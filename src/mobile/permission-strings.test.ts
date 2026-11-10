@@ -65,8 +65,9 @@ describe('InfoPlist.strings (the permission prompts)', () => {
     for (const key of KEYS) {
       expect(en.get(key), key).toBe(plistString(plist, key));
     }
-    // The camera also scans the QR code that pairs devices for sync
+    // The camera also scans the QR code that pairs devices for sync, and the Recovery Kit's QR
     expect(en.get('NSCameraUsageDescription')).toContain('scans the codes that pair devices');
+    expect(en.get('NSCameraUsageDescription')).toContain('the QR code of your Recovery Kit');
   });
 
   it('keeps Face ID untranslated in every language', () => {

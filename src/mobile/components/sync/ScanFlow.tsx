@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
-import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import { backupFileName } from '@/utils/sync-status';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,7 @@ import { JoinDetailsSheet, type ScanDetails } from '@/mobile/components/sync/Joi
 import { PairingSheet, type JoinFailure } from '@/mobile/components/sync/PairingSheet';
 import { ScanOverlay } from '@/mobile/components/sync/ScanOverlay';
 import { cancelQrScan, openCameraSettings, scanQrCode } from '@/mobile/lib/qr-scanner';
-import { scanRoute, type ScanMode } from '@/mobile/lib/sync-scan';
+import { kitQrSummary, scanRoute, type ScanMode } from '@/mobile/lib/sync-scan';
 
 interface ScanFlowProps {
   /** `join`: sync is off ("Scan a code from another device"); `add`: sync is on ("Add a device"). */
@@ -28,9 +27,10 @@ interface ScanFlowProps {
 
 /**
  * Where the flow is: the details, the camera, its refusal, a QR that is no Moony code, the paste
- * sheet, a request, the pairing.
+ * sheet, the confirm before a Recovery Kit QR joins, a request, the pairing.
  */
-type Step = 'details' | 'scanning' | 'denied' | 'notMoony' | 'paste' | 'working' | 'pairing';
+type Step =
+  'details' | 'scanning' | 'denied' | 'notMoony' | 'paste' | 'kitConfirm' | 'working' | 'pairing';
 
 /** The 48 pt buttons of a sheet's footer. */
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
@@ -39,9 +39,10 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
  * Scanning on the phone, from the details to the end (spec §11.4): the password (and when joining,
  * the warning and the device name) before the camera (review PF1), then the camera, then by what was
  * scanned — a pairing code pairs (`scan`, the backend tells the role: joining with sync off, sending
- * the sync details with sync on), the Recovery Kit's QR joins with the Kit (sync off) or is "Sync
- * is already on". Mounted only while it runs; unmounting it (a lock, leaving the page) cancels the
- * camera and gives the pairing up (`useDevicePairing`).
+ * the sync details with sync on), the Recovery Kit's QR joins with the Kit once its account and
+ * sync server are confirmed (sync off) or is "Sync is already on". Mounted only while it runs;
+ * unmounting it (a lock, leaving the page) cancels the camera and gives the pairing up
+ * (`useDevicePairing`).
  */
 export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
   const { t } = useTranslation('deviceSync');
@@ -52,6 +53,10 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
   const [detailsError, setDetailsError] = useState<string | null>(null);
   /** The details between "Continue" and the request that uses them; never rendered. */
   const details = useRef<ScanDetails | null>(null);
+  /** A scanned Recovery Kit QR between the scan and "Join" (it holds the recovery key); not rendered. */
+  const kitText = useRef<string | null>(null);
+  /** What the confirm sheet shows of that QR: the account number and the sync server. */
+  const [kitShown, setKitShown] = useState<{ account: string; server: string } | null>(null);
   /** The overlay's "Paste a pairing code": the scan is cancelled to make way for the sheet. */
   const toPaste = useRef(false);
   const [joinFailure, setJoinFailure] = useState<JoinFailure | null>(null);
@@ -63,6 +68,7 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
   useEffect(
     () => () => {
       details.current = null;
+      kitText.current = null;
       resetKitJoin();
     },
     [resetKitJoin]
@@ -79,6 +85,7 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
   /** Back to the details with what went wrong; the password is typed again. */
   const backToDetails = (error: unknown) => {
     details.current = null;
+    kitText.current = null;
     setDetailsError(translateApiError(error as Error, tc));
     setStep('details');
   };
@@ -86,11 +93,13 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
   /** Every way out goes through here: the password typed for the scan goes with it. */
   const finish = () => {
     details.current = null;
+    kitText.current = null;
     onDone();
   };
 
   const giveUp = async () => {
     details.current = null;
+    kitText.current = null;
     try {
       await pairing.cancel();
     } catch {
@@ -130,22 +139,20 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
           backToDetails(error);
         }
         return;
-      case 'kitJoin':
-        // The busy cover is up while the data is replaced; nothing of the flow is open under it
-        setStep('working');
-        try {
-          const path = await joinWithRecoveryKit.mutateAsync({
-            code: text.trim(),
-            deviceName: typed.deviceName ?? '',
-            password: typed.password,
-          });
-          toast(t('pairing.joined', { path: backupFileName(path) }));
-          finish();
-        } catch (error) {
-          joinWithRecoveryKit.reset();
-          backToDetails(error);
+      case 'kitJoin': {
+        // A QR is read at a glance: say which account and server it joins before the data goes
+        const summary = kitQrSummary(text);
+        if (!summary.ok) {
+          details.current = null;
+          setDetailsError(tc(summary.problem));
+          setStep('details');
+          return;
         }
+        kitText.current = text.trim();
+        setKitShown({ account: summary.account, server: summary.server });
+        setStep('kitConfirm');
         return;
+      }
       case 'alreadyOn':
         toast.error(tc('validation.syncAlreadyEnabled'));
         finish();
@@ -154,6 +161,27 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
         // Another QR: say so and offer the camera again; the password stays for that retry only
         setStep('notMoony');
         return;
+    }
+  };
+
+  /** "Join" on the confirm sheet: the scanned Kit QR joins. */
+  const joinWithKit = async () => {
+    const typed = details.current;
+    const code = kitText.current;
+    if (!typed || code === null) return finish();
+    // The busy cover is up while the data is replaced; nothing of the flow is open under it
+    setStep('working');
+    try {
+      const path = await joinWithRecoveryKit.mutateAsync({
+        code,
+        deviceName: typed.deviceName ?? '',
+        password: typed.password,
+      });
+      toast(t('pairing.joined', { path: backupFileName(path) }));
+      finish();
+    } catch (error) {
+      joinWithRecoveryKit.reset();
+      backToDetails(error);
     }
   };
 
@@ -186,14 +214,9 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
       toast(t('pairing.joined', { path: backupFileName(path) }));
       finish();
     } catch (failure) {
-      const key = failure instanceof ApiError ? failure.key : undefined;
-      setJoinFailure({
-        message: translateApiError(failure as Error, tc),
-        // Only these two keep the received session; any other failure ended it.
-        retryable:
-          key === 'validation.syncChangeInProgress' || key === 'validation.syncJoinSetupPending',
-        setupPending: key === 'validation.syncJoinSetupPending',
-      });
+      // The key alone cannot tell whether the backend kept the received session: ask it.
+      const action = await pairing.afterFailedJoin(failure);
+      setJoinFailure({ message: translateApiError(failure as Error, tc), ...action });
     }
   };
 
@@ -309,6 +332,41 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
         }
       >
         {null}
+      </Sheet>
+      <Sheet
+        open={step === 'kitConfirm'}
+        onOpenChange={(next) => {
+          if (!next) void giveUp();
+        }}
+        title={t('phone.kitConfirmTitle')}
+        description={t('phone.kitConfirmBody')}
+        footer={
+          <>
+            <Button variant="ghost" className={`${BUTTON} px-[18px]`} onClick={() => void giveUp()}>
+              {tc('buttons.cancel')}
+            </Button>
+            <Button className={`${BUTTON} flex-1`} onClick={() => void joinWithKit()}>
+              {t('phone.kitConfirmJoin')}
+            </Button>
+          </>
+        }
+      >
+        {kitShown && (
+          <dl className="m-0 grid gap-3">
+            <div>
+              <dt className="text-m-caption text-ink-3">{t('join.accountLabel')}</dt>
+              <dd className="m-0 text-m-row text-ink num" data-testid="kit-confirm-account">
+                {kitShown.account}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-m-caption text-ink-3">{t('join.serverLabel')}</dt>
+              <dd className="m-0 break-all text-m-row text-ink" data-testid="kit-confirm-server">
+                {kitShown.server}
+              </dd>
+            </div>
+          </dl>
+        )}
       </Sheet>
       <CodeEntrySheet
         open={step === 'paste'}

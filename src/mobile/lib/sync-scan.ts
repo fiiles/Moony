@@ -1,5 +1,6 @@
 import type { PairingStage, PairingView } from '@shared/schema';
 import { scannedCodeKind } from '@/utils/pairing-code';
+import { groupAccountNumber } from '@/utils/recovery-kit';
 
 /**
  * The pure parts of scanning on the phone (Nastavení → Sync): what a scanned or pasted text leads
@@ -35,6 +36,58 @@ export function scanRoute(text: string, mode: ScanMode): ScanRoute {
  */
 export function kitCodeProblem(code: string): string | null {
   return scannedCodeKind(code) === 'pair' ? 'phone.notAKitCode' : null;
+}
+
+/**
+ * The sync server a Recovery Kit QR without one names: `DEFAULT_RELAY_URL` in
+ * `src-tauri/src/services/sync/relay/http.rs`, which `read_recovery_input` joins with.
+ */
+export const DEFAULT_SYNC_SERVER = 'https://sync.moonyfinance.com';
+
+/**
+ * What the phone shows before a scanned Recovery Kit QR joins: the account number in groups of four
+ * and the sync server, or why the QR cannot join (a `common` key, the one the backend would answer).
+ */
+export type KitQrSummary =
+  | { ok: true; account: string; server: string }
+  | {
+      ok: false;
+      problem: 'validation.syncRecoveryCodeInvalid' | 'validation.syncRelayUrlInvalid';
+    };
+
+const KIT_QR_PREFIX = 'moony-recover:1:';
+
+/**
+ * Reads the account and the sync server of `moony-recover:1:<account>:<code>[:<base64url server>]`
+ * (`parse_recovery_qr_payload`) for the confirm sheet. It refuses no more than the backend does: the
+ * code itself and the server's details are the backend's to check when the join runs.
+ */
+export function kitQrSummary(text: string): KitQrSummary {
+  const invalid = { ok: false, problem: 'validation.syncRecoveryCodeInvalid' } as const;
+  const trimmed = text.trim();
+  if (!trimmed.startsWith(KIT_QR_PREFIX)) return invalid;
+  const fields = trimmed.slice(KIT_QR_PREFIX.length).split(':');
+  if (fields.length < 2 || fields.length > 3) return invalid;
+  const [account, , encoded] = fields;
+  if (!/^\d{16}$/.test(account)) return invalid;
+  if (encoded === undefined) {
+    return { ok: true, account: groupAccountNumber(account), server: DEFAULT_SYNC_SERVER };
+  }
+  if (!/^[A-Za-z0-9_-]+$/.test(encoded)) return invalid;
+  let address: string;
+  try {
+    const binary = atob(encoded.replace(/-/g, '+').replace(/_/g, '/'));
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    address = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return invalid;
+  }
+  try {
+    const server = new URL(address).href.replace(/\/+$/, '');
+    return { ok: true, account: groupAccountNumber(account), server };
+  } catch {
+    return { ok: false, problem: 'validation.syncRelayUrlInvalid' };
+  }
 }
 
 /** The developer paste sheet takes a pairing code only (a `deviceSync` key otherwise). */

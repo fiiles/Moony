@@ -1125,7 +1125,11 @@ where it differs from §11, the code and ADR 0026 win.
   Recovery Kit. Both devices check their device password before anything is shown or written, and
   each acts only after its own person confirmed the six digits. The joining device keeps its own
   profile and password and joins by replace (D22) after a verified backup; a Kit join first checks
-  the account on the server and refuses a vault whose key was rotated.
+  the account on the server and refuses a vault whose key was rotated. A join that fails for the
+  moment (offline, a sync server error, another sync change running, a half-finished setup) keeps
+  the received sync details: the UI asks the backend whether they are still there and offers "Try
+  again" (and "Cancel setup" when a setup blocks it), else "Start again". On the phone a scanned
+  Recovery Kit QR joins only after a confirm that shows the Kit's account number and sync server.
 - **§11.4 The device list.** "Last synced" is derived, not stored: this device's last successful
   sync, another device's newest clock in `sync_clock`. Rows of re-joined or turned-off devices stay
   until removal in phase 5.

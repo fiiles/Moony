@@ -471,9 +471,11 @@ pub fn open_credentials(t: &Transcript, sealed: &[u8]) -> Result<Credentials> {
         if decoded.len() != 32 {
             return Err(failed());
         }
-        let mut key = [0u8; 32];
+        // The temporary and a replaced duplicate are wiped too, not only the map's copy.
+        let mut key = Zeroizing::new([0u8; 32]);
         key.copy_from_slice(&decoded);
-        if keys.0.insert(entry.epoch, key).is_some() {
+        if let Some(mut duplicate) = keys.0.insert(entry.epoch, *key) {
+            zeroize::Zeroize::zeroize(&mut duplicate);
             return Err(failed());
         }
     }

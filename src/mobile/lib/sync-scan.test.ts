@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { PairingStage, PairingView } from '@shared/schema';
 import {
+  DEFAULT_SYNC_SERVER,
   isScanCancelled,
+  kitQrSummary,
   kitCodeProblem,
   pairingCodeProblem,
   pairingSheetStep,
@@ -158,5 +160,71 @@ describe('pairingSheetStep', () => {
     ] as const) {
       expect(pairingSheetStep(view(stage), { failed: false, expired: false })).toBe(stage);
     }
+  });
+});
+
+describe('kitQrSummary', () => {
+  // base64url without padding, as recovery_qr_payload writes it
+  const b64 = (text: string) =>
+    btoa(String.fromCharCode(...new TextEncoder().encode(text)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+  it('reads the account, and the default server for a kit without one', () => {
+    expect(kitQrSummary(`  ${KIT_QR}\n`)).toEqual({
+      ok: true,
+      account: '1234 5678 1234 5678',
+      server: 'https://sync.moonyfinance.com',
+    });
+    expect(DEFAULT_SYNC_SERVER).toBe('https://sync.moonyfinance.com');
+  });
+
+  it('reads the server a self-hosted kit names (the Rust test vector)', () => {
+    expect(kitQrSummary(`${KIT_QR}:aHR0cHM6Ly9yZWxheS5leGFtcGxlLm9yZw`)).toEqual({
+      ok: true,
+      account: '1234 5678 1234 5678',
+      server: 'https://relay.example.org',
+    });
+  });
+
+  it('shows the server as the URL parser spells it (no trailing slash, punycode host)', () => {
+    expect(kitQrSummary(`${KIT_QR}:${b64('https://Sync.Example.com:8443/')}`)).toMatchObject({
+      server: 'https://sync.example.com:8443',
+    });
+    expect(kitQrSummary(`${KIT_QR}:${b64('https://bücher.example/')}`)).toMatchObject({
+      server: 'https://xn--bcher-kva.example',
+    });
+  });
+
+  it.each([
+    ['another version', `moony-recover:2:1234567812345678:${CODE80}`],
+    ['no code', 'moony-recover:1:1234567812345678'],
+    ['a short account', `moony-recover:1:123456781234567:${CODE80}`],
+    ['a grouped account', `moony-recover:1:1234-5678-1234-5678:${CODE80}`],
+    ['letters in the account', `moony-recover:1:12345678123456a8:${CODE80}`],
+    ['a fifth field', `${KIT_QR}:aHR0cHM6Ly9yZWxheS5leGFtcGxlLm9yZw:x`],
+    ['an empty server', `${KIT_QR}:`],
+    ['a padded server', `${KIT_QR}:aHR0cHM6Ly9yZWxheS5leGFtcGxlLm9yZw==`],
+    ['standard base64 characters', `${KIT_QR}:${btoa('https://a.example/?>>>')}`],
+  ])('refuses %s as an invalid code', (_label, text) => {
+    expect(kitQrSummary(text)).toEqual({
+      ok: false,
+      problem: 'validation.syncRecoveryCodeInvalid',
+    });
+  });
+
+  it('refuses a server that is not UTF-8 as an invalid code', () => {
+    expect(kitQrSummary(`${KIT_QR}:_w`)).toEqual({
+      ok: false,
+      problem: 'validation.syncRecoveryCodeInvalid',
+    });
+  });
+
+  it('refuses a server that is no URL', () => {
+    expect(kitQrSummary(`${KIT_QR}:${b64('not a url')}`)).toEqual({
+      ok: false,
+      problem: 'validation.syncRelayUrlInvalid',
+    });
   });
 });

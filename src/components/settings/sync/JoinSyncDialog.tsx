@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
-import { ApiError } from '@/lib/api-error';
+import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
+import type { JoinFailureAction } from '@/utils/pairing-code';
 import { defaultDeviceKey } from '@/utils/sync-devices';
 import { JoinFields, JoinWarning } from '@/components/settings/sync/JoinFields';
 import { PairingSteps } from '@/components/settings/sync/PairingSteps';
@@ -30,7 +31,8 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
   const { t: tc } = useTranslation('common');
   const status = useDeviceSyncStatus().data;
   const pairing = useDevicePairing();
-  const { error, isError, start, confirm, cancel, join } = pairing;
+  const { error, isError, start, confirm, cancel, join, afterFailedJoin } = pairing;
+  const { turnOff } = useDeviceSyncMutations();
   // A successful join clears the pairing before the dialog closes: keep showing its last step.
   const lastView = useRef(pairing.view);
   if (pairing.view) lastView.current = pairing.view;
@@ -39,8 +41,13 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
   const [password, setPassword] = useState('');
   const [relayUrl, setRelayUrl] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
-  /** A failed join: its text, and whether the backend kept the pairing (so the same join can run again). */
-  const [joinError, setJoinError] = useState<{ message: string; retryable: boolean } | null>(null);
+  /**
+   * A failed join: its text, whether the backend kept the pairing (so the same join can run again)
+   * and whether a half-finished setup blocks it ("Cancel setup").
+   */
+  const [joinError, setJoinError] = useState<({ message: string } & JoinFailureAction) | null>(
+    null
+  );
 
   const close = async () => {
     try {
@@ -75,13 +82,9 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
       toast(t('pairing.joined', { path }));
       onClose();
     } catch (failure) {
-      const key = failure instanceof ApiError ? failure.key : undefined;
-      setJoinError({
-        message: translateApiError(failure as Error, tc),
-        // Only these two keep the received session (`after_join_error`); any other failure ended it.
-        retryable:
-          key === 'validation.syncChangeInProgress' || key === 'validation.syncJoinSetupPending',
-      });
+      // The key alone cannot tell whether the backend kept the received session: ask it.
+      const action = await afterFailedJoin(failure);
+      setJoinError({ message: translateApiError(failure as Error, tc), ...action });
     }
   };
 
@@ -104,6 +107,17 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
   };
 
   const retry = async () => {
+    await runJoin();
+  };
+
+  // A half-finished setup on this device refuses the join: cancel it, then join again
+  const cancelSetupAndRetry = async () => {
+    try {
+      await turnOff.mutateAsync();
+    } catch (failure) {
+      toast.error(tc('status.error'), { description: translateApiError(failure as Error, tc) });
+      return;
+    }
     await runJoin();
   };
 
@@ -190,11 +204,23 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
           </Alert>
         )}
         <DialogFooter>
+          {joinError?.setupPending && !failed && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={cancelSetupAndRetry}
+              loading={turnOff.isPending}
+              disabled={join.isPending}
+            >
+              {t('intro.cancelSetup')}
+            </Button>
+          )}
           {joinError && !failed && (
             <Button
               type="button"
               onClick={joinError.retryable ? retry : startAgain}
               loading={join.isPending}
+              disabled={turnOff.isPending}
             >
               {joinError.retryable ? t('pairing.tryAgain') : t('pairing.startAgain')}
             </Button>
@@ -202,7 +228,7 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
           <Button
             type="button"
             variant="ghost"
-            disabled={join.isPending}
+            disabled={join.isPending || turnOff.isPending}
             onClick={() => void close()}
           >
             {tc('buttons.cancel')}

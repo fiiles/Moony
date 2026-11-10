@@ -1,9 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PairingView } from '@shared/schema';
+import { ApiError } from '@/lib/api-error';
 import { deviceSyncApi, portfolioApi } from '@/lib/tauri-api';
 import { refreshAfterRemoteChanges } from '@/lib/device-sync-refresh';
-import { pairingPollInterval } from '@/utils/pairing-code';
+import {
+  joinFailureAction,
+  pairingPollInterval,
+  type JoinFailureAction,
+  type JoinFailurePoll,
+} from '@/utils/pairing-code';
 import { REPLACE_DEVICE_MUTATION_KEY } from './use-device-sync-mutations';
 import { useDeviceSyncFeature } from './use-device-sync';
 
@@ -18,7 +24,8 @@ const PAIRING_KEY = ['device-sync-pairing'] as const;
  * so they are reset as soon as they succeed. A dialog that closes any other way (error, dismissed)
  * must call `cancel()` (resets both and clears the view) or `start.reset()` / `scan.reset()` itself.
  * `error` / `isError` report a failed poll (expired, cancelled by the other device, unreachable);
- * polling stops on an error and once `expiresAt` has passed.
+ * polling stops on an error and once `expiresAt` has passed. After a failed `join`,
+ * `afterFailedJoin` asks the backend whether it kept the received session (`joinFailureAction`).
  */
 export function useDevicePairing() {
   const queryClient = useQueryClient();
@@ -86,6 +93,17 @@ export function useDevicePairing() {
     },
   });
 
+  /** A failed join: asks the backend whether the received session is still there to join again. */
+  const afterFailedJoin = async (failure: unknown): Promise<JoinFailureAction> => {
+    let poll: JoinFailurePoll;
+    try {
+      poll = { ok: true, stage: (await deviceSyncApi.pairingPoll()).stage };
+    } catch (pollFailure) {
+      poll = { ok: false, key: pollFailure instanceof ApiError ? pollFailure.key : undefined };
+    }
+    return joinFailureAction(poll, failure instanceof ApiError ? failure.key : undefined);
+  };
+
   const cancel = async () => {
     start.reset();
     scan.reset();
@@ -111,5 +129,5 @@ export function useDevicePairing() {
     [queryClient, resetStart, resetScan]
   );
 
-  return { view, error, isError, start, scan, confirm, cancel, join };
+  return { view, error, isError, start, scan, confirm, cancel, join, afterFailedJoin };
 }

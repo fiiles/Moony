@@ -94,10 +94,16 @@ never waits behind a running join, which gives the pairing up when it ends.
 off, and no setup of another account or on another server stored (`syncJoinSetupPending`, PF5),
 both before anything is written; then the verified backup (`sync-repair-<unix>.zip`, read back),
 then the replace of ADR 0025 under a new device ID, and the binding. The command runs it as a sync
-change (`guarded_change`) on a copy of the credentials; a momentary failure, `syncChangeInProgress`
-or `syncJoinSetupPending` keep the received session, and the UI offers "Cancel setup" (turn-off with
-sync off) and "Try again". The busy modal (desktop) and the busy cover (phone, which also holds back
-navigation and the edge swipe) block edits until the replace ends. The Kit join checks the password,
+change (`guarded_change`) on a copy of the credentials; a momentary failure (offline, a relay
+failure, a rate limit), `syncChangeInProgress` or `syncJoinSetupPending` keep the received session,
+anything else ends it. The error key cannot tell which (`syncRelayError` is both), so after a failed
+join both UIs ask `sync_pairing_poll` (`joinFailureAction` in `src/utils/pairing-code.ts`): stage
+`received` offers "Try again", which joins again, and on `syncJoinSetupPending` also "Cancel setup"
+(turn-off with sync off, then the join again); "not started" or "expired" offers "Start again". The
+busy modal (desktop) and the busy cover (phone, which also holds back navigation and the edge
+swipe) block edits until the replace ends. On the phone a scanned Kit QR joins only after a confirm
+sheet that shows its account number (in groups of four) and sync server; a typed code has its
+fields on screen already. The Kit join checks the password,
 then (PF7) refuses with sync on before any relay call, asks `account_status`
 (`syncRecoveryAccountInvalid`), opens the vault with the Kit's key as epoch 0 (`vault_info`;
 `syncRecoveryVaultNotFound`) and refuses a vault whose `rotation` is not 0
@@ -128,7 +134,7 @@ Enclave, so the binding is written and checked there too; the XCTest self-test a
 with a software key. The recovery code goes on the pasteboard `.localOnly` with a 60 s
 `.expirationDate`; the clear at lock or in the background can miss (iOS may not keep `changeCount`
 fresh there), and the expiry is the backstop. `NSCameraUsageDescription` now names scanning pairing
-codes, and `NSLocalNetworkUsageDescription` covers a sync server on the home network, in all ten
+codes and the Recovery Kit's QR, and `NSLocalNetworkUsageDescription` covers a sync server on the home network, in all ten
 languages. The barcode scanner runs `windowed: true` under the app's own overlay with five named
 permissions. Android answers `Unsupported` for the binding and the clipboard (the UI copies and
 asks the person to clear it).
@@ -163,5 +169,10 @@ behind, to be replaced by a relay flag before release.
   seal and open (`binding_written = 1` after a join); the error a blob from another iPhone gives
   (the log line `bindOpen failed at restore: …`); a locked or background start answers −25308 and
   reads `Failed`; the `.localOnly` clipboard expiring after 60 s and clearing at lock; the camera
-  scan of the desktop's QR; the camera and local-network permission texts. Also the unused
+  scan of the desktop's QR in both directions (the phone joining from the desktop's "Add a device",
+  and the phone's "Add a device" scanning the desktop's "Join from your phone"); a pairing join cut
+  by a network drop (Wi-Fi off while "Joining…" shows, on the phone and on the desktop), which must
+  offer "Try again", not "Start again", and join once the network is back; a real-camera scan of a
+  Recovery Kit QR, which must show the confirm sheet with the Kit's account number and sync server
+  before anything is replaced; the camera and local-network permission texts. Also the unused
   checkout session above, before release.

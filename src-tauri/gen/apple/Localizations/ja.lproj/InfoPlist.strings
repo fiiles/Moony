@@ -2,7 +2,7 @@
 "NSFaceIDUsageDescription" = "MoonyはFace IDでデータのロックを解除します。";
 
 /* Camera permission prompt */
-"NSCameraUsageDescription" = "Moonyは書類や物件を撮影し、同期のためにデバイスをペアリングするコードを読み取ります。写真は暗号化され、このスマートフォンに保存されます。";
+"NSCameraUsageDescription" = "Moonyは書類や物件を撮影し、同期のためにデバイスをペアリングするコードやリカバリーキットの QR コードを読み取ります。写真は暗号化され、このスマートフォンに保存されます。";
 
 /* Local network permission prompt (a sync server on the home network) */
 "NSLocalNetworkUsageDescription" = "ホームネットワーク上の同期サーバーを使用する場合、Moonyはそのサーバーに接続します。";

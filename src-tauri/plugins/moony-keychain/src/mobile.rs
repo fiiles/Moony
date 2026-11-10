@@ -139,7 +139,8 @@ impl<R: Runtime> Keychain<R> {
     /// Seals device sync's 32-byte binding to this phone and answers the blob. iOS: a new Secure
     /// Enclave key (no prompt, usable only while the phone is unlocked), its handle inside the
     /// blob, as on macOS (`MoonyBinding.swift`); `Unsupported` without a Secure Enclave (the
-    /// simulator). Android: `Unsupported`, so the binding stays off, as on Linux.
+    /// Xcode 27 simulator has one: `SecureEnclave.isAvailable` is true there and the seal works).
+    /// Android: `Unsupported`, so the binding stays off, as on Linux.
     pub fn bind_seal(&self, secret: &[u8; 32]) -> Result<Vec<u8>> {
         #[cfg(target_os = "ios")]
         {
@@ -200,7 +201,9 @@ impl<R: Runtime> Keychain<R> {
     }
 
     /// Empties the pasteboard if its change count is still `token`, that is, if nothing was copied
-    /// since [`Keychain::copy_secret_text`]; answers whether it did. Android: `Unsupported`.
+    /// since [`Keychain::copy_secret_text`]; answers whether it did. At lock or in the background
+    /// iOS may limit pasteboard access or `changeCount` freshness, so this clear can miss; the 60 s
+    /// `.expirationDate` set at the copy is the backstop. Android: `Unsupported`.
     pub fn clear_clipboard_if_unchanged(&self, token: u64) -> Result<bool> {
         #[cfg(target_os = "ios")]
         {

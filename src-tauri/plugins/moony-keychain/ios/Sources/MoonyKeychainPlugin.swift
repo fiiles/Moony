@@ -42,10 +42,6 @@ enum KeychainCode: String {
   case cancelled
   case unavailable
   case failed
-  /// Not on this device; Rust reads it as `KeychainError::Unsupported`. No command rejects with it
-  /// today: the binding says so in its reply (`BindReply.unsupported`), next to the failures Rust
-  /// classifies, so a missing Secure Enclave and a failed one cannot be confused.
-  case unsupported
 }
 
 struct StoreArgs: Decodable {
@@ -230,7 +226,7 @@ class MoonyKeychainPlugin: Plugin {
   }
 
   /// Seals device sync's binding to this phone's Secure Enclave (no prompt). Answers a
-  /// `BindReply`: the blob, `unsupported` (no Secure Enclave: the simulator), or the stage, domain
+  /// `BindReply`: the blob, `unsupported` (no Secure Enclave), or the stage, domain
   /// and code of the failure, which Rust classifies (review PF11). Never rejects for a failure of
   /// the Secure Enclave; only for arguments that do not parse.
   @objc func bindSeal(_ invoke: Invoke) {
@@ -281,7 +277,9 @@ class MoonyKeychainPlugin: Plugin {
   }
 
   /// Empties the general pasteboard if its change count is still `token`, that is, if nothing was
-  /// copied since `copySecretText` answered it; answers whether it did.
+  /// copied since `copySecretText` answered it; answers whether it did. At lock or in the
+  /// background iOS may limit pasteboard access or not keep `changeCount` fresh, so this clear can
+  /// miss; the 60 s `.expirationDate` set at the copy is the backstop that removes the code anyway.
   @objc func clearClipboardIfUnchanged(_ invoke: Invoke) {
     guard let args = arguments(invoke, ClearClipboardArgs.self) else { return }
     let pasteboard = UIPasteboard.general

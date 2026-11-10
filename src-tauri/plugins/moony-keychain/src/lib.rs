@@ -20,7 +20,8 @@
 //! `clear_clipboard_if_unchanged`) are Rust-only too: they are not in `build.rs`'s command list,
 //! so no permission can grant the webview `bindOpen`. On the iPhone the binding is a Secure Enclave
 //! key, as on macOS, and the clipboard is `.localOnly` with a 60 s expiry; on Android, and without
-//! a Secure Enclave (the simulator), they answer [`KeychainError::Unsupported`].
+//! a Secure Enclave, they answer [`KeychainError::Unsupported`]. (The Xcode 27 simulator does
+//! report a Secure Enclave, and the binding round-trips there.)
 //!
 //! On the desktop the crate compiles and registers on every platform. The desktop backend wraps
 //! the secret with a key that only the platform's biometry can use and keeps the wrapped blob in a

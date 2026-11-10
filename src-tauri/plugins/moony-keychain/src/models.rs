@@ -34,12 +34,14 @@ pub struct Status {
 /// The Swift side (`ios/Sources/MoonyBinding.swift`) never decides that a blob belongs to another
 /// phone. It answers the stage that failed with the error's domain and code (and the codes of the
 /// errors underneath it), and [`classify_ios_binding`] reads them with the macOS table
-/// (`MoonyBiometrics.swift`, `restoreFailure` / `momentaryFailure`): a blob that does not parse,
-/// a key handle this Secure Enclave rejects, an agreement the key refuses and a box that does not
-/// open are `Invalidated` ("not this device", a re-join); a refusal of the moment is `Failed` (the
-/// start goes on) at every stage, under any other error. Unlike macOS, an error the table does not
-/// know is `Failed` too (review PF11): on the phone a re-join costs a new device ID and a fresh
-/// copy, and a locked phone must never cause one.
+/// (`MoonyBiometrics.swift`, `restoreFailure` / `momentaryFailure`): a refusal of the moment
+/// (the phone locked, the Secure Enclave busy) is `Failed` (the start goes on) at every stage,
+/// bare or under any other error, so a locked phone never re-joins; a seal that fails is `Failed`
+/// too (it says nothing about another device). Anything else once a blob is being opened (a blob
+/// that does not parse, a key handle this Secure Enclave rejects, an agreement the key refuses, a
+/// box that does not open, and an error the table does not know) is `Invalidated` ("not this
+/// device", a re-join): as on macOS, a needless re-join is cheap and a missed copy is not (phase 2
+/// Task 14 ruling, Task 13 fix round 1).
 pub(crate) mod bridge {
     // Only the iPhone build calls these; every platform compiles and tests them.
     #![cfg_attr(not(target_os = "ios"), allow(dead_code))]
@@ -50,17 +52,10 @@ pub(crate) mod bridge {
 
     use crate::{KeychainError, Result};
 
-    /// The domain of the failures the Swift side finds itself (`MoonyBinding.swift`): 1 the blob is
-    /// not of the binding's format or length, 2 a secret of the wrong length, 3 no AES-GCM box, 4
-    /// no access control.
-    pub const MOONY_BINDING_DOMAIN: &str = "MoonyBinding";
     /// The NSError domain of a Security OSStatus.
     const OS_STATUS_DOMAIN: &str = "NSOSStatusErrorDomain";
     /// CryptoTokenKit's `TKErrorDomain`, which the Secure Enclave's key operations answer in.
     const TOKEN_DOMAIN: &str = "CryptoTokenKit";
-    /// CryptoKit's errors, by their case's index (`MoonyBinding.swift` `cryptoKitCode`:
-    /// 2 is `authenticationFailure`, a box that does not open).
-    const CRYPTO_KIT_DOMAIN: &str = "CryptoKit.CryptoKitError";
     /// LocalAuthentication's `LAErrorDomain`: no binding call prompts, so any such answer is one
     /// of the moment.
     const LOCAL_AUTHENTICATION_DOMAIN: &str = "com.apple.LocalAuthentication";
@@ -72,13 +67,6 @@ pub(crate) mod bridge {
     /// `TKError` codes that say nothing about the key: communicationError, canceledByUser,
     /// tokenNotFound, authenticationNeeded.
     pub const MOMENTARY_TOKEN_ERRORS: [i64; 4] = [-2, -4, -7, -9];
-    /// OSStatus values of a key this Secure Enclave will not use: errSecItemNotFound,
-    /// errSecAuthFailed, errSecParam (the macOS table's binding rows).
-    const KEY_REJECTED_OS_STATUS: [i64; 3] = [-25300, -25293, -50];
-    /// `TKError` codes of a key this Secure Enclave will not use: corruptedData ("corrupted
-    /// objectID detected", a handle from another Secure Enclave), authenticationFailed,
-    /// objectNotFound.
-    const KEY_REJECTED_TOKEN_ERRORS: [i64; 3] = [-3, -5, -6];
 
     /// `bindSeal`'s argument: the 32-byte value as base64 ([`encode_secret`]).
     #[derive(Serialize)]
@@ -117,7 +105,7 @@ pub(crate) mod bridge {
     }
 
     /// `bindSeal`'s and `bindOpen`'s answer: the blob or the 32-byte value as base64, or
-    /// `unsupported` (no Secure Enclave: the simulator), or the failure to classify.
+    /// `unsupported` (no Secure Enclave), or the failure to classify.
     #[derive(Deserialize)]
     pub struct BindReply {
         #[serde(default)]
@@ -201,23 +189,14 @@ pub(crate) mod bridge {
         STANDARD.encode(blob)
     }
 
-    /// Classifies a failed seal or open the way macOS does: `Invalidated` only for what proves the
-    /// blob is not this phone's (see the module), `Failed` for everything else.
+    /// Classifies a failed seal or open the way macOS does (see the module): `Failed` for a
+    /// refusal of the moment anywhere in the chain and for any failed seal, `Invalidated` for
+    /// everything else.
     pub fn classify_ios_binding(failure: &NativeFailure) -> KeychainError {
-        if failure.chain().any(is_momentary) {
+        if failure.stage == BindStage::Seal || failure.chain().any(is_momentary) {
             return failed(failure);
         }
-        match failure.stage {
-            BindStage::Seal => failed(failure),
-            BindStage::Parse => KeychainError::Invalidated,
-            BindStage::Restore | BindStage::Agree | BindStage::Open => {
-                if failure.chain().any(rejects_the_blob) {
-                    KeychainError::Invalidated
-                } else {
-                    failed(failure)
-                }
-            }
-        }
+        KeychainError::Invalidated
     }
 
     /// `bindOpen`'s answer: the 32-byte value, wiped when dropped.
@@ -269,19 +248,6 @@ pub(crate) mod bridge {
             OS_STATUS_DOMAIN => MOMENTARY_OS_STATUS.contains(&code),
             TOKEN_DOMAIN => MOMENTARY_TOKEN_ERRORS.contains(&code),
             LOCAL_AUTHENTICATION_DOMAIN => true,
-            _ => false,
-        }
-    }
-
-    /// What only a blob that is not this phone's (or not a binding at all) gives once it has
-    /// parsed: a key handle the Secure Enclave rejects, an agreement it refuses, a CryptoKit error
-    /// over the blob's bytes (an authentication failure when the box does not open), or a box
-    /// that holds no 32-byte value.
-    fn rejects_the_blob((domain, code): (&str, i64)) -> bool {
-        match domain {
-            OS_STATUS_DOMAIN => KEY_REJECTED_OS_STATUS.contains(&code),
-            TOKEN_DOMAIN => KEY_REJECTED_TOKEN_ERRORS.contains(&code),
-            CRYPTO_KIT_DOMAIN | MOONY_BINDING_DOMAIN => true,
             _ => false,
         }
     }
@@ -342,6 +308,10 @@ mod tests {
 
     const OS_STATUS: &str = "NSOSStatusErrorDomain";
     const TOKEN: &str = "CryptoTokenKit";
+    /// The domain of the failures the Swift side finds itself (`MoonyBinding.swift`): 1 the blob is
+    /// not of the binding's format or length, 2 a secret of the wrong length, 3 no AES-GCM box, 4
+    /// no access control.
+    const MOONY_BINDING_DOMAIN: &str = "MoonyBinding";
     const CRYPTO_KIT: &str = "CryptoKit.CryptoKitError";
     const LA: &str = "com.apple.LocalAuthentication";
     const ALL_STAGES: [BindStage; 5] = [
@@ -431,7 +401,7 @@ mod tests {
             Err(KeychainError::Failed(_))
         ));
 
-        // No Secure Enclave (the simulator): unsupported, whatever else came along.
+        // No Secure Enclave: unsupported, whatever else came along.
         assert_eq!(
             bind_reply_blob(reply(r#"{"unsupported":true}"#)),
             Err(KeychainError::Unsupported)
@@ -497,6 +467,14 @@ mod tests {
             // A box that does not open (CryptoKit authenticationFailure), or holds no secret.
             failure(BindStage::Open, CRYPTO_KIT, 2),
             failure(BindStage::Open, MOONY_BINDING_DOMAIN, 2),
+            // An error this table does not know, once the blob parsed: as on macOS, a needless
+            // re-join beats a copy that goes unnoticed (phase 2 Task 14 ruling).
+            failure(BindStage::Restore, "SomethingElse", 0),
+            failure(BindStage::Agree, "SomethingElse", 0),
+            failure(BindStage::Open, "SomethingElse", 0),
+            failure(BindStage::Restore, OS_STATUS, -99_999),
+            failure(BindStage::Restore, TOKEN, -99),
+            wrapped(BindStage::Restore, (CRYPTO_KIT, 3), ("CoreCrypto", -7)),
         ];
         for row in &invalidated {
             assert_eq!(
@@ -521,13 +499,8 @@ mod tests {
             failure(BindStage::Seal, CRYPTO_KIT, 2),
             failure(BindStage::Seal, OS_STATUS, -25300),
             failure(BindStage::Seal, MOONY_BINDING_DOMAIN, 2),
-            // An error this table does not know is not proof of another device.
+            // Nor does an error the table does not know while sealing.
             failure(BindStage::Seal, "SomethingElse", 0),
-            failure(BindStage::Restore, "SomethingElse", 0),
-            failure(BindStage::Agree, "SomethingElse", 0),
-            failure(BindStage::Open, "SomethingElse", 0),
-            failure(BindStage::Restore, OS_STATUS, -99_999),
-            failure(BindStage::Restore, TOKEN, -99),
         ];
         for row in &failed {
             assert!(
@@ -573,8 +546,8 @@ mod tests {
     fn binding_messages_name_the_secure_storage_not_biometry() {
         for stage in ALL_STAGES {
             for (domain, code) in [(OS_STATUS, -25308), (LA, -6), ("SomethingElse", 0)] {
-                if stage == BindStage::Parse && domain == "SomethingElse" {
-                    continue; // a blob that does not parse is invalidated, whatever the parser said
+                if stage != BindStage::Seal && domain == "SomethingElse" {
+                    continue; // an unknown error over a blob is invalidated: no message
                 }
                 let KeychainError::Failed(message) =
                     classify_ios_binding(&failure(stage, domain, code))

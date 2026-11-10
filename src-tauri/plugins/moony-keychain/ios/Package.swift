@@ -25,6 +25,12 @@ let package = Package(
       dependencies: [
         .byName(name: "Tauri")
       ],
-      path: "Sources")
+      path: "Sources"),
+    // The binding's selftest on the simulator (`xcodebuild test`, see the file); never linked
+    // into the app, which builds the library product only.
+    .testTarget(
+      name: "moony-keychainTests",
+      dependencies: ["moony-keychain"],
+      path: "Tests"),
   ]
 )

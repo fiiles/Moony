@@ -172,3 +172,29 @@ impl Drop for RecoveryKit {
         self.qr_svg.zeroize();
     }
 }
+
+/// One device of the sync account as Settings lists it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncDevice {
+    /// The device ID, 32 lowercase hex characters.
+    #[serde(rename = "id")]
+    pub id: String,
+    #[serde(rename = "name")]
+    pub name: String,
+    /// `macos`, `windows`, `linux`, `ios` or `android`.
+    #[serde(rename = "platform")]
+    pub platform: String,
+    #[serde(rename = "appVersion")]
+    pub app_version: String,
+    #[serde(rename = "joinedAt")]
+    pub joined_at: i64,
+    /// The last successful sync of this device, or the newest change another device wrote
+    /// (unix seconds); `None` before either.
+    #[serde(rename = "lastActiveAt")]
+    pub last_active_at: Option<i64>,
+    #[serde(rename = "thisDevice")]
+    pub this_device: bool,
+    /// The device's messages are held back (quarantined) here.
+    #[serde(rename = "held")]
+    pub held: bool,
+}

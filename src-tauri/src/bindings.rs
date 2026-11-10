@@ -33,6 +33,7 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::SyncAccount>();
     types.register::<crate::models::CheckoutTarget>();
     types.register::<crate::models::RecoveryKit>();
+    types.register::<crate::models::SyncDevice>();
 
     // Investment models
     types.register::<crate::models::StockInvestment>();

@@ -3079,6 +3079,28 @@ export type SyncAccount = { accountNumber: string; active: boolean;
 paidUntil: number | null }
 
 /**
+ * One device of the sync account as Settings lists it.
+ */
+export type SyncDevice = { 
+/**
+ * The device ID, 32 lowercase hex characters.
+ */
+id: string; name: string; 
+/**
+ * `macos`, `windows`, `linux`, `ios` or `android`.
+ */
+platform: string; appVersion: string; joinedAt: number; 
+/**
+ * The last successful sync of this device, or the newest change another device wrote
+ * (unix seconds); `None` before either.
+ */
+lastActiveAt: number | null; thisDevice: boolean; 
+/**
+ * The device's messages are held back (quarantined) here.
+ */
+held: boolean }
+
+/**
  * Where sync stands on this device.
  */
 export type SyncPhase = 

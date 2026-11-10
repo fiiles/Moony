@@ -121,6 +121,22 @@ export interface RecoveryKit {
   relayUrl: string | null;
 }
 
+/** One device of the sync account as Settings lists it. */
+export interface SyncDevice {
+  /** The device ID, 32 lowercase hex characters. */
+  id: string;
+  name: string;
+  /** `macos`, `windows`, `linux`, `ios` or `android`. */
+  platform: string;
+  appVersion: string;
+  joinedAt: number;
+  /** Unix seconds: this device's last successful sync, or the newest change another device wrote. */
+  lastActiveAt: number | null;
+  thisDevice: boolean;
+  /** The device's messages are held back (quarantined) here. */
+  held: boolean;
+}
+
 export interface MenuPreferences {
   loans: boolean;
   insurance: boolean;

@@ -291,6 +291,7 @@
     "devPasteTitle": "Vložit párovací kód — vývojářský nástroj",
     "devPasteLabel": "Párovací kód",
     "payUnavailable": "Platba za synchronizaci není v aplikaci v telefonu k dispozici.",
-    "payWaiting": "Čekáme, až se účet aktivuje. Jakmile se tak stane, pokračuje to samo."
+    "payWaiting": "Čekáme, až se účet aktivuje. Jakmile se tak stane, pokračuje to samo.",
+    "payWaitingShort": "Čekáme…"
   }
 }

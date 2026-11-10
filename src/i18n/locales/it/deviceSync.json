@@ -289,6 +289,7 @@
     "devPasteTitle": "Incolla un codice di associazione — strumento per sviluppatori",
     "devPasteLabel": "Codice di associazione",
     "payUnavailable": "Il pagamento della sincronizzazione non è disponibile nell'app per telefono.",
-    "payWaiting": "In attesa che l'account diventi attivo. Si procede da soli non appena succede."
+    "payWaiting": "In attesa che l'account diventi attivo. Si procede da soli non appena succede.",
+    "payWaitingShort": "In attesa…"
   }
 }

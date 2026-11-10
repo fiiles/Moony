@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Check, ChevronRight, Copy } from 'lucide-react';
+import { Check, ChevronRight, Copy, Loader2 } from 'lucide-react';
 import type { RecoveryKit } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -70,6 +70,13 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
   const [kitKept, setKitKept] = useState(false);
   const [kitConfirmed, setKitConfirmed] = useState(false);
   const [numberCopied, setNumberCopied] = useState(false);
+  const copiedTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+    },
+    []
+  );
   const [deviceName, setDeviceName] = useState(() =>
     t(`setup.defaultName.${phoneDeviceKey(import.meta.env.TAURI_ENV_PLATFORM ?? '')}`)
   );
@@ -134,7 +141,9 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
       // A different server means a different account: whatever was prepared for the old one is void.
       setCreatedNumber(created.accountNumber);
       setCreatedWith(relayValue);
+      prepareRecoveryKit.reset();
       setKit(null);
+      setKitFailed(false);
       setKitKept(false);
       setKitConfirmed(false);
       setPay('asking');
@@ -166,7 +175,8 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
     try {
       await navigator.clipboard.writeText(accountNumber);
       setNumberCopied(true);
-      setTimeout(() => setNumberCopied(false), 2000);
+      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+      copiedTimer.current = window.setTimeout(() => setNumberCopied(false), 2000);
     } catch (error) {
       toastError(error);
     }
@@ -194,7 +204,12 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
 
   const busy = createAccount.isPending || finishSetup.isPending;
 
-  let primary: { label: string; onClick: () => void; disabled?: boolean; loading?: boolean };
+  let primary: {
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    loading?: boolean;
+  } | null;
   switch (step) {
     case 'account':
       primary = {
@@ -205,7 +220,7 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
       break;
     case 'pay':
       // Nothing to press: the step moves on by itself once the account is active
-      primary = { label: t('setup.account.continue'), onClick: () => undefined, disabled: true };
+      primary = null;
       break;
     case 'kit':
       primary = {
@@ -252,14 +267,24 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
           >
             {t('setup.cancel')}
           </Button>
-          <Button
-            className={`${BUTTON} flex-1`}
-            onClick={primary.onClick}
-            disabled={primary.disabled}
-            loading={primary.loading}
-          >
-            {primary.label}
-          </Button>
+          {primary ? (
+            <Button
+              className={`${BUTTON} flex-1`}
+              onClick={primary.onClick}
+              disabled={primary.disabled}
+              loading={primary.loading}
+            >
+              {primary.label}
+            </Button>
+          ) : (
+            <p
+              className="m-0 flex min-h-12 flex-1 items-center justify-center gap-2 text-m-sub text-ink-3"
+              role="status"
+            >
+              <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+              {t('phone.payWaitingShort')}
+            </p>
+          )}
         </>
       }
     >

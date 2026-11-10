@@ -56,8 +56,9 @@ pub const STATUS_CHANGED_EVENT: &str = "sync-status-changed";
 #[derive(Default)]
 pub struct SyncEngineState(pub Mutex<Option<EngineHandle>>);
 
-/// The binding native: the keychain plugin seals to this machine (a Secure Enclave key on macOS,
-/// DPAPI in machine scope on Windows) and answers `Unsupported` on Linux and the phones.
+/// The binding native: the keychain plugin seals to this machine (a Secure Enclave key on macOS
+/// and on the iPhone, DPAPI in machine scope on Windows) and answers `Unsupported` on Linux,
+/// Android and the iOS simulator (no Secure Enclave).
 pub(super) struct KeychainBinding {
     pub(super) app: AppHandle,
 }
@@ -644,6 +645,13 @@ pub async fn sync_show_recovery_kit(
     Ok(kit)
 }
 
+/// Whether turning sync off (or deleting the synced data) ends a running pairing. A holder's
+/// session needs sync on; with sync off only a joiner's can exist, and cancelling a half-finished
+/// setup must keep it, so that the join which the setup refused can be tried again.
+fn forgets_pairing_on_turn_off(sync_was_on: bool) -> bool {
+    sync_was_on
+}
+
 /// Turns sync off on this device; local data stays.
 #[tauri::command]
 pub async fn sync_turn_off(app: AppHandle, db: State<'_, Database>) -> Result<()> {
@@ -651,7 +659,9 @@ pub async fn sync_turn_off(app: AppHandle, db: State<'_, Database>) -> Result<()
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
     forget_kit_window();
-    super::sync_pairing::forget_pairing();
+    if forgets_pairing_on_turn_off(sync_on(&db)?) {
+        super::sync_pairing::forget_pairing();
+    }
     guarded_change(
         &AppEngine { app: &app, db: &db },
         setup::turn_off_between_rounds(&session, &dir),
@@ -673,7 +683,9 @@ pub async fn sync_delete_synced_data(
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     forget_kit_window();
-    super::sync_pairing::forget_pairing();
+    if forgets_pairing_on_turn_off(sync_on(&db)?) {
+        super::sync_pairing::forget_pairing();
+    }
     guarded_change(
         &AppEngine { app: &app, db: &db },
         setup::delete_synced_data(&relay, &session, &dir),
@@ -770,6 +782,12 @@ mod tests {
     use crate::services::sync::engine::tests::TestConn;
     use crate::services::sync::hlc::DeviceId;
     use crate::services::sync::test_support::migrated;
+
+    #[test]
+    fn only_turning_sync_off_from_on_ends_the_pairing() {
+        assert!(forgets_pairing_on_turn_off(true));
+        assert!(!forgets_pairing_on_turn_off(false));
+    }
 
     fn validation_key(result: Result<impl std::fmt::Debug>) -> String {
         match result.expect_err("refused") {

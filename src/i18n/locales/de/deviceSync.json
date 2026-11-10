@@ -287,6 +287,7 @@
     "devPasteTitle": "Kopplungscode einfügen — Entwicklerwerkzeug",
     "devPasteLabel": "Kopplungscode",
     "payUnavailable": "Das Bezahlen der Synchronisierung ist in der Handy-App nicht möglich.",
-    "payWaiting": "Wir warten darauf, dass das Konto aktiv wird. Sobald es so weit ist, geht es von selbst weiter."
+    "payWaiting": "Wir warten darauf, dass das Konto aktiv wird. Sobald es so weit ist, geht es von selbst weiter.",
+    "payWaitingShort": "Warten …"
   }
 }

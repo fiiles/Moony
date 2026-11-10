@@ -287,6 +287,7 @@
     "devPasteTitle": "Klistra in en parkopplingskod — utvecklarverktyg",
     "devPasteLabel": "Parkopplingskod",
     "payUnavailable": "Betalning för synkronisering är inte tillgänglig i mobilappen.",
-    "payWaiting": "Väntar på att kontot ska bli aktivt. När det blir det går det vidare av sig självt."
+    "payWaiting": "Väntar på att kontot ska bli aktivt. När det blir det går det vidare av sig självt.",
+    "payWaitingShort": "Väntar …"
   }
 }

@@ -285,6 +285,7 @@
     "devPasteTitle": "粘贴配对码 — 开发者工具",
     "devPasteLabel": "配对码",
     "payUnavailable": "手机应用中无法为同步付款。",
-    "payWaiting": "正在等待账户激活。激活后会自动进入下一步。"
+    "payWaiting": "正在等待账户激活。激活后会自动进入下一步。",
+    "payWaitingShort": "等待中…"
   }
 }

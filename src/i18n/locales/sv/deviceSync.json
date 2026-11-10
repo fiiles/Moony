@@ -272,6 +272,19 @@
     "saveText": "Spara som text",
     "savePage": "Spara som sida",
     "turnOffBody": "Lokala data på den här telefonen finns kvar. Dina andra enheter fortsätter synkronisera. Du kan ansluta igen senare genom att para ihop med en annan enhet eller skriva in koden från ditt återställningskit; telefonens data ersätts då med de synkroniserade uppgifterna efter en säkerhetskopia.",
-    "renewUnavailable": "Förnyelse är inte tillgänglig i telefonappen."
+    "renewUnavailable": "Förnyelse är inte tillgänglig i telefonappen.",
+    "scanTitle": "Skanna en kod",
+    "scanHint": "Rikta kameran mot koden på den andra enheten (Inställningar → Synkronisering → Lägg till en enhet) eller mot QR-koden i ditt återställningskit.",
+    "addDeviceHint": "Välj ”Anslut från telefonen” under Inställningar → Synkronisering på den nya enheten och rikta sedan kameran mot koden den visar.",
+    "passwordFirst": "Ange enhetslösenordet innan du skannar den andra enhetens kod.",
+    "connecting": "Ansluter…",
+    "cameraDenied": "Tillåt kameraåtkomst i Inställningar för att skanna koden.",
+    "openSettings": "Öppna Inställningar",
+    "cameraUnavailable": "Kameran kunde inte öppnas.",
+    "unknownCode": "Den här QR-koden är varken en parkopplingskod från Moony eller ett återställningskit.",
+    "notAKitCode": "Det här är ingen kod från ett återställningskit",
+    "notAPairingCode": "Det här är ingen parkopplingskod.",
+    "devPasteTitle": "Klistra in en parkopplingskod — utvecklarverktyg",
+    "devPasteLabel": "Parkopplingskod"
   }
 }

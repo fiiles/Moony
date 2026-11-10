@@ -274,6 +274,19 @@
     "saveText": "Guardar como texto",
     "savePage": "Guardar como página",
     "turnOffBody": "Los datos locales de este teléfono se conservan. Tus demás dispositivos siguen sincronizando. Más adelante puedes volver a unirte vinculando otro dispositivo o escribiendo el código de tu kit de recuperación; los datos de este teléfono se sustituyen entonces por los sincronizados tras una copia de seguridad.",
-    "renewUnavailable": "La renovación no está disponible en la app del teléfono."
+    "renewUnavailable": "La renovación no está disponible en la app del teléfono.",
+    "scanTitle": "Escanear un código",
+    "scanHint": "Apunta la cámara al código de tu otro dispositivo (Ajustes → Sincronización → Añadir un dispositivo) o al código QR de tu kit de recuperación.",
+    "addDeviceHint": "En el dispositivo nuevo, elige «Unirse desde tu teléfono» en Ajustes → Sincronización y apunta la cámara al código que muestre.",
+    "passwordFirst": "Introduce la contraseña del dispositivo antes de escanear el código del otro dispositivo.",
+    "connecting": "Conectando…",
+    "cameraDenied": "Permite el acceso a la cámara en Ajustes para escanear el código.",
+    "openSettings": "Abrir Ajustes",
+    "cameraUnavailable": "No se pudo abrir la cámara.",
+    "unknownCode": "Este código QR no es un código de vinculación de Moony ni un kit de recuperación.",
+    "notAKitCode": "Esto no es un código del kit de recuperación",
+    "notAPairingCode": "Esto no es un código de vinculación.",
+    "devPasteTitle": "Pegar un código de vinculación — herramienta de desarrollo",
+    "devPasteLabel": "Código de vinculación"
   }
 }

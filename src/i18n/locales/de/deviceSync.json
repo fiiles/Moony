@@ -272,6 +272,19 @@
     "saveText": "Als Text speichern",
     "savePage": "Als Seite speichern",
     "turnOffBody": "Die lokalen Daten auf diesem Telefon bleiben erhalten. Ihre anderen Geräte synchronisieren weiter. Sie können später wieder beitreten, indem Sie mit einem anderen Gerät koppeln oder den Code Ihres Wiederherstellungs-Kits eingeben; die Daten dieses Telefons werden dann nach einer Sicherung durch die synchronisierten Daten ersetzt.",
-    "renewUnavailable": "Die Verlängerung ist in der Telefon-App nicht verfügbar."
+    "renewUnavailable": "Die Verlängerung ist in der Telefon-App nicht verfügbar.",
+    "scanTitle": "Code scannen",
+    "scanHint": "Richten Sie die Kamera auf den Code auf Ihrem anderen Gerät (Einstellungen → Synchronisierung → Gerät hinzufügen) oder auf den QR-Code Ihres Wiederherstellungs-Kits.",
+    "addDeviceHint": "Wählen Sie auf dem neuen Gerät unter Einstellungen → Synchronisierung „Vom Smartphone beitreten“ und richten Sie dann die Kamera auf den angezeigten Code.",
+    "passwordFirst": "Geben Sie Ihr Gerätepasswort ein, bevor Sie den Code des anderen Geräts scannen.",
+    "connecting": "Verbindung wird hergestellt…",
+    "cameraDenied": "Erlauben Sie in den Einstellungen den Zugriff auf die Kamera, um den Code zu scannen.",
+    "openSettings": "Einstellungen öffnen",
+    "cameraUnavailable": "Die Kamera konnte nicht geöffnet werden.",
+    "unknownCode": "Dieser QR-Code ist weder ein Kopplungscode von Moony noch ein Wiederherstellungs-Kit.",
+    "notAKitCode": "Das ist kein Code eines Wiederherstellungs-Kits",
+    "notAPairingCode": "Das ist kein Kopplungscode.",
+    "devPasteTitle": "Kopplungscode einfügen — Entwicklerwerkzeug",
+    "devPasteLabel": "Kopplungscode"
   }
 }

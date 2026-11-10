@@ -276,6 +276,19 @@
     "saveText": "Zapisz jako tekst",
     "savePage": "Zapisz jako stronę",
     "turnOffBody": "Dane lokalne na tym telefonie zostają. Pozostałe urządzenia nadal się synchronizują. Później możesz dołączyć ponownie, parując z innym urządzeniem lub wpisując kod zestawu odzyskiwania; dane tego telefonu zostaną wtedy po utworzeniu kopii zapasowej zastąpione danymi zsynchronizowanymi.",
-    "renewUnavailable": "Odnowienie nie jest dostępne w aplikacji na telefon."
+    "renewUnavailable": "Odnowienie nie jest dostępne w aplikacji na telefon.",
+    "scanTitle": "Skanuj kod",
+    "scanHint": "Skieruj aparat na kod na drugim urządzeniu (Ustawienia → Synchronizacja → Dodaj urządzenie) albo na kod QR z zestawu odzyskiwania.",
+    "addDeviceHint": "Na nowym urządzeniu wybierz „Dołącz z telefonu” w Ustawienia → Synchronizacja, a potem skieruj aparat na wyświetlony kod.",
+    "passwordFirst": "Zanim zeskanujesz kod drugiego urządzenia, wpisz hasło urządzenia.",
+    "connecting": "Łączenie…",
+    "cameraDenied": "Zezwól na dostęp do aparatu w Ustawieniach, aby zeskanować kod.",
+    "openSettings": "Otwórz Ustawienia",
+    "cameraUnavailable": "Nie udało się otworzyć aparatu.",
+    "unknownCode": "Ten kod QR nie jest kodem parowania Moony ani zestawem odzyskiwania.",
+    "notAKitCode": "To nie jest kod zestawu odzyskiwania",
+    "notAPairingCode": "To nie jest kod parowania.",
+    "devPasteTitle": "Wklej kod parowania — narzędzie deweloperskie",
+    "devPasteLabel": "Kod parowania"
   }
 }

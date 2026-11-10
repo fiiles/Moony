@@ -272,6 +272,19 @@
     "saveText": "Lagre som tekst",
     "savePage": "Lagre som side",
     "turnOffBody": "Lokale data på denne telefonen blir værende. De andre enhetene dine synkroniserer videre. Du kan bli med igjen senere ved å koble til en annen enhet eller skrive inn koden fra gjenopprettingssettet ditt; dataene på denne telefonen erstattes da med de synkroniserte dataene etter en sikkerhetskopi.",
-    "renewUnavailable": "Fornyelse er ikke tilgjengelig i telefonappen."
+    "renewUnavailable": "Fornyelse er ikke tilgjengelig i telefonappen.",
+    "scanTitle": "Skann en kode",
+    "scanHint": "Rett kameraet mot koden på den andre enheten (Innstillinger → Synkronisering → Legg til en enhet) eller mot QR-koden i gjenopprettingssettet.",
+    "addDeviceHint": "På den nye enheten velger du «Bli med fra telefonen» under Innstillinger → Synkronisering, og så retter du kameraet mot koden den viser.",
+    "passwordFirst": "Skriv inn enhetspassordet før du skanner koden på den andre enheten.",
+    "connecting": "Kobler til…",
+    "cameraDenied": "Gi tilgang til kameraet i Innstillinger for å skanne koden.",
+    "openSettings": "Åpne Innstillinger",
+    "cameraUnavailable": "Kameraet kunne ikke åpnes.",
+    "unknownCode": "Denne QR-koden er verken en koblingskode fra Moony eller et gjenopprettingssett.",
+    "notAKitCode": "Dette er ikke en kode fra et gjenopprettingssett",
+    "notAPairingCode": "Dette er ikke en koblingskode.",
+    "devPasteTitle": "Lim inn en koblingskode — utviklerverktøy",
+    "devPasteLabel": "Koblingskode"
   }
 }

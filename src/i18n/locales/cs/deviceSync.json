@@ -276,6 +276,19 @@
     "saveText": "Uložit jako text",
     "savePage": "Uložit jako stránku",
     "turnOffBody": "Místní data v tomto telefonu zůstanou. Ostatní zařízení se synchronizují dál. Později se můžete znovu připojit spárováním s jiným zařízením nebo zadáním kódu záchranné sady; data tohoto telefonu se pak po zálohování nahradí synchronizovanými daty.",
-    "renewUnavailable": "Obnovení není v aplikaci pro telefon dostupné."
+    "renewUnavailable": "Obnovení není v aplikaci pro telefon dostupné.",
+    "scanTitle": "Naskenovat kód",
+    "scanHint": "Namiřte fotoaparát na kód na druhém zařízení (Nastavení → Synchronizace → Přidat zařízení) nebo na QR kód záchranné sady.",
+    "addDeviceHint": "Na novém zařízení zvolte v Nastavení → Synchronizace „Připojit z telefonu“ a pak namiřte fotoaparát na kód, který ukáže.",
+    "passwordFirst": "Než naskenujete kód druhého zařízení, zadejte heslo zařízení.",
+    "connecting": "Připojování…",
+    "cameraDenied": "Aby šlo kód naskenovat, povolte v Nastavení přístup k fotoaparátu.",
+    "openSettings": "Otevřít Nastavení",
+    "cameraUnavailable": "Fotoaparát se nepodařilo otevřít.",
+    "unknownCode": "Tento QR kód není párovací kód Moony ani záchranná sada.",
+    "notAKitCode": "Toto není kód záchranné sady",
+    "notAPairingCode": "Toto není párovací kód.",
+    "devPasteTitle": "Vložit párovací kód — vývojářský nástroj",
+    "devPasteLabel": "Párovací kód"
   }
 }

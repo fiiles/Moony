@@ -270,6 +270,19 @@
     "saveText": "另存为文本",
     "savePage": "另存为页面",
     "turnOffBody": "这部手机上的本地数据会保留。您的其他设备继续同步。以后您可以通过与另一台设备配对或输入恢复包代码再次加入；这部手机的数据随后会在备份后被同步的数据替换。",
-    "renewUnavailable": "手机应用中无法续订。"
+    "renewUnavailable": "手机应用中无法续订。",
+    "scanTitle": "扫描代码",
+    "scanHint": "请将相机对准另一台设备上的代码（设置 → 同步 → 添加设备），或对准恢复包的二维码。",
+    "addDeviceHint": "在新设备上，于 设置 → 同步 中选择“从手机加入”，然后将相机对准它显示的代码。",
+    "passwordFirst": "扫描另一台设备的代码前，请先输入设备密码。",
+    "connecting": "正在连接…",
+    "cameraDenied": "请在设置中允许访问相机，以便扫描代码。",
+    "openSettings": "打开设置",
+    "cameraUnavailable": "无法打开相机。",
+    "unknownCode": "此二维码既不是 Moony 配对码，也不是恢复包。",
+    "notAKitCode": "这不是恢复包代码",
+    "notAPairingCode": "这不是配对码。",
+    "devPasteTitle": "粘贴配对码 — 开发者工具",
+    "devPasteLabel": "配对码"
   }
 }

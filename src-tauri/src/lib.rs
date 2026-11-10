@@ -156,11 +156,13 @@ async fn run_app() {
     // (`capabilities/default.json`): it reaches biometrics only through the app's own commands.
     builder = builder.plugin(moony_keychain::init());
 
-    // Phone-only hardware: haptic feedback and local notifications.
+    // Phone-only hardware: haptic feedback, local notifications and the camera's QR scanner.
     #[cfg(mobile)]
     {
         builder = builder
             .plugin(tauri_plugin_haptics::init())
+            // Sync pairing: scanning the pairing and Recovery Kit QR codes (`qr-scanner.ts`).
+            .plugin(tauri_plugin_barcode_scanner::init())
             // The phone's reminder notifications (Nastavení → Oznámení) are scheduled through it.
             .plugin(tauri_plugin_notification::init())
             // The files the system opened in Moony, until the webview asks for them (a cold start

@@ -2,7 +2,17 @@ import { useEffect, useState } from 'react';
 import { Redirect } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Eraser, KeyRound, Plus, QrCode, RefreshCw, Smartphone, Type, Unplug } from 'lucide-react';
+import {
+  ClipboardPaste,
+  Eraser,
+  KeyRound,
+  Plus,
+  QrCode,
+  RefreshCw,
+  Smartphone,
+  Type,
+  Unplug,
+} from 'lucide-react';
 import type { SyncDevice } from '@shared/schema';
 import {
   useDeviceSyncFeatureState,
@@ -17,25 +27,33 @@ import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
+import { RecoveryJoinSheet } from '@/mobile/components/sync/RecoveryJoinSheet';
 import { RenameDeviceSheet } from '@/mobile/components/sync/RenameDeviceSheet';
+import { ScanFlow } from '@/mobile/components/sync/ScanFlow';
 import { SyncDeviceRows } from '@/mobile/components/sync/SyncDeviceRows';
 import { SyncKitSheet } from '@/mobile/components/sync/SyncKitSheet';
 import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
 import { SyncStatusBlock } from '@/mobile/components/sync/SyncStatusBlock';
+import type { ScanMode } from '@/mobile/lib/sync-scan';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { routes } from '@/mobile/shell/routes';
 
 /** The key the backend sends when a repair could not send every change and replaced nothing. */
 const DRAIN_INCOMPLETE_KEY = 'validation.syncRepairDrainIncomplete';
 
-type Open = 'kit' | 'repair' | 'resync' | 'turnOff' | 'delete' | null;
+type Open = 'kit' | 'kitJoin' | 'repair' | 'resync' | 'turnOff' | 'delete' | null;
+
+/** A scan under way: joining (sync off) or adding a device (sync on); `paste` is the developer tool. */
+type Flow = { mode: ScanMode; paste: boolean } | null;
 
 /**
  * Nastavení → Sync (spec §11.3 and the mobile design §13): behind the feature flag, which sends the
  * page back to Nastavení when it is off. With sync off (or half set up) the page offers the ways in:
  * set up sync on this phone, scan a code from another device and type a Recovery Kit code. With sync
- * on it shows the status and "Sync now", the devices (this one can be renamed), the Recovery Kit
- * behind the device password, re-sync, turn off and delete. The phone never opens a checkout.
+ * on it shows the status and "Sync now", the devices (this one can be renamed), "Add a device" (a
+ * scan), the Recovery Kit behind the device password, re-sync, turn off and delete. With the
+ * developer tools on, a pairing code can also be pasted (the simulator cannot scan); release builds
+ * say nothing about it. The phone never opens a checkout.
  */
 export default function SyncSection() {
   const { t } = useTranslation('deviceSync');
@@ -45,6 +63,7 @@ export default function SyncSection() {
   const { repairDevice, resyncDevice, turnOff, deleteSyncedData } = useDeviceSyncMutations();
   const { t: tc } = useTranslation('common');
   const [open, setOpen] = useState<Open>(null);
+  const [flow, setFlow] = useState<Flow>(null);
   const [renaming, setRenaming] = useState<SyncDevice | null>(null);
   /** A repair that could not send every change: re-syncing is offered next to it. */
   const [offerResync, setOfferResync] = useState(false);
@@ -105,6 +124,14 @@ export default function SyncSection() {
 
   const syncOn = status !== undefined && status.phase !== 'off' && status.phase !== 'settingUp';
   const pending = status?.pendingChanges ?? 0;
+  const devTools = status?.devTools === true;
+  const devPasteRow = devTools && (
+    <SettingsRow
+      icon={ClipboardPaste}
+      title={t('phone.devPasteTitle')}
+      onClick={() => setFlow({ mode: syncOn ? 'add' : 'join', paste: true })}
+    />
+  );
 
   return (
     <SectionPage title={t('phone.title')} lead={t('description')}>
@@ -113,11 +140,20 @@ export default function SyncSection() {
           <p className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3">
             {t('intro.description')} {t('intro.privacy')}
           </p>
-          {/* The ways in are Task 11 (scan, type a code) and Task 12 (set up): their rows wait here */}
+          {/* Setting up sync on the phone is Task 12: its row waits here */}
           <EntityRows>
             <SettingsRow disabled icon={Smartphone} title={t('phone.setUp')} />
-            <SettingsRow disabled icon={QrCode} title={t('phone.scan')} />
-            <SettingsRow disabled icon={Type} title={t('phone.typeCode')} />
+            <SettingsRow
+              icon={QrCode}
+              title={t('phone.scan')}
+              onClick={() => setFlow({ mode: 'join', paste: false })}
+            />
+            <SettingsRow
+              icon={Type}
+              title={t('phone.typeCode')}
+              onClick={() => setOpen('kitJoin')}
+            />
+            {devPasteRow}
           </EntityRows>
         </>
       )}
@@ -135,8 +171,12 @@ export default function SyncSection() {
           <SectionHead title={t('devices.title')} />
           <SyncDeviceRows devices={devices ?? []} onRename={setRenaming} />
           <EntityRows>
-            {/* Task 11 turns this on: pairing another device from the phone */}
-            <SettingsRow disabled icon={Plus} title={t('phone.addDevice')} />
+            <SettingsRow
+              icon={Plus}
+              title={t('phone.addDevice')}
+              onClick={() => setFlow({ mode: 'add', paste: false })}
+            />
+            {devPasteRow}
           </EntityRows>
 
           <EntityRows>
@@ -179,6 +219,16 @@ export default function SyncSection() {
         }}
       />
       <SyncKitSheet open={open === 'kit'} onOpenChange={close} />
+      <RecoveryJoinSheet open={open === 'kitJoin'} onOpenChange={close} />
+      {/* Mounted only while a scan runs: unmounting cancels the camera and the pairing */}
+      {flow && (
+        <ScanFlow
+          mode={flow.mode}
+          paste={flow.paste}
+          devTools={devTools}
+          onDone={() => setFlow(null)}
+        />
+      )}
       <ConfirmSheet
         open={open === 'repair'}
         onOpenChange={close}

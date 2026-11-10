@@ -274,6 +274,19 @@
     "saveText": "Salva come testo",
     "savePage": "Salva come pagina",
     "turnOffBody": "I dati locali su questo telefono restano. Gli altri dispositivi continuano a sincronizzare. In seguito puoi collegarti di nuovo associando un altro dispositivo o digitando il codice del tuo kit di ripristino; i dati di questo telefono vengono poi sostituiti con quelli sincronizzati dopo un backup.",
-    "renewUnavailable": "Il rinnovo non è disponibile nell'app per telefono."
+    "renewUnavailable": "Il rinnovo non è disponibile nell'app per telefono.",
+    "scanTitle": "Scansiona un codice",
+    "scanHint": "Inquadra con la fotocamera il codice sull'altro dispositivo (Impostazioni → Sincronizzazione → Aggiungi un dispositivo) o il codice QR del tuo kit di ripristino.",
+    "addDeviceHint": "Sul nuovo dispositivo scegli «Collegati dal telefono» in Impostazioni → Sincronizzazione, poi inquadra il codice che mostra.",
+    "passwordFirst": "Inserisci la password del dispositivo prima di scansionare il codice dell'altro dispositivo.",
+    "connecting": "Connessione…",
+    "cameraDenied": "Consenti l'accesso alla fotocamera in Impostazioni per scansionare il codice.",
+    "openSettings": "Apri Impostazioni",
+    "cameraUnavailable": "Impossibile aprire la fotocamera.",
+    "unknownCode": "Questo codice QR non è un codice di associazione di Moony né un kit di ripristino.",
+    "notAKitCode": "Questo non è un codice del kit di ripristino",
+    "notAPairingCode": "Questo non è un codice di associazione.",
+    "devPasteTitle": "Incolla un codice di associazione — strumento per sviluppatori",
+    "devPasteLabel": "Codice di associazione"
   }
 }

@@ -272,6 +272,19 @@
     "saveText": "Save as text",
     "savePage": "Save as page",
     "turnOffBody": "Local data on this phone stays. Your other devices keep syncing. To join again later, pair with another device or type your Recovery Kit code; this phone's data is then replaced by the synced data after a backup.",
-    "renewUnavailable": "Renewing isn't available in the phone app."
+    "renewUnavailable": "Renewing isn't available in the phone app.",
+    "scanTitle": "Scan a code",
+    "scanHint": "Point the camera at the code on your other device (Settings → Sync → Add a device) or at the QR code of your Recovery Kit.",
+    "addDeviceHint": "On the new device, choose “Join from your phone” under Settings → Sync, then point the camera at the code it shows.",
+    "passwordFirst": "Enter your device password before you scan the other device's code.",
+    "connecting": "Connecting…",
+    "cameraDenied": "Allow camera access in Settings to scan the code.",
+    "openSettings": "Open Settings",
+    "cameraUnavailable": "The camera could not be opened.",
+    "unknownCode": "This QR code is not a Moony pairing code or Recovery Kit.",
+    "notAKitCode": "This is not a Recovery Kit code",
+    "notAPairingCode": "This is not a pairing code.",
+    "devPasteTitle": "Paste a pairing code — developer tool",
+    "devPasteLabel": "Pairing code"
   }
 }

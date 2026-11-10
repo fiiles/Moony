@@ -250,5 +250,28 @@
     "kitHint": "Enter the recovery code from your Sync Recovery Kit, or the text of its QR code.",
     "codeLabel": "Recovery code",
     "accountLabel": "Account number"
+  },
+  "phone": {
+    "title": "Sync",
+    "status": "Status",
+    "lastSynced": "Last synced",
+    "pending": "Waiting to be sent",
+    "row": {
+      "off": "Off",
+      "synced": "Up to date",
+      "syncing": "Syncing…",
+      "offline": "Offline",
+      "paused": "Paused",
+      "error": "Stopped"
+    },
+    "setUp": "Set up sync on this phone",
+    "scan": "Scan a code from another device",
+    "typeCode": "Type a Recovery Kit code",
+    "addDevice": "Add a device",
+    "busy": "Keep Moony open until it is done.",
+    "saveText": "Save as text",
+    "savePage": "Save as page",
+    "turnOffBody": "Local data on this phone stays. Your other devices keep syncing. To join again later, pair with another device or type your Recovery Kit code; this phone's data is then replaced by the synced data after a backup.",
+    "renewUnavailable": "Renewing isn't available in the phone app."
   }
 }

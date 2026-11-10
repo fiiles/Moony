@@ -250,5 +250,28 @@
     "kitHint": "Geben Sie den Wiederherstellungscode aus Ihrem Sync-Wiederherstellungs-Kit ein oder den Text seines QR-Codes.",
     "codeLabel": "Wiederherstellungscode",
     "accountLabel": "Kontonummer"
+  },
+  "phone": {
+    "title": "Synchronisierung",
+    "status": "Status",
+    "lastSynced": "Zuletzt synchronisiert",
+    "pending": "Warten auf Versand",
+    "row": {
+      "off": "Aus",
+      "synced": "Aktuell",
+      "syncing": "Synchronisiert…",
+      "offline": "Offline",
+      "paused": "Pausiert",
+      "error": "Angehalten"
+    },
+    "setUp": "Synchronisierung auf diesem Telefon einrichten",
+    "scan": "Code von einem anderen Gerät scannen",
+    "typeCode": "Code des Wiederherstellungs-Kits eingeben",
+    "addDevice": "Gerät hinzufügen",
+    "busy": "Lassen Sie Moony geöffnet, bis der Vorgang abgeschlossen ist.",
+    "saveText": "Als Text speichern",
+    "savePage": "Als Seite speichern",
+    "turnOffBody": "Die lokalen Daten auf diesem Telefon bleiben erhalten. Ihre anderen Geräte synchronisieren weiter. Sie können später wieder beitreten, indem Sie mit einem anderen Gerät koppeln oder den Code Ihres Wiederherstellungs-Kits eingeben; die Daten dieses Telefons werden dann nach einer Sicherung durch die synchronisierten Daten ersetzt.",
+    "renewUnavailable": "Die Verlängerung ist in der Telefon-App nicht verfügbar."
   }
 }

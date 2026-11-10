@@ -2,9 +2,11 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Redirect, Route, Router, Switch, useLocation, useSearch } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { useAuth } from '@/hooks/use-auth';
+import { useDeviceSyncEvents } from '@/hooks/use-device-sync-events';
 import { ProtectedRoute } from '@/lib/protected-route';
 import { ReceivedFileHost } from '@/mobile/components/import/ReceivedFileHost';
 import { NotificationTargetHost } from '@/mobile/components/NotificationTargetHost';
+import { SyncBusyCover } from '@/mobile/components/sync/SyncBusyCover';
 import { ImportSheetProvider } from '@/mobile/hooks/use-import-sheet';
 import { clearUpkeepDismissals } from '@/mobile/hooks/use-upkeep-dismissals';
 import { NavEntryContext, useNavStack, useNavUnderlay } from '@/mobile/hooks/use-nav-stack';
@@ -45,6 +47,12 @@ import { TabBar } from './TabBar';
 /** Plans the local notifications (spec §8.9) and draws nothing. */
 function NotificationScheduler() {
   useNotificationSchedule();
+  return null;
+}
+
+/** Keeps the sync status live and refreshes after remote changes (spec §11), and draws nothing. */
+function SyncEvents() {
+  useDeviceSyncEvents();
   return null;
 }
 
@@ -199,6 +207,10 @@ export function MobileShell() {
       <EnableBiometricsSheet sharedPending={sharedPending} />
       {/* Only while unlocked: it reads the milestones, which the locked database cannot answer. */}
       {appStatus === 'unlocked' && <NotificationScheduler />}
+      {/* Likewise: a remote change refreshes the data, which the locked database cannot serve */}
+      {appStatus === 'unlocked' && <SyncEvents />}
+      {/* Over everything while a repair, a re-sync or a join replaces this phone's data */}
+      <SyncBusyCover />
       {/* A statement shared into the app opens the import sheet after the unlock, once. It stays
           mounted through a lock (and drains only while unlocked), so a path it has taken but not
           yet shown survives every unlock. */}

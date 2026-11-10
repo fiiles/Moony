@@ -248,5 +248,28 @@
     "kitHint": "输入同步恢复包中的恢复代码，或其二维码的文本。",
     "codeLabel": "恢复代码",
     "accountLabel": "账户编号"
+  },
+  "phone": {
+    "title": "同步",
+    "status": "状态",
+    "lastSynced": "上次同步",
+    "pending": "等待发送",
+    "row": {
+      "off": "已关闭",
+      "synced": "已是最新",
+      "syncing": "正在同步…",
+      "offline": "离线",
+      "paused": "已暂停",
+      "error": "已停止"
+    },
+    "setUp": "在这部手机上设置同步",
+    "scan": "扫描另一台设备上的代码",
+    "typeCode": "输入恢复包代码",
+    "addDevice": "添加设备",
+    "busy": "请保持 Moony 打开，直到完成。",
+    "saveText": "另存为文本",
+    "savePage": "另存为页面",
+    "turnOffBody": "这部手机上的本地数据会保留。您的其他设备继续同步。以后您可以通过与另一台设备配对或输入恢复包代码再次加入；这部手机的数据随后会在备份后被同步的数据替换。",
+    "renewUnavailable": "手机应用中无法续订。"
   }
 }

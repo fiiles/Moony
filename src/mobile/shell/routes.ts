@@ -81,6 +81,7 @@ export const SETTINGS_SECTIONS = [
   'reminders',
   'notifications',
   'backup',
+  'sync',
   'categories',
   'categorization',
   'import',

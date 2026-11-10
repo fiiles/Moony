@@ -252,5 +252,28 @@
     "kitHint": "Inserisci il codice di ripristino del tuo kit di ripristino della sincronizzazione, o il testo del suo codice QR.",
     "codeLabel": "Codice di ripristino",
     "accountLabel": "Numero dell'account"
+  },
+  "phone": {
+    "title": "Sincronizzazione",
+    "status": "Stato",
+    "lastSynced": "Ultima sincronizzazione",
+    "pending": "In attesa di invio",
+    "row": {
+      "off": "Disattivata",
+      "synced": "Aggiornata",
+      "syncing": "Sincronizzazione…",
+      "offline": "Offline",
+      "paused": "In pausa",
+      "error": "Interrotta"
+    },
+    "setUp": "Configura la sincronizzazione su questo telefono",
+    "scan": "Scansiona un codice da un altro dispositivo",
+    "typeCode": "Digita un codice del kit di ripristino",
+    "addDevice": "Aggiungi un dispositivo",
+    "busy": "Tieni aperto Moony finché non ha finito.",
+    "saveText": "Salva come testo",
+    "savePage": "Salva come pagina",
+    "turnOffBody": "I dati locali su questo telefono restano. Gli altri dispositivi continuano a sincronizzare. In seguito puoi collegarti di nuovo associando un altro dispositivo o digitando il codice del tuo kit di ripristino; i dati di questo telefono vengono poi sostituiti con quelli sincronizzati dopo un backup.",
+    "renewUnavailable": "Il rinnovo non è disponibile nell'app per telefono."
   }
 }

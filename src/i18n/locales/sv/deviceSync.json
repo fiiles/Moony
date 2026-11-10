@@ -250,5 +250,28 @@
     "kitHint": "Ange återställningskoden från ditt återställningskit för synkronisering, eller texten i dess QR-kod.",
     "codeLabel": "Återställningskod",
     "accountLabel": "Kontonummer"
+  },
+  "phone": {
+    "title": "Synkronisering",
+    "status": "Status",
+    "lastSynced": "Senast synkroniserad",
+    "pending": "Väntar på att skickas",
+    "row": {
+      "off": "Av",
+      "synced": "Uppdaterad",
+      "syncing": "Synkroniserar…",
+      "offline": "Offline",
+      "paused": "Pausad",
+      "error": "Stoppad"
+    },
+    "setUp": "Ställ in synkronisering på den här telefonen",
+    "scan": "Skanna en kod från en annan enhet",
+    "typeCode": "Skriv in en kod från återställningskitet",
+    "addDevice": "Lägg till en enhet",
+    "busy": "Låt Moony vara öppet tills det är klart.",
+    "saveText": "Spara som text",
+    "savePage": "Spara som sida",
+    "turnOffBody": "Lokala data på den här telefonen finns kvar. Dina andra enheter fortsätter synkronisera. Du kan ansluta igen senare genom att para ihop med en annan enhet eller skriva in koden från ditt återställningskit; telefonens data ersätts då med de synkroniserade uppgifterna efter en säkerhetskopia.",
+    "renewUnavailable": "Förnyelse är inte tillgänglig i telefonappen."
   }
 }

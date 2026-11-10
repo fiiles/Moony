@@ -17,6 +17,13 @@ export const DATA_EXPORT_FILE = 'moony-export.json';
 export const RECOVERY_KEY_FILE = 'moony-recovery-key.txt';
 
 /**
+ * The Sync Recovery Kit's two files (Settings → Sync → Show Recovery Kit, "Save as text" / "Save as
+ * page"). Rust's `TEXT_EXPORT_FILE_NAMES` must allow both names before the phone can stage them.
+ */
+export const SYNC_KIT_TEXT_FILE = 'moony-sync-recovery-kit.txt';
+export const SYNC_KIT_PAGE_FILE = 'moony-sync-recovery-kit.html';
+
+/**
  * The new recovery key of a password change, `moony-recovery-key-2026-10-25-1742.txt`: the local day
  * and time of the attempt (the Rust allow-list accepts exactly this shape, and the day-only one of
  * older builds). A change may be abandoned, so its key must never replace the first run's

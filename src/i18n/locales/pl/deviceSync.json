@@ -254,5 +254,28 @@
     "kitHint": "Wpisz kod odzyskiwania z zestawu odzyskiwania synchronizacji lub tekst jego kodu QR.",
     "codeLabel": "Kod odzyskiwania",
     "accountLabel": "Numer konta"
+  },
+  "phone": {
+    "title": "Synchronizacja",
+    "status": "Stan",
+    "lastSynced": "Ostatnia synchronizacja",
+    "pending": "Oczekuje na wysłanie",
+    "row": {
+      "off": "Wyłączona",
+      "synced": "Aktualna",
+      "syncing": "Synchronizowanie…",
+      "offline": "Offline",
+      "paused": "Wstrzymana",
+      "error": "Zatrzymana"
+    },
+    "setUp": "Skonfiguruj synchronizację na tym telefonie",
+    "scan": "Zeskanuj kod z innego urządzenia",
+    "typeCode": "Wpisz kod zestawu odzyskiwania",
+    "addDevice": "Dodaj urządzenie",
+    "busy": "Nie zamykaj Moony, dopóki to się nie skończy.",
+    "saveText": "Zapisz jako tekst",
+    "savePage": "Zapisz jako stronę",
+    "turnOffBody": "Dane lokalne na tym telefonie zostają. Pozostałe urządzenia nadal się synchronizują. Później możesz dołączyć ponownie, parując z innym urządzeniem lub wpisując kod zestawu odzyskiwania; dane tego telefonu zostaną wtedy po utworzeniu kopii zapasowej zastąpione danymi zsynchronizowanymi.",
+    "renewUnavailable": "Odnowienie nie jest dostępne w aplikacji na telefon."
   }
 }

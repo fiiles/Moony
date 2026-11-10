@@ -11,6 +11,7 @@ import {
   FileText,
   Globe,
   Lock,
+  RefreshCw,
   SunMoon,
   Tag,
   Tags,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useCategories } from '@/hooks/use-categories';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useMilestoneMutedKinds } from '@/hooks/use-milestones';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { languageInfo } from '@/i18n/languages';
@@ -39,6 +41,7 @@ import { useNotificationPermission } from '@/mobile/hooks/use-notification-permi
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { clearQuietLock, requestQuietLock } from '@/mobile/lib/quiet-lock';
+import { syncRowSummary } from '@/mobile/lib/sync-summary';
 import { areasFromPreferences } from '@/mobile/lib/tracked-areas';
 import {
   categorizationSummary,
@@ -107,6 +110,7 @@ export default function Settings() {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const { t: ts } = useTranslation('settings');
+  const { t: tsync } = useTranslation('deviceSync');
   const { user, lockMutation } = useAuth();
   const { language } = useLanguage();
   const { preference } = useTheme();
@@ -148,6 +152,11 @@ export default function Settings() {
       ? t('backup.lastOn', { date: fmt.dateTime(lastBackupAt) })
       : t('backup.never')
     : undefined;
+
+  // The Sync row exists only where device sync is built in (the feature flag)
+  const syncFeature = useDeviceSyncFeature();
+  const syncStatus = useDeviceSyncStatus();
+  const syncSub = syncStatus.isPending ? undefined : tsync(syncRowSummary(syncStatus.data).key);
 
   const notificationsSub = notifications.isPending
     ? undefined
@@ -265,6 +274,14 @@ export default function Settings() {
           sub={backupSub}
           href={settingsPath('backup')}
         />
+        {syncFeature && (
+          <SettingsRow
+            icon={RefreshCw}
+            title={tsync('phone.title')}
+            sub={syncSub}
+            href={settingsPath('sync')}
+          />
+        )}
         <SettingsRow
           icon={Bell}
           title={t('settings.rows.notifications')}

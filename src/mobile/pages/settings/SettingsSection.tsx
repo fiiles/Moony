@@ -8,6 +8,7 @@ import NotificationsSection from './NotificationsSection';
 import ProfileSection from './ProfileSection';
 import RemindersSection from './RemindersSection';
 import SecuritySection from './SecuritySection';
+import SyncSection from './SyncSection';
 import TrackingSection from './TrackingSection';
 
 /**
@@ -31,6 +32,8 @@ export default function SettingsSection() {
       return <NotificationsSection />;
     case 'backup':
       return <BackupSection />;
+    case 'sync':
+      return <SyncSection />;
     case 'categories':
       return <CategoriesSection />;
     case 'categorization':

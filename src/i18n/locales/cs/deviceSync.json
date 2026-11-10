@@ -254,5 +254,28 @@
     "kitHint": "Zadejte obnovovací kód ze záchranné sady synchronizace nebo text jejího QR kódu.",
     "codeLabel": "Obnovovací kód",
     "accountLabel": "Číslo účtu"
+  },
+  "phone": {
+    "title": "Synchronizace",
+    "status": "Stav",
+    "lastSynced": "Naposledy synchronizováno",
+    "pending": "Čeká na odeslání",
+    "row": {
+      "off": "Vypnuto",
+      "synced": "Aktuální",
+      "syncing": "Synchronizuje se…",
+      "offline": "Offline",
+      "paused": "Pozastaveno",
+      "error": "Zastaveno"
+    },
+    "setUp": "Nastavit synchronizaci v tomto telefonu",
+    "scan": "Naskenovat kód z jiného zařízení",
+    "typeCode": "Zadat kód záchranné sady",
+    "addDevice": "Přidat zařízení",
+    "busy": "Nechte Moony otevřené, dokud to neskončí.",
+    "saveText": "Uložit jako text",
+    "savePage": "Uložit jako stránku",
+    "turnOffBody": "Místní data v tomto telefonu zůstanou. Ostatní zařízení se synchronizují dál. Později se můžete znovu připojit spárováním s jiným zařízením nebo zadáním kódu záchranné sady; data tohoto telefonu se pak po zálohování nahradí synchronizovanými daty.",
+    "renewUnavailable": "Obnovení není v aplikaci pro telefon dostupné."
   }
 }

@@ -19,8 +19,9 @@ pub enum KeychainError {
     /// Anything else, with the native side's message.
     #[error("keychain operation failed: {0}")]
     Failed(String),
-    /// No biometric store on this platform (Linux), or a phone-only call (the privacy screen,
-    /// backup exclusion) made on the desktop.
+    /// No biometric store on this platform (Linux), a phone-only call (the privacy screen,
+    /// backup exclusion) made on the desktop, or a call this device cannot answer (device sync's
+    /// binding without a Secure Enclave, on Android, or a native that rejects with `unsupported`).
     #[error("the keychain is not supported on this platform")]
     Unsupported,
 }
@@ -31,6 +32,7 @@ impl KeychainError {
     pub const CODE_CANCELLED: &'static str = "cancelled";
     pub const CODE_UNAVAILABLE: &'static str = "unavailable";
     pub const CODE_FAILED: &'static str = "failed";
+    pub const CODE_UNSUPPORTED: &'static str = "unsupported";
 
     /// Parses a rejection `code` alone (`KeychainError::from_code("invalidated")`).
     pub fn from_code(code: &str) -> Self {
@@ -44,6 +46,7 @@ impl KeychainError {
             Some(Self::CODE_INVALIDATED) => Self::Invalidated,
             Some(Self::CODE_CANCELLED) => Self::Cancelled,
             Some(Self::CODE_UNAVAILABLE) => Self::Unavailable,
+            Some(Self::CODE_UNSUPPORTED) => Self::Unsupported,
             _ => Self::Failed(
                 message
                     .filter(|m| !m.is_empty())
@@ -163,6 +166,19 @@ mod tests {
             KeychainError::from_rejection(None, Some("")),
             KeychainError::Failed("unknown keychain error".to_string())
         );
+    }
+
+    #[test]
+    fn unsupported_rejections_read_as_unsupported() {
+        assert_eq!(
+            KeychainError::from_code("unsupported"),
+            KeychainError::Unsupported
+        );
+        assert_eq!(
+            parse_rejection(r#"{"message":"Not on this device","code":"unsupported"}"#),
+            KeychainError::Unsupported
+        );
+        assert_eq!(KeychainError::CODE_UNSUPPORTED, "unsupported");
     }
 
     #[test]

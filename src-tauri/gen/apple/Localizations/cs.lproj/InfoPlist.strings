@@ -2,4 +2,7 @@
 "NSFaceIDUsageDescription" = "Moony odemyká vaše data pomocí Face ID.";
 
 /* Camera permission prompt */
-"NSCameraUsageDescription" = "Moony fotí dokumenty a vaši nemovitost; fotky se ukládají zašifrované v tomto telefonu.";
+"NSCameraUsageDescription" = "Moony fotí dokumenty a vaši nemovitost a skenuje kódy, které párují zařízení pro synchronizaci; fotky se ukládají zašifrované v tomto telefonu.";
+
+/* Local network permission prompt (a sync server on the home network) */
+"NSLocalNetworkUsageDescription" = "Moony se připojuje k synchronizačnímu serveru ve vaší domácí síti, pokud nějaký používáte.";

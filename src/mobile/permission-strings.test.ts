@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-// The two iOS permission prompts (Face ID, camera) are shown from the app bundle's
+// The three iOS permission prompts (Face ID, camera, local network) are shown from the app bundle's
 // `<lang>.lproj/InfoPlist.strings`, not from the React i18n files: iOS reads them before any of the
 // app's code runs. They live next to the xcodegen project, one folder per app language. This gate
 // keeps the ten folders complete and wired into the project, and the English text equal to the
@@ -17,7 +17,11 @@ const read = (url: URL) => readFileSync(url, 'utf8');
 
 /** The app's ten UI languages as iOS region folders (`zh` is Simplified Chinese, `zh-Hans`). */
 const REGIONS = ['en', 'cs', 'de', 'es', 'it', 'nb', 'pl', 'sv', 'ja', 'zh-Hans'];
-const KEYS = ['NSFaceIDUsageDescription', 'NSCameraUsageDescription'];
+const KEYS = [
+  'NSFaceIDUsageDescription',
+  'NSCameraUsageDescription',
+  'NSLocalNetworkUsageDescription',
+];
 
 /**
  * The entries of a `.strings` file, in order. Throws when anything but comments, whitespace and
@@ -42,7 +46,7 @@ const stringsOf = (region: string) =>
   read(new URL(`Localizations/${region}.lproj/InfoPlist.strings`, APPLE));
 
 describe('InfoPlist.strings (the permission prompts)', () => {
-  it.each(REGIONS)('%s holds exactly the two permission texts', (region) => {
+  it.each(REGIONS)('%s holds exactly the three permission texts', (region) => {
     const text = stringsOf(region);
     const entries = parseStrings(text);
     expect(entries.map(([key]) => key)).toEqual(KEYS);
@@ -52,7 +56,7 @@ describe('InfoPlist.strings (the permission prompts)', () => {
       expect(value.replace(/\\./g, ''), `${region} ${key}`).not.toContain('"');
     }
     // Each entry follows a comment that says what it is for
-    expect(text.match(/\/\*[\s\S]*?\*\/\s*"NS/g)?.length, `${region} comments`).toBe(2);
+    expect(text.match(/\/\*[\s\S]*?\*\/\s*"NS/g)?.length, `${region} comments`).toBe(3);
   });
 
   it('English equals the texts of Info.ios.plist', () => {
@@ -61,6 +65,8 @@ describe('InfoPlist.strings (the permission prompts)', () => {
     for (const key of KEYS) {
       expect(en.get(key), key).toBe(plistString(plist, key));
     }
+    // The camera also scans the QR code that pairs devices for sync
+    expect(en.get('NSCameraUsageDescription')).toContain('scans the codes that pair devices');
   });
 
   it('keeps Face ID untranslated in every language', () => {

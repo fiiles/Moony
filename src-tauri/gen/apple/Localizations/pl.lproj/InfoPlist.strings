@@ -2,4 +2,7 @@
 "NSFaceIDUsageDescription" = "Moony odblokowuje twoje dane za pomocą Face ID.";
 
 /* Camera permission prompt */
-"NSCameraUsageDescription" = "Moony fotografuje dokumenty i twoją nieruchomość; zdjęcia są zapisywane na tym telefonie w postaci zaszyfrowanej.";
+"NSCameraUsageDescription" = "Moony fotografuje dokumenty i twoją nieruchomość oraz skanuje kody, które łączą urządzenia do synchronizacji; zdjęcia są zapisywane na tym telefonie w postaci zaszyfrowanej.";
+
+/* Local network permission prompt (a sync server on the home network) */
+"NSLocalNetworkUsageDescription" = "Moony łączy się z serwerem synchronizacji w twojej sieci domowej, jeśli z niego korzystasz.";

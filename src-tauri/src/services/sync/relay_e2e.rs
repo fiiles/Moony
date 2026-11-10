@@ -54,7 +54,7 @@ const NEEDS_SELF_HOSTED: &str = "set MOONY_RELAY_E2E_SELF_HOSTED to a running se
      ALLOWED_ACCOUNTS";
 
 /// The local relay's address, or the failure that says how to start one.
-fn relay_url() -> String {
+pub(super) fn relay_url() -> String {
     env_or("MOONY_RELAY_E2E", NEEDS_RELAY)
 }
 
@@ -66,11 +66,11 @@ fn env_or(name: &str, missing: &str) -> String {
 }
 
 /// The relay as the commands build it: from the stored address (ruling SH-2).
-fn relay_at(url: &str) -> HttpRelay {
+pub(super) fn relay_at(url: &str) -> HttpRelay {
     HttpRelay::new(url).expect("relay address")
 }
 
-fn now() -> i64 {
+pub(super) fn now() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("clock")
@@ -78,49 +78,49 @@ fn now() -> i64 {
 }
 
 /// One device: a fresh migrated profile and the folder next to it.
-struct Device {
-    db: TestConn,
+pub(super) struct Device {
+    pub(super) db: TestConn,
     dir: TempDir,
 }
 
 impl Device {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         Device {
             db: TestConn::new(migrated()),
             dir: tempfile::tempdir().expect("data dir"),
         }
     }
 
-    fn dir(&self) -> &Path {
+    pub(super) fn dir(&self) -> &Path {
         self.dir.path()
     }
 
-    fn exec(&self, sql: &str) {
+    pub(super) fn exec(&self, sql: &str) {
         self.db.lock().execute_batch(sql).expect(sql);
     }
 
-    fn text(&self, sql: &str) -> Option<String> {
+    pub(super) fn text(&self, sql: &str) -> Option<String> {
         self.db.lock().query_row(sql, [], |r| r.get(0)).expect(sql)
     }
 
-    fn count(&self, sql: &str) -> i64 {
+    pub(super) fn count(&self, sql: &str) -> i64 {
         self.db.lock().query_row(sql, [], |r| r.get(0)).expect(sql)
     }
 
-    fn enabled(&self) -> bool {
+    pub(super) fn enabled(&self) -> bool {
         state::load(&self.db.lock())
             .expect("state")
             .is_some_and(|sync| sync.enabled)
     }
 
-    fn credentials(&self) -> Credentials {
+    pub(super) fn credentials(&self) -> Credentials {
         keys::credentials(&self.db.lock())
             .expect("credentials")
             .expect("stored")
     }
 
     /// One `Normal` round at the real time; an error or a problem fails the test.
-    async fn round(&self, relay: &impl Relay) -> RoundReport {
+    pub(super) async fn round(&self, relay: &impl Relay) -> RoundReport {
         let report = self.round_with_problem(relay).await;
         assert_eq!(report.problem, None, "{report:?}");
         report
@@ -267,7 +267,7 @@ async fn fresh_account(relay: &HttpRelay, device: &Device, url: &str) -> String 
 }
 
 /// The validation key a command would answer for `result`'s error.
-fn command_key<T: std::fmt::Debug>(result: SyncResult<T>) -> String {
+pub(super) fn command_key<T: std::fmt::Debug>(result: SyncResult<T>) -> String {
     match result.expect_err("refused").to_app_error() {
         AppError::Validation(key) => key,
         other => panic!("not a validation key: {other:?}"),
@@ -276,7 +276,7 @@ fn command_key<T: std::fmt::Debug>(result: SyncResult<T>) -> String {
 
 /// A first device with sync on: a new account, paid for 30 days with the dev grant, its Recovery
 /// Kit, setup finished under `name`.
-async fn first_device(relay: &HttpRelay, url: &str, name: &str) -> Device {
+pub(super) async fn first_device(relay: &HttpRelay, url: &str, name: &str) -> Device {
     let device = Device::new();
     let account = fresh_account(relay, &device, url).await;
     let paid_until = relay.dev_grant(&account, 30).await.expect("dev grant");
@@ -300,7 +300,7 @@ async fn first_device(relay: &HttpRelay, url: &str, name: &str) -> Device {
 }
 
 /// A bank account, a category and 20 transactions (`tx-00` … `tx-19`).
-fn add_finances(device: &Device) {
+pub(super) fn add_finances(device: &Device) {
     let mut sql = String::from(
         "INSERT INTO bank_accounts (id, name, currency, balance) \
            VALUES ('acc-1', 'Main', 'CZK', '1000.00'); \
@@ -350,7 +350,7 @@ fn add_bulk(device: &Device, n: usize) {
     tx.commit().expect("commit");
 }
 
-fn converged(a: &Device, b: &Device) {
+pub(super) fn converged(a: &Device, b: &Device) {
     let (a, b) = (a.db.lock(), b.db.lock());
     let devices: [&Connection; 2] = [&a, &b];
     assert_converged(&devices);

@@ -235,7 +235,8 @@
     "waiting": "Esperando al otro dispositivo…",
     "joining": "Uniéndose…",
     "joined": "Este dispositivo ya se sincroniza. Sus datos anteriores están copiados en {{path}}",
-    "tryAgain": "Reintentar"
+    "tryAgain": "Reintentar",
+    "startAgain": "Empezar de nuevo"
   },
   "join": {
     "introPair": "Unirse desde tu teléfono",
@@ -250,7 +251,6 @@
     "kitTitle": "Usar un kit de recuperación",
     "kitHint": "Introduce el código de recuperación de tu kit de recuperación de sincronización, o el texto de su código QR.",
     "codeLabel": "Código de recuperación",
-    "accountLabel": "Número de cuenta",
-    "submit": "Unirse a la sincronización"
+    "accountLabel": "Número de cuenta"
   }
 }

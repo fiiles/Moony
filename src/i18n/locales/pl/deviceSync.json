@@ -237,7 +237,8 @@
     "waiting": "Czekam na drugie urządzenie…",
     "joining": "Dołączanie…",
     "joined": "To urządzenie jest teraz synchronizowane. Jego wcześniejsze dane zapisano w kopii w {{path}}",
-    "tryAgain": "Spróbuj ponownie"
+    "tryAgain": "Spróbuj ponownie",
+    "startAgain": "Zacznij od nowa"
   },
   "join": {
     "introPair": "Dołącz z telefonu",
@@ -252,7 +253,6 @@
     "kitTitle": "Użyj zestawu odzyskiwania",
     "kitHint": "Wpisz kod odzyskiwania z zestawu odzyskiwania synchronizacji lub tekst jego kodu QR.",
     "codeLabel": "Kod odzyskiwania",
-    "accountLabel": "Numer konta",
-    "submit": "Dołącz do synchronizacji"
+    "accountLabel": "Numer konta"
   }
 }

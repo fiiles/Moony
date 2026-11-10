@@ -6,6 +6,7 @@ import type { PairingView } from '@shared/schema';
 import { translateApiError } from '@/lib/translate-api-error';
 import { usePairingExpired } from '@/hooks/use-pairing-expired';
 import { formatComparisonCode } from '@/utils/pairing-code';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
 interface PairingStepsProps {
@@ -45,16 +46,18 @@ export function PairingSteps({
   const waitingStage = view.stage !== 'sent' && view.stage !== 'received';
   if (error) {
     return (
-      <p className="m-0 text-body text-loss" role="alert">
-        {translateApiError(error, tc)}
-      </p>
+      <Alert variant="destructive">
+        <AlertTriangle />
+        <AlertDescription>{translateApiError(error, tc)}</AlertDescription>
+      </Alert>
     );
   }
   if (expired && waitingStage) {
     return (
-      <p className="m-0 text-body text-loss" role="alert">
-        {tc('validation.syncPairingExpired')}
-      </p>
+      <Alert variant="destructive">
+        <AlertTriangle />
+        <AlertDescription>{tc('validation.syncPairingExpired')}</AlertDescription>
+      </Alert>
     );
   }
 
@@ -71,10 +74,10 @@ export function PairingSteps({
 
   if (view.contested) {
     return (
-      <div className="flex items-start gap-2 text-body text-loss" role="alert">
-        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-        <p className="m-0">{t('pairing.contested')}</p>
-      </div>
+      <Alert variant="destructive">
+        <AlertTriangle />
+        <AlertDescription>{t('pairing.contested')}</AlertDescription>
+      </Alert>
     );
   }
 
@@ -112,10 +115,17 @@ export function PairingSteps({
           </div>
           <p className="m-0 text-center text-body text-ink-2">{t('pairing.compareOnlyIfSame')}</p>
           <div className="flex gap-2">
-            <Button type="button" onClick={onMatch} loading={matching}>
+            <Button type="button" variant="outline" onClick={onMatch} loading={matching}>
               {t('pairing.match')}
             </Button>
-            <Button type="button" variant="outline" onClick={onNoMatch} disabled={matching}>
+            {/* Focus starts here, so a reflexive Enter cannot confirm the digits. */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onNoMatch}
+              disabled={matching}
+              autoFocus
+            >
               {t('pairing.noMatch')}
             </Button>
           </div>

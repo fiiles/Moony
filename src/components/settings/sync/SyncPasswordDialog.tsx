@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertDialog,
@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { submitOnEnter } from '@/components/settings/sync/submit-on-enter';
 import { translateApiError } from '@/lib/translate-api-error';
 
 interface SyncPasswordDialogProps {
@@ -47,15 +48,6 @@ export function SyncPasswordDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const field = useRef<HTMLInputElement>(null);
-
-  // Enter in the field submits through the form's own handler (so the busy and empty-password
-  // guards hold) instead of relying on the webview's implicit submission, which did not fire in
-  // the desktop app.
-  const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
-    event.preventDefault();
-    event.currentTarget.form?.requestSubmit();
-  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

@@ -233,7 +233,8 @@
     "waiting": "Väntar på den andra enheten …",
     "joining": "Ansluter …",
     "joined": "Den här enheten synkroniseras nu. Dess tidigare data är säkerhetskopierad i {{path}}",
-    "tryAgain": "Försök igen"
+    "tryAgain": "Försök igen",
+    "startAgain": "Börja om"
   },
   "join": {
     "introPair": "Anslut från telefonen",
@@ -248,7 +249,6 @@
     "kitTitle": "Använd ett återställningskit",
     "kitHint": "Ange återställningskoden från ditt återställningskit för synkronisering, eller texten i dess QR-kod.",
     "codeLabel": "Återställningskod",
-    "accountLabel": "Kontonummer",
-    "submit": "Anslut till synkroniseringen"
+    "accountLabel": "Kontonummer"
   }
 }

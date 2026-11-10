@@ -233,7 +233,8 @@
     "waiting": "Waiting for the other device…",
     "joining": "Joining…",
     "joined": "This device now syncs. Its earlier data is backed up in {{path}}",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "startAgain": "Start again"
   },
   "join": {
     "introPair": "Join from your phone",
@@ -248,7 +249,6 @@
     "kitTitle": "Use a Recovery Kit",
     "kitHint": "Enter the recovery code from your Sync Recovery Kit, or the text of its QR code.",
     "codeLabel": "Recovery code",
-    "accountLabel": "Account number",
-    "submit": "Join sync"
+    "accountLabel": "Account number"
   }
 }

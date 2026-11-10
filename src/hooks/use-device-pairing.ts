@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PairingView } from '@shared/schema';
 import { deviceSyncApi, portfolioApi } from '@/lib/tauri-api';
@@ -69,11 +69,14 @@ export function useDevicePairing() {
     mutationFn: () => deviceSyncApi.pairingConfirm(),
     onSuccess: setView,
   });
+  // A join that succeeded ended the pairing by itself: nothing is left to cancel on unmount.
+  const joined = useRef(false);
   const join = useMutation({
     mutationKey: REPLACE_DEVICE_MUTATION_KEY,
     mutationFn: () => deviceSyncApi.pairingJoin(),
     gcTime: 0,
     onSuccess: async () => {
+      joined.current = true;
       queryClient.removeQueries({ queryKey: PAIRING_KEY });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['device-sync-status'] }),
@@ -92,6 +95,21 @@ export function useDevicePairing() {
       queryClient.removeQueries({ queryKey: PAIRING_KEY });
     }
   };
+
+  // Whatever closes the dialog (auto-lock, another branch of the page, a route change) gives the
+  // pairing up too. Cancelling is idempotent, so the dialogs' own close handlers may cancel first.
+  const { reset: resetStart } = start;
+  const { reset: resetScan } = scan;
+  useEffect(
+    () => () => {
+      resetStart();
+      resetScan();
+      if (joined.current) return;
+      queryClient.removeQueries({ queryKey: PAIRING_KEY });
+      deviceSyncApi.pairingCancel().catch(() => undefined);
+    },
+    [queryClient, resetStart, resetScan]
+  );
 
   return { view, error, isError, start, scan, confirm, cancel, join };
 }

@@ -69,7 +69,7 @@ export function RecoveryJoinDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className="max-w-[520px]">
+      <DialogContent className="max-w-[560px]">
         <form onSubmit={submit} className="grid gap-4">
           <DialogHeader>
             <DialogTitle>{t('join.kitTitle')}</DialogTitle>
@@ -119,7 +119,7 @@ export function RecoveryJoinDialog({ onClose }: { onClose: () => void }) {
               {tc('buttons.cancel')}
             </Button>
             <Button type="submit" loading={busy} disabled={!ready}>
-              {t('join.submit')}
+              {t('join.kitTitle')}
             </Button>
           </DialogFooter>
         </form>

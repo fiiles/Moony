@@ -231,7 +231,8 @@
     "waiting": "正在等待另一台设备…",
     "joining": "正在加入…",
     "joined": "此设备现已同步。它此前的数据已备份在 {{path}}",
-    "tryAgain": "重试"
+    "tryAgain": "重试",
+    "startAgain": "重新开始"
   },
   "join": {
     "introPair": "从手机加入",
@@ -246,7 +247,6 @@
     "kitTitle": "使用恢复包",
     "kitHint": "输入同步恢复包中的恢复代码，或其二维码的文本。",
     "codeLabel": "恢复代码",
-    "accountLabel": "账户编号",
-    "submit": "加入同步"
+    "accountLabel": "账户编号"
   }
 }

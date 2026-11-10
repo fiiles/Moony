@@ -66,9 +66,10 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
   };
 
   const finished = view.stage === 'sent' || isError || view.contested;
+  const closing = view.stage === 'sent' || isError;
   return (
     <Dialog open onOpenChange={(open) => !open && void close()}>
-      <DialogContent className="max-w-[480px]">
+      <DialogContent className="max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{t('pairing.addTitle')}</DialogTitle>
           <DialogDescription>
@@ -87,10 +88,10 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
         <DialogFooter>
           <Button
             type="button"
-            variant={finished ? 'default' : 'ghost'}
+            variant={finished ? 'outline' : 'ghost'}
             onClick={() => void close()}
           >
-            {finished && !view.contested && !isError ? tc('buttons.close') : tc('buttons.cancel')}
+            {closing ? tc('buttons.close') : tc('buttons.cancel')}
           </Button>
         </DialogFooter>
       </DialogContent>

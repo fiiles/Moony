@@ -226,14 +226,15 @@
     "validFor": "Der Code gilt 10 Minuten.",
     "compareTitle": "Ziffern vergleichen",
     "compareOnlyIfSame": "Fahren Sie nur fort, wenn das andere Gerät dieselben sechs Ziffern anzeigt.",
-    "match": "Sie stimmen überein",
-    "noMatch": "Sie stimmen nicht überein",
-    "contested": "Ein anderes Gerät hat diesen Code zuerst beantwortet, daher stimmen diese Ziffern nicht überein. Wählen Sie auf dem anderen Gerät „Sie stimmen nicht überein“ und beginnen Sie von vorn.",
+    "match": "Die Ziffern stimmen überein",
+    "noMatch": "Die Ziffern stimmen nicht überein",
+    "contested": "Ein anderes Gerät hat diesen Code zuerst beantwortet, daher stimmen diese Ziffern nicht überein. Wählen Sie auf dem anderen Gerät „Die Ziffern stimmen nicht überein“ und beginnen Sie von vorn.",
     "sent": "Gesendet. Schließen Sie den Vorgang auf dem anderen Gerät ab.",
     "waiting": "Warten auf das andere Gerät …",
     "joining": "Verbindung wird hergestellt …",
     "joined": "Dieses Gerät synchronisiert jetzt. Seine früheren Daten sind gesichert in {{path}}",
-    "tryAgain": "Erneut versuchen"
+    "tryAgain": "Erneut versuchen",
+    "startAgain": "Neu beginnen"
   },
   "join": {
     "introPair": "Vom Smartphone beitreten",
@@ -248,7 +249,6 @@
     "kitTitle": "Wiederherstellungs-Kit verwenden",
     "kitHint": "Geben Sie den Wiederherstellungscode aus Ihrem Sync-Wiederherstellungs-Kit ein oder den Text seines QR-Codes.",
     "codeLabel": "Wiederherstellungscode",
-    "accountLabel": "Kontonummer",
-    "submit": "Synchronisierung beitreten"
+    "accountLabel": "Kontonummer"
   }
 }

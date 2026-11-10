@@ -233,7 +233,8 @@
     "waiting": "Venter på den andre enheten …",
     "joining": "Blir med …",
     "joined": "Denne enheten synkroniserer nå. De tidligere dataene er sikkerhetskopiert i {{path}}",
-    "tryAgain": "Prøv igjen"
+    "tryAgain": "Prøv igjen",
+    "startAgain": "Start på nytt"
   },
   "join": {
     "introPair": "Bli med fra telefonen",
@@ -248,7 +249,6 @@
     "kitTitle": "Bruk et gjenopprettingssett",
     "kitHint": "Skriv inn gjenopprettingskoden fra gjenopprettingssettet for synkronisering, eller teksten i QR-koden.",
     "codeLabel": "Gjenopprettingskode",
-    "accountLabel": "Kontonummer",
-    "submit": "Bli med i synkroniseringen"
+    "accountLabel": "Kontonummer"
   }
 }

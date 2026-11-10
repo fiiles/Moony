@@ -235,7 +235,8 @@
     "waiting": "In attesa dell'altro dispositivo…",
     "joining": "Collegamento in corso…",
     "joined": "Questo dispositivo ora si sincronizza. I suoi dati precedenti sono salvati in {{path}}",
-    "tryAgain": "Riprova"
+    "tryAgain": "Riprova",
+    "startAgain": "Ricomincia"
   },
   "join": {
     "introPair": "Collegati dal telefono",
@@ -250,7 +251,6 @@
     "kitTitle": "Usa un kit di ripristino",
     "kitHint": "Inserisci il codice di ripristino del tuo kit di ripristino della sincronizzazione, o il testo del suo codice QR.",
     "codeLabel": "Codice di ripristino",
-    "accountLabel": "Numero dell'account",
-    "submit": "Collegati alla sincronizzazione"
+    "accountLabel": "Numero dell'account"
   }
 }

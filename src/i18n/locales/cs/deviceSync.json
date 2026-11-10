@@ -237,7 +237,8 @@
     "waiting": "Čeká se na druhé zařízení…",
     "joining": "Připojuje se…",
     "joined": "Toto zařízení se nyní synchronizuje. Jeho dřívější data jsou zálohována v {{path}}",
-    "tryAgain": "Zkusit znovu"
+    "tryAgain": "Zkusit znovu",
+    "startAgain": "Začít znovu"
   },
   "join": {
     "introPair": "Připojit z telefonu",
@@ -252,7 +253,6 @@
     "kitTitle": "Použít záchrannou sadu",
     "kitHint": "Zadejte obnovovací kód ze záchranné sady synchronizace nebo text jejího QR kódu.",
     "codeLabel": "Obnovovací kód",
-    "accountLabel": "Číslo účtu",
-    "submit": "Připojit k synchronizaci"
+    "accountLabel": "Číslo účtu"
   }
 }

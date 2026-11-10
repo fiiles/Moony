@@ -107,7 +107,7 @@ function RenameDeviceDialog({ device, onClose }: { device: SyncDevice; onClose: 
 
   return (
     <Dialog open onOpenChange={(open) => !open && !renameDevice.isPending && onClose()}>
-      <DialogContent className="max-w-[420px]">
+      <DialogContent className="max-w-[440px]">
         <form onSubmit={submit} className="grid gap-4">
           <DialogHeader>
             <DialogTitle>{t('devices.renameTitle')}</DialogTitle>

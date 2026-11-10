@@ -93,6 +93,7 @@ src-tauri/src/bin/local_*.rs
 
 # Local cargo [env] fallback for the dev sync variables (ADR 0026, PF10): never committed
 src-tauri/.cargo/config.toml
+/.cargo/config.toml
 
 # Agent worktrees and mobile build outputs (the iOS project ignores its own build folders)
 .claude/worktrees/

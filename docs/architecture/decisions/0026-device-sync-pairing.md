@@ -121,8 +121,12 @@ whose every edit was overwritten shows an older time. Renaming this device is a 
 `MOONY_DEV_SYNC=1` (and `MOONY_RELAY_URL`) carries them (`option_env!`, behind
 `cfg(debug_assertions)`; the run-time value wins). A release build reads neither, at build or run
 time: `a_release_build_ignores_the_dev_variables` runs under `cargo test --release` with both set.
-If Xcode's build phase drops the variables, an uncommitted `src-tauri/.cargo/config.toml` `[env]`
-is the fallback (PF10).
+Xcode's build phase does drop the variables (seen in the 2026-11-10 simulator run), and a
+`src-tauri/.cargo/config.toml` is not picked up either; what works is an uncommitted, gitignored
+`.cargo/config.toml` at the repository root whose `[env]` entries use `force = true`
+(`MOONY_DEV_SYNC = { value = "1", force = true }`), plus a touch of `services/sync/feature.rs` so
+cargo rebuilds. Delete it afterwards: it also turns sync on for every debug build and test run in
+that checkout (PF10).
 
 **iOS.** The binding ports the macOS design byte for byte: a Secure Enclave P-256 key-agreement key
 with `.privateKeyUsage` and `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` (no prompt; the binding

@@ -349,6 +349,8 @@
     "syncPairingBothOn": "Synchronizace je zapnutá na obou zařízeních. Vypněte ji na tom, které se má připojit.",
     "syncPairingBothOff": "Synchronizace je vypnutá na obou zařízeních. Nejprve ji zapněte na zařízení, které má vaše data.",
     "syncPairingCancelled": "Druhé zařízení párování zrušilo. Začněte znovu na obou zařízeních.",
+    "syncPairingNotStarted": "Na tomto zařízení neprobíhá žádné párování. Začněte znovu na obou zařízeních.",
+    "syncPairingPasswordRequired": "Pro spárování zařízení zadejte heslo.",
     "syncRecoveryAccountInvalid": "Zkontrolujte číslo účtu: je to 16 číslic ze sady pro obnovení synchronizace.",
     "syncRecoveryVaultNotFound": "Synchronizační server nemá k tomuto obnovovacímu kódu žádná synchronizovaná data. Zkontrolujte kód a adresu synchronizačního serveru v sadě pro obnovení synchronizace.",
     "syncRecoveryKitRotated": "Klíče této synchronizace byly vyměněny; připojení pomocí sady pro obnovení po takové výměně zatím není podporováno.",

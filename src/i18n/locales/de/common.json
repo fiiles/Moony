@@ -349,6 +349,8 @@
     "syncPairingBothOn": "Die Synchronisierung ist auf beiden Geräten eingeschaltet. Schalten Sie sie auf dem Gerät aus, das beitreten soll.",
     "syncPairingBothOff": "Die Synchronisierung ist auf beiden Geräten ausgeschaltet. Schalten Sie sie zuerst auf dem Gerät mit Ihren Daten ein.",
     "syncPairingCancelled": "Das andere Gerät hat die Kopplung abgebrochen. Beginnen Sie auf beiden Geräten von vorn.",
+    "syncPairingNotStarted": "Auf diesem Gerät läuft keine Kopplung. Beginnen Sie auf beiden Geräten von vorn.",
+    "syncPairingPasswordRequired": "Geben Sie Ihr Passwort ein, um die Geräte zu koppeln.",
     "syncRecoveryAccountInvalid": "Prüfen Sie die Kontonummer: Es sind die 16 Ziffern auf Ihrem Sync-Wiederherstellungskit.",
     "syncRecoveryVaultNotFound": "Zu diesem Wiederherstellungscode gibt es auf dem Sync-Server keine synchronisierten Daten. Prüfen Sie den Code und die Adresse des Sync-Servers auf Ihrem Sync-Wiederherstellungskit.",
     "syncRecoveryKitRotated": "Die Schlüssel dieser Synchronisierung wurden erneuert; ein Beitritt mit einem Wiederherstellungskit ist danach noch nicht möglich.",

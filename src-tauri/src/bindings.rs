@@ -35,6 +35,11 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::RecoveryKit>();
     types.register::<crate::models::SyncDevice>();
 
+    // Device sync pairing (a second device)
+    types.register::<crate::models::PairingStage>();
+    types.register::<crate::models::PairingRole>();
+    types.register::<crate::models::PairingView>();
+
     // Investment models
     types.register::<crate::models::StockInvestment>();
     types.register::<crate::models::EnrichedStockInvestment>();

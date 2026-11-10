@@ -58,8 +58,8 @@ pub struct SyncEngineState(pub Mutex<Option<EngineHandle>>);
 
 /// The binding native: the keychain plugin seals to this machine (a Secure Enclave key on macOS,
 /// DPAPI in machine scope on Windows) and answers `Unsupported` on Linux and the phones.
-struct KeychainBinding {
-    app: AppHandle,
+pub(super) struct KeychainBinding {
+    pub(super) app: AppHandle,
 }
 
 impl BindingNative for KeychainBinding {
@@ -210,7 +210,7 @@ pub(crate) fn stop_engine(app: &AppHandle) {
 // ============================================================================
 
 /// `validation.syncUnavailable` while the flag is off.
-fn require_feature() -> Result<()> {
+pub(super) fn require_feature() -> Result<()> {
     require_feature_with(feature::enabled)
 }
 
@@ -231,15 +231,15 @@ fn require_dev_tools() -> Result<()> {
     }
 }
 
-fn app_error(error: SyncError) -> AppError {
+pub(super) fn app_error(error: SyncError) -> AppError {
     error.to_app_error()
 }
 
-fn now() -> i64 {
+pub(super) fn now() -> i64 {
     chrono::Utc::now().timestamp()
 }
 
-fn data_dir(app: &AppHandle) -> Result<PathBuf> {
+pub(super) fn data_dir(app: &AppHandle) -> Result<PathBuf> {
     app.path()
         .app_data_dir()
         .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {e}")))
@@ -247,12 +247,12 @@ fn data_dir(app: &AppHandle) -> Result<PathBuf> {
 
 /// The relay of this profile: the stored account's address (ruling SH-2), or the default relay
 /// while no account is stored.
-fn profile_relay(db: &Database) -> Result<HttpRelay> {
+pub(super) fn profile_relay(db: &Database) -> Result<HttpRelay> {
     let stored = db.with_conn(|conn| Ok(keys::account(conn)?.map(|(url, _)| url)))?;
     HttpRelay::new(&stored.unwrap_or_else(default_base_url))
 }
 
-fn sync_on(db: &Database) -> Result<bool> {
+pub(super) fn sync_on(db: &Database) -> Result<bool> {
     db.with_conn(|conn| Ok(state::load(conn)?.is_some_and(|sync| sync.enabled)))
 }
 
@@ -270,16 +270,16 @@ fn current_status(app: &AppHandle, db: &Database) -> Result<SyncStatus> {
 }
 
 /// Stopping and starting the engine around a sync change (the app's engine, or a test's).
-trait EngineControl {
+pub(super) trait EngineControl {
     fn stop(&self);
     /// Starts the engine again; nothing when sync is off by then.
     fn start(&self);
 }
 
 /// The app's engine of the open profile.
-struct AppEngine<'a> {
-    app: &'a AppHandle,
-    db: &'a Database,
+pub(super) struct AppEngine<'a> {
+    pub(super) app: &'a AppHandle,
+    pub(super) db: &'a Database,
 }
 
 impl EngineControl for AppEngine<'_> {
@@ -297,7 +297,7 @@ impl EngineControl for AppEngine<'_> {
 /// with the engine stopped first and started again afterwards when sync is still on, so no loop
 /// keeps a relay or credentials from before. The guard is held until the engine has started again
 /// (`start_engine` skips while it is held).
-async fn guarded_change<T>(
+pub(super) async fn guarded_change<T>(
     engine: &impl EngineControl,
     work: impl Future<Output = SyncResult<T>>,
 ) -> Result<T> {
@@ -310,7 +310,7 @@ async fn guarded_change<T>(
 
 /// The device password, checked against the profile's key file off the runtime (the key
 /// derivation takes about a second).
-async fn verify_password(app: &AppHandle, password: Zeroizing<String>) -> Result<()> {
+pub(super) async fn verify_password(app: &AppHandle, password: Zeroizing<String>) -> Result<()> {
     let db_path = get_db_path(app)?;
     tauri::async_runtime::spawn_blocking(move || auth::verify_password(&db_path, &password))
         .await
@@ -347,9 +347,9 @@ fn engine_may_start(flag_on: bool, change_running: bool) -> bool {
 /// The profile session a copy window belongs to: the profile's database file and the session
 /// (`Database::session_epoch`, which changes at every unlock and lock).
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct KitOwner {
-    db_path: PathBuf,
-    session: u64,
+pub(super) struct KitOwner {
+    pub(super) db_path: PathBuf,
+    pub(super) session: u64,
 }
 
 /// `sync_show_recovery_kit` checked the password of `owner` at `opened`.
@@ -382,7 +382,7 @@ pub(crate) fn forget_kit_window() {
     *kit_window_slot() = None;
 }
 
-fn kit_owner(app: &AppHandle, db: &Database) -> Result<KitOwner> {
+pub(super) fn kit_owner(app: &AppHandle, db: &Database) -> Result<KitOwner> {
     Ok(KitOwner {
         db_path: get_db_path(app)?,
         session: db.session_epoch(),
@@ -967,9 +967,17 @@ mod tests {
         assert_ne!(db.session_epoch(), before);
     }
 
-    /// The commands of this file (name → body up to its third statement), read from the source.
+    /// The sync commands (name → body up to its third statement), read from the sources of this
+    /// file and of `sync_pairing.rs`.
     fn commands_and_their_first_statements() -> Vec<(String, String)> {
-        let source = include_str!("sync.rs");
+        [include_str!("sync.rs"), include_str!("sync_pairing.rs")]
+            .into_iter()
+            .flat_map(commands_of)
+            .collect()
+    }
+
+    /// The commands of one source file.
+    fn commands_of(source: &str) -> Vec<(String, String)> {
         // Only the code above the tests: the tests' own text names the attribute too.
         let code = source
             .split("\n#[cfg(test)]\nmod tests {")
@@ -1006,11 +1014,15 @@ mod tests {
         // Every command registered in `lib.rs` is one this scan found, and the other way round.
         let registered: BTreeSet<&str> = include_str!("../lib.rs")
             .lines()
-            .filter_map(|line| line.trim().strip_prefix("commands::sync::"))
+            .filter_map(|line| {
+                let line = line.trim();
+                line.strip_prefix("commands::sync::")
+                    .or_else(|| line.strip_prefix("commands::sync_pairing::"))
+            })
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 16);
+        assert_eq!(found.len(), 25);
         for (name, first_three) in &commands {
             if name == "sync_feature_enabled" {
                 continue;

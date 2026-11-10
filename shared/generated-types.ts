@@ -1639,6 +1639,68 @@ export type OtherAssetTransaction = { id: string; assetId: string; type: string;
 export type PackRuleInfo = { id: string; name: string; ruleType: string; pattern: string; categoryId: string; priority: number; disabled: boolean }
 
 /**
+ * Whether this device holds the synced data (sync on) or joins it (sync off).
+ */
+export type PairingRole = "holder" | "joiner"
+
+/**
+ * Where a pairing stands on this device (`services::sync::pairing::session::Stage`).
+ */
+export type PairingStage = 
+/**
+ * Scanner: its answer is not written yet; polling retries it.
+ */
+"announcing" | 
+/**
+ * Shower: the QR code is on screen, waiting for the other device to scan it.
+ */
+"waitingForScan" | 
+/**
+ * Both: the six-digit comparison code is on screen, waiting for the person.
+ */
+"compare" | 
+/**
+ * Joiner, after its confirm: waiting for the other device to send the sync details.
+ */
+"waitingForOther" | 
+/**
+ * Holder, after its confirm: the sync details are sent.
+ */
+"sent" | 
+/**
+ * Joiner: the sync details arrived; joining can start.
+ */
+"received"
+
+/**
+ * A pairing as the UI shows it. Nothing secret: the QR code and the comparison code only
+ * protect the exchange while they are on screens the person is looking at; the sync details
+ * themselves never leave Rust.
+ */
+export type PairingView = { stage: PairingStage; role: PairingRole; 
+/**
+ * The pairing code as an SVG QR code, while this device shows it (`waitingForScan`).
+ */
+qrSvg: string | null; 
+/**
+ * The same code as text, only with the developer tools (a simulator cannot scan).
+ */
+pairingCode: string | null; 
+/**
+ * The six digits both devices show, from `compare` on.
+ */
+comparisonCode: string | null; 
+/**
+ * Scanner: another device answered this code first; this device's digits differ from the
+ * other device's, and only cancelling is offered.
+ */
+contested: boolean; 
+/**
+ * When the pairing ends on this device (unix seconds).
+ */
+expiresAt: number }
+
+/**
  * The chart data of one requested series, on the dates of the report.
  */
 export type PerformanceSeries = { key: string; 

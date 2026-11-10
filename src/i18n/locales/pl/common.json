@@ -348,7 +348,11 @@
     "syncPairingExpired": "Ten kod parowania wygasł. Zacznij od nowa na obu urządzeniach.",
     "syncPairingBothOn": "Synchronizacja jest już włączona na obu urządzeniach. Wyłącz ją na tym, które ma dołączyć.",
     "syncPairingBothOff": "Synchronizacja jest wyłączona na obu urządzeniach. Najpierw włącz ją na urządzeniu z Twoimi danymi.",
-    "syncPairingCancelled": "Drugie urządzenie anulowało parowanie. Zacznij od nowa na obu urządzeniach."
+    "syncPairingCancelled": "Drugie urządzenie anulowało parowanie. Zacznij od nowa na obu urządzeniach.",
+    "syncRecoveryAccountInvalid": "Sprawdź numer konta: to 16 cyfr z zestawu odzyskiwania synchronizacji.",
+    "syncRecoveryVaultNotFound": "Serwer synchronizacji nie ma zsynchronizowanych danych dla tego kodu odzyskiwania. Sprawdź kod i adres serwera synchronizacji w zestawie odzyskiwania synchronizacji.",
+    "syncRecoveryKitRotated": "Klucze tej synchronizacji zostały wymienione; dołączanie za pomocą zestawu odzyskiwania po takiej wymianie nie jest jeszcze obsługiwane.",
+    "syncJoinSetupPending": "Najpierw dokończ lub anuluj konfigurację synchronizacji na tym urządzeniu."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

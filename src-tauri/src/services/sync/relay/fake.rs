@@ -79,6 +79,8 @@ struct Vault {
     dropped: HashSet<u64>,
     bytes: u64,
     snapshot: Option<SnapshotBlob>,
+    /// The token rotation counter `vault_info` answers (`set_rotation`).
+    rotation: u32,
 }
 
 #[derive(Default)]
@@ -350,6 +352,14 @@ impl FakeRelay {
             .find_map(|v| v.snapshot.as_ref().map(|s| s.seq))
     }
 
+    /// The token rotation counter `vault_info` answers for `vault_id` from now on (a re-keyed
+    /// vault; the token stays the one the vault was created with).
+    pub fn set_rotation(&self, vault_id: &str, rotation: u32) {
+        if let Some(vault) = self.lock().vaults.get_mut(vault_id) {
+            vault.rotation = rotation;
+        }
+    }
+
     /// The relay forgets the vault (as after the lapsed-vault wipe): later calls get
     /// `VaultNotFound`.
     pub fn wipe_vault(&self, vault_id: &str) {
@@ -506,6 +516,7 @@ impl Relay for FakeRelay {
                     dropped: HashSet::new(),
                     bytes: 0,
                     snapshot: None,
+                    rotation: 0,
                 },
             );
             Ok(true)
@@ -525,7 +536,7 @@ impl Relay for FakeRelay {
                 snapshot_seq: stored.snapshot.as_ref().map(|s| s.seq),
                 paid_until: state.paid_until(&stored.account),
                 bytes: stored.bytes,
-                rotation: 0,
+                rotation: stored.rotation,
             })
         })();
         async move { result }

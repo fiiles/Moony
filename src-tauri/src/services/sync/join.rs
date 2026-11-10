@@ -1,14 +1,16 @@
-//! Joining a vault by replace (spec §8, §11.3 D22), repairing a profile whose change capture
-//! broke (ruling P3) and re-syncing a device from the vault (ruling T8-4). All three replace the
-//! person's local data with the vault's, so none may lose it silently: a join is one savepoint
-//! that leaves the profile as it was when any step fails; the repair and the re-sync write a
-//! backup and read it back before anything else; and the repair replaces nothing unless every
-//! change this device captured reached the relay first.
+//! Joining a vault by replace (spec §8, §11.3 D22), a new device joining from pairing or a Sync
+//! Recovery Kit (phase 3), repairing a profile whose change capture broke (ruling P3) and
+//! re-syncing a device from the vault (ruling T8-4). All of them replace the person's local data
+//! with the vault's, so none may lose it silently: a join is one savepoint that leaves the
+//! profile as it was when any step fails; the new device's join, the repair and the re-sync
+//! write a backup and read it back before anything else; and the repair replaces nothing unless
+//! every change this device captured reached the relay first.
 //!
 //! The relay passed in is the one at the credentials' own address (`Credentials::relay_url`, the
 //! default or a self-hosted one, ruling SH-2): the caller builds it with
 //! `HttpRelay::new(&creds.relay_url)`, never from `default_base_url()` (`MOONY_RELAY_URL`).
 
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -25,7 +27,8 @@ use super::engine::{self, ConnAccess, PullReport, RoundMode};
 use super::error::SyncResult;
 use super::hlc::DeviceId;
 use super::in_savepoint;
-use super::keys::{self, Credentials};
+use super::keys::{self, Credentials, VaultKeys};
+use super::recovery::RecoveryInput;
 use super::relay::http::validate_base_url;
 use super::relay::{Relay, RelayError};
 use super::snapshot::RestoreReport;
@@ -40,6 +43,11 @@ pub const REPAIR_BACKUP_PREFIX: &str = "sync-repair-";
 pub const REPAIR_BACKUP_SUFFIX: &str = ".zip";
 
 const NO_SNAPSHOT: &str = "validation.syncVaultHasNoSnapshot";
+const ALREADY_ENABLED: &str = "validation.syncAlreadyEnabled";
+const SETUP_PENDING: &str = "validation.syncJoinSetupPending";
+const KIT_ACCOUNT_INVALID: &str = "validation.syncRecoveryAccountInvalid";
+const KIT_VAULT_NOT_FOUND: &str = "validation.syncRecoveryVaultNotFound";
+const KIT_ROTATED: &str = "validation.syncRecoveryKitRotated";
 const DRAIN_INCOMPLETE: &str = "validation.syncRepairDrainIncomplete";
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -75,7 +83,20 @@ pub async fn join_by_replace<R: Relay, D: ConnAccess>(
     devices::validate_device_name(device_name)?;
     validate_base_url(&creds.relay_url)?;
     let _no_round = engine::exclusive(db).await;
+    replace_under_lock(relay, db, creds, device_name, data_dir, native, now).await
+}
 
+/// Steps 2 to 4 of `join_by_replace`, for a caller that holds off every round
+/// (`engine::exclusive`) and has checked the device name and the relay address.
+async fn replace_under_lock<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: Credentials,
+    device_name: &str,
+    data_dir: &Path,
+    native: &dyn BindingNative,
+    now: i64,
+) -> SyncResult<RestoreReport> {
     let blob = match relay.get_snapshot(&creds.auth()).await {
         Ok(blob) => blob,
         Err(RelayError::NoSnapshot) => {
@@ -98,6 +119,100 @@ pub async fn join_by_replace<R: Relay, D: ConnAccess>(
         log::debug!("[SYNC] The device binding could not be written after the join: {error}");
     }
     Ok(report)
+}
+
+/// A new device joins the vault of `creds` (phase 3: credentials received by pairing, or made
+/// from a Sync Recovery Kit by `recovery_credentials`); returns the path of the backup. The
+/// caller passes a copy of the credentials and keeps its own, so "Try again" needs no new
+/// pairing (review PF6).
+///
+/// 1. Before any backup or relay call: the device name and the relay address are checked; then,
+///    holding off every round of the profile (`engine::exclusive`) until the join ends, sync must
+///    be off (`validation.syncAlreadyEnabled`), and a sync setup this device started with another
+///    account (`keys::account`) stops the join with `validation.syncJoinSetupPending` (review
+///    PF5); a setup that stopped at the same account may go on into the join.
+/// 2. The verified backup of the repair (`sync-repair-<now>.zip`, flushed and read back).
+/// 3. `join_by_replace`'s replace: the snapshot is fetched and opened, and in one savepoint the
+///    credentials are bound, the profile replaced under a new device ID with a new key pair and
+///    this device recorded under `device_name`; then the binding is written. A failure leaves
+///    the profile as it was; the backup stays.
+pub async fn join_new_device<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: Credentials,
+    device_name: &str,
+    data_dir: &Path,
+    native: &dyn BindingNative,
+    now: i64,
+) -> SyncResult<PathBuf> {
+    devices::validate_device_name(device_name)?;
+    validate_base_url(&creds.relay_url)?;
+    let _no_round = engine::exclusive(db).await;
+    db.with_conn(|conn| may_join(conn, &creds.account))?;
+    let zip = backed_up(db, data_dir, now).await?;
+    replace_under_lock(relay, db, creds, device_name, data_dir, native, now).await?;
+    log::info!("[SYNC] A new device joined the vault");
+    Ok(zip)
+}
+
+/// Step 1 of `join_new_device`: sync is off, and no setup with another account is under way.
+fn may_join(conn: &Connection, account: &str) -> Result<()> {
+    if state::load(conn)?.is_some_and(|sync| sync.enabled) {
+        return Err(AppError::Validation(ALREADY_ENABLED.into()));
+    }
+    if keys::account(conn)?.is_some_and(|(_, stored)| stored != account) {
+        return Err(AppError::Validation(SETUP_PENDING.into()));
+    }
+    Ok(())
+}
+
+/// The credentials of a Sync Recovery Kit (review PF7), from the relay at `input.relay_url` (the
+/// caller builds it from that address). In this order:
+///
+/// 1. Sync on → `validation.syncAlreadyEnabled`, before any relay call.
+/// 2. The relay must know the account (`account_status`; `AccountNotFound` →
+///    `validation.syncRecoveryAccountInvalid`).
+/// 3. The kit's key is the vault's key of epoch 0; the vault must answer its token (`vault_info`;
+///    `Unauthorized` or `VaultNotFound` → `validation.syncRecoveryVaultNotFound`).
+/// 4. A vault whose token was rotated (`rotation != 0`) is refused with
+///    `validation.syncRecoveryKitRotated`: a kit holds the first key only, and finding a later
+///    epoch is phase 5.
+///
+/// Any other relay answer comes back as its `SyncError`. Nothing is stored.
+pub async fn recovery_credentials<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    input: RecoveryInput,
+) -> SyncResult<Credentials> {
+    let enabled = db.with_conn(|conn| Ok(state::load(conn)?.is_some_and(|sync| sync.enabled)))?;
+    if enabled {
+        return Err(AppError::Validation(ALREADY_ENABLED.into()).into());
+    }
+    match relay.account_status(&input.account).await {
+        Ok(_) => {}
+        Err(RelayError::AccountNotFound) => {
+            return Err(AppError::Validation(KIT_ACCOUNT_INVALID.into()).into());
+        }
+        Err(error) => return Err(error.into()),
+    }
+    let creds = Credentials {
+        relay_url: input.relay_url,
+        account: input.account,
+        vault_id: input.vault_id,
+        keys: VaultKeys::from_parts(0, BTreeMap::from([(0, *input.key.expose())]))?,
+    };
+    let info = match relay.vault_info(&creds.auth()).await {
+        Ok(info) => info,
+        Err(RelayError::Unauthorized | RelayError::VaultNotFound) => {
+            return Err(AppError::Validation(KIT_VAULT_NOT_FOUND.into()).into());
+        }
+        Err(error) => return Err(error.into()),
+    };
+    if info.rotation != 0 {
+        log::info!("[SYNC] The vault was re-keyed; a Recovery Kit join is not supported yet");
+        return Err(AppError::Validation(KIT_ROTATED.into()).into());
+    }
+    Ok(creds)
 }
 
 /// Step 3 of `join_by_replace`.
@@ -308,8 +423,8 @@ async fn drained<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> SyncRe
     Ok(pending == 0)
 }
 
-/// Step 1 of `repair_capture` and `resync_by_replace`: writes the backup to a free name, flushes
-/// it and reads it back.
+/// Step 1 of `repair_capture` and `resync_by_replace`, step 2 of `join_new_device`: writes the
+/// backup to a free name, flushes it and reads it back.
 fn back_up<D: ConnAccess>(db: &D, data_dir: &Path, now: i64) -> Result<PathBuf> {
     let dest = free_backup_path(data_dir, now)?;
     db.with_conn(|conn| backup::create_backup(conn, data_dir, &dest, APP_VERSION))?;

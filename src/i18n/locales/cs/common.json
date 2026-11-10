@@ -348,7 +348,11 @@
     "syncPairingExpired": "Platnost párovacího kódu vypršela. Začněte znovu na obou zařízeních.",
     "syncPairingBothOn": "Synchronizace je zapnutá na obou zařízeních. Vypněte ji na tom, které se má připojit.",
     "syncPairingBothOff": "Synchronizace je vypnutá na obou zařízeních. Nejprve ji zapněte na zařízení, které má vaše data.",
-    "syncPairingCancelled": "Druhé zařízení párování zrušilo. Začněte znovu na obou zařízeních."
+    "syncPairingCancelled": "Druhé zařízení párování zrušilo. Začněte znovu na obou zařízeních.",
+    "syncRecoveryAccountInvalid": "Zkontrolujte číslo účtu: je to 16 číslic ze sady pro obnovení synchronizace.",
+    "syncRecoveryVaultNotFound": "Synchronizační server nemá k tomuto obnovovacímu kódu žádná synchronizovaná data. Zkontrolujte kód a adresu synchronizačního serveru v sadě pro obnovení synchronizace.",
+    "syncRecoveryKitRotated": "Klíče této synchronizace byly vyměněny; připojení pomocí sady pro obnovení po takové výměně zatím není podporováno.",
+    "syncJoinSetupPending": "Nejprve na tomto zařízení dokončete nebo zrušte nastavení synchronizace."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

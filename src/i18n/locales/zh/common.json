@@ -348,7 +348,11 @@
     "syncPairingExpired": "此配对码已过期。请在两台设备上重新开始。",
     "syncPairingBothOn": "两台设备都已开启同步。请在要加入的那台设备上关闭同步。",
     "syncPairingBothOff": "两台设备都未开启同步。请先在存有您数据的设备上开启同步。",
-    "syncPairingCancelled": "另一台设备已取消配对。请在两台设备上重新开始。"
+    "syncPairingCancelled": "另一台设备已取消配对。请在两台设备上重新开始。",
+    "syncRecoveryAccountInvalid": "请检查账户号码：即同步恢复套件上的 16 位数字。",
+    "syncRecoveryVaultNotFound": "同步服务器上没有与此恢复码对应的同步数据。请检查同步恢复套件上的恢复码和同步服务器地址。",
+    "syncRecoveryKitRotated": "此同步的密钥已更换；更换后暂不支持使用恢复套件加入。",
+    "syncJoinSetupPending": "请先在此设备上完成或取消同步设置。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

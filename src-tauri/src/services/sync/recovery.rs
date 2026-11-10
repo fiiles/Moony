@@ -20,7 +20,7 @@ use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
 use super::keys::VaultId;
-use super::relay::http::{is_default_relay, normalize_base_url};
+use super::relay::http::{is_default_relay, normalize_base_url, DEFAULT_RELAY_URL};
 use crate::error::{AppError, Result};
 
 /// Crockford base32 characters of the code, checksum included.
@@ -235,6 +235,79 @@ pub fn parse_recovery_qr_payload(input: &str) -> Result<RecoveryQr> {
         vault_id,
         key,
         relay_url,
+    })
+}
+
+const QR_SCHEME: &str = "moony-recover:";
+const ACCOUNT_DIGITS: usize = 16;
+
+fn account_invalid() -> AppError {
+    AppError::Validation("validation.syncRecoveryAccountInvalid".into())
+}
+
+/// What a person gave to join with a Sync Recovery Kit (`read_recovery_input`): the vault's
+/// account, ID and key and the sync server to ask. `Debug` prints nothing of it.
+pub struct RecoveryInput {
+    /// Normalized (`normalize_base_url`).
+    pub relay_url: String,
+    pub account: String,
+    pub vault_id: VaultId,
+    pub key: RecoveryKey,
+}
+
+impl std::fmt::Debug for RecoveryInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RecoveryInput { .. }")
+    }
+}
+
+/// Reads what the person scanned or typed from a Sync Recovery Kit.
+///
+/// - A scanned QR (the trimmed `code` starts `moony-recover:`) brings its own account and sync
+///   server (`parse_recovery_qr_payload`); `account` and `relay_url` are ignored, and a QR
+///   without a server names the default relay (`DEFAULT_RELAY_URL`).
+/// - A typed code (`decode_recovery_code`) needs `account`: 16 digits, spaces and `-` between
+///   them ignored, else `validation.syncRecoveryAccountInvalid`. The server is `relay_url`,
+///   normalized (`validation.syncRelayUrlInvalid`), or `default_relay` when it is absent or
+///   blank.
+///
+/// No error carries the input.
+pub fn read_recovery_input(
+    code: &str,
+    account: Option<&str>,
+    relay_url: Option<&str>,
+    default_relay: &str,
+) -> Result<RecoveryInput> {
+    let code = code.trim();
+    if code.starts_with(QR_SCHEME) {
+        let qr = parse_recovery_qr_payload(code)?;
+        return Ok(RecoveryInput {
+            relay_url: qr
+                .relay_url
+                .unwrap_or_else(|| DEFAULT_RELAY_URL.to_string()),
+            account: qr.account,
+            vault_id: qr.vault_id,
+            key: qr.key,
+        });
+    }
+    let (vault_id, key) = decode_recovery_code(code)?;
+    let account: String = account
+        .unwrap_or_default()
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '-')
+        .collect();
+    if account.len() != ACCOUNT_DIGITS || !account.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(account_invalid());
+    }
+    let relay_url = match relay_url.map(str::trim).filter(|url| !url.is_empty()) {
+        Some(url) => normalize_base_url(url)?,
+        None => normalize_base_url(default_relay)?,
+    };
+    Ok(RecoveryInput {
+        relay_url,
+        account,
+        vault_id,
+        key,
     })
 }
 
@@ -523,6 +596,107 @@ mod tests {
         assert!(
             parse_recovery_qr_payload(&at_cap).is_ok(),
             "512 bytes is fine"
+        );
+    }
+
+    const DEFAULT: &str = "https://default.relay.test";
+
+    fn key_of(result: Result<RecoveryInput>) -> String {
+        match result {
+            Err(AppError::Validation(key)) => key,
+            other => panic!("not a validation key: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn the_recovery_qr_brings_its_own_account_and_server() {
+        let (id, key) = v2();
+        let custom = recovery_qr_payload(ACCOUNT, V2, Some("https://Relay.Example.org/"));
+        // Surrounding whitespace is trimmed; the account and server arguments are ignored.
+        let input = read_recovery_input(
+            &format!("  {}\n", custom.as_str()),
+            Some("1111222233334444"),
+            Some("https://other.example.org"),
+            DEFAULT,
+        )
+        .expect("custom QR");
+        assert_eq!(input.account, ACCOUNT);
+        assert_eq!(input.relay_url, "https://relay.example.org");
+        assert_eq!((input.vault_id, *input.key.expose()), (id, key));
+
+        // A QR without a server names the default relay itself, not the caller's default.
+        let plain = recovery_qr_payload(ACCOUNT, V2, None);
+        let input = read_recovery_input(&plain, None, None, DEFAULT).expect("default QR");
+        assert_eq!(input.account, ACCOUNT);
+        assert_eq!(input.relay_url, DEFAULT_RELAY_URL);
+        assert_eq!((input.vault_id, *input.key.expose()), (id, key));
+        assert_eq!(format!("{input:?}"), "RecoveryInput { .. }");
+
+        // A broken QR is a broken code; a server the app never uses is refused.
+        assert_eq!(
+            key_of(read_recovery_input(
+                &format!("moony-recover:1:{ACCOUNT}"),
+                None,
+                None,
+                DEFAULT
+            )),
+            "validation.syncRecoveryCodeInvalid"
+        );
+        let http = format!("moony-recover:1:{ACCOUNT}:{V2}:aHR0cDovL3JlbGF5LmV4YW1wbGUub3Jn");
+        assert_eq!(
+            key_of(read_recovery_input(&http, None, None, DEFAULT)),
+            "validation.syncRelayUrlInvalid"
+        );
+    }
+
+    #[test]
+    fn a_typed_code_needs_the_account_and_takes_the_default_server() {
+        let (id, key) = v2();
+        let grouped = format_recovery_code(V2);
+        for server in [None, Some(""), Some("   ")] {
+            let input =
+                read_recovery_input(&grouped, Some(ACCOUNT), server, DEFAULT).expect("typed");
+            assert_eq!(input.account, ACCOUNT);
+            assert_eq!(input.relay_url, DEFAULT, "{server:?}");
+            assert_eq!((input.vault_id, *input.key.expose()), (id, key));
+        }
+        // An account typed in groups reads as its 16 digits.
+        let input = read_recovery_input(
+            &grouped,
+            Some(" 4417 9382-0556 1273 "),
+            Some("https://Relay.Test/"),
+            DEFAULT,
+        )
+        .expect("grouped account, own server");
+        assert_eq!(input.account, ACCOUNT);
+        assert_eq!(input.relay_url, "https://relay.test");
+
+        let account = "validation.syncRecoveryAccountInvalid";
+        for typed in [
+            None,
+            Some(""),
+            Some("123"),
+            Some("44179382055612730"),
+            Some("441793820556127a"),
+        ] {
+            assert_eq!(
+                key_of(read_recovery_input(&grouped, typed, None, DEFAULT)),
+                account,
+                "{typed:?}"
+            );
+        }
+        assert_eq!(
+            key_of(read_recovery_input(
+                &grouped,
+                Some(ACCOUNT),
+                Some("http://evil.example"),
+                DEFAULT
+            )),
+            "validation.syncRelayUrlInvalid"
+        );
+        assert_eq!(
+            key_of(read_recovery_input(&V2[..79], Some(ACCOUNT), None, DEFAULT)),
+            "validation.syncRecoveryCodeInvalid"
         );
     }
 

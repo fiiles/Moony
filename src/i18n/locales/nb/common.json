@@ -348,7 +348,11 @@
     "syncPairingExpired": "Denne paringskoden er utløpt. Start på nytt på begge enhetene.",
     "syncPairingBothOn": "Synkronisering er allerede på for begge enhetene. Slå den av på enheten som skal bli med.",
     "syncPairingBothOff": "Synkronisering er av på begge enhetene. Slå den på først på enheten som har dataene dine.",
-    "syncPairingCancelled": "Den andre enheten avbrøt paringen. Start på nytt på begge enhetene."
+    "syncPairingCancelled": "Den andre enheten avbrøt paringen. Start på nytt på begge enhetene.",
+    "syncRecoveryAccountInvalid": "Sjekk kontonummeret: det er de 16 sifrene i gjenopprettingssettet for synkronisering.",
+    "syncRecoveryVaultNotFound": "Synkroniseringsserveren har ingen synkroniserte data for denne gjenopprettingskoden. Sjekk koden og adressen til synkroniseringsserveren i gjenopprettingssettet for synkronisering.",
+    "syncRecoveryKitRotated": "Nøklene for denne synkroniseringen er byttet ut; å bli med ved hjelp av et gjenopprettingssett etter det støttes ikke ennå.",
+    "syncJoinSetupPending": "Fullfør eller avbryt oppsettet av synkronisering på denne enheten først."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

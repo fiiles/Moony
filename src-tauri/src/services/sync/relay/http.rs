@@ -43,17 +43,11 @@ const MAX_PREALLOCATION: usize = 1024 * 1024;
 const ACCOUNT_HEADER: &str = "moony-account";
 const SNAPSHOT_SEQ_HEADER: &str = "moony-snapshot-seq";
 
-/// `MOONY_RELAY_URL` in debug builds when it is set, else `DEFAULT_RELAY_URL`. Release builds
-/// never read the variable.
+/// The dev sync server of a debug build (`feature::dev_relay_base`: `MOONY_RELAY_URL` at run
+/// time, else as the binary was built; an iPhone app has no environment), else
+/// `DEFAULT_RELAY_URL`. Release builds never read the variable.
 pub fn default_base_url() -> String {
-    #[cfg(debug_assertions)]
-    if let Some(url) = std::env::var("MOONY_RELAY_URL")
-        .ok()
-        .filter(|url| !url.is_empty())
-    {
-        return url;
-    }
-    DEFAULT_RELAY_URL.to_string()
+    super::super::feature::dev_relay_base().unwrap_or_else(|| DEFAULT_RELAY_URL.to_string())
 }
 
 /// A relay base URL: `https`, or `http` only for the hosts `localhost` and `127.0.0.1`; no user,

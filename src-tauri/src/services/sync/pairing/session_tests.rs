@@ -621,9 +621,9 @@ fn only_a_lost_answer_makes_a_put_ambiguous() {
         (net("timeout"), true),
         (net("body"), true),
         (net("other"), true),
+        (net("request"), true),
         (RelayError::Server(502), true),
         (net("connect"), false),
-        (net("request"), false),
         (RelayError::RateLimited, false),
         (RelayError::Protocol("redirect".into()), false),
     ] {
@@ -633,17 +633,30 @@ fn only_a_lost_answer_makes_a_put_ambiguous() {
 
 #[tokio::test]
 async fn a_put_that_never_left_is_not_taken_for_our_own_write() {
-    for reason in ["connect", "request"] {
-        let relay = FakeRelay::new();
-        let (_s, mut c) = pair(Role::Holder, Role::Joiner);
-        relay.fail_next(Route::MailboxPut, RelayError::Network(reason.into()));
-        let error = c.announce(&relay, T0).await.unwrap_err();
-        assert!(keeps_session(&error));
-        let m_pub = public(M_SECRET);
-        relay.write_slot_raw(&id(&c), 1, slot1(Role::Joiner, &m_pub).to_vec());
-        assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
-        assert!(c.contested(), "{reason}: the impostor's record is not ours");
-    }
+    let relay = FakeRelay::new();
+    let (_s, mut c) = pair(Role::Holder, Role::Joiner);
+    relay.fail_next(Route::MailboxPut, RelayError::Network("connect".into()));
+    let error = c.announce(&relay, T0).await.unwrap_err();
+    assert!(keeps_session(&error));
+    let m_pub = public(M_SECRET);
+    relay.write_slot_raw(&id(&c), 1, slot1(Role::Joiner, &m_pub).to_vec());
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(c.contested(), "the impostor's record is not ours");
+}
+
+#[tokio::test]
+async fn a_lost_request_answer_still_reaches_compare_as_ours() {
+    // reqwest reports a reset after the request was written as "request": the relay stored it.
+    let relay = FakeRelay::new();
+    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
+    relay.fail_next(Route::MailboxPut, RelayError::Network("request".into()));
+    assert!(keeps_session(&c.announce(&relay, T0).await.unwrap_err()));
+    relay.write_slot_raw(&id(&c), 1, slot1(Role::Joiner, &public(C_SECRET)).to_vec());
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(!c.contested());
+    assert_eq!(relay.peek_slot(&id(&c), 2), None, "slot 2 is left open");
+    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(s.comparison_code(), c.comparison_code());
 }
 
 #[tokio::test]

@@ -121,12 +121,14 @@ fn internal(what: &str) -> SyncError {
     SyncError::Local(AppError::Internal(format!("sync pairing: {what}")))
 }
 
-/// A put whose answer was lost may have been stored: a timeout, a failure while reading the
-/// answer, or a server error. A put that never reached the relay (`HttpRelay` reports a failed
-/// connection as `"connect"` and a request it could not send as `"request"`) stored nothing.
+/// A put whose answer was lost may have been stored: every network failure and every server
+/// error, except a connection that was never made (`HttpRelay` reports it as `"connect"`), which
+/// sent nothing. `"request"` stays ambiguous: reqwest also reports a reset or EOF after the
+/// request was written that way, and a stored put taken for unsent would flag our own retry as
+/// contested.
 fn put_was_ambiguous(error: &RelayError) -> bool {
     match error {
-        RelayError::Network(reason) => !matches!(reason.as_str(), "connect" | "request"),
+        RelayError::Network(reason) => reason != "connect",
         RelayError::Server(_) => true,
         _ => false,
     }

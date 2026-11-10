@@ -35,3 +35,15 @@ export function useDeviceSyncAccount(opts: { pollWhileInactive?: boolean } = {})
       opts.pollWhileInactive && query.state.data?.active !== true ? 3000 : false,
   });
 }
+
+/** The devices of the sync account (this one marked); read while sync is on. */
+export function useSyncDevices() {
+  const enabled = useDeviceSyncFeature();
+  const { data: status } = useDeviceSyncStatus();
+  const syncOn = status !== undefined && status.phase !== 'off' && status.phase !== 'settingUp';
+  return useQuery({
+    queryKey: ['device-sync-devices'],
+    queryFn: () => deviceSyncApi.listDevices(),
+    enabled: enabled && syncOn,
+  });
+}

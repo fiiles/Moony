@@ -76,6 +76,17 @@ export function useDeviceSyncMutations() {
     gcTime: 0,
     onSuccess: refreshLocalData,
   });
+  // Joining with a kit replaces this device's data, like repair and re-sync.
+  const joinWithRecoveryKit = useMutation({
+    mutationKey: REPLACE_DEVICE_MUTATION_KEY,
+    mutationFn: deviceSyncApi.joinWithRecoveryKit,
+    gcTime: 0,
+    onSuccess: refreshLocalData,
+  });
+  const renameDevice = useMutation({
+    mutationFn: deviceSyncApi.renameDevice,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] }),
+  });
   const devGrant = useMutation({
     mutationFn: deviceSyncApi.devGrant,
     onSuccess: refreshSyncState,
@@ -93,6 +104,8 @@ export function useDeviceSyncMutations() {
     deleteSyncedData,
     repairDevice,
     resyncDevice,
+    joinWithRecoveryKit,
+    renameDevice,
     devGrant,
   };
 }

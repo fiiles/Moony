@@ -71,6 +71,10 @@ impl From<RelayError> for SyncError {
             | RelayError::SnapshotOutdated
             | RelayError::CheckoutUnavailable
             | RelayError::SelfHosted
+            | RelayError::SlotTaken
+            | RelayError::SlotEmpty
+            | RelayError::SlotConsumed
+            | RelayError::MailboxGone
             | RelayError::BadRequest(_)) => SyncError::Refused(refused),
         }
     }
@@ -108,6 +112,9 @@ impl SyncError {
             SyncError::Refused(RelayError::CheckoutUnavailable) => {
                 "validation.syncCheckoutUnavailable"
             }
+            SyncError::Refused(RelayError::SlotTaken) => "validation.syncPairingCodeUsed",
+            SyncError::Refused(RelayError::MailboxGone) => "validation.syncPairingExpired",
+            SyncError::Refused(RelayError::SlotConsumed) => "validation.syncPairingFailed",
             SyncError::Refused(_) => "validation.syncRelayError",
         };
         AppError::Validation(key.into())
@@ -288,5 +295,36 @@ mod tests {
         let body = SyncError::TooLarge(TooLarge::Body);
         assert!(!body.backs_off());
         assert_eq!(key(&body), "validation.syncSnapshotInvalid");
+    }
+
+    #[test]
+    fn mailbox_errors_read_as_pairing_keys() {
+        for (relay, class, expected_key) in [
+            (
+                E::SlotTaken,
+                "Refused(SlotTaken)",
+                "validation.syncPairingCodeUsed",
+            ),
+            (
+                E::MailboxGone,
+                "Refused(MailboxGone)",
+                "validation.syncPairingExpired",
+            ),
+            (
+                E::SlotConsumed,
+                "Refused(SlotConsumed)",
+                "validation.syncPairingFailed",
+            ),
+            (
+                E::SlotEmpty,
+                "Refused(SlotEmpty)",
+                "validation.syncRelayError",
+            ),
+        ] {
+            let error = SyncError::from(relay);
+            assert_eq!(format!("{error:?}"), class);
+            assert!(!error.backs_off(), "{class}");
+            assert_eq!(key(&error), expected_key, "{class}");
+        }
     }
 }

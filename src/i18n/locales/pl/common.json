@@ -344,6 +344,8 @@
     "syncPasswordRequired": "Wpisz ponownie hasło, aby skopiować kod odzyskiwania.",
     "syncPairingCodeInvalid": "Kod parowania jest nieprawidłowy. Zeskanuj kod wyświetlony na drugim urządzeniu.",
     "syncPairingFailed": "Parowanie się nie powiodło. Zacznij od nowa na obu urządzeniach.",
+    "syncPairingCodeUsed": "Inne urządzenie odpowiedziało na ten kod jako pierwsze. Na drugim urządzeniu wybierz „Nie pasują”, a potem zacznij od nowa.",
+    "syncPairingExpired": "Ten kod parowania wygasł. Zacznij od nowa na obu urządzeniach.",
     "syncPairingBothOn": "Synchronizacja jest już włączona na obu urządzeniach. Wyłącz ją na tym, które ma dołączyć.",
     "syncPairingBothOff": "Synchronizacja jest wyłączona na obu urządzeniach. Najpierw włącz ją na urządzeniu z Twoimi danymi."
   },

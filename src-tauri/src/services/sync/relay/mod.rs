@@ -137,6 +137,19 @@ pub enum RelayError {
     /// checkout answers `409 self_hosted`.
     #[error("self-hosted relay")]
     SelfHosted,
+    /// `409 slot_taken`: the pairing slot was already written (by this device, or by someone
+    /// who guessed the ID first).
+    #[error("pairing slot taken")]
+    SlotTaken,
+    /// `404 empty`: nothing in the pairing slot yet.
+    #[error("pairing slot empty")]
+    SlotEmpty,
+    /// `410 consumed`: the pairing slot was already read (and erased).
+    #[error("pairing slot consumed")]
+    SlotConsumed,
+    /// `410 mailbox_gone`: the mailbox expired or was burnt.
+    #[error("pairing mailbox gone")]
+    MailboxGone,
     #[error("bad request: {0}")]
     BadRequest(String),
     #[error("server error {0}")]
@@ -205,6 +218,10 @@ impl RelayError {
             (409, "account_has_vaults") => RelayError::AccountHasVaults,
             (409, "snapshot_outdated") => RelayError::SnapshotOutdated,
             (409, "self_hosted") => RelayError::SelfHosted,
+            (409, "slot_taken") => RelayError::SlotTaken,
+            (404, "empty") => RelayError::SlotEmpty,
+            (410, "consumed") => RelayError::SlotConsumed,
+            (410, "mailbox_gone") => RelayError::MailboxGone,
             (410, "snapshot_required") => RelayError::SnapshotRequired,
             (411, "length_required") => RelayError::BadRequest("length_required".into()),
             (413, "quota_exceeded") => RelayError::QuotaExceeded,
@@ -270,6 +287,30 @@ pub trait Relay: Send + Sync {
     fn delete_vault(&self, vault: &VaultAuth) -> impl Future<Output = RelayResult<()>> + Send;
 }
 
+/// The most a pairing slot holds (Moony-relay `MAX_MAILBOX_SLOT_BYTES`).
+pub const MAX_SLOT_BYTES: usize = 64 * 1024;
+
+/// The relay's pairing mailbox (Moony-relay `src/mailbox.ts`): a two-slot drop box for the key
+/// exchange that pairs a device. No credentials; each slot is written once and read once, and the
+/// mailbox lives ten minutes. `mailbox` is the 22-character base64url ID, `slot` 1 or 2.
+pub trait Mailbox: Send + Sync {
+    /// `PUT /v1/pairing/:id/:slot` (raw body, 1 B to 64 KiB) → 204.
+    fn put_slot(
+        &self,
+        mailbox: &str,
+        slot: u8,
+        bytes: &[u8],
+    ) -> impl Future<Output = RelayResult<()>> + Send;
+    /// `GET /v1/pairing/:id/:slot` → `Some(bytes)` (the relay erases them) or `None` (404 empty).
+    fn take_slot(
+        &self,
+        mailbox: &str,
+        slot: u8,
+    ) -> impl Future<Output = RelayResult<Option<Vec<u8>>>> + Send;
+    /// `DELETE /v1/pairing/:id` → 204, idempotent.
+    fn burn_mailbox(&self, mailbox: &str) -> impl Future<Output = RelayResult<()>> + Send;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -324,18 +365,18 @@ mod tests {
             // Routes the relay serves but no phase 2 call reaches.
             (404, "not_found", bad("not_found")),
             (405, "method_not_allowed", bad("method_not_allowed")),
-            // Token rotation and the pairing mailbox: no call of this client sends them, so the
-            // 400s are bad requests and the other codes are outside this client's contract.
+            // Token rotation (no call of this client sends it: the 400s are bad requests and the
+            // other codes are outside this client's contract) and the pairing mailbox.
             (400, "invalid_token", bad("invalid_token")),
             (400, "invalid_rekey", bad("invalid_rekey")),
             (400, "bad_mailbox", bad("bad_mailbox")),
             (400, "bad_slot", bad("bad_slot")),
             (413, "rekey_too_large", bad("rekey_too_large")),
             (409, "too_many_rotations", unknown_code()),
-            (409, "slot_taken", unknown_code()),
-            (404, "empty", unknown_code()),
-            (410, "consumed", unknown_code()),
-            (410, "mailbox_gone", unknown_code()),
+            (409, "slot_taken", E::SlotTaken),
+            (404, "empty", E::SlotEmpty),
+            (410, "consumed", E::SlotConsumed),
+            (410, "mailbox_gone", E::MailboxGone),
             // A documented code under the wrong status, or an unknown code.
             (404, "snapshot_required", unknown_code()),
             (410, "vault_not_found", unknown_code()),

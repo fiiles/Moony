@@ -17,17 +17,17 @@ fn vault() -> VaultAuth {
 }
 
 /// What the one-shot server received.
-struct Request {
-    head: String,
-    body: Vec<u8>,
+pub(super) struct Request {
+    pub(super) head: String,
+    pub(super) body: Vec<u8>,
 }
 
 impl Request {
-    fn request_line(&self) -> &str {
+    pub(super) fn request_line(&self) -> &str {
         self.head.lines().next().unwrap_or_default()
     }
 
-    fn header(&self, name: &str) -> Option<String> {
+    pub(super) fn header(&self, name: &str) -> Option<String> {
         let wanted = format!("{}:", name.to_ascii_lowercase());
         self.head.lines().find_map(|line| {
             line.to_ascii_lowercase()
@@ -65,7 +65,7 @@ fn read_request(stream: &mut TcpStream) -> Request {
 }
 
 /// Accepts one connection, answers `response` and hands back what it received.
-fn serve_once(response: Vec<u8>) -> (String, JoinHandle<Request>) {
+pub(super) fn serve_once(response: Vec<u8>) -> (String, JoinHandle<Request>) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
     let port = listener.local_addr().expect("addr").port();
     let server = std::thread::spawn(move || {
@@ -87,7 +87,7 @@ fn serve_once(response: Vec<u8>) -> (String, JoinHandle<Request>) {
     (format!("http://127.0.0.1:{port}"), server)
 }
 
-fn answer(status: &str, headers: &[(&str, &str)], body: &[u8]) -> Vec<u8> {
+pub(super) fn answer(status: &str, headers: &[(&str, &str)], body: &[u8]) -> Vec<u8> {
     let mut out = format!("HTTP/1.1 {status}\r\nConnection: close\r\n");
     for (name, value) in headers {
         out.push_str(&format!("{name}: {value}\r\n"));
@@ -104,7 +104,7 @@ fn answer(status: &str, headers: &[(&str, &str)], body: &[u8]) -> Vec<u8> {
     bytes
 }
 
-fn json_answer(status: &str, body: &str) -> Vec<u8> {
+pub(super) fn json_answer(status: &str, body: &str) -> Vec<u8> {
     answer(
         status,
         &[("Content-Type", "application/json")],

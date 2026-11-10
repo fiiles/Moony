@@ -344,6 +344,8 @@
     "syncPasswordRequired": "Skriv inn passordet ditt på nytt for å kopiere gjenopprettingskoden.",
     "syncPairingCodeInvalid": "Paringskoden er ugyldig. Skann koden som vises på den andre enheten.",
     "syncPairingFailed": "Paringen fungerte ikke. Start på nytt på begge enhetene.",
+    "syncPairingCodeUsed": "En annen enhet svarte på denne koden først. Velg «De stemmer ikke overens» på den andre enheten, og start på nytt.",
+    "syncPairingExpired": "Denne koblingskoden er utløpt. Start på nytt på begge enhetene.",
     "syncPairingBothOn": "Synkronisering er allerede på for begge enhetene. Slå den av på enheten som skal bli med.",
     "syncPairingBothOff": "Synkronisering er av på begge enhetene. Slå den på først på enheten som har dataene dine."
   },

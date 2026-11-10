@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
 use super::{
-    AccountStatus, CheckoutPlan, OutgoingOp, PullPage, PulledOp, PushReceipt, Relay, RelayError,
-    RelayResult, SnapshotBlob, VaultInfo,
+    AccountStatus, CheckoutPlan, Mailbox, OutgoingOp, PullPage, PulledOp, PushReceipt, Relay,
+    RelayError, RelayResult, SnapshotBlob, VaultInfo, MAX_SLOT_BYTES,
 };
 use crate::error::{AppError, Result};
 use crate::services::http::no_redirect_client;
@@ -169,6 +169,19 @@ impl HttpRelay {
         Ok(no_redirect_client()
             .request(method, url)
             .header(AUTHORIZATION, bearer(vault)?))
+    }
+
+    /// The pairing URL of `mailbox` (and `slot`), after the argument checks. The ID never leaves
+    /// this URL: it is in no error and no log.
+    fn pairing_url(&self, mailbox: &str, slot: Option<u8>) -> RelayResult<Url> {
+        if !is_base64url(mailbox, 22) {
+            return Err(RelayError::BadRequest("bad_mailbox".into()));
+        }
+        match slot {
+            None => self.url(&format!("v1/pairing/{mailbox}")),
+            Some(1 | 2) => self.url(&format!("v1/pairing/{mailbox}/{}", slot.unwrap_or(0))),
+            Some(_) => Err(RelayError::BadRequest("bad_slot".into())),
+        }
     }
 
     /// `POST /v1/vaults/:id/ops` with the ops as standard padded base64.
@@ -571,5 +584,47 @@ impl Relay for HttpRelay {
     }
 }
 
+impl Mailbox for HttpRelay {
+    async fn put_slot(&self, mailbox: &str, slot: u8, bytes: &[u8]) -> RelayResult<()> {
+        let url = self.pairing_url(mailbox, Some(slot))?;
+        if bytes.is_empty() {
+            return Err(RelayError::BadRequest("empty_body".into()));
+        }
+        if bytes.len() > MAX_SLOT_BYTES {
+            return Err(RelayError::BadRequest("body_too_large".into()));
+        }
+        // No account header and no token: the mailbox takes no credentials.
+        let request = no_redirect_client()
+            .put(url)
+            .header(CONTENT_TYPE, "application/octet-stream")
+            .body(bytes.to_vec());
+        expect_status(send(request).await?, &[204]).await?;
+        Ok(())
+    }
+
+    async fn take_slot(&self, mailbox: &str, slot: u8) -> RelayResult<Option<Vec<u8>>> {
+        let url = self.pairing_url(mailbox, Some(slot))?;
+        let response = match expect_status(send(no_redirect_client().get(url)).await?, &[200]).await
+        {
+            Ok(response) => response,
+            Err(RelayError::SlotEmpty) => return Ok(None),
+            Err(error) => return Err(error),
+        };
+        let bytes = read_capped(response, MAX_SLOT_BYTES).await?;
+        if bytes.is_empty() {
+            return Err(RelayError::Protocol("unexpected answer".into()));
+        }
+        Ok(Some(bytes))
+    }
+
+    async fn burn_mailbox(&self, mailbox: &str) -> RelayResult<()> {
+        let url = self.pairing_url(mailbox, None)?;
+        expect_status(send(no_redirect_client().delete(url)).await?, &[204]).await?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod mailbox_tests;
 #[cfg(test)]
 mod tests;

@@ -486,3 +486,144 @@ async fn a_fully_dropped_page_is_skipped_not_returned_empty() {
     let page = relay.pull(&auth(), 4, 2).await.expect("pull");
     assert_eq!((page.ops.len(), page.more, page.head), (0, false, 5));
 }
+
+const MAILBOX: &str = "AAECAwQFBgcICQoLDA0ODw";
+
+#[tokio::test]
+async fn the_fake_mailbox_is_write_once_and_read_once() {
+    let relay = FakeRelay::new();
+    relay.put_slot(MAILBOX, 1, b"first").await.expect("put 1");
+    assert_eq!(
+        relay.put_slot(MAILBOX, 1, b"again").await,
+        Err(RelayError::SlotTaken)
+    );
+    assert_eq!(relay.take_slot(MAILBOX, 2).await, Ok(None));
+    assert_eq!(relay.peek_slot(MAILBOX, 1), Some(b"first".to_vec()));
+    assert_eq!(
+        relay.take_slot(MAILBOX, 1).await,
+        Ok(Some(b"first".to_vec()))
+    );
+    assert_eq!(relay.peek_slot(MAILBOX, 1), None);
+    assert_eq!(
+        relay.take_slot(MAILBOX, 1).await,
+        Err(RelayError::SlotConsumed)
+    );
+    // A write to a slot that was read is still refused.
+    assert_eq!(
+        relay.put_slot(MAILBOX, 1, b"late").await,
+        Err(RelayError::SlotTaken)
+    );
+    // The other slot is independent; an attacker's write follows the same rules.
+    relay.write_slot_raw(MAILBOX, 2, b"theirs".to_vec());
+    assert_eq!(
+        relay.put_slot(MAILBOX, 2, b"mine").await,
+        Err(RelayError::SlotTaken)
+    );
+    assert_eq!(
+        relay.take_slot(MAILBOX, 2).await,
+        Ok(Some(b"theirs".to_vec()))
+    );
+}
+
+#[tokio::test]
+async fn a_burnt_or_expired_mailbox_is_gone_for_every_call() {
+    let relay = FakeRelay::new();
+    relay.put_slot(MAILBOX, 1, b"x").await.expect("put");
+    relay.burn_mailbox(MAILBOX).await.expect("burn");
+    assert_eq!(relay.peek_slot(MAILBOX, 1), None);
+    for slot in [1, 2] {
+        assert_eq!(
+            relay.put_slot(MAILBOX, slot, b"y").await,
+            Err(RelayError::MailboxGone)
+        );
+        assert_eq!(
+            relay.take_slot(MAILBOX, slot).await,
+            Err(RelayError::MailboxGone)
+        );
+    }
+    // Burning again is idempotent.
+    relay.burn_mailbox(MAILBOX).await.expect("burn again");
+
+    let other = "BBECAwQFBgcICQoLDA0ODw";
+    relay.put_slot(other, 2, b"x").await.expect("put");
+    relay.expire_mailbox(other);
+    assert_eq!(
+        relay.take_slot(other, 2).await,
+        Err(RelayError::MailboxGone)
+    );
+    assert_eq!(
+        relay.put_slot(other, 1, b"x").await,
+        Err(RelayError::MailboxGone)
+    );
+}
+
+#[tokio::test]
+async fn unknown_mailboxes_store_nothing() {
+    let relay = FakeRelay::new();
+    assert_eq!(relay.take_slot(MAILBOX, 1).await, Ok(None));
+    relay.burn_mailbox(MAILBOX).await.expect("burn unknown");
+    relay.expire_mailbox(MAILBOX);
+    // Neither the read, the burn nor the expiry burnt the ID: a put still opens it.
+    relay.put_slot(MAILBOX, 1, b"x").await.expect("put");
+    assert_eq!(relay.take_slot(MAILBOX, 1).await, Ok(Some(b"x".to_vec())));
+}
+
+#[tokio::test]
+async fn a_lost_take_answer_leaves_the_slot_consumed() {
+    let relay = FakeRelay::new();
+    relay.put_slot(MAILBOX, 1, b"x").await.expect("put");
+    relay.lose_next_take_answer();
+    assert_eq!(
+        relay.take_slot(MAILBOX, 1).await,
+        Err(RelayError::Network("timeout".into()))
+    );
+    assert_eq!(
+        relay.take_slot(MAILBOX, 1).await,
+        Err(RelayError::SlotConsumed)
+    );
+}
+
+#[tokio::test]
+async fn a_lost_put_answer_leaves_the_slot_written() {
+    let relay = FakeRelay::new();
+    relay.lose_next_put_answer();
+    assert_eq!(
+        relay.put_slot(MAILBOX, 1, b"x").await,
+        Err(RelayError::Network("timeout".into()))
+    );
+    assert_eq!(relay.peek_slot(MAILBOX, 1), Some(b"x".to_vec()));
+    assert_eq!(
+        relay.put_slot(MAILBOX, 1, b"x").await,
+        Err(RelayError::SlotTaken)
+    );
+}
+
+#[tokio::test]
+async fn the_fake_checks_mailbox_arguments_like_the_http_client() {
+    let relay = FakeRelay::new();
+    assert_eq!(
+        relay.put_slot("short", 1, b"x").await,
+        Err(RelayError::BadRequest("bad_mailbox".into()))
+    );
+    assert_eq!(
+        relay.take_slot(MAILBOX, 3).await,
+        Err(RelayError::BadRequest("bad_slot".into()))
+    );
+    assert_eq!(
+        relay.put_slot(MAILBOX, 1, b"").await,
+        Err(RelayError::BadRequest("empty_body".into()))
+    );
+    assert_eq!(
+        relay
+            .put_slot(MAILBOX, 1, &vec![0; MAX_SLOT_BYTES + 1])
+            .await,
+        Err(RelayError::BadRequest("body_too_large".into()))
+    );
+    assert!(relay.calls().is_empty());
+    relay.fail_next(Route::MailboxTake, RelayError::RateLimited);
+    assert_eq!(
+        relay.take_slot(MAILBOX, 1).await,
+        Err(RelayError::RateLimited)
+    );
+    assert_eq!(relay.calls(), vec![Route::MailboxTake]);
+}

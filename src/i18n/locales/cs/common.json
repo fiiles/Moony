@@ -344,6 +344,8 @@
     "syncPasswordRequired": "Pro zkopírování obnovovacího kódu znovu zadejte heslo.",
     "syncPairingCodeInvalid": "Párovací kód není platný. Naskenujte kód zobrazený na druhém zařízení.",
     "syncPairingFailed": "Párování se nepovedlo. Začněte znovu na obou zařízeních.",
+    "syncPairingCodeUsed": "Na tento kód odpovědělo jako první jiné zařízení. Na druhém zařízení zvolte „Neshodují se“ a začněte znovu.",
+    "syncPairingExpired": "Platnost párovacího kódu vypršela. Začněte znovu na obou zařízeních.",
     "syncPairingBothOn": "Synchronizace je zapnutá na obou zařízeních. Vypněte ji na tom, které se má připojit.",
     "syncPairingBothOff": "Synchronizace je vypnutá na obou zařízeních. Nejprve ji zapněte na zařízení, které má vaše data."
   },

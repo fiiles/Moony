@@ -18,6 +18,10 @@
 // folder, the webview's storage and the staged and received files out of iCloud and Finder
 // device backups.
 //
+// Device sync's binding to this phone (`bindSeal`, `bindOpen`; the Secure Enclave work is in
+// `MoonyBinding.swift`) and a private clipboard for the recovery code (`copySecretText`,
+// `clearClipboardIfUnchanged`): this phone only, gone after 60 s, cleared earlier while unchanged.
+//
 // And the status bar style: the app's theme, set outright through `preferredStatusBarStyle` of
 // Tauri's view controller, because the sampled style lags behind a live theme switch on iOS 26
 // (checked on 26.3; earlier iOS was not verified, see `setStatusBarStyle`).
@@ -64,6 +68,32 @@ struct PrivacyScreenArgs: Decodable {
 struct ExcludeFromBackupArgs: Decodable {
   let path: String
 }
+
+struct BindSealArgs: Decodable {
+  /// The 32-byte value, base64.
+  let secret: String
+}
+
+struct BindOpenArgs: Decodable {
+  /// The blob `bindSeal` answered, base64.
+  let blob: String
+}
+
+struct CopySecretTextArgs: Decodable {
+  let text: String
+}
+
+struct ClearClipboardArgs: Decodable {
+  /// The change count `copySecretText` answered.
+  let token: Int
+}
+
+/// `UTType.utf8PlainText.identifier`, spelled out: the package still builds for iOS 13, and
+/// UniformTypeIdentifiers starts at 14.
+private let utf8PlainTextType = "public.utf8-plain-text"
+/// How long a copied recovery code stays on the pasteboard at most (Rust clears it at the same
+/// time, or earlier at exit or lock, while nothing else was copied).
+private let secretTextLifetime: TimeInterval = 60
 
 struct StatusBarStyleArgs: Decodable {
   /// The app's resolved theme: "light" or "dark".
@@ -193,6 +223,72 @@ class MoonyKeychainPlugin: Plugin {
           "Could not exclude the path from device backups: \(failure.domain) \(failure.code)")
       }
     }
+  }
+
+  /// Seals device sync's binding to this phone's Secure Enclave (no prompt). Answers a
+  /// `BindReply`: the blob, `unsupported` (no Secure Enclave), or the stage, domain
+  /// and code of the failure, which Rust classifies (review PF11). Never rejects for a failure of
+  /// the Secure Enclave; only for arguments that do not parse.
+  @objc func bindSeal(_ invoke: Invoke) {
+    guard let args = arguments(invoke, BindSealArgs.self) else { return }
+    workQueue.async {
+      guard var secret = Data(base64Encoded: args.secret) else {
+        self.reject(invoke, .failed, "Invalid arguments: the binding is not base64")
+        return
+      }
+      defer {
+        secret.withUnsafeMutableBytes { buffer in
+          guard let base = buffer.baseAddress else { return }
+          _ = memset_s(base, buffer.count, 0, buffer.count)
+        }
+      }
+      self.resolveBinding(invoke, bindingSealReply(secret: secret))
+    }
+  }
+
+  /// Opens a blob `bindSeal` made on this phone (no prompt). Answers a `BindReply` as `bindSeal`
+  /// does, with the 32-byte value as base64.
+  @objc func bindOpen(_ invoke: Invoke) {
+    guard let args = arguments(invoke, BindOpenArgs.self) else { return }
+    workQueue.async {
+      guard let blob = Data(base64Encoded: args.blob) else {
+        self.reject(invoke, .failed, "Invalid arguments: the blob is not base64")
+        return
+      }
+      self.resolveBinding(invoke, bindingOpenReply(blob: blob))
+    }
+  }
+
+  /// Puts the recovery code on the general pasteboard as its only item, for this phone only
+  /// (`.localOnly`: never handed to Universal Clipboard) and for 60 s at most
+  /// (`.expirationDate`), and answers the change count as the token `clearClipboardIfUnchanged`
+  /// takes. Synchronous and quick: Rust may wait for it on the main thread at exit, and
+  /// UIPasteboard is not bound to the main thread. The text is never logged.
+  @objc func copySecretText(_ invoke: Invoke) {
+    guard let args = arguments(invoke, CopySecretTextArgs.self) else { return }
+    let pasteboard = UIPasteboard.general
+    pasteboard.setItems(
+      [[utf8PlainTextType: args.text]],
+      options: [
+        .localOnly: true,
+        .expirationDate: Date(timeIntervalSinceNow: secretTextLifetime),
+      ])
+    invoke.resolve(["token": pasteboard.changeCount])
+  }
+
+  /// Empties the general pasteboard if its change count is still `token`, that is, if nothing was
+  /// copied since `copySecretText` answered it; answers whether it did. At lock or in the
+  /// background iOS may limit pasteboard access or not keep `changeCount` fresh, so this clear can
+  /// miss; the 60 s `.expirationDate` set at the copy is the backstop that removes the code anyway.
+  @objc func clearClipboardIfUnchanged(_ invoke: Invoke) {
+    guard let args = arguments(invoke, ClearClipboardArgs.self) else { return }
+    let pasteboard = UIPasteboard.general
+    guard pasteboard.changeCount == args.token else {
+      invoke.resolve(["cleared": false])
+      return
+    }
+    pasteboard.items = []
+    invoke.resolve(["cleared": true])
   }
 
   @objc func setStatusBarStyle(_ invoke: Invoke) {
@@ -582,6 +678,18 @@ class MoonyKeychainPlugin: Plugin {
   }
 
   // MARK: - Helpers
+
+  /// Answers a binding reply, logging a failure's stage, domains and codes (never a value).
+  private func resolveBinding(_ invoke: Invoke, _ reply: BindReply) {
+    if let failure = reply.failure {
+      Logger.error(
+        "\(invoke.command) failed at \(describeBindingFailure(failure))", category: logCategory)
+    } else if reply.unsupported {
+      Logger.debug(
+        "\(invoke.command): no Secure Enclave on this device", category: logCategory)
+    }
+    invoke.resolve(reply)
+  }
 
   private func arguments<T: Decodable>(_ invoke: Invoke, _ type: T.Type) -> T? {
     do {

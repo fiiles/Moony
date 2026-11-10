@@ -341,7 +341,20 @@
     "syncUnavailable": "La sincronización no está disponible en esta versión de Moony.",
     "syncDevOnly": "Es una herramienta para desarrolladores, disponible solo en compilaciones de desarrollo.",
     "syncChangeInProgress": "Ya hay otro cambio de sincronización en curso en este dispositivo. Espera a que termine.",
-    "syncPasswordRequired": "Vuelve a introducir tu contraseña para copiar el código de recuperación."
+    "syncPasswordRequired": "Vuelve a introducir tu contraseña para copiar el código de recuperación.",
+    "syncPairingCodeInvalid": "El código de emparejamiento no es válido. Escanea el código que muestra el otro dispositivo.",
+    "syncPairingFailed": "El emparejamiento no funcionó. Empieza de nuevo en ambos dispositivos.",
+    "syncPairingCodeUsed": "Otro dispositivo respondió primero a este código. En el otro dispositivo, elige «No coinciden» y vuelve a empezar.",
+    "syncPairingExpired": "Este código de emparejamiento ha caducado. Empieza de nuevo en ambos dispositivos.",
+    "syncPairingBothOn": "La sincronización ya está activada en ambos dispositivos. Desactívala en el que debe unirse.",
+    "syncPairingBothOff": "La sincronización está desactivada en ambos dispositivos. Actívala primero en el dispositivo que tiene tus datos.",
+    "syncPairingCancelled": "El otro dispositivo ha cancelado el emparejamiento. Empieza de nuevo en ambos dispositivos.",
+    "syncPairingNotStarted": "No hay ningún emparejamiento en curso en este dispositivo. Empieza de nuevo en ambos dispositivos.",
+    "syncPasswordNeeded": "Introduce la contraseña de este dispositivo para continuar.",
+    "syncRecoveryAccountInvalid": "Comprueba el número de cuenta: son los 16 dígitos de tu kit de recuperación de la sincronización.",
+    "syncRecoveryVaultNotFound": "El servidor de sincronización no tiene datos sincronizados para este código de recuperación. Comprueba el código y la dirección del servidor de sincronización en tu kit de recuperación de la sincronización.",
+    "syncRecoveryKitRotated": "Las claves de esta sincronización se cambiaron; todavía no es posible unirse con un kit de recuperación después de ese cambio.",
+    "syncJoinSetupPending": "Primero termina o cancela la configuración de la sincronización en este dispositivo."
   },
   "auth": {
     "wrongPassword": "La contraseña introducida es incorrecta. Inténtalo de nuevo.",

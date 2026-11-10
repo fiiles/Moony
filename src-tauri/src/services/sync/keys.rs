@@ -24,7 +24,7 @@ use crate::error::{AppError, Result};
 
 /// Fills `buf` from the operating system's random source (not a user-space generator): vault
 /// keys, vault IDs and the device's X25519 secret come from here.
-fn os_random(buf: &mut [u8]) -> Result<()> {
+pub fn os_random(buf: &mut [u8]) -> Result<()> {
     SysRng
         .try_fill_bytes(buf)
         .map_err(|e| AppError::Internal(format!("sync: the system random source failed: {e}")))
@@ -88,6 +88,15 @@ impl VaultKeys {
         Self::checked(current, owned)
     }
 
+    /// One key, already in a wiped-on-drop buffer, as the current epoch's (a Recovery Kit's key):
+    /// moved in, never copied out of its `Zeroizing`.
+    pub fn single(epoch: u32, key: Zeroizing<[u8; 32]>) -> Self {
+        VaultKeys {
+            current: epoch,
+            keys: BTreeMap::from([(epoch, key)]),
+        }
+    }
+
     fn checked(current: u32, keys: BTreeMap<u32, Zeroizing<[u8; 32]>>) -> Result<Self> {
         if !keys.contains_key(&current) {
             return Err(AppError::Internal(format!(
@@ -104,6 +113,13 @@ impl VaultKeys {
     pub fn current(&self) -> &[u8; 32] {
         // Every constructor goes through `checked` or inserts the current epoch itself.
         &self.keys[&self.current]
+    }
+
+    /// Every epoch with its key, ascending.
+    pub fn epochs(&self) -> impl Iterator<Item = (u32, Zeroizing<[u8; 32]>)> + '_ {
+        self.keys
+            .iter()
+            .map(|(epoch, key)| (*epoch, Zeroizing::new(**key)))
     }
 
     pub fn get(&self, epoch: u32) -> Option<Zeroizing<[u8; 32]>> {
@@ -197,7 +213,7 @@ impl<'de> Deserialize<'de> for Entries {
 }
 
 /// A JSON string read straight into a wiped buffer.
-struct SecretString(Zeroizing<String>);
+pub(super) struct SecretString(pub(super) Zeroizing<String>);
 
 impl<'de> Deserialize<'de> for SecretString {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
@@ -515,6 +531,14 @@ mod tests {
             keys: VaultKeys::from_parts(1, BTreeMap::from([(0, [0x01; 32]), (1, [0x11; 32])]))
                 .expect("keys"),
         }
+    }
+
+    #[test]
+    fn a_single_key_is_its_epoch_and_current() {
+        let keys = VaultKeys::single(0, Zeroizing::new([7; 32]));
+        assert_eq!(keys.current_epoch(), 0);
+        assert_eq!(*keys.current(), [7; 32]);
+        assert_eq!(keys.epochs().count(), 1);
     }
 
     #[test]

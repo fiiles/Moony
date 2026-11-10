@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deviceSyncApi, portfolioApi } from '@/lib/tauri-api';
 import { refreshAfterRemoteChanges } from '@/lib/device-sync-refresh';
@@ -8,7 +9,7 @@ import { refreshAfterRemoteChanges } from '@/lib/device-sync-refresh';
  * turn off, delete, repair, re-sync) also run the full rule-7 refresh.
  */
 /**
- * Key shared by the mutations that replace this device's data (repair, re-sync): the app-wide
+ * Key shared by the mutations that replace this device's data (repair, re-sync, joins): the app-wide
  * busy modal counts them with `useIsMutating`, whichever component started them.
  */
 export const REPLACE_DEVICE_MUTATION_KEY = ['device-sync-replace-data'] as const;
@@ -76,6 +77,22 @@ export function useDeviceSyncMutations() {
     gcTime: 0,
     onSuccess: refreshLocalData,
   });
+  // Joining with a kit replaces this device's data, like repair and re-sync.
+  const joinWithRecoveryKit = useMutation({
+    mutationKey: REPLACE_DEVICE_MUTATION_KEY,
+    mutationFn: deviceSyncApi.joinWithRecoveryKit,
+    gcTime: 0,
+    onSuccess: refreshLocalData,
+  });
+  // The password stays in the mutation state until the join succeeds; a dialog that closes
+  // earlier (error, dismissed) calls `joinWithRecoveryKit.reset()`.
+  useEffect(() => {
+    if (joinWithRecoveryKit.isSuccess) joinWithRecoveryKit.reset();
+  }, [joinWithRecoveryKit, joinWithRecoveryKit.isSuccess]);
+  const renameDevice = useMutation({
+    mutationFn: deviceSyncApi.renameDevice,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] }),
+  });
   const devGrant = useMutation({
     mutationFn: deviceSyncApi.devGrant,
     onSuccess: refreshSyncState,
@@ -93,6 +110,8 @@ export function useDeviceSyncMutations() {
     deleteSyncedData,
     repairDevice,
     resyncDevice,
+    joinWithRecoveryKit,
+    renameDevice,
     devGrant,
   };
 }

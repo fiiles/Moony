@@ -341,7 +341,20 @@
     "syncUnavailable": "Synkronisering är inte tillgänglig i den här versionen av Moony.",
     "syncDevOnly": "Det här är ett utvecklarverktyg som bara finns i utvecklingsversioner.",
     "syncChangeInProgress": "En annan ändring av synkroniseringen pågår redan på den här enheten. Vänta tills den är klar.",
-    "syncPasswordRequired": "Ange ditt lösenord igen för att kopiera återställningskoden."
+    "syncPasswordRequired": "Ange ditt lösenord igen för att kopiera återställningskoden.",
+    "syncPairingCodeInvalid": "Parkopplingskoden är ogiltig. Skanna koden som visas på den andra enheten.",
+    "syncPairingFailed": "Parkopplingen fungerade inte. Börja om på båda enheterna.",
+    "syncPairingCodeUsed": "En annan enhet svarade på den här koden först. Välj ”De stämmer inte” på den andra enheten och börja om.",
+    "syncPairingExpired": "Den här parkopplingskoden har gått ut. Börja om på båda enheterna.",
+    "syncPairingBothOn": "Synkronisering är redan på för båda enheterna. Stäng av den på den som ska ansluta.",
+    "syncPairingBothOff": "Synkronisering är avstängd på båda enheterna. Slå på den först på enheten som har dina data.",
+    "syncPairingCancelled": "Den andra enheten avbröt parkopplingen. Börja om på båda enheterna.",
+    "syncPairingNotStarted": "Ingen parkoppling pågår på den här enheten. Börja om på båda enheterna.",
+    "syncPasswordNeeded": "Ange lösenordet för den här enheten för att fortsätta.",
+    "syncRecoveryAccountInvalid": "Kontrollera kontonumret: det är de 16 siffrorna i återställningspaketet för synkronisering.",
+    "syncRecoveryVaultNotFound": "Synkroniseringsservern har inga synkroniserade data för den här återställningskoden. Kontrollera koden och synkroniseringsserverns adress i återställningspaketet för synkronisering.",
+    "syncRecoveryKitRotated": "Nycklarna för den här synkroniseringen har bytts ut; att ansluta med ett återställningspaket efter det stöds inte ännu.",
+    "syncJoinSetupPending": "Slutför eller avbryt konfigurationen av synkroniseringen på den här enheten först."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

@@ -341,7 +341,20 @@
     "syncUnavailable": "Synkronisering er ikke tilgjengelig i denne versjonen av Moony.",
     "syncDevOnly": "Dette er et utviklerverktøy, kun tilgjengelig i utviklingsversjoner.",
     "syncChangeInProgress": "En annen endring av synkroniseringen pågår allerede på denne enheten. Vent til den er ferdig.",
-    "syncPasswordRequired": "Skriv inn passordet ditt på nytt for å kopiere gjenopprettingskoden."
+    "syncPasswordRequired": "Skriv inn passordet ditt på nytt for å kopiere gjenopprettingskoden.",
+    "syncPairingCodeInvalid": "Paringskoden er ugyldig. Skann koden som vises på den andre enheten.",
+    "syncPairingFailed": "Paringen fungerte ikke. Start på nytt på begge enhetene.",
+    "syncPairingCodeUsed": "En annen enhet svarte på denne koden først. Velg «De stemmer ikke overens» på den andre enheten, og start på nytt.",
+    "syncPairingExpired": "Denne paringskoden er utløpt. Start på nytt på begge enhetene.",
+    "syncPairingBothOn": "Synkronisering er allerede på for begge enhetene. Slå den av på enheten som skal bli med.",
+    "syncPairingBothOff": "Synkronisering er av på begge enhetene. Slå den på først på enheten som har dataene dine.",
+    "syncPairingCancelled": "Den andre enheten avbrøt paringen. Start på nytt på begge enhetene.",
+    "syncPairingNotStarted": "Ingen paring pågår på denne enheten. Start på nytt på begge enhetene.",
+    "syncPasswordNeeded": "Skriv inn passordet for denne enheten for å fortsette.",
+    "syncRecoveryAccountInvalid": "Sjekk kontonummeret: det er de 16 sifrene i gjenopprettingssettet for synkronisering.",
+    "syncRecoveryVaultNotFound": "Synkroniseringsserveren har ingen synkroniserte data for denne gjenopprettingskoden. Sjekk koden og adressen til synkroniseringsserveren i gjenopprettingssettet for synkronisering.",
+    "syncRecoveryKitRotated": "Nøklene for denne synkroniseringen er byttet ut; å bli med ved hjelp av et gjenopprettingssett etter det støttes ikke ennå.",
+    "syncJoinSetupPending": "Fullfør eller avbryt oppsettet av synkronisering på denne enheten først."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

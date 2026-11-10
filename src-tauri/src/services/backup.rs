@@ -92,12 +92,14 @@ pub const DATA_EXPORT_FILE_NAME: &str = "moony-export.json";
 /// The text files the phone may stage in Documents for the Files export: the recovery key's text,
 /// the CSV of each class page (stocks, crypto, bonds, other assets — the name stays fixed, the
 /// dated one the export command returns is only the desktop's) and of Finance's loans and policies,
-/// the Cashflow tab's report and the
-/// JSON of all data (`DATA_EXPORT_FILE_NAME`). A fixed list, so the command that writes one can
-/// never be pointed at another file. The one other name is the new key of a password change
-/// (`is_dated_recovery_key_file_name`).
-const TEXT_EXPORT_FILE_NAMES: [&str; 9] = [
+/// the Cashflow tab's report, the
+/// JSON of all data (`DATA_EXPORT_FILE_NAME`) and the Sync Recovery Kit as text and as a page. A
+/// fixed list, so the command that writes one can never be pointed at another file. The one other
+/// name is the new key of a password change (`is_dated_recovery_key_file_name`).
+const TEXT_EXPORT_FILE_NAMES: [&str; 11] = [
     "moony-recovery-key.txt",
+    "moony-sync-recovery-kit.txt",
+    "moony-sync-recovery-kit.html",
     "moony-stock-transactions.csv",
     "moony-crypto-transactions.csv",
     "moony-bonds.csv",
@@ -1612,6 +1614,40 @@ mod tests {
         ] {
             assert!(!is_text_export_file_name(bad), "{bad}");
         }
+    }
+
+    /// The Sync Recovery Kit's two files (Settings → Sync → Show Recovery Kit on the phone,
+    /// `SYNC_KIT_TEXT_FILE` / `SYNC_KIT_PAGE_FILE` in `export-file.ts`): staged, and swept when an
+    /// export was interrupted, like the recovery key's text.
+    #[test]
+    fn the_sync_recovery_kit_files_are_on_the_allow_list() {
+        for good in [
+            "moony-sync-recovery-kit.txt",
+            "moony-sync-recovery-kit.html",
+        ] {
+            assert!(is_text_export_file_name(good), "{good}");
+        }
+        for bad in [
+            "../moony-sync-recovery-kit.txt",
+            "Moony-sync-recovery-kit.txt",
+            "moony-sync-recovery-kit.htm",
+            "moony-sync-recovery-kit.html.zip",
+            "moony-sync-recovery-kit-2026-11-10.txt",
+            "moony-sync-recovery-kit.pdf",
+        ] {
+            assert!(!is_text_export_file_name(bad), "{bad}");
+        }
+
+        let dir = tempfile::tempdir().expect("dir");
+        let text =
+            write_text_export(dir.path(), "moony-sync-recovery-kit.txt", "kit").expect("txt");
+        let page = write_text_export(dir.path(), "moony-sync-recovery-kit.html", "<p>kit</p>")
+            .expect("html");
+        assert!(is_staged_text_export_path(dir.path(), &text));
+        assert!(is_staged_text_export_path(dir.path(), &page));
+        assert_eq!(sweep_staged_exports(dir.path()).expect("sweep"), 2);
+        assert!(!text.exists());
+        assert!(!page.exists());
     }
 
     #[test]

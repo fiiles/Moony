@@ -41,7 +41,9 @@
 	<key>NSFaceIDUsageDescription</key>
 	<string>Moony unlocks your data with Face ID.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Moony photographs documents and your property; the photos are stored encrypted on this phone.</string>
+	<string>Moony photographs documents and your property, and scans the codes that pair devices for sync and the QR code of your Recovery Kit; photos are stored encrypted on this phone.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Moony connects to a sync server on your home network when you use one.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

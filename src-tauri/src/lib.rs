@@ -156,11 +156,13 @@ async fn run_app() {
     // (`capabilities/default.json`): it reaches biometrics only through the app's own commands.
     builder = builder.plugin(moony_keychain::init());
 
-    // Phone-only hardware: haptic feedback and local notifications.
+    // Phone-only hardware: haptic feedback, local notifications and the camera's QR scanner.
     #[cfg(mobile)]
     {
         builder = builder
             .plugin(tauri_plugin_haptics::init())
+            // Sync pairing: scanning the pairing and Recovery Kit QR codes (`qr-scanner.ts`).
+            .plugin(tauri_plugin_barcode_scanner::init())
             // The phone's reminder notifications (Nastavení → Oznámení) are scheduled through it.
             .plugin(tauri_plugin_notification::init())
             // The files the system opened in Moony, until the webview asks for them (a cold start
@@ -294,6 +296,15 @@ async fn run_app() {
             commands::sync::sync_resync_device,
             commands::sync::sync_dev_grant,
             commands::sync::sync_debug_capture_overhead,
+            commands::sync_pairing::sync_pairing_start,
+            commands::sync_pairing::sync_pairing_scan,
+            commands::sync_pairing::sync_pairing_poll,
+            commands::sync_pairing::sync_pairing_confirm,
+            commands::sync_pairing::sync_pairing_cancel,
+            commands::sync_pairing::sync_pairing_join,
+            commands::sync_pairing::sync_join_with_recovery_kit,
+            commands::sync_pairing::sync_list_devices,
+            commands::sync_pairing::sync_rename_device,
             // Investment commands
             commands::investments::get_all_investments,
             commands::investments::get_investment,

@@ -1,10 +1,9 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Check, Copy, FileText, Download } from 'lucide-react';
 import type { RecoveryKit } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
-import { useFormat } from '@/lib/use-format';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
@@ -14,32 +13,8 @@ import {
   recoveryKitHtml,
   recoveryKitText,
 } from '@/utils/recovery-kit';
-import type { RecoveryKitCopy } from '@/utils/recovery-kit';
 import { Button } from '@/components/ui/button';
-
-/** The kit's printed lines, in the language the app shows. */
-function useRecoveryKitCopy(): RecoveryKitCopy {
-  const { t } = useTranslation('deviceSync');
-  const { date } = useFormat();
-  return useMemo(
-    () => ({
-      title: t('setup.kit.file.title'),
-      intro: t('setup.kit.file.intro'),
-      accountLabel: t('setup.kit.file.accountLabel'),
-      accountNote: t('setup.kit.file.accountNote'),
-      codeLabel: t('setup.kit.file.codeLabel'),
-      codeNote: t('setup.kit.file.codeNote'),
-      qrLabel: t('setup.kit.file.qrLabel'),
-      differsFromRecoveryKey: t('setup.kit.differs'),
-      created: t('setup.kit.file.created', {
-        date: date(new Date(), { dateStyle: 'long' }),
-      }),
-      relayLabel: t('setup.kit.file.relayLabel'),
-      relayNote: t('setup.kit.file.relayNote'),
-    }),
-    [t, date]
-  );
-}
+import { useRecoveryKitCopy } from '@/components/settings/sync/use-recovery-kit-copy';
 
 interface RecoveryKitPanelProps {
   kit: RecoveryKit;

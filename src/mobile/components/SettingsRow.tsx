@@ -15,6 +15,8 @@ interface SettingsRowProps {
   onClick?: () => void;
   /** A destructive row: the chip and the title in `loss`. */
   danger?: boolean;
+  /** A row whose action is not available yet: half strength, announced as unavailable, and neither a link nor a button. */
+  disabled?: boolean;
 }
 
 /**
@@ -29,9 +31,11 @@ export function SettingsRow({
   href,
   onClick,
   danger = false,
+  disabled = false,
 }: SettingsRowProps) {
   return (
     <EntityRow
+      className={disabled ? 'opacity-50' : undefined}
       chip={
         <RowChip square tone={danger ? 'loss' : 'default'}>
           <Icon strokeWidth={1.75} />
@@ -39,9 +43,10 @@ export function SettingsRow({
       }
       title={<span className={cn(danger && 'text-loss')}>{title}</span>}
       sub={sub}
-      href={href}
-      onClick={onClick}
-      chevron
+      href={disabled ? undefined : href}
+      onClick={disabled ? undefined : onClick}
+      chevron={!disabled}
+      disabled={disabled}
     />
   );
 }

@@ -131,6 +131,7 @@ describe('settings sections', () => {
       'reminders',
       'notifications',
       'backup',
+      'sync',
       'categories',
       'categorization',
       'import',

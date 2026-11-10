@@ -49,7 +49,8 @@
     "description": "Håll dina uppgifter uppdaterade på alla dina enheter. De är end-to-end-krypterade: synkroniseringsservern lagrar bara data den inte kan läsa.",
     "privacy": "Dina uppgifter lämnar aldrig dina enheter okrypterade.",
     "start": "Ställ in synkronisering",
-    "resume": "Fortsätt inställningen"
+    "resume": "Fortsätt inställningen",
+    "cancelSetup": "Avbryt konfigurationen"
   },
   "setup": {
     "title": "Ställ in synkronisering",
@@ -117,7 +118,9 @@
     "defaultName": {
       "macos": "Mac",
       "windows": "Windows-dator",
-      "linux": "Linux-dator"
+      "linux": "Linux-dator",
+      "ios": "iPhone",
+      "android": "Android-telefon"
     }
   },
   "alert": {
@@ -159,7 +162,7 @@
     "button": "Stäng av synkronisering på den här enheten",
     "hint": "Lokala data finns kvar. Andra enheter fortsätter synkronisera.",
     "title": "Stänga av synkroniseringen på den här enheten?",
-    "description": "Lokala data finns kvar. Andra enheter fortsätter synkronisera. Slår du på synkroniseringen igen senare får du ställa in den på nytt.",
+    "description": "Lokala data finns kvar. Andra enheter fortsätter synkronisera. Du kan ansluta igen senare genom att para ihop med en annan enhet eller med ditt återställningskit; enhetens data ersätts då med de synkroniserade uppgifterna efter en säkerhetskopia.",
     "pendingChanges_one": "{{count}} ändring på den här enheten har inte skickats än. Den skickas inte.",
     "pendingChanges_other": "{{count}} ändringar på den här enheten har inte skickats än. De skickas inte.",
     "confirm": "Stäng av synkronisering",
@@ -189,5 +192,105 @@
   "busy": {
     "title": "Ersätter enhetens data…",
     "description": "Stäng inte Moony."
+  },
+  "devices": {
+    "title": "Enheter",
+    "description": "Enheterna som synkroniseras med det här kontot.",
+    "thisDevice": "Den här enheten",
+    "joined": "Ansluten {{date}}",
+    "lastChange": "Senaste ändring synkroniserad {{when}}",
+    "noChange": "Inga ändringar har synkroniserats ännu",
+    "version": "Moony {{version}}",
+    "held": "Ändringar hålls kvar",
+    "rename": "Byt namn",
+    "renameTitle": "Byt namn på den här enheten",
+    "add": "Lägg till en enhet",
+    "platform": {
+      "macos": "Mac",
+      "windows": "Windows-dator",
+      "linux": "Linux-dator",
+      "ios": "iPhone",
+      "android": "Android-telefon",
+      "other": "Annan enhet"
+    }
+  },
+  "pairing": {
+    "addTitle": "Lägg till en enhet",
+    "addDescription": "Para ihop en annan enhet med ditt synkroniseringskonto. Inget lämnar dina enheter okrypterat.",
+    "passwordFirst": "Ange enhetslösenordet för att visa parkopplingskoden.",
+    "showCode": "Visa kod",
+    "qrAlt": "Parkopplingskod",
+    "preparing": "Förbereder parkopplingen …",
+    "scanHint": "Skanna detta med Moony på telefonen: Inställningar → Synkronisering → Skanna en kod",
+    "copyCodeDev": "Kopiera kod",
+    "validFor": "Koden fungerar i 10 minuter.",
+    "compareTitle": "Jämför siffrorna",
+    "compareOnlyIfSame": "Fortsätt bara om den andra enheten visar samma sex siffror.",
+    "match": "De stämmer",
+    "noMatch": "De stämmer inte",
+    "contested": "En annan enhet svarade på den här koden först, så siffrorna kommer inte att stämma. Välj ”De stämmer inte” på den andra enheten och börja om.",
+    "sent": "Skickat. Slutför på den andra enheten.",
+    "waiting": "Väntar på den andra enheten …",
+    "joining": "Ansluter …",
+    "joined": "Den här enheten synkroniseras nu. Dess tidigare data är säkerhetskopierad i {{path}}",
+    "tryAgain": "Försök igen",
+    "startAgain": "Börja om"
+  },
+  "join": {
+    "introPair": "Anslut från telefonen",
+    "introKit": "Använd ett återställningskit",
+    "warning": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först bredvid din profil.",
+    "nameLabel": "Enhetsnamn",
+    "passwordLabel": "Enhetslösenord",
+    "advanced": "Avancerat",
+    "serverLabel": "Adress till synkroniseringsservern",
+    "pairTitle": "Anslut från telefonen",
+    "pairHint": "På telefonen med synkronisering på: Inställningar → Synkronisering → Lägg till en enhet",
+    "kitTitle": "Använd ett återställningskit",
+    "kitHint": "Ange återställningskoden från ditt återställningskit för synkronisering, eller texten i dess QR-kod.",
+    "codeLabel": "Återställningskod",
+    "accountLabel": "Kontonummer"
+  },
+  "phone": {
+    "title": "Synkronisering",
+    "status": "Status",
+    "lastSynced": "Senast synkroniserad",
+    "pending": "Väntar på att skickas",
+    "row": {
+      "off": "Av",
+      "synced": "Uppdaterad",
+      "syncing": "Synkroniserar…",
+      "offline": "Offline",
+      "paused": "Pausad",
+      "error": "Stoppad"
+    },
+    "setUp": "Ställ in synkronisering på den här telefonen",
+    "scan": "Skanna en kod från en annan enhet",
+    "typeCode": "Skriv in en kod från återställningskitet",
+    "addDevice": "Lägg till en enhet",
+    "busy": "Låt Moony vara öppet tills det är klart.",
+    "saveText": "Spara som text",
+    "savePage": "Spara som sida",
+    "turnOffBody": "Lokala data på den här telefonen finns kvar. Dina andra enheter fortsätter synkronisera. Du kan ansluta igen senare genom att para ihop med en annan enhet eller skriva in koden från ditt återställningskit; telefonens data ersätts då med de synkroniserade uppgifterna efter en säkerhetskopia.",
+    "renewUnavailable": "Förnyelse är inte tillgänglig i telefonappen.",
+    "scanTitle": "Skanna en kod",
+    "scanHint": "Rikta kameran mot koden på den andra enheten (Inställningar → Synkronisering → Lägg till en enhet) eller mot QR-koden i ditt återställningskit.",
+    "addDeviceHint": "Välj ”Anslut från telefonen” under Inställningar → Synkronisering på den nya enheten och rikta sedan kameran mot koden den visar.",
+    "passwordFirst": "Ange enhetslösenordet innan du skannar den andra enhetens kod.",
+    "connecting": "Ansluter…",
+    "cameraDenied": "Tillåt kameraåtkomst i Inställningar för att skanna koden.",
+    "openSettings": "Öppna Inställningar",
+    "cameraUnavailable": "Kameran kunde inte öppnas.",
+    "unknownCode": "Den här QR-koden är varken en parkopplingskod från Moony eller ett återställningskit.",
+    "kitConfirmTitle": "Ansluta till det här synkroniseringskontot?",
+    "kitConfirmBody": "Telefonens data ersätts med de synkroniserade uppgifterna (en säkerhetskopia sparas).",
+    "kitConfirmJoin": "Anslut",
+    "notAKitCode": "Det här är ingen kod från ett återställningskit",
+    "notAPairingCode": "Det här är ingen parkopplingskod.",
+    "devPasteTitle": "Klistra in en parkopplingskod — utvecklarverktyg",
+    "devPasteLabel": "Parkopplingskod",
+    "payUnavailable": "Betalning för synkronisering är inte tillgänglig i mobilappen.",
+    "payWaiting": "Väntar på att kontot ska bli aktivt. När det blir det går det vidare av sig självt.",
+    "payWaitingShort": "Väntar …"
   }
 }

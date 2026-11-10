@@ -170,6 +170,8 @@ import type {
   SyncPlan,
   CheckoutTarget,
   RecoveryKit,
+  SyncDevice,
+  PairingView,
 } from '../../shared/schema';
 
 // Backend error keys (`validation.*`, `auth.*`) and the generic `errors.*` messages live in common.json.
@@ -359,6 +361,59 @@ export const deviceSyncApi = {
   /** Debug builds with the developer tools only: one line with both timings. */
   debugCaptureOverhead: (rows: number) =>
     tauriInvoke<string>('sync_debug_capture_overhead', { rows }),
+
+  /**
+   * Shows a pairing code once the device password is checked: as the holder with sync on, as
+   * the joiner without (then `deviceName` is required and `relayUrl` may name a sync server).
+   */
+  pairingStart: (opts: { password: string; relayUrl?: string; deviceName?: string }) =>
+    tauriInvoke<PairingView>('sync_pairing_start', {
+      relayUrl: opts.relayUrl ?? null,
+      deviceName: opts.deviceName ?? null,
+      password: opts.password,
+    }),
+
+  /** Answers a scanned pairing code once the device password is checked. */
+  pairingScan: (code: string, opts: { password: string; deviceName?: string }) =>
+    tauriInvoke<PairingView>('sync_pairing_scan', {
+      code,
+      deviceName: opts.deviceName ?? null,
+      password: opts.password,
+    }),
+
+  /** One step of waiting; poll every 2 s while the view waits. */
+  pairingPoll: () => tauriInvoke<PairingView>('sync_pairing_poll'),
+
+  /** The person confirmed that both devices show the same six digits. */
+  pairingConfirm: () => tauriInvoke<PairingView>('sync_pairing_confirm'),
+
+  pairingCancel: () => tauriInvoke<void>('sync_pairing_cancel'),
+
+  /** Joins with the received sync details (view `received`); resolves to the backup's path. */
+  pairingJoin: () => tauriInvoke<string>('sync_pairing_join'),
+
+  /**
+   * Joins with a Sync Recovery Kit (its QR text, or the typed code with the account number);
+   * resolves to the backup's path.
+   */
+  joinWithRecoveryKit: (args: {
+    code: string;
+    account?: string;
+    relayUrl?: string;
+    deviceName: string;
+    password: string;
+  }) =>
+    tauriInvoke<string>('sync_join_with_recovery_kit', {
+      code: args.code,
+      account: args.account ?? null,
+      relayUrl: args.relayUrl ?? null,
+      deviceName: args.deviceName,
+      password: args.password,
+    }),
+
+  listDevices: () => tauriInvoke<SyncDevice[]>('sync_list_devices'),
+
+  renameDevice: (name: string) => tauriInvoke<void>('sync_rename_device', { name }),
 };
 
 // ============================================================================

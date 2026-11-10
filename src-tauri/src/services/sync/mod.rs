@@ -25,12 +25,15 @@ pub mod journal;
 pub mod keys;
 pub mod merge;
 pub mod natural_id;
+pub mod pairing;
 pub mod recovery;
 pub mod registry;
 pub mod relay;
 // `dev_grant` exists only in debug builds (ruling P18), so the e2e tests do too.
 #[cfg(all(test, debug_assertions))]
 mod relay_e2e;
+#[cfg(all(test, debug_assertions))]
+mod relay_e2e_pairing;
 pub mod repair;
 pub mod setup;
 pub mod snapshot;

@@ -194,6 +194,7 @@ pub async fn restore_backup(
     local_api.stop().await;
     crate::commands::sync::stop_engine(&app);
     crate::commands::sync::forget_kit_window();
+    crate::commands::sync_pairing::forget_pairing();
     crate::commands::sync::clear_copied_code(&app);
     crate::services::auth::logout(&db, &session);
     crate::commands::attachments::wipe_open_copies(&app);

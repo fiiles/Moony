@@ -127,6 +127,7 @@ tauri-plugin-process = "2"
 [target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
 tauri-plugin-haptics = "2"
 tauri-plugin-notification = "2"
+tauri-plugin-barcode-scanner = "=2.5.3"  # Sync pairing: scanning the pairing and Recovery Kit QR codes
 
 [dev-dependencies]
 tempfile = "3"

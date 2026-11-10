@@ -49,7 +49,8 @@
     "description": "Mantieni i dati allineati su tutti i tuoi dispositivi. Sono cifrati end-to-end: il server di sincronizzazione conserva solo dati che non può leggere.",
     "privacy": "I tuoi dati non lasciano mai i tuoi dispositivi senza cifratura.",
     "start": "Configura la sincronizzazione",
-    "resume": "Continua la configurazione"
+    "resume": "Continua la configurazione",
+    "cancelSetup": "Annulla la configurazione"
   },
   "setup": {
     "title": "Configura la sincronizzazione",
@@ -117,7 +118,9 @@
     "defaultName": {
       "macos": "Mac",
       "windows": "PC Windows",
-      "linux": "PC Linux"
+      "linux": "PC Linux",
+      "ios": "iPhone",
+      "android": "Telefono Android"
     }
   },
   "alert": {
@@ -160,7 +163,7 @@
     "button": "Disattiva la sincronizzazione su questo dispositivo",
     "hint": "I dati locali restano. Gli altri dispositivi continuano a sincronizzare.",
     "title": "Disattivare la sincronizzazione su questo dispositivo?",
-    "description": "I dati locali restano. Gli altri dispositivi continuano a sincronizzare. Se riattivi la sincronizzazione in seguito, dovrai configurarla da capo.",
+    "description": "I dati locali restano. Gli altri dispositivi continuano a sincronizzare. In seguito puoi collegarti di nuovo associando un altro dispositivo o con il tuo kit di ripristino; i dati di questo dispositivo vengono poi sostituiti con quelli sincronizzati dopo un backup.",
     "pendingChanges_one": "{{count}} modifica di questo dispositivo non è ancora stata inviata. Non verrà più inviata.",
     "pendingChanges_many": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Non verranno più inviate.",
     "pendingChanges_other": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Non verranno più inviate.",
@@ -191,5 +194,105 @@
   "busy": {
     "title": "Sostituzione dei dati di questo dispositivo in corso…",
     "description": "Non chiudere Moony."
+  },
+  "devices": {
+    "title": "Dispositivi",
+    "description": "I dispositivi che si sincronizzano con questo account.",
+    "thisDevice": "Questo dispositivo",
+    "joined": "Aggiunto il {{date}}",
+    "lastChange": "Ultima modifica sincronizzata {{when}}",
+    "noChange": "Nessuna modifica ancora sincronizzata",
+    "version": "Moony {{version}}",
+    "held": "Modifiche trattenute",
+    "rename": "Rinomina",
+    "renameTitle": "Rinomina questo dispositivo",
+    "add": "Aggiungi un dispositivo",
+    "platform": {
+      "macos": "Mac",
+      "windows": "PC Windows",
+      "linux": "PC Linux",
+      "ios": "iPhone",
+      "android": "Telefono Android",
+      "other": "Altro dispositivo"
+    }
+  },
+  "pairing": {
+    "addTitle": "Aggiungi un dispositivo",
+    "addDescription": "Associa un altro dispositivo al tuo account di sincronizzazione. Niente lascia i tuoi dispositivi senza cifratura.",
+    "passwordFirst": "Inserisci la password del dispositivo per mostrare il codice di associazione.",
+    "showCode": "Mostra il codice",
+    "qrAlt": "Codice di associazione",
+    "preparing": "Preparazione dell'associazione…",
+    "scanHint": "Inquadralo con Moony sul telefono: Impostazioni → Sincronizzazione → Scansiona un codice",
+    "copyCodeDev": "Copia il codice",
+    "validFor": "Il codice è valido per 10 minuti.",
+    "compareTitle": "Confronta le cifre",
+    "compareOnlyIfSame": "Continua solo se l'altro dispositivo mostra le stesse sei cifre.",
+    "match": "Corrispondono",
+    "noMatch": "Non corrispondono",
+    "contested": "Un altro dispositivo ha risposto per primo a questo codice, quindi queste cifre non corrisponderanno. Sull'altro dispositivo scegli «Non corrispondono», poi ricomincia.",
+    "sent": "Inviato. Completa l'operazione sull'altro dispositivo.",
+    "waiting": "In attesa dell'altro dispositivo…",
+    "joining": "Collegamento in corso…",
+    "joined": "Questo dispositivo ora si sincronizza. I suoi dati precedenti sono salvati in {{path}}",
+    "tryAgain": "Riprova",
+    "startAgain": "Ricomincia"
+  },
+  "join": {
+    "introPair": "Collegati dal telefono",
+    "introKit": "Usa un kit di ripristino",
+    "warning": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup accanto al tuo profilo.",
+    "nameLabel": "Nome del dispositivo",
+    "passwordLabel": "Password del dispositivo",
+    "advanced": "Avanzate",
+    "serverLabel": "Indirizzo del server di sincronizzazione",
+    "pairTitle": "Collegati dal telefono",
+    "pairHint": "Sul telefono con la sincronizzazione attiva: Impostazioni → Sincronizzazione → Aggiungi un dispositivo",
+    "kitTitle": "Usa un kit di ripristino",
+    "kitHint": "Inserisci il codice di ripristino del tuo kit di ripristino della sincronizzazione, o il testo del suo codice QR.",
+    "codeLabel": "Codice di ripristino",
+    "accountLabel": "Numero dell'account"
+  },
+  "phone": {
+    "title": "Sincronizzazione",
+    "status": "Stato",
+    "lastSynced": "Ultima sincronizzazione",
+    "pending": "In attesa di invio",
+    "row": {
+      "off": "Disattivata",
+      "synced": "Aggiornata",
+      "syncing": "Sincronizzazione…",
+      "offline": "Offline",
+      "paused": "In pausa",
+      "error": "Interrotta"
+    },
+    "setUp": "Configura la sincronizzazione su questo telefono",
+    "scan": "Scansiona un codice da un altro dispositivo",
+    "typeCode": "Digita un codice del kit di ripristino",
+    "addDevice": "Aggiungi un dispositivo",
+    "busy": "Tieni aperto Moony finché non ha finito.",
+    "saveText": "Salva come testo",
+    "savePage": "Salva come pagina",
+    "turnOffBody": "I dati locali su questo telefono restano. Gli altri dispositivi continuano a sincronizzare. In seguito puoi collegarti di nuovo associando un altro dispositivo o digitando il codice del tuo kit di ripristino; i dati di questo telefono vengono poi sostituiti con quelli sincronizzati dopo un backup.",
+    "renewUnavailable": "Il rinnovo non è disponibile nell'app per telefono.",
+    "scanTitle": "Scansiona un codice",
+    "scanHint": "Inquadra con la fotocamera il codice sull'altro dispositivo (Impostazioni → Sincronizzazione → Aggiungi un dispositivo) o il codice QR del tuo kit di ripristino.",
+    "addDeviceHint": "Sul nuovo dispositivo scegli «Collegati dal telefono» in Impostazioni → Sincronizzazione, poi inquadra il codice che mostra.",
+    "passwordFirst": "Inserisci la password del dispositivo prima di scansionare il codice dell'altro dispositivo.",
+    "connecting": "Connessione…",
+    "cameraDenied": "Consenti l'accesso alla fotocamera in Impostazioni per scansionare il codice.",
+    "openSettings": "Apri Impostazioni",
+    "cameraUnavailable": "Impossibile aprire la fotocamera.",
+    "unknownCode": "Questo codice QR non è un codice di associazione di Moony né un kit di ripristino.",
+    "kitConfirmTitle": "Collegarti a questo account di sincronizzazione?",
+    "kitConfirmBody": "I dati di questo telefono vengono sostituiti con quelli sincronizzati (viene conservato un backup).",
+    "kitConfirmJoin": "Collegati",
+    "notAKitCode": "Questo non è un codice del kit di ripristino",
+    "notAPairingCode": "Questo non è un codice di associazione.",
+    "devPasteTitle": "Incolla un codice di associazione — strumento per sviluppatori",
+    "devPasteLabel": "Codice di associazione",
+    "payUnavailable": "Il pagamento della sincronizzazione non è disponibile nell'app per telefono.",
+    "payWaiting": "In attesa che l'account diventi attivo. Si procede da soli non appena succede.",
+    "payWaitingShort": "In attesa…"
   }
 }

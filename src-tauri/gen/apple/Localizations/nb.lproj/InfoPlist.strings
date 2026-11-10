@@ -2,4 +2,7 @@
 "NSFaceIDUsageDescription" = "Moony låser opp dataene dine med Face ID.";
 
 /* Camera permission prompt */
-"NSCameraUsageDescription" = "Moony tar bilder av dokumenter og eiendommen din; bildene lagres kryptert på denne telefonen.";
+"NSCameraUsageDescription" = "Moony tar bilder av dokumenter og eiendommen din, og skanner kodene som kobler sammen enheter for synkronisering og QR-koden i gjenopprettingssettet ditt; bildene lagres kryptert på denne telefonen.";
+
+/* Local network permission prompt (a sync server on the home network) */
+"NSLocalNetworkUsageDescription" = "Moony kobler til en synkroniseringsserver på hjemmenettverket ditt når du bruker en.";

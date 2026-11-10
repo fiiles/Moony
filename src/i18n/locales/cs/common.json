@@ -341,7 +341,20 @@
     "syncUnavailable": "Synchronizace není v této verzi Moony dostupná.",
     "syncDevOnly": "Toto je nástroj pro vývojáře, dostupný jen ve vývojových sestaveních.",
     "syncChangeInProgress": "Na tomto zařízení už probíhá jiná změna synchronizace. Počkejte, až skončí.",
-    "syncPasswordRequired": "Pro zkopírování obnovovacího kódu znovu zadejte heslo."
+    "syncPasswordRequired": "Pro zkopírování obnovovacího kódu znovu zadejte heslo.",
+    "syncPairingCodeInvalid": "Párovací kód není platný. Naskenujte kód zobrazený na druhém zařízení.",
+    "syncPairingFailed": "Párování se nepovedlo. Začněte znovu na obou zařízeních.",
+    "syncPairingCodeUsed": "Na tento kód odpovědělo jako první jiné zařízení. Na druhém zařízení zvolte „Neshodují se“ a začněte znovu.",
+    "syncPairingExpired": "Platnost párovacího kódu vypršela. Začněte znovu na obou zařízeních.",
+    "syncPairingBothOn": "Synchronizace je zapnutá na obou zařízeních. Vypněte ji na tom, které se má připojit.",
+    "syncPairingBothOff": "Synchronizace je vypnutá na obou zařízeních. Nejprve ji zapněte na zařízení, které má vaše data.",
+    "syncPairingCancelled": "Druhé zařízení párování zrušilo. Začněte znovu na obou zařízeních.",
+    "syncPairingNotStarted": "Na tomto zařízení neprobíhá žádné párování. Začněte znovu na obou zařízeních.",
+    "syncPasswordNeeded": "Pro pokračování zadejte heslo k tomuto zařízení.",
+    "syncRecoveryAccountInvalid": "Zkontrolujte číslo účtu: je to 16 číslic ze sady pro obnovení synchronizace.",
+    "syncRecoveryVaultNotFound": "Synchronizační server nemá k tomuto obnovovacímu kódu žádná synchronizovaná data. Zkontrolujte kód a adresu synchronizačního serveru v sadě pro obnovení synchronizace.",
+    "syncRecoveryKitRotated": "Klíče této synchronizace byly vyměněny; připojení pomocí sady pro obnovení po takové výměně zatím není podporováno.",
+    "syncJoinSetupPending": "Nejprve na tomto zařízení dokončete nebo zrušte nastavení synchronizace."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

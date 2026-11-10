@@ -762,7 +762,9 @@ fn a_multi_row_delete_stamps_each_cascade_with_its_own_row_clock() {
     );
 }
 
-/// A cascade clock left set outside a delete is a bug; `with_mode` says so loudly in debug.
+/// A cascade clock left set outside a delete is a bug; `with_mode` says so loudly in debug (a
+/// `debug_assert!`, so a release build has nothing to test).
+#[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "local cascade clock")]
 fn with_mode_refuses_a_leaked_local_cascade_clock() {

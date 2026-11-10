@@ -49,7 +49,8 @@
     "description": "Halten Sie Ihre Daten auf allen Ihren Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
     "privacy": "Ihre Daten verlassen Ihre Geräte nie unverschlüsselt.",
     "start": "Synchronisierung einrichten",
-    "resume": "Einrichtung fortsetzen"
+    "resume": "Einrichtung fortsetzen",
+    "cancelSetup": "Einrichtung abbrechen"
   },
   "setup": {
     "title": "Synchronisierung einrichten",
@@ -117,7 +118,9 @@
     "defaultName": {
       "macos": "Mac",
       "windows": "Windows-PC",
-      "linux": "Linux-PC"
+      "linux": "Linux-PC",
+      "ios": "iPhone",
+      "android": "Android-Smartphone"
     }
   },
   "alert": {
@@ -159,7 +162,7 @@
     "button": "Synchronisierung auf diesem Gerät ausschalten",
     "hint": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter.",
     "title": "Synchronisierung auf diesem Gerät ausschalten?",
-    "description": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter. Wenn Sie die Synchronisierung später wieder einschalten, richten Sie sie neu ein.",
+    "description": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter. Sie können später wieder beitreten, indem Sie mit einem anderen Gerät oder mit Ihrem Wiederherstellungs-Kit koppeln; die Daten dieses Geräts werden dann nach einer Sicherung durch die synchronisierten Daten ersetzt.",
     "pendingChanges_one": "{{count}} Änderung auf diesem Gerät wurde noch nicht gesendet. Sie wird nicht mehr gesendet.",
     "pendingChanges_other": "{{count}} Änderungen auf diesem Gerät wurden noch nicht gesendet. Sie werden nicht mehr gesendet.",
     "confirm": "Synchronisierung ausschalten",
@@ -189,5 +192,105 @@
   "busy": {
     "title": "Die Daten dieses Geräts werden ersetzt…",
     "description": "Schließen Sie Moony nicht."
+  },
+  "devices": {
+    "title": "Geräte",
+    "description": "Die Geräte, die mit diesem Konto synchronisieren.",
+    "thisDevice": "Dieses Gerät",
+    "joined": "Hinzugefügt am {{date}}",
+    "lastChange": "Letzte Änderung synchronisiert {{when}}",
+    "noChange": "Noch keine Änderungen synchronisiert",
+    "version": "Moony {{version}}",
+    "held": "Änderungen zurückgehalten",
+    "rename": "Umbenennen",
+    "renameTitle": "Dieses Gerät umbenennen",
+    "add": "Gerät hinzufügen",
+    "platform": {
+      "macos": "Mac",
+      "windows": "Windows-PC",
+      "linux": "Linux-PC",
+      "ios": "iPhone",
+      "android": "Android-Smartphone",
+      "other": "Anderes Gerät"
+    }
+  },
+  "pairing": {
+    "addTitle": "Gerät hinzufügen",
+    "addDescription": "Koppeln Sie ein weiteres Gerät mit Ihrem Synchronisierungskonto. Nichts verlässt Ihre Geräte unverschlüsselt.",
+    "passwordFirst": "Geben Sie Ihr Gerätepasswort ein, um den Kopplungscode anzuzeigen.",
+    "showCode": "Code anzeigen",
+    "qrAlt": "Kopplungscode",
+    "preparing": "Kopplung wird vorbereitet …",
+    "scanHint": "Scannen Sie dies mit Moony auf Ihrem Smartphone: Einstellungen → Synchronisierung → Code scannen",
+    "copyCodeDev": "Code kopieren",
+    "validFor": "Der Code gilt 10 Minuten.",
+    "compareTitle": "Ziffern vergleichen",
+    "compareOnlyIfSame": "Fahren Sie nur fort, wenn das andere Gerät dieselben sechs Ziffern anzeigt.",
+    "match": "Die Ziffern stimmen überein",
+    "noMatch": "Die Ziffern stimmen nicht überein",
+    "contested": "Ein anderes Gerät hat diesen Code zuerst beantwortet, daher stimmen diese Ziffern nicht überein. Wählen Sie auf dem anderen Gerät „Die Ziffern stimmen nicht überein“ und beginnen Sie von vorn.",
+    "sent": "Gesendet. Schließen Sie den Vorgang auf dem anderen Gerät ab.",
+    "waiting": "Warten auf das andere Gerät …",
+    "joining": "Verbindung wird hergestellt …",
+    "joined": "Dieses Gerät synchronisiert jetzt. Seine früheren Daten sind gesichert in {{path}}",
+    "tryAgain": "Erneut versuchen",
+    "startAgain": "Neu beginnen"
+  },
+  "join": {
+    "introPair": "Vom Smartphone beitreten",
+    "introKit": "Wiederherstellungs-Kit verwenden",
+    "warning": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird neben Ihrem Profil eine Sicherung gespeichert.",
+    "nameLabel": "Gerätename",
+    "passwordLabel": "Gerätepasswort",
+    "advanced": "Erweitert",
+    "serverLabel": "Adresse des Synchronisierungsservers",
+    "pairTitle": "Vom Smartphone beitreten",
+    "pairHint": "Auf dem Smartphone mit eingeschalteter Synchronisierung: Einstellungen → Synchronisierung → Gerät hinzufügen",
+    "kitTitle": "Wiederherstellungs-Kit verwenden",
+    "kitHint": "Geben Sie den Wiederherstellungscode aus Ihrem Sync-Wiederherstellungs-Kit ein oder den Text seines QR-Codes.",
+    "codeLabel": "Wiederherstellungscode",
+    "accountLabel": "Kontonummer"
+  },
+  "phone": {
+    "title": "Synchronisierung",
+    "status": "Status",
+    "lastSynced": "Zuletzt synchronisiert",
+    "pending": "Warten auf Versand",
+    "row": {
+      "off": "Aus",
+      "synced": "Aktuell",
+      "syncing": "Synchronisiert…",
+      "offline": "Offline",
+      "paused": "Pausiert",
+      "error": "Angehalten"
+    },
+    "setUp": "Synchronisierung auf diesem Telefon einrichten",
+    "scan": "Code von einem anderen Gerät scannen",
+    "typeCode": "Code des Wiederherstellungs-Kits eingeben",
+    "addDevice": "Gerät hinzufügen",
+    "busy": "Lassen Sie Moony geöffnet, bis der Vorgang abgeschlossen ist.",
+    "saveText": "Als Text speichern",
+    "savePage": "Als Seite speichern",
+    "turnOffBody": "Die lokalen Daten auf diesem Telefon bleiben erhalten. Ihre anderen Geräte synchronisieren weiter. Sie können später wieder beitreten, indem Sie mit einem anderen Gerät koppeln oder den Code Ihres Wiederherstellungs-Kits eingeben; die Daten dieses Telefons werden dann nach einer Sicherung durch die synchronisierten Daten ersetzt.",
+    "renewUnavailable": "Die Verlängerung ist in der Telefon-App nicht verfügbar.",
+    "scanTitle": "Code scannen",
+    "scanHint": "Richten Sie die Kamera auf den Code auf Ihrem anderen Gerät (Einstellungen → Synchronisierung → Gerät hinzufügen) oder auf den QR-Code Ihres Wiederherstellungs-Kits.",
+    "addDeviceHint": "Wählen Sie auf dem neuen Gerät unter Einstellungen → Synchronisierung „Vom Smartphone beitreten“ und richten Sie dann die Kamera auf den angezeigten Code.",
+    "passwordFirst": "Geben Sie Ihr Gerätepasswort ein, bevor Sie den Code des anderen Geräts scannen.",
+    "connecting": "Verbindung wird hergestellt…",
+    "cameraDenied": "Erlauben Sie in den Einstellungen den Zugriff auf die Kamera, um den Code zu scannen.",
+    "openSettings": "Einstellungen öffnen",
+    "cameraUnavailable": "Die Kamera konnte nicht geöffnet werden.",
+    "unknownCode": "Dieser QR-Code ist weder ein Kopplungscode von Moony noch ein Wiederherstellungs-Kit.",
+    "kitConfirmTitle": "Diesem Sync-Konto beitreten?",
+    "kitConfirmBody": "Die Daten dieses Telefons werden durch die synchronisierten Daten ersetzt (eine Sicherung bleibt erhalten).",
+    "kitConfirmJoin": "Beitreten",
+    "notAKitCode": "Das ist kein Code eines Wiederherstellungs-Kits",
+    "notAPairingCode": "Das ist kein Kopplungscode.",
+    "devPasteTitle": "Kopplungscode einfügen — Entwicklerwerkzeug",
+    "devPasteLabel": "Kopplungscode",
+    "payUnavailable": "Das Bezahlen der Synchronisierung ist in der Handy-App nicht möglich.",
+    "payWaiting": "Wir warten darauf, dass das Konto aktiv wird. Sobald es so weit ist, geht es von selbst weiter.",
+    "payWaitingShort": "Warten …"
   }
 }

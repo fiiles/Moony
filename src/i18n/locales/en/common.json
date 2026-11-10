@@ -341,7 +341,20 @@
     "syncUnavailable": "Sync is not available in this version of Moony.",
     "syncDevOnly": "This is a developer tool, available only in development builds.",
     "syncChangeInProgress": "Another sync change is in progress on this device. Wait until it finishes.",
-    "syncPasswordRequired": "Enter your password again to copy the recovery code."
+    "syncPasswordRequired": "Enter your password again to copy the recovery code.",
+    "syncPairingCodeInvalid": "The pairing code is not valid. Scan the code shown on the other device.",
+    "syncPairingFailed": "Pairing did not work. Start again on both devices.",
+    "syncPairingCodeUsed": "Another device answered this code first. Choose \"They don't match\" on the other device, then start again.",
+    "syncPairingExpired": "This pairing code has expired. Start again on both devices.",
+    "syncPairingBothOn": "Sync is already on for both devices. Turn it off on the one that should join.",
+    "syncPairingBothOff": "Sync is off on both devices. Turn it on first on the device that has your data.",
+    "syncPairingCancelled": "The other device cancelled the pairing. Start again on both devices.",
+    "syncPairingNotStarted": "No pairing is in progress on this device. Start again on both devices.",
+    "syncPasswordNeeded": "Enter this device's password to continue.",
+    "syncRecoveryAccountInvalid": "Check the account number: it is the 16 digits on your Sync Recovery Kit.",
+    "syncRecoveryVaultNotFound": "The sync server has no synced data for this recovery code. Check the code and the sync server address on your Sync Recovery Kit.",
+    "syncRecoveryKitRotated": "This sync was re-keyed; joining with a Recovery Kit after that is not supported yet.",
+    "syncJoinSetupPending": "Finish or cancel the sync setup on this device first."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

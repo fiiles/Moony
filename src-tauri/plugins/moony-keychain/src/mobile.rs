@@ -8,6 +8,8 @@ use tauri::{
 
 use zeroize::Zeroizing;
 
+#[cfg(target_os = "ios")]
+use crate::models::bridge;
 use crate::{KeychainError, Result, Status};
 
 #[cfg(target_os = "android")]
@@ -134,21 +136,93 @@ impl<R: Runtime> Keychain<R> {
         self.0.run_mobile_plugin("status", ()).map_err(Into::into)
     }
 
-    /// Device sync's binding and clearing clipboard arrive on the phones in a later phase; until
-    /// then they are unsupported, like on Linux.
-    pub fn bind_seal(&self, _secret: &[u8; 32]) -> Result<Vec<u8>> {
-        Err(KeychainError::Unsupported)
+    /// Seals device sync's 32-byte binding to this phone and answers the blob. iOS: a new Secure
+    /// Enclave key (no prompt, usable only while the phone is unlocked), its handle inside the
+    /// blob, as on macOS (`MoonyBinding.swift`); `Unsupported` without a Secure Enclave (the
+    /// Xcode 27 simulator has one: `SecureEnclave.isAvailable` is true there and the seal works).
+    /// Android: `Unsupported`, so the binding stays off, as on Linux.
+    pub fn bind_seal(&self, secret: &[u8; 32]) -> Result<Vec<u8>> {
+        #[cfg(target_os = "ios")]
+        {
+            let secret = bridge::encode_secret(secret);
+            let reply: bridge::BindReply = self
+                .0
+                .run_mobile_plugin("bindSeal", bridge::BindSealPayload { secret: &secret })?;
+            bridge::bind_reply_blob(reply)
+        }
+        #[cfg(not(target_os = "ios"))]
+        {
+            let _ = secret;
+            Err(KeychainError::Unsupported)
+        }
     }
 
-    pub fn bind_open(&self, _blob: &[u8]) -> Result<Zeroizing<[u8; 32]>> {
-        Err(KeychainError::Unsupported)
+    /// Opens a blob [`Keychain::bind_seal`] made on this phone. `Invalidated`: it was sealed on
+    /// another phone or is no binding (Rust classifies the native failure,
+    /// [`bridge::classify_ios_binding`]); `Failed`: a refusal of the moment (the phone is locked).
+    /// Android: `Unsupported`.
+    pub fn bind_open(&self, blob: &[u8]) -> Result<Zeroizing<[u8; 32]>> {
+        #[cfg(target_os = "ios")]
+        {
+            let blob = bridge::encode_blob(blob);
+            let reply: bridge::BindReply = self
+                .0
+                .run_mobile_plugin("bindOpen", bridge::BindOpenPayload { blob: &blob })?;
+            bridge::bind_reply_secret(reply)
+        }
+        #[cfg(not(target_os = "ios"))]
+        {
+            let _ = blob;
+            Err(KeychainError::Unsupported)
+        }
     }
 
-    pub fn copy_secret_text(&self, _text: &str) -> Result<u64> {
-        Err(KeychainError::Unsupported)
+    /// Copies `text` (the recovery code) to the pasteboard for this phone only (`.localOnly`: no
+    /// Universal Clipboard) with a 60 s expiry, and answers the pasteboard's change count as the
+    /// token [`Keychain::clear_clipboard_if_unchanged`] takes. The text crosses the bridge as JSON
+    /// and lives in a Swift `String`, neither wiped: the residual of copying a secret at all.
+    /// Android: `Unsupported`; the UI copies itself and asks the person to clear the clipboard.
+    pub fn copy_secret_text(&self, text: &str) -> Result<u64> {
+        #[cfg(target_os = "ios")]
+        {
+            self.0
+                .run_mobile_plugin::<bridge::CopySecretTextReply>(
+                    "copySecretText",
+                    bridge::CopySecretTextPayload { text },
+                )
+                .map(|reply| reply.token)
+                .map_err(Into::into)
+        }
+        #[cfg(not(target_os = "ios"))]
+        {
+            let _ = text;
+            Err(KeychainError::Unsupported)
+        }
     }
 
-    pub fn clear_clipboard_if_unchanged(&self, _token: u64) -> Result<bool> {
-        Err(KeychainError::Unsupported)
+    /// Empties the pasteboard if its change count is still `token`, that is, if nothing was copied
+    /// since [`Keychain::copy_secret_text`]; answers whether it did. At lock or in the background
+    /// iOS may limit pasteboard access or `changeCount` freshness, so this clear can miss; the 60 s
+    /// `.expirationDate` set at the copy is the backstop. Android: `Unsupported`.
+    pub fn clear_clipboard_if_unchanged(&self, token: u64) -> Result<bool> {
+        #[cfg(target_os = "ios")]
+        {
+            // A token no change count can equal (Swift's `Int`): the pasteboard is not ours to clear.
+            if i64::try_from(token).is_err() {
+                return Ok(false);
+            }
+            self.0
+                .run_mobile_plugin::<bridge::ClearClipboardReply>(
+                    "clearClipboardIfUnchanged",
+                    bridge::ClearClipboardPayload { token },
+                )
+                .map(|reply| reply.cleared)
+                .map_err(Into::into)
+        }
+        #[cfg(not(target_os = "ios"))]
+        {
+            let _ = token;
+            Err(KeychainError::Unsupported)
+        }
     }
 }

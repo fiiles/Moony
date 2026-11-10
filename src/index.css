@@ -329,6 +329,18 @@
     height: var(--m-vh, auto);
   }
 
+  /* Scanning a QR code (Nastavení → Sync, `ScanOverlay` sets data-scanning): the camera runs under
+     the webview (the scanner's windowed mode), so the page is transparent and the shell is hidden
+     while the overlay (portalled to <body>, outside #root) draws its frame and Cancel. */
+  html[data-scanning],
+  html[data-scanning] body,
+  html[data-scanning] #root {
+    background: transparent;
+  }
+  html[data-scanning] #root {
+    visibility: hidden;
+  }
+
   /* Touch: no grey flash over a tapped link or button; the components draw their own pressed state.
      No double-tap zoom (a fast second tap on a row or a chart is not a zoom request); pinch zoom
      stays: the viewport is no longer locked to scale 1 (Dynamic Type, README §13). */

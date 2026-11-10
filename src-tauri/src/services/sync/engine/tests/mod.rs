@@ -4,6 +4,7 @@
 //! forged from hand-made changesets (`forge`), and reach the relay through `push`.
 
 mod join;
+mod join_new;
 mod pull;
 mod push;
 mod repair;

@@ -172,3 +172,88 @@ impl Drop for RecoveryKit {
         self.qr_svg.zeroize();
     }
 }
+
+/// One device of the sync account as Settings lists it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncDevice {
+    /// The device ID, 32 lowercase hex characters.
+    #[serde(rename = "id")]
+    pub id: String,
+    #[serde(rename = "name")]
+    pub name: String,
+    /// `macos`, `windows`, `linux`, `ios` or `android`.
+    #[serde(rename = "platform")]
+    pub platform: String,
+    #[serde(rename = "appVersion")]
+    pub app_version: String,
+    #[serde(rename = "joinedAt")]
+    pub joined_at: i64,
+    /// The last successful sync of this device, or the newest change another device wrote
+    /// (unix seconds); `None` before either.
+    #[serde(rename = "lastActiveAt")]
+    pub last_active_at: Option<i64>,
+    #[serde(rename = "thisDevice")]
+    pub this_device: bool,
+    /// The device's messages are held back (quarantined) here.
+    #[serde(rename = "held")]
+    pub held: bool,
+}
+
+/// Where a pairing stands on this device (`services::sync::pairing::session::Stage`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum PairingStage {
+    /// Scanner: its answer is not written yet; polling retries it.
+    #[serde(rename = "announcing")]
+    Announcing,
+    /// Shower: the QR code is on screen, waiting for the other device to scan it.
+    #[serde(rename = "waitingForScan")]
+    WaitingForScan,
+    /// Both: the six-digit comparison code is on screen, waiting for the person.
+    #[serde(rename = "compare")]
+    Compare,
+    /// Joiner, after its confirm: waiting for the other device to send the sync details.
+    #[serde(rename = "waitingForOther")]
+    WaitingForOther,
+    /// Holder, after its confirm: the sync details are sent.
+    #[serde(rename = "sent")]
+    Sent,
+    /// Joiner: the sync details arrived; joining can start.
+    #[serde(rename = "received")]
+    Received,
+}
+
+/// Whether this device holds the synced data (sync on) or joins it (sync off).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum PairingRole {
+    #[serde(rename = "holder")]
+    Holder,
+    #[serde(rename = "joiner")]
+    Joiner,
+}
+
+/// A pairing as the UI shows it. Nothing secret: the QR code and the comparison code only
+/// protect the exchange while they are on screens the person is looking at; the sync details
+/// themselves never leave Rust.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct PairingView {
+    #[serde(rename = "stage")]
+    pub stage: PairingStage,
+    #[serde(rename = "role")]
+    pub role: PairingRole,
+    /// The pairing code as an SVG QR code, while this device shows it (`waitingForScan`).
+    #[serde(rename = "qrSvg")]
+    pub qr_svg: Option<String>,
+    /// The same code as text, only with the developer tools (a simulator cannot scan).
+    #[serde(rename = "pairingCode")]
+    pub pairing_code: Option<String>,
+    /// The six digits both devices show, from `compare` on.
+    #[serde(rename = "comparisonCode")]
+    pub comparison_code: Option<String>,
+    /// Scanner: another device answered this code first; this device's digits differ from the
+    /// other device's, and only cancelling is offered.
+    #[serde(rename = "contested")]
+    pub contested: bool,
+    /// When the pairing ends on this device (unix seconds).
+    #[serde(rename = "expiresAt")]
+    pub expires_at: i64,
+}

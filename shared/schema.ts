@@ -121,6 +121,48 @@ export interface RecoveryKit {
   relayUrl: string | null;
 }
 
+/** One device of the sync account as Settings lists it. */
+export interface SyncDevice {
+  /** The device ID, 32 lowercase hex characters. */
+  id: string;
+  name: string;
+  /** `macos`, `windows`, `linux`, `ios` or `android`. */
+  platform: string;
+  appVersion: string;
+  joinedAt: number;
+  /** Unix seconds: this device's last successful sync, or the newest change another device wrote. */
+  lastActiveAt: number | null;
+  thisDevice: boolean;
+  /** The device's messages are held back (quarantined) here. */
+  held: boolean;
+}
+
+/** Where a pairing stands on this device. */
+export type PairingStage =
+  'announcing' | 'waitingForScan' | 'compare' | 'waitingForOther' | 'sent' | 'received';
+
+/** `holder`: this device syncs and sends its sync details; `joiner`: it receives them. */
+export type PairingRole = 'holder' | 'joiner';
+
+/**
+ * A pairing as the UI shows it. Nothing secret: the QR and the six digits only protect the
+ * exchange on screens the person is looking at; the sync details never leave Rust.
+ */
+export interface PairingView {
+  stage: PairingStage;
+  role: PairingRole;
+  /** The pairing code as an SVG QR code, while this device shows it (`waitingForScan`). */
+  qrSvg: string | null;
+  /** The same code as text, only with the developer tools (a simulator cannot scan). */
+  pairingCode: string | null;
+  /** The six digits both devices show, from `compare` on. */
+  comparisonCode: string | null;
+  /** Scanner: another device answered this code first; only cancelling is offered. */
+  contested: boolean;
+  /** When the pairing ends on this device (unix seconds). */
+  expiresAt: number;
+}
+
 export interface MenuPreferences {
   loans: boolean;
   insurance: boolean;

@@ -341,7 +341,20 @@
     "syncUnavailable": "此版本的 Moony 不支持同步。",
     "syncDevOnly": "这是开发者工具，仅在开发版本中可用。",
     "syncChangeInProgress": "此设备上已有另一项同步更改正在进行。请等待其完成。",
-    "syncPasswordRequired": "请再次输入密码以复制恢复代码。"
+    "syncPasswordRequired": "请再次输入密码以复制恢复代码。",
+    "syncPairingCodeInvalid": "配对码无效。请扫描另一台设备上显示的二维码。",
+    "syncPairingFailed": "配对未成功。请在两台设备上重新开始。",
+    "syncPairingCodeUsed": "另一台设备已抢先响应此代码。请在另一台设备上选择“不匹配”，然后重新开始。",
+    "syncPairingExpired": "此配对码已过期。请在两台设备上重新开始。",
+    "syncPairingBothOn": "两台设备都已开启同步。请在要加入的那台设备上关闭同步。",
+    "syncPairingBothOff": "两台设备都未开启同步。请先在存有您数据的设备上开启同步。",
+    "syncPairingCancelled": "另一台设备已取消配对。请在两台设备上重新开始。",
+    "syncPairingNotStarted": "此设备上没有正在进行的配对。请在两台设备上重新开始。",
+    "syncPasswordNeeded": "请输入此设备的密码以继续。",
+    "syncRecoveryAccountInvalid": "请检查账户号码：即同步恢复套件上的 16 位数字。",
+    "syncRecoveryVaultNotFound": "同步服务器上没有与此恢复码对应的同步数据。请检查同步恢复套件上的恢复码和同步服务器地址。",
+    "syncRecoveryKitRotated": "此同步的密钥已更换；更换后暂不支持使用恢复套件加入。",
+    "syncJoinSetupPending": "请先在此设备上完成或取消同步设置。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

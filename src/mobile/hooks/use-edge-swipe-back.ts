@@ -1,7 +1,7 @@
 import { useEffect, type RefObject } from 'react';
 import { releaseVelocity } from '@/lib/sheet-drag';
 import { edgeSwipeCommits, edgeSwipeDirection, edgeSwipeStarts } from '@/mobile/lib/edge-swipe';
-import { backIsHeld } from '@/mobile/hooks/use-hold-back';
+import { backIsHeld } from '@/mobile/lib/back-hold';
 import { hasScreenUnder, setNavUnderlay } from '@/mobile/hooks/use-nav-stack';
 
 /** The slide out after a committed swipe, and the snap home after one let go too early. */

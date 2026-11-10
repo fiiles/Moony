@@ -26,8 +26,11 @@ interface ScanFlowProps {
   onDone: () => void;
 }
 
-/** Where the flow is: the details, the camera, its refusal, the paste sheet, a request, the pairing. */
-type Step = 'details' | 'scanning' | 'denied' | 'paste' | 'working' | 'pairing';
+/**
+ * Where the flow is: the details, the camera, its refusal, a QR that is no Moony code, the paste
+ * sheet, a request, the pairing.
+ */
+type Step = 'details' | 'scanning' | 'denied' | 'notMoony' | 'paste' | 'working' | 'pairing';
 
 /** The 48 pt buttons of a sheet's footer. */
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
@@ -52,6 +55,8 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
   /** The overlay's "Paste a pairing code": the scan is cancelled to make way for the sheet. */
   const toPaste = useRef(false);
   const [joinFailure, setJoinFailure] = useState<JoinFailure | null>(null);
+  /** Cancel was pressed while the scan was announcing: its late answer is given up too. */
+  const abandoned = useRef(false);
 
   // A Kit join's password is a mutation variable: it leaves with the flow
   const resetKitJoin = joinWithRecoveryKit.reset;
@@ -78,18 +83,32 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
     setStep('details');
   };
 
+  /** Every way out goes through here: the password typed for the scan goes with it. */
+  const finish = () => {
+    details.current = null;
+    onDone();
+  };
+
   const giveUp = async () => {
+    details.current = null;
     try {
       await pairing.cancel();
     } catch {
       // Gone on this device either way.
     }
-    onDone();
+    finish();
+  };
+
+  // Cancel while "Connecting…": the flow ends now; the scan's answer, when it comes, is cancelled
+  // too (the backend's cancel also waits for the scan to finish), so no pairing is left behind.
+  const abandonScan = () => {
+    abandoned.current = true;
+    void giveUp();
   };
 
   const takeText = async (text: string) => {
     const typed = details.current;
-    if (!typed) return onDone();
+    if (!typed) return finish();
     switch (scanRoute(text, mode)) {
       case 'pair':
         setStep('working');
@@ -100,9 +119,14 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
             deviceName: typed.deviceName,
           });
           details.current = null;
+          if (abandoned.current) {
+            void pairing.cancel().catch(() => undefined);
+            return;
+          }
           setStep('pairing');
         } catch (error) {
           pairing.scan.reset();
+          if (abandoned.current) return;
           backToDetails(error);
         }
         return;
@@ -115,23 +139,20 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
             deviceName: typed.deviceName ?? '',
             password: typed.password,
           });
-          details.current = null;
           toast(t('pairing.joined', { path: backupFileName(path) }));
-          onDone();
+          finish();
         } catch (error) {
           joinWithRecoveryKit.reset();
           backToDetails(error);
         }
         return;
       case 'alreadyOn':
-        details.current = null;
         toast.error(tc('validation.syncAlreadyEnabled'));
-        onDone();
+        finish();
         return;
       case 'unknown':
-        details.current = null;
-        toast.error(t('phone.unknownCode'));
-        onDone();
+        // Another QR: say so and offer the camera again; the password stays for that retry only
+        setStep('notMoony');
         return;
     }
   };
@@ -144,12 +165,10 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
       if (outcome.kind === 'code') return void (await takeText(outcome.text));
       if (outcome.kind === 'denied') return setStep('denied');
       if (toPaste.current) return setStep('paste');
-      details.current = null;
-      onDone();
+      finish();
     } catch {
-      details.current = null;
       toast.error(t('phone.cameraUnavailable'));
-      onDone();
+      finish();
     }
   };
 
@@ -165,7 +184,7 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
     try {
       const path = await pairing.join.mutateAsync();
       toast(t('pairing.joined', { path: backupFileName(path) }));
-      onDone();
+      finish();
     } catch (failure) {
       const key = failure instanceof ApiError ? failure.key : undefined;
       setJoinFailure({
@@ -259,6 +278,26 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
       >
         {null}
       </Sheet>
+      <Sheet
+        open={step === 'notMoony'}
+        onOpenChange={(next) => {
+          if (!next) void giveUp();
+        }}
+        title={t('phone.scanTitle')}
+        description={t('phone.unknownCode')}
+        footer={
+          <>
+            <Button variant="ghost" className={`${BUTTON} px-[18px]`} onClick={() => void giveUp()}>
+              {tc('buttons.cancel')}
+            </Button>
+            <Button className={`${BUTTON} flex-1`} onClick={() => void scanNow()}>
+              {t('pairing.tryAgain')}
+            </Button>
+          </>
+        }
+      >
+        {null}
+      </Sheet>
       <CodeEntrySheet
         open={step === 'paste'}
         onOpenChange={(next) => {
@@ -269,10 +308,12 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
       {/* The scan is announcing this phone's answer (a pairing code only: a Kit join shows the busy cover) */}
       <Sheet
         open={step === 'working' && pairing.scan.isPending}
-        onOpenChange={() => undefined}
+        onOpenChange={(next) => {
+          if (!next) abandonScan();
+        }}
         title={t('phone.scanTitle')}
         footer={
-          <Button variant="ghost" className={`${BUTTON} flex-1`} disabled>
+          <Button variant="ghost" className={`${BUTTON} flex-1`} onClick={abandonScan}>
             {tc('buttons.cancel')}
           </Button>
         }

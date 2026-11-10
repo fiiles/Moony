@@ -22,17 +22,27 @@ export type ScanOutcome =
   { kind: 'code'; text: string } | { kind: 'cancelled' } | { kind: 'denied' };
 
 /**
+ * A cancel that came before the camera opened (while the permission prompt was up): the plugin has
+ * no scan to cancel then, so `scanQrCode` checks this just before it starts one. Reset by every
+ * new `scanQrCode`.
+ */
+let cancelRequested = false;
+
+/**
  * Asks for the camera when it has not been asked yet, then scans one QR code. `denied`: the camera
  * is refused (Settings can allow it, `openCameraSettings`); `cancelled`: `cancelQrScan` ended it.
  * Any other failure (no camera, as on the simulator) rejects.
  */
 export async function scanQrCode(): Promise<ScanOutcome> {
+  cancelRequested = false;
   let permission = await checkPermissions();
   // Not asked yet ('prompt', and Android's 'prompt-with-rationale'): the system asks now
   if (permission !== 'granted' && permission !== 'denied') {
     permission = await requestPermissions();
   }
   if (permission !== 'granted') return { kind: 'denied' };
+  // Cancelled, unmounted or sent to the background during the prompt: no camera without its overlay
+  if (cancelRequested) return { kind: 'cancelled' };
   try {
     const scanned = await scan({ windowed: true, formats: [Format.QRCode] });
     return { kind: 'code', text: scanned.content };
@@ -42,8 +52,12 @@ export async function scanQrCode(): Promise<ScanOutcome> {
   }
 }
 
-/** Ends a running scan (its promise answers `cancelled`); nothing happens when none runs. */
+/**
+ * Ends a running scan (its promise answers `cancelled`), or one still waiting for the permission
+ * prompt (it answers `cancelled` without opening the camera); nothing happens when none runs.
+ */
 export async function cancelQrScan(): Promise<void> {
+  cancelRequested = true;
   try {
     await cancel();
   } catch {

@@ -89,6 +89,44 @@ describe('isScanCancelled', () => {
   });
 });
 
+describe('hostile scanner text', () => {
+  const LONG = 'A'.repeat(200_000);
+
+  it('classifies a very long text without trouble', () => {
+    expect(scanRoute(LONG, 'join')).toBe('unknown');
+    expect(kitCodeProblem(LONG)).toBeNull();
+    expect(pairingCodeProblem(LONG)).toBe('phone.notAPairingCode');
+    // A long tail after a known prefix is still that kind: the backend's parser judges the rest
+    expect(scanRoute(`moony-pair:${LONG}`, 'join')).toBe('pair');
+    expect(scanRoute(`moony-recover:${LONG}`, 'add')).toBe('alreadyOn');
+  });
+
+  it('does not let a newline or a NUL smuggle a prefix in', () => {
+    expect(scanRoute(`junk\n${PAIR}`, 'join')).toBe('unknown');
+    expect(scanRoute(`\u0000${PAIR}`, 'join')).toBe('unknown');
+    expect(scanRoute(`junk\n${KIT_QR}`, 'join')).toBe('unknown');
+    expect(pairingCodeProblem(`x\u0000${PAIR}`)).toBe('phone.notAPairingCode');
+    expect(kitCodeProblem(`x\n${PAIR}`)).toBeNull();
+    // A recovery code with a NUL in it is not a typed recovery code
+    expect(scanRoute(`${CODE80.slice(0, 40)}\u0000${CODE80.slice(40)}`, 'join')).toBe('unknown');
+  });
+
+  it('routes a known prefix followed by junk by its prefix (the backend refuses the junk)', () => {
+    expect(scanRoute('moony-pair:', 'join')).toBe('pair');
+    expect(scanRoute('moony-pair:\u0000\n<script>', 'add')).toBe('pair');
+    expect(scanRoute('moony-recover:', 'join')).toBe('kitJoin');
+    expect(scanRoute('moony-recover:%%%\n\u0000', 'add')).toBe('alreadyOn');
+    expect(kitCodeProblem('moony-pair:junk')).toBe('phone.notAKitCode');
+    expect(pairingCodeProblem('moony-recover:junk')).toBe('phone.notAPairingCode');
+  });
+
+  it('does not take a look-alike prefix', () => {
+    expect(scanRoute('MOONY-PAIR:1:abc', 'join')).toBe('unknown');
+    expect(scanRoute('moony-pair', 'join')).toBe('unknown');
+    expect(scanRoute('moony-recovery:1:x', 'join')).toBe('unknown');
+  });
+});
+
 describe('pairingSheetStep', () => {
   it('shows a failed poll before anything else', () => {
     expect(pairingSheetStep(view('compare'), { failed: true, expired: false })).toBe('failed');

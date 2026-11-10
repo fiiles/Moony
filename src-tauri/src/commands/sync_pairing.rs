@@ -4,9 +4,12 @@
 //!
 //! - One pairing at a time, in `PAIRING`, bound to the profile session that started it
 //!   (`KitOwner`, as the Recovery Kit's copy window). A command of another profile session, or one
-//!   past `PairingSession::wiped_at`, abandons it. Lock, restore and Delete Account abandon it too
-//!   (`forget_pairing`), and a received session is wiped at `wiped_at` by its own task (review
-//!   PF6), so received credentials never outlive `expires_at + RECEIVED_GRACE_SECS`.
+//!   past `PairingSession::wiped_at`, abandons it. Lock, restore, Delete Account, turning sync off
+//!   and deleting the synced data abandon it too (`forget_pairing`, which never waits behind a
+//!   running join), and a received session is wiped at `wiped_at` by its own task (review PF6),
+//!   so received credentials never outlive `expires_at + RECEIVED_GRACE_SECS`.
+//! - New pairings (start, scan) are made one at a time under the slot's lock; a repeated scan of
+//!   the code already answered keeps that session.
 //! - Both roles check the device password before a QR is shown or slot 1 is written (`begin`,
 //!   review PF1). The role is the profile's own: holder with sync on, joiner without.
 //! - The pairing code's text crosses IPC only with the developer tools (review PF2); the QR and
@@ -16,6 +19,8 @@
 //! No command logs its arguments; passwords and recovery codes stay in `Zeroizing` once received.
 
 use std::future::Future;
+use std::ops::{Deref, DerefMut};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use rusqlite::Connection;
@@ -40,10 +45,15 @@ use crate::services::sync::{devices, feature, join, state};
 
 const NOT_STARTED: &str = "validation.syncPairingNotStarted";
 const EXPIRED: &str = "validation.syncPairingExpired";
-const PASSWORD_REQUIRED: &str = "validation.syncPairingPasswordRequired";
+const PASSWORD_NEEDED: &str = "validation.syncPasswordNeeded";
 const FAILED: &str = "validation.syncPairingFailed";
 const SETUP_INCOMPLETE: &str = "validation.syncSetupIncomplete";
 const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
+const JOIN_SETUP_PENDING: &str = "validation.syncJoinSetupPending";
+
+/// The longest the wiper sleeps before it reads the wall clock again (a machine that slept does
+/// not advance a monotonic timer).
+const WIPER_TICK_SECS: i64 = 30;
 
 /// The pairing of this app, with the profile session that started it and, for a joiner, the
 /// device name it joins under.
@@ -53,15 +63,170 @@ struct PairingSlot {
     device_name: Option<String>,
 }
 
+/// The one pairing slot of the app, and how a pairing that ends is given up (`dispose`).
+struct Pairings {
+    slot: tokio::sync::Mutex<Option<PairingSlot>>,
+    /// Set by `forget` while the slot is busy: whoever holds the lock next, or lets it go, gives
+    /// the pairing up.
+    forget: AtomicBool,
+    dispose: fn(PairingSlot),
+}
+
+impl Pairings {
+    const fn new(dispose: fn(PairingSlot)) -> Self {
+        Pairings {
+            slot: tokio::sync::Mutex::const_new(None),
+            forget: AtomicBool::new(false),
+            dispose,
+        }
+    }
+
+    /// The slot, held until the guard drops. A pending `forget` is honoured first.
+    async fn lock(&self) -> PairingGuard<'_> {
+        let mut slot = self.slot.lock().await;
+        if self.forget.swap(false, Ordering::SeqCst) {
+            if let Some(old) = slot.take() {
+                (self.dispose)(old);
+            }
+        }
+        PairingGuard {
+            pairings: self,
+            slot: Some(slot),
+        }
+    }
+
+    /// Gives the pairing up without waiting: at once while the slot is free, else as soon as its
+    /// holder (a running join, say) lets go of it.
+    fn forget(&self) {
+        self.forget.store(true, Ordering::SeqCst);
+        self.forget_if_free();
+    }
+
+    fn forget_if_free(&self) {
+        if !self.forget.load(Ordering::SeqCst) {
+            return;
+        }
+        if let Ok(mut slot) = self.slot.try_lock() {
+            if self.forget.swap(false, Ordering::SeqCst) {
+                if let Some(old) = slot.take() {
+                    drop(slot);
+                    (self.dispose)(old);
+                }
+            }
+        }
+    }
+}
+
+/// The held slot. Letting go of it honours a `forget` that came meanwhile.
+struct PairingGuard<'a> {
+    pairings: &'a Pairings,
+    /// `None` only inside `drop`.
+    slot: Option<tokio::sync::MutexGuard<'a, Option<PairingSlot>>>,
+}
+
+impl Deref for PairingGuard<'_> {
+    type Target = Option<PairingSlot>;
+
+    fn deref(&self) -> &Self::Target {
+        self.slot
+            .as_ref()
+            .expect("the slot is held until the guard drops")
+    }
+}
+
+impl DerefMut for PairingGuard<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.slot
+            .as_mut()
+            .expect("the slot is held until the guard drops")
+    }
+}
+
+impl Drop for PairingGuard<'_> {
+    fn drop(&mut self) {
+        // Released first: a `forget` that found the slot busy has set its flag by now.
+        drop(self.slot.take());
+        self.pairings.forget_if_free();
+    }
+}
+
+impl PairingGuard<'_> {
+    /// Gives the pairing in the slot up, if any.
+    fn dispose_current(&mut self) {
+        if let Some(slot) = self.take() {
+            (self.pairings.dispose)(slot);
+        }
+    }
+
+    /// Ends the pairing after an error that does not keep the session.
+    fn end_unless_kept(&mut self, error: &SyncError) {
+        if !keeps_session(error) {
+            self.dispose_current();
+        }
+    }
+
+    /// The live slot of `owner`'s profile session. A stale one (another profile session, or
+    /// past `wiped_at`) is given up and answers `validation.syncPairingNotStarted` or
+    /// `validation.syncPairingExpired`; no slot is `validation.syncPairingNotStarted`.
+    fn live(&mut self, owner: &KitOwner, now: i64) -> Result<&mut PairingSlot> {
+        let (kept, stale) = slot_for(owner, now, self.take());
+        **self = kept;
+        if let Some(stale) = stale {
+            let key = if stale.owner == *owner {
+                EXPIRED
+            } else {
+                NOT_STARTED
+            };
+            (self.pairings.dispose)(stale);
+            return Err(AppError::Validation(key.into()));
+        }
+        self.as_mut()
+            .ok_or_else(|| AppError::Validation(NOT_STARTED.into()))
+    }
+
+    /// Makes `session` the pairing in progress in place of an older one (given up), unless the
+    /// profile session that started it has ended meanwhile (`owner_now`: a lock during the
+    /// password check or the announce).
+    fn install(
+        &mut self,
+        owner: &KitOwner,
+        owner_now: Option<KitOwner>,
+        session: PairingSession,
+        device_name: Option<String>,
+        dev_tools: bool,
+    ) -> Result<PairingView> {
+        let slot = PairingSlot {
+            owner: owner.clone(),
+            session,
+            device_name,
+        };
+        if owner_now.as_ref() != Some(owner) {
+            (self.pairings.dispose)(slot);
+            return Err(AppError::Validation(NOT_STARTED.into()));
+        }
+        let view = match view_of(&slot.session, dev_tools) {
+            Ok(view) => view,
+            Err(error) => {
+                (self.pairings.dispose)(slot);
+                return Err(error);
+            }
+        };
+        if let Some(older) = self.replace(slot) {
+            (self.pairings.dispose)(older);
+        }
+        Ok(view)
+    }
+}
+
 /// The one pairing in progress, if any.
-static PAIRING: tokio::sync::Mutex<Option<PairingSlot>> = tokio::sync::Mutex::const_new(None);
+static PAIRING: Pairings = Pairings::new(abandon_later);
 
 // ============================================================================
 // Helpers of the commands
 // ============================================================================
 
 /// The gate in front of every new pairing and every Kit join (review PF1): an empty password is
-/// `validation.syncPairingPasswordRequired`, without awaiting `verify`; `verify` (the device
+/// `validation.syncPasswordNeeded`, without awaiting `verify`; `verify` (the device
 /// password check) must succeed before `then` is polled at all, so no QR is rendered and nothing
 /// is written to a mailbox before it did.
 async fn begin<T>(
@@ -70,7 +235,7 @@ async fn begin<T>(
     then: impl Future<Output = SyncResult<T>>,
 ) -> Result<T> {
     if password.is_empty() {
-        return Err(AppError::Validation(PASSWORD_REQUIRED.into()));
+        return Err(AppError::Validation(PASSWORD_NEEDED.into()));
     }
     drop(password);
     verify.await?;
@@ -91,10 +256,16 @@ fn slot_for(
 }
 
 /// Whether a failed join keeps the received session for "Try again": a momentary relay failure,
-/// a rate limit, or another sync change running. Anything else ends the pairing.
+/// a rate limit, another sync change running, or a sync setup of another account still pending
+/// (the person can cancel it and try again within the grace period). Anything else ends the
+/// pairing.
 fn after_join_error(error: &SyncError) -> bool {
     keeps_session(error)
-        || matches!(error, SyncError::Local(AppError::Validation(key)) if key == CHANGE_IN_PROGRESS)
+        || matches!(
+            error,
+            SyncError::Local(AppError::Validation(key))
+                if key == CHANGE_IN_PROGRESS || key == JOIN_SETUP_PENDING
+        )
 }
 
 /// The session as the UI shows it. The QR (and, with the developer tools only, the same code as
@@ -196,6 +367,11 @@ fn mailbox_of(session: &PairingSession) -> MailboxId {
     session.code().mailbox
 }
 
+/// Whether two sessions answer the same pairing code (the same mailbox, shower key and server).
+fn same_code(a: &PairingSession, b: &PairingSession) -> bool {
+    pairing_code_text(&a.code()) == pairing_code_text(&b.code())
+}
+
 /// Gives a pairing up: cancel markers and the delete within `ABANDON_BUDGET`, best effort (a
 /// holder in Sent sends nothing); the session's secrets go with it.
 async fn abandon(slot: PairingSlot) {
@@ -205,49 +381,9 @@ async fn abandon(slot: PairingSlot) {
     }
 }
 
-/// `abandon` on the app's runtime, so the command that ends a pairing answers at once.
+/// `abandon` on the app's runtime, so nothing waits for it (`PAIRING`'s `dispose`).
 fn abandon_later(slot: PairingSlot) {
     tauri::async_runtime::spawn(abandon(slot));
-}
-
-/// Takes the pairing in progress, if any, and abandons it.
-async fn abandon_current() {
-    if let Some(slot) = PAIRING.lock().await.take() {
-        abandon_later(slot);
-    }
-}
-
-/// Ends the pairing (abandoned) after an error that does not keep the session.
-fn end_unless_kept(pairing: &mut Option<PairingSlot>, error: &SyncError) {
-    if !keeps_session(error) {
-        if let Some(slot) = pairing.take() {
-            abandon_later(slot);
-        }
-    }
-}
-
-/// The live slot of `owner`'s profile session. A stale one (another profile session, or past
-/// `wiped_at`) is abandoned and answers `validation.syncPairingNotStarted` or
-/// `validation.syncPairingExpired`; no slot is `validation.syncPairingNotStarted`.
-fn live_slot<'a>(
-    pairing: &'a mut Option<PairingSlot>,
-    owner: &KitOwner,
-    now: i64,
-) -> Result<&'a mut PairingSlot> {
-    let (kept, stale) = slot_for(owner, now, pairing.take());
-    *pairing = kept;
-    if let Some(stale) = stale {
-        let key = if stale.owner == *owner {
-            EXPIRED
-        } else {
-            NOT_STARTED
-        };
-        abandon_later(stale);
-        return Err(AppError::Validation(key.into()));
-    }
-    pairing
-        .as_mut()
-        .ok_or_else(|| AppError::Validation(NOT_STARTED.into()))
 }
 
 fn current_view(pairing: &Option<PairingSlot>) -> Result<PairingView> {
@@ -257,64 +393,76 @@ fn current_view(pairing: &Option<PairingSlot>) -> Result<PairingView> {
     view_of(&slot.session, feature::dev_tools())
 }
 
-/// Makes `session` the pairing in progress, unless the profile session that started it has
-/// ended meanwhile (a lock during the password check); an older pairing is abandoned.
-async fn install(
-    app: &AppHandle,
-    db: &Database,
-    owner: KitOwner,
+/// A new shown pairing, made under the slot's lock (one start or scan at a time): the older
+/// pairing is given up first.
+async fn start_under_lock(
+    pairings: &Pairings,
+    owner: &KitOwner,
+    owner_now: impl FnOnce() -> Option<KitOwner>,
     session: PairingSession,
     device_name: Option<String>,
-) -> Result<PairingView> {
-    let slot = PairingSlot {
-        owner,
-        session,
-        device_name,
-    };
-    let mut pairing = PAIRING.lock().await;
-    if kit_owner(app, db).ok().as_ref() != Some(&slot.owner) {
-        abandon_later(slot);
-        return Err(AppError::Validation(NOT_STARTED.into()));
-    }
-    let view = match view_of(&slot.session, feature::dev_tools()) {
-        Ok(view) => view,
-        Err(error) => {
-            abandon_later(slot);
-            return Err(error);
+    dev_tools: bool,
+) -> SyncResult<PairingView> {
+    let mut pairing = pairings.lock().await;
+    pairing.dispose_current();
+    Ok(pairing.install(owner, owner_now(), session, device_name, dev_tools)?)
+}
+
+/// A scanned pairing, made under the slot's lock. A repeated scan of the code this profile
+/// session already answered (the camera reports a QR twice, two scans race) answers that
+/// session's view and writes nothing; any other code gives the older pairing up and announces.
+#[allow(clippy::too_many_arguments)]
+async fn scan_under_lock<M: Mailbox>(
+    pairings: &Pairings,
+    owner: &KitOwner,
+    owner_now: impl FnOnce() -> Option<KitOwner>,
+    scanned: PairingSession,
+    mailbox: &M,
+    device_name: Option<String>,
+    now: i64,
+    dev_tools: bool,
+) -> SyncResult<PairingView> {
+    let mut pairing = pairings.lock().await;
+    if let Some(slot) = pairing.as_ref() {
+        let alive = slot.owner == *owner && now < slot.session.wiped_at();
+        if alive && slot.session.side() == Side::Scanner && same_code(&slot.session, &scanned) {
+            return Ok(view_of(&slot.session, dev_tools)?);
         }
-    };
-    if let Some(older) = pairing.replace(slot) {
-        abandon_later(older);
     }
-    Ok(view)
+    pairing.dispose_current();
+    let session = announced(scanned, mailbox, now).await?;
+    Ok(pairing.install(owner, owner_now(), session, device_name, dev_tools)?)
+}
+
+/// How long the wiper sleeps before it looks at the wall clock again: at most
+/// `WIPER_TICK_SECS`; `None` once `wiped_at` has passed.
+fn wiper_wait(now: i64, wiped_at: i64) -> Option<Duration> {
+    let left = wiped_at.saturating_sub(now);
+    (left > 0).then(|| Duration::from_secs(left.min(WIPER_TICK_SECS).unsigned_abs()))
 }
 
 /// Received credentials never outlive `wiped_at` (review PF6): the session answers nothing past
-/// it, and this task abandons it then if it is still the pairing in progress.
+/// it, and this task gives it up then if it is still the pairing in progress. It sleeps in short
+/// ticks against the wall clock, so a machine that slept does not keep the credentials longer.
 fn wipe_when_due(mailbox: MailboxId, wiped_at: i64) {
     tauri::async_runtime::spawn(async move {
-        let wait = u64::try_from(wiped_at.saturating_sub(now())).unwrap_or(0);
-        tokio::time::sleep(Duration::from_secs(wait)).await;
+        while let Some(wait) = wiper_wait(now(), wiped_at) {
+            tokio::time::sleep(wait).await;
+        }
         let mut pairing = PAIRING.lock().await;
         if pairing
             .as_ref()
             .is_some_and(|slot| mailbox_of(&slot.session) == mailbox)
         {
-            if let Some(slot) = pairing.take() {
-                drop(pairing);
-                abandon(slot).await;
-            }
+            pairing.dispose_current();
         }
     });
 }
 
-/// Abandons the pairing in progress, if any (lock, restore, Delete Account).
+/// Gives the pairing in progress up (lock, restore, Delete Account, turning sync off, deleting
+/// the synced data) without waiting: a running join gives it up as soon as it ends.
 pub(crate) fn forget_pairing() {
-    tauri::async_runtime::spawn(async {
-        if let Some(slot) = PAIRING.lock().await.take() {
-            abandon(slot).await;
-        }
-    });
+    PAIRING.forget();
 }
 
 // ============================================================================
@@ -340,17 +488,18 @@ pub async fn sync_pairing_start(
     let relay_url = session.with_conn(|conn| shower_relay(conn, role, relay_url.as_deref()))?;
     let owner = kit_owner(&app, &db)?;
     let verify = verify_password(&app, password.clone());
-    let pairing = begin(password, verify, async {
-        abandon_current().await;
-        Ok(PairingSession::show(role, &relay_url, now())?)
+    begin(password, verify, async {
+        let shown = PairingSession::show(role, &relay_url, now())?;
+        let owner_now = || kit_owner(&app, &db).ok();
+        let dev_tools = feature::dev_tools();
+        start_under_lock(&PAIRING, &owner, owner_now, shown, device_name, dev_tools).await
     })
-    .await?;
-    install(&app, &db, owner, pairing, device_name).await
+    .await
 }
 
 /// Answers a scanned pairing code once the device password is checked (slot 1 is written then);
 /// `deviceName` as for `sync_pairing_start`. A momentary relay failure leaves the view in
-/// `announcing`, and polling retries.
+/// `announcing`, and polling retries. Scanning the code already answered answers its view.
 #[tauri::command]
 pub async fn sync_pairing_scan(
     app: AppHandle,
@@ -366,14 +515,25 @@ pub async fn sync_pairing_scan(
     let device_name = joiner_name(role, device_name)?;
     let owner = kit_owner(&app, &db)?;
     let verify = verify_password(&app, password.clone());
-    let pairing = begin(password, verify, async {
-        abandon_current().await;
-        let scanned = PairingSession::scan(role, &code, now())?;
+    begin(password, verify, async {
+        let now = now();
+        let scanned = PairingSession::scan(role, &code, now)?;
         let relay = HttpRelay::new(scanned.relay_url())?;
-        announced(scanned, &relay, now()).await
+        let owner_now = || kit_owner(&app, &db).ok();
+        let dev_tools = feature::dev_tools();
+        scan_under_lock(
+            &PAIRING,
+            &owner,
+            owner_now,
+            scanned,
+            &relay,
+            device_name,
+            now,
+            dev_tools,
+        )
+        .await
     })
-    .await?;
-    install(&app, &db, owner, pairing, device_name).await
+    .await
 }
 
 /// One step of waiting (the UI polls every 2 s while the view waits). A momentary relay failure
@@ -384,7 +544,7 @@ pub async fn sync_pairing_poll(app: AppHandle, db: State<'_, Database>) -> Resul
     let owner = kit_owner(&app, &db)?;
     let mut pairing = PAIRING.lock().await;
     let polled = {
-        let slot = live_slot(&mut pairing, &owner, now())?;
+        let slot = pairing.live(&owner, now())?;
         let relay = HttpRelay::new(slot.session.relay_url())?;
         let before = slot.session.stage();
         slot.session
@@ -401,7 +561,7 @@ pub async fn sync_pairing_poll(app: AppHandle, db: State<'_, Database>) -> Resul
         Ok(_) => {}
         Err(error) if keeps_session(&error) => {}
         Err(error) => {
-            end_unless_kept(&mut pairing, &error);
+            pairing.end_unless_kept(&error);
             return Err(app_error(error));
         }
     }
@@ -418,7 +578,7 @@ pub async fn sync_pairing_confirm(app: AppHandle, db: State<'_, Database>) -> Re
     let session = db.current_session()?;
     let mut pairing = PAIRING.lock().await;
     let confirmed = {
-        let slot = live_slot(&mut pairing, &owner, now())?;
+        let slot = pairing.live(&owner, now())?;
         let relay = HttpRelay::new(slot.session.relay_url())?;
         match holder_credentials(&slot.session, &session) {
             Ok(creds) => slot.session.confirm(&relay, creds.as_ref(), now()).await,
@@ -426,7 +586,7 @@ pub async fn sync_pairing_confirm(app: AppHandle, db: State<'_, Database>) -> Re
         }
     };
     if let Err(error) = confirmed {
-        end_unless_kept(&mut pairing, &error);
+        pairing.end_unless_kept(&error);
         return Err(app_error(error));
     }
     current_view(&pairing)
@@ -436,13 +596,14 @@ pub async fn sync_pairing_confirm(app: AppHandle, db: State<'_, Database>) -> Re
 #[tauri::command]
 pub async fn sync_pairing_cancel() -> Result<()> {
     require_feature()?;
-    abandon_current().await;
+    PAIRING.lock().await.dispose_current();
     Ok(())
 }
 
-/// The joiner joins with the received sync details (stage `received` only): backup, then join by
-/// replace, as a sync change; the backup's path. A failure that may pass keeps the received
-/// session for "Try again"; success ends it.
+/// The joiner joins with the received sync details (stage `received` only, else
+/// `validation.syncPairingFailed`): backup, then join by replace, as a sync change; the backup's
+/// path. A failure that may pass keeps the received session for "Try again"; success ends it.
+/// A lock meanwhile (`forget_pairing`) gives the session up when the join ends.
 #[tauri::command]
 pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Result<String> {
     require_feature()?;
@@ -450,12 +611,12 @@ pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Resul
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
     let mut pairing = PAIRING.lock().await;
-    let slot = live_slot(&mut pairing, &owner, now())?;
+    let slot = pairing.live(&owner, now())?;
     // The slot keeps its own copy of the credentials for "Try again" (review PF6).
     let (Some(creds), Some(device_name)) =
         (slot.session.received().cloned(), slot.device_name.clone())
     else {
-        return Err(AppError::Validation(NOT_STARTED.into()));
+        return Err(AppError::Validation(FAILED.into()));
     };
     let relay = HttpRelay::new(&creds.relay_url)?;
     let native = KeychainBinding { app: app.clone() };
@@ -473,9 +634,7 @@ pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Resul
         }
         Err(error) => {
             if !after_join_error(&error) {
-                if let Some(slot) = pairing.take() {
-                    abandon_later(slot);
-                }
+                pairing.dispose_current();
             }
             Err(app_error(error))
         }
@@ -535,263 +694,5 @@ pub async fn sync_rename_device(db: State<'_, Database>, name: String) -> Result
 }
 
 #[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-    use std::sync::atomic::{AtomicBool, Ordering};
-
-    use super::*;
-    use crate::services::sync::error::Transient;
-    use crate::services::sync::relay::fake::FakeRelay;
-    use crate::services::sync::relay::RelayError;
-    use crate::services::sync::test_support::migrated;
-
-    const T0: i64 = 1_800_000_000;
-    const HOME: &str = "https://sync.home.example.com";
-
-    fn owner(path: &str, session: u64) -> KitOwner {
-        KitOwner {
-            db_path: PathBuf::from(path),
-            session,
-        }
-    }
-
-    fn validation(key: &str) -> SyncError {
-        SyncError::Local(AppError::Validation(key.into()))
-    }
-
-    fn key_of(result: Result<impl std::fmt::Debug>) -> String {
-        match result.expect_err("refused") {
-            AppError::Validation(key) | AppError::Auth(key) => key,
-            other => panic!("not a key: {other:?}"),
-        }
-    }
-
-    fn wrong_password() -> Result<()> {
-        Err(AppError::Auth("auth.wrongPassword".into()))
-    }
-
-    #[tokio::test]
-    async fn pairing_needs_the_password_before_anything_is_shown_or_written() {
-        // A joiner shows a code; this device scans it as the holder.
-        let shower = PairingSession::show(Role::Joiner, HOME, T0).expect("shower");
-        let text = pairing_code_text(&shower.code());
-        let mailbox = mailbox_of(&shower).to_b64();
-
-        for (password, verify, expected) in [
-            ("", Ok(()), "validation.syncPairingPasswordRequired"),
-            ("wrong", wrong_password(), "auth.wrongPassword"),
-        ] {
-            let relay = FakeRelay::new();
-            let polled = AtomicBool::new(false);
-            let scan = async {
-                polled.store(true, Ordering::SeqCst);
-                let scanned = PairingSession::scan(Role::Holder, &text, T0)?;
-                announced(scanned, &relay, T0).await
-            };
-            let refused = begin(
-                Zeroizing::new(password.to_string()),
-                std::future::ready(verify),
-                scan,
-            )
-            .await;
-            assert_eq!(key_of(refused), expected);
-            assert!(!polled.load(Ordering::SeqCst), "the scan never started");
-            assert!(relay.calls().is_empty(), "nothing was sent: {password:?}");
-            assert_eq!(relay.peek_slot(&mailbox, 1), None);
-
-            // A holder's show: no pairing code is made.
-            let shown = AtomicBool::new(false);
-            let show = async {
-                shown.store(true, Ordering::SeqCst);
-                Ok(PairingSession::show(Role::Holder, HOME, T0)?)
-            };
-            let verify = if password.is_empty() {
-                Ok(())
-            } else {
-                wrong_password()
-            };
-            let refused = begin(
-                Zeroizing::new(password.to_string()),
-                std::future::ready(verify),
-                show,
-            )
-            .await;
-            assert_eq!(key_of(refused), expected);
-            assert!(!shown.load(Ordering::SeqCst), "no code was made");
-        }
-
-        // The right password: the scan answers, and slot 1 is written.
-        let relay = FakeRelay::new();
-        let scan = async {
-            let scanned = PairingSession::scan(Role::Holder, &text, T0)?;
-            announced(scanned, &relay, T0).await
-        };
-        let scanned = begin(
-            Zeroizing::new("right".to_string()),
-            std::future::ready(Ok(())),
-            scan,
-        )
-        .await
-        .expect("scanned");
-        assert_eq!(scanned.stage(), Stage::Compare);
-        assert!(relay.peek_slot(&mailbox, 1).is_some(), "slot 1 is written");
-    }
-
-    fn slot_of(owner: KitOwner) -> PairingSlot {
-        PairingSlot {
-            owner,
-            session: PairingSession::show(Role::Holder, HOME, T0).expect("session"),
-            device_name: None,
-        }
-    }
-
-    #[test]
-    fn a_pairing_session_belongs_to_one_profile_session() {
-        let a = owner("/profiles/a/moony.db", 1);
-        let now = T0 + 10;
-
-        let (kept, stale) = slot_for(&a, now, Some(slot_of(a.clone())));
-        assert!(kept.is_some_and(|slot| slot.owner == a));
-        assert!(stale.is_none());
-
-        for other in [
-            owner("/profiles/a/moony.db", 2),
-            owner("/profiles/b/moony.db", 1),
-        ] {
-            let (kept, stale) = slot_for(&other, now, Some(slot_of(a.clone())));
-            assert!(kept.is_none(), "{other:?} does not get it");
-            assert!(stale.is_some_and(|slot| slot.owner == a), "it is abandoned");
-        }
-
-        // The right profile session, past `wiped_at`.
-        let slot = slot_of(a.clone());
-        let wiped_at = slot.session.wiped_at();
-        assert_eq!(wiped_at, T0 + 600);
-        let (kept, stale) = slot_for(&a, wiped_at - 1, Some(slot));
-        assert!(kept.is_some() && stale.is_none(), "alive until wiped_at");
-        let (kept, stale) = slot_for(&a, wiped_at, kept);
-        assert!(kept.is_none());
-        assert!(stale.is_some(), "abandoned at wiped_at");
-
-        let (kept, stale) = slot_for(&a, now, None);
-        assert!(kept.is_none() && stale.is_none());
-    }
-
-    #[test]
-    fn a_transient_join_failure_keeps_the_received_session() {
-        for kept in [
-            SyncError::Transient(Transient::Offline),
-            SyncError::Transient(Transient::Relay),
-            SyncError::RateLimited,
-            validation("validation.syncChangeInProgress"),
-        ] {
-            assert!(after_join_error(&kept), "{kept:?} keeps the session");
-        }
-        for ended in [
-            validation("validation.syncAlreadyEnabled"),
-            validation("validation.syncJoinSetupPending"),
-            validation("validation.syncVaultHasNoSnapshot"),
-            SyncError::Refused(RelayError::AccountNotFound),
-            SyncError::Refused(RelayError::SlotConsumed),
-            SyncError::VaultNotFound,
-            SyncError::Local(AppError::Internal("disk full".into())),
-        ] {
-            assert!(!after_join_error(&ended), "{ended:?} ends the pairing");
-        }
-    }
-
-    #[test]
-    fn the_pairing_code_text_is_a_developer_tool() {
-        let session = PairingSession::show(Role::Holder, HOME, T0).expect("session");
-        let text = pairing_code_text(&session.code());
-        assert!(text.starts_with("moony-pair:1:"));
-
-        let release = view_of(&session, false).expect("view");
-        assert_eq!(
-            release.pairing_code, None,
-            "a release build shows the QR only"
-        );
-        assert!(release
-            .qr_svg
-            .as_deref()
-            .is_some_and(|svg| svg.contains("<svg")));
-        assert_eq!(release.stage, PairingStage::WaitingForScan);
-        assert_eq!(release.role, PairingRole::Holder);
-        assert_eq!(release.comparison_code, None);
-        assert!(!release.contested);
-        assert_eq!(release.expires_at, T0 + 600);
-
-        let dev = view_of(&session, true).expect("view");
-        assert_eq!(dev.pairing_code.as_deref(), Some(text.as_str()));
-        assert_eq!(dev.qr_svg, release.qr_svg);
-
-        // A scanner shows no code of its own, with or without the developer tools.
-        let scanner = PairingSession::scan(Role::Joiner, &text, T0).expect("scanner");
-        let view = view_of(&scanner, true).expect("view");
-        assert_eq!(view.stage, PairingStage::Announcing);
-        assert_eq!(view.role, PairingRole::Joiner);
-        assert_eq!((view.qr_svg, view.pairing_code), (None, None));
-    }
-
-    #[test]
-    fn the_shown_mailbox_is_on_the_server_of_the_role() {
-        let conn = migrated();
-        let default = normalize_base_url(&default_base_url()).expect("default");
-        // Without an account: a holder cannot show, a joiner uses the typed address or the
-        // default.
-        assert_eq!(
-            key_of(shower_relay(&conn, Role::Holder, Some(HOME))),
-            "validation.syncSetupIncomplete"
-        );
-        assert_eq!(
-            shower_relay(&conn, Role::Joiner, None).expect("joiner"),
-            default
-        );
-        assert_eq!(
-            shower_relay(&conn, Role::Joiner, Some("  ")).expect("joiner"),
-            default
-        );
-        assert_eq!(
-            shower_relay(&conn, Role::Joiner, Some(" https://sync.example.com/ ")).expect("typed"),
-            normalize_base_url("https://sync.example.com").expect("typed")
-        );
-        assert_eq!(
-            key_of(shower_relay(&conn, Role::Joiner, Some("ftp://nope"))),
-            "validation.syncRelayUrlInvalid"
-        );
-
-        // With an account: a holder always its own; a joiner the typed one first.
-        keys::save_account(&conn, HOME, "1234567890123456").expect("account");
-        assert_eq!(
-            shower_relay(&conn, Role::Holder, Some("https://sync.example.com")).expect("holder"),
-            HOME
-        );
-        assert_eq!(
-            shower_relay(&conn, Role::Joiner, None).expect("joiner"),
-            HOME
-        );
-        assert_eq!(
-            shower_relay(&conn, Role::Joiner, Some("https://sync.example.com")).expect("typed"),
-            normalize_base_url("https://sync.example.com").expect("typed")
-        );
-    }
-
-    #[test]
-    fn only_a_joiner_needs_a_device_name() {
-        assert_eq!(joiner_name(Role::Holder, None).expect("holder"), None);
-        assert_eq!(
-            joiner_name(Role::Holder, Some(String::new())).expect("ignored"),
-            None
-        );
-        assert_eq!(
-            joiner_name(Role::Joiner, Some("Work laptop".into())).expect("joiner"),
-            Some("Work laptop".to_string())
-        );
-        for invalid in [None, Some("   ".to_string()), Some("x".repeat(61))] {
-            assert_eq!(
-                key_of(joiner_name(Role::Joiner, invalid)),
-                "validation.syncDeviceNameInvalid"
-            );
-        }
-    }
-}
+#[path = "sync_pairing_tests.rs"]
+mod tests;

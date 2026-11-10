@@ -350,7 +350,7 @@
     "syncPairingBothOff": "Synchronizacja jest wyłączona na obu urządzeniach. Najpierw włącz ją na urządzeniu z Twoimi danymi.",
     "syncPairingCancelled": "Drugie urządzenie anulowało parowanie. Zacznij od nowa na obu urządzeniach.",
     "syncPairingNotStarted": "Na tym urządzeniu nie trwa żadne parowanie. Zacznij od nowa na obu urządzeniach.",
-    "syncPairingPasswordRequired": "Wpisz hasło, aby sparować urządzenia.",
+    "syncPasswordNeeded": "Wpisz hasło tego urządzenia, aby kontynuować.",
     "syncRecoveryAccountInvalid": "Sprawdź numer konta: to 16 cyfr z zestawu odzyskiwania synchronizacji.",
     "syncRecoveryVaultNotFound": "Serwer synchronizacji nie ma zsynchronizowanych danych dla tego kodu odzyskiwania. Sprawdź kod i adres serwera synchronizacji w zestawie odzyskiwania synchronizacji.",
     "syncRecoveryKitRotated": "Klucze tej synchronizacji zostały wymienione; dołączanie za pomocą zestawu odzyskiwania po takiej wymianie nie jest jeszcze obsługiwane.",

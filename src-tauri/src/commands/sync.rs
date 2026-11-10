@@ -651,6 +651,7 @@ pub async fn sync_turn_off(app: AppHandle, db: State<'_, Database>) -> Result<()
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
     forget_kit_window();
+    super::sync_pairing::forget_pairing();
     guarded_change(
         &AppEngine { app: &app, db: &db },
         setup::turn_off_between_rounds(&session, &dir),
@@ -672,6 +673,7 @@ pub async fn sync_delete_synced_data(
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     forget_kit_window();
+    super::sync_pairing::forget_pairing();
     guarded_change(
         &AppEngine { app: &app, db: &db },
         setup::delete_synced_data(&relay, &session, &dir),

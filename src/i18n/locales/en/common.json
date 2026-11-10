@@ -350,7 +350,7 @@
     "syncPairingBothOff": "Sync is off on both devices. Turn it on first on the device that has your data.",
     "syncPairingCancelled": "The other device cancelled the pairing. Start again on both devices.",
     "syncPairingNotStarted": "No pairing is in progress on this device. Start again on both devices.",
-    "syncPairingPasswordRequired": "Enter your password to pair the devices.",
+    "syncPasswordNeeded": "Enter this device's password to continue.",
     "syncRecoveryAccountInvalid": "Check the account number: it is the 16 digits on your Sync Recovery Kit.",
     "syncRecoveryVaultNotFound": "The sync server has no synced data for this recovery code. Check the code and the sync server address on your Sync Recovery Kit.",
     "syncRecoveryKitRotated": "This sync was re-keyed; joining with a Recovery Kit after that is not supported yet.",

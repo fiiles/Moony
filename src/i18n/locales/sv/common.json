@@ -350,7 +350,7 @@
     "syncPairingBothOff": "Synkronisering är avstängd på båda enheterna. Slå på den först på enheten som har dina data.",
     "syncPairingCancelled": "Den andra enheten avbröt parkopplingen. Börja om på båda enheterna.",
     "syncPairingNotStarted": "Ingen parkoppling pågår på den här enheten. Börja om på båda enheterna.",
-    "syncPairingPasswordRequired": "Ange ditt lösenord för att parkoppla enheterna.",
+    "syncPasswordNeeded": "Ange lösenordet för den här enheten för att fortsätta.",
     "syncRecoveryAccountInvalid": "Kontrollera kontonumret: det är de 16 siffrorna i återställningspaketet för synkronisering.",
     "syncRecoveryVaultNotFound": "Synkroniseringsservern har inga synkroniserade data för den här återställningskoden. Kontrollera koden och synkroniseringsserverns adress i återställningspaketet för synkronisering.",
     "syncRecoveryKitRotated": "Nycklarna för den här synkroniseringen har bytts ut; att ansluta med ett återställningspaket efter det stöds inte ännu.",

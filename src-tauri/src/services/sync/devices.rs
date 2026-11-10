@@ -4,6 +4,8 @@
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use std::collections::{HashMap, HashSet};
+
 use rusqlite::{params, Connection, OptionalExtension};
 
 use super::hlc::{unpack, DeviceId};
@@ -12,6 +14,14 @@ use crate::error::{AppError, Result};
 use crate::models::SyncDevice;
 
 const MAX_NAME_CHARS: usize = 60;
+
+/// Each device's newest clock stamp, read along `idx_sync_clock_device_hlc`.
+const NEWEST_CLOCKS: &str = "SELECT device, MAX(hlc) FROM sync_clock GROUP BY device";
+
+/// A raw device ID as `sync_devices.id` spells it: lowercase hex.
+fn hex_of(device: &[u8]) -> String {
+    device.iter().map(|b| format!("{b:02x}")).collect()
+}
 
 /// The platform this build runs on, as `sync_devices.platform` records it.
 pub fn platform() -> &'static str {
@@ -101,32 +111,40 @@ pub fn list_devices(conn: &Connection) -> Result<Vec<SyncDevice>> {
     };
     let this = sync.device.to_hex();
     let this_active = state::marks(conn)?.and_then(|m| m.last_success_at);
+    // One pass over the clock index per device, matched here by the hex of the raw ID (a
+    // `hex(device)` per row in SQL would scan the whole table for every device).
+    let mut newest = HashMap::new();
+    let mut stmt = conn.prepare(NEWEST_CLOCKS)?;
+    for row in stmt.query_map([], |r| Ok((r.get::<_, Vec<u8>>(0)?, r.get::<_, i64>(1)?)))? {
+        let (device, hlc) = row?;
+        newest.insert(hex_of(&device), hlc);
+    }
+    let mut stmt = conn.prepare("SELECT device FROM sync_heads WHERE quarantined != 0")?;
+    let held: HashSet<String> = stmt
+        .query_map([], |r| r.get::<_, Vec<u8>>(0))?
+        .map(|device| device.map(|d| hex_of(&d)))
+        .collect::<std::result::Result<_, _>>()?;
     let mut stmt = conn.prepare(
-        "SELECT d.id, d.name, d.platform, d.app_version, d.joined_at, \
-           (SELECT MAX(c.hlc) FROM sync_clock c WHERE lower(hex(c.device)) = d.id), \
-           COALESCE((SELECT h.quarantined FROM sync_heads h WHERE lower(hex(h.device)) = d.id), 0) \
-         FROM sync_devices d WHERE d.removed = 0",
+        "SELECT id, name, platform, app_version, joined_at FROM sync_devices WHERE removed = 0",
     )?;
     let mut devices = stmt
         .query_map([], |r| {
             let id: String = r.get(0)?;
-            let hlc: Option<i64> = r.get(5)?;
-            let held: i64 = r.get(6)?;
             let this_device = id == this;
             let last_active_at = if this_device {
                 this_active
             } else {
-                hlc.map(|h| (unpack(h as u64).0 / 1000) as i64)
+                newest.get(&id).map(|h| (unpack(*h as u64).0 / 1000) as i64)
             };
             Ok(SyncDevice {
-                id,
+                held: held.contains(&id),
                 name: r.get(1)?,
                 platform: r.get(2)?,
                 app_version: r.get(3)?,
                 joined_at: r.get(4)?,
                 last_active_at,
                 this_device,
-                held: held != 0,
+                id,
             })
         })?
         .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -400,6 +418,39 @@ mod tests {
         assert_eq!(list[0].last_active_at, None, "this device never synced");
         assert_eq!(list[1].last_active_at, None);
         assert!(list_devices(&migrated()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn the_newest_clocks_are_read_along_the_device_index() {
+        let conn = migrated();
+        let plan: Vec<String> = conn
+            .prepare(&format!("EXPLAIN QUERY PLAN {NEWEST_CLOCKS}"))
+            .unwrap()
+            .query_map([], |r| r.get::<_, String>(3))
+            .unwrap()
+            .collect::<std::result::Result<_, _>>()
+            .unwrap();
+        assert!(
+            plan.iter()
+                .any(|step| step.contains("COVERING INDEX idx_sync_clock_device_hlc")),
+            "{plan:?}"
+        );
+        assert_eq!(hex_of(&DEVICE.0), DEVICE_HEX);
+    }
+
+    #[test]
+    fn renaming_needs_this_devices_row() {
+        let conn = migrated();
+        state::enable(&conn, DEVICE).unwrap();
+        // Sync is on, but this device's row was never recorded.
+        assert!(matches!(
+            rename_this_device(&conn, "MacBook"),
+            Err(AppError::Validation(k)) if k == "validation.syncSetupIncomplete"
+        ));
+        let rows: i64 = conn
+            .query_row("SELECT COUNT(*) FROM sync_devices", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rows, 0, "nothing was written");
     }
 
     #[test]

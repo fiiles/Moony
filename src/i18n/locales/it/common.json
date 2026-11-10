@@ -350,7 +350,7 @@
     "syncPairingBothOff": "La sincronizzazione è disattivata su entrambi i dispositivi. Attivala prima sul dispositivo che ha i tuoi dati.",
     "syncPairingCancelled": "L'altro dispositivo ha annullato l'abbinamento. Ricomincia su entrambi i dispositivi.",
     "syncPairingNotStarted": "Su questo dispositivo non è in corso alcun abbinamento. Ricomincia su entrambi i dispositivi.",
-    "syncPairingPasswordRequired": "Inserisci la password per abbinare i dispositivi.",
+    "syncPasswordNeeded": "Inserisci la password di questo dispositivo per continuare.",
     "syncRecoveryAccountInvalid": "Controlla il numero di account: sono le 16 cifre del kit di recupero della sincronizzazione.",
     "syncRecoveryVaultNotFound": "Il server di sincronizzazione non ha dati sincronizzati per questo codice di recupero. Controlla il codice e l'indirizzo del server di sincronizzazione nel kit di recupero della sincronizzazione.",
     "syncRecoveryKitRotated": "Le chiavi di questa sincronizzazione sono state cambiate; unirsi con un kit di recupero dopo questo cambio non è ancora supportato.",

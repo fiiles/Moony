@@ -157,7 +157,8 @@ fn base_urls_are_parsed_not_prefix_matched() {
 #[test]
 fn the_release_relay_is_the_default() {
     assert_eq!(DEFAULT_RELAY_URL, "https://sync.moonyfinance.com");
-    if std::env::var_os("MOONY_RELAY_URL").is_none() {
+    // Unless a debug build points at a dev sync server, at run time or baked in at build time.
+    if crate::services::sync::feature::dev_relay_base().is_none() {
         assert_eq!(default_base_url(), DEFAULT_RELAY_URL);
     }
     assert_eq!(MAX_JSON_BODY, 65_536);

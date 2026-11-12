@@ -105,15 +105,23 @@ fn open_capture(conn: &Connection) -> Result<()> {
     if !sync.enabled {
         return Ok(());
     }
-    let revived = repair::delete_revived_seeds(conn)?;
-    if revived > 0 {
-        log::info!("[SYNC] Deleted {revived} seeded rows that another device had deleted");
+    // A capture marked broken may have lost the deletes the sweep reads, and `schema_seen` stays
+    // put so the next clean unlock still sweeps what those migrations seeded.
+    let capture_ok = state::marks(conn)?.is_none_or(|m| m.capture_broken_at.is_none());
+    if capture_ok {
+        let seeded = registry::keys::seeded_tables(sync.schema_seen);
+        let revived = repair::delete_revived_seeds(conn, &seeded)?;
+        if revived > 0 {
+            log::info!("[SYNC] Deleted {revived} seeded rows that another device had deleted");
+        }
     }
     let requeued = chain::cross_barrier(conn, &sync)?;
     if requeued > 0 {
         log::info!("[SYNC] Crossed a barrier: queued {requeued} own rows again");
     }
-    state::note_schema_seen(conn)?;
+    if capture_ok {
+        state::note_schema_seen(conn)?;
+    }
     capture::install(conn, sync.device)?;
     // Capture records every change now; a guard from an earlier open of this connection goes.
     if capture::guard::is_imposed(conn) {

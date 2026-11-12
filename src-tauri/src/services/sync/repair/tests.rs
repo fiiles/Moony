@@ -707,58 +707,6 @@ fn repairs_record_no_clock_and_queue_nothing() {
 }
 
 #[test]
-fn a_seeded_row_with_a_tombstone_is_deleted_again() {
-    let conn = enabled();
-    let seed = "SELECT * FROM transaction_categories WHERE id = 'cat_entertainment'";
-    let row: (String, Option<String>, Option<String>, i64, i64, String) = conn
-        .query_row(
-            "SELECT name, icon, color, sort_order, is_system, kind FROM transaction_categories \
-             WHERE id = 'cat_entertainment'",
-            [],
-            |r| {
-                Ok((
-                    r.get(0)?,
-                    r.get(1)?,
-                    r.get(2)?,
-                    r.get(3)?,
-                    r.get(4)?,
-                    r.get(5)?,
-                ))
-            },
-        )
-        .expect(seed);
-    exec(
-        &conn,
-        "DELETE FROM transaction_categories WHERE id = 'cat_entertainment'",
-    );
-    assert_eq!(
-        count(
-            &conn,
-            "SELECT COUNT(*) FROM sync_clock WHERE tbl = 'transaction_categories' \
-             AND pk = 'cat_entertainment' AND col = '-'"
-        ),
-        1
-    );
-    capture::uninstall(&conn).unwrap();
-    conn.execute(
-        "INSERT INTO transaction_categories (id, name, icon, color, sort_order, is_system, kind) \
-         VALUES ('cat_entertainment', ?1, ?2, ?3, ?4, ?5, ?6)",
-        rusqlite::params![row.0, row.1, row.2, row.3, row.4, row.5],
-    )
-    .unwrap();
-
-    assert_eq!(delete_revived_seeds(&conn).unwrap(), 1);
-    assert_eq!(
-        count(
-            &conn,
-            "SELECT COUNT(*) FROM transaction_categories WHERE id = 'cat_entertainment'"
-        ),
-        0
-    );
-    assert_eq!(delete_revived_seeds(&conn).unwrap(), 0);
-}
-
-#[test]
 fn a_row_inserted_after_its_tombstone_is_not_a_revived_seed() {
     let conn = enabled();
     exec(
@@ -768,33 +716,12 @@ fn a_row_inserted_after_its_tombstone_is_not_a_revived_seed() {
          INSERT INTO institutions (id, name) VALUES ('i1', 'Bank');",
     );
     capture::uninstall(&conn).unwrap();
-    assert_eq!(delete_revived_seeds(&conn).unwrap(), 0);
+    assert_eq!(
+        delete_revived_seeds(&conn, &BTreeSet::from(["institutions"])).unwrap(),
+        0
+    );
     assert_eq!(
         count(&conn, "SELECT COUNT(*) FROM institutions WHERE id = 'i1'"),
         1
     );
-}
-
-#[test]
-fn opening_a_synced_profile_deletes_revived_seeds_before_capture() {
-    let conn = enabled();
-    exec(
-        &conn,
-        "INSERT INTO institutions (id, name) VALUES ('i1', 'Bank'); \
-         DELETE FROM institutions WHERE id = 'i1';",
-    );
-    capture::uninstall(&conn).unwrap();
-    exec(
-        &conn,
-        "INSERT INTO institutions (id, name) VALUES ('i1', 'Bank')",
-    );
-    exec(&conn, "DELETE FROM sync_outbox");
-
-    crate::services::sync::on_open(&conn);
-    assert!(capture::is_installed(&conn).unwrap());
-    assert_eq!(
-        count(&conn, "SELECT COUNT(*) FROM institutions WHERE id = 'i1'"),
-        0
-    );
-    assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_outbox"), 0);
 }

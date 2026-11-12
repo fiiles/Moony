@@ -1,6 +1,6 @@
 //! Unique-key rules, the foreign-key graph and migration classes of the sync registry.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use rusqlite::Connection;
 
@@ -352,20 +352,53 @@ const VOLATILE: [&str; 8] = [
 pub fn seeds_with_volatile_values(sql: &str, synced: &[&str]) -> bool {
     let code = strip_sql_comments(sql).to_lowercase();
     code.split(';').any(|statement| {
-        let words: Vec<&str> = statement
-            .split(|c: char| c.is_whitespace() || c == '(')
-            .filter(|w| !w.is_empty())
-            .collect();
-        let target = match words.as_slice() {
-            ["insert", rest @ ..] => rest
-                .iter()
-                .position(|w| *w == "into")
-                .and_then(|i| rest.get(i + 1)),
-            ["update", rest @ ..] => rest.iter().find(|w| **w != "or" && !is_conflict_word(w)),
-            _ => None,
-        };
-        target.is_some_and(|t| synced.contains(t)) && VOLATILE.iter().any(|v| statement.contains(v))
+        statement_target(statement).is_some_and(|t| synced.contains(&t))
+            && VOLATILE.iter().any(|v| statement.contains(v))
     })
+}
+
+/// The table a lower-cased `INSERT ... INTO t` or `UPDATE [OR x] t` statement writes to.
+fn statement_target(statement: &str) -> Option<&str> {
+    let words: Vec<&str> = statement
+        .split(|c: char| c.is_whitespace() || c == '(')
+        .filter(|w| !w.is_empty())
+        .collect();
+    match words.as_slice() {
+        ["insert", rest @ ..] => rest
+            .iter()
+            .position(|w| *w == "into")
+            .and_then(|i| rest.get(i + 1))
+            .copied(),
+        ["update", rest @ ..] => rest
+            .iter()
+            .find(|w| **w != "or" && !is_conflict_word(w))
+            .copied(),
+        _ => None,
+    }
+}
+
+/// The Synced tables that a migration numbered above `after` inserts into or updates.
+pub fn seeded_tables(after: u32) -> BTreeSet<&'static str> {
+    let mut tables = BTreeSet::new();
+    for name in crate::db::known_migration_names()
+        .into_iter()
+        .skip(after as usize)
+    {
+        let Some(sql) = crate::db::migration_sql(name) else {
+            continue;
+        };
+        let code = strip_sql_comments(sql).to_lowercase();
+        for statement in code.split(';') {
+            let Some(target) = statement_target(statement) else {
+                continue;
+            };
+            let target = target.trim_matches(|c| c == '"' || c == '`' || c == '[' || c == ']');
+            if let Some(spec) = super::synced_tables().find(|t| t.name == target) {
+                tables.insert(spec.name);
+            }
+        }
+    }
+    tables
 }
 
 fn is_conflict_word(word: &str) -> bool {
@@ -624,6 +657,17 @@ mod tests {
                 !seeds_with_volatile_values(crate::db::migration_sql(name).unwrap(), &synced),
                 "{name}"
             );
+        }
+    }
+
+    #[test]
+    fn seeded_tables_reads_the_migrations_after_a_number() {
+        let all = seeded_tables(0);
+        assert!(all.contains("transaction_categories"));
+        assert!(seeded_tables(schema_number()).is_empty());
+        let synced: Vec<&str> = synced_tables().map(|t| t.name).collect();
+        for name in all {
+            assert!(synced.contains(&name), "{name}");
         }
     }
 

@@ -791,6 +791,9 @@ fn migration_seed_revival_is_deleted_again() {
     let seed_sql = crate::db::migration_sql("010_income_categories").expect("migration 010");
     b.execute_batch(seed_sql).expect("re-run the seed");
     assert_eq!(count(b, seeded), 1, "the seed brought the row back");
+    // Migration 010 ran just now: the last unlock had seen the schema up to 009.
+    b.execute("UPDATE sync_state SET schema_seen = 9", [])
+        .expect("the schema seen before the migration");
     sync::on_open(b);
 
     assert_eq!(count(b, seeded), 0);

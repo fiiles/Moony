@@ -348,25 +348,16 @@ async fn a_rejoin_happens_before_any_push_in_the_round() {
     assert!(has_institution(&a, "theirs") && has_institution(&a, "mine"));
 }
 
-/// Ruling P1: a pull that stopped on a gap, an envelope that does not open or a broken chain link
-/// pushes nothing in that round; the queued rows stay where they are.
+/// Ruling P1: a pull that stopped on an envelope that does not open or a broken chain link pushes
+/// nothing in that round; the queued rows stay where they are. (A gap holds and pushes: `gaps`.)
 #[tokio::test]
 async fn a_stopped_pull_skips_the_push() {
     for (what, expected) in [
-        ("gap", SyncProblem::Gap),
         ("undecryptable", SyncProblem::Undecryptable),
         ("invalid chain", SyncProblem::InvalidChain),
     ] {
         let vault = super::vault().await;
         match what {
-            "gap" => {
-                let sealed: Vec<Vec<u8>> = ["b1", "b2", "b3"]
-                    .iter()
-                    .map(|id| write_and_seal(&vault, &vault.b, id))
-                    .collect();
-                push(&vault.relay, &vault.creds, &sealed).await;
-                vault.relay.drop_op(2);
-            }
             "undecryptable" => {
                 let mut tampered = write_and_seal(&vault, &vault.b, "b1");
                 *tampered.last_mut().expect("tag") ^= 1;
@@ -468,7 +459,7 @@ async fn a_snapshot_is_dumped_only_after_a_clean_pull() {
     assert!(report.push.is_some() && !report.snapshot_uploaded);
     assert_eq!(routes(&held.relay, Route::PutSnapshot), 0);
 
-    // A gap: no push, no upload.
+    // A gap: a push, but no upload.
     let gap = super::vault().await;
     let sealed: Vec<Vec<u8>> = ["b1", "b2"]
         .iter()

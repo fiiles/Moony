@@ -24,7 +24,7 @@
       "quotaExceeded": "The synced data is over the storage limit.",
       "snapshotTooLarge": "The data is too large to sync.",
       "newerSchema": "Another device uses a newer version of Moony. Update this app to continue.",
-      "gap": "This device's sync history is inconsistent. Re-sync this device.",
+      "gap": "A change from another device hasn't arrived yet. This device keeps syncing and sending its own changes.",
       "undecryptable": "Changes from another device could not be decrypted.",
       "invalidChain": "Changes from another device failed verification and are held.",
       "missingParent": "Changes from another device are missing earlier steps and are held.",

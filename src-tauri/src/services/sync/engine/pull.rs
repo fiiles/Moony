@@ -1,8 +1,11 @@
 //! Pull (spec §9.3, §9.4): pages of envelopes from the relay, each one opened, judged against its
 //! author's chain and applied or acted on, the cursor moving exactly as far as the verdicts
 //! allow. The relay is untrusted: a page outside its contract, an envelope that does not open
-//! and a broken chain all stop the pull without moving the cursor past them; nothing this device
-//! has not taken is skipped.
+//! and a broken chain link all stop the pull without moving the cursor past them; nothing this
+//! device has not taken is skipped. An envelope that comes before an earlier one of its author, or
+//! that references a parent not here yet, is held like a quarantined author's (audit M3): the
+//! cursor stays before it, the rest of the pull goes on, and this device keeps pushing, so a
+//! withheld or reordered envelope never stalls it.
 
 use rusqlite::Connection;
 
@@ -33,8 +36,8 @@ pub(crate) const DEFAULT_DEVICE_NAME: &str = "Moony";
 pub enum OpStep {
     /// Dealt with: the cursor may move past it.
     Advance,
-    /// Kept for a quarantined author: the cursor stays before it, later envelopes are still
-    /// handled.
+    /// Kept for a quarantined author, or waiting for an earlier envelope of its author or for a
+    /// parent it references: the cursor stays before it, later envelopes are still handled.
     Hold,
     /// The pull ends here; the cursor stays before it.
     Stop(PullStop),
@@ -44,10 +47,10 @@ pub enum OpStep {
 }
 
 /// Opens, judges and applies (or acts on) one pulled envelope, under the connection lock.
-/// `report.applied` and `report.rejoined` are kept here; the caller keeps the cursor, `held` and
-/// `stop`. On `Clone` the device re-joins and the same envelope is judged again (the old ID is
-/// then an author like any other). An error is a local failure (the database, or a re-join that
-/// could not finish) and ends the round, so it never pushes.
+/// `report.applied`, `report.held`, `report.gaps` and `report.rejoined` are kept here; the caller
+/// keeps the cursor and `stop`. On `Clone` the device re-joins and the same envelope is judged
+/// again (the old ID is then an author like any other). An error is a local failure (the
+/// database, or a re-join that could not finish) and ends the round, so it never pushes.
 pub fn handle_op(
     conn: &Connection,
     creds: &Credentials,
@@ -100,13 +103,16 @@ fn act(
                 report.applied += 1;
                 OpStep::Advance
             }
+            // The merge rolled back: the parent may come in a later envelope (a resent one, or
+            // one the relay placed after this), so the change waits like a gap.
             Outcome::Stopped(StopReason::MissingParent { table, key, parent }) => {
                 log::debug!("[SYNC] {table} {key} references the missing parent {parent}");
-                log::warn!(
-                    "[SYNC] Relay op {} references a parent this device has not seen",
+                log::debug!(
+                    "[SYNC] Relay op {} references a parent this device has not seen: it waits",
                     meta.position
                 );
-                OpStep::Stop(PullStop::MissingParent)
+                report.gaps += 1;
+                OpStep::Hold
             }
             Outcome::Stopped(StopReason::NewerSchema(_)) => OpStep::Stop(PullStop::NewerSchema),
         },
@@ -122,14 +128,25 @@ fn act(
                 meta.device.to_hex()
             );
             chain::quarantine(conn, meta.device)?;
+            report.held += 1;
             OpStep::Hold
         }
-        Verdict::Held => OpStep::Hold,
+        Verdict::Held => {
+            report.held += 1;
+            OpStep::Hold
+        }
         Verdict::BelowBarrier => {
             chain::skip_below_barrier(conn, meta)?;
             OpStep::Advance
         }
-        Verdict::Gap => OpStep::Stop(PullStop::Gap),
+        Verdict::Gap => {
+            log::debug!(
+                "[SYNC] Relay op {} comes before an earlier envelope of its author: it waits",
+                meta.position
+            );
+            report.gaps += 1;
+            OpStep::Hold
+        }
         Verdict::NewerSchema => OpStep::Stop(PullStop::NewerSchema),
         Verdict::Invalid => OpStep::Stop(PullStop::Invalid),
     };
@@ -140,9 +157,11 @@ fn act(
 /// pull reaches its bounds. Each page is fetched without the connection lock and checked against
 /// the relay contract before any of its envelopes is handled, each envelope under its own lock.
 /// The persisted cursor moves over consecutive envelopes that were dealt with (`Advance`,
-/// `Rejoined`); after the first `Hold` it stays before that envelope while later ones are still
-/// handled (other authors keep syncing). A stop ends the pull with the cursor before the stopping
-/// envelope, and so does a page outside the contract (`Invalid`).
+/// `Rejoined`); after the first `Hold` (a quarantined author, a gap in an author's chain, a missing
+/// parent) it stays before that envelope while later ones are still handled (other authors keep
+/// syncing, this device's own envelopes are still acknowledged), so the next pull meets the held
+/// envelope again. A stop ends the pull with the cursor before the stopping envelope, and so does
+/// a page outside the contract (`Invalid`).
 ///
 /// Relay positions are not authenticated, so one pull is bounded: it ends once it has handled
 /// everything up to the head the first page reported (later envelopes are left to the next
@@ -150,8 +169,7 @@ fn act(
 /// (`unfinished`: a relay that keeps reporting a higher head, or a backlog that large).
 ///
 /// An envelope's size counts towards `pulled_bytes` once, when the persisted cursor moves past
-/// it: an envelope fetched again (held behind a quarantined author, or after a stop) is not
-/// counted again.
+/// it: an envelope fetched again (behind a held one, or after a stop) is not counted again.
 ///
 /// When the relay's head is past the last envelope it served, the report says `behind`; the
 /// cursor never moves to the head.
@@ -206,10 +224,7 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
                     report.stop = Some(stop);
                     return Ok(report);
                 }
-                OpStep::Hold => {
-                    holding = true;
-                    report.held += 1;
-                }
+                OpStep::Hold => holding = true,
                 OpStep::Advance | OpStep::Rejoined => {}
             }
             after = op.seq;

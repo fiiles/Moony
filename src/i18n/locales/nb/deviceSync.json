@@ -24,7 +24,7 @@
       "quotaExceeded": "De synkroniserte dataene overskrider lagringsgrensen.",
       "snapshotTooLarge": "Dataene er for store til å synkroniseres.",
       "newerSchema": "En annen enhet bruker en nyere versjon av Moony. Oppdater denne appen for å fortsette.",
-      "gap": "Synkroniseringshistorikken til denne enheten er inkonsekvent. Synkroniser denne enheten på nytt.",
+      "gap": "En endring fra en annen enhet har ikke kommet ennå. Denne enheten fortsetter å synkronisere og sende sine egne endringer.",
       "undecryptable": "Endringer fra en annen enhet kunne ikke dekrypteres.",
       "invalidChain": "Endringer fra en annen enhet besto ikke verifiseringen og holdes tilbake.",
       "missingParent": "Endringer fra en annen enhet mangler tidligere trinn og holdes tilbake.",

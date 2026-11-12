@@ -41,7 +41,7 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
   };
 
   const selfHosted = isSelfHostedPaidUntil(status.paidUntil);
-  const action = problemAction(problem, selfHosted);
+  const action = problemAction(problem, selfHosted, status.pendingChanges);
   let title: string | null = null;
   let body: string | null = t(`status.problem.${problem}`);
   let actions: React.ReactNode = null;

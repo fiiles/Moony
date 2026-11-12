@@ -24,7 +24,7 @@
       "quotaExceeded": "Zsynchronizowane dane przekraczają limit miejsca.",
       "snapshotTooLarge": "Dane są za duże do synchronizacji.",
       "newerSchema": "Inne urządzenie używa nowszej wersji Moony. Zaktualizuj tę aplikację, aby kontynuować.",
-      "gap": "Historia synchronizacji tego urządzenia jest niespójna. Zsynchronizuj to urządzenie ponownie.",
+      "gap": "Zmiana z innego urządzenia jeszcze nie dotarła. To urządzenie nadal synchronizuje dane i wysyła własne zmiany.",
       "undecryptable": "Nie udało się odszyfrować zmian z innego urządzenia.",
       "invalidChain": "Zmiany z innego urządzenia nie przeszły weryfikacji i są wstrzymane.",
       "missingParent": "Zmianom z innego urządzenia brakuje wcześniejszych kroków i są wstrzymane.",

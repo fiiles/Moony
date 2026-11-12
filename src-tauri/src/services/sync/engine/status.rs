@@ -165,19 +165,20 @@ pub fn problem_of(error: &SyncError) -> SyncProblem {
     }
 }
 
-/// The problem a pull leaves: its stop, or held envelopes; `None` for a pull that ended done or
-/// unfinished (the next round goes on).
+/// The problem a pull leaves: its stop, envelopes waiting for a missing one or a missing parent
+/// (`Gap`: this device keeps syncing and pushing), or a quarantined author's held envelopes; `None`
+/// for a pull that ended done or unfinished (the next round goes on). `MissingParent` is no longer
+/// produced: a missing parent waits like a gap.
 pub fn problem_of_pull(pull: &PullReport) -> Option<SyncProblem> {
     use SyncProblem as P;
     match pull.end() {
         PullEnd::Done | PullEnd::Unfinished => None,
+        PullEnd::Waiting => Some(P::Gap),
         PullEnd::Held => Some(P::Quarantined),
         PullEnd::Stopped(stop) => Some(match stop {
-            PullStop::Gap => P::Gap,
             PullStop::Invalid => P::InvalidChain,
             PullStop::Undecryptable => P::Undecryptable,
             PullStop::NewerSchema => P::NewerSchema,
-            PullStop::MissingParent => P::MissingParent,
         }),
     }
 }

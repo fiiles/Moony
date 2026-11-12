@@ -24,7 +24,7 @@
       "quotaExceeded": "Synchronizovaná data překračují limit úložiště.",
       "snapshotTooLarge": "Data jsou na synchronizaci příliš velká.",
       "newerSchema": "Jiné zařízení používá novější verzi Moony. Pro pokračování aplikaci aktualizujte.",
-      "gap": "Historie synchronizace tohoto zařízení je nekonzistentní. Synchronizujte toto zařízení znovu.",
+      "gap": "Změna z jiného zařízení zatím nedorazila. Toto zařízení dál synchronizuje a odesílá své vlastní změny.",
       "undecryptable": "Změny z jiného zařízení se nepodařilo dešifrovat.",
       "invalidChain": "Změny z jiného zařízení neprošly ověřením a jsou zadržené.",
       "missingParent": "Změnám z jiného zařízení chybí dřívější kroky a jsou zadržené.",

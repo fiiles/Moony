@@ -4,12 +4,13 @@
 use super::pull::{write_and_seal, Mangled};
 use super::*;
 use crate::services::sync::engine::pull::pull_all;
-use crate::services::sync::engine::PullStop;
+use crate::services::sync::engine::PullEnd;
 use crate::services::sync::relay::PullPage;
 
-// Audit M3 (out-of-order author wedges the pull): flipped by the pull-ordering task.
+// Audit M3 (out-of-order author): fixed by Task 15. The envelope that arrives before its author's
+// earlier one is held; the earlier one applies, and the next pull applies the held one.
 #[tokio::test]
-async fn poc_m3_out_of_order_author_wedges_the_pull_for_good() {
+async fn an_out_of_order_author_is_applied_on_the_next_pull() {
     let vault = vault().await;
     let b1 = write_and_seal(&vault, &vault.b, "b1");
     let b2 = write_and_seal(&vault, &vault.b, "b2");
@@ -25,14 +26,28 @@ async fn poc_m3_out_of_order_author_wedges_the_pull_for_good() {
             p
         },
     };
-    for _ in 0..3 {
-        let r = pull_all(&relay, &vault.a, &vault.creds, NOW)
-            .await
-            .expect("pull");
-        assert_eq!(r.stop, Some(PullStop::Gap));
-        assert!(!r.may_push());
-        assert_eq!(cursor(&vault.a.lock()), 0);
+
+    let first = pull_all(&relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("first pull");
+
+    assert_eq!(first.end(), PullEnd::Waiting);
+    assert_eq!((first.gaps, first.applied), (1, 1));
+    assert!(first.may_push());
+    {
+        let a = vault.a.lock();
+        assert_eq!(cursor(&a), 0);
+        assert!(has_institution(&a, "b1") && !has_institution(&a, "b2"));
     }
+
+    let second = pull_all(&relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("second pull");
+
+    assert!(second.done(), "{second:?}");
+    let a = vault.a.lock();
+    assert_eq!(cursor(&a), 2);
+    assert!(has_institution(&a, "b1") && has_institution(&a, "b2"));
 }
 
 // Audit M4 (acknowledged envelope the relay drops): flipped by the push-verification task.
@@ -56,7 +71,8 @@ async fn poc_m4_acknowledged_envelope_the_relay_drops_is_never_sent_again() {
     let b = pull_all(&vault.relay, &vault.b, &vault.creds, NOW)
         .await
         .expect("B");
-    assert_eq!(b.stop, Some(PullStop::Gap));
+    // B holds A's envelope 2 behind the missing 1 (Task 15) and waits for it.
+    assert_eq!(b.end(), PullEnd::Waiting);
     let a = vault.a.lock();
     assert_eq!(
         count(

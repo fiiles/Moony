@@ -47,11 +47,10 @@ impl ConnAccess for crate::db::Database {
 }
 
 /// Why a pull stopped before the relay's end. The cursor stays before the envelope that stopped
-/// it, so the next pull meets it again.
+/// it, so the next pull meets it again. A missing envelope or parent is no stop: it is held
+/// (`PullReport::gaps`, audit M3).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PullStop {
-    /// An envelope of an author is missing (the relay dropped it).
-    Gap,
     /// A malformed chain link, a changeset that does not parse, or a pull page outside the
     /// relay contract: more envelopes than the limit, a sequence not above `after` or not
     /// increasing, a head below the page's last sequence or below `after` (the head never goes
@@ -62,8 +61,6 @@ pub enum PullStop {
     Undecryptable,
     /// Written by a newer schema than this build knows.
     NewerSchema,
-    /// A changeset references a parent this device has never seen; the merge rolled back.
-    MissingParent,
 }
 
 /// How a pull ended (ruling P1), from `PullReport::end`.
@@ -73,6 +70,9 @@ pub enum PullEnd {
     Done,
     /// Every envelope was dealt with except a quarantined author's, which are held.
     Held,
+    /// Every envelope was dealt with except those waiting for an earlier envelope of their author
+    /// or for a parent they reference (held; the next pull meets them again, audit M3).
+    Waiting,
     /// The pull reached its page limit before the relay's head; the next round goes on.
     Unfinished,
     /// The pull stopped on an envelope (or a page) and went no further.
@@ -89,6 +89,9 @@ pub struct PullReport {
     pub rejoined: bool,
     /// Envelopes held for a quarantined author.
     pub held: usize,
+    /// Envelopes held because an earlier one of their author, or a parent they reference, has not
+    /// arrived.
+    pub gaps: usize,
     /// The profile was restored from a snapshot (`snapshots::restore_after_410`).
     pub restored: bool,
     /// The relay's head is past the last envelope it served: it withholds a trailing envelope (or
@@ -105,31 +108,37 @@ impl PullReport {
         self.end() == PullEnd::Done
     }
 
-    /// A stop comes first, then an unfinished pull, then held envelopes.
+    /// A stop comes first, then an unfinished pull, then envelopes waiting for an earlier one
+    /// (gaps), then a quarantined author's held envelopes.
     pub fn end(&self) -> PullEnd {
         match &self.stop {
             Some(stop) => PullEnd::Stopped(stop.clone()),
             None if self.unfinished => PullEnd::Unfinished,
+            None if self.gaps > 0 => PullEnd::Waiting,
             None if self.held > 0 => PullEnd::Held,
             None => PullEnd::Done,
         }
     }
 
-    /// Whether the round may push after this pull (ruling P1): the pull ended done, with only a
-    /// quarantined author's envelopes held, or stopped only on a newer schema (an older device
-    /// keeps pushing, spec §14). An unfinished pull does not push: a device that is behind
-    /// catches up before adding more (§9.4).
+    /// Whether the round may push after this pull (ruling P1): the pull ended done, with only
+    /// held envelopes (a quarantined author's, or ones waiting for a missing envelope or parent:
+    /// a withheld envelope never stalls this device, audit M3), or stopped only on a newer schema
+    /// (an older device keeps pushing, spec §14). An unfinished pull does not push: a device that
+    /// is behind catches up before adding more (§9.4).
     pub fn may_push(&self) -> bool {
         matches!(
             self.end(),
-            PullEnd::Done | PullEnd::Held | PullEnd::Stopped(PullStop::NewerSchema)
+            PullEnd::Done
+                | PullEnd::Held
+                | PullEnd::Waiting
+                | PullEnd::Stopped(PullStop::NewerSchema)
         )
     }
 
     /// Whether the round may dump and upload a snapshot after this pull (rulings P4, P14): only
-    /// after a pull that ended done. Unlike `may_push`, held envelopes and a newer schema rule it
-    /// out too: the snapshot's sequence is the cursor this device applied, and a restorer skips
-    /// everything up to it.
+    /// after a pull that ended done. Unlike `may_push`, held or waiting envelopes and a newer
+    /// schema rule it out too: the snapshot's sequence is the cursor this device applied, and a
+    /// restorer skips everything up to it.
     pub fn may_snapshot(&self) -> bool {
         self.done()
     }
@@ -335,6 +344,13 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         }
         other => other?,
     };
+    if pulled.gaps > 0 {
+        // Once per round, not per envelope: every later envelope of a waiting author waits too.
+        log::info!(
+            "[SYNC] {} envelopes wait for an earlier envelope or a parent that has not arrived",
+            pulled.gaps
+        );
+    }
     let may_push = pulled.may_push();
     report.pull = Some(pulled);
     if !may_push {
@@ -402,6 +418,7 @@ fn absorb(first: &mut PullReport, later: PullReport) {
     first.rejoined |= later.rejoined;
     first.restored |= later.restored;
     first.held = later.held;
+    first.gaps = later.gaps;
     first.stop = later.stop;
     first.behind = later.behind;
     first.unfinished = later.unfinished;

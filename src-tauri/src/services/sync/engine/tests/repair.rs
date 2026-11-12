@@ -219,7 +219,8 @@ enum Fault {
 }
 
 /// A capture-broken `B` with one change already sealed and waiting in `sync_unsent`, and `fault`
-/// in the drain's way; the repair must stop and leave `B` as it was, but for the backup.
+/// in the drain's way; the repair must stop and leave `B` as it was, but for the backup. A gap
+/// holds without stopping the drain's pushes (audit M3): `B`'s change is sent, nothing replaced.
 async fn repair_with(fault: Fault) {
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;
@@ -261,7 +262,16 @@ async fn repair_with(fault: Fault) {
         Some("validation.syncRepairDrainIncomplete"),
         "{fault:?}: {error:?}"
     );
-    assert_eq!(repair_state(&vault.b.lock()), before, "{fault:?}");
+    match fault {
+        Fault::Gap => {
+            assert!(
+                relay_has_institution(&vault, "b1"),
+                "the drain still pushed"
+            );
+            assert_eq!(device_of(&vault.b.lock()), B, "nothing replaced");
+        }
+        _ => assert_eq!(repair_state(&vault.b.lock()), before, "{fault:?}"),
+    }
     assert_eq!(
         repair_backups(dir.path()),
         vec![format!("sync-repair-{NOW}-unused.zip")],

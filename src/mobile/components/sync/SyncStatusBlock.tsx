@@ -109,7 +109,11 @@ function ProblemAlert({
   const problem = status.problem;
   if (!problem) return null;
 
-  const action = problemAction(problem, isSelfHostedPaidUntil(status.paidUntil));
+  const action = problemAction(
+    problem,
+    isSelfHostedPaidUntil(status.paidUntil),
+    status.pendingChanges
+  );
   let title: string | undefined;
   let body = t(`status.problem.${problem}`);
   let actions: Array<{ label: string; onClick: () => void; disabled?: boolean }> = [];

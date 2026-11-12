@@ -208,7 +208,7 @@ async fn a_clone_whose_trigger_then_forks_is_held() {
 }
 
 #[tokio::test]
-async fn gap_stops_without_moving_the_cursor() {
+async fn a_gap_holds_without_moving_the_cursor_past_it() {
     let vault = vault().await;
     let sealed: Vec<Vec<u8>> = ["b1", "b2", "b3"]
         .iter()
@@ -219,9 +219,9 @@ async fn gap_stops_without_moving_the_cursor() {
 
     let report = pull(&vault, &vault.a).await;
 
-    assert_eq!(report.stop, Some(PullStop::Gap));
-    assert_eq!(report.applied, 1);
-    assert!(!report.may_push());
+    assert_eq!(report.end(), PullEnd::Waiting);
+    assert_eq!((report.applied, report.gaps), (1, 1));
+    assert!(report.may_push() && !report.may_snapshot());
     let a = vault.a.lock();
     assert_eq!(cursor(&a), 1);
     assert_eq!(head(&a, B).map(|h| h.0), Some(1));
@@ -344,7 +344,7 @@ async fn quarantine_keeps_the_cursor_before_the_held_envelope_while_others_apply
 }
 
 #[tokio::test]
-async fn a_missing_parent_rolls_back_and_keeps_the_cursor() {
+async fn a_missing_parent_rolls_back_and_holds_the_cursor() {
     let vault = vault().await;
     let g = Clock {
         hlc: 1_000 << 16,
@@ -385,8 +385,9 @@ async fn a_missing_parent_rolls_back_and_keeps_the_cursor() {
 
     let report = pull(&vault, &vault.a).await;
 
-    assert_eq!(report.stop, Some(PullStop::MissingParent));
-    assert_eq!(report.applied, 0);
+    assert_eq!(report.end(), PullEnd::Waiting);
+    assert_eq!((report.applied, report.gaps), (0, 1));
+    assert!(report.may_push());
     let a = vault.a.lock();
     assert_eq!(cursor(&a), 0);
     assert_eq!(head(&a, C), None);
@@ -689,6 +690,10 @@ fn the_report_says_how_the_pull_ended_and_whether_the_round_may_push() {
         held,
         ..PullReport::default()
     };
+    let gaps = |stop: Option<PullStop>, held: usize, gaps: usize| PullReport {
+        gaps,
+        ..report(stop, held)
+    };
     let unfinished = |stop: Option<PullStop>, held: usize| PullReport {
         unfinished: true,
         ..report(stop, held)
@@ -716,14 +721,25 @@ fn the_report_says_how_the_pull_ended_and_whether_the_round_may_push() {
             false,
             true,
         ),
+        (gaps(None, 0, 1), PullEnd::Waiting, false, true),
+        (gaps(None, 2, 1), PullEnd::Waiting, false, true),
         (
-            report(Some(PullStop::Gap), 0),
-            PullEnd::Stopped(PullStop::Gap),
+            PullReport {
+                unfinished: true,
+                ..gaps(None, 0, 1)
+            },
+            PullEnd::Unfinished,
             false,
             false,
         ),
         (
-            report(Some(PullStop::Invalid), 1),
+            gaps(Some(PullStop::NewerSchema), 0, 1),
+            PullEnd::Stopped(PullStop::NewerSchema),
+            false,
+            true,
+        ),
+        (
+            gaps(Some(PullStop::Invalid), 1, 1),
             PullEnd::Stopped(PullStop::Invalid),
             false,
             false,
@@ -731,12 +747,6 @@ fn the_report_says_how_the_pull_ended_and_whether_the_round_may_push() {
         (
             report(Some(PullStop::Undecryptable), 0),
             PullEnd::Stopped(PullStop::Undecryptable),
-            false,
-            false,
-        ),
-        (
-            report(Some(PullStop::MissingParent), 0),
-            PullEnd::Stopped(PullStop::MissingParent),
             false,
             false,
         ),

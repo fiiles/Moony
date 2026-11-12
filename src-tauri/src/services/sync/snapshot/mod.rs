@@ -11,13 +11,15 @@
 //!
 //! - **replace** (a joining device): the synced and Seed tables are emptied first, so the
 //!   joiner's own rows and migration seeds cannot come back (a seed deleted in the vault left a
-//!   tombstone, not a row);
+//!   tombstone, not a row); this device's documents and photos are kept aside and put back
+//!   wherever the vault has their item (`attachments`, audit H3);
 //! - **merge** (after `410 snapshot_required`, or a re-join): the device's rows came from the
 //!   vault, so they merge by their clocks; the outbox stays and is pushed afterwards.
 //!
 //! A stream is read whole and checked before anything is written; a snapshot from below the
 //! barrier this device has crossed is refused (§14).
 
+mod attachments;
 mod stream;
 
 pub use stream::{read_record, Head, Record};
@@ -131,6 +133,18 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
 pub struct RestoreReport {
     pub stats: DumpStats,
     pub warnings: Vec<String>,
+    /// This device's documents and photos a replace carried over or let go (zero after a merge,
+    /// which keeps them all).
+    pub attachments: AttachmentCarry,
+}
+
+/// What a replace did with this device's attachment rows, which no snapshot carries: documents
+/// and photos (photo batches are not counted) re-attached to their item from the vault (`kept`),
+/// and those whose item the vault lacks, gone with their blobs (`orphaned`).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct AttachmentCarry {
+    pub kept: u32,
+    pub orphaned: u32,
 }
 
 /// A device joins the vault from a snapshot, in the order of ruling R4: its `sync_state` row,
@@ -161,10 +175,12 @@ pub fn join(
 /// snapshot's rows go in through the merge engine, its seeds and heads are written, the cursor
 /// and snapshot bookkeeping set, and every repair runs.
 ///
-/// A joining device replaces everything: emptying the synced tables cascades away the Local rows
-/// that hang off them, so the joiner's own attachment rows (`real_estate_photo_batches` and their
-/// photos, `real_estate_documents`, `insurance_documents`) go with its own real estate and
-/// policies.
+/// The Local attachment rows that hang off synced rows (`real_estate_photo_batches` and their
+/// photos, `real_estate_documents`, `insurance_documents`) never travel in a snapshot. They are
+/// kept aside before the clear and put back, under their own IDs, wherever the vault has their
+/// real estate or policy (a repair or re-sync, which comes back under the same IDs, or a re-join
+/// of a device that was in the vault); the others go with their blobs, as the joiner's own items
+/// do. `RestoreReport::attachments` counts both.
 pub fn restore_replace(
     conn: &Connection,
     input: &mut impl Read,
@@ -187,7 +203,7 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
         let sync = admissible(conn, &snapshot)?;
         let mut report = RestoreReport {
             stats: stats_of(&snapshot),
-            warnings: Vec::new(),
+            ..RestoreReport::default()
         };
         observe(conn, report.stats.max_hlc, &mut report.warnings)?;
         match merge::merge_rows(conn, &snapshot.rows, now)? {
@@ -210,7 +226,7 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<Restor
     let sync = admissible(conn, &snapshot)?;
     let mut report = RestoreReport {
         stats: stats_of(&snapshot),
-        warnings: Vec::new(),
+        ..RestoreReport::default()
     };
     conn.execute_batch("PRAGMA defer_foreign_keys = ON")?;
     // The rows go in in merge mode, so nothing is clocked or queued. Without capture (a joining
@@ -220,6 +236,30 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<Restor
         capture::install(conn, sync.device)?;
     }
     observe(conn, report.stats.max_hlc, &mut report.warnings)?;
+    // This device's documents and photos (Local, never in a snapshot) are kept aside before the
+    // clear and put back under the items the vault has before the repair, whose blob purge then
+    // takes only the blobs of rows that were not (audit H3).
+    let kept = attachments::keep(conn)?;
+    if let Err(error) = refill(conn, &mut snapshot, &sync, &mut report) {
+        attachments::discard(conn);
+        return Err(error);
+    }
+    report.attachments = attachments::reattach(conn, kept)?;
+    report.warnings.extend(repair::full(conn, now)?.warnings);
+    if !installed {
+        capture::uninstall(conn)?;
+    }
+    Ok(report)
+}
+
+/// The middle of `replace`: empties what a replace restores, then writes the snapshot's rows,
+/// seeds, heads and bookkeeping.
+fn refill(
+    conn: &Connection,
+    snapshot: &mut Snapshot,
+    sync: &SyncState,
+    report: &mut RestoreReport,
+) -> Result<()> {
     capture::with_mode(conn, Mode::Repair, || clear(conn))?;
     if let Some(i) = snapshot
         .rows
@@ -240,12 +280,7 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<Restor
         return Err(invalid());
     }
     report.warnings.append(&mut ctx.report.warnings);
-    finish(conn, &snapshot, &sync, report.stats.max_hlc, true)?;
-    report.warnings.extend(repair::full(conn, now)?.warnings);
-    if !installed {
-        capture::uninstall(conn)?;
-    }
-    Ok(report)
+    finish(conn, snapshot, sync, report.stats.max_hlc, true)
 }
 
 /// Moves this connection's clock past the snapshot's newest clock (capture is installed on every

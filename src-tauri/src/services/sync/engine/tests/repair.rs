@@ -442,6 +442,55 @@ async fn resync_replaces_a_capture_broken_profile_and_keeps_its_unsent_changes_i
     assert!(has_institution(&copy, "b-sealed") && has_institution(&copy, "b-queued"));
 }
 
+/// Audit H3, as reproduced there: a policy with a contract PDF on `B`, then "Re-sync this
+/// device". The policy comes back from the vault under its ID, and so do its document and blob.
+#[tokio::test]
+async fn a_resync_keeps_the_contract_pdf_of_a_policy_the_vault_has() {
+    let vault = vault().await;
+    exec(
+        &vault.a.lock(),
+        "INSERT INTO insurance_policies \
+           (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
+         VALUES ('p1', 'life', 'Insurer', 'Life', '123', 1767225600, 'monthly')",
+    );
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    let blob = {
+        let b = vault.b.lock();
+        b.execute("ATTACH DATABASE ':memory:' AS files", [])
+            .expect("attach");
+        crate::db::files_schema::migrate(&b).expect("files schema");
+        let blob = crate::services::attachment_store::put_bytes(&b, b"%PDF-1.7 contract")
+            .expect("blob")
+            .id;
+        b.execute(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id) \
+             VALUES ('d1', 'p1', 'Contract', ?1)",
+            [&blob],
+        )
+        .expect("document");
+        blob
+    };
+    let dir = tempfile::tempdir().expect("dir");
+
+    resync_by_replace(&vault.relay, &vault.b, dir.path(), &XorNative, NOW)
+        .await
+        .expect("resync");
+
+    let b = vault.b.lock();
+    assert_eq!(
+        count(
+            &b,
+            "SELECT COUNT(*) FROM insurance_documents WHERE id = 'd1'"
+        ),
+        1
+    );
+    assert_eq!(
+        crate::services::attachment_store::read_all(&b, &blob).expect("blob"),
+        b"%PDF-1.7 contract".to_vec()
+    );
+}
+
 /// The repair stops at a backup that fails: no relay call, no capture install, `B` unchanged.
 async fn repair_with_a_failing_backup(
     spoil: impl FnOnce(&Connection),

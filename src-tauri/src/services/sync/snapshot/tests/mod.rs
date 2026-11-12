@@ -2,6 +2,7 @@
 //! third device `C` whose changesets `A` merges. `stream` holds what the stream carries and
 //! refuses, `restore` what each restore leaves behind.
 
+mod attachments;
 mod restore;
 mod stream;
 
@@ -142,6 +143,39 @@ fn stream_of(records: &[Record]) -> Vec<u8> {
         write_record(&mut out, &encode(record, &mut devs)).expect("write");
     }
     out
+}
+
+/// `bytes` with one more row record at the end of the rows: a category whose parent no device
+/// has ever seen, so the merge stops after writing every row before it.
+fn with_orphan(bytes: &[u8]) -> Vec<u8> {
+    let mut all = records(bytes);
+    let at = all
+        .iter()
+        .position(|r| matches!(r, Record::Seed { .. } | Record::End { .. }))
+        .expect("seeds or end");
+    let clock = Clock { hlc: 5, device: A };
+    let text = |v: &str| (SqlValue::Text(v.to_string()), clock);
+    all.insert(
+        at,
+        Record::Row(RowChange {
+            table: "transaction_categories".into(),
+            key: RowKey::Single("orphan".into()),
+            generation: clock,
+            insert: true,
+            deleted: None,
+            columns: BTreeMap::from([
+                ("name".to_string(), text("Orphan")),
+                ("parent_id".to_string(), text("never-seen")),
+                ("kind".to_string(), text("expense")),
+            ]),
+            parents: BTreeMap::from([("parent_id".to_string(), clock)]),
+        }),
+    );
+    let Some(Record::End { rows, .. }) = all.last_mut() else {
+        panic!("end last");
+    };
+    *rows += 1;
+    stream_of(&all)
 }
 
 /// Every synced row of every synced table (Local columns left out, `app_config` limited to the

@@ -1,8 +1,9 @@
 //! Chain bookkeeping (spec §9.3, §11.4, §14): the verdict on every pulled envelope, from its
 //! author's chain head (`sync_heads`) or, for this device's own ID, from `sync_own_log`; the
 //! barrier marker found by relay order; and the re-queue when this device crosses a barrier.
-//! The re-join after a clone or rollback lives in `rejoin`.
+//! The re-join after a clone or rollback lives in `rejoin`; held gaps and skipping them in `gaps`.
 
+pub mod gaps;
 mod rejoin;
 
 pub use rejoin::*;

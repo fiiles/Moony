@@ -178,6 +178,7 @@ import type {
   ReplaceConsentView,
   ReplaceOutcomeView,
   SyncBackupEntry,
+  HeldGapView,
 } from '../../shared/schema';
 
 // Backend error keys (`validation.*`, `auth.*`) and the generic `errors.*` messages live in common.json.
@@ -394,6 +395,16 @@ export const deviceSyncApi = {
 
   /** Deletes a listed sync backup for good (confirm first). */
   deleteBackup: (path: string) => tauriInvoke<void>('sync_delete_backup', { path }),
+
+  /** Changes held because something they need never arrived, the oldest first. */
+  heldGaps: () => tauriInvoke<HeldGapView[]>('sync_held_gaps'),
+
+  /**
+   * Skips the held change of `deviceId` once the device password is checked; refused
+   * (`validation.syncGapNotSkippableYet`) before its `skippableAt`.
+   */
+  skipMissingChange: (password: string, deviceId: string) =>
+    tauriInvoke<void>('sync_skip_missing_change', { password, deviceId }),
 
   /**
    * Phones only: copies a listed sync backup to Documents for the Files sheet; hand the returned

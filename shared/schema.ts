@@ -246,6 +246,29 @@ export interface SyncBackupEntry {
   kept: boolean;
 }
 
+/**
+ * What a held change waits for: `missing`, an earlier change of the device never arrived (skipping
+ * applies the ones after it); `parent`, the change refers to something no change brought (skipping
+ * skips that change).
+ */
+export type HeldGapKind = 'missing' | 'parent';
+
+/**
+ * A change from another device that this device holds because something it needs has not arrived
+ * (audit M3): Settings offers to skip it once `skippableAt` has passed.
+ */
+export interface HeldGapView {
+  /** The author's device ID, 32 lowercase hex characters (`skipMissingChange` takes it). */
+  deviceId: string;
+  /** The author's name from the device list; `null` for a device that has no row there. */
+  deviceName: string | null;
+  kind: HeldGapKind;
+  /** When this device first held it (unix seconds). */
+  since: number;
+  /** From when it may be skipped (unix seconds): `since` plus 14 days. */
+  skippableAt: number;
+}
+
 export interface MenuPreferences {
   loans: boolean;
   insurance: boolean;

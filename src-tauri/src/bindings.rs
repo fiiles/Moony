@@ -48,6 +48,10 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::ReplaceOutcomeView>();
     types.register::<crate::models::SyncBackupEntry>();
 
+    // Device sync: held changes and skipping them (audit M3)
+    types.register::<crate::models::HeldGapKind>();
+    types.register::<crate::models::HeldGapView>();
+
     // Investment models
     types.register::<crate::models::StockInvestment>();
     types.register::<crate::models::EnrichedStockInvestment>();

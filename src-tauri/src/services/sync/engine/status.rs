@@ -185,11 +185,18 @@ pub fn problem_of(error: &SyncError) -> SyncProblem {
 
 /// The problem a pull leaves: its stop, envelopes waiting for a missing one or a missing parent
 /// (`Gap`: this device keeps syncing and pushing), or a quarantined author's held envelopes; `None`
-/// for a pull that ended done or unfinished (the next round goes on). `MissingParent` is no longer
-/// produced: a missing parent waits like a gap.
+/// for a pull that ended done, or unfinished with nothing held (the next round goes on).
+/// `MissingParent` is no longer produced: a missing parent waits like a gap.
+///
+/// An unfinished pull that held something says so (`Quarantined`, else `Gap`): while an envelope
+/// is held every pull fetches again from it, so a tail behind it longer than the page limit
+/// (`pull::MAX_PULL_PAGES`) ends every pull unfinished at the same place, which is no "up to date"
+/// (Task 15 review, minor 8). Skipping the gap (`chain::gaps`) releases it.
 pub fn problem_of_pull(pull: &PullReport) -> Option<SyncProblem> {
     use SyncProblem as P;
     match pull.end() {
+        PullEnd::Unfinished if pull.held > 0 => Some(P::Quarantined),
+        PullEnd::Unfinished if pull.gaps > 0 => Some(P::Gap),
         PullEnd::Done | PullEnd::Unfinished => None,
         PullEnd::Waiting => Some(P::Gap),
         PullEnd::Held => Some(P::Quarantined),

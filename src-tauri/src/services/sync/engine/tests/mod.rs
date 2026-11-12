@@ -5,6 +5,7 @@
 
 mod binding_failure;
 mod echo;
+mod gap_skip;
 mod gaps;
 mod join;
 mod join_new;

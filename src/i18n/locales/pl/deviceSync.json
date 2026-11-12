@@ -139,7 +139,18 @@
       "turnOff": "Wyłącz synchronizację",
       "retry": "Spróbuj ponownie"
     },
-    "newerSchema": "Zaktualizuj Moony na tym urządzeniu, aby synchronizacja mogła trwać"
+    "newerSchema": "Zaktualizuj Moony na tym urządzeniu, aby synchronizacja mogła trwać",
+    "gap": {
+      "missing_one": "Zmiany z urządzenia „{{device}}” brakuje od {{count}} dnia.",
+      "missing_few": "Zmiany z urządzenia „{{device}}” brakuje od {{count}} dni.",
+      "missing_many": "Zmiany z urządzenia „{{device}}” brakuje od {{count}} dni.",
+      "missing_other": "Zmiany z urządzenia „{{device}}” brakuje od {{count}} dnia.",
+      "waiting_one": "Zmiana z urządzenia „{{device}}” od {{count}} dnia czeka na wcześniejszą zmianę, od której zależy, a która nigdy nie dotarła.",
+      "waiting_few": "Zmiana z urządzenia „{{device}}” od {{count}} dni czeka na wcześniejszą zmianę, od której zależy, a która nigdy nie dotarła.",
+      "waiting_many": "Zmiana z urządzenia „{{device}}” od {{count}} dni czeka na wcześniejszą zmianę, od której zależy, a która nigdy nie dotarła.",
+      "waiting_other": "Zmiana z urządzenia „{{device}}” od {{count}} dnia czeka na wcześniejszą zmianę, od której zależy, a która nigdy nie dotarła.",
+      "skip": "Pomiń brakującą zmianę"
+    }
   },
   "renew": {
     "title": "Odnów synchronizację",
@@ -154,11 +165,18 @@
   },
   "resync": {
     "button": "Zsynchronizuj to urządzenie ponownie",
-    "hint": "Zastępuje dane tego urządzenia danymi zsynchronizowanymi. Użyj tego, jeśli historia synchronizacji tego urządzenia jest niespójna.",
+    "hint": "Zastępuje dane tego urządzenia danymi zsynchronizowanymi, po zapisaniu kopii zapasowej. Użyj tego tylko wtedy, gdy to urządzenie nie może zsynchronizować się w żaden inny sposób.",
     "title": "Zsynchronizować to urządzenie ponownie?",
     "description": "Dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi. Najpierw zapisywana jest kopia zapasowa.",
     "confirm": "Zsynchronizuj ponownie",
     "success": "Urządzenie zsynchronizowane ponownie. Kopia zapasowa zapisana jako {{file}}."
+  },
+  "skipGap": {
+    "title": "Pominąć brakującą zmianę?",
+    "description": "Zmiana z urządzenia „{{device}}”, która nigdy nie dotarła, zostanie pominięta. To, co zawierała, nie pojawi się na tym urządzeniu, dopóki urządzenie, które ją ma, nie prześle nowszej kopii zsynchronizowanych danych.",
+    "descriptionParent": "Zmiana z urządzenia „{{device}}”, której nie da się zastosować, zostanie pominięta. To, co zawierała, nie pojawi się na tym urządzeniu, dopóki urządzenie, które ją ma, nie prześle nowszej kopii zsynchronizowanych danych.",
+    "confirm": "Pomiń zmianę",
+    "success": "Brakująca zmiana została pominięta. Synchronizacja trwa dalej."
   },
   "turnOff": {
     "button": "Wyłącz synchronizację na tym urządzeniu",

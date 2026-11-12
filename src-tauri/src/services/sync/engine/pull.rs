@@ -13,6 +13,7 @@ use rusqlite::Connection;
 
 use super::{ConnAccess, PullReport, PullStop};
 use crate::error::{AppError, Result};
+use crate::services::sync::chain::gaps::{self, GapKind};
 use crate::services::sync::chain::{self, EnvelopeMeta, RejoinReport, Verdict};
 use crate::services::sync::changeset::{self, Changeset};
 use crate::services::sync::devices;
@@ -113,6 +114,7 @@ fn act(
                     "[SYNC] Relay op {} references a parent this device has not seen: it waits",
                     meta.position
                 );
+                gaps::note_held_gap(conn, meta, GapKind::Parent, now)?;
                 report.gaps += 1;
                 OpStep::Hold
             }
@@ -146,6 +148,7 @@ fn act(
                 "[SYNC] Relay op {} comes before an earlier envelope of its author: it waits",
                 meta.position
             );
+            gaps::note_held_gap(conn, meta, GapKind::Missing, now)?;
             report.gaps += 1;
             OpStep::Hold
         }
@@ -219,8 +222,35 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
     pull_bounded(relay, db, creds, now, max_pages, None).await
 }
 
-/// `pull_all` with at most `max_pages` pages, scanning only past `scan_from`.
+/// `pull_all` with at most `max_pages` pages, scanning only past `scan_from`; then the held gaps
+/// are brought up to date (`settle_gaps`).
 async fn pull_bounded<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    now: i64,
+    max_pages: usize,
+    scan_from: Option<u64>,
+) -> SyncResult<PullReport> {
+    let report = pull_pages_from_cursor(relay, db, creds, now, max_pages, scan_from).await?;
+    db.with_conn(|conn| settle_gaps(conn, &report))?;
+    Ok(report)
+}
+
+/// After a pull: a pull that reached the relay's end with nothing waiting for a missing envelope
+/// or parent holds no gap any more, so every record goes (`gaps::forget_all`); otherwise the gaps
+/// whose author's head reached them go (`gaps::forget_healed_gaps`). A stopped or unfinished pull
+/// may not have met a held envelope again, so it forgets only the healed ones.
+fn settle_gaps(conn: &Connection, report: &PullReport) -> Result<()> {
+    if report.gaps == 0 && report.stop.is_none() && !report.unfinished {
+        gaps::forget_all(conn)
+    } else {
+        gaps::forget_healed_gaps(conn).map(|_| ())
+    }
+}
+
+/// The pages of `pull_bounded`.
+async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     creds: &Credentials,

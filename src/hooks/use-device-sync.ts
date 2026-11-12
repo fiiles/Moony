@@ -81,3 +81,17 @@ export function useSyncBackups() {
     enabled,
   });
 }
+
+/**
+ * The changes from other devices held because something they need never arrived (the `gap`
+ * problem), the oldest first; read while `active` (the status shows a gap). The status event
+ * re-reads it.
+ */
+export function useHeldGaps(active: boolean) {
+  const enabled = useDeviceSyncFeature();
+  return useQuery({
+    queryKey: ['device-sync-held-gaps'],
+    queryFn: () => deviceSyncApi.heldGaps(),
+    enabled: enabled && active,
+  });
+}

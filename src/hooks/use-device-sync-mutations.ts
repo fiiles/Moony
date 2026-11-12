@@ -130,6 +130,17 @@ export function useDeviceSyncMutations() {
     gcTime: 0,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-backups'] }),
   });
+  // Skipping a held change moves where this device is in the synced history; the round it asks
+  // for brings the changes after it, and their refresh comes with `sync-data-changed`.
+  const skipMissingChange = useMutation({
+    mutationFn: ({ password, deviceId }: { password: string; deviceId: string }) =>
+      deviceSyncApi.skipMissingChange(password, deviceId),
+    gcTime: 0,
+    onSuccess: async () => {
+      await refreshSyncState();
+      await queryClient.invalidateQueries({ queryKey: ['device-sync-held-gaps'] });
+    },
+  });
   const renameDevice = useMutation({
     mutationFn: deviceSyncApi.renameDevice,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] }),
@@ -155,6 +166,7 @@ export function useDeviceSyncMutations() {
     resyncDevice,
     joinWithRecoveryKit,
     deleteBackup,
+    skipMissingChange,
     renameDevice,
     devGrant,
   };

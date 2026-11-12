@@ -1,12 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
-import type { SyncStatus } from '@shared/schema';
+import type { HeldGapView, SyncStatus } from '@shared/schema';
 import { Button } from '@/components/ui/button';
+import { useHeldGaps } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
-import { problemAction } from '@/utils/device-sync-problem';
+import { heldDays, heldGapDevice, problemAction, skippableGap } from '@/utils/device-sync-problem';
 import { isSelfHostedPaidUntil } from '@/utils/sync-status';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
@@ -25,6 +26,8 @@ interface SyncStatusBlockProps {
   onRepair: () => void;
   onResync: () => void;
   onTurnOff: () => void;
+  /** A change from another device missing for 14 days or more: its skip confirmation opens. */
+  onSkipMissing: (gap: HeldGapView) => void;
 }
 
 /**
@@ -39,6 +42,7 @@ export function SyncStatusBlock({
   onRepair,
   onResync,
   onTurnOff,
+  onSkipMissing,
 }: SyncStatusBlockProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
@@ -67,6 +71,7 @@ export function SyncStatusBlock({
           onRepair={onRepair}
           onResync={onResync}
           onTurnOff={onTurnOff}
+          onSkipMissing={onSkipMissing}
           onTryAgain={() => void run()}
           tryingAgain={syncNow.isPending}
           renderDate={(seconds) => date(new Date(seconds * 1000), { dateStyle: 'long' })}
@@ -97,6 +102,7 @@ function ProblemAlert({
   onRepair,
   onResync,
   onTurnOff,
+  onSkipMissing,
   onTryAgain,
   tryingAgain,
   renderDate,
@@ -106,14 +112,14 @@ function ProblemAlert({
   renderDate: (seconds: number) => string;
 }) {
   const { t } = useTranslation('deviceSync');
+  const heldGaps = useHeldGaps(status.problem === 'gap');
   const problem = status.problem;
   if (!problem) return null;
 
-  const action = problemAction(
-    problem,
-    isSelfHostedPaidUntil(status.paidUntil),
-    status.pendingChanges
-  );
+  const now = Math.floor(Date.now() / 1000);
+  // A gap younger than 14 days offers nothing: this device keeps syncing meanwhile
+  const skippable = problem === 'gap' ? skippableGap(heldGaps.data, now) : null;
+  const action = problemAction(problem, isSelfHostedPaidUntil(status.paidUntil), skippable);
   let title: string | undefined;
   let body = t(`status.problem.${problem}`);
   let actions: Array<{ label: string; onClick: () => void; disabled?: boolean }> = [];
@@ -151,6 +157,15 @@ function ProblemAlert({
       break;
     case 'updateApp':
       body = t('alert.newerSchema');
+      break;
+    case 'skipMissing':
+      if (skippable) {
+        body = t(skippable.kind === 'parent' ? 'alert.gap.waiting' : 'alert.gap.missing', {
+          device: heldGapDevice(skippable),
+          count: heldDays(skippable, now),
+        });
+        actions = [{ label: t('alert.gap.skip'), onClick: () => onSkipMissing(skippable) }];
+      }
       break;
   }
 

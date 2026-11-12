@@ -173,8 +173,8 @@ pub fn note_starting_barrier(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Turns sync off on this device (§11.6, local part): capture goes, and so does every sync row.
-/// Local data stays.
+/// Turns sync off on this device (§11.6, local part): capture goes, and so does every sync row
+/// (the held gaps' Local keys included). Local data stays.
 pub fn disable(conn: &Connection) -> Result<()> {
     in_savepoint(conn, "sync_disable", || {
         capture::uninstall(conn)?;
@@ -184,7 +184,7 @@ pub fn disable(conn: &Connection) -> Result<()> {
              DELETE FROM sync_typed;",
         )?;
         clear_vault_went_back(conn)?;
-        Ok(())
+        super::chain::gaps::forget_all(conn)
     })
 }
 
@@ -484,10 +484,12 @@ fn clear_vault_went_back(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Clears the pauses and the counters that belong to one vault binding, and the mark of a sync
-/// server that went back (a completed replace starts over from the server's state).
+/// Clears the pauses and the counters that belong to one vault binding, the mark of a sync
+/// server that went back and the held gaps (a completed replace starts over from the server's
+/// state).
 pub fn reset_engine_marks(conn: &Connection) -> Result<()> {
     clear_vault_went_back(conn)?;
+    super::chain::gaps::forget_all(conn)?;
     conn.execute(
         "UPDATE sync_state SET vault_gone_at = NULL, capture_broken_at = NULL, \
            snapshot_uploaded_at = NULL, snapshot_too_large_at = NULL, pulled_bytes = 0, \

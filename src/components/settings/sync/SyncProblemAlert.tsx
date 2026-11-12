@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
 import type { SyncStatus } from '@shared/schema';
+import { useHeldGaps } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
-import { problemAction } from '@/utils/device-sync-problem';
+import { heldDays, heldGapDevice, problemAction, skippableGap } from '@/utils/device-sync-problem';
 import { isSelfHostedPaidUntil } from '@/utils/sync-status';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -16,8 +17,9 @@ import {
   ResyncDeviceDialog,
 } from '@/components/settings/sync/SyncRepairDialogs';
 import { TurnOffSyncDialog } from '@/components/settings/sync/TurnOffSyncDialog';
+import { SkipMissingChangeDialog } from '@/components/settings/sync/SkipMissingChangeDialog';
 
-type Open = 'renew' | 'repair' | 'resync' | 'turnOff' | null;
+type Open = 'renew' | 'repair' | 'resync' | 'turnOff' | 'skipMissing' | null;
 
 /** The problem that paused or stopped sync, next to its cause, with the action that answers it. */
 export function SyncProblemAlert({ status }: { status: SyncStatus }) {
@@ -28,6 +30,7 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
   const [open, setOpen] = useState<Open>(null);
   /** A repair that could not send every change: re-syncing is offered next to it. */
   const [offerResync, setOfferResync] = useState(false);
+  const heldGaps = useHeldGaps(status.problem === 'gap');
   const close = () => setOpen(null);
   const problem = status.problem;
   if (!problem) return null;
@@ -41,7 +44,10 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
   };
 
   const selfHosted = isSelfHostedPaidUntil(status.paidUntil);
-  const action = problemAction(problem, selfHosted, status.pendingChanges);
+  const now = Math.floor(Date.now() / 1000);
+  // A gap younger than 14 days offers nothing: this device keeps syncing meanwhile
+  const skippable = problem === 'gap' ? skippableGap(heldGaps.data, now) : null;
+  const action = problemAction(problem, selfHosted, skippable);
   let title: string | null = null;
   let body: string | null = t(`status.problem.${problem}`);
   let actions: React.ReactNode = null;
@@ -109,6 +115,19 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
         </Button>
       );
       break;
+    case 'skipMissing':
+      if (skippable) {
+        body = t(skippable.kind === 'parent' ? 'alert.gap.waiting' : 'alert.gap.missing', {
+          device: heldGapDevice(skippable),
+          count: heldDays(skippable, now),
+        });
+        actions = (
+          <Button type="button" size="sm" onClick={() => setOpen('skipMissing')}>
+            {t('alert.gap.skip')}
+          </Button>
+        );
+      }
+      break;
   }
 
   return (
@@ -125,6 +144,9 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
       )}
       {open === 'resync' && <ResyncDeviceDialog onClose={close} />}
       {open === 'turnOff' && <TurnOffSyncDialog onClose={close} />}
+      {open === 'skipMissing' && skippable && (
+        <SkipMissingChangeDialog gap={skippable} onClose={close} />
+      )}
     </>
   );
 }

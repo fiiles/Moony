@@ -139,7 +139,14 @@
       "turnOff": "Stäng av synkronisering",
       "retry": "Försök igen"
     },
-    "newerSchema": "Uppdatera Moony på den här enheten för att fortsätta synkronisera"
+    "newerSchema": "Uppdatera Moony på den här enheten för att fortsätta synkronisera",
+    "gap": {
+      "missing_one": "En ändring från ”{{device}}” har saknats i {{count}} dag.",
+      "missing_other": "En ändring från ”{{device}}” har saknats i {{count}} dagar.",
+      "waiting_one": "En ändring från ”{{device}}” har i {{count}} dag väntat på en tidigare ändring som den bygger på och som aldrig kom fram.",
+      "waiting_other": "En ändring från ”{{device}}” har i {{count}} dagar väntat på en tidigare ändring som den bygger på och som aldrig kom fram.",
+      "skip": "Hoppa över den saknade ändringen"
+    }
   },
   "renew": {
     "title": "Förnya synkroniseringen",
@@ -154,11 +161,18 @@
   },
   "resync": {
     "button": "Synkronisera den här enheten igen",
-    "hint": "Ersätter enhetens data med de synkroniserade uppgifterna. Använd det om enhetens synkroniseringshistorik är inkonsekvent.",
+    "hint": "Ersätter enhetens data med de synkroniserade uppgifterna, efter att en säkerhetskopia har sparats. Använd det bara om enheten inte kan synkronisera på något annat sätt.",
     "title": "Synkronisera den här enheten igen?",
     "description": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först.",
     "confirm": "Synkronisera igen",
     "success": "Enheten är synkroniserad igen. Säkerhetskopia sparad som {{file}}."
+  },
+  "skipGap": {
+    "title": "Hoppa över den saknade ändringen?",
+    "description": "Ändringen från ”{{device}}” som aldrig kom fram hoppas över. Det den innehöll saknas på den här enheten tills en enhet som har den laddar upp en nyare kopia av de synkroniserade uppgifterna.",
+    "descriptionParent": "Ändringen från ”{{device}}” som inte kan tillämpas hoppas över. Det den innehöll saknas på den här enheten tills en enhet som har den laddar upp en nyare kopia av de synkroniserade uppgifterna.",
+    "confirm": "Hoppa över ändringen",
+    "success": "Den saknade ändringen hoppades över. Synkroniseringen fortsätter."
   },
   "turnOff": {
     "button": "Stäng av synkronisering på den här enheten",

@@ -139,7 +139,14 @@
       "turnOff": "Synchronisierung ausschalten",
       "retry": "Erneut versuchen"
     },
-    "newerSchema": "Aktualisieren Sie Moony auf diesem Gerät, um weiter zu synchronisieren"
+    "newerSchema": "Aktualisieren Sie Moony auf diesem Gerät, um weiter zu synchronisieren",
+    "gap": {
+      "missing_one": "Eine Änderung von „{{device}}“ fehlt seit {{count}} Tag.",
+      "missing_other": "Eine Änderung von „{{device}}“ fehlt seit {{count}} Tagen.",
+      "waiting_one": "Eine Änderung von „{{device}}“ wartet seit {{count}} Tag auf eine frühere Änderung, von der sie abhängt und die nie angekommen ist.",
+      "waiting_other": "Eine Änderung von „{{device}}“ wartet seit {{count}} Tagen auf eine frühere Änderung, von der sie abhängt und die nie angekommen ist.",
+      "skip": "Fehlende Änderung überspringen"
+    }
   },
   "renew": {
     "title": "Synchronisierung verlängern",
@@ -154,11 +161,18 @@
   },
   "resync": {
     "button": "Dieses Gerät neu synchronisieren",
-    "hint": "Ersetzt die Daten dieses Geräts durch die synchronisierten Daten. Nutzen Sie dies, wenn der Sync-Verlauf dieses Geräts inkonsistent ist.",
+    "hint": "Ersetzt die Daten dieses Geräts durch die synchronisierten Daten, nachdem eine Sicherung gespeichert wurde. Nutzen Sie dies nur, wenn sich dieses Gerät auf keine andere Weise synchronisieren lässt.",
     "title": "Dieses Gerät neu synchronisieren?",
     "description": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird eine Sicherung gespeichert.",
     "confirm": "Neu synchronisieren",
     "success": "Gerät neu synchronisiert. Sicherung gespeichert als {{file}}."
+  },
+  "skipGap": {
+    "title": "Fehlende Änderung überspringen?",
+    "description": "Die Änderung von „{{device}}“, die nie angekommen ist, wird übersprungen. Was sie enthielt, fehlt auf diesem Gerät, bis ein Gerät, das sie hat, eine neuere Kopie der synchronisierten Daten hochlädt.",
+    "descriptionParent": "Die Änderung von „{{device}}“, die sich nicht anwenden lässt, wird übersprungen. Was sie enthielt, fehlt auf diesem Gerät, bis ein Gerät, das sie hat, eine neuere Kopie der synchronisierten Daten hochlädt.",
+    "confirm": "Änderung überspringen",
+    "success": "Die fehlende Änderung wurde übersprungen. Die Synchronisierung läuft weiter."
   },
   "turnOff": {
     "button": "Synchronisierung auf diesem Gerät ausschalten",

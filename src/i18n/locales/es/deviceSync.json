@@ -139,7 +139,16 @@
       "turnOff": "Desactivar la sincronización",
       "retry": "Intentar de nuevo"
     },
-    "newerSchema": "Actualiza Moony en este dispositivo para seguir sincronizando"
+    "newerSchema": "Actualiza Moony en este dispositivo para seguir sincronizando",
+    "gap": {
+      "missing_one": "Falta un cambio de «{{device}}» desde hace {{count}} día.",
+      "missing_many": "Falta un cambio de «{{device}}» desde hace {{count}} días.",
+      "missing_other": "Falta un cambio de «{{device}}» desde hace {{count}} días.",
+      "waiting_one": "Un cambio de «{{device}}» lleva {{count}} día esperando un cambio anterior del que depende y que nunca llegó.",
+      "waiting_many": "Un cambio de «{{device}}» lleva {{count}} días esperando un cambio anterior del que depende y que nunca llegó.",
+      "waiting_other": "Un cambio de «{{device}}» lleva {{count}} días esperando un cambio anterior del que depende y que nunca llegó.",
+      "skip": "Omitir el cambio que falta"
+    }
   },
   "renew": {
     "title": "Renovar la sincronización",
@@ -154,11 +163,18 @@
   },
   "resync": {
     "button": "Volver a sincronizar este dispositivo",
-    "hint": "Sustituye los datos de este dispositivo por los sincronizados. Úsalo si el historial de sincronización de este dispositivo es incoherente.",
+    "hint": "Sustituye los datos de este dispositivo por los sincronizados, después de guardar una copia de seguridad. Úsalo solo si este dispositivo no puede sincronizarse de ninguna otra forma.",
     "title": "¿Volver a sincronizar este dispositivo?",
     "description": "Los datos de este dispositivo se sustituyen por los sincronizados. Antes se guarda una copia de seguridad.",
     "confirm": "Volver a sincronizar",
     "success": "Dispositivo sincronizado de nuevo. Copia de seguridad guardada como {{file}}."
+  },
+  "skipGap": {
+    "title": "¿Omitir el cambio que falta?",
+    "description": "Se omitirá el cambio de «{{device}}» que nunca llegó. Lo que contenía seguirá faltando en este dispositivo hasta que un dispositivo que lo tenga suba una copia más reciente de los datos sincronizados.",
+    "descriptionParent": "Se omitirá el cambio de «{{device}}» que no se puede aplicar. Lo que contenía seguirá faltando en este dispositivo hasta que un dispositivo que lo tenga suba una copia más reciente de los datos sincronizados.",
+    "confirm": "Omitir el cambio",
+    "success": "Se omitió el cambio que faltaba. La sincronización continúa."
   },
   "turnOff": {
     "button": "Desactivar la sincronización en este dispositivo",

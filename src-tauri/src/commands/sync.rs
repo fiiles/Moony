@@ -429,7 +429,7 @@ fn copy_outcome(result: std::result::Result<u64, KeychainError>) -> Result<Optio
 
 /// An empty password is `validation.syncPasswordNeeded` before any check runs (it would only
 /// count as a wrong one).
-fn password_given(password: &str) -> Result<()> {
+pub(super) fn password_given(password: &str) -> Result<()> {
     if password.is_empty() {
         return Err(AppError::Validation(PASSWORD_NEEDED.into()));
     }
@@ -659,6 +659,12 @@ pub async fn sync_finish_setup(
 #[tauri::command]
 pub async fn sync_now(app: AppHandle) -> Result<()> {
     require_feature()?;
+    wake_engine(&app);
+    Ok(())
+}
+
+/// Asks the running engine for a round now, past any back-off; nothing while no engine runs.
+pub(super) fn wake_engine(app: &AppHandle) {
     if let Some(handle) = app
         .state::<SyncEngineState>()
         .0
@@ -668,7 +674,6 @@ pub async fn sync_now(app: AppHandle) -> Result<()> {
     {
         handle.wake(Trigger::SyncNow);
     }
-    Ok(())
 }
 
 /// The kit after setup, once the device password is checked; opens `KIT_COPY_WINDOW` for

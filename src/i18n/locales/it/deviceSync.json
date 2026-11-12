@@ -139,7 +139,16 @@
       "turnOff": "Disattiva la sincronizzazione",
       "retry": "Riprova"
     },
-    "newerSchema": "Aggiorna Moony su questo dispositivo per continuare a sincronizzare"
+    "newerSchema": "Aggiorna Moony su questo dispositivo per continuare a sincronizzare",
+    "gap": {
+      "missing_one": "Manca una modifica da «{{device}}» da {{count}} giorno.",
+      "missing_many": "Manca una modifica da «{{device}}» da {{count}} giorni.",
+      "missing_other": "Manca una modifica da «{{device}}» da {{count}} giorni.",
+      "waiting_one": "Una modifica da «{{device}}» attende da {{count}} giorno una modifica precedente da cui dipende e che non è mai arrivata.",
+      "waiting_many": "Una modifica da «{{device}}» attende da {{count}} giorni una modifica precedente da cui dipende e che non è mai arrivata.",
+      "waiting_other": "Una modifica da «{{device}}» attende da {{count}} giorni una modifica precedente da cui dipende e che non è mai arrivata.",
+      "skip": "Salta la modifica mancante"
+    }
   },
   "renew": {
     "title": "Rinnova la sincronizzazione",
@@ -154,11 +163,18 @@
   },
   "resync": {
     "button": "Risincronizza questo dispositivo",
-    "hint": "Sostituisce i dati di questo dispositivo con quelli sincronizzati. Usalo se la cronologia di sincronizzazione di questo dispositivo è incoerente.",
+    "hint": "Sostituisce i dati di questo dispositivo con quelli sincronizzati, dopo aver salvato un backup. Usalo solo se questo dispositivo non riesce a sincronizzarsi in nessun altro modo.",
     "title": "Risincronizzare questo dispositivo?",
     "description": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup.",
     "confirm": "Risincronizza",
     "success": "Dispositivo risincronizzato. Backup salvato come {{file}}."
+  },
+  "skipGap": {
+    "title": "Saltare la modifica mancante?",
+    "description": "La modifica da «{{device}}» che non è mai arrivata verrà saltata. Ciò che conteneva resterà mancante su questo dispositivo finché un dispositivo che la possiede non caricherà una copia più recente dei dati sincronizzati.",
+    "descriptionParent": "La modifica da «{{device}}» che non si può applicare verrà saltata. Ciò che conteneva resterà mancante su questo dispositivo finché un dispositivo che la possiede non caricherà una copia più recente dei dati sincronizzati.",
+    "confirm": "Salta la modifica",
+    "success": "La modifica mancante è stata saltata. La sincronizzazione continua."
   },
   "turnOff": {
     "button": "Disattiva la sincronizzazione su questo dispositivo",

@@ -14,7 +14,12 @@ import {
   Unplug,
   X,
 } from 'lucide-react';
-import type { ReplaceImpactView, ReplaceOutcomeView, SyncDevice } from '@shared/schema';
+import type {
+  HeldGapView,
+  ReplaceImpactView,
+  ReplaceOutcomeView,
+  SyncDevice,
+} from '@shared/schema';
 import {
   useDeviceSyncFeatureState,
   useDeviceSyncStatus,
@@ -24,6 +29,7 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import { consentOf } from '@/utils/replace-impact';
+import { heldGapDevice } from '@/utils/device-sync-problem';
 import {
   IMPACT_CHANGED_KEY,
   replaceOutcomeToast,
@@ -69,7 +75,8 @@ export default function SyncSection() {
   const feature = useDeviceSyncFeatureState();
   const { data: status } = useDeviceSyncStatus();
   const { data: devices } = useSyncDevices();
-  const { repairDevice, resyncDevice, turnOff, deleteSyncedData } = useDeviceSyncMutations();
+  const { repairDevice, resyncDevice, turnOff, deleteSyncedData, skipMissingChange } =
+    useDeviceSyncMutations();
   const { t: tc } = useTranslation('common');
   const [open, setOpen] = useState<Open>(null);
   const [flow, setFlow] = useState<Flow>(null);
@@ -80,6 +87,8 @@ export default function SyncSection() {
   const [offerResync, setOfferResync] = useState(false);
   /** A replace that kept its backup: the sheet that says where it is (and offers a copy in Files). */
   const [saved, setSaved] = useState<ReplaceSaved | null>(null);
+  /** The held change whose skip confirmation is open. */
+  const [skipping, setSkipping] = useState<HeldGapView | null>(null);
 
   // A password typed for repair, re-sync, turning off or delete is a mutation variable: it leaves
   // with the page
@@ -87,10 +96,12 @@ export default function SyncSection() {
   const resetResync = resyncDevice.reset;
   const resetTurnOff = turnOff.reset;
   const resetDelete = deleteSyncedData.reset;
+  const resetSkip = skipMissingChange.reset;
   useEffect(() => resetRepair, [resetRepair]);
   useEffect(() => resetResync, [resetResync]);
   useEffect(() => resetTurnOff, [resetTurnOff]);
   useEffect(() => resetDelete, [resetDelete]);
+  useEffect(() => resetSkip, [resetSkip]);
 
   if (!feature.loading && !feature.enabled) return <Redirect to={routes.settings} replace />;
 
@@ -147,6 +158,13 @@ export default function SyncSection() {
     } finally {
       resetResync();
     }
+  };
+
+  // A wrong password (or a change not 14 days old yet) shows under the field and keeps the sheet
+  const skipNow = async (password: string) => {
+    if (!skipping) return;
+    await skipMissingChange.mutateAsync({ password, deviceId: skipping.deviceId });
+    toast(t('skipGap.success'));
   };
 
   // A wrong password shows under the field and keeps the sheet
@@ -219,6 +237,7 @@ export default function SyncSection() {
             onRepair={() => setOpen('repair')}
             onResync={() => setOpen('resync')}
             onTurnOff={() => setOpen('turnOff')}
+            onSkipMissing={setSkipping}
           />
 
           <SectionHead title={t('devices.title')} />
@@ -322,6 +341,26 @@ export default function SyncSection() {
         confirmLabel={t('turnOff.confirm')}
         destructive
         onSubmit={turnOffNow}
+      />
+      <SyncPasswordSheet
+        open={skipping !== null}
+        onOpenChange={(next) => {
+          if (next) return;
+          setSkipping(null);
+          // The typed password leaves with its sheet
+          resetSkip();
+        }}
+        title={t('skipGap.title')}
+        description={
+          skipping
+            ? t(skipping.kind === 'parent' ? 'skipGap.descriptionParent' : 'skipGap.description', {
+                device: heldGapDevice(skipping),
+              })
+            : ''
+        }
+        confirmLabel={t('skipGap.confirm')}
+        destructive
+        onSubmit={skipNow}
       />
       <SyncPasswordSheet
         open={open === 'delete'}

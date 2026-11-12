@@ -139,7 +139,14 @@
       "turnOff": "Turn off sync",
       "retry": "Try again"
     },
-    "newerSchema": "Update Moony on this device to keep syncing"
+    "newerSchema": "Update Moony on this device to keep syncing",
+    "gap": {
+      "missing_one": "A change from “{{device}}” has been missing for {{count}} day.",
+      "missing_other": "A change from “{{device}}” has been missing for {{count}} days.",
+      "waiting_one": "A change from “{{device}}” has waited {{count}} day for an earlier change it depends on, which never arrived.",
+      "waiting_other": "A change from “{{device}}” has waited {{count}} days for an earlier change it depends on, which never arrived.",
+      "skip": "Skip the missing change"
+    }
   },
   "renew": {
     "title": "Renew sync",
@@ -154,11 +161,18 @@
   },
   "resync": {
     "button": "Re-sync this device",
-    "hint": "Replaces this device's data with the synced data. Use it if this device's sync history is inconsistent.",
+    "hint": "Replaces this device's data with the synced data, after saving a backup. Use it only if this device cannot sync any other way.",
     "title": "Re-sync this device?",
     "description": "This device's data is replaced with the synced data. A backup is saved first.",
     "confirm": "Re-sync",
     "success": "Device re-synced. Backup saved as {{file}}."
+  },
+  "skipGap": {
+    "title": "Skip the missing change?",
+    "description": "The change from “{{device}}” that never arrived will be skipped. Whatever it held stays missing on this device until a device that has it uploads a newer copy of the synced data.",
+    "descriptionParent": "The change from “{{device}}” that cannot be applied will be skipped. Whatever it held stays missing on this device until a device that has it uploads a newer copy of the synced data.",
+    "confirm": "Skip the change",
+    "success": "The missing change was skipped. Syncing continues."
   },
   "turnOff": {
     "button": "Turn off sync on this device",

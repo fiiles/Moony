@@ -139,7 +139,18 @@
       "turnOff": "Vypnout synchronizaci",
       "retry": "Zkusit znovu"
     },
-    "newerSchema": "Aktualizujte Moony na tomto zařízení, aby synchronizace mohla pokračovat"
+    "newerSchema": "Aktualizujte Moony na tomto zařízení, aby synchronizace mohla pokračovat",
+    "gap": {
+      "missing_one": "Změna ze zařízení „{{device}}“ chybí už {{count}} den.",
+      "missing_few": "Změna ze zařízení „{{device}}“ chybí už {{count}} dny.",
+      "missing_many": "Změna ze zařízení „{{device}}“ chybí už {{count}} dne.",
+      "missing_other": "Změna ze zařízení „{{device}}“ chybí už {{count}} dní.",
+      "waiting_one": "Změna ze zařízení „{{device}}“ už {{count}} den čeká na dřívější změnu, na které závisí a která nikdy nedorazila.",
+      "waiting_few": "Změna ze zařízení „{{device}}“ už {{count}} dny čeká na dřívější změnu, na které závisí a která nikdy nedorazila.",
+      "waiting_many": "Změna ze zařízení „{{device}}“ už {{count}} dne čeká na dřívější změnu, na které závisí a která nikdy nedorazila.",
+      "waiting_other": "Změna ze zařízení „{{device}}“ už {{count}} dní čeká na dřívější změnu, na které závisí a která nikdy nedorazila.",
+      "skip": "Přeskočit chybějící změnu"
+    }
   },
   "renew": {
     "title": "Obnovit synchronizaci",
@@ -154,11 +165,18 @@
   },
   "resync": {
     "button": "Synchronizovat toto zařízení znovu",
-    "hint": "Nahradí data tohoto zařízení synchronizovanými daty. Použijte to, pokud je historie synchronizace tohoto zařízení nekonzistentní.",
+    "hint": "Nahradí data tohoto zařízení synchronizovanými daty, předtím uloží zálohu. Použijte to jen tehdy, když se toto zařízení nedokáže synchronizovat jinak.",
     "title": "Synchronizovat toto zařízení znovu?",
     "description": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Nejdřív se uloží záloha.",
     "confirm": "Synchronizovat znovu",
     "success": "Zařízení znovu synchronizováno. Záloha uložena jako {{file}}."
+  },
+  "skipGap": {
+    "title": "Přeskočit chybějící změnu?",
+    "description": "Změna ze zařízení „{{device}}“, která nikdy nedorazila, bude přeskočena. Co obsahovala, bude na tomto zařízení chybět, dokud zařízení, které ji má, nenahraje novější kopii synchronizovaných dat.",
+    "descriptionParent": "Změna ze zařízení „{{device}}“, kterou nelze použít, bude přeskočena. Co obsahovala, bude na tomto zařízení chybět, dokud zařízení, které ji má, nenahraje novější kopii synchronizovaných dat.",
+    "confirm": "Přeskočit změnu",
+    "success": "Chybějící změna byla přeskočena. Synchronizace pokračuje."
   },
   "turnOff": {
     "button": "Vypnout synchronizaci na tomto zařízení",

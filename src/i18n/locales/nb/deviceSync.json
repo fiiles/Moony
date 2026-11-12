@@ -175,7 +175,8 @@
     "title": "Slette synkroniserte data?",
     "description": "Dette sletter de synkroniserte dataene på synkroniseringsserveren for alle enheter. De lokale dataene på hver enhet blir værende.",
     "confirm": "Slett synkroniserte data",
-    "success": "Synkroniserte data slettet"
+    "success": "Synkroniserte data slettet",
+    "afterwards": "Etterpå settes synkroniseringen opp fra start, med en ny synkroniseringskonto og et nytt gjenopprettingssett."
   },
   "danger": {
     "title": "Slå av eller slett",
@@ -214,8 +215,8 @@
       "android": "Android-telefon",
       "other": "Annen enhet"
     },
-    "quiet_one": "Ikke hørt fra på {{count}} dag",
-    "quiet_other": "Ikke hørt fra på {{count}} dager"
+    "quiet_one": "Ingen endringer fra denne enheten på {{count}} dag",
+    "quiet_other": "Ingen endringer fra denne enheten på {{count}} dager"
   },
   "pairing": {
     "addTitle": "Legg til en enhet",
@@ -333,6 +334,6 @@
     "onThisDevice": "På denne enheten:"
   },
   "limits": {
-    "lostDevice": "En mistet enhet eller et mistet gjenopprettingssett kan ikke stenges ute fra de synkroniserte dataene dine ennå. Hvis noe forsvinner, sletter du de synkroniserte dataene og setter opp synkroniseringen på nytt med et nytt sett."
+    "lostDevice": "En mistet enhet eller et mistet gjenopprettingssett kan ikke stenges ute fra de synkroniserte dataene dine ennå, og alle som har ett, kan allerede lese det det inneholder. Hvis noe forsvinner, sletter du de synkroniserte dataene og setter opp synkroniseringen på nytt med et nytt sett; de andre enhetene dine må da koble seg til igjen."
   }
 }

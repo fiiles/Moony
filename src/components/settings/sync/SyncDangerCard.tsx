@@ -43,7 +43,7 @@ export function SyncDangerCard() {
       {open === 'delete' && (
         <SyncPasswordDialog
           title={t('delete.title')}
-          description={t('delete.description')}
+          description={`${t('delete.description')} ${t('delete.afterwards')}`}
           confirmLabel={t('delete.confirm')}
           destructive
           onSubmit={async (password) => {

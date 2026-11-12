@@ -56,35 +56,36 @@ export function SyncDevicesCard() {
         }
       >
         <div>
-          {(devices ?? []).map((device) => (
-            <SettingsRow
-              key={device.id}
-              label={
-                <span className="inline-flex flex-wrap items-center gap-2">
-                  {device.name}
-                  {device.thisDevice && <Badge variant="dark">{t('devices.thisDevice')}</Badge>}
-                  {device.held && <Badge variant="loss">{t('devices.held')}</Badge>}
-                  {quietDays(device.lastActiveAt, now) !== null && (
-                    <Badge variant="loss">
-                      {t('devices.quiet', { count: quietDays(device.lastActiveAt, now) ?? 0 })}
-                    </Badge>
-                  )}
-                </span>
-              }
-              hint={hint(device)}
-            >
-              {device.thisDevice && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setRenaming(device)}
-                >
-                  {t('devices.rename')}
-                </Button>
-              )}
-            </SettingsRow>
-          ))}
+          {(devices ?? []).map((device) => {
+            const quiet = quietDays(device.lastActiveAt, now);
+            return (
+              <SettingsRow
+                key={device.id}
+                label={
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    {device.name}
+                    {device.thisDevice && <Badge variant="dark">{t('devices.thisDevice')}</Badge>}
+                    {device.held && <Badge variant="loss">{t('devices.held')}</Badge>}
+                    {quiet !== null && (
+                      <Badge variant="default">{t('devices.quiet', { count: quiet })}</Badge>
+                    )}
+                  </span>
+                }
+                hint={hint(device)}
+              >
+                {device.thisDevice && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRenaming(device)}
+                  >
+                    {t('devices.rename')}
+                  </Button>
+                )}
+              </SettingsRow>
+            );
+          })}
         </div>
         <p className="m-0 mt-3 text-micro font-500 text-ink-3" data-testid="sync-limits">
           {t('limits.lostDevice')}

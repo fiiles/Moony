@@ -176,7 +176,8 @@
     "title": "Eliminare i dati sincronizzati?",
     "description": "Questo elimina i dati sincronizzati sul server di sincronizzazione per tutti i dispositivi. I dati locali di ogni dispositivo restano.",
     "confirm": "Elimina i dati sincronizzati",
-    "success": "Dati sincronizzati eliminati"
+    "success": "Dati sincronizzati eliminati",
+    "afterwards": "In seguito la sincronizzazione viene configurata da zero, con un nuovo account di sincronizzazione e un nuovo Kit di ripristino."
   },
   "danger": {
     "title": "Disattivare o eliminare",
@@ -215,9 +216,9 @@
       "android": "Telefono Android",
       "other": "Altro dispositivo"
     },
-    "quiet_one": "Nessun segnale da {{count}} giorno",
-    "quiet_many": "Nessun segnale da {{count}} giorni",
-    "quiet_other": "Nessun segnale da {{count}} giorni"
+    "quiet_one": "Nessuna modifica da questo dispositivo da {{count}} giorno",
+    "quiet_many": "Nessuna modifica da questo dispositivo da {{count}} giorni",
+    "quiet_other": "Nessuna modifica da questo dispositivo da {{count}} giorni"
   },
   "pairing": {
     "addTitle": "Aggiungi un dispositivo",
@@ -335,6 +336,6 @@
     "onThisDevice": "Su questo dispositivo:"
   },
   "limits": {
-    "lostDevice": "Un dispositivo o un Kit di recupero smarrito non può ancora essere escluso dai tuoi dati sincronizzati. Se uno va perso, elimina i dati sincronizzati e configura di nuovo la sincronizzazione con un nuovo Kit."
+    "lostDevice": "Un dispositivo o un Kit di ripristino smarrito non può ancora essere escluso dai tuoi dati sincronizzati, e chi ne possiede uno può già leggere ciò che contiene. Se uno va perso, elimina i dati sincronizzati e configura di nuovo la sincronizzazione con un nuovo Kit; gli altri tuoi dispositivi dovranno poi unirsi di nuovo."
   }
 }

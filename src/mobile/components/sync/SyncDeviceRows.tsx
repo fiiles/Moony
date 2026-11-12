@@ -28,6 +28,7 @@ export function SyncDeviceRows({ devices, onRename }: SyncDeviceRowsProps) {
     <EntityRows>
       {devices.map((device) => {
         const Icon: LucideIcon = PHONES.has(device.platform) ? Smartphone : Laptop;
+        const quiet = quietDays(device.lastActiveAt, now);
         const sub = [
           ...(device.thisDevice ? [t('devices.thisDevice')] : []),
           t(devicePlatformKey(device.platform)),
@@ -37,9 +38,7 @@ export function SyncDeviceRows({ devices, onRename }: SyncDeviceRowsProps) {
                 when: dateTime(device.lastActiveAt, { dateStyle: 'medium', timeStyle: 'short' }),
               }),
           ...(device.held ? [t('devices.held')] : []),
-          ...(quietDays(device.lastActiveAt, now) !== null
-            ? [t('devices.quiet', { count: quietDays(device.lastActiveAt, now) ?? 0 })]
-            : []),
+          ...(quiet !== null ? [t('devices.quiet', { count: quiet })] : []),
         ].join(' · ');
         return (
           <EntityRow

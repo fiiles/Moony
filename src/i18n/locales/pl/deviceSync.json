@@ -177,7 +177,8 @@
     "title": "Usunąć zsynchronizowane dane?",
     "description": "To usuwa zsynchronizowane dane z serwera synchronizacji dla wszystkich urządzeń. Dane lokalne na każdym urządzeniu zostają.",
     "confirm": "Usuń zsynchronizowane dane",
-    "success": "Zsynchronizowane dane usunięte"
+    "success": "Zsynchronizowane dane usunięte",
+    "afterwards": "Potem synchronizacja jest konfigurowana od początku, z nowym kontem synchronizacji i nowym Zestawem odzyskiwania."
   },
   "danger": {
     "title": "Wyłączenie lub usunięcie",
@@ -216,10 +217,10 @@
       "android": "Telefon z Androidem",
       "other": "Inne urządzenie"
     },
-    "quiet_one": "Brak wieści od {{count}} dnia",
-    "quiet_few": "Brak wieści od {{count}} dni",
-    "quiet_many": "Brak wieści od {{count}} dni",
-    "quiet_other": "Brak wieści od {{count}} dnia"
+    "quiet_one": "Brak zmian z tego urządzenia od {{count}} dnia",
+    "quiet_few": "Brak zmian z tego urządzenia od {{count}} dni",
+    "quiet_many": "Brak zmian z tego urządzenia od {{count}} dni",
+    "quiet_other": "Brak zmian z tego urządzenia od {{count}} dnia"
   },
   "pairing": {
     "addTitle": "Dodaj urządzenie",
@@ -337,6 +338,6 @@
     "onThisDevice": "Na tym urządzeniu:"
   },
   "limits": {
-    "lostDevice": "Zgubionego urządzenia ani Zestawu odzyskiwania nie można jeszcze odciąć od zsynchronizowanych danych. Jeśli któryś zaginie, usuń zsynchronizowane dane i skonfiguruj synchronizację od nowa z nowym Zestawem."
+    "lostDevice": "Zgubionego urządzenia ani Zestawu odzyskiwania nie można jeszcze odciąć od zsynchronizowanych danych, a kto je ma, może już teraz odczytać to, co zawierają. Jeśli coś zaginie, usuń zsynchronizowane dane i skonfiguruj synchronizację od nowa z nowym Zestawem; pozostałe urządzenia będą musiały wtedy dołączyć ponownie."
   }
 }

@@ -175,7 +175,8 @@
     "title": "Radera synkroniserade data?",
     "description": "Det här raderar de synkroniserade uppgifterna på synkroniseringsservern för alla enheter. De lokala data på varje enhet finns kvar.",
     "confirm": "Radera synkroniserade data",
-    "success": "Synkroniserade data raderade"
+    "success": "Synkroniserade data raderade",
+    "afterwards": "Därefter ställs synkroniseringen in från början, med ett nytt synkroniseringskonto och ett nytt återställningskit."
   },
   "danger": {
     "title": "Stäng av eller radera",
@@ -214,8 +215,8 @@
       "android": "Android-telefon",
       "other": "Annan enhet"
     },
-    "quiet_one": "Inget livstecken på {{count}} dag",
-    "quiet_other": "Inget livstecken på {{count}} dagar"
+    "quiet_one": "Inga ändringar från den här enheten på {{count}} dag",
+    "quiet_other": "Inga ändringar från den här enheten på {{count}} dagar"
   },
   "pairing": {
     "addTitle": "Lägg till en enhet",
@@ -333,6 +334,6 @@
     "onThisDevice": "På den här enheten:"
   },
   "limits": {
-    "lostDevice": "En borttappad enhet eller ett borttappat återställningskit kan ännu inte stängas ute från dina synkroniserade data. Om något försvinner raderar du de synkroniserade data och ställer in synkroniseringen på nytt med ett nytt kit."
+    "lostDevice": "En borttappad enhet eller ett borttappat återställningskit kan ännu inte stängas ute från dina synkroniserade data, och den som har ett kan redan nu läsa vad det innehåller. Om något försvinner raderar du de synkroniserade data och ställer in synkroniseringen på nytt med ett nytt kit; dina andra enheter måste då ansluta igen."
   }
 }

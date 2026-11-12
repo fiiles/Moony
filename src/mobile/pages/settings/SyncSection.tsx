@@ -327,7 +327,7 @@ export default function SyncSection() {
         open={open === 'delete'}
         onOpenChange={close}
         title={t('delete.title')}
-        description={t('delete.description')}
+        description={`${t('delete.description')} ${t('delete.afterwards')}`}
         confirmLabel={t('delete.confirm')}
         destructive
         onSubmit={async (password) => {

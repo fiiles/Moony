@@ -177,7 +177,8 @@
     "title": "Smazat synchronizovaná data?",
     "description": "Tím se na synchronizačním serveru smažou synchronizovaná data pro všechna zařízení. Místní data na každém zařízení zůstanou.",
     "confirm": "Smazat synchronizovaná data",
-    "success": "Synchronizovaná data smazána"
+    "success": "Synchronizovaná data smazána",
+    "afterwards": "Poté se synchronizace nastavuje od začátku, s novým synchronizačním účtem a novou Záchrannou sadou."
   },
   "danger": {
     "title": "Vypnutí a smazání",
@@ -216,10 +217,10 @@
       "android": "Telefon s Androidem",
       "other": "Jiné zařízení"
     },
-    "quiet_one": "Bez zprávy {{count}} den",
-    "quiet_few": "Bez zprávy {{count}} dny",
-    "quiet_many": "Bez zprávy {{count}} dne",
-    "quiet_other": "Bez zprávy {{count}} dní"
+    "quiet_one": "Žádné změny z tohoto zařízení za {{count}} den",
+    "quiet_few": "Žádné změny z tohoto zařízení za {{count}} dny",
+    "quiet_many": "Žádné změny z tohoto zařízení za {{count}} dne",
+    "quiet_other": "Žádné změny z tohoto zařízení za {{count}} dní"
   },
   "pairing": {
     "addTitle": "Přidat zařízení",
@@ -337,6 +338,6 @@
     "onThisDevice": "V tomto zařízení:"
   },
   "limits": {
-    "lostDevice": "Ztracené zařízení nebo Záchranou sadu zatím nelze odříznout od synchronizovaných dat. Pokud nějaká zmizí, smažte synchronizovaná data a nastavte synchronizaci znovu s novou sadou."
+    "lostDevice": "Ztracené zařízení nebo ztracenou Záchrannou sadu zatím nelze odříznout od synchronizovaných dat a kdo je má, může už teď číst, co obsahují. Pokud se něco ztratí, smažte synchronizovaná data a nastavte synchronizaci znovu s novou sadou; ostatní zařízení se pak musí připojit znovu."
   }
 }

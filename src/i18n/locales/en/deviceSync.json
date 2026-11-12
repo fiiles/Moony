@@ -175,7 +175,8 @@
     "title": "Delete synced data?",
     "description": "This deletes the synced data on the sync server for every device. The local data on every device stays.",
     "confirm": "Delete synced data",
-    "success": "Synced data deleted"
+    "success": "Synced data deleted",
+    "afterwards": "Afterwards sync is set up from the start, with a new sync account and a new Recovery Kit."
   },
   "danger": {
     "title": "Turn off or delete",
@@ -214,8 +215,8 @@
       "android": "Android phone",
       "other": "Other device"
     },
-    "quiet_one": "Not heard from in {{count}} day",
-    "quiet_other": "Not heard from in {{count}} days"
+    "quiet_one": "No changes from this device in {{count}} day",
+    "quiet_other": "No changes from this device in {{count}} days"
   },
   "pairing": {
     "addTitle": "Add a device",
@@ -333,6 +334,6 @@
     "onThisDevice": "On this device:"
   },
   "limits": {
-    "lostDevice": "A lost device or Recovery Kit can't be cut off from your synced data yet. If one goes missing, delete the synced data and set sync up again with a new Kit."
+    "lostDevice": "A lost device or Recovery Kit can't be cut off from your synced data yet, and anyone who has one can already read what it holds. If one goes missing, delete the synced data and set sync up again with a new Kit; your other devices will then need to join again."
   }
 }

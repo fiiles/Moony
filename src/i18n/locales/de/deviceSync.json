@@ -175,7 +175,8 @@
     "title": "Synchronisierte Daten löschen?",
     "description": "Dadurch werden die synchronisierten Daten auf dem Synchronisierungsserver für alle Geräte gelöscht. Die lokalen Daten auf jedem Gerät bleiben erhalten.",
     "confirm": "Synchronisierte Daten löschen",
-    "success": "Synchronisierte Daten gelöscht"
+    "success": "Synchronisierte Daten gelöscht",
+    "afterwards": "Danach wird die Synchronisierung von Grund auf neu eingerichtet, mit einem neuen Sync-Konto und einem neuen Wiederherstellungs-Kit."
   },
   "danger": {
     "title": "Ausschalten oder löschen",
@@ -214,8 +215,8 @@
       "android": "Android-Smartphone",
       "other": "Anderes Gerät"
     },
-    "quiet_one": "Seit {{count}} Tag nichts gehört",
-    "quiet_other": "Seit {{count}} Tagen nichts gehört"
+    "quiet_one": "Seit {{count}} Tag keine Änderungen von diesem Gerät",
+    "quiet_other": "Seit {{count}} Tagen keine Änderungen von diesem Gerät"
   },
   "pairing": {
     "addTitle": "Gerät hinzufügen",
@@ -333,6 +334,6 @@
     "onThisDevice": "Auf diesem Gerät:"
   },
   "limits": {
-    "lostDevice": "Ein verlorenes Gerät oder ein verlorenes Wiederherstellungs-Kit kann noch nicht von Ihren synchronisierten Daten abgetrennt werden. Falls eines abhandenkommt, löschen Sie die synchronisierten Daten und richten Sie die Synchronisierung mit einem neuen Kit neu ein."
+    "lostDevice": "Ein verlorenes Gerät oder ein verlorenes Wiederherstellungs-Kit kann noch nicht von Ihren synchronisierten Daten abgetrennt werden, und wer eines besitzt, kann schon jetzt lesen, was es enthält. Falls eines abhandenkommt, löschen Sie die synchronisierten Daten und richten Sie die Synchronisierung mit einem neuen Kit neu ein; Ihre anderen Geräte müssen dann erneut beitreten."
   }
 }

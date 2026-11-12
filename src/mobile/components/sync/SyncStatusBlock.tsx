@@ -14,7 +14,7 @@ import {
   problemAction,
   skippableGap,
 } from '@/utils/device-sync-problem';
-import { isSelfHostedPaidUntil } from '@/utils/sync-status';
+import { isSelfHostedPaidUntil, secondsToDate } from '@/utils/sync-status';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 
@@ -80,7 +80,10 @@ export function SyncStatusBlock({
           onSkipMissing={onSkipMissing}
           onTryAgain={() => void run()}
           tryingAgain={syncNow.isPending}
-          renderDate={(seconds) => date(new Date(seconds * 1000), { dateStyle: 'long' })}
+          renderDate={(seconds) => {
+            const when = secondsToDate(seconds);
+            return when ? date(when, { dateStyle: 'long' }) : '';
+          }}
         />
       )}
       <div className={CARD}>
@@ -142,8 +145,8 @@ function ProblemAlert({
           ? t('alert.lapsed.selfHosted')
           : [
               t('phone.renewUnavailable'),
-              status.deletesAt !== null
-                ? t('alert.lapsed.deletes', { date: renderDate(status.deletesAt) })
+              secondsToDate(status.deletesAt) !== null
+                ? t('alert.lapsed.deletes', { date: renderDate(status.deletesAt ?? 0) })
                 : null,
             ]
               .filter(Boolean)

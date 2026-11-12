@@ -200,6 +200,21 @@ async fn a_paid_until_near_the_maximum_has_no_deletion_date() {
     assert_eq!(shown.problem, Some(SyncProblem::Lapsed));
     assert_eq!(shown.deletes_at, None);
 
+    // Beyond year 9999 nothing is shown: no deletion date, no paid-until.
+    let hostile = Runtime {
+        paid_until: Some(3_000_000_000_000_000),
+        ..runtime.clone()
+    };
+    let shown = status(&vault.a.lock(), &hostile).expect("status");
+    assert_eq!((shown.deletes_at, shown.paid_until), (None, None));
+    // A self-hosted server's year 9000 stays.
+    let self_hosted = Runtime {
+        paid_until: Some(221_845_392_000),
+        ..runtime.clone()
+    };
+    let shown = status(&vault.a.lock(), &self_hosted).expect("status");
+    assert_eq!(shown.paid_until, Some(221_845_392_000));
+
     let ordinary = Runtime {
         paid_until: Some(1_000),
         ..runtime
@@ -263,4 +278,101 @@ async fn endless_pulls_behind_a_held_gap_keep_the_gap_and_count_only_when_they_p
         Some(NOW + 10),
         "the round that pushed counts"
     );
+}
+
+/// Review fix 1: a restore that failed on the network does not use up the back-off window.
+#[tokio::test]
+async fn a_transient_restore_failure_does_not_consume_the_back_off() {
+    let vault = vault().await;
+    let mut policy_a = SnapshotPolicy::default();
+    let a1 = write_and_seal(&vault, &vault.a, "a1");
+    push(&vault.relay, &vault.creds, &[a1]).await;
+    run_round(
+        &vault.relay,
+        &vault.a,
+        &mut policy_a,
+        RoundMode::FirstSnapshot,
+        NOW,
+        0,
+    )
+    .await
+    .expect("A uploads");
+    vault
+        .relay
+        .fail_next(Route::Pull, RelayError::SnapshotRequired);
+    vault
+        .relay
+        .fail_next(Route::GetSnapshot, RelayError::Network("down".into()));
+    let mut policy = SnapshotPolicy::default();
+
+    let first = run_round(
+        &vault.relay,
+        &vault.b,
+        &mut policy,
+        RoundMode::Normal,
+        NOW,
+        0,
+    )
+    .await;
+    assert!(first.is_err(), "the round fails on the transient error");
+    assert!(policy.restore_allowed(NOW + 60));
+
+    vault
+        .relay
+        .fail_next(Route::Pull, RelayError::SnapshotRequired);
+    let second = round_at(&vault.relay, &vault.b, &mut policy, NOW + 60).await;
+    assert!(second.restored, "the next round restores");
+    assert_eq!(gets(&vault.relay), 2);
+    assert!(!policy.restore_allowed(NOW + 120));
+}
+
+/// Review fix 2: a sync server that went back outranks the relay errors of the endless pull.
+#[tokio::test]
+async fn server_went_back_outranks_the_endless_pull_relay_error() {
+    let vault = vault().await;
+    let relay = Endless {
+        inner: vault.relay.clone(),
+        ct: write_and_seal(&vault, &vault.b, "b1"),
+    };
+    state::note_vault_went_back(&vault.a.lock(), NOW).expect("mark");
+    let mut policy = SnapshotPolicy::default();
+    let mut last = None;
+    for n in 0..UNFINISHED_BEFORE_PUSH {
+        last = Some(round_at(&relay, &vault.a, &mut policy, NOW + i64::from(n)).await);
+    }
+    assert_eq!(
+        last.expect("round").problem,
+        Some(SyncProblem::ServerWentBack)
+    );
+}
+
+/// Review fix 5: a quarantine behind an endless pull stays `Quarantined` and still pushes after
+/// `UNFINISHED_BEFORE_PUSH`.
+#[tokio::test]
+async fn a_quarantine_behind_an_endless_pull_keeps_its_problem_and_pushes() {
+    let vault = vault().await;
+    // C forks: two different envelopes at seq 1 make C quarantined; replay the fork's second.
+    let c1 = forge(&vault.creds, &changeset(C, 1, None, vec![]));
+    let c2 = forge(&vault.creds, &changeset(C, 2, Some([9; 32]), vec![]));
+    push(&vault.relay, &vault.creds, &[c1, c2.clone()]).await;
+    // A meets the fork first, so C is quarantined; the endless relay then replays C's second.
+    let first =
+        crate::services::sync::engine::pull::pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+            .await
+            .expect("pull");
+    assert!(first.held > 0, "{first:?}");
+    let relay = Endless {
+        inner: vault.relay.clone(),
+        ct: c2,
+    };
+    institution(&vault.a.lock(), "a1");
+    let mut policy = SnapshotPolicy::default();
+    for n in 1..UNFINISHED_BEFORE_PUSH {
+        let report = round_at(&relay, &vault.a, &mut policy, NOW + i64::from(n)).await;
+        assert!(report.push.is_none());
+        assert_eq!(report.problem, Some(SyncProblem::Quarantined), "round {n}");
+    }
+    let last = round_at(&relay, &vault.a, &mut policy, NOW + 10).await;
+    assert!(last.push.is_some_and(|p| p.pushed > 0));
+    assert_eq!(last.problem, Some(SyncProblem::Quarantined));
 }

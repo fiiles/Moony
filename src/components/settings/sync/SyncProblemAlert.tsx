@@ -14,7 +14,7 @@ import {
   problemAction,
   skippableGap,
 } from '@/utils/device-sync-problem';
-import { isSelfHostedPaidUntil } from '@/utils/sync-status';
+import { isSelfHostedPaidUntil, secondsToDate } from '@/utils/sync-status';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { SyncRenewDialog } from '@/components/settings/sync/SyncRenewDialog';
@@ -56,13 +56,15 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
   // A gap younger than 14 days offers nothing: this device keeps syncing meanwhile
   const skippable = problem === 'gap' ? skippableGap(heldGaps.data, now) : null;
   const action = problemAction(problem, selfHosted, skippable);
+  const deletesAt = secondsToDate(status.deletesAt);
   let title: string | null = null;
   let body: string | null = t(`status.problem.${problem}`);
   const skipFrom = problem === 'gap' ? firstSkippableAt(heldGaps.data, now) : null;
   if (skipFrom !== null) {
-    body = `${body} ${t('alert.gap.skipFrom', {
-      date: date(new Date(skipFrom * 1000), { dateStyle: 'long' }),
-    })}`;
+    const from = secondsToDate(skipFrom);
+    if (from) {
+      body = `${body} ${t('alert.gap.skipFrom', { date: date(from, { dateStyle: 'long' }) })}`;
+    }
   }
   let actions: React.ReactNode = null;
   switch (action) {
@@ -72,10 +74,8 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
       body =
         action === 'askOperator'
           ? t('alert.lapsed.selfHosted')
-          : status.deletesAt !== null
-            ? t('alert.lapsed.deletes', {
-                date: date(new Date(status.deletesAt * 1000), { dateStyle: 'long' }),
-              })
+          : deletesAt
+            ? t('alert.lapsed.deletes', { date: date(deletesAt, { dateStyle: 'long' }) })
             : null;
       if (action === 'renew') {
         actions = (

@@ -13,6 +13,8 @@ use crate::services::sync::{feature, keys, state};
 
 /// The relay deletes a lapsed vault this long after the subscription ended (spec §11.6).
 pub const DELETE_AFTER_LAPSE: i64 = 90 * 86_400;
+/// The last second of year 9999: the latest instant the UI can show as a date.
+const MAX_DISPLAY_SECS: i64 = 253_402_300_799;
 
 /// The key a snapshot from a newer app version is refused with (`snapshots::restore_after_410`).
 const NEWER_SCHEMA_KEY: &str = "validation.syncSnapshotNewerSchema";
@@ -95,10 +97,15 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         [],
         |r| Ok((r.get(0)?, r.get(1)?)),
     )?;
+    // A date past year 9999 has no valid `Date` in the UI (a hostile `paidUntil` such as 3e15): it
+    // is shown as none, for the deletion date and for `paid_until` alike. Self-hosted servers
+    // report year 9000 to 9999, which stays.
+    let displayable = |at: i64| (0..=MAX_DISPLAY_SECS).contains(&at);
+    let paid_until = runtime.paid_until.filter(|at| displayable(*at));
     let deletes_at = match problem {
-        Some(SyncProblem::Lapsed) => runtime
-            .paid_until
-            .and_then(|at| at.checked_add(DELETE_AFTER_LAPSE)),
+        Some(SyncProblem::Lapsed) => paid_until
+            .and_then(|at| at.checked_add(DELETE_AFTER_LAPSE))
+            .filter(|at| displayable(*at)),
         _ => None,
     };
     Ok(SyncStatus {
@@ -108,20 +115,22 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         pending_changes: count(pending),
         held_devices: count(held),
         refused_rows: runtime.refused_rows,
-        paid_until: runtime.paid_until,
+        paid_until,
         deletes_at,
         dev_tools,
     })
 }
 
 /// `problem`, unless the sync server went back (`state::vault_went_back_at`): then
-/// `ServerWentBack` stands for no problem, a waiting gap and an invalid chain (the head below this
+/// `ServerWentBack` stands for no problem, a waiting gap, a relay error and an invalid chain (the head below this
 /// device's place is one), in every round until a replace or turning sync off. Problems that say
 /// what to do about something else (a pause, a lapse, a stop) keep their place.
 pub fn went_back(conn: &Connection, problem: Option<SyncProblem>) -> Result<Option<SyncProblem>> {
     let outranked = matches!(
         problem,
-        None | Some(SyncProblem::Gap) | Some(SyncProblem::InvalidChain)
+        None | Some(SyncProblem::Gap)
+            | Some(SyncProblem::InvalidChain)
+            | Some(SyncProblem::RelayError)
     );
     if outranked && state::vault_went_back_at(conn)?.is_some() {
         return Ok(Some(SyncProblem::ServerWentBack));

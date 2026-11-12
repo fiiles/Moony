@@ -270,24 +270,25 @@ pub struct SnapshotPolicy {
     /// The newest snapshot a heal fetched that did not heal (or did not restore): not fetched
     /// again until the vault has a newer one.
     pub examined_seq: Option<u64>,
-    /// When a restore after `410` last went ahead (`may_restore_after_410`).
+    /// When a restore after `410` last went ahead (`note_restore`).
     pub restored_at: Option<i64>,
     /// The run of consecutive unfinished pulls (`note_pull`).
     unfinished_pulls: u32,
 }
 
 impl SnapshotPolicy {
-    /// True at most once per `RESTORE_BACKOFF_SECS`; records `now` when true. A clock that went
-    /// back counts as inside the back-off.
-    pub fn may_restore_after_410(&mut self, now: i64) -> bool {
-        if self
-            .restored_at
-            .is_some_and(|at| now.saturating_sub(at) < RESTORE_BACKOFF_SECS)
-        {
-            return false;
-        }
+    /// Whether a restore after `410` may go ahead: none went ahead in the last
+    /// `RESTORE_BACKOFF_SECS`. A clock that went back counts as inside the back-off.
+    pub fn restore_allowed(&self, now: i64) -> bool {
+        self.restored_at
+            .is_none_or(|at| now.saturating_sub(at) >= RESTORE_BACKOFF_SECS)
+    }
+
+    /// Records a restore that succeeded or came back with a verdict on the snapshot's bytes (a
+    /// stop). A restore that failed for the network, a rate limit or a local failure is not
+    /// recorded, so the next round may try again.
+    pub fn note_restore(&mut self, now: i64) {
         self.restored_at = Some(now);
-        true
     }
 
     /// The run of consecutive unfinished pulls, this one included (0 after any other end).

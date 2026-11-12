@@ -5,7 +5,7 @@ import type { SyncStatus } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
-import { isSelfHostedPaidUntil } from '@/utils/sync-status';
+import { isSelfHostedPaidUntil, secondsToDate } from '@/utils/sync-status';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { ShowRecoveryKitFlow } from '@/components/settings/sync/ShowRecoveryKitFlow';
 import { SyncProblemAlert } from '@/components/settings/sync/SyncProblemAlert';
@@ -28,6 +28,7 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
   };
 
   const selfHosted = isSelfHostedPaidUntil(status.paidUntil);
+  const paidUntil = secondsToDate(status.paidUntil);
   const lastSynced =
     status.lastSuccessAt === null
       ? t('status.neverSynced')
@@ -53,16 +54,14 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
                 {t('status.syncNow')}
               </Button>
             </SettingsRow>
-            {(selfHosted || status.paidUntil !== null) && (
+            {(selfHosted || paidUntil) && (
               <SettingsRow
                 label={t('status.subscription')}
                 hint={
                   selfHosted
                     ? t('status.selfHosted')
                     : t('status.paidUntil', {
-                        date: date(new Date((status.paidUntil ?? 0) * 1000), {
-                          dateStyle: 'long',
-                        }),
+                        date: date(paidUntil ?? new Date(0), { dateStyle: 'long' }),
                       })
                 }
               />

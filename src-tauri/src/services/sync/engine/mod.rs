@@ -14,7 +14,7 @@ use std::path::PathBuf;
 
 use rusqlite::Connection;
 
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use crate::models::sync::{SyncProblem, SyncStatus};
 use crate::services::sync::binding::BindingNative;
 use crate::services::sync::capture::guard;
@@ -372,14 +372,25 @@ async fn round_steps<R: Relay, D: ConnAccess>(
 ) -> SyncResult<()> {
     let pulled = match pull::pull_all(relay, db, creds, now).await {
         Err(SyncError::SnapshotRequired) => {
-            if !policy.may_restore_after_410(now) {
+            if !policy.restore_allowed(now) {
                 log::warn!(
                     "[SYNC] The relay asked for a snapshot restore again within the back-off"
                 );
                 report.problem = Some(SyncProblem::RelayError);
                 return Ok(());
             }
-            snapshots::restore_after_410(relay, db, creds, now).await?;
+            let restored = snapshots::restore_after_410(relay, db, creds, now).await;
+            // Only a restore that ran, or was refused on the snapshot's own bytes, uses up the
+            // back-off window; a transient failure leaves the next round free to try again.
+            if matches!(
+                restored,
+                Ok(_)
+                    | Err(SyncError::Local(AppError::Validation(_)))
+                    | Err(SyncError::TooLarge(TooLarge::Body))
+            ) {
+                policy.note_restore(now);
+            }
+            restored?;
             report.restored = true;
             log::info!("[SYNC] Restored the vault's snapshot after the relay pruned this cursor");
             match pull::pull_all(relay, db, creds, now).await {
@@ -400,6 +411,10 @@ async fn round_steps<R: Relay, D: ConnAccess>(
             pulled.gaps
         );
     }
+    // A round that fails on a transient error returns before this point: it neither counts as an
+    // unfinished pull nor resets the run. An unfinished pull that holds nothing and made progress
+    // still records success (pull progress is syncing); only the run of `UNFINISHED_BEFORE_PUSH`
+    // turns it into a relay error.
     // Endless pulls (audit L3): an unfinished pull does not push, until `UNFINISHED_BEFORE_PUSH` of
     // them in a row. The round then pushes and reports a relay error, so it records no success; a
     // held gap behind a long tail is such a pull too. The push still stops at

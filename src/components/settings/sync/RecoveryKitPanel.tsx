@@ -164,6 +164,7 @@ export function RecoveryKitPanel({
       )}
       <p className="m-0 text-micro font-500 text-ink-3">{t('setup.kit.differs')}</p>
       <p className="m-0 text-micro font-500 text-ink-3">{t('setup.kit.folderWarning')}</p>
+      <p className="m-0 text-micro font-500 text-ink-3">{t('limits.lostDevice')}</p>
     </div>
   );
 }

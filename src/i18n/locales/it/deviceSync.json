@@ -167,7 +167,8 @@
     "pendingChanges_many": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Non verranno più inviate.",
     "pendingChanges_other": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Non verranno più inviate.",
     "confirm": "Disattiva la sincronizzazione",
-    "success": "Sincronizzazione disattivata"
+    "success": "Sincronizzazione disattivata",
+    "noCutOff": "Disattivare qui la sincronizzazione non esclude nessun altro dispositivo né Kit."
   },
   "delete": {
     "button": "Elimina i dati sincronizzati",
@@ -213,7 +214,10 @@
       "ios": "iPhone",
       "android": "Telefono Android",
       "other": "Altro dispositivo"
-    }
+    },
+    "quiet_one": "Nessun segnale da {{count}} giorno",
+    "quiet_many": "Nessun segnale da {{count}} giorni",
+    "quiet_other": "Nessun segnale da {{count}} giorni"
   },
   "pairing": {
     "addTitle": "Aggiungi un dispositivo",
@@ -329,5 +333,8 @@
       "saveCopy": "Salva una copia in File"
     },
     "onThisDevice": "Su questo dispositivo:"
+  },
+  "limits": {
+    "lostDevice": "Un dispositivo o un Kit di recupero smarrito non può ancora essere escluso dai tuoi dati sincronizzati. Se uno va perso, elimina i dati sincronizzati e configura di nuovo la sincronizzazione con un nuovo Kit."
   }
 }

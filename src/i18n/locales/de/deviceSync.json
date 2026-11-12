@@ -166,7 +166,8 @@
     "pendingChanges_one": "{{count}} Änderung auf diesem Gerät wurde noch nicht gesendet. Sie wird nicht mehr gesendet.",
     "pendingChanges_other": "{{count}} Änderungen auf diesem Gerät wurden noch nicht gesendet. Sie werden nicht mehr gesendet.",
     "confirm": "Synchronisierung ausschalten",
-    "success": "Synchronisierung ausgeschaltet"
+    "success": "Synchronisierung ausgeschaltet",
+    "noCutOff": "Das Ausschalten der Synchronisierung hier trennt kein anderes Gerät und kein Kit ab."
   },
   "delete": {
     "button": "Synchronisierte Daten löschen",
@@ -212,7 +213,9 @@
       "ios": "iPhone",
       "android": "Android-Smartphone",
       "other": "Anderes Gerät"
-    }
+    },
+    "quiet_one": "Seit {{count}} Tag nichts gehört",
+    "quiet_other": "Seit {{count}} Tagen nichts gehört"
   },
   "pairing": {
     "addTitle": "Gerät hinzufügen",
@@ -328,5 +331,8 @@
       "saveCopy": "Kopie in Dateien sichern"
     },
     "onThisDevice": "Auf diesem Gerät:"
+  },
+  "limits": {
+    "lostDevice": "Ein verlorenes Gerät oder ein verlorenes Wiederherstellungs-Kit kann noch nicht von Ihren synchronisierten Daten abgetrennt werden. Falls eines abhandenkommt, löschen Sie die synchronisierten Daten und richten Sie die Synchronisierung mit einem neuen Kit neu ein."
   }
 }

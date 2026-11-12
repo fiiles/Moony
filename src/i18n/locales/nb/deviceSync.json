@@ -166,7 +166,8 @@
     "pendingChanges_one": "{{count}} endring på denne enheten er ikke sendt ennå. Den blir ikke sendt.",
     "pendingChanges_other": "{{count}} endringer på denne enheten er ikke sendt ennå. De blir ikke sendt.",
     "confirm": "Slå av synkronisering",
-    "success": "Synkronisering slått av"
+    "success": "Synkronisering slått av",
+    "noCutOff": "Å slå av synkroniseringen her stenger ikke ute noen andre enheter eller sett."
   },
   "delete": {
     "button": "Slett synkroniserte data",
@@ -212,7 +213,9 @@
       "ios": "iPhone",
       "android": "Android-telefon",
       "other": "Annen enhet"
-    }
+    },
+    "quiet_one": "Ikke hørt fra på {{count}} dag",
+    "quiet_other": "Ikke hørt fra på {{count}} dager"
   },
   "pairing": {
     "addTitle": "Legg til en enhet",
@@ -328,5 +331,8 @@
       "saveCopy": "Lagre en kopi i Filer"
     },
     "onThisDevice": "På denne enheten:"
+  },
+  "limits": {
+    "lostDevice": "En mistet enhet eller et mistet gjenopprettingssett kan ikke stenges ute fra de synkroniserte dataene dine ennå. Hvis noe forsvinner, sletter du de synkroniserte dataene og setter opp synkroniseringen på nytt med et nytt sett."
   }
 }

@@ -19,7 +19,7 @@ export function TurnOffSyncDialog({ onClose }: { onClose: () => void }) {
   return (
     <SyncPasswordDialog
       title={t('turnOff.title')}
-      description={t('turnOff.description')}
+      description={`${t('turnOff.description')} ${t('turnOff.noCutOff')}`}
       note={pending > 0 ? t('turnOff.pendingChanges', { count: pending }) : undefined}
       confirmLabel={t('turnOff.confirm')}
       destructive

@@ -168,7 +168,8 @@
     "pendingChanges_many": "{{count}} změny na tomto zařízení ještě nebylo odesláno. Už se neodešlou.",
     "pendingChanges_other": "{{count}} změn na tomto zařízení ještě nebylo odesláno. Už se neodešlou.",
     "confirm": "Vypnout synchronizaci",
-    "success": "Synchronizace vypnuta"
+    "success": "Synchronizace vypnuta",
+    "noCutOff": "Vypnutím synchronizace tady neodříznete žádné jiné zařízení ani sadu."
   },
   "delete": {
     "button": "Smazat synchronizovaná data",
@@ -214,7 +215,11 @@
       "ios": "iPhone",
       "android": "Telefon s Androidem",
       "other": "Jiné zařízení"
-    }
+    },
+    "quiet_one": "Bez zprávy {{count}} den",
+    "quiet_few": "Bez zprávy {{count}} dny",
+    "quiet_many": "Bez zprávy {{count}} dne",
+    "quiet_other": "Bez zprávy {{count}} dní"
   },
   "pairing": {
     "addTitle": "Přidat zařízení",
@@ -330,5 +335,8 @@
       "saveCopy": "Uložit kopii do Souborů"
     },
     "onThisDevice": "V tomto zařízení:"
+  },
+  "limits": {
+    "lostDevice": "Ztracené zařízení nebo Záchranou sadu zatím nelze odříznout od synchronizovaných dat. Pokud nějaká zmizí, smažte synchronizovaná data a nastavte synchronizaci znovu s novou sadou."
   }
 }

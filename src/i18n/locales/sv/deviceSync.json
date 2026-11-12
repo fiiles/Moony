@@ -166,7 +166,8 @@
     "pendingChanges_one": "{{count}} ändring på den här enheten har inte skickats än. Den skickas inte.",
     "pendingChanges_other": "{{count}} ändringar på den här enheten har inte skickats än. De skickas inte.",
     "confirm": "Stäng av synkronisering",
-    "success": "Synkroniseringen är avstängd"
+    "success": "Synkroniseringen är avstängd",
+    "noCutOff": "Att stänga av synkroniseringen här stänger inte ute någon annan enhet eller något annat kit."
   },
   "delete": {
     "button": "Radera synkroniserade data",
@@ -212,7 +213,9 @@
       "ios": "iPhone",
       "android": "Android-telefon",
       "other": "Annan enhet"
-    }
+    },
+    "quiet_one": "Inget livstecken på {{count}} dag",
+    "quiet_other": "Inget livstecken på {{count}} dagar"
   },
   "pairing": {
     "addTitle": "Lägg till en enhet",
@@ -328,5 +331,8 @@
       "saveCopy": "Spara en kopia i Filer"
     },
     "onThisDevice": "På den här enheten:"
+  },
+  "limits": {
+    "lostDevice": "En borttappad enhet eller ett borttappat återställningskit kan ännu inte stängas ute från dina synkroniserade data. Om något försvinner raderar du de synkroniserade data och ställer in synkroniseringen på nytt med ett nytt kit."
   }
 }

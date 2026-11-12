@@ -166,7 +166,8 @@
     "pendingChanges_one": "{{count}} change on this device has not been sent yet. It will not be sent.",
     "pendingChanges_other": "{{count}} changes on this device have not been sent yet. They will not be sent.",
     "confirm": "Turn off sync",
-    "success": "Sync turned off"
+    "success": "Sync turned off",
+    "noCutOff": "Turning sync off here doesn't cut off any other device or Kit."
   },
   "delete": {
     "button": "Delete synced data",
@@ -212,7 +213,9 @@
       "ios": "iPhone",
       "android": "Android phone",
       "other": "Other device"
-    }
+    },
+    "quiet_one": "Not heard from in {{count}} day",
+    "quiet_other": "Not heard from in {{count}} days"
   },
   "pairing": {
     "addTitle": "Add a device",
@@ -328,5 +331,8 @@
       "saveCopy": "Save a copy to Files"
     },
     "onThisDevice": "On this device:"
+  },
+  "limits": {
+    "lostDevice": "A lost device or Recovery Kit can't be cut off from your synced data yet. If one goes missing, delete the synced data and set sync up again with a new Kit."
   }
 }

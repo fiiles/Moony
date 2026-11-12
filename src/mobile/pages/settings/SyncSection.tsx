@@ -223,6 +223,7 @@ export default function SyncSection() {
 
           <SectionHead title={t('devices.title')} />
           <SyncDeviceRows devices={devices ?? []} onRename={setRenaming} />
+          <p className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3">{t('limits.lostDevice')}</p>
           <EntityRows>
             <SettingsRow
               icon={Plus}
@@ -316,7 +317,7 @@ export default function SyncSection() {
         open={open === 'turnOff'}
         onOpenChange={close}
         title={t('turnOff.title')}
-        description={t('phone.turnOffBody')}
+        description={`${t('phone.turnOffBody')} ${t('turnOff.noCutOff')}`}
         note={pending > 0 ? t('turnOff.pendingChanges', { count: pending }) : undefined}
         confirmLabel={t('turnOff.confirm')}
         destructive

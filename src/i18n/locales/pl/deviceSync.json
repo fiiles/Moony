@@ -168,7 +168,8 @@
     "pendingChanges_many": "{{count}} zmian na tym urządzeniu nie zostało jeszcze wysłanych. Nie zostaną już wysłane.",
     "pendingChanges_other": "{{count}} zmiany na tym urządzeniu nie zostało jeszcze wysłane. Nie zostaną już wysłane.",
     "confirm": "Wyłącz synchronizację",
-    "success": "Synchronizacja wyłączona"
+    "success": "Synchronizacja wyłączona",
+    "noCutOff": "Wyłączenie synchronizacji tutaj nie odcina żadnego innego urządzenia ani Zestawu."
   },
   "delete": {
     "button": "Usuń zsynchronizowane dane",
@@ -214,7 +215,11 @@
       "ios": "iPhone",
       "android": "Telefon z Androidem",
       "other": "Inne urządzenie"
-    }
+    },
+    "quiet_one": "Brak wieści od {{count}} dnia",
+    "quiet_few": "Brak wieści od {{count}} dni",
+    "quiet_many": "Brak wieści od {{count}} dni",
+    "quiet_other": "Brak wieści od {{count}} dnia"
   },
   "pairing": {
     "addTitle": "Dodaj urządzenie",
@@ -330,5 +335,8 @@
       "saveCopy": "Zapisz kopię w Plikach"
     },
     "onThisDevice": "Na tym urządzeniu:"
+  },
+  "limits": {
+    "lostDevice": "Zgubionego urządzenia ani Zestawu odzyskiwania nie można jeszcze odciąć od zsynchronizowanych danych. Jeśli któryś zaginie, usuń zsynchronizowane dane i skonfiguruj synchronizację od nowa z nowym Zestawem."
   }
 }

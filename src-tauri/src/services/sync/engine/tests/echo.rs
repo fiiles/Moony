@@ -468,7 +468,8 @@ async fn a_resync_after_an_invalid_chain_keeps_its_backup() {
     )
     .await
     .expect("round");
-    assert_eq!(stopped.problem, Some(SyncProblem::InvalidChain));
+    // Review round 2: the head below the cursor marks the sync server as gone back.
+    assert_eq!(stopped.problem, Some(SyncProblem::ServerWentBack));
     let consent = agreed(&vault.b);
     let dir = tempfile::tempdir().expect("dir");
 
@@ -490,11 +491,12 @@ async fn a_resync_after_an_invalid_chain_keeps_its_backup() {
     );
 }
 
-/// The fake relay whose second pull call fails (`429`): the pull between a round's push and its
-/// echo.
+/// The fake relay whose second pull call fails with `error`: the pull between a round's push and
+/// its echo.
 struct FailSecondPull {
     inner: FakeRelay,
     pulls: AtomicUsize,
+    error: fn() -> RelayError,
 }
 
 impl Relay for FailSecondPull {
@@ -518,7 +520,7 @@ impl Relay for FailSecondPull {
     }
     async fn pull(&self, vault: &VaultAuth, after: u64, limit: u32) -> RelayResult<PullPage> {
         if self.pulls.fetch_add(1, Ordering::SeqCst) == 1 {
-            return Err(RelayError::RateLimited);
+            return Err((self.error)());
         }
         self.inner.pull(vault, after, limit).await
     }
@@ -542,6 +544,7 @@ async fn a_failed_echo_pull_keeps_the_round() {
     let relay = FailSecondPull {
         inner: vault.relay.clone(),
         pulls: AtomicUsize::new(0),
+        error: || RelayError::RateLimited,
     };
 
     let report = run_round(
@@ -562,4 +565,31 @@ async fn a_failed_echo_pull_keeps_the_round() {
     let next = round(&vault, &vault.a, RoundMode::Normal).await;
     assert_eq!(next.problem, None);
     assert!(unsent(&vault.a.lock()).is_empty());
+}
+
+/// Review round 2, item 3: only a transient failure of the echo pull is swallowed; any other
+/// answer is the round's, mapped as for the first pull.
+#[tokio::test]
+async fn an_echo_pull_refused_for_good_is_the_rounds_problem() {
+    let vault = vault().await;
+    institution(&vault.a.lock(), "a1");
+    let relay = FailSecondPull {
+        inner: vault.relay.clone(),
+        pulls: AtomicUsize::new(0),
+        error: || RelayError::Unauthorized,
+    };
+
+    let report = run_round(
+        &relay,
+        &vault.a,
+        &mut SnapshotPolicy::default(),
+        RoundMode::Normal,
+        NOW,
+        0,
+    )
+    .await
+    .expect("a sync state, not an error");
+
+    assert_eq!(report.push.as_ref().map(|p| p.pushed), Some(1));
+    assert_eq!(report.problem, Some(SyncProblem::Unauthorized));
 }

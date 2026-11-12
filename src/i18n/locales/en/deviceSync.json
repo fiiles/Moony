@@ -37,6 +37,7 @@
       "unauthorized": "The sync server did not accept this device. Setting up sync again may be needed.",
       "keyRotated": "The recovery key was changed on another device. Set up sync on this device again.",
       "secureStorage": "Moony could not reach this device's secure storage, so syncing is paused. It will try again; unlocking the device or restarting Moony usually helps.",
+      "serverWentBack": "The sync server went back to an older state, so changes may be missing on your other devices. Your data on this device is intact. Moony cannot repair this on its own yet: to bring your devices back together, turn sync off, set it up again on the device with the most complete data, and join the others.",
       "internal": "Syncing stopped because of an internal error."
     },
     "lastSynced": "Last synced {{date}}",

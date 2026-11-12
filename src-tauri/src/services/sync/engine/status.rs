@@ -82,7 +82,7 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
     } else {
         None
     };
-    let problem = paused.or(runtime.problem);
+    let problem = went_back(conn, paused.or(runtime.problem))?;
     let phase = match (paused, problem) {
         (Some(paused), _) => phase_of(paused),
         (None, _) if runtime.running_round => SyncPhase::Syncing,
@@ -112,6 +112,21 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
     })
 }
 
+/// `problem`, unless the sync server went back (`state::vault_went_back_at`): then
+/// `ServerWentBack` stands for no problem, a waiting gap and an invalid chain (the head below this
+/// device's place is one), in every round until a replace or turning sync off. Problems that say
+/// what to do about something else (a pause, a lapse, a stop) keep their place.
+pub fn went_back(conn: &Connection, problem: Option<SyncProblem>) -> Result<Option<SyncProblem>> {
+    let outranked = matches!(
+        problem,
+        None | Some(SyncProblem::Gap) | Some(SyncProblem::InvalidChain)
+    );
+    if outranked && state::vault_went_back_at(conn)?.is_some() {
+        return Ok(Some(SyncProblem::ServerWentBack));
+    }
+    Ok(problem)
+}
+
 fn count(n: i64) -> u32 {
     u32::try_from(n.max(0)).unwrap_or(u32::MAX)
 }
@@ -138,6 +153,7 @@ pub fn phase_of(problem: SyncProblem) -> SyncPhase {
         | P::MissingParent
         | P::Quarantined
         | P::RelayError
+        | P::ServerWentBack
         | P::Unauthorized
         | P::KeyRotated
         | P::Internal => SyncPhase::Error,
@@ -208,6 +224,7 @@ pub fn reason(problem: SyncProblem) -> &'static str {
         P::Unauthorized => "sync stopped: unauthorized",
         P::KeyRotated => "sync stopped: keyRotated",
         P::SecureStorage => "sync stopped: secureStorage",
+        P::ServerWentBack => "sync stopped: serverWentBack",
         P::Internal => "sync stopped: internal",
     }
 }

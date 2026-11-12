@@ -3366,7 +3366,13 @@ export type SyncProblem =
  * This device's secure storage could not be reached (the device binding could not be
  * checked); paused, and tried again at the next trigger.
  */
-"secureStorage" | "internal"
+"secureStorage" | 
+/**
+ * The sync server went back to an older state (its head below this device's place, e.g.
+ * restored from an older backup); changes may be missing on other devices. Sticky until a
+ * replace or turning sync off; syncing goes on.
+ */
+"serverWentBack" | "internal"
 
 /**
  * The `sync-status-changed` payload.

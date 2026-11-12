@@ -37,6 +37,7 @@
       "unauthorized": "El servidor de sincronización no aceptó este dispositivo. Puede que debas configurar la sincronización de nuevo.",
       "keyRotated": "La clave de recuperación se cambió en otro dispositivo. Configura la sincronización de nuevo en este dispositivo.",
       "secureStorage": "Moony no ha podido acceder al almacenamiento seguro de este dispositivo, así que la sincronización está en pausa. Lo intentará de nuevo; desbloquear el dispositivo o reiniciar Moony suele ayudar.",
+      "serverWentBack": "El servidor de sincronización ha vuelto a un estado anterior, así que puede que falten cambios en tus otros dispositivos. Tus datos en este dispositivo están intactos. Moony todavía no puede arreglarlo por sí mismo: para volver a juntar tus dispositivos, desactiva la sincronización, vuelve a configurarla en el dispositivo con los datos más completos y une los demás.",
       "internal": "La sincronización se detuvo por un error interno."
     },
     "lastSynced": "Última sincronización: {{date}}",

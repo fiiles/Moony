@@ -37,6 +37,7 @@
       "unauthorized": "Synkroniseringsserveren godtok ikke denne enheten. Du må kanskje sette opp synkronisering på nytt.",
       "keyRotated": "Gjenopprettingsnøkkelen ble endret på en annen enhet. Sett opp synkronisering på nytt på denne enheten.",
       "secureStorage": "Moony kom ikke til den sikre lagringen på denne enheten, så synkroniseringen er satt på pause. Moony prøver igjen; det hjelper som regel å låse opp enheten eller starte Moony på nytt.",
+      "serverWentBack": "Synkroniseringsserveren har gått tilbake til en eldre tilstand, så endringer kan mangle på de andre enhetene dine. Dataene dine på denne enheten er intakte. Moony kan ikke rette opp dette selv ennå: for å samle enhetene igjen, slå av synkronisering, sett den opp på nytt på enheten med de mest fullstendige dataene, og koble til de andre.",
       "internal": "Synkroniseringen stoppet på grunn av en intern feil."
     },
     "lastSynced": "Sist synkronisert {{date}}",

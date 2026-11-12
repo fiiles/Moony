@@ -26,6 +26,10 @@ export function problemAction(
       return pendingChanges > 0 ? 'none' : 'resync';
     case 'newerSchema':
       return 'updateApp';
+    case 'serverWentBack':
+      // No action yet: the text says how to bring the devices back together (turn sync off,
+      // set it up again on the device with the most complete data, join the others).
+      return 'none';
     default:
       return 'none';
   }

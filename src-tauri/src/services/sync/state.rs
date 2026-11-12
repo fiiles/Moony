@@ -183,6 +183,7 @@ pub fn disable(conn: &Connection) -> Result<()> {
              DELETE FROM sync_heads; DELETE FROM sync_own_log; DELETE FROM sync_unsent; \
              DELETE FROM sync_typed;",
         )?;
+        clear_vault_went_back(conn)?;
         Ok(())
     })
 }
@@ -445,8 +446,48 @@ pub fn reset_chain(conn: &Connection) -> Result<()> {
     })
 }
 
-/// Clears the pauses and the counters that belong to one vault binding.
+/// The Local `app_config` key (never synced, never captured) holding when this device first saw
+/// the sync server's head below its place: a server that went back, e.g. restored from an older
+/// backup (`note_vault_went_back`).
+const VAULT_WENT_BACK_KEY: &str = "sync.vault_went_back_at";
+
+/// The sync server went back below this device's place (a pull page's head below it): noted at
+/// `at` (unix seconds), the first time kept. Sticky: no round, successful or not, clears it; only a
+/// completed replace (`reset_engine_marks`) and turning sync off (`disable`) do. While it is set,
+/// the status shows `SyncProblem::ServerWentBack` and every re-sync keeps its backup.
+pub fn note_vault_went_back(conn: &Connection, at: i64) -> Result<()> {
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO NOTHING",
+        rusqlite::params![VAULT_WENT_BACK_KEY, at.to_string()],
+    )?;
+    Ok(())
+}
+
+/// When the sync server was seen to go back, if it was (`note_vault_went_back`).
+pub fn vault_went_back_at(conn: &Connection) -> Result<Option<i64>> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [VAULT_WENT_BACK_KEY],
+            |row| row.get(0),
+        )
+        .optional()?;
+    // A value that does not parse still says it happened.
+    Ok(value.map(|v| v.parse().unwrap_or(0)))
+}
+
+fn clear_vault_went_back(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "DELETE FROM app_config WHERE key = ?1",
+        [VAULT_WENT_BACK_KEY],
+    )?;
+    Ok(())
+}
+
+/// Clears the pauses and the counters that belong to one vault binding, and the mark of a sync
+/// server that went back (a completed replace starts over from the server's state).
 pub fn reset_engine_marks(conn: &Connection) -> Result<()> {
+    clear_vault_went_back(conn)?;
     conn.execute(
         "UPDATE sync_state SET vault_gone_at = NULL, capture_broken_at = NULL, \
            snapshot_uploaded_at = NULL, snapshot_too_large_at = NULL, pulled_bytes = 0, \

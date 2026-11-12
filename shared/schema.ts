@@ -78,6 +78,7 @@ export type SyncProblem =
   | 'unauthorized'
   | 'keyRotated'
   | 'secureStorage'
+  | 'serverWentBack'
   | 'internal';
 
 /** The `sync-status-changed` payload. */

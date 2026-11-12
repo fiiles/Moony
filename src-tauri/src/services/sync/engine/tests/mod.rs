@@ -15,8 +15,10 @@ mod repair;
 mod replace_safety;
 mod runtime;
 mod runtime_loop;
+mod scan;
 mod setup;
 mod snapshots;
+mod went_back;
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};

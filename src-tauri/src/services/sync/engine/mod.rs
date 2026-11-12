@@ -101,6 +101,8 @@ pub struct PullReport {
     pub behind: bool,
     /// The pull reached its page limit (`pull::MAX_PULL_PAGES`) before the relay's head.
     pub unfinished: bool,
+    /// The head the first page reported: how far this pull looked (`pull::pull_echo`).
+    pub reach: Option<u64>,
 }
 
 impl PullReport {
@@ -199,7 +201,6 @@ impl RoundReport {
     }
 }
 
-/// The envelopes waiting in `sync_unsent` for their echo.
 /// The envelopes waiting in `sync_unsent` for their echo, and the oldest one's sequence.
 fn unechoed<D: ConnAccess>(db: &D) -> Result<(usize, Option<u64>)> {
     db.with_conn(|conn| {
@@ -264,8 +265,10 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    quota, a snapshot too large, a rotated token or an unauthorized one. A transient, rate-limit,
 ///    refusal or local failure is returned as an error; nothing inside a round is retried, so a
 ///    round lasts at most one relay timeout past its last answered call.
-/// 6. A round with no problem, or only a waiting gap (`Gap`), records its success; one with any
-///    other problem records its fixed reason.
+/// 6. A sync server that went back (`state::vault_went_back_at`) is the round's problem in place
+///    of none, a gap or an invalid chain (`status::went_back`). A round with no problem, or only
+///    a waiting gap (`Gap`), records its success; one with any other problem records its fixed
+///    reason.
 #[allow(clippy::too_many_arguments)]
 pub async fn run_round_into<R: Relay, D: ConnAccess>(
     relay: &R,
@@ -332,6 +335,10 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
     if report.problem.is_none() {
         report.problem = report.pull.as_ref().and_then(status::problem_of_pull);
     }
+    // A sync server that went back stays visible in every round until a replace (no silent
+    // divergence once the head has passed this device's place again).
+    let problem = report.problem;
+    report.problem = db.with_conn(|conn| status::went_back(conn, problem))?;
     // A gap alone is no failure: the round synced everything it could and keeps pushing, so it
     // counts for "Last synced" (the `Gap` problem and the `waiting` phase are still reported).
     db.with_conn(|conn| match report.problem {
@@ -393,19 +400,25 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     }
     // The echo (audit M4): what the push sent leaves `sync_unsent` only when this device pulls it
     // back, so the round pulls once more. On an honest relay nothing it sent stays pending, and a
-    // snapshot's `S` covers it (ruling P4). A failed echo pull (a `410` or `429` between the two
-    // pulls) does not fail a round whose push went through: the next round's pull is the echo.
-    match pull::pull_all(relay, db, creds, now).await {
+    // snapshot's `S` covers it (ruling P4). A transient failure of the echo pull (a `410`, a `429`,
+    // the network between the two pulls) does not fail a round whose push went through: the next
+    // round's pull is the echo. Any other error is the round's, as for the first pull.
+    let reach = report.pull.as_ref().and_then(|pull| pull.reach);
+    match pull::pull_echo(relay, db, creds, now, reach).await {
         Ok(echo) => {
             if let Some(pull) = report.pull.as_mut() {
                 absorb(pull, echo);
             }
         }
-        Err(error) => {
+        Err(
+            error
+            @ (SyncError::RateLimited | SyncError::Transient(_) | SyncError::SnapshotRequired),
+        ) => {
             log::info!("[SYNC] The pull after the push failed; the next round pulls the echo");
             log::debug!("[SYNC] The pull after the push failed: {error}");
             return Ok(());
         }
+        Err(error) => return Err(error),
     }
     // Only a pull that reached the relay's end (or got past a hold or a gap, where own envelopes
     // are still acknowledged) says what came back; a pull stop keeps its own problem.
@@ -489,6 +502,7 @@ fn absorb(first: &mut PullReport, later: PullReport) {
     first.stop = later.stop;
     first.behind = later.behind;
     first.unfinished = later.unfinished;
+    first.reach = later.reach.or(first.reach);
 }
 
 /// "Sync now" on a paused vault (ruling P9): asks the relay for the vault once and lifts the pause

@@ -163,10 +163,14 @@ fn act(
 /// parent) it stays before that envelope while later ones are still handled (other authors keep
 /// syncing, this device's own envelopes are still acknowledged), so the next pull meets the held
 /// envelope again. A stop ends the pull with the cursor before the stopping envelope, and so does
-/// a page outside the contract (`Invalid`). A `NewerSchema` stop alone goes on to the same bounds
-/// in scan mode (`acknowledge_if_own`): this device's own envelopes are acknowledged, nothing is
-/// applied, the cursor stays before the stop, so the pushes a newer-schema stop allows still get
-/// their echo.
+/// a page outside the contract (`Invalid`); one whose head is below where the pull stands is a
+/// sync server that went back (restored from an older backup), noted until a replace or turning
+/// sync off (`state::note_vault_went_back`). A `NewerSchema` stop alone goes on to the same bounds
+/// in scan mode (`acknowledge_if_own`) while anything of this device waits in `sync_unsent`
+/// (checked at the stop and after each page, so with nothing waiting it stops at once): this
+/// device's own envelopes are acknowledged, nothing is applied, no other author's head and not
+/// the cursor move, so the pushes a newer-schema stop allows still get their echo. A page outside
+/// the contract met while scanning ends the scan and the pull stays reported as `NewerSchema`.
 ///
 /// Relay positions are not authenticated, so one pull is bounded: it ends once it has handled
 /// everything up to the head the first page reported (later envelopes are left to the next
@@ -187,16 +191,42 @@ pub async fn pull_all<R: Relay, D: ConnAccess>(
     creds: &Credentials,
     now: i64,
 ) -> SyncResult<PullReport> {
-    pull_pages(relay, db, creds, now, MAX_PULL_PAGES).await
+    pull_bounded(relay, db, creds, now, MAX_PULL_PAGES, None).await
 }
 
-/// `pull_all` with at most `max_pages` pages.
+/// The round's echo pull after its push: `pull_all`, except that a scan after a `NewerSchema`
+/// stop starts past `scan_from`, the reach (`PullReport::reach`) of the round's first pull, which
+/// already looked at everything up to it.
+pub async fn pull_echo<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    now: i64,
+    scan_from: Option<u64>,
+) -> SyncResult<PullReport> {
+    pull_bounded(relay, db, creds, now, MAX_PULL_PAGES, scan_from).await
+}
+
+/// `pull_all` with at most `max_pages` pages (tests).
+#[cfg(test)]
 pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     creds: &Credentials,
     now: i64,
     max_pages: usize,
+) -> SyncResult<PullReport> {
+    pull_bounded(relay, db, creds, now, max_pages, None).await
+}
+
+/// `pull_all` with at most `max_pages` pages, scanning only past `scan_from`.
+async fn pull_bounded<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    now: i64,
+    max_pages: usize,
+    scan_from: Option<u64>,
 ) -> SyncResult<PullReport> {
     let mut after = db.with_conn(|conn| {
         state::load(conn)?
@@ -213,13 +243,20 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
         let page = relay.pull(&auth, after, PULL_PAGE).await?;
         if let Err(reason) = check_page(&page, after, PULL_PAGE) {
             log::warn!("[SYNC] The relay served a page outside its contract: {reason}");
+            if page.head < after {
+                log::warn!("[SYNC] The sync server's head went back below this device's place");
+                db.with_conn(|conn| state::note_vault_went_back(conn, now))?;
+            }
             report.stop.get_or_insert(PullStop::Invalid);
             return Ok(report);
         }
         let target = *first_head.get_or_insert(page.head);
+        report.reach = Some(target);
         for op in &page.ops {
             if scanning {
-                db.with_conn(|conn| acknowledge_if_own(conn, creds, op))?;
+                if scan_from.is_none_or(|from| op.seq > from) {
+                    db.with_conn(|conn| acknowledge_if_own(conn, creds, op))?;
+                }
                 after = op.seq;
                 continue;
             }
@@ -234,6 +271,9 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
             match step {
                 OpStep::Stop(PullStop::NewerSchema) => {
                     report.stop = Some(PullStop::NewerSchema);
+                    if !db.with_conn(waiting_for_echo)? {
+                        return Ok(report);
+                    }
                     scanning = true;
                 }
                 OpStep::Stop(stop) => {
@@ -244,6 +284,14 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
                 OpStep::Advance | OpStep::Rejoined => {}
             }
             after = op.seq;
+        }
+        if scanning {
+            if !db.with_conn(waiting_for_echo)? {
+                return Ok(report);
+            }
+            if let Some(from) = scan_from {
+                after = after.max(from);
+            }
         }
         if !page.more {
             report.behind = page.head > after;
@@ -262,6 +310,15 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
     log::warn!("[SYNC] A pull ended after {max_pages} pages, before the relay's head");
     report.unfinished = true;
     Ok(report)
+}
+
+/// Whether anything of this device waits in `sync_unsent` for its echo.
+fn waiting_for_echo(conn: &Connection) -> Result<bool> {
+    Ok(
+        conn.query_row("SELECT EXISTS (SELECT 1 FROM sync_unsent)", [], |r| {
+            r.get(0)
+        })?,
+    )
 }
 
 /// Scan mode after a `NewerSchema` stop: acknowledges `op` when it is this device's own envelope as

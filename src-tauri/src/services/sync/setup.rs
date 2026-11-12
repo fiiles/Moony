@@ -340,6 +340,7 @@ fn problem_error(problem: SyncProblem) -> SyncError {
         | SyncProblem::Quarantined
         | SyncProblem::RelayError
         | SyncProblem::SecureStorage
+        | SyncProblem::ServerWentBack
         | SyncProblem::Internal => SyncError::Transient(Transient::Relay),
     }
 }

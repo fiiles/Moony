@@ -34,7 +34,6 @@ use super::engine::pull::DEFAULT_DEVICE_NAME;
 use super::engine::push;
 use super::engine::runtime::{rejoin_if_copy, CopyCheck};
 use super::engine::snapshots::{off_thread, open_sealed, SnapshotPolicy};
-use super::engine::status;
 use super::engine::{self, ConnAccess, PullEnd, PullReport, RoundMode};
 use super::error::SyncResult;
 use super::hlc::DeviceId;
@@ -144,8 +143,8 @@ struct Replaced {
     /// A join or a repair: its backup stays Kept whatever the counts (controller ruling). A
     /// re-sync too when, inside its hold, an envelope still waited for its echo (sent or not, the
     /// vault was not seen to hold it: the counts leave out what the push handed over, the mark
-    /// does not), or its last pull stopped on an invalid chain (a relay whose head went below the
-    /// cursor, e.g. restored from an older backup, may have lost envelopes already echoed here).
+    /// does not), or the sync server was seen to go back (`state::vault_went_back_at`: restored
+    /// from an older backup, it may have lost envelopes already echoed here).
     always_kept: bool,
 }
 
@@ -190,13 +189,11 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
         impact::check_consent_after_push(conn, input.kind, &input.consent, &input.acknowledged)?;
         let (unsent_items, unsent_batches, resync_keeps) = if input.kind == ReplaceKind::Resync {
             let impact = impact::replace_impact(conn)?;
-            let invalid_chain = state::marks(conn)?
-                .and_then(|marks| marks.last_error)
-                .is_some_and(|error| error == status::reason(SyncProblem::InvalidChain));
+            let went_back = state::vault_went_back_at(conn)?.is_some();
             (
                 impact.pending_items,
                 impact::unsent_batches_besides(conn, &input.acknowledged)?,
-                impact.pending_batches > 0 || invalid_chain,
+                impact.pending_batches > 0 || went_back,
             )
         } else {
             (0, 0, false)
@@ -617,8 +614,8 @@ async fn repair_after_backup<R: Relay, D: ConnAccess>(
 /// the outcome says how many. An envelope the push handed to the relay is not counted although
 /// its echo is never pulled here (audit M4's echo needs a pull the replace does not wait for),
 /// but the backup stays `-kept` whenever any envelope still waited for its echo in the hold, and
-/// whenever the last pull stopped on an invalid chain (a relay restored from an older backup):
-/// it may be the only copy of what such a relay lost.
+/// whenever the sync server was seen to go back (`state::vault_went_back_at`, sticky until a
+/// replace): it may be the only copy of what such a server lost.
 pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -789,6 +786,11 @@ async fn drain_round<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> bo
             match report.problem {
                 None => pull.is_some_and(PullReport::done),
                 Some(SyncProblem::Gap) => pull.is_some_and(|p| p.end() == PullEnd::Waiting),
+                // A sync server that went back stays the problem of every round until the replace
+                // this drain leads to: the pull itself decides.
+                Some(SyncProblem::ServerWentBack) => {
+                    pull.is_some_and(|p| matches!(p.end(), PullEnd::Done | PullEnd::Waiting))
+                }
                 Some(_) => false,
             }
         }

@@ -77,6 +77,11 @@ pub enum SyncProblem {
     /// checked); paused, and tried again at the next trigger.
     #[serde(rename = "secureStorage")]
     SecureStorage,
+    /// The sync server went back to an older state (its head below this device's place, e.g.
+    /// restored from an older backup); changes may be missing on other devices. Sticky until a
+    /// replace or turning sync off; syncing goes on.
+    #[serde(rename = "serverWentBack")]
+    ServerWentBack,
     #[serde(rename = "internal")]
     Internal,
 }

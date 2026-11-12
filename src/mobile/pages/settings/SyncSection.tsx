@@ -75,7 +75,7 @@ type Flow = { mode: ScanMode; paste: boolean } | null;
 export default function SyncSection() {
   const { t } = useTranslation('deviceSync');
   const feature = useDeviceSyncFeatureState();
-  const leftover = useLeftoverSyncProfile();
+  const { leftover, pending: leftoverPending, loading: leftoverLoading } = useLeftoverSyncProfile();
   const { data: status } = useDeviceSyncStatus();
   const { data: devices } = useSyncDevices();
   const { repairDevice, resyncDevice, turnOff, deleteSyncedData, skipMissingChange } =
@@ -111,7 +111,7 @@ export default function SyncSection() {
   useEffect(() => resetDelete, [resetDelete]);
   useEffect(() => resetSkip, [resetSkip]);
 
-  if (!feature.loading && !feature.enabled && !leftover) {
+  if (!feature.loading && !leftoverLoading && !feature.enabled && !leftover) {
     return <Redirect to={routes.settings} replace />;
   }
 
@@ -195,7 +195,7 @@ export default function SyncSection() {
   };
 
   // A build without sync: only a profile that has sync on gets a page, with the way out
-  if (!feature.loading && !feature.enabled) {
+  if (!feature.loading && !feature.enabled && leftover) {
     return (
       <SectionPage title={t('phone.title')} lead={t('leftover.text')}>
         <EntityRows>
@@ -209,7 +209,12 @@ export default function SyncSection() {
           open={open === 'turnOff'}
           onOpenChange={close}
           title={t('turnOff.title')}
-          description={`${t('phone.turnOffBody')} ${t('turnOff.noCutOff')}`}
+          description={`${t('phone.turnOffBody')} ${t('leftover.noServer')}`}
+          note={
+            leftoverPending > 0
+              ? t('turnOff.pendingChanges', { count: leftoverPending })
+              : undefined
+          }
           confirmLabel={t('turnOff.confirm')}
           destructive
           onSubmit={turnOffNow}

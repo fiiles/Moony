@@ -536,9 +536,12 @@ pub async fn sync_feature_enabled() -> Result<bool> {
 /// build runs sync (`featureOn`). A build without the flag shows a way out when the profile is on.
 #[tauri::command]
 pub async fn sync_profile_state(db: State<'_, Database>) -> Result<SyncProfileState> {
-    Ok(SyncProfileState {
-        enabled: sync_on(&db)?,
-        feature_on: feature::enabled(),
+    db.with_conn(|conn| {
+        Ok(SyncProfileState {
+            enabled: state::load(conn)?.is_some_and(|sync| sync.enabled),
+            feature_on: feature::enabled(),
+            pending_changes: status::unsent_changes(conn)?,
+        })
     })
 }
 
@@ -1251,6 +1254,13 @@ mod tests {
             .unwrap_or_else(|| panic!("`{name}` is in sync.rs"));
         let body = &code[start..];
         &body[..body.find("\n}\n").expect("the end of the command")]
+    }
+
+    /// Audit L10: the one command that works without the flag keeps the password rule.
+    #[test]
+    fn turning_sync_off_keeps_the_password_rule() {
+        let body = command_body("sync_turn_off");
+        assert!(body.contains("turn_off_allowed(was_on, checked)?"));
     }
 
     /// Audit M11: every showing of the Kit checks the device password, setup's first included,

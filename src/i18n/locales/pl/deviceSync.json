@@ -230,7 +230,8 @@
   },
   "leftover": {
     "text": "W tym profilu synchronizacja urządzeń została włączona z wersji deweloperskiej. Jego zmiany nadal są zapisywane na potrzeby synchronizacji.",
-    "button": "Wyłącz synchronizację"
+    "button": "Wyłącz synchronizację",
+    "noServer": "Zsynchronizowane dane i konto synchronizacji pozostają na serwerze synchronizacji, dopóki nie zostaną usunięte w wersji Moony z synchronizacją."
   },
   "password": {
     "label": "Hasło urządzenia"

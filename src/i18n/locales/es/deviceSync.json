@@ -224,7 +224,8 @@
   },
   "leftover": {
     "text": "Este perfil tiene la sincronización entre dispositivos activada desde una versión de desarrollo. Sus cambios se siguen registrando para la sincronización.",
-    "button": "Desactivar la sincronización"
+    "button": "Desactivar la sincronización",
+    "noServer": "Los datos sincronizados y la cuenta de sincronización permanecen en el servidor de sincronización hasta que los elimines desde una versión de Moony con sincronización."
   },
   "password": {
     "label": "Contraseña del dispositivo"

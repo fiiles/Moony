@@ -218,7 +218,8 @@
   },
   "leftover": {
     "text": "Den här profilen har enhetssynkronisering påslagen från en utvecklingsversion. Dess ändringar registreras fortfarande för synkronisering.",
-    "button": "Stäng av synkroniseringen"
+    "button": "Stäng av synkroniseringen",
+    "noServer": "De synkroniserade uppgifterna och synkroniseringskontot finns kvar på synkroniseringsservern tills de raderas från en version av Moony med synkronisering."
   },
   "password": {
     "label": "Enhetslösenord"

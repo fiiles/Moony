@@ -113,6 +113,8 @@ export interface SyncProfileState {
   enabled: boolean;
   /** This build runs sync (the feature flag). */
   featureOn: boolean;
+  /** Changes recorded but never sent; turning sync off means they will not be sent. */
+  pendingChanges: number;
 }
 
 /** The subscription a checkout is for. */

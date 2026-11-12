@@ -218,7 +218,8 @@
   },
   "leftover": {
     "text": "In diesem Profil wurde die Geräte-Synchronisierung über eine Entwicklungsversion eingeschaltet. Seine Änderungen werden weiterhin für die Synchronisierung aufgezeichnet.",
-    "button": "Synchronisierung ausschalten"
+    "button": "Synchronisierung ausschalten",
+    "noServer": "Die synchronisierten Daten und das Synchronisierungskonto bleiben auf dem Synchronisierungsserver, bis Sie sie in einer Version von Moony mit Synchronisierung löschen."
   },
   "password": {
     "label": "Gerätepasswort"

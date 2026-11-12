@@ -100,6 +100,9 @@ pub struct SyncProfileState {
     /// This build runs sync (the flag).
     #[serde(rename = "featureOn")]
     pub feature_on: bool,
+    /// Changes recorded but never sent (turning sync off means they will not be sent).
+    #[serde(rename = "pendingChanges")]
+    pub pending_changes: u32,
 }
 
 /// The `sync-status-changed` payload.

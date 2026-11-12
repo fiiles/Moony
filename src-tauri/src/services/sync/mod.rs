@@ -272,4 +272,16 @@ mod tests {
         assert!(capture::guard::is_imposed(&conn) || capture::guard::is_read_only(&conn));
         assert!(institution(&conn, "i1").is_err(), "the insert is refused");
     }
+
+    #[test]
+    fn unsent_changes_counts_the_outbox() {
+        let conn = test_support::migrated();
+        state::enable(&conn, hlc::DeviceId([5; 16])).expect("enable");
+        let before = engine::status::unsent_changes(&conn).expect("count");
+        institution(&conn, "i1").expect("an edit");
+        assert_eq!(
+            engine::status::unsent_changes(&conn).expect("count"),
+            before + 1
+        );
+    }
 }

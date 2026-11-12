@@ -3442,7 +3442,11 @@ enabled: boolean;
 /**
  * This build runs sync (the flag).
  */
-featureOn: boolean }
+featureOn: boolean; 
+/**
+ * Changes recorded but never sent (turning sync off means they will not be sent).
+ */
+pendingChanges: number }
 
 /**
  * The `sync-status-changed` payload.

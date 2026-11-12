@@ -14,7 +14,7 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
  */
 export function LeftoverSyncCard() {
   const { t } = useTranslation('deviceSync');
-  const leftover = useLeftoverSyncProfile();
+  const { leftover, pending } = useLeftoverSyncProfile();
   const { turnOff } = useDeviceSyncMutations();
   const [open, setOpen] = useState(false);
   // The password is the mutation's variable: it leaves the cache with the dialog.
@@ -24,7 +24,7 @@ export function LeftoverSyncCard() {
   if (!leftover) return null;
   return (
     <SettingsCard title={t('title')}>
-      <SettingsRow label={t('leftover.text')}>
+      <SettingsRow label={t('leftover.text')} hint={t('leftover.noServer')}>
         <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
           {t('leftover.button')}
         </Button>
@@ -32,7 +32,8 @@ export function LeftoverSyncCard() {
       {open && (
         <SyncPasswordDialog
           title={t('turnOff.title')}
-          description={`${t('turnOff.description')} ${t('turnOff.noCutOff')}`}
+          description={`${t('turnOff.description')} ${t('leftover.noServer')}`}
+          note={pending > 0 ? t('turnOff.pendingChanges', { count: pending }) : undefined}
           confirmLabel={t('turnOff.confirm')}
           destructive
           onSubmit={async (password) => {

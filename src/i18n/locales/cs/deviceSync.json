@@ -230,7 +230,8 @@
   },
   "leftover": {
     "text": "Tento profil má zapnutou synchronizaci zařízení z vývojářské verze. Jeho změny se stále zaznamenávají pro synchronizaci.",
-    "button": "Vypnout synchronizaci"
+    "button": "Vypnout synchronizaci",
+    "noServer": "Synchronizovaná data a účet synchronizace zůstanou na synchronizačním serveru, dokud je nesmažete z verze Moony se synchronizací."
   },
   "password": {
     "label": "Heslo zařízení"

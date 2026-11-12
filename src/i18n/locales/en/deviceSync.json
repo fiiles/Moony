@@ -218,7 +218,8 @@
   },
   "leftover": {
     "text": "This profile has device sync turned on from a development build. Its changes are still recorded for sync.",
-    "button": "Turn sync off"
+    "button": "Turn sync off",
+    "noServer": "The synced data and the sync account stay on the sync server until they are deleted from a version of Moony that has sync."
   },
   "password": {
     "label": "Device password"

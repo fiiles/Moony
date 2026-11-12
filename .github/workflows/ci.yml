@@ -103,6 +103,8 @@ jobs:
         env:
           MOONY_DEV_SYNC: "1"
           MOONY_RELAY_URL: "http://127.0.0.1:8787"
+          CARGO_PROFILE_RELEASE_LTO: "off"
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
         run: cargo test --release --lib services::sync::feature
 
       - name: Verify generated types

@@ -14,17 +14,27 @@ export function useDeviceSyncFeatureState(): { enabled: boolean; loading: boolea
   return { enabled: data === true, loading: isPending };
 }
 
-/**
- * Whether this profile has sync on while this build does not run sync (a profile a development
- * build enabled): the one case where a way out is shown. `false` while loading.
- */
-export function useLeftoverSyncProfile(): boolean {
-  const { data } = useQuery({
+/** What this profile says about sync in any build (`sync_profile_state`). */
+export function useSyncProfileState() {
+  return useQuery({
     queryKey: ['device-sync-profile-state'],
     queryFn: () => deviceSyncApi.profileState(),
     staleTime: Infinity,
   });
-  return data !== undefined && data.enabled && !data.featureOn;
+}
+
+/**
+ * Whether this profile has sync on while this build does not run sync (a profile a development
+ * build enabled): the one case where a way out is shown. `pending`: changes recorded but never
+ * sent; `loading`: the answer is not in yet.
+ */
+export function useLeftoverSyncProfile(): { leftover: boolean; pending: number; loading: boolean } {
+  const { data, isPending } = useSyncProfileState();
+  return {
+    leftover: data !== undefined && data.enabled && !data.featureOn,
+    pending: data?.pendingChanges ?? 0,
+    loading: isPending,
+  };
 }
 
 /** Whether device sync is built in and enabled; `false` while loading or when asking fails. */

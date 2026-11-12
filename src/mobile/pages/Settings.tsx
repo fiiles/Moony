@@ -160,7 +160,7 @@ export default function Settings() {
   // The Sync row exists only where device sync is built in (the feature flag)
   const syncFeature = useDeviceSyncFeature();
   // …or a profile that has sync on though this build does not run it: the page offers turning it off
-  const syncLeftover = useLeftoverSyncProfile();
+  const { leftover: syncLeftover } = useLeftoverSyncProfile();
   const syncStatus = useDeviceSyncStatus();
   const syncSub = syncStatus.isPending ? undefined : tsync(syncRowSummary(syncStatus.data).key);
 

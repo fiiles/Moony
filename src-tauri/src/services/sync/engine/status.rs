@@ -155,6 +155,17 @@ pub fn went_back(conn: &Connection, problem: Option<SyncProblem>) -> Result<Opti
     Ok(problem)
 }
 
+/// Changes recorded but not yet sent: the outbox plus the sealed envelopes waiting for the server
+/// (what `SyncStatus::pending_changes` counts).
+pub fn unsent_changes(conn: &Connection) -> Result<u32> {
+    let n: i64 = conn.query_row(
+        "SELECT (SELECT COUNT(*) FROM sync_outbox) + (SELECT COUNT(*) FROM sync_unsent)",
+        [],
+        |r| r.get(0),
+    )?;
+    Ok(count(n))
+}
+
 fn count(n: i64) -> u32 {
     u32::try_from(n.max(0)).unwrap_or(u32::MAX)
 }

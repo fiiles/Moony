@@ -807,7 +807,9 @@
     "exportSummary": "{{tables}} tabulek, {{rows}} řádků.",
     "syncLead": "Moony uloží zálohu, než synchronizace v tomto telefonu nahradí data. Data Moony se do vlastních záloh telefonu nezahrnují, takže tento seznam a Soubory jsou jediná cesta, jak se k nim dostat.",
     "syncSaveCopy": "Uložit kopii do Souborů",
-    "syncCopySaved": "Kopie byla uložena do Souborů"
+    "syncCopySaved": "Kopie byla uložena do Souborů",
+    "syncLeadNoFiles": "Moony uloží zálohu, než synchronizace v tomto telefonu nahradí data. Tady je můžete obnovit nebo smazat.",
+    "syncNoCopy": "Uložení kopie mimo Moony zatím na tomto telefonu není k dispozici. Zálohu lze obnovit z tohoto seznamu. Pokud se data Moony z telefonu odstraní, zálohy zmizí."
   },
   "firstRun": {
     "privacyLead": "Moony ukládá vše do šifrované databáze v tomto telefonu. Žádný cloud, žádný účet u nás.",

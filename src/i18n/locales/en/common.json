@@ -346,6 +346,7 @@
     "syncChangeInProgress": "Another sync change is in progress on this device. Wait until it finishes.",
     "syncPasswordRequired": "Enter your password again to copy the recovery code.",
     "syncPairingCodeInvalid": "The pairing code is not valid. Scan the code shown on the other device.",
+    "syncPairingOtherNeedsUpdate": "The other device needs a Moony update before it can pair with this one.",
     "syncPairingFailed": "Pairing did not work. Start again on both devices.",
     "syncPairingCodeUsed": "Another device answered this code first. Choose \"They don't match\" on the other device, then start again.",
     "syncPairingExpired": "This pairing code has expired. Start again on both devices.",

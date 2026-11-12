@@ -42,9 +42,16 @@ export default function BackupSection() {
     if (picked) setInspection(picked);
   };
 
+  /** The listed backup being read: its own Restore button spins, not the file picker's. */
+  const [listedBusy, setListedBusy] = useState<string | null>(null);
   const restoreListed = async (path: string) => {
-    const read = await inspectPath(path);
-    if (read) setInspection(read);
+    setListedBusy(path);
+    try {
+      const read = await inspectPath(path);
+      if (read) setInspection(read);
+    } finally {
+      setListedBusy(null);
+    }
   };
 
   const confirmRestore = () => {
@@ -81,14 +88,18 @@ export default function BackupSection() {
       <Button
         variant="secondary"
         className={BUTTON}
-        loading={busy === 'restore'}
+        loading={busy === 'restore' && listedBusy === null}
         disabled={busy === 'backup'}
         onClick={() => void chooseRestore()}
       >
         {ts('data.restore')}
       </Button>
 
-      <SyncBackupRows onRestore={(path) => void restoreListed(path)} disabled={busy !== null} />
+      <SyncBackupRows
+        onRestore={(path) => void restoreListed(path)}
+        disabled={busy !== null}
+        restoring={listedBusy}
+      />
 
       <DataTools />
 

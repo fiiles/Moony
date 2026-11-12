@@ -346,6 +346,7 @@
     "syncChangeInProgress": "Na tym urządzeniu trwa już inna zmiana synchronizacji. Poczekaj, aż się zakończy.",
     "syncPasswordRequired": "Wpisz ponownie hasło, aby skopiować kod odzyskiwania.",
     "syncPairingCodeInvalid": "Kod parowania jest nieprawidłowy. Zeskanuj kod wyświetlony na drugim urządzeniu.",
+    "syncPairingOtherNeedsUpdate": "Drugie urządzenie wymaga aktualizacji Moony, zanim będzie można sparować je z tym.",
     "syncPairingFailed": "Parowanie się nie powiodło. Zacznij od nowa na obu urządzeniach.",
     "syncPairingCodeUsed": "Inne urządzenie odpowiedziało na ten kod jako pierwsze. Na drugim urządzeniu wybierz „Nie pasują”, a potem zacznij od nowa.",
     "syncPairingExpired": "Ten kod parowania wygasł. Zacznij od nowa na obu urządzeniach.",

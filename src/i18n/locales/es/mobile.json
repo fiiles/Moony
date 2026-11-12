@@ -799,7 +799,9 @@
     "exportSummary": "{{tables}} tablas, {{rows}} filas.",
     "syncLead": "Moony guarda una copia de seguridad antes de que la sincronización reemplace datos en este teléfono. Los datos de Moony no se incluyen en las copias de seguridad propias de tu teléfono, así que esta lista y Archivos son la única forma de acceder a ellas.",
     "syncSaveCopy": "Guardar una copia en Archivos",
-    "syncCopySaved": "Se guardó una copia en Archivos"
+    "syncCopySaved": "Se guardó una copia en Archivos",
+    "syncLeadNoFiles": "Moony guarda una copia de seguridad antes de que la sincronización reemplace datos en este teléfono. Aquí puedes restaurarlas o eliminarlas.",
+    "syncNoCopy": "Guardar una copia fuera de Moony todavía no está disponible en este teléfono. Puedes restaurar una copia de seguridad desde esta lista. Se pierde si los datos de Moony se eliminan del teléfono."
   },
   "firstRun": {
     "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",

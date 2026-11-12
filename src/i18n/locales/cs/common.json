@@ -346,6 +346,7 @@
     "syncChangeInProgress": "Na tomto zařízení už probíhá jiná změna synchronizace. Počkejte, až skončí.",
     "syncPasswordRequired": "Pro zkopírování obnovovacího kódu znovu zadejte heslo.",
     "syncPairingCodeInvalid": "Párovací kód není platný. Naskenujte kód zobrazený na druhém zařízení.",
+    "syncPairingOtherNeedsUpdate": "Druhé zařízení potřebuje aktualizovat Moony, než se s tímto spáruje.",
     "syncPairingFailed": "Párování se nepovedlo. Začněte znovu na obou zařízeních.",
     "syncPairingCodeUsed": "Na tento kód odpovědělo jako první jiné zařízení. Na druhém zařízení zvolte „Neshodují se“ a začněte znovu.",
     "syncPairingExpired": "Platnost párovacího kódu vypršela. Začněte znovu na obou zařízeních.",

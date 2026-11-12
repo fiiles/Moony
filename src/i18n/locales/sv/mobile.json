@@ -755,7 +755,9 @@
     "exportSummary": "{{tables}} tabeller, {{rows}} rader.",
     "syncLead": "Moony sparar en säkerhetskopia innan synkroniseringen ersätter data på den här telefonen. Moonys data lämnas utanför telefonens egna säkerhetskopior, så den här listan och Filer är den enda vägen dit.",
     "syncSaveCopy": "Spara en kopia i Filer",
-    "syncCopySaved": "En kopia sparades i Filer"
+    "syncCopySaved": "En kopia sparades i Filer",
+    "syncLeadNoFiles": "Moony sparar en säkerhetskopia innan synkroniseringen ersätter data på den här telefonen. Här kan du återställa eller ta bort dem.",
+    "syncNoCopy": "Att spara en kopia utanför Moony går inte än på den här telefonen. En säkerhetskopia kan återställas från den här listan. Den går förlorad om Moonys data tas bort från telefonen."
   },
   "firstRun": {
     "privacyLead": "Moony lagrar allt i en krypterad databas på den här telefonen. Inget moln, inget konto hos oss.",

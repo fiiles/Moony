@@ -346,6 +346,7 @@
     "syncChangeInProgress": "En annan ändring av synkroniseringen pågår redan på den här enheten. Vänta tills den är klar.",
     "syncPasswordRequired": "Ange ditt lösenord igen för att kopiera återställningskoden.",
     "syncPairingCodeInvalid": "Parkopplingskoden är ogiltig. Skanna koden som visas på den andra enheten.",
+    "syncPairingOtherNeedsUpdate": "Den andra enheten behöver uppdatera Moony innan den kan parkopplas med den här.",
     "syncPairingFailed": "Parkopplingen fungerade inte. Börja om på båda enheterna.",
     "syncPairingCodeUsed": "En annan enhet svarade på den här koden först. Välj ”De stämmer inte” på den andra enheten och börja om.",
     "syncPairingExpired": "Den här parkopplingskoden har gått ut. Börja om på båda enheterna.",

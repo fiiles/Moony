@@ -799,7 +799,9 @@
     "exportSummary": "{{tables}} tabelle, {{rows}} righe.",
     "syncLead": "Moony salva un backup prima che la sincronizzazione sostituisca i dati su questo telefono. I dati di Moony sono esclusi dai backup del tuo telefono, quindi questo elenco e File sono l'unico modo per raggiungerli.",
     "syncSaveCopy": "Salva una copia in File",
-    "syncCopySaved": "Una copia è stata salvata in File"
+    "syncCopySaved": "Una copia è stata salvata in File",
+    "syncLeadNoFiles": "Moony salva un backup prima che la sincronizzazione sostituisca i dati su questo telefono. Qui puoi ripristinarli o eliminarli.",
+    "syncNoCopy": "Salvare una copia fuori da Moony non è ancora disponibile su questo telefono. Un backup si può ripristinare da questo elenco. Va perso se i dati di Moony vengono rimossi dal telefono."
   },
   "firstRun": {
     "privacyLead": "Moony conserva tutto in un database cifrato su questo telefono. Nessun cloud, nessun account presso di noi.",

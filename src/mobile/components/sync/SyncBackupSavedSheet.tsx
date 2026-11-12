@@ -23,6 +23,7 @@ interface SyncBackupSavedSheetProps {
 export function SyncBackupSavedSheet({ saved, onClose }: SyncBackupSavedSheetProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
+  const { t: tm } = useTranslation('mobile');
   const { canExport, exporting, exportCopy } = useSyncBackupExport();
   const shown = useRetained(saved);
   const busy = exporting !== null;
@@ -65,7 +66,9 @@ export function SyncBackupSavedSheet({ saved, onClose }: SyncBackupSavedSheetPro
             </p>
           ))}
           <p className="m-0">{t('replace.saved.where')}</p>
-          {canExport && <p className="m-0 text-ink-3">{t('replace.saved.filesHint')}</p>}
+          <p className="m-0 text-ink-3">
+            {canExport ? t('replace.saved.filesHint') : tm('backup.syncNoCopy')}
+          </p>
         </div>
       )}
     </Sheet>

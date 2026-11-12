@@ -23,6 +23,8 @@ interface SyncBackupRowsProps {
   onRestore: (path: string) => void;
   /** A backup is being made, read or restored: the actions wait. */
   disabled: boolean;
+  /** The path whose restore is being read: its Restore button shows the spinner. */
+  restoring: string | null;
 }
 
 /**
@@ -33,7 +35,7 @@ interface SyncBackupRowsProps {
  * date and says when it holds changes found nowhere else. Buttons rather than swipes: these are rare
  * acts and the row is not a list row. Left out while nothing is listed.
  */
-export function SyncBackupRows({ onRestore, disabled }: SyncBackupRowsProps) {
+export function SyncBackupRows({ onRestore, disabled, restoring }: SyncBackupRowsProps) {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('settings');
   const { t: tc } = useTranslation('common');
@@ -75,7 +77,14 @@ export function SyncBackupRows({ onRestore, disabled }: SyncBackupRowsProps) {
   return (
     <>
       <SectionHead title={ts('data.syncBackups.title')} />
-      <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3">{t('backup.syncLead')}</p>
+      <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3">
+        {canExport ? t('backup.syncLead') : t('backup.syncLeadNoFiles')}
+      </p>
+      {!canExport && (
+        <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3" data-testid="sync-backups-no-copy">
+          {t('backup.syncNoCopy')}
+        </p>
+      )}
       <ul className="m-0 grid list-none gap-3 p-0" data-testid="sync-backups">
         {list.map((backup) => (
           <li
@@ -108,6 +117,7 @@ export function SyncBackupRows({ onRestore, disabled }: SyncBackupRowsProps) {
                 <Button
                   variant="outline"
                   className={`${BUTTON} flex-1`}
+                  loading={restoring === backup.path}
                   disabled={busy}
                   onClick={() => onRestore(backup.path)}
                 >

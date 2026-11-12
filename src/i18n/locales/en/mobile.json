@@ -755,7 +755,9 @@
     "exportSummary": "{{tables}} tables, {{rows}} rows.",
     "syncLead": "Moony saves a backup before sync replaces data on this phone. Moony's data is left out of your phone's own backups, so this list and Files are the only way to reach them.",
     "syncSaveCopy": "Save a copy to Files",
-    "syncCopySaved": "A copy was saved to Files"
+    "syncCopySaved": "A copy was saved to Files",
+    "syncLeadNoFiles": "Moony saves a backup before sync replaces data on this phone. You can restore or delete them here.",
+    "syncNoCopy": "Saving a copy outside Moony is not available on this phone yet. A backup can be restored from this list. It is lost if Moony's data is removed from the phone."
   },
   "firstRun": {
     "privacyLead": "Moony stores everything in an encrypted database on this phone. No cloud, no account with us.",

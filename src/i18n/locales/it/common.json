@@ -346,6 +346,7 @@
     "syncChangeInProgress": "Su questo dispositivo è già in corso un'altra modifica della sincronizzazione. Attendi che finisca.",
     "syncPasswordRequired": "Inserisci di nuovo la password per copiare il codice di recupero.",
     "syncPairingCodeInvalid": "Il codice di abbinamento non è valido. Scansiona il codice mostrato sull'altro dispositivo.",
+    "syncPairingOtherNeedsUpdate": "L'altro dispositivo deve aggiornare Moony prima di potersi abbinare a questo.",
     "syncPairingFailed": "L'abbinamento non è riuscito. Ricomincia su entrambi i dispositivi.",
     "syncPairingCodeUsed": "Un altro dispositivo ha risposto per primo a questo codice. Sull'altro dispositivo scegli «Non corrispondono», poi ricomincia.",
     "syncPairingExpired": "Questo codice di abbinamento è scaduto. Ricomincia su entrambi i dispositivi.",

@@ -346,6 +346,7 @@
     "syncChangeInProgress": "En annen endring av synkroniseringen pågår allerede på denne enheten. Vent til den er ferdig.",
     "syncPasswordRequired": "Skriv inn passordet ditt på nytt for å kopiere gjenopprettingskoden.",
     "syncPairingCodeInvalid": "Paringskoden er ugyldig. Skann koden som vises på den andre enheten.",
+    "syncPairingOtherNeedsUpdate": "Den andre enheten må oppdatere Moony før den kan pares med denne.",
     "syncPairingFailed": "Paringen fungerte ikke. Start på nytt på begge enhetene.",
     "syncPairingCodeUsed": "En annen enhet svarte på denne koden først. Velg «De stemmer ikke overens» på den andre enheten, og start på nytt.",
     "syncPairingExpired": "Denne paringskoden er utløpt. Start på nytt på begge enhetene.",

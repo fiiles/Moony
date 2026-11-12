@@ -843,7 +843,9 @@
     "exportSummary": "Tabele: {{tables}}, wiersze: {{rows}}.",
     "syncLead": "Moony zapisuje kopię zapasową, zanim synchronizacja zastąpi dane na tym telefonie. Dane Moony nie trafiają do własnych kopii zapasowych telefonu, więc ta lista i Pliki są jedyną drogą do nich.",
     "syncSaveCopy": "Zapisz kopię w Plikach",
-    "syncCopySaved": "Kopia została zapisana w Plikach"
+    "syncCopySaved": "Kopia została zapisana w Plikach",
+    "syncLeadNoFiles": "Moony zapisuje kopię zapasową, zanim synchronizacja zastąpi dane na tym telefonie. Tutaj możesz je przywrócić lub usunąć.",
+    "syncNoCopy": "Zapisanie kopii poza Moony nie jest jeszcze dostępne na tym telefonie. Kopię zapasową można przywrócić z tej listy. Przepadnie, jeśli dane Moony zostaną usunięte z telefonu."
   },
   "firstRun": {
     "privacyLead": "Moony przechowuje wszystko w zaszyfrowanej bazie danych na tym telefonie. Bez chmury, bez konta u nas.",

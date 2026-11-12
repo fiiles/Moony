@@ -150,6 +150,8 @@ fn a_transient_join_failure_keeps_the_received_session() {
         validation("validation.syncChangeInProgress"),
         // The person can cancel the pending setup and try again within the grace period.
         validation("validation.syncJoinSetupPending"),
+        // Nothing was replaced: the confirmation reads the new numbers and asks again.
+        validation("validation.syncReplaceImpactChanged"),
     ] {
         assert!(after_join_error(&kept), "{kept:?} keeps the session");
     }
@@ -169,7 +171,7 @@ fn a_transient_join_failure_keeps_the_received_session() {
 fn the_pairing_code_text_is_a_developer_tool() {
     let session = PairingSession::show(Role::Holder, HOME, T0).expect("session");
     let text = pairing_code_text(&session.code());
-    assert!(text.starts_with("moony-pair:1:"));
+    assert!(text.starts_with("moony-pair:2:"));
 
     let release = view_of(&session, false).expect("view");
     assert_eq!(

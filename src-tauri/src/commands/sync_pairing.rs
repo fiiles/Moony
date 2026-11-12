@@ -40,6 +40,7 @@ use crate::models::sync::{
     PairingRole, PairingStage, PairingView, ReplaceConsentView, ReplaceOutcomeView, SyncDevice,
 };
 use crate::services::sync::error::{SyncError, SyncResult};
+use crate::services::sync::impact::IMPACT_CHANGED;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::pairing::session::{keeps_session, PairingSession, Stage};
 use crate::services::sync::pairing::{pairing_code_text, MailboxId, Role, Side};
@@ -262,14 +263,15 @@ fn slot_for(
 
 /// Whether a failed join keeps the received session for "Try again": a momentary relay failure,
 /// a rate limit, another sync change running, or a sync setup of another account still pending
-/// (the person can cancel it and try again within the grace period). Anything else ends the
-/// pairing.
+/// (the person can cancel it and try again within the grace period), or what the confirmation
+/// showed no longer holding (`IMPACT_CHANGED`: nothing was replaced, the confirmation reads the
+/// new numbers and asks again within the grace period). Anything else ends the pairing.
 fn after_join_error(error: &SyncError) -> bool {
     keeps_session(error)
         || matches!(
             error,
             SyncError::Local(AppError::Validation(key))
-                if key == CHANGE_IN_PROGRESS || key == JOIN_SETUP_PENDING
+                if key == CHANGE_IN_PROGRESS || key == JOIN_SETUP_PENDING || key == IMPACT_CHANGED
         )
 }
 

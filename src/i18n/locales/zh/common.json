@@ -346,6 +346,7 @@
     "syncChangeInProgress": "此设备上已有另一项同步更改正在进行。请等待其完成。",
     "syncPasswordRequired": "请再次输入密码以复制恢复代码。",
     "syncPairingCodeInvalid": "配对码无效。请扫描另一台设备上显示的二维码。",
+    "syncPairingOtherNeedsUpdate": "另一台设备需要先更新 Moony，才能与此设备配对。",
     "syncPairingFailed": "配对未成功。请在两台设备上重新开始。",
     "syncPairingCodeUsed": "另一台设备已抢先响应此代码。请在另一台设备上选择“不匹配”，然后重新开始。",
     "syncPairingExpired": "此配对码已过期。请在两台设备上重新开始。",

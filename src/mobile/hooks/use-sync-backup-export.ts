@@ -40,7 +40,11 @@ export function useSyncBackupExport(): {
           exported =
             (await save({ defaultPath: fileNameOf(staged), filters: BACKUP_FILE_FILTER })) !== null;
         } finally {
-          await dataApi.finishBackupExport(staged, false);
+          // The copy is saved (or not) either way: a failed removal is not the person's problem, and
+          // the startup sweep removes a staged copy that is left
+          await dataApi.finishBackupExport(staged, false).catch((failure: unknown) => {
+            console.debug('Could not remove the staged sync backup copy', failure);
+          });
         }
         toast(exported ? tm('backup.syncCopySaved') : tm('backup.notSaved'));
         return exported ? 'saved' : 'cancelled';

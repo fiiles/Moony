@@ -8,7 +8,7 @@ use std::future::Future;
 use x25519_dalek::StaticSecret;
 
 use super::tests::{
-    assert_same_creds, creds, id, key_of, pair, public, HOME, M_SECRET, S_SECRET, T0,
+    assert_same_creds, creds, id, key_of, pair, public, to_compare, HOME, M_SECRET, S_SECRET, T0,
 };
 use super::*;
 use crate::services::sync::pairing::{derive, seal_credentials, slot1, CANCEL_MARKER};
@@ -304,10 +304,12 @@ async fn a_lost_ack_read_ends_the_pairing_clearly() {
     assert!(keeps_session(&error));
     assert_eq!(c.stage(), Stage::AwaitingAck);
 
+    // Our own lost read consumed it: nobody interfered, so no security alarm.
     let error = c.poll(&relay, T0).await.unwrap_err();
-    assert_eq!(key_of(&error), INTERFERED);
+    assert_eq!(key_of(&error), "validation.syncPairingFailed");
     assert!(!keeps_session(&error));
     assert_eq!(c.comparison_code(), None);
+    assert_eq!(relay.peek_slot(&id(&s), 2), Some(CANCEL_MARKER.to_vec()));
 }
 
 #[tokio::test]
@@ -436,7 +438,10 @@ async fn abandoning_marks_slot_3_too() {
     c.abandon(&relay).await;
     assert_eq!(relay.peek_slot(&id(&s), 2), Some(CANCEL_MARKER.to_vec()));
     assert_eq!(relay.peek_slot(&id(&s), 3), Some(CANCEL_MARKER.to_vec()));
-    assert!(s.poll(&relay, T0).await.is_err());
+    // The scanner's marker in slot 3 is the contested scanner's marker too, so the shower cannot
+    // tell them apart and reads it as someone else's answer.
+    let error = s.poll(&relay, T0).await.unwrap_err();
+    assert_eq!(key_of(&error), INTERFERED);
     assert_ne!(s.stage(), Stage::Compare);
     assert_eq!(s.comparison_code(), None);
 }
@@ -480,4 +485,58 @@ async fn a_contested_scan_closes_slot_2_for_the_shower() {
     let error = s.poll(&relay, T0).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingCancelled");
     assert!(s.received().is_none());
+}
+
+#[tokio::test]
+async fn a_scanner_that_met_an_old_sync_server_leaves_the_mailbox_alone() {
+    // Its burn could reach the shower before its next read and read as "too old".
+    let relay = FakeRelay::new();
+    relay.act_without_slot_3();
+    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
+    let error = c.poll(&relay, T0).await.unwrap_err();
+    assert_eq!(key_of(&error), SERVER_NEEDS_UPDATE);
+    c.abandon(&relay).await;
+    assert_eq!(relay.peek_slot(&id(&s), 2), None, "no cancel marker either");
+    let error = s.poll(&relay, T0).await.unwrap_err();
+    assert_eq!(key_of(&error), SERVER_NEEDS_UPDATE);
+}
+
+#[tokio::test]
+async fn a_kept_holder_session_still_works_after_a_wrong_code() {
+    let relay = FakeRelay::new();
+    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
+    let digits = to_compare(&relay, &mut s, &mut c).await;
+    let wrong = if digits == "000000" {
+        "000001"
+    } else {
+        "000000"
+    };
+    let error = s
+        .confirm(&relay, Some(&creds()), Some(wrong), T0)
+        .await
+        .unwrap_err();
+    assert_eq!(key_of(&error), CODE_MISMATCH);
+    assert!(keeps_session(&error));
+    assert_eq!(s.attempts_left(), 2);
+    assert_eq!(
+        s.confirm(&relay, Some(&creds()), Some(&digits), T0)
+            .await
+            .unwrap(),
+        Stage::Sent
+    );
+    assert_eq!(s.attempts_left(), 2);
+}
+
+#[tokio::test]
+async fn a_low_order_shower_key_in_the_code_is_refused_before_anything_is_written() {
+    use crate::services::sync::pairing::pairing_code_text;
+    let (s, _c) = pair(Role::Holder, Role::Joiner);
+    let mut code = s.code();
+    code.shower_public = [0u8; 32];
+    let text = pairing_code_text(&code);
+    match PairingSession::scan(Role::Joiner, &text, T0) {
+        Err(AppError::Validation(key)) => assert_eq!(key, "validation.syncPairingFailed"),
+        _ => panic!("a low-order key must be refused"),
+    }
 }

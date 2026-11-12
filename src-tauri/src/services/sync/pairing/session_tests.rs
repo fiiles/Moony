@@ -73,7 +73,11 @@ pub(super) fn pair(shower: Role, scanner: Role) -> (PairingSession, PairingSessi
 
 /// Drives both to Compare: C announces, S reads slot 1 and acknowledges, C reads the
 /// acknowledgement. The joiner's digits, which the holder's person types (the holder shows none).
-async fn to_compare(relay: &FakeRelay, s: &mut PairingSession, c: &mut PairingSession) -> String {
+pub(super) async fn to_compare(
+    relay: &FakeRelay,
+    s: &mut PairingSession,
+    c: &mut PairingSession,
+) -> String {
     assert_eq!(c.announce(relay, T0).await.unwrap(), Stage::AwaitingAck);
     assert_eq!(s.poll(relay, T0).await.unwrap(), Stage::Compare);
     assert_eq!(c.poll(relay, T0).await.unwrap(), Stage::Compare);

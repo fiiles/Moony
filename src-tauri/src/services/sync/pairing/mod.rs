@@ -65,6 +65,9 @@ pub const OKM_LEN: usize = 72;
 pub const CANCEL_MARKER: [u8; 2] = [SLOT_VERSION, 0x00];
 /// A version-1 pairing code: the other device needs an update before it can pair.
 pub const OTHER_NEEDS_UPDATE: &str = "validation.syncPairingOtherNeedsUpdate";
+/// A pairing code of a version this app does not know (`moony-pair:3:` and later): this device
+/// needs an update.
+pub const THIS_NEEDS_UPDATE: &str = "validation.syncPairingThisNeedsUpdate";
 pub const MAX_PAYLOAD_JSON: usize = 16 * 1024;
 pub const MAX_PAYLOAD_KEYS: usize = 64;
 
@@ -189,9 +192,21 @@ pub fn pairing_code_text(code: &PairingCode) -> String {
     text
 }
 
+/// `moony-pair:<n>:` with `n` a number above the version this app speaks.
+fn is_newer_version(text: &str) -> bool {
+    let version = text
+        .strip_prefix("moony-pair:")
+        .and_then(|rest| rest.split(':').next())
+        .filter(|digits| !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()));
+    version.is_some_and(|digits| {
+        // Longer than any version counter is still "newer", never a parse failure.
+        digits.len() > 9 || digits.parse::<u32>().is_ok_and(|n| n > 2)
+    })
+}
+
 /// Parses a pairing code. Malformed input is `validation.syncPairingCodeInvalid`; a relay address
 /// the app does not use is `validation.syncRelayUrlInvalid`; a version-1 code (`moony-pair:1:`,
-/// whatever follows) is `OTHER_NEEDS_UPDATE`. The default relay reads as `None`. No error carries
+/// whatever follows) is `OTHER_NEEDS_UPDATE`, a later one (`moony-pair:3:`…) `THIS_NEEDS_UPDATE`. The default relay reads as `None`. No error carries
 /// the input.
 pub fn parse_pairing_code(text: &str) -> Result<PairingCode> {
     if text.len() > MAX_CODE_BYTES {
@@ -199,6 +214,9 @@ pub fn parse_pairing_code(text: &str) -> Result<PairingCode> {
     }
     if text.starts_with(QR_PREFIX_V1) {
         return Err(AppError::Validation(OTHER_NEEDS_UPDATE.into()));
+    }
+    if is_newer_version(text) {
+        return Err(AppError::Validation(THIS_NEEDS_UPDATE.into()));
     }
     let rest = text.strip_prefix(QR_PREFIX).ok_or_else(code_invalid)?;
     let fields: Vec<&str> = rest.split(':').collect();

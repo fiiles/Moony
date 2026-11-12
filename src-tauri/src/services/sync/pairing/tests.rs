@@ -231,6 +231,31 @@ fn the_size_cap_comes_before_decoding() {
 }
 
 #[test]
+fn a_code_of_a_later_version_says_this_device_needs_an_update() {
+    let mailbox = "MzMzMzMzMzMzMzMzMzMzMw";
+    let key = "e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
+    for input in [
+        format!("moony-pair:3:{mailbox}:{key}"),
+        "moony-pair:10:".to_string(),
+        "moony-pair:3".to_string(),
+        "moony-pair:99999999999999999999:x".to_string(),
+    ] {
+        let err = parse_pairing_code(&input).unwrap_err();
+        assert!(!format!("{err} {err:?}").contains(key), "echoed the key");
+        assert_eq!(validation_key(err), THIS_NEEDS_UPDATE, "{input}");
+    }
+    assert_eq!(THIS_NEEDS_UPDATE, "validation.syncPairingThisNeedsUpdate");
+    // Not a version number: still just invalid.
+    for input in ["moony-pair:x:abc", "moony-pair::abc", "moony-pair:-3:abc"] {
+        assert_eq!(
+            validation_key(parse_pairing_code(input).unwrap_err()),
+            "validation.syncPairingCodeInvalid",
+            "{input}"
+        );
+    }
+}
+
+#[test]
 fn malformed_codes_are_refused_without_echoing_them() {
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
     use base64::Engine;
@@ -240,10 +265,6 @@ fn malformed_codes_are_refused_without_echoing_them() {
     let cases: Vec<(String, &str)> = vec![
         (
             format!("moony-recover:1:{mailbox}:{key}"),
-            "validation.syncPairingCodeInvalid",
-        ),
-        (
-            format!("moony-pair:3:{mailbox}:{key}"),
             "validation.syncPairingCodeInvalid",
         ),
         (

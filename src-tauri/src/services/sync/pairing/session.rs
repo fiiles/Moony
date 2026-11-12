@@ -129,6 +129,13 @@ pub struct PairingSession {
     ambiguous_put: [bool; 3],
     /// Slots 1 / 2 / 3 this side is known to have written.
     written: [bool; 3],
+    /// Scanner: a take of slot 3 whose answer was lost, so the relay may have consumed the
+    /// acknowledgement for us; a later "read by someone else" is then our own read.
+    ambiguous_ack_take: bool,
+    /// The sync server answered `bad_slot` for slot 3. The other device meets the same answer on
+    /// its own call, so this side leaves the mailbox alone: a burn here could reach the other
+    /// device first and read as "the code is too old".
+    server_needs_update: bool,
     /// Holder: wrong six-digit codes typed so far.
     wrong_codes: u8,
     received: Option<Credentials>,
@@ -221,7 +228,7 @@ impl PairingSession {
     /// secret is made.
     pub fn scan(role: Role, code_text: &str, now: i64) -> Result<Self> {
         let code = parse_pairing_code(code_text)?;
-        Ok(Self::scanner_of(role, code, now, random_secret()?))
+        Self::scanner_of(role, code, now, random_secret()?)
     }
 
     fn new_shower(role: Role, relay_url: &str, now: i64, secret: StaticSecret) -> Result<Self> {
@@ -237,11 +244,18 @@ impl PairingSession {
         ))
     }
 
-    fn scanner_of(role: Role, code: PairingCode, now: i64, secret: StaticSecret) -> Self {
+    /// A low-order shower key in the code is refused here, before anything is written.
+    fn scanner_of(role: Role, code: PairingCode, now: i64, secret: StaticSecret) -> Result<Self> {
+        if !secret
+            .diffie_hellman(&PublicKey::from(code.shower_public))
+            .was_contributory()
+        {
+            return Err(AppError::Validation("validation.syncPairingFailed".into()));
+        }
         let relay_url = code
             .relay_url
             .unwrap_or_else(|| DEFAULT_RELAY_URL.to_string());
-        Self::new(
+        Ok(Self::new(
             Side::Scanner,
             role,
             code.mailbox,
@@ -249,7 +263,7 @@ impl PairingSession {
             secret,
             Some(code.shower_public),
             now,
-        )
+        ))
     }
 
     fn new(
@@ -279,6 +293,8 @@ impl PairingSession {
             contested: false,
             ambiguous_put: [false; 3],
             written: [false; 3],
+            ambiguous_ack_take: false,
+            server_needs_update: false,
             wrong_codes: 0,
             received: None,
             expires_at: now + PAIRING_LIFETIME_SECS,
@@ -304,7 +320,7 @@ impl PairingSession {
         secret: StaticSecret,
     ) -> Result<Self> {
         let code = parse_pairing_code(code_text)?;
-        Ok(Self::scanner_of(role, code, now, secret))
+        Self::scanner_of(role, code, now, secret)
     }
 
     #[cfg(test)]
@@ -485,7 +501,7 @@ impl PairingSession {
             Err(RelayError::SlotTaken | RelayError::SlotConsumed) => {
                 Err(self.interfere(mailbox, &id).await)
             }
-            Err(error) if predates_slot_3(&error) => Err(server_needs_update()),
+            Err(error) if predates_slot_3(&error) => Err(self.needs_update()),
             Err(error) => {
                 if put_was_ambiguous(&error) {
                     self.ambiguous_put[slot_index(ACK_SLOT)] = true;
@@ -503,9 +519,19 @@ impl PairingSession {
         let bytes = match mailbox.take_slot(&id, ACK_SLOT).await {
             Ok(None) => return Ok(self.stage),
             Ok(Some(bytes)) => bytes,
+            // Our own earlier take, whose answer was lost, consumed it: nobody else interfered.
+            Err(RelayError::SlotConsumed) if self.ambiguous_ack_take => {
+                self.close(mailbox, &id).await;
+                return Err(failed());
+            }
             Err(RelayError::SlotConsumed) => return Err(self.interfere(mailbox, &id).await),
-            Err(error) if predates_slot_3(&error) => return Err(server_needs_update()),
-            Err(error) => return Err(self.relay_error(error)),
+            Err(error) if predates_slot_3(&error) => return Err(self.needs_update()),
+            Err(error) => {
+                if put_was_ambiguous(&error) {
+                    self.ambiguous_ack_take = true;
+                }
+                return Err(self.relay_error(error));
+            }
         };
         if is_cancel_marker(&bytes) {
             return Err(cancelled());
@@ -653,7 +679,7 @@ impl PairingSession {
     /// A holder in Sent is simply dropped, sending nothing: the joiner may not have read slot 2
     /// yet, and the mailbox expires on its own.
     pub async fn abandon<M: Mailbox>(mut self, mailbox: &M) {
-        if self.stage == Stage::Sent {
+        if self.stage == Stage::Sent || self.server_needs_update {
             self.wipe();
             return;
         }
@@ -671,6 +697,12 @@ impl PairingSession {
     /// cancel markers (within `ABANDON_BUDGET`, best effort), the secrets wiped, and the error
     /// that ends the pairing.
     async fn interfere<M: Mailbox>(&mut self, mailbox: &M, id: &str) -> SyncError {
+        self.close(mailbox, id).await;
+        interfered()
+    }
+
+    /// The cancel markers (within `ABANDON_BUDGET`, best effort) and the secrets wiped.
+    async fn close<M: Mailbox>(&mut self, mailbox: &M, id: &str) {
         let mut written = self.written;
         let _ = tokio::time::timeout(
             ABANDON_BUDGET,
@@ -679,7 +711,14 @@ impl PairingSession {
         .await;
         self.written = written;
         self.wipe();
-        interfered()
+    }
+
+    /// The sync server predates slot 3: the error that ends the pairing, and no mailbox writes
+    /// from this side afterwards.
+    fn needs_update(&mut self) -> SyncError {
+        self.server_needs_update = true;
+        self.wipe();
+        server_needs_update()
     }
 
     fn check_alive(&mut self, now: i64) -> SyncResult<()> {
@@ -695,6 +734,7 @@ impl PairingSession {
         self.secret = None;
         self.transcript = None;
         self.received = None;
+        self.comparison = None;
     }
 
     /// Takes the secret out and derives the transcript (the secret is dropped and zeroized here).

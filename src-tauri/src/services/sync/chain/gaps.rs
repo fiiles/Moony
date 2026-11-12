@@ -9,9 +9,10 @@
 //! the held envelopes apply at the next pull and the cursor is released, and the miss is recorded
 //! as a skipped one (`state::note_skipped_miss`, ruling I1). This device still uploads snapshots,
 //! with the miss in their header, so no device heals from them and a restorer inherits it; a
-//! snapshot from a device that has the change heals it (`chain::snapshot_heals_missed`). While a
-//! skipped miss stands, a change held for a parent the skipped one may have created is skippable
-//! as early as the skip was (ruling I2).
+//! snapshot from a device that has the change heals it (`chain::snapshot_heals_missed`). A change
+//! held for a parent within 14 days of a skip made on this device (its parent may be a row the
+//! skipped one created) is skippable as early as the skip was (ruling I2); a miss only inherited
+//! from a snapshot never does that (final review A, minor 2).
 //!
 //! One record per author, in the Local `app_config` key `sync.held_gap.<device hex>` (JSON; never
 //! synced, never captured; no migration): the lowest held sequence of that author, kept with the
@@ -194,10 +195,12 @@ fn held_gap(conn: &Connection, device: DeviceId) -> Result<Option<HeldGap>> {
 
 /// The pull held `meta` (`kind` says why) at `now`. The author's record keeps its lowest held
 /// sequence, which a lower one replaces, and its first time, which nothing replaces. A new
-/// `Parent` record while a skipped miss stands takes the skip's first time when that is earlier
-/// (ruling I2): its parent may be a row the skipped change created, which is not coming, so the
-/// person need not wait another 14 days to skip it too (still behind the password and its
-/// confirmation). A `Missing` or `Ahead` record starts at `now`. An `Ahead` record is written with
+/// `Parent` record noted within `GAP_SKIP_AFTER_SECS` of a skip made on this device
+/// (`state::local_skip`) takes the skipped gap's first time when that is earlier (ruling I2): its
+/// parent may be a row the skipped change created, which is not coming, so the person need not
+/// wait another 14 days to skip it too (still behind the password and its confirmation). A miss
+/// only inherited from a snapshot, or a hold noted later, starts at `now` (final review A,
+/// minor 2). A `Missing` or `Ahead` record starts at `now`. An `Ahead` record is written with
 /// `note_held_ahead`, which keeps the date it carries.
 pub fn note_held_gap(
     conn: &Connection,
@@ -247,9 +250,15 @@ fn note(
             position: meta.position,
             since: match existing {
                 Some(gap) => gap.since,
-                None if kind == GapKind::Parent => {
-                    state::skipped_miss_since(conn)?.map_or(now, |skipped| skipped.min(now))
-                }
+                None if kind == GapKind::Parent => match state::local_skip(conn)? {
+                    // Only a skip made on this device, and only for a hold noted within 14 days
+                    // of it (final review A, minor 2): an inherited miss, or a hold long after,
+                    // waits its own 14 days.
+                    Some((skipped, at)) if now.saturating_sub(at) <= GAP_SKIP_AFTER_SECS => {
+                        skipped.min(now)
+                    }
+                    _ => now,
+                },
                 None => now,
             },
             dated_ms,
@@ -343,9 +352,9 @@ pub fn forget_all(conn: &Connection) -> Result<()> {
 /// Skips `device`'s held gap at `now`. Refused (`validation.syncGapNotSkippableYet`) before it has
 /// been held `GAP_SKIP_AFTER_SECS`. Otherwise, in one savepoint: the author's head moves past what
 /// is missing (`HeldGap::head_past`), so the held envelopes apply at the next pull and release the
-/// cursor; the miss is recorded at the held envelope's position (`state::note_skipped_miss`, with
-/// the gap's first time), so a later snapshot from a device that has the change heals it; the
-/// record goes. `Ok(true)` when a change was skipped. A gap that is no longer held (it healed
+/// cursor; the miss is recorded at the held envelope's position (`state::note_skipped_miss`), so a
+/// later snapshot from a device that has the change heals it, and so is the skip itself, with the
+/// gap's first time and `now` (`state::note_local_skip`); the record goes. `Ok(true)` when a change was skipped. A gap that is no longer held (it healed
 /// meanwhile, or none was noted for `device`) is nothing to skip: `Ok(false)`, and nothing changes.
 pub fn skip_missing_change(conn: &Connection, device: DeviceId, now: i64) -> Result<bool> {
     let Some(gap) = held_gap(conn, device)? else {
@@ -360,7 +369,8 @@ pub fn skip_missing_change(conn: &Connection, device: DeviceId, now: i64) -> Res
         if skipped {
             let (seq, hash) = gap.head_past()?;
             set_head(conn, device, seq, hash)?;
-            state::note_skipped_miss(conn, gap.position, gap.since)?;
+            state::note_skipped_miss(conn, gap.position)?;
+            state::note_local_skip(conn, gap.since, now)?;
             log::info!("[SYNC] Skipped a change that never arrived; it is recorded as missed");
         }
         forget(conn, device)?;

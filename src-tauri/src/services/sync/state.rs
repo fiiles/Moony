@@ -500,27 +500,41 @@ fn clear_vault_went_back(conn: &Connection) -> Result<()> {
 
 /// The Local `app_config` keys (never synced, never captured) of the miss a skipped change left
 /// (`chain::gaps::skip_missing_change`, or inherited from a snapshot whose dumper had one): the
-/// newest relay position whose rows this device lacks, and when the oldest such skip was first
-/// held (a later change that waits for a parent the skipped one created inherits it, Task 17 I2).
+/// newest relay position whose rows this device lacks; and, for skips made on this device only,
+/// when the oldest skipped gap was first held and when the newest skip was made (a change held
+/// soon after for a parent the skipped one created inherits the first, Task 17 I2, bounded by
+/// final review A minor 2).
 const SKIPPED_MISS_KEY: &str = "sync.skipped_miss";
 const SKIPPED_SINCE_KEY: &str = "sync.skipped_miss_since";
+const SKIPPED_AT_KEY: &str = "sync.skipped_miss_at";
 
-/// This device lacks the rows of a skipped change at relay `position` (Task 17, ruling I1). Unlike
-/// a below-barrier miss it never holds a snapshot upload back: the dump writes it into the header
-/// (`snapshot::dump`), so no device heals from that snapshot, and a restorer inherits it. The
-/// newest position and the earliest `since` are kept. Cleared by a clean snapshot that heals it,
-/// a replace from a clean one and turning sync off.
-pub fn note_skipped_miss(conn: &Connection, position: u64, since: i64) -> Result<()> {
+/// This device lacks the rows of a skipped change at relay `position` (Task 17, ruling I1), its
+/// own skip or one inherited from a snapshot. Unlike a below-barrier miss it never holds a
+/// snapshot upload back: the dump writes it into the header (`snapshot::dump`), so no device heals
+/// from that snapshot, and a restorer inherits it. The newest position is kept. Cleared by a clean
+/// snapshot that heals it, a replace from a clean one and turning sync off.
+pub fn note_skipped_miss(conn: &Connection, position: u64) -> Result<()> {
     let position = signed(position, "skipped_miss")?;
     conn.execute(
         "INSERT INTO app_config (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET \
            value = CAST(MAX(CAST(value AS INTEGER), CAST(excluded.value AS INTEGER)) AS TEXT)",
         rusqlite::params![SKIPPED_MISS_KEY, position.to_string()],
     )?;
+    Ok(())
+}
+
+/// This device skipped a gap first held at `since`, at `at` (`chain::gaps::skip_missing_change`).
+/// The earliest `since` and the latest `at` are kept; an inherited miss never writes either.
+pub fn note_local_skip(conn: &Connection, since: i64, at: i64) -> Result<()> {
     conn.execute(
         "INSERT INTO app_config (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET \
            value = CAST(MIN(CAST(value AS INTEGER), CAST(excluded.value AS INTEGER)) AS TEXT)",
         rusqlite::params![SKIPPED_SINCE_KEY, since.to_string()],
+    )?;
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET \
+           value = CAST(MAX(CAST(value AS INTEGER), CAST(excluded.value AS INTEGER)) AS TEXT)",
+        rusqlite::params![SKIPPED_AT_KEY, at.to_string()],
     )?;
     Ok(())
 }
@@ -530,19 +544,21 @@ pub fn skipped_miss(conn: &Connection) -> Result<Option<u64>> {
     Ok(config_int(conn, SKIPPED_MISS_KEY)?.and_then(|v| u64::try_from(v).ok()))
 }
 
-/// When the oldest skipped change this device lacks was first held (or inherited), while one is.
-pub fn skipped_miss_since(conn: &Connection) -> Result<Option<i64>> {
+/// While a skipped miss stands and this device made a skip itself (`note_local_skip`): when the
+/// oldest gap it skipped was first held, and when it made the newest skip. `None` for a miss only
+/// inherited from a snapshot.
+pub fn local_skip(conn: &Connection) -> Result<Option<(i64, i64)>> {
     if skipped_miss(conn)?.is_none() {
         return Ok(None);
     }
-    config_int(conn, SKIPPED_SINCE_KEY)
+    Ok(config_int(conn, SKIPPED_SINCE_KEY)?.zip(config_int(conn, SKIPPED_AT_KEY)?))
 }
 
 /// A snapshot that heals every miss was restored, or the chain starts over.
 pub fn clear_skipped_miss(conn: &Connection) -> Result<()> {
     conn.execute(
-        "DELETE FROM app_config WHERE key IN (?1, ?2)",
-        [SKIPPED_MISS_KEY, SKIPPED_SINCE_KEY],
+        "DELETE FROM app_config WHERE key IN (?1, ?2, ?3)",
+        [SKIPPED_MISS_KEY, SKIPPED_SINCE_KEY, SKIPPED_AT_KEY],
     )?;
     Ok(())
 }

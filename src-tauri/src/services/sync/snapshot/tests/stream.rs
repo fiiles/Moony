@@ -553,7 +553,7 @@ fn the_header_carries_a_skipped_miss_beside_the_below_barrier_one() {
             .expect("header")
     };
     let a = device(A);
-    state::note_skipped_miss(&a, 12, 0).expect("skip");
+    state::note_skipped_miss(&a, 12).expect("skip");
     let (skipped_only, _) = snapshot(&a, 20);
     assert_eq!(misses(&skipped_only), (None, Some(12)));
     let text = String::from_utf8_lossy(&skipped_only);

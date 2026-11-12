@@ -216,7 +216,7 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
                 return Err(invalid());
             }
         }
-        finish(conn, &snapshot, &sync, report.stats.max_hlc, false, now)?;
+        finish(conn, &snapshot, &sync, report.stats.max_hlc, false)?;
         report.warnings.extend(repair::full(conn, now)?.warnings);
         Ok(report)
     })
@@ -241,7 +241,7 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<Restor
     // clear and put back under the items the vault has before the repair, whose blob purge then
     // takes only the blobs of rows that were not (audit H3).
     let kept = attachments::keep(conn)?;
-    if let Err(error) = refill(conn, &mut snapshot, &sync, &mut report, now) {
+    if let Err(error) = refill(conn, &mut snapshot, &sync, &mut report) {
         attachments::discard(conn);
         return Err(error);
     }
@@ -260,7 +260,6 @@ fn refill(
     snapshot: &mut Snapshot,
     sync: &SyncState,
     report: &mut RestoreReport,
-    now: i64,
 ) -> Result<()> {
     capture::with_mode(conn, Mode::Repair, || clear(conn))?;
     if let Some(i) = snapshot
@@ -284,7 +283,7 @@ fn refill(
         return Err(invalid());
     }
     report.warnings.append(&mut ctx.report.warnings);
-    finish(conn, snapshot, sync, report.stats.max_hlc, true, now)
+    finish(conn, snapshot, sync, report.stats.max_hlc, true)
 }
 
 /// Moves this connection's clock past the snapshot's newest clock (capture is installed on every
@@ -339,7 +338,6 @@ fn finish(
     sync: &SyncState,
     max_hlc: u64,
     replacing: bool,
-    now: i64,
 ) -> Result<()> {
     insert_seeds(conn, &snapshot.seeds, replacing)?;
     // A quarantine is never lifted by a snapshot: the fork stays a fork.
@@ -390,7 +388,8 @@ fn finish(
     // The miss (rulings T8-2, T8-6, T8-7). Replacing restarts this device at the snapshot's
     // cursor, so its miss is the dumper's: the rows of what the dumper skipped are missing here
     // too, and anything this device skipped itself it meets again above the new cursor. A skipped
-    // change's miss (Task 17 I1) is inherited the same way, into its own mark, dated now.
+    // change's miss (Task 17 I1) is inherited the same way, into its own mark (never as a skip made
+    // here: `state::note_local_skip`, final review A minor 2).
     if replacing {
         state::clear_missed_below_barrier(conn)?;
         if let Some(missed) = snapshot.missed_below_barrier {
@@ -398,7 +397,7 @@ fn finish(
         }
         state::clear_skipped_miss(conn)?;
         if let Some(skipped) = snapshot.missed_skipped {
-            state::note_skipped_miss(conn, skipped, now)?;
+            state::note_skipped_miss(conn, skipped)?;
         }
         return Ok(());
     }
@@ -421,7 +420,7 @@ fn finish(
         state::note_missed_below_barrier(conn, missed)?;
     }
     if let Some(skipped) = snapshot.missed_skipped.filter(|m| sync.cursor < *m) {
-        state::note_skipped_miss(conn, skipped, now)?;
+        state::note_skipped_miss(conn, skipped)?;
     }
     Ok(())
 }

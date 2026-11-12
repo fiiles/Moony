@@ -10,12 +10,13 @@ use super::*;
 use crate::error::AppError;
 use crate::models::sync::HeldGapKind;
 use crate::services::sync::chain::gaps::{
-    held_gap_views, held_gaps, skip_missing_change, GapKind, GAP_SKIP_AFTER_SECS,
+    self, held_gap_views, held_gaps, skip_missing_change, GapKind, GAP_SKIP_AFTER_SECS,
 };
-use crate::services::sync::chain::may_upload_snapshot;
+use crate::services::sync::chain::{may_upload_snapshot, EnvelopeMeta};
 use crate::services::sync::engine::pull::pull_all;
 use crate::services::sync::engine::snapshots::{dump_sealed, heal_missed, SnapshotPolicy};
 use crate::services::sync::engine::{run_round, RoundMode};
+use crate::services::sync::registry::keys::{barrier_number, schema_number};
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::VaultInfo;
 use crate::services::sync::snapshot::{read_record, Record};
@@ -216,7 +217,72 @@ async fn a_merge_inherits_a_skipped_miss_above_its_cursor() {
 
     let b = vault.b.lock();
     assert_eq!(missed(&b), Some(2));
-    assert_eq!(state::skipped_miss_since(&b).expect("since"), Some(AT));
+    assert_eq!(
+        state::local_skip(&b).expect("local skip"),
+        None,
+        "B skipped nothing itself"
+    );
+}
+
+/// A Parent hold of `device`'s first envelope at relay position 9.
+fn parent_meta(device: DeviceId) -> EnvelopeMeta {
+    EnvelopeMeta {
+        device,
+        seq: 1,
+        prev: None,
+        hash: [7; 32],
+        schema: schema_number(),
+        barrier: barrier_number(),
+        position: 9,
+    }
+}
+
+fn since_of(conn: &Connection, device: DeviceId) -> i64 {
+    held_gaps(conn)
+        .expect("held gaps")
+        .into_iter()
+        .find(|gap| gap.device == device)
+        .expect("held")
+        .since
+}
+
+/// Final review A, minor 2 (ruling): a miss inherited from a snapshot never makes a Parent hold
+/// skippable at once. Two weeks after a join, an unrelated author whose parent is merely late
+/// still waits its own 14 days.
+#[tokio::test]
+async fn an_inherited_miss_leaves_a_parent_hold_its_own_wait() {
+    let vault = vault().await;
+    skipped_on_a(&vault).await;
+    let plain = plain_dump(&vault.a.lock());
+    snapshot::restore_merge(&vault.b.lock(), &mut plain.as_slice(), AT).expect("merge");
+    let later = AT + GAP_SKIP_AFTER_SECS + DAY;
+    let b = vault.b.lock();
+
+    gaps::note_held_gap(&b, &parent_meta(C), GapKind::Parent, later).expect("hold");
+
+    assert_eq!(since_of(&b, C), later);
+    let early = skip_missing_change(&b, C, later).expect_err("waits");
+    assert!(not_skippable_yet(&early));
+}
+
+/// Final review A, minor 2 (ruling): a Parent hold takes a local skip's first time only when it
+/// is noted within 14 days of that skip; a later one waits its own 14 days.
+#[tokio::test]
+async fn only_a_parent_hold_soon_after_a_local_skip_inherits_its_time() {
+    let vault = vault().await;
+    skipped_on_a(&vault).await;
+    let a = vault.a.lock();
+    let within = AT + GAP_SKIP_AFTER_SECS;
+    let after = within + 1;
+
+    gaps::note_held_gap(&a, &parent_meta(C), GapKind::Parent, within).expect("hold C");
+    gaps::note_held_gap(&a, &parent_meta(D), GapKind::Parent, after).expect("hold D");
+
+    assert_eq!(since_of(&a, C), NOW, "the skipped gap's first time");
+    assert_eq!(since_of(&a, D), after);
+    assert!(skip_missing_change(&a, C, within).expect("skippable at once"));
+    let early = skip_missing_change(&a, D, after).expect_err("D waits");
+    assert!(not_skippable_yet(&early));
 }
 
 #[tokio::test]
@@ -232,9 +298,11 @@ async fn turning_sync_off_or_a_clean_replace_forgets_a_skipped_miss() {
         "a replace from a clean snapshot"
     );
 
-    state::note_skipped_miss(&vault.a.lock(), 2, NOW).expect("miss");
+    state::note_skipped_miss(&vault.a.lock(), 2).expect("miss");
+    state::note_local_skip(&vault.a.lock(), NOW, AT).expect("skip");
     state::disable(&vault.a.lock()).expect("disable");
     assert_eq!(state::skipped_miss(&vault.a.lock()).expect("miss"), None);
+    assert_eq!(state::local_skip(&vault.a.lock()).expect("skip"), None);
 }
 
 /// Ruling I2: after a skip, B's later change under the account the skipped one created waits for

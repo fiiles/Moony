@@ -361,7 +361,7 @@
     "syncPairingCancelled": "The other device cancelled the pairing. Start again on both devices.",
     "syncPairingNotStarted": "No pairing is in progress on this device. Start again on both devices.",
     "syncPasswordNeeded": "Enter this device's password to continue.",
-    "syncCopyFailed": "The code couldn't be copied. Save the Kit as a file instead.",
+    "syncCopyFailed": "The code couldn't be copied. Try again, or keep the Kit another way shown on this screen.",
     "syncRecoveryAccountInvalid": "Check the account number: it is the 16 digits on your Sync Recovery Kit.",
     "syncRecoveryVaultNotFound": "The sync server has no synced data for this recovery code. Check the code and the sync server address on your Sync Recovery Kit.",
     "syncRecoveryKitRotated": "This sync was re-keyed; joining with a Recovery Kit after that is not supported yet.",

@@ -361,7 +361,7 @@
     "syncPairingCancelled": "Den andre enheten avbrøt paringen. Start på nytt på begge enhetene.",
     "syncPairingNotStarted": "Ingen paring pågår på denne enheten. Start på nytt på begge enhetene.",
     "syncPasswordNeeded": "Skriv inn passordet for denne enheten for å fortsette.",
-    "syncCopyFailed": "Koden kunne ikke kopieres. Lagre settet som en fil i stedet.",
+    "syncCopyFailed": "Koden kunne ikke kopieres. Prøv igjen, eller ta vare på settet på en annen måte som vises på denne skjermen.",
     "syncRecoveryAccountInvalid": "Sjekk kontonummeret: det er de 16 sifrene i gjenopprettingssettet for synkronisering.",
     "syncRecoveryVaultNotFound": "Synkroniseringsserveren har ingen synkroniserte data for denne gjenopprettingskoden. Sjekk koden og adressen til synkroniseringsserveren i gjenopprettingssettet for synkronisering.",
     "syncRecoveryKitRotated": "Nøklene for denne synkroniseringen er byttet ut; å bli med ved hjelp av et gjenopprettingssett etter det støttes ikke ennå.",

@@ -33,7 +33,6 @@ export function useRecoveryKitLifetime(onExpired: () => void, protectScreen: boo
 
   useEffect(() => {
     if (!protectScreen) return;
-    let cancelled = false;
     const setProtected = async (on: boolean) => {
       try {
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
@@ -42,11 +41,8 @@ export function useRecoveryKitLifetime(onExpired: () => void, protectScreen: boo
         // Not in Tauri (browser, tests) or refused: the kit still leaves the screen on time.
       }
     };
-    void setProtected(true).then(() => {
-      if (cancelled) void setProtected(false);
-    });
+    void setProtected(true);
     return () => {
-      cancelled = true;
       void setProtected(false);
     };
   }, [protectScreen]);

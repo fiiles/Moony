@@ -81,6 +81,13 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   // Step 3 asks the device password before it shows the kit (audit M11), every time the kit has
   // left the screen.
   const askingForKit = step === 'kit' && !kit && !kitPromptClosed;
+  // Continuing forgets the kit (state and mutation result): nothing later in setup reads it, the
+  // device step needs only `kitKept`. No re-ask, unlike `dropKit`.
+  const leaveKitStep = () => {
+    prepareRecoveryKit.reset();
+    setKit(null);
+    setStep('device');
+  };
   const dropKit = () => {
     prepareRecoveryKit.reset();
     setKit(null);
@@ -195,7 +202,7 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
     case 'kit':
       primary = {
         label: t('setup.account.continue'),
-        onClick: () => setStep('device'),
+        onClick: leaveKitStep,
         disabled: !kitConfirmed,
       };
       break;

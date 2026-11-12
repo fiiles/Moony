@@ -141,15 +141,16 @@
     },
     "newerSchema": "Zaktualizuj Moony na tym urządzeniu, aby synchronizacja mogła trwać",
     "gap": {
-      "missing_one": "Zmiany z urządzenia „{{device}}” brakuje od {{count}} dnia.",
-      "missing_few": "Zmiany z urządzenia „{{device}}” brakuje od {{count}} dni.",
-      "missing_many": "Zmiany z urządzenia „{{device}}” brakuje od {{count}} dni.",
-      "missing_other": "Zmiany z urządzenia „{{device}}” brakuje od {{count}} dnia.",
-      "waiting_one": "Zmiana z urządzenia „{{device}}” od {{count}} dnia czeka na wcześniejszą zmianę, od której zależy, a która nigdy nie dotarła.",
-      "waiting_few": "Zmiana z urządzenia „{{device}}” od {{count}} dni czeka na wcześniejszą zmianę, od której zależy, a która nigdy nie dotarła.",
-      "waiting_many": "Zmiana z urządzenia „{{device}}” od {{count}} dni czeka na wcześniejszą zmianę, od której zależy, a która nigdy nie dotarła.",
-      "waiting_other": "Zmiana z urządzenia „{{device}}” od {{count}} dnia czeka na wcześniejszą zmianę, od której zależy, a która nigdy nie dotarła.",
-      "skip": "Pomiń brakującą zmianę"
+      "missing_one": "Od {{days}} dni brakuje zmiany z urządzenia „{{device}}”.",
+      "missing_few": "Od {{days}} dni brakuje {{count}} zmian z urządzenia „{{device}}”.",
+      "missing_many": "Od {{days}} dni brakuje {{count}} zmian z urządzenia „{{device}}”.",
+      "missing_other": "Od {{days}} dni brakuje {{count}} zmiany z urządzenia „{{device}}”.",
+      "waiting": "Zmiana z urządzenia „{{device}}” od {{days}} dni czeka na wcześniejszą zmianę, od której zależy, a która nigdy nie dotarła.",
+      "skip_one": "Pomiń brakującą zmianę",
+      "skip_few": "Pomiń brakujące zmiany",
+      "skip_many": "Pomiń brakujące zmiany",
+      "skip_other": "Pomiń brakujące zmiany",
+      "skipFrom": "Jeśli nie dotrze do {{date}}, będzie można ją wtedy pominąć."
     }
   },
   "renew": {
@@ -172,11 +173,21 @@
     "success": "Urządzenie zsynchronizowane ponownie. Kopia zapasowa zapisana jako {{file}}."
   },
   "skipGap": {
-    "title": "Pominąć brakującą zmianę?",
-    "description": "Zmiana z urządzenia „{{device}}”, która nigdy nie dotarła, zostanie pominięta. To, co zawierała, nie pojawi się na tym urządzeniu, dopóki urządzenie, które ją ma, nie prześle nowszej kopii zsynchronizowanych danych.",
-    "descriptionParent": "Zmiana z urządzenia „{{device}}”, której nie da się zastosować, zostanie pominięta. To, co zawierała, nie pojawi się na tym urządzeniu, dopóki urządzenie, które ją ma, nie prześle nowszej kopii zsynchronizowanych danych.",
-    "confirm": "Pomiń zmianę",
-    "success": "Brakująca zmiana została pominięta. Synchronizacja trwa dalej."
+    "title_one": "Pominąć brakującą zmianę?",
+    "title_few": "Pominąć brakujące zmiany?",
+    "title_many": "Pominąć brakujące zmiany?",
+    "title_other": "Pominąć brakujące zmiany?",
+    "description_one": "Zmiana z urządzenia „{{device}}”, która nigdy nie dotarła, zostanie pominięta. Wróci na to urządzenie tylko wtedy, gdy urządzenie, które ją ma, prześle nowszą kopię zsynchronizowanych danych; jeśli żadne urządzenie jej nie ma, przepadnie. Zmiany, które od niej zależą, być może też trzeba będzie pominąć.",
+    "description_few": "{{count}} zmiany z urządzenia „{{device}}”, które nigdy nie dotarły, zostaną pominięte. Wrócą na to urządzenie tylko wtedy, gdy urządzenie, które je ma, prześle nowszą kopię zsynchronizowanych danych; jeśli żadne urządzenie ich nie ma, przepadną. Zmiany, które od nich zależą, być może też trzeba będzie pominąć.",
+    "description_many": "{{count}} zmian z urządzenia „{{device}}”, które nigdy nie dotarły, zostanie pominiętych. Wrócą na to urządzenie tylko wtedy, gdy urządzenie, które je ma, prześle nowszą kopię zsynchronizowanych danych; jeśli żadne urządzenie ich nie ma, przepadną. Zmiany, które od nich zależą, być może też trzeba będzie pominąć.",
+    "description_other": "{{count}} zmiany z urządzenia „{{device}}”, które nigdy nie dotarły, zostanie pominięte. Wrócą na to urządzenie tylko wtedy, gdy urządzenie, które je ma, prześle nowszą kopię zsynchronizowanych danych; jeśli żadne urządzenie ich nie ma, przepadną. Zmiany, które od nich zależą, być może też trzeba będzie pominąć.",
+    "descriptionParent": "Zmiana z urządzenia „{{device}}”, której nie da się zastosować, zostanie pominięta. To, co zawierała, wróci na to urządzenie tylko wtedy, gdy urządzenie, które ją zastosowało, prześle nowszą kopię zsynchronizowanych danych; jeśli żadne tego nie zrobiło, przepadnie. Zmiany, które od niej zależą, być może też trzeba będzie pominąć.",
+    "confirm": "Pomiń",
+    "success_one": "Brakująca zmiana została pominięta. Synchronizacja trwa dalej.",
+    "success_few": "Brakujące zmiany zostały pominięte. Synchronizacja trwa dalej.",
+    "success_many": "Brakujące zmiany zostały pominięte. Synchronizacja trwa dalej.",
+    "success_other": "Brakujące zmiany zostały pominięte. Synchronizacja trwa dalej.",
+    "arrived": "Brakująca zmiana w międzyczasie dotarła; nic nie pominięto."
   },
   "turnOff": {
     "button": "Wyłącz synchronizację na tym urządzeniu",

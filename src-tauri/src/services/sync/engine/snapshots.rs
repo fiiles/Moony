@@ -368,10 +368,11 @@ pub async fn restore_after_410<R: Relay, D: ConnAccess>(
     }
 }
 
-/// Heals a below-barrier miss (rulings T8-2, T8-6): when this device has `missed_below_barrier`
-/// set and the vault's newest snapshot (by `info`) is at or past it, fetches and opens that
-/// snapshot and, when it heals the miss (`chain::snapshot_heals_missed` on its header: a clean
-/// dumper, at this device's barrier or later), restores it by merge, which clears the mark. A
+/// Heals a below-barrier miss (rulings T8-2, T8-6) or a skipped change's (`state::skipped_miss`,
+/// Task 17 I1): when this device has either set and the vault's newest snapshot (by `info`) is at
+/// or past the newer of them, fetches and opens that snapshot and, when it heals the misses
+/// (`chain::snapshot_heals_missed` on its header: a dumper with no miss of either kind, at this
+/// device's barrier or later), restores it by merge, which clears both marks. A
 /// snapshot that does not heal is not restored, and not fetched again
 /// (`SnapshotPolicy::examined_seq`) until the vault has a newer one; neither is a snapshot whose
 /// restore stopped or that does not open (both are verdicts on its bytes). A transient or local
@@ -388,7 +389,12 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
     let Some(newest) = info.snapshot_seq else {
         return Ok(None);
     };
-    let Some(missed) = db.with_conn(|conn| Ok(loaded(conn)?.missed_below_barrier))? else {
+    let missed = db.with_conn(|conn| {
+        Ok(loaded(conn)?
+            .missed_below_barrier
+            .max(state::skipped_miss(conn)?))
+    })?;
+    let Some(missed) = missed else {
         return Ok(None);
     };
     if newest < missed || policy.examined_seq == Some(newest) {
@@ -410,7 +416,14 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
     let outcome = off_thread(move || {
         db.with_conn(|conn| {
             let sync = loaded(conn)?;
-            if !chain::snapshot_heals_missed(&sync, header.barrier, header.seq, header.missed) {
+            let skipped = state::skipped_miss(conn)?;
+            if !chain::snapshot_heals_missed(
+                &sync,
+                skipped,
+                header.barrier,
+                header.seq,
+                header.missed,
+            ) {
                 return Ok(Heal::NotHealing);
             }
             Ok(match restore_or_note(conn, &plain, now)? {
@@ -684,11 +697,13 @@ fn header_of(plain: &[u8]) -> SyncResult<Header> {
             barrier,
             seq,
             missed_below_barrier,
+            missed_skipped,
             ..
         }) => Ok(Header {
             barrier,
             seq,
-            missed: missed_below_barrier,
+            // Either kind of miss means the dumper lacks something: no heal from it.
+            missed: missed_below_barrier.max(missed_skipped),
         }),
         _ => Err(invalid_snapshot()),
     }

@@ -163,8 +163,10 @@ export default function SyncSection() {
   // A wrong password (or a change not 14 days old yet) shows under the field and keeps the sheet
   const skipNow = async (password: string) => {
     if (!skipping) return;
-    await skipMissingChange.mutateAsync({ password, deviceId: skipping.deviceId });
-    toast(t('skipGap.success'));
+    const skipped = await skipMissingChange.mutateAsync({ password, deviceId: skipping.deviceId });
+    toast(
+      skipped ? t('skipGap.success', { count: skipping.missingChanges }) : t('skipGap.arrived')
+    );
   };
 
   // A wrong password shows under the field and keeps the sheet
@@ -350,13 +352,16 @@ export default function SyncSection() {
           // The typed password leaves with its sheet
           resetSkip();
         }}
-        title={t('skipGap.title')}
+        title={t('skipGap.title', { count: skipping?.missingChanges ?? 1 })}
         description={
-          skipping
-            ? t(skipping.kind === 'parent' ? 'skipGap.descriptionParent' : 'skipGap.description', {
-                device: heldGapDevice(skipping),
-              })
-            : ''
+          !skipping
+            ? ''
+            : skipping.kind === 'parent'
+              ? t('skipGap.descriptionParent', { device: heldGapDevice(skipping) })
+              : t('skipGap.description', {
+                  device: heldGapDevice(skipping),
+                  count: skipping.missingChanges,
+                })
         }
         confirmLabel={t('skipGap.confirm')}
         destructive

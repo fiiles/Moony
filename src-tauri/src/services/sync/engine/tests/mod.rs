@@ -7,6 +7,7 @@ mod backoff;
 mod binding_failure;
 mod echo;
 mod gap_skip;
+mod gap_skip_miss;
 mod gaps;
 mod join;
 mod join_new;

@@ -141,11 +141,12 @@
     },
     "newerSchema": "Oppdater Moony på denne enheten for å fortsette å synkronisere",
     "gap": {
-      "missing_one": "En endring fra «{{device}}» har manglet i {{count}} dag.",
-      "missing_other": "En endring fra «{{device}}» har manglet i {{count}} dager.",
-      "waiting_one": "En endring fra «{{device}}» har i {{count}} dag ventet på en tidligere endring den er avhengig av, og som aldri kom.",
-      "waiting_other": "En endring fra «{{device}}» har i {{count}} dager ventet på en tidligere endring den er avhengig av, og som aldri kom.",
-      "skip": "Hopp over den manglende endringen"
+      "missing_one": "En endring fra «{{device}}» har manglet i {{days}} dager.",
+      "missing_other": "{{count}} endringer fra «{{device}}» har manglet i {{days}} dager.",
+      "waiting": "En endring fra «{{device}}» har i {{days}} dager ventet på en tidligere endring den er avhengig av, og som aldri kom.",
+      "skip_one": "Hopp over den manglende endringen",
+      "skip_other": "Hopp over de manglende endringene",
+      "skipFrom": "Hvis den ikke har kommet innen {{date}}, kan du hoppe over den da."
     }
   },
   "renew": {
@@ -168,11 +169,15 @@
     "success": "Enheten er synkronisert på nytt. Sikkerhetskopi lagret som {{file}}."
   },
   "skipGap": {
-    "title": "Hoppe over den manglende endringen?",
-    "description": "Endringen fra «{{device}}» som aldri kom, blir hoppet over. Det den inneholdt, mangler på denne enheten til en enhet som har den, laster opp en nyere kopi av de synkroniserte dataene.",
-    "descriptionParent": "Endringen fra «{{device}}» som ikke kan tas i bruk, blir hoppet over. Det den inneholdt, mangler på denne enheten til en enhet som har den, laster opp en nyere kopi av de synkroniserte dataene.",
-    "confirm": "Hopp over endringen",
-    "success": "Den manglende endringen ble hoppet over. Synkroniseringen fortsetter."
+    "title_one": "Hoppe over den manglende endringen?",
+    "title_other": "Hoppe over de manglende endringene?",
+    "description_one": "Endringen fra «{{device}}» som aldri kom, blir hoppet over. Den kommer bare tilbake til denne enheten hvis en enhet som har den, laster opp en nyere kopi av de synkroniserte dataene; har ingen enhet den, er den tapt. Endringer som er avhengige av den, må kanskje også hoppes over.",
+    "description_other": "De {{count}} endringene fra «{{device}}» som aldri kom, blir hoppet over. De kommer bare tilbake til denne enheten hvis en enhet som har dem, laster opp en nyere kopi av de synkroniserte dataene; har ingen enhet dem, er de tapt. Endringer som er avhengige av dem, må kanskje også hoppes over.",
+    "descriptionParent": "Endringen fra «{{device}}» som ikke kan tas i bruk, blir hoppet over. Det den inneholdt, kommer bare tilbake til denne enheten hvis en enhet som tok den i bruk, laster opp en nyere kopi av de synkroniserte dataene; gjorde ingen det, er det tapt. Endringer som er avhengige av den, må kanskje også hoppes over.",
+    "confirm": "Hopp over",
+    "success_one": "Den manglende endringen ble hoppet over. Synkroniseringen fortsetter.",
+    "success_other": "De manglende endringene ble hoppet over. Synkroniseringen fortsetter.",
+    "arrived": "Den manglende endringen kom i mellomtiden; ingenting ble hoppet over."
   },
   "turnOff": {
     "button": "Slå av synkronisering på denne enheten",

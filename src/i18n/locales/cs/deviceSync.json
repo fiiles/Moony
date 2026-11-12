@@ -141,15 +141,16 @@
     },
     "newerSchema": "Aktualizujte Moony na tomto zařízení, aby synchronizace mohla pokračovat",
     "gap": {
-      "missing_one": "Změna ze zařízení „{{device}}“ chybí už {{count}} den.",
-      "missing_few": "Změna ze zařízení „{{device}}“ chybí už {{count}} dny.",
-      "missing_many": "Změna ze zařízení „{{device}}“ chybí už {{count}} dne.",
-      "missing_other": "Změna ze zařízení „{{device}}“ chybí už {{count}} dní.",
-      "waiting_one": "Změna ze zařízení „{{device}}“ už {{count}} den čeká na dřívější změnu, na které závisí a která nikdy nedorazila.",
-      "waiting_few": "Změna ze zařízení „{{device}}“ už {{count}} dny čeká na dřívější změnu, na které závisí a která nikdy nedorazila.",
-      "waiting_many": "Změna ze zařízení „{{device}}“ už {{count}} dne čeká na dřívější změnu, na které závisí a která nikdy nedorazila.",
-      "waiting_other": "Změna ze zařízení „{{device}}“ už {{count}} dní čeká na dřívější změnu, na které závisí a která nikdy nedorazila.",
-      "skip": "Přeskočit chybějící změnu"
+      "missing_one": "Změna ze zařízení „{{device}}“ chybí už {{days}} dní.",
+      "missing_few": "{{count}} změny ze zařízení „{{device}}“ chybí už {{days}} dní.",
+      "missing_many": "{{count}} změny ze zařízení „{{device}}“ chybí už {{days}} dní.",
+      "missing_other": "{{count}} změn ze zařízení „{{device}}“ chybí už {{days}} dní.",
+      "waiting": "Změna ze zařízení „{{device}}“ už {{days}} dní čeká na dřívější změnu, na které závisí a která nikdy nedorazila.",
+      "skip_one": "Přeskočit chybějící změnu",
+      "skip_few": "Přeskočit chybějící změny",
+      "skip_many": "Přeskočit chybějící změny",
+      "skip_other": "Přeskočit chybějící změny",
+      "skipFrom": "Pokud do {{date}} nedorazí, budete ji pak moct přeskočit."
     }
   },
   "renew": {
@@ -172,11 +173,21 @@
     "success": "Zařízení znovu synchronizováno. Záloha uložena jako {{file}}."
   },
   "skipGap": {
-    "title": "Přeskočit chybějící změnu?",
-    "description": "Změna ze zařízení „{{device}}“, která nikdy nedorazila, bude přeskočena. Co obsahovala, bude na tomto zařízení chybět, dokud zařízení, které ji má, nenahraje novější kopii synchronizovaných dat.",
-    "descriptionParent": "Změna ze zařízení „{{device}}“, kterou nelze použít, bude přeskočena. Co obsahovala, bude na tomto zařízení chybět, dokud zařízení, které ji má, nenahraje novější kopii synchronizovaných dat.",
-    "confirm": "Přeskočit změnu",
-    "success": "Chybějící změna byla přeskočena. Synchronizace pokračuje."
+    "title_one": "Přeskočit chybějící změnu?",
+    "title_few": "Přeskočit chybějící změny?",
+    "title_many": "Přeskočit chybějící změny?",
+    "title_other": "Přeskočit chybějící změny?",
+    "description_one": "Změna ze zařízení „{{device}}“, která nikdy nedorazila, bude přeskočena. Na toto zařízení se vrátí, jen pokud ji zařízení, které ji má, nahraje v novější kopii synchronizovaných dat; pokud ji žádné zařízení nemá, je ztracená. Změny, které na ní závisí, bude možná potřeba přeskočit také.",
+    "description_few": "{{count}} změny ze zařízení „{{device}}“, které nikdy nedorazily, budou přeskočeny. Na toto zařízení se vrátí, jen pokud je zařízení, které je má, nahraje v novější kopii synchronizovaných dat; pokud je žádné zařízení nemá, jsou ztracené. Změny, které na nich závisí, bude možná potřeba přeskočit také.",
+    "description_many": "{{count}} změny ze zařízení „{{device}}“, které nikdy nedorazily, budou přeskočeny. Na toto zařízení se vrátí, jen pokud je zařízení, které je má, nahraje v novější kopii synchronizovaných dat; pokud je žádné zařízení nemá, jsou ztracené. Změny, které na nich závisí, bude možná potřeba přeskočit také.",
+    "description_other": "{{count}} změn ze zařízení „{{device}}“, které nikdy nedorazily, bude přeskočeno. Na toto zařízení se vrátí, jen pokud je zařízení, které je má, nahraje v novější kopii synchronizovaných dat; pokud je žádné zařízení nemá, jsou ztracené. Změny, které na nich závisí, bude možná potřeba přeskočit také.",
+    "descriptionParent": "Změna ze zařízení „{{device}}“, kterou nelze použít, bude přeskočena. Co obsahovala, se na toto zařízení vrátí, jen pokud zařízení, které ji použilo, nahraje novější kopii synchronizovaných dat; pokud žádné takové není, je ztracená. Změny, které na ní závisí, bude možná potřeba přeskočit také.",
+    "confirm": "Přeskočit",
+    "success_one": "Chybějící změna byla přeskočena. Synchronizace pokračuje.",
+    "success_few": "Chybějící změny byly přeskočeny. Synchronizace pokračuje.",
+    "success_many": "Chybějící změny byly přeskočeny. Synchronizace pokračuje.",
+    "success_other": "Chybějící změny byly přeskočeny. Synchronizace pokračuje.",
+    "arrived": "Chybějící změna mezitím dorazila, nic se nepřeskočilo."
   },
   "turnOff": {
     "button": "Vypnout synchronizaci na tomto zařízení",

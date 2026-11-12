@@ -141,13 +141,14 @@
     },
     "newerSchema": "Actualiza Moony en este dispositivo para seguir sincronizando",
     "gap": {
-      "missing_one": "Falta un cambio de «{{device}}» desde hace {{count}} día.",
-      "missing_many": "Falta un cambio de «{{device}}» desde hace {{count}} días.",
-      "missing_other": "Falta un cambio de «{{device}}» desde hace {{count}} días.",
-      "waiting_one": "Un cambio de «{{device}}» lleva {{count}} día esperando un cambio anterior del que depende y que nunca llegó.",
-      "waiting_many": "Un cambio de «{{device}}» lleva {{count}} días esperando un cambio anterior del que depende y que nunca llegó.",
-      "waiting_other": "Un cambio de «{{device}}» lleva {{count}} días esperando un cambio anterior del que depende y que nunca llegó.",
-      "skip": "Omitir el cambio que falta"
+      "missing_one": "Falta un cambio de «{{device}}» desde hace {{days}} días.",
+      "missing_many": "Faltan {{count}} cambios de «{{device}}» desde hace {{days}} días.",
+      "missing_other": "Faltan {{count}} cambios de «{{device}}» desde hace {{days}} días.",
+      "waiting": "Un cambio de «{{device}}» lleva {{days}} días esperando un cambio anterior del que depende y que nunca llegó.",
+      "skip_one": "Omitir el cambio que falta",
+      "skip_many": "Omitir los cambios que faltan",
+      "skip_other": "Omitir los cambios que faltan",
+      "skipFrom": "Si sigue sin llegar el {{date}}, podrás omitirlo entonces."
     }
   },
   "renew": {
@@ -170,11 +171,18 @@
     "success": "Dispositivo sincronizado de nuevo. Copia de seguridad guardada como {{file}}."
   },
   "skipGap": {
-    "title": "¿Omitir el cambio que falta?",
-    "description": "Se omitirá el cambio de «{{device}}» que nunca llegó. Lo que contenía seguirá faltando en este dispositivo hasta que un dispositivo que lo tenga suba una copia más reciente de los datos sincronizados.",
-    "descriptionParent": "Se omitirá el cambio de «{{device}}» que no se puede aplicar. Lo que contenía seguirá faltando en este dispositivo hasta que un dispositivo que lo tenga suba una copia más reciente de los datos sincronizados.",
-    "confirm": "Omitir el cambio",
-    "success": "Se omitió el cambio que faltaba. La sincronización continúa."
+    "title_one": "¿Omitir el cambio que falta?",
+    "title_many": "¿Omitir los cambios que faltan?",
+    "title_other": "¿Omitir los cambios que faltan?",
+    "description_one": "Se omitirá el cambio de «{{device}}» que nunca llegó. Solo volverá a este dispositivo si un dispositivo que lo tenga sube una copia más reciente de los datos sincronizados; si ningún dispositivo lo tiene, se pierde. Puede que también tengas que omitir los cambios que dependen de él.",
+    "description_many": "Se omitirán los {{count}} cambios de «{{device}}» que nunca llegaron. Solo volverán a este dispositivo si un dispositivo que los tenga sube una copia más reciente de los datos sincronizados; si ningún dispositivo los tiene, se pierden. Puede que también tengas que omitir los cambios que dependen de ellos.",
+    "description_other": "Se omitirán los {{count}} cambios de «{{device}}» que nunca llegaron. Solo volverán a este dispositivo si un dispositivo que los tenga sube una copia más reciente de los datos sincronizados; si ningún dispositivo los tiene, se pierden. Puede que también tengas que omitir los cambios que dependen de ellos.",
+    "descriptionParent": "Se omitirá el cambio de «{{device}}» que no se puede aplicar. Lo que contenía solo volverá a este dispositivo si un dispositivo que lo aplicó sube una copia más reciente de los datos sincronizados; si ninguno lo hizo, se pierde. Puede que también tengas que omitir los cambios que dependen de él.",
+    "confirm": "Omitir",
+    "success_one": "Se omitió el cambio que faltaba. La sincronización continúa.",
+    "success_many": "Se omitieron los cambios que faltaban. La sincronización continúa.",
+    "success_other": "Se omitieron los cambios que faltaban. La sincronización continúa.",
+    "arrived": "El cambio que faltaba llegó mientras tanto; no se omitió nada."
   },
   "turnOff": {
     "button": "Desactivar la sincronización en este dispositivo",

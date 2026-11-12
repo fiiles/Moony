@@ -198,6 +198,7 @@ fn heads_and_cursor_come_from_the_header() {
         heads: header_heads,
         barrier_seq,
         missed_below_barrier,
+        missed_skipped,
     } = header
     else {
         unreachable!();
@@ -213,6 +214,7 @@ fn heads_and_cursor_come_from_the_header() {
     assert_eq!(seq, 7);
     assert_eq!(barrier_seq, None, "A never saw a barrier marker");
     assert_eq!(missed_below_barrier, None, "A skipped nothing");
+    assert_eq!(missed_skipped, None, "A skipped no change");
     assert_eq!(
         header_heads,
         vec![
@@ -530,4 +532,37 @@ fn the_header_carries_the_dumpers_pending_miss() {
     let (pending, _) = snapshot(&a, 9);
     assert_eq!(header_missed(&pending), Some(7));
     assert!(String::from_utf8_lossy(&pending).contains(r#""missedBelowBarrier":7"#));
+    assert!(!String::from_utf8_lossy(&pending).contains("missedSkipped"));
+}
+
+/// Task 17 I1: a skipped change's miss travels next to the below-barrier one, each read back
+/// exactly, while `missedBelowBarrier` (all an older reader knows) is the max of the two.
+#[test]
+fn the_header_carries_a_skipped_miss_beside_the_below_barrier_one() {
+    let misses = |bytes: &[u8]| {
+        records(bytes)
+            .into_iter()
+            .find_map(|r| match r {
+                Record::Header {
+                    missed_below_barrier,
+                    missed_skipped,
+                    ..
+                } => Some((missed_below_barrier, missed_skipped)),
+                _ => None,
+            })
+            .expect("header")
+    };
+    let a = device(A);
+    state::note_skipped_miss(&a, 12, 0).expect("skip");
+    let (skipped_only, _) = snapshot(&a, 20);
+    assert_eq!(misses(&skipped_only), (None, Some(12)));
+    let text = String::from_utf8_lossy(&skipped_only);
+    assert!(text.contains(r#""missedBelowBarrier":12"#) && !text.contains("missedBarrier\""));
+
+    state::note_missed_below_barrier(&a, 7).expect("miss");
+    let (both, _) = snapshot(&a, 20);
+    assert_eq!(misses(&both), (Some(7), Some(12)));
+    let text = String::from_utf8_lossy(&both);
+    assert!(text.contains(r#""missedBelowBarrier":12"#));
+    assert!(text.contains(r#""missedBarrier":7"#));
 }

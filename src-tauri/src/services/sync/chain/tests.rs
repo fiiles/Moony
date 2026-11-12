@@ -431,7 +431,7 @@ fn a_snapshot_heals_a_miss_only_from_a_clean_dumper_at_the_barrier_and_past_the_
         .unwrap();
     let sync = state::load(&conn).unwrap().expect("row");
     assert!(
-        !snapshot_heals_missed(&sync, 25, 100, None),
+        !snapshot_heals_missed(&sync, None, 25, 100, None),
         "nothing missed"
     );
     assert!(may_upload_snapshot(&sync));
@@ -442,22 +442,22 @@ fn a_snapshot_heals_a_miss_only_from_a_clean_dumper_at_the_barrier_and_past_the_
         !may_upload_snapshot(&sync),
         "a device with a miss never uploads"
     );
-    assert!(snapshot_heals_missed(&sync, 25, 7, None));
-    assert!(snapshot_heals_missed(&sync, 26, 30, None));
+    assert!(snapshot_heals_missed(&sync, None, 25, 7, None));
+    assert!(snapshot_heals_missed(&sync, None, 26, 30, None));
     assert!(
-        !snapshot_heals_missed(&sync, 25, 30, Some(7)),
+        !snapshot_heals_missed(&sync, None, 25, 30, Some(7)),
         "the dumper skipped it too"
     );
     assert!(
-        !snapshot_heals_missed(&sync, 25, 30, Some(12)),
+        !snapshot_heals_missed(&sync, None, 25, 30, Some(12)),
         "the dumper has a miss of its own"
     );
     assert!(
-        !snapshot_heals_missed(&sync, 25, 6, None),
+        !snapshot_heals_missed(&sync, None, 25, 6, None),
         "dumped before the miss"
     );
     assert!(
-        !snapshot_heals_missed(&sync, 19, 30, None),
+        !snapshot_heals_missed(&sync, None, 19, 30, None),
         "dumped below the barrier"
     );
 }

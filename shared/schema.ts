@@ -263,6 +263,8 @@ export interface HeldGapView {
   /** The author's name from the device list; `null` for a device that has no row there. */
   deviceName: string | null;
   kind: HeldGapKind;
+  /** How many changes a skip gives up: the device's changes that never arrived, or 1 (`parent`). */
+  missingChanges: number;
   /** When this device first held it (unix seconds). */
   since: number;
   /** From when it may be skipped (unix seconds): `since` plus 14 days. */

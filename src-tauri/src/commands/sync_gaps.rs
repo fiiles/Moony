@@ -7,7 +7,9 @@
 use tauri::{AppHandle, State};
 use zeroize::Zeroizing;
 
-use super::sync::{now, password_given, require_feature, verify_password, wake_engine};
+use super::sync::{
+    guarded_change, now, password_given, require_feature, verify_password, wake_engine, AppEngine,
+};
 use crate::db::Database;
 use crate::error::Result;
 use crate::models::sync::HeldGapView;
@@ -24,27 +26,37 @@ pub async fn sync_held_gaps(db: State<'_, Database>) -> Result<Vec<HeldGapView>>
 }
 
 /// Skips the held change of `device_id` once the device password is checked
-/// (`gaps::skip_missing_change`: `validation.syncGapNotSkippableYet` before 14 days), between two
-/// rounds, then asks for a round so the changes after it apply. A device ID that names no held
-/// change (it arrived meanwhile, or the ID is not one) is nothing to skip.
+/// (`gaps::skip_missing_change`: `validation.syncGapNotSkippableYet` before 14 days), as a sync
+/// change (`guarded_change`: one at a time, the engine stopped and started again) and between two
+/// rounds, then asks for a round so the changes after it apply. `true` when a change was skipped;
+/// `false` when there was nothing to skip (it arrived meanwhile, or the ID names no held change).
 #[tauri::command]
 pub async fn sync_skip_missing_change(
     app: AppHandle,
     db: State<'_, Database>,
     password: String,
     device_id: String,
-) -> Result<()> {
+) -> Result<bool> {
     let password = Zeroizing::new(password);
     require_feature()?;
     password_given(&password)?;
     verify_password(&app, password).await?;
     let Ok(device) = DeviceId::from_hex(&device_id) else {
-        return Ok(());
+        return Ok(false);
     };
-    {
-        let _between_rounds = engine::exclusive(db.inner()).await;
-        db.with_conn(|conn| gaps::skip_missing_change(conn, device, now()))?;
-    }
+    let database = db.inner();
+    let skip = async {
+        let _between_rounds = engine::exclusive(database).await;
+        Ok(database.with_conn(|conn| gaps::skip_missing_change(conn, device, now()))?)
+    };
+    let skipped = guarded_change(
+        &AppEngine {
+            app: &app,
+            db: database,
+        },
+        skip,
+    )
+    .await?;
     wake_engine(&app);
-    Ok(())
+    Ok(skipped)
 }

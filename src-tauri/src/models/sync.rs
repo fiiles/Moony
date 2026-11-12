@@ -406,6 +406,10 @@ pub struct HeldGapView {
     pub device_name: Option<String>,
     #[serde(rename = "kind")]
     pub kind: HeldGapKind,
+    /// How many changes a skip gives up: the device's changes that never arrived (`missing`), or
+    /// 1 (`parent`, the held change itself).
+    #[serde(rename = "missingChanges")]
+    pub missing_changes: u64,
     /// When this device first held it (unix seconds).
     #[serde(rename = "since")]
     pub since: i64,

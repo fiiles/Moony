@@ -141,11 +141,12 @@
     },
     "newerSchema": "Update Moony on this device to keep syncing",
     "gap": {
-      "missing_one": "A change from “{{device}}” has been missing for {{count}} day.",
-      "missing_other": "A change from “{{device}}” has been missing for {{count}} days.",
-      "waiting_one": "A change from “{{device}}” has waited {{count}} day for an earlier change it depends on, which never arrived.",
-      "waiting_other": "A change from “{{device}}” has waited {{count}} days for an earlier change it depends on, which never arrived.",
-      "skip": "Skip the missing change"
+      "missing_one": "A change from “{{device}}” has been missing for {{days}} days.",
+      "missing_other": "{{count}} changes from “{{device}}” have been missing for {{days}} days.",
+      "waiting": "A change from “{{device}}” has waited {{days}} days for an earlier change it depends on, which never arrived.",
+      "skip_one": "Skip the missing change",
+      "skip_other": "Skip the missing changes",
+      "skipFrom": "If it still hasn't arrived by {{date}}, you can skip it then."
     }
   },
   "renew": {
@@ -168,11 +169,15 @@
     "success": "Device re-synced. Backup saved as {{file}}."
   },
   "skipGap": {
-    "title": "Skip the missing change?",
-    "description": "The change from “{{device}}” that never arrived will be skipped. Whatever it held stays missing on this device until a device that has it uploads a newer copy of the synced data.",
-    "descriptionParent": "The change from “{{device}}” that cannot be applied will be skipped. Whatever it held stays missing on this device until a device that has it uploads a newer copy of the synced data.",
-    "confirm": "Skip the change",
-    "success": "The missing change was skipped. Syncing continues."
+    "title_one": "Skip the missing change?",
+    "title_other": "Skip the missing changes?",
+    "description_one": "The change from “{{device}}” that never arrived will be skipped. It comes back on this device only if a device that has it uploads a newer copy of the synced data; if no device has it, it is lost. Changes that depend on it may need to be skipped too.",
+    "description_other": "The {{count}} changes from “{{device}}” that never arrived will be skipped. They come back on this device only if a device that has them uploads a newer copy of the synced data; if no device has them, they are lost. Changes that depend on them may need to be skipped too.",
+    "descriptionParent": "The change from “{{device}}” that cannot be applied will be skipped. What it held comes back on this device only if a device that applied it uploads a newer copy of the synced data; if none did, it is lost. Changes that depend on it may need to be skipped too.",
+    "confirm": "Skip",
+    "success_one": "The missing change was skipped. Syncing continues.",
+    "success_other": "The missing changes were skipped. Syncing continues.",
+    "arrived": "The missing change arrived in the meantime; nothing was skipped."
   },
   "turnOff": {
     "button": "Turn off sync on this device",

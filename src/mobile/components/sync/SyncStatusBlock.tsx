@@ -7,7 +7,13 @@ import { useHeldGaps } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
-import { heldDays, heldGapDevice, problemAction, skippableGap } from '@/utils/device-sync-problem';
+import {
+  firstSkippableAt,
+  heldDays,
+  heldGapDevice,
+  problemAction,
+  skippableGap,
+} from '@/utils/device-sync-problem';
 import { isSelfHostedPaidUntil } from '@/utils/sync-status';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
@@ -122,6 +128,10 @@ function ProblemAlert({
   const action = problemAction(problem, isSelfHostedPaidUntil(status.paidUntil), skippable);
   let title: string | undefined;
   let body = t(`status.problem.${problem}`);
+  const skipFrom = problem === 'gap' ? firstSkippableAt(heldGaps.data, now) : null;
+  if (skipFrom !== null) {
+    body = `${body} ${t('alert.gap.skipFrom', { date: renderDate(skipFrom) })}`;
+  }
   let actions: Array<{ label: string; onClick: () => void; disabled?: boolean }> = [];
   switch (action) {
     case 'renew':
@@ -160,11 +170,18 @@ function ProblemAlert({
       break;
     case 'skipMissing':
       if (skippable) {
-        body = t(skippable.kind === 'parent' ? 'alert.gap.waiting' : 'alert.gap.missing', {
-          device: heldGapDevice(skippable),
-          count: heldDays(skippable, now),
-        });
-        actions = [{ label: t('alert.gap.skip'), onClick: () => onSkipMissing(skippable) }];
+        const device = heldGapDevice(skippable);
+        const days = heldDays(skippable, now);
+        body =
+          skippable.kind === 'parent'
+            ? t('alert.gap.waiting', { device, days })
+            : t('alert.gap.missing', { device, days, count: skippable.missingChanges });
+        actions = [
+          {
+            label: t('alert.gap.skip', { count: skippable.missingChanges }),
+            onClick: () => onSkipMissing(skippable),
+          },
+        ];
       }
       break;
   }

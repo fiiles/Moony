@@ -8,8 +8,9 @@ import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialo
 
 /**
  * Skip a change from another device that never arrived (audit M3): the confirmation names the
- * device and says what stays missing, then the password. A refusal (a wrong password, a change not
- * yet 14 days old) shows under the field.
+ * device, how many changes go and what that costs, then the password. A refusal (a wrong
+ * password, a change not yet 14 days old) shows under the field; a change that arrived meanwhile
+ * is said so rather than "skipped".
  */
 export function SkipMissingChangeDialog({
   gap,
@@ -24,17 +25,20 @@ export function SkipMissingChangeDialog({
   const resetSkip = skipMissingChange.reset;
   useEffect(() => resetSkip, [resetSkip]);
   const device = heldGapDevice(gap);
+  const count = gap.missingChanges;
   return (
     <SyncPasswordDialog
-      title={t('skipGap.title')}
-      description={t(gap.kind === 'parent' ? 'skipGap.descriptionParent' : 'skipGap.description', {
-        device,
-      })}
+      title={t('skipGap.title', { count })}
+      description={
+        gap.kind === 'parent'
+          ? t('skipGap.descriptionParent', { device })
+          : t('skipGap.description', { device, count })
+      }
       confirmLabel={t('skipGap.confirm')}
       destructive
       onSubmit={async (password) => {
-        await skipMissingChange.mutateAsync({ password, deviceId: gap.deviceId });
-        toast(t('skipGap.success'));
+        const skipped = await skipMissingChange.mutateAsync({ password, deviceId: gap.deviceId });
+        toast(skipped ? t('skipGap.success', { count }) : t('skipGap.arrived'));
       }}
       onClose={onClose}
     />

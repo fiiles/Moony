@@ -401,10 +401,11 @@ export const deviceSyncApi = {
 
   /**
    * Skips the held change of `deviceId` once the device password is checked; refused
-   * (`validation.syncGapNotSkippableYet`) before its `skippableAt`.
+   * (`validation.syncGapNotSkippableYet`) before its `skippableAt`. `false`: nothing was skipped
+   * (it arrived meanwhile).
    */
   skipMissingChange: (password: string, deviceId: string) =>
-    tauriInvoke<void>('sync_skip_missing_change', { password, deviceId }),
+    tauriInvoke<boolean>('sync_skip_missing_change', { password, deviceId }),
 
   /**
    * Phones only: copies a listed sync backup to Documents for the Files sheet; hand the returned

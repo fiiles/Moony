@@ -581,14 +581,14 @@ fn a_crossed_device_skips_a_lagging_envelope_until_a_healing_snapshot() {
 
     // A snapshot dumped before the skipped position does not heal it.
     let sync = state::load(&b).expect("load").expect("row");
-    assert!(!snapshot_heals_missed(&sync, 25, 2, None));
+    assert!(!snapshot_heals_missed(&sync, None, 25, 2, None));
     restore_merge(&b, &mut &early[..], NOW).expect("merge");
     assert_eq!(missed(&b), Some(3));
     assert!(!has_ds_row(&b));
 
     // A clean one at the barrier and past it does, and the restore clears the miss.
     let (healing, _) = snapshot(&a, 5);
-    assert!(snapshot_heals_missed(&sync, 25, 5, None));
+    assert!(snapshot_heals_missed(&sync, None, 25, 5, None));
     restore_merge(&b, &mut &healing[..], NOW).expect("merge");
     assert_eq!(missed(&b), None);
     assert_eq!(

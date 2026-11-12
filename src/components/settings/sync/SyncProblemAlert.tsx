@@ -2,12 +2,18 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
-import type { SyncStatus } from '@shared/schema';
+import type { HeldGapView, SyncStatus } from '@shared/schema';
 import { useHeldGaps } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
-import { heldDays, heldGapDevice, problemAction, skippableGap } from '@/utils/device-sync-problem';
+import {
+  firstSkippableAt,
+  heldDays,
+  heldGapDevice,
+  problemAction,
+  skippableGap,
+} from '@/utils/device-sync-problem';
 import { isSelfHostedPaidUntil } from '@/utils/sync-status';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -19,7 +25,7 @@ import {
 import { TurnOffSyncDialog } from '@/components/settings/sync/TurnOffSyncDialog';
 import { SkipMissingChangeDialog } from '@/components/settings/sync/SkipMissingChangeDialog';
 
-type Open = 'renew' | 'repair' | 'resync' | 'turnOff' | 'skipMissing' | null;
+type Open = 'renew' | 'repair' | 'resync' | 'turnOff' | null;
 
 /** The problem that paused or stopped sync, next to its cause, with the action that answers it. */
 export function SyncProblemAlert({ status }: { status: SyncStatus }) {
@@ -30,6 +36,8 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
   const [open, setOpen] = useState<Open>(null);
   /** A repair that could not send every change: re-syncing is offered next to it. */
   const [offerResync, setOfferResync] = useState(false);
+  /** The held change whose skip confirmation is open, as it was when the confirmation opened. */
+  const [skipping, setSkipping] = useState<HeldGapView | null>(null);
   const heldGaps = useHeldGaps(status.problem === 'gap');
   const close = () => setOpen(null);
   const problem = status.problem;
@@ -50,6 +58,12 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
   const action = problemAction(problem, selfHosted, skippable);
   let title: string | null = null;
   let body: string | null = t(`status.problem.${problem}`);
+  const skipFrom = problem === 'gap' ? firstSkippableAt(heldGaps.data, now) : null;
+  if (skipFrom !== null) {
+    body = `${body} ${t('alert.gap.skipFrom', {
+      date: date(new Date(skipFrom * 1000), { dateStyle: 'long' }),
+    })}`;
+  }
   let actions: React.ReactNode = null;
   switch (action) {
     case 'renew':
@@ -117,13 +131,15 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
       break;
     case 'skipMissing':
       if (skippable) {
-        body = t(skippable.kind === 'parent' ? 'alert.gap.waiting' : 'alert.gap.missing', {
-          device: heldGapDevice(skippable),
-          count: heldDays(skippable, now),
-        });
+        const device = heldGapDevice(skippable);
+        const days = heldDays(skippable, now);
+        body =
+          skippable.kind === 'parent'
+            ? t('alert.gap.waiting', { device, days })
+            : t('alert.gap.missing', { device, days, count: skippable.missingChanges });
         actions = (
-          <Button type="button" size="sm" onClick={() => setOpen('skipMissing')}>
-            {t('alert.gap.skip')}
+          <Button type="button" size="sm" onClick={() => setSkipping(skippable)}>
+            {t('alert.gap.skip', { count: skippable.missingChanges })}
           </Button>
         );
       }
@@ -144,9 +160,7 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
       )}
       {open === 'resync' && <ResyncDeviceDialog onClose={close} />}
       {open === 'turnOff' && <TurnOffSyncDialog onClose={close} />}
-      {open === 'skipMissing' && skippable && (
-        <SkipMissingChangeDialog gap={skippable} onClose={close} />
-      )}
+      {skipping && <SkipMissingChangeDialog gap={skipping} onClose={() => setSkipping(null)} />}
     </>
   );
 }

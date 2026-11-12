@@ -141,11 +141,12 @@
     },
     "newerSchema": "Uppdatera Moony på den här enheten för att fortsätta synkronisera",
     "gap": {
-      "missing_one": "En ändring från ”{{device}}” har saknats i {{count}} dag.",
-      "missing_other": "En ändring från ”{{device}}” har saknats i {{count}} dagar.",
-      "waiting_one": "En ändring från ”{{device}}” har i {{count}} dag väntat på en tidigare ändring som den bygger på och som aldrig kom fram.",
-      "waiting_other": "En ändring från ”{{device}}” har i {{count}} dagar väntat på en tidigare ändring som den bygger på och som aldrig kom fram.",
-      "skip": "Hoppa över den saknade ändringen"
+      "missing_one": "En ändring från ”{{device}}” har saknats i {{days}} dagar.",
+      "missing_other": "{{count}} ändringar från ”{{device}}” har saknats i {{days}} dagar.",
+      "waiting": "En ändring från ”{{device}}” har i {{days}} dagar väntat på en tidigare ändring som den bygger på och som aldrig kom fram.",
+      "skip_one": "Hoppa över den saknade ändringen",
+      "skip_other": "Hoppa över de saknade ändringarna",
+      "skipFrom": "Om den inte har kommit fram senast {{date}} kan du hoppa över den då."
     }
   },
   "renew": {
@@ -168,11 +169,15 @@
     "success": "Enheten är synkroniserad igen. Säkerhetskopia sparad som {{file}}."
   },
   "skipGap": {
-    "title": "Hoppa över den saknade ändringen?",
-    "description": "Ändringen från ”{{device}}” som aldrig kom fram hoppas över. Det den innehöll saknas på den här enheten tills en enhet som har den laddar upp en nyare kopia av de synkroniserade uppgifterna.",
-    "descriptionParent": "Ändringen från ”{{device}}” som inte kan tillämpas hoppas över. Det den innehöll saknas på den här enheten tills en enhet som har den laddar upp en nyare kopia av de synkroniserade uppgifterna.",
-    "confirm": "Hoppa över ändringen",
-    "success": "Den saknade ändringen hoppades över. Synkroniseringen fortsätter."
+    "title_one": "Hoppa över den saknade ändringen?",
+    "title_other": "Hoppa över de saknade ändringarna?",
+    "description_one": "Ändringen från ”{{device}}” som aldrig kom fram hoppas över. Den kommer bara tillbaka till den här enheten om en enhet som har den laddar upp en nyare kopia av de synkroniserade uppgifterna; om ingen enhet har den är den förlorad. Ändringar som bygger på den kan också behöva hoppas över.",
+    "description_other": "De {{count}} ändringarna från ”{{device}}” som aldrig kom fram hoppas över. De kommer bara tillbaka till den här enheten om en enhet som har dem laddar upp en nyare kopia av de synkroniserade uppgifterna; om ingen enhet har dem är de förlorade. Ändringar som bygger på dem kan också behöva hoppas över.",
+    "descriptionParent": "Ändringen från ”{{device}}” som inte kan tillämpas hoppas över. Det den innehöll kommer bara tillbaka till den här enheten om en enhet som tillämpade den laddar upp en nyare kopia av de synkroniserade uppgifterna; om ingen gjorde det är det förlorat. Ändringar som bygger på den kan också behöva hoppas över.",
+    "confirm": "Hoppa över",
+    "success_one": "Den saknade ändringen hoppades över. Synkroniseringen fortsätter.",
+    "success_other": "De saknade ändringarna hoppades över. Synkroniseringen fortsätter.",
+    "arrived": "Den saknade ändringen kom fram under tiden; ingenting hoppades över."
   },
   "turnOff": {
     "button": "Stäng av synkronisering på den här enheten",

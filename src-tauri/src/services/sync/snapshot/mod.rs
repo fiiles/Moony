@@ -93,6 +93,7 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
         heads: heads_of(conn, &sync)?,
         barrier_seq: sync.barrier_seq,
         missed_below_barrier: sync.missed_below_barrier,
+        missed_skipped: state::skipped_miss(conn)?,
     };
 
     // The `devs` record goes first but is known only once every row is encoded.
@@ -215,7 +216,7 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
                 return Err(invalid());
             }
         }
-        finish(conn, &snapshot, &sync, report.stats.max_hlc, false)?;
+        finish(conn, &snapshot, &sync, report.stats.max_hlc, false, now)?;
         report.warnings.extend(repair::full(conn, now)?.warnings);
         Ok(report)
     })
@@ -240,7 +241,7 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<Restor
     // clear and put back under the items the vault has before the repair, whose blob purge then
     // takes only the blobs of rows that were not (audit H3).
     let kept = attachments::keep(conn)?;
-    if let Err(error) = refill(conn, &mut snapshot, &sync, &mut report) {
+    if let Err(error) = refill(conn, &mut snapshot, &sync, &mut report, now) {
         attachments::discard(conn);
         return Err(error);
     }
@@ -259,6 +260,7 @@ fn refill(
     snapshot: &mut Snapshot,
     sync: &SyncState,
     report: &mut RestoreReport,
+    now: i64,
 ) -> Result<()> {
     capture::with_mode(conn, Mode::Repair, || clear(conn))?;
     if let Some(i) = snapshot
@@ -282,7 +284,7 @@ fn refill(
         return Err(invalid());
     }
     report.warnings.append(&mut ctx.report.warnings);
-    finish(conn, snapshot, sync, report.stats.max_hlc, true)
+    finish(conn, snapshot, sync, report.stats.max_hlc, true, now)
 }
 
 /// Moves this connection's clock past the snapshot's newest clock (capture is installed on every
@@ -325,6 +327,7 @@ fn finish(
     sync: &SyncState,
     max_hlc: u64,
     replacing: bool,
+    now: i64,
 ) -> Result<()> {
     insert_seeds(conn, &snapshot.seeds, replacing)?;
     // A quarantine is never lifted by a snapshot: the fork stays a fork.
@@ -374,29 +377,39 @@ fn finish(
     }
     // The miss (rulings T8-2, T8-6, T8-7). Replacing restarts this device at the snapshot's
     // cursor, so its miss is the dumper's: the rows of what the dumper skipped are missing here
-    // too, and anything this device skipped itself it meets again above the new cursor.
+    // too, and anything this device skipped itself it meets again above the new cursor. A skipped
+    // change's miss (Task 17 I1) is inherited the same way, into its own mark, dated now.
     if replacing {
         state::clear_missed_below_barrier(conn)?;
         if let Some(missed) = snapshot.missed_below_barrier {
             state::note_missed_below_barrier(conn, missed)?;
         }
+        state::clear_skipped_miss(conn)?;
+        if let Some(skipped) = snapshot.missed_skipped {
+            state::note_skipped_miss(conn, skipped, now)?;
+        }
         return Ok(());
     }
-    // Merging heals this device's miss only with a snapshot from a clean dumper (no pending miss
-    // of its own, so it applied what this device skipped), dumped at this device's barrier or
-    // later and at or past every skipped position (T8-6).
+    // Merging heals this device's misses only with a snapshot from a clean dumper (no pending
+    // miss of either kind, so it applied what this device lacks), dumped at this device's barrier
+    // or later and at or past every missed position (T8-6).
     if chain::snapshot_heals_missed(
         sync,
+        state::skipped_miss(conn)?,
         snapshot.barrier,
         snapshot.seq,
-        snapshot.missed_below_barrier,
+        snapshot.missed_below_barrier.max(snapshot.missed_skipped),
     ) {
         state::clear_missed_below_barrier(conn)?;
+        state::clear_skipped_miss(conn)?;
     }
     // A dumper's own miss above this device's cursor is now this device's too: the cursor moves
     // past that envelope and the snapshot lacks its rows (T8-7). The newest miss is kept.
     if let Some(missed) = snapshot.missed_below_barrier.filter(|m| sync.cursor < *m) {
         state::note_missed_below_barrier(conn, missed)?;
+    }
+    if let Some(skipped) = snapshot.missed_skipped.filter(|m| sync.cursor < *m) {
+        state::note_skipped_miss(conn, skipped, now)?;
     }
     Ok(())
 }

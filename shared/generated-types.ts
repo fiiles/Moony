@@ -1022,6 +1022,11 @@ deviceId: string;
  */
 deviceName: string | null; kind: HeldGapKind; 
 /**
+ * How many changes a skip gives up: the device's changes that never arrived (`missing`), or
+ * 1 (`parent`, the held change itself).
+ */
+missingChanges: number; 
+/**
  * When this device first held it (unix seconds).
  */
 since: number; 

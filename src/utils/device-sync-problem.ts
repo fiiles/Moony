@@ -18,14 +18,30 @@ export function gapSkippable(gap: HeldGapView, now: number): boolean {
   return now >= gap.skippableAt;
 }
 
-/** The held change the alert offers to skip at `now` (unix seconds): the oldest skippable one. */
+/**
+ * The held change the alert offers to skip at `now` (unix seconds): a missing change before one
+ * waiting for a parent (skipping the missing one may bring the parent), then the oldest.
+ */
 export function skippableGap(
   gaps: readonly HeldGapView[] | undefined,
   now: number
 ): HeldGapView | null {
   const skippable = (gaps ?? []).filter((gap) => gapSkippable(gap, now));
   if (skippable.length === 0) return null;
-  return skippable.reduce((oldest, gap) => (gap.since < oldest.since ? gap : oldest));
+  const rank = (gap: HeldGapView) => (gap.kind === 'missing' ? 0 : 1);
+  return skippable.reduce((best, gap) =>
+    rank(gap) < rank(best) || (rank(gap) === rank(best) && gap.since < best.since) ? gap : best
+  );
+}
+
+/** When the first held change becomes skippable (unix seconds), while none is; else `null`. */
+export function firstSkippableAt(
+  gaps: readonly HeldGapView[] | undefined,
+  now: number
+): number | null {
+  const list = gaps ?? [];
+  if (list.length === 0 || list.some((gap) => gapSkippable(gap, now))) return null;
+  return Math.min(...list.map((gap) => gap.skippableAt));
 }
 
 /**

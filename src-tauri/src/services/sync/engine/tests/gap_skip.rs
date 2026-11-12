@@ -21,17 +21,20 @@ use crate::services::sync::engine::status::{problem_of_pull, status, Runtime};
 use crate::services::sync::engine::{run_round, PullEnd, RoundMode};
 use crate::services::sync::hlc::Clock;
 
-const DAY: i64 = 86_400;
+pub(super) const DAY: i64 = 86_400;
 
-fn missed(conn: &Connection) -> Option<u64> {
-    state::load(conn)
-        .expect("state")
-        .expect("row")
-        .missed_below_barrier
+/// The skipped change's miss (`state::skipped_miss`); a skip never sets the below-barrier one.
+pub(super) fn missed(conn: &Connection) -> Option<u64> {
+    let sync = state::load(conn).expect("state").expect("row");
+    assert_eq!(
+        sync.missed_below_barrier, None,
+        "a skip is no below-barrier miss"
+    );
+    state::skipped_miss(conn).expect("skipped miss")
 }
 
 /// `B` writes `b1` and `b2`; the relay withholds `b1` (op 1), so `A` holds `b2` (op 2) as a gap.
-async fn b1_withheld(vault: &Vault) {
+pub(super) async fn b1_withheld(vault: &Vault) {
     let b1 = write_and_seal(vault, &vault.b, "b1");
     let b2 = write_and_seal(vault, &vault.b, "b2");
     push(&vault.relay, &vault.creds, &[b1, b2]).await;
@@ -133,7 +136,7 @@ async fn skipping_applies_the_held_envelopes_and_records_the_miss() {
     assert!(!first.may_snapshot());
     let at = NOW + GAP_SKIP_AFTER_SECS;
 
-    skip_missing_change(&vault.a.lock(), B, at).expect("skip");
+    assert!(skip_missing_change(&vault.a.lock(), B, at).expect("skip"));
     {
         let a = vault.a.lock();
         assert!(held_gaps(&a).expect("held gaps").is_empty());
@@ -172,7 +175,10 @@ async fn skipping_a_gap_that_healed_meanwhile_changes_nothing() {
         .expect("pull");
     let before = sync_rows(&vault.a.lock());
 
-    skip_missing_change(&vault.a.lock(), B, NOW + GAP_SKIP_AFTER_SECS).expect("nothing to skip");
+    let skipped = skip_missing_change(&vault.a.lock(), B, NOW + GAP_SKIP_AFTER_SECS)
+        .expect("nothing to skip");
+    assert!(!skipped, "it arrived meanwhile: nothing was skipped");
+    assert!(!skip_missing_change(&vault.a.lock(), C, NOW + GAP_SKIP_AFTER_SECS).expect("unknown"));
 
     let a = vault.a.lock();
     assert_eq!(sync_rows(&a), before);

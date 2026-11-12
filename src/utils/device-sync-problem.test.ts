@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HeldGapView, SyncProblem } from '@shared/schema';
 import {
+  firstSkippableAt,
   gapSkippable,
   heldDays,
   heldGapDevice,
@@ -72,6 +73,7 @@ function gap(overrides: Partial<HeldGapView> = {}): HeldGapView {
     deviceId: '02'.repeat(16),
     deviceName: 'Work laptop',
     kind: 'missing',
+    missingChanges: 1,
     since,
     skippableAt: since + 14 * DAY,
     ...overrides,
@@ -94,6 +96,22 @@ describe('skippableGap', () => {
     expect(skippableGap(undefined, SINCE)).toBeNull();
     expect(skippableGap([younger], SINCE + 15 * DAY)).toBeNull();
     expect(skippableGap([younger, older], SINCE + 15 * DAY)).toBe(older);
+  });
+
+  it('offers a missing change before one waiting for a parent', () => {
+    const parent = gap({ deviceId: 'aa'.repeat(16), kind: 'parent', since: SINCE - 5 * DAY });
+    const missing = gap({ deviceId: 'bb'.repeat(16), since: SINCE });
+    expect(skippableGap([parent, missing], SINCE + 15 * DAY)).toBe(missing);
+    expect(skippableGap([parent], SINCE + 15 * DAY)).toBe(parent);
+  });
+});
+
+describe('firstSkippableAt', () => {
+  it('is the earliest skippable time while none may be skipped yet', () => {
+    const later = gap({ deviceId: 'aa'.repeat(16), since: SINCE + 3 * DAY });
+    expect(firstSkippableAt(undefined, SINCE)).toBeNull();
+    expect(firstSkippableAt([later, gap()], SINCE + DAY)).toBe(SINCE + 14 * DAY);
+    expect(firstSkippableAt([later, gap()], SINCE + 14 * DAY)).toBeNull();
   });
 });
 

@@ -3,10 +3,13 @@
 //! While it is held the cursor stays before the held envelope, so every pull fetches again from
 //! there (up to `pull::MAX_PULL_PAGES`), nothing is dumped as a snapshot and the relay cannot prune.
 //! Once a gap has waited `GAP_SKIP_AFTER_SECS`, the person may skip it (after a confirmation that
-//! names the author): the author's head moves past what is missing, so the held envelopes apply at
-//! the next pull and the cursor is released, and the miss is recorded like a below-barrier one
-//! (`state::note_missed_below_barrier`), so a snapshot from a device that has the change heals it
-//! (`chain::snapshot_heals_missed`) and this device uploads none until then.
+//! names the author and how many changes go): the author's head moves past what is missing, so
+//! the held envelopes apply at the next pull and the cursor is released, and the miss is recorded
+//! as a skipped one (`state::note_skipped_miss`, ruling I1). This device still uploads snapshots,
+//! with the miss in their header, so no device heals from them and a restorer inherits it; a
+//! snapshot from a device that has the change heals it (`chain::snapshot_heals_missed`). While a
+//! skipped miss stands, a change held for a parent the skipped one may have created is skippable
+//! as early as the skip was (ruling I2).
 //!
 //! One record per author, in the Local `app_config` key `sync.held_gap.<device hex>` (JSON; never
 //! synced, never captured; no migration): the lowest held sequence of that author, kept with the
@@ -77,6 +80,20 @@ impl HeldGap {
                 )),
             },
             GapKind::Parent => Ok((self.held_seq, self.held_hash)),
+        }
+    }
+
+    /// How many changes a skip gives up, with the author's head at `head_seq`: every sequence
+    /// between the head and the held envelope (`Missing`, at least one), or the held envelope
+    /// itself (`Parent`).
+    fn missing_changes(&self, head_seq: Option<u64>) -> u64 {
+        match self.kind {
+            GapKind::Missing => self
+                .held_seq
+                .saturating_sub(head_seq.unwrap_or(0))
+                .saturating_sub(1)
+                .max(1),
+            GapKind::Parent => 1,
         }
     }
 
@@ -162,7 +179,11 @@ fn held_gap(conn: &Connection, device: DeviceId) -> Result<Option<HeldGap>> {
 }
 
 /// The pull held `meta` (`kind` says why) at `now`. The author's record keeps its lowest held
-/// sequence, which a lower one replaces, and its first time, which nothing replaces.
+/// sequence, which a lower one replaces, and its first time, which nothing replaces. A new
+/// `Parent` record while a skipped miss stands takes the skip's first time when that is earlier
+/// (ruling I2): its parent may be a row the skipped change created, which is not coming, so the
+/// person need not wait another 14 days to skip it too (still behind the password and its
+/// confirmation). A `Missing` record always starts at `now`.
 pub fn note_held_gap(
     conn: &Connection,
     meta: &EnvelopeMeta,
@@ -185,7 +206,13 @@ pub fn note_held_gap(
             held_prev: meta.prev,
             held_hash: meta.hash,
             position: meta.position,
-            since: existing.map_or(now, |gap| gap.since),
+            since: match existing {
+                Some(gap) => gap.since,
+                None if kind == GapKind::Parent => {
+                    state::skipped_miss_since(conn)?.map_or(now, |skipped| skipped.min(now))
+                }
+                None => now,
+            },
         },
     )
 }
@@ -224,6 +251,7 @@ pub fn held_gap_views(conn: &Connection) -> Result<Vec<HeldGapView>> {
                     GapKind::Missing => HeldGapKind::Missing,
                     GapKind::Parent => HeldGapKind::Parent,
                 },
+                missing_changes: gap.missing_changes(head_of(conn, gap.device)?.map(|h| h.seq)),
                 since: gap.since,
                 skippable_at: gap.skippable_at(),
             })
@@ -261,26 +289,27 @@ pub fn forget_all(conn: &Connection) -> Result<()> {
 /// Skips `device`'s held gap at `now`. Refused (`validation.syncGapNotSkippableYet`) before it has
 /// been held `GAP_SKIP_AFTER_SECS`. Otherwise, in one savepoint: the author's head moves past what
 /// is missing (`HeldGap::head_past`), so the held envelopes apply at the next pull and release the
-/// cursor; the miss is recorded at the held envelope's position
-/// (`state::note_missed_below_barrier`), so a later snapshot from a device that has the change
-/// heals it, and until then this device uploads no snapshot; the record goes. A gap that is no
-/// longer held (it healed meanwhile, or none was noted for `device`) is nothing to skip: `Ok`, and
-/// nothing changes.
-pub fn skip_missing_change(conn: &Connection, device: DeviceId, now: i64) -> Result<()> {
+/// cursor; the miss is recorded at the held envelope's position (`state::note_skipped_miss`, with
+/// the gap's first time), so a later snapshot from a device that has the change heals it; the
+/// record goes. `Ok(true)` when a change was skipped. A gap that is no longer held (it healed
+/// meanwhile, or none was noted for `device`) is nothing to skip: `Ok(false)`, and nothing changes.
+pub fn skip_missing_change(conn: &Connection, device: DeviceId, now: i64) -> Result<bool> {
     let Some(gap) = held_gap(conn, device)? else {
-        return Ok(());
+        return Ok(false);
     };
     if now < gap.skippable_at() {
         return Err(AppError::Validation(NOT_SKIPPABLE_YET.into()));
     }
     in_savepoint(conn, "sync_skip_missing_change", || {
         let reached = head_of(conn, device)?.map_or(0, |head| head.seq);
-        if !gap.healed_by(reached) {
+        let skipped = !gap.healed_by(reached);
+        if skipped {
             let (seq, hash) = gap.head_past()?;
             set_head(conn, device, seq, hash)?;
-            state::note_missed_below_barrier(conn, gap.position)?;
+            state::note_skipped_miss(conn, gap.position, gap.since)?;
             log::info!("[SYNC] Skipped a change that never arrived; it is recorded as missed");
         }
-        forget(conn, device)
+        forget(conn, device)?;
+        Ok(skipped)
     })
 }

@@ -86,7 +86,6 @@
     },
     "kit": {
       "description": "Speichern Sie Ihr Sync-Wiederherstellungs-Kit. Nur damit bekommen Sie Ihre synchronisierten Daten zurück, wenn Sie alle Geräte verlieren.",
-      "preparing": "Kit wird vorbereitet…",
       "savePage": "Als Seite speichern…",
       "saveText": "Als Text speichern…",
       "copyCode": "Code kopieren",
@@ -108,8 +107,9 @@
         "relayLabel": "Synchronisierungsserver",
         "relayNote": "Wird zum Wiederherstellen mit diesem Kit benötigt"
       },
-      "failed": "Das Kit konnte nicht vorbereitet werden.",
-      "retry": "Erneut versuchen"
+      "folderWarning": "Bewahren Sie das Kit auf Papier oder in einem Passwortmanager auf, nicht in einem Ordner, der mit einem Cloud-Dienst synchronisiert wird.",
+      "syncedFolder": "Kit gespeichert, aber dieser Ordner wird offenbar mit einem Cloud-Dienst synchronisiert. Verschieben Sie die Datei an einen Ort ohne Synchronisierung oder löschen Sie sie, sobald das Kit auf Papier vorliegt.",
+      "saveRefused": "Dieses Kit ist veraltet und wurde deshalb nicht gespeichert. Schließen Sie es und zeigen Sie das Kit erneut an."
     },
     "device": {
       "description": "Geben Sie diesem Gerät einen Namen, um es von Ihren anderen zu unterscheiden.",
@@ -186,7 +186,7 @@
   "showKit": {
     "title": "Sync-Wiederherstellungs-Kit",
     "description": "Geben Sie Ihr Gerätepasswort ein, um das Kit anzuzeigen.",
-    "again": "Geben Sie Ihr Passwort erneut ein, um den Code zu kopieren.",
+    "again": "Geben Sie Ihr Passwort erneut ein, um das Kit anzuzeigen.",
     "confirm": "Kit anzeigen"
   },
   "busy": {

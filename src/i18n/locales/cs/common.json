@@ -344,7 +344,7 @@
     "syncUnavailable": "Synchronizace není v této verzi Moony dostupná.",
     "syncDevOnly": "Toto je nástroj pro vývojáře, dostupný jen ve vývojových sestaveních.",
     "syncChangeInProgress": "Na tomto zařízení už probíhá jiná změna synchronizace. Počkejte, až skončí.",
-    "syncPasswordRequired": "Pro zkopírování obnovovacího kódu znovu zadejte heslo.",
+    "syncPasswordRequired": "Pro zkopírování nebo uložení obnovovacího kódu znovu zadejte heslo.",
     "syncPairingCodeInvalid": "Párovací kód není platný. Naskenujte kód zobrazený na druhém zařízení.",
     "syncPairingOtherNeedsUpdate": "Druhé zařízení potřebuje aktualizovat Moony, než se s tímto spáruje.",
     "syncPairingThisNeedsUpdate": "Tento párovací kód pochází z novější verze Moony. Aktualizujte Moony na tomto zařízení a zkuste to znovu.",

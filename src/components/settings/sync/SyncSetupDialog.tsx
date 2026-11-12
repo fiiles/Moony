@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -8,6 +8,7 @@ import { useDeviceSyncAccount, useDeviceSyncStatus } from '@/hooks/use-device-sy
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { RecoveryKitPanel } from '@/components/settings/sync/RecoveryKitPanel';
+import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialog';
 import {
   Dialog,
   DialogContent,
@@ -42,8 +43,14 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   const { data: account } = useDeviceSyncAccount({ pollWhileInactive: chosenStep === 'pay' });
   // The payment (or the operator's allow-list) is waited for on step 2; it moves on by itself.
   const step: Step = chosenStep === 'pay' && account?.active ? 'kit' : chosenStep;
-  const { createAccount, startCheckout, prepareRecoveryKit, finishSetup, devGrant } =
-    useDeviceSyncMutations();
+  const {
+    createAccount,
+    startCheckout,
+    prepareRecoveryKit,
+    prepareKitWithPassword,
+    finishSetup,
+    devGrant,
+  } = useDeviceSyncMutations();
 
   const [relayInput, setRelayInput] = useState('');
   /** The address the current account was created with; `null` while a resumed one is unknown. */
@@ -53,7 +60,10 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   const [plan, setPlan] = useState<SyncPlan>('monthly');
   const [selfHosted, setSelfHosted] = useState(false);
   const [kit, setKit] = useState<RecoveryKit | null>(null);
-  const [kitFailed, setKitFailed] = useState(false);
+  /** The person closed the password question: the kit step waits for "Show the kit". */
+  const [kitPromptClosed, setKitPromptClosed] = useState(false);
+  /** The kit left the screen (expired, copy window over): the question says so. */
+  const [kitAskedAgain, setKitAskedAgain] = useState(false);
   const [kitKept, setKitKept] = useState(false);
   const [kitConfirmed, setKitConfirmed] = useState(false);
   const [numberCopied, setNumberCopied] = useState(false);
@@ -68,23 +78,15 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   const toastError = (error: unknown) =>
     toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
 
-  // The kit is prepared once on entering step 3.
-  const preparing = useRef(false);
-  useEffect(() => {
-    if (step !== 'kit' || kit || kitFailed || preparing.current) return;
-    preparing.current = true;
-    prepareRecoveryKit
-      .mutateAsync()
-      .then(setKit)
-      .catch((error) => {
-        setKitFailed(true);
-        toastError(error);
-      })
-      .finally(() => {
-        preparing.current = false;
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, kit, kitFailed]);
+  // Step 3 asks the device password before it shows the kit (audit M11), every time the kit has
+  // left the screen.
+  const askingForKit = step === 'kit' && !kit && !kitPromptClosed;
+  const dropKit = () => {
+    prepareRecoveryKit.reset();
+    setKit(null);
+    setKitPromptClosed(false);
+    setKitAskedAgain(true);
+  };
 
   // The kit holds the vault key: when the dialog closes it leaves the mutation's result too.
   const resetPreparedKit = prepareRecoveryKit.reset;
@@ -101,7 +103,10 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
       // A different server means a different account: whatever was prepared for the old one is void.
       setCreatedNumber(created.accountNumber);
       setCreatedWith(relayValue);
+      prepareRecoveryKit.reset();
       setKit(null);
+      setKitPromptClosed(false);
+      setKitAskedAgain(false);
       setKitKept(false);
       setKitConfirmed(false);
       setSelfHosted(false);
@@ -191,7 +196,7 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
       primary = {
         label: t('setup.account.continue'),
         onClick: () => setStep('device'),
-        disabled: !kit || !kitConfirmed,
+        disabled: !kitConfirmed,
       };
       break;
     default:
@@ -204,166 +209,186 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className="max-w-[560px]">
-        <DialogHeader>
-          <DialogTitle>{t('setup.title')}</DialogTitle>
-          <DialogDescription>
-            {t('setup.step', { current: stepNumber, total: STEPS.length })}
-            {' · '}
-            {t(
-              step === 'account'
-                ? 'setup.account.description'
-                : step === 'pay'
-                  ? 'setup.pay.description'
-                  : step === 'kit'
-                    ? 'setup.kit.description'
-                    : 'setup.device.description'
-            )}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
+        <DialogContent className="max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>{t('setup.title')}</DialogTitle>
+            <DialogDescription>
+              {t('setup.step', { current: stepNumber, total: STEPS.length })}
+              {' · '}
+              {t(
+                step === 'account'
+                  ? 'setup.account.description'
+                  : step === 'pay'
+                    ? 'setup.pay.description'
+                    : step === 'kit'
+                      ? 'setup.kit.description'
+                      : 'setup.device.description'
+              )}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="grid gap-4">
-          {step === 'account' && (
-            <>
-              {numberBox}
-              {accountNumber && (
-                <p className="m-0 text-micro font-500 text-ink-3">{t('setup.account.explain')}</p>
-              )}
-              <Collapsible>
-                <CollapsibleTrigger className="group flex items-center gap-1 text-caption font-700 text-ink-2">
-                  <ChevronRight className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
-                  {t('setup.advanced.toggle')}
-                </CollapsibleTrigger>
-                <CollapsibleContent className="grid gap-1.5 pt-2.5">
-                  <Label htmlFor="sync-relay-url">{t('setup.advanced.label')}</Label>
-                  <Input
-                    id="sync-relay-url"
-                    value={relayInput}
-                    onChange={(event) => {
-                      setRelayInput(event.target.value);
-                      setRelayError(null);
-                    }}
-                    placeholder={t('setup.advanced.placeholder')}
-                    aria-invalid={relayError ? true : undefined}
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                    spellCheck={false}
-                  />
-                  {relayError ? (
-                    <p className="m-0 text-micro font-500 text-loss" role="alert">
-                      {relayError}
-                    </p>
-                  ) : (
-                    <p className="m-0 text-micro font-500 text-ink-4">{t('setup.advanced.hint')}</p>
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
-            </>
-          )}
-
-          {step === 'pay' && (
-            <>
-              {!selfHosted && (
-                <Segmented<SyncPlan>
-                  aria-label={t('setup.pay.plan')}
-                  fullWidth
-                  value={plan}
-                  onValueChange={setPlan}
-                  options={[
-                    { value: 'monthly', label: t('setup.pay.monthly') },
-                    { value: 'yearly', label: t('setup.pay.yearly') },
-                  ]}
-                />
-              )}
-              {selfHosted ? (
-                <>
-                  {numberBox}
-                  <p className="m-0 text-body text-ink-2">{t('setup.pay.selfHosted')}</p>
-                  <p className="m-0 text-micro font-500 text-ink-3">
-                    {t('setup.pay.selfHostedWaiting')}
-                  </p>
-                </>
-              ) : (
-                startCheckout.isSuccess && (
-                  <p className="m-0 text-micro font-500 text-ink-3">{t('setup.pay.waiting')}</p>
-                )
-              )}
-              {status?.devTools && (
-                <div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleGrant}
-                    loading={devGrant.isPending}
-                  >
-                    {t('setup.pay.grantTest')}
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-
-          {step === 'kit' &&
-            (kit ? (
+          <div className="grid gap-4">
+            {step === 'account' && (
               <>
-                <RecoveryKitPanel kit={kit} onKept={() => setKitKept(true)} />
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="sync-kit-confirmed"
-                    checked={kitConfirmed}
-                    disabled={!kitKept}
-                    onCheckedChange={(checked) => setKitConfirmed(checked === true)}
+                {numberBox}
+                {accountNumber && (
+                  <p className="m-0 text-micro font-500 text-ink-3">{t('setup.account.explain')}</p>
+                )}
+                <Collapsible>
+                  <CollapsibleTrigger className="group flex items-center gap-1 text-caption font-700 text-ink-2">
+                    <ChevronRight className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
+                    {t('setup.advanced.toggle')}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="grid gap-1.5 pt-2.5">
+                    <Label htmlFor="sync-relay-url">{t('setup.advanced.label')}</Label>
+                    <Input
+                      id="sync-relay-url"
+                      value={relayInput}
+                      onChange={(event) => {
+                        setRelayInput(event.target.value);
+                        setRelayError(null);
+                      }}
+                      placeholder={t('setup.advanced.placeholder')}
+                      aria-invalid={relayError ? true : undefined}
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                    />
+                    {relayError ? (
+                      <p className="m-0 text-micro font-500 text-loss" role="alert">
+                        {relayError}
+                      </p>
+                    ) : (
+                      <p className="m-0 text-micro font-500 text-ink-4">
+                        {t('setup.advanced.hint')}
+                      </p>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
+
+            {step === 'pay' && (
+              <>
+                {!selfHosted && (
+                  <Segmented<SyncPlan>
+                    aria-label={t('setup.pay.plan')}
+                    fullWidth
+                    value={plan}
+                    onValueChange={setPlan}
+                    options={[
+                      { value: 'monthly', label: t('setup.pay.monthly') },
+                      { value: 'yearly', label: t('setup.pay.yearly') },
+                    ]}
                   />
-                  <Label htmlFor="sync-kit-confirmed" className="text-body font-500">
-                    {t('setup.kit.confirm')}
-                  </Label>
-                </div>
-                {!kitKept && (
-                  <p className="m-0 text-micro font-500 text-ink-4">{t('setup.kit.saveFirst')}</p>
+                )}
+                {selfHosted ? (
+                  <>
+                    {numberBox}
+                    <p className="m-0 text-body text-ink-2">{t('setup.pay.selfHosted')}</p>
+                    <p className="m-0 text-micro font-500 text-ink-3">
+                      {t('setup.pay.selfHostedWaiting')}
+                    </p>
+                  </>
+                ) : (
+                  startCheckout.isSuccess && (
+                    <p className="m-0 text-micro font-500 text-ink-3">{t('setup.pay.waiting')}</p>
+                  )
+                )}
+                {status?.devTools && (
+                  <div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleGrant}
+                      loading={devGrant.isPending}
+                    >
+                      {t('setup.pay.grantTest')}
+                    </Button>
+                  </div>
                 )}
               </>
-            ) : kitFailed ? (
-              <div className="grid justify-items-start gap-2">
-                <p className="m-0 text-body text-loss" role="alert">
-                  {t('setup.kit.failed')}
-                </p>
-                <Button type="button" variant="outline" onClick={() => setKitFailed(false)}>
-                  {t('setup.kit.retry')}
-                </Button>
+            )}
+
+            {step === 'kit' &&
+              (kit ? (
+                <>
+                  <RecoveryKitPanel
+                    kit={kit}
+                    onKept={() => setKitKept(true)}
+                    onPasswordRequired={dropKit}
+                    onExpired={dropKit}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="sync-kit-confirmed"
+                      checked={kitConfirmed}
+                      disabled={!kitKept}
+                      onCheckedChange={(checked) => setKitConfirmed(checked === true)}
+                    />
+                    <Label htmlFor="sync-kit-confirmed" className="text-body font-500">
+                      {t('setup.kit.confirm')}
+                    </Label>
+                  </div>
+                  {!kitKept && (
+                    <p className="m-0 text-micro font-500 text-ink-4">{t('setup.kit.saveFirst')}</p>
+                  )}
+                </>
+              ) : (
+                <div className="grid justify-items-start gap-2">
+                  <p className="m-0 text-body text-ink-3">
+                    {kitAskedAgain ? t('showKit.again') : t('showKit.description')}
+                  </p>
+                  <Button type="button" variant="outline" onClick={() => setKitPromptClosed(false)}>
+                    {t('showKit.confirm')}
+                  </Button>
+                </div>
+              ))}
+
+            {step === 'device' && (
+              <div className="grid gap-1.5">
+                <Label htmlFor="sync-device-name">{t('setup.device.name')}</Label>
+                <Input
+                  id="sync-device-name"
+                  value={deviceName}
+                  maxLength={60}
+                  onChange={(event) => setDeviceName(event.target.value)}
+                />
               </div>
-            ) : (
-              <p className="m-0 text-body text-ink-3">{t('setup.kit.preparing')}</p>
-            ))}
+            )}
+          </div>
 
-          {step === 'device' && (
-            <div className="grid gap-1.5">
-              <Label htmlFor="sync-device-name">{t('setup.device.name')}</Label>
-              <Input
-                id="sync-device-name"
-                value={deviceName}
-                maxLength={60}
-                onChange={(event) => setDeviceName(event.target.value)}
-              />
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
-            {t('setup.cancel')}
-          </Button>
-          <Button
-            type="button"
-            onClick={primary.onClick}
-            disabled={primary.disabled}
-            loading={primary.loading}
-          >
-            {primary.label}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
+              {t('setup.cancel')}
+            </Button>
+            <Button
+              type="button"
+              onClick={primary.onClick}
+              disabled={primary.disabled}
+              loading={primary.loading}
+            >
+              {primary.label}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {askingForKit && (
+        <SyncPasswordDialog
+          title={t('showKit.title')}
+          description={kitAskedAgain ? t('showKit.again') : t('showKit.description')}
+          confirmLabel={t('showKit.confirm')}
+          closeOnSuccess={false}
+          onSubmit={async (password) => {
+            setKit(await prepareKitWithPassword(password));
+            setKitAskedAgain(false);
+          }}
+          onClose={() => setKitPromptClosed(true)}
+        />
+      )}
+    </>
   );
 }

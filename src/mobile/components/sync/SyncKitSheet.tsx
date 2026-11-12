@@ -12,9 +12,9 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
 /**
  * Settings → Sync → Show Recovery Kit: the device password first, then the kit read-only (QR,
  * account, grouped code). The kit holds the vault key, so it is forgotten when the sheet closes,
- * from the state and from the mutation's result alike. Copying the code works only shortly after
- * the kit was shown; afterwards Rust asks for the password again and this goes back to the
- * password step.
+ * from the state and from the mutation's result alike, and after five minutes or when the app is
+ * hidden. Copying the code works only shortly after the kit was shown; afterwards Rust asks for
+ * the password again and this goes back to the password step.
  */
 export function SyncKitSheet({
   open,
@@ -24,7 +24,7 @@ export function SyncKitSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslation('deviceSync');
-  const { showRecoveryKit } = useDeviceSyncMutations();
+  const { showRecoveryKit, showKitWithPassword } = useDeviceSyncMutations();
   const [kit, setKit] = useState<RecoveryKit | null>(null);
   const [again, setAgain] = useState(false);
 
@@ -33,6 +33,11 @@ export function SyncKitSheet({
   useEffect(() => {
     if (!open) resetShownKit();
   }, [open, resetShownKit]);
+  const askAgain = () => {
+    resetShownKit();
+    setKit(null);
+    setAgain(true);
+  };
   // Closed: the kit and the "again" sentence go with it
   const [wasOpen, setWasOpen] = useState(open);
   if (wasOpen !== open) {
@@ -53,17 +58,14 @@ export function SyncKitSheet({
         confirmLabel={t('showKit.confirm')}
         closeOnSuccess={false}
         onSubmit={async (password) => {
-          setKit(await showRecoveryKit.mutateAsync(password));
+          setKit(await showKitWithPassword(password));
         }}
       />
       <KitSheet
         kit={open ? kit : null}
         onOpenChange={onOpenChange}
-        onPasswordRequired={() => {
-          resetShownKit();
-          setKit(null);
-          setAgain(true);
-        }}
+        onPasswordRequired={askAgain}
+        onExpired={askAgain}
       />
     </>
   );
@@ -73,10 +75,12 @@ function KitSheet({
   kit,
   onOpenChange,
   onPasswordRequired,
+  onExpired,
 }: {
   kit: RecoveryKit | null;
   onOpenChange: (open: boolean) => void;
   onPasswordRequired: () => void;
+  onExpired: () => void;
 }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
@@ -93,7 +97,7 @@ function KitSheet({
         </Button>
       }
     >
-      {kit && <KitBody kit={kit} onPasswordRequired={onPasswordRequired} />}
+      {kit && <KitBody kit={kit} onPasswordRequired={onPasswordRequired} onExpired={onExpired} />}
     </Sheet>
   );
 }

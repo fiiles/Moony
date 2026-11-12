@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deviceSyncApi, portfolioApi } from '@/lib/tauri-api';
 import { refreshAfterRemoteChanges } from '@/lib/device-sync-refresh';
-import type { ReplaceConsentView } from '@shared/schema';
+import type { RecoveryKit, ReplaceConsentView } from '@shared/schema';
 
 type KitJoin = Parameters<typeof deviceSyncApi.joinWithRecoveryKit>[0] & {
   consent: ReplaceConsentView;
@@ -42,14 +42,26 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.startCheckout,
     onSuccess: refreshSyncState,
   });
-  // gcTime 0: the kit holds the vault key, so its result leaves the mutation cache with the screen
-  // (and the password with it). The device password is required every time (audit M11); until
-  // the setup screens ask for it, a call without one reads `validation.syncPasswordNeeded`.
-  const prepareRecoveryKit = useMutation({
-    mutationFn: (password: string | void) =>
-      deviceSyncApi.prepareRecoveryKit(typeof password === 'string' ? password : ''),
+  // gcTime 0: the kit holds the vault key, so its result leaves the mutation cache with the screen.
+  // The device password is required every time (audit M11) and TanStack Query keeps a mutation's
+  // variables in its state, so both kit mutations take none: the password travels in a ref that
+  // `mutationFn` empties (the pattern of `unlockWithPassword` in `use-auth.tsx`). The setup and
+  // Show Recovery Kit screens call `prepareKitWithPassword` / `showKitWithPassword`, and `reset()`
+  // the mutation when the kit leaves the screen.
+  const prepareKitPassword = useRef<string | null>(null);
+  const prepareRecoveryKit = useMutation<RecoveryKit, Error, void>({
+    mutationFn: async () => {
+      const password = prepareKitPassword.current;
+      prepareKitPassword.current = null;
+      if (password === null) throw new Error('No password to prepare the kit with');
+      return deviceSyncApi.prepareRecoveryKit(password);
+    },
     gcTime: 0,
   });
+  const prepareKitWithPassword = (password: string) => {
+    prepareKitPassword.current = password;
+    return prepareRecoveryKit.mutateAsync();
+  };
   // gcTime 0 below: a password typed for turning off, delete, repair or re-sync is a mutation
   // variable and must not linger.
   const copyRecoveryCode = useMutation({ mutationFn: deviceSyncApi.copyRecoveryCode });
@@ -62,10 +74,20 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.syncNow,
     onSuccess: refreshSyncState,
   });
-  const showRecoveryKit = useMutation({
-    mutationFn: deviceSyncApi.showRecoveryKit,
+  const showKitPassword = useRef<string | null>(null);
+  const showRecoveryKit = useMutation<RecoveryKit, Error, void>({
+    mutationFn: async () => {
+      const password = showKitPassword.current;
+      showKitPassword.current = null;
+      if (password === null) throw new Error('No password to show the kit with');
+      return deviceSyncApi.showRecoveryKit(password);
+    },
     gcTime: 0,
   });
+  const showKitWithPassword = (password: string) => {
+    showKitPassword.current = password;
+    return showRecoveryKit.mutateAsync();
+  };
   // No password: cancelling a setup that has not finished (with sync on it is required).
   const turnOff = useMutation({
     mutationFn: (password: string | void) =>
@@ -121,10 +143,12 @@ export function useDeviceSyncMutations() {
     createAccount,
     startCheckout,
     prepareRecoveryKit,
+    prepareKitWithPassword,
     copyRecoveryCode,
     finishSetup,
     syncNow,
     showRecoveryKit,
+    showKitWithPassword,
     turnOff,
     deleteSyncedData,
     repairDevice,

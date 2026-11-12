@@ -86,7 +86,6 @@
     },
     "kit": {
       "description": "Salva il tuo Kit di ripristino della sincronizzazione. È l'unico modo per riavere i dati sincronizzati se perdi tutti i dispositivi.",
-      "preparing": "Preparazione del kit…",
       "savePage": "Salva come pagina…",
       "saveText": "Salva come testo…",
       "copyCode": "Copia il codice",
@@ -108,8 +107,9 @@
         "relayLabel": "Server di sincronizzazione",
         "relayNote": "Necessario per il ripristino da questo kit"
       },
-      "failed": "Non è stato possibile preparare il kit.",
-      "retry": "Riprova"
+      "folderWarning": "Conserva il kit su carta o in un gestore di password, non in una cartella sincronizzata con un servizio cloud.",
+      "syncedFolder": "Kit salvato, ma questa cartella sembra sincronizzarsi con un servizio cloud. Sposta il file in un posto che non si sincronizza oppure eliminalo quando hai il kit su carta.",
+      "saveRefused": "Questo kit non è aggiornato, quindi non è stato salvato. Chiudilo e mostra di nuovo il kit."
     },
     "device": {
       "description": "Dai un nome a questo dispositivo per distinguerlo dagli altri.",
@@ -187,7 +187,7 @@
   "showKit": {
     "title": "Kit di ripristino della sincronizzazione",
     "description": "Inserisci la password del dispositivo per mostrare il kit.",
-    "again": "Inserisci di nuovo la password per copiare il codice.",
+    "again": "Inserisci di nuovo la password per mostrare il kit.",
     "confirm": "Mostra il kit"
   },
   "busy": {

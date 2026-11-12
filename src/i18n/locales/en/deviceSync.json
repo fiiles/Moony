@@ -86,7 +86,6 @@
     },
     "kit": {
       "description": "Save your Sync Recovery Kit. It is the only way to get your synced data back if you lose all your devices.",
-      "preparing": "Preparing the kit…",
       "savePage": "Save as page…",
       "saveText": "Save as text…",
       "copyCode": "Copy code",
@@ -108,8 +107,9 @@
         "relayLabel": "Sync server",
         "relayNote": "Needed to restore from this kit"
       },
-      "failed": "Preparing the kit failed.",
-      "retry": "Try again"
+      "folderWarning": "Keep the Kit on paper or in a password manager, not in a folder that syncs to a cloud service.",
+      "syncedFolder": "Kit saved, but this folder looks like it syncs to a cloud service. Move the file somewhere that does not sync, or delete it once the Kit is on paper.",
+      "saveRefused": "This Kit is out of date, so it was not saved. Close it and show the Kit again."
     },
     "device": {
       "description": "Name this device so you can tell it apart from your others.",
@@ -186,7 +186,7 @@
   "showKit": {
     "title": "Sync Recovery Kit",
     "description": "Enter your device password to show the kit.",
-    "again": "Enter your password again to copy the code.",
+    "again": "Enter your password again to show the kit.",
     "confirm": "Show kit"
   },
   "busy": {

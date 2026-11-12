@@ -86,7 +86,6 @@
     },
     "kit": {
       "description": "Lagre gjenopprettingssettet for synkronisering. Det er den eneste måten å få tilbake de synkroniserte dataene på hvis du mister alle enhetene dine.",
-      "preparing": "Gjør klar settet…",
       "savePage": "Lagre som side…",
       "saveText": "Lagre som tekst…",
       "copyCode": "Kopier koden",
@@ -108,8 +107,9 @@
         "relayLabel": "Synkroniseringsserver",
         "relayNote": "Trengs for å gjenopprette fra dette settet"
       },
-      "failed": "Settet kunne ikke gjøres klart.",
-      "retry": "Prøv igjen"
+      "folderWarning": "Oppbevar settet på papir eller i en passordbehandler, ikke i en mappe som synkroniseres med en skytjeneste.",
+      "syncedFolder": "Settet er lagret, men denne mappen ser ut til å synkroniseres med en skytjeneste. Flytt filen til et sted som ikke synkroniseres, eller slett den når du har settet på papir.",
+      "saveRefused": "Dette settet er utdatert og ble derfor ikke lagret. Lukk det og vis settet på nytt."
     },
     "device": {
       "description": "Gi enheten et navn, så du kan skille den fra de andre.",
@@ -186,7 +186,7 @@
   "showKit": {
     "title": "Gjenopprettingssett for synkronisering",
     "description": "Skriv inn enhetspassordet for å vise settet.",
-    "again": "Skriv inn passordet på nytt for å kopiere koden.",
+    "again": "Skriv inn passordet på nytt for å vise settet.",
     "confirm": "Vis settet"
   },
   "busy": {

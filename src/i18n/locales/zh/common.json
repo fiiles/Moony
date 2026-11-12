@@ -344,7 +344,7 @@
     "syncUnavailable": "此版本的 Moony 不支持同步。",
     "syncDevOnly": "这是开发者工具，仅在开发版本中可用。",
     "syncChangeInProgress": "此设备上已有另一项同步更改正在进行。请等待其完成。",
-    "syncPasswordRequired": "请再次输入密码以复制恢复代码。",
+    "syncPasswordRequired": "请再次输入密码以复制或保存恢复代码。",
     "syncPairingCodeInvalid": "配对码无效。请扫描另一台设备上显示的二维码。",
     "syncPairingOtherNeedsUpdate": "另一台设备需要先更新 Moony，才能与此设备配对。",
     "syncPairingThisNeedsUpdate": "此配对代码来自更新版本的 Moony。请更新此设备上的 Moony，然后重试。",

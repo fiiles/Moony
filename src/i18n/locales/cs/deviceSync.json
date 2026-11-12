@@ -86,7 +86,6 @@
     },
     "kit": {
       "description": "Uložte si Záchrannou sadu synchronizace. Je to jediný způsob, jak získat synchronizovaná data zpět, když přijdete o všechna zařízení.",
-      "preparing": "Připravuji sadu…",
       "savePage": "Uložit jako stránku…",
       "saveText": "Uložit jako text…",
       "copyCode": "Zkopírovat kód",
@@ -108,8 +107,9 @@
         "relayLabel": "Synchronizační server",
         "relayNote": "Potřebný k obnově z této sady"
       },
-      "failed": "Přípravu sady se nepodařilo dokončit.",
-      "retry": "Zkusit znovu"
+      "folderWarning": "Sadu uchovávejte na papíře nebo ve správci hesel, ne ve složce, která se synchronizuje s cloudovou službou.",
+      "syncedFolder": "Sada je uložena, ale tato složka se zřejmě synchronizuje s cloudovou službou. Přesuňte soubor na místo, které se nesynchronizuje, nebo ho smažte, jakmile budete mít sadu na papíře.",
+      "saveRefused": "Tato sada je zastaralá, proto se neuložila. Zavřete ji a zobrazte sadu znovu."
     },
     "device": {
       "description": "Pojmenujte toto zařízení, abyste ho odlišili od ostatních.",
@@ -188,7 +188,7 @@
   "showKit": {
     "title": "Záchranná sada synchronizace",
     "description": "Zadejte heslo zařízení, aby se sada zobrazila.",
-    "again": "Zadejte heslo znovu, aby šlo kód zkopírovat.",
+    "again": "Zadejte heslo znovu, aby se sada zobrazila.",
     "confirm": "Zobrazit sadu"
   },
   "busy": {

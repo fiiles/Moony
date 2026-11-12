@@ -344,7 +344,7 @@
     "syncUnavailable": "Sync is not available in this version of Moony.",
     "syncDevOnly": "This is a developer tool, available only in development builds.",
     "syncChangeInProgress": "Another sync change is in progress on this device. Wait until it finishes.",
-    "syncPasswordRequired": "Enter your password again to copy the recovery code.",
+    "syncPasswordRequired": "Enter your password again to copy or save the recovery code.",
     "syncPairingCodeInvalid": "The pairing code is not valid. Scan the code shown on the other device.",
     "syncPairingOtherNeedsUpdate": "The other device needs a Moony update before it can pair with this one.",
     "syncPairingThisNeedsUpdate": "This pairing code comes from a newer version of Moony. Update Moony on this device and try again.",

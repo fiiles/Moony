@@ -86,7 +86,6 @@
     },
     "kit": {
       "description": "Spara ditt återställningskit för synkronisering. Det är det enda sättet att få tillbaka de synkroniserade uppgifterna om du förlorar alla dina enheter.",
-      "preparing": "Förbereder kitet…",
       "savePage": "Spara som sida…",
       "saveText": "Spara som text…",
       "copyCode": "Kopiera koden",
@@ -108,8 +107,9 @@
         "relayLabel": "Synkroniseringsserver",
         "relayNote": "Behövs för att återställa från det här kitet"
       },
-      "failed": "Kitet kunde inte förberedas.",
-      "retry": "Försök igen"
+      "folderWarning": "Förvara kitet på papper eller i en lösenordshanterare, inte i en mapp som synkroniseras med en molntjänst.",
+      "syncedFolder": "Kitet sparat, men den här mappen verkar synkroniseras med en molntjänst. Flytta filen till en plats som inte synkroniseras, eller radera den när du har kitet på papper.",
+      "saveRefused": "Det här kitet är föråldrat och sparades därför inte. Stäng det och visa kitet igen."
     },
     "device": {
       "description": "Ge enheten ett namn så att du kan skilja den från de andra.",
@@ -186,7 +186,7 @@
   "showKit": {
     "title": "Återställningskit för synkronisering",
     "description": "Ange enhetens lösenord för att visa kitet.",
-    "again": "Ange lösenordet igen för att kopiera koden.",
+    "again": "Ange lösenordet igen för att visa kitet.",
     "confirm": "Visa kitet"
   },
   "busy": {

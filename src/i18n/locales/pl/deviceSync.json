@@ -86,7 +86,6 @@
     },
     "kit": {
       "description": "Zapisz Zestaw odzyskiwania synchronizacji. To jedyny sposób, by odzyskać zsynchronizowane dane po utracie wszystkich urządzeń.",
-      "preparing": "Przygotowuję zestaw…",
       "savePage": "Zapisz jako stronę…",
       "saveText": "Zapisz jako tekst…",
       "copyCode": "Kopiuj kod",
@@ -108,8 +107,9 @@
         "relayLabel": "Serwer synchronizacji",
         "relayNote": "Potrzebny do odzyskania z tego zestawu"
       },
-      "failed": "Nie udało się przygotować zestawu.",
-      "retry": "Spróbuj ponownie"
+      "folderWarning": "Przechowuj zestaw na papierze lub w menedżerze haseł, a nie w folderze synchronizowanym z usługą w chmurze.",
+      "syncedFolder": "Zestaw zapisany, ale ten folder wygląda na synchronizowany z usługą w chmurze. Przenieś plik w miejsce, które się nie synchronizuje, albo usuń go, gdy będziesz mieć zestaw na papierze.",
+      "saveRefused": "Ten zestaw jest nieaktualny, więc nie został zapisany. Zamknij go i pokaż zestaw ponownie."
     },
     "device": {
       "description": "Nadaj temu urządzeniu nazwę, aby odróżnić je od innych.",
@@ -188,7 +188,7 @@
   "showKit": {
     "title": "Zestaw odzyskiwania synchronizacji",
     "description": "Wpisz hasło urządzenia, aby pokazać zestaw.",
-    "again": "Wpisz hasło ponownie, aby skopiować kod.",
+    "again": "Wpisz hasło ponownie, aby pokazać zestaw.",
     "confirm": "Pokaż zestaw"
   },
   "busy": {

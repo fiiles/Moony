@@ -4,7 +4,10 @@ import { toast } from 'sonner';
 import { Check, Copy, FileText, Download } from 'lucide-react';
 import type { RecoveryKit } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { useRecoveryKitLifetime } from '@/hooks/use-recovery-kit-lifetime';
+import { copyToWebviewClipboard } from '@/utils/recovery-kit-lifetime';
 import { ApiError } from '@/lib/api-error';
+import { deviceSyncApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
   groupAccountNumber,
@@ -13,6 +16,7 @@ import {
   recoveryKitHtml,
   recoveryKitText,
 } from '@/utils/recovery-kit';
+import type { KitFileKind } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useRecoveryKitCopy } from '@/components/settings/sync/use-recovery-kit-copy';
 
@@ -21,43 +25,60 @@ interface RecoveryKitPanelProps {
   /** Called once the kit was saved to a file or its code copied. */
   onKept: () => void;
   /**
-   * With sync on, copying the code works only shortly after the kit was shown; afterwards the
-   * backend asks for the password again. When given, this is called instead of a failure toast.
+   * Copying the code or saving a file works only shortly after the kit was shown; afterwards the
+   * backend asks for the password again, and this is called instead of a failure toast.
    */
-  onPasswordRequired?: () => void;
+  onPasswordRequired: () => void;
+  /**
+   * The kit has been on screen for five minutes, or the app was hidden: the caller drops it (state
+   * and mutation result) and asks the password again before showing it. Screen capture is off
+   * while this panel is mounted.
+   */
+  onExpired: () => void;
 }
 
 /** The Sync Recovery Kit as shown during setup: QR, code, account, and the ways to keep it. */
-export function RecoveryKitPanel({ kit, onKept, onPasswordRequired }: RecoveryKitPanelProps) {
+export function RecoveryKitPanel({
+  kit,
+  onKept,
+  onPasswordRequired,
+  onExpired,
+}: RecoveryKitPanelProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { copyRecoveryCode } = useDeviceSyncMutations();
   const kitCopy = useRecoveryKitCopy();
   const [copied, setCopied] = useState(false);
   const [clipboardHint, setClipboardHint] = useState(false);
+  useRecoveryKitLifetime(onExpired, true);
 
   const fail = (error: unknown) =>
     toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
 
-  const saveFile = async (kind: 'html' | 'txt') => {
+  const passwordRequired = (error: unknown) =>
+    error instanceof ApiError && error.key === 'validation.syncPasswordRequired';
+
+  const saveFile = async (kind: KitFileKind) => {
     try {
-      const { save } = await import('@tauri-apps/plugin-dialog');
-      const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-      const path = await save({
-        defaultPath: `moony-sync-recovery-kit.${kind === 'html' ? 'html' : 'txt'}`,
-        filters:
-          kind === 'html'
-            ? [{ name: 'HTML', extensions: ['html'] }]
-            : [{ name: 'Text', extensions: ['txt'] }],
-      });
-      if (!path) return;
-      await writeTextFile(
-        path,
-        kind === 'html' ? recoveryKitHtml(kit, kitCopy) : recoveryKitText(kit, kitCopy)
+      const outcome = await deviceSyncApi.saveRecoveryKit(
+        kind,
+        kind === 'page' ? recoveryKitHtml(kit, kitCopy) : recoveryKitText(kit, kitCopy)
       );
-      toast(t('setup.kit.saved'));
+      // The save dialog was closed: nothing was written
+      if (!outcome.saved) return;
+      if (outcome.syncedFolder) toast.warning(t('setup.kit.syncedFolder'));
+      else toast(t('setup.kit.saved'));
       onKept();
     } catch (error) {
+      if (passwordRequired(error)) {
+        onPasswordRequired();
+        return;
+      }
+      // Rust refuses a file that is not this account's current kit (setup restarted meanwhile)
+      if (error instanceof ApiError && error.kind === 'internal') {
+        toast.error(tc('status.error'), { description: t('setup.kit.saveRefused') });
+        return;
+      }
       fail(error);
     }
   };
@@ -66,18 +87,15 @@ export function RecoveryKitPanel({ kit, onKept, onPasswordRequired }: RecoveryKi
     try {
       const native = await copyRecoveryCode.mutateAsync();
       if (!native) {
-        await navigator.clipboard.writeText(kit.recoveryCode);
+        await copyToWebviewClipboard(kit.recoveryCode);
         setClipboardHint(true);
       }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       onKept();
     } catch (error) {
-      if (
-        onPasswordRequired &&
-        error instanceof ApiError &&
-        error.key === 'validation.syncPasswordRequired'
-      ) {
+      // A failed native copy never falls back to the ordinary clipboard (`syncCopyFailed`)
+      if (passwordRequired(error)) {
         onPasswordRequired();
         return;
       }
@@ -130,11 +148,11 @@ export function RecoveryKitPanel({ kit, onKept, onPasswordRequired }: RecoveryKi
           {copied ? <Check /> : <Copy />}
           {copied ? t('setup.kit.copied') : t('setup.kit.copyCode')}
         </Button>
-        <Button type="button" variant="outline" onClick={() => saveFile('html')}>
+        <Button type="button" variant="outline" onClick={() => saveFile('page')}>
           <Download />
           {t('setup.kit.savePage')}
         </Button>
-        <Button type="button" variant="outline" onClick={() => saveFile('txt')}>
+        <Button type="button" variant="outline" onClick={() => saveFile('text')}>
           <FileText />
           {t('setup.kit.saveText')}
         </Button>
@@ -145,6 +163,7 @@ export function RecoveryKitPanel({ kit, onKept, onPasswordRequired }: RecoveryKi
         </p>
       )}
       <p className="m-0 text-micro font-500 text-ink-3">{t('setup.kit.differs')}</p>
+      <p className="m-0 text-micro font-500 text-ink-3">{t('setup.kit.folderWarning')}</p>
     </div>
   );
 }

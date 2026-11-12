@@ -101,28 +101,7 @@ impl Database {
             log::warn!("[DB] Warning: Failed to load exchange rates: {}", e);
         }
 
-        // Idempotent self-heal that runs on every open: corrects any stale investment
-        // quantity values left over from older calculations
-        // (never blocks DB open on failure)
-        if let Err(e) = crate::services::investments::recalculate_all_investment_metrics(&conn) {
-            log::warn!(
-                "[DB] Warning: Failed to recalculate investment metrics: {}",
-                e
-            );
-        }
-
-        // Follow-up of migration 019: an anchor an extra payment or a rate change re-anchored
-        // may hide a balance the user had entered by hand. Idempotent (a processed row is
-        // deleted, a later open finds none); never blocks DB open on failure.
-        if let Err(e) = crate::services::loan_events::reconcile_legacy_anchors(
-            &conn,
-            chrono::Utc::now().timestamp(),
-        ) {
-            log::warn!(
-                "[DB] Warning: Failed to reconcile legacy loan anchors: {}",
-                e
-            );
-        }
+        self_heal(&conn);
 
         // Store connection and path
         let mut guard = self
@@ -387,6 +366,39 @@ impl Default for Database {
     }
 }
 
+/// The idempotent self-heals of every open; returns whether they ran. Neither blocks the open:
+/// a failure is logged. A profile whose changes to synced data are paused (the sync guard, or the
+/// read-only last resort: `capture::guard::changes_paused`) skips them with one log line, since
+/// they write synced tables and every write would be refused; the next unlock runs them.
+fn self_heal(conn: &Connection) -> bool {
+    if crate::services::sync::capture::guard::changes_paused(conn) {
+        log::warn!(
+            "[DB] Self-heals skipped: changes to synced data are paused until sync is repaired"
+        );
+        return false;
+    }
+    // Corrects any stale investment quantity values left over from older calculations.
+    if let Err(e) = crate::services::investments::recalculate_all_investment_metrics(conn) {
+        log::warn!(
+            "[DB] Warning: Failed to recalculate investment metrics: {}",
+            e
+        );
+    }
+
+    // Follow-up of migration 019: an anchor an extra payment or a rate change re-anchored
+    // may hide a balance the user had entered by hand. Idempotent (a processed row is
+    // deleted, a later open finds none).
+    if let Err(e) =
+        crate::services::loan_events::reconcile_legacy_anchors(conn, chrono::Utc::now().timestamp())
+    {
+        log::warn!(
+            "[DB] Warning: Failed to reconcile legacy loan anchors: {}",
+            e
+        );
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -604,6 +616,23 @@ mod tests {
             Ok(())
         })
         .expect("checks");
+    }
+
+    /// Audit H2 fix round 1: on a guarded or read-only profile the self-heals, which write
+    /// synced tables, are skipped with one log line instead of a refused write per row.
+    #[test]
+    fn a_profile_with_paused_changes_skips_the_self_heals() {
+        use crate::services::sync::capture::guard;
+        let conn = Connection::open_in_memory().expect("db");
+        run_migrations(&conn).expect("migrations");
+        assert!(self_heal(&conn), "an ordinary profile heals");
+
+        guard::impose(&conn).expect("guard");
+        assert!(!self_heal(&conn));
+        guard::lift(&conn).expect("lift");
+        conn.execute_batch("PRAGMA query_only = 1")
+            .expect("read-only");
+        assert!(!self_heal(&conn));
     }
 
     #[test]

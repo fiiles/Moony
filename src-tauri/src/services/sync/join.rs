@@ -282,6 +282,8 @@ fn replace_profile(
 
 /// Repairs a profile whose change capture broke (ruling P3); returns the path of the backup.
 ///
+/// A read-only session (`refuse_read_only`) is `validation.syncCaptureStillBroken` before step 0.
+///
 /// 0. Holding off every round, the engine start's copy check (`runtime::rejoin_if_copy`): a
 ///    restored or copied profile whose engine start did not re-join (its check failed) re-joins
 ///    under a new device ID now, so the drain never pushes under the original device's ID. A
@@ -309,6 +311,7 @@ pub async fn repair_capture<R: Relay, D: ConnAccess>(
     native: &dyn BindingNative,
     now: i64,
 ) -> SyncResult<PathBuf> {
+    refuse_read_only(db)?;
     rejoin_if_copy_between_rounds(db, data_dir, native, now).await?;
     let (creds, name) = stored_identity(db)?;
     let zip = backed_up(db, data_dir, now).await?;
@@ -357,6 +360,7 @@ pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
     native: &dyn BindingNative,
     now: i64,
 ) -> SyncResult<PathBuf> {
+    refuse_read_only(db)?;
     let (creds, name) = stored_identity(db)?;
     let zip = backed_up(db, data_dir, now).await?;
     join_by_replace(relay, db, creds, &name, data_dir, native, now).await?;
@@ -397,6 +401,18 @@ pub(super) fn rejoin_if_copy_under_lock<D: ConnAccess>(
             Err(failure.into_app_error().into())
         }
     }
+}
+
+/// A read-only session (`query_only`, the last resort when the guard could not be imposed: ADR
+/// 0027) can write nothing, a backup included, and capture needs temp writes to install: the
+/// repair and the re-sync answer `validation.syncCaptureStillBroken` (turning sync off is the way
+/// on) before they try anything.
+fn refuse_read_only<D: ConnAccess>(db: &D) -> SyncResult<()> {
+    if db.with_conn(|conn| Ok(guard::is_read_only(conn)))? {
+        log::warn!("[SYNC] The profile is read-only: change capture cannot be repaired");
+        return Err(AppError::Validation(guard::CAPTURE_STILL_BROKEN.into()).into());
+    }
+    Ok(())
 }
 
 /// The stored credentials of an enabled profile and this device's current name.

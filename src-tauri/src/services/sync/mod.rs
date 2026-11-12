@@ -69,8 +69,14 @@ pub fn on_open(conn: &Connection) {
         if let Err(record) = state::record_error(conn, CAPTURE_BROKEN_REASON) {
             log::warn!("[SYNC] Could not record the capture error: {record}");
         }
-        // Only an enabled profile has lost anything; the row is a no-op update otherwise.
-        let enabled = state::load(conn).ok().flatten().is_some_and(|s| s.enabled);
+        // Only an enabled profile has lost anything; the row is a no-op update otherwise. A row
+        // that exists but does not load may be an enabled profile's, so it is guarded too.
+        let enabled = match state::load(conn) {
+            Ok(sync) => sync.is_some_and(|s| s.enabled),
+            Err(_) => conn
+                .query_row("SELECT EXISTS (SELECT 1 FROM sync_state)", [], |r| r.get(0))
+                .unwrap_or(true),
+        };
         if enabled {
             if let Err(record) = state::mark_capture_broken(conn, now()) {
                 log::warn!("[SYNC] Could not mark the capture as broken: {record}");

@@ -659,3 +659,38 @@ async fn a_repair_of_a_guarded_profile_carrying_the_restore_marker_succeeds() {
     institution(&b, "b-after");
     assert_eq!(outbox_rows(&b, "b-after"), 1, "captured");
 }
+
+/// Fix round 1 (1): under the read-only last resort nothing can be written, a backup included;
+/// the repair says capture is still broken before it tries anything.
+#[tokio::test]
+async fn a_read_only_profile_is_told_to_turn_sync_off_before_any_backup() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    break_capture(&vault.b);
+    {
+        // The guard could not be imposed: `guard_or_close` made the session read-only.
+        let b = vault.b.lock();
+        guard::lift(&b).expect("lift");
+        exec(&b, "PRAGMA query_only = 1");
+    }
+    let from = vault.relay.calls().len();
+    let dir = tempfile::tempdir().expect("dir");
+
+    let error = repair_capture(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
+        .await
+        .expect_err("read-only");
+
+    assert_eq!(validation_key(&error), Some(guard::CAPTURE_STILL_BROKEN));
+    let error = resync_by_replace(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
+        .await
+        .expect_err("read-only");
+    assert_eq!(validation_key(&error), Some(guard::CAPTURE_STILL_BROKEN));
+    assert_eq!(calls_since(&vault, from), Vec::<Route>::new());
+    assert_eq!(
+        repair_backups(dir.path()),
+        Vec::<String>::new(),
+        "no backup"
+    );
+    assert!(guard::is_read_only(&vault.b.lock()));
+}

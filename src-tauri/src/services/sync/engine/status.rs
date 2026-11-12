@@ -7,6 +7,7 @@ use rusqlite::Connection;
 use super::{PullEnd, PullReport, PullStop, RoundReport};
 use crate::error::{AppError, Result};
 use crate::models::sync::{SyncPhase, SyncProblem, SyncStatus};
+use crate::services::sync::capture::guard;
 use crate::services::sync::error::{SyncError, TooLarge, Transient};
 use crate::services::sync::{feature, keys, state};
 
@@ -74,7 +75,7 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
     }
     let marks = state::marks(conn)?
         .ok_or_else(|| AppError::Internal("sync status: sync is not set up".into()))?;
-    let paused = if marks.capture_broken_at.is_some() {
+    let paused = if marks.capture_broken_at.is_some() || guard::changes_paused(conn) {
         Some(SyncProblem::CaptureBroken)
     } else if marks.vault_gone_at.is_some() {
         Some(SyncProblem::VaultGone)

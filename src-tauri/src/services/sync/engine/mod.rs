@@ -17,6 +17,7 @@ use rusqlite::Connection;
 use crate::error::Result;
 use crate::models::sync::{SyncProblem, SyncStatus};
 use crate::services::sync::binding::BindingNative;
+use crate::services::sync::capture::guard;
 use crate::services::sync::error::{SyncError, SyncResult, TooLarge};
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::relay::{Relay, RelayError, VaultInfo};
@@ -248,14 +249,17 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         let Some(sync) = state::load(conn)?.filter(|sync| sync.enabled) else {
             return Ok(None);
         };
+        // A guarded or read-only connection is capture-broken whatever the mark says (it may
+        // not have been written): nothing runs against it but the repair's drain.
+        let paused = guard::changes_paused(conn);
         Ok(keys::credentials(conn)?
             .zip(state::marks(conn)?)
             .map(|(creds, marks)| {
                 let forced = state::needs_forced_snapshot(&sync, &marks);
-                (creds, marks, forced)
+                (creds, marks, forced, paused)
             }))
     })?;
-    let Some((creds, marks, forced)) = ready else {
+    let Some((creds, marks, forced, paused)) = ready else {
         return Ok(());
     };
     let mode = if mode == RoundMode::Normal && forced {
@@ -263,7 +267,7 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
     } else {
         mode
     };
-    if marks.capture_broken_at.is_some() && mode != RoundMode::Drain {
+    if (marks.capture_broken_at.is_some() || paused) && mode != RoundMode::Drain {
         report.problem = Some(SyncProblem::CaptureBroken);
         return Ok(());
     }

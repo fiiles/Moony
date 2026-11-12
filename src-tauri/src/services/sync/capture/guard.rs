@@ -17,6 +17,12 @@
 //! Local columns, local tables, `sync_devices` (only sync code writes it), the `temp` schema, the
 //! attachment store (`files`) and the target of `VACUUM INTO` stay writable, so settings, sync's
 //! own bookkeeping, a backup, a repair and turning sync off keep working.
+//!
+//! The guard holds one connection, and the app opens one per profile (`Database::open_with_key`,
+//! which runs `sync::on_open`). Any other connection to an enabled profile must go through
+//! `on_open` too, or it writes uncaptured. A guarded or read-only profile counts as
+//! capture-broken everywhere the mark is read (`changes_paused`), even when the mark itself could
+//! not be written.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -98,15 +104,41 @@ pub fn is_imposed(conn: &Connection) -> bool {
     conn.prepare(&format!("SELECT {MARKER}()")).is_ok()
 }
 
+/// Whether the session is read-only (`PRAGMA query_only`, the last resort when the guard could
+/// not be imposed). A pragma that cannot be read counts as read-only.
+pub fn is_read_only(conn: &Connection) -> bool {
+    conn.pragma_query_value(None, "query_only", |r| r.get::<_, bool>(0))
+        .unwrap_or(true)
+}
+
+/// Whether changes to synced data are paused on this connection: the guard is imposed or the
+/// session is read-only. Such a profile is capture-broken whatever its mark says.
+pub fn changes_paused(conn: &Connection) -> bool {
+    is_imposed(conn) || is_read_only(conn)
+}
+
 /// Pure decision, tested directly. Denies only in schema `main`: INSERT and DELETE on a Synced
 /// table, UPDATE of a column whose class is not Local; never `sync_devices` (only sync code writes
-/// it); `app_config` only when `whole_app_config`. Everything else (reads, Local and Seed tables,
+/// it); `app_config` only when `whole_app_config`; ALTER TABLE of a Synced table (SQLite names
+/// its schema in the action, not in `database`). Everything else (reads, Local and Seed tables,
 /// `temp`, `files`, the target of `VACUUM INTO`) is allowed.
 pub(crate) fn decide(
     action: &AuthAction<'_>,
     database: Option<&str>,
     whole_app_config: bool,
 ) -> Authorization {
+    if let AuthAction::AlterTable {
+        database_name,
+        table_name,
+    } = *action
+    {
+        let synced = registry::spec(table_name).is_some_and(|s| s.class == TableClass::Synced);
+        return if database_name == "main" && synced {
+            Authorization::Deny
+        } else {
+            Authorization::Allow
+        };
+    }
     if database != Some("main") {
         return Authorization::Allow;
     }
@@ -587,5 +619,73 @@ mod tests {
         assert!(is_imposed(&conn));
         institution_refused(&conn, "i1");
         assert!(state::load(&conn).expect("state").is_some());
+    }
+
+    #[test]
+    fn decide_refuses_altering_a_synced_table() {
+        let alter = |table_name| AuthAction::AlterTable {
+            database_name: "main",
+            table_name,
+        };
+        // SQLite passes no database argument for ALTER TABLE: the action names its schema.
+        assert_eq!(
+            decide(&alter("institutions"), None, false),
+            Authorization::Deny
+        );
+        assert_eq!(
+            decide(&alter("sync_clock"), None, false),
+            Authorization::Allow
+        );
+        let in_store = AuthAction::AlterTable {
+            database_name: "files",
+            table_name: "institutions",
+        };
+        assert_eq!(decide(&in_store, None, false), Authorization::Allow);
+
+        let conn = migrated();
+        impose(&conn).expect("impose");
+        refused(&conn, "ALTER TABLE institutions ADD COLUMN extra TEXT");
+        refused(&conn, "ALTER TABLE institutions RENAME TO banks");
+        allowed(&conn, "ALTER TABLE sync_clock RENAME TO sync_clock_old");
+    }
+
+    #[test]
+    fn changes_paused_covers_the_guard_and_read_only() {
+        let conn = migrated();
+        assert!(!changes_paused(&conn));
+        impose(&conn).expect("impose");
+        assert!(changes_paused(&conn));
+        lift(&conn).expect("lift");
+        allowed(&conn, "PRAGMA query_only = 1");
+        assert!(is_read_only(&conn));
+        assert!(changes_paused(&conn));
+    }
+
+    /// Fix round 1 (3): a `sync_state` row that exists but does not load may be an enabled
+    /// profile's: it opens guarded.
+    #[test]
+    fn an_unreadable_sync_row_opens_guarded() {
+        let conn = migrated();
+        state::ensure_row(&conn, DEVICE).expect("row");
+        allowed(
+            &conn,
+            "UPDATE sync_state SET device_id = x'01' WHERE id = 1",
+        );
+        assert!(state::load(&conn).is_err(), "the row does not load");
+
+        on_open(&conn);
+
+        assert!(is_imposed(&conn));
+        institution_refused(&conn, "i1");
+    }
+
+    #[test]
+    fn a_profile_without_a_sync_row_opens_unguarded() {
+        let conn = migrated();
+
+        on_open(&conn);
+
+        assert!(!changes_paused(&conn));
+        insert_institution(&conn, "i1").expect("writable");
     }
 }

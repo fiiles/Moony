@@ -222,6 +222,26 @@ fn store_resolved(conn: &rusqlite::Connection, id: &str, symbol: &str) -> Result
         .filter(|stored| !stored.trim().is_empty()))
 }
 
+/// What storing `symbol` on `ticker`'s holding means for the caller. A store that fails (on a
+/// profile whose changes to synced data are paused until sync is repaired, say) skips the holding
+/// this time, like a failed search: it must never fail the refresh of every other holding.
+fn resolution(stored: Result<Option<String>>, ticker: &str, symbol: &str) -> Resolved {
+    match stored {
+        Ok(Some(stored)) if stored == symbol => {
+            log::debug!("[CRYPTO SYMBOL] {ticker} resolved to {symbol}");
+            Resolved::Now(stored)
+        }
+        Ok(Some(stored)) => Resolved::Already(stored),
+        Ok(None) => Resolved::None,
+        Err(error) => {
+            log::warn!(
+                "[CRYPTO SYMBOL] {ticker}: the resolved symbol was not stored this time: {error}"
+            );
+            Resolved::None
+        }
+    }
+}
+
 /// The holding's symbol: the stored one, else resolved (D4: `search_crypto(name)` and
 /// `search_crypto(ticker)`, merged, one choice) and stored. `Resolved::Already(s)` / `Resolved::Now(s)` /
 /// `Resolved::None`. A search failure is `None` (best effort, warn log), never an error; a
@@ -268,15 +288,8 @@ pub async fn ensure_symbol(db: &Database, ticker: &str) -> Result<Resolved> {
         match normalize_symbol(&chosen) {
             Ok(symbol) => {
                 // Stored only while the holding is still unresolved: a symbol picked meanwhile wins.
-                let stored = db.with_conn(|conn| store_resolved(conn, &id, &symbol))?;
-                return Ok(match stored {
-                    Some(stored) if stored == symbol => {
-                        log::debug!("[CRYPTO SYMBOL] {ticker} resolved to {symbol}");
-                        Resolved::Now(stored)
-                    }
-                    Some(stored) => Resolved::Already(stored),
-                    None => Resolved::None,
-                });
+                let stored = db.with_conn(|conn| store_resolved(conn, &id, &symbol));
+                return Ok(resolution(stored, &ticker, &symbol));
             }
             Err(_) => {
                 log::debug!(
@@ -503,6 +516,27 @@ mod tests {
             "a symbol picked meanwhile wins"
         );
         assert_eq!(store_resolved(&conn, "gone", "ARB11841-USD").unwrap(), None);
+    }
+
+    /// Audit H2 fix round 1: a guarded profile refuses the store; the refresh goes on without
+    /// this holding instead of failing for all of them.
+    #[test]
+    fn a_symbol_that_cannot_be_stored_skips_the_holding() {
+        let conn = holding_db(None);
+        crate::services::sync::capture::guard::impose(&conn).expect("guard");
+
+        let stored = store_resolved(&conn, "h1", "ARB11841-USD");
+
+        assert!(stored.is_err(), "the guard refuses the store");
+        assert_eq!(resolution(stored, "ARB", "ARB11841-USD"), Resolved::None);
+        assert_eq!(
+            resolution(Ok(Some("ARB11841-USD".into())), "ARB", "ARB11841-USD"),
+            Resolved::Now("ARB11841-USD".into())
+        );
+        assert_eq!(
+            resolution(Ok(Some("ARB-USD".into())), "ARB", "ARB11841-USD"),
+            Resolved::Already("ARB-USD".into())
+        );
     }
 
     #[test]

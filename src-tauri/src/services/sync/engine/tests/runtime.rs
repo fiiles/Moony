@@ -654,3 +654,42 @@ async fn a_vault_gone_during_the_pull_pauses_too() {
         "a paused vault is not asked"
     );
 }
+
+/// Fix round 1 (2): a guarded (or read-only) profile counts as capture-broken even when its mark
+/// could not be written: no round runs against it, and the status offers the repair.
+#[tokio::test]
+async fn a_guarded_profile_never_syncs_even_without_its_mark() {
+    for read_only in [false, true] {
+        let vault = super::vault().await;
+        {
+            let a = vault.a.lock();
+            institution(&a, "queued");
+            capture::uninstall(&a).expect("uninstall");
+            if read_only {
+                exec(&a, "PRAGMA query_only = 1");
+            } else {
+                capture::guard::impose(&a).expect("guard");
+            }
+            let marks = state::marks(&a).expect("marks").expect("row");
+            assert_eq!(marks.capture_broken_at, None, "no mark");
+        }
+        let from = vault.relay.calls().len();
+
+        let report = round(&vault, &vault.a).await;
+
+        assert_eq!(
+            report.problem,
+            Some(SyncProblem::CaptureBroken),
+            "{read_only}"
+        );
+        assert!(calls_since(&vault.relay, from).is_empty(), "{read_only}");
+        let mut runtime = Runtime::default();
+        runtime.after_round(&report);
+        let shown = status(&vault.a.lock(), &runtime).expect("status");
+        assert_eq!(
+            (shown.phase, shown.problem),
+            (SyncPhase::Error, Some(SyncProblem::CaptureBroken)),
+            "{read_only}"
+        );
+    }
+}

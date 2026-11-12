@@ -771,8 +771,9 @@ async fn drained<R: Relay, D: ConnAccess>(
 
 /// One drain round: whether it ended without an error or a problem and its pull reached the
 /// relay's end (`PullReport::done`), or only waits for another device's missing envelope or parent
-/// (`PullEnd::Waiting`, problem `Gap`): the drain makes sure this device's changes were sent, and
-/// a waiting pull still pushes. A quarantined author outranks a gap (`PullEnd::Held`, problem
+/// (`PullEnd::Waiting`, problem `Gap`) or for another device's change dated too far ahead
+/// (`PullEnd::Ahead`, problem `ClockAhead`): the drain makes sure this device's changes were sent,
+/// and a waiting pull still pushes. A quarantined author outranks a gap (`PullEnd::Held`, problem
 /// `Quarantined`): not clean, with or without a gap. The caller asks for nothing left pending as
 /// well.
 async fn drain_round<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> bool {
@@ -786,11 +787,12 @@ async fn drain_round<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> bo
             match report.problem {
                 None => pull.is_some_and(PullReport::done),
                 Some(SyncProblem::Gap) => pull.is_some_and(|p| p.end() == PullEnd::Waiting),
+                Some(SyncProblem::ClockAhead) => pull.is_some_and(|p| p.end() == PullEnd::Ahead),
                 // A sync server that went back stays the problem of every round until the replace
                 // this drain leads to: the pull itself decides.
-                Some(SyncProblem::ServerWentBack) => {
-                    pull.is_some_and(|p| matches!(p.end(), PullEnd::Done | PullEnd::Waiting))
-                }
+                Some(SyncProblem::ServerWentBack) => pull.is_some_and(|p| {
+                    matches!(p.end(), PullEnd::Done | PullEnd::Waiting | PullEnd::Ahead)
+                }),
                 Some(_) => false,
             }
         }

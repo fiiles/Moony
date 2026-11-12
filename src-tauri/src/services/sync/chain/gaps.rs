@@ -161,6 +161,12 @@ fn write(conn: &Connection, gap: &HeldGap) -> Result<()> {
     Ok(())
 }
 
+/// Forgets `device`'s held gap: its next envelope is here after all, waiting for its time (audit
+/// M6), so nothing of that author is missing.
+pub fn forget_gap(conn: &Connection, device: DeviceId) -> Result<()> {
+    forget(conn, device)
+}
+
 fn forget(conn: &Connection, device: DeviceId) -> Result<()> {
     conn.execute("DELETE FROM app_config WHERE key = ?1", [key_of(device)])?;
     Ok(())

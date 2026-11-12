@@ -1,6 +1,6 @@
 //! Per-column merge of a live row (D12): last writer wins by `(hlc, device)`, column groups taken
 //! whole from the newer side, the weak `pending` of `stock_splits.status` (correction 9), and the
-//! write-once `sync_devices.public_key`.
+//! write-once `sync_devices.public_key`, which only the device itself replaces (audit M6).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
@@ -54,21 +54,38 @@ pub(super) fn merge(
                     (false, false) => *clock > ours,
                 }
             }
-            // Non-NULL beats NULL; between two values the older clock wins, so the outcome does
-            // not depend on the order the devices see them in.
+            // Non-NULL beats NULL. A device's public key written by the device itself (its
+            // clock's device is the row's) beats one written by any other device, and between two
+            // of its own the newer wins: only the device replaces its key (audit M6). Otherwise
+            // the older clock wins. Every rule is a fixed order on (value, clock), so the outcome
+            // does not depend on the order the devices see them in.
             ColumnClass::WriteOnce => match (local_value, value) {
                 (SqlValue::Null, SqlValue::Null) => *clock > ours,
                 (SqlValue::Null, _) => true,
                 (_, SqlValue::Null) => false,
                 (kept, offered) => {
-                    if kept != offered {
+                    let own = |clock: Clock| own_key(name, column, pk, clock);
+                    let theirs_win = match (own(ours), own(*clock)) {
+                        (false, true) => true,
+                        (true, false) => false,
+                        (true, true) => *clock > ours,
+                        (false, false) => *clock < ours,
+                    };
+                    if kept != offered && own(ours) != own(*clock) {
+                        let refused = if theirs_win { ours } else { *clock };
+                        merged.warnings.push(format!(
+                            "{name}: device {} offered another device's {column}; kept the one the \
+                             device wrote itself",
+                            refused.device.to_b64()
+                        ));
+                    } else if kept != offered && !own(ours) {
                         merged.warnings.push(format!(
                             "{name} {pk}: two different values of {column}; kept the older one \
                              (written by device {})",
                             ours.min(*clock).device.to_b64()
                         ));
                     }
-                    *clock < ours
+                    theirs_win
                 }
             },
             _ => {
@@ -99,6 +116,13 @@ pub(super) fn merge(
         }
     }
     merged
+}
+
+/// Whether `clock` is the device's own write of its public key: the row of `sync_devices` is keyed
+/// by the device's ID in hex, so the device itself wrote the value when the clock's device is the
+/// row's. Always `false` for every other column.
+fn own_key(table: &str, column: &str, pk: &str, clock: Clock) -> bool {
+    table == "sync_devices" && column == "public_key" && pk == clock.device.to_hex()
 }
 
 fn is_weak_value(table: &str, column: &str, value: &SqlValue) -> bool {

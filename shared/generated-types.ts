@@ -3393,7 +3393,12 @@ export type SyncProblem =
 /**
  * The relay withholds an envelope.
  */
-"gap" | "undecryptable" | "invalidChain" | "missingParent" | 
+"gap" | 
+/**
+ * Changes from another device are dated more than a day past this device's time (a clock set
+ * ahead): they wait until that time, and this device keeps syncing meanwhile (audit M6).
+ */
+"clockAhead" | "undecryptable" | "invalidChain" | "missingParent" | 
 /**
  * A device's envelopes are held after its chain forked.
  */

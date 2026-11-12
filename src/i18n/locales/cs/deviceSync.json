@@ -27,6 +27,7 @@
       "snapshotTooLarge": "Data jsou na synchronizaci příliš velká.",
       "newerSchema": "Jiné zařízení používá novější verzi Moony. Pro pokračování aplikaci aktualizujte.",
       "gap": "Změna z jiného zařízení zatím nedorazila. Toto zařízení dál synchronizuje a odesílá své vlastní změny.",
+      "clockAhead": "Změny z jiného zařízení mají datum víc než den dopředu, takže počkají, až ten čas nastane. Stává se to, když má některé zařízení nastavené datum a čas dopředu: zkontrolujte je na svých zařízeních. Toto zařízení mezitím dál synchronizuje.",
       "undecryptable": "Změny z jiného zařízení se nepodařilo dešifrovat.",
       "invalidChain": "Změny z jiného zařízení neprošly ověřením a jsou zadržené.",
       "missingParent": "Změnám z jiného zařízení chybí dřívější kroky a jsou zadržené.",

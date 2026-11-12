@@ -5,6 +5,7 @@
 
 mod backoff;
 mod binding_failure;
+mod clocks;
 mod echo;
 mod gap_skip;
 mod gap_skip_miss;

@@ -81,6 +81,10 @@ export function problemAction(
       return skippable ? 'skipMissing' : 'none';
     case 'newerSchema':
       return 'updateApp';
+    case 'clockAhead':
+      // No action: the change applies by itself once its time comes; the text says to check the
+      // devices' date and time. It is never offered as a missing change to skip.
+      return 'none';
     case 'serverWentBack':
       // No action yet: the text says how to bring the devices back together (turn sync off,
       // set it up again on the device with the most complete data, join the others).

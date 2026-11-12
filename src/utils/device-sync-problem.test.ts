@@ -19,6 +19,7 @@ const TABLE: Record<SyncProblem, [SyncProblemAction, SyncProblemAction]> = {
   snapshotTooLarge: ['none', 'none'],
   newerSchema: ['updateApp', 'updateApp'],
   gap: ['none', 'none'],
+  clockAhead: ['none', 'none'],
   undecryptable: ['none', 'none'],
   invalidChain: ['none', 'none'],
   missingParent: ['none', 'none'],

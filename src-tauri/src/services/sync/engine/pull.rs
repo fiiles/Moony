@@ -7,7 +7,9 @@
 //! cursor stays before it, the rest of the pull goes on, and this device keeps pushing, so a
 //! withheld or reordered envelope never stalls it. A newer-schema envelope stops the pull too,
 //! but this device keeps pushing past it (spec §14), so the rest of the pull only looks for this
-//! device's own envelopes and acknowledges them (their echo, audit M4), applying nothing.
+//! device's own envelopes and acknowledges them (their echo, audit M4), applying nothing. A
+//! changeset dated more than a day past this device's time is held the same way, with the later
+//! envelopes of its author behind it, until its time comes (audit M6, `chain::too_far_ahead`).
 
 use rusqlite::Connection;
 
@@ -19,6 +21,7 @@ use crate::services::sync::changeset::{self, Changeset};
 use crate::services::sync::devices;
 use crate::services::sync::envelope::{envelope_hash, open_op};
 use crate::services::sync::error::SyncResult;
+use crate::services::sync::hlc::now_ms;
 use crate::services::sync::in_savepoint;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::merge::{apply_changeset, Outcome, StopReason};
@@ -39,8 +42,9 @@ pub(crate) const DEFAULT_DEVICE_NAME: &str = "Moony";
 pub enum OpStep {
     /// Dealt with: the cursor may move past it.
     Advance,
-    /// Kept for a quarantined author, or waiting for an earlier envelope of its author or for a
-    /// parent it references: the cursor stays before it, later envelopes are still handled.
+    /// Kept for a quarantined author, waiting for an earlier envelope of its author or for a
+    /// parent it references, or dated too far ahead (audit M6): the cursor stays before it, later
+    /// envelopes are still handled.
     Hold,
     /// The pull ends here; the cursor stays before it.
     Stop(PullStop),
@@ -50,7 +54,8 @@ pub enum OpStep {
 }
 
 /// Opens, judges and applies (or acts on) one pulled envelope, under the connection lock.
-/// `report.applied`, `report.held`, `report.gaps` and `report.rejoined` are kept here; the caller
+/// `report.applied`, `report.held`, `report.gaps`, `report.ahead` and `report.rejoined` are kept
+/// here; the caller
 /// keeps the cursor and `stop`. On `Clone` the device re-joins and the same envelope is judged
 /// again (the old ID is then an author like any other). An error is a local failure (the
 /// database, or a re-join that could not finish) and ends the round, so it never pushes.
@@ -101,6 +106,19 @@ fn act(
     report: &mut PullReport,
 ) -> Result<Option<OpStep>> {
     let step = match verdict {
+        // A change dated too far ahead waits for its time (audit M6): applying it would move
+        // this device's clock that far and let it win every edit made before then. Nothing of it
+        // is written; the next pulls meet it again.
+        Verdict::Apply if chain::too_far_ahead(conn, changeset::max_hlc(cs), now_ms())? => {
+            log::info!(
+                "[SYNC] Relay op {} is dated more than a day ahead: it waits for its time",
+                meta.position
+            );
+            if report.note_ahead(meta.device) {
+                gaps::forget_gap(conn, meta.device)?;
+            }
+            OpStep::Hold
+        }
         Verdict::Apply => match apply_changeset(conn, cs, meta.hash, now)? {
             Outcome::Applied(_) => {
                 report.applied += 1;
@@ -148,8 +166,11 @@ fn act(
                 "[SYNC] Relay op {} comes before an earlier envelope of its author: it waits",
                 meta.position
             );
-            gaps::note_held_gap(conn, meta, GapKind::Missing, now)?;
-            report.gaps += 1;
+            // Behind an envelope of its author that waits for its time, it waits with it: nothing
+            // is missing, so no gap is noted (the skip is never offered for it).
+            if report.note_gap(meta.device) {
+                gaps::note_held_gap(conn, meta, GapKind::Missing, now)?;
+            }
             OpStep::Hold
         }
         Verdict::NewerSchema => OpStep::Stop(PullStop::NewerSchema),
@@ -163,7 +184,7 @@ fn act(
 /// the relay contract before any of its envelopes is handled, each envelope under its own lock.
 /// The persisted cursor moves over consecutive envelopes that were dealt with (`Advance`,
 /// `Rejoined`); after the first `Hold` (a quarantined author, a gap in an author's chain, a missing
-/// parent) it stays before that envelope while later ones are still handled (other authors keep
+/// parent, a change dated too far ahead) it stays before that envelope while later ones are still handled (other authors keep
 /// syncing, this device's own envelopes are still acknowledged), so the next pull meets the held
 /// envelope again. A stop ends the pull with the cursor before the stopping envelope, and so does
 /// a page outside the contract (`Invalid`); one whose head is below where the pull stands is a

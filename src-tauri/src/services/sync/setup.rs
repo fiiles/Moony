@@ -334,6 +334,7 @@ fn problem_error(problem: SyncProblem) -> SyncError {
         SyncProblem::CaptureBroken
         | SyncProblem::NewerSchema
         | SyncProblem::Gap
+        | SyncProblem::ClockAhead
         | SyncProblem::Undecryptable
         | SyncProblem::InvalidChain
         | SyncProblem::MissingParent

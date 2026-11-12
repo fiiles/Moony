@@ -27,6 +27,7 @@
       "snapshotTooLarge": "Dataene er for store til å synkroniseres.",
       "newerSchema": "En annen enhet bruker en nyere versjon av Moony. Oppdater denne appen for å fortsette.",
       "gap": "En endring fra en annen enhet har ikke kommet ennå. Denne enheten fortsetter å synkronisere og sende sine egne endringer.",
+      "clockAhead": "Endringer fra en annen enhet er datert mer enn ett døgn frem i tid, så de venter til det tidspunktet. Dette skjer når dato og klokkeslett på en enhet står for langt frem: sjekk dem på enhetene dine. Denne enheten fortsetter å synkronisere i mellomtiden.",
       "undecryptable": "Endringer fra en annen enhet kunne ikke dekrypteres.",
       "invalidChain": "Endringer fra en annen enhet besto ikke verifiseringen og holdes tilbake.",
       "missingParent": "Endringer fra en annen enhet mangler tidligere trinn og holdes tilbake.",

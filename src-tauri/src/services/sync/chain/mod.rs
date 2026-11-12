@@ -11,7 +11,7 @@ pub use rejoin::*;
 use rusqlite::{params, Connection, OptionalExtension};
 
 use super::changeset::Changeset;
-use super::hlc::DeviceId;
+use super::hlc::{unpack, DeviceId};
 use super::in_savepoint;
 use super::registry::keys::{barrier_number, schema_number};
 use super::state::{self, SyncState};
@@ -176,6 +176,32 @@ pub fn judge(conn: &Connection, meta: &EnvelopeMeta) -> Result<Verdict> {
         seq if seq == head.seq + 1 => Verdict::Quarantine,
         _ => Verdict::Gap,
     })
+}
+
+/// How far past this device's time a pulled change's newest clock may be and still apply (audit
+/// M6): one day, as far as the clock warning (`hlc::FUTURE_WARNING_MS`) lets a clock be ahead
+/// without notice. Time zones and ordinary drift stay well inside it.
+pub const MAX_CLOCK_AHEAD_MS: u64 = 24 * 3600 * 1000;
+
+/// The changeset's newest clock (`changeset::max_hlc`) is more than `MAX_CLOCK_AHEAD_MS` past both
+/// `now_ms` and this device's newest stored clock (`MAX(hlc) FROM sync_clock`), physical parts
+/// compared (audit M6). Applying such a change would move this device's clock (`capture::observe`)
+/// that far ahead and let the change win every later edit made before its time; the pull holds it
+/// instead (`PullReport::ahead`), so it applies once this device's time comes within the bound.
+/// A clock this device already holds (it applied one a day ahead, or its own time was ahead and
+/// it issued one) moves nothing when observed again, so it is the bound's floor too: a vault
+/// whose clocks are already ahead keeps syncing. Each applied change moves that floor at most
+/// `MAX_CLOCK_AHEAD_MS`, so reaching the clock's maximum takes about 1.6 billion changes.
+pub fn too_far_ahead(conn: &Connection, newest_hlc: u64, now_ms: u64) -> Result<bool> {
+    let newest_ms = unpack(newest_hlc).0;
+    if newest_ms <= now_ms.saturating_add(MAX_CLOCK_AHEAD_MS) {
+        return Ok(false);
+    }
+    let stored: i64 = conn.query_row("SELECT COALESCE(MAX(hlc), 0) FROM sync_clock", [], |r| {
+        r.get(0)
+    })?;
+    let stored_ms = unpack(u64::try_from(stored).unwrap_or(0)).0;
+    Ok(newest_ms > stored_ms.saturating_add(MAX_CLOCK_AHEAD_MS))
 }
 
 /// This device pulled its own envelope `seq` back from the relay (its echo): the relay holds it,

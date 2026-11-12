@@ -53,6 +53,10 @@ pub enum SyncProblem {
     /// The relay withholds an envelope.
     #[serde(rename = "gap")]
     Gap,
+    /// Changes from another device are dated more than a day past this device's time (a clock set
+    /// ahead): they wait until that time, and this device keeps syncing meanwhile (audit M6).
+    #[serde(rename = "clockAhead")]
+    ClockAhead,
     #[serde(rename = "undecryptable")]
     Undecryptable,
     #[serde(rename = "invalidChain")]

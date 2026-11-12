@@ -27,6 +27,7 @@
       "snapshotTooLarge": "The data is too large to sync.",
       "newerSchema": "Another device uses a newer version of Moony. Update this app to continue.",
       "gap": "A change from another device hasn't arrived yet. This device keeps syncing and sending its own changes.",
+      "clockAhead": "Changes from another device are dated more than a day ahead, so they wait until that time. This happens when a device's date and time are set ahead: check them on your devices. This device keeps syncing meanwhile.",
       "undecryptable": "Changes from another device could not be decrypted.",
       "invalidChain": "Changes from another device failed verification and are held.",
       "missingParent": "Changes from another device are missing earlier steps and are held.",

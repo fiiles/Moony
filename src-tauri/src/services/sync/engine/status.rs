@@ -122,13 +122,15 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
 }
 
 /// `problem`, unless the sync server went back (`state::vault_went_back_at`): then
-/// `ServerWentBack` stands for no problem, a waiting gap, a relay error and an invalid chain (the head below this
-/// device's place is one), in every round until a replace or turning sync off. Problems that say
+/// `ServerWentBack` stands for no problem, a waiting gap or change, a relay error and an invalid
+/// chain (the head below this device's place is one), in every round until a replace or turning
+/// sync off. Problems that say
 /// what to do about something else (a pause, a lapse, a stop) keep their place.
 pub fn went_back(conn: &Connection, problem: Option<SyncProblem>) -> Result<Option<SyncProblem>> {
     let outranked = matches!(
         problem,
         None | Some(SyncProblem::Gap)
+            | Some(SyncProblem::ClockAhead)
             | Some(SyncProblem::InvalidChain)
             | Some(SyncProblem::RelayError)
     );
@@ -143,13 +145,14 @@ fn count(n: i64) -> u32 {
 }
 
 /// The phase a problem puts sync in (P17): `waiting` for a gap (a change from another device has
-/// not arrived, and this device keeps pulling and pushing: no stop), `paused` while it waits on
+/// not arrived, and this device keeps pulling and pushing: no stop) and for a change dated too far
+/// ahead (it applies once its time comes), `paused` while it waits on
 /// something outside this device (the vault, the subscription, the quota, an app update, the
 /// network, the rate limit), `error` for everything else.
 pub fn phase_of(problem: SyncProblem) -> SyncPhase {
     use SyncProblem as P;
     match problem {
-        P::Gap => SyncPhase::Waiting,
+        P::Gap | P::ClockAhead => SyncPhase::Waiting,
         P::VaultGone
         | P::Lapsed
         | P::QuotaExceeded
@@ -195,11 +198,13 @@ pub fn problem_of(error: &SyncError) -> SyncProblem {
 }
 
 /// The problem a pull leaves: its stop, envelopes waiting for a missing one or a missing parent
-/// (`Gap`: this device keeps syncing and pushing), or a quarantined author's held envelopes; `None`
-/// for a pull that ended done, or unfinished with nothing held (the next round goes on).
+/// (`Gap`: this device keeps syncing and pushing), a quarantined author's held envelopes, or
+/// changes dated too far ahead (`ClockAhead`, also no stop); `None` for a pull that ended done,
+/// or unfinished with nothing held (the next round goes on).
 /// `MissingParent` is no longer produced: a missing parent waits like a gap.
 ///
-/// An unfinished pull that held something says so (`Quarantined`, else `Gap`): while an envelope
+/// An unfinished pull that held something says so (`Quarantined`, else `Gap`, else `ClockAhead`):
+/// while an envelope
 /// is held every pull fetches again from it, so a tail behind it longer than the page limit
 /// (`pull::MAX_PULL_PAGES`) ends every pull unfinished at the same place, which is no "up to date"
 /// (Task 15 review, minor 8). Skipping the gap (`chain::gaps`) releases it.
@@ -208,8 +213,10 @@ pub fn problem_of_pull(pull: &PullReport) -> Option<SyncProblem> {
     match pull.end() {
         PullEnd::Unfinished if pull.held > 0 => Some(P::Quarantined),
         PullEnd::Unfinished if pull.gaps > 0 => Some(P::Gap),
+        PullEnd::Unfinished if pull.ahead > 0 => Some(P::ClockAhead),
         PullEnd::Done | PullEnd::Unfinished => None,
         PullEnd::Waiting => Some(P::Gap),
+        PullEnd::Ahead => Some(P::ClockAhead),
         PullEnd::Held => Some(P::Quarantined),
         PullEnd::Stopped(stop) => Some(match stop {
             PullStop::Invalid => P::InvalidChain,
@@ -232,6 +239,7 @@ pub fn reason(problem: SyncProblem) -> &'static str {
         P::SnapshotTooLarge => "sync stopped: snapshotTooLarge",
         P::NewerSchema => "sync stopped: newerSchema",
         P::Gap => "sync waiting: gap",
+        P::ClockAhead => "sync waiting: clockAhead",
         P::Undecryptable => "sync stopped: undecryptable",
         P::InvalidChain => "sync stopped: invalidChain",
         P::MissingParent => "sync stopped: missingParent",

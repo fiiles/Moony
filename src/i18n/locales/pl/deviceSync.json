@@ -27,6 +27,7 @@
       "snapshotTooLarge": "Dane są za duże do synchronizacji.",
       "newerSchema": "Inne urządzenie używa nowszej wersji Moony. Zaktualizuj tę aplikację, aby kontynuować.",
       "gap": "Zmiana z innego urządzenia jeszcze nie dotarła. To urządzenie nadal synchronizuje dane i wysyła własne zmiany.",
+      "clockAhead": "Zmiany z innego urządzenia mają datę późniejszą o ponad dzień, więc czekają do tego czasu. Dzieje się tak, gdy data i godzina na urządzeniu są ustawione do przodu: sprawdź je na swoich urządzeniach. W międzyczasie to urządzenie nadal synchronizuje dane.",
       "undecryptable": "Nie udało się odszyfrować zmian z innego urządzenia.",
       "invalidChain": "Zmiany z innego urządzenia nie przeszły weryfikacji i są wstrzymane.",
       "missingParent": "Zmianom z innego urządzenia brakuje wcześniejszych kroków i są wstrzymane.",

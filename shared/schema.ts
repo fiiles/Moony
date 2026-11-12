@@ -68,6 +68,7 @@ export type SyncProblem =
   | 'snapshotTooLarge'
   | 'newerSchema'
   | 'gap'
+  | 'clockAhead'
   | 'undecryptable'
   | 'invalidChain'
   | 'missingParent'

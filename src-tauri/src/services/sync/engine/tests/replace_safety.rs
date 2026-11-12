@@ -362,8 +362,8 @@ async fn a_resync_pushes_what_it_can_before_it_replaces() {
     );
     assert_eq!(
         outcome.backup,
-        dir.path().join(format!("sync-repair-{NOW}.zip")),
-        "nothing only in the backup: plain"
+        dir.path().join(format!("sync-repair-{NOW}-kept.zip")),
+        "nothing counted as only in the backup, but b1 and b2 never came back: kept (Task 16 I3)"
     );
     assert_ne!(device_of(&vault.b.lock()), B);
     round(&vault, &vault.b, RoundMode::Normal).await;

@@ -61,7 +61,7 @@ async fn an_envelope_the_relay_acknowledged_and_lost_is_sent_again() {
         .await
         .expect("push 1");
     let a1 = vault.relay.ops()[0].id.clone();
-    // The relay answered, then lost it (or was restored from an older backup).
+    // The relay answered, then lost it (it never stored it durably).
     vault.relay.forget_op(1);
     institution(&vault.a.lock(), "a2");
 

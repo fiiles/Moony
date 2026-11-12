@@ -200,10 +200,17 @@ impl RoundReport {
 }
 
 /// The envelopes waiting in `sync_unsent` for their echo.
-fn unechoed<D: ConnAccess>(db: &D) -> Result<usize> {
+/// The envelopes waiting in `sync_unsent` for their echo, and the oldest one's sequence.
+fn unechoed<D: ConnAccess>(db: &D) -> Result<(usize, Option<u64>)> {
     db.with_conn(|conn| {
-        let n: i64 = conn.query_row("SELECT COUNT(*) FROM sync_unsent", [], |r| r.get(0))?;
-        Ok(usize::try_from(n).unwrap_or(usize::MAX))
+        let (n, oldest): (i64, Option<i64>) =
+            conn.query_row("SELECT COUNT(*), MIN(seq) FROM sync_unsent", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })?;
+        Ok((
+            usize::try_from(n).unwrap_or(usize::MAX),
+            oldest.and_then(|seq| u64::try_from(seq).ok()),
+        ))
     })
 }
 
@@ -244,9 +251,11 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    a relay error).
 /// 3. Push only when the pull allows it (ruling P1, `PullReport::may_push`). A push that sent
 ///    anything is followed by a second pull, which brings what it sent back (the echo, audit M4):
-///    only that removes an envelope from `sync_unsent`. When sealing stopped at
-///    `push::MAX_UNECHOED` and the echo pull brought none of it back, the round's problem is a
-///    relay error.
+///    only that removes an envelope from `sync_unsent`; a failure of that pull is logged and ends
+///    the round without an error. After an echo pull that was not stopped or unfinished, the
+///    round's problem is a relay error when an envelope sent in an earlier round is still not
+///    back, or when sealing stopped at `push::MAX_UNECHOED` and the pull brought none of it back
+///    (a pull-stop problem is never replaced).
 /// 4. Not in `Drain`: when the mode asks for it or the policy wants it, read the vault's info,
 ///    heal a below-barrier miss with it, and, after pulls that ended done (rulings P4, P14),
 ///    upload a snapshot if due (forced in `FirstSnapshot`).
@@ -373,24 +382,62 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         return Ok(());
     }
     let pushed = push::push_all(relay, db, creds).await?;
-    let (sent, capped) = (pushed.pushed > 0, pushed.unechoed_cap);
+    let (sent, capped, resent_through) = (
+        pushed.pushed > 0,
+        pushed.unechoed_cap,
+        pushed.resent_through,
+    );
     report.push = Some(pushed);
-    if sent {
-        // The echo (audit M4): what the push sent leaves `sync_unsent` only when this device pulls
-        // it back, so the round pulls once more. On an honest relay nothing it sent stays pending,
-        // and a snapshot's `S` covers it (ruling P4).
-        let echo = pull::pull_all(relay, db, creds, now).await?;
-        if let Some(pull) = report.pull.as_mut() {
-            absorb(pull, echo);
+    if !sent {
+        return after_push(relay, db, creds, policy, mode, now, jitter, report).await;
+    }
+    // The echo (audit M4): what the push sent leaves `sync_unsent` only when this device pulls it
+    // back, so the round pulls once more. On an honest relay nothing it sent stays pending, and a
+    // snapshot's `S` covers it (ruling P4). A failed echo pull (a `410` or `429` between the two
+    // pulls) does not fail a round whose push went through: the next round's pull is the echo.
+    match pull::pull_all(relay, db, creds, now).await {
+        Ok(echo) => {
+            if let Some(pull) = report.pull.as_mut() {
+                absorb(pull, echo);
+            }
+        }
+        Err(error) => {
+            log::info!("[SYNC] The pull after the push failed; the next round pulls the echo");
+            log::debug!("[SYNC] The pull after the push failed: {error}");
+            return Ok(());
         }
     }
-    if capped && unechoed(db)? >= push::MAX_UNECHOED {
-        // The relay takes envelopes and never serves them back, even right after the push.
-        log::warn!("[SYNC] The relay does not serve this device's envelopes back");
-        report.problem = Some(SyncProblem::RelayError);
-        return Ok(());
+    // Only a pull that reached the relay's end (or got past a hold or a gap, where own envelopes
+    // are still acknowledged) says what came back; a pull stop keeps its own problem.
+    let reached = report
+        .pull
+        .as_ref()
+        .is_some_and(|pull| !matches!(pull.end(), PullEnd::Stopped(_) | PullEnd::Unfinished));
+    if reached {
+        let (left, oldest) = unechoed(db)?;
+        let lost_earlier = resent_through.is_some_and(|r| oldest.is_some_and(|o| o <= r));
+        if (capped && left >= push::MAX_UNECHOED) || lost_earlier {
+            // The relay takes envelopes and never serves them back, even right after the push.
+            log::warn!("[SYNC] The relay does not serve this device's envelopes back");
+            report.problem = Some(SyncProblem::RelayError);
+            return Ok(());
+        }
     }
+    after_push(relay, db, creds, policy, mode, now, jitter, report).await
+}
 
+/// Step 4 of `run_round_into`: the vault's info, healing a below-barrier miss, and the snapshot.
+#[allow(clippy::too_many_arguments)]
+async fn after_push<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    policy: &mut SnapshotPolicy,
+    mode: RoundMode,
+    now: i64,
+    jitter: i64,
+    report: &mut RoundReport,
+) -> SyncResult<()> {
     if mode == RoundMode::Drain || (mode == RoundMode::Normal && !policy.wants_info(now)) {
         return Ok(());
     }

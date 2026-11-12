@@ -4,7 +4,10 @@
 
 use std::collections::BTreeSet;
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use super::join::{break_capture, device_of, repair_backups, snapshot_of_a, validation_key};
+use super::pull::Mangled;
 use super::repair::relay_has_institution;
 use super::*;
 use crate::models::sync::{SyncPhase, SyncProblem};
@@ -17,8 +20,12 @@ use crate::services::sync::engine::status::{status, Runtime};
 use crate::services::sync::engine::{run_round, RoundMode, RoundReport};
 use crate::services::sync::impact::{self, DRAIN_INCOMPLETE};
 use crate::services::sync::join::{repair_capture, resync_by_replace};
+use crate::services::sync::keys::VaultAuth;
 use crate::services::sync::relay::fake::Route;
-use crate::services::sync::relay::RelayError;
+use crate::services::sync::relay::{
+    AccountStatus, CheckoutPlan, PullPage, PushReceipt, RelayError, RelayResult, SnapshotBlob,
+    VaultInfo,
+};
 use crate::services::sync::test_support::noise;
 
 async fn round(vault: &Vault, device: &TestConn, mode: RoundMode) -> RoundReport {
@@ -89,7 +96,9 @@ async fn one_push_all_sends_each_envelope_once() {
         institution(&a, "late");
     }
 
-    for call in ["first", "again, nothing echoed yet"] {
+    // The first call sends them all; the second, with nothing echoed yet, sends one batch of
+    // re-sends, which the relay answers with no new op, and skips the rest (review I2).
+    for (call, expected, skipped) in [("first", 151, false), ("again", 100, true)] {
         let from = vault.relay.pushed_ids().len();
 
         let report = push_all(&vault.relay, &vault.a, &vault.creds)
@@ -98,12 +107,13 @@ async fn one_push_all_sends_each_envelope_once() {
 
         let sent: Vec<String> = vault.relay.pushed_ids()[from..].concat();
         let distinct: BTreeSet<&String> = sent.iter().collect();
-        assert_eq!(sent.len(), 151, "{call}: every waiting envelope");
+        assert_eq!(sent.len(), expected, "{call}");
         assert_eq!(distinct.len(), sent.len(), "{call}: each one once");
-        assert_eq!(report.pushed, 151, "{call}");
+        assert_eq!(report.pushed, expected, "{call}");
+        assert_eq!(report.resends_skipped, skipped, "{call}");
         assert_eq!(
             report.acknowledged,
-            (1..=151).collect::<Vec<u64>>(),
+            (1..=expected as u64).collect::<Vec<u64>>(),
             "{call}"
         );
     }
@@ -220,7 +230,8 @@ async fn a_round_that_pushed_pulls_its_echo() {
 
 /// Task 6's count: a re-sync replaces after its best-effort push, without a pull, so what stays
 /// only in the backup is what the relay did not take in that push. An envelope the relay took
-/// earlier but never served back is sent again by that push.
+/// earlier but never served back is sent again by that push. The backup is kept either way: an
+/// envelope still waited for its echo in the hold.
 #[tokio::test]
 async fn a_resync_counts_only_what_the_relay_did_not_take() {
     for refused in [false, true] {
@@ -261,8 +272,9 @@ async fn a_resync_counts_only_what_the_relay_did_not_take() {
             assert_eq!(listed[0].mark, BackupMark::Kept);
         } else {
             assert_eq!(counts, (0, 0), "the push took both");
-            assert!(!outcome.kept);
-            assert_eq!(listed[0].mark, BackupMark::Plain);
+            // Neither came back before the replace: the backup is kept (Task 16 review I3).
+            assert!(outcome.kept);
+            assert_eq!(listed[0].mark, BackupMark::Kept);
             assert!(relay_has_institution(&vault, "b1") && relay_has_institution(&vault, "b2"));
         }
     }
@@ -376,4 +388,178 @@ fn write_and_seal_b(vault: &Vault, id: &str) -> Vec<u8> {
     let b = vault.b.lock();
     institution(&b, id);
     seal_from(&b, &vault.creds)
+}
+
+/// Review I2: a relay that keeps an envelope's op ID but never serves it back. The re-sends of a
+/// round stop after one batch the relay answers with no new op, and the round reports a relay
+/// error (never "up to date"); new envelopes still go out.
+#[tokio::test]
+async fn an_envelope_the_relay_keeps_but_never_serves_is_sent_once_a_round_and_reported() {
+    let vault = vault().await;
+    let cts: Vec<Vec<u8>> = {
+        let a = vault.a.lock();
+        (0..150)
+            .map(|i| {
+                institution(&a, &format!("i{i:03}"));
+                seal_from(&a, &vault.creds)
+            })
+            .collect()
+    };
+    push(&vault.relay, &vault.creds, &cts).await;
+    for seq in 1..=150 {
+        vault.relay.drop_op(seq);
+    }
+    let from = vault.relay.pushed_ids().len();
+
+    let first = round(&vault, &vault.a, RoundMode::Normal).await;
+
+    let sent = vault.relay.pushed_ids()[from..].to_vec();
+    assert_eq!(sent.len(), 1, "one batch of re-sends");
+    assert_eq!(sent[0].len(), 100);
+    let push = first.push.as_ref().expect("push");
+    assert!(push.resends_skipped);
+    assert_eq!(push.resent_through, Some(150));
+    assert_eq!(first.problem, Some(SyncProblem::RelayError));
+    {
+        let mut runtime = Runtime::default();
+        runtime.after_round(&first);
+        let shown = status(&vault.a.lock(), &runtime).expect("status");
+        assert_eq!(shown.phase, SyncPhase::Error, "never up to date");
+    }
+
+    institution(&vault.a.lock(), "a-new");
+    let from = vault.relay.pushed_ids().len();
+    let second = round(&vault, &vault.a, RoundMode::Normal).await;
+
+    let sent = vault.relay.pushed_ids()[from..].to_vec();
+    assert_eq!(
+        sent.iter().map(Vec::len).collect::<Vec<_>>(),
+        vec![100, 1],
+        "one batch of re-sends, then the new envelope"
+    );
+    assert_eq!(second.problem, Some(SyncProblem::RelayError));
+    assert_eq!(unsent(&vault.a.lock()).len(), 150, "a-new came back");
+    assert!(relay_has_institution(&vault, "a-new"));
+}
+
+/// Review I4: a relay restored from an older backup serves a head below this device's cursor, and
+/// the pull stops on an invalid chain. A re-sync after that keeps its backup whatever the counts:
+/// envelopes echoed after the relay's backup may live only there.
+#[tokio::test]
+async fn a_resync_after_an_invalid_chain_keeps_its_backup() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    assert!(cursor(&vault.b.lock()) > 0);
+    let restored = Mangled {
+        inner: vault.relay.clone(),
+        mangle: |_, mut page: PullPage| {
+            page.head = 0;
+            page
+        },
+    };
+    let stopped = run_round(
+        &restored,
+        &vault.b,
+        &mut SnapshotPolicy::default(),
+        RoundMode::Normal,
+        NOW,
+        0,
+    )
+    .await
+    .expect("round");
+    assert_eq!(stopped.problem, Some(SyncProblem::InvalidChain));
+    let consent = agreed(&vault.b);
+    let dir = tempfile::tempdir().expect("dir");
+
+    let outcome = resync_by_replace(&vault.relay, &vault.b, consent, dir.path(), &NoBinding, NOW)
+        .await
+        .expect("resync");
+
+    assert_eq!(
+        (
+            outcome.unsent_items_in_backup_only,
+            outcome.unsent_batches_in_backup_only
+        ),
+        (0, 0)
+    );
+    assert!(outcome.kept);
+    assert_eq!(
+        backups::list(dir.path()).expect("list")[0].mark,
+        BackupMark::Kept
+    );
+}
+
+/// The fake relay whose second pull call fails (`429`): the pull between a round's push and its
+/// echo.
+struct FailSecondPull {
+    inner: FakeRelay,
+    pulls: AtomicUsize,
+}
+
+impl Relay for FailSecondPull {
+    async fn create_account(&self) -> RelayResult<String> {
+        self.inner.create_account().await
+    }
+    async fn account_status(&self, account: &str) -> RelayResult<AccountStatus> {
+        self.inner.account_status(account).await
+    }
+    async fn checkout(&self, account: &str, plan: CheckoutPlan) -> RelayResult<String> {
+        self.inner.checkout(account, plan).await
+    }
+    async fn create_vault(&self, account: &str, vault: &VaultAuth) -> RelayResult<bool> {
+        self.inner.create_vault(account, vault).await
+    }
+    async fn vault_info(&self, vault: &VaultAuth) -> RelayResult<VaultInfo> {
+        self.inner.vault_info(vault).await
+    }
+    async fn push(&self, vault: &VaultAuth, ops: &[OutgoingOp]) -> RelayResult<PushReceipt> {
+        self.inner.push(vault, ops).await
+    }
+    async fn pull(&self, vault: &VaultAuth, after: u64, limit: u32) -> RelayResult<PullPage> {
+        if self.pulls.fetch_add(1, Ordering::SeqCst) == 1 {
+            return Err(RelayError::RateLimited);
+        }
+        self.inner.pull(vault, after, limit).await
+    }
+    async fn put_snapshot(&self, vault: &VaultAuth, seq: u64, bytes: Vec<u8>) -> RelayResult<()> {
+        self.inner.put_snapshot(vault, seq, bytes).await
+    }
+    async fn get_snapshot(&self, vault: &VaultAuth) -> RelayResult<SnapshotBlob> {
+        self.inner.get_snapshot(vault).await
+    }
+    async fn delete_vault(&self, vault: &VaultAuth) -> RelayResult<()> {
+        self.inner.delete_vault(vault).await
+    }
+}
+
+/// Review minor 1: the echo pull failing does not fail a round whose push went through; the next
+/// round's pull is the echo.
+#[tokio::test]
+async fn a_failed_echo_pull_keeps_the_round() {
+    let vault = vault().await;
+    institution(&vault.a.lock(), "a1");
+    let relay = FailSecondPull {
+        inner: vault.relay.clone(),
+        pulls: AtomicUsize::new(0),
+    };
+
+    let report = run_round(
+        &relay,
+        &vault.a,
+        &mut SnapshotPolicy::default(),
+        RoundMode::Normal,
+        NOW,
+        0,
+    )
+    .await
+    .expect("the push went through");
+
+    assert_eq!(report.push.as_ref().map(|p| p.pushed), Some(1));
+    assert_eq!(report.problem, None);
+    assert_eq!(unsent(&vault.a.lock()), vec![1]);
+
+    let next = round(&vault, &vault.a, RoundMode::Normal).await;
+    assert_eq!(next.problem, None);
+    assert!(unsent(&vault.a.lock()).is_empty());
 }

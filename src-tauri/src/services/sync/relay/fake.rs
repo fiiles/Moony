@@ -237,9 +237,10 @@ impl FakeRelay {
         }
     }
 
-    /// A relay that lost op `seq` after acknowledging it (it never stored it, or was restored
-    /// from an older backup): the op leaves the log and its ID is forgotten, so a push of the same
-    /// op stores it again under a new sequence number. The head stays.
+    /// A relay that lost op `seq` after acknowledging it (it never stored it durably): the op
+    /// leaves the log and its ID is forgotten, so a push of the same op stores it again under a new
+    /// sequence number. The head stays. This is not a relay restored from an older backup: that
+    /// one's head goes back too (below a device's cursor), which no knob here models.
     ///
     /// Single-vault helper: `seq` is looked up in every vault the fake holds (tests use one).
     pub fn forget_op(&self, seq: u64) {

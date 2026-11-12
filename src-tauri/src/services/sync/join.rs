@@ -34,6 +34,7 @@ use super::engine::pull::DEFAULT_DEVICE_NAME;
 use super::engine::push;
 use super::engine::runtime::{rejoin_if_copy, CopyCheck};
 use super::engine::snapshots::{off_thread, open_sealed, SnapshotPolicy};
+use super::engine::status;
 use super::engine::{self, ConnAccess, PullEnd, PullReport, RoundMode};
 use super::error::SyncResult;
 use super::hlc::DeviceId;
@@ -140,7 +141,11 @@ struct Replaced {
     report: RestoreReport,
     unsent_items: u32,
     unsent_batches: u32,
-    /// A join or a repair: its backup stays Kept whatever the counts (controller ruling).
+    /// A join or a repair: its backup stays Kept whatever the counts (controller ruling). A
+    /// re-sync too when, inside its hold, an envelope still waited for its echo (sent or not, the
+    /// vault was not seen to hold it: the counts leave out what the push handed over, the mark
+    /// does not), or its last pull stopped on an invalid chain (a relay whose head went below the
+    /// cursor, e.g. restored from an older backup, may have lost envelopes already echoed here).
     always_kept: bool,
 }
 
@@ -183,14 +188,18 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
             may_join(conn, &input.creds)?;
         }
         impact::check_consent_after_push(conn, input.kind, &input.consent, &input.acknowledged)?;
-        let (unsent_items, unsent_batches) = if input.kind == ReplaceKind::Resync {
+        let (unsent_items, unsent_batches, resync_keeps) = if input.kind == ReplaceKind::Resync {
             let impact = impact::replace_impact(conn)?;
+            let invalid_chain = state::marks(conn)?
+                .and_then(|marks| marks.last_error)
+                .is_some_and(|error| error == status::reason(SyncProblem::InvalidChain));
             (
                 impact.pending_items,
                 impact::unsent_batches_besides(conn, &input.acknowledged)?,
+                impact.pending_batches > 0 || invalid_chain,
             )
         } else {
-            (0, 0)
+            (0, 0, false)
         };
         let path = match backup.take() {
             Some(path) => path,
@@ -215,7 +224,7 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
             report,
             unsent_items,
             unsent_batches,
-            always_kept: input.kind != ReplaceKind::Resync,
+            always_kept: input.kind != ReplaceKind::Resync || resync_keeps,
         })
     })();
     Hold { backup, replaced }
@@ -605,10 +614,11 @@ async fn repair_after_backup<R: Relay, D: ConnAccess>(
 /// not sent (a failure is logged; the hold decides); the snapshot is fetched and opened; then one
 /// connection hold checks the consent, counts what is still unsent, writes the verified backup and
 /// replaces (`replace_hold`). Unsent changes survive only in the backup, which then stays `-kept`;
-/// the outcome says how many. An envelope the push handed to the relay counts as sent although
-/// its echo is never pulled here (audit M4's echo needs a pull the replace does not wait for):
-/// a relay that acknowledges and then loses it loses it from the vault, and the backup is the
-/// only copy, marked Plain when nothing else stayed only in it.
+/// the outcome says how many. An envelope the push handed to the relay is not counted although
+/// its echo is never pulled here (audit M4's echo needs a pull the replace does not wait for),
+/// but the backup stays `-kept` whenever any envelope still waited for its echo in the hold, and
+/// whenever the last pull stopped on an invalid chain (a relay restored from an older backup):
+/// it may be the only copy of what such a relay lost.
 pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,

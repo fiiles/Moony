@@ -5,11 +5,15 @@
 //! Then the waiting envelopes go to the relay in sequence order, in batches within its limits.
 //! The relay's answer deletes nothing (audit M4): an envelope leaves `sync_unsent` only when this
 //! device pulls it back from the relay (its echo, `OwnAcknowledged` → `chain::acknowledge_own`),
-//! so a relay that acknowledges a push and then loses it (or is restored from an older backup)
-//! gets the envelope again in the next round. A crash anywhere pushes the same envelopes again:
-//! the op ID makes that a no-op on a relay that holds them, and this device's chain never forks.
-//! At most `MAX_UNECHOED` envelopes wait for their echo; past that nothing more is sealed and the
-//! round reports a relay error.
+//! so a relay that acknowledges a push and then loses it gets the envelope again in the next
+//! round. That does not cover a relay restored from an older backup: its head goes below this
+//! device's cursor, the pull stops (`PullStop::Invalid`), and envelopes echoed after that backup
+//! are no longer here to send (audit M4 stays open for that case; the re-sync keeps its backup).
+//! A crash anywhere pushes the same envelopes again: the op ID makes that a no-op on a relay that
+//! holds them, and this device's chain never forks. A batch of nothing but re-sends that the relay
+//! answers with no new op (it holds them all, yet never serves them back) ends the re-sends of
+//! that call, and the round reports a relay error. At most `MAX_UNECHOED` envelopes wait for their
+//! echo; past that nothing more is sealed and the round reports a relay error.
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -246,6 +250,11 @@ pub struct PushReport {
     pub acknowledged: Vec<u64>,
     /// Sealing stopped at `MAX_UNECHOED`: the relay acknowledges and never serves back.
     pub unechoed_cap: bool,
+    /// The highest sequence already waiting in `sync_unsent` when the call began: envelopes up to
+    /// it were sealed (and as a rule sent) in an earlier call and are re-sends here.
+    pub resent_through: Option<u64>,
+    /// A batch of re-sends only was answered with no new op: the rest of the re-sends were skipped.
+    pub resends_skipped: bool,
 }
 
 /// Seals and pushes until nothing is left to send: seal (locked one envelope at a time) → next
@@ -268,6 +277,11 @@ pub async fn push_all<R: Relay, D: ConnAccess>(
     // (table, pk) of each refused row, logged once.
     let mut refused: BTreeSet<(String, String)> = BTreeSet::new();
     let mut after = None;
+    report.resent_through = db.with_conn(|conn| {
+        let max: Option<i64> =
+            conn.query_row("SELECT MAX(seq) FROM sync_unsent", [], |r| r.get(0))?;
+        Ok(max.and_then(|seq| u64::try_from(seq).ok()))
+    })?;
     loop {
         let sealed = seal_batch(db, creds, after)?;
         report.unechoed_cap |= sealed.unechoed_cap;
@@ -296,9 +310,18 @@ pub async fn push_all<R: Relay, D: ConnAccess>(
                 "push accepted more ops than sent".into(),
             )));
         }
-        after = seqs.last().copied();
+        let last = seqs.last().copied();
+        let resends_only = last.is_some_and(|seq| report.resent_through >= Some(seq));
+        after = last;
         report.pushed += ops.len();
         report.acknowledged.extend(seqs);
+        if resends_only && receipt.accepted == 0 && after < report.resent_through {
+            // The relay holds every one of them and serves none back: sending the rest of the
+            // re-sends changes nothing. The new envelopes still go.
+            log::warn!("[SYNC] The relay already holds envelopes it does not serve back");
+            report.resends_skipped = true;
+            after = report.resent_through;
+        }
     }
     report.refused = refused.len();
     if report.unechoed_cap {

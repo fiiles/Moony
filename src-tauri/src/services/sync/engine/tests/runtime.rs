@@ -416,6 +416,17 @@ async fn newer_schema_and_held_envelopes_still_push() {
         assert_eq!(op_devices(&vault, head_before), [A], "{what}");
         assert!(outbox(&vault.a.lock()).is_empty(), "{what}");
         assert_eq!(report.problem, Some(expected), "{what}");
+        assert_eq!(
+            count(&vault.a.lock(), "SELECT COUNT(*) FROM sync_unsent"),
+            0,
+            "{what}: the echo came back past the stop or the hold (Task 16 review I1)"
+        );
+        let again = round(&vault, &vault.a).await;
+        assert_eq!(
+            again.problem,
+            Some(expected),
+            "{what}: still, never a relay error"
+        );
         assert!(
             !report.snapshot_uploaded,
             "a snapshot needs a clean pull: {what}"

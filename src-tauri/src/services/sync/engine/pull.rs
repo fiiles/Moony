@@ -5,7 +5,9 @@
 //! device has not taken is skipped. An envelope that comes before an earlier one of its author, or
 //! that references a parent not here yet, is held like a quarantined author's (audit M3): the
 //! cursor stays before it, the rest of the pull goes on, and this device keeps pushing, so a
-//! withheld or reordered envelope never stalls it.
+//! withheld or reordered envelope never stalls it. A newer-schema envelope stops the pull too,
+//! but this device keeps pushing past it (spec §14), so the rest of the pull only looks for this
+//! device's own envelopes and acknowledges them (their echo, audit M4), applying nothing.
 
 use rusqlite::Connection;
 
@@ -161,7 +163,10 @@ fn act(
 /// parent) it stays before that envelope while later ones are still handled (other authors keep
 /// syncing, this device's own envelopes are still acknowledged), so the next pull meets the held
 /// envelope again. A stop ends the pull with the cursor before the stopping envelope, and so does
-/// a page outside the contract (`Invalid`).
+/// a page outside the contract (`Invalid`). A `NewerSchema` stop alone goes on to the same bounds
+/// in scan mode (`acknowledge_if_own`): this device's own envelopes are acknowledged, nothing is
+/// applied, the cursor stays before the stop, so the pushes a newer-schema stop allows still get
+/// their echo.
 ///
 /// Relay positions are not authenticated, so one pull is bounded: it ends once it has handled
 /// everything up to the head the first page reported (later envelopes are left to the next
@@ -201,16 +206,23 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
     let auth = creds.auth();
     let mut report = PullReport::default();
     let mut holding = false;
+    // After a `NewerSchema` stop: only this device's own envelopes are looked at.
+    let mut scanning = false;
     let mut first_head = None;
     for _ in 0..max_pages {
         let page = relay.pull(&auth, after, PULL_PAGE).await?;
         if let Err(reason) = check_page(&page, after, PULL_PAGE) {
             log::warn!("[SYNC] The relay served a page outside its contract: {reason}");
-            report.stop = Some(PullStop::Invalid);
+            report.stop.get_or_insert(PullStop::Invalid);
             return Ok(report);
         }
         let target = *first_head.get_or_insert(page.head);
         for op in &page.ops {
+            if scanning {
+                db.with_conn(|conn| acknowledge_if_own(conn, creds, op))?;
+                after = op.seq;
+                continue;
+            }
             let step = db.with_conn(|conn| {
                 let step = handle_op(conn, creds, op, now, &mut report)?;
                 if !holding && matches!(step, OpStep::Advance | OpStep::Rejoined) {
@@ -220,6 +232,10 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
                 Ok(step)
             })?;
             match step {
+                OpStep::Stop(PullStop::NewerSchema) => {
+                    report.stop = Some(PullStop::NewerSchema);
+                    scanning = true;
+                }
                 OpStep::Stop(stop) => {
                     report.stop = Some(stop);
                     return Ok(report);
@@ -246,6 +262,23 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
     log::warn!("[SYNC] A pull ended after {max_pages} pages, before the relay's head");
     report.unfinished = true;
     Ok(report)
+}
+
+/// Scan mode after a `NewerSchema` stop: acknowledges `op` when it is this device's own envelope as
+/// sealed here (`Verdict::OwnAcknowledged`); anything else is left for the pull that reaches it
+/// (nothing is applied, no re-join, the cursor does not move).
+fn acknowledge_if_own(conn: &Connection, creds: &Credentials, op: &PulledOp) -> Result<()> {
+    let Ok(json) = open_op(|epoch| creds.keys.get(epoch), &creds.vault_id.0, &op.ct) else {
+        return Ok(());
+    };
+    let Ok(cs) = changeset::from_json(&json) else {
+        return Ok(());
+    };
+    let meta = EnvelopeMeta::of(&cs, envelope_hash(&op.ct), op.seq);
+    if chain::judge(conn, &meta)? == Verdict::OwnAcknowledged {
+        chain::acknowledge_own(conn, meta.seq)?;
+    }
+    Ok(())
 }
 
 /// The relay contract for a page fetched after `after` with `limit`: at most `limit` envelopes,

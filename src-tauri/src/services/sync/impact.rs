@@ -189,9 +189,10 @@ pub fn check_consent_after_push(
             // the edit again under the new ID (the third test reads its clock in `max_hlc` while
             // that push has not handed it to the relay; once it has, the edit is not lost and
             // does not count), and what it could not seal waits in the outbox next to that row
-            // (the first two) until a push delivers it. Left: a push that delivers the row but leaves an old-ID edit
-            // unsealed (a row too large to send); the outcome still counts it as unsent and the
-            // backup stays kept. Keep this in mind when changing the re-join or this check.
+            // (the first two) until a push delivers it. Left: a push that delivers the row but
+            // leaves an old-ID edit unsealed (a row too large to send); the outcome still counts it
+            // as unsent and the backup stays kept. Keep this in mind when changing the re-join or
+            // this check.
             let through = i64::try_from(consent.changes_through).unwrap_or(i64::MAX);
             let queued_later: bool = conn.query_row(
                 "SELECT EXISTS (SELECT 1 FROM sync_outbox WHERE queued_at > ?1) \

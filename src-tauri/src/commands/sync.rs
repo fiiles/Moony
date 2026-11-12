@@ -1214,6 +1214,39 @@ mod tests {
         }
     }
 
+    /// The body of `name` in this file's code above the tests, up to its closing brace.
+    fn command_body(name: &str) -> &'static str {
+        let code = include_str!("sync.rs")
+            .split("\n#[cfg(test)]\nmod tests {")
+            .next()
+            .expect("code");
+        let start = code
+            .find(&format!("pub async fn {name}("))
+            .unwrap_or_else(|| panic!("`{name}` is in sync.rs"));
+        let body = &code[start..];
+        &body[..body.find("\n}\n").expect("the end of the command")]
+    }
+
+    /// Audit M11: every showing of the Kit checks the device password, setup's first included,
+    /// before the kit is read.
+    #[test]
+    fn every_kit_showing_checks_the_password_first() {
+        for name in ["sync_prepare_recovery_kit", "sync_show_recovery_kit"] {
+            let body = command_body(name);
+            let checked = body
+                .find("verify_password(&app, password).await?")
+                .unwrap_or_else(|| panic!("`{name}` must call `verify_password(`"));
+            let read = body
+                .find("recovery_kit)?")
+                .unwrap_or_else(|| panic!("`{name}` reads the kit"));
+            assert!(
+                checked < read,
+                "`{name}` checks the password before reading the kit"
+            );
+            assert!(body.contains("password_given(&password)?"), "{name}");
+        }
+    }
+
     #[test]
     fn keychain_errors_map_to_binding_failures() {
         assert!(matches!(

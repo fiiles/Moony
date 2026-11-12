@@ -216,6 +216,31 @@ fn the_view_names_a_custom_server_and_the_holders_attempts() {
 }
 
 #[test]
+fn a_holder_at_compare_has_no_digits_and_all_its_attempts() {
+    use crate::services::sync::pairing::Role as R;
+    let relay = FakeRelay::new();
+    let shower = PairingSession::show(R::Joiner, HOME, T0).expect("shower");
+    let text = pairing_code_text(&shower.code());
+    let mut shower = shower;
+    let mut holder = PairingSession::scan(R::Holder, &text, T0).expect("scanner");
+    futures::executor::block_on(async {
+        holder.announce(&relay, T0).await.expect("announce");
+        shower.poll(&relay, T0).await.expect("acknowledge");
+        holder.poll(&relay, T0).await.expect("verify");
+    });
+    assert_eq!(holder.stage(), Stage::Compare);
+    let view = view_of(&holder, false).expect("view");
+    assert_eq!(view.stage, PairingStage::Compare);
+    assert_eq!(view.role, PairingRole::Holder);
+    assert_eq!(view.comparison_code, None);
+    assert_eq!(view.attempts_left, Some(3));
+    // The joiner shows its digits and has no attempts to count.
+    let joiner = view_of(&shower, false).expect("view");
+    assert!(joiner.comparison_code.is_some());
+    assert_eq!(joiner.attempts_left, None);
+}
+
+#[test]
 fn the_acknowledgement_stages_read_as_connecting() {
     assert_eq!(stage_of(Stage::AwaitingAck), PairingStage::Connecting);
     assert_eq!(stage_of(Stage::Acknowledging), PairingStage::Connecting);

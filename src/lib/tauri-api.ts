@@ -347,9 +347,12 @@ export const deviceSyncApi = {
   copyRecoveryCode: () => tauriInvoke<boolean>('sync_copy_recovery_code'),
 
   /**
-   * Desktop: Rust opens the save dialog and writes `contents` (the rendered kit, holding its
-   * recovery code) owner-only. `saved: false` when the dialog was closed; `syncedFolder` when the
-   * folder looks synced to a cloud service. Same window as `copyRecoveryCode`.
+   * Desktop only (`validation.syncUnavailable` on a phone, which saves through the Files picker):
+   * Rust opens the save dialog and writes `contents` (the rendered kit, holding its recovery code;
+   * a page with no script or inline handler) owner-only: mode 0600 at creation on macOS and Linux,
+   * the chosen folder's permissions on Windows. `saved: false` when the dialog was closed;
+   * `syncedFolder` when the folder looks synced to a cloud service. Same window as
+   * `copyRecoveryCode`.
    */
   saveRecoveryKit: (kind: KitFileKind, contents: string) =>
     tauriInvoke<KitSaveOutcome>('sync_save_recovery_kit', { kind, contents }),

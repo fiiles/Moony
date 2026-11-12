@@ -51,9 +51,8 @@ pub fn default_base_url() -> String {
 }
 
 /// A relay base URL: `https`, or `http` only for the hosts `localhost` and `127.0.0.1` in a debug
-/// build; no user,
-/// password, query or fragment; no path but `/`; at most `MAX_RELAY_URL_CHARS` characters. Parsed,
-/// never prefix-matched.
+/// build; no user, password, query or fragment; no path but `/`; at most `MAX_RELAY_URL_CHARS`
+/// characters. Parsed, never prefix-matched.
 pub fn validate_base_url(url: &str) -> Result<()> {
     parse_base_url(url).map(|_| ())
 }

@@ -548,6 +548,8 @@ mod tests {
         conn
     }
 
+    /// The profile here is also what an unfinished setup leaves (sync off, the account and the
+    /// vault keys stored): "Cancel setup" is `sync_turn_off` without a password, which runs this.
     #[test]
     fn turning_sync_off_leaves_no_key_bytes_in_a_plain_database_file() {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -561,6 +563,7 @@ mod tests {
         turn_off(&conn, dir.path()).expect("turn off");
 
         assert!(state::load(&conn).expect("state").is_none());
+        assert!(keys::account(&conn).expect("account").is_none());
         assert!(!contains(&read_or_empty(&path), MARKER));
     }
 

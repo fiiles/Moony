@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use chrono::{DateTime, TimeZone};
 use tauri::{AppHandle, State};
 
-use super::sync::{data_dir, require_feature};
+use super::sync::{data_dir, require_feature, sync_change_running, CHANGE_IN_PROGRESS};
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::sync::{
@@ -80,6 +80,15 @@ fn entry_of(backup: &SyncBackup) -> SyncBackupEntry {
     }
 }
 
+/// A backup is deleted only while no sync change runs: a join, repair or re-sync may have just
+/// written and marked the backup it is about to rely on (`validation.syncChangeInProgress`).
+fn deletion_allowed(change_running: bool) -> Result<()> {
+    if change_running {
+        return Err(AppError::Validation(CHANGE_IN_PROGRESS.into()));
+    }
+    Ok(())
+}
+
 /// `moony-sync-backup-<local date of created_at>.zip`, a name `services::backup::is_export_file_name`
 /// accepts (so `finish_backup_export` and the sweep of an interrupted export remove it).
 #[cfg(any(mobile, test))]
@@ -137,18 +146,29 @@ pub async fn sync_replace_impact(db: State<'_, Database>) -> Result<ReplaceImpac
     Ok(impact_view(&impact))
 }
 
-/// The backups joins, repairs and re-syncs made, newest first.
+/// The backups joins, repairs and re-syncs made, newest first (an unlocked profile only).
 #[tauri::command]
-pub async fn sync_list_backups(app: AppHandle) -> Result<Vec<SyncBackupEntry>> {
+pub async fn sync_list_backups(
+    app: AppHandle,
+    db: State<'_, Database>,
+) -> Result<Vec<SyncBackupEntry>> {
     require_feature()?;
+    db.current_session()?;
     let dir = data_dir(&app)?;
     Ok(backups::list(&dir)?.iter().map(entry_of).collect())
 }
 
-/// The person deletes a listed sync backup (the UI confirms first: permanent).
+/// The person deletes a listed sync backup (the UI confirms first: permanent), while the profile
+/// is unlocked and no sync change runs (`deletion_allowed`).
 #[tauri::command]
-pub async fn sync_delete_backup(app: AppHandle, path: String) -> Result<()> {
+pub async fn sync_delete_backup(
+    app: AppHandle,
+    db: State<'_, Database>,
+    path: String,
+) -> Result<()> {
     require_feature()?;
+    db.current_session()?;
+    deletion_allowed(sync_change_running())?;
     let dir = data_dir(&app)?;
     backups::delete(&dir, Path::new(&path))
 }
@@ -158,8 +178,13 @@ pub async fn sync_delete_backup(app: AppHandle, path: String) -> Result<()> {
 /// The copy is kept out of a device backup while it waits.
 #[cfg(mobile)]
 #[tauri::command]
-pub async fn stage_sync_backup_export(app: AppHandle, path: String) -> Result<String> {
+pub async fn stage_sync_backup_export(
+    app: AppHandle,
+    db: State<'_, Database>,
+    path: String,
+) -> Result<String> {
     require_feature()?;
+    db.current_session()?;
     let dir = data_dir(&app)?;
     let documents = super::backup::documents_dir(&app)?;
     let dest = tauri::async_runtime::spawn_blocking(move || {
@@ -198,6 +223,15 @@ mod tests {
                 "{at}"
             );
         }
+    }
+
+    #[test]
+    fn a_backup_is_not_deleted_while_a_sync_change_runs() {
+        match deletion_allowed(true) {
+            Err(AppError::Validation(key)) => assert_eq!(key, "validation.syncChangeInProgress"),
+            other => panic!("{other:?}"),
+        }
+        assert!(deletion_allowed(false).is_ok());
     }
 
     fn view(clock: &str) -> ReplaceConsentView {

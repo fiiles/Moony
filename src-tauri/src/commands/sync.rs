@@ -11,7 +11,7 @@
 //! No command logs its arguments; passwords stay in `Zeroizing` once received.
 
 use std::future::Future;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -31,7 +31,7 @@ use crate::services::auth;
 use crate::services::sync::binding::{BindingFailure, BindingNative};
 use crate::services::sync::capture::bench::{self, Overhead};
 use crate::services::sync::engine::runtime::{self, EngineHandle, Trigger};
-use crate::services::sync::engine::{status, EngineEvents};
+use crate::services::sync::engine::{status, ConnAccess, EngineEvents};
 use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::merge::DATA_CHANGED_EVENT;
 use crate::services::sync::relay::http::{default_base_url, HttpRelay};
@@ -41,7 +41,7 @@ use super::sync_backups::{consent_of, outcome_view};
 
 const UNAVAILABLE: &str = "validation.syncUnavailable";
 const DEV_ONLY: &str = "validation.syncDevOnly";
-const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
+pub(super) const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
 const PASSWORD_REQUIRED: &str = "validation.syncPasswordRequired";
 const PASSWORD_NEEDED: &str = "validation.syncPasswordNeeded";
 
@@ -326,6 +326,11 @@ pub(super) async fn verify_password(app: &AppHandle, password: Zeroizing<String>
 
 /// One sync change at a time in the process (`guarded_change`).
 static SYNC_CHANGE_RUNNING: AtomicBool = AtomicBool::new(false);
+
+/// Whether a sync change (`guarded_change`: a join, repair, re-sync, turning off, …) runs now.
+pub(super) fn sync_change_running() -> bool {
+    SYNC_CHANGE_RUNNING.load(Ordering::SeqCst)
+}
 
 /// Holds the one sync-change slot; dropping it frees the slot.
 struct SyncChangeGuard;
@@ -668,6 +673,19 @@ fn turn_off_allowed(sync_is_on: bool, password_checked: bool) -> Result<()> {
     Ok(())
 }
 
+/// `sync_turn_off`'s work once no other sync change runs: `turn_off_allowed` again on the profile
+/// as it is now (a setup may have finished since the first check), then
+/// `setup::turn_off_between_rounds`.
+async fn turn_off_rechecked<D: ConnAccess>(
+    db: &D,
+    data_dir: &Path,
+    password_checked: bool,
+) -> SyncResult<()> {
+    let on = db.with_conn(|conn| Ok(state::load(conn)?.is_some_and(|sync| sync.enabled)))?;
+    turn_off_allowed(on, password_checked)?;
+    setup::turn_off_between_rounds(db, data_dir).await
+}
+
 /// Turns sync off on this device; local data stays. With sync on, only once the device password
 /// is checked (`turn_off_allowed`, checked again once no other sync change runs, in case a setup
 /// finished meanwhile); cancelling a setup that has not finished needs none.
@@ -694,11 +712,11 @@ pub async fn sync_turn_off(
     if forgets_pairing_on_turn_off(was_on) {
         super::sync_pairing::forget_pairing();
     }
-    let turn_off = async {
-        turn_off_allowed(sync_on(&session)?, checked)?;
-        setup::turn_off_between_rounds(&session, &dir).await
-    };
-    guarded_change(&AppEngine { app: &app, db: &db }, turn_off).await
+    guarded_change(
+        &AppEngine { app: &app, db: &db },
+        turn_off_rechecked(&session, &dir, checked),
+    )
+    .await
 }
 
 /// Deletes the vault on the relay and turns sync off, once the device password is checked.
@@ -836,6 +854,29 @@ mod tests {
             turn_off_allowed(false, false).is_ok(),
             "cancelling a setup that has not finished"
         );
+    }
+
+    #[tokio::test]
+    async fn a_setup_that_finished_after_the_first_check_still_needs_the_password() {
+        let db = TestConn::new(migrated());
+        let dir = tempfile::tempdir().expect("dir");
+        assert!(
+            turn_off_allowed(sync_is_on(&db), false).is_ok(),
+            "the first check: a setup that has not finished"
+        );
+        state::enable(&db.lock(), DeviceId::random()).expect("the setup finished meanwhile");
+
+        let refused = turn_off_rechecked(&db, dir.path(), false).await;
+        assert_eq!(
+            validation_key(refused.map_err(app_error)),
+            "validation.syncPasswordNeeded"
+        );
+        assert!(sync_is_on(&db), "nothing was turned off");
+
+        turn_off_rechecked(&db, dir.path(), true)
+            .await
+            .expect("turned off with the password checked");
+        assert!(!sync_is_on(&db));
     }
 
     #[test]

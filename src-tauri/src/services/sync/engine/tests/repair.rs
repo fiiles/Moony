@@ -46,7 +46,7 @@ async fn repair_backs_up_drains_and_rejoins_under_a_new_device() {
         .expect("repair");
     let zip = outcome.backup.clone();
 
-    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}.zip")));
+    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}-kept.zip")));
     assert_eq!(
         (
             outcome.unsent_items_in_backup_only,
@@ -54,7 +54,11 @@ async fn repair_backs_up_drains_and_rejoins_under_a_new_device() {
             outcome.attachments.orphaned
         ),
         (0, 0, 0),
-        "everything reached the relay: the backup is plain"
+        "everything captured reached the relay"
+    );
+    assert!(
+        outcome.kept,
+        "a repair's backup may hold what a capture-broken session wrote uncaptured"
     );
     let inspection =
         backup::inspect_backup(&zip, &crate::db::known_migration_names()).expect("readable");
@@ -103,7 +107,7 @@ async fn repair_backs_up_drains_and_rejoins_under_a_new_device() {
     assert_eq!(outbox_rows(&vault.b.lock(), "b-after"), 1, "captured");
     assert_eq!(
         repair_backups(dir.path()),
-        vec![format!("sync-repair-{NOW}.zip")]
+        vec![format!("sync-repair-{NOW}-kept.zip")]
     );
 }
 
@@ -197,7 +201,10 @@ async fn a_second_repair_in_the_same_second_keeps_the_first_backup() {
         .expect("repair")
         .backup;
 
-    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}-2.zip")));
+    assert_eq!(
+        zip,
+        dir.path().join(format!("sync-repair-{NOW}-2-kept.zip"))
+    );
     assert_eq!(
         std::fs::read(dir.path().join(format!("sync-repair-{NOW}.zip"))).expect("earlier"),
         b"earlier"

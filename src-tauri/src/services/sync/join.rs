@@ -11,9 +11,11 @@
 //!   first, and the re-sync sends what it can before it replaces;
 //! - each returns a `ReplaceOutcome` with what stayed only in the backup. The backup is marked
 //!   `-kept` inside the hold, before the replace commits, so a crash before the outcome is known
-//!   never leaves it prunable; after the outcome it settles to plain, stays kept (it holds changes
-//!   or documents found nowhere else, or a joiner's own data, which the join replaced), or becomes
-//!   `-unused` when its replace never happened.
+//!   never leaves it prunable. After the outcome a join's and a repair's backup stay kept (the
+//!   only copy of what a join replaced; what a capture-broken session may have written before
+//!   the guard existed), a re-sync's settles to plain or stays kept (unsent changes, documents
+//!   or photos found nowhere else), and the backup of a replace that never happened becomes
+//!   `-unused`.
 //!
 //! The relay passed in is the one at the credentials' own address (`Credentials::relay_url`, the
 //! default or a self-hosted one, ruling SH-2): the caller builds it with
@@ -54,8 +56,8 @@ const KIT_ACCOUNT_INVALID: &str = "validation.syncRecoveryAccountInvalid";
 const KIT_VAULT_NOT_FOUND: &str = "validation.syncRecoveryVaultNotFound";
 const KIT_ROTATED: &str = "validation.syncRecoveryKitRotated";
 
-/// Drain rounds a repair runs at most; it also stops after two rounds in a row that did not shrink
-/// `pending_items + pending_batches`.
+/// Drain rounds a repair runs at most; it also stops after two rounds in a row that neither shrank
+/// `pending_items + pending_batches` nor moved the pull cursor on.
 pub const MAX_DRAIN_ROUNDS: usize = 20;
 
 /// What a join, repair or re-sync did: its backup (with the mark it settled to), this device's
@@ -137,9 +139,8 @@ struct Replaced {
     report: RestoreReport,
     unsent_items: u32,
     unsent_batches: u32,
-    /// A join's device had accounts, transactions, documents or photos of its own: the backup is
-    /// the only copy of what the join replaced.
-    joiner_had_data: bool,
+    /// A join or a repair: its backup stays Kept whatever the counts (controller ruling).
+    always_kept: bool,
 }
 
 /// One replace hold: the backup it wrote or used (marked Kept once it is about to be replaced
@@ -164,10 +165,9 @@ struct HoldInput {
 /// One connection hold, in this order, so nothing can be written between the backup and the
 /// replace (audit M8): a join checks again that it may join (`may_join`); the consent check
 /// (`impact::check_consent`: a refusal writes no backup); a re-sync reads what stays only in the
-/// backup (`pending_items`, `pending_batches`), a join whether the device had data of its own
-/// (accounts and assets, transactions, documents or photos); the verified backup is written (a
-/// repair's was made before its drain); the backup is marked Kept (a crash from here on never
-/// leaves it prunable); then `replace_profile`.
+/// backup (`pending_items`, `pending_batches`); the verified backup is written (a repair's was
+/// made before its drain); the backup is marked Kept (a crash from here on never leaves it
+/// prunable); then `replace_profile`.
 fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
     let mut backup = match &input.backup {
         HoldBackup::Write => None,
@@ -178,20 +178,11 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
             may_join(conn, &input.creds)?;
         }
         impact::check_consent(conn, input.kind, &input.consent)?;
-        let (unsent_items, unsent_batches, joiner_had_data) = match input.kind {
-            ReplaceKind::Resync => {
-                let impact = impact::replace_impact(conn)?;
-                (impact.pending_items, impact.pending_batches, false)
-            }
-            ReplaceKind::Join => {
-                let impact = impact::replace_impact(conn)?;
-                let own = impact.accounts > 0
-                    || impact.transactions > 0
-                    || impact.documents > 0
-                    || impact.photos > 0;
-                (0, 0, own)
-            }
-            ReplaceKind::Repair => (0, 0, false),
+        let (unsent_items, unsent_batches) = if input.kind == ReplaceKind::Resync {
+            let impact = impact::replace_impact(conn)?;
+            (impact.pending_items, impact.pending_batches)
+        } else {
+            (0, 0)
         };
         let path = match backup.take() {
             Some(path) => path,
@@ -216,7 +207,7 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
             report,
             unsent_items,
             unsent_batches,
-            joiner_had_data,
+            always_kept: input.kind != ReplaceKind::Resync,
         })
     })();
     Hold { backup, replaced }
@@ -228,14 +219,14 @@ async fn held<D: ConnAccess>(db: &D, input: HoldInput) -> SyncResult<Hold> {
     off_thread(move || holder.with_conn(|conn| Ok(replace_hold(conn, &input)))).await
 }
 
-/// The mark a backup settles to after its replace, with whether it is Kept: Kept when anything
-/// stayed only in it (unsent changes, documents or photos not re-attached, or a joiner's own data,
-/// which the join replaced), else Plain. A failure is logged, and the backup stays Kept.
+/// The mark a backup settles to after its replace, with whether it is Kept: Kept for a join and
+/// a repair, and for a re-sync when anything stayed only in it (unsent changes, documents or
+/// photos not re-attached), else Plain. A failure is logged, and the backup stays Kept.
 fn settled(backup: PathBuf, replaced: &Replaced) -> (PathBuf, bool) {
     let only_in_backup = replaced.unsent_items > 0
         || replaced.unsent_batches > 0
         || replaced.report.attachments.orphaned > 0
-        || replaced.joiner_had_data;
+        || replaced.always_kept;
     let mark = if only_in_backup {
         BackupMark::Kept
     } else {
@@ -293,15 +284,14 @@ fn outcome((backup, kept): (PathBuf, bool), replaced: &Replaced) -> ReplaceOutco
 ///    `validation.syncJoinSetupPending` (review PF5); a setup that stopped at the same account on
 ///    the same server may go on into the join.
 /// 2. The snapshot is fetched and opened (`fetched_snapshot`).
-/// 3. One connection hold (`replace_hold`): step 1's check again, more documents and photos than
-///    the person agreed to (`consent.attachments`) → `validation.syncReplaceImpactChanged`, the
-///    verified backup (`sync-repair-<now>.zip`), then `replace_profile`: in one savepoint the
+/// 3. One connection hold (`replace_hold`): step 1's check again, documents and photos other
+///    than the person agreed to (`consent.attachments`) or a watermark past this profile's newest
+///    clock → `validation.syncReplaceImpactChanged`, the verified backup (`sync-repair-<now>.zip`), then `replace_profile`: in one savepoint the
 ///    credentials are bound, the profile replaced under a new device ID with a new key pair and
 ///    this device recorded under `device_name`. A failure leaves the profile as it was and the
 ///    backup, if one was written, `-unused`.
-/// 4. The backup settles: `-kept` when this device had accounts, transactions, documents or
-///    photos of its own (the backup is the only copy of what the join replaced), else plain; the
-///    binding is written.
+/// 4. The backup stays `-kept`: it is the only copy of what the join replaced. The binding is
+///    written.
 #[allow(clippy::too_many_arguments)]
 pub async fn join_new_device<R: Relay, D: ConnAccess>(
     relay: &R,
@@ -490,16 +480,18 @@ fn replace_profile(
 ///    change from here on is captured.
 /// 3. Drain rounds (`RoundMode::Drain`) pull, and push what capture recorded, until one ends clean:
 ///    no error or problem, a pull that reached the relay's end, and `sync_outbox` and
-///    `sync_unsent` empty. At most `MAX_DRAIN_ROUNDS` in all, and two rounds in a row that do not
-///    shrink what is pending end it: `validation.syncRepairDrainIncomplete`, nothing replaced.
+///    `sync_unsent` empty. At most `MAX_DRAIN_ROUNDS` in all, and two rounds in a row that neither
+///    shrink what is pending nor move the pull cursor on (a device several pages behind catches up
+///    a page or more per round) end it: `validation.syncRepairDrainIncomplete`, nothing replaced.
 /// 4. Holding off every round, the snapshot is fetched and opened, then one connection hold: a
 ///    change written since the drain (`impact::check_consent`, `ReplaceKind::Repair`) sends the
 ///    repair back to step 3 within the same budget; else the backup is marked and
 ///    `replace_profile` replaces with the stored credentials under this device's current name;
 ///    its fresh engine marks clear the capture mark.
 ///
-/// A repair that ends without a replace leaves its backup `-unused`; after a replace it settles
-/// (`-kept` when documents or photos stayed only in it). It is never deleted here.
+/// A repair that ends without a replace leaves its backup `-unused`; after a replace it stays
+/// `-kept` (it may hold what a capture-broken session wrote before the guard existed). It is never
+/// deleted here.
 pub async fn repair_capture<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -720,24 +712,25 @@ async fn backed_up<D: ConnAccess>(db: &D, data_dir: &Path, now: i64) -> SyncResu
 
 /// Step 3 of `repair_capture`: drain rounds until one ends clean (`true`), or the budget
 /// (`rounds`, shared by every drain of the repair, up to `MAX_DRAIN_ROUNDS`) or two rounds in a
-/// row without progress end it (`false`).
+/// row without progress (nothing less pending, the pull cursor where it was) end it (`false`).
 async fn drained<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     rounds: &mut usize,
     now: i64,
 ) -> SyncResult<bool> {
-    let mut last = pending(db)?;
+    let (mut last, mut last_cursor) = pending(db)?;
     let mut stalled = 0;
     while *rounds < MAX_DRAIN_ROUNDS {
         *rounds += 1;
         let clean = drain_round(relay, db, now).await;
-        let left = pending(db)?;
+        let (left, cursor) = pending(db)?;
         if clean && left == 0 {
             return Ok(true);
         }
-        stalled = if left < last { 0 } else { stalled + 1 };
-        last = left;
+        let progress = left < last || cursor > last_cursor;
+        stalled = if progress { 0 } else { stalled + 1 };
+        (last, last_cursor) = (left, cursor);
         if stalled >= 2 {
             log::info!("[SYNC] The repair's drain made no progress in two rounds");
             return Ok(false);
@@ -766,10 +759,14 @@ async fn drain_round<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> bo
     }
 }
 
-/// `sync_outbox` rows plus `sync_unsent` rows.
-fn pending<D: ConnAccess>(db: &D) -> Result<u64> {
+/// `sync_outbox` rows plus `sync_unsent` rows, and the pull cursor.
+fn pending<D: ConnAccess>(db: &D) -> Result<(u64, u64)> {
     db.with_conn(|conn| {
         let impact = impact::replace_impact(conn)?;
-        Ok(u64::from(impact.pending_items) + u64::from(impact.pending_batches))
+        let cursor = state::load(conn)?.map_or(0, |sync| sync.cursor);
+        Ok((
+            u64::from(impact.pending_items) + u64::from(impact.pending_batches),
+            cursor,
+        ))
     })
 }

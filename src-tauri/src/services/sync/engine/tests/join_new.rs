@@ -118,7 +118,7 @@ async fn join_as(
 /// recorded with this platform and a public key; then rounds on it, `A` and it again converge,
 /// and `A` lists it.
 async fn assert_joined(vault: &Vault, device: &TestConn, zip: &Path, dir: &Path) -> DeviceId {
-    assert_eq!(zip, dir.join(format!("sync-repair-{NOW}.zip")));
+    assert_eq!(zip, dir.join(format!("sync-repair-{NOW}-kept.zip")));
     assert!(zip.exists(), "the backup comes first");
     let id = {
         let c = device.lock();
@@ -476,7 +476,7 @@ async fn a_join_whose_snapshot_download_fails_changes_nothing() {
     let zip = join_as(&vault, &device, vault.creds.clone(), "Laptop", dir.path())
         .await
         .expect("the second join");
-    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}.zip")));
+    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}-kept.zip")));
     assert!(!has_institution(&device.lock(), "local-only"));
     for device in [&device, &vault.a, &device] {
         round(&vault, device, RoundMode::Normal).await;

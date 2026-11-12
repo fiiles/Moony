@@ -2,10 +2,15 @@
 //! nothing changed since the person agreed to it (audit M8; pre-flight C8, Minor 4 and Minor 5).
 //!
 //! The person agrees to the numbers a confirmation showed. Consent is a clock watermark, not a
-//! count: every local change after it carries a larger clock (`sync_clock`, `queued_at` and the own
-//! log's `max_hlc` are all clocks of the same hybrid logical clock), so the check names exactly the
-//! changes made after the person looked, whatever happened to the counts meanwhile. Items (outbox
-//! rows) and batches (sealed envelopes) are different units and are counted apart.
+//! count: `changes_through` is the newest clock of this device's hybrid logical clock that the
+//! profile records (`sync_clock`, the own log's `max_hlc`, `sync_outbox.queued_at`), and every
+//! local change after it carries a larger one. The check names exactly the changes made after the
+//! person looked, whatever happened to the counts meanwhile: an outbox row queued after it, a
+//! pending outbox key that this device clocked again after it (a row keeps its first `queued_at`
+//! when it is edited again, and nothing is sealed while an envelope waits), or a sealed envelope
+//! whose newest clock is after it. Clocks other devices wrote, merged meanwhile, are not local
+//! changes. Items (outbox rows) and batches (sealed envelopes) are different units and are
+//! counted apart.
 
 use rusqlite::Connection;
 
@@ -49,8 +54,9 @@ pub struct ReplaceImpact {
     pub accounts: u32,
     /// `bank_transactions`.
     pub transactions: u32,
-    /// The newest clock this device knows (`MAX(hlc)` of `sync_clock`, 0 without one): every later
-    /// local change gets a larger clock.
+    /// The newest clock the profile records: the largest of `sync_clock.hlc`,
+    /// `sync_own_log.max_hlc` (a barrier marker ticks the clock without a `sync_clock` row) and
+    /// `sync_outbox.queued_at`, 0 without any. Every later local change gets a larger clock.
     pub changes_through: u64,
 }
 
@@ -83,8 +89,13 @@ pub fn replace_impact(conn: &Connection) -> Result<ReplaceImpact> {
     let documents = rows(conn, "real_estate_documents")?
         .checked_add(rows(conn, "insurance_documents")?)
         .ok_or_else(too_many)?;
-    let newest: Option<i64> =
-        conn.query_row("SELECT MAX(hlc) FROM sync_clock", [], |r| r.get(0))?;
+    let newest: Option<i64> = conn.query_row(
+        "SELECT MAX(hlc) FROM (SELECT MAX(hlc) AS hlc FROM sync_clock \
+                               UNION ALL SELECT MAX(max_hlc) FROM sync_own_log \
+                               UNION ALL SELECT MAX(queued_at) FROM sync_outbox)",
+        [],
+        |r| r.get(0),
+    )?;
     Ok(ReplaceImpact {
         pending_items: rows(conn, "sync_outbox")?,
         pending_batches: rows(conn, "sync_unsent")?,
@@ -96,24 +107,37 @@ pub fn replace_impact(conn: &Connection) -> Result<ReplaceImpact> {
     })
 }
 
-/// Join: documents + photos above `consent.attachments` → `IMPACT_CHANGED`. Resync: an outbox row
-/// queued after `consent.changes_through` (`queued_at`) or an unsent envelope whose own-log
-/// `max_hlc` is after it → `IMPACT_CHANGED`. Repair: any pending item or batch →
-/// `validation.syncRepairDrainIncomplete` (the caller drains again).
+/// Join and Resync: a watermark above the newest clock the profile records → `IMPACT_CHANGED`
+/// (a forged consent only ever refuses). Join: documents + photos other than
+/// `consent.attachments` → `IMPACT_CHANGED`. Resync: an outbox row
+/// queued after `consent.changes_through` (`queued_at`), a pending outbox key with a `sync_clock`
+/// entry of this device after it, or an unsent envelope whose own-log `max_hlc` is after it →
+/// `IMPACT_CHANGED`. Repair: any pending item or batch → `validation.syncRepairDrainIncomplete`
+/// (the caller drains again).
 pub fn check_consent(conn: &Connection, kind: ReplaceKind, consent: &ReplaceConsent) -> Result<()> {
-    match kind {
-        ReplaceKind::Join => {
-            let impact = replace_impact(conn)?;
-            let attachments = impact.documents.saturating_add(impact.photos);
-            if attachments > consent.attachments {
-                return Err(AppError::Validation(IMPACT_CHANGED.into()));
-            }
+    if kind != ReplaceKind::Repair {
+        // A forged consent only ever refuses: clocks only grow, so a watermark above the newest
+        // clock this profile records, or a join's attachments other than the ones it has, is not
+        // an impact this profile ever showed.
+        let impact = replace_impact(conn)?;
+        let forged = consent.changes_through > impact.changes_through
+            || (kind == ReplaceKind::Join
+                && consent.attachments != impact.documents.saturating_add(impact.photos));
+        if forged {
+            return Err(AppError::Validation(IMPACT_CHANGED.into()));
         }
+    }
+    match kind {
+        ReplaceKind::Join => {}
         ReplaceKind::Resync => {
             // Clocks are stored as INTEGER; a watermark beyond i64 covers every one of them.
             let through = i64::try_from(consent.changes_through).unwrap_or(i64::MAX);
             let later: bool = conn.query_row(
                 "SELECT EXISTS (SELECT 1 FROM sync_outbox WHERE queued_at > ?1) \
+                     OR EXISTS (SELECT 1 FROM sync_outbox o \
+                                JOIN sync_clock c ON c.tbl = o.tbl AND c.pk = o.pk \
+                                WHERE c.hlc > ?1 \
+                                  AND c.device = (SELECT device_id FROM sync_state WHERE id = 1)) \
                      OR EXISTS (SELECT 1 FROM sync_unsent u JOIN sync_own_log l ON l.seq = u.seq \
                                 WHERE l.max_hlc > ?1)",
                 [through],
@@ -196,9 +220,9 @@ mod tests {
                 photos: 1,
                 accounts: 5,
                 transactions: 3,
-                changes_through: 0,
+                changes_through: 6,
             },
-            "bonds count among accounts; items and batches apart"
+            "bonds count among accounts; items and batches apart; the outbox's newest clock"
         );
     }
 
@@ -220,23 +244,32 @@ mod tests {
     #[test]
     fn consent_is_checked_per_kind() {
         let conn = migrated();
-        let agreed = ReplaceConsent {
-            changes_through: 100,
-            attachments: 1,
-        };
+        this_device(&conn);
+        exec(
+            &conn,
+            &format!(
+                "INSERT INTO insurance_policies
+                   (id, type, provider, policy_name, policy_number, start_date, payment_frequency)
+                 VALUES ('p1', 'life', 'Insurer', 'Life', '123', 1767225600, 'monthly');
+                 INSERT INTO insurance_documents (id, insurance_id, name, blob_id)
+                 VALUES ('d1', 'p1', 'C', 'b1');
+                 INSERT INTO sync_clock (tbl, pk, col, hlc, device)
+                 VALUES ('institutions', 'i0', '*', 100, {THIS});"
+            ),
+        );
+        let agreed = replace_impact(&conn).expect("impact").consent();
+        assert_eq!(
+            agreed,
+            ReplaceConsent {
+                changes_through: 100,
+                attachments: 1
+            }
+        );
         for kind in [ReplaceKind::Join, ReplaceKind::Resync, ReplaceKind::Repair] {
             assert_eq!(key(check_consent(&conn, kind, &agreed)), None, "{kind:?}");
         }
 
-        // Join: attachments above what was agreed.
-        exec(
-            &conn,
-            "INSERT INTO insurance_policies
-               (id, type, provider, policy_name, policy_number, start_date, payment_frequency)
-             VALUES ('p1', 'life', 'Insurer', 'Life', '123', 1767225600, 'monthly');
-             INSERT INTO insurance_documents (id, insurance_id, name, blob_id) VALUES ('d1', 'p1', 'C', 'b1');",
-        );
-        assert_eq!(key(check_consent(&conn, ReplaceKind::Join, &agreed)), None);
+        // Join: attachments other than agreed.
         exec(
             &conn,
             "INSERT INTO insurance_documents (id, insurance_id, name, blob_id) VALUES ('d2', 'p1', 'C', 'b2');",
@@ -245,6 +278,7 @@ mod tests {
             key(check_consent(&conn, ReplaceKind::Join, &agreed)).as_deref(),
             Some(IMPACT_CHANGED)
         );
+        exec(&conn, "DELETE FROM insurance_documents WHERE id = 'd2'");
 
         // Resync: an item queued at or before the watermark passes, one after it does not.
         exec(
@@ -273,7 +307,7 @@ mod tests {
         exec(&conn, "DELETE FROM sync_outbox");
         exec(
             &conn,
-            "INSERT INTO sync_own_log (seq, hash, min_hlc, max_hlc) VALUES (1, x'01', 50, 100), (2, x'02', 90, 140);
+            "INSERT INTO sync_own_log (seq, hash, min_hlc, max_hlc) VALUES (1, x'01', 50, 100);
              INSERT INTO sync_unsent (seq, envelope) VALUES (1, x'00');",
         );
         assert_eq!(
@@ -287,18 +321,165 @@ mod tests {
         );
         exec(
             &conn,
-            "INSERT INTO sync_unsent (seq, envelope) VALUES (2, x'00');",
+            "INSERT INTO sync_own_log (seq, hash, min_hlc, max_hlc) VALUES (2, x'02', 90, 140);
+             INSERT INTO sync_unsent (seq, envelope) VALUES (2, x'00');",
         );
         assert_eq!(
             key(check_consent(&conn, ReplaceKind::Resync, &agreed)).as_deref(),
             Some(IMPACT_CHANGED)
         );
+    }
+
+    /// Task 7 review: a forged consent can only ever refuse. Clocks only grow, so a real impact's
+    /// watermark is never above the profile's newest clock, and a join's attachments are the ones
+    /// the profile has.
+    #[test]
+    fn a_forged_consent_only_ever_refuses() {
+        let conn = migrated();
+        this_device(&conn);
+        exec(
+            &conn,
+            &format!(
+                "INSERT INTO sync_clock (tbl, pk, col, hlc, device)
+                 VALUES ('institutions', 'i0', '*', 100, {THIS});
+                 INSERT INTO sync_outbox (tbl, pk, queued_at) VALUES ('institutions', 'i0', 100);"
+            ),
+        );
+        let real = replace_impact(&conn).expect("impact").consent();
+        assert_eq!(key(check_consent(&conn, ReplaceKind::Resync, &real)), None);
+        assert_eq!(key(check_consent(&conn, ReplaceKind::Join, &real)), None);
+
         let everything = ReplaceConsent {
             changes_through: u64::MAX,
-            attachments: 0,
+            ..real
         };
+        let ahead = ReplaceConsent {
+            changes_through: 101,
+            ..real
+        };
+        let inflated = ReplaceConsent {
+            attachments: 5,
+            ..real
+        };
+        for (kind, forged) in [
+            (ReplaceKind::Resync, everything),
+            (ReplaceKind::Resync, ahead),
+            (ReplaceKind::Join, everything),
+            (ReplaceKind::Join, inflated),
+        ] {
+            assert_eq!(
+                key(check_consent(&conn, kind, &forged)).as_deref(),
+                Some(IMPACT_CHANGED),
+                "{kind:?} {forged:?}"
+            );
+        }
+    }
+
+    const THIS: &str = "x'01010101010101010101010101010101'";
+    const OTHER: &str = "x'02020202020202020202020202020202'";
+
+    fn this_device(conn: &Connection) {
+        exec(
+            conn,
+            &format!("INSERT INTO sync_state (id, device_id) VALUES (1, {THIS})"),
+        );
+    }
+
+    #[test]
+    fn an_edit_to_an_item_queued_before_consent_is_caught_by_its_clock() {
+        let conn = migrated();
+        this_device(&conn);
+        exec(
+            &conn,
+            &format!(
+                "INSERT INTO sync_outbox (tbl, pk, queued_at) VALUES ('institutions', 'i1', 50);
+                 INSERT INTO sync_clock (tbl, pk, col, hlc, device)
+                 VALUES ('institutions', 'i1', '*', 50, {THIS});"
+            ),
+        );
+        let agreed = replace_impact(&conn).expect("impact").consent();
+        assert_eq!(agreed.changes_through, 50);
         assert_eq!(
-            key(check_consent(&conn, ReplaceKind::Resync, &everything)),
+            key(check_consent(&conn, ReplaceKind::Resync, &agreed)),
+            None
+        );
+
+        // The edit keeps the row's first `queued_at`; only its clock is new.
+        exec(
+            &conn,
+            &format!(
+                "INSERT INTO sync_clock (tbl, pk, col, hlc, device)
+                 VALUES ('institutions', 'i1', 'name', 70, {THIS});"
+            ),
+        );
+
+        assert_eq!(
+            key(check_consent(&conn, ReplaceKind::Resync, &agreed)).as_deref(),
+            Some(IMPACT_CHANGED)
+        );
+    }
+
+    /// A clock another device wrote (merged after consent) on a pending key is no local change.
+    #[test]
+    fn a_remote_clock_merged_after_consent_is_no_local_change() {
+        let conn = migrated();
+        this_device(&conn);
+        exec(
+            &conn,
+            &format!(
+                "INSERT INTO sync_outbox (tbl, pk, queued_at) VALUES ('institutions', 'i1', 50);
+                 INSERT INTO sync_clock (tbl, pk, col, hlc, device)
+                 VALUES ('institutions', 'i1', '*', 50, {THIS});"
+            ),
+        );
+        let agreed = replace_impact(&conn).expect("impact").consent();
+
+        exec(
+            &conn,
+            &format!(
+                "INSERT INTO sync_clock (tbl, pk, col, hlc, device)
+                 VALUES ('institutions', 'i1', 'name', 900, {OTHER}),
+                        ('institutions', 'i9', '*', 950, {OTHER});"
+            ),
+        );
+
+        assert_eq!(
+            key(check_consent(&conn, ReplaceKind::Resync, &agreed)),
+            None
+        );
+    }
+
+    /// A barrier marker ticks the clock without a `sync_clock` row, and an outbox row may carry a
+    /// clock above every stored one: the watermark covers both, so the consent of a reloaded
+    /// impact passes instead of refusing every offline re-sync for good.
+    #[test]
+    fn changes_through_covers_the_own_log_and_the_outbox() {
+        let conn = migrated();
+        this_device(&conn);
+        exec(
+            &conn,
+            &format!(
+                "INSERT INTO sync_clock (tbl, pk, col, hlc, device)
+                 VALUES ('institutions', 'i1', '*', 100, {THIS});
+                 INSERT INTO sync_own_log (seq, hash, min_hlc, max_hlc) VALUES (1, x'01', 0, 500);
+                 INSERT INTO sync_unsent (seq, envelope) VALUES (1, x'00');"
+            ),
+        );
+        let agreed = replace_impact(&conn).expect("impact").consent();
+        assert_eq!(agreed.changes_through, 500, "the waiting marker's clock");
+        assert_eq!(
+            key(check_consent(&conn, ReplaceKind::Resync, &agreed)),
+            None
+        );
+
+        exec(
+            &conn,
+            "INSERT INTO sync_outbox (tbl, pk, queued_at) VALUES ('institutions', 'i2', 600);",
+        );
+        let agreed = replace_impact(&conn).expect("impact").consent();
+        assert_eq!(agreed.changes_through, 600, "the outbox's clock");
+        assert_eq!(
+            key(check_consent(&conn, ReplaceKind::Resync, &agreed)),
             None
         );
     }

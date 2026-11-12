@@ -97,10 +97,13 @@ impl ConnAccess for HoldLog {
 }
 
 /// The fake relay, with a write into a device's profile just before the first snapshot download
-/// (after a re-sync's push, after a repair's drain).
+/// (after a re-sync's push, after a repair's drain), or (`drip`) pull pages of one envelope where
+/// every second pull call fails: each round moves the cursor one envelope and ends in an error.
 struct WritesBeforeSnapshot {
     relay: FakeRelay,
     write: Mutex<Option<Box<dyn FnOnce() + Send>>>,
+    drip: bool,
+    pulls: std::sync::atomic::AtomicUsize,
 }
 
 impl WritesBeforeSnapshot {
@@ -108,6 +111,15 @@ impl WritesBeforeSnapshot {
         Self {
             relay: relay.clone(),
             write: Mutex::new(Some(Box::new(write))),
+            drip: false,
+            pulls: std::sync::atomic::AtomicUsize::new(0),
+        }
+    }
+
+    fn drip(relay: &FakeRelay) -> Self {
+        Self {
+            drip: true,
+            ..Self::new(relay, || {})
         }
     }
 }
@@ -155,7 +167,18 @@ impl Relay for WritesBeforeSnapshot {
         after: u64,
         limit: u32,
     ) -> impl std::future::Future<Output = RelayResult<PullPage>> + Send {
-        self.relay.pull(vault, after, limit)
+        let call = self.pulls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let fail = self.drip && call % 2 == 1;
+        let page = self
+            .relay
+            .pull(vault, after, if self.drip { 1 } else { limit });
+        async move {
+            if fail {
+                Err(RelayError::Network("dropped".into()))
+            } else {
+                page.await
+            }
+        }
     }
     fn put_snapshot(
         &self,
@@ -222,28 +245,20 @@ async fn the_join_backs_up_and_replaces_in_one_connection_hold() {
     );
     assert_eq!(
         outcome.backup,
-        dir.path().join(format!("sync-repair-{NOW}.zip"))
+        dir.path().join(format!("sync-repair-{NOW}-kept.zip"))
     );
-    assert!(
-        !outcome.kept,
-        "an institution is no account, transaction or attachment"
-    );
+    assert!(outcome.kept);
     assert!(outcome.backup.is_file());
 }
 
-/// A join's backup is the only copy of what the join replaced: when the joiner had accounts,
-/// transactions, documents or photos of its own, it stays `-kept` (never pruned), whatever was
-/// re-attached; without any it settles to plain (the test above).
+/// Controller ruling: every join that replaced keeps its backup, whatever kind of rows the device
+/// had: it is the only copy of what the join replaced.
 #[tokio::test]
-async fn a_join_keeps_the_backup_of_a_device_that_had_data_of_its_own() {
+async fn every_join_that_replaced_keeps_its_backup() {
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;
     let dir = tempfile::tempdir().expect("dir");
     let joiner = TestConn::new(migrated());
-    exec(
-        &joiner.lock(),
-        "INSERT INTO bank_accounts (id, name) VALUES ('own', 'Checking')",
-    );
     let consent = agreed(&joiner);
 
     let outcome = join_new_device(
@@ -259,12 +274,7 @@ async fn a_join_keeps_the_backup_of_a_device_that_had_data_of_its_own() {
     .await
     .expect("join");
 
-    assert_eq!(
-        outcome.backup,
-        dir.path().join(format!("sync-repair-{NOW}-kept.zip"))
-    );
-    assert!(outcome.kept);
-    assert!(outcome.backup.is_file());
+    assert!(outcome.kept, "even a device with no rows of its own");
     let listed = backups::list(dir.path()).expect("list");
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].mark, BackupMark::Kept);
@@ -289,22 +299,22 @@ async fn a_backup_survives_a_prune_between_its_replace_and_its_mark() {
         .expect("newer backup");
     }
     let later = NOW + 400 * DAY;
-    let mut joiner = HoldLog::new(TestConn::new(migrated()), dir.path());
-    joiner.prune_at = Some(later);
-    let consent = agreed(&joiner.inner);
+    // A re-sync with nothing left unsent: its backup settles to plain after the replace.
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    let mut resyncing = HoldLog::new(vault.b.clone(), dir.path());
+    resyncing.prune_at = Some(later);
+    let consent = agreed(&vault.b);
 
-    let outcome = join_new_device(
+    let outcome = resync_by_replace(
         &vault.relay,
-        &joiner,
-        vault.creds.clone(),
-        "Laptop",
+        &resyncing,
         consent,
         dir.path(),
         &NoBinding,
         NOW,
     )
     .await
-    .expect("join");
+    .expect("resync");
 
     assert!(
         outcome.backup.is_file(),
@@ -315,6 +325,7 @@ async fn a_backup_survives_a_prune_between_its_replace_and_its_mark() {
         dir.path().join(format!("sync-repair-{NOW}.zip")),
         "and settled to plain after it"
     );
+    assert!(!outcome.kept);
 }
 
 #[tokio::test]
@@ -516,7 +527,7 @@ async fn a_repair_with_a_change_after_its_drain_drains_again() {
     assert!(relay_has_institution(&vault, "b1") && relay_has_institution(&vault, "b-late"));
     assert_eq!(
         outcome.backup,
-        dir.path().join(format!("sync-repair-{NOW}.zip"))
+        dir.path().join(format!("sync-repair-{NOW}-kept.zip"))
     );
     assert_ne!(device_of(&vault.b.lock()), B);
     round(&vault, &vault.b, RoundMode::Normal).await;
@@ -574,4 +585,127 @@ async fn a_resync_of_a_copied_profile_rejoins_before_it_pushes() {
         "never under the copied profile's original ID: {pushed:?}"
     );
     assert!(relay_has_institution(&vault, "b1"));
+}
+
+/// Review fix 3: a device several pull pages behind advances its cursor in every round, even
+/// when each round ends in an error; that is progress, so the repair goes on draining.
+#[tokio::test]
+async fn a_repair_whose_pull_advances_keeps_draining() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    let cts = {
+        let a = vault.a.lock();
+        (1..=4)
+            .map(|i| {
+                institution(&a, &format!("a-late-{i}"));
+                seal_from(&a, &vault.creds)
+            })
+            .collect::<Vec<_>>()
+    };
+    push(&vault.relay, &vault.creds, &cts).await;
+    institution(&vault.b.lock(), "b1");
+    break_capture(&vault.b);
+    let relay = WritesBeforeSnapshot::drip(&vault.relay);
+    let dir = tempfile::tempdir().expect("dir");
+
+    repair_capture(&relay, &vault.b, dir.path(), &NoBinding, NOW)
+        .await
+        .expect("four rounds that each move the cursor, then a clean one");
+
+    assert!(relay_has_institution(&vault, "b1"));
+    assert_ne!(device_of(&vault.b.lock()), B);
+}
+
+/// Review fix 1: the outbox keeps a row's first `queued_at`, and nothing is sealed while an
+/// envelope waits, so an edit after consent to an item already queued must be caught by its
+/// clock.
+#[tokio::test]
+async fn an_edit_to_a_queued_item_after_consent_stops_an_offline_resync() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    {
+        let b = vault.b.lock();
+        institution(&b, "b-sealed");
+        seal_from(&b, &vault.creds);
+        institution(&b, "b1");
+    }
+    let consent = agreed(&vault.b);
+    exec(
+        &vault.b.lock(),
+        "UPDATE institutions SET name = 'Renamed after consent' WHERE id = 'b1'",
+    );
+    vault.relay.fail_next(Route::Push, RelayError::Server(503));
+    let dir = tempfile::tempdir().expect("dir");
+
+    let error = resync_by_replace(&vault.relay, &vault.b, consent, dir.path(), &NoBinding, NOW)
+        .await
+        .expect_err("b1 changed after the person agreed");
+
+    assert_eq!(key_of(&error), Some(IMPACT_CHANGED), "{error:?}");
+    let b = vault.b.lock();
+    assert_eq!(device_of(&b), B, "nothing replaced");
+    assert_eq!(
+        count(
+            &b,
+            "SELECT COUNT(*) FROM institutions WHERE id = 'b1' AND name = 'Renamed after consent'"
+        ),
+        1
+    );
+    assert!(repair_backups(dir.path()).is_empty(), "no backup");
+}
+
+/// Task 7 review: a consent the UI never showed (a watermark past every clock, more attachments
+/// than the device has) refuses and replaces nothing.
+#[tokio::test]
+async fn a_forged_consent_replaces_nothing() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    institution(&vault.b.lock(), "b1");
+    let dir = tempfile::tempdir().expect("dir");
+    let everything = crate::services::sync::impact::ReplaceConsent {
+        changes_through: u64::MAX,
+        ..agreed(&vault.b)
+    };
+
+    let error = resync_by_replace(
+        &vault.relay,
+        &vault.b,
+        everything,
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect_err("a watermark past every clock");
+
+    assert_eq!(key_of(&error), Some(IMPACT_CHANGED), "{error:?}");
+    assert_eq!(device_of(&vault.b.lock()), B);
+    assert!(has_institution(&vault.b.lock(), "b1"));
+
+    let joiner = TestConn::new(migrated());
+    let before = profile(&joiner.lock());
+    let inflated = crate::services::sync::impact::ReplaceConsent {
+        attachments: 5,
+        ..agreed(&joiner)
+    };
+    let error = join_new_device(
+        &vault.relay,
+        &joiner,
+        vault.creds.clone(),
+        "Laptop",
+        inflated,
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect_err("more attachments than the device has");
+
+    assert_eq!(key_of(&error), Some(IMPACT_CHANGED), "{error:?}");
+    assert_eq!(profile(&joiner.lock()), before);
+    assert!(state::load(&joiner.lock()).expect("state").is_none());
+    assert!(repair_backups(dir.path()).is_empty(), "no backup");
 }

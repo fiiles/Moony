@@ -335,14 +335,20 @@ fn finish(
            seq = MAX(seq, excluded.seq), \
            quarantined = MAX(quarantined, excluded.quarantined)",
     )?;
-    // This device's own envelopes are judged from its own log, never from a head.
-    for h in snapshot.heads.iter().filter(|h| h.device != sync.device) {
-        head.execute(params![
-            h.device.0.to_vec(),
-            sql_int(h.seq)?,
-            h.hash.to_vec(),
-            h.quarantined
-        ])?;
+    // This device's own envelopes are judged from its own log, never from a head. Merging moves
+    // the cursor past what the snapshot holds: the own envelopes it holds are acknowledged, as
+    // their echo would have done (audit M4); replacing starts a new chain anyway.
+    for h in &snapshot.heads {
+        if h.device != sync.device {
+            head.execute(params![
+                h.device.0.to_vec(),
+                sql_int(h.seq)?,
+                h.hash.to_vec(),
+                h.quarantined
+            ])?;
+        } else if !replacing {
+            chain::acknowledge_own_through(conn, h.seq, h.hash)?;
+        }
     }
     let sql = if replacing {
         "UPDATE sync_state SET cursor = ?1, snapshot_seq = ?1, snapshot_hlc = ?2, \

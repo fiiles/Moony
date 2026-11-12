@@ -330,7 +330,7 @@ Recomputed, recomputed-or-typed, write-once, monotonic); ADR 0024 records the me
 | `sync_outbox` | Local. Rows changed locally and not yet sent | `PRIMARY KEY (tbl, pk)` WITHOUT ROWID; `queued_at` indexed |
 | `sync_heads` | Local. Newest verified message per author device | `device` BLOB PK; `seq`, `hash`; `quarantined` (per-author quarantine) |
 | `sync_own_log` | Local. This device's own hash chain | `seq` PK; `hash`; `min_hlc` (oldest own clock in the envelope); `max_hlc` |
-| `sync_unsent` | Local. Own envelopes built but not yet delivered | `seq` PK; `envelope` BLOB |
+| `sync_unsent` | Local. Own envelopes sealed and not yet pulled back from the relay (a push answer alone never removes one, audit M4) | `seq` PK; `envelope` BLOB |
 | `sync_typed` | Local. Columns a repair shows differently from what was typed: renamed names (`col = 'name'`), cleared `cashflow_items.replacement_source_id` links, recomputed-or-typed columns while source rows exist (ruling T18b) | `PRIMARY KEY (tbl, pk, col)` WITHOUT ROWID; `typed` (the typed / last-writer-wins value, what syncs), `assigned` (the value shown; NULL for a cleared link); both untyped columns, so numbers and NULL keep their type |
 | `sync_devices` | Synced. Devices of the vault | `id` TEXT PK (device ID, 32 lowercase hex characters); `public_key`; `name`, `platform`, `app_version`, `joined_at`; `removed` CHECK (0/1) |
 

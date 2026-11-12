@@ -2,7 +2,8 @@
 //! `src/vault.ts`, `src/account.ts`, `src/index.ts`) and answers with exactly the `RelayError`s
 //! `HttpRelay` produces for the same situation, including the argument checks `HttpRelay` makes
 //! before it sends anything. On top of that it has fault switches: a failure for the next call of
-//! a route, a lost push answer, pruning, and two dishonest-relay knobs (`drop_op`, `replay_op`).
+//! a route, a lost push answer, pruning, and dishonest-relay knobs (`drop_op`, `replay_op`,
+//! `forget_op`, `set_swallow_pushes`).
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::future::Future;
@@ -80,6 +81,10 @@ struct FakeState {
     op_quota: Option<u64>,
     calls: Vec<Route>,
     push_sizes: Vec<(usize, usize)>,
+    /// Per push call, the op IDs it carried, whatever the answer was (`pushed_ids`).
+    pushed_ids: Vec<Vec<String>>,
+    /// Every push answers success and stores nothing (`set_swallow_pushes`).
+    swallow_pushes: bool,
     /// What a checkout answers: this base followed by the plan (`set_checkout_base`).
     checkout_base: Option<String>,
     /// A self-hosted relay (`SELF_HOSTED=1`): checkout answers `SelfHosted`.
@@ -232,6 +237,26 @@ impl FakeRelay {
         }
     }
 
+    /// A relay that lost op `seq` after acknowledging it (it never stored it, or was restored
+    /// from an older backup): the op leaves the log and its ID is forgotten, so a push of the same
+    /// op stores it again under a new sequence number. The head stays.
+    ///
+    /// Single-vault helper: `seq` is looked up in every vault the fake holds (tests use one).
+    pub fn forget_op(&self, seq: u64) {
+        let mut state = self.lock();
+        for vault in state.vaults.values_mut() {
+            vault.ops.retain(|op| op.seq != seq);
+            vault.dropped.remove(&seq);
+            vault.bytes = vault.ops.iter().map(|op| op.ct.len() as u64).sum();
+        }
+    }
+
+    /// A dishonest relay: from now on (until switched off) every push that passes its checks
+    /// answers that it accepted all its ops, and stores none of them.
+    pub fn set_swallow_pushes(&self, swallow: bool) {
+        self.lock().swallow_pushes = swallow;
+    }
+
     /// A dishonest relay: serves op `seq` again under a new sequence number (the same ID and
     /// ciphertext at `head + 1`).
     ///
@@ -264,6 +289,12 @@ impl FakeRelay {
             .collect();
         ops.sort_by_key(|op| op.seq);
         ops
+    }
+
+    /// Per push call, the op IDs it carried, in order (including the calls a fault switch
+    /// failed).
+    pub fn pushed_ids(&self) -> Vec<Vec<String>> {
+        self.lock().pushed_ids.clone()
     }
 
     /// Every call made, in order (including the ones a fault switch failed).
@@ -486,6 +517,9 @@ impl Relay for FakeRelay {
             let mut state = self.lock();
             let wire_bytes: usize = ops.iter().map(|op| base64_len(op.ct.len())).sum();
             state.push_sizes.push((ops.len(), wire_bytes));
+            state
+                .pushed_ids
+                .push(ops.iter().map(|op| op.id.clone()).collect());
             state.enter(Route::Push)?;
             if wire_bytes > MAX_PUSH_BODY_BYTES {
                 return Err(RelayError::BadRequest("body_too_large".into()));
@@ -510,6 +544,13 @@ impl Relay for FakeRelay {
                 return Err(RelayError::QuotaExceeded);
             }
             let lose_answer = std::mem::take(&mut state.lose_push_answer);
+            if state.swallow_pushes {
+                let head = state.vault_mut(&vault.vault_id).head;
+                return Ok(PushReceipt {
+                    head,
+                    accepted: ops.len() as u32,
+                });
+            }
             let stored = state.vault_mut(&vault.vault_id);
             let mut accepted = 0u32;
             for op in ops {

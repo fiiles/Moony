@@ -101,18 +101,18 @@ async fn a_dependent_envelope_waits_for_its_resent_parent() {
     // The relay withholds B1 at its place and serves it again after C's change.
     vault.relay.drop_op(1);
     vault.relay.replay_op(1);
-    institution(&vault.a.lock(), "a1");
 
-    let first = round(&vault, &vault.a, RoundMode::Normal).await;
+    let first = pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("first pull");
 
-    let pull = first.pull.as_ref().expect("pull");
-    assert_eq!(pull.end(), PullEnd::Waiting);
+    assert_eq!(first.end(), PullEnd::Waiting);
     assert_eq!(
-        (pull.applied, pull.gaps),
+        (first.applied, first.gaps),
         (1, 1),
         "B1 applied, C's change held"
     );
-    assert_eq!(first.push.as_ref().map(|p| p.pushed), Some(1));
+    assert!(first.may_push());
     {
         let a = vault.a.lock();
         assert_eq!(cursor(&a), 0);
@@ -133,7 +133,7 @@ async fn a_dependent_envelope_waits_for_its_resent_parent() {
     assert!(second.done(), "{second:?}");
     assert_eq!(second.applied, 1);
     let a = vault.a.lock();
-    assert_eq!(cursor(&a), 4);
+    assert_eq!(cursor(&a), 3, "B1's replay is the last op");
     assert_eq!(
         count(&a, "SELECT COUNT(*) FROM bank_transactions WHERE id = 't1'"),
         1
@@ -289,23 +289,24 @@ async fn a_gap_only_round_records_success() {
     let report = round(&vault, &vault.a, RoundMode::Normal).await;
 
     assert_eq!(report.problem, Some(SyncProblem::Gap));
-    let a = vault.a.lock();
-    let marks = state::marks(&a).expect("marks").expect("row");
-    assert_eq!(marks.last_success_at, Some(NOW));
-    let last_error: Option<String> = a
-        .query_row("SELECT last_error FROM sync_state", [], |r| r.get(0))
-        .expect("last_error");
-    assert_eq!(last_error, None);
-    let mut runtime = Runtime::default();
-    runtime.after_round(&report);
-    let shown = status(&a, &runtime).expect("status");
-    assert_eq!(
-        (shown.phase, shown.problem, shown.last_success_at),
-        (SyncPhase::Waiting, Some(SyncProblem::Gap), Some(NOW))
-    );
+    {
+        let a = vault.a.lock();
+        let marks = state::marks(&a).expect("marks").expect("row");
+        assert_eq!(marks.last_success_at, Some(NOW));
+        let last_error: Option<String> = a
+            .query_row("SELECT last_error FROM sync_state", [], |r| r.get(0))
+            .expect("last_error");
+        assert_eq!(last_error, None);
+        let mut runtime = Runtime::default();
+        runtime.after_round(&report);
+        let shown = status(&a, &runtime).expect("status");
+        assert_eq!(
+            (shown.phase, shown.problem, shown.last_success_at),
+            (SyncPhase::Waiting, Some(SyncProblem::Gap), Some(NOW))
+        );
+    }
 
     // A quarantine is still an error: it records its reason.
-    drop(a);
     let c1 = forge(&vault.creds, &changeset(C, 1, None, vec![]));
     let c2 = forge(&vault.creds, &changeset(C, 2, Some([9; 32]), vec![]));
     push(&vault.relay, &vault.creds, &[c1, c2]).await;

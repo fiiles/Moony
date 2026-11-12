@@ -199,6 +199,14 @@ impl RoundReport {
     }
 }
 
+/// The envelopes waiting in `sync_unsent` for their echo.
+fn unechoed<D: ConnAccess>(db: &D) -> Result<usize> {
+    db.with_conn(|conn| {
+        let n: i64 = conn.query_row("SELECT COUNT(*) FROM sync_unsent", [], |r| r.get(0))?;
+        Ok(usize::try_from(n).unwrap_or(usize::MAX))
+    })
+}
+
 /// The process's round lock (`ConnAccess::round_lock`; one profile is open at a time).
 static ROUNDS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
@@ -234,11 +242,14 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    through or finds a newer snapshot (`409`, noted with `state::note_snapshot_barrier`).
 /// 2. Pull. `410` restores the vault's snapshot by merge, then pulls once more (a second `410` is
 ///    a relay error).
-/// 3. Push only when the pull allows it (ruling P1, `PullReport::may_push`).
+/// 3. Push only when the pull allows it (ruling P1, `PullReport::may_push`). A push that sent
+///    anything is followed by a second pull, which brings what it sent back (the echo, audit M4):
+///    only that removes an envelope from `sync_unsent`. When sealing stopped at
+///    `push::MAX_UNECHOED` and the echo pull brought none of it back, the round's problem is a
+///    relay error.
 /// 4. Not in `Drain`: when the mode asks for it or the policy wants it, read the vault's info,
-///    heal a below-barrier miss with it, and, after a pull that ended done (rulings P4, P14) and
-///    a second one if the push sent anything, upload a snapshot if due (forced in
-///    `FirstSnapshot`).
+///    heal a below-barrier miss with it, and, after pulls that ended done (rulings P4, P14),
+///    upload a snapshot if due (forced in `FirstSnapshot`).
 /// 5. A sync state is a problem, not an error (ruling P8): the vault gone (paused in
 ///    `sync_state`), a lapse (with the vault's `paid_until` when the relay still answers), the
 ///    quota, a snapshot too large, a rotated token or an unauthorized one. A transient, rate-limit,
@@ -362,8 +373,23 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         return Ok(());
     }
     let pushed = push::push_all(relay, db, creds).await?;
-    let sent = pushed.pushed > 0;
+    let (sent, capped) = (pushed.pushed > 0, pushed.unechoed_cap);
     report.push = Some(pushed);
+    if sent {
+        // The echo (audit M4): what the push sent leaves `sync_unsent` only when this device pulls
+        // it back, so the round pulls once more. On an honest relay nothing it sent stays pending,
+        // and a snapshot's `S` covers it (ruling P4).
+        let echo = pull::pull_all(relay, db, creds, now).await?;
+        if let Some(pull) = report.pull.as_mut() {
+            absorb(pull, echo);
+        }
+    }
+    if capped && unechoed(db)? >= push::MAX_UNECHOED {
+        // The relay takes envelopes and never serves them back, even right after the push.
+        log::warn!("[SYNC] The relay does not serve this device's envelopes back");
+        report.problem = Some(SyncProblem::RelayError);
+        return Ok(());
+    }
 
     if mode == RoundMode::Drain || (mode == RoundMode::Normal && !policy.wants_info(now)) {
         return Ok(());
@@ -378,17 +404,6 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     }
     if !report.pull.as_ref().is_some_and(PullReport::may_snapshot) {
         return Ok(());
-    }
-    if sent {
-        // The pushed envelopes are acknowledged, so the dump's `S` covers them (ruling P4).
-        let again = pull::pull_all(relay, db, creds, now).await?;
-        let done = again.may_snapshot();
-        if let Some(pull) = report.pull.as_mut() {
-            absorb(pull, again);
-        }
-        if !done {
-            return Ok(());
-        }
     }
     let force = mode == RoundMode::FirstSnapshot;
     match snapshots::upload_if_due(
@@ -416,8 +431,8 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     Ok(())
 }
 
-/// Adds a later pull of the same round to the first (which ended done): the counts add up, the
-/// later pull's ending stands.
+/// Adds a later pull of the same round (the echo pull) to the first: the counts add up, the later
+/// pull's ending stands.
 fn absorb(first: &mut PullReport, later: PullReport) {
     first.applied += later.applied;
     first.rejoined |= later.rejoined;

@@ -8,9 +8,14 @@
 //! person looked, whatever happened to the counts meanwhile: an outbox row queued after it, a
 //! pending outbox key that this device clocked again after it (a row keeps its first `queued_at`
 //! when it is edited again, and nothing is sealed while an envelope waits), or a sealed envelope
-//! whose newest clock is after it. Clocks other devices wrote, merged meanwhile, are not local
-//! changes. Items (outbox rows) and batches (sealed envelopes) are different units and are
-//! counted apart.
+//! whose newest clock is after it and that a re-sync's own push did not hand to the relay. Clocks
+//! other devices wrote, merged meanwhile, are not local changes. Items (outbox rows) and batches
+//! (sealed envelopes) are different units and are counted apart.
+//!
+//! A batch stays in `sync_unsent` until this device pulls it back from the relay (audit M4), so
+//! `pending_batches` counts envelopes the relay has not been seen to hold: never sent, or sent and
+//! not echoed yet. A re-sync, which replaces right after its push without pulling, leaves out what
+//! that push handed to the relay (`unsent_batches_besides`, `check_consent_after_push`).
 
 use rusqlite::Connection;
 
@@ -44,7 +49,8 @@ pub enum ReplaceKind {
 pub struct ReplaceImpact {
     /// `sync_outbox` rows: changed items not sealed yet.
     pub pending_items: u32,
-    /// `sync_unsent` rows: sealed batches not confirmed by the sync server.
+    /// `sync_unsent` rows: sealed batches this device has not pulled back from the sync server
+    /// (not sent yet, or sent and not echoed).
     pub pending_batches: u32,
     /// `real_estate_documents` + `insurance_documents`.
     pub documents: u32,
@@ -107,14 +113,56 @@ pub fn replace_impact(conn: &Connection) -> Result<ReplaceImpact> {
     })
 }
 
+/// `check_consent_after_push` for a replace with no push before it.
+pub fn check_consent(conn: &Connection, kind: ReplaceKind, consent: &ReplaceConsent) -> Result<()> {
+    check_consent_after_push(conn, kind, consent, &[])
+}
+
+/// The `sync_unsent` rows other than `acknowledged` (what a re-sync's push just handed to the
+/// relay): the batches that stay only in the backup.
+pub fn unsent_batches_besides(conn: &Connection, acknowledged: &[u64]) -> Result<u32> {
+    let left = unsent_seqs(conn)?
+        .into_iter()
+        .filter(|(seq, _)| !acknowledged.contains(seq))
+        .count();
+    u32::try_from(left).map_err(|_| too_many())
+}
+
+/// `(seq, max_hlc)` of every `sync_unsent` row, `max_hlc` from the own log (always there: both
+/// rows are written in one transaction).
+fn unsent_seqs(conn: &Connection) -> Result<Vec<(u64, Option<i64>)>> {
+    let rows: Vec<(i64, Option<i64>)> = conn
+        .prepare(
+            "SELECT u.seq, l.max_hlc FROM sync_unsent u \
+             LEFT JOIN sync_own_log l ON l.seq = u.seq ORDER BY u.seq",
+        )?
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<std::result::Result<_, _>>()?;
+    rows.into_iter()
+        .map(|(seq, max_hlc)| {
+            let seq = u64::try_from(seq).map_err(|_| {
+                AppError::Internal("sync impact: a negative unsent sequence".into())
+            })?;
+            Ok((seq, max_hlc))
+        })
+        .collect()
+}
+
 /// Join and Resync: a watermark above the newest clock the profile records → `IMPACT_CHANGED`
 /// (a forged consent only ever refuses). Join: documents + photos other than
 /// `consent.attachments` → `IMPACT_CHANGED`. Resync: an outbox row
 /// queued after `consent.changes_through` (`queued_at`), a pending outbox key with a `sync_clock`
-/// entry of this device after it, or an unsent envelope whose own-log `max_hlc` is after it →
-/// `IMPACT_CHANGED`. Repair: any pending item or batch → `validation.syncRepairDrainIncomplete`
-/// (the caller drains again).
-pub fn check_consent(conn: &Connection, kind: ReplaceKind, consent: &ReplaceConsent) -> Result<()> {
+/// entry of this device after it, or an unsent envelope whose own-log `max_hlc` is after it and
+/// that is not in `acknowledged` (the re-sync's push handed those to the relay: not lost, so not a
+/// change the backup alone holds) → `IMPACT_CHANGED`. Repair: any pending item or batch →
+/// `validation.syncRepairDrainIncomplete` (the caller drains again; its drain ends only once
+/// everything came back).
+pub fn check_consent_after_push(
+    conn: &Connection,
+    kind: ReplaceKind,
+    consent: &ReplaceConsent,
+    acknowledged: &[u64],
+) -> Result<()> {
     if kind != ReplaceKind::Repair {
         // A forged consent only ever refuses: clocks only grow, so a watermark above the newest
         // clock this profile records, or a join's attachments other than the ones it has, is not
@@ -138,24 +186,26 @@ pub fn check_consent(conn: &Connection, kind: ReplaceKind, consent: &ReplaceCons
             // re-join moves only column clocks), and that test misses it. It is caught anyway
             // because the re-join wipes `sync_unsent` and its `record_this_device` queues this
             // device's `sync_devices` row at a clock above the watermark: the re-sync's push seals
-            // the edit again under the new ID (the third test reads its clock in `max_hlc`), and
-            // what it could not seal waits in the outbox next to that row (the first two) until a
-            // push delivers it. Left: a push that delivers the row but leaves an old-ID edit
+            // the edit again under the new ID (the third test reads its clock in `max_hlc` while
+            // that push has not handed it to the relay; once it has, the edit is not lost and
+            // does not count), and what it could not seal waits in the outbox next to that row
+            // (the first two) until a push delivers it. Left: a push that delivers the row but leaves an old-ID edit
             // unsealed (a row too large to send); the outcome still counts it as unsent and the
             // backup stays kept. Keep this in mind when changing the re-join or this check.
             let through = i64::try_from(consent.changes_through).unwrap_or(i64::MAX);
-            let later: bool = conn.query_row(
+            let queued_later: bool = conn.query_row(
                 "SELECT EXISTS (SELECT 1 FROM sync_outbox WHERE queued_at > ?1) \
                      OR EXISTS (SELECT 1 FROM sync_outbox o \
                                 JOIN sync_clock c ON c.tbl = o.tbl AND c.pk = o.pk \
                                 WHERE c.hlc > ?1 \
-                                  AND c.device = (SELECT device_id FROM sync_state WHERE id = 1)) \
-                     OR EXISTS (SELECT 1 FROM sync_unsent u JOIN sync_own_log l ON l.seq = u.seq \
-                                WHERE l.max_hlc > ?1)",
+                                  AND c.device = (SELECT device_id FROM sync_state WHERE id = 1))",
                 [through],
                 |r| r.get(0),
             )?;
-            if later {
+            let sealed_later = unsent_seqs(conn)?.into_iter().any(|(seq, max_hlc)| {
+                max_hlc.is_some_and(|hlc| hlc > through) && !acknowledged.contains(&seq)
+            });
+            if queued_later || sealed_later {
                 return Err(AppError::Validation(IMPACT_CHANGED.into()));
             }
         }

@@ -100,7 +100,8 @@ pub enum Verdict {
     Apply,
     /// Already applied (a replay): skip it.
     SkipReplay,
-    /// This device's own envelope, as sealed here: acknowledged (`acknowledge_own`).
+    /// This device's own envelope, as sealed here, back from the relay: acknowledged
+    /// (`acknowledge_own`).
     OwnAcknowledged,
     /// This device's ID on an envelope it never sealed: a clone or a rollback. Re-join.
     Clone,
@@ -171,10 +172,30 @@ pub fn judge(conn: &Connection, meta: &EnvelopeMeta) -> Result<Verdict> {
     })
 }
 
-/// The relay holds this device's envelope `seq`: it no longer waits in `sync_unsent`.
+/// This device pulled its own envelope `seq` back from the relay (its echo): the relay holds it,
+/// and it no longer waits in `sync_unsent`. With `acknowledge_own_through`, the only way a row
+/// leaves `sync_unsent` while the chain goes on (audit M4): a push answer alone removes nothing,
+/// so a relay that acknowledges and then loses an envelope gets it again.
 pub fn acknowledge_own(conn: &Connection, seq: u64) -> Result<()> {
     conn.execute("DELETE FROM sync_unsent WHERE seq = ?1", [seq_param(seq)?])?;
     Ok(())
+}
+
+/// A snapshot restored by merge carries the dumper's head for this device, `(seq, hash)`: when it
+/// names this device's own envelope `seq` (`sync_own_log`), the dumper applied this device's chain
+/// up to it, so the vault holds every own envelope up to `seq`, and they stop waiting for an echo
+/// the restore's cursor jump has passed. A head that names no own envelope (another chain under
+/// this ID) acknowledges nothing. Returns how many rows left `sync_unsent`.
+pub fn acknowledge_own_through(conn: &Connection, seq: u64, hash: [u8; 32]) -> Result<usize> {
+    let ours: bool = conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sync_own_log WHERE seq = ?1 AND hash = ?2)",
+        params![seq_param(seq)?, hash.to_vec()],
+        |r| r.get(0),
+    )?;
+    if !ours {
+        return Ok(0);
+    }
+    Ok(conn.execute("DELETE FROM sync_unsent WHERE seq <= ?1", [seq_param(seq)?])?)
 }
 
 /// Holds every further envelope of `device` (its chain forked). Only a device with a head can

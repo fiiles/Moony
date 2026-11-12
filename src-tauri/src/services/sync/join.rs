@@ -161,14 +161,18 @@ struct HoldInput {
     device_name: String,
     plain: Zeroizing<Vec<u8>>,
     now: i64,
+    /// A re-sync: the sequences its push just handed to the relay (`PushReport::acknowledged`).
+    /// They wait for an echo the replace never pulls, but the relay took them: they are not counted
+    /// as staying only in the backup, nor against the consent.
+    acknowledged: Vec<u64>,
 }
 
 /// One connection hold, in this order, so nothing can be written between the backup and the
 /// replace (audit M8): a join checks again that it may join (`may_join`); the consent check
-/// (`impact::check_consent`: a refusal writes no backup); a re-sync reads what stays only in the
-/// backup (`pending_items`, `pending_batches`); the verified backup is written (a repair's was
-/// made before its drain); the backup is marked Kept (a crash from here on never leaves it
-/// prunable); then `replace_profile`.
+/// (`impact::check_consent_after_push`: a refusal writes no backup); a re-sync reads what stays
+/// only in the backup (`pending_items`, and the `sync_unsent` rows its push did not hand to the
+/// relay); the verified backup is written (a repair's was made before its drain); the backup is
+/// marked Kept (a crash from here on never leaves it prunable); then `replace_profile`.
 fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
     let mut backup = match &input.backup {
         HoldBackup::Write => None,
@@ -178,10 +182,13 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
         if input.kind == ReplaceKind::Join {
             may_join(conn, &input.creds)?;
         }
-        impact::check_consent(conn, input.kind, &input.consent)?;
+        impact::check_consent_after_push(conn, input.kind, &input.consent, &input.acknowledged)?;
         let (unsent_items, unsent_batches) = if input.kind == ReplaceKind::Resync {
             let impact = impact::replace_impact(conn)?;
-            (impact.pending_items, impact.pending_batches)
+            (
+                impact.pending_items,
+                impact::unsent_batches_besides(conn, &input.acknowledged)?,
+            )
         } else {
             (0, 0)
         };
@@ -321,6 +328,7 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
             device_name: device_name.to_string(),
             plain,
             now,
+            acknowledged: Vec::new(),
         },
     )
     .await?;
@@ -571,6 +579,7 @@ async fn repair_after_backup<R: Relay, D: ConnAccess>(
                 device_name: name.to_string(),
                 plain,
                 now,
+                acknowledged: Vec::new(),
             },
         )
         .await?;
@@ -596,7 +605,10 @@ async fn repair_after_backup<R: Relay, D: ConnAccess>(
 /// not sent (a failure is logged; the hold decides); the snapshot is fetched and opened; then one
 /// connection hold checks the consent, counts what is still unsent, writes the verified backup and
 /// replaces (`replace_hold`). Unsent changes survive only in the backup, which then stays `-kept`;
-/// the outcome says how many.
+/// the outcome says how many. An envelope the push handed to the relay counts as sent although
+/// its echo is never pulled here (audit M4's echo needs a pull the replace does not wait for):
+/// a relay that acknowledges and then loses it loses it from the vault, and the backup is the
+/// only copy, marked Plain when nothing else stayed only in it.
 pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -609,19 +621,24 @@ pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
     let (creds, name) = stored_identity(db)?;
     let _no_round = engine::exclusive(db).await;
     rejoin_if_copy_under_lock(db, data_dir, native, now)?;
-    match push::push_all(relay, db, &creds).await {
-        Ok(report) if report.pushed > 0 => {
-            log::info!(
-                "[SYNC] The re-sync sent {} envelopes before replacing",
-                report.pushed
-            );
+    let acknowledged = match push::push_all(relay, db, &creds).await {
+        Ok(report) => {
+            if report.pushed > 0 {
+                log::info!(
+                    "[SYNC] The re-sync sent {} envelopes before replacing",
+                    report.pushed
+                );
+            }
+            report.acknowledged
         }
-        Ok(_) => {}
         Err(error) => {
+            // What an earlier batch of this push handed over is counted as unsent: the backup
+            // stays kept.
             log::warn!("[SYNC] The re-sync could not send this device's changes first");
             log::debug!("[SYNC] The re-sync could not send this device's changes first: {error}");
+            Vec::new()
         }
-    }
+    };
     let plain = fetched_snapshot(relay, &creds).await?;
     let hold = held(
         db,
@@ -634,6 +651,7 @@ pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
             device_name: name,
             plain,
             now,
+            acknowledged,
         },
     )
     .await?;

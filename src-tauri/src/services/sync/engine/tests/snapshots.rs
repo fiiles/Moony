@@ -347,7 +347,7 @@ async fn upload_waits_for_an_empty_outbox_and_unsent() {
 }
 
 fn seal_batch_a(vault: &Vault) {
-    crate::services::sync::engine::push::seal_batch(&vault.a, &vault.creds).expect("seal");
+    crate::services::sync::engine::push::seal_batch(&vault.a, &vault.creds, None).expect("seal");
 }
 
 #[tokio::test]

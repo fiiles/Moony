@@ -741,3 +741,78 @@ async fn repair_and_resync_go_through_the_relay() {
     a.round(&relay).await;
     converged(&a, &b);
 }
+
+#[tokio::test]
+#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+async fn a_resync_pushes_unsent_changes_first() {
+    let url = relay_url();
+    let relay = relay_at(&url);
+    let a = first_device(&relay, &url, "A").await;
+    add_finances(&a);
+    a.round(&relay).await;
+    let b = Device::new();
+    b.join(&relay, a.credentials(), "B").await;
+    b.round(&relay).await;
+    a.round(&relay).await;
+
+    // B edits and has not synced: the re-sync sends that first, then replaces B's data.
+    b.exec("UPDATE bank_transactions SET description = 'unsent on B' WHERE id = 'tx-05'");
+    let consent = super::engine::tests::agreed(&b.db);
+    let outcome = resync_by_replace(&relay, &b.db, consent, b.dir(), &NoBinding, now())
+        .await
+        .expect("re-sync");
+    assert!(outcome.backup.exists());
+    assert_eq!(
+        outcome.unsent_items_in_backup_only, 0,
+        "the edit reached the sync server before the replace"
+    );
+
+    // On the relay under B's old ID: A pulls the edit.
+    a.round(&relay).await;
+    assert_eq!(
+        a.text("SELECT description FROM bank_transactions WHERE id = 'tx-05'")
+            .as_deref(),
+        Some("unsent on B")
+    );
+    // And on B again, after its next round.
+    b.round(&relay).await;
+    assert_eq!(
+        b.text("SELECT description FROM bank_transactions WHERE id = 'tx-05'")
+            .as_deref(),
+        Some("unsent on B"),
+        "the replaced profile got its own edit back"
+    );
+    a.round(&relay).await;
+    converged(&a, &b);
+}
+
+#[tokio::test]
+#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+async fn an_envelope_stays_until_it_comes_back() {
+    let url = relay_url();
+    let relay = relay_at(&url);
+    let a = first_device(&relay, &url, "A").await;
+    add_finances(&a);
+    let creds = a.credentials();
+
+    let pushed = super::engine::push::push_all(&relay, &a.db, &creds)
+        .await
+        .expect("push");
+    assert!(
+        pushed.pushed > 0 && !pushed.acknowledged.is_empty(),
+        "{pushed:?}"
+    );
+    assert!(
+        a.count("SELECT COUNT(*) FROM sync_unsent") > 0,
+        "the relay's answer removes nothing: the echo does"
+    );
+
+    super::engine::pull::pull_all(&relay, &a.db, &creds, now())
+        .await
+        .expect("pull");
+    assert_eq!(
+        a.count("SELECT COUNT(*) FROM sync_unsent"),
+        0,
+        "the envelopes came back in a pull"
+    );
+}

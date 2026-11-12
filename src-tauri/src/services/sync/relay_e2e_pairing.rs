@@ -20,7 +20,9 @@ use super::binding::NoBinding;
 use super::devices::list_devices;
 use super::join::{join_new_device, recovery_credentials};
 use super::keys::{self, Credentials};
-use super::pairing::session::{keeps_session, PairingSession, Stage};
+use super::pairing::session::{
+    keeps_session, PairingSession, Stage, CODE_MISMATCH, CODE_MISMATCH_FINAL,
+};
 use super::pairing::{pairing_code_text, parse_pairing_code, MailboxId, Role};
 use super::recovery::read_recovery_input;
 use super::relay::http::{normalize_base_url, HttpRelay, DEFAULT_RELAY_URL};
@@ -159,7 +161,112 @@ async fn the_mailbox_answers_as_documented() {
 
 #[tokio::test]
 #[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
-async fn a_phone_joins_a_desktop_that_shows_the_code() {
+async fn the_mailbox_has_three_slots() {
+    let url = relay_url();
+    let relay = relay_at(&url);
+    let id = MailboxId::random().expect("id").to_b64();
+
+    relay.put_slot(&id, 3, b"ack").await.expect("put 3");
+    let rewrite = relay.put_slot(&id, 3, b"again").await;
+    assert!(
+        matches!(rewrite, Err(RelayError::SlotTaken)),
+        "written once: {rewrite:?}"
+    );
+    assert_eq!(
+        relay.take_slot(&id, 3).await.expect("take 3"),
+        Some(b"ack".to_vec())
+    );
+    let again = relay.take_slot(&id, 3).await;
+    assert!(
+        matches!(again, Err(RelayError::SlotConsumed)),
+        "read once: {again:?}"
+    );
+
+    // Slot 4: the client refuses it before sending, and the relay itself answers 400 bad_slot.
+    let client = relay.put_slot(&id, 4, b"x").await;
+    assert!(
+        matches!(&client, Err(RelayError::BadRequest(code)) if code == "bad_slot"),
+        "{client:?}"
+    );
+    let base = normalize_base_url(&url).expect("relay address");
+    let raw = reqwest::Client::new()
+        .put(format!("{}/v1/pairing/{id}/4", base.trim_end_matches('/')))
+        .header("content-type", "application/octet-stream")
+        .body(b"x".to_vec())
+        .send()
+        .await
+        .expect("raw put");
+    assert_eq!(raw.status().as_u16(), 400);
+    let body = raw.text().await.expect("body");
+    assert!(body.contains("bad_slot"), "{body}");
+    relay.burn_mailbox(&id).await.expect("burn");
+}
+
+#[tokio::test]
+#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+async fn three_wrong_codes_end_the_pairing_and_nothing_is_sealed() {
+    let url = relay_url();
+    let a = first_device(&relay_at(&url), &url, "A").await;
+    let mut shower = PairingSession::show(Role::Holder, &stored_relay(&a), now()).expect("show");
+    let relay = relay_at(shower.relay_url());
+    let text = pairing_code_text(&shower.code());
+    let mut scanner = PairingSession::scan(Role::Joiner, &text, now()).expect("scan");
+    scanner.announce(&relay, now()).await.expect("announce");
+    shower.poll(&relay, now()).await.expect("poll");
+    scanner.poll(&relay, now()).await.expect("read the ack");
+    let right = scanner.comparison_code().expect("the joiner's digits");
+    scanner
+        .confirm(&relay, None, None, now())
+        .await
+        .expect("joiner confirms");
+
+    let wrong = if right == "000000" {
+        "111111"
+    } else {
+        "000000"
+    };
+    let held = a.credentials();
+    assert_eq!(
+        command_key(
+            shower
+                .confirm(&relay, Some(&held), Some(wrong), now())
+                .await
+        ),
+        CODE_MISMATCH
+    );
+    assert_eq!(
+        command_key(
+            shower
+                .confirm(&relay, Some(&held), Some(wrong), now())
+                .await
+        ),
+        CODE_MISMATCH
+    );
+    assert_eq!(
+        command_key(
+            shower
+                .confirm(&relay, Some(&held), Some(wrong), now())
+                .await
+        ),
+        CODE_MISMATCH_FINAL
+    );
+    // The right code afterwards no longer pairs: the session is over and nothing was sealed.
+    let after = shower
+        .confirm(&relay, Some(&held), Some(&right), now())
+        .await;
+    assert!(after.is_err(), "{after:?}");
+    assert_ne!(shower.stage(), Stage::Sent);
+    assert_eq!(
+        command_key(scanner.poll(&relay, now()).await),
+        "validation.syncPairingCancelled",
+        "the joiner reads the cancel marker, not credentials"
+    );
+    assert!(scanner.received().is_none());
+}
+
+#[tokio::test]
+#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+async fn a_phone_joins_a_desktop_that_types_its_code() {
     let url = relay_url();
     let (a, b) = holder_and_new_device(&url).await;
     let local = normalize_base_url(&url).expect("relay address");
@@ -238,7 +345,7 @@ async fn a_phone_joins_a_desktop_that_shows_the_code() {
 
 #[tokio::test]
 #[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
-async fn a_desktop_joins_from_a_phone_that_scans_its_code() {
+async fn a_desktop_joins_from_a_phone_and_the_phone_types_the_code() {
     let url = relay_url();
     let (a, b) = holder_and_new_device(&url).await;
     let local = normalize_base_url(&url).expect("relay address");

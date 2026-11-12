@@ -14,9 +14,11 @@
 //!   with `sync_`, so a capture install replaces them as it replaces its own triggers. When they
 //!   cannot be created, the authorizer refuses every write to `app_config` instead.
 //!
-//! Local columns, local tables, `sync_devices` (only sync code writes it), the `temp` schema, the
-//! attachment store (`files`) and the target of `VACUUM INTO` stay writable, so settings, sync's
-//! own bookkeeping, a backup, a repair and turning sync off keep working.
+//! Local columns, local tables, `sync_devices` (sync code writes it, and so do the person's rename
+//! of this device and a re-join at the engine's start, uncaptured while guarded; harmless: no
+//! round runs, and a repair or re-sync carries this device's name forward), the `temp` schema,
+//! the attachment store (`files`) and the target of `VACUUM INTO` stay writable, so settings,
+//! sync's own bookkeeping, a backup, a repair and turning sync off keep working.
 //!
 //! The guard holds one connection, and the app opens one per profile (`Database::open_with_key`,
 //! which runs `sync::on_open`). Any other connection to an enabled profile must go through
@@ -118,8 +120,8 @@ pub fn changes_paused(conn: &Connection) -> bool {
 }
 
 /// Pure decision, tested directly. Denies only in schema `main`: INSERT and DELETE on a Synced
-/// table, UPDATE of a column whose class is not Local; never `sync_devices` (only sync code writes
-/// it); `app_config` only when `whole_app_config`; ALTER TABLE of a Synced table (SQLite names
+/// table, UPDATE of a column whose class is not Local; never `sync_devices` (see the module doc:
+/// a rename or a re-join may write it while guarded); `app_config` only when `whole_app_config`; ALTER TABLE of a Synced table (SQLite names
 /// its schema in the action, not in `database`). Everything else (reads, Local and Seed tables,
 /// `temp`, `files`, the target of `VACUUM INTO`) is allowed.
 pub(crate) fn decide(

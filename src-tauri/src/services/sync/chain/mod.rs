@@ -116,9 +116,12 @@ pub enum Verdict {
     /// The author is quarantined: keep its envelopes (replays included) and do not advance the
     /// cursor past them.
     Held,
-    /// An envelope of the author is missing (the relay dropped it): stop until it arrives.
+    /// An envelope of the author is missing (the relay dropped or withholds it): hold this one and
+    /// the author's later ones, and keep pulling the others (audit M3); the cursor stays before it
+    /// until the missing one arrives or the person skips it (`gaps`).
     Gap,
-    /// Written by a newer schema than this build knows: stop pulling, keep pushing.
+    /// Written by a newer schema than this build knows: stop applying, keep pushing; while this
+    /// device waits for an echo, the pull scans on for its own envelopes only (`pull::pull_all`).
     NewerSchema,
     /// Written below the barrier this device is past: not applied, the head moves and the miss is
     /// recorded (`skip_below_barrier`), wherever the relay placed it (ruling T8-2).
@@ -188,8 +191,8 @@ pub const TEN_YEARS_AHEAD_MS: u64 = 3_653 * 86_400_000;
 /// `TEN_YEARS_AHEAD_MS` past this device's wall clock `now_ms`, physical parts compared (audit
 /// M6). The pull holds such a change (`PullReport::ahead`, a held gap of kind `Ahead` the person
 /// may skip after 14 days) and both snapshot restores refuse such a snapshot, so this device's
-/// clock never moves past `now_ms + TEN_YEARS_AHEAD_MS`: the 48-bit physical part (year 6429) and
-/// the counter cannot be saturated. Residual: a holder of the vault key can still move every
+/// clock never moves past `now_ms + TEN_YEARS_AHEAD_MS`: the physical part's cap (`hlc::MAX_MS`,
+/// 2^47 − 1 ms, year 6429) and the counter cannot be saturated. Residual: a holder of the vault key can still move every
 /// device's clock up to ten years ahead, and an edit stamped that far wins every edit made before
 /// its date; an honest clock that was days or weeks ahead is kept on purpose (holding it would
 /// leave that device's later edits, stamped from its clock's high mark, diverging or lost).

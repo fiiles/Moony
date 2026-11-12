@@ -272,8 +272,9 @@ pub fn problem_of_pull(pull: &PullReport) -> Option<SyncProblem> {
 }
 
 /// The fixed `last_error` text of a problem: its wire name, never an error's own text (which may
-/// carry a path or a URL). A round whose only problem is a waiting gap records success instead
-/// (`run_round_into`), so the `Gap` text is a fallback that says it is no stop.
+/// carry a path or a URL). A round whose only problem is a waiting gap or a change held for its
+/// date records success instead (`run_round_into`), so the `Gap` and `ClockAhead` texts are used
+/// only by a stalled round (an unfinished pull that pushed nothing) and say it is no stop.
 pub fn reason(problem: SyncProblem) -> &'static str {
     use SyncProblem as P;
     match problem {

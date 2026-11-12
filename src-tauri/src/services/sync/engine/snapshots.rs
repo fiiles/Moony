@@ -440,7 +440,9 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
     .await?;
     match outcome {
         Heal::Restored(report) => {
-            log::info!("[SYNC] A snapshot restored what this device skipped below its barrier");
+            log::info!(
+                "[SYNC] A snapshot restored what this device missed (below its barrier or skipped)"
+            );
             Ok(Some(report))
         }
         Heal::NotHealing => {

@@ -233,7 +233,8 @@
     "joined": "This device now syncs. Its earlier data is backed up in {{path}}",
     "tryAgain": "Try again",
     "startAgain": "Start again",
-    "readyToJoin": "The sync details arrived. Check what is replaced, then join."
+    "readyToJoin": "The sync details arrived. Check what is replaced, then join.",
+    "validUntil": "The code is valid until {{time}}."
   },
   "join": {
     "introPair": "Join from your phone",
@@ -284,7 +285,6 @@
     "unknownCode": "This QR code is not a Moony pairing code or Recovery Kit.",
     "kitConfirmTitle": "Join this sync account?",
     "kitConfirmBody": "This phone's data is replaced by the synced data (a backup is kept).",
-    "kitConfirmJoin": "Join",
     "notAKitCode": "This is not a Recovery Kit code",
     "notAPairingCode": "This is not a pairing code.",
     "devPasteTitle": "Paste a pairing code — developer tool",
@@ -304,14 +304,22 @@
     },
     "attachments": "Documents and photos stay attached to items the synced data also has; the others stay only in the backup.",
     "unsent": "Moony sends the waiting changes first; anything it cannot send stays only in the backup.",
-    "backupWhere": "The backup is listed under Settings → Backup → Restore.",
+    "backupWhere": "The backup is listed under Settings → Data and backups, under “Backups made before sync replaced data”.",
     "loading": "Counting what is at stake…",
     "outcome": {
       "attachments": "Documents and photos only in the backup now: {{count}}",
       "items": "Changed items that were not sent, only in the backup: {{count}}",
       "batches": "Batches of changes that were not sent, only in the backup: {{count}}",
       "someUnsent": "Some changes stay only in the backup.",
-      "kept": "The backup holds the only copy of what it contains, so Moony never deletes it. You can delete it under Settings → Backup → Restore."
-    }
+      "kept": "The backup holds the only copy of what it contains, so Moony never deletes it. You can delete it under Settings → Data and backups, under “Backups made before sync replaced data”."
+    },
+    "backupWherePhone": "The backup is listed under Settings → Backup and transfer.",
+    "saved": {
+      "title": "A backup was saved on this phone",
+      "where": "It is listed under Settings → Backup and transfer. Moony never deletes it; only you can.",
+      "filesHint": "Moony's data is left out of your phone's own backups. Save a copy to Files if you want to reach this backup outside Moony.",
+      "saveCopy": "Save a copy to Files"
+    },
+    "onThisDevice": "On this device:"
   }
 }

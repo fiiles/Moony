@@ -232,7 +232,8 @@
     "joined": "此设备现已同步。它此前的数据已备份在 {{path}}",
     "tryAgain": "重试",
     "startAgain": "重新开始",
-    "readyToJoin": "同步信息已到达。请先查看将被替换的内容，然后加入。"
+    "readyToJoin": "同步信息已到达。请先查看将被替换的内容，然后加入。",
+    "validUntil": "此代码有效期至 {{time}}。"
   },
   "join": {
     "introPair": "从手机加入",
@@ -283,7 +284,6 @@
     "unknownCode": "此二维码既不是 Moony 配对码，也不是恢复包。",
     "kitConfirmTitle": "加入此同步账户？",
     "kitConfirmBody": "这部手机的数据将被同步的数据替换（会保留一份备份）。",
-    "kitConfirmJoin": "加入",
     "notAKitCode": "这不是恢复包代码",
     "notAPairingCode": "这不是配对码。",
     "devPasteTitle": "粘贴配对码 — 开发者工具",
@@ -303,14 +303,22 @@
     },
     "attachments": "文档和照片会继续附加在同步数据中也有的项目上；其余的只保留在备份中。",
     "unsent": "Moony 会先发送等待中的更改；无法发送的更改只保留在备份中。",
-    "backupWhere": "备份列在 设置 → 备份 → 恢复 中。",
+    "backupWhere": "备份列在 设置 → 数据与备份 的“同步替换数据之前创建的备份” 中。",
     "loading": "正在统计受影响的内容…",
     "outcome": {
       "attachments": "现在只存在于备份中的文档和照片：{{count}}",
       "items": "未发送、只存在于备份中的已更改项目：{{count}}",
       "batches": "未发送、只存在于备份中的更改批次：{{count}}",
       "someUnsent": "部分更改只保留在备份中。",
-      "kept": "该备份保存着其内容的唯一副本，因此 Moony 绝不会删除它。你可以在 设置 → 备份 → 恢复 中删除。"
-    }
+      "kept": "该备份保存着其内容的唯一副本，因此 Moony 绝不会删除它。你可以在 设置 → 数据与备份 的“同步替换数据之前创建的备份” 中删除。"
+    },
+    "backupWherePhone": "备份列在 设置 → 备份与迁移 中。",
+    "saved": {
+      "title": "此手机上已保存一份备份",
+      "where": "它列在 设置 → 备份与迁移 中。Moony 不会删除它，只有你可以。",
+      "filesHint": "Moony 的数据不包含在手机自身的备份中。若想在 Moony 之外访问此备份，请将副本保存到“文件”。",
+      "saveCopy": "将副本保存到“文件”"
+    },
+    "onThisDevice": "此设备上："
   }
 }

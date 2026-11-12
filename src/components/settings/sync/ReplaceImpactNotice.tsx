@@ -25,17 +25,30 @@ export function ReplaceImpactNotice({ flow, impact, error }: ReplaceImpactNotice
     );
   }
   if (!impact) return <p className="m-0 text-body text-ink-3">{t('replace.loading')}</p>;
+  // Unsent changes are one thing; what is on this device (documents and photos too) is another
   const lines = impactLines(flow, impact);
+  const unsent = lines.filter((line) => line.key === 'items' || line.key === 'batches');
+  const onDevice = lines.filter((line) => line.key !== 'items' && line.key !== 'batches');
   const hasAttachments = impact.documents + impact.photos > 0;
   const hasUnsent = flow === 'resync' && impact.pendingItems + impact.pendingBatches > 0;
   return (
     <div className="grid gap-2 text-body text-ink-2" data-testid="replace-impact">
-      {lines.length > 0 && (
+      {unsent.length > 0 && (
         <ul className="m-0 list-disc pl-5 num">
-          {lines.map((line) => (
+          {unsent.map((line) => (
             <li key={line.key}>{t(`replace.lines.${line.key}`, { count: line.count })}</li>
           ))}
         </ul>
+      )}
+      {onDevice.length > 0 && (
+        <div className="grid gap-1">
+          <p className="m-0 font-600">{t('replace.onThisDevice')}</p>
+          <ul className="m-0 list-disc pl-5 num">
+            {onDevice.map((line) => (
+              <li key={line.key}>{t(`replace.lines.${line.key}`, { count: line.count })}</li>
+            ))}
+          </ul>
+        </div>
       )}
       {hasUnsent && <p className="m-0">{t('replace.unsent')}</p>}
       {hasAttachments && <p className="m-0">{t('replace.attachments')}</p>}

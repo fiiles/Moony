@@ -234,7 +234,8 @@
     "joined": "Este dispositivo ya se sincroniza. Sus datos anteriores están copiados en {{path}}",
     "tryAgain": "Reintentar",
     "startAgain": "Empezar de nuevo",
-    "readyToJoin": "Han llegado los datos de sincronización. Revisa qué se reemplaza y después únete."
+    "readyToJoin": "Han llegado los datos de sincronización. Revisa qué se reemplaza y después únete.",
+    "validUntil": "El código funciona hasta las {{time}}."
   },
   "join": {
     "introPair": "Unirse desde tu teléfono",
@@ -285,7 +286,6 @@
     "unknownCode": "Este código QR no es un código de vinculación de Moony ni un kit de recuperación.",
     "kitConfirmTitle": "¿Unirte a esta cuenta de sincronización?",
     "kitConfirmBody": "Los datos de este teléfono se sustituyen por los sincronizados (se guarda una copia de seguridad).",
-    "kitConfirmJoin": "Unirme",
     "notAKitCode": "Esto no es un código del kit de recuperación",
     "notAPairingCode": "Esto no es un código de vinculación.",
     "devPasteTitle": "Pegar un código de vinculación — herramienta de desarrollo",
@@ -305,14 +305,22 @@
     },
     "attachments": "Los documentos y las fotos siguen adjuntos a los elementos que también tienen los datos sincronizados; el resto queda solo en la copia de seguridad.",
     "unsent": "Moony envía primero los cambios pendientes; lo que no pueda enviar queda solo en la copia de seguridad.",
-    "backupWhere": "La copia de seguridad aparece en Ajustes → Copia de seguridad → Restaurar.",
+    "backupWhere": "La copia de seguridad aparece en Ajustes → Datos y copias de seguridad, en «Copias de seguridad hechas antes de que la sincronización reemplazara datos».",
     "loading": "Contando lo que está en juego…",
     "outcome": {
       "attachments": "Documentos y fotos que ahora están solo en la copia de seguridad: {{count}}",
       "items": "Elementos modificados que no se enviaron y están solo en la copia de seguridad: {{count}}",
       "batches": "Lotes de cambios que no se enviaron y están solo en la copia de seguridad: {{count}}",
       "someUnsent": "Algunos cambios quedan solo en la copia de seguridad.",
-      "kept": "La copia de seguridad guarda la única copia de lo que contiene, por eso Moony nunca la elimina. Puedes eliminarla en Ajustes → Copia de seguridad → Restaurar."
-    }
+      "kept": "La copia de seguridad guarda la única copia de lo que contiene, por eso Moony nunca la elimina. Puedes eliminarla en Ajustes → Datos y copias de seguridad, en «Copias de seguridad hechas antes de que la sincronización reemplazara datos»."
+    },
+    "backupWherePhone": "La copia de seguridad aparece en Ajustes → Copia de seguridad y traslado.",
+    "saved": {
+      "title": "Se guardó una copia de seguridad en este teléfono",
+      "where": "Aparece en Ajustes → Copia de seguridad y traslado. Moony nunca la elimina; solo tú puedes hacerlo.",
+      "filesHint": "Los datos de Moony no se incluyen en las copias de seguridad propias de tu teléfono. Guarda una copia en Archivos si quieres acceder a esta copia fuera de Moony.",
+      "saveCopy": "Guardar una copia en Archivos"
+    },
+    "onThisDevice": "En este dispositivo:"
   }
 }

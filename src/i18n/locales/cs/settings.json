@@ -203,7 +203,7 @@
       "kept": "Obsahuje změny, které nejsou nikde jinde",
       "restore": "Obnovit",
       "delete": "Smazat",
-      "deleteTitle": "Smazat tuto zálohu?",
+      "deleteTitle": "Smazat zálohu z {{date}}?",
       "deleteBody": "Tato záloha se nenávratně smaže.",
       "deleteBodyKept": "Tato záloha obsahuje změny, které nejsou nikde jinde. Nenávratně se smaže a tyto změny se ztratí.",
       "deleted": "Záloha smazána"

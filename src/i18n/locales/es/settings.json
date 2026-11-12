@@ -203,7 +203,7 @@
       "kept": "Contiene cambios que no están en ningún otro sitio",
       "restore": "Restaurar",
       "delete": "Eliminar",
-      "deleteTitle": "¿Eliminar esta copia de seguridad?",
+      "deleteTitle": "¿Eliminar la copia de seguridad del {{date}}?",
       "deleteBody": "Esta copia de seguridad se elimina para siempre.",
       "deleteBodyKept": "Esta copia de seguridad contiene cambios que no están en ningún otro sitio. Se elimina para siempre y esos cambios se pierden.",
       "deleted": "Copia de seguridad eliminada"

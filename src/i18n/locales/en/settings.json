@@ -201,7 +201,7 @@
       "kept": "Holds changes found nowhere else",
       "restore": "Restore",
       "delete": "Delete",
-      "deleteTitle": "Delete this backup?",
+      "deleteTitle": "Delete the backup from {{date}}?",
       "deleteBody": "This backup is deleted for good.",
       "deleteBodyKept": "This backup holds changes found nowhere else. It is deleted for good, and those changes are lost.",
       "deleted": "Backup deleted"

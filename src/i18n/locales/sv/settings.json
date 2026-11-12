@@ -201,7 +201,7 @@
       "kept": "Innehåller ändringar som inte finns någon annanstans",
       "restore": "Återställ",
       "delete": "Ta bort",
-      "deleteTitle": "Ta bort den här säkerhetskopian?",
+      "deleteTitle": "Ta bort säkerhetskopian från {{date}}?",
       "deleteBody": "Den här säkerhetskopian tas bort för gott.",
       "deleteBodyKept": "Den här säkerhetskopian innehåller ändringar som inte finns någon annanstans. Den tas bort för gott och ändringarna går förlorade.",
       "deleted": "Säkerhetskopian är borttagen"

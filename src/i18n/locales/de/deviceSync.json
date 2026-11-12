@@ -233,7 +233,8 @@
     "joined": "Dieses Gerät synchronisiert jetzt. Seine früheren Daten sind gesichert in {{path}}",
     "tryAgain": "Erneut versuchen",
     "startAgain": "Neu beginnen",
-    "readyToJoin": "Die Synchronisierungsdaten sind angekommen. Prüfen Sie, was ersetzt wird, und treten Sie dann bei."
+    "readyToJoin": "Die Synchronisierungsdaten sind angekommen. Prüfen Sie, was ersetzt wird, und treten Sie dann bei.",
+    "validUntil": "Der Code gilt bis {{time}}."
   },
   "join": {
     "introPair": "Vom Smartphone beitreten",
@@ -284,7 +285,6 @@
     "unknownCode": "Dieser QR-Code ist weder ein Kopplungscode von Moony noch ein Wiederherstellungs-Kit.",
     "kitConfirmTitle": "Diesem Sync-Konto beitreten?",
     "kitConfirmBody": "Die Daten dieses Telefons werden durch die synchronisierten Daten ersetzt (eine Sicherung bleibt erhalten).",
-    "kitConfirmJoin": "Beitreten",
     "notAKitCode": "Das ist kein Code eines Wiederherstellungs-Kits",
     "notAPairingCode": "Das ist kein Kopplungscode.",
     "devPasteTitle": "Kopplungscode einfügen — Entwicklerwerkzeug",
@@ -304,14 +304,22 @@
     },
     "attachments": "Dokumente und Fotos bleiben an Elementen angehängt, die auch die synchronisierten Daten enthalten; die übrigen bleiben nur in der Sicherung.",
     "unsent": "Moony sendet zuerst die wartenden Änderungen; was nicht gesendet werden kann, bleibt nur in der Sicherung.",
-    "backupWhere": "Die Sicherung finden Sie unter Einstellungen → Sicherung → Wiederherstellen.",
+    "backupWhere": "Die Sicherung finden Sie unter Einstellungen → Daten und Sicherungen, im Abschnitt „Sicherungen vor dem Ersetzen von Daten durch die Synchronisierung“.",
     "loading": "Es wird gezählt, was betroffen ist …",
     "outcome": {
       "attachments": "Dokumente und Fotos, die jetzt nur in der Sicherung sind: {{count}}",
       "items": "Geänderte Elemente, die nicht gesendet wurden und nur in der Sicherung sind: {{count}}",
       "batches": "Änderungspakete, die nicht gesendet wurden und nur in der Sicherung sind: {{count}}",
       "someUnsent": "Einige Änderungen bleiben nur in der Sicherung.",
-      "kept": "Die Sicherung enthält die einzige Kopie ihres Inhalts, deshalb löscht Moony sie nie. Sie können sie unter Einstellungen → Sicherung → Wiederherstellen löschen."
-    }
+      "kept": "Die Sicherung enthält die einzige Kopie ihres Inhalts, deshalb löscht Moony sie nie. Sie können sie unter Einstellungen → Daten und Sicherungen, im Abschnitt „Sicherungen vor dem Ersetzen von Daten durch die Synchronisierung“ löschen."
+    },
+    "backupWherePhone": "Die Sicherung finden Sie unter Einstellungen → Sicherung und Übertragung.",
+    "saved": {
+      "title": "Auf diesem Telefon wurde eine Sicherung gespeichert",
+      "where": "Sie finden sie unter Einstellungen → Sicherung und Übertragung. Moony löscht sie nie, nur Sie können das.",
+      "filesHint": "Die Daten von Moony sind von den eigenen Sicherungen Ihres Telefons ausgenommen. Speichern Sie eine Kopie in Dateien, wenn Sie diese Sicherung auch außerhalb von Moony erreichen möchten.",
+      "saveCopy": "Kopie in Dateien sichern"
+    },
+    "onThisDevice": "Auf diesem Gerät:"
   }
 }

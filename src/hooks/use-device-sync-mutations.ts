@@ -4,16 +4,6 @@ import { deviceSyncApi, portfolioApi } from '@/lib/tauri-api';
 import { refreshAfterRemoteChanges } from '@/lib/device-sync-refresh';
 import type { ReplaceConsentView } from '@shared/schema';
 
-/**
- * The consent of the profile as it stands now: the impact read just before the replace, which is
- * what the commands took before the confirmations showed it. A confirmation that shows the impact
- * sends the consent of what it showed instead.
- */
-export async function consentAsItStands(): Promise<ReplaceConsentView> {
-  const impact = await deviceSyncApi.replaceImpact();
-  return { changesThrough: impact.changesThrough, attachments: impact.documents + impact.photos };
-}
-
 type KitJoin = Parameters<typeof deviceSyncApi.joinWithRecoveryKit>[0] & {
   consent: ReplaceConsentView;
 };
@@ -112,6 +102,7 @@ export function useDeviceSyncMutations() {
   }, [joinWithRecoveryKit, joinWithRecoveryKit.isSuccess]);
   const deleteBackup = useMutation({
     mutationFn: deviceSyncApi.deleteBackup,
+    gcTime: 0,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-backups'] }),
   });
   const renameDevice = useMutation({

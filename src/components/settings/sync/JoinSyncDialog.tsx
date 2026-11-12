@@ -10,6 +10,7 @@ import { translateApiError } from '@/lib/translate-api-error';
 import type { JoinFailureAction } from '@/utils/pairing-code';
 import { defaultDeviceKey } from '@/utils/sync-devices';
 import { JoinFields, JoinWarning } from '@/components/settings/sync/JoinFields';
+import { PairingExpiryNote } from '@/components/settings/sync/PairingExpiryNote';
 import { PairingSteps } from '@/components/settings/sync/PairingSteps';
 import { ReplaceImpactNotice } from '@/components/settings/sync/ReplaceImpactNotice';
 import {
@@ -219,6 +220,7 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
               impact={impact.data}
               error={impact.isError ? (impact.error as Error) : null}
             />
+            <PairingExpiryNote view={view} className="text-micro" />
           </>
         )}
         {joinError && (

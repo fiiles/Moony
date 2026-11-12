@@ -44,7 +44,7 @@ export function RepairDeviceDialog({
           error={impact.isError ? (impact.error as Error) : null}
         />
       }
-      submitDisabled={!impact.data}
+      submitDisabled={!impact.data || impact.isFetching}
       confirmLabel={t('repair.confirm')}
       destructive
       onSubmit={async (password) => {
@@ -92,11 +92,14 @@ export function ResyncDeviceDialog({ onClose }: { onClose: () => void }) {
       confirmLabel={t('resync.confirm')}
       destructive
       onSubmit={async (password) => {
-        if (!impact.data) return;
+        // The confirm is off until the numbers are in; this only narrows the type, and never lets
+        // the dialog close without replacing
+        const shown = impact.data;
+        if (!shown) throw new Error('The numbers to confirm are not loaded.');
         try {
           const outcome = await resyncDevice.mutateAsync({
             password,
-            consent: consentOf('resync', impact.data),
+            consent: consentOf('resync', shown),
           });
           replaceOutcomeToast(
             t,

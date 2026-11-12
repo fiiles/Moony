@@ -235,7 +235,8 @@
     "joined": "Toto zařízení se nyní synchronizuje. Jeho dřívější data jsou zálohována v {{path}}",
     "tryAgain": "Zkusit znovu",
     "startAgain": "Začít znovu",
-    "readyToJoin": "Údaje k synchronizaci dorazily. Zkontrolujte, co se nahradí, a pak se připojte."
+    "readyToJoin": "Údaje k synchronizaci dorazily. Zkontrolujte, co se nahradí, a pak se připojte.",
+    "validUntil": "Kód platí do {{time}}."
   },
   "join": {
     "introPair": "Připojit z telefonu",
@@ -286,7 +287,6 @@
     "unknownCode": "Tento QR kód není párovací kód Moony ani záchranná sada.",
     "kitConfirmTitle": "Připojit se k tomuto synchronizačnímu účtu?",
     "kitConfirmBody": "Data tohoto telefonu budou nahrazena synchronizovanými daty (záloha se uchová).",
-    "kitConfirmJoin": "Připojit",
     "notAKitCode": "Toto není kód záchranné sady",
     "notAPairingCode": "Toto není párovací kód.",
     "devPasteTitle": "Vložit párovací kód — vývojářský nástroj",
@@ -306,14 +306,22 @@
     },
     "attachments": "Dokumenty a fotky zůstanou přiložené k položkám, které mají i synchronizovaná data; ostatní zůstanou jen v záloze.",
     "unsent": "Moony nejdřív odešle čekající změny; co odeslat nedokáže, zůstane jen v záloze.",
-    "backupWhere": "Záloha je v seznamu v Nastavení → Záloha → Obnovit.",
+    "backupWhere": "Záloha je v seznamu v Nastavení → Data a zálohy, v části „Zálohy vytvořené před nahrazením dat synchronizací“.",
     "loading": "Počítám, o co jde…",
     "outcome": {
       "attachments": "Dokumenty a fotky, které jsou teď jen v záloze: {{count}}",
       "items": "Změněné položky, které se neodeslaly a jsou jen v záloze: {{count}}",
       "batches": "Dávky změn, které se neodeslaly a jsou jen v záloze: {{count}}",
       "someUnsent": "Některé změny zůstaly jen v záloze.",
-      "kept": "Záloha obsahuje jedinou kopii toho, co v ní je, proto ji Moony nikdy nemaže. Smazat ji můžete v Nastavení → Záloha → Obnovit."
-    }
+      "kept": "Záloha obsahuje jedinou kopii toho, co v ní je, proto ji Moony nikdy nemaže. Smazat ji můžete v Nastavení → Data a zálohy, v části „Zálohy vytvořené před nahrazením dat synchronizací“."
+    },
+    "backupWherePhone": "Záloha je v seznamu v Nastavení → Záloha a přenos.",
+    "saved": {
+      "title": "V tomto telefonu byla uložena záloha",
+      "where": "Najdete ji v Nastavení → Záloha a přenos. Moony ji nikdy nesmaže, jen vy.",
+      "filesHint": "Data Moony se do vlastních záloh telefonu nezahrnují. Uložte kopii do Souborů, chcete-li se k záloze dostat mimo Moony.",
+      "saveCopy": "Uložit kopii do Souborů"
+    },
+    "onThisDevice": "V tomto zařízení:"
   }
 }

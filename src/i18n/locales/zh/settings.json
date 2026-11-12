@@ -199,7 +199,7 @@
       "kept": "包含其他地方没有的更改",
       "restore": "恢复",
       "delete": "删除",
-      "deleteTitle": "删除此备份？",
+      "deleteTitle": "删除 {{date}} 的备份？",
       "deleteBody": "此备份将被永久删除。",
       "deleteBodyKept": "此备份包含其他地方没有的更改。它将被永久删除，这些更改也会丢失。",
       "deleted": "备份已删除"

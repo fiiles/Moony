@@ -203,7 +203,7 @@
       "kept": "Contiene modifiche che non esistono altrove",
       "restore": "Ripristina",
       "delete": "Elimina",
-      "deleteTitle": "Eliminare questo backup?",
+      "deleteTitle": "Eliminare il backup del {{date}}?",
       "deleteBody": "Questo backup viene eliminato definitivamente.",
       "deleteBodyKept": "Questo backup contiene modifiche che non esistono altrove. Viene eliminato definitivamente e quelle modifiche vanno perse.",
       "deleted": "Backup eliminato"

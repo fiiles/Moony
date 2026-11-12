@@ -205,7 +205,7 @@
       "kept": "Zawiera zmiany, których nie ma nigdzie indziej",
       "restore": "Przywróć",
       "delete": "Usuń",
-      "deleteTitle": "Usunąć tę kopię zapasową?",
+      "deleteTitle": "Usunąć kopię zapasową z {{date}}?",
       "deleteBody": "Ta kopia zapasowa zostanie usunięta na zawsze.",
       "deleteBodyKept": "Ta kopia zapasowa zawiera zmiany, których nie ma nigdzie indziej. Zostanie usunięta na zawsze, a te zmiany przepadną.",
       "deleted": "Kopia zapasowa usunięta"

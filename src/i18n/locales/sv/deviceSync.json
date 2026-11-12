@@ -233,7 +233,8 @@
     "joined": "Den här enheten synkroniseras nu. Dess tidigare data är säkerhetskopierad i {{path}}",
     "tryAgain": "Försök igen",
     "startAgain": "Börja om",
-    "readyToJoin": "Synkroniseringsuppgifterna har kommit. Se vad som ersätts och anslut sedan."
+    "readyToJoin": "Synkroniseringsuppgifterna har kommit. Se vad som ersätts och anslut sedan.",
+    "validUntil": "Koden fungerar till kl. {{time}}."
   },
   "join": {
     "introPair": "Anslut från telefonen",
@@ -284,7 +285,6 @@
     "unknownCode": "Den här QR-koden är varken en parkopplingskod från Moony eller ett återställningskit.",
     "kitConfirmTitle": "Ansluta till det här synkroniseringskontot?",
     "kitConfirmBody": "Telefonens data ersätts med de synkroniserade uppgifterna (en säkerhetskopia sparas).",
-    "kitConfirmJoin": "Anslut",
     "notAKitCode": "Det här är ingen kod från ett återställningskit",
     "notAPairingCode": "Det här är ingen parkopplingskod.",
     "devPasteTitle": "Klistra in en parkopplingskod — utvecklarverktyg",
@@ -304,14 +304,22 @@
     },
     "attachments": "Dokument och foton förblir kopplade till objekt som de synkroniserade uppgifterna också har; resten finns bara kvar i säkerhetskopian.",
     "unsent": "Moony skickar de väntande ändringarna först; det som inte kan skickas finns bara kvar i säkerhetskopian.",
-    "backupWhere": "Säkerhetskopian finns under Inställningar → Säkerhetskopia → Återställ.",
+    "backupWhere": "Säkerhetskopian finns under Inställningar → Data och säkerhetskopior, under ”Säkerhetskopior gjorda innan synkroniseringen ersatte data”.",
     "loading": "Räknar vad som står på spel …",
     "outcome": {
       "attachments": "Dokument och foton som nu bara finns i säkerhetskopian: {{count}}",
       "items": "Ändrade objekt som inte skickades och bara finns i säkerhetskopian: {{count}}",
       "batches": "Ändringspaket som inte skickades och bara finns i säkerhetskopian: {{count}}",
       "someUnsent": "Vissa ändringar finns bara kvar i säkerhetskopian.",
-      "kept": "Säkerhetskopian innehåller den enda kopian av sitt innehåll, så Moony tar aldrig bort den. Du kan ta bort den under Inställningar → Säkerhetskopia → Återställ."
-    }
+      "kept": "Säkerhetskopian innehåller den enda kopian av sitt innehåll, så Moony tar aldrig bort den. Du kan ta bort den under Inställningar → Data och säkerhetskopior, under ”Säkerhetskopior gjorda innan synkroniseringen ersatte data”."
+    },
+    "backupWherePhone": "Säkerhetskopian finns under Inställningar → Säkerhetskopia och överföring.",
+    "saved": {
+      "title": "En säkerhetskopia sparades på den här telefonen",
+      "where": "Den finns under Inställningar → Säkerhetskopia och överföring. Moony tar aldrig bort den; bara du kan göra det.",
+      "filesHint": "Moonys data lämnas utanför telefonens egna säkerhetskopior. Spara en kopia i Filer om du vill nå den här säkerhetskopian utanför Moony.",
+      "saveCopy": "Spara en kopia i Filer"
+    },
+    "onThisDevice": "På den här enheten:"
   }
 }

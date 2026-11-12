@@ -235,7 +235,8 @@
     "joined": "To urządzenie jest teraz synchronizowane. Jego wcześniejsze dane zapisano w kopii w {{path}}",
     "tryAgain": "Spróbuj ponownie",
     "startAgain": "Zacznij od nowa",
-    "readyToJoin": "Dane synchronizacji dotarły. Sprawdź, co zostanie zastąpione, i dołącz."
+    "readyToJoin": "Dane synchronizacji dotarły. Sprawdź, co zostanie zastąpione, i dołącz.",
+    "validUntil": "Kod działa do {{time}}."
   },
   "join": {
     "introPair": "Dołącz z telefonu",
@@ -286,7 +287,6 @@
     "unknownCode": "Ten kod QR nie jest kodem parowania Moony ani zestawem odzyskiwania.",
     "kitConfirmTitle": "Dołączyć do tego konta synchronizacji?",
     "kitConfirmBody": "Dane tego telefonu zostaną zastąpione danymi zsynchronizowanymi (kopia zapasowa zostanie zachowana).",
-    "kitConfirmJoin": "Dołącz",
     "notAKitCode": "To nie jest kod zestawu odzyskiwania",
     "notAPairingCode": "To nie jest kod parowania.",
     "devPasteTitle": "Wklej kod parowania — narzędzie deweloperskie",
@@ -306,14 +306,22 @@
     },
     "attachments": "Dokumenty i zdjęcia pozostają przypisane do elementów, które mają również dane zsynchronizowane; pozostałe zostają tylko w kopii zapasowej.",
     "unsent": "Moony najpierw wysyła oczekujące zmiany; czego nie uda się wysłać, zostaje tylko w kopii zapasowej.",
-    "backupWhere": "Kopia zapasowa jest na liście w Ustawienia → Kopia zapasowa → Przywróć.",
+    "backupWhere": "Kopia zapasowa jest na liście w Ustawienia → Dane i kopie zapasowe, w sekcji „Kopie zapasowe wykonane, zanim synchronizacja zastąpiła dane”.",
     "loading": "Liczenie, co jest zagrożone…",
     "outcome": {
       "attachments": "Dokumenty i zdjęcia, które są teraz tylko w kopii zapasowej: {{count}}",
       "items": "Zmienione elementy, które nie zostały wysłane i są tylko w kopii zapasowej: {{count}}",
       "batches": "Paczki zmian, które nie zostały wysłane i są tylko w kopii zapasowej: {{count}}",
       "someUnsent": "Niektóre zmiany zostają tylko w kopii zapasowej.",
-      "kept": "Kopia zapasowa zawiera jedyny egzemplarz tego, co w niej jest, dlatego Moony nigdy jej nie usuwa. Możesz ją usunąć w Ustawienia → Kopia zapasowa → Przywróć."
-    }
+      "kept": "Kopia zapasowa zawiera jedyny egzemplarz tego, co w niej jest, dlatego Moony nigdy jej nie usuwa. Możesz ją usunąć w Ustawienia → Dane i kopie zapasowe, w sekcji „Kopie zapasowe wykonane, zanim synchronizacja zastąpiła dane”."
+    },
+    "backupWherePhone": "Kopia zapasowa jest na liście w Ustawienia → Kopia zapasowa i przenoszenie.",
+    "saved": {
+      "title": "Na tym telefonie zapisano kopię zapasową",
+      "where": "Znajdziesz ją w Ustawienia → Kopia zapasowa i przenoszenie. Moony nigdy jej nie usuwa; możesz to zrobić tylko ty.",
+      "filesHint": "Dane Moony nie trafiają do własnych kopii zapasowych telefonu. Zapisz kopię w Plikach, jeśli chcesz mieć dostęp do tej kopii poza Moony.",
+      "saveCopy": "Zapisz kopię w Plikach"
+    },
+    "onThisDevice": "Na tym urządzeniu:"
   }
 }

@@ -1,23 +1,30 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
 import { ChevronRight } from 'lucide-react';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { consentAsItStands, useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { useReplaceImpact } from '@/hooks/use-device-sync';
+import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { ApiError } from '@/lib/api-error';
+import { consentOf } from '@/utils/replace-impact';
+import { IMPACT_CHANGED_KEY } from '@/components/settings/sync/replace-outcome';
+import { ReplaceImpactBlock } from '@/mobile/components/sync/ReplaceImpactBlock';
 import { translateApiError } from '@/lib/translate-api-error';
 import { scannedCodeKind } from '@/utils/pairing-code';
 import { backupFileName } from '@/utils/sync-status';
 import { Sheet } from '@/mobile/components/Sheet';
+import type { ReplaceOutcomeView } from '@shared/schema';
 import { kitCodeProblem, phoneDeviceKey } from '@/mobile/lib/sync-scan';
 import { field48, fieldMessage } from '@/mobile/pages/first-run/styles';
 
 interface RecoveryJoinSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The join is done: its headline and outcome (the page says where the backup is). */
+  onReplaced: (headline: string, outcome: ReplaceOutcomeView) => void;
 }
 
 /** A field that takes a code or an address never feeds the keyboard's corrections. */
@@ -34,10 +41,13 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
  * steps aside for the busy cover while it runs and comes back with the error when it fails, the
  * fields as they were (the mutation's copy of the password is reset).
  */
-export function RecoveryJoinSheet({ open, onOpenChange }: RecoveryJoinSheetProps) {
+export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJoinSheetProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { joinWithRecoveryKit } = useDeviceSyncMutations();
+  // What the join puts at stake, read each time the sheet opens; the join sends its consent
+  const impact = useReplaceImpact(open);
+  const shownImpact = impact.isFetching ? undefined : impact.data;
   const resetJoin = joinWithRecoveryKit.reset;
   // The password stays in the mutation state until it succeeds: leaving clears it
   useEffect(() => resetJoin, [resetJoin]);
@@ -67,6 +77,7 @@ export function RecoveryJoinSheet({ open, onOpenChange }: RecoveryJoinSheetProps
     code.trim() !== '' &&
     codeProblem === null &&
     password !== '' &&
+    shownImpact !== undefined &&
     name.trim() !== '' &&
     (!needsAccount || account.trim() !== '');
 
@@ -77,7 +88,7 @@ export function RecoveryJoinSheet({ open, onOpenChange }: RecoveryJoinSheetProps
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!ready || busy) return;
+    if (!ready || busy || !shownImpact) return;
     setError(null);
     try {
       const outcome = await joinWithRecoveryKit.mutateAsync({
@@ -86,12 +97,14 @@ export function RecoveryJoinSheet({ open, onOpenChange }: RecoveryJoinSheetProps
         relayUrl: relayUrl.trim() === '' ? undefined : relayUrl.trim(),
         deviceName: name.trim(),
         password,
-        consent: await consentAsItStands(),
+        consent: consentOf('join', shownImpact),
       });
-      toast(t('pairing.joined', { path: backupFileName(outcome.backupPath) }));
       onOpenChange(false);
+      onReplaced(t('pairing.joined', { path: backupFileName(outcome.backupPath) }), outcome);
     } catch (failure) {
       joinWithRecoveryKit.reset();
+      // What the sheet showed no longer holds: read again, the new numbers replace the old
+      if (failure instanceof ApiError && failure.key === IMPACT_CHANGED_KEY) await impact.refetch();
       setError(translateApiError(failure as Error, tc));
     }
   };
@@ -111,13 +124,18 @@ export function RecoveryJoinSheet({ open, onOpenChange }: RecoveryJoinSheetProps
             {tc('buttons.cancel')}
           </Button>
           <Button type="submit" form={formId} className={`${BUTTON} flex-1`} disabled={!ready}>
-            {t('join.kitTitle')}
+            {t('join.confirm')}
           </Button>
         </>
       }
     >
       <form id={formId} onSubmit={submit} noValidate className="space-y-3">
         <p className="m-0 text-m-sub text-ink-3">{t('join.kitHint')}</p>
+        <ReplaceImpactBlock
+          flow="join"
+          impact={shownImpact}
+          error={impact.isError ? (impact.error as Error) : null}
+        />
         <div className="space-y-1.5">
           <Label htmlFor={`${fieldId}-code`}>{t('join.codeLabel')}</Label>
           <textarea

@@ -6,6 +6,7 @@ import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { useBackup } from '@/mobile/hooks/use-backup';
+import { SyncBackupRows } from '@/mobile/components/sync/SyncBackupRows';
 import { RestoreBackupSheet } from '@/mobile/sheets/RestoreBackupSheet';
 import { DataTools } from './DataTools';
 import type { BackupInspection } from '@shared/schema';
@@ -32,12 +33,18 @@ export default function BackupSection() {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('settings');
   const fmt = useFormat();
-  const { createBackup, pickRestore, restore, busy, lastBackupAt, canExport } = useBackup();
+  const { createBackup, pickRestore, inspectPath, restore, busy, lastBackupAt, canExport } =
+    useBackup();
   const [inspection, setInspection] = useState<BackupInspection | null>(null);
 
   const chooseRestore = async () => {
     const picked = await pickRestore();
     if (picked) setInspection(picked);
+  };
+
+  const restoreListed = async (path: string) => {
+    const read = await inspectPath(path);
+    if (read) setInspection(read);
   };
 
   const confirmRestore = () => {
@@ -80,6 +87,8 @@ export default function BackupSection() {
       >
         {ts('data.restore')}
       </Button>
+
+      <SyncBackupRows onRestore={(path) => void restoreListed(path)} disabled={busy !== null} />
 
       <DataTools />
 

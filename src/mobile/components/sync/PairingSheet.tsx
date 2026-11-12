@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 import type { PairingView } from '@shared/schema';
 import { Button } from '@/components/ui/button';
+import { PairingExpiryNote } from '@/components/settings/sync/PairingExpiryNote';
 import { usePairingExpired } from '@/hooks/use-pairing-expired';
 import { translateApiError } from '@/lib/translate-api-error';
 import { formatComparisonCode } from '@/utils/pairing-code';
@@ -35,6 +37,14 @@ interface PairingSheetProps {
   /** Cancels the half-finished setup that blocks the join; the caller then runs the join again. */
   onCancelSetup: () => void;
   cancellingSetup: boolean;
+  /** `received`, before the join: what it puts at stake (`ReplaceImpactBlock`). */
+  impact: ReactNode;
+  /** The confirm "Join and replace" is on once the numbers it shows are in. */
+  canJoin: boolean;
+  /** "Join and replace": the join with the consent of the numbers on screen. */
+  onJoin: () => void;
+  /** What the person saw no longer held and was read again: said above the new numbers. */
+  impactChanged: string | null;
 }
 
 /** The 48 pt buttons of a sheet's footer. */
@@ -64,6 +74,10 @@ export function PairingSheet({
   onStartAgain,
   onCancelSetup,
   cancellingSetup,
+  impact,
+  canJoin,
+  onJoin,
+  impactChanged,
 }: PairingSheetProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
@@ -137,7 +151,13 @@ export function PairingSheet({
             )}
           </div>
         ) : (
-          <p className="m-0 text-m-lead text-ink-3">{t('pairing.joining')}</p>
+          // The join waits for the person: what is replaced, with the true counts, then the confirm
+          <div className="space-y-3">
+            <p className="m-0 text-m-lead text-ink-3">{t('pairing.readyToJoin')}</p>
+            {impactChanged && <InlineAlert icon={AlertTriangle}>{impactChanged}</InlineAlert>}
+            {impact}
+            <PairingExpiryNote view={view} className="text-m-sub" />
+          </div>
         );
     }
   })();
@@ -170,7 +190,7 @@ export function PairingSheet({
       <>
         <Button
           variant="ghost"
-          className={`${BUTTON} px-[18px] ${joinFailure && step === 'received' ? '' : 'flex-1'}`}
+          className={`${BUTTON} px-[18px] ${step === 'received' ? '' : 'flex-1'}`}
           onClick={onClose}
         >
           {finished ? tc('buttons.close') : tc('buttons.cancel')}
@@ -181,6 +201,16 @@ export function PairingSheet({
             onClick={joinFailure.retryable ? onRetryJoin : onStartAgain}
           >
             {joinFailure.retryable ? t('pairing.tryAgain') : t('pairing.startAgain')}
+          </Button>
+        )}
+        {!joinFailure && step === 'received' && (
+          <Button
+            variant="destructive"
+            className={`${BUTTON} flex-1`}
+            disabled={!canJoin}
+            onClick={onJoin}
+          >
+            {t('join.confirm')}
           </Button>
         )}
       </>

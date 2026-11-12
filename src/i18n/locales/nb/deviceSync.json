@@ -233,7 +233,8 @@
     "joined": "Denne enheten synkroniserer nå. De tidligere dataene er sikkerhetskopiert i {{path}}",
     "tryAgain": "Prøv igjen",
     "startAgain": "Start på nytt",
-    "readyToJoin": "Synkroniseringsopplysningene er kommet. Se hva som erstattes, og bli deretter med."
+    "readyToJoin": "Synkroniseringsopplysningene er kommet. Se hva som erstattes, og bli deretter med.",
+    "validUntil": "Koden fungerer til kl. {{time}}."
   },
   "join": {
     "introPair": "Bli med fra telefonen",
@@ -284,7 +285,6 @@
     "unknownCode": "Denne QR-koden er verken en koblingskode fra Moony eller et gjenopprettingssett.",
     "kitConfirmTitle": "Bli med i denne synkroniseringskontoen?",
     "kitConfirmBody": "Dataene på denne telefonen erstattes med de synkroniserte dataene (en sikkerhetskopi beholdes).",
-    "kitConfirmJoin": "Bli med",
     "notAKitCode": "Dette er ikke en kode fra et gjenopprettingssett",
     "notAPairingCode": "Dette er ikke en koblingskode.",
     "devPasteTitle": "Lim inn en koblingskode — utviklerverktøy",
@@ -304,14 +304,22 @@
     },
     "attachments": "Dokumenter og bilder blir værende på elementer som de synkroniserte dataene også har; resten finnes bare i sikkerhetskopien.",
     "unsent": "Moony sender de ventende endringene først; det som ikke kan sendes, finnes bare i sikkerhetskopien.",
-    "backupWhere": "Sikkerhetskopien står under Innstillinger → Sikkerhetskopi → Gjenopprett.",
+    "backupWhere": "Sikkerhetskopien står under Innstillinger → Data og sikkerhetskopier, under «Sikkerhetskopier laget før synkronisering erstattet data».",
     "loading": "Teller hva som står på spill …",
     "outcome": {
       "attachments": "Dokumenter og bilder som nå bare finnes i sikkerhetskopien: {{count}}",
       "items": "Endrede elementer som ikke ble sendt og bare finnes i sikkerhetskopien: {{count}}",
       "batches": "Endringspakker som ikke ble sendt og bare finnes i sikkerhetskopien: {{count}}",
       "someUnsent": "Noen endringer finnes bare i sikkerhetskopien.",
-      "kept": "Sikkerhetskopien har den eneste kopien av innholdet, så Moony sletter den aldri. Du kan slette den under Innstillinger → Sikkerhetskopi → Gjenopprett."
-    }
+      "kept": "Sikkerhetskopien har den eneste kopien av innholdet, så Moony sletter den aldri. Du kan slette den under Innstillinger → Data og sikkerhetskopier, under «Sikkerhetskopier laget før synkronisering erstattet data»."
+    },
+    "backupWherePhone": "Sikkerhetskopien står under Innstillinger → Sikkerhetskopi og overføring.",
+    "saved": {
+      "title": "En sikkerhetskopi ble lagret på denne telefonen",
+      "where": "Den står under Innstillinger → Sikkerhetskopi og overføring. Moony sletter den aldri; bare du kan det.",
+      "filesHint": "Moonys data holdes utenfor telefonens egne sikkerhetskopier. Lagre en kopi i Filer hvis du vil nå denne sikkerhetskopien utenfor Moony.",
+      "saveCopy": "Lagre en kopi i Filer"
+    },
+    "onThisDevice": "På denne enheten:"
   }
 }

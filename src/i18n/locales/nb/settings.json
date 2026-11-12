@@ -201,7 +201,7 @@
       "kept": "Har endringer som ikke finnes andre steder",
       "restore": "Gjenopprett",
       "delete": "Slett",
-      "deleteTitle": "Slette denne sikkerhetskopien?",
+      "deleteTitle": "Slette sikkerhetskopien fra {{date}}?",
       "deleteBody": "Denne sikkerhetskopien slettes for godt.",
       "deleteBodyKept": "Denne sikkerhetskopien har endringer som ikke finnes andre steder. Den slettes for godt, og endringene går tapt.",
       "deleted": "Sikkerhetskopien er slettet"

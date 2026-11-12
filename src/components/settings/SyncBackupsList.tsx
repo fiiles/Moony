@@ -11,6 +11,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { RestoreBackup } from '@/components/common/RestoreBackup';
 import { useSyncBackups } from '@/hooks/use-device-sync';
@@ -32,18 +34,21 @@ export function SyncBackupsList({ disabled = false }: { disabled?: boolean }) {
   const backups = useSyncBackups();
   const { deleteBackup } = useDeviceSyncMutations();
   const [toDelete, setToDelete] = useState<SyncBackupEntry | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const list = backups.data ?? [];
   if (list.length === 0) return null;
 
   const confirmDelete = async () => {
     if (!toDelete) return;
+    setDeleteError(null);
     try {
       await deleteBackup.mutateAsync(toDelete.path);
       toast(t('data.syncBackups.deleted'));
       setToDelete(null);
     } catch (error) {
-      toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
+      // Said inside the dialog, where the person is looking
+      setDeleteError(translateApiError(error as Error, tc));
     }
   };
 
@@ -92,18 +97,30 @@ export function SyncBackupsList({ disabled = false }: { disabled?: boolean }) {
       <AlertDialog
         open={toDelete !== null}
         onOpenChange={(open) => {
-          if (!open && !deleteBackup.isPending) setToDelete(null);
+          if (open || deleteBackup.isPending) return;
+          setToDelete(null);
+          setDeleteError(null);
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('data.syncBackups.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t('data.syncBackups.deleteTitle', {
+                date: toDelete ? fmt.dateTime(toDelete.createdAt) : '',
+              })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {toDelete?.kept
                 ? t('data.syncBackups.deleteBodyKept')
                 : t('data.syncBackups.deleteBody')}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteError && (
+            <Alert variant="destructive">
+              <AlertTriangle />
+              <AlertDescription>{deleteError}</AlertDescription>
+            </Alert>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteBackup.isPending}>
               {tc('buttons.cancel')}

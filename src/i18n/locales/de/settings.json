@@ -201,7 +201,7 @@
       "kept": "Enthält Änderungen, die es sonst nirgends gibt",
       "restore": "Wiederherstellen",
       "delete": "Löschen",
-      "deleteTitle": "Diese Sicherung löschen?",
+      "deleteTitle": "Sicherung vom {{date}} löschen?",
       "deleteBody": "Diese Sicherung wird endgültig gelöscht.",
       "deleteBodyKept": "Diese Sicherung enthält Änderungen, die es sonst nirgends gibt. Sie wird endgültig gelöscht, und diese Änderungen gehen verloren.",
       "deleted": "Sicherung gelöscht"

@@ -222,7 +222,6 @@ pub fn spawn<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
         backoff: Backoff::default(),
         watch: OutboxWatch::default(),
         started: false,
-        binding_failed: false,
         last_sent: None,
         retry_at: None,
         next_periodic: Instant::now() + PERIODIC,
@@ -250,8 +249,6 @@ struct Engine<R, D, E> {
     watch: OutboxWatch,
     /// The binding check passed (and any re-join is done).
     started: bool,
-    /// A binding check failed in this process (counted once per app start: M10).
-    binding_failed: bool,
     last_sent: Option<SyncStatus>,
     retry_at: Option<Instant>,
     next_periodic: Instant,
@@ -338,18 +335,25 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         let db = self.db.clone();
         let _no_round = super::exclusive(&db).await;
         let dir = self.events.data_dir();
+        // The app start's mark, not this engine's: an unlock or a sync change spawns a new engine
+        // in the same start, and a failed check counts once per start (final review A, I2).
+        let this_start = self.events.binding_failed_this_start();
+        let first_failure = !this_start.load(Ordering::SeqCst);
         match rejoin_if_copy(
             &self.db,
             &dir,
             self.events.binding(),
             unix_now(),
-            !self.binding_failed,
+            first_failure,
         ) {
             Ok(CopyCheck::Rejoined) => self.write_binding()?,
             Ok(CopyCheck::Fine) => self.write_binding_if_due()?,
             Err(CopyCheckFailure::Check(error)) if binding::is_unchecked(&error) => {
-                // Counted once per process: later attempts still stop the round.
-                self.binding_failed = true;
+                // Counted once per app start: later attempts, by this engine or another one
+                // spawned in the same start, still stop the round.
+                self.events
+                    .binding_failed_this_start()
+                    .store(true, Ordering::SeqCst);
                 log::warn!("[SYNC] The device binding could not be checked; sync waits");
                 self.note_problem(SyncProblem::SecureStorage)?;
                 return Ok(false);

@@ -12,6 +12,7 @@ pub mod status;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
 
 use rusqlite::Connection;
 
@@ -219,6 +220,10 @@ pub trait EngineEvents: Send + Sync + 'static {
     fn binding(&self) -> &dyn BindingNative;
     /// The folder next to the profile: the restore marker and the binding live there.
     fn data_dir(&self) -> PathBuf;
+    /// Whether a binding check already failed in this app start (audit M10, final review A I2):
+    /// one mark for the whole process, which outlives any one engine. Every unlock and every sync
+    /// change spawns a new engine, and a failed check counts once per app start among all of them.
+    fn binding_failed_this_start(&self) -> &AtomicBool;
 }
 
 /// What a round is for.

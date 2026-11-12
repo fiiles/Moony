@@ -2,12 +2,13 @@
 //! runs no round; a start counts once however often it is retried, and the third failed start in
 //! a row re-joins.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::Arc;
 
 use zeroize::Zeroizing;
 
 use super::runtime::{calls_since, device_of};
-use super::runtime_loop::{rounds, start, until, Sealing};
+use super::runtime_loop::{rounds, start, start_in, until, Sealing};
 use super::*;
 use crate::models::sync::SyncProblem;
 use crate::services::sync::binding::{self, BindingFailure, BindingNative};
@@ -112,7 +113,39 @@ async fn several_failed_attempts_in_one_process_count_once() {
     running.handle.stop();
 }
 
-/// Three separate app starts in a row (a new runtime each) that cannot check the binding re-join.
+/// Final review A, I2: the mark is the app start's, not the engine's. Every unlock and every sync
+/// change spawns a new engine within the same app start; a failed check counts once among all of
+/// them.
+#[tokio::test]
+async fn engines_spawned_in_one_app_start_count_once() {
+    let vault = super::vault().await;
+    let this_start = Arc::new(AtomicBool::new(false));
+
+    for _ in 0..3 {
+        let dir = tempfile::tempdir().expect("temp dir");
+        binding::write_binding(&vault.a.lock(), dir.path(), &Sealing).expect("binding");
+        let running = start_in(
+            &vault,
+            &vault.a,
+            dir,
+            Box::new(AlwaysFailing),
+            this_start.clone(),
+        );
+        until("the problem showed", || {
+            running.handle.runtime().problem == Some(SyncProblem::SecureStorage)
+        })
+        .await;
+        running.handle.stop();
+        until("the loop ended", || !running.handle.is_running()).await;
+    }
+
+    assert_eq!(failed_starts(&vault.a.lock()).as_deref(), Some("1"));
+    assert_eq!(device_of(&vault.a.lock()), A, "no re-join");
+}
+
+/// Three separate app starts in a row that cannot check the binding re-join. Each start gets a
+/// fresh app-start mark (`start` passes a new one): that is what a new process has, and it stands
+/// in for resetting the process-wide mark between starts.
 #[tokio::test]
 async fn three_separate_failed_starts_rejoin() {
     let vault = super::vault().await;

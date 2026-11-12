@@ -488,3 +488,32 @@ async fn the_view_names_the_device_and_the_day_it_may_be_skipped() {
     assert_eq!(view.kind, crate::models::sync::HeldGapKind::Missing);
     assert_eq!((view.since, view.skippable_at), (NOW, NOW + 14 * DAY));
 }
+
+/// Final review A, minor 4: a drain round whose pull ends clean writes no held-gap record when
+/// there is none, so a guard that closed all of `app_config` (its triggers failed) does not fail
+/// the repair's drain.
+#[tokio::test]
+async fn a_clean_drain_round_writes_nothing_to_a_closed_app_config() {
+    let vault = vault().await;
+    vault
+        .a
+        .lock()
+        .authorizer(Some(|ctx: rusqlite::hooks::AuthContext<'_>| {
+            crate::services::sync::capture::guard::decide(&ctx.action, ctx.database_name, true)
+        }))
+        .expect("authorizer");
+
+    let report = run_round(
+        &vault.relay,
+        &vault.a,
+        &mut SnapshotPolicy::default(),
+        RoundMode::Drain,
+        NOW,
+        0,
+    )
+    .await
+    .expect("the drain round runs");
+
+    assert!(report.pull.as_ref().is_some_and(|p| p.done()), "{report:?}");
+    assert_eq!(report.problem, None);
+}

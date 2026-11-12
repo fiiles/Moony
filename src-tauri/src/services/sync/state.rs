@@ -185,6 +185,7 @@ pub fn disable(conn: &Connection) -> Result<()> {
         )?;
         clear_vault_went_back(conn)?;
         clear_skipped_miss(conn)?;
+        super::binding::forget_failed_starts(conn)?;
         super::chain::gaps::forget_all(conn)
     })
 }

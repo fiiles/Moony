@@ -88,8 +88,10 @@ impl BindingNative for KeychainBinding {
 }
 
 /// `Invalidated` is the plugin's "sealed on another machine"; anything but that and
-/// `Unsupported` is a failure of the moment, which lets this start go on. The plugin's messages
-/// name OS error codes only, never a value, a path or a blob.
+/// `Unsupported` is a failure of the moment (`Failed`), which stops this start's rounds and
+/// counts once per app start; the third such start in a row re-joins (audit M10,
+/// `binding::startup_check_counted`). The plugin's messages name OS error codes only, never a
+/// value, a path or a blob.
 fn binding_failure(error: KeychainError) -> BindingFailure {
     match error {
         KeychainError::Unsupported => BindingFailure::Unsupported,
@@ -129,7 +131,15 @@ impl EngineEvents for TauriEvents {
     fn data_dir(&self) -> PathBuf {
         self.data_dir.clone()
     }
+
+    fn binding_failed_this_start(&self) -> &AtomicBool {
+        &BINDING_FAILED_THIS_START
+    }
 }
+
+/// A binding check failed in this process (`EngineEvents::binding_failed_this_start`): the app
+/// start's mark, shared by every engine an unlock or a sync change spawns.
+static BINDING_FAILED_THIS_START: AtomicBool = AtomicBool::new(false);
 
 /// Starts the engine for the profile just unlocked. Nothing at all while the flag is off
 /// (`feature::enabled`); a profile without sync costs one `SELECT` (G5). A running engine is

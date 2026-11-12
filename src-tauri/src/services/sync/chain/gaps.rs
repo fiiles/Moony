@@ -322,12 +322,21 @@ pub fn forget_healed_gaps(conn: &Connection) -> Result<usize> {
 }
 
 /// Forgets every held gap: a pull reached the relay's end with nothing waiting, sync was turned
-/// off, or a replace started the chain over.
+/// off, or a replace started the chain over. Deletes only when a record exists (read first): a
+/// guard that closed all of `app_config` refuses every write there, and the repair's drain, whose
+/// clean pulls end here, must not fail on a write with nothing to do (final review A minor 4).
 pub fn forget_all(conn: &Connection) -> Result<()> {
-    conn.execute(
-        "DELETE FROM app_config WHERE substr(key, 1, ?2) = ?1",
+    let any: bool = conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM app_config WHERE substr(key, 1, ?2) = ?1)",
         params![KEY_PREFIX, KEY_PREFIX.len() as i64],
+        |r| r.get(0),
     )?;
+    if any {
+        conn.execute(
+            "DELETE FROM app_config WHERE substr(key, 1, ?2) = ?1",
+            params![KEY_PREFIX, KEY_PREFIX.len() as i64],
+        )?;
+    }
     Ok(())
 }
 

@@ -195,6 +195,13 @@ pub fn is_unchecked(error: &AppError) -> bool {
     matches!(error, AppError::Internal(m) if m == UNCHECKED_MESSAGE)
 }
 
+/// Removes the failed-starts count (turning sync off: `state::disable`, final review B minor 8),
+/// so a later setup starts from none.
+pub fn forget_failed_starts(conn: &Connection) -> Result<()> {
+    conn.execute("DELETE FROM app_config WHERE key = ?1", [FAILED_STARTS_KEY])?;
+    Ok(())
+}
+
 fn failed_starts(conn: &Connection) -> Result<u32> {
     let value: Option<String> = conn
         .query_row(
@@ -206,10 +213,16 @@ fn failed_starts(conn: &Connection) -> Result<u32> {
     Ok(value.and_then(|v| v.parse().ok()).unwrap_or(0))
 }
 
-/// Stores the count; zero removes the row, so a healthy profile writes nothing.
+/// Stores the count; zero removes the row, so a healthy profile writes nothing. Written only when
+/// it changes (read first): a guard that closed all of `app_config` (its triggers failed) refuses
+/// every write there, and a check with nothing to count must not fail on it (final review A
+/// minor 4, B minor 3), or the repair's copy check would answer `syncChangesPaused`.
 fn set_failed_starts(conn: &Connection, count: u32) -> Result<()> {
+    if failed_starts(conn)? == count {
+        return Ok(());
+    }
     if count == 0 {
-        conn.execute("DELETE FROM app_config WHERE key = ?1", [FAILED_STARTS_KEY])?;
+        forget_failed_starts(conn)?;
     } else {
         conn.execute(
             "INSERT INTO app_config (key, value) VALUES (?1, ?2)
@@ -699,6 +712,68 @@ mod tests {
             counted(&conn, dir.path(), &BrokenNative).is_err(),
             "the count started over: two failures are still errors"
         );
+    }
+
+    /// The guard with its triggers failed: the authorizer refuses every write to `app_config`.
+    fn close_app_config(conn: &Connection) {
+        conn.authorizer(Some(|ctx: rusqlite::hooks::AuthContext<'_>| {
+            crate::services::sync::capture::guard::decide(&ctx.action, ctx.database_name, true)
+        }))
+        .expect("authorizer");
+        assert!(
+            conn.execute("DELETE FROM app_config WHERE key = 'none'", [])
+                .is_err(),
+            "app_config is closed"
+        );
+    }
+
+    /// Final review A minor 4, B minor 3: a check with nothing to count writes nothing, so a guard
+    /// that closed all of `app_config` does not fail the start check (or the repair's copy check)
+    /// of a healthy profile.
+    #[test]
+    fn a_check_with_nothing_to_count_writes_nothing() {
+        let conn = synced();
+        let dir = tempfile::tempdir().expect("dir");
+        close_app_config(&conn);
+
+        assert_eq!(
+            startup_check(&conn, dir.path(), &FakeNative { machine: 7 }).expect("not written"),
+            StartupCheck::Fine
+        );
+
+        let conn = synced();
+        write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
+        close_app_config(&conn);
+        assert_eq!(
+            counted(&conn, dir.path(), &FakeNative { machine: 7 }).expect("matches"),
+            StartupCheck::Fine
+        );
+        assert_eq!(
+            counted(&conn, dir.path(), &FakeNative { machine: 9 }).expect("another machine"),
+            StartupCheck::Rejoin(RejoinReason::BindingMismatch)
+        );
+    }
+
+    /// Final review B, minor 8: turning sync off forgets the count, so a later setup starts at 0.
+    #[test]
+    fn turning_sync_off_forgets_the_failed_count() {
+        let conn = synced();
+        let dir = tempfile::tempdir().expect("dir");
+        write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
+        assert!(counted(&conn, dir.path(), &BrokenNative).is_err());
+        assert_eq!(failed_starts(&conn).expect("count"), 1);
+
+        state::disable(&conn).expect("off");
+
+        assert_eq!(failed_starts(&conn).expect("count"), 0);
+        let rows: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM app_config WHERE key = 'sync.binding_failed_starts'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("count rows");
+        assert_eq!(rows, 0);
     }
 
     #[test]

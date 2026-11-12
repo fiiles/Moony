@@ -2,7 +2,7 @@
 //! network, the loop's triggers, back-off, re-join at start, pauses and events.
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use zeroize::Zeroizing;
@@ -193,6 +193,9 @@ struct Events {
     seen: Seen,
     dir: PathBuf,
     native: Box<dyn BindingNative>,
+    /// The app start's binding mark (`EngineEvents::binding_failed_this_start`): a fresh one is a
+    /// new app start, a shared one engines spawned within one.
+    this_start: Arc<AtomicBool>,
 }
 
 impl EngineEvents for Events {
@@ -212,6 +215,9 @@ impl EngineEvents for Events {
     fn data_dir(&self) -> PathBuf {
         self.dir.clone()
     }
+    fn binding_failed_this_start(&self) -> &AtomicBool {
+        &self.this_start
+    }
 }
 
 pub(super) struct Running {
@@ -220,17 +226,31 @@ pub(super) struct Running {
     _dir: tempfile::TempDir,
 }
 
+/// The engine in an app start of its own (a fresh binding mark).
 pub(super) fn start(
     vault: &Vault,
     device: &TestConn,
     dir: tempfile::TempDir,
     native: Box<dyn BindingNative>,
 ) -> Running {
+    start_in(vault, device, dir, native, Arc::default())
+}
+
+/// The engine spawned within the app start whose binding mark is `this_start` (an unlock after a
+/// lock, or a sync change, spawns another engine in the same start).
+pub(super) fn start_in(
+    vault: &Vault,
+    device: &TestConn,
+    dir: tempfile::TempDir,
+    native: Box<dyn BindingNative>,
+    this_start: Arc<AtomicBool>,
+) -> Running {
     let seen = Seen::default();
     let events = Events {
         seen: seen.clone(),
         dir: dir.path().to_path_buf(),
         native,
+        this_start,
     };
     let handle = runtime::spawn(vault.relay.clone(), device.clone(), events);
     Running {
@@ -248,6 +268,7 @@ fn start_on<R: Relay + 'static, D: ConnAccess>(relay: R, db: D) -> Running {
         seen: seen.clone(),
         dir: dir.path().to_path_buf(),
         native: Box::new(NoBinding),
+        this_start: Arc::default(),
     };
     let handle = runtime::spawn(relay, db, events);
     Running {

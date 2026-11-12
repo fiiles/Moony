@@ -317,6 +317,7 @@
     "dividendFromYahoo": "Dywidendy {{ticker}} pochodzą z Yahoo Finance; nie można dodać ręcznej dywidendy.",
     "syncChangesetInvalid": "Zmiany otrzymane z innego urządzenia są uszkodzone i nie udało się ich odczytać.",
     "syncSnapshotBelowBarrier": "Zsynchronizowana kopia twoich danych powstała przed ostatnią aktualizacją Moony i nie można jej użyć. Urządzenie z najnowszą wersją musi przesłać nową.",
+    "syncSnapshotClockAhead": "Zsynchronizowana kopia twoich danych ma datę późniejszą o ponad dziesięć lat, więc nie została użyta. Urządzenie z poprawną datą i godziną musi przesłać nową.",
     "syncSnapshotInvalid": "Zsynchronizowana kopia twoich danych jest uszkodzona i nie udało się jej przywrócić.",
     "syncSnapshotNewerSchema": "Zsynchronizowana kopia twoich danych pochodzi z nowszej wersji Moony. Najpierw zaktualizuj Moony na tym urządzeniu.",
     "syncSnapshotPending": "Na tym urządzeniu wciąż czekają zmiany do wysłania. Spróbuj ponownie po następnej synchronizacji.",

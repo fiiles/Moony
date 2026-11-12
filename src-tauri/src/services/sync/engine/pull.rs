@@ -8,8 +8,9 @@
 //! withheld or reordered envelope never stalls it. A newer-schema envelope stops the pull too,
 //! but this device keeps pushing past it (spec §14), so the rest of the pull only looks for this
 //! device's own envelopes and acknowledges them (their echo, audit M4), applying nothing. A
-//! changeset dated more than a day past this device's time is held the same way, with the later
-//! envelopes of its author behind it, until its time comes (audit M6, `chain::too_far_ahead`).
+//! changeset dated more than ten years past this device's time is held the same way, with the
+//! later envelopes of its author as gaps behind it, until the person skips it (audit M6,
+//! `chain::too_far_ahead`).
 
 use rusqlite::Connection;
 
@@ -106,17 +107,16 @@ fn act(
     report: &mut PullReport,
 ) -> Result<Option<OpStep>> {
     let step = match verdict {
-        // A change dated too far ahead waits for its time (audit M6): applying it would move
+        // A change dated more than ten years ahead is held (audit M6): applying it would move
         // this device's clock that far and let it win every edit made before then. Nothing of it
-        // is written; the next pulls meet it again.
-        Verdict::Apply if chain::too_far_ahead(conn, changeset::max_hlc(cs), now_ms())? => {
+        // is written; the next pulls meet it again, and the person may skip it after 14 days.
+        Verdict::Apply if chain::too_far_ahead(changeset::max_hlc(cs), now_ms()) => {
             log::info!(
-                "[SYNC] Relay op {} is dated more than a day ahead: it waits for its time",
+                "[SYNC] Relay op {} is dated more than ten years ahead: it is held",
                 meta.position
             );
-            if report.note_ahead(meta.device) {
-                gaps::forget_gap(conn, meta.device)?;
-            }
+            gaps::note_held_ahead(conn, meta, changeset::max_hlc(cs), now)?;
+            report.note_ahead(meta.device);
             OpStep::Hold
         }
         Verdict::Apply => match apply_changeset(conn, cs, meta.hash, now)? {
@@ -133,7 +133,7 @@ fn act(
                     meta.position
                 );
                 gaps::note_held_gap(conn, meta, GapKind::Parent, now)?;
-                report.gaps += 1;
+                report.note_gap(meta.device);
                 OpStep::Hold
             }
             Outcome::Stopped(StopReason::NewerSchema(_)) => OpStep::Stop(PullStop::NewerSchema),
@@ -166,11 +166,10 @@ fn act(
                 "[SYNC] Relay op {} comes before an earlier envelope of its author: it waits",
                 meta.position
             );
-            // Behind an envelope of its author that waits for its time, it waits with it: nothing
-            // is missing, so no gap is noted (the skip is never offered for it).
-            if report.note_gap(meta.device) {
-                gaps::note_held_gap(conn, meta, GapKind::Missing, now)?;
-            }
+            // Behind its author's change dated too far ahead it is an ordinary gap too: the
+            // author's record stays the lower `Ahead` one, and skipping that releases it.
+            gaps::note_held_gap(conn, meta, GapKind::Missing, now)?;
+            report.note_gap(meta.device);
             OpStep::Hold
         }
         Verdict::NewerSchema => OpStep::Stop(PullStop::NewerSchema),
@@ -259,11 +258,11 @@ async fn pull_bounded<R: Relay, D: ConnAccess>(
 }
 
 /// After a pull: a pull that reached the relay's end with nothing waiting for a missing envelope
-/// or parent holds no gap any more, so every record goes (`gaps::forget_all`); otherwise the gaps
+/// or parent and nothing held for its date holds no gap any more, so every record goes (`gaps::forget_all`); otherwise the gaps
 /// whose author's head reached them go (`gaps::forget_healed_gaps`). A stopped or unfinished pull
 /// may not have met a held envelope again, so it forgets only the healed ones.
 fn settle_gaps(conn: &Connection, report: &PullReport) -> Result<()> {
-    if report.gaps == 0 && report.stop.is_none() && !report.unfinished {
+    if report.gaps == 0 && report.ahead == 0 && report.stop.is_none() && !report.unfinished {
         gaps::forget_all(conn)
     } else {
         gaps::forget_healed_gaps(conn).map(|_| ())

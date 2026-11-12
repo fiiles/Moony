@@ -317,6 +317,7 @@
     "dividendFromYahoo": "{{ticker}} の配当は Yahoo Finance から取得されるため、手動の配当は追加できません。",
     "syncChangesetInvalid": "別のデバイスから受信した変更が破損しているため、読み込めませんでした。",
     "syncSnapshotBelowBarrier": "同期されたデータのコピーは最新の Moony アップデートより前に作成されたため、使用できません。最新バージョンのデバイスから新しいコピーをアップロードする必要があります。",
+    "syncSnapshotClockAhead": "同期されたデータのコピーの日付が10年以上先になっているため、使用しませんでした。正しい日付と時刻のデバイスから新しいコピーをアップロードする必要があります。",
     "syncSnapshotInvalid": "同期されたデータのコピーが破損しているため、復元できませんでした。",
     "syncSnapshotNewerSchema": "同期されたデータのコピーは新しいバージョンの Moony で作成されています。先にこのデバイスの Moony を更新してください。",
     "syncSnapshotPending": "このデバイスにはまだ送信待ちの変更があります。次回の同期後にもう一度お試しください。",

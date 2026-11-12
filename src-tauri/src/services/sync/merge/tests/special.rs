@@ -415,10 +415,11 @@ fn applied(conn: &Connection, cs: &(Changeset, [u8; 32])) -> ApplyReport {
     }
 }
 
-// Audit M6 (forged older clock on sync_devices), flipped: another device's older clock no longer
-// replaces a device's public key; only the device itself does.
+// Audit M6 (forged older clock on sync_devices), flipped: a key stamped with another device's ID
+// no longer replaces a device's public key, whatever its clock; one stamped with the device's own
+// ID does (and that stamp can itself be forged, see the next test).
 #[test]
-fn only_the_device_itself_replaces_its_public_key() {
+fn a_key_stamped_with_the_devices_own_id_beats_any_other() {
     let a = device(A);
     own_device_row(&a, A, Some("KA"));
     let c = device(C);
@@ -441,8 +442,8 @@ fn only_the_device_itself_replaces_its_public_key() {
             report.warnings
         );
     }
-    // A device that meets the forgery first takes it (it has no key for A yet) and A's own key
-    // replaces it when it arrives: every order ends with A's key.
+    // A device that meets the forgery first takes it (it has no key for A yet) and the key stamped
+    // with A's ID replaces it when it arrives: every order ends with A's key.
     let d = device(D);
     applied(&d, &forged);
     assert_eq!(key_of(&d, A).as_deref(), Some("EVIL"));
@@ -450,18 +451,40 @@ fn only_the_device_itself_replaces_its_public_key() {
     assert_eq!(key_of(&d, A).as_deref(), Some("KA"));
     assert_converged(&[&a, &c, &d]);
 
-    // A replaces its own key: that applies, whatever the forged clock said.
+    // Between two keys stamped with A's ID the older stays (write-once, like the COALESCE in
+    // `devices.rs`), in both orders.
     let renewed = changeset(
         A,
         2,
         vec![device_change(A, "KA2", clock(pack(now_ms(), 0), A))],
     );
     let report = applied(&c, &renewed);
-    assert_eq!(key_of(&c, A).as_deref(), Some("KA2"));
-    assert!(report.warnings.is_empty(), "{:?}", report.warnings);
-    // And the forgery arriving after it changes nothing either.
+    assert_eq!(key_of(&c, A).as_deref(), Some("KA"));
+    assert_eq!(report.warnings.len(), 1, "{:?}", report.warnings);
+    let e = device(DeviceId([5; 16]));
+    applied(&e, &renewed);
+    assert_eq!(key_of(&e, A).as_deref(), Some("KA2"));
+    apply(&e, &from_a);
+    assert_eq!(key_of(&e, A).as_deref(), Some("KA"));
+    applied(&e, &forged);
+    assert_eq!(key_of(&e, A).as_deref(), Some("KA"));
+}
+
+/// The residual the rule leaves (audit M6): the clock's device is written by whoever seals the
+/// changeset, so a holder of the vault key can stamp a key with another device's own ID and an
+/// older clock, and it is taken. Nothing may trust the column for rekeying until changes are
+/// signed per device.
+#[test]
+fn a_forged_own_id_stamp_still_replaces_the_key() {
+    let a = device(A);
+    own_device_row(&a, A, Some("KA"));
+    let c = device(C);
+    apply(&c, &send(&a));
+    let forged = changeset(B, 1, vec![device_change(A, "EVIL", clock(1, A))]);
+
     applied(&c, &forged);
-    assert_eq!(key_of(&c, A).as_deref(), Some("KA2"));
+
+    assert_eq!(key_of(&c, A).as_deref(), Some("EVIL"));
 }
 
 #[test]

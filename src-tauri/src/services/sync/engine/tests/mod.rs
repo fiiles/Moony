@@ -5,6 +5,7 @@
 
 mod backoff;
 mod binding_failure;
+mod clock_snapshots;
 mod clocks;
 mod echo;
 mod gap_skip;

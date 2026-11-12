@@ -100,6 +100,7 @@ async fn a_lower_held_envelope_of_the_same_author_takes_its_place_and_keeps_the_
             held_hash: [9; 32],
             position: 7,
             since: NOW,
+            dated_ms: None,
         }]
     );
 }

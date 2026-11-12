@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { HeldGapView, SyncProblem } from '@shared/schema';
 import {
+  aheadGap,
+  aheadText,
   firstSkippableAt,
+  heldFor,
+  skipGapTexts,
   gapSkippable,
   heldDays,
   heldGapDevice,
@@ -48,6 +52,11 @@ describe('problemAction', () => {
     expect(problemAction('gap', true, null)).toBe('none');
   });
 
+  it('offers to skip a held change dated more than ten years ahead once it may be', () => {
+    expect(problemAction('clockAhead', false, null)).toBe('none');
+    expect(problemAction('clockAhead', true, gap({ kind: 'ahead' }))).toBe('skipMissing');
+  });
+
   it('offers to skip a skippable held gap, never a re-sync', () => {
     expect(problemAction('gap', false, gap())).toBe('skipMissing');
     expect(problemAction('gap', true, gap())).toBe('skipMissing');
@@ -58,7 +67,7 @@ describe('problemAction', () => {
       SyncProblem,
       [SyncProblemAction, SyncProblemAction],
     ][]) {
-      if (problem === 'gap') continue;
+      if (problem === 'gap' || problem === 'clockAhead') continue;
       expect(problemAction(problem, false, gap())).toBe(normal);
       expect(problemAction(problem, true, gap())).toBe(selfHosted);
     }
@@ -77,6 +86,7 @@ function gap(overrides: Partial<HeldGapView> = {}): HeldGapView {
     missingChanges: 1,
     since,
     skippableAt: since + 14 * DAY,
+    datedAt: null,
     ...overrides,
   };
 }
@@ -127,5 +137,54 @@ describe('heldGapDevice', () => {
   it('is the device name, else the start of its ID', () => {
     expect(heldGapDevice(gap())).toBe('Work laptop');
     expect(heldGapDevice(gap({ deviceName: null }))).toBe('02020202');
+  });
+});
+
+describe('heldFor', () => {
+  it('gives a gap its missing and parent changes, clockAhead its changes dated ahead', () => {
+    const missing = gap({ deviceId: 'aa'.repeat(16) });
+    const parent = gap({ deviceId: 'bb'.repeat(16), kind: 'parent' });
+    const ahead = gap({ deviceId: 'cc'.repeat(16), kind: 'ahead' });
+    const all = [missing, parent, ahead];
+    expect(heldFor('gap', all)).toEqual([missing, parent]);
+    expect(heldFor('clockAhead', all)).toEqual([ahead]);
+    expect(heldFor('quarantined', all)).toEqual([]);
+    expect(heldFor('gap', undefined)).toEqual([]);
+  });
+});
+
+describe('aheadGap and aheadText', () => {
+  const t = (key: string, options?: Record<string, unknown>) =>
+    `${key} ${JSON.stringify(options ?? {})}`;
+  const dateText = (seconds: number) => `day ${seconds}`;
+
+  it('is the oldest change dated ahead, named with its device and date', () => {
+    const older = gap({ kind: 'ahead', since: SINCE - DAY, datedAt: 4_000_000_000 });
+    const younger = gap({ deviceId: 'dd'.repeat(16), kind: 'ahead', since: SINCE });
+    expect(aheadGap([gap(), younger, older])).toBe(older);
+    expect(aheadGap([gap()])).toBeNull();
+    expect(aheadText(older, t, dateText)).toBe(
+      'alert.clockAhead.text {"device":"Work laptop","date":"day 4000000000"}'
+    );
+    expect(aheadText(younger, t, dateText)).toBe(
+      'alert.clockAhead.textFar {"device":"Work laptop"}'
+    );
+  });
+
+  it('gives the skip confirmation of a change dated ahead its own texts', () => {
+    const texts = skipGapTexts(gap({ kind: 'ahead', datedAt: 4_000_000_000 }), t, dateText);
+    expect(texts.title).toBe('skipGap.titleAhead {}');
+    expect(texts.description).toBe(
+      'skipGap.descriptionAhead {"device":"Work laptop","date":"day 4000000000"}'
+    );
+    expect(texts.skipped).toBe('skipGap.successAhead {}');
+    expect(texts.unchanged).toBe('skipGap.appliedAhead {}');
+    expect(skipGapTexts(gap({ kind: 'ahead' }), t, dateText).description).toBe(
+      'skipGap.descriptionAheadFar {"device":"Work laptop"}'
+    );
+    expect(skipGapTexts(gap(), t, dateText).title).toBe('skipGap.title {"count":1}');
+    expect(skipGapTexts(gap({ kind: 'parent' }), t, dateText).description).toBe(
+      'skipGap.descriptionParent {"device":"Work laptop"}'
+    );
   });
 });

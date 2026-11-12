@@ -1006,11 +1006,17 @@ export type HeldGapKind =
 /**
  * The device's change refers to something no change brought; skipping skips that change.
  */
-"parent"
+"parent" | 
+/**
+ * The device's change is dated more than ten years ahead (audit M6); skipping skips that
+ * change, and the device's later changes then apply.
+ */
+"ahead"
 
 /**
  * A change from another device that this device holds because something it needs has not arrived
- * (audit M3): Settings offers to skip it once `skippableAt` has passed.
+ * (audit M3) or because it is dated more than ten years ahead (audit M6): Settings offers to skip
+ * it once `skippableAt` has passed.
  */
 export type HeldGapView = { 
 /**
@@ -1023,7 +1029,7 @@ deviceId: string;
 deviceName: string | null; kind: HeldGapKind; 
 /**
  * How many changes a skip gives up: the device's changes that never arrived (`missing`), or
- * 1 (`parent`, the held change itself).
+ * 1 (`parent` and `ahead`, the held change itself).
  */
 missingChanges: number; 
 /**
@@ -1033,7 +1039,12 @@ since: number;
 /**
  * From when it may be skipped (unix seconds): `since` plus 14 days.
  */
-skippableAt: number }
+skippableAt: number; 
+/**
+ * The date an `ahead` change carries (unix seconds, its newest clock); `None` for the other
+ * kinds and for a date past year 9999.
+ */
+datedAt: number | null }
 
 /**
  * Payload of the `history-recalculation` event.
@@ -3395,8 +3406,9 @@ export type SyncProblem =
  */
 "gap" | 
 /**
- * Changes from another device are dated more than a day past this device's time (a clock set
- * ahead): they wait until that time, and this device keeps syncing meanwhile (audit M6).
+ * A change from another device is dated more than ten years past this device's time: it is
+ * held (skippable after 14 days, `HeldGapKind::Ahead`), and this device keeps syncing
+ * meanwhile (audit M6).
  */
 "clockAhead" | "undecryptable" | "invalidChain" | "missingParent" | 
 /**
@@ -3460,6 +3472,13 @@ paidUntil: number | null;
  * When the relay deletes the vault after a lapse: 90 days after `paidUntil`.
  */
 deletesAt: number | null; 
+/**
+ * While this device's clock (its hybrid logical clock) is more than a day past its wall
+ * clock: the date its changes are stamped with until then (unix seconds). A note, never a
+ * problem: sync goes on, and until that date this device's edits win over edits made
+ * elsewhere before it. `None` otherwise, and for a date past year 9999 (audit M6).
+ */
+clockAheadUntil: number | null; 
 /**
  * The developer tools are offered (debug build with sync on).
  */

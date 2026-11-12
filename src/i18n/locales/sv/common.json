@@ -317,6 +317,7 @@
     "dividendFromYahoo": "Utdelningarna för {{ticker}} kommer från Yahoo Finance; en manuell utdelning kan inte läggas till.",
     "syncChangesetInvalid": "Ändringar som tagits emot från en annan enhet är skadade och kunde inte läsas.",
     "syncSnapshotBelowBarrier": "Den synkroniserade kopian av dina data är äldre än den senaste Moony-uppdateringen och kan inte användas. En enhet med den senaste versionen behöver ladda upp en ny.",
+    "syncSnapshotClockAhead": "Den synkroniserade kopian av dina uppgifter är daterad mer än tio år framåt i tiden, så den användes inte. En enhet med rätt datum och tid behöver ladda upp en ny.",
     "syncSnapshotInvalid": "Den synkroniserade kopian av dina data är skadad och kunde inte återställas.",
     "syncSnapshotNewerSchema": "Den synkroniserade kopian av dina data kommer från en nyare version av Moony. Uppdatera Moony på den här enheten först.",
     "syncSnapshotPending": "Den här enheten har fortfarande ändringar som väntar på att skickas. Försök igen efter nästa synkronisering.",

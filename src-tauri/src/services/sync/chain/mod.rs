@@ -178,30 +178,23 @@ pub fn judge(conn: &Connection, meta: &EnvelopeMeta) -> Result<Verdict> {
     })
 }
 
-/// How far past this device's time a pulled change's newest clock may be and still apply (audit
-/// M6): one day, as far as the clock warning (`hlc::FUTURE_WARNING_MS`) lets a clock be ahead
-/// without notice. Time zones and ordinary drift stay well inside it.
-pub const MAX_CLOCK_AHEAD_MS: u64 = 24 * 3600 * 1000;
+/// How far past this device's wall clock a pulled change's or a snapshot's newest clock may be
+/// and still be taken (audit M6): ten years (3,653 days). No real device's clock is that far
+/// ahead, so only a forged clock (or one set absurdly wrong) is held; a clock a day to ten years
+/// ahead applies as before, with the clock warning (`hlc::FUTURE_WARNING_MS`).
+pub const TEN_YEARS_AHEAD_MS: u64 = 3_653 * 86_400_000;
 
-/// The changeset's newest clock (`changeset::max_hlc`) is more than `MAX_CLOCK_AHEAD_MS` past both
-/// `now_ms` and this device's newest stored clock (`MAX(hlc) FROM sync_clock`), physical parts
-/// compared (audit M6). Applying such a change would move this device's clock (`capture::observe`)
-/// that far ahead and let the change win every later edit made before its time; the pull holds it
-/// instead (`PullReport::ahead`), so it applies once this device's time comes within the bound.
-/// A clock this device already holds (it applied one a day ahead, or its own time was ahead and
-/// it issued one) moves nothing when observed again, so it is the bound's floor too: a vault
-/// whose clocks are already ahead keeps syncing. Each applied change moves that floor at most
-/// `MAX_CLOCK_AHEAD_MS`, so reaching the clock's maximum takes about 1.6 billion changes.
-pub fn too_far_ahead(conn: &Connection, newest_hlc: u64, now_ms: u64) -> Result<bool> {
-    let newest_ms = unpack(newest_hlc).0;
-    if newest_ms <= now_ms.saturating_add(MAX_CLOCK_AHEAD_MS) {
-        return Ok(false);
-    }
-    let stored: i64 = conn.query_row("SELECT COALESCE(MAX(hlc), 0) FROM sync_clock", [], |r| {
-        r.get(0)
-    })?;
-    let stored_ms = unpack(u64::try_from(stored).unwrap_or(0)).0;
-    Ok(newest_ms > stored_ms.saturating_add(MAX_CLOCK_AHEAD_MS))
+/// The newest clock `newest_hlc` (`changeset::max_hlc`, a snapshot's `max_hlc`) is more than
+/// `TEN_YEARS_AHEAD_MS` past this device's wall clock `now_ms`, physical parts compared (audit
+/// M6). The pull holds such a change (`PullReport::ahead`, a held gap of kind `Ahead` the person
+/// may skip after 14 days) and both snapshot restores refuse such a snapshot, so this device's
+/// clock never moves past `now_ms + TEN_YEARS_AHEAD_MS`: the 48-bit physical part (year 6429) and
+/// the counter cannot be saturated. Residual: a holder of the vault key can still move every
+/// device's clock up to ten years ahead, and an edit stamped that far wins every edit made before
+/// its date; an honest clock that was days or weeks ahead is kept on purpose (holding it would
+/// leave that device's later edits, stamped from its clock's high mark, diverging or lost).
+pub fn too_far_ahead(newest_hlc: u64, now_ms: u64) -> bool {
+    unpack(newest_hlc).0 > now_ms.saturating_add(TEN_YEARS_AHEAD_MS)
 }
 
 /// This device pulled its own envelope `seq` back from the relay (its echo): the relay holds it,

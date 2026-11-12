@@ -317,6 +317,7 @@
     "dividendFromYahoo": "Die Dividenden von {{ticker}} kommen von Yahoo Finance; eine manuelle Dividende kann nicht hinzugefügt werden.",
     "syncChangesetInvalid": "Von einem anderen Gerät empfangene Änderungen sind beschädigt und konnten nicht gelesen werden.",
     "syncSnapshotBelowBarrier": "Die synchronisierte Kopie Ihrer Daten stammt von vor dem letzten Moony-Update und kann nicht verwendet werden. Ein Gerät mit der neuesten Version muss eine neue hochladen.",
+    "syncSnapshotClockAhead": "Die synchronisierte Kopie Ihrer Daten ist mehr als zehn Jahre im Voraus datiert und wurde deshalb nicht verwendet. Ein Gerät mit korrektem Datum und korrekter Uhrzeit muss eine neue hochladen.",
     "syncSnapshotInvalid": "Die synchronisierte Kopie Ihrer Daten ist beschädigt und konnte nicht wiederhergestellt werden.",
     "syncSnapshotNewerSchema": "Die synchronisierte Kopie Ihrer Daten stammt aus einer neueren Moony-Version. Aktualisieren Sie zuerst Moony auf diesem Gerät.",
     "syncSnapshotPending": "Auf diesem Gerät warten noch Änderungen darauf, gesendet zu werden. Versuchen Sie es nach der nächsten Synchronisierung erneut.",

@@ -27,7 +27,7 @@
       "snapshotTooLarge": "I dati sono troppo grandi per essere sincronizzati.",
       "newerSchema": "Un altro dispositivo usa una versione più recente di Moony. Aggiorna questa app per continuare.",
       "gap": "Una modifica da un altro dispositivo non è ancora arrivata. Questo dispositivo continua a sincronizzarsi e a inviare le proprie modifiche.",
-      "clockAhead": "Le modifiche da un altro dispositivo hanno una data più di un giorno avanti, quindi attendono fino a quel momento. Succede quando la data e l'ora di un dispositivo sono avanti: controllale sui tuoi dispositivi. Nel frattempo questo dispositivo continua a sincronizzarsi.",
+      "clockAhead": "Una modifica da un altro dispositivo ha una data più di dieci anni avanti, quindi viene trattenuta. Resta trattenuta anche dopo che l'orologio di quel dispositivo viene corretto; dopo 14 giorni puoi saltarla.",
       "undecryptable": "Non è stato possibile decifrare le modifiche di un altro dispositivo.",
       "invalidChain": "Le modifiche di un altro dispositivo non hanno superato la verifica e sono trattenute.",
       "missingParent": "Alle modifiche di un altro dispositivo mancano passaggi precedenti e sono trattenute.",
@@ -44,6 +44,7 @@
     "lastSynced": "Ultima sincronizzazione: {{date}}",
     "neverSynced": "Non ancora sincronizzato",
     "pending": "In attesa di invio: {{number}}",
+    "clockAhead": "L'orologio di questo dispositivo (o di un dispositivo con cui si è sincronizzato) è stato avanti a un certo punto, quindi le sue modifiche portano la data {{date}} fino ad allora. Continuano a sincronizzarsi; se lo stesso elemento viene modificato su un altro dispositivo, fino a quella data vince la versione di questo dispositivo.",
     "subscription": "Abbonamento",
     "selfHosted": "Server self-hosted",
     "paidUntil": "Pagato fino al {{date}}",
@@ -150,6 +151,12 @@
       "skip_many": "Salta le modifiche mancanti",
       "skip_other": "Salta le modifiche mancanti",
       "skipFrom": "Se non arriva entro il {{date}}, potrai saltarla a quel punto."
+    },
+    "clockAhead": {
+      "text": "Una modifica da «{{device}}» ha la data {{date}}, più di dieci anni avanti, quindi viene trattenuta. Resta trattenuta anche dopo che l'orologio di quel dispositivo viene corretto.",
+      "textFar": "Una modifica da «{{device}}» ha una data molto lontana nel futuro, più di dieci anni avanti, quindi viene trattenuta. Resta trattenuta anche dopo che l'orologio di quel dispositivo viene corretto.",
+      "skipFrom": "Potrai saltarla dal {{date}}.",
+      "skip": "Salta questa modifica"
     }
   },
   "renew": {
@@ -183,7 +190,12 @@
     "success_one": "La modifica mancante è stata saltata. La sincronizzazione continua.",
     "success_many": "Le modifiche mancanti sono state saltate. La sincronizzazione continua.",
     "success_other": "Le modifiche mancanti sono state saltate. La sincronizzazione continua.",
-    "arrived": "La modifica mancante è arrivata nel frattempo; non è stato saltato nulla."
+    "arrived": "La modifica mancante è arrivata nel frattempo; non è stato saltato nulla.",
+    "titleAhead": "Saltare la modifica con data futura?",
+    "descriptionAhead": "La modifica da «{{device}}» con data {{date}} verrà saltata e le modifiche successive di quel dispositivo verranno sincronizzate. Tornerà su questo dispositivo solo se un dispositivo che l'ha applicata carica una copia più recente dei dati sincronizzati; se nessuno l'ha fatto, è persa.",
+    "descriptionAheadFar": "La modifica da «{{device}}» con una data molto lontana nel futuro verrà saltata e le modifiche successive di quel dispositivo verranno sincronizzate. Tornerà su questo dispositivo solo se un dispositivo che l'ha applicata carica una copia più recente dei dati sincronizzati; se nessuno l'ha fatto, è persa.",
+    "successAhead": "La modifica è stata saltata. La sincronizzazione continua.",
+    "appliedAhead": "La modifica è stata applicata nel frattempo; non è stato saltato nulla."
   },
   "turnOff": {
     "button": "Disattiva la sincronizzazione su questo dispositivo",

@@ -27,7 +27,7 @@
       "snapshotTooLarge": "Uppgifterna är för stora för att synkroniseras.",
       "newerSchema": "En annan enhet använder en nyare version av Moony. Uppdatera den här appen för att fortsätta.",
       "gap": "En ändring från en annan enhet har inte kommit fram än. Den här enheten fortsätter att synkronisera och skicka sina egna ändringar.",
-      "clockAhead": "Ändringar från en annan enhet är daterade mer än ett dygn framåt i tiden, så de väntar till dess. Det händer när datum och tid på en enhet är inställda för långt fram: kontrollera dem på dina enheter. Den här enheten fortsätter att synkronisera under tiden.",
+      "clockAhead": "En ändring från en annan enhet är daterad mer än tio år framåt i tiden, så den hålls kvar. Den hålls kvar även sedan klockan på den enheten har rättats; efter 14 dagar kan du hoppa över den.",
       "undecryptable": "Ändringar från en annan enhet kunde inte dekrypteras.",
       "invalidChain": "Ändringar från en annan enhet klarade inte verifieringen och hålls kvar.",
       "missingParent": "Ändringar från en annan enhet saknar tidigare steg och hålls kvar.",
@@ -44,6 +44,7 @@
     "lastSynced": "Senast synkroniserad {{date}}",
     "neverSynced": "Ännu inte synkroniserad",
     "pending": "Väntar på att skickas: {{number}}",
+    "clockAhead": "Klockan på den här enheten (eller på en enhet den synkroniserade med) gick före vid något tillfälle, så dess ändringar är daterade {{date}} fram till dess. De synkroniseras fortfarande; om samma post redigeras på en annan enhet vinner den här enhetens version fram till det datumet.",
     "subscription": "Prenumeration",
     "selfHosted": "Egen server",
     "paidUntil": "Betald till {{date}}",
@@ -148,6 +149,12 @@
       "skip_one": "Hoppa över den saknade ändringen",
       "skip_other": "Hoppa över de saknade ändringarna",
       "skipFrom": "Om den inte har kommit fram senast {{date}} kan du hoppa över den då."
+    },
+    "clockAhead": {
+      "text": "En ändring från ”{{device}}” är daterad {{date}}, mer än tio år framåt i tiden, så den hålls kvar. Den hålls kvar även sedan klockan på den enheten har rättats.",
+      "textFar": "En ändring från ”{{device}}” är daterad långt fram i tiden, mer än tio år, så den hålls kvar. Den hålls kvar även sedan klockan på den enheten har rättats.",
+      "skipFrom": "Du kan hoppa över den från och med {{date}}.",
+      "skip": "Hoppa över den här ändringen"
     }
   },
   "renew": {
@@ -178,7 +185,12 @@
     "confirm": "Hoppa över",
     "success_one": "Den saknade ändringen hoppades över. Synkroniseringen fortsätter.",
     "success_other": "De saknade ändringarna hoppades över. Synkroniseringen fortsätter.",
-    "arrived": "Den saknade ändringen kom fram under tiden; ingenting hoppades över."
+    "arrived": "Den saknade ändringen kom fram under tiden; ingenting hoppades över.",
+    "titleAhead": "Hoppa över ändringen med framtida datum?",
+    "descriptionAhead": "Ändringen från ”{{device}}” daterad {{date}} hoppas över, och senare ändringar från den enheten synkroniseras. Den kommer bara tillbaka till den här enheten om en enhet som tillämpade den laddar upp en nyare kopia av de synkroniserade uppgifterna; om ingen gjorde det är den förlorad.",
+    "descriptionAheadFar": "Ändringen från ”{{device}}” daterad långt fram i tiden hoppas över, och senare ändringar från den enheten synkroniseras. Den kommer bara tillbaka till den här enheten om en enhet som tillämpade den laddar upp en nyare kopia av de synkroniserade uppgifterna; om ingen gjorde det är den förlorad.",
+    "successAhead": "Ändringen hoppades över. Synkroniseringen fortsätter.",
+    "appliedAhead": "Ändringen tillämpades under tiden; inget hoppades över."
   },
   "turnOff": {
     "button": "Stäng av synkronisering på den här enheten",

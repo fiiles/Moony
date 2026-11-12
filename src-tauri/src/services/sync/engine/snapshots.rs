@@ -659,10 +659,12 @@ fn restore_or_note(conn: &Connection, plain: &[u8], now: i64) -> Result<Restore>
     }
 }
 
-/// The error a stopped restore returns: a newer schema says so (the person updates the app);
-/// every other stop is one key, a damaged snapshot (phase 1 note L142).
+/// The error a stopped restore returns: a newer schema says so (the person updates the app), and
+/// so does a snapshot dated more than ten years ahead (`snapshot::CLOCK_AHEAD_KEY`, shown as a
+/// failed verification, audit M6); every other stop is one key, a damaged snapshot (phase 1 note
+/// L142).
 fn stopped(key: String) -> SyncError {
-    if key == NEWER_SCHEMA {
+    if key == NEWER_SCHEMA || key == snapshot::CLOCK_AHEAD_KEY {
         SyncError::Local(AppError::Validation(key))
     } else {
         invalid_snapshot()

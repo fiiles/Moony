@@ -27,7 +27,7 @@
       "snapshotTooLarge": "Dane są za duże do synchronizacji.",
       "newerSchema": "Inne urządzenie używa nowszej wersji Moony. Zaktualizuj tę aplikację, aby kontynuować.",
       "gap": "Zmiana z innego urządzenia jeszcze nie dotarła. To urządzenie nadal synchronizuje dane i wysyła własne zmiany.",
-      "clockAhead": "Zmiany z innego urządzenia mają datę późniejszą o ponad dzień, więc czekają do tego czasu. Dzieje się tak, gdy data i godzina na urządzeniu są ustawione do przodu: sprawdź je na swoich urządzeniach. W międzyczasie to urządzenie nadal synchronizuje dane.",
+      "clockAhead": "Zmiana z innego urządzenia ma datę późniejszą o ponad dziesięć lat, więc jest wstrzymana. Pozostanie wstrzymana nawet po poprawieniu zegara tego urządzenia; po 14 dniach możesz ją pominąć.",
       "undecryptable": "Nie udało się odszyfrować zmian z innego urządzenia.",
       "invalidChain": "Zmiany z innego urządzenia nie przeszły weryfikacji i są wstrzymane.",
       "missingParent": "Zmianom z innego urządzenia brakuje wcześniejszych kroków i są wstrzymane.",
@@ -44,6 +44,7 @@
     "lastSynced": "Ostatnia synchronizacja: {{date}}",
     "neverSynced": "Jeszcze nie zsynchronizowano",
     "pending": "Oczekuje na wysłanie: {{number}}",
+    "clockAhead": "Zegar tego urządzenia (albo urządzenia, z którym się synchronizowało) w pewnym momencie się spieszył, więc jego zmiany mają datę {{date}}, dopóki ten dzień nie nadejdzie. Nadal się synchronizują; jeśli ten sam element zostanie zmieniony na innym urządzeniu, do tej daty wygrywa wersja z tego urządzenia.",
     "subscription": "Subskrypcja",
     "selfHosted": "Własny serwer",
     "paidUntil": "Opłacone do {{date}}",
@@ -152,6 +153,12 @@
       "skip_many": "Pomiń brakujące zmiany",
       "skip_other": "Pomiń brakujące zmiany",
       "skipFrom": "Jeśli nie dotrze do {{date}}, będzie można ją wtedy pominąć."
+    },
+    "clockAhead": {
+      "text": "Zmiana z urządzenia „{{device}}” ma datę {{date}}, późniejszą o ponad dziesięć lat, więc jest wstrzymana. Pozostanie wstrzymana nawet po poprawieniu zegara tego urządzenia.",
+      "textFar": "Zmiana z urządzenia „{{device}}” ma datę daleko w przyszłości, późniejszą o ponad dziesięć lat, więc jest wstrzymana. Pozostanie wstrzymana nawet po poprawieniu zegara tego urządzenia.",
+      "skipFrom": "Od {{date}} będzie można ją pominąć.",
+      "skip": "Pomiń tę zmianę"
     }
   },
   "renew": {
@@ -188,7 +195,12 @@
     "success_few": "Brakujące zmiany zostały pominięte. Synchronizacja trwa dalej.",
     "success_many": "Brakujące zmiany zostały pominięte. Synchronizacja trwa dalej.",
     "success_other": "Brakujące zmiany zostały pominięte. Synchronizacja trwa dalej.",
-    "arrived": "Brakująca zmiana w międzyczasie dotarła; nic nie pominięto."
+    "arrived": "Brakująca zmiana w międzyczasie dotarła; nic nie pominięto.",
+    "titleAhead": "Pominąć zmianę z przyszłą datą?",
+    "descriptionAhead": "Zmiana z urządzenia „{{device}}” z datą {{date}} zostanie pominięta, a późniejsze zmiany z tego urządzenia zostaną zsynchronizowane. Wróci na to urządzenie tylko wtedy, gdy urządzenie, które ją zastosowało, prześle nowszą kopię zsynchronizowanych danych; jeśli żadne tego nie zrobiło, przepadnie.",
+    "descriptionAheadFar": "Zmiana z urządzenia „{{device}}” z datą daleko w przyszłości zostanie pominięta, a późniejsze zmiany z tego urządzenia zostaną zsynchronizowane. Wróci na to urządzenie tylko wtedy, gdy urządzenie, które ją zastosowało, prześle nowszą kopię zsynchronizowanych danych; jeśli żadne tego nie zrobiło, przepadnie.",
+    "successAhead": "Zmiana została pominięta. Synchronizacja trwa dalej.",
+    "appliedAhead": "Zmiana została w międzyczasie zastosowana; nic nie pominięto."
   },
   "turnOff": {
     "button": "Wyłącz synchronizację na tym urządzeniu",

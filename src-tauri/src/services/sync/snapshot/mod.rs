@@ -288,8 +288,9 @@ fn refill(
 }
 
 /// Moves this connection's clock past the snapshot's newest clock (capture is installed on every
-/// restore path by now) and warns when that clock is more than 24 hours ahead of local time: it is
-/// restored anyway, as a changeset's would be (§6.3).
+/// restore path by now) and warns when that clock is more than 24 hours ahead of local time: up to
+/// ten years ahead it is restored anyway, as a changeset's would be (§6.3); past that `admissible`
+/// refused the snapshot already.
 fn observe(conn: &Connection, max_hlc: u64, warnings: &mut Vec<String>) -> Result<()> {
     if let Observation::FarFuture { ahead_ms } = capture::observe(conn, max_hlc)? {
         let warning = format!(
@@ -302,9 +303,20 @@ fn observe(conn: &Connection, max_hlc: u64, warnings: &mut Vec<String>) -> Resul
     Ok(())
 }
 
-/// The sync row, once the snapshot is known to be one this device may restore.
+/// The key a snapshot whose newest clock is more than ten years ahead is refused with.
+pub const CLOCK_AHEAD_KEY: &str = "validation.syncSnapshotClockAhead";
+
+/// The sync row, once the snapshot is known to be one this device may restore. A snapshot whose
+/// newest clock is more than ten years past this device's wall clock (`chain::too_far_ahead`,
+/// audit M6) is refused before anything is written or observed, on every restore (a join, a
+/// re-sync, a repair, the restore after `410`), so this device's clock never jumps with it.
 fn admissible(conn: &Connection, snapshot: &Snapshot) -> Result<SyncState> {
     let sync = loaded(conn)?;
+    let newest = snapshot.rows.iter().map(newest_clock).max().unwrap_or(0);
+    if chain::too_far_ahead(newest, super::hlc::now_ms()) {
+        log::warn!("[SYNC] A snapshot is dated more than ten years ahead: it is refused");
+        return Err(AppError::Validation(CLOCK_AHEAD_KEY.into()));
+    }
     if snapshot.schema > schema_number() {
         return Err(AppError::Validation(
             "validation.syncSnapshotNewerSchema".into(),

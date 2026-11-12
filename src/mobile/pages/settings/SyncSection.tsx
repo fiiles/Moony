@@ -30,12 +30,13 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import { consentOf } from '@/utils/replace-impact';
-import { heldGapDevice } from '@/utils/device-sync-problem';
+import { skipGapTexts } from '@/utils/device-sync-problem';
+import { useFormat } from '@/lib/use-format';
 import {
   IMPACT_CHANGED_KEY,
   replaceOutcomeToast,
 } from '@/components/settings/sync/replace-outcome';
-import { backupFileName } from '@/utils/sync-status';
+import { backupFileName, secondsToDate } from '@/utils/sync-status';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { SectionPage } from '@/mobile/components/SectionPage';
@@ -80,6 +81,11 @@ export default function SyncSection() {
   const { repairDevice, resyncDevice, turnOff, deleteSyncedData, skipMissingChange } =
     useDeviceSyncMutations();
   const { t: tc } = useTranslation('common');
+  const { date } = useFormat();
+  const renderDate = (seconds: number) => {
+    const when = secondsToDate(seconds);
+    return when ? date(when, { dateStyle: 'long' }) : '';
+  };
   const [open, setOpen] = useState<Open>(null);
   const [flow, setFlow] = useState<Flow>(null);
   /** The first-device setup sheet is up. */
@@ -168,9 +174,8 @@ export default function SyncSection() {
   const skipNow = async (password: string) => {
     if (!skipping) return;
     const skipped = await skipMissingChange.mutateAsync({ password, deviceId: skipping.deviceId });
-    toast(
-      skipped ? t('skipGap.success', { count: skipping.missingChanges }) : t('skipGap.arrived')
-    );
+    const texts = skipGapTexts(skipping, t, renderDate);
+    toast(skipped ? texts.skipped : texts.unchanged);
   };
 
   // A wrong password shows under the field and keeps the sheet
@@ -380,17 +385,10 @@ export default function SyncSection() {
           // The typed password leaves with its sheet
           resetSkip();
         }}
-        title={t('skipGap.title', { count: skipping?.missingChanges ?? 1 })}
-        description={
-          !skipping
-            ? ''
-            : skipping.kind === 'parent'
-              ? t('skipGap.descriptionParent', { device: heldGapDevice(skipping) })
-              : t('skipGap.description', {
-                  device: heldGapDevice(skipping),
-                  count: skipping.missingChanges,
-                })
+        title={
+          skipping ? skipGapTexts(skipping, t, renderDate).title : t('skipGap.title', { count: 1 })
         }
+        description={skipping ? skipGapTexts(skipping, t, renderDate).description : ''}
         confirmLabel={t('skipGap.confirm')}
         destructive
         onSubmit={skipNow}

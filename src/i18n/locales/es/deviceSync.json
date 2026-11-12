@@ -27,7 +27,7 @@
       "snapshotTooLarge": "Los datos son demasiado grandes para sincronizarse.",
       "newerSchema": "Otro dispositivo usa una versión más reciente de Moony. Actualiza esta app para continuar.",
       "gap": "Todavía no ha llegado un cambio de otro dispositivo. Este dispositivo sigue sincronizando y enviando sus propios cambios.",
-      "clockAhead": "Los cambios de otro dispositivo tienen una fecha más de un día en el futuro, así que esperan hasta ese momento. Esto ocurre cuando la fecha y la hora de un dispositivo están adelantadas: revísalas en tus dispositivos. Mientras tanto, este dispositivo sigue sincronizando.",
+      "clockAhead": "Un cambio de otro dispositivo tiene una fecha más de diez años en el futuro, así que se retiene. Seguirá retenido aunque se corrija el reloj de ese dispositivo; podrás omitirlo pasados 14 días.",
       "undecryptable": "No se pudieron descifrar los cambios de otro dispositivo.",
       "invalidChain": "Los cambios de otro dispositivo no pasaron la verificación y se retienen.",
       "missingParent": "A los cambios de otro dispositivo les faltan pasos anteriores y se retienen.",
@@ -44,6 +44,7 @@
     "lastSynced": "Última sincronización: {{date}}",
     "neverSynced": "Aún sin sincronizar",
     "pending": "Pendientes de enviar: {{number}}",
+    "clockAhead": "El reloj de este dispositivo (o el de un dispositivo con el que se sincronizó) estuvo adelantado en algún momento, así que sus cambios llevan la fecha {{date}} hasta entonces. Se siguen sincronizando; si se edita el mismo elemento en otro dispositivo, gana la versión de este dispositivo hasta esa fecha.",
     "subscription": "Suscripción",
     "selfHosted": "Servidor propio",
     "paidUntil": "Pagado hasta {{date}}",
@@ -150,6 +151,12 @@
       "skip_many": "Omitir los cambios que faltan",
       "skip_other": "Omitir los cambios que faltan",
       "skipFrom": "Si sigue sin llegar el {{date}}, podrás omitirlo entonces."
+    },
+    "clockAhead": {
+      "text": "Un cambio de «{{device}}» tiene fecha del {{date}}, más de diez años en el futuro, así que se retiene. Seguirá retenido aunque se corrija el reloj de ese dispositivo.",
+      "textFar": "Un cambio de «{{device}}» tiene una fecha muy lejana en el futuro, más de diez años, así que se retiene. Seguirá retenido aunque se corrija el reloj de ese dispositivo.",
+      "skipFrom": "Podrás omitirlo a partir del {{date}}.",
+      "skip": "Omitir este cambio"
     }
   },
   "renew": {
@@ -183,7 +190,12 @@
     "success_one": "Se omitió el cambio que faltaba. La sincronización continúa.",
     "success_many": "Se omitieron los cambios que faltaban. La sincronización continúa.",
     "success_other": "Se omitieron los cambios que faltaban. La sincronización continúa.",
-    "arrived": "El cambio que faltaba llegó mientras tanto; no se omitió nada."
+    "arrived": "El cambio que faltaba llegó mientras tanto; no se omitió nada.",
+    "titleAhead": "¿Omitir el cambio con fecha futura?",
+    "descriptionAhead": "Se omitirá el cambio de «{{device}}» con fecha del {{date}}, y los cambios posteriores de ese dispositivo se sincronizarán. Solo volverá a este dispositivo si un dispositivo que lo aplicó sube una copia más reciente de los datos sincronizados; si ninguno lo hizo, se pierde.",
+    "descriptionAheadFar": "Se omitirá el cambio de «{{device}}» con una fecha muy lejana en el futuro, y los cambios posteriores de ese dispositivo se sincronizarán. Solo volverá a este dispositivo si un dispositivo que lo aplicó sube una copia más reciente de los datos sincronizados; si ninguno lo hizo, se pierde.",
+    "successAhead": "Se omitió el cambio. La sincronización continúa.",
+    "appliedAhead": "El cambio se aplicó mientras tanto; no se omitió nada."
   },
   "turnOff": {
     "button": "Desactivar la sincronización en este dispositivo",

@@ -1,5 +1,7 @@
 //! Held gaps (audit M3's way out, Task 17): an author whose envelopes wait for one that never
-//! arrives, or for a parent no envelope brings, is noted with the time this device first held it.
+//! arrives, for a parent no envelope brings, or for the date of a change stamped more than ten
+//! years ahead (audit M6, `chain::too_far_ahead`), is noted with the time this device first held
+//! it.
 //! While it is held the cursor stays before the held envelope, so every pull fetches again from
 //! there (up to `pull::MAX_PULL_PAGES`), nothing is dumped as a snapshot and the relay cannot prune.
 //! Once a gap has waited `GAP_SKIP_AFTER_SECS`, the person may skip it (after a confirmation that
@@ -23,7 +25,8 @@ use serde::{Deserialize, Serialize};
 use super::{head_of, set_head, EnvelopeMeta};
 use crate::error::{AppError, Result};
 use crate::models::sync::{HeldGapKind, HeldGapView};
-use crate::services::sync::hlc::DeviceId;
+use crate::services::sync::engine::status::MAX_DISPLAY_SECS;
+use crate::services::sync::hlc::{unpack, DeviceId};
 use crate::services::sync::{devices, in_savepoint, state};
 
 /// How long a gap is held before the person may skip it.
@@ -46,6 +49,11 @@ pub enum GapKind {
     /// no envelope has brought (`StopReason::MissingParent`). Skipping skips the envelope itself.
     #[serde(rename = "parent")]
     Parent,
+    /// The held envelope is the author's next one, but its newest clock is more than ten years
+    /// past this device's time (`chain::too_far_ahead`). Skipping skips the envelope itself; the
+    /// author's later envelopes, held behind it as ordinary gaps, then apply.
+    #[serde(rename = "ahead")]
+    Ahead,
 }
 
 /// One author's held gap.
@@ -61,6 +69,8 @@ pub struct HeldGap {
     pub position: u64,
     /// When this device first held an envelope of this author (kept when the gap is met again).
     pub since: i64,
+    /// `Ahead`: the physical part (ms) of the held envelope's newest clock, the date it carries.
+    pub dated_ms: Option<u64>,
 }
 
 impl HeldGap {
@@ -79,7 +89,7 @@ impl HeldGap {
                     "sync gaps: a missing envelope's record has no earlier link".into(),
                 )),
             },
-            GapKind::Parent => Ok((self.held_seq, self.held_hash)),
+            GapKind::Parent | GapKind::Ahead => Ok((self.held_seq, self.held_hash)),
         }
     }
 
@@ -93,7 +103,7 @@ impl HeldGap {
                 .saturating_sub(head_seq.unwrap_or(0))
                 .saturating_sub(1)
                 .max(1),
-            GapKind::Parent => 1,
+            GapKind::Parent | GapKind::Ahead => 1,
         }
     }
 
@@ -101,7 +111,7 @@ impl HeldGap {
     fn healed_by(&self, head_seq: u64) -> bool {
         match self.kind {
             GapKind::Missing => head_seq.saturating_add(1) >= self.held_seq,
-            GapKind::Parent => head_seq >= self.held_seq,
+            GapKind::Parent | GapKind::Ahead => head_seq >= self.held_seq,
         }
     }
 }
@@ -115,6 +125,8 @@ struct Stored {
     hash: String,
     position: u64,
     since: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    dated_ms: Option<u64>,
 }
 
 fn key_of(device: DeviceId) -> String {
@@ -139,6 +151,7 @@ fn parse(device: DeviceId, value: &str) -> Option<HeldGap> {
         held_hash: hash_of(&stored.hash)?,
         position: stored.position,
         since: stored.since,
+        dated_ms: stored.dated_ms,
     })
 }
 
@@ -150,6 +163,7 @@ fn write(conn: &Connection, gap: &HeldGap) -> Result<()> {
         hash: hex::encode(gap.held_hash),
         position: gap.position,
         since: gap.since,
+        dated_ms: gap.dated_ms,
     };
     let value = serde_json::to_string(&stored)
         .map_err(|e| AppError::Internal(format!("sync gaps: the record does not encode: {e}")))?;
@@ -159,12 +173,6 @@ fn write(conn: &Connection, gap: &HeldGap) -> Result<()> {
         params![key_of(gap.device), value],
     )?;
     Ok(())
-}
-
-/// Forgets `device`'s held gap: its next envelope is here after all, waiting for its time (audit
-/// M6), so nothing of that author is missing.
-pub fn forget_gap(conn: &Connection, device: DeviceId) -> Result<()> {
-    forget(conn, device)
 }
 
 fn forget(conn: &Connection, device: DeviceId) -> Result<()> {
@@ -189,11 +197,36 @@ fn held_gap(conn: &Connection, device: DeviceId) -> Result<Option<HeldGap>> {
 /// `Parent` record while a skipped miss stands takes the skip's first time when that is earlier
 /// (ruling I2): its parent may be a row the skipped change created, which is not coming, so the
 /// person need not wait another 14 days to skip it too (still behind the password and its
-/// confirmation). A `Missing` record always starts at `now`.
+/// confirmation). A `Missing` or `Ahead` record starts at `now`. An `Ahead` record is written with
+/// `note_held_ahead`, which keeps the date it carries.
 pub fn note_held_gap(
     conn: &Connection,
     meta: &EnvelopeMeta,
     kind: GapKind,
+    now: i64,
+) -> Result<()> {
+    note(conn, meta, kind, None, now)
+}
+
+/// The pull held `meta`, the author's next envelope, at `now` because its newest clock
+/// (`newest_hlc`) is more than ten years ahead (audit M6): an `Ahead` record (`note_held_gap`'s
+/// rules), with the date it carries. The author's later envelopes are judged `Gap` behind it; their
+/// higher sequences leave this record as it is, and when the relay served one first its `Missing`
+/// record gives way to this lower one (keeping its first time).
+pub fn note_held_ahead(
+    conn: &Connection,
+    meta: &EnvelopeMeta,
+    newest_hlc: u64,
+    now: i64,
+) -> Result<()> {
+    note(conn, meta, GapKind::Ahead, Some(unpack(newest_hlc).0), now)
+}
+
+fn note(
+    conn: &Connection,
+    meta: &EnvelopeMeta,
+    kind: GapKind,
+    dated_ms: Option<u64>,
     now: i64,
 ) -> Result<()> {
     let existing = held_gap(conn, meta.device)?;
@@ -219,6 +252,7 @@ pub fn note_held_gap(
                 }
                 None => now,
             },
+            dated_ms,
         },
     )
 }
@@ -256,10 +290,15 @@ pub fn held_gap_views(conn: &Connection) -> Result<Vec<HeldGapView>> {
                 kind: match gap.kind {
                     GapKind::Missing => HeldGapKind::Missing,
                     GapKind::Parent => HeldGapKind::Parent,
+                    GapKind::Ahead => HeldGapKind::Ahead,
                 },
                 missing_changes: gap.missing_changes(head_of(conn, gap.device)?.map(|h| h.seq)),
                 since: gap.since,
                 skippable_at: gap.skippable_at(),
+                dated_at: gap
+                    .dated_ms
+                    .and_then(|ms| i64::try_from(ms / 1000).ok())
+                    .filter(|at| (0..=MAX_DISPLAY_SECS).contains(at)),
             })
         })
         .collect()

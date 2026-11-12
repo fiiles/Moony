@@ -7,14 +7,15 @@ use rusqlite::Connection;
 use super::{PullEnd, PullReport, PullStop, RoundReport};
 use crate::error::{AppError, Result};
 use crate::models::sync::{SyncPhase, SyncProblem, SyncStatus};
-use crate::services::sync::capture::guard;
+use crate::services::sync::capture::{self, guard};
 use crate::services::sync::error::{SyncError, TooLarge, Transient};
-use crate::services::sync::{feature, keys, state};
+use crate::services::sync::hlc::{now_ms, unpack, FUTURE_WARNING_MS};
+use crate::services::sync::{feature, keys, snapshot, state};
 
 /// The relay deletes a lapsed vault this long after the subscription ended (spec §11.6).
 pub const DELETE_AFTER_LAPSE: i64 = 90 * 86_400;
 /// The last second of year 9999: the latest instant the UI can show as a date.
-const MAX_DISPLAY_SECS: i64 = 253_402_300_799;
+pub(crate) const MAX_DISPLAY_SECS: i64 = 253_402_300_799;
 
 /// The key a snapshot from a newer app version is refused with (`snapshots::restore_after_410`).
 const NEWER_SCHEMA_KEY: &str = "validation.syncSnapshotNewerSchema";
@@ -63,6 +64,7 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         refused_rows: 0,
         paid_until: None,
         deletes_at: None,
+        clock_ahead_until: None,
         dev_tools,
     };
     let Some(sync) = state::load(conn)? else {
@@ -117,8 +119,21 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         refused_rows: runtime.refused_rows,
         paid_until,
         deletes_at,
+        clock_ahead_until: clock_ahead_until(conn, now_ms())?.filter(|at| displayable(*at)),
         dev_tools,
     })
+}
+
+/// While this device's clock (`capture::clock_now`) is more than `hlc::FUTURE_WARNING_MS` past
+/// `now_ms`: the date it stands at (unix seconds), which every change this device makes carries
+/// until then (the local tick is the larger of the wall clock and the clock's high mark). Its own
+/// wall clock was ahead once, or it applied a change from a device whose clock was (audit M6).
+pub fn clock_ahead_until(conn: &Connection, now_ms: u64) -> Result<Option<i64>> {
+    let ms = unpack(capture::clock_now(conn)?).0;
+    if ms <= now_ms.saturating_add(FUTURE_WARNING_MS) {
+        return Ok(None);
+    }
+    Ok(i64::try_from(ms / 1000).ok())
 }
 
 /// `problem`, unless the sync server went back (`state::vault_went_back_at`): then
@@ -145,8 +160,8 @@ fn count(n: i64) -> u32 {
 }
 
 /// The phase a problem puts sync in (P17): `waiting` for a gap (a change from another device has
-/// not arrived, and this device keeps pulling and pushing: no stop) and for a change dated too far
-/// ahead (it applies once its time comes), `paused` while it waits on
+/// not arrived, and this device keeps pulling and pushing: no stop) and for a change dated more
+/// than ten years ahead (held until it is skipped), `paused` while it waits on
 /// something outside this device (the vault, the subscription, the quota, an app update, the
 /// network, the rate limit), `error` for everything else.
 pub fn phase_of(problem: SyncProblem) -> SyncPhase {
@@ -175,8 +190,9 @@ pub fn phase_of(problem: SyncProblem) -> SyncPhase {
 }
 
 /// The problem a failed round shows. A relay answer outside the sync states (`Refused`, a
-/// snapshot too large to open) is a relay error; a snapshot from a newer app version says so; any
-/// other local failure is internal.
+/// snapshot too large to open) is a relay error; a snapshot from a newer app version says so; one
+/// dated more than ten years ahead failed verification (`InvalidChain`); any other local failure
+/// is internal.
 pub fn problem_of(error: &SyncError) -> SyncProblem {
     use SyncProblem as P;
     match error {
@@ -193,6 +209,10 @@ pub fn problem_of(error: &SyncError) -> SyncProblem {
         SyncError::TooLarge(TooLarge::Quota) => P::QuotaExceeded,
         SyncError::TooLarge(TooLarge::Snapshot) => P::SnapshotTooLarge,
         SyncError::Local(AppError::Validation(key)) if key == NEWER_SCHEMA_KEY => P::NewerSchema,
+        // A snapshot dated more than ten years ahead failed this device's check (audit M6).
+        SyncError::Local(AppError::Validation(key)) if key == snapshot::CLOCK_AHEAD_KEY => {
+            P::InvalidChain
+        }
         SyncError::Local(_) => P::Internal,
     }
 }
@@ -212,7 +232,7 @@ pub fn problem_of_pull(pull: &PullReport) -> Option<SyncProblem> {
     use SyncProblem as P;
     match pull.end() {
         PullEnd::Unfinished if pull.held > 0 => Some(P::Quarantined),
-        PullEnd::Unfinished if pull.gaps > 0 => Some(P::Gap),
+        PullEnd::Unfinished if pull.missing_gaps() > 0 => Some(P::Gap),
         PullEnd::Unfinished if pull.ahead > 0 => Some(P::ClockAhead),
         PullEnd::Done | PullEnd::Unfinished => None,
         PullEnd::Waiting => Some(P::Gap),

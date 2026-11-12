@@ -121,6 +121,18 @@ pub fn is_installed(conn: &Connection) -> Result<bool> {
     )?)
 }
 
+/// The connection's clock: the highest clock it issued or observed (`sync_hlc_now()`) while capture
+/// is installed, else the newest stored clock, where an installation starts it.
+pub fn clock_now(conn: &Connection) -> Result<u64> {
+    let sql = if is_installed(conn)? {
+        "SELECT sync_hlc_now()"
+    } else {
+        "SELECT COALESCE(MAX(hlc), 0) FROM sync_clock"
+    };
+    let hlc: i64 = conn.query_row(sql, [], |r| r.get(0))?;
+    u64::try_from(hlc).map_err(|_| AppError::Internal(format!("negative clock {hlc}")))
+}
+
 /// The connection's mode; `Local` when capture is not installed.
 pub fn mode(conn: &Connection) -> Result<Mode> {
     if !is_installed(conn)? {

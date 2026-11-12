@@ -53,8 +53,9 @@ pub enum SyncProblem {
     /// The relay withholds an envelope.
     #[serde(rename = "gap")]
     Gap,
-    /// Changes from another device are dated more than a day past this device's time (a clock set
-    /// ahead): they wait until that time, and this device keeps syncing meanwhile (audit M6).
+    /// A change from another device is dated more than ten years past this device's time: it is
+    /// held (skippable after 14 days, `HeldGapKind::Ahead`), and this device keeps syncing
+    /// meanwhile (audit M6).
     #[serde(rename = "clockAhead")]
     ClockAhead,
     #[serde(rename = "undecryptable")]
@@ -126,6 +127,12 @@ pub struct SyncStatus {
     /// When the relay deletes the vault after a lapse: 90 days after `paidUntil`.
     #[serde(rename = "deletesAt")]
     pub deletes_at: Option<i64>,
+    /// While this device's clock (its hybrid logical clock) is more than a day past its wall
+    /// clock: the date its changes are stamped with until then (unix seconds). A note, never a
+    /// problem: sync goes on, and until that date this device's edits win over edits made
+    /// elsewhere before it. `None` otherwise, and for a date past year 9999 (audit M6).
+    #[serde(rename = "clockAheadUntil")]
+    pub clock_ahead_until: Option<i64>,
     /// The developer tools are offered (debug build with sync on).
     #[serde(rename = "devTools")]
     pub dev_tools: bool,
@@ -407,10 +414,15 @@ pub enum HeldGapKind {
     /// The device's change refers to something no change brought; skipping skips that change.
     #[serde(rename = "parent")]
     Parent,
+    /// The device's change is dated more than ten years ahead (audit M6); skipping skips that
+    /// change, and the device's later changes then apply.
+    #[serde(rename = "ahead")]
+    Ahead,
 }
 
 /// A change from another device that this device holds because something it needs has not arrived
-/// (audit M3): Settings offers to skip it once `skippableAt` has passed.
+/// (audit M3) or because it is dated more than ten years ahead (audit M6): Settings offers to skip
+/// it once `skippableAt` has passed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct HeldGapView {
     /// The author's device ID, 32 lowercase hex characters (`sync_skip_missing_change` takes it).
@@ -422,7 +434,7 @@ pub struct HeldGapView {
     #[serde(rename = "kind")]
     pub kind: HeldGapKind,
     /// How many changes a skip gives up: the device's changes that never arrived (`missing`), or
-    /// 1 (`parent`, the held change itself).
+    /// 1 (`parent` and `ahead`, the held change itself).
     #[serde(rename = "missingChanges")]
     pub missing_changes: u64,
     /// When this device first held it (unix seconds).
@@ -431,4 +443,8 @@ pub struct HeldGapView {
     /// From when it may be skipped (unix seconds): `since` plus 14 days.
     #[serde(rename = "skippableAt")]
     pub skippable_at: i64,
+    /// The date an `ahead` change carries (unix seconds, its newest clock); `None` for the other
+    /// kinds and for a date past year 9999.
+    #[serde(rename = "datedAt")]
+    pub dated_at: Option<i64>,
 }

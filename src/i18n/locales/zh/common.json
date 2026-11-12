@@ -317,6 +317,7 @@
     "dividendFromYahoo": "{{ticker}} 的股息来自 Yahoo Finance；无法添加手动股息。",
     "syncChangesetInvalid": "从其他设备收到的更改已损坏，无法读取。",
     "syncSnapshotBelowBarrier": "您数据的同步副本早于最新的 Moony 更新，无法使用。需要由安装了最新版本的设备上传新副本。",
+    "syncSnapshotClockAhead": "您的数据的同步副本日期比现在晚十年以上，因此未被使用。需要由日期和时间正确的设备上传新的副本。",
     "syncSnapshotInvalid": "您数据的同步副本已损坏，无法恢复。",
     "syncSnapshotNewerSchema": "您数据的同步副本来自更新版本的 Moony。请先在此设备上更新 Moony。",
     "syncSnapshotPending": "此设备仍有等待发送的更改。请在下次同步后重试。",

@@ -1,4 +1,4 @@
-import type { HeldGapView, SyncProblem } from '@shared/schema';
+import type { HeldGapKind, HeldGapView, SyncProblem } from '@shared/schema';
 
 /** The action the problem alert offers. */
 export type SyncProblemAction =
@@ -12,6 +12,77 @@ export type SyncProblemAction =
   | 'none';
 
 const DAY_SECONDS = 86_400;
+
+/** A translation function, as `useTranslation('deviceSync').t` gives it. */
+type Translate = (key: string, options?: Record<string, unknown>) => string;
+
+/**
+ * The held changes an alert for `problem` is about: a gap's are the missing changes and those
+ * waiting for a parent; `clockAhead`'s are the changes dated more than ten years ahead; none for
+ * any other problem.
+ */
+export function heldFor(
+  problem: SyncProblem,
+  gaps: readonly HeldGapView[] | undefined
+): HeldGapView[] {
+  const kinds: HeldGapKind[] =
+    problem === 'gap' ? ['missing', 'parent'] : problem === 'clockAhead' ? ['ahead'] : [];
+  return (gaps ?? []).filter((gap) => kinds.includes(gap.kind));
+}
+
+/** The oldest held change dated more than ten years ahead, or `null`. */
+export function aheadGap(gaps: readonly HeldGapView[] | undefined): HeldGapView | null {
+  const ahead = heldFor('clockAhead', gaps);
+  if (ahead.length === 0) return null;
+  return ahead.reduce((best, gap) => (gap.since < best.since ? gap : best));
+}
+
+/**
+ * The alert's text for a held change dated more than ten years ahead: its device and the date it
+ * carries (`dateText` formats unix seconds), and that the wait goes on after that device's clock
+ * is corrected.
+ */
+export function aheadText(
+  gap: HeldGapView,
+  t: Translate,
+  dateText: (seconds: number) => string
+): string {
+  const device = heldGapDevice(gap);
+  const date = gap.datedAt === null ? '' : dateText(gap.datedAt);
+  return date
+    ? t('alert.clockAhead.text', { device, date })
+    : t('alert.clockAhead.textFar', { device });
+}
+
+/** The skip confirmation's texts for `gap`, on desktop and phone alike. */
+export function skipGapTexts(
+  gap: HeldGapView,
+  t: Translate,
+  dateText: (seconds: number) => string
+): { title: string; description: string; skipped: string; unchanged: string } {
+  const device = heldGapDevice(gap);
+  const count = gap.missingChanges;
+  if (gap.kind === 'ahead') {
+    const date = gap.datedAt === null ? '' : dateText(gap.datedAt);
+    return {
+      title: t('skipGap.titleAhead'),
+      description: date
+        ? t('skipGap.descriptionAhead', { device, date })
+        : t('skipGap.descriptionAheadFar', { device }),
+      skipped: t('skipGap.successAhead'),
+      unchanged: t('skipGap.appliedAhead'),
+    };
+  }
+  return {
+    title: t('skipGap.title', { count }),
+    description:
+      gap.kind === 'parent'
+        ? t('skipGap.descriptionParent', { device })
+        : t('skipGap.description', { device, count }),
+    skipped: t('skipGap.success', { count }),
+    unchanged: t('skipGap.arrived'),
+  };
+}
 
 /** Whether a held change may be skipped at `now` (unix seconds): 14 days after it was first held. */
 export function gapSkippable(gap: HeldGapView, now: number): boolean {
@@ -63,7 +134,8 @@ export function heldDays(gap: HeldGapView, now: number): number {
  * it is younger than 14 days: this device keeps syncing and sending its own changes meanwhile. Once
  * a held change may be skipped (`skippable`, from `skippableGap`), the alert offers to skip it;
  * Re-sync is never the gap's answer (it would replace this device's data, and the gap would
- * come back with the same missing change).
+ * come back with the same missing change). A change dated more than ten years ahead
+ * (`clockAhead`) is offered for skipping the same way, from its own alert.
  */
 export function problemAction(
   problem: SyncProblem,
@@ -78,13 +150,11 @@ export function problemAction(
     case 'captureBroken':
       return 'repair';
     case 'gap':
+    case 'clockAhead':
+      // A change dated more than ten years ahead waits like a gap: skippable after 14 days.
       return skippable ? 'skipMissing' : 'none';
     case 'newerSchema':
       return 'updateApp';
-    case 'clockAhead':
-      // No action: the change applies by itself once its time comes; the text says to check the
-      // devices' date and time. It is never offered as a missing change to skip.
-      return 'none';
     case 'serverWentBack':
       // No action yet: the text says how to bring the devices back together (turn sync off,
       // set it up again on the device with the most complete data, join the others).

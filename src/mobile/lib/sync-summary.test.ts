@@ -12,6 +12,7 @@ function status(phase: SyncPhase, problem: SyncProblem | null = null): SyncStatu
     refusedRows: 0,
     paidUntil: null,
     deletesAt: null,
+    clockAheadUntil: null,
     devTools: false,
   };
 }

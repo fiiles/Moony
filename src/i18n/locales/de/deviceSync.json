@@ -27,7 +27,7 @@
       "snapshotTooLarge": "Die Daten sind zu groß für die Synchronisierung.",
       "newerSchema": "Ein anderes Gerät nutzt eine neuere Version von Moony. Aktualisieren Sie diese App, um fortzufahren.",
       "gap": "Eine Änderung von einem anderen Gerät ist noch nicht eingetroffen. Dieses Gerät synchronisiert weiter und sendet seine eigenen Änderungen.",
-      "clockAhead": "Änderungen von einem anderen Gerät sind mehr als einen Tag im Voraus datiert und warten deshalb bis zu diesem Zeitpunkt. Das passiert, wenn Datum und Uhrzeit eines Geräts vorgestellt sind: Prüfen Sie diese auf Ihren Geräten. Dieses Gerät synchronisiert in der Zwischenzeit weiter.",
+      "clockAhead": "Eine Änderung von einem anderen Gerät ist mehr als zehn Jahre im Voraus datiert und wird deshalb zurückgehalten. Sie bleibt zurückgehalten, auch wenn die Uhr dieses Geräts korrigiert wird; nach 14 Tagen können Sie sie überspringen.",
       "undecryptable": "Änderungen eines anderen Geräts konnten nicht entschlüsselt werden.",
       "invalidChain": "Änderungen eines anderen Geräts haben die Prüfung nicht bestanden und werden zurückgehalten.",
       "missingParent": "Änderungen eines anderen Geräts haben fehlende frühere Schritte und werden zurückgehalten.",
@@ -44,6 +44,7 @@
     "lastSynced": "Zuletzt synchronisiert {{date}}",
     "neverSynced": "Noch nicht synchronisiert",
     "pending": "Zum Senden vorgemerkt: {{number}}",
+    "clockAhead": "Die Uhr dieses Geräts (oder die eines Geräts, mit dem es synchronisiert hat) ging einmal vor, daher tragen seine Änderungen bis dahin das Datum {{date}}. Sie werden weiter synchronisiert; wird derselbe Eintrag auf einem anderen Gerät bearbeitet, setzt sich bis zu diesem Datum die Version dieses Geräts durch.",
     "subscription": "Abonnement",
     "selfHosted": "Selbst betriebener Server",
     "paidUntil": "Bezahlt bis {{date}}",
@@ -148,6 +149,12 @@
       "skip_one": "Fehlende Änderung überspringen",
       "skip_other": "Fehlende Änderungen überspringen",
       "skipFrom": "Wenn sie bis zum {{date}} nicht ankommt, können Sie sie dann überspringen."
+    },
+    "clockAhead": {
+      "text": "Eine Änderung von „{{device}}“ ist auf den {{date}} datiert, mehr als zehn Jahre im Voraus, und wird deshalb zurückgehalten. Sie bleibt zurückgehalten, auch wenn die Uhr dieses Geräts korrigiert wird.",
+      "textFar": "Eine Änderung von „{{device}}“ ist weit in die Zukunft datiert, mehr als zehn Jahre im Voraus, und wird deshalb zurückgehalten. Sie bleibt zurückgehalten, auch wenn die Uhr dieses Geräts korrigiert wird.",
+      "skipFrom": "Ab dem {{date}} können Sie sie überspringen.",
+      "skip": "Diese Änderung überspringen"
     }
   },
   "renew": {
@@ -178,7 +185,12 @@
     "confirm": "Überspringen",
     "success_one": "Die fehlende Änderung wurde übersprungen. Die Synchronisierung läuft weiter.",
     "success_other": "Die fehlenden Änderungen wurden übersprungen. Die Synchronisierung läuft weiter.",
-    "arrived": "Die fehlende Änderung ist inzwischen angekommen; es wurde nichts übersprungen."
+    "arrived": "Die fehlende Änderung ist inzwischen angekommen; es wurde nichts übersprungen.",
+    "titleAhead": "Änderung mit zukünftigem Datum überspringen?",
+    "descriptionAhead": "Die Änderung von „{{device}}“ mit dem Datum {{date}} wird übersprungen, und die späteren Änderungen dieses Geräts werden synchronisiert. Sie kommt auf dieses Gerät nur zurück, wenn ein Gerät, das sie angewendet hat, eine neuere Kopie der synchronisierten Daten hochlädt; hat das keines getan, ist sie verloren.",
+    "descriptionAheadFar": "Die Änderung von „{{device}}“, die weit in die Zukunft datiert ist, wird übersprungen, und die späteren Änderungen dieses Geräts werden synchronisiert. Sie kommt auf dieses Gerät nur zurück, wenn ein Gerät, das sie angewendet hat, eine neuere Kopie der synchronisierten Daten hochlädt; hat das keines getan, ist sie verloren.",
+    "successAhead": "Die Änderung wurde übersprungen. Die Synchronisierung läuft weiter.",
+    "appliedAhead": "Die Änderung wurde inzwischen angewendet; nichts wurde übersprungen."
   },
   "turnOff": {
     "button": "Synchronisierung auf diesem Gerät ausschalten",

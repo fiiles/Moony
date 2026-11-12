@@ -76,11 +76,11 @@ pub enum PullEnd {
     Held,
     /// Every envelope was dealt with except those waiting for an earlier envelope of their author
     /// or for a parent they reference (held; the next pull meets them again, audit M3), and
-    /// perhaps some dated too far ahead (a missing change outranks one that waits for its time).
+    /// perhaps some dated too far ahead (a missing change outranks one dated too far ahead).
     Waiting,
-    /// Every envelope was dealt with except changes dated more than a day past this device's time
-    /// (`chain::too_far_ahead`) and the later envelopes of their authors, which wait behind them
-    /// (held; the next pull meets them again, and they apply once the time comes, audit M6).
+    /// Every envelope was dealt with except changes dated more than ten years past this device's
+    /// time (`chain::too_far_ahead`) and the later envelopes of their authors, gaps behind them
+    /// (held; the next pull meets them again; skippable after 14 days, audit M6).
     Ahead,
     /// The pull reached its page limit before the relay's head; the next round goes on.
     Unfinished,
@@ -91,14 +91,13 @@ pub enum PullEnd {
 /// What one pull did.
 #[derive(Debug, Default)]
 pub struct PullReport {
-    /// Envelopes held because their changeset is dated too far ahead (`chain::too_far_ahead`), and
-    /// the later envelopes of the same authors, which wait behind them (audit M6).
+    /// Envelopes held because their changeset is dated more than ten years ahead
+    /// (`chain::too_far_ahead`, audit M6). The same authors' later envelopes are gaps behind them.
     pub ahead: usize,
-    /// The authors whose next envelope this pull held as too far ahead: their later envelopes
-    /// count in `ahead`, never as a gap.
+    /// The authors whose next envelope this pull held as too far ahead.
     ahead_authors: BTreeSet<DeviceId>,
-    /// This pull's gaps by author (`gaps`), moved to `ahead` when the author's next envelope turns
-    /// out to be too far ahead (the relay served a later one first).
+    /// This pull's gaps by author (`gaps`), so the gaps behind a change dated too far ahead are
+    /// told apart from missing ones (`missing_gaps`).
     gaps_by_author: BTreeMap<DeviceId, usize>,
     /// Changesets merged.
     pub applied: usize,
@@ -129,43 +128,47 @@ impl PullReport {
     }
 
     /// A stop comes first, then an unfinished pull, then a quarantined author's held envelopes,
-    /// then envelopes waiting for an earlier one (gaps), then changes dated too far ahead: a
-    /// quarantine outranks a gap, so a forked author is shown even while another author's
-    /// envelope is missing, and a gap outranks a change waiting for its time, which needs nothing
-    /// from the person (a gap may need its skip, `chain::gaps`).
+    /// then envelopes waiting for a missing one (`missing_gaps`), then changes dated too far ahead
+    /// (with the gaps of their authors behind them): a quarantine outranks a gap, so a forked
+    /// author is shown even while another author's envelope is missing, and a missing change
+    /// outranks one dated too far ahead (both are skippable after 14 days, each from its own
+    /// alert).
     pub fn end(&self) -> PullEnd {
         match &self.stop {
             Some(stop) => PullEnd::Stopped(stop.clone()),
             None if self.unfinished => PullEnd::Unfinished,
             None if self.held > 0 => PullEnd::Held,
-            None if self.gaps > 0 => PullEnd::Waiting,
+            None if self.missing_gaps() > 0 => PullEnd::Waiting,
             None if self.ahead > 0 => PullEnd::Ahead,
             None => PullEnd::Done,
         }
     }
 
-    /// A gap of `device` held by this pull: counted in `ahead` when the author's next envelope
-    /// waits for its time, else in `gaps`. `true` when it counts as a gap.
-    pub(crate) fn note_gap(&mut self, device: DeviceId) -> bool {
-        if self.ahead_authors.contains(&device) {
-            self.ahead += 1;
-            return false;
-        }
+    /// A gap of `device` held by this pull (an ordinary gap, also behind the author's change dated
+    /// too far ahead).
+    pub(crate) fn note_gap(&mut self, device: DeviceId) {
         self.gaps += 1;
         *self.gaps_by_author.entry(device).or_insert(0) += 1;
-        true
     }
 
-    /// `device`'s next envelope waits for its time: it and the author's gaps this pull already
-    /// held count in `ahead`. `true` when the author had gaps (their record goes, since nothing of
-    /// that author is missing).
-    pub(crate) fn note_ahead(&mut self, device: DeviceId) -> bool {
+    /// `device`'s next envelope is dated too far ahead (audit M6): held, and its author's gaps
+    /// wait behind it rather than for a missing change.
+    pub(crate) fn note_ahead(&mut self, device: DeviceId) {
         self.ahead += 1;
         self.ahead_authors.insert(device);
-        let moved = self.gaps_by_author.remove(&device).unwrap_or(0);
-        self.gaps -= moved;
-        self.ahead += moved;
-        moved > 0
+    }
+
+    /// The gaps that wait for a missing envelope or parent: every gap except those of an author
+    /// whose next envelope this pull held as too far ahead (they wait behind it, nothing of that
+    /// author is missing, and its `Ahead` record covers them).
+    pub fn missing_gaps(&self) -> usize {
+        let behind_ahead: usize = self
+            .gaps_by_author
+            .iter()
+            .filter(|(device, _)| self.ahead_authors.contains(*device))
+            .map(|(_, n)| n)
+            .sum();
+        self.gaps.saturating_sub(behind_ahead)
     }
 
     /// Whether the round may push after this pull (ruling P1): the pull ended done, with only
@@ -312,7 +315,7 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    refusal or local failure is returned as an error; nothing inside a round is retried, so a
 ///    round lasts at most one relay timeout past its last answered call.
 /// 6. A sync server that went back (`state::vault_went_back_at`) is the round's problem in place
-///    of none, a gap, a change waiting for its time or an invalid chain (`status::went_back`). A
+///    of none, a gap, a change held for its date or an invalid chain (`status::went_back`). A
 ///    round with no problem, or only a waiting gap (`Gap`) or change (`ClockAhead`), records its
 ///    success; one with any other problem records its fixed reason.
 #[allow(clippy::too_many_arguments)]
@@ -388,7 +391,7 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
     // A gap alone is no failure: the round synced everything it could and keeps pushing, so it
     // counts for "Last synced" (the `Gap` problem and the `waiting` phase are still reported).
     // An unfinished pull behind a held gap that pushed nothing did not sync: no success, the gap
-    // stays the problem. A change waiting for its time (`ClockAhead`) counts alike.
+    // stays the problem. A change held for its date (`ClockAhead`) counts alike.
     let stalled = report.push.is_none()
         && report
             .pull
@@ -472,8 +475,8 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     if endless {
         log::warn!("[SYNC] Pulls keep ending unfinished: pushing anyway");
         // A pull that holds something keeps its own problem (a quarantine, else the gap, else a
-        // change waiting for its time): the person's way out of a held gap (the skip) is offered
-        // for `Gap` only.
+        // change held for its date): the person's way out (the skip) is offered under `Gap` and
+        // `ClockAhead` only.
         if pulled.held == 0 && pulled.gaps == 0 && pulled.ahead == 0 {
             report.problem = Some(SyncProblem::RelayError);
         }

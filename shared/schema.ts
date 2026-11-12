@@ -98,6 +98,11 @@ export interface SyncStatus {
   paidUntil: number | null;
   /** When the relay deletes the vault after a lapse: 90 days after `paidUntil`. */
   deletesAt: number | null;
+  /**
+   * While this device's clock is more than a day past its wall clock: the date its changes are
+   * stamped with until then (unix seconds). A note, never a problem; `null` otherwise.
+   */
+  clockAheadUntil: number | null;
   /** The developer tools are offered (debug build with sync on). */
   devTools: boolean;
 }
@@ -260,11 +265,16 @@ export interface SyncBackupEntry {
  * applies the ones after it); `parent`, the change refers to something no change brought (skipping
  * skips that change).
  */
-export type HeldGapKind = 'missing' | 'parent';
+/**
+ * What a held change waits for: an earlier change that never arrived (`missing`), something it
+ * refers to (`parent`), or its date, more than ten years ahead (`ahead`, audit M6).
+ */
+export type HeldGapKind = 'missing' | 'parent' | 'ahead';
 
 /**
  * A change from another device that this device holds because something it needs has not arrived
- * (audit M3): Settings offers to skip it once `skippableAt` has passed.
+ * (audit M3) or because it is dated more than ten years ahead (audit M6): Settings offers to skip
+ * it once `skippableAt` has passed.
  */
 export interface HeldGapView {
   /** The author's device ID, 32 lowercase hex characters (`skipMissingChange` takes it). */
@@ -272,12 +282,17 @@ export interface HeldGapView {
   /** The author's name from the device list; `null` for a device that has no row there. */
   deviceName: string | null;
   kind: HeldGapKind;
-  /** How many changes a skip gives up: the device's changes that never arrived, or 1 (`parent`). */
+  /**
+   * How many changes a skip gives up: the device's changes that never arrived, or 1 (`parent`,
+   * `ahead`).
+   */
   missingChanges: number;
   /** When this device first held it (unix seconds). */
   since: number;
   /** From when it may be skipped (unix seconds): `since` plus 14 days. */
   skippableAt: number;
+  /** The date an `ahead` change carries (unix seconds); `null` otherwise or past year 9999. */
+  datedAt: number | null;
 }
 
 export interface MenuPreferences {

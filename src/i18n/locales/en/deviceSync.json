@@ -27,7 +27,7 @@
       "snapshotTooLarge": "The data is too large to sync.",
       "newerSchema": "Another device uses a newer version of Moony. Update this app to continue.",
       "gap": "A change from another device hasn't arrived yet. This device keeps syncing and sending its own changes.",
-      "clockAhead": "Changes from another device are dated more than a day ahead, so they wait until that time. This happens when a device's date and time are set ahead: check them on your devices. This device keeps syncing meanwhile.",
+      "clockAhead": "A change from another device is dated more than ten years ahead, so it is held. It stays held even after that device's clock is corrected; you can skip it after 14 days.",
       "undecryptable": "Changes from another device could not be decrypted.",
       "invalidChain": "Changes from another device failed verification and are held.",
       "missingParent": "Changes from another device are missing earlier steps and are held.",
@@ -44,6 +44,7 @@
     "lastSynced": "Last synced {{date}}",
     "neverSynced": "Not synced yet",
     "pending": "Waiting to be sent: {{number}}",
+    "clockAhead": "This device's clock was ahead at some point (or that of a device it synced with), so its changes are dated {{date}} until then. They still sync; if the same item is edited on another device, this device's version wins until that date.",
     "subscription": "Subscription",
     "selfHosted": "Self-hosted server",
     "paidUntil": "Paid until {{date}}",
@@ -148,6 +149,12 @@
       "skip_one": "Skip the missing change",
       "skip_other": "Skip the missing changes",
       "skipFrom": "If it still hasn't arrived by {{date}}, you can skip it then."
+    },
+    "clockAhead": {
+      "text": "A change from “{{device}}” is dated {{date}}, more than ten years ahead, so it is held. It stays held even after that device's clock is corrected.",
+      "textFar": "A change from “{{device}}” is dated far in the future, more than ten years ahead, so it is held. It stays held even after that device's clock is corrected.",
+      "skipFrom": "You can skip it from {{date}}.",
+      "skip": "Skip this change"
     }
   },
   "renew": {
@@ -178,7 +185,12 @@
     "confirm": "Skip",
     "success_one": "The missing change was skipped. Syncing continues.",
     "success_other": "The missing changes were skipped. Syncing continues.",
-    "arrived": "The missing change arrived in the meantime; nothing was skipped."
+    "arrived": "The missing change arrived in the meantime; nothing was skipped.",
+    "titleAhead": "Skip the change dated in the future?",
+    "descriptionAhead": "The change from “{{device}}” dated {{date}} will be skipped, and that device's later changes will sync. It comes back on this device only if a device that applied it uploads a newer copy of the synced data; if none did, it is lost.",
+    "descriptionAheadFar": "The change from “{{device}}” dated far in the future will be skipped, and that device's later changes will sync. It comes back on this device only if a device that applied it uploads a newer copy of the synced data; if none did, it is lost.",
+    "successAhead": "The change was skipped. Syncing continues.",
+    "appliedAhead": "The change was applied in the meantime; nothing was skipped."
   },
   "turnOff": {
     "button": "Turn off sync on this device",

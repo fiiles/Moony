@@ -27,7 +27,7 @@
       "snapshotTooLarge": "Data jsou na synchronizaci příliš velká.",
       "newerSchema": "Jiné zařízení používá novější verzi Moony. Pro pokračování aplikaci aktualizujte.",
       "gap": "Změna z jiného zařízení zatím nedorazila. Toto zařízení dál synchronizuje a odesílá své vlastní změny.",
-      "clockAhead": "Změny z jiného zařízení mají datum víc než den dopředu, takže počkají, až ten čas nastane. Stává se to, když má některé zařízení nastavené datum a čas dopředu: zkontrolujte je na svých zařízeních. Toto zařízení mezitím dál synchronizuje.",
+      "clockAhead": "Změna z jiného zařízení má datum víc než deset let dopředu, a proto je zadržená. Zůstane zadržená, i když se hodiny toho zařízení opraví; po 14 dnech ji můžete přeskočit.",
       "undecryptable": "Změny z jiného zařízení se nepodařilo dešifrovat.",
       "invalidChain": "Změny z jiného zařízení neprošly ověřením a jsou zadržené.",
       "missingParent": "Změnám z jiného zařízení chybí dřívější kroky a jsou zadržené.",
@@ -44,6 +44,7 @@
     "lastSynced": "Naposledy synchronizováno {{date}}",
     "neverSynced": "Zatím nesynchronizováno",
     "pending": "Čeká na odeslání: {{number}}",
+    "clockAhead": "Hodiny tohoto zařízení (nebo zařízení, se kterým se synchronizovalo) byly v jednu chvíli napřed, takže jeho změny nesou datum {{date}}, dokud ten den nenastane. Synchronizují se dál; pokud se stejná položka upraví na jiném zařízení, do toho data vyhraje verze z tohoto zařízení.",
     "subscription": "Předplatné",
     "selfHosted": "Vlastní (self-hosted) server",
     "paidUntil": "Zaplaceno do {{date}}",
@@ -152,6 +153,12 @@
       "skip_many": "Přeskočit chybějící změny",
       "skip_other": "Přeskočit chybějící změny",
       "skipFrom": "Pokud do {{date}} nedorazí, budete ji pak moct přeskočit."
+    },
+    "clockAhead": {
+      "text": "Změna ze zařízení „{{device}}“ má datum {{date}}, víc než deset let dopředu, a proto je zadržená. Zůstane zadržená, i když se hodiny toho zařízení opraví.",
+      "textFar": "Změna ze zařízení „{{device}}“ má datum daleko v budoucnosti, víc než deset let dopředu, a proto je zadržená. Zůstane zadržená, i když se hodiny toho zařízení opraví.",
+      "skipFrom": "Od {{date}} ji budete moct přeskočit.",
+      "skip": "Přeskočit tuto změnu"
     }
   },
   "renew": {
@@ -188,7 +195,12 @@
     "success_few": "Chybějící změny byly přeskočeny. Synchronizace pokračuje.",
     "success_many": "Chybějící změny byly přeskočeny. Synchronizace pokračuje.",
     "success_other": "Chybějící změny byly přeskočeny. Synchronizace pokračuje.",
-    "arrived": "Chybějící změna mezitím dorazila, nic se nepřeskočilo."
+    "arrived": "Chybějící změna mezitím dorazila, nic se nepřeskočilo.",
+    "titleAhead": "Přeskočit změnu s budoucím datem?",
+    "descriptionAhead": "Změna ze zařízení „{{device}}“ s datem {{date}} bude přeskočena a pozdější změny z toho zařízení se pak synchronizují. Na toto zařízení se vrátí, jen pokud zařízení, které ji použilo, nahraje novější kopii synchronizovaných dat; pokud žádné takové není, je ztracená.",
+    "descriptionAheadFar": "Změna ze zařízení „{{device}}“ s datem daleko v budoucnosti bude přeskočena a pozdější změny z toho zařízení se pak synchronizují. Na toto zařízení se vrátí, jen pokud zařízení, které ji použilo, nahraje novější kopii synchronizovaných dat; pokud žádné takové není, je ztracená.",
+    "successAhead": "Změna byla přeskočena. Synchronizace pokračuje.",
+    "appliedAhead": "Změna se mezitím použila; nic nebylo přeskočeno."
   },
   "turnOff": {
     "button": "Vypnout synchronizaci na tomto zařízení",

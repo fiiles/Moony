@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Clock } from 'lucide-react';
 import type { HeldGapView, SyncStatus } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useHeldGaps } from '@/hooks/use-device-sync';
@@ -8,8 +8,11 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
 import {
+  aheadGap,
+  aheadText,
   firstSkippableAt,
   heldDays,
+  heldFor,
   heldGapDevice,
   problemAction,
   skippableGap,
@@ -63,6 +66,8 @@ export function SyncStatusBlock({
     }
   };
 
+  // A note, never a problem: this device's clock stands more than a day ahead (audit M6)
+  const clockAheadUntil = secondsToDate(status.clockAheadUntil);
   const lastSynced =
     status.lastSuccessAt === null
       ? t('status.neverSynced')
@@ -85,6 +90,11 @@ export function SyncStatusBlock({
             return when ? date(when, { dateStyle: 'long' }) : '';
           }}
         />
+      )}
+      {clockAheadUntil && (
+        <InlineAlert icon={Clock} muted>
+          {t('status.clockAhead', { date: date(clockAheadUntil, { dateStyle: 'long' }) })}
+        </InlineAlert>
       )}
       <div className={CARD}>
         <KeyValueRow label={t('phone.status')} value={t(`status.phase.${status.phase}`)} />
@@ -121,19 +131,22 @@ function ProblemAlert({
   renderDate: (seconds: number) => string;
 }) {
   const { t } = useTranslation('deviceSync');
-  const heldGaps = useHeldGaps(status.problem === 'gap');
+  const heldGaps = useHeldGaps(status.problem === 'gap' || status.problem === 'clockAhead');
   const problem = status.problem;
   if (!problem) return null;
 
   const now = Math.floor(Date.now() / 1000);
-  // A gap younger than 14 days offers nothing: this device keeps syncing meanwhile
-  const skippable = problem === 'gap' ? skippableGap(heldGaps.data, now) : null;
+  const held = heldFor(problem, heldGaps.data);
+  // A held change younger than 14 days offers nothing: this device keeps syncing meanwhile
+  const skippable = skippableGap(held, now);
   const action = problemAction(problem, isSelfHostedPaidUntil(status.paidUntil), skippable);
+  const ahead = problem === 'clockAhead' ? aheadGap(held) : null;
   let title: string | undefined;
-  let body = t(`status.problem.${problem}`);
-  const skipFrom = problem === 'gap' ? firstSkippableAt(heldGaps.data, now) : null;
-  if (skipFrom !== null) {
-    body = `${body} ${t('alert.gap.skipFrom', { date: renderDate(skipFrom) })}`;
+  let body = ahead ? aheadText(ahead, t, renderDate) : t(`status.problem.${problem}`);
+  const skipFrom = firstSkippableAt(held, now);
+  if (skipFrom !== null && renderDate(skipFrom)) {
+    const key = problem === 'clockAhead' ? 'alert.clockAhead.skipFrom' : 'alert.gap.skipFrom';
+    body = `${body} ${t(key, { date: renderDate(skipFrom) })}`;
   }
   let actions: Array<{ label: string; onClick: () => void; disabled?: boolean }> = [];
   switch (action) {
@@ -172,7 +185,10 @@ function ProblemAlert({
       body = t('alert.newerSchema');
       break;
     case 'skipMissing':
-      if (skippable) {
+      if (skippable?.kind === 'ahead') {
+        body = aheadText(skippable, t, renderDate);
+        actions = [{ label: t('alert.clockAhead.skip'), onClick: () => onSkipMissing(skippable) }];
+      } else if (skippable) {
         const device = heldGapDevice(skippable);
         const days = heldDays(skippable, now);
         body =

@@ -29,6 +29,7 @@ use reqwest::Url;
 use rusqlite::Connection;
 
 use super::binding::{self, BindingNative};
+use super::capture::guard;
 use super::devices;
 use super::engine::snapshots::{off_thread, SnapshotPolicy};
 use super::engine::{self, ConnAccess, RoundMode, RoundReport};
@@ -351,13 +352,35 @@ fn problem_error(problem: SyncProblem) -> SyncError {
 /// (`binding::forget_binding`). Local data stays, and so does the vault on the
 /// relay for the other devices. Repair backups (`sync-repair-*.zip`) are copies of local data and
 /// stay until Delete Account.
+///
+/// Turning sync off is the way out of a profile whose capture cannot be installed (ADR 0027): the
+/// guard (`capture::guard`) and a read-only session (`query_only`) are lifted before the
+/// savepoint, so local data is writable again once sync is off; a failure puts back whichever of
+/// them the profile had.
 pub fn turn_off(conn: &Connection, data_dir: &Path) -> Result<()> {
-    in_savepoint(conn, "sync_turn_off", || {
-        // `disable` drops the capture first, so deleting the device list queues nothing.
-        state::disable(conn)?;
-        conn.execute("DELETE FROM sync_devices", [])?;
-        Ok(())
-    })?;
+    let was_guarded = guard::is_imposed(conn);
+    let was_read_only: bool = conn.pragma_query_value(None, "query_only", |r| r.get(0))?;
+    let off = guard::lift(conn)
+        .and_then(|()| Ok(conn.execute_batch("PRAGMA query_only = 0")?))
+        .and_then(|()| {
+            in_savepoint(conn, "sync_turn_off", || {
+                // `disable` drops the capture first, so deleting the device list queues nothing.
+                state::disable(conn)?;
+                conn.execute("DELETE FROM sync_devices", [])?;
+                Ok(())
+            })
+        });
+    if let Err(error) = off {
+        if was_guarded {
+            super::guard_or_close(conn, guard::impose);
+        }
+        if was_read_only {
+            if let Err(pragma) = conn.execute_batch("PRAGMA query_only = 1") {
+                log::error!("[SYNC] Could not make the profile read-only again: {pragma}");
+            }
+        }
+        return Err(error);
+    }
     binding::forget_binding(data_dir)?;
     log::info!("[SYNC] Sync is off on this device; local data stays");
     Ok(())

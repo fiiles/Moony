@@ -335,6 +335,8 @@
     "syncRelayUrlInvalid": "Adressen til synkroniseringsserveren er ugyldig.",
     "syncVaultHasNoSnapshot": "De synkroniserte dataene har ennå ingen kopi å starte fra. La en enhet som allerede synkroniserer fullføre en synkronisering, og prøv igjen.",
     "syncRepairDrainIncomplete": "Ikke alle endringene fra denne enheten kunne sendes til synkroniseringsserveren, så reparasjonen stoppet og ingenting ble erstattet. En sikkerhetskopi ble lagret. Prøv igjen når synkroniseringen fungerer.",
+    "syncChangesPaused": "Endringer kan ikke lagres på denne enheten før synkroniseringen er reparert under Innstillinger → Synkronisering.",
+    "syncCaptureStillBroken": "Endringssporingen kan fortsatt ikke starte på denne enheten. Slå av synkronisering for å fortsette å jobbe: dataene dine blir her, og du kan sette opp synkronisering igjen senere.",
     "syncRecoveryKitNotConfirmed": "Lagre eller kopier gjenopprettingssettet for synkronisering, og bekreft at du har gjort det, før du fortsetter.",
     "syncSetupIncomplete": "Oppsettet av synkronisering er ikke fullført. Gå tilbake til forrige trinn og prøv igjen.",
     "syncAlreadyEnabled": "Synkronisering er allerede slått på for denne profilen.",

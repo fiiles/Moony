@@ -7,6 +7,7 @@
 //! recalculations after a merge) and then the triggers of `triggers::trigger_sql`.
 
 pub mod bench;
+pub mod guard;
 pub mod triggers;
 
 use std::sync::{Arc, Mutex};
@@ -74,6 +75,18 @@ pub fn install(conn: &Connection, device: DeviceId) -> Result<()> {
         }
         Ok(())
     })
+}
+
+/// `install`; when it fails, the guard (`guard::impose`, or read-only when that fails too:
+/// `sync::guard_or_close`) and the install's error. For a profile whose capture must not lapse:
+/// an enabled profile either captures every change or refuses changes to synced data (ADR 0027).
+pub fn install_or_guard(conn: &Connection, device: DeviceId) -> Result<()> {
+    let installed = install(conn, device);
+    if let Err(error) = &installed {
+        log::warn!("[SYNC] Change capture did not install; the guard goes on: {error}");
+        super::guard_or_close(conn, guard::impose);
+    }
+    installed
 }
 
 /// Removes the triggers and `temp.sync_mode`. The clock functions stay registered until the

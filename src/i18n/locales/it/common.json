@@ -335,6 +335,8 @@
     "syncRelayUrlInvalid": "L'indirizzo del server di sincronizzazione non è valido.",
     "syncVaultHasNoSnapshot": "I dati sincronizzati non hanno ancora una copia da cui partire. Lascia che un dispositivo che sincronizza già completi una sincronizzazione, poi riprova.",
     "syncRepairDrainIncomplete": "Non è stato possibile inviare al server di sincronizzazione tutte le modifiche di questo dispositivo, quindi la riparazione si è fermata e non è stato sostituito nulla. È stato salvato un backup. Riprova quando la sincronizzazione funziona.",
+    "syncChangesPaused": "Non è possibile salvare modifiche su questo dispositivo finché non ripari la sincronizzazione in Impostazioni → Sincronizzazione.",
+    "syncCaptureStillBroken": "Il tracciamento delle modifiche non riesce ancora ad avviarsi su questo dispositivo. Disattiva la sincronizzazione per continuare a lavorare: i tuoi dati restano qui e potrai configurare di nuovo la sincronizzazione più tardi.",
     "syncRecoveryKitNotConfirmed": "Salva o copia il kit di recupero della sincronizzazione e conferma di averlo fatto prima di continuare.",
     "syncSetupIncomplete": "La configurazione della sincronizzazione non è completa. Torna al passaggio precedente e riprova.",
     "syncAlreadyEnabled": "La sincronizzazione è già attiva per questo profilo.",

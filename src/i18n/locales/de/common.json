@@ -335,6 +335,8 @@
     "syncRelayUrlInvalid": "Die Adresse des Sync-Servers ist ungültig.",
     "syncVaultHasNoSnapshot": "Für die synchronisierten Daten gibt es noch keine Kopie zum Starten. Lassen Sie ein Gerät, das bereits synchronisiert, eine Synchronisierung abschließen, und versuchen Sie es dann erneut.",
     "syncRepairDrainIncomplete": "Nicht alle Änderungen dieses Geräts konnten an den Sync-Server gesendet werden. Die Reparatur wurde daher angehalten und nichts ersetzt. Eine Sicherung wurde gespeichert. Versuchen Sie es erneut, wenn die Synchronisierung funktioniert.",
+    "syncChangesPaused": "Änderungen können auf diesem Gerät erst wieder gespeichert werden, wenn Sie die Synchronisierung unter Einstellungen → Synchronisierung reparieren.",
+    "syncCaptureStillBroken": "Die Änderungsverfolgung lässt sich auf diesem Gerät weiterhin nicht starten. Schalten Sie die Synchronisierung aus, um weiterzuarbeiten: Ihre Daten bleiben hier, und Sie können die Synchronisierung später erneut einrichten.",
     "syncRecoveryKitNotConfirmed": "Speichern oder kopieren Sie Ihr Sync-Wiederherstellungskit und bestätigen Sie das, bevor Sie fortfahren.",
     "syncSetupIncomplete": "Die Einrichtung der Synchronisierung ist nicht abgeschlossen. Gehen Sie einen Schritt zurück und versuchen Sie es erneut.",
     "syncAlreadyEnabled": "Die Synchronisierung ist für dieses Profil bereits aktiviert.",

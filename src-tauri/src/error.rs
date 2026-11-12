@@ -61,10 +61,30 @@ impl Serialize for AppError {
     }
 }
 
-// Convert from rusqlite errors
+// Convert from rusqlite errors. A write the sync guard refused (its authorizer's `SQLITE_AUTH`, or
+// its `app_config` trigger's RAISE) reads as a paused change the person can act on.
 impl From<rusqlite::Error> for AppError {
     fn from(e: rusqlite::Error) -> Self {
+        if refused_by_sync_guard(&e) {
+            return AppError::Validation(
+                crate::services::sync::capture::guard::CHANGES_PAUSED.into(),
+            );
+        }
         AppError::Database(e.to_string())
+    }
+}
+
+/// Only the sync guard sets an authorizer, so any `SQLITE_AUTH` is the guard's.
+fn refused_by_sync_guard(e: &rusqlite::Error) -> bool {
+    match e {
+        rusqlite::Error::SqliteFailure(failure, message) => match failure.code {
+            rusqlite::ErrorCode::AuthorizationForStatementDenied => true,
+            rusqlite::ErrorCode::ConstraintViolation => {
+                message.as_deref() == Some(crate::services::sync::capture::guard::GUARD_RAISE)
+            }
+            _ => false,
+        },
+        _ => false,
     }
 }
 
@@ -125,6 +145,37 @@ mod tests {
             Some(("validation.required".to_string(), json!({})))
         );
         assert_eq!(AppError::NotFound("x".into()).keyed(), None);
+    }
+
+    #[test]
+    fn the_guard_reads_as_changes_paused() {
+        use crate::services::sync::capture::guard::{self, CHANGES_PAUSED};
+        let paused = |e: rusqlite::Error| matches!(AppError::from(e), AppError::Validation(key) if key == CHANGES_PAUSED);
+        let conn = crate::services::sync::test_support::migrated();
+        guard::impose(&conn).expect("impose");
+
+        let denied = conn
+            .execute(
+                "INSERT INTO institutions (id, name) VALUES ('g1', 'Bank')",
+                [],
+            )
+            .expect_err("the authorizer refuses");
+        assert!(paused(denied));
+        let raised = conn
+            .execute(
+                "INSERT INTO app_config (key, value) VALUES ('rule_packs_enabled', '[]')",
+                [],
+            )
+            .expect_err("the trigger refuses");
+        assert!(paused(raised));
+
+        let other = conn
+            .execute(
+                "INSERT INTO _migrations (name) SELECT name FROM _migrations LIMIT 1",
+                [],
+            )
+            .expect_err("a constraint of its own");
+        assert!(matches!(AppError::from(other), AppError::Database(_)));
     }
 
     fn rust_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {

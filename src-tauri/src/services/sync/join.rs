@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use rusqlite::Connection;
 
 use super::binding::{self, BindingNative};
-use super::capture;
+use super::capture::{self, guard};
 use super::devices;
 use super::engine::pull::DEFAULT_DEVICE_NAME;
 use super::engine::runtime::{rejoin_if_copy, CopyCheck};
@@ -235,31 +235,40 @@ fn replace_profile(
     plain: &[u8],
     now: i64,
 ) -> Result<RestoreReport> {
-    // The device whose capture runs on this connection now, if any: a failed join puts it back.
+    // The device whose capture runs on this connection now, if any, and whether the guard of a
+    // capture-broken profile is on (ADR 0027): a failed join puts back whichever it was.
     let installed = if capture::is_installed(conn)? {
         state::load(conn)?.map(|sync| sync.device)
     } else {
         None
     };
-    let joined = in_savepoint(conn, "sync_join_by_replace", || {
-        keys::save_credentials(conn, creds)?;
-        state::reset_chain(conn)?;
-        state::reset_engine_marks(conn)?;
-        let report = binding::join_leaving_marker(conn, DeviceId::random(), &mut &plain[..], now)?;
-        let public = keys::new_device_keypair(conn)?;
-        devices::record_this_device(conn, device_name, &public, now)?;
-        Ok(report)
+    let was_guarded = guard::is_imposed(conn);
+    // The guard is a connection setting no rollback undoes, so it is lifted outside the
+    // savepoint (the replace writes synced tables) and imposed again on every failure.
+    let joined = guard::lift(conn).and_then(|()| {
+        in_savepoint(conn, "sync_join_by_replace", || {
+            keys::save_credentials(conn, creds)?;
+            state::reset_chain(conn)?;
+            state::reset_engine_marks(conn)?;
+            let report =
+                binding::join_leaving_marker(conn, DeviceId::random(), &mut &plain[..], now)?;
+            let public = keys::new_device_keypair(conn)?;
+            devices::record_this_device(conn, device_name, &public, now)?;
+            Ok(report)
+        })
     });
     let joined = match joined {
         Ok(report) => report,
         Err(error) => {
             // The rollback restored the old triggers, but not the clock functions the join's
             // capture install registered: they were seeded from the snapshot's clocks. Installing
-            // again seeds them from this profile's own `sync_clock`.
+            // again seeds them from this profile's own `sync_clock`; failing that, the guard.
             if let Some(device) = installed {
-                if let Err(e) = capture::install(conn, device) {
+                if let Err(e) = capture::install_or_guard(conn, device) {
                     log::warn!("[SYNC] Could not reinstall capture after a failed join: {e}");
                 }
+            } else if was_guarded {
+                super::guard_or_close(conn, guard::impose);
             }
             return Err(error);
         }
@@ -282,7 +291,9 @@ fn replace_profile(
 ///    earlier one), flushed to disk and read back to its last byte. Nothing goes on without it.
 /// 2. Capture is installed again on the connection (whatever broke it at unlock may have passed):
 ///    the drain's merge needs it. When it still fails, the repair stops with
-///    `validation.syncRepairDrainIncomplete`; nothing but the backup has changed.
+///    `validation.syncCaptureStillBroken` (its message points to Turn off sync); nothing but the
+///    backup has changed, and the guard stays (ADR 0027). Once capture is installed the guard is
+///    lifted, before the drain: every change from here on is captured.
 /// 3. A drain round (`RoundMode::Drain`) pulls, and pushes what capture recorded before it broke.
 /// 4. Only a clean drain goes on: the round ended without an error or a problem, its pull reached
 ///    the relay's end (`PullReport::done`), and `sync_outbox` and `sync_unsent` are empty. Anything
@@ -309,10 +320,14 @@ pub async fn repair_capture<R: Relay, D: ConnAccess>(
         Ok(capture::install(conn, device))
     })?;
     if let Err(error) = reinstalled {
+        // The guard stays: nothing may change uncaptured. Turning sync off is the way on.
         log::warn!("[SYNC] The repair stopped: change capture still does not install");
         log::debug!("[SYNC] The repair stopped: change capture still does not install: {error}");
-        return Err(AppError::Validation(DRAIN_INCOMPLETE.into()).into());
+        return Err(AppError::Validation(guard::CAPTURE_STILL_BROKEN.into()).into());
     }
+    // Capture records every change again, so the guard goes before the drain (whose merge writes
+    // synced tables); from here on a failure leaves capture installed.
+    db.with_conn(guard::lift)?;
     if !drained(relay, db, now).await? {
         log::warn!("[SYNC] The repair stopped: this device's changes did not all reach the relay");
         return Err(AppError::Validation(DRAIN_INCOMPLETE.into()).into());

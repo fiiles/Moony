@@ -41,7 +41,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # Database with SQLCipher encryption
-rusqlite = { version = "0.40", features = ["bundled-sqlcipher", "blob", "functions"] }
+rusqlite = { version = "0.40", features = ["bundled-sqlcipher", "blob", "functions", "hooks"] }
 
 # Async runtime
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net", "sync"] }

@@ -54,7 +54,15 @@ pub const CAPTURE_BROKEN_REASON: &str = "change capture could not be installed";
 
 /// Called by `Database::open_with_key` after the migrations and before the self-heals. A profile
 /// without sync costs one `SELECT` and gets nothing installed (G5). Never fails: an error is
-/// logged and recorded in `sync_state`, and the profile opens without capture.
+/// logged and recorded in `sync_state`, and an enabled profile is marked capture-broken and opens
+/// guarded (`capture::guard`: changes to synced data are refused, local ones go through), or
+/// read-only when the guard cannot be imposed (`guard_or_close`).
+///
+/// The invariant (audit H2, ADR 0027): an enabled profile's connection has capture installed, or
+/// the guard imposed, or `query_only` on — after `on_open`, after any failed join, repair,
+/// re-sync or turn-off, and after a successful one (capture). Turning sync off removes all three.
+/// So a repair or re-sync, which replaces the synced data, never discards an edit nobody
+/// recorded.
 pub fn on_open(conn: &Connection) {
     if let Err(e) = open_capture(conn) {
         log::warn!("[SYNC] Change capture is off for this session: {e}");
@@ -67,6 +75,19 @@ pub fn on_open(conn: &Connection) {
             if let Err(record) = state::mark_capture_broken(conn, now()) {
                 log::warn!("[SYNC] Could not mark the capture as broken: {record}");
             }
+            guard_or_close(conn, capture::guard::impose);
+        }
+    }
+}
+
+/// The last resort of `on_open` (and of any failure that leaves an enabled profile without
+/// capture): `impose`, else `PRAGMA query_only = 1` (logged at warn), so no change goes
+/// unrecorded.
+fn guard_or_close(conn: &Connection, impose: impl FnOnce(&Connection) -> Result<()>) {
+    if let Err(error) = impose(conn) {
+        log::warn!("[SYNC] The sync guard could not be imposed; the profile is read-only: {error}");
+        if let Err(pragma) = conn.execute_batch("PRAGMA query_only = 1") {
+            log::error!("[SYNC] Could not make the profile read-only: {pragma}");
         }
     }
 }
@@ -93,7 +114,12 @@ fn open_capture(conn: &Connection) -> Result<()> {
         log::info!("[SYNC] Crossed a barrier: queued {requeued} own rows again");
     }
     state::note_schema_seen(conn)?;
-    capture::install(conn, sync.device)
+    capture::install(conn, sync.device)?;
+    // Capture records every change now; a guard from an earlier open of this connection goes.
+    if capture::guard::is_imposed(conn) {
+        capture::guard::lift(conn)?;
+    }
+    Ok(())
 }
 
 /// Runs `work` inside `SAVEPOINT <name>`, rolled back when it fails. Savepoints nest, so this

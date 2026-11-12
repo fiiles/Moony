@@ -10,10 +10,13 @@ use super::runtime::op_devices;
 use super::*;
 use crate::services::backup;
 use crate::services::sync::binding::{write_rejoin_marker, NoBinding, REJOIN_MARKER};
-use crate::services::sync::capture;
+use crate::services::sync::capture::{self, guard};
+use crate::services::sync::changeset::from_json;
 use crate::services::sync::devices;
 use crate::services::sync::engine::RoundMode;
+use crate::services::sync::envelope::open_op;
 use crate::services::sync::error::SyncError;
+use crate::services::sync::join::join_by_replace;
 use crate::services::sync::join::{repair_capture, resync_by_replace};
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::RelayError;
@@ -30,8 +33,12 @@ async fn repair_backs_up_drains_and_rejoins_under_a_new_device() {
         institution(&b, "b1");
     }
     break_capture(&vault.b);
-    // Written while capture is off: not queued, kept only in the backup.
-    institution(&vault.b.lock(), "b-uncaptured");
+    // Audit H2: an edit while capture is off would never be queued, and the replace would discard
+    // it. The guard refuses it instead, so the person knows it was not saved.
+    assert_eq!(
+        refused_institution(&vault.b.lock(), "b-uncaptured"),
+        Some(guard::CHANGES_PAUSED)
+    );
     let dir = tempfile::tempdir().expect("dir");
 
     let zip = repair_capture(&vault.relay, &vault.b, dir.path(), &XorNative, NOW)
@@ -54,10 +61,8 @@ async fn repair_backs_up_drains_and_rejoins_under_a_new_device() {
         assert_eq!(marks.capture_broken_at, None);
         assert!(marks.binding_written);
         assert!(capture::is_installed(&b).expect("installed"));
-        assert!(
-            !has_institution(&b, "b-uncaptured"),
-            "replaced by the vault's data"
-        );
+        assert!(!guard::is_imposed(&b), "capture is back: the guard is gone");
+        assert!(!has_institution(&b, "b-uncaptured"), "it was never written");
         assert_eq!(
             keys::credentials(&b)
                 .expect("credentials")
@@ -81,10 +86,56 @@ async fn repair_backs_up_drains_and_rejoins_under_a_new_device() {
     round(&vault, &vault.a, RoundMode::Normal).await;
     assert!(has_institution(&vault.a.lock(), "b1"));
     assert_converged(&[&*vault.a.lock(), &*vault.b.lock()]);
+    // Every institution B ever wrote is on B and on the relay.
+    assert!(relay_has_institution(&vault, "b1"));
+    assert!(!relay_has_institution(&vault, "b-uncaptured"));
+    institution(&vault.b.lock(), "b-after");
+    assert_eq!(outbox_rows(&vault.b.lock(), "b-after"), 1, "captured");
     assert_eq!(
         repair_backups(dir.path()),
         vec![format!("sync-repair-{NOW}.zip")]
     );
+}
+
+/// The key of the error an insert of institution `id` ends in, `None` when it went through.
+fn refused_institution(conn: &Connection, id: &str) -> Option<&'static str> {
+    let inserted = conn.execute(
+        "INSERT INTO institutions (id, name) VALUES (?1, 'Bank')",
+        [id],
+    );
+    match inserted.map_err(AppError::from) {
+        Ok(_) => None,
+        Err(AppError::Validation(key)) if key == guard::CHANGES_PAUSED => {
+            Some(guard::CHANGES_PAUSED)
+        }
+        Err(other) => panic!("not the guard: {other:?}"),
+    }
+}
+
+/// Whether any op on the relay carries institution `id`.
+fn relay_has_institution(vault: &Vault, id: &str) -> bool {
+    vault.relay.ops().iter().any(|op| {
+        let json = open_op(
+            |epoch| vault.creds.keys.get(epoch),
+            &vault.creds.vault_id.0,
+            &op.ct,
+        )
+        .expect("open");
+        from_json(&json)
+            .expect("changeset")
+            .rows
+            .iter()
+            .any(|row| row.table == "institutions" && row.key == RowKey::Single(id.into()))
+    })
+}
+
+fn outbox_rows(conn: &Connection, id: &str) -> i64 {
+    conn.query_row(
+        "SELECT COUNT(*) FROM sync_outbox WHERE tbl = 'institutions' AND pk = ?1",
+        [id],
+        |r| r.get(0),
+    )
+    .expect("outbox")
 }
 
 /// A restored copy whose engine start never re-joined (its check failed, say) must not drain
@@ -310,10 +361,7 @@ async fn repair_stops_when_capture_still_does_not_install() {
         .await
         .expect_err("capture does not install");
 
-    assert_eq!(
-        validation_key(&error),
-        Some("validation.syncRepairDrainIncomplete")
-    );
+    assert_eq!(validation_key(&error), Some(guard::CAPTURE_STILL_BROKEN));
     assert_eq!(calls_since(&vault, from), Vec::<Route>::new(), "no drain");
     let b = vault.b.lock();
     assert_eq!(repair_state(&b), before);
@@ -465,4 +513,149 @@ async fn a_backup_that_does_not_read_back_stops_the_repair_before_the_drain() {
         vec![format!("sync-repair-{NOW}.zip")],
         "the file stays"
     );
+}
+
+/// Audit H2 with pre-flight C-1: the guard is a connection setting no rollback restores, so a
+/// replace that fails on a guarded profile must impose it again.
+#[tokio::test]
+async fn a_failed_replace_on_a_guarded_profile_still_refuses_writes() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    // The snapshot's row `a1` fails as the replace restores it.
+    exec(
+        &vault.b.lock(),
+        "CREATE TRIGGER fail_restore BEFORE INSERT ON institutions WHEN NEW.id = 'a1' \
+         BEGIN SELECT RAISE(ABORT, 'injected'); END;",
+    );
+    break_capture(&vault.b);
+    let dir = tempfile::tempdir().expect("dir");
+
+    let result = join_by_replace(
+        &vault.relay,
+        &vault.b,
+        vault.creds.clone(),
+        "Laptop",
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await;
+
+    assert!(result.is_err(), "{result:?}");
+    let b = vault.b.lock();
+    assert_eq!(device_of(&b), B, "rolled back");
+    assert!(!capture::is_installed(&b).expect("installed"));
+    assert!(guard::is_imposed(&b));
+    assert_eq!(
+        refused_institution(&b, "after"),
+        Some(guard::CHANGES_PAUSED)
+    );
+}
+
+#[tokio::test]
+async fn a_replace_on_a_guarded_profile_ends_with_capture() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    break_capture(&vault.b);
+    let dir = tempfile::tempdir().expect("dir");
+
+    join_by_replace(
+        &vault.relay,
+        &vault.b,
+        vault.creds.clone(),
+        "Laptop",
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect("join");
+
+    let b = vault.b.lock();
+    assert!(capture::is_installed(&b).expect("installed"));
+    assert!(!guard::is_imposed(&b));
+    assert_eq!(refused_institution(&b, "after"), None);
+    assert_eq!(outbox_rows(&b, "after"), 1, "captured");
+}
+
+/// The repair keeps the guard while capture still fails (`syncCaptureStillBroken`, pointing to
+/// Turn off sync), and lifts it as soon as capture installs: before the drain, so a drain that
+/// fails leaves a profile that captures what it writes.
+#[tokio::test]
+async fn repair_lifts_the_guard_only_after_capture_installs() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    break_capture(&vault.b);
+    exec(
+        &vault.b.lock(),
+        "ALTER TABLE sync_clock RENAME TO sync_clock_lost",
+    );
+    let dir = tempfile::tempdir().expect("dir");
+
+    let error = repair_capture(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
+        .await
+        .expect_err("capture still does not install");
+
+    assert_eq!(validation_key(&error), Some(guard::CAPTURE_STILL_BROKEN));
+    {
+        let b = vault.b.lock();
+        assert!(guard::is_imposed(&b));
+        assert_eq!(
+            refused_institution(&b, "b-refused"),
+            Some(guard::CHANGES_PAUSED)
+        );
+    }
+
+    exec(
+        &vault.b.lock(),
+        "ALTER TABLE sync_clock_lost RENAME TO sync_clock",
+    );
+    vault
+        .relay
+        .fail_next(Route::Pull, RelayError::Network("offline".into()));
+
+    let error = repair_capture(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
+        .await
+        .expect_err("the drain did not finish");
+
+    assert_eq!(
+        validation_key(&error),
+        Some("validation.syncRepairDrainIncomplete")
+    );
+    let b = vault.b.lock();
+    assert!(capture::is_installed(&b).expect("installed"));
+    assert!(!guard::is_imposed(&b));
+    assert_eq!(refused_institution(&b, "b-after"), None);
+    assert_eq!(outbox_rows(&b, "b-after"), 1, "captured");
+}
+
+/// Pre-flight I-1: the copy check of a restored, guarded profile re-joins, which records the new
+/// device in `sync_devices`: the guard lets that through, and the repair completes.
+#[tokio::test]
+async fn a_repair_of_a_guarded_profile_carrying_the_restore_marker_succeeds() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    let head = vault.relay.ops().last().map_or(0, |op| op.seq);
+    institution(&vault.b.lock(), "b1");
+    break_capture(&vault.b);
+    let dir = tempfile::tempdir().expect("dir");
+    write_rejoin_marker(dir.path()).expect("marker");
+
+    repair_capture(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
+        .await
+        .expect("repair");
+
+    let drained = op_devices(&vault, head);
+    assert_eq!(drained.len(), 1, "{drained:?}");
+    assert!(drained[0] > B, "drained under the re-join's ID");
+    assert!(!dir.path().join(REJOIN_MARKER).exists());
+    let b = vault.b.lock();
+    assert!(capture::is_installed(&b).expect("installed"));
+    assert!(!guard::is_imposed(&b));
+    institution(&b, "b-after");
+    assert_eq!(outbox_rows(&b, "b-after"), 1, "captured");
 }

@@ -205,7 +205,7 @@ pub(crate) fn spawn_fx_backfill(app: AppHandle, db: Database) {
 pub struct PriceStatus {
     /// Are any stock prices considered stale (older than 24 hours)?
     pub stocks_stale: bool,
-    /// Are any crypto prices considered stale (older than 12 hours)?
+    /// Are any crypto prices considered stale (older than 24 hours, the same rule as stocks)?
     pub crypto_stale: bool,
     /// Are exchange rates considered stale (older than 48 hours)?
     pub exchange_rates_stale: bool,
@@ -231,7 +231,7 @@ pub struct PriceStatus {
 
 /// Staleness thresholds in hours
 const STOCKS_STALE_THRESHOLD_HOURS: i64 = 24;
-const CRYPTO_STALE_THRESHOLD_HOURS: i64 = 12;
+const CRYPTO_STALE_THRESHOLD_HOURS: i64 = 24;
 const FX_STALE_THRESHOLD_HOURS: i64 = 48;
 
 /// Current FX quotes (units per 1 unit of the reference) for frontend conversions.

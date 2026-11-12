@@ -1860,7 +1860,7 @@ export type PriceStatus = {
  */
 stocksStale: boolean; 
 /**
- * Are any crypto prices considered stale (older than 12 hours)?
+ * Are any crypto prices considered stale (older than 24 hours, the same rule as stocks)?
  */
 cryptoStale: boolean; 
 /**

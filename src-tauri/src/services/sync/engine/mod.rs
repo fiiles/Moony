@@ -341,7 +341,17 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
     report.problem = db.with_conn(|conn| status::went_back(conn, problem))?;
     // A gap alone is no failure: the round synced everything it could and keeps pushing, so it
     // counts for "Last synced" (the `Gap` problem and the `waiting` phase are still reported).
+    // An unfinished pull behind a held gap that pushed nothing did not sync: no success, the gap
+    // stays the problem.
+    let stalled = report.push.is_none()
+        && report
+            .pull
+            .as_ref()
+            .is_some_and(|pull| pull.end() == PullEnd::Unfinished);
     db.with_conn(|conn| match report.problem {
+        Some(SyncProblem::Gap) if stalled => {
+            state::record_error(conn, status::reason(SyncProblem::Gap))
+        }
         None | Some(SyncProblem::Gap) => state::record_success(conn, now),
         Some(problem) => state::record_error(conn, status::reason(problem)),
     })?;
@@ -362,6 +372,13 @@ async fn round_steps<R: Relay, D: ConnAccess>(
 ) -> SyncResult<()> {
     let pulled = match pull::pull_all(relay, db, creds, now).await {
         Err(SyncError::SnapshotRequired) => {
+            if !policy.may_restore_after_410(now) {
+                log::warn!(
+                    "[SYNC] The relay asked for a snapshot restore again within the back-off"
+                );
+                report.problem = Some(SyncProblem::RelayError);
+                return Ok(());
+            }
             snapshots::restore_after_410(relay, db, creds, now).await?;
             report.restored = true;
             log::info!("[SYNC] Restored the vault's snapshot after the relay pruned this cursor");
@@ -383,7 +400,22 @@ async fn round_steps<R: Relay, D: ConnAccess>(
             pulled.gaps
         );
     }
-    let may_push = pulled.may_push();
+    // Endless pulls (audit L3): an unfinished pull does not push, until `UNFINISHED_BEFORE_PUSH` of
+    // them in a row. The round then pushes and reports a relay error, so it records no success; a
+    // held gap behind a long tail is such a pull too. The push still stops at
+    // `push::MAX_UNECHOED`, and the echo pull's unechoed check waits for a pull that reached the
+    // relay's end.
+    let endless =
+        policy.note_pull(&pulled) >= snapshots::UNFINISHED_BEFORE_PUSH && !pulled.may_push();
+    let may_push = pulled.may_push() || endless;
+    if endless {
+        log::warn!("[SYNC] Pulls keep ending unfinished: pushing anyway");
+        // A pull that holds something keeps its own problem (a quarantine, else the gap): the
+        // person's way out of a held gap (the skip) is offered for `Gap` only.
+        if pulled.held == 0 && pulled.gaps == 0 {
+            report.problem = Some(SyncProblem::RelayError);
+        }
+    }
     report.pull = Some(pulled);
     if !may_push {
         return Ok(());

@@ -21,7 +21,7 @@ use flate2::{Compression, Decompress, FlushDecompress, Status};
 use rusqlite::Connection;
 use zeroize::Zeroizing;
 
-use super::ConnAccess;
+use super::{ConnAccess, PullEnd, PullReport};
 use crate::error::{AppError, Result};
 use crate::services::sync::chain;
 use crate::services::sync::envelope::stream::{open_stream, snapshot_object_id, StreamSealer};
@@ -45,6 +45,15 @@ pub const POLICY_CHECK_INTERVAL: i64 = 3_600;
 pub const MAX_SNAPSHOT_BYTES: usize = 104_857_600;
 /// The largest record stream a dump writes and a download inflates to.
 pub const MAX_SNAPSHOT_PLAIN: usize = 512 * 1024 * 1024;
+
+/// A relay that answers `410 snapshot_required` is restored from at most once in this many seconds
+/// (audit L2): a relay that says it every round cannot make every round download and merge a
+/// snapshot.
+pub const RESTORE_BACKOFF_SECS: i64 = 6 * 3600;
+/// Pulls in a row that end unfinished (the page limit) before the round pushes anyway and reports a
+/// relay error (audit L3): a pull that is never done must not hold this device's changes back for
+/// good.
+pub const UNFINISHED_BEFORE_PUSH: u32 = 3;
 
 /// The fixed `last_error` of a restore that stopped; the reason is logged only at `debug` (it may
 /// name a row).
@@ -261,9 +270,36 @@ pub struct SnapshotPolicy {
     /// The newest snapshot a heal fetched that did not heal (or did not restore): not fetched
     /// again until the vault has a newer one.
     pub examined_seq: Option<u64>,
+    /// When a restore after `410` last went ahead (`may_restore_after_410`).
+    pub restored_at: Option<i64>,
+    /// The run of consecutive unfinished pulls (`note_pull`).
+    unfinished_pulls: u32,
 }
 
 impl SnapshotPolicy {
+    /// True at most once per `RESTORE_BACKOFF_SECS`; records `now` when true. A clock that went
+    /// back counts as inside the back-off.
+    pub fn may_restore_after_410(&mut self, now: i64) -> bool {
+        if self
+            .restored_at
+            .is_some_and(|at| now.saturating_sub(at) < RESTORE_BACKOFF_SECS)
+        {
+            return false;
+        }
+        self.restored_at = Some(now);
+        true
+    }
+
+    /// The run of consecutive unfinished pulls, this one included (0 after any other end).
+    pub fn note_pull(&mut self, report: &PullReport) -> u32 {
+        self.unfinished_pulls = if report.end() == PullEnd::Unfinished {
+            self.unfinished_pulls.saturating_add(1)
+        } else {
+            0
+        };
+        self.unfinished_pulls
+    }
+
     /// Whether the caller should fetch the vault's info for `decide`: never checked, checked
     /// `POLICY_CHECK_INTERVAL` ago or longer, or a schedule fell due.
     pub fn wants_info(&self, now: i64) -> bool {

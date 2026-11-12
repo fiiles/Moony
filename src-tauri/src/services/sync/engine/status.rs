@@ -96,7 +96,9 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         |r| Ok((r.get(0)?, r.get(1)?)),
     )?;
     let deletes_at = match problem {
-        Some(SyncProblem::Lapsed) => runtime.paid_until.map(|at| at + DELETE_AFTER_LAPSE),
+        Some(SyncProblem::Lapsed) => runtime
+            .paid_until
+            .and_then(|at| at.checked_add(DELETE_AFTER_LAPSE)),
         _ => None,
     };
     Ok(SyncStatus {

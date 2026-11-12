@@ -420,6 +420,38 @@ async fn a_transient_error_backs_off_until_sync_now() {
     running.handle.stop();
 }
 
+/// Final review A, I3: a round whose pull held a quarantined author and whose push then failed on
+/// the relay shows the quarantine, not a relay error; it still backs off.
+#[tokio::test]
+async fn a_failed_push_does_not_hide_a_quarantine() {
+    let vault = super::vault().await;
+    let c1 = forge(&vault.creds, &changeset(C, 1, None, vec![]));
+    let c2 = forge(&vault.creds, &changeset(C, 2, Some([9; 32]), vec![]));
+    push(&vault.relay, &vault.creds, &[c1, c2]).await;
+    institution(&vault.a.lock(), "a1");
+    vault.relay.fail_next(Route::Push, RelayError::Server(503));
+
+    let running = start_plain(&vault, &vault.a);
+    rounds(&running, 1).await;
+
+    assert_eq!(
+        running.handle.runtime().problem,
+        Some(SyncProblem::Quarantined)
+    );
+    let last = running.seen.last();
+    assert_eq!(
+        (last.phase, last.problem),
+        (SyncPhase::Error, Some(SyncProblem::Quarantined))
+    );
+    let last_error: Option<String> = vault
+        .a
+        .lock()
+        .query_row("SELECT last_error FROM sync_state", [], |r| r.get(0))
+        .expect("last_error");
+    assert_eq!(last_error.as_deref(), Some("sync stopped: quarantined"));
+    running.handle.stop();
+}
+
 #[tokio::test]
 async fn a_restore_marker_rejoins_before_the_first_round() {
     let vault = super::vault().await;

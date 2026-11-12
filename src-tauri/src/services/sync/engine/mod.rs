@@ -72,7 +72,9 @@ pub enum PullEnd {
     /// Every envelope up to the relay's end was dealt with.
     Done,
     /// Every envelope was dealt with except a quarantined author's, which are held (and perhaps
-    /// some waiting for an earlier envelope: a quarantine outranks a gap).
+    /// some waiting for an earlier envelope: a quarantine outranks a gap). Also a pull that held a
+    /// quarantined author and then stopped on a newer schema: the stop still stops applying
+    /// (`PullReport::stop`), but the quarantine is what the round reports (final review A, I3).
     Held,
     /// Every envelope was dealt with except those waiting for an earlier envelope of their author
     /// or for a parent they reference (held; the next pull meets them again, audit M3), and
@@ -132,9 +134,11 @@ impl PullReport {
     /// (with the gaps of their authors behind them): a quarantine outranks a gap, so a forked
     /// author is shown even while another author's envelope is missing, and a missing change
     /// outranks one dated too far ahead (both are skippable after 14 days, each from its own
-    /// alert).
+    /// alert). A quarantine also outranks a newer-schema stop, which a key holder can write
+    /// (final review A, I3): `Held`, while `stop` stays set and still stops applying.
     pub fn end(&self) -> PullEnd {
         match &self.stop {
+            Some(PullStop::NewerSchema) if self.held > 0 => PullEnd::Held,
             Some(stop) => PullEnd::Stopped(stop.clone()),
             None if self.unfinished => PullEnd::Unfinished,
             None if self.held > 0 => PullEnd::Held,
@@ -169,6 +173,13 @@ impl PullReport {
             .map(|(_, n)| n)
             .sum();
         self.gaps.saturating_sub(behind_ahead)
+    }
+
+    /// Whether this pull held anything: a quarantined author's envelopes, a gap, or a change dated
+    /// too far ahead. Such a pull keeps its own problem over a relay error (endless pulls, the
+    /// echo check): the person's way out is offered under that problem.
+    pub fn holds_something(&self) -> bool {
+        self.held > 0 || self.gaps > 0 || self.ahead > 0
     }
 
     /// Whether the round may push after this pull (ruling P1): the pull ended done, with only
@@ -305,17 +316,21 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    the round without an error. After an echo pull that was not stopped or unfinished, the
 ///    round's problem is a relay error when an envelope sent in an earlier round is still not
 ///    back, or when sealing stopped at `push::MAX_UNECHOED` and the pull brought none of it back
-///    (a pull-stop problem is never replaced).
+///    (a pull-stop problem is never replaced, and a pull that holds something keeps its own
+///    problem: `PullReport::holds_something`).
 /// 4. Not in `Drain`: when the mode asks for it or the policy wants it, read the vault's info,
 ///    heal a below-barrier miss with it, and, after pulls that ended done (rulings P4, P14),
 ///    upload a snapshot if due (forced in `FirstSnapshot`).
 /// 5. A sync state is a problem, not an error (ruling P8): the vault gone (paused in
 ///    `sync_state`), a lapse (with the vault's `paid_until` when the relay still answers), the
 ///    quota, a snapshot too large, a rotated token or an unauthorized one. A transient, rate-limit,
-///    refusal or local failure is returned as an error; nothing inside a round is retried, so a
-///    round lasts at most one relay timeout past its last answered call.
+///    refusal or local failure is returned as an error (the runtime shows it with
+///    `status::problem_of_round`, where a quarantine the pull held outranks a relay error, the
+///    network and the rate limit); nothing inside a round is retried, so a round lasts at most
+///    one relay timeout past its last answered call.
 /// 6. A sync server that went back (`state::vault_went_back_at`) is the round's problem in place
-///    of none, a gap, a change held for its date or an invalid chain (`status::went_back`). A
+///    of none, a gap, a change held for its date, an invalid chain or a relay error
+///    (`status::went_back`). A
 ///    round with no problem, or only a waiting gap (`Gap`) or change (`ClockAhead`), records its
 ///    success; one with any other problem records its fixed reason.
 #[allow(clippy::too_many_arguments)]
@@ -477,7 +492,7 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         // A pull that holds something keeps its own problem (a quarantine, else the gap, else a
         // change held for its date): the person's way out (the skip) is offered under `Gap` and
         // `ClockAhead` only.
-        if pulled.held == 0 && pulled.gaps == 0 && pulled.ahead == 0 {
+        if !pulled.holds_something() {
             report.problem = Some(SyncProblem::RelayError);
         }
     }
@@ -529,7 +544,15 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         if (capped && left >= push::MAX_UNECHOED) || lost_earlier {
             // The relay takes envelopes and never serves them back, even right after the push.
             log::warn!("[SYNC] The relay does not serve this device's envelopes back");
-            report.problem = Some(SyncProblem::RelayError);
+            // As after endless pulls, a pull that holds something keeps its own problem: a
+            // relay cannot hide a quarantine behind this (final review A, I3).
+            if !report
+                .pull
+                .as_ref()
+                .is_some_and(PullReport::holds_something)
+            {
+                report.problem = Some(SyncProblem::RelayError);
+            }
             return Ok(());
         }
     }
@@ -589,14 +612,17 @@ async fn after_push<R: Relay, D: ConnAccess>(
 }
 
 /// Adds a later pull of the same round (the echo pull) to the first: the counts add up, the later
-/// pull's ending stands.
+/// pull's ending stands, its gaps and its authors held for their date included (final review A,
+/// minor 1: `missing_gaps` reads one pull, not a mix of two).
 fn absorb(first: &mut PullReport, later: PullReport) {
     first.applied += later.applied;
     first.rejoined |= later.rejoined;
     first.restored |= later.restored;
     first.held = later.held;
     first.gaps = later.gaps;
+    first.gaps_by_author = later.gaps_by_author;
     first.ahead = later.ahead;
+    first.ahead_authors = later.ahead_authors;
     first.stop = later.stop;
     first.behind = later.behind;
     first.unfinished = later.unfinished;

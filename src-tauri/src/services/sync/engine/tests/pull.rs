@@ -715,9 +715,11 @@ fn the_report_says_how_the_pull_ended_and_whether_the_round_may_push() {
             false,
             true,
         ),
+        // A quarantine outranks a newer-schema stop in the ending (final review A, I3); the stop
+        // stays set and still stops applying.
         (
             report(Some(PullStop::NewerSchema), 1),
-            PullEnd::Stopped(PullStop::NewerSchema),
+            PullEnd::Held,
             false,
             true,
         ),

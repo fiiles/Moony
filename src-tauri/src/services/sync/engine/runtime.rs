@@ -20,7 +20,7 @@ use tokio::time::Instant;
 
 use super::pull::rejoin_as_new_device;
 use super::snapshots::{SnapshotPolicy, SNAPSHOT_MAX_DELAY};
-use super::status::{self, problem_of, Runtime};
+use super::status::{self, problem_of_round, Runtime};
 use super::{recheck_vault, run_round_into, ConnAccess, EngineEvents, RoundMode, RoundReport};
 use crate::error::AppError;
 use crate::models::sync::{SyncProblem, SyncStatus};
@@ -493,7 +493,7 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         match result {
             Ok(()) => self.backoff.reset(),
             Err(error) => {
-                let problem = problem_of(&error);
+                let problem = problem_of_round(&error, report.pull.as_ref());
                 log::warn!("[SYNC] A sync round failed: {}", status::reason(problem));
                 log::debug!("[SYNC] A sync round failed: {error}");
                 self.shared.update(|r| r.problem = Some(problem));

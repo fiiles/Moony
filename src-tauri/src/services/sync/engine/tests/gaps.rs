@@ -12,7 +12,7 @@ use crate::services::sync::changeset::SqlValue;
 use crate::services::sync::engine::pull::pull_all;
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
 use crate::services::sync::engine::status::{status, Runtime};
-use crate::services::sync::engine::{run_round, PullEnd, RoundMode, RoundReport};
+use crate::services::sync::engine::{run_round, PullEnd, PullReport, RoundMode, RoundReport};
 use crate::services::sync::hlc::Clock;
 use crate::services::sync::join::repair_capture;
 use crate::services::sync::relay::fake::Route;
@@ -268,6 +268,47 @@ async fn a_gap_does_not_hide_a_quarantine() {
         (shown.phase, shown.problem),
         (SyncPhase::Error, Some(SyncProblem::Quarantined))
     );
+}
+
+/// Final review A, I3: a relay that never serves this device's envelopes back cannot hide a
+/// quarantine behind a relay error. The echo check keeps the problem of a pull that holds
+/// something, as the endless-pull rule does.
+#[tokio::test]
+async fn the_echo_check_does_not_hide_a_quarantine() {
+    let vault = vault().await;
+    let c1 = forge(&vault.creds, &changeset(C, 1, None, vec![]));
+    let c2 = forge(&vault.creds, &changeset(C, 2, Some([9; 32]), vec![]));
+    push(&vault.relay, &vault.creds, &[c1, c2]).await;
+    vault.relay.set_swallow_pushes(true);
+    institution(&vault.a.lock(), "a1");
+    round(&vault, &vault.a, RoundMode::Normal).await;
+
+    // a1 is sent again and still does not come back: the echo check fails.
+    let report = round(&vault, &vault.a, RoundMode::Normal).await;
+
+    let pull = report.pull.as_ref().expect("pull");
+    assert!(pull.held > 0, "{report:?}");
+    assert!(report.push.as_ref().is_some_and(|p| p.pushed > 0));
+    assert_eq!(unsent(&vault.a.lock()), 1, "a1 never came back");
+    assert_eq!(report.problem, Some(SyncProblem::Quarantined));
+}
+
+/// Final review A, minor 1: the echo pull's gaps and authors held for their date replace the first
+/// pull's, so a round's ending reads one pull, not a mix of two.
+#[test]
+fn the_echo_pull_replaces_the_first_pulls_gaps_and_ahead_authors() {
+    let mut first = PullReport::default();
+    first.note_gap(B);
+    first.note_gap(B);
+    first.note_ahead(B);
+    assert_eq!(first.end(), PullEnd::Ahead);
+    let mut later = PullReport::default();
+    later.note_gap(C);
+
+    crate::services::sync::engine::absorb(&mut first, later);
+
+    assert_eq!((first.gaps, first.ahead, first.missing_gaps()), (1, 0, 1));
+    assert_eq!(first.end(), PullEnd::Waiting);
 }
 
 /// Task 15 review ruling: a round whose only problem is a waiting gap synced everything it could:

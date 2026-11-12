@@ -10,8 +10,12 @@ use crate::services::sync::capture;
 use crate::services::sync::changeset::from_json;
 use crate::services::sync::engine::runtime::{Backoff, OutboxWatch};
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
-use crate::services::sync::engine::status::{phase_of, problem_of, status, Runtime};
-use crate::services::sync::engine::{run_round, RoundMode, RoundReport};
+use crate::services::sync::engine::status::{
+    phase_of, problem_of, problem_of_round, status, Runtime,
+};
+use crate::services::sync::engine::{
+    run_round, PullEnd, PullReport, PullStop, RoundMode, RoundReport,
+};
 use crate::services::sync::envelope::open_op;
 use crate::services::sync::error::{SyncError, Transient};
 use crate::services::sync::relay::fake::Route;
@@ -435,6 +439,68 @@ async fn newer_schema_and_held_envelopes_still_push() {
         );
         assert_eq!(vault.relay.snapshot_seq(), None, "{what}");
     }
+}
+
+/// Final review A, I3: a newer-schema envelope (which a key holder can write) does not hide a
+/// quarantine. The pull still stops applying at it, and the round still pushes.
+#[tokio::test]
+async fn a_newer_schema_stop_does_not_hide_a_quarantine() {
+    let vault = super::vault().await;
+    let c1 = forge(&vault.creds, &changeset(C, 1, None, vec![]));
+    let c2 = forge(&vault.creds, &changeset(C, 2, Some([9; 32]), vec![]));
+    let mut newer = changeset(B, 1, None, vec![]);
+    newer.schema = schema_number() + 1;
+    push(
+        &vault.relay,
+        &vault.creds,
+        &[c1, c2, forge(&vault.creds, &newer)],
+    )
+    .await;
+    institution(&vault.a.lock(), "queued");
+
+    let report = round(&vault, &vault.a).await;
+
+    let pull = report.pull.as_ref().expect("pull");
+    assert_eq!(pull.stop, Some(PullStop::NewerSchema), "the stop stands");
+    assert!(pull.held > 0, "{report:?}");
+    assert_eq!(pull.end(), PullEnd::Held);
+    assert!(
+        head(&vault.a.lock(), B).is_none(),
+        "nothing past the stop applied"
+    );
+    assert_eq!(report.push.as_ref().map(|p| p.pushed), Some(1));
+    assert_eq!(report.problem, Some(SyncProblem::Quarantined));
+}
+
+/// Final review A, I3: a round that fails on the network or the relay keeps showing a quarantine
+/// its pull held, so a relay cannot hide it behind a failure of a later step.
+#[test]
+fn a_failed_round_keeps_a_quarantine_its_pull_held() {
+    let held = PullReport {
+        held: 1,
+        ..PullReport::default()
+    };
+    for error in [
+        SyncError::Transient(Transient::Relay),
+        SyncError::Transient(Transient::Offline),
+        SyncError::RateLimited,
+    ] {
+        assert_eq!(
+            problem_of_round(&error, Some(&held)),
+            SyncProblem::Quarantined,
+            "{error:?}"
+        );
+        assert_eq!(problem_of_round(&error, None), problem_of(&error));
+        assert_eq!(
+            problem_of_round(&error, Some(&PullReport::default())),
+            problem_of(&error)
+        );
+    }
+    // A sync state or a local failure still says what it is.
+    assert_eq!(
+        problem_of_round(&SyncError::Unauthorized, Some(&held)),
+        SyncProblem::Unauthorized
+    );
 }
 
 /// Rulings P4, P14: the snapshot's sequence is the relay's head after the pull that follows the

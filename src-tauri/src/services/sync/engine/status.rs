@@ -228,6 +228,20 @@ pub fn problem_of(error: &SyncError) -> SyncProblem {
     }
 }
 
+/// The problem a round that failed with `error` shows: `problem_of`, except that a quarantine its
+/// pull held outranks a relay error, the network and the rate limit (final review A, I3). A relay
+/// that refuses a later step (the push, the echo pull, the vault's info, the snapshot) must not
+/// hide a forked author, which only this problem shows.
+pub fn problem_of_round(error: &SyncError, pull: Option<&PullReport>) -> SyncProblem {
+    use SyncProblem as P;
+    match problem_of(error) {
+        P::RelayError | P::Offline | P::RateLimited if pull.is_some_and(|p| p.held > 0) => {
+            P::Quarantined
+        }
+        problem => problem,
+    }
+}
+
 /// The problem a pull leaves: its stop, envelopes waiting for a missing one or a missing parent
 /// (`Gap`: this device keeps syncing and pushing), a quarantined author's held envelopes, or
 /// changes dated too far ahead (`ClockAhead`, also no stop); `None` for a pull that ended done,

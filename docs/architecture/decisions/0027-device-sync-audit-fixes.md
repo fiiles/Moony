@@ -104,7 +104,9 @@ new phase `waiting` with problem `gap`, not an error; a quarantine outranks a ga
 cannot hide "held for safety" by withholding one envelope; a gap-only round counts as synced. No
 skip is offered while `serverWentBack` or `quarantined` outranks the gap, though the held record
 stands and Rust would allow it. A quarantine also outranks `relayError` and `newerSchema`, and `offline` and `rateLimited` when a
-round fails after its pull held a quarantined author, so a server cannot mask it. Each
+round fails after its pull held a quarantined author, so a server cannot mask it. The cost: while
+a quarantine stands, a genuine newer-schema stop shows only "held for safety" and not "update this
+app", although nothing past the stop is applied. Each
 held author has a Local record (`app_config` `sync.held_gap.<device hex>`: the lowest held envelope
 and when it was first held). After 14 days the person may skip it, behind the password and a
 confirmation that names the device, how many changes go, that changes depending on them may need
@@ -147,7 +149,7 @@ covers, and what it does not:
 | The sync server… | Result |
 |---|---|
 | answers "stored" and loses the envelope, or never stores it | covered: it is sent again next round and other devices apply it |
-| keeps the envelope's ID but never serves it | not repairable from the device (the relay ignores a repeated ID); `relayError` every round |
+| keeps the envelope's ID but never serves it | not repairable from the device (the relay ignores a repeated ID); `relayError` every round, unless that round's pull holds something, whose own problem then shows |
 | is restored from an older backup (self-hosted) | **not repaired**; see below |
 
 A device notices a server that went back when a pull page's head is below where its pull stands.
@@ -155,7 +157,9 @@ It writes the sticky Local key `sync.vault_went_back_at` and shows the problem `
 (phase error, no action button), which outranks `gap`, `clockAhead`, `invalidChain` and `relayError`.
 Pulling and pushing go on, but "Last synced" stops. The mark clears only with a completed replace or
 turning sync off; while it is set every re-sync and repair keeps its backup and no snapshot is
-uploaded (a snapshot built on the old head would seed joiners with it). Nothing is repaired
+uploaded (a snapshot built on the old head would seed joiners with it). A device left in this
+state therefore never lets the sync server prune: the vault grows toward its quota, and a later
+joiner restores the snapshot from before the restore and pulls the whole tail. Nothing is repaired
 automatically: envelopes the server lost and this device already saw echoed are not sent again,
 devices whose cursor was above the restored head resume from their old cursor and miss what landed
 in between, and later envelopes of an affected author wait as gaps. Re-sync is no remedy: it
@@ -294,7 +298,8 @@ says setup starts over with a new account and Kit. A device with no changes for 
   - A device whose wall clock is more than ten years behind holds every change from other devices as
     `ahead` (problem `clockAhead`), refuses every snapshot and so cannot join, until its clock is
     corrected; skipping the changes after 14 days loses them on that device.
-  - Endless pulls fill the unechoed cap: a persistent `relayError` with a growing pending count.
+  - Endless pulls fill the unechoed cap: a persistent `relayError` with a growing pending count
+    (while the pull holds something, that hold's problem shows in its place).
   - A skipped envelope that arrives later is below its author's head and is not applied; only a clean
     snapshot brings its rows (applying it would be possible in principle, an improvement left open).
   - L4 (a replay at a huge position jumps the cursor), L6 (a maximum snapshot costs memory before its

@@ -354,7 +354,7 @@ off also deletes the last):
   one and turning sync off.
 - `sync.vault_went_back_at`: when this device first saw the sync server's head below its place (a
   server restored from an older backup). Sticky: no round clears it; while it is set the status
-  shows `serverWentBack` and every re-sync keeps its backup.
+  shows `serverWentBack`, every re-sync keeps its backup and no snapshot is uploaded.
 - `sync.binding_failed_starts`: app starts in a row whose this-machine binding could not be checked
   (a native `Failed`), counted once per app start (process-wide); the third re-joins, and any other
   answer deletes the key, as does turning sync off (`binding.rs`, `state::disable`).

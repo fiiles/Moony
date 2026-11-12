@@ -286,10 +286,11 @@ fn outcome((backup, kept): (PathBuf, bool), replaced: &Replaced) -> ReplaceOutco
 /// 2. The snapshot is fetched and opened (`fetched_snapshot`).
 /// 3. One connection hold (`replace_hold`): step 1's check again, documents and photos other
 ///    than the person agreed to (`consent.attachments`) or a watermark past this profile's newest
-///    clock → `validation.syncReplaceImpactChanged`, the verified backup (`sync-repair-<now>.zip`), then `replace_profile`: in one savepoint the
-///    credentials are bound, the profile replaced under a new device ID with a new key pair and
-///    this device recorded under `device_name`. A failure leaves the profile as it was and the
-///    backup, if one was written, `-unused`.
+///    clock → `validation.syncReplaceImpactChanged`, the verified backup marked kept
+///    (`sync-repair-<now>-kept.zip`) before the replace commits, then `replace_profile`: in one
+///    savepoint the credentials are bound, the profile replaced under a new device ID with a new
+///    key pair and this device recorded under `device_name`. A failure leaves the profile as it
+///    was and the backup, if one was written, `-unused`.
 /// 4. The backup stays `-kept`: it is the only copy of what the join replaced. The binding is
 ///    written.
 #[allow(clippy::too_many_arguments)]

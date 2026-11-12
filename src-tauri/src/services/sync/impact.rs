@@ -131,6 +131,18 @@ pub fn check_consent(conn: &Connection, kind: ReplaceKind, consent: &ReplaceCons
         ReplaceKind::Join => {}
         ReplaceKind::Resync => {
             // Clocks are stored as INTEGER; a watermark beyond i64 covers every one of them.
+            //
+            // The `sync_clock` test names this device's ID as it is now. A re-sync of a copied
+            // profile re-joins between the consent and this hold (`rejoin_if_copy_under_lock`):
+            // an edit after consent then keeps the old ID on its row clock or tombstone (the
+            // re-join moves only column clocks), and that test misses it. It is caught anyway
+            // because the re-join wipes `sync_unsent` and its `record_this_device` queues this
+            // device's `sync_devices` row at a clock above the watermark: the re-sync's push seals
+            // the edit again under the new ID (the third test reads its clock in `max_hlc`), and
+            // what it could not seal waits in the outbox next to that row (the first two) until a
+            // push delivers it. Left: a push that delivers the row but leaves an old-ID edit
+            // unsealed (a row too large to send); the outcome still counts it as unsent and the
+            // backup stays kept. Keep this in mind when changing the re-join or this check.
             let through = i64::try_from(consent.changes_through).unwrap_or(i64::MAX);
             let later: bool = conn.query_row(
                 "SELECT EXISTS (SELECT 1 FROM sync_outbox WHERE queued_at > ?1) \

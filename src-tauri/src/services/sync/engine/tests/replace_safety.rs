@@ -656,6 +656,33 @@ async fn an_edit_to_a_queued_item_after_consent_stops_an_offline_resync() {
     assert!(repair_backups(dir.path()).is_empty(), "no backup");
 }
 
+/// Task 6 review: a copied profile re-joins inside the re-sync, between the consent and the hold,
+/// so the hold's device filter on `sync_clock` names the new ID while the deletion after consent
+/// keeps the old one on its tombstone. The re-join's wipe of `sync_unsent` has the failing push
+/// seal the deletion again, and the hold sees its clock (`impact::check_consent`).
+#[tokio::test]
+async fn a_deletion_after_consent_stops_a_resync_that_rejoins_first() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    institution(&vault.b.lock(), "b1");
+    let dir = tempfile::tempdir().expect("dir");
+    write_rejoin_marker(dir.path()).expect("marker");
+    let consent = agreed(&vault.b);
+    exec(&vault.b.lock(), "DELETE FROM institutions WHERE id = 'b1'");
+    vault.relay.fail_next(Route::Push, RelayError::Server(503));
+
+    let error = resync_by_replace(&vault.relay, &vault.b, consent, dir.path(), &NoBinding, NOW)
+        .await
+        .expect_err("b1 was deleted after the person agreed");
+
+    assert_eq!(key_of(&error), Some(IMPACT_CHANGED), "{error:?}");
+    let b = vault.b.lock();
+    assert_ne!(device_of(&b), B, "the copy re-joined before the hold");
+    assert!(!has_institution(&b, "b1"));
+    assert!(repair_backups(dir.path()).is_empty(), "no backup");
+}
+
 /// Task 7 review: a consent the UI never showed (a watermark past every clock, more attachments
 /// than the device has) refuses and replaces nothing.
 #[tokio::test]

@@ -126,6 +126,17 @@ pub fn load(conn: &Connection) -> Result<Option<SyncState>> {
     }))
 }
 
+/// Whether sync is on for this profile, a row that exists but does not load (a damaged
+/// `device_id` or `last_hash`) counting as on: it may be an enabled profile's. `sync::on_open`
+/// guards such a profile, so the ways out of it (turning sync off, deleting the synced data, the
+/// profile state a build without sync reads) must see it as on too (final review B, minor 1).
+pub fn on_or_unreadable(conn: &Connection) -> Result<bool> {
+    match load(conn) {
+        Ok(sync) => Ok(sync.is_some_and(|s| s.enabled)),
+        Err(_) => Ok(conn.query_row("SELECT EXISTS (SELECT 1 FROM sync_state)", [], |r| r.get(0))?),
+    }
+}
+
 fn unsigned<T: TryFrom<i64>>(value: i64, column: &str) -> Result<T> {
     T::try_from(value)
         .map_err(|_| AppError::Internal(format!("sync_state.{column} is out of range: {value}")))

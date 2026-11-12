@@ -274,8 +274,9 @@ pub(super) fn profile_relay(db: &Database) -> Result<HttpRelay> {
     HttpRelay::new(&stored.unwrap_or_else(default_base_url))
 }
 
+/// Whether sync is on, a damaged `sync_state` row counting as on (`state::on_or_unreadable`).
 pub(super) fn sync_on(db: &Database) -> Result<bool> {
-    db.with_conn(|conn| Ok(state::load(conn)?.is_some_and(|sync| sync.enabled)))
+    db.with_conn(state::on_or_unreadable)
 }
 
 /// The status of the open profile, with the running engine's memory of its rounds.
@@ -546,12 +547,15 @@ pub async fn sync_feature_enabled() -> Result<bool> {
 /// build runs sync (`featureOn`). A build without the flag shows a way out when the profile is on.
 #[tauri::command]
 pub async fn sync_profile_state(db: State<'_, Database>) -> Result<SyncProfileState> {
-    db.with_conn(|conn| {
-        Ok(SyncProfileState {
-            enabled: state::load(conn)?.is_some_and(|sync| sync.enabled),
-            feature_on: feature::enabled(),
-            pending_changes: status::unsent_changes(conn)?,
-        })
+    db.with_conn(profile_state)
+}
+
+/// `sync_profile_state`'s answer.
+fn profile_state(conn: &rusqlite::Connection) -> Result<SyncProfileState> {
+    Ok(SyncProfileState {
+        enabled: state::on_or_unreadable(conn)?,
+        feature_on: feature::enabled(),
+        pending_changes: status::unsent_changes(conn)?,
     })
 }
 
@@ -745,7 +749,7 @@ async fn turn_off_rechecked<D: ConnAccess>(
     data_dir: &Path,
     password_checked: bool,
 ) -> SyncResult<()> {
-    let on = db.with_conn(|conn| Ok(state::load(conn)?.is_some_and(|sync| sync.enabled)))?;
+    let on = db.with_conn(state::on_or_unreadable)?;
     turn_off_allowed(on, password_checked)?;
     setup::turn_off_between_rounds(db, data_dir).await
 }
@@ -792,6 +796,7 @@ pub async fn sync_delete_synced_data(
 ) -> Result<()> {
     let password = Zeroizing::new(password);
     require_feature()?;
+    password_given(&password)?;
     verify_password(&app, password).await?;
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
@@ -817,6 +822,7 @@ pub async fn sync_repair_device(
 ) -> Result<ReplaceOutcomeView> {
     let password = Zeroizing::new(password);
     require_feature()?;
+    password_given(&password)?;
     verify_password(&app, password).await?;
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
@@ -841,6 +847,7 @@ pub async fn sync_resync_device(
     let password = Zeroizing::new(password);
     require_feature()?;
     let consent = consent_of(&consent)?;
+    password_given(&password)?;
     verify_password(&app, password).await?;
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
@@ -941,6 +948,33 @@ mod tests {
             .await
             .expect("turned off with the password checked");
         assert!(!sync_is_on(&db));
+    }
+
+    /// Final review B, minor 1: a `sync_state` row that does not load (a damaged `device_id`)
+    /// counts as on, as `sync::on_open` guards it: turning sync off still works, behind the
+    /// password, and the profile state says sync is on.
+    #[tokio::test]
+    async fn an_unreadable_sync_row_can_still_be_turned_off() {
+        let db = TestConn::new(migrated());
+        state::enable(&db.lock(), DeviceId::random()).expect("sync on");
+        db.lock()
+            .execute("UPDATE sync_state SET device_id = X'01'", [])
+            .expect("damage the row");
+        assert!(state::load(&db.lock()).is_err(), "the row does not load");
+        let dir = tempfile::tempdir().expect("dir");
+
+        assert!(profile_state(&db.lock()).expect("profile state").enabled);
+        let refused = turn_off_rechecked(&db, dir.path(), false).await;
+        assert_eq!(
+            validation_key(refused.map_err(app_error)),
+            "validation.syncPasswordNeeded"
+        );
+
+        turn_off_rechecked(&db, dir.path(), true)
+            .await
+            .expect("turned off with the password checked");
+        assert!(!sync_is_on(&db));
+        assert!(!profile_state(&db.lock()).expect("profile state").enabled);
     }
 
     #[test]
@@ -1173,13 +1207,14 @@ mod tests {
     }
 
     /// The sync commands (name → body up to its third statement), read from the sources of this
-    /// file, `sync_pairing.rs`, `sync_backups.rs` and `sync_kit.rs`.
+    /// file, `sync_pairing.rs`, `sync_backups.rs`, `sync_kit.rs` and `sync_gaps.rs`.
     fn commands_and_their_first_statements() -> Vec<(String, String)> {
         [
             include_str!("sync.rs"),
             include_str!("sync_pairing.rs"),
             include_str!("sync_backups.rs"),
             include_str!("sync_kit.rs"),
+            include_str!("sync_gaps.rs"),
         ]
         .into_iter()
         .flat_map(commands_of)
@@ -1230,11 +1265,12 @@ mod tests {
                     .or_else(|| line.strip_prefix("commands::sync_pairing::"))
                     .or_else(|| line.strip_prefix("commands::sync_backups::"))
                     .or_else(|| line.strip_prefix("commands::sync_kit::"))
+                    .or_else(|| line.strip_prefix("commands::sync_gaps::"))
             })
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 31);
+        assert_eq!(found.len(), 33);
         for (name, first_three) in &commands {
             // The flag itself, a read-only question, and the way out of an enabled profile.
             if [
@@ -1255,15 +1291,46 @@ mod tests {
 
     /// The body of `name` in this file's code above the tests, up to its closing brace.
     fn command_body(name: &str) -> &'static str {
-        let code = include_str!("sync.rs")
+        command_body_in(include_str!("sync.rs"), name)
+    }
+
+    /// The body of `name` in `source`'s code above its tests, up to its closing brace.
+    fn command_body_in(source: &'static str, name: &str) -> &'static str {
+        let code = source
             .split("\n#[cfg(test)]\nmod tests {")
             .next()
             .expect("code");
         let start = code
             .find(&format!("pub async fn {name}("))
-            .unwrap_or_else(|| panic!("`{name}` is in sync.rs"));
+            .unwrap_or_else(|| panic!("`{name}` is in the source"));
         let body = &code[start..];
         &body[..body.find("\n}\n").expect("the end of the command")]
+    }
+
+    /// Final review B, minor 6 (audit L10): the repair, the re-sync, deleting the synced data and
+    /// the skip check the device password, and refuse an empty one before the key check runs.
+    #[test]
+    fn every_password_command_refuses_an_empty_password_then_checks_it() {
+        for (source, name) in [
+            (include_str!("sync.rs"), "sync_repair_device"),
+            (include_str!("sync.rs"), "sync_resync_device"),
+            (include_str!("sync.rs"), "sync_delete_synced_data"),
+            (include_str!("sync_gaps.rs"), "sync_skip_missing_change"),
+        ] {
+            let body = command_body_in(source, name);
+            let given = body
+                .find("password_given(&password)?")
+                .unwrap_or_else(|| panic!("`{name}` must call `password_given(`"));
+            let checked = body
+                .find("verify_password(&app, password).await?")
+                .unwrap_or_else(|| panic!("`{name}` must call `verify_password(`"));
+            assert!(given < checked, "`{name}` refuses an empty password first");
+            let work = body.find("guarded_change(").expect("a sync change");
+            assert!(
+                checked < work,
+                "`{name}` checks the password before the change"
+            );
+        }
     }
 
     /// Audit L10: the one command that works without the flag keeps the password rule.

@@ -217,6 +217,9 @@ impl RelayError {
             (409, "vault_exists") => RelayError::VaultExists,
             (409, "account_has_vaults") => RelayError::AccountHasVaults,
             (409, "snapshot_outdated") => RelayError::SnapshotOutdated,
+            // The vault is still being deleted (a re-created vault always has a new ID, so this
+            // is near unreachable): the relay is busy, a passing server error that backs off.
+            (409, "vault_deleting") => RelayError::Server(409),
             (409, "self_hosted") => RelayError::SelfHosted,
             (409, "slot_taken") => RelayError::SlotTaken,
             (404, "empty") => RelayError::SlotEmpty,
@@ -358,6 +361,8 @@ mod tests {
             (404, "no_snapshot", E::NoSnapshot),
             (409, "vault_exists", E::VaultExists),
             (409, "snapshot_outdated", E::SnapshotOutdated),
+            // A vault still being deleted (feat/pairing-ack): the relay is busy, try later.
+            (409, "vault_deleting", E::Server(409)),
             (410, "snapshot_required", E::SnapshotRequired),
             (411, "length_required", bad("length_required")),
             (413, "quota_exceeded", E::QuotaExceeded),
@@ -391,6 +396,21 @@ mod tests {
                 "{status} {code}"
             );
         }
+    }
+
+    /// Final review B, minor 5: a vault the relay is still deleting is a passing relay error (the
+    /// round backs off and tries again), not an unknown answer.
+    #[test]
+    fn a_vault_being_deleted_is_a_transient_relay_error() {
+        use crate::services::sync::error::{SyncError, Transient};
+        let error = RelayError::from_response(409, &body("vault_deleting"));
+        assert_eq!(error, E::Server(409));
+        let sync = SyncError::from(error);
+        assert!(
+            matches!(sync, SyncError::Transient(Transient::Relay)),
+            "{sync:?}"
+        );
+        assert!(sync.backs_off());
     }
 
     #[test]

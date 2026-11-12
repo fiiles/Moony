@@ -36,7 +36,8 @@ code. Each proof of concept became a regression test that asserts the fixed beha
 refuses to change it (`capture/guard.rs`). When capture cannot be installed at unlock, `sync::on_open`
 marks the profile capture-broken and imposes the guard: an SQLite authorizer refuses inserts and
 deletes on synced tables of `main`, updates of their synced columns, and `ALTER TABLE` on them.
-Local columns, local tables, `sync_devices` (only sync code writes it), the `temp` schema, the
+Local columns, local tables, `sync_devices` (sync code writes it, and so do the person's rename and a re-join; a repair carries
+the name forward), the `temp` schema, the
 attachment store and the target of `VACUUM INTO` stay writable, so settings, sync's bookkeeping, a
 backup, a repair and turning sync off keep working. `app_config` mixes synced and local keys and the
 authorizer cannot see keys, so three TEMP triggers refuse the five synced keys; if they cannot be
@@ -79,7 +80,8 @@ carries `kept` and `orphaned`.
   them (M8). A re-sync first checks for a copied profile, then pushes what it can; a repair keeps
   its pre-drain backup, drains for at most 20 rounds while each round makes progress (less pending,
   or the cursor moved; two rounds without progress end it) and checks "nothing pending" in the hold.
-  A waiting gap with nothing left to send counts as drained.
+  With nothing local pending, a waiting gap, a far-future hold (`clockAhead`, `ahead`) or a sync
+  server that went back counts as drained; any other problem does not.
 - Repair, re-sync and turning sync off with sync on need the device password (L10).
 - A backup is written as `sync-repair-<unix>[-n].zip.partial`, flushed through a write handle (M9),
   read back (manifest and every entry's CRC; still a structural check, L11) and only then renamed.
@@ -97,7 +99,10 @@ carries `kept` and `orphaned`.
 chain and a change whose parent no envelope brought are holds, like a quarantine: the cursor stays
 before the held envelope, other authors keep applying, this device keeps pushing. The status is the
 new phase `waiting` with problem `gap`, not an error; a quarantine outranks a gap, so a server
-cannot hide "held for safety" by withholding one envelope; a gap-only round counts as synced. Each
+cannot hide "held for safety" by withholding one envelope; a gap-only round counts as synced. No
+skip is offered while `serverWentBack` or `quarantined` outranks the gap, though the held record
+stands and Rust would allow it. A quarantine also outranks `relayError` and `newerSchema`, so a
+server cannot mask it. Each
 held author has a Local record (`app_config` `sync.held_gap.<device hex>`: the lowest held envelope
 and when it was first held). After 14 days the person may skip it, behind the password and a
 confirmation that names the device, how many changes go, that changes depending on them may need
@@ -108,7 +113,9 @@ itself. The miss is recorded in `sync.skipped_miss` (the newest position) and
 (`missedSkipped`; `missedBelowBarrier` carries the larger of both for older readers), and such a
 snapshot never heals anyone; a clean snapshot heals it, and a restorer inherits a header miss
 (dated at the restore). While a skipped miss stands, a new missing-parent hold takes the skip's
-`since`, so a cascade is skippable at once, still behind the password. Rejected: recording the
+`since`, so a cascade is skippable at once, still behind the password; the inheritance is bounded:
+only from a skip made on this device, and only for holds noted within 14 days of it (a miss
+inherited at a restore does not make Parent holds instantly skippable). Rejected: recording the
 skip as a below-barrier miss (no device would upload a snapshot again, so the relay could never
 prune) and accepting a change as lost after a time without the person. A held envelope costs a
 re-fetch of the tail behind it on every pull, at most 100,000 envelopes; past that the pull ends
@@ -124,7 +131,10 @@ for the echo (one extra call). No migration: a column would raise the schema num
 devices on `NewerSchema`. Sealing stops at 1,024 unechoed envelopes and the round then shows
 `relayError` if the echo brought none back; a batch of re-sends answered with none accepted is sent
 once per round, and an envelope sent in an earlier round that is still not back after the echo
-pull shows `relayError`, never "Up to date". A merge restore after `410` acknowledges own
+pull shows `relayError`, not "Up to date". The exception: a round whose echo pull fails transiently
+or ends unfinished keeps the first pull's report and records success while an earlier envelope is
+still unechoed; the next round shows it. Likewise an unfinished pull with nothing held that made
+progress keeps recording success (pull progress is syncing; Task 18's ruling). A merge restore after `410` acknowledges own
 envelopes up to the snapshot's head for this device. Behind a newer-schema stop the pull scans on to
 the head, only while something waits for its echo, and only acknowledges own envelopes. What this
 covers, and what it does not:
@@ -139,7 +149,8 @@ A device notices a server that went back when a pull page's head is below where 
 It writes the sticky Local key `sync.vault_went_back_at` and shows the problem `serverWentBack`
 (phase error, no action button), which outranks `gap`, `clockAhead`, `invalidChain` and `relayError`.
 Pulling and pushing go on, but "Last synced" stops. The mark clears only with a completed replace or
-turning sync off; while it is set every re-sync and repair keeps its backup. Nothing is repaired
+turning sync off; while it is set every re-sync and repair keeps its backup and no snapshot is
+uploaded (a snapshot built on the old head would seed joiners with it). Nothing is repaired
 automatically: envelopes the server lost and this device already saw echoed are not sent again,
 devices whose cursor was above the restored head resume from their old cursor and miss what landed
 in between, and later envelopes of an affected author wait as gaps. Re-sync is no remedy: it
@@ -193,12 +204,14 @@ which a proxy may set, so it is defence in depth only; a server is safe because 
 keeps recording an enabled development profile's changes (they are never sent from that build).
 The audit's alternative, returning early from `on_open`, was rejected: edits would be written with no
 trigger, never sent, and invisible to a later sync build, so devices would diverge silently.
-`sync_turn_off` and the read-only `sync_profile_state` answer without the flag (besides
+`sync_turn_off` and the read-only `sync_profile_state` answer without the flag, and an unreadable
+`sync_state` row counts as sync on, so it can still be turned off (besides
 `sync_feature_enabled`), and Settings shows a leftover card (desktop Settings → Data, a row on the
 phone) that turns sync off. CI runs the release-build flag test (`cargo test --release`).
 
 **The binding fails closed (M10, L13).** A native `Failed` answer stops the start: no round, the
-problem `secureStorage` (phase paused). It counts once per app start in the Local key
+problem `secureStorage` (phase paused). It counts once per app start, process-wide (a later attempt in the same process does not count, and
+neither does a restart of the sync engine), in the Local key
 `sync.binding_failed_starts`; the third start in a row re-joins under a new device ID, any other
 answer resets the count, and repair and setup checks never count, so one locked keychain cannot
 force a re-join.
@@ -206,14 +219,19 @@ force a re-join.
 **Far-future clocks and the public key (M6, L1).** A pulled change dated more than 10 years past this
 device's wall clock is held, not applied (one day to ten years ahead applies, with the existing
 far-future warning). The hold is a third skippable held-gap kind, `ahead`, with the same 14 days,
-password, confirmation and snapshot-header miss rule. Both snapshot restores (merge and replace,
-joins included) refuse a snapshot whose newest clock passes the same bound. A device whose own clock
+password, confirmation and snapshot-header miss rule; for a device whose every envelope is more than
+ten years ahead, each skip drops one envelope and the next is held for another 14 days, so "then
+apply" holds only for later envelopes within the bound. Both snapshot restores (merge and replace,
+joins included) refuse a snapshot whose newest clock passes the same bound; a refused snapshot
+shows `invalidChain` in a round and `validation.syncSnapshotClockAhead` in a join or re-sync. A device whose own clock
 is more than a day past its wall clock shows a note with the date its changes carry until then
 (`clockAheadUntil`): until that date its edits win over edits made elsewhere. A 24-hour hold was
 built first and rejected: an honest clock set days or weeks ahead turned into held edits and silent
-divergence. Cost: a key holder can move every device's clock up to 10 years ahead in one envelope,
-which is cosmetic (the clock is read as a time only for "last change"; the counter cannot be
-saturated). `sync_devices.public_key`: a key stamped with the device's own ID beats one stamped with
+divergence. Cost: a key holder can move every device's clock up to 10 years ahead in one envelope.
+That is not only cosmetic: edits made on a device that has not yet pulled the bump lose
+last-writer-wins to earlier edits for up to ten years (the counter cannot be saturated, and the
+clock is read as a time only for "last change"). A residual of a vault-key holder, who can already
+forge any author. `sync_devices.public_key`: a key stamped with the device's own ID beats one stamped with
 another ID, and between two alike the older one wins (write-once). That stamp is not proof: any
 holder of the vault key writes changesets under any device ID, so the column must not be trusted
 for rekeying until changes are signed per device. A re-join ID is drawn at most 2^96 above the old
@@ -231,9 +249,10 @@ dialog, checks the contents hold this Kit's code (at most 256 KiB; a page with a
 handler or a `javascript:` URL is refused), refuses the data folder, stages under a random
 `.<name>.<uuid>.tmp` created exclusively with mode 0600 (Unix; on Windows the file takes the
 folder's permissions), renames it, and warns when the folder looks cloud-synced (a hint). Phones
-keep their text export. The main database runs `PRAGMA secure_delete = ON`, and turning sync off
-truncates the WAL, so the deleted vault key leaves the profile file's free pages; that is not
-physical erasure. Cancelling a setup deletes its secrets; abandoning it keeps them until resume or
+keep their text export. The main database runs `PRAGMA secure_delete = ON`, which zeroes the
+deleted vault key's cells in the profile file's free pages; that is not physical erasure. Profiles
+use a rollback journal, so the WAL truncation turning sync off also runs is a no-op there, and the
+journal file is unlinked, not wiped. Cancelling a setup deletes its secrets; abandoning it keeps them until resume or
 cancel, behind the password. The unlock password no longer stays in mutation state (L16).
 
 **Telling the truth about H1 and M5.** The device lists and the Kit screens say that a lost device or
@@ -266,6 +285,9 @@ says setup starts over with a new account and Kit. A device with no changes for 
     with the password can re-seal the binding; Windows DPAPI is machine-scope, so a disk, image or VM
     clone should pass on both machines; no TPM-backed key.
   - A server restored from an older backup is noticed but not repaired (above).
+  - A device whose wall clock is more than ten years behind holds every change from other devices as
+    `ahead` (problem `clockAhead`), refuses every snapshot and so cannot join, until its clock is
+    corrected; skipping the changes after 14 days loses them on that device.
   - Endless pulls fill the unechoed cap: a persistent `relayError` with a growing pending count.
   - A skipped envelope that arrives later is below its author's head and is not applied; only a clean
     snapshot brings its rows (applying it would be possible in principle, an improvement left open).
@@ -277,7 +299,7 @@ says setup starts over with a new account and Kit. A device with no changes for 
   - The clipboard holds the code up to 60 s and is not cleared after a crash; phone screen capture of
     the Kit is not blocked; a visible but unfocused desktop window shows the Kit up to 5 minutes; the
     cloud-folder warning misses synced Desktop and Documents folders; `secure_delete` and the WAL
-    truncation do not reach SSD remapped blocks, file system snapshots or earlier copies.
+    truncation (a no-op on a rollback journal) do not reach SSD remapped blocks, file system snapshots or earlier copies.
   - The relay still learns the account-to-vault link, the device count, activity timing and padded
     sizes.
 - Owner decisions still open:

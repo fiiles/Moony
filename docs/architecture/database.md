@@ -357,8 +357,10 @@ from a snapshot whose header carries a skipped miss writes `sync.skipped_miss` a
 
 The main connection runs `PRAGMA foreign_keys = ON` and `PRAGMA main.secure_delete = ON`
 (`db::configure`, when a database is created and each time one is opened), so deleted cells are
-zeroed in the file; turning sync off then truncates the WAL (`PRAGMA wal_checkpoint(TRUNCATE)`), so
-the deleted vault key leaves the profile's free pages. Copies made earlier (backups,
+zeroed in the file. That is what removes the deleted vault key from the profile's free pages:
+profiles use a rollback journal, so the WAL truncation turning sync off also runs
+(`PRAGMA wal_checkpoint(TRUNCATE)`) is a no-op there, and the journal file is unlinked, not wiped.
+Copies made earlier (backups,
 `moony.db.bak-*`, `sync-repair-*.zip`) still hold it.
 
 ## The attachments store (`attachments.db`)

@@ -1199,4 +1199,6 @@ residuals; where it differs from the text above, the code and ADR 0027 win. Sent
   true in this build: there is no removal, and a lost device, a Recovery Kit and every profile or
   sync backup made while sync was on keep the vault key for good (audit H1). There is also no author
   authentication: a key holder can write rows as any device. Turning sync off deletes the key from
-  the profile file (`secure_delete`, WAL truncation) but not from backups made earlier.
+  the profile file (`secure_delete` zeroes the deleted cells; the WAL truncation matters only in WAL mode, which
+  profiles do not use, and the rollback journal file is unlinked, not wiped) but not from backups
+  made earlier.

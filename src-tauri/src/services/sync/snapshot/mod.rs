@@ -276,7 +276,9 @@ fn refill(
         merge::apply_all(conn, &snapshot.rows, &mut ctx)
     })?;
     if let Some(reason) = stopped {
-        log::warn!("[SYNC] A snapshot did not restore: {reason:?}");
+        // The reason names a row key: only at `debug`.
+        log::debug!("[SYNC] A snapshot did not restore: {reason:?}");
+        log::warn!("[SYNC] A snapshot did not restore");
         return Err(invalid());
     }
     report.warnings.append(&mut ctx.report.warnings);

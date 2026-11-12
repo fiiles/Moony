@@ -44,6 +44,18 @@ fn policy_document(conn: &Connection, id: &str, policy: &str) -> String {
     blob
 }
 
+/// A property document `id` under `property` with a new blob; returns the blob's ID.
+fn property_document(conn: &Connection, id: &str, property: &str) -> String {
+    let blob = blob(conn, format!("deed {id}").as_bytes());
+    conn.execute(
+        "INSERT INTO real_estate_documents (id, real_estate_id, name, blob_id) \
+         VALUES (?1, ?2, 'Deed', ?3)",
+        [id, property, &blob],
+    )
+    .expect("document");
+    blob
+}
+
 /// A batch `batch` of `property` with one photo `photo`; returns its two blobs.
 fn photo(conn: &Connection, property: &str, batch: &str, photo: &str) -> (String, String) {
     let full = blob(conn, format!("full {photo}").as_bytes());
@@ -158,13 +170,8 @@ fn a_property_that_the_vault_deleted_takes_its_photos_and_documents() {
     apply(&c, &send(&a));
     let (kept_full, kept_thumb) = photo(&c, "r1", "batch-1", "ph1");
     let (gone_full, gone_thumb) = photo(&c, "r2", "batch-2", "ph2");
-    let deed = blob(&c, b"deed");
-    c.execute(
-        "INSERT INTO real_estate_documents (id, real_estate_id, name, blob_id) \
-         VALUES ('rd2', 'r2', 'Deed', ?1)",
-        [&deed],
-    )
-    .expect("document");
+    let kept_deed = property_document(&c, "rd1", "r1");
+    let deed = property_document(&c, "rd2", "r2");
     exec(&a, "DELETE FROM real_estate WHERE id = 'r2'");
     let (bytes, _) = snapshot(&a, 2);
 
@@ -172,14 +179,21 @@ fn a_property_that_the_vault_deleted_takes_its_photos_and_documents() {
 
     assert_eq!(
         report.attachments,
-        carry(1, 2),
-        "a photo and a document go; batches are not counted"
+        carry(2, 2),
+        "r1's photo and document are re-attached, r2's go; batches are not counted"
     );
     assert_eq!(
         strings(&c, "SELECT id FROM real_estate_photo_batches"),
         vec!["batch-1"]
     );
-    assert_eq!(count(&c, "SELECT COUNT(*) FROM real_estate_documents"), 0);
+    assert_eq!(
+        strings(
+            &c,
+            "SELECT id || ' ' || real_estate_id FROM real_estate_documents"
+        ),
+        vec!["rd1 r1"]
+    );
+    assert!(readable(&c, &kept_deed));
     assert!(readable(&c, &kept_full) && readable(&c, &kept_thumb));
     assert!(!readable(&c, &gone_full) && !readable(&c, &gone_thumb) && !readable(&c, &deed));
 }
@@ -253,4 +267,36 @@ fn a_kit_rejoin_carries_documents_of_items_the_vault_has() {
         vec!["d1 p1"]
     );
     assert!(readable(&b, &b1));
+}
+
+/// A second replace right after the first (a re-sync tried again) puts the same rows back once
+/// and reports the same counts.
+#[test]
+fn a_second_replace_back_to_back_adds_no_duplicate_attachments() {
+    let a = device(A);
+    policy(&a, "p1");
+    property(&a, "r1");
+    let c = with_store(device(C));
+    apply(&c, &send(&a));
+    let doc = policy_document(&c, "d1", "p1");
+    let deed = property_document(&c, "rd1", "r1");
+    let (full, thumb) = photo(&c, "r1", "batch-1", "ph1");
+    let (bytes, _) = snapshot(&a, 1);
+    let rows = "SELECT 'i ' || id FROM insurance_documents \
+                UNION ALL SELECT 'r ' || id FROM real_estate_documents \
+                UNION ALL SELECT 'b ' || id FROM real_estate_photo_batches \
+                UNION ALL SELECT 'p ' || id FROM real_estate_photos ORDER BY 1";
+
+    let first = restore_replace(&c, &mut &bytes[..], NOW).expect("first replace");
+    let after_first = strings(&c, rows);
+    let second = restore_replace(&c, &mut &bytes[..], NOW).expect("second replace");
+
+    assert_eq!(first.attachments, carry(3, 0));
+    assert_eq!(second.attachments, first.attachments);
+    assert_eq!(strings(&c, rows), after_first);
+    assert_eq!(after_first, vec!["b batch-1", "i d1", "p ph1", "r rd1"]);
+    assert!(
+        readable(&c, &doc) && readable(&c, &deed) && readable(&c, &full) && readable(&c, &thumb)
+    );
+    assert!(kept_tables(&c).is_empty());
 }

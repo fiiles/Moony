@@ -4,6 +4,7 @@
   "indicator": {
     "synced": "已同步",
     "syncing": "正在同步…",
+    "waiting": "等待更改",
     "paused": "同步已暂停",
     "error": "同步出错",
     "offline": "离线"
@@ -14,6 +15,7 @@
       "settingUp": "正在设置同步",
       "idle": "已是最新",
       "syncing": "正在同步…",
+      "waiting": "正在同步，等待来自另一台设备的更改",
       "paused": "同步已暂停",
       "error": "同步已停止"
     },
@@ -260,6 +262,7 @@
       "off": "已关闭",
       "synced": "已是最新",
       "syncing": "正在同步…",
+      "waiting": "等待更改",
       "offline": "离线",
       "paused": "已暂停",
       "error": "已停止"

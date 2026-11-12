@@ -219,8 +219,7 @@ enum Fault {
 }
 
 /// A capture-broken `B` with one change already sealed and waiting in `sync_unsent`, and `fault`
-/// in the drain's way; the repair must stop and leave `B` as it was, but for the backup. A gap
-/// holds without stopping the drain's pushes (audit M3): `B`'s change is sent, nothing replaced.
+/// in the drain's way; the repair must stop and leave `B` as it was, but for the backup.
 async fn repair_with(fault: Fault) {
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;
@@ -237,17 +236,10 @@ async fn repair_with(fault: Fault) {
             RelayError::Network("offline".into())
         }),
         Fault::Lapsed => fail_every_round(&vault, Route::Push, || RelayError::PaymentRequired),
+        // A waiting gap drains only once nothing is left to send: here the push keeps failing.
         Fault::Gap => {
-            let cts = {
-                let a = vault.a.lock();
-                institution(&a, "a2");
-                let first = seal_from(&a, &vault.creds);
-                institution(&a, "a3");
-                vec![first, seal_from(&a, &vault.creds)]
-            };
-            push(&vault.relay, &vault.creds, &cts).await;
-            let dropped = vault.relay.ops().last().expect("ops").seq - 1;
-            vault.relay.drop_op(dropped);
+            withhold_one_of_a(&vault).await;
+            fail_every_round(&vault, Route::Push, || RelayError::Server(503));
         }
     }
     let before = repair_state(&vault.b.lock());
@@ -262,21 +254,65 @@ async fn repair_with(fault: Fault) {
         Some("validation.syncRepairDrainIncomplete"),
         "{fault:?}: {error:?}"
     );
-    match fault {
-        Fault::Gap => {
-            assert!(
-                relay_has_institution(&vault, "b1"),
-                "the drain still pushed"
-            );
-            assert_eq!(device_of(&vault.b.lock()), B, "nothing replaced");
-        }
-        _ => assert_eq!(repair_state(&vault.b.lock()), before, "{fault:?}"),
-    }
+    assert_eq!(repair_state(&vault.b.lock()), before, "{fault:?}");
     assert_eq!(
         repair_backups(dir.path()),
         vec![format!("sync-repair-{NOW}-unused.zip")],
         "{fault:?}: the backup stays, marked unused"
     );
+}
+
+/// `A` writes two envelopes; the relay withholds the first, so a pull holds the second (a gap).
+async fn withhold_one_of_a(vault: &Vault) {
+    let cts = {
+        let a = vault.a.lock();
+        institution(&a, "a2");
+        let first = seal_from(&a, &vault.creds);
+        institution(&a, "a3");
+        vec![first, seal_from(&a, &vault.creds)]
+    };
+    push(&vault.relay, &vault.creds, &cts).await;
+    let dropped = vault.relay.ops().last().expect("ops").seq - 1;
+    vault.relay.drop_op(dropped);
+}
+
+/// Coordinator ruling on Task 15: the drain makes sure this device's changes were sent. A pull
+/// that waits on another device's missing envelope, with nothing left to send, has drained: the
+/// repair goes on and replaces (its backup is kept regardless).
+#[tokio::test]
+async fn a_repair_with_a_waiting_gap_finishes_once_everything_is_sent() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    {
+        let b = vault.b.lock();
+        institution(&b, "b1");
+        seal_from(&b, &vault.creds);
+    }
+    break_capture(&vault.b);
+    withhold_one_of_a(&vault).await;
+    let dir = tempfile::tempdir().expect("dir");
+
+    let outcome = repair_capture(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
+        .await
+        .expect("the gap waits, everything of B's was sent");
+
+    assert!(relay_has_institution(&vault, "b1"), "the drain pushed");
+    assert_eq!(
+        (
+            outcome.unsent_items_in_backup_only,
+            outcome.unsent_batches_in_backup_only
+        ),
+        (0, 0)
+    );
+    assert!(outcome.kept);
+    let b = vault.b.lock();
+    assert_ne!(device_of(&b), B, "replaced under a new device ID");
+    assert!(state::marks(&b)
+        .expect("marks")
+        .expect("row")
+        .capture_broken_at
+        .is_none());
 }
 
 /// `route` fails in every drain round a repair may run.

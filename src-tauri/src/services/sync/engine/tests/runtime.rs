@@ -140,7 +140,7 @@ fn a_local_write_runs_a_round_after_one_quiet_poll_or_after_60_seconds() {
 
 #[test]
 fn status_phases_follow_the_problem() {
-    use SyncPhase::{Error, Paused};
+    use SyncPhase::{Error, Paused, Waiting};
     use SyncProblem as P;
     let table = [
         (P::CaptureBroken, Error),
@@ -149,7 +149,7 @@ fn status_phases_follow_the_problem() {
         (P::QuotaExceeded, Paused),
         (P::SnapshotTooLarge, Error),
         (P::NewerSchema, Paused),
-        (P::Gap, Error),
+        (P::Gap, Waiting),
         (P::Undecryptable, Error),
         (P::InvalidChain, Error),
         (P::MissingParent, Error),

@@ -116,12 +116,14 @@ fn count(n: i64) -> u32 {
     u32::try_from(n.max(0)).unwrap_or(u32::MAX)
 }
 
-/// The phase a problem puts sync in (P17): `paused` while it waits on something outside this
-/// device (the vault, the subscription, the quota, an app update, the network, the rate limit),
-/// `error` for everything else.
+/// The phase a problem puts sync in (P17): `waiting` for a gap (a change from another device has
+/// not arrived, and this device keeps pulling and pushing: no stop), `paused` while it waits on
+/// something outside this device (the vault, the subscription, the quota, an app update, the
+/// network, the rate limit), `error` for everything else.
 pub fn phase_of(problem: SyncProblem) -> SyncPhase {
     use SyncProblem as P;
     match problem {
+        P::Gap => SyncPhase::Waiting,
         P::VaultGone
         | P::Lapsed
         | P::QuotaExceeded
@@ -130,7 +132,6 @@ pub fn phase_of(problem: SyncProblem) -> SyncPhase {
         | P::RateLimited => SyncPhase::Paused,
         P::CaptureBroken
         | P::SnapshotTooLarge
-        | P::Gap
         | P::Undecryptable
         | P::InvalidChain
         | P::MissingParent

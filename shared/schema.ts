@@ -49,7 +49,15 @@ export interface BiometricStatus {
 
 // Device sync (Rust `models::sync`)
 /** Where sync stands on this device. */
-export type SyncPhase = 'off' | 'settingUp' | 'idle' | 'syncing' | 'paused' | 'error';
+export type SyncPhase =
+  | 'off'
+  | 'settingUp'
+  | 'idle'
+  | 'syncing'
+  /** Syncing goes on, but a change from another device has not arrived yet (problem `gap`). */
+  | 'waiting'
+  | 'paused'
+  | 'error';
 
 /** Why sync is paused or stopped. */
 export type SyncProblem =
@@ -119,6 +127,17 @@ export interface RecoveryKit {
   qrSvg: string;
   /** The relay address, only when it is not the default relay (a self-hosted one). */
   relayUrl: string | null;
+}
+
+/** Which file of the Recovery Kit the desktop saves: the page (`.html`) or the text (`.txt`). */
+export type KitFileKind = 'page' | 'text';
+
+/** What became of a Recovery Kit save. */
+export interface KitSaveOutcome {
+  /** `false`: the person closed the save dialog; nothing was written. */
+  saved: boolean;
+  /** The chosen folder looks synced to a cloud service (iCloud Drive, OneDrive, Dropbox, …). */
+  syncedFolder: boolean;
 }
 
 /** One device of the sync account as Settings lists it. */

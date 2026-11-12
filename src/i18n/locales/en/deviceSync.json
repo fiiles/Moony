@@ -4,6 +4,7 @@
   "indicator": {
     "synced": "Synced",
     "syncing": "Syncing…",
+    "waiting": "Waiting for a change",
     "paused": "Sync paused",
     "error": "Sync error",
     "offline": "Offline"
@@ -14,6 +15,7 @@
       "settingUp": "Setting up sync",
       "idle": "Up to date",
       "syncing": "Syncing…",
+      "waiting": "Syncing, waiting for a change from another device",
       "paused": "Sync is paused",
       "error": "Sync stopped"
     },
@@ -261,6 +263,7 @@
       "off": "Off",
       "synced": "Up to date",
       "syncing": "Syncing…",
+      "waiting": "Waiting for a change",
       "offline": "Offline",
       "paused": "Paused",
       "error": "Stopped"

@@ -15,6 +15,8 @@ export function syncIndicator(status: SyncStatus | undefined): SyncIndicator {
       return { tone: 'fresh', labelKey: 'indicator.synced' };
     case 'syncing':
       return { tone: 'neutral', labelKey: 'indicator.syncing' };
+    case 'waiting':
+      return { tone: 'stale', labelKey: 'indicator.waiting' };
     case 'paused':
       return { tone: 'stale', labelKey: 'indicator.paused' };
     case 'error':

@@ -4,6 +4,7 @@
   "indicator": {
     "synced": "Synkronisert",
     "syncing": "Synkroniserer…",
+    "waiting": "Venter på en endring",
     "paused": "Synkronisering satt på pause",
     "error": "Synkroniseringsfeil",
     "offline": "Frakoblet"
@@ -14,6 +15,7 @@
       "settingUp": "Setter opp synkronisering",
       "idle": "Oppdatert",
       "syncing": "Synkroniserer…",
+      "waiting": "Synkroniserer, venter på en endring fra en annen enhet",
       "paused": "Synkronisering er satt på pause",
       "error": "Synkroniseringen stoppet"
     },
@@ -261,6 +263,7 @@
       "off": "Av",
       "synced": "Oppdatert",
       "syncing": "Synkroniserer…",
+      "waiting": "Venter på en endring",
       "offline": "Frakoblet",
       "paused": "På pause",
       "error": "Stoppet"

@@ -4,6 +4,7 @@
   "indicator": {
     "synced": "Zsynchronizowano",
     "syncing": "Synchronizuję…",
+    "waiting": "Oczekuje na zmianę",
     "paused": "Synchronizacja wstrzymana",
     "error": "Błąd synchronizacji",
     "offline": "Offline"
@@ -14,6 +15,7 @@
       "settingUp": "Konfigurowanie synchronizacji",
       "idle": "Aktualne",
       "syncing": "Synchronizuję…",
+      "waiting": "Synchronizacja trwa, oczekuje na zmianę z innego urządzenia",
       "paused": "Synchronizacja jest wstrzymana",
       "error": "Synchronizacja zatrzymana"
     },
@@ -263,6 +265,7 @@
       "off": "Wyłączona",
       "synced": "Aktualna",
       "syncing": "Synchronizowanie…",
+      "waiting": "Oczekuje na zmianę",
       "offline": "Offline",
       "paused": "Wstrzymana",
       "error": "Zatrzymana"

@@ -1343,6 +1343,32 @@ fee: string | null }
 export type InvestmentWithDetails = { currency: string; fxQuality: ConversionQuality; investment: EnrichedStockInvestment; transactions: InvestmentTransaction[]; tags: StockTag[] }
 
 /**
+ * Which file of the Recovery Kit the desktop saves (`sync_save_recovery_kit`).
+ */
+export type KitFileKind = 
+/**
+ * The self-contained page (`.html`), to print or keep.
+ */
+"page" | 
+/**
+ * The same facts as plain text (`.txt`).
+ */
+"text"
+
+/**
+ * What became of a Recovery Kit save.
+ */
+export type KitSaveOutcome = { 
+/**
+ * `false`: the person closed the save dialog; nothing was written.
+ */
+saved: boolean; 
+/**
+ * The chosen folder looks synced to a cloud service (iCloud Drive, OneDrive, Dropbox, …).
+ */
+syncedFolder: boolean }
+
+/**
  * A CSV layout the person confirmed once, recognised next month (mobile spec §8.6 rung 4; TS
  * `LearnedCsvFormat`). Stored in `app_config` by `csv_import::learned`; `signature` is the
  * layout's key (header cells, delimiter, column count), `headers` the cells it was learned
@@ -3269,6 +3295,11 @@ export type SyncPhase =
  * A round is running.
  */
 "syncing" | 
+/**
+ * Syncing goes on, but a change from another device has not arrived (a gap in its chain, or
+ * a parent it references): the change waits, this device keeps pulling and pushing.
+ */
+"waiting" | 
 /**
  * Waiting on something outside this device: the vault, the subscription, the quota, an app
  * update, the network or the relay's rate limit.

@@ -4,7 +4,7 @@
 
 use super::runtime::{routes, write_and_seal};
 use super::*;
-use crate::models::sync::SyncProblem;
+use crate::models::sync::{SyncPhase, SyncProblem};
 use crate::services::sync::changeset::SqlValue;
 use crate::services::sync::engine::pull::pull_all;
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
@@ -55,9 +55,11 @@ async fn a_withheld_envelope_holds_the_cursor_while_others_sync_and_pushes_go_on
     assert!(head(&a, C).is_some(), "C's envelope after the gap applied");
     assert!(!has_institution(&a, "b2"));
     assert_eq!(head(&a, B), None);
+    let shown = status(&a, &runtime).expect("status");
     assert_eq!(
-        status(&a, &runtime).expect("status").problem,
-        Some(SyncProblem::Gap)
+        (shown.phase, shown.problem),
+        (SyncPhase::Waiting, Some(SyncProblem::Gap)),
+        "a waiting gap is no stop"
     );
 }
 

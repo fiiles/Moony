@@ -4,6 +4,7 @@
   "indicator": {
     "synced": "同期済み",
     "syncing": "同期中…",
+    "waiting": "変更を待機中",
     "paused": "同期を一時停止中",
     "error": "同期エラー",
     "offline": "オフライン"
@@ -14,6 +15,7 @@
       "settingUp": "同期を設定中",
       "idle": "最新の状態です",
       "syncing": "同期中…",
+      "waiting": "同期中。別のデバイスからの変更を待っています",
       "paused": "同期は一時停止中です",
       "error": "同期が停止しました"
     },
@@ -260,6 +262,7 @@
       "off": "オフ",
       "synced": "最新",
       "syncing": "同期中…",
+      "waiting": "変更を待機中",
       "offline": "オフライン",
       "paused": "一時停止中",
       "error": "停止中"

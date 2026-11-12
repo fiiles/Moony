@@ -4,6 +4,7 @@
   "indicator": {
     "synced": "Synchronizováno",
     "syncing": "Synchronizuji…",
+    "waiting": "Čeká na změnu",
     "paused": "Synchronizace pozastavena",
     "error": "Chyba synchronizace",
     "offline": "Offline"
@@ -14,6 +15,7 @@
       "settingUp": "Nastavuje se synchronizace",
       "idle": "Vše aktuální",
       "syncing": "Synchronizuji…",
+      "waiting": "Synchronizuje se, čeká na změnu z jiného zařízení",
       "paused": "Synchronizace je pozastavená",
       "error": "Synchronizace se zastavila"
     },
@@ -263,6 +265,7 @@
       "off": "Vypnuto",
       "synced": "Aktuální",
       "syncing": "Synchronizuje se…",
+      "waiting": "Čeká na změnu",
       "offline": "Offline",
       "paused": "Pozastaveno",
       "error": "Zastaveno"

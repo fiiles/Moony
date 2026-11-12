@@ -34,7 +34,7 @@ use super::engine::pull::DEFAULT_DEVICE_NAME;
 use super::engine::push;
 use super::engine::runtime::{rejoin_if_copy, CopyCheck};
 use super::engine::snapshots::{off_thread, open_sealed, SnapshotPolicy};
-use super::engine::{self, ConnAccess, PullReport, RoundMode};
+use super::engine::{self, ConnAccess, PullEnd, PullReport, RoundMode};
 use super::error::SyncResult;
 use super::hlc::DeviceId;
 use super::impact::{self, ReplaceConsent, ReplaceKind, DRAIN_INCOMPLETE};
@@ -46,6 +46,7 @@ use super::relay::{Relay, RelayError};
 use super::snapshot::{AttachmentCarry, RestoreReport};
 use super::state;
 use crate::error::{AppError, Result};
+use crate::models::sync::SyncProblem;
 
 pub use super::backups::{PREFIX as REPAIR_BACKUP_PREFIX, SUFFIX as REPAIR_BACKUP_SUFFIX};
 
@@ -711,7 +712,9 @@ async fn backed_up<D: ConnAccess>(db: &D, data_dir: &Path, now: i64) -> SyncResu
     Ok(zip)
 }
 
-/// Step 3 of `repair_capture`: drain rounds until one ends clean (`true`), or the budget
+/// Step 3 of `repair_capture`: drain rounds until one ends clean (`drain_round`; a pull that
+/// only waits for another device's missing envelope counts) with nothing pending (`true`), or the
+/// budget
 /// (`rounds`, shared by every drain of the repair, up to `MAX_DRAIN_ROUNDS`) or two rounds in a
 /// row without progress (nothing less pending, the pull cursor where it was) end it (`false`).
 async fn drained<R: Relay, D: ConnAccess>(
@@ -742,7 +745,9 @@ async fn drained<R: Relay, D: ConnAccess>(
 }
 
 /// One drain round: whether it ended without an error or a problem and its pull reached the
-/// relay's end (`PullReport::done`).
+/// relay's end (`PullReport::done`), or only waits for another device's missing envelope or parent
+/// (`PullEnd::Waiting`, problem `Gap`): the drain makes sure this device's changes were sent, and
+/// a waiting pull still pushes. The caller asks for nothing left pending as well.
 async fn drain_round<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> bool {
     let mut policy = SnapshotPolicy::default();
     match engine::run_round(relay, db, &mut policy, RoundMode::Drain, now, 0).await {
@@ -750,7 +755,12 @@ async fn drain_round<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> bo
             if let Some(problem) = report.problem {
                 log::info!("[SYNC] The repair's drain round ended with {problem:?}");
             }
-            report.problem.is_none() && report.pull.as_ref().is_some_and(PullReport::done)
+            let pull = report.pull.as_ref();
+            match report.problem {
+                None => pull.is_some_and(PullReport::done),
+                Some(SyncProblem::Gap) => pull.is_some_and(|p| p.end() == PullEnd::Waiting),
+                Some(_) => false,
+            }
         }
         Err(error) => {
             log::info!("[SYNC] The repair's drain round failed");

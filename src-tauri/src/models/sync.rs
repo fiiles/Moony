@@ -18,6 +18,10 @@ pub enum SyncPhase {
     /// A round is running.
     #[serde(rename = "syncing")]
     Syncing,
+    /// Syncing goes on, but a change from another device has not arrived (a gap in its chain, or
+    /// a parent it references): the change waits, this device keeps pulling and pushing.
+    #[serde(rename = "waiting")]
+    Waiting,
     /// Waiting on something outside this device: the vault, the subscription, the quota, an app
     /// update, the network or the relay's rate limit.
     #[serde(rename = "paused")]
@@ -171,6 +175,28 @@ impl Drop for RecoveryKit {
         self.recovery_code.zeroize();
         self.qr_svg.zeroize();
     }
+}
+
+/// Which file of the Recovery Kit the desktop saves (`sync_save_recovery_kit`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum KitFileKind {
+    /// The self-contained page (`.html`), to print or keep.
+    #[serde(rename = "page")]
+    Page,
+    /// The same facts as plain text (`.txt`).
+    #[serde(rename = "text")]
+    Text,
+}
+
+/// What became of a Recovery Kit save.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct KitSaveOutcome {
+    /// `false`: the person closed the save dialog; nothing was written.
+    #[serde(rename = "saved")]
+    pub saved: bool,
+    /// The chosen folder looks synced to a cloud service (iCloud Drive, OneDrive, Dropbox, …).
+    #[serde(rename = "syncedFolder")]
+    pub synced_folder: bool,
 }
 
 /// One device of the sync account as Settings lists it.

@@ -9,8 +9,9 @@ export type SyncRowSummary = { key: string; tone: 'fresh' | 'stale' | 'neutral' 
 
 /**
  * The sub-line of the Sync row in Nastavení (a `deviceSync` key). Off or half set up reads "off"
- * (the page offers the setup); a pause because the phone has no connection is its own line, any
- * other pause or an error asks for a look on the page.
+ * (the page offers the setup); a pause because the phone has no connection is its own line, a
+ * change from another device that has not arrived (`waiting`) says so, any other pause or an
+ * error asks for a look on the page.
  */
 export function syncRowSummary(status: SyncStatus | undefined): SyncRowSummary {
   switch (status?.phase) {
@@ -18,6 +19,8 @@ export function syncRowSummary(status: SyncStatus | undefined): SyncRowSummary {
       return { key: 'phone.row.synced', tone: 'fresh' };
     case 'syncing':
       return { key: 'phone.row.syncing', tone: 'neutral' };
+    case 'waiting':
+      return { key: 'phone.row.waiting', tone: 'stale' };
     case 'paused':
       return status.problem === 'offline'
         ? { key: 'phone.row.offline', tone: 'stale' }

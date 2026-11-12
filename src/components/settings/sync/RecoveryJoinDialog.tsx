@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { consentAsItStands, useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { scannedCodeKind } from '@/utils/pairing-code';
 import { defaultDeviceKey } from '@/utils/sync-devices';
@@ -52,14 +52,15 @@ export function RecoveryJoinDialog({ onClose }: { onClose: () => void }) {
     if (!ready || busy) return;
     setError(null);
     try {
-      const path = await joinWithRecoveryKit.mutateAsync({
+      const outcome = await joinWithRecoveryKit.mutateAsync({
         code: code.trim(),
         account: needsAccount ? account.trim() : undefined,
         relayUrl: relayUrl.trim() === '' ? undefined : relayUrl.trim(),
         deviceName: name.trim(),
         password,
+        consent: await consentAsItStands(),
       });
-      toast(t('pairing.joined', { path }));
+      toast(t('pairing.joined', { path: outcome.backupPath }));
       onClose();
     } catch (failure) {
       joinWithRecoveryKit.reset();

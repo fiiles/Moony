@@ -305,6 +305,11 @@ async fn run_app() {
             commands::sync_pairing::sync_join_with_recovery_kit,
             commands::sync_pairing::sync_list_devices,
             commands::sync_pairing::sync_rename_device,
+            commands::sync_backups::sync_replace_impact,
+            commands::sync_backups::sync_list_backups,
+            commands::sync_backups::sync_delete_backup,
+            #[cfg(mobile)]
+            commands::sync_backups::stage_sync_backup_export,
             // Investment commands
             commands::investments::get_all_investments,
             commands::investments::get_investment,

@@ -48,7 +48,7 @@ pub async fn create_backup(
 
 /// Phones only: the app's Documents folder, where the system's Files export looks for the file.
 #[cfg(mobile)]
-fn documents_dir(app: &AppHandle) -> Result<PathBuf> {
+pub(super) fn documents_dir(app: &AppHandle) -> Result<PathBuf> {
     app.path()
         .document_dir()
         .map_err(|e| AppError::Internal(format!("Failed to get documents dir: {e}")))
@@ -56,7 +56,7 @@ fn documents_dir(app: &AppHandle) -> Result<PathBuf> {
 
 /// Phones only: a staged path as the string the webview hands back to the finishing command.
 #[cfg(mobile)]
-fn path_string(path: &std::path::Path) -> Result<String> {
+pub(super) fn path_string(path: &std::path::Path) -> Result<String> {
     path.to_str()
         .map(str::to_owned)
         .ok_or_else(|| AppError::Internal("Documents path is not valid UTF-8".into()))

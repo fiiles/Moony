@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
-import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { consentAsItStands, useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import type { JoinFailureAction } from '@/utils/pairing-code';
 import { defaultDeviceKey } from '@/utils/sync-devices';
@@ -78,8 +78,8 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
   const runJoin = async () => {
     setJoinError(null);
     try {
-      const path = await join.mutateAsync();
-      toast(t('pairing.joined', { path }));
+      const outcome = await join.mutateAsync(await consentAsItStands());
+      toast(t('pairing.joined', { path: outcome.backupPath }));
       onClose();
     } catch (failure) {
       // The key alone cannot tell whether the backend kept the received session: ask it.

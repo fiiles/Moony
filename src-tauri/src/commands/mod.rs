@@ -41,5 +41,6 @@ pub mod stock_monitor;
 pub mod stock_splits;
 pub mod stock_tags;
 pub mod sync;
+pub mod sync_backups;
 pub mod sync_pairing;
 pub mod system;

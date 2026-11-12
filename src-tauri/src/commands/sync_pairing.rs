@@ -30,12 +30,15 @@ use tauri::{AppHandle, State};
 use zeroize::Zeroizing;
 
 use super::sync::{
-    app_error, consent_as_it_stands, data_dir, guarded_change, kit_owner, now, require_feature,
-    sync_on, verify_password, AppEngine, KeychainBinding, KitOwner,
+    app_error, data_dir, guarded_change, kit_owner, now, require_feature, sync_on, verify_password,
+    AppEngine, KeychainBinding, KitOwner,
 };
+use super::sync_backups::{consent_of, outcome_view};
 use crate::db::Database;
 use crate::error::{AppError, Result};
-use crate::models::sync::{PairingRole, PairingStage, PairingView, SyncDevice};
+use crate::models::sync::{
+    PairingRole, PairingStage, PairingView, ReplaceConsentView, ReplaceOutcomeView, SyncDevice,
+};
 use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::pairing::session::{keeps_session, PairingSession, Stage};
@@ -604,12 +607,19 @@ pub async fn sync_pairing_cancel() -> Result<()> {
 }
 
 /// The joiner joins with the received sync details (stage `received` only, else
-/// `validation.syncPairingFailed`): backup, then join by replace, as a sync change; the backup's
-/// path. A failure that may pass keeps the received session for "Try again"; success ends it.
-/// A lock meanwhile (`forget_pairing`) gives the session up when the join ends.
+/// `validation.syncPairingFailed`): backup, then join by replace, as a sync change, within what
+/// the person agreed to (`consent`: more documents and photos than it showed stop the join with
+/// `validation.syncReplaceImpactChanged`); the outcome. A failure that may pass keeps the
+/// received session for "Try again"; success ends it. A lock meanwhile (`forget_pairing`) gives
+/// the session up when the join ends.
 #[tauri::command]
-pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Result<String> {
+pub async fn sync_pairing_join(
+    app: AppHandle,
+    db: State<'_, Database>,
+    consent: ReplaceConsentView,
+) -> Result<ReplaceOutcomeView> {
     require_feature()?;
+    let consent = consent_of(&consent)?;
     let owner = kit_owner(&app, &db)?;
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
@@ -623,7 +633,6 @@ pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Resul
     };
     let relay = HttpRelay::new(&creds.relay_url)?;
     let native = KeychainBinding { app: app.clone() };
-    let consent = consent_as_it_stands(&session)?;
     let join = join::join_new_device(
         &relay,
         &session,
@@ -643,7 +652,7 @@ pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Resul
     match joined {
         Ok(outcome) => {
             pairing.take();
-            Ok(outcome.backup.display().to_string())
+            Ok(outcome_view(&outcome))
         }
         Err(error) => {
             if !after_join_error(&error) {
@@ -656,7 +665,9 @@ pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Resul
 
 /// Joins with a Sync Recovery Kit (its QR text or typed code, with the account number and an
 /// optional sync server for a typed one) once the device password is checked: backup, then join
-/// by replace, as a sync change; the backup's path.
+/// by replace, as a sync change, within what the person agreed to (`consent`, as
+/// `sync_pairing_join`); the outcome.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn sync_join_with_recovery_kit(
     app: AppHandle,
@@ -666,10 +677,12 @@ pub async fn sync_join_with_recovery_kit(
     relay_url: Option<String>,
     device_name: String,
     password: String,
-) -> Result<String> {
+    consent: ReplaceConsentView,
+) -> Result<ReplaceOutcomeView> {
     let password = Zeroizing::new(password);
     let code = Zeroizing::new(code);
     require_feature()?;
+    let consent = consent_of(&consent)?;
     devices::validate_device_name(&device_name)?;
     let verify = verify_password(&app, password.clone());
     begin(password, verify, std::future::ready(Ok(()))).await?;
@@ -684,7 +697,6 @@ pub async fn sync_join_with_recovery_kit(
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
-    let consent = consent_as_it_stands(&session)?;
     let join = async {
         let creds = join::recovery_credentials(&relay, &session, input).await?;
         join::join_new_device(
@@ -700,7 +712,7 @@ pub async fn sync_join_with_recovery_kit(
         .await
     };
     let outcome = guarded_change(&AppEngine { app: &app, db: &db }, join).await?;
-    Ok(outcome.backup.display().to_string())
+    Ok(outcome_view(&outcome))
 }
 
 /// The devices of the sync account.

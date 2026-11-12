@@ -40,6 +40,12 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::PairingRole>();
     types.register::<crate::models::PairingView>();
 
+    // Device sync replaces (join, repair, re-sync) and their backups
+    types.register::<crate::models::ReplaceImpactView>();
+    types.register::<crate::models::ReplaceConsentView>();
+    types.register::<crate::models::ReplaceOutcomeView>();
+    types.register::<crate::models::SyncBackupEntry>();
+
     // Investment models
     types.register::<crate::models::StockInvestment>();
     types.register::<crate::models::EnrichedStockInvestment>();

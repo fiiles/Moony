@@ -257,3 +257,81 @@ pub struct PairingView {
     #[serde(rename = "expiresAt")]
     pub expires_at: i64,
 }
+
+/// What a replace (a join, a repair, a re-sync) puts at stake on this device, for the confirmation
+/// that asks for it (`services::sync::impact::ReplaceImpact`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct ReplaceImpactView {
+    /// Changed items not sealed yet (`sync_outbox` rows).
+    #[serde(rename = "pendingItems")]
+    pub pending_items: u32,
+    /// Sealed batches the sync server has not confirmed (`sync_unsent` rows).
+    #[serde(rename = "pendingBatches")]
+    pub pending_batches: u32,
+    /// Documents of properties and insurance policies.
+    #[serde(rename = "documents")]
+    pub documents: u32,
+    /// Photos of properties.
+    #[serde(rename = "photos")]
+    pub photos: u32,
+    /// Accounts and assets (bonds and insurance policies included).
+    #[serde(rename = "accounts")]
+    pub accounts: u32,
+    /// Bank transactions.
+    #[serde(rename = "transactions")]
+    pub transactions: u32,
+    /// The newest clock this device knows, as a decimal string (it exceeds 2^53): the watermark a
+    /// confirmation sends back in its consent.
+    #[serde(rename = "changesThrough")]
+    pub changes_through: String,
+}
+
+/// What the person agreed to in a replace's confirmation: the watermark of the impact it showed,
+/// and the documents and photos it showed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct ReplaceConsentView {
+    /// `ReplaceImpactView::changes_through`, as the confirmation received it (decimal string).
+    #[serde(rename = "changesThrough")]
+    pub changes_through: String,
+    /// Documents plus photos the confirmation showed.
+    #[serde(rename = "attachments")]
+    pub attachments: u32,
+}
+
+/// What a join, repair or re-sync did: its backup and what stayed only in it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct ReplaceOutcomeView {
+    /// The backup made before the replace (listed in Restore).
+    #[serde(rename = "backupPath")]
+    pub backup_path: String,
+    /// This device's documents and photos re-attached to items the synced data also has.
+    #[serde(rename = "attachmentsKept")]
+    pub attachments_kept: u32,
+    /// This device's documents and photos found only in the backup now.
+    #[serde(rename = "attachmentsInBackupOnly")]
+    pub attachments_in_backup_only: u32,
+    /// Changed items that reached no sync server and are only in the backup.
+    #[serde(rename = "unsentItemsInBackupOnly")]
+    pub unsent_items_in_backup_only: u32,
+    /// Sealed batches that reached no sync server and are only in the backup.
+    #[serde(rename = "unsentBatchesInBackupOnly")]
+    pub unsent_batches_in_backup_only: u32,
+    /// The backup is kept: never removed by the app, only by the person.
+    #[serde(rename = "kept")]
+    pub kept: bool,
+}
+
+/// A backup a join, repair or re-sync made, as Restore lists it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncBackupEntry {
+    #[serde(rename = "path")]
+    pub path: String,
+    /// When it was made (unix seconds).
+    #[serde(rename = "createdAt")]
+    pub created_at: i64,
+    #[serde(rename = "bytes")]
+    pub bytes: u64,
+    /// It holds something found nowhere else: the app never removes it, only the person does.
+    #[serde(rename = "kept")]
+    pub kept: bool,
+}

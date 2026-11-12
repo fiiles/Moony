@@ -172,6 +172,10 @@ import type {
   RecoveryKit,
   SyncDevice,
   PairingView,
+  ReplaceImpactView,
+  ReplaceConsentView,
+  ReplaceOutcomeView,
+  SyncBackupEntry,
 } from '../../shared/schema';
 
 // Backend error keys (`validation.*`, `auth.*`) and the generic `errors.*` messages live in common.json.
@@ -341,19 +345,42 @@ export const deviceSyncApi = {
   showRecoveryKit: (password: string) =>
     tauriInvoke<RecoveryKit>('sync_show_recovery_kit', { password }),
 
-  turnOff: () => tauriInvoke<void>('sync_turn_off'),
+  /**
+   * Turns sync off on this device. With sync on the device password is required; cancelling a
+   * setup that has not finished needs none.
+   */
+  turnOff: (password?: string) =>
+    tauriInvoke<void>('sync_turn_off', { password: password ?? null }),
 
   deleteSyncedData: (password: string) =>
     tauriInvoke<void>('sync_delete_synced_data', { password }),
 
-  /** Repairs a capture-broken device; resolves to the backup's path. */
-  repairDevice: () => tauriInvoke<string>('sync_repair_device'),
+  /** Repairs a capture-broken device once the password is checked; its backup and what is only in it. */
+  repairDevice: (password: string) =>
+    tauriInvoke<ReplaceOutcomeView>('sync_repair_device', { password }),
 
   /**
-   * Re-syncs this device from the vault without sending its unsent changes (they stay only in
-   * the backup); resolves to the backup's path.
+   * Re-syncs this device from the vault within `consent` (what the confirmation showed); what it
+   * could not send stays only in the backup, and the outcome says how much.
    */
-  resyncDevice: (password: string) => tauriInvoke<string>('sync_resync_device', { password }),
+  resyncDevice: (password: string, consent: ReplaceConsentView) =>
+    tauriInvoke<ReplaceOutcomeView>('sync_resync_device', { password, consent }),
+
+  /** What a join, repair or re-sync would put at stake now; a confirmation loads it when it opens. */
+  replaceImpact: () => tauriInvoke<ReplaceImpactView>('sync_replace_impact'),
+
+  /** The backups joins, repairs and re-syncs made, newest first. */
+  listBackups: () => tauriInvoke<SyncBackupEntry[]>('sync_list_backups'),
+
+  /** Deletes a listed sync backup for good (confirm first). */
+  deleteBackup: (path: string) => tauriInvoke<void>('sync_delete_backup', { path }),
+
+  /**
+   * Phones only: copies a listed sync backup to Documents for the Files sheet; hand the returned
+   * path to `dataApi.finishBackupExport`.
+   */
+  stageSyncBackupExport: (path: string) =>
+    tauriInvoke<string>('stage_sync_backup_export', { path }),
 
   /** Debug builds with the developer tools only. */
   devGrant: (days: number) => tauriInvoke<SyncAccount>('sync_dev_grant', { days }),
@@ -389,26 +416,31 @@ export const deviceSyncApi = {
 
   pairingCancel: () => tauriInvoke<void>('sync_pairing_cancel'),
 
-  /** Joins with the received sync details (view `received`); resolves to the backup's path. */
-  pairingJoin: () => tauriInvoke<string>('sync_pairing_join'),
+  /** Joins with the received sync details (view `received`) within `consent`; the outcome. */
+  pairingJoin: (consent: ReplaceConsentView) =>
+    tauriInvoke<ReplaceOutcomeView>('sync_pairing_join', { consent }),
 
   /**
-   * Joins with a Sync Recovery Kit (its QR text, or the typed code with the account number);
-   * resolves to the backup's path.
+   * Joins with a Sync Recovery Kit (its QR text, or the typed code with the account number)
+   * within `consent`; the outcome.
    */
-  joinWithRecoveryKit: (args: {
-    code: string;
-    account?: string;
-    relayUrl?: string;
-    deviceName: string;
-    password: string;
-  }) =>
-    tauriInvoke<string>('sync_join_with_recovery_kit', {
+  joinWithRecoveryKit: (
+    args: {
+      code: string;
+      account?: string;
+      relayUrl?: string;
+      deviceName: string;
+      password: string;
+    },
+    consent: ReplaceConsentView
+  ) =>
+    tauriInvoke<ReplaceOutcomeView>('sync_join_with_recovery_kit', {
       code: args.code,
       account: args.account ?? null,
       relayUrl: args.relayUrl ?? null,
       deviceName: args.deviceName,
       password: args.password,
+      consent,
     }),
 
   listDevices: () => tauriInvoke<SyncDevice[]>('sync_list_devices'),

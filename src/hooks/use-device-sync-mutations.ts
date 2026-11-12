@@ -2,6 +2,21 @@ import { useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deviceSyncApi, portfolioApi } from '@/lib/tauri-api';
 import { refreshAfterRemoteChanges } from '@/lib/device-sync-refresh';
+import type { ReplaceConsentView } from '@shared/schema';
+
+/**
+ * The consent of the profile as it stands now: the impact read just before the replace, which is
+ * what the commands took before the confirmations showed it. A confirmation that shows the impact
+ * sends the consent of what it showed instead.
+ */
+export async function consentAsItStands(): Promise<ReplaceConsentView> {
+  const impact = await deviceSyncApi.replaceImpact();
+  return { changesThrough: impact.changesThrough, attachments: impact.documents + impact.photos };
+}
+
+type KitJoin = Parameters<typeof deviceSyncApi.joinWithRecoveryKit>[0] & {
+  consent: ReplaceConsentView;
+};
 
 /**
  * One mutation per `deviceSyncApi` write. Thin on purpose: the setup and Sync screens decide how a
@@ -41,7 +56,8 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.prepareRecoveryKit,
     gcTime: 0,
   });
-  // gcTime 0 below: a password typed for delete / re-sync is a mutation variable and must not linger.
+  // gcTime 0 below: a password typed for turning off, delete, repair or re-sync is a mutation
+  // variable and must not linger.
   const copyRecoveryCode = useMutation({ mutationFn: deviceSyncApi.copyRecoveryCode });
   const finishSetup = useMutation({
     mutationFn: ({ deviceName, kitSaved }: { deviceName: string; kitSaved: boolean }) =>
@@ -56,8 +72,11 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.showRecoveryKit,
     gcTime: 0,
   });
+  // No password: cancelling a setup that has not finished (with sync on it is required).
   const turnOff = useMutation({
-    mutationFn: deviceSyncApi.turnOff,
+    mutationFn: (password: string | void) =>
+      deviceSyncApi.turnOff(typeof password === 'string' ? password : undefined),
+    gcTime: 0,
     onSuccess: refreshLocalData,
   });
   const deleteSyncedData = useMutation({
@@ -67,20 +86,21 @@ export function useDeviceSyncMutations() {
   });
   const repairDevice = useMutation({
     mutationKey: REPLACE_DEVICE_MUTATION_KEY,
-    mutationFn: deviceSyncApi.repairDevice,
+    mutationFn: (password: string) => deviceSyncApi.repairDevice(password),
     gcTime: 0,
     onSuccess: refreshLocalData,
   });
   const resyncDevice = useMutation({
     mutationKey: REPLACE_DEVICE_MUTATION_KEY,
-    mutationFn: deviceSyncApi.resyncDevice,
+    mutationFn: ({ password, consent }: { password: string; consent: ReplaceConsentView }) =>
+      deviceSyncApi.resyncDevice(password, consent),
     gcTime: 0,
     onSuccess: refreshLocalData,
   });
   // Joining with a kit replaces this device's data, like repair and re-sync.
   const joinWithRecoveryKit = useMutation({
     mutationKey: REPLACE_DEVICE_MUTATION_KEY,
-    mutationFn: deviceSyncApi.joinWithRecoveryKit,
+    mutationFn: ({ consent, ...args }: KitJoin) => deviceSyncApi.joinWithRecoveryKit(args, consent),
     gcTime: 0,
     onSuccess: refreshLocalData,
   });

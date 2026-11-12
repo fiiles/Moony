@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { consentAsItStands, useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { scannedCodeKind } from '@/utils/pairing-code';
 import { backupFileName } from '@/utils/sync-status';
@@ -80,14 +80,15 @@ export function RecoveryJoinSheet({ open, onOpenChange }: RecoveryJoinSheetProps
     if (!ready || busy) return;
     setError(null);
     try {
-      const path = await joinWithRecoveryKit.mutateAsync({
+      const outcome = await joinWithRecoveryKit.mutateAsync({
         code: code.trim(),
         account: needsAccount ? account.trim() : undefined,
         relayUrl: relayUrl.trim() === '' ? undefined : relayUrl.trim(),
         deviceName: name.trim(),
         password,
+        consent: await consentAsItStands(),
       });
-      toast(t('pairing.joined', { path: backupFileName(path) }));
+      toast(t('pairing.joined', { path: backupFileName(outcome.backupPath) }));
       onOpenChange(false);
     } catch (failure) {
       joinWithRecoveryKit.reset();

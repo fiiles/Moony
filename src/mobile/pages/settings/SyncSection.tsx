@@ -20,7 +20,7 @@ import {
   useDeviceSyncStatus,
   useSyncDevices,
 } from '@/hooks/use-device-sync';
-import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { consentAsItStands, useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import { backupFileName } from '@/utils/sync-status';
@@ -37,7 +37,6 @@ import { SyncKitSheet } from '@/mobile/components/sync/SyncKitSheet';
 import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
 import { SyncStatusBlock } from '@/mobile/components/sync/SyncStatusBlock';
 import type { ScanMode } from '@/mobile/lib/sync-scan';
-import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { routes } from '@/mobile/shell/routes';
 
 /** The key the backend sends when a repair could not send every change and replaced nothing. */
@@ -72,10 +71,15 @@ export default function SyncSection() {
   /** A repair that could not send every change: re-syncing is offered next to it. */
   const [offerResync, setOfferResync] = useState(false);
 
-  // A password typed for re-sync or delete is a mutation variable: it leaves with the page
+  // A password typed for repair, re-sync, turning off or delete is a mutation variable: it leaves
+  // with the page
+  const resetRepair = repairDevice.reset;
   const resetResync = resyncDevice.reset;
+  const resetTurnOff = turnOff.reset;
   const resetDelete = deleteSyncedData.reset;
+  useEffect(() => resetRepair, [resetRepair]);
   useEffect(() => resetResync, [resetResync]);
+  useEffect(() => resetTurnOff, [resetTurnOff]);
   useEffect(() => resetDelete, [resetDelete]);
 
   if (!feature.loading && !feature.enabled) return <Redirect to={routes.settings} replace />;
@@ -83,21 +87,26 @@ export default function SyncSection() {
   const close = (next: boolean) => {
     if (next) return;
     setOpen(null);
-    // The password of a re-sync or a delete leaves with its sheet
+    // The password of a repair, a re-sync, turning off or a delete leaves with its sheet
+    resetRepair();
     resetResync();
+    resetTurnOff();
     resetDelete();
   };
   const fail = (error: unknown) =>
     toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
 
-  const repair = async () => {
+  // As the re-sync below: the sheet goes first, and with it the typed password
+  const repair = async (password: string) => {
     setOpen(null);
     try {
-      const path = await repairDevice.mutateAsync();
-      toast(t('repair.success', { file: backupFileName(path) }));
+      const outcome = await repairDevice.mutateAsync(password);
+      toast(t('repair.success', { file: backupFileName(outcome.backupPath) }));
     } catch (error) {
       fail(error);
       if (error instanceof ApiError && error.key === DRAIN_INCOMPLETE_KEY) setOfferResync(true);
+    } finally {
+      resetRepair();
     }
   };
 
@@ -107,8 +116,11 @@ export default function SyncSection() {
   const resync = async (password: string) => {
     setOpen(null);
     try {
-      const path = await resyncDevice.mutateAsync(password);
-      toast(t('resync.success', { file: backupFileName(path) }));
+      const outcome = await resyncDevice.mutateAsync({
+        password,
+        consent: await consentAsItStands(),
+      });
+      toast(t('resync.success', { file: backupFileName(outcome.backupPath) }));
     } catch (error) {
       fail(error);
     } finally {
@@ -116,14 +128,10 @@ export default function SyncSection() {
     }
   };
 
-  const turnOffNow = async () => {
-    try {
-      await turnOff.mutateAsync();
-      toast(t('turnOff.success'));
-      setOpen(null);
-    } catch (error) {
-      fail(error);
-    }
+  // A wrong password shows under the field and keeps the sheet
+  const turnOffNow = async (password: string) => {
+    await turnOff.mutateAsync(password);
+    toast(t('turnOff.success'));
   };
 
   // A setup that was started and not finished: the row resumes it, another cancels it
@@ -255,13 +263,19 @@ export default function SyncSection() {
           onDone={() => setFlow(null)}
         />
       )}
-      <ConfirmSheet
+      <SyncPasswordSheet
         open={open === 'repair'}
         onOpenChange={close}
         title={t('repair.title')}
         description={t('repair.description')}
         confirmLabel={t('repair.confirm')}
-        onConfirm={() => void repair()}
+        destructive
+        closeOnSuccess={false}
+        onSubmit={(password) => {
+          // Closes the sheet itself before the repair starts (`repair`)
+          void repair(password);
+          return Promise.resolve();
+        }}
       />
       <SyncPasswordSheet
         open={open === 'resync'}
@@ -278,18 +292,15 @@ export default function SyncSection() {
           return Promise.resolve();
         }}
       />
-      <ConfirmSheet
+      <SyncPasswordSheet
         open={open === 'turnOff'}
         onOpenChange={close}
         title={t('turnOff.title')}
-        description={
-          pending > 0
-            ? `${t('phone.turnOffBody')} ${t('turnOff.pendingChanges', { count: pending })}`
-            : t('phone.turnOffBody')
-        }
+        description={t('phone.turnOffBody')}
+        note={pending > 0 ? t('turnOff.pendingChanges', { count: pending }) : undefined}
         confirmLabel={t('turnOff.confirm')}
-        onConfirm={() => void turnOffNow()}
-        isPending={turnOff.isPending}
+        destructive
+        onSubmit={turnOffNow}
       />
       <SyncPasswordSheet
         open={open === 'delete'}

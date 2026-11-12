@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { PairingView } from '@shared/schema';
+import type { PairingView, ReplaceConsentView } from '@shared/schema';
 import { ApiError } from '@/lib/api-error';
 import { deviceSyncApi, portfolioApi } from '@/lib/tauri-api';
 import { refreshAfterRemoteChanges } from '@/lib/device-sync-refresh';
@@ -80,7 +80,7 @@ export function useDevicePairing() {
   const joined = useRef(false);
   const join = useMutation({
     mutationKey: REPLACE_DEVICE_MUTATION_KEY,
-    mutationFn: () => deviceSyncApi.pairingJoin(),
+    mutationFn: (consent: ReplaceConsentView) => deviceSyncApi.pairingJoin(consent),
     gcTime: 0,
     onSuccess: async () => {
       joined.current = true;

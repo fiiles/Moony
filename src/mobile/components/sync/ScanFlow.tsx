@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
-import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { consentAsItStands, useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { backupFileName } from '@/utils/sync-status';
 import { Button } from '@/components/ui/button';
@@ -172,12 +172,13 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
     // The busy cover is up while the data is replaced; nothing of the flow is open under it
     setStep('working');
     try {
-      const path = await joinWithRecoveryKit.mutateAsync({
+      const outcome = await joinWithRecoveryKit.mutateAsync({
         code,
         deviceName: typed.deviceName ?? '',
         password: typed.password,
+        consent: await consentAsItStands(),
       });
-      toast(t('pairing.joined', { path: backupFileName(path) }));
+      toast(t('pairing.joined', { path: backupFileName(outcome.backupPath) }));
       finish();
     } catch (error) {
       joinWithRecoveryKit.reset();
@@ -210,8 +211,8 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
   const runJoin = async () => {
     setJoinFailure(null);
     try {
-      const path = await pairing.join.mutateAsync();
-      toast(t('pairing.joined', { path: backupFileName(path) }));
+      const outcome = await pairing.join.mutateAsync(await consentAsItStands());
+      toast(t('pairing.joined', { path: backupFileName(outcome.backupPath) }));
       finish();
     } catch (failure) {
       // The key alone cannot tell whether the backend kept the received session: ask it.

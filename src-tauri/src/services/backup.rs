@@ -58,12 +58,17 @@ pub fn unix_now() -> i64 {
 
 // ========================== Phone export ==========================
 
-/// Whether `name` is exactly `moony-backup-YYYY-MM-DD.zip` (digits only, nothing before or after):
-/// the one name the phone stages a backup under in Documents before the Files picker exports it.
+/// Whether `name` is exactly `moony-backup-YYYY-MM-DD.zip` or `moony-sync-backup-YYYY-MM-DD.zip`
+/// (digits only, nothing before or after): the names the phone stages a backup, or a copy of a
+/// sync backup (`commands::sync_backups`), under in Documents before the Files picker exports it.
 pub fn is_export_file_name(name: &str) -> bool {
-    name.strip_prefix("moony-backup-")
-        .and_then(|rest| rest.strip_suffix(".zip"))
-        .is_some_and(is_date_stamp)
+    ["moony-backup-", "moony-sync-backup-"]
+        .iter()
+        .any(|prefix| {
+            name.strip_prefix(prefix)
+                .and_then(|rest| rest.strip_suffix(".zip"))
+                .is_some_and(is_date_stamp)
+        })
 }
 
 /// Whether `stamp` is shaped `YYYY-MM-DD` (ASCII digits and the two dashes, nothing else).
@@ -1481,6 +1486,23 @@ mod tests {
         ] {
             assert!(!is_export_file_name(bad), "{bad}");
         }
+    }
+
+    #[test]
+    fn a_sync_backup_copy_has_an_export_name() {
+        assert!(is_export_file_name("moony-sync-backup-2026-11-12.zip"));
+        for bad in [
+            "moony-sync-backup-x.zip",
+            "moony-sync-backup-2026-11-12.zip.partial",
+            "moony-sync-backup-20261112.zip",
+            "sync-repair-1800000000.zip",
+        ] {
+            assert!(!is_export_file_name(bad), "{bad}");
+        }
+        assert!(is_staged_export_path(
+            Path::new("/c/Documents"),
+            Path::new("/c/Documents/moony-sync-backup-2026-11-12.zip")
+        ));
     }
 
     #[test]

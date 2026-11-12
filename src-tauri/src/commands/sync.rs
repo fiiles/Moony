@@ -23,22 +23,27 @@ use zeroize::Zeroizing;
 use crate::commands::auth::get_db_path;
 use crate::db::Database;
 use crate::error::{AppError, Result};
-use crate::models::sync::{CheckoutTarget, RecoveryKit, SyncAccount, SyncPlan, SyncStatus};
+use crate::models::sync::{
+    CheckoutTarget, RecoveryKit, ReplaceConsentView, ReplaceOutcomeView, SyncAccount, SyncPlan,
+    SyncStatus,
+};
 use crate::services::auth;
 use crate::services::sync::binding::{BindingFailure, BindingNative};
 use crate::services::sync::capture::bench::{self, Overhead};
 use crate::services::sync::engine::runtime::{self, EngineHandle, Trigger};
-use crate::services::sync::engine::{status, ConnAccess, EngineEvents};
+use crate::services::sync::engine::{status, EngineEvents};
 use crate::services::sync::error::{SyncError, SyncResult};
-use crate::services::sync::impact::{self, ReplaceConsent};
 use crate::services::sync::merge::DATA_CHANGED_EVENT;
 use crate::services::sync::relay::http::{default_base_url, HttpRelay};
 use crate::services::sync::{feature, join, keys, setup, state};
+
+use super::sync_backups::{consent_of, outcome_view};
 
 const UNAVAILABLE: &str = "validation.syncUnavailable";
 const DEV_ONLY: &str = "validation.syncDevOnly";
 const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
 const PASSWORD_REQUIRED: &str = "validation.syncPasswordRequired";
+const PASSWORD_NEEDED: &str = "validation.syncPasswordNeeded";
 
 /// How long after `sync_show_recovery_kit` checked the password the code may be copied with sync
 /// on (during setup it may be copied at any time).
@@ -653,21 +658,47 @@ fn forgets_pairing_on_turn_off(sync_was_on: bool) -> bool {
     sync_was_on
 }
 
-/// Turns sync off on this device; local data stays.
+/// Turning sync off with sync on needs the device password (audit L10):
+/// `validation.syncPasswordNeeded` without one that was checked. Cancelling a setup that has not
+/// finished (sync not on yet) needs none.
+fn turn_off_allowed(sync_is_on: bool, password_checked: bool) -> Result<()> {
+    if sync_is_on && !password_checked {
+        return Err(AppError::Validation(PASSWORD_NEEDED.into()));
+    }
+    Ok(())
+}
+
+/// Turns sync off on this device; local data stays. With sync on, only once the device password
+/// is checked (`turn_off_allowed`, checked again once no other sync change runs, in case a setup
+/// finished meanwhile); cancelling a setup that has not finished needs none.
 #[tauri::command]
-pub async fn sync_turn_off(app: AppHandle, db: State<'_, Database>) -> Result<()> {
+pub async fn sync_turn_off(
+    app: AppHandle,
+    db: State<'_, Database>,
+    password: Option<String>,
+) -> Result<()> {
+    let password = password.map(Zeroizing::new);
     require_feature()?;
+    let checked = match password {
+        Some(password) => {
+            verify_password(&app, password).await?;
+            true
+        }
+        None => false,
+    };
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
+    let was_on = sync_on(&db)?;
+    turn_off_allowed(was_on, checked)?;
     forget_kit_window();
-    if forgets_pairing_on_turn_off(sync_on(&db)?) {
+    if forgets_pairing_on_turn_off(was_on) {
         super::sync_pairing::forget_pairing();
     }
-    guarded_change(
-        &AppEngine { app: &app, db: &db },
-        setup::turn_off_between_rounds(&session, &dir),
-    )
-    .await
+    let turn_off = async {
+        turn_off_allowed(sync_on(&session)?, checked)?;
+        setup::turn_off_between_rounds(&session, &dir).await
+    };
+    guarded_change(&AppEngine { app: &app, db: &db }, turn_off).await
 }
 
 /// Deletes the vault on the relay and turns sync off, once the device password is checked.
@@ -694,28 +725,14 @@ pub async fn sync_delete_synced_data(
     .await
 }
 
-/// Repairs a capture-broken profile (`join::repair_capture`); the backup's path.
+/// Repairs a capture-broken profile (`join::repair_capture`) once the device password is checked;
+/// its backup and what stayed only in it.
 #[tauri::command]
-pub async fn sync_repair_device(app: AppHandle, db: State<'_, Database>) -> Result<String> {
-    require_feature()?;
-    let session = db.current_session()?;
-    let relay = profile_relay(&session)?;
-    let dir = data_dir(&app)?;
-    let native = KeychainBinding { app: app.clone() };
-    let repair = join::repair_capture(&relay, &session, &dir, &native, now());
-    let outcome = guarded_change(&AppEngine { app: &app, db: &db }, repair).await?;
-    Ok(outcome.backup.display().to_string())
-}
-
-/// "Re-sync this device" (ruling T8-4): backup, then join by replace without a drain, once the
-/// device password is checked (changes not sent yet survive only in the backup); the backup's
-/// path.
-#[tauri::command]
-pub async fn sync_resync_device(
+pub async fn sync_repair_device(
     app: AppHandle,
     db: State<'_, Database>,
     password: String,
-) -> Result<String> {
+) -> Result<ReplaceOutcomeView> {
     let password = Zeroizing::new(password);
     require_feature()?;
     verify_password(&app, password).await?;
@@ -723,16 +740,33 @@ pub async fn sync_resync_device(
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
-    let consent = consent_as_it_stands(&session)?;
-    let resync = join::resync_by_replace(&relay, &session, consent, &dir, &native, now());
-    let outcome = guarded_change(&AppEngine { app: &app, db: &db }, resync).await?;
-    Ok(outcome.backup.display().to_string())
+    let repair = join::repair_capture(&relay, &session, &dir, &native, now());
+    let outcome = guarded_change(&AppEngine { app: &app, db: &db }, repair).await?;
+    Ok(outcome_view(&outcome))
 }
 
-/// The consent of a confirmation that showed the profile as it stands now: its watermark and its
-/// documents and photos. A change after this still stops the replace.
-pub(super) fn consent_as_it_stands<D: ConnAccess>(db: &D) -> Result<ReplaceConsent> {
-    Ok(db.with_conn(impact::replace_impact)?.consent())
+/// "Re-sync this device" (ruling T8-4): backup, then join by replace without a drain, once the
+/// device password is checked, within what the person agreed to (`consent`: a change after it
+/// stops the re-sync with `validation.syncReplaceImpactChanged`). Changes not sent yet survive
+/// only in the backup; the outcome says how many.
+#[tauri::command]
+pub async fn sync_resync_device(
+    app: AppHandle,
+    db: State<'_, Database>,
+    password: String,
+    consent: ReplaceConsentView,
+) -> Result<ReplaceOutcomeView> {
+    let password = Zeroizing::new(password);
+    require_feature()?;
+    let consent = consent_of(&consent)?;
+    verify_password(&app, password).await?;
+    let session = db.current_session()?;
+    let relay = profile_relay(&session)?;
+    let dir = data_dir(&app)?;
+    let native = KeychainBinding { app: app.clone() };
+    let resync = join::resync_by_replace(&relay, &session, consent, &dir, &native, now());
+    let outcome = guarded_change(&AppEngine { app: &app, db: &db }, resync).await?;
+    Ok(outcome_view(&outcome))
 }
 
 /// A test subscription of `days` days on a local relay started with `DEV_GRANT=1` (debug builds
@@ -790,6 +824,19 @@ mod tests {
     use crate::services::sync::engine::tests::TestConn;
     use crate::services::sync::hlc::DeviceId;
     use crate::services::sync::test_support::migrated;
+
+    #[test]
+    fn turning_sync_off_with_sync_on_needs_the_password() {
+        assert_eq!(
+            validation_key(turn_off_allowed(true, false)),
+            "validation.syncPasswordNeeded"
+        );
+        assert!(turn_off_allowed(true, true).is_ok());
+        assert!(
+            turn_off_allowed(false, false).is_ok(),
+            "cancelling a setup that has not finished"
+        );
+    }
 
     #[test]
     fn only_turning_sync_off_from_on_ends_the_pairing() {
@@ -996,12 +1043,16 @@ mod tests {
     }
 
     /// The sync commands (name → body up to its third statement), read from the sources of this
-    /// file and of `sync_pairing.rs`.
+    /// file, `sync_pairing.rs` and `sync_backups.rs`.
     fn commands_and_their_first_statements() -> Vec<(String, String)> {
-        [include_str!("sync.rs"), include_str!("sync_pairing.rs")]
-            .into_iter()
-            .flat_map(commands_of)
-            .collect()
+        [
+            include_str!("sync.rs"),
+            include_str!("sync_pairing.rs"),
+            include_str!("sync_backups.rs"),
+        ]
+        .into_iter()
+        .flat_map(commands_of)
+        .collect()
     }
 
     /// The commands of one source file.
@@ -1046,11 +1097,12 @@ mod tests {
                 let line = line.trim();
                 line.strip_prefix("commands::sync::")
                     .or_else(|| line.strip_prefix("commands::sync_pairing::"))
+                    .or_else(|| line.strip_prefix("commands::sync_backups::"))
             })
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 25);
+        assert_eq!(found.len(), 29);
         for (name, first_three) in &commands {
             if name == "sync_feature_enabled" {
                 continue;

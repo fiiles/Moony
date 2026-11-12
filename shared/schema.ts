@@ -163,6 +163,58 @@ export interface PairingView {
   expiresAt: number;
 }
 
+/** What a replace (a join, a repair, a re-sync) puts at stake on this device, for its confirmation. */
+export interface ReplaceImpactView {
+  /** Changed items not sealed yet. */
+  pendingItems: number;
+  /** Sealed batches the sync server has not confirmed. */
+  pendingBatches: number;
+  /** Documents of properties and insurance policies. */
+  documents: number;
+  /** Photos of properties. */
+  photos: number;
+  /** Accounts and assets (bonds and insurance policies included). */
+  accounts: number;
+  /** Bank transactions. */
+  transactions: number;
+  /** The newest clock this device knows, as a decimal string (it exceeds 2^53): send it back as is. */
+  changesThrough: string;
+}
+
+/** What the person agreed to in a replace's confirmation: the impact's watermark and attachments. */
+export interface ReplaceConsentView {
+  /** `ReplaceImpactView.changesThrough`, unchanged. */
+  changesThrough: string;
+  /** Documents plus photos the confirmation showed. */
+  attachments: number;
+}
+
+/** What a join, repair or re-sync did: its backup and what stayed only in it. */
+export interface ReplaceOutcomeView {
+  /** The backup made before the replace (listed in Restore). */
+  backupPath: string;
+  /** This device's documents and photos re-attached to items the synced data also has. */
+  attachmentsKept: number;
+  /** This device's documents and photos found only in the backup now. */
+  attachmentsInBackupOnly: number;
+  /** Changed items that reached no sync server and are only in the backup. */
+  unsentItemsInBackupOnly: number;
+  /** Sealed batches that reached no sync server and are only in the backup. */
+  unsentBatchesInBackupOnly: number;
+  /** The backup is kept: never removed by the app, only by the person. */
+  kept: boolean;
+}
+
+/** A backup a join, repair or re-sync made, as Restore lists it. */
+export interface SyncBackupEntry {
+  path: string;
+  /** When it was made (unix seconds). */
+  createdAt: number;
+  bytes: number;
+  /** It holds something found nowhere else: the app never removes it, only the person does. */
+  kept: boolean;
+}
+
 export interface MenuPreferences {
   loans: boolean;
   insurance: boolean;

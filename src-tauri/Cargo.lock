@@ -3035,6 +3035,7 @@ dependencies = [
  "flate2",
  "hex",
  "hkdf",
+ "hmac",
  "image",
  "lazy_static",
  "log",

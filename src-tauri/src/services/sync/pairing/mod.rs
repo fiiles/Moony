@@ -8,6 +8,14 @@
 //! protects the exchange when S's public key reaches C over a channel the attacker cannot modify
 //! (a QR on a screen the person is looking at).
 //!
+//! Protocol 2 (audit M1, M2): the shower proves with an acknowledgement (slot 3, an HMAC under a
+//! key from the same HKDF output) that it derived its transcript from the scanner's own key, so a
+//! relay that also sees the QR and the scanner's digits cannot grind a scanner key whose code
+//! matches; and the holder's person types the digits the other device shows, checked here in
+//! constant time. The version lives in the QR prefix and in slot 1: a version-1 code is refused
+//! with `OTHER_NEEDS_UPDATE`, and a version-1 slot 1 with `syncPairingFailed`. The session key,
+//! the code and slot 2 are byte for byte those of version 1.
+//!
 //! Secrets hygiene as in phase 2: keys, payloads and decrypted buffers live in `Zeroizing`
 //! buffers, and `Debug` of every secret-bearing type prints `<redacted>`.
 
@@ -19,8 +27,10 @@ use base64::Engine;
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::XChaCha20Poly1305;
 use hkdf::Hkdf;
+use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::Sha256;
+use subtle::ConstantTimeEq;
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::Zeroizing;
 
@@ -33,13 +43,28 @@ pub mod session;
 #[cfg(test)]
 mod tests;
 
-pub const QR_PREFIX: &str = "moony-pair:1:";
+pub const QR_PREFIX: &str = "moony-pair:2:";
+/// Recognised only to refuse it clearly: the other device runs a build from before protocol 2.
+pub const QR_PREFIX_V1: &str = "moony-pair:1:";
 pub const MAX_CODE_BYTES: usize = 512;
+/// Unchanged from protocol 1, so the session key and the code are the frozen ones.
 pub const KDF_INFO: &[u8] = b"moony pair v1";
+/// Slot 2, slot 3 and the cancel marker; the slot-2 AD keeps it, so slot 2 is unchanged.
 pub const SLOT_VERSION: u8 = 0x01;
+/// Slot 1 only: `0x02 ‖ role ‖ C public`. A version-1 slot 1 is refused.
+pub const SLOT1_VERSION: u8 = 0x02;
 pub const SLOT1_LEN: usize = 34;
 pub const SLOT2_DIRECTION: &[u8] = b"holder->joiner";
+/// The acknowledgement's direction label (slot 3).
+pub const ACK_DIRECTION: &[u8] = b"shower->scanner";
+/// Slot 3: `SLOT_VERSION ‖ 32-byte HMAC-SHA256 tag`.
+pub const ACK_SLOT_LEN: usize = 1 + 32;
+/// HKDF output: session key (0..32), code (32..40), ack key (40..72). HKDF-Expand is
+/// prefix-consistent, so bytes 0..40 are those of protocol 1's 40-byte expand.
+pub const OKM_LEN: usize = 72;
 pub const CANCEL_MARKER: [u8; 2] = [SLOT_VERSION, 0x00];
+/// A version-1 pairing code: the other device needs an update before it can pair.
+pub const OTHER_NEEDS_UPDATE: &str = "validation.syncPairingOtherNeedsUpdate";
 pub const MAX_PAYLOAD_JSON: usize = 16 * 1024;
 pub const MAX_PAYLOAD_KEYS: usize = 64;
 
@@ -144,7 +169,7 @@ impl fmt::Debug for PairingCode {
     }
 }
 
-/// `moony-pair:1:<mailbox>:<S public>[:<relay>]`, every field base64url without padding. The
+/// `moony-pair:2:<mailbox>:<S public>[:<relay>]`, every field base64url without padding. The
 /// fourth field is written only for a relay that is not the default. Infallible: the caller
 /// passes the stored, already-normalized relay address (`normalize_base_url`).
 pub fn pairing_code_text(code: &PairingCode) -> String {
@@ -165,11 +190,15 @@ pub fn pairing_code_text(code: &PairingCode) -> String {
 }
 
 /// Parses a pairing code. Malformed input is `validation.syncPairingCodeInvalid`; a relay address
-/// the app does not use is `validation.syncRelayUrlInvalid`. The default relay reads as `None`.
-/// No error carries the input.
+/// the app does not use is `validation.syncRelayUrlInvalid`; a version-1 code (`moony-pair:1:`,
+/// whatever follows) is `OTHER_NEEDS_UPDATE`. The default relay reads as `None`. No error carries
+/// the input.
 pub fn parse_pairing_code(text: &str) -> Result<PairingCode> {
     if text.len() > MAX_CODE_BYTES {
         return Err(code_invalid());
+    }
+    if text.starts_with(QR_PREFIX_V1) {
+        return Err(AppError::Validation(OTHER_NEEDS_UPDATE.into()));
     }
     let rest = text.strip_prefix(QR_PREFIX).ok_or_else(code_invalid)?;
     let fields: Vec<&str> = rest.split(':').collect();
@@ -205,17 +234,19 @@ pub fn parse_pairing_code(text: &str) -> Result<PairingCode> {
     })
 }
 
-/// Slot 1, the scanner's reply: `0x01 ‖ role ‖ C public`.
+/// Slot 1, the scanner's reply: `0x02 ‖ role ‖ C public`.
 pub fn slot1(role: Role, scanner_public: &[u8; 32]) -> [u8; SLOT1_LEN] {
     let mut slot = [0u8; SLOT1_LEN];
-    slot[0] = SLOT_VERSION;
+    slot[0] = SLOT1_VERSION;
     slot[1] = role.byte();
     slot[2..].copy_from_slice(scanner_public);
     slot
 }
 
+/// Exactly 34 bytes with `SLOT1_VERSION` and a known role; anything else, a version-1 record
+/// included, is `validation.syncPairingFailed`.
 pub fn parse_slot1(bytes: &[u8]) -> Result<(Role, [u8; 32])> {
-    if bytes.len() != SLOT1_LEN || bytes[0] != SLOT_VERSION {
+    if bytes.len() != SLOT1_LEN || bytes[0] != SLOT1_VERSION {
         return Err(failed());
     }
     let role = Role::from_byte(bytes[1]).ok_or_else(failed)?;
@@ -237,15 +268,17 @@ pub fn check_roles(shower: Role, scanner: Role) -> Result<()> {
     }
 }
 
-/// Exactly `0x01 0x00`, on either slot. The session checks it on every slot before parsing.
+/// Exactly `0x01 0x00`, on any slot. The session checks it on every slot before parsing.
 pub fn is_cancel_marker(bytes: &[u8]) -> bool {
     bytes == CANCEL_MARKER
 }
 
-/// The session key, the comparison code and the slot-2 associated data of one exchange.
+/// The session key, the comparison code, the acknowledgement key and the slot-2 associated data
+/// of one exchange.
 pub struct Transcript {
     key: Zeroizing<[u8; 32]>,
     code: u32,
+    ack_key: Zeroizing<[u8; 32]>,
     ad: [u8; AD_LEN],
 }
 
@@ -259,9 +292,62 @@ impl Transcript {
         format!("{:06}", self.code)
     }
 
+    /// Slot 3, the shower's acknowledgement:
+    /// `SLOT_VERSION ‖ HMAC-SHA256(ack key, ACK_DIRECTION ‖ mailbox ‖ S public ‖ C public)`.
+    /// Only a shower that derived its transcript from the scanner's own key can produce it.
+    pub fn ack(&self) -> [u8; ACK_SLOT_LEN] {
+        // HMAC takes a key of any length, so `new_from_slice` cannot fail; the `hmac` crate's
+        // internal pads are not zeroized (a crate limit, as with HKDF's PRK).
+        let mut mac = <Hmac<Sha256>>::new_from_slice(&self.ack_key[..])
+            .expect("HMAC-SHA256 takes a 32-byte key");
+        mac.update(ACK_DIRECTION);
+        // The AD's tail is exactly `mailbox ‖ S public ‖ C public`.
+        mac.update(&self.ad[1 + SLOT2_DIRECTION.len()..]);
+        let tag = mac.finalize().into_bytes();
+        let mut slot = [0u8; ACK_SLOT_LEN];
+        slot[0] = SLOT_VERSION;
+        slot[1..].copy_from_slice(&tag);
+        slot
+    }
+
+    /// Whether `slot3` is this exchange's acknowledgement, compared in constant time. Any other
+    /// length or version, and the cancel marker, is false.
+    pub fn verify_ack(&self, slot3: &[u8]) -> bool {
+        if slot3.len() != ACK_SLOT_LEN {
+            return false;
+        }
+        bool::from(self.ack()[..].ct_eq(slot3))
+    }
+
+    /// Whether the person typed this exchange's code: six ASCII digits, optionally with one space
+    /// or `-` after the third, compared with `code_text()` in constant time. Anything else (other
+    /// characters, leading or trailing blanks, another length) is false.
+    pub fn code_matches(&self, typed: &str) -> bool {
+        let bytes = typed.as_bytes();
+        let mut digits = Zeroizing::new([0u8; 6]);
+        match bytes.len() {
+            6 => digits.copy_from_slice(bytes),
+            7 if bytes[3] == b' ' || bytes[3] == b'-' => {
+                digits[..3].copy_from_slice(&bytes[..3]);
+                digits[3..].copy_from_slice(&bytes[4..]);
+            }
+            _ => return false,
+        }
+        if !digits.iter().all(u8::is_ascii_digit) {
+            return false;
+        }
+        let expected = Zeroizing::new(self.code_text());
+        bool::from(digits[..].ct_eq(expected.as_bytes()))
+    }
+
     #[cfg(test)]
     fn key_bytes(&self) -> &[u8; 32] {
         &self.key
+    }
+
+    #[cfg(test)]
+    fn ack_key(&self) -> &[u8; 32] {
+        &self.ack_key
     }
 
     #[cfg(test)]
@@ -277,10 +363,11 @@ impl fmt::Debug for Transcript {
 }
 
 /// X25519 between `own` and `peer_public`, then
-/// `HKDF-SHA256(salt = mailbox, ikm = shared, info = "moony pair v1" ‖ S public ‖ C public)` of 40
-/// bytes: the first 32 are the session key, the last 8 (big-endian, mod 10^6) the code. `own`'s
-/// public key takes the place `side` names and the peer's the other. A low-order peer key (a
-/// non-contributory exchange) is refused.
+/// `HKDF-SHA256(salt = mailbox, ikm = shared, info = "moony pair v1" ‖ S public ‖ C public)` of
+/// `OKM_LEN` (72) bytes: 0..32 are the session key, 32..40 (big-endian, mod 10^6) the code and
+/// 40..72 the acknowledgement key. HKDF-Expand is prefix-consistent, so the session key and the
+/// code are protocol 1's. `own`'s public key takes the place `side` names and the peer's the
+/// other. A low-order peer key (a non-contributory exchange) is refused.
 ///
 /// The `hkdf` crate's PRK is not zeroized (a crate limit); the OKM and the shared secret are.
 pub fn derive(
@@ -302,15 +389,17 @@ pub fn derive(
     info.extend_from_slice(KDF_INFO);
     info.extend_from_slice(&s_pub);
     info.extend_from_slice(&c_pub);
-    let mut okm = Zeroizing::new([0u8; 40]);
+    let mut okm = Zeroizing::new([0u8; OKM_LEN]);
     Hkdf::<Sha256>::new(Some(&mailbox.0), shared.as_bytes())
         .expand(&info, &mut okm[..])
-        .expect("40 bytes is within HKDF-SHA256's output limit");
+        .expect("72 bytes is within HKDF-SHA256's output limit");
     let mut key = Zeroizing::new([0u8; 32]);
     key.copy_from_slice(&okm[..32]);
-    let mut tail = [0u8; 8];
-    tail.copy_from_slice(&okm[32..]);
-    let code = (u64::from_be_bytes(tail) % 1_000_000) as u32;
+    let mut tail = Zeroizing::new([0u8; 8]);
+    tail.copy_from_slice(&okm[32..40]);
+    let code = (u64::from_be_bytes(*tail) % 1_000_000) as u32;
+    let mut ack_key = Zeroizing::new([0u8; 32]);
+    ack_key.copy_from_slice(&okm[40..OKM_LEN]);
 
     let mut ad = [0u8; AD_LEN];
     ad[0] = SLOT_VERSION;
@@ -318,7 +407,12 @@ pub fn derive(
     ad[15..31].copy_from_slice(&mailbox.0);
     ad[31..63].copy_from_slice(&s_pub);
     ad[63..95].copy_from_slice(&c_pub);
-    Ok(Transcript { key, code, ad })
+    Ok(Transcript {
+        key,
+        code,
+        ack_key,
+        ad,
+    })
 }
 
 /// Slot 2: `0x01 ‖ nonce (24) ‖ XChaCha20-Poly1305(session key, AD, payload JSON)`.

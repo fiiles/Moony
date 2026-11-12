@@ -153,6 +153,9 @@ fn the_cancel_marker_is_two_bytes() {
 }
 
 const FROZEN_TEXT: &str =
+    "moony-pair:2:MzMzMzMzMzMzMzMzMzMzMw:e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
+/// What a version-1 build shows for the same exchange.
+const FROZEN_TEXT_V1: &str =
     "moony-pair:1:MzMzMzMzMzMzMzMzMzMzMw:e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
 
 #[test]
@@ -240,36 +243,36 @@ fn malformed_codes_are_refused_without_echoing_them() {
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:2:{mailbox}:{key}"),
+            format!("moony-pair:3:{mailbox}:{key}"),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:1:{}:{key}", &mailbox[..21]),
+            format!("moony-pair:2:{}:{key}", &mailbox[..21]),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:1:{mailbox}A:{key}"),
+            format!("moony-pair:2:{mailbox}A:{key}"),
             "validation.syncPairingCodeInvalid",
         ),
         // 22 characters whose last character carries non-zero trailing bits: not canonical.
         (
-            format!("moony-pair:1:{}x:{key}", &mailbox[..21]),
+            format!("moony-pair:2:{}x:{key}", &mailbox[..21]),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:1:{mailbox}:{}", &key[..42]),
+            format!("moony-pair:2:{mailbox}:{}", &key[..42]),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:1:{mailbox}:{key}:{evil}:x"),
+            format!("moony-pair:2:{mailbox}:{key}:{evil}:x"),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:1:{mailbox}:{key}:{evil}"),
+            format!("moony-pair:2:{mailbox}:{key}:{evil}"),
             "validation.syncRelayUrlInvalid",
         ),
         (
-            format!("moony-pair:1:{mailbox}:{key}:"),
+            format!("moony-pair:2:{mailbox}:{key}:"),
             "validation.syncPairingCodeInvalid",
         ),
         (code_with_host(400), "validation.syncPairingCodeInvalid"),
@@ -287,6 +290,165 @@ fn malformed_codes_are_refused_without_echoing_them() {
 }
 
 #[test]
+fn a_v1_code_is_refused_with_a_clear_message() {
+    let mut v1_with_relay = FROZEN_TEXT_V1.to_string();
+    v1_with_relay.push_str(":aHR0cDovL2V2aWwuZXhhbXBsZQ");
+    for input in [
+        FROZEN_TEXT_V1,
+        v1_with_relay.as_str(),
+        "moony-pair:1:",
+        "moony-pair:1:junk",
+    ] {
+        let err = match parse_pairing_code(input) {
+            Ok(_) => panic!("accepted {input}"),
+            Err(e) => e,
+        };
+        let shown = format!("{err} {err:?}");
+        assert!(!shown.contains(input), "echoed {input}");
+        assert!(
+            !shown.contains("e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM"),
+            "echoed the key"
+        );
+        assert_eq!(validation_key(err), OTHER_NEEDS_UPDATE, "{input}");
+    }
+    assert_eq!(OTHER_NEEDS_UPDATE, "validation.syncPairingOtherNeedsUpdate");
+    assert_eq!(QR_PREFIX_V1, "moony-pair:1:");
+    // The size cap still comes first.
+    let over = format!("{FROZEN_TEXT_V1}:{}", "A".repeat(MAX_CODE_BYTES));
+    assert_eq!(
+        validation_key(parse_pairing_code(&over).unwrap_err()),
+        "validation.syncPairingCodeInvalid"
+    );
+}
+
+#[test]
+fn a_v1_slot1_is_refused_by_a_v2_shower() {
+    let mut v1 = vec![0x01, 0x02];
+    v1.extend_from_slice(&c_pub());
+    assert_eq!(v1.len(), SLOT1_LEN);
+    assert_eq!(
+        validation_key(parse_slot1(&v1).unwrap_err()),
+        "validation.syncPairingFailed"
+    );
+    assert_eq!(SLOT1_VERSION, 0x02);
+    // Slot 2, slot 3 and the cancel marker keep version 1.
+    assert_eq!(SLOT_VERSION, 0x01);
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn ack_slot(tag_hex: &str) -> Vec<u8> {
+    let mut slot = vec![0x01];
+    slot.extend_from_slice(&unhex(tag_hex));
+    slot
+}
+
+const ACK_S_C: &str = "b473ae20bc53682f690b9ab3c17a0696027843f17d0988e72df937e5d0a8bced";
+const ACK_S_M: &str = "261a64208961cfca3bcbbb003c1c61a1fc75de1d4ba8b71dec0d9298966dace2";
+
+#[test]
+fn the_ack_matches_the_frozen_vector() {
+    assert_eq!(ACK_DIRECTION, b"shower->scanner");
+    assert_eq!(ACK_DIRECTION.len(), 15);
+    assert_eq!(ACK_SLOT_LEN, 33);
+    assert_eq!(OKM_LEN, 72);
+    for t in [shower(), scanner()] {
+        assert_eq!(
+            hex(t.ack_key().as_slice()),
+            "f2131f574e31de0d056d117dab2d59525121e925e2ab79436137e5f3987ae644"
+        );
+        let ack = t.ack();
+        assert_eq!(ack.len(), ACK_SLOT_LEN);
+        assert_eq!(ack.to_vec(), ack_slot(ACK_S_C));
+        // The session key and the code stay the frozen version-1 ones.
+        assert_eq!(
+            key(&t),
+            "01b8d60583d5b13dc2ac3426e3bb2550bc24e241f7fea9f2787597d0c03d527b"
+        );
+        assert_eq!(t.code(), 482686);
+    }
+    assert!(scanner().verify_ack(&shower().ack()));
+}
+
+#[test]
+fn an_ack_for_a_substituted_key_does_not_verify() {
+    let m_pub = public(M_SECRET);
+    assert_eq!(
+        m_pub,
+        hex32("ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b")
+    );
+    let fooled = derive(
+        &StaticSecret::from(S_SECRET),
+        Side::Shower,
+        &m_pub,
+        &MAILBOX,
+    )
+    .unwrap();
+    let forged = fooled.ack();
+    assert_eq!(forged.to_vec(), ack_slot(ACK_S_M));
+    assert!(!scanner().verify_ack(&forged));
+    assert!(scanner().verify_ack(&shower().ack()));
+}
+
+#[test]
+fn a_tampered_or_short_ack_is_refused() {
+    let c = scanner();
+    let good = shower().ack();
+    assert!(c.verify_ack(&good));
+    for bit in 0..ACK_SLOT_LEN * 8 {
+        let mut bad = good;
+        bad[bit / 8] ^= 1 << (bit % 8);
+        assert!(!c.verify_ack(&bad), "bit {bit}");
+    }
+    assert!(!c.verify_ack(&good[..32]));
+    let mut long = good.to_vec();
+    long.push(0);
+    assert!(!c.verify_ack(&long));
+    let mut v2 = good;
+    v2[0] = 0x02;
+    assert!(!c.verify_ack(&v2));
+    assert!(!c.verify_ack(&CANCEL_MARKER));
+    assert!(!c.verify_ack(&[]));
+}
+
+#[test]
+fn the_typed_code_is_checked_exactly() {
+    let t = shower();
+    assert_eq!(t.code_text(), "482686");
+    for typed in ["482686", "482 686", "482-686"] {
+        assert!(t.code_matches(typed), "{typed:?}");
+    }
+    for typed in [
+        "482687",
+        "48268",
+        "4826860",
+        "48268a",
+        " 482686",
+        "",
+        "482686 ",
+        "48 2686",
+        "482  686",
+        "482_686",
+        "482--686",
+        "482 -686",
+        "４８２６８６",
+    ] {
+        assert!(!t.code_matches(typed), "{typed:?}");
+    }
+    let seven = Transcript {
+        code: 7,
+        ..shower()
+    };
+    assert_eq!(seven.code_text(), "000007");
+    assert!(seven.code_matches("000007"));
+    assert!(seven.code_matches("000 007"));
+    assert!(!seven.code_matches("7"));
+    assert!(!seven.code_matches("482686"));
+}
+
+#[test]
 fn mailbox_ids_are_canonical_base64url() {
     assert_eq!(MAILBOX.to_b64(), "MzMzMzMzMzMzMzMzMzMzMw");
     assert_eq!(
@@ -301,7 +463,7 @@ fn mailbox_ids_are_canonical_base64url() {
 fn slot_1_layout_and_roles() {
     let slot = slot1(Role::Joiner, &c_pub());
     assert_eq!(slot.len(), SLOT1_LEN);
-    assert_eq!(&slot[..2], &[0x01, 0x02]);
+    assert_eq!(&slot[..2], &[0x02, 0x02]);
     assert_eq!(&slot[2..], &c_pub());
     assert_eq!(parse_slot1(&slot).unwrap(), (Role::Joiner, c_pub()));
     let failed = |bytes: &[u8]| validation_key(parse_slot1(bytes).unwrap_err());
@@ -309,9 +471,9 @@ fn slot_1_layout_and_roles() {
     let mut long = slot.to_vec();
     long.push(0);
     assert_eq!(failed(&long), "validation.syncPairingFailed");
-    let mut v2 = slot;
-    v2[0] = 2;
-    assert_eq!(failed(&v2), "validation.syncPairingFailed");
+    let mut v3 = slot;
+    v3[0] = 3;
+    assert_eq!(failed(&v3), "validation.syncPairingFailed");
     let mut r3 = slot;
     r3[1] = 3;
     assert_eq!(failed(&r3), "validation.syncPairingFailed");
@@ -485,6 +647,8 @@ fn secrets_print_redacted() {
     assert!(!t.contains(&key(&shower())));
     assert!(!t.contains("482686"));
     assert!(!t.contains("33"));
+    assert!(!t.contains(&hex(shower().ack_key().as_slice())));
+    assert!(!t.contains(ACK_S_C));
 }
 
 #[test]
@@ -492,6 +656,10 @@ fn secrets_are_wiped_on_drop() {
     fn wiped<T: zeroize::ZeroizeOnDrop>() {}
     wiped::<x25519_dalek::StaticSecret>();
     wiped::<Zeroizing<[u8; 32]>>();
+    // The session key and the ack key are held in wiped buffers.
+    let t = shower();
+    let _: &Zeroizing<[u8; 32]> = &t.key;
+    let _: &Zeroizing<[u8; 32]> = &t.ack_key;
 }
 
 // Audit M2 (relay grinds a matching scanner key): flipped by the pairing-identity task.

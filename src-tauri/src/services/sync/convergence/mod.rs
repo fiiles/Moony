@@ -71,6 +71,13 @@ pub struct Vault {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PullEnd {
     Done,
+    /// Everything offered was dealt with except envelopes held as the engine holds them (audit
+    /// M3): `gaps` waiting for an earlier envelope of their author, `parents` for a parent row
+    /// not seen yet. The pull went on past them; the next pull offers them again.
+    Waiting {
+        gaps: usize,
+        parents: usize,
+    },
     Stopped(Verdict),
     MergeStopped(StopReason),
 }
@@ -232,6 +239,7 @@ impl Vault {
     }
 
     fn pull_inner(&mut self, d: usize, order: &[usize], seen: &mut Vec<String>) -> PullEnd {
+        let (mut gaps, mut parents) = (0, 0);
         for &i in order {
             if self.devices[d].processed.contains(&i) {
                 continue;
@@ -242,6 +250,8 @@ impl Vault {
             // As the engine does: the marker is noted before the verdict, whatever it is.
             let noted = chain::note_barrier_marker(&self.devices[d].conn, &meta);
             self.check(&what, noted);
+            // Held, as the engine holds it (audit M3): not dealt with, offered again next pull.
+            let mut held = false;
             loop {
                 let verdict = self.check(&what, judge(&self.devices[d].conn, &meta));
                 seen.push(format!("{i} {verdict:?}"));
@@ -251,6 +261,11 @@ impl Vault {
                     Verdict::Apply => {
                         match self.check(&what, apply_changeset(conn, &cs, hash, now())) {
                             Merged::Applied(_) => {}
+                            // The merge rolled back; the change waits for its parent.
+                            Merged::Stopped(StopReason::MissingParent { .. }) => {
+                                parents += 1;
+                                held = true;
+                            }
                             Merged::Stopped(reason) => return PullEnd::MergeStopped(reason),
                         }
                     }
@@ -275,15 +290,23 @@ impl Vault {
                     Verdict::BelowBarrier => {
                         self.check(&what, chain::skip_below_barrier(conn, &meta));
                     }
-                    Verdict::Gap | Verdict::NewerSchema | Verdict::Invalid => {
-                        return PullEnd::Stopped(verdict)
+                    Verdict::Gap => {
+                        gaps += 1;
+                        held = true;
                     }
+                    Verdict::NewerSchema | Verdict::Invalid => return PullEnd::Stopped(verdict),
                 }
                 break;
             }
-            self.devices[d].processed.insert(i);
+            if !held {
+                self.devices[d].processed.insert(i);
+            }
         }
-        PullEnd::Done
+        if gaps + parents > 0 {
+            PullEnd::Waiting { gaps, parents }
+        } else {
+            PullEnd::Done
+        }
     }
 
     /// The relay entries device `d` has not dealt with, by author, each author's in sequence
@@ -326,13 +349,14 @@ impl Vault {
         order
     }
 
-    /// Device `d` pulls in its own random order. Order alone may only stop a pull on a parent
-    /// that arrives later (an author's envelope ahead of another author's it depends on);
-    /// anything else fails the run.
+    /// Device `d` pulls in its own random order. Order alone may only hold an envelope for a
+    /// parent that arrives later (an author's envelope ahead of another author's it depends on),
+    /// and the author's later envelopes behind it, while the pull goes on; anything else fails
+    /// the run.
     pub fn pull_random(&mut self, d: usize, schedule: &mut StdRng, partial: bool) {
         let order = self.random_order(d, schedule, partial);
         match self.pull(d, &order) {
-            PullEnd::Done | PullEnd::MergeStopped(StopReason::MissingParent { .. }) => {}
+            PullEnd::Done | PullEnd::Waiting { .. } => {}
             other => self.fail(&format!("device {d} stopped on {other:?}")),
         }
     }

@@ -894,7 +894,7 @@ fn rule_packs_written_explicitly_travel() {
 }
 
 /// §18's failure drill as a named test: a relay that drops A's second envelope for C and
-/// replays A's first. C stops on the gap with the first applied and the third not, skips the
+/// replays A's first. C holds the third behind the gap (the first applied), skips the
 /// replay, and once the missing envelope arrives applies the rest.
 #[test]
 fn dishonest_relay_drops_one_envelope_and_replays_another() {
@@ -914,7 +914,10 @@ fn dishonest_relay_drops_one_envelope_and_replays_another() {
 
     assert_eq!(
         vault.pull(2, &[first, third]),
-        PullEnd::Stopped(Verdict::Gap)
+        PullEnd::Waiting {
+            gaps: 1,
+            parents: 0
+        }
     );
     assert_eq!(
         category_names(&vault.devices[2].conn),

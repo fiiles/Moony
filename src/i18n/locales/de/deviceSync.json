@@ -15,7 +15,7 @@
       "settingUp": "Synchronisierung wird eingerichtet",
       "idle": "Auf dem neuesten Stand",
       "syncing": "Synchronisiere…",
-      "waiting": "Synchronisiert, wartet auf eine Änderung von einem anderen Gerät",
+      "waiting": "Synchronisierung läuft, wartet auf eine Änderung von einem anderen Gerät",
       "paused": "Synchronisierung pausiert",
       "error": "Synchronisierung gestoppt"
     },

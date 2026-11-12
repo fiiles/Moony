@@ -185,7 +185,8 @@ pub fn problem_of_pull(pull: &PullReport) -> Option<SyncProblem> {
 }
 
 /// The fixed `last_error` text of a problem: its wire name, never an error's own text (which may
-/// carry a path or a URL).
+/// carry a path or a URL). A round whose only problem is a waiting gap records success instead
+/// (`run_round_into`), so the `Gap` text is a fallback that says it is no stop.
 pub fn reason(problem: SyncProblem) -> &'static str {
     use SyncProblem as P;
     match problem {
@@ -195,7 +196,7 @@ pub fn reason(problem: SyncProblem) -> &'static str {
         P::QuotaExceeded => "sync stopped: quotaExceeded",
         P::SnapshotTooLarge => "sync stopped: snapshotTooLarge",
         P::NewerSchema => "sync stopped: newerSchema",
-        P::Gap => "sync stopped: gap",
+        P::Gap => "sync waiting: gap",
         P::Undecryptable => "sync stopped: undecryptable",
         P::InvalidChain => "sync stopped: invalidChain",
         P::MissingParent => "sync stopped: missingParent",

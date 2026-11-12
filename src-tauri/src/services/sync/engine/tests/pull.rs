@@ -722,7 +722,8 @@ fn the_report_says_how_the_pull_ended_and_whether_the_round_may_push() {
             true,
         ),
         (gaps(None, 0, 1), PullEnd::Waiting, false, true),
-        (gaps(None, 2, 1), PullEnd::Waiting, false, true),
+        // A quarantine outranks a gap; both still push.
+        (gaps(None, 2, 1), PullEnd::Held, false, true),
         (
             PullReport {
                 unfinished: true,

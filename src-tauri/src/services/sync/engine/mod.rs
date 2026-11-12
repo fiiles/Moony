@@ -68,7 +68,8 @@ pub enum PullStop {
 pub enum PullEnd {
     /// Every envelope up to the relay's end was dealt with.
     Done,
-    /// Every envelope was dealt with except a quarantined author's, which are held.
+    /// Every envelope was dealt with except a quarantined author's, which are held (and perhaps
+    /// some waiting for an earlier envelope: a quarantine outranks a gap).
     Held,
     /// Every envelope was dealt with except those waiting for an earlier envelope of their author
     /// or for a parent they reference (held; the next pull meets them again, audit M3).
@@ -108,14 +109,15 @@ impl PullReport {
         self.end() == PullEnd::Done
     }
 
-    /// A stop comes first, then an unfinished pull, then envelopes waiting for an earlier one
-    /// (gaps), then a quarantined author's held envelopes.
+    /// A stop comes first, then an unfinished pull, then a quarantined author's held envelopes,
+    /// then envelopes waiting for an earlier one (gaps): a quarantine outranks a gap, so a forked
+    /// author is shown even while another author's envelope is missing.
     pub fn end(&self) -> PullEnd {
         match &self.stop {
             Some(stop) => PullEnd::Stopped(stop.clone()),
             None if self.unfinished => PullEnd::Unfinished,
-            None if self.gaps > 0 => PullEnd::Waiting,
             None if self.held > 0 => PullEnd::Held,
+            None if self.gaps > 0 => PullEnd::Waiting,
             None => PullEnd::Done,
         }
     }
@@ -242,7 +244,8 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    quota, a snapshot too large, a rotated token or an unauthorized one. A transient, rate-limit,
 ///    refusal or local failure is returned as an error; nothing inside a round is retried, so a
 ///    round lasts at most one relay timeout past its last answered call.
-/// 6. A round with no problem records its success; one with a problem records its fixed reason.
+/// 6. A round with no problem, or only a waiting gap (`Gap`), records its success; one with any
+///    other problem records its fixed reason.
 #[allow(clippy::too_many_arguments)]
 pub async fn run_round_into<R: Relay, D: ConnAccess>(
     relay: &R,
@@ -309,8 +312,10 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
     if report.problem.is_none() {
         report.problem = report.pull.as_ref().and_then(status::problem_of_pull);
     }
+    // A gap alone is no failure: the round synced everything it could and keeps pushing, so it
+    // counts for "Last synced" (the `Gap` problem and the `waiting` phase are still reported).
     db.with_conn(|conn| match report.problem {
-        None => state::record_success(conn, now),
+        None | Some(SyncProblem::Gap) => state::record_success(conn, now),
         Some(problem) => state::record_error(conn, status::reason(problem)),
     })?;
     Ok(())

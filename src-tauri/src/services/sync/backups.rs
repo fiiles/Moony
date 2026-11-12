@@ -32,7 +32,7 @@ pub enum BackupMark {
     /// It holds something found nowhere else (changes the replace could not send, documents or
     /// photos it could not re-attach). Never pruned; only the person deletes it.
     Kept,
-    /// Its replace never happened (a refused or failed join, repair or re-sync).
+    /// Its replace never happened (a refused or failed join, repair or re-sync). Final.
     Unused,
 }
 
@@ -58,13 +58,23 @@ fn parse_finished(name: &str) -> Option<(i64, u32, BackupMark)> {
     Some((unix, n, mark))
 }
 
-/// `<unix>` or `<unix>-<n>`, digits only.
+/// `<unix>` or `<unix>-<n>` with `n >= 2`, both as `free_stem` writes them (digits, no leading
+/// zero), so one backup has one name and `mark` can never rename onto another backup.
 fn parse_stamp(stem: &str) -> Option<(i64, u32)> {
-    let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    fn canonical<T: std::str::FromStr + ToString>(s: &str) -> Option<T> {
+        if s.is_empty() || !s.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        let value: T = s.parse().ok()?;
+        (value.to_string() == s).then_some(value)
+    }
     match stem.split_once('-') {
-        None if digits(stem) => Some((stem.parse().ok()?, 1)),
-        Some((unix, n)) if digits(unix) && digits(n) => Some((unix.parse().ok()?, n.parse().ok()?)),
-        _ => None,
+        None => Some((canonical(stem)?, 1)),
+        Some((unix, n)) => {
+            let n: u32 = canonical(n)?;
+            (n >= 2).then_some(())?;
+            Some((canonical(unix)?, n))
+        }
     }
 }
 
@@ -124,8 +134,9 @@ fn read_back(path: &Path) -> Result<()> {
 }
 
 /// `backup::create_backup` into `<PREFIX><now>[-n]<PARTIAL_SUFFIX>`, `flush_file`, the read-back,
-/// rename to the plain `.zip` name, `crypto::sync_parent_dir`, then `prune`. A failure removes the
-/// partial file.
+/// rename to the plain `.zip` name, `crypto::sync_parent_dir`, then `prune`. A failure up to the
+/// rename removes the partial file; after it the backup is complete and verified, so a directory
+/// sync or a prune that fails is only logged.
 pub fn write_verified(conn: &Connection, data_dir: &Path, now: i64) -> Result<PathBuf> {
     write_verified_with(conn, data_dir, now, read_back)
 }
@@ -137,6 +148,25 @@ pub fn write_verified_with(
     now: i64,
     read_back: impl FnOnce(&Path) -> Result<()>,
 ) -> Result<PathBuf> {
+    write_with(
+        conn,
+        data_dir,
+        now,
+        read_back,
+        crypto::sync_parent_dir,
+        prune,
+    )
+}
+
+/// `write_verified_with` with the directory sync and the prune as seams too.
+fn write_with(
+    conn: &Connection,
+    data_dir: &Path,
+    now: i64,
+    read_back: impl FnOnce(&Path) -> Result<()>,
+    sync_dir: impl FnOnce(&Path) -> io::Result<()>,
+    prune: impl FnOnce(&Path, i64) -> Result<usize>,
+) -> Result<PathBuf> {
     let stem = free_stem(data_dir, now)?;
     let partial = data_dir.join(format!("{stem}{PARTIAL_SUFFIX}"));
     let finish = |partial: &Path| -> Result<PathBuf> {
@@ -145,21 +175,22 @@ pub fn write_verified_with(
         read_back(partial)?;
         let done = data_dir.join(format!("{stem}{SUFFIX}"));
         fs::rename(partial, &done)?;
-        crypto::sync_parent_dir(&done)?;
         Ok(done)
     };
-    match finish(&partial) {
-        Ok(done) => {
-            if let Err(error) = prune(data_dir, now) {
-                log::warn!("[SYNC] Pruning old sync backups failed: {error}");
-            }
-            Ok(done)
-        }
+    let done = match finish(&partial) {
+        Ok(done) => done,
         Err(error) => {
             let _ = fs::remove_file(&partial);
-            Err(error)
+            return Err(error);
         }
+    };
+    if let Err(error) = sync_dir(&done) {
+        log::warn!("[SYNC] The data folder could not be synced after a sync backup: {error}");
     }
+    if let Err(error) = prune(data_dir, now) {
+        log::warn!("[SYNC] Pruning old sync backups failed: {error}");
+    }
+    Ok(done)
 }
 
 /// Opens the file for reading and writing and `sync_all`s it (Windows' FlushFileBuffers needs
@@ -172,7 +203,10 @@ pub fn flush_file(path: &Path) -> io::Result<()> {
         .sync_all()
 }
 
-/// Renames a finished plain backup to carry `mark`; returns the new path.
+/// Renames a finished backup to carry `mark`; returns the new path. A Plain backup takes any
+/// mark. A Kept one may become Plain or Unused: a replace marks its backup Kept before it commits,
+/// so a crash before the outcome is known never leaves it prunable, and settles it after. An
+/// Unused one keeps its mark. Never renames onto an existing file.
 pub fn mark(path: &Path, mark: BackupMark) -> Result<PathBuf> {
     let name = name_of(path).ok_or_else(|| AppError::Internal("sync backup: bad path".into()))?;
     let (unix, n, current) = parse_finished(name)
@@ -180,9 +214,9 @@ pub fn mark(path: &Path, mark: BackupMark) -> Result<PathBuf> {
     if current == mark {
         return Ok(path.to_path_buf());
     }
-    if current != BackupMark::Plain {
+    if current == BackupMark::Unused {
         return Err(AppError::Internal(
-            "sync backup: a marked backup keeps its mark".into(),
+            "sync backup: an unused backup keeps its mark".into(),
         ));
     }
     let tag = match mark {
@@ -196,21 +230,34 @@ pub fn mark(path: &Path, mark: BackupMark) -> Result<PathBuf> {
         format!("{PREFIX}{unix}")
     };
     let target = path.with_file_name(format!("{stem}{tag}{SUFFIX}"));
+    if target.try_exists()? {
+        return Err(AppError::Internal(
+            "sync backup: the marked name is taken".into(),
+        ));
+    }
     fs::rename(path, &target)?;
-    crypto::sync_parent_dir(&target)?;
+    if let Err(error) = crypto::sync_parent_dir(&target) {
+        log::warn!("[SYNC] The data folder could not be synced after marking a backup: {error}");
+    }
     Ok(target)
 }
 
-/// The finished sync backups, newest first; partial and foreign names ignored.
+/// The finished sync backups, newest first; partial and foreign names, symbolic links, folders
+/// and entries that cannot be read are left out.
 pub fn list(data_dir: &Path) -> Result<Vec<SyncBackup>> {
     let mut found = Vec::new();
     for entry in fs::read_dir(data_dir)? {
-        let entry = entry?;
+        let Ok(entry) = entry else {
+            continue;
+        };
         let name = entry.file_name().to_string_lossy().into_owned();
         let Some((created_at, n, mark)) = parse_finished(&name) else {
             continue;
         };
-        let meta = entry.metadata()?;
+        // `DirEntry::metadata` does not follow a symbolic link.
+        let Ok(meta) = entry.metadata() else {
+            continue;
+        };
         if !meta.is_file() {
             continue;
         }
@@ -249,9 +296,12 @@ pub fn prune(data_dir: &Path, now: i64) -> Result<usize> {
         }
     }
     for entry in fs::read_dir(data_dir)? {
-        let entry = entry?;
+        let Ok(entry) = entry else {
+            continue;
+        };
         let name = entry.file_name().to_string_lossy().into_owned();
         if parse_partial(&name).is_some_and(|at| now - at > DAY)
+            && entry.file_type().is_ok_and(|t| t.is_file())
             && fs::remove_file(entry.path()).is_ok()
         {
             removed += 1;
@@ -278,7 +328,9 @@ pub fn delete(data_dir: &Path, path: &Path) -> Result<()> {
         ));
     }
     fs::remove_file(path)?;
-    crypto::sync_parent_dir(path)?;
+    if let Err(error) = crypto::sync_parent_dir(path) {
+        log::warn!("[SYNC] The data folder could not be synced after deleting a backup: {error}");
+    }
     Ok(())
 }
 
@@ -372,6 +424,10 @@ mod tests {
         assert!(flush_file(&path).is_ok());
 
         fs::set_permissions(&path, fs::Permissions::from_mode(0o444)).expect("chmod");
+        if OpenOptions::new().write(true).open(&path).is_ok() {
+            // Running as root: permissions do not apply, so there is nothing to see.
+            return;
+        }
         let error = flush_file(&path).expect_err("read-only");
         assert_eq!(error.kind(), io::ErrorKind::PermissionDenied);
     }
@@ -459,7 +515,10 @@ mod tests {
             name_of(&b),
             Some(format!("sync-repair-{NOW}-2-kept.zip").as_str())
         );
-        assert!(mark(&a, BackupMark::Unused).is_err());
+        assert!(
+            mark(&c, BackupMark::Kept).is_err(),
+            "an unused backup stays unused"
+        );
 
         let listed = list(dir.path()).expect("list");
         let got: Vec<(PathBuf, i64, BackupMark)> = listed
@@ -523,5 +582,141 @@ mod tests {
 
         delete(dir.path(), &good).expect("delete");
         assert!(!good.exists());
+    }
+
+    #[test]
+    fn a_kept_backup_settles_to_plain_or_unused() {
+        let dir = tempdir().expect("dir");
+        let a = dir.path().join(format!("{PREFIX}{NOW}{SUFFIX}"));
+        let b = dir.path().join(format!("{PREFIX}{NOW}-2{SUFFIX}"));
+        fs::write(&a, b"a").expect("a");
+        fs::write(&b, b"b").expect("b");
+
+        let a = mark(&a, BackupMark::Kept).expect("kept");
+        let a = mark(&a, BackupMark::Plain).expect("settled plain");
+        let b = mark(&b, BackupMark::Kept).expect("kept");
+        let b = mark(&b, BackupMark::Unused).expect("settled unused");
+
+        assert_eq!(name_of(&a), Some(format!("sync-repair-{NOW}.zip").as_str()));
+        assert_eq!(
+            name_of(&b),
+            Some(format!("sync-repair-{NOW}-2-unused.zip").as_str())
+        );
+        assert_eq!(fs::read(&a).expect("a"), b"a");
+    }
+
+    #[test]
+    fn mark_never_renames_onto_another_backup() {
+        let dir = tempdir().expect("dir");
+        // Not names `free_stem` writes: `-1`, a leading zero.
+        for odd in [
+            format!("{PREFIX}{NOW}-1{SUFFIX}"),
+            format!("{PREFIX}{NOW}-02{SUFFIX}"),
+            format!("{PREFIX}0{NOW}{SUFFIX}"),
+        ] {
+            touch(dir.path(), &odd);
+            assert!(
+                mark(&dir.path().join(&odd), BackupMark::Kept).is_err(),
+                "{odd}"
+            );
+        }
+        assert!(list(dir.path()).expect("list").is_empty());
+
+        // A taken target (never written by this module, but possible by hand).
+        let plain = dir.path().join(format!("{PREFIX}{NOW}{SUFFIX}"));
+        let kept = dir.path().join(format!("{PREFIX}{NOW}{KEPT_TAG}{SUFFIX}"));
+        fs::write(&plain, b"plain").expect("plain");
+        fs::write(&kept, b"kept").expect("kept");
+
+        assert!(mark(&kept, BackupMark::Plain).is_err());
+        assert!(mark(&plain, BackupMark::Kept).is_err());
+        assert_eq!(fs::read(&plain).expect("plain"), b"plain");
+        assert_eq!(fs::read(&kept).expect("kept"), b"kept");
+    }
+
+    #[test]
+    fn a_failing_directory_sync_after_the_rename_does_not_fail_the_backup() {
+        let dir = tempdir().expect("dir");
+        let conn = account(dir.path());
+
+        let zip = write_with(
+            &conn,
+            dir.path(),
+            NOW,
+            |_| Ok(()),
+            |_| Err(io::Error::other("fsync failed")),
+            prune,
+        )
+        .expect("the backup is complete and verified");
+
+        assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}.zip")));
+        assert!(zip.is_file());
+    }
+
+    #[test]
+    fn write_verified_prunes_and_a_failing_prune_does_not_fail_the_backup() {
+        let dir = tempdir().expect("dir");
+        let conn = account(dir.path());
+        for days in [40, 50, 60, 70] {
+            touch(dir.path(), &aged(days));
+        }
+
+        write_verified_with(&conn, dir.path(), NOW, |_| Ok(())).expect("backup");
+
+        let left = names(dir.path());
+        assert_eq!(
+            left.len(),
+            3,
+            "the new one and the two newest before it: {left:?}"
+        );
+        assert!(left.contains(&aged(40)) && left.contains(&aged(50)));
+
+        let zip = write_with(
+            &conn,
+            dir.path(),
+            NOW,
+            |_| Ok(()),
+            crypto::sync_parent_dir,
+            |_, _| Err(AppError::Internal("prune failed".into())),
+        )
+        .expect("a failing prune is only logged");
+        assert!(zip.is_file());
+    }
+
+    #[test]
+    fn the_real_read_back_refuses_a_corrupt_zip() {
+        let dir = tempdir().expect("dir");
+        let path = dir.path().join("corrupt.zip");
+        fs::write(&path, b"PK\x03\x04 not really a zip").expect("file");
+
+        assert!(read_back(&path).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn links_and_folders_named_like_backups_are_ignored() {
+        let dir = tempdir().expect("dir");
+        let elsewhere = tempdir().expect("elsewhere");
+        let target = elsewhere.path().join("precious.zip");
+        fs::write(&target, b"precious").expect("target");
+        let link = dir.path().join(aged(400));
+        std::os::unix::fs::symlink(&target, &link).expect("symlink");
+        let folder = dir.path().join(aged(500));
+        fs::create_dir(&folder).expect("folder");
+        let partial_link = dir
+            .path()
+            .join(format!("{PREFIX}{}{PARTIAL_SUFFIX}", NOW - 9 * DAY));
+        std::os::unix::fs::symlink(&target, &partial_link).expect("partial symlink");
+        for days in [1, 2, 3] {
+            touch(dir.path(), &aged(days));
+        }
+
+        assert_eq!(list(dir.path()).expect("list").len(), 3);
+        assert_eq!(prune(dir.path(), NOW).expect("prune"), 0);
+        assert!(delete(dir.path(), &link).is_err());
+        assert!(delete(dir.path(), &folder).is_err());
+        assert!(fs::symlink_metadata(&link).is_ok() && folder.is_dir());
+        assert!(fs::symlink_metadata(&partial_link).is_ok());
+        assert_eq!(fs::read(&target).expect("target"), b"precious");
     }
 }

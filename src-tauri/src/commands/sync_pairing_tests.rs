@@ -97,7 +97,7 @@ async fn pairing_needs_the_password_before_anything_is_shown_or_written() {
     )
     .await
     .expect("scanned");
-    assert_eq!(scanned.stage(), Stage::Compare);
+    assert_eq!(scanned.stage(), Stage::AwaitingAck);
     assert!(relay.peek_slot(&mailbox, 1).is_some(), "slot 1 is written");
 }
 
@@ -358,7 +358,8 @@ async fn a_repeated_scan_of_the_same_code_keeps_its_session() {
     )
     .await
     .expect("first scan");
-    assert_eq!(first.stage, PairingStage::Compare);
+    // Waiting for the shower's acknowledgement reads as announcing until the screens know it.
+    assert_eq!(first.stage, PairingStage::Announcing);
     assert!(!first.contested);
 
     // The camera reports the same QR again: the same session answers, nothing is written.
@@ -393,7 +394,11 @@ async fn a_repeated_scan_of_the_same_code_keeps_its_session() {
     )
     .await
     .expect("another code");
-    assert_ne!(replaced.comparison_code, first.comparison_code);
+    assert_eq!(
+        replaced.comparison_code, None,
+        "no digits before the acknowledgement"
+    );
+    assert_eq!(put_count(&relay), 2, "the other code's slot 1 is written");
     assert_eq!(disposed.load(Ordering::SeqCst), 1);
 }
 
@@ -419,7 +424,7 @@ async fn concurrent_scans_of_one_code_answer_it_once() {
     let (one, two) = tokio::join!(scan(), scan());
     let (one, two) = (one.expect("one"), two.expect("two"));
     assert_eq!(one, two);
-    assert!(!one.contested && one.stage == PairingStage::Compare);
+    assert!(!one.contested && one.stage == PairingStage::Announcing);
     assert_eq!(put_count(&relay), 1);
     assert_eq!(disposed.load(Ordering::SeqCst), 0);
 }

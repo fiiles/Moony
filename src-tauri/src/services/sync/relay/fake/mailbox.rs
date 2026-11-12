@@ -82,6 +82,20 @@ impl FakeRelay {
     pub fn lose_next_answer(&self, route: Route) {
         self.lock().lose_answers.push(route);
     }
+
+    /// From now on this fake is a sync server from before slot 3: it answers every put or take
+    /// of slot 3 with 400 `bad_slot`, as the old relay's route check does.
+    pub fn act_without_slot_3(&self) {
+        self.lock().without_slot_3 = true;
+    }
+}
+
+/// The old relay's answer to a slot it does not know.
+fn refuses_slot(without_slot_3: bool, slot: u8) -> RelayResult<()> {
+    if without_slot_3 && slot == 3 {
+        return Err(RelayError::BadRequest("bad_slot".into()));
+    }
+    Ok(())
 }
 
 impl Mailbox for FakeRelay {
@@ -101,6 +115,7 @@ impl Mailbox for FakeRelay {
             }
             let mut state = self.lock();
             state.enter(Route::MailboxPut)?;
+            refuses_slot(state.without_slot_3, slot)?;
             let lose_answer = std::mem::take(&mut state.lose_put_answer);
             let lose_503 = state
                 .lose_answers
@@ -140,6 +155,7 @@ impl Mailbox for FakeRelay {
             let index = check_mailbox(mailbox, Some(slot))?;
             let mut state = self.lock();
             state.enter(Route::MailboxTake)?;
+            refuses_slot(state.without_slot_3, slot)?;
             let lose_answer = std::mem::take(&mut state.lose_take_answer);
             let Some(stored) = state.mailboxes.get_mut(mailbox) else {
                 return Ok(None);

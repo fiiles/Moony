@@ -56,6 +56,32 @@ async fn slot_3_round_trips_over_http() {
     );
 }
 
+/// A sync server from before slot 3 answers its route check's 400 `bad_slot`; the client never
+/// makes that error for slot 3 itself, so the pairing can read it as "the server needs an update".
+#[tokio::test]
+async fn an_old_server_refuses_slot_3_with_bad_slot() {
+    let refused = || json_answer("400 Bad Request", r#"{"error":"bad_slot"}"#);
+    let bad = RelayError::BadRequest("bad_slot".into());
+
+    let (base, server) = serve_once(refused());
+    assert_eq!(
+        relay(&base).put_slot(MAILBOX, 3, b"ack").await,
+        Err(bad.clone())
+    );
+    assert_eq!(
+        server.join().expect("server").request_line(),
+        format!("PUT /v1/pairing/{MAILBOX}/3 HTTP/1.1"),
+        "the request was sent"
+    );
+
+    let (base, server) = serve_once(refused());
+    assert_eq!(relay(&base).take_slot(MAILBOX, 3).await, Err(bad));
+    assert_eq!(
+        server.join().expect("server").request_line(),
+        format!("GET /v1/pairing/{MAILBOX}/3 HTTP/1.1")
+    );
+}
+
 #[tokio::test]
 async fn slot_4_is_refused_before_any_request() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind");

@@ -297,8 +297,11 @@ fn view_of(session: &PairingSession, dev_tools: bool) -> Result<PairingView> {
 
 fn stage_of(stage: Stage) -> PairingStage {
     match stage {
-        Stage::Announcing => PairingStage::Announcing,
-        Stage::WaitingForScan => PairingStage::WaitingForScan,
+        // The wire stages for the acknowledgement come with the screens (protocol 2): until then
+        // the scanner waiting for it reads as still announcing, the shower storing it as still
+        // waiting for the scan.
+        Stage::Announcing | Stage::AwaitingAck => PairingStage::Announcing,
+        Stage::WaitingForScan | Stage::Acknowledging => PairingStage::WaitingForScan,
         Stage::Compare => PairingStage::Compare,
         Stage::WaitingForOther => PairingStage::WaitingForOther,
         Stage::Sent => PairingStage::Sent,
@@ -589,7 +592,13 @@ pub async fn sync_pairing_confirm(app: AppHandle, db: State<'_, Database>) -> Re
         let slot = pairing.live(&owner, now())?;
         let relay = HttpRelay::new(slot.session.relay_url())?;
         match holder_credentials(&slot.session, &session) {
-            Ok(creds) => slot.session.confirm(&relay, creds.as_ref(), now()).await,
+            // No typed digits yet: the holder's confirm answers `CODE_INCOMPLETE` until the
+            // command takes them.
+            Ok(creds) => {
+                slot.session
+                    .confirm(&relay, creds.as_ref(), None, now())
+                    .await
+            }
             Err(error) => Err(error),
         }
     };

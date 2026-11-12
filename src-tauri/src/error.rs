@@ -237,6 +237,16 @@ mod tests {
             keys.contains("syncDeviceNameInvalid") && keys.contains("syncChangesetInvalid"),
             "the scan finds the sync keys: {keys:?}"
         );
+        // Pairing protocol 2 (audit M1, M2, L8): the typed code and the acknowledgement.
+        for pairing in [
+            "syncPairingCodeIncomplete",
+            "syncPairingCodeMismatch",
+            "syncPairingCodeMismatchFinal",
+            "syncPairingInterfered",
+            "syncServerNeedsUpdate",
+        ] {
+            assert!(keys.contains(pairing), "the scan finds {pairing}");
+        }
 
         let english: serde_json::Value = serde_json::from_str(
             &std::fs::read_to_string(manifest.join("../src/i18n/locales/en/common.json"))

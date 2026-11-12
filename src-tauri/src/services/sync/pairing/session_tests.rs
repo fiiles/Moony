@@ -6,7 +6,7 @@ use super::*;
 use crate::error::AppError;
 use crate::services::sync::error::Transient;
 use crate::services::sync::keys::{VaultId, VaultKeys};
-use crate::services::sync::pairing::{derive, pairing_code_text, slot1, CANCEL_MARKER};
+use crate::services::sync::pairing::{pairing_code_text, slot1, CANCEL_MARKER};
 use crate::services::sync::relay::fake::{FakeRelay, Route};
 use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
 use crate::services::sync::relay::{RelayError, RelayResult};
@@ -21,7 +21,7 @@ pub(super) fn public(secret: [u8; 32]) -> [u8; 32] {
     PublicKey::from(&StaticSecret::from(secret)).to_bytes()
 }
 
-fn key_of(error: &SyncError) -> String {
+pub(super) fn key_of(error: &SyncError) -> String {
     match error.to_app_error() {
         AppError::Validation(key) => key,
         other => panic!("not a validation key: {other:?}"),
@@ -71,11 +71,19 @@ pub(super) fn pair(shower: Role, scanner: Role) -> (PairingSession, PairingSessi
     (s, c)
 }
 
-/// Drives both to Compare: C announces, S reads slot 1.
-async fn to_compare(relay: &FakeRelay, s: &mut PairingSession, c: &mut PairingSession) {
-    assert_eq!(c.announce(relay, T0).await.unwrap(), Stage::Compare);
+/// Drives both to Compare: C announces, S reads slot 1 and acknowledges, C reads the
+/// acknowledgement. The joiner's digits, which the holder's person types (the holder shows none).
+async fn to_compare(relay: &FakeRelay, s: &mut PairingSession, c: &mut PairingSession) -> String {
+    assert_eq!(c.announce(relay, T0).await.unwrap(), Stage::AwaitingAck);
     assert_eq!(s.poll(relay, T0).await.unwrap(), Stage::Compare);
-    assert_eq!(s.comparison_code(), c.comparison_code());
+    assert_eq!(c.poll(relay, T0).await.unwrap(), Stage::Compare);
+    let (holder, joiner) = if s.role() == Role::Holder {
+        (&*s, &*c)
+    } else {
+        (&*c, &*s)
+    };
+    assert_eq!(holder.comparison_code(), None);
+    joiner.comparison_code().expect("the joiner's digits")
 }
 
 fn puts(relay: &FakeRelay) -> usize {
@@ -99,21 +107,25 @@ async fn a_joiner_scans_a_holders_code_and_receives_the_credentials() {
     assert_eq!(c.stage(), Stage::Announcing);
     assert_eq!(c.comparison_code(), None);
 
-    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
+    assert_eq!(c.comparison_code(), None);
     assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
-    let code = s.comparison_code().unwrap();
+    assert_eq!(s.comparison_code(), None, "the holder shows no digits");
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    let code = c.comparison_code().unwrap();
     assert_eq!(code.len(), 6);
     assert!(code.bytes().all(|b| b.is_ascii_digit()));
-    assert_eq!(c.comparison_code().unwrap(), code);
 
     assert_eq!(
-        c.confirm(&relay, None, T0).await.unwrap(),
+        c.confirm(&relay, None, None, T0).await.unwrap(),
         Stage::WaitingForOther
     );
     assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::WaitingForOther);
     let sent = creds();
     assert_eq!(
-        s.confirm(&relay, Some(&sent), T0).await.unwrap(),
+        s.confirm(&relay, Some(&sent), Some(&code), T0)
+            .await
+            .unwrap(),
         Stage::Sent
     );
     assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Received);
@@ -131,16 +143,18 @@ async fn a_holder_scans_a_joiners_code_and_sends_the_credentials() {
     let relay = FakeRelay::new();
     let mut s = PairingSession::show(Role::Joiner, HOME, T0).unwrap();
     let mut c = PairingSession::scan(Role::Holder, &pairing_code_text(&s.code()), T0).unwrap();
-    to_compare(&relay, &mut s, &mut c).await;
+    let code = to_compare(&relay, &mut s, &mut c).await;
 
     assert_eq!(
-        s.confirm(&relay, None, T0).await.unwrap(),
+        s.confirm(&relay, None, None, T0).await.unwrap(),
         Stage::WaitingForOther
     );
     assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::WaitingForOther);
     let sent = creds();
     assert_eq!(
-        c.confirm(&relay, Some(&sent), T0).await.unwrap(),
+        c.confirm(&relay, Some(&sent), Some(&code), T0)
+            .await
+            .unwrap(),
         Stage::Sent
     );
     assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Received);
@@ -155,9 +169,9 @@ async fn a_holder_scans_a_joiners_code_and_sends_the_credentials() {
 async fn the_holder_writes_slot_2_only_after_its_own_confirm() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    to_compare(&relay, &mut s, &mut c).await;
+    let code = to_compare(&relay, &mut s, &mut c).await;
     assert_eq!(
-        c.confirm(&relay, None, T0).await.unwrap(),
+        c.confirm(&relay, None, None, T0).await.unwrap(),
         Stage::WaitingForOther
     );
     assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::WaitingForOther);
@@ -165,12 +179,14 @@ async fn the_holder_writes_slot_2_only_after_its_own_confirm() {
     assert_eq!(relay.peek_slot(&id(&s), 2), None);
 
     // A holder confirm without credentials is a bug of the caller: nothing is written.
-    let missing = s.confirm(&relay, None, T0).await.unwrap_err();
+    let missing = s.confirm(&relay, None, Some(&code), T0).await.unwrap_err();
     assert!(matches!(missing, SyncError::Local(AppError::Internal(_))));
     assert_eq!(relay.peek_slot(&id(&s), 2), None);
 
     assert_eq!(
-        s.confirm(&relay, Some(&creds()), T0).await.unwrap(),
+        s.confirm(&relay, Some(&creds()), Some(&code), T0)
+            .await
+            .unwrap(),
         Stage::Sent
     );
     assert!(relay.peek_slot(&id(&s), 2).is_some());
@@ -180,7 +196,7 @@ async fn the_holder_writes_slot_2_only_after_its_own_confirm() {
 async fn a_forged_slot_2_fails_and_nothing_is_joined() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    to_compare(&relay, &mut s, &mut c).await;
+    let code = to_compare(&relay, &mut s, &mut c).await;
     relay.write_slot_raw(&id(&s), 2, vec![0x01; 80]);
 
     let calls = relay.calls().len();
@@ -188,7 +204,7 @@ async fn a_forged_slot_2_fails_and_nothing_is_joined() {
     assert_eq!(relay.calls().len(), calls, "no read before the confirm");
 
     assert_eq!(
-        c.confirm(&relay, None, T0).await.unwrap(),
+        c.confirm(&relay, None, None, T0).await.unwrap(),
         Stage::WaitingForOther
     );
     let error = c.poll(&relay, T0).await.unwrap_err();
@@ -196,7 +212,10 @@ async fn a_forged_slot_2_fails_and_nothing_is_joined() {
     assert!(!keeps_session(&error));
     assert!(c.received().is_none());
 
-    let error = s.confirm(&relay, Some(&creds()), T0).await.unwrap_err();
+    let error = s
+        .confirm(&relay, Some(&creds()), Some(&code), T0)
+        .await
+        .unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingFailed");
     assert_ne!(s.stage(), Stage::Sent);
 }
@@ -210,33 +229,16 @@ async fn a_man_in_the_middle_who_writes_slot_1_first_is_caught() {
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
     relay.write_slot_raw(&id(&s), 1, slot1(Role::Joiner, &m_pub).to_vec());
     assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
-    let code_s_m = derive(
-        &StaticSecret::from(S_SECRET),
-        Side::Shower,
-        &m_pub,
-        &s.mailbox,
-    )
-    .unwrap()
-    .code_text();
-    assert_eq!(s.comparison_code().unwrap(), code_s_m);
+    assert_eq!(s.comparison_code(), None);
 
-    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
     assert!(c.contested());
     assert!(!s.contested());
-    let code_s_c = derive(
-        &StaticSecret::from(S_SECRET),
-        Side::Shower,
-        &public(C_SECRET),
-        &s.mailbox,
-    )
-    .unwrap()
-    .code_text();
-    assert_eq!(c.comparison_code().unwrap(), code_s_c);
-    assert_ne!(c.comparison_code(), s.comparison_code());
+    assert_eq!(c.comparison_code(), None);
 
-    let error = c.confirm(&relay, None, T0).await.unwrap_err();
+    let error = c.confirm(&relay, None, None, T0).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingCodeUsed");
-    assert_eq!(c.stage(), Stage::Compare);
+    assert_eq!(c.stage(), Stage::AwaitingAck);
     assert_eq!(
         relay.peek_slot(&id(&s), 2),
         Some(CANCEL_MARKER.to_vec()),
@@ -252,18 +254,13 @@ async fn a_man_in_the_middle_who_writes_slot_1_first_is_caught() {
     let relay = FakeRelay::new();
     let (s, mut c) = pair(Role::Joiner, Role::Holder);
     relay.write_slot_raw(&id(&s), 1, slot1(Role::Holder, &m_pub).to_vec());
-    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
     assert!(c.contested(), "an impostor's unread record");
-    let code_s_c = derive(
-        &StaticSecret::from(S_SECRET),
-        Side::Shower,
-        &public(C_SECRET),
-        &s.mailbox,
-    )
-    .unwrap()
-    .code_text();
-    assert_eq!(c.comparison_code().unwrap(), code_s_c);
-    let error = c.confirm(&relay, Some(&creds()), T0).await.unwrap_err();
+    assert_eq!(c.comparison_code(), None);
+    let error = c
+        .confirm(&relay, Some(&creds()), Some("123456"), T0)
+        .await
+        .unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingCodeUsed");
     assert_eq!(
         relay.peek_slot(&id(&s), 2),
@@ -282,10 +279,11 @@ async fn a_scanner_whose_announce_failed_retries_on_poll() {
     assert_eq!(c.stage(), Stage::Announcing);
     assert_eq!(relay.peek_slot(&id(&c), 1), None);
 
-    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::AwaitingAck);
     assert!(!c.contested());
     assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
-    assert_eq!(s.comparison_code(), c.comparison_code());
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(c.comparison_code().is_some());
 }
 
 #[tokio::test]
@@ -297,29 +295,35 @@ async fn a_lost_slot_1_put_answer_still_reaches_compare() {
     assert!(matches!(error, SyncError::Transient(Transient::Offline)));
     assert_eq!(c.stage(), Stage::Announcing);
 
-    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::AwaitingAck);
     assert!(
         !c.contested(),
         "a slot taken after our own lost answer is ours"
     );
     assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
-    assert_eq!(s.comparison_code(), c.comparison_code());
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(c.comparison_code().is_some());
 }
 
 #[tokio::test]
 async fn a_lost_slot_2_put_answer_counts_as_sent() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    to_compare(&relay, &mut s, &mut c).await;
-    c.confirm(&relay, None, T0).await.unwrap();
+    let code = to_compare(&relay, &mut s, &mut c).await;
+    c.confirm(&relay, None, None, T0).await.unwrap();
 
     relay.lose_next_put_answer();
     let sent = creds();
-    let error = s.confirm(&relay, Some(&sent), T0).await.unwrap_err();
+    let error = s
+        .confirm(&relay, Some(&sent), Some(&code), T0)
+        .await
+        .unwrap_err();
     assert!(keeps_session(&error));
     assert_eq!(s.stage(), Stage::Compare);
     assert_eq!(
-        s.confirm(&relay, Some(&sent), T0).await.unwrap(),
+        s.confirm(&relay, Some(&sent), Some(&code), T0)
+            .await
+            .unwrap(),
         Stage::Sent
     );
     assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Received);
@@ -332,7 +336,7 @@ async fn abandoning_tells_a_waiting_peer_it_was_cancelled() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
     to_compare(&relay, &mut s, &mut c).await;
-    c.confirm(&relay, None, T0).await.unwrap();
+    c.confirm(&relay, None, None, T0).await.unwrap();
     relay.fail_next(Route::MailboxBurn, RelayError::Network("timeout".into()));
     s.abandon(&relay).await;
     assert_eq!(relay.peek_slot(&id(&c), 2), Some(CANCEL_MARKER.to_vec()));
@@ -384,7 +388,7 @@ async fn the_secret_is_gone_after_derive() {
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
     assert!(s.has_secret());
     assert!(c.has_secret());
-    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
     assert!(!c.has_secret());
     assert!(s.has_secret());
     assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
@@ -395,9 +399,11 @@ async fn the_secret_is_gone_after_derive() {
 async fn a_received_session_lives_through_the_grace_period() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    to_compare(&relay, &mut s, &mut c).await;
-    c.confirm(&relay, None, T0).await.unwrap();
-    s.confirm(&relay, Some(&creds()), T0).await.unwrap();
+    let code = to_compare(&relay, &mut s, &mut c).await;
+    c.confirm(&relay, None, None, T0).await.unwrap();
+    s.confirm(&relay, Some(&creds()), Some(&code), T0)
+        .await
+        .unwrap();
     assert_eq!(c.wiped_at(), c.expires_at());
     assert_eq!(c.poll(&relay, T0 + 10).await.unwrap(), Stage::Received);
 
@@ -415,7 +421,7 @@ async fn a_received_session_lives_through_the_grace_period() {
     let end = c.expires_at() + 300;
     let error = c.poll(&relay, end).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingExpired");
-    let error = c.confirm(&relay, None, end).await.unwrap_err();
+    let error = c.confirm(&relay, None, None, end).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingExpired");
     assert!(
         c.received().is_none(),
@@ -427,27 +433,24 @@ async fn a_received_session_lives_through_the_grace_period() {
 async fn equal_roles_are_refused_by_the_shower() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Holder);
-    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
     let error = s.poll(&relay, T0).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingBothOn");
     assert!(!keeps_session(&error));
     s.abandon(&relay).await;
-    let error = c.confirm(&relay, Some(&creds()), T0).await.unwrap_err();
+    // The scanner's read of slot 3 meets the burnt mailbox.
+    let error = c.poll(&relay, T0).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingCancelled");
 
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Joiner, Role::Joiner);
-    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
     let error = s.poll(&relay, T0).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingBothOff");
     s.abandon(&relay).await;
-    // A joiner's confirm sends nothing; its first read meets the burnt mailbox.
-    assert_eq!(
-        c.confirm(&relay, None, T0).await.unwrap(),
-        Stage::WaitingForOther
-    );
     let error = c.poll(&relay, T0).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingCancelled");
+    assert_eq!(c.comparison_code(), None);
 }
 
 #[tokio::test]
@@ -479,9 +482,12 @@ async fn an_expired_pairing_is_refused() {
     // After Compare a gone mailbox means the other device gave up.
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    to_compare(&relay, &mut s, &mut c).await;
+    let code = to_compare(&relay, &mut s, &mut c).await;
     relay.expire_mailbox(&id(&s));
-    let error = s.confirm(&relay, Some(&creds()), T0).await.unwrap_err();
+    let error = s
+        .confirm(&relay, Some(&creds()), Some(&code), T0)
+        .await
+        .unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingCancelled");
 }
 
@@ -489,7 +495,7 @@ async fn an_expired_pairing_is_refused() {
 async fn a_lost_read_ends_the_pairing_with_a_clear_error() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
     relay.lose_next_take_answer();
     let error = s.poll(&relay, T0).await.unwrap_err();
     assert!(matches!(error, SyncError::Transient(_)));
@@ -504,7 +510,7 @@ async fn a_lost_read_ends_the_pairing_with_a_clear_error() {
 async fn transient_errors_keep_the_session() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
 
     relay.fail_next(Route::MailboxTake, RelayError::RateLimited);
     let error = s.poll(&relay, T0).await.unwrap_err();
@@ -518,7 +524,8 @@ async fn transient_errors_keep_the_session() {
     assert_eq!(s.stage(), Stage::WaitingForScan);
 
     assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
-    assert_eq!(s.comparison_code(), c.comparison_code());
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(c.comparison_code().is_some());
 
     assert!(!keeps_session(&SyncError::Refused(RelayError::SlotTaken)));
     assert!(!keeps_session(&SyncError::Local(AppError::Validation(
@@ -550,22 +557,30 @@ async fn the_scanner_uses_the_sync_server_the_code_names() {
 async fn confirm_outside_compare_sends_nothing() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    let error = s.confirm(&relay, Some(&creds()), T0).await.unwrap_err();
+    let error = s
+        .confirm(&relay, Some(&creds()), Some("123456"), T0)
+        .await
+        .unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingFailed");
     assert_eq!(s.stage(), Stage::WaitingForScan);
-    let error = c.confirm(&relay, None, T0).await.unwrap_err();
+    let error = c.confirm(&relay, None, None, T0).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingFailed");
     assert_eq!(c.stage(), Stage::Announcing);
     assert!(relay.calls().is_empty());
 
     // After Compare a repeated confirm returns the stage and does nothing.
-    to_compare(&relay, &mut s, &mut c).await;
-    s.confirm(&relay, Some(&creds()), T0).await.unwrap();
-    c.confirm(&relay, None, T0).await.unwrap();
+    let code = to_compare(&relay, &mut s, &mut c).await;
+    s.confirm(&relay, Some(&creds()), Some(&code), T0)
+        .await
+        .unwrap();
+    c.confirm(&relay, None, None, T0).await.unwrap();
     let calls = relay.calls().len();
-    let again = s.confirm(&relay, Some(&creds()), T0).await.unwrap();
+    let again = s
+        .confirm(&relay, Some(&creds()), Some(&code), T0)
+        .await
+        .unwrap();
     assert_eq!(again, Stage::Sent);
-    let again = c.confirm(&relay, None, T0).await.unwrap();
+    let again = c.confirm(&relay, None, None, T0).await.unwrap();
     assert_eq!(again, Stage::WaitingForOther);
     assert_eq!(
         relay.calls().len(),
@@ -574,7 +589,10 @@ async fn confirm_outside_compare_sends_nothing() {
     );
     assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Received);
     let calls = relay.calls().len();
-    assert_eq!(c.confirm(&relay, None, T0).await.unwrap(), Stage::Received);
+    assert_eq!(
+        c.confirm(&relay, None, None, T0).await.unwrap(),
+        Stage::Received
+    );
     assert_eq!(relay.calls().len(), calls);
 }
 
@@ -586,8 +604,7 @@ fn a_session_prints_nothing_secret() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
     let text = pairing_code_text(&s.code());
-    runtime.block_on(to_compare(&relay, &mut s, &mut c));
-    let code = s.comparison_code().unwrap();
+    let code = runtime.block_on(to_compare(&relay, &mut s, &mut c));
     let hex = |b: &[u8]| -> String { b.iter().map(|x| format!("{x:02x}")).collect() };
     let b64 = |b: &[u8]| -> String {
         use base64::Engine;
@@ -640,7 +657,7 @@ async fn a_put_that_never_left_is_not_taken_for_our_own_write() {
     assert!(keeps_session(&error));
     let m_pub = public(M_SECRET);
     relay.write_slot_raw(&id(&c), 1, slot1(Role::Joiner, &m_pub).to_vec());
-    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::AwaitingAck);
     assert!(c.contested(), "the impostor's record is not ours");
 }
 
@@ -652,20 +669,23 @@ async fn a_lost_request_answer_still_reaches_compare_as_ours() {
     relay.fail_next(Route::MailboxPut, RelayError::Network("request".into()));
     assert!(keeps_session(&c.announce(&relay, T0).await.unwrap_err()));
     relay.write_slot_raw(&id(&c), 1, slot1(Role::Joiner, &public(C_SECRET)).to_vec());
-    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::AwaitingAck);
     assert!(!c.contested());
     assert_eq!(relay.peek_slot(&id(&c), 2), None, "slot 2 is left open");
     assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
-    assert_eq!(s.comparison_code(), c.comparison_code());
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(c.comparison_code().is_some());
 }
 
 #[tokio::test]
 async fn abandoning_a_sent_holder_leaves_the_mailbox_to_the_joiner() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    to_compare(&relay, &mut s, &mut c).await;
-    c.confirm(&relay, None, T0).await.unwrap();
-    s.confirm(&relay, Some(&creds()), T0).await.unwrap();
+    let code = to_compare(&relay, &mut s, &mut c).await;
+    c.confirm(&relay, None, None, T0).await.unwrap();
+    s.confirm(&relay, Some(&creds()), Some(&code), T0)
+        .await
+        .unwrap();
     let calls = relay.calls().len();
     s.abandon(&relay).await;
     assert_eq!(
@@ -684,7 +704,9 @@ async fn expiry_is_sticky() {
     c.announce(&relay, c.expires_at() + 5).await.unwrap_err();
     for error in [
         s.poll(&relay, T0).await.unwrap_err(),
-        s.confirm(&relay, Some(&creds()), T0).await.unwrap_err(),
+        s.confirm(&relay, Some(&creds()), None, T0)
+            .await
+            .unwrap_err(),
         c.announce(&relay, T0).await.unwrap_err(),
         c.poll(&relay, T0).await.unwrap_err(),
     ] {
@@ -694,47 +716,20 @@ async fn expiry_is_sticky() {
 }
 
 #[tokio::test]
-async fn a_contested_scan_closes_slot_2_for_the_shower() {
-    let m_pub = public(M_SECRET);
-
-    // The shower holds the vault and the person wrongly confirms on it: nothing sealed is written.
-    let relay = FakeRelay::new();
-    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    relay.write_slot_raw(&id(&s), 1, slot1(Role::Joiner, &m_pub).to_vec());
-    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
-    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
-    assert!(c.contested());
-    let error = s.confirm(&relay, Some(&creds()), T0).await.unwrap_err();
-    assert_eq!(key_of(&error), "validation.syncPairingFailed");
-    assert_ne!(s.stage(), Stage::Sent);
-    assert_eq!(relay.peek_slot(&id(&s), 2), Some(CANCEL_MARKER.to_vec()));
-
-    // The shower wants to join: it reads "cancelled" instead of anything sealed.
-    let relay = FakeRelay::new();
-    let (mut s, mut c) = pair(Role::Joiner, Role::Holder);
-    relay.write_slot_raw(&id(&s), 1, slot1(Role::Holder, &m_pub).to_vec());
-    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
-    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
-    assert!(c.contested());
-    s.confirm(&relay, None, T0).await.unwrap();
-    let error = s.poll(&relay, T0).await.unwrap_err();
-    assert_eq!(key_of(&error), "validation.syncPairingCancelled");
-    assert!(s.received().is_none());
-}
-
-#[tokio::test]
 async fn a_slot_2_sealed_in_another_pairing_is_refused() {
     // Same device keys, another mailbox: a genuine blob of the first pairing.
     let first = FakeRelay::new();
     let (mut s1, mut c1) = pair(Role::Holder, Role::Joiner);
-    to_compare(&first, &mut s1, &mut c1).await;
-    s1.confirm(&first, Some(&creds()), T0).await.unwrap();
+    let code = to_compare(&first, &mut s1, &mut c1).await;
+    s1.confirm(&first, Some(&creds()), Some(&code), T0)
+        .await
+        .unwrap();
     let blob = first.peek_slot(&id(&s1), 2).unwrap();
 
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
     to_compare(&relay, &mut s, &mut c).await;
-    c.confirm(&relay, None, T0).await.unwrap();
+    c.confirm(&relay, None, None, T0).await.unwrap();
     relay.write_slot_raw(&id(&s), 2, blob);
     let error = c.poll(&relay, T0).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingFailed");
@@ -753,7 +748,10 @@ async fn a_bad_scanner_key_keeps_the_shower_out_of_compare() {
         assert_eq!(key_of(&error), "validation.syncPairingFailed");
         assert_eq!(s.stage(), Stage::WaitingForScan);
         assert_eq!(s.comparison_code(), None);
-        assert!(s.confirm(&relay, Some(&creds()), T0).await.is_err());
+        assert!(s
+            .confirm(&relay, Some(&creds()), Some("123456"), T0)
+            .await
+            .is_err());
         assert_eq!(puts(&relay), 0);
         assert_eq!(relay.peek_slot(&id(&s), 2), None);
     }
@@ -763,10 +761,11 @@ async fn a_bad_scanner_key_keeps_the_shower_out_of_compare() {
 async fn a_received_joiner_prints_nothing_secret() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    to_compare(&relay, &mut s, &mut c).await;
-    let code = c.comparison_code().unwrap();
-    c.confirm(&relay, None, T0).await.unwrap();
-    s.confirm(&relay, Some(&creds()), T0).await.unwrap();
+    let code = to_compare(&relay, &mut s, &mut c).await;
+    c.confirm(&relay, None, None, T0).await.unwrap();
+    s.confirm(&relay, Some(&creds()), Some(&code), T0)
+        .await
+        .unwrap();
     assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Received);
     let printed = format!("{c:?}");
     let sent = creds();

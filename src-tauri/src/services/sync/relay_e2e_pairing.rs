@@ -183,20 +183,26 @@ async fn a_phone_joins_a_desktop_that_shows_the_code() {
     let b_relay = relay_at(scanner.relay_url());
     assert_eq!(
         scanner.announce(&b_relay, now()).await.expect("announce"),
-        Stage::Compare
+        Stage::AwaitingAck
     );
     assert_eq!(
         shower.poll(&a_relay, now()).await.expect("poll"),
+        Stage::Compare,
+        "A acknowledged B's key in slot 3"
+    );
+    assert_eq!(shower.comparison_code(), None, "the holder shows no digits");
+    assert_eq!(
+        scanner.poll(&b_relay, now()).await.expect("read the ack"),
         Stage::Compare
     );
-    let digits = shower.comparison_code().expect("code on A");
-    assert_eq!(scanner.comparison_code().as_deref(), Some(digits.as_str()));
+    let digits = scanner.comparison_code().expect("code on B");
     assert!(!scanner.contested());
 
-    // The joiner confirms first and finds nothing yet; then the holder seals its details.
+    // The joiner confirms first and finds nothing yet; then the holder seals its details once
+    // its person typed B's digits.
     assert_eq!(
         scanner
-            .confirm(&b_relay, None, now())
+            .confirm(&b_relay, None, None, now())
             .await
             .expect("B confirms"),
         Stage::WaitingForOther
@@ -208,7 +214,7 @@ async fn a_phone_joins_a_desktop_that_shows_the_code() {
     let held = a.credentials();
     assert_eq!(
         shower
-            .confirm(&a_relay, Some(&held), now())
+            .confirm(&a_relay, Some(&held), Some(&digits), now())
             .await
             .expect("A confirms"),
         Stage::Sent
@@ -254,27 +260,35 @@ async fn a_desktop_joins_from_a_phone_that_scans_its_code() {
     let a_relay = relay_at(scanner.relay_url());
     assert_eq!(
         scanner.announce(&a_relay, now()).await.expect("announce"),
-        Stage::Compare
+        Stage::AwaitingAck
     );
     assert_eq!(
         shower.poll(&b_relay, now()).await.expect("poll"),
         Stage::Compare
     );
-    assert_eq!(scanner.comparison_code(), shower.comparison_code());
-    assert!(shower.comparison_code().is_some());
+    assert_eq!(
+        scanner.poll(&a_relay, now()).await.expect("read the ack"),
+        Stage::Compare
+    );
+    assert_eq!(
+        scanner.comparison_code(),
+        None,
+        "the holder shows no digits"
+    );
+    let digits = shower.comparison_code().expect("code on B");
 
     // The holder confirms first this time: the sealed details wait in slot 2.
     let held = a.credentials();
     assert_eq!(
         scanner
-            .confirm(&a_relay, Some(&held), now())
+            .confirm(&a_relay, Some(&held), Some(&digits), now())
             .await
             .expect("A confirms"),
         Stage::Sent
     );
     assert_eq!(
         shower
-            .confirm(&b_relay, None, now())
+            .confirm(&b_relay, None, None, now())
             .await
             .expect("B confirms"),
         Stage::WaitingForOther
@@ -340,30 +354,40 @@ async fn a_mismatch_burns_the_mailbox_and_sends_nothing() {
             .announce(&relay, now())
             .await
             .expect("attacker announces"),
-        Stage::Compare
+        Stage::AwaitingAck
     );
     assert_eq!(
         shower.poll(&relay, now()).await.expect("poll"),
         Stage::Compare
     );
-    assert_eq!(attacker.comparison_code(), shower.comparison_code());
+    assert_eq!(
+        attacker
+            .poll(&relay, now())
+            .await
+            .expect("attacker reads the ack"),
+        Stage::Compare
+    );
+    let attackers = attacker.comparison_code().expect("the attacker's digits");
+    assert_eq!(shower.comparison_code(), None);
 
-    // The person's own phone scans: slot 1 is taken, so it shows its own, different code.
+    // The person's own phone scans: slot 1 is taken, so it shows no digits at all.
     let mut scanner = PairingSession::scan(Role::Joiner, &text, now()).expect("scan");
     assert_eq!(
         scanner.announce(&relay, now()).await.expect("announce"),
-        Stage::Compare
+        Stage::AwaitingAck
     );
     assert!(scanner.contested());
-    assert!(scanner.comparison_code().is_some());
-    assert_ne!(scanner.comparison_code(), shower.comparison_code());
+    assert_eq!(scanner.comparison_code(), None);
 
-    // Both are at Compare; the person chooses "They don't match" on the phone.
+    // The person gives up on the phone.
     scanner.abandon(&relay).await;
 
-    // The holder's person confirms anyway: nothing is sealed into the mailbox.
+    // The holder's person types the attacker's digits anyway (told them, say): nothing is sealed
+    // into the mailbox.
     let held = a.credentials();
-    let confirmed = shower.confirm(&relay, Some(&held), now()).await;
+    let confirmed = shower
+        .confirm(&relay, Some(&held), Some(&attackers), now())
+        .await;
     assert!(
         !confirmed.as_ref().is_err_and(keeps_session),
         "{confirmed:?}"
@@ -383,7 +407,7 @@ async fn a_mismatch_burns_the_mailbox_and_sends_nothing() {
     // The attacker, confirming and waiting, gets nothing.
     assert_eq!(
         attacker
-            .confirm(&relay, None, now())
+            .confirm(&relay, None, None, now())
             .await
             .expect("attacker confirms"),
         Stage::WaitingForOther
@@ -411,27 +435,36 @@ async fn a_holder_confirming_an_attackers_code_seals_nothing() {
         .await
         .expect("attacker announces");
     shower.poll(&relay, now()).await.expect("poll");
+    attacker
+        .poll(&relay, now())
+        .await
+        .expect("attacker reads the ack");
+    let attackers = attacker.comparison_code().expect("the attacker's digits");
 
     // The contested phone closes slot 2 with a cancel marker before anyone confirms.
     let mut scanner = PairingSession::scan(Role::Joiner, &text, now()).expect("scan");
     scanner.announce(&relay, now()).await.expect("announce");
     assert!(scanner.contested());
     assert_eq!(
-        command_key(scanner.confirm(&relay, None, now()).await),
+        command_key(scanner.confirm(&relay, None, None, now()).await),
         "validation.syncPairingCodeUsed",
         "a contested scan cannot confirm"
     );
 
-    // The holder's person confirms the attacker's code before the phone gives up: the slot-2
+    // The holder's person types the attacker's digits before the phone gives up: the slot-2
     // write meets the marker, and the attacker reads "cancelled".
     let held = a.credentials();
     assert_eq!(
-        command_key(shower.confirm(&relay, Some(&held), now()).await),
+        command_key(
+            shower
+                .confirm(&relay, Some(&held), Some(&attackers), now())
+                .await
+        ),
         "validation.syncPairingFailed"
     );
     assert_eq!(shower.stage(), Stage::Compare, "the holder sent nothing");
     attacker
-        .confirm(&relay, None, now())
+        .confirm(&relay, None, None, now())
         .await
         .expect("attacker confirms");
     assert_eq!(
@@ -490,33 +523,38 @@ async fn a_lost_slot_1_answer_is_taken_as_ours() {
     // The retry (the next poll) meets its own write: the relay answers 409, read as ours.
     assert_eq!(
         scanner.poll(&lossy, now()).await.expect("retry"),
-        Stage::Compare
+        Stage::AwaitingAck
     );
     assert!(!scanner.contested(), "our own write is no contest");
     assert_eq!(
         shower.poll(&relay, now()).await.expect("poll"),
         Stage::Compare
     );
-    assert_eq!(scanner.comparison_code(), shower.comparison_code());
-    assert!(scanner.comparison_code().is_some());
+    assert_eq!(
+        scanner.poll(&relay, now()).await.expect("read the ack"),
+        Stage::Compare
+    );
+    let digits = scanner.comparison_code().expect("the joiner's digits");
 
     // The holder's slot-2 write loses its answer too: its second confirm meets its own sealed
     // details (409) and counts them as sent; the joiner opens the first copy.
     let held = a.credentials();
     scanner
-        .confirm(&relay, None, now())
+        .confirm(&relay, None, None, now())
         .await
         .expect("joiner confirms");
     let lossy = LosesFirstPutAnswer {
         relay: &relay,
         lost: AtomicBool::new(false),
     };
-    let first = shower.confirm(&lossy, Some(&held), now()).await;
+    let first = shower
+        .confirm(&lossy, Some(&held), Some(&digits), now())
+        .await;
     assert!(first.as_ref().is_err_and(keeps_session), "{first:?}");
     assert_eq!(shower.stage(), Stage::Compare);
     assert_eq!(
         shower
-            .confirm(&lossy, Some(&held), now())
+            .confirm(&lossy, Some(&held), Some(&digits), now())
             .await
             .expect("holder confirms again"),
         Stage::Sent

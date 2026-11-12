@@ -319,23 +319,12 @@ impl Transcript {
         bool::from(self.ack()[..].ct_eq(slot3))
     }
 
-    /// Whether the person typed this exchange's code: six ASCII digits, optionally with one space
-    /// or `-` after the third, compared with `code_text()` in constant time. Anything else (other
-    /// characters, leading or trailing blanks, another length) is false.
+    /// Whether the person typed this exchange's code (`typed_code_digits`), compared with
+    /// `code_text()` in constant time. Input that is not six digits is false.
     pub fn code_matches(&self, typed: &str) -> bool {
-        let bytes = typed.as_bytes();
-        let mut digits = Zeroizing::new([0u8; 6]);
-        match bytes.len() {
-            6 => digits.copy_from_slice(bytes),
-            7 if bytes[3] == b' ' || bytes[3] == b'-' => {
-                digits[..3].copy_from_slice(&bytes[..3]);
-                digits[3..].copy_from_slice(&bytes[4..]);
-            }
-            _ => return false,
-        }
-        if !digits.iter().all(u8::is_ascii_digit) {
+        let Some(digits) = typed_code_digits(typed) else {
             return false;
-        }
+        };
         let expected = Zeroizing::new(self.code_text());
         bool::from(digits[..].ct_eq(expected.as_bytes()))
     }
@@ -354,6 +343,38 @@ impl Transcript {
     fn ad(&self) -> &[u8; AD_LEN] {
         &self.ad
     }
+}
+
+/// The six ASCII digits of a typed comparison code: six digits, optionally with one space or `-`
+/// after the third; full-width digits (U+FF10–U+FF19, as some keyboards type them) count as their
+/// ASCII digit. Anything else (other characters, leading or trailing blanks, another length) is
+/// `None`. Depends on the typed text only, never on a secret.
+pub fn typed_code_digits(typed: &str) -> Option<Zeroizing<[u8; 6]>> {
+    const SEPARATOR: u8 = 0;
+    let mut chars = Zeroizing::new([0u8; 7]);
+    let mut len = 0;
+    for c in typed.chars() {
+        if len == chars.len() {
+            return None;
+        }
+        chars[len] = match c {
+            '0'..='9' => c as u8,
+            '\u{FF10}'..='\u{FF19}' => b'0' + (u32::from(c) - 0xFF10) as u8,
+            ' ' | '-' => SEPARATOR,
+            _ => return None,
+        };
+        len += 1;
+    }
+    let mut digits = Zeroizing::new([0u8; 6]);
+    match len {
+        6 => digits.copy_from_slice(&chars[..6]),
+        7 if chars[3] == SEPARATOR => {
+            digits[..3].copy_from_slice(&chars[..3]);
+            digits[3..].copy_from_slice(&chars[4..]);
+        }
+        _ => return None,
+    }
+    digits.iter().all(u8::is_ascii_digit).then_some(digits)
 }
 
 impl fmt::Debug for Transcript {

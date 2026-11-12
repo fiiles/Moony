@@ -393,6 +393,19 @@ fn an_ack_for_a_substituted_key_does_not_verify() {
 }
 
 #[test]
+fn an_ack_for_the_same_keys_under_another_mailbox_does_not_verify() {
+    let other = MailboxId([0x34; 16]);
+    let elsewhere = derive(
+        &StaticSecret::from(S_SECRET),
+        Side::Shower,
+        &c_pub(),
+        &other,
+    )
+    .unwrap();
+    assert!(!scanner().verify_ack(&elsewhere.ack()));
+}
+
+#[test]
 fn a_tampered_or_short_ack_is_refused() {
     let c = scanner();
     let good = shower().ack();
@@ -417,8 +430,17 @@ fn a_tampered_or_short_ack_is_refused() {
 fn the_typed_code_is_checked_exactly() {
     let t = shower();
     assert_eq!(t.code_text(), "482686");
-    for typed in ["482686", "482 686", "482-686"] {
+    // Full-width digits (U+FF10–U+FF19) count as their ASCII digit.
+    for typed in [
+        "482686",
+        "482 686",
+        "482-686",
+        "４８２６８６",
+        "４８２ ６８６",
+        "48２6８6",
+    ] {
         assert!(t.code_matches(typed), "{typed:?}");
+        assert!(typed_code_digits(typed).is_some(), "{typed:?}");
     }
     for typed in [
         "482687",
@@ -433,10 +455,24 @@ fn the_typed_code_is_checked_exactly() {
         "482_686",
         "482--686",
         "482 -686",
-        "４８２６８６",
+        "４８２６８７",
+        "４８２　６８６",
+        "٤٨٢٦٨٦",
     ] {
         assert!(!t.code_matches(typed), "{typed:?}");
     }
+    // Only input of another shape is not six digits; a wrong six-digit code is.
+    for typed in [
+        "48268",
+        "482686 ",
+        "48 2686",
+        "482_686",
+        "４８２　６８６",
+        "",
+    ] {
+        assert!(typed_code_digits(typed).is_none(), "{typed:?}");
+    }
+    assert!(typed_code_digits("482687").is_some());
     let seven = Transcript {
         code: 7,
         ..shower()
@@ -662,10 +698,15 @@ fn secrets_are_wiped_on_drop() {
     let _: &Zeroizing<[u8; 32]> = &t.ack_key;
 }
 
-// Audit M2 (relay grinds a matching scanner key): flipped by the pairing-identity task.
+// Audit M2, after Task 13 of the audit-fix plan: this stays true. Six digits can always be ground
+// (about 10^6 X25519 keys); nothing in the code itself stops it. The defence is the ordering of
+// the acknowledgement (slot 3): the scanner shows its digits only after the shower proved it
+// derived its transcript from the scanner's own key, so by the time the digits are on a screen a
+// key ground to match them is useless (`session_audit_tests::
+// a_scanner_shows_no_digits_before_a_valid_ack`).
 #[test]
 #[ignore = "grinds about 10^6 X25519 keys"]
-fn poc_m2_relay_that_sees_the_phones_digits_grinds_a_matching_scanner_key() {
+fn the_six_digits_alone_can_be_ground() {
     let s_pub = public(S_SECRET);
     let phone = derive(
         &StaticSecret::from(C_SECRET),

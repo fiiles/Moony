@@ -60,24 +60,30 @@ async fn pair(vault: &Vault, holder: &TestConn, joiner_shows: bool) -> Credentia
     };
     assert_eq!(
         scanner.announce(&vault.relay, NOW).await.expect("announce"),
-        Stage::Compare
+        Stage::AwaitingAck
     );
     assert_eq!(
         shower.poll(&vault.relay, NOW).await.expect("read the scan"),
         Stage::Compare
     );
-    assert_eq!(shower.comparison_code(), scanner.comparison_code());
+    assert_eq!(
+        scanner.poll(&vault.relay, NOW).await.expect("read the ack"),
+        Stage::Compare
+    );
+    let digits = joiner_session
+        .comparison_code()
+        .expect("the joiner's digits");
 
     assert_eq!(
         joiner_session
-            .confirm(&vault.relay, None, NOW)
+            .confirm(&vault.relay, None, None, NOW)
             .await
             .expect("joiner confirms"),
         Stage::WaitingForOther
     );
     assert_eq!(
         holder_session
-            .confirm(&vault.relay, Some(&creds), NOW)
+            .confirm(&vault.relay, Some(&creds), Some(&digits), NOW)
             .await
             .expect("holder confirms"),
         Stage::Sent

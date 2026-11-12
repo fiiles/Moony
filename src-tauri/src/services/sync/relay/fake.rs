@@ -90,6 +90,8 @@ struct FakeState {
     lose_put_answer: bool,
     /// Routes whose next successful call stores its effect, then answers `Server(503)`.
     lose_answers: Vec<Route>,
+    /// A sync server from before slot 3: every call on slot 3 answers `BadRequest("bad_slot")`.
+    without_slot_3: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

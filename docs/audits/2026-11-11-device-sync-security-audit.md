@@ -269,8 +269,14 @@ fixed or consciously accepted.
 
 - Nine added PoC tests pass in the scratch worktree (they assert the faulty behaviour).
 - The two existing tests cited under H2 and M7 pass.
-- The M2 grind test is `#[ignore]`; its result is recorded in the summary message that accompanies
-  this report.
+- The M2 grind test (`#[ignore]`) passes: it found a scanner key whose six digits equal the phone's
+  after 16,605,568 loop steps in 7,115 s. The loop counter overstates the work eight times over,
+  because X25519 clamping maps eight consecutive seeds to one key, so about 2.1 million distinct
+  keys were tried (the expected number is 10^6). The run was one thread of an unoptimised test
+  build, about 2,300 derivations a second, which does not fit the mailbox's 10-minute lifetime.
+  An optimised build on several cores should do 10^6 derivations in seconds; that figure is an
+  estimate and was not measured. The test proves that a matching key exists and is accepted by the
+  showing device, not that the attack fits the window.
 - Relay suite on `feat/dev-grant`: 97 pass, 1 fails (M13).
 
 ## Residual risks

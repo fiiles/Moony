@@ -10,12 +10,11 @@
 //! default or a self-hosted one, ruling SH-2): the caller builds it with
 //! `HttpRelay::new(&creds.relay_url)`, never from `default_base_url()` (`MOONY_RELAY_URL`).
 
-use std::fs::File;
-use std::io;
 use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
 
+use super::backups;
 use super::binding::{self, BindingNative};
 use super::capture::{self, guard};
 use super::devices;
@@ -33,13 +32,8 @@ use super::relay::{Relay, RelayError};
 use super::snapshot::RestoreReport;
 use super::state;
 use crate::error::{AppError, Result};
-use crate::services::backup;
-use crate::services::crypto;
 
-/// The repair's backups, next to the profile: `sync-repair-<unix>.zip` (`-<n>` added when a backup
-/// of that second exists). They stay until Delete Account (`auth::remove_account_files`).
-pub const REPAIR_BACKUP_PREFIX: &str = "sync-repair-";
-pub const REPAIR_BACKUP_SUFFIX: &str = ".zip";
+pub use super::backups::{PREFIX as REPAIR_BACKUP_PREFIX, SUFFIX as REPAIR_BACKUP_SUFFIX};
 
 const NO_SNAPSHOT: &str = "validation.syncVaultHasNoSnapshot";
 const ALREADY_ENABLED: &str = "validation.syncAlreadyEnabled";
@@ -48,7 +42,6 @@ const KIT_ACCOUNT_INVALID: &str = "validation.syncRecoveryAccountInvalid";
 const KIT_VAULT_NOT_FOUND: &str = "validation.syncRecoveryVaultNotFound";
 const KIT_ROTATED: &str = "validation.syncRecoveryKitRotated";
 const DRAIN_INCOMPLETE: &str = "validation.syncRepairDrainIncomplete";
-const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// This device joins the vault of `creds` by replacing its data with the vault's newest snapshot
 /// (D22; the caller has made the backup). Holds off every round of the profile
@@ -465,49 +458,8 @@ async fn drained<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> SyncRe
     Ok(pending == 0)
 }
 
-/// Step 1 of `repair_capture` and `resync_by_replace`, step 2 of `join_new_device`: writes the
-/// backup to a free name, flushes it and reads it back.
+/// Step 1 of `repair_capture` and `resync_by_replace`, step 2 of `join_new_device`: the verified
+/// backup (`backups::write_verified`).
 fn back_up<D: ConnAccess>(db: &D, data_dir: &Path, now: i64) -> Result<PathBuf> {
-    let dest = free_backup_path(data_dir, now)?;
-    db.with_conn(|conn| backup::create_backup(conn, data_dir, &dest, APP_VERSION))?;
-    File::open(&dest)?.sync_all()?;
-    crypto::sync_parent_dir(&dest)?;
-    read_back(&dest)?;
-    Ok(dest)
-}
-
-/// `sync-repair-<now>.zip`, or `sync-repair-<now>-<n>.zip` with the first `n` from 2 that is free.
-fn free_backup_path(data_dir: &Path, now: i64) -> Result<PathBuf> {
-    let first = data_dir.join(format!("{REPAIR_BACKUP_PREFIX}{now}{REPAIR_BACKUP_SUFFIX}"));
-    if !first.try_exists()? {
-        return Ok(first);
-    }
-    for n in 2u32.. {
-        let next = data_dir.join(format!(
-            "{REPAIR_BACKUP_PREFIX}{now}-{n}{REPAIR_BACKUP_SUFFIX}"
-        ));
-        if !next.try_exists()? {
-            return Ok(next);
-        }
-    }
-    Err(AppError::Internal(
-        "sync repair: no free backup name".into(),
-    ))
-}
-
-/// The archive is one the app restores (`backup::inspect_backup`: its layout, its manifest, every
-/// listed file present, not newer than this build), and every entry reads to its end, so the zip
-/// checks each one's CRC.
-fn read_back(path: &Path) -> Result<()> {
-    let unreadable = || AppError::Internal("sync repair: the backup does not read back".into());
-    let inspection = backup::inspect_backup(path, &crate::db::known_migration_names())?;
-    if inspection.newer_than_app {
-        return Err(unreadable());
-    }
-    let mut archive = zip::ZipArchive::new(File::open(path)?).map_err(|_| unreadable())?;
-    for i in 0..archive.len() {
-        let mut entry = archive.by_index(i).map_err(|_| unreadable())?;
-        io::copy(&mut entry, &mut io::sink()).map_err(|_| unreadable())?;
-    }
-    Ok(())
+    db.with_conn(|conn| backups::write_verified(conn, data_dir, now))
 }

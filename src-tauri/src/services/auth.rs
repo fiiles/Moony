@@ -728,8 +728,10 @@ pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
             let name = entry.file_name().to_string_lossy().into_owned();
             // The database files, their -wal/-shm/-journal side files and `.bak-<ts>` copies, and
             // the sync repair's backups (`sync-repair-*.zip`, ruling P24).
+            // That covers the `-kept` / `-unused` marks and `.zip.partial` leftovers too.
             let repair_backup = name.starts_with(join::REPAIR_BACKUP_PREFIX)
-                && name.ends_with(join::REPAIR_BACKUP_SUFFIX);
+                && (name.ends_with(join::REPAIR_BACKUP_SUFFIX)
+                    || name.ends_with(crate::services::sync::backups::PARTIAL_SUFFIX));
             if repair_backup || databases.iter().any(|db| name.starts_with(db)) {
                 remove(entry.path());
             }
@@ -1828,6 +1830,9 @@ mod tests {
         for name in [
             "sync-repair-1790000000.zip",
             "sync-repair-1790000000-2.zip",
+            "sync-repair-1790000000-3.zip.partial",
+            "sync-repair-1790000000-kept.zip",
+            "sync-repair-1790000000-unused.zip",
             "sync-repair-1790000000.txt",
             "sync-repair.zip",
             "unrelated.txt",

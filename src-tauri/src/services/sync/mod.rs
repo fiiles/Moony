@@ -8,6 +8,7 @@
 //! capture-broken profile (`join`), and first-device setup, turning sync off and deleting the
 //! synced data (`setup`).
 
+pub mod backups;
 pub mod binding;
 pub mod capture;
 pub mod chain;

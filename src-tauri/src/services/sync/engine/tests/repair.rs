@@ -559,8 +559,8 @@ async fn a_backup_that_does_not_read_back_stops_the_repair_before_the_drain() {
     assert!(read_back, "{error:?}");
     assert_eq!(
         repair_backups(dir.path()),
-        vec![format!("sync-repair-{NOW}.zip")],
-        "the file stays"
+        Vec::<String>::new(),
+        "a backup that does not read back leaves no file"
     );
 }
 

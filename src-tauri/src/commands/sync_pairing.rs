@@ -27,7 +27,6 @@ use std::time::Duration;
 
 use rusqlite::Connection;
 use tauri::{AppHandle, State};
-
 use zeroize::Zeroizing;
 
 use super::sync::{

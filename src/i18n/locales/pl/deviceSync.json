@@ -231,6 +231,7 @@
     "typePrompt": "Wpisz sześć cyfr wyświetlonych na drugim urządzeniu",
     "attemptsLeft": "Pozostałe próby: {{count}}",
     "showPrompt": "Wpisz ten kod na drugim urządzeniu. Gdy pokaże, że kod jest poprawny, kontynuuj tutaj.",
+    "notStartedWarning": "Jeśli to nie Ty rozpocząłeś to parowanie, anuluj je.",
     "connecting": "Bezpieczne łączenie…",
     "serverHost": "Serwer synchronizacji: {{host}}",
     "contested": "Inne urządzenie odpowiedziało na ten kod jako pierwsze, więc to parowanie nie może być kontynuowane. Anuluj je tutaj i zacznij od nowa na obu urządzeniach.",

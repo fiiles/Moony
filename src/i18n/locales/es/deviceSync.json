@@ -230,6 +230,7 @@
     "typePrompt": "Escribe los seis dígitos que aparecen en tu otro dispositivo",
     "attemptsLeft": "Intentos restantes: {{count}}",
     "showPrompt": "Escribe este código en tu otro dispositivo. Continúa aquí cuando te diga que el código es correcto.",
+    "notStartedWarning": "Si no has iniciado tú esta vinculación, cancélala.",
     "connecting": "Conectando de forma segura…",
     "serverHost": "Servidor de sincronización: {{host}}",
     "contested": "Otro dispositivo respondió primero a este código, así que esta vinculación no puede continuar. Cancela aquí y vuelve a empezar en ambos dispositivos.",

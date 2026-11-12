@@ -229,6 +229,7 @@
     "typePrompt": "Skriv de sex siffrorna som visas på den andra enheten",
     "attemptsLeft": "Försök kvar: {{count}}",
     "showPrompt": "Skriv den här koden på den andra enheten. Fortsätt här när den säger att koden är rätt.",
+    "notStartedWarning": "Om du inte startade den här parkopplingen själv, avbryt den.",
     "connecting": "Ansluter säkert …",
     "serverHost": "Synkroniseringsserver: {{host}}",
     "contested": "En annan enhet svarade på den här koden först, så parkopplingen kan inte fortsätta. Avbryt här och börja om på båda enheterna.",

@@ -229,6 +229,7 @@
     "typePrompt": "Skriv inn de seks sifrene som vises på den andre enheten",
     "attemptsLeft": "Gjenstående forsøk: {{count}}",
     "showPrompt": "Skriv inn denne koden på den andre enheten. Fortsett her når den sier at koden er riktig.",
+    "notStartedWarning": "Hvis du ikke startet denne koblingen selv, avbryter du den.",
     "connecting": "Kobler til på en sikker måte …",
     "serverHost": "Synkroniseringsserver: {{host}}",
     "contested": "En annen enhet svarte på denne koden først, så denne koblingen kan ikke fortsette. Avbryt her og start på nytt på begge enhetene.",

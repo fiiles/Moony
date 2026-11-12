@@ -142,6 +142,9 @@ export function PairingSheet({
           <div className="space-y-3">
             {digits}
             <p className="m-0 text-center text-m-lead text-ink-2">{t('pairing.showPrompt')}</p>
+            <p className="m-0 text-center text-m-lead font-500 text-ink-2">
+              {t('pairing.notStartedWarning')}
+            </p>
             {confirmMessage && <InlineAlert icon={AlertTriangle}>{confirmMessage}</InlineAlert>}
           </div>
         );

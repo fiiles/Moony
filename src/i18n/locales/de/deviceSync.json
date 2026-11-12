@@ -229,6 +229,7 @@
     "typePrompt": "Geben Sie die sechs Ziffern ein, die auf Ihrem anderen Gerät angezeigt werden",
     "attemptsLeft": "Verbleibende Versuche: {{count}}",
     "showPrompt": "Geben Sie diesen Code auf Ihrem anderen Gerät ein. Fahren Sie hier fort, sobald dort steht, dass der Code stimmt.",
+    "notStartedWarning": "Wenn Sie diese Kopplung nicht selbst gestartet haben, brechen Sie sie ab.",
     "connecting": "Sichere Verbindung wird aufgebaut …",
     "serverHost": "Synchronisierungsserver: {{host}}",
     "contested": "Ein anderes Gerät hat diesen Code zuerst beantwortet, daher kann diese Kopplung nicht fortgesetzt werden. Brechen Sie sie hier ab und beginnen Sie auf beiden Geräten von vorn.",

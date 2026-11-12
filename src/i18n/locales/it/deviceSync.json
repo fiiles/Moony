@@ -230,6 +230,7 @@
     "typePrompt": "Digita le sei cifre mostrate sull'altro dispositivo",
     "attemptsLeft": "Tentativi rimasti: {{count}}",
     "showPrompt": "Digita questo codice sull'altro dispositivo. Continua qui quando ti dice che il codice è corretto.",
+    "notStartedWarning": "Se non hai avviato tu questa associazione, annullala.",
     "connecting": "Connessione sicura in corso…",
     "serverHost": "Server di sincronizzazione: {{host}}",
     "contested": "Un altro dispositivo ha risposto per primo a questo codice, quindi questa associazione non può proseguire. Annulla qui e ricomincia su entrambi i dispositivi.",

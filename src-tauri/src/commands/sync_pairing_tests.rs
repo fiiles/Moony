@@ -215,19 +215,17 @@ fn the_view_names_a_custom_server_and_the_holders_attempts() {
     );
 }
 
-#[test]
-fn a_holder_at_compare_has_no_digits_and_all_its_attempts() {
+#[tokio::test]
+async fn a_holder_at_compare_has_no_digits_and_all_its_attempts() {
     use crate::services::sync::pairing::Role as R;
     let relay = FakeRelay::new();
     let shower = PairingSession::show(R::Joiner, HOME, T0).expect("shower");
     let text = pairing_code_text(&shower.code());
     let mut shower = shower;
     let mut holder = PairingSession::scan(R::Holder, &text, T0).expect("scanner");
-    futures::executor::block_on(async {
-        holder.announce(&relay, T0).await.expect("announce");
-        shower.poll(&relay, T0).await.expect("acknowledge");
-        holder.poll(&relay, T0).await.expect("verify");
-    });
+    holder.announce(&relay, T0).await.expect("announce");
+    shower.poll(&relay, T0).await.expect("acknowledge");
+    holder.poll(&relay, T0).await.expect("verify");
     assert_eq!(holder.stage(), Stage::Compare);
     let view = view_of(&holder, false).expect("view");
     assert_eq!(view.stage, PairingStage::Compare);

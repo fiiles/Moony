@@ -21,7 +21,7 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const status = useDeviceSyncStatus().data;
-  const { view, error, isError, start, confirm, cancel } = useDevicePairing();
+  const { view, error, isError, start, confirm, confirmError, cancel } = useDevicePairing();
 
   const close = async () => {
     try {
@@ -55,7 +55,7 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
     );
   }
 
-  // A wrong or momentary answer shows under the field (`confirm.error`); one that ended the pairing
+  // A wrong or momentary answer shows under the field (`confirmError`); one that ended the pairing
   // is `error`, and the dialog offers to start again.
   const handleConfirm = (typedCode?: string) => {
     confirm.mutate(typedCode);
@@ -88,7 +88,7 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
           scanHint={t('pairing.scanHint')}
           devTools={status?.devTools === true}
           error={isError ? (error as Error) : null}
-          confirmError={confirm.isError ? confirm.error : null}
+          confirmError={confirmError}
           onConfirm={handleConfirm}
           confirming={confirm.isPending}
         />

@@ -231,6 +231,7 @@
     "typePrompt": "Zadejte šest číslic zobrazených na druhém zařízení",
     "attemptsLeft": "Zbývající pokusy: {{count}}",
     "showPrompt": "Zadejte tento kód na druhém zařízení. Až tam uvidíte, že je kód správný, pokračujte tady.",
+    "notStartedWarning": "Pokud jste toto párování nezahájili vy, zrušte ho.",
     "connecting": "Zabezpečené připojování…",
     "serverHost": "Synchronizační server: {{host}}",
     "contested": "Na tento kód odpovědělo jako první jiné zařízení, takže v tomto párování nelze pokračovat. Zrušte ho tady a začněte znovu na obou zařízeních.",

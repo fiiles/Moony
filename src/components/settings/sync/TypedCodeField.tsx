@@ -1,4 +1,4 @@
-import { useId, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,13 @@ export function TypedCodeField({
 }: TypedCodeFieldProps) {
   const { t } = useTranslation('deviceSync');
   const id = useId();
+  const input = useRef<HTMLInputElement>(null);
+  // A disabled field loses focus: when it is enabled again after a confirm, the person types on.
+  const wasDisabled = useRef(disabled);
+  useEffect(() => {
+    if (wasDisabled.current && !disabled) input.current?.focus();
+    wasDisabled.current = disabled;
+  }, [disabled]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -55,6 +62,7 @@ export function TypedCodeField({
       </Label>
       <Input
         id={id}
+        ref={input}
         type="text"
         inputMode="numeric"
         autoComplete="one-time-code"

@@ -145,6 +145,9 @@ export function PairingSteps({
               {formatComparisonCode(view.comparisonCode ?? '')}
             </div>
             <p className="m-0 text-center text-body text-ink-2">{t('pairing.showPrompt')}</p>
+            <p className="m-0 text-center text-body font-500 text-ink-2">
+              {t('pairing.notStartedWarning')}
+            </p>
             {confirmError && (
               <p role="alert" className="m-0 text-center text-micro text-loss">
                 {translateApiError(confirmError, tc)}

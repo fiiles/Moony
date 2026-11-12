@@ -229,6 +229,7 @@
     "typePrompt": "Type the six digits shown on your other device",
     "attemptsLeft": "Attempts left: {{count}}",
     "showPrompt": "Type this code on your other device. Continue here once it says the code is right.",
+    "notStartedWarning": "If you did not start this pairing, cancel.",
     "connecting": "Connecting securely…",
     "serverHost": "Sync server: {{host}}",
     "contested": "Another device answered this code first, so this pairing cannot go on. Cancel here and start again on both devices.",

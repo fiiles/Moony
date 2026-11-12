@@ -228,6 +228,7 @@
     "typePrompt": "请输入另一台设备上显示的六位数字",
     "attemptsLeft": "剩余尝试次数：{{count}}",
     "showPrompt": "请在另一台设备上输入此代码。待其显示代码正确后，再在此继续。",
+    "notStartedWarning": "如果此次配对不是您发起的，请取消。",
     "connecting": "正在安全连接…",
     "serverHost": "同步服务器：{{host}}",
     "contested": "另一台设备已抢先响应此代码，因此无法继续此次配对。请在此取消，并在两台设备上重新开始。",

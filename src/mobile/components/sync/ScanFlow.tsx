@@ -262,7 +262,7 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
   };
 
   // The holder's typed digits, or the joiner's Continue: a failure shows in the sheet
-  // (`confirm.error`), and one that ended the pairing is `pairing.error`.
+  // (`confirmError`), and one that ended the pairing is `pairing.error`.
   const handleConfirm = (typedCode?: string) => {
     pairing.confirm.mutate(typedCode);
   };
@@ -435,7 +435,7 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
           open={step === 'pairing' && !pairing.join.isPending}
           view={view}
           pollError={pairing.isError ? (pairing.error as Error) : null}
-          confirmError={pairing.confirm.isError ? pairing.confirm.error : null}
+          confirmError={pairing.confirmError}
           onConfirm={handleConfirm}
           confirming={pairing.confirm.isPending}
           onClose={() => void giveUp()}

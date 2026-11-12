@@ -39,7 +39,7 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
   const { t: tc } = useTranslation('common');
   const status = useDeviceSyncStatus().data;
   const pairing = useDevicePairing();
-  const { error, isError, start, confirm, cancel, join, afterFailedJoin } = pairing;
+  const { error, isError, start, confirm, confirmError, cancel, join, afterFailedJoin } = pairing;
   const { turnOff } = useDeviceSyncMutations();
   // A successful join clears the pairing before the dialog closes: keep showing its last step.
   const lastView = useRef(pairing.view);
@@ -108,7 +108,7 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
     }
   };
 
-  // Continue: the joiner's confirm gate. A failure shows under the digits (`confirm.error`).
+  // Continue: the joiner's confirm gate. A failure shows under the digits (`confirmError`).
   const handleConfirm = () => {
     confirm.mutate(undefined);
   };
@@ -190,16 +190,14 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
       <DialogContent className="max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{t('join.pairTitle')}</DialogTitle>
-          <DialogDescription>
-            {view.stage === 'compare' && !isError ? t('pairing.showTitle') : t('join.warning')}
-          </DialogDescription>
+          <DialogDescription>{t('join.warning')}</DialogDescription>
         </DialogHeader>
         <PairingSteps
           view={view}
           scanHint={t('join.pairHint')}
           devTools={status?.devTools === true}
           error={isError ? (error as Error) : null}
-          confirmError={confirm.isError ? confirm.error : null}
+          confirmError={confirmError}
           onConfirm={handleConfirm}
           confirming={confirm.isPending}
           joining={join.isPending}

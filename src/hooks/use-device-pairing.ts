@@ -37,7 +37,7 @@ function isTypedCodeProblem(failure: unknown): boolean {
  * `error` / `isError` report a failed poll (expired, cancelled by the other device, unreachable)
  * or a confirm that ended the pairing (a third wrong code, someone else answering, an old sync
  * server): the screen shows the message and offers to start again. A confirm that keeps the pairing
- * (a wrong or incomplete code with attempts left, a momentary failure) is `confirm.error` and the
+ * (a wrong or incomplete code with attempts left, a momentary failure) is `confirmError` and the
  * view is read again for `attemptsLeft`. Polling stops on an error and once `expiresAt` has passed. After a failed `join`,
  * `afterFailedJoin` asks the backend whether it kept the received session (`joinFailureAction`).
  */
@@ -92,11 +92,17 @@ export function useDevicePairing() {
   useEffect(() => {
     if (scan.isSuccess) scan.reset();
   }, [scan, scan.isSuccess]);
+  // The last confirm's answer when the pairing went on, held here because the mutation is reset
+  // as soon as it settles: its variables are the typed digits and must not linger.
+  const [confirmFailure, setConfirmFailure] = useState<Error | null>(null);
   const confirm = useMutation({
     // The holder's typed digits; the joiner's confirm has none.
     mutationFn: (typedCode?: string) => deviceSyncApi.pairingConfirm(typedCode),
+    gcTime: 0,
+    onMutate: () => setConfirmFailure(null),
     onSuccess: setView,
     onError: async (failure) => {
+      setConfirmFailure(failure);
       // Polling is off while comparing: ask once, for `attemptsLeft`, and to learn whether the
       // pairing is still there.
       try {
@@ -106,6 +112,9 @@ export function useDevicePairing() {
       }
     },
   });
+  useEffect(() => {
+    if (confirm.isSuccess || confirm.isError) confirm.reset();
+  }, [confirm, confirm.isSuccess, confirm.isError]);
   // A join that succeeded ended the pairing by itself: nothing is left to cancel on unmount.
   const joined = useRef(false);
   const join = useMutation({
@@ -138,6 +147,7 @@ export function useDevicePairing() {
     start.reset();
     scan.reset();
     confirm.reset();
+    setConfirmFailure(null);
     setEnded(null);
     try {
       await deviceSyncApi.pairingCancel();
@@ -168,6 +178,7 @@ export function useDevicePairing() {
     start,
     scan,
     confirm,
+    confirmError: confirmFailure,
     cancel,
     join,
     afterFailedJoin,

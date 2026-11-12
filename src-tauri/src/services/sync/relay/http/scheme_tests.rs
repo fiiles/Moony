@@ -20,7 +20,11 @@ fn plain_http_is_a_debug_build_convenience() {
 #[test]
 fn a_local_http_address_is_accepted_in_debug_builds_only() {
     for url in ["http://127.0.0.1:8787", "http://localhost:8787/"] {
-        assert_eq!(validate_base_url(url).is_ok(), cfg!(debug_assertions), "{url}");
+        assert_eq!(
+            validate_base_url(url).is_ok(),
+            cfg!(debug_assertions),
+            "{url}"
+        );
         assert_eq!(HttpRelay::new(url).is_ok(), cfg!(debug_assertions), "{url}");
     }
     assert!(validate_base_url("https://sync.moonyfinance.com").is_ok());

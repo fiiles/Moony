@@ -208,7 +208,8 @@ function UnlockScreen({
   onLanguageChange: (language: SupportedLanguage) => void;
   onForgot: () => void;
 }) {
-  const { unlockMutation, unlockWithBiometricsMutation, lockMutation } = useAuth();
+  const { unlockMutation, unlockWithPassword, unlockWithBiometricsMutation, lockMutation } =
+    useAuth();
   const { t } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
   const { t: tm } = useTranslation('mobile');
@@ -280,7 +281,7 @@ function UnlockScreen({
 
   const submit = (data: z.infer<typeof unlockSchema>) => {
     if (pending || biometricPending) return;
-    unlockMutation.mutate(data, {
+    unlockWithPassword(data, {
       onError: (error) => {
         if (!isAuthApiError(error)) return;
         form.resetField('password');

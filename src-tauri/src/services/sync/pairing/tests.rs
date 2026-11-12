@@ -493,3 +493,41 @@ fn secrets_are_wiped_on_drop() {
     wiped::<x25519_dalek::StaticSecret>();
     wiped::<Zeroizing<[u8; 32]>>();
 }
+
+// Audit M2 (relay grinds a matching scanner key): flipped by the pairing-identity task.
+#[test]
+#[ignore = "grinds about 10^6 X25519 keys"]
+fn poc_m2_relay_that_sees_the_phones_digits_grinds_a_matching_scanner_key() {
+    let s_pub = public(S_SECRET);
+    let phone = derive(
+        &StaticSecret::from(C_SECRET),
+        Side::Scanner,
+        &s_pub,
+        &MAILBOX,
+    )
+    .unwrap()
+    .code();
+    let started = std::time::Instant::now();
+    let mut seed = [0u8; 32];
+    for i in 1u64.. {
+        seed[..8].copy_from_slice(&i.to_le_bytes());
+        let m = StaticSecret::from(seed);
+        let Ok(t) = derive(&m, Side::Scanner, &s_pub, &MAILBOX) else {
+            continue;
+        };
+        if t.code() == phone {
+            let m_pub = PublicKey::from(&m).to_bytes();
+            let shower = derive(
+                &StaticSecret::from(S_SECRET),
+                Side::Shower,
+                &m_pub,
+                &MAILBOX,
+            )
+            .unwrap();
+            assert_eq!(shower.code(), phone);
+            assert_ne!(m_pub, public(C_SECRET));
+            eprintln!("AUDIT grind: {i} trials in {:?}", started.elapsed());
+            return;
+        }
+    }
+}

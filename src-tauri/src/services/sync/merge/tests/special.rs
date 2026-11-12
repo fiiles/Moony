@@ -366,3 +366,56 @@ fn tombstones_that_differ_without_a_cascade_parent_do_not_converge() {
 
     assert_converged(&[&a, &b]);
 }
+
+// Audit M6 (forged older clock on sync_devices): flipped by the merge-validation task.
+#[test]
+fn poc_m6_forged_older_clock_takes_over_a_devices_public_key() {
+    let victim = device(A);
+    device_row(&victim, "KA", "Phone A");
+    let forged = row(
+        "sync_devices",
+        "dev-x",
+        clock(1, B),
+        &[
+            ("public_key", text("EVIL")),
+            ("name", text("Phone A")),
+            ("platform", text("ios")),
+            ("app_version", text("1.0")),
+            ("joined_at", SqlValue::Integer(100)),
+        ],
+    );
+    let (cs, hash) = changeset(B, 1, vec![forged]);
+    assert!(matches!(
+        apply_changeset(&victim, &cs, hash, NOW).unwrap(),
+        Outcome::Applied(_)
+    ));
+    assert_eq!(
+        value(&victim, "SELECT public_key FROM sync_devices").as_deref(),
+        Some("EVIL")
+    );
+}
+
+// Audit M6 (maximum clock pins a value): flipped by the merge-validation task.
+#[test]
+fn poc_m6_maximum_clock_pins_a_value_and_later_edits_diverge() {
+    let (a, b) = (device(A), device(B));
+    exec(
+        &a,
+        "INSERT INTO institutions (id, name) VALUES ('i1','Bank')",
+    );
+    apply(&b, &send(&a));
+    let evil = clock(i64::MAX as u64, DeviceId([0xFF; 16]));
+    let pinned = row("institutions", "i1", evil, &[("name", text("Pinned"))]);
+    let (cs, hash) = changeset(C, 1, vec![pinned]);
+    for conn in [&a, &b] {
+        assert!(matches!(
+            apply_changeset(conn, &cs, hash, NOW).unwrap(),
+            Outcome::Applied(_)
+        ));
+    }
+    exec(&a, "UPDATE institutions SET name='Renamed' WHERE id='i1'");
+    apply(&b, &send(&a));
+    let name = |c: &Connection| value(c, "SELECT name FROM institutions WHERE id='i1'");
+    assert_eq!(name(&a).as_deref(), Some("Renamed"));
+    assert_eq!(name(&b).as_deref(), Some("Pinned"));
+}

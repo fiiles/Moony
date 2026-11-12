@@ -11,13 +11,13 @@ use crate::services::sync::relay::fake::{FakeRelay, Route};
 use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
 use crate::services::sync::relay::{RelayError, RelayResult};
 
-const T0: i64 = 1_800_000_000;
-const HOME: &str = "https://sync.home.example.com";
-const S_SECRET: [u8; 32] = [0x11; 32];
+pub(super) const T0: i64 = 1_800_000_000;
+pub(super) const HOME: &str = "https://sync.home.example.com";
+pub(super) const S_SECRET: [u8; 32] = [0x11; 32];
 const C_SECRET: [u8; 32] = [0x22; 32];
-const M_SECRET: [u8; 32] = [0x44; 32];
+pub(super) const M_SECRET: [u8; 32] = [0x44; 32];
 
-fn public(secret: [u8; 32]) -> [u8; 32] {
+pub(super) fn public(secret: [u8; 32]) -> [u8; 32] {
     PublicKey::from(&StaticSecret::from(secret)).to_bytes()
 }
 
@@ -28,7 +28,7 @@ fn key_of(error: &SyncError) -> String {
     }
 }
 
-fn creds() -> Credentials {
+pub(super) fn creds() -> Credentials {
     let keys = VaultKeys::from_parts(
         1,
         std::collections::BTreeMap::from([(0, [0xA0; 32]), (1, [0xA1; 32])]),
@@ -42,7 +42,7 @@ fn creds() -> Credentials {
     }
 }
 
-fn assert_same_creds(got: &Credentials, want: &Credentials) {
+pub(super) fn assert_same_creds(got: &Credentials, want: &Credentials) {
     assert_eq!(got.relay_url, want.relay_url);
     assert_eq!(got.account, want.account);
     assert_eq!(got.vault_id.0, want.vault_id.0);
@@ -53,12 +53,12 @@ fn assert_same_creds(got: &Credentials, want: &Credentials) {
     assert_eq!(epochs(got), epochs(want));
 }
 
-fn id(session: &PairingSession) -> String {
+pub(super) fn id(session: &PairingSession) -> String {
     session.mailbox.to_b64()
 }
 
 /// S shows (fixed secret), C scans S's code (fixed secret).
-fn pair(shower: Role, scanner: Role) -> (PairingSession, PairingSession) {
+pub(super) fn pair(shower: Role, scanner: Role) -> (PairingSession, PairingSession) {
     let s =
         PairingSession::show_with_secret(shower, HOME, T0, StaticSecret::from(S_SECRET)).unwrap();
     let c = PairingSession::scan_with_secret(

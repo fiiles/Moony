@@ -40,6 +40,10 @@ use crate::services::sync::relay::{Mailbox, RelayError};
 #[path = "session_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+#[path = "session_audit_tests.rs"]
+mod audit_tests;
+
 /// How long a pairing lives on this device (the relay's mailbox lives as long from its first
 /// write).
 pub const PAIRING_LIFETIME_SECS: i64 = 600;

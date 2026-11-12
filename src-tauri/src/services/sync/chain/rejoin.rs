@@ -702,3 +702,32 @@ mod tests {
         assert_eq!(clock_of(&y, "i1", "name"), (h, new));
     }
 }
+
+#[cfg(test)]
+mod audit_tests {
+    use super::*;
+    // Audit L1 (rejoins exhaust the id space): flipped by the rejoin-id task.
+    #[test]
+    fn poc_l1_repeated_rejoins_exhaust_the_id_space() {
+        let mut rng = rand::rng();
+        let mut worst = 0;
+        let mut total = 0;
+        for _ in 0..200 {
+            let mut id = DeviceId([0x80; 16]);
+            let mut n = 0;
+            while let Ok(next) = id_above(id, &mut rng) {
+                id = next;
+                n += 1;
+                assert!(n < 2000);
+            }
+            worst = worst.max(n);
+            total += n;
+        }
+        eprintln!(
+            "AUDIT rejoins until exhaustion: mean {} worst {}",
+            total / 200,
+            worst
+        );
+        assert!(worst < 400);
+    }
+}

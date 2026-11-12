@@ -7,6 +7,7 @@ mod join;
 mod join_new;
 mod pull;
 mod push;
+mod relay_faults;
 mod repair;
 mod runtime;
 mod runtime_loop;

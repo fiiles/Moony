@@ -23,7 +23,7 @@ async fn pull(vault: &Vault, device: &TestConn) -> PullReport {
 }
 
 /// One institution written on `device` and sealed into its next envelope.
-fn write_and_seal(vault: &Vault, device: &TestConn, id: &str) -> Vec<u8> {
+pub(super) fn write_and_seal(vault: &Vault, device: &TestConn, id: &str) -> Vec<u8> {
     let conn = device.lock();
     institution(&conn, id);
     seal_from(&conn, &vault.creds)
@@ -583,9 +583,9 @@ type Mangle = fn(u64, PullPage) -> PullPage;
 
 /// A relay that serves `FakeRelay`'s pull pages through `mangle` (given the `after` of the call).
 /// A pull makes no other call.
-struct Mangled<F> {
-    inner: FakeRelay,
-    mangle: F,
+pub(super) struct Mangled<F> {
+    pub(super) inner: FakeRelay,
+    pub(super) mangle: F,
 }
 
 impl<F: Fn(u64, PullPage) -> PullPage + Send + Sync> Relay for Mangled<F> {

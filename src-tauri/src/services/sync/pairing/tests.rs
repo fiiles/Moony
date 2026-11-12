@@ -188,11 +188,15 @@ fn a_code_names_a_sync_server_that_is_not_the_default() {
         parse_pairing_code(&text).unwrap().relay_url.as_deref(),
         Some("https://sync.home.example.com")
     );
-    let local = pairing_code_text(&with("http://127.0.0.1:8787"));
-    assert_eq!(
-        parse_pairing_code(&local).unwrap().relay_url.as_deref(),
-        Some("http://127.0.0.1:8787")
-    );
+    // A local sync server over plain http is a development address: debug builds only
+    // (`relay::http::scheme_allowed`).
+    if cfg!(debug_assertions) {
+        let local = pairing_code_text(&with("http://127.0.0.1:8787"));
+        assert_eq!(
+            parse_pairing_code(&local).unwrap().relay_url.as_deref(),
+            Some("http://127.0.0.1:8787")
+        );
+    }
     // The default server never gets a fourth field, and a fourth field naming it reads as None.
     assert_eq!(pairing_code_text(&with(DEFAULT_RELAY_URL)), FROZEN_TEXT);
     let named = format!(

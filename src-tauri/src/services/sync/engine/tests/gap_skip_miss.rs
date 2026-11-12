@@ -16,6 +16,7 @@ use crate::services::sync::chain::may_upload_snapshot;
 use crate::services::sync::engine::pull::pull_all;
 use crate::services::sync::engine::snapshots::{dump_sealed, heal_missed, SnapshotPolicy};
 use crate::services::sync::engine::{run_round, RoundMode};
+use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::VaultInfo;
 use crate::services::sync::snapshot::{read_record, Record};
 
@@ -163,6 +164,45 @@ async fn a_skipper_uploads_with_the_miss_and_only_a_clean_snapshot_heals() {
         assert_eq!(missed(&conn), None, "healed");
         assert!(has_institution(&conn, "b1"));
     }
+}
+
+/// Final review A, minor 3: a device never downloads its own newest snapshot to heal a miss: the
+/// snapshot carries that very miss and cannot heal it.
+#[tokio::test]
+async fn a_skipper_does_not_download_its_own_snapshot_to_heal() {
+    let vault = vault().await;
+    skipped_on_a(&vault).await;
+    let report = run_round(
+        &vault.relay,
+        &vault.a,
+        &mut SnapshotPolicy::default(),
+        RoundMode::FirstSnapshot,
+        AT,
+        0,
+    )
+    .await
+    .expect("round");
+    assert!(report.snapshot_uploaded, "{report:?}");
+    let info = info(&vault).await;
+    let from = vault.relay.calls().len();
+
+    let healed = heal_missed(
+        &vault.relay,
+        &vault.a,
+        &vault.creds,
+        &mut SnapshotPolicy::default(),
+        &info,
+        AT,
+    )
+    .await
+    .expect("heal");
+
+    assert!(healed.is_none());
+    assert!(
+        !vault.relay.calls()[from..].contains(&Route::GetSnapshot),
+        "its own snapshot is not fetched"
+    );
+    assert_eq!(missed(&vault.a.lock()), Some(2));
 }
 
 #[tokio::test]

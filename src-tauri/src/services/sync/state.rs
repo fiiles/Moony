@@ -391,6 +391,18 @@ pub fn record_snapshot_uploaded(conn: &Connection, seq: u64, max_hlc: u64, at: i
     Ok(())
 }
 
+/// The newest snapshot sequence this device uploaded or restored (`snapshot_seq`), if any.
+pub fn snapshot_seq(conn: &Connection) -> Result<Option<u64>> {
+    let seq: Option<Option<i64>> = conn
+        .query_row(
+            "SELECT snapshot_seq FROM sync_state WHERE id = 1",
+            [],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(seq.flatten().and_then(|seq| u64::try_from(seq).ok()))
+}
+
 /// The vault already holds a newer snapshot than the one this device offered at its barrier
 /// (`409 snapshot_outdated`): the forced upload after a crossing is done (`snapshot_barrier`).
 pub fn note_snapshot_barrier(conn: &Connection) -> Result<()> {

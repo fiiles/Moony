@@ -373,8 +373,9 @@ pub async fn restore_after_410<R: Relay, D: ConnAccess>(
 /// Task 17 I1): when this device has either set and the vault's newest snapshot (by `info`) is at
 /// or past the newer of them, fetches and opens that snapshot and, when it heals the misses
 /// (`chain::snapshot_heals_missed` on its header: a dumper with no miss of either kind, at this
-/// device's barrier or later), restores it by merge, which clears both marks. A
-/// snapshot that does not heal is not restored, and not fetched again
+/// device's barrier or later), restores it by merge, which clears both marks. The vault's newest
+/// snapshot is not fetched when it is this device's own (`state::snapshot_seq`: uploaded or
+/// restored here already). A snapshot that does not heal is not restored, and not fetched again
 /// (`SnapshotPolicy::examined_seq`) until the vault has a newer one; neither is a snapshot whose
 /// restore stopped or that does not open (both are verdicts on its bytes). A transient or local
 /// failure leaves `examined_seq` alone, so the next round tries again. A restore that stops is
@@ -390,15 +391,18 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
     let Some(newest) = info.snapshot_seq else {
         return Ok(None);
     };
-    let missed = db.with_conn(|conn| {
-        Ok(loaded(conn)?
+    let (missed, own) = db.with_conn(|conn| {
+        let missed = loaded(conn)?
             .missed_below_barrier
-            .max(state::skipped_miss(conn)?))
+            .max(state::skipped_miss(conn)?);
+        Ok((missed, state::snapshot_seq(conn)?))
     })?;
     let Some(missed) = missed else {
         return Ok(None);
     };
-    if newest < missed || policy.examined_seq == Some(newest) {
+    // This device's own snapshot (one it uploaded or already restored) carries its miss and
+    // heals nothing: not downloaded (final review A, minor 3).
+    if newest < missed || policy.examined_seq == Some(newest) || own == Some(newest) {
         return Ok(None);
     }
     let blob = relay.get_snapshot(&creds.auth()).await?;
@@ -500,8 +504,8 @@ pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
 /// What `upload_if_due` came to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Upload {
-    /// Nothing was sent: not due, not ready (something waits to go out, a below-barrier miss), or
-    /// a snapshot was found too large less than a day ago.
+    /// Nothing was sent: not due, not ready (something waits to go out, a below-barrier miss, a
+    /// sync server that went back), or a snapshot was found too large less than a day ago.
     Skipped,
     Uploaded,
     /// The relay already holds a newer snapshot (`409 snapshot_outdated`): nothing to do.
@@ -513,8 +517,9 @@ pub enum Upload {
 ///
 /// The pulled bytes are counted from the vault's newest snapshot (`rebase_pulled_bytes`). Nothing
 /// is uploaded while `sync_outbox` or `sync_unsent` holds anything, by a device with a pending
-/// below-barrier miss (`chain::may_upload_snapshot`, ruling T8-6: the forced upload included), or
-/// within a day of a snapshot found too large (`snapshot_too_large_at`). With `force` (the first clean round after
+/// below-barrier miss (`chain::may_upload_snapshot`, ruling T8-6: the forced upload included) or
+/// that saw the sync server go back (`ready_to_dump`), or within a day of a snapshot found too
+/// large (`snapshot_too_large_at`). With `force` (the first clean round after
 /// crossing a barrier, ruling T8-2) the upload is due now; otherwise `SnapshotPolicy::decide`
 /// says when.
 ///
@@ -632,14 +637,21 @@ enum Restore {
     Stopped(String),
 }
 
-/// Nothing waits to go out and no below-barrier miss is pending.
+/// Nothing waits to go out, no below-barrier miss is pending, and the sync server has not gone
+/// back (`state::vault_went_back_at`, final review A I1): a server restored from an older backup
+/// may have renumbered another device's change below this device's cursor, so a snapshot at the
+/// cursor could claim a change this device never saw. Until a replace clears the mark, no
+/// snapshot leaves this device, the forced one included (its round keeps asking for the vault's
+/// info).
 fn ready_to_dump(conn: &Connection) -> Result<bool> {
     let pending: i64 = conn.query_row(
         "SELECT (SELECT COUNT(*) FROM sync_outbox) + (SELECT COUNT(*) FROM sync_unsent)",
         [],
         |r| r.get(0),
     )?;
-    Ok(pending == 0 && chain::may_upload_snapshot(&loaded(conn)?))
+    Ok(pending == 0
+        && chain::may_upload_snapshot(&loaded(conn)?)
+        && state::vault_went_back_at(conn)?.is_none())
 }
 
 /// Restores `plain` by merge. A restore that stops on the snapshot (a validation answer: a merge

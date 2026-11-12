@@ -101,6 +101,39 @@ async fn the_status_shows_the_server_went_back_after_the_device_resumes() {
     );
 }
 
+/// Final review A, I1: while the mark stands this device uploads no snapshot, the forced one after
+/// a barrier crossing included. The restored server may have renumbered a change below this
+/// device's cursor, so a snapshot at its cursor could claim a change it never saw. A forced round
+/// still asks for the vault's info, and keeps asking.
+#[tokio::test]
+async fn a_device_that_saw_the_server_go_back_uploads_no_snapshot() {
+    let vault = vault().await;
+    went_back(&vault).await;
+    // The head passes B's place again, so B's pull ends done.
+    let a2 = write_and_seal(&vault, &vault.a, "a2");
+    push(&vault.relay, &vault.creds, &[a2]).await;
+    let before = vault.relay.snapshot_seq();
+    let from = vault.relay.calls().len();
+
+    let report = run_round(
+        &vault.relay,
+        &vault.b,
+        &mut SnapshotPolicy::default(),
+        RoundMode::FirstSnapshot,
+        NOW,
+        0,
+    )
+    .await
+    .expect("round");
+
+    assert!(report.pull.as_ref().is_some_and(|p| p.done()), "{report:?}");
+    assert!(!report.snapshot_uploaded, "{report:?}");
+    let calls = vault.relay.calls()[from..].to_vec();
+    assert!(calls.contains(&Route::VaultInfo), "{calls:?}");
+    assert!(!calls.contains(&Route::PutSnapshot), "{calls:?}");
+    assert_eq!(vault.relay.snapshot_seq(), before);
+}
+
 #[tokio::test]
 async fn the_mark_survives_a_gap_round_and_an_offline_round_and_a_resync_keeps_its_backup() {
     let vault = vault().await;

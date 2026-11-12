@@ -335,8 +335,9 @@ Recomputed, recomputed-or-typed, write-once, monotonic); ADR 0024 records the me
 | `sync_devices` | Synced. Devices of the vault | `id` TEXT PK (device ID, 32 lowercase hex characters); `public_key` (write-once, except that a key stamped with the device's own ID beats one stamped with another ID; that stamp is not proof of authorship, ADR 0027); `name`, `platform`, `app_version`, `joined_at`; `removed` CHECK (0/1) |
 
 The engine also keeps Local keys in `app_config` (never synced, never captured, no migration; ADR
-0027). Turning sync off and a completed join, repair or re-sync delete the first four (a replace
-from a snapshot whose header carries a skipped miss writes `sync.skipped_miss` again):
+0027). Turning sync off and a completed join, repair or re-sync delete the first five (a replace
+from a snapshot whose header carries a skipped miss writes `sync.skipped_miss` again; turning sync
+off also deletes the last):
 
 - `sync.held_gap.<device hex>`: one per author whose change this device holds because an earlier
   change or a parent has not arrived, or because it is dated more than 10 years ahead (kind
@@ -345,15 +346,18 @@ from a snapshot whose header carries a skipped miss writes `sync.skipped_miss` a
   it heals or when a pull reaches the end with nothing held (`chain/gaps.rs`).
 - `sync.skipped_miss`: the newest relay position of a skipped change whose rows this device lacks;
   written into the header of every snapshot this device uploads, so no device heals from it.
-- `sync.skipped_miss_since`: when the oldest such change was first held (or inherited); a change
-  that waits for a parent the skipped one created is skippable from then. Both skip keys are
-  cleared by a clean snapshot that heals the miss.
+- `sync.skipped_miss_since` and `sync.skipped_miss_at`: written only by a skip made on this device:
+  when the oldest skipped change was first held (earliest kept) and when the newest skip was made
+  (latest kept). A change held for a parent within 14 days of that skip is skippable from `since`.
+  A miss inherited from a snapshot header or a restore carries the position only, never these two.
+  All three skip keys are cleared by a clean snapshot that heals the miss, a replace from a clean
+  one and turning sync off.
 - `sync.vault_went_back_at`: when this device first saw the sync server's head below its place (a
   server restored from an older backup). Sticky: no round clears it; while it is set the status
   shows `serverWentBack` and every re-sync keeps its backup.
 - `sync.binding_failed_starts`: app starts in a row whose this-machine binding could not be checked
-  (a native `Failed`), counted once per start; the third re-joins, and any other answer deletes the
-  key (`binding.rs`).
+  (a native `Failed`), counted once per app start (process-wide); the third re-joins, and any other
+  answer deletes the key, as does turning sync off (`binding.rs`, `state::disable`).
 
 The main connection runs `PRAGMA foreign_keys = ON` and `PRAGMA main.secure_delete = ON`
 (`db::configure`, when a database is created and each time one is opened), so deleted cells are

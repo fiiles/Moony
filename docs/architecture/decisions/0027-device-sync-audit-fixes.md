@@ -82,7 +82,9 @@ carries `kept` and `orphaned`.
   or the cursor moved; two rounds without progress end it) and checks "nothing pending" in the hold.
   With nothing local pending, a waiting gap, a far-future hold (`clockAhead`, `ahead`) or a sync
   server that went back counts as drained; any other problem does not.
-- Repair, re-sync and turning sync off with sync on need the device password (L10).
+- Repair, re-sync, delete synced data, skipping a change and turning sync off with sync on need the
+  device password (L10); the first four refuse an empty one (`validation.syncPasswordNeeded`)
+  before the key check.
 - A backup is written as `sync-repair-<unix>[-n].zip.partial`, flushed through a write handle (M9),
   read back (manifest and every entry's CRC; still a structural check, L11) and only then renamed.
   The mark is in the name: `-kept` holds something found nowhere else and is never pruned (every
@@ -101,18 +103,19 @@ before the held envelope, other authors keep applying, this device keeps pushing
 new phase `waiting` with problem `gap`, not an error; a quarantine outranks a gap, so a server
 cannot hide "held for safety" by withholding one envelope; a gap-only round counts as synced. No
 skip is offered while `serverWentBack` or `quarantined` outranks the gap, though the held record
-stands and Rust would allow it. A quarantine also outranks `relayError` and `newerSchema`, so a
-server cannot mask it. Each
+stands and Rust would allow it. A quarantine also outranks `relayError` and `newerSchema`, and `offline` and `rateLimited` when a
+round fails after its pull held a quarantined author, so a server cannot mask it. Each
 held author has a Local record (`app_config` `sync.held_gap.<device hex>`: the lowest held envelope
 and when it was first held). After 14 days the person may skip it, behind the password and a
 confirmation that names the device, how many changes go, that changes depending on them may need
 skipping too and that they are lost if no device has them. A skip of a missing range moves the
 author's head to just before the held envelope; a skip of a missing parent skips the held envelope
-itself. The miss is recorded in `sync.skipped_miss` (the newest position) and
-`sync.skipped_miss_since`; the skipping device still uploads snapshots, with the miss in the header
+itself. The miss is recorded in `sync.skipped_miss` (the newest position); a skip made on this device
+also writes `sync.skipped_miss_since` (when the oldest skipped gap was first held) and
+`sync.skipped_miss_at` (when the newest skip was made), and an inherited miss writes neither; the skipping device still uploads snapshots, with the miss in the header
 (`missedSkipped`; `missedBelowBarrier` carries the larger of both for older readers), and such a
-snapshot never heals anyone; a clean snapshot heals it, and a restorer inherits a header miss
-(dated at the restore). While a skipped miss stands, a new missing-parent hold takes the skip's
+snapshot never heals anyone; a clean snapshot heals it (a heal never downloads this device's own newest snapshot), and a restorer inherits only the miss position
+(`sync.skipped_miss`, undated: never `since` or `at`). While a skipped miss stands, a new missing-parent hold takes the skip's
 `since`, so a cascade is skippable at once, still behind the password; the inheritance is bounded:
 only from a skip made on this device, and only for holds noted within 14 days of it (a miss
 inherited at a restore does not make Parent holds instantly skippable). Rejected: recording the
@@ -131,7 +134,9 @@ for the echo (one extra call). No migration: a column would raise the schema num
 devices on `NewerSchema`. Sealing stops at 1,024 unechoed envelopes and the round then shows
 `relayError` if the echo brought none back; a batch of re-sends answered with none accepted is sent
 once per round, and an envelope sent in an earlier round that is still not back after the echo
-pull shows `relayError`, not "Up to date". The exception: a round whose echo pull fails transiently
+pull shows `relayError`, not "Up to date"; when that round's pull holds something, its own problem
+stands (`quarantined`, `gap` or `clockAhead`), and a `gap` or `clockAhead` round records success.
+The exception: a round whose echo pull fails transiently
 or ends unfinished keeps the first pull's report and records success while an earlier envelope is
 still unechoed; the next round shows it. Likewise an unfinished pull with nothing held that made
 progress keeps recording success (pull progress is syncing; Task 18's ruling). A merge restore after `410` acknowledges own
@@ -193,7 +198,8 @@ state is not zeroized, the same limit as the HKDF PRK.
 **The relay.** `feat/pairing-ack` adds slot 3 (write-once, read-once, burned with the mailbox; slot
 4 is `bad_slot`) and makes a vault deletion resumable (L14): the record and a pending-wipe marker
 change in one transaction, an alarm finishes the R2 and account calls and retries every 60 s, and
-re-creating the vault meanwhile answers `409 vault_deleting`. `feat/dev-grant` answers the dev grant
+re-creating the vault meanwhile answers `409 vault_deleting` (the app treats it as a passing server
+error that backs off). `feat/dev-grant` answers the dev grant
 only with `DEV_GRANT=1` and a loopback request host, ships the example with the line commented out,
 and tests the off state without reading `.dev.vars` (M13). The host check reads the Host header,
 which a proxy may set, so it is defence in depth only; a server is safe because it never has
@@ -213,7 +219,7 @@ phone) that turns sync off. CI runs the release-build flag test (`cargo test --r
 problem `secureStorage` (phase paused). It counts once per app start, process-wide (a later attempt in the same process does not count, and
 neither does a restart of the sync engine), in the Local key
 `sync.binding_failed_starts`; the third start in a row re-joins under a new device ID, any other
-answer resets the count, and repair and setup checks never count, so one locked keychain cannot
+answer resets the count, turning sync off removes the key, and repair and setup checks never count, so one locked keychain cannot
 force a re-join.
 
 **Far-future clocks and the public key (M6, L1).** A pulled change dated more than 10 years past this
@@ -269,7 +275,7 @@ says setup starts over with a new account and Kit. A device with no changes for 
   bytes is a new protocol number with new vectors; a backup marked `-kept` is deleted only by the
   person.
 - New Local `app_config` keys (no migration, never captured): `sync.held_gap.<device hex>`,
-  `sync.skipped_miss`, `sync.skipped_miss_since`, `sync.vault_went_back_at`,
+  `sync.skipped_miss`, `sync.skipped_miss_since`, `sync.skipped_miss_at`, `sync.vault_went_back_at`,
   `sync.binding_failed_starts`. New phase `waiting`; new problems `clockAhead`, `secureStorage`,
   `serverWentBack`; `missingParent` stays in the wire enum but is no longer produced.
 - Accepted residuals:

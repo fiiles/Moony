@@ -152,9 +152,7 @@
     "button": "Re-sync this device",
     "hint": "Replaces this device's data with the synced data. Use it if this device's sync history is inconsistent.",
     "title": "Re-sync this device?",
-    "description": "This device's data is replaced with the synced data. A backup is saved first. Changes this device has not sent yet are kept only in that backup.",
-    "pendingChanges_one": "{{count}} change on this device has not been sent yet. It will be kept only in the backup.",
-    "pendingChanges_other": "{{count}} changes on this device have not been sent yet. They will be kept only in the backup.",
+    "description": "This device's data is replaced with the synced data. A backup is saved first.",
     "confirm": "Re-sync",
     "success": "Device re-synced. Backup saved as {{file}}."
   },
@@ -234,7 +232,8 @@
     "joining": "Joining…",
     "joined": "This device now syncs. Its earlier data is backed up in {{path}}",
     "tryAgain": "Try again",
-    "startAgain": "Start again"
+    "startAgain": "Start again",
+    "readyToJoin": "The sync details arrived. Check what is replaced, then join."
   },
   "join": {
     "introPair": "Join from your phone",
@@ -249,7 +248,8 @@
     "kitTitle": "Use a Recovery Kit",
     "kitHint": "Enter the recovery code from your Sync Recovery Kit, or the text of its QR code.",
     "codeLabel": "Recovery code",
-    "accountLabel": "Account number"
+    "accountLabel": "Account number",
+    "confirm": "Join and replace"
   },
   "phone": {
     "title": "Sync",
@@ -292,5 +292,26 @@
     "payUnavailable": "Paying for sync is not available in the phone app.",
     "payWaiting": "Waiting for the account to become active. This moves on by itself when it does.",
     "payWaitingShort": "Waiting…"
+  },
+  "replace": {
+    "lines": {
+      "accounts": "Accounts and assets: {{count}}",
+      "transactions": "Transactions: {{count}}",
+      "items": "Changed items waiting to be sent: {{count}}",
+      "batches": "Batches of changes not yet confirmed by the sync server: {{count}}",
+      "documents": "Documents: {{count}}",
+      "photos": "Photos: {{count}}"
+    },
+    "attachments": "Documents and photos stay attached to items the synced data also has; the others stay only in the backup.",
+    "unsent": "Moony sends the waiting changes first; anything it cannot send stays only in the backup.",
+    "backupWhere": "The backup is listed under Settings → Backup → Restore.",
+    "loading": "Counting what is at stake…",
+    "outcome": {
+      "attachments": "Documents and photos only in the backup now: {{count}}",
+      "items": "Changed items that were not sent, only in the backup: {{count}}",
+      "batches": "Batches of changes that were not sent, only in the backup: {{count}}",
+      "someUnsent": "Some changes stay only in the backup.",
+      "kept": "The backup holds the only copy of what it contains, so Moony never deletes it. You can delete it under Settings → Backup → Restore."
+    }
   }
 }

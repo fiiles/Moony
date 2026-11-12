@@ -40,6 +40,7 @@ export function useDeviceSyncMutations() {
   };
   const refreshLocalData = async () => {
     await refreshSyncState();
+    await queryClient.invalidateQueries({ queryKey: ['device-sync-backups'] });
     await refreshAfterRemoteChanges(queryClient, portfolioApi.recordSnapshot);
   };
 
@@ -109,6 +110,10 @@ export function useDeviceSyncMutations() {
   useEffect(() => {
     if (joinWithRecoveryKit.isSuccess) joinWithRecoveryKit.reset();
   }, [joinWithRecoveryKit, joinWithRecoveryKit.isSuccess]);
+  const deleteBackup = useMutation({
+    mutationFn: deviceSyncApi.deleteBackup,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-backups'] }),
+  });
   const renameDevice = useMutation({
     mutationFn: deviceSyncApi.renameDevice,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] }),
@@ -131,6 +136,7 @@ export function useDeviceSyncMutations() {
     repairDevice,
     resyncDevice,
     joinWithRecoveryKit,
+    deleteBackup,
     renameDevice,
     devGrant,
   };

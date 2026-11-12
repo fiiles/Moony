@@ -152,10 +152,7 @@
     "button": "Volver a sincronizar este dispositivo",
     "hint": "Sustituye los datos de este dispositivo por los sincronizados. Úsalo si el historial de sincronización de este dispositivo es incoherente.",
     "title": "¿Volver a sincronizar este dispositivo?",
-    "description": "Los datos de este dispositivo se sustituyen por los sincronizados. Antes se guarda una copia de seguridad. Los cambios que este dispositivo aún no ha enviado solo quedan en esa copia.",
-    "pendingChanges_one": "{{count}} cambio de este dispositivo aún no se ha enviado. Solo quedará en la copia de seguridad.",
-    "pendingChanges_many": "{{count}} cambios de este dispositivo aún no se han enviado. Solo quedarán en la copia de seguridad.",
-    "pendingChanges_other": "{{count}} cambios de este dispositivo aún no se han enviado. Solo quedarán en la copia de seguridad.",
+    "description": "Los datos de este dispositivo se sustituyen por los sincronizados. Antes se guarda una copia de seguridad.",
     "confirm": "Volver a sincronizar",
     "success": "Dispositivo sincronizado de nuevo. Copia de seguridad guardada como {{file}}."
   },
@@ -236,7 +233,8 @@
     "joining": "Uniéndose…",
     "joined": "Este dispositivo ya se sincroniza. Sus datos anteriores están copiados en {{path}}",
     "tryAgain": "Reintentar",
-    "startAgain": "Empezar de nuevo"
+    "startAgain": "Empezar de nuevo",
+    "readyToJoin": "Han llegado los datos de sincronización. Revisa qué se reemplaza y después únete."
   },
   "join": {
     "introPair": "Unirse desde tu teléfono",
@@ -251,7 +249,8 @@
     "kitTitle": "Usar un kit de recuperación",
     "kitHint": "Introduce el código de recuperación de tu kit de recuperación de sincronización, o el texto de su código QR.",
     "codeLabel": "Código de recuperación",
-    "accountLabel": "Número de cuenta"
+    "accountLabel": "Número de cuenta",
+    "confirm": "Unirse y reemplazar"
   },
   "phone": {
     "title": "Sincronización",
@@ -294,5 +293,26 @@
     "payUnavailable": "Pagar la sincronización no está disponible en la app del móvil.",
     "payWaiting": "Esperando a que la cuenta se active. Cuando lo haga, pasarás al siguiente paso automáticamente.",
     "payWaitingShort": "Esperando…"
+  },
+  "replace": {
+    "lines": {
+      "accounts": "Cuentas y activos: {{count}}",
+      "transactions": "Transacciones: {{count}}",
+      "items": "Elementos modificados pendientes de enviar: {{count}}",
+      "batches": "Lotes de cambios que el servidor de sincronización aún no ha confirmado: {{count}}",
+      "documents": "Documentos: {{count}}",
+      "photos": "Fotos: {{count}}"
+    },
+    "attachments": "Los documentos y las fotos siguen adjuntos a los elementos que también tienen los datos sincronizados; el resto queda solo en la copia de seguridad.",
+    "unsent": "Moony envía primero los cambios pendientes; lo que no pueda enviar queda solo en la copia de seguridad.",
+    "backupWhere": "La copia de seguridad aparece en Ajustes → Copia de seguridad → Restaurar.",
+    "loading": "Contando lo que está en juego…",
+    "outcome": {
+      "attachments": "Documentos y fotos que ahora están solo en la copia de seguridad: {{count}}",
+      "items": "Elementos modificados que no se enviaron y están solo en la copia de seguridad: {{count}}",
+      "batches": "Lotes de cambios que no se enviaron y están solo en la copia de seguridad: {{count}}",
+      "someUnsent": "Algunos cambios quedan solo en la copia de seguridad.",
+      "kept": "La copia de seguridad guarda la única copia de lo que contiene, por eso Moony nunca la elimina. Puedes eliminarla en Ajustes → Copia de seguridad → Restaurar."
+    }
   }
 }

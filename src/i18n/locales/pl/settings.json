@@ -199,6 +199,16 @@
       "leftoversTitle": "Niezaszyfrowane kopie poza Moony",
       "leftoversBody": "Moony znalazła je podczas szyfrowania. Nigdy nie usuwa niczego poza własnym folderem; sprawdź je i usuń samodzielnie.",
       "reveal": "Pokaż"
+    },
+    "syncBackups": {
+      "title": "Kopie zapasowe wykonane, zanim synchronizacja zastąpiła dane",
+      "kept": "Zawiera zmiany, których nie ma nigdzie indziej",
+      "restore": "Przywróć",
+      "delete": "Usuń",
+      "deleteTitle": "Usunąć tę kopię zapasową?",
+      "deleteBody": "Ta kopia zapasowa zostanie usunięta na zawsze.",
+      "deleteBodyKept": "Ta kopia zapasowa zawiera zmiany, których nie ma nigdzie indziej. Zostanie usunięta na zawsze, a te zmiany przepadną.",
+      "deleted": "Kopia zapasowa usunięta"
     }
   },
   "autoLock": {

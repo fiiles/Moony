@@ -197,6 +197,16 @@
       "leftoversTitle": "Copie non cifrate fuori da Moony",
       "leftoversBody": "Moony le ha trovate durante la cifratura. Non elimina mai nulla fuori dalla propria cartella: controllale ed eliminale tu.",
       "reveal": "Mostra"
+    },
+    "syncBackups": {
+      "title": "Backup creati prima che la sincronizzazione sostituisse i dati",
+      "kept": "Contiene modifiche che non esistono altrove",
+      "restore": "Ripristina",
+      "delete": "Elimina",
+      "deleteTitle": "Eliminare questo backup?",
+      "deleteBody": "Questo backup viene eliminato definitivamente.",
+      "deleteBodyKept": "Questo backup contiene modifiche che non esistono altrove. Viene eliminato definitivamente e quelle modifiche vanno perse.",
+      "deleted": "Backup eliminato"
     }
   },
   "autoLock": {

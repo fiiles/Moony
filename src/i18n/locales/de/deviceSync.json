@@ -152,9 +152,7 @@
     "button": "Dieses Gerät neu synchronisieren",
     "hint": "Ersetzt die Daten dieses Geräts durch die synchronisierten Daten. Nutzen Sie dies, wenn der Sync-Verlauf dieses Geräts inkonsistent ist.",
     "title": "Dieses Gerät neu synchronisieren?",
-    "description": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird eine Sicherung gespeichert. Änderungen, die dieses Gerät noch nicht gesendet hat, bleiben nur in dieser Sicherung erhalten.",
-    "pendingChanges_one": "{{count}} Änderung auf diesem Gerät wurde noch nicht gesendet. Sie bleibt nur in der Sicherung erhalten.",
-    "pendingChanges_other": "{{count}} Änderungen auf diesem Gerät wurden noch nicht gesendet. Sie bleiben nur in der Sicherung erhalten.",
+    "description": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird eine Sicherung gespeichert.",
     "confirm": "Neu synchronisieren",
     "success": "Gerät neu synchronisiert. Sicherung gespeichert als {{file}}."
   },
@@ -234,7 +232,8 @@
     "joining": "Verbindung wird hergestellt …",
     "joined": "Dieses Gerät synchronisiert jetzt. Seine früheren Daten sind gesichert in {{path}}",
     "tryAgain": "Erneut versuchen",
-    "startAgain": "Neu beginnen"
+    "startAgain": "Neu beginnen",
+    "readyToJoin": "Die Synchronisierungsdaten sind angekommen. Prüfen Sie, was ersetzt wird, und treten Sie dann bei."
   },
   "join": {
     "introPair": "Vom Smartphone beitreten",
@@ -249,7 +248,8 @@
     "kitTitle": "Wiederherstellungs-Kit verwenden",
     "kitHint": "Geben Sie den Wiederherstellungscode aus Ihrem Sync-Wiederherstellungs-Kit ein oder den Text seines QR-Codes.",
     "codeLabel": "Wiederherstellungscode",
-    "accountLabel": "Kontonummer"
+    "accountLabel": "Kontonummer",
+    "confirm": "Beitreten und ersetzen"
   },
   "phone": {
     "title": "Synchronisierung",
@@ -292,5 +292,26 @@
     "payUnavailable": "Das Bezahlen der Synchronisierung ist in der Handy-App nicht möglich.",
     "payWaiting": "Wir warten darauf, dass das Konto aktiv wird. Sobald es so weit ist, geht es von selbst weiter.",
     "payWaitingShort": "Warten …"
+  },
+  "replace": {
+    "lines": {
+      "accounts": "Konten und Vermögenswerte: {{count}}",
+      "transactions": "Transaktionen: {{count}}",
+      "items": "Geänderte Elemente, die noch gesendet werden müssen: {{count}}",
+      "batches": "Änderungspakete, die der Synchronisierungsserver noch nicht bestätigt hat: {{count}}",
+      "documents": "Dokumente: {{count}}",
+      "photos": "Fotos: {{count}}"
+    },
+    "attachments": "Dokumente und Fotos bleiben an Elementen angehängt, die auch die synchronisierten Daten enthalten; die übrigen bleiben nur in der Sicherung.",
+    "unsent": "Moony sendet zuerst die wartenden Änderungen; was nicht gesendet werden kann, bleibt nur in der Sicherung.",
+    "backupWhere": "Die Sicherung finden Sie unter Einstellungen → Sicherung → Wiederherstellen.",
+    "loading": "Es wird gezählt, was betroffen ist …",
+    "outcome": {
+      "attachments": "Dokumente und Fotos, die jetzt nur in der Sicherung sind: {{count}}",
+      "items": "Geänderte Elemente, die nicht gesendet wurden und nur in der Sicherung sind: {{count}}",
+      "batches": "Änderungspakete, die nicht gesendet wurden und nur in der Sicherung sind: {{count}}",
+      "someUnsent": "Einige Änderungen bleiben nur in der Sicherung.",
+      "kept": "Die Sicherung enthält die einzige Kopie ihres Inhalts, deshalb löscht Moony sie nie. Sie können sie unter Einstellungen → Sicherung → Wiederherstellen löschen."
+    }
   }
 }

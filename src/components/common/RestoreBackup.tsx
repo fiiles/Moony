@@ -18,8 +18,11 @@ import { formatBytes } from '@/utils/format-bytes';
 import type { BackupInspection } from '@shared/schema';
 
 interface RestoreBackupProps {
-  /** Renders the trigger; `pick` opens the file dialog, `busy` is true while picking or restoring. */
-  children: (pick: () => void, busy: boolean) => ReactNode;
+  /**
+   * Renders the trigger; `pick` opens the file dialog, `busy` is true while picking or restoring,
+   * `pickPath` inspects a backup whose path is already known (a listed sync backup).
+   */
+  children: (pick: () => void, busy: boolean, pickPath: (path: string) => void) => ReactNode;
   /** First run: there is no current account to move aside, so the dialog says so. */
   fresh?: boolean;
   onBusyChange?: (busy: boolean) => void;
@@ -67,6 +70,17 @@ export function RestoreBackup({ children, fresh = false, onBusyChange }: Restore
     }
   };
 
+  const inspectPath = async (path: string) => {
+    try {
+      setBusy(true);
+      setPending(await dataApi.inspectBackup(path));
+    } catch (error) {
+      showError(error);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const confirm = async () => {
     if (!pending) return;
     try {
@@ -91,7 +105,11 @@ export function RestoreBackup({ children, fresh = false, onBusyChange }: Restore
 
   return (
     <>
-      {children(() => void pick(), busy)}
+      {children(
+        () => void pick(),
+        busy,
+        (path) => void inspectPath(path)
+      )}
       <AlertDialog
         open={pending !== null}
         onOpenChange={(open) => {

@@ -152,11 +152,7 @@
     "button": "Synchronizovat toto zařízení znovu",
     "hint": "Nahradí data tohoto zařízení synchronizovanými daty. Použijte to, pokud je historie synchronizace tohoto zařízení nekonzistentní.",
     "title": "Synchronizovat toto zařízení znovu?",
-    "description": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Nejdřív se uloží záloha. Změny, které toto zařízení ještě neodeslalo, zůstanou jen v této záloze.",
-    "pendingChanges_one": "{{count}} změna na tomto zařízení ještě nebyla odeslána. Zůstane jen v záloze.",
-    "pendingChanges_few": "{{count}} změny na tomto zařízení ještě nebyly odeslány. Zůstanou jen v záloze.",
-    "pendingChanges_many": "{{count}} změny na tomto zařízení ještě nebylo odesláno. Zůstanou jen v záloze.",
-    "pendingChanges_other": "{{count}} změn na tomto zařízení ještě nebylo odesláno. Zůstanou jen v záloze.",
+    "description": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Nejdřív se uloží záloha.",
     "confirm": "Synchronizovat znovu",
     "success": "Zařízení znovu synchronizováno. Záloha uložena jako {{file}}."
   },
@@ -238,7 +234,8 @@
     "joining": "Připojuje se…",
     "joined": "Toto zařízení se nyní synchronizuje. Jeho dřívější data jsou zálohována v {{path}}",
     "tryAgain": "Zkusit znovu",
-    "startAgain": "Začít znovu"
+    "startAgain": "Začít znovu",
+    "readyToJoin": "Údaje k synchronizaci dorazily. Zkontrolujte, co se nahradí, a pak se připojte."
   },
   "join": {
     "introPair": "Připojit z telefonu",
@@ -253,7 +250,8 @@
     "kitTitle": "Použít záchrannou sadu",
     "kitHint": "Zadejte obnovovací kód ze záchranné sady synchronizace nebo text jejího QR kódu.",
     "codeLabel": "Obnovovací kód",
-    "accountLabel": "Číslo účtu"
+    "accountLabel": "Číslo účtu",
+    "confirm": "Připojit a nahradit"
   },
   "phone": {
     "title": "Synchronizace",
@@ -296,5 +294,26 @@
     "payUnavailable": "Platba za synchronizaci není v aplikaci v telefonu k dispozici.",
     "payWaiting": "Čekáme, až se účet aktivuje. Jakmile se tak stane, pokračuje to samo.",
     "payWaitingShort": "Čekáme…"
+  },
+  "replace": {
+    "lines": {
+      "accounts": "Účty a majetek: {{count}}",
+      "transactions": "Transakce: {{count}}",
+      "items": "Změněné položky čekající na odeslání: {{count}}",
+      "batches": "Dávky změn, které synchronizační server ještě nepotvrdil: {{count}}",
+      "documents": "Dokumenty: {{count}}",
+      "photos": "Fotky: {{count}}"
+    },
+    "attachments": "Dokumenty a fotky zůstanou přiložené k položkám, které mají i synchronizovaná data; ostatní zůstanou jen v záloze.",
+    "unsent": "Moony nejdřív odešle čekající změny; co odeslat nedokáže, zůstane jen v záloze.",
+    "backupWhere": "Záloha je v seznamu v Nastavení → Záloha → Obnovit.",
+    "loading": "Počítám, o co jde…",
+    "outcome": {
+      "attachments": "Dokumenty a fotky, které jsou teď jen v záloze: {{count}}",
+      "items": "Změněné položky, které se neodeslaly a jsou jen v záloze: {{count}}",
+      "batches": "Dávky změn, které se neodeslaly a jsou jen v záloze: {{count}}",
+      "someUnsent": "Některé změny zůstaly jen v záloze.",
+      "kept": "Záloha obsahuje jedinou kopii toho, co v ní je, proto ji Moony nikdy nemaže. Smazat ji můžete v Nastavení → Záloha → Obnovit."
+    }
   }
 }

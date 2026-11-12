@@ -152,11 +152,7 @@
     "button": "Zsynchronizuj to urządzenie ponownie",
     "hint": "Zastępuje dane tego urządzenia danymi zsynchronizowanymi. Użyj tego, jeśli historia synchronizacji tego urządzenia jest niespójna.",
     "title": "Zsynchronizować to urządzenie ponownie?",
-    "description": "Dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi. Najpierw zapisywana jest kopia zapasowa. Zmiany, których to urządzenie jeszcze nie wysłało, zostaną tylko w tej kopii.",
-    "pendingChanges_one": "{{count}} zmiana na tym urządzeniu nie została jeszcze wysłana. Zostanie tylko w kopii zapasowej.",
-    "pendingChanges_few": "{{count}} zmiany na tym urządzeniu nie zostały jeszcze wysłane. Zostaną tylko w kopii zapasowej.",
-    "pendingChanges_many": "{{count}} zmian na tym urządzeniu nie zostało jeszcze wysłanych. Zostaną tylko w kopii zapasowej.",
-    "pendingChanges_other": "{{count}} zmiany na tym urządzeniu nie zostało jeszcze wysłane. Zostaną tylko w kopii zapasowej.",
+    "description": "Dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi. Najpierw zapisywana jest kopia zapasowa.",
     "confirm": "Zsynchronizuj ponownie",
     "success": "Urządzenie zsynchronizowane ponownie. Kopia zapasowa zapisana jako {{file}}."
   },
@@ -238,7 +234,8 @@
     "joining": "Dołączanie…",
     "joined": "To urządzenie jest teraz synchronizowane. Jego wcześniejsze dane zapisano w kopii w {{path}}",
     "tryAgain": "Spróbuj ponownie",
-    "startAgain": "Zacznij od nowa"
+    "startAgain": "Zacznij od nowa",
+    "readyToJoin": "Dane synchronizacji dotarły. Sprawdź, co zostanie zastąpione, i dołącz."
   },
   "join": {
     "introPair": "Dołącz z telefonu",
@@ -253,7 +250,8 @@
     "kitTitle": "Użyj zestawu odzyskiwania",
     "kitHint": "Wpisz kod odzyskiwania z zestawu odzyskiwania synchronizacji lub tekst jego kodu QR.",
     "codeLabel": "Kod odzyskiwania",
-    "accountLabel": "Numer konta"
+    "accountLabel": "Numer konta",
+    "confirm": "Dołącz i zastąp"
   },
   "phone": {
     "title": "Synchronizacja",
@@ -296,5 +294,26 @@
     "payUnavailable": "Płatność za synchronizację nie jest dostępna w aplikacji na telefonie.",
     "payWaiting": "Czekamy, aż konto stanie się aktywne. Gdy to nastąpi, przejdziemy dalej automatycznie.",
     "payWaitingShort": "Czekamy…"
+  },
+  "replace": {
+    "lines": {
+      "accounts": "Konta i aktywa: {{count}}",
+      "transactions": "Transakcje: {{count}}",
+      "items": "Zmienione elementy czekające na wysłanie: {{count}}",
+      "batches": "Paczki zmian, których serwer synchronizacji jeszcze nie potwierdził: {{count}}",
+      "documents": "Dokumenty: {{count}}",
+      "photos": "Zdjęcia: {{count}}"
+    },
+    "attachments": "Dokumenty i zdjęcia pozostają przypisane do elementów, które mają również dane zsynchronizowane; pozostałe zostają tylko w kopii zapasowej.",
+    "unsent": "Moony najpierw wysyła oczekujące zmiany; czego nie uda się wysłać, zostaje tylko w kopii zapasowej.",
+    "backupWhere": "Kopia zapasowa jest na liście w Ustawienia → Kopia zapasowa → Przywróć.",
+    "loading": "Liczenie, co jest zagrożone…",
+    "outcome": {
+      "attachments": "Dokumenty i zdjęcia, które są teraz tylko w kopii zapasowej: {{count}}",
+      "items": "Zmienione elementy, które nie zostały wysłane i są tylko w kopii zapasowej: {{count}}",
+      "batches": "Paczki zmian, które nie zostały wysłane i są tylko w kopii zapasowej: {{count}}",
+      "someUnsent": "Niektóre zmiany zostają tylko w kopii zapasowej.",
+      "kept": "Kopia zapasowa zawiera jedyny egzemplarz tego, co w niej jest, dlatego Moony nigdy jej nie usuwa. Możesz ją usunąć w Ustawienia → Kopia zapasowa → Przywróć."
+    }
   }
 }

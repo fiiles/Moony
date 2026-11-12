@@ -152,10 +152,7 @@
     "button": "Risincronizza questo dispositivo",
     "hint": "Sostituisce i dati di questo dispositivo con quelli sincronizzati. Usalo se la cronologia di sincronizzazione di questo dispositivo è incoerente.",
     "title": "Risincronizzare questo dispositivo?",
-    "description": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup. Le modifiche che questo dispositivo non ha ancora inviato restano solo in quel backup.",
-    "pendingChanges_one": "{{count}} modifica di questo dispositivo non è ancora stata inviata. Resterà solo nel backup.",
-    "pendingChanges_many": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Resteranno solo nel backup.",
-    "pendingChanges_other": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Resteranno solo nel backup.",
+    "description": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup.",
     "confirm": "Risincronizza",
     "success": "Dispositivo risincronizzato. Backup salvato come {{file}}."
   },
@@ -236,7 +233,8 @@
     "joining": "Collegamento in corso…",
     "joined": "Questo dispositivo ora si sincronizza. I suoi dati precedenti sono salvati in {{path}}",
     "tryAgain": "Riprova",
-    "startAgain": "Ricomincia"
+    "startAgain": "Ricomincia",
+    "readyToJoin": "I dettagli di sincronizzazione sono arrivati. Controlla cosa viene sostituito, poi collega."
   },
   "join": {
     "introPair": "Collegati dal telefono",
@@ -251,7 +249,8 @@
     "kitTitle": "Usa un kit di ripristino",
     "kitHint": "Inserisci il codice di ripristino del tuo kit di ripristino della sincronizzazione, o il testo del suo codice QR.",
     "codeLabel": "Codice di ripristino",
-    "accountLabel": "Numero dell'account"
+    "accountLabel": "Numero dell'account",
+    "confirm": "Collega e sostituisci"
   },
   "phone": {
     "title": "Sincronizzazione",
@@ -294,5 +293,26 @@
     "payUnavailable": "Il pagamento della sincronizzazione non è disponibile nell'app per telefono.",
     "payWaiting": "In attesa che l'account diventi attivo. Si procede da soli non appena succede.",
     "payWaitingShort": "In attesa…"
+  },
+  "replace": {
+    "lines": {
+      "accounts": "Conti e attività: {{count}}",
+      "transactions": "Transazioni: {{count}}",
+      "items": "Elementi modificati in attesa di invio: {{count}}",
+      "batches": "Gruppi di modifiche non ancora confermati dal server di sincronizzazione: {{count}}",
+      "documents": "Documenti: {{count}}",
+      "photos": "Foto: {{count}}"
+    },
+    "attachments": "I documenti e le foto restano allegati agli elementi presenti anche nei dati sincronizzati; gli altri restano solo nel backup.",
+    "unsent": "Moony invia prima le modifiche in attesa; ciò che non riesce a inviare resta solo nel backup.",
+    "backupWhere": "Il backup è elencato in Impostazioni → Backup → Ripristina.",
+    "loading": "Conteggio di ciò che è in gioco…",
+    "outcome": {
+      "attachments": "Documenti e foto ora solo nel backup: {{count}}",
+      "items": "Elementi modificati non inviati, presenti solo nel backup: {{count}}",
+      "batches": "Gruppi di modifiche non inviati, presenti solo nel backup: {{count}}",
+      "someUnsent": "Alcune modifiche restano solo nel backup.",
+      "kept": "Il backup contiene l'unica copia di ciò che include, quindi Moony non lo elimina mai. Puoi eliminarlo in Impostazioni → Backup → Ripristina."
+    }
   }
 }

@@ -152,9 +152,7 @@
     "button": "Synkroniser denne enheten på nytt",
     "hint": "Erstatter dataene på denne enheten med de synkroniserte dataene. Bruk dette hvis synkroniseringshistorikken til enheten er inkonsekvent.",
     "title": "Synkronisere denne enheten på nytt?",
-    "description": "Dataene på denne enheten erstattes med de synkroniserte dataene. En sikkerhetskopi lagres først. Endringer som denne enheten ikke har sendt ennå, finnes bare i den sikkerhetskopien.",
-    "pendingChanges_one": "{{count}} endring på denne enheten er ikke sendt ennå. Den finnes bare i sikkerhetskopien.",
-    "pendingChanges_other": "{{count}} endringer på denne enheten er ikke sendt ennå. De finnes bare i sikkerhetskopien.",
+    "description": "Dataene på denne enheten erstattes med de synkroniserte dataene. En sikkerhetskopi lagres først.",
     "confirm": "Synkroniser på nytt",
     "success": "Enheten er synkronisert på nytt. Sikkerhetskopi lagret som {{file}}."
   },
@@ -234,7 +232,8 @@
     "joining": "Blir med …",
     "joined": "Denne enheten synkroniserer nå. De tidligere dataene er sikkerhetskopiert i {{path}}",
     "tryAgain": "Prøv igjen",
-    "startAgain": "Start på nytt"
+    "startAgain": "Start på nytt",
+    "readyToJoin": "Synkroniseringsopplysningene er kommet. Se hva som erstattes, og bli deretter med."
   },
   "join": {
     "introPair": "Bli med fra telefonen",
@@ -249,7 +248,8 @@
     "kitTitle": "Bruk et gjenopprettingssett",
     "kitHint": "Skriv inn gjenopprettingskoden fra gjenopprettingssettet for synkronisering, eller teksten i QR-koden.",
     "codeLabel": "Gjenopprettingskode",
-    "accountLabel": "Kontonummer"
+    "accountLabel": "Kontonummer",
+    "confirm": "Bli med og erstatt"
   },
   "phone": {
     "title": "Synkronisering",
@@ -292,5 +292,26 @@
     "payUnavailable": "Betaling for synkronisering er ikke tilgjengelig i mobilappen.",
     "payWaiting": "Venter på at kontoen blir aktiv. Når den blir det, går det videre av seg selv.",
     "payWaitingShort": "Venter …"
+  },
+  "replace": {
+    "lines": {
+      "accounts": "Kontoer og eiendeler: {{count}}",
+      "transactions": "Transaksjoner: {{count}}",
+      "items": "Endrede elementer som venter på å bli sendt: {{count}}",
+      "batches": "Endringspakker synkroniseringsserveren ikke har bekreftet ennå: {{count}}",
+      "documents": "Dokumenter: {{count}}",
+      "photos": "Bilder: {{count}}"
+    },
+    "attachments": "Dokumenter og bilder blir værende på elementer som de synkroniserte dataene også har; resten finnes bare i sikkerhetskopien.",
+    "unsent": "Moony sender de ventende endringene først; det som ikke kan sendes, finnes bare i sikkerhetskopien.",
+    "backupWhere": "Sikkerhetskopien står under Innstillinger → Sikkerhetskopi → Gjenopprett.",
+    "loading": "Teller hva som står på spill …",
+    "outcome": {
+      "attachments": "Dokumenter og bilder som nå bare finnes i sikkerhetskopien: {{count}}",
+      "items": "Endrede elementer som ikke ble sendt og bare finnes i sikkerhetskopien: {{count}}",
+      "batches": "Endringspakker som ikke ble sendt og bare finnes i sikkerhetskopien: {{count}}",
+      "someUnsent": "Noen endringer finnes bare i sikkerhetskopien.",
+      "kept": "Sikkerhetskopien har den eneste kopien av innholdet, så Moony sletter den aldri. Du kan slette den under Innstillinger → Sikkerhetskopi → Gjenopprett."
+    }
   }
 }

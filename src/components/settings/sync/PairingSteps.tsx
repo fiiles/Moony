@@ -22,6 +22,8 @@ interface PairingStepsProps {
   matching: boolean;
   /** "They don't match": the caller cancels the pairing and closes. */
   onNoMatch: () => void;
+  /** `received`: false while the join waits for the person's confirmation (default: running). */
+  joining?: boolean;
 }
 
 /**
@@ -37,6 +39,7 @@ export function PairingSteps({
   onMatch,
   matching,
   onNoMatch,
+  joining = true,
 }: PairingStepsProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
@@ -136,6 +139,10 @@ export function PairingSteps({
     case 'sent':
       return <p className="m-0 text-body text-ink-2">{t('pairing.sent')}</p>;
     case 'received':
-      return <p className="m-0 text-body text-ink-3">{t('pairing.joining')}</p>;
+      return (
+        <p className="m-0 text-body text-ink-3">
+          {joining ? t('pairing.joining') : t('pairing.readyToJoin')}
+        </p>
+      );
   }
 }

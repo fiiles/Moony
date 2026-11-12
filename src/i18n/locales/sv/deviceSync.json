@@ -152,9 +152,7 @@
     "button": "Synkronisera den här enheten igen",
     "hint": "Ersätter enhetens data med de synkroniserade uppgifterna. Använd det om enhetens synkroniseringshistorik är inkonsekvent.",
     "title": "Synkronisera den här enheten igen?",
-    "description": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först. Ändringar som enheten ännu inte har skickat finns bara kvar i den säkerhetskopian.",
-    "pendingChanges_one": "{{count}} ändring på den här enheten har inte skickats än. Den finns bara kvar i säkerhetskopian.",
-    "pendingChanges_other": "{{count}} ändringar på den här enheten har inte skickats än. De finns bara kvar i säkerhetskopian.",
+    "description": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först.",
     "confirm": "Synkronisera igen",
     "success": "Enheten är synkroniserad igen. Säkerhetskopia sparad som {{file}}."
   },
@@ -234,7 +232,8 @@
     "joining": "Ansluter …",
     "joined": "Den här enheten synkroniseras nu. Dess tidigare data är säkerhetskopierad i {{path}}",
     "tryAgain": "Försök igen",
-    "startAgain": "Börja om"
+    "startAgain": "Börja om",
+    "readyToJoin": "Synkroniseringsuppgifterna har kommit. Se vad som ersätts och anslut sedan."
   },
   "join": {
     "introPair": "Anslut från telefonen",
@@ -249,7 +248,8 @@
     "kitTitle": "Använd ett återställningskit",
     "kitHint": "Ange återställningskoden från ditt återställningskit för synkronisering, eller texten i dess QR-kod.",
     "codeLabel": "Återställningskod",
-    "accountLabel": "Kontonummer"
+    "accountLabel": "Kontonummer",
+    "confirm": "Anslut och ersätt"
   },
   "phone": {
     "title": "Synkronisering",
@@ -292,5 +292,26 @@
     "payUnavailable": "Betalning för synkronisering är inte tillgänglig i mobilappen.",
     "payWaiting": "Väntar på att kontot ska bli aktivt. När det blir det går det vidare av sig självt.",
     "payWaitingShort": "Väntar …"
+  },
+  "replace": {
+    "lines": {
+      "accounts": "Konton och tillgångar: {{count}}",
+      "transactions": "Transaktioner: {{count}}",
+      "items": "Ändrade objekt som väntar på att skickas: {{count}}",
+      "batches": "Ändringspaket som synkroniseringsservern ännu inte har bekräftat: {{count}}",
+      "documents": "Dokument: {{count}}",
+      "photos": "Foton: {{count}}"
+    },
+    "attachments": "Dokument och foton förblir kopplade till objekt som de synkroniserade uppgifterna också har; resten finns bara kvar i säkerhetskopian.",
+    "unsent": "Moony skickar de väntande ändringarna först; det som inte kan skickas finns bara kvar i säkerhetskopian.",
+    "backupWhere": "Säkerhetskopian finns under Inställningar → Säkerhetskopia → Återställ.",
+    "loading": "Räknar vad som står på spel …",
+    "outcome": {
+      "attachments": "Dokument och foton som nu bara finns i säkerhetskopian: {{count}}",
+      "items": "Ändrade objekt som inte skickades och bara finns i säkerhetskopian: {{count}}",
+      "batches": "Ändringspaket som inte skickades och bara finns i säkerhetskopian: {{count}}",
+      "someUnsent": "Vissa ändringar finns bara kvar i säkerhetskopian.",
+      "kept": "Säkerhetskopian innehåller den enda kopian av sitt innehåll, så Moony tar aldrig bort den. Du kan ta bort den under Inställningar → Säkerhetskopia → Återställ."
+    }
   }
 }

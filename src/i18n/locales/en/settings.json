@@ -195,6 +195,16 @@
       "leftoversTitle": "Unencrypted copies outside Moony",
       "leftoversBody": "Moony found these while encrypting. It never deletes anything outside its own folder; check them and delete them yourself.",
       "reveal": "Show"
+    },
+    "syncBackups": {
+      "title": "Backups made before sync replaced data",
+      "kept": "Holds changes found nowhere else",
+      "restore": "Restore",
+      "delete": "Delete",
+      "deleteTitle": "Delete this backup?",
+      "deleteBody": "This backup is deleted for good.",
+      "deleteBodyKept": "This backup holds changes found nowhere else. It is deleted for good, and those changes are lost.",
+      "deleted": "Backup deleted"
     }
   },
   "autoLock": {

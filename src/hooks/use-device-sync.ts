@@ -55,3 +55,29 @@ export function useSyncDevices() {
     enabled: enabled && syncOn,
   });
 }
+
+/**
+ * What a replace would put at stake now. Never cached: a confirmation reads it when it opens
+ * (`enabled`) and again after `validation.syncReplaceImpactChanged`.
+ */
+export function useReplaceImpact(enabled = true) {
+  return useQuery({
+    queryKey: ['device-sync-replace-impact'],
+    queryFn: () => deviceSyncApi.replaceImpact(),
+    enabled,
+    gcTime: 0,
+    staleTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** The backups joins, repairs and re-syncs made, newest first; read while sync is built in. */
+export function useSyncBackups() {
+  const enabled = useDeviceSyncFeature();
+  return useQuery({
+    queryKey: ['device-sync-backups'],
+    queryFn: () => deviceSyncApi.listBackups(),
+    enabled,
+  });
+}

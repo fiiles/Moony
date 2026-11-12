@@ -1,4 +1,5 @@
 import { DataSection } from '@/components/settings/DataSection';
+import { LeftoverSyncCard } from '@/components/settings/sync/LeftoverSyncCard';
 import { CategoriesCard } from '@/components/settings/CategoriesCard';
 import { ProfileCard } from '@/components/settings/ProfileCard';
 import { LanguageCard } from '@/components/settings/LanguageCard';
@@ -43,7 +44,12 @@ export function SecuritySection() {
 
 /** /settings/data */
 export function DataSettingsSection() {
-  return <DataSection />;
+  return (
+    <>
+      <DataSection />
+      <LeftoverSyncCard />
+    </>
+  );
 }
 
 /** /settings/integrations */

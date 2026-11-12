@@ -204,6 +204,10 @@
     "title": "Ausschalten oder löschen",
     "description": "Die Synchronisierung auf diesem Gerät beenden oder löschen, was der Synchronisierungsserver speichert."
   },
+  "leftover": {
+    "text": "In diesem Profil wurde die Geräte-Synchronisierung über eine Entwicklungsversion eingeschaltet. Seine Änderungen werden weiterhin für die Synchronisierung aufgezeichnet.",
+    "button": "Synchronisierung ausschalten"
+  },
   "password": {
     "label": "Gerätepasswort"
   },

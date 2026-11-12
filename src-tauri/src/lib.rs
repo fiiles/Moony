@@ -281,6 +281,7 @@ async fn run_app() {
             commands::biometric::unlock_with_biometrics,
             // Device sync (services::sync)
             commands::sync::sync_feature_enabled,
+            commands::sync::sync_profile_state,
             commands::sync::get_sync_status,
             commands::sync::sync_create_account,
             commands::sync::sync_get_account,

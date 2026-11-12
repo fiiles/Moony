@@ -210,6 +210,10 @@
     "title": "Disattivare o eliminare",
     "description": "Interrompi la sincronizzazione su questo dispositivo o elimina ciò che conserva il server di sincronizzazione."
   },
+  "leftover": {
+    "text": "Questo profilo ha la sincronizzazione tra dispositivi attivata da una versione di sviluppo. Le sue modifiche vengono ancora registrate per la sincronizzazione.",
+    "button": "Disattiva la sincronizzazione"
+  },
   "password": {
     "label": "Password del dispositivo"
   },

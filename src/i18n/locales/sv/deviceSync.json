@@ -204,6 +204,10 @@
     "title": "Stäng av eller radera",
     "description": "Sluta synkronisera på den här enheten eller radera det synkroniseringsservern lagrar."
   },
+  "leftover": {
+    "text": "Den här profilen har enhetssynkronisering påslagen från en utvecklingsversion. Dess ändringar registreras fortfarande för synkronisering.",
+    "button": "Stäng av synkroniseringen"
+  },
   "password": {
     "label": "Enhetslösenord"
   },

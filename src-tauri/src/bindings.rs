@@ -27,6 +27,7 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::SyncPhase>();
     types.register::<crate::models::SyncProblem>();
     types.register::<crate::models::SyncStatus>();
+    types.register::<crate::models::SyncProfileState>();
 
     // Device sync setup (first device, checkout, Recovery Kit)
     types.register::<crate::models::SyncPlan>();

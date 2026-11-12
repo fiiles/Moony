@@ -165,6 +165,7 @@ import type {
   StockSplitCheck,
   StockInstrumentQuery,
   StockInstrumentResolution,
+  SyncProfileState,
   SyncStatus,
   SyncAccount,
   SyncPlan,
@@ -314,12 +315,16 @@ export const keychainApi = {
 // ============================================================================
 
 /**
- * Device sync (`commands/sync.rs`). Every call but `featureEnabled` rejects with
+ * Device sync (`commands/sync.rs`). Every call but `featureEnabled`, `profileState` and `turnOff`
+ * (which work in every build) rejects with
  * `validation.syncUnavailable` while the flag is off. The relay is the one at the stored account's
  * address; `createAccount` picks it (`undefined`: the default relay).
  */
 export const deviceSyncApi = {
   featureEnabled: () => tauriInvoke<boolean>('sync_feature_enabled'),
+
+  /** Works without the flag, read-only: whether this profile has sync on. */
+  profileState: () => tauriInvoke<SyncProfileState>('sync_profile_state'),
 
   getStatus: () => tauriInvoke<SyncStatus>('get_sync_status'),
 

@@ -26,6 +26,7 @@ export function useDeviceSyncMutations() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['device-sync-status'] }),
       queryClient.invalidateQueries({ queryKey: ['device-sync-account'] }),
+      queryClient.invalidateQueries({ queryKey: ['device-sync-profile-state'] }),
     ]);
   };
   const refreshLocalData = async () => {

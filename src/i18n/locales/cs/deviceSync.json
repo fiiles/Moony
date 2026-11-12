@@ -216,6 +216,10 @@
     "title": "Vypnutí a smazání",
     "description": "Zastavte synchronizaci na tomto zařízení nebo smažte, co synchronizační server uchovává."
   },
+  "leftover": {
+    "text": "Tento profil má zapnutou synchronizaci zařízení z vývojářské verze. Jeho změny se stále zaznamenávají pro synchronizaci.",
+    "button": "Vypnout synchronizaci"
+  },
   "password": {
     "label": "Heslo zařízení"
   },

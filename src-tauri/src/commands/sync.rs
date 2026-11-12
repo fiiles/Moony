@@ -2,7 +2,11 @@
 //! at lock, restore and account deletion; and the sync commands (thin: the flag, the input, the
 //! service in `services::sync::{setup, join}`, its `SyncError` mapped with `to_app_error`).
 //!
-//! Every command but `sync_feature_enabled` starts with `require_feature()`. The relay is the one
+//! Every command but three starts with `require_feature()`: `sync_feature_enabled` (it is the flag),
+//! `sync_profile_state` (read-only: whether this profile has sync on, so a build without the flag
+//! can say so) and `sync_turn_off` (it only removes sync state from this profile; a build without
+//! the flag keeps capturing an enabled profile, audit M12, and must let the person end that).
+//! The relay is the one
 //! at the stored account's address (`keys::account`, ruling SH-2); `default_base_url()` only before
 //! an account exists. The commands that change what the engine works on (finishing setup, turning
 //! sync off, deleting the synced data, the repair and the re-sync) stop the engine first and start
@@ -25,7 +29,7 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::sync::{
     CheckoutTarget, RecoveryKit, ReplaceConsentView, ReplaceOutcomeView, SyncAccount, SyncPlan,
-    SyncStatus,
+    SyncProfileState, SyncStatus,
 };
 use crate::services::auth;
 use crate::services::sync::binding::{BindingFailure, BindingNative};
@@ -528,6 +532,16 @@ pub async fn sync_feature_enabled() -> Result<bool> {
     Ok(feature::enabled())
 }
 
+/// Works without the flag, read-only: whether this profile has sync on (`enabled`) and whether this
+/// build runs sync (`featureOn`). A build without the flag shows a way out when the profile is on.
+#[tauri::command]
+pub async fn sync_profile_state(db: State<'_, Database>) -> Result<SyncProfileState> {
+    Ok(SyncProfileState {
+        enabled: sync_on(&db)?,
+        feature_on: feature::enabled(),
+    })
+}
+
 #[tauri::command]
 pub async fn get_sync_status(app: AppHandle, db: State<'_, Database>) -> Result<SyncStatus> {
     require_feature()?;
@@ -723,7 +737,8 @@ async fn turn_off_rechecked<D: ConnAccess>(
     setup::turn_off_between_rounds(db, data_dir).await
 }
 
-/// Turns sync off on this device; local data stays. With sync on, only once the device password
+/// Turns sync off on this device; local data stays. Works without the flag: it only removes sync
+/// state (and the guard or `query_only`) from this profile. With sync on, only once the device password
 /// is checked (`turn_off_allowed`, checked again once no other sync change runs, in case a setup
 /// finished meanwhile); cancelling a setup that has not finished needs none.
 #[tauri::command]
@@ -733,7 +748,6 @@ pub async fn sync_turn_off(
     password: Option<String>,
 ) -> Result<()> {
     let password = password.map(Zeroizing::new);
-    require_feature()?;
     let checked = match password {
         Some(password) => {
             verify_password(&app, password).await?;
@@ -1207,9 +1221,16 @@ mod tests {
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 30);
+        assert_eq!(found.len(), 31);
         for (name, first_three) in &commands {
-            if name == "sync_feature_enabled" {
+            // The flag itself, a read-only question, and the way out of an enabled profile.
+            if [
+                "sync_feature_enabled",
+                "sync_profile_state",
+                "sync_turn_off",
+            ]
+            .contains(&name.as_str())
+            {
                 continue;
             }
             assert!(

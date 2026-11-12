@@ -204,6 +204,10 @@
     "title": "Turn off or delete",
     "description": "Stop syncing on this device, or delete what the sync server stores."
   },
+  "leftover": {
+    "text": "This profile has device sync turned on from a development build. Its changes are still recorded for sync.",
+    "button": "Turn sync off"
+  },
   "password": {
     "label": "Device password"
   },

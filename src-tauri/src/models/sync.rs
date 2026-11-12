@@ -90,6 +90,17 @@ pub enum SyncProblem {
     Internal,
 }
 
+/// What a build without the sync flag can still say about the open profile (`sync_profile_state`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncProfileState {
+    /// This profile has sync turned on (a development build did it); its changes are recorded.
+    #[serde(rename = "enabled")]
+    pub enabled: bool,
+    /// This build runs sync (the flag).
+    #[serde(rename = "featureOn")]
+    pub feature_on: bool,
+}
+
 /// The `sync-status-changed` payload.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct SyncStatus {

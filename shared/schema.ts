@@ -102,6 +102,14 @@ export interface SyncStatus {
   devTools: boolean;
 }
 
+/** `sync_profile_state`: answered in every build, read-only. */
+export interface SyncProfileState {
+  /** This profile has sync turned on; its changes are recorded in every build. */
+  enabled: boolean;
+  /** This build runs sync (the feature flag). */
+  featureOn: boolean;
+}
+
 /** The subscription a checkout is for. */
 export type SyncPlan = 'monthly' | 'yearly';
 

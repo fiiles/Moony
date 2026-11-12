@@ -21,7 +21,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useCategories } from '@/hooks/use-categories';
-import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
+import {
+  useDeviceSyncFeature,
+  useDeviceSyncStatus,
+  useLeftoverSyncProfile,
+} from '@/hooks/use-device-sync';
 import { useMilestoneMutedKinds } from '@/hooks/use-milestones';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { languageInfo } from '@/i18n/languages';
@@ -155,6 +159,8 @@ export default function Settings() {
 
   // The Sync row exists only where device sync is built in (the feature flag)
   const syncFeature = useDeviceSyncFeature();
+  // …or a profile that has sync on though this build does not run it: the page offers turning it off
+  const syncLeftover = useLeftoverSyncProfile();
   const syncStatus = useDeviceSyncStatus();
   const syncSub = syncStatus.isPending ? undefined : tsync(syncRowSummary(syncStatus.data).key);
 
@@ -274,11 +280,11 @@ export default function Settings() {
           sub={backupSub}
           href={settingsPath('backup')}
         />
-        {syncFeature && (
+        {(syncFeature || syncLeftover) && (
           <SettingsRow
             icon={RefreshCw}
             title={tsync('phone.title')}
-            sub={syncSub}
+            sub={syncFeature ? syncSub : undefined}
             href={settingsPath('sync')}
           />
         )}

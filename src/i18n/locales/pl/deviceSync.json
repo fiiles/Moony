@@ -216,6 +216,10 @@
     "title": "Wyłączenie lub usunięcie",
     "description": "Zatrzymaj synchronizację na tym urządzeniu albo usuń to, co przechowuje serwer synchronizacji."
   },
+  "leftover": {
+    "text": "W tym profilu synchronizacja urządzeń została włączona z wersji deweloperskiej. Jego zmiany nadal są zapisywane na potrzeby synchronizacji.",
+    "button": "Wyłącz synchronizację"
+  },
   "password": {
     "label": "Hasło urządzenia"
   },

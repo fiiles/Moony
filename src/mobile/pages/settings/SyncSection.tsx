@@ -22,6 +22,7 @@ import type {
 } from '@shared/schema';
 import {
   useDeviceSyncFeatureState,
+  useLeftoverSyncProfile,
   useDeviceSyncStatus,
   useSyncDevices,
 } from '@/hooks/use-device-sync';
@@ -73,6 +74,7 @@ type Flow = { mode: ScanMode; paste: boolean } | null;
 export default function SyncSection() {
   const { t } = useTranslation('deviceSync');
   const feature = useDeviceSyncFeatureState();
+  const leftover = useLeftoverSyncProfile();
   const { data: status } = useDeviceSyncStatus();
   const { data: devices } = useSyncDevices();
   const { repairDevice, resyncDevice, turnOff, deleteSyncedData, skipMissingChange } =
@@ -103,7 +105,9 @@ export default function SyncSection() {
   useEffect(() => resetDelete, [resetDelete]);
   useEffect(() => resetSkip, [resetSkip]);
 
-  if (!feature.loading && !feature.enabled) return <Redirect to={routes.settings} replace />;
+  if (!feature.loading && !feature.enabled && !leftover) {
+    return <Redirect to={routes.settings} replace />;
+  }
 
   const close = (next: boolean) => {
     if (next) return;
@@ -184,6 +188,30 @@ export default function SyncSection() {
       fail(error);
     }
   };
+
+  // A build without sync: only a profile that has sync on gets a page, with the way out
+  if (!feature.loading && !feature.enabled) {
+    return (
+      <SectionPage title={t('phone.title')} lead={t('leftover.text')}>
+        <EntityRows>
+          <SettingsRow
+            icon={Unplug}
+            title={t('leftover.button')}
+            onClick={() => setOpen('turnOff')}
+          />
+        </EntityRows>
+        <SyncPasswordSheet
+          open={open === 'turnOff'}
+          onOpenChange={close}
+          title={t('turnOff.title')}
+          description={`${t('phone.turnOffBody')} ${t('turnOff.noCutOff')}`}
+          confirmLabel={t('turnOff.confirm')}
+          destructive
+          onSubmit={turnOffNow}
+        />
+      </SectionPage>
+    );
+  }
 
   const syncOn = status !== undefined && status.phase !== 'off' && status.phase !== 'settingUp';
   const pending = status?.pendingChanges ?? 0;

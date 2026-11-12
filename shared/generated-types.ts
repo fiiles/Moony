@@ -3420,6 +3420,19 @@ export type SyncProblem =
 "serverWentBack" | "internal"
 
 /**
+ * What a build without the sync flag can still say about the open profile (`sync_profile_state`).
+ */
+export type SyncProfileState = { 
+/**
+ * This profile has sync turned on (a development build did it); its changes are recorded.
+ */
+enabled: boolean; 
+/**
+ * This build runs sync (the flag).
+ */
+featureOn: boolean }
+
+/**
  * The `sync-status-changed` payload.
  */
 export type SyncStatus = { phase: SyncPhase; problem: SyncProblem | null; 

@@ -204,6 +204,10 @@
     "title": "Slå av eller slett",
     "description": "Stopp synkroniseringen på denne enheten, eller slett det synkroniseringsserveren lagrer."
   },
+  "leftover": {
+    "text": "Denne profilen har enhetssynkronisering slått på fra en utviklerversjon. Endringene i den registreres fortsatt for synkronisering.",
+    "button": "Slå av synkronisering"
+  },
   "password": {
     "label": "Enhetspassord"
   },

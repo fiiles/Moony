@@ -185,7 +185,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
-| `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; no API key is stored since migration 025; `stock_import_formats` holds the custom stock CSV mappings (JSON array, newest first, at most 20; `services/stock_import/formats.rs`); `learned_csv_formats` holds the CSV statement layouts the person confirmed on the phone (JSON array of `LearnedCsvFormat`, at most 20, newest used first; `services/csv_import/learned.rs`); `milestones.mutedKinds` holds the milestone kinds the user turned off (JSON array of kind names; `services/milestones/`); `fx_reference` records the currency stored rates are quoted against (`EUR` since migration 011); `history_rebuild_version` is the version of the one-time history rebuild the profile has completed (absent means never; the current version is 4): the first start of a version rebuilds every history day from dated facts and stores it once the days rebuild succeeded (`services/history_plan.rs`, ADR 0016) |
+| `app_config` | Key-value app settings incl. recovery-key hash | `key TEXT PRIMARY KEY`, `value TEXT`; no API key is stored since migration 025; `stock_import_formats` holds the custom stock CSV mappings (JSON array, newest first, at most 20; `services/stock_import/formats.rs`); `learned_csv_formats` holds the CSV statement layouts the person confirmed on the phone (JSON array of `LearnedCsvFormat`, at most 20, newest used first; `services/csv_import/learned.rs`); `milestones.mutedKinds` holds the milestone kinds the user turned off (JSON array of kind names; `services/milestones/`); `fx_reference` records the currency stored rates are quoted against (`EUR` since migration 011); `history_rebuild_version` is the version of the one-time history rebuild the profile has completed (absent means never; the current version is 4): the first start of a version rebuilds every history day from dated facts and stores it once the days rebuild succeeded (`services/history_plan.rs`, ADR 0016); the `sync.*` keys are device sync's Local bookkeeping (see "Device sync" below). Five keys sync between devices (`APP_CONFIG_SYNCED_KEYS` in `services/sync/registry/`); every other key is Local |
 | `user_profile` | Single-row user profile and preferences | `INTEGER AUTOINCREMENT` PK (convention exception); `currency DEFAULT 'CZK'` (the main currency; creation and update accept only the 36 codes with an exchange-rate source, `validation.currencyUnsupported`; an older unsupported value is kept as is), `language`, `menu_preferences` JSON, `mcp_server_enabled` gates the local API server, `mcp_server_token` TEXT (NULL until the server is first enabled), `mcp_server_port` INTEGER (NULL = default 41414), `country` TEXT (ISO 3166-1 alpha-2 of the profile, NULL until set in the wizard or Settings; migration 017), `insurance_notice_days` INTEGER (NULL = the 50-day default; 0 = no insurance-anniversary reminder; else days; migration 018), `theme` TEXT NOT NULL DEFAULT `'system'` (`system`/`light`/`dark`, validated on update with `validation.themeInvalid`; migration 022) |
 
 ### Bank accounts
@@ -332,7 +332,34 @@ Recomputed, recomputed-or-typed, write-once, monotonic); ADR 0024 records the me
 | `sync_own_log` | Local. This device's own hash chain | `seq` PK; `hash`; `min_hlc` (oldest own clock in the envelope); `max_hlc` |
 | `sync_unsent` | Local. Own envelopes sealed and not yet pulled back from the relay (a push answer alone never removes one, audit M4) | `seq` PK; `envelope` BLOB |
 | `sync_typed` | Local. Columns a repair shows differently from what was typed: renamed names (`col = 'name'`), cleared `cashflow_items.replacement_source_id` links, recomputed-or-typed columns while source rows exist (ruling T18b) | `PRIMARY KEY (tbl, pk, col)` WITHOUT ROWID; `typed` (the typed / last-writer-wins value, what syncs), `assigned` (the value shown; NULL for a cleared link); both untyped columns, so numbers and NULL keep their type |
-| `sync_devices` | Synced. Devices of the vault | `id` TEXT PK (device ID, 32 lowercase hex characters); `public_key`; `name`, `platform`, `app_version`, `joined_at`; `removed` CHECK (0/1) |
+| `sync_devices` | Synced. Devices of the vault | `id` TEXT PK (device ID, 32 lowercase hex characters); `public_key` (write-once, except that a key stamped with the device's own ID beats one stamped with another ID; that stamp is not proof of authorship, ADR 0027); `name`, `platform`, `app_version`, `joined_at`; `removed` CHECK (0/1) |
+
+The engine also keeps Local keys in `app_config` (never synced, never captured, no migration; ADR
+0027). Turning sync off and a completed join, repair or re-sync delete the first four (a replace
+from a snapshot whose header carries a skipped miss writes `sync.skipped_miss` again):
+
+- `sync.held_gap.<device hex>`: one per author whose change this device holds because an earlier
+  change or a parent has not arrived, or because it is dated more than 10 years ahead (kind
+  `ahead`); JSON with the kind, the lowest held envelope (sequence, previous hash, hash, relay
+  position) and when it was first held. The person may skip it 14 days after that. Forgotten when
+  it heals or when a pull reaches the end with nothing held (`chain/gaps.rs`).
+- `sync.skipped_miss`: the newest relay position of a skipped change whose rows this device lacks;
+  written into the header of every snapshot this device uploads, so no device heals from it.
+- `sync.skipped_miss_since`: when the oldest such change was first held (or inherited); a change
+  that waits for a parent the skipped one created is skippable from then. Both skip keys are
+  cleared by a clean snapshot that heals the miss.
+- `sync.vault_went_back_at`: when this device first saw the sync server's head below its place (a
+  server restored from an older backup). Sticky: no round clears it; while it is set the status
+  shows `serverWentBack` and every re-sync keeps its backup.
+- `sync.binding_failed_starts`: app starts in a row whose this-machine binding could not be checked
+  (a native `Failed`), counted once per start; the third re-joins, and any other answer deletes the
+  key (`binding.rs`).
+
+The main connection runs `PRAGMA foreign_keys = ON` and `PRAGMA main.secure_delete = ON`
+(`db::configure`, when a database is created and each time one is opened), so deleted cells are
+zeroed in the file; turning sync off then truncates the WAL (`PRAGMA wal_checkpoint(TRUNCATE)`), so
+the deleted vault key leaves the profile's free pages. Copies made earlier (backups,
+`moony.db.bak-*`, `sync-repair-*.zip`) still hold it.
 
 ## The attachments store (`attachments.db`)
 
@@ -368,7 +395,7 @@ versions that the conversion has encrypted, deleted at the next unlock once the
 store checks out; the legacy folders `real_estate_photos/`,
 `real_estate_documents/`, `insurance_documents/` while plain files of earlier
 versions are not converted yet; `pre-restore-<unix ts>/` — the previous account
-after a restore from backup (never deleted automatically); with device sync (ADR 0025): `sync-binding.bin` (this device's ID sealed to the machine; `.tmp` while it is written), `sync-rejoin.marker` (left by a restore: the next unlock re-joins) and `sync-repair-<unix ts>.zip` (the verified backup a sync repair or re-sync takes before replacing the profile; kept until Delete Account). None of the three is part of a backup; Delete Account removes them, and turning sync off removes the first two. Decrypted copies of
+after a restore from backup (never deleted automatically); with device sync (ADR 0025): `sync-binding.bin` (this device's ID sealed to the machine; `.tmp` while it is written), `sync-rejoin.marker` (left by a restore: the next unlock re-joins) and `sync-repair-<unix ts>[-n][-kept|-unused].zip` (the verified backup a join, repair or re-sync takes before replacing the profile, written as `.zip.partial` until it is flushed and read back; `-kept` holds something found nowhere else and is never pruned, `-unused` means the replace never happened and goes after 30 days, and of the plain ones the newest three and those under 30 days stay; Restore lists them and the person may delete one, ADR 0027). None of the three is part of a backup; Delete Account removes them, and turning sync off removes the first two. Decrypted copies of
 documents opened in another app live in the app *cache* folder under `open/`
 and are wiped on lock, exit and start. Backups themselves are zip archives
 written wherever the user chooses (`services/backup.rs`, format 2: both database

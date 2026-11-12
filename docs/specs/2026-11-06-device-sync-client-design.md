@@ -36,7 +36,7 @@ and drives everything below.
   never leave the person's devices except through pairing and the Recovery Kit, both under the
   person's control.
 - G3. Integrity. A relay that drops, reorders, replays or alters data is detected; it can at most
-  delay or withhold updates (§13).
+  delay or withhold updates (§13). (corrected, see §20)
 - G4. No change to how the app is written. The ~900 write statements in `services/` stay as
   they are; sync captures changes below them (D4). UI and MCP writes sync alike.
 - G5. Zero cost for people who don't sync: no triggers, no journal growth, no network calls.
@@ -533,7 +533,7 @@ envelope, all inside the AEAD. On every pull the engine checks each envelope:
     keeps syncing, and diagnostics name the device. The clone re-joins under a new ID on its own
     next pull, after which the quarantine is moot.
   - `seq` beyond the next one (a gap) → the relay dropped something. Stop; a later pull that fills
-    the gap resumes.
+    the gap resumes. (corrected, see §20)
 - Decryption failure → stop. Never skip an envelope that fails to decrypt: skipping would make
   the devices diverge silently.
 
@@ -546,7 +546,7 @@ waiting for the relay.
 
 What remains possible for the relay: withholding new envelopes (a device just looks out of date)
 and deleting everything (the person still has every device's local data). Both are visible; both
-are availability problems, not confidentiality or integrity ones. A `404` for the vault therefore
+are availability problems, not confidentiality or integrity ones. (corrected, see §20) A `404` for the vault therefore
 never tears sync down by itself (§11.6): it pauses sync and asks the person.
 
 ### 9.4 The engine loop
@@ -736,7 +736,8 @@ number, a QR, and a recovery code: vault ID (128 bits) and current vault key (25
 Crockford base32 — 77 characters plus a 3-character checksum, printed as 16 groups of five. Long,
 but it is typed only when every device is lost, and the QR on the same page covers the usual case.
 It is the only way back when every device is lost. It is shown at setup and after every key
-rotation, and Settings → Sync can show it again (after the device password). Older epochs come
+rotation, and Settings → Sync can show it again (after the device password). (corrected, see
+§20) Older epochs come
 from the snapshot and the rekey back-links (§8, §11.4), so a Kit with only the current key still
 opens every blob.
 
@@ -791,7 +792,7 @@ amount, name, category, ticker, note, file name, file content, device name or co
 
 What a stolen phone or laptop yields: nothing more than today — the vault keys are inside the
 SQLCipher database, behind the device password (and biometry where enabled). Removing the device
-(§11.4) stops it from following future changes.
+(§11.4) stops it from following future changes. (corrected, see §20)
 
 What the Recovery Kit yields: everything synced. It is treated like the local recovery key.
 
@@ -1138,3 +1139,64 @@ where it differs from §11, the code and ADR 0026 win.
   the default one waits for a subscription paid elsewhere. The iPhone binds with the Secure Enclave
   as macOS does, copies the recovery code to a private pasteboard that expires after 60 s, and a
   debug build can carry the sync flag from its build environment. Android is not built.
+
+### As built (audit fixes, 2026-11-12)
+
+The security audit of phases 1–3 (`docs/audits/2026-11-11-device-sync-security-audit.md`) and its
+fixes on `fix/device-sync-audit` corrected several claims of this spec. ADR 0027
+(`docs/architecture/decisions/0027-device-sync-audit-fixes.md`) records the decisions and the
+residuals; where it differs from the text above, the code and ADR 0027 win. Sentences marked
+"(corrected, see §20)" are corrected here.
+
+- **§2 G3 Integrity.** Dropping, reordering, replaying and altering are detected, but withholding
+  and forking are not reliably visible: a sync server can serve one device an older state, split
+  devices, or keep an envelope's ID and never serve it, and a joining device accepts any genuine
+  snapshot without proof that it is the newest (audit M5, accepted). The only signal is a device
+  marked "No changes from this device in N days" after more than 30 days, and a `relayError` for an
+  envelope that never comes back. A self-hosted server restored from an older backup is noticed
+  (problem `serverWentBack`) but not repaired.
+- **§6 and §11.6 Capture or guard.** An enabled profile is either captured or guarded: when capture
+  cannot be installed, writes to synced data are refused (`validation.syncChangesPaused`) until a
+  repair or turning sync off, so a repair or re-sync never discards an uncaptured edit; if the guard
+  cannot be imposed either, the profile opens read-only. This holds in every build, including one
+  without the sync flag, where turning sync off still works. The unlock sweep of revived seeds
+  covers only tables a newly applied migration seeded.
+- **§8 and D22 Replaces.** A join, repair or re-sync keeps this device's documents and photos whose
+  item the vault also has; the others are counted and stay only in the backup. The confirmation
+  shows the counts and the replace runs only within what the person agreed to, with the backup and
+  the replace under one connection hold. Backups are `sync-repair-<unix>[-n].zip`, with `-kept`
+  (never pruned: every join and repair, and a re-sync that leaves something only in the backup) or
+  `-unused` (the replace never happened) in the name; plain ones keep the newest three and those
+  under 30 days. Restore lists them, and the iPhone can copy one to Files. Repair, re-sync and
+  turning sync off with sync on need the device password. Both snapshot restores refuse a snapshot
+  whose newest clock is more than 10 years past this device's wall clock.
+- **§9.3 Gaps and visibility.** A gap does not stop sync: the envelope is held with the cursor
+  before it, other authors keep applying, and the device keeps pushing (phase `waiting`, problem
+  `gap`). The same holds for a change whose parent no envelope brought, and for a change dated more
+  than 10 years ahead of this device's wall clock (problem `clockAhead`; anything from a day to 10
+  years ahead applies with a warning). After 14 days the person may skip a held change
+  (password and confirmation); the skipped rows come back only from a snapshot of a device that has
+  them. "Both are visible" overstates it: see G3 above.
+- **§9.4 Push.** A push answer no longer deletes anything: an envelope stays in `sync_unsent` until
+  this device's own pull sees it, and it is sent again until then. A round that pushed pulls once
+  more for the echo. A `410` restore runs at most once in 6 hours; after three unfinished pulls in a
+  row the round pushes anyway.
+- **§11.3 Pairing.** Protocol 2 (`moony-pair:2:`): a third mailbox slot carries the showing device's
+  acknowledgement, the scanning device shows digits only after verifying it, and the person types
+  the joining device's six digits on the device that holds the vault (three attempts), instead of
+  comparing two screens. A sync server must offer slot 3 (relay branch `feat/pairing-ack`).
+- **§11.4 Device list and the public key.** Removal and rotation do not exist yet (phase 5): a lost
+  device or Recovery Kit cannot be cut off, and the UI says so. `sync_devices.public_key` is not
+  strictly write-once: a key stamped with the device's own ID beats one stamped with another ID.
+  Any holder of the vault key can forge that stamp, so the column must not be trusted for rekeying
+  until changes are signed per device.
+- **§11.5 Recovery Kit.** It is a printable HTML page or plain text, not a PDF (ADR 0025). Every
+  showing needs the device password, the first one during setup included. It leaves the screen after
+  5 minutes or when the app is hidden, the desktop protects it from screen capture, copying is native
+  only (cleared after 60 s), and the desktop saves it from Rust with owner-only permissions on macOS
+  and Linux.
+- **§13 Security properties.** "Removing the device stops it from following future changes" is not
+  true in this build: there is no removal, and a lost device, a Recovery Kit and every profile or
+  sync backup made while sync was on keep the vault key for good (audit H1). There is also no author
+  authentication: a key holder can write rows as any device. Turning sync off deletes the key from
+  the profile file (`secure_delete`, WAL truncation) but not from backups made earlier.

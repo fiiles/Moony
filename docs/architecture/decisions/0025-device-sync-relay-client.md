@@ -9,7 +9,9 @@ relay client, still hidden behind a runtime flag (`src-tauri/src/services/sync/`
 `relay/`, `engine/`, `binding.rs`, `recovery.rs`, `keys.rs`, `setup.rs`, `join.rs`;
 `commands/sync.rs`; the binding and clipboard natives of `plugins/moony-keychain`;
 `src/components/settings/sync/`). Builds on ADR 0024. Where the spec's text differs, the code and
-this ADR win.
+this ADR win. Amended by [ADR 0027](0027-device-sync-audit-fixes.md) (2026-11-12): rounds hold a
+gap instead of stopping, envelopes stay until they come back, back-offs, replaces and their
+backups, the binding fails closed, the Recovery Kit and the runtime flag.
 
 ## Context
 

@@ -10,6 +10,8 @@ and the phone app's sync, still hidden behind the runtime flag (`src-tauri/src/s
 `pairing/`, `join.rs`, `devices.rs`, `feature.rs`, `relay/`; `commands/sync_pairing.rs`; the iOS
 binding and clipboard of `plugins/moony-keychain`; `src/components/settings/sync/`, `src/mobile/`).
 Builds on ADR 0024 and ADR 0025. Where the spec's text differs, the code and this ADR win.
+Amended by [ADR 0027](0027-device-sync-audit-fixes.md) (2026-11-12): pairing protocol 2 (see the
+marked paragraph under **Bytes**), joins that keep their backup, and the Recovery Kit.
 
 ## Context
 
@@ -38,6 +40,18 @@ the HKDF info: a relay that flips it only stops the pairing (`syncPairingBothOn`
 sides waiting until expiry). The `hkdf` crate's PRK is not zeroized; the shared secret, the output
 and the X25519 secret (an `Option` taken at derive) are. The vectors in `pairing/tests.rs` are the
 contract with every other device.
+
+*Amended 2026-11-12 (ADR 0027): protocol 2.* The QR text starts `moony-pair:2:` and slot 1 is
+`0x02 ‖ role ‖ C public`. The HKDF info is unchanged, but 72 bytes are taken: the session key
+(0..32), the code (32..40, as above) and an acknowledgement key (40..72). The shower, after reading
+slot 1, writes slot 3 = `0x01 ‖ HMAC-SHA256(ack key, "shower->scanner" ‖ mailbox ‖ S public ‖ C
+public)` (33 bytes); the scanner shows anything only after it verifies. Only the joiner shows the
+six digits; the person types them on the holder, which checks them in Rust (three attempts), so
+"They match" and "They don't match" no longer exist and abandoning is "Cancel". Slot 2 and the
+cancel marker are unchanged. A `moony-pair:1:` code is refused ("the other device needs an
+update"), a version `0x01` slot 1 ends the pairing, and a sync server without slot 3 answers "this
+sync server needs an update". The
+vectors in `pairing/tests.rs` now include the acknowledgement.
 
 **The channel the code relies on (PF2).** The six digits protect the exchange only because S's
 public key reaches C over a channel the attacker cannot modify: a QR on a screen the person is

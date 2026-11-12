@@ -196,11 +196,11 @@ fn strings(conn: &Connection, sql: &str) -> Result<Vec<String>> {
 }
 
 /// Deletes, in the given Synced `tables` (those a newly applied migration seeded, so an ordinary
-/// row that was deleted and re-created under the same key is never touched), the rows whose key has a tombstone (`'-'`) and no row clock
-/// (`'*'`) at least as new: a migration seed brought back a row a device deleted (§14). Driven
-/// from the tombstones (the `sync_clock` key range of the table), so the cost follows the number
-/// of tombstones, not the size of the table. Runs before capture is installed, so no trigger
-/// records the deletes. Returns how many went.
+/// row that was deleted and re-created under the same key is never touched), the rows whose key
+/// has a tombstone (`'-'`) and no row clock (`'*'`) at least as new: a migration seed brought
+/// back a row a device deleted (§14). Driven from the tombstones (the `sync_clock` key range of
+/// the table), so the cost follows the number of tombstones, not the size of the table. Runs
+/// before capture is installed, so no trigger records the deletes. Returns how many went.
 pub fn delete_revived_seeds(conn: &Connection, tables: &BTreeSet<&str>) -> Result<usize> {
     let mut deleted = 0;
     for spec in registry::synced_tables() {

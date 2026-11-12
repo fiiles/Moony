@@ -187,10 +187,13 @@ pub fn disable(conn: &Connection) -> Result<()> {
     })
 }
 
-/// Records that this build opened the profile (its schema number), for the barrier logic (§14).
+/// Records that this build opened the profile (its schema number), for the barrier logic (§14)
+/// and the unlock sweep. The mark never goes down: a mark left by a newer build stays, so going
+/// back to that build sweeps no migration it has already seen and crosses no barrier again
+/// (`chain::cross_barrier` only compares the mark with this build's barrier).
 pub fn note_schema_seen(conn: &Connection) -> Result<()> {
     conn.execute(
-        "UPDATE sync_state SET schema_seen = ?1 WHERE id = 1",
+        "UPDATE sync_state SET schema_seen = MAX(schema_seen, ?1) WHERE id = 1",
         [schema_number()],
     )?;
     Ok(())
@@ -533,6 +536,32 @@ mod tests {
         let state = load(&conn).unwrap().expect("row");
         assert!(state.enabled);
         assert_eq!(state.device, DEVICE);
+    }
+
+    #[test]
+    fn the_schema_mark_rises_but_never_goes_down() {
+        let conn = migrated();
+        ensure_row(&conn, DEVICE).unwrap();
+        conn.execute("UPDATE sync_state SET schema_seen = 2", [])
+            .unwrap();
+        note_schema_seen(&conn).unwrap();
+        assert_eq!(
+            load(&conn).unwrap().expect("row").schema_seen,
+            schema_number()
+        );
+
+        // A newer build opened the profile, then this one: the newer mark stays, so going back
+        // to that build sweeps none of the migrations it has already seen.
+        conn.execute(
+            "UPDATE sync_state SET schema_seen = ?1",
+            [schema_number() + 3],
+        )
+        .unwrap();
+        note_schema_seen(&conn).unwrap();
+        assert_eq!(
+            load(&conn).unwrap().expect("row").schema_seen,
+            schema_number() + 3
+        );
     }
 
     #[test]

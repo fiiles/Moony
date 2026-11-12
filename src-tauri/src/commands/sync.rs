@@ -28,8 +28,9 @@ use crate::services::auth;
 use crate::services::sync::binding::{BindingFailure, BindingNative};
 use crate::services::sync::capture::bench::{self, Overhead};
 use crate::services::sync::engine::runtime::{self, EngineHandle, Trigger};
-use crate::services::sync::engine::{status, EngineEvents};
+use crate::services::sync::engine::{status, ConnAccess, EngineEvents};
 use crate::services::sync::error::{SyncError, SyncResult};
+use crate::services::sync::impact::{self, ReplaceConsent};
 use crate::services::sync::merge::DATA_CHANGED_EVENT;
 use crate::services::sync::relay::http::{default_base_url, HttpRelay};
 use crate::services::sync::{feature, join, keys, setup, state};
@@ -702,8 +703,8 @@ pub async fn sync_repair_device(app: AppHandle, db: State<'_, Database>) -> Resu
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
     let repair = join::repair_capture(&relay, &session, &dir, &native, now());
-    let backup = guarded_change(&AppEngine { app: &app, db: &db }, repair).await?;
-    Ok(backup.display().to_string())
+    let outcome = guarded_change(&AppEngine { app: &app, db: &db }, repair).await?;
+    Ok(outcome.backup.display().to_string())
 }
 
 /// "Re-sync this device" (ruling T8-4): backup, then join by replace without a drain, once the
@@ -722,9 +723,16 @@ pub async fn sync_resync_device(
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
-    let resync = join::resync_by_replace(&relay, &session, &dir, &native, now());
-    let backup = guarded_change(&AppEngine { app: &app, db: &db }, resync).await?;
-    Ok(backup.display().to_string())
+    let consent = consent_as_it_stands(&session)?;
+    let resync = join::resync_by_replace(&relay, &session, consent, &dir, &native, now());
+    let outcome = guarded_change(&AppEngine { app: &app, db: &db }, resync).await?;
+    Ok(outcome.backup.display().to_string())
+}
+
+/// The consent of a confirmation that showed the profile as it stands now: its watermark and its
+/// documents and photos. A change after this still stops the replace.
+pub(super) fn consent_as_it_stands<D: ConnAccess>(db: &D) -> Result<ReplaceConsent> {
+    Ok(db.with_conn(impact::replace_impact)?.consent())
 }
 
 /// A test subscription of `days` days on a local relay started with `DEV_GRANT=1` (debug builds

@@ -9,6 +9,7 @@ mod pull;
 mod push;
 mod relay_faults;
 mod repair;
+mod replace_safety;
 mod runtime;
 mod runtime_loop;
 mod setup;
@@ -233,6 +234,13 @@ pub fn row(table: &str, key: &str, generation: Clock, columns: &[(&str, SqlValue
 
 pub fn text(value: &str) -> SqlValue {
     SqlValue::Text(value.to_string())
+}
+
+/// The consent of a confirmation that shows `device` as it stands now.
+pub fn agreed(device: &TestConn) -> crate::services::sync::impact::ReplaceConsent {
+    crate::services::sync::impact::replace_impact(&device.lock())
+        .expect("impact")
+        .consent()
 }
 
 pub fn cursor(conn: &Connection) -> u64 {

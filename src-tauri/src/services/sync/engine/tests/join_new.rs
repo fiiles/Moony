@@ -99,7 +99,19 @@ async fn join_as(
     name: &str,
     dir: &Path,
 ) -> SyncResult<std::path::PathBuf> {
-    join_new_device(&vault.relay, device, creds, name, dir, &NoBinding, NOW).await
+    let consent = agreed(device);
+    join_new_device(
+        &vault.relay,
+        device,
+        creds,
+        name,
+        consent,
+        dir,
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .map(|outcome| outcome.backup)
 }
 
 /// The newcomer joined: its own row is gone, the vault's is there, sync is on under a new device
@@ -433,7 +445,7 @@ async fn a_hostile_sync_server_in_the_credentials_is_refused_before_anything() {
 }
 
 #[tokio::test]
-async fn a_join_whose_snapshot_download_fails_changes_nothing_but_the_backup() {
+async fn a_join_whose_snapshot_download_fails_changes_nothing() {
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;
     let device = newcomer();
@@ -456,16 +468,15 @@ async fn a_join_whose_snapshot_download_fails_changes_nothing_but_the_backup() {
         assert_eq!(profile(&c), before, "the profile is as it was");
         assert!(state::load(&c).expect("state").is_none(), "sync stays off");
     }
-    assert_eq!(
-        repair_backups(dir.path()),
-        vec![format!("sync-repair-{NOW}.zip")],
-        "the backup stays"
+    assert!(
+        repair_backups(dir.path()).is_empty(),
+        "the backup comes in the hold, after the snapshot is open"
     );
 
     let zip = join_as(&vault, &device, vault.creds.clone(), "Laptop", dir.path())
         .await
         .expect("the second join");
-    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}-2.zip")));
+    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}.zip")));
     assert!(!has_institution(&device.lock(), "local-only"));
     for device in [&device, &vault.a, &device] {
         round(&vault, device, RoundMode::Normal).await;

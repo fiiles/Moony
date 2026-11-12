@@ -14,10 +14,10 @@
 //! two in `finish_setup`: the copy check of a resumed setup (`join::rejoin_if_copy_under_lock`)
 //! and the binding write (`write_binding_if_due`) run on the runtime, under the connection lock
 //! and the round lock, because the platform's sealing (`BindingNative`) comes in as a borrowed
-//! `&dyn` that cannot move to the blocking pool (as in `join::join_by_replace`). Each is at most
-//! one keychain or DPAPI open or seal of 32 bytes, a small file read or write and, for a copy,
-//! the re-join's one savepoint. (`block_in_place` would need a multi-thread runtime; the tests run
-//! on tokio's current-thread one.)
+//! `&dyn` that cannot move to the blocking pool (as in `join::write_binding_after_replace`).
+//! Each is at most one keychain or DPAPI open or seal of 32 bytes, a small file read or write
+//! and, for a copy, the re-join's one savepoint. (`block_in_place` would need a multi-thread
+//! runtime; the tests run on tokio's current-thread one.)
 //!
 //! `finish_setup`, `delete_synced_data` and `turn_off_between_rounds` hold off the profile's
 //! rounds (`engine::exclusive`) while they change what a round works on.

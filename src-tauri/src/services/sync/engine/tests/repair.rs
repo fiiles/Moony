@@ -41,11 +41,21 @@ async fn repair_backs_up_drains_and_rejoins_under_a_new_device() {
     );
     let dir = tempfile::tempdir().expect("dir");
 
-    let zip = repair_capture(&vault.relay, &vault.b, dir.path(), &XorNative, NOW)
+    let outcome = repair_capture(&vault.relay, &vault.b, dir.path(), &XorNative, NOW)
         .await
         .expect("repair");
+    let zip = outcome.backup.clone();
 
     assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}.zip")));
+    assert_eq!(
+        (
+            outcome.unsent_items_in_backup_only,
+            outcome.unsent_batches_in_backup_only,
+            outcome.attachments.orphaned
+        ),
+        (0, 0, 0),
+        "everything reached the relay: the backup is plain"
+    );
     let inspection =
         backup::inspect_backup(&zip, &crate::db::known_migration_names()).expect("readable");
     assert!(!inspection.newer_than_app);
@@ -113,7 +123,7 @@ fn refused_institution(conn: &Connection, id: &str) -> Option<&'static str> {
 }
 
 /// Whether any op on the relay carries institution `id`.
-fn relay_has_institution(vault: &Vault, id: &str) -> bool {
+pub(super) fn relay_has_institution(vault: &Vault, id: &str) -> bool {
     vault.relay.ops().iter().any(|op| {
         let json = open_op(
             |epoch| vault.creds.keys.get(epoch),
@@ -184,7 +194,8 @@ async fn a_second_repair_in_the_same_second_keeps_the_first_backup() {
 
     let zip = repair_capture(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
         .await
-        .expect("repair");
+        .expect("repair")
+        .backup;
 
     assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}-2.zip")));
     assert_eq!(
@@ -213,12 +224,11 @@ async fn repair_with(fault: Fault) {
     }
     break_capture(&vault.b);
     match fault {
-        Fault::Network => vault
-            .relay
-            .fail_next(Route::Push, RelayError::Network("offline".into())),
-        Fault::Lapsed => vault
-            .relay
-            .fail_next(Route::Push, RelayError::PaymentRequired),
+        // Every drain round meets it: the repair drains while it makes progress.
+        Fault::Network => fail_every_round(&vault, Route::Push, || {
+            RelayError::Network("offline".into())
+        }),
+        Fault::Lapsed => fail_every_round(&vault, Route::Push, || RelayError::PaymentRequired),
         Fault::Gap => {
             let cts = {
                 let a = vault.a.lock();
@@ -247,9 +257,16 @@ async fn repair_with(fault: Fault) {
     assert_eq!(repair_state(&vault.b.lock()), before, "{fault:?}");
     assert_eq!(
         repair_backups(dir.path()),
-        vec![format!("sync-repair-{NOW}.zip")],
-        "{fault:?}: the backup stays"
+        vec![format!("sync-repair-{NOW}-unused.zip")],
+        "{fault:?}: the backup stays, marked unused"
     );
+}
+
+/// `route` fails in every drain round a repair may run.
+pub(super) fn fail_every_round(vault: &Vault, route: Route, error: impl Fn() -> RelayError) {
+    for _ in 0..crate::services::sync::join::MAX_DRAIN_ROUNDS {
+        vault.relay.fail_next(route, error());
+    }
 }
 
 #[tokio::test]
@@ -368,7 +385,8 @@ async fn repair_stops_when_capture_still_does_not_install() {
     assert!(!capture::is_installed(&b).expect("installed"));
     assert_eq!(
         repair_backups(dir.path()),
-        vec![format!("sync-repair-{NOW}.zip")]
+        vec![format!("sync-repair-{NOW}-unused.zip")],
+        "no replace happened"
     );
 }
 
@@ -385,6 +403,8 @@ fn backed_up_database(zip: &std::path::Path, dir: &std::path::Path) -> Connectio
     Connection::open(&copy).expect("open the copy")
 }
 
+/// Offline (every push fails), the re-sync replaces anyway, as the person agreed: what it could not
+/// send stays in the backup, which is kept, and the outcome counts it.
 #[tokio::test]
 async fn resync_replaces_a_capture_broken_profile_and_keeps_its_unsent_changes_in_the_backup() {
     let vault = vault().await;
@@ -398,17 +418,29 @@ async fn resync_replaces_a_capture_broken_profile_and_keeps_its_unsent_changes_i
         count(&b, "SELECT MAX(seq) FROM sync_unsent")
     };
     break_capture(&vault.b);
-    let from = vault.relay.calls().len();
+    let consent = agreed(&vault.b);
+    vault
+        .relay
+        .fail_next(Route::Push, RelayError::Network("offline".into()));
     let dir = tempfile::tempdir().expect("dir");
 
-    let zip = resync_by_replace(&vault.relay, &vault.b, dir.path(), &XorNative, NOW)
+    let outcome = resync_by_replace(&vault.relay, &vault.b, consent, dir.path(), &XorNative, NOW)
         .await
         .expect("resync");
+    let zip = outcome.backup.clone();
 
-    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}.zip")));
+    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}-kept.zip")));
+    assert_eq!(
+        (
+            outcome.unsent_items_in_backup_only,
+            outcome.unsent_batches_in_backup_only
+        ),
+        (1, 1),
+        "b-queued waits in the outbox, b-sealed in its batch"
+    );
     assert!(
-        !calls_since(&vault, from).contains(&Route::Push),
-        "no drain: nothing was sent"
+        !relay_has_institution(&vault, "b-sealed"),
+        "the push failed: nothing was sent"
     );
     {
         let b = vault.b.lock();
@@ -472,8 +504,9 @@ async fn a_resync_keeps_the_contract_pdf_of_a_policy_the_vault_has() {
         blob
     };
     let dir = tempfile::tempdir().expect("dir");
+    let consent = agreed(&vault.b);
 
-    resync_by_replace(&vault.relay, &vault.b, dir.path(), &XorNative, NOW)
+    resync_by_replace(&vault.relay, &vault.b, consent, dir.path(), &XorNative, NOW)
         .await
         .expect("resync");
 
@@ -662,9 +695,9 @@ async fn repair_lifts_the_guard_only_after_capture_installs() {
         &vault.b.lock(),
         "ALTER TABLE sync_clock_lost RENAME TO sync_clock",
     );
-    vault
-        .relay
-        .fail_next(Route::Pull, RelayError::Network("offline".into()));
+    fail_every_round(&vault, Route::Pull, || {
+        RelayError::Network("offline".into())
+    });
 
     let error = repair_capture(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
         .await
@@ -731,9 +764,16 @@ async fn a_read_only_profile_is_told_to_turn_sync_off_before_any_backup() {
         .expect_err("read-only");
 
     assert_eq!(validation_key(&error), Some(guard::CAPTURE_STILL_BROKEN));
-    let error = resync_by_replace(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
-        .await
-        .expect_err("read-only");
+    let error = resync_by_replace(
+        &vault.relay,
+        &vault.b,
+        agreed(&vault.b),
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect_err("read-only");
     assert_eq!(validation_key(&error), Some(guard::CAPTURE_STILL_BROKEN));
     assert_eq!(calls_since(&vault, from), Vec::<Route>::new());
     assert_eq!(

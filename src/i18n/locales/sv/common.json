@@ -335,6 +335,7 @@
     "syncRelayUrlInvalid": "Adressen till synkroniseringsservern är ogiltig.",
     "syncVaultHasNoSnapshot": "Den synkroniserade datan har ännu ingen kopia att börja från. Låt en enhet som redan synkroniserar slutföra en synkronisering och försök sedan igen.",
     "syncRepairDrainIncomplete": "Alla ändringar från den här enheten kunde inte skickas till synkroniseringsservern, så reparationen stoppades och inget ersattes. En säkerhetskopia sparades. Försök igen när synkroniseringen fungerar.",
+    "syncReplaceImpactChanged": "Något ändrades på den här enheten medan du bestämde dig. Kontrollera siffrorna igen och bekräfta.",
     "syncChangesPaused": "Ändringar kan inte sparas på den här enheten förrän synkroniseringen har reparerats under Inställningar → Synkronisering.",
     "syncCaptureStillBroken": "Ändringsspårningen kan fortfarande inte starta på den här enheten. Stäng av synkronisering för att fortsätta arbeta: dina data stannar här, och du kan ställa in synkronisering igen senare.",
     "syncRecoveryKitNotConfirmed": "Spara eller kopiera återställningspaketet för synkronisering och bekräfta att du har gjort det innan du fortsätter.",

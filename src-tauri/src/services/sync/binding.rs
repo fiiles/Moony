@@ -219,7 +219,7 @@ pub fn join(
 
 /// [`join`] without the marker: for a caller that runs the join inside its own transaction and
 /// clears the marker (`clear_rejoin_marker`) only once that transaction has committed, so a join
-/// rolled back with it leaves the marker where it was (`sync::join::join_by_replace`).
+/// rolled back with it leaves the marker where it was (`sync::join`'s `replace_profile`).
 pub fn join_leaving_marker(
     conn: &Connection,
     device: DeviceId,

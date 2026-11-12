@@ -712,7 +712,8 @@ async fn repair_and_resync_go_through_the_relay() {
 
     let zip = repair_capture(&relay, &b.db, b.dir(), &NoBinding, now())
         .await
-        .expect("repair");
+        .expect("repair")
+        .backup;
     assert!(zip.exists(), "the repair's backup stays");
     let repaired = state::load(&b.db.lock()).expect("state").expect("row");
     assert_ne!(
@@ -730,9 +731,11 @@ async fn repair_and_resync_go_through_the_relay() {
     );
 
     // "Re-sync this device": a backup, then the vault's snapshot replaces B's data.
-    let backup = resync_by_replace(&relay, &b.db, b.dir(), &NoBinding, now())
+    let consent = super::engine::tests::agreed(&b.db);
+    let backup = resync_by_replace(&relay, &b.db, consent, b.dir(), &NoBinding, now())
         .await
-        .expect("re-sync");
+        .expect("re-sync")
+        .backup;
     assert!(backup.exists());
     b.round(&relay).await;
     a.round(&relay).await;

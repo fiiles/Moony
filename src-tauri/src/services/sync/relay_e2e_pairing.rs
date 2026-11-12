@@ -50,17 +50,20 @@ fn add_own_rows(device: &Device) {
 /// the holder lists the new device.
 async fn join_and_converge(holder: &Device, joiner: &Device, creds: Credentials, name: &str) {
     let relay = HttpRelay::new(&creds.relay_url).expect("the received relay address");
+    let consent = super::engine::tests::agreed(&joiner.db);
     let backup: PathBuf = join_new_device(
         &relay,
         &joiner.db,
         creds,
         name,
+        consent,
         joiner.dir(),
         &NoBinding,
         now(),
     )
     .await
-    .expect("join");
+    .expect("join")
+    .backup;
     assert!(backup.exists(), "the join's backup stays");
     assert!(joiner.enabled());
     assert_eq!(

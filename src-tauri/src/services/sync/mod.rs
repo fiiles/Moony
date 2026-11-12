@@ -21,6 +21,7 @@ pub mod envelope;
 pub mod error;
 pub mod feature;
 pub mod hlc;
+pub mod impact;
 pub mod join;
 pub mod journal;
 pub mod keys;

@@ -335,6 +335,7 @@
     "syncRelayUrlInvalid": "Adres serwera synchronizacji jest nieprawidłowy.",
     "syncVaultHasNoSnapshot": "Zsynchronizowane dane nie mają jeszcze kopii, od której można zacząć. Poczekaj, aż urządzenie, które już synchronizuje, zakończy synchronizację, i spróbuj ponownie.",
     "syncRepairDrainIncomplete": "Nie wszystkie zmiany z tego urządzenia udało się wysłać na serwer synchronizacji, więc naprawa została zatrzymana i nic nie zostało zastąpione. Zapisano kopię zapasową. Spróbuj ponownie, gdy synchronizacja będzie działać.",
+    "syncReplaceImpactChanged": "Podczas podejmowania decyzji coś zmieniło się na tym urządzeniu. Sprawdź ponownie liczby i potwierdź.",
     "syncChangesPaused": "Na tym urządzeniu nie można zapisywać zmian, dopóki synchronizacja nie zostanie naprawiona w Ustawienia → Synchronizacja.",
     "syncCaptureStillBroken": "Śledzenie zmian nadal nie może się uruchomić na tym urządzeniu. Wyłącz synchronizację, aby dalej pracować: dane zostaną tutaj, a synchronizację możesz później skonfigurować ponownie.",
     "syncRecoveryKitNotConfirmed": "Zanim przejdziesz dalej, zapisz lub skopiuj zestaw odzyskiwania synchronizacji i potwierdź, że to zrobiłeś.",

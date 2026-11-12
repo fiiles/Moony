@@ -335,6 +335,7 @@
     "syncRelayUrlInvalid": "同步服务器地址无效。",
     "syncVaultHasNoSnapshot": "同步数据还没有可用于开始的副本。请让一台已在同步的设备完成一次同步，然后重试。",
     "syncRepairDrainIncomplete": "未能将此设备的所有更改发送到同步服务器，因此修复已停止，未替换任何内容。已保存一份备份。请在同步正常后重试。",
+    "syncReplaceImpactChanged": "在您做决定期间，此设备上有内容发生了变化。请重新核对数字并确认。",
     "syncChangesPaused": "在 设置 → 同步 中修复同步之前，无法在此设备上保存更改。",
     "syncCaptureStillBroken": "此设备上的变更跟踪仍无法启动。要继续使用，请关闭同步：您的数据会保留在此设备上，之后可以重新设置同步。",
     "syncRecoveryKitNotConfirmed": "请先保存或复制同步恢复套件，并确认已完成，然后再继续。",

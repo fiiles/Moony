@@ -30,8 +30,8 @@ use tauri::{AppHandle, State};
 use zeroize::Zeroizing;
 
 use super::sync::{
-    app_error, data_dir, guarded_change, kit_owner, now, require_feature, sync_on, verify_password,
-    AppEngine, KeychainBinding, KitOwner,
+    app_error, consent_as_it_stands, data_dir, guarded_change, kit_owner, now, require_feature,
+    sync_on, verify_password, AppEngine, KeychainBinding, KitOwner,
 };
 use crate::db::Database;
 use crate::error::{AppError, Result};
@@ -623,7 +623,17 @@ pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Resul
     };
     let relay = HttpRelay::new(&creds.relay_url)?;
     let native = KeychainBinding { app: app.clone() };
-    let join = join::join_new_device(&relay, &session, creds, &device_name, &dir, &native, now());
+    let consent = consent_as_it_stands(&session)?;
+    let join = join::join_new_device(
+        &relay,
+        &session,
+        creds,
+        &device_name,
+        consent,
+        &dir,
+        &native,
+        now(),
+    );
     // The join's own error stays a `SyncError` for `after_join_error`; the outer one is the
     // change guard's.
     let joined = guarded_change(&AppEngine { app: &app, db: &db }, async { Ok(join.await) })
@@ -631,9 +641,9 @@ pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Resul
         .map_err(SyncError::Local)
         .and_then(|joined| joined);
     match joined {
-        Ok(backup) => {
+        Ok(outcome) => {
             pairing.take();
-            Ok(backup.display().to_string())
+            Ok(outcome.backup.display().to_string())
         }
         Err(error) => {
             if !after_join_error(&error) {
@@ -674,12 +684,23 @@ pub async fn sync_join_with_recovery_kit(
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
+    let consent = consent_as_it_stands(&session)?;
     let join = async {
         let creds = join::recovery_credentials(&relay, &session, input).await?;
-        join::join_new_device(&relay, &session, creds, &device_name, &dir, &native, now()).await
+        join::join_new_device(
+            &relay,
+            &session,
+            creds,
+            &device_name,
+            consent,
+            &dir,
+            &native,
+            now(),
+        )
+        .await
     };
-    let backup = guarded_change(&AppEngine { app: &app, db: &db }, join).await?;
-    Ok(backup.display().to_string())
+    let outcome = guarded_change(&AppEngine { app: &app, db: &db }, join).await?;
+    Ok(outcome.backup.display().to_string())
 }
 
 /// The devices of the sync account.

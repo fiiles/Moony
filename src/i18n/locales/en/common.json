@@ -335,6 +335,7 @@
     "syncRelayUrlInvalid": "The sync server address is not valid.",
     "syncVaultHasNoSnapshot": "The synced data has no copy to start from yet. Let a device that already syncs finish a sync, then try again.",
     "syncRepairDrainIncomplete": "Not all of this device's changes could be sent to the sync server, so the repair stopped and nothing was replaced. A backup was saved. Try again when sync works.",
+    "syncReplaceImpactChanged": "Something changed on this device while you were deciding. Check the numbers again and confirm.",
     "syncChangesPaused": "Changes can't be saved on this device until sync is repaired in Settings → Sync.",
     "syncCaptureStillBroken": "Change tracking still can't start on this device. Turn sync off to keep working: your data stays here, and you can set sync up again later.",
     "syncRecoveryKitNotConfirmed": "Save or copy your Sync Recovery Kit and confirm that you did before you continue.",

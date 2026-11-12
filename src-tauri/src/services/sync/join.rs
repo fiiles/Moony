@@ -12,7 +12,8 @@
 //! - each returns a `ReplaceOutcome` with what stayed only in the backup. The backup is marked
 //!   `-kept` inside the hold, before the replace commits, so a crash before the outcome is known
 //!   never leaves it prunable; after the outcome it settles to plain, stays kept (it holds changes
-//!   or documents found nowhere else), or becomes `-unused` when its replace never happened.
+//!   or documents found nowhere else, or a joiner's own data, which the join replaced), or becomes
+//!   `-unused` when its replace never happened.
 //!
 //! The relay passed in is the one at the credentials' own address (`Credentials::relay_url`, the
 //! default or a self-hosted one, ruling SH-2): the caller builds it with
@@ -67,6 +68,8 @@ pub struct ReplaceOutcome {
     pub attachments: AttachmentCarry,
     pub unsent_items_in_backup_only: u32,
     pub unsent_batches_in_backup_only: u32,
+    /// The backup is `-kept`: never pruned, only the person deletes it.
+    pub kept: bool,
 }
 
 /// The replace without a backup: tests and the e2e harness only. Fetches and opens the snapshot,
@@ -134,6 +137,9 @@ struct Replaced {
     report: RestoreReport,
     unsent_items: u32,
     unsent_batches: u32,
+    /// A join's device had accounts, transactions, documents or photos of its own: the backup is
+    /// the only copy of what the join replaced.
+    joiner_had_data: bool,
 }
 
 /// One replace hold: the backup it wrote or used (marked Kept once it is about to be replaced
@@ -158,9 +164,10 @@ struct HoldInput {
 /// One connection hold, in this order, so nothing can be written between the backup and the
 /// replace (audit M8): a join checks again that it may join (`may_join`); the consent check
 /// (`impact::check_consent`: a refusal writes no backup); a re-sync reads what stays only in the
-/// backup (`pending_items`, `pending_batches`); the verified backup is written (a repair's was
-/// made before its drain); the backup is marked Kept (a crash from here on never leaves it
-/// prunable); then `replace_profile`.
+/// backup (`pending_items`, `pending_batches`), a join whether the device had data of its own
+/// (accounts and assets, transactions, documents or photos); the verified backup is written (a
+/// repair's was made before its drain); the backup is marked Kept (a crash from here on never
+/// leaves it prunable); then `replace_profile`.
 fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
     let mut backup = match &input.backup {
         HoldBackup::Write => None,
@@ -171,11 +178,20 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
             may_join(conn, &input.creds)?;
         }
         impact::check_consent(conn, input.kind, &input.consent)?;
-        let (unsent_items, unsent_batches) = if input.kind == ReplaceKind::Resync {
-            let impact = impact::replace_impact(conn)?;
-            (impact.pending_items, impact.pending_batches)
-        } else {
-            (0, 0)
+        let (unsent_items, unsent_batches, joiner_had_data) = match input.kind {
+            ReplaceKind::Resync => {
+                let impact = impact::replace_impact(conn)?;
+                (impact.pending_items, impact.pending_batches, false)
+            }
+            ReplaceKind::Join => {
+                let impact = impact::replace_impact(conn)?;
+                let own = impact.accounts > 0
+                    || impact.transactions > 0
+                    || impact.documents > 0
+                    || impact.photos > 0;
+                (0, 0, own)
+            }
+            ReplaceKind::Repair => (0, 0, false),
         };
         let path = match backup.take() {
             Some(path) => path,
@@ -200,6 +216,7 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
             report,
             unsent_items,
             unsent_batches,
+            joiner_had_data,
         })
     })();
     Hold { backup, replaced }
@@ -211,22 +228,24 @@ async fn held<D: ConnAccess>(db: &D, input: HoldInput) -> SyncResult<Hold> {
     off_thread(move || holder.with_conn(|conn| Ok(replace_hold(conn, &input)))).await
 }
 
-/// The mark a backup settles to after its replace: Kept when anything stayed only in it, else
-/// Plain. A failure is logged, and the backup stays Kept.
-fn settled(backup: PathBuf, replaced: &Replaced) -> PathBuf {
+/// The mark a backup settles to after its replace, with whether it is Kept: Kept when anything
+/// stayed only in it (unsent changes, documents or photos not re-attached, or a joiner's own data,
+/// which the join replaced), else Plain. A failure is logged, and the backup stays Kept.
+fn settled(backup: PathBuf, replaced: &Replaced) -> (PathBuf, bool) {
     let only_in_backup = replaced.unsent_items > 0
         || replaced.unsent_batches > 0
-        || replaced.report.attachments.orphaned > 0;
+        || replaced.report.attachments.orphaned > 0
+        || replaced.joiner_had_data;
     let mark = if only_in_backup {
         BackupMark::Kept
     } else {
         BackupMark::Plain
     };
     match backups::mark(&backup, mark) {
-        Ok(path) => path,
+        Ok(path) => (path, mark == BackupMark::Kept),
         Err(error) => {
             log::warn!("[SYNC] A sync backup could not be marked after its replace: {error}");
-            backup
+            (backup, true)
         }
     }
 }
@@ -253,12 +272,13 @@ fn outcome_of(hold: Hold) -> SyncResult<ReplaceOutcome> {
     }
 }
 
-fn outcome(backup: PathBuf, replaced: &Replaced) -> ReplaceOutcome {
+fn outcome((backup, kept): (PathBuf, bool), replaced: &Replaced) -> ReplaceOutcome {
     ReplaceOutcome {
         backup,
         attachments: replaced.report.attachments,
         unsent_items_in_backup_only: replaced.unsent_items,
         unsent_batches_in_backup_only: replaced.unsent_batches,
+        kept,
     }
 }
 
@@ -279,8 +299,9 @@ fn outcome(backup: PathBuf, replaced: &Replaced) -> ReplaceOutcome {
 ///    credentials are bound, the profile replaced under a new device ID with a new key pair and
 ///    this device recorded under `device_name`. A failure leaves the profile as it was and the
 ///    backup, if one was written, `-unused`.
-/// 4. The backup settles (`-kept` when documents or photos stayed only in it); the binding is
-///    written.
+/// 4. The backup settles: `-kept` when this device had accounts, transactions, documents or
+///    photos of its own (the backup is the only copy of what the join replaced), else plain; the
+///    binding is written.
 #[allow(clippy::too_many_arguments)]
 pub async fn join_new_device<R: Relay, D: ConnAccess>(
     relay: &R,

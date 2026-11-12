@@ -224,7 +224,50 @@ async fn the_join_backs_up_and_replaces_in_one_connection_hold() {
         outcome.backup,
         dir.path().join(format!("sync-repair-{NOW}.zip"))
     );
+    assert!(
+        !outcome.kept,
+        "an institution is no account, transaction or attachment"
+    );
     assert!(outcome.backup.is_file());
+}
+
+/// A join's backup is the only copy of what the join replaced: when the joiner had accounts,
+/// transactions, documents or photos of its own, it stays `-kept` (never pruned), whatever was
+/// re-attached; without any it settles to plain (the test above).
+#[tokio::test]
+async fn a_join_keeps_the_backup_of_a_device_that_had_data_of_its_own() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let dir = tempfile::tempdir().expect("dir");
+    let joiner = TestConn::new(migrated());
+    exec(
+        &joiner.lock(),
+        "INSERT INTO bank_accounts (id, name) VALUES ('own', 'Checking')",
+    );
+    let consent = agreed(&joiner);
+
+    let outcome = join_new_device(
+        &vault.relay,
+        &joiner,
+        vault.creds.clone(),
+        "Laptop",
+        consent,
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect("join");
+
+    assert_eq!(
+        outcome.backup,
+        dir.path().join(format!("sync-repair-{NOW}-kept.zip"))
+    );
+    assert!(outcome.kept);
+    assert!(outcome.backup.is_file());
+    let listed = backups::list(dir.path()).expect("list");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].mark, BackupMark::Kept);
 }
 
 /// Pre-flight I-6 with the Task 5 review: between the replace's commit and the backup's final

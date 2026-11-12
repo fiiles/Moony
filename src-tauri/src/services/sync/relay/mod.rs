@@ -290,9 +290,9 @@ pub trait Relay: Send + Sync {
 /// The most a pairing slot holds (Moony-relay `MAX_MAILBOX_SLOT_BYTES`).
 pub const MAX_SLOT_BYTES: usize = 64 * 1024;
 
-/// The relay's pairing mailbox (Moony-relay `src/mailbox.ts`): a two-slot drop box for the key
-/// exchange that pairs a device. No credentials; each slot is written once and read once, and the
-/// mailbox lives ten minutes. `mailbox` is the 22-character base64url ID, `slot` 1 or 2.
+/// The relay's pairing mailbox (Moony-relay `src/mailbox.ts`): a three-slot drop box for the key
+/// exchange that pairs a device (slots 1 and 2) and the shower's acknowledgement (slot 3). No credentials; each slot is written once and read once, and the
+/// mailbox lives ten minutes. `mailbox` is the 22-character base64url ID, `slot` 1, 2 or 3.
 pub trait Mailbox: Send + Sync {
     /// `PUT /v1/pairing/:id/:slot` (raw body, 1 B to 64 KiB) → 204.
     fn put_slot(

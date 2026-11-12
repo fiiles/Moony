@@ -173,7 +173,7 @@ impl HttpRelay {
         }
         match slot {
             None => self.url(&format!("v1/pairing/{mailbox}")),
-            Some(1 | 2) => self.url(&format!("v1/pairing/{mailbox}/{}", slot.unwrap_or(0))),
+            Some(1..=3) => self.url(&format!("v1/pairing/{mailbox}/{}", slot.unwrap_or(0))),
             Some(_) => Err(RelayError::BadRequest("bad_slot".into())),
         }
     }

@@ -1,6 +1,7 @@
 //! Tests of `FakeRelay`: the relay semantics the engine relies on, and its fault switches.
 
 use super::*;
+use crate::services::sync::relay::{Mailbox, MAX_SLOT_BYTES};
 use zeroize::Zeroizing;
 
 const VAULT_ID: &str = "AAECAwQFBgcICQoLDA0ODw";
@@ -606,7 +607,7 @@ async fn the_fake_checks_mailbox_arguments_like_the_http_client() {
         Err(RelayError::BadRequest("bad_mailbox".into()))
     );
     assert_eq!(
-        relay.take_slot(MAILBOX, 3).await,
+        relay.take_slot(MAILBOX, 4).await,
         Err(RelayError::BadRequest("bad_slot".into()))
     );
     assert_eq!(
@@ -626,4 +627,45 @@ async fn the_fake_checks_mailbox_arguments_like_the_http_client() {
         Err(RelayError::RateLimited)
     );
     assert_eq!(relay.calls(), vec![Route::MailboxTake]);
+}
+
+#[tokio::test]
+async fn the_fake_keeps_slot_3_write_once_and_read_once() {
+    let relay = FakeRelay::new();
+    relay.put_slot(MAILBOX, 3, b"ack").await.expect("put 3");
+    assert_eq!(
+        relay.put_slot(MAILBOX, 3, b"again").await,
+        Err(RelayError::SlotTaken)
+    );
+    assert_eq!(relay.take_slot(MAILBOX, 1).await, Ok(None));
+    assert_eq!(relay.peek_slot(MAILBOX, 3), Some(b"ack".to_vec()));
+    assert_eq!(relay.take_slot(MAILBOX, 3).await, Ok(Some(b"ack".to_vec())));
+    assert_eq!(relay.peek_slot(MAILBOX, 3), None);
+    assert_eq!(
+        relay.take_slot(MAILBOX, 3).await,
+        Err(RelayError::SlotConsumed)
+    );
+    relay.write_slot_raw(MAILBOX, 2, b"x".to_vec());
+    assert_eq!(
+        relay.put_slot(MAILBOX, 4, b"x").await,
+        Err(RelayError::BadRequest("bad_slot".into()))
+    );
+    relay.burn_mailbox(MAILBOX).await.expect("burn");
+    assert_eq!(
+        relay.put_slot(MAILBOX, 3, b"y").await,
+        Err(RelayError::MailboxGone)
+    );
+}
+
+#[tokio::test]
+async fn a_lost_put_answer_is_stored_anyway() {
+    let relay = FakeRelay::new();
+    relay.lose_next_answer(Route::MailboxPut);
+    assert_eq!(
+        relay.put_slot(MAILBOX, 3, b"ack").await,
+        Err(RelayError::Server(503))
+    );
+    assert_eq!(relay.peek_slot(MAILBOX, 3), Some(b"ack".to_vec()));
+    // The switch fires once.
+    relay.put_slot(MAILBOX, 1, b"x").await.expect("put 1");
 }

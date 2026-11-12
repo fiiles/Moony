@@ -360,6 +360,7 @@
     "syncPairingCancelled": "Druhé zařízení párování zrušilo. Začněte znovu na obou zařízeních.",
     "syncPairingNotStarted": "Na tomto zařízení neprobíhá žádné párování. Začněte znovu na obou zařízeních.",
     "syncPasswordNeeded": "Pro pokračování zadejte heslo k tomuto zařízení.",
+    "syncCopyFailed": "Kód se nepodařilo zkopírovat. Uložte místo toho sadu jako soubor.",
     "syncRecoveryAccountInvalid": "Zkontrolujte číslo účtu: je to 16 číslic ze sady pro obnovení synchronizace.",
     "syncRecoveryVaultNotFound": "Synchronizační server nemá k tomuto obnovovacímu kódu žádná synchronizovaná data. Zkontrolujte kód a adresu synchronizačního serveru v sadě pro obnovení synchronizace.",
     "syncRecoveryKitRotated": "Klíče této synchronizace byly vyměněny; připojení pomocí sady pro obnovení po takové výměně zatím není podporováno.",

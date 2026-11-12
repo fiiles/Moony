@@ -159,9 +159,9 @@ pub fn recovery_kit(conn: &Connection) -> Result<RecoveryKit> {
     })
 }
 
-/// The kit while setup runs (`sync_prepare_recovery_kit`, no password): `recovery_kit`, refused
-/// with `validation.syncAlreadyEnabled` once sync is on. After setup the kit is shown only once
-/// the device password was checked (`sync_show_recovery_kit`).
+/// The kit while setup runs (`sync_prepare_recovery_kit`, after the device password was checked,
+/// audit M11): `recovery_kit`, refused with `validation.syncAlreadyEnabled` once sync is on. After
+/// setup the kit is shown by `sync_show_recovery_kit`, behind the password as well.
 pub fn setup_recovery_kit(conn: &Connection) -> Result<RecoveryKit> {
     if enabled(conn)? {
         return Err(AppError::Validation(ALREADY_ENABLED.into()));
@@ -381,9 +381,31 @@ pub fn turn_off(conn: &Connection, data_dir: &Path) -> Result<()> {
         }
         return Err(error);
     }
+    truncate_wal(conn);
     binding::forget_binding(data_dir)?;
     log::info!("[SYNC] Sync is off on this device; local data stays");
     Ok(())
+}
+
+/// After the sync secrets were deleted (`secure_delete` zeroes their cells, `db::configure`): in
+/// WAL mode the log still holds the pages as they were, so they are checkpointed into the
+/// database file and the log is truncated to nothing (audit M11). Profiles use a rollback journal,
+/// where this is a no-op; best effort, since sync is already off.
+fn truncate_wal(conn: &Connection) {
+    let mode = conn.pragma_query_value(None, "journal_mode", |r| r.get::<_, String>(0));
+    match mode {
+        Ok(mode) if mode.eq_ignore_ascii_case("wal") => {
+            match conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |r| {
+                r.get::<_, i64>(0)
+            }) {
+                Ok(0) => {}
+                Ok(_) => log::warn!("[SYNC] The write-ahead log could not be truncated: busy"),
+                Err(e) => log::warn!("[SYNC] The write-ahead log could not be truncated: {e}"),
+            }
+        }
+        Ok(_) => {}
+        Err(e) => log::warn!("[SYNC] Could not read the journal mode: {e}"),
+    }
 }
 
 /// `turn_off` once no round of the profile runs (`engine::exclusive`), off the runtime: what the
@@ -486,4 +508,76 @@ fn is_polar_checkout(url: &str) -> bool {
         && parsed.port().is_none()
         && parsed.username().is_empty()
         && parsed.password().is_none()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A vault key nobody else writes: its bytes must be gone from the files after turning off.
+    const MARKER: &str = "M11-VAULT-KEY-MARKER-5a3c9e17d2b84f60a1e7c3d95b2f8e46";
+
+    fn contains(haystack: &[u8], needle: &str) -> bool {
+        haystack
+            .windows(needle.len())
+            .any(|window| window == needle.as_bytes())
+    }
+
+    fn read_or_empty(path: &Path) -> Vec<u8> {
+        std::fs::read(path).unwrap_or_default()
+    }
+
+    /// An unkeyed file database (its pages readable as plain bytes), configured and migrated like
+    /// a profile, with an account and vault keys holding `MARKER`.
+    fn profile_with_marked_keys(path: &Path, wal: bool) -> Connection {
+        let conn = Connection::open(path).expect("open");
+        crate::db::configure(&conn).expect("configure");
+        if wal {
+            let mode: String = conn
+                .query_row("PRAGMA journal_mode = WAL", [], |r| r.get(0))
+                .expect("wal");
+            assert_eq!(mode, "wal");
+        }
+        crate::db::run_migrations(&conn).expect("migrations");
+        keys::save_account(&conn, "https://sync.example.com", "1234567812345678").expect("account");
+        conn.execute(
+            "UPDATE sync_state SET vault_id = 'v', key_epoch = 1, vault_keys = ?1 WHERE id = 1",
+            [MARKER],
+        )
+        .expect("marked keys");
+        conn
+    }
+
+    #[test]
+    fn turning_sync_off_leaves_no_key_bytes_in_a_plain_database_file() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("moony.db");
+        let conn = profile_with_marked_keys(&path, false);
+        assert!(
+            contains(&read_or_empty(&path), MARKER),
+            "the key is on disk before"
+        );
+
+        turn_off(&conn, dir.path()).expect("turn off");
+
+        assert!(state::load(&conn).expect("state").is_none());
+        assert!(!contains(&read_or_empty(&path), MARKER));
+    }
+
+    #[test]
+    fn turning_sync_off_in_wal_mode_leaves_no_key_bytes_in_the_file_or_its_log() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("moony.db");
+        let wal = dir.path().join("moony.db-wal");
+        let conn = profile_with_marked_keys(&path, true);
+        assert!(
+            contains(&read_or_empty(&path), MARKER) || contains(&read_or_empty(&wal), MARKER),
+            "the key is on disk before"
+        );
+
+        turn_off(&conn, dir.path()).expect("turn off");
+
+        assert!(!contains(&read_or_empty(&path), MARKER), "database file");
+        assert!(!contains(&read_or_empty(&wal), MARKER), "write-ahead log");
+    }
 }

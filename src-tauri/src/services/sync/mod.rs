@@ -25,6 +25,7 @@ pub mod impact;
 pub mod join;
 pub mod journal;
 pub mod keys;
+pub mod kit_file;
 pub mod merge;
 pub mod natural_id;
 pub mod pairing;

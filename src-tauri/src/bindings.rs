@@ -33,6 +33,8 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::SyncAccount>();
     types.register::<crate::models::CheckoutTarget>();
     types.register::<crate::models::RecoveryKit>();
+    types.register::<crate::models::KitFileKind>();
+    types.register::<crate::models::KitSaveOutcome>();
     types.register::<crate::models::SyncDevice>();
 
     // Device sync pairing (a second device)

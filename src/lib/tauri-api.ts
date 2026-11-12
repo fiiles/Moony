@@ -170,6 +170,8 @@ import type {
   SyncPlan,
   CheckoutTarget,
   RecoveryKit,
+  KitFileKind,
+  KitSaveOutcome,
   SyncDevice,
   PairingView,
   ReplaceImpactView,
@@ -328,14 +330,29 @@ export const deviceSyncApi = {
   /** `open`: a payment page to open with the opener plugin; `selfHosted`: no payment page. */
   startCheckout: (plan: SyncPlan) => tauriInvoke<CheckoutTarget>('sync_start_checkout', { plan }),
 
-  /** The kit during setup only; afterwards `showRecoveryKit` (with the device password). */
-  prepareRecoveryKit: () => tauriInvoke<RecoveryKit>('sync_prepare_recovery_kit'),
+  /**
+   * The kit during setup only, behind the device password every time (an empty one is
+   * `validation.syncPasswordNeeded`); afterwards `showRecoveryKit`. Opens the five-minute window
+   * for `copyRecoveryCode` and `saveRecoveryKit`.
+   */
+  prepareRecoveryKit: (password: string) =>
+    tauriInvoke<RecoveryKit>('sync_prepare_recovery_kit', { password }),
 
   /**
    * Copies the recovery code natively and clears it after 60 s if unchanged. `false`: not
-   * supported here, so the UI copies itself. With sync on, only shortly after `showRecoveryKit`.
+   * supported here (Linux, Android), so the UI copies itself; any other failure is
+   * `validation.syncCopyFailed`. Only shortly after `prepareRecoveryKit` or `showRecoveryKit`
+   * (`validation.syncPasswordRequired` otherwise).
    */
   copyRecoveryCode: () => tauriInvoke<boolean>('sync_copy_recovery_code'),
+
+  /**
+   * Desktop: Rust opens the save dialog and writes `contents` (the rendered kit, holding its
+   * recovery code) owner-only. `saved: false` when the dialog was closed; `syncedFolder` when the
+   * folder looks synced to a cloud service. Same window as `copyRecoveryCode`.
+   */
+  saveRecoveryKit: (kind: KitFileKind, contents: string) =>
+    tauriInvoke<KitSaveOutcome>('sync_save_recovery_kit', { kind, contents }),
 
   finishSetup: (deviceName: string, kitSaved: boolean) =>
     tauriInvoke<SyncStatus>('sync_finish_setup', { deviceName, kitSaved }),

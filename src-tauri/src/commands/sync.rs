@@ -44,9 +44,10 @@ const DEV_ONLY: &str = "validation.syncDevOnly";
 pub(super) const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
 const PASSWORD_REQUIRED: &str = "validation.syncPasswordRequired";
 const PASSWORD_NEEDED: &str = "validation.syncPasswordNeeded";
+const COPY_FAILED: &str = "validation.syncCopyFailed";
 
-/// How long after `sync_show_recovery_kit` checked the password the code may be copied with sync
-/// on (during setup it may be copied at any time).
+/// How long after `sync_prepare_recovery_kit` or `sync_show_recovery_kit` checked the password the
+/// code may be copied and the Kit saved (audit M11: every showing needs the password).
 const KIT_COPY_WINDOW: Duration = Duration::from_secs(5 * 60);
 
 /// How long a copied recovery code stays on the clipboard if nothing else was copied since.
@@ -364,9 +365,10 @@ pub(super) struct KitOwner {
     pub(super) session: u64,
 }
 
-/// `sync_show_recovery_kit` checked the password of `owner` at `opened`.
+/// `sync_prepare_recovery_kit` or `sync_show_recovery_kit` checked the password of `owner` at
+/// `opened`.
 #[derive(Debug, Clone)]
-struct KitWindow {
+pub(super) struct KitWindow {
     owner: KitOwner,
     opened: Instant,
 }
@@ -381,7 +383,7 @@ fn kit_window_slot() -> std::sync::MutexGuard<'static, Option<KitWindow>> {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-fn kit_window() -> Option<KitWindow> {
+pub(super) fn kit_window() -> Option<KitWindow> {
     kit_window_slot().clone()
 }
 
@@ -401,15 +403,37 @@ pub(super) fn kit_owner(app: &AppHandle, db: &Database) -> Result<KitOwner> {
     })
 }
 
-/// The code is copied without a password only during setup (sync not on yet, the kit is being
-/// shown the first time); with sync on, only within `KIT_COPY_WINDOW` after the password of this
-/// very profile session was checked.
-fn copy_allowed(sync_on: bool, window: Option<&KitWindow>, owner: &KitOwner, now: Instant) -> bool {
-    !sync_on
-        || window.is_some_and(|window| {
-            window.owner == *owner
-                && now.saturating_duration_since(window.opened) <= KIT_COPY_WINDOW
-        })
+/// The code is copied (and the Kit saved) only within `KIT_COPY_WINDOW` after the password of
+/// this very profile session was checked, during setup too (audit M11: a person at an unlocked
+/// app cannot take the Kit by starting setup).
+pub(super) fn copy_allowed(window: Option<&KitWindow>, owner: &KitOwner, now: Instant) -> bool {
+    window.is_some_and(|window| {
+        window.owner == *owner && now.saturating_duration_since(window.opened) <= KIT_COPY_WINDOW
+    })
+}
+
+/// What a native copy's answer means: a change token to clear later, `None` when this platform
+/// has no native copy (Linux, Android: the UI copies itself and clears it), and
+/// `validation.syncCopyFailed` for any other failure, so a failed native copy never falls back
+/// to a plain clipboard write (audit M11).
+fn copy_outcome(result: std::result::Result<u64, KeychainError>) -> Result<Option<u64>> {
+    match result {
+        Ok(token) => Ok(Some(token)),
+        Err(KeychainError::Unsupported) => Ok(None),
+        Err(e) => {
+            log::warn!("[SYNC] The recovery code could not be copied natively: {e}");
+            Err(AppError::Validation(COPY_FAILED.into()))
+        }
+    }
+}
+
+/// An empty password is `validation.syncPasswordNeeded` before any check runs (it would only
+/// count as a wrong one).
+fn password_given(password: &str) -> Result<()> {
+    if password.is_empty() {
+        return Err(AppError::Validation(PASSWORD_NEEDED.into()));
+    }
+    Ok(())
 }
 
 /// The clipboard clear still owed for the newest recovery code copied natively: its change token
@@ -552,35 +576,42 @@ pub async fn sync_start_checkout(
         .map_err(app_error)
 }
 
-/// The kit during setup; with sync on, `validation.syncAlreadyEnabled` (see
-/// `sync_show_recovery_kit`).
+/// The kit during setup, every time behind the device password (the first showing included,
+/// audit M11); opens `KIT_COPY_WINDOW` for `sync_copy_recovery_code` and `sync_save_recovery_kit`.
+/// With sync on, `validation.syncAlreadyEnabled` (see `sync_show_recovery_kit`).
 #[tauri::command]
-pub async fn sync_prepare_recovery_kit(db: State<'_, Database>) -> Result<RecoveryKit> {
+pub async fn sync_prepare_recovery_kit(
+    app: AppHandle,
+    db: State<'_, Database>,
+    password: String,
+) -> Result<RecoveryKit> {
+    let password = Zeroizing::new(password);
     require_feature()?;
-    db.with_conn(setup::setup_recovery_kit)
+    password_given(&password)?;
+    verify_password(&app, password).await?;
+    let kit = db.with_conn(setup::setup_recovery_kit)?;
+    open_kit_window(kit_owner(&app, &db)?, Instant::now());
+    Ok(kit)
 }
 
 /// Copies the recovery code natively (hidden from clipboard managers) and clears the clipboard
 /// after `CLIPBOARD_CLEAR_AFTER`, or earlier at exit or lock (`clear_copied_code`), if nothing
-/// else was copied since. The code is read here from `sync_state` and never crosses IPC. `false`: no native copy on this platform (or it failed);
-/// the UI copies itself and asks the person to clear the clipboard.
+/// else was copied since. The code is read here from `sync_state` and never crosses IPC. Only
+/// within `KIT_COPY_WINDOW` (`validation.syncPasswordRequired` otherwise). `false`: no native copy
+/// on this platform, so the UI copies itself and clears it; any other failure is
+/// `validation.syncCopyFailed` (`copy_outcome`).
 #[tauri::command]
 pub async fn sync_copy_recovery_code(app: AppHandle, db: State<'_, Database>) -> Result<bool> {
     require_feature()?;
     let owner = kit_owner(&app, &db)?;
     let window = kit_window();
-    if !copy_allowed(sync_on(&db)?, window.as_ref(), &owner, Instant::now()) {
+    if !copy_allowed(window.as_ref(), &owner, Instant::now()) {
         return Err(AppError::Validation(PASSWORD_REQUIRED.into()));
     }
     // The kit wipes its code when dropped.
     let kit = db.with_conn(setup::recovery_kit)?;
-    let token = match app.keychain().copy_secret_text(&kit.recovery_code) {
-        Ok(token) => token,
-        Err(KeychainError::Unsupported) => return Ok(false),
-        Err(e) => {
-            log::warn!("[SYNC] The recovery code could not be copied natively: {e}");
-            return Ok(false);
-        }
+    let Some(token) = copy_outcome(app.keychain().copy_secret_text(&kit.recovery_code))? else {
+        return Ok(false);
     };
     // Owed until the timer, an exit or a lock clears it (`clear_copied_code`).
     pending_clear().set(token);
@@ -641,7 +672,7 @@ pub async fn sync_now(app: AppHandle) -> Result<()> {
 }
 
 /// The kit after setup, once the device password is checked; opens `KIT_COPY_WINDOW` for
-/// `sync_copy_recovery_code`.
+/// `sync_copy_recovery_code` and `sync_save_recovery_kit`.
 #[tauri::command]
 pub async fn sync_show_recovery_kit(
     app: AppHandle,
@@ -650,6 +681,7 @@ pub async fn sync_show_recovery_kit(
 ) -> Result<RecoveryKit> {
     let password = Zeroizing::new(password);
     require_feature()?;
+    password_given(&password)?;
     verify_password(&app, password).await?;
     let kit = db.with_conn(setup::recovery_kit)?;
     open_kit_window(kit_owner(&app, &db)?, Instant::now());
@@ -1004,26 +1036,51 @@ mod tests {
     }
 
     #[test]
-    fn the_code_is_copied_during_setup_or_shortly_after_the_password() {
+    fn the_code_is_copied_only_shortly_after_the_password() {
         let now = Instant::now();
         let a = owner("/profiles/a/moony.db", 3);
         let shown = |opened| KitWindow {
             owner: a.clone(),
             opened,
         };
-        // During setup (sync not on yet) the kit is being shown for the first time.
-        assert!(copy_allowed(false, None, &a, now));
-        // With sync on, only within the window after `sync_show_recovery_kit` checked the password.
-        assert!(!copy_allowed(true, None, &a, now));
-        assert!(copy_allowed(true, Some(&shown(now)), &a, now));
+        // Setup included: no window, no copy (audit M11).
+        assert!(!copy_allowed(None, &a, now));
+        assert!(copy_allowed(Some(&shown(now)), &a, now));
         let edge = now + KIT_COPY_WINDOW;
-        assert!(copy_allowed(true, Some(&shown(now)), &a, edge));
+        assert!(copy_allowed(Some(&shown(now)), &a, edge));
         assert!(!copy_allowed(
-            true,
             Some(&shown(now)),
             &a,
             edge + Duration::from_secs(1)
         ));
+    }
+
+    #[test]
+    fn copy_outcome_falls_back_only_when_unsupported() {
+        assert_eq!(copy_outcome(Ok(7)).expect("copied"), Some(7));
+        assert_eq!(
+            copy_outcome(Err(KeychainError::Unsupported)).expect("the UI copies"),
+            None
+        );
+        for failed in [
+            KeychainError::Failed("NSPasteboard refused".into()),
+            KeychainError::Unavailable,
+            KeychainError::Cancelled,
+            KeychainError::Invalidated,
+        ] {
+            let error = copy_outcome(Err(failed)).expect_err("no fallback");
+            assert!(
+                matches!(&error, AppError::Validation(key) if key == COPY_FAILED),
+                "{error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn password_given_refuses_an_empty_password() {
+        let error = password_given("").expect_err("empty");
+        assert!(matches!(&error, AppError::Validation(key) if key == PASSWORD_NEEDED));
+        assert!(password_given("correct horse").is_ok());
     }
 
     #[test]
@@ -1034,13 +1091,13 @@ mod tests {
             owner: a.clone(),
             opened: now,
         };
-        assert!(copy_allowed(true, Some(&window), &a, now));
+        assert!(copy_allowed(Some(&window), &a, now));
         assert!(
-            !copy_allowed(true, Some(&window), &owner("/profiles/b/moony.db", 3), now),
+            !copy_allowed(Some(&window), &owner("/profiles/b/moony.db", 3), now),
             "another profile"
         );
         assert!(
-            !copy_allowed(true, Some(&window), &owner("/profiles/a/moony.db", 5), now),
+            !copy_allowed(Some(&window), &owner("/profiles/a/moony.db", 5), now),
             "the same profile after a lock and an unlock"
         );
     }
@@ -1084,12 +1141,13 @@ mod tests {
     }
 
     /// The sync commands (name → body up to its third statement), read from the sources of this
-    /// file, `sync_pairing.rs` and `sync_backups.rs`.
+    /// file, `sync_pairing.rs`, `sync_backups.rs` and `sync_kit.rs`.
     fn commands_and_their_first_statements() -> Vec<(String, String)> {
         [
             include_str!("sync.rs"),
             include_str!("sync_pairing.rs"),
             include_str!("sync_backups.rs"),
+            include_str!("sync_kit.rs"),
         ]
         .into_iter()
         .flat_map(commands_of)
@@ -1139,11 +1197,12 @@ mod tests {
                 line.strip_prefix("commands::sync::")
                     .or_else(|| line.strip_prefix("commands::sync_pairing::"))
                     .or_else(|| line.strip_prefix("commands::sync_backups::"))
+                    .or_else(|| line.strip_prefix("commands::sync_kit::"))
             })
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 29);
+        assert_eq!(found.len(), 30);
         for (name, first_three) in &commands {
             if name == "sync_feature_enabled" {
                 continue;

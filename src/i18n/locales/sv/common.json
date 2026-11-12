@@ -360,6 +360,7 @@
     "syncPairingCancelled": "Den andra enheten avbröt parkopplingen. Börja om på båda enheterna.",
     "syncPairingNotStarted": "Ingen parkoppling pågår på den här enheten. Börja om på båda enheterna.",
     "syncPasswordNeeded": "Ange lösenordet för den här enheten för att fortsätta.",
+    "syncCopyFailed": "Koden kunde inte kopieras. Spara kitet som en fil i stället.",
     "syncRecoveryAccountInvalid": "Kontrollera kontonumret: det är de 16 siffrorna i återställningspaketet för synkronisering.",
     "syncRecoveryVaultNotFound": "Synkroniseringsservern har inga synkroniserade data för den här återställningskoden. Kontrollera koden och synkroniseringsserverns adress i återställningspaketet för synkronisering.",
     "syncRecoveryKitRotated": "Nycklarna för den här synkroniseringen har bytts ut; att ansluta med ett återställningspaket efter det stöds inte ännu.",

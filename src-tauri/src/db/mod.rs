@@ -69,9 +69,6 @@ impl Database {
         let pragma_key = Zeroizing::new(format!("x{}", hex_key));
         conn.pragma_update(None, "key", pragma_key.as_str())?;
 
-        // Enable foreign key constraints
-        conn.execute("PRAGMA foreign_keys = ON", [])?;
-
         // Verify the key works by querying sqlite_master
         conn.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(()))
             .map_err(|e| {
@@ -85,6 +82,8 @@ impl Database {
                 );
                 AppError::Auth(crate::services::crypto::AUTH_KEY_FILES_CORRUPTED.into())
             })?;
+
+        configure(&conn)?;
 
         // Run migrations, copying the database file first when any are pending
         //: a failed upgrade must never leave the only copy half-migrated.
@@ -134,8 +133,7 @@ impl Database {
         let pragma_key = Zeroizing::new(format!("x{}", hex_key));
         conn.pragma_update(None, "key", pragma_key.as_str())?;
 
-        // Enable foreign key constraints
-        conn.execute("PRAGMA foreign_keys = ON", [])?;
+        configure(&conn)?;
 
         // Run migrations to create schema
         migrations::run_migrations(&conn)?;
@@ -258,6 +256,15 @@ impl Database {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
     }
+}
+
+/// The connection settings every profile session runs with, once the key is set: foreign key
+/// constraints, and `secure_delete` on the main database, so a deleted row (the sync secrets that
+/// turning sync off deletes, audit M11) is overwritten on its page instead of lingering in free
+/// space. The attachments store sets its own (`files_schema`).
+pub(crate) fn configure(conn: &Connection) -> Result<()> {
+    conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA main.secure_delete = ON;")?;
+    Ok(())
 }
 
 /// Attach `attachments.db` next to the main file (ADR 0017). A store that cannot be opened (damaged,
@@ -410,6 +417,21 @@ mod tests {
         assert!(require_session(Some(7), 9).is_err()); // reopen, including the same path
         assert!(require_session(Some(9), 9).is_ok());
         assert!(require_session(None, 9).is_ok()); // normal app handles follow the new session
+    }
+
+    #[test]
+    fn secure_delete_is_on_for_the_main_database() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let conn = Connection::open(dir.path().join("moony.db")).expect("open");
+        configure(&conn).expect("configure");
+        let secure: i64 = conn
+            .query_row("PRAGMA main.secure_delete", [], |r| r.get(0))
+            .expect("secure_delete");
+        assert_eq!(secure, 1);
+        let foreign: i64 = conn
+            .query_row("PRAGMA foreign_keys", [], |r| r.get(0))
+            .expect("foreign_keys");
+        assert_eq!(foreign, 1);
     }
 
     #[test]

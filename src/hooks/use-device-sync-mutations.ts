@@ -42,9 +42,12 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.startCheckout,
     onSuccess: refreshSyncState,
   });
-  // gcTime 0: the kit holds the vault key, so its result leaves the mutation cache with the screen.
+  // gcTime 0: the kit holds the vault key, so its result leaves the mutation cache with the screen
+  // (and the password with it). The device password is required every time (audit M11); until
+  // the setup screens ask for it, a call without one reads `validation.syncPasswordNeeded`.
   const prepareRecoveryKit = useMutation({
-    mutationFn: deviceSyncApi.prepareRecoveryKit,
+    mutationFn: (password: string | void) =>
+      deviceSyncApi.prepareRecoveryKit(typeof password === 'string' ? password : ''),
     gcTime: 0,
   });
   // gcTime 0 below: a password typed for turning off, delete, repair or re-sync is a mutation

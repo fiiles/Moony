@@ -201,6 +201,32 @@ fn the_pairing_code_text_is_a_developer_tool() {
 }
 
 #[test]
+fn the_view_names_a_custom_server_and_the_holders_attempts() {
+    let default = PairingSession::show(Role::Holder, &default_base_url(), T0).expect("shower");
+    assert_eq!(view_of(&default, false).expect("view").server_host, None);
+    let own = PairingSession::show(Role::Holder, "https://sync.example.org:8443", T0).expect("own");
+    let view = view_of(&own, false).expect("view");
+    assert_eq!(view.server_host.as_deref(), Some("sync.example.org:8443"));
+    assert_eq!(view.attempts_left, None, "only in compare");
+    assert_eq!(view.comparison_code, None);
+    assert_eq!(
+        server_host("https://sync.example.org"),
+        Some("sync.example.org".into())
+    );
+}
+
+#[test]
+fn the_acknowledgement_stages_read_as_connecting() {
+    assert_eq!(stage_of(Stage::AwaitingAck), PairingStage::Connecting);
+    assert_eq!(stage_of(Stage::Acknowledging), PairingStage::Connecting);
+    assert_eq!(stage_of(Stage::Announcing), PairingStage::Announcing);
+    assert_eq!(
+        stage_of(Stage::WaitingForScan),
+        PairingStage::WaitingForScan
+    );
+}
+
+#[test]
 fn the_shown_mailbox_is_on_the_server_of_the_role() {
     let conn = migrated();
     let default = normalize_base_url(&default_base_url()).expect("default");
@@ -358,8 +384,8 @@ async fn a_repeated_scan_of_the_same_code_keeps_its_session() {
     )
     .await
     .expect("first scan");
-    // Waiting for the shower's acknowledgement reads as announcing until the screens know it.
-    assert_eq!(first.stage, PairingStage::Announcing);
+    // Answered, waiting for the shower's acknowledgement: nothing to show yet.
+    assert_eq!(first.stage, PairingStage::Connecting);
     assert!(!first.contested);
 
     // The camera reports the same QR again: the same session answers, nothing is written.
@@ -424,7 +450,7 @@ async fn concurrent_scans_of_one_code_answer_it_once() {
     let (one, two) = tokio::join!(scan(), scan());
     let (one, two) = (one.expect("one"), two.expect("two"));
     assert_eq!(one, two);
-    assert!(!one.contested && one.stage == PairingStage::Announcing);
+    assert!(!one.contested && one.stage == PairingStage::Connecting);
     assert_eq!(put_count(&relay), 1);
     assert_eq!(disposed.load(Ordering::SeqCst), 0);
 }

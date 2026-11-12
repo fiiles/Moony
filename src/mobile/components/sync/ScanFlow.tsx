@@ -261,12 +261,10 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
     }
   };
 
-  const handleMatch = async () => {
-    try {
-      await pairing.confirm.mutateAsync();
-    } catch (error) {
-      fail(error);
-    }
+  // The holder's typed digits, or the joiner's Continue: a failure shows in the sheet
+  // (`confirm.error`), and one that ended the pairing is `pairing.error`.
+  const handleConfirm = (typedCode?: string) => {
+    pairing.confirm.mutate(typedCode);
   };
 
   // A half-finished setup on this phone refuses the join: cancel it, then join again
@@ -437,8 +435,9 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
           open={step === 'pairing' && !pairing.join.isPending}
           view={view}
           pollError={pairing.isError ? (pairing.error as Error) : null}
-          onMatch={() => void handleMatch()}
-          matching={pairing.confirm.isPending}
+          confirmError={pairing.confirm.isError ? pairing.confirm.error : null}
+          onConfirm={handleConfirm}
+          confirming={pairing.confirm.isPending}
           onClose={() => void giveUp()}
           joinFailure={joinFailure}
           onRetryJoin={() => void runJoin()}

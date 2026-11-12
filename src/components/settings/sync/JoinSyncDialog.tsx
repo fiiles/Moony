@@ -108,12 +108,9 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const handleMatch = async () => {
-    try {
-      await confirm.mutateAsync();
-    } catch (failure) {
-      toast.error(tc('status.error'), { description: translateApiError(failure as Error, tc) });
-    }
+  // Continue: the joiner's confirm gate. A failure shows under the digits (`confirm.error`).
+  const handleConfirm = () => {
+    confirm.mutate(undefined);
   };
 
   const retry = async () => {
@@ -194,7 +191,7 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
         <DialogHeader>
           <DialogTitle>{t('join.pairTitle')}</DialogTitle>
           <DialogDescription>
-            {view.stage === 'compare' ? t('pairing.compareTitle') : t('join.warning')}
+            {view.stage === 'compare' && !isError ? t('pairing.showTitle') : t('join.warning')}
           </DialogDescription>
         </DialogHeader>
         <PairingSteps
@@ -202,9 +199,9 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
           scanHint={t('join.pairHint')}
           devTools={status?.devTools === true}
           error={isError ? (error as Error) : null}
-          onMatch={handleMatch}
-          matching={confirm.isPending}
-          onNoMatch={() => void close()}
+          confirmError={confirm.isError ? confirm.error : null}
+          onConfirm={handleConfirm}
+          confirming={confirm.isPending}
           joining={join.isPending}
         />
         {view.stage === 'received' && !failed && (
@@ -239,6 +236,11 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
               disabled={join.isPending}
             >
               {t('intro.cancelSetup')}
+            </Button>
+          )}
+          {isError && !joinError && (
+            <Button type="button" onClick={() => void startAgain()}>
+              {t('pairing.startAgain')}
             </Button>
           )}
           {joinError && !failed && (

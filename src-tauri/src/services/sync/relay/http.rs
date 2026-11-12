@@ -50,7 +50,8 @@ pub fn default_base_url() -> String {
     super::super::feature::dev_relay_base().unwrap_or_else(|| DEFAULT_RELAY_URL.to_string())
 }
 
-/// A relay base URL: `https`, or `http` only for the hosts `localhost` and `127.0.0.1`; no user,
+/// A relay base URL: `https`, or `http` only for the hosts `localhost` and `127.0.0.1` in a debug
+/// build; no user,
 /// password, query or fragment; no path but `/`; at most `MAX_RELAY_URL_CHARS` characters. Parsed,
 /// never prefix-matched.
 pub fn validate_base_url(url: &str) -> Result<()> {
@@ -71,6 +72,17 @@ pub fn is_default_relay(url: &str) -> bool {
     normalize_base_url(url).is_ok_and(|normal| normal == DEFAULT_RELAY_URL)
 }
 
+/// `http` only for `localhost` / `127.0.0.1` and only in a debug build (a release build never
+/// sends a pairing or a sealed batch over plain text, even to the same machine); `https` for any
+/// host.
+fn scheme_allowed(scheme: &str, host: Option<&str>, debug: bool) -> bool {
+    match scheme {
+        "https" => host.is_some_and(|host| !host.is_empty()),
+        "http" => debug && matches!(host, Some("localhost" | "127.0.0.1")),
+        _ => false,
+    }
+}
+
 fn parse_base_url(url: &str) -> Result<Url> {
     let invalid = || AppError::Validation("validation.syncRelayUrlInvalid".into());
     if url.chars().count() > MAX_RELAY_URL_CHARS {
@@ -88,11 +100,7 @@ fn parse_base_url(url: &str) -> Result<Url> {
     if parsed.as_str().trim_end_matches('/').len() > MAX_RELAY_URL_CHARS {
         return Err(invalid());
     }
-    let host_allowed = match parsed.scheme() {
-        "https" => parsed.host_str().is_some_and(|host| !host.is_empty()),
-        "http" => matches!(parsed.host_str(), Some("localhost" | "127.0.0.1")),
-        _ => false,
-    };
+    let host_allowed = scheme_allowed(parsed.scheme(), parsed.host_str(), cfg!(debug_assertions));
     let bare = parsed.username().is_empty()
         && parsed.password().is_none()
         && parsed.query().is_none()
@@ -620,5 +628,7 @@ impl Mailbox for HttpRelay {
 
 #[cfg(test)]
 mod mailbox_tests;
+#[cfg(test)]
+mod scheme_tests;
 #[cfg(test)]
 mod tests;

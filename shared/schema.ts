@@ -158,7 +158,13 @@ export interface SyncDevice {
 
 /** Where a pairing stands on this device. */
 export type PairingStage =
-  'announcing' | 'waitingForScan' | 'compare' | 'waitingForOther' | 'sent' | 'received';
+  | 'announcing'
+  | 'waitingForScan'
+  | 'connecting'
+  | 'compare'
+  | 'waitingForOther'
+  | 'sent'
+  | 'received';
 
 /** `holder`: this device syncs and sends its sync details; `joiner`: it receives them. */
 export type PairingRole = 'holder' | 'joiner';
@@ -174,12 +180,16 @@ export interface PairingView {
   qrSvg: string | null;
   /** The same code as text, only with the developer tools (a simulator cannot scan). */
   pairingCode: string | null;
-  /** The six digits both devices show, from `compare` on. */
+  /** The six digits the joiner shows, from `compare` on; never set on the holder, whose person types them. */
   comparisonCode: string | null;
   /** Scanner: another device answered this code first; only cancelling is offered. */
   contested: boolean;
   /** When the pairing ends on this device (unix seconds). */
   expiresAt: number;
+  /** The sync server as `host[:port]`, only when it is not the default one. */
+  serverHost: string | null;
+  /** Holder, in `compare`: wrong codes the person may still type before the pairing ends. */
+  attemptsLeft: number | null;
 }
 
 /** What a replace (a join, a repair, a re-sync) puts at stake on this device, for its confirmation. */

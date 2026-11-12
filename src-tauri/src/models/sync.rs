@@ -234,7 +234,11 @@ pub enum PairingStage {
     /// Shower: the QR code is on screen, waiting for the other device to scan it.
     #[serde(rename = "waitingForScan")]
     WaitingForScan,
-    /// Both: the six-digit comparison code is on screen, waiting for the person.
+    /// Both: the other device is answered (scanner: slot 1 written, the shower's acknowledgement
+    /// awaited; shower: the acknowledgement is being stored); nothing is shown yet.
+    #[serde(rename = "connecting")]
+    Connecting,
+    /// The joiner shows its six digits; the holder asks its person to type them.
     #[serde(rename = "compare")]
     Compare,
     /// Joiner, after its confirm: waiting for the other device to send the sync details.
@@ -272,7 +276,8 @@ pub struct PairingView {
     /// The same code as text, only with the developer tools (a simulator cannot scan).
     #[serde(rename = "pairingCode")]
     pub pairing_code: Option<String>,
-    /// The six digits both devices show, from `compare` on.
+    /// The six digits the joiner shows, from `compare` on; never set on the holder, whose person
+    /// types them.
     #[serde(rename = "comparisonCode")]
     pub comparison_code: Option<String>,
     /// Scanner: another device answered this code first; this device's digits differ from the
@@ -282,6 +287,13 @@ pub struct PairingView {
     /// When the pairing ends on this device (unix seconds).
     #[serde(rename = "expiresAt")]
     pub expires_at: i64,
+    /// The sync server of this pairing as `host[:port]`, only when it is not the default one, so
+    /// the person sees which server a self-hosted pairing goes through.
+    #[serde(rename = "serverHost")]
+    pub server_host: Option<String>,
+    /// Holder, in `compare`: wrong codes the person may still type before the pairing ends.
+    #[serde(rename = "attemptsLeft")]
+    pub attempts_left: Option<u8>,
 }
 
 /// What a replace (a join, a repair, a re-sync) puts at stake on this device, for the confirmation

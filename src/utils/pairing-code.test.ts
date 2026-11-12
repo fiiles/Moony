@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { PairingStage, PairingView } from '@shared/schema';
 import {
   formatComparisonCode,
+  isCompleteCode,
   joinFailureAction,
+  normalizeTypedCode,
   pairingPollInterval,
   scannedCodeKind,
   type JoinFailurePoll,
@@ -20,6 +22,8 @@ function view(stage: PairingStage): PairingView {
     comparisonCode: null,
     contested: false,
     expiresAt: 0,
+    serverHost: null,
+    attemptsLeft: null,
   };
 }
 
@@ -75,9 +79,38 @@ describe('formatComparisonCode', () => {
   });
 });
 
+describe('normalizeTypedCode', () => {
+  it('keeps digits only, at most six', () => {
+    expect(normalizeTypedCode('482 686')).toBe('482686');
+    expect(normalizeTypedCode('482-686')).toBe('482686');
+    expect(normalizeTypedCode(' 4a8b2 ')).toBe('482');
+    expect(normalizeTypedCode('4826869')).toBe('482686');
+    expect(normalizeTypedCode('')).toBe('');
+  });
+
+  it('folds full-width digits to ASCII before stripping', () => {
+    expect(normalizeTypedCode('４８２６８６')).toBe('482686');
+    expect(normalizeTypedCode('４８２ ６８６')).toBe('482686');
+  });
+
+  it('drops other scripts instead of guessing', () => {
+    expect(normalizeTypedCode('٤٨٢٦٨٦')).toBe('');
+  });
+});
+
+describe('isCompleteCode', () => {
+  it('is true for exactly six digits once normalised', () => {
+    expect(isCompleteCode('482 686')).toBe(true);
+    expect(isCompleteCode('４８２６８６')).toBe(true);
+    expect(isCompleteCode('48268')).toBe(false);
+    expect(isCompleteCode('')).toBe(false);
+  });
+});
+
 describe('pairingPollInterval', () => {
-  it('polls only while announcing or waiting for the other device', () => {
+  it('polls only while announcing, connecting or waiting for the other device', () => {
     expect(pairingPollInterval(view('announcing'))).toBe(2000);
+    expect(pairingPollInterval(view('connecting'))).toBe(2000);
     expect(pairingPollInterval(view('waitingForScan'))).toBe(2000);
     expect(pairingPollInterval(view('waitingForOther'))).toBe(2000);
     expect(pairingPollInterval(view('compare'))).toBe(false);

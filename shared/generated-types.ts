@@ -1682,7 +1682,12 @@ export type PairingStage =
  */
 "waitingForScan" | 
 /**
- * Both: the six-digit comparison code is on screen, waiting for the person.
+ * Both: the other device is answered (scanner: slot 1 written, the shower's acknowledgement
+ * awaited; shower: the acknowledgement is being stored); nothing is shown yet.
+ */
+"connecting" | 
+/**
+ * The joiner shows its six digits; the holder asks its person to type them.
  */
 "compare" | 
 /**
@@ -1713,7 +1718,8 @@ qrSvg: string | null;
  */
 pairingCode: string | null; 
 /**
- * The six digits both devices show, from `compare` on.
+ * The six digits the joiner shows, from `compare` on; never set on the holder, whose person
+ * types them.
  */
 comparisonCode: string | null; 
 /**
@@ -1724,7 +1730,16 @@ contested: boolean;
 /**
  * When the pairing ends on this device (unix seconds).
  */
-expiresAt: number }
+expiresAt: number; 
+/**
+ * The sync server of this pairing as `host[:port]`, only when it is not the default one, so
+ * the person sees which server a self-hosted pairing goes through.
+ */
+serverHost: string | null; 
+/**
+ * Holder, in `compare`: wrong codes the person may still type before the pairing ends.
+ */
+attemptsLeft: number | null }
 
 /**
  * The chart data of one requested series, on the dates of the report.

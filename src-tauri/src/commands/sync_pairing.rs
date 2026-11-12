@@ -27,6 +27,7 @@ use std::time::Duration;
 
 use rusqlite::Connection;
 use tauri::{AppHandle, State};
+
 use zeroize::Zeroizing;
 
 use super::sync::{
@@ -43,9 +44,11 @@ use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::impact::IMPACT_CHANGED;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::pairing::session::{keeps_session, PairingSession, Stage};
-use crate::services::sync::pairing::{pairing_code_text, MailboxId, Role, Side};
+use crate::services::sync::pairing::{pairing_code_text, typed_code_digits, MailboxId, Role, Side};
 use crate::services::sync::recovery::{qr_svg, read_recovery_input};
-use crate::services::sync::relay::http::{default_base_url, normalize_base_url, HttpRelay};
+use crate::services::sync::relay::http::{
+    default_base_url, is_default_relay, normalize_base_url, HttpRelay,
+};
 use crate::services::sync::relay::Mailbox;
 use crate::services::sync::{devices, feature, join, state};
 
@@ -292,16 +295,32 @@ fn view_of(session: &PairingSession, dev_tools: bool) -> Result<PairingView> {
         comparison_code: session.comparison_code(),
         contested: session.contested(),
         expires_at: session.wiped_at(),
+        server_host: server_host(session.relay_url()),
+        attempts_left: (session.role() == Role::Holder && session.stage() == Stage::Compare)
+            .then(|| session.attempts_left()),
+    })
+}
+
+/// `host[:port]` of a sync server that is not the default one.
+fn server_host(relay_url: &str) -> Option<String> {
+    if is_default_relay(relay_url) {
+        return None;
+    }
+    let url = reqwest::Url::parse(relay_url).ok()?;
+    let host = url.host_str()?;
+    Some(match url.port() {
+        Some(port) => format!("{host}:{port}"),
+        None => host.to_string(),
     })
 }
 
 fn stage_of(stage: Stage) -> PairingStage {
     match stage {
-        // The wire stages for the acknowledgement come with the screens (protocol 2): until then
-        // the scanner waiting for it reads as still announcing, the shower storing it as still
-        // waiting for the scan.
-        Stage::Announcing | Stage::AwaitingAck => PairingStage::Announcing,
-        Stage::WaitingForScan | Stage::Acknowledging => PairingStage::WaitingForScan,
+        Stage::Announcing => PairingStage::Announcing,
+        Stage::WaitingForScan => PairingStage::WaitingForScan,
+        // Answered, but the digits wait for the acknowledgement (protocol 2): the scanner reads
+        // slot 3, the shower stores it.
+        Stage::AwaitingAck | Stage::Acknowledging => PairingStage::Connecting,
         Stage::Compare => PairingStage::Compare,
         Stage::WaitingForOther => PairingStage::WaitingForOther,
         Stage::Sent => PairingStage::Sent,
@@ -579,11 +598,19 @@ pub async fn sync_pairing_poll(app: AppHandle, db: State<'_, Database>) -> Resul
     current_view(&pairing)
 }
 
-/// The person confirmed the six digits match: a holder seals its sync details for the other
-/// device, a joiner starts waiting for them. A contested scan answers
-/// `validation.syncPairingCodeUsed`.
+/// The person confirmed. A holder passes the six digits typed from the joining device's screen
+/// and, if they are the joiner's, seals its sync details for it; nothing typed, or text that is
+/// not six digits, is `validation.syncPairingCodeIncomplete` (no attempt spent), a wrong code
+/// `validation.syncPairingCodeMismatch` (the pairing stays) until the third, which ends it with
+/// `validation.syncPairingCodeMismatchFinal`. A joiner starts waiting for the details (`typed_code`
+/// is ignored). A contested scan answers `validation.syncPairingCodeUsed`.
 #[tauri::command]
-pub async fn sync_pairing_confirm(app: AppHandle, db: State<'_, Database>) -> Result<PairingView> {
+pub async fn sync_pairing_confirm(
+    app: AppHandle,
+    db: State<'_, Database>,
+    typed_code: Option<String>,
+) -> Result<PairingView> {
+    let typed_code = typed_code.map(Zeroizing::new);
     require_feature()?;
     let owner = kit_owner(&app, &db)?;
     let session = db.current_session()?;
@@ -591,12 +618,25 @@ pub async fn sync_pairing_confirm(app: AppHandle, db: State<'_, Database>) -> Re
     let confirmed = {
         let slot = pairing.live(&owner, now())?;
         let relay = HttpRelay::new(slot.session.relay_url())?;
-        match holder_credentials(&slot.session, &session) {
-            // No typed digits yet: the holder's confirm answers `CODE_INCOMPLETE` until the
-            // command takes them.
+        // The vault keys are read only for text that can be a code: the session answers
+        // `CODE_INCOMPLETE` for anything else before it needs them.
+        let creds = if typed_code
+            .as_deref()
+            .is_some_and(|typed| typed_code_digits(typed).is_some())
+        {
+            holder_credentials(&slot.session, &session)
+        } else {
+            Ok(None)
+        };
+        match creds {
             Ok(creds) => {
                 slot.session
-                    .confirm(&relay, creds.as_ref(), None, now())
+                    .confirm(
+                        &relay,
+                        creds.as_ref(),
+                        typed_code.as_deref().map(String::as_str),
+                        now(),
+                    )
                     .await
             }
             Err(error) => Err(error),
@@ -609,7 +649,7 @@ pub async fn sync_pairing_confirm(app: AppHandle, db: State<'_, Database>) -> Re
     current_view(&pairing)
 }
 
-/// Gives the pairing in progress up ("They don't match", closing the dialog).
+/// Gives the pairing in progress up (Cancel, closing the dialog).
 #[tauri::command]
 pub async fn sync_pairing_cancel() -> Result<()> {
     require_feature()?;

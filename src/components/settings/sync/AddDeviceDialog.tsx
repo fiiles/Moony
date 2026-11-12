@@ -1,8 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
 import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
-import { translateApiError } from '@/lib/translate-api-error';
 import { PairingSteps } from '@/components/settings/sync/PairingSteps';
 import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialog';
 import {
@@ -57,11 +55,18 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
     );
   }
 
-  const handleMatch = async () => {
+  // A wrong or momentary answer shows under the field (`confirm.error`); one that ended the pairing
+  // is `error`, and the dialog offers to start again.
+  const handleConfirm = (typedCode?: string) => {
+    confirm.mutate(typedCode);
+  };
+
+  // Back to the password step for a fresh code.
+  const startAgain = async () => {
     try {
-      await confirm.mutateAsync();
-    } catch (failure) {
-      toast.error(tc('status.error'), { description: translateApiError(failure as Error, tc) });
+      await cancel();
+    } catch {
+      // Gone on this device either way.
     }
   };
 
@@ -73,7 +78,9 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
         <DialogHeader>
           <DialogTitle>{t('pairing.addTitle')}</DialogTitle>
           <DialogDescription>
-            {view.stage === 'compare' ? t('pairing.compareTitle') : t('pairing.addDescription')}
+            {view.stage === 'compare' && !isError
+              ? t('pairing.typeTitle')
+              : t('pairing.addDescription')}
           </DialogDescription>
         </DialogHeader>
         <PairingSteps
@@ -81,11 +88,16 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
           scanHint={t('pairing.scanHint')}
           devTools={status?.devTools === true}
           error={isError ? (error as Error) : null}
-          onMatch={handleMatch}
-          matching={confirm.isPending}
-          onNoMatch={() => void close()}
+          confirmError={confirm.isError ? confirm.error : null}
+          onConfirm={handleConfirm}
+          confirming={confirm.isPending}
         />
         <DialogFooter>
+          {isError && (
+            <Button type="button" onClick={() => void startAgain()}>
+              {t('pairing.startAgain')}
+            </Button>
+          )}
           <Button
             type="button"
             variant={finished ? 'outline' : 'ghost'}

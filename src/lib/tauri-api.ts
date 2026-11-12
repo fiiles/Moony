@@ -428,8 +428,13 @@ export const deviceSyncApi = {
   /** One step of waiting; poll every 2 s while the view waits. */
   pairingPoll: () => tauriInvoke<PairingView>('sync_pairing_poll'),
 
-  /** The person confirmed that both devices show the same six digits. */
-  pairingConfirm: () => tauriInvoke<PairingView>('sync_pairing_confirm'),
+  /**
+   * The person confirmed. The holder passes the six digits typed from the joining device's screen
+   * (a wrong code answers `syncPairingCodeMismatch`, three end the pairing); the joiner passes
+   * nothing.
+   */
+  pairingConfirm: (typedCode?: string) =>
+    tauriInvoke<PairingView>('sync_pairing_confirm', { typedCode: typedCode ?? null }),
 
   pairingCancel: () => tauriInvoke<void>('sync_pairing_cancel'),
 

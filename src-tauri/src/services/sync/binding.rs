@@ -17,7 +17,7 @@ use std::fs;
 use std::io::{self, Read};
 use std::path::Path;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 use zeroize::Zeroizing;
@@ -34,6 +34,12 @@ pub const BINDING_FILE: &str = "sync-binding.bin";
 pub const REJOIN_MARKER: &str = "sync-rejoin.marker";
 /// Domain separation of the bound value.
 pub const BINDING_LABEL: &[u8] = b"moony sync binding v1";
+
+/// Starts in a row whose binding check answered a native `Failed` (Local `app_config` key
+/// `sync.binding_failed_starts`); reset by any other answer. The third in a row re-joins: a
+/// needless re-join is cheap, a check that never passes is not.
+pub const FAILED_STARTS_BEFORE_REJOIN: u32 = 3;
+const FAILED_STARTS_KEY: &str = "sync.binding_failed_starts";
 
 /// Why a native could not seal or open the binding.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,7 +109,9 @@ pub fn clear_rejoin_marker(data_dir: &Path) -> io::Result<()> {
 /// machine and equal `SHA-256(BINDING_LABEL ‖ device_id)` (compared in constant time). A platform
 /// without a binding never writes one, so it asks only for a binding written on another OS (the
 /// folder moved here); after that re-join `binding_written` stays 0 and it never asks again. A
-/// native failure is logged once and lets the start go on.
+/// native `Failed` is an error (this start runs no round and the next trigger tries again), counted
+/// per start; the `FAILED_STARTS_BEFORE_REJOIN`-th in a row asks for a re-join instead and resets
+/// the count (audit M10: the check fails closed).
 pub fn startup_check(
     conn: &Connection,
     data_dir: &Path,
@@ -121,16 +129,22 @@ pub fn startup_check(
     }
     let written = state::marks(conn)?.is_some_and(|m| m.binding_written);
     if !written {
+        set_failed_starts(conn, 0)?;
         return Ok(StartupCheck::Fine);
     }
     let blob = match fs::read(data_dir.join(BINDING_FILE)) {
         Ok(blob) => blob,
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            set_failed_starts(conn, 0)?;
             return Ok(StartupCheck::Rejoin(RejoinReason::BindingMismatch));
         }
         Err(e) => return Err(e.into()),
     };
-    match native.open(&blob) {
+    let answer = native.open(&blob);
+    if !matches!(answer, Err(BindingFailure::Failed(_))) {
+        set_failed_starts(conn, 0)?;
+    }
+    match answer {
         Ok(opened) => {
             let expected = bound_value(sync.device);
             if bool::from(opened[..].ct_eq(&expected[..])) {
@@ -146,9 +160,42 @@ pub fn startup_check(
         }
         Err(BindingFailure::Failed(reason)) => {
             log::warn!("[SYNC] The device binding could not be checked at this start: {reason}");
-            Ok(StartupCheck::Fine)
+            let failed = failed_starts(conn)?.saturating_add(1);
+            if failed >= FAILED_STARTS_BEFORE_REJOIN {
+                set_failed_starts(conn, 0)?;
+                return Ok(StartupCheck::Rejoin(RejoinReason::BindingMismatch));
+            }
+            set_failed_starts(conn, failed)?;
+            Err(AppError::Internal(
+                "sync binding: could not be checked at this start".into(),
+            ))
         }
     }
+}
+
+fn failed_starts(conn: &Connection) -> Result<u32> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [FAILED_STARTS_KEY],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(value.and_then(|v| v.parse().ok()).unwrap_or(0))
+}
+
+/// Stores the count; zero removes the row, so a healthy profile writes nothing.
+fn set_failed_starts(conn: &Connection, count: u32) -> Result<()> {
+    if count == 0 {
+        conn.execute("DELETE FROM app_config WHERE key = ?1", [FAILED_STARTS_KEY])?;
+    } else {
+        conn.execute(
+            "INSERT INTO app_config (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            rusqlite::params![FAILED_STARTS_KEY, count.to_string()],
+        )?;
+    }
+    Ok(())
 }
 
 /// Seals the binding of this device's ID, writes it next to the profile (owner-only, atomically:
@@ -562,20 +609,55 @@ mod tests {
     }
 
     #[test]
-    fn a_native_failure_is_fine() {
+    fn a_binding_that_cannot_be_opened_now_is_an_error() {
         let conn = synced();
         let dir = tempfile::tempdir().expect("dir");
         write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
 
-        assert_eq!(
-            startup_check(&conn, dir.path(), &BrokenNative).expect("check"),
-            StartupCheck::Fine
-        );
+        let error = startup_check(&conn, dir.path(), &BrokenNative).expect_err("fails closed");
+        assert!(matches!(error, AppError::Internal(_)), "{error:?}");
+        assert_eq!(failed_starts(&conn).expect("count"), 1);
         let error = write_binding(&conn, dir.path(), &BrokenNative).expect_err("seal fails");
         assert!(matches!(error, AppError::Internal(_)), "{error:?}");
         assert!(
             !error.to_string().contains(&*dir.path().to_string_lossy()),
             "no path in the error"
+        );
+    }
+
+    #[test]
+    fn three_failed_starts_in_a_row_rejoin() {
+        let conn = synced();
+        let dir = tempfile::tempdir().expect("dir");
+        write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
+
+        for _ in 1..FAILED_STARTS_BEFORE_REJOIN {
+            assert!(startup_check(&conn, dir.path(), &BrokenNative).is_err());
+        }
+        assert_eq!(
+            startup_check(&conn, dir.path(), &BrokenNative).expect("third"),
+            StartupCheck::Rejoin(RejoinReason::BindingMismatch)
+        );
+        assert_eq!(failed_starts(&conn).expect("count"), 0, "the count resets");
+    }
+
+    #[test]
+    fn a_successful_check_resets_the_failed_count() {
+        let conn = synced();
+        let dir = tempfile::tempdir().expect("dir");
+        write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
+
+        assert!(startup_check(&conn, dir.path(), &BrokenNative).is_err());
+        assert!(startup_check(&conn, dir.path(), &BrokenNative).is_err());
+        assert_eq!(
+            startup_check(&conn, dir.path(), &FakeNative { machine: 7 }).expect("check"),
+            StartupCheck::Fine
+        );
+        assert_eq!(failed_starts(&conn).expect("count"), 0);
+        assert!(startup_check(&conn, dir.path(), &BrokenNative).is_err());
+        assert!(
+            startup_check(&conn, dir.path(), &BrokenNative).is_err(),
+            "the count started over: two failures are still errors"
         );
     }
 

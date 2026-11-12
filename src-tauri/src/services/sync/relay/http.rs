@@ -625,9 +625,10 @@ impl Mailbox for HttpRelay {
     }
 }
 
-#[cfg(test)]
+// These talk to one-shot servers on 127.0.0.1, an address only a debug build accepts.
+#[cfg(all(test, debug_assertions))]
 mod mailbox_tests;
 #[cfg(test)]
 mod scheme_tests;
-#[cfg(test)]
+#[cfg(all(test, debug_assertions))]
 mod tests;

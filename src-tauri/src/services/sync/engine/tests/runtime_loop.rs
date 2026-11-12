@@ -2,7 +2,7 @@
 //! network, the loop's triggers, back-off, re-join at start, pauses and events.
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use zeroize::Zeroizing;
@@ -156,7 +156,7 @@ async fn the_rounds_of_a_profile_never_overlap_and_never_hold_the_lock_over_the_
 // The loop
 
 /// A binding that "seals" by copying (a machine-bound seal in tests).
-struct Sealing;
+pub(super) struct Sealing;
 
 impl BindingNative for Sealing {
     fn seal(&self, secret: &[u8; 32]) -> std::result::Result<Vec<u8>, BindingFailure> {
@@ -172,7 +172,7 @@ impl BindingNative for Sealing {
 
 /// What the loop told the app.
 #[derive(Clone, Default)]
-struct Seen {
+pub(super) struct Seen {
     data_changed: Arc<AtomicUsize>,
     statuses: Arc<Mutex<Vec<SyncStatus>>>,
 }
@@ -193,6 +193,9 @@ struct Events {
     seen: Seen,
     dir: PathBuf,
     native: Box<dyn BindingNative>,
+    /// The app start's binding mark (`EngineEvents::binding_failed_this_start`): a fresh one is a
+    /// new app start, a shared one engines spawned within one.
+    this_start: Arc<AtomicBool>,
 }
 
 impl EngineEvents for Events {
@@ -212,25 +215,42 @@ impl EngineEvents for Events {
     fn data_dir(&self) -> PathBuf {
         self.dir.clone()
     }
+    fn binding_failed_this_start(&self) -> &AtomicBool {
+        &self.this_start
+    }
 }
 
-struct Running {
-    handle: EngineHandle,
-    seen: Seen,
+pub(super) struct Running {
+    pub(super) handle: EngineHandle,
+    pub(super) seen: Seen,
     _dir: tempfile::TempDir,
 }
 
-fn start(
+/// The engine in an app start of its own (a fresh binding mark).
+pub(super) fn start(
     vault: &Vault,
     device: &TestConn,
     dir: tempfile::TempDir,
     native: Box<dyn BindingNative>,
+) -> Running {
+    start_in(vault, device, dir, native, Arc::default())
+}
+
+/// The engine spawned within the app start whose binding mark is `this_start` (an unlock after a
+/// lock, or a sync change, spawns another engine in the same start).
+pub(super) fn start_in(
+    vault: &Vault,
+    device: &TestConn,
+    dir: tempfile::TempDir,
+    native: Box<dyn BindingNative>,
+    this_start: Arc<AtomicBool>,
 ) -> Running {
     let seen = Seen::default();
     let events = Events {
         seen: seen.clone(),
         dir: dir.path().to_path_buf(),
         native,
+        this_start,
     };
     let handle = runtime::spawn(vault.relay.clone(), device.clone(), events);
     Running {
@@ -248,6 +268,7 @@ fn start_on<R: Relay + 'static, D: ConnAccess>(relay: R, db: D) -> Running {
         seen: seen.clone(),
         dir: dir.path().to_path_buf(),
         native: Box::new(NoBinding),
+        this_start: Arc::default(),
     };
     let handle = runtime::spawn(relay, db, events);
     Running {
@@ -295,7 +316,7 @@ fn start_plain(vault: &Vault, device: &TestConn) -> Running {
     )
 }
 
-async fn until(what: &str, done: impl Fn() -> bool) {
+pub(super) async fn until(what: &str, done: impl Fn() -> bool) {
     for _ in 0..6_000 {
         if done() {
             return;
@@ -305,7 +326,7 @@ async fn until(what: &str, done: impl Fn() -> bool) {
     panic!("timed out waiting until {what}");
 }
 
-async fn rounds(running: &Running, n: u64) {
+pub(super) async fn rounds(running: &Running, n: u64) {
     until(&format!("{n} rounds ran"), || {
         running.handle.runtime().rounds >= n
     })
@@ -417,6 +438,38 @@ async fn a_transient_error_backs_off_until_sync_now() {
     running.handle.wake(Trigger::SyncNow);
     rounds(&running, 2).await;
     assert_eq!(running.handle.runtime().problem, None);
+    running.handle.stop();
+}
+
+/// Final review A, I3: a round whose pull held a quarantined author and whose push then failed on
+/// the relay shows the quarantine, not a relay error; it still backs off.
+#[tokio::test]
+async fn a_failed_push_does_not_hide_a_quarantine() {
+    let vault = super::vault().await;
+    let c1 = forge(&vault.creds, &changeset(C, 1, None, vec![]));
+    let c2 = forge(&vault.creds, &changeset(C, 2, Some([9; 32]), vec![]));
+    push(&vault.relay, &vault.creds, &[c1, c2]).await;
+    institution(&vault.a.lock(), "a1");
+    vault.relay.fail_next(Route::Push, RelayError::Server(503));
+
+    let running = start_plain(&vault, &vault.a);
+    rounds(&running, 1).await;
+
+    assert_eq!(
+        running.handle.runtime().problem,
+        Some(SyncProblem::Quarantined)
+    );
+    let last = running.seen.last();
+    assert_eq!(
+        (last.phase, last.problem),
+        (SyncPhase::Error, Some(SyncProblem::Quarantined))
+    );
+    let last_error: Option<String> = vault
+        .a
+        .lock()
+        .query_row("SELECT last_error FROM sync_state", [], |r| r.get(0))
+        .expect("last_error");
+    assert_eq!(last_error.as_deref(), Some("sync stopped: quarantined"));
     running.handle.stop();
 }
 

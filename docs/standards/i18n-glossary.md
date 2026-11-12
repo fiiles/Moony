@@ -59,7 +59,7 @@ Brokers / IBKR, Revolut, Degiro, Fio, Air Bank, …), keyboard keys.
 | Salary | Gehalt | Salario | Stipendio | Lønn | Wynagrodzenie | Lön | 給与 | 工资 |
 | Refund | Erstattung | Reembolso | Rimborso | Refusjon | Zwrot | Återbetalning | 返金 | 退款 |
 | Sync server (cs synchronizační server; user copy never says "relay") | Synchronisierungsserver | Servidor de sincronización | Server di sincronizzazione | Synkroniseringsserver | Serwer synchronizacji | Synkroniseringsserver | 同期サーバー | 同步服务器 |
-| Pairing code (cs párovací kód; the QR one device shows to add another) | Kopplungscode | Código de vinculación | Codice di associazione | Koblingskode | Kod parowania | Parkopplingskod | ペアリングコード | 配对码 |
+| Pairing code (cs párovací kód; the QR one device shows to add another, and the six digits the joining device shows for the person to type on the other; the step in between is "Connecting securely", never "acknowledgement") | Kopplungscode | Código de vinculación | Codice di associazione | Koblingskode | Kod parowania | Parkopplingskod | ペアリングコード | 配对码 |
 | Own-account transfer | Umbuchung | Traspaso | Giroconto | Overføring mellom egne kontoer | Przelew własny | Överföring mellan egna konton | 口座間振替 | 账户间转账 |
 | Stocks | Aktien | Acciones | Azioni | Aksjer | Akcje | Aktier | 株式 | 股票 |
 | Holding / position | Position | Posición | Posizione | Beholdning | Pozycja | Innehav | 保有銘柄 | 持仓 |

@@ -791,6 +791,9 @@ fn migration_seed_revival_is_deleted_again() {
     let seed_sql = crate::db::migration_sql("010_income_categories").expect("migration 010");
     b.execute_batch(seed_sql).expect("re-run the seed");
     assert_eq!(count(b, seeded), 1, "the seed brought the row back");
+    // Migration 010 ran just now: the last unlock had seen the schema up to 009.
+    b.execute("UPDATE sync_state SET schema_seen = 9", [])
+        .expect("the schema seen before the migration");
     sync::on_open(b);
 
     assert_eq!(count(b, seeded), 0);
@@ -891,7 +894,7 @@ fn rule_packs_written_explicitly_travel() {
 }
 
 /// §18's failure drill as a named test: a relay that drops A's second envelope for C and
-/// replays A's first. C stops on the gap with the first applied and the third not, skips the
+/// replays A's first. C holds the third behind the gap (the first applied), skips the
 /// replay, and once the missing envelope arrives applies the rest.
 #[test]
 fn dishonest_relay_drops_one_envelope_and_replays_another() {
@@ -911,7 +914,10 @@ fn dishonest_relay_drops_one_envelope_and_replays_another() {
 
     assert_eq!(
         vault.pull(2, &[first, third]),
-        PullEnd::Stopped(Verdict::Gap)
+        PullEnd::Waiting {
+            gaps: 1,
+            parents: 0
+        }
     );
     assert_eq!(
         category_names(&vault.devices[2].conn),

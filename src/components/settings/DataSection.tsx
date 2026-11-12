@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { AttachmentsStatusRow } from '@/components/settings/AttachmentsStatusRow';
 import { RestoreBackup } from '@/components/common/RestoreBackup';
+import { SyncBackupsList } from '@/components/settings/SyncBackupsList';
 import { queryClient } from '@/lib/queryClient';
 import { dataApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -163,6 +164,8 @@ export function DataSection() {
           {t('data.backupNow')}
         </Button>
       </SettingsRow>
+
+      <SyncBackupsList disabled={busy !== null} />
 
       <SettingsRow label={t('data.exportRow')} hint={t('data.exportHint')}>
         <Button

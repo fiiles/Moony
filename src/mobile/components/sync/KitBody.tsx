@@ -6,6 +6,8 @@ import type { RecoveryKit } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useRecoveryKitCopy } from '@/components/settings/sync/use-recovery-kit-copy';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { useRecoveryKitLifetime } from '@/hooks/use-recovery-kit-lifetime';
+import { copyToWebviewClipboard } from '@/utils/recovery-kit-lifetime';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
@@ -29,24 +31,29 @@ const WIDE_BUTTON = `${BUTTON} w-full [&_svg]:size-[18px]`;
 /**
  * The Sync Recovery Kit as the phone shows it, in Show Recovery Kit and in setup: QR, account,
  * grouped code, and the ways to keep it (copy the code; on iOS save it as text or as a page through
- * the Files picker). `onKept` is called once the code was copied or a file was saved. With sync on,
- * copying works only shortly after the kit was shown; `onPasswordRequired` is then called instead
- * of a failure toast.
+ * the Files picker). `onKept` is called once the code was copied or a file was saved. Copying works
+ * only shortly after the kit was shown; `onPasswordRequired` is then called instead of a failure
+ * toast. After five minutes, or as soon as the app is hidden, `onExpired` is called: the caller
+ * drops the kit (state and mutation result) and asks the password again.
  */
 export function KitBody({
   kit,
   onKept,
   onPasswordRequired,
+  onExpired,
 }: {
   kit: RecoveryKit;
   onKept?: () => void;
-  onPasswordRequired?: () => void;
+  onPasswordRequired: () => void;
+  onExpired: () => void;
 }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { copyRecoveryCode } = useDeviceSyncMutations();
   const { exportText } = useExportTextFile();
   const kitCopy = useRecoveryKitCopy();
+  // Screen capture cannot be switched off per window on a phone: the lifetime is all there is
+  useRecoveryKitLifetime(onExpired, false);
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<number | null>(null);
   useEffect(
@@ -67,7 +74,7 @@ export function KitBody({
     try {
       const native = await copyRecoveryCode.mutateAsync();
       if (!native) {
-        await navigator.clipboard.writeText(kit.recoveryCode);
+        await copyToWebviewClipboard(kit.recoveryCode);
         setClipboardHint(true);
       }
       setCopied(true);
@@ -75,11 +82,8 @@ export function KitBody({
       if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
       copiedTimer.current = window.setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      if (
-        onPasswordRequired &&
-        error instanceof ApiError &&
-        error.key === 'validation.syncPasswordRequired'
-      ) {
+      // A failed native copy never falls back to the ordinary clipboard (`syncCopyFailed`)
+      if (error instanceof ApiError && error.key === 'validation.syncPasswordRequired') {
         onPasswordRequired();
         return;
       }
@@ -183,6 +187,8 @@ export function KitBody({
         </p>
       )}
       <p className="m-0 text-m-sub text-ink-3">{t('setup.kit.differs')}</p>
+      <p className="m-0 text-m-sub text-ink-3">{t('setup.kit.folderWarning')}</p>
+      <p className="m-0 text-m-sub text-ink-3">{t('limits.lostDevice')}</p>
     </div>
   );
 }

@@ -27,18 +27,31 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::SyncPhase>();
     types.register::<crate::models::SyncProblem>();
     types.register::<crate::models::SyncStatus>();
+    types.register::<crate::models::SyncProfileState>();
 
     // Device sync setup (first device, checkout, Recovery Kit)
     types.register::<crate::models::SyncPlan>();
     types.register::<crate::models::SyncAccount>();
     types.register::<crate::models::CheckoutTarget>();
     types.register::<crate::models::RecoveryKit>();
+    types.register::<crate::models::KitFileKind>();
+    types.register::<crate::models::KitSaveOutcome>();
     types.register::<crate::models::SyncDevice>();
 
     // Device sync pairing (a second device)
     types.register::<crate::models::PairingStage>();
     types.register::<crate::models::PairingRole>();
     types.register::<crate::models::PairingView>();
+
+    // Device sync replaces (join, repair, re-sync) and their backups
+    types.register::<crate::models::ReplaceImpactView>();
+    types.register::<crate::models::ReplaceConsentView>();
+    types.register::<crate::models::ReplaceOutcomeView>();
+    types.register::<crate::models::SyncBackupEntry>();
+
+    // Device sync: held changes and skipping them (audit M3)
+    types.register::<crate::models::HeldGapKind>();
+    types.register::<crate::models::HeldGapView>();
 
     // Investment models
     types.register::<crate::models::StockInvestment>();

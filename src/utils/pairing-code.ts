@@ -30,10 +30,37 @@ export function formatComparisonCode(code: string): string {
   return /^\d{6}$/.test(code) ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
 }
 
-/** How often (ms) to ask the backend about a pairing, or `false` when nothing is waited for. */
+/** The answer to a typed code that was wrong while attempts are left: the pairing goes on. */
+export const CODE_MISMATCH_KEY = 'validation.syncPairingCodeMismatch';
+
+/** Digits in a comparison code. */
+export const CODE_LENGTH = 6;
+
+/**
+ * What the holder's person typed, as the digits it can mean: Unicode compatibility forms are
+ * folded first (a full-width `４８２` is `482`), then everything but ASCII digits goes (spaces,
+ * dashes), and at most six digits stay. `482 686` becomes `482686`.
+ */
+export function normalizeTypedCode(input: string): string {
+  return input
+    .normalize('NFKC')
+    .replace(/[^0-9]/g, '')
+    .slice(0, CODE_LENGTH);
+}
+
+/** Whether `input` holds a full code: exactly six digits once normalised, nothing else typed. */
+export function isCompleteCode(input: string): boolean {
+  return normalizeTypedCode(input).length === CODE_LENGTH;
+}
+
+/**
+ * How often (ms) to ask the backend about a pairing, or `false` when nothing is waited for. The
+ * scanner reads the shower's acknowledgement while `connecting`; the shower retries its put.
+ */
 export function pairingPollInterval(view: PairingView | undefined): number | false {
   switch (view?.stage) {
     case 'announcing':
+    case 'connecting':
     case 'waitingForScan':
     case 'waitingForOther':
       return 2000;

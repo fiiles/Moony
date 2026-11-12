@@ -7,6 +7,7 @@
 //! recalculations after a merge) and then the triggers of `triggers::trigger_sql`.
 
 pub mod bench;
+pub mod guard;
 pub mod triggers;
 
 use std::sync::{Arc, Mutex};
@@ -76,6 +77,18 @@ pub fn install(conn: &Connection, device: DeviceId) -> Result<()> {
     })
 }
 
+/// `install`; when it fails, the guard (`guard::impose`, or read-only when that fails too:
+/// `sync::guard_or_close`) and the install's error. For a profile whose capture must not lapse:
+/// an enabled profile either captures every change or refuses changes to synced data (ADR 0027).
+pub fn install_or_guard(conn: &Connection, device: DeviceId) -> Result<()> {
+    let installed = install(conn, device);
+    if let Err(error) = &installed {
+        log::warn!("[SYNC] Change capture did not install; the guard goes on: {error}");
+        super::guard_or_close(conn, guard::impose);
+    }
+    installed
+}
+
 /// Removes the triggers and `temp.sync_mode`. The clock functions stay registered until the
 /// connection closes; nothing calls them once the triggers are gone.
 pub fn uninstall(conn: &Connection) -> Result<()> {
@@ -106,6 +119,18 @@ pub fn is_installed(conn: &Connection) -> Result<bool> {
         [],
         |r| r.get(0),
     )?)
+}
+
+/// The connection's clock: the highest clock it issued or observed (`sync_hlc_now()`) while capture
+/// is installed, else the newest stored clock, where an installation starts it.
+pub fn clock_now(conn: &Connection) -> Result<u64> {
+    let sql = if is_installed(conn)? {
+        "SELECT sync_hlc_now()"
+    } else {
+        "SELECT COALESCE(MAX(hlc), 0) FROM sync_clock"
+    };
+    let hlc: i64 = conn.query_row(sql, [], |r| r.get(0))?;
+    u64::try_from(hlc).map_err(|_| AppError::Internal(format!("negative clock {hlc}")))
 }
 
 /// The connection's mode; `Local` when capture is not installed.

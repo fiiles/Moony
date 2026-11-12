@@ -111,8 +111,8 @@ export type PairingSheetStep = 'failed' | 'expired' | 'contested' | PairingStage
 
 /**
  * A failed poll comes first; an expired code only while something was still awaited (a sent or
- * received pairing has finished its part); a contested scan shows its own digits with a warning
- * and only Cancel (review PF4); otherwise the stage.
+ * received pairing has finished its part); a contested scan shows a warning and only Cancel, and
+ * no digits (review PF4); otherwise the stage.
  */
 export function pairingSheetStep(
   view: PairingView,

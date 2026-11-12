@@ -14,6 +14,29 @@ export function useDeviceSyncFeatureState(): { enabled: boolean; loading: boolea
   return { enabled: data === true, loading: isPending };
 }
 
+/** What this profile says about sync in any build (`sync_profile_state`). */
+export function useSyncProfileState() {
+  return useQuery({
+    queryKey: ['device-sync-profile-state'],
+    queryFn: () => deviceSyncApi.profileState(),
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * Whether this profile has sync on while this build does not run sync (a profile a development
+ * build enabled): the one case where a way out is shown. `pending`: changes recorded but never
+ * sent; `loading`: the answer is not in yet.
+ */
+export function useLeftoverSyncProfile(): { leftover: boolean; pending: number; loading: boolean } {
+  const { data, isPending } = useSyncProfileState();
+  return {
+    leftover: data !== undefined && data.enabled && !data.featureOn,
+    pending: data?.pendingChanges ?? 0,
+    loading: isPending,
+  };
+}
+
 /** Whether device sync is built in and enabled; `false` while loading or when asking fails. */
 export function useDeviceSyncFeature(): boolean {
   return useDeviceSyncFeatureState().enabled;
@@ -53,5 +76,45 @@ export function useSyncDevices() {
     queryKey: ['device-sync-devices'],
     queryFn: () => deviceSyncApi.listDevices(),
     enabled: enabled && syncOn,
+  });
+}
+
+/**
+ * What a replace would put at stake now. Never cached: a confirmation reads it when it opens
+ * (`enabled`) and again after `validation.syncReplaceImpactChanged`.
+ */
+export function useReplaceImpact(enabled = true) {
+  return useQuery({
+    queryKey: ['device-sync-replace-impact'],
+    queryFn: () => deviceSyncApi.replaceImpact(),
+    enabled,
+    gcTime: 0,
+    staleTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** The backups joins, repairs and re-syncs made, newest first; read while sync is built in. */
+export function useSyncBackups() {
+  const enabled = useDeviceSyncFeature();
+  return useQuery({
+    queryKey: ['device-sync-backups'],
+    queryFn: () => deviceSyncApi.listBackups(),
+    enabled,
+  });
+}
+
+/**
+ * The changes from other devices held because something they need never arrived (the `gap`
+ * problem), the oldest first; read while `active` (the status shows a gap). The status event
+ * re-reads it.
+ */
+export function useHeldGaps(active: boolean) {
+  const enabled = useDeviceSyncFeature();
+  return useQuery({
+    queryKey: ['device-sync-held-gaps'],
+    queryFn: () => deviceSyncApi.heldGaps(),
+    enabled: enabled && active,
   });
 }

@@ -1,0 +1,235 @@
+diff --git a/src-tauri/src/services/sync/chain/rejoin.rs b/src-tauri/src/services/sync/chain/rejoin.rs
+index cf18dd68..cb8b15a1 100644
+--- a/src-tauri/src/services/sync/chain/rejoin.rs
++++ b/src-tauri/src/services/sync/chain/rejoin.rs
+@@ -702,3 +702,27 @@ mod tests {
+         assert_eq!(clock_of(&y, "i1", "name"), (h, new));
+     }
+ }
++
++#[cfg(test)]
++mod audit_tests {
++    use super::*;
++    #[test]
++    fn audit_repeated_rejoins_exhaust_the_id_space() {
++        let mut rng = rand::rng();
++        let mut worst = 0;
++        let mut total = 0;
++        for _ in 0..200 {
++            let mut id = DeviceId([0x80; 16]);
++            let mut n = 0;
++            while let Ok(next) = id_above(id, &mut rng) {
++                id = next;
++                n += 1;
++                assert!(n < 2000);
++            }
++            worst = worst.max(n);
++            total += n;
++        }
++        eprintln!("AUDIT rejoins until exhaustion: mean {} worst {}", total / 200, worst);
++        assert!(worst < 400);
++    }
++}
+diff --git a/src-tauri/src/services/sync/engine/tests/pull.rs b/src-tauri/src/services/sync/engine/tests/pull.rs
+index 1c88a7e9..74e77c80 100644
+--- a/src-tauri/src/services/sync/engine/tests/pull.rs
++++ b/src-tauri/src/services/sync/engine/tests/pull.rs
+@@ -870,3 +870,48 @@ async fn an_envelope_fetched_again_counts_its_bytes_once() {
+         );
+     }
+ }
++
++// ---- AUDIT PoCs ----
++#[tokio::test]
++async fn audit_m1_out_of_order_author_wedges_the_pull_for_good() {
++    let vault = vault().await;
++    let b1 = write_and_seal(&vault, &vault.b, "b1");
++    let b2 = write_and_seal(&vault, &vault.b, "b2");
++    push(&vault.relay, &vault.creds, &[b1, b2]).await;
++    let relay = Mangled {
++        inner: vault.relay.clone(),
++        mangle: |_, mut p: PullPage| {
++            if p.ops.len() == 2 {
++                let (x, y) = (p.ops[0].ct.clone(), p.ops[1].ct.clone());
++                p.ops[0].ct = y;
++                p.ops[1].ct = x;
++            }
++            p
++        },
++    };
++    for _ in 0..3 {
++        let r = pull_all(&relay, &vault.a, &vault.creds, NOW).await.expect("pull");
++        assert_eq!(r.stop, Some(PullStop::Gap));
++        assert!(!r.may_push());
++        assert_eq!(cursor(&vault.a.lock()), 0);
++    }
++}
++
++#[tokio::test]
++async fn audit_m2_acknowledged_envelope_the_relay_drops_is_never_sent_again() {
++    use crate::services::sync::engine::push::push_all;
++    let vault = vault().await;
++    institution(&vault.a.lock(), "a1");
++    push_all(&vault.relay, &vault.a, &vault.creds).await.expect("push 1");
++    vault.relay.drop_op(1);
++    institution(&vault.a.lock(), "a2");
++    push_all(&vault.relay, &vault.a, &vault.creds).await.expect("push 2");
++    assert!(pull_all(&vault.relay, &vault.a, &vault.creds, NOW).await.expect("A").done());
++    let b = pull_all(&vault.relay, &vault.b, &vault.creds, NOW).await.expect("B");
++    assert_eq!(b.stop, Some(PullStop::Gap));
++    let a = vault.a.lock();
++    assert_eq!(
++        count(&a, "SELECT (SELECT COUNT(*) FROM sync_unsent)+(SELECT COUNT(*) FROM sync_outbox)"),
++        0
++    );
++}
+diff --git a/src-tauri/src/services/sync/merge/tests/special.rs b/src-tauri/src/services/sync/merge/tests/special.rs
+index 33d5eb7d..862c2a61 100644
+--- a/src-tauri/src/services/sync/merge/tests/special.rs
++++ b/src-tauri/src/services/sync/merge/tests/special.rs
+@@ -366,3 +366,52 @@ fn tombstones_that_differ_without_a_cascade_parent_do_not_converge() {
+ 
+     assert_converged(&[&a, &b]);
+ }
++
++// ---- AUDIT PoCs ----
++#[test]
++fn audit_forged_older_clock_takes_over_a_devices_public_key() {
++    let victim = device(A);
++    device_row(&victim, "KA", "Phone A");
++    let forged = row(
++        "sync_devices",
++        "dev-x",
++        clock(1, B),
++        &[
++            ("public_key", text("EVIL")),
++            ("name", text("Phone A")),
++            ("platform", text("ios")),
++            ("app_version", text("1.0")),
++            ("joined_at", SqlValue::Integer(100)),
++        ],
++    );
++    let (cs, hash) = changeset(B, 1, vec![forged]);
++    assert!(matches!(
++        apply_changeset(&victim, &cs, hash, NOW).unwrap(),
++        Outcome::Applied(_)
++    ));
++    assert_eq!(
++        value(&victim, "SELECT public_key FROM sync_devices").as_deref(),
++        Some("EVIL")
++    );
++}
++
++#[test]
++fn audit_maximum_clock_pins_a_value_and_later_edits_diverge() {
++    let (a, b) = (device(A), device(B));
++    exec(&a, "INSERT INTO institutions (id, name) VALUES ('i1','Bank')");
++    apply(&b, &send(&a));
++    let evil = clock(i64::MAX as u64, DeviceId([0xFF; 16]));
++    let pinned = row("institutions", "i1", evil, &[("name", text("Pinned"))]);
++    let (cs, hash) = changeset(C, 1, vec![pinned]);
++    for conn in [&a, &b] {
++        assert!(matches!(
++            apply_changeset(conn, &cs, hash, NOW).unwrap(),
++            Outcome::Applied(_)
++        ));
++    }
++    exec(&a, "UPDATE institutions SET name='Renamed' WHERE id='i1'");
++    apply(&b, &send(&a));
++    let name = |c: &Connection| value(c, "SELECT name FROM institutions WHERE id='i1'");
++    assert_eq!(name(&a).as_deref(), Some("Renamed"));
++    assert_eq!(name(&b).as_deref(), Some("Pinned"));
++}
+diff --git a/src-tauri/src/services/sync/pairing/session_tests.rs b/src-tauri/src/services/sync/pairing/session_tests.rs
+index d73fd3d1..a207e862 100644
+--- a/src-tauri/src/services/sync/pairing/session_tests.rs
++++ b/src-tauri/src/services/sync/pairing/session_tests.rs
+@@ -787,3 +787,54 @@ async fn a_received_joiner_prints_nothing_secret() {
+     }
+     assert!(printed.contains("Received"), "{printed}");
+ }
++
++// ---- AUDIT PoCs ----
++#[tokio::test]
++async fn audit_f1_impostor_first_scanner_gets_keys_on_lone_holder_confirm() {
++    use crate::services::sync::pairing::open_credentials;
++    let relay = FakeRelay::new();
++    let mut s =
++        PairingSession::show_with_secret(Role::Holder, HOME, T0, StaticSecret::from(S_SECRET))
++            .unwrap();
++    relay.write_slot_raw(&id(&s), 1, slot1(Role::Joiner, &public(M_SECRET)).to_vec());
++    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
++    assert_eq!(s.confirm(&relay, Some(&creds()), T0).await.unwrap(), Stage::Sent);
++    let t = derive(&StaticSecret::from(M_SECRET), Side::Scanner, &public(S_SECRET), &s.mailbox)
++        .unwrap();
++    let sealed = relay.peek_slot(&id(&s), 2).unwrap();
++    assert_same_creds(&open_credentials(&t, &sealed).unwrap(), &creds());
++}
++
++#[tokio::test]
++async fn audit_f3_impostor_holder_fills_slot_2_before_the_cancel_marker() {
++    use crate::services::sync::pairing::seal_credentials;
++    let relay = FakeRelay::new();
++    let (mut s, mut c) = pair(Role::Joiner, Role::Holder);
++    let t = derive(&StaticSecret::from(M_SECRET), Side::Scanner, &public(S_SECRET), &s.mailbox)
++        .unwrap();
++    let mut theirs = creds();
++    theirs.relay_url = "https://evil.example".into();
++    relay.write_slot_raw(&id(&s), 1, slot1(Role::Holder, &public(M_SECRET)).to_vec());
++    relay.write_slot_raw(&id(&s), 2, seal_credentials(&t, &theirs).unwrap());
++    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
++    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
++    assert!(c.contested());
++    assert_ne!(relay.peek_slot(&id(&s), 2), Some(CANCEL_MARKER.to_vec()));
++    s.confirm(&relay, None, T0).await.unwrap();
++    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Received);
++    assert_eq!(s.received().unwrap().relay_url, "https://evil.example");
++}
++
++#[tokio::test]
++async fn audit_f4_impostor_after_a_failed_announce_is_taken_for_our_own_write() {
++    let relay = FakeRelay::new();
++    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
++    relay.fail_next(Route::MailboxPut, RelayError::Server(503));
++    assert!(c.announce(&relay, T0).await.is_err());
++    relay.write_slot_raw(&id(&s), 1, slot1(Role::Joiner, &public(M_SECRET)).to_vec());
++    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
++    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
++    assert!(!c.contested());
++    assert_eq!(relay.peek_slot(&id(&s), 2), None);
++    assert_ne!(s.comparison_code(), c.comparison_code());
++}
+diff --git a/src-tauri/src/services/sync/pairing/tests.rs b/src-tauri/src/services/sync/pairing/tests.rs
+index 98e2d8c1..f3b6466b 100644
+--- a/src-tauri/src/services/sync/pairing/tests.rs
++++ b/src-tauri/src/services/sync/pairing/tests.rs
+@@ -493,3 +493,29 @@ fn secrets_are_wiped_on_drop() {
+     wiped::<x25519_dalek::StaticSecret>();
+     wiped::<Zeroizing<[u8; 32]>>();
+ }
++
++// ---- AUDIT PoC ----
++#[test]
++#[ignore = "grinds about 10^6 X25519 keys"]
++fn audit_f2_relay_that_sees_the_phones_digits_grinds_a_matching_scanner_key() {
++    let s_pub = public(S_SECRET);
++    let phone = derive(&StaticSecret::from(C_SECRET), Side::Scanner, &s_pub, &MAILBOX)
++        .unwrap()
++        .code();
++    let started = std::time::Instant::now();
++    let mut seed = [0u8; 32];
++    for i in 1u64.. {
++        seed[..8].copy_from_slice(&i.to_le_bytes());
++        let m = StaticSecret::from(seed);
++        let Ok(t) = derive(&m, Side::Scanner, &s_pub, &MAILBOX) else { continue };
++        if t.code() == phone {
++            let m_pub = PublicKey::from(&m).to_bytes();
++            let shower =
++                derive(&StaticSecret::from(S_SECRET), Side::Shower, &m_pub, &MAILBOX).unwrap();
++            assert_eq!(shower.code(), phone);
++            assert_ne!(m_pub, public(C_SECRET));
++            eprintln!("AUDIT grind: {i} trials in {:?}", started.elapsed());
++            return;
++        }
++    }
++}

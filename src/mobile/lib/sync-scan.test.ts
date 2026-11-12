@@ -24,6 +24,8 @@ function view(stage: PairingStage, contested = false): PairingView {
     comparisonCode: '482686',
     contested,
     expiresAt: 0,
+    serverHost: null,
+    attemptsLeft: null,
   };
 }
 
@@ -136,15 +138,21 @@ describe('pairingSheetStep', () => {
   });
 
   it('shows an expired pairing only while it was still waiting', () => {
-    for (const stage of ['announcing', 'waitingForScan', 'compare', 'waitingForOther'] as const) {
+    for (const stage of [
+      'announcing',
+      'waitingForScan',
+      'connecting',
+      'compare',
+      'waitingForOther',
+    ] as const) {
       expect(pairingSheetStep(view(stage), { failed: false, expired: true })).toBe('expired');
     }
     expect(pairingSheetStep(view('sent'), { failed: false, expired: true })).toBe('sent');
     expect(pairingSheetStep(view('received'), { failed: false, expired: true })).toBe('received');
   });
 
-  it('shows a contested scan as its own step (its own digits, a warning, only Cancel)', () => {
-    expect(pairingSheetStep(view('compare', true), { failed: false, expired: false })).toBe(
+  it('shows a contested scan as its own step (a warning, no digits, only Cancel)', () => {
+    expect(pairingSheetStep(view('connecting', true), { failed: false, expired: false })).toBe(
       'contested'
     );
   });
@@ -153,6 +161,7 @@ describe('pairingSheetStep', () => {
     for (const stage of [
       'announcing',
       'waitingForScan',
+      'connecting',
       'compare',
       'waitingForOther',
       'sent',

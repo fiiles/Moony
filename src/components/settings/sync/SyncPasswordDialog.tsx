@@ -20,6 +20,10 @@ interface SyncPasswordDialogProps {
   description: ReactNode;
   /** A second, emphasised sentence under the description (e.g. how many changes are unsent). */
   note?: string;
+  /** Below the note: what is at stake (a replace's counts). */
+  extra?: ReactNode;
+  /** Holds the confirm back (the numbers it asks the person to agree to are not in yet). */
+  submitDisabled?: boolean;
   confirmLabel: string;
   /** The confirm button is red for actions that delete or replace data. */
   destructive?: boolean;
@@ -36,6 +40,8 @@ export function SyncPasswordDialog({
   title,
   description,
   note,
+  extra,
+  submitDisabled = false,
   confirmLabel,
   destructive = false,
   closeOnSuccess = true,
@@ -51,7 +57,7 @@ export function SyncPasswordDialog({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (password === '' || busy) return;
+    if (password === '' || busy || submitDisabled) return;
     setBusy(true);
     setError(null);
     try {
@@ -79,6 +85,7 @@ export function SyncPasswordDialog({
               <div className="space-y-2">
                 <p>{description}</p>
                 {note && <p className="font-600">{note}</p>}
+                {extra}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -108,7 +115,7 @@ export function SyncPasswordDialog({
             <Button
               type="submit"
               variant={destructive ? 'destructive' : 'default'}
-              disabled={password === ''}
+              disabled={password === '' || submitDisabled}
               loading={busy}
             >
               {confirmLabel}

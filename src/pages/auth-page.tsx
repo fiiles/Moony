@@ -77,6 +77,7 @@ export default function AuthPage() {
     user,
     appStatus,
     unlockMutation,
+    unlockWithPassword,
     unlockWithBiometricsMutation,
     lockMutation,
     recoverMutation,
@@ -205,7 +206,7 @@ export default function AuthPage() {
   const submitUnlock = (data: z.infer<typeof unlockSchema>) => {
     if (unlockPending || biometricPending) return;
     setBiometricMessage(null);
-    unlockMutation.mutate(data, {
+    unlockWithPassword(data, {
       onError: (error) => {
         if (!isAuthApiError(error)) return;
         unlockForm.resetField('password');

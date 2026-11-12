@@ -41,7 +41,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # Database with SQLCipher encryption
-rusqlite = { version = "0.40", features = ["bundled-sqlcipher", "blob", "functions"] }
+rusqlite = { version = "0.40", features = ["bundled-sqlcipher", "blob", "functions", "hooks"] }
 
 # Async runtime
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net", "sync"] }
@@ -67,6 +67,7 @@ sha2 = { version = "0.11", default-features = false }  # Content hashes of store
 zeroize = "1"        # Wipes the session's master key from memory (services/session_key.rs)
 chacha20poly1305 = { version = "0.11", default-features = false, features = ["alloc", "zeroize"] }  # Device sync envelopes and snapshot streams (XChaCha20-Poly1305, spec §9.2)
 hkdf = "0.13"                    # Device sync key derivation (already in Cargo.lock through another crate)
+hmac = "0.13"                    # Device sync pairing acknowledgement (already in Cargo.lock through hkdf)
 x25519-dalek = { version = "3", features = ["static_secrets"] }  # Device sync: this device's key pair (spec §11.1)
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }  # Sync Recovery Kit QR (SVG only)
 

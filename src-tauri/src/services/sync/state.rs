@@ -126,6 +126,17 @@ pub fn load(conn: &Connection) -> Result<Option<SyncState>> {
     }))
 }
 
+/// Whether sync is on for this profile, a row that exists but does not load (a damaged
+/// `device_id` or `last_hash`) counting as on: it may be an enabled profile's. `sync::on_open`
+/// guards such a profile, so the ways out of it (turning sync off, deleting the synced data, the
+/// profile state a build without sync reads) must see it as on too (final review B, minor 1).
+pub fn on_or_unreadable(conn: &Connection) -> Result<bool> {
+    match load(conn) {
+        Ok(sync) => Ok(sync.is_some_and(|s| s.enabled)),
+        Err(_) => Ok(conn.query_row("SELECT EXISTS (SELECT 1 FROM sync_state)", [], |r| r.get(0))?),
+    }
+}
+
 fn unsigned<T: TryFrom<i64>>(value: i64, column: &str) -> Result<T> {
     T::try_from(value)
         .map_err(|_| AppError::Internal(format!("sync_state.{column} is out of range: {value}")))
@@ -173,8 +184,8 @@ pub fn note_starting_barrier(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Turns sync off on this device (§11.6, local part): capture goes, and so does every sync row.
-/// Local data stays.
+/// Turns sync off on this device (§11.6, local part): capture goes, and so does every sync row
+/// (the held gaps' Local keys included). Local data stays.
 pub fn disable(conn: &Connection) -> Result<()> {
     in_savepoint(conn, "sync_disable", || {
         capture::uninstall(conn)?;
@@ -183,14 +194,20 @@ pub fn disable(conn: &Connection) -> Result<()> {
              DELETE FROM sync_heads; DELETE FROM sync_own_log; DELETE FROM sync_unsent; \
              DELETE FROM sync_typed;",
         )?;
-        Ok(())
+        clear_vault_went_back(conn)?;
+        clear_skipped_miss(conn)?;
+        super::binding::forget_failed_starts(conn)?;
+        super::chain::gaps::forget_all(conn)
     })
 }
 
-/// Records that this build opened the profile (its schema number), for the barrier logic (§14).
+/// Records that this build opened the profile (its schema number), for the barrier logic (§14)
+/// and the unlock sweep. The mark never goes down: a mark left by a newer build stays, so going
+/// back to that build sweeps no migration it has already seen and crosses no barrier again
+/// (`chain::cross_barrier` only compares the mark with this build's barrier).
 pub fn note_schema_seen(conn: &Connection) -> Result<()> {
     conn.execute(
-        "UPDATE sync_state SET schema_seen = ?1 WHERE id = 1",
+        "UPDATE sync_state SET schema_seen = MAX(schema_seen, ?1) WHERE id = 1",
         [schema_number()],
     )?;
     Ok(())
@@ -386,6 +403,18 @@ pub fn record_snapshot_uploaded(conn: &Connection, seq: u64, max_hlc: u64, at: i
     Ok(())
 }
 
+/// The newest snapshot sequence this device uploaded or restored (`snapshot_seq`), if any.
+pub fn snapshot_seq(conn: &Connection) -> Result<Option<u64>> {
+    let seq: Option<Option<i64>> = conn
+        .query_row(
+            "SELECT snapshot_seq FROM sync_state WHERE id = 1",
+            [],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(seq.flatten().and_then(|seq| u64::try_from(seq).ok()))
+}
+
 /// The vault already holds a newer snapshot than the one this device offered at its barrier
 /// (`409 snapshot_outdated`): the forced upload after a crossing is done (`snapshot_barrier`).
 pub fn note_snapshot_barrier(conn: &Connection) -> Result<()> {
@@ -442,8 +471,127 @@ pub fn reset_chain(conn: &Connection) -> Result<()> {
     })
 }
 
-/// Clears the pauses and the counters that belong to one vault binding.
+/// The Local `app_config` key (never synced, never captured) holding when this device first saw
+/// the sync server's head below its place: a server that went back, e.g. restored from an older
+/// backup (`note_vault_went_back`).
+const VAULT_WENT_BACK_KEY: &str = "sync.vault_went_back_at";
+
+/// The sync server went back below this device's place (a pull page's head below it): noted at
+/// `at` (unix seconds), the first time kept. Sticky: no round, successful or not, clears it; only a
+/// completed replace (`reset_engine_marks`) and turning sync off (`disable`) do. While it is set,
+/// the status shows `SyncProblem::ServerWentBack` and every re-sync keeps its backup.
+pub fn note_vault_went_back(conn: &Connection, at: i64) -> Result<()> {
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO NOTHING",
+        rusqlite::params![VAULT_WENT_BACK_KEY, at.to_string()],
+    )?;
+    Ok(())
+}
+
+/// When the sync server was seen to go back, if it was (`note_vault_went_back`).
+pub fn vault_went_back_at(conn: &Connection) -> Result<Option<i64>> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [VAULT_WENT_BACK_KEY],
+            |row| row.get(0),
+        )
+        .optional()?;
+    // A value that does not parse still says it happened.
+    Ok(value.map(|v| v.parse().unwrap_or(0)))
+}
+
+fn clear_vault_went_back(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "DELETE FROM app_config WHERE key = ?1",
+        [VAULT_WENT_BACK_KEY],
+    )?;
+    Ok(())
+}
+
+/// The Local `app_config` keys (never synced, never captured) of the miss a skipped change left
+/// (`chain::gaps::skip_missing_change`, or inherited from a snapshot whose dumper had one): the
+/// newest relay position whose rows this device lacks; and, for skips made on this device only,
+/// when the oldest skipped gap was first held and when the newest skip was made (a change held
+/// soon after for a parent the skipped one created inherits the first, Task 17 I2, bounded by
+/// final review A minor 2).
+const SKIPPED_MISS_KEY: &str = "sync.skipped_miss";
+const SKIPPED_SINCE_KEY: &str = "sync.skipped_miss_since";
+const SKIPPED_AT_KEY: &str = "sync.skipped_miss_at";
+
+/// This device lacks the rows of a skipped change at relay `position` (Task 17, ruling I1), its
+/// own skip or one inherited from a snapshot. Unlike a below-barrier miss it never holds a
+/// snapshot upload back: the dump writes it into the header (`snapshot::dump`), so no device heals
+/// from that snapshot, and a restorer inherits it. The newest position is kept. Cleared by a clean
+/// snapshot that heals it, a replace from a clean one and turning sync off.
+pub fn note_skipped_miss(conn: &Connection, position: u64) -> Result<()> {
+    let position = signed(position, "skipped_miss")?;
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET \
+           value = CAST(MAX(CAST(value AS INTEGER), CAST(excluded.value AS INTEGER)) AS TEXT)",
+        rusqlite::params![SKIPPED_MISS_KEY, position.to_string()],
+    )?;
+    Ok(())
+}
+
+/// This device skipped a gap first held at `since`, at `at` (`chain::gaps::skip_missing_change`).
+/// The earliest `since` and the latest `at` are kept; an inherited miss never writes either.
+pub fn note_local_skip(conn: &Connection, since: i64, at: i64) -> Result<()> {
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET \
+           value = CAST(MIN(CAST(value AS INTEGER), CAST(excluded.value AS INTEGER)) AS TEXT)",
+        rusqlite::params![SKIPPED_SINCE_KEY, since.to_string()],
+    )?;
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET \
+           value = CAST(MAX(CAST(value AS INTEGER), CAST(excluded.value AS INTEGER)) AS TEXT)",
+        rusqlite::params![SKIPPED_AT_KEY, at.to_string()],
+    )?;
+    Ok(())
+}
+
+/// The newest relay position of a skipped change whose rows this device lacks, if any.
+pub fn skipped_miss(conn: &Connection) -> Result<Option<u64>> {
+    Ok(config_int(conn, SKIPPED_MISS_KEY)?.and_then(|v| u64::try_from(v).ok()))
+}
+
+/// While a skipped miss stands and this device made a skip itself (`note_local_skip`): when the
+/// oldest gap it skipped was first held, and when it made the newest skip. `None` for a miss only
+/// inherited from a snapshot.
+pub fn local_skip(conn: &Connection) -> Result<Option<(i64, i64)>> {
+    if skipped_miss(conn)?.is_none() {
+        return Ok(None);
+    }
+    Ok(config_int(conn, SKIPPED_SINCE_KEY)?.zip(config_int(conn, SKIPPED_AT_KEY)?))
+}
+
+/// A snapshot that heals every miss was restored, or the chain starts over.
+pub fn clear_skipped_miss(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "DELETE FROM app_config WHERE key IN (?1, ?2, ?3)",
+        [SKIPPED_MISS_KEY, SKIPPED_SINCE_KEY, SKIPPED_AT_KEY],
+    )?;
+    Ok(())
+}
+
+fn config_int(conn: &Connection, key: &str) -> Result<Option<i64>> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [key],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(value.and_then(|v| v.parse().ok()))
+}
+
+/// Clears the pauses and the counters that belong to one vault binding, the mark of a sync
+/// server that went back, the held gaps and the skipped miss (a completed replace starts over
+/// from the server's state, and inherits the snapshot's miss, if any, afterwards).
 pub fn reset_engine_marks(conn: &Connection) -> Result<()> {
+    clear_vault_went_back(conn)?;
+    super::chain::gaps::forget_all(conn)?;
+    clear_skipped_miss(conn)?;
     conn.execute(
         "UPDATE sync_state SET vault_gone_at = NULL, capture_broken_at = NULL, \
            snapshot_uploaded_at = NULL, snapshot_too_large_at = NULL, pulled_bytes = 0, \
@@ -533,6 +681,32 @@ mod tests {
         let state = load(&conn).unwrap().expect("row");
         assert!(state.enabled);
         assert_eq!(state.device, DEVICE);
+    }
+
+    #[test]
+    fn the_schema_mark_rises_but_never_goes_down() {
+        let conn = migrated();
+        ensure_row(&conn, DEVICE).unwrap();
+        conn.execute("UPDATE sync_state SET schema_seen = 2", [])
+            .unwrap();
+        note_schema_seen(&conn).unwrap();
+        assert_eq!(
+            load(&conn).unwrap().expect("row").schema_seen,
+            schema_number()
+        );
+
+        // A newer build opened the profile, then this one: the newer mark stays, so going back
+        // to that build sweeps none of the migrations it has already seen.
+        conn.execute(
+            "UPDATE sync_state SET schema_seen = ?1",
+            [schema_number() + 3],
+        )
+        .unwrap();
+        note_schema_seen(&conn).unwrap();
+        assert_eq!(
+            load(&conn).unwrap().expect("row").schema_seen,
+            schema_number() + 3
+        );
     }
 
     #[test]

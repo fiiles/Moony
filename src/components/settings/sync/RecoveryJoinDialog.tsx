@@ -1,11 +1,18 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
+import { useReplaceImpact } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { ApiError } from '@/lib/api-error';
+import { consentOf } from '@/utils/replace-impact';
 import { translateApiError } from '@/lib/translate-api-error';
 import { scannedCodeKind } from '@/utils/pairing-code';
 import { defaultDeviceKey } from '@/utils/sync-devices';
 import { JoinFields, JoinWarning } from '@/components/settings/sync/JoinFields';
+import { ReplaceImpactNotice } from '@/components/settings/sync/ReplaceImpactNotice';
+import {
+  IMPACT_CHANGED_KEY,
+  replaceOutcomeToast,
+} from '@/components/settings/sync/replace-outcome';
 import { submitOnEnter } from '@/components/settings/sync/submit-on-enter';
 import {
   Dialog,
@@ -28,6 +35,7 @@ export function RecoveryJoinDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { joinWithRecoveryKit } = useDeviceSyncMutations();
+  const impact = useReplaceImpact();
   const resetJoin = joinWithRecoveryKit.reset;
   // The password stays in the mutation state until it succeeds: leaving clears it.
   useEffect(() => resetJoin, [resetJoin]);
@@ -44,25 +52,29 @@ export function RecoveryJoinDialog({ onClose }: { onClose: () => void }) {
   const ready =
     code.trim() !== '' &&
     password !== '' &&
+    impact.data !== undefined &&
+    !impact.isFetching &&
     name.trim() !== '' &&
     (!needsAccount || account.trim() !== '');
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!ready || busy) return;
+    if (!ready || busy || !impact.data) return;
     setError(null);
     try {
-      const path = await joinWithRecoveryKit.mutateAsync({
+      const outcome = await joinWithRecoveryKit.mutateAsync({
         code: code.trim(),
         account: needsAccount ? account.trim() : undefined,
         relayUrl: relayUrl.trim() === '' ? undefined : relayUrl.trim(),
         deviceName: name.trim(),
         password,
+        consent: consentOf('join', impact.data),
       });
-      toast(t('pairing.joined', { path }));
+      replaceOutcomeToast(t, t('pairing.joined', { path: outcome.backupPath }), outcome);
       onClose();
     } catch (failure) {
       joinWithRecoveryKit.reset();
+      if (failure instanceof ApiError && failure.key === IMPACT_CHANGED_KEY) await impact.refetch();
       setError(translateApiError(failure as Error, tc));
     }
   };
@@ -76,6 +88,11 @@ export function RecoveryJoinDialog({ onClose }: { onClose: () => void }) {
             <DialogDescription>{t('join.kitHint')}</DialogDescription>
           </DialogHeader>
           <JoinWarning />
+          <ReplaceImpactNotice
+            flow="join"
+            impact={impact.data}
+            error={impact.isError ? (impact.error as Error) : null}
+          />
           <div className="grid gap-1.5">
             <Label htmlFor="join-kit-code">{t('join.codeLabel')}</Label>
             <Input

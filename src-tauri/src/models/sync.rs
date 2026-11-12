@@ -18,6 +18,10 @@ pub enum SyncPhase {
     /// A round is running.
     #[serde(rename = "syncing")]
     Syncing,
+    /// Syncing goes on, but a change from another device has not arrived (a gap in its chain, or
+    /// a parent it references): the change waits, this device keeps pulling and pushing.
+    #[serde(rename = "waiting")]
+    Waiting,
     /// Waiting on something outside this device: the vault, the subscription, the quota, an app
     /// update, the network or the relay's rate limit.
     #[serde(rename = "paused")]
@@ -49,6 +53,11 @@ pub enum SyncProblem {
     /// The relay withholds an envelope.
     #[serde(rename = "gap")]
     Gap,
+    /// A change from another device is dated more than ten years past this device's time: it is
+    /// held (skippable after 14 days, `HeldGapKind::Ahead`), and this device keeps syncing
+    /// meanwhile (audit M6).
+    #[serde(rename = "clockAhead")]
+    ClockAhead,
     #[serde(rename = "undecryptable")]
     Undecryptable,
     #[serde(rename = "invalidChain")]
@@ -69,8 +78,31 @@ pub enum SyncProblem {
     /// The vault's token was rotated by another device (`403 token_read_only`).
     #[serde(rename = "keyRotated")]
     KeyRotated,
+    /// This device's secure storage could not be reached (the device binding could not be
+    /// checked); paused, and tried again at the next trigger.
+    #[serde(rename = "secureStorage")]
+    SecureStorage,
+    /// The sync server went back to an older state (its head below this device's place, e.g.
+    /// restored from an older backup); changes may be missing on other devices. Sticky until a
+    /// replace or turning sync off; syncing goes on.
+    #[serde(rename = "serverWentBack")]
+    ServerWentBack,
     #[serde(rename = "internal")]
     Internal,
+}
+
+/// What a build without the sync flag can still say about the open profile (`sync_profile_state`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncProfileState {
+    /// This profile has sync turned on (a development build did it); its changes are recorded.
+    #[serde(rename = "enabled")]
+    pub enabled: bool,
+    /// This build runs sync (the flag).
+    #[serde(rename = "featureOn")]
+    pub feature_on: bool,
+    /// Changes recorded but never sent (turning sync off means they will not be sent).
+    #[serde(rename = "pendingChanges")]
+    pub pending_changes: u32,
 }
 
 /// The `sync-status-changed` payload.
@@ -98,6 +130,12 @@ pub struct SyncStatus {
     /// When the relay deletes the vault after a lapse: 90 days after `paidUntil`.
     #[serde(rename = "deletesAt")]
     pub deletes_at: Option<i64>,
+    /// While this device's clock (its hybrid logical clock) is more than a day past its wall
+    /// clock: the date its changes are stamped with until then (unix seconds). A note, never a
+    /// problem: sync goes on, and until that date this device's edits win over edits made
+    /// elsewhere before it. `None` otherwise, and for a date past year 9999 (audit M6).
+    #[serde(rename = "clockAheadUntil")]
+    pub clock_ahead_until: Option<i64>,
     /// The developer tools are offered (debug build with sync on).
     #[serde(rename = "devTools")]
     pub dev_tools: bool,
@@ -173,6 +211,28 @@ impl Drop for RecoveryKit {
     }
 }
 
+/// Which file of the Recovery Kit the desktop saves (`sync_save_recovery_kit`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum KitFileKind {
+    /// The self-contained page (`.html`), to print or keep.
+    #[serde(rename = "page")]
+    Page,
+    /// The same facts as plain text (`.txt`).
+    #[serde(rename = "text")]
+    Text,
+}
+
+/// What became of a Recovery Kit save.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct KitSaveOutcome {
+    /// `false`: the person closed the save dialog; nothing was written.
+    #[serde(rename = "saved")]
+    pub saved: bool,
+    /// The chosen folder looks synced to a cloud service (iCloud Drive, OneDrive, Dropbox, …).
+    #[serde(rename = "syncedFolder")]
+    pub synced_folder: bool,
+}
+
 /// One device of the sync account as Settings lists it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct SyncDevice {
@@ -208,7 +268,11 @@ pub enum PairingStage {
     /// Shower: the QR code is on screen, waiting for the other device to scan it.
     #[serde(rename = "waitingForScan")]
     WaitingForScan,
-    /// Both: the six-digit comparison code is on screen, waiting for the person.
+    /// Both: the other device is answered (scanner: slot 1 written, the shower's acknowledgement
+    /// awaited; shower: the acknowledgement is being stored); nothing is shown yet.
+    #[serde(rename = "connecting")]
+    Connecting,
+    /// The joiner shows its six digits; the holder asks its person to type them.
     #[serde(rename = "compare")]
     Compare,
     /// Joiner, after its confirm: waiting for the other device to send the sync details.
@@ -246,7 +310,8 @@ pub struct PairingView {
     /// The same code as text, only with the developer tools (a simulator cannot scan).
     #[serde(rename = "pairingCode")]
     pub pairing_code: Option<String>,
-    /// The six digits both devices show, from `compare` on.
+    /// The six digits the joiner shows, from `compare` on; never set on the holder, whose person
+    /// types them.
     #[serde(rename = "comparisonCode")]
     pub comparison_code: Option<String>,
     /// Scanner: another device answered this code first; this device's digits differ from the
@@ -256,4 +321,133 @@ pub struct PairingView {
     /// When the pairing ends on this device (unix seconds).
     #[serde(rename = "expiresAt")]
     pub expires_at: i64,
+    /// The sync server of this pairing as `host[:port]`, only when it is not the default one, so
+    /// the person sees which server a self-hosted pairing goes through.
+    #[serde(rename = "serverHost")]
+    pub server_host: Option<String>,
+    /// Holder, in `compare`: wrong codes the person may still type before the pairing ends.
+    #[serde(rename = "attemptsLeft")]
+    pub attempts_left: Option<u8>,
+}
+
+/// What a replace (a join, a repair, a re-sync) puts at stake on this device, for the confirmation
+/// that asks for it (`services::sync::impact::ReplaceImpact`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct ReplaceImpactView {
+    /// Changed items not sealed yet (`sync_outbox` rows).
+    #[serde(rename = "pendingItems")]
+    pub pending_items: u32,
+    /// Sealed batches the sync server has not confirmed (`sync_unsent` rows).
+    #[serde(rename = "pendingBatches")]
+    pub pending_batches: u32,
+    /// Documents of properties and insurance policies.
+    #[serde(rename = "documents")]
+    pub documents: u32,
+    /// Photos of properties.
+    #[serde(rename = "photos")]
+    pub photos: u32,
+    /// Accounts and assets (bonds and insurance policies included).
+    #[serde(rename = "accounts")]
+    pub accounts: u32,
+    /// Bank transactions.
+    #[serde(rename = "transactions")]
+    pub transactions: u32,
+    /// The newest clock this device knows, as a decimal string (it exceeds 2^53): the watermark a
+    /// confirmation sends back in its consent.
+    #[serde(rename = "changesThrough")]
+    pub changes_through: String,
+}
+
+/// What the person agreed to in a replace's confirmation: the watermark of the impact it showed,
+/// and the documents and photos it showed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct ReplaceConsentView {
+    /// `ReplaceImpactView::changes_through`, as the confirmation received it (decimal string).
+    #[serde(rename = "changesThrough")]
+    pub changes_through: String,
+    /// Documents plus photos the confirmation showed.
+    #[serde(rename = "attachments")]
+    pub attachments: u32,
+}
+
+/// What a join, repair or re-sync did: its backup and what stayed only in it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct ReplaceOutcomeView {
+    /// The backup made before the replace (listed in Restore).
+    #[serde(rename = "backupPath")]
+    pub backup_path: String,
+    /// This device's documents and photos re-attached to items the synced data also has.
+    #[serde(rename = "attachmentsKept")]
+    pub attachments_kept: u32,
+    /// This device's documents and photos found only in the backup now.
+    #[serde(rename = "attachmentsInBackupOnly")]
+    pub attachments_in_backup_only: u32,
+    /// Changed items that reached no sync server and are only in the backup.
+    #[serde(rename = "unsentItemsInBackupOnly")]
+    pub unsent_items_in_backup_only: u32,
+    /// Sealed batches that reached no sync server and are only in the backup.
+    #[serde(rename = "unsentBatchesInBackupOnly")]
+    pub unsent_batches_in_backup_only: u32,
+    /// The backup is kept: never removed by the app, only by the person.
+    #[serde(rename = "kept")]
+    pub kept: bool,
+}
+
+/// A backup a join, repair or re-sync made, as Restore lists it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncBackupEntry {
+    #[serde(rename = "path")]
+    pub path: String,
+    /// When it was made (unix seconds).
+    #[serde(rename = "createdAt")]
+    pub created_at: i64,
+    #[serde(rename = "bytes")]
+    pub bytes: u64,
+    /// It holds something found nowhere else: the app never removes it, only the person does.
+    #[serde(rename = "kept")]
+    pub kept: bool,
+}
+
+/// What a held change waits for (`HeldGapView::kind`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum HeldGapKind {
+    /// An earlier change of the device never arrived; skipping applies the ones after it.
+    #[serde(rename = "missing")]
+    Missing,
+    /// The device's change refers to something no change brought; skipping skips that change.
+    #[serde(rename = "parent")]
+    Parent,
+    /// The device's change is dated more than ten years ahead (audit M6); skipping skips that
+    /// change, and the device's later changes then apply.
+    #[serde(rename = "ahead")]
+    Ahead,
+}
+
+/// A change from another device that this device holds because something it needs has not arrived
+/// (audit M3) or because it is dated more than ten years ahead (audit M6): Settings offers to skip
+/// it once `skippableAt` has passed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct HeldGapView {
+    /// The author's device ID, 32 lowercase hex characters (`sync_skip_missing_change` takes it).
+    #[serde(rename = "deviceId")]
+    pub device_id: String,
+    /// The author's name from the device list; `None` for a device that has no row there.
+    #[serde(rename = "deviceName")]
+    pub device_name: Option<String>,
+    #[serde(rename = "kind")]
+    pub kind: HeldGapKind,
+    /// How many changes a skip gives up: the device's changes that never arrived (`missing`), or
+    /// 1 (`parent` and `ahead`, the held change itself).
+    #[serde(rename = "missingChanges")]
+    pub missing_changes: u64,
+    /// When this device first held it (unix seconds).
+    #[serde(rename = "since")]
+    pub since: i64,
+    /// From when it may be skipped (unix seconds): `since` plus 14 days.
+    #[serde(rename = "skippableAt")]
+    pub skippable_at: i64,
+    /// The date an `ahead` change carries (unix seconds, its newest clock); `None` for the other
+    /// kinds and for a date past year 9999.
+    #[serde(rename = "datedAt")]
+    pub dated_at: Option<i64>,
 }

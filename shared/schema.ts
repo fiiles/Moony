@@ -49,7 +49,18 @@ export interface BiometricStatus {
 
 // Device sync (Rust `models::sync`)
 /** Where sync stands on this device. */
-export type SyncPhase = 'off' | 'settingUp' | 'idle' | 'syncing' | 'paused' | 'error';
+export type SyncPhase =
+  | 'off'
+  | 'settingUp'
+  | 'idle'
+  | 'syncing'
+  /**
+   * Syncing goes on, but a change from another device is held: it has not arrived (problem `gap`)
+   * or is dated more than ten years ahead (`clockAhead`).
+   */
+  | 'waiting'
+  | 'paused'
+  | 'error';
 
 /** Why sync is paused or stopped. */
 export type SyncProblem =
@@ -60,6 +71,7 @@ export type SyncProblem =
   | 'snapshotTooLarge'
   | 'newerSchema'
   | 'gap'
+  | 'clockAhead'
   | 'undecryptable'
   | 'invalidChain'
   | 'missingParent'
@@ -69,6 +81,8 @@ export type SyncProblem =
   | 'rateLimited'
   | 'unauthorized'
   | 'keyRotated'
+  | 'secureStorage'
+  | 'serverWentBack'
   | 'internal';
 
 /** The `sync-status-changed` payload. */
@@ -87,8 +101,23 @@ export interface SyncStatus {
   paidUntil: number | null;
   /** When the relay deletes the vault after a lapse: 90 days after `paidUntil`. */
   deletesAt: number | null;
+  /**
+   * While this device's clock is more than a day past its wall clock: the date its changes are
+   * stamped with until then (unix seconds). A note, never a problem; `null` otherwise.
+   */
+  clockAheadUntil: number | null;
   /** The developer tools are offered (debug build with sync on). */
   devTools: boolean;
+}
+
+/** `sync_profile_state`: answered in every build, read-only. */
+export interface SyncProfileState {
+  /** This profile has sync turned on; its changes are recorded in every build. */
+  enabled: boolean;
+  /** This build runs sync (the feature flag). */
+  featureOn: boolean;
+  /** Changes recorded but never sent; turning sync off means they will not be sent. */
+  pendingChanges: number;
 }
 
 /** The subscription a checkout is for. */
@@ -121,6 +150,17 @@ export interface RecoveryKit {
   relayUrl: string | null;
 }
 
+/** Which file of the Recovery Kit the desktop saves: the page (`.html`) or the text (`.txt`). */
+export type KitFileKind = 'page' | 'text';
+
+/** What became of a Recovery Kit save. */
+export interface KitSaveOutcome {
+  /** `false`: the person closed the save dialog; nothing was written. */
+  saved: boolean;
+  /** The chosen folder looks synced to a cloud service (iCloud Drive, OneDrive, Dropbox, …). */
+  syncedFolder: boolean;
+}
+
 /** One device of the sync account as Settings lists it. */
 export interface SyncDevice {
   /** The device ID, 32 lowercase hex characters. */
@@ -139,7 +179,13 @@ export interface SyncDevice {
 
 /** Where a pairing stands on this device. */
 export type PairingStage =
-  'announcing' | 'waitingForScan' | 'compare' | 'waitingForOther' | 'sent' | 'received';
+  | 'announcing'
+  | 'waitingForScan'
+  | 'connecting'
+  | 'compare'
+  | 'waitingForOther'
+  | 'sent'
+  | 'received';
 
 /** `holder`: this device syncs and sends its sync details; `joiner`: it receives them. */
 export type PairingRole = 'holder' | 'joiner';
@@ -155,12 +201,98 @@ export interface PairingView {
   qrSvg: string | null;
   /** The same code as text, only with the developer tools (a simulator cannot scan). */
   pairingCode: string | null;
-  /** The six digits both devices show, from `compare` on. */
+  /** The six digits the joiner shows, from `compare` on; never set on the holder, whose person types them. */
   comparisonCode: string | null;
   /** Scanner: another device answered this code first; only cancelling is offered. */
   contested: boolean;
   /** When the pairing ends on this device (unix seconds). */
   expiresAt: number;
+  /** The sync server as `host[:port]`, only when it is not the default one. */
+  serverHost: string | null;
+  /** Holder, in `compare`: wrong codes the person may still type before the pairing ends. */
+  attemptsLeft: number | null;
+}
+
+/** What a replace (a join, a repair, a re-sync) puts at stake on this device, for its confirmation. */
+export interface ReplaceImpactView {
+  /** Changed items not sealed yet. */
+  pendingItems: number;
+  /** Sealed batches the sync server has not confirmed. */
+  pendingBatches: number;
+  /** Documents of properties and insurance policies. */
+  documents: number;
+  /** Photos of properties. */
+  photos: number;
+  /** Accounts and assets (bonds and insurance policies included). */
+  accounts: number;
+  /** Bank transactions. */
+  transactions: number;
+  /** The newest clock this device knows, as a decimal string (it exceeds 2^53): send it back as is. */
+  changesThrough: string;
+}
+
+/** What the person agreed to in a replace's confirmation: the impact's watermark and attachments. */
+export interface ReplaceConsentView {
+  /** `ReplaceImpactView.changesThrough`, unchanged. */
+  changesThrough: string;
+  /** Documents plus photos the confirmation showed. */
+  attachments: number;
+}
+
+/** What a join, repair or re-sync did: its backup and what stayed only in it. */
+export interface ReplaceOutcomeView {
+  /** The backup made before the replace (listed in Restore). */
+  backupPath: string;
+  /** This device's documents and photos re-attached to items the synced data also has. */
+  attachmentsKept: number;
+  /** This device's documents and photos found only in the backup now. */
+  attachmentsInBackupOnly: number;
+  /** Changed items that reached no sync server and are only in the backup. */
+  unsentItemsInBackupOnly: number;
+  /** Sealed batches that reached no sync server and are only in the backup. */
+  unsentBatchesInBackupOnly: number;
+  /** The backup is kept: never removed by the app, only by the person. */
+  kept: boolean;
+}
+
+/** A backup a join, repair or re-sync made, as Restore lists it. */
+export interface SyncBackupEntry {
+  path: string;
+  /** When it was made (unix seconds). */
+  createdAt: number;
+  bytes: number;
+  /** It holds something found nowhere else: the app never removes it, only the person does. */
+  kept: boolean;
+}
+
+/**
+ * What a held change waits for: an earlier change that never arrived (`missing`), something it
+ * refers to (`parent`), or its date, more than ten years ahead (`ahead`, audit M6).
+ */
+export type HeldGapKind = 'missing' | 'parent' | 'ahead';
+
+/**
+ * A change from another device that this device holds because something it needs has not arrived
+ * (audit M3) or because it is dated more than ten years ahead (audit M6): Settings offers to skip
+ * it once `skippableAt` has passed.
+ */
+export interface HeldGapView {
+  /** The author's device ID, 32 lowercase hex characters (`skipMissingChange` takes it). */
+  deviceId: string;
+  /** The author's name from the device list; `null` for a device that has no row there. */
+  deviceName: string | null;
+  kind: HeldGapKind;
+  /**
+   * How many changes a skip gives up: the device's changes that never arrived, or 1 (`parent`,
+   * `ahead`).
+   */
+  missingChanges: number;
+  /** When this device first held it (unix seconds). */
+  since: number;
+  /** From when it may be skipped (unix seconds): `since` plus 14 days. */
+  skippableAt: number;
+  /** The date an `ahead` change carries (unix seconds); `null` otherwise or past year 9999. */
+  datedAt: number | null;
 }
 
 export interface MenuPreferences {

@@ -366,3 +366,159 @@ fn tombstones_that_differ_without_a_cascade_parent_do_not_converge() {
 
     assert_converged(&[&a, &b]);
 }
+
+/// `id`'s `sync_devices` row on `conn`, written there (so under `conn`'s clock).
+fn own_device_row(conn: &Connection, id: DeviceId, key: Option<&str>) {
+    conn.execute(
+        "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
+         VALUES (?1, ?2, 'Phone', 'ios', '1.0', 100)",
+        rusqlite::params![id.to_hex(), key],
+    )
+    .expect("insert device");
+}
+
+/// A full `sync_devices` row for `id` with `key`, every column at `at`.
+fn device_change(id: DeviceId, key: &str, at: Clock) -> RowChange {
+    row(
+        "sync_devices",
+        &id.to_hex(),
+        at,
+        &[
+            ("public_key", text(key)),
+            ("name", text("Phone")),
+            ("platform", text("ios")),
+            ("app_version", text("1.0")),
+            ("joined_at", SqlValue::Integer(100)),
+        ],
+    )
+}
+
+fn key_of(conn: &Connection, id: DeviceId) -> Option<String> {
+    conn.query_row(
+        "SELECT public_key FROM sync_devices WHERE id = ?1",
+        [id.to_hex()],
+        |r| r.get(0),
+    )
+    .expect("public key")
+}
+
+/// The clock of `id`'s public key on `conn`: its column clock, else the row clock.
+fn key_clock(conn: &Connection, id: DeviceId) -> Clock {
+    let clocks = clocks(conn, "sync_devices", &id.to_hex());
+    clocks.get("public_key").copied().unwrap_or(clocks["*"])
+}
+
+fn applied(conn: &Connection, cs: &(Changeset, [u8; 32])) -> ApplyReport {
+    match apply_changeset(conn, &cs.0, cs.1, NOW).expect("apply") {
+        Outcome::Applied(report) => report,
+        Outcome::Stopped(reason) => panic!("stopped: {reason:?}"),
+    }
+}
+
+// Audit M6 (forged older clock on sync_devices), flipped: a key stamped with another device's ID
+// no longer replaces a device's public key, whatever its clock; one stamped with the device's own
+// ID does (and that stamp can itself be forged, see the next test).
+#[test]
+fn a_key_stamped_with_the_devices_own_id_beats_any_other() {
+    let a = device(A);
+    own_device_row(&a, A, Some("KA"));
+    let c = device(C);
+    let from_a = send(&a);
+    apply(&c, &from_a);
+    let forged = changeset(B, 1, vec![device_change(A, "EVIL", clock(1, B))]);
+
+    for conn in [&a, &c] {
+        let report = applied(conn, &forged);
+        assert_eq!(key_of(conn, A).as_deref(), Some("KA"));
+        assert_eq!(report.warnings.len(), 1, "{:?}", report.warnings);
+        assert!(
+            report.warnings[0].contains("sync_devices"),
+            "{:?}",
+            report.warnings
+        );
+        assert!(
+            !report.warnings[0].contains("KA") && !report.warnings[0].contains("EVIL"),
+            "the warning never names a key: {:?}",
+            report.warnings
+        );
+    }
+    // A device that meets the forgery first takes it (it has no key for A yet) and the key stamped
+    // with A's ID replaces it when it arrives: every order ends with A's key.
+    let d = device(D);
+    applied(&d, &forged);
+    assert_eq!(key_of(&d, A).as_deref(), Some("EVIL"));
+    apply(&d, &from_a);
+    assert_eq!(key_of(&d, A).as_deref(), Some("KA"));
+    assert_converged(&[&a, &c, &d]);
+
+    // Between two keys stamped with A's ID the older stays (write-once, like the COALESCE in
+    // `devices.rs`), in both orders.
+    let renewed = changeset(
+        A,
+        2,
+        vec![device_change(A, "KA2", clock(pack(now_ms(), 0), A))],
+    );
+    let report = applied(&c, &renewed);
+    assert_eq!(key_of(&c, A).as_deref(), Some("KA"));
+    assert_eq!(report.warnings.len(), 1, "{:?}", report.warnings);
+    let e = device(DeviceId([5; 16]));
+    applied(&e, &renewed);
+    assert_eq!(key_of(&e, A).as_deref(), Some("KA2"));
+    apply(&e, &from_a);
+    assert_eq!(key_of(&e, A).as_deref(), Some("KA"));
+    applied(&e, &forged);
+    assert_eq!(key_of(&e, A).as_deref(), Some("KA"));
+}
+
+/// The residual the rule leaves (audit M6): the clock's device is written by whoever seals the
+/// changeset, so a holder of the vault key can stamp a key with another device's own ID and an
+/// older clock, and it is taken. Nothing may trust the column for rekeying until changes are
+/// signed per device.
+#[test]
+fn a_forged_own_id_stamp_still_replaces_the_key() {
+    let a = device(A);
+    own_device_row(&a, A, Some("KA"));
+    let c = device(C);
+    apply(&c, &send(&a));
+    let forged = changeset(B, 1, vec![device_change(A, "EVIL", clock(1, A))]);
+
+    applied(&c, &forged);
+
+    assert_eq!(key_of(&c, A).as_deref(), Some("EVIL"));
+}
+
+#[test]
+fn a_first_key_for_a_row_is_taken_from_any_clock() {
+    let c = device(C);
+    own_device_row(&c, A, None);
+    // A re-joined device sends the key under its new ID's clock.
+    let new = DeviceId([0x90; 16]);
+    let first = changeset(
+        new,
+        1,
+        vec![device_change(A, "KA", clock(pack(now_ms(), 0), new))],
+    );
+
+    applied(&c, &first);
+
+    assert_eq!(key_of(&c, A).as_deref(), Some("KA"));
+}
+
+#[test]
+fn a_rejoined_devices_restamped_key_clock_keeps_the_stored_key() {
+    let a = device(A);
+    own_device_row(&a, A, Some("KA"));
+    let c = device(C);
+    apply(&c, &send(&a));
+    let stored = key_clock(&c, A);
+    let h = stored.hlc;
+    // After a re-join A's column clocks keep their hlc under an ID above A's (ruling T8-1).
+    let new = DeviceId([0x90; 16]);
+    let restamped = changeset(new, 1, vec![device_change(A, "KA", clock(h, new))]);
+
+    let report = applied(&c, &restamped);
+
+    assert_eq!(key_of(&c, A).as_deref(), Some("KA"));
+    assert_eq!(key_clock(&c, A), stored);
+    assert!(report.warnings.is_empty(), "{:?}", report.warnings);
+}

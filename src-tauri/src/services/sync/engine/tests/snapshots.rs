@@ -288,7 +288,7 @@ fn only_a_pull_that_ended_done_may_be_followed_by_a_dump() {
         ..PullReport::default()
     };
     let gap = PullReport {
-        stop: Some(PullStop::Gap),
+        gaps: 1,
         ..PullReport::default()
     };
     let verdicts: Vec<(bool, bool)> = [&done, &held, &unfinished, &newer, &gap]
@@ -302,7 +302,7 @@ fn only_a_pull_that_ended_done_may_be_followed_by_a_dump() {
             (false, true),
             (false, false),
             (false, true),
-            (false, false)
+            (false, true)
         ]
     );
 }
@@ -347,7 +347,7 @@ async fn upload_waits_for_an_empty_outbox_and_unsent() {
 }
 
 fn seal_batch_a(vault: &Vault) {
-    crate::services::sync::engine::push::seal_batch(&vault.a, &vault.creds).expect("seal");
+    crate::services::sync::engine::push::seal_batch(&vault.a, &vault.creds, None).expect("seal");
 }
 
 #[tokio::test]

@@ -5,11 +5,13 @@ import type { SyncStatus } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
-import { isSelfHostedPaidUntil } from '@/utils/sync-status';
+import { isSelfHostedPaidUntil, secondsToDate } from '@/utils/sync-status';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { ShowRecoveryKitFlow } from '@/components/settings/sync/ShowRecoveryKitFlow';
 import { SyncProblemAlert } from '@/components/settings/sync/SyncProblemAlert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Clock } from 'lucide-react';
 
 /** Settings → Sync, sync on: where sync stands, what is waiting, and the two everyday actions. */
 export function SyncStatusCard({ status }: { status: SyncStatus }) {
@@ -28,6 +30,9 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
   };
 
   const selfHosted = isSelfHostedPaidUntil(status.paidUntil);
+  const paidUntil = secondsToDate(status.paidUntil);
+  // A note, never a problem: this device's clock stands more than a day ahead (audit M6)
+  const clockAheadUntil = secondsToDate(status.clockAheadUntil);
   const lastSynced =
     status.lastSuccessAt === null
       ? t('status.neverSynced')
@@ -40,6 +45,14 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
       <SettingsCard title={t('title')} description={t('description')}>
         <div className="grid gap-3">
           <SyncProblemAlert status={status} />
+          {clockAheadUntil && (
+            <Alert>
+              <Clock />
+              <AlertDescription>
+                {t('status.clockAhead', { date: date(clockAheadUntil, { dateStyle: 'long' }) })}
+              </AlertDescription>
+            </Alert>
+          )}
           <div>
             <SettingsRow
               label={t(`status.phase.${status.phase}`)}
@@ -53,16 +66,14 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
                 {t('status.syncNow')}
               </Button>
             </SettingsRow>
-            {(selfHosted || status.paidUntil !== null) && (
+            {(selfHosted || paidUntil) && (
               <SettingsRow
                 label={t('status.subscription')}
                 hint={
                   selfHosted
                     ? t('status.selfHosted')
                     : t('status.paidUntil', {
-                        date: date(new Date((status.paidUntil ?? 0) * 1000), {
-                          dateStyle: 'long',
-                        }),
+                        date: date(paidUntil ?? new Date(0), { dateStyle: 'long' }),
                       })
                 }
               />

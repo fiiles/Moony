@@ -20,7 +20,7 @@ use tokio::time::Instant;
 
 use super::pull::rejoin_as_new_device;
 use super::snapshots::{SnapshotPolicy, SNAPSHOT_MAX_DELAY};
-use super::status::{self, problem_of, Runtime};
+use super::status::{self, problem_of_round, Runtime};
 use super::{recheck_vault, run_round_into, ConnAccess, EngineEvents, RoundMode, RoundReport};
 use crate::error::AppError;
 use crate::models::sync::{SyncProblem, SyncStatus};
@@ -335,9 +335,29 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         let db = self.db.clone();
         let _no_round = super::exclusive(&db).await;
         let dir = self.events.data_dir();
-        match rejoin_if_copy(&self.db, &dir, self.events.binding(), unix_now()) {
+        // The app start's mark, not this engine's: an unlock or a sync change spawns a new engine
+        // in the same start, and a failed check counts once per start (final review A, I2).
+        let this_start = self.events.binding_failed_this_start();
+        let first_failure = !this_start.load(Ordering::SeqCst);
+        match rejoin_if_copy(
+            &self.db,
+            &dir,
+            self.events.binding(),
+            unix_now(),
+            first_failure,
+        ) {
             Ok(CopyCheck::Rejoined) => self.write_binding()?,
             Ok(CopyCheck::Fine) => self.write_binding_if_due()?,
+            Err(CopyCheckFailure::Check(error)) if binding::is_unchecked(&error) => {
+                // Counted once per app start: later attempts, by this engine or another one
+                // spawned in the same start, still stop the round.
+                self.events
+                    .binding_failed_this_start()
+                    .store(true, Ordering::SeqCst);
+                log::warn!("[SYNC] The device binding could not be checked; sync waits");
+                self.note_problem(SyncProblem::SecureStorage)?;
+                return Ok(false);
+            }
             Err(CopyCheckFailure::Check(error)) => {
                 return self.start_failed(error, "The device binding could not be checked");
             }
@@ -477,7 +497,7 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         match result {
             Ok(()) => self.backoff.reset(),
             Err(error) => {
-                let problem = problem_of(&error);
+                let problem = problem_of_round(&error, report.pull.as_ref());
                 log::warn!("[SYNC] A sync round failed: {}", status::reason(problem));
                 log::debug!("[SYNC] A sync round failed: {error}");
                 self.shared.update(|r| r.problem = Some(problem));
@@ -567,16 +587,18 @@ impl CopyCheckFailure {
 /// The engine start's copy check (obligation c), for every path that may push: the engine's
 /// start, the repair's drain (`join::repair_capture`) and a resumed setup's first round
 /// (`setup::finish_setup`). `binding::startup_check`; on `Rejoin`, the re-join commits
-/// (`rejoin_as_new_device`), then the restore marker goes. The caller holds off every round
+/// (`rejoin_as_new_device`), then the restore marker goes. `count_failure` is true only for the
+/// first failed binding check of an app start (the engine). The caller holds off every round
 /// (`engine::exclusive`) and writes the new ID's binding afterwards.
 pub fn rejoin_if_copy<D: ConnAccess>(
     db: &D,
     data_dir: &Path,
     native: &dyn BindingNative,
     now: i64,
+    count_failure: bool,
 ) -> Result<CopyCheck, CopyCheckFailure> {
     let check = db
-        .with_conn(|conn| binding::startup_check(conn, data_dir, native))
+        .with_conn(|conn| binding::startup_check_counted(conn, data_dir, native, count_failure))
         .map_err(CopyCheckFailure::Check)?;
     let StartupCheck::Rejoin(reason) = check else {
         return Ok(CopyCheck::Fine);

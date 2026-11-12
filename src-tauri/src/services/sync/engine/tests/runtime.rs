@@ -10,8 +10,12 @@ use crate::services::sync::capture;
 use crate::services::sync::changeset::from_json;
 use crate::services::sync::engine::runtime::{Backoff, OutboxWatch};
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
-use crate::services::sync::engine::status::{phase_of, problem_of, status, Runtime};
-use crate::services::sync::engine::{run_round, RoundMode, RoundReport};
+use crate::services::sync::engine::status::{
+    phase_of, problem_of, problem_of_round, status, Runtime,
+};
+use crate::services::sync::engine::{
+    run_round, PullEnd, PullReport, PullStop, RoundMode, RoundReport,
+};
 use crate::services::sync::envelope::open_op;
 use crate::services::sync::error::{SyncError, Transient};
 use crate::services::sync::relay::fake::Route;
@@ -140,7 +144,7 @@ fn a_local_write_runs_a_round_after_one_quiet_poll_or_after_60_seconds() {
 
 #[test]
 fn status_phases_follow_the_problem() {
-    use SyncPhase::{Error, Paused};
+    use SyncPhase::{Error, Paused, Waiting};
     use SyncProblem as P;
     let table = [
         (P::CaptureBroken, Error),
@@ -149,7 +153,7 @@ fn status_phases_follow_the_problem() {
         (P::QuotaExceeded, Paused),
         (P::SnapshotTooLarge, Error),
         (P::NewerSchema, Paused),
-        (P::Gap, Error),
+        (P::Gap, Waiting),
         (P::Undecryptable, Error),
         (P::InvalidChain, Error),
         (P::MissingParent, Error),
@@ -159,6 +163,7 @@ fn status_phases_follow_the_problem() {
         (P::RateLimited, Paused),
         (P::Unauthorized, Error),
         (P::KeyRotated, Error),
+        (P::SecureStorage, Paused),
         (P::Internal, Error),
     ];
     for (problem, phase) in table {
@@ -248,6 +253,7 @@ async fn the_status_counts_pending_changes_and_held_devices() {
             refused_rows: 2,
             paid_until: Some(NOW),
             deletes_at: None,
+            clock_ahead_until: None,
             dev_tools: crate::services::sync::feature::dev_tools(),
         }
     );
@@ -348,25 +354,16 @@ async fn a_rejoin_happens_before_any_push_in_the_round() {
     assert!(has_institution(&a, "theirs") && has_institution(&a, "mine"));
 }
 
-/// Ruling P1: a pull that stopped on a gap, an envelope that does not open or a broken chain link
-/// pushes nothing in that round; the queued rows stay where they are.
+/// Ruling P1: a pull that stopped on an envelope that does not open or a broken chain link pushes
+/// nothing in that round; the queued rows stay where they are. (A gap holds and pushes: `gaps`.)
 #[tokio::test]
 async fn a_stopped_pull_skips_the_push() {
     for (what, expected) in [
-        ("gap", SyncProblem::Gap),
         ("undecryptable", SyncProblem::Undecryptable),
         ("invalid chain", SyncProblem::InvalidChain),
     ] {
         let vault = super::vault().await;
         match what {
-            "gap" => {
-                let sealed: Vec<Vec<u8>> = ["b1", "b2", "b3"]
-                    .iter()
-                    .map(|id| write_and_seal(&vault, &vault.b, id))
-                    .collect();
-                push(&vault.relay, &vault.creds, &sealed).await;
-                vault.relay.drop_op(2);
-            }
             "undecryptable" => {
                 let mut tampered = write_and_seal(&vault, &vault.b, "b1");
                 *tampered.last_mut().expect("tag") ^= 1;
@@ -425,12 +422,85 @@ async fn newer_schema_and_held_envelopes_still_push() {
         assert_eq!(op_devices(&vault, head_before), [A], "{what}");
         assert!(outbox(&vault.a.lock()).is_empty(), "{what}");
         assert_eq!(report.problem, Some(expected), "{what}");
+        assert_eq!(
+            count(&vault.a.lock(), "SELECT COUNT(*) FROM sync_unsent"),
+            0,
+            "{what}: the echo came back past the stop or the hold (Task 16 review I1)"
+        );
+        let again = round(&vault, &vault.a).await;
+        assert_eq!(
+            again.problem,
+            Some(expected),
+            "{what}: still, never a relay error"
+        );
         assert!(
             !report.snapshot_uploaded,
             "a snapshot needs a clean pull: {what}"
         );
         assert_eq!(vault.relay.snapshot_seq(), None, "{what}");
     }
+}
+
+/// Final review A, I3: a newer-schema envelope (which a key holder can write) does not hide a
+/// quarantine. The pull still stops applying at it, and the round still pushes.
+#[tokio::test]
+async fn a_newer_schema_stop_does_not_hide_a_quarantine() {
+    let vault = super::vault().await;
+    let c1 = forge(&vault.creds, &changeset(C, 1, None, vec![]));
+    let c2 = forge(&vault.creds, &changeset(C, 2, Some([9; 32]), vec![]));
+    let mut newer = changeset(B, 1, None, vec![]);
+    newer.schema = schema_number() + 1;
+    push(
+        &vault.relay,
+        &vault.creds,
+        &[c1, c2, forge(&vault.creds, &newer)],
+    )
+    .await;
+    institution(&vault.a.lock(), "queued");
+
+    let report = round(&vault, &vault.a).await;
+
+    let pull = report.pull.as_ref().expect("pull");
+    assert_eq!(pull.stop, Some(PullStop::NewerSchema), "the stop stands");
+    assert!(pull.held > 0, "{report:?}");
+    assert_eq!(pull.end(), PullEnd::Held);
+    assert!(
+        head(&vault.a.lock(), B).is_none(),
+        "nothing past the stop applied"
+    );
+    assert_eq!(report.push.as_ref().map(|p| p.pushed), Some(1));
+    assert_eq!(report.problem, Some(SyncProblem::Quarantined));
+}
+
+/// Final review A, I3: a round that fails on the network or the relay keeps showing a quarantine
+/// its pull held, so a relay cannot hide it behind a failure of a later step.
+#[test]
+fn a_failed_round_keeps_a_quarantine_its_pull_held() {
+    let held = PullReport {
+        held: 1,
+        ..PullReport::default()
+    };
+    for error in [
+        SyncError::Transient(Transient::Relay),
+        SyncError::Transient(Transient::Offline),
+        SyncError::RateLimited,
+    ] {
+        assert_eq!(
+            problem_of_round(&error, Some(&held)),
+            SyncProblem::Quarantined,
+            "{error:?}"
+        );
+        assert_eq!(problem_of_round(&error, None), problem_of(&error));
+        assert_eq!(
+            problem_of_round(&error, Some(&PullReport::default())),
+            problem_of(&error)
+        );
+    }
+    // A sync state or a local failure still says what it is.
+    assert_eq!(
+        problem_of_round(&SyncError::Unauthorized, Some(&held)),
+        SyncProblem::Unauthorized
+    );
 }
 
 /// Rulings P4, P14: the snapshot's sequence is the relay's head after the pull that follows the
@@ -468,7 +538,7 @@ async fn a_snapshot_is_dumped_only_after_a_clean_pull() {
     assert!(report.push.is_some() && !report.snapshot_uploaded);
     assert_eq!(routes(&held.relay, Route::PutSnapshot), 0);
 
-    // A gap: no push, no upload.
+    // A gap: a push, but no upload.
     let gap = super::vault().await;
     let sealed: Vec<Vec<u8>> = ["b1", "b2"]
         .iter()
@@ -653,4 +723,43 @@ async fn a_vault_gone_during_the_pull_pauses_too() {
         [Route::Pull],
         "a paused vault is not asked"
     );
+}
+
+/// Fix round 1 (2): a guarded (or read-only) profile counts as capture-broken even when its mark
+/// could not be written: no round runs against it, and the status offers the repair.
+#[tokio::test]
+async fn a_guarded_profile_never_syncs_even_without_its_mark() {
+    for read_only in [false, true] {
+        let vault = super::vault().await;
+        {
+            let a = vault.a.lock();
+            institution(&a, "queued");
+            capture::uninstall(&a).expect("uninstall");
+            if read_only {
+                exec(&a, "PRAGMA query_only = 1");
+            } else {
+                capture::guard::impose(&a).expect("guard");
+            }
+            let marks = state::marks(&a).expect("marks").expect("row");
+            assert_eq!(marks.capture_broken_at, None, "no mark");
+        }
+        let from = vault.relay.calls().len();
+
+        let report = round(&vault, &vault.a).await;
+
+        assert_eq!(
+            report.problem,
+            Some(SyncProblem::CaptureBroken),
+            "{read_only}"
+        );
+        assert!(calls_since(&vault.relay, from).is_empty(), "{read_only}");
+        let mut runtime = Runtime::default();
+        runtime.after_round(&report);
+        let shown = status(&vault.a.lock(), &runtime).expect("status");
+        assert_eq!(
+            (shown.phase, shown.problem),
+            (SyncPhase::Error, Some(SyncProblem::CaptureBroken)),
+            "{read_only}"
+        );
+    }
 }

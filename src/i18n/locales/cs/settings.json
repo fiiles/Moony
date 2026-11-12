@@ -197,6 +197,16 @@
       "leftoversTitle": "Nešifrované kopie mimo Moony",
       "leftoversBody": "Moony je při šifrování našla. Mimo svou složku nic nemaže; zkontrolujte je a smažte ručně.",
       "reveal": "Zobrazit"
+    },
+    "syncBackups": {
+      "title": "Zálohy vytvořené před nahrazením dat synchronizací",
+      "kept": "Obsahuje změny, které nejsou nikde jinde",
+      "restore": "Obnovit",
+      "delete": "Smazat",
+      "deleteTitle": "Smazat zálohu z {{date}}?",
+      "deleteBody": "Tato záloha se nenávratně smaže.",
+      "deleteBodyKept": "Tato záloha obsahuje změny, které nejsou nikde jinde. Nenávratně se smaže a tyto změny se ztratí.",
+      "deleted": "Záloha smazána"
     }
   },
   "autoLock": {

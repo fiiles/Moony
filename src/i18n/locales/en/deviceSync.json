@@ -4,6 +4,7 @@
   "indicator": {
     "synced": "Synced",
     "syncing": "Syncing…",
+    "waiting": "A change is held",
     "paused": "Sync paused",
     "error": "Sync error",
     "offline": "Offline"
@@ -14,6 +15,7 @@
       "settingUp": "Setting up sync",
       "idle": "Up to date",
       "syncing": "Syncing…",
+      "waiting": "Syncing; a change from another device is held",
       "paused": "Sync is paused",
       "error": "Sync stopped"
     },
@@ -24,21 +26,25 @@
       "quotaExceeded": "The synced data is over the storage limit.",
       "snapshotTooLarge": "The data is too large to sync.",
       "newerSchema": "Another device uses a newer version of Moony. Update this app to continue.",
-      "gap": "This device's sync history is inconsistent. Re-sync this device.",
+      "gap": "A change from another device hasn't arrived yet. This device keeps syncing and sending its own changes.",
+      "clockAhead": "A change from another device is dated more than ten years ahead, so it is held. It stays held even after that device's clock is corrected; you can skip it after 14 days.",
       "undecryptable": "Changes from another device could not be decrypted.",
       "invalidChain": "Changes from another device failed verification and are held.",
       "missingParent": "Changes from another device are missing earlier steps and are held.",
       "quarantined": "Changes from some devices are held for safety.",
       "offline": "No connection to the sync server. Syncing resumes when it is back.",
-      "relayError": "The sync server answered with an error. Moony will try again.",
+      "relayError": "The sync server is not answering as expected. Moony keeps trying.",
       "rateLimited": "The sync server asked Moony to slow down. Moony will try again soon.",
       "unauthorized": "The sync server did not accept this device. Setting up sync again may be needed.",
       "keyRotated": "The recovery key was changed on another device. Set up sync on this device again.",
+      "secureStorage": "Moony could not reach this device's secure storage, so syncing is paused. It will try again; unlocking the device or restarting Moony usually helps.",
+      "serverWentBack": "The sync server went back to an older state, so changes may be missing on your other devices. Your data on this device is intact. Moony cannot repair this on its own yet: to bring your devices back together, turn sync off, set it up again on the device with the most complete data, and join the others. Don't re-sync: it would replace this device's data with the sync server's older copy. Setting sync up again creates a new sync account.",
       "internal": "Syncing stopped because of an internal error."
     },
     "lastSynced": "Last synced {{date}}",
     "neverSynced": "Not synced yet",
     "pending": "Waiting to be sent: {{number}}",
+    "clockAhead": "This device's clock was ahead at some point (or that of a device it synced with), so its changes are dated {{date}} until then. They still sync; if the same item is edited on another device, this device's version wins until that date.",
     "subscription": "Subscription",
     "selfHosted": "Self-hosted server",
     "paidUntil": "Paid until {{date}}",
@@ -50,7 +56,12 @@
     "privacy": "Your data never leaves your devices unencrypted.",
     "start": "Set up sync",
     "resume": "Continue setup",
-    "cancelSetup": "Cancel setup"
+    "cancelSetup": "Cancel setup",
+    "cancelConfirm": {
+      "title": "Cancel the setup?",
+      "description": "This device forgets the sync account created for this setup, and a payment already made for it is not carried over. Setting up sync again starts from the start, with a new sync account.",
+      "keep": "Keep setup"
+    }
   },
   "setup": {
     "title": "Set up sync",
@@ -84,7 +95,6 @@
     },
     "kit": {
       "description": "Save your Sync Recovery Kit. It is the only way to get your synced data back if you lose all your devices.",
-      "preparing": "Preparing the kit…",
       "savePage": "Save as page…",
       "saveText": "Save as text…",
       "copyCode": "Copy code",
@@ -106,8 +116,9 @@
         "relayLabel": "Sync server",
         "relayNote": "Needed to restore from this kit"
       },
-      "failed": "Preparing the kit failed.",
-      "retry": "Try again"
+      "folderWarning": "Keep the Kit on paper or in a password manager, not in a folder that syncs to a cloud service.",
+      "syncedFolder": "Kit saved, but this folder looks like it syncs to a cloud service. Move the file somewhere that does not sync, or delete it once the Kit is on paper.",
+      "saveRefused": "This Kit is out of date, so it was not saved. Close it and show the Kit again."
     },
     "device": {
       "description": "Name this device so you can tell it apart from your others.",
@@ -135,7 +146,21 @@
       "turnOff": "Turn off sync",
       "retry": "Try again"
     },
-    "newerSchema": "Update Moony on this device to keep syncing"
+    "newerSchema": "Update Moony on this device to keep syncing",
+    "gap": {
+      "missing_one": "A change from “{{device}}” has been missing for {{days}} days.",
+      "missing_other": "{{count}} changes from “{{device}}” have been missing for {{days}} days.",
+      "waiting": "A change from “{{device}}” has waited {{days}} days for an earlier change it depends on, which never arrived.",
+      "skip_one": "Skip the missing change",
+      "skip_other": "Skip the missing changes",
+      "skipFrom": "If it still hasn't arrived by {{date}}, you can skip it then."
+    },
+    "clockAhead": {
+      "text": "A change from “{{device}}” is dated {{date}}, more than ten years ahead, so it is held. It stays held even after that device's clock is corrected.",
+      "textFar": "A change from “{{device}}” is dated far in the future, more than ten years ahead, so it is held. It stays held even after that device's clock is corrected.",
+      "skipFrom": "You can skip it from {{date}}.",
+      "skip": "Skip this change"
+    }
   },
   "renew": {
     "title": "Renew sync",
@@ -150,13 +175,27 @@
   },
   "resync": {
     "button": "Re-sync this device",
-    "hint": "Replaces this device's data with the synced data. Use it if this device's sync history is inconsistent.",
+    "hint": "Replaces this device's data with the synced data, after saving a backup. Use it only if this device cannot sync any other way.",
     "title": "Re-sync this device?",
-    "description": "This device's data is replaced with the synced data. A backup is saved first. Changes this device has not sent yet are kept only in that backup.",
-    "pendingChanges_one": "{{count}} change on this device has not been sent yet. It will be kept only in the backup.",
-    "pendingChanges_other": "{{count}} changes on this device have not been sent yet. They will be kept only in the backup.",
+    "description": "This device's data is replaced with the synced data. A backup is saved first.",
     "confirm": "Re-sync",
     "success": "Device re-synced. Backup saved as {{file}}."
+  },
+  "skipGap": {
+    "title_one": "Skip the missing change?",
+    "title_other": "Skip the missing changes?",
+    "description_one": "The change from “{{device}}” that never arrived will be skipped. It comes back on this device only if a device that has it uploads a newer copy of the synced data; if no device has it, it is lost. Changes that depend on it may need to be skipped too.",
+    "description_other": "The {{count}} changes from “{{device}}” that never arrived will be skipped. They come back on this device only if a device that has them uploads a newer copy of the synced data; if no device has them, they are lost. Changes that depend on them may need to be skipped too.",
+    "descriptionParent": "The change from “{{device}}” that cannot be applied will be skipped. What it held comes back on this device only if a device that applied it uploads a newer copy of the synced data; if none did, it is lost. Changes that depend on it may need to be skipped too.",
+    "confirm": "Skip",
+    "success_one": "The missing change was skipped. Syncing continues.",
+    "success_other": "The missing changes were skipped. Syncing continues.",
+    "arrived": "The missing change arrived in the meantime; nothing was skipped.",
+    "titleAhead": "Skip the change dated in the future?",
+    "descriptionAhead": "The change from “{{device}}” dated {{date}} will be skipped, and that device's later changes will sync. It comes back on this device only if a device that applied it uploads a newer copy of the synced data; if none did, it is lost.",
+    "descriptionAheadFar": "The change from “{{device}}” dated far in the future will be skipped, and that device's later changes will sync. It comes back on this device only if a device that applied it uploads a newer copy of the synced data; if none did, it is lost.",
+    "successAhead": "The change was skipped. Syncing continues.",
+    "appliedAhead": "The change was applied in the meantime; nothing was skipped."
   },
   "turnOff": {
     "button": "Turn off sync on this device",
@@ -166,7 +205,8 @@
     "pendingChanges_one": "{{count}} change on this device has not been sent yet. It will not be sent.",
     "pendingChanges_other": "{{count}} changes on this device have not been sent yet. They will not be sent.",
     "confirm": "Turn off sync",
-    "success": "Sync turned off"
+    "success": "Sync turned off",
+    "noCutOff": "Turning sync off here doesn't cut off any other device or Kit."
   },
   "delete": {
     "button": "Delete synced data",
@@ -174,11 +214,19 @@
     "title": "Delete synced data?",
     "description": "This deletes the synced data on the sync server for every device. The local data on every device stays.",
     "confirm": "Delete synced data",
-    "success": "Synced data deleted"
+    "success": "Synced data deleted",
+    "afterwards": "Afterwards sync is set up from the start, with a new sync account and a new Recovery Kit."
   },
   "danger": {
     "title": "Turn off or delete",
     "description": "Stop syncing on this device, or delete what the sync server stores."
+  },
+  "leftover": {
+    "text": "This profile has device sync turned on from a development build. Its changes are still recorded for sync.",
+    "button": "Turn sync off",
+    "noServer": "The synced data and the sync account stay on the sync server until they are deleted from a version of Moony that has sync.",
+    "description": "Local data stays. Other devices keep syncing. Joining again later needs a version of Moony that has sync.",
+    "phoneDescription": "Local data on this phone stays. Your other devices keep syncing. Joining again later needs a version of Moony that has sync."
   },
   "password": {
     "label": "Device password"
@@ -186,7 +234,7 @@
   "showKit": {
     "title": "Sync Recovery Kit",
     "description": "Enter your device password to show the kit.",
-    "again": "Enter your password again to copy the code.",
+    "again": "Enter your password again to show the kit.",
     "confirm": "Show kit"
   },
   "busy": {
@@ -212,7 +260,9 @@
       "ios": "iPhone",
       "android": "Android phone",
       "other": "Other device"
-    }
+    },
+    "quiet_one": "No changes from this device in {{count}} day",
+    "quiet_other": "No changes from this device in {{count}} days"
   },
   "pairing": {
     "addTitle": "Add a device",
@@ -224,17 +274,23 @@
     "scanHint": "Scan this with Moony on your phone: Settings → Sync → Scan a code",
     "copyCodeDev": "Copy code",
     "validFor": "The code works for 10 minutes.",
-    "compareTitle": "Compare the digits",
-    "compareOnlyIfSame": "Continue only if the other device shows these same six digits.",
-    "match": "They match",
-    "noMatch": "They don't match",
-    "contested": "Another device answered this code first, so these digits will not match. Choose \"They don't match\" on the other device and start again.",
+    "typeTitle": "Type the code",
+    "showTitle": "Your pairing code",
+    "typePrompt": "Type the six digits shown on your other device",
+    "attemptsLeft": "Attempts left: {{count}}",
+    "showPrompt": "Type this code on your other device. Continue here once it says the code is right.",
+    "notStartedWarning": "If you did not start this pairing, cancel.",
+    "connecting": "Connecting securely…",
+    "serverHost": "Sync server: {{host}}",
+    "contested": "Another device answered this code first, so this pairing cannot go on. Cancel here and start again on both devices.",
     "sent": "Sent. Finish on the other device.",
     "waiting": "Waiting for the other device…",
     "joining": "Joining…",
     "joined": "This device now syncs. Its earlier data is backed up in {{path}}",
     "tryAgain": "Try again",
-    "startAgain": "Start again"
+    "startAgain": "Start again",
+    "readyToJoin": "The sync details arrived. Check what is replaced, then join.",
+    "validUntil": "The code is valid until {{time}}."
   },
   "join": {
     "introPair": "Join from your phone",
@@ -249,7 +305,8 @@
     "kitTitle": "Use a Recovery Kit",
     "kitHint": "Enter the recovery code from your Sync Recovery Kit, or the text of its QR code.",
     "codeLabel": "Recovery code",
-    "accountLabel": "Account number"
+    "accountLabel": "Account number",
+    "confirm": "Join and replace"
   },
   "phone": {
     "title": "Sync",
@@ -260,6 +317,7 @@
       "off": "Off",
       "synced": "Up to date",
       "syncing": "Syncing…",
+      "waiting": "A change is held",
       "offline": "Offline",
       "paused": "Paused",
       "error": "Stopped"
@@ -284,7 +342,6 @@
     "unknownCode": "This QR code is not a Moony pairing code or Recovery Kit.",
     "kitConfirmTitle": "Join this sync account?",
     "kitConfirmBody": "This phone's data is replaced by the synced data (a backup is kept).",
-    "kitConfirmJoin": "Join",
     "notAKitCode": "This is not a Recovery Kit code",
     "notAPairingCode": "This is not a pairing code.",
     "devPasteTitle": "Paste a pairing code — developer tool",
@@ -292,5 +349,37 @@
     "payUnavailable": "Paying for sync is not available in the phone app.",
     "payWaiting": "Waiting for the account to become active. This moves on by itself when it does.",
     "payWaitingShort": "Waiting…"
+  },
+  "replace": {
+    "lines": {
+      "accounts": "Accounts and assets: {{count}}",
+      "transactions": "Transactions: {{count}}",
+      "items": "Changed items waiting to be sent: {{count}}",
+      "batches": "Batches of changes not yet confirmed by the sync server: {{count}}",
+      "documents": "Documents: {{count}}",
+      "photos": "Photos: {{count}}"
+    },
+    "attachments": "Documents and photos stay attached to items the synced data also has; the others stay only in the backup.",
+    "unsent": "Moony sends the waiting changes first; anything it cannot send stays only in the backup.",
+    "backupWhere": "The backup is listed under Settings → Data and backups, under “Backups made before sync replaced data”.",
+    "loading": "Counting what is at stake…",
+    "outcome": {
+      "attachments": "Documents and photos only in the backup now: {{count}}",
+      "items": "Changed items that were not sent, only in the backup: {{count}}",
+      "batches": "Batches of changes that were not sent, only in the backup: {{count}}",
+      "someUnsent": "Some changes stay only in the backup.",
+      "kept": "The backup holds the only copy of what it contains, so Moony never deletes it. You can delete it under Settings → Data and backups, under “Backups made before sync replaced data”."
+    },
+    "backupWherePhone": "The backup is listed under Settings → Backup and transfer.",
+    "saved": {
+      "title": "A backup was saved on this phone",
+      "where": "It is listed under Settings → Backup and transfer. Moony never deletes it; only you can.",
+      "filesHint": "Moony's data is left out of your phone's own backups. Save a copy to Files if you want to reach this backup outside Moony.",
+      "saveCopy": "Save a copy to Files"
+    },
+    "onThisDevice": "On this device:"
+  },
+  "limits": {
+    "lostDevice": "A lost device or Recovery Kit can't be cut off from your synced data yet, and anyone who has one can already read what it holds. If one goes missing, delete the synced data and set sync up again with a new Kit; your other devices will then need to join again."
   }
 }

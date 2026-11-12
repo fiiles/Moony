@@ -36,7 +36,7 @@ export function DangerZoneCard() {
   const syncOn =
     syncFeature &&
     syncStatus !== undefined &&
-    ['idle', 'syncing', 'paused', 'error'].includes(syncStatus.phase);
+    ['idle', 'syncing', 'waiting', 'paused', 'error'].includes(syncStatus.phase);
   // Japanese and Chinese run sentences together without a space
   const sentenceGap = ['ja', 'zh'].includes(i18n.language) ? '' : ' ';
 

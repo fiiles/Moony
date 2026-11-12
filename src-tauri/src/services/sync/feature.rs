@@ -5,6 +5,11 @@
 //! variables, so a debug build made with `MOONY_DEV_SYNC=1` (and `MOONY_RELAY_URL`) in the build
 //! environment carries them in the binary (`option_env!`; cargo rebuilds when they change). A
 //! release build never reads the variables, at run time or at build time.
+//!
+//! The flag gates the engine, the commands and the UI, not change capture: a build without the flag
+//! still records an enabled profile's changes (`sync::on_open`, audit M12, ADR 0027) and can turn
+//! sync off (`sync_turn_off`), so it never writes synced tables uncaptured.
+//! CI runs `cargo test --release --lib services::sync::feature` with both variables set.
 
 /// Device sync is released to everyone (phase 6).
 pub const RELEASED: bool = false;

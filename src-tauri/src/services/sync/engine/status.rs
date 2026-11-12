@@ -7,11 +7,15 @@ use rusqlite::Connection;
 use super::{PullEnd, PullReport, PullStop, RoundReport};
 use crate::error::{AppError, Result};
 use crate::models::sync::{SyncPhase, SyncProblem, SyncStatus};
+use crate::services::sync::capture::{self, guard};
 use crate::services::sync::error::{SyncError, TooLarge, Transient};
-use crate::services::sync::{feature, keys, state};
+use crate::services::sync::hlc::{now_ms, unpack, FUTURE_WARNING_MS};
+use crate::services::sync::{feature, keys, snapshot, state};
 
 /// The relay deletes a lapsed vault this long after the subscription ended (spec §11.6).
 pub const DELETE_AFTER_LAPSE: i64 = 90 * 86_400;
+/// The last second of year 9999: the latest instant the UI can show as a date.
+pub(crate) const MAX_DISPLAY_SECS: i64 = 253_402_300_799;
 
 /// The key a snapshot from a newer app version is refused with (`snapshots::restore_after_410`).
 const NEWER_SCHEMA_KEY: &str = "validation.syncSnapshotNewerSchema";
@@ -60,6 +64,7 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         refused_rows: 0,
         paid_until: None,
         deletes_at: None,
+        clock_ahead_until: None,
         dev_tools,
     };
     let Some(sync) = state::load(conn)? else {
@@ -74,14 +79,14 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
     }
     let marks = state::marks(conn)?
         .ok_or_else(|| AppError::Internal("sync status: sync is not set up".into()))?;
-    let paused = if marks.capture_broken_at.is_some() {
+    let paused = if marks.capture_broken_at.is_some() || guard::changes_paused(conn) {
         Some(SyncProblem::CaptureBroken)
     } else if marks.vault_gone_at.is_some() {
         Some(SyncProblem::VaultGone)
     } else {
         None
     };
-    let problem = paused.or(runtime.problem);
+    let problem = went_back(conn, paused.or(runtime.problem))?;
     let phase = match (paused, problem) {
         (Some(paused), _) => phase_of(paused),
         (None, _) if runtime.running_round => SyncPhase::Syncing,
@@ -94,8 +99,15 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         [],
         |r| Ok((r.get(0)?, r.get(1)?)),
     )?;
+    // A date past year 9999 has no valid `Date` in the UI (a hostile `paidUntil` such as 3e15): it
+    // is shown as none, for the deletion date and for `paid_until` alike. Self-hosted servers
+    // report year 9000 to 9999, which stays.
+    let displayable = |at: i64| (0..=MAX_DISPLAY_SECS).contains(&at);
+    let paid_until = runtime.paid_until.filter(|at| displayable(*at));
     let deletes_at = match problem {
-        Some(SyncProblem::Lapsed) => runtime.paid_until.map(|at| at + DELETE_AFTER_LAPSE),
+        Some(SyncProblem::Lapsed) => paid_until
+            .and_then(|at| at.checked_add(DELETE_AFTER_LAPSE))
+            .filter(|at| displayable(*at)),
         _ => None,
     };
     Ok(SyncStatus {
@@ -105,36 +117,83 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         pending_changes: count(pending),
         held_devices: count(held),
         refused_rows: runtime.refused_rows,
-        paid_until: runtime.paid_until,
+        paid_until,
         deletes_at,
+        clock_ahead_until: clock_ahead_until(conn, now_ms())?.filter(|at| displayable(*at)),
         dev_tools,
     })
+}
+
+/// While this device's clock (`capture::clock_now`) is more than `hlc::FUTURE_WARNING_MS` past
+/// `now_ms`: the date it stands at (unix seconds), which every change this device makes carries
+/// until then (the local tick is the larger of the wall clock and the clock's high mark). Its own
+/// wall clock was ahead once, or it applied a change from a device whose clock was (audit M6).
+pub fn clock_ahead_until(conn: &Connection, now_ms: u64) -> Result<Option<i64>> {
+    let ms = unpack(capture::clock_now(conn)?).0;
+    if ms <= now_ms.saturating_add(FUTURE_WARNING_MS) {
+        return Ok(None);
+    }
+    Ok(i64::try_from(ms / 1000).ok())
+}
+
+/// `problem`, unless the sync server went back (`state::vault_went_back_at`): then
+/// `ServerWentBack` stands for no problem, a waiting gap or change, a relay error and an invalid
+/// chain (the head below this device's place is one), in every round until a replace or turning
+/// sync off. Problems that say
+/// what to do about something else (a pause, a lapse, a stop) keep their place.
+pub fn went_back(conn: &Connection, problem: Option<SyncProblem>) -> Result<Option<SyncProblem>> {
+    let outranked = matches!(
+        problem,
+        None | Some(SyncProblem::Gap)
+            | Some(SyncProblem::ClockAhead)
+            | Some(SyncProblem::InvalidChain)
+            | Some(SyncProblem::RelayError)
+    );
+    if outranked && state::vault_went_back_at(conn)?.is_some() {
+        return Ok(Some(SyncProblem::ServerWentBack));
+    }
+    Ok(problem)
+}
+
+/// Changes recorded but not yet sent: the outbox plus the sealed envelopes waiting for the server
+/// (what `SyncStatus::pending_changes` counts).
+pub fn unsent_changes(conn: &Connection) -> Result<u32> {
+    let n: i64 = conn.query_row(
+        "SELECT (SELECT COUNT(*) FROM sync_outbox) + (SELECT COUNT(*) FROM sync_unsent)",
+        [],
+        |r| r.get(0),
+    )?;
+    Ok(count(n))
 }
 
 fn count(n: i64) -> u32 {
     u32::try_from(n.max(0)).unwrap_or(u32::MAX)
 }
 
-/// The phase a problem puts sync in (P17): `paused` while it waits on something outside this
-/// device (the vault, the subscription, the quota, an app update, the network, the rate limit),
-/// `error` for everything else.
+/// The phase a problem puts sync in (P17): `waiting` for a gap (a change from another device has
+/// not arrived, and this device keeps pulling and pushing: no stop) and for a change dated more
+/// than ten years ahead (held until it is skipped), `paused` while it waits on
+/// something outside this device (the vault, the subscription, the quota, an app update, the
+/// network, the rate limit), `error` for everything else.
 pub fn phase_of(problem: SyncProblem) -> SyncPhase {
     use SyncProblem as P;
     match problem {
+        P::Gap | P::ClockAhead => SyncPhase::Waiting,
         P::VaultGone
         | P::Lapsed
         | P::QuotaExceeded
         | P::NewerSchema
         | P::Offline
-        | P::RateLimited => SyncPhase::Paused,
+        | P::RateLimited
+        | P::SecureStorage => SyncPhase::Paused,
         P::CaptureBroken
         | P::SnapshotTooLarge
-        | P::Gap
         | P::Undecryptable
         | P::InvalidChain
         | P::MissingParent
         | P::Quarantined
         | P::RelayError
+        | P::ServerWentBack
         | P::Unauthorized
         | P::KeyRotated
         | P::Internal => SyncPhase::Error,
@@ -142,8 +201,9 @@ pub fn phase_of(problem: SyncProblem) -> SyncPhase {
 }
 
 /// The problem a failed round shows. A relay answer outside the sync states (`Refused`, a
-/// snapshot too large to open) is a relay error; a snapshot from a newer app version says so; any
-/// other local failure is internal.
+/// snapshot too large to open) is a relay error; a snapshot from a newer app version says so; one
+/// dated more than ten years ahead failed verification (`InvalidChain`); any other local failure
+/// is internal.
 pub fn problem_of(error: &SyncError) -> SyncProblem {
     use SyncProblem as P;
     match error {
@@ -160,29 +220,61 @@ pub fn problem_of(error: &SyncError) -> SyncProblem {
         SyncError::TooLarge(TooLarge::Quota) => P::QuotaExceeded,
         SyncError::TooLarge(TooLarge::Snapshot) => P::SnapshotTooLarge,
         SyncError::Local(AppError::Validation(key)) if key == NEWER_SCHEMA_KEY => P::NewerSchema,
+        // A snapshot dated more than ten years ahead failed this device's check (audit M6).
+        SyncError::Local(AppError::Validation(key)) if key == snapshot::CLOCK_AHEAD_KEY => {
+            P::InvalidChain
+        }
         SyncError::Local(_) => P::Internal,
     }
 }
 
-/// The problem a pull leaves: its stop, or held envelopes; `None` for a pull that ended done or
-/// unfinished (the next round goes on).
+/// The problem a round that failed with `error` shows: `problem_of`, except that a quarantine its
+/// pull held outranks a relay error, the network and the rate limit (final review A, I3). A relay
+/// that refuses a later step (the push, the echo pull, the vault's info, the snapshot) must not
+/// hide a forked author, which only this problem shows.
+pub fn problem_of_round(error: &SyncError, pull: Option<&PullReport>) -> SyncProblem {
+    use SyncProblem as P;
+    match problem_of(error) {
+        P::RelayError | P::Offline | P::RateLimited if pull.is_some_and(|p| p.held > 0) => {
+            P::Quarantined
+        }
+        problem => problem,
+    }
+}
+
+/// The problem a pull leaves: its stop, envelopes waiting for a missing one or a missing parent
+/// (`Gap`: this device keeps syncing and pushing), a quarantined author's held envelopes, or
+/// changes dated too far ahead (`ClockAhead`, also no stop); `None` for a pull that ended done,
+/// or unfinished with nothing held (the next round goes on).
+/// `MissingParent` is no longer produced: a missing parent waits like a gap.
+///
+/// An unfinished pull that held something says so (`Quarantined`, else `Gap`, else `ClockAhead`):
+/// while an envelope
+/// is held every pull fetches again from it, so a tail behind it longer than the page limit
+/// (`pull::MAX_PULL_PAGES`) ends every pull unfinished at the same place, which is no "up to date"
+/// (Task 15 review, minor 8). Skipping the gap (`chain::gaps`) releases it.
 pub fn problem_of_pull(pull: &PullReport) -> Option<SyncProblem> {
     use SyncProblem as P;
     match pull.end() {
+        PullEnd::Unfinished if pull.held > 0 => Some(P::Quarantined),
+        PullEnd::Unfinished if pull.missing_gaps() > 0 => Some(P::Gap),
+        PullEnd::Unfinished if pull.ahead > 0 => Some(P::ClockAhead),
         PullEnd::Done | PullEnd::Unfinished => None,
+        PullEnd::Waiting => Some(P::Gap),
+        PullEnd::Ahead => Some(P::ClockAhead),
         PullEnd::Held => Some(P::Quarantined),
         PullEnd::Stopped(stop) => Some(match stop {
-            PullStop::Gap => P::Gap,
             PullStop::Invalid => P::InvalidChain,
             PullStop::Undecryptable => P::Undecryptable,
             PullStop::NewerSchema => P::NewerSchema,
-            PullStop::MissingParent => P::MissingParent,
         }),
     }
 }
 
 /// The fixed `last_error` text of a problem: its wire name, never an error's own text (which may
-/// carry a path or a URL).
+/// carry a path or a URL). A round whose only problem is a waiting gap or a change held for its
+/// date records success instead (`run_round_into`), so the `Gap` and `ClockAhead` texts are used
+/// only by a stalled round (an unfinished pull that pushed nothing) and say it is no stop.
 pub fn reason(problem: SyncProblem) -> &'static str {
     use SyncProblem as P;
     match problem {
@@ -192,7 +284,8 @@ pub fn reason(problem: SyncProblem) -> &'static str {
         P::QuotaExceeded => "sync stopped: quotaExceeded",
         P::SnapshotTooLarge => "sync stopped: snapshotTooLarge",
         P::NewerSchema => "sync stopped: newerSchema",
-        P::Gap => "sync stopped: gap",
+        P::Gap => "sync waiting: gap",
+        P::ClockAhead => "sync waiting: clockAhead",
         P::Undecryptable => "sync stopped: undecryptable",
         P::InvalidChain => "sync stopped: invalidChain",
         P::MissingParent => "sync stopped: missingParent",
@@ -202,6 +295,8 @@ pub fn reason(problem: SyncProblem) -> &'static str {
         P::RateLimited => "sync stopped: rateLimited",
         P::Unauthorized => "sync stopped: unauthorized",
         P::KeyRotated => "sync stopped: keyRotated",
+        P::SecureStorage => "sync stopped: secureStorage",
+        P::ServerWentBack => "sync stopped: serverWentBack",
         P::Internal => "sync stopped: internal",
     }
 }

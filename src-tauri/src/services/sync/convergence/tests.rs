@@ -364,10 +364,12 @@ fn adversarial_pull(vault: &mut Vault, d: usize, flip: bool, rngs: &mut Rngs) ->
         .filter(|&i| withheld.is_none_or(|w| !same(i, w)))
         .collect();
     let end = vault.pull(d, &first);
-    let gap = end == PullEnd::Stopped(Verdict::Gap);
+    // The pull holds the withheld author's later envelopes and goes on (audit M3); a change
+    // whose parent is still to come is held too, and so are its author's later ones.
+    let gap = withheld.is_some() && matches!(end, PullEnd::Waiting { gaps: 1.., .. });
     match (&end, withheld) {
-        (PullEnd::Stopped(Verdict::Gap), Some(_)) => {}
-        (PullEnd::MergeStopped(StopReason::MissingParent { .. }), _) => {}
+        (PullEnd::Waiting { gaps: 1.., .. }, Some(_)) => {}
+        (PullEnd::Waiting { .. }, None) => {}
         (PullEnd::Done, None) => {}
         _ => vault.fail(&format!(
             "device {d}: with {withheld:?} withheld the pull ended {end:?}"
@@ -377,7 +379,7 @@ fn adversarial_pull(vault: &mut Vault, d: usize, flip: bool, rngs: &mut Rngs) ->
     groups.reverse();
     let rest = groups.concat();
     match vault.pull(d, &rest) {
-        PullEnd::Done | PullEnd::MergeStopped(StopReason::MissingParent { .. }) => {}
+        PullEnd::Done | PullEnd::Waiting { .. } => {}
         other => vault.fail(&format!("device {d}: the resumed pull ended {other:?}")),
     }
     gap
@@ -425,7 +427,7 @@ fn adversarial_orders_converge() {
     };
     assert!(
         count("withheld gap") > 0,
-        "no pull ever stopped on a withheld envelope"
+        "no pull ever held a gap behind a withheld envelope"
     );
     assert!(count("SkipReplay") > 0, "no replay was ever judged");
 }

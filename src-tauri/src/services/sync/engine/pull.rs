@@ -1,18 +1,28 @@
 //! Pull (spec §9.3, §9.4): pages of envelopes from the relay, each one opened, judged against its
 //! author's chain and applied or acted on, the cursor moving exactly as far as the verdicts
 //! allow. The relay is untrusted: a page outside its contract, an envelope that does not open
-//! and a broken chain all stop the pull without moving the cursor past them; nothing this device
-//! has not taken is skipped.
+//! and a broken chain link all stop the pull without moving the cursor past them; nothing this
+//! device has not taken is skipped. An envelope that comes before an earlier one of its author, or
+//! that references a parent not here yet, is held like a quarantined author's (audit M3): the
+//! cursor stays before it, the rest of the pull goes on, and this device keeps pushing, so a
+//! withheld or reordered envelope never stalls it. A newer-schema envelope stops the pull too,
+//! but this device keeps pushing past it (spec §14), so the rest of the pull only looks for this
+//! device's own envelopes and acknowledges them (their echo, audit M4), applying nothing. A
+//! changeset dated more than ten years past this device's time is held the same way, with the
+//! later envelopes of its author as gaps behind it, until the person skips it (audit M6,
+//! `chain::too_far_ahead`).
 
 use rusqlite::Connection;
 
 use super::{ConnAccess, PullReport, PullStop};
 use crate::error::{AppError, Result};
+use crate::services::sync::chain::gaps::{self, GapKind};
 use crate::services::sync::chain::{self, EnvelopeMeta, RejoinReport, Verdict};
 use crate::services::sync::changeset::{self, Changeset};
 use crate::services::sync::devices;
 use crate::services::sync::envelope::{envelope_hash, open_op};
 use crate::services::sync::error::SyncResult;
+use crate::services::sync::hlc::now_ms;
 use crate::services::sync::in_savepoint;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::merge::{apply_changeset, Outcome, StopReason};
@@ -33,8 +43,9 @@ pub(crate) const DEFAULT_DEVICE_NAME: &str = "Moony";
 pub enum OpStep {
     /// Dealt with: the cursor may move past it.
     Advance,
-    /// Kept for a quarantined author: the cursor stays before it, later envelopes are still
-    /// handled.
+    /// Kept for a quarantined author, waiting for an earlier envelope of its author or for a
+    /// parent it references, or dated too far ahead (audit M6): the cursor stays before it, later
+    /// envelopes are still handled.
     Hold,
     /// The pull ends here; the cursor stays before it.
     Stop(PullStop),
@@ -44,10 +55,11 @@ pub enum OpStep {
 }
 
 /// Opens, judges and applies (or acts on) one pulled envelope, under the connection lock.
-/// `report.applied` and `report.rejoined` are kept here; the caller keeps the cursor, `held` and
-/// `stop`. On `Clone` the device re-joins and the same envelope is judged again (the old ID is
-/// then an author like any other). An error is a local failure (the database, or a re-join that
-/// could not finish) and ends the round, so it never pushes.
+/// `report.applied`, `report.held`, `report.gaps`, `report.ahead` and `report.rejoined` are kept
+/// here; the caller
+/// keeps the cursor and `stop`. On `Clone` the device re-joins and the same envelope is judged
+/// again (the old ID is then an author like any other). An error is a local failure (the
+/// database, or a re-join that could not finish) and ends the round, so it never pushes.
 pub fn handle_op(
     conn: &Connection,
     creds: &Credentials,
@@ -95,18 +107,34 @@ fn act(
     report: &mut PullReport,
 ) -> Result<Option<OpStep>> {
     let step = match verdict {
+        // A change dated more than ten years ahead is held (audit M6): applying it would move
+        // this device's clock that far and let it win every edit made before then. Nothing of it
+        // is written; the next pulls meet it again, and the person may skip it after 14 days.
+        Verdict::Apply if chain::too_far_ahead(changeset::max_hlc(cs), now_ms()) => {
+            log::info!(
+                "[SYNC] Relay op {} is dated more than ten years ahead: it is held",
+                meta.position
+            );
+            gaps::note_held_ahead(conn, meta, changeset::max_hlc(cs), now)?;
+            report.note_ahead(meta.device);
+            OpStep::Hold
+        }
         Verdict::Apply => match apply_changeset(conn, cs, meta.hash, now)? {
             Outcome::Applied(_) => {
                 report.applied += 1;
                 OpStep::Advance
             }
+            // The merge rolled back: the parent may come in a later envelope (a resent one, or
+            // one the relay placed after this), so the change waits like a gap.
             Outcome::Stopped(StopReason::MissingParent { table, key, parent }) => {
                 log::debug!("[SYNC] {table} {key} references the missing parent {parent}");
-                log::warn!(
-                    "[SYNC] Relay op {} references a parent this device has not seen",
+                log::debug!(
+                    "[SYNC] Relay op {} references a parent this device has not seen: it waits",
                     meta.position
                 );
-                OpStep::Stop(PullStop::MissingParent)
+                gaps::note_held_gap(conn, meta, GapKind::Parent, now)?;
+                report.note_gap(meta.device);
+                OpStep::Hold
             }
             Outcome::Stopped(StopReason::NewerSchema(_)) => OpStep::Stop(PullStop::NewerSchema),
         },
@@ -122,14 +150,28 @@ fn act(
                 meta.device.to_hex()
             );
             chain::quarantine(conn, meta.device)?;
+            report.held += 1;
             OpStep::Hold
         }
-        Verdict::Held => OpStep::Hold,
+        Verdict::Held => {
+            report.held += 1;
+            OpStep::Hold
+        }
         Verdict::BelowBarrier => {
             chain::skip_below_barrier(conn, meta)?;
             OpStep::Advance
         }
-        Verdict::Gap => OpStep::Stop(PullStop::Gap),
+        Verdict::Gap => {
+            log::debug!(
+                "[SYNC] Relay op {} comes before an earlier envelope of its author: it waits",
+                meta.position
+            );
+            // Behind its author's change dated too far ahead it is an ordinary gap too: the
+            // author's record stays the lower `Ahead` one, and skipping that releases it.
+            gaps::note_held_gap(conn, meta, GapKind::Missing, now)?;
+            report.note_gap(meta.device);
+            OpStep::Hold
+        }
         Verdict::NewerSchema => OpStep::Stop(PullStop::NewerSchema),
         Verdict::Invalid => OpStep::Stop(PullStop::Invalid),
     };
@@ -140,9 +182,18 @@ fn act(
 /// pull reaches its bounds. Each page is fetched without the connection lock and checked against
 /// the relay contract before any of its envelopes is handled, each envelope under its own lock.
 /// The persisted cursor moves over consecutive envelopes that were dealt with (`Advance`,
-/// `Rejoined`); after the first `Hold` it stays before that envelope while later ones are still
-/// handled (other authors keep syncing). A stop ends the pull with the cursor before the stopping
-/// envelope, and so does a page outside the contract (`Invalid`).
+/// `Rejoined`); after the first `Hold` (a quarantined author, a gap in an author's chain, a missing
+/// parent, a change dated too far ahead) it stays before that envelope while later ones are still handled (other authors keep
+/// syncing, this device's own envelopes are still acknowledged), so the next pull meets the held
+/// envelope again. A stop ends the pull with the cursor before the stopping envelope, and so does
+/// a page outside the contract (`Invalid`); one whose head is below where the pull stands is a
+/// sync server that went back (restored from an older backup), noted until a replace or turning
+/// sync off (`state::note_vault_went_back`). A `NewerSchema` stop alone goes on to the same bounds
+/// in scan mode (`acknowledge_if_own`) while anything of this device waits in `sync_unsent`
+/// (checked at the stop and after each page, so with nothing waiting it stops at once): this
+/// device's own envelopes are acknowledged, nothing is applied, no other author's head and not
+/// the cursor move, so the pushes a newer-schema stop allows still get their echo. A page outside
+/// the contract met while scanning ends the scan and the pull stays reported as `NewerSchema`.
 ///
 /// Relay positions are not authenticated, so one pull is bounded: it ends once it has handled
 /// everything up to the head the first page reported (later envelopes are left to the next
@@ -150,8 +201,7 @@ fn act(
 /// (`unfinished`: a relay that keeps reporting a higher head, or a backlog that large).
 ///
 /// An envelope's size counts towards `pulled_bytes` once, when the persisted cursor moves past
-/// it: an envelope fetched again (held behind a quarantined author, or after a stop) is not
-/// counted again.
+/// it: an envelope fetched again (behind a held one, or after a stop) is not counted again.
 ///
 /// When the relay's head is past the last envelope it served, the report says `behind`; the
 /// cursor never moves to the head.
@@ -164,16 +214,69 @@ pub async fn pull_all<R: Relay, D: ConnAccess>(
     creds: &Credentials,
     now: i64,
 ) -> SyncResult<PullReport> {
-    pull_pages(relay, db, creds, now, MAX_PULL_PAGES).await
+    pull_bounded(relay, db, creds, now, MAX_PULL_PAGES, None).await
 }
 
-/// `pull_all` with at most `max_pages` pages.
+/// The round's echo pull after its push: `pull_all`, except that a scan after a `NewerSchema`
+/// stop starts past `scan_from`, the reach (`PullReport::reach`) of the round's first pull, which
+/// already looked at everything up to it.
+pub async fn pull_echo<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    now: i64,
+    scan_from: Option<u64>,
+) -> SyncResult<PullReport> {
+    pull_bounded(relay, db, creds, now, MAX_PULL_PAGES, scan_from).await
+}
+
+/// `pull_all` with at most `max_pages` pages (tests).
+#[cfg(test)]
 pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     creds: &Credentials,
     now: i64,
     max_pages: usize,
+) -> SyncResult<PullReport> {
+    pull_bounded(relay, db, creds, now, max_pages, None).await
+}
+
+/// `pull_all` with at most `max_pages` pages, scanning only past `scan_from`; then the held gaps
+/// are brought up to date (`settle_gaps`).
+async fn pull_bounded<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    now: i64,
+    max_pages: usize,
+    scan_from: Option<u64>,
+) -> SyncResult<PullReport> {
+    let report = pull_pages_from_cursor(relay, db, creds, now, max_pages, scan_from).await?;
+    db.with_conn(|conn| settle_gaps(conn, &report))?;
+    Ok(report)
+}
+
+/// After a pull: a pull that reached the relay's end with nothing waiting for a missing envelope
+/// or parent and nothing held for its date holds no gap any more, so every record goes (`gaps::forget_all`); otherwise the gaps
+/// whose author's head reached them go (`gaps::forget_healed_gaps`). A stopped or unfinished pull
+/// may not have met a held envelope again, so it forgets only the healed ones.
+fn settle_gaps(conn: &Connection, report: &PullReport) -> Result<()> {
+    if report.gaps == 0 && report.ahead == 0 && report.stop.is_none() && !report.unfinished {
+        gaps::forget_all(conn)
+    } else {
+        gaps::forget_healed_gaps(conn).map(|_| ())
+    }
+}
+
+/// The pages of `pull_bounded`.
+async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    now: i64,
+    max_pages: usize,
+    scan_from: Option<u64>,
 ) -> SyncResult<PullReport> {
     let mut after = db.with_conn(|conn| {
         state::load(conn)?
@@ -183,16 +286,30 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
     let auth = creds.auth();
     let mut report = PullReport::default();
     let mut holding = false;
+    // After a `NewerSchema` stop: only this device's own envelopes are looked at.
+    let mut scanning = false;
     let mut first_head = None;
     for _ in 0..max_pages {
         let page = relay.pull(&auth, after, PULL_PAGE).await?;
         if let Err(reason) = check_page(&page, after, PULL_PAGE) {
             log::warn!("[SYNC] The relay served a page outside its contract: {reason}");
-            report.stop = Some(PullStop::Invalid);
+            if page.head < after {
+                log::warn!("[SYNC] The sync server's head went back below this device's place");
+                db.with_conn(|conn| state::note_vault_went_back(conn, now))?;
+            }
+            report.stop.get_or_insert(PullStop::Invalid);
             return Ok(report);
         }
         let target = *first_head.get_or_insert(page.head);
+        report.reach = Some(target);
         for op in &page.ops {
+            if scanning {
+                if scan_from.is_none_or(|from| op.seq > from) {
+                    db.with_conn(|conn| acknowledge_if_own(conn, creds, op))?;
+                }
+                after = op.seq;
+                continue;
+            }
             let step = db.with_conn(|conn| {
                 let step = handle_op(conn, creds, op, now, &mut report)?;
                 if !holding && matches!(step, OpStep::Advance | OpStep::Rejoined) {
@@ -202,17 +319,29 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
                 Ok(step)
             })?;
             match step {
+                OpStep::Stop(PullStop::NewerSchema) => {
+                    report.stop = Some(PullStop::NewerSchema);
+                    if !db.with_conn(waiting_for_echo)? {
+                        return Ok(report);
+                    }
+                    scanning = true;
+                }
                 OpStep::Stop(stop) => {
                     report.stop = Some(stop);
                     return Ok(report);
                 }
-                OpStep::Hold => {
-                    holding = true;
-                    report.held += 1;
-                }
+                OpStep::Hold => holding = true,
                 OpStep::Advance | OpStep::Rejoined => {}
             }
             after = op.seq;
+        }
+        if scanning {
+            if !db.with_conn(waiting_for_echo)? {
+                return Ok(report);
+            }
+            if let Some(from) = scan_from {
+                after = after.max(from);
+            }
         }
         if !page.more {
             report.behind = page.head > after;
@@ -231,6 +360,32 @@ pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
     log::warn!("[SYNC] A pull ended after {max_pages} pages, before the relay's head");
     report.unfinished = true;
     Ok(report)
+}
+
+/// Whether anything of this device waits in `sync_unsent` for its echo.
+fn waiting_for_echo(conn: &Connection) -> Result<bool> {
+    Ok(
+        conn.query_row("SELECT EXISTS (SELECT 1 FROM sync_unsent)", [], |r| {
+            r.get(0)
+        })?,
+    )
+}
+
+/// Scan mode after a `NewerSchema` stop: acknowledges `op` when it is this device's own envelope as
+/// sealed here (`Verdict::OwnAcknowledged`); anything else is left for the pull that reaches it
+/// (nothing is applied, no re-join, the cursor does not move).
+fn acknowledge_if_own(conn: &Connection, creds: &Credentials, op: &PulledOp) -> Result<()> {
+    let Ok(json) = open_op(|epoch| creds.keys.get(epoch), &creds.vault_id.0, &op.ct) else {
+        return Ok(());
+    };
+    let Ok(cs) = changeset::from_json(&json) else {
+        return Ok(());
+    };
+    let meta = EnvelopeMeta::of(&cs, envelope_hash(&op.ct), op.seq);
+    if chain::judge(conn, &meta)? == Verdict::OwnAcknowledged {
+        chain::acknowledge_own(conn, meta.seq)?;
+    }
+    Ok(())
 }
 
 /// The relay contract for a page fetched after `after` with `limit`: at most `limit` envelopes,

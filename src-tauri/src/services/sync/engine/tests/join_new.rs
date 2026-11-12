@@ -60,24 +60,30 @@ async fn pair(vault: &Vault, holder: &TestConn, joiner_shows: bool) -> Credentia
     };
     assert_eq!(
         scanner.announce(&vault.relay, NOW).await.expect("announce"),
-        Stage::Compare
+        Stage::AwaitingAck
     );
     assert_eq!(
         shower.poll(&vault.relay, NOW).await.expect("read the scan"),
         Stage::Compare
     );
-    assert_eq!(shower.comparison_code(), scanner.comparison_code());
+    assert_eq!(
+        scanner.poll(&vault.relay, NOW).await.expect("read the ack"),
+        Stage::Compare
+    );
+    let digits = joiner_session
+        .comparison_code()
+        .expect("the joiner's digits");
 
     assert_eq!(
         joiner_session
-            .confirm(&vault.relay, None, NOW)
+            .confirm(&vault.relay, None, None, NOW)
             .await
             .expect("joiner confirms"),
         Stage::WaitingForOther
     );
     assert_eq!(
         holder_session
-            .confirm(&vault.relay, Some(&creds), NOW)
+            .confirm(&vault.relay, Some(&creds), Some(&digits), NOW)
             .await
             .expect("holder confirms"),
         Stage::Sent
@@ -99,14 +105,26 @@ async fn join_as(
     name: &str,
     dir: &Path,
 ) -> SyncResult<std::path::PathBuf> {
-    join_new_device(&vault.relay, device, creds, name, dir, &NoBinding, NOW).await
+    let consent = agreed(device);
+    join_new_device(
+        &vault.relay,
+        device,
+        creds,
+        name,
+        consent,
+        dir,
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .map(|outcome| outcome.backup)
 }
 
 /// The newcomer joined: its own row is gone, the vault's is there, sync is on under a new device
 /// recorded with this platform and a public key; then rounds on it, `A` and it again converge,
 /// and `A` lists it.
 async fn assert_joined(vault: &Vault, device: &TestConn, zip: &Path, dir: &Path) -> DeviceId {
-    assert_eq!(zip, dir.join(format!("sync-repair-{NOW}.zip")));
+    assert_eq!(zip, dir.join(format!("sync-repair-{NOW}-kept.zip")));
     assert!(zip.exists(), "the backup comes first");
     let id = {
         let c = device.lock();
@@ -433,7 +451,7 @@ async fn a_hostile_sync_server_in_the_credentials_is_refused_before_anything() {
 }
 
 #[tokio::test]
-async fn a_join_whose_snapshot_download_fails_changes_nothing_but_the_backup() {
+async fn a_join_whose_snapshot_download_fails_changes_nothing() {
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;
     let device = newcomer();
@@ -456,16 +474,15 @@ async fn a_join_whose_snapshot_download_fails_changes_nothing_but_the_backup() {
         assert_eq!(profile(&c), before, "the profile is as it was");
         assert!(state::load(&c).expect("state").is_none(), "sync stays off");
     }
-    assert_eq!(
-        repair_backups(dir.path()),
-        vec![format!("sync-repair-{NOW}.zip")],
-        "the backup stays"
+    assert!(
+        repair_backups(dir.path()).is_empty(),
+        "the backup comes in the hold, after the snapshot is open"
     );
 
     let zip = join_as(&vault, &device, vault.creds.clone(), "Laptop", dir.path())
         .await
         .expect("the second join");
-    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}-2.zip")));
+    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}-kept.zip")));
     assert!(!has_institution(&device.lock(), "local-only"));
     for device in [&device, &vault.a, &device] {
         round(&vault, device, RoundMode::Normal).await;

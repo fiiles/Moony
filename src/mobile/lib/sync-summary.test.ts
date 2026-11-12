@@ -12,6 +12,7 @@ function status(phase: SyncPhase, problem: SyncProblem | null = null): SyncStatu
     refusedRows: 0,
     paidUntil: null,
     deletesAt: null,
+    clockAheadUntil: null,
     devTools: false,
   };
 }
@@ -29,6 +30,7 @@ describe('syncRowSummary', () => {
       [status('paused'), 'phone.row.paused', 'stale'],
       [status('error', 'internal'), 'phone.row.error', 'stale'],
       [status('error'), 'phone.row.error', 'stale'],
+      [status('waiting', 'gap'), 'phone.row.waiting', 'stale'],
     ];
     for (const [input, key, tone] of table) {
       expect(syncRowSummary(input)).toEqual({ key, tone });

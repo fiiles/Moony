@@ -193,6 +193,16 @@
       "leftoversTitle": "Moony 之外的未加密副本",
       "leftoversBody": "Moony 在加密时发现了这些文件。它从不删除自己文件夹之外的任何内容；请检查后自行删除。",
       "reveal": "显示"
+    },
+    "syncBackups": {
+      "title": "同步替换数据之前创建的备份",
+      "kept": "包含其他地方没有的更改",
+      "restore": "恢复",
+      "delete": "删除",
+      "deleteTitle": "删除 {{date}} 的备份？",
+      "deleteBody": "此备份将被永久删除。",
+      "deleteBodyKept": "此备份包含其他地方没有的更改。它将被永久删除，这些更改也会丢失。",
+      "deleted": "备份已删除"
     }
   },
   "autoLock": {

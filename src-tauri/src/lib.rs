@@ -281,12 +281,14 @@ async fn run_app() {
             commands::biometric::unlock_with_biometrics,
             // Device sync (services::sync)
             commands::sync::sync_feature_enabled,
+            commands::sync::sync_profile_state,
             commands::sync::get_sync_status,
             commands::sync::sync_create_account,
             commands::sync::sync_get_account,
             commands::sync::sync_start_checkout,
             commands::sync::sync_prepare_recovery_kit,
             commands::sync::sync_copy_recovery_code,
+            commands::sync_kit::sync_save_recovery_kit,
             commands::sync::sync_finish_setup,
             commands::sync::sync_now,
             commands::sync::sync_show_recovery_kit,
@@ -305,6 +307,13 @@ async fn run_app() {
             commands::sync_pairing::sync_join_with_recovery_kit,
             commands::sync_pairing::sync_list_devices,
             commands::sync_pairing::sync_rename_device,
+            commands::sync_backups::sync_replace_impact,
+            commands::sync_backups::sync_list_backups,
+            commands::sync_backups::sync_delete_backup,
+            commands::sync_gaps::sync_held_gaps,
+            commands::sync_gaps::sync_skip_missing_change,
+            #[cfg(mobile)]
+            commands::sync_backups::stage_sync_backup_export,
             // Investment commands
             commands::investments::get_all_investments,
             commands::investments::get_investment,

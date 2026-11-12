@@ -1,14 +1,22 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
+import { useDeviceSyncStatus, useReplaceImpact } from '@/hooks/use-device-sync';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { ApiError } from '@/lib/api-error';
+import { consentOf } from '@/utils/replace-impact';
 import { translateApiError } from '@/lib/translate-api-error';
 import type { JoinFailureAction } from '@/utils/pairing-code';
 import { defaultDeviceKey } from '@/utils/sync-devices';
 import { JoinFields, JoinWarning } from '@/components/settings/sync/JoinFields';
+import { PairingExpiryNote } from '@/components/settings/sync/PairingExpiryNote';
 import { PairingSteps } from '@/components/settings/sync/PairingSteps';
+import { ReplaceImpactNotice } from '@/components/settings/sync/ReplaceImpactNotice';
+import {
+  IMPACT_CHANGED_KEY,
+  replaceOutcomeToast,
+} from '@/components/settings/sync/replace-outcome';
 import {
   Dialog,
   DialogContent,
@@ -31,15 +39,18 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
   const { t: tc } = useTranslation('common');
   const status = useDeviceSyncStatus().data;
   const pairing = useDevicePairing();
-  const { error, isError, start, confirm, cancel, join, afterFailedJoin } = pairing;
+  const { error, isError, start, confirm, confirmError, cancel, join, afterFailedJoin } = pairing;
   const { turnOff } = useDeviceSyncMutations();
   // A successful join clears the pairing before the dialog closes: keep showing its last step.
   const lastView = useRef(pairing.view);
   if (pairing.view) lastView.current = pairing.view;
   const view = pairing.view ?? lastView.current;
+  // Read when the sync details arrive and the confirmation opens; never cached.
+  const impact = useReplaceImpact(view?.stage === 'received');
   const [name, setName] = useState(() => t(`setup.defaultName.${defaultDeviceKey()}`));
   const [password, setPassword] = useState('');
   const [relayUrl, setRelayUrl] = useState('');
+  const [impactChanged, setImpactChanged] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   /**
    * A failed join: its text, whether the backend kept the pairing (so the same join can run again)
@@ -76,34 +87,30 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
   };
 
   const runJoin = async () => {
+    // The consent is that of the impact on screen; the join waits for the person's confirmation.
+    if (!impact.data) return;
     setJoinError(null);
+    setImpactChanged(false);
     try {
-      const path = await join.mutateAsync();
-      toast(t('pairing.joined', { path }));
+      const outcome = await join.mutateAsync(consentOf('join', impact.data));
+      replaceOutcomeToast(t, t('pairing.joined', { path: outcome.backupPath }), outcome);
       onClose();
     } catch (failure) {
+      if (failure instanceof ApiError && failure.key === IMPACT_CHANGED_KEY) {
+        // What the person saw no longer holds: show the new numbers and ask again.
+        setImpactChanged(true);
+        await impact.refetch();
+        return;
+      }
       // The key alone cannot tell whether the backend kept the received session: ask it.
       const action = await afterFailedJoin(failure);
       setJoinError({ message: translateApiError(failure as Error, tc), ...action });
     }
   };
 
-  // The sync details arrived: join at once, once (a failure offers "Try again").
-  const joining = useRef(false);
-  const stage = view?.stage;
-  useEffect(() => {
-    if (stage !== 'received' || joining.current) return;
-    joining.current = true;
-    void runJoin();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage]);
-
-  const handleMatch = async () => {
-    try {
-      await confirm.mutateAsync();
-    } catch (failure) {
-      toast.error(tc('status.error'), { description: translateApiError(failure as Error, tc) });
-    }
+  // Continue: the joiner's confirm gate. A failure shows under the digits (`confirmError`).
+  const handleConfirm = () => {
+    confirm.mutate(undefined);
   };
 
   const retry = async () => {
@@ -129,7 +136,6 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
       // Gone on this device either way.
     }
     lastView.current = undefined;
-    joining.current = false;
     setJoinError(null);
   };
 
@@ -184,19 +190,34 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
       <DialogContent className="max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{t('join.pairTitle')}</DialogTitle>
-          <DialogDescription>
-            {view.stage === 'compare' ? t('pairing.compareTitle') : t('join.warning')}
-          </DialogDescription>
+          <DialogDescription>{t('join.warning')}</DialogDescription>
         </DialogHeader>
         <PairingSteps
           view={view}
           scanHint={t('join.pairHint')}
           devTools={status?.devTools === true}
           error={isError ? (error as Error) : null}
-          onMatch={handleMatch}
-          matching={confirm.isPending}
-          onNoMatch={() => void close()}
+          confirmError={confirmError}
+          onConfirm={handleConfirm}
+          confirming={confirm.isPending}
+          joining={join.isPending}
         />
+        {view.stage === 'received' && !failed && (
+          <>
+            {impactChanged && (
+              <Alert variant="destructive">
+                <AlertTriangle />
+                <AlertDescription>{tc(IMPACT_CHANGED_KEY)}</AlertDescription>
+              </Alert>
+            )}
+            <ReplaceImpactNotice
+              flow="join"
+              impact={impact.data}
+              error={impact.isError ? (impact.error as Error) : null}
+            />
+            <PairingExpiryNote view={view} className="text-micro" />
+          </>
+        )}
         {joinError && (
           <Alert variant="destructive">
             <AlertTriangle />
@@ -215,6 +236,11 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
               {t('intro.cancelSetup')}
             </Button>
           )}
+          {isError && !joinError && (
+            <Button type="button" onClick={() => void startAgain()}>
+              {t('pairing.startAgain')}
+            </Button>
+          )}
           {joinError && !failed && (
             <Button
               type="button"
@@ -223,6 +249,16 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
               disabled={turnOff.isPending}
             >
               {joinError.retryable ? t('pairing.tryAgain') : t('pairing.startAgain')}
+            </Button>
+          )}
+          {view.stage === 'received' && !failed && !joinError && (
+            <Button
+              type="button"
+              onClick={() => void runJoin()}
+              loading={join.isPending}
+              disabled={!impact.data || impact.isFetching}
+            >
+              {t('join.confirm')}
             </Button>
           )}
           <Button

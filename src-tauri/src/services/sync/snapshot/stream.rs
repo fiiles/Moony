@@ -45,8 +45,15 @@ pub enum Record {
         /// `"barrierSeq"`, omitted when `None`.
         barrier_seq: Option<u64>,
         /// The dumping device's pending below-barrier miss (`sync_state.missed_below_barrier`):
-        /// such a snapshot heals nobody (ruling T8-6). `"missedBelowBarrier"`, omitted when `None`.
+        /// such a snapshot heals nobody (ruling T8-6).
         missed_below_barrier: Option<u64>,
+        /// The dumping device's miss of a skipped change (`state::skipped_miss`, Task 17 I1): such
+        /// a snapshot heals nobody either, and a restorer inherits it.
+        ///
+        /// On the wire `"missedBelowBarrier"` is the max of the two (omitted when both are
+        /// `None`), so a reader that knows only that key never heals from either; with a skipped
+        /// miss, `"missedSkipped"` carries it and `"missedBarrier"` the below-barrier one alone.
+        missed_skipped: Option<u64>,
     },
     Devices(Vec<DeviceId>),
     /// Live rows and tombstone-only changes alike.
@@ -70,6 +77,7 @@ pub(super) struct Snapshot {
     pub heads: Vec<Head>,
     pub barrier_seq: Option<u64>,
     pub missed_below_barrier: Option<u64>,
+    pub missed_skipped: Option<u64>,
     pub rows: Vec<RowChange>,
     pub seeds: Vec<(String, BTreeMap<String, SqlValue>)>,
 }
@@ -94,6 +102,7 @@ pub(super) fn encode(record: &Record, devs: &mut DevTable) -> Json {
             heads,
             barrier_seq,
             missed_below_barrier,
+            missed_skipped,
         } => {
             out.insert("r".into(), json!("header"));
             out.insert("schema".into(), json!(schema));
@@ -114,8 +123,14 @@ pub(super) fn encode(record: &Record, devs: &mut DevTable) -> Json {
             if let Some(barrier_seq) = barrier_seq {
                 out.insert("barrierSeq".into(), json!(barrier_seq));
             }
-            if let Some(missed) = missed_below_barrier {
+            if let Some(missed) = missed_below_barrier.max(missed_skipped) {
                 out.insert("missedBelowBarrier".into(), json!(missed));
+            }
+            if let Some(skipped) = missed_skipped {
+                out.insert("missedSkipped".into(), json!(skipped));
+                if let Some(missed) = missed_below_barrier {
+                    out.insert("missedBarrier".into(), json!(missed));
+                }
             }
         }
         Record::Row(row) => {
@@ -202,26 +217,39 @@ fn decode(value: &Json, devs: &[DeviceId]) -> Result<Record> {
                 }
                 Record::Devices(list)
             }
-            "header" => Record::Header {
-                schema: small("schema")?,
-                barrier: small("barrier")?,
-                seq: number("seq")?,
-                heads: o
-                    .get("heads")
-                    .and_then(Json::as_array)
-                    .ok_or_else(invalid)?
-                    .iter()
-                    .map(decode_head)
-                    .collect::<Result<_>>()?,
-                barrier_seq: o
-                    .get("barrierSeq")
-                    .map(|v| v.as_u64().ok_or_else(invalid))
-                    .transpose()?,
-                missed_below_barrier: o
-                    .get("missedBelowBarrier")
-                    .map(|v| v.as_u64().ok_or_else(invalid))
-                    .transpose()?,
-            },
+            "header" => {
+                let optional = |key: &str| {
+                    o.get(key)
+                        .map(|v| v.as_u64().ok_or_else(invalid))
+                        .transpose()
+                };
+                let missed_skipped = optional("missedSkipped")?;
+                // With a skipped miss, `missedBelowBarrier` is the max of both and the
+                // below-barrier one alone is `missedBarrier`.
+                let missed_below_barrier = if missed_skipped.is_some() {
+                    optional("missedBarrier")?
+                } else {
+                    optional("missedBelowBarrier")?
+                };
+                Record::Header {
+                    schema: small("schema")?,
+                    barrier: small("barrier")?,
+                    seq: number("seq")?,
+                    heads: o
+                        .get("heads")
+                        .and_then(Json::as_array)
+                        .ok_or_else(invalid)?
+                        .iter()
+                        .map(decode_head)
+                        .collect::<Result<_>>()?,
+                    barrier_seq: o
+                        .get("barrierSeq")
+                        .map(|v| v.as_u64().ok_or_else(invalid))
+                        .transpose()?,
+                    missed_below_barrier,
+                    missed_skipped,
+                }
+            }
             "row" => Record::Row(decode_row(value, devs).map_err(|_| invalid())?),
             "seed" => {
                 let table = o.get("t").and_then(Json::as_str).ok_or_else(invalid)?;
@@ -282,6 +310,7 @@ pub(super) fn read_all(input: &mut impl Read) -> Result<Snapshot> {
         heads,
         barrier_seq,
         missed_below_barrier,
+        missed_skipped,
     }) = read_record(input, &devs)?
     else {
         return Err(invalid());
@@ -309,6 +338,7 @@ pub(super) fn read_all(input: &mut impl Read) -> Result<Snapshot> {
         heads,
         barrier_seq,
         missed_below_barrier,
+        missed_skipped,
         rows,
         seeds,
     })

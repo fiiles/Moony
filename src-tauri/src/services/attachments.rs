@@ -52,7 +52,7 @@ pub fn is_legacy_attachment_path(data_dir: &Path, path: &Path) -> bool {
 
 /// Refuse a destination inside the data folder: a copy must never overwrite the databases, the
 /// key files or the store.
-fn ensure_outside_data_dir(data_dir: &Path, dest: &Path) -> Result<()> {
+pub(crate) fn ensure_outside_data_dir(data_dir: &Path, dest: &Path) -> Result<()> {
     let canonical = |p: &Path| p.canonicalize().unwrap_or_else(|_| p.to_path_buf());
     let data = canonical(data_dir);
     let target = match (dest.parent(), dest.file_name()) {

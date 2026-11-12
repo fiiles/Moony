@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,10 @@ interface SyncPasswordSheetProps {
   description: string;
   /** A second, emphasised sentence (how many changes are unsent). */
   note?: string;
+  /** Below the note: what is at stake (a replace's counts). */
+  extra?: ReactNode;
+  /** Holds the confirm back (the numbers it asks the person to agree to are not in yet). */
+  submitDisabled?: boolean;
   confirmLabel: string;
   /** The confirm button is red for what deletes or replaces data. */
   destructive?: boolean;
@@ -42,6 +46,8 @@ export function SyncPasswordSheet({
   title,
   description,
   note,
+  extra,
+  submitDisabled = false,
   confirmLabel,
   destructive = false,
   onSubmit,
@@ -68,7 +74,7 @@ export function SyncPasswordSheet({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (password === '' || busy) return;
+    if (password === '' || busy || submitDisabled) return;
     setBusy(true);
     setError(null);
     try {
@@ -103,7 +109,7 @@ export function SyncPasswordSheet({
             form={formId}
             variant={destructive ? 'destructive' : 'default'}
             className={`${BUTTON} flex-1`}
-            disabled={password === ''}
+            disabled={password === '' || submitDisabled}
             loading={busy}
           >
             {confirmLabel}
@@ -113,6 +119,7 @@ export function SyncPasswordSheet({
     >
       <form id={formId} onSubmit={submit} aria-busy={busy} noValidate className="space-y-3">
         {note && <p className="m-0 text-m-lead font-semibold text-ink-2">{note}</p>}
+        {extra}
         <div className="space-y-1.5">
           <Label htmlFor={fieldId}>{t('password.label')}</Label>
           <PasswordInput

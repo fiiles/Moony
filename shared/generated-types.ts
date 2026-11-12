@@ -996,6 +996,57 @@ revision: number }
 export type GoverningRule = { id: string; name: string; categoryId: string }
 
 /**
+ * What a held change waits for (`HeldGapView::kind`).
+ */
+export type HeldGapKind = 
+/**
+ * An earlier change of the device never arrived; skipping applies the ones after it.
+ */
+"missing" | 
+/**
+ * The device's change refers to something no change brought; skipping skips that change.
+ */
+"parent" | 
+/**
+ * The device's change is dated more than ten years ahead (audit M6); skipping skips that
+ * change, and the device's later changes then apply.
+ */
+"ahead"
+
+/**
+ * A change from another device that this device holds because something it needs has not arrived
+ * (audit M3) or because it is dated more than ten years ahead (audit M6): Settings offers to skip
+ * it once `skippableAt` has passed.
+ */
+export type HeldGapView = { 
+/**
+ * The author's device ID, 32 lowercase hex characters (`sync_skip_missing_change` takes it).
+ */
+deviceId: string; 
+/**
+ * The author's name from the device list; `None` for a device that has no row there.
+ */
+deviceName: string | null; kind: HeldGapKind; 
+/**
+ * How many changes a skip gives up: the device's changes that never arrived (`missing`), or
+ * 1 (`parent` and `ahead`, the held change itself).
+ */
+missingChanges: number; 
+/**
+ * When this device first held it (unix seconds).
+ */
+since: number; 
+/**
+ * From when it may be skipped (unix seconds): `since` plus 14 days.
+ */
+skippableAt: number; 
+/**
+ * The date an `ahead` change carries (unix seconds, its newest clock); `None` for the other
+ * kinds and for a date past year 9999.
+ */
+datedAt: number | null }
+
+/**
  * Payload of the `history-recalculation` event.
  */
 export type HistoryRecalcEvent = { ticker: string; status: RecalcStatus }
@@ -1343,6 +1394,32 @@ fee: string | null }
 export type InvestmentWithDetails = { currency: string; fxQuality: ConversionQuality; investment: EnrichedStockInvestment; transactions: InvestmentTransaction[]; tags: StockTag[] }
 
 /**
+ * Which file of the Recovery Kit the desktop saves (`sync_save_recovery_kit`).
+ */
+export type KitFileKind = 
+/**
+ * The self-contained page (`.html`), to print or keep.
+ */
+"page" | 
+/**
+ * The same facts as plain text (`.txt`).
+ */
+"text"
+
+/**
+ * What became of a Recovery Kit save.
+ */
+export type KitSaveOutcome = { 
+/**
+ * `false`: the person closed the save dialog; nothing was written.
+ */
+saved: boolean; 
+/**
+ * The chosen folder looks synced to a cloud service (iCloud Drive, OneDrive, Dropbox, …).
+ */
+syncedFolder: boolean }
+
+/**
  * A CSV layout the person confirmed once, recognised next month (mobile spec §8.6 rung 4; TS
  * `LearnedCsvFormat`). Stored in `app_config` by `csv_import::learned`; `signature` is the
  * layout's key (header cells, delimiter, column count), `headers` the cells it was learned
@@ -1656,7 +1733,12 @@ export type PairingStage =
  */
 "waitingForScan" | 
 /**
- * Both: the six-digit comparison code is on screen, waiting for the person.
+ * Both: the other device is answered (scanner: slot 1 written, the shower's acknowledgement
+ * awaited; shower: the acknowledgement is being stored); nothing is shown yet.
+ */
+"connecting" | 
+/**
+ * The joiner shows its six digits; the holder asks its person to type them.
  */
 "compare" | 
 /**
@@ -1687,7 +1769,8 @@ qrSvg: string | null;
  */
 pairingCode: string | null; 
 /**
- * The six digits both devices show, from `compare` on.
+ * The six digits the joiner shows, from `compare` on; never set on the holder, whose person
+ * types them.
  */
 comparisonCode: string | null; 
 /**
@@ -1698,7 +1781,16 @@ contested: boolean;
 /**
  * When the pairing ends on this device (unix seconds).
  */
-expiresAt: number }
+expiresAt: number; 
+/**
+ * The sync server of this pairing as `host[:port]`, only when it is not the default one, so
+ * the person sees which server a self-hosted pairing goes through.
+ */
+serverHost: string | null; 
+/**
+ * Holder, in `compare`: wrong codes the person may still type before the pairing ends.
+ */
+attemptsLeft: number | null }
 
 /**
  * The chart data of one requested series, on the dates of the report.
@@ -2009,6 +2101,84 @@ relayUrl: string | null }
  * Recurring cost for real estate
  */
 export type RecurringCost = { name: string; amount: number; frequency: string; currency: string | null }
+
+/**
+ * What the person agreed to in a replace's confirmation: the watermark of the impact it showed,
+ * and the documents and photos it showed.
+ */
+export type ReplaceConsentView = { 
+/**
+ * `ReplaceImpactView::changes_through`, as the confirmation received it (decimal string).
+ */
+changesThrough: string; 
+/**
+ * Documents plus photos the confirmation showed.
+ */
+attachments: number }
+
+/**
+ * What a replace (a join, a repair, a re-sync) puts at stake on this device, for the confirmation
+ * that asks for it (`services::sync::impact::ReplaceImpact`).
+ */
+export type ReplaceImpactView = { 
+/**
+ * Changed items not sealed yet (`sync_outbox` rows).
+ */
+pendingItems: number; 
+/**
+ * Sealed batches the sync server has not confirmed (`sync_unsent` rows).
+ */
+pendingBatches: number; 
+/**
+ * Documents of properties and insurance policies.
+ */
+documents: number; 
+/**
+ * Photos of properties.
+ */
+photos: number; 
+/**
+ * Accounts and assets (bonds and insurance policies included).
+ */
+accounts: number; 
+/**
+ * Bank transactions.
+ */
+transactions: number; 
+/**
+ * The newest clock this device knows, as a decimal string (it exceeds 2^53): the watermark a
+ * confirmation sends back in its consent.
+ */
+changesThrough: string }
+
+/**
+ * What a join, repair or re-sync did: its backup and what stayed only in it.
+ */
+export type ReplaceOutcomeView = { 
+/**
+ * The backup made before the replace (listed in Restore).
+ */
+backupPath: string; 
+/**
+ * This device's documents and photos re-attached to items the synced data also has.
+ */
+attachmentsKept: number; 
+/**
+ * This device's documents and photos found only in the backup now.
+ */
+attachmentsInBackupOnly: number; 
+/**
+ * Changed items that reached no sync server and are only in the backup.
+ */
+unsentItemsInBackupOnly: number; 
+/**
+ * Sealed batches that reached no sync server and are only in the backup.
+ */
+unsentBatchesInBackupOnly: number; 
+/**
+ * The backup is kept: never removed by the app, only by the person.
+ */
+kept: boolean }
 
 export type ReportQuality = { missingFxCount: number; missingFxCurrencies: string[]; estimatedFxCount: number; observedCompletedMonths: number[]; partialMonthCount: number; unobservedMonthCount: number; 
 /**
@@ -3141,6 +3311,19 @@ export type SyncAccount = { accountNumber: string; active: boolean;
 paidUntil: number | null }
 
 /**
+ * A backup a join, repair or re-sync made, as Restore lists it.
+ */
+export type SyncBackupEntry = { path: string; 
+/**
+ * When it was made (unix seconds).
+ */
+createdAt: number; bytes: number; 
+/**
+ * It holds something found nowhere else: the app never removes it, only the person does.
+ */
+kept: boolean }
+
+/**
  * One device of the sync account as Settings lists it.
  */
 export type SyncDevice = { 
@@ -3179,6 +3362,11 @@ export type SyncPhase =
  */
 "syncing" | 
 /**
+ * Syncing goes on, but a change from another device has not arrived (a gap in its chain, or
+ * a parent it references): the change waits, this device keeps pulling and pushing.
+ */
+"waiting" | 
+/**
  * Waiting on something outside this device: the vault, the subscription, the quota, an app
  * update, the network or the relay's rate limit.
  */
@@ -3216,7 +3404,13 @@ export type SyncProblem =
 /**
  * The relay withholds an envelope.
  */
-"gap" | "undecryptable" | "invalidChain" | "missingParent" | 
+"gap" | 
+/**
+ * A change from another device is dated more than ten years past this device's time: it is
+ * held (skippable after 14 days, `HeldGapKind::Ahead`), and this device keeps syncing
+ * meanwhile (audit M6).
+ */
+"clockAhead" | "undecryptable" | "invalidChain" | "missingParent" | 
 /**
  * A device's envelopes are held after its chain forked.
  */
@@ -3224,7 +3418,35 @@ export type SyncProblem =
 /**
  * The vault's token was rotated by another device (`403 token_read_only`).
  */
-"keyRotated" | "internal"
+"keyRotated" | 
+/**
+ * This device's secure storage could not be reached (the device binding could not be
+ * checked); paused, and tried again at the next trigger.
+ */
+"secureStorage" | 
+/**
+ * The sync server went back to an older state (its head below this device's place, e.g.
+ * restored from an older backup); changes may be missing on other devices. Sticky until a
+ * replace or turning sync off; syncing goes on.
+ */
+"serverWentBack" | "internal"
+
+/**
+ * What a build without the sync flag can still say about the open profile (`sync_profile_state`).
+ */
+export type SyncProfileState = { 
+/**
+ * This profile has sync turned on (a development build did it); its changes are recorded.
+ */
+enabled: boolean; 
+/**
+ * This build runs sync (the flag).
+ */
+featureOn: boolean; 
+/**
+ * Changes recorded but never sent (turning sync off means they will not be sent).
+ */
+pendingChanges: number }
 
 /**
  * The `sync-status-changed` payload.
@@ -3254,6 +3476,13 @@ paidUntil: number | null;
  * When the relay deletes the vault after a lapse: 90 days after `paidUntil`.
  */
 deletesAt: number | null; 
+/**
+ * While this device's clock (its hybrid logical clock) is more than a day past its wall
+ * clock: the date its changes are stamped with until then (unix seconds). A note, never a
+ * problem: sync goes on, and until that date this device's edits win over edits made
+ * elsewhere before it. `None` otherwise, and for a date past year 9999 (audit M6).
+ */
+clockAheadUntil: number | null; 
 /**
  * The developer tools are offered (debug build with sync on).
  */

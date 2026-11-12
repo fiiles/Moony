@@ -4,6 +4,7 @@
   "indicator": {
     "synced": "Synchronizováno",
     "syncing": "Synchronizuji…",
+    "waiting": "Změna je zadržena",
     "paused": "Synchronizace pozastavena",
     "error": "Chyba synchronizace",
     "offline": "Offline"
@@ -14,6 +15,7 @@
       "settingUp": "Nastavuje se synchronizace",
       "idle": "Vše aktuální",
       "syncing": "Synchronizuji…",
+      "waiting": "Synchronizuje se, změna z jiného zařízení je zadržena",
       "paused": "Synchronizace je pozastavená",
       "error": "Synchronizace se zastavila"
     },
@@ -24,21 +26,25 @@
       "quotaExceeded": "Synchronizovaná data překračují limit úložiště.",
       "snapshotTooLarge": "Data jsou na synchronizaci příliš velká.",
       "newerSchema": "Jiné zařízení používá novější verzi Moony. Pro pokračování aplikaci aktualizujte.",
-      "gap": "Historie synchronizace tohoto zařízení je nekonzistentní. Synchronizujte toto zařízení znovu.",
+      "gap": "Změna z jiného zařízení zatím nedorazila. Toto zařízení dál synchronizuje a odesílá své vlastní změny.",
+      "clockAhead": "Změna z jiného zařízení má datum víc než deset let dopředu, a proto je zadržená. Zůstane zadržená, i když se hodiny toho zařízení opraví; po 14 dnech ji můžete přeskočit.",
       "undecryptable": "Změny z jiného zařízení se nepodařilo dešifrovat.",
       "invalidChain": "Změny z jiného zařízení neprošly ověřením a jsou zadržené.",
       "missingParent": "Změnám z jiného zařízení chybí dřívější kroky a jsou zadržené.",
       "quarantined": "Změny z některých zařízení jsou z bezpečnostních důvodů zadržené.",
       "offline": "Synchronizační server není dostupný. Synchronizace se obnoví, jakmile bude zpět.",
-      "relayError": "Synchronizační server odpověděl chybou. Moony to zkusí znovu.",
+      "relayError": "Synchronizační server neodpovídá tak, jak má. Moony to zkouší dál.",
       "rateLimited": "Synchronizační server požádal Moony o zpomalení. Moony to brzy zkusí znovu.",
       "unauthorized": "Synchronizační server toto zařízení nepřijal. Může být potřeba synchronizaci nastavit znovu.",
       "keyRotated": "Obnovovací klíč byl změněn na jiném zařízení. Nastavte synchronizaci na tomto zařízení znovu.",
+      "secureStorage": "Moony se nemohla dostat k zabezpečenému úložišti tohoto zařízení, a proto je synchronizace pozastavena. Zkusí to znovu; obvykle pomůže odemknout zařízení nebo restartovat Moony.",
+      "serverWentBack": "Synchronizační server se vrátil do staršího stavu, takže na vašich dalších zařízeních mohou chybět změny. Data na tomto zařízení jsou v pořádku. Moony to zatím neumí opravit sama: pokud chcete zařízení znovu sladit, vypněte synchronizaci, znovu ji nastavte na zařízení s nejúplnějšími daty a připojte k ní ostatní. Funkci „Synchronizovat toto zařízení znovu“ nepoužívejte: nahradila by data tohoto zařízení starší kopií ze synchronizačního serveru. Opětovným nastavením synchronizace vznikne nový synchronizační účet.",
       "internal": "Synchronizace se zastavila kvůli vnitřní chybě."
     },
     "lastSynced": "Naposledy synchronizováno {{date}}",
     "neverSynced": "Zatím nesynchronizováno",
     "pending": "Čeká na odeslání: {{number}}",
+    "clockAhead": "Hodiny tohoto zařízení (nebo zařízení, se kterým se synchronizovalo) byly v jednu chvíli napřed, takže jeho změny nesou datum {{date}}, dokud ten den nenastane. Synchronizují se dál; pokud se stejná položka upraví na jiném zařízení, do toho data vyhraje verze z tohoto zařízení.",
     "subscription": "Předplatné",
     "selfHosted": "Vlastní (self-hosted) server",
     "paidUntil": "Zaplaceno do {{date}}",
@@ -50,7 +56,12 @@
     "privacy": "Vaše data neopustí zařízení nešifrovaná.",
     "start": "Nastavit synchronizaci",
     "resume": "Pokračovat v nastavení",
-    "cancelSetup": "Zrušit nastavení"
+    "cancelSetup": "Zrušit nastavení",
+    "cancelConfirm": {
+      "title": "Zrušit nastavení?",
+      "description": "Toto zařízení zapomene synchronizační účet vytvořený při tomto nastavení a už uhrazená platba se nepřenese. Nastavení synchronizace pak začne od začátku, s novým synchronizačním účtem.",
+      "keep": "Ponechat nastavení"
+    }
   },
   "setup": {
     "title": "Nastavit synchronizaci",
@@ -84,7 +95,6 @@
     },
     "kit": {
       "description": "Uložte si Záchrannou sadu synchronizace. Je to jediný způsob, jak získat synchronizovaná data zpět, když přijdete o všechna zařízení.",
-      "preparing": "Připravuji sadu…",
       "savePage": "Uložit jako stránku…",
       "saveText": "Uložit jako text…",
       "copyCode": "Zkopírovat kód",
@@ -106,8 +116,9 @@
         "relayLabel": "Synchronizační server",
         "relayNote": "Potřebný k obnově z této sady"
       },
-      "failed": "Přípravu sady se nepodařilo dokončit.",
-      "retry": "Zkusit znovu"
+      "folderWarning": "Sadu uchovávejte na papíře nebo ve správci hesel, ne ve složce, která se synchronizuje s cloudovou službou.",
+      "syncedFolder": "Sada je uložena, ale tato složka se zřejmě synchronizuje s cloudovou službou. Přesuňte soubor na místo, které se nesynchronizuje, nebo ho smažte, jakmile budete mít sadu na papíře.",
+      "saveRefused": "Tato sada je zastaralá, proto se neuložila. Zavřete ji a zobrazte sadu znovu."
     },
     "device": {
       "description": "Pojmenujte toto zařízení, abyste ho odlišili od ostatních.",
@@ -135,7 +146,25 @@
       "turnOff": "Vypnout synchronizaci",
       "retry": "Zkusit znovu"
     },
-    "newerSchema": "Aktualizujte Moony na tomto zařízení, aby synchronizace mohla pokračovat"
+    "newerSchema": "Aktualizujte Moony na tomto zařízení, aby synchronizace mohla pokračovat",
+    "gap": {
+      "missing_one": "Změna ze zařízení „{{device}}“ chybí už {{days}} dní.",
+      "missing_few": "{{count}} změny ze zařízení „{{device}}“ chybí už {{days}} dní.",
+      "missing_many": "{{count}} změny ze zařízení „{{device}}“ chybí už {{days}} dní.",
+      "missing_other": "{{count}} změn ze zařízení „{{device}}“ chybí už {{days}} dní.",
+      "waiting": "Změna ze zařízení „{{device}}“ už {{days}} dní čeká na dřívější změnu, na které závisí a která nikdy nedorazila.",
+      "skip_one": "Přeskočit chybějící změnu",
+      "skip_few": "Přeskočit chybějící změny",
+      "skip_many": "Přeskočit chybějící změny",
+      "skip_other": "Přeskočit chybějící změny",
+      "skipFrom": "Pokud do {{date}} nedorazí, budete ji pak moct přeskočit."
+    },
+    "clockAhead": {
+      "text": "Změna ze zařízení „{{device}}“ má datum {{date}}, víc než deset let dopředu, a proto je zadržená. Zůstane zadržená, i když se hodiny toho zařízení opraví.",
+      "textFar": "Změna ze zařízení „{{device}}“ má datum daleko v budoucnosti, víc než deset let dopředu, a proto je zadržená. Zůstane zadržená, i když se hodiny toho zařízení opraví.",
+      "skipFrom": "Od {{date}} ji budete moct přeskočit.",
+      "skip": "Přeskočit tuto změnu"
+    }
   },
   "renew": {
     "title": "Obnovit synchronizaci",
@@ -150,15 +179,33 @@
   },
   "resync": {
     "button": "Synchronizovat toto zařízení znovu",
-    "hint": "Nahradí data tohoto zařízení synchronizovanými daty. Použijte to, pokud je historie synchronizace tohoto zařízení nekonzistentní.",
+    "hint": "Nahradí data tohoto zařízení synchronizovanými daty, předtím uloží zálohu. Použijte to jen tehdy, když se toto zařízení nedokáže synchronizovat jinak.",
     "title": "Synchronizovat toto zařízení znovu?",
-    "description": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Nejdřív se uloží záloha. Změny, které toto zařízení ještě neodeslalo, zůstanou jen v této záloze.",
-    "pendingChanges_one": "{{count}} změna na tomto zařízení ještě nebyla odeslána. Zůstane jen v záloze.",
-    "pendingChanges_few": "{{count}} změny na tomto zařízení ještě nebyly odeslány. Zůstanou jen v záloze.",
-    "pendingChanges_many": "{{count}} změny na tomto zařízení ještě nebylo odesláno. Zůstanou jen v záloze.",
-    "pendingChanges_other": "{{count}} změn na tomto zařízení ještě nebylo odesláno. Zůstanou jen v záloze.",
+    "description": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Nejdřív se uloží záloha.",
     "confirm": "Synchronizovat znovu",
     "success": "Zařízení znovu synchronizováno. Záloha uložena jako {{file}}."
+  },
+  "skipGap": {
+    "title_one": "Přeskočit chybějící změnu?",
+    "title_few": "Přeskočit chybějící změny?",
+    "title_many": "Přeskočit chybějící změny?",
+    "title_other": "Přeskočit chybějící změny?",
+    "description_one": "Změna ze zařízení „{{device}}“, která nikdy nedorazila, bude přeskočena. Na toto zařízení se vrátí, jen pokud ji zařízení, které ji má, nahraje v novější kopii synchronizovaných dat; pokud ji žádné zařízení nemá, je ztracená. Změny, které na ní závisí, bude možná potřeba přeskočit také.",
+    "description_few": "{{count}} změny ze zařízení „{{device}}“, které nikdy nedorazily, budou přeskočeny. Na toto zařízení se vrátí, jen pokud je zařízení, které je má, nahraje v novější kopii synchronizovaných dat; pokud je žádné zařízení nemá, jsou ztracené. Změny, které na nich závisí, bude možná potřeba přeskočit také.",
+    "description_many": "{{count}} změny ze zařízení „{{device}}“, které nikdy nedorazily, budou přeskočeny. Na toto zařízení se vrátí, jen pokud je zařízení, které je má, nahraje v novější kopii synchronizovaných dat; pokud je žádné zařízení nemá, jsou ztracené. Změny, které na nich závisí, bude možná potřeba přeskočit také.",
+    "description_other": "{{count}} změn ze zařízení „{{device}}“, které nikdy nedorazily, bude přeskočeno. Na toto zařízení se vrátí, jen pokud je zařízení, které je má, nahraje v novější kopii synchronizovaných dat; pokud je žádné zařízení nemá, jsou ztracené. Změny, které na nich závisí, bude možná potřeba přeskočit také.",
+    "descriptionParent": "Změna ze zařízení „{{device}}“, kterou nelze použít, bude přeskočena. Co obsahovala, se na toto zařízení vrátí, jen pokud zařízení, které ji použilo, nahraje novější kopii synchronizovaných dat; pokud žádné takové není, je ztracená. Změny, které na ní závisí, bude možná potřeba přeskočit také.",
+    "confirm": "Přeskočit",
+    "success_one": "Chybějící změna byla přeskočena. Synchronizace pokračuje.",
+    "success_few": "Chybějící změny byly přeskočeny. Synchronizace pokračuje.",
+    "success_many": "Chybějící změny byly přeskočeny. Synchronizace pokračuje.",
+    "success_other": "Chybějící změny byly přeskočeny. Synchronizace pokračuje.",
+    "arrived": "Chybějící změna mezitím dorazila, nic se nepřeskočilo.",
+    "titleAhead": "Přeskočit změnu s budoucím datem?",
+    "descriptionAhead": "Změna ze zařízení „{{device}}“ s datem {{date}} bude přeskočena a pozdější změny z toho zařízení se pak synchronizují. Na toto zařízení se vrátí, jen pokud zařízení, které ji použilo, nahraje novější kopii synchronizovaných dat; pokud žádné takové není, je ztracená.",
+    "descriptionAheadFar": "Změna ze zařízení „{{device}}“ s datem daleko v budoucnosti bude přeskočena a pozdější změny z toho zařízení se pak synchronizují. Na toto zařízení se vrátí, jen pokud zařízení, které ji použilo, nahraje novější kopii synchronizovaných dat; pokud žádné takové není, je ztracená.",
+    "successAhead": "Změna byla přeskočena. Synchronizace pokračuje.",
+    "appliedAhead": "Změna se mezitím použila; nic nebylo přeskočeno."
   },
   "turnOff": {
     "button": "Vypnout synchronizaci na tomto zařízení",
@@ -170,7 +217,8 @@
     "pendingChanges_many": "{{count}} změny na tomto zařízení ještě nebylo odesláno. Už se neodešlou.",
     "pendingChanges_other": "{{count}} změn na tomto zařízení ještě nebylo odesláno. Už se neodešlou.",
     "confirm": "Vypnout synchronizaci",
-    "success": "Synchronizace vypnuta"
+    "success": "Synchronizace vypnuta",
+    "noCutOff": "Vypnutím synchronizace tady neodříznete žádné jiné zařízení ani Záchrannou sadu."
   },
   "delete": {
     "button": "Smazat synchronizovaná data",
@@ -178,11 +226,19 @@
     "title": "Smazat synchronizovaná data?",
     "description": "Tím se na synchronizačním serveru smažou synchronizovaná data pro všechna zařízení. Místní data na každém zařízení zůstanou.",
     "confirm": "Smazat synchronizovaná data",
-    "success": "Synchronizovaná data smazána"
+    "success": "Synchronizovaná data smazána",
+    "afterwards": "Poté se synchronizace nastavuje od začátku, s novým synchronizačním účtem a novou Záchrannou sadou."
   },
   "danger": {
     "title": "Vypnutí a smazání",
     "description": "Zastavte synchronizaci na tomto zařízení nebo smažte, co synchronizační server uchovává."
+  },
+  "leftover": {
+    "text": "Tento profil má zapnutou synchronizaci zařízení z vývojářské verze. Jeho změny se stále zaznamenávají pro synchronizaci.",
+    "button": "Vypnout synchronizaci",
+    "noServer": "Synchronizovaná data a synchronizační účet zůstanou na synchronizačním serveru, dokud je nesmažete z verze Moony se synchronizací.",
+    "description": "Místní data zůstanou. Ostatní zařízení se synchronizují dál. K pozdějšímu opětovnému připojení je potřeba verze Moony se synchronizací.",
+    "phoneDescription": "Místní data v tomto telefonu zůstanou. Ostatní zařízení se synchronizují dál. K pozdějšímu opětovnému připojení je potřeba verze Moony se synchronizací."
   },
   "password": {
     "label": "Heslo zařízení"
@@ -190,7 +246,7 @@
   "showKit": {
     "title": "Záchranná sada synchronizace",
     "description": "Zadejte heslo zařízení, aby se sada zobrazila.",
-    "again": "Zadejte heslo znovu, aby šlo kód zkopírovat.",
+    "again": "Zadejte heslo znovu, aby se sada zobrazila.",
     "confirm": "Zobrazit sadu"
   },
   "busy": {
@@ -216,7 +272,11 @@
       "ios": "iPhone",
       "android": "Telefon s Androidem",
       "other": "Jiné zařízení"
-    }
+    },
+    "quiet_one": "Žádné změny z tohoto zařízení za {{count}} den",
+    "quiet_few": "Žádné změny z tohoto zařízení za {{count}} dny",
+    "quiet_many": "Žádné změny z tohoto zařízení za {{count}} dne",
+    "quiet_other": "Žádné změny z tohoto zařízení za {{count}} dní"
   },
   "pairing": {
     "addTitle": "Přidat zařízení",
@@ -228,17 +288,23 @@
     "scanHint": "Naskenujte to v Moony na telefonu: Nastavení → Synchronizace → Naskenovat kód",
     "copyCodeDev": "Kopírovat kód",
     "validFor": "Kód platí 10 minut.",
-    "compareTitle": "Porovnejte číslice",
-    "compareOnlyIfSame": "Pokračujte, jen pokud druhé zařízení ukazuje stejných šest číslic.",
-    "match": "Shodují se",
-    "noMatch": "Neshodují se",
-    "contested": "Na tento kód odpovědělo jako první jiné zařízení, takže se tyto číslice neshodnou. Na druhém zařízení zvolte „Neshodují se“ a začněte znovu.",
+    "typeTitle": "Zadejte kód",
+    "showTitle": "Váš párovací kód",
+    "typePrompt": "Zadejte šest číslic zobrazených na druhém zařízení",
+    "attemptsLeft": "Zbývající pokusy: {{count}}",
+    "showPrompt": "Zadejte tento kód na druhém zařízení. Až tam uvidíte, že je kód správný, pokračujte tady.",
+    "notStartedWarning": "Pokud jste toto párování nezahájili vy, zrušte ho.",
+    "connecting": "Navazuje se zabezpečené spojení…",
+    "serverHost": "Synchronizační server: {{host}}",
+    "contested": "Na tento kód odpovědělo jako první jiné zařízení, takže v tomto párování nelze pokračovat. Zrušte ho tady a začněte znovu na obou zařízeních.",
     "sent": "Odesláno. Dokončete to na druhém zařízení.",
     "waiting": "Čeká se na druhé zařízení…",
     "joining": "Připojuje se…",
     "joined": "Toto zařízení se nyní synchronizuje. Jeho dřívější data jsou zálohována v {{path}}",
     "tryAgain": "Zkusit znovu",
-    "startAgain": "Začít znovu"
+    "startAgain": "Začít znovu",
+    "readyToJoin": "Údaje k synchronizaci dorazily. Zkontrolujte, co se nahradí, a pak se připojte.",
+    "validUntil": "Kód platí do {{time}}."
   },
   "join": {
     "introPair": "Připojit z telefonu",
@@ -253,7 +319,8 @@
     "kitTitle": "Použít záchrannou sadu",
     "kitHint": "Zadejte obnovovací kód ze záchranné sady synchronizace nebo text jejího QR kódu.",
     "codeLabel": "Obnovovací kód",
-    "accountLabel": "Číslo účtu"
+    "accountLabel": "Číslo účtu",
+    "confirm": "Připojit a nahradit"
   },
   "phone": {
     "title": "Synchronizace",
@@ -264,6 +331,7 @@
       "off": "Vypnuto",
       "synced": "Aktuální",
       "syncing": "Synchronizuje se…",
+      "waiting": "Změna je zadržena",
       "offline": "Offline",
       "paused": "Pozastaveno",
       "error": "Zastaveno"
@@ -288,7 +356,6 @@
     "unknownCode": "Tento QR kód není párovací kód Moony ani záchranná sada.",
     "kitConfirmTitle": "Připojit se k tomuto synchronizačnímu účtu?",
     "kitConfirmBody": "Data tohoto telefonu budou nahrazena synchronizovanými daty (záloha se uchová).",
-    "kitConfirmJoin": "Připojit",
     "notAKitCode": "Toto není kód záchranné sady",
     "notAPairingCode": "Toto není párovací kód.",
     "devPasteTitle": "Vložit párovací kód — vývojářský nástroj",
@@ -296,5 +363,37 @@
     "payUnavailable": "Platba za synchronizaci není v aplikaci v telefonu k dispozici.",
     "payWaiting": "Čekáme, až se účet aktivuje. Jakmile se tak stane, pokračuje to samo.",
     "payWaitingShort": "Čekáme…"
+  },
+  "replace": {
+    "lines": {
+      "accounts": "Účty a majetek: {{count}}",
+      "transactions": "Transakce: {{count}}",
+      "items": "Změněné položky čekající na odeslání: {{count}}",
+      "batches": "Dávky změn, které synchronizační server ještě nepotvrdil: {{count}}",
+      "documents": "Dokumenty: {{count}}",
+      "photos": "Fotky: {{count}}"
+    },
+    "attachments": "Dokumenty a fotky zůstanou přiložené k položkám, které mají i synchronizovaná data; ostatní zůstanou jen v záloze.",
+    "unsent": "Moony nejdřív odešle čekající změny; co odeslat nedokáže, zůstane jen v záloze.",
+    "backupWhere": "Záloha je v seznamu v Nastavení → Data a zálohy, v části „Zálohy vytvořené před nahrazením dat synchronizací“.",
+    "loading": "Počítám, co je v sázce…",
+    "outcome": {
+      "attachments": "Dokumenty a fotky, které jsou teď jen v záloze: {{count}}",
+      "items": "Změněné položky, které se neodeslaly a jsou jen v záloze: {{count}}",
+      "batches": "Dávky změn, které se neodeslaly a jsou jen v záloze: {{count}}",
+      "someUnsent": "Některé změny zůstaly jen v záloze.",
+      "kept": "Záloha obsahuje jedinou kopii toho, co v ní je, proto ji Moony nikdy nemaže. Smazat ji můžete v Nastavení → Data a zálohy, v části „Zálohy vytvořené před nahrazením dat synchronizací“."
+    },
+    "backupWherePhone": "Záloha je v seznamu v Nastavení → Záloha a přenos.",
+    "saved": {
+      "title": "V tomto telefonu byla uložena záloha",
+      "where": "Najdete ji v Nastavení → Záloha a přenos. Moony ji nikdy nesmaže, jen vy.",
+      "filesHint": "Data Moony se do vlastních záloh telefonu nezahrnují. Uložte kopii do Souborů, chcete-li se k záloze dostat mimo Moony.",
+      "saveCopy": "Uložit kopii do Souborů"
+    },
+    "onThisDevice": "V tomto zařízení:"
+  },
+  "limits": {
+    "lostDevice": "Ztracené zařízení nebo ztracenou Záchrannou sadu zatím nelze odříznout od synchronizovaných dat a kdo je má, může už teď číst, co obsahují. Pokud se něco ztratí, smažte synchronizovaná data a nastavte synchronizaci znovu s novou sadou; ostatní zařízení se pak musí připojit znovu."
   }
 }

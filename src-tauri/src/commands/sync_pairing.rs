@@ -33,15 +33,21 @@ use super::sync::{
     app_error, data_dir, guarded_change, kit_owner, now, require_feature, sync_on, verify_password,
     AppEngine, KeychainBinding, KitOwner,
 };
+use super::sync_backups::{consent_of, outcome_view};
 use crate::db::Database;
 use crate::error::{AppError, Result};
-use crate::models::sync::{PairingRole, PairingStage, PairingView, SyncDevice};
+use crate::models::sync::{
+    PairingRole, PairingStage, PairingView, ReplaceConsentView, ReplaceOutcomeView, SyncDevice,
+};
 use crate::services::sync::error::{SyncError, SyncResult};
+use crate::services::sync::impact::IMPACT_CHANGED;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::pairing::session::{keeps_session, PairingSession, Stage};
-use crate::services::sync::pairing::{pairing_code_text, MailboxId, Role, Side};
+use crate::services::sync::pairing::{pairing_code_text, typed_code_digits, MailboxId, Role, Side};
 use crate::services::sync::recovery::{qr_svg, read_recovery_input};
-use crate::services::sync::relay::http::{default_base_url, normalize_base_url, HttpRelay};
+use crate::services::sync::relay::http::{
+    default_base_url, is_default_relay, normalize_base_url, HttpRelay,
+};
 use crate::services::sync::relay::Mailbox;
 use crate::services::sync::{devices, feature, join, state};
 
@@ -259,14 +265,15 @@ fn slot_for(
 
 /// Whether a failed join keeps the received session for "Try again": a momentary relay failure,
 /// a rate limit, another sync change running, or a sync setup of another account still pending
-/// (the person can cancel it and try again within the grace period). Anything else ends the
-/// pairing.
+/// (the person can cancel it and try again within the grace period), or what the confirmation
+/// showed no longer holding (`IMPACT_CHANGED`: nothing was replaced, the confirmation reads the
+/// new numbers and asks again within the grace period). Anything else ends the pairing.
 fn after_join_error(error: &SyncError) -> bool {
     keeps_session(error)
         || matches!(
             error,
             SyncError::Local(AppError::Validation(key))
-                if key == CHANGE_IN_PROGRESS || key == JOIN_SETUP_PENDING
+                if key == CHANGE_IN_PROGRESS || key == JOIN_SETUP_PENDING || key == IMPACT_CHANGED
         )
 }
 
@@ -287,6 +294,22 @@ fn view_of(session: &PairingSession, dev_tools: bool) -> Result<PairingView> {
         comparison_code: session.comparison_code(),
         contested: session.contested(),
         expires_at: session.wiped_at(),
+        server_host: server_host(session.relay_url()),
+        attempts_left: (session.role() == Role::Holder && session.stage() == Stage::Compare)
+            .then(|| session.attempts_left()),
+    })
+}
+
+/// `host[:port]` of a sync server that is not the default one.
+fn server_host(relay_url: &str) -> Option<String> {
+    if is_default_relay(relay_url) {
+        return None;
+    }
+    let url = reqwest::Url::parse(relay_url).ok()?;
+    let host = url.host_str()?;
+    Some(match url.port() {
+        Some(port) => format!("{host}:{port}"),
+        None => host.to_string(),
     })
 }
 
@@ -294,6 +317,9 @@ fn stage_of(stage: Stage) -> PairingStage {
     match stage {
         Stage::Announcing => PairingStage::Announcing,
         Stage::WaitingForScan => PairingStage::WaitingForScan,
+        // Answered, but the digits wait for the acknowledgement (protocol 2): the scanner reads
+        // slot 3, the shower stores it.
+        Stage::AwaitingAck | Stage::Acknowledging => PairingStage::Connecting,
         Stage::Compare => PairingStage::Compare,
         Stage::WaitingForOther => PairingStage::WaitingForOther,
         Stage::Sent => PairingStage::Sent,
@@ -571,11 +597,19 @@ pub async fn sync_pairing_poll(app: AppHandle, db: State<'_, Database>) -> Resul
     current_view(&pairing)
 }
 
-/// The person confirmed the six digits match: a holder seals its sync details for the other
-/// device, a joiner starts waiting for them. A contested scan answers
-/// `validation.syncPairingCodeUsed`.
+/// The person confirmed. A holder passes the six digits typed from the joining device's screen
+/// and, if they are the joiner's, seals its sync details for it; nothing typed, or text that is
+/// not six digits, is `validation.syncPairingCodeIncomplete` (no attempt spent), a wrong code
+/// `validation.syncPairingCodeMismatch` (the pairing stays) until the third, which ends it with
+/// `validation.syncPairingCodeMismatchFinal`. A joiner starts waiting for the details (`typed_code`
+/// is ignored). A contested scan answers `validation.syncPairingCodeUsed`.
 #[tauri::command]
-pub async fn sync_pairing_confirm(app: AppHandle, db: State<'_, Database>) -> Result<PairingView> {
+pub async fn sync_pairing_confirm(
+    app: AppHandle,
+    db: State<'_, Database>,
+    typed_code: Option<String>,
+) -> Result<PairingView> {
+    let typed_code = typed_code.map(Zeroizing::new);
     require_feature()?;
     let owner = kit_owner(&app, &db)?;
     let session = db.current_session()?;
@@ -583,8 +617,27 @@ pub async fn sync_pairing_confirm(app: AppHandle, db: State<'_, Database>) -> Re
     let confirmed = {
         let slot = pairing.live(&owner, now())?;
         let relay = HttpRelay::new(slot.session.relay_url())?;
-        match holder_credentials(&slot.session, &session) {
-            Ok(creds) => slot.session.confirm(&relay, creds.as_ref(), now()).await,
+        // The vault keys are read only for text that can be a code: the session answers
+        // `CODE_INCOMPLETE` for anything else before it needs them.
+        let creds = if typed_code
+            .as_deref()
+            .is_some_and(|typed| typed_code_digits(typed).is_some())
+        {
+            holder_credentials(&slot.session, &session)
+        } else {
+            Ok(None)
+        };
+        match creds {
+            Ok(creds) => {
+                slot.session
+                    .confirm(
+                        &relay,
+                        creds.as_ref(),
+                        typed_code.as_deref().map(String::as_str),
+                        now(),
+                    )
+                    .await
+            }
             Err(error) => Err(error),
         }
     };
@@ -595,7 +648,7 @@ pub async fn sync_pairing_confirm(app: AppHandle, db: State<'_, Database>) -> Re
     current_view(&pairing)
 }
 
-/// Gives the pairing in progress up ("They don't match", closing the dialog).
+/// Gives the pairing in progress up (Cancel, closing the dialog).
 #[tauri::command]
 pub async fn sync_pairing_cancel() -> Result<()> {
     require_feature()?;
@@ -604,12 +657,19 @@ pub async fn sync_pairing_cancel() -> Result<()> {
 }
 
 /// The joiner joins with the received sync details (stage `received` only, else
-/// `validation.syncPairingFailed`): backup, then join by replace, as a sync change; the backup's
-/// path. A failure that may pass keeps the received session for "Try again"; success ends it.
-/// A lock meanwhile (`forget_pairing`) gives the session up when the join ends.
+/// `validation.syncPairingFailed`): backup, then join by replace, as a sync change, within what
+/// the person agreed to (`consent`: more documents and photos than it showed stop the join with
+/// `validation.syncReplaceImpactChanged`); the outcome. A failure that may pass keeps the
+/// received session for "Try again"; success ends it. A lock meanwhile (`forget_pairing`) gives
+/// the session up when the join ends.
 #[tauri::command]
-pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Result<String> {
+pub async fn sync_pairing_join(
+    app: AppHandle,
+    db: State<'_, Database>,
+    consent: ReplaceConsentView,
+) -> Result<ReplaceOutcomeView> {
     require_feature()?;
+    let consent = consent_of(&consent)?;
     let owner = kit_owner(&app, &db)?;
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
@@ -623,7 +683,16 @@ pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Resul
     };
     let relay = HttpRelay::new(&creds.relay_url)?;
     let native = KeychainBinding { app: app.clone() };
-    let join = join::join_new_device(&relay, &session, creds, &device_name, &dir, &native, now());
+    let join = join::join_new_device(
+        &relay,
+        &session,
+        creds,
+        &device_name,
+        consent,
+        &dir,
+        &native,
+        now(),
+    );
     // The join's own error stays a `SyncError` for `after_join_error`; the outer one is the
     // change guard's.
     let joined = guarded_change(&AppEngine { app: &app, db: &db }, async { Ok(join.await) })
@@ -631,9 +700,9 @@ pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Resul
         .map_err(SyncError::Local)
         .and_then(|joined| joined);
     match joined {
-        Ok(backup) => {
+        Ok(outcome) => {
             pairing.take();
-            Ok(backup.display().to_string())
+            Ok(outcome_view(&outcome))
         }
         Err(error) => {
             if !after_join_error(&error) {
@@ -646,7 +715,9 @@ pub async fn sync_pairing_join(app: AppHandle, db: State<'_, Database>) -> Resul
 
 /// Joins with a Sync Recovery Kit (its QR text or typed code, with the account number and an
 /// optional sync server for a typed one) once the device password is checked: backup, then join
-/// by replace, as a sync change; the backup's path.
+/// by replace, as a sync change, within what the person agreed to (`consent`, as
+/// `sync_pairing_join`); the outcome.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn sync_join_with_recovery_kit(
     app: AppHandle,
@@ -656,10 +727,12 @@ pub async fn sync_join_with_recovery_kit(
     relay_url: Option<String>,
     device_name: String,
     password: String,
-) -> Result<String> {
+    consent: ReplaceConsentView,
+) -> Result<ReplaceOutcomeView> {
     let password = Zeroizing::new(password);
     let code = Zeroizing::new(code);
     require_feature()?;
+    let consent = consent_of(&consent)?;
     devices::validate_device_name(&device_name)?;
     let verify = verify_password(&app, password.clone());
     begin(password, verify, std::future::ready(Ok(()))).await?;
@@ -676,10 +749,20 @@ pub async fn sync_join_with_recovery_kit(
     let native = KeychainBinding { app: app.clone() };
     let join = async {
         let creds = join::recovery_credentials(&relay, &session, input).await?;
-        join::join_new_device(&relay, &session, creds, &device_name, &dir, &native, now()).await
+        join::join_new_device(
+            &relay,
+            &session,
+            creds,
+            &device_name,
+            consent,
+            &dir,
+            &native,
+            now(),
+        )
+        .await
     };
-    let backup = guarded_change(&AppEngine { app: &app, db: &db }, join).await?;
-    Ok(backup.display().to_string())
+    let outcome = guarded_change(&AppEngine { app: &app, db: &db }, join).await?;
+    Ok(outcome_view(&outcome))
 }
 
 /// The devices of the sync account.

@@ -12,6 +12,7 @@ function status(phase: SyncPhase, problem: SyncProblem | null = null): SyncStatu
     refusedRows: 0,
     paidUntil: null,
     deletesAt: null,
+    clockAheadUntil: null,
     devTools: false,
   };
 }
@@ -30,6 +31,8 @@ describe('syncIndicator', () => {
       ['syncing', null, { tone: 'neutral', labelKey: 'indicator.syncing' }],
       ['paused', null, { tone: 'stale', labelKey: 'indicator.paused' }],
       ['error', null, { tone: 'stale', labelKey: 'indicator.error' }],
+      ['waiting', 'gap', { tone: 'stale', labelKey: 'indicator.waiting' }],
+      ['waiting', 'offline', { tone: 'stale', labelKey: 'indicator.offline' }],
       ['paused', 'lapsed', { tone: 'stale', labelKey: 'indicator.paused' }],
       ['error', 'internal', { tone: 'stale', labelKey: 'indicator.error' }],
       ['idle', 'offline', { tone: 'stale', labelKey: 'indicator.offline' }],

@@ -2,15 +2,16 @@
 //! `src/vault.ts`, `src/account.ts`, `src/index.ts`) and answers with exactly the `RelayError`s
 //! `HttpRelay` produces for the same situation, including the argument checks `HttpRelay` makes
 //! before it sends anything. On top of that it has fault switches: a failure for the next call of
-//! a route, a lost push answer, pruning, and two dishonest-relay knobs (`drop_op`, `replay_op`).
+//! a route, a lost push answer, pruning, and dishonest-relay knobs (`drop_op`, `replay_op`,
+//! `forget_op`, `set_swallow_pushes`).
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::future::Future;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use super::{
-    AccountStatus, CheckoutPlan, Mailbox, OutgoingOp, PullPage, PulledOp, PushReceipt, Relay,
-    RelayError, RelayResult, SnapshotBlob, VaultInfo, MAX_SLOT_BYTES,
+    AccountStatus, CheckoutPlan, OutgoingOp, PullPage, PulledOp, PushReceipt, Relay, RelayError,
+    RelayResult, SnapshotBlob, VaultInfo,
 };
 use crate::services::sync::keys::VaultAuth;
 
@@ -55,20 +56,6 @@ struct Account {
     vaults: Vec<String>,
 }
 
-/// A pairing mailbox the relay has stored something for (`src/mailbox.ts`).
-#[derive(Default)]
-struct PairingBox {
-    /// Burnt or expired: every call answers `MailboxGone`.
-    gone: bool,
-    slots: [Option<PairingSlot>; 2],
-}
-
-struct PairingSlot {
-    /// Emptied once read.
-    data: Vec<u8>,
-    consumed: bool,
-}
-
 struct Vault {
     account: String,
     token: String,
@@ -94,14 +81,22 @@ struct FakeState {
     op_quota: Option<u64>,
     calls: Vec<Route>,
     push_sizes: Vec<(usize, usize)>,
+    /// Per push call, the op IDs it carried, whatever the answer was (`pushed_ids`).
+    pushed_ids: Vec<Vec<String>>,
+    /// Every push answers success and stores nothing (`set_swallow_pushes`).
+    swallow_pushes: bool,
     /// What a checkout answers: this base followed by the plan (`set_checkout_base`).
     checkout_base: Option<String>,
     /// A self-hosted relay (`SELF_HOSTED=1`): checkout answers `SelfHosted`.
     self_hosted: bool,
     /// Only mailboxes that were written to: reads, burns and expiry of other IDs store nothing.
-    mailboxes: HashMap<String, PairingBox>,
+    mailboxes: HashMap<String, mailbox::PairingBox>,
     lose_take_answer: bool,
     lose_put_answer: bool,
+    /// Routes whose next successful call stores its effect, then answers `Server(503)`.
+    lose_answers: Vec<Route>,
+    /// A sync server from before slot 3: every call on slot 3 answers `BadRequest("bad_slot")`.
+    without_slot_3: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -135,18 +130,6 @@ fn check_vault(vault: &VaultAuth) -> RelayResult<()> {
         return Err(RelayError::BadRequest("invalid_token".into()));
     }
     Ok(())
-}
-
-/// The argument checks of `HttpRelay` before a mailbox call; the slot as an index.
-fn check_mailbox(mailbox: &str, slot: Option<u8>) -> RelayResult<usize> {
-    if !is_base64url(mailbox, 22) {
-        return Err(RelayError::BadRequest("bad_mailbox".into()));
-    }
-    match slot {
-        None => Ok(0),
-        Some(slot @ (1 | 2)) => Ok(usize::from(slot) - 1),
-        Some(_) => Err(RelayError::BadRequest("bad_slot".into())),
-    }
 }
 
 fn base64_len(bytes: usize) -> usize {
@@ -195,50 +178,6 @@ impl FakeRelay {
     /// The next push that succeeds stores its ops, then answers `Network("timeout")`.
     pub fn lose_next_push_answer(&self) {
         self.lock().lose_push_answer = true;
-    }
-
-    /// What slot `slot` of the mailbox holds, without consuming it.
-    pub fn peek_slot(&self, mailbox: &str, slot: u8) -> Option<Vec<u8>> {
-        let state = self.lock();
-        let stored = state.mailboxes.get(mailbox)?;
-        let slot = stored
-            .slots
-            .get(usize::from(slot).checked_sub(1)?)?
-            .as_ref()?;
-        (!slot.consumed).then(|| slot.data.clone())
-    }
-
-    /// An attacker's write to a slot: the relay takes no credentials, so it follows the same
-    /// rules as `put_slot` (write once, burnt boxes refuse) but never fails by switch.
-    pub fn write_slot_raw(&self, mailbox: &str, slot: u8, bytes: Vec<u8>) {
-        let mut state = self.lock();
-        let index = check_mailbox(mailbox, Some(slot)).expect("a valid mailbox and slot");
-        let stored = state.mailboxes.entry(mailbox.to_string()).or_default();
-        if !stored.gone && stored.slots[index].is_none() {
-            stored.slots[index] = Some(PairingSlot {
-                data: bytes,
-                consumed: false,
-            });
-        }
-    }
-
-    /// As if the mailbox's 10 minutes were over: later calls answer `MailboxGone`. A mailbox
-    /// nobody wrote to stays unknown.
-    pub fn expire_mailbox(&self, mailbox: &str) {
-        if let Some(stored) = self.lock().mailboxes.get_mut(mailbox) {
-            stored.gone = true;
-            stored.slots = [None, None];
-        }
-    }
-
-    /// The next take of a written slot erases it, then answers `Network("timeout")`.
-    pub fn lose_next_take_answer(&self) {
-        self.lock().lose_take_answer = true;
-    }
-
-    /// The next put that succeeds stores the slot, then answers `Network("timeout")`.
-    pub fn lose_next_put_answer(&self) {
-        self.lock().lose_put_answer = true;
     }
 
     /// Paid: `paid_until` a year ahead; unpaid: a day ago (writes are refused, reads are still in
@@ -298,6 +237,27 @@ impl FakeRelay {
         }
     }
 
+    /// A relay that lost op `seq` after acknowledging it (it never stored it durably): the op
+    /// leaves the log and its ID is forgotten, so a push of the same op stores it again under a new
+    /// sequence number. The head stays. This is not a relay restored from an older backup: that
+    /// one's head goes back too (below a device's cursor), which no knob here models.
+    ///
+    /// Single-vault helper: `seq` is looked up in every vault the fake holds (tests use one).
+    pub fn forget_op(&self, seq: u64) {
+        let mut state = self.lock();
+        for vault in state.vaults.values_mut() {
+            vault.ops.retain(|op| op.seq != seq);
+            vault.dropped.remove(&seq);
+            vault.bytes = vault.ops.iter().map(|op| op.ct.len() as u64).sum();
+        }
+    }
+
+    /// A dishonest relay: from now on (until switched off) every push that passes its checks
+    /// answers that it accepted all its ops, and stores none of them.
+    pub fn set_swallow_pushes(&self, swallow: bool) {
+        self.lock().swallow_pushes = swallow;
+    }
+
     /// A dishonest relay: serves op `seq` again under a new sequence number (the same ID and
     /// ciphertext at `head + 1`).
     ///
@@ -330,6 +290,12 @@ impl FakeRelay {
             .collect();
         ops.sort_by_key(|op| op.seq);
         ops
+    }
+
+    /// Per push call, the op IDs it carried, in order (including the calls a fault switch
+    /// failed).
+    pub fn pushed_ids(&self) -> Vec<Vec<String>> {
+        self.lock().pushed_ids.clone()
     }
 
     /// Every call made, in order (including the ones a fault switch failed).
@@ -552,6 +518,9 @@ impl Relay for FakeRelay {
             let mut state = self.lock();
             let wire_bytes: usize = ops.iter().map(|op| base64_len(op.ct.len())).sum();
             state.push_sizes.push((ops.len(), wire_bytes));
+            state
+                .pushed_ids
+                .push(ops.iter().map(|op| op.id.clone()).collect());
             state.enter(Route::Push)?;
             if wire_bytes > MAX_PUSH_BODY_BYTES {
                 return Err(RelayError::BadRequest("body_too_large".into()));
@@ -576,6 +545,13 @@ impl Relay for FakeRelay {
                 return Err(RelayError::QuotaExceeded);
             }
             let lose_answer = std::mem::take(&mut state.lose_push_answer);
+            if state.swallow_pushes {
+                let head = state.vault_mut(&vault.vault_id).head;
+                return Ok(PushReceipt {
+                    head,
+                    accepted: ops.len() as u32,
+                });
+            }
             let stored = state.vault_mut(&vault.vault_id);
             let mut accepted = 0u32;
             for op in ops {
@@ -707,90 +683,6 @@ impl Relay for FakeRelay {
     }
 }
 
-impl Mailbox for FakeRelay {
-    fn put_slot(
-        &self,
-        mailbox: &str,
-        slot: u8,
-        bytes: &[u8],
-    ) -> impl Future<Output = RelayResult<()>> + Send {
-        let result = (|| {
-            let index = check_mailbox(mailbox, Some(slot))?;
-            if bytes.is_empty() {
-                return Err(RelayError::BadRequest("empty_body".into()));
-            }
-            if bytes.len() > MAX_SLOT_BYTES {
-                return Err(RelayError::BadRequest("body_too_large".into()));
-            }
-            let mut state = self.lock();
-            state.enter(Route::MailboxPut)?;
-            let lose_answer = std::mem::take(&mut state.lose_put_answer);
-            // The first write opens the mailbox.
-            let stored = state.mailboxes.entry(mailbox.to_string()).or_default();
-            if stored.gone {
-                return Err(RelayError::MailboxGone);
-            }
-            if stored.slots[index].is_some() {
-                return Err(RelayError::SlotTaken);
-            }
-            stored.slots[index] = Some(PairingSlot {
-                data: bytes.to_vec(),
-                consumed: false,
-            });
-            if lose_answer {
-                return Err(RelayError::Network("timeout".into()));
-            }
-            Ok(())
-        })();
-        async move { result }
-    }
-
-    fn take_slot(
-        &self,
-        mailbox: &str,
-        slot: u8,
-    ) -> impl Future<Output = RelayResult<Option<Vec<u8>>>> + Send {
-        let result = (|| {
-            let index = check_mailbox(mailbox, Some(slot))?;
-            let mut state = self.lock();
-            state.enter(Route::MailboxTake)?;
-            let lose_answer = std::mem::take(&mut state.lose_take_answer);
-            let Some(stored) = state.mailboxes.get_mut(mailbox) else {
-                return Ok(None);
-            };
-            if stored.gone {
-                return Err(RelayError::MailboxGone);
-            }
-            let Some(slot) = stored.slots[index].as_mut() else {
-                return Ok(None);
-            };
-            if slot.consumed {
-                return Err(RelayError::SlotConsumed);
-            }
-            slot.consumed = true;
-            let data = std::mem::take(&mut slot.data);
-            if lose_answer {
-                return Err(RelayError::Network("timeout".into()));
-            }
-            Ok(Some(data))
-        })();
-        async move { result }
-    }
-
-    fn burn_mailbox(&self, mailbox: &str) -> impl Future<Output = RelayResult<()>> + Send {
-        let result = (|| {
-            check_mailbox(mailbox, None)?;
-            let mut state = self.lock();
-            state.enter(Route::MailboxBurn)?;
-            if let Some(stored) = state.mailboxes.get_mut(mailbox) {
-                stored.gone = true;
-                stored.slots = [None, None];
-            }
-            Ok(())
-        })();
-        async move { result }
-    }
-}
-
+mod mailbox;
 #[cfg(test)]
 mod tests;

@@ -1,10 +1,14 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 import type { PairingView } from '@shared/schema';
 import { Button } from '@/components/ui/button';
+import { PairingExpiryNote } from '@/components/settings/sync/PairingExpiryNote';
 import { usePairingExpired } from '@/hooks/use-pairing-expired';
+import { useTypedCode } from '@/hooks/use-typed-code';
 import { translateApiError } from '@/lib/translate-api-error';
-import { formatComparisonCode } from '@/utils/pairing-code';
+import { formatComparisonCode, isCompleteCode } from '@/utils/pairing-code';
+import { TypedCodeField } from '@/components/settings/sync/TypedCodeField';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { Sheet } from '@/mobile/components/Sheet';
 import { pairingSheetStep } from '@/mobile/lib/sync-scan';
@@ -21,12 +25,14 @@ interface PairingSheetProps {
   /** Shown while a pairing is on; hidden while the join replaces the data (the busy cover is up). */
   open: boolean;
   view: PairingView;
-  /** A failed poll (expired, cancelled by the other device, unreachable). */
+  /** A failed poll or a confirm that ended the pairing (expired, cancelled, interfered). */
   pollError: Error | null;
-  /** "They match": confirms the six digits. */
-  onMatch: () => void;
-  matching: boolean;
-  /** Cancel, "They don't match", Close and every other way out: the caller gives the pairing up. */
+  /** The last confirm's answer when the pairing goes on (a wrong code, a momentary failure). */
+  confirmError: Error | null;
+  /** Confirm: the holder's typed six digits, or the joiner's Continue (no argument). */
+  onConfirm: (typedCode?: string) => void;
+  confirming: boolean;
+  /** Cancel, Close and every other way out: the caller gives the pairing up. */
   onClose: () => void;
   joinFailure: JoinFailure | null;
   /** After a failed join: the same join again (`retryable`), or a fresh pairing from the start. */
@@ -35,47 +41,67 @@ interface PairingSheetProps {
   /** Cancels the half-finished setup that blocks the join; the caller then runs the join again. */
   onCancelSetup: () => void;
   cancellingSetup: boolean;
+  /** `received`, before the join: what it puts at stake (`ReplaceImpactBlock`). */
+  impact: ReactNode;
+  /** The confirm "Join and replace" is on once the numbers it shows are in. */
+  canJoin: boolean;
+  /** "Join and replace": the join with the consent of the numbers on screen. */
+  onJoin: () => void;
+  /** What the person saw no longer held and was read again: said above the new numbers. */
+  impactChanged: string | null;
 }
+
+/** The sheet's form for the holder's typed digits, so the footer's Confirm submits it. */
+const TYPED_FORM = 'pairing-typed-code-form';
 
 /** The 48 pt buttons of a sheet's footer. */
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
 
 /**
- * The pairing after this phone scanned the other device's code (the scanner, either role): "Connecting…"
- * while the answer is written and read again, the six digits to compare, then waiting, and for the
- * holder "Sent. Finish on the other device." The joiner's join runs as soon as the sync details
- * arrive (the caller hides this sheet behind the busy cover meanwhile; a failure brings it back with
- * "Try again" or "Start again").
- *
- * The compare step says "Continue only if the other device shows these same six digits." and offers
- * "They match" and "They don't match" side by side, neither filled and neither focused, so no
- * reflexive tap confirms. A contested scan (another device answered the code first, review PF4)
- * shows this phone's own digits, which will not match, with the warning and only Cancel.
+ * The pairing after this phone scanned the other device's code (the scanner, either role): "Connecting
+ * securely…" while the answer is written and the other device's acknowledgement read, then the
+ * compare step by role: the holder types the six digits the joining device shows (Confirm, with the
+ * attempts left), the joiner shows its digits large with "Type this code on your other device.
+ * Continue here once it says the code is right." and Continue. Then waiting, and for the holder
+ * "Sent. Finish on the other device." The joiner's join runs as soon as the sync details arrive (the
+ * caller hides this sheet behind the busy cover meanwhile; a failure brings it back with "Try again"
+ * or "Start again"). A contested scan (another device answered the code first, review PF4) shows
+ * only the warning and Cancel, and no digits. A pairing that ended (a failed poll, an expired code)
+ * offers "Start again".
  */
 export function PairingSheet({
   open,
   view,
   pollError,
-  onMatch,
-  matching,
+  confirmError,
+  onConfirm,
+  confirming,
   onClose,
   joinFailure,
   onRetryJoin,
   onStartAgain,
   onCancelSetup,
   cancellingSetup,
+  impact,
+  canJoin,
+  onJoin,
+  impactChanged,
 }: PairingSheetProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const expired = usePairingExpired(view);
   const step = pairingSheetStep(view, { failed: pollError !== null, expired });
-  const comparing = step === 'compare' || step === 'contested';
+  const [typed, setTyped] = useTypedCode(confirmError);
+  const confirmMessage = confirmError ? translateApiError(confirmError, tc) : null;
 
-  const title = comparing
-    ? t('pairing.compareTitle')
-    : view.role === 'holder'
-      ? t('pairing.addTitle')
-      : t('phone.scanTitle');
+  const title =
+    step === 'compare'
+      ? view.role === 'holder'
+        ? t('pairing.typeTitle')
+        : t('pairing.showTitle')
+      : view.role === 'holder'
+        ? t('pairing.addTitle')
+        : t('phone.scanTitle');
 
   const digits = (
     <div
@@ -99,21 +125,31 @@ export function PairingSheet({
           <InlineAlert icon={AlertTriangle}>{tc('validation.syncPairingExpired')}</InlineAlert>
         );
       case 'contested':
-        return (
-          <div className="space-y-3">
-            {digits}
-            <InlineAlert icon={AlertTriangle}>{t('pairing.contested')}</InlineAlert>
-          </div>
-        );
+        return <InlineAlert icon={AlertTriangle}>{t('pairing.contested')}</InlineAlert>;
       case 'compare':
-        return (
+        return view.role === 'holder' ? (
+          <TypedCodeField
+            phone
+            formId={TYPED_FORM}
+            value={typed}
+            onChange={setTyped}
+            onSubmit={onConfirm}
+            attemptsLeft={view.attemptsLeft}
+            errorMessage={confirmMessage}
+            disabled={confirming}
+          />
+        ) : (
           <div className="space-y-3">
             {digits}
-            <p className="m-0 text-center text-m-lead text-ink-2">
-              {t('pairing.compareOnlyIfSame')}
+            <p className="m-0 text-center text-m-lead text-ink-2">{t('pairing.showPrompt')}</p>
+            <p className="m-0 text-center text-m-lead font-500 text-ink-2">
+              {t('pairing.notStartedWarning')}
             </p>
+            {confirmMessage && <InlineAlert icon={AlertTriangle}>{confirmMessage}</InlineAlert>}
           </div>
         );
+      case 'connecting':
+        return <p className="m-0 text-m-lead text-ink-3">{t('pairing.connecting')}</p>;
       case 'announcing':
       case 'waitingForScan':
         return <p className="m-0 text-m-lead text-ink-3">{t('phone.connecting')}</p>;
@@ -137,7 +173,13 @@ export function PairingSheet({
             )}
           </div>
         ) : (
-          <p className="m-0 text-m-lead text-ink-3">{t('pairing.joining')}</p>
+          // The join waits for the person: what is replaced, with the true counts, then the confirm
+          <div className="space-y-3">
+            <p className="m-0 text-m-lead text-ink-3">{t('pairing.readyToJoin')}</p>
+            {impactChanged && <InlineAlert icon={AlertTriangle}>{impactChanged}</InlineAlert>}
+            {impact}
+            <PairingExpiryNote view={view} className="text-m-sub" />
+          </div>
         );
     }
   })();
@@ -147,21 +189,28 @@ export function PairingSheet({
       return (
         <>
           <Button
-            variant="outline"
-            className={`${BUTTON} flex-1`}
-            disabled={matching}
+            variant="ghost"
+            className={`${BUTTON} px-[18px]`}
+            disabled={confirming}
             onClick={onClose}
           >
-            {t('pairing.noMatch')}
+            {tc('buttons.cancel')}
           </Button>
-          <Button
-            variant="outline"
-            className={`${BUTTON} flex-1`}
-            loading={matching}
-            onClick={onMatch}
-          >
-            {t('pairing.match')}
-          </Button>
+          {view.role === 'holder' ? (
+            <Button
+              type="submit"
+              form={TYPED_FORM}
+              className={`${BUTTON} flex-1`}
+              loading={confirming}
+              disabled={!isCompleteCode(typed)}
+            >
+              {tc('buttons.confirm')}
+            </Button>
+          ) : (
+            <Button className={`${BUTTON} flex-1`} loading={confirming} onClick={() => onConfirm()}>
+              {tc('buttons.continue')}
+            </Button>
+          )}
         </>
       );
     }
@@ -170,17 +219,32 @@ export function PairingSheet({
       <>
         <Button
           variant="ghost"
-          className={`${BUTTON} px-[18px] ${joinFailure && step === 'received' ? '' : 'flex-1'}`}
+          className={`${BUTTON} px-[18px] ${step === 'received' ? '' : 'flex-1'}`}
           onClick={onClose}
         >
           {finished ? tc('buttons.close') : tc('buttons.cancel')}
         </Button>
+        {(step === 'failed' || step === 'expired') && (
+          <Button className={`${BUTTON} flex-1`} onClick={onStartAgain}>
+            {t('pairing.startAgain')}
+          </Button>
+        )}
         {joinFailure && step === 'received' && (
           <Button
             className={`${BUTTON} flex-1`}
             onClick={joinFailure.retryable ? onRetryJoin : onStartAgain}
           >
             {joinFailure.retryable ? t('pairing.tryAgain') : t('pairing.startAgain')}
+          </Button>
+        )}
+        {!joinFailure && step === 'received' && (
+          <Button
+            variant="destructive"
+            className={`${BUTTON} flex-1`}
+            disabled={!canJoin}
+            onClick={onJoin}
+          >
+            {t('join.confirm')}
           </Button>
         )}
       </>
@@ -197,6 +261,11 @@ export function PairingSheet({
       footer={footer}
     >
       {body}
+      {view.serverHost && step !== 'failed' && step !== 'expired' && (
+        <p className="m-0 mt-3 text-center text-m-sub text-ink-4" data-testid="pairing-server-host">
+          {t('pairing.serverHost', { host: view.serverHost })}
+        </p>
+      )}
     </Sheet>
   );
 }

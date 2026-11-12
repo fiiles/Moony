@@ -69,9 +69,6 @@ impl Database {
         let pragma_key = Zeroizing::new(format!("x{}", hex_key));
         conn.pragma_update(None, "key", pragma_key.as_str())?;
 
-        // Enable foreign key constraints
-        conn.execute("PRAGMA foreign_keys = ON", [])?;
-
         // Verify the key works by querying sqlite_master
         conn.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(()))
             .map_err(|e| {
@@ -85,6 +82,8 @@ impl Database {
                 );
                 AppError::Auth(crate::services::crypto::AUTH_KEY_FILES_CORRUPTED.into())
             })?;
+
+        configure(&conn)?;
 
         // Run migrations, copying the database file first when any are pending
         //: a failed upgrade must never leave the only copy half-migrated.
@@ -101,28 +100,7 @@ impl Database {
             log::warn!("[DB] Warning: Failed to load exchange rates: {}", e);
         }
 
-        // Idempotent self-heal that runs on every open: corrects any stale investment
-        // quantity values left over from older calculations
-        // (never blocks DB open on failure)
-        if let Err(e) = crate::services::investments::recalculate_all_investment_metrics(&conn) {
-            log::warn!(
-                "[DB] Warning: Failed to recalculate investment metrics: {}",
-                e
-            );
-        }
-
-        // Follow-up of migration 019: an anchor an extra payment or a rate change re-anchored
-        // may hide a balance the user had entered by hand. Idempotent (a processed row is
-        // deleted, a later open finds none); never blocks DB open on failure.
-        if let Err(e) = crate::services::loan_events::reconcile_legacy_anchors(
-            &conn,
-            chrono::Utc::now().timestamp(),
-        ) {
-            log::warn!(
-                "[DB] Warning: Failed to reconcile legacy loan anchors: {}",
-                e
-            );
-        }
+        self_heal(&conn);
 
         // Store connection and path
         let mut guard = self
@@ -155,8 +133,7 @@ impl Database {
         let pragma_key = Zeroizing::new(format!("x{}", hex_key));
         conn.pragma_update(None, "key", pragma_key.as_str())?;
 
-        // Enable foreign key constraints
-        conn.execute("PRAGMA foreign_keys = ON", [])?;
+        configure(&conn)?;
 
         // Run migrations to create schema
         migrations::run_migrations(&conn)?;
@@ -281,6 +258,15 @@ impl Database {
     }
 }
 
+/// The connection settings every profile session runs with, once the key is set: foreign key
+/// constraints, and `secure_delete` on the main database, so a deleted row (the sync secrets that
+/// turning sync off deletes, audit M11) is overwritten on its page instead of lingering in free
+/// space. The attachments store sets its own (`files_schema`).
+pub(crate) fn configure(conn: &Connection) -> Result<()> {
+    conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA main.secure_delete = ON;")?;
+    Ok(())
+}
+
 /// Attach `attachments.db` next to the main file (ADR 0017). A store that cannot be opened (damaged,
 /// or from another profile) must not lock the user out of their finances: the profile opens
 /// without it, the file is left as it is, and every attachment call reports the store unavailable.
@@ -387,6 +373,39 @@ impl Default for Database {
     }
 }
 
+/// The idempotent self-heals of every open; returns whether they ran. Neither blocks the open:
+/// a failure is logged. A profile whose changes to synced data are paused (the sync guard, or the
+/// read-only last resort: `capture::guard::changes_paused`) skips them with one log line, since
+/// they write synced tables and every write would be refused; the next unlock runs them.
+fn self_heal(conn: &Connection) -> bool {
+    if crate::services::sync::capture::guard::changes_paused(conn) {
+        log::warn!(
+            "[DB] Self-heals skipped: changes to synced data are paused until sync is repaired"
+        );
+        return false;
+    }
+    // Corrects any stale investment quantity values left over from older calculations.
+    if let Err(e) = crate::services::investments::recalculate_all_investment_metrics(conn) {
+        log::warn!(
+            "[DB] Warning: Failed to recalculate investment metrics: {}",
+            e
+        );
+    }
+
+    // Follow-up of migration 019: an anchor an extra payment or a rate change re-anchored
+    // may hide a balance the user had entered by hand. Idempotent (a processed row is
+    // deleted, a later open finds none).
+    if let Err(e) =
+        crate::services::loan_events::reconcile_legacy_anchors(conn, chrono::Utc::now().timestamp())
+    {
+        log::warn!(
+            "[DB] Warning: Failed to reconcile legacy loan anchors: {}",
+            e
+        );
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -398,6 +417,21 @@ mod tests {
         assert!(require_session(Some(7), 9).is_err()); // reopen, including the same path
         assert!(require_session(Some(9), 9).is_ok());
         assert!(require_session(None, 9).is_ok()); // normal app handles follow the new session
+    }
+
+    #[test]
+    fn secure_delete_is_on_for_the_main_database() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let conn = Connection::open(dir.path().join("moony.db")).expect("open");
+        configure(&conn).expect("configure");
+        let secure: i64 = conn
+            .query_row("PRAGMA main.secure_delete", [], |r| r.get(0))
+            .expect("secure_delete");
+        assert_eq!(secure, 1);
+        let foreign: i64 = conn
+            .query_row("PRAGMA foreign_keys", [], |r| r.get(0))
+            .expect("foreign_keys");
+        assert_eq!(foreign, 1);
     }
 
     #[test]
@@ -604,6 +638,23 @@ mod tests {
             Ok(())
         })
         .expect("checks");
+    }
+
+    /// Audit H2 fix round 1: on a guarded or read-only profile the self-heals, which write
+    /// synced tables, are skipped with one log line instead of a refused write per row.
+    #[test]
+    fn a_profile_with_paused_changes_skips_the_self_heals() {
+        use crate::services::sync::capture::guard;
+        let conn = Connection::open_in_memory().expect("db");
+        run_migrations(&conn).expect("migrations");
+        assert!(self_heal(&conn), "an ordinary profile heals");
+
+        guard::impose(&conn).expect("guard");
+        assert!(!self_heal(&conn));
+        guard::lift(&conn).expect("lift");
+        conn.execute_batch("PRAGMA query_only = 1")
+            .expect("read-only");
+        assert!(!self_heal(&conn));
     }
 
     #[test]

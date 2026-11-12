@@ -33,14 +33,21 @@ fn requeue_own_from(conn: &Connection, device: DeviceId, from_hlc: u64) -> Resul
     )?)
 }
 
-/// A device ID for a re-join of `old`, drawn uniformly from the IDs above it (T8-1 addendum).
-/// The new ID must sort above the old one: a re-stamped column clock `(h, new)` then beats the
-/// `(h, old)` the relay may still carry on every device, so the clocks converge. An error only
-/// when `old` is the largest ID.
+/// A device ID for a re-join of `old`, drawn uniformly from the `REJOIN_STEP` IDs above it (T8-1
+/// addendum, audit L1). The new ID must sort above the old one: a re-stamped column clock
+/// `(h, new)` then beats the `(h, old)` the relay may still carry on every device, so the clocks
+/// converge. Drawing from everything above would halve the room left at each re-join (the audit
+/// ran out after about 90); a step of 2^96 leaves a random ID room for about 2^31 re-joins, and
+/// 2^32 random IDs still fit in one step, so a draw is as unlikely to meet another device's ID. An
+/// error only when `old` is the largest ID.
 pub fn rejoin_device_id(old: DeviceId) -> Result<DeviceId> {
     id_above(old, &mut rand::rng())
 }
 
+/// How far above the old ID a re-join draws at most (audit L1).
+pub const REJOIN_STEP: u128 = 1 << 96;
+
+/// Uniform in `(old, min(old + REJOIN_STEP, u128::MAX)]`; an error only for `u128::MAX`.
 fn id_above(old: DeviceId, rng: &mut impl Rng) -> Result<DeviceId> {
     let floor = u128::from_be_bytes(old.0);
     if floor == u128::MAX {
@@ -48,8 +55,9 @@ fn id_above(old: DeviceId, rng: &mut impl Rng) -> Result<DeviceId> {
             "sync chain: no device ID sorts above the largest one".into(),
         ));
     }
+    let ceiling = floor.saturating_add(REJOIN_STEP);
     Ok(DeviceId(
-        rng.random_range(floor + 1..=u128::MAX).to_be_bytes(),
+        rng.random_range(floor + 1..=ceiling).to_be_bytes(),
     ))
 }
 
@@ -700,5 +708,29 @@ mod tests {
 
         assert_eq!(clock_of(&x, "i1", "name"), (h, new));
         assert_eq!(clock_of(&y, "i1", "name"), (h, new));
+    }
+}
+
+#[cfg(test)]
+mod audit_tests {
+    use super::*;
+    use rand::SeedableRng;
+
+    // Audit L1 (re-joins exhausted the ID space), flipped: each re-join moves at most
+    // `REJOIN_STEP` up, so an ID in the middle of the space has room for 2^31 of them.
+    #[test]
+    fn ten_thousand_rejoins_never_run_out_of_ids() {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(21);
+        let mut id = DeviceId([0x80; 16]);
+        for _ in 0..10_000 {
+            let next = id_above(id, &mut rng).expect("an ID above");
+            assert!(next > id);
+            assert!(u128::from_be_bytes(next.0) - u128::from_be_bytes(id.0) <= REJOIN_STEP);
+            id = next;
+        }
+        let max = DeviceId(u128::MAX.to_be_bytes());
+        let below_max = DeviceId((u128::MAX - 1).to_be_bytes());
+        assert_eq!(id_above(below_max, &mut rng).expect("the largest ID"), max);
+        assert!(id_above(max, &mut rng).is_err());
     }
 }

@@ -6,6 +6,7 @@ import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { useBackup } from '@/mobile/hooks/use-backup';
+import { SyncBackupRows } from '@/mobile/components/sync/SyncBackupRows';
 import { RestoreBackupSheet } from '@/mobile/sheets/RestoreBackupSheet';
 import { DataTools } from './DataTools';
 import type { BackupInspection } from '@shared/schema';
@@ -32,12 +33,25 @@ export default function BackupSection() {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('settings');
   const fmt = useFormat();
-  const { createBackup, pickRestore, restore, busy, lastBackupAt, canExport } = useBackup();
+  const { createBackup, pickRestore, inspectPath, restore, busy, lastBackupAt, canExport } =
+    useBackup();
   const [inspection, setInspection] = useState<BackupInspection | null>(null);
 
   const chooseRestore = async () => {
     const picked = await pickRestore();
     if (picked) setInspection(picked);
+  };
+
+  /** The listed backup being read: its own Restore button spins, not the file picker's. */
+  const [listedBusy, setListedBusy] = useState<string | null>(null);
+  const restoreListed = async (path: string) => {
+    setListedBusy(path);
+    try {
+      const read = await inspectPath(path);
+      if (read) setInspection(read);
+    } finally {
+      setListedBusy(null);
+    }
   };
 
   const confirmRestore = () => {
@@ -74,12 +88,18 @@ export default function BackupSection() {
       <Button
         variant="secondary"
         className={BUTTON}
-        loading={busy === 'restore'}
+        loading={busy === 'restore' && listedBusy === null}
         disabled={busy === 'backup'}
         onClick={() => void chooseRestore()}
       >
         {ts('data.restore')}
       </Button>
+
+      <SyncBackupRows
+        onRestore={(path) => void restoreListed(path)}
+        disabled={busy !== null}
+        restoring={listedBusy}
+      />
 
       <DataTools />
 

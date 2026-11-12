@@ -21,7 +21,7 @@ use flate2::{Compression, Decompress, FlushDecompress, Status};
 use rusqlite::Connection;
 use zeroize::Zeroizing;
 
-use super::ConnAccess;
+use super::{ConnAccess, PullEnd, PullReport};
 use crate::error::{AppError, Result};
 use crate::services::sync::chain;
 use crate::services::sync::envelope::stream::{open_stream, snapshot_object_id, StreamSealer};
@@ -45,6 +45,15 @@ pub const POLICY_CHECK_INTERVAL: i64 = 3_600;
 pub const MAX_SNAPSHOT_BYTES: usize = 104_857_600;
 /// The largest record stream a dump writes and a download inflates to.
 pub const MAX_SNAPSHOT_PLAIN: usize = 512 * 1024 * 1024;
+
+/// A relay that answers `410 snapshot_required` is restored from at most once in this many seconds
+/// (audit L2): a relay that says it every round cannot make every round download and merge a
+/// snapshot.
+pub const RESTORE_BACKOFF_SECS: i64 = 6 * 3600;
+/// Pulls in a row that end unfinished (the page limit) before the round pushes anyway and reports a
+/// relay error (audit L3): a pull that is never done must not hold this device's changes back for
+/// good.
+pub const UNFINISHED_BEFORE_PUSH: u32 = 3;
 
 /// The fixed `last_error` of a restore that stopped; the reason is logged only at `debug` (it may
 /// name a row).
@@ -261,9 +270,37 @@ pub struct SnapshotPolicy {
     /// The newest snapshot a heal fetched that did not heal (or did not restore): not fetched
     /// again until the vault has a newer one.
     pub examined_seq: Option<u64>,
+    /// When a restore after `410` last went ahead (`note_restore`).
+    pub restored_at: Option<i64>,
+    /// The run of consecutive unfinished pulls (`note_pull`).
+    unfinished_pulls: u32,
 }
 
 impl SnapshotPolicy {
+    /// Whether a restore after `410` may go ahead: none went ahead in the last
+    /// `RESTORE_BACKOFF_SECS`. A clock that went back counts as inside the back-off.
+    pub fn restore_allowed(&self, now: i64) -> bool {
+        self.restored_at
+            .is_none_or(|at| now.saturating_sub(at) >= RESTORE_BACKOFF_SECS)
+    }
+
+    /// Records a restore that succeeded or came back with a verdict on the snapshot's bytes (a
+    /// stop). A restore that failed for the network, a rate limit or a local failure is not
+    /// recorded, so the next round may try again.
+    pub fn note_restore(&mut self, now: i64) {
+        self.restored_at = Some(now);
+    }
+
+    /// The run of consecutive unfinished pulls, this one included (0 after any other end).
+    pub fn note_pull(&mut self, report: &PullReport) -> u32 {
+        self.unfinished_pulls = if report.end() == PullEnd::Unfinished {
+            self.unfinished_pulls.saturating_add(1)
+        } else {
+            0
+        };
+        self.unfinished_pulls
+    }
+
     /// Whether the caller should fetch the vault's info for `decide`: never checked, checked
     /// `POLICY_CHECK_INTERVAL` ago or longer, or a schedule fell due.
     pub fn wants_info(&self, now: i64) -> bool {
@@ -332,11 +369,13 @@ pub async fn restore_after_410<R: Relay, D: ConnAccess>(
     }
 }
 
-/// Heals a below-barrier miss (rulings T8-2, T8-6): when this device has `missed_below_barrier`
-/// set and the vault's newest snapshot (by `info`) is at or past it, fetches and opens that
-/// snapshot and, when it heals the miss (`chain::snapshot_heals_missed` on its header: a clean
-/// dumper, at this device's barrier or later), restores it by merge, which clears the mark. A
-/// snapshot that does not heal is not restored, and not fetched again
+/// Heals a below-barrier miss (rulings T8-2, T8-6) or a skipped change's (`state::skipped_miss`,
+/// Task 17 I1): when this device has either set and the vault's newest snapshot (by `info`) is at
+/// or past the newer of them, fetches and opens that snapshot and, when it heals the misses
+/// (`chain::snapshot_heals_missed` on its header: a dumper with no miss of either kind, at this
+/// device's barrier or later), restores it by merge, which clears both marks. The vault's newest
+/// snapshot is not fetched when it is this device's own (`state::snapshot_seq`: uploaded or
+/// restored here already). A snapshot that does not heal is not restored, and not fetched again
 /// (`SnapshotPolicy::examined_seq`) until the vault has a newer one; neither is a snapshot whose
 /// restore stopped or that does not open (both are verdicts on its bytes). A transient or local
 /// failure leaves `examined_seq` alone, so the next round tries again. A restore that stops is
@@ -352,10 +391,18 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
     let Some(newest) = info.snapshot_seq else {
         return Ok(None);
     };
-    let Some(missed) = db.with_conn(|conn| Ok(loaded(conn)?.missed_below_barrier))? else {
+    let (missed, own) = db.with_conn(|conn| {
+        let missed = loaded(conn)?
+            .missed_below_barrier
+            .max(state::skipped_miss(conn)?);
+        Ok((missed, state::snapshot_seq(conn)?))
+    })?;
+    let Some(missed) = missed else {
         return Ok(None);
     };
-    if newest < missed || policy.examined_seq == Some(newest) {
+    // This device's own snapshot (one it uploaded or already restored) carries its miss and
+    // heals nothing: not downloaded (final review A, minor 3).
+    if newest < missed || policy.examined_seq == Some(newest) || own == Some(newest) {
         return Ok(None);
     }
     let blob = relay.get_snapshot(&creds.auth()).await?;
@@ -374,7 +421,14 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
     let outcome = off_thread(move || {
         db.with_conn(|conn| {
             let sync = loaded(conn)?;
-            if !chain::snapshot_heals_missed(&sync, header.barrier, header.seq, header.missed) {
+            let skipped = state::skipped_miss(conn)?;
+            if !chain::snapshot_heals_missed(
+                &sync,
+                skipped,
+                header.barrier,
+                header.seq,
+                header.missed,
+            ) {
                 return Ok(Heal::NotHealing);
             }
             Ok(match restore_or_note(conn, &plain, now)? {
@@ -386,7 +440,9 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
     .await?;
     match outcome {
         Heal::Restored(report) => {
-            log::info!("[SYNC] A snapshot restored what this device skipped below its barrier");
+            log::info!(
+                "[SYNC] A snapshot restored what this device missed (below its barrier or skipped)"
+            );
             Ok(Some(report))
         }
         Heal::NotHealing => {
@@ -450,8 +506,8 @@ pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
 /// What `upload_if_due` came to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Upload {
-    /// Nothing was sent: not due, not ready (something waits to go out, a below-barrier miss), or
-    /// a snapshot was found too large less than a day ago.
+    /// Nothing was sent: not due, not ready (something waits to go out, a below-barrier miss, a
+    /// sync server that went back), or a snapshot was found too large less than a day ago.
     Skipped,
     Uploaded,
     /// The relay already holds a newer snapshot (`409 snapshot_outdated`): nothing to do.
@@ -463,8 +519,9 @@ pub enum Upload {
 ///
 /// The pulled bytes are counted from the vault's newest snapshot (`rebase_pulled_bytes`). Nothing
 /// is uploaded while `sync_outbox` or `sync_unsent` holds anything, by a device with a pending
-/// below-barrier miss (`chain::may_upload_snapshot`, ruling T8-6: the forced upload included), or
-/// within a day of a snapshot found too large (`snapshot_too_large_at`). With `force` (the first clean round after
+/// below-barrier miss (`chain::may_upload_snapshot`, ruling T8-6: the forced upload included) or
+/// that saw the sync server go back (`ready_to_dump`), or within a day of a snapshot found too
+/// large (`snapshot_too_large_at`). With `force` (the first clean round after
 /// crossing a barrier, ruling T8-2) the upload is due now; otherwise `SnapshotPolicy::decide`
 /// says when.
 ///
@@ -582,14 +639,21 @@ enum Restore {
     Stopped(String),
 }
 
-/// Nothing waits to go out and no below-barrier miss is pending.
+/// Nothing waits to go out, no below-barrier miss is pending, and the sync server has not gone
+/// back (`state::vault_went_back_at`, final review A I1): a server restored from an older backup
+/// may have renumbered another device's change below this device's cursor, so a snapshot at the
+/// cursor could claim a change this device never saw. Until a replace clears the mark, no
+/// snapshot leaves this device, the forced one included (its round keeps asking for the vault's
+/// info).
 fn ready_to_dump(conn: &Connection) -> Result<bool> {
     let pending: i64 = conn.query_row(
         "SELECT (SELECT COUNT(*) FROM sync_outbox) + (SELECT COUNT(*) FROM sync_unsent)",
         [],
         |r| r.get(0),
     )?;
-    Ok(pending == 0 && chain::may_upload_snapshot(&loaded(conn)?))
+    Ok(pending == 0
+        && chain::may_upload_snapshot(&loaded(conn)?)
+        && state::vault_went_back_at(conn)?.is_none())
 }
 
 /// Restores `plain` by merge. A restore that stops on the snapshot (a validation answer: a merge
@@ -609,10 +673,12 @@ fn restore_or_note(conn: &Connection, plain: &[u8], now: i64) -> Result<Restore>
     }
 }
 
-/// The error a stopped restore returns: a newer schema says so (the person updates the app);
-/// every other stop is one key, a damaged snapshot (phase 1 note L142).
+/// The error a stopped restore returns: a newer schema says so (the person updates the app), and
+/// so does a snapshot dated more than ten years ahead (`snapshot::CLOCK_AHEAD_KEY`, shown as a
+/// failed verification, audit M6); every other stop is one key, a damaged snapshot (phase 1 note
+/// L142).
 fn stopped(key: String) -> SyncError {
-    if key == NEWER_SCHEMA {
+    if key == NEWER_SCHEMA || key == snapshot::CLOCK_AHEAD_KEY {
         SyncError::Local(AppError::Validation(key))
     } else {
         invalid_snapshot()
@@ -648,11 +714,13 @@ fn header_of(plain: &[u8]) -> SyncResult<Header> {
             barrier,
             seq,
             missed_below_barrier,
+            missed_skipped,
             ..
         }) => Ok(Header {
             barrier,
             seq,
-            missed: missed_below_barrier,
+            // Either kind of miss means the dumper lacks something: no heal from it.
+            missed: missed_below_barrier.max(missed_skipped),
         }),
         _ => Err(invalid_snapshot()),
     }

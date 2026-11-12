@@ -16,18 +16,24 @@ import { Button } from '@/components/ui/button';
 
 /**
  * Settings → Sync → Show Recovery Kit: the device password first, then the kit read-only. The kit
- * is forgotten when this closes (also from the mutation's result). If copying the code needs the
- * password again, the kit goes away and the password is asked once more.
+ * is forgotten when this closes (also from the mutation's result), after five minutes, or when the
+ * app is hidden. If copying or saving needs the password again, or the kit expired, the kit goes
+ * away and the password is asked once more.
  */
 export function ShowRecoveryKitFlow({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
-  const { showRecoveryKit } = useDeviceSyncMutations();
+  const { showRecoveryKit, showKitWithPassword } = useDeviceSyncMutations();
   const [kit, setKit] = useState<RecoveryKit | null>(null);
   const [again, setAgain] = useState(false);
 
   const resetShownKit = showRecoveryKit.reset;
   useEffect(() => resetShownKit, [resetShownKit]);
+  const askAgain = () => {
+    resetShownKit();
+    setKit(null);
+    setAgain(true);
+  };
 
   if (!kit) {
     return (
@@ -37,7 +43,7 @@ export function ShowRecoveryKitFlow({ onClose }: { onClose: () => void }) {
         confirmLabel={t('showKit.confirm')}
         closeOnSuccess={false}
         onSubmit={async (password) => {
-          setKit(await showRecoveryKit.mutateAsync(password));
+          setKit(await showKitWithPassword(password));
         }}
         onClose={onClose}
       />
@@ -54,11 +60,8 @@ export function ShowRecoveryKitFlow({ onClose }: { onClose: () => void }) {
         <RecoveryKitPanel
           kit={kit}
           onKept={() => {}}
-          onPasswordRequired={() => {
-            showRecoveryKit.reset();
-            setKit(null);
-            setAgain(true);
-          }}
+          onPasswordRequired={askAgain}
+          onExpired={askAgain}
         />
         <DialogFooter>
           <Button type="button" onClick={onClose}>

@@ -165,13 +165,21 @@ import type {
   StockSplitCheck,
   StockInstrumentQuery,
   StockInstrumentResolution,
+  SyncProfileState,
   SyncStatus,
   SyncAccount,
   SyncPlan,
   CheckoutTarget,
   RecoveryKit,
+  KitFileKind,
+  KitSaveOutcome,
   SyncDevice,
   PairingView,
+  ReplaceImpactView,
+  ReplaceConsentView,
+  ReplaceOutcomeView,
+  SyncBackupEntry,
+  HeldGapView,
 } from '../../shared/schema';
 
 // Backend error keys (`validation.*`, `auth.*`) and the generic `errors.*` messages live in common.json.
@@ -307,12 +315,16 @@ export const keychainApi = {
 // ============================================================================
 
 /**
- * Device sync (`commands/sync.rs`). Every call but `featureEnabled` rejects with
+ * Device sync (`commands/sync.rs`). Every call but `featureEnabled`, `profileState` and `turnOff`
+ * (which work in every build) rejects with
  * `validation.syncUnavailable` while the flag is off. The relay is the one at the stored account's
  * address; `createAccount` picks it (`undefined`: the default relay).
  */
 export const deviceSyncApi = {
   featureEnabled: () => tauriInvoke<boolean>('sync_feature_enabled'),
+
+  /** Works without the flag, read-only: whether this profile has sync on. */
+  profileState: () => tauriInvoke<SyncProfileState>('sync_profile_state'),
 
   getStatus: () => tauriInvoke<SyncStatus>('get_sync_status'),
 
@@ -324,14 +336,32 @@ export const deviceSyncApi = {
   /** `open`: a payment page to open with the opener plugin; `selfHosted`: no payment page. */
   startCheckout: (plan: SyncPlan) => tauriInvoke<CheckoutTarget>('sync_start_checkout', { plan }),
 
-  /** The kit during setup only; afterwards `showRecoveryKit` (with the device password). */
-  prepareRecoveryKit: () => tauriInvoke<RecoveryKit>('sync_prepare_recovery_kit'),
+  /**
+   * The kit during setup only, behind the device password every time (an empty one is
+   * `validation.syncPasswordNeeded`); afterwards `showRecoveryKit`. Opens the five-minute window
+   * for `copyRecoveryCode` and `saveRecoveryKit`.
+   */
+  prepareRecoveryKit: (password: string) =>
+    tauriInvoke<RecoveryKit>('sync_prepare_recovery_kit', { password }),
 
   /**
    * Copies the recovery code natively and clears it after 60 s if unchanged. `false`: not
-   * supported here, so the UI copies itself. With sync on, only shortly after `showRecoveryKit`.
+   * supported here (Linux, Android), so the UI copies itself; any other failure is
+   * `validation.syncCopyFailed`. Only shortly after `prepareRecoveryKit` or `showRecoveryKit`
+   * (`validation.syncPasswordRequired` otherwise).
    */
   copyRecoveryCode: () => tauriInvoke<boolean>('sync_copy_recovery_code'),
+
+  /**
+   * Desktop only (`validation.syncUnavailable` on a phone, which saves through the Files picker):
+   * Rust opens the save dialog and writes `contents` (the rendered kit, holding its recovery code;
+   * a page with no script or inline handler) owner-only: mode 0600 at creation on macOS and Linux,
+   * the chosen folder's permissions on Windows. `saved: false` when the dialog was closed;
+   * `syncedFolder` when the folder looks synced to a cloud service. Same window as
+   * `copyRecoveryCode`.
+   */
+  saveRecoveryKit: (kind: KitFileKind, contents: string) =>
+    tauriInvoke<KitSaveOutcome>('sync_save_recovery_kit', { kind, contents }),
 
   finishSetup: (deviceName: string, kitSaved: boolean) =>
     tauriInvoke<SyncStatus>('sync_finish_setup', { deviceName, kitSaved }),
@@ -341,19 +371,53 @@ export const deviceSyncApi = {
   showRecoveryKit: (password: string) =>
     tauriInvoke<RecoveryKit>('sync_show_recovery_kit', { password }),
 
-  turnOff: () => tauriInvoke<void>('sync_turn_off'),
+  /**
+   * Turns sync off on this device. With sync on the device password is required; cancelling a
+   * setup that has not finished needs none.
+   */
+  turnOff: (password?: string) =>
+    tauriInvoke<void>('sync_turn_off', { password: password ?? null }),
 
   deleteSyncedData: (password: string) =>
     tauriInvoke<void>('sync_delete_synced_data', { password }),
 
-  /** Repairs a capture-broken device; resolves to the backup's path. */
-  repairDevice: () => tauriInvoke<string>('sync_repair_device'),
+  /** Repairs a capture-broken device once the password is checked; its backup and what is only in it. */
+  repairDevice: (password: string) =>
+    tauriInvoke<ReplaceOutcomeView>('sync_repair_device', { password }),
 
   /**
-   * Re-syncs this device from the vault without sending its unsent changes (they stay only in
-   * the backup); resolves to the backup's path.
+   * Re-syncs this device from the vault within `consent` (what the confirmation showed); what it
+   * could not send stays only in the backup, and the outcome says how much.
    */
-  resyncDevice: (password: string) => tauriInvoke<string>('sync_resync_device', { password }),
+  resyncDevice: (password: string, consent: ReplaceConsentView) =>
+    tauriInvoke<ReplaceOutcomeView>('sync_resync_device', { password, consent }),
+
+  /** What a join, repair or re-sync would put at stake now; a confirmation loads it when it opens. */
+  replaceImpact: () => tauriInvoke<ReplaceImpactView>('sync_replace_impact'),
+
+  /** The backups joins, repairs and re-syncs made, newest first. */
+  listBackups: () => tauriInvoke<SyncBackupEntry[]>('sync_list_backups'),
+
+  /** Deletes a listed sync backup for good (confirm first). */
+  deleteBackup: (path: string) => tauriInvoke<void>('sync_delete_backup', { path }),
+
+  /** Changes held because something they need never arrived, the oldest first. */
+  heldGaps: () => tauriInvoke<HeldGapView[]>('sync_held_gaps'),
+
+  /**
+   * Skips the held change of `deviceId` once the device password is checked; refused
+   * (`validation.syncGapNotSkippableYet`) before its `skippableAt`. `false`: nothing was skipped
+   * (it arrived meanwhile).
+   */
+  skipMissingChange: (password: string, deviceId: string) =>
+    tauriInvoke<boolean>('sync_skip_missing_change', { password, deviceId }),
+
+  /**
+   * Phones only: copies a listed sync backup to Documents for the Files sheet; hand the returned
+   * path to `dataApi.finishBackupExport`.
+   */
+  stageSyncBackupExport: (path: string) =>
+    tauriInvoke<string>('stage_sync_backup_export', { path }),
 
   /** Debug builds with the developer tools only. */
   devGrant: (days: number) => tauriInvoke<SyncAccount>('sync_dev_grant', { days }),
@@ -384,31 +448,41 @@ export const deviceSyncApi = {
   /** One step of waiting; poll every 2 s while the view waits. */
   pairingPoll: () => tauriInvoke<PairingView>('sync_pairing_poll'),
 
-  /** The person confirmed that both devices show the same six digits. */
-  pairingConfirm: () => tauriInvoke<PairingView>('sync_pairing_confirm'),
+  /**
+   * The person confirmed. The holder passes the six digits typed from the joining device's screen
+   * (a wrong code answers `syncPairingCodeMismatch`, three end the pairing); the joiner passes
+   * nothing.
+   */
+  pairingConfirm: (typedCode?: string) =>
+    tauriInvoke<PairingView>('sync_pairing_confirm', { typedCode: typedCode ?? null }),
 
   pairingCancel: () => tauriInvoke<void>('sync_pairing_cancel'),
 
-  /** Joins with the received sync details (view `received`); resolves to the backup's path. */
-  pairingJoin: () => tauriInvoke<string>('sync_pairing_join'),
+  /** Joins with the received sync details (view `received`) within `consent`; the outcome. */
+  pairingJoin: (consent: ReplaceConsentView) =>
+    tauriInvoke<ReplaceOutcomeView>('sync_pairing_join', { consent }),
 
   /**
-   * Joins with a Sync Recovery Kit (its QR text, or the typed code with the account number);
-   * resolves to the backup's path.
+   * Joins with a Sync Recovery Kit (its QR text, or the typed code with the account number)
+   * within `consent`; the outcome.
    */
-  joinWithRecoveryKit: (args: {
-    code: string;
-    account?: string;
-    relayUrl?: string;
-    deviceName: string;
-    password: string;
-  }) =>
-    tauriInvoke<string>('sync_join_with_recovery_kit', {
+  joinWithRecoveryKit: (
+    args: {
+      code: string;
+      account?: string;
+      relayUrl?: string;
+      deviceName: string;
+      password: string;
+    },
+    consent: ReplaceConsentView
+  ) =>
+    tauriInvoke<ReplaceOutcomeView>('sync_join_with_recovery_kit', {
       code: args.code,
       account: args.account ?? null,
       relayUrl: args.relayUrl ?? null,
       deviceName: args.deviceName,
       password: args.password,
+      consent,
     }),
 
   listDevices: () => tauriInvoke<SyncDevice[]>('sync_list_devices'),

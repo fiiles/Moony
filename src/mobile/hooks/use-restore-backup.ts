@@ -27,6 +27,8 @@ export const BACKUP_FILE_FILTER = [{ name: 'Moony backup', extensions: ['zip'] }
  */
 export function useRestoreBackup(): {
   pickRestore: () => Promise<BackupInspection | null>;
+  /** Reads a backup whose path is known (a listed sync backup) instead of asking for a file. */
+  inspectPath: (path: string) => Promise<BackupInspection | null>;
   restore: (inspection: BackupInspection) => Promise<void>;
   /** The archive is being read or restored. */
   restoring: boolean;
@@ -66,6 +68,21 @@ export function useRestoreBackup(): {
       setRestoring(false);
     }
   }, [showError]);
+
+  const inspectPath = useCallback(
+    async (path: string): Promise<BackupInspection | null> => {
+      setRestoring(true);
+      try {
+        return await dataApi.inspectBackup(path);
+      } catch (error) {
+        showError(error);
+        return null;
+      } finally {
+        setRestoring(false);
+      }
+    },
+    [showError]
+  );
 
   const restore = useCallback(
     async (inspection: BackupInspection): Promise<void> => {
@@ -110,5 +127,5 @@ export function useRestoreBackup(): {
     [enrolled, showError, t]
   );
 
-  return { pickRestore, restore, restoring };
+  return { pickRestore, inspectPath, restore, restoring };
 }

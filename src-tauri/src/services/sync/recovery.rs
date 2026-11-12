@@ -538,12 +538,12 @@ mod tests {
         assert_eq!((qr.vault_id, qr_key(&qr)), (id, key));
         assert_eq!(qr.relay_url, None);
 
-        let custom = recovery_qr_payload(ACCOUNT, V2, Some("http://localhost:8787"));
-        assert!(custom.ends_with(":aHR0cDovL2xvY2FsaG9zdDo4Nzg3"));
+        let custom = recovery_qr_payload(ACCOUNT, V2, Some("https://sync.example.org"));
+        assert!(custom.ends_with(":aHR0cHM6Ly9zeW5jLmV4YW1wbGUub3Jn"));
         let qr = parse_recovery_qr_payload(&custom).expect("custom relay form");
         assert_eq!(qr.account, ACCOUNT);
         assert_eq!((qr.vault_id, qr_key(&qr)), (id, key));
-        assert_eq!(qr.relay_url.as_deref(), Some("http://localhost:8787"));
+        assert_eq!(qr.relay_url.as_deref(), Some("https://sync.example.org"));
 
         // A grouped code and the default relay written out read as well.
         let grouped = format!(

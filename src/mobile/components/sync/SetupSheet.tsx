@@ -15,6 +15,7 @@ import { groupAccountNumber } from '@/utils/recovery-kit';
 import { Sheet } from '@/mobile/components/Sheet';
 import { StepProgress } from '@/mobile/components/StepProgress';
 import { KitBody } from '@/mobile/components/sync/KitBody';
+import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
 import { phoneDeviceKey } from '@/mobile/lib/sync-scan';
 import { field48, fieldMessage } from '@/mobile/pages/first-run/styles';
 
@@ -56,8 +57,14 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
   const { data: account } = useDeviceSyncAccount({ pollWhileInactive: chosenStep === 'pay' });
   // The payment (or the operator's allow-list) is waited for on step 2; it moves on by itself.
   const step: Step = chosenStep === 'pay' && account?.active ? 'kit' : chosenStep;
-  const { createAccount, startCheckout, prepareRecoveryKit, finishSetup, devGrant } =
-    useDeviceSyncMutations();
+  const {
+    createAccount,
+    startCheckout,
+    prepareRecoveryKit,
+    prepareKitWithPassword,
+    finishSetup,
+    devGrant,
+  } = useDeviceSyncMutations();
 
   const [relayInput, setRelayInput] = useState('');
   /** The address the current account was created with; `null` while a resumed one is unknown. */
@@ -66,7 +73,10 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
   const [relayError, setRelayError] = useState<string | null>(null);
   const [pay, setPay] = useState<Pay>('asking');
   const [kit, setKit] = useState<RecoveryKit | null>(null);
-  const [kitFailed, setKitFailed] = useState(false);
+  /** The person closed the password question: the kit step waits for "Show the kit". */
+  const [kitPromptClosed, setKitPromptClosed] = useState(false);
+  /** The kit left the screen (expired, copy window over): the question says so. */
+  const [kitAskedAgain, setKitAskedAgain] = useState(false);
   const [kitKept, setKitKept] = useState(false);
   const [kitConfirmed, setKitConfirmed] = useState(false);
   const [numberCopied, setNumberCopied] = useState(false);
@@ -90,23 +100,22 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
   const toastError = (error: unknown) =>
     toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
 
-  // The kit is prepared once on entering step 3.
-  const preparing = useRef(false);
-  useEffect(() => {
-    if (step !== 'kit' || kit || kitFailed || preparing.current) return;
-    preparing.current = true;
-    prepareRecoveryKit
-      .mutateAsync()
-      .then(setKit)
-      .catch((error) => {
-        setKitFailed(true);
-        toastError(error);
-      })
-      .finally(() => {
-        preparing.current = false;
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, kit, kitFailed]);
+  // Step 3 asks the device password before it shows the kit (audit M11), every time the kit has
+  // left the screen.
+  const askingForKit = step === 'kit' && !kit && !kitPromptClosed;
+  // Continuing forgets the kit (state and mutation result): nothing later in setup reads it, the
+  // device step needs only `kitKept`. No re-ask, unlike `dropKit`.
+  const leaveKitStep = () => {
+    prepareRecoveryKit.reset();
+    setKit(null);
+    setStep('device');
+  };
+  const dropKit = () => {
+    prepareRecoveryKit.reset();
+    setKit(null);
+    setKitPromptClosed(false);
+    setKitAskedAgain(true);
+  };
 
   // The kit holds the vault key: when the sheet closes it leaves the mutation's result too.
   const resetPreparedKit = prepareRecoveryKit.reset;
@@ -143,7 +152,8 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
       setCreatedWith(relayValue);
       prepareRecoveryKit.reset();
       setKit(null);
-      setKitFailed(false);
+      setKitPromptClosed(false);
+      setKitAskedAgain(false);
       setKitKept(false);
       setKitConfirmed(false);
       setPay('asking');
@@ -225,8 +235,8 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
     case 'kit':
       primary = {
         label: t('setup.account.continue'),
-        onClick: () => setStep('device'),
-        disabled: !kit || !kitConfirmed,
+        onClick: leaveKitStep,
+        disabled: !kitConfirmed,
       };
       break;
     default:
@@ -249,175 +259,196 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
           : t('setup.device.description');
 
   return (
-    <Sheet
-      open
-      full
-      onOpenChange={(open) => {
-        if (!open && !busy) onClose();
-      }}
-      title={t('setup.title')}
-      description={description}
-      footer={
-        <>
-          <Button
-            variant="ghost"
-            className={`${BUTTON} px-[18px]`}
-            onClick={onClose}
-            disabled={busy}
-          >
-            {t('setup.cancel')}
-          </Button>
-          {primary ? (
+    <>
+      <Sheet
+        open
+        full
+        onOpenChange={(open) => {
+          if (!open && !busy) onClose();
+        }}
+        title={t('setup.title')}
+        description={description}
+        footer={
+          <>
             <Button
-              className={`${BUTTON} flex-1`}
-              onClick={primary.onClick}
-              disabled={primary.disabled}
-              loading={primary.loading}
+              variant="ghost"
+              className={`${BUTTON} px-[18px]`}
+              onClick={onClose}
+              disabled={busy}
             >
-              {primary.label}
+              {t('setup.cancel')}
             </Button>
-          ) : (
-            <p
-              className="m-0 flex min-h-12 flex-1 items-center justify-center gap-2 text-m-sub text-ink-3"
-              role="status"
-            >
-              <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
-              {t('phone.payWaitingShort')}
-            </p>
-          )}
-        </>
-      }
-    >
-      <StepProgress
-        index={stepNumber}
-        total={STEPS.length}
-        label={t('setup.step', { current: stepNumber, total: STEPS.length })}
-      />
-      <div className="space-y-3.5">
-        {step === 'account' && (
-          <>
-            {numberBox}
-            {accountNumber && (
-              <p className="m-0 text-m-sub text-ink-3">{t('setup.account.explain')}</p>
-            )}
-            <Collapsible>
-              <CollapsibleTrigger className="group flex min-h-11 items-center gap-1 text-m-sub font-semibold text-ink-2">
-                <ChevronRight
-                  aria-hidden
-                  className="size-4 transition-transform group-data-[state=open]:rotate-90"
-                />
-                {t('setup.advanced.toggle')}
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1.5 pt-1">
-                <Label htmlFor={`${fieldId}-server`}>{t('setup.advanced.label')}</Label>
-                <Input
-                  id={`${fieldId}-server`}
-                  value={relayInput}
-                  onChange={(event) => {
-                    setRelayInput(event.target.value);
-                    setRelayError(null);
-                  }}
-                  placeholder={t('setup.advanced.placeholder')}
-                  inputMode="url"
-                  aria-invalid={relayError ? true : undefined}
-                  className={field48}
-                  {...PLAIN_FIELD}
-                />
-                {relayError ? (
-                  <p role="alert" className={`m-0 text-loss ${fieldMessage}`}>
-                    {relayError}
-                  </p>
-                ) : (
-                  <p className="m-0 text-m-sub text-ink-4">{t('setup.advanced.hint')}</p>
-                )}
-              </CollapsibleContent>
-            </Collapsible>
-          </>
-        )}
-
-        {step === 'pay' && (
-          <>
-            {pay === 'selfHosted' && (
-              <>
-                {numberBox}
-                <p className="m-0 text-m-lead text-ink-2">{t('setup.pay.selfHosted')}</p>
-                <p className="m-0 text-m-sub text-ink-3">{t('setup.pay.selfHostedWaiting')}</p>
-              </>
-            )}
-            {pay === 'unavailable' && (
-              <p className="m-0 text-m-lead text-ink-2">{t('phone.payUnavailable')}</p>
-            )}
-            {pay === 'failed' && (
+            {primary ? (
               <Button
-                variant="secondary"
-                className={`${BUTTON} w-full`}
-                onClick={() => setPay('asking')}
+                className={`${BUTTON} flex-1`}
+                onClick={primary.onClick}
+                disabled={primary.disabled}
+                loading={primary.loading}
               >
-                {t('pairing.tryAgain')}
+                {primary.label}
               </Button>
-            )}
-            {status?.devTools && (
-              <Button
-                variant="ghost"
-                className={`${BUTTON} w-full`}
-                onClick={() => void handleGrant()}
-                loading={devGrant.isPending}
+            ) : (
+              <p
+                className="m-0 flex min-h-12 flex-1 items-center justify-center gap-2 text-m-sub text-ink-3"
+                role="status"
               >
-                {t('setup.pay.grantTest')}
-              </Button>
-            )}
-          </>
-        )}
-
-        {step === 'kit' &&
-          (kit ? (
-            <>
-              <KitBody kit={kit} onKept={() => setKitKept(true)} />
-              <div className="flex min-h-11 items-center gap-3">
-                <Checkbox
-                  id={`${fieldId}-confirmed`}
-                  checked={kitConfirmed}
-                  disabled={!kitKept}
-                  onCheckedChange={(checked) => setKitConfirmed(checked === true)}
-                />
-                <Label htmlFor={`${fieldId}-confirmed`} className="text-m-row">
-                  {t('setup.kit.confirm')}
-                </Label>
-              </div>
-              {!kitKept && <p className="m-0 text-m-sub text-ink-4">{t('setup.kit.saveFirst')}</p>}
-            </>
-          ) : kitFailed ? (
-            <div className="space-y-2.5">
-              <p className="m-0 text-m-lead text-loss" role="alert">
-                {t('setup.kit.failed')}
+                <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+                {t('phone.payWaitingShort')}
               </p>
-              <Button
-                variant="secondary"
-                className={`${BUTTON} w-full`}
-                onClick={() => setKitFailed(false)}
-              >
-                {t('setup.kit.retry')}
-              </Button>
-            </div>
-          ) : (
-            <p className="m-0 text-m-lead text-ink-3">{t('setup.kit.preparing')}</p>
-          ))}
+            )}
+          </>
+        }
+      >
+        <StepProgress
+          index={stepNumber}
+          total={STEPS.length}
+          label={t('setup.step', { current: stepNumber, total: STEPS.length })}
+        />
+        <div className="space-y-3.5">
+          {step === 'account' && (
+            <>
+              {numberBox}
+              {accountNumber && (
+                <p className="m-0 text-m-sub text-ink-3">{t('setup.account.explain')}</p>
+              )}
+              <Collapsible>
+                <CollapsibleTrigger className="group flex min-h-11 items-center gap-1 text-m-sub font-semibold text-ink-2">
+                  <ChevronRight
+                    aria-hidden
+                    className="size-4 transition-transform group-data-[state=open]:rotate-90"
+                  />
+                  {t('setup.advanced.toggle')}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1.5 pt-1">
+                  <Label htmlFor={`${fieldId}-server`}>{t('setup.advanced.label')}</Label>
+                  <Input
+                    id={`${fieldId}-server`}
+                    value={relayInput}
+                    onChange={(event) => {
+                      setRelayInput(event.target.value);
+                      setRelayError(null);
+                    }}
+                    placeholder={t('setup.advanced.placeholder')}
+                    inputMode="url"
+                    aria-invalid={relayError ? true : undefined}
+                    className={field48}
+                    {...PLAIN_FIELD}
+                  />
+                  {relayError ? (
+                    <p role="alert" className={`m-0 text-loss ${fieldMessage}`}>
+                      {relayError}
+                    </p>
+                  ) : (
+                    <p className="m-0 text-m-sub text-ink-4">{t('setup.advanced.hint')}</p>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+            </>
+          )}
 
-        {step === 'device' && (
-          <div className="space-y-1.5">
-            <Label htmlFor={`${fieldId}-name`}>{t('setup.device.name')}</Label>
-            <Input
-              id={`${fieldId}-name`}
-              value={deviceName}
-              maxLength={60}
-              onChange={(event) => setDeviceName(event.target.value)}
-              autoComplete="off"
-              enterKeyHint="done"
-              className={field48}
-            />
-          </div>
-        )}
-      </div>
-    </Sheet>
+          {step === 'pay' && (
+            <>
+              {pay === 'selfHosted' && (
+                <>
+                  {numberBox}
+                  <p className="m-0 text-m-lead text-ink-2">{t('setup.pay.selfHosted')}</p>
+                  <p className="m-0 text-m-sub text-ink-3">{t('setup.pay.selfHostedWaiting')}</p>
+                </>
+              )}
+              {pay === 'unavailable' && (
+                <p className="m-0 text-m-lead text-ink-2">{t('phone.payUnavailable')}</p>
+              )}
+              {pay === 'failed' && (
+                <Button
+                  variant="secondary"
+                  className={`${BUTTON} w-full`}
+                  onClick={() => setPay('asking')}
+                >
+                  {t('pairing.tryAgain')}
+                </Button>
+              )}
+              {status?.devTools && (
+                <Button
+                  variant="ghost"
+                  className={`${BUTTON} w-full`}
+                  onClick={() => void handleGrant()}
+                  loading={devGrant.isPending}
+                >
+                  {t('setup.pay.grantTest')}
+                </Button>
+              )}
+            </>
+          )}
+
+          {step === 'kit' &&
+            (kit ? (
+              <>
+                <KitBody
+                  kit={kit}
+                  onKept={() => setKitKept(true)}
+                  onPasswordRequired={dropKit}
+                  onExpired={dropKit}
+                />
+                <div className="flex min-h-11 items-center gap-3">
+                  <Checkbox
+                    id={`${fieldId}-confirmed`}
+                    checked={kitConfirmed}
+                    disabled={!kitKept}
+                    onCheckedChange={(checked) => setKitConfirmed(checked === true)}
+                  />
+                  <Label htmlFor={`${fieldId}-confirmed`} className="text-m-row">
+                    {t('setup.kit.confirm')}
+                  </Label>
+                </div>
+                {!kitKept && (
+                  <p className="m-0 text-m-sub text-ink-4">{t('setup.kit.saveFirst')}</p>
+                )}
+              </>
+            ) : (
+              <div className="space-y-2.5">
+                <p className="m-0 text-m-lead text-ink-3">
+                  {kitAskedAgain ? t('showKit.again') : t('showKit.description')}
+                </p>
+                <Button
+                  variant="secondary"
+                  className={`${BUTTON} w-full`}
+                  onClick={() => setKitPromptClosed(false)}
+                >
+                  {t('showKit.confirm')}
+                </Button>
+              </div>
+            ))}
+
+          {step === 'device' && (
+            <div className="space-y-1.5">
+              <Label htmlFor={`${fieldId}-name`}>{t('setup.device.name')}</Label>
+              <Input
+                id={`${fieldId}-name`}
+                value={deviceName}
+                maxLength={60}
+                onChange={(event) => setDeviceName(event.target.value)}
+                autoComplete="off"
+                enterKeyHint="done"
+                className={field48}
+              />
+            </div>
+          )}
+        </div>
+      </Sheet>
+      <SyncPasswordSheet
+        open={askingForKit}
+        onOpenChange={(open) => {
+          if (!open) setKitPromptClosed(true);
+        }}
+        title={t('showKit.title')}
+        description={kitAskedAgain ? t('showKit.again') : t('showKit.description')}
+        confirmLabel={t('showKit.confirm')}
+        closeOnSuccess={false}
+        onSubmit={async (password) => {
+          setKit(await prepareKitWithPassword(password));
+          setKitAskedAgain(false);
+        }}
+      />
+    </>
   );
 }

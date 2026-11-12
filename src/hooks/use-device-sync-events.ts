@@ -33,6 +33,8 @@ export function useDeviceSyncEvents(): void {
     const status = safeUnlisten(
       listen<SyncStatus>(SYNC_STATUS_EVENT, (event) => {
         queryClient.setQueryData(['device-sync-status'], event.payload);
+        // A gap that appears, heals or ages shows with its held changes
+        void queryClient.invalidateQueries({ queryKey: ['device-sync-held-gaps'] });
       })
     );
     const data = safeUnlisten(

@@ -8,6 +8,7 @@
 //! capture-broken profile (`join`), and first-device setup, turning sync off and deleting the
 //! synced data (`setup`).
 
+pub mod backups;
 pub mod binding;
 pub mod capture;
 pub mod chain;
@@ -20,9 +21,11 @@ pub mod envelope;
 pub mod error;
 pub mod feature;
 pub mod hlc;
+pub mod impact;
 pub mod join;
 pub mod journal;
 pub mod keys;
+pub mod kit_file;
 pub mod merge;
 pub mod natural_id;
 pub mod pairing;
@@ -54,19 +57,55 @@ pub const CAPTURE_BROKEN_REASON: &str = "change capture could not be installed";
 
 /// Called by `Database::open_with_key` after the migrations and before the self-heals. A profile
 /// without sync costs one `SELECT` and gets nothing installed (G5). Never fails: an error is
-/// logged and recorded in `sync_state`, and the profile opens without capture.
+/// logged and recorded in `sync_state`, and an enabled profile is marked capture-broken and opens
+/// guarded (`capture::guard`: changes to synced data are refused, local ones go through), or
+/// read-only when the guard cannot be imposed (`guard_or_close`).
+///
+/// The invariant (audit H2, ADR 0027): an enabled profile's connection has capture installed, or
+/// the guard imposed, or `query_only` on — after `on_open`, after any failed join, repair,
+/// re-sync or turn-off, and after a successful one (capture). Turning sync off removes all three.
+/// So a repair or re-sync, which replaces the synced data, never discards an edit nobody
+/// recorded.
 pub fn on_open(conn: &Connection) {
+    on_open_with(conn, feature::enabled());
+}
+
+/// `on_open` with the flag given. `feature_on` decides only the log line: an enabled profile is
+/// captured (or guarded) in every build, so a build without sync never writes it uncaptured
+/// (audit M12, ADR 0027). Returning early instead would let such a build edit the synced tables
+/// with no trigger, and those edits would be lost to the other devices. No round, no network: the
+/// engine never starts without the flag.
+pub(crate) fn on_open_with(conn: &Connection, feature_on: bool) {
+    if !feature_on && state::load(conn).ok().flatten().is_some_and(|s| s.enabled) {
+        log::info!(
+            "[SYNC] This build does not run sync; the enabled profile's changes are still recorded"
+        );
+    }
     if let Err(e) = open_capture(conn) {
         log::warn!("[SYNC] Change capture is off for this session: {e}");
         if let Err(record) = state::record_error(conn, CAPTURE_BROKEN_REASON) {
             log::warn!("[SYNC] Could not record the capture error: {record}");
         }
-        // Only an enabled profile has lost anything; the row is a no-op update otherwise.
-        let enabled = state::load(conn).ok().flatten().is_some_and(|s| s.enabled);
+        // Only an enabled profile has lost anything; the row is a no-op update otherwise. A row
+        // that exists but does not load may be an enabled profile's, so it is guarded too.
+        let enabled = state::on_or_unreadable(conn).unwrap_or(true);
         if enabled {
             if let Err(record) = state::mark_capture_broken(conn, now()) {
                 log::warn!("[SYNC] Could not mark the capture as broken: {record}");
             }
+            guard_or_close(conn, capture::guard::impose);
+        }
+    }
+}
+
+/// The last resort of `on_open` (and of any failure that leaves an enabled profile without
+/// capture): `impose`, else `PRAGMA query_only = 1` (logged at warn), so no change goes
+/// unrecorded.
+fn guard_or_close(conn: &Connection, impose: impl FnOnce(&Connection) -> Result<()>) {
+    if let Err(error) = impose(conn) {
+        log::warn!("[SYNC] The sync guard could not be imposed; the profile is read-only: {error}");
+        if let Err(pragma) = conn.execute_batch("PRAGMA query_only = 1") {
+            log::error!("[SYNC] Could not make the profile read-only: {pragma}");
         }
     }
 }
@@ -84,16 +123,29 @@ fn open_capture(conn: &Connection) -> Result<()> {
     if !sync.enabled {
         return Ok(());
     }
-    let revived = repair::delete_revived_seeds(conn)?;
-    if revived > 0 {
-        log::info!("[SYNC] Deleted {revived} seeded rows that another device had deleted");
+    // A capture marked broken may have lost the deletes the sweep reads, and `schema_seen` stays
+    // put so the next clean unlock still sweeps what those migrations seeded.
+    let capture_ok = state::marks(conn)?.is_none_or(|m| m.capture_broken_at.is_none());
+    if capture_ok {
+        let seeded = registry::keys::seeded_tables(sync.schema_seen);
+        let revived = repair::delete_revived_seeds(conn, &seeded)?;
+        if revived > 0 {
+            log::info!("[SYNC] Deleted {revived} seeded rows that another device had deleted");
+        }
     }
     let requeued = chain::cross_barrier(conn, &sync)?;
     if requeued > 0 {
         log::info!("[SYNC] Crossed a barrier: queued {requeued} own rows again");
     }
-    state::note_schema_seen(conn)?;
-    capture::install(conn, sync.device)
+    if capture_ok {
+        state::note_schema_seen(conn)?;
+    }
+    capture::install(conn, sync.device)?;
+    // Capture records every change now; a guard from an earlier open of this connection goes.
+    if capture::guard::is_imposed(conn) {
+        capture::guard::lift(conn)?;
+    }
+    Ok(())
 }
 
 /// Runs `work` inside `SAVEPOINT <name>`, rolled back when it fails. Savepoints nest, so this
@@ -124,6 +176,7 @@ pub(crate) fn in_savepoint<T>(
 mod tests {
     use super::*;
     use crate::error::AppError;
+    use crate::services::sync::test_support;
 
     #[test]
     fn a_failed_release_rolls_the_savepoint_back() {
@@ -155,5 +208,75 @@ mod tests {
             )
             .expect("count");
         assert_eq!(rows, 0, "nothing was written");
+    }
+
+    fn institution(conn: &Connection, id: &str) -> rusqlite::Result<usize> {
+        conn.execute(
+            "INSERT INTO institutions (id, name) VALUES (?1, 'Bank')",
+            [id],
+        )
+    }
+
+    fn outbox_rows(conn: &Connection) -> i64 {
+        conn.query_row(
+            "SELECT COUNT(*) FROM sync_outbox WHERE tbl = 'institutions'",
+            [],
+            |r| r.get(0),
+        )
+        .expect("count")
+    }
+
+    /// Audit M12: a build without the flag still records an enabled profile's edits.
+    #[test]
+    fn a_build_without_sync_still_captures_an_enabled_profile() {
+        let conn = test_support::migrated();
+        state::enable(&conn, hlc::DeviceId([5; 16])).expect("enable");
+        capture::uninstall(&conn).expect("uninstall");
+        assert!(!capture::is_installed(&conn).unwrap());
+
+        on_open_with(&conn, false);
+
+        assert!(
+            capture::is_installed(&conn).unwrap(),
+            "capture is installed"
+        );
+        institution(&conn, "i1").expect("an edit");
+        assert_eq!(outbox_rows(&conn), 1, "one outbox row");
+    }
+
+    #[test]
+    fn a_build_without_sync_installs_nothing_on_a_profile_without_sync() {
+        let conn = test_support::migrated();
+
+        on_open_with(&conn, false);
+
+        assert!(!capture::is_installed(&conn).unwrap());
+        institution(&conn, "i1").expect("an edit");
+        assert_eq!(outbox_rows(&conn), 0);
+    }
+
+    #[test]
+    fn a_build_without_sync_guards_an_enabled_profile_whose_capture_fails() {
+        let conn = test_support::migrated();
+        state::enable(&conn, hlc::DeviceId([5; 16])).expect("enable");
+        capture::uninstall(&conn).expect("uninstall");
+        conn.execute_batch("DROP TABLE sync_clock").expect("break");
+
+        on_open_with(&conn, false);
+
+        assert!(capture::guard::is_imposed(&conn) || capture::guard::is_read_only(&conn));
+        assert!(institution(&conn, "i1").is_err(), "the insert is refused");
+    }
+
+    #[test]
+    fn unsent_changes_counts_the_outbox() {
+        let conn = test_support::migrated();
+        state::enable(&conn, hlc::DeviceId([5; 16])).expect("enable");
+        let before = engine::status::unsent_changes(&conn).expect("count");
+        institution(&conn, "i1").expect("an edit");
+        assert_eq!(
+            engine::status::unsent_changes(&conn).expect("count"),
+            before + 1
+        );
     }
 }

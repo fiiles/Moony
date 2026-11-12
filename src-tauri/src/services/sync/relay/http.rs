@@ -50,9 +50,9 @@ pub fn default_base_url() -> String {
     super::super::feature::dev_relay_base().unwrap_or_else(|| DEFAULT_RELAY_URL.to_string())
 }
 
-/// A relay base URL: `https`, or `http` only for the hosts `localhost` and `127.0.0.1`; no user,
-/// password, query or fragment; no path but `/`; at most `MAX_RELAY_URL_CHARS` characters. Parsed,
-/// never prefix-matched.
+/// A relay base URL: `https`, or `http` only for the hosts `localhost` and `127.0.0.1` in a debug
+/// build; no user, password, query or fragment; no path but `/`; at most `MAX_RELAY_URL_CHARS`
+/// characters. Parsed, never prefix-matched.
 pub fn validate_base_url(url: &str) -> Result<()> {
     parse_base_url(url).map(|_| ())
 }
@@ -69,6 +69,17 @@ pub fn normalize_base_url(url: &str) -> Result<String> {
 /// address is not.
 pub fn is_default_relay(url: &str) -> bool {
     normalize_base_url(url).is_ok_and(|normal| normal == DEFAULT_RELAY_URL)
+}
+
+/// `http` only for `localhost` / `127.0.0.1` and only in a debug build (a release build never
+/// sends a pairing or a sealed batch over plain text, even to the same machine); `https` for any
+/// host.
+fn scheme_allowed(scheme: &str, host: Option<&str>, debug: bool) -> bool {
+    match scheme {
+        "https" => host.is_some_and(|host| !host.is_empty()),
+        "http" => debug && matches!(host, Some("localhost" | "127.0.0.1")),
+        _ => false,
+    }
 }
 
 fn parse_base_url(url: &str) -> Result<Url> {
@@ -88,11 +99,7 @@ fn parse_base_url(url: &str) -> Result<Url> {
     if parsed.as_str().trim_end_matches('/').len() > MAX_RELAY_URL_CHARS {
         return Err(invalid());
     }
-    let host_allowed = match parsed.scheme() {
-        "https" => parsed.host_str().is_some_and(|host| !host.is_empty()),
-        "http" => matches!(parsed.host_str(), Some("localhost" | "127.0.0.1")),
-        _ => false,
-    };
+    let host_allowed = scheme_allowed(parsed.scheme(), parsed.host_str(), cfg!(debug_assertions));
     let bare = parsed.username().is_empty()
         && parsed.password().is_none()
         && parsed.query().is_none()
@@ -173,7 +180,7 @@ impl HttpRelay {
         }
         match slot {
             None => self.url(&format!("v1/pairing/{mailbox}")),
-            Some(1 | 2) => self.url(&format!("v1/pairing/{mailbox}/{}", slot.unwrap_or(0))),
+            Some(1..=3) => self.url(&format!("v1/pairing/{mailbox}/{}", slot.unwrap_or(0))),
             Some(_) => Err(RelayError::BadRequest("bad_slot".into())),
         }
     }
@@ -618,7 +625,10 @@ impl Mailbox for HttpRelay {
     }
 }
 
-#[cfg(test)]
+// These talk to one-shot servers on 127.0.0.1, an address only a debug build accepts.
+#[cfg(all(test, debug_assertions))]
 mod mailbox_tests;
 #[cfg(test)]
+mod scheme_tests;
+#[cfg(all(test, debug_assertions))]
 mod tests;

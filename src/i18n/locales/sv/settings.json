@@ -195,6 +195,16 @@
       "leftoversTitle": "Okrypterade kopior utanför Moony",
       "leftoversBody": "Moony hittade dem under krypteringen. Den raderar aldrig något utanför sin egen mapp; kontrollera dem och radera dem själv.",
       "reveal": "Visa"
+    },
+    "syncBackups": {
+      "title": "Säkerhetskopior gjorda innan synkroniseringen ersatte data",
+      "kept": "Innehåller ändringar som inte finns någon annanstans",
+      "restore": "Återställ",
+      "delete": "Ta bort",
+      "deleteTitle": "Ta bort säkerhetskopian från {{date}}?",
+      "deleteBody": "Den här säkerhetskopian tas bort för gott.",
+      "deleteBodyKept": "Den här säkerhetskopian innehåller ändringar som inte finns någon annanstans. Den tas bort för gott och ändringarna går förlorade.",
+      "deleted": "Säkerhetskopian är borttagen"
     }
   },
   "autoLock": {

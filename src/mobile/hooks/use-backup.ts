@@ -31,6 +31,7 @@ const PROGRESS_KEY = ['onboarding-progress'] as const;
 export function useBackup(): {
   createBackup: () => Promise<ExportOutcome>;
   pickRestore: () => Promise<BackupInspection | null>;
+  inspectPath: (path: string) => Promise<BackupInspection | null>;
   restore: (inspection: BackupInspection) => Promise<void>;
   busy: Busy;
   lastBackupAt: number | null;
@@ -41,7 +42,7 @@ export function useBackup(): {
   const { t: tm } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const [backingUp, setBackingUp] = useState(false);
-  const { pickRestore, restore, restoring } = useRestoreBackup();
+  const { pickRestore, inspectPath, restore, restoring } = useRestoreBackup();
   const canExport = exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? '');
 
   const progress = useQuery({ queryKey: PROGRESS_KEY, queryFn: () => onboardingApi.getProgress() });
@@ -90,6 +91,7 @@ export function useBackup(): {
   return {
     createBackup,
     pickRestore,
+    inspectPath,
     restore,
     busy: backingUp ? 'backup' : restoring ? 'restore' : null,
     lastBackupAt: progress.data?.lastBackupAt ?? null,

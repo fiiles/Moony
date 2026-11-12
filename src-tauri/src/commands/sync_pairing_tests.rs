@@ -97,7 +97,7 @@ async fn pairing_needs_the_password_before_anything_is_shown_or_written() {
     )
     .await
     .expect("scanned");
-    assert_eq!(scanned.stage(), Stage::Compare);
+    assert_eq!(scanned.stage(), Stage::AwaitingAck);
     assert!(relay.peek_slot(&mailbox, 1).is_some(), "slot 1 is written");
 }
 
@@ -150,6 +150,8 @@ fn a_transient_join_failure_keeps_the_received_session() {
         validation("validation.syncChangeInProgress"),
         // The person can cancel the pending setup and try again within the grace period.
         validation("validation.syncJoinSetupPending"),
+        // Nothing was replaced: the confirmation reads the new numbers and asks again.
+        validation("validation.syncReplaceImpactChanged"),
     ] {
         assert!(after_join_error(&kept), "{kept:?} keeps the session");
     }
@@ -169,7 +171,7 @@ fn a_transient_join_failure_keeps_the_received_session() {
 fn the_pairing_code_text_is_a_developer_tool() {
     let session = PairingSession::show(Role::Holder, HOME, T0).expect("session");
     let text = pairing_code_text(&session.code());
-    assert!(text.starts_with("moony-pair:1:"));
+    assert!(text.starts_with("moony-pair:2:"));
 
     let release = view_of(&session, false).expect("view");
     assert_eq!(
@@ -196,6 +198,55 @@ fn the_pairing_code_text_is_a_developer_tool() {
     assert_eq!(view.stage, PairingStage::Announcing);
     assert_eq!(view.role, PairingRole::Joiner);
     assert_eq!((view.qr_svg, view.pairing_code), (None, None));
+}
+
+#[test]
+fn the_view_names_a_custom_server_and_the_holders_attempts() {
+    let default = PairingSession::show(Role::Holder, &default_base_url(), T0).expect("shower");
+    assert_eq!(view_of(&default, false).expect("view").server_host, None);
+    let own = PairingSession::show(Role::Holder, "https://sync.example.org:8443", T0).expect("own");
+    let view = view_of(&own, false).expect("view");
+    assert_eq!(view.server_host.as_deref(), Some("sync.example.org:8443"));
+    assert_eq!(view.attempts_left, None, "only in compare");
+    assert_eq!(view.comparison_code, None);
+    assert_eq!(
+        server_host("https://sync.example.org"),
+        Some("sync.example.org".into())
+    );
+}
+
+#[tokio::test]
+async fn a_holder_at_compare_has_no_digits_and_all_its_attempts() {
+    use crate::services::sync::pairing::Role as R;
+    let relay = FakeRelay::new();
+    let shower = PairingSession::show(R::Joiner, HOME, T0).expect("shower");
+    let text = pairing_code_text(&shower.code());
+    let mut shower = shower;
+    let mut holder = PairingSession::scan(R::Holder, &text, T0).expect("scanner");
+    holder.announce(&relay, T0).await.expect("announce");
+    shower.poll(&relay, T0).await.expect("acknowledge");
+    holder.poll(&relay, T0).await.expect("verify");
+    assert_eq!(holder.stage(), Stage::Compare);
+    let view = view_of(&holder, false).expect("view");
+    assert_eq!(view.stage, PairingStage::Compare);
+    assert_eq!(view.role, PairingRole::Holder);
+    assert_eq!(view.comparison_code, None);
+    assert_eq!(view.attempts_left, Some(3));
+    // The joiner shows its digits and has no attempts to count.
+    let joiner = view_of(&shower, false).expect("view");
+    assert!(joiner.comparison_code.is_some());
+    assert_eq!(joiner.attempts_left, None);
+}
+
+#[test]
+fn the_acknowledgement_stages_read_as_connecting() {
+    assert_eq!(stage_of(Stage::AwaitingAck), PairingStage::Connecting);
+    assert_eq!(stage_of(Stage::Acknowledging), PairingStage::Connecting);
+    assert_eq!(stage_of(Stage::Announcing), PairingStage::Announcing);
+    assert_eq!(
+        stage_of(Stage::WaitingForScan),
+        PairingStage::WaitingForScan
+    );
 }
 
 #[test]
@@ -356,7 +407,8 @@ async fn a_repeated_scan_of_the_same_code_keeps_its_session() {
     )
     .await
     .expect("first scan");
-    assert_eq!(first.stage, PairingStage::Compare);
+    // Answered, waiting for the shower's acknowledgement: nothing to show yet.
+    assert_eq!(first.stage, PairingStage::Connecting);
     assert!(!first.contested);
 
     // The camera reports the same QR again: the same session answers, nothing is written.
@@ -391,7 +443,11 @@ async fn a_repeated_scan_of_the_same_code_keeps_its_session() {
     )
     .await
     .expect("another code");
-    assert_ne!(replaced.comparison_code, first.comparison_code);
+    assert_eq!(
+        replaced.comparison_code, None,
+        "no digits before the acknowledgement"
+    );
+    assert_eq!(put_count(&relay), 2, "the other code's slot 1 is written");
     assert_eq!(disposed.load(Ordering::SeqCst), 1);
 }
 
@@ -417,7 +473,7 @@ async fn concurrent_scans_of_one_code_answer_it_once() {
     let (one, two) = tokio::join!(scan(), scan());
     let (one, two) = (one.expect("one"), two.expect("two"));
     assert_eq!(one, two);
-    assert!(!one.contested && one.stage == PairingStage::Compare);
+    assert!(!one.contested && one.stage == PairingStage::Connecting);
     assert_eq!(put_count(&relay), 1);
     assert_eq!(disposed.load(Ordering::SeqCst), 0);
 }

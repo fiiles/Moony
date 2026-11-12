@@ -3,15 +3,27 @@
 //! engine locks one step at a time. Envelopes are sealed as the push seals them (`seal_from`) or
 //! forged from hand-made changesets (`forge`), and reach the relay through `push`.
 
+mod backoff;
+mod binding_failure;
+mod clock_snapshots;
+mod clocks;
+mod echo;
+mod gap_skip;
+mod gap_skip_miss;
+mod gaps;
 mod join;
 mod join_new;
 mod pull;
 mod push;
+mod relay_faults;
 mod repair;
+mod replace_safety;
 mod runtime;
 mod runtime_loop;
+mod scan;
 mod setup;
 mod snapshots;
+mod went_back;
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -232,6 +244,13 @@ pub fn row(table: &str, key: &str, generation: Clock, columns: &[(&str, SqlValue
 
 pub fn text(value: &str) -> SqlValue {
     SqlValue::Text(value.to_string())
+}
+
+/// The consent of a confirmation that shows `device` as it stands now.
+pub fn agreed(device: &TestConn) -> crate::services::sync::impact::ReplaceConsent {
+    crate::services::sync::impact::replace_impact(&device.lock())
+        .expect("impact")
+        .consent()
 }
 
 pub fn cursor(conn: &Connection) -> u64 {

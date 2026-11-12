@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Laptop, Smartphone, type LucideIcon } from 'lucide-react';
 import type { SyncDevice } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
-import { devicePlatformKey } from '@/utils/sync-devices';
+import { devicePlatformKey, quietDays } from '@/utils/sync-devices';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 
 interface SyncDeviceRowsProps {
@@ -22,11 +22,13 @@ const PHONES: ReadonlySet<string> = new Set(['ios', 'android']);
 export function SyncDeviceRows({ devices, onRename }: SyncDeviceRowsProps) {
   const { t } = useTranslation('deviceSync');
   const { dateTime } = useFormat();
+  const now = Math.floor(Date.now() / 1000);
 
   return (
     <EntityRows>
       {devices.map((device) => {
         const Icon: LucideIcon = PHONES.has(device.platform) ? Smartphone : Laptop;
+        const quiet = quietDays(device.lastActiveAt, now);
         const sub = [
           ...(device.thisDevice ? [t('devices.thisDevice')] : []),
           t(devicePlatformKey(device.platform)),
@@ -36,6 +38,7 @@ export function SyncDeviceRows({ devices, onRename }: SyncDeviceRowsProps) {
                 when: dateTime(device.lastActiveAt, { dateStyle: 'medium', timeStyle: 'short' }),
               }),
           ...(device.held ? [t('devices.held')] : []),
+          ...(quiet !== null ? [t('devices.quiet', { count: quiet })] : []),
         ].join(' · ');
         return (
           <EntityRow

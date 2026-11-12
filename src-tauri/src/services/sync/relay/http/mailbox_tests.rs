@@ -32,6 +32,75 @@ async fn a_slot_is_put_as_raw_bytes_without_credentials() {
 }
 
 #[tokio::test]
+async fn slot_3_round_trips_over_http() {
+    let (base, server) = serve_once(answer("204 No Content", &[], b""));
+    relay(&base)
+        .put_slot(MAILBOX, 3, b"ack")
+        .await
+        .expect("put");
+    let request = server.join().expect("server");
+    assert_eq!(
+        request.request_line(),
+        format!("PUT /v1/pairing/{MAILBOX}/3 HTTP/1.1")
+    );
+    assert_eq!(request.body, b"ack".to_vec());
+
+    let (base, server) = serve_once(answer("200 OK", &[], &[4, 5]));
+    assert_eq!(
+        relay(&base).take_slot(MAILBOX, 3).await,
+        Ok(Some(vec![4, 5]))
+    );
+    assert_eq!(
+        server.join().expect("server").request_line(),
+        format!("GET /v1/pairing/{MAILBOX}/3 HTTP/1.1")
+    );
+}
+
+/// A sync server from before slot 3 answers its route check's 400 `bad_slot`; the client never
+/// makes that error for slot 3 itself, so the pairing can read it as "the server needs an update".
+#[tokio::test]
+async fn an_old_server_refuses_slot_3_with_bad_slot() {
+    let refused = || json_answer("400 Bad Request", r#"{"error":"bad_slot"}"#);
+    let bad = RelayError::BadRequest("bad_slot".into());
+
+    let (base, server) = serve_once(refused());
+    assert_eq!(
+        relay(&base).put_slot(MAILBOX, 3, b"ack").await,
+        Err(bad.clone())
+    );
+    assert_eq!(
+        server.join().expect("server").request_line(),
+        format!("PUT /v1/pairing/{MAILBOX}/3 HTTP/1.1"),
+        "the request was sent"
+    );
+
+    let (base, server) = serve_once(refused());
+    assert_eq!(relay(&base).take_slot(MAILBOX, 3).await, Err(bad));
+    assert_eq!(
+        server.join().expect("server").request_line(),
+        format!("GET /v1/pairing/{MAILBOX}/3 HTTP/1.1")
+    );
+}
+
+#[tokio::test]
+async fn slot_4_is_refused_before_any_request() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+    listener.set_nonblocking(true).expect("nonblocking");
+    let base = format!(
+        "http://127.0.0.1:{}",
+        listener.local_addr().expect("addr").port()
+    );
+    let relay = relay(&base);
+    let bad = RelayError::BadRequest("bad_slot".into());
+    assert_eq!(relay.put_slot(MAILBOX, 4, b"x").await, Err(bad.clone()));
+    assert_eq!(relay.take_slot(MAILBOX, 4).await, Err(bad));
+    assert!(
+        matches!(listener.accept(), Err(e) if e.kind() == std::io::ErrorKind::WouldBlock),
+        "no connection was made"
+    );
+}
+
+#[tokio::test]
 async fn an_empty_slot_reads_as_none_and_a_written_one_as_its_bytes() {
     let (base, server) = serve_once(json_answer("404 Not Found", r#"{"error":"empty"}"#));
     assert_eq!(relay(&base).take_slot(MAILBOX, 2).await, Ok(None));
@@ -160,7 +229,7 @@ async fn bad_mailbox_ids_and_slots_are_refused_before_sending() {
             "{id}"
         );
     }
-    for slot in [0u8, 3, 255] {
+    for slot in [0u8, 4, 255] {
         assert_eq!(
             relay.put_slot(MAILBOX, slot, b"x").await,
             Err(bad_slot.clone())

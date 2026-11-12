@@ -6,7 +6,7 @@
  * - Setup: prepareSetup() → show recovery key → confirmSetup() → account created
  * - Recovery: prepareRecover() → show new recovery key → confirmRecover() → password changed
  */
-import { createContext, ReactNode, useContext, useState, useEffect } from 'react';
+import { createContext, ReactNode, useContext, useState, useEffect, useRef } from 'react';
 import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { authApi, biometricApi, priceApi, categorizationApi } from '../lib/tauri-api';
@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { translateApiError } from '@/lib/translate-api-error';
 import { isAuthApiError } from '@/lib/api-error';
 import type { UserProfile } from '@shared/schema';
-import type { UseMutationResult } from '@tanstack/react-query';
+import type { MutateOptions, UseMutationResult } from '@tanstack/react-query';
 
 type AppStatus = 'needs_setup' | 'locked' | 'unlocked';
 
@@ -54,7 +54,16 @@ type AuthContextType = {
       currency?: string;
     }
   >;
-  unlockMutation: UseMutationResult<UserProfile, Error, { password: string }>;
+  /**
+   * Takes no variables, so the password never sits in the mutation's state (`variables` stays
+   * undefined); read its status, `submittedAt` and `isSuccess`, and submit through `unlockWithPassword`.
+   */
+  unlockMutation: UseMutationResult<UserProfile, Error, void>;
+  /** Starts `unlockMutation` with this password; the password is held in a ref only until the unlock settles. */
+  unlockWithPassword: (
+    data: { password: string },
+    options?: MutateOptions<UserProfile, Error, void>
+  ) => void;
   /**
    * Phones and the desktop (macOS, Windows): unlock with the key stored behind biometry; the
    * variable is the prompt text.
@@ -259,15 +268,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     toast.error(t('toast.unlockFailed'), { description: translateApiError(error, tc) });
   };
 
-  // Unlock mutation (login with password)
-  const unlockMutation = useMutation({
-    mutationFn: async (data: { password: string }) => {
-      const profile = await authApi.unlock(data.password);
-      return profile;
+  // Unlock mutation (login with password). It takes no variables: TanStack Query keeps a
+  // mutation's variables in its state (and the mutation cache) after it settles, so the password
+  // travels in a ref that `mutationFn` empties in `finally`.
+  const unlockPasswordRef = useRef<string | null>(null);
+  const unlockMutation = useMutation<UserProfile, Error, void>({
+    mutationFn: async () => {
+      const password = unlockPasswordRef.current;
+      unlockPasswordRef.current = null;
+      if (password === null) throw new Error('No password to unlock with');
+      return authApi.unlock(password);
     },
     onSuccess: finishUnlock,
     onError: toastUnlockFailure,
   });
+  const unlockWithPassword = (
+    data: { password: string },
+    options?: MutateOptions<UserProfile, Error, void>
+  ) => {
+    unlockPasswordRef.current = data.password;
+    unlockMutation.mutate(undefined, options);
+  };
 
   // Phones and the desktop: unlock with the master key stored behind Face ID / Touch ID /
   // Windows Hello (it never reaches the webview); the same follow-ups as a password unlock
@@ -369,6 +390,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         setupMutation,
         unlockMutation,
+        unlockWithPassword,
         unlockWithBiometricsMutation,
         lockMutation,
         recoverMutation,

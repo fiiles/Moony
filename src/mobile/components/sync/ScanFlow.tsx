@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
+import { useReplaceImpact } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { ApiError } from '@/lib/api-error';
+import { consentOf } from '@/utils/replace-impact';
+import { IMPACT_CHANGED_KEY } from '@/components/settings/sync/replace-outcome';
+import { ReplaceImpactBlock } from '@/mobile/components/sync/ReplaceImpactBlock';
 import { translateApiError } from '@/lib/translate-api-error';
 import { backupFileName } from '@/utils/sync-status';
 import { Button } from '@/components/ui/button';
@@ -12,6 +17,7 @@ import { JoinDetailsSheet, type ScanDetails } from '@/mobile/components/sync/Joi
 import { PairingSheet, type JoinFailure } from '@/mobile/components/sync/PairingSheet';
 import { ScanOverlay } from '@/mobile/components/sync/ScanOverlay';
 import { cancelQrScan, openCameraSettings, scanQrCode } from '@/mobile/lib/qr-scanner';
+import type { ReplaceOutcomeView } from '@shared/schema';
 import { kitQrSummary, scanRoute, type ScanMode } from '@/mobile/lib/sync-scan';
 
 interface ScanFlowProps {
@@ -23,6 +29,8 @@ interface ScanFlowProps {
   devTools: boolean;
   /** The flow is over (finished, cancelled or failed): the caller unmounts it. */
   onDone: () => void;
+  /** A join is done: its headline and outcome (the page says where the backup is). */
+  onReplaced: (headline: string, outcome: ReplaceOutcomeView) => void;
 }
 
 /**
@@ -44,7 +52,7 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
  * unmounting it (a lock, leaving the page) cancels the camera and gives the pairing up
  * (`useDevicePairing`).
  */
-export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
+export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlowProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const pairing = useDevicePairing();
@@ -60,6 +68,8 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
   /** The overlay's "Paste a pairing code": the scan is cancelled to make way for the sheet. */
   const toPaste = useRef(false);
   const [joinFailure, setJoinFailure] = useState<JoinFailure | null>(null);
+  /** What the person saw no longer held and was read again (`validation.syncReplaceImpactChanged`). */
+  const [impactChanged, setImpactChanged] = useState<string | null>(null);
   /** Cancel was pressed while the scan was announcing: its late answer is given up too. */
   const abandoned = useRef(false);
 
@@ -78,6 +88,20 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
   const lastView = useRef(pairing.view);
   if (pairing.view) lastView.current = pairing.view;
   const view = pairing.view ?? lastView.current;
+
+  // What a join puts at stake, read when its confirmation opens (a Kit QR's, or the received
+  // sync details'); the join sends the consent of the numbers on screen
+  const stage = view?.stage;
+  const confirming = step === 'kitConfirm' || (step === 'pairing' && stage === 'received');
+  const impact = useReplaceImpact(confirming);
+  const shownImpact = impact.isFetching ? undefined : impact.data;
+  const impactBlock = (
+    <ReplaceImpactBlock
+      flow="join"
+      impact={shownImpact}
+      error={impact.isError ? (impact.error as Error) : null}
+    />
+  );
 
   const fail = (error: unknown) =>
     toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
@@ -168,19 +192,27 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
   const joinWithKit = async () => {
     const typed = details.current;
     const code = kitText.current;
-    if (!typed || code === null) return finish();
+    if (!typed || code === null || !shownImpact) return finish();
     // The busy cover is up while the data is replaced; nothing of the flow is open under it
     setStep('working');
     try {
-      const path = await joinWithRecoveryKit.mutateAsync({
+      const outcome = await joinWithRecoveryKit.mutateAsync({
         code,
         deviceName: typed.deviceName ?? '',
         password: typed.password,
+        consent: consentOf('join', shownImpact),
       });
-      toast(t('pairing.joined', { path: backupFileName(path) }));
       finish();
+      onReplaced(t('pairing.joined', { path: backupFileName(outcome.backupPath) }), outcome);
     } catch (error) {
       joinWithRecoveryKit.reset();
+      if (error instanceof ApiError && error.key === IMPACT_CHANGED_KEY) {
+        // What the confirmation showed no longer holds: the Kit confirmation shows the new numbers
+        setStep('kitConfirm');
+        setImpactChanged(translateApiError(error, tc));
+        await impact.refetch();
+        return;
+      }
       backToDetails(error);
     }
   };
@@ -209,33 +241,30 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
 
   const runJoin = async () => {
     setJoinFailure(null);
+    setImpactChanged(null);
+    // The consent is that of the numbers on screen; the join waits for the person's confirmation
+    if (!shownImpact) return;
     try {
-      const path = await pairing.join.mutateAsync();
-      toast(t('pairing.joined', { path: backupFileName(path) }));
+      const outcome = await pairing.join.mutateAsync(consentOf('join', shownImpact));
       finish();
+      onReplaced(t('pairing.joined', { path: backupFileName(outcome.backupPath) }), outcome);
     } catch (failure) {
+      if (failure instanceof ApiError && failure.key === IMPACT_CHANGED_KEY) {
+        // Shown again with the new numbers, and the person asked again
+        setImpactChanged(translateApiError(failure, tc));
+        await impact.refetch();
+        return;
+      }
       // The key alone cannot tell whether the backend kept the received session: ask it.
       const action = await pairing.afterFailedJoin(failure);
       setJoinFailure({ message: translateApiError(failure as Error, tc), ...action });
     }
   };
 
-  // The sync details arrived (this phone joins): join at once, once ("Try again" after a failure)
-  const joining = useRef(false);
-  const stage = view?.stage;
-  useEffect(() => {
-    if (stage !== 'received' || joining.current) return;
-    joining.current = true;
-    void runJoin();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage]);
-
-  const handleMatch = async () => {
-    try {
-      await pairing.confirm.mutateAsync();
-    } catch (error) {
-      fail(error);
-    }
+  // The holder's typed digits, or the joiner's Continue: a failure shows in the sheet
+  // (`confirmError`), and one that ended the pairing is `pairing.error`.
+  const handleConfirm = (typedCode?: string) => {
+    pairing.confirm.mutate(typedCode);
   };
 
   // A half-finished setup on this phone refuses the join: cancel it, then join again
@@ -257,8 +286,8 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
       // Gone on this device either way.
     }
     lastView.current = undefined;
-    joining.current = false;
     setJoinFailure(null);
+    setImpactChanged(null);
     setDetailsError(null);
     setStep('details');
   };
@@ -345,14 +374,19 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
             <Button variant="ghost" className={`${BUTTON} px-[18px]`} onClick={() => void giveUp()}>
               {tc('buttons.cancel')}
             </Button>
-            <Button className={`${BUTTON} flex-1`} onClick={() => void joinWithKit()}>
-              {t('phone.kitConfirmJoin')}
+            <Button
+              variant="destructive"
+              className={`${BUTTON} flex-1`}
+              disabled={!shownImpact}
+              onClick={() => void joinWithKit()}
+            >
+              {t('join.confirm')}
             </Button>
           </>
         }
       >
         {kitShown && (
-          <dl className="m-0 grid gap-3">
+          <dl className="m-0 mb-3 grid gap-3">
             <div>
               <dt className="text-m-caption text-ink-3">{t('join.accountLabel')}</dt>
               <dd className="m-0 text-m-row text-ink num" data-testid="kit-confirm-account">
@@ -367,6 +401,12 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
             </div>
           </dl>
         )}
+        {impactChanged && step === 'kitConfirm' && (
+          <p role="alert" className="mx-0 mb-3 mt-0 text-m-sub font-medium text-loss">
+            {impactChanged}
+          </p>
+        )}
+        {impactBlock}
       </Sheet>
       <CodeEntrySheet
         open={step === 'paste'}
@@ -395,14 +435,19 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
           open={step === 'pairing' && !pairing.join.isPending}
           view={view}
           pollError={pairing.isError ? (pairing.error as Error) : null}
-          onMatch={() => void handleMatch()}
-          matching={pairing.confirm.isPending}
+          confirmError={pairing.confirmError}
+          onConfirm={handleConfirm}
+          confirming={pairing.confirm.isPending}
           onClose={() => void giveUp()}
           joinFailure={joinFailure}
           onRetryJoin={() => void runJoin()}
           onStartAgain={() => void startAgain()}
           onCancelSetup={() => void cancelSetupAndRetry()}
           cancellingSetup={turnOff.isPending}
+          impact={impactBlock}
+          canJoin={shownImpact !== undefined}
+          onJoin={() => void runJoin()}
+          impactChanged={impactChanged}
         />
       )}
     </>

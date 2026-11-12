@@ -11,13 +11,15 @@
 //!
 //! - **replace** (a joining device): the synced and Seed tables are emptied first, so the
 //!   joiner's own rows and migration seeds cannot come back (a seed deleted in the vault left a
-//!   tombstone, not a row);
+//!   tombstone, not a row); this device's documents and photos are kept aside and put back
+//!   wherever the vault has their item (`attachments`, audit H3);
 //! - **merge** (after `410 snapshot_required`, or a re-join): the device's rows came from the
 //!   vault, so they merge by their clocks; the outbox stays and is pushed afterwards.
 //!
 //! A stream is read whole and checked before anything is written; a snapshot from below the
 //! barrier this device has crossed is refused (§14).
 
+mod attachments;
 mod stream;
 
 pub use stream::{read_record, Head, Record};
@@ -91,6 +93,7 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
         heads: heads_of(conn, &sync)?,
         barrier_seq: sync.barrier_seq,
         missed_below_barrier: sync.missed_below_barrier,
+        missed_skipped: state::skipped_miss(conn)?,
     };
 
     // The `devs` record goes first but is known only once every row is encoded.
@@ -131,6 +134,18 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
 pub struct RestoreReport {
     pub stats: DumpStats,
     pub warnings: Vec<String>,
+    /// This device's documents and photos a replace carried over or let go (zero after a merge,
+    /// which keeps them all).
+    pub attachments: AttachmentCarry,
+}
+
+/// What a replace did with this device's attachment rows, which no snapshot carries: documents
+/// and photos (photo batches are not counted) re-attached to their item from the vault (`kept`),
+/// and those whose item the vault lacks, gone with their blobs (`orphaned`).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct AttachmentCarry {
+    pub kept: u32,
+    pub orphaned: u32,
 }
 
 /// A device joins the vault from a snapshot, in the order of ruling R4: its `sync_state` row,
@@ -161,10 +176,12 @@ pub fn join(
 /// snapshot's rows go in through the merge engine, its seeds and heads are written, the cursor
 /// and snapshot bookkeeping set, and every repair runs.
 ///
-/// A joining device replaces everything: emptying the synced tables cascades away the Local rows
-/// that hang off them, so the joiner's own attachment rows (`real_estate_photo_batches` and their
-/// photos, `real_estate_documents`, `insurance_documents`) go with its own real estate and
-/// policies.
+/// The Local attachment rows that hang off synced rows (`real_estate_photo_batches` and their
+/// photos, `real_estate_documents`, `insurance_documents`) never travel in a snapshot. They are
+/// kept aside before the clear and put back, under their own IDs, wherever the vault has their
+/// real estate or policy (a repair or re-sync, which comes back under the same IDs, or a re-join
+/// of a device that was in the vault); the others go with their blobs, as the joiner's own items
+/// do. `RestoreReport::attachments` counts both.
 pub fn restore_replace(
     conn: &Connection,
     input: &mut impl Read,
@@ -187,7 +204,7 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
         let sync = admissible(conn, &snapshot)?;
         let mut report = RestoreReport {
             stats: stats_of(&snapshot),
-            warnings: Vec::new(),
+            ..RestoreReport::default()
         };
         observe(conn, report.stats.max_hlc, &mut report.warnings)?;
         match merge::merge_rows(conn, &snapshot.rows, now)? {
@@ -210,7 +227,7 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<Restor
     let sync = admissible(conn, &snapshot)?;
     let mut report = RestoreReport {
         stats: stats_of(&snapshot),
-        warnings: Vec::new(),
+        ..RestoreReport::default()
     };
     conn.execute_batch("PRAGMA defer_foreign_keys = ON")?;
     // The rows go in in merge mode, so nothing is clocked or queued. Without capture (a joining
@@ -220,6 +237,30 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<Restor
         capture::install(conn, sync.device)?;
     }
     observe(conn, report.stats.max_hlc, &mut report.warnings)?;
+    // This device's documents and photos (Local, never in a snapshot) are kept aside before the
+    // clear and put back under the items the vault has before the repair, whose blob purge then
+    // takes only the blobs of rows that were not (audit H3).
+    let kept = attachments::keep(conn)?;
+    if let Err(error) = refill(conn, &mut snapshot, &sync, &mut report) {
+        attachments::discard(conn);
+        return Err(error);
+    }
+    report.attachments = attachments::reattach(conn, kept)?;
+    report.warnings.extend(repair::full(conn, now)?.warnings);
+    if !installed {
+        capture::uninstall(conn)?;
+    }
+    Ok(report)
+}
+
+/// The middle of `replace`: empties what a replace restores, then writes the snapshot's rows,
+/// seeds, heads and bookkeeping.
+fn refill(
+    conn: &Connection,
+    snapshot: &mut Snapshot,
+    sync: &SyncState,
+    report: &mut RestoreReport,
+) -> Result<()> {
     capture::with_mode(conn, Mode::Repair, || clear(conn))?;
     if let Some(i) = snapshot
         .rows
@@ -236,21 +277,19 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<Restor
         merge::apply_all(conn, &snapshot.rows, &mut ctx)
     })?;
     if let Some(reason) = stopped {
-        log::warn!("[SYNC] A snapshot did not restore: {reason:?}");
+        // The reason names a row key: only at `debug`.
+        log::debug!("[SYNC] A snapshot did not restore: {reason:?}");
+        log::warn!("[SYNC] A snapshot did not restore");
         return Err(invalid());
     }
     report.warnings.append(&mut ctx.report.warnings);
-    finish(conn, &snapshot, &sync, report.stats.max_hlc, true)?;
-    report.warnings.extend(repair::full(conn, now)?.warnings);
-    if !installed {
-        capture::uninstall(conn)?;
-    }
-    Ok(report)
+    finish(conn, snapshot, sync, report.stats.max_hlc, true)
 }
 
 /// Moves this connection's clock past the snapshot's newest clock (capture is installed on every
-/// restore path by now) and warns when that clock is more than 24 hours ahead of local time: it is
-/// restored anyway, as a changeset's would be (§6.3).
+/// restore path by now) and warns when that clock is more than 24 hours ahead of local time: up to
+/// ten years ahead it is restored anyway, as a changeset's would be (§6.3); past that `admissible`
+/// refused the snapshot already.
 fn observe(conn: &Connection, max_hlc: u64, warnings: &mut Vec<String>) -> Result<()> {
     if let Observation::FarFuture { ahead_ms } = capture::observe(conn, max_hlc)? {
         let warning = format!(
@@ -263,9 +302,20 @@ fn observe(conn: &Connection, max_hlc: u64, warnings: &mut Vec<String>) -> Resul
     Ok(())
 }
 
-/// The sync row, once the snapshot is known to be one this device may restore.
+/// The key a snapshot whose newest clock is more than ten years ahead is refused with.
+pub const CLOCK_AHEAD_KEY: &str = "validation.syncSnapshotClockAhead";
+
+/// The sync row, once the snapshot is known to be one this device may restore. A snapshot whose
+/// newest clock is more than ten years past this device's wall clock (`chain::too_far_ahead`,
+/// audit M6) is refused before anything is written or observed, on every restore (a join, a
+/// re-sync, a repair, the restore after `410`), so this device's clock never jumps with it.
 fn admissible(conn: &Connection, snapshot: &Snapshot) -> Result<SyncState> {
     let sync = loaded(conn)?;
+    let newest = snapshot.rows.iter().map(newest_clock).max().unwrap_or(0);
+    if chain::too_far_ahead(newest, super::hlc::now_ms()) {
+        log::warn!("[SYNC] A snapshot is dated more than ten years ahead: it is refused");
+        return Err(AppError::Validation(CLOCK_AHEAD_KEY.into()));
+    }
     if snapshot.schema > schema_number() {
         return Err(AppError::Validation(
             "validation.syncSnapshotNewerSchema".into(),
@@ -298,14 +348,20 @@ fn finish(
            seq = MAX(seq, excluded.seq), \
            quarantined = MAX(quarantined, excluded.quarantined)",
     )?;
-    // This device's own envelopes are judged from its own log, never from a head.
-    for h in snapshot.heads.iter().filter(|h| h.device != sync.device) {
-        head.execute(params![
-            h.device.0.to_vec(),
-            sql_int(h.seq)?,
-            h.hash.to_vec(),
-            h.quarantined
-        ])?;
+    // This device's own envelopes are judged from its own log, never from a head. Merging moves
+    // the cursor past what the snapshot holds: the own envelopes it holds are acknowledged, as
+    // their echo would have done (audit M4); replacing starts a new chain anyway.
+    for h in &snapshot.heads {
+        if h.device != sync.device {
+            head.execute(params![
+                h.device.0.to_vec(),
+                sql_int(h.seq)?,
+                h.hash.to_vec(),
+                h.quarantined
+            ])?;
+        } else if !replacing {
+            chain::acknowledge_own_through(conn, h.seq, h.hash)?;
+        }
     }
     let sql = if replacing {
         "UPDATE sync_state SET cursor = ?1, snapshot_seq = ?1, snapshot_hlc = ?2, \
@@ -331,29 +387,40 @@ fn finish(
     }
     // The miss (rulings T8-2, T8-6, T8-7). Replacing restarts this device at the snapshot's
     // cursor, so its miss is the dumper's: the rows of what the dumper skipped are missing here
-    // too, and anything this device skipped itself it meets again above the new cursor.
+    // too, and anything this device skipped itself it meets again above the new cursor. A skipped
+    // change's miss (Task 17 I1) is inherited the same way, into its own mark (never as a skip made
+    // here: `state::note_local_skip`, final review A minor 2).
     if replacing {
         state::clear_missed_below_barrier(conn)?;
         if let Some(missed) = snapshot.missed_below_barrier {
             state::note_missed_below_barrier(conn, missed)?;
         }
+        state::clear_skipped_miss(conn)?;
+        if let Some(skipped) = snapshot.missed_skipped {
+            state::note_skipped_miss(conn, skipped)?;
+        }
         return Ok(());
     }
-    // Merging heals this device's miss only with a snapshot from a clean dumper (no pending miss
-    // of its own, so it applied what this device skipped), dumped at this device's barrier or
-    // later and at or past every skipped position (T8-6).
+    // Merging heals this device's misses only with a snapshot from a clean dumper (no pending
+    // miss of either kind, so it applied what this device lacks), dumped at this device's barrier
+    // or later and at or past every missed position (T8-6).
     if chain::snapshot_heals_missed(
         sync,
+        state::skipped_miss(conn)?,
         snapshot.barrier,
         snapshot.seq,
-        snapshot.missed_below_barrier,
+        snapshot.missed_below_barrier.max(snapshot.missed_skipped),
     ) {
         state::clear_missed_below_barrier(conn)?;
+        state::clear_skipped_miss(conn)?;
     }
     // A dumper's own miss above this device's cursor is now this device's too: the cursor moves
     // past that envelope and the snapshot lacks its rows (T8-7). The newest miss is kept.
     if let Some(missed) = snapshot.missed_below_barrier.filter(|m| sync.cursor < *m) {
         state::note_missed_below_barrier(conn, missed)?;
+    }
+    if let Some(skipped) = snapshot.missed_skipped.filter(|m| sync.cursor < *m) {
+        state::note_skipped_miss(conn, skipped)?;
     }
     Ok(())
 }

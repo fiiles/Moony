@@ -6,6 +6,8 @@ Date: 2026-11-07
 
 Accepted. Records phase 1 of `docs/specs/2026-11-06-device-sync-client-design.md` as built
 (`src-tauri/src/services/sync/`); the spec's §20 lists where the build departs from its text.
+Amended by [ADR 0027](0027-device-sync-audit-fixes.md) (2026-11-12): capture or guard, the
+unlock sweep, far-future clocks and the `sync_devices.public_key` rule.
 
 ## Context
 

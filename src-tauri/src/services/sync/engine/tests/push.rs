@@ -1,15 +1,17 @@
 //! `seal_batch`, `next_push_batch_with` and `push_all` against the fake relay: the one-transaction
 //! seal into `sync_unsent`, the same op IDs after a crash or a lost answer, the relay's batch
-//! limits, its refusals as sync error classes, a refused row, and the barrier marker.
+//! limits, its refusals as sync error classes, a refused row, and the barrier marker. A pushed
+//! envelope leaves `sync_unsent` only with its echo (audit M4, `echo.rs`).
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use super::*;
+use crate::services::sync::chain::acknowledge_own;
 use crate::services::sync::engine::pull::pull_all;
 use crate::services::sync::engine::push::{
-    acknowledge_pushed, next_push_batch, next_push_batch_with, push_all, seal_batch, PushReport,
-    SealReport, PUSH_MAX_OPS, SEAL_BATCH, SEAL_PER_HOLD,
+    next_push_batch, next_push_batch_with, push_all, seal_batch, PushReport, SealReport,
+    PUSH_MAX_OPS, SEAL_BATCH, SEAL_PER_HOLD,
 };
 use crate::services::sync::error::{SyncError, SyncResult, TooLarge, Transient};
 use crate::services::sync::journal::Refused;
@@ -23,6 +25,13 @@ use crate::services::sync::test_support::noise;
 
 async fn push_a(vault: &Vault) -> SyncResult<PushReport> {
     push_all(&vault.relay, &vault.a, &vault.creds).await
+}
+
+/// `A` pulls: its pushed envelopes come back and stop waiting.
+async fn echo_a(vault: &Vault) {
+    pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("pull");
 }
 
 /// `(seq, op ID)` of every envelope waiting in `sync_unsent`, in sequence order.
@@ -56,7 +65,7 @@ fn barrier(conn: &Connection) -> u32 {
 
 /// `seal_batch` on `device`, which the caller must not hold locked.
 fn seal(vault: &Vault, device: &TestConn) -> SealReport {
-    seal_batch(device, &vault.creds).expect("seal")
+    seal_batch(device, &vault.creds, None).expect("seal")
 }
 
 /// A `ConnAccess` that records each lock hold: how long it took and how many envelopes were
@@ -207,6 +216,8 @@ async fn a_crash_before_the_push_resends_the_same_op_ids() {
         "the same op ID as sealed before the crash"
     );
     assert_eq!(relay.len(), 2);
+    assert_eq!(unsent(&vault.a.lock()).len(), 2, "both wait for their echo");
+    echo_a(&vault).await;
     assert!(unsent(&vault.a.lock()).is_empty());
 }
 
@@ -279,7 +290,7 @@ async fn push_batches_respect_the_relay_limits() {
 
     {
         let a = vault.a.lock();
-        let by_count = next_push_batch_with(&a, 100, usize::MAX).expect("batch");
+        let by_count = next_push_batch_with(&a, None, 100, usize::MAX).expect("batch");
         assert_eq!(
             by_count.iter().map(|(seq, _)| *seq).collect::<Vec<_>>(),
             (1..=100).collect::<Vec<u64>>()
@@ -291,12 +302,21 @@ async fn push_batches_respect_the_relay_limits() {
                 .collect::<Vec<_>>(),
             ids(&sealed[..100])
         );
-        let by_size = next_push_batch_with(&a, usize::MAX, 3 * one).expect("batch");
+        let by_size = next_push_batch_with(&a, None, usize::MAX, 3 * one).expect("batch");
         assert_eq!(
             by_size.iter().map(|(seq, _)| *seq).collect::<Vec<_>>(),
             vec![1, 2, 3]
         );
-        assert_eq!(next_push_batch(&a).expect("batch").len(), PUSH_MAX_OPS);
+        assert_eq!(
+            next_push_batch(&a, None).expect("batch").len(),
+            PUSH_MAX_OPS
+        );
+        let above = next_push_batch_with(&a, Some(250), 100, usize::MAX).expect("batch");
+        assert_eq!(
+            above.iter().map(|(seq, _)| *seq).collect::<Vec<_>>(),
+            (251..=300).collect::<Vec<u64>>(),
+            "only what lies above the last one sent"
+        );
     }
 
     let report = push_a(&vault).await.expect("push");
@@ -311,6 +331,7 @@ async fn push_batches_respect_the_relay_limits() {
         ids(&sealed),
         "relay order = seq order"
     );
+    echo_a(&vault).await;
     assert!(unsent(&vault.a.lock()).is_empty());
 }
 
@@ -421,6 +442,7 @@ async fn an_oversized_row_is_refused_and_the_loop_still_ends() {
         "counted once, though every seal meets it"
     );
     assert_eq!(report.pushed, 1, "the institution's envelope");
+    echo_a(&vault).await;
     let a = vault.a.lock();
     assert_eq!(
         count(
@@ -508,6 +530,7 @@ async fn a_device_past_a_new_barrier_with_nothing_to_send_pushes_one_marker() {
         );
     }
 
+    echo_a(&vault).await;
     let second = push_a(&vault).await.expect("push again");
 
     assert_eq!(second.pushed, 0, "at most one marker per barrier");
@@ -576,7 +599,7 @@ async fn a_receipt_accepting_more_than_was_sent_acknowledges_nothing() {
 }
 
 #[tokio::test]
-async fn acknowledging_removes_only_the_named_envelopes() {
+async fn an_echo_removes_only_its_own_envelope() {
     let vault = vault().await;
     let a = vault.a.lock();
     for id in ["a1", "a2", "a3"] {
@@ -585,7 +608,8 @@ async fn acknowledging_removes_only_the_named_envelopes() {
     }
     let before = unsent(&a);
 
-    acknowledge_pushed(&a, &[1, 3]).expect("acknowledge");
+    acknowledge_own(&a, 1).expect("echo 1");
+    acknowledge_own(&a, 3).expect("echo 3");
 
     assert_eq!(unsent(&a), vec![before[1].clone()]);
 }
@@ -608,7 +632,7 @@ async fn a_large_drain_takes_several_lock_holds() {
     }
     let db = Holds::new(vault.a.clone());
 
-    let report = seal_batch(&db, &vault.creds).expect("seal");
+    let report = seal_batch(&db, &vault.creds, None).expect("seal");
 
     assert_eq!((SEAL_BATCH, SEAL_PER_HOLD), (64, 1));
     assert_eq!(report.sealed, 64);
@@ -625,14 +649,15 @@ async fn a_large_drain_takes_several_lock_holds() {
     );
     drop(a);
 
-    // The rest waits for the next batch, which starts only once these left.
-    acknowledge_pushed(
-        &vault.a.lock(),
-        &(1..=SEAL_BATCH as u64).collect::<Vec<_>>(),
-    )
-    .expect("acknowledge");
+    // The rest waits for the next batch, which starts only once these were sent (`after` past
+    // them) or came back.
+    let early = seal_batch(&db, &vault.creds, Some(SEAL_BATCH as u64 - 1)).expect("seal");
+    assert_eq!(early.sealed, 0, "envelope 64 was not sent yet");
+    for seq in 1..=SEAL_BATCH as u64 {
+        acknowledge_own(&vault.a.lock(), seq).expect("echo");
+    }
     let before = db.holds().len();
-    let rest = seal_batch(&db, &vault.creds).expect("seal the rest");
+    let rest = seal_batch(&db, &vault.creds, None).expect("seal the rest");
     assert_eq!(rest.sealed, 6);
     let waiting: Vec<i64> = db.holds()[before..].iter().map(|(_, w)| *w).collect();
     assert_eq!(
@@ -664,6 +689,8 @@ async fn a_lost_answer_pushed_again_without_a_pull_stores_each_op_once() {
 
     assert_eq!(again.pushed, 1, "the same envelope, acknowledged this time");
     assert_eq!(relay_ids(&vault.relay), ids(&sealed), "each op once");
+    assert_eq!(unsent(&vault.a.lock()), sealed, "it waits for its echo");
+    echo_a(&vault).await;
     assert!(unsent(&vault.a.lock()).is_empty());
 }
 
@@ -673,6 +700,7 @@ fn a_seal_report_debug_leaves_row_keys_out() {
     let report = SealReport {
         sealed: 2,
         marker: false,
+        unechoed_cap: false,
         refused: vec![Refused {
             table: "watched_stocks".into(),
             pk: "secret-key-w1".into(),
@@ -716,12 +744,12 @@ fn draining_a_50000_row_outbox() {
     let started = Instant::now();
     let mut envelopes = 0;
     loop {
-        let report = seal_batch(&db, &creds).expect("seal");
+        let report = seal_batch(&db, &creds, None).expect("seal");
         if report.sealed == 0 {
             break;
         }
         envelopes += report.sealed;
-        // As if pushed and acknowledged.
+        // As if pushed and pulled back.
         exec(&db.inner.lock(), "DELETE FROM sync_unsent");
     }
     let total = started.elapsed();

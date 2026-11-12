@@ -6,7 +6,7 @@ import { useSyncDevices } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
-import { devicePlatformKey } from '@/utils/sync-devices';
+import { devicePlatformKey, quietDays } from '@/utils/sync-devices';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { AddDeviceDialog } from '@/components/settings/sync/AddDeviceDialog';
 import {
@@ -42,6 +42,7 @@ export function SyncDevicesCard() {
           }),
       t('devices.version', { version: device.appVersion }),
     ].join(' · ');
+  const now = Math.floor(Date.now() / 1000);
 
   return (
     <>
@@ -55,31 +56,40 @@ export function SyncDevicesCard() {
         }
       >
         <div>
-          {(devices ?? []).map((device) => (
-            <SettingsRow
-              key={device.id}
-              label={
-                <span className="inline-flex flex-wrap items-center gap-2">
-                  {device.name}
-                  {device.thisDevice && <Badge variant="dark">{t('devices.thisDevice')}</Badge>}
-                  {device.held && <Badge variant="loss">{t('devices.held')}</Badge>}
-                </span>
-              }
-              hint={hint(device)}
-            >
-              {device.thisDevice && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setRenaming(device)}
-                >
-                  {t('devices.rename')}
-                </Button>
-              )}
-            </SettingsRow>
-          ))}
+          {(devices ?? []).map((device) => {
+            const quiet = quietDays(device.lastActiveAt, now);
+            return (
+              <SettingsRow
+                key={device.id}
+                label={
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    {device.name}
+                    {device.thisDevice && <Badge variant="dark">{t('devices.thisDevice')}</Badge>}
+                    {device.held && <Badge variant="loss">{t('devices.held')}</Badge>}
+                    {quiet !== null && (
+                      <Badge variant="default">{t('devices.quiet', { count: quiet })}</Badge>
+                    )}
+                  </span>
+                }
+                hint={hint(device)}
+              >
+                {device.thisDevice && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRenaming(device)}
+                  >
+                    {t('devices.rename')}
+                  </Button>
+                )}
+              </SettingsRow>
+            );
+          })}
         </div>
+        <p className="m-0 mt-3 text-micro font-500 text-ink-3" data-testid="sync-limits">
+          {t('limits.lostDevice')}
+        </p>
       </SettingsCard>
       {renaming && <RenameDeviceDialog device={renaming} onClose={() => setRenaming(null)} />}
       {adding && <AddDeviceDialog onClose={() => setAdding(false)} />}

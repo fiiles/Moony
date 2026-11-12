@@ -195,6 +195,16 @@
       "leftoversTitle": "Unverschlüsselte Kopien außerhalb von Moony",
       "leftoversBody": "Moony hat sie beim Verschlüsseln gefunden. Außerhalb des eigenen Ordners löscht Moony nichts; prüfen und löschen Sie sie selbst.",
       "reveal": "Anzeigen"
+    },
+    "syncBackups": {
+      "title": "Sicherungen vor dem Ersetzen von Daten durch die Synchronisierung",
+      "kept": "Enthält Änderungen, die es sonst nirgends gibt",
+      "restore": "Wiederherstellen",
+      "delete": "Löschen",
+      "deleteTitle": "Sicherung vom {{date}} löschen?",
+      "deleteBody": "Diese Sicherung wird endgültig gelöscht.",
+      "deleteBodyKept": "Diese Sicherung enthält Änderungen, die es sonst nirgends gibt. Sie wird endgültig gelöscht, und diese Änderungen gehen verloren.",
+      "deleted": "Sicherung gelöscht"
     }
   },
   "autoLock": {

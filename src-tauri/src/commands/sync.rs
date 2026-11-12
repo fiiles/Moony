@@ -2,7 +2,11 @@
 //! at lock, restore and account deletion; and the sync commands (thin: the flag, the input, the
 //! service in `services::sync::{setup, join}`, its `SyncError` mapped with `to_app_error`).
 //!
-//! Every command but `sync_feature_enabled` starts with `require_feature()`. The relay is the one
+//! Every command but three starts with `require_feature()`: `sync_feature_enabled` (it is the flag),
+//! `sync_profile_state` (read-only: whether this profile has sync on, so a build without the flag
+//! can say so) and `sync_turn_off` (it only removes sync state from this profile; a build without
+//! the flag keeps capturing an enabled profile, audit M12, and must let the person end that).
+//! The relay is the one
 //! at the stored account's address (`keys::account`, ruling SH-2); `default_base_url()` only before
 //! an account exists. The commands that change what the engine works on (finishing setup, turning
 //! sync off, deleting the synced data, the repair and the re-sync) stop the engine first and start
@@ -11,7 +15,7 @@
 //! No command logs its arguments; passwords stay in `Zeroizing` once received.
 
 use std::future::Future;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -23,24 +27,31 @@ use zeroize::Zeroizing;
 use crate::commands::auth::get_db_path;
 use crate::db::Database;
 use crate::error::{AppError, Result};
-use crate::models::sync::{CheckoutTarget, RecoveryKit, SyncAccount, SyncPlan, SyncStatus};
+use crate::models::sync::{
+    CheckoutTarget, RecoveryKit, ReplaceConsentView, ReplaceOutcomeView, SyncAccount, SyncPlan,
+    SyncProfileState, SyncStatus,
+};
 use crate::services::auth;
 use crate::services::sync::binding::{BindingFailure, BindingNative};
 use crate::services::sync::capture::bench::{self, Overhead};
 use crate::services::sync::engine::runtime::{self, EngineHandle, Trigger};
-use crate::services::sync::engine::{status, EngineEvents};
+use crate::services::sync::engine::{status, ConnAccess, EngineEvents};
 use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::merge::DATA_CHANGED_EVENT;
 use crate::services::sync::relay::http::{default_base_url, HttpRelay};
 use crate::services::sync::{feature, join, keys, setup, state};
 
+use super::sync_backups::{consent_of, outcome_view};
+
 const UNAVAILABLE: &str = "validation.syncUnavailable";
 const DEV_ONLY: &str = "validation.syncDevOnly";
-const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
+pub(super) const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
 const PASSWORD_REQUIRED: &str = "validation.syncPasswordRequired";
+const PASSWORD_NEEDED: &str = "validation.syncPasswordNeeded";
+const COPY_FAILED: &str = "validation.syncCopyFailed";
 
-/// How long after `sync_show_recovery_kit` checked the password the code may be copied with sync
-/// on (during setup it may be copied at any time).
+/// How long after `sync_prepare_recovery_kit` or `sync_show_recovery_kit` checked the password the
+/// code may be copied and the Kit saved (audit M11: every showing needs the password).
 const KIT_COPY_WINDOW: Duration = Duration::from_secs(5 * 60);
 
 /// How long a copied recovery code stays on the clipboard if nothing else was copied since.
@@ -77,8 +88,10 @@ impl BindingNative for KeychainBinding {
 }
 
 /// `Invalidated` is the plugin's "sealed on another machine"; anything but that and
-/// `Unsupported` is a failure of the moment, which lets this start go on. The plugin's messages
-/// name OS error codes only, never a value, a path or a blob.
+/// `Unsupported` is a failure of the moment (`Failed`), which stops this start's rounds and
+/// counts once per app start; the third such start in a row re-joins (audit M10,
+/// `binding::startup_check_counted`). The plugin's messages name OS error codes only, never a
+/// value, a path or a blob.
 fn binding_failure(error: KeychainError) -> BindingFailure {
     match error {
         KeychainError::Unsupported => BindingFailure::Unsupported,
@@ -118,7 +131,15 @@ impl EngineEvents for TauriEvents {
     fn data_dir(&self) -> PathBuf {
         self.data_dir.clone()
     }
+
+    fn binding_failed_this_start(&self) -> &AtomicBool {
+        &BINDING_FAILED_THIS_START
+    }
 }
+
+/// A binding check failed in this process (`EngineEvents::binding_failed_this_start`): the app
+/// start's mark, shared by every engine an unlock or a sync change spawns.
+static BINDING_FAILED_THIS_START: AtomicBool = AtomicBool::new(false);
 
 /// Starts the engine for the profile just unlocked. Nothing at all while the flag is off
 /// (`feature::enabled`); a profile without sync costs one `SELECT` (G5). A running engine is
@@ -253,8 +274,9 @@ pub(super) fn profile_relay(db: &Database) -> Result<HttpRelay> {
     HttpRelay::new(&stored.unwrap_or_else(default_base_url))
 }
 
+/// Whether sync is on, a damaged `sync_state` row counting as on (`state::on_or_unreadable`).
 pub(super) fn sync_on(db: &Database) -> Result<bool> {
-    db.with_conn(|conn| Ok(state::load(conn)?.is_some_and(|sync| sync.enabled)))
+    db.with_conn(state::on_or_unreadable)
 }
 
 /// The status of the open profile, with the running engine's memory of its rounds.
@@ -321,6 +343,11 @@ pub(super) async fn verify_password(app: &AppHandle, password: Zeroizing<String>
 /// One sync change at a time in the process (`guarded_change`).
 static SYNC_CHANGE_RUNNING: AtomicBool = AtomicBool::new(false);
 
+/// Whether a sync change (`guarded_change`: a join, repair, re-sync, turning off, …) runs now.
+pub(super) fn sync_change_running() -> bool {
+    SYNC_CHANGE_RUNNING.load(Ordering::SeqCst)
+}
+
 /// Holds the one sync-change slot; dropping it frees the slot.
 struct SyncChangeGuard;
 
@@ -353,9 +380,10 @@ pub(super) struct KitOwner {
     pub(super) session: u64,
 }
 
-/// `sync_show_recovery_kit` checked the password of `owner` at `opened`.
+/// `sync_prepare_recovery_kit` or `sync_show_recovery_kit` checked the password of `owner` at
+/// `opened`.
 #[derive(Debug, Clone)]
-struct KitWindow {
+pub(super) struct KitWindow {
     owner: KitOwner,
     opened: Instant,
 }
@@ -370,7 +398,7 @@ fn kit_window_slot() -> std::sync::MutexGuard<'static, Option<KitWindow>> {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-fn kit_window() -> Option<KitWindow> {
+pub(super) fn kit_window() -> Option<KitWindow> {
     kit_window_slot().clone()
 }
 
@@ -390,15 +418,37 @@ pub(super) fn kit_owner(app: &AppHandle, db: &Database) -> Result<KitOwner> {
     })
 }
 
-/// The code is copied without a password only during setup (sync not on yet, the kit is being
-/// shown the first time); with sync on, only within `KIT_COPY_WINDOW` after the password of this
-/// very profile session was checked.
-fn copy_allowed(sync_on: bool, window: Option<&KitWindow>, owner: &KitOwner, now: Instant) -> bool {
-    !sync_on
-        || window.is_some_and(|window| {
-            window.owner == *owner
-                && now.saturating_duration_since(window.opened) <= KIT_COPY_WINDOW
-        })
+/// The code is copied (and the Kit saved) only within `KIT_COPY_WINDOW` after the password of
+/// this very profile session was checked, during setup too (audit M11: a person at an unlocked
+/// app cannot take the Kit by starting setup).
+pub(super) fn copy_allowed(window: Option<&KitWindow>, owner: &KitOwner, now: Instant) -> bool {
+    window.is_some_and(|window| {
+        window.owner == *owner && now.saturating_duration_since(window.opened) <= KIT_COPY_WINDOW
+    })
+}
+
+/// What a native copy's answer means: a change token to clear later, `None` when this platform
+/// has no native copy (Linux, Android: the UI copies itself and clears it), and
+/// `validation.syncCopyFailed` for any other failure, so a failed native copy never falls back
+/// to a plain clipboard write (audit M11).
+fn copy_outcome(result: std::result::Result<u64, KeychainError>) -> Result<Option<u64>> {
+    match result {
+        Ok(token) => Ok(Some(token)),
+        Err(KeychainError::Unsupported) => Ok(None),
+        Err(e) => {
+            log::warn!("[SYNC] The recovery code could not be copied natively: {e}");
+            Err(AppError::Validation(COPY_FAILED.into()))
+        }
+    }
+}
+
+/// An empty password is `validation.syncPasswordNeeded` before any check runs (it would only
+/// count as a wrong one).
+pub(super) fn password_given(password: &str) -> Result<()> {
+    if password.is_empty() {
+        return Err(AppError::Validation(PASSWORD_NEEDED.into()));
+    }
+    Ok(())
 }
 
 /// The clipboard clear still owed for the newest recovery code copied natively: its change token
@@ -493,6 +543,22 @@ pub async fn sync_feature_enabled() -> Result<bool> {
     Ok(feature::enabled())
 }
 
+/// Works without the flag, read-only: whether this profile has sync on (`enabled`) and whether this
+/// build runs sync (`featureOn`). A build without the flag shows a way out when the profile is on.
+#[tauri::command]
+pub async fn sync_profile_state(db: State<'_, Database>) -> Result<SyncProfileState> {
+    db.with_conn(profile_state)
+}
+
+/// `sync_profile_state`'s answer.
+fn profile_state(conn: &rusqlite::Connection) -> Result<SyncProfileState> {
+    Ok(SyncProfileState {
+        enabled: state::on_or_unreadable(conn)?,
+        feature_on: feature::enabled(),
+        pending_changes: status::unsent_changes(conn)?,
+    })
+}
+
 #[tauri::command]
 pub async fn get_sync_status(app: AppHandle, db: State<'_, Database>) -> Result<SyncStatus> {
     require_feature()?;
@@ -541,35 +607,42 @@ pub async fn sync_start_checkout(
         .map_err(app_error)
 }
 
-/// The kit during setup; with sync on, `validation.syncAlreadyEnabled` (see
-/// `sync_show_recovery_kit`).
+/// The kit during setup, every time behind the device password (the first showing included,
+/// audit M11); opens `KIT_COPY_WINDOW` for `sync_copy_recovery_code` and `sync_save_recovery_kit`.
+/// With sync on, `validation.syncAlreadyEnabled` (see `sync_show_recovery_kit`).
 #[tauri::command]
-pub async fn sync_prepare_recovery_kit(db: State<'_, Database>) -> Result<RecoveryKit> {
+pub async fn sync_prepare_recovery_kit(
+    app: AppHandle,
+    db: State<'_, Database>,
+    password: String,
+) -> Result<RecoveryKit> {
+    let password = Zeroizing::new(password);
     require_feature()?;
-    db.with_conn(setup::setup_recovery_kit)
+    password_given(&password)?;
+    verify_password(&app, password).await?;
+    let kit = db.with_conn(setup::setup_recovery_kit)?;
+    open_kit_window(kit_owner(&app, &db)?, Instant::now());
+    Ok(kit)
 }
 
 /// Copies the recovery code natively (hidden from clipboard managers) and clears the clipboard
 /// after `CLIPBOARD_CLEAR_AFTER`, or earlier at exit or lock (`clear_copied_code`), if nothing
-/// else was copied since. The code is read here from `sync_state` and never crosses IPC. `false`: no native copy on this platform (or it failed);
-/// the UI copies itself and asks the person to clear the clipboard.
+/// else was copied since. The code is read here from `sync_state` and never crosses IPC. Only
+/// within `KIT_COPY_WINDOW` (`validation.syncPasswordRequired` otherwise). `false`: no native copy
+/// on this platform, so the UI copies itself and clears it; any other failure is
+/// `validation.syncCopyFailed` (`copy_outcome`).
 #[tauri::command]
 pub async fn sync_copy_recovery_code(app: AppHandle, db: State<'_, Database>) -> Result<bool> {
     require_feature()?;
     let owner = kit_owner(&app, &db)?;
     let window = kit_window();
-    if !copy_allowed(sync_on(&db)?, window.as_ref(), &owner, Instant::now()) {
+    if !copy_allowed(window.as_ref(), &owner, Instant::now()) {
         return Err(AppError::Validation(PASSWORD_REQUIRED.into()));
     }
     // The kit wipes its code when dropped.
     let kit = db.with_conn(setup::recovery_kit)?;
-    let token = match app.keychain().copy_secret_text(&kit.recovery_code) {
-        Ok(token) => token,
-        Err(KeychainError::Unsupported) => return Ok(false),
-        Err(e) => {
-            log::warn!("[SYNC] The recovery code could not be copied natively: {e}");
-            return Ok(false);
-        }
+    let Some(token) = copy_outcome(app.keychain().copy_secret_text(&kit.recovery_code))? else {
+        return Ok(false);
     };
     // Owed until the timer, an exit or a lock clears it (`clear_copied_code`).
     pending_clear().set(token);
@@ -617,6 +690,12 @@ pub async fn sync_finish_setup(
 #[tauri::command]
 pub async fn sync_now(app: AppHandle) -> Result<()> {
     require_feature()?;
+    wake_engine(&app);
+    Ok(())
+}
+
+/// Asks the running engine for a round now, past any back-off; nothing while no engine runs.
+pub(super) fn wake_engine(app: &AppHandle) {
     if let Some(handle) = app
         .state::<SyncEngineState>()
         .0
@@ -626,11 +705,10 @@ pub async fn sync_now(app: AppHandle) -> Result<()> {
     {
         handle.wake(Trigger::SyncNow);
     }
-    Ok(())
 }
 
 /// The kit after setup, once the device password is checked; opens `KIT_COPY_WINDOW` for
-/// `sync_copy_recovery_code`.
+/// `sync_copy_recovery_code` and `sync_save_recovery_kit`.
 #[tauri::command]
 pub async fn sync_show_recovery_kit(
     app: AppHandle,
@@ -639,6 +717,7 @@ pub async fn sync_show_recovery_kit(
 ) -> Result<RecoveryKit> {
     let password = Zeroizing::new(password);
     require_feature()?;
+    password_given(&password)?;
     verify_password(&app, password).await?;
     let kit = db.with_conn(setup::recovery_kit)?;
     open_kit_window(kit_owner(&app, &db)?, Instant::now());
@@ -652,19 +731,58 @@ fn forgets_pairing_on_turn_off(sync_was_on: bool) -> bool {
     sync_was_on
 }
 
-/// Turns sync off on this device; local data stays.
+/// Turning sync off with sync on needs the device password (audit L10):
+/// `validation.syncPasswordNeeded` without one that was checked. Cancelling a setup that has not
+/// finished (sync not on yet) needs none.
+fn turn_off_allowed(sync_is_on: bool, password_checked: bool) -> Result<()> {
+    if sync_is_on && !password_checked {
+        return Err(AppError::Validation(PASSWORD_NEEDED.into()));
+    }
+    Ok(())
+}
+
+/// `sync_turn_off`'s work once no other sync change runs: `turn_off_allowed` again on the profile
+/// as it is now (a setup may have finished since the first check), then
+/// `setup::turn_off_between_rounds`.
+async fn turn_off_rechecked<D: ConnAccess>(
+    db: &D,
+    data_dir: &Path,
+    password_checked: bool,
+) -> SyncResult<()> {
+    let on = db.with_conn(state::on_or_unreadable)?;
+    turn_off_allowed(on, password_checked)?;
+    setup::turn_off_between_rounds(db, data_dir).await
+}
+
+/// Turns sync off on this device; local data stays. Works without the flag: it only removes sync
+/// state (and the guard or `query_only`) from this profile. With sync on, only once the device password
+/// is checked (`turn_off_allowed`, checked again once no other sync change runs, in case a setup
+/// finished meanwhile); cancelling a setup that has not finished needs none.
 #[tauri::command]
-pub async fn sync_turn_off(app: AppHandle, db: State<'_, Database>) -> Result<()> {
-    require_feature()?;
+pub async fn sync_turn_off(
+    app: AppHandle,
+    db: State<'_, Database>,
+    password: Option<String>,
+) -> Result<()> {
+    let password = password.map(Zeroizing::new);
+    let checked = match password {
+        Some(password) => {
+            verify_password(&app, password).await?;
+            true
+        }
+        None => false,
+    };
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
+    let was_on = sync_on(&db)?;
+    turn_off_allowed(was_on, checked)?;
     forget_kit_window();
-    if forgets_pairing_on_turn_off(sync_on(&db)?) {
+    if forgets_pairing_on_turn_off(was_on) {
         super::sync_pairing::forget_pairing();
     }
     guarded_change(
         &AppEngine { app: &app, db: &db },
-        setup::turn_off_between_rounds(&session, &dir),
+        turn_off_rechecked(&session, &dir, checked),
     )
     .await
 }
@@ -678,6 +796,7 @@ pub async fn sync_delete_synced_data(
 ) -> Result<()> {
     let password = Zeroizing::new(password);
     require_feature()?;
+    password_given(&password)?;
     verify_password(&app, password).await?;
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
@@ -693,38 +812,50 @@ pub async fn sync_delete_synced_data(
     .await
 }
 
-/// Repairs a capture-broken profile (`join::repair_capture`); the backup's path.
+/// Repairs a capture-broken profile (`join::repair_capture`) once the device password is checked;
+/// its backup and what stayed only in it.
 #[tauri::command]
-pub async fn sync_repair_device(app: AppHandle, db: State<'_, Database>) -> Result<String> {
-    require_feature()?;
-    let session = db.current_session()?;
-    let relay = profile_relay(&session)?;
-    let dir = data_dir(&app)?;
-    let native = KeychainBinding { app: app.clone() };
-    let repair = join::repair_capture(&relay, &session, &dir, &native, now());
-    let backup = guarded_change(&AppEngine { app: &app, db: &db }, repair).await?;
-    Ok(backup.display().to_string())
-}
-
-/// "Re-sync this device" (ruling T8-4): backup, then join by replace without a drain, once the
-/// device password is checked (changes not sent yet survive only in the backup); the backup's
-/// path.
-#[tauri::command]
-pub async fn sync_resync_device(
+pub async fn sync_repair_device(
     app: AppHandle,
     db: State<'_, Database>,
     password: String,
-) -> Result<String> {
+) -> Result<ReplaceOutcomeView> {
     let password = Zeroizing::new(password);
     require_feature()?;
+    password_given(&password)?;
     verify_password(&app, password).await?;
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
-    let resync = join::resync_by_replace(&relay, &session, &dir, &native, now());
-    let backup = guarded_change(&AppEngine { app: &app, db: &db }, resync).await?;
-    Ok(backup.display().to_string())
+    let repair = join::repair_capture(&relay, &session, &dir, &native, now());
+    let outcome = guarded_change(&AppEngine { app: &app, db: &db }, repair).await?;
+    Ok(outcome_view(&outcome))
+}
+
+/// "Re-sync this device" (ruling T8-4): backup, then join by replace without a drain, once the
+/// device password is checked, within what the person agreed to (`consent`: a change after it
+/// stops the re-sync with `validation.syncReplaceImpactChanged`). Changes not sent yet survive
+/// only in the backup; the outcome says how many.
+#[tauri::command]
+pub async fn sync_resync_device(
+    app: AppHandle,
+    db: State<'_, Database>,
+    password: String,
+    consent: ReplaceConsentView,
+) -> Result<ReplaceOutcomeView> {
+    let password = Zeroizing::new(password);
+    require_feature()?;
+    let consent = consent_of(&consent)?;
+    password_given(&password)?;
+    verify_password(&app, password).await?;
+    let session = db.current_session()?;
+    let relay = profile_relay(&session)?;
+    let dir = data_dir(&app)?;
+    let native = KeychainBinding { app: app.clone() };
+    let resync = join::resync_by_replace(&relay, &session, consent, &dir, &native, now());
+    let outcome = guarded_change(&AppEngine { app: &app, db: &db }, resync).await?;
+    Ok(outcome_view(&outcome))
 }
 
 /// A test subscription of `days` days on a local relay started with `DEV_GRANT=1` (debug builds
@@ -782,6 +913,69 @@ mod tests {
     use crate::services::sync::engine::tests::TestConn;
     use crate::services::sync::hlc::DeviceId;
     use crate::services::sync::test_support::migrated;
+
+    #[test]
+    fn turning_sync_off_with_sync_on_needs_the_password() {
+        assert_eq!(
+            validation_key(turn_off_allowed(true, false)),
+            "validation.syncPasswordNeeded"
+        );
+        assert!(turn_off_allowed(true, true).is_ok());
+        assert!(
+            turn_off_allowed(false, false).is_ok(),
+            "cancelling a setup that has not finished"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_setup_that_finished_after_the_first_check_still_needs_the_password() {
+        let db = TestConn::new(migrated());
+        let dir = tempfile::tempdir().expect("dir");
+        assert!(
+            turn_off_allowed(sync_is_on(&db), false).is_ok(),
+            "the first check: a setup that has not finished"
+        );
+        state::enable(&db.lock(), DeviceId::random()).expect("the setup finished meanwhile");
+
+        let refused = turn_off_rechecked(&db, dir.path(), false).await;
+        assert_eq!(
+            validation_key(refused.map_err(app_error)),
+            "validation.syncPasswordNeeded"
+        );
+        assert!(sync_is_on(&db), "nothing was turned off");
+
+        turn_off_rechecked(&db, dir.path(), true)
+            .await
+            .expect("turned off with the password checked");
+        assert!(!sync_is_on(&db));
+    }
+
+    /// Final review B, minor 1: a `sync_state` row that does not load (a damaged `device_id`)
+    /// counts as on, as `sync::on_open` guards it: turning sync off still works, behind the
+    /// password, and the profile state says sync is on.
+    #[tokio::test]
+    async fn an_unreadable_sync_row_can_still_be_turned_off() {
+        let db = TestConn::new(migrated());
+        state::enable(&db.lock(), DeviceId::random()).expect("sync on");
+        db.lock()
+            .execute("UPDATE sync_state SET device_id = X'01'", [])
+            .expect("damage the row");
+        assert!(state::load(&db.lock()).is_err(), "the row does not load");
+        let dir = tempfile::tempdir().expect("dir");
+
+        assert!(profile_state(&db.lock()).expect("profile state").enabled);
+        let refused = turn_off_rechecked(&db, dir.path(), false).await;
+        assert_eq!(
+            validation_key(refused.map_err(app_error)),
+            "validation.syncPasswordNeeded"
+        );
+
+        turn_off_rechecked(&db, dir.path(), true)
+            .await
+            .expect("turned off with the password checked");
+        assert!(!sync_is_on(&db));
+        assert!(!profile_state(&db.lock()).expect("profile state").enabled);
+    }
 
     #[test]
     fn only_turning_sync_off_from_on_ends_the_pairing() {
@@ -908,26 +1102,51 @@ mod tests {
     }
 
     #[test]
-    fn the_code_is_copied_during_setup_or_shortly_after_the_password() {
+    fn the_code_is_copied_only_shortly_after_the_password() {
         let now = Instant::now();
         let a = owner("/profiles/a/moony.db", 3);
         let shown = |opened| KitWindow {
             owner: a.clone(),
             opened,
         };
-        // During setup (sync not on yet) the kit is being shown for the first time.
-        assert!(copy_allowed(false, None, &a, now));
-        // With sync on, only within the window after `sync_show_recovery_kit` checked the password.
-        assert!(!copy_allowed(true, None, &a, now));
-        assert!(copy_allowed(true, Some(&shown(now)), &a, now));
+        // Setup included: no window, no copy (audit M11).
+        assert!(!copy_allowed(None, &a, now));
+        assert!(copy_allowed(Some(&shown(now)), &a, now));
         let edge = now + KIT_COPY_WINDOW;
-        assert!(copy_allowed(true, Some(&shown(now)), &a, edge));
+        assert!(copy_allowed(Some(&shown(now)), &a, edge));
         assert!(!copy_allowed(
-            true,
             Some(&shown(now)),
             &a,
             edge + Duration::from_secs(1)
         ));
+    }
+
+    #[test]
+    fn copy_outcome_falls_back_only_when_unsupported() {
+        assert_eq!(copy_outcome(Ok(7)).expect("copied"), Some(7));
+        assert_eq!(
+            copy_outcome(Err(KeychainError::Unsupported)).expect("the UI copies"),
+            None
+        );
+        for failed in [
+            KeychainError::Failed("NSPasteboard refused".into()),
+            KeychainError::Unavailable,
+            KeychainError::Cancelled,
+            KeychainError::Invalidated,
+        ] {
+            let error = copy_outcome(Err(failed)).expect_err("no fallback");
+            assert!(
+                matches!(&error, AppError::Validation(key) if key == COPY_FAILED),
+                "{error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn password_given_refuses_an_empty_password() {
+        let error = password_given("").expect_err("empty");
+        assert!(matches!(&error, AppError::Validation(key) if key == PASSWORD_NEEDED));
+        assert!(password_given("correct horse").is_ok());
     }
 
     #[test]
@@ -938,13 +1157,13 @@ mod tests {
             owner: a.clone(),
             opened: now,
         };
-        assert!(copy_allowed(true, Some(&window), &a, now));
+        assert!(copy_allowed(Some(&window), &a, now));
         assert!(
-            !copy_allowed(true, Some(&window), &owner("/profiles/b/moony.db", 3), now),
+            !copy_allowed(Some(&window), &owner("/profiles/b/moony.db", 3), now),
             "another profile"
         );
         assert!(
-            !copy_allowed(true, Some(&window), &owner("/profiles/a/moony.db", 5), now),
+            !copy_allowed(Some(&window), &owner("/profiles/a/moony.db", 5), now),
             "the same profile after a lock and an unlock"
         );
     }
@@ -988,12 +1207,18 @@ mod tests {
     }
 
     /// The sync commands (name → body up to its third statement), read from the sources of this
-    /// file and of `sync_pairing.rs`.
+    /// file, `sync_pairing.rs`, `sync_backups.rs`, `sync_kit.rs` and `sync_gaps.rs`.
     fn commands_and_their_first_statements() -> Vec<(String, String)> {
-        [include_str!("sync.rs"), include_str!("sync_pairing.rs")]
-            .into_iter()
-            .flat_map(commands_of)
-            .collect()
+        [
+            include_str!("sync.rs"),
+            include_str!("sync_pairing.rs"),
+            include_str!("sync_backups.rs"),
+            include_str!("sync_kit.rs"),
+            include_str!("sync_gaps.rs"),
+        ]
+        .into_iter()
+        .flat_map(commands_of)
+        .collect()
     }
 
     /// The commands of one source file.
@@ -1038,19 +1263,100 @@ mod tests {
                 let line = line.trim();
                 line.strip_prefix("commands::sync::")
                     .or_else(|| line.strip_prefix("commands::sync_pairing::"))
+                    .or_else(|| line.strip_prefix("commands::sync_backups::"))
+                    .or_else(|| line.strip_prefix("commands::sync_kit::"))
+                    .or_else(|| line.strip_prefix("commands::sync_gaps::"))
             })
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 25);
+        assert_eq!(found.len(), 33);
         for (name, first_three) in &commands {
-            if name == "sync_feature_enabled" {
+            // The flag itself, a read-only question, and the way out of an enabled profile.
+            if [
+                "sync_feature_enabled",
+                "sync_profile_state",
+                "sync_turn_off",
+            ]
+            .contains(&name.as_str())
+            {
                 continue;
             }
             assert!(
                 first_three.contains("require_feature()?"),
                 "`{name}` must call `require_feature()?` within its first three statements"
             );
+        }
+    }
+
+    /// The body of `name` in this file's code above the tests, up to its closing brace.
+    fn command_body(name: &str) -> &'static str {
+        command_body_in(include_str!("sync.rs"), name)
+    }
+
+    /// The body of `name` in `source`'s code above its tests, up to its closing brace.
+    fn command_body_in(source: &'static str, name: &str) -> &'static str {
+        let code = source
+            .split("\n#[cfg(test)]\nmod tests {")
+            .next()
+            .expect("code");
+        let start = code
+            .find(&format!("pub async fn {name}("))
+            .unwrap_or_else(|| panic!("`{name}` is in the source"));
+        let body = &code[start..];
+        &body[..body.find("\n}\n").expect("the end of the command")]
+    }
+
+    /// Final review B, minor 6 (audit L10): the repair, the re-sync, deleting the synced data and
+    /// the skip check the device password, and refuse an empty one before the key check runs.
+    #[test]
+    fn every_password_command_refuses_an_empty_password_then_checks_it() {
+        for (source, name) in [
+            (include_str!("sync.rs"), "sync_repair_device"),
+            (include_str!("sync.rs"), "sync_resync_device"),
+            (include_str!("sync.rs"), "sync_delete_synced_data"),
+            (include_str!("sync_gaps.rs"), "sync_skip_missing_change"),
+        ] {
+            let body = command_body_in(source, name);
+            let given = body
+                .find("password_given(&password)?")
+                .unwrap_or_else(|| panic!("`{name}` must call `password_given(`"));
+            let checked = body
+                .find("verify_password(&app, password).await?")
+                .unwrap_or_else(|| panic!("`{name}` must call `verify_password(`"));
+            assert!(given < checked, "`{name}` refuses an empty password first");
+            let work = body.find("guarded_change(").expect("a sync change");
+            assert!(
+                checked < work,
+                "`{name}` checks the password before the change"
+            );
+        }
+    }
+
+    /// Audit L10: the one command that works without the flag keeps the password rule.
+    #[test]
+    fn turning_sync_off_keeps_the_password_rule() {
+        let body = command_body("sync_turn_off");
+        assert!(body.contains("turn_off_allowed(was_on, checked)?"));
+    }
+
+    /// Audit M11: every showing of the Kit checks the device password, setup's first included,
+    /// before the kit is read.
+    #[test]
+    fn every_kit_showing_checks_the_password_first() {
+        for name in ["sync_prepare_recovery_kit", "sync_show_recovery_kit"] {
+            let body = command_body(name);
+            let checked = body
+                .find("verify_password(&app, password).await?")
+                .unwrap_or_else(|| panic!("`{name}` must call `verify_password(`"));
+            let read = body
+                .find("recovery_kit)?")
+                .unwrap_or_else(|| panic!("`{name}` reads the kit"));
+            assert!(
+                checked < read,
+                "`{name}` checks the password before reading the kit"
+            );
+            assert!(body.contains("password_given(&password)?"), "{name}");
         }
     }
 

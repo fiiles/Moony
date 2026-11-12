@@ -478,7 +478,7 @@ async fn a_self_hosted_relay_answers_checkout_without_a_url() {
     let relay = FakeRelay::new();
     relay.set_self_hosted(true);
     let device = fresh();
-    let account = create_account(&relay, &device, "http://localhost:8787")
+    let account = create_account(&relay, &device, "https://sync.example.org")
         .await
         .expect("account");
 
@@ -504,7 +504,7 @@ async fn a_self_hosted_relay_answers_checkout_without_a_url() {
     );
 
     let kit = recovery_kit(&device.lock()).expect("kit");
-    assert_eq!(kit.relay_url.as_deref(), Some("http://localhost:8787"));
+    assert_eq!(kit.relay_url.as_deref(), Some("https://sync.example.org"));
     let dir = tempfile::tempdir().expect("dir");
     finish(&relay, &device, dir.path()).await.expect("setup");
     assert_eq!(
@@ -512,7 +512,7 @@ async fn a_self_hosted_relay_answers_checkout_without_a_url() {
             .expect("credentials")
             .expect("stored")
             .relay_url,
-        "http://localhost:8787"
+        "https://sync.example.org"
     );
 }
 

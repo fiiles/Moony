@@ -1,8 +1,9 @@
 //! Chain bookkeeping (spec §9.3, §11.4, §14): the verdict on every pulled envelope, from its
 //! author's chain head (`sync_heads`) or, for this device's own ID, from `sync_own_log`; the
 //! barrier marker found by relay order; and the re-queue when this device crosses a barrier.
-//! The re-join after a clone or rollback lives in `rejoin`.
+//! The re-join after a clone or rollback lives in `rejoin`; held gaps and skipping them in `gaps`.
 
+pub mod gaps;
 mod rejoin;
 
 pub use rejoin::*;
@@ -10,7 +11,7 @@ pub use rejoin::*;
 use rusqlite::{params, Connection, OptionalExtension};
 
 use super::changeset::Changeset;
-use super::hlc::DeviceId;
+use super::hlc::{unpack, DeviceId};
 use super::in_savepoint;
 use super::registry::keys::{barrier_number, schema_number};
 use super::state::{self, SyncState};
@@ -63,33 +64,38 @@ pub fn note_barrier_marker(conn: &Connection, meta: &EnvelopeMeta) -> Result<boo
     Ok(true)
 }
 
-/// Whether a snapshot heals what this device missed by skipping below-barrier envelopes (rulings
-/// T8-2, T8-6): its header says it was dumped at this device's barrier or later (`header_barrier`),
-/// at relay sequence `header_seq` at or past every skipped position, by a device with no pending
-/// miss of its own (`header_missed` is `None`), which therefore applied what this one skipped.
-/// `false` when nothing is missed.
+/// Whether a snapshot heals what this device missed, by skipping below-barrier envelopes (rulings
+/// T8-2, T8-6) or by skipping a change that never arrived (`skipped`, Task 17 ruling I1): its
+/// header says it was dumped at this device's barrier or later (`header_barrier`), at relay
+/// sequence `header_seq` at or past every missed position, by a device with no miss of either
+/// kind (`header_missed`, the max of the dumper's two, is `None`), which therefore applied what
+/// this one lacks. `false` when nothing is missed.
 ///
 /// The engine (Tasks 11 and 13) restores by merge from the relay's newest snapshot once this
-/// holds; `snapshot::restore_merge` then clears `missed_below_barrier`. Every device that crosses a
+/// holds; `snapshot::restore_merge` then clears both marks. Every device that crosses a
 /// barrier uploads a snapshot at its first clean round after crossing (forced, outside the upload
 /// policy, but never against `may_upload_snapshot`), so such a snapshot appears. Known limit
 /// (ADR 0025): an envelope that no device applied before crossing stays missed by the devices
-/// that crossed early.
+/// that crossed early; a skipped change no device has stays missed for good.
 pub fn snapshot_heals_missed(
     sync: &SyncState,
+    skipped: Option<u64>,
     header_barrier: u32,
     header_seq: u64,
     header_missed: Option<u64>,
 ) -> bool {
-    sync.missed_below_barrier.is_some_and(|missed| {
-        header_missed.is_none() && header_barrier >= sync.barrier && header_seq >= missed
-    })
+    sync.missed_below_barrier
+        .max(skipped)
+        .is_some_and(|missed| {
+            header_missed.is_none() && header_barrier >= sync.barrier && header_seq >= missed
+        })
 }
 
 /// Whether this device may upload a snapshot (ruling T8-6): never while it has skipped a
 /// below-barrier envelope it has not healed, since its snapshot lacks that envelope's rows. The
 /// engine's upload policy checks it before every upload, the forced one after a barrier crossing
-/// included.
+/// included. A skipped change that never arrived (`state::skipped_miss`) does not hold the upload
+/// back (Task 17 ruling I1): its position goes into the snapshot's header instead.
 pub fn may_upload_snapshot(sync: &SyncState) -> bool {
     sync.missed_below_barrier.is_none()
 }
@@ -100,7 +106,8 @@ pub enum Verdict {
     Apply,
     /// Already applied (a replay): skip it.
     SkipReplay,
-    /// This device's own envelope, as sealed here: acknowledged (`acknowledge_own`).
+    /// This device's own envelope, as sealed here, back from the relay: acknowledged
+    /// (`acknowledge_own`).
     OwnAcknowledged,
     /// This device's ID on an envelope it never sealed: a clone or a rollback. Re-join.
     Clone,
@@ -109,9 +116,12 @@ pub enum Verdict {
     /// The author is quarantined: keep its envelopes (replays included) and do not advance the
     /// cursor past them.
     Held,
-    /// An envelope of the author is missing (the relay dropped it): stop until it arrives.
+    /// An envelope of the author is missing (the relay dropped or withholds it): hold this one and
+    /// the author's later ones, and keep pulling the others (audit M3); the cursor stays before it
+    /// until the missing one arrives or the person skips it (`gaps`).
     Gap,
-    /// Written by a newer schema than this build knows: stop pulling, keep pushing.
+    /// Written by a newer schema than this build knows: stop applying, keep pushing; while this
+    /// device waits for an echo, the pull scans on for its own envelopes only (`pull::pull_all`).
     NewerSchema,
     /// Written below the barrier this device is past: not applied, the head moves and the miss is
     /// recorded (`skip_below_barrier`), wherever the relay placed it (ruling T8-2).
@@ -171,10 +181,49 @@ pub fn judge(conn: &Connection, meta: &EnvelopeMeta) -> Result<Verdict> {
     })
 }
 
-/// The relay holds this device's envelope `seq`: it no longer waits in `sync_unsent`.
+/// How far past this device's wall clock a pulled change's or a snapshot's newest clock may be
+/// and still be taken (audit M6): ten years (3,653 days). No real device's clock is that far
+/// ahead, so only a forged clock (or one set absurdly wrong) is held; a clock a day to ten years
+/// ahead applies as before, with the clock warning (`hlc::FUTURE_WARNING_MS`).
+pub const TEN_YEARS_AHEAD_MS: u64 = 3_653 * 86_400_000;
+
+/// The newest clock `newest_hlc` (`changeset::max_hlc`, a snapshot's `max_hlc`) is more than
+/// `TEN_YEARS_AHEAD_MS` past this device's wall clock `now_ms`, physical parts compared (audit
+/// M6). The pull holds such a change (`PullReport::ahead`, a held gap of kind `Ahead` the person
+/// may skip after 14 days) and both snapshot restores refuse such a snapshot, so this device's
+/// clock never moves past `now_ms + TEN_YEARS_AHEAD_MS`: the physical part's cap (`hlc::MAX_MS`,
+/// 2^47 − 1 ms, year 6429) and the counter cannot be saturated. Residual: a holder of the vault key can still move every
+/// device's clock up to ten years ahead, and an edit stamped that far wins every edit made before
+/// its date; an honest clock that was days or weeks ahead is kept on purpose (holding it would
+/// leave that device's later edits, stamped from its clock's high mark, diverging or lost).
+pub fn too_far_ahead(newest_hlc: u64, now_ms: u64) -> bool {
+    unpack(newest_hlc).0 > now_ms.saturating_add(TEN_YEARS_AHEAD_MS)
+}
+
+/// This device pulled its own envelope `seq` back from the relay (its echo): the relay holds it,
+/// and it no longer waits in `sync_unsent`. With `acknowledge_own_through`, the only way a row
+/// leaves `sync_unsent` while the chain goes on (audit M4): a push answer alone removes nothing,
+/// so a relay that acknowledges and then loses an envelope gets it again.
 pub fn acknowledge_own(conn: &Connection, seq: u64) -> Result<()> {
     conn.execute("DELETE FROM sync_unsent WHERE seq = ?1", [seq_param(seq)?])?;
     Ok(())
+}
+
+/// A snapshot restored by merge carries the dumper's head for this device, `(seq, hash)`: when it
+/// names this device's own envelope `seq` (`sync_own_log`), the dumper applied this device's chain
+/// up to it, so the vault holds every own envelope up to `seq`, and they stop waiting for an echo
+/// the restore's cursor jump has passed. A head that names no own envelope (another chain under
+/// this ID) acknowledges nothing. Returns how many rows left `sync_unsent`.
+pub fn acknowledge_own_through(conn: &Connection, seq: u64, hash: [u8; 32]) -> Result<usize> {
+    let ours: bool = conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sync_own_log WHERE seq = ?1 AND hash = ?2)",
+        params![seq_param(seq)?, hash.to_vec()],
+        |r| r.get(0),
+    )?;
+    if !ours {
+        return Ok(0);
+    }
+    Ok(conn.execute("DELETE FROM sync_unsent WHERE seq <= ?1", [seq_param(seq)?])?)
 }
 
 /// Holds every further envelope of `device` (its chain forked). Only a device with a head can

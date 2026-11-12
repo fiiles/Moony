@@ -20,6 +20,7 @@ const TABLE: Record<SyncProblem, [SyncProblemAction, SyncProblemAction]> = {
   rateLimited: ['none', 'none'],
   unauthorized: ['none', 'none'],
   keyRotated: ['none', 'none'],
+  secureStorage: ['none', 'none'],
   internal: ['none', 'none'],
 };
 

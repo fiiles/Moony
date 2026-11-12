@@ -222,6 +222,7 @@ pub fn spawn<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
         backoff: Backoff::default(),
         watch: OutboxWatch::default(),
         started: false,
+        binding_failed: false,
         last_sent: None,
         retry_at: None,
         next_periodic: Instant::now() + PERIODIC,
@@ -249,6 +250,8 @@ struct Engine<R, D, E> {
     watch: OutboxWatch,
     /// The binding check passed (and any re-join is done).
     started: bool,
+    /// A binding check failed in this process (counted once per app start: M10).
+    binding_failed: bool,
     last_sent: Option<SyncStatus>,
     retry_at: Option<Instant>,
     next_periodic: Instant,
@@ -335,9 +338,22 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         let db = self.db.clone();
         let _no_round = super::exclusive(&db).await;
         let dir = self.events.data_dir();
-        match rejoin_if_copy(&self.db, &dir, self.events.binding(), unix_now()) {
+        match rejoin_if_copy(
+            &self.db,
+            &dir,
+            self.events.binding(),
+            unix_now(),
+            !self.binding_failed,
+        ) {
             Ok(CopyCheck::Rejoined) => self.write_binding()?,
             Ok(CopyCheck::Fine) => self.write_binding_if_due()?,
+            Err(CopyCheckFailure::Check(error)) if binding::is_unchecked(&error) => {
+                // Counted once per process: later attempts still stop the round.
+                self.binding_failed = true;
+                log::warn!("[SYNC] The device binding could not be checked; sync waits");
+                self.note_problem(SyncProblem::SecureStorage)?;
+                return Ok(false);
+            }
             Err(CopyCheckFailure::Check(error)) => {
                 return self.start_failed(error, "The device binding could not be checked");
             }
@@ -567,16 +583,18 @@ impl CopyCheckFailure {
 /// The engine start's copy check (obligation c), for every path that may push: the engine's
 /// start, the repair's drain (`join::repair_capture`) and a resumed setup's first round
 /// (`setup::finish_setup`). `binding::startup_check`; on `Rejoin`, the re-join commits
-/// (`rejoin_as_new_device`), then the restore marker goes. The caller holds off every round
+/// (`rejoin_as_new_device`), then the restore marker goes. `count_failure` is true only for the
+/// first failed binding check of an app start (the engine). The caller holds off every round
 /// (`engine::exclusive`) and writes the new ID's binding afterwards.
 pub fn rejoin_if_copy<D: ConnAccess>(
     db: &D,
     data_dir: &Path,
     native: &dyn BindingNative,
     now: i64,
+    count_failure: bool,
 ) -> Result<CopyCheck, CopyCheckFailure> {
     let check = db
-        .with_conn(|conn| binding::startup_check(conn, data_dir, native))
+        .with_conn(|conn| binding::startup_check_counted(conn, data_dir, native, count_failure))
         .map_err(CopyCheckFailure::Check)?;
     let StartupCheck::Rejoin(reason) = check else {
         return Ok(CopyCheck::Fine);

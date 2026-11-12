@@ -73,6 +73,10 @@ pub enum SyncProblem {
     /// The vault's token was rotated by another device (`403 token_read_only`).
     #[serde(rename = "keyRotated")]
     KeyRotated,
+    /// This device's secure storage could not be reached (the device binding could not be
+    /// checked); paused, and tried again at the next trigger.
+    #[serde(rename = "secureStorage")]
+    SecureStorage,
     #[serde(rename = "internal")]
     Internal,
 }

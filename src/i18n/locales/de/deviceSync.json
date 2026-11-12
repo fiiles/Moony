@@ -36,6 +36,7 @@
       "rateLimited": "Der Synchronisierungsserver hat Moony gebeten, langsamer zu sein. Moony versucht es bald erneut.",
       "unauthorized": "Der Synchronisierungsserver hat dieses Gerät nicht akzeptiert. Die Synchronisierung muss eventuell neu eingerichtet werden.",
       "keyRotated": "Der Wiederherstellungsschlüssel wurde auf einem anderen Gerät geändert. Richten Sie die Synchronisierung auf diesem Gerät neu ein.",
+      "secureStorage": "Moony konnte nicht auf den sicheren Speicher dieses Geräts zugreifen, daher ist die Synchronisierung pausiert. Moony versucht es erneut; meist hilft es, das Gerät zu entsperren oder Moony neu zu starten.",
       "internal": "Die Synchronisierung wurde wegen eines internen Fehlers gestoppt."
     },
     "lastSynced": "Zuletzt synchronisiert {{date}}",

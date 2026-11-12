@@ -35,10 +35,14 @@ pub const REJOIN_MARKER: &str = "sync-rejoin.marker";
 /// Domain separation of the bound value.
 pub const BINDING_LABEL: &[u8] = b"moony sync binding v1";
 
-/// Starts in a row whose binding check answered a native `Failed` (Local `app_config` key
-/// `sync.binding_failed_starts`); reset by any other answer. The third in a row re-joins: a
-/// needless re-join is cheap, a check that never passes is not.
+/// App starts in a row whose binding check answered a native `Failed` (Local `app_config` key
+/// `sync.binding_failed_starts`); reset by any other answer. A start counts once however often the
+/// engine retries inside it (the caller says so: see `startup_check_counted`). The third in a row
+/// re-joins: a needless re-join is cheap, a check that never passes is not.
 pub const FAILED_STARTS_BEFORE_REJOIN: u32 = 3;
+/// The error a binding that could not be checked answers with; the engine shows it as its own
+/// problem (`is_unchecked`).
+const UNCHECKED_MESSAGE: &str = "sync binding: could not be checked at this start";
 const FAILED_STARTS_KEY: &str = "sync.binding_failed_starts";
 
 /// Why a native could not seal or open the binding.
@@ -109,13 +113,26 @@ pub fn clear_rejoin_marker(data_dir: &Path) -> io::Result<()> {
 /// machine and equal `SHA-256(BINDING_LABEL ‖ device_id)` (compared in constant time). A platform
 /// without a binding never writes one, so it asks only for a binding written on another OS (the
 /// folder moved here); after that re-join `binding_written` stays 0 and it never asks again. A
-/// native `Failed` is an error (this start runs no round and the next trigger tries again), counted
-/// per start; the `FAILED_STARTS_BEFORE_REJOIN`-th in a row asks for a re-join instead and resets
-/// the count (audit M10: the check fails closed).
+/// native `Failed` is an error (no round runs and the next trigger tries again); it never changes
+/// the failed-starts count here (the repair and a resumed setup are no app start). The engine's
+/// start uses [`startup_check_counted`].
 pub fn startup_check(
     conn: &Connection,
     data_dir: &Path,
     native: &dyn BindingNative,
+) -> Result<StartupCheck> {
+    startup_check_counted(conn, data_dir, native, false)
+}
+
+/// The check at an app start (audit M10: it fails closed). With `count_failure` (the first failure
+/// of this process) a native `Failed` adds one to the failed-starts count and the
+/// `FAILED_STARTS_BEFORE_REJOIN`-th in a row asks for a re-join instead and resets the count;
+/// without it (a retry in the same process) the failure is an error and nothing is counted.
+pub fn startup_check_counted(
+    conn: &Connection,
+    data_dir: &Path,
+    native: &dyn BindingNative,
+    count_failure: bool,
 ) -> Result<StartupCheck> {
     let sync = state::load(conn)?.filter(|s| s.enabled);
     let Some(sync) = sync else {
@@ -160,17 +177,22 @@ pub fn startup_check(
         }
         Err(BindingFailure::Failed(reason)) => {
             log::warn!("[SYNC] The device binding could not be checked at this start: {reason}");
-            let failed = failed_starts(conn)?.saturating_add(1);
-            if failed >= FAILED_STARTS_BEFORE_REJOIN {
-                set_failed_starts(conn, 0)?;
-                return Ok(StartupCheck::Rejoin(RejoinReason::BindingMismatch));
+            if count_failure {
+                let failed = failed_starts(conn)?.saturating_add(1);
+                if failed >= FAILED_STARTS_BEFORE_REJOIN {
+                    set_failed_starts(conn, 0)?;
+                    return Ok(StartupCheck::Rejoin(RejoinReason::BindingMismatch));
+                }
+                set_failed_starts(conn, failed)?;
             }
-            set_failed_starts(conn, failed)?;
-            Err(AppError::Internal(
-                "sync binding: could not be checked at this start".into(),
-            ))
+            Err(AppError::Internal(UNCHECKED_MESSAGE.into()))
         }
     }
+}
+
+/// Whether `error` is the answer of a binding that could not be checked.
+pub fn is_unchecked(error: &AppError) -> bool {
+    matches!(error, AppError::Internal(m) if m == UNCHECKED_MESSAGE)
 }
 
 fn failed_starts(conn: &Connection) -> Result<u32> {
@@ -616,13 +638,17 @@ mod tests {
 
         let error = startup_check(&conn, dir.path(), &BrokenNative).expect_err("fails closed");
         assert!(matches!(error, AppError::Internal(_)), "{error:?}");
-        assert_eq!(failed_starts(&conn).expect("count"), 1);
+        assert_eq!(failed_starts(&conn).expect("count"), 0, "not counted");
         let error = write_binding(&conn, dir.path(), &BrokenNative).expect_err("seal fails");
         assert!(matches!(error, AppError::Internal(_)), "{error:?}");
         assert!(
             !error.to_string().contains(&*dir.path().to_string_lossy()),
             "no path in the error"
         );
+    }
+
+    fn counted(conn: &Connection, dir: &Path, native: &dyn BindingNative) -> Result<StartupCheck> {
+        startup_check_counted(conn, dir, native, true)
     }
 
     #[test]
@@ -632,13 +658,27 @@ mod tests {
         write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
 
         for _ in 1..FAILED_STARTS_BEFORE_REJOIN {
-            assert!(startup_check(&conn, dir.path(), &BrokenNative).is_err());
+            let error = counted(&conn, dir.path(), &BrokenNative).expect_err("fails closed");
+            assert!(is_unchecked(&error), "{error:?}");
         }
         assert_eq!(
-            startup_check(&conn, dir.path(), &BrokenNative).expect("third"),
+            counted(&conn, dir.path(), &BrokenNative).expect("third"),
             StartupCheck::Rejoin(RejoinReason::BindingMismatch)
         );
         assert_eq!(failed_starts(&conn).expect("count"), 0, "the count resets");
+    }
+
+    #[test]
+    fn a_retry_in_the_same_start_and_the_repair_do_not_count() {
+        let conn = synced();
+        let dir = tempfile::tempdir().expect("dir");
+        write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
+
+        assert!(counted(&conn, dir.path(), &BrokenNative).is_err());
+        for _ in 0..5 {
+            assert!(startup_check(&conn, dir.path(), &BrokenNative).is_err());
+        }
+        assert_eq!(failed_starts(&conn).expect("count"), 1);
     }
 
     #[test]
@@ -647,18 +687,43 @@ mod tests {
         let dir = tempfile::tempdir().expect("dir");
         write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
 
-        assert!(startup_check(&conn, dir.path(), &BrokenNative).is_err());
-        assert!(startup_check(&conn, dir.path(), &BrokenNative).is_err());
+        assert!(counted(&conn, dir.path(), &BrokenNative).is_err());
+        assert!(counted(&conn, dir.path(), &BrokenNative).is_err());
         assert_eq!(
-            startup_check(&conn, dir.path(), &FakeNative { machine: 7 }).expect("check"),
+            counted(&conn, dir.path(), &FakeNative { machine: 7 }).expect("check"),
             StartupCheck::Fine
         );
         assert_eq!(failed_starts(&conn).expect("count"), 0);
-        assert!(startup_check(&conn, dir.path(), &BrokenNative).is_err());
+        assert!(counted(&conn, dir.path(), &BrokenNative).is_err());
         assert!(
-            startup_check(&conn, dir.path(), &BrokenNative).is_err(),
+            counted(&conn, dir.path(), &BrokenNative).is_err(),
             "the count started over: two failures are still errors"
         );
+    }
+
+    #[test]
+    fn another_machines_answer_and_a_missing_file_reset_the_failed_count() {
+        let conn = synced();
+        let dir = tempfile::tempdir().expect("dir");
+        write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
+
+        assert!(counted(&conn, dir.path(), &BrokenNative).is_err());
+        assert_eq!(failed_starts(&conn).expect("count"), 1);
+        assert_eq!(
+            counted(&conn, dir.path(), &FakeNative { machine: 9 }).expect("check"),
+            StartupCheck::Rejoin(RejoinReason::BindingMismatch),
+            "NotThisDevice"
+        );
+        assert_eq!(failed_starts(&conn).expect("count"), 0);
+
+        assert!(counted(&conn, dir.path(), &BrokenNative).is_err());
+        fs::remove_file(dir.path().join(BINDING_FILE)).expect("remove");
+        assert_eq!(
+            counted(&conn, dir.path(), &BrokenNative).expect("check"),
+            StartupCheck::Rejoin(RejoinReason::BindingMismatch),
+            "a missing file"
+        );
+        assert_eq!(failed_starts(&conn).expect("count"), 0);
     }
 
     #[test]

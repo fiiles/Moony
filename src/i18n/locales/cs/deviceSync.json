@@ -36,6 +36,7 @@
       "rateLimited": "Synchronizační server požádal Moony o zpomalení. Moony to brzy zkusí znovu.",
       "unauthorized": "Synchronizační server toto zařízení nepřijal. Může být potřeba synchronizaci nastavit znovu.",
       "keyRotated": "Obnovovací klíč byl změněn na jiném zařízení. Nastavte synchronizaci na tomto zařízení znovu.",
+      "secureStorage": "Moony se nemohla dostat k zabezpečenému úložišti tohoto zařízení, a proto je synchronizace pozastavena. Zkusí to znovu; obvykle pomůže odemknout zařízení nebo restartovat Moony.",
       "internal": "Synchronizace se zastavila kvůli vnitřní chybě."
     },
     "lastSynced": "Naposledy synchronizováno {{date}}",

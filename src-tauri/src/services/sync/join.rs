@@ -692,7 +692,7 @@ pub(super) fn rejoin_if_copy_under_lock<D: ConnAccess>(
     native: &dyn BindingNative,
     now: i64,
 ) -> SyncResult<()> {
-    match rejoin_if_copy(db, data_dir, native, now) {
+    match rejoin_if_copy(db, data_dir, native, now, false) {
         Ok(CopyCheck::Fine) => Ok(()),
         Ok(CopyCheck::Rejoined) => {
             log::info!("[SYNC] This profile re-joined under a new device ID before pushing");

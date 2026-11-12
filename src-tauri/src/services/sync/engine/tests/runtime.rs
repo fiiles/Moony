@@ -159,6 +159,7 @@ fn status_phases_follow_the_problem() {
         (P::RateLimited, Paused),
         (P::Unauthorized, Error),
         (P::KeyRotated, Error),
+        (P::SecureStorage, Paused),
         (P::Internal, Error),
     ];
     for (problem, phase) in table {

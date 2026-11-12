@@ -36,6 +36,7 @@
       "rateLimited": "El servidor de sincronización pidió a Moony que fuera más despacio. Moony lo intentará de nuevo pronto.",
       "unauthorized": "El servidor de sincronización no aceptó este dispositivo. Puede que debas configurar la sincronización de nuevo.",
       "keyRotated": "La clave de recuperación se cambió en otro dispositivo. Configura la sincronización de nuevo en este dispositivo.",
+      "secureStorage": "Moony no ha podido acceder al almacenamiento seguro de este dispositivo, así que la sincronización está en pausa. Lo intentará de nuevo; desbloquear el dispositivo o reiniciar Moony suele ayudar.",
       "internal": "La sincronización se detuvo por un error interno."
     },
     "lastSynced": "Última sincronización: {{date}}",

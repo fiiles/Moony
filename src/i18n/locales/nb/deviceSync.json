@@ -36,6 +36,7 @@
       "rateLimited": "Synkroniseringsserveren ba Moony om å senke farten. Moony prøver igjen snart.",
       "unauthorized": "Synkroniseringsserveren godtok ikke denne enheten. Du må kanskje sette opp synkronisering på nytt.",
       "keyRotated": "Gjenopprettingsnøkkelen ble endret på en annen enhet. Sett opp synkronisering på nytt på denne enheten.",
+      "secureStorage": "Moony kom ikke til den sikre lagringen på denne enheten, så synkroniseringen er satt på pause. Moony prøver igjen; det hjelper som regel å låse opp enheten eller starte Moony på nytt.",
       "internal": "Synkroniseringen stoppet på grunn av en intern feil."
     },
     "lastSynced": "Sist synkronisert {{date}}",

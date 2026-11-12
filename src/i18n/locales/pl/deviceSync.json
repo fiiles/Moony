@@ -36,6 +36,7 @@
       "rateLimited": "Serwer synchronizacji poprosił Moony o zwolnienie tempa. Moony wkrótce spróbuje ponownie.",
       "unauthorized": "Serwer synchronizacji nie przyjął tego urządzenia. Może być potrzebna ponowna konfiguracja synchronizacji.",
       "keyRotated": "Klucz odzyskiwania został zmieniony na innym urządzeniu. Skonfiguruj synchronizację na tym urządzeniu ponownie.",
+      "secureStorage": "Moony nie mogła uzyskać dostępu do bezpiecznego magazynu tego urządzenia, więc synchronizacja jest wstrzymana. Spróbuje ponownie; zwykle pomaga odblokowanie urządzenia lub ponowne uruchomienie Moony.",
       "internal": "Synchronizacja zatrzymała się z powodu błędu wewnętrznego."
     },
     "lastSynced": "Ostatnia synchronizacja: {{date}}",

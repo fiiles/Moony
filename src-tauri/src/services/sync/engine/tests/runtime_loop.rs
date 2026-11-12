@@ -156,7 +156,7 @@ async fn the_rounds_of_a_profile_never_overlap_and_never_hold_the_lock_over_the_
 // The loop
 
 /// A binding that "seals" by copying (a machine-bound seal in tests).
-struct Sealing;
+pub(super) struct Sealing;
 
 impl BindingNative for Sealing {
     fn seal(&self, secret: &[u8; 32]) -> std::result::Result<Vec<u8>, BindingFailure> {
@@ -172,7 +172,7 @@ impl BindingNative for Sealing {
 
 /// What the loop told the app.
 #[derive(Clone, Default)]
-struct Seen {
+pub(super) struct Seen {
     data_changed: Arc<AtomicUsize>,
     statuses: Arc<Mutex<Vec<SyncStatus>>>,
 }
@@ -214,13 +214,13 @@ impl EngineEvents for Events {
     }
 }
 
-struct Running {
-    handle: EngineHandle,
-    seen: Seen,
+pub(super) struct Running {
+    pub(super) handle: EngineHandle,
+    pub(super) seen: Seen,
     _dir: tempfile::TempDir,
 }
 
-fn start(
+pub(super) fn start(
     vault: &Vault,
     device: &TestConn,
     dir: tempfile::TempDir,
@@ -295,7 +295,7 @@ fn start_plain(vault: &Vault, device: &TestConn) -> Running {
     )
 }
 
-async fn until(what: &str, done: impl Fn() -> bool) {
+pub(super) async fn until(what: &str, done: impl Fn() -> bool) {
     for _ in 0..6_000 {
         if done() {
             return;
@@ -305,7 +305,7 @@ async fn until(what: &str, done: impl Fn() -> bool) {
     panic!("timed out waiting until {what}");
 }
 
-async fn rounds(running: &Running, n: u64) {
+pub(super) async fn rounds(running: &Running, n: u64) {
     until(&format!("{n} rounds ran"), || {
         running.handle.runtime().rounds >= n
     })
@@ -506,57 +506,6 @@ async fn a_binding_that_failed_to_seal_at_enable_is_written_at_the_next_start() 
         A,
         "no re-join for an unwritten binding"
     );
-    running.handle.stop();
-}
-
-/// `Sealing`, but the first `failures` opens fail as a passing native error would.
-struct FlakyOpening {
-    failures: AtomicUsize,
-}
-
-impl BindingNative for FlakyOpening {
-    fn seal(&self, secret: &[u8; 32]) -> std::result::Result<Vec<u8>, BindingFailure> {
-        Sealing.seal(secret)
-    }
-    fn open(&self, blob: &[u8]) -> std::result::Result<Zeroizing<[u8; 32]>, BindingFailure> {
-        let failed = self
-            .failures
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| n.checked_sub(1))
-            .is_ok();
-        if failed {
-            return Err(BindingFailure::Failed("the secure storage is busy".into()));
-        }
-        Sealing.open(blob)
-    }
-}
-
-/// Audit M10: a native `Failed` at the binding check fails closed. The first start makes no relay
-/// request and shows a problem; the next trigger starts again and runs a round.
-#[tokio::test]
-async fn a_momentary_binding_failure_runs_no_round_and_retries() {
-    let vault = super::vault().await;
-    let dir = tempfile::tempdir().expect("temp dir");
-    let native = FlakyOpening {
-        failures: AtomicUsize::new(1),
-    };
-    binding::write_binding(&vault.a.lock(), dir.path(), &native).expect("binding");
-    let from = vault.relay.calls().len();
-
-    let running = start(&vault, &vault.a, dir, Box::new(native));
-    until("the failed start showed", || {
-        running.handle.runtime().problem == Some(SyncProblem::Internal)
-    })
-    .await;
-    assert!(
-        calls_since(&vault.relay, from).is_empty(),
-        "no relay request at the failed start"
-    );
-    assert_eq!(running.handle.runtime().rounds, 0);
-
-    running.handle.wake(Trigger::SyncNow);
-    rounds(&running, 1).await;
-    assert!(!calls_since(&vault.relay, from).is_empty(), "a round ran");
-    assert_eq!(device_of(&vault.a.lock()), A, "no re-join");
     running.handle.stop();
 }
 

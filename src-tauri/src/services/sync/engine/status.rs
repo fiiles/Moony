@@ -129,7 +129,8 @@ pub fn phase_of(problem: SyncProblem) -> SyncPhase {
         | P::QuotaExceeded
         | P::NewerSchema
         | P::Offline
-        | P::RateLimited => SyncPhase::Paused,
+        | P::RateLimited
+        | P::SecureStorage => SyncPhase::Paused,
         P::CaptureBroken
         | P::SnapshotTooLarge
         | P::Undecryptable
@@ -206,6 +207,7 @@ pub fn reason(problem: SyncProblem) -> &'static str {
         P::RateLimited => "sync stopped: rateLimited",
         P::Unauthorized => "sync stopped: unauthorized",
         P::KeyRotated => "sync stopped: keyRotated",
+        P::SecureStorage => "sync stopped: secureStorage",
         P::Internal => "sync stopped: internal",
     }
 }

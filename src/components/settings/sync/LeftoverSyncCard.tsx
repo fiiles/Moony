@@ -32,7 +32,7 @@ export function LeftoverSyncCard() {
       {open && (
         <SyncPasswordDialog
           title={t('turnOff.title')}
-          description={`${t('turnOff.description')} ${t('leftover.noServer')}`}
+          description={`${t('leftover.description')} ${t('leftover.noServer')}`}
           note={pending > 0 ? t('turnOff.pendingChanges', { count: pending }) : undefined}
           confirmLabel={t('turnOff.confirm')}
           destructive

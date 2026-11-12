@@ -362,7 +362,7 @@
     "syncPairingCancelled": "Drugie urządzenie anulowało parowanie. Zacznij od nowa na obu urządzeniach.",
     "syncPairingNotStarted": "Na tym urządzeniu nie trwa żadne parowanie. Zacznij od nowa na obu urządzeniach.",
     "syncPasswordNeeded": "Wpisz hasło tego urządzenia, aby kontynuować.",
-    "syncGapNotSkippableYet": "Tę zmianę można pominąć dopiero wtedy, gdy brakuje jej od 14 dni.",
+    "syncGapNotSkippableYet": "Tę zmianę można pominąć dopiero po 14 dniach od jej wstrzymania.",
     "syncCopyFailed": "Nie udało się skopiować kodu. Spróbuj ponownie albo zachowaj zestaw w inny sposób, który pokazuje ten ekran.",
     "syncRecoveryAccountInvalid": "Sprawdź numer konta: to 16 cyfr z zestawu odzyskiwania synchronizacji.",
     "syncRecoveryVaultNotFound": "Serwer synchronizacji nie ma zsynchronizowanych danych dla tego kodu odzyskiwania. Sprawdź kod i adres serwera synchronizacji w zestawie odzyskiwania synchronizacji.",

@@ -362,7 +362,7 @@
     "syncPairingCancelled": "另一台设备已取消配对。请在两台设备上重新开始。",
     "syncPairingNotStarted": "此设备上没有正在进行的配对。请在两台设备上重新开始。",
     "syncPasswordNeeded": "请输入此设备的密码以继续。",
-    "syncGapNotSkippableYet": "此更改需缺失满 14 天后才能跳过。",
+    "syncGapNotSkippableYet": "此更改需暂缓满 14 天后才能跳过。",
     "syncCopyFailed": "无法复制代码。请重试，或使用此屏幕上显示的其他方式保存恢复包。",
     "syncRecoveryAccountInvalid": "请检查账户号码：即同步恢复套件上的 16 位数字。",
     "syncRecoveryVaultNotFound": "同步服务器上没有与此恢复码对应的同步数据。请检查同步恢复套件上的恢复码和同步服务器地址。",

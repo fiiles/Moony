@@ -4,7 +4,7 @@
   "indicator": {
     "synced": "Synkronisert",
     "syncing": "Synkroniserer…",
-    "waiting": "Venter på en endring",
+    "waiting": "Endring holdes tilbake",
     "paused": "Synkronisering satt på pause",
     "error": "Synkroniseringsfeil",
     "offline": "Frakoblet"
@@ -15,7 +15,7 @@
       "settingUp": "Setter opp synkronisering",
       "idle": "Oppdatert",
       "syncing": "Synkroniserer…",
-      "waiting": "Synkroniserer, venter på en endring fra en annen enhet",
+      "waiting": "Synkroniserer, en endring fra en annen enhet holdes tilbake",
       "paused": "Synkronisering er satt på pause",
       "error": "Synkroniseringen stoppet"
     },
@@ -33,12 +33,12 @@
       "missingParent": "Endringer fra en annen enhet mangler tidligere trinn og holdes tilbake.",
       "quarantined": "Endringer fra noen enheter holdes tilbake av sikkerhetshensyn.",
       "offline": "Ingen forbindelse til synkroniseringsserveren. Synkroniseringen fortsetter når den er tilbake.",
-      "relayError": "Synkroniseringsserveren svarte med en feil. Moony prøver igjen.",
+      "relayError": "Synkroniseringsserveren svarer ikke som forventet. Moony fortsetter å prøve.",
       "rateLimited": "Synkroniseringsserveren ba Moony om å senke farten. Moony prøver igjen snart.",
       "unauthorized": "Synkroniseringsserveren godtok ikke denne enheten. Du må kanskje sette opp synkronisering på nytt.",
       "keyRotated": "Gjenopprettingsnøkkelen ble endret på en annen enhet. Sett opp synkronisering på nytt på denne enheten.",
       "secureStorage": "Moony kom ikke til den sikre lagringen på denne enheten, så synkroniseringen er satt på pause. Moony prøver igjen; det hjelper som regel å låse opp enheten eller starte Moony på nytt.",
-      "serverWentBack": "Synkroniseringsserveren har gått tilbake til en eldre tilstand, så endringer kan mangle på de andre enhetene dine. Dataene dine på denne enheten er intakte. Moony kan ikke rette opp dette selv ennå: for å samle enhetene igjen, slå av synkronisering, sett den opp på nytt på enheten med de mest fullstendige dataene, og koble til de andre.",
+      "serverWentBack": "Synkroniseringsserveren har gått tilbake til en eldre tilstand, så endringer kan mangle på de andre enhetene dine. Dataene dine på denne enheten er intakte. Moony kan ikke rette opp dette selv ennå: for å samle enhetene igjen, slå av synkronisering, sett den opp på nytt på enheten med de mest fullstendige dataene, og koble til de andre. Ikke synkroniser denne enheten på nytt: det ville erstatte dataene på enheten med den eldre kopien på synkroniseringsserveren. Når du setter opp synkronisering på nytt, opprettes en ny synkroniseringskonto.",
       "internal": "Synkroniseringen stoppet på grunn av en intern feil."
     },
     "lastSynced": "Sist synkronisert {{date}}",
@@ -56,7 +56,12 @@
     "privacy": "Dataene dine forlater aldri enhetene dine ukryptert.",
     "start": "Sett opp synkronisering",
     "resume": "Fortsett oppsettet",
-    "cancelSetup": "Avbryt oppsettet"
+    "cancelSetup": "Avbryt oppsettet",
+    "cancelConfirm": {
+      "title": "Avbryte oppsettet?",
+      "description": "Denne enheten glemmer synkroniseringskontoen som ble opprettet for dette oppsettet, og en betaling som allerede er gjort, blir ikke overført. Hvis du setter opp synkronisering på nytt, starter det fra begynnelsen, med en ny synkroniseringskonto.",
+      "keep": "Behold oppsettet"
+    }
   },
   "setup": {
     "title": "Sett opp synkronisering",
@@ -219,7 +224,9 @@
   "leftover": {
     "text": "Denne profilen har enhetssynkronisering slått på fra en utviklerversjon. Endringene i den registreres fortsatt for synkronisering.",
     "button": "Slå av synkronisering",
-    "noServer": "De synkroniserte dataene og synkroniseringskontoen blir liggende på synkroniseringsserveren til de slettes fra en versjon av Moony med synkronisering."
+    "noServer": "De synkroniserte dataene og synkroniseringskontoen blir liggende på synkroniseringsserveren til de slettes fra en versjon av Moony med synkronisering.",
+    "description": "Lokale data blir værende. Andre enheter synkroniserer videre. For å bli med igjen senere trenger du en versjon av Moony med synkronisering.",
+    "phoneDescription": "Lokale data på denne telefonen blir værende. De andre enhetene dine synkroniserer videre. For å bli med igjen senere trenger du en versjon av Moony med synkronisering."
   },
   "password": {
     "label": "Enhetspassord"
@@ -310,7 +317,7 @@
       "off": "Av",
       "synced": "Oppdatert",
       "syncing": "Synkroniserer…",
-      "waiting": "Venter på en endring",
+      "waiting": "Endring holdes tilbake",
       "offline": "Frakoblet",
       "paused": "På pause",
       "error": "Stoppet"

@@ -4,7 +4,7 @@
   "indicator": {
     "synced": "Synced",
     "syncing": "Syncing…",
-    "waiting": "Waiting for a change",
+    "waiting": "A change is held",
     "paused": "Sync paused",
     "error": "Sync error",
     "offline": "Offline"
@@ -15,7 +15,7 @@
       "settingUp": "Setting up sync",
       "idle": "Up to date",
       "syncing": "Syncing…",
-      "waiting": "Syncing, waiting for a change from another device",
+      "waiting": "Syncing; a change from another device is held",
       "paused": "Sync is paused",
       "error": "Sync stopped"
     },
@@ -33,12 +33,12 @@
       "missingParent": "Changes from another device are missing earlier steps and are held.",
       "quarantined": "Changes from some devices are held for safety.",
       "offline": "No connection to the sync server. Syncing resumes when it is back.",
-      "relayError": "The sync server answered with an error. Moony will try again.",
+      "relayError": "The sync server is not answering as expected. Moony keeps trying.",
       "rateLimited": "The sync server asked Moony to slow down. Moony will try again soon.",
       "unauthorized": "The sync server did not accept this device. Setting up sync again may be needed.",
       "keyRotated": "The recovery key was changed on another device. Set up sync on this device again.",
       "secureStorage": "Moony could not reach this device's secure storage, so syncing is paused. It will try again; unlocking the device or restarting Moony usually helps.",
-      "serverWentBack": "The sync server went back to an older state, so changes may be missing on your other devices. Your data on this device is intact. Moony cannot repair this on its own yet: to bring your devices back together, turn sync off, set it up again on the device with the most complete data, and join the others.",
+      "serverWentBack": "The sync server went back to an older state, so changes may be missing on your other devices. Your data on this device is intact. Moony cannot repair this on its own yet: to bring your devices back together, turn sync off, set it up again on the device with the most complete data, and join the others. Don't re-sync: it would replace this device's data with the sync server's older copy. Setting sync up again creates a new sync account.",
       "internal": "Syncing stopped because of an internal error."
     },
     "lastSynced": "Last synced {{date}}",
@@ -56,7 +56,12 @@
     "privacy": "Your data never leaves your devices unencrypted.",
     "start": "Set up sync",
     "resume": "Continue setup",
-    "cancelSetup": "Cancel setup"
+    "cancelSetup": "Cancel setup",
+    "cancelConfirm": {
+      "title": "Cancel the setup?",
+      "description": "This device forgets the sync account created for this setup, and a payment already made for it is not carried over. Setting up sync again starts from the start, with a new sync account.",
+      "keep": "Keep setup"
+    }
   },
   "setup": {
     "title": "Set up sync",
@@ -219,7 +224,9 @@
   "leftover": {
     "text": "This profile has device sync turned on from a development build. Its changes are still recorded for sync.",
     "button": "Turn sync off",
-    "noServer": "The synced data and the sync account stay on the sync server until they are deleted from a version of Moony that has sync."
+    "noServer": "The synced data and the sync account stay on the sync server until they are deleted from a version of Moony that has sync.",
+    "description": "Local data stays. Other devices keep syncing. Joining again later needs a version of Moony that has sync.",
+    "phoneDescription": "Local data on this phone stays. Your other devices keep syncing. Joining again later needs a version of Moony that has sync."
   },
   "password": {
     "label": "Device password"
@@ -310,7 +317,7 @@
       "off": "Off",
       "synced": "Up to date",
       "syncing": "Syncing…",
-      "waiting": "Waiting for a change",
+      "waiting": "A change is held",
       "offline": "Offline",
       "paused": "Paused",
       "error": "Stopped"

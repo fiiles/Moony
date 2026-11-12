@@ -4,7 +4,7 @@
   "indicator": {
     "synced": "Synchronisiert",
     "syncing": "Synchronisiere…",
-    "waiting": "Wartet auf Änderung",
+    "waiting": "Änderung zurückgehalten",
     "paused": "Sync pausiert",
     "error": "Sync-Fehler",
     "offline": "Offline"
@@ -15,7 +15,7 @@
       "settingUp": "Synchronisierung wird eingerichtet",
       "idle": "Auf dem neuesten Stand",
       "syncing": "Synchronisiere…",
-      "waiting": "Synchronisierung läuft, wartet auf eine Änderung von einem anderen Gerät",
+      "waiting": "Synchronisierung läuft, eine Änderung von einem anderen Gerät wird zurückgehalten",
       "paused": "Synchronisierung pausiert",
       "error": "Synchronisierung gestoppt"
     },
@@ -33,12 +33,12 @@
       "missingParent": "Änderungen eines anderen Geräts haben fehlende frühere Schritte und werden zurückgehalten.",
       "quarantined": "Änderungen einiger Geräte werden aus Sicherheitsgründen zurückgehalten.",
       "offline": "Keine Verbindung zum Synchronisierungsserver. Die Synchronisierung läuft weiter, sobald er wieder erreichbar ist.",
-      "relayError": "Der Synchronisierungsserver hat mit einem Fehler geantwortet. Moony versucht es erneut.",
+      "relayError": "Der Synchronisierungsserver antwortet nicht wie erwartet. Moony versucht es weiter.",
       "rateLimited": "Der Synchronisierungsserver hat Moony gebeten, langsamer zu sein. Moony versucht es bald erneut.",
       "unauthorized": "Der Synchronisierungsserver hat dieses Gerät nicht akzeptiert. Die Synchronisierung muss eventuell neu eingerichtet werden.",
       "keyRotated": "Der Wiederherstellungsschlüssel wurde auf einem anderen Gerät geändert. Richten Sie die Synchronisierung auf diesem Gerät neu ein.",
       "secureStorage": "Moony konnte nicht auf den sicheren Speicher dieses Geräts zugreifen, daher ist die Synchronisierung pausiert. Moony versucht es erneut; meist hilft es, das Gerät zu entsperren oder Moony neu zu starten.",
-      "serverWentBack": "Der Synchronisierungsserver ist auf einen älteren Stand zurückgefallen, daher können auf Ihren anderen Geräten Änderungen fehlen. Ihre Daten auf diesem Gerät sind unversehrt. Moony kann das noch nicht selbst beheben: Um Ihre Geräte wieder zusammenzuführen, schalten Sie die Synchronisierung aus, richten Sie sie auf dem Gerät mit den vollständigsten Daten neu ein und verbinden Sie die anderen Geräte.",
+      "serverWentBack": "Der Synchronisierungsserver ist auf einen älteren Stand zurückgefallen, daher können auf Ihren anderen Geräten Änderungen fehlen. Ihre Daten auf diesem Gerät sind unversehrt. Moony kann das noch nicht selbst beheben: Um Ihre Geräte wieder zusammenzuführen, schalten Sie die Synchronisierung aus, richten Sie sie auf dem Gerät mit den vollständigsten Daten neu ein und verbinden Sie die anderen Geräte. Synchronisieren Sie dieses Gerät nicht neu: Das würde die Daten dieses Geräts durch die ältere Kopie des Synchronisierungsservers ersetzen. Wenn Sie die Synchronisierung neu einrichten, entsteht ein neues Sync-Konto.",
       "internal": "Die Synchronisierung wurde wegen eines internen Fehlers gestoppt."
     },
     "lastSynced": "Zuletzt synchronisiert {{date}}",
@@ -56,7 +56,12 @@
     "privacy": "Ihre Daten verlassen Ihre Geräte nie unverschlüsselt.",
     "start": "Synchronisierung einrichten",
     "resume": "Einrichtung fortsetzen",
-    "cancelSetup": "Einrichtung abbrechen"
+    "cancelSetup": "Einrichtung abbrechen",
+    "cancelConfirm": {
+      "title": "Einrichtung abbrechen?",
+      "description": "Dieses Gerät vergisst das Sync-Konto, das für diese Einrichtung angelegt wurde, und eine bereits geleistete Zahlung wird nicht übernommen. Danach beginnt die Einrichtung der Synchronisierung von vorn, mit einem neuen Sync-Konto.",
+      "keep": "Einrichtung fortsetzen"
+    }
   },
   "setup": {
     "title": "Synchronisierung einrichten",
@@ -219,7 +224,9 @@
   "leftover": {
     "text": "In diesem Profil wurde die Geräte-Synchronisierung über eine Entwicklungsversion eingeschaltet. Seine Änderungen werden weiterhin für die Synchronisierung aufgezeichnet.",
     "button": "Synchronisierung ausschalten",
-    "noServer": "Die synchronisierten Daten und das Synchronisierungskonto bleiben auf dem Synchronisierungsserver, bis Sie sie in einer Version von Moony mit Synchronisierung löschen."
+    "noServer": "Die synchronisierten Daten und das Sync-Konto bleiben auf dem Synchronisierungsserver, bis Sie sie in einer Version von Moony mit Synchronisierung löschen.",
+    "description": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter. Um später wieder beizutreten, brauchen Sie eine Version von Moony mit Synchronisierung.",
+    "phoneDescription": "Die lokalen Daten auf diesem Telefon bleiben erhalten. Ihre anderen Geräte synchronisieren weiter. Um später wieder beizutreten, brauchen Sie eine Version von Moony mit Synchronisierung."
   },
   "password": {
     "label": "Gerätepasswort"
@@ -259,7 +266,7 @@
   },
   "pairing": {
     "addTitle": "Gerät hinzufügen",
-    "addDescription": "Koppeln Sie ein weiteres Gerät mit Ihrem Synchronisierungskonto. Nichts verlässt Ihre Geräte unverschlüsselt.",
+    "addDescription": "Koppeln Sie ein weiteres Gerät mit Ihrem Sync-Konto. Nichts verlässt Ihre Geräte unverschlüsselt.",
     "passwordFirst": "Geben Sie Ihr Gerätepasswort ein, um den Kopplungscode anzuzeigen.",
     "showCode": "Code anzeigen",
     "qrAlt": "Kopplungscode",
@@ -310,7 +317,7 @@
       "off": "Aus",
       "synced": "Aktuell",
       "syncing": "Synchronisiert…",
-      "waiting": "Wartet auf Änderung",
+      "waiting": "Änderung zurückgehalten",
       "offline": "Offline",
       "paused": "Pausiert",
       "error": "Angehalten"

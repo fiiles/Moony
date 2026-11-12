@@ -4,7 +4,7 @@
   "indicator": {
     "synced": "Zsynchronizowano",
     "syncing": "Synchronizuję…",
-    "waiting": "Oczekuje na zmianę",
+    "waiting": "Zmiana jest wstrzymana",
     "paused": "Synchronizacja wstrzymana",
     "error": "Błąd synchronizacji",
     "offline": "Offline"
@@ -15,7 +15,7 @@
       "settingUp": "Konfigurowanie synchronizacji",
       "idle": "Aktualne",
       "syncing": "Synchronizuję…",
-      "waiting": "Synchronizacja trwa, oczekuje na zmianę z innego urządzenia",
+      "waiting": "Synchronizacja trwa, zmiana z innego urządzenia jest wstrzymana",
       "paused": "Synchronizacja jest wstrzymana",
       "error": "Synchronizacja zatrzymana"
     },
@@ -33,12 +33,12 @@
       "missingParent": "Zmianom z innego urządzenia brakuje wcześniejszych kroków i są wstrzymane.",
       "quarantined": "Zmiany z niektórych urządzeń są wstrzymane ze względów bezpieczeństwa.",
       "offline": "Brak połączenia z serwerem synchronizacji. Synchronizacja wznowi się, gdy wróci.",
-      "relayError": "Serwer synchronizacji odpowiedział błędem. Moony spróbuje ponownie.",
+      "relayError": "Serwer synchronizacji nie odpowiada tak, jak powinien. Moony próbuje dalej.",
       "rateLimited": "Serwer synchronizacji poprosił Moony o zwolnienie tempa. Moony wkrótce spróbuje ponownie.",
       "unauthorized": "Serwer synchronizacji nie przyjął tego urządzenia. Może być potrzebna ponowna konfiguracja synchronizacji.",
       "keyRotated": "Klucz odzyskiwania został zmieniony na innym urządzeniu. Skonfiguruj synchronizację na tym urządzeniu ponownie.",
       "secureStorage": "Moony nie mogła uzyskać dostępu do bezpiecznego magazynu tego urządzenia, więc synchronizacja jest wstrzymana. Spróbuje ponownie; zwykle pomaga odblokowanie urządzenia lub ponowne uruchomienie Moony.",
-      "serverWentBack": "Serwer synchronizacji wrócił do starszego stanu, więc na innych urządzeniach może brakować zmian. Dane na tym urządzeniu są nienaruszone. Moony nie potrafi jeszcze sama tego naprawić: aby ponownie połączyć urządzenia, wyłącz synchronizację, skonfiguruj ją od nowa na urządzeniu z najpełniejszymi danymi i dołącz pozostałe.",
+      "serverWentBack": "Serwer synchronizacji wrócił do starszego stanu, więc na innych urządzeniach może brakować zmian. Dane na tym urządzeniu są nienaruszone. Moony nie potrafi jeszcze sama tego naprawić: aby ponownie połączyć urządzenia, wyłącz synchronizację, skonfiguruj ją od nowa na urządzeniu z najpełniejszymi danymi i dołącz pozostałe. Nie synchronizuj tego urządzenia ponownie: zastąpiłoby to jego dane starszą kopią z serwera synchronizacji. Ponowna konfiguracja synchronizacji tworzy nowe konto synchronizacji.",
       "internal": "Synchronizacja zatrzymała się z powodu błędu wewnętrznego."
     },
     "lastSynced": "Ostatnia synchronizacja: {{date}}",
@@ -56,7 +56,12 @@
     "privacy": "Twoje dane nigdy nie opuszczają urządzeń w postaci niezaszyfrowanej.",
     "start": "Skonfiguruj synchronizację",
     "resume": "Dokończ konfigurację",
-    "cancelSetup": "Anuluj konfigurację"
+    "cancelSetup": "Anuluj konfigurację",
+    "cancelConfirm": {
+      "title": "Anulować konfigurację?",
+      "description": "To urządzenie zapomni konto synchronizacji utworzone podczas tej konfiguracji, a dokonana już płatność nie zostanie przeniesiona. Ponowna konfiguracja synchronizacji zaczyna się od początku, z nowym kontem synchronizacji.",
+      "keep": "Zachowaj konfigurację"
+    }
   },
   "setup": {
     "title": "Skonfiguruj synchronizację",
@@ -231,7 +236,9 @@
   "leftover": {
     "text": "W tym profilu synchronizacja urządzeń została włączona z wersji deweloperskiej. Jego zmiany nadal są zapisywane na potrzeby synchronizacji.",
     "button": "Wyłącz synchronizację",
-    "noServer": "Zsynchronizowane dane i konto synchronizacji pozostają na serwerze synchronizacji, dopóki nie zostaną usunięte w wersji Moony z synchronizacją."
+    "noServer": "Zsynchronizowane dane i konto synchronizacji pozostają na serwerze synchronizacji, dopóki nie zostaną usunięte w wersji Moony z synchronizacją.",
+    "description": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują. Aby później dołączyć ponownie, potrzebna jest wersja Moony z synchronizacją.",
+    "phoneDescription": "Dane lokalne na tym telefonie zostają. Pozostałe urządzenia nadal się synchronizują. Aby później dołączyć ponownie, potrzebna jest wersja Moony z synchronizacją."
   },
   "password": {
     "label": "Hasło urządzenia"
@@ -324,7 +331,7 @@
       "off": "Wyłączona",
       "synced": "Aktualna",
       "syncing": "Synchronizowanie…",
-      "waiting": "Oczekuje na zmianę",
+      "waiting": "Zmiana jest wstrzymana",
       "offline": "Offline",
       "paused": "Wstrzymana",
       "error": "Zatrzymana"

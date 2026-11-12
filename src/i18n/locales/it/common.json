@@ -362,7 +362,7 @@
     "syncPairingCancelled": "L'altro dispositivo ha annullato l'abbinamento. Ricomincia su entrambi i dispositivi.",
     "syncPairingNotStarted": "Su questo dispositivo non è in corso alcun abbinamento. Ricomincia su entrambi i dispositivi.",
     "syncPasswordNeeded": "Inserisci la password di questo dispositivo per continuare.",
-    "syncGapNotSkippableYet": "Questa modifica si può saltare solo quando manca da 14 giorni.",
+    "syncGapNotSkippableYet": "Questa modifica si può saltare solo dopo 14 giorni da quando è trattenuta.",
     "syncCopyFailed": "Non è stato possibile copiare il codice. Riprova oppure conserva il kit in un altro modo tra quelli mostrati in questa schermata.",
     "syncRecoveryAccountInvalid": "Controlla il numero di account: sono le 16 cifre del kit di recupero della sincronizzazione.",
     "syncRecoveryVaultNotFound": "Il server di sincronizzazione non ha dati sincronizzati per questo codice di recupero. Controlla il codice e l'indirizzo del server di sincronizzazione nel kit di recupero della sincronizzazione.",

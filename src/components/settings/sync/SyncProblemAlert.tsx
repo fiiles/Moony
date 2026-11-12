@@ -129,13 +129,6 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
       title = t('alert.newerSchema');
       body = null;
       break;
-    case 'resync':
-      actions = (
-        <Button type="button" size="sm" onClick={() => setOpen('resync')}>
-          {t('resync.button')}
-        </Button>
-      );
-      break;
     case 'skipMissing':
       if (skippable?.kind === 'ahead') {
         body = aheadText(skippable, t, dateText);
@@ -158,6 +151,13 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
         );
       }
       break;
+    case 'none':
+      break;
+    default: {
+      // A new SyncProblemAction must be placed above: this fails to compile until it is
+      const unhandled: never = action;
+      return unhandled;
+    }
   }
 
   return (

@@ -178,9 +178,6 @@ function ProblemAlert({
         ...(offerResync ? [{ label: t('resync.button'), onClick: onResync }] : []),
       ];
       break;
-    case 'resync':
-      actions = [{ label: t('resync.button'), onClick: onResync }];
-      break;
     case 'updateApp':
       body = t('alert.newerSchema');
       break;
@@ -203,6 +200,13 @@ function ProblemAlert({
         ];
       }
       break;
+    case 'none':
+      break;
+    default: {
+      // A new SyncProblemAction must be placed above: this fails to compile until it is
+      const unhandled: never = action;
+      return unhandled;
+    }
   }
 
   return (

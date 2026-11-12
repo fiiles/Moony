@@ -39,6 +39,7 @@ import {
 import { backupFileName, secondsToDate } from '@/utils/sync-status';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
+import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { ReplaceConfirmSheet } from '@/mobile/components/sync/ReplaceConfirmSheet';
@@ -95,6 +96,8 @@ export default function SyncSection() {
   const [offerResync, setOfferResync] = useState(false);
   /** A replace that kept its backup: the sheet that says where it is (and offers a copy in Files). */
   const [saved, setSaved] = useState<ReplaceSaved | null>(null);
+  /** The confirmation of cancelling a setup that was started is open. */
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   /** The held change whose skip confirmation is open. */
   const [skipping, setSkipping] = useState<HeldGapView | null>(null);
 
@@ -189,6 +192,7 @@ export default function SyncSection() {
     if (turnOff.isPending) return;
     try {
       await turnOff.mutateAsync();
+      setConfirmingCancel(false);
     } catch (error) {
       fail(error);
     }
@@ -209,7 +213,7 @@ export default function SyncSection() {
           open={open === 'turnOff'}
           onOpenChange={close}
           title={t('turnOff.title')}
-          description={`${t('phone.turnOffBody')} ${t('leftover.noServer')}`}
+          description={`${t('leftover.phoneDescription')} ${t('leftover.noServer')}`}
           note={
             leftoverPending > 0
               ? t('turnOff.pendingChanges', { count: leftoverPending })
@@ -251,7 +255,7 @@ export default function SyncSection() {
               <SettingsRow
                 icon={X}
                 title={t('intro.cancelSetup')}
-                onClick={() => void cancelSetup()}
+                onClick={() => setConfirmingCancel(true)}
               />
             )}
             <SettingsRow
@@ -302,12 +306,14 @@ export default function SyncSection() {
 
           <SectionHead title={t('danger.title')} />
           <EntityRows>
-            <SettingsRow
-              icon={RefreshCw}
-              title={t('resync.button')}
-              sub={t('resync.hint')}
-              onClick={() => setOpen('resync')}
-            />
+            {status.problem !== 'serverWentBack' && (
+              <SettingsRow
+                icon={RefreshCw}
+                title={t('resync.button')}
+                sub={t('resync.hint')}
+                onClick={() => setOpen('resync')}
+              />
+            )}
             <SettingsRow
               icon={Unplug}
               title={t('turnOff.button')}
@@ -332,6 +338,18 @@ export default function SyncSection() {
         }}
       />
       <SyncBackupSavedSheet saved={saved} onClose={() => setSaved(null)} />
+      <ConfirmSheet
+        open={confirmingCancel}
+        onOpenChange={(next) => {
+          if (!turnOff.isPending) setConfirmingCancel(next);
+        }}
+        title={t('intro.cancelConfirm.title')}
+        description={t('intro.cancelConfirm.description')}
+        confirmLabel={t('intro.cancelSetup')}
+        cancelLabel={t('intro.cancelConfirm.keep')}
+        onConfirm={() => void cancelSetup()}
+        isPending={turnOff.isPending}
+      />
       <SyncKitSheet open={open === 'kit'} onOpenChange={close} />
       <RecoveryJoinSheet open={open === 'kitJoin'} onOpenChange={close} onReplaced={replaced} />
       {/* Mounted only while a setup runs: unmounting forgets the Recovery Kit */}

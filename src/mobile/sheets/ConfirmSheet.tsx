@@ -15,6 +15,8 @@ interface ConfirmSheetProps {
   isPending?: boolean;
   /** The solid button waits (without a spinner) for something else to settle first. */
   confirmDisabled?: boolean;
+  /** The ghost button's text where plain "Zrušit" would be ambiguous (it cancels the action's own cancel). */
+  cancelLabel?: string;
 }
 
 /**
@@ -31,6 +33,7 @@ export function ConfirmSheet({
   onConfirm,
   isPending = false,
   confirmDisabled = false,
+  cancelLabel,
 }: ConfirmSheetProps) {
   const { t: tc } = useTranslation('common');
   return (
@@ -46,7 +49,7 @@ export function ConfirmSheet({
             className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-[18px] text-m-row"
             onClick={() => onOpenChange(false)}
           >
-            {tc('buttons.cancel')}
+            {cancelLabel ?? tc('buttons.cancel')}
           </Button>
           <Button
             variant="destructive"

@@ -1,8 +1,19 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { SettingsCard } from '@/components/settings/SettingsCard';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 
 interface SyncIntroCardProps {
@@ -18,7 +29,8 @@ interface SyncIntroCardProps {
 /**
  * Settings → Sync while sync is off (or half set up): what it is, the button that starts setup and
  * two quieter ways to join an account that already exists. A half-finished setup can be cancelled
- * here (a join refuses to start next to one).
+ * here (a join refuses to start next to one), after a confirmation: this device forgets the sync
+ * account the setup created.
  */
 export function SyncIntroCard({
   resuming,
@@ -30,9 +42,12 @@ export function SyncIntroCard({
   const { t: tc } = useTranslation('common');
   const { turnOff } = useDeviceSyncMutations();
 
+  const [confirming, setConfirming] = useState(false);
+
   const cancelSetup = async () => {
     try {
       await turnOff.mutateAsync();
+      setConfirming(false);
     } catch (error) {
       toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
     }
@@ -54,12 +69,38 @@ export function SyncIntroCard({
             {t('join.introKit')}
           </Button>
           {resuming && (
-            <Button type="button" variant="ghost" onClick={cancelSetup} loading={turnOff.isPending}>
+            <Button type="button" variant="ghost" onClick={() => setConfirming(true)}>
               {t('intro.cancelSetup')}
             </Button>
           )}
         </div>
       </div>
+      <AlertDialog
+        open={confirming}
+        onOpenChange={(next) => !turnOff.isPending && setConfirming(next)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('intro.cancelConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('intro.cancelConfirm.description')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={turnOff.isPending}>
+              {t('intro.cancelConfirm.keep')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                // Stays open until the setup is cancelled, so a failure leaves the dialog and toast
+                event.preventDefault();
+                void cancelSetup();
+              }}
+              disabled={turnOff.isPending}
+            >
+              {t('intro.cancelSetup')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SettingsCard>
   );
 }

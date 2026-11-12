@@ -54,7 +54,10 @@ export type SyncPhase =
   | 'settingUp'
   | 'idle'
   | 'syncing'
-  /** Syncing goes on, but a change from another device has not arrived yet (problem `gap`). */
+  /**
+   * Syncing goes on, but a change from another device is held: it has not arrived (problem `gap`)
+   * or is dated more than ten years ahead (`clockAhead`).
+   */
   | 'waiting'
   | 'paused'
   | 'error';
@@ -262,11 +265,6 @@ export interface SyncBackupEntry {
   kept: boolean;
 }
 
-/**
- * What a held change waits for: `missing`, an earlier change of the device never arrived (skipping
- * applies the ones after it); `parent`, the change refers to something no change brought (skipping
- * skips that change).
- */
 /**
  * What a held change waits for: an earlier change that never arrived (`missing`), something it
  * refers to (`parent`), or its date, more than ten years ahead (`ahead`, audit M6).

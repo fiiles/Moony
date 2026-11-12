@@ -4,7 +4,7 @@
   "indicator": {
     "synced": "Sincronizzato",
     "syncing": "Sincronizzazione…",
-    "waiting": "In attesa di una modifica",
+    "waiting": "Modifica trattenuta",
     "paused": "Sincronizzazione in pausa",
     "error": "Errore di sincronizzazione",
     "offline": "Offline"
@@ -15,7 +15,7 @@
       "settingUp": "Configurazione della sincronizzazione",
       "idle": "Aggiornato",
       "syncing": "Sincronizzazione…",
-      "waiting": "Sincronizzazione in corso, in attesa di una modifica da un altro dispositivo",
+      "waiting": "Sincronizzazione in corso; una modifica da un altro dispositivo è trattenuta",
       "paused": "La sincronizzazione è in pausa",
       "error": "La sincronizzazione si è fermata"
     },
@@ -33,12 +33,12 @@
       "missingParent": "Alle modifiche di un altro dispositivo mancano passaggi precedenti e sono trattenute.",
       "quarantined": "Le modifiche di alcuni dispositivi sono trattenute per sicurezza.",
       "offline": "Nessuna connessione al server di sincronizzazione. La sincronizzazione riprenderà quando sarà di nuovo raggiungibile.",
-      "relayError": "Il server di sincronizzazione ha risposto con un errore. Moony riproverà.",
+      "relayError": "Il server di sincronizzazione non risponde come previsto. Moony continua a riprovare.",
       "rateLimited": "Il server di sincronizzazione ha chiesto a Moony di rallentare. Moony riproverà a breve.",
       "unauthorized": "Il server di sincronizzazione non ha accettato questo dispositivo. Potrebbe servire configurare di nuovo la sincronizzazione.",
       "keyRotated": "La chiave di recupero è stata cambiata su un altro dispositivo. Configura di nuovo la sincronizzazione su questo dispositivo.",
       "secureStorage": "Moony non è riuscita ad accedere all'archivio sicuro di questo dispositivo, quindi la sincronizzazione è in pausa. Riproverà; di solito aiuta sbloccare il dispositivo o riavviare Moony.",
-      "serverWentBack": "Il server di sincronizzazione è tornato a uno stato precedente, quindi sugli altri tuoi dispositivi potrebbero mancare delle modifiche. I dati su questo dispositivo sono intatti. Moony non può ancora risolverlo da sola: per riallineare i dispositivi, disattiva la sincronizzazione, configurala di nuovo sul dispositivo con i dati più completi e collega gli altri.",
+      "serverWentBack": "Il server di sincronizzazione è tornato a uno stato precedente, quindi sugli altri tuoi dispositivi potrebbero mancare delle modifiche. I dati su questo dispositivo sono intatti. Moony non può ancora risolverlo da sola: per riallineare i dispositivi, disattiva la sincronizzazione, configurala di nuovo sul dispositivo con i dati più completi e collega gli altri. Non risincronizzare questo dispositivo: sostituirebbe i suoi dati con la copia più vecchia del server di sincronizzazione. Configurando di nuovo la sincronizzazione si crea un nuovo account di sincronizzazione.",
       "internal": "La sincronizzazione si è fermata per un errore interno."
     },
     "lastSynced": "Ultima sincronizzazione: {{date}}",
@@ -56,7 +56,12 @@
     "privacy": "I tuoi dati non lasciano mai i tuoi dispositivi senza cifratura.",
     "start": "Configura la sincronizzazione",
     "resume": "Continua la configurazione",
-    "cancelSetup": "Annulla la configurazione"
+    "cancelSetup": "Annulla la configurazione",
+    "cancelConfirm": {
+      "title": "Annullare la configurazione?",
+      "description": "Questo dispositivo dimentica l'account di sincronizzazione creato per questa configurazione, e un pagamento già effettuato non viene trasferito. Se configuri di nuovo la sincronizzazione, si riparte da zero, con un nuovo account di sincronizzazione.",
+      "keep": "Mantieni la configurazione"
+    }
   },
   "setup": {
     "title": "Configura la sincronizzazione",
@@ -225,7 +230,9 @@
   "leftover": {
     "text": "Questo profilo ha la sincronizzazione tra dispositivi attivata da una versione di sviluppo. Le sue modifiche vengono ancora registrate per la sincronizzazione.",
     "button": "Disattiva la sincronizzazione",
-    "noServer": "I dati sincronizzati e l'account di sincronizzazione restano sul server di sincronizzazione finché non li elimini da una versione di Moony con la sincronizzazione."
+    "noServer": "I dati sincronizzati e l'account di sincronizzazione restano sul server di sincronizzazione finché non li elimini da una versione di Moony con la sincronizzazione.",
+    "description": "I dati locali restano. Gli altri dispositivi continuano a sincronizzare. Per ricollegarti in seguito serve una versione di Moony con la sincronizzazione.",
+    "phoneDescription": "I dati locali su questo telefono restano. Gli altri dispositivi continuano a sincronizzare. Per ricollegarti in seguito serve una versione di Moony con la sincronizzazione."
   },
   "password": {
     "label": "Password del dispositivo"
@@ -317,7 +324,7 @@
       "off": "Disattivata",
       "synced": "Aggiornata",
       "syncing": "Sincronizzazione…",
-      "waiting": "In attesa di una modifica",
+      "waiting": "Modifica trattenuta",
       "offline": "Offline",
       "paused": "In pausa",
       "error": "Interrotta"

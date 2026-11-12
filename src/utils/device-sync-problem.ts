@@ -2,14 +2,7 @@ import type { HeldGapKind, HeldGapView, SyncProblem } from '@shared/schema';
 
 /** The action the problem alert offers. */
 export type SyncProblemAction =
-  | 'renew'
-  | 'askOperator'
-  | 'turnOffOrRetry'
-  | 'repair'
-  | 'resync'
-  | 'skipMissing'
-  | 'updateApp'
-  | 'none';
+  'renew' | 'askOperator' | 'turnOffOrRetry' | 'repair' | 'skipMissing' | 'updateApp' | 'none';
 
 const DAY_SECONDS = 86_400;
 
@@ -134,7 +127,8 @@ export function heldDays(gap: HeldGapView, now: number): number {
  * it is younger than 14 days: this device keeps syncing and sending its own changes meanwhile. Once
  * a held change may be skipped (`skippable`, from `skippableGap`), the alert offers to skip it;
  * Re-sync is never the gap's answer (it would replace this device's data, and the gap would
- * come back with the same missing change). A change dated more than ten years ahead
+ * come back with the same missing change); the alert offers it only after a repair that could
+ * not send every change. A change dated more than ten years ahead
  * (`clockAhead`) is offered for skipping the same way, from its own alert.
  */
 export function problemAction(
@@ -157,9 +151,27 @@ export function problemAction(
       return 'updateApp';
     case 'serverWentBack':
       // No action yet: the text says how to bring the devices back together (turn sync off,
-      // set it up again on the device with the most complete data, join the others).
+      // set it up again on the device with the most complete data, join the others) and not to
+      // re-sync, which would replace this device's data with the server's older copy.
       return 'none';
-    default:
+    case 'quotaExceeded':
+    case 'snapshotTooLarge':
+    case 'undecryptable':
+    case 'invalidChain':
+    case 'missingParent':
+    case 'quarantined':
+    case 'offline':
+    case 'relayError':
+    case 'rateLimited':
+    case 'unauthorized':
+    case 'keyRotated':
+    case 'secureStorage':
+    case 'internal':
       return 'none';
+    default: {
+      // A new SyncProblem must be placed above: this fails to compile until it is
+      const unhandled: never = problem;
+      return unhandled;
+    }
   }
 }

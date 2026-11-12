@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialog';
@@ -14,6 +15,10 @@ type Open = 'turnOff' | 'delete' | 'resync' | null;
 export function SyncDangerCard() {
   const { t } = useTranslation('deviceSync');
   const { deleteSyncedData } = useDeviceSyncMutations();
+  const { data: status } = useDeviceSyncStatus();
+  // Re-sync would replace this device's data with the server's older copy: not offered while the
+  // server has gone back (the status text says so)
+  const canResync = status?.problem !== 'serverWentBack';
   const resetDelete = deleteSyncedData.reset;
   useEffect(() => resetDelete, [resetDelete]);
   const [open, setOpen] = useState<Open>(null);
@@ -32,14 +37,16 @@ export function SyncDangerCard() {
             {t('delete.button')}
           </Button>
         </SettingsRow>
-        <SettingsRow label={t('resync.button')} hint={t('resync.hint')}>
-          <Button type="button" variant="outline" onClick={() => setOpen('resync')}>
-            {t('resync.button')}
-          </Button>
-        </SettingsRow>
+        {canResync && (
+          <SettingsRow label={t('resync.button')} hint={t('resync.hint')}>
+            <Button type="button" variant="outline" onClick={() => setOpen('resync')}>
+              {t('resync.button')}
+            </Button>
+          </SettingsRow>
+        )}
       </SettingsCard>
       {open === 'turnOff' && <TurnOffSyncDialog onClose={close} />}
-      {open === 'resync' && <ResyncDeviceDialog onClose={close} />}
+      {open === 'resync' && canResync && <ResyncDeviceDialog onClose={close} />}
       {open === 'delete' && (
         <SyncPasswordDialog
           title={t('delete.title')}

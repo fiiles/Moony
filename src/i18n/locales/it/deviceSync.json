@@ -24,6 +24,13 @@
     "days_many": "{{count}} giorni fa",
     "days_other": "{{count}} giorni fa"
   },
+  "popover": {
+    "title": "Sincronizzazione",
+    "pending": "In attesa di invio",
+    "server": "Server",
+    "openSettings": "Apri impostazioni",
+    "settings": "Impostazioni di sincronizzazione"
+  },
   "status": {
     "phase": {
       "off": "La sincronizzazione è disattivata",

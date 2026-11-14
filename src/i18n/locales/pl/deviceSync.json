@@ -28,6 +28,13 @@
     "days_many": "{{count}} dni temu",
     "days_other": "{{count}} dnia temu"
   },
+  "popover": {
+    "title": "Synchronizacja",
+    "pending": "Oczekuje na wysłanie",
+    "server": "Serwer",
+    "openSettings": "Otwórz ustawienia",
+    "settings": "Ustawienia synchronizacji"
+  },
   "status": {
     "phase": {
       "off": "Synchronizacja jest wyłączona",

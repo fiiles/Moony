@@ -16,6 +16,13 @@
     "hours_other": "{{count}}時間前",
     "days_other": "{{count}}日前"
   },
+  "popover": {
+    "title": "同期",
+    "pending": "送信待ち",
+    "server": "サーバー",
+    "openSettings": "設定を開く",
+    "settings": "同期設定"
+  },
   "status": {
     "phase": {
       "off": "同期はオフです",

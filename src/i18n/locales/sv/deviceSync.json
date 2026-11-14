@@ -20,6 +20,13 @@
     "days_one": "för {{count}} dag sedan",
     "days_other": "för {{count}} dagar sedan"
   },
+  "popover": {
+    "title": "Synkronisering",
+    "pending": "Väntar på att skickas",
+    "server": "Server",
+    "openSettings": "Öppna inställningar",
+    "settings": "Synkroniseringsinställningar"
+  },
   "status": {
     "phase": {
       "off": "Synkroniseringen är av",

@@ -20,6 +20,13 @@
     "days_one": "vor {{count}} Tag",
     "days_other": "vor {{count}} Tagen"
   },
+  "popover": {
+    "title": "Synchronisierung",
+    "pending": "Wartet auf Versand",
+    "server": "Server",
+    "openSettings": "Einstellungen öffnen",
+    "settings": "Synchronisierungseinstellungen"
+  },
   "status": {
     "phase": {
       "off": "Synchronisierung ist aus",

@@ -16,6 +16,13 @@
     "hours_other": "{{count}} 小时前",
     "days_other": "{{count}} 天前"
   },
+  "popover": {
+    "title": "同步",
+    "pending": "等待发送",
+    "server": "服务器",
+    "openSettings": "打开设置",
+    "settings": "同步设置"
+  },
   "status": {
     "phase": {
       "off": "同步已关闭",

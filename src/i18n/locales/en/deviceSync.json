@@ -20,6 +20,13 @@
     "days_one": "{{count}} day ago",
     "days_other": "{{count}} days ago"
   },
+  "popover": {
+    "title": "Sync",
+    "pending": "Waiting to be sent",
+    "server": "Server",
+    "openSettings": "Open settings",
+    "settings": "Sync settings"
+  },
   "status": {
     "phase": {
       "off": "Sync is off",

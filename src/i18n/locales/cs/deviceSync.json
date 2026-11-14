@@ -28,6 +28,13 @@
     "days_many": "před {{count}} dny",
     "days_other": "před {{count}} dny"
   },
+  "popover": {
+    "title": "Synchronizace",
+    "pending": "Čeká na odeslání",
+    "server": "Server",
+    "openSettings": "Otevřít nastavení",
+    "settings": "Nastavení synchronizace"
+  },
   "status": {
     "phase": {
       "off": "Synchronizace je vypnutá",

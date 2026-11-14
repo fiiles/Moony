@@ -50,18 +50,26 @@ vault.
   Recovery Kit, device.
 - The Moony cloud card is shown, disabled, with "Coming soon". The cloud branch of the setup
   dialog (`createAccount`, `startCheckout`, the pay step) and `checkout_url` stay in the code, with
-  no way to select them. They are unreachable on purpose, so the cloud can be switched on without
-  rebuilding them; a reader must not mistake them for live code.
+  no way to select them. They are unreachable on purpose, but switching the cloud on still needs
+  wiring: the choice's state (`kind` in the setup dialog has no setter), the phone's cloud branch
+  (the phone sets up on an own server only) and ChoiceCard selection from the RadioGroup value. A
+  reader must not mistake that code for live or finished.
 - `SyncStatus` gains `ownServer`, `serverAddress` and `serverInsecure`, computed from the stored
   address (`engine/status.rs`: own server means the stored address is not the Moony cloud). An own
-  server has no deletion date: a lapse reads "blocked on your sync server" with no renewal.
+  server has no deletion date: a lapse reads "blocked on your sync server" with no renewal, on
+  every path that talks to the server: setup, change address, pairing join, Recovery Kit join,
+  repair and re-sync map their errors with `app_error_for(stored or given URL, …)`, which picks
+  `to_own_server_app_error` for any server that is not the Moony cloud.
 
 **The server check.** `GET /v1/server` (no authentication) answers `{name: "moony-sync", version,
 protocol, mode}`. `server::check_own_server` refuses an address that does not answer that shape
 (`syncServerNotFound`), a protocol below `MIN_PROTOCOL = 2` (`syncServerNeedsUpdate`, the key
 pairing already used) and a mode other than `self_hosted` (`syncServerNotOwn`). The check runs
-before any account call, in setup and in every join dialog. A running device does not repeat it
-per round; a server that became too old shows up as the errors it already had.
+before any account call. The backend runs it in setup (`connect_own_server`) and in the change-address
+action. The join dialogs run it through the UI (`sync_check_server`, which the server field calls)
+and the join commands do not repeat it; the phone's pairing scan checks no server at all, because
+it uses the holder's. A running device does not repeat it per round; a server that became too old
+shows up as the errors it already had.
 
 **Plain `http` for any host but the Moony cloud, in every build.** This reverses ADR 0025's HTTP
 rule and ADR 0027 L9. `relay/http.rs::scheme_allowed(scheme, host)` takes `https` for any host and
@@ -75,8 +83,8 @@ either. Pairing is unaffected, because its mailbox carries only a public key and
 (ADR 0026, protocol 2); a wire reader learns nothing it can use. Redirects stay off, so the
 account header and the token never reach another origin.
 - The warning is a duty of the UI, not of the backend, which accepts `http` by design. Whenever an
-  `http` address with a host other than loopback (`is_insecure_address`; `localhost`, `127.0.0.1`
-  and `[::1]` are not insecure) is typed, scanned, read from a payload or resumed, the dialog
+  `http` address with a host other than loopback (`is_insecure_address`; only `localhost` and
+  `127.0.0.1` are exempt, `[::1]` is treated as insecure) is typed, scanned, read from a payload or resumed, the dialog
   shows the warning and needs an explicit tick before it goes on: in setup, in the pairing join
   (also at the `received` step when the credentials name another server than the one typed), in
   the Recovery Kit join and when changing the address. Typing again unticks. Nothing is stored per
@@ -96,7 +104,7 @@ server; everything else tied to it is handled explicitly:
 | the cursor | checked: the vault's `head` at the new address must be at least the cursor (`syncServerAddressWentBack` otherwise) |
 | the went-back mark (`sync.vault_went_back_at`) | kept, and not set by a refused change: data a restore lost is not healed by moving |
 | the vault-gone pause (`vault_gone_at`) | cleared in the same transaction as the swap: the vault was just proven to exist |
-| pairing sessions and the Kit window | forgotten before the change, on every attempt |
+| pairing sessions and the Kit window | forgotten on every attempt, after the password check and the address parse |
 | the engine's client | rebuilt: the command runs under `guarded_change`, which stops the engine and starts it again, and `spawn_engine` builds a new `HttpRelay` from the stored address |
 | Recovery Kits saved earlier | still name the old address; the text says to save the Kit again (the Kit join lets a person type another server) |
 
@@ -151,6 +159,9 @@ person does. They are `#[cfg(test)]`, ignored, and run against a server with
     is the same server (above).
   - A typed address at setup or a join can be a hostile server, which then holds an account number
     or a token.
+  - An active attacker on the same network can answer `GET /v1/server` over `http` and stand in for
+    the server: the same exposure as a hostile server above. The detection of ADR 0027 (a vault
+    that went back) still applies.
   - The server's admin interface is reachable by anyone who can reach the server; its protection
     is the admin's password and second factor (DESIGN.md of the server).
   - ADR 0027's manual recovery for a server restored from an older backup no longer says "add the

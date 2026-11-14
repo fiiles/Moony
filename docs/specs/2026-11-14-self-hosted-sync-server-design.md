@@ -563,6 +563,15 @@ App
   to exist) and keeps the went-back mark (data lost by a restore is not healed by moving); the
   client is built from the checked address inside the service, so no other string reaches it.
   The same address typed again is a no-op, and the dialog says so.
+- §9.1: the account number is NOT shown in Settings → Sync; it appears only inside the Recovery
+  Kit, which needs the device password.
+- Blocked person (final review I1): every path that talks to an own server (setup, change address,
+  pairing join, Kit join, repair, re-sync) reads "blocked on your sync server", never the payment
+  message.
+- Resumed setup (I2): the server step does not contact the stored server until Continue; a failure
+  (unreachable, rate-limited) shows its own message, and only a real "not active" reads blocked.
+- Change address (M5): an address equal to the stored one is said so at the address step, and the
+  password is never asked for.
 - `403 managed_by_operator` is a permanent refusal in the app (`SyncError::Refused`), `503` and
   `408` are transient. The spec named the answers but not their classes.
 

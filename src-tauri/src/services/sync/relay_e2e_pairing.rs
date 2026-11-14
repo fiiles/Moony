@@ -1,9 +1,9 @@
-//! End to end, phase 3: pairing over the relay's mailbox and the new device's joins (pairing in
-//! both directions, a Sync Recovery Kit), against a real Moony-relay under `wrangler dev`. Every
-//! test is ignored; they run with the phase 2 ones (`relay_e2e`), one at a time:
+//! End to end, phase 3: pairing over the sync server's mailbox and the new device's joins
+//! (pairing in both directions, a Sync Recovery Kit), against a real Moony sync server
+//! (Moony-relay-node, Plan 1). Every test is ignored; they run with the phase 2 ones
+//! (`relay_e2e`, which has the run's recipe), one at a time:
 //!
 //! ```text
-//! # Moony-relay, branch feat/dev-grant: cp .dev.vars.example .dev.vars && npm run dev
 //! cd src-tauri && MOONY_RELAY_E2E=http://127.0.0.1:8787 \
 //!   cargo test --lib relay_e2e -- --ignored --test-threads=1
 //! ```
@@ -107,7 +107,7 @@ fn mailbox_of(session: &PairingSession) -> String {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn the_mailbox_answers_as_documented() {
     let relay = relay_at(&relay_url());
     let id = MailboxId::random().expect("id").to_b64();
@@ -160,7 +160,7 @@ async fn the_mailbox_answers_as_documented() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn the_mailbox_has_three_slots() {
     let url = relay_url();
     let relay = relay_at(&url);
@@ -203,7 +203,7 @@ async fn the_mailbox_has_three_slots() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn three_wrong_codes_end_the_pairing_and_nothing_is_sealed() {
     let url = relay_url();
     let a = first_device(&relay_at(&url), &url, "A").await;
@@ -265,7 +265,7 @@ async fn three_wrong_codes_end_the_pairing_and_nothing_is_sealed() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn a_phone_joins_a_desktop_that_types_its_code() {
     let url = relay_url();
     let (a, b) = holder_and_new_device(&url).await;
@@ -344,7 +344,7 @@ async fn a_phone_joins_a_desktop_that_types_its_code() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn a_desktop_joins_from_a_phone_and_the_phone_types_the_code() {
     let url = relay_url();
     let (a, b) = holder_and_new_device(&url).await;
@@ -412,7 +412,7 @@ async fn a_desktop_joins_from_a_phone_and_the_phone_types_the_code() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn a_device_joins_with_the_recovery_kit() {
     let url = relay_url();
     let (a, b) = holder_and_new_device(&url).await;
@@ -446,7 +446,7 @@ async fn a_device_joins_with_the_recovery_kit() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn a_mismatch_burns_the_mailbox_and_sends_nothing() {
     let url = relay_url();
     let a = first_device(&relay_at(&url), &url, "A").await;
@@ -529,7 +529,7 @@ async fn a_mismatch_burns_the_mailbox_and_sends_nothing() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn a_holder_confirming_an_attackers_code_seals_nothing() {
     let url = relay_url();
     let a = first_device(&relay_at(&url), &url, "A").await;
@@ -609,7 +609,7 @@ impl Mailbox for LosesFirstPutAnswer<'_> {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn a_lost_slot_1_answer_is_taken_as_ours() {
     let url = relay_url();
     let a = first_device(&relay_at(&url), &url, "A").await;

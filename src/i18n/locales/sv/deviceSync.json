@@ -90,7 +90,6 @@
       "yearly": "Årsvis",
       "continue": "Fortsätt till betalning",
       "waiting": "Väntar på betalningen. Det här fönstret går vidare när den kommer.",
-      "grantTest": "Ge en testprenumeration",
       "ownServer": "Den här servern är inte Moony-molnet, så det finns inget att betala. Ställ in synkroniseringen med anslutningskoden till din egen synkroniseringsserver i stället."
     },
     "kit": {

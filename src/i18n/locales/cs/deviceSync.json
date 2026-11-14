@@ -90,7 +90,6 @@
       "yearly": "Ročně",
       "continue": "Pokračovat k platbě",
       "waiting": "Čekám na platbu. Okno se posune dál, jakmile dorazí.",
-      "grantTest": "Udělit zkušební předplatné",
       "ownServer": "Tento server není Moony cloud, takže se nic neplatí. Nastavte synchronizaci pomocí připojovacího kódu vlastního synchronizačního serveru."
     },
     "kit": {

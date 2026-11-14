@@ -90,7 +90,6 @@
       "yearly": "Anual",
       "continue": "Continuar al pago",
       "waiting": "Esperando el pago. Esta ventana avanza cuando llegue.",
-      "grantTest": "Conceder una suscripción de prueba",
       "ownServer": "Este servidor no es la nube de Moony, así que no hay nada que pagar. Configura la sincronización con el código de conexión de tu propio servidor de sincronización."
     },
     "kit": {

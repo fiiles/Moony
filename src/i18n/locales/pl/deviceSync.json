@@ -90,7 +90,6 @@
       "yearly": "Roczny",
       "continue": "Przejdź do płatności",
       "waiting": "Czekam na płatność. To okno przejdzie dalej, gdy nadejdzie.",
-      "grantTest": "Przyznaj testową subskrypcję",
       "ownServer": "Ten serwer nie jest chmurą Moony, więc nie ma nic do zapłacenia. Skonfiguruj synchronizację za pomocą kodu połączenia własnego serwera synchronizacji."
     },
     "kit": {

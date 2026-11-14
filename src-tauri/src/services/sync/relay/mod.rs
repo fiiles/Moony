@@ -208,7 +208,7 @@ struct ErrorBody {
 
 impl RelayError {
     /// The typed error of a relay answer that is not a success, by status and the `"error"` code
-    /// of its `{"error": "<code>"}` body. Rate limits, redirects and 5xx go by status alone (an
+    /// of its `{"error": "<code>"}` body. Rate limits, redirects, `408` and 5xx go by status alone (an
     /// edge or proxy may answer them with HTML); everything else needs the documented code for its
     /// status, and an unknown code or a body that is not that JSON shape is `Protocol`. A `502` /
     /// `503` of the checkout route is `CheckoutUnavailable`, decided by the caller, which knows the
@@ -217,7 +217,8 @@ impl RelayError {
         match status {
             300..=399 => return RelayError::Protocol("redirect".into()),
             429 => return RelayError::RateLimited,
-            500..=599 => return RelayError::Server(status),
+            // A slow upload (`408 body_timeout`) passes like a busy server (`503 busy`).
+            408 | 500..=599 => return RelayError::Server(status),
             400..=499 => {}
             _ => return RelayError::Protocol("unexpected status".into()),
         }
@@ -442,6 +443,29 @@ mod tests {
             "{sync:?}"
         );
         assert!(sync.backs_off());
+    }
+
+    /// The Node sync server answers `503 {"error":"busy"}` (body budget, mailbox caps) and
+    /// `408 {"error":"body_timeout"}` (a slow upload): both pass, so a round backs off and tries
+    /// again instead of stopping on a permanent refusal.
+    #[test]
+    fn a_busy_or_slow_server_is_a_transient_relay_error() {
+        use crate::services::sync::error::{SyncError, Transient};
+        for (status, code) in [(503, "busy"), (408, "body_timeout")] {
+            let error = RelayError::from_response(status, &body(code));
+            assert_eq!(error, E::Server(status), "{status} {code}");
+            let sync = SyncError::from(error);
+            assert!(
+                matches!(sync, SyncError::Transient(Transient::Relay)),
+                "{status}: {sync:?}"
+            );
+            assert!(sync.backs_off(), "{status}");
+        }
+        // Whatever the body (an edge may answer a timeout with HTML), the status decides.
+        assert_eq!(
+            RelayError::from_response(408, b"<html>timeout</html>"),
+            E::Server(408)
+        );
     }
 
     #[test]

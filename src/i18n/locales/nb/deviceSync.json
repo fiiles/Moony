@@ -90,7 +90,6 @@
       "yearly": "Årlig",
       "continue": "Fortsett til betaling",
       "waiting": "Venter på betalingen. Dette vinduet går videre når den kommer.",
-      "grantTest": "Gi et prøveabonnement",
       "ownServer": "Denne serveren er ikke Moony-skyen, så det er ingenting å betale. Sett opp synkroniseringen med tilkoblingskoden til din egen synkroniseringsserver i stedet."
     },
     "kit": {

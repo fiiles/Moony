@@ -927,38 +927,6 @@ pub async fn sync_change_server_address(
     current_status(&app, &db)
 }
 
-/// A test subscription of `days` days on a local relay started with `DEV_GRANT=1` (debug builds
-/// with the developer tools only).
-#[tauri::command]
-pub async fn sync_dev_grant(db: State<'_, Database>, days: u32) -> Result<SyncAccount> {
-    require_feature()?;
-    require_dev_tools()?;
-    dev_grant(&db, days).await
-}
-
-#[cfg(debug_assertions)]
-async fn dev_grant(db: &Database, days: u32) -> Result<SyncAccount> {
-    let session = db.current_session()?;
-    let relay = profile_relay(&session)?;
-    let account = session.with_conn(|conn| {
-        keys::account(conn)?
-            .map(|(_, account)| account)
-            .ok_or_else(|| AppError::Validation("validation.syncSetupIncomplete".into()))
-    })?;
-    relay
-        .dev_grant(&account, days)
-        .await
-        .map_err(|e| app_error(e.into()))?;
-    setup::account_status(&relay, &session)
-        .await
-        .map_err(app_error)
-}
-
-#[cfg(not(debug_assertions))]
-async fn dev_grant(_db: &Database, _days: u32) -> Result<SyncAccount> {
-    Err(AppError::Validation(DEV_ONLY.into()))
-}
-
 /// The capture overhead of `rows` inserts on two scratch profiles (`capture::bench`; developer
 /// tools only).
 #[tauri::command]
@@ -1339,7 +1307,7 @@ mod tests {
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 36);
+        assert_eq!(found.len(), 35);
         for (name, first_three) in &commands {
             // The flag itself, a read-only question, and the way out of an enabled profile.
             if [

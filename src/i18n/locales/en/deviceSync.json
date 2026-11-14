@@ -90,7 +90,6 @@
       "yearly": "Yearly",
       "continue": "Continue to payment",
       "waiting": "Waiting for the payment. This window moves on when it arrives.",
-      "grantTest": "Grant a test subscription",
       "ownServer": "This server is not the Moony cloud, so there is nothing to pay. Set sync up with the connection code of your own sync server instead."
     },
     "kit": {

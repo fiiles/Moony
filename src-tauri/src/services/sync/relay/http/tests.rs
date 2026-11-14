@@ -790,32 +790,6 @@ fn a_relay_address_over_256_characters_is_refused() {
     }
 }
 
-#[cfg(debug_assertions)]
-#[tokio::test]
-async fn dev_grant_posts_the_days_with_the_account_header() {
-    let (base, server) = serve_once(json_answer("200 OK", r#"{"paidUntil":1800000000}"#));
-    let paid_until = relay(&base)
-        .dev_grant(ACCOUNT, 30)
-        .await
-        .expect("dev grant");
-    assert_eq!(paid_until, 1_800_000_000);
-    let request = server.join().expect("server");
-    assert_eq!(request.request_line(), "POST /v1/dev/grant HTTP/1.1");
-    assert_eq!(request.header("moony-account").as_deref(), Some(ACCOUNT));
-    assert_eq!(request.header("authorization"), None);
-    let body: serde_json::Value = serde_json::from_slice(&request.body).expect("json body");
-    assert_eq!(body, serde_json::json!({"days": 30}));
-
-    // A relay without DEV_GRANT=1 does not know the route.
-    let (base, server) = serve_once(json_answer("404 Not Found", r#"{"error":"not_found"}"#));
-    let error = relay(&base)
-        .dev_grant(ACCOUNT, 30)
-        .await
-        .expect_err("no grant");
-    assert_eq!(error, RelayError::BadRequest("not_found".into()));
-    server.join().expect("server");
-}
-
 #[tokio::test]
 async fn server_info_reads_the_documented_answer() {
     let (base, server) = serve_once(json_answer(

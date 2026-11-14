@@ -299,7 +299,6 @@ async fn run_app() {
             commands::sync::sync_repair_device,
             commands::sync::sync_resync_device,
             commands::sync::sync_change_server_address,
-            commands::sync::sync_dev_grant,
             commands::sync::sync_debug_capture_overhead,
             commands::sync_pairing::sync_pairing_start,
             commands::sync_pairing::sync_pairing_scan,

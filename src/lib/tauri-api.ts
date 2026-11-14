@@ -434,9 +434,6 @@ export const deviceSyncApi = {
   stageSyncBackupExport: (path: string) =>
     tauriInvoke<string>('stage_sync_backup_export', { path }),
 
-  /** Debug builds with the developer tools only. */
-  devGrant: (days: number) => tauriInvoke<SyncAccount>('sync_dev_grant', { days }),
-
   /** Debug builds with the developer tools only: one line with both timings. */
   debugCaptureOverhead: (rows: number) =>
     tauriInvoke<string>('sync_debug_capture_overhead', { rows }),

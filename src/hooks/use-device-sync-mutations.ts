@@ -158,10 +158,6 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.renameDevice,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] }),
   });
-  const devGrant = useMutation({
-    mutationFn: deviceSyncApi.devGrant,
-    onSuccess: refreshSyncState,
-  });
 
   return {
     createAccount,
@@ -183,6 +179,5 @@ export function useDeviceSyncMutations() {
     deleteBackup,
     skipMissingChange,
     renameDevice,
-    devGrant,
   };
 }

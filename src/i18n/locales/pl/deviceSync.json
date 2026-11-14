@@ -56,7 +56,8 @@
     "change": "Zmień adres",
     "dialogTitle": "Zmień adres serwera",
     "dialogBody": "Użyj tego, gdy Twój serwer synchronizacji zmienił adres. To musi być ten sam serwer z Twoimi zsynchronizowanymi danymi. Każde urządzenie zmienia własny adres, więc powtórz to na pozostałych urządzeniach. Zapisz zestaw odzyskiwania ponownie: zawiera teraz nowy adres.",
-    "success": "Adres serwera synchronizacji został zmieniony"
+    "success": "Adres serwera synchronizacji został zmieniony",
+    "unchanged": "To urządzenie już używa tego adresu."
   },
   "intro": {
     "description": "Utrzymuj dane aktualne na wszystkich urządzeniach. Są szyfrowane end-to-end: serwer synchronizacji przechowuje tylko dane, których nie potrafi odczytać.",
@@ -90,7 +91,7 @@
       "yearly": "Roczny",
       "continue": "Przejdź do płatności",
       "waiting": "Czekam na płatność. To okno przejdzie dalej, gdy nadejdzie.",
-      "ownServer": "Ten serwer nie jest chmurą Moony, więc nie ma nic do zapłacenia. Skonfiguruj synchronizację za pomocą kodu połączenia własnego serwera synchronizacji."
+      "ownServer": "Ten serwer to nie Moony cloud, więc nie ma nic do zapłacenia. Skonfiguruj synchronizację za pomocą kodu połączenia własnego serwera synchronizacji."
     },
     "kit": {
       "description": "Zapisz Zestaw odzyskiwania synchronizacji. To jedyny sposób, by odzyskać zsynchronizowane dane po utracie wszystkich urządzeń.",

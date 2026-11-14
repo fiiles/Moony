@@ -56,7 +56,8 @@
     "change": "Cambiar dirección",
     "dialogTitle": "Cambiar la dirección del servidor",
     "dialogBody": "Úsalo cuando tu servidor de sincronización se haya mudado a una dirección nueva. Debe ser el mismo servidor, con tus datos sincronizados. Cada dispositivo cambia su propia dirección, así que haz lo mismo en tus otros dispositivos. Guarda de nuevo el kit de recuperación: ahora incluye la dirección nueva.",
-    "success": "Dirección del servidor de sincronización cambiada"
+    "success": "Dirección del servidor de sincronización cambiada",
+    "unchanged": "Este dispositivo ya usa esta dirección."
   },
   "intro": {
     "description": "Mantén tus datos al día en todos tus dispositivos. Están cifrados de extremo a extremo: el servidor de sincronización solo guarda datos que no puede leer.",
@@ -90,7 +91,7 @@
       "yearly": "Anual",
       "continue": "Continuar al pago",
       "waiting": "Esperando el pago. Esta ventana avanza cuando llegue.",
-      "ownServer": "Este servidor no es la nube de Moony, así que no hay nada que pagar. Configura la sincronización con el código de conexión de tu propio servidor de sincronización."
+      "ownServer": "Este servidor no es Moony cloud, así que no hay nada que pagar. Configura la sincronización con el código de conexión de tu propio servidor de sincronización."
     },
     "kit": {
       "description": "Guarda tu Kit de recuperación de sincronización. Es la única forma de recuperar tus datos sincronizados si pierdes todos tus dispositivos.",

@@ -56,7 +56,8 @@
     "change": "Cambia indirizzo",
     "dialogTitle": "Cambia l'indirizzo del server",
     "dialogBody": "Usalo quando il tuo server di sincronizzazione si è spostato a un nuovo indirizzo. Deve essere lo stesso server, con i tuoi dati sincronizzati. Ogni dispositivo cambia il proprio indirizzo, quindi ripeti l'operazione sugli altri dispositivi. Salva di nuovo il kit di ripristino: ora contiene il nuovo indirizzo.",
-    "success": "Indirizzo del server di sincronizzazione cambiato"
+    "success": "Indirizzo del server di sincronizzazione cambiato",
+    "unchanged": "Questo dispositivo usa già questo indirizzo."
   },
   "intro": {
     "description": "Mantieni i dati allineati su tutti i tuoi dispositivi. Sono cifrati end-to-end: il server di sincronizzazione conserva solo dati che non può leggere.",
@@ -90,7 +91,7 @@
       "yearly": "Annuale",
       "continue": "Continua al pagamento",
       "waiting": "In attesa del pagamento. Questa finestra prosegue quando arriva.",
-      "ownServer": "Questo server non è il cloud di Moony, quindi non c'è nulla da pagare. Configura la sincronizzazione con il codice di connessione del tuo server di sincronizzazione."
+      "ownServer": "Questo server non è Moony cloud, quindi non c'è nulla da pagare. Configura la sincronizzazione con il codice di connessione del tuo server di sincronizzazione."
     },
     "kit": {
       "description": "Salva il tuo Kit di ripristino della sincronizzazione. È l'unico modo per riavere i dati sincronizzati se perdi tutti i dispositivi.",

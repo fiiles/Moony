@@ -51,12 +51,13 @@
     "showKit": "Wiederherstellungs-Kit anzeigen"
   },
   "server": {
-    "label": "Sync-Server",
+    "label": "Synchronisierungsserver",
     "insecure": "Unverschlüsselte Verbindung (http)",
     "change": "Adresse ändern",
     "dialogTitle": "Serveradresse ändern",
-    "dialogBody": "Nutze das, wenn dein Sync-Server auf eine neue Adresse umgezogen ist. Es muss derselbe Server mit deinen synchronisierten Daten sein. Jedes Gerät ändert seine Adresse selbst, wiederhole das also auf deinen anderen Geräten. Speichere das Wiederherstellungs-Kit erneut: Es enthält jetzt die neue Adresse.",
-    "success": "Adresse des Sync-Servers geändert"
+    "dialogBody": "Verwenden Sie dies, wenn Ihr Synchronisierungsserver auf eine neue Adresse umgezogen ist. Es muss derselbe Server mit Ihren synchronisierten Daten sein. Jedes Gerät ändert seine Adresse selbst, wiederholen Sie das also auf Ihren anderen Geräten. Speichern Sie das Wiederherstellungs-Kit erneut: Es enthält jetzt die neue Adresse.",
+    "success": "Adresse des Synchronisierungsservers geändert",
+    "unchanged": "Dieses Gerät verwendet diese Adresse bereits."
   },
   "intro": {
     "description": "Halten Sie Ihre Daten auf allen Ihren Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
@@ -90,7 +91,7 @@
       "yearly": "Jährlich",
       "continue": "Weiter zur Zahlung",
       "waiting": "Es wird auf die Zahlung gewartet. Dieses Fenster geht weiter, sobald sie eintrifft.",
-      "ownServer": "Dieser Server ist nicht die Moony Cloud, daher gibt es nichts zu bezahlen. Richten Sie die Synchronisierung stattdessen mit dem Verbindungscode Ihres eigenen Synchronisierungsservers ein."
+      "ownServer": "Dieser Server ist nicht Moony cloud, daher gibt es nichts zu bezahlen. Richten Sie die Synchronisierung stattdessen mit dem Verbindungscode Ihres eigenen Synchronisierungsservers ein."
     },
     "kit": {
       "description": "Speichern Sie Ihr Sync-Wiederherstellungs-Kit. Nur damit bekommen Sie Ihre synchronisierten Daten zurück, wenn Sie alle Geräte verlieren.",

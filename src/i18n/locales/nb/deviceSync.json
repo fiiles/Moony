@@ -56,7 +56,8 @@
     "change": "Endre adresse",
     "dialogTitle": "Endre serveradressen",
     "dialogBody": "Bruk dette når synkroniseringsserveren din har flyttet til en ny adresse. Det må være den samme serveren, med de synkroniserte dataene dine. Hver enhet endrer sin egen adresse, så gjør det samme på de andre enhetene dine. Lagre gjenopprettingssettet på nytt: det inneholder nå den nye adressen.",
-    "success": "Adressen til synkroniseringsserveren er endret"
+    "success": "Adressen til synkroniseringsserveren er endret",
+    "unchanged": "Denne enheten bruker allerede denne adressen."
   },
   "intro": {
     "description": "Hold dataene dine oppdatert på alle enhetene dine. De er ende-til-ende-kryptert: synkroniseringsserveren lagrer bare data den ikke kan lese.",
@@ -90,7 +91,7 @@
       "yearly": "Årlig",
       "continue": "Fortsett til betaling",
       "waiting": "Venter på betalingen. Dette vinduet går videre når den kommer.",
-      "ownServer": "Denne serveren er ikke Moony-skyen, så det er ingenting å betale. Sett opp synkroniseringen med tilkoblingskoden til din egen synkroniseringsserver i stedet."
+      "ownServer": "Denne serveren er ikke Moony cloud, så det er ingenting å betale. Sett opp synkroniseringen med tilkoblingskoden til din egen synkroniseringsserver i stedet."
     },
     "kit": {
       "description": "Lagre gjenopprettingssettet for synkronisering. Det er den eneste måten å få tilbake de synkroniserte dataene på hvis du mister alle enhetene dine.",

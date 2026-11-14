@@ -56,7 +56,8 @@
     "change": "Ändra adress",
     "dialogTitle": "Ändra serveradressen",
     "dialogBody": "Använd det här när din synkroniseringsserver har flyttat till en ny adress. Det måste vara samma server, med dina synkroniserade data. Varje enhet ändrar sin egen adress, så gör likadant på dina andra enheter. Spara återställningskitet igen: det innehåller nu den nya adressen.",
-    "success": "Synkroniseringsserverns adress har ändrats"
+    "success": "Synkroniseringsserverns adress har ändrats",
+    "unchanged": "Den här enheten använder redan den här adressen."
   },
   "intro": {
     "description": "Håll dina uppgifter uppdaterade på alla dina enheter. De är end-to-end-krypterade: synkroniseringsservern lagrar bara data den inte kan läsa.",
@@ -90,7 +91,7 @@
       "yearly": "Årsvis",
       "continue": "Fortsätt till betalning",
       "waiting": "Väntar på betalningen. Det här fönstret går vidare när den kommer.",
-      "ownServer": "Den här servern är inte Moony-molnet, så det finns inget att betala. Ställ in synkroniseringen med anslutningskoden till din egen synkroniseringsserver i stället."
+      "ownServer": "Den här servern är inte Moony cloud, så det finns inget att betala. Ställ in synkroniseringen med anslutningskoden till din egen synkroniseringsserver i stället."
     },
     "kit": {
       "description": "Spara ditt återställningskit för synkronisering. Det är det enda sättet att få tillbaka de synkroniserade uppgifterna om du förlorar alla dina enheter.",
@@ -404,7 +405,7 @@
   },
   "codes": {
     "pairNotForSetup": "Det här är en parkopplingskod, inte en anslutningskod. Skanna den när du lägger till den här enheten i en synkronisering som redan körs.",
-    "kitNotForSetup": "Det här är en kod från återställningssatsen, inte en anslutningskod. Använd den när du ansluter till synkroniserade data som redan finns.",
+    "kitNotForSetup": "Det här är en kod från återställningskitet, inte en anslutningskod. Använd den när du ansluter till synkroniserade data som redan finns.",
     "connectionNotHere": "Det här är en anslutningskod för en synkroniseringsserver. Använd den när du ställer in synkronisering, inte här.",
     "notAServerAddress": "Det här är inte adressen till en synkroniseringsserver. Ange adressen till din synkroniseringsserver eller klistra in dess anslutningskod."
   }

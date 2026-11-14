@@ -13,6 +13,8 @@ import { SortPill } from './SortPill';
 
 interface PositionListProps<R extends PositionRowBase & { companyName?: string; name?: string }> {
   rows: readonly R[];
+  /** Which class the rows are: stocks show Yahoo logos, coins their bundled icons. */
+  kind: 'stock' | 'crypto';
   /** Where a tap on a row goes. */
   hrefOf: (row: R) => string;
   /** The report currency: the value and the gain of a row are the backend's, converted into it. */
@@ -35,6 +37,7 @@ export function PositionList<R extends PositionRowBase & { companyName?: string;
   hrefOf,
   currency,
   dimmed,
+  kind,
   rememberKey,
 }: PositionListProps<R>) {
   const { t } = useTranslation('mobile');
@@ -106,6 +109,7 @@ export function PositionList<R extends PositionRowBase & { companyName?: string;
           {shown.map((row) => (
             <PositionRow
               key={row.id}
+              kind={kind}
               row={row}
               name={displayName(row)}
               href={hrefOf(row)}

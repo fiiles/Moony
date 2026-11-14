@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { refreshAssetLogos } from '@/hooks/use-asset-logos';
 import { investmentsApi, portfolioApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import type { InsertInvestmentTransaction } from '@shared/schema';
@@ -37,6 +38,8 @@ export function useRefreshAfterStockTransaction() {
     }
     queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
     queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
+    // A new ticker may have a logo to fetch (the backend only looks up what is due)
+    void refreshAssetLogos(queryClient);
     // The write already succeeded; a failed snapshot must not turn it into an error.
     try {
       await portfolioApi.recordSnapshot();

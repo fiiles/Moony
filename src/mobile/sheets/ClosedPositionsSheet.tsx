@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
+import { InstrumentChip } from '@/mobile/components/wealth/InstrumentChip';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import { useFormat } from '@/lib/use-format';
 import type { PositionRowBase } from '@/utils/positions';
 import { Button } from '@/components/ui/button';
-import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
+import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { Sheet } from '@/mobile/components/Sheet';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -20,6 +21,8 @@ interface ClosedPositionsSheetProps<
   onOpenChange: (open: boolean) => void;
   /** Every position of the class: the closed ones are picked out here. */
   rows: readonly R[];
+  /** Which class the positions are: it decides where the chip's logo comes from. */
+  kind: 'stock' | 'crypto';
   /** Every trade of the class: the last sell of a position is the day it was closed. */
   trades: readonly PositionTrade[];
   /** The report currency: the realized result is the backend's, converted into it. */
@@ -37,7 +40,7 @@ interface ClosedPositionsSheetProps<
  */
 export function ClosedPositionsSheet<
   R extends PositionRowBase & { companyName?: string; name?: string },
->({ open, onOpenChange, rows, trades, currency, hrefOf }: ClosedPositionsSheetProps<R>) {
+>({ open, onOpenChange, rows, kind, trades, currency, hrefOf }: ClosedPositionsSheetProps<R>) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
@@ -70,7 +73,7 @@ export function ClosedPositionsSheet<
           {closed.map(({ row, closedAt }) => (
             <EntityRow
               key={row.id}
-              chip={<RowChip>{row.ticker.slice(0, 2).toUpperCase()}</RowChip>}
+              chip={<InstrumentChip ticker={row.ticker} type={kind} />}
               title={row.ticker}
               sub={displayName(row)}
               value={

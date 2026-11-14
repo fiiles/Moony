@@ -1,3 +1,4 @@
+import { refreshAssetLogos } from '@/hooks/use-asset-logos';
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { portfolioApi, priceApi, stockImportApi } from '@/lib/tauri-api';
@@ -29,6 +30,7 @@ const STOCK_IMPORT_KEYS = [
  * must not turn it into an error.
  */
 async function refreshAfterStockChange(queryClient: QueryClient) {
+  void refreshAssetLogos(queryClient);
   for (const queryKey of STOCK_IMPORT_KEYS) {
     queryClient.invalidateQueries({ queryKey });
   }

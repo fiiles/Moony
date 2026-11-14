@@ -205,7 +205,7 @@ export function BondsTable({ bonds, today, convert, onEdit, onDelete }: BondsTab
                     <div className="flex min-w-0 items-center gap-[10px]">
                       <AssetLogo
                         ticker={bond.isin || bond.name}
-                        type="stock"
+                        type="initials"
                         variant={matured ? 'soft' : 'series'}
                       />
                       <div className="min-w-0">

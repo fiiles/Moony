@@ -334,6 +334,8 @@
     "syncQuotaExceeded": "El almacenamiento de sincronización de este perfil está lleno.",
     "syncKeyRotated": "Este dispositivo ya no tiene acceso a los datos sincronizados. Es posible que otro dispositivo lo haya eliminado.",
     "syncRelayUrlInvalid": "La dirección del servidor de sincronización no es válida.",
+    "syncAccountBlocked": "Esta cuenta está bloqueada en tu servidor de sincronización. Pide al operador del servidor que la desbloquee.",
+    "syncConnectionCodeRevoked": "Este código de conexión ya no funciona: la cuenta no está en tu servidor de sincronización. Pide un código nuevo.",
     "syncConnectionCodeInvalid": "El código de conexión no es válido. Cópialo de nuevo desde tu servidor de sincronización.",
     "syncConnectionCodeNewer": "Este código de conexión procede de un servidor de sincronización más reciente. Actualiza Moony e inténtalo de nuevo.",
     "syncVaultHasNoSnapshot": "Los datos sincronizados aún no tienen una copia desde la que empezar. Deja que un dispositivo que ya sincroniza termine una sincronización y vuelve a intentarlo.",

@@ -334,6 +334,8 @@
     "syncQuotaExceeded": "Miejsce na synchronizację tego profilu jest pełne.",
     "syncKeyRotated": "To urządzenie nie ma już dostępu do zsynchronizowanych danych. Mogło zostać usunięte przez inne urządzenie.",
     "syncRelayUrlInvalid": "Adres serwera synchronizacji jest nieprawidłowy.",
+    "syncAccountBlocked": "To konto jest zablokowane na Twoim serwerze synchronizacji. Poproś operatora serwera o odblokowanie.",
+    "syncConnectionCodeRevoked": "Ten kod połączenia już nie działa: konta nie ma na Twoim serwerze synchronizacji. Poproś o nowy kod.",
     "syncConnectionCodeInvalid": "Kod połączenia jest nieprawidłowy. Skopiuj go ponownie z swojego serwera synchronizacji.",
     "syncConnectionCodeNewer": "Ten kod połączenia pochodzi z nowszego serwera synchronizacji. Zaktualizuj Moony i spróbuj ponownie.",
     "syncVaultHasNoSnapshot": "Zsynchronizowane dane nie mają jeszcze kopii, od której można zacząć. Poczekaj, aż urządzenie, które już synchronizuje, zakończy synchronizację, i spróbuj ponownie.",

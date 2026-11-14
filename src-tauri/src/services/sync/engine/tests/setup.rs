@@ -7,12 +7,13 @@ use std::path::Path;
 
 use super::join::{validation_key, XorNative};
 use super::*;
-use crate::models::sync::{CheckoutTarget, SyncPlan};
+use crate::models::sync::{CheckoutTarget, SyncAccount, SyncPlan};
 use crate::services::sync::binding::{
     startup_check, write_rejoin_marker, StartupCheck, BINDING_FILE, REJOIN_MARKER,
 };
 use crate::services::sync::capture;
 use crate::services::sync::changeset::from_json;
+use crate::services::sync::connection_code::{encode_connection_code, parse_connection_code};
 use crate::services::sync::engine::snapshots::{open_sealed, SnapshotPolicy};
 use crate::services::sync::engine::{run_round, RoundMode};
 use crate::services::sync::envelope::open_op;
@@ -21,8 +22,9 @@ use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
 use crate::services::sync::relay::RelayError;
 use crate::services::sync::setup::{
-    account_status, checkout_url, create_account, delete_synced_data, delete_vault_best_effort,
-    finish_setup, recovery_kit, setup_recovery_kit, turn_off_between_rounds,
+    account_status, checkout_url, connect_own_server, create_account, delete_synced_data,
+    delete_vault_best_effort, finish_setup, recovery_kit, setup_recovery_kit,
+    turn_off_between_rounds,
 };
 use crate::services::sync::snapshot::{read_record, Record};
 
@@ -893,4 +895,135 @@ async fn a_kit_for_the_longest_relay_address_renders_and_reads_back() {
         key_of(create_account(&relay, &fresh(), &relay_of_len(257)).await),
         "validation.syncRelayUrlInvalid"
     );
+}
+
+fn code_for(account: &str) -> crate::services::sync::connection_code::ConnectionCode {
+    parse_connection_code(&encode_connection_code(RELAY, account)).expect("code")
+}
+
+#[tokio::test]
+async fn an_own_server_code_adopts_the_account_and_skips_payment() {
+    let fake = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    let acct = fake.add_person();
+
+    let account = connect_own_server(&fake, &device, &code_for(&acct))
+        .await
+        .expect("connect");
+    assert_eq!(
+        account,
+        SyncAccount {
+            account_number: acct.clone(),
+            active: true,
+            paid_until: Some(253_402_300_799),
+        }
+    );
+    assert_eq!(
+        keys::account(&device.lock()).expect("account"),
+        Some((RELAY.to_string(), acct.clone()))
+    );
+    assert_eq!(fake.calls(), [Route::ServerInfo, Route::AccountStatus]);
+
+    let kit = recovery_kit(&device.lock()).expect("kit");
+    assert_eq!(kit.relay_url.as_deref(), Some(RELAY));
+    finish(&fake, &device, dir.path()).await.expect("finish");
+    assert!(enabled(&device.lock()));
+}
+
+#[tokio::test]
+async fn a_blocked_or_deleted_person_is_refused_before_anything_is_stored() {
+    let fake = FakeRelay::new();
+    let device = fresh();
+    let blocked = fake.add_person();
+    fake.block(&blocked, NOW - 10);
+    assert_eq!(
+        command_key(connect_own_server(&fake, &device, &code_for(&blocked)).await),
+        "validation.syncAccountBlocked"
+    );
+    assert_eq!(keys::account(&device.lock()).expect("account"), None);
+
+    let gone = fake.add_person();
+    fake.remove_account(&gone);
+    assert_eq!(
+        command_key(connect_own_server(&fake, &device, &code_for(&gone)).await),
+        "validation.syncConnectionCodeRevoked"
+    );
+    assert_eq!(keys::account(&device.lock()).expect("account"), None);
+}
+
+#[tokio::test]
+async fn a_server_that_fails_the_check_stores_nothing() {
+    let fake = FakeRelay::new();
+    let device = fresh();
+    let acct = fake.add_person();
+    fake.set_server_info(None);
+    assert_eq!(
+        command_key(connect_own_server(&fake, &device, &code_for(&acct)).await),
+        "validation.syncServerNotFound"
+    );
+    assert_eq!(keys::account(&device.lock()).expect("account"), None);
+    assert!(!fake.calls().contains(&Route::AccountStatus));
+}
+
+#[tokio::test]
+async fn the_same_code_resumes_and_another_replaces_only_while_off() {
+    let fake = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    let (first, second) = (fake.add_person(), fake.add_person());
+
+    let a = connect_own_server(&fake, &device, &code_for(&first))
+        .await
+        .expect("first");
+    let again = connect_own_server(&fake, &device, &code_for(&first))
+        .await
+        .expect("again");
+    assert_eq!(a.account_number, again.account_number);
+    let rows: i64 = device
+        .lock()
+        .query_row("SELECT COUNT(*) FROM sync_state", [], |r| r.get(0))
+        .expect("count");
+    assert_eq!(rows, 1);
+
+    let replaced = connect_own_server(&fake, &device, &code_for(&second))
+        .await
+        .expect("replaced");
+    assert_eq!(replaced.account_number, second);
+    assert_eq!(
+        keys::account(&device.lock()).expect("account"),
+        Some((RELAY.to_string(), second.clone()))
+    );
+
+    recovery_kit(&device.lock()).expect("kit");
+    finish(&fake, &device, dir.path()).await.expect("finish");
+    assert_eq!(
+        command_key(connect_own_server(&fake, &device, &code_for(&first)).await),
+        "validation.syncAlreadyEnabled"
+    );
+    // The same code while on is the same account: it only reads the status.
+    connect_own_server(&fake, &device, &code_for(&second))
+        .await
+        .expect("same while on");
+}
+
+#[tokio::test]
+async fn a_person_blocked_before_finish_reads_the_own_server_key() {
+    let fake = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    let acct = fake.add_person();
+    connect_own_server(&fake, &device, &code_for(&acct))
+        .await
+        .expect("connect");
+    recovery_kit(&device.lock()).expect("kit");
+    fake.block(&acct, NOW - 10);
+    let error = finish(&fake, &device, dir.path())
+        .await
+        .expect_err("blocked");
+    assert!(matches!(error, SyncError::Lapsed), "{error:?}");
+    match error.to_own_server_app_error() {
+        AppError::Validation(key) => assert_eq!(key, "validation.syncAccountBlocked"),
+        other => panic!("not a validation key: {other:?}"),
+    }
 }

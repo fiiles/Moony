@@ -85,6 +85,14 @@ export type SyncProblem =
   | 'serverWentBack'
   | 'internal';
 
+/** What a server answered to the check: a Moony sync server of the person's own. */
+export interface SyncServerCheck {
+  address: string;
+  host: string;
+  version: string;
+  insecure: boolean;
+}
+
 /** The `sync-status-changed` payload. */
 export interface SyncStatus {
   phase: SyncPhase;
@@ -108,6 +116,12 @@ export interface SyncStatus {
   clockAheadUntil: number | null;
   /** The developer tools are offered (debug build with sync on). */
   devTools: boolean;
+  /** The stored server is not the Moony cloud: a person's own sync server. */
+  ownServer: boolean;
+  /** The stored server's address, in every phase that has one. */
+  serverAddress: string | null;
+  /** The stored address is plain http to a host other than this computer. */
+  serverInsecure: boolean;
 }
 
 /** `sync_profile_state`: answered in every build, read-only. */

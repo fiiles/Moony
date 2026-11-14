@@ -334,6 +334,8 @@
     "syncQuotaExceeded": "此配置文件的同步存储空间已满。",
     "syncKeyRotated": "此设备已无法访问同步数据，可能已被其他设备移除。",
     "syncRelayUrlInvalid": "同步服务器地址无效。",
+    "syncAccountBlocked": "此账户在您的同步服务器上已被封锁。请联系服务器管理员解除封锁。",
+    "syncConnectionCodeRevoked": "此连接码已失效：该账户不在您的同步服务器上。请索取新的连接码。",
     "syncConnectionCodeInvalid": "连接码无效。请从您的同步服务器重新复制。",
     "syncConnectionCodeNewer": "此连接码来自较新的同步服务器。请更新 Moony 后重试。",
     "syncVaultHasNoSnapshot": "同步数据还没有可用于开始的副本。请让一台已在同步的设备完成一次同步，然后重试。",

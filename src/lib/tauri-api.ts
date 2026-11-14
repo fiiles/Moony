@@ -166,6 +166,7 @@ import type {
   StockInstrumentQuery,
   StockInstrumentResolution,
   SyncProfileState,
+  SyncServerCheck,
   SyncStatus,
   SyncAccount,
   SyncPlan,
@@ -330,6 +331,12 @@ export const deviceSyncApi = {
 
   createAccount: (relayUrl?: string) =>
     tauriInvoke<SyncAccount>('sync_create_account', { relayUrl: relayUrl ?? null }),
+
+  /** `input`: a server address or a connection code; the code is never logged. */
+  checkServer: (input: string) => tauriInvoke<SyncServerCheck>('sync_check_server', { input }),
+
+  connectOwnServer: (connectionCode: string) =>
+    tauriInvoke<SyncAccount>('sync_connect_own_server', { connectionCode }),
 
   getAccount: () => tauriInvoke<SyncAccount>('sync_get_account'),
 

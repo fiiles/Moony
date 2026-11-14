@@ -3492,7 +3492,19 @@ clockAheadUntil: number | null;
 /**
  * The developer tools are offered (debug build with sync on).
  */
-devTools: boolean }
+devTools: boolean; 
+/**
+ * The stored server is not the Moony cloud: a person's own sync server.
+ */
+ownServer: boolean; 
+/**
+ * The stored server's address, in every phase that has one.
+ */
+serverAddress: string | null; 
+/**
+ * The stored address is plain http to a host other than this computer.
+ */
+serverInsecure: boolean }
 
 /**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;

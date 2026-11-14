@@ -122,6 +122,21 @@ impl SyncError {
     }
 }
 
+impl SyncError {
+    /// `to_app_error` for the person's own server, which takes no payment: a blocked account is
+    /// `syncAccountBlocked` (never "subscription"), and one the server does not know means the
+    /// connection code was revoked.
+    pub fn to_own_server_app_error(&self) -> AppError {
+        match self {
+            SyncError::Lapsed => AppError::Validation("validation.syncAccountBlocked".into()),
+            SyncError::Refused(RelayError::AccountNotFound) => {
+                AppError::Validation("validation.syncConnectionCodeRevoked".into())
+            }
+            other => other.to_app_error(),
+        }
+    }
+}
+
 /// `AppError` is not `Clone`; every variant is one message, so a copy is the same variant.
 fn same_app_error(error: &AppError) -> AppError {
     match error {
@@ -332,6 +347,30 @@ mod tests {
             assert_eq!(format!("{error:?}"), class);
             assert!(!error.backs_off(), "{class}");
             assert_eq!(key(&error), expected_key, "{class}");
+        }
+    }
+
+    #[test]
+    fn own_server_errors_never_ask_for_payment() {
+        assert_eq!(
+            SyncError::Lapsed.to_own_server_app_error().to_string(),
+            AppError::Validation("validation.syncAccountBlocked".into()).to_string()
+        );
+        for (error, expected) in [
+            (SyncError::Lapsed, "validation.syncAccountBlocked"),
+            (
+                SyncError::Refused(RelayError::AccountNotFound),
+                "validation.syncConnectionCodeRevoked",
+            ),
+            (
+                SyncError::Transient(Transient::Offline),
+                "validation.syncRelayUnreachable",
+            ),
+        ] {
+            match error.to_own_server_app_error() {
+                AppError::Validation(key) => assert_eq!(key, expected),
+                other => panic!("not a validation key: {other:?}"),
+            }
         }
     }
 }

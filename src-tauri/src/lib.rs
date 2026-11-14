@@ -284,6 +284,8 @@ async fn run_app() {
             commands::sync::sync_profile_state,
             commands::sync::get_sync_status,
             commands::sync::sync_create_account,
+            commands::sync::sync_check_server,
+            commands::sync::sync_connect_own_server,
             commands::sync::sync_get_account,
             commands::sync::sync_start_checkout,
             commands::sync::sync_prepare_recovery_kit,

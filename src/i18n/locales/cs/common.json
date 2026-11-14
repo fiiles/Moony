@@ -334,6 +334,8 @@
     "syncQuotaExceeded": "Úložiště synchronizace pro tento profil je plné.",
     "syncKeyRotated": "Toto zařízení už nemá přístup k synchronizovaným datům. Možná ho odebralo jiné zařízení.",
     "syncRelayUrlInvalid": "Adresa synchronizačního serveru není platná.",
+    "syncAccountBlocked": "Tento účet je na vašem synchronizačním serveru zablokovaný. Požádejte správce serveru o odblokování.",
+    "syncConnectionCodeRevoked": "Tento připojovací kód už nefunguje: účet na vašem synchronizačním serveru neexistuje. Požádejte o nový kód.",
     "syncConnectionCodeInvalid": "Připojovací kód není platný. Zkopírujte ho znovu ze svého synchronizačního serveru.",
     "syncConnectionCodeNewer": "Tento připojovací kód pochází z novějšího synchronizačního serveru. Aktualizujte Moony a zkuste to znovu.",
     "syncVaultHasNoSnapshot": "Synchronizovaná data zatím nemají kopii, ze které by šlo začít. Nechte zařízení, které už synchronizuje, dokončit synchronizaci a zkuste to znovu.",

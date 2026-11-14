@@ -334,6 +334,8 @@
     "syncQuotaExceeded": "Der Sync-Speicher für dieses Profil ist voll.",
     "syncKeyRotated": "Dieses Gerät hat keinen Zugriff mehr auf die synchronisierten Daten. Möglicherweise hat ein anderes Gerät es entfernt.",
     "syncRelayUrlInvalid": "Die Adresse des Sync-Servers ist ungültig.",
+    "syncAccountBlocked": "Dieses Konto ist auf Ihrem Synchronisierungsserver gesperrt. Bitten Sie den Betreiber des Servers, es freizugeben.",
+    "syncConnectionCodeRevoked": "Dieser Verbindungscode funktioniert nicht mehr: Das Konto gibt es auf Ihrem Synchronisierungsserver nicht. Fordern Sie einen neuen Code an.",
     "syncConnectionCodeInvalid": "Der Verbindungscode ist ungültig. Kopieren Sie ihn erneut von Ihrem Synchronisierungsserver.",
     "syncConnectionCodeNewer": "Dieser Verbindungscode stammt von einem neueren Synchronisierungsserver. Aktualisieren Sie Moony und versuchen Sie es erneut.",
     "syncVaultHasNoSnapshot": "Für die synchronisierten Daten gibt es noch keine Kopie zum Starten. Lassen Sie ein Gerät, das bereits synchronisiert, eine Synchronisierung abschließen, und versuchen Sie es dann erneut.",

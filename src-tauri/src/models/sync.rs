@@ -139,6 +139,15 @@ pub struct SyncStatus {
     /// The developer tools are offered (debug build with sync on).
     #[serde(rename = "devTools")]
     pub dev_tools: bool,
+    /// The stored server is not the Moony cloud: a person's own sync server.
+    #[serde(rename = "ownServer")]
+    pub own_server: bool,
+    /// The stored server's address, in every phase that has one.
+    #[serde(rename = "serverAddress")]
+    pub server_address: Option<String>,
+    /// The stored address is plain http to a host other than this computer.
+    #[serde(rename = "serverInsecure")]
+    pub server_insecure: bool,
 }
 
 /// The subscription a checkout is for.

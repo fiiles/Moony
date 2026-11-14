@@ -39,6 +39,10 @@ export function useDeviceSyncMutations() {
     mutationFn: (relayUrl?: string) => deviceSyncApi.createAccount(relayUrl),
     onSuccess: refreshSyncState,
   });
+  const connectOwnServer = useMutation({
+    mutationFn: (connectionCode: string) => deviceSyncApi.connectOwnServer(connectionCode),
+    onSuccess: refreshSyncState,
+  });
   const startCheckout = useMutation({
     mutationFn: deviceSyncApi.startCheckout,
     onSuccess: refreshSyncState,
@@ -153,6 +157,7 @@ export function useDeviceSyncMutations() {
 
   return {
     createAccount,
+    connectOwnServer,
     startCheckout,
     prepareRecoveryKit,
     prepareKitWithPassword,

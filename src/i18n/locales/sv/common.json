@@ -334,6 +334,8 @@
     "syncQuotaExceeded": "Synkroniseringslagringen för den här profilen är full.",
     "syncKeyRotated": "Den här enheten har inte längre åtkomst till synkroniserade data. En annan enhet kan ha tagit bort den.",
     "syncRelayUrlInvalid": "Adressen till synkroniseringsservern är ogiltig.",
+    "syncAccountBlocked": "Det här kontot är blockerat på din synkroniseringsserver. Be serverns operatör att häva blockeringen.",
+    "syncConnectionCodeRevoked": "Den här anslutningskoden fungerar inte längre: kontot finns inte på din synkroniseringsserver. Be om en ny kod.",
     "syncConnectionCodeInvalid": "Anslutningskoden är ogiltig. Kopiera den igen från din synkroniseringsserver.",
     "syncConnectionCodeNewer": "Den här anslutningskoden kommer från en nyare synkroniseringsserver. Uppdatera Moony och försök igen.",
     "syncVaultHasNoSnapshot": "Den synkroniserade datan har ännu ingen kopia att börja från. Låt en enhet som redan synkroniserar slutföra en synkronisering och försök sedan igen.",

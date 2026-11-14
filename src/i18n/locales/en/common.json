@@ -334,6 +334,8 @@
     "syncQuotaExceeded": "The sync storage for this profile is full.",
     "syncKeyRotated": "This device no longer has access to the synced data. Another device may have removed it.",
     "syncRelayUrlInvalid": "The sync server address is not valid.",
+    "syncAccountBlocked": "This account is blocked on your sync server. Ask the server's operator to unblock it.",
+    "syncConnectionCodeRevoked": "This connection code no longer works: the account is not on your sync server. Ask for a new code.",
     "syncConnectionCodeInvalid": "The connection code is not valid. Copy it again from your sync server.",
     "syncConnectionCodeNewer": "This connection code comes from a newer sync server. Update Moony and try again.",
     "syncVaultHasNoSnapshot": "The synced data has no copy to start from yet. Let a device that already syncs finish a sync, then try again.",

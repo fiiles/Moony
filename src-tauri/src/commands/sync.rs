@@ -29,17 +29,18 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::sync::{
     CheckoutTarget, RecoveryKit, ReplaceConsentView, ReplaceOutcomeView, SyncAccount, SyncPlan,
-    SyncProfileState, SyncStatus,
+    SyncProfileState, SyncServerCheck, SyncStatus,
 };
 use crate::services::auth;
 use crate::services::sync::binding::{BindingFailure, BindingNative};
 use crate::services::sync::capture::bench::{self, Overhead};
+use crate::services::sync::connection_code::{parse_connection_code, server_address_from_input};
 use crate::services::sync::engine::runtime::{self, EngineHandle, Trigger};
 use crate::services::sync::engine::{status, ConnAccess, EngineEvents};
 use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::merge::DATA_CHANGED_EVENT;
-use crate::services::sync::relay::http::{default_base_url, HttpRelay};
-use crate::services::sync::{feature, join, keys, setup, state};
+use crate::services::sync::relay::http::{default_base_url, is_default_relay, HttpRelay};
+use crate::services::sync::{feature, join, keys, server, setup, state};
 
 use super::sync_backups::{consent_of, outcome_view};
 
@@ -583,6 +584,34 @@ pub async fn sync_create_account(
         .map_err(app_error)
 }
 
+/// Asks the server at an address, or in a connection code, what it is (`server::check_own_server`).
+/// The input is never logged.
+#[tauri::command]
+pub async fn sync_check_server(input: String) -> Result<SyncServerCheck> {
+    require_feature()?;
+    let address = server_address_from_input(&input)?;
+    let relay = HttpRelay::new(&address)?;
+    server::check_own_server(&relay, &address)
+        .await
+        .map_err(app_error)
+}
+
+/// Sets up on a person's own server from its connection code (`setup::connect_own_server`): the
+/// account is the one the code names; nothing is created or paid.
+#[tauri::command]
+pub async fn sync_connect_own_server(
+    db: State<'_, Database>,
+    connection_code: String,
+) -> Result<SyncAccount> {
+    require_feature()?;
+    let code = parse_connection_code(&connection_code)?;
+    let session = db.current_session()?;
+    let relay = HttpRelay::new(&code.server_url)?;
+    setup::connect_own_server(&relay, &session, &code)
+        .await
+        .map_err(app_error)
+}
+
 #[tauri::command]
 pub async fn sync_get_account(db: State<'_, Database>) -> Result<SyncAccount> {
     require_feature()?;
@@ -682,6 +711,17 @@ pub async fn sync_finish_setup(
         &native,
         now(),
     );
+    let own_server = db.with_conn(|conn| {
+        Ok(keys::account(conn)?.is_some_and(|(url, _)| !is_default_relay(&url)))
+    })?;
+    // A person blocked between the steps of an own server never reads "subscription" copy; the
+    // mapped error passes `guarded_change` unchanged (`SyncError::Local`).
+    let finish = async {
+        finish.await.map_err(|error| match own_server {
+            true => SyncError::Local(error.to_own_server_app_error()),
+            false => error,
+        })
+    };
     guarded_change(&AppEngine { app: &app, db: &db }, finish).await?;
     current_status(&app, &db)
 }
@@ -1270,7 +1310,7 @@ mod tests {
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 33);
+        assert_eq!(found.len(), 35);
         for (name, first_three) in &commands {
             // The flag itself, a read-only question, and the way out of an enabled profile.
             if [

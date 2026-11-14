@@ -7,7 +7,18 @@
     "waiting": "A change is held",
     "paused": "Sync paused",
     "error": "Sync error",
-    "offline": "Offline"
+    "unreachable": "Server out of reach",
+    "unreachableLong_one": "Not synced for {{count}} day",
+    "unreachableLong_other": "Not synced for {{count}} days"
+  },
+  "age": {
+    "justNow": "just now",
+    "minutes_one": "{{count}} min ago",
+    "minutes_other": "{{count}} min ago",
+    "hours_one": "{{count}} h ago",
+    "hours_other": "{{count}} h ago",
+    "days_one": "{{count}} day ago",
+    "days_other": "{{count}} days ago"
   },
   "status": {
     "phase": {
@@ -340,10 +351,13 @@
       "synced": "Up to date",
       "syncing": "Syncing…",
       "waiting": "A change is held",
-      "offline": "Offline",
+      "unreachable": "Server out of reach",
+      "unreachableLong_one": "Not synced for {{count}} day",
+      "unreachableLong_other": "Not synced for {{count}} days",
       "paused": "Paused",
       "error": "Stopped"
     },
+    "rowWithAge": "{{state}} · {{age}}",
     "setUp": "Set up sync on this phone",
     "scan": "Scan a code from another device",
     "typeCode": "Type a Recovery Kit code",

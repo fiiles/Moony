@@ -7,7 +7,18 @@
     "waiting": "En ändring hålls kvar",
     "paused": "Synkroniseringen är pausad",
     "error": "Synkroniseringsfel",
-    "offline": "Offline"
+    "unreachable": "Servern är utom räckvidd",
+    "unreachableLong_one": "Inte synkroniserad på {{count}} dag",
+    "unreachableLong_other": "Inte synkroniserad på {{count}} dagar"
+  },
+  "age": {
+    "justNow": "just nu",
+    "minutes_one": "för {{count}} min sedan",
+    "minutes_other": "för {{count}} min sedan",
+    "hours_one": "för {{count}} tim sedan",
+    "hours_other": "för {{count}} tim sedan",
+    "days_one": "för {{count}} dag sedan",
+    "days_other": "för {{count}} dagar sedan"
   },
   "status": {
     "phase": {
@@ -340,10 +351,13 @@
       "synced": "Uppdaterad",
       "syncing": "Synkroniserar…",
       "waiting": "En ändring hålls kvar",
-      "offline": "Offline",
+      "unreachable": "Servern är utom räckvidd",
+      "unreachableLong_one": "Inte synkroniserad på {{count}} dag",
+      "unreachableLong_other": "Inte synkroniserad på {{count}} dagar",
       "paused": "Pausad",
       "error": "Stoppad"
     },
+    "rowWithAge": "{{state}} · {{age}}",
     "setUp": "Ställ in synkronisering på den här telefonen",
     "scan": "Skanna en kod från en annan enhet",
     "typeCode": "Skriv in en kod från återställningskitet",

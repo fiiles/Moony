@@ -7,7 +7,14 @@
     "waiting": "更改已暂缓",
     "paused": "同步已暂停",
     "error": "同步出错",
-    "offline": "离线"
+    "unreachable": "服务器无法连接",
+    "unreachableLong_other": "已 {{count}} 天未同步"
+  },
+  "age": {
+    "justNow": "刚刚",
+    "minutes_other": "{{count}} 分钟前",
+    "hours_other": "{{count}} 小时前",
+    "days_other": "{{count}} 天前"
   },
   "status": {
     "phase": {
@@ -333,10 +340,12 @@
       "synced": "已是最新",
       "syncing": "正在同步…",
       "waiting": "更改已暂缓",
-      "offline": "离线",
+      "unreachable": "服务器无法连接",
+      "unreachableLong_other": "已 {{count}} 天未同步",
       "paused": "已暂停",
       "error": "已停止"
     },
+    "rowWithAge": "{{state}} · {{age}}",
     "setUp": "在这部手机上设置同步",
     "scan": "扫描另一台设备上的代码",
     "typeCode": "输入恢复包代码",

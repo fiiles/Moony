@@ -7,7 +7,18 @@
     "waiting": "Endring holdes tilbake",
     "paused": "Synkronisering satt på pause",
     "error": "Synkroniseringsfeil",
-    "offline": "Frakoblet"
+    "unreachable": "Serveren er utenfor rekkevidde",
+    "unreachableLong_one": "Ikke synkronisert på {{count}} dag",
+    "unreachableLong_other": "Ikke synkronisert på {{count}} dager"
+  },
+  "age": {
+    "justNow": "akkurat nå",
+    "minutes_one": "for {{count}} min siden",
+    "minutes_other": "for {{count}} min siden",
+    "hours_one": "for {{count}} t siden",
+    "hours_other": "for {{count}} t siden",
+    "days_one": "for {{count}} dag siden",
+    "days_other": "for {{count}} dager siden"
   },
   "status": {
     "phase": {
@@ -340,10 +351,13 @@
       "synced": "Oppdatert",
       "syncing": "Synkroniserer…",
       "waiting": "Endring holdes tilbake",
-      "offline": "Frakoblet",
+      "unreachable": "Serveren er utenfor rekkevidde",
+      "unreachableLong_one": "Ikke synkronisert på {{count}} dag",
+      "unreachableLong_other": "Ikke synkronisert på {{count}} dager",
       "paused": "På pause",
       "error": "Stoppet"
     },
+    "rowWithAge": "{{state}} · {{age}}",
     "setUp": "Sett opp synkronisering på denne telefonen",
     "scan": "Skann en kode fra en annen enhet",
     "typeCode": "Skriv inn en kode fra gjenopprettingssettet",

@@ -7,7 +7,22 @@
     "waiting": "Cambio retenido",
     "paused": "Sincronización en pausa",
     "error": "Error de sincronización",
-    "offline": "Sin conexión"
+    "unreachable": "Servidor fuera de alcance",
+    "unreachableLong_one": "Sin sincronizar desde hace {{count}} día",
+    "unreachableLong_many": "Sin sincronizar desde hace {{count}} días",
+    "unreachableLong_other": "Sin sincronizar desde hace {{count}} días"
+  },
+  "age": {
+    "justNow": "ahora mismo",
+    "minutes_one": "hace {{count}} min",
+    "minutes_many": "hace {{count}} min",
+    "minutes_other": "hace {{count}} min",
+    "hours_one": "hace {{count}} h",
+    "hours_many": "hace {{count}} h",
+    "hours_other": "hace {{count}} h",
+    "days_one": "hace {{count}} día",
+    "days_many": "hace {{count}} días",
+    "days_other": "hace {{count}} días"
   },
   "status": {
     "phase": {
@@ -347,10 +362,14 @@
       "synced": "Al día",
       "syncing": "Sincronizando…",
       "waiting": "Cambio retenido",
-      "offline": "Sin conexión",
+      "unreachable": "Servidor fuera de alcance",
+      "unreachableLong_one": "Sin sincronizar desde hace {{count}} día",
+      "unreachableLong_many": "Sin sincronizar desde hace {{count}} días",
+      "unreachableLong_other": "Sin sincronizar desde hace {{count}} días",
       "paused": "En pausa",
       "error": "Detenida"
     },
+    "rowWithAge": "{{state}} · {{age}}",
     "setUp": "Configurar la sincronización en este teléfono",
     "scan": "Escanear un código de otro dispositivo",
     "typeCode": "Escribir un código del kit de recuperación",

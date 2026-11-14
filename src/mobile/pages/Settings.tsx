@@ -45,8 +45,8 @@ import { useNotificationPermission } from '@/mobile/hooks/use-notification-permi
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { clearQuietLock, requestQuietLock } from '@/mobile/lib/quiet-lock';
-import { syncRowSummary } from '@/mobile/lib/sync-summary';
 import { areasFromPreferences } from '@/mobile/lib/tracked-areas';
+import { syncAge, syncState } from '@/utils/sync-state';
 import {
   categorizationSummary,
   renderTextRef,
@@ -162,7 +162,26 @@ export default function Settings() {
   // …or a profile that has sync on though this build does not run it: the page offers turning it off
   const { leftover: syncLeftover } = useLeftoverSyncProfile();
   const syncStatus = useDeviceSyncStatus();
-  const syncSub = syncStatus.isPending ? undefined : tsync(syncRowSummary(syncStatus.data).key);
+  // The Sync row's sub-line: the state, then how long ago the last success was (age at render, no timer)
+  const syncNow = Math.floor(Date.now() / 1000);
+  const syncView = syncState(syncStatus.data, syncNow);
+  let syncSub: string | undefined;
+  if (!syncStatus.isPending) {
+    if (!syncView) {
+      syncSub = tsync('phone.row.off');
+    } else {
+      const state = tsync(syncView.rowKey, { count: syncView.days });
+      if (syncView.ageFrom === null) {
+        syncSub = state;
+      } else {
+        const a = syncAge(syncView.ageFrom, syncNow);
+        syncSub = tsync('phone.rowWithAge', {
+          state,
+          age: tsync(`age.${a.key}`, { count: a.count }),
+        });
+      }
+    }
+  }
 
   const notificationsSub = notifications.isPending
     ? undefined

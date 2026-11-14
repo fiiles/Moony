@@ -7,7 +7,22 @@
     "waiting": "Modifica trattenuta",
     "paused": "Sincronizzazione in pausa",
     "error": "Errore di sincronizzazione",
-    "offline": "Offline"
+    "unreachable": "Server non raggiungibile",
+    "unreachableLong_one": "Non sincronizzato da {{count}} giorno",
+    "unreachableLong_many": "Non sincronizzato da {{count}} giorni",
+    "unreachableLong_other": "Non sincronizzato da {{count}} giorni"
+  },
+  "age": {
+    "justNow": "adesso",
+    "minutes_one": "{{count}} min fa",
+    "minutes_many": "{{count}} min fa",
+    "minutes_other": "{{count}} min fa",
+    "hours_one": "{{count}} h fa",
+    "hours_many": "{{count}} h fa",
+    "hours_other": "{{count}} h fa",
+    "days_one": "{{count}} giorno fa",
+    "days_many": "{{count}} giorni fa",
+    "days_other": "{{count}} giorni fa"
   },
   "status": {
     "phase": {
@@ -347,10 +362,14 @@
       "synced": "Aggiornata",
       "syncing": "Sincronizzazione…",
       "waiting": "Modifica trattenuta",
-      "offline": "Offline",
+      "unreachable": "Server non raggiungibile",
+      "unreachableLong_one": "Non sincronizzato da {{count}} giorno",
+      "unreachableLong_many": "Non sincronizzato da {{count}} giorni",
+      "unreachableLong_other": "Non sincronizzato da {{count}} giorni",
       "paused": "In pausa",
       "error": "Interrotta"
     },
+    "rowWithAge": "{{state}} · {{age}}",
     "setUp": "Configura la sincronizzazione su questo telefono",
     "scan": "Scansiona un codice da un altro dispositivo",
     "typeCode": "Digita un codice del kit di ripristino",

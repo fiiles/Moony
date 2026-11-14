@@ -7,7 +7,18 @@
     "waiting": "Änderung zurückgehalten",
     "paused": "Sync pausiert",
     "error": "Sync-Fehler",
-    "offline": "Offline"
+    "unreachable": "Server nicht erreichbar",
+    "unreachableLong_one": "Seit {{count}} Tag nicht synchronisiert",
+    "unreachableLong_other": "Seit {{count}} Tagen nicht synchronisiert"
+  },
+  "age": {
+    "justNow": "gerade eben",
+    "minutes_one": "vor {{count}} Min.",
+    "minutes_other": "vor {{count}} Min.",
+    "hours_one": "vor {{count}} Std.",
+    "hours_other": "vor {{count}} Std.",
+    "days_one": "vor {{count}} Tag",
+    "days_other": "vor {{count}} Tagen"
   },
   "status": {
     "phase": {
@@ -340,10 +351,13 @@
       "synced": "Aktuell",
       "syncing": "Synchronisiert…",
       "waiting": "Änderung zurückgehalten",
-      "offline": "Offline",
+      "unreachable": "Server nicht erreichbar",
+      "unreachableLong_one": "Seit {{count}} Tag nicht synchronisiert",
+      "unreachableLong_other": "Seit {{count}} Tagen nicht synchronisiert",
       "paused": "Pausiert",
       "error": "Angehalten"
     },
+    "rowWithAge": "{{state}} · {{age}}",
     "setUp": "Synchronisierung auf diesem Telefon einrichten",
     "scan": "Code von einem anderen Gerät scannen",
     "typeCode": "Code des Wiederherstellungs-Kits eingeben",

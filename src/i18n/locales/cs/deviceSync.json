@@ -7,7 +7,22 @@
     "waiting": "Změna je zadržena",
     "paused": "Synchronizace pozastavena",
     "error": "Chyba synchronizace",
-    "offline": "Offline"
+    "unreachable": "Server mimo dosah",
+    "unreachableLong_one": "Nesynchronizováno {{count}} den",
+    "unreachableLong_few": "Nesynchronizováno {{count}} dny",
+    "unreachableLong_other": "Nesynchronizováno {{count}} dní"
+  },
+  "age": {
+    "justNow": "právě teď",
+    "minutes_one": "před {{count}} min",
+    "minutes_few": "před {{count}} min",
+    "minutes_other": "před {{count}} min",
+    "hours_one": "před {{count}} h",
+    "hours_few": "před {{count}} h",
+    "hours_other": "před {{count}} h",
+    "days_one": "před {{count}} dnem",
+    "days_few": "před {{count}} dny",
+    "days_other": "před {{count}} dny"
   },
   "status": {
     "phase": {
@@ -354,10 +369,14 @@
       "synced": "Aktuální",
       "syncing": "Synchronizuje se…",
       "waiting": "Změna je zadržena",
-      "offline": "Offline",
+      "unreachable": "Server mimo dosah",
+      "unreachableLong_one": "Nesynchronizováno {{count}} den",
+      "unreachableLong_few": "Nesynchronizováno {{count}} dny",
+      "unreachableLong_other": "Nesynchronizováno {{count}} dní",
       "paused": "Pozastaveno",
       "error": "Zastaveno"
     },
+    "rowWithAge": "{{state}} · {{age}}",
     "setUp": "Nastavit synchronizaci v tomto telefonu",
     "scan": "Naskenovat kód z jiného zařízení",
     "typeCode": "Zadat kód záchranné sady",

@@ -7,7 +7,26 @@
     "waiting": "Zmiana jest wstrzymana",
     "paused": "Synchronizacja wstrzymana",
     "error": "Błąd synchronizacji",
-    "offline": "Offline"
+    "unreachable": "Serwer poza zasięgiem",
+    "unreachableLong_one": "Brak synchronizacji od {{count}} dnia",
+    "unreachableLong_few": "Brak synchronizacji od {{count}} dni",
+    "unreachableLong_many": "Brak synchronizacji od {{count}} dni",
+    "unreachableLong_other": "Brak synchronizacji od {{count}} dnia"
+  },
+  "age": {
+    "justNow": "przed chwilą",
+    "minutes_one": "{{count}} min temu",
+    "minutes_few": "{{count}} min temu",
+    "minutes_many": "{{count}} min temu",
+    "minutes_other": "{{count}} min temu",
+    "hours_one": "{{count}} godz. temu",
+    "hours_few": "{{count}} godz. temu",
+    "hours_many": "{{count}} godz. temu",
+    "hours_other": "{{count}} godz. temu",
+    "days_one": "{{count}} dzień temu",
+    "days_few": "{{count}} dni temu",
+    "days_many": "{{count}} dni temu",
+    "days_other": "{{count}} dnia temu"
   },
   "status": {
     "phase": {
@@ -354,10 +373,15 @@
       "synced": "Aktualna",
       "syncing": "Synchronizowanie…",
       "waiting": "Zmiana jest wstrzymana",
-      "offline": "Offline",
+      "unreachable": "Serwer poza zasięgiem",
+      "unreachableLong_one": "Brak synchronizacji od {{count}} dnia",
+      "unreachableLong_few": "Brak synchronizacji od {{count}} dni",
+      "unreachableLong_many": "Brak synchronizacji od {{count}} dni",
+      "unreachableLong_other": "Brak synchronizacji od {{count}} dnia",
       "paused": "Wstrzymana",
       "error": "Zatrzymana"
     },
+    "rowWithAge": "{{state}} · {{age}}",
     "setUp": "Skonfiguruj synchronizację na tym telefonie",
     "scan": "Zeskanuj kod z innego urządzenia",
     "typeCode": "Wpisz kod zestawu odzyskiwania",

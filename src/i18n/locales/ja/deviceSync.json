@@ -7,7 +7,14 @@
     "waiting": "変更を保留中",
     "paused": "同期を一時停止中",
     "error": "同期エラー",
-    "offline": "オフライン"
+    "unreachable": "サーバーに接続できません",
+    "unreachableLong_other": "{{count}}日間同期されていません"
+  },
+  "age": {
+    "justNow": "たった今",
+    "minutes_other": "{{count}}分前",
+    "hours_other": "{{count}}時間前",
+    "days_other": "{{count}}日前"
   },
   "status": {
     "phase": {
@@ -333,10 +340,12 @@
       "synced": "最新",
       "syncing": "同期中…",
       "waiting": "変更を保留中",
-      "offline": "オフライン",
+      "unreachable": "サーバーに接続できません",
+      "unreachableLong_other": "{{count}}日間同期されていません",
       "paused": "一時停止中",
       "error": "停止中"
     },
+    "rowWithAge": "{{state}} · {{age}}",
     "setUp": "このスマートフォンで同期を設定",
     "scan": "ほかのデバイスのコードをスキャン",
     "typeCode": "リカバリーキットのコードを入力",

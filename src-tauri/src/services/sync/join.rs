@@ -204,9 +204,9 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
         // A join into a profile that holds nothing still writes its backup (no replace without
         // a verified backup), but the backup is not worth keeping (spec 2026-11-14 §5.4).
         let brand_new =
-            input.kind == ReplaceKind::Join && impact::replace_impact(conn)?.holds_nothing();
+            input.kind == ReplaceKind::Join && impact::brand_new_profile(conn, input.now)?;
         if brand_new {
-            log::info!("[SYNC] The joining profile held nothing: its backup is not kept");
+            log::info!("[SYNC] The joining profile is brand new: its backup is not kept");
         }
         let path = match backup.take() {
             Some(path) => path,
@@ -249,7 +249,8 @@ async fn held<D: ConnAccess>(db: &D, input: HoldInput) -> SyncResult<Hold> {
 
 /// The mark a backup settles to after its replace, with whether it is Kept: Kept for a repair and
 /// for a join into a profile that held something, and for a re-sync when anything stayed only in
-/// it (unsent changes, documents or photos not re-attached), else Plain. A failure is logged, and the backup stays Kept.
+/// it (unsent changes, documents or photos not re-attached), else Plain. A failure is logged, and the
+/// backup stays Kept.
 fn settled(backup: PathBuf, replaced: &Replaced) -> (PathBuf, bool) {
     let only_in_backup = replaced.unsent_items > 0
         || replaced.unsent_batches > 0

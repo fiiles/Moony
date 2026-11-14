@@ -324,6 +324,55 @@ async fn a_join_into_a_brand_new_profile_leaves_a_plain_backup() {
     assert_eq!(listed[0].mark, BackupMark::Plain);
 }
 
+/// A join into a profile with nothing counted but something a person made (a watchlist row), or
+/// one created more than a day ago, keeps its backup (`impact::brand_new_profile`).
+async fn join_keeping_check(prepare: impl FnOnce(&Connection)) {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let dir = tempfile::tempdir().expect("dir");
+    let joiner = TestConn::new(migrated());
+    prepare(&joiner.lock());
+    let consent = agreed(&joiner);
+    assert!(impact::replace_impact(&joiner.lock())
+        .expect("impact")
+        .holds_nothing());
+
+    let outcome = join_new_device(
+        &vault.relay,
+        &joiner,
+        vault.creds.clone(),
+        "Laptop",
+        consent,
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect("join");
+
+    assert!(outcome.kept);
+    let listed = backups::list(dir.path()).expect("list");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].mark, BackupMark::Kept);
+}
+
+#[tokio::test]
+async fn a_join_into_a_profile_with_only_a_watchlist_row_keeps_its_backup() {
+    join_keeping_check(|conn| {
+        profile_created_at(conn, NOW - 3_600);
+        exec(
+            conn,
+            "INSERT INTO watched_stocks (id, ticker) VALUES ('w1', 'AAPL')",
+        );
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn a_join_into_an_empty_profile_created_a_day_ago_keeps_its_backup() {
+    join_keeping_check(|conn| profile_created_at(conn, NOW - 25 * 3_600)).await;
+}
+
 /// The "brand new" decision is taken inside the hold: an account written after the person agreed
 /// (a joining profile has no capture, so the consent watermark does not move and the join goes on)
 /// makes the backup kept, not plain.

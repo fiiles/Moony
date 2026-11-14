@@ -129,7 +129,8 @@ const BRAND_NEW_WITHIN_SECS: i64 = 86_400;
 
 /// Tables where any row means a person made something `holds_nothing` does not count. Categories
 /// and categorization rules only count when `is_system = 0` (profile creation seeds the rest).
-const PERSON_MADE: [&str; 8] = [
+const PERSON_MADE: [&str; 9] = [
+    "cashflow_items",
     "watched_stocks",
     "budget_goals",
     "budget_goal_versions",
@@ -360,6 +361,7 @@ mod tests {
             ("spending plan", "INSERT INTO spending_plans (id, name, year, amount, currency, icon, color) VALUES ('p1', 'Plan', 2026, '1', 'EUR', 'i', 'c');"),
             ("own rule", "INSERT INTO categorization_rules (id, name, rule_type, pattern, category_id, is_system) VALUES ('r1', 'R', 'contains', 'x', 'c1', 0);"),
             ("stock tag", "INSERT INTO stock_tags (id, name) VALUES ('t1', 'Mine');"),
+            ("planned item", "INSERT INTO cashflow_items (id, name, amount, currency, frequency, item_type) VALUES ('i1', 'Rent', '1', 'EUR', 'monthly', 'expense');"),
         ] {
             let sql = format!("{category}{sql}");
             assert!(!brand_new_with(&sql, NOW - HOUR), "{what}");

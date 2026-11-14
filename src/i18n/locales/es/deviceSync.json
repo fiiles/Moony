@@ -94,7 +94,12 @@
       "title": "¿Cancelar la configuración?",
       "description": "Este dispositivo olvida la cuenta de sincronización creada para esta configuración, y un pago ya realizado no se traslada. Si vuelves a configurar la sincronización, empieza desde cero, con una cuenta de sincronización nueva.",
       "keep": "Mantener la configuración"
-    }
+    },
+    "startTitle": "Empezar a sincronizar",
+    "startLead": "Este dispositivo será el primero. Necesitas el código de conexión de tu servidor de sincronización.",
+    "joinTitle": "Conectar este dispositivo",
+    "joinLead": "Ya sincronizas en otro dispositivo.",
+    "joinButton": "Conectar este dispositivo"
   },
   "setup": {
     "title": "Configurar la sincronización",
@@ -345,8 +350,6 @@
     "validUntil": "El código funciona hasta las {{time}}."
   },
   "join": {
-    "introPair": "Unirse desde tu teléfono",
-    "introKit": "Usar un kit de recuperación",
     "warning": "Los datos de este dispositivo se sustituyen por los sincronizados. Antes se guarda una copia de seguridad junto a tu perfil.",
     "nameLabel": "Nombre del dispositivo",
     "passwordLabel": "Contraseña del dispositivo",
@@ -360,7 +363,18 @@
     "kitHint": "Introduce el código de recuperación de tu kit de recuperación de sincronización, o el texto de su código QR.",
     "codeLabel": "Código de recuperación",
     "accountLabel": "Número de cuenta",
-    "confirm": "Unirse y reemplazar"
+    "confirm": "Unirse y reemplazar",
+    "choice": {
+      "pair": {
+        "title": "Tengo un teléfono que sincroniza",
+        "lead": "Aparecerá un código. En el teléfono: Ajustes → Sincronización → Añadir un dispositivo."
+      },
+      "kit": {
+        "title": "Tengo el kit de recuperación de sincronización",
+        "lead": "Introduces el código del kit y la dirección del servidor. Así se une también un segundo ordenador."
+      }
+    },
+    "connect": "Conectar"
   },
   "phone": {
     "title": "Sincronización",
@@ -391,7 +405,7 @@
     "renewUnavailable": "La renovación no está disponible en la app del teléfono.",
     "scanTitle": "Escanear un código",
     "scanHint": "Apunta la cámara al código de tu otro dispositivo (Ajustes → Sincronización → Añadir un dispositivo) o al código QR de tu kit de recuperación.",
-    "addDeviceHint": "En el dispositivo nuevo, elige «Unirse desde tu teléfono» en Ajustes → Sincronización y apunta la cámara al código que muestre.",
+    "addDeviceHint": "En el dispositivo nuevo, elige «Conectar este dispositivo» en Ajustes → Sincronización y apunta la cámara al código que muestre.",
     "passwordFirst": "Introduce la contraseña del dispositivo antes de escanear el código del otro dispositivo.",
     "connecting": "Conectando…",
     "cameraDenied": "Permite el acceso a la cámara en Ajustes para escanear el código.",

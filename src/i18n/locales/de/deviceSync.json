@@ -90,7 +90,12 @@
       "title": "Einrichtung abbrechen?",
       "description": "Dieses Gerät vergisst das Sync-Konto, das für diese Einrichtung angelegt wurde, und eine bereits geleistete Zahlung wird nicht übernommen. Danach beginnt die Einrichtung der Synchronisierung von vorn, mit einem neuen Sync-Konto.",
       "keep": "Einrichtung fortsetzen"
-    }
+    },
+    "startTitle": "Synchronisierung starten",
+    "startLead": "Dieses Gerät wird das erste. Sie brauchen den Verbindungscode Ihres Synchronisierungsservers.",
+    "joinTitle": "Dieses Gerät verbinden",
+    "joinLead": "Sie synchronisieren bereits auf einem anderen Gerät.",
+    "joinButton": "Dieses Gerät verbinden"
   },
   "setup": {
     "title": "Synchronisierung einrichten",
@@ -334,8 +339,6 @@
     "validUntil": "Der Code gilt bis {{time}}."
   },
   "join": {
-    "introPair": "Vom Smartphone beitreten",
-    "introKit": "Wiederherstellungs-Kit verwenden",
     "warning": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird neben Ihrem Profil eine Sicherung gespeichert.",
     "nameLabel": "Gerätename",
     "passwordLabel": "Gerätepasswort",
@@ -349,7 +352,18 @@
     "kitHint": "Geben Sie den Wiederherstellungscode aus Ihrem Sync-Wiederherstellungs-Kit ein oder den Text seines QR-Codes.",
     "codeLabel": "Wiederherstellungscode",
     "accountLabel": "Kontonummer",
-    "confirm": "Beitreten und ersetzen"
+    "confirm": "Beitreten und ersetzen",
+    "choice": {
+      "pair": {
+        "title": "Ich habe ein Smartphone, das synchronisiert",
+        "lead": "Ein Code erscheint. Auf dem Smartphone: Einstellungen → Synchronisierung → Gerät hinzufügen."
+      },
+      "kit": {
+        "title": "Ich habe das Sync-Wiederherstellungs-Kit",
+        "lead": "Sie geben den Code aus dem Kit und die Serveradresse ein. So tritt auch ein zweiter Computer bei."
+      }
+    },
+    "connect": "Verbinden"
   },
   "phone": {
     "title": "Synchronisierung",
@@ -379,7 +393,7 @@
     "renewUnavailable": "Die Verlängerung ist in der Telefon-App nicht verfügbar.",
     "scanTitle": "Code scannen",
     "scanHint": "Richten Sie die Kamera auf den Code auf Ihrem anderen Gerät (Einstellungen → Synchronisierung → Gerät hinzufügen) oder auf den QR-Code Ihres Wiederherstellungs-Kits.",
-    "addDeviceHint": "Wählen Sie auf dem neuen Gerät unter Einstellungen → Synchronisierung „Vom Smartphone beitreten“ und richten Sie dann die Kamera auf den angezeigten Code.",
+    "addDeviceHint": "Wählen Sie auf dem neuen Gerät unter Einstellungen → Synchronisierung „Dieses Gerät verbinden“ und richten Sie dann die Kamera auf den angezeigten Code.",
     "passwordFirst": "Geben Sie Ihr Gerätepasswort ein, bevor Sie den Code des anderen Geräts scannen.",
     "connecting": "Verbindung wird hergestellt…",
     "cameraDenied": "Erlauben Sie in den Einstellungen den Zugriff auf die Kamera, um den Code zu scannen.",

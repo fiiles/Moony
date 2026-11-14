@@ -90,7 +90,12 @@
       "title": "Avbryta konfigurationen?",
       "description": "Den här enheten glömmer synkroniseringskontot som skapades för den här konfigurationen, och en betalning som redan gjorts förs inte över. Ställer du in synkroniseringen på nytt börjar det om från början, med ett nytt synkroniseringskonto.",
       "keep": "Behåll konfigurationen"
-    }
+    },
+    "startTitle": "Börja synkronisera",
+    "startLead": "Den här enheten blir den första. Du behöver anslutningskoden till din synkroniseringsserver.",
+    "joinTitle": "Anslut den här enheten",
+    "joinLead": "Du synkroniserar redan på en annan enhet.",
+    "joinButton": "Anslut den här enheten"
   },
   "setup": {
     "title": "Ställ in synkronisering",
@@ -334,8 +339,6 @@
     "validUntil": "Koden fungerar till kl. {{time}}."
   },
   "join": {
-    "introPair": "Anslut från telefonen",
-    "introKit": "Använd ett återställningskit",
     "warning": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först bredvid din profil.",
     "nameLabel": "Enhetsnamn",
     "passwordLabel": "Enhetslösenord",
@@ -349,7 +352,18 @@
     "kitHint": "Ange återställningskoden från ditt återställningskit för synkronisering, eller texten i dess QR-kod.",
     "codeLabel": "Återställningskod",
     "accountLabel": "Kontonummer",
-    "confirm": "Anslut och ersätt"
+    "confirm": "Anslut och ersätt",
+    "choice": {
+      "pair": {
+        "title": "Jag har en telefon som synkroniserar",
+        "lead": "En kod visas. På telefonen: Inställningar → Synkronisering → Lägg till en enhet."
+      },
+      "kit": {
+        "title": "Jag har återställningskitet för synkronisering",
+        "lead": "Du anger koden från kitet och serverns adress. Så ansluter även en andra dator."
+      }
+    },
+    "connect": "Anslut"
   },
   "phone": {
     "title": "Synkronisering",
@@ -379,7 +393,7 @@
     "renewUnavailable": "Förnyelse är inte tillgänglig i telefonappen.",
     "scanTitle": "Skanna en kod",
     "scanHint": "Rikta kameran mot koden på den andra enheten (Inställningar → Synkronisering → Lägg till en enhet) eller mot QR-koden i ditt återställningskit.",
-    "addDeviceHint": "Välj ”Anslut från telefonen” under Inställningar → Synkronisering på den nya enheten och rikta sedan kameran mot koden den visar.",
+    "addDeviceHint": "Välj ”Anslut den här enheten” under Inställningar → Synkronisering på den nya enheten och rikta sedan kameran mot koden den visar.",
     "passwordFirst": "Ange enhetslösenordet innan du skannar den andra enhetens kod.",
     "connecting": "Ansluter…",
     "cameraDenied": "Tillåt kameraåtkomst i Inställningar för att skanna koden.",

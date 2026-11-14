@@ -94,7 +94,12 @@
       "title": "Annullare la configurazione?",
       "description": "Questo dispositivo dimentica l'account di sincronizzazione creato per questa configurazione, e un pagamento già effettuato non viene trasferito. Se configuri di nuovo la sincronizzazione, si riparte da zero, con un nuovo account di sincronizzazione.",
       "keep": "Mantieni la configurazione"
-    }
+    },
+    "startTitle": "Inizia a sincronizzare",
+    "startLead": "Questo dispositivo sarà il primo. Ti serve il codice di connessione del tuo server di sincronizzazione.",
+    "joinTitle": "Collega questo dispositivo",
+    "joinLead": "Sincronizzi già su un altro dispositivo.",
+    "joinButton": "Collega questo dispositivo"
   },
   "setup": {
     "title": "Configura la sincronizzazione",
@@ -345,8 +350,6 @@
     "validUntil": "Il codice è valido fino alle {{time}}."
   },
   "join": {
-    "introPair": "Collegati dal telefono",
-    "introKit": "Usa un kit di ripristino",
     "warning": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup accanto al tuo profilo.",
     "nameLabel": "Nome del dispositivo",
     "passwordLabel": "Password del dispositivo",
@@ -360,7 +363,18 @@
     "kitHint": "Inserisci il codice di ripristino del tuo kit di ripristino della sincronizzazione, o il testo del suo codice QR.",
     "codeLabel": "Codice di ripristino",
     "accountLabel": "Numero dell'account",
-    "confirm": "Collega e sostituisci"
+    "confirm": "Collega e sostituisci",
+    "choice": {
+      "pair": {
+        "title": "Ho un telefono che sincronizza",
+        "lead": "Comparirà un codice. Sul telefono: Impostazioni → Sincronizzazione → Aggiungi un dispositivo."
+      },
+      "kit": {
+        "title": "Ho il kit di ripristino della sincronizzazione",
+        "lead": "Inserisci il codice del kit e l'indirizzo del server. Così si collega anche un secondo computer."
+      }
+    },
+    "connect": "Collega"
   },
   "phone": {
     "title": "Sincronizzazione",
@@ -391,7 +405,7 @@
     "renewUnavailable": "Il rinnovo non è disponibile nell'app per telefono.",
     "scanTitle": "Scansiona un codice",
     "scanHint": "Inquadra con la fotocamera il codice sull'altro dispositivo (Impostazioni → Sincronizzazione → Aggiungi un dispositivo) o il codice QR del tuo kit di ripristino.",
-    "addDeviceHint": "Sul nuovo dispositivo scegli «Collegati dal telefono» in Impostazioni → Sincronizzazione, poi inquadra il codice che mostra.",
+    "addDeviceHint": "Sul nuovo dispositivo scegli «Collega questo dispositivo» in Impostazioni → Sincronizzazione, poi inquadra il codice che mostra.",
     "passwordFirst": "Inserisci la password del dispositivo prima di scansionare il codice dell'altro dispositivo.",
     "connecting": "Connessione…",
     "cameraDenied": "Consenti l'accesso alla fotocamera in Impostazioni per scansionare il codice.",

@@ -98,7 +98,12 @@
       "title": "Zrušit nastavení?",
       "description": "Toto zařízení zapomene synchronizační účet vytvořený při tomto nastavení a už uhrazená platba se nepřenese. Nastavení synchronizace pak začne od začátku, s novým synchronizačním účtem.",
       "keep": "Ponechat nastavení"
-    }
+    },
+    "startTitle": "Začít synchronizovat",
+    "startLead": "Toto zařízení bude první. Potřebujete připojovací kód svého synchronizačního serveru.",
+    "joinTitle": "Připojit toto zařízení",
+    "joinLead": "Synchronizaci už máte na jiném zařízení.",
+    "joinButton": "Připojit toto zařízení"
   },
   "setup": {
     "title": "Nastavit synchronizaci",
@@ -356,8 +361,6 @@
     "validUntil": "Kód platí do {{time}}."
   },
   "join": {
-    "introPair": "Připojit z telefonu",
-    "introKit": "Použít záchrannou sadu",
     "warning": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Předtím se vedle profilu uloží záloha.",
     "nameLabel": "Název zařízení",
     "passwordLabel": "Heslo zařízení",
@@ -371,7 +374,18 @@
     "kitHint": "Zadejte obnovovací kód ze záchranné sady synchronizace nebo text jejího QR kódu.",
     "codeLabel": "Obnovovací kód",
     "accountLabel": "Číslo účtu",
-    "confirm": "Připojit a nahradit"
+    "confirm": "Připojit a nahradit",
+    "choice": {
+      "pair": {
+        "title": "Mám u sebe telefon se synchronizací",
+        "lead": "Zobrazí se kód. V telefonu: Nastavení → Synchronizace → Přidat zařízení."
+      },
+      "kit": {
+        "title": "Mám Záchrannou sadu synchronizace",
+        "lead": "Zadáte kód ze sady a adresu serveru. Tak se připojuje i druhý počítač."
+      }
+    },
+    "connect": "Připojit"
   },
   "phone": {
     "title": "Synchronizace",
@@ -403,7 +417,7 @@
     "renewUnavailable": "Obnovení není v aplikaci pro telefon dostupné.",
     "scanTitle": "Naskenovat kód",
     "scanHint": "Namiřte fotoaparát na kód na druhém zařízení (Nastavení → Synchronizace → Přidat zařízení) nebo na QR kód záchranné sady.",
-    "addDeviceHint": "Na novém zařízení zvolte v Nastavení → Synchronizace „Připojit z telefonu“ a pak namiřte fotoaparát na kód, který ukáže.",
+    "addDeviceHint": "Na novém zařízení zvolte v Nastavení → Synchronizace „Připojit toto zařízení“ a pak namiřte fotoaparát na kód, který ukáže.",
     "passwordFirst": "Než naskenujete kód druhého zařízení, zadejte heslo zařízení.",
     "connecting": "Připojování…",
     "cameraDenied": "Aby šlo kód naskenovat, povolte v Nastavení přístup k fotoaparátu.",

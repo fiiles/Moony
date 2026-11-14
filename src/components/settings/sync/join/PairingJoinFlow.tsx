@@ -1,6 +1,8 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { AlertTriangle } from 'lucide-react';
+import type { ReplaceOutcomeView } from '@shared/schema';
 import { useDeviceSyncStatus, useReplaceImpact } from '@/hooks/use-device-sync';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
@@ -8,53 +10,68 @@ import { ApiError } from '@/lib/api-error';
 import { useServerChoice } from '@/hooks/use-server-choice';
 import { consentOf } from '@/utils/replace-impact';
 import { translateApiError } from '@/lib/translate-api-error';
+import { joinPassword, joinPresentation, type JoinContext } from '@/utils/join-context';
 import type { JoinFailureAction } from '@/utils/pairing-code';
-import { defaultDeviceKey } from '@/utils/sync-devices';
 import { needsJoinAcknowledgement } from '@/utils/sync-setup';
 import { JoinFields, JoinWarning } from '@/components/settings/sync/JoinFields';
 import { PairingExpiryNote } from '@/components/settings/sync/PairingExpiryNote';
 import { PairingSteps } from '@/components/settings/sync/PairingSteps';
 import { InsecureNotice } from '@/components/settings/sync/ServerChoice';
 import { ReplaceImpactNotice } from '@/components/settings/sync/ReplaceImpactNotice';
-import {
-  IMPACT_CHANGED_KEY,
-  replaceOutcomeToast,
-} from '@/components/settings/sync/replace-outcome';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { AlertTriangle } from 'lucide-react';
+import { IMPACT_CHANGED_KEY } from '@/components/settings/sync/replace-outcome';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
+/** What both join flows take, in Settings (`JoinDeviceDialog`) and in the first run. */
+export interface JoinFlowProps {
+  context: JoinContext;
+  /** Chosen on the JoinChoice screen; trimmed and non-empty. */
+  deviceName: string;
+  onJoined: (outcome: ReplaceOutcomeView) => void;
+  /** Leaves the flow (Settings: closes the dialog; first run: back to the choice). Cancels a pairing first. */
+  onCancel: () => void;
+  /** Places the flow's buttons: Settings wraps them in `DialogFooter`, the wizard in its nav row. */
+  footer: (actions: ReactNode) => ReactNode;
+  /**
+   * Settings: what a dismissal of the dialog (Escape, a click outside, its X) does. The flow sets
+   * it to its own way out, which does nothing while a pairing starts or a join runs.
+   */
+  dismissRef?: RefObject<(() => void) | null>;
+}
+
 /**
- * Joining from another device's QR (the joiner): the device name, address and password first, then
- * the QR, the six digits to compare and, once the sync details arrive, the join itself (the busy
- * cover shows through the shared mutation key). Mounted only while open; closing gives up.
+ * Joining from another device's QR (the joiner): the address (and in Settings the password)
+ * first, then the QR, the six digits to compare and, once the sync details arrive, the join
+ * itself (the busy cover shows through the shared mutation key). Mounted only while it runs;
+ * leaving gives the pairing up.
  */
-export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
+export function PairingJoinFlow({
+  context,
+  deviceName,
+  onJoined,
+  onCancel,
+  footer,
+  dismissRef,
+}: JoinFlowProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
+  const presentation = joinPresentation(context);
   const status = useDeviceSyncStatus().data;
   const pairing = useDevicePairing();
   const { error, isError, start, confirm, confirmError, cancel, join, afterFailedJoin } = pairing;
   const { turnOff } = useDeviceSyncMutations();
-  // A successful join clears the pairing before the dialog closes: keep showing its last step.
+  // A successful join clears the pairing before the flow is left: keep showing its last step.
   const lastView = useRef(pairing.view);
   if (pairing.view) lastView.current = pairing.view;
   const view = pairing.view ?? lastView.current;
-  // Read when the sync details arrive and the confirmation opens; never cached.
+  // Read when the sync details arrive and the confirmation opens; never cached. Read in the first
+  // run too, where it is not shown: the join sends it as its consent.
   const impact = useReplaceImpact(view?.stage === 'received');
-  const [name, setName] = useState(() => t(`setup.defaultName.${defaultDeviceKey()}`));
   const [password, setPassword] = useState('');
+  const devicePassword = joinPassword(context, password);
   // The mailbox is on the person's own server: an address or a connection code, checked first
   const server = useServerChoice('addressOrCode', 'server');
-  /** The http server this dialog already warned about when it was typed: not asked again at join. */
+  /** The http server this flow already warned about when it was typed: not asked again at join. */
   const [acknowledgedHost, setAcknowledgedHost] = useState<string | null>(null);
   /** The warning at `received` for a server the person did not type (the holder's), ticked. */
   const [joinAcknowledged, setJoinAcknowledged] = useState(false);
@@ -74,17 +91,26 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
     } catch {
       // Gone on this device either way.
     }
-    onClose();
+    onCancel();
   };
+
+  // The dialog's dismissal: not while the pairing starts (the password is on its way) or the join runs
+  const busy = view ? join.isPending : start.isPending;
+  useEffect(() => {
+    if (!dismissRef) return;
+    dismissRef.current = () => {
+      if (!busy) void close();
+    };
+  });
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (password === '' || name.trim() === '' || !server.ready || start.isPending) return;
+    if (devicePassword === '' || deviceName === '' || !server.ready || start.isPending) return;
     setFormError(null);
     try {
       await start.mutateAsync({
-        password,
-        deviceName: name.trim(),
+        password: devicePassword,
+        deviceName,
         relayUrl: server.check?.address,
       });
       setAcknowledgedHost(server.check?.insecure && server.acknowledged ? server.check.host : null);
@@ -96,14 +122,14 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
   };
 
   const runJoin = async () => {
-    // The consent is that of the impact on screen; the join waits for the person's confirmation.
+    // The consent is that of the impact read (on screen in Settings); the join waits for the
+    // person's confirmation.
     if (!impact.data) return;
     setJoinError(null);
     setImpactChanged(false);
     try {
       const outcome = await join.mutateAsync(consentOf('join', impact.data));
-      replaceOutcomeToast(t, t('pairing.joined', { path: outcome.backupPath }), outcome);
-      onClose();
+      onJoined(outcome);
     } catch (failure) {
       if (failure instanceof ApiError && failure.key === IMPACT_CHANGED_KEY) {
         // What the person saw no longer holds: show the new numbers and ask again.
@@ -151,99 +177,96 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
 
   if (!view) {
     return (
-      <Dialog open onOpenChange={(open) => !open && !start.isPending && void close()}>
-        <DialogContent className="max-w-[560px]">
-          <form onSubmit={submit} className="grid gap-4">
-            <DialogHeader>
-              <DialogTitle>{t('join.pairTitle')}</DialogTitle>
-              <DialogDescription>{t('join.pairHint')}</DialogDescription>
-            </DialogHeader>
-            <JoinWarning />
-            <JoinFields
-              name={name}
-              onName={setName}
-              password={password}
-              onPassword={(value) => {
-                setPassword(value);
-                setFormError(null);
-              }}
-              server={server}
-              serverMode="field"
-              error={formError}
-            />
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={start.isPending}
-                onClick={() => void close()}
-              >
-                {tc('buttons.cancel')}
-              </Button>
-              <Button
-                type="submit"
-                loading={start.isPending}
-                disabled={password === '' || name.trim() === '' || !server.ready}
-              >
-                {t('join.pairTitle')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <form onSubmit={submit} className="grid gap-4">
+        {presentation.showReplaceWarning && <JoinWarning />}
+        <JoinFields
+          askPassword={presentation.askPassword}
+          password={password}
+          onPassword={(value) => {
+            setPassword(value);
+            setFormError(null);
+          }}
+          server={server}
+          serverMode="field"
+          error={formError}
+        />
+        {footer(
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={start.isPending}
+              onClick={() => void close()}
+            >
+              {tc(presentation.cancelKey)}
+            </Button>
+            <Button
+              type="submit"
+              loading={start.isPending}
+              disabled={devicePassword === '' || deviceName === '' || !server.ready}
+            >
+              {t('join.pairTitle')}
+            </Button>
+          </>
+        )}
+      </form>
     );
   }
 
   const failed = isError || view.contested;
   const askJoinAcknowledgement = needsJoinAcknowledgement(view, acknowledgedHost);
   return (
-    <Dialog open onOpenChange={(open) => !open && !join.isPending && void close()}>
-      <DialogContent className="max-w-[560px]">
-        <DialogHeader>
-          <DialogTitle>{t('join.pairTitle')}</DialogTitle>
-          <DialogDescription>{t('join.warning')}</DialogDescription>
-        </DialogHeader>
-        <PairingSteps
-          view={view}
-          scanHint={t('join.pairHint')}
-          devTools={status?.devTools === true}
-          error={isError ? (error as Error) : null}
-          confirmError={confirmError}
-          onConfirm={handleConfirm}
-          confirming={confirm.isPending}
-          joining={join.isPending}
-        />
-        {view.stage === 'received' && !failed && (
-          <>
-            {impactChanged && (
-              <Alert variant="destructive">
-                <AlertTriangle />
-                <AlertDescription>{tc(IMPACT_CHANGED_KEY)}</AlertDescription>
-              </Alert>
-            )}
+    <div className="grid gap-4">
+      {presentation.showReplaceWarning && <JoinWarning />}
+      <PairingSteps
+        view={view}
+        scanHint={t('join.pairHint')}
+        devTools={status?.devTools === true}
+        error={isError ? (error as Error) : null}
+        confirmError={confirmError}
+        onConfirm={handleConfirm}
+        confirming={confirm.isPending}
+        joining={join.isPending}
+      />
+      {view.stage === 'received' && !failed && (
+        <>
+          {impactChanged && (
+            <Alert variant="destructive">
+              <AlertTriangle />
+              <AlertDescription>{tc(IMPACT_CHANGED_KEY)}</AlertDescription>
+            </Alert>
+          )}
+          {presentation.showImpact && (
             <ReplaceImpactNotice
               flow="join"
               impact={impact.data}
               error={impact.isError ? (impact.error as Error) : null}
             />
-            {askJoinAcknowledgement && view.joinServer && (
-              <InsecureNotice
-                id="join-insecure"
-                acknowledged={joinAcknowledged}
-                onChange={setJoinAcknowledged}
-                body={t('join.insecureAtJoin', { host: view.joinServer })}
-              />
-            )}
-            <PairingExpiryNote view={view} className="text-micro" />
-          </>
-        )}
-        {joinError && (
-          <Alert variant="destructive">
-            <AlertTriangle />
-            <AlertDescription>{joinError.message}</AlertDescription>
-          </Alert>
-        )}
-        <DialogFooter>
+          )}
+          {!presentation.showImpact && impact.isError && (
+            <p className="m-0 text-micro font-500 text-loss" role="alert">
+              {translateApiError(impact.error as Error, tc)}
+            </p>
+          )}
+          {askJoinAcknowledgement && view.joinServer && (
+            <InsecureNotice
+              id="join-insecure"
+              acknowledged={joinAcknowledged}
+              onChange={setJoinAcknowledged}
+              body={t('join.insecureAtJoin', { host: view.joinServer })}
+            />
+          )}
+          <PairingExpiryNote view={view} className="text-micro" />
+        </>
+      )}
+      {joinError && (
+        <Alert variant="destructive">
+          <AlertTriangle />
+          <AlertDescription>{joinError.message}</AlertDescription>
+        </Alert>
+      )}
+      {footer(
+        <>
           {joinError?.setupPending && !failed && (
             <Button
               type="button"
@@ -279,7 +302,7 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
                 !impact.data || impact.isFetching || (askJoinAcknowledgement && !joinAcknowledged)
               }
             >
-              {t('join.confirm')}
+              {context.kind === 'firstRun' ? t('join.connect') : t('join.confirm')}
             </Button>
           )}
           <Button
@@ -288,10 +311,10 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
             disabled={join.isPending || turnOff.isPending}
             onClick={() => void close()}
           >
-            {tc('buttons.cancel')}
+            {tc(presentation.cancelKey)}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      )}
+    </div>
   );
 }

@@ -90,7 +90,12 @@
       "title": "Cancel the setup?",
       "description": "This device forgets the sync account created for this setup, and a payment already made for it is not carried over. Setting up sync again starts from the start, with a new sync account.",
       "keep": "Keep setup"
-    }
+    },
+    "startTitle": "Start syncing",
+    "startLead": "This device will be the first. You need your sync server's connection code.",
+    "joinTitle": "Connect this device",
+    "joinLead": "You already sync on another device.",
+    "joinButton": "Connect this device"
   },
   "setup": {
     "title": "Set up sync",
@@ -334,8 +339,6 @@
     "validUntil": "The code is valid until {{time}}."
   },
   "join": {
-    "introPair": "Join from your phone",
-    "introKit": "Use a Recovery Kit",
     "warning": "This device's data is replaced by the synced data. A backup is saved next to your profile first.",
     "nameLabel": "Device name",
     "passwordLabel": "Device password",
@@ -349,7 +352,18 @@
     "kitHint": "Enter the recovery code from your Sync Recovery Kit, or the text of its QR code.",
     "codeLabel": "Recovery code",
     "accountLabel": "Account number",
-    "confirm": "Join and replace"
+    "confirm": "Join and replace",
+    "choice": {
+      "pair": {
+        "title": "I have a phone that syncs",
+        "lead": "A code appears. On the phone: Settings → Sync → Add a device."
+      },
+      "kit": {
+        "title": "I have the Sync Recovery Kit",
+        "lead": "You enter the code from the kit and the server address. This is also how a second computer joins."
+      }
+    },
+    "connect": "Connect"
   },
   "phone": {
     "title": "Sync",
@@ -379,7 +393,7 @@
     "renewUnavailable": "Renewing isn't available in the phone app.",
     "scanTitle": "Scan a code",
     "scanHint": "Point the camera at the code on your other device (Settings → Sync → Add a device) or at the QR code of your Recovery Kit.",
-    "addDeviceHint": "On the new device, choose “Join from your phone” under Settings → Sync, then point the camera at the code it shows.",
+    "addDeviceHint": "On the new device, choose “Connect this device” in Settings → Sync, then point the camera at the code it shows.",
     "passwordFirst": "Enter your device password before you scan the other device's code.",
     "connecting": "Connecting…",
     "cameraDenied": "Allow camera access in Settings to scan the code.",

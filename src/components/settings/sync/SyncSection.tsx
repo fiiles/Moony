@@ -4,16 +4,15 @@ import { SyncDangerCard } from '@/components/settings/sync/SyncDangerCard';
 import { SyncDevicesCard } from '@/components/settings/sync/SyncDevicesCard';
 import { SyncStatusCard } from '@/components/settings/sync/SyncStatusCard';
 import { SyncSetupDialog } from '@/components/settings/sync/SyncSetupDialog';
-import { JoinSyncDialog } from '@/components/settings/sync/JoinSyncDialog';
-import { RecoveryJoinDialog } from '@/components/settings/sync/RecoveryJoinDialog';
+import { JoinDeviceDialog } from '@/components/settings/sync/join/JoinDeviceDialog';
 import { WhatSyncsLink } from '@/components/settings/sync/WhatSyncsLink';
 import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 
-type Open = 'setup' | 'pair' | 'kit' | null;
+type Open = 'setup' | 'join' | null;
 
 /**
- * Settings → Sync. While sync is off or half set up: the intro card and its dialogs (setup, join by
- * pairing, join with a Recovery Kit; their open state lives here). Sync on: the status card (with
+ * Settings → Sync. While sync is off or half set up: the intro card and its dialogs (setup, and the
+ * join with a phone or a Recovery Kit; their open state lives here). Sync on: the status card (with
  * the problem alert), the devices card and the danger card.
  */
 export function SyncSection() {
@@ -27,13 +26,11 @@ export function SyncSection() {
         <SyncIntroCard
           resuming={status.phase === 'settingUp'}
           onStart={() => setOpen('setup')}
-          onJoinByPairing={() => setOpen('pair')}
-          onJoinWithKit={() => setOpen('kit')}
+          onJoin={() => setOpen('join')}
         />
         <WhatSyncsLink />
         {open === 'setup' && <SyncSetupDialog onClose={close} />}
-        {open === 'pair' && <JoinSyncDialog onClose={close} />}
-        {open === 'kit' && <RecoveryJoinDialog onClose={close} />}
+        {open === 'join' && <JoinDeviceDialog onClose={close} />}
       </>
     );
   }

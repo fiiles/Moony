@@ -6,6 +6,7 @@ import {
   ClipboardPaste,
   Globe,
   Eraser,
+  Info,
   KeyRound,
   Plus,
   QrCode,
@@ -38,11 +39,13 @@ import {
   replaceOutcomeToast,
 } from '@/components/settings/sync/replace-outcome';
 import { backupFileName, secondsToDate } from '@/utils/sync-status';
+import { Button } from '@/components/ui/button';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
+import { Sheet } from '@/mobile/components/Sheet';
 import { ReplaceConfirmSheet } from '@/mobile/components/sync/ReplaceConfirmSheet';
 import { RecoveryJoinSheet } from '@/mobile/components/sync/RecoveryJoinSheet';
 import { ChangeServerSheet } from '@/mobile/components/sync/ChangeServerSheet';
@@ -90,6 +93,10 @@ export default function SyncSection() {
     return when ? date(when, { dateStyle: 'long' }) : '';
   };
   const [open, setOpen] = useState<Open>(null);
+  /** The lost-device paragraph is unfolded. */
+  const [lostOpen, setLostOpen] = useState(false);
+  /** The "What syncs" sheet is open. */
+  const [whatSyncsOpen, setWhatSyncsOpen] = useState(false);
   const [flow, setFlow] = useState<Flow>(null);
   /** The first-device setup sheet is up. */
   const [settingUp, setSettingUp] = useState(false);
@@ -275,6 +282,13 @@ export default function SyncSection() {
             />
             {devPasteRow}
           </EntityRows>
+          <EntityRows>
+            <SettingsRow
+              icon={Info}
+              title={t('whatSyncs.title')}
+              onClick={() => setWhatSyncsOpen(true)}
+            />
+          </EntityRows>
         </>
       )}
 
@@ -291,7 +305,17 @@ export default function SyncSection() {
 
           <SectionHead title={t('devices.title')} />
           <SyncDeviceRows devices={devices ?? []} onRename={setRenaming} />
-          <p className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3">{t('limits.lostDevice')}</p>
+          <button
+            type="button"
+            aria-expanded={lostOpen}
+            className="mx-0.5 mb-3.5 mt-0 block cursor-pointer border-0 bg-transparent p-0 text-left text-m-sub text-ink-3 underline"
+            onClick={() => setLostOpen((value) => !value)}
+          >
+            {t('limits.lostTitle')}
+          </button>
+          {lostOpen && (
+            <p className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3">{t('limits.lostDevice')}</p>
+          )}
           <EntityRows>
             <SettingsRow
               icon={Plus}
@@ -340,9 +364,32 @@ export default function SyncSection() {
               onClick={() => setOpen('delete')}
             />
           </EntityRows>
+          <EntityRows>
+            <SettingsRow
+              icon={Info}
+              title={t('whatSyncs.title')}
+              onClick={() => setWhatSyncsOpen(true)}
+            />
+          </EntityRows>
         </>
       )}
 
+      <Sheet
+        open={whatSyncsOpen}
+        onOpenChange={setWhatSyncsOpen}
+        title={t('whatSyncs.title')}
+        description={t('whatSyncs.body')}
+        footer={
+          <Button
+            className="h-auto min-h-12 flex-1 whitespace-normal rounded-[10px] py-2 text-center text-m-row"
+            onClick={() => setWhatSyncsOpen(false)}
+          >
+            {tc('buttons.close')}
+          </Button>
+        }
+      >
+        <></>
+      </Sheet>
       <RenameDeviceSheet
         device={renaming}
         onOpenChange={(next) => {

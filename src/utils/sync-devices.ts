@@ -1,3 +1,5 @@
+import type { SyncDevice } from '@shared/schema';
+
 const KNOWN_PLATFORMS = new Set(['macos', 'windows', 'linux', 'ios', 'android']);
 
 /** The i18n key of a device's platform label; unknown platforms read as "other". */
@@ -26,4 +28,12 @@ export function quietDays(lastActiveAt: number | null, now: number): number | nu
   if (lastActiveAt === null) return null;
   const days = Math.floor((now - lastActiveAt) / SECONDS_PER_DAY);
   return days > QUIET_AFTER_DAYS ? days : null;
+}
+
+/** The names of the account's other devices, in list order, trimmed, empty names left out. */
+export function otherDeviceNames(devices: readonly SyncDevice[] | undefined): string[] {
+  return (devices ?? [])
+    .filter((device) => !device.thisDevice)
+    .map((device) => device.name.trim())
+    .filter((name) => name !== '');
 }

@@ -6,6 +6,7 @@ import { SyncStatusCard } from '@/components/settings/sync/SyncStatusCard';
 import { SyncSetupDialog } from '@/components/settings/sync/SyncSetupDialog';
 import { JoinSyncDialog } from '@/components/settings/sync/JoinSyncDialog';
 import { RecoveryJoinDialog } from '@/components/settings/sync/RecoveryJoinDialog';
+import { WhatSyncsLink } from '@/components/settings/sync/WhatSyncsLink';
 import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 
 type Open = 'setup' | 'pair' | 'kit' | null;
@@ -29,6 +30,7 @@ export function SyncSection() {
           onJoinByPairing={() => setOpen('pair')}
           onJoinWithKit={() => setOpen('kit')}
         />
+        <WhatSyncsLink />
         {open === 'setup' && <SyncSetupDialog onClose={close} />}
         {open === 'pair' && <JoinSyncDialog onClose={close} />}
         {open === 'kit' && <RecoveryJoinDialog onClose={close} />}
@@ -42,6 +44,7 @@ export function SyncSection() {
       <SyncStatusCard status={status} />
       <SyncDevicesCard />
       <SyncDangerCard />
+      <WhatSyncsLink />
     </>
   );
 }

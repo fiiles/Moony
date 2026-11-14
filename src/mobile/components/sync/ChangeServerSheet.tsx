@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
+import { useDeviceSyncStatus, useSyncDevices } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useServerChoice } from '@/hooks/use-server-choice';
 import { isAuthApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import { isUnchangedAddress } from '@/utils/sync-setup';
+import { otherDeviceNames } from '@/utils/sync-devices';
 import { Sheet } from '@/mobile/components/Sheet';
 import { ServerChoiceBlock } from '@/mobile/components/sync/ServerChoiceBlock';
 import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
@@ -28,7 +28,9 @@ export function ChangeServerSheet({ onClose }: { onClose: () => void }) {
   const { changeServerAddress } = useDeviceSyncMutations();
   const server = useServerChoice('addressOrCode', 'server');
   const { data: status } = useDeviceSyncStatus();
+  const { data: devices } = useSyncDevices();
   const [asking, setAsking] = useState(false);
+  const [done, setDone] = useState(false);
   /** The refusal that sent the person back to the address step, for the address it was given for. */
   const [refusal, setRefusal] = useState<{ input: string; message: string } | null>(null);
 
@@ -38,6 +40,29 @@ export function ChangeServerSheet({ onClose }: { onClose: () => void }) {
   const address = server.check?.address ?? '';
   // The same address: said here, before any password is asked for
   const unchanged = server.ready && isUnchangedAddress(address, status?.serverAddress ?? null);
+
+  if (done) {
+    const names = otherDeviceNames(devices);
+    return (
+      <Sheet
+        open
+        onOpenChange={(open) => !open && onClose()}
+        title={t('server.success')}
+        description={
+          names.length > 0
+            ? t('server.repeatOn', { devices: names.join(', ') })
+            : t('server.repeatOnOthers')
+        }
+        footer={
+          <Button className={`${BUTTON} flex-1`} onClick={onClose}>
+            {tc('buttons.close')}
+          </Button>
+        }
+      >
+        <></>
+      </Sheet>
+    );
+  }
 
   if (asking) {
     return (
@@ -57,8 +82,8 @@ export function ChangeServerSheet({ onClose }: { onClose: () => void }) {
             setAsking(false);
             return;
           }
-          toast(t('server.success'));
-          onClose();
+          setDone(true);
+          setAsking(false);
         }}
       />
     );

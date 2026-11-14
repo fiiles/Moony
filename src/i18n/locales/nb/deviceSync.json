@@ -76,7 +76,9 @@
     "dialogTitle": "Endre serveradressen",
     "dialogBody": "Bruk dette når synkroniseringsserveren din har flyttet til en ny adresse. Det må være den samme serveren, med de synkroniserte dataene dine. Hver enhet endrer sin egen adresse, så gjør det samme på de andre enhetene dine. Lagre gjenopprettingssettet på nytt: det inneholder nå den nye adressen.",
     "success": "Adressen til synkroniseringsserveren er endret",
-    "unchanged": "Denne enheten bruker allerede denne adressen."
+    "unchanged": "Denne enheten bruker allerede denne adressen.",
+    "repeatOn": "Gjør det samme på: {{devices}}",
+    "repeatOnOthers": "Gjør det samme på de andre enhetene dine."
   },
   "intro": {
     "description": "Hold dataene dine oppdatert på alle enhetene dine. De er ende-til-ende-kryptert: synkroniseringsserveren lagrer bare data den ikke kan lese.",
@@ -423,6 +425,7 @@
     "onThisDevice": "På denne enheten:"
   },
   "limits": {
+    "lostTitle": "Mistet en enhet eller gjenopprettingssettet?",
     "lostDevice": "En mistet enhet eller et mistet gjenopprettingssett kan ikke stenges ute fra de synkroniserte dataene dine ennå, og alle som har ett, kan allerede lese det det inneholder. Hvis noe forsvinner, sletter du de synkroniserte dataene og setter opp synkroniseringen på nytt med et nytt sett; de andre enhetene dine må da koble seg til igjen."
   },
   "codes": {
@@ -430,5 +433,9 @@
     "kitNotForSetup": "Dette er en kode fra gjenopprettingssettet, ikke en tilkoblingskode. Bruk den når du kobler til synkroniserte data som allerede finnes.",
     "connectionNotHere": "Dette er en tilkoblingskode for en synkroniseringsserver. Bruk den når du setter opp synkronisering, ikke her.",
     "notAServerAddress": "Dette er ikke adressen til en synkroniseringsserver. Skriv inn adressen til synkroniseringsserveren din, eller lim inn tilkoblingskoden."
+  },
+  "whatSyncs": {
+    "title": "Hva som synkroniseres",
+    "body": "Alt du legger inn i Moony, synkroniseres. Språk, utseende, meny, varsler, enhetspassord, gjenopprettingsnøkkel og sikkerhetskopier hører til hver enkelt enhet. Priser og historikk beregnes på hver enhet. Dokumenter og bilder blir foreløpig værende på enheten der du la dem til."
   }
 }

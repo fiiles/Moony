@@ -76,7 +76,9 @@
     "dialogTitle": "Serveradresse ändern",
     "dialogBody": "Verwenden Sie dies, wenn Ihr Synchronisierungsserver auf eine neue Adresse umgezogen ist. Es muss derselbe Server mit Ihren synchronisierten Daten sein. Jedes Gerät ändert seine Adresse selbst, wiederholen Sie das also auf Ihren anderen Geräten. Speichern Sie das Wiederherstellungs-Kit erneut: Es enthält jetzt die neue Adresse.",
     "success": "Adresse des Synchronisierungsservers geändert",
-    "unchanged": "Dieses Gerät verwendet diese Adresse bereits."
+    "unchanged": "Dieses Gerät verwendet diese Adresse bereits.",
+    "repeatOn": "Machen Sie dasselbe auf: {{devices}}",
+    "repeatOnOthers": "Machen Sie dasselbe auf Ihren anderen Geräten."
   },
   "intro": {
     "description": "Halten Sie Ihre Daten auf allen Ihren Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
@@ -423,6 +425,7 @@
     "onThisDevice": "Auf diesem Gerät:"
   },
   "limits": {
+    "lostTitle": "Gerät oder Wiederherstellungs-Kit verloren?",
     "lostDevice": "Ein verlorenes Gerät oder ein verlorenes Wiederherstellungs-Kit kann noch nicht von Ihren synchronisierten Daten abgetrennt werden, und wer eines besitzt, kann schon jetzt lesen, was es enthält. Falls eines abhandenkommt, löschen Sie die synchronisierten Daten und richten Sie die Synchronisierung mit einem neuen Kit neu ein; Ihre anderen Geräte müssen dann erneut beitreten."
   },
   "codes": {
@@ -430,5 +433,9 @@
     "kitNotForSetup": "Das ist ein Code des Wiederherstellungs-Kits, kein Verbindungscode. Verwenden Sie ihn, um bereits vorhandene synchronisierte Daten zu übernehmen.",
     "connectionNotHere": "Das ist ein Verbindungscode für einen Synchronisierungsserver. Verwenden Sie ihn beim Einrichten der Synchronisierung, nicht hier.",
     "notAServerAddress": "Das ist keine Adresse eines Synchronisierungsservers. Geben Sie die Adresse Ihres Synchronisierungsservers ein oder fügen Sie seinen Verbindungscode ein."
+  },
+  "whatSyncs": {
+    "title": "Was synchronisiert wird",
+    "body": "Alles, was Sie in Moony eingeben, wird synchronisiert. Sprache, Aussehen, Menü, Benachrichtigungen, Gerätepasswort, Wiederherstellungsschlüssel und Sicherungen gehören zu jedem Gerät einzeln. Kurse und Verlauf werden auf jedem Gerät selbst berechnet. Dokumente und Fotos bleiben vorerst auf dem Gerät, auf dem Sie sie hinzugefügt haben."
   }
 }

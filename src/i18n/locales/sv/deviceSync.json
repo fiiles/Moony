@@ -76,7 +76,9 @@
     "dialogTitle": "Ändra serveradressen",
     "dialogBody": "Använd det här när din synkroniseringsserver har flyttat till en ny adress. Det måste vara samma server, med dina synkroniserade data. Varje enhet ändrar sin egen adress, så gör likadant på dina andra enheter. Spara återställningskitet igen: det innehåller nu den nya adressen.",
     "success": "Synkroniseringsserverns adress har ändrats",
-    "unchanged": "Den här enheten använder redan den här adressen."
+    "unchanged": "Den här enheten använder redan den här adressen.",
+    "repeatOn": "Gör samma sak på: {{devices}}",
+    "repeatOnOthers": "Gör samma sak på dina andra enheter."
   },
   "intro": {
     "description": "Håll dina uppgifter uppdaterade på alla dina enheter. De är end-to-end-krypterade: synkroniseringsservern lagrar bara data den inte kan läsa.",
@@ -423,6 +425,7 @@
     "onThisDevice": "På den här enheten:"
   },
   "limits": {
+    "lostTitle": "Tappat en enhet eller återställningskitet?",
     "lostDevice": "En borttappad enhet eller ett borttappat återställningskit kan ännu inte stängas ute från dina synkroniserade data, och den som har ett kan redan nu läsa vad det innehåller. Om något försvinner raderar du de synkroniserade data och ställer in synkroniseringen på nytt med ett nytt kit; dina andra enheter måste då ansluta igen."
   },
   "codes": {
@@ -430,5 +433,9 @@
     "kitNotForSetup": "Det här är en kod från återställningskitet, inte en anslutningskod. Använd den när du ansluter till synkroniserade data som redan finns.",
     "connectionNotHere": "Det här är en anslutningskod för en synkroniseringsserver. Använd den när du ställer in synkronisering, inte här.",
     "notAServerAddress": "Det här är inte adressen till en synkroniseringsserver. Ange adressen till din synkroniseringsserver eller klistra in dess anslutningskod."
+  },
+  "whatSyncs": {
+    "title": "Vad som synkroniseras",
+    "body": "Allt du skriver in i Moony synkroniseras. Språk, utseende, meny, aviseringar, enhetslösenord, återställningsnyckel och säkerhetskopior hör till varje enhet för sig. Priser och historik räknas fram på varje enhet. Dokument och foton stannar tills vidare på den enhet där du lade till dem."
   }
 }

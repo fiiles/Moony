@@ -76,7 +76,9 @@
     "dialogTitle": "Change the server address",
     "dialogBody": "Use this when your sync server moved to a new address. It must be the same server, with your synced data. Every device changes its own address, so do the same on your other devices. Save the Recovery Kit again: it now carries the new address.",
     "success": "Sync server address changed",
-    "unchanged": "This device already uses this address."
+    "unchanged": "This device already uses this address.",
+    "repeatOn": "Do the same on: {{devices}}",
+    "repeatOnOthers": "Do the same on your other devices."
   },
   "intro": {
     "description": "Keep your data in step on all your devices. It is end-to-end encrypted: the sync server only stores data it cannot read.",
@@ -423,6 +425,7 @@
     "onThisDevice": "On this device:"
   },
   "limits": {
+    "lostTitle": "Lost a device or the Recovery Kit?",
     "lostDevice": "A lost device or Recovery Kit can't be cut off from your synced data yet, and anyone who has one can already read what it holds. If one goes missing, delete the synced data and set sync up again with a new Kit; your other devices will then need to join again."
   },
   "codes": {
@@ -430,5 +433,9 @@
     "kitNotForSetup": "This is a Recovery Kit code, not a connection code. Use it when you join synced data that already exists.",
     "connectionNotHere": "This is a connection code for a sync server. Use it when you set up sync, not here.",
     "notAServerAddress": "This is not a sync server address. Type the address of your sync server, or paste its connection code."
+  },
+  "whatSyncs": {
+    "title": "What syncs",
+    "body": "Everything you enter into Moony syncs. The language, look, menu, notifications, device password, recovery key and backups belong to each device. Prices and history are worked out on each device. Documents and photos stay on the device that added them for now."
   }
 }

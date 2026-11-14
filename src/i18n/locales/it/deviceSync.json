@@ -80,7 +80,9 @@
     "dialogTitle": "Cambia l'indirizzo del server",
     "dialogBody": "Usalo quando il tuo server di sincronizzazione si è spostato a un nuovo indirizzo. Deve essere lo stesso server, con i tuoi dati sincronizzati. Ogni dispositivo cambia il proprio indirizzo, quindi ripeti l'operazione sugli altri dispositivi. Salva di nuovo il kit di ripristino: ora contiene il nuovo indirizzo.",
     "success": "Indirizzo del server di sincronizzazione cambiato",
-    "unchanged": "Questo dispositivo usa già questo indirizzo."
+    "unchanged": "Questo dispositivo usa già questo indirizzo.",
+    "repeatOn": "Fai lo stesso su: {{devices}}",
+    "repeatOnOthers": "Fai lo stesso sugli altri dispositivi."
   },
   "intro": {
     "description": "Mantieni i dati allineati su tutti i tuoi dispositivi. Sono cifrati end-to-end: il server di sincronizzazione conserva solo dati che non può leggere.",
@@ -435,6 +437,7 @@
     "onThisDevice": "Su questo dispositivo:"
   },
   "limits": {
+    "lostTitle": "Hai perso un dispositivo o il Kit di ripristino?",
     "lostDevice": "Un dispositivo o un Kit di ripristino smarrito non può ancora essere escluso dai tuoi dati sincronizzati, e chi ne possiede uno può già leggere ciò che contiene. Se uno va perso, elimina i dati sincronizzati e configura di nuovo la sincronizzazione con un nuovo Kit; gli altri tuoi dispositivi dovranno poi unirsi di nuovo."
   },
   "codes": {
@@ -442,5 +445,9 @@
     "kitNotForSetup": "Questo è un codice del kit di recupero, non un codice di connessione. Usalo per unirti a dati sincronizzati già esistenti.",
     "connectionNotHere": "Questo è un codice di connessione di un server di sincronizzazione. Usalo quando configuri la sincronizzazione, non qui.",
     "notAServerAddress": "Questo non è l'indirizzo di un server di sincronizzazione. Digita l'indirizzo del tuo server di sincronizzazione o incolla il suo codice di connessione."
+  },
+  "whatSyncs": {
+    "title": "Cosa si sincronizza",
+    "body": "Tutto ciò che inserisci in Moony viene sincronizzato. La lingua, l'aspetto, il menu, le notifiche, la password del dispositivo, la chiave di recupero e i backup appartengono a ciascun dispositivo. I prezzi e la cronologia vengono calcolati su ogni dispositivo. Per ora i documenti e le foto restano sul dispositivo in cui li hai aggiunti."
   }
 }

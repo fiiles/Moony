@@ -84,7 +84,9 @@
     "dialogTitle": "Zmień adres serwera",
     "dialogBody": "Użyj tego, gdy Twój serwer synchronizacji zmienił adres. To musi być ten sam serwer z Twoimi zsynchronizowanymi danymi. Każde urządzenie zmienia własny adres, więc powtórz to na pozostałych urządzeniach. Zapisz zestaw odzyskiwania ponownie: zawiera teraz nowy adres.",
     "success": "Adres serwera synchronizacji został zmieniony",
-    "unchanged": "To urządzenie już używa tego adresu."
+    "unchanged": "To urządzenie już używa tego adresu.",
+    "repeatOn": "To samo zrób na: {{devices}}",
+    "repeatOnOthers": "To samo zrób na pozostałych urządzeniach."
   },
   "intro": {
     "description": "Utrzymuj dane aktualne na wszystkich urządzeniach. Są szyfrowane end-to-end: serwer synchronizacji przechowuje tylko dane, których nie potrafi odczytać.",
@@ -447,6 +449,7 @@
     "onThisDevice": "Na tym urządzeniu:"
   },
   "limits": {
+    "lostTitle": "Zgubiono urządzenie lub Zestaw odzyskiwania?",
     "lostDevice": "Zgubionego urządzenia ani Zestawu odzyskiwania nie można jeszcze odciąć od zsynchronizowanych danych, a kto je ma, może już teraz odczytać to, co zawierają. Jeśli coś zaginie, usuń zsynchronizowane dane i skonfiguruj synchronizację od nowa z nowym Zestawem; pozostałe urządzenia będą musiały wtedy dołączyć ponownie."
   },
   "codes": {
@@ -454,5 +457,9 @@
     "kitNotForSetup": "To jest kod zestawu odzyskiwania, a nie kod połączenia. Użyj go, aby dołączyć do już istniejących zsynchronizowanych danych.",
     "connectionNotHere": "To jest kod połączenia z serwerem synchronizacji. Użyj go podczas konfigurowania synchronizacji, a nie tutaj.",
     "notAServerAddress": "To nie jest adres serwera synchronizacji. Wpisz adres swojego serwera synchronizacji lub wklej jego kod połączenia."
+  },
+  "whatSyncs": {
+    "title": "Co jest synchronizowane",
+    "body": "Synchronizowane jest wszystko, co wprowadzisz do Moony. Język, wygląd, menu, powiadomienia, hasło urządzenia, klucz odzyskiwania i kopie zapasowe należą do każdego urządzenia osobno. Ceny i historia są wyliczane na każdym urządzeniu. Dokumenty i zdjęcia na razie zostają na urządzeniu, na którym je dodano."
   }
 }

@@ -80,7 +80,9 @@
     "dialogTitle": "Cambiar la dirección del servidor",
     "dialogBody": "Úsalo cuando tu servidor de sincronización se haya mudado a una dirección nueva. Debe ser el mismo servidor, con tus datos sincronizados. Cada dispositivo cambia su propia dirección, así que haz lo mismo en tus otros dispositivos. Guarda de nuevo el kit de recuperación: ahora incluye la dirección nueva.",
     "success": "Dirección del servidor de sincronización cambiada",
-    "unchanged": "Este dispositivo ya usa esta dirección."
+    "unchanged": "Este dispositivo ya usa esta dirección.",
+    "repeatOn": "Haz lo mismo en: {{devices}}",
+    "repeatOnOthers": "Haz lo mismo en tus otros dispositivos."
   },
   "intro": {
     "description": "Mantén tus datos al día en todos tus dispositivos. Están cifrados de extremo a extremo: el servidor de sincronización solo guarda datos que no puede leer.",
@@ -435,6 +437,7 @@
     "onThisDevice": "En este dispositivo:"
   },
   "limits": {
+    "lostTitle": "¿Has perdido un dispositivo o el Kit de recuperación?",
     "lostDevice": "Todavía no se puede cortar el acceso a tus datos sincronizados de un dispositivo o un Kit de recuperación perdido, y quien tenga uno ya puede leer lo que contiene. Si alguno desaparece, elimina los datos sincronizados y vuelve a configurar la sincronización con un Kit nuevo; tus otros dispositivos tendrán que unirse de nuevo."
   },
   "codes": {
@@ -442,5 +445,9 @@
     "kitNotForSetup": "Este es un código del kit de recuperación, no un código de conexión. Úsalo para unirte a datos sincronizados que ya existen.",
     "connectionNotHere": "Este es un código de conexión de un servidor de sincronización. Úsalo al configurar la sincronización, no aquí.",
     "notAServerAddress": "Esta no es la dirección de un servidor de sincronización. Escribe la dirección de tu servidor de sincronización o pega su código de conexión."
+  },
+  "whatSyncs": {
+    "title": "Qué se sincroniza",
+    "body": "Todo lo que introduces en Moony se sincroniza. El idioma, el aspecto, el menú, las notificaciones, la contraseña del dispositivo, la clave de recuperación y las copias de seguridad pertenecen a cada dispositivo. Los precios y el historial se calculan en cada dispositivo. Los documentos y las fotos, por ahora, se quedan en el dispositivo donde los añadiste."
   }
 }

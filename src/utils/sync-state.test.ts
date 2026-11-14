@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SyncPhase, SyncProblem, SyncStatus } from '@shared/schema';
-import { syncAge, syncState } from './sync-state';
+import { isQuietlyOutOfReach, syncAge, syncState } from './sync-state';
 import type { SyncAgeKey, SyncStateKind, SyncTone } from './sync-state';
 
 const D = 86_400;
@@ -119,5 +119,30 @@ describe('syncAge', () => {
     for (const [elapsed, key, count] of cases) {
       expect(syncAge(now - elapsed, now)).toEqual({ key, count });
     }
+  });
+});
+
+describe('isQuietlyOutOfReach', () => {
+  const two = now - 2 * D;
+  it('is quiet for a transient problem under 7 days, whatever the phase', () => {
+    expect(isQuietlyOutOfReach(status('syncing', 'offline', two), now)).toBe(true);
+    expect(isQuietlyOutOfReach(status('idle', 'offline', two), now)).toBe(true);
+    expect(isQuietlyOutOfReach(status('paused', 'offline', two), now)).toBe(true);
+    expect(isQuietlyOutOfReach(status('syncing', 'relayError', two), now)).toBe(true);
+    expect(isQuietlyOutOfReach(status('idle', 'rateLimited', two), now)).toBe(true);
+  });
+  it('is not quiet after 7 days, even while a round runs', () => {
+    expect(isQuietlyOutOfReach(status('syncing', 'offline', now - 8 * D), now)).toBe(false);
+  });
+  it('is not quiet for other problems or none', () => {
+    expect(isQuietlyOutOfReach(status('paused', 'lapsed', two), now)).toBe(false);
+    expect(isQuietlyOutOfReach(status('waiting', 'gap', now - 30 * D), now)).toBe(false);
+    expect(isQuietlyOutOfReach(status('idle', null, two), now)).toBe(false);
+  });
+  it('counts from enabledAt without a success, and never a negative day count', () => {
+    expect(isQuietlyOutOfReach(status('idle', 'offline', null, now - 9 * D), now)).toBe(false);
+    expect(isQuietlyOutOfReach(status('idle', 'offline', null, null), now)).toBe(true);
+    expect(isQuietlyOutOfReach(status('idle', 'offline', now + 5 * D), now)).toBe(true);
+    expect(isQuietlyOutOfReach(status('idle', 'lapsed', now + 5 * D), now)).toBe(false);
   });
 });

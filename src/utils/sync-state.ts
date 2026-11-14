@@ -46,19 +46,36 @@ function view(kind: SyncStateKind, status: SyncStatus, days = 0): SyncStateView 
   };
 }
 
+/**
+ * Whole UTC days the server has been out of reach, counted from the last success (or when sync was
+ * turned on); `null` unless the status carries a transient problem. Phase does not matter.
+ */
+function outOfReachDays(status: SyncStatus, now: number): number | null {
+  if (!status.problem || !TRANSIENT_PROBLEMS.includes(status.problem)) return null;
+  const anchor = status.lastSuccessAt ?? status.enabledAt;
+  return anchor === null ? 0 : Math.max(0, daysBetween(anchor, now));
+}
+
+/**
+ * The server is merely out of reach (under 7 days): Settings shows a plain line instead of an alert,
+ * also while a retry round runs. `now` in unix seconds.
+ */
+export function isQuietlyOutOfReach(status: SyncStatus, now: number): boolean {
+  const days = outOfReachDays(status, now);
+  return days !== null && days < SYNC_STALE_DAYS;
+}
+
 /** `now` in unix seconds. `null` while sync is off or being set up (no indicator). */
 export function syncState(status: SyncStatus | undefined, now: number): SyncStateView | null {
   if (!status || status.phase === 'off' || status.phase === 'settingUp') return null;
   // A running retry round shows as syncing even when the server has long been out of reach; the
   // Rust reminder (`sync_stalled`) stays raised then, so it does not flicker between rounds.
   if (status.phase === 'syncing') return view('syncing', status);
-  if (status.problem && TRANSIENT_PROBLEMS.includes(status.problem)) {
-    const anchor = status.lastSuccessAt ?? status.enabledAt;
-    if (anchor !== null) {
-      const days = Math.max(0, daysBetween(anchor, now));
-      if (days >= SYNC_STALE_DAYS) return view('unreachableLong', status, days);
-    }
-    return view('unreachable', status);
+  const days = outOfReachDays(status, now);
+  if (days !== null) {
+    return days >= SYNC_STALE_DAYS
+      ? view('unreachableLong', status, days)
+      : view('unreachable', status);
   }
   switch (status.phase) {
     case 'idle':

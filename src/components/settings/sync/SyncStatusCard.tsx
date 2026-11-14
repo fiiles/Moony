@@ -7,7 +7,7 @@ import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { secondsToDate } from '@/utils/sync-status';
 import { hostOf } from '@/utils/sync-setup';
-import { syncState } from '@/utils/sync-state';
+import { isQuietlyOutOfReach } from '@/utils/sync-state';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { ChangeServerDialog } from '@/components/settings/sync/ChangeServerDialog';
 import { ShowRecoveryKitFlow } from '@/components/settings/sync/ShowRecoveryKitFlow';
@@ -36,7 +36,7 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
     }
   };
 
-  const unreachable = syncState(status, Math.floor(Date.now() / 1000))?.kind === 'unreachable';
+  const unreachable = isQuietlyOutOfReach(status, Math.floor(Date.now() / 1000));
   const paidUntil = secondsToDate(status.paidUntil);
   // A note, never a problem: this device's clock stands more than a day ahead (audit M6)
   const clockAheadUntil = secondsToDate(status.clockAheadUntil);

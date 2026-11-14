@@ -167,7 +167,8 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
     });
   }
 
-  // Sync stopped for good (the desktop's `sync_stalled` reminder): absent while healthy or merely out of reach
+  // Sync stopped for good (the desktop's `sync_stalled` reminder): absent while healthy or merely
+  // out of reach
   const syncStalled = milestones.find((m) => m.kind === 'sync_stalled');
   if (syncStalled) {
     rows.push({

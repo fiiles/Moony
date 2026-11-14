@@ -362,6 +362,8 @@
     "syncServerNotFound": "Ningún servidor de sincronización de Moony responde en esta dirección.",
     "syncServerNeedsUpdate": "Este servidor de sincronización necesita una actualización antes de que Moony pueda usarlo.",
     "syncServerNotOwn": "Esta dirección no es un servidor de sincronización propio. Usa el código de conexión de quien administra tu servidor de sincronización.",
+    "syncServerAddressOtherServer": "El servidor de sincronización de esta dirección no tiene los datos sincronizados de este dispositivo, así que la dirección no se ha cambiado.",
+    "syncServerAddressWentBack": "El servidor de sincronización de esta dirección tiene datos sincronizados más antiguos de los que este dispositivo ya ha visto, así que la dirección no se ha cambiado.",
     "syncPairingExpired": "Este código de emparejamiento ha caducado. Empieza de nuevo en ambos dispositivos.",
     "syncPairingBothOn": "La sincronización ya está activada en ambos dispositivos. Desactívala en el que debe unirse.",
     "syncPairingBothOff": "La sincronización está desactivada en ambos dispositivos. Actívala primero en el dispositivo que tiene tus datos.",

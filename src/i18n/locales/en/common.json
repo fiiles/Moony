@@ -362,6 +362,8 @@
     "syncServerNotFound": "No Moony sync server answers at this address.",
     "syncServerNeedsUpdate": "This sync server needs an update before Moony can use it.",
     "syncServerNotOwn": "This address is not an own sync server. Use the connection code from whoever runs your sync server.",
+    "syncServerAddressOtherServer": "The sync server at this address does not have this device's synced data, so the address was not changed.",
+    "syncServerAddressWentBack": "The sync server at this address has older synced data than this device has already seen, so the address was not changed.",
     "syncPairingExpired": "This pairing code has expired. Start again on both devices.",
     "syncPairingBothOn": "Sync is already on for both devices. Turn it off on the one that should join.",
     "syncPairingBothOff": "Sync is off on both devices. Turn it on first on the device that has your data.",

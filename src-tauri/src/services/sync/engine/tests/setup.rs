@@ -28,9 +28,9 @@ use crate::services::sync::setup::{
 };
 use crate::services::sync::snapshot::{read_record, Record};
 
-const RELAY: &str = "https://relay.example.org";
+pub(super) const RELAY: &str = "https://relay.example.org";
 
-fn fresh() -> TestConn {
+pub(super) fn fresh() -> TestConn {
     TestConn::new(migrated())
 }
 
@@ -55,7 +55,7 @@ async fn finish(relay: &FakeRelay, device: &TestConn, dir: &Path) -> SyncResult<
 }
 
 /// A profile with sync set up on `relay`: account, payment, kit, finish.
-async fn set_up(relay: &FakeRelay, device: &TestConn, dir: &Path) -> Credentials {
+pub(super) async fn set_up(relay: &FakeRelay, device: &TestConn, dir: &Path) -> Credentials {
     let account = create_account(relay, device, RELAY).await.expect("account");
     relay.set_paid(&account.account_number, true);
     recovery_kit(&device.lock()).expect("kit");
@@ -65,7 +65,7 @@ async fn set_up(relay: &FakeRelay, device: &TestConn, dir: &Path) -> Credentials
         .expect("stored")
 }
 
-fn enabled(conn: &Connection) -> bool {
+pub(super) fn enabled(conn: &Connection) -> bool {
     state::load(conn).expect("state").is_some_and(|s| s.enabled)
 }
 

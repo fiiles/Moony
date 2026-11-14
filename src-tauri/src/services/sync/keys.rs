@@ -336,6 +336,22 @@ pub fn save_account(conn: &Connection, relay_url: &str, account: &str) -> Result
     })
 }
 
+/// Swaps the stored server address, one `UPDATE` of `sync_state.relay_url`; the account, the vault
+/// secrets and everything else stay. A profile without a `sync_state` row is left without one
+/// (`validation.syncSetupIncomplete`, nothing written).
+pub fn save_relay_url(conn: &Connection, relay_url: &str) -> Result<()> {
+    let changed = conn.execute(
+        "UPDATE sync_state SET relay_url = ?1 WHERE id = 1",
+        params![relay_url],
+    )?;
+    if changed == 0 {
+        return Err(AppError::Validation(
+            "validation.syncSetupIncomplete".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// `(relay_url, account)`, or `None` before an account is saved.
 pub fn account(conn: &Connection) -> Result<Option<(String, String)>> {
     let row: Option<(Option<String>, Option<String>)> = conn

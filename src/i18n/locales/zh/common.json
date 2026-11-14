@@ -362,6 +362,8 @@
     "syncServerNotFound": "此地址上没有 Moony 同步服务器响应。",
     "syncServerNeedsUpdate": "Moony 要使用此同步服务器，需要先更新它。",
     "syncServerNotOwn": "此地址不是你自己的同步服务器。请使用运营你的同步服务器的人提供的连接代码。",
+    "syncServerAddressOtherServer": "此地址的同步服务器上没有此设备的同步数据，因此地址未更改。",
+    "syncServerAddressWentBack": "此地址的同步服务器上的同步数据比此设备已经见过的更旧，因此地址未更改。",
     "syncPairingExpired": "此配对码已过期。请在两台设备上重新开始。",
     "syncPairingBothOn": "两台设备都已开启同步。请在要加入的那台设备上关闭同步。",
     "syncPairingBothOff": "两台设备都未开启同步。请先在存有您数据的设备上开启同步。",

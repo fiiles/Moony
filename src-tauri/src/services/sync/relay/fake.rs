@@ -406,6 +406,19 @@ impl FakeRelay {
         }
     }
 
+    /// A server restored from an older backup: the vault's head (and the ops past it) go back to
+    /// `head`. Never raises a head.
+    pub fn roll_back_head(&self, vault_id: &str, head: u64) {
+        if let Some(vault) = self.lock().vaults.get_mut(vault_id) {
+            if head < vault.head {
+                vault.head = head;
+                vault.ops.retain(|op| op.seq <= head);
+                vault.dropped.retain(|seq| *seq <= head);
+                vault.bytes = vault.ops.iter().map(|op| op.ct.len() as u64).sum();
+            }
+        }
+    }
+
     /// The relay forgets the vault (as after the lapsed-vault wipe): later calls get
     /// `VaultNotFound`.
     pub fn wipe_vault(&self, vault_id: &str) {

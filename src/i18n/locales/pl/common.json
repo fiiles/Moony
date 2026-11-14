@@ -362,6 +362,8 @@
     "syncServerNotFound": "Pod tym adresem nie odpowiada żaden serwer synchronizacji Moony.",
     "syncServerNeedsUpdate": "Ten serwer synchronizacji wymaga aktualizacji, zanim Moony będzie mogło go używać.",
     "syncServerNotOwn": "Ten adres nie jest własnym serwerem synchronizacji. Użyj kodu połączenia od osoby, która prowadzi Twój serwer synchronizacji.",
+    "syncServerAddressOtherServer": "Serwer synchronizacji pod tym adresem nie ma zsynchronizowanych danych tego urządzenia, więc adres nie został zmieniony.",
+    "syncServerAddressWentBack": "Serwer synchronizacji pod tym adresem ma starsze zsynchronizowane dane, niż to urządzenie już widziało, więc adres nie został zmieniony.",
     "syncPairingExpired": "Ten kod parowania wygasł. Zacznij od nowa na obu urządzeniach.",
     "syncPairingBothOn": "Synchronizacja jest już włączona na obu urządzeniach. Wyłącz ją na tym, które ma dołączyć.",
     "syncPairingBothOff": "Synchronizacja jest wyłączona na obu urządzeniach. Najpierw włącz ją na urządzeniu z Twoimi danymi.",

@@ -362,6 +362,8 @@
     "syncServerNotFound": "Ingen Moony-synkroniseringsserver svarar på den här adressen.",
     "syncServerNeedsUpdate": "Den här synkroniseringsservern behöver uppdateras innan Moony kan använda den.",
     "syncServerNotOwn": "Den här adressen är inte en egen synkroniseringsserver. Använd anslutningskoden från den som driver din synkroniseringsserver.",
+    "syncServerAddressOtherServer": "Synkroniseringsservern på den här adressen har inte den här enhetens synkroniserade data, så adressen ändrades inte.",
+    "syncServerAddressWentBack": "Synkroniseringsservern på den här adressen har äldre synkroniserad data än den här enheten redan har sett, så adressen ändrades inte.",
     "syncPairingExpired": "Den här parkopplingskoden har gått ut. Börja om på båda enheterna.",
     "syncPairingBothOn": "Synkronisering är redan på för båda enheterna. Stäng av den på den som ska ansluta.",
     "syncPairingBothOff": "Synkronisering är avstängd på båda enheterna. Slå på den först på enheten som har dina data.",

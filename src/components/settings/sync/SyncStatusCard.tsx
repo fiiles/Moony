@@ -5,7 +5,7 @@ import type { SyncStatus } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
-import { isSelfHostedPaidUntil, secondsToDate } from '@/utils/sync-status';
+import { secondsToDate } from '@/utils/sync-status';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { ShowRecoveryKitFlow } from '@/components/settings/sync/ShowRecoveryKitFlow';
 import { SyncProblemAlert } from '@/components/settings/sync/SyncProblemAlert';
@@ -29,7 +29,6 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
     }
   };
 
-  const selfHosted = isSelfHostedPaidUntil(status.paidUntil);
   const paidUntil = secondsToDate(status.paidUntil);
   // A note, never a problem: this device's clock stands more than a day ahead (audit M6)
   const clockAheadUntil = secondsToDate(status.clockAheadUntil);
@@ -66,16 +65,10 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
                 {t('status.syncNow')}
               </Button>
             </SettingsRow>
-            {(selfHosted || paidUntil) && (
+            {!status.ownServer && paidUntil && (
               <SettingsRow
                 label={t('status.subscription')}
-                hint={
-                  selfHosted
-                    ? t('status.selfHosted')
-                    : t('status.paidUntil', {
-                        date: date(paidUntil ?? new Date(0), { dateStyle: 'long' }),
-                      })
-                }
+                hint={t('status.paidUntil', { date: date(paidUntil, { dateStyle: 'long' }) })}
               />
             )}
             <SettingsRow label={t('showKit.title')}>

@@ -91,7 +91,8 @@
       "waiting": "Es wird auf die Zahlung gewartet. Dieses Fenster geht weiter, sobald sie eintrifft.",
       "grantTest": "Test-Abo gewähren",
       "selfHosted": "Das ist Ihr eigener Synchronisierungsserver, es gibt also nichts zu bezahlen. Tragen Sie die Kontonummer oben in ALLOWED_ACCOUNTS auf dem Server ein und starten Sie ihn neu.",
-      "selfHostedWaiting": "Es wird gewartet, bis der Server das Konto akzeptiert. Dieses Fenster geht weiter, sobald er es tut."
+      "selfHostedWaiting": "Es wird gewartet, bis der Server das Konto akzeptiert. Dieses Fenster geht weiter, sobald er es tut.",
+      "ownServer": "Dieser Server ist nicht die Moony Cloud, daher gibt es nichts zu bezahlen. Richten Sie die Synchronisierung stattdessen mit dem Verbindungscode Ihres eigenen Synchronisierungsservers ein."
     },
     "kit": {
       "description": "Speichern Sie Ihr Sync-Wiederherstellungs-Kit. Nur damit bekommen Sie Ihre synchronisierten Daten zurück, wenn Sie alle Geräte verlieren.",
@@ -132,6 +133,23 @@
       "linux": "Linux-PC",
       "ios": "iPhone",
       "android": "Android-Smartphone"
+    },
+    "server": {
+      "title": "Wo sollen Ihre Daten synchronisiert werden?",
+      "encrypted": "In beiden Fällen Ende-zu-Ende-verschlüsselt",
+      "cloud": "Moony cloud",
+      "soon": "Demnächst",
+      "cloudHint": "Nichts zu installieren, wir betreiben es.",
+      "own": "Eigener Server",
+      "codeLabel": "Verbindungscode",
+      "codeHint": "Sie erhalten ihn von der Person, die Ihren Synchronisierungsserver betreibt.",
+      "found": "Server gefunden · Version {{version}}",
+      "checking": "Server wird gesucht…",
+      "insecureTitle": "Die Verbindung ist nicht verschlüsselt (http)",
+      "insecureBody": "Ihre Daten bleiben verschlüsselt, aber jeder im selben Netzwerk kann den Zugang zur Synchronisierung abgreifen und die synchronisierten Daten auf dem Server löschen oder sperren.",
+      "insecureAck": "Ich verstehe, trotzdem fortfahren",
+      "resume": "Einrichtung mit {{host}} begonnen",
+      "other": "Anderen Verbindungscode verwenden"
     }
   },
   "alert": {
@@ -139,7 +157,8 @@
       "title": "Synchronisierung pausiert – verlängern Sie, um fortzufahren",
       "deletes": "Die synchronisierten Daten werden am {{date}} gelöscht.",
       "selfHosted": "Bitten Sie den Betreiber Ihres Synchronisierungsservers, den Zugang zu verlängern.",
-      "renew": "Verlängern"
+      "renew": "Verlängern",
+      "titleOwnServer": "Synchronisierung pausiert"
     },
     "vaultGone": {
       "text": "Ihre synchronisierten Daten sind auf dem Server nicht mehr vorhanden. Synchronisierung auf diesem Gerät ausschalten?",
@@ -215,7 +234,8 @@
     "description": "Dadurch werden die synchronisierten Daten auf dem Synchronisierungsserver für alle Geräte gelöscht. Die lokalen Daten auf jedem Gerät bleiben erhalten.",
     "confirm": "Synchronisierte Daten löschen",
     "success": "Synchronisierte Daten gelöscht",
-    "afterwards": "Danach wird die Synchronisierung von Grund auf neu eingerichtet, mit einem neuen Sync-Konto und einem neuen Wiederherstellungs-Kit."
+    "afterwards": "Danach wird die Synchronisierung von Grund auf neu eingerichtet, mit einem neuen Sync-Konto und einem neuen Wiederherstellungs-Kit.",
+    "afterwardsOwnServer": "Danach können Sie die Synchronisierung mit demselben Verbindungscode und einem neuen Wiederherstellungs-Kit erneut einrichten."
   },
   "danger": {
     "title": "Ausschalten oder löschen",

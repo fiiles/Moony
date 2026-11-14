@@ -91,7 +91,8 @@
       "waiting": "Väntar på betalningen. Det här fönstret går vidare när den kommer.",
       "grantTest": "Ge en testprenumeration",
       "selfHosted": "Det här är din egen synkroniseringsserver, så det finns inget att betala. Lägg till kontonumret ovan i ALLOWED_ACCOUNTS på servern och starta om den.",
-      "selfHostedWaiting": "Väntar på att servern godtar kontot. Det här fönstret går vidare när den gör det."
+      "selfHostedWaiting": "Väntar på att servern godtar kontot. Det här fönstret går vidare när den gör det.",
+      "ownServer": "Den här servern är inte Moony-molnet, så det finns inget att betala. Ställ in synkroniseringen med anslutningskoden till din egen synkroniseringsserver i stället."
     },
     "kit": {
       "description": "Spara ditt återställningskit för synkronisering. Det är det enda sättet att få tillbaka de synkroniserade uppgifterna om du förlorar alla dina enheter.",
@@ -132,6 +133,23 @@
       "linux": "Linux-dator",
       "ios": "iPhone",
       "android": "Android-telefon"
+    },
+    "server": {
+      "title": "Var ska dina data synkroniseras?",
+      "encrypted": "Ände-till-ände-krypterat i båda fallen",
+      "cloud": "Moony cloud",
+      "soon": "Kommer snart",
+      "cloudHint": "Inget att installera, vi sköter driften.",
+      "own": "Egen server",
+      "codeLabel": "Anslutningskod",
+      "codeHint": "Du får den av den som driver din synkroniseringsserver.",
+      "found": "Servern hittades · version {{version}}",
+      "checking": "Letar efter servern…",
+      "insecureTitle": "Anslutningen är inte krypterad (http)",
+      "insecureBody": "Dina data förblir krypterade, men alla på samma nätverk kan fånga upp åtkomsten till synkroniseringen och radera eller blockera de synkroniserade data på servern.",
+      "insecureAck": "Jag förstår, fortsätt ändå",
+      "resume": "Inställningen påbörjades med {{host}}",
+      "other": "Använd en annan anslutningskod"
     }
   },
   "alert": {
@@ -139,7 +157,8 @@
       "title": "Synkroniseringen är pausad – förnya för att fortsätta",
       "deletes": "De synkroniserade uppgifterna raderas {{date}}.",
       "selfHosted": "Be operatören av din synkroniseringsserver att förnya åtkomsten.",
-      "renew": "Förnya"
+      "renew": "Förnya",
+      "titleOwnServer": "Synkroniseringen är pausad"
     },
     "vaultGone": {
       "text": "Dina synkroniserade uppgifter finns inte längre på servern. Stänga av synkroniseringen på den här enheten?",
@@ -215,7 +234,8 @@
     "description": "Det här raderar de synkroniserade uppgifterna på synkroniseringsservern för alla enheter. De lokala data på varje enhet finns kvar.",
     "confirm": "Radera synkroniserade data",
     "success": "Synkroniserade data raderade",
-    "afterwards": "Därefter ställs synkroniseringen in från början, med ett nytt synkroniseringskonto och ett nytt återställningskit."
+    "afterwards": "Därefter ställs synkroniseringen in från början, med ett nytt synkroniseringskonto och ett nytt återställningskit.",
+    "afterwardsOwnServer": "Därefter kan du ställa in synkroniseringen igen med samma anslutningskod och ett nytt återställningskit."
   },
   "danger": {
     "title": "Stäng av eller radera",

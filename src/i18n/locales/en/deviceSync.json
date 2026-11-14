@@ -91,7 +91,8 @@
       "waiting": "Waiting for the payment. This window moves on when it arrives.",
       "grantTest": "Grant a test subscription",
       "selfHosted": "This is your own sync server, so there is nothing to pay. Add the account number above to ALLOWED_ACCOUNTS on the server and restart it.",
-      "selfHostedWaiting": "Waiting for the server to accept the account. This window moves on when it does."
+      "selfHostedWaiting": "Waiting for the server to accept the account. This window moves on when it does.",
+      "ownServer": "This server is not the Moony cloud, so there is nothing to pay. Set sync up with the connection code of your own sync server instead."
     },
     "kit": {
       "description": "Save your Sync Recovery Kit. It is the only way to get your synced data back if you lose all your devices.",
@@ -132,6 +133,23 @@
       "linux": "Linux PC",
       "ios": "iPhone",
       "android": "Android phone"
+    },
+    "server": {
+      "title": "Where should your data sync?",
+      "encrypted": "End-to-end encrypted either way",
+      "cloud": "Moony cloud",
+      "soon": "Coming soon",
+      "cloudHint": "Nothing to install, we run it.",
+      "own": "Own server",
+      "codeLabel": "Connection code",
+      "codeHint": "You get it from whoever runs your sync server.",
+      "found": "Server found · version {{version}}",
+      "checking": "Looking for the server…",
+      "insecureTitle": "The connection is not encrypted (http)",
+      "insecureBody": "Your data stays encrypted, but anyone on the same network can capture the access to sync and delete or block the synced data on the server.",
+      "insecureAck": "I understand, continue anyway",
+      "resume": "Setup started with {{host}}",
+      "other": "Use another connection code"
     }
   },
   "alert": {
@@ -139,7 +157,8 @@
       "title": "Sync paused — renew to continue",
       "deletes": "Synced data will be deleted on {{date}}.",
       "selfHosted": "Ask the operator of your sync server to renew access.",
-      "renew": "Renew"
+      "renew": "Renew",
+      "titleOwnServer": "Sync paused"
     },
     "vaultGone": {
       "text": "Your synced data is gone from the server. Turn sync off on this device?",
@@ -215,7 +234,8 @@
     "description": "This deletes the synced data on the sync server for every device. The local data on every device stays.",
     "confirm": "Delete synced data",
     "success": "Synced data deleted",
-    "afterwards": "Afterwards sync is set up from the start, with a new sync account and a new Recovery Kit."
+    "afterwards": "Afterwards sync is set up from the start, with a new sync account and a new Recovery Kit.",
+    "afterwardsOwnServer": "Afterwards you can set sync up again with the same connection code and a new Recovery Kit."
   },
   "danger": {
     "title": "Turn off or delete",

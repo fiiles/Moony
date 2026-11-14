@@ -122,7 +122,7 @@ export function heldDays(gap: HeldGapView, now: number): number {
 }
 
 /**
- * Which action the alert shows for a problem; a lapsed subscription on a self-hosted server has no
+ * Which action the alert shows for a problem; a lapsed account on an own server has no
  * Renew. A gap (a change from another device that has not arrived) offers nothing destructive while
  * it is younger than 14 days: this device keeps syncing and sending its own changes meanwhile. Once
  * a held change may be skipped (`skippable`, from `skippableGap`), the alert offers to skip it;
@@ -133,12 +133,12 @@ export function heldDays(gap: HeldGapView, now: number): number {
  */
 export function problemAction(
   problem: SyncProblem,
-  selfHosted: boolean,
+  ownServer: boolean,
   skippable: HeldGapView | null = null
 ): SyncProblemAction {
   switch (problem) {
     case 'lapsed':
-      return selfHosted ? 'askOperator' : 'renew';
+      return ownServer ? 'askOperator' : 'renew';
     case 'vaultGone':
       return 'turnOffOrRetry';
     case 'captureBroken':

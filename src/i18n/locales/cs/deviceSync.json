@@ -91,7 +91,8 @@
       "waiting": "Čekám na platbu. Okno se posune dál, jakmile dorazí.",
       "grantTest": "Udělit zkušební předplatné",
       "selfHosted": "Toto je váš vlastní synchronizační server, takže se nic neplatí. Přidejte číslo účtu výše do ALLOWED_ACCOUNTS na serveru a server restartujte.",
-      "selfHostedWaiting": "Čekám, až server účet přijme. Okno se posune dál, jakmile se tak stane."
+      "selfHostedWaiting": "Čekám, až server účet přijme. Okno se posune dál, jakmile se tak stane.",
+      "ownServer": "Tento server není Moony cloud, takže se nic neplatí. Nastavte synchronizaci pomocí připojovacího kódu vlastního synchronizačního serveru."
     },
     "kit": {
       "description": "Uložte si Záchrannou sadu synchronizace. Je to jediný způsob, jak získat synchronizovaná data zpět, když přijdete o všechna zařízení.",
@@ -132,6 +133,23 @@
       "linux": "Linux PC",
       "ios": "iPhone",
       "android": "Telefon s Androidem"
+    },
+    "server": {
+      "title": "Kde se mají data synchronizovat?",
+      "encrypted": "V obou případech koncově šifrovaná",
+      "cloud": "Moony cloud",
+      "soon": "Připravujeme",
+      "cloudHint": "Nic neinstalujete, o provoz se staráme my.",
+      "own": "Vlastní server",
+      "codeLabel": "Připojovací kód",
+      "codeHint": "Dostanete ho od toho, kdo provozuje váš synchronizační server.",
+      "found": "Server nalezen · verze {{version}}",
+      "checking": "Hledám server…",
+      "insecureTitle": "Spojení není šifrované (http)",
+      "insecureBody": "Data zůstávají šifrovaná, ale kdokoli ve stejné síti může zachytit přístup k synchronizaci a synchronizovaná data na serveru smazat nebo zablokovat.",
+      "insecureAck": "Rozumím, přesto pokračovat",
+      "resume": "Nastavení začalo se serverem {{host}}",
+      "other": "Použít jiný připojovací kód"
     }
   },
   "alert": {
@@ -139,7 +157,8 @@
       "title": "Synchronizace pozastavena – obnovte předplatné",
       "deletes": "Synchronizovaná data budou smazána {{date}}.",
       "selfHosted": "Požádejte provozovatele svého synchronizačního serveru o obnovení přístupu.",
-      "renew": "Obnovit"
+      "renew": "Obnovit",
+      "titleOwnServer": "Synchronizace pozastavena"
     },
     "vaultGone": {
       "text": "Vaše synchronizovaná data na serveru zmizela. Vypnout synchronizaci na tomto zařízení?",
@@ -227,7 +246,8 @@
     "description": "Tím se na synchronizačním serveru smažou synchronizovaná data pro všechna zařízení. Místní data na každém zařízení zůstanou.",
     "confirm": "Smazat synchronizovaná data",
     "success": "Synchronizovaná data smazána",
-    "afterwards": "Poté se synchronizace nastavuje od začátku, s novým synchronizačním účtem a novou Záchrannou sadou."
+    "afterwards": "Poté se synchronizace nastavuje od začátku, s novým synchronizačním účtem a novou Záchrannou sadou.",
+    "afterwardsOwnServer": "Poté můžete synchronizaci nastavit znovu se stejným připojovacím kódem a novou Záchrannou sadou."
   },
   "danger": {
     "title": "Vypnutí a smazání",

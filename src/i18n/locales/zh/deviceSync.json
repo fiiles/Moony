@@ -91,7 +91,8 @@
       "waiting": "正在等待付款。款项到账后此窗口会继续。",
       "grantTest": "授予测试订阅",
       "selfHosted": "这是您自己的同步服务器，无需付款。请把上面的账户编号添加到服务器的 ALLOWED_ACCOUNTS 中，然后重启服务器。",
-      "selfHostedWaiting": "正在等待服务器接受该账户。服务器接受后此窗口会继续。"
+      "selfHostedWaiting": "正在等待服务器接受该账户。服务器接受后此窗口会继续。",
+      "ownServer": "此服务器不是 Moony 云，因此无需付款。请改用您自己同步服务器的连接码来设置同步。"
     },
     "kit": {
       "description": "请保存您的同步恢复包。如果您丢失了所有设备，这是找回已同步数据的唯一办法。",
@@ -132,6 +133,23 @@
       "linux": "Linux 电脑",
       "ios": "iPhone",
       "android": "Android 手机"
+    },
+    "server": {
+      "title": "您的数据要同步到哪里？",
+      "encrypted": "两种方式都采用端到端加密",
+      "cloud": "Moony cloud",
+      "soon": "即将推出",
+      "cloudHint": "无需安装，由我们负责运行。",
+      "own": "自己的服务器",
+      "codeLabel": "连接码",
+      "codeHint": "请向运行您同步服务器的人索取。",
+      "found": "已找到服务器 · 版本 {{version}}",
+      "checking": "正在查找服务器…",
+      "insecureTitle": "连接未加密 (http)",
+      "insecureBody": "您的数据仍然是加密的，但同一网络中的任何人都可能截获同步访问权限，并删除或阻止服务器上已同步的数据。",
+      "insecureAck": "我明白，仍然继续",
+      "resume": "已与 {{host}} 开始设置",
+      "other": "使用其他连接码"
     }
   },
   "alert": {
@@ -139,7 +157,8 @@
       "title": "同步已暂停——请续订以继续",
       "deletes": "同步数据将于 {{date}} 删除。",
       "selfHosted": "请联系您的同步服务器运营者续订访问权限。",
-      "renew": "续订"
+      "renew": "续订",
+      "titleOwnServer": "同步已暂停"
     },
     "vaultGone": {
       "text": "您的同步数据已从服务器上消失。要在此设备上关闭同步吗？",
@@ -209,7 +228,8 @@
     "description": "这会删除同步服务器上所有设备的同步数据。每台设备上的本地数据会保留。",
     "confirm": "删除同步数据",
     "success": "同步数据已删除",
-    "afterwards": "之后将从头开始设置同步，使用新的同步账户和新的恢复包。"
+    "afterwards": "之后将从头开始设置同步，使用新的同步账户和新的恢复包。",
+    "afterwardsOwnServer": "之后，您可以使用同一个连接码和新的恢复包重新设置同步。"
   },
   "danger": {
     "title": "关闭或删除",

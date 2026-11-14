@@ -91,7 +91,8 @@
       "waiting": "Esperando el pago. Esta ventana avanza cuando llegue.",
       "grantTest": "Conceder una suscripción de prueba",
       "selfHosted": "Este es tu propio servidor de sincronización, así que no hay nada que pagar. Añade el número de cuenta de arriba a ALLOWED_ACCOUNTS en el servidor y reinícialo.",
-      "selfHostedWaiting": "Esperando a que el servidor acepte la cuenta. Esta ventana avanza cuando lo haga."
+      "selfHostedWaiting": "Esperando a que el servidor acepte la cuenta. Esta ventana avanza cuando lo haga.",
+      "ownServer": "Este servidor no es la nube de Moony, así que no hay nada que pagar. Configura la sincronización con el código de conexión de tu propio servidor de sincronización."
     },
     "kit": {
       "description": "Guarda tu Kit de recuperación de sincronización. Es la única forma de recuperar tus datos sincronizados si pierdes todos tus dispositivos.",
@@ -132,6 +133,23 @@
       "linux": "PC con Linux",
       "ios": "iPhone",
       "android": "Teléfono Android"
+    },
+    "server": {
+      "title": "¿Dónde quieres sincronizar tus datos?",
+      "encrypted": "Cifrado de extremo a extremo en ambos casos",
+      "cloud": "Moony cloud",
+      "soon": "Próximamente",
+      "cloudHint": "Nada que instalar, nosotros lo gestionamos.",
+      "own": "Servidor propio",
+      "codeLabel": "Código de conexión",
+      "codeHint": "Te lo da quien gestiona tu servidor de sincronización.",
+      "found": "Servidor encontrado · versión {{version}}",
+      "checking": "Buscando el servidor…",
+      "insecureTitle": "La conexión no está cifrada (http)",
+      "insecureBody": "Tus datos siguen cifrados, pero cualquiera en la misma red puede capturar el acceso a la sincronización y borrar o bloquear los datos sincronizados en el servidor.",
+      "insecureAck": "Lo entiendo, continuar de todos modos",
+      "resume": "La configuración empezó con {{host}}",
+      "other": "Usar otro código de conexión"
     }
   },
   "alert": {
@@ -139,7 +157,8 @@
       "title": "Sincronización en pausa: renueva para continuar",
       "deletes": "Los datos sincronizados se eliminarán el {{date}}.",
       "selfHosted": "Pide al operador de tu servidor de sincronización que renueve el acceso.",
-      "renew": "Renovar"
+      "renew": "Renovar",
+      "titleOwnServer": "Sincronización en pausa"
     },
     "vaultGone": {
       "text": "Tus datos sincronizados ya no están en el servidor. ¿Desactivar la sincronización en este dispositivo?",
@@ -221,7 +240,8 @@
     "description": "Esto elimina los datos sincronizados del servidor de sincronización para todos los dispositivos. Los datos locales de cada dispositivo se conservan.",
     "confirm": "Eliminar los datos sincronizados",
     "success": "Datos sincronizados eliminados",
-    "afterwards": "Después, la sincronización se configura desde cero, con una cuenta de sincronización nueva y un Kit de recuperación nuevo."
+    "afterwards": "Después, la sincronización se configura desde cero, con una cuenta de sincronización nueva y un Kit de recuperación nuevo.",
+    "afterwardsOwnServer": "Después puedes volver a configurar la sincronización con el mismo código de conexión y un Kit de recuperación nuevo."
   },
   "danger": {
     "title": "Desactivar o eliminar",

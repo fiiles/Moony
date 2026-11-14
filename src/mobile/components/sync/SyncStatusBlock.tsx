@@ -17,7 +17,7 @@ import {
   problemAction,
   skippableGap,
 } from '@/utils/device-sync-problem';
-import { isSelfHostedPaidUntil, secondsToDate } from '@/utils/sync-status';
+import { secondsToDate } from '@/utils/sync-status';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 
@@ -100,7 +100,7 @@ export function SyncStatusBlock({
         <KeyValueRow label={t('phone.status')} value={t(`status.phase.${status.phase}`)} />
         <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} />
         <KeyValueRow label={t('phone.pending')} value={status.pendingChanges} />
-        {isSelfHostedPaidUntil(status.paidUntil) && (
+        {status.ownServer && (
           <KeyValueRow label={t('status.subscription')} value={t('status.selfHosted')} />
         )}
       </div>
@@ -139,7 +139,7 @@ function ProblemAlert({
   const held = heldFor(problem, heldGaps.data);
   // A held change younger than 14 days offers nothing: this device keeps syncing meanwhile
   const skippable = skippableGap(held, now);
-  const action = problemAction(problem, isSelfHostedPaidUntil(status.paidUntil), skippable);
+  const action = problemAction(problem, status.ownServer, skippable);
   const ahead = problem === 'clockAhead' ? aheadGap(held) : null;
   let title: string | undefined;
   let body = ahead ? aheadText(ahead, t, renderDate) : t(`status.problem.${problem}`);

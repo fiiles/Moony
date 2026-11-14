@@ -91,7 +91,8 @@
       "waiting": "Venter på betalingen. Dette vinduet går videre når den kommer.",
       "grantTest": "Gi et prøveabonnement",
       "selfHosted": "Dette er din egen synkroniseringsserver, så det er ingenting å betale. Legg kontonummeret over til i ALLOWED_ACCOUNTS på serveren og start den på nytt.",
-      "selfHostedWaiting": "Venter på at serveren godtar kontoen. Dette vinduet går videre når den gjør det."
+      "selfHostedWaiting": "Venter på at serveren godtar kontoen. Dette vinduet går videre når den gjør det.",
+      "ownServer": "Denne serveren er ikke Moony-skyen, så det er ingenting å betale. Sett opp synkroniseringen med tilkoblingskoden til din egen synkroniseringsserver i stedet."
     },
     "kit": {
       "description": "Lagre gjenopprettingssettet for synkronisering. Det er den eneste måten å få tilbake de synkroniserte dataene på hvis du mister alle enhetene dine.",
@@ -132,6 +133,23 @@
       "linux": "Linux-PC",
       "ios": "iPhone",
       "android": "Android-telefon"
+    },
+    "server": {
+      "title": "Hvor skal dataene dine synkroniseres?",
+      "encrypted": "Ende-til-ende-kryptert i begge tilfeller",
+      "cloud": "Moony cloud",
+      "soon": "Kommer snart",
+      "cloudHint": "Ingenting å installere, vi drifter det.",
+      "own": "Egen server",
+      "codeLabel": "Tilkoblingskode",
+      "codeHint": "Du får den av den som drifter synkroniseringsserveren din.",
+      "found": "Server funnet · versjon {{version}}",
+      "checking": "Leter etter serveren…",
+      "insecureTitle": "Tilkoblingen er ikke kryptert (http)",
+      "insecureBody": "Dataene dine forblir krypterte, men alle på samme nettverk kan fange opp tilgangen til synkroniseringen og slette eller blokkere de synkroniserte dataene på serveren.",
+      "insecureAck": "Jeg forstår, fortsett likevel",
+      "resume": "Oppsettet startet med {{host}}",
+      "other": "Bruk en annen tilkoblingskode"
     }
   },
   "alert": {
@@ -139,7 +157,8 @@
       "title": "Synkroniseringen er satt på pause – forny for å fortsette",
       "deletes": "De synkroniserte dataene slettes {{date}}.",
       "selfHosted": "Be operatøren av synkroniseringsserveren din om å fornye tilgangen.",
-      "renew": "Forny"
+      "renew": "Forny",
+      "titleOwnServer": "Synkroniseringen er satt på pause"
     },
     "vaultGone": {
       "text": "De synkroniserte dataene dine er borte fra serveren. Slå av synkronisering på denne enheten?",
@@ -215,7 +234,8 @@
     "description": "Dette sletter de synkroniserte dataene på synkroniseringsserveren for alle enheter. De lokale dataene på hver enhet blir værende.",
     "confirm": "Slett synkroniserte data",
     "success": "Synkroniserte data slettet",
-    "afterwards": "Etterpå settes synkroniseringen opp fra start, med en ny synkroniseringskonto og et nytt gjenopprettingssett."
+    "afterwards": "Etterpå settes synkroniseringen opp fra start, med en ny synkroniseringskonto og et nytt gjenopprettingssett.",
+    "afterwardsOwnServer": "Etterpå kan du sette opp synkroniseringen på nytt med den samme tilkoblingskoden og et nytt gjenopprettingssett."
   },
   "danger": {
     "title": "Slå av eller slett",

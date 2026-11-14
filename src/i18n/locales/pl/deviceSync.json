@@ -91,7 +91,8 @@
       "waiting": "Czekam na płatność. To okno przejdzie dalej, gdy nadejdzie.",
       "grantTest": "Przyznaj testową subskrypcję",
       "selfHosted": "To Twój własny serwer synchronizacji, więc nie ma nic do zapłaty. Dodaj powyższy numer konta do ALLOWED_ACCOUNTS na serwerze i uruchom go ponownie.",
-      "selfHostedWaiting": "Czekam, aż serwer zaakceptuje konto. To okno przejdzie dalej, gdy to zrobi."
+      "selfHostedWaiting": "Czekam, aż serwer zaakceptuje konto. To okno przejdzie dalej, gdy to zrobi.",
+      "ownServer": "Ten serwer nie jest chmurą Moony, więc nie ma nic do zapłacenia. Skonfiguruj synchronizację za pomocą kodu połączenia własnego serwera synchronizacji."
     },
     "kit": {
       "description": "Zapisz Zestaw odzyskiwania synchronizacji. To jedyny sposób, by odzyskać zsynchronizowane dane po utracie wszystkich urządzeń.",
@@ -132,6 +133,23 @@
       "linux": "Komputer z Linuksem",
       "ios": "iPhone",
       "android": "Telefon z Androidem"
+    },
+    "server": {
+      "title": "Gdzie mają się synchronizować Twoje dane?",
+      "encrypted": "W obu przypadkach szyfrowane end-to-end",
+      "cloud": "Moony cloud",
+      "soon": "Wkrótce",
+      "cloudHint": "Nic nie trzeba instalować, my to prowadzimy.",
+      "own": "Własny serwer",
+      "codeLabel": "Kod połączenia",
+      "codeHint": "Dostaniesz go od osoby, która prowadzi Twój serwer synchronizacji.",
+      "found": "Znaleziono serwer · wersja {{version}}",
+      "checking": "Szukam serwera…",
+      "insecureTitle": "Połączenie nie jest szyfrowane (http)",
+      "insecureBody": "Twoje dane pozostają zaszyfrowane, ale każdy w tej samej sieci może przechwycić dostęp do synchronizacji i usunąć lub zablokować zsynchronizowane dane na serwerze.",
+      "insecureAck": "Rozumiem, kontynuuj mimo to",
+      "resume": "Konfiguracja rozpoczęła się z serwerem {{host}}",
+      "other": "Użyj innego kodu połączenia"
     }
   },
   "alert": {
@@ -139,7 +157,8 @@
       "title": "Synchronizacja wstrzymana – odnów subskrypcję, aby kontynuować",
       "deletes": "Zsynchronizowane dane zostaną usunięte {{date}}.",
       "selfHosted": "Poproś operatora swojego serwera synchronizacji o odnowienie dostępu.",
-      "renew": "Odnów"
+      "renew": "Odnów",
+      "titleOwnServer": "Synchronizacja wstrzymana"
     },
     "vaultGone": {
       "text": "Twoich zsynchronizowanych danych nie ma już na serwerze. Wyłączyć synchronizację na tym urządzeniu?",
@@ -227,7 +246,8 @@
     "description": "To usuwa zsynchronizowane dane z serwera synchronizacji dla wszystkich urządzeń. Dane lokalne na każdym urządzeniu zostają.",
     "confirm": "Usuń zsynchronizowane dane",
     "success": "Zsynchronizowane dane usunięte",
-    "afterwards": "Potem synchronizacja jest konfigurowana od początku, z nowym kontem synchronizacji i nowym Zestawem odzyskiwania."
+    "afterwards": "Potem synchronizacja jest konfigurowana od początku, z nowym kontem synchronizacji i nowym Zestawem odzyskiwania.",
+    "afterwardsOwnServer": "Potem możesz skonfigurować synchronizację ponownie z tym samym kodem połączenia i nowym Zestawem odzyskiwania."
   },
   "danger": {
     "title": "Wyłączenie lub usunięcie",

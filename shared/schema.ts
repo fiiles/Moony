@@ -148,8 +148,8 @@ export interface SyncAccount {
 
 /**
  * Where paying for the account happens: a payment page to open (https, on polar.sh), or a
- * self-hosted relay that takes no payments (its operator adds the account number to the relay's
- * `ALLOWED_ACCOUNTS`; setup then waits until the account is active).
+ * own sync server that takes no payments (its operator adds people in the server's admin
+ * interface; an account is active until the person is blocked).
  */
 export type CheckoutTarget = { kind: 'open'; url: string } | { kind: 'selfHosted' };
 

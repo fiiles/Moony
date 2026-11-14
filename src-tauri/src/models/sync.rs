@@ -196,8 +196,9 @@ pub enum CheckoutTarget {
         #[serde(rename = "url")]
         url: String,
     },
-    /// A self-hosted relay takes no payments: its operator adds the account number to the relay's
-    /// `ALLOWED_ACCOUNTS`, and setup waits until the account is active.
+    /// An own sync server takes no payments: its operator adds people in the server's admin
+    /// interface and the account is active as long as the person is not blocked. Only the Moony
+    /// cloud checkout (not reachable yet) answers `Open`.
     #[serde(rename = "selfHosted")]
     SelfHosted,
 }

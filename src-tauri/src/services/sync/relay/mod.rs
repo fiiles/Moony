@@ -208,11 +208,11 @@ struct ErrorBody {
 
 impl RelayError {
     /// The typed error of a relay answer that is not a success, by status and the `"error"` code
-    /// of its `{"error": "<code>"}` body. Rate limits, redirects, `408` and 5xx go by status alone (an
-    /// edge or proxy may answer them with HTML); everything else needs the documented code for its
-    /// status, and an unknown code or a body that is not that JSON shape is `Protocol`. A `502` /
-    /// `503` of the checkout route is `CheckoutUnavailable`, decided by the caller, which knows the
-    /// route.
+    /// of its `{"error": "<code>"}` body. Rate limits, redirects, `408` and 5xx go by status alone
+    /// (an edge or proxy may answer them with HTML); everything else needs the documented code for
+    /// its status, and an unknown code or a body that is not that JSON shape is `Protocol`. A `502`
+    /// / `503` of the checkout route is `CheckoutUnavailable`, decided by the caller, which knows
+    /// the route.
     pub fn from_response(status: u16, body: &[u8]) -> Self {
         match status {
             300..=399 => return RelayError::Protocol("redirect".into()),

@@ -496,7 +496,7 @@ async fn a_self_hosted_relay_answers_checkout_without_a_url() {
             .expect("status")
             .active
     );
-    // The operator adds the number to ALLOWED_ACCOUNTS; the next poll sees it active.
+    // The operator unblocks the person (the fake's `set_paid`); the next poll sees it active.
     relay.set_paid(&account.account_number, true);
     assert!(
         account_status(&relay, &device)

@@ -491,6 +491,63 @@ async fn a_blocked_person_cannot_create_a_vault_until_unblocked() {
 
 #[tokio::test]
 #[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+async fn a_blocked_person_keeps_pulling_but_cannot_push_until_unblocked() {
+    let url = relay_url();
+    let relay = relay_at(&url);
+    let (a, person) = first_device_of(&relay, &url, "A").await;
+    add_finances(&a);
+    a.round(&relay).await;
+    let b = Device::new();
+    b.join(&relay, a.credentials(), "B").await;
+    b.round(&relay).await;
+
+    // B pushes a change before the block; A has one of its own waiting.
+    b.exec("UPDATE bank_transactions SET description = 'from B' WHERE id = 'tx-01'");
+    b.round(&relay).await;
+    a.exec("UPDATE bank_transactions SET description = 'from A' WHERE id = 'tx-02'");
+
+    let admin = admin(&url).await;
+    let blocked_at = now();
+    admin.block(&person.id).await;
+
+    // A still pulls (the server's read grace), its push is refused as lapsed and waits.
+    let report = a.round_with_problem(&relay).await;
+    assert_eq!(report.problem, Some(SyncProblem::Lapsed), "{report:?}");
+    assert_eq!(
+        a.text("SELECT description FROM bank_transactions WHERE id = 'tx-01'")
+            .as_deref(),
+        Some("from B"),
+        "pulls go on"
+    );
+    assert!(
+        a.count("SELECT COUNT(*) FROM sync_unsent") > 0,
+        "the push waits"
+    );
+    // The status carries the moment of the block.
+    let status = sync_until_allowed(|| account_status(&relay, &a.db))
+        .await
+        .expect("status");
+    assert!(!status.active, "{status:?}");
+    let paid_until = status.paid_until.expect("a block time");
+    assert!(
+        (paid_until - blocked_at).abs() <= 120,
+        "paid_until {paid_until} is about the block time {blocked_at}"
+    );
+
+    admin.unblock(&person.id).await;
+    a.round(&relay).await;
+    b.round(&relay).await;
+    assert_eq!(
+        b.text("SELECT description FROM bank_transactions WHERE id = 'tx-02'")
+            .as_deref(),
+        Some("from A"),
+        "the push goes through after the unblock"
+    );
+    converged(&a, &b);
+}
+
+#[tokio::test]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn deleting_synced_data_makes_the_other_device_pause() {
     let url = relay_url();
     let relay = relay_at(&url);

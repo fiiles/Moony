@@ -151,9 +151,9 @@ pub async fn connect_own_server<R: Relay, D: ConnAccess>(
     Ok(account)
 }
 
-/// The stored account as the relay sees it now; `validation.syncSetupIncomplete` without one. The
-/// UI polls this until the account is active (paid, or added to a self-hosted relay's
-/// `ALLOWED_ACCOUNTS`).
+/// The stored account as the server sees it now; `validation.syncSetupIncomplete` without one. On
+/// the Moony cloud the UI polls this until the account is paid; on an own sync server the account
+/// is active unless the operator blocked the person in the server's admin interface.
 pub async fn account_status<R: Relay, D: ConnAccess>(relay: &R, db: &D) -> SyncResult<SyncAccount> {
     let account = stored_account(db).await?;
     status_of(relay, account).await
@@ -162,8 +162,8 @@ pub async fn account_status<R: Relay, D: ConnAccess>(relay: &R, db: &D) -> SyncR
 /// Where to pay for the stored account. The default relay answers a payment page, which must be
 /// `https` on `polar.sh` or one of its subdomains (anything else is `validation.syncRelayError`:
 /// the URL goes to the system opener). A self-hosted relay takes no payments and answers
-/// `CheckoutTarget::SelfHosted`, which is not an error: the UI shows the account number to add to
-/// the relay's `ALLOWED_ACCOUNTS` and polls `account_status`.
+/// `CheckoutTarget::SelfHosted`, which is not an error: there is nothing to pay, and an own server
+/// is set up from a connection code (`connect_own_server`) instead.
 pub async fn checkout_url<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,

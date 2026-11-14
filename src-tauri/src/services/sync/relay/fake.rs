@@ -205,8 +205,8 @@ impl FakeRelay {
     }
 
     /// A self-hosted relay (Moony-relay `SELF_HOSTED=1`, ruling SH-1): checkout answers
-    /// `409 self_hosted`, and an account is paid only once the test says so (the operator added it
-    /// to `ALLOWED_ACCOUNTS`).
+    /// `409 self_hosted`, and an account is paid only once the test says so (`set_paid`, standing
+    /// for an operator who added or unblocked the person).
     pub fn set_self_hosted(&self, self_hosted: bool) {
         self.lock().self_hosted = self_hosted;
     }

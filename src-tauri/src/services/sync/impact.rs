@@ -124,6 +124,45 @@ pub fn replace_impact(conn: &Connection) -> Result<ReplaceImpact> {
     })
 }
 
+/// A profile younger than this (seconds since its `user_profile.created_at`) may be brand new.
+const BRAND_NEW_WITHIN_SECS: i64 = 86_400;
+
+/// Tables where any row means a person made something `holds_nothing` does not count. Categories
+/// and categorization rules only count when `is_system = 0` (profile creation seeds the rest).
+const PERSON_MADE: [&str; 8] = [
+    "watched_stocks",
+    "budget_goals",
+    "budget_goal_versions",
+    "spending_plans",
+    "stock_tags",
+    "stock_tag_groups",
+    "categorization_rules WHERE is_system = 0",
+    "transaction_categories WHERE is_system = 0",
+];
+
+/// A join into this profile loses nothing worth a kept backup: the replace impact holds nothing,
+/// no watchlist entry, budget goal, spending plan, own rule, own category or stock tag exists, and
+/// the profile was created less than 24 hours before `now` (no profile row, or one created in the
+/// future, is not brand new). Spec 2026-11-14 §5.4 with the controller's tightening.
+pub fn brand_new_profile(conn: &Connection, now: i64) -> Result<bool> {
+    if !replace_impact(conn)?.holds_nothing() {
+        return Ok(false);
+    }
+    for table in PERSON_MADE {
+        let any: bool = conn.query_row(
+            &format!("SELECT EXISTS (SELECT 1 FROM main.{table})"),
+            [],
+            |r| r.get(0),
+        )?;
+        if any {
+            return Ok(false);
+        }
+    }
+    let created: Option<i64> =
+        conn.query_row("SELECT MIN(created_at) FROM user_profile", [], |r| r.get(0))?;
+    Ok(created.is_some_and(|at| at <= now && at > now - BRAND_NEW_WITHIN_SECS))
+}
+
 /// `check_consent_after_push` for a replace with no push before it.
 pub fn check_consent(conn: &Connection, kind: ReplaceKind, consent: &ReplaceConsent) -> Result<()> {
     check_consent_after_push(conn, kind, consent, &[])
@@ -283,6 +322,59 @@ mod tests {
         ] {
             assert!(!impact.holds_nothing(), "{impact:?}");
         }
+    }
+
+    const NOW: i64 = 1_800_000_000;
+    const HOUR: i64 = 3_600;
+
+    fn profile_created(conn: &Connection, at: i64) {
+        conn.execute(
+            "INSERT INTO user_profile (name, surname, email, created_at) VALUES ('A', 'B', 'a@b.c', ?1)",
+            [at],
+        )
+        .expect("profile");
+    }
+
+    fn brand_new_with(extra_sql: &str, created: i64) -> bool {
+        let conn = migrated();
+        profile_created(&conn, created);
+        if !extra_sql.is_empty() {
+            conn.execute_batch(extra_sql).expect(extra_sql);
+        }
+        brand_new_profile(&conn, NOW).expect("brand new")
+    }
+
+    #[test]
+    fn an_empty_profile_created_an_hour_ago_is_brand_new() {
+        assert!(brand_new_with("", NOW - HOUR));
+    }
+
+    #[test]
+    fn a_profile_holding_anything_a_person_made_is_not_brand_new() {
+        let category =
+            "INSERT INTO transaction_categories (id, name, is_system) VALUES ('c1', 'Mine', 0);";
+        for (what, sql) in [
+            ("bank account", "INSERT INTO bank_accounts (id, name) VALUES ('a1', 'Acc');"),
+            ("watchlist row", "INSERT INTO watched_stocks (id, ticker) VALUES ('w1', 'AAPL');"),
+            ("budget goal", "INSERT INTO budget_goals (id, category_id, timeframe, amount) VALUES ('g1', 'c1', 'monthly', '1');"),
+            ("spending plan", "INSERT INTO spending_plans (id, name, year, amount, currency, icon, color) VALUES ('p1', 'Plan', 2026, '1', 'EUR', 'i', 'c');"),
+            ("own rule", "INSERT INTO categorization_rules (id, name, rule_type, pattern, category_id, is_system) VALUES ('r1', 'R', 'contains', 'x', 'c1', 0);"),
+            ("stock tag", "INSERT INTO stock_tags (id, name) VALUES ('t1', 'Mine');"),
+        ] {
+            let sql = format!("{category}{sql}");
+            assert!(!brand_new_with(&sql, NOW - HOUR), "{what}");
+        }
+    }
+
+    #[test]
+    fn an_old_or_unknown_profile_is_not_brand_new() {
+        assert!(!brand_new_with("", NOW - 25 * HOUR));
+        assert!(!brand_new_with("", NOW + HOUR), "created in the future");
+        let conn = migrated();
+        assert!(
+            !brand_new_profile(&conn, NOW).expect("no row"),
+            "no profile row"
+        );
     }
 
     fn exec(conn: &Connection, sql: &str) {

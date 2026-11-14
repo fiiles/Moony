@@ -297,6 +297,7 @@ async fn a_join_into_a_brand_new_profile_leaves_a_plain_backup() {
     let dir = tempfile::tempdir().expect("dir");
     let joiner = TestConn::new(migrated());
     institution(&joiner.lock(), "local-only");
+    profile_created_at(&joiner.lock(), NOW - 3_600);
     let consent = agreed(&joiner);
 
     let outcome = join_new_device(
@@ -321,6 +322,44 @@ async fn a_join_into_a_brand_new_profile_leaves_a_plain_backup() {
     let listed = backups::list(dir.path()).expect("list");
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].mark, BackupMark::Plain);
+}
+
+/// The "brand new" decision is taken inside the hold: an account written after the person agreed
+/// (a joining profile has no capture, so the consent watermark does not move and the join goes on)
+/// makes the backup kept, not plain.
+#[tokio::test]
+async fn an_account_written_after_the_confirmation_keeps_the_backup() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let dir = tempfile::tempdir().expect("dir");
+    let joiner = TestConn::new(migrated());
+    profile_created_at(&joiner.lock(), NOW - 3_600);
+    let consent = agreed(&joiner);
+    assert!(impact::replace_impact(&joiner.lock())
+        .expect("impact")
+        .holds_nothing());
+    let writer = joiner.clone();
+    let relay = WritesBeforeSnapshot::new(&vault.relay, move || {
+        bank_account(&writer.lock(), "late");
+    });
+
+    let outcome = join_new_device(
+        &relay,
+        &joiner,
+        vault.creds.clone(),
+        "Laptop",
+        consent,
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect("the consent does not see an unsynced write, so the join goes on");
+
+    assert!(outcome.kept);
+    let listed = backups::list(dir.path()).expect("list");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].mark, BackupMark::Kept);
 }
 
 /// Pre-flight I-6 with the Task 5 review: between the replace's commit and the backup's final

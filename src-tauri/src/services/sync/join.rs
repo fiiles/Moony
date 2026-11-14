@@ -12,10 +12,11 @@
 //! - each returns a `ReplaceOutcome` with what stayed only in the backup. The backup is marked
 //!   `-kept` inside the hold, before the replace commits, so a crash before the outcome is known
 //!   never leaves it prunable. After the outcome a repair's backup stays kept (what a
-//!   capture-broken session may have written before the guard existed) and so does a join's,
-//!   the only copy of what it replaced, unless the profile held nothing (no account,
-//!   transaction, document, photo or unsent change: spec 2026-11-14 §5.4), when it is plain, a re-sync's settles to plain or stays kept (unsent changes, documents
-//!   or photos found nowhere else), and the backup of a replace that never happened becomes
+//!   capture-broken session may have written before the guard existed) and so does a join's, the
+//!   only copy of what it replaced, unless the profile is brand new (`impact::brand_new_profile`:
+//!   nothing counted, nothing a person made, created within a day: spec 2026-11-14 §5.4), when it
+//!   is plain. A re-sync's settles to plain or stays kept (unsent changes, documents or photos
+//!   found nowhere else), and the backup of a replace that never happened becomes
 //!   `-unused`.
 //!
 //! The relay passed in is the one at the credentials' own address (`Credentials::relay_url`, the
@@ -246,9 +247,9 @@ async fn held<D: ConnAccess>(db: &D, input: HoldInput) -> SyncResult<Hold> {
     off_thread(move || holder.with_conn(|conn| Ok(replace_hold(conn, &input)))).await
 }
 
-/// The mark a backup settles to after its replace, with whether it is Kept: Kept for a join and
-/// a repair, and for a re-sync when anything stayed only in it (unsent changes, documents or
-/// photos not re-attached), else Plain. A failure is logged, and the backup stays Kept.
+/// The mark a backup settles to after its replace, with whether it is Kept: Kept for a repair and
+/// for a join into a profile that held something, and for a re-sync when anything stayed only in
+/// it (unsent changes, documents or photos not re-attached), else Plain. A failure is logged, and the backup stays Kept.
 fn settled(backup: PathBuf, replaced: &Replaced) -> (PathBuf, bool) {
     let only_in_backup = replaced.unsent_items > 0
         || replaced.unsent_batches > 0
@@ -318,8 +319,8 @@ fn outcome((backup, kept): (PathBuf, bool), replaced: &Replaced) -> ReplaceOutco
 ///    savepoint the credentials are bound, the profile replaced under a new device ID with a new
 ///    key pair and this device recorded under `device_name`. A failure leaves the profile as it
 ///    was and the backup, if one was written, `-unused`.
-/// 4. The backup stays `-kept`: it is the only copy of what the join replaced. The binding is
-///    written.
+/// 4. The backup stays `-kept`, the only copy of what the join replaced, unless the profile was
+///    brand new (`impact::brand_new_profile`), when it settles to plain. The binding is written.
 #[allow(clippy::too_many_arguments)]
 pub async fn join_new_device<R: Relay, D: ConnAccess>(
     relay: &R,

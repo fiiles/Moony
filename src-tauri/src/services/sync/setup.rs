@@ -34,7 +34,9 @@ use super::connection_code::ConnectionCode;
 use super::devices;
 use super::engine::snapshots::{off_thread, SnapshotPolicy};
 use super::engine::{self, ConnAccess, RoundMode, RoundReport};
-use super::error::{SyncError, SyncResult, TooLarge, Transient};
+use super::error::{
+    SyncError, SyncResult, TooLarge, Transient, ACCOUNT_BLOCKED, CONNECTION_CODE_REVOKED,
+};
 use super::in_savepoint;
 use super::join::rejoin_if_copy_under_lock;
 use super::keys::{self, Credentials};
@@ -50,8 +52,6 @@ const KIT_NOT_CONFIRMED: &str = "validation.syncRecoveryKitNotConfirmed";
 const SETUP_INCOMPLETE: &str = "validation.syncSetupIncomplete";
 const ALREADY_ENABLED: &str = "validation.syncAlreadyEnabled";
 const RELAY_ERROR: &str = "validation.syncRelayError";
-const ACCOUNT_BLOCKED: &str = "validation.syncAccountBlocked";
-const CONNECTION_CODE_REVOKED: &str = "validation.syncConnectionCodeRevoked";
 
 /// How long Delete Account waits for the relay to delete the vault.
 pub const DELETE_BUDGET: Duration = Duration::from_secs(5);

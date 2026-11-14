@@ -111,10 +111,11 @@ fn parse_base_url(url: &str) -> Result<Url> {
         return Err(invalid());
     }
     let mut parsed = Url::parse(url).map_err(|_| invalid())?;
-    // `sync.moonyfinance.com.` is the same host as `sync.moonyfinance.com`: one trailing dot of a
-    // domain goes, so both spell (and compare as) one address.
-    if let Some(bare) = parsed.domain().and_then(|d| d.strip_suffix('.')) {
-        let bare = bare.to_string();
+    // `sync.moonyfinance.com.` is the same host as `sync.moonyfinance.com`: every trailing dot of
+    // a domain goes (`..` too, or the cloud host would slip past the http refusal), so all
+    // spellings compare as one address.
+    if let Some(domain) = parsed.domain().filter(|d| d.ends_with('.')) {
+        let bare = domain.trim_end_matches('.').to_string();
         parsed.set_host(Some(&bare)).map_err(|_| invalid())?;
     }
     // Parsing can lengthen an address (an international domain becomes punycode): the stored and
@@ -667,7 +668,8 @@ impl Mailbox for HttpRelay {
     }
 }
 
-// These talk to one-shot servers on 127.0.0.1, an address only a debug build accepts.
+// These talk to one-shot servers on 127.0.0.1 and are built in debug only (the mock servers
+// bind a loopback port; release test runs skip them).
 #[cfg(all(test, debug_assertions))]
 mod mailbox_tests;
 #[cfg(test)]

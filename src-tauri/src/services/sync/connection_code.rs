@@ -198,6 +198,27 @@ mod tests {
     }
 
     #[test]
+    fn a_code_of_the_longest_length_passes_the_length_gate() {
+        // 512 characters get past the length check (and fail on the address, which a code of
+        // that size can never carry); 513 stop at the gate.
+        let prefix = format!("moony-sync1:{ACCOUNT}:");
+        let at_limit = format!(
+            "{prefix}{}",
+            "A".repeat(MAX_CONNECTION_CODE_CHARS - prefix.len())
+        );
+        assert_eq!(at_limit.chars().count(), MAX_CONNECTION_CODE_CHARS);
+        assert_eq!(
+            key_of(parse_connection_code(&at_limit)),
+            "validation.syncRelayUrlInvalid"
+        );
+        let over = format!("{at_limit}A");
+        assert_eq!(
+            key_of(parse_connection_code(&over)),
+            "validation.syncConnectionCodeInvalid"
+        );
+    }
+
+    #[test]
     fn malformed_codes_are_refused_without_echoing_them() {
         let good_server = "aHR0cHM6Ly9zeW5jLmV4YW1wbGUub3Jn";
         let invalid = "validation.syncConnectionCodeInvalid";

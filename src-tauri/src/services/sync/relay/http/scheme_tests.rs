@@ -18,6 +18,8 @@ fn plain_http_is_allowed_except_to_the_moony_cloud() {
     for url in [
         "http://sync.moonyfinance.com",
         "http://sync.moonyfinance.com.:80/",
+        "http://sync.moonyfinance.com..",
+        "http://sync.moonyfinance.com...:80/",
     ] {
         assert!(validate_base_url(url).is_err(), "{url}");
         assert!(HttpRelay::new(url).is_err(), "{url}");
@@ -43,6 +45,8 @@ fn an_http_address_is_insecure_unless_loopback() {
     assert!(is_insecure_address("http://nas.local"));
     assert!(!is_insecure_address("http://localhost:8787"));
     assert!(!is_insecure_address("http://127.0.0.1:8787"));
+    // By design: the IPv6 loopback is not on the short list, so it asks for the warning too.
+    assert!(is_insecure_address("http://[::1]"));
     assert!(!is_insecure_address("https://x.example"));
     assert!(!is_insecure_address("not a url"));
 }
@@ -58,4 +62,13 @@ fn a_display_host_is_host_and_port() {
         Some("sync.example.org".into())
     );
     assert_eq!(display_host("nope"), None);
+}
+
+#[test]
+fn every_trailing_dot_of_the_cloud_host_is_stripped() {
+    assert_eq!(
+        normalize_base_url("https://sync.moonyfinance.com..").expect("https"),
+        DEFAULT_RELAY_URL
+    );
+    assert!(is_default_relay("https://sync.moonyfinance.com..."));
 }

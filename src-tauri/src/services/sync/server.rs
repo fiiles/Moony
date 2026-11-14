@@ -30,8 +30,13 @@ pub async fn check_own_server<R: Relay>(relay: &R, address: &str) -> SyncResult<
     if info.mode != ServerMode::SelfHosted {
         return Err(refusal("validation.syncServerNotOwn"));
     }
+    let host = display_host(&address).ok_or_else(|| {
+        SyncError::Local(crate::error::AppError::Validation(
+            "validation.syncRelayUrlInvalid".into(),
+        ))
+    })?;
     Ok(SyncServerCheck {
-        host: display_host(&address).unwrap_or_default(),
+        host,
         insecure: is_insecure_address(&address),
         address,
         version: info.version,

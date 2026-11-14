@@ -120,22 +120,24 @@ impl SyncError {
         };
         AppError::Validation(key.into())
     }
-}
 
-impl SyncError {
     /// `to_app_error` for the person's own server, which takes no payment: a blocked account is
     /// `syncAccountBlocked` (never "subscription"), and one the server does not know means the
     /// connection code was revoked.
     pub fn to_own_server_app_error(&self) -> AppError {
         match self {
-            SyncError::Lapsed => AppError::Validation("validation.syncAccountBlocked".into()),
+            SyncError::Lapsed => AppError::Validation(ACCOUNT_BLOCKED.into()),
             SyncError::Refused(RelayError::AccountNotFound) => {
-                AppError::Validation("validation.syncConnectionCodeRevoked".into())
+                AppError::Validation(CONNECTION_CODE_REVOKED.into())
             }
             other => other.to_app_error(),
         }
     }
 }
+
+/// The keys only the own-server mapping produces; setup shares them.
+pub const ACCOUNT_BLOCKED: &str = "validation.syncAccountBlocked";
+pub const CONNECTION_CODE_REVOKED: &str = "validation.syncConnectionCodeRevoked";
 
 /// `AppError` is not `Clone`; every variant is one message, so a copy is the same variant.
 fn same_app_error(error: &AppError) -> AppError {

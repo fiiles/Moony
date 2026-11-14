@@ -24,7 +24,10 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
   const [kitOpen, setKitOpen] = useState(false);
   const [serverOpen, setServerOpen] = useState(false);
 
+  const running = syncNow.isPending || status.phase === 'syncing';
+
   const handleSyncNow = async () => {
+    if (running) return;
     try {
       await syncNow.mutateAsync();
     } catch (error) {
@@ -60,11 +63,7 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
               label={t(`status.phase.${status.phase}`)}
               hint={`${lastSynced} · ${t('status.pending', { number: status.pendingChanges })}`}
             >
-              <Button
-                type="button"
-                onClick={handleSyncNow}
-                loading={syncNow.isPending || status.phase === 'syncing'}
-              >
+              <Button type="button" onClick={handleSyncNow} loading={running} disabled={running}>
                 {t('status.syncNow')}
               </Button>
             </SettingsRow>

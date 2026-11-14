@@ -59,7 +59,10 @@ export function SyncStatusBlock({
   const { dateTime, date } = useFormat();
   const { syncNow } = useDeviceSyncMutations();
 
+  const running = syncNow.isPending || status.phase === 'syncing';
+
   const run = async () => {
+    if (running) return;
     try {
       await syncNow.mutateAsync();
     } catch (error) {
@@ -109,11 +112,7 @@ export function SyncStatusBlock({
           />
         )}
       </div>
-      <Button
-        className={BUTTON}
-        onClick={() => void run()}
-        loading={syncNow.isPending || status.phase === 'syncing'}
-      >
+      <Button className={BUTTON} onClick={() => void run()} loading={running} disabled={running}>
         {t('status.syncNow')}
       </Button>
     </>

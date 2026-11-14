@@ -335,6 +335,20 @@ mod tests {
     }
 
     #[test]
+    fn a_retry_round_of_an_unreachable_server_keeps_the_reminder() {
+        // The top bar shows the running round (`syncState`); the reminder stays so it does not
+        // flicker off between rounds.
+        let today = day(2026, 11, 14);
+        let s = sync(
+            SyncPhase::Syncing,
+            Some(SyncProblem::Offline),
+            Some(today - 30 * DAY),
+            None,
+        );
+        assert!(sync_stalled(today, &s).is_some());
+    }
+
+    #[test]
     fn the_seventh_utc_day_of_an_out_of_reach_server_stalls_the_sixth_does_not() {
         let today = day(2026, 11, 14);
         let at = |days: i64| {

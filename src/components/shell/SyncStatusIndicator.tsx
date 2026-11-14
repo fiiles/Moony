@@ -30,7 +30,10 @@ export function SyncStatusIndicator() {
   const age = indicator.ageFrom === null ? null : syncAge(indicator.ageFrom, now);
   const stale = indicator.tone === 'stale';
 
+  const running = syncNow.isPending || status.phase === 'syncing';
+
   const handleSyncNow = async () => {
+    if (running) return;
     try {
       await syncNow.mutateAsync();
     } catch (error) {
@@ -94,7 +97,8 @@ export function SyncStatusIndicator() {
                 variant="outline"
                 size="sm"
                 onClick={handleSyncNow}
-                loading={syncNow.isPending || status.phase === 'syncing'}
+                loading={running}
+                disabled={running}
               >
                 {t('status.syncNow')}
               </Button>

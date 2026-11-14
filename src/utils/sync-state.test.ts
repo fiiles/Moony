@@ -38,6 +38,7 @@ describe('syncState', () => {
       [status('settingUp'), null, null],
       [status('idle', null, now - 240), 'synced', 'fresh'],
       [status('syncing'), 'syncing', 'neutral'],
+      // Differs from Rust on purpose: the reminder stays `Some` for this input, the bar shows the round.
       [status('syncing', 'offline', now - 30 * D), 'syncing', 'neutral'],
       [status('syncing', null, now - 30 * D), 'syncing', 'neutral'],
       [status('idle', null, now - 30 * D), 'synced', 'fresh'],

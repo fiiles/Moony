@@ -49,6 +49,8 @@ function view(kind: SyncStateKind, status: SyncStatus, days = 0): SyncStateView 
 /** `now` in unix seconds. `null` while sync is off or being set up (no indicator). */
 export function syncState(status: SyncStatus | undefined, now: number): SyncStateView | null {
   if (!status || status.phase === 'off' || status.phase === 'settingUp') return null;
+  // A running retry round shows as syncing even when the server has long been out of reach; the
+  // Rust reminder (`sync_stalled`) stays raised then, so it does not flicker between rounds.
   if (status.phase === 'syncing') return view('syncing', status);
   if (status.problem && TRANSIENT_PROBLEMS.includes(status.problem)) {
     const anchor = status.lastSuccessAt ?? status.enabledAt;
@@ -61,6 +63,8 @@ export function syncState(status: SyncStatus | undefined, now: number): SyncStat
   switch (status.phase) {
     case 'idle':
       return view('synced', status);
+    // Held (stale) here, while the Rust reminder is not raised for `waiting` without a problem:
+    // a held change with no named problem gives the person nothing to do.
     case 'waiting':
       return view('waiting', status);
     case 'paused':

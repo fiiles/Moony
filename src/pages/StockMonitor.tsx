@@ -424,7 +424,7 @@ export default function StockMonitor() {
                         <ChangeBadge
                           ratio={change.pct / 100}
                           digits={2}
-                          className="h-[26px] gap-1.5 px-2.5 text-[14px] [&>span:first-child]:text-[11px]"
+                          className="h-[23px] gap-[5px] px-2 text-[12px] [&>span:first-child]:text-[10px]"
                         />
                         <small className="mt-[3px] block text-[10px] font-500 text-ink-4">
                           {formatNativePrice(

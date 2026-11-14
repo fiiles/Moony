@@ -131,6 +131,8 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
         const connected = await connectOwnServer.mutateAsync(choice.input.trim());
         if (connected.accountNumber !== createdNumber) forgetKit();
         setCreatedNumber(connected.accountNumber);
+        // The code carries the account: it does not stay in the field once it was used
+        choice.setInput('');
       }
       setStep('kit');
     } catch (error) {

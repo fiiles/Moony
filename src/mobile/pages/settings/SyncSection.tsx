@@ -232,6 +232,9 @@ export default function SyncSection() {
   const syncOn = status !== undefined && status.phase !== 'off' && status.phase !== 'settingUp';
   const pending = status?.pendingChanges ?? 0;
   const devTools = status?.devTools === true;
+  const deleteAfterwards = t(
+    status?.ownServer ? 'delete.afterwardsOwnServer' : 'delete.afterwards'
+  );
   const devPasteRow = devTools && (
     <SettingsRow
       icon={ClipboardPaste}
@@ -431,7 +434,7 @@ export default function SyncSection() {
         open={open === 'delete'}
         onOpenChange={close}
         title={t('delete.title')}
-        description={`${t('delete.description')} ${t(status?.ownServer ? 'delete.afterwardsOwnServer' : 'delete.afterwards')}`}
+        description={`${t('delete.description')} ${deleteAfterwards}`}
         confirmLabel={t('delete.confirm')}
         destructive
         onSubmit={async (password) => {

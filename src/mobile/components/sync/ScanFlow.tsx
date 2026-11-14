@@ -67,9 +67,9 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
   const details = useRef<ScanDetails | null>(null);
   /** A scanned Recovery Kit QR between the scan and "Join" (it holds the recovery key); not rendered. */
   const kitText = useRef<string | null>(null);
-  /** What the confirm sheet shows of that QR: the account number and the sync server. */
   /** Why the scanned QR is no code for this flow (the `notMoony` sheet's sentence). */
   const [refusal, setRefusal] = useState<'unknownCode' | 'connection'>('unknownCode');
+  /** What the confirm sheet shows of that QR: the account number and the sync server. */
   const [kitShown, setKitShown] = useState<{ account: string; server: string } | null>(null);
   /** The overlay's "Paste a pairing code": the scan is cancelled to make way for the sheet. */
   const toPaste = useRef(false);
@@ -104,6 +104,7 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
   const lastView = useRef(pairing.view);
   if (pairing.view) lastView.current = pairing.view;
   const view = pairing.view ?? lastView.current;
+  const joinNeedsAcknowledgement = view ? needsJoinAcknowledgement(view, null) : false;
 
   // What a join puts at stake, read when its confirmation opens (a Kit QR's, or the received
   // sync details'); the join sends the consent of the numbers on screen
@@ -473,13 +474,10 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
           onCancelSetup={() => void cancelSetupAndRetry()}
           cancellingSetup={turnOff.isPending}
           impact={impactBlock}
-          askInsecure={needsJoinAcknowledgement(view, null)}
+          askInsecure={joinNeedsAcknowledgement}
           insecureAcknowledged={insecureAcknowledged}
           onInsecureAcknowledged={setInsecureAcknowledged}
-          canJoin={
-            shownImpact !== undefined &&
-            (!needsJoinAcknowledgement(view, null) || insecureAcknowledged)
-          }
+          canJoin={shownImpact !== undefined && (!joinNeedsAcknowledgement || insecureAcknowledged)}
           onJoin={() => void runJoin()}
           impactChanged={impactChanged}
         />

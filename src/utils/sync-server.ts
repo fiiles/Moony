@@ -62,7 +62,7 @@ export function normalizeAddress(address: string): string | null {
   } catch {
     return null;
   }
-  const host = url.hostname.replace(/\.$/, '');
+  const host = url.hostname.replace(/\.+$/, '');
   const bare = url.username === '' && url.password === '' && url.pathname === '/';
   if (!bare || host === '') return null;
   if (url.protocol === 'http:' && host === DEFAULT_SYNC_HOST) return null;
@@ -72,13 +72,9 @@ export function normalizeAddress(address: string): string | null {
   return normal.length > MAX_ADDRESS_CHARS ? null : normal;
 }
 
-/** Whether a normalized address is the Moony cloud's. */
+/** Whether an address is the Moony cloud's: its normalised origin is the default server's. */
 export function isDefaultServer(address: string): boolean {
-  try {
-    return new URL(address).hostname === DEFAULT_SYNC_HOST;
-  } catch {
-    return false;
-  }
+  return normalizeAddress(address) === `https://${DEFAULT_SYNC_HOST}`;
 }
 
 /** Reads a connection code the way the backend does. */

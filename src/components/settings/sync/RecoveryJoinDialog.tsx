@@ -53,11 +53,12 @@ export function RecoveryJoinDialog({ onClose }: { onClose: () => void }) {
   const needsAccount = kind === 'recoveryCode';
   // A typed code asks for its sync server; a Kit QR brings its own, which is checked (and its
   // plain http acknowledged) before the join sends anything to it
-  const need = kitServerNeed(kind, payloadServer(code));
+  const qrServer = payloadServer(code);
+  const need = kitServerNeed(kind, qrServer);
   const server = useServerChoice(
     'addressOrCode',
     'server',
-    need === 'typed' ? undefined : need === 'qr' ? (payloadServer(code) ?? '') : ''
+    need === 'typed' ? undefined : need === 'qr' ? (qrServer ?? '') : ''
   );
   const busy = joinWithRecoveryKit.isPending;
   const ready =

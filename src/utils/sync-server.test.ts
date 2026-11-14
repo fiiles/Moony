@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   CONNECTION_CODE_PREFIX,
   decodeServerField,
+  isDefaultServer,
+  normalizeAddress,
   parseConnectionCode,
   payloadServer,
   wrongCodeKey,
@@ -84,15 +86,24 @@ describe('parseConnectionCode', () => {
     });
   });
 
-  it.each(['ftp://x.example', 'https://x.example/p', 'http://sync.moonyfinance.com'])(
-    'refuses the server %s',
-    (server) => {
-      expect(parseConnectionCode(`moony-sync1:${ACCOUNT}:${b64(server)}`)).toEqual({
-        ok: false,
-        problem: 'validation.syncRelayUrlInvalid',
-      });
+  it('reads a code that starts with a zero-width character', () => {
+    for (const lead of ['\u200B', '\u200C', '\u200D', '\uFEFF']) {
+      expect(parseConnectionCode(`${lead}${CODE}`)).toMatchObject({ ok: true, account: ACCOUNT });
     }
-  );
+  });
+
+  it.each([
+    'ftp://x.example',
+    'https://x.example/p',
+    'http://sync.moonyfinance.com',
+    'http://sync.moonyfinance.com.',
+    'http://sync.moonyfinance.com..',
+  ])('refuses the server %s', (server) => {
+    expect(parseConnectionCode(`moony-sync1:${ACCOUNT}:${b64(server)}`)).toEqual({
+      ok: false,
+      problem: 'validation.syncRelayUrlInvalid',
+    });
+  });
 });
 
 describe('decodeServerField', () => {
@@ -154,5 +165,26 @@ describe('wrongCodeKey', () => {
   ];
   it.each(table)('%s with %s gives %s', (context, text, key) => {
     expect(wrongCodeKey(context, text)).toBe(key);
+  });
+});
+
+describe('normalizeAddress', () => {
+  it('strips every trailing dot, so the cloud host cannot hide behind them', () => {
+    expect(normalizeAddress('https://sync.moonyfinance.com..')).toBe(
+      'https://sync.moonyfinance.com'
+    );
+    expect(normalizeAddress('http://sync.moonyfinance.com...:80/')).toBeNull();
+  });
+});
+
+describe('isDefaultServer', () => {
+  it('is the Moony cloud origin, however it is spelled, and nothing else', () => {
+    expect(isDefaultServer('https://sync.moonyfinance.com')).toBe(true);
+    expect(isDefaultServer('https://sync.moonyfinance.com/')).toBe(true);
+    expect(isDefaultServer('https://sync.moonyfinance.com.')).toBe(true);
+    expect(isDefaultServer('https://sync.moonyfinance.com:8443')).toBe(false);
+    expect(isDefaultServer('http://sync.moonyfinance.com')).toBe(false);
+    expect(isDefaultServer('https://sync.example.org')).toBe(false);
+    expect(isDefaultServer('nope')).toBe(false);
   });
 });

@@ -11,9 +11,9 @@ import { scannedCodeKind } from '@/utils/pairing-code';
 import { payloadServer } from '@/utils/sync-server';
 import { kitCodeProblem, kitServerNeed } from '@/utils/sync-setup';
 import { JoinFields, JoinWarning } from '@/components/settings/sync/JoinFields';
-import { ReplaceImpactNotice } from '@/components/settings/sync/ReplaceImpactNotice';
 import { IMPACT_CHANGED_KEY } from '@/components/settings/sync/replace-outcome';
 import { submitOnEnter } from '@/components/settings/sync/submit-on-enter';
+import { JoinImpactNotice } from '@/components/settings/sync/join/JoinImpactNotice';
 import type { JoinFlowProps } from '@/components/settings/sync/join/PairingJoinFlow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,7 +71,7 @@ export function RecoveryJoinFlow({
     deviceName !== '' &&
     (!needsAccount || account.trim() !== '');
 
-  // The dialog's dismissal: not while the join runs
+  // The caller's way out (Settings: a dismissal; first run: leaving the step): not while the join runs
   useEffect(() => {
     if (!dismissRef) return;
     dismissRef.current = () => {
@@ -103,18 +103,11 @@ export function RecoveryJoinFlow({
   return (
     <form onSubmit={submit} className="grid gap-4">
       {presentation.showReplaceWarning && <JoinWarning />}
-      {presentation.showImpact && (
-        <ReplaceImpactNotice
-          flow="join"
-          impact={impact.data}
-          error={impact.isError ? (impact.error as Error) : null}
-        />
-      )}
-      {!presentation.showImpact && impact.isError && (
-        <p className="m-0 text-micro font-500 text-loss" role="alert">
-          {translateApiError(impact.error as Error, tc)}
-        </p>
-      )}
+      <JoinImpactNotice
+        show={presentation.showImpact}
+        impact={impact.data}
+        error={impact.isError ? (impact.error as Error) : null}
+      />
       <div className="grid gap-1.5">
         <Label htmlFor="join-kit-code">{t('join.codeLabel')}</Label>
         <Input

@@ -17,8 +17,8 @@ import { JoinFields, JoinWarning } from '@/components/settings/sync/JoinFields';
 import { PairingExpiryNote } from '@/components/settings/sync/PairingExpiryNote';
 import { PairingSteps } from '@/components/settings/sync/PairingSteps';
 import { InsecureNotice } from '@/components/settings/sync/ServerChoice';
-import { ReplaceImpactNotice } from '@/components/settings/sync/ReplaceImpactNotice';
 import { IMPACT_CHANGED_KEY } from '@/components/settings/sync/replace-outcome';
+import { JoinImpactNotice } from '@/components/settings/sync/join/JoinImpactNotice';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
@@ -33,10 +33,18 @@ export interface JoinFlowProps {
   /** Places the flow's buttons: Settings wraps them in `DialogFooter`, the wizard in its nav row. */
   footer: (actions: ReactNode) => ReactNode;
   /**
-   * Settings: what a dismissal of the dialog (Escape, a click outside, its X) does. The flow sets
-   * it to its own way out, which does nothing while a pairing starts or a join runs.
+   * The caller's way to leave the flow from outside it: Settings calls it when the dialog is
+   * dismissed (Escape, a click outside, its X), the first run before it leaves the Připojení step
+   * ("Continue without sync"). The flow sets it to its own way out (`onCancel`, after giving a
+   * pairing up), which does nothing while a pairing starts or a join runs.
    */
   dismissRef?: RefObject<(() => void) | null>;
+}
+
+/** Only the pairing flow: whether a pairing exists yet (its QR and later steps are on screen). */
+export interface PairingJoinFlowProps extends JoinFlowProps {
+  /** Settings drops the dialog's description once the QR shows its own hint. */
+  onPairingShown?: (shown: boolean) => void;
 }
 
 /**
@@ -52,7 +60,8 @@ export function PairingJoinFlow({
   onCancel,
   footer,
   dismissRef,
-}: JoinFlowProps) {
+  onPairingShown,
+}: PairingJoinFlowProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const presentation = joinPresentation(context);
@@ -64,6 +73,8 @@ export function PairingJoinFlow({
   const lastView = useRef(pairing.view);
   if (pairing.view) lastView.current = pairing.view;
   const view = pairing.view ?? lastView.current;
+  const shown = view !== undefined;
+  useEffect(() => onPairingShown?.(shown), [onPairingShown, shown]);
   // Read when the sync details arrive and the confirmation opens; never cached. Read in the first
   // run too, where it is not shown: the join sends it as its consent.
   const impact = useReplaceImpact(view?.stage === 'received');
@@ -94,7 +105,8 @@ export function PairingJoinFlow({
     onCancel();
   };
 
-  // The dialog's dismissal: not while the pairing starts (the password is on its way) or the join runs
+  // The caller's way out (Settings: a dismissal; first run: leaving the step): not while the pairing
+  // starts (the password is on its way) or the join runs
   const busy = view ? join.isPending : start.isPending;
   useEffect(() => {
     if (!dismissRef) return;
@@ -236,18 +248,11 @@ export function PairingJoinFlow({
               <AlertDescription>{tc(IMPACT_CHANGED_KEY)}</AlertDescription>
             </Alert>
           )}
-          {presentation.showImpact && (
-            <ReplaceImpactNotice
-              flow="join"
-              impact={impact.data}
-              error={impact.isError ? (impact.error as Error) : null}
-            />
-          )}
-          {!presentation.showImpact && impact.isError && (
-            <p className="m-0 text-micro font-500 text-loss" role="alert">
-              {translateApiError(impact.error as Error, tc)}
-            </p>
-          )}
+          <JoinImpactNotice
+            show={presentation.showImpact}
+            impact={impact.data}
+            error={impact.isError ? (impact.error as Error) : null}
+          />
           {askJoinAcknowledgement && view.joinServer && (
             <InsecureNotice
               id="join-insecure"

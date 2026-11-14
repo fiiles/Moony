@@ -33,6 +33,8 @@ export function JoinDeviceDialog({ onClose }: { onClose: () => void }) {
   const [screen, setScreen] = useState<'choice' | 'flow'>('choice');
   const [name, setName] = useState(() => t(`setup.defaultName.${defaultDeviceKey()}`));
   const [method, setMethod] = useState<JoinMethod>('pair');
+  // Once a pairing exists its QR carries the phone hint: the header leaves its description out
+  const [pairingShown, setPairingShown] = useState(false);
   // Set by the running flow: its own way out, a no-op while it is busy
   const dismissFlow = useRef<(() => void) | null>(null);
   const deviceName = name.trim();
@@ -52,10 +54,23 @@ export function JoinDeviceDialog({ onClose }: { onClose: () => void }) {
     else dismissFlow.current?.();
   };
 
-  const Flow = method === 'pair' ? PairingJoinFlow : RecoveryJoinFlow;
+  const flowProps = {
+    context: SETTINGS,
+    deviceName,
+    onJoined: joined,
+    onCancel: onClose,
+    footer: inFooter,
+    dismissRef: dismissFlow,
+  };
+  const hint = method === 'kit' ? t('join.kitHint') : pairingShown ? null : t('join.pairHint');
+  // A screen without a description says so, or Radix warns about a missing one
+  const noDescription = screen === 'flow' && hint === null;
   return (
     <Dialog open onOpenChange={(open) => !open && dismiss()}>
-      <DialogContent className="max-w-[560px]">
+      <DialogContent
+        className="max-w-[560px]"
+        {...(noDescription ? { 'aria-describedby': undefined } : {})}
+      >
         {screen === 'choice' ? (
           <form onSubmit={proceed} className="grid gap-4">
             <DialogHeader>
@@ -78,18 +93,13 @@ export function JoinDeviceDialog({ onClose }: { onClose: () => void }) {
               <DialogTitle>
                 {method === 'pair' ? t('join.pairTitle') : t('join.kitTitle')}
               </DialogTitle>
-              <DialogDescription>
-                {method === 'pair' ? t('join.pairHint') : t('join.kitHint')}
-              </DialogDescription>
+              {hint !== null && <DialogDescription>{hint}</DialogDescription>}
             </DialogHeader>
-            <Flow
-              context={SETTINGS}
-              deviceName={deviceName}
-              onJoined={joined}
-              onCancel={onClose}
-              footer={inFooter}
-              dismissRef={dismissFlow}
-            />
+            {method === 'pair' ? (
+              <PairingJoinFlow {...flowProps} onPairingShown={setPairingShown} />
+            ) : (
+              <RecoveryJoinFlow {...flowProps} />
+            )}
           </>
         )}
       </DialogContent>

@@ -24,6 +24,7 @@
     "settings": "同期設定"
   },
   "status": {
+    "unreachableNote": "サーバーに接続できるようになると、同期が再開されます。",
     "phase": {
       "off": "同期はオフです",
       "settingUp": "同期を設定中",

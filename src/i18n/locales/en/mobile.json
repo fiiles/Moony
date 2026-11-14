@@ -64,7 +64,9 @@
     "backupStale_other": "Last backup {{count}} days ago",
     "backupNever": "No backup yet",
     "valuationStale": "The valuation of {{name}} is a year old",
+    "syncStalled": "Sync has stopped",
     "actions": {
+      "open": "Open",
       "record": "Record",
       "categorize": "Categorize",
       "import": "Import",

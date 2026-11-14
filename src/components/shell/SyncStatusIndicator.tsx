@@ -93,13 +93,7 @@ export function SyncStatusIndicator() {
             </Button>
           ) : (
             <div className="flex items-center justify-between gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSyncNow}
-                loading={running}
-                disabled={running}
-              >
+              <Button variant="outline" size="sm" onClick={handleSyncNow} loading={running}>
                 {t('status.syncNow')}
               </Button>
               <Link href="/settings/sync" onClick={() => setOpen(false)} className={linkClass}>

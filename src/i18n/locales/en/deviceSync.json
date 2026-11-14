@@ -28,6 +28,7 @@
     "settings": "Sync settings"
   },
   "status": {
+    "unreachableNote": "Sync resumes once the server is in reach.",
     "phase": {
       "off": "Sync is off",
       "settingUp": "Setting up sync",

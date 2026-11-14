@@ -78,7 +78,9 @@
     "backupStale_other": "Ostatnia kopia zapasowa sprzed {{count}} dnia",
     "backupNever": "Brak kopii zapasowej",
     "valuationStale": "Wycena {{name}} ma rok",
+    "syncStalled": "Synchronizacja została zatrzymana",
     "actions": {
+      "open": "Otwórz",
       "record": "Zapisz",
       "categorize": "Przypisz",
       "import": "Importuj",

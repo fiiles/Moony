@@ -19,6 +19,7 @@ import {
 } from '@/utils/device-sync-problem';
 import { secondsToDate } from '@/utils/sync-status';
 import { hostOf } from '@/utils/sync-setup';
+import { syncState } from '@/utils/sync-state';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 
@@ -70,6 +71,7 @@ export function SyncStatusBlock({
     }
   };
 
+  const unreachable = syncState(status, Math.floor(Date.now() / 1000))?.kind === 'unreachable';
   // A note, never a problem: this device's clock stands more than a day ahead (audit M6)
   const clockAheadUntil = secondsToDate(status.clockAheadUntil);
   const lastSynced =
@@ -100,6 +102,9 @@ export function SyncStatusBlock({
           {t('status.clockAhead', { date: date(clockAheadUntil, { dateStyle: 'long' }) })}
         </InlineAlert>
       )}
+      {unreachable && (
+        <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{t('status.unreachableNote')}</p>
+      )}
       <div className={CARD}>
         <KeyValueRow label={t('phone.status')} value={t(`status.phase.${status.phase}`)} />
         <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} />
@@ -112,7 +117,7 @@ export function SyncStatusBlock({
           />
         )}
       </div>
-      <Button className={BUTTON} onClick={() => void run()} loading={running} disabled={running}>
+      <Button className={BUTTON} onClick={() => void run()} loading={running}>
         {t('status.syncNow')}
       </Button>
     </>
@@ -138,6 +143,8 @@ function ProblemAlert({
   const heldGaps = useHeldGaps(status.problem === 'gap' || status.problem === 'clockAhead');
   const problem = status.problem;
   if (!problem) return null;
+  // Out of reach for now: no alert box, the block shows a plain line instead
+  if (syncState(status, Math.floor(Date.now() / 1000))?.kind === 'unreachable') return null;
 
   const now = Math.floor(Date.now() / 1000);
   const held = heldFor(problem, heldGaps.data);

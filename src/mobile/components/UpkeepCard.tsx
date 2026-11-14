@@ -12,6 +12,7 @@ import {
   House,
   Landmark,
   Percent,
+  RefreshCw,
   Tag,
   Upload,
   type LucideIcon,
@@ -50,6 +51,7 @@ const ICONS: Record<UpkeepKind, LucideIcon> = {
   uncategorized: Tag,
   statement_due: Upload,
   backup_stale: Download,
+  sync_stalled: RefreshCw,
   valuation_stale: House,
   // The desktop's upkeep icons (`MilestoneRows`)
   loan_balance_check: FileCheck,
@@ -61,6 +63,7 @@ const VERBS: Record<UpkeepKind, string> = {
   uncategorized: 'upkeep.actions.categorize',
   statement_due: 'upkeep.actions.import',
   backup_stale: 'upkeep.actions.backup',
+  sync_stalled: 'upkeep.actions.open',
   valuation_stale: 'upkeep.actions.revalue',
   loan_balance_check: 'upkeep.actions.enterBalance',
   loan_fixation_expired: 'upkeep.actions.enterRate',
@@ -84,6 +87,8 @@ function targetOf(row: UpkeepRow): string {
       return row.sourceId ? loanEventPath(row.sourceId, 'balance_check') : routes.finance;
     case 'loan_fixation_expired':
       return row.sourceId ? loanEventPath(row.sourceId, 'rate_change') : routes.finance;
+    case 'sync_stalled':
+      return settingsPath('sync');
     default:
       // `backup_stale`: the other two kinds open a sheet and never ask
       return settingsPath('backup');
@@ -235,6 +240,7 @@ function UpkeepItem({
       break;
     case 'loan_balance_check':
     case 'loan_fixation_expired':
+    case 'sync_stalled':
       // The desktop's upkeep row: the loan's name over its sub-line
       sub = row.milestone ? subLine(row.milestone) : null;
       break;

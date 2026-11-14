@@ -28,6 +28,7 @@
     "settings": "Synchronisierungseinstellungen"
   },
   "status": {
+    "unreachableNote": "Die Synchronisierung läuft weiter, sobald der Server wieder erreichbar ist.",
     "phase": {
       "off": "Synchronisierung ist aus",
       "settingUp": "Synchronisierung wird eingerichtet",

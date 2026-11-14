@@ -28,6 +28,7 @@
     "settings": "Synkroniseringsinställningar"
   },
   "status": {
+    "unreachableNote": "Synkroniseringen återupptas när servern är inom räckhåll igen.",
     "phase": {
       "off": "Synkroniseringen är av",
       "settingUp": "Synkroniseringen ställs in",

@@ -18,6 +18,7 @@ import {
   skippableGap,
 } from '@/utils/device-sync-problem';
 import { secondsToDate } from '@/utils/sync-status';
+import { syncState } from '@/utils/sync-state';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { SyncRenewDialog } from '@/components/settings/sync/SyncRenewDialog';
@@ -45,6 +46,8 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
   const close = () => setOpen(null);
   const problem = status.problem;
   if (!problem) return null;
+  // Out of reach for now: the engine retries, so no alert box (the status card shows a plain line)
+  if (syncState(status, Math.floor(Date.now() / 1000))?.kind === 'unreachable') return null;
 
   const tryAgain = async () => {
     try {

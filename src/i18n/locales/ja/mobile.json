@@ -57,7 +57,9 @@
     "backupStale_other": "最後のバックアップは{{count}}日前",
     "backupNever": "まだバックアップがありません",
     "valuationStale": "{{name}}の評価額は1年前のものです",
+    "syncStalled": "同期が停止しました",
     "actions": {
+      "open": "開く",
       "record": "記録",
       "categorize": "分類",
       "import": "取り込む",

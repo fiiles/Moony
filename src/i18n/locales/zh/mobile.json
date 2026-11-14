@@ -57,7 +57,9 @@
     "backupStale_other": "{{count}} 天前备份",
     "backupNever": "尚无备份",
     "valuationStale": "{{name}} 的估值已满一年",
+    "syncStalled": "同步已停止",
     "actions": {
+      "open": "打开",
       "record": "记录",
       "categorize": "分类",
       "import": "导入",

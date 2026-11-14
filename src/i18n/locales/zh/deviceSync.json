@@ -24,6 +24,7 @@
     "settings": "同步设置"
   },
   "status": {
+    "unreachableNote": "服务器恢复可达后,同步将自动恢复。",
     "phase": {
       "off": "同步已关闭",
       "settingUp": "正在设置同步",

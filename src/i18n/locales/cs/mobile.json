@@ -71,7 +71,9 @@
     "backupStale_other": "Záloha před {{count}} dny",
     "backupNever": "Zatím žádná záloha",
     "valuationStale": "Ocenění {{name}} je rok staré",
+    "syncStalled": "Synchronizace se zastavila",
     "actions": {
+      "open": "Otevřít",
       "record": "Zaznamenat",
       "categorize": "Zařadit",
       "import": "Importovat",

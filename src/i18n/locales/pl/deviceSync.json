@@ -36,6 +36,7 @@
     "settings": "Ustawienia synchronizacji"
   },
   "status": {
+    "unreachableNote": "Synchronizacja wznowi się, gdy serwer znów będzie w zasięgu.",
     "phase": {
       "off": "Synchronizacja jest wyłączona",
       "settingUp": "Konfigurowanie synchronizacji",

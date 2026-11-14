@@ -36,6 +36,7 @@
     "settings": "Nastavení synchronizace"
   },
   "status": {
+    "unreachableNote": "Synchronizace se obnoví, až bude server v dosahu.",
     "phase": {
       "off": "Synchronizace je vypnutá",
       "settingUp": "Nastavuje se synchronizace",

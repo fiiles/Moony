@@ -71,7 +71,9 @@
     "backupStale_other": "Última copia de seguridad hace {{count}} días",
     "backupNever": "Aún no hay copia de seguridad",
     "valuationStale": "La valoración de {{name}} tiene un año",
+    "syncStalled": "La sincronización se ha detenido",
     "actions": {
+      "open": "Abrir",
       "record": "Registrar",
       "categorize": "Clasificar",
       "import": "Importar",

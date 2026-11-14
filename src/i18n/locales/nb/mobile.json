@@ -64,7 +64,9 @@
     "backupStale_other": "Siste sikkerhetskopi for {{count}} dager siden",
     "backupNever": "Ingen sikkerhetskopi ennå",
     "valuationStale": "Verdivurderingen av {{name}} er et år gammel",
+    "syncStalled": "Synkroniseringen har stoppet",
     "actions": {
+      "open": "Åpne",
       "record": "Registrer",
       "categorize": "Kategoriser",
       "import": "Importer",

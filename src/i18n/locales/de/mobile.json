@@ -64,7 +64,9 @@
     "backupStale_other": "Letzte Sicherung vor {{count}} Tagen",
     "backupNever": "Noch keine Sicherung",
     "valuationStale": "Die Bewertung von {{name}} ist ein Jahr alt",
+    "syncStalled": "Die Synchronisierung wurde angehalten",
     "actions": {
+      "open": "Öffnen",
       "record": "Erfassen",
       "categorize": "Zuordnen",
       "import": "Importieren",

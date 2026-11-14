@@ -32,6 +32,7 @@
     "settings": "Ajustes de sincronización"
   },
   "status": {
+    "unreachableNote": "La sincronización se reanudará cuando el servidor vuelva a estar al alcance.",
     "phase": {
       "off": "La sincronización está desactivada",
       "settingUp": "Configurando la sincronización",

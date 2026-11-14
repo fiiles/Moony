@@ -420,7 +420,12 @@ export default function StockMonitor() {
                   <TableCell className="text-right num">
                     {change ? (
                       <>
-                        <ChangeBadge ratio={change.pct / 100} digits={2} />
+                        {/* The day's change is what this screen is read for: larger than a badge. */}
+                        <ChangeBadge
+                          ratio={change.pct / 100}
+                          digits={2}
+                          className="h-[23px] gap-[5px] px-2 text-[12px] [&>span:first-child]:text-[10px]"
+                        />
                         <small className="mt-[3px] block text-[10px] font-500 text-ink-4">
                           {formatNativePrice(
                             change.abs,

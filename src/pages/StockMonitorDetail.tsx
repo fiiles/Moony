@@ -25,6 +25,7 @@ import {
 } from '@/utils/stock-monitor';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import { positionTradeEvents, type PositionTradeEvent } from '@/utils/trade-events';
+import { sessionStarts, tradingAxis, withLivePrice } from '@/utils/trading-axis';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
 import { InstrumentHeadLogo } from '@/components/common/AssetLogo';
 import { Button } from '@/components/ui/button';
@@ -176,16 +177,27 @@ export default function StockMonitorDetail() {
   };
   const intraday = period === '1D' || period === '5D';
 
-  const points = useMemo(() => {
-    const pts = range.map((p) => ({ t: p.timestamp, value: p.price }));
-    if (isFinite(current) && pts.length > 0) {
-      const last = pts[pts.length - 1];
-      const at = fetchedAt ?? Math.floor(Date.now() / 1000);
-      if (at > last.t) pts.push({ t: at, value: current });
-      else last.value = current;
-    }
-    return pts;
-  }, [range, current, fetchedAt]);
+  const points = useMemo(
+    () =>
+      withLivePrice(
+        range.map((p) => ({ t: p.timestamp, value: p.price })),
+        current,
+        fetchedAt ?? Math.floor(Date.now() / 1000)
+      ),
+    [range, current, fetchedAt]
+  );
+
+  // Intraday (1D, 5D) the chart runs on trading time, as Google Finance does: nights,
+  // weekends and lunch breaks shrink to one bar instead of a flat line across them.
+  const axis = useMemo(
+    () => (intraday ? tradingAxis(points.map((p) => p.t)) : null),
+    [intraday, points]
+  );
+  const realT = (x: number) => (axis ? axis.fromAxis(x) : x);
+  const chartPoints = useMemo(
+    () => (axis ? points.map((p) => ({ ...p, t: axis.toAxis(p.t) })) : points),
+    [axis, points]
+  );
 
   const watchEvents = useMemo<ChartEvent[]>(
     () =>
@@ -203,10 +215,10 @@ export default function StockMonitorDetail() {
     enabled: !!heldId,
   });
   const tradeEvents = useMemo(() => positionTradeEvents(transactions ?? []), [transactions]);
-  const chartEvents = useMemo<MonitorEvent[]>(
-    () => (showTrades ? [...watchEvents, ...tradeEvents] : watchEvents),
-    [showTrades, watchEvents, tradeEvents]
-  );
+  const chartEvents = useMemo<MonitorEvent[]>(() => {
+    const events = showTrades ? [...watchEvents, ...tradeEvents] : watchEvents;
+    return axis ? events.map((e) => ({ ...e, t: axis.toAxis(e.t) })) : events;
+  }, [showTrades, watchEvents, tradeEvents, axis]);
 
   const priceAt = (series: { timestamp: number; price: number }[], at: number) => {
     if (series.length === 0) return null;
@@ -228,18 +240,30 @@ export default function StockMonitorDetail() {
   const periodLabel = (p: ChartPeriod) =>
     p === '1Y' ? tc('periods.1Y') : p === '5Y' ? tc('periods.5Y') : p === 'MAX' ? 'Max' : p;
 
-  // Intraday axis: times instead of days
+  // Intraday axis: five evenly spaced times for 1D, each session's day at its start for 5D
   const intradayLabels = useMemo(() => {
-    if (!intraday || points.length < 2) return [];
-    const t0 = points[0].t;
-    const t1 = points[points.length - 1].t;
-    return Array.from({ length: 5 }, (_, i) => {
-      const ts = t0 + ((t1 - t0) * i) / 4;
-      return period === '1D'
-        ? fmt.time(ts)
-        : fmt.date(new Date(ts * 1000), { day: 'numeric', month: 'numeric' });
-    });
-  }, [intraday, points, period, fmt]);
+    if (!axis || chartPoints.length < 2) return [];
+    const x0 = chartPoints[0].t;
+    const x1 = chartPoints[chartPoints.length - 1].t;
+    if (x1 <= x0) return [];
+    if (period === '1D') {
+      return Array.from({ length: 5 }, (_, i) => ({
+        at: i / 4,
+        label: fmt.time(axis.fromAxis(x0 + ((x1 - x0) * i) / 4)),
+      }));
+    }
+    const labels: { at: number; label: string }[] = [];
+    for (const i of sessionStarts(points.map((p) => p.t))) {
+      const at = (chartPoints[i].t - x0) / (x1 - x0);
+      // A session too close to the previous label (a short one) stays unnamed.
+      if (labels.length > 0 && at - labels[labels.length - 1].at < 0.1) continue;
+      labels.push({
+        at,
+        label: fmt.date(new Date(points[i].t * 1000), { day: 'numeric', month: 'numeric' }),
+      });
+    }
+    return labels;
+  }, [axis, chartPoints, points, period, fmt]);
 
   const openTarget = () =>
     detail &&
@@ -289,8 +313,8 @@ export default function StockMonitorDetail() {
 
   const eventTip = (cluster: EventCluster<MonitorEvent>) => {
     if (cluster.events.length > 1) {
-      const first = cluster.events[0].t;
-      const last = cluster.events[cluster.events.length - 1].t;
+      const first = realT(cluster.events[0].t);
+      const last = realT(cluster.events[cluster.events.length - 1].t);
       return {
         title: ts('detail.events.cluster', { count: cluster.events.length }),
         lines: [first === last ? fmt.day(first) : `${fmt.day(first)} – ${fmt.day(last)}`],
@@ -316,7 +340,7 @@ export default function StockMonitorDetail() {
       title: t('detail.legend.watchStart'),
       lines: [
         [
-          fmt.day(cluster.t),
+          fmt.day(realT(cluster.t)),
           watchPrice !== null ? price(watchPrice) : null,
           hasTarget ? t('detail.watchStartTarget', { price: price(targetValue) }) : null,
         ]
@@ -439,7 +463,7 @@ export default function StockMonitorDetail() {
             ) : (
               <MoonyLineChart
                 className="-mx-1 mt-[18px]"
-                points={points}
+                points={chartPoints}
                 height={230}
                 formatValue={price}
                 formatTick={(v) => plain(v)}
@@ -456,7 +480,7 @@ export default function StockMonitorDetail() {
                 events={chartEvents}
                 renderTip={(p) => ({
                   title: price(p.value),
-                  lines: [intraday ? fmt.dateTime(p.t) : fmt.day(p.t)],
+                  lines: [intraday ? fmt.dateTime(realT(p.t)) : fmt.day(p.t)],
                 })}
                 renderEventTip={eventTip}
               />
@@ -464,12 +488,32 @@ export default function StockMonitorDetail() {
             {intraday && intradayLabels.length > 0 && (
               <div
                 aria-hidden
-                className="mt-1.5 flex justify-between text-micro font-500 text-chart-axis"
+                className="mt-1.5 text-micro font-500 text-chart-axis"
                 style={{ paddingRight: AXIS_WIDTH }}
               >
-                {intradayLabels.map((l, i) => (
-                  <span key={i}>{l}</span>
-                ))}
+                {period === '1D' ? (
+                  <div className="flex justify-between">
+                    {intradayLabels.map((l, i) => (
+                      <span key={i}>{l.label}</span>
+                    ))}
+                  </div>
+                ) : (
+                  // Each day's label starts where its session starts; one near the end hangs left.
+                  <div className="relative h-[1lh] whitespace-nowrap">
+                    {intradayLabels.map((l, i) => (
+                      <span
+                        key={i}
+                        className="absolute top-0"
+                        style={{
+                          left: `${l.at * 100}%`,
+                          transform: l.at > 0.9 ? 'translateX(-100%)' : undefined,
+                        }}
+                      >
+                        {l.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">

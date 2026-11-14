@@ -11,9 +11,10 @@
 //!   first, and the re-sync sends what it can before it replaces;
 //! - each returns a `ReplaceOutcome` with what stayed only in the backup. The backup is marked
 //!   `-kept` inside the hold, before the replace commits, so a crash before the outcome is known
-//!   never leaves it prunable. After the outcome a join's and a repair's backup stay kept (the
-//!   only copy of what a join replaced; what a capture-broken session may have written before
-//!   the guard existed), a re-sync's settles to plain or stays kept (unsent changes, documents
+//!   never leaves it prunable. After the outcome a repair's backup stays kept (what a
+//!   capture-broken session may have written before the guard existed) and so does a join's,
+//!   the only copy of what it replaced, unless the profile held nothing (no account,
+//!   transaction, document, photo or unsent change: spec 2026-11-14 §5.4), when it is plain, a re-sync's settles to plain or stays kept (unsent changes, documents
 //!   or photos found nowhere else), and the backup of a replace that never happened becomes
 //!   `-unused`.
 //!
@@ -140,7 +141,8 @@ struct Replaced {
     report: RestoreReport,
     unsent_items: u32,
     unsent_batches: u32,
-    /// A join or a repair: its backup stays Kept whatever the counts (controller ruling). A
+    /// A repair, or a join into a profile that held something: its backup stays Kept whatever the
+    /// counts (controller ruling); a join into a profile that held nothing leaves it plain. A
     /// re-sync too when, inside its hold, an envelope still waited for its echo (sent or not, the
     /// vault was not seen to hold it: the counts leave out what the push handed over, the mark
     /// does not), or the sync server was seen to go back (`state::vault_went_back_at`: restored
@@ -198,6 +200,13 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
         } else {
             (0, 0, false)
         };
+        // A join into a profile that holds nothing still writes its backup (no replace without
+        // a verified backup), but the backup is not worth keeping (spec 2026-11-14 §5.4).
+        let brand_new =
+            input.kind == ReplaceKind::Join && impact::replace_impact(conn)?.holds_nothing();
+        if brand_new {
+            log::info!("[SYNC] The joining profile held nothing: its backup is not kept");
+        }
         let path = match backup.take() {
             Some(path) => path,
             None => {
@@ -221,7 +230,11 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
             report,
             unsent_items,
             unsent_batches,
-            always_kept: input.kind != ReplaceKind::Resync || resync_keeps,
+            always_kept: match input.kind {
+                ReplaceKind::Join => !brand_new,
+                ReplaceKind::Repair => true,
+                ReplaceKind::Resync => resync_keeps,
+            },
         })
     })();
     Hold { backup, replaced }

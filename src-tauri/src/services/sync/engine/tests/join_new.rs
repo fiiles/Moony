@@ -29,6 +29,7 @@ const RELAY: &str = "https://relay.test";
 fn newcomer() -> TestConn {
     let conn = TestConn::new(migrated());
     institution(&conn.lock(), "local-only");
+    bank_account(&conn.lock(), "local-account");
     conn
 }
 
@@ -505,6 +506,7 @@ async fn a_device_that_turned_sync_off_joins_again() {
     assert!(state::load(&device.lock()).expect("state").is_none());
     let again = tempfile::tempdir().expect("dir");
     institution(&device.lock(), "local-only");
+    bank_account(&device.lock(), "local-account");
     let zip = join_as(&vault, &device, vault.creds.clone(), "Laptop", again.path())
         .await
         .expect("join again");

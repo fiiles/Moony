@@ -218,6 +218,7 @@ async fn the_join_backs_up_and_replaces_in_one_connection_hold() {
     let dir = tempfile::tempdir().expect("dir");
     let joiner = HoldLog::new(TestConn::new(migrated()), dir.path());
     institution(&joiner.inner.lock(), "local-only");
+    bank_account(&joiner.inner.lock(), "local-account");
     let consent = agreed(&joiner.inner);
 
     let outcome = join_new_device(
@@ -257,14 +258,15 @@ async fn the_join_backs_up_and_replaces_in_one_connection_hold() {
     assert!(outcome.backup.is_file());
 }
 
-/// Controller ruling: every join that replaced keeps its backup, whatever kind of rows the device
-/// had: it is the only copy of what the join replaced.
+/// Controller ruling: a join into a profile that holds something keeps its backup: it is the only
+/// copy of what the join replaced.
 #[tokio::test]
-async fn every_join_that_replaced_keeps_its_backup() {
+async fn a_join_into_a_profile_with_data_keeps_its_backup() {
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;
     let dir = tempfile::tempdir().expect("dir");
     let joiner = TestConn::new(migrated());
+    bank_account(&joiner.lock(), "b1");
     let consent = agreed(&joiner);
 
     let outcome = join_new_device(
@@ -280,10 +282,45 @@ async fn every_join_that_replaced_keeps_its_backup() {
     .await
     .expect("join");
 
-    assert!(outcome.kept, "even a device with no rows of its own");
+    assert!(outcome.kept);
     let listed = backups::list(dir.path()).expect("list");
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].mark, BackupMark::Kept);
+}
+
+/// Spec 2026-11-14 §5.4: a join into a profile that holds nothing still writes its backup, and
+/// leaves it plain (prunable). Institutions are not counted.
+#[tokio::test]
+async fn a_join_into_a_brand_new_profile_leaves_a_plain_backup() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let dir = tempfile::tempdir().expect("dir");
+    let joiner = TestConn::new(migrated());
+    institution(&joiner.lock(), "local-only");
+    let consent = agreed(&joiner);
+
+    let outcome = join_new_device(
+        &vault.relay,
+        &joiner,
+        vault.creds.clone(),
+        "Laptop",
+        consent,
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect("join");
+
+    assert!(!outcome.kept);
+    assert_eq!(
+        outcome.backup,
+        dir.path().join(format!("sync-repair-{NOW}.zip"))
+    );
+    assert!(outcome.backup.is_file());
+    let listed = backups::list(dir.path()).expect("list");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].mark, BackupMark::Plain);
 }
 
 /// Pre-flight I-6 with the Task 5 review: between the replace's commit and the backup's final

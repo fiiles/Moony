@@ -67,6 +67,17 @@ pub struct ReplaceImpact {
 }
 
 impl ReplaceImpact {
+    /// The profile holds nothing a replace could lose: no account, transaction, document, photo
+    /// or unsent change. The watermark never decides (a fresh profile ticks it too).
+    pub fn holds_nothing(&self) -> bool {
+        self.accounts == 0
+            && self.transactions == 0
+            && self.documents == 0
+            && self.photos == 0
+            && self.pending_items == 0
+            && self.pending_batches == 0
+    }
+
     /// The consent of a confirmation that showed this impact: its watermark, and its documents and
     /// photos.
     pub fn consent(&self) -> ReplaceConsent {
@@ -236,6 +247,43 @@ fn too_many() -> AppError {
 mod tests {
     use super::*;
     use crate::services::sync::test_support::migrated;
+
+    #[test]
+    fn holds_nothing_counts_everything_but_the_watermark() {
+        let empty = ReplaceImpact {
+            changes_through: 42,
+            ..Default::default()
+        };
+        assert!(empty.holds_nothing());
+        for impact in [
+            ReplaceImpact {
+                accounts: 1,
+                ..Default::default()
+            },
+            ReplaceImpact {
+                transactions: 1,
+                ..Default::default()
+            },
+            ReplaceImpact {
+                documents: 1,
+                ..Default::default()
+            },
+            ReplaceImpact {
+                photos: 1,
+                ..Default::default()
+            },
+            ReplaceImpact {
+                pending_items: 1,
+                ..Default::default()
+            },
+            ReplaceImpact {
+                pending_batches: 1,
+                ..Default::default()
+            },
+        ] {
+            assert!(!impact.holds_nothing(), "{impact:?}");
+        }
+    }
 
     fn exec(conn: &Connection, sql: &str) {
         conn.execute_batch(sql).expect(sql);

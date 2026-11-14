@@ -283,6 +283,7 @@ pub const MIGRATION_CLASSES: &[(&str, MigrationClass)] = &[
     ("031_sync_missed_below_barrier", A),
     ("032_sync_snapshot_too_large", A),
     ("033_sync_snapshot_barrier", A),
+    ("034_asset_logos", A),
 ];
 
 pub fn schema_number() -> u32 {
@@ -672,8 +673,8 @@ mod tests {
     }
 
     #[test]
-    fn schema_number_is_33_and_the_newest_barrier_is_025() {
-        assert_eq!(schema_number(), 33);
+    fn schema_number_is_34_and_the_newest_barrier_is_025() {
+        assert_eq!(schema_number(), 34);
         assert_eq!(barrier_number(), 25);
     }
 }

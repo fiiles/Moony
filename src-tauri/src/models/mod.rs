@@ -4,6 +4,7 @@
 
 #![allow(dead_code)]
 
+pub mod asset_logos;
 pub mod attachments;
 pub mod backup;
 pub mod bank_accounts;

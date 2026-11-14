@@ -296,6 +296,7 @@ fn the_exact_tables_of_each_class_are_pinned() {
     let derived = ["budget_goals"];
     let local = [
         "_migrations",
+        "asset_logos",
         "attachment_leftovers",
         "loan_legacy_anchors",
         "mcp_pending_refresh",

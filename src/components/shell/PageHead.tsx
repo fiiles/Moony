@@ -7,6 +7,8 @@ interface PageHeadProps {
   /** 10 px uppercase line above the title; segments joined with " · ". */
   eyebrow?: ReactNode | ReactNode[];
   title: ReactNode;
+  /** An instrument's logo left of the title (a detail page); nothing when it renders null. */
+  logo?: ReactNode;
   /** One sentence under the title. */
   description?: ReactNode;
   /** Right side: actions with at most one primary button, or a period switch. */
@@ -15,7 +17,7 @@ interface PageHeadProps {
 }
 
 /** Page head (design system §4): eyebrow, H1, one sentence, actions right. */
-export function PageHead({ eyebrow, title, description, actions, className }: PageHeadProps) {
+export function PageHead({ eyebrow, title, logo, description, actions, className }: PageHeadProps) {
   const segments = Array.isArray(eyebrow) ? eyebrow.filter(Boolean) : eyebrow ? [eyebrow] : [];
   return (
     <div className={cn('mb-[26px] flex items-end justify-between gap-6', className)}>
@@ -34,7 +36,10 @@ export function PageHead({ eyebrow, title, description, actions, className }: Pa
             ))}
           </div>
         )}
-        <h1 className="m-0 text-h1 text-ink">{title}</h1>
+        <h1 className="m-0 flex items-center gap-3 text-h1 text-ink">
+          {logo}
+          <span className="min-w-0">{title}</span>
+        </h1>
         {description && <p className="mt-2 text-body text-ink-3">{description}</p>}
       </div>
       {actions && <div className="flex flex-none items-center gap-2">{actions}</div>}

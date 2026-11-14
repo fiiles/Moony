@@ -29,6 +29,8 @@ export function useAssetLogos(): ReadonlyMap<string, string> {
       return null;
     },
     staleTime: Infinity,
+    // Kept while no logo is on screen too, so the lookup runs once per unlock, not once per visit
+    gcTime: Infinity,
     retry: false,
   });
 

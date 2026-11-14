@@ -20,6 +20,7 @@ import { amountOf, costPerUnit, toCryptoRow } from '@/utils/positions';
 import { monthsBetween } from '@/utils/duration';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
+import { InstrumentHeadLogo } from '@/components/common/AssetLogo';
 import { HeroValue } from '@/components/common/HeroCard';
 import { Stat, Stats } from '@/components/common/Stat';
 import { ChangeNote } from '@/components/common/ChangeBadge';
@@ -348,6 +349,7 @@ export default function CryptoDetail() {
           nativeCurrency,
         ]}
         title={crypto.name || crypto.ticker}
+        logo={<InstrumentHeadLogo ticker={crypto.ticker} type="crypto" className="size-10" />}
         description={[
           t('detail.quantityUnits', { quantity: unitQty(quantity), ticker: crypto.ticker }),
           averageCost !== null && averageCost > 0

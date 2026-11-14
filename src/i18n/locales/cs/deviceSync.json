@@ -10,18 +10,22 @@
     "unreachable": "Server mimo dosah",
     "unreachableLong_one": "Nesynchronizováno {{count}} den",
     "unreachableLong_few": "Nesynchronizováno {{count}} dny",
+    "unreachableLong_many": "Nesynchronizováno {{count}} dní",
     "unreachableLong_other": "Nesynchronizováno {{count}} dní"
   },
   "age": {
     "justNow": "právě teď",
     "minutes_one": "před {{count}} min",
     "minutes_few": "před {{count}} min",
+    "minutes_many": "před {{count}} min",
     "minutes_other": "před {{count}} min",
     "hours_one": "před {{count}} h",
     "hours_few": "před {{count}} h",
+    "hours_many": "před {{count}} h",
     "hours_other": "před {{count}} h",
     "days_one": "před {{count}} dnem",
     "days_few": "před {{count}} dny",
+    "days_many": "před {{count}} dny",
     "days_other": "před {{count}} dny"
   },
   "status": {
@@ -372,6 +376,7 @@
       "unreachable": "Server mimo dosah",
       "unreachableLong_one": "Nesynchronizováno {{count}} den",
       "unreachableLong_few": "Nesynchronizováno {{count}} dny",
+      "unreachableLong_many": "Nesynchronizováno {{count}} dní",
       "unreachableLong_other": "Nesynchronizováno {{count}} dní",
       "paused": "Pozastaveno",
       "error": "Zastaveno"

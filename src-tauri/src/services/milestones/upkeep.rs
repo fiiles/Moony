@@ -92,9 +92,11 @@ fn valuations(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
     Ok(out)
 }
 
-/// Sync that stopped or needs the person, or has not finished a round for a week. A problem the
-/// engine retries by itself (server out of reach) waits for the week; anything else asks at once,
-/// except while a round is running.
+/// Sync that stopped or needs the person, or whose server has been out of reach for a week. A
+/// problem the engine retries by itself (`TRANSIENT_PROBLEMS`: server out of reach) waits for the
+/// week, counted from the last success (or from `enabled_at` without one); anything else asks at
+/// once, except while a round is running. A status without such a problem never stalls by time,
+/// however old its last success (the app opened after a break, before its first round).
 pub(super) fn sync_stalled(today: i64, sync: &SyncStatus) -> Option<Milestone> {
     let at_once = match sync.phase {
         SyncPhase::Off | SyncPhase::SettingUp => return None,
@@ -106,7 +108,11 @@ pub(super) fn sync_stalled(today: i64, sync: &SyncStatus) -> Option<Milestone> {
         SyncPhase::Idle | SyncPhase::Syncing => false,
     };
     let anchor = sync.last_success_at.or(sync.enabled_at);
-    let by_time = anchor.is_some_and(|a| day_floor(a) <= today - SYNC_STALE_DAYS * DAY);
+    let out_of_reach = sync
+        .problem
+        .is_some_and(|p| TRANSIENT_PROBLEMS.contains(&p));
+    let by_time =
+        out_of_reach && anchor.is_some_and(|a| day_floor(a) <= today - SYNC_STALE_DAYS * DAY);
     if !at_once && !by_time {
         return None;
     }
@@ -316,7 +322,31 @@ mod tests {
             Some(day(2026, 11, 6)),
             None,
         );
-        assert!(sync_stalled(today, &old).is_some());
+        assert!(sync_stalled(today, &old).is_none());
+    }
+
+    #[test]
+    fn an_old_success_without_a_problem_never_stalls_by_time() {
+        let today = day(2026, 11, 14);
+        for phase in [SyncPhase::Idle, SyncPhase::Syncing, SyncPhase::Waiting] {
+            let s = sync(phase, None, Some(today - 30 * DAY), None);
+            assert!(sync_stalled(today, &s).is_none(), "{phase:?}");
+        }
+    }
+
+    #[test]
+    fn the_seventh_utc_day_of_an_out_of_reach_server_stalls_the_sixth_does_not() {
+        let today = day(2026, 11, 14);
+        let at = |days: i64| {
+            sync(
+                SyncPhase::Idle,
+                Some(SyncProblem::Offline),
+                Some(today - days * DAY + 3_600),
+                None,
+            )
+        };
+        assert!(sync_stalled(today, &at(7)).is_some());
+        assert!(sync_stalled(today, &at(6)).is_none());
     }
 
     #[test]

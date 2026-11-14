@@ -67,6 +67,10 @@ export function syncState(status: SyncStatus | undefined, now: number): SyncStat
       return view('paused', status);
     case 'error':
       return view('error', status);
+    default: {
+      const unhandled: never = status.phase;
+      return unhandled;
+    }
   }
 }
 

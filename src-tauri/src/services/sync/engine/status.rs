@@ -397,5 +397,6 @@ mod tests {
             setting_up.server_address.as_deref(),
             Some("https://relay.example.org")
         );
+        assert_eq!(setting_up.enabled_at, None);
     }
 }

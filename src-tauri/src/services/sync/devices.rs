@@ -246,7 +246,15 @@ mod tests {
         record_this_device(&conn, "MacBook", &[0x01; 32], 1_800_000_000).unwrap();
         assert_eq!(this_device_joined_at(&conn).unwrap(), Some(1_800_000_000));
 
-        record_this_device(&conn, "MacBook", &[0x01; 32], 1_900_000_000).unwrap();
+        // Another device joined later: this device's own row is still the one read.
+        conn.execute(
+            "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
+             VALUES (?1, NULL, 'iPhone', 'ios', '1.0.0', 1_850_000_000)",
+            [DeviceId([9; 16]).to_hex()],
+        )
+        .unwrap();
+        // A second record under another name changes neither the row's age nor which row is read.
+        record_this_device(&conn, "Work Mac", &[0x01; 32], 1_900_000_000).unwrap();
         assert_eq!(this_device_joined_at(&conn).unwrap(), Some(1_800_000_000));
     }
 

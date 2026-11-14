@@ -15,7 +15,7 @@ use zeroize::Zeroizing;
 
 use super::{
     AccountStatus, CheckoutPlan, Mailbox, OutgoingOp, PullPage, PulledOp, PushReceipt, Relay,
-    RelayError, RelayResult, SnapshotBlob, VaultInfo, MAX_SLOT_BYTES,
+    RelayError, RelayResult, ServerInfo, ServerMode, SnapshotBlob, VaultInfo, MAX_SLOT_BYTES,
 };
 use crate::error::{AppError, Result};
 use crate::services::http::no_redirect_client;
@@ -391,6 +391,29 @@ struct AccountStatusWire {
     vaults: u32,
 }
 
+#[derive(Deserialize)]
+struct ServerInfoWire {
+    #[serde(rename = "name")]
+    name: String,
+    #[serde(rename = "version")]
+    version: String,
+    #[serde(rename = "protocol")]
+    protocol: u32,
+    #[serde(rename = "mode")]
+    mode: String,
+}
+
+/// What `GET /v1/server` answers as `name`.
+const SERVER_NAME: &str = "moony-sync";
+
+/// 1–32 characters of `[0-9A-Za-z.+-]`.
+fn is_server_version(text: &str) -> bool {
+    (1..=32).contains(&text.len())
+        && text
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'+' | b'-'))
+}
+
 #[derive(Serialize)]
 struct CheckoutWire {
     #[serde(rename = "plan")]
@@ -468,6 +491,29 @@ struct PullOpWire {
 }
 
 impl Relay for HttpRelay {
+    async fn server_info(&self) -> RelayResult<ServerInfo> {
+        // No account header: the question is asked before there is an account.
+        let request = no_redirect_client().get(self.url("v1/server")?);
+        let response = expect_status(send(request).await?, &[200]).await?;
+        let answer: ServerInfoWire = read_json(response, MAX_JSON_BODY).await?;
+        if answer.name != SERVER_NAME {
+            return Err(RelayError::Protocol("not a sync server".into()));
+        }
+        if !is_server_version(&answer.version) {
+            return Err(RelayError::Protocol("version".into()));
+        }
+        let mode = match answer.mode.as_str() {
+            "self_hosted" => ServerMode::SelfHosted,
+            "cloud" => ServerMode::Cloud,
+            _ => ServerMode::Other,
+        };
+        Ok(ServerInfo {
+            version: answer.version,
+            protocol: answer.protocol,
+            mode,
+        })
+    }
+
     async fn create_account(&self) -> RelayResult<String> {
         let request = no_redirect_client().post(self.url("v1/accounts")?);
         let response = expect_status(send(request).await?, &[201]).await?;

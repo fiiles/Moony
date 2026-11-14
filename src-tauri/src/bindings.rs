@@ -32,6 +32,7 @@ pub fn collect_types() -> TypeCollection {
     // Device sync setup (first device, checkout, Recovery Kit)
     types.register::<crate::models::SyncPlan>();
     types.register::<crate::models::SyncAccount>();
+    types.register::<crate::models::SyncServerCheck>();
     types.register::<crate::models::CheckoutTarget>();
     types.register::<crate::models::RecoveryKit>();
     types.register::<crate::models::KitFileKind>();

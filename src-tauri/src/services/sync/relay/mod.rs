@@ -48,6 +48,26 @@ pub struct VaultInfo {
     pub rotation: u32,
 }
 
+/// What a server says it is (`GET /v1/server`, spec §9.3): `protocol` is the version of this
+/// contract, `mode` how the server is run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServerMode {
+    /// A person's own server (`self_hosted`).
+    SelfHosted,
+    /// The Moony cloud (`cloud`).
+    Cloud,
+    /// Any other value: a mode this app does not know.
+    Other,
+}
+
+/// `GET /v1/server`. `version` is 1–32 characters of `[0-9A-Za-z.+-]`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerInfo {
+    pub version: String,
+    pub protocol: u32,
+    pub mode: ServerMode,
+}
+
 /// One sealed op on its way to the relay.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutgoingOp {
@@ -137,6 +157,10 @@ pub enum RelayError {
     /// checkout answers `409 self_hosted`.
     #[error("self-hosted relay")]
     SelfHosted,
+    /// `403 registration_closed`: a self-hosted server takes no new accounts; its operator adds
+    /// people.
+    #[error("registration closed")]
+    RegistrationClosed,
     /// `409 slot_taken`: the pairing slot was already written (by this device, or by someone
     /// who guessed the ID first).
     #[error("pairing slot taken")]
@@ -209,6 +233,8 @@ impl RelayError {
             (402, "payment_required") => RelayError::PaymentRequired,
             (403, "token_read_only") => RelayError::TokenReadOnly,
             (403, "vault_limit_reached") => RelayError::VaultLimitReached,
+            (403, "registration_closed") => RelayError::RegistrationClosed,
+            (403, "managed_by_operator") => RelayError::BadRequest("managed_by_operator".into()),
             (404, "account_not_found") => RelayError::AccountNotFound,
             (404, "vault_not_found") => RelayError::VaultNotFound,
             (404, "no_snapshot") => RelayError::NoSnapshot,
@@ -238,6 +264,8 @@ impl RelayError {
 
 /// The relay calls of the sync engine. `HttpRelay` talks to the real relay; tests use a fake.
 pub trait Relay: Send + Sync {
+    /// `GET /v1/server`: what the server is and which protocol it speaks. No credentials.
+    fn server_info(&self) -> impl Future<Output = RelayResult<ServerInfo>> + Send;
     /// `POST /v1/accounts` → the new 16-digit account number.
     fn create_account(&self) -> impl Future<Output = RelayResult<String>> + Send;
     /// `GET /v1/accounts/me`.
@@ -357,6 +385,9 @@ mod tests {
             (402, "payment_required", E::PaymentRequired),
             (403, "token_read_only", E::TokenReadOnly),
             (403, "vault_limit_reached", E::VaultLimitReached),
+            // A self-hosted server (spec §5.3, §5.5): no open registration, no self-deletion.
+            (403, "registration_closed", E::RegistrationClosed),
+            (403, "managed_by_operator", bad("managed_by_operator")),
             (404, "vault_not_found", E::VaultNotFound),
             (404, "no_snapshot", E::NoSnapshot),
             (409, "vault_exists", E::VaultExists),

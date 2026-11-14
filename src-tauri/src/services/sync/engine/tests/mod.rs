@@ -21,6 +21,7 @@ mod replace_safety;
 mod runtime;
 mod runtime_loop;
 mod scan;
+mod server;
 mod setup;
 mod snapshots;
 mod went_back;

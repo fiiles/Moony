@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use super::{
     AccountStatus, CheckoutPlan, OutgoingOp, PullPage, PulledOp, PushReceipt, Relay, RelayError,
-    RelayResult, SnapshotBlob, VaultInfo,
+    RelayResult, ServerInfo, ServerMode, SnapshotBlob, VaultInfo,
 };
 use crate::services::sync::keys::VaultAuth;
 
@@ -26,10 +26,13 @@ const MAX_VAULTS_PER_ACCOUNT: usize = 5;
 const READ_GRACE_SECONDS: i64 = 30 * 86_400;
 /// How far `set_paid(.., true)` pushes `paid_until`.
 const PAID_FOR_SECONDS: i64 = 365 * 86_400;
+/// The `paid_until` a self-hosted server gives a person (year 9999).
+const PERSON_PAID_UNTIL: i64 = 253_402_300_799;
 
 /// The relay calls a test can make fail or look up in `calls()`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Route {
+    ServerInfo,
     CreateAccount,
     AccountStatus,
     Checkout,
@@ -70,7 +73,6 @@ struct Vault {
     rotation: u32,
 }
 
-#[derive(Default)]
 struct FakeState {
     accounts: HashMap<String, Account>,
     vaults: HashMap<String, Vault>,
@@ -97,6 +99,40 @@ struct FakeState {
     lose_answers: Vec<Route>,
     /// A sync server from before slot 3: every call on slot 3 answers `BadRequest("bad_slot")`.
     without_slot_3: bool,
+    /// What `server_info` answers; `None` is a relay from before `GET /v1/server`.
+    server_info: Option<ServerInfo>,
+    /// A self-hosted server with registration closed: `create_account` answers 403.
+    registration_closed: bool,
+}
+
+impl Default for FakeState {
+    fn default() -> Self {
+        FakeState {
+            accounts: HashMap::new(),
+            vaults: HashMap::new(),
+            next_account: 0,
+            failures: HashMap::new(),
+            lose_push_answer: false,
+            op_quota: None,
+            calls: Vec::new(),
+            push_sizes: Vec::new(),
+            pushed_ids: Vec::new(),
+            swallow_pushes: false,
+            checkout_base: None,
+            self_hosted: false,
+            mailboxes: HashMap::new(),
+            lose_take_answer: false,
+            lose_put_answer: false,
+            lose_answers: Vec::new(),
+            without_slot_3: false,
+            server_info: Some(ServerInfo {
+                version: "1.0.0".into(),
+                protocol: 2,
+                mode: ServerMode::SelfHosted,
+            }),
+            registration_closed: false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -173,6 +209,50 @@ impl FakeRelay {
     /// to `ALLOWED_ACCOUNTS`).
     pub fn set_self_hosted(&self, self_hosted: bool) {
         self.lock().self_hosted = self_hosted;
+    }
+
+    /// What `server_info` answers from now on; `None` is an old relay that does not know the
+    /// route (`BadRequest("not_found")`). Default: protocol 2, self-hosted, version 1.0.0.
+    pub fn set_server_info(&self, info: Option<ServerInfo>) {
+        self.lock().server_info = info;
+    }
+
+    /// A person the server's operator added: an account that is active until year 9999.
+    pub fn add_person(&self) -> String {
+        let mut state = self.lock();
+        state.next_account += 1;
+        let number = format!("{:016}", 4_000_000_000_000_000u64 + state.next_account);
+        state.accounts.insert(
+            number.clone(),
+            Account {
+                paid_until: PERSON_PAID_UNTIL,
+                vaults: Vec::new(),
+            },
+        );
+        number
+    }
+
+    /// Blocks a person: `paid_until` is the moment of blocking (`at`, unix seconds).
+    pub fn block(&self, account: &str, at: i64) {
+        self.set_paid_until(account, at);
+    }
+
+    /// Unblocks a person: active until year 9999 again.
+    pub fn unblock(&self, account: &str) {
+        self.set_paid_until(account, PERSON_PAID_UNTIL);
+    }
+
+    /// The operator removes a person: the account and its vaults are gone.
+    pub fn remove_account(&self, account: &str) {
+        let mut state = self.lock();
+        state.accounts.remove(account);
+        state.vaults.retain(|_, vault| vault.account != account);
+    }
+
+    /// A self-hosted server with registration closed: `create_account` answers
+    /// `RegistrationClosed`.
+    pub fn set_registration_closed(&self, closed: bool) {
+        self.lock().registration_closed = closed;
     }
 
     /// The next push that succeeds stores its ops, then answers `Network("timeout")`.
@@ -385,10 +465,25 @@ impl FakeState {
 }
 
 impl Relay for FakeRelay {
+    fn server_info(&self) -> impl Future<Output = RelayResult<ServerInfo>> + Send {
+        let result = (|| {
+            let mut state = self.lock();
+            state.enter(Route::ServerInfo)?;
+            state
+                .server_info
+                .clone()
+                .ok_or_else(|| RelayError::BadRequest("not_found".into()))
+        })();
+        async move { result }
+    }
+
     fn create_account(&self) -> impl Future<Output = RelayResult<String>> + Send {
         let result = (|| {
             let mut state = self.lock();
             state.enter(Route::CreateAccount)?;
+            if state.registration_closed {
+                return Err(RelayError::RegistrationClosed);
+            }
             state.next_account += 1;
             let number = format!("{:016}", 4_000_000_000_000_000u64 + state.next_account);
             state.accounts.insert(number.clone(), Account::default());

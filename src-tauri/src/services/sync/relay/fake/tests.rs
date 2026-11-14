@@ -669,3 +669,56 @@ async fn a_lost_put_answer_is_stored_anyway() {
     // The switch fires once.
     relay.put_slot(MAILBOX, 1, b"x").await.expect("put 1");
 }
+
+#[tokio::test]
+async fn server_info_defaults_to_an_own_server_and_can_look_like_an_old_relay() {
+    let relay = FakeRelay::new();
+    let info = relay.server_info().await.expect("info");
+    assert_eq!(info.protocol, 2);
+    assert_eq!(info.mode, ServerMode::SelfHosted);
+    relay.set_server_info(None);
+    assert_eq!(
+        relay.server_info().await,
+        Err(RelayError::BadRequest("not_found".into()))
+    );
+    assert_eq!(relay.calls(), [Route::ServerInfo, Route::ServerInfo]);
+}
+
+#[tokio::test]
+async fn people_can_be_added_blocked_unblocked_and_removed() {
+    let (relay, account) = relay_with_vault().await;
+    let person = relay.add_person();
+    let status = relay.account_status(&person).await.expect("status");
+    assert!(status.active);
+    assert_eq!(status.paid_until, Some(253_402_300_799));
+
+    relay.block(&person, 1_700_000_000);
+    let status = relay.account_status(&person).await.expect("status");
+    assert!(!status.active);
+    assert_eq!(status.paid_until, Some(1_700_000_000));
+    relay.unblock(&person);
+    assert!(relay.account_status(&person).await.expect("status").active);
+
+    // Removing an account takes its vaults along.
+    relay.remove_account(&account);
+    assert_eq!(
+        relay.account_status(&account).await,
+        Err(RelayError::AccountNotFound)
+    );
+    assert_eq!(
+        relay.vault_info(&auth()).await,
+        Err(RelayError::VaultNotFound)
+    );
+}
+
+#[tokio::test]
+async fn a_closed_registration_refuses_new_accounts() {
+    let relay = FakeRelay::new();
+    relay.set_registration_closed(true);
+    assert_eq!(
+        relay.create_account().await,
+        Err(RelayError::RegistrationClosed)
+    );
+    relay.set_registration_closed(false);
+    assert!(relay.create_account().await.is_ok());
+}

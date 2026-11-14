@@ -71,6 +71,7 @@ impl From<RelayError> for SyncError {
             | RelayError::SnapshotOutdated
             | RelayError::CheckoutUnavailable
             | RelayError::SelfHosted
+            | RelayError::RegistrationClosed
             | RelayError::SlotTaken
             | RelayError::SlotEmpty
             | RelayError::SlotConsumed
@@ -238,6 +239,12 @@ mod tests {
                 // Setup turns it into `CheckoutTarget::SelfHosted` before it is an error.
                 E::SelfHosted,
                 "Refused(SelfHosted)",
+                false,
+                "validation.syncRelayError",
+            ),
+            (
+                E::RegistrationClosed,
+                "Refused(RegistrationClosed)",
                 false,
                 "validation.syncRelayError",
             ),

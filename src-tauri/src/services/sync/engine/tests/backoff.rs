@@ -91,6 +91,9 @@ struct Endless {
 }
 
 impl Relay for Endless {
+    async fn server_info(&self) -> RelayResult<crate::services::sync::relay::ServerInfo> {
+        self.inner.server_info().await
+    }
     async fn create_account(&self) -> RelayResult<String> {
         self.inner.create_account().await
     }

@@ -3449,6 +3449,12 @@ featureOn: boolean;
 pendingChanges: number }
 
 /**
+ * A sync server that passed the check (`GET /v1/server`, spec §9.3): the address in its stored
+ * spelling, how to show it, its version, and whether it is plain http beyond this computer.
+ */
+export type SyncServerCheck = { address: string; host: string; version: string; insecure: boolean }
+
+/**
  * The `sync-status-changed` payload.
  */
 export type SyncStatus = { phase: SyncPhase; problem: SyncProblem | null; 

@@ -163,6 +163,20 @@ pub struct SyncAccount {
     pub paid_until: Option<i64>,
 }
 
+/// A sync server that passed the check (`GET /v1/server`, spec §9.3): the address in its stored
+/// spelling, how to show it, its version, and whether it is plain http beyond this computer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncServerCheck {
+    #[serde(rename = "address")]
+    pub address: String,
+    #[serde(rename = "host")]
+    pub host: String,
+    #[serde(rename = "version")]
+    pub version: String,
+    #[serde(rename = "insecure")]
+    pub insecure: bool,
+}
+
 /// Where paying for the account happens.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "kind")]

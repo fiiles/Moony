@@ -180,6 +180,10 @@ impl<'a> Counting<'a> {
 }
 
 impl Relay for Counting<'_> {
+    async fn server_info(&self) -> RelayResult<crate::services::sync::relay::ServerInfo> {
+        self.relay.server_info().await
+    }
+
     async fn create_account(&self) -> RelayResult<String> {
         self.relay.create_account().await
     }

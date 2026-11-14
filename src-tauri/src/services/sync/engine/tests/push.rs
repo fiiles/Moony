@@ -543,6 +543,9 @@ struct Inflated {
 }
 
 impl Relay for Inflated {
+    async fn server_info(&self) -> RelayResult<crate::services::sync::relay::ServerInfo> {
+        unreachable!("not a push call")
+    }
     async fn create_account(&self) -> RelayResult<String> {
         unreachable!("not a push call")
     }

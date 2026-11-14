@@ -72,6 +72,9 @@ impl Probe {
 }
 
 impl Relay for Probe {
+    async fn server_info(&self) -> RelayResult<crate::services::sync::relay::ServerInfo> {
+        self.around(self.inner.server_info()).await
+    }
     async fn create_account(&self) -> RelayResult<String> {
         self.around(self.inner.create_account()).await
     }

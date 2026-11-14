@@ -39,6 +39,7 @@ mod relay_e2e;
 #[cfg(all(test, debug_assertions))]
 mod relay_e2e_pairing;
 pub mod repair;
+pub mod server;
 pub mod setup;
 pub mod snapshot;
 pub mod state;

@@ -1,5 +1,5 @@
 import type { PairingView, SyncServerCheck } from '@shared/schema';
-import type { ScannedCodeKind } from '@/utils/pairing-code';
+import { scannedCodeKind, type ScannedCodeKind } from '@/utils/pairing-code';
 import { isDefaultServer } from '@/utils/sync-server';
 
 /** Where the data syncs: the Moony cloud, or a sync server the person runs. */
@@ -81,5 +81,30 @@ export function hostOf(address: string): string {
     return new URL(address).host || address;
   } catch {
     return address;
+  }
+}
+
+/**
+ * Whether the address the server answered for (`checked`) is the one this device already uses
+ * (`stored`, the status's address): changing to it is no change, so the address step says so and
+ * never asks for the password.
+ */
+export function isUnchangedAddress(checked: string | undefined, stored: string | null): boolean {
+  return checked !== undefined && checked !== '' && checked === stored;
+}
+
+/**
+ * A `deviceSync` key naming what is wrong when `code`, typed or pasted into a Recovery Kit field,
+ * is another kind of code: a pairing code or a connection code. Anything else goes to the backend,
+ * which says what is wrong with it.
+ */
+export function kitCodeProblem(code: string): string | null {
+  switch (scannedCodeKind(code)) {
+    case 'pair':
+      return 'phone.notAKitCode';
+    case 'connection':
+      return 'codes.connectionNotHere';
+    default:
+      return null;
   }
 }

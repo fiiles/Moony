@@ -4,6 +4,8 @@ import {
   accountQueryEnabled,
   acknowledgedAfterEdit,
   hostOf,
+  isUnchangedAddress,
+  kitCodeProblem,
   kitServerNeed,
   needsJoinAcknowledgement,
   serverContinue,
@@ -117,5 +119,26 @@ describe('hostOf', () => {
 
   it('leaves what is no address as it is', () => {
     expect(hostOf('nonsense')).toBe('nonsense');
+  });
+});
+
+describe('isUnchangedAddress', () => {
+  it('is true only for the address the device already uses', () => {
+    expect(isUnchangedAddress('https://sync.example.org', 'https://sync.example.org')).toBe(true);
+    expect(isUnchangedAddress('https://other.example.org', 'https://sync.example.org')).toBe(false);
+  });
+
+  it('is false while nothing is checked or the device has no address', () => {
+    expect(isUnchangedAddress(undefined, 'https://sync.example.org')).toBe(false);
+    expect(isUnchangedAddress('', '')).toBe(false);
+    expect(isUnchangedAddress('https://sync.example.org', null)).toBe(false);
+  });
+});
+
+describe('kitCodeProblem (shared by the desktop and phone Recovery Kit fields)', () => {
+  it('names a pairing code and a connection code, nothing else', () => {
+    expect(kitCodeProblem('moony-pair:2:a:b')).toBe('phone.notAKitCode');
+    expect(kitCodeProblem('ABCDE-')).toBeNull();
+    expect(kitCodeProblem('')).toBeNull();
   });
 });

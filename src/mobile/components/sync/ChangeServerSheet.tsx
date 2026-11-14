@@ -7,6 +7,7 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useServerChoice } from '@/hooks/use-server-choice';
 import { isAuthApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
+import { isUnchangedAddress } from '@/utils/sync-setup';
 import { Sheet } from '@/mobile/components/Sheet';
 import { ServerChoiceBlock } from '@/mobile/components/sync/ServerChoiceBlock';
 import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
@@ -35,6 +36,8 @@ export function ChangeServerSheet({ onClose }: { onClose: () => void }) {
   useEffect(() => reset, [reset]);
 
   const address = server.check?.address ?? '';
+  // The same address: said here, before any password is asked for
+  const unchanged = server.ready && isUnchangedAddress(address, status?.serverAddress ?? null);
 
   if (asking) {
     return (
@@ -46,8 +49,6 @@ export function ChangeServerSheet({ onClose }: { onClose: () => void }) {
         confirmLabel={t('server.change')}
         closeOnSuccess={false}
         onSubmit={async (password) => {
-          // The address the device used before: the status is refreshed once the change is done
-          const before = status?.serverAddress ?? null;
           try {
             await changeServerAddress.mutateAsync({ password, address });
           } catch (error) {
@@ -56,7 +57,7 @@ export function ChangeServerSheet({ onClose }: { onClose: () => void }) {
             setAsking(false);
             return;
           }
-          toast(address === before ? t('server.unchanged') : t('server.success'));
+          toast(t('server.success'));
           onClose();
         }}
       />
@@ -77,7 +78,7 @@ export function ChangeServerSheet({ onClose }: { onClose: () => void }) {
           </Button>
           <Button
             className={`${BUTTON} flex-1`}
-            disabled={!server.ready}
+            disabled={!server.ready || unchanged}
             onClick={() => setAsking(true)}
           >
             {tc('buttons.continue')}
@@ -86,6 +87,11 @@ export function ChangeServerSheet({ onClose }: { onClose: () => void }) {
       }
     >
       <ServerChoiceBlock state={server} showCloud={false} />
+      {unchanged && (
+        <p className="m-0 mt-2 text-m-sub text-ink-3" role="status">
+          {t('server.unchanged')}
+        </p>
+      )}
       {refusal && refusal.input === server.input && (
         <p className="m-0 mt-2 text-m-sub text-loss" role="alert">
           {refusal.message}

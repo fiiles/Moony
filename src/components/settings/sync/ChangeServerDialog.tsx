@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { isAuthApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
+import { isUnchangedAddress } from '@/utils/sync-setup';
 
 /**
  * Settings → Sync, "Change address": the new address (or a connection code, whose server is
@@ -41,11 +42,13 @@ export function ChangeServerDialog({ onClose }: { onClose: () => void }) {
 
   const next = (event: FormEvent) => {
     event.preventDefault();
-    if (server.ready) setAsking(true);
+    if (server.ready && !unchanged) setAsking(true);
   };
 
   // The address the server answered for: the normalized one
   const address = server.check?.address ?? '';
+  // The same address: said here, before any password is asked for
+  const unchanged = server.ready && isUnchangedAddress(address, status?.serverAddress ?? null);
 
   if (asking) {
     return (
@@ -55,8 +58,6 @@ export function ChangeServerDialog({ onClose }: { onClose: () => void }) {
         confirmLabel={t('server.change')}
         closeOnSuccess={false}
         onSubmit={async (password) => {
-          // The address the device used before: the status is refreshed once the change is done
-          const before = status?.serverAddress ?? null;
           try {
             await changeServerAddress.mutateAsync({ password, address });
           } catch (error) {
@@ -65,7 +66,7 @@ export function ChangeServerDialog({ onClose }: { onClose: () => void }) {
             setAsking(false);
             return;
           }
-          toast(address === before ? t('server.unchanged') : t('server.success'));
+          toast(t('server.success'));
           onClose();
         }}
         onClose={onClose}
@@ -82,6 +83,11 @@ export function ChangeServerDialog({ onClose }: { onClose: () => void }) {
             <DialogDescription>{t('server.dialogBody')}</DialogDescription>
           </DialogHeader>
           <ServerChoice state={server} id="change-server" showCloud={false} />
+          {unchanged && (
+            <p className="m-0 text-micro font-500 text-ink-3" role="status">
+              {t('server.unchanged')}
+            </p>
+          )}
           {refusal && refusal.input === server.input && (
             <p className="m-0 text-micro font-500 text-loss" role="alert">
               {refusal.message}
@@ -91,7 +97,7 @@ export function ChangeServerDialog({ onClose }: { onClose: () => void }) {
             <Button type="button" variant="ghost" onClick={onClose}>
               {tc('buttons.cancel')}
             </Button>
-            <Button type="submit" disabled={!server.ready}>
+            <Button type="submit" disabled={!server.ready || unchanged}>
               {tc('buttons.continue')}
             </Button>
           </DialogFooter>

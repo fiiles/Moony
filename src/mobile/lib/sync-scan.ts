@@ -52,21 +52,7 @@ export function setupScanRoute(text: string): SetupScanRoute {
   }
 }
 
-/**
- * The Recovery Kit sheet reads recovery codes and the Kit QR's text only (review PF2): a pairing
- * code there is named (a `deviceSync` key). Anything else goes to the backend, which says what is
- * wrong with it.
- */
-export function kitCodeProblem(code: string): string | null {
-  switch (scannedCodeKind(code)) {
-    case 'pair':
-      return 'phone.notAKitCode';
-    case 'connection':
-      return 'codes.connectionNotHere';
-    default:
-      return null;
-  }
-}
+export { kitCodeProblem } from '@/utils/sync-setup';
 
 /**
  * The sync server a Recovery Kit QR without one names: `DEFAULT_RELAY_URL` in

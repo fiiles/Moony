@@ -124,7 +124,7 @@ export function payloadServer(text: string): string | null {
 }
 
 /** Where a code is typed or scanned. */
-export type CodeContext = 'setup' | 'pairing' | 'kit' | 'server';
+export type CodeContext = 'setup' | 'server';
 
 /**
  * A `deviceSync` key naming what is wrong when `text` is the wrong kind of code for `context`, or
@@ -137,9 +137,6 @@ export function wrongCodeKey(context: CodeContext, text: string): string | null 
       if (kind === 'pair') return 'codes.pairNotForSetup';
       if (kind === 'recover' || kind === 'recoveryCode') return 'codes.kitNotForSetup';
       return null;
-    case 'pairing':
-    case 'kit':
-      return kind === 'connection' ? 'codes.connectionNotHere' : null;
     case 'server':
       return kind === 'pair' || kind === 'recover' || kind === 'recoveryCode'
         ? 'codes.notAServerAddress'

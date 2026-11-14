@@ -38,6 +38,9 @@ export function ConnectStep({ password, onJoined, onDecline }: ConnectStepProps)
   // A join runs, or it is done and the wizard is finishing: the step cannot be left any more
   const [joined, setJoined] = useState(false);
   const busy = useIsMutating({ mutationKey: REPLACE_DEVICE_MUTATION_KEY }) > 0 || joined;
+  // The flow's own busy state, which also covers a pairing that is starting
+  const [flowBusy, setFlowBusy] = useState(false);
+  const cannotLeave = busy || (screen === 'flow' && flowBusy);
   const deviceName = name.trim();
   const context = useMemo<JoinContext>(() => ({ kind: 'firstRun', password }), [password]);
 
@@ -55,13 +58,13 @@ export function ConnectStep({ password, onJoined, onDecline }: ConnectStepProps)
 
   // The flow gives a pairing up as it is left; the step's unmount cancels it again either way
   const decline = () => {
-    if (busy) return;
+    if (cannotLeave) return;
     if (screen === 'flow' && leaveFlow.current && !leaveFlow.current()) return;
     onDecline();
   };
 
   const withoutSync = (
-    <Button type="button" variant="ghost" disabled={busy} onClick={decline}>
+    <Button type="button" variant="ghost" disabled={cannotLeave} onClick={decline}>
       {t('onboarding.connect.withoutSync')}
     </Button>
   );
@@ -116,6 +119,7 @@ export function ConnectStep({ password, onJoined, onDecline }: ConnectStepProps)
               onJoined();
             }}
             onCancel={() => setScreen('choice')}
+            onBusyChange={setFlowBusy}
             footer={footer}
             dismissRef={leaveFlow}
           />

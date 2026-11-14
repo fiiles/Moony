@@ -40,6 +40,11 @@ export interface JoinFlowProps {
    * is leaving.
    */
   dismissRef?: RefObject<(() => boolean) | null>;
+  /**
+   * Whether the flow is busy (a pairing starts, a join or a cancelled setup runs): the first run
+   * disables "Continue without sync" meanwhile, so the button never does nothing.
+   */
+  onBusyChange?: (busy: boolean) => void;
 }
 
 /** Only the pairing flow: whether a pairing exists yet (its QR and later steps are on screen). */
@@ -61,6 +66,7 @@ export function PairingJoinFlow({
   onCancel,
   footer,
   dismissRef,
+  onBusyChange,
   onPairingShown,
 }: PairingJoinFlowProps) {
   const { t } = useTranslation('deviceSync');
@@ -109,6 +115,7 @@ export function PairingJoinFlow({
   // The caller's way out (Settings: a dismissal; first run: leaving the step): not while the pairing
   // starts (the password is on its way) or the join runs (a cancelled setup goes on to join)
   const busy = view ? join.isPending || turnOff.isPending : start.isPending;
+  useEffect(() => onBusyChange?.(busy), [onBusyChange, busy]);
   useEffect(() => {
     if (!dismissRef) return;
     dismissRef.current = () => {

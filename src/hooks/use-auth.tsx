@@ -90,7 +90,8 @@ export const GREETING_NAME_KEY = 'moony-greeting-name';
 export const LOCKED_AT_KEY = 'moony-locked-at';
 
 /** Only the first name, for "Vítejte zpět, Filipe"; nothing else leaves the encrypted database. */
-function rememberGreetingName(name: string | null | undefined) {
+// eslint-disable-next-line react-refresh/only-export-components -- shared with the first run's declined path
+export function rememberGreetingName(name: string | null | undefined) {
   try {
     if (name) localStorage.setItem(GREETING_NAME_KEY, name);
   } catch {

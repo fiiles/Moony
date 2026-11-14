@@ -134,6 +134,8 @@ export function useFirstRun({
   /** Throws the prepared key away; the next "Pokračovat" prepares a new one. */
   const backToAccount = () => {
     clearRecoveryKey();
+    // The prepared setup (password and key) lives on in the mutation's variables and data
+    setupMutation.reset();
     setStep('account');
     toast(t('onboarding.recovery.discarded'));
   };
@@ -142,8 +144,10 @@ export function useFirstRun({
     confirmSetupMutation.mutate(undefined, {
       onSuccess: () => {
         clearRecoveryKey();
-        // The password has done its work; nothing needs it on this screen any more
+        // The password has done its work; nothing needs it on this screen any more (the mutation
+        // held it, and the key, in its variables and data)
         setAccountDraft(null);
+        setupMutation.reset();
         setStep('areas');
       },
     });

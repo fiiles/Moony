@@ -31,6 +31,7 @@ export function RecoveryJoinFlow({
   onCancel,
   footer,
   dismissRef,
+  onBusyChange,
 }: JoinFlowProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
@@ -61,6 +62,7 @@ export function RecoveryJoinFlow({
     need === 'typed' ? undefined : need === 'qr' ? (qrServer ?? '') : ''
   );
   const busy = joinWithRecoveryKit.isPending;
+  useEffect(() => onBusyChange?.(busy), [onBusyChange, busy]);
   const ready =
     code.trim() !== '' &&
     codeProblem === null &&

@@ -45,7 +45,7 @@ import { FX_SUPPORTED_CODES, type CurrencyCode } from '@shared/currencies';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import { MoonMark } from '@/components/common/MoonMark';
 import { WizardSteps } from '@/components/common/WizardSteps';
-import { useAuth } from '@/hooks/use-auth';
+import { rememberGreetingName, useAuth } from '@/hooks/use-auth';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { useFormat } from '@/lib/use-format';
@@ -184,6 +184,8 @@ export function OnboardingWizard({
   const backToAccount = () => {
     joinPassword.current = null;
     clearRecoveryKey();
+    // The prepared setup (password and key) lives on in the mutation's variables and data
+    setupMutation.reset();
     setTyped(['', '']);
     setStep('account');
     toast(t('onboarding.recovery.discarded'));
@@ -193,6 +195,8 @@ export function OnboardingWizard({
     confirmSetupMutation.mutate(undefined, {
       onSuccess: () => {
         clearRecoveryKey();
+        // The password and the key were held in the mutation's variables and data: drop them
+        setupMutation.reset();
         setStep(stepAfterRecovery(path));
       },
     });
@@ -230,6 +234,7 @@ export function OnboardingWizard({
   const firstName = (path === 'declined' ? nameForm.watch('name') : setupForm.watch('name')).trim();
 
   const saveAreas = async (names?: z.infer<typeof profileNameSchema>) => {
+    if (savingAreas) return;
     setSavingAreas(true);
     try {
       const menuPreferences: MenuPreferences = {
@@ -247,6 +252,8 @@ export function OnboardingWizard({
         ...(country !== NONE ? { country: country.toUpperCase() } : {}),
       });
       queryClient.setQueryData(['user-profile'], profile);
+      // The account step asked no name on this path: the lock screen greets by it from now on
+      if (names) rememberGreetingName(profile.name);
 
       if (country !== NONE) {
         const packs = await categorizationApi.getRulePacks();
@@ -705,7 +712,7 @@ export function OnboardingWizard({
                   <form
                     className="mb-5 space-y-4"
                     data-testid="onboarding-areas-name"
-                    onSubmit={(event) => event.preventDefault()}
+                    onSubmit={nameForm.handleSubmit((names) => saveAreas(names))}
                   >
                     <p className="m-0 text-caption font-500 text-ink-3">
                       {t('onboarding.areas.nameLead')}

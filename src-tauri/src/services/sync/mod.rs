@@ -13,6 +13,7 @@ pub mod binding;
 pub mod capture;
 pub mod chain;
 pub mod changeset;
+pub mod connection_code;
 #[cfg(test)]
 mod convergence;
 pub mod devices;

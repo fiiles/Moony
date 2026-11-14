@@ -1,7 +1,8 @@
 import type { PairingStage, PairingView } from '@shared/schema';
 
-export type ScannedCodeKind = 'pair' | 'recover' | 'recoveryCode' | 'unknown';
+export type ScannedCodeKind = 'pair' | 'recover' | 'recoveryCode' | 'connection' | 'unknown';
 
+const CONNECTION_CODE = /^moony-sync\d+:/;
 const RECOVERY_CODE = /^[0-9A-HJKMNP-TV-Z]{80}$/;
 
 /** The same normalisation as `decode_recovery_code` in Rust: separators go, ASCII upper case, I/L to 1, O to 0. */
@@ -15,12 +16,14 @@ function normalizeRecoveryCode(text: string): string {
 
 /**
  * What a scanned or typed text is: a pairing code, a Sync Recovery Kit QR, a typed recovery code
- * (80 Crockford characters once spaces and dashes go) or something else.
+ * (80 Crockford characters once spaces and dashes go), a connection code of a self-hosted sync
+ * server (`moony-sync<n>:`, any version) or something else.
  */
 export function scannedCodeKind(text: string): ScannedCodeKind {
   const trimmed = text.trim();
   if (trimmed.startsWith('moony-pair:')) return 'pair';
   if (trimmed.startsWith('moony-recover:')) return 'recover';
+  if (CONNECTION_CODE.test(trimmed)) return 'connection';
   if (RECOVERY_CODE.test(normalizeRecoveryCode(trimmed))) return 'recoveryCode';
   return 'unknown';
 }

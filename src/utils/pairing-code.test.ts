@@ -32,6 +32,11 @@ describe('scannedCodeKind', () => {
     expect(scannedCodeKind('moony-pair:1:x')).toBe('pair');
     expect(scannedCodeKind('  moony-pair:1:x\n')).toBe('pair');
     expect(scannedCodeKind(' moony-recover:1:abc')).toBe('recover');
+    expect(scannedCodeKind('moony-sync1:4417938205561273:aHR0cHM6Ly9zeW5jLmV4YW1wbGUub3Jn')).toBe(
+      'connection'
+    );
+    expect(scannedCodeKind(' moony-sync2:abc\n')).toBe('connection');
+    expect(scannedCodeKind('moony-sync:abc')).toBe('unknown');
     expect(scannedCodeKind(GROUPED)).toBe('recoveryCode');
     expect(scannedCodeKind(GROUPED.replace(/-/g, ' '))).toBe('recoveryCode');
     expect(scannedCodeKind(CODE80)).toBe('recoveryCode');

@@ -521,7 +521,7 @@ async fn the_relay_address_is_checked_normalized_and_kept_until_setup_ends() {
     let relay = FakeRelay::new();
     let device = fresh();
     for refused in [
-        "http://relay.example.org",
+        "ftp://relay.example.org",
         "https://relay.example.org/path",
         "",
     ] {

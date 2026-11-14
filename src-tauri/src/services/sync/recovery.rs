@@ -585,7 +585,7 @@ mod tests {
             assert_eq!(invalid(&input), code, "{input}");
         }
         // A relay address the app would never use (plain http to another host).
-        let http = format!("moony-recover:1:{ACCOUNT}:{V2}:aHR0cDovL3JlbGF5LmV4YW1wbGUub3Jn");
+        let http = format!("moony-recover:1:{ACCOUNT}:{V2}:ZnRwOi8vcmVsYXkuZXhhbXBsZS5vcmc");
         assert_eq!(invalid(&http), "validation.syncRelayUrlInvalid");
     }
 
@@ -653,11 +653,24 @@ mod tests {
             )),
             "validation.syncRecoveryCodeInvalid"
         );
-        let http = format!("moony-recover:1:{ACCOUNT}:{V2}:aHR0cDovL3JlbGF5LmV4YW1wbGUub3Jn");
+        let http = format!("moony-recover:1:{ACCOUNT}:{V2}:ZnRwOi8vcmVsYXkuZXhhbXBsZS5vcmc");
         assert_eq!(
             key_of(read_recovery_input(&http, None, None, DEFAULT)),
             "validation.syncRelayUrlInvalid"
         );
+    }
+
+    #[test]
+    fn a_plain_http_server_on_the_local_network_is_read() {
+        let grouped = format_recovery_code(V2);
+        let input = read_recovery_input(
+            &grouped,
+            Some(ACCOUNT),
+            Some("http://192.168.1.20:8787"),
+            DEFAULT,
+        )
+        .expect("plain http server");
+        assert_eq!(input.relay_url, "http://192.168.1.20:8787");
     }
 
     #[test]
@@ -709,7 +722,7 @@ mod tests {
             key_of(read_recovery_input(
                 &grouped,
                 Some(ACCOUNT),
-                Some("http://evil.example"),
+                Some("ftp://evil.example"),
                 DEFAULT
             )),
             "validation.syncRelayUrlInvalid"

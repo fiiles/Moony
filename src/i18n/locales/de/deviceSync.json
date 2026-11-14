@@ -381,5 +381,11 @@
   },
   "limits": {
     "lostDevice": "Ein verlorenes Gerät oder ein verlorenes Wiederherstellungs-Kit kann noch nicht von Ihren synchronisierten Daten abgetrennt werden, und wer eines besitzt, kann schon jetzt lesen, was es enthält. Falls eines abhandenkommt, löschen Sie die synchronisierten Daten und richten Sie die Synchronisierung mit einem neuen Kit neu ein; Ihre anderen Geräte müssen dann erneut beitreten."
+  },
+  "codes": {
+    "pairNotForSetup": "Das ist ein Kopplungscode, kein Verbindungscode. Scannen Sie ihn, wenn Sie dieses Gerät zu einer bereits laufenden Synchronisierung hinzufügen.",
+    "kitNotForSetup": "Das ist ein Code des Wiederherstellungs-Kits, kein Verbindungscode. Verwenden Sie ihn, um bereits vorhandene synchronisierte Daten zu übernehmen.",
+    "connectionNotHere": "Das ist ein Verbindungscode für einen Synchronisierungsserver. Verwenden Sie ihn beim Einrichten der Synchronisierung, nicht hier.",
+    "notAServerAddress": "Das ist keine Adresse eines Synchronisierungsservers. Geben Sie die Adresse Ihres Synchronisierungsservers ein oder fügen Sie seinen Verbindungscode ein."
   }
 }

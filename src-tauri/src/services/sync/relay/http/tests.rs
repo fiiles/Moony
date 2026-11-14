@@ -123,15 +123,15 @@ fn base_urls_are_parsed_not_prefix_matched() {
         "https://sync.moonyfinance.com/",
         "http://127.0.0.1:8787",
         "http://localhost:8787/",
+        "http://localhost.evil.com",
+        "http://127.0.0.1.evil.com",
     ] {
         assert!(validate_base_url(ok).is_ok(), "{ok} is accepted");
         assert!(HttpRelay::new(ok).is_ok(), "{ok} builds a relay");
     }
     for refused in [
         "http://sync.moonyfinance.com",
-        "http://localhost.evil.com",
         "http://localhost@evil.com",
-        "http://127.0.0.1.evil.com",
         "https://user:pw@sync.moonyfinance.com",
         "https://user@sync.moonyfinance.com",
         "https://x/?q=1",
@@ -734,8 +734,10 @@ fn base_urls_are_normalized_to_their_origin() {
     ] {
         assert_eq!(normalize_base_url(given).expect(given), normal, "{given}");
     }
-    let error = normalize_base_url("http://relay.example.org").expect_err("plain http");
-    assert!(matches!(&error, AppError::Validation(k) if k == "validation.syncRelayUrlInvalid"));
+    assert_eq!(
+        normalize_base_url("http://relay.example.org").expect("plain http"),
+        "http://relay.example.org"
+    );
     assert!(is_default_relay("https://sync.moonyfinance.com/"));
     assert!(is_default_relay(DEFAULT_RELAY_URL));
     assert!(!is_default_relay("https://relay.example.org"));

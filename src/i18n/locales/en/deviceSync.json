@@ -381,5 +381,11 @@
   },
   "limits": {
     "lostDevice": "A lost device or Recovery Kit can't be cut off from your synced data yet, and anyone who has one can already read what it holds. If one goes missing, delete the synced data and set sync up again with a new Kit; your other devices will then need to join again."
+  },
+  "codes": {
+    "pairNotForSetup": "This is a pairing code, not a connection code. Scan it when you add this device to sync that is already running.",
+    "kitNotForSetup": "This is a Recovery Kit code, not a connection code. Use it when you join synced data that already exists.",
+    "connectionNotHere": "This is a connection code for a sync server. Use it when you set up sync, not here.",
+    "notAServerAddress": "This is not a sync server address. Type the address of your sync server, or paste its connection code."
   }
 }

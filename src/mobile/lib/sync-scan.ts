@@ -1,5 +1,6 @@
 import type { PairingStage, PairingView } from '@shared/schema';
 import { scannedCodeKind } from '@/utils/pairing-code';
+import { decodeServerField } from '@/utils/sync-server';
 import { groupAccountNumber } from '@/utils/recovery-kit';
 
 /**
@@ -73,15 +74,8 @@ export function kitQrSummary(text: string): KitQrSummary {
   if (encoded === undefined) {
     return { ok: true, account: groupAccountNumber(account), server: DEFAULT_SYNC_SERVER };
   }
-  if (!/^[A-Za-z0-9_-]+$/.test(encoded)) return invalid;
-  let address: string;
-  try {
-    const binary = atob(encoded.replace(/-/g, '+').replace(/_/g, '/'));
-    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-    address = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch {
-    return invalid;
-  }
+  const address = decodeServerField(encoded);
+  if (address === null) return invalid;
   try {
     const server = new URL(address).href.replace(/\/+$/, '');
     return { ok: true, account: groupAccountNumber(account), server };

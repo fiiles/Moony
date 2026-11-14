@@ -395,5 +395,11 @@
   },
   "limits": {
     "lostDevice": "Zgubionego urządzenia ani Zestawu odzyskiwania nie można jeszcze odciąć od zsynchronizowanych danych, a kto je ma, może już teraz odczytać to, co zawierają. Jeśli coś zaginie, usuń zsynchronizowane dane i skonfiguruj synchronizację od nowa z nowym Zestawem; pozostałe urządzenia będą musiały wtedy dołączyć ponownie."
+  },
+  "codes": {
+    "pairNotForSetup": "To jest kod parowania, a nie kod połączenia. Zeskanuj go, dodając to urządzenie do już działającej synchronizacji.",
+    "kitNotForSetup": "To jest kod zestawu odzyskiwania, a nie kod połączenia. Użyj go, aby dołączyć do już istniejących zsynchronizowanych danych.",
+    "connectionNotHere": "To jest kod połączenia z serwerem synchronizacji. Użyj go podczas konfigurowania synchronizacji, a nie tutaj.",
+    "notAServerAddress": "To nie jest adres serwera synchronizacji. Wpisz adres swojego serwera synchronizacji lub wklej jego kod połączenia."
   }
 }

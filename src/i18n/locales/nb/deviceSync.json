@@ -381,5 +381,11 @@
   },
   "limits": {
     "lostDevice": "En mistet enhet eller et mistet gjenopprettingssett kan ikke stenges ute fra de synkroniserte dataene dine ennå, og alle som har ett, kan allerede lese det det inneholder. Hvis noe forsvinner, sletter du de synkroniserte dataene og setter opp synkroniseringen på nytt med et nytt sett; de andre enhetene dine må da koble seg til igjen."
+  },
+  "codes": {
+    "pairNotForSetup": "Dette er en paringskode, ikke en tilkoblingskode. Skann den når du legger denne enheten til en synkronisering som allerede kjører.",
+    "kitNotForSetup": "Dette er en kode fra gjenopprettingssettet, ikke en tilkoblingskode. Bruk den når du kobler til synkroniserte data som allerede finnes.",
+    "connectionNotHere": "Dette er en tilkoblingskode for en synkroniseringsserver. Bruk den når du setter opp synkronisering, ikke her.",
+    "notAServerAddress": "Dette er ikke adressen til en synkroniseringsserver. Skriv inn adressen til synkroniseringsserveren din, eller lim inn tilkoblingskoden."
   }
 }

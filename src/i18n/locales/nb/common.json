@@ -334,6 +334,8 @@
     "syncQuotaExceeded": "Synkroniseringslagringen for denne profilen er full.",
     "syncKeyRotated": "Denne enheten har ikke lenger tilgang til de synkroniserte dataene. En annen enhet kan ha fjernet den.",
     "syncRelayUrlInvalid": "Adressen til synkroniseringsserveren er ugyldig.",
+    "syncConnectionCodeInvalid": "Tilkoblingskoden er ugyldig. Kopier den på nytt fra synkroniseringsserveren din.",
+    "syncConnectionCodeNewer": "Denne tilkoblingskoden kommer fra en nyere synkroniseringsserver. Oppdater Moony og prøv igjen.",
     "syncVaultHasNoSnapshot": "De synkroniserte dataene har ennå ingen kopi å starte fra. La en enhet som allerede synkroniserer fullføre en synkronisering, og prøv igjen.",
     "syncRepairDrainIncomplete": "Ikke alle endringene fra denne enheten kunne sendes til synkroniseringsserveren, så reparasjonen stoppet og ingenting ble erstattet. En sikkerhetskopi ble lagret. Prøv igjen når synkroniseringen fungerer.",
     "syncReplaceImpactChanged": "Noe endret seg på denne enheten mens du bestemte deg. Sjekk tallene på nytt og bekreft.",

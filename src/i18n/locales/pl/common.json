@@ -334,6 +334,8 @@
     "syncQuotaExceeded": "Miejsce na synchronizację tego profilu jest pełne.",
     "syncKeyRotated": "To urządzenie nie ma już dostępu do zsynchronizowanych danych. Mogło zostać usunięte przez inne urządzenie.",
     "syncRelayUrlInvalid": "Adres serwera synchronizacji jest nieprawidłowy.",
+    "syncConnectionCodeInvalid": "Kod połączenia jest nieprawidłowy. Skopiuj go ponownie z swojego serwera synchronizacji.",
+    "syncConnectionCodeNewer": "Ten kod połączenia pochodzi z nowszego serwera synchronizacji. Zaktualizuj Moony i spróbuj ponownie.",
     "syncVaultHasNoSnapshot": "Zsynchronizowane dane nie mają jeszcze kopii, od której można zacząć. Poczekaj, aż urządzenie, które już synchronizuje, zakończy synchronizację, i spróbuj ponownie.",
     "syncRepairDrainIncomplete": "Nie wszystkie zmiany z tego urządzenia udało się wysłać na serwer synchronizacji, więc naprawa została zatrzymana i nic nie zostało zastąpione. Zapisano kopię zapasową. Spróbuj ponownie, gdy synchronizacja będzie działać.",
     "syncReplaceImpactChanged": "Podczas podejmowania decyzji coś zmieniło się na tym urządzeniu. Sprawdź ponownie liczby i potwierdź.",

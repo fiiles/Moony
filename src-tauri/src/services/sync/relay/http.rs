@@ -23,6 +23,8 @@ use crate::services::sync::keys::VaultAuth;
 
 /// The relay of release builds (a placeholder until phase 6).
 pub const DEFAULT_RELAY_URL: &str = "https://sync.moonyfinance.com";
+/// The host of `DEFAULT_RELAY_URL`: the Moony cloud, the one server plain http never reaches.
+pub const DEFAULT_RELAY_HOST: &str = "sync.moonyfinance.com";
 /// The longest relay address accepted, as typed and once normalized (it rides in the Recovery
 /// Kit's QR, ruling SH-2).
 pub const MAX_RELAY_URL_CHARS: usize = 256;
@@ -50,9 +52,9 @@ pub fn default_base_url() -> String {
     super::super::feature::dev_relay_base().unwrap_or_else(|| DEFAULT_RELAY_URL.to_string())
 }
 
-/// A relay base URL: `https`, or `http` only for the hosts `localhost` and `127.0.0.1` in a debug
-/// build; no user, password, query or fragment; no path but `/`; at most `MAX_RELAY_URL_CHARS`
-/// characters. Parsed, never prefix-matched.
+/// A relay base URL: `https`, or `http` for any host but the Moony cloud (a person's own server,
+/// spec §9.2; see `is_insecure_address` for the warning); no user, password, query or fragment; no
+/// path but `/`; at most `MAX_RELAY_URL_CHARS` characters. Parsed, never prefix-matched.
 pub fn validate_base_url(url: &str) -> Result<()> {
     parse_base_url(url).map(|_| ())
 }
@@ -71,15 +73,36 @@ pub fn is_default_relay(url: &str) -> bool {
     normalize_base_url(url).is_ok_and(|normal| normal == DEFAULT_RELAY_URL)
 }
 
-/// `http` only for `localhost` / `127.0.0.1` and only in a debug build (a release build never
-/// sends a pairing or a sealed batch over plain text, even to the same machine); `https` for any
-/// host.
-fn scheme_allowed(scheme: &str, host: Option<&str>, debug: bool) -> bool {
+/// `https` for any host; `http` for any host but the Moony cloud (`DEFAULT_RELAY_HOST`), in every
+/// build. The same rule in debug and release: a person's own server may sit on a home network
+/// without a certificate, and `is_insecure_address` is what asks the person to be sure.
+fn scheme_allowed(scheme: &str, host: Option<&str>) -> bool {
+    let Some(host) = host.filter(|host| !host.is_empty()) else {
+        return false;
+    };
     match scheme {
-        "https" => host.is_some_and(|host| !host.is_empty()),
-        "http" => debug && matches!(host, Some("localhost" | "127.0.0.1")),
+        "https" => true,
+        "http" => host != DEFAULT_RELAY_HOST,
         _ => false,
     }
+}
+
+/// Whether a normalized address is plain http to a host other than `localhost` / `127.0.0.1`,
+/// the one condition the app warns about. An address that does not parse is not.
+pub fn is_insecure_address(normalized: &str) -> bool {
+    Url::parse(normalized).is_ok_and(|url| {
+        url.scheme() == "http" && !matches!(url.host_str(), Some("localhost" | "127.0.0.1"))
+    })
+}
+
+/// `host[:port]` of an address, for showing which server is meant; `None` when it does not parse.
+pub fn display_host(url: &str) -> Option<String> {
+    let url = Url::parse(url).ok()?;
+    let host = url.host_str()?;
+    Some(match url.port() {
+        Some(port) => format!("{host}:{port}"),
+        None => host.to_string(),
+    })
 }
 
 fn parse_base_url(url: &str) -> Result<Url> {
@@ -99,7 +122,7 @@ fn parse_base_url(url: &str) -> Result<Url> {
     if parsed.as_str().trim_end_matches('/').len() > MAX_RELAY_URL_CHARS {
         return Err(invalid());
     }
-    let host_allowed = scheme_allowed(parsed.scheme(), parsed.host_str(), cfg!(debug_assertions));
+    let host_allowed = scheme_allowed(parsed.scheme(), parsed.host_str());
     let bare = parsed.username().is_empty()
         && parsed.password().is_none()
         && parsed.query().is_none()

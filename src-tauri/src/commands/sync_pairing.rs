@@ -46,7 +46,7 @@ use crate::services::sync::pairing::session::{keeps_session, PairingSession, Sta
 use crate::services::sync::pairing::{pairing_code_text, typed_code_digits, MailboxId, Role, Side};
 use crate::services::sync::recovery::{qr_svg, read_recovery_input};
 use crate::services::sync::relay::http::{
-    default_base_url, is_default_relay, normalize_base_url, HttpRelay,
+    default_base_url, display_host, is_default_relay, normalize_base_url, HttpRelay,
 };
 use crate::services::sync::relay::Mailbox;
 use crate::services::sync::{devices, feature, join, state};
@@ -305,12 +305,7 @@ fn server_host(relay_url: &str) -> Option<String> {
     if is_default_relay(relay_url) {
         return None;
     }
-    let url = reqwest::Url::parse(relay_url).ok()?;
-    let host = url.host_str()?;
-    Some(match url.port() {
-        Some(port) => format!("{host}:{port}"),
-        None => host.to_string(),
-    })
+    display_host(relay_url)
 }
 
 fn stage_of(stage: Stage) -> PairingStage {

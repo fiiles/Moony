@@ -388,5 +388,11 @@
   },
   "limits": {
     "lostDevice": "Todavía no se puede cortar el acceso a tus datos sincronizados de un dispositivo o un Kit de recuperación perdido, y quien tenga uno ya puede leer lo que contiene. Si alguno desaparece, elimina los datos sincronizados y vuelve a configurar la sincronización con un Kit nuevo; tus otros dispositivos tendrán que unirse de nuevo."
+  },
+  "codes": {
+    "pairNotForSetup": "Este es un código de emparejamiento, no un código de conexión. Escanéalo al añadir este dispositivo a una sincronización que ya está activa.",
+    "kitNotForSetup": "Este es un código del kit de recuperación, no un código de conexión. Úsalo para unirte a datos sincronizados que ya existen.",
+    "connectionNotHere": "Este es un código de conexión de un servidor de sincronización. Úsalo al configurar la sincronización, no aquí.",
+    "notAServerAddress": "Esta no es la dirección de un servidor de sincronización. Escribe la dirección de tu servidor de sincronización o pega su código de conexión."
   }
 }

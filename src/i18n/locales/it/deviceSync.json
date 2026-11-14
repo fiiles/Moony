@@ -388,5 +388,11 @@
   },
   "limits": {
     "lostDevice": "Un dispositivo o un Kit di ripristino smarrito non può ancora essere escluso dai tuoi dati sincronizzati, e chi ne possiede uno può già leggere ciò che contiene. Se uno va perso, elimina i dati sincronizzati e configura di nuovo la sincronizzazione con un nuovo Kit; gli altri tuoi dispositivi dovranno poi unirsi di nuovo."
+  },
+  "codes": {
+    "pairNotForSetup": "Questo è un codice di abbinamento, non un codice di connessione. Scansionalo quando aggiungi questo dispositivo a una sincronizzazione già attiva.",
+    "kitNotForSetup": "Questo è un codice del kit di recupero, non un codice di connessione. Usalo per unirti a dati sincronizzati già esistenti.",
+    "connectionNotHere": "Questo è un codice di connessione di un server di sincronizzazione. Usalo quando configuri la sincronizzazione, non qui.",
+    "notAServerAddress": "Questo non è l'indirizzo di un server di sincronizzazione. Digita l'indirizzo del tuo server di sincronizzazione o incolla il suo codice di connessione."
   }
 }

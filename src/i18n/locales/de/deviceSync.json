@@ -363,7 +363,8 @@
         "lead": "Sie geben den Code aus dem Kit und die Serveradresse ein. So tritt auch ein zweiter Computer bei."
       }
     },
-    "connect": "Verbinden"
+    "connect": "Verbinden",
+    "firstRunDone": "Dieses Gerät synchronisiert jetzt"
   },
   "phone": {
     "title": "Synchronisierung",

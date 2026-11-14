@@ -36,9 +36,10 @@ export interface JoinFlowProps {
    * The caller's way to leave the flow from outside it: Settings calls it when the dialog is
    * dismissed (Escape, a click outside, its X), the first run before it leaves the Připojení step
    * ("Continue without sync"). The flow sets it to its own way out (`onCancel`, after giving a
-   * pairing up), which does nothing while a pairing starts or a join runs.
+   * pairing up), which does nothing while a pairing starts or a join runs; it answers whether it
+   * is leaving.
    */
-  dismissRef?: RefObject<(() => void) | null>;
+  dismissRef?: RefObject<(() => boolean) | null>;
 }
 
 /** Only the pairing flow: whether a pairing exists yet (its QR and later steps are on screen). */
@@ -106,12 +107,14 @@ export function PairingJoinFlow({
   };
 
   // The caller's way out (Settings: a dismissal; first run: leaving the step): not while the pairing
-  // starts (the password is on its way) or the join runs
-  const busy = view ? join.isPending : start.isPending;
+  // starts (the password is on its way) or the join runs (a cancelled setup goes on to join)
+  const busy = view ? join.isPending || turnOff.isPending : start.isPending;
   useEffect(() => {
     if (!dismissRef) return;
     dismissRef.current = () => {
-      if (!busy) void close();
+      if (busy) return false;
+      void close();
+      return true;
     };
   });
 

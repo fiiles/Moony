@@ -385,7 +385,8 @@
         "lead": "Wpisujesz kod z zestawu i adres serwera. Tak dołącza też drugi komputer."
       }
     },
-    "connect": "Połącz"
+    "connect": "Połącz",
+    "firstRunDone": "To urządzenie jest teraz synchronizowane"
   },
   "phone": {
     "title": "Synchronizacja",

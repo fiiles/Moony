@@ -385,7 +385,8 @@
         "lead": "Zadáte kód ze sady a adresu serveru. Tak se připojuje i druhý počítač."
       }
     },
-    "connect": "Připojit"
+    "connect": "Připojit",
+    "firstRunDone": "Toto zařízení se teď synchronizuje"
   },
   "phone": {
     "title": "Synchronizace",

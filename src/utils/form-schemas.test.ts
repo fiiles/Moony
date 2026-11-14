@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { requiredNumber, optionalFee, feeForCreate, feeForUpdate } from './form-schemas';
+import { MIN_PASSWORD_LENGTH } from '@shared/schema';
+import {
+  requiredNumber,
+  optionalFee,
+  feeForCreate,
+  feeForUpdate,
+  devicePasswordSchema,
+  profileNameSchema,
+} from './form-schemas';
 
 const amountSchema = z.object({
   amount: requiredNumber('validation.amountRequired').positive('validation.amountPositive'),
@@ -89,5 +97,73 @@ describe('fee wire values', () => {
     expect(feeForUpdate(undefined)).toBe('');
     expect(feeForUpdate('')).toBe('');
     expect(feeForUpdate('3')).toBe('3');
+  });
+});
+
+function issues(schema: z.ZodType, input: unknown) {
+  const result = schema.safeParse(input);
+  return result.success
+    ? []
+    : result.error.issues.map((i) => ({ path: i.path, message: i.message }));
+}
+
+describe('devicePasswordSchema', () => {
+  const password = 'a'.repeat(MIN_PASSWORD_LENGTH);
+
+  it('accepts a password of the minimum length typed twice', () => {
+    expect(devicePasswordSchema.safeParse({ password, confirmPassword: password }).success).toBe(
+      true
+    );
+  });
+
+  it('refuses a shorter password with the minimum-length key', () => {
+    const short = password.slice(1);
+    expect(
+      issues(devicePasswordSchema, { password: short, confirmPassword: short })
+    ).toContainEqual({ path: ['password'], message: 'validation.passwordMinLength' });
+  });
+
+  it('reports a mismatch on the confirmation field', () => {
+    expect(issues(devicePasswordSchema, { password, confirmPassword: `${password}b` })).toEqual([
+      { path: ['confirmPassword'], message: 'validation.passwordMismatch' },
+    ]);
+  });
+});
+
+describe('profileNameSchema', () => {
+  it('accepts a name and surname with an empty e-mail', () => {
+    expect(profileNameSchema.safeParse({ name: 'Alex', surname: 'Novák', email: '' }).success).toBe(
+      true
+    );
+  });
+
+  it('accepts a missing e-mail', () => {
+    expect(profileNameSchema.safeParse({ name: 'Alex', surname: 'Novák' }).success).toBe(true);
+  });
+
+  it('refuses a name of blanks with the name-required key', () => {
+    expect(issues(profileNameSchema, { name: '  ', surname: 'N' })).toEqual([
+      { path: ['name'], message: 'validation.nameRequired' },
+    ]);
+  });
+
+  it('refuses a surname of blanks with the surname-required key', () => {
+    expect(issues(profileNameSchema, { name: 'Alex', surname: ' ' })).toEqual([
+      { path: ['surname'], message: 'validation.surnameRequired' },
+    ]);
+  });
+
+  it('refuses a bad e-mail with the invalid-email key', () => {
+    expect(
+      issues(profileNameSchema, { name: 'Alex', surname: 'Novák', email: 'not-an-email' })
+    ).toEqual([{ path: ['email'], message: 'validation.invalidEmail' }]);
+  });
+
+  it('sends the trimmed name and surname', () => {
+    expect(profileNameSchema.parse({ name: ' Alex ', surname: ' Novák ', email: '' })).toEqual({
+      name: 'Alex',
+      surname: 'Novák',
+      email: '',
+    });
   });
 });

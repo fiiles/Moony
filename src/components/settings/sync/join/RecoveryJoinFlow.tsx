@@ -75,7 +75,9 @@ export function RecoveryJoinFlow({
   useEffect(() => {
     if (!dismissRef) return;
     dismissRef.current = () => {
-      if (!busy) onCancel();
+      if (busy) return false;
+      onCancel();
+      return true;
     };
   });
 

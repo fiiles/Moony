@@ -36,7 +36,7 @@ export function JoinDeviceDialog({ onClose }: { onClose: () => void }) {
   // Once a pairing exists its QR carries the phone hint: the header leaves its description out
   const [pairingShown, setPairingShown] = useState(false);
   // Set by the running flow: its own way out, a no-op while it is busy
-  const dismissFlow = useRef<(() => void) | null>(null);
+  const dismissFlow = useRef<(() => boolean) | null>(null);
   const deviceName = name.trim();
 
   const proceed = (event: FormEvent) => {

@@ -6,8 +6,12 @@
  * right that follows the chosen areas. The wizard stays mounted after the
  * account is created (steps 4–5 run unlocked); `onFinished` hands control
  * back to the auth page.
+ *
+ * With sync built in, the first step also offers the join path (spec 2026-11-14 §5.1): the
+ * account step asks only this device's password, and Připojení replaces the last two steps. Left
+ * without sync, Připojení is followed by the normal steps, with the name asked on Co sledovat.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -43,10 +47,19 @@ import { MoonMark } from '@/components/common/MoonMark';
 import { WizardSteps } from '@/components/common/WizardSteps';
 import { useAuth } from '@/hooks/use-auth';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
+import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { useFormat } from '@/lib/use-format';
 import { authApi, categorizationApi, onboardingApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { cn } from '@/lib/utils';
+import { passwordStrength } from '@/mobile/lib/password-strength';
+import { profileNameSchema } from '@/utils/form-schemas';
+import {
+  onboardingSteps,
+  stepAfterRecovery,
+  type OnboardingPath,
+  type OnboardingStep,
+} from '@/utils/onboarding-steps';
 import { todayIsoUtc, utcDayStart } from '@/utils/period';
 import {
   RULE_PACK_COUNTRY_IDS,
@@ -65,10 +78,11 @@ import { PasswordInput } from '@/components/auth/PasswordInput';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { OnboardingPreview, type PreviewAreas } from '@/components/auth/OnboardingPreview';
 import { RestoreBackup } from '@/components/common/RestoreBackup';
+import { ConnectStep } from '@/components/auth/onboarding/ConnectStep';
+import { DevicePasswordForm } from '@/components/auth/onboarding/DevicePasswordForm';
+import { StepHead } from '@/components/auth/onboarding/StepHead';
 import './onboarding.css';
 
-type Step = 'welcome' | 'account' | 'recovery' | 'areas' | 'firstAccount';
-const STEPS: Step[] = ['welcome', 'account', 'recovery', 'areas', 'firstAccount'];
 const NONE = '__none__';
 
 interface OnboardingWizardProps {
@@ -80,32 +94,6 @@ interface OnboardingWizardProps {
   touch?: boolean;
 }
 
-/**
- * Simple length/variety based strength hint — guidance, not a gate. 'weak' means
- * "too short" (its copy says so), so it applies only below the minimum length.
- */
-function passwordStrength(password: string): 'weak' | 'fair' | 'strong' | null {
-  if (!password) return null;
-  const variety = [/[a-z]/, /[A-Z]/, /\d/, /[^\w\s]/].filter((re) => re.test(password)).length;
-  if (password.length < MIN_PASSWORD_LENGTH) return 'weak';
-  if (password.length >= 14 && variety >= 3) return 'strong';
-  return 'fair';
-}
-
-function StepHead({ title, lead }: { title: string; lead: string }) {
-  return (
-    <>
-      <h1
-        tabIndex={-1}
-        className="m-0 text-[26px] font-650 tracking-[-0.05em] text-ink outline-none"
-      >
-        {title}
-      </h1>
-      <p className="mb-6 mt-2 text-body leading-[1.5] text-ink-3">{lead}</p>
-    </>
-  );
-}
-
 export function OnboardingWizard({
   language,
   onFinished,
@@ -114,7 +102,9 @@ export function OnboardingWizard({
 }: OnboardingWizardProps) {
   const { t } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
+  const { t: tSync } = useTranslation('deviceSync');
   const fmt = useFormat();
+  const syncFeature = useDeviceSyncFeature();
   const queryClient = useQueryClient();
   const { appStatus, setupMutation, confirmSetupMutation, recoveryKey, clearRecoveryKey } =
     useAuth();
@@ -126,7 +116,13 @@ export function OnboardingWizard({
   }, []);
 
   const systemRegion = useMemo(() => regionFromLocale(navigator.language), []);
-  const [step, setStep] = useState<Step>('welcome');
+  const [step, setStep] = useState<OnboardingStep>('welcome');
+  const [path, setPath] = useState<OnboardingPath>('new');
+  /**
+   * Join path: the device password typed on the account step, kept in memory only for Připojení
+   * (a pairing starts with it, a Kit join sends it) and dropped when that step ends either way.
+   */
+  const joinPassword = useRef<string | null>(null);
   const [currency, setCurrency] = useState<CurrencyCode>(() =>
     defaultCurrencyForRegion(systemRegion)
   );
@@ -141,10 +137,11 @@ export function OnboardingWizard({
   );
   const countryName = countryOptions.find((o) => o.packId === country)?.name ?? null;
 
-  const stepLabels: Record<Step, string> = {
+  const stepLabels: Record<OnboardingStep, string> = {
     welcome: t('onboarding.steps.welcome'),
     account: t('onboarding.steps.account'),
     recovery: t('onboarding.steps.recovery'),
+    connect: t('onboarding.steps.connect'),
     areas: t('onboarding.steps.areas'),
     firstAccount: t('onboarding.steps.firstAccount'),
   };
@@ -155,8 +152,19 @@ export function OnboardingWizard({
     defaultValues: { name: '', surname: '', email: '', password: '', confirmPassword: '' },
   });
   const passwordValue = setupForm.watch('password');
-  const firstName = setupForm.watch('name').trim();
   const strength = passwordStrength(passwordValue);
+
+  // Join path: only the device password; the synced profile brings name, surname, e-mail and
+  // currency (the backend checks only the password and the currency here).
+  const submitDevicePassword = (password: string) => {
+    joinPassword.current = password;
+    setupMutation.mutate({ name: '', surname: '', email: '', password, language, currency });
+  };
+  const leaveJoinPath = () => {
+    joinPassword.current = null;
+    setPath('new');
+    setStep('welcome');
+  };
 
   // Keys are prepared → show the recovery step.
   useEffect(() => {
@@ -174,6 +182,7 @@ export function OnboardingWizard({
     !verified && typed[0].length >= 4 && typed[1].length >= 4 && recoveryKey !== null;
 
   const backToAccount = () => {
+    joinPassword.current = null;
     clearRecoveryKey();
     setTyped(['', '']);
     setStep('account');
@@ -184,10 +193,27 @@ export function OnboardingWizard({
     confirmSetupMutation.mutate(undefined, {
       onSuccess: () => {
         clearRecoveryKey();
-        setStep('areas');
+        setStep(stepAfterRecovery(path));
       },
     });
   };
+
+  // ---------------- Join path, step 4: Připojení ----------------
+  const unlocked = appStatus === 'unlocked';
+  const connectShown = step === 'connect' && unlocked;
+  // However the step ends (joined, left without sync, the wizard unmounted), the password goes.
+  useEffect(() => {
+    if (!connectShown) return;
+    return () => {
+      joinPassword.current = null;
+    };
+  }, [connectShown]);
+
+  const declineSync = useCallback(() => {
+    joinPassword.current = null;
+    setPath('declined');
+    setStep('areas');
+  }, []);
 
   // ---------------- Step 4: areas ----------------
   const [areas, setAreas] = useState<PreviewAreas>({
@@ -196,8 +222,14 @@ export function OnboardingWizard({
     liabilities: true,
   });
   const [savingAreas, setSavingAreas] = useState(false);
+  // Declined path: the profile has no name yet (the account step asked only the password)
+  const nameForm = useForm<z.infer<typeof profileNameSchema>>({
+    resolver: zodResolver(profileNameSchema),
+    defaultValues: { name: '', surname: '', email: '' },
+  });
+  const firstName = (path === 'declined' ? nameForm.watch('name') : setupForm.watch('name')).trim();
 
-  const saveAreas = async () => {
+  const saveAreas = async (names?: z.infer<typeof profileNameSchema>) => {
     setSavingAreas(true);
     try {
       const menuPreferences: MenuPreferences = {
@@ -210,6 +242,7 @@ export function OnboardingWizard({
         insurance: areas.liabilities,
       };
       const profile = await authApi.updateProfile({
+        ...(names ? { name: names.name, surname: names.surname, email: names.email ?? '' } : {}),
         menuPreferences,
         ...(country !== NONE ? { country: country.toUpperCase() } : {}),
       });
@@ -294,7 +327,12 @@ export function OnboardingWizard({
     }
   };
 
-  const unlocked = appStatus === 'unlocked';
+  const joinedSync = async () => {
+    joinPassword.current = null;
+    toast(tSync('join.firstRunDone'));
+    await finish();
+  };
+
   const balanceNumber = Number(accountBalance.replace(/\s/g, '').replace(',', '.'));
   const previewNetWorth =
     step === 'firstAccount' && accountBalance.trim() !== '' && Number.isFinite(balanceNumber)
@@ -335,7 +373,7 @@ export function OnboardingWizard({
           </div>
           <WizardSteps
             className="mb-[26px]"
-            steps={STEPS.map((id) => ({ id, label: stepLabels[id] }))}
+            steps={onboardingSteps(path).map((id) => ({ id, label: stepLabels[id] }))}
             current={step}
           />
 
@@ -399,28 +437,70 @@ export function OnboardingWizard({
                   {tc('buttons.continue')}
                 </Button>
               )}
-              {/* Moving from another computer or reinstalling: skip the setup entirely */}
+              {/* Moving from another device or reinstalling: join sync or skip the setup entirely */}
               <RestoreBackup fresh>
-                {(pick, busy) => (
-                  <p className="m-0 mt-4 border-t border-line-soft pt-4 text-caption font-500 text-ink-3">
-                    {t('onboarding.welcome.restoreLead')}{' '}
+                {(pick, busy) => {
+                  const restore = (
                     <button
                       type="button"
                       onClick={pick}
                       disabled={busy}
-                      className="font-650 text-ink underline underline-offset-[3px] hover:text-ink-2 disabled:pointer-events-none disabled:opacity-50"
+                      className={TEXT_BUTTON}
                       data-testid="onboarding-restore-backup"
                     >
                       {t('onboarding.welcome.restoreBackup')}
                     </button>
-                  </p>
-                )}
+                  );
+                  return (
+                    <p className="m-0 mt-4 border-t border-line-soft pt-4 text-caption font-500 text-ink-3">
+                      {syncFeature ? (
+                        <>
+                          {t('onboarding.welcome.otherDeviceLead')}
+                          <span className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPath('join');
+                                setStep('account');
+                              }}
+                              disabled={busy}
+                              className={TEXT_BUTTON}
+                              data-testid="onboarding-join-sync"
+                            >
+                              {t('onboarding.welcome.joinSync')}
+                            </button>
+                            {restore}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          {t('onboarding.welcome.restoreLead')} {restore}
+                        </>
+                      )}
+                    </p>
+                  );
+                }}
               </RestoreBackup>
             </div>
           )}
 
+          {/* ---------------- 2. Account (join path: this device's password) ---------------- */}
+          {step === 'account' && path === 'join' && (
+            <div className="onboarding-step" data-testid="onboarding-join-account">
+              <StepHead
+                title={t('onboarding.joinAccount.title')}
+                lead={t('onboarding.joinAccount.subtitle')}
+              />
+              <DevicePasswordForm
+                pending={setupMutation.isPending}
+                onSubmit={submitDevicePassword}
+                onBack={leaveJoinPath}
+              />
+            </div>
+          )}
+
           {/* ---------------- 2. Account ---------------- */}
-          {step === 'account' && (
+          {step === 'account' && path !== 'join' && (
             <Form {...setupForm}>
               <form
                 onSubmit={setupForm.handleSubmit((data) =>
@@ -607,10 +687,80 @@ export function OnboardingWizard({
             </div>
           )}
 
+          {/* ---------------- 4. Připojení (join path) ---------------- */}
+          {connectShown && (
+            <ConnectStep
+              password={joinPassword.current ?? ''}
+              onJoined={() => void joinedSync()}
+              onDecline={declineSync}
+            />
+          )}
+
           {/* ---------------- 4. Areas ---------------- */}
           {step === 'areas' && unlocked && (
             <div className="onboarding-step" data-testid="onboarding-areas">
               <StepHead title={t('onboarding.areas.title')} lead={t('onboarding.areas.subtitle')} />
+              {path === 'declined' && (
+                <Form {...nameForm}>
+                  <form
+                    className="mb-5 space-y-4"
+                    data-testid="onboarding-areas-name"
+                    onSubmit={(event) => event.preventDefault()}
+                  >
+                    <p className="m-0 text-caption font-500 text-ink-3">
+                      {t('onboarding.areas.nameLead')}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField
+                        control={nameForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('onboarding.account.name')}</FormLabel>
+                            <FormControl>
+                              <Input autoFocus autoComplete="given-name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={nameForm.control}
+                        name="surname"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('onboarding.account.surname')}</FormLabel>
+                            <FormControl>
+                              <Input autoComplete="family-name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={nameForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex justify-between">
+                            <span>{t('onboarding.account.email')}</span>
+                            <span className="font-500 text-ink-5">{tc('labels.optional')}</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              placeholder={t('onboarding.account.emailPlaceholder')}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </form>
+                </Form>
+              )}
               <div className="mb-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <AreaCard
                   title={t('onboarding.areas.accounts.title')}
@@ -653,7 +803,11 @@ export function OnboardingWizard({
               {nav(
                 null,
                 <Button
-                  onClick={saveAreas}
+                  onClick={
+                    path === 'declined'
+                      ? nameForm.handleSubmit((names) => saveAreas(names))
+                      : () => void saveAreas()
+                  }
                   disabled={savingAreas}
                   loading={savingAreas}
                   data-testid="onboarding-areas-continue"
@@ -795,6 +949,9 @@ export function OnboardingWizard({
     </div>
   );
 }
+
+const TEXT_BUTTON =
+  'font-650 text-ink underline underline-offset-[3px] hover:text-ink-2 disabled:pointer-events-none disabled:opacity-50';
 
 function AreaCard({
   title,

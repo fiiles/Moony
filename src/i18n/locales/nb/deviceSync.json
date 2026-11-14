@@ -363,7 +363,8 @@
         "lead": "Du skriver inn koden fra settet og serveradressen. Slik kobles også en datamaskin nummer to til."
       }
     },
-    "connect": "Koble til"
+    "connect": "Koble til",
+    "firstRunDone": "Denne enheten synkroniserer nå"
   },
   "phone": {
     "title": "Synkronisering",

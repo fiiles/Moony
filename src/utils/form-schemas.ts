@@ -1,4 +1,23 @@
 import { z } from 'zod';
+import { MIN_PASSWORD_LENGTH } from '@shared/schema';
+
+/** The join path's account step: the device password twice (same rules and keys as `setupSchema`). */
+export const devicePasswordSchema = z
+  .object({
+    password: z.string().min(MIN_PASSWORD_LENGTH, 'validation.passwordMinLength'),
+    confirmPassword: z.string().min(1, 'validation.passwordRequired'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'validation.passwordMismatch',
+    path: ['confirmPassword'],
+  });
+
+/** The declined path asks the name on Co sledovat: name and surname required (trimmed), e-mail optional. */
+export const profileNameSchema = z.object({
+  name: z.string().trim().min(1, 'validation.nameRequired'),
+  surname: z.string().trim().min(1, 'validation.surnameRequired'),
+  email: z.string().trim().email('validation.invalidEmail').optional().or(z.literal('')),
+});
 
 /**
  * Number field for react-hook-form + zod (v4).

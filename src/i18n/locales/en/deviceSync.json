@@ -363,7 +363,8 @@
         "lead": "You enter the code from the kit and the server address. This is also how a second computer joins."
       }
     },
-    "connect": "Connect"
+    "connect": "Connect",
+    "firstRunDone": "This device is syncing now"
   },
   "phone": {
     "title": "Sync",

@@ -363,7 +363,8 @@
         "lead": "Du anger koden från kitet och serverns adress. Så ansluter även en andra dator."
       }
     },
-    "connect": "Anslut"
+    "connect": "Anslut",
+    "firstRunDone": "Den här enheten synkroniseras nu"
   },
   "phone": {
     "title": "Synkronisering",

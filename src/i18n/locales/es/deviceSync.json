@@ -374,7 +374,8 @@
         "lead": "Introduces el código del kit y la dirección del servidor. Así se une también un segundo ordenador."
       }
     },
-    "connect": "Conectar"
+    "connect": "Conectar",
+    "firstRunDone": "Este dispositivo ya se sincroniza"
   },
   "phone": {
     "title": "Sincronización",

@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { refreshAssetLogos } from '@/hooks/use-asset-logos';
 import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { queryClient } from '@/lib/queryClient';
 import { stockMonitorApi } from '@/lib/tauri-api';
@@ -22,6 +23,7 @@ export function useStockMonitorMutations() {
     mutationFn: (ticker: string) => stockMonitorApi.follow(ticker),
     onSuccess: (watched) => {
       invalidate();
+      void refreshAssetLogos(queryClient);
       // Following fetches the ticker's price, shared with a held position of it
       void invalidateAfterPriceRefresh(queryClient);
       toast(t('toast.followed', { ticker: watched.ticker }));
@@ -81,6 +83,7 @@ export function useStockMonitorMutations() {
     onSuccess: (added) => {
       invalidate();
       if (added.length > 0) {
+        void refreshAssetLogos(queryClient);
         // Following the held tickers fetches their prices
         void invalidateAfterPriceRefresh(queryClient);
         toast(t('toast.followedPortfolio', { count: added.length }));

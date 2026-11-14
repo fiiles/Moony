@@ -1,3 +1,4 @@
+import { InstrumentHeadLogo } from '@/components/common/AssetLogo';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoute } from 'wouter';
@@ -104,8 +105,11 @@ export default function CryptoDetail() {
       {view ? (
         <>
           {/* The nav bar keeps its one title, so the name and the currency are the first line */}
-          <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
-            {[view.holding.name, view.holding.originalCurrency].join(' · ')}
+          <p className="mx-0.5 -mt-0.5 mb-2.5 flex items-center justify-center gap-1.5 text-m-caption text-ink-3">
+            <InstrumentHeadLogo ticker={view.holding.ticker} type="crypto" className="size-5" />
+            <span className="min-w-0 truncate">
+              {[view.holding.name, view.holding.originalCurrency].join(' · ')}
+            </span>
           </p>
           {/* The list's quality, shown when this coin is one of those not converted */}
           <ScaledConversionNote

@@ -516,7 +516,7 @@ export default function RealEstatePage() {
                           <div className="flex min-w-0 items-center gap-[10px]">
                             <AssetLogo
                               ticker={p.name}
-                              type="stock"
+                              type="initials"
                               variant={r.excluded ? 'soft' : 'series'}
                             />
                             <div className="min-w-0">

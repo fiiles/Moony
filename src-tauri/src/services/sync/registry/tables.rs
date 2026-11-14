@@ -422,6 +422,12 @@ pub(super) static TABLES: &[TableSpec] = &[
         class: TableClass::Local,
         ..BASE
     },
+    // A per-device cache of fetched stock logos (spec 2026-11-14-asset-logos).
+    TableSpec {
+        name: "asset_logos",
+        class: TableClass::Local,
+        ..BASE
+    },
     TableSpec {
         name: "attachment_leftovers",
         class: TableClass::Local,

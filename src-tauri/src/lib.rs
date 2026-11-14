@@ -458,6 +458,9 @@ async fn run_app() {
             commands::stock_monitor::get_stock_price_range,
             // Company data (services::company_info)
             commands::company_info::get_stock_company_info,
+            // Stock logos (services::asset_logos)
+            commands::asset_logos::get_asset_logos,
+            commands::asset_logos::refresh_asset_logos,
             // Cashflow commands
             commands::cashflow::get_cashflow_report,
             commands::cashflow::get_cashflow_actuals,

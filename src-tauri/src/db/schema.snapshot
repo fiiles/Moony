@@ -145,6 +145,15 @@ CREATE TABLE app_config (
     value TEXT NOT NULL
 )
 
+== table asset_logos ==
+CREATE TABLE asset_logos (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    image BLOB,
+    mime TEXT,
+    checked_at INTEGER NOT NULL
+)
+
 == table attachment_leftovers ==
 CREATE TABLE attachment_leftovers (
     id TEXT PRIMARY KEY,

@@ -151,6 +151,7 @@ export default function Crypto() {
             </InlineAlert>
           )}
           <PositionList
+            kind="crypto"
             rows={rows}
             hrefOf={(row) => cryptoPath(row.id)}
             currency={reportCurrency}
@@ -166,6 +167,7 @@ export default function Crypto() {
         investment={pickRow}
       />
       <ClosedPositionsSheet
+        kind="crypto"
         open={closedOpen}
         onOpenChange={setClosedOpen}
         rows={rows}

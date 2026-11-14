@@ -16,6 +16,12 @@ export type AccountMatch = "selected" | "other" | "none" | "unknown"
 export type AccountType = "checking" | "savings" | "credit_card" | "investment"
 
 /**
+ * One stored logo: the upper-case ticker and the normalized PNG as
+ * `data:image/png;base64,…`. Tickers without a logo are not listed.
+ */
+export type AssetLogo = { ticker: string; dataUrl: string }
+
+/**
  * One dated estimate of an asset's value.
  */
 export type AssetValuation = { id: string; 

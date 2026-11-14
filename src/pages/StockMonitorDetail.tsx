@@ -27,6 +27,7 @@ import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import { positionTradeEvents, type PositionTradeEvent } from '@/utils/trade-events';
 import { sessionStarts, tradingAxis, withLivePrice } from '@/utils/trading-axis';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
+import { InstrumentHeadLogo } from '@/components/common/AssetLogo';
 import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
 import { Chip } from '@/components/ui/chip';
@@ -385,6 +386,7 @@ export default function StockMonitorDetail() {
           ) as string[]
         }
         title={name}
+        logo={<InstrumentHeadLogo ticker={detail.ticker} type="stock" className="size-10" />}
         description={
           detail.followed
             ? `${followedAt ? t('detail.followedSince', { date: fmt.day(followedAt) }) : ''}${followedAt ? ' · ' : ''}${

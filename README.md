@@ -43,8 +43,8 @@ tablet app, or a budget shared by a household (one profile on one computer, no s
   undo) and an account page built around dated balance records. Categorization uses your own
   rules, rules learned from your choices and rule packs for many countries.
 - **Stocks** with prices from Yahoo Finance (or set by hand), a yearly dividend estimate, the
-  dividends each position received (from Yahoo Finance, or entered by hand where Yahoo has none)
-  and a watchlist that never counts toward net worth. Broker CSV import reads XTB, Trading 212,
+  dividends each position received (from Yahoo Finance, or entered by hand where Yahoo has none),
+  company logos where Yahoo has them, and a watchlist that never counts toward net worth. Broker CSV import reads XTB, Trading 212,
   Degiro and Interactive Brokers exports and your own table. The analysis shows time-weighted and
   money-weighted return, drawdown, each position's contribution, deposits against gain and an
   optional comparison with S&P 500 or MSCI World. Stock splits are detected from Yahoo Finance
@@ -158,8 +158,9 @@ The checkable version is **[PRIVACY.md](./PRIVACY.md)**; vulnerabilities go thro
   your records, one for the photos and documents you attach. No account, no cloud, no sync, and no
   telemetry: no analytics, no usage statistics, no crash reports.
 - **What leaves your computer.** Ticker symbols, ISINs, crypto symbols, search text, currencies and
-  date ranges go to Yahoo Finance and Frankfurter for prices and rates; the ECB's daily
-  rates are downloaded, and the update check goes to GitHub. Balances, amounts, names and
+  date ranges go to Yahoo Finance and Frankfurter for prices and rates, and Yahoo's image server
+  (`s.yimg.com`) supplies company logos; the ECB's daily rates are downloaded, and the update
+  check goes to GitHub. Balances, amounts, names and
   documents are not sent (an AI client you connect through MCP is the exception).
 - **Not encrypted.** The JSON export, copies you save, and the temporary copy of a document you
   open in another app (Moony deletes it when you lock or quit). Images and PDFs open inside Moony.
@@ -197,11 +198,12 @@ reads, usually in its provider's cloud ([setup](./docs/mcp.md)).
 
 ## Data sources and attribution
 
-- **Yahoo Finance** supplies stock and crypto prices, history, dividends, ticker and coin search and company data
-  through an unofficial, undocumented interface used by a community library
+- **Yahoo Finance** supplies stock and crypto prices, history, dividends, ticker and coin search, company data and
+  company logos (its image server, `s.yimg.com`) through an unofficial, undocumented interface used by a community library
   ([`yahoo_finance_api`](https://crates.io/crates/yahoo_finance_api)). It can change, break or be
   rate-limited without notice, and Moony is not affiliated with Yahoo. A price can always be set
-  by hand.
+  by hand. Coin icons are not downloaded: they ship with the app
+  ([`@web3icons/core`](https://github.com/0xa3k5/web3icons), MIT).
 - **European Central Bank** (daily euro reference rates; source: ECB, published for information
   purposes only) and **[Frankfurter](https://frankfurter.dev)** (rate history) supply exchange rates.
 

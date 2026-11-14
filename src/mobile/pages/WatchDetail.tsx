@@ -1,3 +1,4 @@
+import { InstrumentHeadLogo } from '@/components/common/AssetLogo';
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -283,10 +284,13 @@ export default function WatchDetail() {
     body = (
       <>
         {/* The nav bar keeps its one title, so the name and the exchange are the first line */}
-        <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
-          {[name, detail.exchange ? exchangeName(detail.exchange) : null]
-            .filter(Boolean)
-            .join(' · ')}
+        <p className="mx-0.5 -mt-0.5 mb-2.5 flex items-center justify-center gap-1.5 text-m-caption text-ink-3">
+          <InstrumentHeadLogo ticker={ticker} type="stock" className="size-5" />
+          <span className="min-w-0 truncate">
+            {[name, detail.exchange ? exchangeName(detail.exchange) : null]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
         </p>
         <Hero
           label={tm('detail.price')}

@@ -40,6 +40,7 @@ import { utcDayFloor } from '@/utils/chart-axis';
 import { formatMarketCap } from '@/utils/stock-monitor';
 import { ratioText as splitRatioText } from '@/utils/stock-splits';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
+import { InstrumentHeadLogo } from '@/components/common/AssetLogo';
 import { HeroValue } from '@/components/common/HeroCard';
 import { Stat, Stats } from '@/components/common/Stat';
 import { ChangeNote } from '@/components/common/ChangeBadge';
@@ -505,6 +506,7 @@ export default function StockDetail() {
       <PageHead
         eyebrow={[investment.ticker, stockCurrency]}
         title={investment.companyName}
+        logo={<InstrumentHeadLogo ticker={investment.ticker} type="stock" className="size-10" />}
         description={[
           t('detail.sharesCount', { count: quantity }),
           t('detail.avgBuyPrice', { price: unitMoney(averageCost) }),

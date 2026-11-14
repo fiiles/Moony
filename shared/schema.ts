@@ -2557,6 +2557,15 @@ export interface StockCompanyInfo {
   metadataFetchedAt: number | null;
 }
 
+// A cached stock logo (src-tauri/src/models/asset_logos.rs). Only tickers with a stored logo
+// are listed; the image is a normalized PNG, so the webview never fetches it from the network.
+export interface AssetLogo {
+  /** Upper-case ticker (the stock's Yahoo symbol). */
+  ticker: string;
+  /** `data:image/png;base64,…` */
+  dataUrl: string;
+}
+
 // Backup / restore / export (src-tauri/src/models/backup.rs)
 export interface BackupFileEntry {
   path: string;

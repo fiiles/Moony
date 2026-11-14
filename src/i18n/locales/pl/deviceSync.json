@@ -406,8 +406,12 @@
       "error": "Zatrzymana"
     },
     "rowWithAge": "{{state}} · {{age}}",
-    "setUp": "Skonfiguruj synchronizację na tym telefonie",
-    "scan": "Zeskanuj kod z innego urządzenia",
+    "choice": {
+      "scan": {
+        "title": "Zeskanuj kod z komputera",
+        "lead": "Na komputerze: Ustawienia → Synchronizacja → Dodaj urządzenie. Można też zeskanować kod QR Zestawu odzyskiwania."
+      }
+    },
     "typeCode": "Wpisz kod zestawu odzyskiwania",
     "addDevice": "Dodaj urządzenie",
     "busy": "Nie zamykaj Moony, dopóki to się nie skończy.",

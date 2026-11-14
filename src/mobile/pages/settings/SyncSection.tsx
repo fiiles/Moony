@@ -9,10 +9,9 @@ import {
   Info,
   KeyRound,
   Plus,
-  QrCode,
+  Link2,
   RefreshCw,
   Smartphone,
-  Type,
   Unplug,
   X,
 } from 'lucide-react';
@@ -46,6 +45,7 @@ import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { Sheet } from '@/mobile/components/Sheet';
+import { JoinChoiceSheet, type PhoneJoinMethod } from '@/mobile/components/sync/JoinChoiceSheet';
 import { ReplaceConfirmSheet } from '@/mobile/components/sync/ReplaceConfirmSheet';
 import { RecoveryJoinSheet } from '@/mobile/components/sync/RecoveryJoinSheet';
 import { ChangeServerSheet } from '@/mobile/components/sync/ChangeServerSheet';
@@ -72,8 +72,8 @@ type Flow = { mode: ScanMode; paste: boolean } | null;
 /**
  * Nastavení → Sync (spec §11.3 and the mobile design §13): behind the feature flag, which sends the
  * page back to Nastavení when it is off. With sync off (or half set up) the page offers the ways in:
- * set up sync on this phone (or continue a setup that was started, or cancel it), scan a code from
- * another device and type a Recovery Kit code. With sync on it shows the status and "Sync now", the devices (this one can be renamed), "Add a device" (a
+ * start syncing on this phone (or continue a setup that was started, or cancel it) and "Connect this
+ * device", which opens a choice: scan a code from the computer or type a Recovery Kit code. With sync on it shows the status and "Sync now", the devices (this one can be renamed), "Add a device" (a
  * scan), the Recovery Kit behind the device password, re-sync, turn off and delete. With the
  * developer tools on, a pairing code can also be pasted (the simulator cannot scan); release builds
  * say nothing about it. The phone never opens a checkout.
@@ -98,6 +98,8 @@ export default function SyncSection() {
   /** The "What syncs" sheet is open. */
   const [whatSyncsOpen, setWhatSyncsOpen] = useState(false);
   const [flow, setFlow] = useState<Flow>(null);
+  /** The "Connect this device" choice sheet is open. */
+  const [choosing, setChoosing] = useState(false);
   /** The first-device setup sheet is up. */
   const [settingUp, setSettingUp] = useState(false);
   const [renaming, setRenaming] = useState<SyncDevice | null>(null);
@@ -242,6 +244,10 @@ export default function SyncSection() {
   const deleteAfterwards = t(
     status?.ownServer ? 'delete.afterwardsOwnServer' : 'delete.afterwards'
   );
+  const joinWith = (method: PhoneJoinMethod) => {
+    if (method === 'kit') setOpen('kitJoin');
+    else setFlow({ mode: 'join', paste: method === 'paste' });
+  };
   const devPasteRow = devTools && (
     <SettingsRow
       icon={ClipboardPaste}
@@ -260,7 +266,8 @@ export default function SyncSection() {
           <EntityRows>
             <SettingsRow
               icon={Smartphone}
-              title={status.phase === 'settingUp' ? t('intro.resume') : t('phone.setUp')}
+              title={status.phase === 'settingUp' ? t('intro.resume') : t('intro.startTitle')}
+              sub={status.phase === 'settingUp' ? undefined : t('intro.startLead')}
               onClick={() => setSettingUp(true)}
             />
             {status.phase === 'settingUp' && (
@@ -271,16 +278,11 @@ export default function SyncSection() {
               />
             )}
             <SettingsRow
-              icon={QrCode}
-              title={t('phone.scan')}
-              onClick={() => setFlow({ mode: 'join', paste: false })}
+              icon={Link2}
+              title={t('intro.joinTitle')}
+              sub={t('intro.joinLead')}
+              onClick={() => setChoosing(true)}
             />
-            <SettingsRow
-              icon={Type}
-              title={t('phone.typeCode')}
-              onClick={() => setOpen('kitJoin')}
-            />
-            {devPasteRow}
           </EntityRows>
           <EntityRows>
             <SettingsRow
@@ -408,6 +410,12 @@ export default function SyncSection() {
         cancelLabel={t('intro.cancelConfirm.keep')}
         onConfirm={() => void cancelSetup()}
         isPending={turnOff.isPending}
+      />
+      <JoinChoiceSheet
+        open={choosing}
+        onOpenChange={setChoosing}
+        devTools={devTools}
+        onPick={joinWith}
       />
       <SyncKitSheet open={open === 'kit'} onOpenChange={close} />
       {/* Mounted only while open: unmounting forgets the typed password and the server check */}

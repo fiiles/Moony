@@ -394,8 +394,12 @@
       "error": "Interrotta"
     },
     "rowWithAge": "{{state}} · {{age}}",
-    "setUp": "Configura la sincronizzazione su questo telefono",
-    "scan": "Scansiona un codice da un altro dispositivo",
+    "choice": {
+      "scan": {
+        "title": "Scansiona un codice dal computer",
+        "lead": "Sul computer: Impostazioni → Sincronizzazione → Aggiungi un dispositivo. Si può scansionare anche il QR del Kit di recupero."
+      }
+    },
     "typeCode": "Digita un codice del kit di ripristino",
     "addDevice": "Aggiungi un dispositivo",
     "busy": "Tieni aperto Moony finché non ha finito.",

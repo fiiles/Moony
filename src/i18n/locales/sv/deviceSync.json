@@ -382,8 +382,12 @@
       "error": "Stoppad"
     },
     "rowWithAge": "{{state}} · {{age}}",
-    "setUp": "Ställ in synkronisering på den här telefonen",
-    "scan": "Skanna en kod från en annan enhet",
+    "choice": {
+      "scan": {
+        "title": "Skanna en kod från datorn",
+        "lead": "På datorn: Inställningar → Synkronisering → Lägg till en enhet. Du kan också skanna QR-koden i återställningssatsen."
+      }
+    },
     "typeCode": "Skriv in en kod från återställningskitet",
     "addDevice": "Lägg till en enhet",
     "busy": "Låt Moony vara öppet tills det är klart.",

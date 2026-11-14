@@ -394,8 +394,12 @@
       "error": "Detenida"
     },
     "rowWithAge": "{{state}} · {{age}}",
-    "setUp": "Configurar la sincronización en este teléfono",
-    "scan": "Escanear un código de otro dispositivo",
+    "choice": {
+      "scan": {
+        "title": "Escanear un código del ordenador",
+        "lead": "En el ordenador: Ajustes → Sincronización → Añadir un dispositivo. También se puede escanear el código QR del Kit de recuperación."
+      }
+    },
     "typeCode": "Escribir un código del kit de recuperación",
     "addDevice": "Añadir un dispositivo",
     "busy": "Mantén Moony abierto hasta que termine.",

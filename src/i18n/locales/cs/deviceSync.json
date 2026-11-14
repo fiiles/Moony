@@ -406,8 +406,12 @@
       "error": "Zastaveno"
     },
     "rowWithAge": "{{state}} · {{age}}",
-    "setUp": "Nastavit synchronizaci v tomto telefonu",
-    "scan": "Naskenovat kód z jiného zařízení",
+    "choice": {
+      "scan": {
+        "title": "Naskenovat kód z počítače",
+        "lead": "Na počítači: Nastavení → Synchronizace → Přidat zařízení. Naskenovat jde i QR kód Záchranné sady."
+      }
+    },
     "typeCode": "Zadat kód záchranné sady",
     "addDevice": "Přidat zařízení",
     "busy": "Nechte Moony otevřené, dokud to neskončí.",

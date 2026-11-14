@@ -382,8 +382,12 @@
       "error": "Stopped"
     },
     "rowWithAge": "{{state}} · {{age}}",
-    "setUp": "Set up sync on this phone",
-    "scan": "Scan a code from another device",
+    "choice": {
+      "scan": {
+        "title": "Scan a code from the computer",
+        "lead": "On the computer: Settings → Sync → Add a device. The scanner also takes a Recovery Kit QR."
+      }
+    },
     "typeCode": "Type a Recovery Kit code",
     "addDevice": "Add a device",
     "busy": "Keep Moony open until it is done.",

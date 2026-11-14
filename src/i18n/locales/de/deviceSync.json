@@ -382,8 +382,12 @@
       "error": "Angehalten"
     },
     "rowWithAge": "{{state}} · {{age}}",
-    "setUp": "Synchronisierung auf diesem Telefon einrichten",
-    "scan": "Code von einem anderen Gerät scannen",
+    "choice": {
+      "scan": {
+        "title": "Code vom Computer scannen",
+        "lead": "Am Computer: Einstellungen → Synchronisierung → Gerät hinzufügen. Gescannt werden kann auch der QR-Code des Wiederherstellungs-Kits."
+      }
+    },
     "typeCode": "Code des Wiederherstellungs-Kits eingeben",
     "addDevice": "Gerät hinzufügen",
     "busy": "Lassen Sie Moony geöffnet, bis der Vorgang abgeschlossen ist.",

@@ -807,7 +807,7 @@ export default function RealEstateDetail() {
                           >
                             <TableCell>
                               <div className="flex min-w-0 items-center gap-[10px]">
-                                <AssetLogo ticker={loan.name} type="stock" variant="soft" />
+                                <AssetLogo ticker={loan.name} type="initials" variant="soft" />
                                 <div className="min-w-0">
                                   <b className="block truncate text-table font-650 text-ink">
                                     {loan.name}
@@ -918,7 +918,11 @@ export default function RealEstateDetail() {
                           >
                             <TableCell>
                               <div className="flex min-w-0 items-center gap-[10px]">
-                                <AssetLogo ticker={policy.provider} type="stock" variant="soft" />
+                                <AssetLogo
+                                  ticker={policy.provider}
+                                  type="initials"
+                                  variant="soft"
+                                />
                                 <div className="min-w-0">
                                   <b className="block truncate text-table font-650 text-ink">
                                     {policy.policyName}

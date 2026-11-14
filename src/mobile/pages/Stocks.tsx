@@ -218,6 +218,7 @@ export default function Stocks() {
           <div hidden={tab !== 'positions'}>
             {hasPositions ? (
               <PositionList
+                kind="stock"
                 rows={rows}
                 hrefOf={(row) => positionPath(row.id)}
                 currency={reportCurrency}
@@ -235,6 +236,7 @@ export default function Stocks() {
       )}
       <AddInvestmentModal open={addOpen} onOpenChange={setAddOpen} />
       <ClosedPositionsSheet
+        kind="stock"
         open={closedOpen}
         onOpenChange={setClosedOpen}
         rows={rows}

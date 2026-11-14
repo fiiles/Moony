@@ -98,6 +98,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("031_sync_missed_below_barrier", MIGRATION_031),
         ("032_sync_snapshot_too_large", MIGRATION_032),
         ("033_sync_snapshot_barrier", MIGRATION_033),
+        ("034_asset_logos", MIGRATION_034),
     ]
 }
 
@@ -3399,12 +3400,9 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_33_migrations() {
-        assert_eq!(known_migration_names().len(), 33);
-        assert_eq!(
-            known_migration_names().last(),
-            Some(&"033_sync_snapshot_barrier")
-        );
+    fn the_chain_now_has_34_migrations() {
+        assert_eq!(known_migration_names().len(), 34);
+        assert_eq!(known_migration_names().last(), Some(&"034_asset_logos"));
     }
 }
 
@@ -3452,6 +3450,19 @@ ALTER TABLE sync_state ADD COLUMN snapshot_too_large_at INTEGER;
 pub(crate) const MIGRATION_033: &str = r#"
 ALTER TABLE sync_state ADD COLUMN snapshot_barrier INTEGER NOT NULL DEFAULT 0;
 UPDATE sync_state SET snapshot_barrier = MIN(marker_barrier, barrier);
+"#;
+
+/// 034: `asset_logos` (Local): a per-device cache of stock logos fetched from Yahoo
+/// (spec 2026-11-14-asset-logos). `ticker` is upper case; `image` holds the normalized PNG, NULL
+/// for a remembered miss (retried after 30 days); `checked_at` is when the lookup ended.
+pub(crate) const MIGRATION_034: &str = r#"
+CREATE TABLE asset_logos (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    image BLOB,
+    mime TEXT,
+    checked_at INTEGER NOT NULL
+);
 "#;
 
 #[cfg(test)]

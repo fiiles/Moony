@@ -231,7 +231,7 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
                     <div className="flex min-w-0 items-center gap-[10px]">
                       <AssetLogo
                         ticker={loan.name}
-                        type="stock"
+                        type="initials"
                         variant={r.matured ? 'soft' : 'series'}
                       />
                       <div className="min-w-0">

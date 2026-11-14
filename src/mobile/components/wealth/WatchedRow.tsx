@@ -1,9 +1,10 @@
 import { useTranslation } from 'react-i18next';
+import { InstrumentChip } from './InstrumentChip';
 import { Plus, Target } from 'lucide-react';
 import type { WatchedStockRow } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { dayChange } from '@/utils/stock-monitor';
-import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
+import { EntityRow } from '@/mobile/components/EntityRow';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { useOpenWithIntent } from '@/mobile/hooks/use-row-intent';
 import { priceOf, watchPriceText, watchTargetState } from '@/mobile/lib/watch-detail';
@@ -42,7 +43,7 @@ export function WatchedRow({ row }: { row: WatchedStockRow }) {
 
   return (
     <EntityRow
-      chip={<RowChip>{row.ticker.slice(0, 2).toUpperCase()}</RowChip>}
+      chip={<InstrumentChip ticker={row.ticker} type="stock" />}
       title={
         <>
           {row.ticker}

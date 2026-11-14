@@ -246,6 +246,9 @@ pub fn collect_types() -> TypeCollection {
     // Company data models
     types.register::<crate::models::company_info::StockCompanyInfo>();
 
+    // Asset logo models
+    types.register::<crate::models::asset_logos::AssetLogo>();
+
     // Cashflow models
     types.register::<crate::models::CashflowItem>();
     types.register::<crate::models::InsertCashflowItem>();

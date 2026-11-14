@@ -1,4 +1,4 @@
-# 0028. Device sync: own sync servers in the app
+# 0029. Device sync: own sync servers in the app
 
 Date: 2026-11-14
 

@@ -380,7 +380,7 @@ export function InsuranceTable({
                     <div className="flex min-w-0 items-center gap-[10px]">
                       <AssetLogo
                         ticker={p.provider}
-                        type="stock"
+                        type="initials"
                         variant={r.ended ? 'soft' : 'series'}
                       />
                       <div className="min-w-0">

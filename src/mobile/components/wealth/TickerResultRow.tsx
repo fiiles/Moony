@@ -1,6 +1,7 @@
 import type { StockSearchResult } from '@/lib/tauri-api';
+import { InstrumentChip } from './InstrumentChip';
 import { exchangeName } from '@/utils/exchange-names';
-import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
+import { EntityRow } from '@/mobile/components/EntityRow';
 
 /**
  * A hit of the ticker search under Sledované (spec §8.8): the symbol with the company and its
@@ -16,7 +17,7 @@ export function TickerResultRow({
 }) {
   return (
     <EntityRow
-      chip={<RowChip>{result.symbol.slice(0, 2).toUpperCase()}</RowChip>}
+      chip={<InstrumentChip ticker={result.symbol} type="stock" />}
       title={result.symbol}
       sub={[result.shortname, exchangeName(result.exchange)].filter(Boolean).join(' · ')}
       chevron

@@ -1030,6 +1030,197 @@ pub async fn search_crypto(query: &str) -> Result<Vec<CryptoSearchResult>> {
 }
 
 // ============================================================================
+// Stock logos (Yahoo search + s.yimg.com)
+// ============================================================================
+
+/// What one ticker's logo lookup ended as.
+pub enum LogoOutcome {
+    /// A normalized PNG to store.
+    Found(Vec<u8>),
+    /// A clean "no logo": remembered, looked up again after `asset_logos::MISS_RETRY_SECS`.
+    Miss,
+    /// A network error, a rate limit or a server error: nothing is written, so the ticker is
+    /// looked up again on the next run.
+    Retry,
+}
+
+/// What an HTTP status of the image request means: 2xx → `None` (read the body); 408, 429 and
+/// 5xx → `Retry`; any other status (404, 410, a redirect, which is never followed) → `Miss`.
+/// The search request uses the same mapping for its non-2xx answers (a persistently rejected
+/// ticker is remembered as a miss instead of being searched on every run).
+pub fn outcome_for_status(status: u16) -> Option<LogoOutcome> {
+    match status {
+        200..=299 => None,
+        408 | 429 | 500..=599 => Some(LogoOutcome::Retry),
+        _ => Some(LogoOutcome::Miss),
+    }
+}
+
+/// Pause between two tickers of one run.
+const LOGO_REQUEST_GAP: std::time::Duration = std::time::Duration::from_millis(300);
+
+/// One logo refresh at a time: a second one (unlock and an added stock at once) waits and then
+/// finds only what the first left due.
+static LOGO_REFRESH: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// The logo run stops here: Yahoo answered HTTP 429, or a request could not be sent at all (the
+/// network is down). Like `Retry`, nothing is written for the ticker.
+struct StopRun;
+
+/// `Err(StopRun)` for a 429, the outcome otherwise.
+fn unless_rate_limited(
+    status: u16,
+    outcome: LogoOutcome,
+) -> std::result::Result<LogoOutcome, StopRun> {
+    if status == 429 {
+        Err(StopRun)
+    } else {
+        Ok(outcome)
+    }
+}
+
+/// The logo of one ticker: one search request, then (when Yahoo names a `s.yimg.com` logo for
+/// exactly this ticker) one image request. Errors never name the URL (it carries the ticker).
+async fn fetch_asset_logo(ticker: &str) -> std::result::Result<LogoOutcome, StopRun> {
+    use crate::services::asset_logos;
+
+    let search_url = format!(
+        "{YAHOO_SEARCH_URL}?q={}&quotesCount=5&newsCount=0&listsCount=0&enableLogoUrl=true",
+        urlencoding::encode(ticker)
+    );
+    let response = match crate::services::http::client()
+        .get(&search_url)
+        .send()
+        .await
+    {
+        Ok(response) => response,
+        Err(e) => {
+            log::warn!("[LOGOS] Search request failed: {}", e.without_url());
+            return Err(StopRun);
+        }
+    };
+    let status = response.status();
+    if let Some(outcome) = outcome_for_status(status.as_u16()) {
+        // A 4xx other than 408/429 is Yahoo rejecting this ticker: remembered as a miss. A rate
+        // limit or a server error is not: nothing is remembered.
+        log::warn!("[LOGOS] Search answered HTTP {}", status.as_u16());
+        return unless_rate_limited(status.as_u16(), outcome);
+    }
+    let body = match response.text().await {
+        Ok(body) => body,
+        Err(e) => {
+            log::warn!("[LOGOS] Search read failed: {}", e.without_url());
+            return Ok(LogoOutcome::Retry);
+        }
+    };
+    let Some(logo_url) = asset_logos::logo_url_from_search(&body, ticker) else {
+        return Ok(LogoOutcome::Miss);
+    };
+
+    // Redirects are not followed: a hop off `s.yimg.com` would reach a new party.
+    let mut response = match crate::services::http::no_redirect_client()
+        .get(&logo_url)
+        .send()
+        .await
+    {
+        Ok(response) => response,
+        Err(e) => {
+            log::warn!("[LOGOS] Image request failed: {}", e.without_url());
+            return Err(StopRun);
+        }
+    };
+    let status = response.status().as_u16();
+    if let Some(outcome) = outcome_for_status(status) {
+        log::debug!("[LOGOS] Image answered HTTP {}", status);
+        return unless_rate_limited(status, outcome);
+    }
+    if response
+        .content_length()
+        .is_some_and(|length| length > asset_logos::MAX_SOURCE_BYTES as u64)
+    {
+        return Ok(LogoOutcome::Miss);
+    }
+    let mut bytes: Vec<u8> = Vec::new();
+    loop {
+        match response.chunk().await {
+            Ok(Some(chunk)) => {
+                if bytes.len() + chunk.len() > asset_logos::MAX_SOURCE_BYTES {
+                    return Ok(LogoOutcome::Miss);
+                }
+                bytes.extend_from_slice(&chunk);
+            }
+            Ok(None) => break,
+            Err(e) => {
+                log::warn!("[LOGOS] Image read failed: {}", e.without_url());
+                return Ok(LogoOutcome::Retry);
+            }
+        }
+    }
+    // Decoding and resizing is CPU work: off the async worker threads.
+    let normalized = tauri::async_runtime::spawn_blocking(move || asset_logos::normalize(&bytes))
+        .await
+        .ok()
+        .flatten();
+    Ok(match normalized {
+        Some(png) => LogoOutcome::Found(png),
+        None => LogoOutcome::Miss,
+    })
+}
+
+/// Look up the logos of every held and watched ticker that is due (`asset_logos::due`), in
+/// sequence, [`LOGO_REQUEST_GAP`] apart; returns how many logos were newly stored.
+///
+/// The ticker list comes from the database, never from the caller. A found logo and a clean miss
+/// are stored; a network error, a 408/429/5xx writes nothing. An HTTP 429 or a request that cannot
+/// be sent (offline) ends the run; the rest is due again next time. The DB lock is held only for the reads and each write, never
+/// across a request.
+pub async fn refresh_asset_logos(db: &Database) -> Result<u32> {
+    use crate::services::asset_logos;
+
+    let _running = LOGO_REFRESH.lock().await;
+    // A run lasts many seconds: every read and write goes through the session open now, so a
+    // deleted account, a restore or another profile makes the later writes fail.
+    let db = &db.current_session()?;
+    let due = db.with_conn(|conn| {
+        let tracked = asset_logos::tracked_tickers(conn)?;
+        asset_logos::due(conn, &tracked, unix_timestamp_now())
+    })?;
+    if due.is_empty() {
+        return Ok(0);
+    }
+    log::info!("[LOGOS] Looking up {} logos", due.len());
+
+    let mut stored = 0u32;
+    let mut missed = 0u32;
+    for (index, ticker) in due.iter().enumerate() {
+        if index > 0 {
+            tokio::time::sleep(LOGO_REQUEST_GAP).await;
+        }
+        match fetch_asset_logo(ticker).await {
+            Err(StopRun) => {
+                log::info!("[LOGOS] The run stops early; the rest is due again next time");
+                break;
+            }
+            Ok(LogoOutcome::Found(png)) => {
+                db.with_conn(|conn| {
+                    asset_logos::store(conn, ticker, Some(&png), unix_timestamp_now())
+                })?;
+                stored += 1;
+            }
+            Ok(LogoOutcome::Miss) => {
+                db.with_conn(|conn| asset_logos::store(conn, ticker, None, unix_timestamp_now()))?;
+                missed += 1;
+            }
+            Ok(LogoOutcome::Retry) => {
+                log::debug!("[LOGOS] {} left for the next run", ticker);
+            }
+        }
+    }
+    log::info!("[LOGOS] Stored {} logos, {} without one", stored, missed);
+    Ok(stored)
+}
+
+// ============================================================================
 // Dividend Refresh (Yahoo Finance)
 // ============================================================================
 
@@ -1813,6 +2004,21 @@ pub async fn get_stock_price_range(ticker: &str, period: &str) -> Result<Vec<Sto
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn outcome_for_status_keeps_rate_limits_retryable() {
+        assert!(matches!(outcome_for_status(429), Some(LogoOutcome::Retry)));
+        assert!(matches!(outcome_for_status(503), Some(LogoOutcome::Retry)));
+        assert!(matches!(outcome_for_status(500), Some(LogoOutcome::Retry)));
+        assert!(matches!(outcome_for_status(408), Some(LogoOutcome::Retry)));
+        assert!(matches!(outcome_for_status(400), Some(LogoOutcome::Miss)));
+        assert!(matches!(outcome_for_status(404), Some(LogoOutcome::Miss)));
+        assert!(matches!(outcome_for_status(410), Some(LogoOutcome::Miss)));
+        // A redirect is never followed (it could lead off `s.yimg.com`): a miss.
+        assert!(matches!(outcome_for_status(302), Some(LogoOutcome::Miss)));
+        assert!(outcome_for_status(200).is_none());
+        assert!(outcome_for_status(204).is_none());
+    }
 
     #[test]
     fn ticker_suffixes_of_the_main_exchanges_name_their_currency() {

@@ -520,7 +520,7 @@ Open, not blocking the build:
 The sections above are the design as approved and are not rewritten. This section lists where the
 build differs. The server's `DESIGN.md` and `README.md` (Moony-relay repository, branch
 `feat/node-server`, head 0313a86) are authoritative for the server; the app side is recorded in
-[ADR 0028](../architecture/decisions/0028-self-hosted-sync-server-in-the-app.md).
+[ADR 0029](../architecture/decisions/0029-self-hosted-sync-server-in-the-app.md).
 
 Server
 

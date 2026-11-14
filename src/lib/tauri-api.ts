@@ -10,6 +10,7 @@ import i18n from '@/i18n';
 import { toApiError } from '@/lib/api-error';
 import type { ResolvedTheme } from '@/utils/theme';
 import type {
+  AssetLogo,
   AssetValuation,
   InsertStockDividend,
   StockDividend,
@@ -1033,6 +1034,18 @@ export const priceApi = {
 };
 
 // ============================================================================
+// Asset logos API (stock logos cached from Yahoo; no ticker is ever passed)
+// ============================================================================
+
+export const assetLogosApi = {
+  /** Every cached stock logo as `{ ticker, dataUrl }` (upper-case ticker). */
+  getAll: () => tauriInvoke<AssetLogo[]>('get_asset_logos'),
+
+  /** Looks up the due logos of held and watched tickers; resolves to how many were newly stored. */
+  refresh: () => tauriInvoke<number>('refresh_asset_logos'),
+};
+
+// ============================================================================
 // Stock Monitor API
 // ============================================================================
 
@@ -1807,6 +1820,7 @@ export const api = {
   otherAssets: otherAssetsApi,
   portfolio: portfolioApi,
   price: priceApi,
+  assetLogos: assetLogosApi,
   stockMonitor: stockMonitorApi,
   cashflow: cashflowApi,
   fx: fxApi,

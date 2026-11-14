@@ -208,7 +208,7 @@ export function OtherAssetsTable({
                 <TableRow key={a.id} className="h-[62px]">
                   <TableCell>
                     <div className="flex min-w-0 items-center gap-[10px] text-ink">
-                      <AssetLogo ticker={a.name} type="stock" />
+                      <AssetLogo ticker={a.name} type="initials" />
                       <div className="min-w-0">
                         <b className="block truncate text-table font-650">{a.name}</b>
                         {sub(currency)}

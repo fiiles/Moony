@@ -19,16 +19,16 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Ecosystem | Packages |
 | --- | ---: |
-| npm | 228 |
-| Rust | 665 |
+| npm | 231 |
+| Rust | 673 |
 
 ### npm — packages per licence
 
 | Licence | Packages |
 | --- | ---: |
-| MIT | 200 |
+| MIT | 202 |
 | ISC | 13 |
-| MIT OR Apache-2.0 | 7 |
+| MIT OR Apache-2.0 | 8 |
 | Apache-2.0 | 2 |
 | 0BSD | 1 |
 | Apache-2.0 OR MIT | 1 |
@@ -41,13 +41,13 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Licence | Packages |
 | --- | ---: |
-| MIT OR Apache-2.0 | 324 |
+| MIT OR Apache-2.0 | 326 |
 | MIT | 157 |
-| Apache-2.0 OR MIT | 68 |
+| Apache-2.0 OR MIT | 70 |
 | Unicode-3.0 | 18 |
 | Zlib OR Apache-2.0 OR MIT | 18 |
 | Unlicense OR MIT | 14 |
-| BSD-3-Clause | 7 |
+| BSD-3-Clause | 10 |
 | MIT OR Apache-2.0 OR Zlib | 6 |
 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 5 |
 | MPL-2.0 | 5 |
@@ -77,6 +77,7 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 | ISC AND (Apache-2.0 OR ISC) | 1 |
 | ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) | 1 |
 | MIT AND BSD-3-Clause | 1 |
+| MIT OR Apache-2.0 OR BSD-1-Clause | 1 |
 
 ## Needs review
 
@@ -156,6 +157,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | @tanstack/query-core | 5.106.1 | MIT |
 | @tanstack/react-query | 5.106.1 | MIT |
 | @tauri-apps/api | 2.12.4 | Apache-2.0 OR MIT |
+| @tauri-apps/plugin-barcode-scanner | 2.5.3 | MIT OR Apache-2.0 |
 | @tauri-apps/plugin-dialog | 2.8.4 | MIT OR Apache-2.0 |
 | @tauri-apps/plugin-fs | 2.7.1 | MIT OR Apache-2.0 |
 | @tauri-apps/plugin-haptics | 2.4.2 | MIT OR Apache-2.0 |
@@ -182,6 +184,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | @types/unist | 3.0.3 | MIT |
 | @types/use-sync-external-store | 0.0.6 | MIT |
 | @ungap/structured-clone | 1.4.0 | ISC |
+| @web3icons/common | 0.11.54 | MIT |
+| @web3icons/core | 4.0.59 | MIT |
 | aria-hidden | 1.2.6 | MIT |
 | bail | 2.0.2 | MIT |
 | ccount | 2.0.1 | MIT |
@@ -401,6 +405,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | cfg-expr | 0.15.8 | MIT OR Apache-2.0 |
 | cfg-if | 1.0.5 | MIT OR Apache-2.0 |
 | chacha20 | 0.10.2 | MIT OR Apache-2.0 |
+| chacha20poly1305 | 0.11.0 | Apache-2.0 OR MIT |
 | chrono | 0.4.45 | MIT OR Apache-2.0 |
 | cipher | 0.5.2 | MIT OR Apache-2.0 |
 | cmake | 0.1.58 | MIT OR Apache-2.0 |
@@ -435,6 +440,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | ctor | 1.0.13 | Apache-2.0 OR MIT |
 | ctr | 0.10.1 | MIT OR Apache-2.0 |
 | ctutils | 0.4.8 | Apache-2.0 OR MIT |
+| curve25519-dalek | 5.0.0 | BSD-3-Clause |
+| curve25519-dalek-derive | 0.1.1 | MIT OR Apache-2.0 |
 | darling | 0.24.1 | MIT |
 | darling_core | 0.24.1 | MIT |
 | darling_macro | 0.24.1 | MIT |
@@ -482,6 +489,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | fax | 0.2.7 | MIT |
 | fdeflate | 0.3.7 | MIT OR Apache-2.0 |
 | fern | 0.7.1 | MIT |
+| fiat-crypto | 0.3.0 | MIT OR Apache-2.0 OR BSD-1-Clause |
 | field-offset | 0.3.6 | MIT OR Apache-2.0 |
 | filetime | 0.2.29 | MIT OR Apache-2.0 |
 | find-msvc-tools | 0.1.15 | MIT OR Apache-2.0 |
@@ -689,6 +697,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | plist | 1.10.3 | MIT |
 | png | 0.18.1 | MIT OR Apache-2.0 |
 | polling | 3.11.0 | Apache-2.0 OR MIT |
+| poly1305 | 0.9.1 | Apache-2.0 OR MIT |
 | polyval | 0.7.3 | Apache-2.0 OR MIT |
 | portable-atomic | 1.15.0 | Apache-2.0 OR MIT |
 | portable-atomic-util | 0.2.8 | Apache-2.0 OR MIT |
@@ -710,6 +719,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | pulp-wasm-simd-flag | 0.1.1 | MIT |
 | pxfm | 0.1.30 | BSD-3-Clause OR Apache-2.0 |
 | qoi | 0.4.1 | MIT OR Apache-2.0 |
+| qrcode | 0.14.1 | MIT OR Apache-2.0 |
 | quick-error | 2.0.1 | MIT OR Apache-2.0 |
 | quick-xml | 0.42.0 | MIT |
 | quinn | 0.11.12 | MIT OR Apache-2.0 |
@@ -788,6 +798,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | serialize-to-javascript | 0.1.2 | MIT OR Apache-2.0 |
 | serialize-to-javascript-impl | 0.1.2 | MIT OR Apache-2.0 |
 | servo_arc | 0.4.3 | MIT OR Apache-2.0 |
+| sha1_smol | 1.0.1 | BSD-3-Clause |
 | sha2 | 0.10.9 | MIT OR Apache-2.0 |
 | sha2 | 0.11.1 | MIT OR Apache-2.0 |
 | shlex | 2.0.1 | MIT OR Apache-2.0 |
@@ -833,11 +844,11 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | tauri-codegen | 2.7.4 | Apache-2.0 OR MIT |
 | tauri-macros | 2.7.4 | Apache-2.0 OR MIT |
 | tauri-plugin | 2.7.2 | Apache-2.0 OR MIT |
+| tauri-plugin-barcode-scanner | 2.5.3 | Apache-2.0 OR MIT |
 | tauri-plugin-dialog | 2.8.4 | Apache-2.0 OR MIT |
 | tauri-plugin-fs | 2.7.1 | Apache-2.0 OR MIT |
 | tauri-plugin-haptics | 2.4.2 | Apache-2.0 OR MIT |
 | tauri-plugin-log | 2.10.1 | Apache-2.0 OR MIT |
-| tauri-plugin-notification | 2.8.0 | Apache-2.0 OR MIT |
 | tauri-plugin-opener | 2.7.2 | Apache-2.0 OR MIT |
 | tauri-plugin-process | 2.4.0 | Apache-2.0 OR MIT |
 | tauri-plugin-updater | 2.14.1 | Apache-2.0 OR MIT |
@@ -968,6 +979,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | wry | 0.57.1 | Apache-2.0 OR MIT |
 | x11 | 2.21.0 | MIT |
 | x11-dl | 2.21.0 | MIT |
+| x25519-dalek | 3.0.0 | BSD-3-Clause |
 | xattr | 1.7.0 | MIT OR Apache-2.0 |
 | y4m | 0.8.0 | MIT |
 | yahoo_finance_api | 5.0.0 | MIT OR Apache-2.0 |

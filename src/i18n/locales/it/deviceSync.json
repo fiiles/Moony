@@ -46,10 +46,18 @@
     "pending": "In attesa di invio: {{number}}",
     "clockAhead": "L'orologio di questo dispositivo (o di un dispositivo con cui si è sincronizzato) è stato avanti a un certo punto, quindi le sue modifiche portano la data {{date}} fino ad allora. Continuano a sincronizzarsi; se lo stesso elemento viene modificato su un altro dispositivo, fino a quella data vince la versione di questo dispositivo.",
     "subscription": "Abbonamento",
-    "selfHosted": "Server self-hosted",
     "paidUntil": "Pagato fino al {{date}}",
     "syncNow": "Sincronizza ora",
     "showKit": "Mostra il Kit di ripristino"
+  },
+  "server": {
+    "label": "Server di sincronizzazione",
+    "insecure": "Connessione non cifrata (http)",
+    "change": "Cambia indirizzo",
+    "dialogTitle": "Cambia l'indirizzo del server",
+    "dialogBody": "Usalo quando il tuo server di sincronizzazione si è spostato a un nuovo indirizzo. Deve essere lo stesso server, con i tuoi dati sincronizzati. Ogni dispositivo cambia il proprio indirizzo, quindi ripeti l'operazione sugli altri dispositivi. Salva di nuovo il kit di ripristino: ora contiene il nuovo indirizzo.",
+    "success": "Indirizzo del server di sincronizzazione cambiato",
+    "unchanged": "Questo dispositivo usa già questo indirizzo."
   },
   "intro": {
     "description": "Mantieni i dati allineati su tutti i tuoi dispositivi. Sono cifrati end-to-end: il server di sincronizzazione conserva solo dati che non può leggere.",
@@ -76,12 +84,6 @@
       "copy": "Copia",
       "copied": "Copiato"
     },
-    "advanced": {
-      "toggle": "Avanzate",
-      "label": "Indirizzo del server di sincronizzazione",
-      "placeholder": "https://sync.moonyfinance.com",
-      "hint": "Lascia vuoto per usare il servizio di sincronizzazione di Moony. Compilalo solo se gestisci un tuo server di sincronizzazione."
-    },
     "pay": {
       "description": "Scegli un piano. Il pagamento si apre nel browser.",
       "plan": "Piano",
@@ -89,9 +91,7 @@
       "yearly": "Annuale",
       "continue": "Continua al pagamento",
       "waiting": "In attesa del pagamento. Questa finestra prosegue quando arriva.",
-      "grantTest": "Concedi un abbonamento di prova",
-      "selfHosted": "Questo è il tuo server di sincronizzazione, quindi non c'è nulla da pagare. Aggiungi il numero dell'account qui sopra a ALLOWED_ACCOUNTS sul server e riavvialo.",
-      "selfHostedWaiting": "In attesa che il server accetti l'account. Questa finestra prosegue quando lo fa."
+      "ownServer": "Questo server non è Moony cloud, quindi non c'è nulla da pagare. Configura la sincronizzazione con il codice di connessione del tuo server di sincronizzazione."
     },
     "kit": {
       "description": "Salva il tuo Kit di ripristino della sincronizzazione. È l'unico modo per riavere i dati sincronizzati se perdi tutti i dispositivi.",
@@ -132,14 +132,33 @@
       "linux": "PC Linux",
       "ios": "iPhone",
       "android": "Telefono Android"
+    },
+    "server": {
+      "title": "Dove vuoi sincronizzare i tuoi dati?",
+      "encrypted": "Crittografati end-to-end in entrambi i casi",
+      "cloud": "Moony cloud",
+      "soon": "In arrivo",
+      "cloudHint": "Niente da installare, ci pensiamo noi.",
+      "own": "Server personale",
+      "codeLabel": "Codice di connessione",
+      "codeHint": "Lo ricevi da chi gestisce il tuo server di sincronizzazione.",
+      "found": "Server trovato · versione {{version}}",
+      "checking": "Ricerca del server…",
+      "insecureTitle": "La connessione non è crittografata (http)",
+      "insecureBody": "I tuoi dati restano crittografati, ma chiunque sia sulla stessa rete può intercettare l'accesso alla sincronizzazione ed eliminare o bloccare i dati sincronizzati sul server.",
+      "insecureAck": "Ho capito, continua comunque",
+      "resume": "Configurazione avviata con {{host}}",
+      "other": "Usa un altro codice di connessione",
+      "scan": "Scansiona codice"
     }
   },
   "alert": {
     "lapsed": {
       "title": "Sincronizzazione in pausa: rinnova per continuare",
       "deletes": "I dati sincronizzati verranno eliminati il {{date}}.",
-      "selfHosted": "Chiedi all'operatore del tuo server di sincronizzazione di rinnovare l'accesso.",
-      "renew": "Rinnova"
+      "selfHosted": "Il tuo account è bloccato sul tuo server di sincronizzazione. Chiedi a chi lo gestisce di sbloccarlo.",
+      "renew": "Rinnova",
+      "titleOwnServer": "Sincronizzazione in pausa"
     },
     "vaultGone": {
       "text": "I tuoi dati sincronizzati non sono più sul server. Disattivare la sincronizzazione su questo dispositivo?",
@@ -221,7 +240,8 @@
     "description": "Questo elimina i dati sincronizzati sul server di sincronizzazione per tutti i dispositivi. I dati locali di ogni dispositivo restano.",
     "confirm": "Elimina i dati sincronizzati",
     "success": "Dati sincronizzati eliminati",
-    "afterwards": "In seguito la sincronizzazione viene configurata da zero, con un nuovo account di sincronizzazione e un nuovo Kit di ripristino."
+    "afterwards": "In seguito la sincronizzazione viene configurata da zero, con un nuovo account di sincronizzazione e un nuovo Kit di ripristino.",
+    "afterwardsOwnServer": "In seguito puoi configurare di nuovo la sincronizzazione con lo stesso codice di connessione e un nuovo Kit di ripristino."
   },
   "danger": {
     "title": "Disattivare o eliminare",
@@ -305,8 +325,10 @@
     "warning": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup accanto al tuo profilo.",
     "nameLabel": "Nome del dispositivo",
     "passwordLabel": "Password del dispositivo",
-    "advanced": "Avanzate",
     "serverLabel": "Indirizzo del server di sincronizzazione",
+    "serverHint": "Scrivi l'indirizzo del tuo server di sincronizzazione o incolla il suo codice di connessione.",
+    "insecureAtJoin": "I dati di sincronizzazione con cui ti unisci puntano a {{host}}, raggiunto tramite semplice http. I tuoi dati restano crittografati, ma chiunque sia sulla stessa rete può intercettare l'accesso alla sincronizzazione ed eliminare o bloccare i dati sincronizzati sul server.",
+    "kitServer": "Server di sincronizzazione: {{host}}",
     "pairTitle": "Collegati dal telefono",
     "pairHint": "Sul telefono con la sincronizzazione attiva: Impostazioni → Sincronizzazione → Aggiungi un dispositivo",
     "kitTitle": "Usa un kit di ripristino",
@@ -353,9 +375,8 @@
     "notAPairingCode": "Questo non è un codice di associazione.",
     "devPasteTitle": "Incolla un codice di associazione — strumento per sviluppatori",
     "devPasteLabel": "Codice di associazione",
-    "payUnavailable": "Il pagamento della sincronizzazione non è disponibile nell'app per telefono.",
-    "payWaiting": "In attesa che l'account diventi attivo. Si procede da soli non appena succede.",
-    "payWaitingShort": "In attesa…"
+    "notAConnectionCode": "Questo codice QR non è un codice di connessione di un server di sincronizzazione.",
+    "scanConnectionHint": "Inquadra con la fotocamera il codice di connessione del tuo server di sincronizzazione."
   },
   "replace": {
     "lines": {
@@ -388,5 +409,11 @@
   },
   "limits": {
     "lostDevice": "Un dispositivo o un Kit di ripristino smarrito non può ancora essere escluso dai tuoi dati sincronizzati, e chi ne possiede uno può già leggere ciò che contiene. Se uno va perso, elimina i dati sincronizzati e configura di nuovo la sincronizzazione con un nuovo Kit; gli altri tuoi dispositivi dovranno poi unirsi di nuovo."
+  },
+  "codes": {
+    "pairNotForSetup": "Questo è un codice di abbinamento, non un codice di connessione. Scansionalo quando aggiungi questo dispositivo a una sincronizzazione già attiva.",
+    "kitNotForSetup": "Questo è un codice del kit di recupero, non un codice di connessione. Usalo per unirti a dati sincronizzati già esistenti.",
+    "connectionNotHere": "Questo è un codice di connessione di un server di sincronizzazione. Usalo quando configuri la sincronizzazione, non qui.",
+    "notAServerAddress": "Questo non è l'indirizzo di un server di sincronizzazione. Digita l'indirizzo del tuo server di sincronizzazione o incolla il suo codice di connessione."
   }
 }

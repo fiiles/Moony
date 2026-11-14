@@ -389,8 +389,9 @@ export type CheckoutTarget =
  */
 { kind: "open"; url: string } | 
 /**
- * A self-hosted relay takes no payments: its operator adds the account number to the relay's
- * `ALLOWED_ACCOUNTS`, and setup waits until the account is active.
+ * An own sync server takes no payments: its operator adds people in the server's admin
+ * interface and the account is active as long as the person is not blocked. Only the Moony
+ * cloud checkout (not reachable yet) answers `Open`.
  */
 { kind: "selfHosted" }
 
@@ -1793,6 +1794,15 @@ expiresAt: number;
  * the person sees which server a self-hosted pairing goes through.
  */
 serverHost: string | null; 
+/**
+ * Joiner, at `received`: `host[:port]` of the server the received sync details name, so the
+ * person sees where the account will be used before joining.
+ */
+joinServer: string | null; 
+/**
+ * Whether that server is reached over plain http beyond this device (`is_insecure_address`).
+ */
+joinServerInsecure: boolean; 
 /**
  * Holder, in `compare`: wrong codes the person may still type before the pairing ends.
  */
@@ -3455,6 +3465,12 @@ featureOn: boolean;
 pendingChanges: number }
 
 /**
+ * A sync server that passed the check (`GET /v1/server`, spec §9.3): the address in its stored
+ * spelling, how to show it, its version, and whether it is plain http beyond this computer.
+ */
+export type SyncServerCheck = { address: string; host: string; version: string; insecure: boolean }
+
+/**
  * The `sync-status-changed` payload.
  */
 export type SyncStatus = { phase: SyncPhase; problem: SyncProblem | null; 
@@ -3492,7 +3508,19 @@ clockAheadUntil: number | null;
 /**
  * The developer tools are offered (debug build with sync on).
  */
-devTools: boolean }
+devTools: boolean; 
+/**
+ * The stored server is not the Moony cloud: a person's own sync server.
+ */
+ownServer: boolean; 
+/**
+ * The stored server's address, in every phase that has one.
+ */
+serverAddress: string | null; 
+/**
+ * The stored address is plain http to a host other than this computer.
+ */
+serverInsecure: boolean }
 
 /**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;

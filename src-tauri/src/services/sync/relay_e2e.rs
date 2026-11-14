@@ -1,21 +1,21 @@
 //! End to end: the app's sync client (`HttpRelay`, setup, join, the engine's rounds) against a
-//! real Moony-relay running under `wrangler dev`. Every test is ignored; run them one at a time:
+//! real Moony sync server (Moony-relay-node, Plan 1). Every test is ignored; run them one at a time
+//! (the admin login is attempt-limited and the tests share the server):
 //!
 //! ```text
-//! # Moony-relay, branch feat/dev-grant: cp .dev.vars.example .dev.vars && npm run dev
+//! # In Moony-relay-node (built with `npm run build`), a fresh data folder and a fixed setup code:
+//! SETUP_CODE=moony-e2e-setup-code DATA_DIR=$(mktemp -d) npm start
+//! # (or the image: docker run -e SETUP_CODE=moony-e2e-setup-code -p 8787:8787 ...)
 //! cd src-tauri && MOONY_RELAY_E2E=http://127.0.0.1:8787 \
 //!   cargo test --lib relay_e2e -- --ignored --test-threads=1
 //! ```
 //!
-//! `a_self_hosted_relay_serves_only_allowed_accounts` needs a second relay set up as the relay's
-//! README "Self-hosting" (b) describes, with one account on its `ALLOWED_ACCOUNTS`:
-//! `MOONY_RELAY_E2E_SELF_HOSTED=<its address>` and `MOONY_RELAY_E2E_ALLOWED_ACCOUNT=<that number>`.
-//! The account is minted on that relay first (`POST /v1/accounts`, as the app's setup does), then
-//! added to `.dev.vars` and the relay restarted, as the README's step 6 says.
-//!
-//! Each test makes its own accounts and vaults (the relay limits account creation to 5 a minute
-//! per address: `fresh_account` waits that out). Devices are fresh migrated profiles behind a
-//! `TestConn`, with their own data folder; the clock is the real one, as the relay's is.
+//! `MOONY_RELAY_E2E_SETUP_CODE` names another setup code (`relay_e2e_admin`). The suites go
+//! through the server's admin path, as a person who runs a server does: the admin is set up once
+//! (or signed in, on a server an earlier run set up), the server's address is saved, and every
+//! device's person is added there; its connection code is what the app's setup takes
+//! (`connect_own_server`). Devices are fresh migrated profiles behind a `TestConn`, with their
+//! own data folder; the clock is the real one, as the server's is.
 
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -35,33 +35,27 @@ use super::keys::VaultAuth;
 use super::keys::{self, Credentials};
 use super::relay::http::HttpRelay;
 use super::relay::{
-    AccountStatus, CheckoutPlan, OutgoingOp, PullPage, PushReceipt, Relay, RelayResult,
-    SnapshotBlob, VaultInfo,
+    AccountStatus, CheckoutPlan, OutgoingOp, PullPage, PushReceipt, Relay, RelayError, RelayResult,
+    ServerMode, SnapshotBlob, VaultInfo,
 };
+use super::relay_e2e_admin::{admin, Person};
+use super::server::change_server_address;
 use super::setup::{
-    account_status, checkout_url, create_account, delete_synced_data, finish_setup, recovery_kit,
+    account_status, connect_own_server, delete_synced_data, finish_setup, recovery_kit,
 };
 use super::state;
 use super::test_support::{assert_converged, migrated, noise};
 use crate::error::AppError;
-use crate::models::sync::{CheckoutTarget, SyncPlan, SyncProblem};
+use crate::models::sync::SyncProblem;
 
-const NEEDS_RELAY: &str = "set MOONY_RELAY_E2E to a running wrangler dev of Moony-relay \
-     (branch feat/dev-grant, npm run dev there, with DEV_GRANT=1 in .dev.vars)";
-const NEEDS_SELF_HOSTED: &str = "set MOONY_RELAY_E2E_SELF_HOSTED to a running self-hosted \
-     Moony-relay (README \"Self-hosting\" (b): SELF_HOSTED=1 in .dev.vars) and \
-     MOONY_RELAY_E2E_ALLOWED_ACCOUNT to an account number minted on it and listed in its \
-     ALLOWED_ACCOUNTS";
+const NEEDS_RELAY: &str = "set MOONY_RELAY_E2E to a running Moony sync server \
+     (Moony-relay-node: SETUP_CODE=moony-e2e-setup-code DATA_DIR=$(mktemp -d) npm start)";
 
-/// The local relay's address, or the failure that says how to start one.
+/// The sync server's address, or the failure that says how to start one.
 pub(super) fn relay_url() -> String {
-    env_or("MOONY_RELAY_E2E", NEEDS_RELAY)
-}
-
-fn env_or(name: &str, missing: &str) -> String {
-    match std::env::var(name) {
+    match std::env::var("MOONY_RELAY_E2E") {
         Ok(value) if !value.is_empty() => value,
-        _ => panic!("{missing}"),
+        _ => panic!("{NEEDS_RELAY}"),
     }
 }
 
@@ -180,6 +174,10 @@ impl<'a> Counting<'a> {
 }
 
 impl Relay for Counting<'_> {
+    async fn server_info(&self) -> RelayResult<crate::services::sync::relay::ServerInfo> {
+        self.relay.server_info().await
+    }
+
     async fn create_account(&self) -> RelayResult<String> {
         self.relay.create_account().await
     }
@@ -227,45 +225,6 @@ impl Relay for Counting<'_> {
     }
 }
 
-/// Deletes a vault on the relay when dropped, so a test that panics after making it leaves no
-/// vault behind (a self-hosted account owns at most 5). `Drop` cannot await, so it blocks on the
-/// test's own runtime (`block_in_place`, which needs the multi-thread flavour): the relay
-/// client's pooled connections belong to that runtime, and a request on another runtime would
-/// wait on them until it times out. A vault already gone (`404`) is fine.
-struct DeleteVaultOnDrop {
-    url: String,
-    vault: VaultAuth,
-}
-
-impl Drop for DeleteVaultOnDrop {
-    fn drop(&mut self) {
-        let Ok(runtime) = tokio::runtime::Handle::try_current() else {
-            eprintln!("no runtime to delete the test's vault on");
-            return;
-        };
-        let relay = relay_at(&self.url);
-        let deleted = tokio::task::block_in_place(|| {
-            runtime.block_on(async { relay.delete_vault(&self.vault).await })
-        });
-        match deleted {
-            Ok(()) | Err(super::relay::RelayError::VaultNotFound) => {}
-            Err(error) => eprintln!("could not delete the test's vault: {error}"),
-        }
-    }
-}
-
-/// `create_account` on `device`, waiting out the relay's limit of 5 new accounts a minute.
-async fn fresh_account(relay: &HttpRelay, device: &Device, url: &str) -> String {
-    for _ in 0..30 {
-        match create_account(relay, &device.db, url).await {
-            Ok(account) => return account.account_number,
-            Err(SyncError::RateLimited) => tokio::time::sleep(Duration::from_secs(3)).await,
-            Err(error) => panic!("create_account: {error:?}"),
-        }
-    }
-    panic!("the relay kept refusing new accounts");
-}
-
 /// The validation key a command would answer for `result`'s error.
 pub(super) fn command_key<T: std::fmt::Debug>(result: SyncResult<T>) -> String {
     match result.expect_err("refused").to_app_error() {
@@ -274,29 +233,96 @@ pub(super) fn command_key<T: std::fmt::Debug>(result: SyncResult<T>) -> String {
     }
 }
 
-/// A first device with sync on: a new account, paid for 30 days with the dev grant, its Recovery
-/// Kit, setup finished under `name`.
-pub(super) async fn first_device(relay: &HttpRelay, url: &str, name: &str) -> Device {
+/// The validation key a command on the person's own server would answer for `result`'s error
+/// (`SyncError::to_own_server_app_error`: a blocked person is `syncAccountBlocked`).
+pub(super) fn own_server_key<T: std::fmt::Debug>(result: SyncResult<T>) -> String {
+    match result.expect_err("refused").to_own_server_app_error() {
+        AppError::Validation(key) => key,
+        other => panic!("not a validation key: {other:?}"),
+    }
+}
+
+/// `call`, again after a pause while the server answers that this client asks too often: its
+/// account lookups (a server check, an account's status, a vault's creation) are limited to 60 a
+/// minute per client address, and one run's tests share the address. Any other answer is returned.
+pub(super) async fn until_allowed<T, E, Fut>(
+    mut call: impl FnMut() -> Fut,
+    limited: impl Fn(&E) -> bool,
+) -> Result<T, E>
+where
+    Fut: std::future::Future<Output = Result<T, E>>,
+{
+    let mut waited = 0;
+    loop {
+        match call().await {
+            Err(error) if limited(&error) && waited < 40 => {
+                waited += 1;
+                tokio::time::sleep(Duration::from_secs(3)).await;
+            }
+            other => return other,
+        }
+    }
+}
+
+/// `until_allowed` for the sync operations.
+pub(super) async fn sync_until_allowed<T, Fut>(call: impl FnMut() -> Fut) -> SyncResult<T>
+where
+    Fut: std::future::Future<Output = SyncResult<T>>,
+{
+    until_allowed(call, |error| matches!(error, SyncError::RateLimited)).await
+}
+
+/// A name no other person on the server has: the admin adds one person per device.
+fn unique_name(name: &str) -> String {
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    format!(
+        "e2e {name} {} {}",
+        now(),
+        NEXT.fetch_add(1, Ordering::SeqCst)
+    )
+}
+
+/// A device that adopted a person the admin just added, by their connection code, and has its
+/// Recovery Kit: setup stops short of the vault. The server is at `url`.
+async fn device_of_new_person(relay: &HttpRelay, url: &str, name: &str) -> (Device, Person) {
     let device = Device::new();
-    let account = fresh_account(relay, &device, url).await;
-    let paid_until = relay.dev_grant(&account, 30).await.expect("dev grant");
-    assert!(paid_until > now() + 29 * 86_400, "{paid_until}");
-    let status = account_status(relay, &device.db).await.expect("status");
+    let person = admin(url).await.add_person(&unique_name(name)).await;
+    let account = sync_until_allowed(|| connect_own_server(relay, &device.db, &person.code))
+        .await
+        .expect("connect to the server");
+    assert!(account.active, "{account:?}");
+    let status = sync_until_allowed(|| account_status(relay, &device.db))
+        .await
+        .expect("status");
     assert!(status.active, "{status:?}");
     recovery_kit(&device.db.lock()).expect("kit");
-    finish_setup(
-        relay,
-        &device.db,
-        name,
-        true,
-        device.dir(),
-        &NoBinding,
-        now(),
-    )
+    (device, person)
+}
+
+/// A first device with sync on: a person added by the admin, its connection code, its Recovery
+/// Kit, setup finished under `name`. The person comes back with it, for the tests that block or
+/// delete them.
+pub(super) async fn first_device_of(relay: &HttpRelay, url: &str, name: &str) -> (Device, Person) {
+    let (device, person) = device_of_new_person(relay, url, name).await;
+    sync_until_allowed(|| {
+        finish_setup(
+            relay,
+            &device.db,
+            name,
+            true,
+            device.dir(),
+            &NoBinding,
+            now(),
+        )
+    })
     .await
     .expect("finish setup");
     assert!(device.enabled());
-    device
+    (device, person)
+}
+
+pub(super) async fn first_device(relay: &HttpRelay, url: &str, name: &str) -> Device {
+    first_device_of(relay, url, name).await.0
 }
 
 /// A bank account, a category and 20 transactions (`tx-00` … `tx-19`).
@@ -366,7 +392,7 @@ async fn vault_snapshot_seq(relay: &HttpRelay, creds: &Credentials) -> Option<u6
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn two_devices_sync_through_the_relay() {
     let url = relay_url();
     let relay = relay_at(&url);
@@ -419,39 +445,109 @@ async fn two_devices_sync_through_the_relay() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
-async fn an_unpaid_account_cannot_create_a_vault() {
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+async fn a_blocked_person_cannot_create_a_vault_until_unblocked() {
     let url = relay_url();
     let relay = relay_at(&url);
-    let device = Device::new();
-    fresh_account(&relay, &device, &url).await;
-    let status = account_status(&relay, &device.db).await.expect("status");
-    assert!(!status.active, "{status:?}");
-    assert_eq!(status.paid_until, None);
-    // `wrangler dev` has no Polar products: the payment page is not available.
-    assert_eq!(
-        command_key(checkout_url(&relay, &device.db, SyncPlan::Monthly).await),
-        "validation.syncCheckoutUnavailable"
-    );
-    recovery_kit(&device.db.lock()).expect("kit");
+    let (device, person) = device_of_new_person(&relay, &url, "Blocked").await;
+    let admin = admin(&url).await;
+    admin.block(&person.id).await;
 
-    let result = finish_setup(
-        &relay,
-        &device.db,
-        "Laptop",
-        true,
-        device.dir(),
-        &NoBinding,
-        now(),
-    )
+    let result = sync_until_allowed(|| {
+        finish_setup(
+            &relay,
+            &device.db,
+            "Laptop",
+            true,
+            device.dir(),
+            &NoBinding,
+            now(),
+        )
+    })
     .await;
     assert!(matches!(result, Err(SyncError::Lapsed)), "{result:?}");
-    assert_eq!(command_key(result), "validation.syncPaymentRequired");
+    assert_eq!(own_server_key(result), "validation.syncAccountBlocked");
     assert!(!device.enabled(), "sync stays off");
+
+    admin.unblock(&person.id).await;
+    sync_until_allowed(|| {
+        finish_setup(
+            &relay,
+            &device.db,
+            "Laptop",
+            true,
+            device.dir(),
+            &NoBinding,
+            now(),
+        )
+    })
+    .await
+    .expect("finish setup after the unblock");
+    assert!(device.enabled());
+    delete_synced_data(&relay, &device.db, device.dir())
+        .await
+        .expect("delete synced data");
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+async fn a_blocked_person_keeps_pulling_but_cannot_push_until_unblocked() {
+    let url = relay_url();
+    let relay = relay_at(&url);
+    let (a, person) = first_device_of(&relay, &url, "A").await;
+    add_finances(&a);
+    a.round(&relay).await;
+    let b = Device::new();
+    b.join(&relay, a.credentials(), "B").await;
+    b.round(&relay).await;
+
+    // B pushes a change before the block; A has one of its own waiting.
+    b.exec("UPDATE bank_transactions SET description = 'from B' WHERE id = 'tx-01'");
+    b.round(&relay).await;
+    a.exec("UPDATE bank_transactions SET description = 'from A' WHERE id = 'tx-02'");
+
+    let admin = admin(&url).await;
+    let blocked_at = now();
+    admin.block(&person.id).await;
+
+    // A still pulls (the server's read grace), its push is refused as lapsed and waits.
+    let report = a.round_with_problem(&relay).await;
+    assert_eq!(report.problem, Some(SyncProblem::Lapsed), "{report:?}");
+    assert_eq!(
+        a.text("SELECT description FROM bank_transactions WHERE id = 'tx-01'")
+            .as_deref(),
+        Some("from B"),
+        "pulls go on"
+    );
+    assert!(
+        a.count("SELECT COUNT(*) FROM sync_unsent") > 0,
+        "the push waits"
+    );
+    // The status carries the moment of the block.
+    let status = sync_until_allowed(|| account_status(&relay, &a.db))
+        .await
+        .expect("status");
+    assert!(!status.active, "{status:?}");
+    let paid_until = status.paid_until.expect("a block time");
+    assert!(
+        (paid_until - blocked_at).abs() <= 120,
+        "paid_until {paid_until} is about the block time {blocked_at}"
+    );
+
+    admin.unblock(&person.id).await;
+    a.round(&relay).await;
+    b.round(&relay).await;
+    assert_eq!(
+        b.text("SELECT description FROM bank_transactions WHERE id = 'tx-02'")
+            .as_deref(),
+        Some("from A"),
+        "the push goes through after the unblock"
+    );
+    converged(&a, &b);
+}
+
+#[tokio::test]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn deleting_synced_data_makes_the_other_device_pause() {
     let url = relay_url();
     let relay = relay_at(&url);
@@ -487,7 +583,7 @@ async fn deleting_synced_data_makes_the_other_device_pause() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn snapshot_round_trip_through_r2() {
     let url = relay_url();
     let relay = relay_at(&url);
@@ -537,94 +633,86 @@ async fn snapshot_round_trip_through_r2() {
     converged(&a, &b);
 }
 
-// Multi-thread: `DeleteVaultOnDrop` blocks in place on this runtime.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore = "needs a self-hosted Moony-relay: MOONY_RELAY_E2E_SELF_HOSTED, MOONY_RELAY_E2E_ALLOWED_ACCOUNT"]
-async fn a_self_hosted_relay_serves_only_allowed_accounts() {
-    let url = env_or("MOONY_RELAY_E2E_SELF_HOSTED", NEEDS_SELF_HOSTED);
-    let allowed = env_or("MOONY_RELAY_E2E_ALLOWED_ACCOUNT", NEEDS_SELF_HOSTED);
+#[tokio::test]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+async fn registration_is_closed_and_a_deleted_persons_code_is_refused() {
+    let url = relay_url();
     let relay = relay_at(&url);
 
-    // An account the operator has not listed: no payment page, never active, no vault.
-    let stranger = Device::new();
-    fresh_account(&relay, &stranger, &url).await;
+    // What the server says it is, and that the app cannot mint an account on it.
+    let info = until_allowed(|| relay.server_info(), |e| *e == RelayError::RateLimited)
+        .await
+        .expect("server info");
+    assert_eq!(info.protocol, 2);
+    assert_eq!(info.mode, ServerMode::SelfHosted);
+    assert!(!info.version.is_empty());
     assert_eq!(
-        checkout_url(&relay, &stranger.db, SyncPlan::Monthly)
-            .await
-            .expect("checkout"),
-        CheckoutTarget::SelfHosted
+        until_allowed(|| relay.create_account(), |e| *e == RelayError::RateLimited).await,
+        Err(RelayError::RegistrationClosed)
     );
-    let status = account_status(&relay, &stranger.db).await.expect("status");
-    assert!(!status.active, "{status:?}");
-    recovery_kit(&stranger.db.lock()).expect("kit");
-    let result = finish_setup(
-        &relay,
-        &stranger.db,
-        "Stranger",
-        true,
-        stranger.dir(),
-        &NoBinding,
-        now(),
-    )
-    .await;
-    assert!(matches!(result, Err(SyncError::Lapsed)), "{result:?}");
-    assert_eq!(command_key(result), "validation.syncPaymentRequired");
-    assert!(!stranger.enabled());
 
-    // The listed account, created earlier on this profile (README step 6: create it in the app,
-    // add its number, restart the relay); setup resumes with it.
-    let a = Device::new();
-    keys::save_account(&a.db.lock(), &url, &allowed).expect("stored account");
-    let account = create_account(&relay, &a.db, &url)
-        .await
-        .expect("the stored account");
-    assert_eq!(account.account_number, allowed);
-    assert!(account.active, "{account:?}");
+    // A person with a synced device is deleted by the admin: the device's next round finds its
+    // vault gone, and the person's code no longer connects a new profile.
+    let (a, person) = first_device_of(&relay, &url, "Deleted").await;
+    add_finances(&a);
+    a.round(&relay).await;
+    admin(&url).await.delete(&person.id).await;
+
+    a.exec("UPDATE bank_transactions SET description = 'after' WHERE id = 'tx-01'");
+    let paused = a.round_with_problem(&relay).await;
+    assert_eq!(paused.problem, Some(SyncProblem::VaultGone), "{paused:?}");
+
+    let fresh = Device::new();
+    let result = sync_until_allowed(|| connect_own_server(&relay, &fresh.db, &person.code)).await;
     assert_eq!(
-        checkout_url(&relay, &a.db, SyncPlan::Yearly)
-            .await
-            .expect("checkout"),
-        CheckoutTarget::SelfHosted
+        own_server_key(result),
+        "validation.syncConnectionCodeRevoked"
     );
-    let kit = recovery_kit(&a.db.lock()).expect("kit");
-    assert_eq!(
-        kit.relay_url.as_deref(),
-        Some(url.trim_end_matches('/')),
-        "the kit carries a self-hosted relay's address"
-    );
-    // From here on the vault may exist on the relay: it goes again however the test ends.
-    let _cleanup = DeleteVaultOnDrop {
-        url: url.clone(),
-        vault: a.credentials().auth(),
-    };
-    finish_setup(&relay, &a.db, "A", true, a.dir(), &NoBinding, now())
-        .await
-        .expect("finish setup");
+    assert!(keys::account(&fresh.db.lock()).expect("account").is_none());
+}
+
+/// The address a device syncs through can change without touching its vault: the same server by
+/// another name works; an address nobody answers is refused and the old one is kept.
+#[tokio::test]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+async fn an_address_change_goes_through_a_real_server() {
+    let url = relay_url();
+    let port = reqwest::Url::parse(&url)
+        .expect("address")
+        .port_or_known_default()
+        .expect("a port");
+    let local = format!("http://127.0.0.1:{port}");
+    let named = format!("http://localhost:{port}");
+    let relay = relay_at(&local);
+    let a = first_device(&relay, &local, "Mover").await;
     add_finances(&a);
     a.round(&relay).await;
 
-    let b = Device::new();
-    b.join(&relay, a.credentials(), "B").await;
-    b.round(&relay).await;
-    b.exec("UPDATE bank_transactions SET description = 'from B' WHERE id = 'tx-05'");
-    b.round(&relay).await;
-    a.round(&relay).await;
-    converged(&a, &b);
-    assert_eq!(
-        a.text("SELECT description FROM bank_transactions WHERE id = 'tx-05'")
-            .as_deref(),
-        Some("from B")
-    );
+    let stored = |device: &Device| {
+        keys::credentials(&device.db.lock())
+            .expect("credentials")
+            .expect("stored")
+            .relay_url
+    };
+    let build = |address: &str| HttpRelay::new(address).map_err(SyncError::Local);
 
-    // The allowed account owns at most 5 vaults: this run's goes again (and `_cleanup` finds it
-    // gone).
-    delete_synced_data(&relay, &a.db, a.dir())
+    let changed = sync_until_allowed(|| change_server_address(build, &a.db, &named))
         .await
-        .expect("delete synced data");
+        .expect("change the address");
+    assert_eq!(changed, named);
+    assert_eq!(stored(&a), named);
+    a.exec("UPDATE bank_transactions SET description = 'by name' WHERE id = 'tx-02'");
+    a.round(&relay_at(&named)).await;
+
+    let nobody = "http://127.0.0.1:1";
+    let result = sync_until_allowed(|| change_server_address(build, &a.db, nobody)).await;
+    assert_eq!(command_key(result), "validation.syncServerNotFound");
+    assert_eq!(stored(&a), named, "the old address stays");
+    a.round(&relay_at(&named)).await;
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn a_large_history_is_split_and_paged() {
     let url = relay_url();
     let relay = relay_at(&url);
@@ -683,7 +771,7 @@ async fn a_large_history_is_split_and_paged() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn repair_and_resync_go_through_the_relay() {
     let url = relay_url();
     let relay = relay_at(&url);
@@ -743,7 +831,7 @@ async fn repair_and_resync_go_through_the_relay() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn a_resync_pushes_unsent_changes_first() {
     let url = relay_url();
     let relay = relay_at(&url);
@@ -787,7 +875,7 @@ async fn a_resync_pushes_unsent_changes_first() {
 }
 
 #[tokio::test]
-#[ignore = "needs wrangler dev of Moony-relay: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
+#[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn an_envelope_stays_until_it_comes_back() {
     let url = relay_url();
     let relay = relay_at(&url);

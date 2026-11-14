@@ -434,7 +434,7 @@ async fn a_hostile_sync_server_in_the_credentials_is_refused_before_anything() {
     let before = profile(&device.lock());
     let dir = tempfile::tempdir().expect("dir");
     let mut creds = vault.creds.clone();
-    creds.relay_url = "http://evil.example".into();
+    creds.relay_url = "ftp://evil.example".into();
 
     let error = join_as(&vault, &device, creds, "Laptop", dir.path())
         .await

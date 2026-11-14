@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { ChevronRight } from 'lucide-react';
+import type { ServerChoiceState } from '@/hooks/use-server-choice';
+import { ServerCheckNotice, ServerChoice } from '@/components/settings/sync/ServerChoice';
 import { submitOnEnter } from '@/components/settings/sync/submit-on-enter';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -16,19 +16,24 @@ interface JoinFieldsProps {
   onName: (value: string) => void;
   password: string;
   onPassword: (value: string) => void;
-  relayUrl: string;
-  onRelayUrl: (value: string) => void;
+  /** The sync server: typed here, checked and acknowledged (`useServerChoice`). */
+  server: ServerChoiceState;
+  /**
+   * `field`: the person types an address or a connection code; `fixed`: a Recovery Kit QR names the
+   * server, shown with its check and warning; `hidden`: nothing to ask or show.
+   */
+  serverMode: 'field' | 'fixed' | 'hidden';
   error: string | null;
 }
 
-/** Device name, device password and the Advanced sync server address, as both join forms ask. */
+/** Device name, device password and the sync server, as both join forms ask. */
 export function JoinFields({
   name,
   onName,
   password,
   onPassword,
-  relayUrl,
-  onRelayUrl,
+  server,
+  serverMode,
   error,
 }: JoinFieldsProps) {
   const { t } = useTranslation('deviceSync');
@@ -61,26 +66,8 @@ export function JoinFields({
           </p>
         )}
       </div>
-      <Collapsible>
-        <CollapsibleTrigger className="group flex items-center gap-1 text-caption font-700 text-ink-2">
-          <ChevronRight className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
-          {t('join.advanced')}
-        </CollapsibleTrigger>
-        <CollapsibleContent className="grid gap-1.5 pt-2.5">
-          <Label htmlFor="join-relay-url">{t('join.serverLabel')}</Label>
-          <Input
-            id="join-relay-url"
-            value={relayUrl}
-            onChange={(event) => onRelayUrl(event.target.value)}
-            onKeyDown={submitOnEnter}
-            placeholder={t('setup.advanced.placeholder')}
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-          />
-          <p className="m-0 text-micro font-500 text-ink-4">{t('setup.advanced.hint')}</p>
-        </CollapsibleContent>
-      </Collapsible>
+      {serverMode === 'field' && <ServerChoice state={server} id="join-server" showCloud />}
+      {serverMode === 'fixed' && <ServerCheckNotice state={server} id="join-server" />}
     </>
   );
 }

@@ -1,6 +1,16 @@
 import type { PairingStage, PairingView } from '@shared/schema';
 
-export type ScannedCodeKind = 'pair' | 'recover' | 'recoveryCode' | 'unknown';
+export type ScannedCodeKind = 'pair' | 'recover' | 'recoveryCode' | 'connection' | 'unknown';
+
+const CONNECTION_CODE = /^moony-sync\d+:/;
+/**
+ * `text` the way `connection_code::cleaned` reads a connection code in Rust: trimmed, every
+ * White_Space and zero-width character removed (a code wrapped by a chat app or copied with a
+ * zero-width space still reads).
+ */
+export function stripInvisible(text: string): string {
+  return text.trim().replace(/[\p{White_Space}\u200B-\u200D\uFEFF]/gu, '');
+}
 
 const RECOVERY_CODE = /^[0-9A-HJKMNP-TV-Z]{80}$/;
 
@@ -15,12 +25,16 @@ function normalizeRecoveryCode(text: string): string {
 
 /**
  * What a scanned or typed text is: a pairing code, a Sync Recovery Kit QR, a typed recovery code
- * (80 Crockford characters once spaces and dashes go) or something else.
+ * (80 Crockford characters once spaces and dashes go), a connection code of a self-hosted sync
+ * server (`moony-sync<n>:`, any version) or something else.
  */
 export function scannedCodeKind(text: string): ScannedCodeKind {
   const trimmed = text.trim();
   if (trimmed.startsWith('moony-pair:')) return 'pair';
   if (trimmed.startsWith('moony-recover:')) return 'recover';
+  // Only the connection code parser removes inner white space and zero-width characters (the
+  // pairing and Kit parsers just trim, a recovery code keeps zero-width characters invalid)
+  if (CONNECTION_CODE.test(stripInvisible(trimmed))) return 'connection';
   if (RECOVERY_CODE.test(normalizeRecoveryCode(trimmed))) return 'recoveryCode';
   return 'unknown';
 }

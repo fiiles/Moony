@@ -17,7 +17,7 @@ import {
   problemAction,
   skippableGap,
 } from '@/utils/device-sync-problem';
-import { isSelfHostedPaidUntil, secondsToDate } from '@/utils/sync-status';
+import { secondsToDate } from '@/utils/sync-status';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { SyncRenewDialog } from '@/components/settings/sync/SyncRenewDialog';
@@ -54,7 +54,6 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
     }
   };
 
-  const selfHosted = isSelfHostedPaidUntil(status.paidUntil);
   const now = Math.floor(Date.now() / 1000);
   const dateText = (seconds: number) => {
     const when = secondsToDate(seconds);
@@ -63,7 +62,7 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
   const held = heldFor(problem, heldGaps.data);
   // A held change younger than 14 days offers nothing: this device keeps syncing meanwhile
   const skippable = skippableGap(held, now);
-  const action = problemAction(problem, selfHosted, skippable);
+  const action = problemAction(problem, status.ownServer, skippable);
   const deletesAt = secondsToDate(status.deletesAt);
   const ahead = problem === 'clockAhead' ? aheadGap(held) : null;
   let title: string | null = null;
@@ -77,7 +76,7 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
   switch (action) {
     case 'renew':
     case 'askOperator':
-      title = t('alert.lapsed.title');
+      title = status.ownServer ? t('alert.lapsed.titleOwnServer') : t('alert.lapsed.title');
       body =
         action === 'askOperator'
           ? t('alert.lapsed.selfHosted')

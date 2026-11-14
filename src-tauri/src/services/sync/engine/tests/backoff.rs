@@ -91,6 +91,9 @@ struct Endless {
 }
 
 impl Relay for Endless {
+    async fn server_info(&self) -> RelayResult<crate::services::sync::relay::ServerInfo> {
+        self.inner.server_info().await
+    }
     async fn create_account(&self) -> RelayResult<String> {
         self.inner.create_account().await
     }
@@ -191,6 +194,7 @@ async fn a_pull_that_ends_done_resets_the_unfinished_run() {
 #[tokio::test]
 async fn a_paid_until_near_the_maximum_has_no_deletion_date() {
     let vault = vault().await;
+    on_the_cloud(&vault.a.lock());
     let runtime = Runtime {
         problem: Some(SyncProblem::Lapsed),
         paid_until: Some(i64::MAX - 1),

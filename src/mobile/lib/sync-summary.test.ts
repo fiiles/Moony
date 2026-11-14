@@ -14,6 +14,9 @@ function status(phase: SyncPhase, problem: SyncProblem | null = null): SyncStatu
     deletesAt: null,
     clockAheadUntil: null,
     devTools: false,
+    ownServer: false,
+    serverAddress: null,
+    serverInsecure: false,
   };
 }
 

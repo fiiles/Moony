@@ -46,10 +46,18 @@
     "pending": "Väntar på att skickas: {{number}}",
     "clockAhead": "Klockan på den här enheten (eller på en enhet den synkroniserade med) gick före vid något tillfälle, så dess ändringar är daterade {{date}} fram till dess. De synkroniseras fortfarande; om samma post redigeras på en annan enhet vinner den här enhetens version fram till det datumet.",
     "subscription": "Prenumeration",
-    "selfHosted": "Egen server",
     "paidUntil": "Betald till {{date}}",
     "syncNow": "Synkronisera nu",
     "showKit": "Visa återställningskitet"
+  },
+  "server": {
+    "label": "Synkroniseringsserver",
+    "insecure": "Okrypterad anslutning (http)",
+    "change": "Ändra adress",
+    "dialogTitle": "Ändra serveradressen",
+    "dialogBody": "Använd det här när din synkroniseringsserver har flyttat till en ny adress. Det måste vara samma server, med dina synkroniserade data. Varje enhet ändrar sin egen adress, så gör likadant på dina andra enheter. Spara återställningskitet igen: det innehåller nu den nya adressen.",
+    "success": "Synkroniseringsserverns adress har ändrats",
+    "unchanged": "Den här enheten använder redan den här adressen."
   },
   "intro": {
     "description": "Håll dina uppgifter uppdaterade på alla dina enheter. De är end-to-end-krypterade: synkroniseringsservern lagrar bara data den inte kan läsa.",
@@ -76,12 +84,6 @@
       "copy": "Kopiera",
       "copied": "Kopierat"
     },
-    "advanced": {
-      "toggle": "Avancerat",
-      "label": "Adress till synkroniseringsservern",
-      "placeholder": "https://sync.moonyfinance.com",
-      "hint": "Lämna tomt för att använda Moonys synkroniseringstjänst. Fyll i bara om du kör din egen synkroniseringsserver."
-    },
     "pay": {
       "description": "Välj en plan. Betalningen öppnas i webbläsaren.",
       "plan": "Plan",
@@ -89,9 +91,7 @@
       "yearly": "Årsvis",
       "continue": "Fortsätt till betalning",
       "waiting": "Väntar på betalningen. Det här fönstret går vidare när den kommer.",
-      "grantTest": "Ge en testprenumeration",
-      "selfHosted": "Det här är din egen synkroniseringsserver, så det finns inget att betala. Lägg till kontonumret ovan i ALLOWED_ACCOUNTS på servern och starta om den.",
-      "selfHostedWaiting": "Väntar på att servern godtar kontot. Det här fönstret går vidare när den gör det."
+      "ownServer": "Den här servern är inte Moony cloud, så det finns inget att betala. Ställ in synkroniseringen med anslutningskoden till din egen synkroniseringsserver i stället."
     },
     "kit": {
       "description": "Spara ditt återställningskit för synkronisering. Det är det enda sättet att få tillbaka de synkroniserade uppgifterna om du förlorar alla dina enheter.",
@@ -132,14 +132,33 @@
       "linux": "Linux-dator",
       "ios": "iPhone",
       "android": "Android-telefon"
+    },
+    "server": {
+      "title": "Var ska dina data synkroniseras?",
+      "encrypted": "Ände-till-ände-krypterat i båda fallen",
+      "cloud": "Moony cloud",
+      "soon": "Kommer snart",
+      "cloudHint": "Inget att installera, vi sköter driften.",
+      "own": "Egen server",
+      "codeLabel": "Anslutningskod",
+      "codeHint": "Du får den av den som driver din synkroniseringsserver.",
+      "found": "Servern hittades · version {{version}}",
+      "checking": "Letar efter servern…",
+      "insecureTitle": "Anslutningen är inte krypterad (http)",
+      "insecureBody": "Dina data förblir krypterade, men alla på samma nätverk kan fånga upp åtkomsten till synkroniseringen och radera eller blockera de synkroniserade data på servern.",
+      "insecureAck": "Jag förstår, fortsätt ändå",
+      "resume": "Inställningen påbörjades med {{host}}",
+      "other": "Använd en annan anslutningskod",
+      "scan": "Skanna kod"
     }
   },
   "alert": {
     "lapsed": {
       "title": "Synkroniseringen är pausad – förnya för att fortsätta",
       "deletes": "De synkroniserade uppgifterna raderas {{date}}.",
-      "selfHosted": "Be operatören av din synkroniseringsserver att förnya åtkomsten.",
-      "renew": "Förnya"
+      "selfHosted": "Ditt konto är blockerat på din synkroniseringsserver. Be den som driver den att häva blockeringen.",
+      "renew": "Förnya",
+      "titleOwnServer": "Synkroniseringen är pausad"
     },
     "vaultGone": {
       "text": "Dina synkroniserade uppgifter finns inte längre på servern. Stänga av synkroniseringen på den här enheten?",
@@ -215,7 +234,8 @@
     "description": "Det här raderar de synkroniserade uppgifterna på synkroniseringsservern för alla enheter. De lokala data på varje enhet finns kvar.",
     "confirm": "Radera synkroniserade data",
     "success": "Synkroniserade data raderade",
-    "afterwards": "Därefter ställs synkroniseringen in från början, med ett nytt synkroniseringskonto och ett nytt återställningskit."
+    "afterwards": "Därefter ställs synkroniseringen in från början, med ett nytt synkroniseringskonto och ett nytt återställningskit.",
+    "afterwardsOwnServer": "Därefter kan du ställa in synkroniseringen igen med samma anslutningskod och ett nytt återställningskit."
   },
   "danger": {
     "title": "Stäng av eller radera",
@@ -298,8 +318,10 @@
     "warning": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först bredvid din profil.",
     "nameLabel": "Enhetsnamn",
     "passwordLabel": "Enhetslösenord",
-    "advanced": "Avancerat",
     "serverLabel": "Adress till synkroniseringsservern",
+    "serverHint": "Skriv adressen till din synkroniseringsserver eller klistra in dess anslutningskod.",
+    "insecureAtJoin": "Synkroniseringsuppgifterna du går med i pekar på {{host}}, som nås via vanlig http. Dina data förblir krypterade, men alla på samma nätverk kan fånga upp åtkomsten till synkroniseringen och radera eller blockera de synkroniserade data på servern.",
+    "kitServer": "Synkroniseringsserver: {{host}}",
     "pairTitle": "Anslut från telefonen",
     "pairHint": "På telefonen med synkronisering på: Inställningar → Synkronisering → Lägg till en enhet",
     "kitTitle": "Använd ett återställningskit",
@@ -346,9 +368,8 @@
     "notAPairingCode": "Det här är ingen parkopplingskod.",
     "devPasteTitle": "Klistra in en parkopplingskod — utvecklarverktyg",
     "devPasteLabel": "Parkopplingskod",
-    "payUnavailable": "Betalning för synkronisering är inte tillgänglig i mobilappen.",
-    "payWaiting": "Väntar på att kontot ska bli aktivt. När det blir det går det vidare av sig självt.",
-    "payWaitingShort": "Väntar …"
+    "notAConnectionCode": "Den här QR-koden är inte en anslutningskod för en synkroniseringsserver.",
+    "scanConnectionHint": "Rikta kameran mot anslutningskoden för din synkroniseringsserver."
   },
   "replace": {
     "lines": {
@@ -381,5 +402,11 @@
   },
   "limits": {
     "lostDevice": "En borttappad enhet eller ett borttappat återställningskit kan ännu inte stängas ute från dina synkroniserade data, och den som har ett kan redan nu läsa vad det innehåller. Om något försvinner raderar du de synkroniserade data och ställer in synkroniseringen på nytt med ett nytt kit; dina andra enheter måste då ansluta igen."
+  },
+  "codes": {
+    "pairNotForSetup": "Det här är en parkopplingskod, inte en anslutningskod. Skanna den när du lägger till den här enheten i en synkronisering som redan körs.",
+    "kitNotForSetup": "Det här är en kod från återställningskitet, inte en anslutningskod. Använd den när du ansluter till synkroniserade data som redan finns.",
+    "connectionNotHere": "Det här är en anslutningskod för en synkroniseringsserver. Använd den när du ställer in synkronisering, inte här.",
+    "notAServerAddress": "Det här är inte adressen till en synkroniseringsserver. Ange adressen till din synkroniseringsserver eller klistra in dess anslutningskod."
   }
 }

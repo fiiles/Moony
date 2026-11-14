@@ -9,10 +9,12 @@ import {
   pairingSheetStep,
   phoneDeviceKey,
   scanRoute,
+  setupScanRoute,
 } from './sync-scan';
 
 const CODE80 = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789'.repeat(3).slice(0, 80);
 const PAIR = 'moony-pair:1:abc:def';
+const CONNECTION = 'moony-sync1:4417938205561273:aHR0cHM6Ly9zeW5jLmV4YW1wbGUub3Jn';
 const KIT_QR = `moony-recover:1:1234567812345678:${CODE80}`;
 
 function view(stage: PairingStage, contested = false): PairingView {
@@ -25,6 +27,8 @@ function view(stage: PairingStage, contested = false): PairingView {
     contested,
     expiresAt: 0,
     serverHost: null,
+    joinServer: null,
+    joinServerInsecure: false,
     attemptsLeft: null,
   };
 }
@@ -47,10 +51,34 @@ describe('scanRoute', () => {
   });
 });
 
+describe('a connection code in the join and add scanners', () => {
+  it('is its own route, whichever mode', () => {
+    expect(scanRoute(CONNECTION, 'join')).toBe('connection');
+    expect(scanRoute(CONNECTION, 'add')).toBe('connection');
+    expect(scanRoute(` ${CONNECTION}\n`, 'join')).toBe('connection');
+    expect(scanRoute('moony-sync2:later', 'add')).toBe('connection');
+  });
+});
+
+describe('setupScanRoute', () => {
+  it('takes a connection code, names a pairing code and a Recovery Kit QR, refuses the rest', () => {
+    expect(setupScanRoute(CONNECTION)).toBe('connection');
+    expect(setupScanRoute('moony-pair:2:abc:def')).toBe('pair');
+    expect(setupScanRoute('moony-recover:1:1234567812345678:abc')).toBe('recover');
+    expect(setupScanRoute('https://x')).toBe('unknown');
+    expect(setupScanRoute(CODE80)).toBe('unknown');
+    expect(setupScanRoute('')).toBe('unknown');
+  });
+});
+
 describe('kitCodeProblem', () => {
   it('names a pairing code as not a Recovery Kit code', () => {
     expect(kitCodeProblem(PAIR)).toBe('phone.notAKitCode');
     expect(kitCodeProblem(` ${PAIR}`)).toBe('phone.notAKitCode');
+  });
+
+  it('names a connection code as not belonging here', () => {
+    expect(kitCodeProblem(CONNECTION)).toBe('codes.connectionNotHere');
   });
 
   it('accepts a Kit QR text, a typed code, and leaves the rest to the backend', () => {
@@ -68,6 +96,10 @@ describe('pairingCodeProblem', () => {
     expect(pairingCodeProblem(KIT_QR)).toBe('phone.notAPairingCode');
     expect(pairingCodeProblem(CODE80)).toBe('phone.notAPairingCode');
     expect(pairingCodeProblem('hello')).toBe('phone.notAPairingCode');
+  });
+
+  it('names a connection code as not belonging here', () => {
+    expect(pairingCodeProblem(CONNECTION)).toBe('codes.connectionNotHere');
   });
 });
 
@@ -227,6 +259,28 @@ describe('kitQrSummary', () => {
     expect(kitQrSummary(`${KIT_QR}:_w`)).toEqual({
       ok: false,
       problem: 'validation.syncRecoveryCodeInvalid',
+    });
+  });
+
+  it('shows the server as the shared normaliser spells it (default port kept off, no path)', () => {
+    expect(kitQrSummary(`${KIT_QR}:${b64('http://192.168.1.20:8787')}`)).toMatchObject({
+      server: 'http://192.168.1.20:8787',
+    });
+    expect(kitQrSummary(`${KIT_QR}:${b64('https://Sync.Example.com.')}`)).toMatchObject({
+      server: 'https://sync.example.com',
+    });
+  });
+
+  it.each([
+    ['a path', 'https://sync.example.com/api'],
+    ['a query', 'https://sync.example.com/?a=1'],
+    ['a login', 'https://user:pw@sync.example.com'],
+    ['plain http to the Moony cloud', 'http://sync.moonyfinance.com'],
+    ['another scheme', 'ftp://sync.example.com'],
+  ])('refuses %s as an unusable server, as the backend does', (_label, address) => {
+    expect(kitQrSummary(`${KIT_QR}:${b64(address)}`)).toEqual({
+      ok: false,
+      problem: 'validation.syncRelayUrlInvalid',
     });
   });
 

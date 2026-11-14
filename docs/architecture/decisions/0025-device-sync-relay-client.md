@@ -11,7 +11,9 @@ relay client, still hidden behind a runtime flag (`src-tauri/src/services/sync/`
 `src/components/settings/sync/`). Builds on ADR 0024. Where the spec's text differs, the code and
 this ADR win. Amended by [ADR 0027](0027-device-sync-audit-fixes.md) (2026-11-12): rounds hold a
 gap instead of stopping, envelopes stay until they come back, back-offs, replaces and their
-backups, the binding fails closed, the Recovery Kit and the runtime flag.
+backups, the binding fails closed, the Recovery Kit and the runtime flag. Amended by
+[ADR 0029](0029-self-hosted-sync-server-in-the-app.md) (2026-11-14): the HTTP rule, and own sync
+servers set up from a connection code instead of an allow list.
 
 ## Context
 
@@ -71,6 +73,7 @@ user, query, fragment or path; normalized (lowercase host, no default port, no t
 slash) and at most 256 characters. Redirects are off, so the `Moony-Account` header and the token
 never reach another origin. Every body is read under a cap, errors carry no URL or body, the
 checkout page must be `https`. Push and pull get 120 s, snapshots 600 s, everything else 15 s.
+*Amended by [ADR 0029](0029-self-hosted-sync-server-in-the-app.md): `http` is allowed for any host but the Moony cloud, in every build; the dialogs warn each time.*
 
 **Runtime flag.** `feature::RELEASED` is `false`. A debug build runs sync only with
 `MOONY_DEV_SYNC=1` (and reads `MOONY_RELAY_URL`); a release build reads neither. Every sync

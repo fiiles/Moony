@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { Check, ChevronRight, Copy } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import type { RecoveryKit, SyncPlan } from '@shared/schema';
 import { useDeviceSyncAccount, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
+import { useServerChoice } from '@/hooks/use-server-choice';
 import { RecoveryKitPanel } from '@/components/settings/sync/RecoveryKitPanel';
+import { InsecureNotice, ServerChoice } from '@/components/settings/sync/ServerChoice';
 import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialog';
 import {
   Dialog,
@@ -19,44 +21,63 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Segmented } from '@/components/ui/segmented';
 import { groupAccountNumber } from '@/utils/recovery-kit';
 import { defaultDeviceKey } from '@/utils/sync-devices';
-
-type Step = 'account' | 'pay' | 'kit' | 'device';
-const STEPS: readonly Step[] = ['account', 'pay', 'kit', 'device'];
+import {
+  accountQueryEnabled,
+  hostOf,
+  setupSteps,
+  type ServerKind,
+  type SetupStep,
+} from '@/utils/sync-setup';
 
 interface SyncSetupDialogProps {
   /** Mounted only while open: closing unmounts it, which also forgets the kit. */
   onClose: () => void;
 }
 
-/** First-device setup: account, payment, the Sync Recovery Kit, then this device's name. */
+/**
+ * First-device setup. On an own server: its connection code, the Sync Recovery Kit, then this
+ * device's name. The Moony cloud (not open yet) adds an account and a payment before the kit.
+ */
 export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { data: status } = useDeviceSyncStatus();
-  const [chosenStep, setStep] = useState<Step>('account');
-  const { data: account } = useDeviceSyncAccount({ pollWhileInactive: chosenStep === 'pay' });
-  // The payment (or the operator's allow-list) is waited for on step 2; it moves on by itself.
-  const step: Step = chosenStep === 'pay' && account?.active ? 'kit' : chosenStep;
+  // The cloud card is disabled for now, so nothing sets this to 'cloud'; its steps stay below.
+  const [kind] = useState<ServerKind>('own');
+  const steps = setupSteps(kind);
+  const [chosenStep, setStep] = useState<SetupStep>(steps[0]);
+  const accountQuery = useDeviceSyncAccount({
+    pollWhileInactive: chosenStep === 'pay',
+    enabled: accountQueryEnabled(chosenStep, kind),
+  });
+  const account = accountQuery.data;
+  // The payment is waited for on the pay step; it moves on by itself.
+  const step: SetupStep = chosenStep === 'pay' && account?.active ? 'kit' : chosenStep;
   const {
     createAccount,
+    connectOwnServer,
     startCheckout,
     prepareRecoveryKit,
     prepareKitWithPassword,
     finishSetup,
-    devGrant,
   } = useDeviceSyncMutations();
 
-  const [relayInput, setRelayInput] = useState('');
-  /** The address the current account was created with; `null` while a resumed one is unknown. */
-  const [createdWith, setCreatedWith] = useState<string | null>(null);
+  const choice = useServerChoice('connectionCode', 'setup');
+  /** Setup was started with this own server before (the dialog was closed): continue with it. */
+  const resumeAddress =
+    status?.phase === 'settingUp' && status.ownServer ? status.serverAddress : null;
+  const [otherServer, setOtherServer] = useState(false);
+  const resuming = resumeAddress !== null && !otherServer;
+  /** The resumed server is plain http: the warning is shown and acknowledged again. */
+  const resumeInsecure = resuming && status?.serverInsecure === true;
+  /** Why the server step could not go on (a revoked code, a blocked account), translated. */
+  const [connectError, setConnectError] = useState<string | null>(null);
   const [createdNumber, setCreatedNumber] = useState<string | null>(null);
-  const [relayError, setRelayError] = useState<string | null>(null);
   const [plan, setPlan] = useState<SyncPlan>('monthly');
   const [selfHosted, setSelfHosted] = useState(false);
   const [kit, setKit] = useState<RecoveryKit | null>(null);
@@ -70,10 +91,7 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   const [deviceName, setDeviceName] = useState(() => t(`setup.defaultName.${defaultDeviceKey()}`));
 
   const accountNumber = createdNumber ?? account?.accountNumber ?? null;
-  const relayValue = relayInput.trim();
-  const hasAccount = accountNumber !== null;
-  const accountCurrent =
-    hasAccount && (createdWith === null ? relayValue === '' : createdWith === relayValue);
+  const accountCurrent = accountNumber !== null;
 
   const toastError = (error: unknown) =>
     toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
@@ -98,27 +116,60 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   // The kit holds the vault key: when the dialog closes it leaves the mutation's result too.
   const resetPreparedKit = prepareRecoveryKit.reset;
   useEffect(() => resetPreparedKit, [resetPreparedKit]);
+  // The connection code leaves the mutation's state with the dialog too.
+  const resetConnection = connectOwnServer.reset;
+  useEffect(() => resetConnection, [resetConnection]);
+
+  /** A different account than the one shown: whatever was prepared for the old one is void. */
+  const forgetKit = () => {
+    prepareRecoveryKit.reset();
+    setKit(null);
+    setKitPromptClosed(false);
+    setKitAskedAgain(false);
+    setKitKept(false);
+    setKitConfirmed(false);
+  };
+
+  const handleServer = async () => {
+    setConnectError(null);
+    if (kind === 'cloud') {
+      setStep('account');
+      return;
+    }
+    try {
+      if (resuming) {
+        if (resumeInsecure && !choice.acknowledged) return;
+        // A server that does not answer is its own message; only "not active" is "blocked".
+        const { data: current } = await accountQuery.refetch({ throwOnError: true });
+        if (!current?.active) {
+          setConnectError(tc('validation.syncAccountBlocked'));
+          return;
+        }
+      } else {
+        const connected = await connectOwnServer.mutateAsync(choice.input.trim());
+        if (connected.accountNumber !== createdNumber) forgetKit();
+        setCreatedNumber(connected.accountNumber);
+        // The code carries the account: it does not stay in the field once it was used
+        choice.setInput('');
+      }
+      setStep('kit');
+    } catch (error) {
+      setConnectError(translateApiError(error as Error, tc));
+    }
+  };
 
   const handleAccount = async () => {
     if (accountCurrent) {
       setStep('pay');
       return;
     }
-    setRelayError(null);
     try {
-      const created = await createAccount.mutateAsync(relayValue === '' ? undefined : relayValue);
-      // A different server means a different account: whatever was prepared for the old one is void.
+      const created = await createAccount.mutateAsync(undefined);
       setCreatedNumber(created.accountNumber);
-      setCreatedWith(relayValue);
-      prepareRecoveryKit.reset();
-      setKit(null);
-      setKitPromptClosed(false);
-      setKitAskedAgain(false);
-      setKitKept(false);
-      setKitConfirmed(false);
+      forgetKit();
       setSelfHosted(false);
     } catch (error) {
-      setRelayError(translateApiError(error as Error, tc));
+      toastError(error);
     }
   };
 
@@ -127,14 +178,6 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
       const target = await startCheckout.mutateAsync(plan);
       if (target.kind === 'open') await openUrl(target.url);
       else setSelfHosted(true);
-    } catch (error) {
-      toastError(error);
-    }
-  };
-
-  const handleGrant = async () => {
-    try {
-      await devGrant.mutateAsync(30);
     } catch (error) {
       toastError(error);
     }
@@ -179,11 +222,19 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
     </div>
   );
 
-  const stepNumber = STEPS.indexOf(step) + 1;
-  const busy = createAccount.isPending || finishSetup.isPending;
+  const stepNumber = steps.indexOf(step) + 1;
+  const busy = createAccount.isPending || connectOwnServer.isPending || finishSetup.isPending;
 
   let primary: { label: string; onClick: () => void; disabled?: boolean; loading?: boolean };
   switch (step) {
+    case 'server':
+      primary = {
+        label: t('setup.account.continue'),
+        onClick: handleServer,
+        loading: connectOwnServer.isPending || (resuming && accountQuery.isFetching),
+        disabled: resuming ? resumeInsecure && !choice.acknowledged : !choice.ready,
+      };
+      break;
     case 'account':
       primary = {
         label: accountCurrent ? t('setup.account.continue') : t('setup.account.create'),
@@ -222,58 +273,67 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
           <DialogHeader>
             <DialogTitle>{t('setup.title')}</DialogTitle>
             <DialogDescription>
-              {t('setup.step', { current: stepNumber, total: STEPS.length })}
+              {t('setup.step', { current: stepNumber, total: steps.length })}
               {' · '}
               {t(
-                step === 'account'
-                  ? 'setup.account.description'
-                  : step === 'pay'
-                    ? 'setup.pay.description'
-                    : step === 'kit'
-                      ? 'setup.kit.description'
-                      : 'setup.device.description'
+                step === 'server'
+                  ? 'setup.server.title'
+                  : step === 'account'
+                    ? 'setup.account.description'
+                    : step === 'pay'
+                      ? 'setup.pay.description'
+                      : step === 'kit'
+                        ? 'setup.kit.description'
+                        : 'setup.device.description'
               )}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4">
+            {step === 'server' && (
+              <>
+                {resuming ? (
+                  <div className="grid justify-items-start gap-2">
+                    <p className="m-0 text-body text-ink-2">
+                      {t('setup.server.resume', { host: hostOf(resumeAddress ?? '') })}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setOtherServer(true);
+                        choice.setAcknowledged(false);
+                        setConnectError(null);
+                      }}
+                    >
+                      {t('setup.server.other')}
+                    </Button>
+                    {resumeInsecure && (
+                      <InsecureNotice
+                        id="sync-server-resume"
+                        acknowledged={choice.acknowledged}
+                        onChange={choice.setAcknowledged}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <ServerChoice state={choice} id="sync-server" showCloud />
+                )}
+                {connectError && (
+                  <p className="m-0 text-micro font-500 text-loss" role="alert">
+                    {connectError}
+                  </p>
+                )}
+              </>
+            )}
+
             {step === 'account' && (
               <>
                 {numberBox}
                 {accountNumber && (
                   <p className="m-0 text-micro font-500 text-ink-3">{t('setup.account.explain')}</p>
                 )}
-                <Collapsible>
-                  <CollapsibleTrigger className="group flex items-center gap-1 text-caption font-700 text-ink-2">
-                    <ChevronRight className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
-                    {t('setup.advanced.toggle')}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="grid gap-1.5 pt-2.5">
-                    <Label htmlFor="sync-relay-url">{t('setup.advanced.label')}</Label>
-                    <Input
-                      id="sync-relay-url"
-                      value={relayInput}
-                      onChange={(event) => {
-                        setRelayInput(event.target.value);
-                        setRelayError(null);
-                      }}
-                      placeholder={t('setup.advanced.placeholder')}
-                      aria-invalid={relayError ? true : undefined}
-                      autoCapitalize="off"
-                      autoCorrect="off"
-                      spellCheck={false}
-                    />
-                    {relayError ? (
-                      <p className="m-0 text-micro font-500 text-loss" role="alert">
-                        {relayError}
-                      </p>
-                    ) : (
-                      <p className="m-0 text-micro font-500 text-ink-4">
-                        {t('setup.advanced.hint')}
-                      </p>
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
               </>
             )}
 
@@ -294,28 +354,12 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
                 {selfHosted ? (
                   <>
                     {numberBox}
-                    <p className="m-0 text-body text-ink-2">{t('setup.pay.selfHosted')}</p>
-                    <p className="m-0 text-micro font-500 text-ink-3">
-                      {t('setup.pay.selfHostedWaiting')}
-                    </p>
+                    <p className="m-0 text-body text-ink-2">{t('setup.pay.ownServer')}</p>
                   </>
                 ) : (
                   startCheckout.isSuccess && (
                     <p className="m-0 text-micro font-500 text-ink-3">{t('setup.pay.waiting')}</p>
                   )
-                )}
-                {status?.devTools && (
-                  <div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleGrant}
-                      loading={devGrant.isPending}
-                    >
-                      {t('setup.pay.grantTest')}
-                    </Button>
-                  </div>
                 )}
               </>
             )}

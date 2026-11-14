@@ -13,6 +13,7 @@ pub mod binding;
 pub mod capture;
 pub mod chain;
 pub mod changeset;
+pub mod connection_code;
 #[cfg(test)]
 mod convergence;
 pub mod devices;
@@ -32,12 +33,14 @@ pub mod pairing;
 pub mod recovery;
 pub mod registry;
 pub mod relay;
-// `dev_grant` exists only in debug builds (ruling P18), so the e2e tests do too.
-#[cfg(all(test, debug_assertions))]
+#[cfg(test)]
 mod relay_e2e;
-#[cfg(all(test, debug_assertions))]
+#[cfg(test)]
+mod relay_e2e_admin;
+#[cfg(test)]
 mod relay_e2e_pairing;
 pub mod repair;
+pub mod server;
 pub mod setup;
 pub mod snapshot;
 pub mod state;

@@ -139,6 +139,15 @@ pub struct SyncStatus {
     /// The developer tools are offered (debug build with sync on).
     #[serde(rename = "devTools")]
     pub dev_tools: bool,
+    /// The stored server is not the Moony cloud: a person's own sync server.
+    #[serde(rename = "ownServer")]
+    pub own_server: bool,
+    /// The stored server's address, in every phase that has one.
+    #[serde(rename = "serverAddress")]
+    pub server_address: Option<String>,
+    /// The stored address is plain http to a host other than this computer.
+    #[serde(rename = "serverInsecure")]
+    pub server_insecure: bool,
 }
 
 /// The subscription a checkout is for.
@@ -163,6 +172,20 @@ pub struct SyncAccount {
     pub paid_until: Option<i64>,
 }
 
+/// A sync server that passed the check (`GET /v1/server`, spec §9.3): the address in its stored
+/// spelling, how to show it, its version, and whether it is plain http beyond this computer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncServerCheck {
+    #[serde(rename = "address")]
+    pub address: String,
+    #[serde(rename = "host")]
+    pub host: String,
+    #[serde(rename = "version")]
+    pub version: String,
+    #[serde(rename = "insecure")]
+    pub insecure: bool,
+}
+
 /// Where paying for the account happens.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "kind")]
@@ -173,8 +196,9 @@ pub enum CheckoutTarget {
         #[serde(rename = "url")]
         url: String,
     },
-    /// A self-hosted relay takes no payments: its operator adds the account number to the relay's
-    /// `ALLOWED_ACCOUNTS`, and setup waits until the account is active.
+    /// An own sync server takes no payments: its operator adds people in the server's admin
+    /// interface and the account is active as long as the person is not blocked. Only the Moony
+    /// cloud checkout (not reachable yet) answers `Open`.
     #[serde(rename = "selfHosted")]
     SelfHosted,
 }
@@ -325,6 +349,13 @@ pub struct PairingView {
     /// the person sees which server a self-hosted pairing goes through.
     #[serde(rename = "serverHost")]
     pub server_host: Option<String>,
+    /// Joiner, at `received`: `host[:port]` of the server the received sync details name, so the
+    /// person sees where the account will be used before joining.
+    #[serde(rename = "joinServer")]
+    pub join_server: Option<String>,
+    /// Whether that server is reached over plain http beyond this device (`is_insecure_address`).
+    #[serde(rename = "joinServerInsecure")]
+    pub join_server_insecure: bool,
     /// Holder, in `compare`: wrong codes the person may still type before the pairing ends.
     #[serde(rename = "attemptsLeft")]
     pub attempts_left: Option<u8>,

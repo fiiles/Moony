@@ -46,10 +46,18 @@
     "pending": "等待发送：{{number}}",
     "clockAhead": "此设备（或与之同步的某台设备）的时钟曾经超前，因此在 {{date}} 之前，此设备的更改都会标注该日期。它们仍会同步；在该日期之前，如果在另一台设备上编辑了同一项目，以此设备的版本为准。",
     "subscription": "订阅",
-    "selfHosted": "自托管服务器",
     "paidUntil": "已付费至 {{date}}",
     "syncNow": "立即同步",
     "showKit": "显示恢复包"
+  },
+  "server": {
+    "label": "同步服务器",
+    "insecure": "未加密的连接（http）",
+    "change": "更改地址",
+    "dialogTitle": "更改服务器地址",
+    "dialogBody": "当您的同步服务器迁移到新地址时使用。它必须是同一台服务器，并保存着您已同步的数据。每台设备各自更改自己的地址，请在您的其他设备上也这样做。请重新保存恢复包：它现在包含新地址。",
+    "success": "同步服务器地址已更改",
+    "unchanged": "此设备已在使用该地址。"
   },
   "intro": {
     "description": "让您的数据在所有设备上保持一致。数据经端到端加密：同步服务器只保存它无法读取的数据。",
@@ -76,12 +84,6 @@
       "copy": "复制",
       "copied": "已复制"
     },
-    "advanced": {
-      "toggle": "高级",
-      "label": "同步服务器地址",
-      "placeholder": "https://sync.moonyfinance.com",
-      "hint": "留空则使用 Moony 的同步服务。仅在您运行自己的同步服务器时才填写。"
-    },
     "pay": {
       "description": "选择一个方案。付款页面会在浏览器中打开。",
       "plan": "方案",
@@ -89,9 +91,7 @@
       "yearly": "按年",
       "continue": "前往付款",
       "waiting": "正在等待付款。款项到账后此窗口会继续。",
-      "grantTest": "授予测试订阅",
-      "selfHosted": "这是您自己的同步服务器，无需付款。请把上面的账户编号添加到服务器的 ALLOWED_ACCOUNTS 中，然后重启服务器。",
-      "selfHostedWaiting": "正在等待服务器接受该账户。服务器接受后此窗口会继续。"
+      "ownServer": "此服务器不是 Moony cloud，因此无需付款。请改用您自己同步服务器的连接码来设置同步。"
     },
     "kit": {
       "description": "请保存您的同步恢复包。如果您丢失了所有设备，这是找回已同步数据的唯一办法。",
@@ -132,14 +132,33 @@
       "linux": "Linux 电脑",
       "ios": "iPhone",
       "android": "Android 手机"
+    },
+    "server": {
+      "title": "您的数据要同步到哪里？",
+      "encrypted": "两种方式都采用端到端加密",
+      "cloud": "Moony cloud",
+      "soon": "即将推出",
+      "cloudHint": "无需安装，由我们负责运行。",
+      "own": "自己的服务器",
+      "codeLabel": "连接码",
+      "codeHint": "请向运行您同步服务器的人索取。",
+      "found": "已找到服务器 · 版本 {{version}}",
+      "checking": "正在查找服务器…",
+      "insecureTitle": "连接未加密 (http)",
+      "insecureBody": "您的数据仍然是加密的，但同一网络中的任何人都可能截获同步访问权限，并删除或阻止服务器上已同步的数据。",
+      "insecureAck": "我明白，仍然继续",
+      "resume": "已与 {{host}} 开始设置",
+      "other": "使用其他连接码",
+      "scan": "扫描代码"
     }
   },
   "alert": {
     "lapsed": {
       "title": "同步已暂停——请续订以继续",
       "deletes": "同步数据将于 {{date}} 删除。",
-      "selfHosted": "请联系您的同步服务器运营者续订访问权限。",
-      "renew": "续订"
+      "selfHosted": "您的账户在您的同步服务器上已被封锁。请联系运营者解除封锁。",
+      "renew": "续订",
+      "titleOwnServer": "同步已暂停"
     },
     "vaultGone": {
       "text": "您的同步数据已从服务器上消失。要在此设备上关闭同步吗？",
@@ -209,7 +228,8 @@
     "description": "这会删除同步服务器上所有设备的同步数据。每台设备上的本地数据会保留。",
     "confirm": "删除同步数据",
     "success": "同步数据已删除",
-    "afterwards": "之后将从头开始设置同步，使用新的同步账户和新的恢复包。"
+    "afterwards": "之后将从头开始设置同步，使用新的同步账户和新的恢复包。",
+    "afterwardsOwnServer": "之后，您可以使用同一个连接码和新的恢复包重新设置同步。"
   },
   "danger": {
     "title": "关闭或删除",
@@ -291,8 +311,10 @@
     "warning": "此设备的数据将被同步的数据替换。会先在您的配置文件旁保存一份备份。",
     "nameLabel": "设备名称",
     "passwordLabel": "设备密码",
-    "advanced": "高级",
     "serverLabel": "同步服务器地址",
+    "serverHint": "请输入同步服务器的地址，或粘贴其连接码。",
+    "insecureAtJoin": "您用来加入的同步信息指向 {{host}}，该服务器通过未加密的 http 访问。您的数据仍然是加密的，但同一网络中的任何人都可能截获同步访问权限，并删除或阻止服务器上已同步的数据。",
+    "kitServer": "同步服务器：{{host}}",
     "pairTitle": "从手机加入",
     "pairHint": "在已开启同步的手机上：设置 → 同步 → 添加设备",
     "kitTitle": "使用恢复包",
@@ -339,9 +361,8 @@
     "notAPairingCode": "这不是配对码。",
     "devPasteTitle": "粘贴配对码 — 开发者工具",
     "devPasteLabel": "配对码",
-    "payUnavailable": "手机应用中无法为同步付款。",
-    "payWaiting": "正在等待账户激活。激活后会自动进入下一步。",
-    "payWaitingShort": "等待中…"
+    "notAConnectionCode": "此二维码不是同步服务器的连接码。",
+    "scanConnectionHint": "请将相机对准同步服务器的连接码。"
   },
   "replace": {
     "lines": {
@@ -374,5 +395,11 @@
   },
   "limits": {
     "lostDevice": "目前还无法让丢失的设备或恢复包与您的同步数据断开，而持有它的人现在就能读取其中的内容。如果有设备或恢复包丢失，请删除同步数据，并使用新的恢复包重新设置同步；您的其他设备随后需要重新加入。"
+  },
+  "codes": {
+    "pairNotForSetup": "这是配对码，不是连接码。将此设备添加到已在运行的同步时，请扫描它。",
+    "kitNotForSetup": "这是恢复包代码，不是连接码。加入已有的同步数据时请使用它。",
+    "connectionNotHere": "这是同步服务器的连接码。请在设置同步时使用，而不是在这里。",
+    "notAServerAddress": "这不是同步服务器地址。请输入您的同步服务器地址，或粘贴其连接码。"
   }
 }

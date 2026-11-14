@@ -85,6 +85,14 @@ export type SyncProblem =
   | 'serverWentBack'
   | 'internal';
 
+/** What a server answered to the check: a Moony sync server of the person's own. */
+export interface SyncServerCheck {
+  address: string;
+  host: string;
+  version: string;
+  insecure: boolean;
+}
+
 /** The `sync-status-changed` payload. */
 export interface SyncStatus {
   phase: SyncPhase;
@@ -108,6 +116,12 @@ export interface SyncStatus {
   clockAheadUntil: number | null;
   /** The developer tools are offered (debug build with sync on). */
   devTools: boolean;
+  /** The stored server is not the Moony cloud: a person's own sync server. */
+  ownServer: boolean;
+  /** The stored server's address, in every phase that has one. */
+  serverAddress: string | null;
+  /** The stored address is plain http to a host other than this computer. */
+  serverInsecure: boolean;
 }
 
 /** `sync_profile_state`: answered in every build, read-only. */
@@ -134,8 +148,8 @@ export interface SyncAccount {
 
 /**
  * Where paying for the account happens: a payment page to open (https, on polar.sh), or a
- * self-hosted relay that takes no payments (its operator adds the account number to the relay's
- * `ALLOWED_ACCOUNTS`; setup then waits until the account is active).
+ * own sync server that takes no payments (its operator adds people in the server's admin
+ * interface; an account is active until the person is blocked).
  */
 export type CheckoutTarget = { kind: 'open'; url: string } | { kind: 'selfHosted' };
 
@@ -209,6 +223,10 @@ export interface PairingView {
   expiresAt: number;
   /** The sync server as `host[:port]`, only when it is not the default one. */
   serverHost: string | null;
+  /** Joiner, at `received`: `host[:port]` of the server the received sync details name. */
+  joinServer: string | null;
+  /** Whether that server is plain http beyond this device (the person acknowledges it before joining). */
+  joinServerInsecure: boolean;
   /** Holder, in `compare`: wrong codes the person may still type before the pairing ends. */
   attemptsLeft: number | null;
 }

@@ -527,6 +527,12 @@ struct ServingSnapshot {
 }
 
 impl Relay for ServingSnapshot {
+    fn server_info(
+        &self,
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::ServerInfo>> + Send
+    {
+        self.relay.server_info()
+    }
     fn create_account(&self) -> impl std::future::Future<Output = RelayResult<String>> + Send {
         self.relay.create_account()
     }
@@ -691,7 +697,7 @@ async fn a_join_keeps_the_relay_address_of_its_credentials() {
     // An address the device could never sync with is refused before the relay is asked.
     let fresh = TestConn::new(migrated());
     let mut plain_http = vault.creds.clone();
-    plain_http.relay_url = "http://sync.example.org".into();
+    plain_http.relay_url = "ftp://sync.example.org".into();
     let gets = vault
         .relay
         .calls()

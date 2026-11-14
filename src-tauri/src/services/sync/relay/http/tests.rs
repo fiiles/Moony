@@ -123,15 +123,15 @@ fn base_urls_are_parsed_not_prefix_matched() {
         "https://sync.moonyfinance.com/",
         "http://127.0.0.1:8787",
         "http://localhost:8787/",
+        "http://localhost.evil.com",
+        "http://127.0.0.1.evil.com",
     ] {
         assert!(validate_base_url(ok).is_ok(), "{ok} is accepted");
         assert!(HttpRelay::new(ok).is_ok(), "{ok} builds a relay");
     }
     for refused in [
         "http://sync.moonyfinance.com",
-        "http://localhost.evil.com",
         "http://localhost@evil.com",
-        "http://127.0.0.1.evil.com",
         "https://user:pw@sync.moonyfinance.com",
         "https://user@sync.moonyfinance.com",
         "https://x/?q=1",
@@ -734,8 +734,10 @@ fn base_urls_are_normalized_to_their_origin() {
     ] {
         assert_eq!(normalize_base_url(given).expect(given), normal, "{given}");
     }
-    let error = normalize_base_url("http://relay.example.org").expect_err("plain http");
-    assert!(matches!(&error, AppError::Validation(k) if k == "validation.syncRelayUrlInvalid"));
+    assert_eq!(
+        normalize_base_url("http://relay.example.org").expect("plain http"),
+        "http://relay.example.org"
+    );
     assert!(is_default_relay("https://sync.moonyfinance.com/"));
     assert!(is_default_relay(DEFAULT_RELAY_URL));
     assert!(!is_default_relay("https://relay.example.org"));
@@ -788,28 +790,73 @@ fn a_relay_address_over_256_characters_is_refused() {
     }
 }
 
-#[cfg(debug_assertions)]
 #[tokio::test]
-async fn dev_grant_posts_the_days_with_the_account_header() {
-    let (base, server) = serve_once(json_answer("200 OK", r#"{"paidUntil":1800000000}"#));
-    let paid_until = relay(&base)
-        .dev_grant(ACCOUNT, 30)
-        .await
-        .expect("dev grant");
-    assert_eq!(paid_until, 1_800_000_000);
+async fn server_info_reads_the_documented_answer() {
+    let (base, server) = serve_once(json_answer(
+        "200 OK",
+        r#"{"name":"moony-sync","version":"1.0.0","protocol":2,"mode":"self_hosted"}"#,
+    ));
+    let info = relay(&base).server_info().await.expect("server info");
+    assert_eq!(
+        info,
+        ServerInfo {
+            version: "1.0.0".into(),
+            protocol: 2,
+            mode: ServerMode::SelfHosted,
+        }
+    );
     let request = server.join().expect("server");
-    assert_eq!(request.request_line(), "POST /v1/dev/grant HTTP/1.1");
-    assert_eq!(request.header("moony-account").as_deref(), Some(ACCOUNT));
+    assert_eq!(request.request_line(), "GET /v1/server HTTP/1.1");
+    assert_eq!(request.header("moony-account"), None);
     assert_eq!(request.header("authorization"), None);
-    let body: serde_json::Value = serde_json::from_slice(&request.body).expect("json body");
-    assert_eq!(body, serde_json::json!({"days": 30}));
+}
 
-    // A relay without DEV_GRANT=1 does not know the route.
-    let (base, server) = serve_once(json_answer("404 Not Found", r#"{"error":"not_found"}"#));
-    let error = relay(&base)
-        .dev_grant(ACCOUNT, 30)
-        .await
-        .expect_err("no grant");
-    assert_eq!(error, RelayError::BadRequest("not_found".into()));
-    server.join().expect("server");
+#[tokio::test]
+async fn server_info_refuses_what_is_not_a_moony_server() {
+    async fn ask(response: Vec<u8>) -> RelayResult<ServerInfo> {
+        let (base, server) = serve_once(response);
+        let result = relay(&base).server_info().await;
+        server.join().expect("server");
+        result
+    }
+    let good = |name: &str, version: &str, mode: &str| {
+        json_answer(
+            "200 OK",
+            &format!(r#"{{"name":"{name}","version":"{version}","protocol":2,"mode":"{mode}"}}"#),
+        )
+    };
+
+    assert_eq!(
+        ask(json_answer("404 Not Found", r#"{"error":"not_found"}"#)).await,
+        Err(RelayError::BadRequest("not_found".into()))
+    );
+    assert_eq!(
+        ask(answer("200 OK", &[], b"<html>hello</html>")).await,
+        Err(RelayError::Protocol("not json".into()))
+    );
+    assert_eq!(
+        ask(good("other", "1.0.0", "self_hosted")).await,
+        Err(RelayError::Protocol("not a sync server".into()))
+    );
+    for version in ["", &"1".repeat(40), "1.0 0", "1.0/0"] {
+        assert_eq!(
+            ask(good("moony-sync", version, "self_hosted")).await,
+            Err(RelayError::Protocol("version".into())),
+            "{version:?}"
+        );
+    }
+    assert_eq!(
+        ask(good("moony-sync", "1.2.3-rc.1+b5", "cloud")).await,
+        Ok(ServerInfo {
+            version: "1.2.3-rc.1+b5".into(),
+            protocol: 2,
+            mode: ServerMode::Cloud,
+        })
+    );
+    assert_eq!(
+        ask(good("moony-sync", "1.0.0", "weird"))
+            .await
+            .map(|i| i.mode),
+        Ok(ServerMode::Other)
+    );
 }

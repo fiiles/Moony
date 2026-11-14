@@ -46,10 +46,18 @@
     "pending": "Venter på å bli sendt: {{number}}",
     "clockAhead": "Klokken på denne enheten (eller på en enhet den synkroniserte med) gikk for fort på et tidspunkt, så endringene herfra er datert {{date}} frem til da. De synkroniseres fortsatt; hvis det samme elementet redigeres på en annen enhet, vinner versjonen fra denne enheten frem til den datoen.",
     "subscription": "Abonnement",
-    "selfHosted": "Selvdrevet server",
     "paidUntil": "Betalt til {{date}}",
     "syncNow": "Synkroniser nå",
     "showKit": "Vis gjenopprettingssettet"
+  },
+  "server": {
+    "label": "Synkroniseringsserver",
+    "insecure": "Ukryptert tilkobling (http)",
+    "change": "Endre adresse",
+    "dialogTitle": "Endre serveradressen",
+    "dialogBody": "Bruk dette når synkroniseringsserveren din har flyttet til en ny adresse. Det må være den samme serveren, med de synkroniserte dataene dine. Hver enhet endrer sin egen adresse, så gjør det samme på de andre enhetene dine. Lagre gjenopprettingssettet på nytt: det inneholder nå den nye adressen.",
+    "success": "Adressen til synkroniseringsserveren er endret",
+    "unchanged": "Denne enheten bruker allerede denne adressen."
   },
   "intro": {
     "description": "Hold dataene dine oppdatert på alle enhetene dine. De er ende-til-ende-kryptert: synkroniseringsserveren lagrer bare data den ikke kan lese.",
@@ -76,12 +84,6 @@
       "copy": "Kopier",
       "copied": "Kopiert"
     },
-    "advanced": {
-      "toggle": "Avansert",
-      "label": "Adresse til synkroniseringsserveren",
-      "placeholder": "https://sync.moonyfinance.com",
-      "hint": "La feltet stå tomt for å bruke Moonys synkroniseringstjeneste. Fyll det ut bare hvis du driver din egen synkroniseringsserver."
-    },
     "pay": {
       "description": "Velg en plan. Betalingen åpnes i nettleseren.",
       "plan": "Plan",
@@ -89,9 +91,7 @@
       "yearly": "Årlig",
       "continue": "Fortsett til betaling",
       "waiting": "Venter på betalingen. Dette vinduet går videre når den kommer.",
-      "grantTest": "Gi et prøveabonnement",
-      "selfHosted": "Dette er din egen synkroniseringsserver, så det er ingenting å betale. Legg kontonummeret over til i ALLOWED_ACCOUNTS på serveren og start den på nytt.",
-      "selfHostedWaiting": "Venter på at serveren godtar kontoen. Dette vinduet går videre når den gjør det."
+      "ownServer": "Denne serveren er ikke Moony cloud, så det er ingenting å betale. Sett opp synkroniseringen med tilkoblingskoden til din egen synkroniseringsserver i stedet."
     },
     "kit": {
       "description": "Lagre gjenopprettingssettet for synkronisering. Det er den eneste måten å få tilbake de synkroniserte dataene på hvis du mister alle enhetene dine.",
@@ -132,14 +132,33 @@
       "linux": "Linux-PC",
       "ios": "iPhone",
       "android": "Android-telefon"
+    },
+    "server": {
+      "title": "Hvor skal dataene dine synkroniseres?",
+      "encrypted": "Ende-til-ende-kryptert i begge tilfeller",
+      "cloud": "Moony cloud",
+      "soon": "Kommer snart",
+      "cloudHint": "Ingenting å installere, vi drifter det.",
+      "own": "Egen server",
+      "codeLabel": "Tilkoblingskode",
+      "codeHint": "Du får den av den som drifter synkroniseringsserveren din.",
+      "found": "Server funnet · versjon {{version}}",
+      "checking": "Leter etter serveren…",
+      "insecureTitle": "Tilkoblingen er ikke kryptert (http)",
+      "insecureBody": "Dataene dine forblir krypterte, men alle på samme nettverk kan fange opp tilgangen til synkroniseringen og slette eller blokkere de synkroniserte dataene på serveren.",
+      "insecureAck": "Jeg forstår, fortsett likevel",
+      "resume": "Oppsettet startet med {{host}}",
+      "other": "Bruk en annen tilkoblingskode",
+      "scan": "Skann kode"
     }
   },
   "alert": {
     "lapsed": {
       "title": "Synkroniseringen er satt på pause – forny for å fortsette",
       "deletes": "De synkroniserte dataene slettes {{date}}.",
-      "selfHosted": "Be operatøren av synkroniseringsserveren din om å fornye tilgangen.",
-      "renew": "Forny"
+      "selfHosted": "Kontoen din er sperret på synkroniseringsserveren din. Be den som driver den om å oppheve sperren.",
+      "renew": "Forny",
+      "titleOwnServer": "Synkroniseringen er satt på pause"
     },
     "vaultGone": {
       "text": "De synkroniserte dataene dine er borte fra serveren. Slå av synkronisering på denne enheten?",
@@ -215,7 +234,8 @@
     "description": "Dette sletter de synkroniserte dataene på synkroniseringsserveren for alle enheter. De lokale dataene på hver enhet blir værende.",
     "confirm": "Slett synkroniserte data",
     "success": "Synkroniserte data slettet",
-    "afterwards": "Etterpå settes synkroniseringen opp fra start, med en ny synkroniseringskonto og et nytt gjenopprettingssett."
+    "afterwards": "Etterpå settes synkroniseringen opp fra start, med en ny synkroniseringskonto og et nytt gjenopprettingssett.",
+    "afterwardsOwnServer": "Etterpå kan du sette opp synkroniseringen på nytt med den samme tilkoblingskoden og et nytt gjenopprettingssett."
   },
   "danger": {
     "title": "Slå av eller slett",
@@ -298,8 +318,10 @@
     "warning": "Dataene på denne enheten erstattes med de synkroniserte dataene. En sikkerhetskopi lagres først ved siden av profilen din.",
     "nameLabel": "Enhetsnavn",
     "passwordLabel": "Enhetspassord",
-    "advanced": "Avansert",
     "serverLabel": "Adresse til synkroniseringsserveren",
+    "serverHint": "Skriv adressen til synkroniseringsserveren din, eller lim inn tilkoblingskoden.",
+    "insecureAtJoin": "Synkroniseringsdetaljene du blir med på, peker til {{host}}, som nås over vanlig http. Dataene dine forblir krypterte, men alle på samme nettverk kan fange opp tilgangen til synkroniseringen og slette eller blokkere de synkroniserte dataene på serveren.",
+    "kitServer": "Synkroniseringsserver: {{host}}",
     "pairTitle": "Bli med fra telefonen",
     "pairHint": "På telefonen med synkronisering på: Innstillinger → Synkronisering → Legg til en enhet",
     "kitTitle": "Bruk et gjenopprettingssett",
@@ -346,9 +368,8 @@
     "notAPairingCode": "Dette er ikke en koblingskode.",
     "devPasteTitle": "Lim inn en koblingskode — utviklerverktøy",
     "devPasteLabel": "Koblingskode",
-    "payUnavailable": "Betaling for synkronisering er ikke tilgjengelig i mobilappen.",
-    "payWaiting": "Venter på at kontoen blir aktiv. Når den blir det, går det videre av seg selv.",
-    "payWaitingShort": "Venter …"
+    "notAConnectionCode": "Denne QR-koden er ikke en tilkoblingskode for en synkroniseringsserver.",
+    "scanConnectionHint": "Rett kameraet mot tilkoblingskoden til synkroniseringsserveren din."
   },
   "replace": {
     "lines": {
@@ -381,5 +402,11 @@
   },
   "limits": {
     "lostDevice": "En mistet enhet eller et mistet gjenopprettingssett kan ikke stenges ute fra de synkroniserte dataene dine ennå, og alle som har ett, kan allerede lese det det inneholder. Hvis noe forsvinner, sletter du de synkroniserte dataene og setter opp synkroniseringen på nytt med et nytt sett; de andre enhetene dine må da koble seg til igjen."
+  },
+  "codes": {
+    "pairNotForSetup": "Dette er en paringskode, ikke en tilkoblingskode. Skann den når du legger denne enheten til en synkronisering som allerede kjører.",
+    "kitNotForSetup": "Dette er en kode fra gjenopprettingssettet, ikke en tilkoblingskode. Bruk den når du kobler til synkroniserte data som allerede finnes.",
+    "connectionNotHere": "Dette er en tilkoblingskode for en synkroniseringsserver. Bruk den når du setter opp synkronisering, ikke her.",
+    "notAServerAddress": "Dette er ikke adressen til en synkroniseringsserver. Skriv inn adressen til synkroniseringsserveren din, eller lim inn tilkoblingskoden."
   }
 }

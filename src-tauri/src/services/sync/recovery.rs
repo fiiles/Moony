@@ -19,6 +19,7 @@ use qrcode::{EcLevel, QrCode};
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
+use super::connection_code::server_address_from_input;
 use super::keys::VaultId;
 use super::relay::http::{is_default_relay, normalize_base_url, DEFAULT_RELAY_URL};
 use crate::error::{AppError, Result};
@@ -310,8 +311,8 @@ pub fn read_recovery_input(
     if account.len() != ACCOUNT_DIGITS || !account.bytes().all(|b| b.is_ascii_digit()) {
         return Err(account_invalid());
     }
-    let relay_url = match relay_url.map(str::trim).filter(|url| !url.is_empty()) {
-        Some(url) => normalize_base_url(url)?,
+    let relay_url = match relay_url.filter(|url| !url.trim().is_empty()) {
+        Some(url) => server_address_from_input(url)?,
         None => normalize_base_url(default_relay)?,
     };
     Ok(RecoveryInput {
@@ -585,7 +586,7 @@ mod tests {
             assert_eq!(invalid(&input), code, "{input}");
         }
         // A relay address the app would never use (plain http to another host).
-        let http = format!("moony-recover:1:{ACCOUNT}:{V2}:aHR0cDovL3JlbGF5LmV4YW1wbGUub3Jn");
+        let http = format!("moony-recover:1:{ACCOUNT}:{V2}:ZnRwOi8vcmVsYXkuZXhhbXBsZS5vcmc");
         assert_eq!(invalid(&http), "validation.syncRelayUrlInvalid");
     }
 
@@ -653,11 +654,35 @@ mod tests {
             )),
             "validation.syncRecoveryCodeInvalid"
         );
-        let http = format!("moony-recover:1:{ACCOUNT}:{V2}:aHR0cDovL3JlbGF5LmV4YW1wbGUub3Jn");
+        let http = format!("moony-recover:1:{ACCOUNT}:{V2}:ZnRwOi8vcmVsYXkuZXhhbXBsZS5vcmc");
         assert_eq!(
             key_of(read_recovery_input(&http, None, None, DEFAULT)),
             "validation.syncRelayUrlInvalid"
         );
+    }
+
+    #[test]
+    fn a_plain_http_server_on_the_local_network_is_read() {
+        let grouped = format_recovery_code(V2);
+        let input = read_recovery_input(
+            &grouped,
+            Some(ACCOUNT),
+            Some("http://192.168.1.20:8787"),
+            DEFAULT,
+        )
+        .expect("plain http server");
+        assert_eq!(input.relay_url, "http://192.168.1.20:8787");
+    }
+
+    #[test]
+    fn a_typed_kit_takes_a_connection_code_as_its_server() {
+        use crate::services::sync::connection_code::encode_connection_code;
+        let grouped = format_recovery_code(V2);
+        let code = encode_connection_code("http://192.168.1.20:8787", "1111222233334444");
+        let input = read_recovery_input(&grouped, Some(ACCOUNT), Some(&code), DEFAULT)
+            .expect("typed Kit, connection code");
+        assert_eq!(input.relay_url, "http://192.168.1.20:8787");
+        assert_eq!(input.account, ACCOUNT, "the code's account is ignored");
     }
 
     #[test]
@@ -709,7 +734,7 @@ mod tests {
             key_of(read_recovery_input(
                 &grouped,
                 Some(ACCOUNT),
-                Some("http://evil.example"),
+                Some("ftp://evil.example"),
                 DEFAULT
             )),
             "validation.syncRelayUrlInvalid"

@@ -30,8 +30,8 @@ use tauri::{AppHandle, State};
 use zeroize::Zeroizing;
 
 use super::sync::{
-    app_error, data_dir, guarded_change, kit_owner, now, require_feature, sync_on, verify_password,
-    AppEngine, KeychainBinding, KitOwner,
+    app_error, app_error_for, data_dir, guarded_change, kit_owner, mapped_for_server, now,
+    require_feature, sync_on, verify_password, AppEngine, KeychainBinding, KitOwner,
 };
 use super::sync_backups::{consent_of, outcome_view};
 use crate::db::Database;
@@ -39,6 +39,7 @@ use crate::error::{AppError, Result};
 use crate::models::sync::{
     PairingRole, PairingStage, PairingView, ReplaceConsentView, ReplaceOutcomeView, SyncDevice,
 };
+use crate::services::sync::connection_code::server_address_from_input;
 use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::impact::IMPACT_CHANGED;
 use crate::services::sync::keys::{self, Credentials};
@@ -46,7 +47,8 @@ use crate::services::sync::pairing::session::{keeps_session, PairingSession, Sta
 use crate::services::sync::pairing::{pairing_code_text, typed_code_digits, MailboxId, Role, Side};
 use crate::services::sync::recovery::{qr_svg, read_recovery_input};
 use crate::services::sync::relay::http::{
-    default_base_url, is_default_relay, normalize_base_url, HttpRelay,
+    default_base_url, display_host, is_default_relay, is_insecure_address, normalize_base_url,
+    HttpRelay,
 };
 use crate::services::sync::relay::Mailbox;
 use crate::services::sync::{devices, feature, join, state};
@@ -283,6 +285,11 @@ fn view_of(session: &PairingSession, dev_tools: bool) -> Result<PairingView> {
     let showing = session.side() == Side::Shower && session.stage() == Stage::WaitingForScan;
     let code = showing.then(|| pairing_code_text(&session.code()));
     let qr = code.as_deref().map(qr_svg).transpose()?;
+    // The server of the received credentials, once they are here: where the account is used.
+    let joined = session
+        .received()
+        .filter(|_| session.role() == Role::Joiner && session.stage() == Stage::Received)
+        .map(|creds| creds.relay_url.as_str());
     Ok(PairingView {
         stage: stage_of(session.stage()),
         role: match session.role() {
@@ -295,6 +302,8 @@ fn view_of(session: &PairingSession, dev_tools: bool) -> Result<PairingView> {
         contested: session.contested(),
         expires_at: session.wiped_at(),
         server_host: server_host(session.relay_url()),
+        join_server: joined.and_then(display_host),
+        join_server_insecure: joined.is_some_and(is_insecure_address),
         attempts_left: (session.role() == Role::Holder && session.stage() == Stage::Compare)
             .then(|| session.attempts_left()),
     })
@@ -305,12 +314,7 @@ fn server_host(relay_url: &str) -> Option<String> {
     if is_default_relay(relay_url) {
         return None;
     }
-    let url = reqwest::Url::parse(relay_url).ok()?;
-    let host = url.host_str()?;
-    Some(match url.port() {
-        Some(port) => format!("{host}:{port}"),
-        None => host.to_string(),
-    })
+    display_host(relay_url)
 }
 
 fn stage_of(stage: Stage) -> PairingStage {
@@ -340,18 +344,19 @@ fn joiner_name(role: Role, name: Option<String>) -> Result<Option<String>> {
 }
 
 /// The sync server of the mailbox this device shows (plan correction 2): a holder's stored
-/// account address (`validation.syncSetupIncomplete` without one); a joiner's typed address, else
-/// its stored account address, else `default_base_url()`. Normalized.
+/// account address (`validation.syncSetupIncomplete` without one); a joiner's typed address or
+/// connection code (`server_address_from_input`: only the code's address is used), else its
+/// stored account address, else `default_base_url()`. Normalized.
 fn shower_relay(conn: &Connection, role: Role, typed: Option<&str>) -> Result<String> {
     let stored = keys::account(conn)?.map(|(url, _)| url);
     let url = match role {
         Role::Holder => stored.ok_or_else(|| AppError::Validation(SETUP_INCOMPLETE.into()))?,
-        Role::Joiner => typed
-            .map(str::trim)
-            .filter(|url| !url.is_empty())
-            .map(str::to_string)
-            .or(stored)
-            .unwrap_or_else(default_base_url),
+        Role::Joiner => {
+            return match typed.filter(|text| !text.trim().is_empty()) {
+                Some(text) => server_address_from_input(text),
+                None => normalize_base_url(&stored.unwrap_or_else(default_base_url)),
+            }
+        }
     };
     normalize_base_url(&url)
 }
@@ -682,6 +687,7 @@ pub async fn sync_pairing_join(
         return Err(AppError::Validation(FAILED.into()));
     };
     let relay = HttpRelay::new(&creds.relay_url)?;
+    let relay_url = creds.relay_url.clone();
     let native = KeychainBinding { app: app.clone() };
     let join = join::join_new_device(
         &relay,
@@ -708,7 +714,7 @@ pub async fn sync_pairing_join(
             if !after_join_error(&error) {
                 pairing.dispose_current();
             }
-            Err(app_error(error))
+            Err(app_error_for(&relay_url, error))
         }
     }
 }
@@ -744,6 +750,7 @@ pub async fn sync_join_with_recovery_kit(
     )?;
     drop(code);
     let relay = HttpRelay::new(&input.relay_url)?;
+    let relay_url = input.relay_url.clone();
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
@@ -761,6 +768,7 @@ pub async fn sync_join_with_recovery_kit(
         )
         .await
     };
+    let join = mapped_for_server(relay_url, join);
     let outcome = guarded_change(&AppEngine { app: &app, db: &db }, join).await?;
     Ok(outcome_view(&outcome))
 }

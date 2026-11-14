@@ -46,10 +46,18 @@
     "pending": "Waiting to be sent: {{number}}",
     "clockAhead": "This device's clock was ahead at some point (or that of a device it synced with), so its changes are dated {{date}} until then. They still sync; if the same item is edited on another device, this device's version wins until that date.",
     "subscription": "Subscription",
-    "selfHosted": "Self-hosted server",
     "paidUntil": "Paid until {{date}}",
     "syncNow": "Sync now",
     "showKit": "Show Recovery Kit"
+  },
+  "server": {
+    "label": "Sync server",
+    "insecure": "Unencrypted connection (http)",
+    "change": "Change address",
+    "dialogTitle": "Change the server address",
+    "dialogBody": "Use this when your sync server moved to a new address. It must be the same server, with your synced data. Every device changes its own address, so do the same on your other devices. Save the Recovery Kit again: it now carries the new address.",
+    "success": "Sync server address changed",
+    "unchanged": "This device already uses this address."
   },
   "intro": {
     "description": "Keep your data in step on all your devices. It is end-to-end encrypted: the sync server only stores data it cannot read.",
@@ -76,12 +84,6 @@
       "copy": "Copy",
       "copied": "Copied"
     },
-    "advanced": {
-      "toggle": "Advanced",
-      "label": "Sync server address",
-      "placeholder": "https://sync.moonyfinance.com",
-      "hint": "Leave empty to use Moony's sync service. Fill it in only if you run your own sync server."
-    },
     "pay": {
       "description": "Choose a plan. Payment opens in your browser.",
       "plan": "Plan",
@@ -89,9 +91,7 @@
       "yearly": "Yearly",
       "continue": "Continue to payment",
       "waiting": "Waiting for the payment. This window moves on when it arrives.",
-      "grantTest": "Grant a test subscription",
-      "selfHosted": "This is your own sync server, so there is nothing to pay. Add the account number above to ALLOWED_ACCOUNTS on the server and restart it.",
-      "selfHostedWaiting": "Waiting for the server to accept the account. This window moves on when it does."
+      "ownServer": "This server is not the Moony cloud, so there is nothing to pay. Set sync up with the connection code of your own sync server instead."
     },
     "kit": {
       "description": "Save your Sync Recovery Kit. It is the only way to get your synced data back if you lose all your devices.",
@@ -132,14 +132,33 @@
       "linux": "Linux PC",
       "ios": "iPhone",
       "android": "Android phone"
+    },
+    "server": {
+      "title": "Where should your data sync?",
+      "encrypted": "End-to-end encrypted either way",
+      "cloud": "Moony cloud",
+      "soon": "Coming soon",
+      "cloudHint": "Nothing to install, we run it.",
+      "own": "Own server",
+      "codeLabel": "Connection code",
+      "codeHint": "You get it from whoever runs your sync server.",
+      "found": "Server found · version {{version}}",
+      "checking": "Looking for the server…",
+      "insecureTitle": "The connection is not encrypted (http)",
+      "insecureBody": "Your data stays encrypted, but anyone on the same network can capture the access to sync and delete or block the synced data on the server.",
+      "insecureAck": "I understand, continue anyway",
+      "resume": "Setup started with {{host}}",
+      "other": "Use another connection code",
+      "scan": "Scan code"
     }
   },
   "alert": {
     "lapsed": {
       "title": "Sync paused — renew to continue",
       "deletes": "Synced data will be deleted on {{date}}.",
-      "selfHosted": "Ask the operator of your sync server to renew access.",
-      "renew": "Renew"
+      "selfHosted": "Your account is blocked on your sync server. Ask whoever runs it to unblock it.",
+      "renew": "Renew",
+      "titleOwnServer": "Sync paused"
     },
     "vaultGone": {
       "text": "Your synced data is gone from the server. Turn sync off on this device?",
@@ -215,7 +234,8 @@
     "description": "This deletes the synced data on the sync server for every device. The local data on every device stays.",
     "confirm": "Delete synced data",
     "success": "Synced data deleted",
-    "afterwards": "Afterwards sync is set up from the start, with a new sync account and a new Recovery Kit."
+    "afterwards": "Afterwards sync is set up from the start, with a new sync account and a new Recovery Kit.",
+    "afterwardsOwnServer": "Afterwards you can set sync up again with the same connection code and a new Recovery Kit."
   },
   "danger": {
     "title": "Turn off or delete",
@@ -298,8 +318,10 @@
     "warning": "This device's data is replaced by the synced data. A backup is saved next to your profile first.",
     "nameLabel": "Device name",
     "passwordLabel": "Device password",
-    "advanced": "Advanced",
     "serverLabel": "Sync server address",
+    "serverHint": "Type the address of your sync server, or paste its connection code.",
+    "insecureAtJoin": "The sync details you are joining with point to {{host}}, which is reached over plain http. Your data stays encrypted, but anyone on the same network can capture the access to sync and delete or block the synced data on the server.",
+    "kitServer": "Sync server: {{host}}",
     "pairTitle": "Join from your phone",
     "pairHint": "On the phone with sync on: Settings → Sync → Add a device",
     "kitTitle": "Use a Recovery Kit",
@@ -346,9 +368,8 @@
     "notAPairingCode": "This is not a pairing code.",
     "devPasteTitle": "Paste a pairing code — developer tool",
     "devPasteLabel": "Pairing code",
-    "payUnavailable": "Paying for sync is not available in the phone app.",
-    "payWaiting": "Waiting for the account to become active. This moves on by itself when it does.",
-    "payWaitingShort": "Waiting…"
+    "notAConnectionCode": "This QR code is not a connection code for a sync server.",
+    "scanConnectionHint": "Point the camera at the connection code of your sync server."
   },
   "replace": {
     "lines": {
@@ -381,5 +402,11 @@
   },
   "limits": {
     "lostDevice": "A lost device or Recovery Kit can't be cut off from your synced data yet, and anyone who has one can already read what it holds. If one goes missing, delete the synced data and set sync up again with a new Kit; your other devices will then need to join again."
+  },
+  "codes": {
+    "pairNotForSetup": "This is a pairing code, not a connection code. Scan it when you add this device to sync that is already running.",
+    "kitNotForSetup": "This is a Recovery Kit code, not a connection code. Use it when you join synced data that already exists.",
+    "connectionNotHere": "This is a connection code for a sync server. Use it when you set up sync, not here.",
+    "notAServerAddress": "This is not a sync server address. Type the address of your sync server, or paste its connection code."
   }
 }

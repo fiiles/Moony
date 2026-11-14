@@ -39,6 +39,13 @@ export function useDeviceSyncMutations() {
     mutationFn: (relayUrl?: string) => deviceSyncApi.createAccount(relayUrl),
     onSuccess: refreshSyncState,
   });
+  // gcTime 0: the mutation keeps the connection code (its variables) in state, so it leaves the
+  // mutation cache with the screen; setup also `reset()`s it when it closes.
+  const connectOwnServer = useMutation({
+    mutationFn: (connectionCode: string) => deviceSyncApi.connectOwnServer(connectionCode),
+    onSuccess: refreshSyncState,
+    gcTime: 0,
+  });
   const startCheckout = useMutation({
     mutationFn: deviceSyncApi.startCheckout,
     onSuccess: refreshSyncState,
@@ -114,6 +121,14 @@ export function useDeviceSyncMutations() {
     gcTime: 0,
     onSuccess: refreshLocalData,
   });
+  // The password is a mutation variable: the dialog or sheet that asks for it calls `reset()` when
+  // it leaves.
+  const changeServerAddress = useMutation({
+    mutationFn: ({ password, address }: { password: string; address: string }) =>
+      deviceSyncApi.changeServerAddress(password, address),
+    gcTime: 0,
+    onSuccess: refreshSyncState,
+  });
   // Joining with a kit replaces this device's data, like repair and re-sync.
   const joinWithRecoveryKit = useMutation({
     mutationKey: REPLACE_DEVICE_MUTATION_KEY,
@@ -146,13 +161,10 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.renameDevice,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] }),
   });
-  const devGrant = useMutation({
-    mutationFn: deviceSyncApi.devGrant,
-    onSuccess: refreshSyncState,
-  });
 
   return {
     createAccount,
+    connectOwnServer,
     startCheckout,
     prepareRecoveryKit,
     prepareKitWithPassword,
@@ -165,10 +177,10 @@ export function useDeviceSyncMutations() {
     deleteSyncedData,
     repairDevice,
     resyncDevice,
+    changeServerAddress,
     joinWithRecoveryKit,
     deleteBackup,
     skipMissingChange,
     renameDevice,
-    devGrant,
   };
 }

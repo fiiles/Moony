@@ -336,6 +336,22 @@ pub fn save_account(conn: &Connection, relay_url: &str, account: &str) -> Result
     })
 }
 
+/// Swaps the stored server address, one `UPDATE` of `sync_state.relay_url`; the account, the vault
+/// secrets and everything else stay. A profile without a `sync_state` row is left without one
+/// (`validation.syncSetupIncomplete`, nothing written).
+pub fn save_relay_url(conn: &Connection, relay_url: &str) -> Result<()> {
+    let changed = conn.execute(
+        "UPDATE sync_state SET relay_url = ?1 WHERE id = 1",
+        params![relay_url],
+    )?;
+    if changed == 0 {
+        return Err(AppError::Validation(
+            "validation.syncSetupIncomplete".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// `(relay_url, account)`, or `None` before an account is saved.
 pub fn account(conn: &Connection) -> Result<Option<(String, String)>> {
     let row: Option<(Option<String>, Option<String>)> = conn
@@ -531,6 +547,18 @@ mod tests {
             keys: VaultKeys::from_parts(1, BTreeMap::from([(0, [0x01; 32]), (1, [0x11; 32])]))
                 .expect("keys"),
         }
+    }
+
+    #[test]
+    fn saving_a_relay_url_without_a_sync_state_row_is_refused() {
+        let conn = migrated();
+        conn.execute("DELETE FROM sync_state", []).expect("delete");
+        let error = save_relay_url(&conn, "https://other.example.org").expect_err("no row");
+        assert!(matches!(
+            error,
+            AppError::Validation(key) if key == "validation.syncSetupIncomplete"
+        ));
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_state"), 0);
     }
 
     #[test]

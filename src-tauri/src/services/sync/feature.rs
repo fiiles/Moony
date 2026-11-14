@@ -39,7 +39,7 @@ pub fn enabled() -> bool {
     decide(RELEASED, cfg!(debug_assertions), dev.as_deref(), BUILT_WITH)
 }
 
-/// Whether the developer tools of sync (the dev grant, the measurements) are offered.
+/// Whether the developer tools of sync (the measurements) are offered.
 pub fn dev_tools() -> bool {
     cfg!(debug_assertions) && enabled()
 }

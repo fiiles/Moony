@@ -255,6 +255,9 @@ async fn the_status_counts_pending_changes_and_held_devices() {
             deletes_at: None,
             clock_ahead_until: None,
             dev_tools: crate::services::sync::feature::dev_tools(),
+            own_server: true,
+            server_address: Some("https://relay.test".into()),
+            server_insecure: false,
         }
     );
 }
@@ -601,6 +604,7 @@ async fn a_capture_broken_profile_never_syncs() {
 #[tokio::test]
 async fn lapsed_subscription_keeps_pulling_and_reports_the_deletion_date() {
     let vault = super::vault().await;
+    on_the_cloud(&vault.a.lock());
     let b1 = write_and_seal(&vault, &vault.b, "b1");
     push(&vault.relay, &vault.creds, &[b1]).await;
     let paid_until = real_now() - DAY;

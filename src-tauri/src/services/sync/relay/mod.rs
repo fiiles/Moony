@@ -48,6 +48,26 @@ pub struct VaultInfo {
     pub rotation: u32,
 }
 
+/// What a server says it is (`GET /v1/server`, spec §9.3): `protocol` is the version of this
+/// contract, `mode` how the server is run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServerMode {
+    /// A person's own server (`self_hosted`).
+    SelfHosted,
+    /// The Moony cloud (`cloud`).
+    Cloud,
+    /// Any other value: a mode this app does not know.
+    Other,
+}
+
+/// `GET /v1/server`. `version` is 1–32 characters of `[0-9A-Za-z.+-]`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerInfo {
+    pub version: String,
+    pub protocol: u32,
+    pub mode: ServerMode,
+}
+
 /// One sealed op on its way to the relay.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutgoingOp {
@@ -137,6 +157,10 @@ pub enum RelayError {
     /// checkout answers `409 self_hosted`.
     #[error("self-hosted relay")]
     SelfHosted,
+    /// `403 registration_closed`: a self-hosted server takes no new accounts; its operator adds
+    /// people.
+    #[error("registration closed")]
+    RegistrationClosed,
     /// `409 slot_taken`: the pairing slot was already written (by this device, or by someone
     /// who guessed the ID first).
     #[error("pairing slot taken")]
@@ -184,16 +208,17 @@ struct ErrorBody {
 
 impl RelayError {
     /// The typed error of a relay answer that is not a success, by status and the `"error"` code
-    /// of its `{"error": "<code>"}` body. Rate limits, redirects and 5xx go by status alone (an
-    /// edge or proxy may answer them with HTML); everything else needs the documented code for its
-    /// status, and an unknown code or a body that is not that JSON shape is `Protocol`. A `502` /
-    /// `503` of the checkout route is `CheckoutUnavailable`, decided by the caller, which knows the
-    /// route.
+    /// of its `{"error": "<code>"}` body. Rate limits, redirects, `408` and 5xx go by status alone
+    /// (an edge or proxy may answer them with HTML); everything else needs the documented code for
+    /// its status, and an unknown code or a body that is not that JSON shape is `Protocol`. A `502`
+    /// / `503` of the checkout route is `CheckoutUnavailable`, decided by the caller, which knows
+    /// the route.
     pub fn from_response(status: u16, body: &[u8]) -> Self {
         match status {
             300..=399 => return RelayError::Protocol("redirect".into()),
             429 => return RelayError::RateLimited,
-            500..=599 => return RelayError::Server(status),
+            // A slow upload (`408 body_timeout`) passes like a busy server (`503 busy`).
+            408 | 500..=599 => return RelayError::Server(status),
             400..=499 => {}
             _ => return RelayError::Protocol("unexpected status".into()),
         }
@@ -209,6 +234,8 @@ impl RelayError {
             (402, "payment_required") => RelayError::PaymentRequired,
             (403, "token_read_only") => RelayError::TokenReadOnly,
             (403, "vault_limit_reached") => RelayError::VaultLimitReached,
+            (403, "registration_closed") => RelayError::RegistrationClosed,
+            (403, "managed_by_operator") => RelayError::BadRequest("managed_by_operator".into()),
             (404, "account_not_found") => RelayError::AccountNotFound,
             (404, "vault_not_found") => RelayError::VaultNotFound,
             (404, "no_snapshot") => RelayError::NoSnapshot,
@@ -238,6 +265,8 @@ impl RelayError {
 
 /// The relay calls of the sync engine. `HttpRelay` talks to the real relay; tests use a fake.
 pub trait Relay: Send + Sync {
+    /// `GET /v1/server`: what the server is and which protocol it speaks. No credentials.
+    fn server_info(&self) -> impl Future<Output = RelayResult<ServerInfo>> + Send;
     /// `POST /v1/accounts` → the new 16-digit account number.
     fn create_account(&self) -> impl Future<Output = RelayResult<String>> + Send;
     /// `GET /v1/accounts/me`.
@@ -357,6 +386,9 @@ mod tests {
             (402, "payment_required", E::PaymentRequired),
             (403, "token_read_only", E::TokenReadOnly),
             (403, "vault_limit_reached", E::VaultLimitReached),
+            // A self-hosted server (spec §5.3, §5.5): no open registration, no self-deletion.
+            (403, "registration_closed", E::RegistrationClosed),
+            (403, "managed_by_operator", bad("managed_by_operator")),
             (404, "vault_not_found", E::VaultNotFound),
             (404, "no_snapshot", E::NoSnapshot),
             (409, "vault_exists", E::VaultExists),
@@ -411,6 +443,29 @@ mod tests {
             "{sync:?}"
         );
         assert!(sync.backs_off());
+    }
+
+    /// The Node sync server answers `503 {"error":"busy"}` (body budget, mailbox caps) and
+    /// `408 {"error":"body_timeout"}` (a slow upload): both pass, so a round backs off and tries
+    /// again instead of stopping on a permanent refusal.
+    #[test]
+    fn a_busy_or_slow_server_is_a_transient_relay_error() {
+        use crate::services::sync::error::{SyncError, Transient};
+        for (status, code) in [(503, "busy"), (408, "body_timeout")] {
+            let error = RelayError::from_response(status, &body(code));
+            assert_eq!(error, E::Server(status), "{status} {code}");
+            let sync = SyncError::from(error);
+            assert!(
+                matches!(sync, SyncError::Transient(Transient::Relay)),
+                "{status}: {sync:?}"
+            );
+            assert!(sync.backs_off(), "{status}");
+        }
+        // Whatever the body (an edge may answer a timeout with HTML), the status decides.
+        assert_eq!(
+            RelayError::from_response(408, b"<html>timeout</html>"),
+            E::Server(408)
+        );
     }
 
     #[test]

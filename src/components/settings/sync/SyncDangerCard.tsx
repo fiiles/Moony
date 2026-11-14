@@ -19,6 +19,9 @@ export function SyncDangerCard() {
   // Re-sync would replace this device's data with the server's older copy: not offered while the
   // server has gone back (the status text says so)
   const canResync = status?.problem !== 'serverWentBack';
+  const deleteAfterwards = t(
+    status?.ownServer ? 'delete.afterwardsOwnServer' : 'delete.afterwards'
+  );
   const resetDelete = deleteSyncedData.reset;
   useEffect(() => resetDelete, [resetDelete]);
   const [open, setOpen] = useState<Open>(null);
@@ -50,7 +53,7 @@ export function SyncDangerCard() {
       {open === 'delete' && (
         <SyncPasswordDialog
           title={t('delete.title')}
-          description={`${t('delete.description')} ${t('delete.afterwards')}`}
+          description={`${t('delete.description')} ${deleteAfterwards}`}
           confirmLabel={t('delete.confirm')}
           destructive
           onSubmit={async (password) => {

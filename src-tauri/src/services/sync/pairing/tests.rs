@@ -188,15 +188,12 @@ fn a_code_names_a_sync_server_that_is_not_the_default() {
         parse_pairing_code(&text).unwrap().relay_url.as_deref(),
         Some("https://sync.home.example.com")
     );
-    // A local sync server over plain http is a development address: debug builds only
-    // (`relay::http::scheme_allowed`).
-    if cfg!(debug_assertions) {
-        let local = pairing_code_text(&with("http://127.0.0.1:8787"));
-        assert_eq!(
-            parse_pairing_code(&local).unwrap().relay_url.as_deref(),
-            Some("http://127.0.0.1:8787")
-        );
-    }
+    // A sync server over plain http is allowed in every build (`relay::http::scheme_allowed`).
+    let local = pairing_code_text(&with("http://127.0.0.1:8787"));
+    assert_eq!(
+        parse_pairing_code(&local).unwrap().relay_url.as_deref(),
+        Some("http://127.0.0.1:8787")
+    );
     // The default server never gets a fourth field, and a fourth field naming it reads as None.
     assert_eq!(pairing_code_text(&with(DEFAULT_RELAY_URL)), FROZEN_TEXT);
     let named = format!(
@@ -265,7 +262,7 @@ fn malformed_codes_are_refused_without_echoing_them() {
     use base64::Engine;
     let mailbox = "MzMzMzMzMzMzMzMzMzMzMw";
     let key = "e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
-    let evil = URL_SAFE_NO_PAD.encode("http://evil.example");
+    let evil = URL_SAFE_NO_PAD.encode("ftp://evil.example");
     let cases: Vec<(String, &str)> = vec![
         (
             format!("moony-recover:1:{mailbox}:{key}"),
@@ -677,7 +674,7 @@ fn a_hostile_payload_is_refused() {
         " ".repeat(17 * 1024)
     );
     let cases: Vec<(String, &str)> = vec![
-        (good("http://evil.example", acct, 1, &ok_keys, ""), addr),
+        (good("ftp://evil.example", acct, 1, &ok_keys, ""), addr),
         (good("https://a.b/path", acct, 1, &ok_keys, ""), addr),
         (good(relay, "123", 1, &ok_keys, ""), fail),
         (good(relay, acct, 1, &ok_keys, ",\"extra\":1"), fail),

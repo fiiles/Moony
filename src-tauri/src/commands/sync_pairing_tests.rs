@@ -293,6 +293,69 @@ fn the_shown_mailbox_is_on_the_server_of_the_role() {
 }
 
 #[test]
+fn a_joiner_may_type_a_connection_code() {
+    use crate::services::sync::connection_code::encode_connection_code;
+    let conn = migrated();
+    let code = encode_connection_code("https://sync.example.com", "1111222233334444");
+    assert_eq!(
+        shower_relay(&conn, Role::Joiner, Some(&code)).expect("code"),
+        "https://sync.example.com"
+    );
+}
+
+/// A joiner whose credentials (sent by a holder on `server`) arrived: its session at `Received`.
+async fn received_joiner(server: &str) -> PairingSession {
+    use crate::services::sync::keys::{VaultId, VaultKeys};
+    let relay = FakeRelay::new();
+    let mut shower = PairingSession::show(Role::Holder, HOME, T0).expect("shower");
+    let text = pairing_code_text(&shower.code());
+    let mut joiner = PairingSession::scan(Role::Joiner, &text, T0).expect("scanner");
+    joiner.announce(&relay, T0).await.expect("announce");
+    shower.poll(&relay, T0).await.expect("acknowledge");
+    joiner.poll(&relay, T0).await.expect("verify");
+    let digits = joiner.comparison_code().expect("digits");
+    joiner
+        .confirm(&relay, None, None, T0)
+        .await
+        .expect("confirm");
+    let creds = Credentials {
+        relay_url: server.into(),
+        account: "1234567890123456".into(),
+        vault_id: VaultId([0x77; 16]),
+        keys: VaultKeys::from_parts(0, std::collections::BTreeMap::from([(0, [0xA0; 32])]))
+            .expect("keys"),
+    };
+    shower
+        .confirm(&relay, Some(&creds), Some(&digits), T0)
+        .await
+        .expect("send");
+    assert_eq!(
+        joiner.poll(&relay, T0).await.expect("read"),
+        Stage::Received
+    );
+    (joiner, shower).0
+}
+
+#[tokio::test]
+async fn the_view_names_an_insecure_join_server() {
+    let plain = received_joiner("http://192.168.1.20:8787").await;
+    let view = view_of(&plain, false).expect("view");
+    assert_eq!(view.stage, PairingStage::Received);
+    assert_eq!(view.join_server.as_deref(), Some("192.168.1.20:8787"));
+    assert!(view.join_server_insecure);
+
+    let secure = received_joiner("https://sync.example.com").await;
+    let view = view_of(&secure, false).expect("view");
+    assert_eq!(view.join_server.as_deref(), Some("sync.example.com"));
+    assert!(!view.join_server_insecure);
+
+    // A holder's view, and a joiner before the credentials, name nothing.
+    let holder = PairingSession::show(Role::Holder, HOME, T0).expect("holder");
+    let view = view_of(&holder, false).expect("view");
+    assert_eq!((view.join_server, view.join_server_insecure), (None, false));
+}
+
+#[test]
 fn only_a_joiner_needs_a_device_name() {
     assert_eq!(joiner_name(Role::Holder, None).expect("holder"), None);
     assert_eq!(

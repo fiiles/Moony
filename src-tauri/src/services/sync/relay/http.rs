@@ -15,7 +15,7 @@ use zeroize::Zeroizing;
 
 use super::{
     AccountStatus, CheckoutPlan, Mailbox, OutgoingOp, PullPage, PulledOp, PushReceipt, Relay,
-    RelayError, RelayResult, SnapshotBlob, VaultInfo, MAX_SLOT_BYTES,
+    RelayError, RelayResult, ServerInfo, ServerMode, SnapshotBlob, VaultInfo, MAX_SLOT_BYTES,
 };
 use crate::error::{AppError, Result};
 use crate::services::http::no_redirect_client;
@@ -23,6 +23,8 @@ use crate::services::sync::keys::VaultAuth;
 
 /// The relay of release builds (a placeholder until phase 6).
 pub const DEFAULT_RELAY_URL: &str = "https://sync.moonyfinance.com";
+/// The host of `DEFAULT_RELAY_URL`: the Moony cloud, the one server plain http never reaches.
+pub const DEFAULT_RELAY_HOST: &str = "sync.moonyfinance.com";
 /// The longest relay address accepted, as typed and once normalized (it rides in the Recovery
 /// Kit's QR, ruling SH-2).
 pub const MAX_RELAY_URL_CHARS: usize = 256;
@@ -50,9 +52,9 @@ pub fn default_base_url() -> String {
     super::super::feature::dev_relay_base().unwrap_or_else(|| DEFAULT_RELAY_URL.to_string())
 }
 
-/// A relay base URL: `https`, or `http` only for the hosts `localhost` and `127.0.0.1` in a debug
-/// build; no user, password, query or fragment; no path but `/`; at most `MAX_RELAY_URL_CHARS`
-/// characters. Parsed, never prefix-matched.
+/// A relay base URL: `https`, or `http` for any host but the Moony cloud (a person's own server,
+/// spec §9.2; see `is_insecure_address` for the warning); no user, password, query or fragment; no
+/// path but `/`; at most `MAX_RELAY_URL_CHARS` characters. Parsed, never prefix-matched.
 pub fn validate_base_url(url: &str) -> Result<()> {
     parse_base_url(url).map(|_| ())
 }
@@ -71,15 +73,36 @@ pub fn is_default_relay(url: &str) -> bool {
     normalize_base_url(url).is_ok_and(|normal| normal == DEFAULT_RELAY_URL)
 }
 
-/// `http` only for `localhost` / `127.0.0.1` and only in a debug build (a release build never
-/// sends a pairing or a sealed batch over plain text, even to the same machine); `https` for any
-/// host.
-fn scheme_allowed(scheme: &str, host: Option<&str>, debug: bool) -> bool {
+/// `https` for any host; `http` for any host but the Moony cloud (`DEFAULT_RELAY_HOST`), in every
+/// build. The same rule in debug and release: a person's own server may sit on a home network
+/// without a certificate, and `is_insecure_address` is what asks the person to be sure.
+fn scheme_allowed(scheme: &str, host: Option<&str>) -> bool {
+    let Some(host) = host.filter(|host| !host.is_empty()) else {
+        return false;
+    };
     match scheme {
-        "https" => host.is_some_and(|host| !host.is_empty()),
-        "http" => debug && matches!(host, Some("localhost" | "127.0.0.1")),
+        "https" => true,
+        "http" => host != DEFAULT_RELAY_HOST,
         _ => false,
     }
+}
+
+/// Whether a normalized address is plain http to a host other than `localhost` / `127.0.0.1`,
+/// the one condition the app warns about. An address that does not parse is not.
+pub fn is_insecure_address(normalized: &str) -> bool {
+    Url::parse(normalized).is_ok_and(|url| {
+        url.scheme() == "http" && !matches!(url.host_str(), Some("localhost" | "127.0.0.1"))
+    })
+}
+
+/// `host[:port]` of an address, for showing which server is meant; `None` when it does not parse.
+pub fn display_host(url: &str) -> Option<String> {
+    let url = Url::parse(url).ok()?;
+    let host = url.host_str()?;
+    Some(match url.port() {
+        Some(port) => format!("{host}:{port}"),
+        None => host.to_string(),
+    })
 }
 
 fn parse_base_url(url: &str) -> Result<Url> {
@@ -88,10 +111,11 @@ fn parse_base_url(url: &str) -> Result<Url> {
         return Err(invalid());
     }
     let mut parsed = Url::parse(url).map_err(|_| invalid())?;
-    // `sync.moonyfinance.com.` is the same host as `sync.moonyfinance.com`: one trailing dot of a
-    // domain goes, so both spell (and compare as) one address.
-    if let Some(bare) = parsed.domain().and_then(|d| d.strip_suffix('.')) {
-        let bare = bare.to_string();
+    // `sync.moonyfinance.com.` is the same host as `sync.moonyfinance.com`: every trailing dot of
+    // a domain goes (`..` too, or the cloud host would slip past the http refusal), so all
+    // spellings compare as one address.
+    if let Some(domain) = parsed.domain().filter(|d| d.ends_with('.')) {
+        let bare = domain.trim_end_matches('.').to_string();
         parsed.set_host(Some(&bare)).map_err(|_| invalid())?;
     }
     // Parsing can lengthen an address (an international domain becomes punycode): the stored and
@@ -99,7 +123,7 @@ fn parse_base_url(url: &str) -> Result<Url> {
     if parsed.as_str().trim_end_matches('/').len() > MAX_RELAY_URL_CHARS {
         return Err(invalid());
     }
-    let host_allowed = scheme_allowed(parsed.scheme(), parsed.host_str(), cfg!(debug_assertions));
+    let host_allowed = scheme_allowed(parsed.scheme(), parsed.host_str());
     let bare = parsed.username().is_empty()
         && parsed.password().is_none()
         && parsed.query().is_none()
@@ -218,33 +242,6 @@ impl HttpRelay {
             .vault_request(Method::GET, url, vault)?
             .timeout(OPS_TIMEOUT))
     }
-
-    /// `POST /v1/dev/grant` (Moony-relay `DESIGN.md` "Development only"): a paid period of `days`
-    /// days for `account` on a local relay started with `DEV_GRANT=1` → the new `paidUntil`. Only
-    /// in debug builds (ruling P18): the release client has no such call.
-    #[cfg(debug_assertions)]
-    pub async fn dev_grant(&self, account: &str, days: u32) -> RelayResult<i64> {
-        let request = self
-            .account_request(Method::POST, "v1/dev/grant", account)?
-            .json(&DevGrantWire { days });
-        let response = expect_status(send(request).await?, &[200]).await?;
-        let answer: DevGrantAnswerWire = read_json(response, MAX_JSON_BODY).await?;
-        Ok(answer.paid_until)
-    }
-}
-
-#[cfg(debug_assertions)]
-#[derive(Serialize)]
-struct DevGrantWire {
-    #[serde(rename = "days")]
-    days: u32,
-}
-
-#[cfg(debug_assertions)]
-#[derive(Deserialize)]
-struct DevGrantAnswerWire {
-    #[serde(rename = "paidUntil")]
-    paid_until: i64,
 }
 
 /// `n` characters of the base64url alphabet: a vault ID (22) or a vault token (43).
@@ -368,6 +365,29 @@ struct AccountStatusWire {
     vaults: u32,
 }
 
+#[derive(Deserialize)]
+struct ServerInfoWire {
+    #[serde(rename = "name")]
+    name: String,
+    #[serde(rename = "version")]
+    version: String,
+    #[serde(rename = "protocol")]
+    protocol: u32,
+    #[serde(rename = "mode")]
+    mode: String,
+}
+
+/// What `GET /v1/server` answers as `name`.
+const SERVER_NAME: &str = "moony-sync";
+
+/// 1–32 characters of `[0-9A-Za-z.+-]`.
+fn is_server_version(text: &str) -> bool {
+    (1..=32).contains(&text.len())
+        && text
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'+' | b'-'))
+}
+
 #[derive(Serialize)]
 struct CheckoutWire {
     #[serde(rename = "plan")]
@@ -445,6 +465,29 @@ struct PullOpWire {
 }
 
 impl Relay for HttpRelay {
+    async fn server_info(&self) -> RelayResult<ServerInfo> {
+        // No account header: the question is asked before there is an account.
+        let request = no_redirect_client().get(self.url("v1/server")?);
+        let response = expect_status(send(request).await?, &[200]).await?;
+        let answer: ServerInfoWire = read_json(response, MAX_JSON_BODY).await?;
+        if answer.name != SERVER_NAME {
+            return Err(RelayError::Protocol("not a sync server".into()));
+        }
+        if !is_server_version(&answer.version) {
+            return Err(RelayError::Protocol("version".into()));
+        }
+        let mode = match answer.mode.as_str() {
+            "self_hosted" => ServerMode::SelfHosted,
+            "cloud" => ServerMode::Cloud,
+            _ => ServerMode::Other,
+        };
+        Ok(ServerInfo {
+            version: answer.version,
+            protocol: answer.protocol,
+            mode,
+        })
+    }
+
     async fn create_account(&self) -> RelayResult<String> {
         let request = no_redirect_client().post(self.url("v1/accounts")?);
         let response = expect_status(send(request).await?, &[201]).await?;
@@ -625,7 +668,9 @@ impl Mailbox for HttpRelay {
     }
 }
 
-// These talk to one-shot servers on 127.0.0.1, an address only a debug build accepts.
+// These talk to one-shot servers on 127.0.0.1 over plain http, which every build accepts for a
+// server that is not the Moony cloud (`scheme_allowed`). They stay in debug test builds, the ones
+// `cargo test` makes, so a release test run needs no loopback port.
 #[cfg(all(test, debug_assertions))]
 mod mailbox_tests;
 #[cfg(test)]

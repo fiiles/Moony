@@ -23,6 +23,8 @@ function view(stage: PairingStage): PairingView {
     contested: false,
     expiresAt: 0,
     serverHost: null,
+    joinServer: null,
+    joinServerInsecure: false,
     attemptsLeft: null,
   };
 }
@@ -32,6 +34,11 @@ describe('scannedCodeKind', () => {
     expect(scannedCodeKind('moony-pair:1:x')).toBe('pair');
     expect(scannedCodeKind('  moony-pair:1:x\n')).toBe('pair');
     expect(scannedCodeKind(' moony-recover:1:abc')).toBe('recover');
+    expect(scannedCodeKind('moony-sync1:4417938205561273:aHR0cHM6Ly9zeW5jLmV4YW1wbGUub3Jn')).toBe(
+      'connection'
+    );
+    expect(scannedCodeKind(' moony-sync2:abc\n')).toBe('connection');
+    expect(scannedCodeKind('moony-sync:abc')).toBe('unknown');
     expect(scannedCodeKind(GROUPED)).toBe('recoveryCode');
     expect(scannedCodeKind(GROUPED.replace(/-/g, ' '))).toBe('recoveryCode');
     expect(scannedCodeKind(CODE80)).toBe('recoveryCode');
@@ -40,6 +47,25 @@ describe('scannedCodeKind', () => {
     expect(scannedCodeKind(`U${CODE80.slice(1)}`)).toBe('unknown');
     expect(scannedCodeKind('hello')).toBe('unknown');
     expect(scannedCodeKind('')).toBe('unknown');
+  });
+});
+
+describe('scannedCodeKind reads a connection code the way connection_code.rs cleans it', () => {
+  const CONNECTION = 'moony-sync1:4417938205561273:aHR0cHM6Ly9zeW5jLmV4YW1wbGUub3Jn';
+
+  it('ignores white space and zero-width characters inside the code', () => {
+    expect(scannedCodeKind(`${CONNECTION.slice(0, 20)}\n${CONNECTION.slice(20)}`)).toBe(
+      'connection'
+    );
+    expect(scannedCodeKind(`\u200Bmoony-sync1:\u00A04417938205561273:\u200Dabc\uFEFF`)).toBe(
+      'connection'
+    );
+    expect(scannedCodeKind(`moony-\u200Bsync1:4417938205561273:abc`)).toBe('connection');
+  });
+
+  it('keeps the other kinds as they were (their parsers only trim)', () => {
+    expect(scannedCodeKind('\u200Bmoony-pair:2:x')).toBe('unknown');
+    expect(scannedCodeKind('moony-\npair:2:x')).toBe('unknown');
   });
 });
 

@@ -30,16 +30,20 @@ use rusqlite::Connection;
 
 use super::binding::{self, BindingNative};
 use super::capture::guard;
+use super::connection_code::ConnectionCode;
 use super::devices;
 use super::engine::snapshots::{off_thread, SnapshotPolicy};
 use super::engine::{self, ConnAccess, RoundMode, RoundReport};
-use super::error::{SyncError, SyncResult, TooLarge, Transient};
+use super::error::{
+    SyncError, SyncResult, TooLarge, Transient, ACCOUNT_BLOCKED, CONNECTION_CODE_REVOKED,
+};
 use super::in_savepoint;
 use super::join::rejoin_if_copy_under_lock;
 use super::keys::{self, Credentials};
 use super::recovery::{encode_recovery_code, format_recovery_code, qr_svg, recovery_qr_payload};
 use super::relay::http::{is_default_relay, normalize_base_url, validate_base_url};
 use super::relay::{CheckoutPlan, Relay, RelayError};
+use super::server::check_own_server;
 use super::state;
 use crate::error::{AppError, Result};
 use crate::models::sync::{CheckoutTarget, RecoveryKit, SyncAccount, SyncPlan, SyncProblem};
@@ -57,7 +61,7 @@ fn refused(key: &str) -> SyncError {
 }
 
 /// `work` on the profile's connection, off the runtime.
-async fn on_db<D: ConnAccess, T: Send + 'static>(
+pub(super) async fn on_db<D: ConnAccess, T: Send + 'static>(
     db: &D,
     work: impl FnOnce(&Connection) -> Result<T> + Send + 'static,
 ) -> SyncResult<T> {
@@ -105,9 +109,51 @@ pub async fn create_account<R: Relay, D: ConnAccess>(
     })
 }
 
-/// The stored account as the relay sees it now; `validation.syncSetupIncomplete` without one. The
-/// UI polls this until the account is active (paid, or added to a self-hosted relay's
-/// `ALLOWED_ACCOUNTS`).
+/// Setup on a person's own server from its connection code (spec §9): the server is checked
+/// (`check_own_server`: the service does not trust that the UI checked), the account the code names
+/// is asked for its status, and only an account that exists and is active is stored with the
+/// server's address; the server never creates one and no payment follows. `relay` is the server at
+/// the code's address.
+///
+/// With sync on, a code for another server or account is `validation.syncAlreadyEnabled`; the same
+/// one only reads the status. While sync is off an account stored earlier is replaced (the vault's
+/// secrets stay, as in `create_account`: the vault is made at `finish_setup`). An account the
+/// server does not know is `validation.syncConnectionCodeRevoked`, a blocked one
+/// `validation.syncAccountBlocked`; nothing is stored on any refusal.
+pub async fn connect_own_server<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    code: &ConnectionCode,
+) -> SyncResult<SyncAccount> {
+    let (stored, on) = on_db(db, |conn| Ok((keys::account(conn)?, enabled(conn)?))).await?;
+    let same = stored.as_ref().is_some_and(|(url, account)| {
+        *account == code.account && normalize_base_url(url).is_ok_and(|url| url == code.server_url)
+    });
+    if on && !same {
+        return Err(refused(ALREADY_ENABLED));
+    }
+    check_own_server(relay, &code.server_url).await?;
+    let account = match status_of(relay, code.account.clone()).await {
+        Ok(account) => account,
+        Err(SyncError::Refused(RelayError::AccountNotFound)) => {
+            return Err(refused(CONNECTION_CODE_REVOKED))
+        }
+        Err(error) => return Err(error),
+    };
+    if !account.active {
+        return Err(refused(ACCOUNT_BLOCKED));
+    }
+    if !same {
+        let (url, number) = (code.server_url.clone(), code.account.clone());
+        on_db(db, move |conn| keys::save_account(conn, &url, &number)).await?;
+        log::info!("[SYNC] Adopted an account on an own server");
+    }
+    Ok(account)
+}
+
+/// The stored account as the server sees it now; `validation.syncSetupIncomplete` without one. On
+/// the Moony cloud the UI polls this until the account is paid; on an own sync server the account
+/// is active unless the operator blocked the person in the server's admin interface.
 pub async fn account_status<R: Relay, D: ConnAccess>(relay: &R, db: &D) -> SyncResult<SyncAccount> {
     let account = stored_account(db).await?;
     status_of(relay, account).await
@@ -116,8 +162,8 @@ pub async fn account_status<R: Relay, D: ConnAccess>(relay: &R, db: &D) -> SyncR
 /// Where to pay for the stored account. The default relay answers a payment page, which must be
 /// `https` on `polar.sh` or one of its subdomains (anything else is `validation.syncRelayError`:
 /// the URL goes to the system opener). A self-hosted relay takes no payments and answers
-/// `CheckoutTarget::SelfHosted`, which is not an error: the UI shows the account number to add to
-/// the relay's `ALLOWED_ACCOUNTS` and polls `account_status`.
+/// `CheckoutTarget::SelfHosted`, which is not an error: there is nothing to pay, and an own server
+/// is set up from a connection code (`connect_own_server`) instead.
 pub async fn checkout_url<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,

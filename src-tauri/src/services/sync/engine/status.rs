@@ -10,6 +10,9 @@ use crate::models::sync::{SyncPhase, SyncProblem, SyncStatus};
 use crate::services::sync::capture::{self, guard};
 use crate::services::sync::error::{SyncError, TooLarge, Transient};
 use crate::services::sync::hlc::{now_ms, unpack, FUTURE_WARNING_MS};
+use crate::services::sync::relay::http::{
+    is_default_relay, is_insecure_address, normalize_base_url,
+};
 use crate::services::sync::{feature, keys, snapshot, state};
 
 /// The relay deletes a lapsed vault this long after the subscription ended (spec §11.6).
@@ -55,6 +58,12 @@ impl Runtime {
 /// the last round's problem; `idle` when there is none.
 pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
     let dev_tools = feature::dev_tools();
+    let address = keys::account(conn)?.map(|(url, _)| url);
+    let own_server = address.as_deref().is_some_and(|url| !is_default_relay(url));
+    let server_insecure = address
+        .as_deref()
+        .and_then(|url| normalize_base_url(url).ok())
+        .is_some_and(|url| is_insecure_address(&url));
     let quiet = |phase| SyncStatus {
         phase,
         problem: None,
@@ -66,6 +75,9 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         deletes_at: None,
         clock_ahead_until: None,
         dev_tools,
+        own_server,
+        server_address: address.clone(),
+        server_insecure,
     };
     let Some(sync) = state::load(conn)? else {
         return Ok(quiet(SyncPhase::Off));
@@ -104,8 +116,9 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
     // report year 9000 to 9999, which stays.
     let displayable = |at: i64| (0..=MAX_DISPLAY_SECS).contains(&at);
     let paid_until = runtime.paid_until.filter(|at| displayable(*at));
+    // Blocking on a person's own server never deletes the vault (spec §5.4).
     let deletes_at = match problem {
-        Some(SyncProblem::Lapsed) => paid_until
+        Some(SyncProblem::Lapsed) if !own_server => paid_until
             .and_then(|at| at.checked_add(DELETE_AFTER_LAPSE))
             .filter(|at| displayable(*at)),
         _ => None,
@@ -121,6 +134,9 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         deletes_at,
         clock_ahead_until: clock_ahead_until(conn, now_ms())?.filter(|at| displayable(*at)),
         dev_tools,
+        own_server,
+        server_address: address,
+        server_insecure,
     })
 }
 
@@ -298,5 +314,77 @@ pub fn reason(problem: SyncProblem) -> &'static str {
         P::SecureStorage => "sync stopped: secureStorage",
         P::ServerWentBack => "sync stopped: serverWentBack",
         P::Internal => "sync stopped: internal",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
+    use crate::services::sync::test_support::migrated;
+
+    fn lapsed() -> Runtime {
+        Runtime {
+            problem: Some(SyncProblem::Lapsed),
+            paid_until: Some(1_800_000_000),
+            ..Runtime::default()
+        }
+    }
+
+    /// An enabled profile with its account stored at `address`.
+    fn enabled_at(address: &str) -> Connection {
+        let conn = migrated();
+        keys::save_account(&conn, address, "4000000000000001").expect("account");
+        conn.execute("UPDATE sync_state SET enabled = 1 WHERE id = 1", [])
+            .expect("enable");
+        conn
+    }
+
+    #[test]
+    fn an_own_server_lapse_has_no_deletion_date() {
+        let conn = enabled_at("https://relay.example.org");
+        let shown = status(&conn, &lapsed()).expect("status");
+        assert!(shown.own_server);
+        assert_eq!(shown.deletes_at, None);
+        assert_eq!(shown.paid_until, Some(1_800_000_000));
+        assert_eq!(
+            shown.server_address.as_deref(),
+            Some("https://relay.example.org")
+        );
+        assert!(!shown.server_insecure);
+
+        let lan = enabled_at("http://192.168.1.20:8787");
+        let shown = status(&lan, &lapsed()).expect("status");
+        assert!(shown.server_insecure);
+        assert!(shown.own_server);
+
+        let cloud = enabled_at(DEFAULT_RELAY_URL);
+        let shown = status(&cloud, &lapsed()).expect("status");
+        assert!(!shown.own_server);
+        assert!(!shown.server_insecure);
+        assert_eq!(shown.deletes_at, Some(1_800_000_000 + DELETE_AFTER_LAPSE));
+    }
+
+    #[test]
+    fn a_profile_with_sync_off_and_no_account_names_no_server() {
+        let off = status(&migrated(), &Runtime::default()).expect("status");
+        assert_eq!(off.phase, SyncPhase::Off);
+        assert!(!off.own_server);
+        assert_eq!(off.server_address, None);
+        assert!(!off.server_insecure);
+    }
+
+    #[test]
+    fn setting_up_shows_the_stored_server() {
+        let conn = migrated();
+        keys::save_account(&conn, "https://relay.example.org", "4000000000000001")
+            .expect("account");
+        let setting_up = status(&conn, &Runtime::default()).expect("status");
+        assert_eq!(setting_up.phase, SyncPhase::SettingUp);
+        assert!(setting_up.own_server);
+        assert_eq!(
+            setting_up.server_address.as_deref(),
+            Some("https://relay.example.org")
+        );
     }
 }

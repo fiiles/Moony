@@ -167,6 +167,7 @@ import type {
   StockInstrumentQuery,
   StockInstrumentResolution,
   SyncProfileState,
+  SyncServerCheck,
   SyncStatus,
   SyncAccount,
   SyncPlan,
@@ -332,6 +333,12 @@ export const deviceSyncApi = {
   createAccount: (relayUrl?: string) =>
     tauriInvoke<SyncAccount>('sync_create_account', { relayUrl: relayUrl ?? null }),
 
+  /** `input`: a server address or a connection code; the code is never logged. */
+  checkServer: (input: string) => tauriInvoke<SyncServerCheck>('sync_check_server', { input }),
+
+  connectOwnServer: (connectionCode: string) =>
+    tauriInvoke<SyncAccount>('sync_connect_own_server', { connectionCode }),
+
   getAccount: () => tauriInvoke<SyncAccount>('sync_get_account'),
 
   /** `open`: a payment page to open with the opener plugin; `selfHosted`: no payment page. */
@@ -393,6 +400,14 @@ export const deviceSyncApi = {
   resyncDevice: (password: string, consent: ReplaceConsentView) =>
     tauriInvoke<ReplaceOutcomeView>('sync_resync_device', { password, consent }),
 
+  /**
+   * Moves a device that syncs to another address of the same sync server (the address of a
+   * connection code is read too; its account is ignored), once the device password is checked.
+   * The server must prove it is the same one; the engine restarts on the new address.
+   */
+  changeServerAddress: (password: string, address: string) =>
+    tauriInvoke<SyncStatus>('sync_change_server_address', { password, address }),
+
   /** What a join, repair or re-sync would put at stake now; a confirmation loads it when it opens. */
   replaceImpact: () => tauriInvoke<ReplaceImpactView>('sync_replace_impact'),
 
@@ -419,9 +434,6 @@ export const deviceSyncApi = {
    */
   stageSyncBackupExport: (path: string) =>
     tauriInvoke<string>('stage_sync_backup_export', { path }),
-
-  /** Debug builds with the developer tools only. */
-  devGrant: (days: number) => tauriInvoke<SyncAccount>('sync_dev_grant', { days }),
 
   /** Debug builds with the developer tools only: one line with both timings. */
   debugCaptureOverhead: (rows: number) =>

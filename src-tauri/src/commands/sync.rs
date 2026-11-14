@@ -29,17 +29,18 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::sync::{
     CheckoutTarget, RecoveryKit, ReplaceConsentView, ReplaceOutcomeView, SyncAccount, SyncPlan,
-    SyncProfileState, SyncStatus,
+    SyncProfileState, SyncServerCheck, SyncStatus,
 };
 use crate::services::auth;
 use crate::services::sync::binding::{BindingFailure, BindingNative};
 use crate::services::sync::capture::bench::{self, Overhead};
+use crate::services::sync::connection_code::{parse_connection_code, server_address_from_input};
 use crate::services::sync::engine::runtime::{self, EngineHandle, Trigger};
 use crate::services::sync::engine::{status, ConnAccess, EngineEvents};
-use crate::services::sync::error::{SyncError, SyncResult};
+use crate::services::sync::error::{SyncError, SyncResult, ACCOUNT_BLOCKED};
 use crate::services::sync::merge::DATA_CHANGED_EVENT;
-use crate::services::sync::relay::http::{default_base_url, HttpRelay};
-use crate::services::sync::{feature, join, keys, setup, state};
+use crate::services::sync::relay::http::{default_base_url, is_default_relay, HttpRelay};
+use crate::services::sync::{feature, join, keys, server, setup, state};
 
 use super::sync_backups::{consent_of, outcome_view};
 
@@ -257,6 +258,50 @@ pub(super) fn app_error(error: SyncError) -> AppError {
     error.to_app_error()
 }
 
+/// `app_error` for a change against the server at `relay_url`: the Moony cloud takes payment, any
+/// other server (the person's own) does not, so a blocked account never reads "subscription" copy
+/// there. Only `Lapsed` is remapped; every other error keeps `to_app_error` (an unknown account is
+/// `syncAccountNotFound`: no connection code is involved in these changes).
+pub(super) fn app_error_for(relay_url: &str, error: SyncError) -> AppError {
+    match error {
+        SyncError::Lapsed if !is_default_relay(relay_url) => {
+            AppError::Validation(ACCOUNT_BLOCKED.into())
+        }
+        other => other.to_app_error(),
+    }
+}
+
+/// `work`, its error already mapped for the server at `relay_url` (`app_error_for`); the mapped
+/// error passes `guarded_change` unchanged (`SyncError::Local`).
+pub(super) async fn mapped_for_server<T>(
+    relay_url: String,
+    work: impl Future<Output = SyncResult<T>>,
+) -> SyncResult<T> {
+    work.await
+        .map_err(|error| SyncError::Local(app_error_for(&relay_url, error)))
+}
+
+/// Setup's mapping: as `mapped_for_server`, and an account the own server does not know means the
+/// connection code just entered was revoked (`to_own_server_app_error`).
+async fn mapped_for_setup<T>(
+    relay_url: String,
+    work: impl Future<Output = SyncResult<T>>,
+) -> SyncResult<T> {
+    work.await.map_err(|error| {
+        SyncError::Local(if is_default_relay(&relay_url) {
+            error.to_app_error()
+        } else {
+            error.to_own_server_app_error()
+        })
+    })
+}
+
+/// The server address this profile syncs against (the Moony cloud while there is no account).
+pub(super) fn stored_relay_url(db: &Database) -> Result<String> {
+    let stored = db.with_conn(|conn| Ok(keys::account(conn)?.map(|(url, _)| url)))?;
+    Ok(stored.unwrap_or_else(default_base_url))
+}
+
 pub(super) fn now() -> i64 {
     chrono::Utc::now().timestamp()
 }
@@ -270,8 +315,7 @@ pub(super) fn data_dir(app: &AppHandle) -> Result<PathBuf> {
 /// The relay of this profile: the stored account's address (ruling SH-2), or the default relay
 /// while no account is stored.
 pub(super) fn profile_relay(db: &Database) -> Result<HttpRelay> {
-    let stored = db.with_conn(|conn| Ok(keys::account(conn)?.map(|(url, _)| url)))?;
-    HttpRelay::new(&stored.unwrap_or_else(default_base_url))
+    HttpRelay::new(&stored_relay_url(db)?)
 }
 
 /// Whether sync is on, a damaged `sync_state` row counting as on (`state::on_or_unreadable`).
@@ -583,6 +627,34 @@ pub async fn sync_create_account(
         .map_err(app_error)
 }
 
+/// Asks the server at an address, or in a connection code, what it is (`server::check_own_server`).
+/// The input is never logged.
+#[tauri::command]
+pub async fn sync_check_server(input: String) -> Result<SyncServerCheck> {
+    require_feature()?;
+    let address = server_address_from_input(&input)?;
+    let relay = HttpRelay::new(&address)?;
+    server::check_own_server(&relay, &address)
+        .await
+        .map_err(app_error)
+}
+
+/// Sets up on a person's own server from its connection code (`setup::connect_own_server`): the
+/// account is the one the code names; nothing is created or paid.
+#[tauri::command]
+pub async fn sync_connect_own_server(
+    db: State<'_, Database>,
+    connection_code: String,
+) -> Result<SyncAccount> {
+    require_feature()?;
+    let code = parse_connection_code(&connection_code)?;
+    let session = db.current_session()?;
+    let relay = HttpRelay::new(&code.server_url)?;
+    setup::connect_own_server(&relay, &session, &code)
+        .await
+        .map_err(app_error)
+}
+
 #[tauri::command]
 pub async fn sync_get_account(db: State<'_, Database>) -> Result<SyncAccount> {
     require_feature()?;
@@ -682,6 +754,8 @@ pub async fn sync_finish_setup(
         &native,
         now(),
     );
+    // A person blocked between the steps of an own server never reads "subscription" copy.
+    let finish = mapped_for_setup(stored_relay_url(&db)?, finish);
     guarded_change(&AppEngine { app: &app, db: &db }, finish).await?;
     current_status(&app, &db)
 }
@@ -828,7 +902,10 @@ pub async fn sync_repair_device(
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
-    let repair = join::repair_capture(&relay, &session, &dir, &native, now());
+    let repair = mapped_for_server(
+        stored_relay_url(&db)?,
+        join::repair_capture(&relay, &session, &dir, &native, now()),
+    );
     let outcome = guarded_change(&AppEngine { app: &app, db: &db }, repair).await?;
     Ok(outcome_view(&outcome))
 }
@@ -853,41 +930,44 @@ pub async fn sync_resync_device(
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
-    let resync = join::resync_by_replace(&relay, &session, consent, &dir, &native, now());
+    let resync = mapped_for_server(
+        stored_relay_url(&db)?,
+        join::resync_by_replace(&relay, &session, consent, &dir, &native, now()),
+    );
     let outcome = guarded_change(&AppEngine { app: &app, db: &db }, resync).await?;
     Ok(outcome_view(&outcome))
 }
 
-/// A test subscription of `days` days on a local relay started with `DEV_GRANT=1` (debug builds
-/// with the developer tools only).
+/// Changes the sync server address of a device that syncs (`server::change_server_address`) once
+/// the device password is checked. Only the ADDRESS is used: a connection code's account is
+/// ignored, the stored account, vault and token stay. The engine is stopped for the swap and
+/// starts again on the new stored address, its first round running at once (`runtime::spawn`).
 #[tauri::command]
-pub async fn sync_dev_grant(db: State<'_, Database>, days: u32) -> Result<SyncAccount> {
+pub async fn sync_change_server_address(
+    app: AppHandle,
+    db: State<'_, Database>,
+    password: String,
+    address: String,
+) -> Result<SyncStatus> {
+    let password = Zeroizing::new(password);
     require_feature()?;
-    require_dev_tools()?;
-    dev_grant(&db, days).await
-}
-
-#[cfg(debug_assertions)]
-async fn dev_grant(db: &Database, days: u32) -> Result<SyncAccount> {
+    password_given(&password)?;
+    verify_password(&app, password).await?;
+    let address = server_address_from_input(&address)?;
+    forget_kit_window();
+    super::sync_pairing::forget_pairing();
     let session = db.current_session()?;
-    let relay = profile_relay(&session)?;
-    let account = session.with_conn(|conn| {
-        keys::account(conn)?
-            .map(|(_, account)| account)
-            .ok_or_else(|| AppError::Validation("validation.syncSetupIncomplete".into()))
-    })?;
-    relay
-        .dev_grant(&account, days)
-        .await
-        .map_err(|e| app_error(e.into()))?;
-    setup::account_status(&relay, &session)
-        .await
-        .map_err(app_error)
-}
-
-#[cfg(not(debug_assertions))]
-async fn dev_grant(_db: &Database, _days: u32) -> Result<SyncAccount> {
-    Err(AppError::Validation(DEV_ONLY.into()))
+    // The service builds the client from the address it normalised and stores
+    let change = mapped_for_server(
+        stored_relay_url(&db)?,
+        server::change_server_address(
+            |normalized| HttpRelay::new(normalized).map_err(SyncError::Local),
+            &session,
+            &address,
+        ),
+    );
+    guarded_change(&AppEngine { app: &app, db: &db }, change).await?;
+    current_status(&app, &db)
 }
 
 /// The capture overhead of `rows` inserts on two scratch profiles (`capture::bench`; developer
@@ -1270,7 +1350,7 @@ mod tests {
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 33);
+        assert_eq!(found.len(), 35);
         for (name, first_three) in &commands {
             // The flag itself, a read-only question, and the way out of an enabled profile.
             if [
@@ -1315,6 +1395,7 @@ mod tests {
             (include_str!("sync.rs"), "sync_repair_device"),
             (include_str!("sync.rs"), "sync_resync_device"),
             (include_str!("sync.rs"), "sync_delete_synced_data"),
+            (include_str!("sync.rs"), "sync_change_server_address"),
             (include_str!("sync_gaps.rs"), "sync_skip_missing_change"),
         ] {
             let body = command_body_in(source, name);
@@ -1331,6 +1412,58 @@ mod tests {
                 "`{name}` checks the password before the change"
             );
         }
+    }
+
+    /// Final fix I1: a blocked person on their own server never reads the payment message, on
+    /// any change; the Moony cloud keeps it.
+    #[test]
+    fn a_blocked_account_reads_the_server_it_is_on() {
+        let key = |error: AppError| match error {
+            AppError::Validation(key) => key,
+            other => panic!("a validation key, not {other:?}"),
+        };
+        assert_eq!(
+            key(app_error_for(&default_base_url(), SyncError::Lapsed)),
+            "validation.syncPaymentRequired"
+        );
+        for own in ["https://sync.example.org", "http://192.168.1.21:8787"] {
+            assert_eq!(
+                key(app_error_for(own, SyncError::Lapsed)),
+                "validation.syncAccountBlocked"
+            );
+            // No connection code is involved: an unknown account is not a revoked code
+            assert_eq!(
+                key(app_error_for(
+                    own,
+                    SyncError::Refused(crate::services::sync::relay::RelayError::AccountNotFound)
+                )),
+                "validation.syncAccountNotFound"
+            );
+        }
+    }
+
+    /// Final fix I1: every change that talks to the person's server maps its error for that server.
+    #[test]
+    fn every_server_change_maps_its_error_for_the_server() {
+        for (source, name) in [
+            (include_str!("sync.rs"), "sync_repair_device"),
+            (include_str!("sync.rs"), "sync_resync_device"),
+            (include_str!("sync.rs"), "sync_change_server_address"),
+            (
+                include_str!("sync_pairing.rs"),
+                "sync_join_with_recovery_kit",
+            ),
+        ] {
+            let body = command_body_in(source, name);
+            let mapped = body
+                .find("mapped_for_server(")
+                .unwrap_or_else(|| panic!("`{name}` maps for the server"));
+            assert!(mapped < body.find("guarded_change(").expect("a change"));
+        }
+        let setup = command_body("sync_finish_setup");
+        assert!(setup.contains("mapped_for_setup("));
+        let join = command_body_in(include_str!("sync_pairing.rs"), "sync_pairing_join");
+        assert!(join.contains("app_error_for(&relay_url, error)"));
     }
 
     /// Audit L10: the one command that works without the flag keeps the password rule.

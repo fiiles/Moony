@@ -5,8 +5,10 @@ import type { SyncStatus } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
-import { isSelfHostedPaidUntil, secondsToDate } from '@/utils/sync-status';
+import { secondsToDate } from '@/utils/sync-status';
+import { hostOf } from '@/utils/sync-setup';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
+import { ChangeServerDialog } from '@/components/settings/sync/ChangeServerDialog';
 import { ShowRecoveryKitFlow } from '@/components/settings/sync/ShowRecoveryKitFlow';
 import { SyncProblemAlert } from '@/components/settings/sync/SyncProblemAlert';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -20,6 +22,7 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
   const { dateTime, date } = useFormat();
   const { syncNow } = useDeviceSyncMutations();
   const [kitOpen, setKitOpen] = useState(false);
+  const [serverOpen, setServerOpen] = useState(false);
 
   const handleSyncNow = async () => {
     try {
@@ -29,7 +32,6 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
     }
   };
 
-  const selfHosted = isSelfHostedPaidUntil(status.paidUntil);
   const paidUntil = secondsToDate(status.paidUntil);
   // A note, never a problem: this device's clock stands more than a day ahead (audit M6)
   const clockAheadUntil = secondsToDate(status.clockAheadUntil);
@@ -66,17 +68,26 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
                 {t('status.syncNow')}
               </Button>
             </SettingsRow>
-            {(selfHosted || paidUntil) && (
+            {!status.ownServer && paidUntil && (
               <SettingsRow
                 label={t('status.subscription')}
-                hint={
-                  selfHosted
-                    ? t('status.selfHosted')
-                    : t('status.paidUntil', {
-                        date: date(paidUntil ?? new Date(0), { dateStyle: 'long' }),
-                      })
-                }
+                hint={t('status.paidUntil', { date: date(paidUntil, { dateStyle: 'long' }) })}
               />
+            )}
+            {status.serverAddress && (
+              <SettingsRow
+                label={t('server.label')}
+                hint={
+                  <>
+                    <span className="font-mono">{hostOf(status.serverAddress)}</span>
+                    {status.serverInsecure && <span> · {t('server.insecure')}</span>}
+                  </>
+                }
+              >
+                <Button type="button" variant="outline" onClick={() => setServerOpen(true)}>
+                  {t('server.change')}
+                </Button>
+              </SettingsRow>
             )}
             <SettingsRow label={t('showKit.title')}>
               <Button type="button" variant="outline" onClick={() => setKitOpen(true)}>
@@ -87,6 +98,7 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
         </div>
       </SettingsCard>
       {kitOpen && <ShowRecoveryKitFlow onClose={() => setKitOpen(false)} />}
+      {serverOpen && <ChangeServerDialog onClose={() => setServerOpen(false)} />}
     </>
   );
 }

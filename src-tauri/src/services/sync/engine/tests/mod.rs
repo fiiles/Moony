@@ -21,6 +21,8 @@ mod replace_safety;
 mod runtime;
 mod runtime_loop;
 mod scan;
+mod server;
+mod server_address;
 mod setup;
 mod snapshots;
 mod went_back;
@@ -95,6 +97,16 @@ pub struct Vault {
     pub creds: Credentials,
     pub a: TestConn,
     pub b: TestConn,
+}
+
+/// Stores the Moony cloud's address for the account of `conn`: the 90-day deletion date is shown
+/// for the cloud only (an own server never deletes, spec §5.4); `vault()` uses `https://relay.test`.
+pub fn on_the_cloud(conn: &Connection) {
+    conn.execute(
+        "UPDATE sync_state SET relay_url = ?1 WHERE id = 1",
+        [crate::services::sync::relay::http::DEFAULT_RELAY_URL],
+    )
+    .expect("the cloud address");
 }
 
 /// A paid vault on a fresh `FakeRelay`: `A` turns sync on (its rule-pack keys are dropped from

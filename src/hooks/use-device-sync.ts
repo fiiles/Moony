@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { deviceSyncApi } from '@/lib/tauri-api';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 /**
  * Whether device sync is built in and enabled, and whether that is still being asked (a screen
@@ -54,10 +55,14 @@ export function useDeviceSyncStatus() {
 
 /**
  * The sync account (number, and whether the subscription is active). `pollWhileInactive`
- * re-reads it every 3 s until it is active: setup waits for the payment this way.
+ * re-reads it every 3 s until it is active: setup waits for the payment this way. `enabled: false`
+ * keeps it from contacting the server at all (setup's server step).
  */
-export function useDeviceSyncAccount(opts: { pollWhileInactive?: boolean } = {}) {
-  const enabled = useDeviceSyncFeature();
+export function useDeviceSyncAccount(
+  opts: { pollWhileInactive?: boolean; enabled?: boolean } = {}
+) {
+  const featureEnabled = useDeviceSyncFeature();
+  const enabled = featureEnabled && opts.enabled !== false;
   return useQuery({
     queryKey: ['device-sync-account'],
     queryFn: () => deviceSyncApi.getAccount(),
@@ -116,5 +121,21 @@ export function useHeldGaps(active: boolean) {
     queryKey: ['device-sync-held-gaps'],
     queryFn: () => deviceSyncApi.heldGaps(),
     enabled: enabled && active,
+  });
+}
+
+/**
+ * Asks the server at an address, or named by a connection code, what it is, once the input stopped
+ * changing for 400 ms. Nothing is kept: the input may be a connection code.
+ */
+export function useSyncServerCheck(input: string, enabled: boolean) {
+  const trimmed = useDebouncedValue(input.trim(), 400);
+  return useQuery({
+    queryKey: ['device-sync-server-check', trimmed],
+    queryFn: () => deviceSyncApi.checkServer(trimmed),
+    enabled: enabled && trimmed !== '',
+    retry: false,
+    staleTime: 0,
+    gcTime: 0,
   });
 }

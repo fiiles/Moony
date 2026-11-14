@@ -590,6 +590,9 @@ pub(super) struct Mangled<F> {
 }
 
 impl<F: Fn(u64, PullPage) -> PullPage + Send + Sync> Relay for Mangled<F> {
+    async fn server_info(&self) -> RelayResult<crate::services::sync::relay::ServerInfo> {
+        unreachable!("not a pull call")
+    }
     async fn create_account(&self) -> RelayResult<String> {
         unreachable!("not a pull call")
     }

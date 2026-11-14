@@ -125,6 +125,12 @@ impl WritesBeforeSnapshot {
 }
 
 impl Relay for WritesBeforeSnapshot {
+    fn server_info(
+        &self,
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::ServerInfo>> + Send
+    {
+        self.relay.server_info()
+    }
     fn create_account(&self) -> impl std::future::Future<Output = RelayResult<String>> + Send {
         self.relay.create_account()
     }

@@ -4,7 +4,8 @@ Date: 2026-11-12
 
 ## Status
 
-Accepted. Amends ADR 0024, ADR 0025 and ADR 0026 where named below. Records the fixes built on
+Accepted. Amends ADR 0024, ADR 0025 and ADR 0026 where named below. Amended by
+[ADR 0029](0029-self-hosted-sync-server-in-the-app.md) (the HTTP rule of L9, the allow list). Records the fixes built on
 `fix/device-sync-audit` (plan `docs/plans/2026-11-12-device-sync-audit-fixes.md`) and on two relay
 branches that are not merged into the relay's main: `feat/pairing-ack` and `feat/dev-grant`. Sync is
 still hidden behind the runtime flag. Where the spec or an earlier ADR differs, the code and this
@@ -170,6 +171,7 @@ Manual recovery for a self-hosted server:
    there (or just turn sync off and delete the vault on the server by hand).
 3. Set sync up again on that device. Turning off forgot the account number, so setup creates a new
    one: add it to the server's `ALLOWED_ACCOUNTS`. Its whole profile becomes the new vault.
+   *(Amended by [ADR 0029](0029-self-hosted-sync-server-in-the-app.md): there is no allow list; setup takes the person's connection code from the server's admin.)*
 4. On every other device, turn sync off and join (pairing or the new Recovery Kit). Each join keeps
    its backup `-kept`; changes that only that device had are in it and must be entered again by hand.
 
@@ -193,6 +195,7 @@ v1 code answers "the other device needs an update", a v1 slot 1 is refused, and
 answers `bad_slot`, read on both sides as `validation.syncServerNeedsUpdate`. The joiner's compare
 step says "If you did not start this pairing, cancel." (L7). A plain-`http` sync server is allowed
 only for loopback and only in debug builds, and both sides show a non-default server's host (L9).
+*Amended by [ADR 0029](0029-self-hosted-sync-server-in-the-app.md): `http` is allowed for any host but the Moony cloud in every build, and the dialogs warn each time; showing the host stays.*
 The vectors in `pairing/tests.rs` (ack key `f2131f57…e644`, ack tag `b473ae20…bced` for the frozen S
 and C) are the contract. Rejected: a second mailbox derived from the first ID (no relay change, but
 two mailboxes to expire, cancel and burn) and a nonce committed in the QR (a QR change and still a

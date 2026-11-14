@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
   ClipboardPaste,
+  Globe,
   Eraser,
   KeyRound,
   Plus,
@@ -44,6 +45,7 @@ import { SectionPage } from '@/mobile/components/SectionPage';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { ReplaceConfirmSheet } from '@/mobile/components/sync/ReplaceConfirmSheet';
 import { RecoveryJoinSheet } from '@/mobile/components/sync/RecoveryJoinSheet';
+import { ChangeServerSheet } from '@/mobile/components/sync/ChangeServerSheet';
 import { RenameDeviceSheet } from '@/mobile/components/sync/RenameDeviceSheet';
 import { ScanFlow } from '@/mobile/components/sync/ScanFlow';
 import { SetupSheet } from '@/mobile/components/sync/SetupSheet';
@@ -59,7 +61,7 @@ import { routes } from '@/mobile/shell/routes';
 /** The key the backend sends when a repair could not send every change and replaced nothing. */
 const DRAIN_INCOMPLETE_KEY = 'validation.syncRepairDrainIncomplete';
 
-type Open = 'kit' | 'kitJoin' | 'repair' | 'resync' | 'turnOff' | 'delete' | null;
+type Open = 'kit' | 'kitJoin' | 'server' | 'repair' | 'resync' | 'turnOff' | 'delete' | null;
 
 /** A scan under way: joining (sync off) or adding a device (sync on); `paste` is the developer tool. */
 type Flow = { mode: ScanMode; paste: boolean } | null;
@@ -230,6 +232,9 @@ export default function SyncSection() {
   const syncOn = status !== undefined && status.phase !== 'off' && status.phase !== 'settingUp';
   const pending = status?.pendingChanges ?? 0;
   const devTools = status?.devTools === true;
+  const deleteAfterwards = t(
+    status?.ownServer ? 'delete.afterwardsOwnServer' : 'delete.afterwards'
+  );
   const devPasteRow = devTools && (
     <SettingsRow
       icon={ClipboardPaste}
@@ -302,6 +307,13 @@ export default function SyncSection() {
               title={t('status.showKit')}
               onClick={() => setOpen('kit')}
             />
+            {status.serverAddress && (
+              <SettingsRow
+                icon={Globe}
+                title={t('server.change')}
+                onClick={() => setOpen('server')}
+              />
+            )}
           </EntityRows>
 
           <SectionHead title={t('danger.title')} />
@@ -351,6 +363,8 @@ export default function SyncSection() {
         isPending={turnOff.isPending}
       />
       <SyncKitSheet open={open === 'kit'} onOpenChange={close} />
+      {/* Mounted only while open: unmounting forgets the typed password and the server check */}
+      {open === 'server' && <ChangeServerSheet onClose={() => setOpen(null)} />}
       <RecoveryJoinSheet open={open === 'kitJoin'} onOpenChange={close} onReplaced={replaced} />
       {/* Mounted only while a setup runs: unmounting forgets the Recovery Kit */}
       {settingUp && <SetupSheet onClose={() => setSettingUp(false)} />}
@@ -420,7 +434,7 @@ export default function SyncSection() {
         open={open === 'delete'}
         onOpenChange={close}
         title={t('delete.title')}
-        description={`${t('delete.description')} ${t('delete.afterwards')}`}
+        description={`${t('delete.description')} ${deleteAfterwards}`}
         confirmLabel={t('delete.confirm')}
         destructive
         onSubmit={async (password) => {

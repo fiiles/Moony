@@ -10,6 +10,7 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { formatComparisonCode, isCompleteCode } from '@/utils/pairing-code';
 import { TypedCodeField } from '@/components/settings/sync/TypedCodeField';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
+import { InsecureBlock } from '@/mobile/components/sync/ServerChoiceBlock';
 import { Sheet } from '@/mobile/components/Sheet';
 import { pairingSheetStep } from '@/mobile/lib/sync-scan';
 
@@ -43,7 +44,11 @@ interface PairingSheetProps {
   cancellingSetup: boolean;
   /** `received`, before the join: what it puts at stake (`ReplaceImpactBlock`). */
   impact: ReactNode;
-  /** The confirm "Join and replace" is on once the numbers it shows are in. */
+  /** The sync details name a plain http server: the warning is shown and must be ticked first. */
+  askInsecure: boolean;
+  insecureAcknowledged: boolean;
+  onInsecureAcknowledged: (value: boolean) => void;
+  /** The confirm "Join and replace" is on once the numbers it shows are in (and http is ticked). */
   canJoin: boolean;
   /** "Join and replace": the join with the consent of the numbers on screen. */
   onJoin: () => void;
@@ -83,6 +88,9 @@ export function PairingSheet({
   onCancelSetup,
   cancellingSetup,
   impact,
+  askInsecure,
+  insecureAcknowledged,
+  onInsecureAcknowledged,
   canJoin,
   onJoin,
   impactChanged,
@@ -178,6 +186,13 @@ export function PairingSheet({
             <p className="m-0 text-m-lead text-ink-3">{t('pairing.readyToJoin')}</p>
             {impactChanged && <InlineAlert icon={AlertTriangle}>{impactChanged}</InlineAlert>}
             {impact}
+            {askInsecure && view.joinServer && (
+              <InsecureBlock
+                acknowledged={insecureAcknowledged}
+                onChange={onInsecureAcknowledged}
+                body={t('join.insecureAtJoin', { host: view.joinServer })}
+              />
+            )}
             <PairingExpiryNote view={view} className="text-m-sub" />
           </div>
         );

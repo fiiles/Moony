@@ -17,7 +17,8 @@ import {
   problemAction,
   skippableGap,
 } from '@/utils/device-sync-problem';
-import { isSelfHostedPaidUntil, secondsToDate } from '@/utils/sync-status';
+import { secondsToDate } from '@/utils/sync-status';
+import { hostOf } from '@/utils/sync-setup';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 
@@ -100,8 +101,12 @@ export function SyncStatusBlock({
         <KeyValueRow label={t('phone.status')} value={t(`status.phase.${status.phase}`)} />
         <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} />
         <KeyValueRow label={t('phone.pending')} value={status.pendingChanges} />
-        {isSelfHostedPaidUntil(status.paidUntil) && (
-          <KeyValueRow label={t('status.subscription')} value={t('status.selfHosted')} />
+        {status.serverAddress && (
+          <KeyValueRow
+            label={t('server.label')}
+            value={hostOf(status.serverAddress)}
+            sub={status.serverInsecure ? t('server.insecure') : undefined}
+          />
         )}
       </div>
       <Button
@@ -139,7 +144,7 @@ function ProblemAlert({
   const held = heldFor(problem, heldGaps.data);
   // A held change younger than 14 days offers nothing: this device keeps syncing meanwhile
   const skippable = skippableGap(held, now);
-  const action = problemAction(problem, isSelfHostedPaidUntil(status.paidUntil), skippable);
+  const action = problemAction(problem, status.ownServer, skippable);
   const ahead = problem === 'clockAhead' ? aheadGap(held) : null;
   let title: string | undefined;
   let body = ahead ? aheadText(ahead, t, renderDate) : t(`status.problem.${problem}`);
@@ -152,7 +157,7 @@ function ProblemAlert({
   switch (action) {
     case 'renew':
     case 'askOperator':
-      title = t('alert.lapsed.title');
+      title = status.ownServer ? t('alert.lapsed.titleOwnServer') : t('alert.lapsed.title');
       body =
         action === 'askOperator'
           ? t('alert.lapsed.selfHosted')

@@ -46,7 +46,6 @@
     "pending": "Waiting to be sent: {{number}}",
     "clockAhead": "This device's clock was ahead at some point (or that of a device it synced with), so its changes are dated {{date}} until then. They still sync; if the same item is edited on another device, this device's version wins until that date.",
     "subscription": "Subscription",
-    "selfHosted": "Self-hosted server",
     "paidUntil": "Paid until {{date}}",
     "syncNow": "Sync now",
     "showKit": "Show Recovery Kit"
@@ -77,8 +76,6 @@
       "copied": "Copied"
     },
     "advanced": {
-      "toggle": "Advanced",
-      "label": "Sync server address",
       "placeholder": "https://sync.moonyfinance.com",
       "hint": "Leave empty to use Moony's sync service. Fill it in only if you run your own sync server."
     },
@@ -90,8 +87,6 @@
       "continue": "Continue to payment",
       "waiting": "Waiting for the payment. This window moves on when it arrives.",
       "grantTest": "Grant a test subscription",
-      "selfHosted": "This is your own sync server, so there is nothing to pay. Add the account number above to ALLOWED_ACCOUNTS on the server and restart it.",
-      "selfHostedWaiting": "Waiting for the server to accept the account. This window moves on when it does.",
       "ownServer": "This server is not the Moony cloud, so there is nothing to pay. Set sync up with the connection code of your own sync server instead."
     },
     "kit": {
@@ -149,14 +144,15 @@
       "insecureBody": "Your data stays encrypted, but anyone on the same network can capture the access to sync and delete or block the synced data on the server.",
       "insecureAck": "I understand, continue anyway",
       "resume": "Setup started with {{host}}",
-      "other": "Use another connection code"
+      "other": "Use another connection code",
+      "scan": "Scan code"
     }
   },
   "alert": {
     "lapsed": {
       "title": "Sync paused — renew to continue",
       "deletes": "Synced data will be deleted on {{date}}.",
-      "selfHosted": "Ask the operator of your sync server to renew access.",
+      "selfHosted": "Your account is blocked on your sync server. Ask whoever runs it to unblock it.",
       "renew": "Renew",
       "titleOwnServer": "Sync paused"
     },
@@ -366,9 +362,8 @@
     "notAPairingCode": "This is not a pairing code.",
     "devPasteTitle": "Paste a pairing code — developer tool",
     "devPasteLabel": "Pairing code",
-    "payUnavailable": "Paying for sync is not available in the phone app.",
-    "payWaiting": "Waiting for the account to become active. This moves on by itself when it does.",
-    "payWaitingShort": "Waiting…"
+    "notAConnectionCode": "This QR code is not a connection code for a sync server.",
+    "scanConnectionHint": "Point the camera at the connection code of your sync server."
   },
   "replace": {
     "lines": {

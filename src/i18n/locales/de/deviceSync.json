@@ -46,7 +46,6 @@
     "pending": "Zum Senden vorgemerkt: {{number}}",
     "clockAhead": "Die Uhr dieses Geräts (oder die eines Geräts, mit dem es synchronisiert hat) ging einmal vor, daher tragen seine Änderungen bis dahin das Datum {{date}}. Sie werden weiter synchronisiert; wird derselbe Eintrag auf einem anderen Gerät bearbeitet, setzt sich bis zu diesem Datum die Version dieses Geräts durch.",
     "subscription": "Abonnement",
-    "selfHosted": "Selbst betriebener Server",
     "paidUntil": "Bezahlt bis {{date}}",
     "syncNow": "Jetzt synchronisieren",
     "showKit": "Wiederherstellungs-Kit anzeigen"
@@ -77,8 +76,6 @@
       "copied": "Kopiert"
     },
     "advanced": {
-      "toggle": "Erweitert",
-      "label": "Adresse des Synchronisierungsservers",
       "placeholder": "https://sync.moonyfinance.com",
       "hint": "Leer lassen, um den Synchronisierungsdienst von Moony zu nutzen. Nur ausfüllen, wenn Sie einen eigenen Synchronisierungsserver betreiben."
     },
@@ -90,8 +87,6 @@
       "continue": "Weiter zur Zahlung",
       "waiting": "Es wird auf die Zahlung gewartet. Dieses Fenster geht weiter, sobald sie eintrifft.",
       "grantTest": "Test-Abo gewähren",
-      "selfHosted": "Das ist Ihr eigener Synchronisierungsserver, es gibt also nichts zu bezahlen. Tragen Sie die Kontonummer oben in ALLOWED_ACCOUNTS auf dem Server ein und starten Sie ihn neu.",
-      "selfHostedWaiting": "Es wird gewartet, bis der Server das Konto akzeptiert. Dieses Fenster geht weiter, sobald er es tut.",
       "ownServer": "Dieser Server ist nicht die Moony Cloud, daher gibt es nichts zu bezahlen. Richten Sie die Synchronisierung stattdessen mit dem Verbindungscode Ihres eigenen Synchronisierungsservers ein."
     },
     "kit": {
@@ -149,14 +144,15 @@
       "insecureBody": "Ihre Daten bleiben verschlüsselt, aber jeder im selben Netzwerk kann den Zugang zur Synchronisierung abgreifen und die synchronisierten Daten auf dem Server löschen oder sperren.",
       "insecureAck": "Ich verstehe, trotzdem fortfahren",
       "resume": "Einrichtung mit {{host}} begonnen",
-      "other": "Anderen Verbindungscode verwenden"
+      "other": "Anderen Verbindungscode verwenden",
+      "scan": "Code scannen"
     }
   },
   "alert": {
     "lapsed": {
       "title": "Synchronisierung pausiert – verlängern Sie, um fortzufahren",
       "deletes": "Die synchronisierten Daten werden am {{date}} gelöscht.",
-      "selfHosted": "Bitten Sie den Betreiber Ihres Synchronisierungsservers, den Zugang zu verlängern.",
+      "selfHosted": "Ihr Konto ist auf Ihrem Synchronisierungsserver gesperrt. Bitten Sie den Betreiber, es freizugeben.",
       "renew": "Verlängern",
       "titleOwnServer": "Synchronisierung pausiert"
     },
@@ -366,9 +362,8 @@
     "notAPairingCode": "Das ist kein Kopplungscode.",
     "devPasteTitle": "Kopplungscode einfügen — Entwicklerwerkzeug",
     "devPasteLabel": "Kopplungscode",
-    "payUnavailable": "Das Bezahlen der Synchronisierung ist in der Handy-App nicht möglich.",
-    "payWaiting": "Wir warten darauf, dass das Konto aktiv wird. Sobald es so weit ist, geht es von selbst weiter.",
-    "payWaitingShort": "Warten …"
+    "notAConnectionCode": "Dieser QR-Code ist kein Verbindungscode für einen Synchronisierungsserver.",
+    "scanConnectionHint": "Richten Sie die Kamera auf den Verbindungscode Ihres Synchronisierungsservers."
   },
   "replace": {
     "lines": {

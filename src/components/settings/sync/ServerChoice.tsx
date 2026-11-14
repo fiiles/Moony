@@ -17,6 +17,38 @@ interface ServerChoiceProps {
   showCloud: boolean;
 }
 
+/** The plain-http warning and the acknowledgement that must be ticked before going on. */
+export function InsecureNotice({
+  id,
+  acknowledged,
+  onChange,
+}: {
+  id: string;
+  acknowledged: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  const { t } = useTranslation('deviceSync');
+  return (
+    <Alert className="mt-2.5 text-caption">
+      <AlertTriangle />
+      <AlertTitle>{t('setup.server.insecureTitle')}</AlertTitle>
+      <AlertDescription>
+        {t('setup.server.insecureBody')}
+        <div className="mt-2.5 flex items-center gap-2">
+          <Checkbox
+            id={`${id}-ack`}
+            checked={acknowledged}
+            onCheckedChange={(checked) => onChange(checked === true)}
+          />
+          <Label htmlFor={`${id}-ack`} className="text-caption font-650 text-ink">
+            {t('setup.server.insecureAck')}
+          </Label>
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 /**
  * Where the data syncs: the Moony cloud (not open yet) or the person's own server, with the
  * connection code field, what the server answered and, for plain http, the warning that must be
@@ -93,23 +125,11 @@ export function ServerChoice({ state, id, showCloud }: ServerChoiceProps) {
             {status}
           </div>
           {check?.insecure && !problem && (
-            <Alert className="mt-2.5 text-caption">
-              <AlertTriangle />
-              <AlertTitle>{t('setup.server.insecureTitle')}</AlertTitle>
-              <AlertDescription>
-                {t('setup.server.insecureBody')}
-                <div className="mt-2.5 flex items-center gap-2">
-                  <Checkbox
-                    id={`${id}-ack`}
-                    checked={state.acknowledged}
-                    onCheckedChange={(checked) => state.setAcknowledged(checked === true)}
-                  />
-                  <Label htmlFor={`${id}-ack`} className="text-caption font-650 text-ink">
-                    {t('setup.server.insecureAck')}
-                  </Label>
-                </div>
-              </AlertDescription>
-            </Alert>
+            <InsecureNotice
+              id={id}
+              acknowledged={state.acknowledged}
+              onChange={state.setAcknowledged}
+            />
           )}
         </ChoiceCard>
       </RadioGroup>

@@ -3,6 +3,15 @@ import type { PairingStage, PairingView } from '@shared/schema';
 export type ScannedCodeKind = 'pair' | 'recover' | 'recoveryCode' | 'connection' | 'unknown';
 
 const CONNECTION_CODE = /^moony-sync\d+:/;
+/**
+ * `text` the way `connection_code::cleaned` reads a connection code in Rust: trimmed, every
+ * White_Space and zero-width character removed (a code wrapped by a chat app or copied with a
+ * zero-width space still reads).
+ */
+export function stripInvisible(text: string): string {
+  return text.trim().replace(/[\p{White_Space}\u200B-\u200D\uFEFF]/gu, '');
+}
+
 const RECOVERY_CODE = /^[0-9A-HJKMNP-TV-Z]{80}$/;
 
 /** The same normalisation as `decode_recovery_code` in Rust: separators go, ASCII upper case, I/L to 1, O to 0. */
@@ -23,7 +32,9 @@ export function scannedCodeKind(text: string): ScannedCodeKind {
   const trimmed = text.trim();
   if (trimmed.startsWith('moony-pair:')) return 'pair';
   if (trimmed.startsWith('moony-recover:')) return 'recover';
-  if (CONNECTION_CODE.test(trimmed)) return 'connection';
+  // Only the connection code parser removes inner white space and zero-width characters (the
+  // pairing and Kit parsers just trim, a recovery code keeps zero-width characters invalid)
+  if (CONNECTION_CODE.test(stripInvisible(trimmed))) return 'connection';
   if (RECOVERY_CODE.test(normalizeRecoveryCode(trimmed))) return 'recoveryCode';
   return 'unknown';
 }

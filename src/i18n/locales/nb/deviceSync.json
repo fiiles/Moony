@@ -46,7 +46,6 @@
     "pending": "Venter på å bli sendt: {{number}}",
     "clockAhead": "Klokken på denne enheten (eller på en enhet den synkroniserte med) gikk for fort på et tidspunkt, så endringene herfra er datert {{date}} frem til da. De synkroniseres fortsatt; hvis det samme elementet redigeres på en annen enhet, vinner versjonen fra denne enheten frem til den datoen.",
     "subscription": "Abonnement",
-    "selfHosted": "Selvdrevet server",
     "paidUntil": "Betalt til {{date}}",
     "syncNow": "Synkroniser nå",
     "showKit": "Vis gjenopprettingssettet"
@@ -77,8 +76,6 @@
       "copied": "Kopiert"
     },
     "advanced": {
-      "toggle": "Avansert",
-      "label": "Adresse til synkroniseringsserveren",
       "placeholder": "https://sync.moonyfinance.com",
       "hint": "La feltet stå tomt for å bruke Moonys synkroniseringstjeneste. Fyll det ut bare hvis du driver din egen synkroniseringsserver."
     },
@@ -90,8 +87,6 @@
       "continue": "Fortsett til betaling",
       "waiting": "Venter på betalingen. Dette vinduet går videre når den kommer.",
       "grantTest": "Gi et prøveabonnement",
-      "selfHosted": "Dette er din egen synkroniseringsserver, så det er ingenting å betale. Legg kontonummeret over til i ALLOWED_ACCOUNTS på serveren og start den på nytt.",
-      "selfHostedWaiting": "Venter på at serveren godtar kontoen. Dette vinduet går videre når den gjør det.",
       "ownServer": "Denne serveren er ikke Moony-skyen, så det er ingenting å betale. Sett opp synkroniseringen med tilkoblingskoden til din egen synkroniseringsserver i stedet."
     },
     "kit": {
@@ -149,14 +144,15 @@
       "insecureBody": "Dataene dine forblir krypterte, men alle på samme nettverk kan fange opp tilgangen til synkroniseringen og slette eller blokkere de synkroniserte dataene på serveren.",
       "insecureAck": "Jeg forstår, fortsett likevel",
       "resume": "Oppsettet startet med {{host}}",
-      "other": "Bruk en annen tilkoblingskode"
+      "other": "Bruk en annen tilkoblingskode",
+      "scan": "Skann kode"
     }
   },
   "alert": {
     "lapsed": {
       "title": "Synkroniseringen er satt på pause – forny for å fortsette",
       "deletes": "De synkroniserte dataene slettes {{date}}.",
-      "selfHosted": "Be operatøren av synkroniseringsserveren din om å fornye tilgangen.",
+      "selfHosted": "Kontoen din er sperret på synkroniseringsserveren din. Be den som driver den om å oppheve sperren.",
       "renew": "Forny",
       "titleOwnServer": "Synkroniseringen er satt på pause"
     },
@@ -366,9 +362,8 @@
     "notAPairingCode": "Dette er ikke en koblingskode.",
     "devPasteTitle": "Lim inn en koblingskode — utviklerverktøy",
     "devPasteLabel": "Koblingskode",
-    "payUnavailable": "Betaling for synkronisering er ikke tilgjengelig i mobilappen.",
-    "payWaiting": "Venter på at kontoen blir aktiv. Når den blir det, går det videre av seg selv.",
-    "payWaitingShort": "Venter …"
+    "notAConnectionCode": "Denne QR-koden er ikke en tilkoblingskode for en synkroniseringsserver.",
+    "scanConnectionHint": "Rett kameraet mot tilkoblingskoden til synkroniseringsserveren din."
   },
   "replace": {
     "lines": {

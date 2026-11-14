@@ -5,7 +5,7 @@ import { useSyncServerCheck } from '@/hooks/use-device-sync';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { translateApiError } from '@/lib/translate-api-error';
 import { parseConnectionCode, wrongCodeKey, type CodeContext } from '@/utils/sync-server';
-import { serverContinue } from '@/utils/sync-setup';
+import { acknowledgedAfterEdit, serverContinue } from '@/utils/sync-setup';
 
 export interface ServerChoiceState {
   input: string;
@@ -60,8 +60,8 @@ export function useServerChoice(
   return {
     input,
     setInput: (value) => {
+      setAcknowledged(acknowledgedAfterEdit(input, value, acknowledged));
       setInputState(value);
-      setAcknowledged(false);
     },
     accepts,
     check,

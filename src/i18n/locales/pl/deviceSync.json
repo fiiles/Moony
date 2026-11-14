@@ -46,7 +46,6 @@
     "pending": "Oczekuje na wysłanie: {{number}}",
     "clockAhead": "Zegar tego urządzenia (albo urządzenia, z którym się synchronizowało) w pewnym momencie się spieszył, więc jego zmiany mają datę {{date}}, dopóki ten dzień nie nadejdzie. Nadal się synchronizują; jeśli ten sam element zostanie zmieniony na innym urządzeniu, do tej daty wygrywa wersja z tego urządzenia.",
     "subscription": "Subskrypcja",
-    "selfHosted": "Własny serwer",
     "paidUntil": "Opłacone do {{date}}",
     "syncNow": "Synchronizuj teraz",
     "showKit": "Pokaż Zestaw odzyskiwania"
@@ -77,8 +76,6 @@
       "copied": "Skopiowano"
     },
     "advanced": {
-      "toggle": "Zaawansowane",
-      "label": "Adres serwera synchronizacji",
       "placeholder": "https://sync.moonyfinance.com",
       "hint": "Zostaw puste, aby korzystać z usługi synchronizacji Moony. Wypełnij tylko wtedy, gdy prowadzisz własny serwer synchronizacji."
     },
@@ -90,8 +87,6 @@
       "continue": "Przejdź do płatności",
       "waiting": "Czekam na płatność. To okno przejdzie dalej, gdy nadejdzie.",
       "grantTest": "Przyznaj testową subskrypcję",
-      "selfHosted": "To Twój własny serwer synchronizacji, więc nie ma nic do zapłaty. Dodaj powyższy numer konta do ALLOWED_ACCOUNTS na serwerze i uruchom go ponownie.",
-      "selfHostedWaiting": "Czekam, aż serwer zaakceptuje konto. To okno przejdzie dalej, gdy to zrobi.",
       "ownServer": "Ten serwer nie jest chmurą Moony, więc nie ma nic do zapłacenia. Skonfiguruj synchronizację za pomocą kodu połączenia własnego serwera synchronizacji."
     },
     "kit": {
@@ -149,14 +144,15 @@
       "insecureBody": "Twoje dane pozostają zaszyfrowane, ale każdy w tej samej sieci może przechwycić dostęp do synchronizacji i usunąć lub zablokować zsynchronizowane dane na serwerze.",
       "insecureAck": "Rozumiem, kontynuuj mimo to",
       "resume": "Konfiguracja rozpoczęła się z serwerem {{host}}",
-      "other": "Użyj innego kodu połączenia"
+      "other": "Użyj innego kodu połączenia",
+      "scan": "Zeskanuj kod"
     }
   },
   "alert": {
     "lapsed": {
       "title": "Synchronizacja wstrzymana – odnów subskrypcję, aby kontynuować",
       "deletes": "Zsynchronizowane dane zostaną usunięte {{date}}.",
-      "selfHosted": "Poproś operatora swojego serwera synchronizacji o odnowienie dostępu.",
+      "selfHosted": "Twoje konto jest zablokowane na Twoim serwerze synchronizacji. Poproś osobę, która go prowadzi, o odblokowanie.",
       "renew": "Odnów",
       "titleOwnServer": "Synchronizacja wstrzymana"
     },
@@ -380,9 +376,8 @@
     "notAPairingCode": "To nie jest kod parowania.",
     "devPasteTitle": "Wklej kod parowania — narzędzie deweloperskie",
     "devPasteLabel": "Kod parowania",
-    "payUnavailable": "Płatność za synchronizację nie jest dostępna w aplikacji na telefonie.",
-    "payWaiting": "Czekamy, aż konto stanie się aktywne. Gdy to nastąpi, przejdziemy dalej automatycznie.",
-    "payWaitingShort": "Czekamy…"
+    "notAConnectionCode": "Ten kod QR nie jest kodem połączenia z serwerem synchronizacji.",
+    "scanConnectionHint": "Skieruj aparat na kod połączenia swojego serwera synchronizacji."
   },
   "replace": {
     "lines": {

@@ -64,6 +64,8 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
   /** A scanned Recovery Kit QR between the scan and "Join" (it holds the recovery key); not rendered. */
   const kitText = useRef<string | null>(null);
   /** What the confirm sheet shows of that QR: the account number and the sync server. */
+  /** Why the scanned QR is no code for this flow (the `notMoony` sheet's sentence). */
+  const [refusal, setRefusal] = useState<'unknownCode' | 'connection'>('unknownCode');
   const [kitShown, setKitShown] = useState<{ account: string; server: string } | null>(null);
   /** The overlay's "Paste a pairing code": the scan is cancelled to make way for the sheet. */
   const toPaste = useRef(false);
@@ -142,7 +144,8 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
   const takeText = async (text: string) => {
     const typed = details.current;
     if (!typed) return finish();
-    switch (scanRoute(text, mode)) {
+    const route = scanRoute(text, mode);
+    switch (route) {
       case 'pair':
         setStep('working');
         try {
@@ -181,8 +184,11 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
         toast.error(tc('validation.syncAlreadyEnabled'));
         finish();
         return;
+      case 'connection':
       case 'unknown':
-        // Another QR: say so and offer the camera again; the password stays for that retry only
+        // Another QR (or a sync server's connection code, which is for setup): say so and offer the
+        // camera again; the password stays for that retry only
+        setRefusal(route === 'connection' ? 'connection' : 'unknownCode');
         setStep('notMoony');
         return;
     }
@@ -348,7 +354,9 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
           if (!next) void giveUp();
         }}
         title={t('phone.scanTitle')}
-        description={t('phone.unknownCode')}
+        description={
+          refusal === 'connection' ? t('codes.connectionNotHere') : t('phone.unknownCode')
+        }
         footer={
           <>
             <Button variant="ghost" className={`${BUTTON} px-[18px]`} onClick={() => void giveUp()}>

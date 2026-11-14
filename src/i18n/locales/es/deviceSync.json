@@ -46,7 +46,6 @@
     "pending": "Pendientes de enviar: {{number}}",
     "clockAhead": "El reloj de este dispositivo (o el de un dispositivo con el que se sincronizó) estuvo adelantado en algún momento, así que sus cambios llevan la fecha {{date}} hasta entonces. Se siguen sincronizando; si se edita el mismo elemento en otro dispositivo, gana la versión de este dispositivo hasta esa fecha.",
     "subscription": "Suscripción",
-    "selfHosted": "Servidor propio",
     "paidUntil": "Pagado hasta {{date}}",
     "syncNow": "Sincronizar ahora",
     "showKit": "Mostrar el Kit de recuperación"
@@ -77,8 +76,6 @@
       "copied": "Copiado"
     },
     "advanced": {
-      "toggle": "Avanzado",
-      "label": "Dirección del servidor de sincronización",
       "placeholder": "https://sync.moonyfinance.com",
       "hint": "Déjalo vacío para usar el servicio de sincronización de Moony. Rellénalo solo si gestionas tu propio servidor de sincronización."
     },
@@ -90,8 +87,6 @@
       "continue": "Continuar al pago",
       "waiting": "Esperando el pago. Esta ventana avanza cuando llegue.",
       "grantTest": "Conceder una suscripción de prueba",
-      "selfHosted": "Este es tu propio servidor de sincronización, así que no hay nada que pagar. Añade el número de cuenta de arriba a ALLOWED_ACCOUNTS en el servidor y reinícialo.",
-      "selfHostedWaiting": "Esperando a que el servidor acepte la cuenta. Esta ventana avanza cuando lo haga.",
       "ownServer": "Este servidor no es la nube de Moony, así que no hay nada que pagar. Configura la sincronización con el código de conexión de tu propio servidor de sincronización."
     },
     "kit": {
@@ -149,14 +144,15 @@
       "insecureBody": "Tus datos siguen cifrados, pero cualquiera en la misma red puede capturar el acceso a la sincronización y borrar o bloquear los datos sincronizados en el servidor.",
       "insecureAck": "Lo entiendo, continuar de todos modos",
       "resume": "La configuración empezó con {{host}}",
-      "other": "Usar otro código de conexión"
+      "other": "Usar otro código de conexión",
+      "scan": "Escanear código"
     }
   },
   "alert": {
     "lapsed": {
       "title": "Sincronización en pausa: renueva para continuar",
       "deletes": "Los datos sincronizados se eliminarán el {{date}}.",
-      "selfHosted": "Pide al operador de tu servidor de sincronización que renueve el acceso.",
+      "selfHosted": "Tu cuenta está bloqueada en tu servidor de sincronización. Pide a quien lo gestiona que la desbloquee.",
       "renew": "Renovar",
       "titleOwnServer": "Sincronización en pausa"
     },
@@ -373,9 +369,8 @@
     "notAPairingCode": "Esto no es un código de vinculación.",
     "devPasteTitle": "Pegar un código de vinculación — herramienta de desarrollo",
     "devPasteLabel": "Código de vinculación",
-    "payUnavailable": "Pagar la sincronización no está disponible en la app del móvil.",
-    "payWaiting": "Esperando a que la cuenta se active. Cuando lo haga, pasarás al siguiente paso automáticamente.",
-    "payWaitingShort": "Esperando…"
+    "notAConnectionCode": "Este código QR no es un código de conexión de un servidor de sincronización.",
+    "scanConnectionHint": "Apunta la cámara al código de conexión de tu servidor de sincronización."
   },
   "replace": {
     "lines": {

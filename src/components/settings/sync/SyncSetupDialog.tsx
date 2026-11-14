@@ -9,7 +9,7 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useServerChoice } from '@/hooks/use-server-choice';
 import { RecoveryKitPanel } from '@/components/settings/sync/RecoveryKitPanel';
-import { ServerChoice } from '@/components/settings/sync/ServerChoice';
+import { InsecureNotice, ServerChoice } from '@/components/settings/sync/ServerChoice';
 import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialog';
 import {
   Dialog,
@@ -26,7 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Segmented } from '@/components/ui/segmented';
 import { groupAccountNumber } from '@/utils/recovery-kit';
 import { defaultDeviceKey } from '@/utils/sync-devices';
-import { setupSteps, type ServerKind, type SetupStep } from '@/utils/sync-setup';
+import { isInsecureAddress, setupSteps, type ServerKind, type SetupStep } from '@/utils/sync-setup';
 
 /** `host[:port]` of a stored server address; the address itself when it does not parse. */
 function hostOf(address: string): string {
@@ -73,6 +73,8 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
     status?.phase === 'settingUp' && status.ownServer ? status.serverAddress : null;
   const [otherServer, setOtherServer] = useState(false);
   const resuming = resumeAddress !== null && !otherServer;
+  /** The resumed server is plain http: the warning is shown and acknowledged again. */
+  const resumeInsecure = resuming && isInsecureAddress(resumeAddress);
   /** Why the server step could not go on (a revoked code, a blocked account), translated. */
   const [connectError, setConnectError] = useState<string | null>(null);
   const [createdNumber, setCreatedNumber] = useState<string | null>(null);
@@ -133,6 +135,7 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
     }
     try {
       if (resuming) {
+        if (resumeInsecure && !choice.acknowledged) return;
         const { data: current } = await accountQuery.refetch();
         if (!current?.active) {
           setConnectError(tc('validation.syncAccountBlocked'));
@@ -223,7 +226,7 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
         label: t('setup.account.continue'),
         onClick: handleServer,
         loading: connectOwnServer.isPending || (resuming && accountQuery.isFetching),
-        disabled: !resuming && !choice.ready,
+        disabled: resuming ? resumeInsecure && !choice.acknowledged : !choice.ready,
       };
       break;
     case 'account':
@@ -294,11 +297,19 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
                       size="sm"
                       onClick={() => {
                         setOtherServer(true);
+                        choice.setAcknowledged(false);
                         setConnectError(null);
                       }}
                     >
                       {t('setup.server.other')}
                     </Button>
+                    {resumeInsecure && (
+                      <InsecureNotice
+                        id="sync-server-resume"
+                        acknowledged={choice.acknowledged}
+                        onChange={choice.setAcknowledged}
+                      />
+                    )}
                   </div>
                 ) : (
                   <ServerChoice state={choice} id="sync-server" showCloud />
@@ -338,9 +349,6 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
                   <>
                     {numberBox}
                     <p className="m-0 text-body text-ink-2">{t('setup.pay.ownServer')}</p>
-                    <p className="m-0 text-micro font-500 text-ink-3">
-                      {t('setup.pay.selfHostedWaiting')}
-                    </p>
                   </>
                 ) : (
                   startCheckout.isSuccess && (

@@ -22,3 +22,28 @@ export function serverContinue(check: SyncServerCheck | undefined, acknowledged:
   if (!check) return false;
   return !check.insecure || acknowledged;
 }
+
+/**
+ * Whether a stored server address is plain http to a host other than localhost / 127.0.0.1
+ * (`is_insecure_address` in Rust): a resumed setup shows the warning again for it.
+ */
+export function isInsecureAddress(address: string): boolean {
+  try {
+    const url = new URL(address);
+    return url.protocol === 'http:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The plain-http acknowledgement belongs to the server that was shown: it holds only while the
+ * input is the one it was given for, and typing clears it.
+ */
+export function acknowledgedAfterEdit(
+  previousInput: string,
+  nextInput: string,
+  acknowledged: boolean
+): boolean {
+  return nextInput === previousInput && acknowledged;
+}

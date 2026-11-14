@@ -100,9 +100,6 @@ export function SyncStatusBlock({
         <KeyValueRow label={t('phone.status')} value={t(`status.phase.${status.phase}`)} />
         <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} />
         <KeyValueRow label={t('phone.pending')} value={status.pendingChanges} />
-        {status.ownServer && (
-          <KeyValueRow label={t('status.subscription')} value={t('status.selfHosted')} />
-        )}
       </div>
       <Button
         className={BUTTON}
@@ -152,7 +149,7 @@ function ProblemAlert({
   switch (action) {
     case 'renew':
     case 'askOperator':
-      title = t('alert.lapsed.title');
+      title = status.ownServer ? t('alert.lapsed.titleOwnServer') : t('alert.lapsed.title');
       body =
         action === 'askOperator'
           ? t('alert.lapsed.selfHosted')

@@ -46,7 +46,6 @@
     "pending": "Väntar på att skickas: {{number}}",
     "clockAhead": "Klockan på den här enheten (eller på en enhet den synkroniserade med) gick före vid något tillfälle, så dess ändringar är daterade {{date}} fram till dess. De synkroniseras fortfarande; om samma post redigeras på en annan enhet vinner den här enhetens version fram till det datumet.",
     "subscription": "Prenumeration",
-    "selfHosted": "Egen server",
     "paidUntil": "Betald till {{date}}",
     "syncNow": "Synkronisera nu",
     "showKit": "Visa återställningskitet"
@@ -77,8 +76,6 @@
       "copied": "Kopierat"
     },
     "advanced": {
-      "toggle": "Avancerat",
-      "label": "Adress till synkroniseringsservern",
       "placeholder": "https://sync.moonyfinance.com",
       "hint": "Lämna tomt för att använda Moonys synkroniseringstjänst. Fyll i bara om du kör din egen synkroniseringsserver."
     },
@@ -90,8 +87,6 @@
       "continue": "Fortsätt till betalning",
       "waiting": "Väntar på betalningen. Det här fönstret går vidare när den kommer.",
       "grantTest": "Ge en testprenumeration",
-      "selfHosted": "Det här är din egen synkroniseringsserver, så det finns inget att betala. Lägg till kontonumret ovan i ALLOWED_ACCOUNTS på servern och starta om den.",
-      "selfHostedWaiting": "Väntar på att servern godtar kontot. Det här fönstret går vidare när den gör det.",
       "ownServer": "Den här servern är inte Moony-molnet, så det finns inget att betala. Ställ in synkroniseringen med anslutningskoden till din egen synkroniseringsserver i stället."
     },
     "kit": {
@@ -149,14 +144,15 @@
       "insecureBody": "Dina data förblir krypterade, men alla på samma nätverk kan fånga upp åtkomsten till synkroniseringen och radera eller blockera de synkroniserade data på servern.",
       "insecureAck": "Jag förstår, fortsätt ändå",
       "resume": "Inställningen påbörjades med {{host}}",
-      "other": "Använd en annan anslutningskod"
+      "other": "Använd en annan anslutningskod",
+      "scan": "Skanna kod"
     }
   },
   "alert": {
     "lapsed": {
       "title": "Synkroniseringen är pausad – förnya för att fortsätta",
       "deletes": "De synkroniserade uppgifterna raderas {{date}}.",
-      "selfHosted": "Be operatören av din synkroniseringsserver att förnya åtkomsten.",
+      "selfHosted": "Ditt konto är blockerat på din synkroniseringsserver. Be den som driver den att häva blockeringen.",
       "renew": "Förnya",
       "titleOwnServer": "Synkroniseringen är pausad"
     },
@@ -366,9 +362,8 @@
     "notAPairingCode": "Det här är ingen parkopplingskod.",
     "devPasteTitle": "Klistra in en parkopplingskod — utvecklarverktyg",
     "devPasteLabel": "Parkopplingskod",
-    "payUnavailable": "Betalning för synkronisering är inte tillgänglig i mobilappen.",
-    "payWaiting": "Väntar på att kontot ska bli aktivt. När det blir det går det vidare av sig självt.",
-    "payWaitingShort": "Väntar …"
+    "notAConnectionCode": "Den här QR-koden är inte en anslutningskod för en synkroniseringsserver.",
+    "scanConnectionHint": "Rikta kameran mot anslutningskoden för din synkroniseringsserver."
   },
   "replace": {
     "lines": {

@@ -1,6 +1,6 @@
 import type { PairingStage, PairingView } from '@shared/schema';
 import { scannedCodeKind } from '@/utils/pairing-code';
-import { decodeServerField } from '@/utils/sync-server';
+import { decodeServerField, normalizeAddress } from '@/utils/sync-server';
 import { groupAccountNumber } from '@/utils/recovery-kit';
 
 /**
@@ -14,10 +14,11 @@ export type ScanMode = 'join' | 'add';
 
 /**
  * Where a scanned QR goes: a pairing (either mode, the backend tells the role), a join with the
- * Recovery Kit's QR (sync off only), "Sync is already on" for a Kit with sync on, or nowhere. A bare
- * recovery code in a QR carries no account and is no Moony QR.
+ * Recovery Kit's QR (sync off only), "Sync is already on" for a Kit with sync on, a connection code
+ * (a self-hosted server's: for setup, not here) or nowhere. A bare recovery code in a QR carries no
+ * account and is no Moony QR.
  */
-export type ScanRoute = 'pair' | 'kitJoin' | 'alreadyOn' | 'unknown';
+export type ScanRoute = 'pair' | 'kitJoin' | 'alreadyOn' | 'connection' | 'unknown';
 
 export function scanRoute(text: string, mode: ScanMode): ScanRoute {
   switch (scannedCodeKind(text)) {
@@ -25,6 +26,27 @@ export function scanRoute(text: string, mode: ScanMode): ScanRoute {
       return 'pair';
     case 'recover':
       return mode === 'join' ? 'kitJoin' : 'alreadyOn';
+    case 'connection':
+      return 'connection';
+    default:
+      return 'unknown';
+  }
+}
+
+/**
+ * Where a QR scanned by the setup camera goes: a connection code fills the server field; a pairing
+ * code or a Recovery Kit QR is named as not for setup; anything else is no connection code.
+ */
+export type SetupScanRoute = 'connection' | 'pair' | 'recover' | 'unknown';
+
+export function setupScanRoute(text: string): SetupScanRoute {
+  switch (scannedCodeKind(text)) {
+    case 'connection':
+      return 'connection';
+    case 'pair':
+      return 'pair';
+    case 'recover':
+      return 'recover';
     default:
       return 'unknown';
   }
@@ -36,7 +58,14 @@ export function scanRoute(text: string, mode: ScanMode): ScanRoute {
  * wrong with it.
  */
 export function kitCodeProblem(code: string): string | null {
-  return scannedCodeKind(code) === 'pair' ? 'phone.notAKitCode' : null;
+  switch (scannedCodeKind(code)) {
+    case 'pair':
+      return 'phone.notAKitCode';
+    case 'connection':
+      return 'codes.connectionNotHere';
+    default:
+      return null;
+  }
 }
 
 /**
@@ -76,17 +105,21 @@ export function kitQrSummary(text: string): KitQrSummary {
   }
   const address = decodeServerField(encoded);
   if (address === null) return invalid;
-  try {
-    const server = new URL(address).href.replace(/\/+$/, '');
-    return { ok: true, account: groupAccountNumber(account), server };
-  } catch {
-    return { ok: false, problem: 'validation.syncRelayUrlInvalid' };
-  }
+  const server = normalizeAddress(address);
+  if (server === null) return { ok: false, problem: 'validation.syncRelayUrlInvalid' };
+  return { ok: true, account: groupAccountNumber(account), server };
 }
 
 /** The developer paste sheet takes a pairing code only (a `deviceSync` key otherwise). */
 export function pairingCodeProblem(code: string): string | null {
-  return scannedCodeKind(code) === 'pair' ? null : 'phone.notAPairingCode';
+  switch (scannedCodeKind(code)) {
+    case 'pair':
+      return null;
+    case 'connection':
+      return 'codes.connectionNotHere';
+    default:
+      return 'phone.notAPairingCode';
+  }
 }
 
 /** The `setup.defaultName` key of this phone: Android by its build platform, else an iPhone. */

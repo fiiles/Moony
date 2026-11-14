@@ -1,4 +1,4 @@
-import { scannedCodeKind } from '@/utils/pairing-code';
+import { scannedCodeKind, stripInvisible } from '@/utils/pairing-code';
 
 /**
  * The connection code of a self-hosted sync server and the server addresses it carries. The
@@ -26,7 +26,7 @@ export type ConnectionCodeRead =
 
 /** Trimmed, every White_Space and zero-width character removed, one trailing `.` or `,` dropped. */
 function cleaned(text: string): string {
-  const code = text.trim().replace(/[\p{White_Space}\u200B-\u200D\uFEFF]/gu, '');
+  const code = stripInvisible(text);
   return /[.,]$/.test(code) ? code.slice(0, -1) : code;
 }
 
@@ -54,7 +54,7 @@ export function decodeServerField(encoded: string): string | null {
 }
 
 /** The address in one spelling (`scheme://host[:port]`), or `null` when the app would refuse it. */
-function normalizeAddress(address: string): string | null {
+export function normalizeAddress(address: string): string | null {
   if ([...address].length > MAX_ADDRESS_CHARS || /[?#]/.test(address)) return null;
   let url: URL;
   try {

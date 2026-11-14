@@ -46,7 +46,6 @@
     "pending": "Čeká na odeslání: {{number}}",
     "clockAhead": "Hodiny tohoto zařízení (nebo zařízení, se kterým se synchronizovalo) byly v jednu chvíli napřed, takže jeho změny nesou datum {{date}}, dokud ten den nenastane. Synchronizují se dál; pokud se stejná položka upraví na jiném zařízení, do toho data vyhraje verze z tohoto zařízení.",
     "subscription": "Předplatné",
-    "selfHosted": "Vlastní (self-hosted) server",
     "paidUntil": "Zaplaceno do {{date}}",
     "syncNow": "Synchronizovat",
     "showKit": "Zobrazit Záchrannou sadu"
@@ -77,8 +76,6 @@
       "copied": "Zkopírováno"
     },
     "advanced": {
-      "toggle": "Upřesnit",
-      "label": "Adresa synchronizačního serveru",
       "placeholder": "https://sync.moonyfinance.com",
       "hint": "Nechte prázdné pro synchronizační službu Moony. Vyplňte jen tehdy, když provozujete vlastní synchronizační server."
     },
@@ -90,8 +87,6 @@
       "continue": "Pokračovat k platbě",
       "waiting": "Čekám na platbu. Okno se posune dál, jakmile dorazí.",
       "grantTest": "Udělit zkušební předplatné",
-      "selfHosted": "Toto je váš vlastní synchronizační server, takže se nic neplatí. Přidejte číslo účtu výše do ALLOWED_ACCOUNTS na serveru a server restartujte.",
-      "selfHostedWaiting": "Čekám, až server účet přijme. Okno se posune dál, jakmile se tak stane.",
       "ownServer": "Tento server není Moony cloud, takže se nic neplatí. Nastavte synchronizaci pomocí připojovacího kódu vlastního synchronizačního serveru."
     },
     "kit": {
@@ -149,14 +144,15 @@
       "insecureBody": "Data zůstávají šifrovaná, ale kdokoli ve stejné síti může zachytit přístup k synchronizaci a synchronizovaná data na serveru smazat nebo zablokovat.",
       "insecureAck": "Rozumím, přesto pokračovat",
       "resume": "Nastavení začalo se serverem {{host}}",
-      "other": "Použít jiný připojovací kód"
+      "other": "Použít jiný připojovací kód",
+      "scan": "Naskenovat kód"
     }
   },
   "alert": {
     "lapsed": {
       "title": "Synchronizace pozastavena – obnovte předplatné",
       "deletes": "Synchronizovaná data budou smazána {{date}}.",
-      "selfHosted": "Požádejte provozovatele svého synchronizačního serveru o obnovení přístupu.",
+      "selfHosted": "Váš účet je na vašem synchronizačním serveru zablokovaný. Požádejte toho, kdo server provozuje, o odblokování.",
       "renew": "Obnovit",
       "titleOwnServer": "Synchronizace pozastavena"
     },
@@ -380,9 +376,8 @@
     "notAPairingCode": "Toto není párovací kód.",
     "devPasteTitle": "Vložit párovací kód — vývojářský nástroj",
     "devPasteLabel": "Párovací kód",
-    "payUnavailable": "Platba za synchronizaci není v aplikaci v telefonu k dispozici.",
-    "payWaiting": "Čekáme, až se účet aktivuje. Jakmile se tak stane, pokračuje to samo.",
-    "payWaitingShort": "Čekáme…"
+    "notAConnectionCode": "Tento QR kód není připojovací kód synchronizačního serveru.",
+    "scanConnectionHint": "Namiřte fotoaparát na připojovací kód svého synchronizačního serveru."
   },
   "replace": {
     "lines": {

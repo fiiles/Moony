@@ -46,7 +46,6 @@
     "pending": "等待发送：{{number}}",
     "clockAhead": "此设备（或与之同步的某台设备）的时钟曾经超前，因此在 {{date}} 之前，此设备的更改都会标注该日期。它们仍会同步；在该日期之前，如果在另一台设备上编辑了同一项目，以此设备的版本为准。",
     "subscription": "订阅",
-    "selfHosted": "自托管服务器",
     "paidUntil": "已付费至 {{date}}",
     "syncNow": "立即同步",
     "showKit": "显示恢复包"
@@ -77,8 +76,6 @@
       "copied": "已复制"
     },
     "advanced": {
-      "toggle": "高级",
-      "label": "同步服务器地址",
       "placeholder": "https://sync.moonyfinance.com",
       "hint": "留空则使用 Moony 的同步服务。仅在您运行自己的同步服务器时才填写。"
     },
@@ -90,8 +87,6 @@
       "continue": "前往付款",
       "waiting": "正在等待付款。款项到账后此窗口会继续。",
       "grantTest": "授予测试订阅",
-      "selfHosted": "这是您自己的同步服务器，无需付款。请把上面的账户编号添加到服务器的 ALLOWED_ACCOUNTS 中，然后重启服务器。",
-      "selfHostedWaiting": "正在等待服务器接受该账户。服务器接受后此窗口会继续。",
       "ownServer": "此服务器不是 Moony 云，因此无需付款。请改用您自己同步服务器的连接码来设置同步。"
     },
     "kit": {
@@ -149,14 +144,15 @@
       "insecureBody": "您的数据仍然是加密的，但同一网络中的任何人都可能截获同步访问权限，并删除或阻止服务器上已同步的数据。",
       "insecureAck": "我明白，仍然继续",
       "resume": "已与 {{host}} 开始设置",
-      "other": "使用其他连接码"
+      "other": "使用其他连接码",
+      "scan": "扫描代码"
     }
   },
   "alert": {
     "lapsed": {
       "title": "同步已暂停——请续订以继续",
       "deletes": "同步数据将于 {{date}} 删除。",
-      "selfHosted": "请联系您的同步服务器运营者续订访问权限。",
+      "selfHosted": "您的账户在您的同步服务器上已被封锁。请联系运营者解除封锁。",
       "renew": "续订",
       "titleOwnServer": "同步已暂停"
     },
@@ -359,9 +355,8 @@
     "notAPairingCode": "这不是配对码。",
     "devPasteTitle": "粘贴配对码 — 开发者工具",
     "devPasteLabel": "配对码",
-    "payUnavailable": "手机应用中无法为同步付款。",
-    "payWaiting": "正在等待账户激活。激活后会自动进入下一步。",
-    "payWaitingShort": "等待中…"
+    "notAConnectionCode": "此二维码不是同步服务器的连接码。",
+    "scanConnectionHint": "请将相机对准同步服务器的连接码。"
   },
   "replace": {
     "lines": {

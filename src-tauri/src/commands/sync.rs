@@ -898,6 +898,35 @@ pub async fn sync_resync_device(
     Ok(outcome_view(&outcome))
 }
 
+/// Changes the sync server address of a device that syncs (`server::change_server_address`) once
+/// the device password is checked. Only the ADDRESS is used: a connection code's account is
+/// ignored, the stored account, vault and token stay. The engine is stopped for the swap and
+/// starts again on the new stored address, its first round running at once (`runtime::spawn`).
+#[tauri::command]
+pub async fn sync_change_server_address(
+    app: AppHandle,
+    db: State<'_, Database>,
+    password: String,
+    address: String,
+) -> Result<SyncStatus> {
+    let password = Zeroizing::new(password);
+    require_feature()?;
+    password_given(&password)?;
+    verify_password(&app, password).await?;
+    let address = server_address_from_input(&address)?;
+    forget_kit_window();
+    super::sync_pairing::forget_pairing();
+    let session = db.current_session()?;
+    // The service builds the client from the address it normalised and stores
+    let change = server::change_server_address(
+        |normalized| HttpRelay::new(normalized).map_err(SyncError::Local),
+        &session,
+        &address,
+    );
+    guarded_change(&AppEngine { app: &app, db: &db }, change).await?;
+    current_status(&app, &db)
+}
+
 /// A test subscription of `days` days on a local relay started with `DEV_GRANT=1` (debug builds
 /// with the developer tools only).
 #[tauri::command]
@@ -1310,7 +1339,7 @@ mod tests {
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 35);
+        assert_eq!(found.len(), 36);
         for (name, first_three) in &commands {
             // The flag itself, a read-only question, and the way out of an enabled profile.
             if [
@@ -1355,6 +1384,7 @@ mod tests {
             (include_str!("sync.rs"), "sync_repair_device"),
             (include_str!("sync.rs"), "sync_resync_device"),
             (include_str!("sync.rs"), "sync_delete_synced_data"),
+            (include_str!("sync.rs"), "sync_change_server_address"),
             (include_str!("sync_gaps.rs"), "sync_skip_missing_change"),
         ] {
             let body = command_body_in(source, name);

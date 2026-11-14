@@ -399,6 +399,14 @@ export const deviceSyncApi = {
   resyncDevice: (password: string, consent: ReplaceConsentView) =>
     tauriInvoke<ReplaceOutcomeView>('sync_resync_device', { password, consent }),
 
+  /**
+   * Moves a device that syncs to another address of the same sync server (the address of a
+   * connection code is read too; its account is ignored), once the device password is checked.
+   * The server must prove it is the same one; the engine restarts on the new address.
+   */
+  changeServerAddress: (password: string, address: string) =>
+    tauriInvoke<SyncStatus>('sync_change_server_address', { password, address }),
+
   /** What a join, repair or re-sync would put at stake now; a confirmation loads it when it opens. */
   replaceImpact: () => tauriInvoke<ReplaceImpactView>('sync_replace_impact'),
 

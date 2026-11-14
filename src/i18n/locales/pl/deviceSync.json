@@ -50,6 +50,14 @@
     "syncNow": "Synchronizuj teraz",
     "showKit": "Pokaż Zestaw odzyskiwania"
   },
+  "server": {
+    "label": "Serwer synchronizacji",
+    "insecure": "Połączenie nieszyfrowane (http)",
+    "change": "Zmień adres",
+    "dialogTitle": "Zmień adres serwera",
+    "dialogBody": "Użyj tego, gdy Twój serwer synchronizacji zmienił adres. To musi być ten sam serwer z Twoimi zsynchronizowanymi danymi. Każde urządzenie zmienia własny adres, więc powtórz to na pozostałych urządzeniach. Zapisz zestaw odzyskiwania ponownie: zawiera teraz nowy adres.",
+    "success": "Adres serwera synchronizacji został zmieniony"
+  },
   "intro": {
     "description": "Utrzymuj dane aktualne na wszystkich urządzeniach. Są szyfrowane end-to-end: serwer synchronizacji przechowuje tylko dane, których nie potrafi odczytać.",
     "privacy": "Twoje dane nigdy nie opuszczają urządzeń w postaci niezaszyfrowanej.",

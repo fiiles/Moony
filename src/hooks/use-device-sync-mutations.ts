@@ -118,6 +118,14 @@ export function useDeviceSyncMutations() {
     gcTime: 0,
     onSuccess: refreshLocalData,
   });
+  // The password is a mutation variable: the dialog or sheet that asks for it calls `reset()` when
+  // it leaves.
+  const changeServerAddress = useMutation({
+    mutationFn: ({ password, address }: { password: string; address: string }) =>
+      deviceSyncApi.changeServerAddress(password, address),
+    gcTime: 0,
+    onSuccess: refreshSyncState,
+  });
   // Joining with a kit replaces this device's data, like repair and re-sync.
   const joinWithRecoveryKit = useMutation({
     mutationKey: REPLACE_DEVICE_MUTATION_KEY,
@@ -170,6 +178,7 @@ export function useDeviceSyncMutations() {
     deleteSyncedData,
     repairDevice,
     resyncDevice,
+    changeServerAddress,
     joinWithRecoveryKit,
     deleteBackup,
     skipMissingChange,

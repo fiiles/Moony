@@ -18,6 +18,7 @@ import {
   skippableGap,
 } from '@/utils/device-sync-problem';
 import { secondsToDate } from '@/utils/sync-status';
+import { hostOf } from '@/utils/sync-setup';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 
@@ -100,6 +101,13 @@ export function SyncStatusBlock({
         <KeyValueRow label={t('phone.status')} value={t(`status.phase.${status.phase}`)} />
         <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} />
         <KeyValueRow label={t('phone.pending')} value={status.pendingChanges} />
+        {status.serverAddress && (
+          <KeyValueRow
+            label={t('server.label')}
+            value={hostOf(status.serverAddress)}
+            sub={status.serverInsecure ? t('server.insecure') : undefined}
+          />
+        )}
       </div>
       <Button
         className={BUTTON}

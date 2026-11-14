@@ -50,6 +50,14 @@
     "syncNow": "Sync now",
     "showKit": "Show Recovery Kit"
   },
+  "server": {
+    "label": "Sync server",
+    "insecure": "Unencrypted connection (http)",
+    "change": "Change address",
+    "dialogTitle": "Change the server address",
+    "dialogBody": "Use this when your sync server moved to a new address. It must be the same server, with your synced data. Every device changes its own address, so do the same on your other devices. Save the Recovery Kit again: it now carries the new address.",
+    "success": "Sync server address changed"
+  },
   "intro": {
     "description": "Keep your data in step on all your devices. It is end-to-end encrypted: the sync server only stores data it cannot read.",
     "privacy": "Your data never leaves your devices unencrypted.",

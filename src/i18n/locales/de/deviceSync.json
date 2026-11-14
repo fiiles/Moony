@@ -50,6 +50,14 @@
     "syncNow": "Jetzt synchronisieren",
     "showKit": "Wiederherstellungs-Kit anzeigen"
   },
+  "server": {
+    "label": "Sync-Server",
+    "insecure": "Unverschlüsselte Verbindung (http)",
+    "change": "Adresse ändern",
+    "dialogTitle": "Serveradresse ändern",
+    "dialogBody": "Nutze das, wenn dein Sync-Server auf eine neue Adresse umgezogen ist. Es muss derselbe Server mit deinen synchronisierten Daten sein. Jedes Gerät ändert seine Adresse selbst, wiederhole das also auf deinen anderen Geräten. Speichere das Wiederherstellungs-Kit erneut: Es enthält jetzt die neue Adresse.",
+    "success": "Adresse des Sync-Servers geändert"
+  },
   "intro": {
     "description": "Halten Sie Ihre Daten auf allen Ihren Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
     "privacy": "Ihre Daten verlassen Ihre Geräte nie unverschlüsselt.",

@@ -50,6 +50,14 @@
     "syncNow": "Synkronisera nu",
     "showKit": "Visa återställningskitet"
   },
+  "server": {
+    "label": "Synkroniseringsserver",
+    "insecure": "Okrypterad anslutning (http)",
+    "change": "Ändra adress",
+    "dialogTitle": "Ändra serveradressen",
+    "dialogBody": "Använd det här när din synkroniseringsserver har flyttat till en ny adress. Det måste vara samma server, med dina synkroniserade data. Varje enhet ändrar sin egen adress, så gör likadant på dina andra enheter. Spara återställningskitet igen: det innehåller nu den nya adressen.",
+    "success": "Synkroniseringsserverns adress har ändrats"
+  },
   "intro": {
     "description": "Håll dina uppgifter uppdaterade på alla dina enheter. De är end-to-end-krypterade: synkroniseringsservern lagrar bara data den inte kan läsa.",
     "privacy": "Dina uppgifter lämnar aldrig dina enheter okrypterade.",

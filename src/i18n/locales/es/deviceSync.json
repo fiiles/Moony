@@ -50,6 +50,14 @@
     "syncNow": "Sincronizar ahora",
     "showKit": "Mostrar el Kit de recuperación"
   },
+  "server": {
+    "label": "Servidor de sincronización",
+    "insecure": "Conexión sin cifrar (http)",
+    "change": "Cambiar dirección",
+    "dialogTitle": "Cambiar la dirección del servidor",
+    "dialogBody": "Úsalo cuando tu servidor de sincronización se haya mudado a una dirección nueva. Debe ser el mismo servidor, con tus datos sincronizados. Cada dispositivo cambia su propia dirección, así que haz lo mismo en tus otros dispositivos. Guarda de nuevo el kit de recuperación: ahora incluye la dirección nueva.",
+    "success": "Dirección del servidor de sincronización cambiada"
+  },
   "intro": {
     "description": "Mantén tus datos al día en todos tus dispositivos. Están cifrados de extremo a extremo: el servidor de sincronización solo guarda datos que no puede leer.",
     "privacy": "Tus datos nunca salen de tus dispositivos sin cifrar.",

@@ -50,6 +50,14 @@
     "syncNow": "Sincronizza ora",
     "showKit": "Mostra il Kit di ripristino"
   },
+  "server": {
+    "label": "Server di sincronizzazione",
+    "insecure": "Connessione non cifrata (http)",
+    "change": "Cambia indirizzo",
+    "dialogTitle": "Cambia l'indirizzo del server",
+    "dialogBody": "Usalo quando il tuo server di sincronizzazione si è spostato a un nuovo indirizzo. Deve essere lo stesso server, con i tuoi dati sincronizzati. Ogni dispositivo cambia il proprio indirizzo, quindi ripeti l'operazione sugli altri dispositivi. Salva di nuovo il kit di ripristino: ora contiene il nuovo indirizzo.",
+    "success": "Indirizzo del server di sincronizzazione cambiato"
+  },
   "intro": {
     "description": "Mantieni i dati allineati su tutti i tuoi dispositivi. Sono cifrati end-to-end: il server di sincronizzazione conserva solo dati che non può leggere.",
     "privacy": "I tuoi dati non lasciano mai i tuoi dispositivi senza cifratura.",

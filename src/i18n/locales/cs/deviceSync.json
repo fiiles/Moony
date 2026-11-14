@@ -50,6 +50,14 @@
     "syncNow": "Synchronizovat",
     "showKit": "Zobrazit Záchrannou sadu"
   },
+  "server": {
+    "label": "Synchronizační server",
+    "insecure": "Nešifrované spojení (http)",
+    "change": "Změnit adresu",
+    "dialogTitle": "Změnit adresu serveru",
+    "dialogBody": "Použijte to, když se váš synchronizační server přestěhoval na novou adresu. Musí jít o tentýž server, na kterém jsou vaše synchronizovaná data. Každé zařízení si adresu mění samo, stejný postup tedy zopakujte na ostatních zařízeních. Uložte si znovu Záchrannou sadu: nově obsahuje novou adresu.",
+    "success": "Adresa synchronizačního serveru je změněna"
+  },
   "intro": {
     "description": "Udržujte data synchronizovaná na všech svých zařízeních. Jsou koncově šifrovaná: synchronizační server ukládá jen data, která nepřečte.",
     "privacy": "Vaše data neopustí zařízení nešifrovaná.",

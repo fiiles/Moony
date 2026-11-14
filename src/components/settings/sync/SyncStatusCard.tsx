@@ -6,7 +6,9 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { secondsToDate } from '@/utils/sync-status';
+import { hostOf } from '@/utils/sync-setup';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
+import { ChangeServerDialog } from '@/components/settings/sync/ChangeServerDialog';
 import { ShowRecoveryKitFlow } from '@/components/settings/sync/ShowRecoveryKitFlow';
 import { SyncProblemAlert } from '@/components/settings/sync/SyncProblemAlert';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -20,6 +22,7 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
   const { dateTime, date } = useFormat();
   const { syncNow } = useDeviceSyncMutations();
   const [kitOpen, setKitOpen] = useState(false);
+  const [serverOpen, setServerOpen] = useState(false);
 
   const handleSyncNow = async () => {
     try {
@@ -71,6 +74,21 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
                 hint={t('status.paidUntil', { date: date(paidUntil, { dateStyle: 'long' }) })}
               />
             )}
+            {status.serverAddress && (
+              <SettingsRow
+                label={t('server.label')}
+                hint={
+                  <>
+                    <span className="font-mono">{hostOf(status.serverAddress)}</span>
+                    {status.serverInsecure && <span> · {t('server.insecure')}</span>}
+                  </>
+                }
+              >
+                <Button type="button" variant="outline" onClick={() => setServerOpen(true)}>
+                  {t('server.change')}
+                </Button>
+              </SettingsRow>
+            )}
             <SettingsRow label={t('showKit.title')}>
               <Button type="button" variant="outline" onClick={() => setKitOpen(true)}>
                 {t('status.showKit')}
@@ -80,6 +98,7 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
         </div>
       </SettingsCard>
       {kitOpen && <ShowRecoveryKitFlow onClose={() => setKitOpen(false)} />}
+      {serverOpen && <ChangeServerDialog onClose={() => setServerOpen(false)} />}
     </>
   );
 }

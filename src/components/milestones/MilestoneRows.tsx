@@ -10,6 +10,7 @@ import {
   Home,
   Landmark,
   Percent,
+  RefreshCw,
   type LucideIcon,
 } from 'lucide-react';
 import type { Milestone, MilestoneKind } from '@shared/schema';
@@ -43,6 +44,7 @@ const UPKEEP_ICONS: Partial<Record<MilestoneKind, LucideIcon>> = {
   valuation_stale: Home,
   loan_balance_check: FileCheck,
   loan_fixation_expired: Percent,
+  sync_stalled: RefreshCw,
 };
 
 /**

@@ -45,7 +45,8 @@
   },
   "titles": {
     "backup_stale": "Data backup",
-    "balances_stale": "Account balances"
+    "balances_stale": "Account balances",
+    "sync_stalled": "Sync"
   },
   "sub": {
     "insurance_anniversary": "Cancellation notice deadline · anniversary {{date}}",
@@ -68,7 +69,9 @@
     "backup_stale": "Last backup {{date}}",
     "backup_never": "No backup yet",
     "balances_stale_one": "{{count}} account not updated for over 30 days",
-    "balances_stale_other": "{{count}} accounts not updated for over 30 days"
+    "balances_stale_other": "{{count}} accounts not updated for over 30 days",
+    "sync_stalled": "Last synced {{date}}",
+    "sync_stalled_never": "Not synced yet"
   },
   "short": {
     "backup_stale": "back up your data",
@@ -76,7 +79,8 @@
     "balances_stale_other": "update {{count}} balances",
     "valuation_stale": "revalue {{title}}",
     "loan_balance_check": "enter the current balance of {{title}}",
-    "loan_fixation_expired": "enter the new rate of {{title}}"
+    "loan_fixation_expired": "enter the new rate of {{title}}",
+    "sync_stalled": "check sync"
   },
   "groups": {
     "insuranceDates": {
@@ -128,6 +132,11 @@
       "label": "Loan balances and rates",
       "hint": "Entering the current balance once a year, and the new rate after a fixed rate ends.",
       "mute": "Don't remind me about loan balances and rates"
+    },
+    "sync": {
+      "label": "Sync",
+      "hint": "When sync stops or needs you.",
+      "mute": "Don't remind me about sync"
     }
   },
   "settings": {

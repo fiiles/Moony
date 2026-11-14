@@ -57,6 +57,10 @@ export function useMilestoneSubLine(formatMoney?: Formatters['money']) {
         return m.sinceDay === null
           ? t('sub.backup_never')
           : t('sub.backup_stale', { date: day(m.sinceDay) });
+      case 'sync_stalled':
+        return m.sinceDay === null
+          ? t('sub.sync_stalled_never')
+          : t('sub.sync_stalled', { date: day(m.sinceDay) });
       case 'balances_stale':
         return t('sub.balances_stale', { count: m.count ?? 0 });
       case 'valuation_stale':

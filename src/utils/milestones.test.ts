@@ -8,6 +8,7 @@ import {
   columns,
   daysBetween,
   groupOf,
+  isUpkeep,
   isUrgent,
   kindsOf,
   milestoneHref,
@@ -15,6 +16,7 @@ import {
   splitMilestones,
   upcomingDeadlines,
   upkeepShort,
+  visibleMilestoneGroups,
 } from './milestones';
 
 const DAY = 86_400;
@@ -57,6 +59,7 @@ const ALL_KINDS: MilestoneKind[] = [
   'valuation_stale',
   'watch_target',
   'stock_split',
+  'sync_stalled',
 ];
 
 describe('agendaDay', () => {
@@ -221,6 +224,7 @@ describe('groups', () => {
     expect([...grouped].sort()).toEqual([...ALL_KINDS].sort());
     expect(groupOf('loan_fixation_expired')).toBe('loanChecks');
     expect(groupOf('insurance_payment')).toBe('insurancePayments');
+    expect(groupOf('sync_stalled')).toBe('sync');
   });
 });
 
@@ -249,6 +253,7 @@ describe('milestoneHref', () => {
       '/stock-monitor/BRK.B'
     );
     expect(milestoneHref(m({ kind: 'stock_split', sourceId: 'inv-1' }))).toBe('/stocks/inv-1');
+    expect(milestoneHref(m({ kind: 'sync_stalled', sourceId: null }))).toBe('/settings/sync');
   });
 });
 
@@ -284,6 +289,18 @@ describe('upkeepShort', () => {
     );
     expect(upkeepShort(m({ kind: 'backup_stale', title: '' }), t)).toBe(
       'short.backup_stale|{"title":""}'
+    );
+  });
+});
+
+describe('the sync stall reminder', () => {
+  it('is data upkeep', () => {
+    expect(isUpkeep(m({ kind: 'sync_stalled' }))).toBe(true);
+  });
+  it('lists the sync group only while the sync feature is on', () => {
+    expect(visibleMilestoneGroups(true)).toEqual(MILESTONE_GROUP_IDS);
+    expect(visibleMilestoneGroups(false)).toEqual(
+      MILESTONE_GROUP_IDS.filter((group) => group !== 'sync')
     );
   });
 });

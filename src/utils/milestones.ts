@@ -10,6 +10,7 @@ export const UPKEEP_KINDS: readonly MilestoneKind[] = [
   'valuation_stale',
   'loan_balance_check',
   'loan_fixation_expired',
+  'sync_stalled',
 ];
 
 /** Dates the user can miss: the only kinds the top bar shows. */
@@ -32,7 +33,8 @@ export type MilestoneGroupId =
   | 'backup'
   | 'balances'
   | 'valuations'
-  | 'loanChecks';
+  | 'loanChecks'
+  | 'sync';
 
 /** "Nepřipomínat …" and the settings switches mute whole groups of kinds. */
 const GROUP_OF: Record<MilestoneKind, MilestoneGroupId> = {
@@ -52,6 +54,7 @@ const GROUP_OF: Record<MilestoneKind, MilestoneGroupId> = {
   valuation_stale: 'valuations',
   loan_balance_check: 'loanChecks',
   loan_fixation_expired: 'loanChecks',
+  sync_stalled: 'sync',
 };
 
 /** Groups in settings order. */
@@ -66,7 +69,13 @@ export const MILESTONE_GROUP_IDS: readonly MilestoneGroupId[] = [
   'balances',
   'valuations',
   'loanChecks',
+  'sync',
 ];
+
+/** The reminder groups Settings lists: `sync` only while the sync feature is on. */
+export function visibleMilestoneGroups(syncFeature: boolean): MilestoneGroupId[] {
+  return MILESTONE_GROUP_IDS.filter((group) => syncFeature || group !== 'sync');
+}
 
 export function groupOf(kind: MilestoneKind): MilestoneGroupId {
   return GROUP_OF[kind];
@@ -185,6 +194,8 @@ export function milestoneHref(m: Milestone): string {
       return `/stock-monitor/${id}`;
     case 'stock_split':
       return `/stocks/${id}`;
+    case 'sync_stalled':
+      return '/settings/sync';
   }
 }
 

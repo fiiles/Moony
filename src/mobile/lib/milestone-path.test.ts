@@ -50,6 +50,7 @@ const EXPECTED: Record<MilestoneKind, string> = {
   backup_stale: settingsPath('backup'),
   watch_target: watchPath('src-1'),
   stock_split: positionPath('src-1'),
+  sync_stalled: settingsPath('sync'),
 };
 
 describe('milestonePath', () => {

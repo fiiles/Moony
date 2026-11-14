@@ -54,7 +54,7 @@ pub const MILESTONE_STATE_SNOOZED: &str = "snoozed";
 const MAX_KEY_CHARS: usize = 256;
 
 /// Every kind the service emits; muted kinds must be one of these.
-pub const MILESTONE_KINDS: [&str; 16] = [
+pub const MILESTONE_KINDS: [&str; 17] = [
     "insurance_anniversary",
     "insurance_end",
     "insurance_payment",
@@ -71,6 +71,7 @@ pub const MILESTONE_KINDS: [&str; 16] = [
     "valuation_stale",
     "watch_target",
     "stock_split",
+    "sync_stalled",
 ];
 
 /// Muted kinds ("Nepřipomínat …") must be kinds the service knows.

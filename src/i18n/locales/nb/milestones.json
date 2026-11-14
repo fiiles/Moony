@@ -45,7 +45,8 @@
   },
   "titles": {
     "backup_stale": "Sikkerhetskopi av data",
-    "balances_stale": "Kontosaldoer"
+    "balances_stale": "Kontosaldoer",
+    "sync_stalled": "Synkronisering"
   },
   "sub": {
     "insurance_anniversary": "Frist for oppsigelse · årsdag {{date}}",
@@ -68,7 +69,9 @@
     "backup_stale": "Siste sikkerhetskopi {{date}}",
     "backup_never": "Ingen sikkerhetskopi ennå",
     "balances_stale_one": "{{count}} konto er ikke oppdatert på over 30 dager",
-    "balances_stale_other": "{{count}} kontoer er ikke oppdatert på over 30 dager"
+    "balances_stale_other": "{{count}} kontoer er ikke oppdatert på over 30 dager",
+    "sync_stalled": "Sist synkronisert {{date}}",
+    "sync_stalled_never": "Ikke synkronisert ennå"
   },
   "short": {
     "backup_stale": "ta sikkerhetskopi av dataene",
@@ -76,7 +79,8 @@
     "balances_stale_other": "oppdater {{count}} saldoer",
     "valuation_stale": "vurder {{title}} på nytt",
     "loan_balance_check": "legg inn gjeldende saldo for {{title}}",
-    "loan_fixation_expired": "legg inn ny rente for {{title}}"
+    "loan_fixation_expired": "legg inn ny rente for {{title}}",
+    "sync_stalled": "sjekk synkroniseringen"
   },
   "groups": {
     "insuranceDates": {
@@ -128,6 +132,11 @@
       "label": "Saldo og rente på lån",
       "hint": "Å legge inn gjeldende saldo hvert år og den nye renten når en bindingstid utløper.",
       "mute": "Ikke påminn meg om saldo og rente på lån"
+    },
+    "sync": {
+      "label": "Synkronisering",
+      "hint": "Når synkroniseringen stopper eller trenger deg.",
+      "mute": "Ikke påminn meg om synkronisering"
     }
   },
   "settings": {

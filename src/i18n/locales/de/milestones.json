@@ -45,7 +45,8 @@
   },
   "titles": {
     "backup_stale": "Datensicherung",
-    "balances_stale": "Kontostände"
+    "balances_stale": "Kontostände",
+    "sync_stalled": "Synchronisierung"
   },
   "sub": {
     "insurance_anniversary": "Frist für die Kündigung · Jahrestag {{date}}",
@@ -68,7 +69,9 @@
     "backup_stale": "Letzte Sicherung {{date}}",
     "backup_never": "Noch keine Sicherung",
     "balances_stale_one": "{{count}} Konto seit über 30 Tagen nicht aktualisiert",
-    "balances_stale_other": "{{count}} Konten seit über 30 Tagen nicht aktualisiert"
+    "balances_stale_other": "{{count}} Konten seit über 30 Tagen nicht aktualisiert",
+    "sync_stalled": "Zuletzt synchronisiert {{date}}",
+    "sync_stalled_never": "Noch nicht synchronisiert"
   },
   "short": {
     "backup_stale": "Daten sichern",
@@ -76,7 +79,8 @@
     "balances_stale_other": "{{count}} Kontostände aktualisieren",
     "valuation_stale": "{{title}} neu bewerten",
     "loan_balance_check": "aktuelle Restschuld von {{title}} eingeben",
-    "loan_fixation_expired": "neuen Zinssatz von {{title}} eintragen"
+    "loan_fixation_expired": "neuen Zinssatz von {{title}} eintragen",
+    "sync_stalled": "Synchronisierung prüfen"
   },
   "groups": {
     "insuranceDates": {
@@ -128,6 +132,11 @@
       "label": "Restschuld und Zinssatz von Krediten",
       "hint": "Einmal im Jahr die aktuelle Restschuld eingeben und nach Ende der Zinsbindung den neuen Zinssatz.",
       "mute": "Nicht an Restschuld und Zinssatz von Krediten erinnern"
+    },
+    "sync": {
+      "label": "Synchronisierung",
+      "hint": "Wenn die Synchronisierung stoppt oder Sie gebraucht werden.",
+      "mute": "Nicht an die Synchronisierung erinnern"
     }
   },
   "settings": {

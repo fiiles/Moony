@@ -49,7 +49,8 @@
   },
   "titles": {
     "backup_stale": "Záloha dat",
-    "balances_stale": "Zůstatky účtů"
+    "balances_stale": "Zůstatky účtů",
+    "sync_stalled": "Synchronizace"
   },
   "sub": {
     "insurance_anniversary": "Termín pro doručení výpovědi · výročí {{date}}",
@@ -74,7 +75,9 @@
     "backup_never": "Zatím žádná záloha",
     "balances_stale_one": "{{count}} účet bez aktualizace přes 30 dní",
     "balances_stale_few": "{{count}} účty bez aktualizace přes 30 dní",
-    "balances_stale_other": "{{count}} účtů bez aktualizace přes 30 dní"
+    "balances_stale_other": "{{count}} účtů bez aktualizace přes 30 dní",
+    "sync_stalled": "Naposledy synchronizováno {{date}}",
+    "sync_stalled_never": "Zatím nesynchronizováno"
   },
   "short": {
     "backup_stale": "zálohovat data",
@@ -83,7 +86,8 @@
     "balances_stale_other": "aktualizovat {{count}} zůstatků",
     "valuation_stale": "{{title}} přecenit",
     "loan_balance_check": "{{title}} zadat aktuální zůstatek",
-    "loan_fixation_expired": "{{title}} doplnit sazbu"
+    "loan_fixation_expired": "{{title}} doplnit sazbu",
+    "sync_stalled": "zkontrolovat synchronizaci"
   },
   "groups": {
     "insuranceDates": {
@@ -135,6 +139,11 @@
       "label": "Zůstatky a sazby úvěrů",
       "hint": "Zadání aktuálního zůstatku jednou ročně a nová sazba po konci fixace.",
       "mute": "Nepřipomínat zůstatky a sazby úvěrů"
+    },
+    "sync": {
+      "label": "Synchronizace",
+      "hint": "Když se synchronizace zastaví nebo potřebuje váš zásah.",
+      "mute": "Nepřipomínat synchronizaci"
     }
   },
   "settings": {

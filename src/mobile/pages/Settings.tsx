@@ -35,7 +35,7 @@ import { biometricApi, onboardingApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
 import { useTheme } from '@/theme/ThemeProvider';
 import { deviceStorage } from '@/utils/device-storage';
-import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
+import { kindsOf, visibleMilestoneGroups } from '@/utils/milestones';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { useBack } from '@/mobile/hooks/use-back';
@@ -172,12 +172,13 @@ export default function Settings() {
           : 'notifications.permission.notGranted'
       );
 
+  const reminderGroups = visibleMilestoneGroups(syncFeature);
   const remindersSub = muted.data
     ? t('settings.rows.remindersSub', {
-        on: MILESTONE_GROUP_IDS.filter(
+        on: reminderGroups.filter(
           (group) => !kindsOf(group).every((kind) => muted.data.includes(kind))
         ).length,
-        total: MILESTONE_GROUP_IDS.length,
+        total: reminderGroups.length,
       })
     : undefined;
 

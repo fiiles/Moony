@@ -2655,7 +2655,8 @@ export type MilestoneKind =
   | 'backup_stale'
   | 'valuation_stale'
   | 'watch_target'
-  | 'stock_split';
+  | 'stock_split'
+  | 'sync_stalled';
 export type MilestoneStage = 'now' | 'soon';
 export type MilestoneTone = 'action' | 'info';
 export type MilestoneState = 'done' | 'snoozed';

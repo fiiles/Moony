@@ -91,6 +91,8 @@ export function ChangeServerDialog({ onClose }: { onClose: () => void }) {
             setAsking(false);
             return;
           }
+          // The done screen keeps the dialog mounted: the typed password leaves the mutation now
+          changeServerAddress.reset();
           setDone(true);
           setAsking(false);
         }}

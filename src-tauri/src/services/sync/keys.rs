@@ -550,6 +550,18 @@ mod tests {
     }
 
     #[test]
+    fn saving_a_relay_url_without_a_sync_state_row_is_refused() {
+        let conn = migrated();
+        conn.execute("DELETE FROM sync_state", []).expect("delete");
+        let error = save_relay_url(&conn, "https://other.example.org").expect_err("no row");
+        assert!(matches!(
+            error,
+            AppError::Validation(key) if key == "validation.syncSetupIncomplete"
+        ));
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_state"), 0);
+    }
+
+    #[test]
     fn a_single_key_is_its_epoch_and_current() {
         let keys = VaultKeys::single(0, Zeroizing::new([7; 32]));
         assert_eq!(keys.current_epoch(), 0);

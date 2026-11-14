@@ -2,12 +2,12 @@
 //! is (`GET /v1/server`). Only a Moony sync server of the person's own, speaking a protocol this
 //! app knows, passes; everything else is a refusal with a reading of why, before any account call.
 
-use super::engine::snapshots::off_thread;
 use super::engine::{self, ConnAccess};
 use super::error::{SyncError, SyncResult};
 use super::keys;
 use super::relay::http::{display_host, is_default_relay, is_insecure_address, normalize_base_url};
 use super::relay::{Relay, RelayError, ServerMode};
+use super::setup::on_db;
 use super::state;
 use crate::models::sync::SyncServerCheck;
 
@@ -43,8 +43,8 @@ fn refusal(key: &str) -> SyncError {
 }
 
 /// Changing the server address of a device that syncs (spec §9.3a). Under the round lock
-/// (`engine::exclusive`, so no round runs on the old address while it is swapped), `relay` being
-/// the client of `new_address`:
+/// (`engine::exclusive`, so no round runs on the old address while it is swapped); `relay_for`
+/// builds the client from the normalised address, so the client and the stored value cannot differ:
 ///
 /// 1. the stored credentials and `enabled` (sync off or no credentials: `syncSetupIncomplete`);
 /// 2. the same address as stored (after normalisation) is `Ok` without a call or a write; the
@@ -56,14 +56,17 @@ fn refusal(key: &str) -> SyncError {
 ///    and the change is refused as `SyncError::Lapsed` until the admin unblocks them;
 /// 4. a vault head below this device's cursor is `syncServerAddressWentBack`. The device's own
 ///    went-back mark (`state::note_vault_went_back`) belongs to the current server and is not set;
-/// 5. `keys::save_relay_url`, one write. Returns the stored, normalized address. Any failure
+/// 5. `keys::save_relay_url` and the end of the vault-gone pause (`state::set_vault_gone`), one
+///    transaction. Returns the stored, normalized address. Any failure
 ///    leaves the old address and writes nothing.
 pub async fn change_server_address<R: Relay, D: ConnAccess>(
-    relay: &R,
+    relay_for: impl FnOnce(&str) -> SyncResult<R>,
     db: &D,
     new_address: &str,
 ) -> SyncResult<String> {
+    // The one normalisation point: the client, the checks and the stored value all use it.
     let new_address = normalize_base_url(new_address)?;
+    let relay = &relay_for(&new_address)?;
     let _no_round = engine::exclusive(db).await;
     let (creds, cursor) = on_db(db, |conn| {
         let sync = state::load(conn)?.filter(|sync| sync.enabled);
@@ -99,18 +102,18 @@ pub async fn change_server_address<R: Relay, D: ConnAccess>(
         return Err(refusal("validation.syncServerAddressWentBack"));
     }
     let address = new_address.clone();
-    on_db(db, move |conn| keys::save_relay_url(conn, &address)).await?;
+    // The vault was just proven to exist on the new server: the old server's "vault gone" pause
+    // ends with the swap, in the same transaction.
+    on_db(db, move |conn| {
+        let tx = conn.unchecked_transaction()?;
+        keys::save_relay_url(&tx, &address)?;
+        state::set_vault_gone(&tx, None)?;
+        tx.commit()?;
+        Ok(())
+    })
+    .await?;
     log::info!("[SYNC] Changed the sync server address");
     Ok(new_address)
 }
 
 const OTHER_SERVER: &str = "validation.syncServerAddressOtherServer";
-
-/// `work` on the profile's connection, off the runtime.
-async fn on_db<D: ConnAccess, T: Send + 'static>(
-    db: &D,
-    work: impl FnOnce(&rusqlite::Connection) -> crate::error::Result<T> + Send + 'static,
-) -> SyncResult<T> {
-    let db = db.clone();
-    off_thread(move || db.with_conn(work)).await
-}

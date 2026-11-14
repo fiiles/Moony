@@ -61,7 +61,7 @@ fn refused(key: &str) -> SyncError {
 }
 
 /// `work` on the profile's connection, off the runtime.
-async fn on_db<D: ConnAccess, T: Send + 'static>(
+pub(super) async fn on_db<D: ConnAccess, T: Send + 'static>(
     db: &D,
     work: impl FnOnce(&Connection) -> Result<T> + Send + 'static,
 ) -> SyncResult<T> {

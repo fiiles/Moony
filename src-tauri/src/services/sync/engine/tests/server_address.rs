@@ -270,5 +270,10 @@ async fn a_blocked_person_may_still_move_the_server() {
         error,
         crate::services::sync::error::SyncError::Lapsed
     ));
+    // On an own server that is "blocked", never the payment message (final fix I1).
+    assert_eq!(
+        error.to_own_server_app_error().to_string(),
+        crate::error::AppError::Validation("validation.syncAccountBlocked".into()).to_string()
+    );
     assert_eq!(stored(&device).0, NEW);
 }

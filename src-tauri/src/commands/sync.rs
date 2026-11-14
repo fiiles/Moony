@@ -258,6 +258,33 @@ pub(super) fn app_error(error: SyncError) -> AppError {
     error.to_app_error()
 }
 
+/// `app_error` for a change against the server at `relay_url`: the Moony cloud takes payment, any
+/// other server (the person's own) does not, so a blocked account never reads "subscription" copy
+/// there (`SyncError::to_own_server_app_error`).
+pub(super) fn app_error_for(relay_url: &str, error: SyncError) -> AppError {
+    if is_default_relay(relay_url) {
+        error.to_app_error()
+    } else {
+        error.to_own_server_app_error()
+    }
+}
+
+/// `work`, its error already mapped for the server at `relay_url` (`app_error_for`); the mapped
+/// error passes `guarded_change` unchanged (`SyncError::Local`).
+pub(super) async fn mapped_for_server<T>(
+    relay_url: String,
+    work: impl Future<Output = SyncResult<T>>,
+) -> SyncResult<T> {
+    work.await
+        .map_err(|error| SyncError::Local(app_error_for(&relay_url, error)))
+}
+
+/// The server address this profile syncs against (the Moony cloud while there is no account).
+pub(super) fn stored_relay_url(db: &Database) -> Result<String> {
+    let stored = db.with_conn(|conn| Ok(keys::account(conn)?.map(|(url, _)| url)))?;
+    Ok(stored.unwrap_or_else(default_base_url))
+}
+
 pub(super) fn now() -> i64 {
     chrono::Utc::now().timestamp()
 }
@@ -271,8 +298,7 @@ pub(super) fn data_dir(app: &AppHandle) -> Result<PathBuf> {
 /// The relay of this profile: the stored account's address (ruling SH-2), or the default relay
 /// while no account is stored.
 pub(super) fn profile_relay(db: &Database) -> Result<HttpRelay> {
-    let stored = db.with_conn(|conn| Ok(keys::account(conn)?.map(|(url, _)| url)))?;
-    HttpRelay::new(&stored.unwrap_or_else(default_base_url))
+    HttpRelay::new(&stored_relay_url(db)?)
 }
 
 /// Whether sync is on, a damaged `sync_state` row counting as on (`state::on_or_unreadable`).
@@ -711,17 +737,8 @@ pub async fn sync_finish_setup(
         &native,
         now(),
     );
-    let own_server = db.with_conn(|conn| {
-        Ok(keys::account(conn)?.is_some_and(|(url, _)| !is_default_relay(&url)))
-    })?;
-    // A person blocked between the steps of an own server never reads "subscription" copy; the
-    // mapped error passes `guarded_change` unchanged (`SyncError::Local`).
-    let finish = async {
-        finish.await.map_err(|error| match own_server {
-            true => SyncError::Local(error.to_own_server_app_error()),
-            false => error,
-        })
-    };
+    // A person blocked between the steps of an own server never reads "subscription" copy.
+    let finish = mapped_for_server(stored_relay_url(&db)?, finish);
     guarded_change(&AppEngine { app: &app, db: &db }, finish).await?;
     current_status(&app, &db)
 }
@@ -868,7 +885,10 @@ pub async fn sync_repair_device(
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
-    let repair = join::repair_capture(&relay, &session, &dir, &native, now());
+    let repair = mapped_for_server(
+        stored_relay_url(&db)?,
+        join::repair_capture(&relay, &session, &dir, &native, now()),
+    );
     let outcome = guarded_change(&AppEngine { app: &app, db: &db }, repair).await?;
     Ok(outcome_view(&outcome))
 }
@@ -893,7 +913,10 @@ pub async fn sync_resync_device(
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
-    let resync = join::resync_by_replace(&relay, &session, consent, &dir, &native, now());
+    let resync = mapped_for_server(
+        stored_relay_url(&db)?,
+        join::resync_by_replace(&relay, &session, consent, &dir, &native, now()),
+    );
     let outcome = guarded_change(&AppEngine { app: &app, db: &db }, resync).await?;
     Ok(outcome_view(&outcome))
 }
@@ -918,10 +941,13 @@ pub async fn sync_change_server_address(
     super::sync_pairing::forget_pairing();
     let session = db.current_session()?;
     // The service builds the client from the address it normalised and stores
-    let change = server::change_server_address(
-        |normalized| HttpRelay::new(normalized).map_err(SyncError::Local),
-        &session,
-        &address,
+    let change = mapped_for_server(
+        stored_relay_url(&db)?,
+        server::change_server_address(
+            |normalized| HttpRelay::new(normalized).map_err(SyncError::Local),
+            &session,
+            &address,
+        ),
     );
     guarded_change(&AppEngine { app: &app, db: &db }, change).await?;
     current_status(&app, &db)
@@ -1369,6 +1395,49 @@ mod tests {
                 "`{name}` checks the password before the change"
             );
         }
+    }
+
+    /// Final fix I1: a blocked person on their own server never reads the payment message, on
+    /// any change; the Moony cloud keeps it.
+    #[test]
+    fn a_blocked_account_reads_the_server_it_is_on() {
+        let key = |error: AppError| match error {
+            AppError::Validation(key) => key,
+            other => panic!("a validation key, not {other:?}"),
+        };
+        assert_eq!(
+            key(app_error_for(&default_base_url(), SyncError::Lapsed)),
+            "validation.syncPaymentRequired"
+        );
+        for own in ["https://sync.example.org", "http://192.168.1.21:8787"] {
+            assert_eq!(
+                key(app_error_for(own, SyncError::Lapsed)),
+                "validation.syncAccountBlocked"
+            );
+        }
+    }
+
+    /// Final fix I1: every change that talks to the person's server maps its error for that server.
+    #[test]
+    fn every_server_change_maps_its_error_for_the_server() {
+        for (source, name) in [
+            (include_str!("sync.rs"), "sync_finish_setup"),
+            (include_str!("sync.rs"), "sync_repair_device"),
+            (include_str!("sync.rs"), "sync_resync_device"),
+            (include_str!("sync.rs"), "sync_change_server_address"),
+            (
+                include_str!("sync_pairing.rs"),
+                "sync_join_with_recovery_kit",
+            ),
+        ] {
+            let body = command_body_in(source, name);
+            let mapped = body
+                .find("mapped_for_server(")
+                .unwrap_or_else(|| panic!("`{name}` maps for the server"));
+            assert!(mapped < body.find("guarded_change(").expect("a change"));
+        }
+        let join = command_body_in(include_str!("sync_pairing.rs"), "sync_pairing_join");
+        assert!(join.contains("app_error_for(&relay_url, error)"));
     }
 
     /// Audit L10: the one command that works without the flag keeps the password rule.

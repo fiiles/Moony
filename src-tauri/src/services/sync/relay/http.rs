@@ -668,8 +668,9 @@ impl Mailbox for HttpRelay {
     }
 }
 
-// These talk to one-shot servers on 127.0.0.1 and are built in debug only (the mock servers
-// bind a loopback port; release test runs skip them).
+// These talk to one-shot servers on 127.0.0.1 over plain http, which every build accepts for a
+// server that is not the Moony cloud (`scheme_allowed`). They stay in debug test builds, the ones
+// `cargo test` makes, so a release test run needs no loopback port.
 #[cfg(all(test, debug_assertions))]
 mod mailbox_tests;
 #[cfg(test)]

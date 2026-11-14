@@ -30,8 +30,8 @@ use tauri::{AppHandle, State};
 use zeroize::Zeroizing;
 
 use super::sync::{
-    app_error, data_dir, guarded_change, kit_owner, now, require_feature, sync_on, verify_password,
-    AppEngine, KeychainBinding, KitOwner,
+    app_error, app_error_for, data_dir, guarded_change, kit_owner, mapped_for_server, now,
+    require_feature, sync_on, verify_password, AppEngine, KeychainBinding, KitOwner,
 };
 use super::sync_backups::{consent_of, outcome_view};
 use crate::db::Database;
@@ -687,6 +687,7 @@ pub async fn sync_pairing_join(
         return Err(AppError::Validation(FAILED.into()));
     };
     let relay = HttpRelay::new(&creds.relay_url)?;
+    let relay_url = creds.relay_url.clone();
     let native = KeychainBinding { app: app.clone() };
     let join = join::join_new_device(
         &relay,
@@ -713,7 +714,7 @@ pub async fn sync_pairing_join(
             if !after_join_error(&error) {
                 pairing.dispose_current();
             }
-            Err(app_error(error))
+            Err(app_error_for(&relay_url, error))
         }
     }
 }
@@ -749,6 +750,7 @@ pub async fn sync_join_with_recovery_kit(
     )?;
     drop(code);
     let relay = HttpRelay::new(&input.relay_url)?;
+    let relay_url = input.relay_url.clone();
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
@@ -766,6 +768,7 @@ pub async fn sync_join_with_recovery_kit(
         )
         .await
     };
+    let join = mapped_for_server(relay_url, join);
     let outcome = guarded_change(&AppEngine { app: &app, db: &db }, join).await?;
     Ok(outcome_view(&outcome))
 }

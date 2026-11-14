@@ -122,6 +122,8 @@ export interface SyncStatus {
   serverAddress: string | null;
   /** The stored address is plain http to a host other than this computer. */
   serverInsecure: boolean;
+  /** When sync was turned on on this device: `joinedAt` of its own device row (unix seconds); `null` while off or before the row exists. */
+  enabledAt: number | null;
 }
 
 /** `sync_profile_state`: answered in every build, read-only. */

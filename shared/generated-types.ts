@@ -3520,7 +3520,12 @@ serverAddress: string | null;
 /**
  * The stored address is plain http to a host other than this computer.
  */
-serverInsecure: boolean }
+serverInsecure: boolean; 
+/**
+ * When sync was turned on on this device: `joinedAt` of its own device row (unix seconds);
+ * `None` while off or before the row exists.
+ */
+enabledAt: number | null }
 
 /**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;

@@ -17,6 +17,7 @@ function status(phase: SyncPhase, problem: SyncProblem | null = null): SyncStatu
     ownServer: false,
     serverAddress: null,
     serverInsecure: false,
+    enabledAt: null,
   };
 }
 

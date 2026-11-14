@@ -258,6 +258,7 @@ async fn the_status_counts_pending_changes_and_held_devices() {
             own_server: true,
             server_address: Some("https://relay.test".into()),
             server_insecure: false,
+            enabled_at: None,
         }
     );
 }

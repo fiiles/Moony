@@ -75,10 +75,6 @@
       "copy": "复制",
       "copied": "已复制"
     },
-    "advanced": {
-      "placeholder": "https://sync.moonyfinance.com",
-      "hint": "留空则使用 Moony 的同步服务。仅在您运行自己的同步服务器时才填写。"
-    },
     "pay": {
       "description": "选择一个方案。付款页面会在浏览器中打开。",
       "plan": "方案",
@@ -307,8 +303,10 @@
     "warning": "此设备的数据将被同步的数据替换。会先在您的配置文件旁保存一份备份。",
     "nameLabel": "设备名称",
     "passwordLabel": "设备密码",
-    "advanced": "高级",
     "serverLabel": "同步服务器地址",
+    "serverHint": "请输入同步服务器的地址，或粘贴其连接代码。",
+    "insecureAtJoin": "您用来加入的同步信息指向 {{host}}，该服务器通过未加密的 http 访问。您的数据仍然是加密的，但同一网络中的任何人都可能截获同步访问权限，并删除或阻止服务器上已同步的数据。",
+    "kitServer": "同步服务器：{{host}}",
     "pairTitle": "从手机加入",
     "pairHint": "在已开启同步的手机上：设置 → 同步 → 添加设备",
     "kitTitle": "使用恢复包",

@@ -1788,6 +1788,15 @@ expiresAt: number;
  */
 serverHost: string | null; 
 /**
+ * Joiner, at `received`: `host[:port]` of the server the received sync details name, so the
+ * person sees where the account will be used before joining.
+ */
+joinServer: string | null; 
+/**
+ * Whether that server is reached over plain http beyond this device (`is_insecure_address`).
+ */
+joinServerInsecure: boolean; 
+/**
  * Holder, in `compare`: wrong codes the person may still type before the pairing ends.
  */
 attemptsLeft: number | null }

@@ -75,10 +75,6 @@
       "copy": "Kopírovat",
       "copied": "Zkopírováno"
     },
-    "advanced": {
-      "placeholder": "https://sync.moonyfinance.com",
-      "hint": "Nechte prázdné pro synchronizační službu Moony. Vyplňte jen tehdy, když provozujete vlastní synchronizační server."
-    },
     "pay": {
       "description": "Vyberte tarif. Platba se otevře v prohlížeči.",
       "plan": "Tarif",
@@ -328,8 +324,10 @@
     "warning": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Předtím se vedle profilu uloží záloha.",
     "nameLabel": "Název zařízení",
     "passwordLabel": "Heslo zařízení",
-    "advanced": "Upřesnit",
     "serverLabel": "Adresa synchronizačního serveru",
+    "serverHint": "Napište adresu svého synchronizačního serveru nebo vložte jeho připojovací kód.",
+    "insecureAtJoin": "Synchronizační údaje, se kterými se připojujete, ukazují na server {{host}}, ke kterému se přistupuje přes prosté http. Data zůstávají šifrovaná, ale kdokoli ve stejné síti může zachytit přístup k synchronizaci a synchronizovaná data na serveru smazat nebo zablokovat.",
+    "kitServer": "Synchronizační server: {{host}}",
     "pairTitle": "Připojit z telefonu",
     "pairHint": "Na telefonu se zapnutou synchronizací: Nastavení → Synchronizace → Přidat zařízení",
     "kitTitle": "Použít záchrannou sadu",

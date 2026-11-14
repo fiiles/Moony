@@ -23,6 +23,8 @@ function view(stage: PairingStage): PairingView {
     contested: false,
     expiresAt: 0,
     serverHost: null,
+    joinServer: null,
+    joinServerInsecure: false,
     attemptsLeft: null,
   };
 }

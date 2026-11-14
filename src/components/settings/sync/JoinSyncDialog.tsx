@@ -5,13 +5,16 @@ import { useDeviceSyncStatus, useReplaceImpact } from '@/hooks/use-device-sync';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
+import { useServerChoice } from '@/hooks/use-server-choice';
 import { consentOf } from '@/utils/replace-impact';
 import { translateApiError } from '@/lib/translate-api-error';
 import type { JoinFailureAction } from '@/utils/pairing-code';
 import { defaultDeviceKey } from '@/utils/sync-devices';
+import { needsJoinAcknowledgement } from '@/utils/sync-setup';
 import { JoinFields, JoinWarning } from '@/components/settings/sync/JoinFields';
 import { PairingExpiryNote } from '@/components/settings/sync/PairingExpiryNote';
 import { PairingSteps } from '@/components/settings/sync/PairingSteps';
+import { InsecureNotice } from '@/components/settings/sync/ServerChoice';
 import { ReplaceImpactNotice } from '@/components/settings/sync/ReplaceImpactNotice';
 import {
   IMPACT_CHANGED_KEY,
@@ -49,7 +52,12 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
   const impact = useReplaceImpact(view?.stage === 'received');
   const [name, setName] = useState(() => t(`setup.defaultName.${defaultDeviceKey()}`));
   const [password, setPassword] = useState('');
-  const [relayUrl, setRelayUrl] = useState('');
+  // The mailbox is on the person's own server: an address or a connection code, checked first
+  const server = useServerChoice('addressOrCode', 'server');
+  /** The http server this dialog already warned about when it was typed: not asked again at join. */
+  const [acknowledgedHost, setAcknowledgedHost] = useState<string | null>(null);
+  /** The warning at `received` for a server the person did not type (the holder's), ticked. */
+  const [joinAcknowledged, setJoinAcknowledged] = useState(false);
   const [impactChanged, setImpactChanged] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   /**
@@ -71,14 +79,15 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (password === '' || name.trim() === '' || start.isPending) return;
+    if (password === '' || name.trim() === '' || !server.ready || start.isPending) return;
     setFormError(null);
     try {
       await start.mutateAsync({
         password,
         deviceName: name.trim(),
-        relayUrl: relayUrl.trim() === '' ? undefined : relayUrl.trim(),
+        relayUrl: server.check?.address,
       });
+      setAcknowledgedHost(server.check?.insecure && server.acknowledged ? server.check.host : null);
       setPassword('');
     } catch (failure) {
       start.reset();
@@ -137,6 +146,7 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
     }
     lastView.current = undefined;
     setJoinError(null);
+    setJoinAcknowledged(false);
   };
 
   if (!view) {
@@ -157,8 +167,8 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
                 setPassword(value);
                 setFormError(null);
               }}
-              relayUrl={relayUrl}
-              onRelayUrl={setRelayUrl}
+              server={server}
+              serverMode="field"
               error={formError}
             />
             <DialogFooter>
@@ -173,7 +183,7 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
               <Button
                 type="submit"
                 loading={start.isPending}
-                disabled={password === '' || name.trim() === ''}
+                disabled={password === '' || name.trim() === '' || !server.ready}
               >
                 {t('join.pairTitle')}
               </Button>
@@ -185,6 +195,7 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
   }
 
   const failed = isError || view.contested;
+  const askJoinAcknowledgement = needsJoinAcknowledgement(view, acknowledgedHost);
   return (
     <Dialog open onOpenChange={(open) => !open && !join.isPending && void close()}>
       <DialogContent className="max-w-[560px]">
@@ -215,6 +226,14 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
               impact={impact.data}
               error={impact.isError ? (impact.error as Error) : null}
             />
+            {askJoinAcknowledgement && view.joinServer && (
+              <InsecureNotice
+                id="join-insecure"
+                acknowledged={joinAcknowledged}
+                onChange={setJoinAcknowledged}
+                body={t('join.insecureAtJoin', { host: view.joinServer })}
+              />
+            )}
             <PairingExpiryNote view={view} className="text-micro" />
           </>
         )}
@@ -256,7 +275,9 @@ export function JoinSyncDialog({ onClose }: { onClose: () => void }) {
               type="button"
               onClick={() => void runJoin()}
               loading={join.isPending}
-              disabled={!impact.data || impact.isFetching}
+              disabled={
+                !impact.data || impact.isFetching || (askJoinAcknowledgement && !joinAcknowledged)
+              }
             >
               {t('join.confirm')}
             </Button>

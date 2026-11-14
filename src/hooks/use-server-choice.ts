@@ -29,12 +29,24 @@ export interface ServerChoiceState {
  */
 export function useServerChoice(
   accepts: 'connectionCode' | 'addressOrCode',
-  context: CodeContext
+  context: CodeContext,
+  /**
+   * A server that is not typed (a Recovery Kit QR's) replaces the typed input; `''` names none.
+   * `undefined`: the input is the person's.
+   */
+  forced?: string
 ): ServerChoiceState {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
-  const [input, setInputState] = useState('');
+  const [typed, setInputState] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
+  // The acknowledgement belongs to the server it was given for: another forced one clears it
+  const [previousForced, setPreviousForced] = useState(forced);
+  if (forced !== previousForced) {
+    setPreviousForced(forced);
+    setAcknowledged(false);
+  }
+  const input = forced ?? typed;
   const trimmed = input.trim();
 
   const wrong = trimmed === '' ? null : wrongCodeKey(context, trimmed);
@@ -60,7 +72,7 @@ export function useServerChoice(
   return {
     input,
     setInput: (value) => {
-      setAcknowledged(acknowledgedAfterEdit(input, value, acknowledged));
+      setAcknowledged(acknowledgedAfterEdit(typed, value, acknowledged));
       setInputState(value);
     },
     accepts,

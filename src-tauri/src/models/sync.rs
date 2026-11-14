@@ -348,6 +348,13 @@ pub struct PairingView {
     /// the person sees which server a self-hosted pairing goes through.
     #[serde(rename = "serverHost")]
     pub server_host: Option<String>,
+    /// Joiner, at `received`: `host[:port]` of the server the received sync details name, so the
+    /// person sees where the account will be used before joining.
+    #[serde(rename = "joinServer")]
+    pub join_server: Option<String>,
+    /// Whether that server is reached over plain http beyond this device (`is_insecure_address`).
+    #[serde(rename = "joinServerInsecure")]
+    pub join_server_insecure: bool,
     /// Holder, in `compare`: wrong codes the person may still type before the pairing ends.
     #[serde(rename = "attemptsLeft")]
     pub attempts_left: Option<u8>,

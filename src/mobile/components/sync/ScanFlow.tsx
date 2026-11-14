@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
 import { useReplaceImpact } from '@/hooks/use-device-sync';
+import { useServerChoice } from '@/hooks/use-server-choice';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { consentOf } from '@/utils/replace-impact';
@@ -10,12 +11,15 @@ import { IMPACT_CHANGED_KEY } from '@/components/settings/sync/replace-outcome';
 import { ReplaceImpactBlock } from '@/mobile/components/sync/ReplaceImpactBlock';
 import { translateApiError } from '@/lib/translate-api-error';
 import { backupFileName } from '@/utils/sync-status';
+import { isDefaultServer } from '@/utils/sync-server';
+import { needsJoinAcknowledgement } from '@/utils/sync-setup';
 import { Button } from '@/components/ui/button';
 import { Sheet } from '@/mobile/components/Sheet';
 import { CodeEntrySheet } from '@/mobile/components/sync/CodeEntrySheet';
 import { JoinDetailsSheet, type ScanDetails } from '@/mobile/components/sync/JoinDetailsSheet';
 import { PairingSheet, type JoinFailure } from '@/mobile/components/sync/PairingSheet';
 import { ScanOverlay } from '@/mobile/components/sync/ScanOverlay';
+import { ServerCheckBlock } from '@/mobile/components/sync/ServerChoiceBlock';
 import { cancelQrScan, openCameraSettings, scanQrCode } from '@/mobile/lib/qr-scanner';
 import type { ReplaceOutcomeView } from '@shared/schema';
 import { kitQrSummary, scanRoute, type ScanMode } from '@/mobile/lib/sync-scan';
@@ -70,6 +74,16 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
   /** The overlay's "Paste a pairing code": the scan is cancelled to make way for the sheet. */
   const toPaste = useRef(false);
   const [joinFailure, setJoinFailure] = useState<JoinFailure | null>(null);
+  /** The warning at `received` for a plain http server (the pairing names it, the phone typed none). */
+  const [insecureAcknowledged, setInsecureAcknowledged] = useState(false);
+  // A scanned Kit QR naming a server other than the Moony cloud: asked what it is, and for plain
+  // http acknowledged, before the join sends the account to it
+  const kitServer = useServerChoice(
+    'addressOrCode',
+    'server',
+    kitShown && !isDefaultServer(kitShown.server) ? kitShown.server : ''
+  );
+  const kitServerChecked = !kitShown || isDefaultServer(kitShown.server) || kitServer.ready;
   /** What the person saw no longer held and was read again (`validation.syncReplaceImpactChanged`). */
   const [impactChanged, setImpactChanged] = useState<string | null>(null);
   /** Cancel was pressed while the scan was announcing: its late answer is given up too. */
@@ -198,7 +212,7 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
   const joinWithKit = async () => {
     const typed = details.current;
     const code = kitText.current;
-    if (!typed || code === null || !shownImpact) return finish();
+    if (!typed || code === null || !shownImpact || !kitServerChecked) return finish();
     // The busy cover is up while the data is replaced; nothing of the flow is open under it
     setStep('working');
     try {
@@ -293,6 +307,7 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
     }
     lastView.current = undefined;
     setJoinFailure(null);
+    setInsecureAcknowledged(false);
     setImpactChanged(null);
     setDetailsError(null);
     setStep('details');
@@ -385,7 +400,7 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
             <Button
               variant="destructive"
               className={`${BUTTON} flex-1`}
-              disabled={!shownImpact}
+              disabled={!shownImpact || !kitServerChecked}
               onClick={() => void joinWithKit()}
             >
               {t('join.confirm')}
@@ -408,6 +423,11 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
               </dd>
             </div>
           </dl>
+        )}
+        {kitShown && !isDefaultServer(kitShown.server) && (
+          <div className="mb-3">
+            <ServerCheckBlock state={kitServer} />
+          </div>
         )}
         {impactChanged && step === 'kitConfirm' && (
           <p role="alert" className="mx-0 mb-3 mt-0 text-m-sub font-medium text-loss">
@@ -453,7 +473,13 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
           onCancelSetup={() => void cancelSetupAndRetry()}
           cancellingSetup={turnOff.isPending}
           impact={impactBlock}
-          canJoin={shownImpact !== undefined}
+          askInsecure={needsJoinAcknowledgement(view, null)}
+          insecureAcknowledged={insecureAcknowledged}
+          onInsecureAcknowledged={setInsecureAcknowledged}
+          canJoin={
+            shownImpact !== undefined &&
+            (!needsJoinAcknowledgement(view, null) || insecureAcknowledged)
+          }
           onJoin={() => void runJoin()}
           impactChanged={impactChanged}
         />

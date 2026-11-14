@@ -75,10 +75,6 @@
       "copy": "Copy",
       "copied": "Copied"
     },
-    "advanced": {
-      "placeholder": "https://sync.moonyfinance.com",
-      "hint": "Leave empty to use Moony's sync service. Fill it in only if you run your own sync server."
-    },
     "pay": {
       "description": "Choose a plan. Payment opens in your browser.",
       "plan": "Plan",
@@ -314,8 +310,10 @@
     "warning": "This device's data is replaced by the synced data. A backup is saved next to your profile first.",
     "nameLabel": "Device name",
     "passwordLabel": "Device password",
-    "advanced": "Advanced",
     "serverLabel": "Sync server address",
+    "serverHint": "Type the address of your sync server, or paste its connection code.",
+    "insecureAtJoin": "The sync details you are joining with point to {{host}}, which is reached over plain http. Your data stays encrypted, but anyone on the same network can capture the access to sync and delete or block the synced data on the server.",
+    "kitServer": "Sync server: {{host}}",
     "pairTitle": "Join from your phone",
     "pairHint": "On the phone with sync on: Settings → Sync → Add a device",
     "kitTitle": "Use a Recovery Kit",

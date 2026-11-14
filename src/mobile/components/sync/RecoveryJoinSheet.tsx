@@ -1,12 +1,11 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight } from 'lucide-react';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useReplaceImpact } from '@/hooks/use-device-sync';
+import { useServerChoice } from '@/hooks/use-server-choice';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { consentOf } from '@/utils/replace-impact';
@@ -14,10 +13,12 @@ import { IMPACT_CHANGED_KEY } from '@/components/settings/sync/replace-outcome';
 import { ReplaceImpactBlock } from '@/mobile/components/sync/ReplaceImpactBlock';
 import { translateApiError } from '@/lib/translate-api-error';
 import { scannedCodeKind } from '@/utils/pairing-code';
+import { kitServerNeed } from '@/utils/sync-setup';
+import { ServerCheckBlock, ServerChoiceBlock } from '@/mobile/components/sync/ServerChoiceBlock';
 import { backupFileName } from '@/utils/sync-status';
 import { Sheet } from '@/mobile/components/Sheet';
 import type { ReplaceOutcomeView } from '@shared/schema';
-import { kitCodeProblem, phoneDeviceKey } from '@/mobile/lib/sync-scan';
+import { kitCodeProblem, kitQrSummary, phoneDeviceKey } from '@/mobile/lib/sync-scan';
 import { field48, fieldMessage } from '@/mobile/pages/first-run/styles';
 
 interface RecoveryJoinSheetProps {
@@ -35,8 +36,9 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
 
 /**
  * "Type a Recovery Kit code" (sync off): the recovery code, typed or pasted, or the text of the
- * Kit's QR; the account number when a bare code was typed; the device name and password; and under
- * Advanced the sync server address. It reads Recovery Kit codes only (review PF2): a pairing code
+ * Kit's QR; the account number when a bare code was typed; the device name and password; and, for a
+ * typed code, the sync server (an address or a connection code, checked; a Kit QR brings its own,
+ * which is checked and, for plain http, acknowledged). It reads Recovery Kit codes only (review PF2): a pairing code
  * is "This is not a Recovery Kit code". The join replaces this phone's data after a backup: the sheet
  * steps aside for the busy cover while it runs and comes back with the error when it fails, the
  * fields as they were (the mutation's copy of the password is reset).
@@ -59,7 +61,6 @@ export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJo
     t(`setup.defaultName.${phoneDeviceKey(import.meta.env.TAURI_ENV_PLATFORM ?? '')}`)
   );
   const [password, setPassword] = useState('');
-  const [relayUrl, setRelayUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   // Closed: the code, the account and the password go with it (the name and the server stay)
@@ -72,9 +73,19 @@ export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJo
 
   const busy = joinWithRecoveryKit.isPending;
   const codeProblem = kitCodeProblem(code);
-  const needsAccount = scannedCodeKind(code) === 'recoveryCode';
+  const kind = scannedCodeKind(code);
+  const needsAccount = kind === 'recoveryCode';
+  const qr = kitQrSummary(code);
+  const qrServer = qr.ok ? qr.server : null;
+  const need = kitServerNeed(kind, qrServer);
+  const server = useServerChoice(
+    'addressOrCode',
+    'server',
+    need === 'typed' ? undefined : need === 'qr' ? (qrServer ?? '') : ''
+  );
   const ready =
     code.trim() !== '' &&
+    (need === 'none' || server.ready) &&
     codeProblem === null &&
     password !== '' &&
     shownImpact !== undefined &&
@@ -94,7 +105,7 @@ export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJo
       const outcome = await joinWithRecoveryKit.mutateAsync({
         code: code.trim(),
         account: needsAccount ? account.trim() : undefined,
-        relayUrl: relayUrl.trim() === '' ? undefined : relayUrl.trim(),
+        relayUrl: need === 'typed' ? server.check?.address : undefined,
         deviceName: name.trim(),
         password,
         consent: consentOf('join', shownImpact),
@@ -204,28 +215,8 @@ export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJo
             </p>
           )}
         </div>
-        <Collapsible>
-          <CollapsibleTrigger className="group flex min-h-11 items-center gap-1 text-m-sub font-semibold text-ink-2">
-            <ChevronRight
-              aria-hidden
-              className="size-4 transition-transform group-data-[state=open]:rotate-90"
-            />
-            {t('join.advanced')}
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-1.5 pt-1">
-            <Label htmlFor={`${fieldId}-server`}>{t('join.serverLabel')}</Label>
-            <Input
-              id={`${fieldId}-server`}
-              value={relayUrl}
-              onChange={(event) => setRelayUrl(event.target.value)}
-              placeholder={t('setup.advanced.placeholder')}
-              inputMode="url"
-              className={field48}
-              {...PLAIN_FIELD}
-            />
-            <p className="m-0 text-m-sub text-ink-4">{t('setup.advanced.hint')}</p>
-          </CollapsibleContent>
-        </Collapsible>
+        {need === 'typed' && <ServerChoiceBlock state={server} showCloud />}
+        {need === 'qr' && <ServerCheckBlock state={server} />}
       </form>
     </Sheet>
   );

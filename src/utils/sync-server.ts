@@ -72,6 +72,15 @@ export function normalizeAddress(address: string): string | null {
   return normal.length > MAX_ADDRESS_CHARS ? null : normal;
 }
 
+/** Whether a normalized address is the Moony cloud's. */
+export function isDefaultServer(address: string): boolean {
+  try {
+    return new URL(address).hostname === DEFAULT_SYNC_HOST;
+  } catch {
+    return false;
+  }
+}
+
 /** Reads a connection code the way the backend does. */
 export function parseConnectionCode(text: string): ConnectionCodeRead {
   const invalid = { ok: false, problem: 'validation.syncConnectionCodeInvalid' } as const;

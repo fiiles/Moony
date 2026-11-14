@@ -75,10 +75,6 @@
       "copy": "Kopieren",
       "copied": "Kopiert"
     },
-    "advanced": {
-      "placeholder": "https://sync.moonyfinance.com",
-      "hint": "Leer lassen, um den Synchronisierungsdienst von Moony zu nutzen. Nur ausfüllen, wenn Sie einen eigenen Synchronisierungsserver betreiben."
-    },
     "pay": {
       "description": "Wählen Sie einen Tarif. Die Zahlung öffnet sich im Browser.",
       "plan": "Tarif",
@@ -314,8 +310,10 @@
     "warning": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird neben Ihrem Profil eine Sicherung gespeichert.",
     "nameLabel": "Gerätename",
     "passwordLabel": "Gerätepasswort",
-    "advanced": "Erweitert",
     "serverLabel": "Adresse des Synchronisierungsservers",
+    "serverHint": "Geben Sie die Adresse Ihres Synchronisierungsservers ein oder fügen Sie seinen Verbindungscode ein.",
+    "insecureAtJoin": "Die Synchronisierungsdaten, mit denen Sie beitreten, verweisen auf {{host}}, das über einfaches http erreicht wird. Ihre Daten bleiben verschlüsselt, aber jeder im selben Netzwerk kann den Zugang zur Synchronisierung abgreifen und die synchronisierten Daten auf dem Server löschen oder sperren.",
+    "kitServer": "Synchronisierungsserver: {{host}}",
     "pairTitle": "Vom Smartphone beitreten",
     "pairHint": "Auf dem Smartphone mit eingeschalteter Synchronisierung: Einstellungen → Synchronisierung → Gerät hinzufügen",
     "kitTitle": "Wiederherstellungs-Kit verwenden",

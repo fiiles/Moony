@@ -5,7 +5,10 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { consentOf } from '@/utils/replace-impact';
 import { translateApiError } from '@/lib/translate-api-error';
+import { useServerChoice } from '@/hooks/use-server-choice';
 import { scannedCodeKind } from '@/utils/pairing-code';
+import { payloadServer } from '@/utils/sync-server';
+import { kitServerNeed } from '@/utils/sync-setup';
 import { defaultDeviceKey } from '@/utils/sync-devices';
 import { JoinFields, JoinWarning } from '@/components/settings/sync/JoinFields';
 import { ReplaceImpactNotice } from '@/components/settings/sync/ReplaceImpactNotice';
@@ -44,13 +47,22 @@ export function RecoveryJoinDialog({ onClose }: { onClose: () => void }) {
   const [account, setAccount] = useState('');
   const [name, setName] = useState(() => t(`setup.defaultName.${defaultDeviceKey()}`));
   const [password, setPassword] = useState('');
-  const [relayUrl, setRelayUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const needsAccount = scannedCodeKind(code) === 'recoveryCode';
+  const kind = scannedCodeKind(code);
+  const needsAccount = kind === 'recoveryCode';
+  // A typed code asks for its sync server; a Kit QR brings its own, which is checked (and its
+  // plain http acknowledged) before the join sends anything to it
+  const need = kitServerNeed(kind, payloadServer(code));
+  const server = useServerChoice(
+    'addressOrCode',
+    'server',
+    need === 'typed' ? undefined : need === 'qr' ? (payloadServer(code) ?? '') : ''
+  );
   const busy = joinWithRecoveryKit.isPending;
   const ready =
     code.trim() !== '' &&
+    (need === 'none' || server.ready) &&
     password !== '' &&
     impact.data !== undefined &&
     !impact.isFetching &&
@@ -65,7 +77,7 @@ export function RecoveryJoinDialog({ onClose }: { onClose: () => void }) {
       const outcome = await joinWithRecoveryKit.mutateAsync({
         code: code.trim(),
         account: needsAccount ? account.trim() : undefined,
-        relayUrl: relayUrl.trim() === '' ? undefined : relayUrl.trim(),
+        relayUrl: need === 'typed' ? server.check?.address : undefined,
         deviceName: name.trim(),
         password,
         consent: consentOf('join', impact.data),
@@ -127,8 +139,8 @@ export function RecoveryJoinDialog({ onClose }: { onClose: () => void }) {
               setPassword(value);
               setError(null);
             }}
-            relayUrl={relayUrl}
-            onRelayUrl={setRelayUrl}
+            server={server}
+            serverMode={need === 'typed' ? 'field' : need === 'qr' ? 'fixed' : 'hidden'}
             error={error}
           />
           <DialogFooter>

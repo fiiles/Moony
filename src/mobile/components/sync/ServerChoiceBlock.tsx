@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Check, ScanLine } from 'lucide-react';
 import type { ServerChoiceState } from '@/hooks/use-server-choice';
+import { hostOf } from '@/utils/sync-setup';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,16 +15,19 @@ import { field48 } from '@/mobile/pages/first-run/styles';
 export function InsecureBlock({
   acknowledged,
   onChange,
+  body,
 }: {
   acknowledged: boolean;
   onChange: (value: boolean) => void;
+  /** Replaces the setup wording (a join names the server it is about to use). */
+  body?: string;
 }) {
   const { t } = useTranslation('deviceSync');
   const id = useId();
   return (
     <div className="mt-3">
       <InlineAlert icon={AlertTriangle} title={t('setup.server.insecureTitle')}>
-        {t('setup.server.insecureBody')}
+        {body ?? t('setup.server.insecureBody')}
       </InlineAlert>
       <div className="flex min-h-11 items-center gap-3">
         <Checkbox
@@ -35,6 +39,58 @@ export function InsecureBlock({
           {t('setup.server.insecureAck')}
         </Label>
       </div>
+    </div>
+  );
+}
+
+/**
+ * One line under the server field: the problem, what the server answered, "Looking for the
+ * server…", or the hint of what the field takes.
+ */
+export function ServerStatusLine({ state, id }: { state: ServerChoiceState; id: string }) {
+  const { t } = useTranslation('deviceSync');
+  const { check, checking, problem } = state;
+  if (problem) {
+    return (
+      <p id={id} role="alert" className="m-0 text-m-sub text-loss">
+        {problem}
+      </p>
+    );
+  }
+  if (check) {
+    return (
+      <p id={id} className="m-0 flex items-center gap-1.5 text-m-sub text-ink-2">
+        <Check aria-hidden className="size-3.5 flex-none text-ink-3" />
+        {t('setup.server.found', { version: check.version })}
+      </p>
+    );
+  }
+  const hint =
+    state.accepts === 'addressOrCode' ? t('join.serverHint') : t('setup.server.codeHint');
+  return (
+    <p id={id} className={`m-0 text-m-sub ${checking ? 'text-ink-3' : 'text-ink-4'}`}>
+      {checking ? t('setup.server.checking') : hint}
+    </p>
+  );
+}
+
+/**
+ * The server a Recovery Kit QR names, which the person did not type: its host, what it answered
+ * and, for plain http, the warning to acknowledge before the join sends anything to it.
+ */
+export function ServerCheckBlock({ state }: { state: ServerChoiceState }) {
+  const { t } = useTranslation('deviceSync');
+  const id = useId();
+  const { check, problem } = state;
+  return (
+    <div className="space-y-1.5">
+      <p className="m-0 text-m-row text-ink">
+        {t('join.kitServer', { host: hostOf(state.input) })}
+      </p>
+      <ServerStatusLine state={state} id={`${id}-status`} />
+      {check?.insecure && !problem && (
+        <InsecureBlock acknowledged={state.acknowledged} onChange={state.setAcknowledged} />
+      )}
     </div>
   );
 }
@@ -57,29 +113,9 @@ export function ServerChoiceBlock({ state, showCloud, onScan }: ServerChoiceBloc
   const { t } = useTranslation('deviceSync');
   const fieldId = useId();
   const hintId = `${fieldId}-hint`;
-  const { check, checking, problem } = state;
-
-  let status: React.ReactNode;
-  if (problem) {
-    status = (
-      <p id={hintId} role="alert" className="m-0 text-m-sub text-loss">
-        {problem}
-      </p>
-    );
-  } else if (check) {
-    status = (
-      <p id={hintId} className="m-0 flex items-center gap-1.5 text-m-sub text-ink-2">
-        <Check aria-hidden className="size-3.5 flex-none text-ink-3" />
-        {t('setup.server.found', { version: check.version })}
-      </p>
-    );
-  } else {
-    status = (
-      <p id={hintId} className={`m-0 text-m-sub ${checking ? 'text-ink-3' : 'text-ink-4'}`}>
-        {checking ? t('setup.server.checking') : t('setup.server.codeHint')}
-      </p>
-    );
-  }
+  const { check, problem } = state;
+  // Joining takes an address or a code, with its own label and hint
+  const own = state.accepts === 'addressOrCode';
 
   return (
     <div className="space-y-3">
@@ -99,7 +135,9 @@ export function ServerChoiceBlock({ state, showCloud, onScan }: ServerChoiceBloc
       <div className="rounded-[11px] border border-focus bg-paper px-3.5 py-3 shadow-focus">
         <p className="m-0 text-m-row text-ink">{t('setup.server.own')}</p>
         <div className="mt-3 space-y-1.5">
-          <Label htmlFor={fieldId}>{t('setup.server.codeLabel')}</Label>
+          <Label htmlFor={fieldId}>
+            {own ? t('join.serverLabel') : t('setup.server.codeLabel')}
+          </Label>
           <Input
             id={fieldId}
             value={state.input}
@@ -113,7 +151,7 @@ export function ServerChoiceBlock({ state, showCloud, onScan }: ServerChoiceBloc
             spellCheck={false}
             enterKeyHint="go"
           />
-          {status}
+          <ServerStatusLine state={state} id={hintId} />
           {onScan && (
             <Button
               variant="secondary"

@@ -223,6 +223,10 @@ export interface PairingView {
   expiresAt: number;
   /** The sync server as `host[:port]`, only when it is not the default one. */
   serverHost: string | null;
+  /** Joiner, at `received`: `host[:port]` of the server the received sync details name. */
+  joinServer: string | null;
+  /** Whether that server is plain http beyond this device (the person acknowledges it before joining). */
+  joinServerInsecure: boolean;
   /** Holder, in `compare`: wrong codes the person may still type before the pairing ends. */
   attemptsLeft: number | null;
 }

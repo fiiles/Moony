@@ -75,10 +75,6 @@
       "copy": "Kopier",
       "copied": "Kopiert"
     },
-    "advanced": {
-      "placeholder": "https://sync.moonyfinance.com",
-      "hint": "La feltet stå tomt for å bruke Moonys synkroniseringstjeneste. Fyll det ut bare hvis du driver din egen synkroniseringsserver."
-    },
     "pay": {
       "description": "Velg en plan. Betalingen åpnes i nettleseren.",
       "plan": "Plan",
@@ -314,8 +310,10 @@
     "warning": "Dataene på denne enheten erstattes med de synkroniserte dataene. En sikkerhetskopi lagres først ved siden av profilen din.",
     "nameLabel": "Enhetsnavn",
     "passwordLabel": "Enhetspassord",
-    "advanced": "Avansert",
     "serverLabel": "Adresse til synkroniseringsserveren",
+    "serverHint": "Skriv adressen til synkroniseringsserveren din, eller lim inn tilkoblingskoden.",
+    "insecureAtJoin": "Synkroniseringsdetaljene du blir med på, peker til {{host}}, som nås over vanlig http. Dataene dine forblir krypterte, men alle på samme nettverk kan fange opp tilgangen til synkroniseringen og slette eller blokkere de synkroniserte dataene på serveren.",
+    "kitServer": "Synkroniseringsserver: {{host}}",
     "pairTitle": "Bli med fra telefonen",
     "pairHint": "På telefonen med synkronisering på: Innstillinger → Synkronisering → Legg til en enhet",
     "kitTitle": "Bruk et gjenopprettingssett",

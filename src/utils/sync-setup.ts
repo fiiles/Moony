@@ -1,4 +1,6 @@
-import type { SyncServerCheck } from '@shared/schema';
+import type { PairingView, SyncServerCheck } from '@shared/schema';
+import type { ScannedCodeKind } from '@/utils/pairing-code';
+import { isDefaultServer } from '@/utils/sync-server';
 
 /** Where the data syncs: the Moony cloud, or a sync server the person runs. */
 export type ServerKind = 'cloud' | 'own';
@@ -46,4 +48,42 @@ export function acknowledgedAfterEdit(
   acknowledged: boolean
 ): boolean {
   return nextInput === previousInput && acknowledged;
+}
+
+/**
+ * Whether joining with the received sync details must first be acknowledged: they name a server
+ * reached over plain http, and it is not the one the person already acknowledged in the same
+ * dialog (a desktop joiner who typed that http address).
+ */
+export function needsJoinAcknowledgement(
+  view: Pick<PairingView, 'joinServer' | 'joinServerInsecure'>,
+  acknowledgedHost: string | null
+): boolean {
+  return (
+    view.joinServerInsecure && view.joinServer !== null && view.joinServer !== acknowledgedHost
+  );
+}
+
+/**
+ * What a Recovery Kit join asks of the server field, by what was typed or pasted: a typed recovery
+ * code needs the server typed (`typed`); a Kit QR's text brings its own, which is checked unless it
+ * is the Moony cloud (`qr`, with `qrServer` from `payloadServer` / `kitQrSummary`); anything else
+ * needs nothing, the backend names what is wrong with it (`none`).
+ */
+export function kitServerNeed(
+  kind: ScannedCodeKind,
+  qrServer: string | null
+): 'typed' | 'qr' | 'none' {
+  if (kind === 'recoveryCode') return 'typed';
+  if (kind === 'recover' && qrServer !== null && !isDefaultServer(qrServer)) return 'qr';
+  return 'none';
+}
+
+/** `host[:port]` of an address, for showing which server is meant; anything else as it is. */
+export function hostOf(address: string): string {
+  try {
+    return new URL(address).host || address;
+  } catch {
+    return address;
+  }
 }

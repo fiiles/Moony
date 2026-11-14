@@ -36,7 +36,12 @@ pub const ATTACHMENT_DIRS: [&str; 3] = crate::services::attachments::LEGACY_DIRS
 
 /// Tables that are never part of the JSON export: migration bookkeeping,
 /// app-local configuration (API keys) and SQLite's own sequence table.
-const EXPORT_DENYLIST: [&str; 3] = ["_migrations", "app_config", "sqlite_sequence"];
+const EXPORT_DENYLIST: [&str; 4] = [
+    "_migrations",
+    "app_config",
+    "sqlite_sequence",
+    "asset_logos",
+];
 /// Prefix of every device-sync bookkeeping table. None of them is exported: `sync_state` holds
 /// the vault keys, this device's private key and the account number.
 const EXPORT_SYNC_PREFIX: &str = "sync_";
@@ -847,6 +852,8 @@ mod tests {
             INSERT INTO loans (id, principal, note) VALUES ('l1', '1000.50', X'0102');
             CREATE TABLE app_config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             INSERT INTO app_config (key, value) VALUES ('some_other_setting', 'x');
+            CREATE TABLE asset_logos (id INTEGER PRIMARY KEY, ticker TEXT NOT NULL, image BLOB);
+            INSERT INTO asset_logos (ticker, image) VALUES ('AAPL', X'89504E47');
             "#,
         )
         .expect("schema");
@@ -1205,6 +1212,10 @@ mod tests {
         assert!(
             !tables.contains_key("_migrations"),
             "migration bookkeeping is not exported"
+        );
+        assert!(
+            !tables.contains_key("asset_logos"),
+            "the logo cache is not exported"
         );
         let profile = &tables["user_profile"][0];
         assert_eq!(profile["name"], "Test");

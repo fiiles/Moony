@@ -1046,6 +1046,8 @@ pub enum LogoOutcome {
 
 /// What an HTTP status of the image request means: 2xx → `None` (read the body); 408, 429 and
 /// 5xx → `Retry`; any other status (404, 410, a redirect, which is never followed) → `Miss`.
+/// The search request uses the same mapping for its non-2xx answers (a persistently rejected
+/// ticker is remembered as a miss instead of being searched on every run).
 pub fn outcome_for_status(status: u16) -> Option<LogoOutcome> {
     match status {
         200..=299 => None,
@@ -1098,10 +1100,11 @@ async fn fetch_asset_logo(ticker: &str) -> std::result::Result<LogoOutcome, Stop
         }
     };
     let status = response.status();
-    if !status.is_success() {
-        // Not a clean "no logo" (a rate limit, a changed API): nothing is remembered.
+    if let Some(outcome) = outcome_for_status(status.as_u16()) {
+        // A 4xx other than 408/429 is Yahoo rejecting this ticker: remembered as a miss. A rate
+        // limit or a server error is not: nothing is remembered.
         log::warn!("[LOGOS] Search answered HTTP {}", status.as_u16());
-        return unless_rate_limited(status.as_u16(), LogoOutcome::Retry);
+        return unless_rate_limited(status.as_u16(), outcome);
     }
     let body = match response.text().await {
         Ok(body) => body,
@@ -1153,7 +1156,12 @@ async fn fetch_asset_logo(ticker: &str) -> std::result::Result<LogoOutcome, Stop
             }
         }
     }
-    Ok(match asset_logos::normalize(&bytes) {
+    // Decoding and resizing is CPU work: off the async worker threads.
+    let normalized = tauri::async_runtime::spawn_blocking(move || asset_logos::normalize(&bytes))
+        .await
+        .ok()
+        .flatten();
+    Ok(match normalized {
         Some(png) => LogoOutcome::Found(png),
         None => LogoOutcome::Miss,
     })
@@ -1170,6 +1178,9 @@ pub async fn refresh_asset_logos(db: &Database) -> Result<u32> {
     use crate::services::asset_logos;
 
     let _running = LOGO_REFRESH.lock().await;
+    // A run lasts many seconds: every read and write goes through the session open now, so a
+    // deleted account, a restore or another profile makes the later writes fail.
+    let db = &db.current_session()?;
     let due = db.with_conn(|conn| {
         let tracked = asset_logos::tracked_tickers(conn)?;
         asset_logos::due(conn, &tracked, unix_timestamp_now())
@@ -2000,6 +2011,7 @@ mod tests {
         assert!(matches!(outcome_for_status(503), Some(LogoOutcome::Retry)));
         assert!(matches!(outcome_for_status(500), Some(LogoOutcome::Retry)));
         assert!(matches!(outcome_for_status(408), Some(LogoOutcome::Retry)));
+        assert!(matches!(outcome_for_status(400), Some(LogoOutcome::Miss)));
         assert!(matches!(outcome_for_status(404), Some(LogoOutcome::Miss)));
         assert!(matches!(outcome_for_status(410), Some(LogoOutcome::Miss)));
         // A redirect is never followed (it could lead off `s.yimg.com`): a miss.

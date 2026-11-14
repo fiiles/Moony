@@ -37,7 +37,7 @@ use crate::services::sync::capture::bench::{self, Overhead};
 use crate::services::sync::connection_code::{parse_connection_code, server_address_from_input};
 use crate::services::sync::engine::runtime::{self, EngineHandle, Trigger};
 use crate::services::sync::engine::{status, ConnAccess, EngineEvents};
-use crate::services::sync::error::{SyncError, SyncResult};
+use crate::services::sync::error::{SyncError, SyncResult, ACCOUNT_BLOCKED};
 use crate::services::sync::merge::DATA_CHANGED_EVENT;
 use crate::services::sync::relay::http::{default_base_url, is_default_relay, HttpRelay};
 use crate::services::sync::{feature, join, keys, server, setup, state};
@@ -260,12 +260,14 @@ pub(super) fn app_error(error: SyncError) -> AppError {
 
 /// `app_error` for a change against the server at `relay_url`: the Moony cloud takes payment, any
 /// other server (the person's own) does not, so a blocked account never reads "subscription" copy
-/// there (`SyncError::to_own_server_app_error`).
+/// there. Only `Lapsed` is remapped; every other error keeps `to_app_error` (an unknown account is
+/// `syncAccountNotFound`: no connection code is involved in these changes).
 pub(super) fn app_error_for(relay_url: &str, error: SyncError) -> AppError {
-    if is_default_relay(relay_url) {
-        error.to_app_error()
-    } else {
-        error.to_own_server_app_error()
+    match error {
+        SyncError::Lapsed if !is_default_relay(relay_url) => {
+            AppError::Validation(ACCOUNT_BLOCKED.into())
+        }
+        other => other.to_app_error(),
     }
 }
 
@@ -277,6 +279,21 @@ pub(super) async fn mapped_for_server<T>(
 ) -> SyncResult<T> {
     work.await
         .map_err(|error| SyncError::Local(app_error_for(&relay_url, error)))
+}
+
+/// Setup's mapping: as `mapped_for_server`, and an account the own server does not know means the
+/// connection code just entered was revoked (`to_own_server_app_error`).
+async fn mapped_for_setup<T>(
+    relay_url: String,
+    work: impl Future<Output = SyncResult<T>>,
+) -> SyncResult<T> {
+    work.await.map_err(|error| {
+        SyncError::Local(if is_default_relay(&relay_url) {
+            error.to_app_error()
+        } else {
+            error.to_own_server_app_error()
+        })
+    })
 }
 
 /// The server address this profile syncs against (the Moony cloud while there is no account).
@@ -738,7 +755,7 @@ pub async fn sync_finish_setup(
         now(),
     );
     // A person blocked between the steps of an own server never reads "subscription" copy.
-    let finish = mapped_for_server(stored_relay_url(&db)?, finish);
+    let finish = mapped_for_setup(stored_relay_url(&db)?, finish);
     guarded_change(&AppEngine { app: &app, db: &db }, finish).await?;
     current_status(&app, &db)
 }
@@ -1414,6 +1431,14 @@ mod tests {
                 key(app_error_for(own, SyncError::Lapsed)),
                 "validation.syncAccountBlocked"
             );
+            // No connection code is involved: an unknown account is not a revoked code
+            assert_eq!(
+                key(app_error_for(
+                    own,
+                    SyncError::Refused(crate::services::sync::relay::RelayError::AccountNotFound)
+                )),
+                "validation.syncAccountNotFound"
+            );
         }
     }
 
@@ -1421,7 +1446,6 @@ mod tests {
     #[test]
     fn every_server_change_maps_its_error_for_the_server() {
         for (source, name) in [
-            (include_str!("sync.rs"), "sync_finish_setup"),
             (include_str!("sync.rs"), "sync_repair_device"),
             (include_str!("sync.rs"), "sync_resync_device"),
             (include_str!("sync.rs"), "sync_change_server_address"),
@@ -1436,6 +1460,8 @@ mod tests {
                 .unwrap_or_else(|| panic!("`{name}` maps for the server"));
             assert!(mapped < body.find("guarded_change(").expect("a change"));
         }
+        let setup = command_body("sync_finish_setup");
+        assert!(setup.contains("mapped_for_setup("));
         let join = command_body_in(include_str!("sync_pairing.rs"), "sync_pairing_join");
         assert!(join.contains("app_error_for(&relay_url, error)"));
     }

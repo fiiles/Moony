@@ -58,8 +58,10 @@ vault.
   address (`engine/status.rs`: own server means the stored address is not the Moony cloud). An own
   server has no deletion date: a lapse reads "blocked on your sync server" with no renewal, on
   every path that talks to the server: setup, change address, pairing join, Recovery Kit join,
-  repair and re-sync map their errors with `app_error_for(stored or given URL, …)`, which picks
-  `to_own_server_app_error` for any server that is not the Moony cloud.
+  repair and re-sync map their errors with `app_error_for(stored or given URL, …)`, which
+  remaps only `Lapsed` (to `syncAccountBlocked`, for any server that is not the Moony cloud); an
+  unknown account stays `syncAccountNotFound` there. Setup alone uses the full own-server mapping
+  (`to_own_server_app_error`), where an unknown account means the connection code was revoked.
 
 **The server check.** `GET /v1/server` (no authentication) answers `{name: "moony-sync", version,
 protocol, mode}`. `server::check_own_server` refuses an address that does not answer that shape

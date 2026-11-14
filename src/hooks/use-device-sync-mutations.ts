@@ -39,9 +39,12 @@ export function useDeviceSyncMutations() {
     mutationFn: (relayUrl?: string) => deviceSyncApi.createAccount(relayUrl),
     onSuccess: refreshSyncState,
   });
+  // gcTime 0: the mutation keeps the connection code (its variables) in state, so it leaves the
+  // mutation cache with the screen; setup also `reset()`s it when it closes.
   const connectOwnServer = useMutation({
     mutationFn: (connectionCode: string) => deviceSyncApi.connectOwnServer(connectionCode),
     onSuccess: refreshSyncState,
+    gcTime: 0,
   });
   const startCheckout = useMutation({
     mutationFn: deviceSyncApi.startCheckout,

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { SyncServerCheck } from '@shared/schema';
 import {
+  accountQueryEnabled,
   acknowledgedAfterEdit,
   hostOf,
-  isInsecureAddress,
   kitServerNeed,
   needsJoinAcknowledgement,
   serverContinue,
@@ -43,17 +43,17 @@ describe('serverContinue', () => {
   });
 });
 
-describe('isInsecureAddress', () => {
-  it('flags plain http to anything but this machine', () => {
-    expect(isInsecureAddress('http://192.168.1.2:8787')).toBe(true);
-    expect(isInsecureAddress('http://nas.local')).toBe(true);
+describe('accountQueryEnabled', () => {
+  it('keeps a sync server unasked until the server step is over', () => {
+    expect(accountQueryEnabled('server', 'own')).toBe(false);
+    expect(accountQueryEnabled('kit', 'own')).toBe(true);
+    expect(accountQueryEnabled('device', 'own')).toBe(true);
   });
 
-  it('lets https and local http through', () => {
-    expect(isInsecureAddress('https://sync.example.org')).toBe(false);
-    expect(isInsecureAddress('http://localhost:8787')).toBe(false);
-    expect(isInsecureAddress('http://127.0.0.1:8787')).toBe(false);
-    expect(isInsecureAddress('not an address')).toBe(false);
+  it('reads the cloud account on every step (the pay step polls it)', () => {
+    for (const step of ['server', 'account', 'pay', 'kit', 'device'] as const) {
+      expect(accountQueryEnabled(step, 'cloud')).toBe(true);
+    }
   });
 });
 

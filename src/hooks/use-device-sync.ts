@@ -55,10 +55,14 @@ export function useDeviceSyncStatus() {
 
 /**
  * The sync account (number, and whether the subscription is active). `pollWhileInactive`
- * re-reads it every 3 s until it is active: setup waits for the payment this way.
+ * re-reads it every 3 s until it is active: setup waits for the payment this way. `enabled: false`
+ * keeps it from contacting the server at all (setup's server step).
  */
-export function useDeviceSyncAccount(opts: { pollWhileInactive?: boolean } = {}) {
-  const enabled = useDeviceSyncFeature();
+export function useDeviceSyncAccount(
+  opts: { pollWhileInactive?: boolean; enabled?: boolean } = {}
+) {
+  const featureEnabled = useDeviceSyncFeature();
+  const enabled = featureEnabled && opts.enabled !== false;
   return useQuery({
     queryKey: ['device-sync-account'],
     queryFn: () => deviceSyncApi.getAccount(),

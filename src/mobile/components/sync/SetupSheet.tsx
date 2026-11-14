@@ -10,7 +10,7 @@ import { useDeviceSyncAccount, useDeviceSyncStatus } from '@/hooks/use-device-sy
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useServerChoice } from '@/hooks/use-server-choice';
 import { translateApiError } from '@/lib/translate-api-error';
-import { isInsecureAddress, setupSteps, type SetupStep } from '@/utils/sync-setup';
+import { accountQueryEnabled, hostOf, setupSteps, type SetupStep } from '@/utils/sync-setup';
 import { Sheet } from '@/mobile/components/Sheet';
 import { StepProgress } from '@/mobile/components/StepProgress';
 import { KitBody } from '@/mobile/components/sync/KitBody';
@@ -23,15 +23,6 @@ import { field48 } from '@/mobile/pages/first-run/styles';
 
 /** The phone sets up on an own server only: the cloud card is not open yet, and the phone never pays. */
 const STEPS = setupSteps('own');
-
-/** `host[:port]` of a stored server address; the address itself when it does not parse. */
-function hostOf(address: string): string {
-  try {
-    return new URL(address).host;
-  } catch {
-    return address;
-  }
-}
 
 /** The 48 pt buttons of a sheet's footer. */
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
@@ -55,7 +46,7 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
   const fieldId = useId();
   const { data: status } = useDeviceSyncStatus();
   const [step, setStep] = useState<SetupStep>(STEPS[0]);
-  const accountQuery = useDeviceSyncAccount();
+  const accountQuery = useDeviceSyncAccount({ enabled: accountQueryEnabled(step, 'own') });
   const { connectOwnServer, prepareRecoveryKit, prepareKitWithPassword, finishSetup } =
     useDeviceSyncMutations();
 
@@ -66,7 +57,7 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
   const [otherServer, setOtherServer] = useState(false);
   const resuming = resumeAddress !== null && !otherServer;
   /** The resumed server is plain http: the warning is shown and acknowledged again. */
-  const resumeInsecure = resuming && isInsecureAddress(resumeAddress);
+  const resumeInsecure = resuming && status?.serverInsecure === true;
   /** Why the server step could not go on (a revoked code, a blocked account), translated. */
   const [connectError, setConnectError] = useState<string | null>(null);
   /** The camera is open (the sheet steps aside, as the scan flow's sheets do). */
@@ -106,6 +97,9 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
   // The kit holds the vault key: when the sheet closes it leaves the mutation's result too.
   const resetPreparedKit = prepareRecoveryKit.reset;
   useEffect(() => resetPreparedKit, [resetPreparedKit]);
+  // The connection code leaves the mutation's state with the sheet too.
+  const resetConnection = connectOwnServer.reset;
+  useEffect(() => resetConnection, [resetConnection]);
 
   /** A different account than the one shown: whatever was prepared for the old one is void. */
   const forgetKit = () => {
@@ -122,7 +116,8 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
     try {
       if (resuming) {
         if (resumeInsecure && !choice.acknowledged) return;
-        const { data: current } = await accountQuery.refetch();
+        // A server that does not answer is its own message; only "not active" is "blocked".
+        const { data: current } = await accountQuery.refetch({ throwOnError: true });
         if (!current?.active) {
           setConnectError(tc('validation.syncAccountBlocked'));
           return;

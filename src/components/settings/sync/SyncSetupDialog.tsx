@@ -26,16 +26,13 @@ import { Label } from '@/components/ui/label';
 import { Segmented } from '@/components/ui/segmented';
 import { groupAccountNumber } from '@/utils/recovery-kit';
 import { defaultDeviceKey } from '@/utils/sync-devices';
-import { isInsecureAddress, setupSteps, type ServerKind, type SetupStep } from '@/utils/sync-setup';
-
-/** `host[:port]` of a stored server address; the address itself when it does not parse. */
-function hostOf(address: string): string {
-  try {
-    return new URL(address).host;
-  } catch {
-    return address;
-  }
-}
+import {
+  accountQueryEnabled,
+  hostOf,
+  setupSteps,
+  type ServerKind,
+  type SetupStep,
+} from '@/utils/sync-setup';
 
 interface SyncSetupDialogProps {
   /** Mounted only while open: closing unmounts it, which also forgets the kit. */
@@ -54,9 +51,12 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   const [kind] = useState<ServerKind>('own');
   const steps = setupSteps(kind);
   const [chosenStep, setStep] = useState<SetupStep>(steps[0]);
-  const accountQuery = useDeviceSyncAccount({ pollWhileInactive: chosenStep === 'pay' });
+  const accountQuery = useDeviceSyncAccount({
+    pollWhileInactive: chosenStep === 'pay',
+    enabled: accountQueryEnabled(chosenStep, kind),
+  });
   const account = accountQuery.data;
-  // The payment (or the operator's allow-list) is waited for on step 2; it moves on by itself.
+  // The payment is waited for on the pay step; it moves on by itself.
   const step: SetupStep = chosenStep === 'pay' && account?.active ? 'kit' : chosenStep;
   const {
     createAccount,
@@ -74,7 +74,7 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   const [otherServer, setOtherServer] = useState(false);
   const resuming = resumeAddress !== null && !otherServer;
   /** The resumed server is plain http: the warning is shown and acknowledged again. */
-  const resumeInsecure = resuming && isInsecureAddress(resumeAddress);
+  const resumeInsecure = resuming && status?.serverInsecure === true;
   /** Why the server step could not go on (a revoked code, a blocked account), translated. */
   const [connectError, setConnectError] = useState<string | null>(null);
   const [createdNumber, setCreatedNumber] = useState<string | null>(null);
@@ -116,6 +116,9 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   // The kit holds the vault key: when the dialog closes it leaves the mutation's result too.
   const resetPreparedKit = prepareRecoveryKit.reset;
   useEffect(() => resetPreparedKit, [resetPreparedKit]);
+  // The connection code leaves the mutation's state with the dialog too.
+  const resetConnection = connectOwnServer.reset;
+  useEffect(() => resetConnection, [resetConnection]);
 
   /** A different account than the one shown: whatever was prepared for the old one is void. */
   const forgetKit = () => {
@@ -136,7 +139,8 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
     try {
       if (resuming) {
         if (resumeInsecure && !choice.acknowledged) return;
-        const { data: current } = await accountQuery.refetch();
+        // A server that does not answer is its own message; only "not active" is "blocked".
+        const { data: current } = await accountQuery.refetch({ throwOnError: true });
         if (!current?.active) {
           setConnectError(tc('validation.syncAccountBlocked'));
           return;

@@ -26,16 +26,12 @@ export function serverContinue(check: SyncServerCheck | undefined, acknowledged:
 }
 
 /**
- * Whether a stored server address is plain http to a host other than localhost / 127.0.0.1
- * (`is_insecure_address` in Rust): a resumed setup shows the warning again for it.
+ * Whether setup may read the sync account now. An own server is not asked on the server step: a
+ * resumed setup would otherwise contact a stored plain-http server before the warning is
+ * acknowledged. The cloud's account is read throughout (the pay step polls it).
  */
-export function isInsecureAddress(address: string): boolean {
-  try {
-    const url = new URL(address);
-    return url.protocol === 'http:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1';
-  } catch {
-    return false;
-  }
+export function accountQueryEnabled(step: SetupStep, kind: ServerKind): boolean {
+  return kind === 'cloud' || step !== 'server';
 }
 
 /**

@@ -117,11 +117,124 @@ fn fill<R: Read>(conn: &Connection, rowid: i64, reader: &mut R, len: u64) -> Res
 
 fn rowid_of(conn: &Connection, id: &str) -> Result<i64> {
     ensure_available(conn)?;
-    conn.query_row("SELECT rowid FROM files.blobs WHERE id = ?1", [id], |r| {
-        r.get(0)
-    })
+    conn.query_row(
+        "SELECT rowid FROM files.blobs WHERE id = ?1 AND sha256 <> ''",
+        [id],
+        |r| r.get(0),
+    )
     .optional()?
     .ok_or_else(|| AppError::NotFound("Attachment content not found".into()))
+}
+
+/// The rowid of a blob that is still arriving (`sha256 = ''`), or `NotFound`.
+fn incomplete_rowid_of(conn: &Connection, id: &str) -> Result<i64> {
+    ensure_available(conn)?;
+    conn.query_row(
+        "SELECT rowid FROM files.blobs WHERE id = ?1 AND sha256 = ''",
+        [id],
+        |r| r.get(0),
+    )
+    .optional()?
+    .ok_or_else(|| AppError::NotFound("Incoming attachment content not found".into()))
+}
+
+/// Reserve a blob of `len` bytes that arrives in pieces (a document downloaded from the sync
+/// server). Its row has `sha256 = ''`, which makes it incomplete: every reader below treats it as
+/// absent until [`finish_incoming`]. An older incomplete row of the same `id` (an earlier failed
+/// transfer) is replaced; a complete one is never touched.
+pub fn begin_incoming(conn: &Connection, id: &str, len: u64) -> Result<()> {
+    ensure_available(conn)?;
+    if len > MAX_DOCUMENT_BYTES {
+        return Err(AppError::Validation("validation.attachmentTooLarge".into()));
+    }
+    let size = len as i64;
+    conn.execute(
+        "DELETE FROM files.blobs WHERE id = ?1 AND sha256 = ''",
+        [id],
+    )?;
+    let exists: bool = conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM files.blobs WHERE id = ?1)",
+        [id],
+        |r| r.get(0),
+    )?;
+    if exists {
+        return Err(AppError::Internal("attachments.blobExists".into()));
+    }
+    conn.execute(
+        "INSERT INTO files.blobs (id, data, size, sha256) VALUES (?1, zeroblob(?2), ?2, '')",
+        rusqlite::params![id, size],
+    )?;
+    Ok(())
+}
+
+/// Write `bytes` at `offset` into an incomplete blob. Writing past its reserved size is refused.
+pub fn write_incoming(conn: &Connection, id: &str, offset: u64, bytes: &[u8]) -> Result<()> {
+    let rowid = incomplete_rowid_of(conn, id)?;
+    let mut blob = conn.blob_open(files_schema::SCHEMA, "blobs", "data", rowid, false)?;
+    let start = usize::try_from(offset)
+        .ok()
+        .filter(|s| s.saturating_add(bytes.len()) <= blob.len())
+        .ok_or_else(|| AppError::Internal("attachments.writePastEnd".into()))?;
+    blob.write_at(bytes, start)
+        .map_err(|e| AppError::Database(format!("Failed to store attachment: {e}")))
+}
+
+/// Complete an incoming blob by recording the hex SHA-256 of its content. From here on it is an
+/// ordinary blob. `NotFound` when there is no incomplete blob with this `id`.
+pub fn finish_incoming(conn: &Connection, id: &str, sha256: &str) -> Result<()> {
+    ensure_available(conn)?;
+    if sha256.is_empty() {
+        return Err(AppError::Internal("attachments.emptyHash".into()));
+    }
+    let changed = conn.execute(
+        "UPDATE files.blobs SET sha256 = ?2 WHERE id = ?1 AND sha256 = ''",
+        rusqlite::params![id, sha256],
+    )?;
+    if changed == 0 {
+        return Err(AppError::NotFound(
+            "Incoming attachment content not found".into(),
+        ));
+    }
+    Ok(())
+}
+
+/// Delete an incomplete blob (a failed or cancelled transfer). A complete blob is never deleted
+/// here.
+pub fn abandon_incoming(conn: &Connection, id: &str) -> Result<()> {
+    ensure_available(conn)?;
+    conn.execute(
+        "DELETE FROM files.blobs WHERE id = ?1 AND sha256 = ''",
+        [id],
+    )?;
+    Ok(())
+}
+
+/// True when the blob exists and is complete.
+pub fn is_complete(conn: &Connection, id: &str) -> Result<bool> {
+    ensure_available(conn)?;
+    Ok(conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM files.blobs WHERE id = ?1 AND sha256 <> '')",
+        [id],
+        |r| r.get(0),
+    )?)
+}
+
+/// Read up to `buf.len()` bytes of a complete blob starting at `offset`; returns the number of
+/// bytes read (0 at or past the end).
+pub fn read_at(conn: &Connection, id: &str, offset: u64, buf: &mut [u8]) -> Result<usize> {
+    let rowid = rowid_of(conn, id)?;
+    let blob = conn.blob_open(files_schema::SCHEMA, "blobs", "data", rowid, true)?;
+    let Ok(start) = usize::try_from(offset) else {
+        return Ok(0);
+    };
+    blob.read_at(buf, start)
+        .map_err(|e| AppError::Internal(format!("Failed to read attachment: {e}")))
+}
+
+/// Delete every incomplete blob (the app quit mid-transfer); returns how many went.
+pub fn sweep_incomplete(conn: &Connection) -> Result<usize> {
+    ensure_available(conn)?;
+    Ok(conn.execute("DELETE FROM files.blobs WHERE sha256 = ''", [])?)
 }
 
 /// The whole content of a blob.
@@ -139,13 +252,15 @@ pub fn copy_to<W: Write>(conn: &Connection, id: &str, writer: &mut W) -> Result<
         .map_err(|e| AppError::Internal(format!("Failed to read attachment: {e}")))
 }
 
-/// The recorded size of a blob, or `None` when it does not exist.
+/// The recorded size of a complete blob, or `None` when it does not exist (or is incomplete).
 pub fn size_of(conn: &Connection, id: &str) -> Result<Option<u64>> {
     ensure_available(conn)?;
     let size: Option<i64> = conn
-        .query_row("SELECT size FROM files.blobs WHERE id = ?1", [id], |r| {
-            r.get(0)
-        })
+        .query_row(
+            "SELECT size FROM files.blobs WHERE id = ?1 AND sha256 <> ''",
+            [id],
+            |r| r.get(0),
+        )
         .optional()?;
     Ok(size.map(|s| s as u64))
 }
@@ -212,7 +327,7 @@ pub fn rows_without_content(conn: &Connection) -> Result<u32> {
     ensure_available(conn)?;
     let intact = |column: &str| {
         format!(
-            "EXISTS (SELECT 1 FROM files.blobs b WHERE b.id = {column} AND length(b.data) = b.size)"
+            "EXISTS (SELECT 1 FROM files.blobs b WHERE b.id = {column} AND b.sha256 <> '' AND length(b.data) = b.size)"
         )
     };
     let n: i64 = conn.query_row(
@@ -486,5 +601,130 @@ mod tests {
         ))
         .expect("rows");
         assert_eq!(rows_without_content(&conn).expect("count"), 3);
+    }
+
+    fn blob_count(conn: &Connection) -> i64 {
+        conn.query_row("SELECT count(*) FROM files.blobs", [], |r| r.get(0))
+            .expect("count")
+    }
+
+    #[test]
+    fn an_incoming_blob_is_written_in_pieces_and_completes_with_its_hash() {
+        let conn = setup_test_db();
+        begin_incoming(&conn, "in-1", 5).expect("begin");
+        write_incoming(&conn, "in-1", 0, b"mo").expect("first piece");
+        write_incoming(&conn, "in-1", 2, b"ony").expect("second piece");
+        finish_incoming(&conn, "in-1", &sha(b"moony")).expect("finish");
+        assert!(is_complete(&conn, "in-1").expect("complete"));
+        assert_eq!(read_all(&conn, "in-1").expect("read"), b"moony".to_vec());
+        assert_eq!(size_of(&conn, "in-1").expect("size"), Some(5));
+        assert!(verify(&conn, "in-1", &sha(b"moony")).expect("verify"));
+    }
+
+    #[test]
+    fn an_incomplete_blob_is_invisible_to_every_reader() {
+        let conn = setup_test_db();
+        begin_incoming(&conn, "in-1", 5).expect("begin");
+        write_incoming(&conn, "in-1", 0, b"mo").expect("partial");
+        conn.execute(
+            "INSERT INTO insurance_documents (id, blob_id) VALUES ('d', 'in-1')",
+            [],
+        )
+        .expect("row");
+
+        assert_eq!(size_of(&conn, "in-1").expect("size"), None);
+        assert!(matches!(
+            read_all(&conn, "in-1"),
+            Err(AppError::NotFound(_))
+        ));
+        assert!(!is_complete(&conn, "in-1").expect("complete"));
+        assert!(copy_to(&conn, "in-1", &mut Vec::new()).is_err());
+        assert!(read_at(&conn, "in-1", 0, &mut [0u8; 4]).is_err());
+        assert!(verify(&conn, "in-1", &sha(b"mo\0\0\0")).is_err());
+        assert_eq!(rows_without_content(&conn).expect("count"), 1);
+    }
+
+    #[test]
+    fn beginning_again_replaces_an_incomplete_blob_but_never_a_complete_one() {
+        let conn = setup_test_db();
+        begin_incoming(&conn, "in-1", 3).expect("begin");
+        begin_incoming(&conn, "in-1", 3).expect("begin again");
+        assert_eq!(blob_count(&conn), 1);
+        write_incoming(&conn, "in-1", 0, b"abc").expect("write");
+        finish_incoming(&conn, "in-1", &sha(b"abc")).expect("finish");
+        match begin_incoming(&conn, "in-1", 3) {
+            Err(AppError::Internal(m)) => assert_eq!(m, "attachments.blobExists"),
+            other => panic!("expected blobExists, got {other:?}"),
+        }
+        assert_eq!(read_all(&conn, "in-1").expect("read"), b"abc".to_vec());
+    }
+
+    #[test]
+    fn abandon_and_sweep_remove_only_incomplete_blobs() {
+        let conn = setup_test_db();
+        let done = put_bytes(&conn, b"done").expect("put");
+        begin_incoming(&conn, "in-1", 4).expect("begin");
+        begin_incoming(&conn, "in-2", 4).expect("begin");
+        begin_incoming(&conn, "in-3", 4).expect("begin");
+        abandon_incoming(&conn, "in-3").expect("abandon");
+        abandon_incoming(&conn, &done.id).expect("abandon never touches a complete blob");
+        assert_eq!(read_all(&conn, &done.id).expect("read"), b"done".to_vec());
+        assert_eq!(sweep_incomplete(&conn).expect("sweep"), 2);
+        assert_eq!(blob_count(&conn), 1);
+        assert_eq!(read_all(&conn, &done.id).expect("read"), b"done".to_vec());
+    }
+
+    #[test]
+    fn writing_past_the_end_or_into_a_complete_blob_is_refused() {
+        let conn = setup_test_db();
+        begin_incoming(&conn, "in-1", 4).expect("begin");
+        assert!(matches!(
+            write_incoming(&conn, "in-1", 3, b"ab"),
+            Err(AppError::Internal(_))
+        ));
+        assert!(matches!(
+            write_incoming(&conn, "in-1", u64::MAX, b"a"),
+            Err(AppError::Internal(_))
+        ));
+        assert!(matches!(
+            write_incoming(&conn, "nope", 0, b"a"),
+            Err(AppError::NotFound(_))
+        ));
+        write_incoming(&conn, "in-1", 0, b"abcd").expect("write");
+        finish_incoming(&conn, "in-1", &sha(b"abcd")).expect("finish");
+        assert!(matches!(
+            write_incoming(&conn, "in-1", 0, b"zz"),
+            Err(AppError::NotFound(_))
+        ));
+        assert!(matches!(
+            finish_incoming(&conn, "in-1", &sha(b"abcd")),
+            Err(AppError::NotFound(_))
+        ));
+        assert_eq!(read_all(&conn, "in-1").expect("read"), b"abcd".to_vec());
+    }
+
+    #[test]
+    fn read_at_reads_a_window_of_a_complete_blob() {
+        let conn = setup_test_db();
+        let payload: Vec<u8> = (0..3 * 1024 * 1024u32).map(|i| (i % 251) as u8).collect();
+        let blob = put_bytes(&conn, &payload).expect("put");
+        let mut buf = vec![0u8; 65_536];
+        let n = read_at(&conn, &blob.id, 65_536, &mut buf).expect("read_at");
+        assert_eq!(n, 65_536);
+        assert_eq!(buf[..], payload[65_536..131_072]);
+        let n = read_at(&conn, &blob.id, payload.len() as u64, &mut buf).expect("at the end");
+        assert_eq!(n, 0);
+        let n = read_at(&conn, &blob.id, payload.len() as u64 - 10, &mut buf).expect("tail");
+        assert_eq!(n, 10);
+    }
+
+    #[test]
+    fn an_oversized_incoming_blob_is_refused_before_anything_is_written() {
+        let conn = setup_test_db();
+        match begin_incoming(&conn, "in-1", MAX_DOCUMENT_BYTES + 1) {
+            Err(AppError::Validation(m)) => assert_eq!(m, "validation.attachmentTooLarge"),
+            other => panic!("expected too large, got {other:?}"),
+        }
+        assert_eq!(blob_count(&conn), 0);
     }
 }

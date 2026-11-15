@@ -335,13 +335,15 @@ documents and photos need a newer server. The app assumes the server's error cod
     handle.
   - An upload stops while a download of the same ID is in progress (checked inside the hold that
     reads each chunk, since a download claims its ID before the hold that begins its incoming
-    blob) and checks completeness once more before it seals its last chunk. One window remains:
-    an upload of X whose content is deleted mid-upload and begun again as a download at the same
-    rowid, where that download finishes between two chunks of the upload. The upload then reads
-    zeros for the chunks in between and passes its last check. What covers it: such a download
-    needs the server to hold X complete already, and the server never replaces an existing blob
-    (a `PUT` of an existing ID answers `created: false` and discards the body), so the wrong body
-    is thrown away. A download writes only into the row it began; the claim on its ID
+    blob) and checks completeness once more before it seals its last chunk. Two cases follow when
+    X's content is deleted mid-upload and begun again as a download at the same rowid. While that
+    download holds its claim, every read of the upload sees the claim and stops. If the download
+    finishes and releases between two chunks of the upload, the row holds X's real bytes again,
+    so the upload reads correct content and its last check passes rightly. Zeros can only be read
+    from a download that was dropped and left an unfinished row without a claim; the upload's
+    last check then fails, its body never ends and the server stores nothing. The server would
+    not replace an existing blob either way (a `PUT` of an existing ID answers `created: false`
+    and discards the body). A download writes only into the row it began; the claim on its ID
     (`IncomingBlobs`) makes it the only one that finishes that row, through the guarded
     `finish_incoming`. A row finished by anyone else is not seen per chunk (that would read the
     hash), but the download then does not end as stored. The public `read_at` and

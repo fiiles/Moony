@@ -192,7 +192,7 @@ pub async fn restore_backup(
 ) -> Result<()> {
     let dir = data_dir(&app)?;
     local_api.stop().await;
-    crate::commands::sync::stop_engine(&app);
+    crate::commands::sync::stop_engine_and_wait(&app).await;
     crate::commands::sync::forget_kit_window();
     crate::commands::sync_pairing::forget_pairing();
     crate::commands::sync::clear_copied_code(&app);

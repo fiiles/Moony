@@ -16,6 +16,7 @@ mod gaps;
 mod held_blobs;
 mod join;
 mod join_new;
+mod lanes;
 mod pull;
 mod push;
 mod relay_faults;
@@ -68,6 +69,8 @@ pub struct TestConn {
     /// This profile's own downloads in progress, so devices downloading one blob in parallel
     /// tests never see each other's.
     pub incoming: Arc<crate::services::sync::blobs::stream::IncomingBlobs>,
+    /// This profile's own lane gate, so engines of other tests never wait for it.
+    pub lanes: Arc<tokio::sync::Mutex<()>>,
 }
 
 impl TestConn {
@@ -77,6 +80,7 @@ impl TestConn {
             locked: Arc::new(AtomicBool::new(false)),
             rounds: Arc::new(tokio::sync::Mutex::new(())),
             incoming: Arc::default(),
+            lanes: Arc::default(),
         }
     }
 
@@ -108,6 +112,10 @@ impl ConnAccess for TestConn {
 
     fn incoming_blobs(&self) -> &crate::services::sync::blobs::stream::IncomingBlobs {
         &self.incoming
+    }
+
+    fn lanes_lock(&self) -> &tokio::sync::Mutex<()> {
+        &self.lanes
     }
 }
 

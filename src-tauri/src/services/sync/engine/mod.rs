@@ -60,6 +60,14 @@ pub trait ConnAccess: Clone + Send + Sync + 'static {
     fn incoming_blobs(&self) -> &IncomingBlobs {
         &INCOMING_BLOBS
     }
+
+    /// The profile's lane gate: one engine's transfer lanes at a time (`runtime`). A new engine's
+    /// lanes wait on it until an earlier engine's lanes have ended, their dropped transfers
+    /// settled, before they sweep the store and pick work. The app opens one profile at a time, so
+    /// the default is one gate for the process.
+    fn lanes_lock(&self) -> &tokio::sync::Mutex<()> {
+        &LANES
+    }
 }
 
 impl ConnAccess for crate::db::Database {
@@ -243,6 +251,10 @@ pub trait EngineEvents: Send + Sync + 'static {
     fn binding(&self) -> &dyn BindingNative;
     /// The folder next to the profile: the restore marker and the binding live there.
     fn data_dir(&self) -> PathBuf;
+    /// Documents' or photos' content, or their counts, changed (`sync-attachments-changed`, no
+    /// payload): a transfer lane moved something, or the queue changed. Coalesced by the engine:
+    /// at most a few calls a second, and the last change always gets one.
+    fn attachments_changed(&self);
     /// Whether a binding check already failed in this app start (audit M10, final review A I2):
     /// one mark for the whole process, which outlives any one engine. Every unlock and every sync
     /// change spawns a new engine, and a failed check counts once per app start among all of them.
@@ -305,6 +317,9 @@ fn unechoed<D: ConnAccess>(db: &D) -> Result<(usize, Option<u64>)> {
 
 /// The process's round lock (`ConnAccess::round_lock`; one profile is open at a time).
 static ROUNDS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// The process's lane gate (`ConnAccess::lanes_lock`; one profile is open at a time).
+static LANES: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 /// The process's downloads in progress (`ConnAccess::incoming_blobs`; one profile is open at a
 /// time).

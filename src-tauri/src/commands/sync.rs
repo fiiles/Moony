@@ -64,6 +64,13 @@ const MAX_BENCH_ROWS: u32 = 50_000;
 /// The event that carries `SyncStatus` to the UI.
 pub const STATUS_CHANGED_EVENT: &str = "sync-status-changed";
 
+/// The event that tells the UI documents' or photos' content or counts changed (no payload).
+pub const SYNC_ATTACHMENTS_EVENT: &str = "sync-attachments-changed";
+
+/// How long a sync change, a lock or a restore waits for the stopped engine's tasks to end before
+/// it goes on anyway (a task can only be slow to end inside one database hold).
+const ENGINE_STOP_WAIT: Duration = Duration::from_secs(5);
+
 /// The running engine of the open profile, if any.
 #[derive(Default)]
 pub struct SyncEngineState(pub Mutex<Option<EngineHandle>>);
@@ -122,6 +129,12 @@ impl EngineEvents for TauriEvents {
     fn status_changed(&self, status: &SyncStatus) {
         if let Err(e) = self.app.emit(STATUS_CHANGED_EVENT, status) {
             log::warn!("[SYNC] Could not emit {STATUS_CHANGED_EVENT}: {e}");
+        }
+    }
+
+    fn attachments_changed(&self) {
+        if let Err(e) = self.app.emit(SYNC_ATTACHMENTS_EVENT, ()) {
+            log::warn!("[SYNC] Could not emit {SYNC_ATTACHMENTS_EVENT}: {e}");
         }
     }
 
@@ -214,7 +227,8 @@ fn spawn_engine(app: &AppHandle, db: &Database) {
     log::info!("[SYNC] The sync engine started");
 }
 
-/// Stops the engine, if one runs (lock, restore, account deletion).
+/// Stops the engine, if one runs, without waiting for its tasks to end (an unlock starting the
+/// next one: the new engine's lanes wait for the old ones on the profile's lane gate).
 pub(crate) fn stop_engine(app: &AppHandle) {
     let handle = app
         .state::<SyncEngineState>()
@@ -224,6 +238,27 @@ pub(crate) fn stop_engine(app: &AppHandle) {
         .take();
     if let Some(handle) = handle {
         handle.stop();
+        log::info!("[SYNC] The sync engine stopped");
+    }
+}
+
+/// Stops the engine, if one runs, and returns once its loop and its transfer lanes have ended
+/// (at most `ENGINE_STOP_WAIT`): lock, restore, account deletion and every sync change, so no
+/// transfer of it still uses the profile while the session closes or its rows are replaced.
+pub(crate) async fn stop_engine_and_wait(app: &AppHandle) {
+    let handle = app
+        .state::<SyncEngineState>()
+        .0
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take();
+    if let Some(handle) = handle {
+        if tokio::time::timeout(ENGINE_STOP_WAIT, handle.stopped())
+            .await
+            .is_err()
+        {
+            log::warn!("[SYNC] The sync engine was slow to stop; going on");
+        }
         log::info!("[SYNC] The sync engine stopped");
     }
 }
@@ -338,7 +373,8 @@ pub(crate) fn current_status(app: &AppHandle, db: &Database) -> Result<SyncStatu
 
 /// Stopping and starting the engine around a sync change (the app's engine, or a test's).
 pub(super) trait EngineControl {
-    fn stop(&self);
+    /// Stops the engine and returns once its tasks have ended.
+    fn stop(&self) -> impl Future<Output = ()> + Send;
     /// Starts the engine again; nothing when sync is off by then.
     fn start(&self);
 }
@@ -350,8 +386,8 @@ pub(super) struct AppEngine<'a> {
 }
 
 impl EngineControl for AppEngine<'_> {
-    fn stop(&self) {
-        stop_engine(self.app);
+    async fn stop(&self) {
+        stop_engine_and_wait(self.app).await;
     }
 
     fn start(&self) {
@@ -369,7 +405,7 @@ pub(super) async fn guarded_change<T>(
     work: impl Future<Output = SyncResult<T>>,
 ) -> Result<T> {
     let _one = SyncChangeGuard::try_start()?;
-    engine.stop();
+    engine.stop().await;
     let result = work.await;
     engine.start();
     result.map_err(app_error)
@@ -1103,7 +1139,7 @@ mod tests {
     }
 
     impl EngineControl for FakeEngine {
-        fn stop(&self) {
+        async fn stop(&self) {
             self.stops.fetch_add(1, Ordering::SeqCst);
         }
 

@@ -228,3 +228,17 @@ documents and photos need a newer server. The app assumes the server's error cod
   attachments. `SyncStatus.attachments` carries the counts and the attachments problem beside the
   ordinary phase, never in it; a summary that cannot be read leaves them empty, with a warning in
   the log, and the rest of the status as it is.
+- **The transfer lanes (Task 12).** `engine/runtime.rs` spawns a second task per engine beside the
+  loop. It first waits on the profile's lane gate (`ConnAccess::lanes_lock`), so an earlier
+  engine's lanes have ended (their transfers dropped and settled) before these begin; then, once
+  and before either lane transfers, it sweeps incomplete blobs (`attachment_store::sweep_incomplete`)
+  and runs the full `reconcile`. The two lanes then run side by side over the round's
+  `BlobPolicy`: each waits for a wake (after every round, "Sync now", `wake_transfers`) or 60
+  seconds, then runs until a run moves nothing more, taking new blobs for at most a second per run
+  so the app hears progress. "Sync now" calls `BlobPolicy::try_again` and `queue::retry_now`. The
+  lanes rest where the round does not sync (capture broken, vault gone, an unauthorized token, the
+  start check not passed) and while the round backs off after a failure (offline, rate-limited, a
+  failing server; the retry round wakes them); after a lapse or a rotated token, downloads go on (reads stay allowed)
+  and uploads wait. Lock, restore, Delete Account and every sync change wait for the stopped
+  engine's tasks to end (at most 5 s). Changes reach the app as `sync-attachments-changed`, at most
+  one per 250 ms, the last change always told.

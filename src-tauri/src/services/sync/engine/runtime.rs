@@ -7,6 +7,15 @@
 //! runs one round at a time (one task, and `run_round`'s own lock), and ends quietly when the
 //! profile locks: a step that finds the session closed (`AppError::Auth`) ends it without an error
 //! status; the next unlock starts a fresh engine.
+//!
+//! Beside the loop, a second task runs the two transfer lanes of documents and photos (attachments
+//! design §5.3, §5.4; ADR 0030): uploads and downloads, one blob at a time each, sharing the
+//! round's `BlobPolicy`. They take what the round leaves (content over 8 MiB, content that failed
+//! an attempt, every download), wake after every round, on "Sync now" and on `wake_transfers`, and
+//! look at their queue at least every `LANE_IDLE`. Nothing they do delays or fails a round. The
+//! task first waits on the profile's lane gate (`ConnAccess::lanes_lock`), so an earlier engine's
+//! lanes have ended before these start; then, once and before either lane transfers, it sweeps
+//! incomplete blobs out of the store and reconciles the whole queue with the store.
 
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -22,10 +31,18 @@ use super::pull::rejoin_as_new_device;
 use super::snapshots::{SnapshotPolicy, SNAPSHOT_MAX_DELAY};
 use super::status::{self, problem_of_round, Runtime};
 use super::{recheck_vault, run_round_into, ConnAccess, EngineEvents, RoundMode, RoundReport};
+use crate::db::files_schema;
 use crate::error::AppError;
 use crate::models::sync::{SyncProblem, SyncStatus};
+use crate::services::attachment_store;
 use crate::services::sync::binding::{self, BindingNative, StartupCheck};
+use crate::services::sync::blobs::policy::{BlobPolicy, Lane};
+use crate::services::sync::blobs::queue;
+use crate::services::sync::blobs::stream::hold;
+use crate::services::sync::blobs::transfer::{run_downloads, run_uploads};
+use crate::services::sync::capture::guard;
 use crate::services::sync::error::{SyncError, Transient};
+use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::relay::Relay;
 use crate::services::sync::state;
 
@@ -44,6 +61,14 @@ pub const PERIODIC: Duration = Duration::from_secs(300);
 pub const ROUND_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 /// The loop never sleeps less than this, whatever its deadlines say.
 const MIN_SLEEP: Duration = Duration::from_millis(5);
+/// A transfer lane looks at its queue at least this often when nothing wakes it.
+pub const LANE_IDLE: Duration = Duration::from_secs(60);
+/// A lane run takes no new blob after this long, so the app hears what moved while a long queue
+/// is worked through (a transfer in progress is never cut); the lane goes on at once.
+pub const LANE_SLICE: Duration = Duration::from_secs(1);
+/// At most one `EngineEvents::attachments_changed` per this gap; a change inside it is told at
+/// its end.
+pub const ATTACHMENTS_EVENT_GAP: Duration = Duration::from_millis(250);
 
 /// The wait after failed rounds: 30 s, doubling up to 30 minutes, back to 30 s after a round that
 /// returned.
@@ -124,10 +149,24 @@ pub enum Trigger {
 struct Shared {
     wake: Notify,
     stop: AtomicBool,
+    /// The loop's task lives.
     running: AtomicBool,
+    /// The lanes' task lives.
+    lanes_running: AtomicBool,
     requested: AtomicBool,
     sync_now: AtomicBool,
     runtime: Mutex<Runtime>,
+    /// What the round's upload step and the lanes share (the round's `SnapshotPolicy::blobs`).
+    blobs: BlobPolicy,
+    /// The start check passed: the lanes may transfer.
+    started: AtomicBool,
+    /// The last round failed and the loop backs off before the next (offline, rate-limited, a
+    /// failing server): the lanes rest until a round runs again.
+    backing_off: AtomicBool,
+    /// Something the lanes moved changed the status: the loop publishes it without a round.
+    status_dirty: AtomicBool,
+    /// A lane changed content or counts: told to the app, coalesced (`forward_changes`).
+    attachments: Notify,
 }
 
 impl Shared {
@@ -148,10 +187,12 @@ impl Shared {
     }
 }
 
-/// The running engine of one unlocked profile. Dropping it stops the engine.
+/// The running engine of one unlocked profile: its loop and its transfer lanes. Dropping it stops
+/// the engine.
 pub struct EngineHandle {
     shared: Arc<Shared>,
     task: JoinHandle<()>,
+    lanes: JoinHandle<()>,
 }
 
 impl EngineHandle {
@@ -164,15 +205,33 @@ impl EngineHandle {
         self.shared.wake.notify_one();
     }
 
-    /// Stops the loop at its next await (a round in flight is dropped there; every step it took
-    /// is committed, and the next round goes on from it as after a crash).
+    /// Wakes both transfer lanes: they look at their queue now (content added or wanted here).
+    pub fn wake_transfers(&self) {
+        self.shared.blobs.wake();
+    }
+
+    /// Stops the loop and the lanes at their next await (a round in flight is dropped there; every
+    /// step it took is committed, and the next round goes on from it as after a crash). A transfer
+    /// in flight is dropped too: its entry counts a failed attempt and its incoming blob is
+    /// abandoned when the connection is free at that instant, else by the next lane start.
     pub fn stop(&self) {
         self.shared.stop.store(true, Ordering::SeqCst);
         self.task.abort();
+        self.lanes.abort();
     }
 
+    /// Stops the engine and returns once its loop and its lanes have ended: every transfer they
+    /// had in flight is dropped and settled, so nothing of this engine uses the connection after.
+    pub async fn stopped(mut self) {
+        self.stop();
+        let _ = (&mut self.task).await;
+        let _ = (&mut self.lanes).await;
+    }
+
+    /// The loop or the lanes still run.
     pub fn is_running(&self) -> bool {
         self.shared.running.load(Ordering::SeqCst)
+            || self.shared.lanes_running.load(Ordering::SeqCst)
     }
 
     /// The engine's memory of its rounds (the status's input).
@@ -188,37 +247,74 @@ impl Drop for EngineHandle {
 }
 
 /// Clears `running` when the loop's future is dropped: it ended, or it was aborted, even before
-/// it first ran.
+/// it first ran. The lanes are woken, so they end with it.
 struct RunningFlag(Arc<Shared>);
 
 impl Drop for RunningFlag {
     fn drop(&mut self) {
         self.0.running.store(false, Ordering::SeqCst);
+        self.0.blobs.wake();
     }
 }
 
-/// Starts the engine of an unlocked, sync-enabled profile on the current tokio runtime; its first
-/// round follows the unlock trigger.
+/// Clears `lanes_running` when the lanes' future is dropped.
+struct LanesFlag(Arc<Shared>);
+
+impl Drop for LanesFlag {
+    fn drop(&mut self) {
+        self.0.lanes_running.store(false, Ordering::SeqCst);
+    }
+}
+
+/// Starts the engine of an unlocked, sync-enabled profile on the current tokio runtime, with the
+/// transfer policy of this platform (`BlobPolicy::for_this_platform`); its first round follows the
+/// unlock trigger.
 pub fn spawn<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
     relay: R,
     db: D,
     events: E,
 ) -> EngineHandle {
+    spawn_with(relay, db, events, BlobPolicy::for_this_platform())
+}
+
+/// `spawn` with the given transfer policy (a phone's or a desktop's), shared by the round's upload
+/// step and the two lanes.
+pub fn spawn_with<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
+    relay: R,
+    db: D,
+    events: E,
+    blobs: BlobPolicy,
+) -> EngineHandle {
     let shared = Arc::new(Shared {
         wake: Notify::new(),
         stop: AtomicBool::new(false),
         running: AtomicBool::new(true),
+        lanes_running: AtomicBool::new(true),
         requested: AtomicBool::new(false),
         sync_now: AtomicBool::new(false),
         runtime: Mutex::new(Runtime::default()),
+        blobs: blobs.clone(),
+        started: AtomicBool::new(false),
+        backing_off: AtomicBool::new(false),
+        status_dirty: AtomicBool::new(false),
+        attachments: Notify::new(),
     });
+    let (relay, events) = (Arc::new(relay), Arc::new(events));
+    let mut policy = SnapshotPolicy::default();
+    policy.blobs = blobs;
+    let lanes = Lanes {
+        relay: relay.clone(),
+        db: db.clone(),
+        events: events.clone(),
+        shared: shared.clone(),
+    };
     let flag = RunningFlag(shared.clone());
     let engine = Engine {
         relay,
         db,
         events,
         shared: shared.clone(),
-        policy: SnapshotPolicy::default(),
+        policy,
         backoff: Backoff::default(),
         watch: OutboxWatch::default(),
         started: false,
@@ -227,11 +323,20 @@ pub fn spawn<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
         next_periodic: Instant::now() + PERIODIC,
         next_poll: Instant::now() + OUTBOX_POLL,
     };
+    let lanes_flag = LanesFlag(shared.clone());
+    let lanes = tokio::spawn(async move {
+        let _flag = lanes_flag;
+        lanes.run().await;
+    });
     let task = tokio::spawn(async move {
         let _flag = flag;
         engine.run().await;
     });
-    let handle = EngineHandle { shared, task };
+    let handle = EngineHandle {
+        shared,
+        task,
+        lanes,
+    };
     handle.wake(Trigger::Unlock);
     handle
 }
@@ -240,9 +345,9 @@ pub fn spawn<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
 struct Ended;
 
 struct Engine<R, D, E> {
-    relay: R,
+    relay: Arc<R>,
     db: D,
-    events: E,
+    events: Arc<E>,
     shared: Arc<Shared>,
     policy: SnapshotPolicy,
     backoff: Backoff,
@@ -282,6 +387,7 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
             if sync_now {
                 self.retry_at = None;
                 due = true;
+                self.try_transfers_again()?;
             } else if let Some(at) = self.retry_at {
                 // During a back-off, Unlock, LocalWrite and Periodic requests (and the outbox
                 // poll) are dropped on purpose: the retry runs a round anyway.
@@ -299,6 +405,7 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
             if due {
                 if !self.started {
                     self.started = self.start().await?;
+                    self.shared.started.store(self.started, Ordering::SeqCst);
                 }
                 if self.started {
                     if sync_now {
@@ -306,6 +413,9 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                     }
                     self.round().await?;
                 }
+            }
+            if self.shared.status_dirty.swap(false, Ordering::SeqCst) {
+                self.publish()?;
             }
             // While backing off, only the retry (or a message: stop, Sync now) wakes the loop.
             let deadline = match self.retry_at {
@@ -442,9 +552,25 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         }
     }
 
+    /// "Sync now" for documents and photos: the server is asked again about its blob routes, the
+    /// pause for room ends (`BlobPolicy::try_again`), and every transfer waiting for its backoff is
+    /// due now (`queue::retry_now`); the lanes are woken after the round.
+    fn try_transfers_again(&self) -> Result<(), Ended> {
+        self.policy.blobs.try_again();
+        match self.db.with_conn(queue::retry_now) {
+            Err(error) if locked(&error) => Err(Ended),
+            Err(error) => {
+                log::warn!("[SYNC] Documents and photos could not be made due again");
+                log::debug!("[SYNC] Documents and photos could not be made due again: {error}");
+                Ok(())
+            }
+            Ok(()) => Ok(()),
+        }
+    }
+
     /// "Sync now" on a paused vault: one question to the relay (ruling P9).
     async fn recheck_vault(&mut self) -> Result<(), Ended> {
-        match recheck_vault(&self.relay, &self.db).await {
+        match recheck_vault(self.relay.as_ref(), &self.db).await {
             Ok(_) => Ok(()),
             Err(SyncError::Local(error)) if locked(&error) => Err(Ended),
             Err(error) => {
@@ -465,7 +591,7 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         let result = match tokio::time::timeout(
             ROUND_TIMEOUT,
             run_round_into(
-                &self.relay,
+                self.relay.as_ref(),
                 &self.db,
                 &mut self.policy,
                 RoundMode::Normal,
@@ -507,12 +633,17 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                 }
             }
         }
+        self.shared
+            .backing_off
+            .store(self.retry_at.is_some(), Ordering::SeqCst);
         self.next_periodic = Instant::now() + PERIODIC;
         let pending = self.outbox_count()?;
         self.watch.after_round(pending);
         self.shared.update(|r| r.running_round = false);
         self.publish()?;
         self.shared.update(|r| r.rounds += 1);
+        // What the round merged, queued or left behind is the lanes' now.
+        self.policy.blobs.wake();
         Ok(())
     }
 
@@ -552,6 +683,186 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                 Ok(0)
             }
         }
+    }
+}
+
+/// The transfer lanes of one engine (attachments design §5.3, §5.4): what they share with its
+/// loop.
+struct Lanes<R, D, E> {
+    relay: Arc<R>,
+    db: D,
+    events: Arc<E>,
+    shared: Arc<Shared>,
+}
+
+impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
+    /// Waits for the profile's lane gate (an earlier engine's lanes end first: no entry of theirs
+    /// is still being transferred, no incoming blob of theirs is still being written), starts the
+    /// lanes once (`start`), then runs the upload and the download lane side by side, and tells
+    /// the app what they change (`forward_changes`). Ends when both lanes ended (a locked profile,
+    /// or the loop ended); an abort drops everything here before the gate is released.
+    async fn run(self) {
+        let _gate = self.db.lanes_lock().lock().await;
+        if self.start().is_err() {
+            return;
+        }
+        let both = async { tokio::join!(self.lane(Lane::Up), self.lane(Lane::Down)) };
+        let events = forward_changes(&self.shared.attachments, ATTACHMENTS_EVENT_GAP, || {
+            self.events.attachments_changed();
+            self.shared.status_dirty.store(true, Ordering::SeqCst);
+            self.shared.wake.notify_one();
+        });
+        tokio::select! {
+            _ = both => {}
+            _ = events => {}
+        }
+    }
+
+    /// Once per engine, before either lane transfers: the incomplete blobs earlier transfers left
+    /// in the store go (`attachment_store::sweep_incomplete`: no transfer runs now, the gate is
+    /// held and the lanes have not begun, and a local add writes its blob within one hold), and the
+    /// whole queue is reconciled with the store (`queue::reconcile`: content lost or found outside
+    /// a merge). A local failure is logged and the lanes go on; a locked profile ends them.
+    fn start(&self) -> Result<(), Ended> {
+        let now = unix_now();
+        let started = hold(&self.db, |conn| {
+            if !files_schema::is_attached(conn)? {
+                return Ok(None);
+            }
+            let swept = attachment_store::sweep_incomplete(conn)?;
+            Ok(Some((swept, queue::reconcile(conn, now)?)))
+        });
+        match started {
+            Ok(Some((swept, reconciled))) => {
+                if swept > 0 {
+                    log::info!(
+                        "[SYNC] Removed {swept} unfinished downloads of documents or photos"
+                    );
+                }
+                if reconciled != queue::Reconciled::default() {
+                    self.shared.attachments.notify_one();
+                }
+                Ok(())
+            }
+            Ok(None) => Ok(()),
+            Err(error) if locked(&error) => Err(Ended),
+            Err(error) => {
+                log::warn!("[SYNC] The transfer queue could not be prepared");
+                log::debug!("[SYNC] The transfer queue could not be prepared: {error}");
+                Ok(())
+            }
+        }
+    }
+
+    /// One lane: waits for a wake (after every round, "Sync now", `wake_transfers`) or
+    /// `LANE_IDLE`, then runs until a run moves nothing more. Ends with the loop, or when the
+    /// profile is locked.
+    async fn lane(&self, lane: Lane) {
+        loop {
+            self.shared.blobs.wait(lane, LANE_IDLE).await;
+            loop {
+                if !self.shared.running.load(Ordering::SeqCst) {
+                    return;
+                }
+                match self.run_once(lane).await {
+                    Err(Ended) => return,
+                    Ok(true) => {}
+                    Ok(false) => break,
+                }
+            }
+        }
+    }
+
+    /// One run of `lane` over what is due now, taking new blobs for `LANE_SLICE`; whether it moved
+    /// any blob (more may be due). Nothing runs while the engine's start check has not passed,
+    /// while the loop backs off after a failed round (the retry round wakes the lanes), or while
+    /// the profile does not sync now (`lane_credentials`, `lane_may_run`). A local error is logged
+    /// and waits for the next wake; a locked profile ends the lane.
+    async fn run_once(&self, lane: Lane) -> Result<bool, Ended> {
+        if !self.shared.started.load(Ordering::SeqCst)
+            || self.shared.backing_off.load(Ordering::SeqCst)
+            || !lane_may_run(lane, self.shared.runtime().problem)
+        {
+            return Ok(false);
+        }
+        let creds = match hold(&self.db, lane_credentials) {
+            Ok(Some(creds)) => creds,
+            Ok(None) => return Ok(false),
+            Err(error) if locked(&error) => return Err(Ended),
+            Err(error) => {
+                log::warn!("[SYNC] Documents and photos could not be transferred");
+                log::debug!("[SYNC] The transfer lane could not read the vault: {error}");
+                return Ok(false);
+            }
+        };
+        let policy = &self.shared.blobs;
+        let problem = policy.problem();
+        let (relay, now) = (self.relay.as_ref(), unix_now());
+        let until = Some(Instant::now() + LANE_SLICE);
+        let ran = match lane {
+            Lane::Up => run_uploads(relay, &self.db, &creds, policy, now, until, None).await,
+            Lane::Down => run_downloads(relay, &self.db, &creds, policy, now, until).await,
+        };
+        let report = match ran {
+            Ok(report) => report,
+            Err(error) if locked(&error) => return Err(Ended),
+            Err(error) => {
+                log::warn!("[SYNC] Documents and photos could not be transferred");
+                log::debug!("[SYNC] A transfer lane failed: {error}");
+                return Ok(false);
+            }
+        };
+        if report.changed || policy.problem() != problem {
+            self.shared.attachments.notify_one();
+        }
+        Ok(report.uploaded + report.stored > 0)
+    }
+}
+
+/// The credentials a lane transfers with, `None` while the profile does not sync: sync off, no
+/// credentials, capture broken (marked, or a guarded connection: the round runs only the repair's
+/// drain, and a repair replaces the rows), or the vault gone (the round asks nothing until "Sync
+/// now" finds it again). Read in one hold.
+fn lane_credentials(conn: &rusqlite::Connection) -> crate::error::Result<Option<Credentials>> {
+    if !state::load(conn)?.is_some_and(|sync| sync.enabled) {
+        return Ok(None);
+    }
+    let Some(marks) = state::marks(conn)? else {
+        return Ok(None);
+    };
+    if marks.capture_broken_at.is_some()
+        || marks.vault_gone_at.is_some()
+        || guard::changes_paused(conn)
+    {
+        return Ok(None);
+    }
+    keys::credentials(conn)
+}
+
+/// Whether `lane` runs after a round whose problem is `problem`, as the round itself goes on: a
+/// lapse or a rotated token stops writes (pushes, uploads) while reads go on as long as the server
+/// allows (pulls, downloads); a token the server refuses, a vault gone or broken capture stop
+/// both. Any other problem (a quota of changes, a gap, a newer schema) leaves the lanes to their
+/// own per-blob backoff; while the round itself backs off (offline, rate-limited, a failing
+/// server) the lanes rest too (`Shared::backing_off`).
+pub(crate) fn lane_may_run(lane: Lane, problem: Option<SyncProblem>) -> bool {
+    match problem {
+        Some(SyncProblem::CaptureBroken | SyncProblem::VaultGone | SyncProblem::Unauthorized) => {
+            false
+        }
+        Some(SyncProblem::Lapsed | SyncProblem::KeyRotated) => lane == Lane::Down,
+        _ => true,
+    }
+}
+
+/// Tells `emit` about the changes `changes` is notified of, at most once per `gap`: a change
+/// within the gap after an emit is told at its end (the `Notify` keeps it), so a burst of changes
+/// gives a few calls and the last change always one. Never returns.
+pub(crate) async fn forward_changes(changes: &Notify, gap: Duration, mut emit: impl FnMut()) {
+    loop {
+        changes.notified().await;
+        emit();
+        tokio::time::sleep(gap).await;
     }
 }
 

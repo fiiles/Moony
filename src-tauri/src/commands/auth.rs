@@ -255,7 +255,7 @@ pub async fn logout(
     local_api: State<'_, LocalApiServer>,
 ) -> Result<()> {
     local_api.stop().await;
-    crate::commands::sync::stop_engine(&app);
+    crate::commands::sync::stop_engine_and_wait(&app).await;
     crate::commands::sync::forget_kit_window();
     crate::commands::sync_pairing::forget_pairing();
     crate::commands::sync::clear_copied_code(&app);
@@ -336,7 +336,7 @@ pub async fn delete_account(
     // The engine stops first, so no round holds the round lock through the vault deletion's
     // budget; then the synced data goes too, while the profile is open and its sync row still on
     // (ruling P8). A failure never stops the deletion.
-    crate::commands::sync::stop_engine(&app);
+    crate::commands::sync::stop_engine_and_wait(&app).await;
     crate::commands::sync::forget_kit_window();
     crate::commands::sync_pairing::forget_pairing();
     crate::commands::sync::clear_copied_code(&app);

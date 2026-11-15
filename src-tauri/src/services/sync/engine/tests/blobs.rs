@@ -12,7 +12,9 @@ use crate::services::attachment_store;
 use crate::services::sync::blobs::content::ContentReader;
 use crate::services::sync::blobs::policy::BlobPolicy;
 use crate::services::sync::blobs::queue;
-use crate::services::sync::blobs::transfer::{run_downloads, PRE_PUSH_BUDGET, PRE_PUSH_MAX_PLAIN};
+use crate::services::sync::blobs::transfer::{
+    run_downloads, run_uploads, PRE_PUSH_BUDGET, PRE_PUSH_MAX_PLAIN,
+};
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
 use crate::services::sync::engine::status::{self, Runtime};
 use crate::services::sync::engine::{run_round, RoundMode, RoundReport};
@@ -22,6 +24,7 @@ use crate::services::sync::relay::{
     AccountStatus, BlobBody, BlobPage, BlobSink, CheckoutPlan, Delivery, PullPage, PushReceipt,
     RelayError, RelayResult, ServerInfo, SnapshotBlob, VaultInfo,
 };
+use crate::services::sync::test_support::assert_converged;
 
 /// A blob ID no store here holds (content that lives on another device).
 const ELSEWHERE: &str = "0b9e6a52-3a4c-4e0f-9d7a-1c2b3d4e5f01";
@@ -550,6 +553,251 @@ fn the_status_counts_waiting_uploads_and_content_elsewhere() {
     let off_status = status::status(&off.lock(), &runtime).expect("status");
     assert_eq!(off_status.phase, SyncPhase::Off);
     assert_eq!(off_status.attachments, SyncAttachments::default());
+}
+
+// ---------------------------------------------------------------------------------------------
+// Two devices: rows and their content (the rounds and the lanes' runs, driven by hand)
+
+/// Rounds on both devices and the lanes' runs (a desktop's) until nothing changes, at `now`.
+async fn settle_at(vault: &Vault, now: i64) {
+    let policy = BlobPolicy::default();
+    for _ in 0..10 {
+        let mut changed = false;
+        for device in [&vault.a, &vault.b] {
+            let report = round_at(&vault.relay, device, RoundMode::Normal, now).await;
+            changed |= pushed(&report) > 0 || report.data_changed();
+            let up = run_uploads(&vault.relay, device, &vault.creds, &policy, now, None, None)
+                .await
+                .expect("uploads");
+            let down = run_downloads(&vault.relay, device, &vault.creds, &policy, now, None)
+                .await
+                .expect("downloads");
+            changed |= up.changed || down.changed;
+        }
+        if !changed {
+            return;
+        }
+    }
+    panic!("the devices did not settle");
+}
+
+async fn settle(vault: &Vault) {
+    settle_at(vault, NOW).await;
+}
+
+fn content_of(device: &TestConn, blob: &str) -> AttachmentContent {
+    let conn = device.lock();
+    ContentReader::new(&conn)
+        .expect("reader")
+        .of(Some(blob), true)
+        .expect("content")
+}
+
+/// Property `r1` with photo batch `batch-1` on `device`.
+fn property(device: &TestConn) {
+    exec(
+        &device.lock(),
+        "INSERT INTO real_estate (id, name, address, type) VALUES ('r1', 'Flat', 'Street', 'flat'); \
+         INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date) \
+         VALUES ('batch-1', 'r1', 1767225600);",
+    );
+}
+
+/// A photo `id` of batch `batch-1` with new content; its `(full, thumbnail)` blob IDs.
+fn photo(device: &TestConn, id: &str, seed: u8) -> (String, String) {
+    let conn = device.lock();
+    let full = attachment_store::put_bytes(&conn, &[seed; 90_000])
+        .expect("full")
+        .id;
+    let thumb = attachment_store::put_bytes(&conn, &[seed.wrapping_add(1); 3_000])
+        .expect("thumbnail")
+        .id;
+    conn.execute(
+        "INSERT INTO real_estate_photos (id, batch_id, blob_id, thumb_blob_id, created_at) \
+         VALUES (?1, 'batch-1', ?2, ?3, 1767225600)",
+        [id, &full, &thumb],
+    )
+    .expect("photo");
+    (full, thumb)
+}
+
+fn read(device: &TestConn, blob: &str) -> Vec<u8> {
+    attachment_store::read_all(&device.lock(), blob).expect("read")
+}
+
+fn held_here(device: &TestConn, blob: &str) -> bool {
+    attachment_store::is_complete(&device.lock(), blob).expect("store")
+}
+
+/// A document and a photo written on `A`: once both devices settled, `B` has the same rows and
+/// every blob with the same bytes, shown as here.
+#[tokio::test]
+async fn attachments_converge_with_their_content_on_two_devices() {
+    let vault = vault().await;
+    with_store(&vault.a);
+    with_store(&vault.b);
+    owner(&vault.a);
+    let doc = document(&vault.a, "d1", b"%PDF-1.7 a contract");
+    property(&vault.a);
+    let (full, thumb) = photo(&vault.a, "ph1", 5);
+
+    settle(&vault).await;
+
+    assert_converged(&[&vault.a.lock(), &vault.b.lock()]);
+    for blob in [&doc, &full, &thumb] {
+        assert_eq!(read(&vault.b, blob), read(&vault.a, blob));
+        assert_eq!(content_of(&vault.b, blob), AttachmentContent::Here);
+        assert_eq!(content_of(&vault.a, blob), AttachmentContent::Here);
+    }
+}
+
+/// A row reaches the other device before its content (the upload failed): it shows "not on the
+/// server" there, and arrives once uploaded and tried again.
+#[tokio::test]
+async fn a_row_that_arrives_before_its_content_is_fetched_once_it_is_there() {
+    let vault = vault().await;
+    with_store(&vault.a);
+    with_store(&vault.b);
+    vault
+        .relay
+        .fail_next(Route::PutBlob, RelayError::Server(503));
+    owner(&vault.a);
+    let blob = document(&vault.a, "d1", b"%PDF-1.7 late content");
+    round_on(&vault.relay, &vault.a, RoundMode::Normal).await;
+    round_on(&vault.relay, &vault.b, RoundMode::Normal).await;
+    let policy = BlobPolicy::default();
+    run_downloads(&vault.relay, &vault.b, &vault.creds, &policy, NOW, None)
+        .await
+        .expect("downloads");
+    assert_eq!(content_of(&vault.b, &blob), AttachmentContent::NotOnServer);
+
+    let later = NOW + 600;
+    let up = run_uploads(
+        &vault.relay,
+        &vault.a,
+        &vault.creds,
+        &policy,
+        later,
+        None,
+        None,
+    )
+    .await
+    .expect("uploads");
+    assert_eq!(up.uploaded, 1);
+    queue::retry_now(&vault.b.lock()).expect("retry");
+    run_downloads(&vault.relay, &vault.b, &vault.creds, &policy, later, None)
+        .await
+        .expect("downloads");
+
+    assert_eq!(content_of(&vault.b, &blob), AttachmentContent::Here);
+    assert_eq!(read(&vault.b, &blob), read(&vault.a, &blob));
+}
+
+/// A device that joins from a snapshot queues the content of every row it gets and fetches it.
+#[tokio::test]
+async fn a_join_fetches_content() {
+    let vault = vault().await;
+    with_store(&vault.a);
+    with_store(&vault.b);
+    owner(&vault.a);
+    let doc = document(&vault.a, "d1", b"%PDF-1.7 joined");
+    property(&vault.a);
+    let (full, thumb) = photo(&vault.a, "ph1", 9);
+    settle(&vault).await;
+
+    let mut stream = Vec::new();
+    {
+        let a = vault.a.lock();
+        crate::services::sync::snapshot::dump(&a, cursor(&a), &mut stream).expect("dump A");
+    }
+    let c = TestConn::new(migrated());
+    with_store(&c);
+    crate::services::sync::keys::save_credentials(&c.lock(), &vault.creds).expect("credentials");
+    crate::services::sync::snapshot::join(&c.lock(), C, &mut stream.as_slice(), NOW)
+        .expect("join C");
+    for blob in [&doc, &full, &thumb] {
+        assert_eq!(entry(&c, blob).expect("queued").0, "down", "{blob}");
+    }
+
+    run_downloads(
+        &vault.relay,
+        &c,
+        &vault.creds,
+        &BlobPolicy::default(),
+        NOW,
+        None,
+    )
+    .await
+    .expect("downloads");
+
+    let sha256 = |device: &TestConn, blob: &str| -> String {
+        device
+            .lock()
+            .query_row(
+                "SELECT sha256 FROM files.blobs WHERE id = ?1",
+                [blob],
+                |r| r.get(0),
+            )
+            .expect("sha256")
+    };
+    for blob in [&doc, &full, &thumb] {
+        assert!(held_here(&c, blob), "{blob}");
+        assert_eq!(sha256(&c, blob), sha256(&vault.a, blob));
+        assert_eq!(read(&c, blob), read(&vault.a, blob));
+    }
+}
+
+/// A deleted document and a deleted property (its batch and photos with it) take their content
+/// from every device; the server keeps it (only the daily pass deletes there).
+#[tokio::test]
+async fn a_delete_and_a_cascade_remove_content_everywhere() {
+    let vault = vault().await;
+    with_store(&vault.a);
+    with_store(&vault.b);
+    owner(&vault.a);
+    let doc = document(&vault.a, "d1", b"%PDF-1.7 deleted later");
+    property(&vault.a);
+    let (full, thumb) = photo(&vault.a, "ph1", 13);
+    settle(&vault).await;
+    for blob in [&doc, &full, &thumb] {
+        assert!(held_here(&vault.b, blob));
+    }
+
+    exec(
+        &vault.a.lock(),
+        "DELETE FROM insurance_documents WHERE id = 'd1'",
+    );
+    round_on(&vault.relay, &vault.a, RoundMode::Normal).await;
+    round_on(&vault.relay, &vault.b, RoundMode::Normal).await;
+    assert_eq!(
+        count(&vault.b.lock(), "SELECT COUNT(*) FROM insurance_documents"),
+        0
+    );
+    assert!(!held_here(&vault.b, &doc));
+    assert_eq!(entry(&vault.b, &doc), None);
+
+    exec(&vault.b.lock(), "DELETE FROM real_estate WHERE id = 'r1'");
+    round_on(&vault.relay, &vault.b, RoundMode::Normal).await;
+    round_on(&vault.relay, &vault.a, RoundMode::Normal).await;
+    {
+        let a = vault.a.lock();
+        assert_eq!(
+            count(&a, "SELECT COUNT(*) FROM real_estate_photo_batches"),
+            0
+        );
+        assert_eq!(count(&a, "SELECT COUNT(*) FROM real_estate_photos"), 0);
+    }
+    // The merging side's store loses the content (the deleting side's own delete service removes
+    // its blob there; these deletes are plain SQL).
+    for blob in [&full, &thumb] {
+        assert!(!held_here(&vault.a, blob), "{blob}");
+        assert_eq!(entry(&vault.a, blob), None);
+    }
+    let on_server = vault.relay.blob_ids(&vault.creds.vault_id.to_b64());
+    for blob in [&doc, &full, &thumb] {
+        let id = uuid::Uuid::parse_str(blob).expect("id");
+        assert!(on_server.contains(&id), "{blob} stays on the server");
+    }
 }
 
 /// The fake sync server, except that the upload of the given blob (of any blob with `None`) never

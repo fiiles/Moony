@@ -95,9 +95,15 @@ impl BlobPolicy {
         }
     }
 
-    /// A desktop fetches everything in the background; a phone only on demand.
+    /// A desktop fetches everything in the background; a phone fetches thumbnails at once and
+    /// full content only on demand. Uploads run alike on both.
+    pub fn for_platform(phone: bool) -> Self {
+        Self::new(!phone)
+    }
+
+    /// [`for_platform`](Self::for_platform) of the platform this build runs on.
     pub fn for_this_platform() -> Self {
-        Self::new(!cfg!(any(target_os = "ios", target_os = "android")))
+        Self::for_platform(cfg!(any(target_os = "ios", target_os = "android")))
     }
 
     pub fn eager_full(&self) -> bool {

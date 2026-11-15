@@ -50,7 +50,7 @@ fn blocking<T>(f: impl FnOnce() -> T) -> T {
 }
 
 /// One short hold of the connection, through [`blocking`].
-pub(super) fn hold<D: ConnAccess, T>(
+pub(crate) fn hold<D: ConnAccess, T>(
     db: &D,
     f: impl FnOnce(&rusqlite::Connection) -> Result<T>,
 ) -> Result<T> {

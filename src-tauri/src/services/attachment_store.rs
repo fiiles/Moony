@@ -140,7 +140,10 @@ fn incomplete_rowid_of(conn: &Connection, id: &str) -> Result<i64> {
 
 /// Reserve a blob of `len` bytes that arrives in pieces (a document downloaded from the sync
 /// server). Its row has `sha256 = ''`, which makes it incomplete: every reader below treats it as
-/// absent until [`finish_incoming`]. An older incomplete row of the same `id` (an earlier failed
+/// absent until [`finish_incoming`].
+///
+/// The delete, the existence check and the insert are separate statements, so the caller must
+/// serialize calls for one ID (one transfer per blob ID at a time). An older incomplete row of the same `id` (an earlier failed
 /// transfer) is replaced; a complete one is never touched.
 pub fn begin_incoming(conn: &Connection, id: &str, len: u64) -> Result<()> {
     ensure_available(conn)?;
@@ -179,7 +182,12 @@ pub fn write_incoming(conn: &Connection, id: &str, offset: u64, bytes: &[u8]) ->
         .map_err(|e| AppError::Database(format!("Failed to store attachment: {e}")))
 }
 
-/// Complete an incoming blob by recording the hex SHA-256 of its content. From here on it is an
+/// Complete an incoming blob by recording the hex SHA-256 of its content.
+///
+/// The store trusts the caller and does not track which ranges were written: a skipped piece
+/// stays zeros and would be sealed as complete. The caller must have written every byte in order
+/// and verified the whole stream before calling, and `sha256` must be the SHA-256 of exactly the
+/// bytes written. From here on it is an
 /// ordinary blob. `NotFound` when there is no incomplete blob with this `id`.
 pub fn finish_incoming(conn: &Connection, id: &str, sha256: &str) -> Result<()> {
     ensure_available(conn)?;
@@ -231,7 +239,13 @@ pub fn read_at(conn: &Connection, id: &str, offset: u64, buf: &mut [u8]) -> Resu
         .map_err(|e| AppError::Internal(format!("Failed to read attachment: {e}")))
 }
 
-/// Delete every incomplete blob (the app quit mid-transfer); returns how many went.
+/// Delete every incomplete blob (leftovers of transfers the app quit in the middle of); returns
+/// how many went.
+///
+/// It cannot tell an old failed transfer from a live one, and it also removes a `put_reader`
+/// blob that is still being filled. Call it only when no transfer and no `put_reader` is in
+/// progress on any connection (at start, before the first transfer). If that is violated, a live
+/// transfer's next `write_incoming` or `finish_incoming` answers `NotFound`.
 pub fn sweep_incomplete(conn: &Connection) -> Result<usize> {
     ensure_available(conn)?;
     Ok(conn.execute("DELETE FROM files.blobs WHERE sha256 = ''", [])?)
@@ -291,6 +305,11 @@ pub fn delete(conn: &Connection, id: &str) -> Result<bool> {
 }
 
 /// Delete every blob that no attachment row references (D8); returns how many went.
+///
+/// Incomplete blobs are not exempt. An incoming blob is safe from this sweep only while a row
+/// references its ID, so a transfer must begin only for a blob a row already names. If the row
+/// goes away mid-transfer the blob is removed, and the transfer's next write answers `NotFound`;
+/// the transfer must treat that as "gone", not as an error to retry.
 pub fn delete_unreferenced(conn: &Connection) -> Result<usize> {
     ensure_available(conn)?;
     let referenced = REFERENCES
@@ -701,6 +720,42 @@ mod tests {
             Err(AppError::NotFound(_))
         ));
         assert_eq!(read_all(&conn, "in-1").expect("read"), b"abcd".to_vec());
+    }
+
+    #[test]
+    fn finishing_with_an_empty_hash_is_refused() {
+        let conn = setup_test_db();
+        begin_incoming(&conn, "in-1", 1).expect("begin");
+        write_incoming(&conn, "in-1", 0, b"a").expect("write");
+        match finish_incoming(&conn, "in-1", "") {
+            Err(AppError::Internal(m)) => assert_eq!(m, "attachments.emptyHash"),
+            other => panic!("expected emptyHash, got {other:?}"),
+        }
+        assert!(!is_complete(&conn, "in-1").expect("complete"));
+    }
+
+    #[test]
+    fn an_empty_blob_is_complete_because_its_hash_is_not_the_empty_string() {
+        let conn = setup_test_db();
+        let blob = put_bytes(&conn, b"").expect("put");
+        assert_eq!(blob.sha256, sha(b""));
+        assert!(!blob.sha256.is_empty());
+        assert!(is_complete(&conn, &blob.id).expect("complete"));
+        assert_eq!(size_of(&conn, &blob.id).expect("size"), Some(0));
+        assert_eq!(read_all(&conn, &blob.id).expect("read"), Vec::<u8>::new());
+        assert_eq!(sweep_incomplete(&conn).expect("sweep"), 0);
+    }
+
+    #[test]
+    fn read_at_past_the_end_returns_zero_bytes() {
+        let conn = setup_test_db();
+        let blob = put_bytes(&conn, b"abc").expect("put");
+        let mut buf = [0u8; 4];
+        assert_eq!(read_at(&conn, &blob.id, 10, &mut buf).expect("past"), 0);
+        assert_eq!(
+            read_at(&conn, &blob.id, u64::MAX, &mut buf).expect("far past"),
+            0
+        );
     }
 
     #[test]

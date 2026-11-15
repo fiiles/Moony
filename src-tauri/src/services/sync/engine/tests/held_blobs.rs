@@ -143,6 +143,57 @@ async fn an_unrelated_delete_in_the_catch_up_pull_keeps_a_held_blob() {
     assert_eq!(count(&b, "SELECT COUNT(*) FROM sync_held_blobs"), 0);
 }
 
+/// After a replace the queue holds only what the vault's rows name; the row the pull brings back
+/// queues its held content as held here (`up`, to be confirmed with the server) through the
+/// merge's own `reconcile_rows`: a pull runs no store-wide reconcile at its end (ADR 0030).
+#[tokio::test]
+async fn a_held_blob_whose_row_the_pull_brings_back_is_queued_up_by_the_merge() {
+    let vault = vault().await;
+    {
+        let a = vault.a.lock();
+        policy(&a, "p1");
+    }
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    with_store(&vault.b);
+    let blob = {
+        let b = vault.b.lock();
+        document(&b, "d1", "p1")
+    };
+    let consent = agreed(&vault.b);
+    let dir = tempfile::tempdir().expect("dir");
+    resync_by_replace(&vault.relay, &vault.b, consent, dir.path(), &XorNative, NOW)
+        .await
+        .expect("resync");
+    {
+        let b = vault.b.lock();
+        assert_eq!(count(&b, "SELECT COUNT(*) FROM insurance_documents"), 0);
+        assert_eq!(count(&b, "SELECT COUNT(*) FROM sync_blobs"), 0);
+    }
+
+    pull_all(&vault.relay, &vault.b, &vault.creds, NOW)
+        .await
+        .expect("pull");
+
+    let b = vault.b.lock();
+    assert_eq!(
+        count(
+            &b,
+            "SELECT COUNT(*) FROM insurance_documents WHERE id = 'd1'"
+        ),
+        1,
+        "the pull brought the row back"
+    );
+    let state: Option<String> = b
+        .query_row(
+            "SELECT state FROM sync_blobs WHERE blob_id = ?1",
+            [&blob],
+            |r| r.get(0),
+        )
+        .ok();
+    assert_eq!(state.as_deref(), Some("up"));
+}
+
 /// A new device joins: its own documents are not in the vault and go with the replace, but their
 /// content is held until its first pull caught up, as on a re-sync.
 #[tokio::test]

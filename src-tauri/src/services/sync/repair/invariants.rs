@@ -50,7 +50,7 @@ pub fn run(conn: &Connection, touched: &Touched, now: i64) -> Result<()> {
     }
     // The transfer queue follows the rows: a merge or a restore that brought, changed or removed
     // attachment rows queues their content or drops it. Checking the entries against the store
-    // waits for the end of the pull, or of the restore (`repair::full`).
+    // is left to the full reconcile (lane start, a replace, `repair::full`), never a pull.
     let rows_touched = attachment_store::REFERENCES
         .iter()
         .any(|(table, _)| touched.rows.contains_key(*table));

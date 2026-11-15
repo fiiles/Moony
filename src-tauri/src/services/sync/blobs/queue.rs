@@ -5,10 +5,10 @@
 //!
 //! The queue is a function of the rows and the store, never fed by hooks in the services:
 //! `reconcile` adds what a row names, drops what no row names, and moves an entry when its
-//! content was lost or found. The full `reconcile` (every entry checked against the store) runs at
-//! the end of a pull that merged anything, after every restore and replace, and when a lane
-//! starts; each merged changeset, each sync round and each transfer run uses `reconcile_rows`,
-//! which looks up only newly named blobs in the store. Turning sync off empties the queue, and
+//! content was lost or found. The full `reconcile` (every entry checked against the store) runs
+//! after every restore and replace and when the lanes start; each merged changeset (so every
+//! pull), each sync round and each transfer run uses `reconcile_rows`, which looks up only newly
+//! named blobs in the store. Turning sync off empties the queue, and
 //! so does a replace, whose repair then rebuilds it from the vault's rows and this store.
 //!
 //! The queue is also where everything that runs often reads where content is (the status, the
@@ -290,9 +290,8 @@ fn store_size(id: &str) -> String {
 /// way). Does nothing without the store or with sync off.
 ///
 /// Checking every entry against the store reads each blob's record past its content, so this runs
-/// once per restore and replace, once at the end of a pull that merged anything, and when a lane
-/// starts; each merged changeset, each sync round and each transfer run uses only
-/// `reconcile_rows`.
+/// once per restore and replace and when the lanes start; each merged changeset (a pull runs
+/// nothing else), each sync round and each transfer run uses only `reconcile_rows`.
 pub fn reconcile(conn: &Connection, now: i64) -> Result<Reconciled> {
     reconcile_with(conn, now, true)
 }
@@ -301,8 +300,9 @@ pub fn reconcile(conn: &Connection, now: i64) -> Result<Reconciled> {
 /// uploads, at a transfer run): drops the entries no syncing row names any more and adds the newly
 /// named blobs, looking each new one up in the store. A merge never removes or adds content
 /// of a blob a row still names (the blob sweep takes only blobs no row names, and their entries go
-/// here), so the entries' states against the store are left to the full `reconcile` the pull runs
-/// at its end.
+/// here), so the entries' states against the store are left to the full `reconcile` at the next
+/// lane start, replace or full repair. A blob a replace held (`sync_held_blobs`) whose row comes
+/// back with a pull is newly named here and queued `up`.
 pub fn reconcile_rows(conn: &Connection, now: i64) -> Result<Reconciled> {
     reconcile_with(conn, now, false)
 }

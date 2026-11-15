@@ -1,6 +1,7 @@
 //! The transfer queue after a pull (ADR 0030): each merged changeset brings the queue in line with
-//! the rows it touched, and a pull that merged anything reconciles the whole queue once at its
-//! end, so content this store lost meanwhile is queued to be fetched again.
+//! the rows it touched, and nothing more: a pull never checks the queue against the store (that
+//! walks every blob's pages). Content this store lost outside a merge is noticed by the full
+//! reconcile at the next lane start (or replace, or full repair).
 
 use super::join::round;
 use super::*;
@@ -30,7 +31,7 @@ fn state_of(conn: &Connection, blob: &str) -> Option<String> {
 }
 
 #[tokio::test]
-async fn a_pull_that_merged_changes_reconciles_the_whole_queue() {
+async fn a_pull_reconciles_only_the_rows_it_merged() {
     let vault = vault().await;
     let lost = {
         let b = vault.b.lock();
@@ -73,6 +74,12 @@ async fn a_pull_that_merged_changes_reconciles_the_whole_queue() {
         Some("down"),
         "the merged row"
     );
+    // The pull did not ask the store, so the entry still said `up`; the round's upload step took
+    // it, found the content gone and dropped the entry (ADR 0030, known limits).
+    assert_eq!(state_of(&b, &lost), None, "not moved to down by the pull");
+
+    // What the lanes run when they start.
+    queue::reconcile(&b, NOW).expect("full reconcile");
     assert_eq!(
         state_of(&b, &lost).as_deref(),
         Some("down"),

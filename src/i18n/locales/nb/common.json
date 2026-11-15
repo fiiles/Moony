@@ -187,6 +187,7 @@
     "endDateAfterStart": "Sluttdatoen må være etter startdatoen",
     "attachmentTooLarge": "Filen er større enn 100 MB.",
     "attachmentNotHereYet": "Dette dokumentet eller bildet har ikke kommet til denne enheten ennå.",
+    "attachmentUnavailable": "Dette dokumentet eller bildet kunne ikke lastes ned til denne enheten.",
     "exportIntoDataFolder": "En kopi kan ikke lagres i datamappen til Moony. Velg et annet sted.",
     "documentNameRequired": "Dokumentnavn er påkrevd",
     "nameTooLong": "Navnet er for langt",

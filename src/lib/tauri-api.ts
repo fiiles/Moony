@@ -52,6 +52,7 @@ import type {
   InsertInsurancePolicy,
   InsuranceDocument,
   AttachmentKind,
+  AttachmentContent,
   AttachmentStatus,
   OtherAsset,
   InsertOtherAsset,
@@ -329,6 +330,24 @@ export const deviceSyncApi = {
   profileState: () => tauriInvoke<SyncProfileState>('sync_profile_state'),
 
   getStatus: () => tauriInvoke<SyncStatus>('get_sync_status'),
+
+  /**
+   * Asks for the full content of a document or photo that is not on this device. Content that is
+   * here, or that cannot arrive as things stand, is left as it is; resolves with its state.
+   */
+  downloadAttachment: (kind: AttachmentKind, id: string) =>
+    tauriInvoke<AttachmentContent>('sync_attachment_download', { kind, id }),
+
+  /** "Try again" on a document or photo that failed to move, up or down; resolves with its state. */
+  retryAttachment: (kind: AttachmentKind, id: string) =>
+    tauriInvoke<AttachmentContent>('sync_attachment_retry', { kind, id }),
+
+  /**
+   * "Download everything": asks for every full content not on this device. Resolves with how many
+   * rows have their full content asked for and not here afterwards, those asked for earlier
+   * included, so calling it twice resolves with the same number; 0 while sync is off.
+   */
+  downloadEverything: () => tauriInvoke<number>('sync_download_everything'),
 
   createAccount: (relayUrl?: string) =>
     tauriInvoke<SyncAccount>('sync_create_account', { relayUrl: relayUrl ?? null }),

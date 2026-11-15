@@ -314,6 +314,9 @@ async fn run_app() {
             commands::sync_backups::sync_delete_backup,
             commands::sync_gaps::sync_held_gaps,
             commands::sync_gaps::sync_skip_missing_change,
+            commands::sync_attachments::sync_attachment_download,
+            commands::sync_attachments::sync_attachment_retry,
+            commands::sync_attachments::sync_download_everything,
             #[cfg(mobile)]
             commands::sync_backups::stage_sync_backup_export,
             // Investment commands

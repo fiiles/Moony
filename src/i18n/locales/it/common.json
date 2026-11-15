@@ -187,6 +187,7 @@
     "endDateAfterStart": "La data di fine deve essere successiva alla data di inizio",
     "attachmentTooLarge": "Il file supera i 100 MB.",
     "attachmentNotHereYet": "Questo documento o questa foto non è ancora arrivato su questo dispositivo.",
+    "attachmentUnavailable": "Non è stato possibile scaricare questo documento o questa foto su questo dispositivo.",
     "exportIntoDataFolder": "Non è possibile salvare una copia nella cartella dei dati di Moony. Scegli un'altra posizione.",
     "documentNameRequired": "Il nome del documento è obbligatorio",
     "nameTooLong": "Il nome è troppo lungo",

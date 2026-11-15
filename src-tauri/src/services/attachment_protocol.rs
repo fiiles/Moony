@@ -36,10 +36,7 @@ pub fn parse_route(path: &str) -> Option<Route> {
         _ => return None,
     };
     let id = parts.next()?;
-    let valid = !id.is_empty()
-        && id.len() <= 64
-        && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-');
-    valid.then(|| Route {
+    attachments::is_row_id(id).then(|| Route {
         kind,
         variant,
         id: id.to_string(),
@@ -141,6 +138,10 @@ pub fn response_for(
         // joined phone), so nothing is logged and no body names anything.
         Err(AppError::Validation(key)) if key == attachments::NOT_HERE_YET => {
             status_only(StatusCode::TOO_EARLY)
+        }
+        // Content that cannot reach this device as things stand: not served, and not "too early".
+        Err(AppError::Validation(key)) if key == attachments::UNAVAILABLE => {
+            status_only(StatusCode::NOT_FOUND)
         }
         Err(AppError::Internal(msg)) if msg == "attachments.storeUnavailable" => {
             status_only(StatusCode::SERVICE_UNAVAILABLE)
@@ -402,5 +403,85 @@ mod tests {
         assert_eq!(locked.status(), StatusCode::FORBIDDEN);
         assert!(locked.body().is_empty());
         assert_eq!(header(&locked, "Cache-Control"), Some("no-store"));
+    }
+
+    #[test]
+    fn unavailable_content_answers_404_without_a_body() {
+        let r = response_for(
+            Err(AppError::Validation(attachments::UNAVAILABLE.into())),
+            Some("tauri://localhost"),
+        );
+        assert_eq!(r.status(), StatusCode::NOT_FOUND);
+        assert_eq!(header(&r, "Cache-Control"), Some("no-store"));
+        assert!(r.body().is_empty());
+    }
+
+    /// A real profile with sync on, one document and one photo whose content is on another device.
+    fn profile_with_content_elsewhere() -> Connection {
+        let conn = crate::services::sync::test_support::migrated();
+        conn.execute("ATTACH DATABASE ':memory:' AS files", [])
+            .expect("attach");
+        files_schema::migrate(&conn).expect("files schema");
+        crate::services::sync::state::enable(&conn, crate::services::sync::hlc::DeviceId([7; 16]))
+            .expect("enable");
+        let away = |n: u8| format!("0b9e6a52-3a4c-4e0f-9d7a-1c2b3d4e5f{n:02x}");
+        conn.execute_batch(
+            "INSERT INTO insurance_policies \
+               (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
+             VALUES ('p1', 'life', 'Insurer', 'Life', '123', 1767225600, 'monthly'); \
+             INSERT INTO real_estate (id, name, address, type) VALUES ('r1', 'Flat', 'Street', 'flat'); \
+             INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date) \
+               VALUES ('b1', 'r1', 1767225600);",
+        )
+        .expect("owners");
+        let held = attachment_store::put_bytes(&conn, b"thumb")
+            .expect("blob")
+            .id;
+        conn.execute(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id, uploaded_at) \
+             VALUES ('d', 'p1', 'Contract', ?1, 1)",
+            [away(1)],
+        )
+        .expect("document");
+        conn.execute(
+            "INSERT INTO real_estate_photos (id, batch_id, blob_id, thumb_blob_id, created_at) \
+             VALUES ('ph', 'b1', ?1, ?2, 1)",
+            [away(2), away(3)],
+        )
+        .expect("photo");
+        crate::services::sync::blobs::queue::reconcile(&conn, 1_772_323_200).expect("reconcile");
+        let _ = held;
+        conn
+    }
+
+    #[test]
+    fn a_document_and_a_thumbnail_not_here_answer_425_through_the_real_path() {
+        let conn = profile_with_content_elsewhere();
+        let dir = tempfile::tempdir().expect("tempdir");
+        for path in ["/insurance-document/d", "/photo-thumb/ph", "/photo/ph"] {
+            let route = parse_route(path).expect("route");
+            let loaded = load(&conn, dir.path(), &route);
+            let r = response_for(loaded, Some("tauri://localhost"));
+            assert_eq!(r.status().as_u16(), 425, "{path}");
+            assert_eq!(header(&r, "Cache-Control"), Some("no-store"));
+            assert!(r.body().is_empty());
+        }
+    }
+
+    #[test]
+    fn content_that_cannot_arrive_answers_404_through_the_real_path() {
+        let conn = profile_with_content_elsewhere();
+        let dir = tempfile::tempdir().expect("tempdir");
+        conn.execute(
+            "UPDATE sync_blobs SET last_error = 'refused', next_try_at = ?1",
+            [i64::MAX],
+        )
+        .expect("fail");
+        for path in ["/insurance-document/d", "/photo-thumb/ph"] {
+            let route = parse_route(path).expect("route");
+            let r = response_for(load(&conn, dir.path(), &route), None);
+            assert_eq!(r.status(), StatusCode::NOT_FOUND, "{path}");
+            assert_eq!(header(&r, "Cache-Control"), Some("no-store"));
+        }
     }
 }

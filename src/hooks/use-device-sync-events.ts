@@ -11,6 +11,19 @@ export const SYNC_STATUS_EVENT = 'sync-status-changed';
 /** Emitted after a round merged other devices' changes or restored a snapshot. */
 export const SYNC_DATA_EVENT = 'sync-data-changed';
 
+/**
+ * Emitted (at most once per 250 ms) when documents or photos moved or their transfer state
+ * changed: the lists that show where each one is refresh.
+ */
+export const SYNC_ATTACHMENTS_EVENT = 'sync-attachments-changed';
+
+/** Query-key prefixes of the document and photo lists (desktop and phone use the same keys). */
+const ATTACHMENT_LIST_KEYS = [
+  ['insurance-documents'],
+  ['real-estate-documents'],
+  ['real-estate-photo-batches'],
+] as const;
+
 /** A rejected `listen` leaves nothing to unlisten; it must not go unhandled. */
 function safeUnlisten(pending: Promise<UnlistenFn>): () => void {
   const settled = pending.then(
@@ -44,10 +57,20 @@ export function useDeviceSyncEvents(): void {
         refreshAfterRemoteChanges(queryClient, portfolioApi.recordSnapshot).catch(() => {});
       })
     );
+    const attachments = safeUnlisten(
+      listen(SYNC_ATTACHMENTS_EVENT, () => {
+        for (const queryKey of ATTACHMENT_LIST_KEYS) {
+          void queryClient.invalidateQueries({ queryKey });
+        }
+        // The summary of what waits to move is part of the status
+        void queryClient.invalidateQueries({ queryKey: ['device-sync-status'] });
+      })
+    );
 
     return () => {
       status();
       data();
+      attachments();
     };
   }, [queryClient, enabled]);
 }

@@ -817,6 +817,20 @@ pub(super) fn wake_engine(app: &AppHandle) {
     }
 }
 
+/// Asks the running engine's transfer lanes to look at their queue now (content was wanted or
+/// reset here); nothing while no engine runs (locked, sync off).
+pub(crate) fn wake_transfers(app: &AppHandle) {
+    if let Some(handle) = app
+        .state::<SyncEngineState>()
+        .0
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .as_ref()
+    {
+        handle.wake_transfers();
+    }
+}
+
 /// The kit after setup, once the device password is checked; opens `KIT_COPY_WINDOW` for
 /// `sync_copy_recovery_code` and `sync_save_recovery_kit`.
 #[tauri::command]
@@ -1323,7 +1337,7 @@ mod tests {
     }
 
     /// The sync commands (name → body up to its third statement), read from the sources of this
-    /// file, `sync_pairing.rs`, `sync_backups.rs`, `sync_kit.rs` and `sync_gaps.rs`.
+    /// file, `sync_pairing.rs`, `sync_backups.rs`, `sync_kit.rs`, `sync_gaps.rs` and `sync_attachments.rs`.
     fn commands_and_their_first_statements() -> Vec<(String, String)> {
         [
             include_str!("sync.rs"),
@@ -1331,6 +1345,7 @@ mod tests {
             include_str!("sync_backups.rs"),
             include_str!("sync_kit.rs"),
             include_str!("sync_gaps.rs"),
+            include_str!("sync_attachments.rs"),
         ]
         .into_iter()
         .flat_map(commands_of)
@@ -1382,11 +1397,12 @@ mod tests {
                     .or_else(|| line.strip_prefix("commands::sync_backups::"))
                     .or_else(|| line.strip_prefix("commands::sync_kit::"))
                     .or_else(|| line.strip_prefix("commands::sync_gaps::"))
+                    .or_else(|| line.strip_prefix("commands::sync_attachments::"))
             })
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 35);
+        assert_eq!(found.len(), 38);
         for (name, first_three) in &commands {
             // The flag itself, a read-only question, and the way out of an enabled profile.
             if [

@@ -72,13 +72,9 @@ impl<'c> ContentReader<'c> {
             "up" if queue::is_stuck(error.as_deref()) => AttachmentContent::Failed,
             "up" => AttachmentContent::WaitingUpload,
             "down" if active => AttachmentContent::Downloading,
-            "down" => match error.as_deref() {
-                Some("notOnServer") => AttachmentContent::NotOnServer,
-                Some("unreadable" | "invalidId" | "refused" | "conflict") => {
-                    AttachmentContent::Failed
-                }
-                _ => AttachmentContent::NotHere,
-            },
+            "down" if queue::download_failed(error.as_deref()) => AttachmentContent::Failed,
+            "down" if error.as_deref() == Some("notOnServer") => AttachmentContent::NotOnServer,
+            "down" => AttachmentContent::NotHere,
             _ => AttachmentContent::Here,
         })
     }

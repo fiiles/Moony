@@ -178,6 +178,14 @@ pub fn is_stuck(last_error: Option<&str>) -> bool {
     matches!(last_error, Some("invalidId" | "refused" | "conflict"))
 }
 
+/// Whether `last_error` of a `down` entry says its content cannot be fetched as things stand
+/// (`AttachmentContent::Failed`): [`STUCK`], or content that could not be opened (`unreadable`,
+/// which the lane retries by itself, but a person is told it failed). The one definition the
+/// content reader and the opening of a document ask.
+pub fn download_failed(last_error: Option<&str>) -> bool {
+    is_stuck(last_error) || last_error == Some("unreadable")
+}
+
 /// Clears an entry's retry bookkeeping when its state changes.
 const FRESH: &str = "attempts = 0, next_try_at = 0, last_error = NULL, last_error_at = NULL";
 

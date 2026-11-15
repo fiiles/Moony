@@ -187,6 +187,7 @@
     "endDateAfterStart": "終了日は開始日より後にしてください",
     "attachmentTooLarge": "ファイルが100 MBを超えています。",
     "attachmentNotHereYet": "この書類または写真は、まだこのデバイスに届いていません。",
+    "attachmentUnavailable": "この書類または写真をこのデバイスにダウンロードできませんでした。",
     "exportIntoDataFolder": "Moony のデータフォルダーにはコピーを保存できません。別の場所を選んでください。",
     "documentNameRequired": "書類名を入力してください",
     "nameTooLong": "名前が長すぎます",

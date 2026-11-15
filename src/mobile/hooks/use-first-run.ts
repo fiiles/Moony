@@ -216,15 +216,22 @@ export function useFirstRun({
       backToAccount();
       return;
     }
-    // Back from the join path's account step: the first step offers both ways again
-    if (step === 'account' && path === 'join') {
-      setJoinPassword(null);
-      setPath('new');
+    if (step === 'account') {
+      // A failed setup keeps the password in the mutation's variables: it goes with the step
+      setupMutation.reset();
+      // Back from the join path's account step: the first step offers both ways again
+      if (path === 'join') {
+        setJoinPassword(null);
+        setPath('new');
+      }
     }
     setStep(previous);
   };
 
   // ---------------- Připojení (join path) ----------------
+
+  /** The join is done and nothing needs the password any more (a kept backup's sheet comes first). */
+  const forgetJoinPassword = () => setJoinPassword(null);
 
   /** The join is done: the password goes, the run ends after Biometrie (or now). */
   const joined = () => {
@@ -345,6 +352,7 @@ export function useFirstRun({
     submitJoinPassword,
     joinPassword,
     joined,
+    forgetJoinPassword,
     declineJoin,
     profileName,
     setProfileName,

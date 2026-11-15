@@ -787,7 +787,8 @@
       "biometrics": "Biometrics",
       "backup": "Backup"
     },
-    "backupTitle": "Protect your data",
+    "backupTitle": "Back up your data",
+    "protectTitle": "Protect your data",
     "backupLead": "This phone holds the only copy of your data, and it is not in the phone's own backup (iCloud or a computer). Save an encrypted backup to iCloud Drive or a folder you choose; Moony never sees it.",
     "syncLead": "Have a sync server?",
     "syncLink": "Set up sync",

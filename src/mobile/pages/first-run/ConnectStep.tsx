@@ -69,8 +69,12 @@ export function ConnectStep({ flow }: { flow: FirstRunFlow }) {
     flow.joined();
   };
   const replaced = (headline: string, outcome: ReplaceOutcomeView) => {
-    if (outcome.kept) setSaved({ headline, outcome });
-    else moveOn();
+    if (outcome.kept) {
+      // The password is done with before the sheet opens (the Kit sheet has reset its join, which
+      // held it too); the run moves on once the sheet is closed
+      flow.forgetJoinPassword();
+      setSaved({ headline, outcome });
+    } else moveOn();
   };
 
   const cannotLeave = method !== null || replacing || joinedNow;

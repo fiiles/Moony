@@ -875,7 +875,8 @@
       "biometrics": "Biometria",
       "backup": "Kopia zapasowa"
     },
-    "backupTitle": "Chroń swoje dane",
+    "backupTitle": "Zrób kopię zapasową danych",
+    "protectTitle": "Chroń swoje dane",
     "backupLead": "Ten telefon przechowuje jedyną kopię twoich danych, której nie ma w kopii zapasowej telefonu (iCloud ani komputer). Zapisz zaszyfrowaną kopię zapasową w iCloud Drive lub w wybranym folderze; Moony nigdy jej nie widzi.",
     "syncLead": "Masz serwer synchronizacji?",
     "syncLink": "Skonfiguruj synchronizację",

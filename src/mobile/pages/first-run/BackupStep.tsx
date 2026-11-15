@@ -13,8 +13,9 @@ import { caption, primaryButton, textLink } from './styles';
  * archive, opens the Files picker and records the backup when it was saved. The first run then ends
  * whatever came of it: a cancelled picker says so in a toast and the Údržba card keeps asking.
  * Where backups cannot be exported (not iOS yet) the button is off and says why. With sync built
- * in, one quieter line under "Teď ne" (spec 2026-11-14 §5.2): "Nastavte synchronizaci" ends the run
- * without a backup and opens Nastavení → Synchronizace.
+ * in (spec 2026-11-14 §5.2) the step is "Ochraňte svá data", with one quieter line under "Teď ne":
+ * "Nastavte synchronizaci" ends the run without a backup and opens Nastavení → Synchronizace.
+ * Without it the step is exactly as before.
  */
 export function BackupStep({ flow }: { flow: FirstRunFlow }) {
   const { t } = useTranslation('mobile');
@@ -32,7 +33,11 @@ export function BackupStep({ flow }: { flow: FirstRunFlow }) {
 
   return (
     <div data-testid="first-run-backup">
-      <StepHead title={t('firstRun.backupTitle')} lead={t('firstRun.backupLead')} />
+      {/* With sync built in the step also offers sync, so it is "protect", not only "back up" */}
+      <StepHead
+        title={syncFeature ? t('firstRun.protectTitle') : t('firstRun.backupTitle')}
+        lead={t('firstRun.backupLead')}
+      />
       <Button
         className={primaryButton}
         loading={backingUp}

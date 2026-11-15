@@ -131,6 +131,9 @@ export function RecoveryJoinSheet({
         consent: consentOf('join', shownImpact),
       });
       onOpenChange(false);
+      // The first run's step stays (with this sheet mounted) while a kept backup's sheet is read:
+      // the join's copy of the password goes now, not when the step unmounts
+      if (firstRun) joinWithRecoveryKit.reset();
       onReplaced(t('pairing.joined', { path: backupFileName(outcome.backupPath) }), outcome);
     } catch (failure) {
       joinWithRecoveryKit.reset();

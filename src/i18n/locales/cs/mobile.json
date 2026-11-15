@@ -839,7 +839,8 @@
       "biometrics": "Biometrie",
       "backup": "Záloha"
     },
-    "backupTitle": "Ochraňte svá data",
+    "backupTitle": "Zálohujte si data",
+    "protectTitle": "Ochraňte svá data",
     "backupLead": "Vaše data jsou jen v tomto telefonu a do zálohy telefonu (iCloud ani počítač) se neukládají. Uložte šifrovanou zálohu do iCloud Drive nebo vybrané složky; Moony ji nikdy nevidí.",
     "syncLead": "Máte synchronizační server?",
     "syncLink": "Nastavte synchronizaci",

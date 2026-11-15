@@ -80,7 +80,7 @@
     "repeatOnOthers": "Totéž udělejte na ostatních zařízeních."
   },
   "intro": {
-    "description": "Udržujte data synchronizovaná na všech svých zařízeních. Jsou koncově šifrovaná: synchronizační server ukládá jen data, která nepřečte.",
+    "description": "Udržujte data včetně dokumentů a fotek synchronizovaná na všech svých zařízeních. Jsou koncově šifrovaná: synchronizační server ukládá jen data, která nepřečte.",
     "privacy": "Vaše data neopustí zařízení nešifrovaná.",
     "start": "Nastavit synchronizaci",
     "resume": "Pokračovat v nastavení",

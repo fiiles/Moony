@@ -76,7 +76,7 @@
     "repeatOnOthers": "Fai lo stesso sugli altri dispositivi."
   },
   "intro": {
-    "description": "Mantieni i dati allineati su tutti i tuoi dispositivi. Sono cifrati end-to-end: il server di sincronizzazione conserva solo dati che non può leggere.",
+    "description": "Mantieni i dati, compresi documenti e foto, allineati su tutti i tuoi dispositivi. Sono cifrati end-to-end: il server di sincronizzazione conserva solo dati che non può leggere.",
     "privacy": "I tuoi dati non lasciano mai i tuoi dispositivi senza cifratura.",
     "start": "Configura la sincronizzazione",
     "resume": "Continua la configurazione",

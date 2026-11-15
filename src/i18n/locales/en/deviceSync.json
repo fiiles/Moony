@@ -72,7 +72,7 @@
     "repeatOnOthers": "Do the same on your other devices."
   },
   "intro": {
-    "description": "Keep your data in step on all your devices. It is end-to-end encrypted: the sync server only stores data it cannot read.",
+    "description": "Keep your data, documents and photos included, in step on all your devices. It is end-to-end encrypted: the sync server only stores data it cannot read.",
     "privacy": "Your data never leaves your devices unencrypted.",
     "start": "Set up sync",
     "resume": "Continue setup",

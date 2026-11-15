@@ -830,7 +830,8 @@
       },
       "localOnly": {
         "title": "No cloud",
-        "text": "– we send nothing anywhere; you save the backup to Files or iCloud Drive yourself."
+        "text": "– we send nothing anywhere; you save the backup to Files or iCloud Drive yourself.",
+        "textSync": "– your data leaves this phone only if you turn on sync, and then end-to-end encrypted to a sync server you choose; you save the backup to Files or iCloud Drive yourself."
       },
       "marketData": {
         "title": "Market data",

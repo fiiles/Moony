@@ -783,7 +783,8 @@
       },
       "localOnly": {
         "title": "没有云端",
-        "text": "——我们不会向任何地方发送数据；备份需要您自己保存到“文件”App 或 iCloud Drive。"
+        "text": "——我们不会向任何地方发送数据；备份需要您自己保存到“文件”App 或 iCloud Drive。",
+        "textSync": "——只有在您开启同步时，数据才会离开这部手机，并且只会以端到端加密的方式发送到您选择的同步服务器；备份需要您自己保存到“文件”App 或 iCloud Drive。"
       },
       "marketData": {
         "title": "市场数据",

@@ -76,7 +76,7 @@
     "repeatOnOthers": "Haz lo mismo en tus otros dispositivos."
   },
   "intro": {
-    "description": "Mantén tus datos al día en todos tus dispositivos. Están cifrados de extremo a extremo: el servidor de sincronización solo guarda datos que no puede leer.",
+    "description": "Mantén tus datos, con documentos y fotos incluidos, al día en todos tus dispositivos. Están cifrados de extremo a extremo: el servidor de sincronización solo guarda datos que no puede leer.",
     "privacy": "Tus datos nunca salen de tus dispositivos sin cifrar.",
     "start": "Configurar la sincronización",
     "resume": "Continuar la configuración",

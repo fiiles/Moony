@@ -72,7 +72,7 @@
     "repeatOnOthers": "Gör samma sak på dina andra enheter."
   },
   "intro": {
-    "description": "Håll dina uppgifter uppdaterade på alla dina enheter. De är end-to-end-krypterade: synkroniseringsservern lagrar bara data den inte kan läsa.",
+    "description": "Håll dina uppgifter, även dokument och foton, uppdaterade på alla dina enheter. De är end-to-end-krypterade: synkroniseringsservern lagrar bara data den inte kan läsa.",
     "privacy": "Dina uppgifter lämnar aldrig dina enheter okrypterade.",
     "start": "Ställ in synkronisering",
     "resume": "Fortsätt inställningen",

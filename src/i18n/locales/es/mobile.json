@@ -877,7 +877,8 @@
       },
       "localOnly": {
         "title": "Sin nube",
-        "text": "– no enviamos nada a ninguna parte; la copia de seguridad la guardas tú en Archivos o iCloud Drive."
+        "text": "– no enviamos nada a ninguna parte; la copia de seguridad la guardas tú en Archivos o iCloud Drive.",
+        "textSync": "– tus datos salen de este teléfono solo si activas la sincronización, y entonces solo cifrados de extremo a extremo hacia un servidor de sincronización que eliges tú; la copia de seguridad la guardas tú en Archivos o iCloud Drive."
       },
       "marketData": {
         "title": "Datos de mercado",

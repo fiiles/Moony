@@ -924,7 +924,8 @@
       },
       "localOnly": {
         "title": "Bez chmury",
-        "text": "– nigdzie niczego nie wysyłamy; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive."
+        "text": "– nigdzie niczego nie wysyłamy; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive.",
+        "textSync": "– twoje dane opuszczają ten telefon tylko wtedy, gdy włączysz synchronizację, i wtedy wyłącznie szyfrowane end-to-end na wybrany przez Ciebie serwer synchronizacji; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive."
       },
       "marketData": {
         "title": "Dane rynkowe",

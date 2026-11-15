@@ -72,7 +72,7 @@
     "repeatOnOthers": "Gjør det samme på de andre enhetene dine."
   },
   "intro": {
-    "description": "Hold dataene dine oppdatert på alle enhetene dine. De er ende-til-ende-kryptert: synkroniseringsserveren lagrer bare data den ikke kan lese.",
+    "description": "Hold dataene dine, også dokumenter og bilder, oppdatert på alle enhetene dine. De er ende-til-ende-kryptert: synkroniseringsserveren lagrer bare data den ikke kan lese.",
     "privacy": "Dataene dine forlater aldri enhetene dine ukryptert.",
     "start": "Sett opp synkronisering",
     "resume": "Fortsett oppsettet",

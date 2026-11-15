@@ -57,6 +57,7 @@ import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { RecoverySteps } from '@/components/auth/RecoverySteps';
 import { BiometricUnlockButton } from '@/components/auth/BiometricUnlockButton';
 import { RestoreBackup } from '@/components/common/RestoreBackup';
+import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 
 type Panel = 'unlock' | 'recover' | 'newKey';
 
@@ -87,6 +88,7 @@ export default function AuthPage() {
     recoveryKey,
     clearRecoveryKey,
   } = useAuth();
+  const syncFeature = useDeviceSyncFeature();
   const [, setLocation] = useLocation();
   const { t, i18n } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
@@ -287,7 +289,9 @@ export default function AuthPage() {
             <h1 className="m-0 text-[24px] font-650 tracking-[-0.05em] text-ink">
               {greetingName ? t('login.titleNamed', { name: greetingName }) : t('login.title')}
             </h1>
-            <p className="mb-6 mt-2 text-body leading-[1.5] text-ink-3">{t('login.lead')}</p>
+            <p className="mb-6 mt-2 text-body leading-[1.5] text-ink-3">
+              {t(syncFeature ? 'login.leadSync' : 'login.lead')}
+            </p>
             {biometricReady && (
               <div className="mb-5 space-y-4">
                 <BiometricUnlockButton
@@ -546,7 +550,9 @@ export default function AuthPage() {
       </Card>
 
       <div className="absolute inset-x-0 bottom-5 text-center text-micro font-500 text-ink-5">
-        {version ? t('lock.meta', { version }) : t('lock.metaNoVersion')}
+        {version
+          ? t(syncFeature ? 'lock.metaSync' : 'lock.meta', { version })
+          : t(syncFeature ? 'lock.metaNoVersionSync' : 'lock.metaNoVersion')}
       </div>
     </div>
   );

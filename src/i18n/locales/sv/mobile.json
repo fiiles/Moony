@@ -830,7 +830,8 @@
       },
       "localOnly": {
         "title": "Inget moln",
-        "text": "– vi skickar ingenting någonstans; du sparar säkerhetskopian själv i Filer eller iCloud Drive."
+        "text": "– vi skickar ingenting någonstans; du sparar säkerhetskopian själv i Filer eller iCloud Drive.",
+        "textSync": "– dina data lämnar den här telefonen bara om du slår på synkronisering, och då bara end-to-end-krypterade till en synkroniseringsserver som du väljer; du sparar säkerhetskopian själv i Filer eller iCloud Drive."
       },
       "marketData": {
         "title": "Marknadsdata",

@@ -885,7 +885,8 @@
       },
       "localOnly": {
         "title": "Bez cloudu",
-        "text": "– data nikam neposíláme; zálohu si uložíte do Souborů nebo iCloud Drive sami."
+        "text": "– data nikam neposíláme; zálohu si uložíte do Souborů nebo iCloud Drive sami.",
+        "textSync": "– data opustí tento telefon, jen když zapnete synchronizaci, a pak jen koncově šifrovaná na synchronizační server, který si zvolíte; zálohu si uložíte do Souborů nebo iCloud Drive sami."
       },
       "marketData": {
         "title": "Tržní data",

@@ -830,7 +830,8 @@
       },
       "localOnly": {
         "title": "Keine Cloud",
-        "text": "– wir senden nichts irgendwohin; die Sicherung speichern Sie selbst in „Dateien“ oder iCloud Drive."
+        "text": "– wir senden nichts irgendwohin; die Sicherung speichern Sie selbst in „Dateien“ oder iCloud Drive.",
+        "textSync": "– Ihre Daten verlassen dieses Telefon nur, wenn Sie die Synchronisierung einschalten, und dann nur Ende-zu-Ende-verschlüsselt zu einem Synchronisierungsserver, den Sie wählen; die Sicherung speichern Sie selbst in „Dateien“ oder iCloud Drive."
       },
       "marketData": {
         "title": "Marktdaten",

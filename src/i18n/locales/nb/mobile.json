@@ -830,7 +830,8 @@
       },
       "localOnly": {
         "title": "Ingen sky",
-        "text": "– vi sender ingenting noe sted; du lagrer sikkerhetskopien selv i Filer eller iCloud Drive."
+        "text": "– vi sender ingenting noe sted; du lagrer sikkerhetskopien selv i Filer eller iCloud Drive.",
+        "textSync": "– dataene dine forlater denne telefonen bare hvis du slår på synkronisering, og da bare ende-til-ende-kryptert til en synkroniseringsserver du velger; du lagrer sikkerhetskopien selv i Filer eller iCloud Drive."
       },
       "marketData": {
         "title": "Markedsdata",

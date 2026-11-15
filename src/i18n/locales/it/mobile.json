@@ -877,7 +877,8 @@
       },
       "localOnly": {
         "title": "Nessun cloud",
-        "text": "– non inviamo nulla altrove; il backup lo salvi tu in File o su iCloud Drive."
+        "text": "– non inviamo nulla altrove; il backup lo salvi tu in File o su iCloud Drive.",
+        "textSync": "– i tuoi dati lasciano questo telefono solo se attivi la sincronizzazione, e allora solo cifrati end-to-end verso un server di sincronizzazione che scegli tu; il backup lo salvi tu in File o su iCloud Drive."
       },
       "marketData": {
         "title": "Dati di mercato",

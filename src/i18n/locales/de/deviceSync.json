@@ -72,7 +72,7 @@
     "repeatOnOthers": "Machen Sie dasselbe auf Ihren anderen Geräten."
   },
   "intro": {
-    "description": "Halten Sie Ihre Daten auf allen Ihren Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
+    "description": "Halten Sie Ihre Daten, einschließlich Dokumente und Fotos, auf allen Ihren Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
     "privacy": "Ihre Daten verlassen Ihre Geräte nie unverschlüsselt.",
     "start": "Synchronisierung einrichten",
     "resume": "Einrichtung fortsetzen",

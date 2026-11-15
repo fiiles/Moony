@@ -56,7 +56,11 @@ export function PrivacyStep({ flow }: { flow: FirstRunFlow }) {
             <Check className="mt-px size-3.5 shrink-0 text-gain" aria-hidden />
             <span>
               <b className="font-650 text-ink">{tm(`firstRun.points.${key}.title`)}</b>{' '}
-              {tm(`firstRun.points.${key}.text`)}
+              {tm(
+                key === 'localOnly' && syncFeature
+                  ? 'firstRun.points.localOnly.textSync'
+                  : `firstRun.points.${key}.text`
+              )}
             </span>
           </div>
         ))}

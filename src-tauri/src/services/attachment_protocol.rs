@@ -137,6 +137,11 @@ pub fn response_for(
         }
         Ok(None) | Err(AppError::NotFound(_)) => status_only(StatusCode::NOT_FOUND),
         Err(AppError::Auth(_)) => status_only(StatusCode::FORBIDDEN),
+        // Content still on its way to this device: a normal state (every thumbnail of a freshly
+        // joined phone), so nothing is logged and no body names anything.
+        Err(AppError::Validation(key)) if key == attachments::NOT_HERE_YET => {
+            status_only(StatusCode::TOO_EARLY)
+        }
         Err(AppError::Internal(msg)) if msg == "attachments.storeUnavailable" => {
             status_only(StatusCode::SERVICE_UNAVAILABLE)
         }
@@ -330,6 +335,30 @@ mod tests {
             status(AppError::Database("boom".into())),
             StatusCode::INTERNAL_SERVER_ERROR
         );
+    }
+
+    #[test]
+    fn content_that_is_not_here_yet_answers_425() {
+        let r = response_for(
+            Err(AppError::Validation(attachments::NOT_HERE_YET.into())),
+            Some("tauri://localhost"),
+        );
+        assert_eq!(r.status().as_u16(), 425);
+        assert_eq!(header(&r, "Cache-Control"), Some("no-store"));
+        assert_eq!(
+            header(&r, "Access-Control-Allow-Origin"),
+            Some("tauri://localhost")
+        );
+        assert!(r.body().is_empty(), "nothing names the document");
+        let foreign = response_for(
+            Err(AppError::Validation(attachments::NOT_HERE_YET.into())),
+            Some("https://x.example"),
+        );
+        assert_eq!(foreign.status().as_u16(), 425);
+        assert_eq!(header(&foreign, "Access-Control-Allow-Origin"), None);
+        // Another validation error is still a server error, not "too early".
+        let other = response_for(Err(AppError::Validation("validation.x".into())), None);
+        assert_eq!(other.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[test]

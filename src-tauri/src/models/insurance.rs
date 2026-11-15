@@ -4,6 +4,8 @@ use rmcp::schemars;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::attachments::AttachmentContent;
+
 /// Insurance limit
 #[derive(Debug, Clone, Serialize, Deserialize, Type, rmcp::schemars::JsonSchema)]
 pub struct InsuranceLimit {
@@ -94,6 +96,8 @@ pub struct InsuranceDocument {
     pub file_size: Option<i64>,
     #[serde(rename = "uploadedAt")]
     pub uploaded_at: i64,
+    /// Where the content is, with device sync (ADR 0030).
+    pub content: AttachmentContent,
 }
 
 /// Data for creating insurance document

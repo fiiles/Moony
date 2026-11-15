@@ -317,62 +317,7 @@ pub async fn get_real_estate_photo_batches(
     db: State<'_, Database>,
     real_estate_id: String,
 ) -> Result<Vec<RealEstatePhotoBatch>> {
-    db.with_conn(|conn| {
-        // Get batches
-        let mut batch_stmt = conn.prepare(
-            "SELECT id, real_estate_id, photo_date, description, created_at
-             FROM real_estate_photo_batches WHERE real_estate_id = ?1 ORDER BY photo_date DESC",
-        )?;
-
-        let batches: Vec<(String, String, i64, Option<String>, i64)> = batch_stmt
-            .query_map([&real_estate_id], |row| {
-                Ok((
-                    row.get(0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                ))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        // Get photos for each batch
-        let mut photo_stmt = conn.prepare(
-            "SELECT id, batch_id, created_at
-             FROM real_estate_photos WHERE batch_id = ?1 ORDER BY created_at",
-        )?;
-
-        let result: Vec<RealEstatePhotoBatch> = batches
-            .into_iter()
-            .map(
-                |(id, real_estate_id, photo_date, description, created_at)| {
-                    let photos: Vec<RealEstatePhoto> = photo_stmt
-                        .query_map([&id], |row| {
-                            Ok(RealEstatePhoto {
-                                id: row.get(0)?,
-                                batch_id: row.get(1)?,
-                                created_at: row.get(2)?,
-                            })
-                        })
-                        .ok()
-                        .map(|iter| iter.filter_map(|r| r.ok()).collect())
-                        .unwrap_or_default();
-
-                    RealEstatePhotoBatch {
-                        id,
-                        real_estate_id,
-                        photo_date,
-                        description,
-                        photos,
-                        created_at,
-                    }
-                },
-            )
-            .collect();
-
-        Ok(result)
-    })
+    db.with_conn(|conn| photos_service::list_batches(conn, &real_estate_id))
 }
 
 /// Create a new photo batch (without photos initially)
@@ -458,44 +403,7 @@ pub async fn update_photo_batch(
         conn.execute(&sql, params_ref.as_slice())?;
 
         // Fetch updated batch with photos
-        let batch = conn.query_row(
-            "SELECT id, real_estate_id, photo_date, description, created_at
-             FROM real_estate_photo_batches WHERE id = ?1",
-            [&batch_id],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, i64>(2)?,
-                    row.get::<_, Option<String>>(3)?,
-                    row.get::<_, i64>(4)?,
-                ))
-            },
-        )?;
-
-        let mut photo_stmt = conn.prepare(
-            "SELECT id, batch_id, created_at
-             FROM real_estate_photos WHERE batch_id = ?1",
-        )?;
-        let photos: Vec<RealEstatePhoto> = photo_stmt
-            .query_map([&batch_id], |row| {
-                Ok(RealEstatePhoto {
-                    id: row.get(0)?,
-                    batch_id: row.get(1)?,
-                    created_at: row.get(2)?,
-                })
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        Ok(RealEstatePhotoBatch {
-            id: batch.0,
-            real_estate_id: batch.1,
-            photo_date: batch.2,
-            description: batch.3,
-            photos,
-            created_at: batch.4,
-        })
+        photos_service::batch(conn, &batch_id)
     })
 }
 
@@ -531,37 +439,7 @@ pub async fn get_real_estate_documents(
     db: State<'_, Database>,
     real_estate_id: String,
 ) -> Result<Vec<RealEstateDocument>> {
-    db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT id, real_estate_id, name, description, file_path, file_type, file_size, uploaded_at,
-                    mime_type, original_name
-             FROM real_estate_documents WHERE real_estate_id = ?1 ORDER BY uploaded_at DESC"
-        )?;
-
-        let documents = stmt.query_map([&real_estate_id], |row| {
-            let file_path: Option<String> = row.get(4)?;
-            let mime_type: Option<String> = row.get(8)?;
-            let original_name: Option<String> = row.get(9)?;
-            let (mime_type, extension) = crate::services::attachments::document_meta(
-                file_path.as_deref(),
-                mime_type.as_deref(),
-                original_name.as_deref(),
-            );
-            Ok(RealEstateDocument {
-                id: row.get(0)?,
-                real_estate_id: row.get(1)?,
-                name: row.get(2)?,
-                description: row.get(3)?,
-                mime_type,
-                extension,
-                file_type: row.get(5)?,
-                file_size: row.get(6)?,
-                uploaded_at: row.get(7)?,
-            })
-        })?.filter_map(|r| r.ok()).collect();
-
-        Ok(documents)
-    })
+    db.with_conn(|conn| attachments::list_real_estate_documents(conn, &real_estate_id))
 }
 
 /// Add a document to a real estate property. The file the user picked is stored in the encrypted

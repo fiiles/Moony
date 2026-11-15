@@ -1404,7 +1404,11 @@ mimeType: string;
 /**
  * Lowercased extension of the original file name, for the file tile.
  */
-extension: string | null; fileType: string; fileSize: number | null; uploadedAt: number }
+extension: string | null; fileType: string; fileSize: number | null; uploadedAt: number; 
+/**
+ * Where the content is, with device sync (ADR 0030).
+ */
+content: AttachmentContent }
 
 /**
  * Insurance limit
@@ -2085,7 +2089,11 @@ mimeType: string;
 /**
  * Lowercased extension of the original file name, for the file tile.
  */
-extension: string | null; fileType: string; fileSize: number | null; uploadedAt: number }
+extension: string | null; fileType: string; fileSize: number | null; uploadedAt: number; 
+/**
+ * Where the content is, with device sync (ADR 0030).
+ */
+content: AttachmentContent }
 
 /**
  * One-time cost for real estate
@@ -2096,7 +2104,15 @@ export type RealEstateOneTimeCost = { id: string; realEstateId: string; name: st
  * Individual photo within a batch. The webview loads its bytes through the `moony-file` scheme by
  * id; storage paths never reach it.
  */
-export type RealEstatePhoto = { id: string; batchId: string; createdAt: number }
+export type RealEstatePhoto = { id: string; batchId: string; createdAt: number; 
+/**
+ * Where the photo's content is, with device sync (ADR 0030).
+ */
+content: AttachmentContent; 
+/**
+ * Where the thumbnail's content is.
+ */
+thumbContent: AttachmentContent }
 
 /**
  * Photo batch (groups photos by date and description)

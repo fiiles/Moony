@@ -1000,7 +1000,13 @@ describe('galleryPhotos', () => {
     realEstateId: 'p',
     photoDate,
     description,
-    photos: photoIds.map((photoId) => ({ id: photoId, batchId: id, createdAt: photoDate })),
+    photos: photoIds.map((photoId) => ({
+      id: photoId,
+      batchId: id,
+      createdAt: photoDate,
+      content: 'here',
+      thumbContent: 'here',
+    })),
     createdAt: photoDate,
   });
 
@@ -1060,7 +1066,13 @@ describe('photoDeletion', () => {
     realEstateId: 'p',
     photoDate: TODAY,
     description: null,
-    photos: photoIds.map((photoId) => ({ id: photoId, batchId: id, createdAt: 0 })),
+    photos: photoIds.map((photoId) => ({
+      id: photoId,
+      batchId: id,
+      createdAt: 0,
+      content: 'here',
+      thumbContent: 'here',
+    })),
     createdAt: 0,
   });
 

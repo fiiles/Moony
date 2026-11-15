@@ -613,6 +613,10 @@ export interface RealEstatePhoto {
   id: string;
   batchId: string;
   createdAt: number;
+  /** Where the photo's content is, with device sync (ADR 0030). */
+  content: AttachmentContent;
+  /** Where the thumbnail's content is. */
+  thumbContent: AttachmentContent;
 }
 
 // Real Estate Document
@@ -628,6 +632,8 @@ export interface RealEstateDocument {
   fileType: string; // 'deed' | 'contract' | 'appraisal' | 'other'
   fileSize: number | null;
   uploadedAt: number;
+  /** Where the content is, with device sync (ADR 0030). */
+  content: AttachmentContent;
 }
 
 // Insurance
@@ -670,6 +676,8 @@ export interface InsuranceDocument {
   fileType: string; // 'contract' | 'certificate' | 'claim' | 'other'
   fileSize: number | null;
   uploadedAt: number;
+  /** Where the content is, with device sync (ADR 0030). */
+  content: AttachmentContent;
 }
 
 // Attachments (ADR 0017)

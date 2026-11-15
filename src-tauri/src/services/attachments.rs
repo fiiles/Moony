@@ -12,7 +12,9 @@
 //! commit; a legacy file outside the current data folder is never deleted.
 
 use crate::error::{AppError, Result};
-use crate::models::{AttachmentKind, InsuranceDocument, RealEstateDocument};
+use crate::models::{AttachmentContent, AttachmentKind, InsuranceDocument, RealEstateDocument};
+use crate::services::sync::blobs::content::{row_syncs, ContentReader};
+use crate::services::sync::blobs::{queue, sync_on};
 use crate::services::{attachment_store, document_files, real_estate_photos};
 use rusqlite::{Connection, OptionalExtension};
 use serde::de::DeserializeOwned;
@@ -65,6 +67,73 @@ pub(crate) fn ensure_outside_data_dir(data_dir: &Path, dest: &Path) -> Result<()
         ));
     }
     Ok(())
+}
+
+/// The error key of content that is not on this device yet (it is on the sync server or another
+/// device). A normal state, never logged above `debug`.
+pub const NOT_HERE_YET: &str = "validation.attachmentNotHereYet";
+
+/// Where the content of the rows of one listing is: one per call, so sync is looked up once and a
+/// row costs one queue lookup (the store is only consulted for a blob without a queue entry).
+/// A profile without sync has everything here and is never asked anything else.
+pub struct ContentLookup<'c> {
+    reader: Option<ContentReader<'c>>,
+}
+
+impl<'c> ContentLookup<'c> {
+    pub fn new(conn: &'c Connection) -> Result<Self> {
+        let reader = if sync_on(conn)? {
+            Some(ContentReader::new(conn)?)
+        } else {
+            None
+        };
+        Ok(Self { reader })
+    }
+
+    /// The content of the blob `which` of a row of `kind` with these blob columns (`blob` for a
+    /// document, `blob` and `thumb` for a photo).
+    pub fn of(
+        &self,
+        kind: AttachmentKind,
+        blob: Option<&str>,
+        thumb: Option<&str>,
+        which: Variant,
+    ) -> Result<AttachmentContent> {
+        let Some(reader) = &self.reader else {
+            return Ok(AttachmentContent::Here);
+        };
+        let syncs = row_syncs(kind, blob, thumb)?;
+        reader.of(
+            match which {
+                Variant::Full => blob,
+                Variant::Thumbnail => thumb,
+            },
+            syncs,
+        )
+    }
+}
+
+/// A blob that is not complete here is not content: when the queue is fetching it (an entry that
+/// is to come `down`) it is wanted now and the answer is [`NOT_HERE_YET`]. Nothing is read or
+/// created before this answers. A blob that is not here and not on its way (lost, or sync off)
+/// is left to the reader, which says it is not found. An incomplete incoming blob is never read.
+fn require_here(conn: &Connection, resolved: &Resolved) -> Result<()> {
+    let Source::Blob(id) = &resolved.source else {
+        return Ok(());
+    };
+    if attachment_store::is_complete(conn, id)? {
+        return Ok(());
+    }
+    let coming: bool = conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM main.sync_blobs WHERE blob_id = ?1 AND state = 'down')",
+        [id],
+        |r| r.get(0),
+    )?;
+    if !coming {
+        return Ok(());
+    }
+    queue::want_blob(conn, id)?;
+    Err(AppError::Validation(NOT_HERE_YET.into()))
 }
 
 /// Which rendition of an attachment: photos also have a thumbnail.
@@ -259,6 +328,7 @@ pub fn document_meta(
 
 /// The whole content of a resolved attachment.
 pub fn read_bytes(conn: &Connection, resolved: &Resolved) -> Result<Vec<u8>> {
+    require_here(conn, resolved)?;
     match &resolved.source {
         Source::Blob(id) => attachment_store::read_all(conn, id),
         Source::Legacy(path) => fs::read(path)
@@ -268,6 +338,8 @@ pub fn read_bytes(conn: &Connection, resolved: &Resolved) -> Result<Vec<u8>> {
 
 /// Write a resolved attachment to `dest` (a path the user chose).
 pub fn write_to(conn: &Connection, resolved: &Resolved, dest: &Path) -> Result<()> {
+    // Before the file is created: a document that is not here leaves nothing behind.
+    require_here(conn, resolved)?;
     match &resolved.source {
         Source::Blob(id) => {
             let mut file = File::create(dest)
@@ -325,10 +397,24 @@ pub fn export_photo_batch(
         let rows = stmt.query_map([batch_id], |r| r.get(0))?;
         rows.collect::<rusqlite::Result<_>>()?
     };
-    let mut saved = 0;
+    // Every photo is checked before the first file is written: a batch with a photo that is not
+    // here fails whole, and wants every missing photo so one retry later succeeds.
+    let mut photos = Vec::with_capacity(ids.len());
+    let mut not_here = false;
     for id in ids {
         let resolved = resolve(conn, data_dir, AttachmentKind::Photo, &id, Variant::Full)?
             .ok_or_else(|| AppError::NotFound("Photo not found".into()))?;
+        match require_here(conn, &resolved) {
+            Err(AppError::Validation(key)) if key == NOT_HERE_YET => not_here = true,
+            other => other?,
+        }
+        photos.push((id, resolved));
+    }
+    if not_here {
+        return Err(AppError::Validation(NOT_HERE_YET.into()));
+    }
+    let mut saved = 0;
+    for (id, resolved) in photos {
         let short: String = id.chars().take(8).collect();
         write_to(
             conn,
@@ -462,6 +548,8 @@ pub fn open_elsewhere(
 ) -> Result<PathBuf> {
     let resolved = resolve(conn, data_dir, kind, id, Variant::Full)?
         .ok_or_else(|| AppError::NotFound("Attachment not found".into()))?;
+    // Before the private folder exists.
+    require_here(conn, &resolved)?;
     let dir = cache_dir
         .join(OPEN_COPIES_DIR)
         .join(Uuid::new_v4().to_string());
@@ -559,6 +647,7 @@ impl FileFacts {
 
 struct StoredDocument {
     id: String,
+    blob_id: String,
     mime_type: String,
     extension: Option<String>,
     file_size: i64,
@@ -598,6 +687,7 @@ fn insert_document_row(
     )?;
     Ok(StoredDocument {
         id,
+        blob_id: blob_id.to_string(),
         extension: extension_of(&facts.original_name),
         mime_type: facts.mime_type,
         file_size: facts.len,
@@ -605,12 +695,19 @@ fn insert_document_row(
 }
 
 fn insurance_document(
+    conn: &Connection,
     insurance_id: &str,
     doc: &NewDocument,
     stored: StoredDocument,
     now: i64,
-) -> InsuranceDocument {
-    InsuranceDocument {
+) -> Result<InsuranceDocument> {
+    let content = ContentLookup::new(conn)?.of(
+        AttachmentKind::InsuranceDocument,
+        Some(&stored.blob_id),
+        None,
+        Variant::Full,
+    )?;
+    Ok(InsuranceDocument {
         id: stored.id,
         insurance_id: insurance_id.to_string(),
         name: doc.name.to_string(),
@@ -620,16 +717,24 @@ fn insurance_document(
         file_type: doc.file_type.to_string(),
         file_size: Some(stored.file_size),
         uploaded_at: now,
-    }
+        content,
+    })
 }
 
 fn real_estate_document(
+    conn: &Connection,
     real_estate_id: &str,
     doc: &NewDocument,
     stored: StoredDocument,
     now: i64,
-) -> RealEstateDocument {
-    RealEstateDocument {
+) -> Result<RealEstateDocument> {
+    let content = ContentLookup::new(conn)?.of(
+        AttachmentKind::RealEstateDocument,
+        Some(&stored.blob_id),
+        None,
+        Variant::Full,
+    )?;
+    Ok(RealEstateDocument {
         id: stored.id,
         real_estate_id: real_estate_id.to_string(),
         name: doc.name.to_string(),
@@ -639,7 +744,8 @@ fn real_estate_document(
         file_type: doc.file_type.to_string(),
         file_size: Some(stored.file_size),
         uploaded_at: now,
-    }
+        content,
+    })
 }
 
 /// A document may be at most [`attachment_store::MAX_DOCUMENT_BYTES`]. It takes only the length,
@@ -713,7 +819,7 @@ pub fn add_insurance_document(
     now: i64,
 ) -> Result<InsuranceDocument> {
     let stored = store_document(conn, &INSURANCE_TABLES, insurance_id, source, doc, now)?;
-    Ok(insurance_document(insurance_id, doc, stored, now))
+    insurance_document(conn, insurance_id, doc, stored, now)
 }
 
 /// Attach a document to a property.
@@ -725,7 +831,7 @@ pub fn add_real_estate_document(
     now: i64,
 ) -> Result<RealEstateDocument> {
     let stored = store_document(conn, &REAL_ESTATE_TABLES, real_estate_id, source, doc, now)?;
-    Ok(real_estate_document(real_estate_id, doc, stored, now))
+    real_estate_document(conn, real_estate_id, doc, stored, now)
 }
 
 // ----------------------------------------------------------------------------
@@ -847,7 +953,7 @@ pub fn add_insurance_document_bytes(
         doc,
         now,
     )?;
-    Ok(insurance_document(insurance_id, doc, stored, now))
+    insurance_document(conn, insurance_id, doc, stored, now)
 }
 
 /// Attach a document to a property from its bytes. `file_name` is whatever the picker reported;
@@ -869,7 +975,111 @@ pub fn add_real_estate_document_bytes(
         doc,
         now,
     )?;
-    Ok(real_estate_document(real_estate_id, doc, stored, now))
+    real_estate_document(conn, real_estate_id, doc, stored, now)
+}
+
+// ============================================================================
+// Listing documents
+// ============================================================================
+
+/// The documents of an insurance policy, newest first, each with where its content is.
+pub fn list_insurance_documents(
+    conn: &Connection,
+    insurance_id: &str,
+) -> Result<Vec<InsuranceDocument>> {
+    let content = ContentLookup::new(conn)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at,
+                mime_type, original_name, blob_id
+         FROM insurance_documents WHERE insurance_id = ?1 ORDER BY uploaded_at DESC",
+    )?;
+    let rows = stmt.query_map([insurance_id], |row| {
+        Ok((
+            InsuranceDocument {
+                id: row.get(0)?,
+                insurance_id: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                mime_type: String::new(),
+                extension: None,
+                file_type: row.get(5)?,
+                file_size: row.get(6)?,
+                uploaded_at: row.get(7)?,
+                content: AttachmentContent::Here,
+            },
+            row.get::<_, Option<String>>(4)?,
+            row.get::<_, Option<String>>(8)?,
+            row.get::<_, Option<String>>(9)?,
+            row.get::<_, Option<String>>(10)?,
+        ))
+    })?;
+    let mut documents = Vec::new();
+    for row in rows {
+        let (mut doc, file_path, mime_type, original_name, blob_id) = row?;
+        (doc.mime_type, doc.extension) = document_meta(
+            file_path.as_deref(),
+            mime_type.as_deref(),
+            original_name.as_deref(),
+        );
+        doc.content = content.of(
+            AttachmentKind::InsuranceDocument,
+            blob_id.as_deref(),
+            None,
+            Variant::Full,
+        )?;
+        documents.push(doc);
+    }
+    Ok(documents)
+}
+
+/// The documents of a property, newest first, each with where its content is.
+pub fn list_real_estate_documents(
+    conn: &Connection,
+    real_estate_id: &str,
+) -> Result<Vec<RealEstateDocument>> {
+    let content = ContentLookup::new(conn)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, real_estate_id, name, description, file_path, file_type, file_size, uploaded_at,
+                mime_type, original_name, blob_id
+         FROM real_estate_documents WHERE real_estate_id = ?1 ORDER BY uploaded_at DESC",
+    )?;
+    let rows = stmt.query_map([real_estate_id], |row| {
+        Ok((
+            RealEstateDocument {
+                id: row.get(0)?,
+                real_estate_id: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                mime_type: String::new(),
+                extension: None,
+                file_type: row.get(5)?,
+                file_size: row.get(6)?,
+                uploaded_at: row.get(7)?,
+                content: AttachmentContent::Here,
+            },
+            row.get::<_, Option<String>>(4)?,
+            row.get::<_, Option<String>>(8)?,
+            row.get::<_, Option<String>>(9)?,
+            row.get::<_, Option<String>>(10)?,
+        ))
+    })?;
+    let mut documents = Vec::new();
+    for row in rows {
+        let (mut doc, file_path, mime_type, original_name, blob_id) = row?;
+        (doc.mime_type, doc.extension) = document_meta(
+            file_path.as_deref(),
+            mime_type.as_deref(),
+            original_name.as_deref(),
+        );
+        doc.content = content.of(
+            AttachmentKind::RealEstateDocument,
+            blob_id.as_deref(),
+            None,
+            Variant::Full,
+        )?;
+        documents.push(doc);
+    }
+    Ok(documents)
 }
 
 // ============================================================================
@@ -1097,6 +1307,7 @@ mod tests {
         files_schema::migrate(&conn).expect("files schema");
         conn.execute_batch(
             r#"
+            CREATE TABLE sync_state (id INTEGER PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE insurance_policies (id TEXT PRIMARY KEY);
             CREATE TABLE real_estate (id TEXT PRIMARY KEY);
             INSERT INTO insurance_policies (id) VALUES ('pol');
@@ -2058,5 +2269,306 @@ mod tests {
     fn bidi_controls_cannot_disguise_an_extension() {
         assert_eq!(sanitize_file_name("cv\u{202E}fdp.exe"), "cv_fdp.exe");
         assert_eq!(sanitize_file_name("a\u{200B}b.pdf"), "a_b.pdf");
+    }
+
+    // ------------------------------------------------------------------------
+    // Content state in the lists, and opening content that is not here (Task 14)
+    // ------------------------------------------------------------------------
+
+    use crate::models::{AttachmentContent, RealEstatePhoto};
+    use crate::services::sync::blobs::queue;
+    use crate::services::sync::hlc::DeviceId;
+    use crate::services::sync::{state, test_support::migrated};
+
+    const NOW: i64 = 1_772_323_200;
+
+    /// A real profile with the attachment store, one policy `p1` and one property `r1`; sync on
+    /// when `sync` is true.
+    fn profile(sync: bool) -> Connection {
+        let conn = migrated();
+        conn.execute("ATTACH DATABASE ':memory:' AS files", [])
+            .expect("attach");
+        files_schema::migrate(&conn).expect("files schema");
+        if sync {
+            state::enable(&conn, DeviceId([7; 16])).expect("enable");
+        }
+        conn.execute_batch(
+            "INSERT INTO insurance_policies \
+               (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
+             VALUES ('p1', 'life', 'Insurer', 'Life', '123', 1767225600, 'monthly'); \
+             INSERT INTO real_estate (id, name, address, type) VALUES ('r1', 'Flat', 'Street', 'flat'); \
+             INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date) \
+               VALUES ('b1', 'r1', 1767225600);",
+        )
+        .expect("owners");
+        conn
+    }
+
+    /// A blob ID no blob here has (content that lives on another device).
+    fn elsewhere(n: u8) -> String {
+        format!("0b9e6a52-3a4c-4e0f-9d7a-1c2b3d4e5f{n:02x}")
+    }
+
+    fn insurance_doc(conn: &Connection, id: &str, blob: &str, at: i64) {
+        conn.execute(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id, uploaded_at) \
+             VALUES (?1, 'p1', 'Contract', ?2, ?3)",
+            rusqlite::params![id, blob, at],
+        )
+        .expect("document");
+    }
+
+    fn estate_doc(conn: &Connection, id: &str, blob: &str, at: i64) {
+        conn.execute(
+            "INSERT INTO real_estate_documents (id, real_estate_id, name, blob_id, uploaded_at) \
+             VALUES (?1, 'r1', 'Deed', ?2, ?3)",
+            rusqlite::params![id, blob, at],
+        )
+        .expect("document");
+    }
+
+    fn photo_row(conn: &Connection, id: &str, full: &str, thumb: &str, at: i64) {
+        conn.execute(
+            "INSERT INTO real_estate_photos (id, batch_id, blob_id, thumb_blob_id, created_at) \
+             VALUES (?1, 'b1', ?2, ?3, ?4)",
+            rusqlite::params![id, full, thumb, at],
+        )
+        .expect("photo");
+    }
+
+    fn confirm(conn: &Connection, blob: &str) {
+        conn.execute(
+            "UPDATE sync_blobs SET state = 'done' WHERE blob_id = ?1",
+            [blob],
+        )
+        .expect("done");
+    }
+
+    fn wanted(conn: &Connection, blob: &str) -> bool {
+        conn.query_row(
+            "SELECT wanted FROM sync_blobs WHERE blob_id = ?1",
+            [blob],
+            |r| r.get(0),
+        )
+        .expect("entry")
+    }
+
+    #[test]
+    fn the_lists_report_each_rows_content() {
+        let conn = profile(true);
+        let confirmed = attachment_store::put_bytes(&conn, b"confirmed")
+            .expect("blob")
+            .id;
+        let waiting = attachment_store::put_bytes(&conn, b"waiting")
+            .expect("blob")
+            .id;
+        let thumb = attachment_store::put_bytes(&conn, b"thumb")
+            .expect("blob")
+            .id;
+        let away = elsewhere(1);
+        insurance_doc(&conn, "d-here", &confirmed, 300);
+        insurance_doc(&conn, "d-up", &waiting, 200);
+        insurance_doc(&conn, "d-down", &away, 100);
+        estate_doc(&conn, "e-down", &elsewhere(2), 100);
+        photo_row(&conn, "ph", &elsewhere(3), &thumb, 10);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        confirm(&conn, &confirmed);
+        confirm(&conn, &thumb);
+        // `waiting` has an `up` entry; a row the queue has not seen has no entry at all.
+        let unseen = attachment_store::put_bytes(&conn, b"unseen")
+            .expect("blob")
+            .id;
+        insurance_doc(&conn, "d-unseen", &unseen, 50);
+
+        let docs = list_insurance_documents(&conn, "p1").expect("list");
+        let seen: Vec<_> = docs.iter().map(|d| (d.id.as_str(), d.content)).collect();
+        assert_eq!(
+            seen,
+            [
+                ("d-here", AttachmentContent::Here),
+                ("d-up", AttachmentContent::WaitingUpload),
+                ("d-down", AttachmentContent::NotHere),
+                ("d-unseen", AttachmentContent::WaitingUpload),
+            ],
+            "newest first, as the command returned them"
+        );
+        let estate = list_real_estate_documents(&conn, "r1").expect("list");
+        assert_eq!(estate.len(), 1);
+        assert_eq!(estate[0].content, AttachmentContent::NotHere);
+
+        let batches = real_estate_photos::list_batches(&conn, "r1").expect("batches");
+        let photo = &batches[0].photos[0];
+        assert_eq!(photo.content, AttachmentContent::NotHere);
+        assert_eq!(photo.thumb_content, AttachmentContent::Here);
+    }
+
+    #[test]
+    fn a_profile_without_sync_lists_everything_as_here() {
+        let conn = profile(false);
+        let held = attachment_store::put_bytes(&conn, b"held")
+            .expect("blob")
+            .id;
+        insurance_doc(&conn, "d1", &held, 2);
+        insurance_doc(&conn, "d2", &elsewhere(1), 1); // lost content: sync off knows nothing else
+        estate_doc(&conn, "e1", &held, 1);
+        photo_row(&conn, "ph", &held, &elsewhere(2), 1);
+        // Sync tables empty or never touched: nothing in them is read.
+        conn.execute("DROP TABLE sync_blobs", []).expect("drop");
+
+        let docs = list_insurance_documents(&conn, "p1").expect("list");
+        assert!(docs.iter().all(|d| d.content == AttachmentContent::Here));
+        assert_eq!(docs.len(), 2);
+        assert_eq!(
+            list_real_estate_documents(&conn, "r1").expect("list")[0].content,
+            AttachmentContent::Here
+        );
+        let photo = &real_estate_photos::list_batches(&conn, "r1").expect("batches")[0].photos[0];
+        assert_eq!(
+            (photo.content, photo.thumb_content),
+            (AttachmentContent::Here, AttachmentContent::Here)
+        );
+    }
+
+    #[test]
+    fn a_document_added_here_reads_waiting_with_sync_on_and_here_without() {
+        for (sync, expected) in [
+            (true, AttachmentContent::WaitingUpload),
+            (false, AttachmentContent::Here),
+        ] {
+            let conn = profile(sync);
+            let doc = NewDocument {
+                name: "Contract",
+                description: None,
+                file_type: "other",
+            };
+            let added = add_insurance_document_bytes(&conn, "p1", "a.pdf", b"%PDF-1.7", &doc, NOW)
+                .expect("add");
+            assert_eq!(added.content, expected, "sync {sync}");
+            let added =
+                add_real_estate_document_bytes(&conn, "r1", "a.pdf", b"%PDF-1.7", &doc, NOW)
+                    .expect("add");
+            assert_eq!(added.content, expected, "sync {sync}");
+            let prepared =
+                real_estate_photos::prepared_for_test(b"full".to_vec(), b"thumb".to_vec());
+            let photo: RealEstatePhoto =
+                real_estate_photos::record_photo(&conn, "b1", &prepared, NOW).expect("photo");
+            assert_eq!(
+                (photo.content, photo.thumb_content),
+                (expected, expected),
+                "sync {sync}"
+            );
+        }
+    }
+
+    #[test]
+    fn opening_content_that_is_not_here_asks_for_it() {
+        let conn = profile(true);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (data, cache, out) = (
+            dir.path().join("data"),
+            dir.path().join("cache"),
+            dir.path().join("out"),
+        );
+        for d in [&data, &cache, &out] {
+            fs::create_dir_all(d).expect("mkdir");
+        }
+        let away = elsewhere(1);
+        insurance_doc(&conn, "d", &away, 1);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        assert!(!wanted(&conn, &away));
+        let not_here = |e: AppError| matches!(e, AppError::Validation(k) if k == NOT_HERE_YET);
+        let kind = AttachmentKind::InsuranceDocument;
+
+        let resolved = resolve(&conn, &data, kind, "d", Variant::Full)
+            .expect("resolve")
+            .expect("row");
+        assert!(not_here(read_bytes(&conn, &resolved).expect_err("read")));
+        assert!(wanted(&conn, &away), "reading it asks for it");
+
+        conn.execute("UPDATE sync_blobs SET wanted = 0", [])
+            .expect("reset");
+        let file = out.join("doc.pdf");
+        assert!(not_here(
+            export(&conn, &data, kind, "d", &file).expect_err("export")
+        ));
+        assert!(!file.exists(), "no empty or partial file is left");
+        assert!(wanted(&conn, &away));
+
+        conn.execute("UPDATE sync_blobs SET wanted = 0", [])
+            .expect("reset");
+        assert!(not_here(
+            open_elsewhere(&conn, &data, &cache, kind, "d").expect_err("open")
+        ));
+        assert!(
+            !cache.join(OPEN_COPIES_DIR).exists(),
+            "no folder for a copy"
+        );
+        assert!(wanted(&conn, &away));
+    }
+
+    #[test]
+    fn an_incomplete_incoming_blob_is_not_content() {
+        let conn = profile(true);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let away = elsewhere(1);
+        insurance_doc(&conn, "d", &away, 1);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        attachment_store::begin_incoming(&conn, &away, 4).expect("begin");
+        attachment_store::write_incoming(&conn, &away, 0, b"half").expect("write");
+        let resolved = resolve(
+            &conn,
+            dir.path(),
+            AttachmentKind::InsuranceDocument,
+            "d",
+            Variant::Full,
+        )
+        .expect("resolve")
+        .expect("row");
+        let err = read_bytes(&conn, &resolved).expect_err("read");
+        assert!(matches!(err, AppError::Validation(k) if k == NOT_HERE_YET));
+
+        // Without a queue entry (sync off) it is still never read as content.
+        let conn = profile(false);
+        insurance_doc(&conn, "d", &away, 1);
+        attachment_store::begin_incoming(&conn, &away, 4).expect("begin");
+        attachment_store::write_incoming(&conn, &away, 0, b"half").expect("write");
+        assert!(read_bytes(&conn, &resolved).is_err());
+    }
+
+    #[test]
+    fn a_photo_batch_with_a_photo_not_here_fails_before_writing_and_wants_every_missing_one() {
+        let conn = profile(true);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (data, out) = (dir.path().join("data"), dir.path().join("out"));
+        for d in [&data, &out] {
+            fs::create_dir_all(d).expect("mkdir");
+        }
+        let here = attachment_store::put_bytes(&conn, b"here")
+            .expect("blob")
+            .id;
+        let thumb = attachment_store::put_bytes(&conn, b"thumb")
+            .expect("blob")
+            .id;
+        let (a, b) = (elsewhere(1), elsewhere(2));
+        photo_row(&conn, "p1", &here, &thumb, 1);
+        photo_row(&conn, "p2", &a, &thumb, 2);
+        photo_row(&conn, "p3", &b, &thumb, 3);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+
+        let err = export_photo_batch(&conn, &data, "b1", &out).expect_err("export");
+        assert!(matches!(err, AppError::Validation(k) if k == NOT_HERE_YET));
+        assert_eq!(fs::read_dir(&out).expect("dir").count(), 0, "no half batch");
+        assert!(wanted(&conn, &a) && wanted(&conn, &b));
+
+        // One retry later, with both here, the whole batch is written.
+        for (blob, bytes) in [(&a, b"a"), (&b, b"b")] {
+            attachment_store::begin_incoming(&conn, blob, 1).expect("begin");
+            attachment_store::write_incoming(&conn, blob, 0, bytes).expect("write");
+            attachment_store::finish_incoming(&conn, blob, "sha").expect("finish");
+        }
+        assert_eq!(
+            export_photo_batch(&conn, &data, "b1", &out).expect("export"),
+            3
+        );
     }
 }

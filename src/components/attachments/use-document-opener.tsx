@@ -20,7 +20,11 @@ type DocumentKind = Exclude<AttachmentKind, 'photo'>;
 const openInSystemApp = (kind: DocumentKind, id: string) =>
   kind === 'insurance-document' ? insuranceApi.openDocument(id) : realEstateApi.openDocument(id);
 
-export function useDocumentOpener(kind: DocumentKind): {
+export function useDocumentOpener(
+  kind: DocumentKind,
+  /** The owner's current rows: a viewer whose document is no longer among them closes quietly. */
+  rows: readonly { id: string }[]
+): {
   openDocument: (document: ViewableDocument) => void;
   /** "Try again" on a document whose content failed to move; resolves when the ask is made. */
   retryContent: (id: string) => void;
@@ -40,6 +44,10 @@ export function useDocumentOpener(kind: DocumentKind): {
       toast.error(t('status.error'), { description: translateApiError(error, t) });
     },
   });
+
+  // Another device deleted the document: the list refetches on the attachments event, and the
+  // viewer (whose "save a copy" would now fail with "not found") closes without a message.
+  if (viewing && !rows.some((row) => row.id === viewing.id)) setViewing(null);
 
   const openElsewhere = async (document: ViewableDocument) => {
     try {

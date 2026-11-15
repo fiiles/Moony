@@ -545,7 +545,12 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                       return reason ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="inline-flex" tabIndex={0}>
+                            <span
+                              className="inline-flex"
+                              tabIndex={0}
+                              role="group"
+                              aria-label={`${t('gallery.downloadBatch')}: ${tc(`attachments.content.${reason}`)}`}
+                            >
                               {button}
                             </span>
                           </TooltipTrigger>
@@ -607,6 +612,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                           e.stopPropagation();
                           deletePhotoMutation.mutate(photo.id);
                         }}
+                        aria-label={tc('buttons.delete')}
                       >
                         <X className="h-3 w-3 text-white" />
                       </button>
@@ -618,6 +624,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                             handleDownloadPhoto(photo);
                           }}
                           title={t('gallery.downloadPhoto')}
+                          aria-label={t('gallery.downloadPhoto')}
                         >
                           <Download className="h-3 w-3 text-white" />
                         </button>
@@ -703,6 +710,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
           <button
             className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded"
             onClick={closeLightbox}
+            aria-label={tc('buttons.close')}
           >
             <X className="h-6 w-6" />
           </button>
@@ -714,6 +722,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                 handleDownloadPhoto(lightboxPhoto);
               }}
               title={t('gallery.downloadPhoto')}
+              aria-label={t('gallery.downloadPhoto')}
             >
               <Download className="h-6 w-6" />
             </button>
@@ -726,6 +735,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                   e.stopPropagation();
                   setLightboxIndex((i) => (i - 1 + livePhotos.length) % livePhotos.length);
                 }}
+                aria-label={tc('buttons.previous')}
               >
                 <ChevronLeft className="h-8 w-8" />
               </button>
@@ -735,6 +745,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                   e.stopPropagation();
                   setLightboxIndex((i) => (i + 1) % livePhotos.length);
                 }}
+                aria-label={tc('buttons.next')}
               >
                 <ChevronRight className="h-8 w-8" />
               </button>
@@ -800,6 +811,8 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                           // Same look as the lightbox's other controls: white on the dark overlay.
                           className="border-white/50 text-white hover:bg-white/10 hover:text-white [&_svg]:text-white"
                           loading={retryingId === lightboxPhoto.id}
+                          // One retry at a time: while another photo's runs, this would do nothing
+                          disabled={retryingId !== null}
                           onClick={() => retryPhoto(lightboxPhoto)}
                         >
                           {tc('attachments.content.retry')}

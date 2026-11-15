@@ -67,7 +67,7 @@ export function InsuranceDocuments({ insuranceId, onAdd }: InsuranceDocumentsPro
     retryContent,
     retryingId,
     dialogs: documentDialogs,
-  } = useDocumentOpener('insurance-document');
+  } = useDocumentOpener('insurance-document', documents);
 
   return (
     <>
@@ -159,7 +159,9 @@ export function InsuranceDocuments({ insuranceId, onAdd }: InsuranceDocumentsPro
                           variant="ghost"
                           size="icon-sm"
                           aria-label={t('documents.open')}
-                          title={noteText ?? t('documents.open')}
+                          title={
+                            state.openable ? t('documents.open') : (noteText ?? t('documents.open'))
+                          }
                           disabled={!state.openable}
                           onClick={() => openDocument(doc)}
                         >

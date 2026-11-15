@@ -69,7 +69,7 @@ export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) 
     retryContent,
     retryingId,
     dialogs: documentDialogs,
-  } = useDocumentOpener('real-estate-document');
+  } = useDocumentOpener('real-estate-document', documents ?? []);
 
   return (
     <>
@@ -144,7 +144,9 @@ export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) 
                         size="icon"
                         onClick={() => openDocument(doc)}
                         disabled={!state.openable}
-                        title={noteText ?? t('documents.open')}
+                        title={
+                          state.openable ? t('documents.open') : (noteText ?? t('documents.open'))
+                        }
                       >
                         <ExternalLink className="h-4 w-4" />
                       </Button>

@@ -402,6 +402,7 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         // A guarded or read-only connection is capture-broken whatever the mark says (it may
         // not have been written): nothing runs against it but the repair's drain.
         let paused = guard::changes_paused(conn);
+        queue_local_changes(conn, &policy.blobs, now)?;
         Ok(keys::credentials(conn)?
             .zip(state::marks(conn)?)
             .map(|(creds, marks)| {
@@ -426,7 +427,6 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         return Ok(());
     }
 
-    queue_local_changes(db, &policy.blobs, now)?;
     if let Err(error) = round_steps(relay, db, &creds, policy, mode, now, jitter, report).await {
         let problem = match error {
             SyncError::VaultNotFound => {
@@ -674,20 +674,20 @@ async fn daily_pass<R: Relay, D: ConnAccess>(
 /// backoff keeps the next rounds from spending their budget on it again. Nothing the step meets
 /// fails or changes the round: transfer errors stay on their entries, and a local error is
 /// logged and dropped (a locked profile ends the round at its next step).
-/// Before any network call of the round: the transfer queue learns of documents and photos added
-/// or removed here (`queue::reconcile_rows`: only newly named blobs are looked up in the store),
-/// so the status counts them even when the round then cannot reach the server; the app is told
-/// when the queue changed. A local failure is logged and the round goes on (the upload step
-/// reconciles again); a locked profile ends the round.
-fn queue_local_changes<D: ConnAccess>(db: &D, blobs: &BlobPolicy, now: i64) -> SyncResult<()> {
-    match db.with_conn(|conn| queue::reconcile_rows(conn, now)) {
+/// In the round's first hold, before any network call: the transfer queue learns of documents and
+/// photos added or removed here (`queue::reconcile_rows`: only newly named blobs are looked up in
+/// the store), so the status counts them even when the round then cannot reach the server; the
+/// app is told when the queue changed. A local failure is logged and the round goes on (the
+/// upload step reconciles again); a locked profile ends the round.
+fn queue_local_changes(conn: &Connection, blobs: &BlobPolicy, now: i64) -> Result<()> {
+    match queue::reconcile_rows(conn, now) {
         Ok(reconciled) => {
             if reconciled != queue::Reconciled::default() {
                 blobs.note_changed();
             }
             Ok(())
         }
-        Err(error @ AppError::Auth(_)) => Err(SyncError::Local(error)),
+        Err(error @ AppError::Auth(_)) => Err(error),
         Err(error) => {
             log::warn!("[SYNC] The transfer queue could not be brought up to date");
             log::debug!("[SYNC] The transfer queue could not be brought up to date: {error}");

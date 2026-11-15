@@ -168,10 +168,21 @@ const ROW_AT: [(&str, &str); 3] = [
 /// The blob column that holds a photo's thumbnail.
 const THUMBNAIL_COLUMN: &str = "thumb_blob_id";
 
+/// The codes of [`STUCK`], once, for both SQL lists.
+macro_rules! stuck_codes {
+    () => {
+        "'invalidId', 'refused', 'conflict'"
+    };
+}
+
 /// SQL: the `last_error` codes of an entry that never moves by itself (an invalid ID, a refusal of
 /// the blob, a conflict on the server): only "try again" on its row (`retry_row`) or a rebuilt
 /// queue moves it. Such an entry is a failed item, never content waiting to move.
-pub(crate) const STUCK: &str = "('invalidId', 'refused', 'conflict')";
+pub(crate) const STUCK: &str = concat!("(", stuck_codes!(), ")");
+
+/// SQL: the `last_error` codes of a `down` entry that counts as failed (`AttachmentContent::Failed`):
+/// [`STUCK`] and `unreadable`. Same list as [`download_failed`].
+pub(crate) const DOWNLOAD_FAILED: &str = concat!("('unreadable', ", stuck_codes!(), ")");
 
 /// Whether `last_error` is a code of [`STUCK`].
 pub fn is_stuck(last_error: Option<&str>) -> bool {
@@ -184,6 +195,34 @@ pub fn is_stuck(last_error: Option<&str>) -> bool {
 /// content reader and the opening of a document ask.
 pub fn download_failed(last_error: Option<&str>) -> bool {
     is_stuck(last_error) || last_error == Some("unreadable")
+}
+
+#[cfg(test)]
+mod list_tests {
+    use super::*;
+
+    #[test]
+    fn the_sql_lists_and_the_helpers_agree() {
+        for code in [
+            "invalidId",
+            "refused",
+            "conflict",
+            "unreadable",
+            "network",
+            "notOnServer",
+        ] {
+            assert_eq!(
+                STUCK.contains(&format!("'{code}'")),
+                is_stuck(Some(code)),
+                "{code}"
+            );
+            assert_eq!(
+                DOWNLOAD_FAILED.contains(&format!("'{code}'")),
+                download_failed(Some(code)),
+                "{code}"
+            );
+        }
+    }
 }
 
 /// Clears an entry's retry bookkeeping when its state changes.
@@ -775,7 +814,7 @@ pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
              per_row AS (
                SELECT MAX(state = 'up' AND error NOT IN {STUCK}) AS up,
                  MAX((state = 'down' AND active = 0
-                     AND error IN ('unreadable', 'invalidId', 'refused', 'conflict'))
+                     AND error IN {DOWNLOAD_FAILED})
                    OR (state = 'up' AND error IN {STUCK})) AS failed,
                  MAX(state = 'down' AND active = 0 AND error = 'notOnServer') AS gone,
                  MAX(state = 'down') AS down

@@ -210,9 +210,10 @@ fn require_here(conn: &Connection, resolved: &Resolved) -> Result<()> {
     let Some(last_error) = coming else {
         return Ok(());
     };
-    // Waiting, being fetched, failed for a passing reason or not on the server yet (the other
-    // device has not uploaded it) all arrive by themselves; the rest never does.
-    if queue::download_failed(last_error.as_deref()) {
+    // Waiting, being fetched, failed for a passing reason (`unreadable` included: the lane retries
+    // it) or not on the server yet (the other device has not uploaded it) all arrive by
+    // themselves; only an entry that never moves by itself does not.
+    if queue::is_stuck(last_error.as_deref()) {
         return Err(AppError::Validation(UNAVAILABLE.into()));
     }
     queue::want_blob(conn, id)?;
@@ -484,14 +485,22 @@ pub fn export_photo_batch(
     // here fails whole, and wants every missing photo so one retry later succeeds.
     let mut photos = Vec::with_capacity(ids.len());
     let mut not_here = false;
+    let mut unavailable = false;
     for id in ids {
         let resolved = resolve(conn, data_dir, AttachmentKind::Photo, &id, Variant::Full)?
             .ok_or_else(|| AppError::NotFound("Photo not found".into()))?;
         match require_here(conn, &resolved) {
             Err(AppError::Validation(key)) if key == NOT_HERE_YET => not_here = true,
+            Err(AppError::Validation(key)) if key == UNAVAILABLE => unavailable = true,
             other => other?,
         }
         photos.push((id, resolved));
+    }
+    // Every missing photo that can arrive has been wanted by now. When one cannot arrive the
+    // batch is blocked for good until "try again", so that is the truer answer even if others
+    // are still on their way.
+    if unavailable {
+        return Err(AppError::Validation(UNAVAILABLE.into()));
     }
     if not_here {
         return Err(AppError::Validation(NOT_HERE_YET.into()));
@@ -2696,10 +2705,7 @@ mod tests {
     #[test]
     fn content_that_cannot_arrive_is_unavailable_not_on_its_way() {
         let conn = profile(true);
-        for (i, error) in ["refused", "conflict", "unreadable", "invalidId"]
-            .into_iter()
-            .enumerate()
-        {
+        for (i, error) in ["refused", "conflict", "invalidId"].into_iter().enumerate() {
             let away = elsewhere(10 + i as u8);
             let id = format!("d-{error}");
             insurance_doc(&conn, &id, &away, 1);
@@ -2713,6 +2719,63 @@ mod tests {
             assert!(!wanted(&conn, &away), "{error}: nothing is asked for");
             assert_eq!(entry(&conn, &away).1, 3, "{error}: nothing is reset");
         }
+    }
+
+    #[test]
+    fn unreadable_content_heals_by_itself_so_it_is_on_its_way_and_wanted_now() {
+        let conn = profile(true);
+        let away = elsewhere(40);
+        insurance_doc(&conn, "d", &away, 1);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        fail_down(&conn, &away, "unreadable");
+        let err = read_error(&conn, "d");
+        assert!(
+            matches!(&err, AppError::Validation(k) if k == NOT_HERE_YET),
+            "{err:?}"
+        );
+        let due: i64 = conn
+            .query_row(
+                "SELECT next_try_at FROM sync_blobs WHERE blob_id = ?1",
+                [&away],
+                |r| r.get(0),
+            )
+            .expect("entry");
+        assert!(wanted(&conn, &away) && due == 0, "wanted and due now");
+        // The content state still reads failed (the UI offers "Try again").
+        assert_eq!(
+            row_content(&conn, AttachmentKind::InsuranceDocument, "d").expect("content"),
+            AttachmentContent::Failed
+        );
+    }
+
+    #[test]
+    fn a_batch_wants_every_missing_photo_before_failing_on_an_unavailable_one() {
+        let conn = profile(true);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (data, out) = (dir.path().join("data"), dir.path().join("out"));
+        for d in [&data, &out] {
+            fs::create_dir_all(d).expect("mkdir");
+        }
+        let thumb = attachment_store::put_bytes(&conn, b"thumb")
+            .expect("blob")
+            .id;
+        let (bad, coming) = (elsewhere(41), elsewhere(42));
+        photo_row(&conn, "p1", &bad, &thumb, 1);
+        photo_row(&conn, "p2", &coming, &thumb, 2);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        fail_down(&conn, &bad, "refused");
+        let err = export_photo_batch(&conn, &data, "b1", &out).expect_err("export");
+        assert!(
+            matches!(&err, AppError::Validation(k) if k == UNAVAILABLE),
+            "{err:?}"
+        );
+        assert!(wanted(&conn, &coming), "the later photo is asked for");
+        assert!(!wanted(&conn, &bad));
+        assert_eq!(
+            fs::read_dir(&out).expect("dir").count(),
+            0,
+            "nothing written"
+        );
     }
 
     #[test]

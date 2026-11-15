@@ -450,7 +450,6 @@ mod tests {
         )
         .expect("photo");
         crate::services::sync::blobs::queue::reconcile(&conn, 1_772_323_200).expect("reconcile");
-        let _ = held;
         conn
     }
 
@@ -465,6 +464,22 @@ mod tests {
             assert_eq!(r.status().as_u16(), 425, "{path}");
             assert_eq!(header(&r, "Cache-Control"), Some("no-store"));
             assert!(r.body().is_empty());
+        }
+    }
+
+    #[test]
+    fn unreadable_content_answers_425_through_the_real_path() {
+        let conn = profile_with_content_elsewhere();
+        let dir = tempfile::tempdir().expect("tempdir");
+        conn.execute(
+            "UPDATE sync_blobs SET last_error = 'unreadable', next_try_at = ?1",
+            [i64::MAX],
+        )
+        .expect("fail");
+        for path in ["/insurance-document/d", "/photo-thumb/ph"] {
+            let route = parse_route(path).expect("route");
+            let r = response_for(load(&conn, dir.path(), &route), None);
+            assert_eq!(r.status().as_u16(), 425, "{path}");
         }
     }
 

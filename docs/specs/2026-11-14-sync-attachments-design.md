@@ -1,6 +1,8 @@
 # Device sync: documents and photos — design
 
-Date: 2026-11-14. Status: **draft, waiting for the owner's approval.**
+Date: 2026-11-14. Status: **approved by the owner on 2026-11-14 and built** (recorded in
+[ADR 0030](../architecture/decisions/0030-device-sync-documents-and-photos.md); where the build
+differs, see §13).
 
 This is phase 4 of device sync (`2026-11-06-device-sync-client-design.md` §10, §12, §17), which
 the owner put off on 2026-11-06 ("same for attachments") and asked for on 2026-11-14: "there is
@@ -356,3 +358,42 @@ language, the theme, which menu items are shown, notification settings, biometri
 device password and recovery key, the AI assistant (MCP) settings, and local backups. Prices,
 exchange rates and the portfolio history are not synced because each device downloads or
 recomputes them.
+
+## 13. As built (2026-11-15)
+
+The sections above are the design as approved and are not rewritten. Where the build differs
+(details in ADR 0030):
+
+- §5.1: profiles that had sync on before this build get no one-time enrolment of their
+  attachment rows; it was built and then removed. A development vault that synced before this
+  build does not carry the documents and photos that existed then and must be set up again.
+- §5.1: a replace does not drop this device's content when the vault lacks its row. It holds the
+  content of every blob this device's rows named (`sync_held_blobs`) until the first pull after
+  the replace has caught up to the server's head, because a row pushed after the vault's newest
+  snapshot comes back with that pull. Only then are the blobs no row names swept.
+- §5.3: the round's upload step before the push sends only content that never failed an attempt,
+  each blob at most 8 MiB, 20 seconds in all; everything else goes through two transfer lanes
+  beside the rounds.
+- §5.3: two upload outcomes the design did not name: `refused` (the server refuses the blob for
+  good: too large, empty, a length it cannot take) and `conflict` (the server holds other content
+  under the blob's ID and never overwrites it). Both wait for "Try again" and count as failed,
+  never as waiting to upload.
+- §5.4: on the phone, a file type it cannot show is never downloaded when it is opened and its
+  row offers no download; it says the file is on the other devices. "Download everything to this
+  phone" still fetches it.
+- §5.5: the daily pass is not held back by uploads that wait for room on the server or that are
+  stuck for good, since the pass may be what frees the room and never deletes a blob a row here
+  names. A pass that started and did not complete is tried again after an hour.
+- §5.5: blob ages are measured on the server's clock (the listing's `now`); a blob dated before
+  2020-01-01 or in the server's future is never old enough to delete.
+- §5.5: the pass has a budget: 60 seconds, at most 100 pages of the listing and at most 1,000
+  deletes. A vault of more than 100,000 blobs therefore never completes a pass; it still deletes
+  among the pages it lists, but never re-queues uploads.
+- §5.6: the status and the listings answer where content is from the transfer queue alone, never
+  from the store, and the store gets no index. Content lost from the store outside a merge shows
+  as here until the next start of the sync engine.
+- §5.6, §5.7: the sync status carries one more count, `notOnDevice` (rows with any content not on
+  this device, for any reason), which the backup screen uses for "not in this backup".
+- §7: the file handler answers `425 Too Early` for content on its way (including content that
+  could not be opened yet, which is retried) and `404` with `attachmentUnavailable` only for
+  content that cannot arrive as things stand (refused, a conflict, an invalid ID).

@@ -92,10 +92,11 @@ every blob this device's rows named before it (the Local table `sync_held_blobs`
 written inside the replace's savepoint): `attachment_store::delete_unreferenced` keeps every held
 blob (`attachment_store::HOLDS`), so neither the repair after each changeset, nor the sweep after
 the next unlock, nor the maintenance command removes it. The first pull after the replace that
-reaches the sync server's end with nothing stopped or held (`PullReport::done`) releases every
-hold and sweeps; only then do the blobs no row names go. The reason is audit H3: a row this
-device pushed after the vault's newest snapshot (the re-sync pushes before it replaces) is not in
-the snapshot, so the replace drops it and the next pull brings it back; without the hold its
+reaches the sync server's end with nothing stopped or held and is not behind the server's head
+(`PullReport::done()` and not `behind`) releases every hold and sweeps; only then do the blobs
+no row names go. The reason is audit H3: a row this device pushed after the vault's newest
+snapshot (the re-sync pushes before it replaces) is not in the snapshot, so the replace drops it
+and the next pull brings it back; without the hold its
 content was swept in between, and if its upload had not finished, only the backup had it.
 Turning sync off drops the holds. `RestoreReport.attachments` counts this device's documents and
 photos as before (`kept` if the replace brought them back, else `orphaned`, "only in the
@@ -126,8 +127,9 @@ documents and photos need a newer server. The app assumes the server's error cod
   - a blob whose only holder is wiped before it uploads is lost; the row stays and shows "not
     uploaded yet from the other device" for good;
   - content lost from the store outside a merge (a damaged or edited `attachments.db`) is shown as
-    here, or as waiting to upload, until the next full reconcile (the end of a merging pull, a
-    restore or replace, a lane start); opening it until then fails as a missing file does today,
+    here, or as waiting to upload, until the next full reconcile (a restore or replace, a lane
+    start, so at the latest the next start of the sync engine); opening it until then fails as
+    a missing file does today,
     and an upload that takes it finds the content gone and drops the entry, which the next
     reconcile queues again as not here;
   - an upload or download dropped mid-flight (the round's 20-second budget, an engine stopped)
@@ -149,7 +151,7 @@ documents and photos need a newer server. The app assumes the server's error cod
     attachment row can reach devices that never received the row; such a vault must be set up
     again (sync off, set up, join the other devices again). No released build can be in that
     state: sync is unreleased and ships with this ADR's migrations.
-- Release guard: if sync is ever released from a build without this ADR's migrations (035, 036),
+- Release guard: if sync is ever released from a build without this ADR's migrations (035–038),
   which it must not be, profiles that synced on it would need a one-time enrolment of their
   attachment rows, designed so it never overwrites changes other devices made after it.
 
@@ -163,12 +165,14 @@ documents and photos need a newer server. The app assumes the server's error cod
   blob is neither uploaded nor shown as here. Each merged changeset that touched an attachment row
   table or lost rows of an owner runs `reconcile_rows` (adds and drops; a merge never adds or
   removes content of a blob a row still names); the whole `reconcile`, which checks every entry
-  against the store, runs once at the end of a pull that merged anything and after every restore
-  (`repair::full`), because reading a blob's `size` and `sha256` means walking past its content
-  (they follow `data` in `files.blobs`). A blob held here is queued `up` unless the queue knows the
+  against the store, runs after every restore (`repair::full`) and when the lanes start, because
+  reading a blob's `size` and `sha256` means walking past its content (they follow `data` in
+  `files.blobs`). (It also ran at the end of every pull that merged anything until the final fix
+  wave; see below.) A blob held here is queued `up` unless the queue knows the
   server has it (`done`), so content the queue lost track of is confirmed with the server (a
   `HEAD`, no body when it is there) rather than assumed uploaded: after a replace every held blob
-  is `up`, a held blob whose row the next pull brings back is `up`, and a `down` entry whose
+  a vault row names is `up`, a held blob whose row the next pull brings back is `up`, and a
+  `down` entry whose
   content is found here again becomes `up` (the plan had `done`: losing the copy forgot whether it
   was ever uploaded). The download lane marks what it stored `done` itself. `ContentReader` gives
   each blob an `AttachmentContent`; a row that does not meet its row condition reads as `Here`,
@@ -181,8 +185,10 @@ documents and photos need a newer server. The app assumes the server's error cod
   the round's upload step and the lanes share: the server's `blobs` feature (a fresh answer is
   kept six hours from when it was given; a server that cannot be asked is "unknown": that run
   stops, nothing is kept and no problem shown), the attachments problem
-  (`SyncAttachmentsProblem`: `noRoom` pauses uploads for half an hour and ends only when a body is
-  accepted, downloads go on; `serverNeedsUpdate` only while content waits), one lane lock per
+  (`SyncAttachmentsProblem`: `noRoom` pauses uploads for half an hour, downloads go on; the pause
+  ends early on "Sync now" or after a daily pass deleted blobs, and the problem and its pause end
+  when a body is accepted or when nothing waits to upload any more; `serverNeedsUpdate` only
+  while content waits), one lane lock per
   direction and a wake-up per lane. Blob answers are classified there, never by the round's
   `SyncError`, so no single file fails, pauses or slows a round: `done` only on the server's word
   (an accepted body, or a `HEAD` that finds the blob at its sealed size; content that merely
@@ -212,8 +218,8 @@ documents and photos need a newer server. The app assumes the server's error cod
   (`queue::summary`, also the bytes waiting to upload), the upload pick (`queue::next_upload`,
   also the round's 8 MiB limit) and `ContentReader` whenever the blob has an entry (the store is
   consulted only for a blob without one: sync off, a row that does not sync, a row not queued
-  yet). The store is consulted by the full `reconcile` (the end of a merging pull, a restore or
-  replace, a lane start), by `reconcile_rows` for newly named blobs only (one blob each), and by a
+  yet). The store is consulted by the full `reconcile` (a restore or replace, a lane start), by
+  `reconcile_rows` for newly named blobs only (one blob each), and by a
   transfer for the one blob it handles. A held blob with an invalid ID is queued `up` with `invalidId`
   and a retry time never reached (an entry is `done` only on the server's word): it reads as here,
   counts as a failed item, never as waiting; one not held is `down` with `invalidId`. The full
@@ -271,3 +277,77 @@ documents and photos need a newer server. The app assumes the server's error cod
   "Sync now" (`BlobPolicy::try_again`). Accepted limit: a vault of more than 100,000 blobs
   (`PASS_MAX_PAGES` pages) never completes a pass; once an hour it lists 100 pages, deletes among
   them what qualifies, and puts nothing back.
+- **Lists and opening (Task 14).** Every listing of documents or photos answers where each row's
+  content is through one `ContentLookup` per call (`services/attachments.rs`): sync is looked up
+  once, a row costs one queue lookup, and the store is asked only for a blob without an entry. A
+  profile without sync has everything here and no sync table is read. Opening, exporting and
+  serving content (`read_bytes`, `write_to`, the photo batch export, the `moony-file:`
+  handler) first run `require_here`, before anything is read or created: content on its way is
+  asked for and the answer is "not here yet"; content that cannot arrive is "unavailable"; content
+  that is simply missing is left to the read, which says it is not found. The list queries moved
+  out of the command files into the services.
+- **Asking for content (Task 15).** Three commands: `sync_attachment_download` (the full content of
+  a row is wanted and due now), `sync_attachment_retry` ("Try again" on a row: wanted, every blob
+  of it that waits to move starts its count again) and `sync_download_everything` (every full
+  content not here is wanted; the phone's "Download everything to this phone"). The file handler
+  answers `425 Too Early` for content on its way, which includes content that could not be opened
+  (`unreadable`) and content sealed with a key this device has not received yet (recorded as
+  `local`, see the fix wave below), since the lane retries both by itself; it answers `404` with
+  `attachmentUnavailable` only for content that cannot arrive as things stand (`refused`,
+  `conflict`, an invalid ID: `queue::STUCK`). A photo batch export asks for every missing photo
+  before it fails.
+- **What the person sees (Tasks 16–18).** The desktop tables and the gallery and the phone's lists
+  and viewers show the states of the design's §5.6. The phone asks for a file once per opening.
+  A file type the phone cannot show (the viewer's "open Moony on your computer" kind) is never
+  fetched on open and its row never offers a download: the phone has nothing to open it with, so
+  it only says the file is on the other devices; "Download everything to this phone" still
+  fetches it. `SyncAttachments` gained `notOnDevice` (one wire field): the rows with any content
+  not complete on this device, whatever the reason, which the backup screen uses for "not in this
+  backup" (the other counts are disjoint by worst state, so no sum of them is that number). The
+  status shows `noRoom` only while something waits to upload: the engine's flag can outlive the
+  queue until the next upload run, and with nothing waiting it is treated as no problem.
+  `serverNeedsUpdate`
+  shows whenever set. The "Documents and photos" row never says "All uploaded" beside a problem.
+- **End to end (Task 19).** `services/sync/relay_e2e_blobs.rs` runs the transfers, the daily pass
+  and the quota against a real Moony sync server with the blob routes. Every test is ignored; the
+  file's header gives the commands: the server on its own port with a fresh `DATA_DIR`, then
+  `MOONY_RELAY_E2E=http://127.0.0.1:<port> cargo test --lib relay_e2e_blobs -- --ignored
+  --test-threads=1`. The suite needs its own server and one thread because one test changes the
+  server-wide blob quota for a moment. `pass::Limits.grace` exists for it: a real server dates its
+  blobs by its own clock, so the suite shortens the 7-day grace instead of waiting.
+- **Migrations.** 035–038 stay four migrations, though three of them shape the one table
+  `sync_blobs`: a development or demo profile that ran 037 or 038 from this branch would be
+  refused by the unknown-migration guard after a squash, and squashing gains nothing at runtime.
+- **Final review fixes (2026-11-15).**
+  - A transfer checks that its blob is complete once, when it opens it, and remembers its rowid
+    (`attachment_store::complete_row`, `begin_incoming`). Each 64 KiB chunk after that only checks,
+    from the primary key's index (`SELECT rowid FROM files.blobs WHERE id = ?1`, never the row),
+    that the blob's ID still names that rowid (`read_at_row`, `write_incoming_row`); both must
+    match, since SQLite reuses the highest rowid after a delete. Before, every chunk read the hash,
+    which lies past the content, so SQLite walked the blob's overflow pages per chunk (about 25 ms
+    a chunk for a fragmented 100 MiB blob, 1,600 times, with the database held). An upload also
+    stops while a download of the same ID is in progress and checks completeness once more before
+    it seals its last chunk, so an incoming blob begun under the same ID at the same rowid is
+    never sent as content. A download writes only into the row it began; the claim on its ID
+    (`IncomingBlobs`) makes it the only one that finishes that row, through the guarded
+    `finish_incoming`. The public `read_at` and `write_incoming` keep their own checks.
+  - A pull runs only `reconcile_rows`, per merged changeset; the full reconcile no longer runs at
+    the end of every pull that merged a change. It stays at lane start, after a replace and in
+    `repair::full`. Content lost from the store outside a merge is noticed at the next start of
+    the engine, not at the next pull. A held blob whose row comes back with the pull after a
+    replace is queued `up` by the merge's `reconcile_rows`.
+  - Turning sync off sweeps the incoming blobs of downloads that were cut off
+    (`setup::turn_off`, after the engine stopped; a failure is logged and sync stays off). Before,
+    only a lane start swept them, which never comes with sync off.
+  - With sync off, `require_here` returns at once: nothing is on its way, so neither the store's
+    completeness nor the queue is asked; the read still says a missing blob is not found.
+  - Content sealed with a key epoch this device has not received yet (right after a key rotation,
+    before the pull brings it) is no longer `unreadable` ("Could not download", up to 6 h between
+    tries): it is recorded as `local` (30 s, doubling to 30 minutes) and reads as on its way. A new
+    reason code would have needed a migration to widen the `last_error` CHECK of `sync_blobs`.
+  - Content no server has (`notOnServer`) is asked for after 5, 10, 20 and 40 minutes and an hour,
+    then doubling up to a day (`queue::NOT_ON_SERVER_MAX_WAIT`), so a blob whose only holder was
+    wiped costs one request a day per device, not one an hour. "Sync now" and "Try again" still
+    make it due at once. An entry due more than a day ahead (`MAX_BACKOFF`, now a day) counts as
+    dated by a clock set back.
+  - `pass::run_with` (other limits than `Limits::DEFAULT`) exists only in tests.

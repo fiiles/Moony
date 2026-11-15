@@ -99,6 +99,19 @@ export function rememberGreetingName(name: string | null | undefined) {
   }
 }
 
+/**
+ * After a join the profile holds the synced name: read it for the lock screen's greeting. A profile
+ * that cannot be read now is skipped silently; nothing waits on this.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- shared with both first runs
+export async function rememberGreetingNameFromProfile() {
+  try {
+    rememberGreetingName((await authApi.getProfile())?.name);
+  } catch {
+    /* the next password unlock stores it */
+  }
+}
+
 function rememberLockedAt() {
   try {
     localStorage.setItem(LOCKED_AT_KEY, String(Date.now()));

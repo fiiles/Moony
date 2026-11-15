@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/form';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { cn } from '@/lib/utils';
-import { passwordStrength } from '@/mobile/lib/password-strength';
+import { passwordStrength } from '@/utils/password-strength';
 import { devicePasswordSchema } from '@/utils/form-schemas';
 
 interface DevicePasswordFormProps {

@@ -21,8 +21,9 @@ import { Label } from '@/components/ui/label';
 
 /**
  * Joining with a Sync Recovery Kit: its recovery code (typed, pasted, or the kit QR's text) and,
- * for a typed code, the account number. Replaces this device's data (in Settings after a backup);
- * the busy cover shows through the shared mutation key. Mounted only while it runs.
+ * for a typed code, the account number. Replaces this device's data (in Settings and in the first
+ * run, after a backup is written); the busy cover shows through the shared mutation key. Mounted
+ * only while it runs.
  */
 export function RecoveryJoinFlow({
   context,

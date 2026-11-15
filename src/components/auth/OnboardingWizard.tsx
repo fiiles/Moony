@@ -40,19 +40,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { setupSchema, MIN_PASSWORD_LENGTH, type MenuPreferences } from '@shared/schema';
+import {
+  setupSchema,
+  MIN_PASSWORD_LENGTH,
+  type MenuPreferences,
+  type ReplaceOutcomeView,
+} from '@shared/schema';
 import { FX_SUPPORTED_CODES, type CurrencyCode } from '@shared/currencies';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import { MoonMark } from '@/components/common/MoonMark';
 import { WizardSteps } from '@/components/common/WizardSteps';
-import { rememberGreetingName, useAuth } from '@/hooks/use-auth';
+import { rememberGreetingName, rememberGreetingNameFromProfile, useAuth } from '@/hooks/use-auth';
+import { replaceOutcomeToast } from '@/components/settings/sync/replace-outcome';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { useFormat } from '@/lib/use-format';
 import { authApi, categorizationApi, onboardingApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { cn } from '@/lib/utils';
-import { passwordStrength } from '@/mobile/lib/password-strength';
+import { passwordStrength } from '@/utils/password-strength';
 import { profileNameSchema } from '@/utils/form-schemas';
 import {
   onboardingSteps,
@@ -151,6 +157,8 @@ export function OnboardingWizard({
     resolver: zodResolver(setupSchema),
     defaultValues: { name: '', surname: '', email: '', password: '', confirmPassword: '' },
   });
+  // Set once the account exists, when the form is emptied: the name the preview greets by
+  const [confirmedName, setConfirmedName] = useState<string | null>(null);
   const passwordValue = setupForm.watch('password');
   const strength = passwordStrength(passwordValue);
 
@@ -162,6 +170,8 @@ export function OnboardingWizard({
   };
   const leaveJoinPath = () => {
     joinPassword.current = null;
+    // A failed setup keeps the password in the mutation's variables
+    setupMutation.reset();
     setPath('new');
     setStep('welcome');
   };
@@ -197,6 +207,10 @@ export function OnboardingWizard({
         clearRecoveryKey();
         // The password and the key were held in the mutation's variables and data: drop them
         setupMutation.reset();
+        // The form held the typed password for the wizard's life: only the first name is kept
+        // (the preview greets by it); nothing reads the form's values after this
+        setConfirmedName(setupForm.getValues('name'));
+        setupForm.reset();
         setStep(stepAfterRecovery(path));
       },
     });
@@ -231,7 +245,9 @@ export function OnboardingWizard({
     resolver: zodResolver(profileNameSchema),
     defaultValues: { name: '', surname: '', email: '' },
   });
-  const firstName = (path === 'declined' ? nameForm.watch('name') : setupForm.watch('name')).trim();
+  const firstName = (
+    path === 'declined' ? nameForm.watch('name') : (confirmedName ?? setupForm.watch('name'))
+  ).trim();
 
   const saveAreas = async (names?: z.infer<typeof profileNameSchema>) => {
     if (savingAreas) return;
@@ -334,9 +350,15 @@ export function OnboardingWizard({
     }
   };
 
-  const joinedSync = async () => {
+  const joinedSync = async (outcome: ReplaceOutcomeView) => {
     joinPassword.current = null;
     toast(tSync('join.firstRunDone'));
+    // A backup the backend kept (the wizard was left on Připojení for a day) says where it is
+    if (outcome.kept) {
+      replaceOutcomeToast(tSync, tSync('pairing.joined', { path: outcome.backupPath }), outcome);
+    }
+    // The profile was created without a name: the synced one is read for the lock screen's greeting
+    void rememberGreetingNameFromProfile();
     await finish();
   };
 
@@ -609,7 +631,11 @@ export function OnboardingWizard({
                   />
                 </div>
                 {nav(
-                  () => setStep('welcome'),
+                  () => {
+                    // A failed setup keeps the password in the mutation's variables
+                    setupMutation.reset();
+                    setStep('welcome');
+                  },
                   <Button
                     type="submit"
                     disabled={setupMutation.isPending}
@@ -698,7 +724,7 @@ export function OnboardingWizard({
           {connectShown && (
             <ConnectStep
               password={joinPassword.current ?? ''}
-              onJoined={() => void joinedSync()}
+              onJoined={(outcome) => void joinedSync(outcome)}
               onDecline={declineSync}
             />
           )}

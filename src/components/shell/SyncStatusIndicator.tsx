@@ -60,14 +60,14 @@ export function SyncStatusIndicator() {
         <div className="space-y-4">
           <div>
             <h4 className="text-h3 text-ink">{t('popover.title')}</h4>
-            <p className="mt-1 text-caption text-ink-3">
-              {age ? `${label} · ${t(`age.${age.key}`, { count: age.count })}` : label}
-            </p>
             {stale && status.problem && (
               <p className="mt-1 text-caption text-ink-3">
                 {t(`status.problem.${status.problem}`)}
               </p>
             )}
+            <p className="mt-1 text-caption text-ink-3">
+              {age ? `${label} · ${t(`age.${age.key}`, { count: age.count })}` : label}
+            </p>
           </div>
 
           <div className="divide-y divide-line-soft text-table">

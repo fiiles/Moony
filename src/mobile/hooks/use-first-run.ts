@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import type { z } from 'zod';
 import type { CurrencyCode } from '@shared/currencies';
 import type { setupSchema } from '@shared/schema';
-import { rememberGreetingName, useAuth } from '@/hooks/use-auth';
+import { rememberGreetingName, rememberGreetingNameFromProfile, useAuth } from '@/hooks/use-auth';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { authApi, biometricApi, categorizationApi, onboardingApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -236,6 +236,8 @@ export function useFirstRun({
   /** The join is done: the password goes, the run ends after Biometrie (or now). */
   const joined = () => {
     setJoinPassword(null);
+    // The profile was created without a name: the synced one is read for the lock screen's greeting
+    void rememberGreetingNameFromProfile();
     toast(tSync('join.firstRunDone'));
     moveOn('connect');
   };

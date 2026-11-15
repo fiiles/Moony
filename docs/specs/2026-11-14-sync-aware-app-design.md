@@ -391,3 +391,30 @@ Open, for the owner:
 
 - The address of "Jak si server spustit" (the server's README, or a page on moonyfinance.com).
 - Whether part C should come before the attachments work, with the stricter rule of §4.
+
+## 12. As built (parts A and B, 2026-11-15)
+
+The sections above are the design as approved and are not rewritten. Where the build differs:
+
+- §5.4: "brand new" is stricter than six zero counts. A join's backup settles to plain only when
+  the replace impact holds nothing, no watchlist entry, budget goal, spending plan, planned
+  cashflow item, stock tag or person-made category or categorization rule exists, and the profile
+  is younger than 24 hours (`impact::brand_new_profile`). Reason: the six counts ignore other rows
+  a person can make, and a prunable backup holding the only copy of those would be a silent loss.
+- §5.2: the last step's new title "Ochraňte svá data" and its "set up sync" line show only with
+  the sync flag on; with the flag off the phone's first run is unchanged.
+- §6.1: the server counts as out of reach for the problems `offline`, `relayError` and
+  `rateLimited`.
+- §6.4: the reminder fires by time only while the server is out of reach (7 whole UTC days from
+  the last success, or from the moment sync was turned on when there was none); an idle or syncing
+  status with no problem never raises it, however old its last success. It is raised at once for a
+  pause or stop that needs the person. During a retry round of an unreachable server the reminder
+  stays while the top bar shows the running round. The top-bar count stays deadline-only; the
+  stall shows through the sync popover, the agenda and the phone's Údržba row. "When sync was
+  turned on" is this device's own `sync_devices.joined_at` (`SyncStatus.enabledAt`); no migration
+  was needed. The reminder exists only with the sync flag on.
+- §6.2: the three "Synchronizovat" buttons cannot start a second round while one runs.
+- §5.1: a person who chooses the join path and then continues without sync is asked for name and
+  surname on the next step, since the join path creates the profile without them.
+- Not done: the phone flows were not run in a simulator or on a device (the desktop was checked
+  live against a local sync server); part C (§7) waits for documents and photos to sync.

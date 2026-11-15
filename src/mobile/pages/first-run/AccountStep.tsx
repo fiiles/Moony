@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { cn } from '@/lib/utils';
 import type { FirstRunFlow, SetupFormValues } from '@/mobile/hooks/use-first-run';
-import { passwordStrength } from '@/mobile/lib/password-strength';
+import { passwordStrength } from '@/utils/password-strength';
 import { devicePasswordSchema } from '@/utils/form-schemas';
 import { StepHead } from './StepHead';
 import { field48, fieldMessage, primaryButton, textLink } from './styles';

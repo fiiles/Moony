@@ -40,7 +40,7 @@ import { useExportTextFile } from '@/mobile/hooks/use-export-text-file';
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { canConfirmChange } from '@/mobile/lib/change-password';
 import { changedRecoveryKeyFileName, exportsOnThisDevice } from '@/mobile/lib/export-file';
-import { passwordStrength } from '@/mobile/lib/password-strength';
+import { passwordStrength } from '@/utils/password-strength';
 import { biometryMethodKey, renderTextRef } from '@/mobile/lib/settings-summary';
 import { field48, fieldMessage, primaryButton } from '@/mobile/pages/first-run/styles';
 

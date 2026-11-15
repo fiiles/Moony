@@ -3,6 +3,7 @@ import { useIsMutating } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw } from 'lucide-react';
 import { REPLACE_DEVICE_MUTATION_KEY } from '@/hooks/use-device-sync-mutations';
+import type { ReplaceOutcomeView } from '@shared/schema';
 import type { JoinContext } from '@/utils/join-context';
 import { defaultDeviceKey } from '@/utils/sync-devices';
 import { JoinChoice, type JoinMethod } from '@/components/settings/sync/join/JoinChoice';
@@ -14,7 +15,7 @@ import { Button } from '@/components/ui/button';
 interface ConnectStepProps {
   /** The device password typed on the account step; empty when it is no longer in memory. */
   password: string;
-  onJoined: () => void;
+  onJoined: (outcome: ReplaceOutcomeView) => void;
   /** "Continue without sync": the normal steps follow. */
   onDecline: () => void;
 }
@@ -114,9 +115,9 @@ export function ConnectStep({ password, onJoined, onDecline }: ConnectStepProps)
           <Flow
             context={context}
             deviceName={deviceName}
-            onJoined={() => {
+            onJoined={(outcome) => {
               setJoined(true);
-              onJoined();
+              onJoined(outcome);
             }}
             onCancel={() => setScreen('choice')}
             onBusyChange={setFlowBusy}

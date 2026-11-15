@@ -93,9 +93,9 @@ and follow the dark block, which also sets `color-scheme: dark`. Both value sets
 | `--line-hover` | `#c9c5bc` | `#56544e` | input hover border |
 | `--ink` | `#292822` | `#eceae4` | headings, values |
 | `--ink-2` | `#504d46` | `#cdcbc4` | body, table values |
-| `--ink-3` | `#817e75` | `#a3a098` | secondary text |
-| `--ink-4` | `#98948b` | `#868379` | labels, captions |
-| `--ink-5` | `#aaa7a0` | `#6b6962` | axis ticks, placeholders |
+| `--ink-3` | `#5f5c56` | `#aba8a0` | secondary text |
+| `--ink-4` | `#6e6b64` | `#918f85` | labels, captions |
+| `--ink-5` | `#8a8882` | `#73716a` | axis ticks, placeholders |
 | `--ink-inverse` | `#ffffff` | `#1d1c19` | text on the contrast material |
 | `--ink-inverse-2` | `#d6d3cc` | `#5f5c54` | secondary text on the contrast material |
 | `--ink-hover` | `rgba(41,40,34,.05)` | `rgba(0,0,0,.18)` | nav and ghost hover |
@@ -120,7 +120,7 @@ and follow the dark block, which also sets `color-scheme: dark`. Both value sets
 | `--chart-area` | `#e1e1ee` | `#393b52` | area fill start (fades to `paper-2` at 0) |
 | `--chart-grid` | `#efeeea` | `#302f2c` | grid |
 | `--chart-cost` | `#a8a49b` | `#78756d` | dashed "Vloženo" |
-| `--chart-axis` | `#aaa7a0` | `#6b6962` | axis ticks |
+| `--chart-axis` | `#8a8882` | `#73716a` | axis ticks |
 | `--focus-border` | `#57544d` | `#a09d94` | keyboard focus border |
 | `--focus-ring` | `0 0 0 3px rgba(39,38,32,.10)` | `0 0 0 3px rgba(255,255,255,.12)` | keyboard focus ring |
 | `--sh-sidebar` | `7px 0 22px rgba(58,53,36,.03)` | `7px 0 22px rgba(0,0,0,.22)` | sidebar |
@@ -146,7 +146,7 @@ Validation that was run (dark theme, surface `#292826`):
 | Ordinal-ramp check (one hue, monotone L, ΔL ≥ 0.06, light end ≥ 2:1) | pass | The family reads as one ramp. |
 | `gain` / `loss` text contrast | 6.9:1 / 5.5:1 on paper; 5.7:1 / 4.7:1 on their soft tints | Both work as 10 px badge text. |
 | `gain` vs `loss` CVD ΔE | 9.4 (deutan, worst case; light 9.5) | ▲ / ▼ glyph mandatory as today. |
-| Ink on paper | ink 12.2, ink-2 9.1, ink-3 5.6, ink-4 3.9, ink-5 2.7:1 | ink-4 is the smallest text allowed for labels (light: 3.0:1). |
+| Ink on paper | ink 12.2, ink-2 9.1, ink-3 6.2, ink-4 4.5, ink-5 3.0:1 (light: 14.8, 8.4, 6.7, 5.3, 3.5) | Since 2026-11-15 `ink-3` and `ink-4` hold 4.5:1 on the weaker surface of each theme (light `canvas` 5.6 / 4.5, dark `paper` 6.2 / 4.5), so labels and notes at 10–11 px pass on both. `ink-5` holds 3:1 only: axis ticks, placeholders and chevrons, never text that carries a fact. |
 | Contrast material | `ink-inverse` on `dark` 13.8:1, `ink-inverse-2` 5.4:1 | Tooltip second line and nav counts stay readable. |
 | Logos (`ink-inverse` on s1–s3, `ink` on s4) | 12.4 / 7.5 / 4.4 / 6.1:1 | `.logo--4` keeps `ink` text as in light. |
 | Category presets, glyph lifted 30 % to ink | all 14 ≥ 4.9:1 (raw min 3.1:1) | D7. |

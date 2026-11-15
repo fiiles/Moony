@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { transactionDetails } from '@/utils/transaction-text';
 import { completeAccountIdentifier } from '@/utils/iban-utils';
 import { transactionTitle } from '@/mobile/lib/transaction-title';
+import { CategoryChip } from '@/mobile/components/cashflow/CategoryChip';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -54,10 +55,13 @@ const FLOW_CHOICES: readonly FlowChoice[] = ['auto', 'income', 'expense', 'trans
  * The transaction sheet (spec §8.4, README §13, audit D11): the head says who, when and how much
  * once — the counterparty as the title, the day in words under it, the amount and the payment's
  * note below — and the rows hold only what can be changed: the category (a row that opens the
- * picker over this sheet), the spending plan (not for income, unless one is set), and what the
- * payment counts as (Automaticky or one of the roles, with what the automatic choice comes to and
- * why, in plain words). The technical details fold under "Podrobnosti", each shown in full and
- * copied with a tap; then Smazat as a text danger action, which asks first in a confirm sheet.
+ * picker over this sheet, with the category's coloured chip) and the spending plan (not for
+ * income, unless one is set; with the plan's chip). The payment's role in the reports — the
+ * desktop's "Role v přehledech": Automaticky or one of the three roles, with what the automatic
+ * choice comes to and the desktop's sentence on what a role does — is an override few payments
+ * need, so it opens the folded "Podrobnosti"; a payment that has one shows it as a row that opens
+ * them. The technical details follow there, each shown in full and copied with a tap; then Smazat
+ * as a text danger action, which asks first in a confirm sheet.
  * Changes save as they are made, so the sheet has no footer: "Hotovo" in the head closes it (C7).
  */
 export function TransactionSheet({
@@ -102,6 +106,10 @@ export function TransactionSheet({
   );
   const note = details.filter((text) => text !== title);
   const auto = shown.flowKind === null;
+  const categoryText = category ? categoryName(category) : t('account.ledger.noCategory');
+  // The desktop's name for it ("Role v přehledech"). It is an override few payments need, so it
+  // lives in the folded details; a payment that has one says so in a row that opens them.
+  const roleLabel = tb('readiness.categoryRole');
   const plan = planIndex.data?.find((s) => s.plan.id === shown.spendingPlanId)?.plan;
   // A tagged payment whose plan is not known (yet) is not "Bez plánu"
   const planText = plan
@@ -175,7 +183,13 @@ export function TransactionSheet({
         <div className="divide-y divide-line-soft">
           <KeyValueRow
             label={t('transaction.category')}
-            value={category ? categoryName(category) : t('account.ledger.noCategory')}
+            value={
+              <span className="inline-flex max-w-full items-center justify-end gap-2">
+                <CategoryChip category={category} size="sm" />
+                <span className="truncate">{categoryText}</span>
+              </span>
+            }
+            ariaLabel={`${t('transaction.category')}, ${categoryText}`}
             onClick={onPickCategory}
           />
           {showPlan && (
@@ -195,19 +209,13 @@ export function TransactionSheet({
               onClick={() => setPlanOpen(true)}
             />
           )}
-          <KeyValueRow
-            stack
-            label={t('transaction.flow')}
-            value={
-              <Segment<FlowChoice>
-                value={shown.flowKind ?? 'auto'}
-                options={flowOptions}
-                onChange={changeFlow}
-                label={t('transaction.flow')}
-              />
-            }
-            sub={meaning}
-          />
+          {!auto && (
+            <KeyValueRow
+              label={roleLabel}
+              value={tb(`readiness.flow.${effectiveKind}`)}
+              onClick={() => setExpanded(true)}
+            />
+          )}
         </div>
         <button
           type="button"
@@ -225,6 +233,24 @@ export function TransactionSheet({
         </button>
         {expanded && (
           <div id={detailsId} className="divide-y divide-line-soft">
+            <KeyValueRow
+              stack
+              label={roleLabel}
+              value={
+                <Segment<FlowChoice>
+                  value={shown.flowKind ?? 'auto'}
+                  options={flowOptions}
+                  onChange={changeFlow}
+                  label={roleLabel}
+                />
+              }
+              sub={
+                <>
+                  {meaning && <span className="block font-semibold text-ink-3">{meaning}</span>}
+                  <span className="block">{tb('readiness.roleImpact')}</span>
+                </>
+              }
+            />
             {technical.flatMap(({ label: name, value, copy }) => {
               if (value === null || value === '') return [];
               return copy

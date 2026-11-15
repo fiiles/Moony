@@ -191,7 +191,7 @@
     "unsnooze": "キューに戻す"
   },
   "account": {
-    "record": "残高を記録",
+    "record": "残高を変更",
     "import": "明細をインポート",
     "menu": {
       "edit": "口座を編集",

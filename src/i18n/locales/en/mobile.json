@@ -211,7 +211,7 @@
     "unsnooze": "Back to the queue"
   },
   "account": {
-    "record": "Record balance",
+    "record": "Update balance",
     "import": "Import statement",
     "menu": {
       "edit": "Edit account",

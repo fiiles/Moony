@@ -79,6 +79,7 @@ import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useUndoImport } from '@/mobile/hooks/use-undo-import';
+import { useSpendingPlanIndex } from '@/hooks/use-spending-plans';
 import { useLedger, type Ledger } from '@/mobile/hooks/use-ledger';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useTransactionDay } from '@/mobile/hooks/use-transaction-day';
@@ -901,6 +902,12 @@ function LedgerSection({
   const { t: tc } = useTranslation('common');
   const filters = activeFilterCount(state);
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  // The plans by id, for the badge of a tagged payment
+  const planIndex = useSpendingPlanIndex();
+  const planById = useMemo(
+    () => new Map((planIndex.data ?? []).map(({ plan }) => [plan.id, plan])),
+    [planIndex.data]
+  );
   const groups = useMemo(() => groupByDay(ledger.rows), [ledger.rows]);
 
   // The next page loads when the end of the list comes within 200 px of the screen's bottom.
@@ -1007,6 +1014,7 @@ function LedgerSection({
                     tx={tx}
                     category={tx.categoryId ? categoryById.get(tx.categoryId) : undefined}
                     flow={ledger.flowById.get(tx.id)}
+                    plan={tx.spendingPlanId ? planById.get(tx.spendingPlanId) : undefined}
                     onOpen={() => onOpen(tx)}
                     onCategorize={() => onCategorize(tx)}
                     onDelete={() => onDelete(tx)}

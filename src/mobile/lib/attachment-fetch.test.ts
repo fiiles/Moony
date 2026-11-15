@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { AttachmentContent } from '@shared/schema';
 import { ATTACHMENT_CONTENT_VALUES } from '@/utils/attachment-content';
-import { fetchPlan, rowOpensViewer, shouldAskDownload, tryAgainAction } from './attachment-fetch';
+import {
+  fetchPlan,
+  rowOpensViewer,
+  shouldAskDownload,
+  tryAgainAction,
+  viewerLayers,
+  type FetchPlan,
+  type ViewerLayers,
+} from './attachment-fetch';
 
 describe('fetchPlan', () => {
   it('shows the content that is on the phone, waiting to upload included', () => {
@@ -76,9 +84,29 @@ describe('tryAgainAction', () => {
 });
 
 describe('rowOpensViewer', () => {
-  it('opens for everything but content that cannot arrive or is lost', () => {
-    for (const content of ATTACHMENT_CONTENT_VALUES) {
-      expect(rowOpensViewer(content)).toBe(content !== 'notOnServer' && content !== 'missing');
-    }
+  it.each([
+    ['here', true],
+    ['waitingUpload', true],
+    ['notHere', true],
+    ['downloading', true],
+    ['failed', true],
+    ['notOnServer', false],
+    ['missing', false],
+  ] as [AttachmentContent, boolean][])('%s -> %s', (content, opens) => {
+    expect(rowOpensViewer(content)).toBe(opens);
   });
+});
+
+describe('viewerLayers', () => {
+  it.each([
+    ['show', 'loading', { skeleton: true, thumbnail: false, note: false }],
+    ['show', 'ready', { skeleton: false, thumbnail: false, note: false }],
+    ['fetching', 'fetching', { skeleton: false, thumbnail: true, note: true }],
+    ['unavailable', 'loading', { skeleton: false, thumbnail: true, note: true }],
+  ] as [FetchPlan['stage'], 'loading' | 'ready' | 'fetching', ViewerLayers][])(
+    '%s while %s',
+    (stage, status, layers) => {
+      expect(viewerLayers(stage, status)).toEqual(layers);
+    }
+  );
 });

@@ -311,7 +311,8 @@
     "previewFailed": "Non è stato possibile mostrare l'anteprima. Apri il documento in Moony sul computer.",
     "zoomIn": "Ingrandisci",
     "zoomOut": "Riduci",
-    "notHereSub": "Sugli altri tuoi dispositivi · tocca per scaricare"
+    "notHereSub": "Sugli altri tuoi dispositivi · tocca per scaricare",
+    "elsewhereSub": "Sugli altri tuoi dispositivi"
   },
   "policy": {
     "copy": "Copia il numero di contratto",

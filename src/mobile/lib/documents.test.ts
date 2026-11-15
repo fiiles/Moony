@@ -160,6 +160,7 @@ describe('documentSub with where the content is', () => {
     uploadedAt: UPLOADED,
   };
   const notes: Record<DocumentNoteKey, string> = {
+    elsewhereSub: 'Na vašich dalších zařízeních',
     notHereSub: 'Na vašich dalších zařízeních · klepnutím stáhnete',
     waitingUpload: 'Čeká na synchronizaci',
     downloading: 'Stahuje se…',
@@ -176,14 +177,28 @@ describe('documentSub with where the content is', () => {
     expect(documentSub(doc, label, cs, note)).toBe(base);
   });
 
-  it('appends the note of every other state', () => {
+  it('puts the note of every other state first', () => {
     const sub = (content: AttachmentContent) => documentSub({ ...doc, content }, label, cs, note);
-    expect(sub('waitingUpload')).toBe(`${base} · Čeká na synchronizaci`);
-    expect(sub('notHere')).toBe(`${base} · Na vašich dalších zařízeních · klepnutím stáhnete`);
-    expect(sub('downloading')).toBe(`${base} · Stahuje se…`);
-    expect(sub('notOnServer')).toBe(`${base} · Zatím nenahráno z druhého zařízení`);
-    expect(sub('failed')).toBe(`${base} · Stažení se nepovedlo`);
-    expect(sub('missing')).toBe(`${base} · Obsah chybí`);
+    expect(sub('waitingUpload')).toBe(`Čeká na synchronizaci · ${base}`);
+    expect(sub('notHere')).toBe(`Na vašich dalších zařízeních · klepnutím stáhnete · ${base}`);
+    expect(sub('downloading')).toBe(`Stahuje se… · ${base}`);
+    expect(sub('notOnServer')).toBe(`Zatím nenahráno z druhého zařízení · ${base}`);
+    expect(sub('failed')).toBe(`Stažení se nepovedlo · ${base}`);
+    expect(sub('missing')).toBe(`Obsah chybí · ${base}`);
+  });
+
+  it('says only that a file the phone cannot show is elsewhere, and keeps the other notes', () => {
+    const external = { ...doc, mimeType: 'application/msword' };
+    const sub = (content: AttachmentContent, mimeType = external.mimeType) =>
+      documentSub({ ...doc, mimeType, content }, label, cs, note);
+    expect(sub('notHere')).toBe(`Na vašich dalších zařízeních · ${base}`);
+    expect(sub('notHere', 'application/pdf')).toBe(
+      `Na vašich dalších zařízeních · klepnutím stáhnete · ${base}`
+    );
+    expect(sub('notHere', 'image/png')).toContain('klepnutím stáhnete');
+    expect(sub('downloading')).toBe(`Stahuje se… · ${base}`);
+    expect(sub('failed')).toBe(`Stažení se nepovedlo · ${base}`);
+    expect(sub('here')).toBe(base);
   });
 
   it('asks for the note of a state only when there is one', () => {

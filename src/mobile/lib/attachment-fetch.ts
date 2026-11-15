@@ -56,8 +56,29 @@ export function tryAgainAction(content: AttachmentContent): TryAgainAction | nul
   return null;
 }
 
+/** What a viewer layers: the loading skeleton and its text, the thumbnail, the note card. */
+export interface ViewerLayers {
+  skeleton: boolean;
+  thumbnail: boolean;
+  note: boolean;
+}
+
+/** The loading skeleton belongs to a full load that is really under way, never to a state's note card. */
+export function viewerLayers(
+  stage: FetchPlan['stage'],
+  status: 'loading' | 'ready' | 'failed' | 'fetching'
+): ViewerLayers {
+  return {
+    skeleton: stage === 'show' && status === 'loading',
+    thumbnail: stage !== 'show',
+    note: stage !== 'show',
+  };
+}
+
 /**
- * Whether tapping a row opens the viewer. Everything does but content that cannot arrive
+ * Whether tapping a row opens the viewer. Deliberately differs from `attachmentView(…, 'phone')
+ * .openable` for `failed` and `downloading`: a failed row opens to "Try again", a downloading one
+ * to the spinner. Everything does but content that cannot arrive
  * (`notOnServer`: the other device has not uploaded it) or is lost (`missing`): the row's own note
  * says so. A failed or downloading one opens to its state, with Try again for a failed one.
  */

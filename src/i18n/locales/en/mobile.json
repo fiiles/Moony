@@ -287,7 +287,8 @@
     "previewFailed": "The preview could not be shown. Open the document in Moony on your computer.",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
-    "notHereSub": "On your other devices · tap to download"
+    "notHereSub": "On your other devices · tap to download",
+    "elsewhereSub": "On your other devices"
   },
   "policy": {
     "copy": "Copy contract number",

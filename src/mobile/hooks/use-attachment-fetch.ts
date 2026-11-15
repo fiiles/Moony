@@ -44,6 +44,8 @@ export function useAttachmentFetch(args: {
   const retryingRef = useRef(false);
   // The id this opening already asked for
   const asked = useRef<string | null>(null);
+  // The newest ask: a result of an earlier one (an earlier opening, a superseded retry) is ignored
+  const seq = useRef(0);
 
   // Every opening of an item starts without a failed ask
   const visit = open ? (id ?? null) : null;
@@ -51,19 +53,24 @@ export function useAttachmentFetch(args: {
   if (seenVisit !== visit) {
     setSeenVisit(visit);
     setAskFailed(false);
+    setRetrying(false);
   }
 
   useEffect(() => {
     if (!open) {
       asked.current = null;
+      seq.current += 1;
+      // A retry still in flight no longer blocks the next opening
+      retryingRef.current = false;
       return;
     }
     if (skip || !id || !content) return;
     if (!shouldAskDownload(content, asked.current === id)) return;
     asked.current = id;
+    const token = ++seq.current;
     // The event refreshes the lists; nothing is invalidated here and no snapshot is recorded
     deviceSyncApi.downloadAttachment(kind, id).catch(() => {
-      if (asked.current === id) setAskFailed(true);
+      if (token === seq.current) setAskFailed(true);
     });
   }, [open, kind, id, content, skip]);
 
@@ -75,6 +82,7 @@ export function useAttachmentFetch(args: {
     setRetrying(true);
     setAskFailed(false);
     asked.current = id;
+    const token = ++seq.current;
     // As the first ask: the event refreshes the row, no cache write by hand, no snapshot
     const call =
       action === 'download'
@@ -82,6 +90,7 @@ export function useAttachmentFetch(args: {
         : deviceSyncApi.retryAttachment(kind, id);
     call
       .catch((error: unknown) => {
+        if (token !== seq.current) return;
         if (action === 'download') setAskFailed(true);
         else {
           toast.error(tc('status.error'), {
@@ -90,6 +99,7 @@ export function useAttachmentFetch(args: {
         }
       })
       .finally(() => {
+        if (token !== seq.current) return;
         retryingRef.current = false;
         setRetrying(false);
       });

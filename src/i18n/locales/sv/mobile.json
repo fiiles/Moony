@@ -287,7 +287,8 @@
     "previewFailed": "Förhandsvisningen kunde inte visas. Öppna dokumentet i Moony på datorn.",
     "zoomIn": "Zooma in",
     "zoomOut": "Zooma ut",
-    "notHereSub": "På dina andra enheter · tryck för att ladda ned"
+    "notHereSub": "På dina andra enheter · tryck för att ladda ned",
+    "elsewhereSub": "På dina andra enheter"
   },
   "policy": {
     "copy": "Kopiera avtalsnummer",

@@ -311,7 +311,8 @@
     "previewFailed": "Náhled se nepodařilo zobrazit. Otevřete dokument v Moony na počítači.",
     "zoomIn": "Přiblížit",
     "zoomOut": "Oddálit",
-    "notHereSub": "Na vašich dalších zařízeních · klepnutím stáhnete"
+    "notHereSub": "Na vašich dalších zařízeních · klepnutím stáhnete",
+    "elsewhereSub": "Na vašich dalších zařízeních"
   },
   "policy": {
     "copy": "Zkopírovat číslo smlouvy",

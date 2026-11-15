@@ -91,7 +91,9 @@ export function DocumentsSection({ kind, ownerId, fileTypes, typeLabel }: Docume
   });
 
   const noteText = (key: DocumentNoteKey) =>
-    key === 'notHereSub' ? t('documents.notHereSub') : tc(`attachments.content.${key}`);
+    key === 'notHereSub' || key === 'elsewhereSub'
+      ? t(`documents.${key}`)
+      : tc(`attachments.content.${key}`);
   const sub = (doc: PhoneDocument) => documentSub(doc, typeLabel, fmt, noteText);
 
   const chosen = (files: File[], source: DocumentSource) => {

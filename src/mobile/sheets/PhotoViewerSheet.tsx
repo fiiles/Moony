@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useFormat } from '@/lib/use-format';
 import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
+import { viewerLayers } from '@/mobile/lib/attachment-fetch';
 import type { GalleryPhoto } from '@/mobile/lib/property-detail';
 import { FetchingNotice, UnavailableNotice } from '@/mobile/components/documents/AttachmentStates';
 import { useAttachmentFetch } from '@/mobile/hooks/use-attachment-fetch';
@@ -86,6 +87,7 @@ export function PhotoViewerSheet({
     content: shown?.content,
   });
   // The status follows the plan: a spinner while the photo comes, a fresh load once it is here
+  // (the note of an unavailable photo is no load: `viewerLayers` keeps the skeleton off it)
   const planned: Status =
     plan.stage === 'fetching'
       ? 'fetching'
@@ -93,6 +95,7 @@ export function PhotoViewerSheet({
         ? 'loading'
         : status;
   if (planned !== status) setStatus(planned);
+  const layers = viewerLayers(plan.stage, status);
 
   return (
     <Sheet
@@ -121,7 +124,7 @@ export function PhotoViewerSheet({
       {shown && (
         // A column that fills the sheet's body: the box takes all of it
         <div className="relative flex min-h-0 flex-1 flex-col">
-          {status === 'loading' && (
+          {layers.skeleton && (
             <>
               <Skeleton className="absolute inset-0 z-[1] rounded-r3" />
               <span role="status" className="sr-only">

@@ -6,6 +6,7 @@
 import type { AttachmentContent } from '@shared/schema';
 import type { Formatters } from '@/lib/format';
 import { attachmentView, type AttachmentNote } from '@/utils/attachment-content';
+import { viewerKind } from '@/utils/attachment-viewer';
 
 /** The attachment store's limit (`validation.attachmentTooLarge`): the phone refuses before reading. */
 export const MAX_DOCUMENT_BYTES = 100 * 1024 * 1024;
@@ -95,18 +96,28 @@ interface DocumentSubInput {
   uploadedAt: number;
   /** Where the content is with device sync; left out (or `here`) the line has no note. */
   content?: AttachmentContent;
+  /** The file's type: one the phone cannot show is never downloaded on open. */
+  mimeType?: string;
 }
 
 /**
  * The words a row's note can take: `notHereSub` is the phone's own (`mobile.documents`), the rest
  * are `common.attachments.content.*`. The caller resolves the text.
  */
-export type DocumentNoteKey = 'notHereSub' | AttachmentNote;
+export type DocumentNoteKey = 'notHereSub' | 'elsewhereSub' | AttachmentNote;
 
-/** The note a row's sub-line ends with, or `null` for content that is here. */
-function documentNoteKey(content: AttachmentContent): DocumentNoteKey | null {
+/** The note a row's sub-line starts with, or `null` for content that is here. */
+function documentNoteKey(
+  doc: DocumentSubInput & { content: AttachmentContent }
+): DocumentNoteKey | null {
+  const { content } = doc;
   // The phone's `notHere` is a document to download, not a spinner (`attachmentView`'s `download` action)
-  if (content === 'notHere') return 'notHereSub';
+  if (content === 'notHere') {
+    // A file the phone cannot show is not downloaded on open (no share action here), so no "tap to download"
+    return doc.mimeType !== undefined && viewerKind(doc.mimeType) === 'external'
+      ? 'elsewhereSub'
+      : 'notHereSub';
+  }
   return attachmentView(content, 'phone').note;
 }
 
@@ -114,7 +125,7 @@ function documentNoteKey(content: AttachmentContent): DocumentNoteKey | null {
  * The sub-line of a document row: the type's label · the size · the upload day ("smlouva · 1,2 MB ·
  * 24. 10. 2026"). The size is left out when it is not known. The day is the local one — the upload
  * is a real instant, so a document added at 00:30 is not dated the day before. A document whose
- * content is not on the phone ends with the note that says where it is (`noteText` words it);
+ * content is not on the phone starts with the note that says where it is (`noteText` words it; first, so a narrow screen's cut falls on the day);
  * content that is here (or sync off) gives the line it always was.
  */
 export function documentSub(
@@ -123,12 +134,13 @@ export function documentSub(
   fmt: Pick<Formatters, 'number' | 'date'>,
   noteText?: (key: DocumentNoteKey) => string
 ): string {
-  const noteKey = doc.content && noteText ? documentNoteKey(doc.content) : null;
+  const noteKey =
+    doc.content && noteText ? documentNoteKey({ ...doc, content: doc.content }) : null;
   return [
+    noteKey && noteText ? noteText(noteKey) : '',
     typeLabel(doc.fileType),
     doc.fileSize ? fileSizeText(doc.fileSize, fmt) : '',
     fmt.date(new Date(doc.uploadedAt * 1000)),
-    noteKey && noteText ? noteText(noteKey) : '',
   ]
     .filter(Boolean)
     .join(' · ');

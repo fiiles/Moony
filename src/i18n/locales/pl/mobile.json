@@ -335,7 +335,8 @@
     "previewFailed": "Nie udało się wyświetlić podglądu. Otwórz dokument w Moony na komputerze.",
     "zoomIn": "Powiększ",
     "zoomOut": "Pomniejsz",
-    "notHereSub": "Na innych urządzeniach · dotknij, aby pobrać"
+    "notHereSub": "Na innych urządzeniach · dotknij, aby pobrać",
+    "elsewhereSub": "Na innych urządzeniach"
   },
   "policy": {
     "copy": "Skopiuj numer umowy",

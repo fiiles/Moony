@@ -752,7 +752,7 @@
     "delete": {
       "title": "Alle Daten löschen?",
       "lead": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon dauerhaft. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — sie ist der einzige Weg zurück.",
-      "leadSynced": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon sowie die synchronisierten Daten auf dem Synchronisierungsserver dauerhaft: Ihre anderen Geräte hören auf zu synchronisieren und behalten die Daten, die sie haben. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — für dieses Telefon ist sie der einzige Weg zurück.",
+      "leadSynced": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon dauerhaft, ebenso die synchronisierten Daten auf dem Synchronisierungsserver (sofern erreichbar): Ihre anderen Geräte hören auf zu synchronisieren und behalten die Daten, die sie haben. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — für dieses Telefon ist sie der einzige Weg zurück.",
       "confirmLabel": "Geben Sie zur Bestätigung {{word}} ein",
       "confirm": "Daten löschen",
       "failed": "Löschen fehlgeschlagen"
@@ -828,7 +828,7 @@
     "syncNoCopy": "Eine Kopie außerhalb von Moony zu speichern ist auf diesem Telefon noch nicht möglich. Eine Sicherung lässt sich aus dieser Liste wiederherstellen. Sie geht verloren, wenn die Daten von Moony vom Telefon entfernt werden.",
     "leadSync": "Die Synchronisierung hält Ihre Geräte auf demselben Stand. Eine Sicherung ist eine verschlüsselte Datei für einen einmaligen Umzug oder eine Kopie zum Aufbewahren: die Datenbank, die Schlüssel sowie die Dokumente und Fotos auf diesem Telefon. Nur Ihr Passwort öffnet sie.",
     "restoreLeadSync": "Stellen Sie eine Sicherung von diesem Telefon wieder her oder übertragen Sie ein Profil einmalig aus Moony auf dem Computer: Wählen Sie die Sicherungsdatei und entsperren Sie nach der Wiederherstellung mit dem Passwort, das bei ihrer Erstellung galt. Die Geräte hält die Synchronisierung auf demselben Stand.",
-    "osBackupNoteSync": "Das Profil wird nicht in der eigenen Sicherung des Telefons gespeichert (iCloud oder Computer). Außerhalb dieses Telefons liegen Ihre Daten auf dem Sync-Server und auf Ihren anderen Geräten sowie in jeder Moony-Sicherung, die Sie selbst speichern."
+    "osBackupNoteSync": "Das Profil wird nicht in der eigenen Sicherung des Telefons gespeichert (iCloud oder Computer). Außerhalb dieses Telefons liegen Ihre Daten, sobald sie synchronisiert sind, auf dem Synchronisierungsserver und auf Ihren anderen Geräten sowie in jeder Moony-Sicherung, die Sie selbst speichern."
   },
   "firstRun": {
     "privacyLead": "Moony speichert alles in einer verschlüsselten Datenbank auf diesem Telefon. Keine Cloud, kein Konto bei uns.",

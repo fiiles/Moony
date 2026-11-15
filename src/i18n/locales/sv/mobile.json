@@ -752,7 +752,7 @@
     "delete": {
       "title": "Radera alla data?",
       "lead": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — det är den enda vägen tillbaka.",
-      "leadSynced": "Raderar databasen, nycklarna och bilagorna på den här telefonen samt de synkroniserade data på synkroniseringsservern för gott: dina andra enheter slutar synkronisera och behåller de data de har. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — för den här telefonen är det den enda vägen tillbaka.",
+      "leadSynced": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott samt de synkroniserade data på synkroniseringsservern (om den kan nås): dina andra enheter slutar synkronisera och behåller de data de har. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — för den här telefonen är det den enda vägen tillbaka.",
       "confirmLabel": "Skriv {{word}} för att bekräfta",
       "confirm": "Radera data",
       "failed": "Raderingen misslyckades"
@@ -828,7 +828,7 @@
     "syncNoCopy": "Att spara en kopia utanför Moony går inte än på den här telefonen. En säkerhetskopia kan återställas från den här listan. Den går förlorad om Moonys data tas bort från telefonen.",
     "leadSync": "Synkroniseringen håller dina enheter i takt. En säkerhetskopia är en krypterad fil för en engångsflytt eller en kopia att spara: databasen, nycklarna och dokumenten och fotona på den här telefonen. Bara ditt lösenord öppnar den.",
     "restoreLeadSync": "Återställ en säkerhetskopia från den här telefonen, eller flytta en profil en gång från Moony på datorn: välj säkerhetskopian och lås upp efter återställningen med lösenordet som gällde när den skapades. Synkroniseringen håller enheterna i takt.",
-    "osBackupNoteSync": "Profilen sparas inte i telefonens egen säkerhetskopia (iCloud eller en dator). Utanför den här telefonen finns dina data på synkroniseringsservern, på dina andra enheter och i varje Moony-säkerhetskopia som du sparar själv."
+    "osBackupNoteSync": "Profilen sparas inte i telefonens egen säkerhetskopia (iCloud eller en dator). Utanför den här telefonen finns dina data, så snart de har synkroniserats, på synkroniseringsservern och på dina andra enheter samt i varje Moony-säkerhetskopia som du sparar själv."
   },
   "firstRun": {
     "privacyLead": "Moony lagrar allt i en krypterad databas på den här telefonen. Inget moln, inget konto hos oss.",

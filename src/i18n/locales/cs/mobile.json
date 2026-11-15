@@ -793,7 +793,7 @@
     "delete": {
       "title": "Smazat všechna data?",
       "lead": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — je to jediná cesta zpět.",
-      "leadSynced": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu i synchronizovaná data na synchronizačním serveru: ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — pro tento telefon je to jediná cesta zpět.",
+      "leadSynced": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu i synchronizovaná data na synchronizačním serveru (pokud je dostupný): ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — pro tento telefon je to jediná cesta zpět.",
       "confirmLabel": "Pro potvrzení napište {{word}}",
       "confirm": "Smazat data",
       "failed": "Smazání selhalo"
@@ -884,7 +884,7 @@
     "syncNoCopy": "Uložení kopie mimo Moony zatím na tomto telefonu není k dispozici. Zálohu lze obnovit z tohoto seznamu. Pokud se data Moony z telefonu odstraní, zálohy zmizí.",
     "leadSync": "Synchronizace drží vaše zařízení ve shodě. Záloha je jeden šifrovaný soubor pro jednorázový přenos nebo kopii k uschování: databáze, klíče a dokumenty a fotky v tomto telefonu. Otevře ji jen vaše heslo.",
     "restoreLeadSync": "Obnovte zálohu z tohoto telefonu, nebo jednorázově přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření. Zařízení ve shodě drží synchronizace.",
-    "osBackupNoteSync": "Profil se neukládá do zálohy telefonu (iCloud ani počítač). Mimo telefon jsou vaše data na synchronizačním serveru a na dalších zařízeních a v zálohách Moony, které si sami uložíte."
+    "osBackupNoteSync": "Profil se neukládá do zálohy telefonu (iCloud ani počítač). Mimo telefon jsou vaše data, jakmile se synchronizují, na synchronizačním serveru a na dalších zařízeních a v zálohách Moony, které si sami uložíte."
   },
   "firstRun": {
     "privacyLead": "Moony ukládá vše do šifrované databáze v tomto telefonu. Žádný cloud, žádný účet u nás.",

@@ -120,9 +120,9 @@
     "confirmWord": "SMAZAT",
     "deleteAll": "Smazat všechna data",
     "deleteAllHint": "Odstraní databázi, soubory s klíči a přílohy na tomto počítači. Kopie vedle databáze (moony.db.bak-…, pre-restore-…) zůstanou v datové složce (Data a zálohy → Otevřít složku), stejně jako zálohy uložené mimo aplikaci.",
-    "deleteAllHintSynced": "Odstraní databázi, soubory s klíči a přílohy na tomto počítači i synchronizovaná data na synchronizačním serveru: ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají. Kopie vedle databáze (moony.db.bak-…, pre-restore-…) zůstanou v datové složce (Data a zálohy → Otevřít složku), stejně jako zálohy uložené mimo aplikaci.",
+    "deleteAllHintSynced": "Odstraní databázi, soubory s klíči a přílohy na tomto počítači i synchronizovaná data na synchronizačním serveru (pokud je dostupný): ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají. Kopie vedle databáze (moony.db.bak-…, pre-restore-…) zůstanou v datové složce (Data a zálohy → Otevřít složku), stejně jako zálohy uložené mimo aplikaci.",
     "deleteButton": "Smazat data…",
-    "syncDeleted": "Smažou se i synchronizovaná data na synchronizačním serveru: vaše ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají.",
+    "syncDeleted": "Smažou se i synchronizovaná data na synchronizačním serveru: vaše ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají. Pokud server není dostupný, zůstanou tam, šifrovaná.",
     "confirmDescriptionSynced": "Tuto akci nelze vrátit zpět. Trvale smaže databázi, soubory s klíči a přílohy z tohoto zařízení. Kopie, které Moony ukládá vedle databáze (moony.db.bak-…, pre-restore-…), zůstanou v datové složce; vede do ní Nastavení → Data a zálohy → Otevřít složku."
   },
   "toast": {

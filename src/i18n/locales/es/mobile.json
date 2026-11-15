@@ -792,7 +792,7 @@
     "delete": {
       "title": "¿Eliminar todos los datos?",
       "lead": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: es la única forma de recuperar los datos.",
-      "leadSynced": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono, y los datos sincronizados en el servidor de sincronización: tus demás dispositivos dejan de sincronizar y conservan los datos que tienen. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: para este teléfono es la única forma de recuperar los datos.",
+      "leadSynced": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono, y los datos sincronizados en el servidor de sincronización (si se puede contactar con él): tus demás dispositivos dejan de sincronizar y conservan los datos que tienen. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: para este teléfono es la única forma de recuperar los datos.",
       "confirmLabel": "Escribe {{word}} para confirmar",
       "confirm": "Eliminar datos",
       "failed": "No se pudo eliminar"
@@ -876,7 +876,7 @@
     "syncNoCopy": "Guardar una copia fuera de Moony todavía no está disponible en este teléfono. Puedes restaurar una copia de seguridad desde esta lista. Se pierde si los datos de Moony se eliminan del teléfono.",
     "leadSync": "La sincronización mantiene tus dispositivos al día. Una copia de seguridad es un archivo cifrado para un traslado puntual o una copia que guardar: la base de datos, las claves y los documentos y fotos de este teléfono. Solo tu contraseña la abre.",
     "restoreLeadSync": "Restaura una copia de seguridad de este teléfono, o traslada una vez un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó. La sincronización mantiene tus dispositivos al día.",
-    "osBackupNoteSync": "El perfil no se guarda en la copia de seguridad del propio teléfono (iCloud u ordenador). Fuera de este teléfono, tus datos están en el servidor de sincronización, en tus otros dispositivos y en cualquier copia de seguridad de Moony que guardes tú."
+    "osBackupNoteSync": "El perfil no se guarda en la copia de seguridad del propio teléfono (iCloud u ordenador). Fuera de este teléfono, tus datos, una vez sincronizados, están en el servidor de sincronización y en tus otros dispositivos, y en cualquier copia de seguridad de Moony que guardes tú."
   },
   "firstRun": {
     "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",

@@ -792,7 +792,7 @@
     "delete": {
       "title": "Eliminare tutti i dati?",
       "lead": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono. Le copie di backup fuori dal telefono restano. Fai prima un backup: è l'unica via per tornare indietro.",
-      "leadSynced": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono, e i dati sincronizzati sul server di sincronizzazione: gli altri tuoi dispositivi smettono di sincronizzare e conservano i dati che hanno. Le copie di backup fuori dal telefono restano. Fai prima un backup: per questo telefono è l'unica via per tornare indietro.",
+      "leadSynced": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono, e i dati sincronizzati sul server di sincronizzazione (se raggiungibile): gli altri tuoi dispositivi smettono di sincronizzare e conservano i dati che hanno. Le copie di backup fuori dal telefono restano. Fai prima un backup: per questo telefono è l'unica via per tornare indietro.",
       "confirmLabel": "Scrivi {{word}} per confermare",
       "confirm": "Elimina i dati",
       "failed": "Eliminazione non riuscita"
@@ -876,7 +876,7 @@
     "syncNoCopy": "Salvare una copia fuori da Moony non è ancora disponibile su questo telefono. Un backup si può ripristinare da questo elenco. Va perso se i dati di Moony vengono rimossi dal telefono.",
     "leadSync": "La sincronizzazione tiene allineati i tuoi dispositivi. Un backup è un unico file cifrato per un trasferimento una tantum o una copia da conservare: il database, le chiavi e i documenti e le foto su questo telefono. Lo apre solo la tua password.",
     "restoreLeadSync": "Ripristina un backup da questo telefono, oppure trasferisci una volta un profilo da Moony sul computer: scegli il file del backup e, dopo il ripristino, sblocca con la password in uso quando è stato creato. La sincronizzazione tiene allineati i dispositivi.",
-    "osBackupNoteSync": "Il profilo non viene salvato nel backup del telefono (iCloud o computer). Fuori da questo telefono, i tuoi dati si trovano sul server di sincronizzazione, sugli altri dispositivi e in ogni backup di Moony che salvi tu."
+    "osBackupNoteSync": "Il profilo non viene salvato nel backup del telefono (iCloud o computer). Fuori da questo telefono, i tuoi dati, una volta sincronizzati, si trovano sul server di sincronizzazione e sugli altri dispositivi, e in ogni backup di Moony che salvi tu."
   },
   "firstRun": {
     "privacyLead": "Moony conserva tutto in un database cifrato su questo telefono. Nessun cloud, nessun account presso di noi.",

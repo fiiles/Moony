@@ -54,6 +54,10 @@ pub struct TableSpec {
     pub groups: &'static [&'static [&'static str]],
     pub write_once: &'static [&'static str],
     pub monotonic: &'static [&'static str],
+    /// A row syncs only while this column is not NULL: a document or photo row syncs while it
+    /// names its blob, and a legacy row (a plain file the conversion has not turned into a blob)
+    /// stays on the device. Capture, the journal and snapshots all apply it (`row_condition`).
+    pub requires: Option<&'static str>,
 }
 
 pub fn tables() -> &'static [TableSpec] {
@@ -81,6 +85,14 @@ pub fn is_key_only(table: &str) -> bool {
 
 pub fn synced_tables() -> impl Iterator<Item = &'static TableSpec> {
     tables().iter().filter(|t| t.class == TableClass::Synced)
+}
+
+/// The SQL condition a row of `spec` must meet to sync, over the row named `alias` (a table name or
+/// alias, `NEW` or `OLD`): `{alias}."c" IS NOT NULL` for `requires = Some(c)`, `None` when every
+/// row syncs.
+pub fn row_condition(spec: &TableSpec, alias: &str) -> Option<String> {
+    spec.requires
+        .map(|column| format!("{alias}.\"{}\" IS NOT NULL", column.replace('"', "\"\"")))
 }
 
 /// Class of one column. Anything not listed is `Synced`.

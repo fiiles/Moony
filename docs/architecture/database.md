@@ -84,7 +84,7 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
 - `032_sync_snapshot_too_large` adds `sync_state.snapshot_too_large_at` (Local): when this device last found its snapshot too large to upload (its own limit or the relay's `413 snapshot_too_large`); no upload is tried for a day after it, across restarts. An upload or another vault binding clears it. Additive for device sync.
 - `033_sync_snapshot_barrier` adds `sync_state.snapshot_barrier` (Local, `NOT NULL DEFAULT 0`): the barrier of the newest snapshot this device uploaded or restored (or the barrier it started syncing at); a device above it crossed a barrier and uploads a snapshot at its first clean round, across restarts (ruling T8-2). Existing rows take `MIN(marker_barrier, barrier)`. Additive for device sync.
 - `034_asset_logos` creates `asset_logos` (Local): the per-device cache of stock logos fetched from Yahoo (spec 2026-11-14-asset-logos). Additive for device sync.
-- `035_sync_blobs` creates `sync_blobs` (Local): this device's queue of document and photo content to move to or from the sync server (`state` `up` / `down` / `done`, `thumbnail`, `wanted`, `active`, `row_at`, retry bookkeeping, `last_error`). Emptied by turning sync off. Additive for device sync.
+- `035_sync_blobs` creates `sync_blobs` (Local): this device's queue of document and photo content to move to or from the sync server (`state` `up` / `down` / `done`, `thumbnail`, `wanted`, `active`, `row_at`, retry bookkeeping, `last_error`). Emptied by turning sync off and by a replace. Additive for device sync.
 - To add one: define `const MIGRATION_0NN: &str = r#"..."#;` (next free
   number) and append a `("0NN_short_name", MIGRATION_0NN)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never
@@ -271,16 +271,16 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `real_estate_valuations` | Dated market-value estimates per property | FK `real_estate_id` ON DELETE CASCADE; `value` TEXT, `currency`, `valued_at` INTEGER (UTC day), `note`; index `(real_estate_id, valued_at)`. The newest row is mirrored into `real_estate.market_price` (`services/valuations.rs`). A priced property has a log from day one: `create_property` writes the first row (`record_initial_valuation`) and migration 002 seeded the properties that were created before |
 | `real_estate_loans` | Property ↔ loan join | Composite PK `(real_estate_id, loan_id)`; both FKs ON DELETE CASCADE |
 | `real_estate_insurances` | Property ↔ insurance policy join | Composite PK `(real_estate_id, insurance_id)`; both FKs ON DELETE CASCADE |
-| `real_estate_photo_batches` | Photo uploads grouped by date + description | FK `real_estate_id` ON DELETE CASCADE; indexed |
-| `real_estate_photos` | Individual photos in a batch | FK `batch_id` ON DELETE CASCADE; `blob_id` + `thumb_blob_id` reference the encrypted store (see "The attachments store"); `file_path` + `thumbnail_path` (data-dir-relative) only on rows from earlier versions not converted yet; CHECK: both blobs or both paths (migration 021) |
-| `real_estate_documents` | Documents (deeds, contracts) per property | FK `real_estate_id` ON DELETE CASCADE; `blob_id`, `mime_type`, `original_name`; `file_path` only on unconverted legacy rows; CHECK: a blob or a path (migration 021); `file_type` (the category), `file_size` |
+| `real_estate_photo_batches` | Photo uploads grouped by date + description | FK `real_estate_id` ON DELETE CASCADE; indexed; Synced (ADR 0030) |
+| `real_estate_photos` | Individual photos in a batch | FK `batch_id` ON DELETE CASCADE; `blob_id` + `thumb_blob_id` reference the encrypted store (see "The attachments store"); `file_path` + `thumbnail_path` (data-dir-relative) only on rows from earlier versions not converted yet; CHECK: both blobs or both paths (migration 021); Synced while `blob_id` is set, the two paths Local (ADR 0030) |
+| `real_estate_documents` | Documents (deeds, contracts) per property | FK `real_estate_id` ON DELETE CASCADE; `blob_id`, `mime_type`, `original_name`; `file_path` only on unconverted legacy rows; CHECK: a blob or a path (migration 021); `file_type` (the category), `file_size`; Synced while `blob_id` is set, `file_path` Local (ADR 0030) |
 
 ### Insurance
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|
 | `insurance_policies` | Insurance policies | `type`, `provider`, `payment_frequency` (canonical `monthly`/`quarterly`/`semi_annually`/`annually`/`one_time`, see `models/frequency.rs`), one-time + regular payment each with currency column, `limits` JSON `'[]'`, `status DEFAULT 'active'` |
-| `insurance_documents` | Documents per policy | FK `insurance_id` ON DELETE CASCADE; same columns and CHECK as `real_estate_documents` (migration 021) |
+| `insurance_documents` | Documents per policy | FK `insurance_id` ON DELETE CASCADE; same columns and CHECK as `real_estate_documents` (migration 021); Synced while `blob_id` is set, `file_path` Local (ADR 0030) |
 
 ### Other assets
 
@@ -324,7 +324,12 @@ Grouped by owning domain (see the domain map in `overview.md`).
 Every table and every column of a synced table has a sync class in
 `src-tauri/src/services/sync/registry/` (Synced, Seed, Derived, Local; columns Synced, Local,
 Recomputed, recomputed-or-typed, write-once, monotonic); ADR 0024 records the merge rules.
-`sync_pending_blobs` is not created in phase 1 (attachments stay Local).
+`sync_pending_blobs` is not created in phase 1. The four attachment tables
+(`real_estate_photo_batches`, `real_estate_photos`, `real_estate_documents`,
+`insurance_documents`) are Synced since ADR 0030, with `file_path` and `thumbnail_path` Local; a
+document or photo row syncs only while its `blob_id` is set (`TableSpec.requires`), so a legacy row
+without a blob stays on the device until the conversion gives it one. Their content travels
+separately (`sync_blobs` below).
 
 | Table | Purpose | Notable columns / constraints |
 |---|---|---|

@@ -187,6 +187,15 @@ re-insert a row.
 | Setup's "Advanced" server field and the `ALLOWED_ACCOUNTS` waiting step (the app creates an account, the operator adds its number, the app polls) | Only the author could run it; the operator now adds a person and hands out a code | The connection code (`services/sync/connection_code.rs`, ADR 0029) |
 | `scheme_allowed(scheme, host, debug)` and its rule "`http` only for loopback, only in debug builds" | A LAN sync server has no usable certificate; reversed by ADR 0029 | `scheme_allowed(scheme, host)`: `http` for any host but the Moony cloud, with the warning in every dialog that takes an address |
 
+## Retired with synced documents and photos (do not re-add)
+
+The four attachment tables are Synced since ADR 0030, so a replace restores their rows from the
+vault like every other synced row.
+
+| Removed | Why it was removed | Use instead |
+|---|---|---|
+| `snapshot::attachments::{keep, reattach, discard}` and the `temp.sync_kept_<table>` copies (audit H3): this device's attachment rows set aside before a replace and put back under the items the vault had | The rows sync now; putting back rows the vault lacks would bring back what another device deleted and leave rows no other device has | The carry count of a replace: `snapshot::attachments::{mine, carry}` count this device's documents and photos that are there again (`kept`) or gone (`orphaned`, only in the backup); content stays by blob ID |
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |

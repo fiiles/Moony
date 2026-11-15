@@ -60,8 +60,8 @@ fn local_data_never_enters_a_snapshot() {
            ON CONFLICT(key) DO UPDATE SET value = excluded.value; \
          UPDATE sync_state SET relay_url = 'relay-marker', vault_keys = 'vault-marker'; \
          INSERT INTO real_estate (id, name, address, type) VALUES ('re-1', 'Flat', 'Street', 'flat'); \
-         INSERT INTO real_estate_documents (id, real_estate_id, name, blob_id) \
-           VALUES ('doc-1', 're-1', 'doc-marker', 'blob-marker');",
+         INSERT INTO real_estate_documents (id, real_estate_id, name, file_path) \
+           VALUES ('doc-1', 're-1', 'doc-marker', 'path-marker');",
     );
     let (bytes, _) = snapshot(&a, 1);
     let text = String::from_utf8_lossy(&bytes);
@@ -74,7 +74,7 @@ fn local_data_never_enters_a_snapshot() {
         "relay-marker",
         "vault-marker",
         "doc-marker",
-        "blob-marker",
+        "path-marker",
         "fx_reference",
         "backup.lastCreatedAt",
         "mcp_server_token",
@@ -103,6 +103,88 @@ fn local_data_never_enters_a_snapshot() {
             }
             _ => {}
         }
+    }
+}
+
+/// Documents and photos that name a blob travel as rows (their local paths left out); a legacy
+/// row without a blob does not; content never does.
+#[test]
+fn a_snapshot_carries_attachment_rows_but_no_legacy_ones_and_no_content() {
+    let a = device(A);
+    a.execute("ATTACH DATABASE ':memory:' AS files", [])
+        .expect("attach");
+    crate::db::files_schema::migrate(&a).expect("files schema");
+    let put = |bytes: &[u8]| {
+        crate::services::attachment_store::put_bytes(&a, bytes)
+            .expect("blob")
+            .id
+    };
+    let (doc, full, thumb) = (
+        put(b"content-marker-document"),
+        put(b"content-marker-photo"),
+        put(b"content-marker-thumbnail"),
+    );
+    exec(
+        &a,
+        &format!(
+            "INSERT INTO insurance_policies \
+               (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
+             VALUES ('p1', 'life', 'Insurer', 'Life', '123', 1767225600, 'monthly'); \
+             INSERT INTO insurance_documents (id, insurance_id, name, blob_id) \
+               VALUES ('d1', 'p1', 'Contract', '{doc}'); \
+             INSERT INTO insurance_documents (id, insurance_id, name, file_path) \
+               VALUES ('old', 'p1', 'legacy-marker', 'legacy-path-marker'); \
+             INSERT INTO real_estate (id, name, address, type) VALUES ('r1', 'Flat', 'Street', 'flat'); \
+             INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date) \
+               VALUES ('pb1', 'r1', 1767225600); \
+             INSERT INTO real_estate_photos (id, batch_id, file_path, thumbnail_path, blob_id, thumb_blob_id) \
+               VALUES ('ph1', 'pb1', 'photo-path-marker', 'thumb-path-marker', '{full}', '{thumb}');"
+        ),
+    );
+
+    let (bytes, _) = snapshot(&a, 1);
+
+    let records = records(&bytes);
+    let attachment_rows: Vec<(String, String)> = rows(&records)
+        .iter()
+        .filter(|r| {
+            [
+                "insurance_documents",
+                "real_estate_photo_batches",
+                "real_estate_photos",
+            ]
+            .contains(&r.table.as_str())
+        })
+        .map(|r| (r.table.clone(), r.key.to_pk_text().expect("key")))
+        .collect();
+    assert_eq!(
+        attachment_rows,
+        vec![
+            ("insurance_documents".to_string(), "d1".to_string()),
+            ("real_estate_photo_batches".to_string(), "pb1".to_string()),
+            ("real_estate_photos".to_string(), "ph1".to_string()),
+        ],
+        "parents first, the legacy row left out"
+    );
+    let document = rows(&records)
+        .into_iter()
+        .find(|r| r.table == "insurance_documents")
+        .expect("the document");
+    assert_eq!(
+        document.columns.get("blob_id").map(|(v, _)| v),
+        Some(&SqlValue::Text(doc.clone()))
+    );
+    let text = String::from_utf8_lossy(&bytes);
+    for marker in [
+        "content-marker",
+        "legacy-marker",
+        "legacy-path-marker",
+        "photo-path-marker",
+        "thumb-path-marker",
+        "file_path",
+        "thumbnail_path",
+    ] {
+        assert!(!text.contains(marker), "{marker} leaked into the snapshot");
     }
 }
 

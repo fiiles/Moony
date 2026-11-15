@@ -2,7 +2,9 @@
 //!
 //! A live row carries every column except Local ones and the key columns, each with its column
 //! clock, else the row clock `'*'`, else `Clock::ZERO` (a row that never had a clock: it existed
-//! before sync was turned on). `Clock::ZERO` travels with the all-zero device.
+//! before sync was turned on). `Clock::ZERO` travels with the all-zero device. A row that does
+//! not meet its table's row condition (a document or photo without a blob, `TableSpec::requires`)
+//! reads as absent: its tombstone if it has one, else nothing.
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
@@ -16,7 +18,7 @@ use crate::services::sync::changeset::{RowChange, RowKey, SqlValue};
 use crate::services::sync::hlc::{Clock, DeviceId};
 use crate::services::sync::registry::keys::foreign_keys;
 use crate::services::sync::registry::{
-    self, column_class, schema, ColumnClass, KeyShape, TableClass, TableSpec,
+    self, column_class, row_condition, schema, ColumnClass, KeyShape, TableClass, TableSpec,
     APP_CONFIG_SYNCED_KEYS,
 };
 use crate::services::sync::repair::shadowed_columns;
@@ -34,7 +36,8 @@ struct Shape {
     /// Columns read from the row: the key columns first, then the carried ones.
     selected: Vec<String>,
     key_len: usize,
-    /// `WHERE …` selecting one row by its key (an ordering for the singleton).
+    /// `WHERE …` selecting one row by its key and the table's row condition (an ordering for the
+    /// singleton).
     filter: String,
 }
 
@@ -88,6 +91,7 @@ impl<'c> Reader<'c> {
                     .iter()
                     .enumerate()
                     .map(|(i, c)| format!("{} = ?{}", quoted(c), i + 1))
+                    .chain(row_condition(spec, &quoted(spec.name)))
                     .collect::<Vec<_>>()
                     .join(" AND ")
             ),
@@ -125,7 +129,7 @@ impl<'c> Reader<'c> {
         Ok(Some((key, params)))
     }
 
-    /// Whether the key has a live row.
+    /// Whether the key has a live row that syncs.
     pub(super) fn exists(&self, table: &str, pk: &str) -> Result<bool> {
         let shape = self.shape(table)?;
         let Some((_, params)) = Self::key(&shape, pk)? else {

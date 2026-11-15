@@ -7,8 +7,9 @@ use rusqlite::Connection;
 const DEVICE: DeviceId = DeviceId([7; 16]);
 const OTHER: DeviceId = DeviceId([9; 16]);
 
-/// Every Synced table of the registry (spec §5.1 with the 16a attachment change).
-const SYNCED: [&str; 44] = [
+/// Every Synced table of the registry (spec §5.1; the attachment tables since the documents and
+/// photos design, 2026-11-14).
+const SYNCED: [&str; 48] = [
     "app_config",
     "bank_account_zones",
     "bank_accounts",
@@ -25,6 +26,7 @@ const SYNCED: [&str; 44] = [
     "csv_import_batches",
     "dividend_overrides",
     "institutions",
+    "insurance_documents",
     "insurance_policies",
     "investment_dividends",
     "investment_transactions",
@@ -37,9 +39,12 @@ const SYNCED: [&str; 44] = [
     "other_assets",
     "projection_settings",
     "real_estate",
+    "real_estate_documents",
     "real_estate_insurances",
     "real_estate_loans",
     "real_estate_one_time_costs",
+    "real_estate_photo_batches",
+    "real_estate_photos",
     "real_estate_valuations",
     "spending_plans",
     "stock_import_batches",
@@ -161,9 +166,13 @@ fn installed_triggers_cover_every_synced_table_and_nothing_else() {
     let mut expected: Vec<(String, String)> = Vec::new();
     for t in SYNCED {
         // The singleton has no key to change; the two link tables have no column besides the key.
+        // A row that syncs only while it names a blob enrols and leaves with that column.
         let kinds: &[&str] = match t {
             "user_profile" => &["bdel", "del", "ins", "upd"],
             "real_estate_insurances" | "real_estate_loans" => &["bdel", "del", "ins", "pk"],
+            "real_estate_photos" | "real_estate_documents" | "insurance_documents" => {
+                &["bdel", "del", "enrol", "ins", "leave", "pk", "upd"]
+            }
             _ => &["bdel", "del", "ins", "pk", "upd"],
         };
         for k in kinds {
@@ -774,4 +783,222 @@ fn with_mode_refuses_a_leaked_local_cascade_clock() {
         "UPDATE sync_mode SET local_hlc = 1, local_owner = 'x'",
     );
     let _ = with_mode(&conn, Mode::Repair, || Ok(()));
+}
+
+// Documents and photos sync as rows while they name a blob (`TableSpec::requires`).
+
+const POLICY: &str = "INSERT INTO insurance_policies \
+      (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
+    VALUES ('p1', 'life', 'Insurer', 'Life', '123', 1767225600, 'monthly');";
+const DOCUMENT: &str = "INSERT INTO insurance_documents \
+      (id, insurance_id, name, blob_id, mime_type, file_size) \
+    VALUES ('d1', 'p1', 'Contract', 'blob-1', 'application/pdf', 17);";
+/// A document from before 0.13: a plain file, no blob yet.
+const LEGACY: &str = "INSERT INTO insurance_documents \
+      (id, insurance_id, name, file_path, original_name, file_size) \
+    VALUES ('old', 'p1', 'Old contract', 'insurance/p1/old.pdf', 'old.pdf', 9);";
+
+/// Everything queued on `conn`, sealed as the journal seals it (the chain moves on).
+fn seal(conn: &Connection) -> Vec<(crate::services::sync::changeset::Changeset, [u8; 32])> {
+    use crate::services::sync::changeset::to_json;
+    use crate::services::sync::journal::{build_next, record_sealed};
+    use sha2::{Digest, Sha256};
+    let mut out = Vec::new();
+    loop {
+        let tx = conn.unchecked_transaction().expect("transaction");
+        let (built, refused) = build_next(&tx).expect("build_next");
+        assert!(refused.is_empty(), "{refused:?}");
+        let Some(built) = built else {
+            return out;
+        };
+        let hash: [u8; 32] = Sha256::digest(to_json(&built.changeset).expect("json")).into();
+        record_sealed(&tx, &built, hash).expect("record_sealed");
+        tx.commit().expect("commit");
+        out.push((built.changeset, hash));
+    }
+}
+
+#[test]
+fn a_document_with_a_blob_is_captured_like_any_row() {
+    let conn = installed();
+    exec(&conn, POLICY);
+    exec(&conn, "DELETE FROM sync_outbox");
+    exec(&conn, DOCUMENT);
+
+    assert_eq!(outbox(&conn), vec![row("insurance_documents", "d1")]);
+    let c = clocks(&conn, "insurance_documents");
+    assert_eq!(c.len(), 1);
+    assert_eq!((c[0].0.as_str(), c[0].1.as_str()), ("d1", "*"));
+    assert_eq!(c[0].3, DEVICE.0.to_vec());
+}
+
+#[test]
+fn a_legacy_row_without_a_blob_is_not_captured() {
+    let conn = installed();
+    exec(&conn, POLICY);
+    exec(&conn, "DELETE FROM sync_outbox");
+    exec(&conn, LEGACY);
+
+    assert_eq!(outbox(&conn), Vec::<(String, String)>::new());
+    assert!(clocks(&conn, "insurance_documents").is_empty());
+
+    exec(&conn, "DELETE FROM insurance_documents WHERE id = 'old'");
+    assert_eq!(outbox(&conn), Vec::<(String, String)>::new());
+    assert!(clocks(&conn, "insurance_documents").is_empty());
+}
+
+#[test]
+fn an_edit_of_a_legacy_row_records_nothing() {
+    let conn = installed();
+    exec(&conn, POLICY);
+    exec(&conn, LEGACY);
+    exec(&conn, "DELETE FROM sync_outbox");
+
+    exec(
+        &conn,
+        "UPDATE insurance_documents SET name = 'Renamed', description = 'x' WHERE id = 'old'",
+    );
+
+    assert_eq!(outbox(&conn), Vec::<(String, String)>::new());
+    assert!(clocks(&conn, "insurance_documents").is_empty());
+}
+
+/// The conversion gives a legacy row its blob: the row has never been on another device, so it
+/// travels as a complete insert with a fresh generation.
+#[test]
+fn a_converted_legacy_row_travels_as_a_complete_new_row() {
+    use crate::services::sync::merge::{apply_changeset, Outcome};
+    use crate::services::sync::{snapshot, state, test_support};
+    const NOW: i64 = 1_772_323_200;
+    let first = migrated();
+    state::enable(&first, DEVICE).expect("enable");
+    exec(&first, POLICY);
+    exec(&first, LEGACY);
+    exec(
+        &first,
+        "UPDATE insurance_documents SET description = 'edited before the blob' WHERE id = 'old'",
+    );
+    seal(&first);
+    let mut dumped = Vec::new();
+    snapshot::dump(&first, 1, &mut dumped).expect("dump");
+    let second = migrated();
+    snapshot::join(&second, OTHER, &mut &dumped[..], NOW).expect("join");
+    assert_eq!(
+        count(&second, "SELECT COUNT(*) FROM insurance_documents"),
+        0,
+        "the legacy row stayed home"
+    );
+    let before: i64 = count(&first, "SELECT MAX(hlc) FROM sync_clock");
+
+    exec(
+        &first,
+        "UPDATE insurance_documents SET blob_id = 'blob-old', mime_type = 'application/pdf', \
+           file_path = NULL WHERE id = 'old'",
+    );
+
+    assert_eq!(outbox(&first), vec![row("insurance_documents", "old")]);
+    assert_eq!(clock_cols(&first, "insurance_documents", "old"), vec!["*"]);
+    let star = clocks(&first, "insurance_documents")
+        .into_iter()
+        .find(|c| c.0 == "old" && c.1 == "*")
+        .expect("a fresh generation");
+    assert!(star.2 > before, "{} > {before}", star.2);
+    assert_eq!(star.3, DEVICE.0.to_vec());
+    let change = crate::services::sync::journal::read_row(&first, "insurance_documents", "old")
+        .expect("read")
+        .expect("a live row");
+    assert!(change.insert);
+    assert_eq!(change.deleted, None);
+    let carried: Vec<&str> = change.columns.keys().map(String::as_str).collect();
+    assert_eq!(
+        carried,
+        vec![
+            "blob_id",
+            "description",
+            "file_size",
+            "file_type",
+            "insurance_id",
+            "mime_type",
+            "name",
+            "original_name",
+            "uploaded_at",
+        ]
+    );
+
+    for (changeset, hash) in seal(&first) {
+        match apply_changeset(&second, &changeset, hash, NOW).expect("apply") {
+            Outcome::Applied(_) => {}
+            Outcome::Stopped(reason) => panic!("stopped: {reason:?}"),
+        }
+    }
+    test_support::assert_converged(&[&first, &second]);
+    assert_eq!(
+        count(
+            &second,
+            "SELECT COUNT(*) FROM insurance_documents WHERE id = 'old' AND blob_id = 'blob-old' \
+             AND description = 'edited before the blob' AND file_path IS NULL"
+        ),
+        1
+    );
+}
+
+#[test]
+fn clearing_a_blob_records_a_tombstone() {
+    let conn = installed();
+    exec(&conn, POLICY);
+    exec(
+        &conn,
+        "INSERT INTO insurance_documents (id, insurance_id, name, file_path, blob_id) \
+           VALUES ('d1', 'p1', 'Contract', 'insurance/p1/d1.pdf', 'blob-1'); \
+         UPDATE insurance_documents SET name = 'Renamed' WHERE id = 'd1'; \
+         DELETE FROM sync_outbox;",
+    );
+    let star = clock_of(&conn, "insurance_documents", "d1", "*").expect("generation");
+
+    exec(
+        &conn,
+        "UPDATE insurance_documents SET blob_id = NULL WHERE id = 'd1'",
+    );
+
+    assert_eq!(outbox(&conn), vec![row("insurance_documents", "d1")]);
+    assert_eq!(
+        clock_cols(&conn, "insurance_documents", "d1"),
+        vec!["*", "-"],
+        "column clocks go"
+    );
+    assert!(clock_of(&conn, "insurance_documents", "d1", "-").unwrap() > star);
+    let change = crate::services::sync::journal::read_row(&conn, "insurance_documents", "d1")
+        .expect("read")
+        .expect("a tombstone");
+    assert!(!change.insert, "a tombstone-only change");
+    assert!(change.deleted.is_some());
+    assert!(change.columns.is_empty());
+}
+
+#[test]
+fn deleting_a_policy_tombstones_its_documents_at_the_policy_clock() {
+    let conn = installed();
+    exec(&conn, POLICY);
+    exec(&conn, DOCUMENT);
+    exec(&conn, LEGACY);
+    exec(&conn, "DELETE FROM sync_outbox");
+
+    exec(&conn, "DELETE FROM insurance_policies WHERE id = 'p1'");
+
+    let policy = clock_of(&conn, "insurance_policies", "p1", "-").expect("policy tombstone");
+    assert_eq!(
+        clock_of(&conn, "insurance_documents", "d1", "-"),
+        Some(policy)
+    );
+    assert!(
+        clock_cols(&conn, "insurance_documents", "old").is_empty(),
+        "the legacy row never synced: nothing to tombstone"
+    );
+    assert_eq!(
+        outbox(&conn),
+        vec![
+            row("insurance_documents", "d1"),
+            row("insurance_policies", "p1")
+        ]
+    );
 }

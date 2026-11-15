@@ -891,3 +891,52 @@ fn a_composite_link_row_carries_its_key_parents_and_cascaded_tombstone() {
         .iter()
         .all(|r| !r.insert && r.deleted.is_some()));
 }
+
+/// A document row that names no blob (a legacy plain file, or one whose blob was cleared) does
+/// not sync: it reads as absent, as its tombstone when it has one, and a queued key of it sends
+/// nothing but that tombstone.
+#[test]
+fn the_journal_reads_a_row_without_its_blob_as_absent() {
+    let mut conn = enabled();
+    exec(
+        &conn,
+        "INSERT INTO insurance_policies \
+           (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
+         VALUES ('p1', 'life', 'Insurer', 'Life', '123', 1767225600, 'monthly'); \
+         INSERT INTO insurance_documents (id, insurance_id, name, file_path) \
+           VALUES ('old', 'p1', 'Old', 'insurance/p1/old.pdf'); \
+         INSERT INTO insurance_documents (id, insurance_id, name, file_path, blob_id) \
+           VALUES ('d1', 'p1', 'Contract', 'insurance/p1/d1.pdf', 'blob-1');",
+    );
+    drain(&mut conn);
+    // A key queued by hand: the legacy row has nothing to send.
+    exec(
+        &conn,
+        "INSERT INTO sync_outbox (tbl, pk, queued_at) VALUES ('insurance_documents', 'old', 1)",
+    );
+
+    assert_eq!(
+        read_row(&conn, "insurance_documents", "old").expect("read"),
+        None
+    );
+    assert!(drain(&mut conn).is_empty());
+    assert!(outbox(&conn).is_empty());
+
+    exec(
+        &conn,
+        "UPDATE insurance_documents SET blob_id = NULL WHERE id = 'd1'",
+    );
+    let change = read_row(&conn, "insurance_documents", "d1")
+        .expect("read")
+        .expect("a tombstone");
+    assert!(!change.insert);
+    assert_eq!(
+        change.deleted,
+        clock(&conn, "insurance_documents", "d1", "-")
+    );
+    assert!(change.columns.is_empty());
+    let built = drain(&mut conn);
+    assert_eq!(built.len(), 1);
+    assert_eq!(keys(&built[0]), vec![key("insurance_documents", "d1")]);
+    assert!(!built[0].changeset.rows[0].insert);
+}

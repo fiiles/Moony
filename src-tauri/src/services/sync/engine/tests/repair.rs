@@ -476,7 +476,8 @@ async fn resync_replaces_a_capture_broken_profile_and_keeps_its_unsent_changes_i
 }
 
 /// Audit H3, as reproduced there: a policy with a contract PDF on `B`, then "Re-sync this
-/// device". The policy comes back from the vault under its ID, and so do its document and blob.
+/// device". The document is a synced row (ADR 0030): once it is in the vault's snapshot, it comes
+/// back from the vault under its ID, and `B` keeps its content under the same blob ID.
 #[tokio::test]
 async fn a_resync_keeps_the_contract_pdf_of_a_policy_the_vault_has() {
     let vault = vault().await;
@@ -504,12 +505,20 @@ async fn a_resync_keeps_the_contract_pdf_of_a_policy_the_vault_has() {
         .expect("document");
         blob
     };
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    round(&vault, &vault.a, RoundMode::Normal).await;
+    snapshot_of_a(&vault, "a2").await;
     let dir = tempfile::tempdir().expect("dir");
     let consent = agreed(&vault.b);
 
-    resync_by_replace(&vault.relay, &vault.b, consent, dir.path(), &XorNative, NOW)
+    let outcome = resync_by_replace(&vault.relay, &vault.b, consent, dir.path(), &XorNative, NOW)
         .await
         .expect("resync");
+
+    assert_eq!(
+        (outcome.attachments.kept, outcome.attachments.orphaned),
+        (1, 0)
+    );
 
     let b = vault.b.lock();
     assert_eq!(

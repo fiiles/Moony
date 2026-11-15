@@ -2,7 +2,8 @@
 //! `_del`, `_upd` when the table has a captured column, `_pk` unless it is a singleton), generated
 //! from the registry and `PRAGMA table_info` of the migrated schema, so they always match the
 //! columns that exist. Tables with recomputed-or-typed columns also get the shadow triggers of
-//! ruling T18b (`typed_triggers`).
+//! ruling T18b (`typed_triggers`); tables whose rows sync only while a column is set
+//! (`TableSpec::requires`, the documents and photos) get `_enrol` and `_leave`.
 //!
 //! Every trigger reads the connection's mode from `temp.sync_mode` and clocks from the
 //! connection functions `sync_hlc_tick()` / `sync_hlc_now()` that `capture::install` registers.
@@ -12,7 +13,8 @@ use rusqlite::Connection;
 use crate::error::{AppError, Result};
 use crate::services::sync::hlc::DeviceId;
 use crate::services::sync::registry::{
-    self, column_class, group_of, schema, ColumnClass, KeyShape, TableSpec, APP_CONFIG_SYNCED_KEYS,
+    self, column_class, group_of, row_condition, schema, ColumnClass, KeyShape, TableSpec,
+    APP_CONFIG_SYNCED_KEYS,
 };
 
 /// Conflict clause of every `sync_clock` write: a stored clock is replaced only by a greater
@@ -108,7 +110,7 @@ fn table_triggers(conn: &Connection, spec: &TableSpec, device: &str) -> Result<V
     }
     let new_key = pk_expr(spec, &pk, "NEW");
     let old_key = pk_expr(spec, &pk, "OLD");
-    let (new_ok, old_ok) = row_filter(t);
+    let (new_ok, old_ok) = row_filter(spec);
     let table = Table {
         name: text(t),
         device,
@@ -125,16 +127,18 @@ fn table_triggers(conn: &Connection, spec: &TableSpec, device: &str) -> Result<V
         table.queue(&new_key, "1"),
     ));
 
-    // UPDATE of captured columns: one clock per changed column (every member of a changed group).
+    let same_key = match spec.key {
+        KeyShape::Singleton(_) => String::new(),
+        KeyShape::Primary => pk
+            .iter()
+            .map(|c| format!(" AND OLD.{c} IS NEW.{c}"))
+            .collect(),
+    };
+
+    // UPDATE of captured columns: one clock per changed column (every member of a changed group),
+    // for a row that syncs before and after the write (`_enrol` and `_leave` take the others).
     let units = change_units(spec, &columns, &pk)?;
     if !units.is_empty() {
-        let same_key = match spec.key {
-            KeyShape::Singleton(_) => String::new(),
-            KeyShape::Primary => pk
-                .iter()
-                .map(|c| format!(" AND OLD.{c} IS NEW.{c}"))
-                .collect(),
-        };
         let any_change = units
             .iter()
             .map(|u| u.condition.as_str())
@@ -150,7 +154,31 @@ fn table_triggers(conn: &Connection, spec: &TableSpec, device: &str) -> Result<V
         body.push_str(&table.queue(&new_key, "1"));
         out.push(format!(
             "CREATE TEMP TRIGGER sync_{t}_upd AFTER UPDATE ON main.{t} \
-             WHEN {LOCAL} AND {new_ok}{same_key} AND ({any_change}) BEGIN {body} END;"
+             WHEN {LOCAL} AND {new_ok} AND {old_ok}{same_key} AND ({any_change}) BEGIN {body} END;"
+        ));
+    }
+
+    // A row that starts or stops syncing because its required column was set or cleared (a
+    // legacy document the conversion gave a blob; a blob cleared again). It never was on another
+    // device, so it enrols as a new row: a fresh generation with this device, no column clocks,
+    // queued, and the journal sends it whole. Leaving is a tombstone.
+    if let Some(column) = spec.requires {
+        let (base_new, base_old) = allowlist_filter(spec);
+        out.push(format!(
+            "CREATE TEMP TRIGGER sync_{t}_enrol AFTER UPDATE OF \"{column}\" ON main.{t} \
+             WHEN {LOCAL} AND {base_new} AND OLD.\"{column}\" IS NULL AND NEW.\"{column}\" IS NOT NULL{same_key} \
+             BEGIN SELECT sync_hlc_tick(); {} {} {} END;",
+            table.local_clock(&new_key, "'*'", "1"),
+            table.clear_columns(&new_key, "1"),
+            table.queue(&new_key, "1"),
+        ));
+        out.push(format!(
+            "CREATE TEMP TRIGGER sync_{t}_leave AFTER UPDATE OF \"{column}\" ON main.{t} \
+             WHEN {LOCAL} AND {base_old} AND OLD.\"{column}\" IS NOT NULL AND NEW.\"{column}\" IS NULL{same_key} \
+             BEGIN SELECT sync_hlc_tick(); {} {} {} END;",
+            table.local_clock(&old_key, "'-'", "1"),
+            table.clear_columns(&old_key, "1"),
+            table.queue(&old_key, "1"),
         ));
     }
 
@@ -287,9 +315,21 @@ fn typed_triggers(spec: &TableSpec, pk: &[String]) -> Result<Vec<String>> {
     Ok(out)
 }
 
-/// `(NEW filter, OLD filter)`: `app_config` captures only its allowlisted keys.
-fn row_filter(table: &str) -> (String, String) {
-    if table == "app_config" {
+/// `(NEW filter, OLD filter)`: whether the row syncs. `app_config` captures only its allowlisted
+/// keys; a table with `requires` only rows whose required column is set (`row_condition`).
+fn row_filter(spec: &TableSpec) -> (String, String) {
+    let (new_ok, old_ok) = allowlist_filter(spec);
+    let both = |base: String, row: &str| match row_condition(spec, row) {
+        Some(condition) if base == "1" => condition,
+        Some(condition) => format!("({base} AND {condition})"),
+        None => base,
+    };
+    (both(new_ok, "NEW"), both(old_ok, "OLD"))
+}
+
+/// The key part of `row_filter`: `app_config`'s allowlist, `"1"` for every other table.
+fn allowlist_filter(spec: &TableSpec) -> (String, String) {
+    if spec.name == "app_config" {
         let keys = APP_CONFIG_SYNCED_KEYS
             .iter()
             .map(|k| text(k))

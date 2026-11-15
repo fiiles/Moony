@@ -12,7 +12,8 @@ use rusqlite::Connection;
 use super::journal::Reader;
 use super::registry::keys::{foreign_keys, OnDelete, OrphanRule};
 use super::registry::{
-    column_class, schema, synced_tables, tables, ColumnClass, TableClass, APP_CONFIG_SYNCED_KEYS,
+    column_class, row_condition, schema, synced_tables, tables, ColumnClass, TableClass,
+    APP_CONFIG_SYNCED_KEYS,
 };
 use super::repair::shadowed_columns;
 
@@ -47,7 +48,7 @@ pub(crate) fn noise(len: usize, seed: u64) -> String {
 pub(crate) type ClockRow = (String, String, String, i64, Vec<u8>);
 
 /// Every synced row of every synced table (Local columns left out, `app_config` limited to the
-/// keys that sync), then every Derived table's rows without their device-local key and stamps
+/// keys that sync, a table with a row condition to the rows that meet it), then every Derived table's rows without their device-local key and stamps
 /// (`id`, `created_at`, `updated_at`: a rebuild mints them), in a stable order: what must be
 /// identical on every device.
 pub(crate) fn dump(conn: &Connection) -> Vec<(String, Vec<String>)> {
@@ -69,17 +70,24 @@ pub(crate) fn dump(conn: &Connection) -> Vec<(String, Vec<String>)> {
             .map(|c| format!("\"{c}\""))
             .collect::<Vec<_>>()
             .join(", ");
-        let filter = if spec.name == "app_config" {
+        let allowlist = (spec.name == "app_config").then(|| {
             format!(
-                "WHERE key IN ({})",
+                "key IN ({})",
                 APP_CONFIG_SYNCED_KEYS
                     .iter()
                     .map(|k| format!("'{k}'"))
                     .collect::<Vec<_>>()
                     .join(", ")
             )
-        } else {
+        });
+        let conditions: Vec<String> = allowlist
+            .into_iter()
+            .chain(row_condition(spec, spec.name))
+            .collect();
+        let filter = if conditions.is_empty() {
             String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
         };
         let order = (1..=columns.len())
             .map(|i| i.to_string())

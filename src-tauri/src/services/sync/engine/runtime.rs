@@ -326,7 +326,7 @@ pub fn spawn_with<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
     let lanes_flag = LanesFlag(shared.clone());
     let lanes = tokio::spawn(async move {
         let _flag = lanes_flag;
-        lanes.run().await;
+        reporting_panic(lanes.run()).await;
     });
     let task = tokio::spawn(async move {
         let _flag = flag;
@@ -698,13 +698,30 @@ struct Lanes<R, D, E> {
 impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
     /// Waits for the profile's lane gate (an earlier engine's lanes end first: no entry of theirs
     /// is still being transferred, no incoming blob of theirs is still being written), starts the
-    /// lanes once (`start`), then runs the upload and the download lane side by side, and tells
-    /// the app what they change (`forward_changes`). Ends when both lanes ended (a locked profile,
-    /// or the loop ended); an abort drops everything here before the gate is released.
+    /// lanes (`start`), then runs the upload and the download lane side by side, and tells the app
+    /// what they change (`forward_changes`). No lane transfers anything before a start succeeded:
+    /// a failed start is tried again at the next wake of the download lane (after every round,
+    /// "Sync now", `wake_transfers`) or after `LANE_IDLE`, while the rounds go on. Ends when both
+    /// lanes ended (a locked profile, or the loop ended); an abort drops everything here before
+    /// the gate is released.
     async fn run(self) {
         let _gate = self.db.lanes_lock().lock().await;
-        if self.start().is_err() {
-            return;
+        let mut retried = false;
+        loop {
+            match self.start() {
+                Err(Ended) => return,
+                Ok(true) => break,
+                Ok(false) => {}
+            }
+            self.shared.blobs.wait(Lane::Down, LANE_IDLE).await;
+            if !self.shared.running.load(Ordering::SeqCst) {
+                return;
+            }
+            retried = true;
+        }
+        if retried {
+            // The wake that retried the start was the lanes' own: they look at their queue now.
+            self.shared.blobs.wake();
         }
         let both = async { tokio::join!(self.lane(Lane::Up), self.lane(Lane::Down)) };
         let events = forward_changes(&self.shared.attachments, ATTACHMENTS_EVENT_GAP, || {
@@ -722,8 +739,10 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
     /// in the store go (`attachment_store::sweep_incomplete`: no transfer runs now, the gate is
     /// held and the lanes have not begun, and a local add writes its blob within one hold), and the
     /// whole queue is reconciled with the store (`queue::reconcile`: content lost or found outside
-    /// a merge). A local failure is logged and the lanes go on; a locked profile ends them.
-    fn start(&self) -> Result<(), Ended> {
+    /// a merge), in one hold. Whether it succeeded: a store that is not open, or a local failure,
+    /// is not a start (logged once per attempt; the caller tries again later); a locked profile
+    /// ends the lanes.
+    fn start(&self) -> Result<bool, Ended> {
         let now = unix_now();
         let started = hold(&self.db, |conn| {
             if !files_schema::is_attached(conn)? {
@@ -742,14 +761,19 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
                 if reconciled != queue::Reconciled::default() {
                     self.shared.attachments.notify_one();
                 }
-                Ok(())
+                Ok(true)
             }
-            Ok(None) => Ok(()),
+            Ok(None) => {
+                log::warn!("[SYNC] Documents and photos wait: the attachment store is not open");
+                Ok(false)
+            }
             Err(error) if locked(&error) => Err(Ended),
             Err(error) => {
-                log::warn!("[SYNC] The transfer queue could not be prepared");
+                log::warn!(
+                    "[SYNC] Documents and photos wait: the transfer queue could not be prepared"
+                );
                 log::debug!("[SYNC] The transfer queue could not be prepared: {error}");
-                Ok(())
+                Ok(false)
             }
         }
     }
@@ -852,6 +876,20 @@ pub(crate) fn lane_may_run(lane: Lane, problem: Option<SyncProblem>) -> bool {
         }
         Some(SyncProblem::Lapsed | SyncProblem::KeyRotated) => lane == Lane::Down,
         _ => true,
+    }
+}
+
+/// Runs `work` (the lanes) and reports a panic in it as one error line with its message, instead
+/// of losing it with the task; the panic's text, if there was one. Nothing restarts the lanes.
+pub(crate) async fn reporting_panic(work: impl std::future::Future<Output = ()>) -> Option<String> {
+    use futures_util::FutureExt;
+    match std::panic::AssertUnwindSafe(work).catch_unwind().await {
+        Ok(()) => None,
+        Err(panic) => {
+            let message = crate::services::logging::panic_payload_text(panic.as_ref()).to_string();
+            log::error!("[SYNC] Document and photo transfers stopped after a panic: {message}");
+            Some(message)
+        }
     }
 }
 

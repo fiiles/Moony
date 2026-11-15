@@ -556,6 +556,12 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         return Ok(());
     }
     if mode != RoundMode::Drain {
+        // Not ordered after the lanes' start (`runtime::Lanes::start`), and harmless: it uploads
+        // only complete blobs a syncing row names that never failed an attempt (`attempts = 0`),
+        // and never writes an incoming blob. Its `fail_abandoned(Up)` can count one failed
+        // attempt on an old engine's upload that is still live only after the 5 s stop wait ran
+        // out, or after a stop without a wait; that blob then has an attempt, so this round never
+        // uploads it again.
         upload_before_push(relay, db, creds, &policy.blobs, now).await;
     }
     let pushed = push::push_all(relay, db, creds).await?;

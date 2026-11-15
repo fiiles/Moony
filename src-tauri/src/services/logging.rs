@@ -107,7 +107,7 @@ pub fn log_startup_banner() {
 }
 
 /// Human-readable text of a panic payload (`&str` or `String`; anything else is opaque).
-fn panic_payload_text(payload: &(dyn std::any::Any + Send)) -> &str {
+pub(crate) fn panic_payload_text(payload: &(dyn std::any::Any + Send)) -> &str {
     if let Some(s) = payload.downcast_ref::<&str>() {
         s
     } else if let Some(s) = payload.downcast_ref::<String>() {

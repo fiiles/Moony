@@ -19,7 +19,9 @@ use crate::services::sync::blobs::content::ContentReader;
 use crate::services::sync::blobs::policy::{BlobPolicy, Lane};
 use crate::services::sync::blobs::queue;
 use crate::services::sync::blobs::transfer::run_uploads;
-use crate::services::sync::engine::runtime::{forward_changes, lane_may_run, Trigger};
+use crate::services::sync::engine::runtime::{
+    forward_changes, lane_may_run, reporting_panic, Trigger,
+};
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
 use crate::services::sync::engine::{run_round, RoundMode};
 use crate::services::sync::keys::VaultAuth;
@@ -262,6 +264,95 @@ async fn a_lane_start_sweeps_incomplete_blobs() {
     running.handle.wake(Trigger::SyncNow);
     until("the second content arrived", || stored(&vault.b, &second)).await;
     assert_eq!(incoming(&vault.b), 1, "not swept again");
+}
+
+/// The store refuses to delete incomplete blobs (as a failing disk would): the sweep, and with it
+/// the lanes' start, fails. A trigger on the store, removed by `lift_store_failure`.
+fn fail_the_sweep(device: &TestConn) {
+    exec(
+        &device.lock(),
+        "CREATE TEMP TRIGGER refuse_sweep BEFORE DELETE ON files.blobs WHEN OLD.sha256 = '' \
+         BEGIN SELECT RAISE(ABORT, 'disk I/O error'); END;",
+    );
+}
+
+fn lift_store_failure(device: &TestConn) {
+    exec(&device.lock(), "DROP TRIGGER temp.refuse_sweep");
+}
+
+/// A lane start that fails (the sweep cannot delete) holds every transfer back, never the rounds;
+/// once the store works again, the next wake starts the lanes (sweep and full reconcile) and the
+/// transfers go; later runs never sweep or fully reconcile again.
+#[tokio::test]
+async fn a_failed_lane_start_holds_every_transfer_until_it_succeeds() {
+    let vault = devices().await;
+    attachment_store::begin_incoming(&vault.b.lock(), LEFT_OVER, 10).expect("left over");
+    let fetched = shared_document(&vault, "d1", &pattern(20_000, 18)).await;
+    exec(
+        &vault.b.lock(),
+        "INSERT INTO insurance_policies \
+           (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
+         VALUES ('p2', 'life', 'Insurer', 'Life', '456', 1767225600, 'monthly');",
+    );
+    let own = {
+        let conn = vault.b.lock();
+        let blob = attachment_store::put_bytes(&conn, &pattern(9 * 1024 * 1024, 19))
+            .expect("blob")
+            .id;
+        conn.execute(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id, uploaded_at) \
+             VALUES ('d-own', 'p2', 'Deed', ?1, 1767225600)",
+            [&blob],
+        )
+        .expect("document");
+        blob
+    };
+    fail_the_sweep(&vault.b);
+    let from = vault.relay.calls().len();
+    let ops = vault.relay.ops().len();
+
+    let running = start_with(vault.relay.clone(), vault.b.clone(), desktop());
+    rounds(&running, 1).await;
+    running.handle.wake_transfers();
+    settle_a_moment().await;
+    running.handle.wake(Trigger::SyncNow);
+    rounds(&running, 2).await;
+    settle_a_moment().await;
+
+    let calls = calls_since(&vault.relay, from);
+    assert!(!calls.contains(&Route::GetBlob), "{calls:?}");
+    assert!(!calls.contains(&Route::PutBlob), "{calls:?}");
+    assert!(!calls.contains(&Route::HeadBlob), "{calls:?}");
+    assert!(vault.relay.ops().len() > ops, "the rounds still pushed");
+    assert_eq!(running.handle.runtime().problem, None);
+    assert!(!stored(&vault.b, &fetched));
+    assert_eq!(incoming(&vault.b), 1);
+
+    lift_store_failure(&vault.b);
+    running.handle.wake_transfers();
+
+    until("the content arrived", || stored(&vault.b, &fetched)).await;
+    until("the own content went up", || {
+        state_of(&vault.b, &own).as_deref() == Some("done")
+    })
+    .await;
+    assert_eq!(incoming(&vault.b), 0, "swept at the start that succeeded");
+
+    // Once started, never again: a live incoming blob and content lost from the store outside
+    // a merge stay as they are through later runs (only a start sweeps and fully reconciles).
+    let live = "5d1c3a9e-7b2f-4e8a-9c6d-0e1f2a3b4c03";
+    attachment_store::begin_incoming(&vault.b.lock(), live, 10).expect("live");
+    attachment_store::delete(&vault.b.lock(), &fetched).expect("the store loses it");
+    let second = document(&vault.a, "d2", &pattern(20_000, 20));
+    round_on(&vault.relay, &vault.a).await;
+    running.handle.wake(Trigger::SyncNow);
+    until("a later run fetched more", || stored(&vault.b, &second)).await;
+    assert_eq!(incoming(&vault.b), 1, "not swept again");
+    assert_eq!(
+        state_of(&vault.b, &fetched).as_deref(),
+        Some("done"),
+        "not fully reconciled again"
+    );
 }
 
 /// The lanes' start reconciles the whole queue with the store: content lost outside a merge (an
@@ -982,4 +1073,13 @@ fn each_lane_runs_where_the_round_would() {
         assert!(lane_may_run(Lane::Up, problem), "{problem:?}");
         assert!(lane_may_run(Lane::Down, problem), "{problem:?}");
     }
+}
+
+/// A panic in the lanes ends them, and it is reported (one error line with its message), not
+/// lost with the task.
+#[tokio::test]
+async fn a_panic_in_the_lanes_is_reported() {
+    let panicked = reporting_panic(async { panic!("a lane broke") }).await;
+    assert_eq!(panicked.as_deref(), Some("a lane broke"));
+    assert_eq!(reporting_panic(async {}).await, None);
 }

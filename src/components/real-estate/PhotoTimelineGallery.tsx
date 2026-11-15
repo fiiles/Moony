@@ -29,7 +29,8 @@ import {
 import { attachmentsApi, deviceSyncApi, realEstateApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { Skeleton } from '@/components/ui/skeleton';
-import { attachmentView, thumbnailShown } from '@/utils/attachment-content';
+import { attachmentView, thumbnailShown, type AttachmentView } from '@/utils/attachment-content';
+import { reconcileLightbox } from '@/utils/lightbox-photos';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '@/lib/use-format';
@@ -62,16 +63,37 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
   const markBroken = (key: string) => setBrokenImages((prev) => new Set(prev).add(key));
   // Photos whose full content this lightbox visit already asked for (once per open).
   const requestedFull = useRef<Set<string>>(new Set());
+  // Photos whose ask for the full content failed in this lightbox visit (shown as `failed`).
+  const [failedAsks, setFailedAsks] = useState<ReadonlySet<string>>(new Set());
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  const closeLightbox = () => {
+    setLightboxOpen(false);
+    setBrokenImages(new Set());
+    setFailedAsks(new Set());
+    setRetryingId(null);
+  };
 
   // Upload form state
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
   const [uploadDescription, setUploadDescription] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  const { data: batches = [], isLoading } = useQuery<RealEstatePhotoBatch[]>({
+  const {
+    data: batches = [],
+    isLoading,
+    dataUpdatedAt,
+  } = useQuery<RealEstatePhotoBatch[]>({
     queryKey: ['real-estate-photo-batches', realEstateId],
     queryFn: () => realEstateApi.getPhotoBatches(realEstateId),
   });
+
+  // Each refetch gives broken images one new attempt (never a timer).
+  const [seenUpdate, setSeenUpdate] = useState(dataUpdatedAt);
+  if (seenUpdate !== dataUpdatedAt) {
+    setSeenUpdate(dataUpdatedAt);
+    setBrokenImages(new Set());
+  }
 
   // Keep the formats the backend decodes; HEIC (not supported) and anything else get a message.
   const processFiles = (files: File[]): { processed: File[]; errors: string[] } => {
@@ -266,8 +288,23 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
 
   // A row refetched by the attachments event replaces the lightbox's copy of the photo.
   const livePhotoById = new Map(batches.flatMap((b) => b.photos).map((p) => [p.id, p]));
-  const livePhotos = lightboxPhotos.map((p) => livePhotoById.get(p.id) ?? p);
-  const lightboxPhoto = lightboxOpen ? livePhotos[lightboxIndex] : undefined;
+  // Photos deleted meanwhile drop out; the snapshot's order stays.
+  const reconciled = reconcileLightbox(
+    lightboxPhotos.map((p) => p.id),
+    new Set(livePhotoById.keys()),
+    lightboxIndex
+  );
+  const livePhotos = reconciled.ids.flatMap((id) => livePhotoById.get(id) ?? []);
+  const shownIndex = reconciled.index;
+  if (lightboxOpen && (reconciled.close || reconciled.ids.length !== lightboxPhotos.length)) {
+    if (reconciled.close) {
+      closeLightbox();
+    } else {
+      setLightboxPhotos(livePhotos);
+      setLightboxIndex(reconciled.index);
+    }
+  }
+  const lightboxPhoto = lightboxOpen ? livePhotos[shownIndex] : undefined;
   const lightboxPhotoId = lightboxPhoto?.id;
   const lightboxContent = lightboxPhoto?.content;
 
@@ -282,19 +319,34 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
     // The list refreshes through the `sync-attachments-changed` event; this changes no financial
     // data, so no snapshot and no cache writes by hand.
     deviceSyncApi.downloadAttachment('photo', lightboxPhotoId).catch((error) => {
+      setFailedAsks((prev) => new Set(prev).add(lightboxPhotoId));
       toast.error(tc('status.error'), {
         description: translateApiError(error instanceof Error ? error : String(error), tc),
       });
     });
   }, [lightboxOpen, lightboxPhotoId, lightboxContent, tc]);
 
+  // "Try again" in the lightbox: ask again for a photo whose content is `notHere`, retry one that
+  // `failed`. The event refreshes the list; no snapshot and no cache writes by hand.
   const retryPhoto = (photo: RealEstatePhoto) => {
-    // Same as the downloads above: the event refreshes the list.
-    deviceSyncApi.retryAttachment('photo', photo.id).catch((error) => {
-      toast.error(tc('status.error'), {
-        description: translateApiError(error instanceof Error ? error : String(error), tc),
-      });
+    setRetryingId(photo.id);
+    setFailedAsks((prev) => {
+      const next = new Set(prev);
+      next.delete(photo.id);
+      return next;
     });
+    const call =
+      photo.content === 'failed'
+        ? deviceSyncApi.retryAttachment('photo', photo.id)
+        : deviceSyncApi.downloadAttachment('photo', photo.id);
+    call
+      .catch((error) => {
+        if (photo.content === 'notHere') setFailedAsks((prev) => new Set(prev).add(photo.id));
+        toast.error(tc('status.error'), {
+          description: translateApiError(error instanceof Error ? error : String(error), tc),
+        });
+      })
+      .finally(() => setRetryingId(null));
   };
 
   const getPhotoUrl = (photo: RealEstatePhoto) => attachmentUrl('photo-thumb', photo.id);
@@ -304,6 +356,8 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
   const openLightbox = (batch: RealEstatePhotoBatch, photoIndex: number) => {
     setLightboxPhotos(batch.photos);
     setLightboxIndex(photoIndex);
+    setBrokenImages(new Set());
+    setFailedAsks(new Set());
     setLightboxOpen(true);
   };
 
@@ -448,14 +502,30 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                         </span>
                       </Button>
                     </label>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDownloadBatch(batch)}
-                      title={t('gallery.downloadBatch')}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    {(() => {
+                      // A batch is saved whole: wait until every photo's content is here.
+                      const blocking = batch.photos
+                        .map((p) => attachmentView(p.content, 'desktop'))
+                        .filter((v) => !v.openable);
+                      const reason = blocking.some((v) => v.busy)
+                        ? 'downloading'
+                        : (blocking[0]?.note ?? null);
+                      return (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={reason !== null}
+                          onClick={() => handleDownloadBatch(batch)}
+                          title={
+                            reason
+                              ? tc(`attachments.content.${reason}`)
+                              : t('gallery.downloadBatch')
+                          }
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      );
+                    })()}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -509,13 +579,20 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                         <X className="h-3 w-3 text-white" />
                       </button>
                       <button
-                        className="absolute top-1 left-1 p-1 bg-black/50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        className={`absolute top-1 left-1 p-1 bg-black/50 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
+                          attachmentView(photo.content, 'desktop').openable
+                            ? ''
+                            : 'cursor-not-allowed !opacity-40'
+                        }`}
                         onClick={(e) => {
+                          // aria-disabled, not disabled: a click on a disabled button would
+                          // fall through to the tile and open the lightbox.
                           e.stopPropagation();
-                          handleDownloadPhoto(photo);
+                          if (attachmentView(photo.content, 'desktop').openable)
+                            handleDownloadPhoto(photo);
                         }}
                         title={t('gallery.downloadPhoto')}
-                        disabled={!attachmentView(photo.content, 'desktop').openable}
+                        aria-disabled={!attachmentView(photo.content, 'desktop').openable}
                       >
                         <Download className="h-3 w-3 text-white" />
                       </button>
@@ -595,32 +672,39 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
       {lightboxOpen && lightboxPhotos.length > 0 && (
         <div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-          onClick={() => setLightboxOpen(false)}
+          onClick={closeLightbox}
         >
           <button
             className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded"
-            onClick={() => setLightboxOpen(false)}
+            onClick={closeLightbox}
           >
             <X className="h-6 w-6" />
           </button>
           <button
-            className="absolute top-4 left-4 p-2 text-white hover:bg-white/10 rounded"
+            className={`absolute top-4 left-4 p-2 text-white hover:bg-white/10 rounded ${
+              lightboxPhoto && attachmentView(lightboxPhoto.content, 'desktop').openable
+                ? ''
+                : 'cursor-not-allowed opacity-40'
+            }`}
             onClick={(e) => {
               e.stopPropagation();
-              handleDownloadPhoto(livePhotos[lightboxIndex]);
+              if (lightboxPhoto && attachmentView(lightboxPhoto.content, 'desktop').openable)
+                handleDownloadPhoto(lightboxPhoto);
             }}
             title={t('gallery.downloadPhoto')}
-            disabled={!attachmentView(livePhotos[lightboxIndex].content, 'desktop').openable}
+            aria-disabled={
+              !(lightboxPhoto && attachmentView(lightboxPhoto.content, 'desktop').openable)
+            }
           >
             <Download className="h-6 w-6" />
           </button>
-          {lightboxPhotos.length > 1 && (
+          {livePhotos.length > 1 && (
             <>
               <button
                 className="absolute left-4 p-2 text-white hover:bg-white/10 rounded"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setLightboxIndex((i) => (i - 1 + lightboxPhotos.length) % lightboxPhotos.length);
+                  setLightboxIndex((i) => (i - 1 + livePhotos.length) % livePhotos.length);
                 }}
               >
                 <ChevronLeft className="h-8 w-8" />
@@ -629,7 +713,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                 className="absolute right-4 p-2 text-white hover:bg-white/10 rounded"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setLightboxIndex((i) => (i + 1) % lightboxPhotos.length);
+                  setLightboxIndex((i) => (i + 1) % livePhotos.length);
                 }}
               >
                 <ChevronRight className="h-8 w-8" />
@@ -638,7 +722,11 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
           )}
           {lightboxPhoto &&
             (() => {
-              const state = attachmentView(lightboxPhoto.content, 'desktop');
+              // An ask that failed shows as `failed` instead of an endless spinner.
+              const state: AttachmentView =
+                lightboxPhoto.content === 'notHere' && failedAsks.has(lightboxPhoto.id)
+                  ? { openable: false, note: 'failed', action: 'retry', busy: false }
+                  : attachmentView(lightboxPhoto.content, 'desktop');
               const fullKey = `full:${lightboxPhoto.id}:${lightboxPhoto.content}`;
               const thumbKey = `thumb:${lightboxPhoto.id}:${lightboxPhoto.thumbContent}`;
               const noteText = state.note ? tc(`attachments.content.${state.note}`) : null;
@@ -687,8 +775,11 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                       <span>{noteText}</span>
                       {state.action === 'retry' && (
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
+                          // Same look as the lightbox's other controls: white on the dark overlay.
+                          className="border-white/50 text-white hover:bg-white/10 hover:text-white [&_svg]:text-white"
+                          loading={retryingId === lightboxPhoto.id}
                           onClick={() => retryPhoto(lightboxPhoto)}
                         >
                           {tc('attachments.content.retry')}
@@ -700,7 +791,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
               );
             })()}
           <div className="absolute bottom-4 text-white text-sm">
-            {lightboxIndex + 1} / {lightboxPhotos.length}
+            {shownIndex + 1} / {livePhotos.length}
           </div>
         </div>
       )}

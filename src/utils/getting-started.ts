@@ -78,3 +78,14 @@ export function gettingStartedItems(
   );
   return items;
 }
+
+/**
+ * Whether the checklist item offers a second link, to the sync settings: only "Protect your data"
+ * (its own link leads to the backup), while the flag is on, sync is off and the item is not done.
+ */
+export function offerSyncLink(
+  item: Pick<GettingStartedItem, 'key' | 'done'>,
+  sync: GettingStartedSync
+): boolean {
+  return item.key === 'protectData' && sync.featureOn && !sync.syncOn && !item.done;
+}

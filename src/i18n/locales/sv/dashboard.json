@@ -91,6 +91,7 @@
     "makeBackupHint": "En fil med allt, i Inställningar → Data och säkerhetskopior.",
     "protectData": "Skydda dina data",
     "protectDataHint": "Gör en säkerhetskopia under Inställningar → Data och säkerhetskopior, eller slå på synkronisering.",
+    "setUpSync": "Ställ in synkronisering",
     "dismiss": "Avfärda",
     "done": "Klart",
     "optional": "Valfritt"

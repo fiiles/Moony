@@ -25,7 +25,11 @@ import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sy
 import { onboardingApi } from '@/lib/tauri-api';
 import { cn } from '@/lib/utils';
 import { syncIsOn } from '@/utils/safe-copy';
-import { gettingStartedItems, type GettingStartedKey } from '@/utils/getting-started';
+import {
+  gettingStartedItems,
+  offerSyncLink,
+  type GettingStartedKey,
+} from '@/utils/getting-started';
 
 const ONBOARDING_PROGRESS_KEY = ['onboarding-progress'] as const;
 
@@ -51,10 +55,8 @@ export function GettingStartedCard({ className }: { className?: string }) {
 
   if (!progress || progress.checklistDismissed) return null;
 
-  const items = gettingStartedItems(progress, user?.menuPreferences, {
-    featureOn,
-    syncOn: syncIsOn(featureOn, syncStatus),
-  });
+  const sync = { featureOn, syncOn: syncIsOn(featureOn, syncStatus) };
+  const items = gettingStartedItems(progress, user?.menuPreferences, sync);
   if (items.every((i) => i.done)) return null;
 
   const dismiss = async () => {
@@ -132,6 +134,14 @@ export function GettingStartedCard({ className }: { className?: string }) {
                   </span>
                 </span>
               </Link>
+              {offerSyncLink(item, sync) && (
+                <Link
+                  href="/settings/sync"
+                  className="-mt-1.5 mb-3 ml-[30px] block w-fit text-micro font-500 text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                >
+                  {t('gettingStarted.setUpSync')}
+                </Link>
+              )}
             </li>
           );
         })}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MenuPreferences } from '@shared/schema';
-import { gettingStartedItems } from './getting-started';
+import { gettingStartedItems, offerSyncLink } from './getting-started';
 
 const nothingDone = {
   hasTransactions: false,
@@ -93,5 +93,25 @@ describe('gettingStartedItems', () => {
     });
     expect(last(null, true).done).toBe(true);
     expect(last(1, false).done).toBe(true);
+  });
+});
+
+describe('offerSyncLink', () => {
+  const items = (sync: { featureOn: boolean; syncOn: boolean }) =>
+    gettingStartedItems(nothingDone, prefs(), sync);
+  const offered = (sync: { featureOn: boolean; syncOn: boolean }) =>
+    items(sync)
+      .filter((i) => offerSyncLink(i, sync))
+      .map((i) => i.key);
+
+  it('offers the link on "Protect your data" while the flag is on and sync is off', () => {
+    expect(offered({ featureOn: true, syncOn: false })).toEqual(['protectData']);
+  });
+  it('offers nothing with the flag off, with sync on, or once the item is done', () => {
+    expect(offered({ featureOn: false, syncOn: false })).toEqual([]);
+    expect(offered({ featureOn: true, syncOn: true })).toEqual([]);
+    const sync = { featureOn: true, syncOn: false };
+    const done = gettingStartedItems({ ...nothingDone, lastBackupAt: 1 }, prefs(), sync);
+    expect(done.some((i) => offerSyncLink(i, sync))).toBe(false);
   });
 });

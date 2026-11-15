@@ -91,6 +91,7 @@
     "makeBackupHint": "Jeden soubor se vším, v Nastavení → Data a zálohy.",
     "protectData": "Ochránit data",
     "protectDataHint": "Udělejte zálohu v Nastavení → Data a zálohy, nebo zapněte synchronizaci.",
+    "setUpSync": "Nastavit synchronizaci",
     "dismiss": "Skrýt",
     "done": "Hotovo",
     "optional": "Volitelné"

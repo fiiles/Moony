@@ -91,6 +91,7 @@
     "makeBackupHint": "Eine Datei mit allem, unter Einstellungen → Daten und Sicherungen.",
     "protectData": "Daten schützen",
     "protectDataHint": "Erstellen Sie eine Sicherung unter Einstellungen → Daten und Sicherungen oder schalten Sie die Synchronisierung ein.",
+    "setUpSync": "Synchronisierung einrichten",
     "dismiss": "Ausblenden",
     "done": "Erledigt",
     "optional": "Optional"

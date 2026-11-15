@@ -7,7 +7,9 @@ import { onboardingApi } from '@/lib/tauri-api';
 import { cn } from '@/lib/utils';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { exportsOnThisDevice } from '@/mobile/lib/export-file';
+import { offerSyncLink } from '@/utils/getting-started';
 import { phoneGettingStartedItems } from '@/mobile/lib/getting-started';
+import { settingsPath } from '@/mobile/shell/routes';
 import { syncIsOn } from '@/utils/safe-copy';
 
 /** The progress the desktop card, Nastavení and the backup read: one cache entry. */
@@ -33,11 +35,12 @@ export function GettingStartedCard() {
   });
 
   if (!progress || progress.checklistDismissed) return null;
+  const sync = { featureOn, syncOn: syncIsOn(featureOn, syncStatus) };
   const items = phoneGettingStartedItems(
     progress,
     user?.menuPreferences,
     exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? ''),
-    { featureOn, syncOn: syncIsOn(featureOn, syncStatus) }
+    sync
   );
   if (items.every((item) => item.done)) return null;
   const doneCount = items.filter((item) => item.done).length;
@@ -72,7 +75,7 @@ export function GettingStartedCard() {
         </button>
       </div>
       <EntityRows>
-        {items.map((item) => (
+        {items.flatMap((item) => [
           <EntityRow
             key={item.key}
             chip={
@@ -104,8 +107,19 @@ export function GettingStartedCard() {
             href={item.href}
             from={tm('tabs.overview')}
             chevron
-          />
-        ))}
+          />,
+          ...(offerSyncLink(item, sync)
+            ? [
+                <EntityRow
+                  key={`${item.key}-sync`}
+                  title={t('gettingStarted.setUpSync')}
+                  href={settingsPath('sync')}
+                  from={tm('tabs.overview')}
+                  chevron
+                />,
+              ]
+            : []),
+        ])}
       </EntityRows>
     </section>
   );

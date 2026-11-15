@@ -91,6 +91,7 @@
     "makeBackupHint": "Jeden plik ze wszystkim, w Ustawienia → Dane i kopie zapasowe.",
     "protectData": "Chroń swoje dane",
     "protectDataHint": "Zrób kopię zapasową w Ustawienia → Dane i kopie zapasowe albo włącz synchronizację.",
+    "setUpSync": "Skonfiguruj synchronizację",
     "dismiss": "Odrzuć",
     "done": "Gotowe",
     "optional": "Opcjonalne"

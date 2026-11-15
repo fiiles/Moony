@@ -165,6 +165,12 @@ export interface SyncAttachments {
    * leave out of each other what they hold): a backup made here does not have these.
    */
   notOnDevice: number;
+  /**
+   * Rows among `failed` whose content is held here and cannot upload by itself (refused by the
+   * sync server, a conflict with what it holds, an invalid ID): on this device only until tried
+   * again. An upload backing off (no room, the network) is in `waitingUpload` instead.
+   */
+  failedUpload: number;
   /** Why documents and photos do not move, while ordinary sync goes on. */
   problem: SyncAttachmentsProblem | null;
 }

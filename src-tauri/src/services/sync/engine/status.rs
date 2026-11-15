@@ -136,6 +136,13 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
             .filter(|at| displayable(*at)),
         _ => None,
     };
+    // One pass over the attachment rows (`queue::summary`) gives the figures and the verdict's
+    // "content left"; an error is logged once and read by both as below.
+    let summary = queue::summary(conn)
+        .inspect_err(|error| {
+            log::warn!("[SYNC] Documents and photos could not be counted for the status: {error}");
+        })
+        .ok();
     let mut shown = SyncStatus {
         phase,
         problem,
@@ -151,34 +158,22 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         server_address: address,
         server_insecure,
         enabled_at: devices::this_device_joined_at(conn)?,
-        attachments: attachments(conn, runtime),
+        attachments: attachments(summary.as_ref(), runtime),
         last_complete_at: marks.last_complete_at,
         protects_data: false,
     };
-    shown.protects_data = sync_protects(today_utc_day(), &shown, content_to_upload(conn));
+    // What is left to upload comes from the same pass as the figures; a summary that cannot be
+    // read counts as content left, so the verdict is never "protected" on an error.
+    let content_left = summary.as_ref().is_none_or(|s| s.content_left);
+    shown.protects_data = sync_protects(today_utc_day(), &shown, content_left);
     Ok(shown)
 }
 
-/// Whether documents or photos held here may still have to reach the sync server, stuck uploads
-/// and ones not queued yet included (`queue::holds_content_to_upload`), for the verdict. A queue
-/// that cannot be read counts as content left (logged): the verdict is never "protected" on an
-/// error.
-fn content_to_upload(conn: &Connection) -> bool {
-    queue::holds_content_to_upload(conn).unwrap_or_else(|error| {
-        log::warn!("[SYNC] The transfer queue could not be read for the status");
-        log::debug!("[SYNC] The transfer queue could not be read for the status: {error}");
-        true
-    })
-}
-
 /// Where this device's documents and photos stand (`queue::summary`, read from the queue alone),
-/// with the problem the engine last read from its blob policy. A summary that cannot be read
-/// never hides the ordinary status: its figures are empty, with a warning in the log.
-fn attachments(conn: &Connection, runtime: &Runtime) -> SyncAttachments {
-    let summary = queue::summary(conn).unwrap_or_else(|error| {
-        log::warn!("[SYNC] Documents and photos could not be counted for the status: {error}");
-        Default::default()
-    });
+/// with the problem the engine last read from its blob policy. A summary that could not be read
+/// (`None`) never hides the ordinary status: its figures are empty.
+fn attachments(summary: Option<&queue::AttachmentSummary>, runtime: &Runtime) -> SyncAttachments {
+    let summary = summary.cloned().unwrap_or_default();
     SyncAttachments {
         waiting_upload: summary.waiting_upload,
         waiting_upload_bytes: summary.waiting_upload_bytes,
@@ -186,6 +181,7 @@ fn attachments(conn: &Connection, runtime: &Runtime) -> SyncAttachments {
         not_on_server: summary.not_on_server,
         failed: summary.failed,
         not_on_device: summary.not_on_device,
+        failed_upload: summary.failed_upload,
         problem: runtime.attachments_problem,
     }
 }

@@ -169,6 +169,13 @@ pub struct AttachmentSummary {
     /// the same rows by their worst state (a held blob that cannot upload is failed, not here), so
     /// this is the downloads among them.
     pub not_on_device: u32,
+    /// The rows among `failed` whose content is held here and cannot upload by itself ([`STUCK`]:
+    /// refused, a conflict, an invalid ID); an upload backing off (no room, the network) waits.
+    pub failed_upload: u32,
+    /// Content held here may still have to reach the sync server: a row with an upload waiting or
+    /// stuck, a row whose blob has no queue entry yet, or a blob a replace holds
+    /// (`sync_held_blobs`). Read from `main` alone, also without the store.
+    pub content_left: bool,
 }
 
 /// The owning row's date per attachment table: the download order among rows (`row_at`).
@@ -817,68 +824,77 @@ pub fn uploads_waiting(conn: &Connection) -> Result<u32> {
     Ok(rows as u32)
 }
 
-/// Whether any content held here may still have to reach the sync server: a row (the same rows
-/// as `summary`, `references()`) whose blob has an `up` entry, whatever its `last_error`, the
-/// stuck ones ([`STUCK`]) included, or no entry at all yet (a row added after the last queue
-/// update: its content is here until the queue says otherwise). `down` and `done` entries and
-/// entries no row names do not count. Read from `main` alone, so a store that failed to open
-/// does not make content waiting in it read as sent; a profile without such rows has none.
+/// Whether any content held here may still have to reach the sync server
+/// (`AttachmentSummary::content_left`, the one definition): a row (`references()`) whose blob has
+/// an `up` entry, whatever its `last_error`, the stuck ones ([`STUCK`]) included, or no entry at
+/// all yet (a row added after the last queue update: its content is here until the queue says
+/// otherwise), or a blob a replace holds until its row comes back (`sync_held_blobs`: it may be the
+/// only copy). `down` and `done` entries and entries no row names do not count. Read from `main`
+/// alone, so a store that failed to open does not make content waiting in it read as sent.
 pub fn holds_content_to_upload(conn: &Connection) -> Result<bool> {
-    Ok(conn.query_row(
-        &format!(
-            "SELECT EXISTS (SELECT 1 FROM ({}) r \
-               LEFT JOIN main.sync_blobs q ON q.blob_id = r.b \
-               WHERE q.blob_id IS NULL OR q.state = 'up')",
-            references()?
-        ),
-        [],
-        |r| r.get(0),
-    )?)
+    Ok(summary(conn)?.content_left)
 }
 
 /// The rows by where their content is (a photo once, whatever its two blobs do), read from the
-/// queue alone, never the store (ADR 0030): an entry `up` or `done` is content held here, `down`
-/// content not here, as of the last reconcile; content lost from the store outside a merge reads
-/// as held until the next full `reconcile`. Among content not here a row counts in its worst
-/// state only (failed, then not on the server, then not here); `waiting_upload` counts the rows
-/// with any blob waiting to upload, `waiting_upload_bytes` the plaintext size the queue recorded
-/// for those blobs; a held blob that never uploads by itself ([`STUCK`]) counts its row as failed
-/// instead; `not_on_device` counts every row with any download, before that split. Nothing without
-/// the store (every row reads as here then).
+/// queue alone, never the store (ADR 0030), in one pass over the rows: an entry `up` or `done` is
+/// content held here, `down` content not here, as of the last reconcile; content lost from the
+/// store outside a merge reads as held until the next full `reconcile`. Among content not here a
+/// row counts in its worst state only (failed, then not on the server, then not here);
+/// `waiting_upload` counts the rows with any blob waiting to upload, `waiting_upload_bytes` the
+/// plaintext size the queue recorded for those blobs; a held blob that never uploads by itself
+/// ([`STUCK`]) counts its row as failed instead, and in `failed_upload`; `not_on_device` counts
+/// every row with any download, before that split. A blob with no entry yet counts in none of
+/// these, only in `content_left`. Without the store every count is zero (every row reads as here
+/// then), but `content_left` is still read from `main`.
 pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
-    if !files_schema::is_attached(conn)? {
-        return Ok(AttachmentSummary::default());
-    }
     let refs = references()?;
-    let (waiting_upload, failed, not_on_server, not_here, not_on_device): (
-        i64,
-        i64,
-        i64,
-        i64,
-        i64,
-    ) = conn.query_row(
+    let counts: [i64; 7] = conn.query_row(
         &format!(
             "WITH blobs AS (
-               SELECT r.tbl, r.rid, q.state, q.active, COALESCE(q.last_error, '') AS error
-               FROM ({refs}) r JOIN main.sync_blobs q ON q.blob_id = r.b),
+               SELECT r.tbl, r.rid, q.blob_id IS NOT NULL AS queued, q.state, q.active,
+                 COALESCE(q.last_error, '') AS error
+               FROM ({refs}) r LEFT JOIN main.sync_blobs q ON q.blob_id = r.b),
              per_row AS (
-               SELECT MAX(state = 'up' AND error NOT IN {STUCK}) AS up,
+               SELECT MAX(state = 'up' AND error NOT IN {STUCK}) FILTER (WHERE queued) AS up,
                  MAX((state = 'down' AND active = 0
                      AND error IN {DOWNLOAD_FAILED})
-                   OR (state = 'up' AND error IN {STUCK})) AS failed,
-                 MAX(state = 'down' AND active = 0 AND error = 'notOnServer') AS gone,
-                 MAX(state = 'down') AS down
+                   OR (state = 'up' AND error IN {STUCK})) FILTER (WHERE queued) AS failed,
+                 MAX(state = 'up' AND error IN {STUCK}) FILTER (WHERE queued) AS stuck_up,
+                 MAX(state = 'down' AND active = 0 AND error = 'notOnServer')
+                   FILTER (WHERE queued) AS gone,
+                 MAX(state = 'down') FILTER (WHERE queued) AS down,
+                 MAX(NOT queued) AS unqueued
                FROM blobs
                GROUP BY tbl, rid)
              SELECT COALESCE(SUM(up), 0), COALESCE(SUM(failed), 0),
                COALESCE(SUM(gone AND NOT failed), 0),
                COALESCE(SUM(down AND NOT failed AND NOT gone), 0),
-               COALESCE(SUM(down), 0)
+               COALESCE(SUM(down), 0), COALESCE(SUM(stuck_up), 0),
+               COALESCE(MAX(unqueued), 0) OR EXISTS (SELECT 1 FROM main.sync_held_blobs)
              FROM per_row"
         ),
         [],
-        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+        |r| {
+            Ok([
+                r.get(0)?,
+                r.get(1)?,
+                r.get(2)?,
+                r.get(3)?,
+                r.get(4)?,
+                r.get(5)?,
+                r.get(6)?,
+            ])
+        },
     )?;
+    let [waiting_upload, failed, not_on_server, not_here, not_on_device, failed_upload, unqueued_or_held] =
+        counts;
+    let content_left = waiting_upload > 0 || failed_upload > 0 || unqueued_or_held != 0;
+    if !files_schema::is_attached(conn)? {
+        return Ok(AttachmentSummary {
+            content_left,
+            ..AttachmentSummary::default()
+        });
+    }
     let waiting_upload_bytes: i64 = conn.query_row(
         &format!(
             "SELECT COALESCE(SUM(q.size), 0) FROM main.sync_blobs q \
@@ -895,5 +911,7 @@ pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
         not_on_server: not_on_server as u32,
         failed: failed as u32,
         not_on_device: not_on_device as u32,
+        failed_upload: failed_upload as u32,
+        content_left,
     })
 }

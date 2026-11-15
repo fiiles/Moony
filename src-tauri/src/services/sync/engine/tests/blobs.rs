@@ -304,6 +304,7 @@ async fn a_refused_upload_keeps_the_sync_incomplete() {
 
     assert_eq!(report.problem, None);
     assert_eq!(shown(&vault.a).failed, 1);
+    assert_eq!(shown(&vault.a).failed_upload, 1);
     assert_eq!(last_success(&vault.a), Some(NOW));
     assert_eq!(last_complete(&vault.a), None);
 }
@@ -625,6 +626,7 @@ fn the_status_counts_waiting_uploads_and_content_elsewhere() {
             not_on_server: 0,
             failed: 0,
             not_on_device: 1,
+            failed_upload: 0,
             problem: None,
         }
     );
@@ -693,7 +695,18 @@ fn the_verdict_waits_for_what_only_this_device_holds() {
         )
         .expect("refused");
     let attachments = shown(&device);
-    assert_eq!((attachments.waiting_upload, attachments.failed), (0, 1));
+    assert_eq!(
+        (
+            attachments.waiting_upload,
+            attachments.failed,
+            attachments.failed_upload
+        ),
+        (0, 1, 1)
+    );
+    let wire =
+        serde_json::to_value(status::status(&device.lock(), &Runtime::default()).expect("status"))
+            .expect("json");
+    assert_eq!(wire["attachments"]["failedUpload"], 1);
     assert!(!verdict(), "a refused upload");
 
     device
@@ -710,6 +723,29 @@ fn the_verdict_waits_for_what_only_this_device_holds() {
         "ALTER TABLE sync_blobs RENAME TO sync_blobs_away",
     );
     assert!(!verdict(), "a queue that cannot be read proves nothing");
+}
+
+/// A summary of documents and photos that cannot be read never leaves the verdict standing: the
+/// figures are empty and the verdict is withdrawn, even when the rows and the queue alone would
+/// say nothing is left (here the queue lost the size column only the summary reads).
+#[test]
+fn a_summary_that_cannot_be_read_withdraws_the_verdict() {
+    let device = TestConn::new(migrated());
+    with_store(&device);
+    state::enable(&device.lock(), A).expect("enable");
+    owner(&device);
+    {
+        let conn = device.lock();
+        exec(&conn, "DELETE FROM sync_outbox; DELETE FROM sync_unsent;");
+        state::record_complete(&conn, chrono::Utc::now().timestamp() - 86_400).expect("complete");
+    }
+    let shown_status = || status::status(&device.lock(), &Runtime::default()).expect("status");
+    assert!(shown_status().protects_data);
+
+    exec(&device.lock(), "ALTER TABLE sync_blobs DROP COLUMN size");
+    let broken = shown_status();
+    assert_eq!(broken.attachments, SyncAttachments::default());
+    assert!(!broken.protects_data, "never zeros and protected");
 }
 
 // ---------------------------------------------------------------------------------------------

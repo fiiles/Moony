@@ -27,6 +27,7 @@ const base: SyncStatus = {
     notOnServer: 0,
     failed: 0,
     notOnDevice: 0,
+    failedUpload: 0,
     problem: null,
   },
   lastCompleteAt: now - 240,

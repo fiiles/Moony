@@ -131,6 +131,11 @@ pub struct SyncAttachments {
     /// above leave out of each other what they hold): the backup does not have these.
     #[serde(rename = "notOnDevice")]
     pub not_on_device: u32,
+    /// Rows among `failed` whose content is held here and cannot upload by itself (refused by the
+    /// sync server, a conflict with what it holds, an invalid ID): on this device only until tried
+    /// again. An upload backing off (no room, the network) is in `waiting_upload` instead.
+    #[serde(rename = "failedUpload")]
+    pub failed_upload: u32,
     /// Why documents and photos do not move, while ordinary sync goes on.
     #[serde(rename = "problem")]
     pub problem: Option<SyncAttachmentsProblem>,

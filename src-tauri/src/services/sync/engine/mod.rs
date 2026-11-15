@@ -385,8 +385,8 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    round with no problem, or only a waiting gap (`Gap`) or change (`ClockAhead`), records its
 ///    success; one with any other problem records its fixed reason. A round with no problem that
 ///    leaves no change to send (`sync_outbox`, `sync_unsent`) and no document or photo to upload,
-///    stuck ones and ones not queued yet included (`queue::holds_content_to_upload`), also
-///    records a complete sync
+///    stuck ones and ones not queued yet included, nor a blob a replace still holds
+///    (`queue::holds_content_to_upload`), also records a complete sync
 ///    (`state::record_complete`, spec 2026-11-14 §7.2).
 #[allow(clippy::too_many_arguments)]
 pub async fn run_round_into<R: Relay, D: ConnAccess>(
@@ -707,8 +707,9 @@ fn queue_local_changes(conn: &Connection, blobs: &BlobPolicy, now: i64) -> Resul
     }
 }
 
-/// Whether the round leaves content here to upload (`queue::holds_content_to_upload`), for the
-/// complete sync of step 6. A queue that cannot be read is logged and counts as content left (no
+/// Whether the round leaves content here to upload (`queue::holds_content_to_upload`, the
+/// summary's `content_left`: the same definition the status's verdict reads), for the complete
+/// sync of step 6. A queue that cannot be read is logged and counts as content left (no
 /// complete sync is recorded, the round's success stands); a locked profile ends the round.
 fn content_to_upload(conn: &Connection) -> Result<bool> {
     match queue::holds_content_to_upload(conn) {

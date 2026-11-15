@@ -161,10 +161,10 @@ export function DoneStep({
     <>
       <StatRow
         stats={[
-          { label: tb('csvImport.done.imported'), value: String(facts.imported) },
-          { label: tb('csvImport.done.duplicates'), value: String(facts.duplicates) },
+          { label: t('stat.imported'), value: String(facts.imported) },
+          { label: t('stat.duplicates'), value: String(facts.duplicates) },
           {
-            label: tb('csvImport.done.errors'),
+            label: t('stat.errors'),
             value: String(facts.errors),
             tone: facts.errors > 0 ? 'loss' : undefined,
           },

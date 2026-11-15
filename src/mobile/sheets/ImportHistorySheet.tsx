@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Undo2 } from 'lucide-react';
 import type { CsvImportBatch } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
-import { Button } from '@/components/ui/button';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -29,7 +28,6 @@ export function ImportHistorySheet({
   onUndo,
 }: ImportHistorySheetProps) {
   const { t } = useTranslation('bank_accounts');
-  const { t: tc } = useTranslation('common');
   const newestFirst = [...batches].sort((a, b) => b.importedAt - a.importedAt);
 
   return (
@@ -38,14 +36,6 @@ export function ImportHistorySheet({
       onOpenChange={onOpenChange}
       title={t('importHistory.title')}
       description={newestFirst.length === 0 ? t('importHistory.empty') : undefined}
-      footer={
-        <Button
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={() => onOpenChange(false)}
-        >
-          {tc('buttons.close')}
-        </Button>
-      }
     >
       {newestFirst.length > 0 && (
         <EntityRows className="mb-0">

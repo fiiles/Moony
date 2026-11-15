@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useFormat } from '@/lib/use-format';
 import { Sheet } from '@/mobile/components/Sheet';
-import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
+import { FOOTER_GHOST_WIDE } from '@/mobile/components/import/styles';
 import type { GalleryPhoto } from '@/mobile/lib/property-detail';
 import { attachmentUrl } from '@/utils/attachment-url';
 
@@ -65,18 +65,17 @@ export function PhotoViewerSheet({
       fill
       title={shown ? fmt.day(shown.day, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
       description={shown?.description || undefined}
+      dismiss="done"
       footer={
         <>
+          {/* Nothing to confirm here: "Hotovo" is in the head, the footer holds the one act (C7) */}
           <Button
             variant="ghost"
-            className={cn(FOOTER_GHOST, 'text-loss')}
+            className={cn(FOOTER_GHOST_WIDE, 'text-loss')}
             disabled={deleteDisabled}
             onClick={onDelete}
           >
             {t('property.deletePhoto')}
-          </Button>
-          <Button className={FOOTER_PRIMARY} onClick={() => onOpenChange(false)}>
-            {tc('buttons.close')}
           </Button>
         </>
       }

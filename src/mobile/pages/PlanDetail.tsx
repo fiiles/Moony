@@ -57,6 +57,7 @@ import { filterPlanPayments } from '@/mobile/lib/plan-rows';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { planPath, plansPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { DetailSub } from '@/mobile/components/DetailSub';
 import { CategoryPickerSheet } from '@/mobile/sheets/CategoryPickerSheet';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { PlanFormSheet } from '@/mobile/sheets/PlanFormSheet';
@@ -157,6 +158,7 @@ export default function PlanDetail() {
   return (
     <Screen
       title={plan?.name ?? ''}
+      large
       leading={
         <NavTextButton
           chevron
@@ -334,9 +336,7 @@ function PlanDetailBody({ detail, onReopen }: PlanDetailBodyProps) {
 
   return (
     <>
-      <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
-        {[String(plan.year), currency, plan.note].filter(Boolean).join(' · ')}
-      </p>
+      <DetailSub>{[String(plan.year), currency, plan.note].filter(Boolean).join(' · ')}</DetailSub>
       {plan.closedAt !== null && (
         <InlineAlert
           icon={Lock}

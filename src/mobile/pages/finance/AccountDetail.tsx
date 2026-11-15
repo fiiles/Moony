@@ -2,7 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useLocation, useRoute, useSearch } from 'wouter';
-import { CalendarSearch, Ellipsis, ListFilter, Pencil, Upload, Wallet } from 'lucide-react';
+import {
+  CalendarSearch,
+  Ellipsis,
+  FileClock,
+  History,
+  ListFilter,
+  Pencil,
+  Percent,
+  Plus,
+  SquarePen,
+  Trash2,
+  Upload,
+  WandSparkles,
+} from 'lucide-react';
 import type {
   BankAccountWithInstitution,
   CsvImportBatch,
@@ -18,6 +31,7 @@ import {
 } from '@/hooks/use-bank-account-mutations';
 import { useCategories } from '@/hooks/use-categories';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { calculateZonedInterest } from '@/utils/bank-account-zones';
 import {
@@ -47,6 +61,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { ButtonPair } from '@/mobile/components/ButtonPair';
+import { DetailSub } from '@/mobile/components/DetailSub';
 import { DayHead } from '@/mobile/components/DayHead';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { FlowStrip } from '@/mobile/components/FlowStrip';
@@ -70,6 +85,7 @@ import { useTransactionDay } from '@/mobile/hooks/use-transaction-day';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { useRowIntent } from '@/mobile/hooks/use-row-intent';
 import { hasUncategorized, showsInterest } from '@/mobile/lib/account-menu';
+import { accountDetailSub, hasMonthlyAverage } from '@/mobile/lib/account-detail';
 import { balanceLine } from '@/mobile/lib/balance-line';
 import { recentCategoryIds } from '@/mobile/lib/category-pick';
 import { cashChange } from '@/mobile/lib/finance-rows';
@@ -93,6 +109,7 @@ import { FilterSheet } from '@/mobile/sheets/FilterSheet';
 import { ImportHistorySheet } from '@/mobile/sheets/ImportHistorySheet';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
 import { TransactionSheet } from '@/mobile/sheets/TransactionSheet';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 type SheetKind =
   | 'record'
@@ -142,6 +159,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
+  const { currencyCode } = useCurrency();
   // Money as text for the flows strip's accessible names and the flows line
   const moneyText = useMoneyText();
   const back = useBack(routes.finance);
@@ -279,31 +297,47 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
     );
 
   const balance = account ? parseFloat(account.balance || '0') || 0 : 0;
-  const showHero = balance !== 0 || records.length > 0;
+  // No balance recorded yet: the hero still stands, saying so, with the actions under it (D8)
+  const hasBalance = balance !== 0 || records.length > 0;
+  const sub = account
+    ? accountDetailSub({
+        institution: account.institution?.name,
+        currency,
+        identifier: completeAccountIdentifier(account.iban, account.bban, null),
+        mainCurrency: currencyCode,
+        imported: detail.batches.length > 0,
+      })
+    : null;
+  // A hand-kept account adds its payments one by one: Přidat transakci is its second button and
+  // Importovat výpis waits in `···` (C14); an account with statements keeps the import beside
+  // the balance
+  const manual = sub?.manual ?? false;
   // Until the complete history says otherwise the ledger is there (its own skeleton shows)
   const hasTransactions = !historyLoaded || history.length > 0;
   const currentMonth = monthOf(today);
 
-  // Under the balance chart, one full-width button above the other; first on the page without one
+  const importStatement = () =>
+    account && openImport({ accountId: id, source: 'account', from: account.name });
+  // Under the hero, side by side (D8): the balance, and the import or (hand-kept) a new payment
   const actions = account && (
     <ButtonPair
-      stacked
       primary={{
         label: t('account.record'),
         icon: Pencil,
         onClick: () => setSheet('record'),
       }}
-      secondary={{
-        label: t('account.import'),
-        icon: Upload,
-        onClick: () => openImport({ accountId: id, source: 'account', from: account.name }),
-      }}
+      secondary={
+        manual
+          ? { label: tb('transaction.add'), icon: Plus, onClick: () => setSheet('addTransaction') }
+          : { label: t('account.import'), icon: Upload, onClick: importStatement }
+      }
     />
   );
 
   return (
     <Screen
       title={account?.name ?? ''}
+      large
       leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         account && (
@@ -314,26 +348,43 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
               </NavIconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[220px]">
-              <RowMenuItem onSelect={() => setSheet('edit')}>{t('account.menu.edit')}</RowMenuItem>
-              <RowMenuItem onSelect={() => setSheet('addTransaction')}>
-                {tb('transaction.add')}
+              <RowMenuItem onSelect={() => setSheet('edit')}>
+                <SquarePen strokeWidth={1.75} aria-hidden />
+                {t('account.menu.edit')}
               </RowMenuItem>
+              {/* What the buttons under the hero do not hold (C14) */}
+              {manual ? (
+                <RowMenuItem onSelect={importStatement}>
+                  <Upload strokeWidth={1.75} aria-hidden />
+                  {t('account.import')}
+                </RowMenuItem>
+              ) : (
+                <RowMenuItem onSelect={() => setSheet('addTransaction')}>
+                  <Plus strokeWidth={1.75} aria-hidden />
+                  {tb('transaction.add')}
+                </RowMenuItem>
+              )}
               <RowMenuItem onSelect={() => setSheet('balanceHistory')}>
+                <History strokeWidth={1.75} aria-hidden />
                 {t('account.menu.balanceHistory')}
               </RowMenuItem>
               <RowMenuItem onSelect={() => setSheet('importHistory')}>
+                <FileClock strokeWidth={1.75} aria-hidden />
                 {t('account.menu.importHistory')}
               </RowMenuItem>
               {showsInterest(account) && (
                 <RowMenuItem onSelect={() => setSheet('interest')}>
+                  <Percent strokeWidth={1.75} aria-hidden />
                   {tb('menu.interest')}
                 </RowMenuItem>
               )}
               <RowMenuItem disabled={categorizing} onSelect={runAutoCategorize}>
+                <WandSparkles strokeWidth={1.75} aria-hidden />
                 {tb('categorization.autoCategorize')}
               </RowMenuItem>
               <DropdownMenuSeparator />
               <RowMenuItem variant="danger" onSelect={() => setSheet('deleteAccount')}>
+                <Trash2 strokeWidth={1.75} aria-hidden />
                 {t('account.menu.delete')}
               </RowMenuItem>
             </DropdownMenuContent>
@@ -347,17 +398,13 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
         <MissingOrFailed>{tb('detail.notFound')}</MissingOrFailed>
       ) : (
         <>
-          {/* "Fio · CZK · 2100123456/2010": the nav bar has no room for a second line */}
-          <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
-            {[
-              account.institution?.name,
-              currency,
-              completeAccountIdentifier(account.iban, account.bban, null),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-          {showHero ? (
+          {/* "Fio · 2100123456/2010" under the large title; "Vedeno ručně" for a hand-kept account */}
+          {sub && (sub.manual || sub.parts.length > 0) && (
+            <DetailSub>
+              {[sub.manual ? t('account.manual') : null, ...sub.parts].filter(Boolean).join(' · ')}
+            </DetailSub>
+          )}
+          {hasBalance ? (
             <>
               <BalanceHero
                 account={account}
@@ -380,7 +427,15 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
               />
             </>
           ) : (
-            actions
+            <>
+              <Hero
+                label={t('account.noBalance.label')}
+                value={0}
+                formatValue={money0}
+                note={t('account.noBalance.note')}
+              />
+              {actions}
+            </>
           )}
           {/* Toky holds its place while the history loads, so the ledger does not jump down (C11) */}
           {detail.historyPending ? (
@@ -415,16 +470,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
                 setDeleteOpen(true);
               }}
             />
-          ) : (
-            !showHero && (
-              <ScaledEmptyState
-                icon={<Wallet />}
-                title={tb('empty.noDataTitle')}
-                description={tb('empty.noDataDescription')}
-                className="px-5 py-10"
-              />
-            )
-          )}
+          ) : null}
 
           <RecordBalancesSheet
             open={sheet === 'record'}
@@ -694,14 +740,15 @@ function BalanceStats({
   const stats: StatItem[] = [];
   if (thisYear) {
     stats.push({
-      label: t('account.stats.changeThisYear'),
+      label: t('stat.changeYtd'),
       value: signed0(thisYear.delta),
       note: tb('balanceStats.vsRecordAt', { date: fmt.day(thisYear.baseDay) }),
     });
   }
-  if (avg) {
+  // One month's change is no average (D10)
+  if (avg && hasMonthlyAverage(avg)) {
     stats.push({
-      label: t('account.stats.avgPerMonth'),
+      label: t('stat.avgPerMonth'),
       value: signed0(avg.perMonth),
       note: avg.sinceFirst
         ? tb('balanceStats.sinceFirstRecord', { count: avg.months })
@@ -710,7 +757,7 @@ function BalanceStats({
   }
   if (zoned || simpleRate > 0) {
     stats.push({
-      label: t('account.stats.yearlyInterest'),
+      label: t('stat.yearlyInterest'),
       value: moneyText(yearlyInterest, currency, { decimals: 0 }),
       note: zoned
         ? tb('balanceStats.effectiveZoned', {
@@ -742,6 +789,7 @@ function FlowsSection({
 }) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
+  const list = useListText();
   const fmt = useFormat();
   const flows = useMemo(() => monthlyFlows(historyRows, currentMonth), [historyRows, currentMonth]);
   const flow = flows.find((f) => f.month === selected);
@@ -765,22 +813,43 @@ function FlowsSection({
           labels={{ income: tb('flows.income'), expense: tb('flows.expense') }}
           label={t('account.flows.title')}
         />
-        <p className="mb-0 mt-2 text-m-caption text-ink-3 num">
-          {flow && flow.count > 0
-            ? tb('flows.line', {
+        <p className="mb-0 mt-2 text-balance text-m-caption text-ink-3 num">
+          {flow && flow.count > 0 ? (
+            // Breaks only between the line's parts, never inside one ("· 83 / pohybů", D9)
+            <UnbrokenParts
+              text={tb('flows.line', {
                 credits: signed0(flow.income),
                 debits: signed0(-flow.expense),
                 count: flow.count,
-              })
-            : tb('flows.noMoves')}
+              })}
+            />
+          ) : (
+            tb('flows.noMoves')
+          )}
         </p>
         {/* Rows of a currency without a rate for their day are left out, and said so */}
         {foreignMissing.length > 0 && (
           <p className="mb-0 mt-1 text-m-caption text-loss">
-            {tb('readiness.foreignMissing', { currencies: foreignMissing.join(', ') })}
+            {tb('readiness.foreignMissing', { currencies: list(foreignMissing) })}
           </p>
         )}
       </div>
+    </>
+  );
+}
+
+/** A " · "-joined line whose parts each keep to one line; the line breaks between them. */
+function UnbrokenParts({ text }: { text: string }) {
+  const parts = text.split(' · ');
+  if (parts.length < 2) return <>{text}</>;
+  return (
+    <>
+      {parts.map((part, index) => (
+        <span key={index}>
+          {index > 0 && ' · '}
+          <span className="whitespace-nowrap">{part}</span>
+        </span>
+      ))}
     </>
   );
 }

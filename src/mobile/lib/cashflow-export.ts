@@ -29,3 +29,12 @@ export function cashflowCsv(
         actuals.transfers.length;
   return { csv: buildCashflowCsv(actuals, monthLabel, groupLabel), count };
 }
+
+/**
+ * A month of the CSV as a machine reads it, `yyyy-MM` (audit 2026-11-15 B10): a spreadsheet sorts
+ * and parses it the same in every language, where "10/2026" or "10.2026" follow the UI's.
+ */
+export function csvMonth(month: number): string {
+  const date = new Date(month * 1000);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}

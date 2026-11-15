@@ -18,7 +18,7 @@ import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { useWatchedStocks } from '@/hooks/use-stock-monitor';
 import { useStockImportMutations } from '@/hooks/use-stock-import-mutations';
-import { amountOf, totalOf } from '@/utils/positions';
+import { totalOf } from '@/utils/positions';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,9 +62,6 @@ import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { positionPath, routes, watchPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
-
-/** Whole amounts: the class page shows no decimals. */
-const WHOLE = { decimals: 0 } as const;
 
 /**
  * Akcie, the class page of Majetek (spec §8.8, prototype frame 11): the portfolio value with its
@@ -131,6 +128,7 @@ export default function Stocks() {
       // A pull from the top refreshes the prices, as `···` › Aktualizovat ceny does (spec §8.8)
       onRefresh={() => refresh.mutateAsync()}
       title={ts('title')}
+      large
       leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
       trailing={
         <>
@@ -180,7 +178,7 @@ export default function Stocks() {
         <>
           {hasPositions && (
             <>
-              {/* The nav bar keeps its one title, so the count and the age of the prices are the first line */}
+              {/* The count and the age of the prices under the large title */}
               <PricesLine count={ts('summary.positions', { count: open.length })} rows={rows} />
               {/* Amounts the backend could not convert into the report currency (left out) */}
               <ScaledConversionNote
@@ -208,7 +206,13 @@ export default function Stocks() {
                 value: 'positions',
                 label: t('wealth.stocks.positionsTab', { count: open.length }),
               },
-              { value: 'watched', label: t('wealth.stocks.watchedTab', { count: watched.length }) },
+              {
+                value: 'watched',
+                // No count before the list has answered: "· 0" would be a wrong result (E1)
+                label: watchedLoading
+                  ? t('wealth.stocks.watchedTabPlain')
+                  : t('wealth.stocks.watchedTab', { count: watched.length }),
+              },
             ]}
             onChange={setTab}
             label={ts('title')}
@@ -357,7 +361,6 @@ function PortfolioStats({
   currency: string;
 }) {
   const { t } = useTranslation('mobile');
-  const { t: ts } = useTranslation('stocks');
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const { twr, mwr, notes, isLoading: twrLoading } = useTwrThisYear(positions !== undefined);
@@ -365,7 +368,6 @@ function PortfolioStats({
   const totals = positions?.totals;
   const value = totalOf(totals?.value);
   const unrealized = totalOf(totals?.unrealizedGain);
-  const realized = amountOf(totals?.realizedGain);
   const dividends = totalOf(totals?.yearlyDividend);
 
   const statMoney = (amount: number, signed = false) =>
@@ -374,33 +376,17 @@ function PortfolioStats({
   const stats: StatItem[] = [
     {
       // The desktop's summary (and the phone's crypto) names a loss a loss
-      label: (unrealized ?? 0) >= 0 ? ts('summary.unrealizedGain') : ts('summary.unrealizedLoss'),
+      label: (unrealized ?? 0) >= 0 ? t('stat.unrealizedGain') : t('stat.unrealizedLoss'),
       value: unrealized === null ? '—' : statMoney(unrealized, true),
       tone: statTone(unrealized),
-      // Two short lines, each its own: the percent, then what the sells realized. Joined on one
-      // line the realized part ran onto a third line at 360–390 pt and was cut; its amount is
-      // compact and its word the phone's short one, so it holds one line
-      note: (
-        <>
-          {unrealized !== null &&
-            totals !== undefined &&
-            fmt.percent(totals.unrealizedGainPercent / 100, 1, { signed: true })}
-          {unrealized !== null && totals !== undefined && realized !== null && realized !== 0 && (
-            <br />
-          )}
-          {realized !== null &&
-            realized !== 0 &&
-            t('wealth.stocks.realizedShort', {
-              amount: moneyText(realized, currency, {
-                signed: true,
-                ...(Math.abs(realized) >= 10_000 ? { compact: true, decimals: 0 } : WHOLE),
-              }),
-            })}
-        </>
-      ),
+      // One line (C2): the percent. What the sells realized is the closed positions' sheet's
+      note:
+        unrealized !== null && totals !== undefined
+          ? fmt.percent(totals.unrealizedGainPercent / 100, 1, { signed: true })
+          : undefined,
     },
     {
-      label: ts('summary.estimatedDividend'),
+      label: t('stat.dividends'),
       value: dividends ? statMoney(dividends) : '—',
       note:
         dividends && value !== null && value > 0
@@ -408,8 +394,10 @@ function PortfolioStats({
           : undefined,
     },
     {
-      label: t('wealth.stocks.twrYtd'),
+      label: t('stat.returnYtd'),
       value: twr === null ? '—' : fmt.percent(twr / 100, 1, { signed: true }),
+      // A skeleton while the report is computed, never a bare dash (D25)
+      loading: twr === null && twrLoading,
       tone: statTone(twr),
       // While the report loads there is nothing to say yet; "no history yet" is for a report that
       // has fewer than two days (or failed)

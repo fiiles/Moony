@@ -1,26 +1,31 @@
-import { Fragment, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import { List, Pencil, Plus } from 'lucide-react';
 import type { TransactionCategory } from '@shared/schema';
-import type { ExpenseRow, LimitState } from '@/utils/cashflow-budget-rows';
+import type { ExpenseRow } from '@/utils/cashflow-budget-rows';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { EntityRow } from '@/mobile/components/EntityRow';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
+import { useApprox } from '@/mobile/hooks/use-approx';
 import type { LimitMode } from '@/mobile/lib/budget-limit';
-import type { RowLimitAction } from '@/mobile/lib/budget-rows';
+import { expenseRowMoney, limitStatus, type RowLimitAction } from '@/mobile/lib/budget-rows';
 import { CategoryChip } from './CategoryChip';
 import { ProgressBar } from './ProgressBar';
 
-/** The desktop's words for each limit state (`ExpensesByCategoryCard`). */
-const STATE_KEYS: Record<LimitState, string> = {
-  over: 'table.state.overShort',
-  exhausted: 'table.state.exhausted',
-  near: 'table.state.near',
-  ok: 'table.state.ok',
-  unavailable: 'readiness.usageUnavailable',
-};
+/** The desktop's words for a limit whose usage cannot be worked out (`ExpensesByCategoryCard`). */
+const UNAVAILABLE_KEY = 'readiness.usageUnavailable';
+
+/** Stands for the limit amount inside the translated sentence, which is then split around it. */
+const SLOT = '\u2063';
+
+function withSlot(text: string): { before: string; after: string } {
+  const at = text.indexOf(SLOT);
+  return at < 0
+    ? { before: text, after: '' }
+    : { before: text.slice(0, at), after: text.slice(at + 1) };
+}
 
 interface ExpenseCategoryRowProps {
   row: ExpenseRow;
@@ -28,9 +33,9 @@ interface ExpenseCategoryRowProps {
   title: string;
   /** The category's icon and hue; `null` for the uncategorized group. */
   category: TransactionCategory | null;
-  /** A report amount at the currency's minor units; a net refund reads with its minus sign. */
-  money: (amount: number) => string;
-  /** An amount in its own currency (the limit's), at its minor units. */
+  /** The currency of the report: the row's amount, unless its limit is in another one. */
+  reportCurrency: string;
+  /** A whole amount in the given currency (the report's or the limit's). */
   native: (amount: number, currency: string, opts?: { signed?: boolean }) => string;
   /** The category's transactions in the period; `undefined` when it has none (a limit alone). */
   href: string | undefined;
@@ -52,21 +57,26 @@ interface ExpenseCategoryRowProps {
 
 /**
  * An expense category of the Cashflow report (the desktop's `ExpensesByCategoryCard` row, spec
- * `2026-11-07-mobile-cashflow-parity-design.md`): chip, name, what was spent in the report currency
+ * `2026-11-07-mobile-cashflow-parity-design.md`, audit 2026-11-15 D18): chip, name, what was spent
  * ("—" when no payment could be converted; never red, as on the desktop) and "47 % výdajů · 3
- * transakce". A row with a limit has the usage bar (red when over, the pace tick in a running
- * period) and, under the row and outside its tap target, the limit line: the state word and the
- * usage, what remains (or how far over) in the limit's own currency, "Jen část období" — or
- * "Čerpání nelze vyhodnotit" — and the limit amount as a 44 pt button that edits it. A row without
- * a limit has the share bar; only in the "Bez limitu" filter (`offerSetLimit`) does it get the line
- * "Bez limitu · Nastavit limit". The long press keeps its menu, "Zobrazit transakce" and the same
- * limit action. Colour is never the only signal: the state is worded and "over" has its arrow.
+ * transakce". Every row ends on the same edge: no visible `···`. A row with a limit has the usage
+ * bar (red when over, the pace tick in a running period) and, under the row and outside its tap
+ * target, one sentence (`limitStatus`): "Zbývá 1 229 Kč z 12 500 Kč", "Přečerpáno o 2 796 Kč ·
+ * limit 12 500 Kč" (red, no minus) or "Vyčerpáno · limit 12 500 Kč", whose limit amount is the
+ * dotted button that edits it, then "Jen část období" when it applies — or "Čerpání nelze
+ * vyhodnotit · Upravit limit". A row without a limit has no bar: its share of spending is the
+ * percentage in the sub-line. Every amount of a row is in one currency (`expenseRowMoney`, README
+ * §13): the report's, or — when the limit is in another one — the limit's, with the report amount
+ * as the "≈" under what was spent. All amounts are whole (a summary). Only in the "Bez limitu"
+ * filter (`offerSetLimit`) does a row without a limit get the line "Bez limitu · Nastavit limit".
+ * Swipe right sets or edits the limit; the long press keeps its menu, "Zobrazit transakce" and the
+ * same limit action. Colour is never the only signal: the sentence says the state.
  */
 export function ExpenseCategoryRow({
   row,
   title,
   category,
-  money,
+  reportCurrency,
   native,
   href,
   partial,
@@ -80,8 +90,10 @@ export function ExpenseCategoryRow({
   const { t: tb } = useTranslation('budgeting');
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
+  const approx = useApprox();
   const [, setLocation] = useLocation();
   const { limit } = row;
+  const amounts = expenseRowMoney(row, reportCurrency);
   const evaluated = limit && limit.state !== 'unavailable' && limit.percentage !== null;
   const over = limit?.state === 'over';
   const canOpen = !busy && href !== undefined;
@@ -92,77 +104,97 @@ export function ExpenseCategoryRow({
     { count: row.count }
   )}`;
   const fxUnavailable = tr('readiness.fxUnavailable');
-  const value = row.amountUnavailable ? (
-    <span title={fxUnavailable}>
-      —<span className="sr-only">{fxUnavailable}</span>
-    </span>
-  ) : (
-    money(row.amount)
-  );
+  const value =
+    amounts.spent === null ? (
+      <span title={fxUnavailable}>
+        —<span className="sr-only">{fxUnavailable}</span>
+      </span>
+    ) : (
+      // A net refund reads "− 100 Kč" with the minus sign of the signed amounts
+      native(amounts.spent, amounts.currency, amounts.spent < 0 ? { signed: true } : undefined)
+    );
+  // Written in the limit's currency: the report amount (the one the total adds up) is its "≈"
+  const valueSub =
+    amounts.currency === reportCurrency || amounts.spent === null
+      ? undefined
+      : amounts.approx !== null
+        ? approx(amounts.spent, amounts.currency, { converted: amounts.approx, pending: false })
+        : row.amountUnavailable
+          ? fxUnavailable
+          : undefined;
 
-  // The limit line's sentence, its parts joined by " · "
-  const parts: ReactNode[] = [];
-  if (limit && evaluated) {
-    parts.push(
-      <span className={over ? 'text-loss' : undefined}>
-        {over && <span aria-hidden>↑ </span>}
-        {tb(STATE_KEYS[limit.state])} {fmt.percent((limit.percentage ?? 0) / 100, 0)}
+  // The limit line (D18): one sentence of what remains or how far over, in the limit's currency,
+  // whose limit amount is the dotted button that edits it; no state word, no minus
+  const status = limit ? limitStatus(limit, amounts.limitAmounts) : null;
+  const editLabel = tr(
+    action?.hasLimit ? 'actuals.expenses.editLimitFor' : 'actuals.expenses.setLimitFor',
+    { name: title }
+  );
+  const limitButton = (text: string, amount: boolean) =>
+    action ? (
+      <button
+        type="button"
+        disabled={limitMode === null}
+        aria-label={editLabel}
+        onClick={() => limitMode && onLimit(limitMode)}
+        className={cn(
+          "relative whitespace-nowrap font-semibold text-ink [-webkit-touch-callout:none] after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] active:text-ink-3 disabled:opacity-45",
+          amount && 'underline decoration-line-strong decoration-dotted underline-offset-[3px] num'
+        )}
+      >
+        {text}
+      </button>
+    ) : (
+      <span className="whitespace-nowrap num">{text}</span>
+    );
+  let sentence: ReactNode;
+  if (status && status.kind !== 'unavailable') {
+    const words = withSlot(
+      t(`cashflow.limit.${status.kind}`, {
+        amount: native(status.amount, status.currency),
+        limit: SLOT,
+      })
+    );
+    sentence = (
+      <span className={cn('whitespace-nowrap', status.kind === 'over' && 'text-loss')}>
+        {words.before}
+        {limitButton(native(status.limit, status.currency), true)}
+        {words.after}
       </span>
     );
-    if (limit.remaining !== null && limit.currency) {
-      parts.push(
-        limit.remaining < 0 ? (
-          <span className="text-loss">
-            {native(limit.remaining, limit.currency, { signed: true })}{' '}
-            {tr('actuals.expenses.overLimit')}
-          </span>
-        ) : (
-          `${tr('actuals.expenses.remaining')} ${native(limit.remaining, limit.currency)}`
-        )
-      );
-    }
   } else if (limit) {
-    parts.push(tb(STATE_KEYS.unavailable));
+    sentence = (
+      <>
+        <span>{tb(UNAVAILABLE_KEY)}</span>
+        {action?.hasLimit && (
+          <>
+            {' · '}
+            {limitButton(tb('actions.editLimit'), false)}
+          </>
+        )}
+      </>
+    );
   } else {
-    parts.push(tb('noBudget'));
+    sentence = (
+      <>
+        <span>{tb('noBudget')}</span>
+        {action && (
+          <>
+            {' · '}
+            {limitButton(tb('actions.setLimit'), false)}
+          </>
+        )}
+      </>
+    );
   }
-  if (limit && partial) parts.push(tr('actuals.expenses.partialPeriod'));
-
-  const limitLabel = action?.hasLimit
-    ? limit?.limit != null && limit.currency
-      ? native(limit.limit, limit.currency)
-      : tb('actions.editLimit')
-    : tb('actions.setLimit');
 
   const limitLine = (row.hasLimit || (offerSetLimit && action)) && (
-    <div className="-mt-2 flex min-h-11 items-center justify-between gap-3 pb-0.5 pl-[62px] pr-3.5">
-      <p className="m-0 min-w-0 py-1 text-m-caption font-semibold leading-[1.35] text-ink-3 num">
-        {parts.map((part, index) => (
-          <Fragment key={index}>
-            {index > 0 && ' · '}
-            {part}
-          </Fragment>
-        ))}
-      </p>
-      {action && (
-        <button
-          type="button"
-          disabled={limitMode === null}
-          aria-label={tr(
-            action.hasLimit ? 'actuals.expenses.editLimitFor' : 'actuals.expenses.setLimitFor',
-            { name: title }
-          )}
-          onClick={() => limitMode && onLimit(limitMode)}
-          className={cn(
-            'inline-flex min-h-11 flex-none items-center whitespace-nowrap text-m-sub font-semibold text-ink [-webkit-touch-callout:none] active:text-ink-3 disabled:opacity-45',
-            action.hasLimit &&
-              'underline decoration-line-strong decoration-dotted underline-offset-[3px] num'
-          )}
-        >
-          {limitLabel}
-        </button>
+    <p className="m-0 -mt-2 flex min-h-11 flex-wrap items-center gap-x-1 pb-0.5 pl-[62px] pr-3.5 text-m-caption font-semibold leading-[1.35] text-ink-3">
+      {sentence}
+      {limit && partial && (
+        <span className="whitespace-nowrap">· {tr('actuals.expenses.partialPeriod')}</span>
       )}
-    </div>
+    </p>
   );
 
   const hasMenu = !busy && (href !== undefined || action !== null);
@@ -173,6 +205,7 @@ export function ExpenseCategoryRow({
       title={title}
       sub={sub}
       value={value}
+      valueSub={valueSub}
       bar={
         limit && evaluated ? (
           <ProgressBar
@@ -180,17 +213,19 @@ export function ExpenseCategoryRow({
             tone={over ? 'over' : 'limit'}
             mark={pace}
           />
-        ) : !row.hasLimit ? (
-          <ProgressBar value={row.share} tone="share" />
         ) : undefined
       }
       href={canOpen ? href : undefined}
+      onSwipeRight={limitMode ? () => onLimit(limitMode) : undefined}
+      swipeRightLabel={tb(action?.hasLimit ? 'actions.editLimit' : 'actions.setLimit')}
+      swipeRightIcon={action?.hasLimit ? Pencil : Plus}
       menu={
         hasMenu
           ? {
               label: t('cashflow.rowMenu', { title }),
-              // Nastavit / Upravit limit is nowhere else when the limit line is not drawn
-              shown: !!action && !limitLine,
+              // No visible `···` (D18): every row ends on the same edge; the limit is the swipe,
+              // the long press and "Spravovat limity"
+              shown: false,
               children: (
                 <>
                   <RowMenuItem disabled={!canOpen} onSelect={() => href && setLocation(href)}>

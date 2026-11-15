@@ -117,6 +117,7 @@
     "deleting": "Tar bort...",
     "backupFirst": "Tips: gör en säkerhetskopia först (Inställningar → Data och säkerhetskopior) — det är det enda sättet att få tillbaka de här uppgifterna.",
     "confirmLabel": "Skriv {{word}} för att bekräfta",
+    "confirmWord": "RADERA",
     "deleteAll": "Radera alla data",
     "deleteAllHint": "Tar bort databasen, nyckelfilerna och bilagorna på den här datorn. Kopior bredvid databasen (moony.db.bak-…, pre-restore-…) finns kvar i datamappen (Data och säkerhetskopior → Öppna mappen), liksom säkerhetskopior som sparats utanför appen.",
     "deleteButton": "Radera data…",
@@ -133,7 +134,8 @@
     "verificationFailed": "Verifieringen misslyckades",
     "updateFailed": "Uppdateringen misslyckades",
     "deletionFailed": "Raderingen misslyckades",
-    "languageChanged": "Språket har ändrats"
+    "languageChanged": "Språket har ändrats",
+    "currencyChanged": "Huvudvalutan är nu {{currency}}. Summorna har räknats om."
   },
   "rulePacks": {
     "title": "Regelpaket för kategorisering",

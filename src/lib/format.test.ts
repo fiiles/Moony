@@ -114,7 +114,54 @@ describe('time', () => {
   it('formats the time of day without a date', () => {
     const at = Math.floor(new Date(2026, 8, 30, 14, 5).getTime() / 1000);
     expect(norm(createFormatters('cs-CZ', undefined).time(at))).toBe('14:05');
-    expect(norm(createFormatters('en-US', undefined).time(at))).toBe('02:05 PM');
+    expect(norm(createFormatters('en-US', undefined).time(at))).toBe('2:05 PM');
+  });
+
+  it('keeps the two-digit hour of a 24-hour clock and drops the 12-hour leading zero (B6)', () => {
+    const morning = Math.floor(new Date(2026, 8, 30, 8, 51).getTime() / 1000);
+    expect(norm(createFormatters('cs-CZ', undefined).time(morning))).toBe('08:51');
+    expect(norm(createFormatters('de-DE', undefined).time(morning))).toBe('08:51');
+    expect(norm(createFormatters('en-US', undefined).time(morning))).toBe('8:51 AM');
+    expect(norm(createFormatters('en-US', undefined).dateTime(morning))).toBe('9/30/2026, 8:51 AM');
+  });
+});
+
+describe('phone style (README §13, "Dates and periods")', () => {
+  const SEPT_30 = 1_790_726_400;
+  const en = createFormatters('en-US', undefined, 'phone');
+  const cs = createFormatters('cs-CZ', undefined, 'phone');
+
+  it('writes the English month as a word, never "9/30" (B1)', () => {
+    expect(norm(en.day(SEPT_30))).toBe('Sep 30, 2026');
+    expect(norm(en.day(SEPT_30, { day: 'numeric', month: 'numeric' }))).toBe('Sep 30');
+    expect(norm(en.day(SEPT_30, { day: 'numeric', month: 'numeric', year: 'numeric' }))).toBe(
+      'Sep 30, 2026'
+    );
+    expect(norm(en.date(new Date(2026, 8, 30)))).toBe('Sep 30, 2026');
+  });
+
+  it('leaves the other languages as they are', () => {
+    expect(norm(cs.day(SEPT_30))).toBe('30. 9. 2026');
+    expect(norm(cs.day(SEPT_30, { day: 'numeric', month: 'numeric' }))).toBe('30. 9.');
+  });
+
+  it('keeps a month without a day, as the desktop writes it', () => {
+    expect(
+      norm(en.month(new Date(Date.UTC(2029, 7, 1)), { month: 'numeric', year: 'numeric' }))
+    ).toBe('8/2029');
+  });
+
+  it('writes the yen with the narrow sign in Japanese, as next to Latin digits (B11)', () => {
+    const ja = createFormatters('ja-JP', 'JPY', 'phone');
+    expect(norm(ja.money(247949, 'JPY'))).toBe('¥247,949');
+    expect(norm(ja.money(-247949, 'JPY', { signed: true }))).toBe('− ¥247,949');
+    expect(norm(createFormatters('ja-JP', 'JPY').money(247949, 'JPY'))).toBe('￥247,949');
+  });
+
+  it('labels a long axis with the month and the full year, which never reads as a day (C5)', () => {
+    expect(norm(cs.axisMonth(SEPT_30))).toBe('9/2026');
+    expect(norm(en.axisMonth(SEPT_30))).toBe('9/2026');
+    expect(norm(createFormatters('cs-CZ', undefined).axisMonth(SEPT_30))).toBe('září 26');
   });
 });
 

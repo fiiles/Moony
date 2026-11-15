@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RulePackInfo } from '@shared/schema';
-import { Button } from '@/components/ui/button';
 import { PackRow } from '@/mobile/components/categorization/PackRow';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SearchField } from '@/mobile/components/SearchField';
@@ -33,7 +32,6 @@ export function OtherPacksSheet({
   onOpenPack,
 }: OtherPacksSheetProps) {
   const { t } = useTranslation('mobile');
-  const { t: tc } = useTranslation('common');
   const [query, setQuery] = useState('');
   const [wasOpen, setWasOpen] = useState(open);
   if (wasOpen !== open) {
@@ -55,15 +53,6 @@ export function OtherPacksSheet({
       title={t('settings.categorization.otherPacks')}
       full
       fill
-      footer={
-        <Button
-          variant="ghost"
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={onClose}
-        >
-          {tc('buttons.close')}
-        </Button>
-      }
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <SearchField

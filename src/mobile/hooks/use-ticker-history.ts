@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';
 import type { TickerValueHistoryReport } from '@shared/schema';
@@ -12,15 +12,24 @@ import { chartPeriodStart, type ChartPeriod } from '@/utils/period';
  * backend finishes a recalculation, and backfilled once per ticker so the chart has history after
  * a fresh import. `kind` picks the stock or the crypto commands; `undefined` until loaded and
  * while there is no ticker. With `live` false (the holding is being deleted) the line stays as it
- * is: neither the query nor a recalculation fetches it again.
+ * is: neither the query nor a recalculation fetches it again. `backfilling` is true while that
+ * first backfill runs, so an empty chart can say that its history is still being computed.
  */
+export interface TickerHistory {
+  history: TickerValueHistoryReport | undefined;
+  backfilling: boolean;
+}
+
+/** The value line of one ticker and whether its history is still being backfilled. */
 export function useTickerHistory(
   kind: 'stock' | 'crypto',
   ticker: string | undefined,
   period: ChartPeriod,
   live = true
-): TickerValueHistoryReport | undefined {
+): TickerHistory {
   const queryClient = useQueryClient();
+  // The ticker whose first backfill has finished; until then its history may still be growing
+  const [backfilledTicker, setBackfilledTicker] = useState<string | null>(null);
   const { currencyCode, fxRevision } = useCurrency();
   const api = kind === 'crypto' ? cryptoApi : investmentsApi;
 
@@ -37,6 +46,7 @@ export function useTickerHistory(
   // On-demand backfill, once per ticker, so the chart has history after a fresh import
   useEffect(() => {
     if (!ticker) return;
+    let current = true;
     api
       .backfillHistory(ticker)
       .then((result) => {
@@ -44,7 +54,13 @@ export function useTickerHistory(
           queryClient.invalidateQueries({ queryKey: ['ticker-history', kind, ticker] });
         }
       })
-      .catch((error) => console.error(`[Chart] Backfill failed for ${ticker}:`, error));
+      .catch((error) => console.error(`[Chart] Backfill failed for ${ticker}:`, error))
+      .finally(() => {
+        if (current) setBackfilledTicker(ticker);
+      });
+    return () => {
+      current = false;
+    };
   }, [queryClient, api, kind, ticker]);
 
   // First UTC day of the period (open for "All"): it only changes with the day, so it keys the query
@@ -57,5 +73,5 @@ export function useTickerHistory(
     staleTime: 0,
     refetchOnMount: 'always',
   });
-  return history;
+  return { history, backfilling: ticker !== undefined && backfilledTicker !== ticker };
 }

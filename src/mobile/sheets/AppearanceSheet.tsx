@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { authApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { PickRow } from '@/mobile/components/PickRow';
@@ -61,15 +60,7 @@ export function AppearanceSheet({ open, onOpenChange }: AppearanceSheetProps) {
       onOpenChange={onOpenChange}
       title={ts('appearance.title')}
       description={t('settings.appearance.lead')}
-      footer={
-        <Button
-          variant="ghost"
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={() => onOpenChange(false)}
-        >
-          {tc('buttons.cancel')}
-        </Button>
-      }
+      dismiss="cancel"
     >
       <div
         role="radiogroup"

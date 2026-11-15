@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { allocationSlices, type AllocationSegment } from '@/utils/allocation-percent';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 /** 110 pt ring (spec §10.4), 22 pt thick (prototype `.ring-m`). */
 const SIZE = 110;
@@ -17,14 +18,18 @@ interface AllocationRingProps {
   /** Label of the folded bucket for the fifth and later classes ("Ostatní"). */
   otherLabel: string;
   formatPercent: (ratio: number) => string;
-  /** Amounts for the accessible name (the legend shows the shares). */
+  /** A class's amount, for the legend and the accessible name. */
   formatValue: (value: number) => string;
+  /** The total in the ring's centre, short enough for its 66 pt hole ("8,4 mil. Kč"). */
+  formatTotal: (value: number) => string;
 }
 
 /**
- * Rozložení majetku on the phone (spec §8.3 item 5, prototype frame 02): a 110 pt ring of stroked
- * circles in `s1`–`s4` + `s-other` (at most four classes and Ostatní, as on the desktop ring) on
- * the left, the legend with name and share on the right — never colour alone.
+ * Rozložení majetku on the phone (spec §8.3 item 5, prototype frame 02, audit D5): a 110 pt ring of
+ * stroked circles in `s1`–`s4` + `s-other` (at most four classes and Ostatní, as on the desktop
+ * ring) with the total in its centre under the label, on the left; the legend on the right — name
+ * and share, the amount under the name — never colour alone. The total wraps inside the hole
+ * rather than being cut.
  */
 export function AllocationRing({
   segments,
@@ -32,7 +37,9 @@ export function AllocationRing({
   otherLabel,
   formatPercent,
   formatValue,
+  formatTotal,
 }: AllocationRingProps) {
+  const list = useListText();
   const { slices, total } = useMemo(
     () => allocationSlices(segments, { otherLabel }),
     [segments, otherLabel]
@@ -52,9 +59,11 @@ export function AllocationRing({
     <div className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-4">
       <div
         role="img"
-        aria-label={slices
-          .map((s) => `${s.label} ${formatPercent(s.percent / 100)} (${formatValue(s.value)})`)
-          .join(', ')}
+        aria-label={list(
+          slices.map(
+            (s) => `${s.label} ${formatPercent(s.percent / 100)} (${formatValue(s.value)})`
+          )
+        )}
         className="relative size-[110px]"
       >
         <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="-rotate-90">
@@ -82,16 +91,23 @@ export function AllocationRing({
         </svg>
         <span
           aria-hidden
-          className="absolute inset-0 flex items-center justify-center text-m-caption font-semibold text-ink-3"
+          // Inside the ring's hole with room to spare (B3): the 60 pt square's corners would
+          // reach the ring, so the text keeps to its middle 52 pt and never touches the stroke
+          className="absolute inset-[25px] flex flex-col items-center justify-center px-1 text-center leading-tight"
         >
-          {centerLabel}
+          <span className="max-w-full break-words text-[length:calc(10px*var(--m-text-k))] font-semibold text-ink-4 [hyphens:manual]">
+            {centerLabel}
+          </span>
+          <span className="text-m-caption font-semibold text-ink num">
+            {wrapBeforeUnit(formatTotal(total))}
+          </span>
         </span>
       </div>
       <ul className="m-0 min-w-0 list-none p-0 text-m-sub">
         {slices.map((s) => (
           <li
             key={s.key}
-            className="grid grid-cols-[10px_minmax(0,1fr)_auto] items-center gap-2 py-1 text-ink-2"
+            className="grid grid-cols-[10px_minmax(0,1fr)_auto] items-center gap-x-2 py-1 text-ink-2"
           >
             <i
               aria-hidden
@@ -104,11 +120,22 @@ export function AllocationRing({
             />
             <b className="min-w-0 truncate font-semibold text-ink">{s.label}</b>
             <span className="num">{formatPercent(s.percent / 100)}</span>
+            <span className="col-start-2 col-end-4 whitespace-nowrap text-m-caption text-ink-4 num">
+              {formatValue(s.value)}
+            </span>
           </li>
         ))}
       </ul>
     </div>
   );
+}
+
+/**
+ * The total may break before its unit ("15,7 mil." over "Kč") instead of touching the ring: the
+ * last no-break space of the formatted amount becomes an ordinary one.
+ */
+function wrapBeforeUnit(text: string): string {
+  return text.replace(/[\u00a0\u202f](?=[^\u00a0\u202f]*$)/, ' ');
 }
 
 function color(series: 0 | 1 | 2 | 3 | 'other'): string {

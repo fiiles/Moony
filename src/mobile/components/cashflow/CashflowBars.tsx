@@ -1,11 +1,12 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
 import { useFormat } from '@/lib/use-format';
 import { useChartTokens } from '@/theme/ThemeProvider';
 import { niceTicks, valueDomain } from '@/utils/chart-scale';
-import { AXIS_WIDTH, CategoryAxis } from '@/components/charts/ChartAxis';
+import { CategoryAxis } from '@/components/charts/ChartAxis';
+import { useTickFormatter } from '@/components/charts/use-tick-formatter';
 import { ScaledChartLegend } from '@/mobile/components/Scaled';
-import type { BarDatum } from '@/mobile/lib/cashflow-rows';
+import { barAxisLabels, type BarDatum } from '@/mobile/lib/cashflow-rows';
 
 /** The chart's height (spec §10.4: bars 110 pt). */
 const HEIGHT = 110;
@@ -13,8 +14,6 @@ const HEIGHT = 110;
 const MARGIN = { top: 10, right: 0, bottom: 0, left: 0 };
 /** Months outside the selected period: both bars at this opacity. */
 const MUTED_OPACITY = 0.35;
-/** A month name under every third bar, from the first. */
-const LABEL_EVERY = 3;
 
 interface CashflowBarsProps {
   /** The twelve months, oldest first; a muted one lies outside the selected period. */
@@ -34,7 +33,10 @@ interface CashflowBarsProps {
  * desktop chart's rules — `s1` income and `s3` expenses, 3 px rounded tops, 2 px gap, a zero
  * baseline, horizontal grid, one right-hand value axis — at 110 pt with months outside the period
  * muted. There is no tooltip: a tap on a month (a transparent button the height of the plot, one
- * per bar; disabled for a month still to come) switches the period to it. A short month name stands under every third bar, then the legend.
+ * per bar; disabled for a month still to come) switches the period to it. Under the bars a short
+ * month name stands under the chosen month (strong) and every third month from it
+ * (`barAxisLabels`, D20), then the legend. The value ticks and their gutter come from
+ * `useTickFormatter` (A12).
  */
 export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: CashflowBarsProps) {
   const fmt = useFormat();
@@ -52,7 +54,6 @@ export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: 
     return () => observer.disconnect();
   }, []);
 
-  const plotWidth = Math.max(0, width - AXIS_WIDTH);
   // A month after the current one stays on a quarter's or year's chart but cannot be opened: the
   // period never moves forward, so its button would open the current month under another name
   const today = new Date();
@@ -67,18 +68,20 @@ export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: 
     return { domain: range, ticks: niceTicks(range[0], range[1], 4) };
   }, [bars]);
 
-  const tickFormatter = useCallback(
-    (value: number) => fmt.number(value, { notation: 'compact', maximumFractionDigits: 1 }),
-    [fmt]
-  );
+  // The locale's compact ticks with the decimals the axis needs, in a gutter measured to the
+  // longest of them (A12, the hero chart's rule)
+  const { tickFormatter, axisWidth } = useTickFormatter(ticks);
+  const plotWidth = Math.max(0, width - axisWidth);
 
   // The bare month ("Úno"): `fmt.month` adds the year unless it is cleared, and then Czech writes
-  // the long month
+  // the long month. A month report names its own month, strong, and every third from it (D20)
+  const labelKinds = barAxisLabels(bars);
   const axisLabels = bars.map((bar, index) =>
-    index % LABEL_EVERY === 0
-      ? fmt.month(new Date(bar.month * 1000), { month: 'short', year: undefined })
-      : ''
+    labelKinds[index] === 'hidden'
+      ? ''
+      : fmt.month(new Date(bar.month * 1000), { month: 'short', year: undefined })
   );
+  const strongLabels = labelKinds.map((kind) => kind === 'strong');
 
   const chart = useMemo(() => {
     if (width <= 0) return null;
@@ -97,7 +100,7 @@ export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: 
         <XAxis dataKey="month" hide />
         <YAxis
           orientation="right"
-          width={AXIS_WIDTH}
+          width={axisWidth}
           domain={domain}
           ticks={ticks}
           axisLine={false}
@@ -132,7 +135,7 @@ export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: 
         </Bar>
       </BarChart>
     );
-  }, [width, bars, tk, domain, ticks, tickFormatter, incomeName, expenseName]);
+  }, [width, bars, tk, domain, ticks, tickFormatter, axisWidth, incomeName, expenseName]);
 
   return (
     <div>
@@ -158,7 +161,9 @@ export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: 
           })}
         </div>
       </div>
-      {chart && <CategoryAxis labels={axisLabels} centered />}
+      {chart && (
+        <CategoryAxis labels={axisLabels} strong={strongLabels} gutter={axisWidth} centered />
+      )}
       <ScaledChartLegend
         className="mt-2.5"
         items={[

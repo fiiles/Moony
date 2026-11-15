@@ -1,13 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { priceDecimals } from '@shared/currencies';
-import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { costPerUnit, type PositionRowBase, type StockRow } from '@/utils/positions';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
+import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { priceStamp } from '@/mobile/lib/position-rows';
-import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
+import { isCompactAmount, statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
 
 /**
  * The dividends of a year as the sixth stat of a stock's position: the yearly dividend of the
@@ -16,6 +16,7 @@ import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
  */
 // eslint-disable-next-line react-refresh/only-export-components -- the stock's sixth stat lives with the stats it completes
 export function useDividendStat(holding: StockRow, reportCurrency: string): StatItem {
+  const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
   const fmt = useFormat();
   const moneyText = useMoneyText();
@@ -25,14 +26,14 @@ export function useDividendStat(holding: StockRow, reportCurrency: string): Stat
   const percentNote =
     dividend === null
       ? ts('detail.noDividend')
-      : ts('detail.dividendNote', {
+      : t('wealth.stocks.yieldNote', {
           percent: fmt.percent(
             marketValue !== null && marketValue > 0 ? dividend / marketValue : 0,
             1
           ),
         });
   return {
-    label: ts('summary.estimatedDividend'),
+    label: t('stat.dividends'),
     value:
       dividend === null
         ? '—'
@@ -57,7 +58,8 @@ interface PositionStatsProps {
 
 /**
  * The six stats of a position (spec §8.8), two rows of three: what it is worth in its own
- * currency, its price in the report currency and when it was fetched, what is invested; then the
+ * currency and when its price was fetched, its price in its own currency with the "≈" conversion
+ * (README §13, "Money and currencies"), what is invested; then the
  * unrealized and the realized result and `sixth` (a stock's dividends of a year, see
  * `useDividendStat`). The numbers are the backend's (`toStockRow`, `toCryptoRow`), in the report
  * currency; only the value and the price are the position's own.
@@ -73,7 +75,7 @@ export function PositionStats({
   const { t: ts } = useTranslation('stocks');
   const fmt = useFormat();
   const moneyText = useMoneyText();
-  const { convert } = useCurrency();
+  const approx = useApprox();
 
   const stockCurrency = holding.originalCurrency;
   const nativePrice = holding.originalCurrentPrice;
@@ -84,53 +86,62 @@ export function PositionStats({
   const unitMoney = (amount: number, currency = reportCurrency) =>
     moneyText(amount, currency, { decimals: priceDecimals(amount, currency) });
 
-  // The price in the report currency; without a rate the stock's own price stands in, without a
-  // price (never fetched, none set) there is nothing to show
+  // The price as the exchange quotes it, in the stock's own currency, with its conversion as the
+  // "≈" note (A6); without a price (never fetched, none set) there is nothing to show
   const priced = nativePrice > 0;
-  const converted = convert(nativePrice, stockCurrency, reportCurrency);
-  const price = !priced
-    ? '—'
-    : converted !== null
-      ? unitMoney(converted)
-      : unitMoney(nativePrice, stockCurrency);
+  const price = priced ? unitMoney(nativePrice, stockCurrency) : '—';
   const stamp = priceStamp(holding.fetchedAt, Date.now() / 1000);
-  const priceNote = holding.isManualPrice
+  // When the price (and so the value) was fetched
+  const stampNote = holding.isManualPrice
     ? ts('detail.manual')
     : stamp.kind === 'today'
-      ? fmt.time(stamp.at)
+      ? t('wealth.position.stats.asOf', { when: fmt.time(stamp.at) })
       : stamp.kind === 'day'
-        ? fmt.day(stamp.at, shortDayOptions(stamp.at))
+        ? t('wealth.position.stats.asOf', {
+            when: fmt.day(stamp.at, shortDayOptions(stamp.at)),
+          })
         : ts('summary.notUpdated');
 
   const average = costPerUnit(totalCost, holding.quantity);
 
   const first: StatItem[] = [
     {
-      label: t('wealth.position.stats.value'),
+      label: t('stat.value'),
       value: priced ? statMoney(holding.quantity * nativePrice, stockCurrency) : '—',
-      note: t('wealth.position.stats.inCurrency', { currency: stockCurrency }),
+      note: stampNote,
     },
-    { label: t('wealth.position.stats.price'), value: price, note: priceNote },
     {
-      label: ts('detail.invested'),
+      label: t('stat.price'),
+      value: price,
+      note: priced ? approx(nativePrice, stockCurrency) : undefined,
+    },
+    {
+      label: t('stat.invested'),
       value: totalCost === null ? '—' : statMoney(totalCost),
-      note: average === null ? undefined : ts('detail.avgShort', { price: unitMoney(average) }),
+      // A seven-digit price per unit goes compact so the note keeps one line (C2, A11)
+      note:
+        average === null
+          ? undefined
+          : t('statNote.average', {
+              price: isCompactAmount(average)
+                ? moneyText(average, reportCurrency, { compact: true, decimals: 2 })
+                : unitMoney(average),
+            }),
     },
   ];
   const second: StatItem[] = [
     {
-      label: ts('detail.unrealized'),
+      label: t('stat.unrealizedGain'),
       value: gainLoss === null ? '—' : statMoney(gainLoss, reportCurrency, true),
       tone: statTone(gainLoss),
       note:
         gainLoss !== null && holding.gainLossPercent !== null
-          ? ts('detail.vsInvestedPct', {
-              percent: fmt.percent(holding.gainLossPercent / 100, 1, { signed: true }),
-            })
+          ? // The percent alone (C2: one line); "oproti vloženému" is the hero's
+            fmt.percent(holding.gainLossPercent / 100, 1, { signed: true })
           : undefined,
     },
     {
-      label: ts('detail.realized'),
+      label: t('stat.realized'),
       value: realizedGain === null ? '—' : statMoney(realizedGain, reportCurrency, true),
       tone: statTone(realizedGain),
       // The desktop's two parts, the dividends first. A third of the row holds two short lines at
@@ -142,7 +153,8 @@ export function PositionStats({
           ? ts('detail.realizedDividends', { amount: statMoney(dividendsReceived) })
           : sells > 0
             ? ts('detail.sells', { count: sells })
-            : ts('detail.noSells'),
+            : // No sells: the value says it; a sentence would not fit one line (C2)
+              undefined,
     },
     sixth,
   ];

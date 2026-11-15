@@ -27,9 +27,11 @@ import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
 import { SectionHead } from '@/mobile/components/SectionHead';
+import { SubFacts } from '@/mobile/components/SubFacts';
 import { AddAssetMenu, type AddKind } from '@/mobile/components/wealth/AddAssetMenu';
 import { AllocationBar } from '@/mobile/components/wealth/AllocationBar';
 import { ChangeLine } from '@/mobile/components/wealth/ChangeLine';
+import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
@@ -48,6 +50,7 @@ import { NavIconButton } from '@/mobile/shell/NavBar';
 import { propertyPath, routes } from '@/mobile/shell/routes';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
+import { LineSkeleton } from '@/mobile/components/LineSkeleton';
 
 /** Whole amounts: Majetek shows no decimals. */
 const WHOLE = { decimals: 0 } as const;
@@ -143,7 +146,8 @@ export default function Wealth() {
             className="mx-0.5 mb-3.5"
           />
           <Hero
-            label={t('dashboard:stats.totalAssets')}
+            // The total-assets word of the tile on Přehled (B3: in German not the tab's "Vermögen")
+            label={t('stat.assets')}
             value={unknown.assets ? null : display.assets}
             formatValue={money}
             change={
@@ -158,6 +162,7 @@ export default function Wealth() {
                           options={{ signed: true, ...WHOLE }}
                         />{' '}
                         {changeLabel}
+                        {wealth.movesWithRates && ` · ${t('money.inclFx')}`}
                       </>
                     ),
                   }
@@ -208,14 +213,18 @@ function InvestmentSection({
 
   const title = (cls: InvestmentClass) =>
     cls === 'investments' ? t('stocks:title') : td(`cards.${cls}`);
-  const positions = (count: number, tickers: string) =>
-    [t('stocks:summary.positions', { count }), tickers].filter(Boolean).join(' · ');
+  // The count stays; the names after it show whole or are left to the list one tap away (C1)
+  const positions = (count: number, tickers: string) => (
+    <SubFacts mode="drop" lead={t('stocks:summary.positions', { count })} tail={tickers} />
+  );
 
   const rowFor = (cls: InvestmentClass) => {
     const { icon: Icon, href, add } = INVESTMENT_ROWS[cls];
     const { value, unknown, change } = classes[cls];
-    const { records } = wealth[cls === 'investments' ? 'stocks' : cls];
-    const state = classRowState({ records, value, unknown });
+    const { records, loading } = wealth[cls === 'investments' ? 'stocks' : cls];
+    // Until the class's list has answered, its row is held, not empty (E1): the total is the
+    // hero's, the count and names stand in outline
+    const state = classRowState({ records, value, unknown, loading });
     const common = {
       chip: (
         <RowChip>
@@ -242,52 +251,67 @@ function InvestmentSection({
 
     // Held, but nothing converted: "—", and no change that would be measured against nothing
     const shown = state === 'unknown' ? '—' : money(value);
-    // Said on the row: the position rows one screen down show the gain since purchase
+    // The 30-day share alone: the period is said once, in the section head (D23); the position
+    // rows one screen down show the gain since purchase
     const changeLine = change ? (
       <ChangeLine
         change={change}
         currency={reportCurrency}
-        trail={t('dashboard:changePeriod.30D')}
+        trail={null}
+        srLabel={t('dashboard:changePeriod.30D')}
       />
     ) : undefined;
-    let sub: string;
+    let sub: ReactNode;
     let valueSub: ReactNode;
-    switch (cls) {
-      case 'investments':
-        sub = positions(wealth.stocks.count, wealth.stocks.tickers);
-        valueSub = changeLine;
-        break;
-      case 'crypto':
-        sub = positions(wealth.crypto.count, wealth.crypto.tickers);
-        valueSub = changeLine;
-        break;
-      case 'bonds': {
-        const { count, nearestMaturity, yearlyCoupon } = wealth.bonds;
-        sub = [
-          t('wealth.bonds.count', { count }),
-          nearestMaturity !== null &&
-            t('wealth.bonds.nearest', {
-              month: fmt.monthInSentence(new Date(nearestMaturity * 1000)),
-            }),
-        ]
-          .filter(Boolean)
-          .join(' · ');
-        valueSub =
-          yearlyCoupon > 0 ? t('wealth.bonds.coupon', { amount: money(yearlyCoupon) }) : undefined;
-        break;
+    if (loading) {
+      sub = <LineSkeleton />;
+      valueSub = changeLine;
+    } else
+      switch (cls) {
+        case 'investments':
+          sub = positions(wealth.stocks.count, wealth.stocks.tickers);
+          valueSub = changeLine;
+          break;
+        case 'crypto':
+          sub = positions(wealth.crypto.count, wealth.crypto.tickers);
+          valueSub = changeLine;
+          break;
+        case 'bonds': {
+          const { count, nearestMaturity, yearlyCoupon } = wealth.bonds;
+          sub = (
+            <SubFacts
+              mode="drop"
+              lead={t('wealth.bonds.count', { count })}
+              tail={
+                nearestMaturity !== null &&
+                t('wealth.bonds.nearest', {
+                  month: fmt.monthInSentence(new Date(nearestMaturity * 1000)),
+                })
+              }
+            />
+          );
+          valueSub =
+            yearlyCoupon > 0
+              ? t('wealth.bonds.coupon', {
+                  amount: t('period.year', { amount: money(yearlyCoupon) }),
+                })
+              : undefined;
+          break;
+        }
+        case 'otherAssets': {
+          const { count, names, valuedAt } = wealth.otherAssets;
+          sub = (
+            <SubFacts mode="drop" lead={t('wealth.otherAssets.count', { count })} tail={names} />
+          );
+          valueSub =
+            valuedAt !== null
+              ? t('wealth.otherAssets.valuedOn', {
+                  date: fmt.day(valuedAt, shortDayOptions(valuedAt)),
+                })
+              : undefined;
+          break;
+        }
       }
-      case 'otherAssets': {
-        const { count, names, valuedAt } = wealth.otherAssets;
-        sub = [t('wealth.otherAssets.count', { count }), names].filter(Boolean).join(' · ');
-        valueSub =
-          valuedAt !== null
-            ? t('wealth.otherAssets.valuedOn', {
-                date: fmt.day(valuedAt, shortDayOptions(valuedAt)),
-              })
-            : undefined;
-        break;
-      }
-    }
     return (
       <EntityRow
         key={cls}
@@ -305,22 +329,38 @@ function InvestmentSection({
       <SectionHead
         title={t('wealth.sections.investments')}
         note={known.length > 0 ? money(total) : '—'}
+        caption={visible.some((cls) => classes[cls].change) ? t('wealth.changeCaption') : undefined}
       />
       <EntityRows>{visible.map(rowFor)}</EntityRows>
     </section>
   );
 }
 
-/** Nemovitosti: a row per property at its own market price; the number is the converted total. */
+/**
+ * Nemovitosti: a row per property at its own market price, with "≈" its worth in the main currency
+ * under it when the price is in another one (README §13; it takes the place of the last
+ * revaluation's change); the section's number is the converted total.
+ */
 function PropertySection({ wealth }: { wealth: WealthData }) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const approx = useApprox();
   const openWith = useOpenWithIntent();
   const { user } = useAuth();
-  const { reportCurrency, classes, properties } = wealth;
-  if (!(user?.menuPreferences?.realEstate ?? true) || properties.length === 0) return null;
+  const { reportCurrency, classes, properties, propertiesLoading } = wealth;
+  if (!(user?.menuPreferences?.realEstate ?? true)) return null;
+  // While the list is read, a section the hero says holds something stands in outline (E1)
+  if (propertiesLoading) {
+    return classes.realEstate.value > 0 || classes.realEstate.unknown ? (
+      <section aria-busy="true">
+        <SectionHead title={t('wealth.sections.realEstate')} />
+        <RowsSkeleton count={1} />
+      </section>
+    ) : null;
+  }
+  if (properties.length === 0) return null;
   const excludePersonal = user?.excludePersonalRealEstate ?? false;
 
   return (
@@ -339,16 +379,17 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
           // section's number: the row stays, and says so (the desktop's badge and wording)
           const excluded = excludePersonal && property.type === 'personal';
           const price = amountOf(property.marketPrice);
+          const priceCurrency = recordCurrency(property.marketPriceCurrency);
           const rent = amountOf(property.monthlyRent) ?? 0;
-          const sub = [
-            t(`wealth.realEstate.${property.type === 'personal' ? 'personal' : 'investment'}`),
-            rent > 0 &&
-              t('wealth.realEstate.rent', {
-                amount: moneyText(rent, recordCurrency(property.monthlyRentCurrency), WHOLE),
-              }),
-          ]
-            .filter(Boolean)
-            .join(' · ');
+          // One fact (C1): the rent when there is one (it says the property earns), else its kind
+          const sub =
+            rent > 0
+              ? t('wealth.realEstate.rent', {
+                  amount: t('period.month', {
+                    amount: moneyText(rent, recordCurrency(property.monthlyRentCurrency), WHOLE),
+                  }),
+                })
+              : t(`wealth.realEstate.${property.type === 'personal' ? 'personal' : 'investment'}`);
           return (
             <EntityRow
               key={property.id}
@@ -369,24 +410,24 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
               }
               sub={sub}
               // The property's own price in its own currency; the section's number is the converted total
-              value={
-                price === null
-                  ? '—'
-                  : moneyText(price, recordCurrency(property.marketPriceCurrency), WHOLE)
-              }
+              value={price === null ? '—' : moneyText(price, priceCurrency, WHOLE)}
+              // "≈" first; else the day of the last valuation, said as such (D24) — its change is
+              // on the detail
               valueSub={
-                change ? (
-                  <ChangeLine
-                    change={{ delta: 0, ratio: change.ratio }}
-                    currency={reportCurrency}
-                    trail={fmt.day(change.day, shortDayOptions(change.day))}
-                  />
-                ) : undefined
+                (price === null ? undefined : approx(price, priceCurrency)) ??
+                (change
+                  ? t('wealth.realEstate.revaluedOn', {
+                      date: fmt.day(change.day, shortDayOptions(change.day)),
+                    })
+                  : undefined)
               }
               href={propertyPath(property.id)}
               // The property's revaluation, opened on the property (README §13, Gestures)
               menu={{
-                label: `${tc('labels.actions')}: ${property.name}`,
+                label: tc('mobile:labelValue', {
+                  label: tc('labels.actions'),
+                  value: property.name,
+                }),
                 children: (
                   <RowMenuItem onSelect={() => openWith(propertyPath(property.id), 'revalue')}>
                     <ArrowUp strokeWidth={1.75} aria-hidden />
@@ -412,7 +453,11 @@ function CashSection({ wealth }: { wealth: WealthData }) {
 
   return (
     <section>
-      <SectionHead title={t('wealth.sections.cash')} note={shown} />
+      <SectionHead
+        title={t('wealth.sections.cash')}
+        note={shown}
+        caption={change ? t('wealth.changeCaption') : undefined}
+      />
       <EntityRows>
         <EntityRow
           chip={
@@ -421,15 +466,16 @@ function CashSection({ wealth }: { wealth: WealthData }) {
             </RowChip>
           }
           title={t('wealth.cash.title')}
-          sub={t('upkeep.accounts', { count: cash.accounts })}
+          sub={cash.loading ? <LineSkeleton /> : t('upkeep.accounts', { count: cash.accounts })}
           value={shown}
-          // The same 30 days as the investment rows, said on the row
+          // The same 30 days as the investment rows, said in the section head (D23)
           valueSub={
             change ? (
               <ChangeLine
                 change={change}
                 currency={reportCurrency}
-                trail={t('dashboard:changePeriod.30D')}
+                trail={null}
+                srLabel={t('dashboard:changePeriod.30D')}
               />
             ) : undefined
           }
@@ -463,6 +509,26 @@ function EmptyWealth() {
   );
 }
 
+/** Rows in outline: a card of `count` rows, as a section stands while its list is read. */
+function RowsSkeleton({ count }: { count: number }) {
+  return (
+    <div
+      aria-hidden
+      className="mb-3.5 overflow-hidden rounded-r4 border border-line bg-paper shadow-e1"
+    >
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="flex min-h-[60px] items-center gap-3 px-3.5 py-2.5">
+          <div className="skeleton size-9 flex-none rounded-full" />
+          <div className="min-w-0 flex-1">
+            <div className="skeleton h-3.5 w-2/5" />
+            <div className="skeleton mt-2 h-3 w-3/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** While the metrics settle: the hero and three rows in outline. */
 function WealthSkeleton() {
   return (
@@ -473,17 +539,7 @@ function WealthSkeleton() {
         <div className="skeleton mt-3 h-3 w-40" />
         <div className="skeleton mt-4 h-2 w-full" />
       </div>
-      <div className="mb-3.5 overflow-hidden rounded-r4 border border-line bg-paper shadow-e1">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="flex min-h-[60px] items-center gap-3 px-3.5 py-2.5">
-            <div className="skeleton size-9 flex-none rounded-full" />
-            <div className="min-w-0 flex-1">
-              <div className="skeleton h-3.5 w-2/5" />
-              <div className="skeleton mt-2 h-3 w-3/5" />
-            </div>
-          </div>
-        ))}
-      </div>
+      <RowsSkeleton count={3} />
     </div>
   );
 }

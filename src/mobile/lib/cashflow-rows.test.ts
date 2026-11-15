@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BankAccount, CashflowActuals, CashflowGroup, CashflowMonth } from '@shared/schema';
 import {
+  barAxisLabels,
   accountScope,
   barsFor,
   bodyKind,
@@ -251,5 +252,24 @@ describe('accountScope', () => {
 
   it('counts the choice as it is while the accounts are not loaded', () => {
     expect(accountScope(['a', 'b'], [])).toBe(2);
+  });
+});
+
+describe('barAxisLabels', () => {
+  const bars = (selected: number[]) =>
+    Array.from({ length: 12 }, (_, i) => ({ muted: !selected.includes(i) }));
+
+  it('names the chosen month and every third one from it, the chosen one strong', () => {
+    expect(barAxisLabels(bars([7]))).toEqual(
+      Array.from({ length: 12 }, (_, i) =>
+        i === 7 ? 'strong' : i % 3 === 7 % 3 ? 'shown' : 'hidden'
+      )
+    );
+  });
+
+  it('keeps every third month from the first for a quarter or a year', () => {
+    expect(barAxisLabels(bars([9, 10, 11]))).toEqual(
+      Array.from({ length: 12 }, (_, i) => (i % 3 === 0 ? 'shown' : 'hidden'))
+    );
   });
 });

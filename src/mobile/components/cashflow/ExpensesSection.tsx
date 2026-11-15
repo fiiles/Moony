@@ -29,7 +29,11 @@ interface ExpensesSectionProps {
   href: (row: ExpenseRow) => string | undefined;
   action: (row: ExpenseRow) => RowLimitAction | null;
   partial: (row: ExpenseRow) => boolean;
+  /** The currency of the report (of `total` and of every row's amount). */
+  reportCurrency: string;
+  /** A whole report amount (the footer's totals). */
   money: (amount: number) => string;
+  /** A whole amount in the given currency (the rows). */
   native: (amount: number, currency: string, opts?: { signed?: boolean }) => string;
   /** "Limity vyhodnocené za říjen 2026 · značka je dnešek, uplynulo 23 % období". */
   evaluationNote: string;
@@ -57,6 +61,7 @@ export function ExpensesSection({
   href,
   action,
   partial,
+  reportCurrency,
   money,
   native,
   evaluationNote,
@@ -132,7 +137,7 @@ export function ExpensesSection({
               row={row}
               title={title(row)}
               category={category(row)}
-              money={money}
+              reportCurrency={reportCurrency}
               native={native}
               href={href(row)}
               partial={partial(row)}

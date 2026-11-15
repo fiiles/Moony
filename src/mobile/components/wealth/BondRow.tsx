@@ -11,6 +11,7 @@ import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { BondRowModel } from '@/mobile/lib/bond-rows';
 import type { BondPayment } from '@/mobile/lib/bond-schedule';
 import { RowBadge } from '@/mobile/components/RowBadge';
+import { SubFacts } from '@/mobile/components/SubFacts';
 
 interface BondRowProps {
   row: BondRowModel;
@@ -28,7 +29,7 @@ interface BondRowProps {
 
 /**
  * An issue of the Dluhopisy list (spec §8.8): the bond icon in the chip, the name with its "do
- * roka" or "splaceno" badge over "ISIN · 10 × 1 000 Kč · 5 %" (no ISIN, no first part), the face
+ * roka" or "splaceno" badge over "10 × 1 000 Kč · 5 %" (the ISIN is in the details), the face
  * value over the maturity day or "bez splatnosti". Every amount is the bond's own (native is
  * authoritative, ADR 0012). A tap unfolds everything the row has no
  * room for under it (`BondDetails`), with Upravit (the desktop's form); a long press opens the
@@ -43,9 +44,14 @@ export function BondRow({ row, nextPayment, expanded, onToggle, onEdit, onDelete
 
   // A whole rate is written whole ("5 %"), a fractional one with its two decimals ("5,25 %")
   const rateText = fmt.percent(rate / 100, Number.isInteger(rate) ? 0 : 2);
-  const sub = [bond.isin, `${fmt.number(quantity)} × ${moneyText(unitFace, currency)}`, rateText]
-    .filter(Boolean)
-    .join(' · ');
+  // Two facts (C1): the pieces and the rate; the ISIN is in the details a tap unfolds
+  const sub = (
+    <SubFacts
+      mode="drop"
+      lead={`${fmt.number(quantity)} × ${moneyText(unitFace, currency)}`}
+      tail={rateText}
+    />
+  );
 
   return (
     <EntityRow

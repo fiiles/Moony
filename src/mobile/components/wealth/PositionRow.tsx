@@ -64,7 +64,7 @@ export function PositionRow({ row, kind, name, href, currency }: PositionRowProp
       }
       href={href}
       menu={{
-        label: `${tc('labels.actions')}: ${row.ticker}`,
+        label: tc('mobile:labelValue', { label: tc('labels.actions'), value: row.ticker }),
         children: (
           <>
             <RowMenuItem onSelect={() => openWith(href, 'buy')}>

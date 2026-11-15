@@ -97,7 +97,7 @@
     <div class="m-t-eyebrow">Design systém · mobilní vrstva · 16. října 2026</div>
     <h1>Moony na telefonu</h1>
     <p>Komponenty telefonu z <code>mobile.css</code> na tokenech z <code>tokens.css</code>: obrazovka s navigační lištou a jednou posuvnou plochou, tab bar, Údržba, hero (i kompaktní), řádek statistik, entitní řádky (i s datovým čipem, štítkem v názvu a panelem přejetí), rozložení majetku, segment, karta vývoje, pole, tlačítka, sheet a Cashflow (období, stepper, pruhy, poznámka, řádek s ukazatelem). React shell v <code>src/mobile/</code> jim odpovídá vizuálně. Rámečky mají šířky 360 (nejužší běžný Android), 390 (reference) a 430 pt s bezpečnými okraji daného zařízení; texty jsou německy, protože němčina běží nejdéle.</p>
-    <p>Pod každým rámečkem je výsledek kontroly vodorovného přetečení (nic nesmí přesáhnout obrazovku, posuvná plocha se nesmí posouvat do stran) a seznam textů, které se zkrátí výpustkou. Obrazovky se dají posouvat: velký titulek se po odjetí složí do navigační lišty.</p>
+    <p>Pod každým rámečkem je výsledek kontroly vodorovného přetečení (nic nesmí přesáhnout obrazovku, posuvná plocha se nesmí posouvat do stran) a seznam textů, které se zkrátí výpustkou; zkrácený text s číslicí (částka, datum, počet) je chyba (README §13, „Sub-lines and ellipses“). Obrazovky se dají posouvat: velký titulek se po odjetí složí do navigační lišty.</p>
     <p>Majetek přidává alokační pruh s legendou (<code>.m-abar</code>, <code>.m-legend</code>), řádek změny (<code>.m-change</code>), stránku třídy Akcie (podřádek, hero s legendou značek, nástrojová lišta s řazením, složený seznam) a detail pozice (přerušovaná čára „Vloženo“, dvojice tlačítek, dvě řady statistik, řádky obchodů se zábleskem, karta řádků štítek–hodnota).</p>
     <p>Ostatní aktivum přidává pod dvojici tlačítek plnošířkové sekundární (<code>.m-btn-pair--stack</code>), pole bez jednotky uvnitř (<code>.m-field__i--plain</code>: název, datum) a formulář se sbaleným řádkem „Weitere Angaben“ (<code>.m-disclose</code> mimo sheet transakce).</p>
     <p>Sledované přidává detail sledovaného tickeru: hero s přerušovanou čárou cíle (<code>cost</code>), dvojici Nastavit cíl · Koupit, statistiky dnes · cíl · od sledování a poznámky jako markdown v kartě <code>.m-notes</code> (nadpisy, seznamy, odkazy, kód, citace, tabulka; v úpravě prosté textové pole).</p>
@@ -2843,6 +2843,27 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
      scroll area must not scroll sideways. A segment scrolls sideways by design and counts as one
      box. Texts that end with an ellipsis are listed, they are not overflow. */
   function textWidth(el) { var r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width; }
+  /* README §13 "Sub-lines and ellipses" (audit 2026-11-15 C1): a cut text that holds a digit has cut an amount, a date or a
+     count. The same function runs over the live phone shell (paste it into the console and call cutFigures(document.body)). */
+  function cutFigures(root) {
+    var out = [];
+    root.querySelectorAll("*").forEach(function (el) {
+      if (getComputedStyle(el).textOverflow !== "ellipsis" || !el.getBoundingClientRect().width) return;
+      var cs = getComputedStyle(el), pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      /* Visible text only: a screen reader's `.sr-only` words are clipped, not cut */
+      var box = el.getBoundingClientRect(), left = Infinity, right = -Infinity, text = "", walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), node;
+      while ((node = walk.nextNode())) {
+        if (node.parentElement.closest(".sr-only")) continue;
+        var r = document.createRange(); r.selectNodeContents(node);
+        /* A line clipped away below the box (a `drop` tail) is not shown, so it is not cut */
+        [].forEach.call(r.getClientRects(), function (b) { if (b.top >= box.bottom - 1) return; left = Math.min(left, b.left); right = Math.max(right, b.right); });
+        text += node.textContent;
+      }
+      if (right - left > el.getBoundingClientRect().width - pad + 0.05 && /\d/.test(text)) out.push(text.trim());
+    });
+    return out;
+  }
+  window.cutFigures = cutFigures;
   function padX(el) { var cs = getComputedStyle(el); return parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth); }
   function check() {
     document.querySelectorAll(".frame").forEach(function (frame) {
@@ -2873,14 +2894,15 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
         if (single) singles.push(h);
         if (single ? h < 51.5 : h < 59.5) badRows.push(row.querySelector(".m-row__t").textContent + " " + h + " px");
       });
-      var width = Math.round(edge.width);
-      out.className = "frame__check " + (over.length || badRows.length ? "is-bad" : "is-ok");
+      var width = Math.round(edge.width), figures = cutFigures(screen);
+      out.className = "frame__check " + (over.length || badRows.length || figures.length ? "is-bad" : "is-ok");
       out.textContent = width + " px: " + (over.length ? "přetéká " + over.length + " (" + over.slice(0, 4).join(", ") + ")" : "bez vodorovného přetečení") +
         (scrolls ? " · segment se posouvá: " + scrolls : "") +
         (strips ? " · pás toků se posouvá: " + strips : "") +
         (rows.length ? " · řádky " + rows.length + (badRows.length ? ", špatná výška: " + badRows.join(" | ") : ", výšky v pořádku") +
           (singles.length ? " (jednořádkové " + singles.join(", ") + " px, nejméně 52)" : "") : "") +
-        " · zkráceno výpustkou: " + (cut.length ? cut.join(" | ") : "nic");
+        " · zkráceno výpustkou: " + (cut.length ? cut.join(" | ") : "nic") +
+        (figures.length ? " · ZKRÁCENÉ ČÍSLO (C1): " + figures.join(" | ") : "");
     });
   }
   document.querySelectorAll(".m-flows").forEach(function (strip) { strip.scrollLeft = strip.scrollWidth; });

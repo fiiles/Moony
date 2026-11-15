@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, X } from 'lucide-react';
 import type { BankTransaction, SpendingPlan } from '@shared/schema';
-import { Button } from '@/components/ui/button';
 import { useSpendingPlanIndex } from '@/hooks/use-spending-plans';
 import { useAssignWithUndo } from '@/hooks/use-spending-plan-mutations';
 import { useFormat } from '@/lib/use-format';
@@ -33,7 +32,6 @@ interface PlanPickerSheetProps {
  * `useAssignWithUndo` (toast with Vrátit zpět) and closes the sheet.
  */
 export function PlanPickerSheet({ tx, open, onOpenChange, onAssigned }: PlanPickerSheetProps) {
-  const { t: tc } = useTranslation('common');
   const { t } = useTranslation('mobile');
   const shown = useRetained(tx);
 
@@ -43,15 +41,7 @@ export function PlanPickerSheet({ tx, open, onOpenChange, onAssigned }: PlanPick
       onOpenChange={onOpenChange}
       title={t('transaction.plan')}
       full
-      footer={
-        <Button
-          variant="ghost"
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={() => onOpenChange(false)}
-        >
-          {tc('buttons.cancel')}
-        </Button>
-      }
+      dismiss="cancel"
     >
       {/* Its own component: the search starts over every time the sheet opens */}
       {shown && (

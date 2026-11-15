@@ -4,7 +4,6 @@ import { Plus, Sparkles, X } from 'lucide-react';
 import type { BankTransaction, ChangedRow, TransactionCategory } from '@shared/schema';
 import { CategoryIconChip } from '@/components/common/CategoryIcon';
 import { CategoryFormDialog } from '@/components/categories/CategoryFormDialog';
-import { Button } from '@/components/ui/button';
 import { useCategoryName } from '@/hooks/use-categories';
 import { cn } from '@/lib/utils';
 import { formatBreakdown } from '@/utils/recategorization';
@@ -48,8 +47,9 @@ interface CategoryPickerSheetProps {
 
 /**
  * The category picker (spec §8.4, README §13): a half sheet with the search, the MCP-suggested
- * category as a pill to accept or decline, the recently used categories, then all of them, and
- * "Nová kategorie". A tap on a category saves it at once and closes the sheet. Under the list,
+ * category as a pill to accept or decline, the current category (checked, first), the recently
+ * used categories, then all of them, and "Nová kategorie". A tap on a category saves it at once and
+ * closes the sheet; "Zrušit" in the head closes it without a change. Under the list,
  * pinned to the bottom while the search is empty, are the two learning options the desktop's
  * picker has — remember the pick for this account and direction, and also categorize the other
  * payments it covers — which the tap takes as they stand (`useCategorize`).
@@ -65,26 +65,12 @@ export function CategoryPickerSheet({
   onHistoryApplied,
   onHistoryRestored,
 }: CategoryPickerSheetProps) {
-  const { t: tc } = useTranslation('common');
   const { t } = useTranslation('mobile');
   const shown = useRetained(tx);
   const close = () => onOpenChange(false);
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={onOpenChange}
-      title={t('picker.title')}
-      footer={
-        <Button
-          variant="ghost"
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={close}
-        >
-          {tc('buttons.cancel')}
-        </Button>
-      }
-    >
+    <Sheet open={open} onOpenChange={onOpenChange} title={t('picker.title')} dismiss="cancel">
       {/* Its own component: the search and the two switches start over every time the sheet opens */}
       {shown && (
         <PickerBody
@@ -142,7 +128,11 @@ function PickerBody({
   };
   const searching = query.trim() !== '';
   const all = filterCategories(categories, query, categoryName);
-  const recent = recentIds.flatMap((id) => categoryById.get(id) ?? []);
+  // The category the payment has now, first and checked (audit D12); not again among the recent
+  const current = tx.categoryId ? categoryById.get(tx.categoryId) : undefined;
+  const recent = recentIds.flatMap((id) =>
+    id === current?.id ? [] : (categoryById.get(id) ?? [])
+  );
   const suggestion = tx.categoryId ? undefined : categoryById.get(tx.suggestedCategoryId ?? '');
 
   // What decides this payee today: an own-account transfer categorizes itself, a payment
@@ -153,13 +143,13 @@ function PickerBody({
     (preview.governing === 'ownAccount' || (!preview.learnable && preview.governing !== 'custom'));
   const remembering = remember && !blocked;
   const matches = preview?.matches ?? 0;
-  const scope = tb('readiness.specificLearningScope', {
-    direction: tb(tx.type === 'credit' ? 'transaction.credit' : 'transaction.debit'),
-    identity:
-      completeAccountIdentifier(tx.counterpartyIban, null, tx.counterpartyBankCode) ||
-      tx.counterpartyName ||
-      '—',
-  });
+  // Who "next time" means, in a sentence a person reads at once (audit D12): the payee's name,
+  // else its account number (the rule matches the account when it has one, whatever the name)
+  const who =
+    tx.counterpartyName?.trim() ||
+    completeAccountIdentifier(tx.counterpartyIban, null, tx.counterpartyBankCode) ||
+    '—';
+  const scope = t(tx.type === 'credit' ? 'picker.rememberFrom' : 'picker.rememberTo', { who });
 
   /** Saves the category and, once it is saved, closes the sheet; a failed save leaves it open. */
   const choose = async (id: string, options: { applyHistory: boolean; categoryName?: string }) => {
@@ -225,7 +215,10 @@ function PickerBody({
             <button
               type="button"
               onClick={accept}
-              aria-label={`${tb('categorization.acceptSuggestion')}: ${categoryName(suggestion)}`}
+              aria-label={tb('mobile:labelValue', {
+                label: tb('categorization.acceptSuggestion'),
+                value: categoryName(suggestion),
+              })}
               className="relative inline-flex min-h-9 min-w-0 items-center gap-2 rounded-[10px] border border-dashed border-line-strong bg-paper py-1 pl-2.5 pr-3 text-m-sub font-semibold text-ink-2 [-webkit-touch-callout:none] after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
             >
               <Sparkles aria-hidden className="size-3.5 flex-none text-ink-3" strokeWidth={1.75} />
@@ -243,6 +236,7 @@ function PickerBody({
           </div>
         </PickGroup>
       )}
+      {!searching && current && <PickGroup title={t('picker.current')}>{row(current)}</PickGroup>}
       {!searching && recent.length > 0 && (
         <PickGroup title={t('picker.recent')}>{recent.map(row)}</PickGroup>
       )}
@@ -277,11 +271,7 @@ function PickerBody({
         )}
         <SwitchRow
           id={rememberId}
-          label={
-            governingRule
-              ? tb('categorization.retargetRule')
-              : tb('categorization.rememberForFuture')
-          }
+          label={governingRule ? tb('categorization.retargetRule') : t('picker.remember')}
           sub={rememberSub}
           checked={remembering}
           onCheckedChange={setRemember}
@@ -295,10 +285,12 @@ function PickerBody({
         {remembering && matches > 0 && preview && (
           <SwitchRow
             id={applyId}
-            label={tb('categorization.applyHistory', { count: matches })}
-            sub={formatBreakdown(preview.byCategory, nameOfId, {
-              uncategorized: tb('categorization.uncategorizedCount'),
-              more: (count) => tb('categorization.moreCategories', { count }),
+            label={t('picker.applyHistory', { count: matches })}
+            sub={t('picker.applyHistorySub', {
+              breakdown: formatBreakdown(preview.byCategory, nameOfId, {
+                uncategorized: tb('categorization.uncategorizedCount'),
+                more: (count) => tb('categorization.moreCategories', { count }),
+              }),
             })}
             checked={applyHistory}
             onCheckedChange={setApplyHistory}

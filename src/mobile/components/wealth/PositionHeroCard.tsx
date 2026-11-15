@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { priceDecimals } from '@shared/currencies';
 import type { TickerValueHistoryReport } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
@@ -13,6 +12,10 @@ import { useTradeEventTip } from '@/mobile/hooks/use-trade-event-tip';
 import { changeSinceDayOptions } from '@/mobile/lib/change';
 import { pointsChange, trendChangeBase } from '@/mobile/lib/class-trend';
 import { positionEvents, positionPoints, type LedgerTx } from '@/mobile/lib/position-series';
+import { useListText } from '@/mobile/hooks/use-list-text';
+
+/** The period a position's detail opens on. */
+export const POSITION_PERIOD: ChartPeriod = '30D';
 
 /** Whole amounts: the hero's change and axis show no decimals. */
 const WHOLE = { decimals: 0 } as const;
@@ -21,6 +24,8 @@ interface PositionHeroCardProps {
   holding: PositionRowBase;
   /** The value history of the period, each day in the report currency. */
   history: TickerValueHistoryReport | undefined;
+  /** The ticker's history is still being backfilled: an empty chart says so. */
+  backfilling?: boolean;
   transactions: readonly LedgerTx[];
   /** What the quantity is counted in ("ks" for shares): the label and the marks' callouts. */
   unit: string;
@@ -36,13 +41,14 @@ interface PositionHeroCardProps {
 /**
  * The value of the position (spec §8.8, prototype frame 12): today's value and the quantity in the
  * label, the line of the period with the dashed "Vloženo" cost line and a mark for every buy and
- * sell (a tap opens the callout and flashes the matching rows), the change over the period with the
- * price per unit in the stock's own currency. The line is the desktop hero's: each day's value and
+ * sell (a tap opens the callout and flashes the matching rows), the change over the period (the
+ * price per unit is the stats' "Cena za kus", in the stock's own currency). The line is the desktop hero's: each day's value and
  * cost basis from the backend, today's figures as its last point.
  */
 export function PositionHeroCard({
   holding,
   history,
+  backfilling = false,
   transactions,
   unit,
   quantityDigits = 4,
@@ -54,10 +60,11 @@ export function PositionHeroCard({
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
   const { t: td } = useTranslation('dashboard');
+  const list = useListText();
   const fmt = useFormat();
   const moneyText = useMoneyText();
 
-  const { marketValue, totalCost, quantity, originalCurrentPrice, originalCurrency } = holding;
+  const { marketValue, totalCost, quantity } = holding;
   const points = useMemo(
     () => positionPoints(history, reportCurrency, marketValue, totalCost, Date.now() / 1000),
     [history, reportCurrency, marketValue, totalCost]
@@ -71,14 +78,6 @@ export function PositionHeroCard({
     changeBase === null
       ? t(`dashboard:changePeriod.${period}`)
       : td('changeSince', { date: fmt.day(changeBase, changeSinceDayOptions(changeBase)) });
-  const perUnit =
-    originalCurrentPrice > 0
-      ? t('wealth.position.perUnit', {
-          price: moneyText(originalCurrentPrice, originalCurrency, {
-            decimals: priceDecimals(originalCurrentPrice, originalCurrency),
-          }),
-        })
-      : null;
 
   // Marks before the horizon would pile up on the left edge
   const events = useMemo(
@@ -93,6 +92,15 @@ export function PositionHeroCard({
     unit,
   });
   const missing = history?.fxQuality.missingCurrencies ?? [];
+  // No period segment over a chart that is not there (D26): a position without history yet shows
+  // its value and one sentence. A period the person chose keeps the segment, so the way back to
+  // the opening one is never gone.
+  const lined = points.length > 1;
+  const segmented = lined || period !== POSITION_PERIOD;
+  const emptyNote =
+    history === undefined || backfilling
+      ? t('wealth.position.historyComputing')
+      : t('overview.stats.noHistory');
 
   return (
     <Hero
@@ -111,16 +119,13 @@ export function PositionHeroCard({
                     options={{ signed: true, ...WHOLE }}
                   />{' '}
                   {changeLabel}
-                  {perUnit && ` · ${perUnit}`}
                 </>
               ),
             }
           : undefined
       }
-      note={t('overview.stats.noHistory')}
-      period={period}
-      periods={CHART_PERIODS}
-      onPeriodChange={onPeriodChange}
+      note={emptyNote}
+      {...(segmented && { period, periods: CHART_PERIODS, onPeriodChange })}
       points={points}
       cost
       zeroBaseline={period === 'All'}
@@ -141,7 +146,7 @@ export function PositionHeroCard({
       )}
       {missing.length > 0 && (
         <p className="mb-0 mt-2 text-m-note font-semibold text-loss" role="note">
-          {ts('detail.chartFxMissing', { currencies: missing.join(', ') })}
+          {ts('detail.chartFxMissing', { currencies: list(missing) })}
         </p>
       )}
     </Hero>

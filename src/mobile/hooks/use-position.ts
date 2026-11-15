@@ -8,6 +8,7 @@ import type {
   StockDividend,
   StockDividendList,
   StockPosition,
+  StockPositions,
   TickerValueHistoryReport,
 } from '@shared/schema';
 import { useTransactionFx } from '@/hooks/use-fx';
@@ -51,6 +52,8 @@ export interface PositionData {
   dividendCurrency: string;
   /** The value and cost line of `period`, each day converted into the report currency. */
   history: TickerValueHistoryReport | undefined;
+  /** The first backfill of the ticker's history is still running. */
+  historyBackfilling: boolean;
   /** What Yahoo reported about the company (the stored record shows at once, the fresh one replaces it). */
   companyInfo: StockCompanyInfo | undefined;
   /** The company data has not answered yet (loading, or a retry on its way). */
@@ -59,7 +62,12 @@ export interface PositionData {
   isLoading: boolean;
   /** Loaded, and there is no such position (a deep link to a deleted one). */
   notFound: boolean;
+  /** Ask for the position again (the page's retry after a load that took too long). */
+  retry: () => void;
 }
+
+/** What a position taken from the list claims about conversions: nothing missing (yet). */
+const NO_GAPS = { missingCurrencies: [], missingCount: 0, estimated: false };
 
 /**
  * Everything the position detail shows (spec §8.8), from the queries of the desktop's
@@ -79,12 +87,29 @@ export function usePosition(
   period: ChartPeriod,
   live = true
 ): PositionData {
+  const queryClient = useQueryClient();
   const { currencyCode, fxRevision } = useCurrency();
 
-  const { data: position, isLoading } = useQuery<StockPosition | null>({
+  const {
+    data: position,
+    isLoading,
+    refetch,
+  } = useQuery<StockPosition | null>({
     queryKey: ['investment', id, currencyCode, fxRevision],
     queryFn: () => investmentsApi.get(id!, currencyCode),
     enabled: !!id && live,
+    // The list the row was tapped in already holds the position (the same backend valuation in
+    // the same report currency): the name, the value and the stats show at once while the
+    // position's own answer is on its way (audit E2)
+    placeholderData: () => {
+      const list = queryClient.getQueryData<StockPositions>([
+        'investments',
+        currencyCode,
+        fxRevision,
+      ]);
+      const item = list?.items.find((entry) => entry.id === id);
+      return item ? { currency: list!.currency, fxQuality: NO_GAPS, investment: item } : undefined;
+    },
   });
   const investment = position?.investment;
   const ticker = investment?.ticker;
@@ -113,7 +138,7 @@ export function usePosition(
   );
   const { ready: ratesReady, convertAt } = useTransactionFx(datedFacts);
 
-  const history = useTickerHistory('stock', ticker, period, live);
+  const { history, backfilling } = useTickerHistory('stock', ticker, period, live);
 
   // Company data comes from Yahoo through the stock_data cache. The stored record shows at once;
   // the second query lets the backend fetch it first when it is missing or over a day old, so a
@@ -142,11 +167,13 @@ export function usePosition(
     dividendsFromYahoo: dividendList?.fromYahoo ?? false,
     dividendCurrency: holding?.dividendCurrency ?? holding?.originalCurrency ?? currencyCode,
     history,
+    historyBackfilling: backfilling,
     companyInfo: freshCompanyInfo.data ?? storedCompanyInfo.data,
     companyPending: freshCompanyInfo.isPending || freshCompanyInfo.isFetching,
     refetchCompany: () => void freshCompanyInfo.refetch(),
     isLoading,
     notFound: !isLoading && !investment,
+    retry: () => void refetch(),
   };
 }
 

@@ -34,8 +34,8 @@ import { Screen } from '@/mobile/shell/Screen';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { PlanFormSheet } from '@/mobile/sheets/PlanFormSheet';
 
-const NEW_PLAN_BUTTON =
-  'h-auto min-h-12 whitespace-normal rounded-[10px] px-5 py-2 text-center text-m-row';
+/** The empty state's buttons, as wide as every other empty state's first action (D22). */
+const NEW_PLAN_BUTTON = 'h-auto min-h-12 w-full whitespace-normal rounded-[10px] py-3 text-m-row';
 
 interface PlansViewProps {
   /** The year shown (`?year=`, the current one by default). */
@@ -134,14 +134,19 @@ export function PlansView({ year, onYearChange, switcher, leading }: PlansViewPr
         bare
         icon={<ClipboardList />}
         title={tp('empty.title', { year })}
+        // "První plán" only for a profile that never had one (D22)
         description={
           inserts.length > 0
-            ? tp('empty.descriptionTakeOver', { year: year - 1 })
-            : tp('empty.description')
+            ? t('plans.empty.takeOver', { year: year - 1 })
+            : yearsWithPlans.length > 0
+              ? t('plans.empty.again')
+              : tp('empty.description')
         }
         className="px-5 py-8"
         action={
-          <div className="flex w-full flex-col items-stretch gap-2">
+          // As wide as the sentence above (its 320 pt), not the label: the empty state centres and
+          // shrink-wraps its action
+          <div className="flex w-[min(320px,calc(100vw-72px))] flex-col items-stretch gap-2">
             {inserts.length > 0 && (
               <Button className={NEW_PLAN_BUTTON} onClick={() => setTakeOverOpen(true)}>
                 <Copy />

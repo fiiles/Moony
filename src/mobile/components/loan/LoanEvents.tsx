@@ -65,7 +65,8 @@ export function LoanEvents({ loan, events }: LoanEventsProps) {
       default:
         return {
           title: tl('detail.events.balanceCheck', { amount: money(event.amount) }),
-          note: event.note ?? tl('detail.events.balanceCheckNote'),
+          // That a hand-entered balance holds is said once, in the note under the hero (D14)
+          note: event.note ?? '',
         };
     }
   };
@@ -84,7 +85,7 @@ export function LoanEvents({ loan, events }: LoanEventsProps) {
               chip={<DateChip day={event.eventDay} caption={year(event.eventDay)} />}
               chipWidth={DATE_CHIP_WIDTH}
               title={title}
-              sub={note}
+              sub={note || undefined}
               menu={{
                 label: t('loan.events.menu'),
                 // Smazat is nowhere else: the row has no tap

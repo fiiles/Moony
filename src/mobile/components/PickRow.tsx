@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 /**
  * A titled list of a picker sheet (the filter's Kategorie and Období, the category picker's
@@ -31,7 +32,9 @@ export function PickGroup({
 /**
  * A 44 pt row of a picker sheet (`.m-pick`): an optional chip, the label, and — for a row that
  * is one of the choices — a check on the chosen one. Without `checked` it is a plain button (an
- * action row such as "Nová kategorie").
+ * action row such as "Nová kategorie"). While a pick saves (audit E3), the picked row is `pending`
+ * (a spinning ring where the check goes, `aria-busy`) and the other rows are `dimmed` (faded and
+ * disabled), so a second tap cannot start another save.
  */
 export function PickRow({
   icon,
@@ -40,6 +43,8 @@ export function PickRow({
   lang,
   checked,
   ariaLabel,
+  pending = false,
+  dimmed = false,
   onSelect,
 }: {
   icon?: ReactNode;
@@ -52,6 +57,10 @@ export function PickRow({
   checked?: boolean;
   /** The button's accessible name when the label (and sub) is not it, set explicitly: `aria-label`. */
   ariaLabel?: string;
+  /** This row's pick is being saved. */
+  pending?: boolean;
+  /** Another row's pick is being saved: this one waits, faded. */
+  dimmed?: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -59,8 +68,15 @@ export function PickRow({
       type="button"
       {...(checked === undefined ? {} : { role: 'radio', 'aria-checked': checked })}
       aria-label={ariaLabel}
-      onClick={onSelect}
-      className="flex min-h-11 w-full items-center gap-3 px-1 py-1.5 text-left text-m-body text-ink [-webkit-touch-callout:none] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
+      aria-busy={pending || undefined}
+      disabled={dimmed}
+      onClick={() => {
+        if (!pending) onSelect();
+      }}
+      className={cn(
+        'flex min-h-11 w-full items-center gap-3 px-1 py-1.5 text-left text-m-body text-ink transition-opacity duration-fast [-webkit-touch-callout:none] active:bg-well focus-visible:outline-none focus-visible:shadow-focus',
+        dimmed && 'opacity-40'
+      )}
     >
       {icon}
       <span className="min-w-0 flex-1">
@@ -69,7 +85,15 @@ export function PickRow({
         </span>
         {sub && <span className="block truncate text-m-sub text-ink-4">{sub}</span>}
       </span>
-      {checked && <Check aria-hidden className="size-[18px] flex-none text-ink" strokeWidth={2} />}
+      {pending ? (
+        <Loader2
+          aria-hidden
+          className="size-[18px] flex-none animate-spin text-ink-3 motion-reduce:animate-none"
+          strokeWidth={2}
+        />
+      ) : (
+        checked && <Check aria-hidden className="size-[18px] flex-none text-ink" strokeWidth={2} />
+      )}
     </button>
   );
 }

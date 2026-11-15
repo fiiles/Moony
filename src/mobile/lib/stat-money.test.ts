@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { statMoneyOptions, statTone } from './stat-money';
+import { isCompactAmount, statMoneyOptions, statTone } from './stat-money';
 
 describe('statMoneyOptions', () => {
   it('shows whole amounts under a million', () => {
@@ -15,6 +15,15 @@ describe('statMoneyOptions', () => {
       decimals: 2,
       signed: true,
     });
+  });
+});
+
+describe('isCompactAmount', () => {
+  it('counts the digits the whole amount would show: seven or more go compact, in any currency', () => {
+    expect(isCompactAmount(999_999)).toBe(false);
+    expect(isCompactAmount(999_999.6)).toBe(true);
+    expect(isCompactAmount(-1_000_000)).toBe(true);
+    expect(isCompactAmount(Number.NaN)).toBe(false);
   });
 });
 

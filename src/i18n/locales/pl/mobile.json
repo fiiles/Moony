@@ -19,14 +19,15 @@
       "unchanged": "bez zmian",
       "noHistory": "brak historii"
     },
-    "emptyDescription": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy. Wszystko zostaje na tym telefonie."
+    "emptyDescription": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy. Wszystko zostaje na tym telefonie.",
+    "ringCenter": "Aktywa"
+  },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "brak kursu dla {{currency}}",
+    "inclFx": "z kursami walut"
   },
   "cashflow": {
-    "subtitle_one": "Rzeczywiste przychody i wydatki z {{count}} konta",
-    "subtitle_few": "Rzeczywiste przychody i wydatki z {{count}} kont",
-    "subtitle_many": "Rzeczywiste przychody i wydatki z {{count}} kont",
-    "subtitle_other": "Rzeczywiste przychody i wydatki z {{count}} konta",
-    "subtitleAll": "Rzeczywiste przychody i wydatki ze wszystkich kont",
     "shareOfExpenses": "{{share}} wydatków",
     "shareOfIncome": "{{share}} przychodów",
     "partial": "Okres jeszcze się nie skończył; liczby uzupełnią się wraz z następnym wyciągiem.",
@@ -40,7 +41,10 @@
       "done": "Gotowe"
     },
     "limitSheet": {
-      "pick": "Wybierz kategorię, której wydatki chcesz pilnować."
+      "pick": "Wybierz kategorię, której wydatki chcesz pilnować.",
+      "usual": "Zwykle wydajesz {{amount}} miesięcznie.",
+      "openHelp": "Obowiązuje, dopóki go nie zmienisz.",
+      "closedHelp": "Po ostatnim miesiącu wróci poprzedni limit."
     },
     "budgets": {
       "averageNote": "⌀ z ostatnich 6 miesięcy"
@@ -49,7 +53,25 @@
     "showMore_few": "Pokaż kolejne {{count}} transakcje",
     "showMore_many": "Pokaż kolejnych {{count}} transakcji",
     "showMore_other": "Pokaż kolejne {{count}} transakcji",
-    "rowMenu": "Więcej akcji: {{title}}"
+    "rowMenu": "Więcej akcji: {{title}}",
+    "scopeAll": "Wszystkie konta",
+    "scope_one": "{{count}} konto",
+    "scope_few": "{{count}} konta",
+    "scope_many": "{{count}} kont",
+    "scope_other": "{{count}} konta",
+    "limit": {
+      "remaining": "Zostało {{amount}} z {{limit}}",
+      "over": "Przekroczono o {{amount}} · limit {{limit}}",
+      "exhausted": "Wyczerpany · limit {{limit}}"
+    },
+    "trend": {
+      "title_one": "Ostatni {{count}} miesiąc",
+      "title_few": "Ostatnie {{count}} miesiące",
+      "title_many": "Ostatnie {{count}} miesięcy",
+      "title_other": "Ostatnie {{count}} miesiąca",
+      "max": "najwięcej {{amount}}"
+    },
+    "incomeNote": "Wpływy bez kategorii liczą się jako przychód"
   },
   "upkeep": {
     "title": "Aktualizacja danych",
@@ -57,10 +79,10 @@
     "count_few": "{{count}} pozycje",
     "count_many": "{{count}} pozycji",
     "count_other": "{{count}} pozycji",
-    "balancesStale_one": "{{count}} saldo starsze niż miesiąc",
-    "balancesStale_few": "{{count}} salda starsze niż miesiąc",
-    "balancesStale_many": "{{count}} sald starszych niż miesiąc",
-    "balancesStale_other": "{{count}} salda starszego niż miesiąc",
+    "balancesStale_one": "{{count}} saldo do aktualizacji",
+    "balancesStale_few": "{{count}} salda do aktualizacji",
+    "balancesStale_many": "{{count}} sald do aktualizacji",
+    "balancesStale_other": "{{count}} salda do aktualizacji",
     "uncategorized_one": "{{count}} płatność bez kategorii",
     "uncategorized_few": "{{count}} płatności bez kategorii",
     "uncategorized_many": "{{count}} płatności bez kategorii",
@@ -88,7 +110,11 @@
       "revalue": "Przeszacuj",
       "enterBalance": "Podaj saldo",
       "enterRate": "Uzupełnij stopę"
-    }
+    },
+    "olderThanMonth": "Starsze niż miesiąc",
+    "fromStatement": "wyciąg z {{date}}",
+    "loanBalanceFrom": "Saldo z {{date}}",
+    "loanFixationEnded": "Stała stopa skończyła się {{date}}"
   },
   "recordBalances": {
     "title": "Zapisz salda",
@@ -135,8 +161,6 @@
       "insurance": "Ubezpieczenia"
     },
     "manual": "ręcznie",
-    "statementOn": "wyciąg z {{date}}",
-    "balanceOn": "saldo z {{date}}",
     "trail": {
       "change": "{{amount}} · 30 dni",
       "staleStatement_one": "wyciąg sprzed {{count}} dnia",
@@ -146,11 +170,8 @@
       "staleBalance_one": "saldo sprzed {{count}} dnia",
       "staleBalance_few": "saldo sprzed {{count}} dni",
       "staleBalance_many": "saldo sprzed {{count}} dni",
-      "staleBalance_other": "saldo sprzed {{count}} dnia",
-      "approx": "≈ {{amount}}",
-      "noRate": "brak kursu dla {{currency}}"
+      "staleBalance_other": "saldo sprzed {{count}} dnia"
     },
-    "perMonth": "{{amount}} / mies.",
     "nextPayment": "następna płatność {{date}}",
     "menu": {
       "sort": "Sortuj",
@@ -173,10 +194,10 @@
     "insurance": {
       "type": "Typ polisy",
       "upcoming": "Najbliższe płatności",
-      "upcomingNote_one": "{{count}} dzień",
-      "upcomingNote_few": "{{count}} dni",
-      "upcomingNote_many": "{{count}} dni",
-      "upcomingNote_other": "{{count}} dnia",
+      "upcomingNote_one": "najbliższy {{count}} dzień",
+      "upcomingNote_few": "najbliższe {{count}} dni",
+      "upcomingNote_many": "najbliższe {{count}} dni",
+      "upcomingNote_other": "najbliższe {{count}} dnia",
       "showAll_one": "Pokaż {{count}}",
       "showAll_few": "Pokaż wszystkie {{count}}",
       "showAll_many": "Pokaż wszystkie {{count}}",
@@ -241,11 +262,6 @@
     "addTx": {
       "noCategorySub": "Przypiszesz ją później"
     },
-    "stats": {
-      "changeThisYear": "Zmiana w tym roku",
-      "avgPerMonth": "Średnio miesięcznie",
-      "yearlyInterest": "Roczne odsetki"
-    },
     "flows": {
       "title": "Przepływy"
     },
@@ -281,7 +297,12 @@
     "importHistory": {
       "menu": "Opcje importu"
     },
-    "autoCategorizeAllDone": "Wszystkie płatności na tym koncie mają już kategorię."
+    "autoCategorizeAllDone": "Wszystkie płatności na tym koncie mają już kategorię.",
+    "manual": "Prowadzone ręcznie",
+    "noBalance": {
+      "label": "Saldo",
+      "note": "Saldo nie zostało jeszcze wpisane"
+    }
   },
   "loan": {
     "nextPayment": "Następna rata {{amount}} · {{date}}",
@@ -289,7 +310,8 @@
     "stats": {
       "since": "od {{month, lower}}",
       "extra": "nadpłaty {{amount}}",
-      "until": "do {{month, lower}}"
+      "until": "do {{month, lower}}",
+      "fixationIn": "za {{duration}}"
     },
     "alerts": {
       "fixationSoon_one": "Stała stopa kończy się za {{count}} dzień. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
@@ -311,13 +333,24 @@
       "showAll_one": "Pokaż {{count}}",
       "showAll_few": "Pokaż wszystkie {{count}}",
       "showAll_many": "Pokaż wszystkie {{count}}",
-      "showAll_other": "Pokaż wszystkie {{count}}"
+      "showAll_other": "Pokaż wszystkie {{count}}",
+      "interest": "odsetki {{amount}}",
+      "principal": "kapitał {{amount}}"
     },
     "extra": {
       "noChange": "Ta kwota nie zmienia ani okresu spłaty, ani raty, ani odsetek."
     },
     "events": {
       "menu": "Menu zdarzenia"
+    },
+    "afterFixation": {
+      "title": "Po okresie stałej stopy",
+      "rate": "Przy {{rate}}",
+      "current": "obecna stopa",
+      "delta": "{{delta}} p.p."
+    },
+    "legend": {
+      "tapHint": "Stuknij znacznik, aby zobaczyć, co się stało."
     }
   },
   "documents": {
@@ -346,18 +379,24 @@
     "anniversary": "rocznica {{date}}",
     "notice": "Wypowiedzenie do",
     "limitsTotal": "łącznie {{amount}}",
-    "total": "Razem · {{payments}}"
+    "total": "Razem · {{payments}}",
+    "hero": {
+      "label": "Składka · {{frequency}}",
+      "next": "Następna płatność {{date}} · {{distance}}",
+      "ended": "Polisa zakończyła się {{date}}",
+      "endedPlain": "Polisa została zakończona",
+      "paidOn": "Zapłacono {{date}}",
+      "noPremium": "Składka nie została wpisana"
+    }
   },
   "property": {
     "notFound": "Ta nieruchomość już nie istnieje.",
     "ltv": "LTV {{ltv}}",
-    "rentYear": "{{rent}} rocznie",
     "perYear": "rocznie",
-    "loanPayment": "rata {{amount}} / mies.",
+    "loanPayment": "rata {{amount}}",
     "rowMenu": "Więcej akcji: {{name}}",
     "costKindRecurring": "Cykliczny",
     "costKindOneTime": "Jednorazowy",
-    "costYear": "{{amount}} rocznie",
     "costCurrent": "Teraz {{amount}}",
     "costDateInFuture": "Data kosztu nie może być z przyszłości.",
     "costNameRequired": "Podaj nazwę kosztu.",
@@ -383,10 +422,15 @@
   },
   "transaction": {
     "flowSaved": "Znaczenie zapisane",
-    "counterparty": "Kontrahent",
-    "date": "Data",
     "category": "Kategoria",
-    "flow": "Znaczenie",
+    "flow": "Liczy się jako",
+    "auto": "Automatycznie",
+    "by": {
+      "explicit": "wybrane przez Ciebie",
+      "category": "według kategorii",
+      "direction": "według kierunku płatności",
+      "ownAccount": "między własnymi kontami"
+    },
     "details": "Szczegóły",
     "sourceLabel": "Źródło",
     "source": {
@@ -397,6 +441,8 @@
     "status": "Status",
     "booked": "Zaksięgowana",
     "currency": "Waluta",
+    "counterpartyAccount": "Rachunek kontrahenta",
+    "copied": "Skopiowano: {{label}}",
     "plan": "Plan wydatków",
     "noPlan": "Bez planu"
   },
@@ -405,8 +451,21 @@
     "recent": "Ostatnio używane",
     "all": "Wszystkie kategorie",
     "suggested": "Propozycja",
+    "current": "Obecna",
     "decline": "Odrzuć propozycję",
-    "empty": "Żadna kategoria nie pasuje"
+    "empty": "Żadna kategoria nie pasuje",
+    "remember": "Następnym razem tak samo",
+    "rememberFrom": "Kolejne płatności od {{who}} na to konto dostaną tę samą kategorię.",
+    "rememberTo": "Kolejne płatności dla {{who}} z tego konta dostaną tę samą kategorię.",
+    "applyHistory_one": "Zmień też {{count}} wcześniejszą płatność",
+    "applyHistory_few": "Zmień też {{count}} wcześniejsze płatności",
+    "applyHistory_many": "Zmień też {{count}} wcześniejszych płatności",
+    "applyHistory_other": "Zmień też {{count}} wcześniejszej płatności",
+    "applyHistorySub": "Teraz: {{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "Częste",
+    "all": "Wszystkie waluty"
   },
   "import": {
     "title": "Importuj wyciąg",
@@ -552,12 +611,12 @@
       "count_many": "{{count}} emisji",
       "count_other": "{{count}} emisji",
       "nearest": "najbliższy wykup {{month, lower}}",
-      "coupon": "kupon {{amount}} / rok",
+      "coupon": "kupon {{amount}}",
       "upcoming": "Najbliższe kupony i terminy wykupu",
       "noUpcoming": "W najbliższym roku nie przypada żaden kupon ani termin wykupu.",
       "allRepaid": "Wszystkie emisje zostały wykupione. Włącz w menu ··· „{{action}}”, aby je zobaczyć.",
       "loadFailed": "Nie udało się wczytać obligacji.",
-      "rateNote": "{{rate}} rocznie, ważona",
+      "rateNote": "{{rate}} rocznie",
       "nextPayment": "Następna płatność",
       "notGiven": "nie podano"
     },
@@ -574,8 +633,8 @@
     "realEstate": {
       "personal": "własna",
       "investment": "inwestycyjna",
-      "rent": "najem {{amount}} / mies.",
-      "revaluedOn": "{{date}}"
+      "rent": "najem {{amount}}",
+      "revaluedOn": "wycena z {{date}}"
     },
     "empty": {
       "title": "Jeszcze nic nie posiadasz",
@@ -598,9 +657,8 @@
       "pricesAt": "ceny {{time}}",
       "pricesOn": "ceny {{date}}",
       "invested": "zainwestowano {{amount}}",
-      "yieldNote": "stopa dywidendy {{percent}}",
-      "twrYtd": "Zwrot w tym roku",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "yieldNote": "stopa {{percent}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "jeszcze brak historii",
       "positionsTab": "Pozycje · {{count}}",
@@ -625,11 +683,10 @@
       "target": "cel {{price}}",
       "targetReached": "cel osiągnięty",
       "dayChange": "dziś",
-      "realizedShort": "zrealizowano {{amount}}"
+      "watchedTabPlain": "Obserwowane"
     },
     "crypto": {
-      "largestNote": "{{share}} krypto",
-      "heldNote": "{{share}} krypto · {{date}}"
+      "largestNote": "{{share}} krypto"
     },
     "closed": {
       "on": "zamknięta {{date}}",
@@ -638,20 +695,20 @@
     },
     "position": {
       "heroLabel": "Wartość pozycji · {{quantity}} {{unit}}",
-      "perUnit": "{{price}} za sztukę",
+      "perUnit": "{{price}}/szt.",
       "stats": {
-        "value": "Wartość",
         "inCurrency": "w {{currency}}",
-        "price": "Cena"
+        "asOf": "stan na {{when}}"
       },
       "tx": {
-        "buy": "Zakup · {{quantity}} {{unit}}",
-        "sell": "Sprzedaż · {{quantity}} {{unit}}",
+        "buy": "Zakup",
+        "sell": "Sprzedaż",
         "showAll_one": "Pokaż {{count}}",
         "showAll_few": "Pokaż wszystkie {{count}}",
         "showAll_many": "Pokaż wszystkie {{count}}",
         "showAll_other": "Pokaż wszystkie {{count}}",
-        "menu": "Menu transakcji"
+        "menu": "Menu transakcji",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "Menu dywidendy"
@@ -660,12 +717,12 @@
       "following": "Obserwowana",
       "followed": "Dodano do obserwowanych",
       "range52": "Zakres 52 tyg.",
-      "renamed": "Nazwa zapisana"
+      "renamed": "Nazwa zapisana",
+      "historyComputing": "Historia jest jeszcze obliczana…",
+      "dividendSource": "Dywidendy według {{source}}"
     },
     "watch": {
       "stats": {
-        "today": "Dziś",
-        "since": "Od obserwacji",
         "noTarget": "brak celu"
       },
       "above": "Powyżej",
@@ -673,7 +730,8 @@
       "openPosition": "Otwórz pozycję",
       "notesEmpty": "Brak notatek. Stuknij Edytuj, aby dodać notatki z analizy — markdown działa."
     },
-    "assetsTrendLabel": "Wykres aktywów"
+    "assetsTrendLabel": "Wykres aktywów",
+    "changeCaption": "Zmiana w ostatnich 30 dniach"
   },
   "settings": {
     "rows": {
@@ -694,7 +752,8 @@
       "categoriesSub_few": "{{count}} kategorie",
       "categoriesSub_many": "{{count}} kategorii",
       "categoriesSub_other": "{{count}} kategorii",
-      "categorization": "Kategoryzacja"
+      "categorization": "Kategoryzacja",
+      "lockSub": "Blokuje aplikację od razu"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "bez telemetrii",
@@ -828,7 +887,8 @@
       "usageBudgets_many": "{{count}} budżetów",
       "usageBudgets_other": "{{count}} budżetu"
     },
-    "remindersLead": "Wybierz, o czym przypominają Aktualizacja danych i „Co cię czeka” w Przeglądzie; powiadomienia działają według tej samej listy. Wyłączony rodzaj nie pojawi się nigdzie, także na komputerze. Kiedy przychodzą powiadomienia, ustawisz w Powiadomieniach."
+    "remindersLead": "Wybierz, o czym przypominają Aktualizacja danych i „Co cię czeka” w Przeglądzie; powiadomienia działają według tej samej listy. Wyłączony rodzaj nie pojawi się nigdzie, także na komputerze. Kiedy przychodzą powiadomienia, ustawisz w Powiadomieniach.",
+    "saveTimeout": "Zapisywanie trwa zbyt długo. Spróbuj ponownie."
   },
   "backup": {
     "lead": "Kopia zapasowa to jeden zaszyfrowany plik: baza danych, klucze i załączniki. Otworzy go tylko twoje hasło.",
@@ -973,6 +1033,10 @@
     },
     "form": {
       "newDescription": "Ile chcesz wydać w ciągu roku na jedną rzecz. Płatności dodajesz do planu w szczegółach płatności."
+    },
+    "empty": {
+      "takeOver": "Przejmij plany z {{year}} i tylko popraw kwoty albo utwórz nowy plan.",
+      "again": "Utwórz plan na ten rok: na przykład urlop, prezenty albo regularną opiekę."
     }
   },
   "gettingStarted": {
@@ -986,6 +1050,10 @@
       "confirm": "Odrzuć"
     }
   },
+  "fields": {
+    "pickDay": "Wybierz dzień",
+    "pickMonth": "Wybierz miesiąc"
+  },
   "loadError": {
     "overview": "Nie udało się wczytać przeglądu.",
     "finance": "Nie udało się wczytać finansów.",
@@ -994,5 +1062,80 @@
   },
   "pull": {
     "refreshing": "Odświeżanie…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "Termin wypowiedzenia",
+      "insurance_anniversary_passed": "Termin minął",
+      "insurance_end": "Polisa się kończy",
+      "insurance_payment": "Płatność składki",
+      "loan_fixation_end": "Koniec stałej stopy",
+      "loan_payoff": "Ostatnia rata",
+      "bond_maturity": "Wykup",
+      "bond_coupon": "Kupon",
+      "account_termination": "Konto się kończy",
+      "savings_rate_end": "Koniec promocyjnej stopy",
+      "watch_target_below": "Spadła do celu",
+      "watch_target_above": "Osiągnęła cel",
+      "stock_split": "Split {{ratio}}"
+    },
+    "splitTrades_one": "{{count}} transakcja do korekty",
+    "splitTrades_few": "{{count}} transakcje do korekty",
+    "splitTrades_many": "{{count}} transakcji do korekty",
+    "splitTrades_other": "{{count}} transakcji do korekty"
+  },
+  "stat": {
+    "assets": "Aktywa razem",
+    "liabilities": "Zobowiązania",
+    "freeCash": "Gotówka",
+    "freeCashNote": "na kontach",
+    "unrealizedGain": "Wynik otwarty",
+    "unrealizedLoss": "Wynik otwarty",
+    "dividends": "Dywidendy",
+    "returnYtd": "Zwrot YTD",
+    "faceValue": "Nominał",
+    "yearlyCoupon": "Kupon roczny",
+    "nextMaturity": "Wykup",
+    "realized": "Zrealizowane",
+    "largest": "Największa",
+    "changeYtd": "Zmiana YTD",
+    "avgPerMonth": "Na miesiąc",
+    "yearlyInterest": "Odsetki / rok",
+    "today": "Dziś",
+    "target": "Cel",
+    "sinceFollowing": "Od obserwacji",
+    "value": "Wartość",
+    "price": "Cena",
+    "invested": "Wpłacono",
+    "heldFor": "W portfelu",
+    "quantity": "Ilość",
+    "avgPrice": "Średnia cena",
+    "yearlyYield": "Dochód / rok",
+    "imported": "Dodano",
+    "duplicates": "Duplikaty",
+    "errors": "Błędy"
+  },
+  "statWide": {
+    "interest": "Zapłacone odsetki",
+    "principal": "Spłacony kapitał",
+    "remaining": "Pozostałe raty",
+    "fixation": "Koniec stałej stopy",
+    "value": "Wartość",
+    "equity": "Kapitał własny",
+    "grossYield": "Stopa brutto",
+    "netCashflow": "Przepływy netto"
+  },
+  "period": {
+    "month": "{{amount}} / mies.",
+    "quarter": "{{amount}} / kwartał",
+    "halfYear": "{{amount}} / półrocze",
+    "year": "{{amount}} / rok",
+    "avgMonth": "⌀ {{amount}} / mies."
+  },
+  "labelValue": "{{label}}: {{value}}",
+  "statNote": {
+    "notRented": "niewynajęte",
+    "returns": "zwrot {{amount}}",
+    "average": "⌀ {{price}}"
   }
 }

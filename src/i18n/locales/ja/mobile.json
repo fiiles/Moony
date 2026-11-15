@@ -19,11 +19,15 @@
       "unchanged": "変化なし",
       "noHistory": "履歴なし"
     },
-    "emptyDescription": "口座または投資を追加すると、Moony が概要、グラフ、推移を作成します。すべてのデータはこのスマートフォン内に保存されます。"
+    "emptyDescription": "口座または投資を追加すると、Moony が概要、グラフ、推移を作成します。すべてのデータはこのスマートフォン内に保存されます。",
+    "ringCenter": "総資産"
+  },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "{{currency}}のレートなし",
+    "inclFx": "為替込み"
   },
   "cashflow": {
-    "subtitle_other": "{{count}}口座の実際の収入と支出",
-    "subtitleAll": "すべての口座の実際の収入と支出",
     "shareOfExpenses": "支出の{{share}}",
     "shareOfIncome": "収入の{{share}}",
     "partial": "この期間はまだ終わっていません。次の明細で数値が補完されます。",
@@ -37,18 +41,33 @@
       "done": "完了"
     },
     "limitSheet": {
-      "pick": "支出を管理したいカテゴリを選んでください。"
+      "pick": "支出を管理したいカテゴリを選んでください。",
+      "usual": "普段は月に{{amount}}使っています。",
+      "openHelp": "変更するまで有効です。",
+      "closedHelp": "最後の月が過ぎると、以前の上限に戻ります。"
     },
     "budgets": {
       "averageNote": "直近6か月の平均"
     },
     "showMore_other": "さらに{{count}}件の取引を表示",
-    "rowMenu": "その他の操作: {{title}}"
+    "rowMenu": "その他の操作: {{title}}",
+    "scopeAll": "すべての口座",
+    "scope_other": "{{count}}口座",
+    "limit": {
+      "remaining": "残り {{amount}} / {{limit}}",
+      "over": "{{amount}} 超過 · 上限 {{limit}}",
+      "exhausted": "上限に到達 · 上限 {{limit}}"
+    },
+    "trend": {
+      "title_other": "過去{{count}}か月",
+      "max": "最大 {{amount}}"
+    },
+    "incomeNote": "未分類の入金は収入として数えます"
   },
   "upkeep": {
     "title": "データの更新",
     "count_other": "{{count}}件",
-    "balancesStale_other": "{{count}}件の残高が1か月以上前のものです",
+    "balancesStale_other": "更新が必要な残高 {{count}}件",
     "uncategorized_other": "カテゴリのない支払い{{count}}件",
     "uncategorizedFrom": "{{account}} · {{date}}の明細から",
     "accounts_other": "{{count}}口座",
@@ -67,7 +86,11 @@
       "revalue": "再評価",
       "enterBalance": "残高を入力",
       "enterRate": "金利を入力"
-    }
+    },
+    "olderThanMonth": "1か月以上前",
+    "fromStatement": "{{date}}の明細",
+    "loanBalanceFrom": "{{date}}時点の残高",
+    "loanFixationEnded": "{{date}}に固定期間が終了"
   },
   "recordBalances": {
     "title": "残高を記録",
@@ -105,16 +128,11 @@
       "insurance": "保険"
     },
     "manual": "手入力",
-    "statementOn": "{{date}}の明細",
-    "balanceOn": "{{date}}の残高",
     "trail": {
       "change": "{{amount}} · 30日間",
       "staleStatement_other": "明細は{{count}}日前",
-      "staleBalance_other": "残高は{{count}}日前",
-      "approx": "≈ {{amount}}",
-      "noRate": "{{currency}}のレートなし"
+      "staleBalance_other": "残高は{{count}}日前"
     },
-    "perMonth": "月 {{amount}}",
     "nextPayment": "次回の支払い {{date}}",
     "menu": {
       "sort": "並べ替え",
@@ -137,7 +155,7 @@
     "insurance": {
       "type": "契約の種類",
       "upcoming": "直近の支払い",
-      "upcomingNote_other": "{{count}}日間",
+      "upcomingNote_other": "今後{{count}}日間",
       "showAll_other": "{{count}}件をすべて表示"
     },
     "cashTrendLabel": "現金の推移グラフ",
@@ -184,11 +202,6 @@
     "addTx": {
       "noCategorySub": "あとで分類できます"
     },
-    "stats": {
-      "changeThisYear": "今年の増減",
-      "avgPerMonth": "月平均",
-      "yearlyInterest": "年間利息"
-    },
     "flows": {
       "title": "入出金の推移"
     },
@@ -224,7 +237,12 @@
     "importHistory": {
       "menu": "インポートのオプション"
     },
-    "autoCategorizeAllDone": "この口座のすべての支払いにはすでにカテゴリがあります。"
+    "autoCategorizeAllDone": "この口座のすべての支払いにはすでにカテゴリがあります。",
+    "manual": "手動で管理",
+    "noBalance": {
+      "label": "残高",
+      "note": "残高はまだ入力されていません"
+    }
   },
   "loan": {
     "nextPayment": "次回の返済 {{amount}} · {{date}}",
@@ -232,7 +250,8 @@
     "stats": {
       "since": "{{month}}から",
       "extra": "追加返済 {{amount}}",
-      "until": "{{month}}まで"
+      "until": "{{month}}まで",
+      "fixationIn": "あと{{duration}}"
     },
     "alerts": {
       "fixationSoon_other": "固定金利はあと{{count}}日で終了します。銀行が新しい金利を確定したら記録してください。返済額と計画が再計算されます。",
@@ -242,13 +261,24 @@
     "schedule": {
       "left": "残り {{amount}}",
       "yearSub_other": "{{count}}回 · 利息 {{interest}}",
-      "showAll_other": "全{{count}}回を表示"
+      "showAll_other": "全{{count}}回を表示",
+      "interest": "利息 {{amount}}",
+      "principal": "元金 {{amount}}"
     },
     "extra": {
       "noChange": "この金額では、返済期間も返済額も利息も変わりません。"
     },
     "events": {
       "menu": "イベントメニュー"
+    },
+    "afterFixation": {
+      "title": "固定期間の終了後",
+      "rate": "金利{{rate}}の場合",
+      "current": "現在の金利",
+      "delta": "{{delta}}ポイント"
+    },
+    "legend": {
+      "tapHint": "マークをタップすると内容が表示されます。"
     }
   },
   "documents": {
@@ -274,18 +304,24 @@
     "anniversary": "更新日 {{date}}",
     "notice": "解約通知の期限",
     "limitsTotal": "合計 {{amount}}",
-    "total": "合計 · {{payments}}"
+    "total": "合計 · {{payments}}",
+    "hero": {
+      "label": "保険料 · {{frequency}}",
+      "next": "次回の支払い {{date}} · {{distance}}",
+      "ended": "{{date}}に終了しました",
+      "endedPlain": "この保険は終了しています",
+      "paidOn": "{{date}}に支払い済み",
+      "noPremium": "保険料が入力されていません"
+    }
   },
   "property": {
     "notFound": "この物件は存在しません。",
     "ltv": "LTV {{ltv}}",
-    "rentYear": "年間 {{rent}}",
     "perYear": "年間",
-    "loanPayment": "返済額 月 {{amount}}",
+    "loanPayment": "返済額 {{amount}}",
     "rowMenu": "その他の操作: {{name}}",
     "costKindRecurring": "定期",
     "costKindOneTime": "一時",
-    "costYear": "年間 {{amount}}",
     "costCurrent": "現在 {{amount}}",
     "costDateInFuture": "費用の日付は未来にできません。",
     "costNameRequired": "費用の名前を入力してください。",
@@ -305,10 +341,15 @@
   },
   "transaction": {
     "flowSaved": "意味を保存しました",
-    "counterparty": "取引相手",
-    "date": "日付",
     "category": "カテゴリ",
-    "flow": "意味",
+    "flow": "扱い",
+    "auto": "自動",
+    "by": {
+      "explicit": "手動で選択",
+      "category": "カテゴリーから",
+      "direction": "入出金の向きから",
+      "ownAccount": "自分の口座間"
+    },
     "details": "詳細",
     "sourceLabel": "入力元",
     "source": {
@@ -319,6 +360,8 @@
     "status": "状態",
     "booked": "確定",
     "currency": "通貨",
+    "counterpartyAccount": "取引相手の口座",
+    "copied": "コピーしました：{{label}}",
     "plan": "支出プラン",
     "noPlan": "プランなし"
   },
@@ -327,8 +370,18 @@
     "recent": "最近使ったもの",
     "all": "すべてのカテゴリ",
     "suggested": "提案",
+    "current": "現在",
     "decline": "提案を却下",
-    "empty": "一致するカテゴリがありません"
+    "empty": "一致するカテゴリがありません",
+    "remember": "次回も同じにする",
+    "rememberFrom": "今後、{{who}}からこの口座への入金にも同じカテゴリーを付けます。",
+    "rememberTo": "今後、この口座から{{who}}への支払いにも同じカテゴリーを付けます。",
+    "applyHistory_other": "以前の支払い{{count}}件も変更",
+    "applyHistorySub": "現在：{{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "よく使う通貨",
+    "all": "すべての通貨"
   },
   "import": {
     "title": "明細をインポート",
@@ -456,12 +509,12 @@
     "bonds": {
       "count_other": "{{count}}銘柄",
       "nearest": "直近の満期 {{month}}",
-      "coupon": "クーポン {{amount}} / 年",
+      "coupon": "クーポン {{amount}}",
       "upcoming": "直近のクーポンと満期",
       "noUpcoming": "今後1年間にクーポンや満期はありません。",
       "allRepaid": "すべての銘柄が償還済みです。メニュー「···」の「{{action}}」をオンにすると表示されます。",
       "loadFailed": "債券を読み込めませんでした。",
-      "rateNote": "年率 {{rate}} 加重平均",
+      "rateNote": "年率 {{rate}}",
       "nextPayment": "次回の支払い",
       "notGiven": "未入力"
     },
@@ -475,8 +528,8 @@
     "realEstate": {
       "personal": "自己居住用",
       "investment": "投資用",
-      "rent": "家賃 {{amount}} / 月",
-      "revaluedOn": "{{date}}"
+      "rent": "家賃 {{amount}}",
+      "revaluedOn": "{{date}}に評価"
     },
     "empty": {
       "title": "保有資産はまだありません",
@@ -500,8 +553,7 @@
       "pricesOn": "価格 {{date}}",
       "invested": "投資額 {{amount}}",
       "yieldNote": "利回り {{percent}}",
-      "twrYtd": "今年のリターン",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "履歴はまだありません",
       "positionsTab": "ポジション · {{count}}",
@@ -523,11 +575,10 @@
       "target": "目標 {{price}}",
       "targetReached": "目標に到達",
       "dayChange": "本日",
-      "realizedShort": "確定 {{amount}}"
+      "watchedTabPlain": "ウォッチ中"
     },
     "crypto": {
-      "largestNote": "暗号資産の{{share}}",
-      "heldNote": "暗号資産の{{share}} · {{date}}"
+      "largestNote": "暗号資産の{{share}}"
     },
     "closed": {
       "on": "{{date}}に決済",
@@ -536,17 +587,17 @@
     },
     "position": {
       "heroLabel": "ポジションの評価額 · {{quantity}} {{unit}}",
-      "perUnit": "1単位あたり {{price}}",
+      "perUnit": "{{price}}/個",
       "stats": {
-        "value": "評価額",
         "inCurrency": "{{currency}}建て",
-        "price": "価格"
+        "asOf": "{{when}}時点"
       },
       "tx": {
-        "buy": "買付 · {{quantity}} {{unit}}",
-        "sell": "売却 · {{quantity}} {{unit}}",
+        "buy": "買付",
+        "sell": "売却",
         "showAll_other": "{{count}} 件をすべて表示",
-        "menu": "取引メニュー"
+        "menu": "取引メニュー",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "配当メニュー"
@@ -555,12 +606,12 @@
       "following": "フォロー中",
       "followed": "ウォッチリストに追加しました",
       "range52": "52週レンジ",
-      "renamed": "名称を保存しました"
+      "renamed": "名称を保存しました",
+      "historyComputing": "履歴を計算しています…",
+      "dividendSource": "配当の出典: {{source}}"
     },
     "watch": {
       "stats": {
-        "today": "本日",
-        "since": "フォロー開始以降",
         "noTarget": "目標未設定"
       },
       "above": "上回る",
@@ -568,7 +619,8 @@
       "openPosition": "保有銘柄を開く",
       "notesEmpty": "メモはまだありません。「編集」をタップしてリサーチメモを追加してください。Markdown が使えます。"
     },
-    "assetsTrendLabel": "資産の推移グラフ"
+    "assetsTrendLabel": "資産の推移グラフ",
+    "changeCaption": "過去30日間の変化"
   },
   "settings": {
     "rows": {
@@ -586,7 +638,8 @@
       "tracking": "追跡する項目",
       "categories": "カテゴリ",
       "categoriesSub_other": "{{count}}件のカテゴリ",
-      "categorization": "自動分類"
+      "categorization": "自動分類",
+      "lockSub": "今すぐアプリをロックします"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "テレメトリなし",
@@ -696,7 +749,8 @@
       "usagePayees_other": "{{count}}件の学習済み取引先",
       "usageBudgets_other": "{{count}}件の予算"
     },
-    "remindersLead": "概要の「データの更新」と「今後の予定」で知らせる内容を選びます。通知も同じ一覧に従います。オフにした種類はどこにも表示されません（パソコンでも）。通知が届くタイミングは「通知」で設定します。"
+    "remindersLead": "概要の「データの更新」と「今後の予定」で知らせる内容を選びます。通知も同じ一覧に従います。オフにした種類はどこにも表示されません（パソコンでも）。通知が届くタイミングは「通知」で設定します。",
+    "saveTimeout": "保存に時間がかかっています。もう一度お試しください。"
   },
   "backup": {
     "lead": "バックアップは暗号化された1つのファイルで、データベース、キー、添付ファイルが入っています。開けるのはあなたのパスワードだけです。",
@@ -832,6 +886,10 @@
     },
     "form": {
       "newDescription": "1年間に1つの項目に使いたい金額です。支払いのプランへの追加は、支払いの詳細から行います。"
+    },
+    "empty": {
+      "takeOver": "{{year}}年のプランを引き継いで金額だけ調整するか、新しいプランを作成してください。",
+      "again": "今年のプランを作成しましょう。休暇、贈り物、定期的なケアなど。"
     }
   },
   "gettingStarted": {
@@ -845,6 +903,10 @@
       "confirm": "破棄"
     }
   },
+  "fields": {
+    "pickDay": "日付を選択",
+    "pickMonth": "月を選択"
+  },
   "loadError": {
     "overview": "概要を読み込めませんでした。",
     "finance": "財務を読み込めませんでした。",
@@ -853,5 +915,77 @@
   },
   "pull": {
     "refreshing": "更新中…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "解約の期限",
+      "insurance_anniversary_passed": "解約期間は終了",
+      "insurance_end": "契約終了",
+      "insurance_payment": "保険料の支払い",
+      "loan_fixation_end": "固定期間の終了",
+      "loan_payoff": "最終返済",
+      "bond_maturity": "満期",
+      "bond_coupon": "利払い",
+      "account_termination": "口座の終了",
+      "savings_rate_end": "優遇金利の終了",
+      "watch_target_below": "目標まで下落",
+      "watch_target_above": "目標に到達",
+      "stock_split": "分割 {{ratio}}"
+    },
+    "splitTrades_other": "調整する取引 {{count}}件"
+  },
+  "stat": {
+    "assets": "総資産",
+    "liabilities": "負債",
+    "freeCash": "使える現金",
+    "freeCashNote": "口座の残高",
+    "unrealizedGain": "含み益",
+    "unrealizedLoss": "含み損",
+    "dividends": "配当予想",
+    "returnYtd": "年初来収益",
+    "faceValue": "額面",
+    "yearlyCoupon": "年間クーポン",
+    "nextMaturity": "直近の満期",
+    "realized": "確定損益",
+    "largest": "最大の保有",
+    "changeYtd": "今年の増減",
+    "avgPerMonth": "月平均",
+    "yearlyInterest": "年間利息",
+    "today": "本日",
+    "target": "目標",
+    "sinceFollowing": "フォロー以降",
+    "value": "評価額",
+    "price": "価格",
+    "invested": "投資額",
+    "heldFor": "保有期間",
+    "quantity": "数量",
+    "avgPrice": "平均取得単価",
+    "yearlyYield": "年間の収益",
+    "imported": "取込済み",
+    "duplicates": "重複",
+    "errors": "エラー"
+  },
+  "statWide": {
+    "interest": "支払済みの利息",
+    "principal": "返済済みの元金",
+    "remaining": "残りの返済",
+    "fixation": "固定金利の終了",
+    "value": "評価額",
+    "equity": "自己資本",
+    "grossYield": "表面利回り",
+    "netCashflow": "純キャッシュフロー"
+  },
+  "period": {
+    "month": "{{amount}}/月",
+    "quarter": "{{amount}}/四半期",
+    "halfYear": "{{amount}}/半年",
+    "year": "{{amount}}/年",
+    "avgMonth": "平均 {{amount}}/月"
+  },
+  "labelValue": "{{label}}：{{value}}",
+  "statNote": {
+    "notRented": "賃貸なし",
+    "returns": "償還 {{amount}}",
+    "average": "⌀ {{price}}"
   }
 }

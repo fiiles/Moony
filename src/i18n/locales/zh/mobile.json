@@ -19,11 +19,15 @@
       "unchanged": "无变化",
       "noHistory": "暂无历史"
     },
-    "emptyDescription": "添加账户或投资后，Moony 会据此生成您的概览、图表和趋势。所有内容都保存在这部手机上。"
+    "emptyDescription": "添加账户或投资后，Moony 会据此生成您的概览、图表和趋势。所有内容都保存在这部手机上。",
+    "ringCenter": "总资产"
+  },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "无 {{currency}} 汇率",
+    "inclFx": "含汇率"
   },
   "cashflow": {
-    "subtitle_other": "来自 {{count}} 个账户的实际收入和支出",
-    "subtitleAll": "所有账户的实际收入和支出",
     "shareOfExpenses": "占支出的 {{share}}",
     "shareOfIncome": "占收入的 {{share}}",
     "partial": "本期尚未结束，数据将随下一份对账单补全。",
@@ -37,18 +41,33 @@
       "done": "完成"
     },
     "limitSheet": {
-      "pick": "请选择要控制支出的类别。"
+      "pick": "请选择要控制支出的类别。",
+      "usual": "您通常每月花费{{amount}}。",
+      "openHelp": "在您更改之前一直有效。",
+      "closedHelp": "最后一个月之后，恢复之前的限额。"
     },
     "budgets": {
       "averageNote": "⌀ 近 6 个月"
     },
     "showMore_other": "再显示 {{count}} 笔交易",
-    "rowMenu": "更多操作：{{title}}"
+    "rowMenu": "更多操作：{{title}}",
+    "scopeAll": "所有账户",
+    "scope_other": "{{count}} 个账户",
+    "limit": {
+      "remaining": "剩余 {{amount}} / {{limit}}",
+      "over": "超出 {{amount}} · 限额 {{limit}}",
+      "exhausted": "已用完 · 限额 {{limit}}"
+    },
+    "trend": {
+      "title_other": "过去 {{count}} 个月",
+      "max": "最高 {{amount}}"
+    },
+    "incomeNote": "未分类的入账计为收入"
   },
   "upkeep": {
     "title": "数据维护",
     "count_other": "{{count}} 项",
-    "balancesStale_other": "{{count}} 个余额已超过一个月未更新",
+    "balancesStale_other": "{{count}} 个余额待更新",
     "uncategorized_other": "{{count}} 笔付款未分类",
     "uncategorizedFrom": "{{account}} · 来自 {{date}} 的对账单",
     "accounts_other": "{{count}} 个账户",
@@ -67,7 +86,11 @@
       "revalue": "重新估值",
       "enterBalance": "输入余额",
       "enterRate": "补充利率"
-    }
+    },
+    "olderThanMonth": "超过一个月",
+    "fromStatement": "{{date}} 的对账单",
+    "loanBalanceFrom": "{{date}} 的余额",
+    "loanFixationEnded": "固定利率于 {{date}} 到期"
   },
   "recordBalances": {
     "title": "记录余额",
@@ -105,16 +128,11 @@
       "insurance": "保险"
     },
     "manual": "手动",
-    "statementOn": "{{date}} 对账单",
-    "balanceOn": "{{date}} 余额",
     "trail": {
       "change": "{{amount}} · 30 天",
       "staleStatement_other": "对账单 {{count}} 天前",
-      "staleBalance_other": "余额 {{count}} 天前",
-      "approx": "≈ {{amount}}",
-      "noRate": "无 {{currency}} 汇率"
+      "staleBalance_other": "余额 {{count}} 天前"
     },
-    "perMonth": "{{amount}} / 月",
     "nextPayment": "下次付款 {{date}}",
     "menu": {
       "sort": "排序",
@@ -137,7 +155,7 @@
     "insurance": {
       "type": "保单类型",
       "upcoming": "近期付款",
-      "upcomingNote_other": "{{count}} 天",
+      "upcomingNote_other": "未来 {{count}} 天",
       "showAll_other": "显示全部 {{count}} 笔"
     },
     "cashTrendLabel": "现金走势图",
@@ -184,11 +202,6 @@
     "addTx": {
       "noCategorySub": "您可以稍后再分类"
     },
-    "stats": {
-      "changeThisYear": "今年变动",
-      "avgPerMonth": "月均",
-      "yearlyInterest": "年利息"
-    },
     "flows": {
       "title": "收支"
     },
@@ -224,7 +237,12 @@
     "importHistory": {
       "menu": "导入选项"
     },
-    "autoCategorizeAllDone": "此账户的所有付款都已有类别。"
+    "autoCategorizeAllDone": "此账户的所有付款都已有类别。",
+    "manual": "手动记账",
+    "noBalance": {
+      "label": "余额",
+      "note": "尚未录入余额"
+    }
   },
   "loan": {
     "nextPayment": "下次还款 {{amount}} · {{date}}",
@@ -232,7 +250,8 @@
     "stats": {
       "since": "自 {{month}}",
       "extra": "额外还款 {{amount}}",
-      "until": "至 {{month}}"
+      "until": "至 {{month}}",
+      "fixationIn": "{{duration}}后"
     },
     "alerts": {
       "fixationSoon_other": "固定利率期将在 {{count}} 天后结束。银行确认新利率后，请您记录下来，月供和还款计划会重新计算。",
@@ -242,13 +261,24 @@
     "schedule": {
       "left": "剩余 {{amount}}",
       "yearSub_other": "{{count}} 笔还款 · 利息 {{interest}}",
-      "showAll_other": "显示全部 {{count}} 笔"
+      "showAll_other": "显示全部 {{count}} 笔",
+      "interest": "利息 {{amount}}",
+      "principal": "本金 {{amount}}"
     },
     "extra": {
       "noChange": "该金额不会改变还款期限、月供或利息。"
     },
     "events": {
       "menu": "事件菜单"
+    },
+    "afterFixation": {
+      "title": "固定期结束后",
+      "rate": "利率 {{rate}} 时",
+      "current": "当前利率",
+      "delta": "{{delta}} 个百分点"
+    },
+    "legend": {
+      "tapHint": "轻点标记即可查看发生了什么。"
     }
   },
   "documents": {
@@ -274,18 +304,24 @@
     "anniversary": "周年日 {{date}}",
     "notice": "解约通知截止日",
     "limitsTotal": "合计 {{amount}}",
-    "total": "合计 · {{payments}}"
+    "total": "合计 · {{payments}}",
+    "hero": {
+      "label": "保费 · {{frequency}}",
+      "next": "下次付款 {{date}} · {{distance}}",
+      "ended": "保单已于 {{date}} 结束",
+      "endedPlain": "此保单已结束",
+      "paidOn": "已于 {{date}} 支付",
+      "noPremium": "未填写保费"
+    }
   },
   "property": {
     "notFound": "该房产已不存在。",
     "ltv": "LTV {{ltv}}",
-    "rentYear": "年租金 {{rent}}",
     "perYear": "每年",
-    "loanPayment": "还款额 {{amount}} / 月",
+    "loanPayment": "还款额 {{amount}}",
     "rowMenu": "更多操作：{{name}}",
     "costKindRecurring": "定期",
     "costKindOneTime": "一次性",
-    "costYear": "每年 {{amount}}",
     "costCurrent": "当前 {{amount}}",
     "costDateInFuture": "费用日期不能晚于今天。",
     "costNameRequired": "请输入费用名称。",
@@ -305,10 +341,15 @@
   },
   "transaction": {
     "flowSaved": "含义已保存",
-    "counterparty": "交易对方",
-    "date": "日期",
     "category": "类别",
-    "flow": "含义",
+    "flow": "计为",
+    "auto": "自动",
+    "by": {
+      "explicit": "手动选择",
+      "category": "按类别",
+      "direction": "按收支方向",
+      "ownAccount": "自有账户之间"
+    },
     "details": "详情",
     "sourceLabel": "来源",
     "source": {
@@ -319,6 +360,8 @@
     "status": "状态",
     "booked": "已入账",
     "currency": "货币",
+    "counterpartyAccount": "对方账户",
+    "copied": "已复制：{{label}}",
     "plan": "支出计划",
     "noPlan": "无计划"
   },
@@ -327,8 +370,18 @@
     "recent": "最近使用",
     "all": "所有类别",
     "suggested": "建议",
+    "current": "当前",
     "decline": "拒绝建议",
-    "empty": "没有匹配的类别"
+    "empty": "没有匹配的类别",
+    "remember": "下次也这样分类",
+    "rememberFrom": "今后{{who}}转入此账户的款项也将归入此类别。",
+    "rememberTo": "今后此账户付给{{who}}的款项也将归入此类别。",
+    "applyHistory_other": "同时更改之前的{{count}}笔付款",
+    "applyHistorySub": "当前：{{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "常用",
+    "all": "所有货币"
   },
   "import": {
     "title": "导入账单",
@@ -456,12 +509,12 @@
     "bonds": {
       "count_other": "{{count}} 只债券",
       "nearest": "最近到期 {{month}}",
-      "coupon": "票息 {{amount}} / 年",
+      "coupon": "票息 {{amount}}",
       "upcoming": "近期票息与到期",
       "noUpcoming": "未来一年内没有票息或到期。",
       "allRepaid": "所有债券均已兑付。在“···”菜单中开启“{{action}}”即可查看。",
       "loadFailed": "无法加载债券。",
-      "rateNote": "{{rate}} 年化 加权平均",
+      "rateNote": "{{rate}} 年化",
       "nextPayment": "下次付款",
       "notGiven": "未填写"
     },
@@ -475,8 +528,8 @@
     "realEstate": {
       "personal": "自住",
       "investment": "投资",
-      "rent": "租金 {{amount}} / 月",
-      "revaluedOn": "{{date}}"
+      "rent": "租金 {{amount}}",
+      "revaluedOn": "{{date}} 估值"
     },
     "empty": {
       "title": "暂无资产",
@@ -500,8 +553,7 @@
       "pricesOn": "价格 {{date}}",
       "invested": "已投入 {{amount}}",
       "yieldNote": "收益率 {{percent}}",
-      "twrYtd": "今年收益",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "暂无历史",
       "positionsTab": "持仓 · {{count}}",
@@ -523,11 +575,10 @@
       "target": "目标价 {{price}}",
       "targetReached": "已达目标价",
       "dayChange": "今日",
-      "realizedShort": "已实现 {{amount}}"
+      "watchedTabPlain": "关注"
     },
     "crypto": {
-      "largestNote": "占加密货币 {{share}}",
-      "heldNote": "占加密货币 {{share}} · {{date}}"
+      "largestNote": "占加密货币 {{share}}"
     },
     "closed": {
       "on": "{{date}} 平仓",
@@ -536,17 +587,17 @@
     },
     "position": {
       "heroLabel": "持仓价值 · {{quantity}} {{unit}}",
-      "perUnit": "每单位 {{price}}",
+      "perUnit": "{{price}}/个",
       "stats": {
-        "value": "价值",
         "inCurrency": "以 {{currency}} 计",
-        "price": "价格"
+        "asOf": "截至 {{when}}"
       },
       "tx": {
-        "buy": "买入 · {{quantity}} {{unit}}",
-        "sell": "卖出 · {{quantity}} {{unit}}",
+        "buy": "买入",
+        "sell": "卖出",
         "showAll_other": "显示全部 {{count}} 条",
-        "menu": "交易菜单"
+        "menu": "交易菜单",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "股息菜单"
@@ -555,12 +606,12 @@
       "following": "已关注",
       "followed": "已添加到自选列表",
       "range52": "52 周区间",
-      "renamed": "名称已保存"
+      "renamed": "名称已保存",
+      "historyComputing": "正在计算历史数据…",
+      "dividendSource": "股息来源：{{source}}"
     },
     "watch": {
       "stats": {
-        "today": "今日",
-        "since": "关注以来",
         "noTarget": "未设置目标价"
       },
       "above": "高于",
@@ -568,7 +619,8 @@
       "openPosition": "打开持仓",
       "notesEmpty": "还没有笔记。点按“编辑”添加研究笔记，支持 Markdown。"
     },
-    "assetsTrendLabel": "资产走势图"
+    "assetsTrendLabel": "资产走势图",
+    "changeCaption": "过去 30 天的变化"
   },
   "settings": {
     "rows": {
@@ -586,7 +638,8 @@
       "tracking": "跟踪内容",
       "categories": "类别",
       "categoriesSub_other": "{{count}} 个类别",
-      "categorization": "自动分类"
+      "categorization": "自动分类",
+      "lockSub": "立即锁定应用"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "无遥测",
@@ -696,7 +749,8 @@
       "usagePayees_other": "{{count}} 个已学习的收款方",
       "usageBudgets_other": "{{count}} 项预算"
     },
-    "remindersLead": "选择概览中的“数据维护”和“即将到来”提醒您哪些内容；通知遵循同一列表。关闭的类型在任何地方都不会显示，电脑上也一样。通知何时送达请在“通知”中设置。"
+    "remindersLead": "选择概览中的“数据维护”和“即将到来”提醒您哪些内容；通知遵循同一列表。关闭的类型在任何地方都不会显示，电脑上也一样。通知何时送达请在“通知”中设置。",
+    "saveTimeout": "保存时间过长，请重试。"
   },
   "backup": {
     "lead": "备份是一个加密文件：包含数据库、密钥和附件。只有您的密码才能打开。",
@@ -832,6 +886,10 @@
     },
     "form": {
       "newDescription": "一年中打算在某一项上花多少钱。在付款详情中将付款加入计划。"
+    },
+    "empty": {
+      "takeOver": "沿用 {{year}} 年的计划，只需调整金额，或创建新计划。",
+      "again": "为今年创建一个计划，例如度假、礼物或日常护理。"
     }
   },
   "gettingStarted": {
@@ -845,6 +903,10 @@
       "confirm": "放弃"
     }
   },
+  "fields": {
+    "pickDay": "选择日期",
+    "pickMonth": "选择月份"
+  },
   "loadError": {
     "overview": "无法加载概览。",
     "finance": "无法加载财务。",
@@ -853,5 +915,77 @@
   },
   "pull": {
     "refreshing": "正在刷新…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "退保期限",
+      "insurance_anniversary_passed": "退保期限已过",
+      "insurance_end": "保单到期",
+      "insurance_payment": "保费支付",
+      "loan_fixation_end": "固定利率到期",
+      "loan_payoff": "最后一期还款",
+      "bond_maturity": "到期",
+      "bond_coupon": "付息",
+      "account_termination": "账户终止",
+      "savings_rate_end": "优惠利率到期",
+      "watch_target_below": "已跌至目标",
+      "watch_target_above": "已达目标",
+      "stock_split": "拆股 {{ratio}}"
+    },
+    "splitTrades_other": "{{count}} 笔交易待调整"
+  },
+  "stat": {
+    "assets": "总资产",
+    "liabilities": "负债",
+    "freeCash": "可用现金",
+    "freeCashNote": "账户中",
+    "unrealizedGain": "未实现收益",
+    "unrealizedLoss": "未实现亏损",
+    "dividends": "股息估算",
+    "returnYtd": "今年收益",
+    "faceValue": "面值",
+    "yearlyCoupon": "年票息",
+    "nextMaturity": "最近到期",
+    "realized": "已实现收益",
+    "largest": "最大持仓",
+    "changeYtd": "今年变动",
+    "avgPerMonth": "月均",
+    "yearlyInterest": "年利息",
+    "today": "今日",
+    "target": "目标价",
+    "sinceFollowing": "关注以来",
+    "value": "价值",
+    "price": "价格",
+    "invested": "投入",
+    "heldFor": "持有时长",
+    "quantity": "数量",
+    "avgPrice": "平均价格",
+    "yearlyYield": "年收益",
+    "imported": "已导入",
+    "duplicates": "重复",
+    "errors": "错误"
+  },
+  "statWide": {
+    "interest": "已付利息",
+    "principal": "已还本金",
+    "remaining": "剩余还款",
+    "fixation": "固定利率期结束",
+    "value": "价值",
+    "equity": "权益",
+    "grossYield": "毛收益率",
+    "netCashflow": "净现金流"
+  },
+  "period": {
+    "month": "{{amount}}/月",
+    "quarter": "{{amount}}/季",
+    "halfYear": "{{amount}}/半年",
+    "year": "{{amount}}/年",
+    "avgMonth": "平均 {{amount}}/月"
+  },
+  "labelValue": "{{label}}：{{value}}",
+  "statNote": {
+    "notRented": "未出租",
+    "returns": "返还 {{amount}}",
+    "average": "⌀ {{price}}"
   }
 }

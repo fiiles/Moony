@@ -104,7 +104,7 @@ export function useCryptoPosition(id: string | undefined, period: ChartPeriod, l
   // Each trade converts at the rates of its own day; the hero takes everything from the backend.
   const { ready: ratesReady, convertAt } = useTransactionFx(transactionData);
 
-  const history = useTickerHistory('crypto', holding?.ticker, period, live);
+  const { history, backfilling } = useTickerHistory('crypto', holding?.ticker, period, live);
 
   return {
     positions,
@@ -118,6 +118,8 @@ export function useCryptoPosition(id: string | undefined, period: ChartPeriod, l
     ratesReady,
     /** The value and cost line of `period`, each day converted into the report currency. */
     history,
+    /** The first backfill of the coin's history is still running. */
+    historyBackfilling: backfilling,
     isLoading,
     /** Loaded, and there is no such coin (a deep link to a deleted one). */
     notFound: !isLoading && holding === null,

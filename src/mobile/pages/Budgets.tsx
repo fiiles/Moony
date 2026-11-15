@@ -4,7 +4,6 @@ import { useSearch } from 'wouter';
 import { Pencil, PiggyBank, Plus, Trash2 } from 'lucide-react';
 import type { TransactionCategory } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
-import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { currentMonthStart, type BudgetLimitPeriod } from '@/utils/budget-goal-versions';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useBudgetLimitSheet } from '@/mobile/hooks/use-budget-limit-sheet';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { exactMoneyOptions, WHOLE } from '@/mobile/lib/money-rule';
 import {
   budgetRows,
   unbudgetedRows,
@@ -28,9 +28,9 @@ import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { BudgetDeleteSheet, type PendingDelete } from '@/mobile/sheets/BudgetDeleteSheet';
 import { BudgetLimitSheet } from '@/mobile/sheets/BudgetLimitSheet';
+import { SubFacts } from '@/mobile/components/SubFacts';
 
 /** Whole amounts ("3 000 Kč"). */
-const WHOLE: MoneyOptions = { decimals: 0 };
 
 /**
  * Spravovat rozpočty (spec §8.7, pushed on the Cashflow tab): one row per budget — its limit in
@@ -220,6 +220,9 @@ function BudgetItem({ row, category, onEdit, onEditFrom, onDelete }: BudgetItemP
   const monthLabel = (month: number) => fmt.monthInSentence(new Date(month * 1000));
   const limitText = (amount: string | null, currency: string) =>
     moneyText(Number(amount), currency, WHOLE);
+  // The delete sentence names the limit exactly (the row's value is rounded to whole amounts)
+  const exactLimit = (amount: string | null, currency: string) =>
+    moneyText(Number(amount), currency, exactMoneyOptions(Number(amount), currency));
   // A running row says only where it starts: what follows is in its sub-line
   const validity = ({ version, end }: BudgetLimitPeriod, running: boolean) => {
     const start = monthLabel(version.effectiveMonth);
@@ -255,8 +258,7 @@ function BudgetItem({ row, category, onEdit, onEditFrom, onDelete }: BudgetItemP
         effectiveMonth: main.version.effectiveMonth,
       },
       name: row.name,
-      // The sentence names the limit exactly (the row's value is rounded to whole amounts)
-      amount: moneyText(Number(main.version.amount), main.version.currency),
+      amount: exactLimit(main.version.amount, main.version.currency),
       period: validity(main, false),
     });
 
@@ -318,7 +320,7 @@ function BudgetItem({ row, category, onEdit, onEditFrom, onDelete }: BudgetItemP
                 effectiveMonth: period.version.effectiveMonth,
               },
               name: row.name,
-              amount: moneyText(Number(period.version.amount), period.version.currency),
+              amount: exactLimit(period.version.amount, period.version.currency),
               period: validity(period, false),
             })
           }
@@ -408,15 +410,18 @@ interface UnbudgetedItemProps {
 function UnbudgetedItem({ row, category, currency, onSetLimit }: UnbudgetedItemProps) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('budgeting');
-  const { t: tr } = useTranslation('reports');
   const categoryName = useCategoryName();
   const moneyText = useMoneyText();
   const titleId = useId();
   const name = category ? categoryName(category) : row.categoryId;
-  const sub = [
-    tr('actuals.stats.perMonth', { amount: moneyText(row.average, currency, WHOLE) }),
-    t('bank_accounts:ledger.footer', { count: row.count }),
-  ].join(' · ');
+  // The average stays whole, the count shows when it fits (C1)
+  const sub = (
+    <SubFacts
+      mode="drop"
+      lead={t('period.avgMonth', { amount: moneyText(row.average, currency, WHOLE) })}
+      tail={t('bank_accounts:ledger.footer', { count: row.count })}
+    />
+  );
 
   return (
     <li className="relative flex min-h-[60px] list-none items-center gap-3 px-3.5 py-2.5 before:pointer-events-none before:absolute before:left-[62px] before:right-0 before:top-0 before:border-t before:border-line-soft before:content-[''] first:before:hidden">

@@ -9,6 +9,7 @@ import { Segment } from '@/mobile/components/Segment';
 import { MoreRow } from '@/mobile/components/wealth/MoreRow';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { scheduleYears, upcomingRows } from '@/mobile/lib/loan-detail';
+import { SubFacts } from '@/mobile/components/SubFacts';
 
 type Mode = 'next12' | 'years';
 
@@ -83,10 +84,15 @@ export function LoanSchedule({ row, schedule }: LoanScheduleProps) {
             <EntityRow
               key={r.dueDay}
               title={fmt.day(r.dueDay)}
-              sub={tl('detail.stats.nextPaymentNote', {
-                interest: money(r.interest),
-                principal: money(r.principalPart),
-              })}
+              // Two figures, each whole or left out (C1): the interest stays, the principal
+              // shows when it fits beside it
+              sub={
+                <SubFacts
+                  mode="drop"
+                  lead={t('loan.schedule.interest', { amount: money(r.interest) })}
+                  tail={t('loan.schedule.principal', { amount: money(r.principalPart) })}
+                />
+              }
               value={money(r.payment)}
               valueSub={t('loan.schedule.left', { amount: money(r.balanceAfter) })}
             />

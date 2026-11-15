@@ -19,13 +19,15 @@
       "unchanged": "sin cambios",
       "noHistory": "sin historial"
     },
-    "emptyDescription": "Añade una cuenta o una inversión y Moony construirá a partir de ella tu resumen, gráficos y tendencias. Todo se queda en este teléfono."
+    "emptyDescription": "Añade una cuenta o una inversión y Moony construirá a partir de ella tu resumen, gráficos y tendencias. Todo se queda en este teléfono.",
+    "ringCenter": "Activos"
+  },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "sin tipo de cambio para {{currency}}",
+    "inclFx": "incl. divisas"
   },
   "cashflow": {
-    "subtitle_one": "Ingresos y gastos reales de {{count}} cuenta",
-    "subtitle_many": "Ingresos y gastos reales de {{count}} cuentas",
-    "subtitle_other": "Ingresos y gastos reales de {{count}} cuentas",
-    "subtitleAll": "Ingresos y gastos reales de todas las cuentas",
     "shareOfExpenses": "{{share}} de los gastos",
     "shareOfIncome": "{{share}} de los ingresos",
     "partial": "El periodo aún no ha terminado; las cifras se completarán con el próximo extracto.",
@@ -39,7 +41,10 @@
       "done": "Listo"
     },
     "limitSheet": {
-      "pick": "Elige la categoría cuyos gastos quieres controlar."
+      "pick": "Elige la categoría cuyos gastos quieres controlar.",
+      "usual": "Sueles gastar {{amount}} al mes.",
+      "openHelp": "Se aplica hasta que lo cambies.",
+      "closedHelp": "Después del último mes vuelve el límite anterior."
     },
     "budgets": {
       "averageNote": "⌀ de los últimos 6 meses"
@@ -47,16 +52,32 @@
     "showMore_one": "Mostrar {{count}} movimiento más",
     "showMore_many": "Mostrar {{count}} movimientos más",
     "showMore_other": "Mostrar {{count}} movimientos más",
-    "rowMenu": "Más acciones: {{title}}"
+    "rowMenu": "Más acciones: {{title}}",
+    "scopeAll": "Todas las cuentas",
+    "scope_one": "{{count}} cuenta",
+    "scope_many": "{{count}} cuentas",
+    "scope_other": "{{count}} cuentas",
+    "limit": {
+      "remaining": "Quedan {{amount}} de {{limit}}",
+      "over": "Excedido en {{amount}} · límite {{limit}}",
+      "exhausted": "Agotado · límite {{limit}}"
+    },
+    "trend": {
+      "title_one": "Último {{count}} mes",
+      "title_many": "Últimos {{count}} meses",
+      "title_other": "Últimos {{count}} meses",
+      "max": "máximo {{amount}}"
+    },
+    "incomeNote": "Los cobros sin categoría cuentan como ingresos"
   },
   "upkeep": {
     "title": "Mantenimiento de datos",
     "count_one": "{{count}} tarea",
     "count_many": "{{count}} tareas",
     "count_other": "{{count}} tareas",
-    "balancesStale_one": "{{count}} saldo con más de un mes",
-    "balancesStale_many": "{{count}} saldos con más de un mes",
-    "balancesStale_other": "{{count}} saldos con más de un mes",
+    "balancesStale_one": "{{count}} saldo por actualizar",
+    "balancesStale_many": "{{count}} saldos por actualizar",
+    "balancesStale_other": "{{count}} saldos por actualizar",
     "uncategorized_one": "{{count}} pago sin categoría",
     "uncategorized_many": "{{count}} pagos sin categoría",
     "uncategorized_other": "{{count}} pagos sin categoría",
@@ -81,7 +102,11 @@
       "revalue": "Revalorar",
       "enterBalance": "Indicar saldo",
       "enterRate": "Añadir tipo"
-    }
+    },
+    "olderThanMonth": "De hace más de un mes",
+    "fromStatement": "extracto del {{date}}",
+    "loanBalanceFrom": "Saldo del {{date}}",
+    "loanFixationEnded": "Tipo fijo terminado el {{date}}"
   },
   "recordBalances": {
     "title": "Registrar saldos",
@@ -125,8 +150,6 @@
       "insurance": "Seguros"
     },
     "manual": "manual",
-    "statementOn": "extracto del {{date}}",
-    "balanceOn": "saldo del {{date}}",
     "trail": {
       "change": "{{amount}} · 30 días",
       "staleStatement_one": "extracto de hace {{count}} día",
@@ -134,11 +157,8 @@
       "staleStatement_other": "extracto de hace {{count}} días",
       "staleBalance_one": "saldo de hace {{count}} día",
       "staleBalance_many": "saldo de hace {{count}} días",
-      "staleBalance_other": "saldo de hace {{count}} días",
-      "approx": "≈ {{amount}}",
-      "noRate": "sin tipo de cambio para {{currency}}"
+      "staleBalance_other": "saldo de hace {{count}} días"
     },
-    "perMonth": "{{amount}} / mes",
     "nextPayment": "próximo pago {{date}}",
     "menu": {
       "sort": "Ordenar",
@@ -161,9 +181,9 @@
     "insurance": {
       "type": "Tipo de póliza",
       "upcoming": "Próximos pagos",
-      "upcomingNote_one": "{{count}} día",
-      "upcomingNote_many": "{{count}} días",
-      "upcomingNote_other": "{{count}} días",
+      "upcomingNote_one": "próximo {{count}} día",
+      "upcomingNote_many": "próximos {{count}} días",
+      "upcomingNote_other": "próximos {{count}} días",
       "showAll_one": "Mostrar todos ({{count}})",
       "showAll_many": "Mostrar todos ({{count}})",
       "showAll_other": "Mostrar todos ({{count}})"
@@ -222,11 +242,6 @@
     "addTx": {
       "noCategorySub": "Puedes categorizarla más tarde"
     },
-    "stats": {
-      "changeThisYear": "Variación este año",
-      "avgPerMonth": "Media mensual",
-      "yearlyInterest": "Intereses anuales"
-    },
     "flows": {
       "title": "Flujos"
     },
@@ -262,7 +277,12 @@
     "importHistory": {
       "menu": "Opciones de la importación"
     },
-    "autoCategorizeAllDone": "Todos los pagos de esta cuenta ya tienen categoría."
+    "autoCategorizeAllDone": "Todos los pagos de esta cuenta ya tienen categoría.",
+    "manual": "Gestionada a mano",
+    "noBalance": {
+      "label": "Saldo",
+      "note": "Aún no hay saldo registrado"
+    }
   },
   "loan": {
     "nextPayment": "Próxima cuota {{amount}} · {{date}}",
@@ -270,7 +290,8 @@
     "stats": {
       "since": "desde {{month, lower}}",
       "extra": "extra {{amount}}",
-      "until": "hasta {{month, lower}}"
+      "until": "hasta {{month, lower}}",
+      "fixationIn": "dentro de {{duration}}"
     },
     "alerts": {
       "fixationSoon_one": "El tipo fijo termina en {{count}} día. Cuando el banco confirme el nuevo tipo, regístralo: la cuota y el plan se recalcularán.",
@@ -288,13 +309,24 @@
       "yearSub_other": "{{count}} cuotas · intereses {{interest}}",
       "showAll_one": "Mostrar todas ({{count}})",
       "showAll_many": "Mostrar todas ({{count}})",
-      "showAll_other": "Mostrar todas ({{count}})"
+      "showAll_other": "Mostrar todas ({{count}})",
+      "interest": "intereses {{amount}}",
+      "principal": "capital {{amount}}"
     },
     "extra": {
       "noChange": "Este importe no cambia ni el plazo, ni la cuota, ni los intereses."
     },
     "events": {
       "menu": "Menú del evento"
+    },
+    "afterFixation": {
+      "title": "Al terminar el tipo fijo",
+      "rate": "Al {{rate}}",
+      "current": "tipo actual",
+      "delta": "{{delta}} p. p."
+    },
+    "legend": {
+      "tapHint": "Toca una marca para ver qué pasó."
     }
   },
   "documents": {
@@ -322,18 +354,24 @@
     "anniversary": "aniversario {{date}}",
     "notice": "Cancelar antes de",
     "limitsTotal": "total {{amount}}",
-    "total": "Total · {{payments}}"
+    "total": "Total · {{payments}}",
+    "hero": {
+      "label": "Prima · {{frequency}}",
+      "next": "Próximo pago {{date}} · {{distance}}",
+      "ended": "La póliza terminó el {{date}}",
+      "endedPlain": "La póliza ha terminado",
+      "paidOn": "Pagado el {{date}}",
+      "noPremium": "No se ha indicado la prima"
+    }
   },
   "property": {
     "notFound": "Este inmueble ya no existe.",
     "ltv": "LTV {{ltv}}",
-    "rentYear": "{{rent}} al año",
     "perYear": "al año",
-    "loanPayment": "cuota {{amount}} / mes",
+    "loanPayment": "cuota {{amount}}",
     "rowMenu": "Más acciones: {{name}}",
     "costKindRecurring": "Recurrente",
     "costKindOneTime": "Único",
-    "costYear": "{{amount}} al año",
     "costCurrent": "Ahora {{amount}}",
     "costDateInFuture": "La fecha de un gasto no puede ser futura.",
     "costNameRequired": "Escribe un nombre para el gasto.",
@@ -357,10 +395,15 @@
   },
   "transaction": {
     "flowSaved": "Significado guardado",
-    "counterparty": "Contraparte",
-    "date": "Fecha",
     "category": "Categoría",
-    "flow": "Significado",
+    "flow": "Cuenta como",
+    "auto": "Automático",
+    "by": {
+      "explicit": "elegido por ti",
+      "category": "según la categoría",
+      "direction": "según el sentido del pago",
+      "ownAccount": "entre tus propias cuentas"
+    },
     "details": "Detalles",
     "sourceLabel": "Origen",
     "source": {
@@ -371,6 +414,8 @@
     "status": "Estado",
     "booked": "Contabilizado",
     "currency": "Moneda",
+    "counterpartyAccount": "Cuenta de la contraparte",
+    "copied": "Copiado: {{label}}",
     "plan": "Plan de gastos",
     "noPlan": "Sin plan"
   },
@@ -379,8 +424,20 @@
     "recent": "Usadas recientemente",
     "all": "Todas las categorías",
     "suggested": "Sugerencia",
+    "current": "Actual",
     "decline": "Rechazar sugerencia",
-    "empty": "Ninguna categoría coincide"
+    "empty": "Ninguna categoría coincide",
+    "remember": "Hacer lo mismo la próxima vez",
+    "rememberFrom": "Los próximos pagos de {{who}} a esta cuenta tendrán la misma categoría.",
+    "rememberTo": "Los próximos pagos a {{who}} desde esta cuenta tendrán la misma categoría.",
+    "applyHistory_one": "Cambiar también {{count}} pago anterior",
+    "applyHistory_many": "Cambiar también {{count}} pagos anteriores",
+    "applyHistory_other": "Cambiar también {{count}} pagos anteriores",
+    "applyHistorySub": "Ahora: {{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "Frecuentes",
+    "all": "Todas las monedas"
   },
   "import": {
     "title": "Importar extracto",
@@ -520,12 +577,12 @@
       "count_many": "{{count}} emisiones",
       "count_other": "{{count}} emisiones",
       "nearest": "próximo vencimiento {{month, lower}}",
-      "coupon": "cupón {{amount}} / año",
+      "coupon": "cupón {{amount}}",
       "upcoming": "Próximos cupones y vencimientos",
       "noUpcoming": "No hay cupones ni vencimientos en el próximo año.",
       "allRepaid": "Todas las emisiones están amortizadas. Activa «{{action}}» en el menú ··· para verlas.",
       "loadFailed": "No se pudieron cargar los bonos.",
-      "rateNote": "{{rate}} anual ponderado",
+      "rateNote": "{{rate}} anual",
       "nextPayment": "Próximo pago",
       "notGiven": "no indicada"
     },
@@ -541,8 +598,8 @@
     "realEstate": {
       "personal": "vivienda habitual",
       "investment": "inversión",
-      "rent": "alquiler {{amount}} / mes",
-      "revaluedOn": "{{date}}"
+      "rent": "alquiler {{amount}}",
+      "revaluedOn": "valorado el {{date}}"
     },
     "empty": {
       "title": "Aún no tienes nada",
@@ -565,9 +622,8 @@
       "pricesAt": "precios {{time}}",
       "pricesOn": "precios {{date}}",
       "invested": "invertido {{amount}}",
-      "yieldNote": "rendimiento {{percent}}",
-      "twrYtd": "Rentabilidad este año",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "yieldNote": "rent. {{percent}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "aún sin historial",
       "positionsTab": "Posiciones · {{count}}",
@@ -591,11 +647,10 @@
       "target": "objetivo {{price}}",
       "targetReached": "objetivo alcanzado",
       "dayChange": "hoy",
-      "realizedShort": "realizado {{amount}}"
+      "watchedTabPlain": "Seguidas"
     },
     "crypto": {
-      "largestNote": "{{share}} de cripto",
-      "heldNote": "{{share}} de cripto · {{date}}"
+      "largestNote": "{{share}} de cripto"
     },
     "closed": {
       "on": "cerrada el {{date}}",
@@ -604,19 +659,19 @@
     },
     "position": {
       "heroLabel": "Valor de la posición · {{quantity}} {{unit}}",
-      "perUnit": "{{price}} por unidad",
+      "perUnit": "{{price}}/ud.",
       "stats": {
-        "value": "Valor",
         "inCurrency": "en {{currency}}",
-        "price": "Precio"
+        "asOf": "a {{when}}"
       },
       "tx": {
-        "buy": "Compra · {{quantity}} {{unit}}",
-        "sell": "Venta · {{quantity}} {{unit}}",
+        "buy": "Compra",
+        "sell": "Venta",
         "showAll_one": "Mostrar todas ({{count}})",
         "showAll_many": "Mostrar todas ({{count}})",
         "showAll_other": "Mostrar todas ({{count}})",
-        "menu": "Menú del movimiento"
+        "menu": "Menú del movimiento",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "Menú del dividendo"
@@ -625,12 +680,12 @@
       "following": "Siguiendo",
       "followed": "Añadida a la lista de seguimiento",
       "range52": "Rango de 52 semanas",
-      "renamed": "Nombre guardado"
+      "renamed": "Nombre guardado",
+      "historyComputing": "El historial aún se está calculando…",
+      "dividendSource": "Dividendos según {{source}}"
     },
     "watch": {
       "stats": {
-        "today": "Hoy",
-        "since": "Desde el seguimiento",
         "noTarget": "sin objetivo"
       },
       "above": "Por encima",
@@ -638,7 +693,8 @@
       "openPosition": "Abrir posición",
       "notesEmpty": "Aún no hay notas. Toca Editar para añadir notas de análisis — markdown funciona."
     },
-    "assetsTrendLabel": "Gráfico de la evolución de los activos"
+    "assetsTrendLabel": "Gráfico de la evolución de los activos",
+    "changeCaption": "Cambio en los últimos 30 días"
   },
   "settings": {
     "rows": {
@@ -658,7 +714,8 @@
       "categoriesSub_one": "{{count}} categoría",
       "categoriesSub_many": "{{count}} categorías",
       "categoriesSub_other": "{{count}} categorías",
-      "categorization": "Categorización"
+      "categorization": "Categorización",
+      "lockSub": "Bloquea la app al instante"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "sin telemetría",
@@ -784,7 +841,8 @@
       "usageBudgets_many": "{{count}} presupuestos",
       "usageBudgets_other": "{{count}} presupuestos"
     },
-    "remindersLead": "Elige qué te recuerdan Mantenimiento de datos y «Próximas fechas» en Resumen; las notificaciones siguen la misma lista. Un tipo que desactives no aparece en ningún sitio, tampoco en el ordenador. Cuándo llegan las notificaciones se ajusta en Notificaciones."
+    "remindersLead": "Elige qué te recuerdan Mantenimiento de datos y «Próximas fechas» en Resumen; las notificaciones siguen la misma lista. Un tipo que desactives no aparece en ningún sitio, tampoco en el ordenador. Cuándo llegan las notificaciones se ajusta en Notificaciones.",
+    "saveTimeout": "El guardado tarda demasiado. Inténtalo de nuevo."
   },
   "backup": {
     "lead": "Una copia de seguridad es un archivo cifrado: la base de datos, las claves y los adjuntos. Solo la abre tu contraseña.",
@@ -926,6 +984,10 @@
     },
     "form": {
       "newDescription": "Cuánto quieres gastar en un año en una sola cosa. Añades pagos al plan desde el detalle del pago."
+    },
+    "empty": {
+      "takeOver": "Recupera los planes de {{year}} y solo ajusta los importes, o crea un plan nuevo.",
+      "again": "Crea un plan para este año: unas vacaciones, regalos o un cuidado periódico, por ejemplo."
     }
   },
   "gettingStarted": {
@@ -939,6 +1001,10 @@
       "confirm": "Descartar"
     }
   },
+  "fields": {
+    "pickDay": "Elige un día",
+    "pickMonth": "Elige un mes"
+  },
   "loadError": {
     "overview": "No se pudo cargar el resumen.",
     "finance": "No se pudieron cargar las finanzas.",
@@ -947,5 +1013,79 @@
   },
   "pull": {
     "refreshing": "Actualizando…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "Plazo de cancelación",
+      "insurance_anniversary_passed": "Plazo vencido",
+      "insurance_end": "La póliza termina",
+      "insurance_payment": "Pago de la prima",
+      "loan_fixation_end": "Fin del tipo fijo",
+      "loan_payoff": "Última cuota",
+      "bond_maturity": "Vencimiento",
+      "bond_coupon": "Cupón",
+      "account_termination": "La cuenta termina",
+      "savings_rate_end": "Fin del tipo promocional",
+      "watch_target_below": "Bajó al objetivo",
+      "watch_target_above": "Alcanzó el objetivo",
+      "stock_split": "Split {{ratio}}"
+    },
+    "splitTrades_one": "{{count}} operación por ajustar",
+    "splitTrades_many": "{{count}} operaciones por ajustar",
+    "splitTrades_other": "{{count}} operaciones por ajustar"
+  },
+  "stat": {
+    "assets": "Activos",
+    "liabilities": "Pasivos",
+    "freeCash": "Efectivo libre",
+    "freeCashNote": "en cuentas",
+    "unrealizedGain": "No realizado",
+    "unrealizedLoss": "No realizado",
+    "dividends": "Dividendos",
+    "returnYtd": "Retorno YTD",
+    "faceValue": "Valor nominal",
+    "yearlyCoupon": "Cupón anual",
+    "nextMaturity": "Vencimiento",
+    "realized": "Realizado",
+    "largest": "La mayor",
+    "changeYtd": "Cambio YTD",
+    "avgPerMonth": "Media / mes",
+    "yearlyInterest": "Interés / año",
+    "today": "Hoy",
+    "target": "Objetivo",
+    "sinceFollowing": "Desde inicio",
+    "value": "Valor",
+    "price": "Precio",
+    "invested": "Invertido",
+    "heldFor": "Tenencia",
+    "quantity": "Cantidad",
+    "avgPrice": "Precio medio",
+    "yearlyYield": "Renta anual",
+    "imported": "Importados",
+    "duplicates": "Duplicados",
+    "errors": "Errores"
+  },
+  "statWide": {
+    "interest": "Intereses pagados",
+    "principal": "Capital amortizado",
+    "remaining": "Cuotas pendientes",
+    "fixation": "Fin del tipo fijo",
+    "value": "Valor",
+    "equity": "Capital propio",
+    "grossYield": "Rentabilidad bruta",
+    "netCashflow": "Flujo de caja neto"
+  },
+  "period": {
+    "month": "{{amount}} / mes",
+    "quarter": "{{amount}} / trimestre",
+    "halfYear": "{{amount}} / semestre",
+    "year": "{{amount}} / año",
+    "avgMonth": "⌀ {{amount}} / mes"
+  },
+  "labelValue": "{{label}}: {{value}}",
+  "statNote": {
+    "notRented": "sin alquilar",
+    "returns": "paga {{amount}}",
+    "average": "⌀ {{price}}"
   }
 }

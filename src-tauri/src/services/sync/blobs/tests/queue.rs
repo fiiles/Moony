@@ -884,3 +884,104 @@ fn a_restore_reconciles_the_whole_queue() {
     repair::full(&conn, NOW).expect("restore repair");
     assert_eq!(state_of(&conn, &blob).as_deref(), Some("down"));
 }
+
+fn content_of(conn: &Connection, blob: &str) -> AttachmentContent {
+    ContentReader::new(conn)
+        .expect("reader")
+        .of(Some(blob), true)
+        .expect("content")
+}
+
+/// Fix round 2, item 1: content held here that the server refused for good, that conflicts with
+/// what the server holds, or whose ID is invalid can never upload by itself: it reads as failed,
+/// counts as failed and never as waiting (so the device can count as synchronised), until "try
+/// again" on its row makes a refused or conflicting one wait again. An entry merely backing off
+/// still waits.
+#[test]
+fn an_upload_that_cannot_move_by_itself_reads_failed_until_tried_again() {
+    for error in [
+        TransferError::Refused,
+        TransferError::Conflict,
+        TransferError::InvalidId,
+    ] {
+        let conn = profile();
+        let stuck = held(&conn, b"stuck");
+        let backing_off = held(&conn, b"waits!");
+        document(&conn, "d1", &stuck, 100);
+        document(&conn, "d2", &backing_off, 200);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        note_failed(&conn, &stuck, error, NOW).expect("stuck");
+        note_failed(&conn, &backing_off, TransferError::Network, NOW).expect("backing off");
+
+        assert_eq!(
+            content_of(&conn, &stuck),
+            AttachmentContent::Failed,
+            "{error:?}"
+        );
+        assert_eq!(
+            content_of(&conn, &backing_off),
+            AttachmentContent::WaitingUpload,
+            "{error:?}"
+        );
+        let counts = summary(&conn).expect("summary");
+        assert_eq!(
+            (
+                counts.waiting_upload,
+                counts.waiting_upload_bytes,
+                counts.failed
+            ),
+            (1, 6, 1),
+            "{error:?}"
+        );
+        assert_eq!(uploads_waiting(&conn).expect("waiting"), 1, "{error:?}");
+        assert!(waiting(&conn, true).expect("waiting"), "{error:?}");
+
+        // Only the stuck one left: nothing waits.
+        conn.execute("DELETE FROM insurance_documents WHERE id = 'd2'", [])
+            .expect("delete");
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        assert_eq!(uploads_waiting(&conn).expect("waiting"), 0, "{error:?}");
+        assert!(!waiting(&conn, true).expect("waiting"), "{error:?}");
+        assert!(!waiting(&conn, false).expect("waiting"), "{error:?}");
+        assert_eq!(summary(&conn).expect("summary").waiting_upload, 0);
+
+        // "Try again" on its row: a refusal or a conflict waits again; an invalid ID stays
+        // failed (no try makes it valid, `retry_row` never touches one).
+        retry_row(&conn, AttachmentKind::InsuranceDocument, "d1").expect("try again");
+        let again = error != TransferError::InvalidId;
+        let expected = if again {
+            AttachmentContent::WaitingUpload
+        } else {
+            AttachmentContent::Failed
+        };
+        assert_eq!(content_of(&conn, &stuck), expected, "{error:?}");
+        let counts = summary(&conn).expect("summary");
+        assert_eq!(
+            (counts.waiting_upload, counts.failed),
+            (u32::from(again), u32::from(!again)),
+            "{error:?}"
+        );
+        assert_eq!(
+            uploads_waiting(&conn).expect("waiting"),
+            u32::from(again),
+            "{error:?}"
+        );
+        assert_eq!(waiting(&conn, true).expect("waiting"), again, "{error:?}");
+    }
+}
+
+/// Fix round 2, item 3: a `found` note that finds nothing to move (the content left again) still
+/// ends the transfer, so the entry never reads as downloading until the lanes restart.
+#[test]
+fn a_found_note_that_finds_nothing_still_ends_the_transfer() {
+    let conn = profile();
+    let blob = elsewhere(1);
+    document(&conn, "d1", &blob, 100);
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    set_active(&conn, &blob, true).expect("active");
+
+    assert!(!note_found(&conn, &blob, NOW).expect("found"));
+
+    assert_eq!(state_of(&conn, &blob).as_deref(), Some("down"));
+    assert_eq!(content_of(&conn, &blob), AttachmentContent::NotHere);
+}

@@ -183,7 +183,9 @@ documents and photos need a newer server. The app assumes the server's error cod
   failed with a per-blob backoff (network, server, `429`, unreadable, not on the server, no room,
   local); failed for good, moved only by "try again" or a rebuilt queue (an invalid ID; `refused`:
   too large, empty, a length refused, an old server's plain `not_found`; `conflict`: the server
-  holds another size under the ID and never overwrites; migration 037 adds the two codes);
+  holds another size under the ID and never overwrites; migration 037 adds the two codes; such
+  content held here reads and counts as failed, never as waiting to upload, so it neither keeps the
+  device "not synchronised" nor keeps the no-room problem shown);
   blocked by what the round already shows (`402`, `401`, `403 token_read_only`, vault not found:
   nothing recorded); a locked profile ends the run as `AppError::Auth`. The HTTP client reports
   any body error as network trouble, so the upload keeps its source's error beside the call and a

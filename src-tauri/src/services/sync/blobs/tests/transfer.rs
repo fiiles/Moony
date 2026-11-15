@@ -860,6 +860,29 @@ async fn a_server_copy_of_another_size_is_a_conflict() {
     );
 }
 
+/// Fix round 2, item 2: no room is shown only while something that can upload waits; once the
+/// blobs that met no room are gone and only a refused one is left, the problem goes.
+#[tokio::test]
+async fn no_room_ends_when_only_refused_uploads_are_left() {
+    let vault = devices().await;
+    let refused = queued_document(&vault.a, "d1", &pattern(10_000, 37));
+    queued_document(&vault.a, "d2", &pattern(10_000, 38));
+    queue::note_failed(&vault.a.lock(), &refused, TransferError::Refused, NOW).expect("refused");
+    let policy = BlobPolicy::default();
+    policy.note_no_room(NOW - 1_800);
+    vault
+        .a
+        .lock()
+        .execute("DELETE FROM insurance_documents WHERE id = 'd2'", [])
+        .expect("delete");
+
+    let report = uploads(&vault, &vault.a, &policy).await;
+
+    assert_eq!((report.uploaded, report.failed), (0, 0));
+    assert_eq!(policy.problem(), None);
+    assert!(blob_calls(&vault.relay).is_empty());
+}
+
 /// M5: a `HEAD` hit stores nothing, so it does not say there is room again; an accepted body
 /// does.
 #[tokio::test]

@@ -31,7 +31,8 @@ impl<'c> ContentReader<'c> {
     /// `Here` (the store's unavailable state is reported where it is read). Complete here
     /// (`attachment_store::complete_sql`): for a row that syncs, `WaitingUpload` while the server
     /// has not confirmed it (its entry is `up`, or, with sync on, the queue has not seen it yet),
-    /// else `Here`; a row that does not sync never uploads, so it is `Here`. Not complete here:
+    /// `Failed` for an `up` entry that never moves by itself (`queue::STUCK`: refused, a
+    /// conflict, an invalid ID; "try again" makes it wait again), else `Here`; a row that does not sync never uploads, so it is `Here`. Not complete here:
     /// `Missing` without an entry, else from the entry: `Downloading`, `NotOnServer`, `Failed`
     /// (unreadable, an invalid ID, refused by the server or a conflict there) or `NotHere`.
     pub fn of(&self, blob_id: Option<&str>, syncs: bool) -> Result<AttachmentContent> {
@@ -57,7 +58,13 @@ impl<'c> ContentReader<'c> {
                 return Ok(AttachmentContent::Here);
             }
             return Ok(match entry {
-                Some((state, _, _)) if state == "up" => AttachmentContent::WaitingUpload,
+                Some((state, _, error)) if state == "up" => {
+                    if queue::is_stuck(error.as_deref()) {
+                        AttachmentContent::Failed
+                    } else {
+                        AttachmentContent::WaitingUpload
+                    }
+                }
                 None if self.sync_on => AttachmentContent::WaitingUpload,
                 _ => AttachmentContent::Here,
             });

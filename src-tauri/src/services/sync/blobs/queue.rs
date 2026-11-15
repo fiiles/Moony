@@ -137,7 +137,7 @@ pub struct Reconciled {
 /// Counts of attachment rows (a photo once, whatever its two blobs do) by where their content is.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct AttachmentSummary {
-    /// Rows with content held here that the server has not confirmed.
+    /// Rows with content held here that the server has not confirmed and that can still upload.
     pub waiting_upload: u32,
     /// The plaintext bytes of those blobs.
     pub waiting_upload_bytes: i64,
@@ -146,7 +146,8 @@ pub struct AttachmentSummary {
     pub not_here: u32,
     /// Rows with content the server does not have.
     pub not_on_server: u32,
-    /// Rows with content that could not be fetched (unreadable, or an invalid ID).
+    /// Rows with content that could not be fetched (unreadable, refused, a conflict, or an invalid
+    /// ID), or held here and unable to upload by itself ([`STUCK`]).
     pub failed: u32,
 }
 
@@ -159,6 +160,16 @@ const ROW_AT: [(&str, &str); 3] = [
 
 /// The blob column that holds a photo's thumbnail.
 const THUMBNAIL_COLUMN: &str = "thumb_blob_id";
+
+/// SQL: the `last_error` codes of an entry that never moves by itself (an invalid ID, a refusal of
+/// the blob, a conflict on the server): only "try again" on its row (`retry_row`) or a rebuilt
+/// queue moves it. Such an entry is a failed item, never content waiting to move.
+pub(crate) const STUCK: &str = "('invalidId', 'refused', 'conflict')";
+
+/// Whether `last_error` is a code of [`STUCK`].
+pub fn is_stuck(last_error: Option<&str>) -> bool {
+    matches!(last_error, Some("invalidId" | "refused" | "conflict"))
+}
 
 /// Clears an entry's retry bookkeeping when its state changes.
 const FRESH: &str = "attempts = 0, next_try_at = 0, last_error = NULL, last_error_at = NULL";
@@ -411,8 +422,11 @@ fn due(column: &str) -> String {
 
 /// The content of a `down` entry turned up here (a restore, a copy) before its download: the
 /// entry waits for upload again, as `reconcile` would make it, so the server's `HEAD` says
-/// whether it has it; nothing claims it is there. Whether it changed.
+/// whether it has it; nothing claims it is there. The transfer is over either way, so the entry
+/// stops being active even when there was nothing to move (the content left again). Whether it
+/// moved.
 pub fn note_found(conn: &Connection, blob_id: &str, now: i64) -> Result<bool> {
+    set_active(conn, blob_id, false)?;
     Ok(conn.execute(
         &format!(
             "UPDATE main.sync_blobs SET state = 'up', active = 0, queued_at = ?2, {FRESH} \
@@ -490,13 +504,15 @@ pub fn is_named(conn: &Connection, blob_id: &str) -> Result<bool> {
     )?)
 }
 
-/// Whether any content waits to move, up or down (an invalid ID never moves); with `up_only`,
-/// to upload.
+/// Whether any content waits to move, up or down (an entry that never moves by itself,
+/// [`STUCK`], does not wait); with `up_only`, to upload.
 pub fn waiting(conn: &Connection, up_only: bool) -> Result<bool> {
     Ok(conn.query_row(
-        "SELECT EXISTS (SELECT 1 FROM main.sync_blobs \
-           WHERE (state = 'up' OR (state = 'down' AND NOT ?1)) \
-             AND last_error IS NOT 'invalidId')",
+        &format!(
+            "SELECT EXISTS (SELECT 1 FROM main.sync_blobs \
+               WHERE (state = 'up' OR (state = 'down' AND NOT ?1)) \
+                 AND COALESCE(last_error, '') NOT IN {STUCK})"
+        ),
         [up_only],
         |r| r.get(0),
     )?)
@@ -597,20 +613,23 @@ pub fn want_all(conn: &Connection) -> Result<u32> {
 /// conflict: "try again" on their row moves them).
 pub fn retry_now(conn: &Connection) -> Result<()> {
     conn.execute(
-        "UPDATE main.sync_blobs SET next_try_at = 0 \
-         WHERE state IN ('up', 'down') \
-           AND COALESCE(last_error, '') NOT IN ('invalidId', 'refused', 'conflict')",
+        &format!(
+            "UPDATE main.sync_blobs SET next_try_at = 0 \
+             WHERE state IN ('up', 'down') AND COALESCE(last_error, '') NOT IN {STUCK}"
+        ),
         [],
     )?;
     Ok(())
 }
 
-/// Rows with content held here that the server has not confirmed (a photo once).
+/// Rows with content held here that the server has not confirmed and that can still upload (a
+/// photo once; an entry of [`STUCK`] is a failed item, not waiting).
 pub fn uploads_waiting(conn: &Connection) -> Result<u32> {
     let rows: i64 = conn.query_row(
         &format!(
             "SELECT COUNT(*) FROM (SELECT DISTINCT r.tbl, r.rid FROM ({}) r \
-               JOIN main.sync_blobs q ON q.blob_id = r.b WHERE q.state = 'up')",
+               JOIN main.sync_blobs q ON q.blob_id = r.b \
+               WHERE q.state = 'up' AND COALESCE(q.last_error, '') NOT IN {STUCK})",
             references()?
         ),
         [],
@@ -623,7 +642,8 @@ pub fn uploads_waiting(conn: &Connection) -> Result<u32> {
 /// `content::ContentReader` reads each blob: content complete here is never counted as not here,
 /// whatever its entry says. Among content not here a row counts in its worst state only (failed,
 /// then not on the server, then not here); `waiting_upload` counts the rows with any blob waiting
-/// to upload, `waiting_upload_bytes` the plaintext size of those blobs. Nothing without the store
+/// to upload, `waiting_upload_bytes` the plaintext size of those blobs; a held blob that never
+/// uploads by itself ([`STUCK`]) counts its row as failed instead. Nothing without the store
 /// (every row reads as here then).
 pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
     if !files_schema::is_attached(conn)? {
@@ -636,9 +656,10 @@ pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
                  {held} AS here
                FROM ({refs}) r JOIN main.sync_blobs q ON q.blob_id = r.b),
              per_row AS (
-               SELECT MAX(state = 'up' AND here) AS up,
-                 MAX(absent AND active = 0
-                   AND error IN ('unreadable', 'invalidId', 'refused', 'conflict')) AS failed,
+               SELECT MAX(state = 'up' AND here AND error NOT IN {STUCK}) AS up,
+                 MAX((absent AND active = 0
+                     AND error IN ('unreadable', 'invalidId', 'refused', 'conflict'))
+                   OR (state = 'up' AND here AND error IN {STUCK})) AS failed,
                  MAX(absent AND active = 0 AND error = 'notOnServer') AS gone,
                  MAX(absent) AS down
                FROM (SELECT *, state = 'down' AND NOT here AS absent FROM blobs)
@@ -657,7 +678,8 @@ pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
         &format!(
             "SELECT COALESCE(SUM(f.size), 0) FROM main.sync_blobs q \
              JOIN files.blobs f ON f.id = q.blob_id \
-             WHERE q.state = 'up' AND {held} AND q.blob_id IN (SELECT b FROM ({refs}))",
+             WHERE q.state = 'up' AND {held} AND q.blob_id IN (SELECT b FROM ({refs})) \
+               AND COALESCE(q.last_error, '') NOT IN {STUCK}",
             held = held("q.blob_id"),
             refs = references()?,
         ),

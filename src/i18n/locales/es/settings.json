@@ -257,5 +257,22 @@
       "windowsHello": "Windows Hello no está configurado. Configúralo en Configuración de Windows → Cuentas → Opciones de inicio de sesión.",
       "generic": "La biometría no está disponible en este ordenador."
     }
+  },
+  "keepSafe": {
+    "title": "Qué conviene guardar",
+    "description": "Cada una de estas cosas tiene una función distinta.",
+    "password": {
+      "title": "Contraseña del dispositivo",
+      "text": "Desbloquea Moony en este dispositivo."
+    },
+    "recoveryKey": {
+      "title": "Clave de recuperación",
+      "text": "Restablece la contraseña en este dispositivo. Cada dispositivo tiene la suya."
+    },
+    "kit": {
+      "title": "Kit de recuperación de sincronización",
+      "text": "Recupera tus datos sincronizados cuando se pierden todos los dispositivos. Uno solo para todos tus dispositivos.",
+      "show": "Mostrar"
+    }
   }
 }

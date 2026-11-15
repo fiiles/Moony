@@ -253,5 +253,22 @@
       "windowsHello": "Windows Hello är inte konfigurerat. Konfigurera det i Windows-inställningar → Konton → Inloggningsalternativ.",
       "generic": "Biometri är inte tillgängligt på den här datorn."
     }
+  },
+  "keepSafe": {
+    "title": "Vad du bör spara",
+    "description": "Var och en av dessa har en egen uppgift.",
+    "password": {
+      "title": "Enhetslösenord",
+      "text": "Låser upp Moony på den här enheten."
+    },
+    "recoveryKey": {
+      "title": "Återställningsnyckel",
+      "text": "Återställer lösenordet på den här enheten. Varje enhet har sin egen."
+    },
+    "kit": {
+      "title": "Återställningskit för synkronisering",
+      "text": "Hämtar tillbaka dina synkroniserade data när alla enheter är förlorade. Ett för alla dina enheter.",
+      "show": "Visa"
+    }
   }
 }

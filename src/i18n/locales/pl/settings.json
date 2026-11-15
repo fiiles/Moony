@@ -261,5 +261,22 @@
       "windowsHello": "Windows Hello nie jest skonfigurowane. Można je skonfigurować w Ustawieniach systemu Windows → Konta → Opcje logowania.",
       "generic": "Biometria nie jest dostępna na tym komputerze."
     }
+  },
+  "keepSafe": {
+    "title": "Co warto zachować",
+    "description": "Każda z tych rzeczy służy do czegoś innego.",
+    "password": {
+      "title": "Hasło urządzenia",
+      "text": "Odblokowuje Moony na tym urządzeniu."
+    },
+    "recoveryKey": {
+      "title": "Klucz odzyskiwania",
+      "text": "Resetuje hasło na tym urządzeniu. Każde urządzenie ma własny."
+    },
+    "kit": {
+      "title": "Zestaw odzyskiwania synchronizacji",
+      "text": "Przywraca zsynchronizowane dane, gdy stracisz wszystkie urządzenia. Jeden dla wszystkich urządzeń.",
+      "show": "Pokaż"
+    }
   }
 }

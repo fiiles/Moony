@@ -259,5 +259,22 @@
       "windowsHello": "Windows Hello není nastavené. Nastavíte ho v Nastavení Windows → Účty → Možnosti přihlášení.",
       "generic": "Na tomto počítači není biometrie k dispozici."
     }
+  },
+  "keepSafe": {
+    "title": "Co si uschovat",
+    "description": "Každá z těchto věcí slouží k něčemu jinému.",
+    "password": {
+      "title": "Heslo zařízení",
+      "text": "Odemyká Moony na tomto zařízení."
+    },
+    "recoveryKey": {
+      "title": "Obnovovací klíč",
+      "text": "Obnoví heslo na tomto zařízení. Každé zařízení má vlastní."
+    },
+    "kit": {
+      "title": "Záchranná sada synchronizace",
+      "text": "Vrátí synchronizovaná data, když přijdete o všechna zařízení. Jedna pro všechna zařízení.",
+      "show": "Zobrazit"
+    }
   }
 }

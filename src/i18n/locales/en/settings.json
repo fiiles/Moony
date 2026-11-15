@@ -253,5 +253,22 @@
       "windowsHello": "Windows Hello is not set up. Set it up in Windows Settings → Accounts → Sign-in options.",
       "generic": "Biometrics are not available on this computer."
     }
+  },
+  "keepSafe": {
+    "title": "What to keep safe",
+    "description": "Each of these does a different job.",
+    "password": {
+      "title": "Device password",
+      "text": "Unlocks Moony on this device."
+    },
+    "recoveryKey": {
+      "title": "Recovery key",
+      "text": "Resets the password on this device. Each device has its own."
+    },
+    "kit": {
+      "title": "Sync Recovery Kit",
+      "text": "Brings your synced data back when every device is lost. One for all your devices.",
+      "show": "Show"
+    }
   }
 }

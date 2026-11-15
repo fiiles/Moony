@@ -253,5 +253,22 @@
       "windowsHello": "Windows Hello ist nicht eingerichtet. Richten Sie es unter Windows-Einstellungen → Konten → Anmeldeoptionen ein.",
       "generic": "Auf diesem Computer ist keine Biometrie verfügbar."
     }
+  },
+  "keepSafe": {
+    "title": "Was Sie aufbewahren sollten",
+    "description": "Jedes davon hat eine andere Aufgabe.",
+    "password": {
+      "title": "Gerätepasswort",
+      "text": "Entsperrt Moony auf diesem Gerät."
+    },
+    "recoveryKey": {
+      "title": "Wiederherstellungsschlüssel",
+      "text": "Setzt das Passwort auf diesem Gerät zurück. Jedes Gerät hat einen eigenen."
+    },
+    "kit": {
+      "title": "Sync-Wiederherstellungs-Kit",
+      "text": "Holt Ihre synchronisierten Daten zurück, wenn alle Geräte verloren sind. Eines für alle Ihre Geräte.",
+      "show": "Anzeigen"
+    }
   }
 }

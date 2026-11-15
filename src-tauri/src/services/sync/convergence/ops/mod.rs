@@ -24,7 +24,9 @@ use rusqlite::Connection;
 
 use crate::error::{AppError, Result};
 
-pub(in crate::services::sync::convergence) use attachments::queue_consistent;
+pub(in crate::services::sync::convergence) use attachments::{
+    queue_consistent, queue_matches_rows, settle,
+};
 
 /// What one operation did.
 #[derive(Debug, Clone, PartialEq, Eq)]

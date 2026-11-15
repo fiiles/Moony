@@ -179,46 +179,88 @@ fn delete_photo_batch(conn: &mut Connection, rng: &mut StdRng, dir: &Path) -> Re
     })
 }
 
+/// Every blob a syncing attachment row names (documents with a blob, photos with both).
+const REFERENCED: &str = "SELECT blob_id AS b FROM insurance_documents WHERE blob_id IS NOT NULL \
+    UNION SELECT blob_id FROM real_estate_documents WHERE blob_id IS NOT NULL \
+    UNION SELECT blob_id FROM real_estate_photos WHERE blob_id IS NOT NULL \
+      AND thumb_blob_id IS NOT NULL \
+    UNION SELECT thumb_blob_id FROM real_estate_photos WHERE blob_id IS NOT NULL \
+      AND thumb_blob_id IS NOT NULL";
+
+fn list(conn: &Connection, sql: &str) -> Vec<String> {
+    let mut stmt = conn.prepare(sql).expect("prepare");
+    stmt.query_map([], |r| r.get(0))
+        .expect("query")
+        .collect::<std::result::Result<_, _>>()
+        .expect("rows")
+}
+
+/// What the app does before its transfer lanes take work, and so before a device's own changes
+/// are pushed: the full reconcile, which queues the blobs of rows added here and drops the
+/// entries of rows deleted here.
+pub(in crate::services::sync::convergence) fn settle(conn: &Connection) {
+    crate::services::sync::blobs::queue::reconcile(conn, now()).expect("reconcile");
+}
+
+/// What the merge path itself leaves, checked before any reconcile of the test: the device's own
+/// changes were settled before they were pushed (`settle`), so after an exchange every entry names
+/// a blob a syncing row names and every such blob has an entry.
+pub(in crate::services::sync::convergence) fn queue_matches_rows(conn: &Connection) {
+    let stale = list(
+        conn,
+        &format!("SELECT blob_id FROM sync_blobs WHERE blob_id NOT IN ({REFERENCED})"),
+    );
+    assert!(
+        stale.is_empty(),
+        "the merge left entries naming no row: {stale:?}"
+    );
+    let missing = list(
+        conn,
+        &format!(
+            "SELECT b FROM ({REFERENCED}) \
+             WHERE b NOT IN (SELECT blob_id FROM sync_blobs)"
+        ),
+    );
+    assert!(
+        missing.is_empty(),
+        "the merge left blobs without an entry: {missing:?}"
+    );
+}
+
 /// The queue invariant of a device (ADR 0030): after `reconcile`, every blob a syncing row names
 /// is held here or queued `down` (and an entry's state agrees with the store), and no entry names
 /// a blob no syncing row names.
 pub(in crate::services::sync::convergence) fn queue_consistent(conn: &Connection) {
-    crate::services::sync::blobs::queue::reconcile(conn, now()).expect("reconcile");
-    let referenced = "SELECT blob_id AS b FROM insurance_documents WHERE blob_id IS NOT NULL \
-        UNION SELECT blob_id FROM real_estate_documents WHERE blob_id IS NOT NULL \
-        UNION SELECT blob_id FROM real_estate_photos WHERE blob_id IS NOT NULL \
-          AND thumb_blob_id IS NOT NULL \
-        UNION SELECT thumb_blob_id FROM real_estate_photos WHERE blob_id IS NOT NULL \
-          AND thumb_blob_id IS NOT NULL";
+    settle(conn);
     let held = |id: &str| crate::services::attachment_store::complete_sql(id);
-    let list = |sql: String| -> Vec<String> {
-        let mut stmt = conn.prepare(&sql).expect("prepare");
-        stmt.query_map([], |r| r.get(0))
-            .expect("query")
-            .collect::<std::result::Result<_, _>>()
-            .expect("rows")
-    };
-    let missing = list(format!(
-        "SELECT b FROM ({referenced}) WHERE NOT {held} \
-         AND NOT EXISTS (SELECT 1 FROM sync_blobs q WHERE q.blob_id = b AND q.state = 'down')",
-        held = held("b")
-    ));
+    let missing = list(
+        conn,
+        &format!(
+            "SELECT b FROM ({REFERENCED}) WHERE NOT {held} \
+             AND NOT EXISTS (SELECT 1 FROM sync_blobs q WHERE q.blob_id = b AND q.state = 'down')",
+            held = held("b")
+        ),
+    );
     assert!(
         missing.is_empty(),
         "blobs neither held nor queued down: {missing:?}"
     );
-    let unreferenced = list(format!(
-        "SELECT blob_id FROM sync_blobs WHERE blob_id NOT IN ({referenced})"
-    ));
+    let unreferenced = list(
+        conn,
+        &format!("SELECT blob_id FROM sync_blobs WHERE blob_id NOT IN ({REFERENCED})"),
+    );
     assert!(
         unreferenced.is_empty(),
         "entries naming no row: {unreferenced:?}"
     );
-    let wrong = list(format!(
-        "SELECT blob_id FROM sync_blobs WHERE (state IN ('up', 'done') AND NOT {held}) \
-         OR (state = 'down' AND {held} AND last_error IS NOT 'invalidId')",
-        held = held("blob_id")
-    ));
+    let wrong = list(
+        conn,
+        &format!(
+            "SELECT blob_id FROM sync_blobs WHERE (state IN ('up', 'done') AND NOT {held}) \
+             OR (state = 'down' AND {held} AND last_error IS NOT 'invalidId')",
+            held = held("blob_id")
+        ),
+    );
     assert!(
         wrong.is_empty(),
         "entries disagreeing with the store: {wrong:?}"

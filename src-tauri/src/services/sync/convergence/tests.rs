@@ -273,6 +273,17 @@ fn random_run(seed: u64) -> Vault {
 
 /// The attachment operations, and what they race with: the deletes that cascade over a policy's
 /// or property's documents, photos and batches, and the creates that give the next ones a parent.
+const ATTACHMENT_OPS: [&str; 6] = [
+    "attachments::add_policy_document",
+    "attachments::add_property_document",
+    "attachments::add_photo",
+    "attachments::delete_document",
+    "attachments::delete_photo",
+    "attachments::delete_photo_batch",
+];
+
+/// The pool the run draws from: the attachment operations (`add_photo` twice, to weigh it as the
+/// other adds) and what they race with.
 const ATTACHMENT_RUN_OPS: [&str; 12] = [
     "attachments::add_policy_document",
     "attachments::add_property_document",
@@ -313,10 +324,18 @@ fn attachments_converge_with_cascades_on_two_devices() {
                 }
             }
         }
+        // The devices settle their queues as the app does before the lanes take work, then
+        // exchange everything: what the merges leave must already match the rows.
+        for device in &vault.devices {
+            ops::settle(&device.conn);
+        }
         finish(&mut vault, &mut rngs);
         for (d, device) in vault.devices.iter().enumerate() {
             let conn = &device.conn;
-            let failed = panic::catch_unwind(AssertUnwindSafe(|| ops::queue_consistent(conn)));
+            let failed = panic::catch_unwind(AssertUnwindSafe(|| {
+                ops::queue_matches_rows(conn);
+                ops::queue_consistent(conn);
+            }));
             if let Err(panic) = failed {
                 let message = panic
                     .downcast_ref::<String>()
@@ -347,7 +366,7 @@ fn attachments_converge_with_cascades_on_two_devices() {
         })
         .sum();
     assert!(queued > 0, "no run ended with attachment content queued");
-    let attachment: usize = ATTACHMENT_RUN_OPS[..7].iter().map(|n| done(n)).sum();
+    let attachment: usize = ATTACHMENT_OPS.iter().map(|n| done(n)).sum();
     let all: usize = runs
         .iter()
         .flat_map(|v| v.stats.values())

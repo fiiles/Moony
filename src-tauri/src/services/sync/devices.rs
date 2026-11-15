@@ -90,6 +90,21 @@ pub fn this_device(conn: &Connection) -> Result<Option<(String, String)>> {
     }
 }
 
+/// `joined_at` of this device's own row (unix seconds): when sync was turned on here, written once
+/// by `record_this_device`. `None` without a `sync_state` row or before the row is recorded.
+pub fn this_device_joined_at(conn: &Connection) -> Result<Option<i64>> {
+    let Some(sync) = state::load(conn)? else {
+        return Ok(None);
+    };
+    Ok(conn
+        .query_row(
+            "SELECT joined_at FROM sync_devices WHERE id = ?1",
+            [sync.device.to_hex()],
+            |r| r.get(0),
+        )
+        .optional()?)
+}
+
 /// `(name, platform)` of `device`'s row.
 pub fn device_row(conn: &Connection, device: DeviceId) -> Result<Option<(String, String)>> {
     Ok(conn
@@ -219,6 +234,28 @@ mod tests {
             .unwrap()
             .map(|r| r.unwrap())
             .collect()
+    }
+
+    #[test]
+    fn this_device_joined_at_is_its_first_record() {
+        let conn = migrated();
+        assert_eq!(this_device_joined_at(&conn).unwrap(), None);
+        state::enable(&conn, DEVICE).unwrap();
+        assert_eq!(this_device_joined_at(&conn).unwrap(), None);
+
+        record_this_device(&conn, "MacBook", &[0x01; 32], 1_800_000_000).unwrap();
+        assert_eq!(this_device_joined_at(&conn).unwrap(), Some(1_800_000_000));
+
+        // Another device joined later: this device's own row is still the one read.
+        conn.execute(
+            "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
+             VALUES (?1, NULL, 'iPhone', 'ios', '1.0.0', 1_850_000_000)",
+            [DeviceId([9; 16]).to_hex()],
+        )
+        .unwrap();
+        // A second record under another name changes neither the row's age nor which row is read.
+        record_this_device(&conn, "Work Mac", &[0x01; 32], 1_900_000_000).unwrap();
+        assert_eq!(this_device_joined_at(&conn).unwrap(), Some(1_800_000_000));
     }
 
     #[test]

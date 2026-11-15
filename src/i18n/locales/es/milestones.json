@@ -49,7 +49,8 @@
   },
   "titles": {
     "backup_stale": "Copia de seguridad de los datos",
-    "balances_stale": "Saldos de las cuentas"
+    "balances_stale": "Saldos de las cuentas",
+    "sync_stalled": "Sincronización"
   },
   "sub": {
     "insurance_anniversary": "Fecha límite del preaviso de cancelación · aniversario {{date}}",
@@ -74,7 +75,9 @@
     "backup_never": "Aún no hay copia de seguridad",
     "balances_stale_one": "{{count}} cuenta sin actualizar desde hace más de 30 días",
     "balances_stale_many": "{{count}} cuentas sin actualizar desde hace más de 30 días",
-    "balances_stale_other": "{{count}} cuentas sin actualizar desde hace más de 30 días"
+    "balances_stale_other": "{{count}} cuentas sin actualizar desde hace más de 30 días",
+    "sync_stalled": "Última sincronización el {{date}}",
+    "sync_stalled_never": "Aún no sincronizado"
   },
   "short": {
     "backup_stale": "haz una copia de seguridad de tus datos",
@@ -83,7 +86,8 @@
     "balances_stale_other": "actualiza {{count}} saldos",
     "valuation_stale": "vuelve a valorar {{title}}",
     "loan_balance_check": "introduce el saldo actual de {{title}}",
-    "loan_fixation_expired": "introduce el tipo nuevo de {{title}}"
+    "loan_fixation_expired": "introduce el tipo nuevo de {{title}}",
+    "sync_stalled": "revisa la sincronización"
   },
   "groups": {
     "insuranceDates": {
@@ -135,6 +139,11 @@
       "label": "Saldo y tipo de los préstamos",
       "hint": "Introducir el saldo actual una vez al año y el tipo nuevo cuando termina un tipo fijo.",
       "mute": "No recordarme el saldo y el tipo de los préstamos"
+    },
+    "sync": {
+      "label": "Sincronización",
+      "hint": "Cuando la sincronización se detiene o te necesita.",
+      "mute": "No recordarme la sincronización"
     }
   },
   "settings": {

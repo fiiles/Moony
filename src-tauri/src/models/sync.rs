@@ -148,6 +148,10 @@ pub struct SyncStatus {
     /// The stored address is plain http to a host other than this computer.
     #[serde(rename = "serverInsecure")]
     pub server_insecure: bool,
+    /// When sync was turned on on this device: `joinedAt` of its own device row (unix seconds);
+    /// `None` while off or before the row exists.
+    #[serde(rename = "enabledAt")]
+    pub enabled_at: Option<i64>,
 }
 
 /// The subscription a checkout is for.

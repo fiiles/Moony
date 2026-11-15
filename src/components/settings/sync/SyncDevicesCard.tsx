@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -87,9 +88,16 @@ export function SyncDevicesCard() {
             );
           })}
         </div>
-        <p className="m-0 mt-3 text-micro font-500 text-ink-3" data-testid="sync-limits">
-          {t('limits.lostDevice')}
-        </p>
+        <Collapsible className="mt-3">
+          <CollapsibleTrigger className="cursor-pointer border-0 bg-transparent p-0 text-micro font-500 text-ink-3 underline">
+            {t('limits.lostTitle')}
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <p className="m-0 mt-2 text-micro font-500 text-ink-3" data-testid="sync-limits">
+              {t('limits.lostDevice')}
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
       </SettingsCard>
       {renaming && <RenameDeviceDialog device={renaming} onClose={() => setRenaming(null)} />}
       {adding && <AddDeviceDialog onClose={() => setAdding(false)} />}

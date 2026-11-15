@@ -7,18 +7,32 @@
     "waiting": "Modifica trattenuta",
     "paused": "Sincronizzazione in pausa",
     "error": "Errore di sincronizzazione",
-    "offline": "Offline"
+    "unreachable": "Server non raggiungibile",
+    "unreachableLong_one": "Non sincronizzato da {{count}} giorno",
+    "unreachableLong_many": "Non sincronizzato da {{count}} giorni",
+    "unreachableLong_other": "Non sincronizzato da {{count}} giorni"
+  },
+  "age": {
+    "justNow": "adesso",
+    "minutes_one": "{{count}} min fa",
+    "minutes_many": "{{count}} min fa",
+    "minutes_other": "{{count}} min fa",
+    "hours_one": "{{count}} h fa",
+    "hours_many": "{{count}} h fa",
+    "hours_other": "{{count}} h fa",
+    "days_one": "{{count}} giorno fa",
+    "days_many": "{{count}} giorni fa",
+    "days_other": "{{count}} giorni fa"
+  },
+  "popover": {
+    "title": "Sincronizzazione",
+    "pending": "In attesa di invio",
+    "server": "Server",
+    "openSettings": "Apri impostazioni",
+    "settings": "Impostazioni di sincronizzazione"
   },
   "status": {
-    "phase": {
-      "off": "La sincronizzazione è disattivata",
-      "settingUp": "Configurazione della sincronizzazione",
-      "idle": "Aggiornato",
-      "syncing": "Sincronizzazione…",
-      "waiting": "Sincronizzazione in corso; una modifica da un altro dispositivo è trattenuta",
-      "paused": "La sincronizzazione è in pausa",
-      "error": "La sincronizzazione si è fermata"
-    },
+    "unreachableNote": "La sincronizzazione riprenderà quando il server sarà di nuovo raggiungibile.",
     "problem": {
       "captureBroken": "Il tracciamento delle modifiche di questo dispositivo è danneggiato, quindi la sincronizzazione si è fermata. Si può riparare.",
       "vaultGone": "I dati sincronizzati sono stati eliminati dal server di sincronizzazione.",
@@ -57,7 +71,9 @@
     "dialogTitle": "Cambia l'indirizzo del server",
     "dialogBody": "Usalo quando il tuo server di sincronizzazione si è spostato a un nuovo indirizzo. Deve essere lo stesso server, con i tuoi dati sincronizzati. Ogni dispositivo cambia il proprio indirizzo, quindi ripeti l'operazione sugli altri dispositivi. Salva di nuovo il kit di ripristino: ora contiene il nuovo indirizzo.",
     "success": "Indirizzo del server di sincronizzazione cambiato",
-    "unchanged": "Questo dispositivo usa già questo indirizzo."
+    "unchanged": "Questo dispositivo usa già questo indirizzo.",
+    "repeatOn": "Fai lo stesso su: {{devices}}",
+    "repeatOnOthers": "Fai lo stesso sugli altri dispositivi."
   },
   "intro": {
     "description": "Mantieni i dati allineati su tutti i tuoi dispositivi. Sono cifrati end-to-end: il server di sincronizzazione conserva solo dati che non può leggere.",
@@ -69,7 +85,12 @@
       "title": "Annullare la configurazione?",
       "description": "Questo dispositivo dimentica l'account di sincronizzazione creato per questa configurazione, e un pagamento già effettuato non viene trasferito. Se configuri di nuovo la sincronizzazione, si riparte da zero, con un nuovo account di sincronizzazione.",
       "keep": "Mantieni la configurazione"
-    }
+    },
+    "startTitle": "Inizia a sincronizzare",
+    "startLead": "Questo dispositivo sarà il primo. Ti serve il codice di connessione del tuo server di sincronizzazione.",
+    "joinTitle": "Collega questo dispositivo",
+    "joinLead": "Sincronizzi già su un altro dispositivo.",
+    "joinButton": "Collega questo dispositivo"
   },
   "setup": {
     "title": "Configura la sincronizzazione",
@@ -320,8 +341,6 @@
     "validUntil": "Il codice è valido fino alle {{time}}."
   },
   "join": {
-    "introPair": "Collegati dal telefono",
-    "introKit": "Usa un kit di ripristino",
     "warning": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup accanto al tuo profilo.",
     "nameLabel": "Nome del dispositivo",
     "passwordLabel": "Password del dispositivo",
@@ -335,7 +354,19 @@
     "kitHint": "Inserisci il codice di ripristino del tuo kit di ripristino della sincronizzazione, o il testo del suo codice QR.",
     "codeLabel": "Codice di ripristino",
     "accountLabel": "Numero dell'account",
-    "confirm": "Collega e sostituisci"
+    "confirm": "Collega e sostituisci",
+    "choice": {
+      "pair": {
+        "title": "Ho un telefono che sincronizza",
+        "lead": "Comparirà un codice. Sul telefono: Impostazioni → Sincronizzazione → Aggiungi un dispositivo."
+      },
+      "kit": {
+        "title": "Ho il kit di ripristino della sincronizzazione",
+        "lead": "Inserisci il codice del kit e l'indirizzo del server. Così si collega anche un secondo computer."
+      }
+    },
+    "connect": "Collega",
+    "firstRunDone": "Questo dispositivo ora si sincronizza"
   },
   "phone": {
     "title": "Sincronizzazione",
@@ -347,12 +378,20 @@
       "synced": "Aggiornata",
       "syncing": "Sincronizzazione…",
       "waiting": "Modifica trattenuta",
-      "offline": "Offline",
+      "unreachable": "Server non raggiungibile",
+      "unreachableLong_one": "Non sincronizzato da {{count}} giorno",
+      "unreachableLong_many": "Non sincronizzato da {{count}} giorni",
+      "unreachableLong_other": "Non sincronizzato da {{count}} giorni",
       "paused": "In pausa",
       "error": "Interrotta"
     },
-    "setUp": "Configura la sincronizzazione su questo telefono",
-    "scan": "Scansiona un codice da un altro dispositivo",
+    "rowWithAge": "{{state}} · {{age}}",
+    "choice": {
+      "scan": {
+        "title": "Scansiona un codice dal computer",
+        "lead": "Sul computer: Impostazioni → Sincronizzazione → Aggiungi un dispositivo. Si può scansionare anche il QR del Kit di recupero."
+      }
+    },
     "typeCode": "Digita un codice del kit di ripristino",
     "addDevice": "Aggiungi un dispositivo",
     "busy": "Tieni aperto Moony finché non ha finito.",
@@ -362,7 +401,7 @@
     "renewUnavailable": "Il rinnovo non è disponibile nell'app per telefono.",
     "scanTitle": "Scansiona un codice",
     "scanHint": "Inquadra con la fotocamera il codice sull'altro dispositivo (Impostazioni → Sincronizzazione → Aggiungi un dispositivo) o il codice QR del tuo kit di ripristino.",
-    "addDeviceHint": "Sul nuovo dispositivo scegli «Collegati dal telefono» in Impostazioni → Sincronizzazione, poi inquadra il codice che mostra.",
+    "addDeviceHint": "Sul nuovo dispositivo scegli «Collega questo dispositivo» in Impostazioni → Sincronizzazione, poi inquadra il codice che mostra.",
     "passwordFirst": "Inserisci la password del dispositivo prima di scansionare il codice dell'altro dispositivo.",
     "connecting": "Connessione…",
     "cameraDenied": "Consenti l'accesso alla fotocamera in Impostazioni per scansionare il codice.",
@@ -408,6 +447,7 @@
     "onThisDevice": "Su questo dispositivo:"
   },
   "limits": {
+    "lostTitle": "Hai perso un dispositivo o il Kit di ripristino?",
     "lostDevice": "Un dispositivo o un Kit di ripristino smarrito non può ancora essere escluso dai tuoi dati sincronizzati, e chi ne possiede uno può già leggere ciò che contiene. Se uno va perso, elimina i dati sincronizzati e configura di nuovo la sincronizzazione con un nuovo Kit; gli altri tuoi dispositivi dovranno poi unirsi di nuovo."
   },
   "codes": {
@@ -415,5 +455,9 @@
     "kitNotForSetup": "Questo è un codice del kit di recupero, non un codice di connessione. Usalo per unirti a dati sincronizzati già esistenti.",
     "connectionNotHere": "Questo è un codice di connessione di un server di sincronizzazione. Usalo quando configuri la sincronizzazione, non qui.",
     "notAServerAddress": "Questo non è l'indirizzo di un server di sincronizzazione. Digita l'indirizzo del tuo server di sincronizzazione o incolla il suo codice di connessione."
+  },
+  "whatSyncs": {
+    "title": "Cosa si sincronizza",
+    "body": "Tutto ciò che inserisci in Moony viene sincronizzato. La lingua, l'aspetto, il menu, le notifiche, la password del dispositivo, la chiave di recupero e i backup appartengono a ciascun dispositivo. I prezzi e la cronologia vengono calcolati su ogni dispositivo. Per ora i documenti e le foto restano sul dispositivo in cui li hai aggiunti."
   }
 }

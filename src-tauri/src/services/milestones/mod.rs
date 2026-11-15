@@ -19,6 +19,7 @@ use std::collections::HashMap;
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::error::{AppError, Result};
+use crate::models::sync::SyncStatus;
 use crate::models::{Milestone, MILESTONE_KINDS, MILESTONE_STATE_DONE, MILESTONE_STATE_SNOOZED};
 
 pub use insurance::effective_notice_days as effective_insurance_notice_days;
@@ -31,12 +32,13 @@ const SNOOZE_DAYS: i64 = 7;
 /// Upkeep is snoozed for a month: a weekly reminder to revalue a flat is noise.
 const UPKEEP_SNOOZE_DAYS: i64 = 30;
 /// Data-upkeep kinds: snoozed for a month; their keys carry the date of their data.
-const UPKEEP_KINDS: [&str; 5] = [
+const UPKEEP_KINDS: [&str; 6] = [
     "backup_stale",
     "balances_stale",
     "valuation_stale",
     "loan_balance_check",
     "loan_fixation_expired",
+    "sync_stalled",
 ];
 /// `app_config` key holding the muted kinds as a JSON array.
 const MUTED_KINDS_KEY: &str = "milestones.mutedKinds";
@@ -113,7 +115,11 @@ pub(crate) fn money_text(value: f64) -> String {
 
 /// Every milestone as of `today` (UTC day), without the occurrences marked done or still
 /// snoozed and without the muted kinds, in display order.
-pub fn list_milestones(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
+pub fn list_milestones(
+    conn: &Connection,
+    today: i64,
+    sync: Option<&SyncStatus>,
+) -> Result<Vec<Milestone>> {
     let builders: [(&str, Builder); 7] = [
         ("insurance", insurance::build),
         ("loans", loans::build),
@@ -131,6 +137,7 @@ pub fn list_milestones(conn: &Connection, today: i64) -> Result<Vec<Milestone>> 
             Err(e) => log::warn!("[MILESTONES] {name} skipped: {e}"),
         }
     }
+    all.extend(sync.and_then(|s| upkeep::sync_stalled(today, s)));
     let muted = muted_kinds(conn)?;
     all.retain(|m| !muted.contains(&m.kind));
     let states = load_states(conn)?;
@@ -342,10 +349,10 @@ mod tests {
         // Anniversary 24 Dec 2026; the insurance period ends 23 Dec, so the last safe
         // delivery day of the notice is 11 Nov (43 days earlier); reminder from 14 Oct.
         policy(&conn, "p1", day(2020, 12, 24), None, "monthly", "300");
-        let before = list_milestones(&conn, day(2026, 10, 13)).unwrap();
+        let before = list_milestones(&conn, day(2026, 10, 13), None).unwrap();
         assert_eq!(kinds(&before), vec!["insurance_anniversary"]);
         assert_eq!(before[0].stage, STAGE_SOON);
-        let on = list_milestones(&conn, day(2026, 10, 14)).unwrap();
+        let on = list_milestones(&conn, day(2026, 10, 14), None).unwrap();
         assert_eq!(on[0].stage, STAGE_NOW);
         assert_eq!(on[0].tone, TONE_ACTION);
         assert_eq!(on[0].due_day, Some(day(2026, 12, 24)));
@@ -354,12 +361,12 @@ mod tests {
             on[0].key,
             format!("insurance_anniversary:p1:{}", day(2026, 12, 24))
         );
-        let last_day = list_milestones(&conn, day(2026, 11, 11)).unwrap();
+        let last_day = list_milestones(&conn, day(2026, 11, 11), None).unwrap();
         assert_eq!(
             last_day[0].tone, TONE_ACTION,
             "the deadline day itself is safe"
         );
-        let late = list_milestones(&conn, day(2026, 11, 12)).unwrap();
+        let late = list_milestones(&conn, day(2026, 11, 12), None).unwrap();
         assert_eq!(late[0].tone, TONE_INFO, "the notice period has passed");
     }
 
@@ -368,7 +375,7 @@ mod tests {
         let conn = setup();
         // The notice-to-period-end rule applies to regular premiums only.
         policy(&conn, "o", day(2020, 12, 24), None, "one_time", "0");
-        assert!(list_milestones(&conn, day(2026, 10, 20))
+        assert!(list_milestones(&conn, day(2026, 10, 20), None)
             .unwrap()
             .is_empty());
         policy(
@@ -379,7 +386,7 @@ mod tests {
             "one_time",
             "0",
         );
-        let list = list_milestones(&conn, day(2026, 10, 20)).unwrap();
+        let list = list_milestones(&conn, day(2026, 10, 20), None).unwrap();
         assert_eq!(kinds(&list), vec!["insurance_end"]);
     }
 
@@ -388,7 +395,7 @@ mod tests {
         let conn = setup();
         policy(&conn, "m", day(2025, 3, 20), None, "monthly", "300");
         policy(&conn, "y", day(2025, 10, 20), None, "annually", "4200");
-        let list = list_milestones(&conn, day(2026, 10, 6)).unwrap();
+        let list = list_milestones(&conn, day(2026, 10, 6), None).unwrap();
         let payment: Vec<_> = list
             .iter()
             .filter(|m| m.kind == "insurance_payment")
@@ -411,7 +418,7 @@ mod tests {
             "one_time",
             "0",
         );
-        let list = list_milestones(&conn, day(2026, 10, 5)).unwrap();
+        let list = list_milestones(&conn, day(2026, 10, 5), None).unwrap();
         assert_eq!(kinds(&list), vec!["insurance_end"]);
         assert_eq!(list[0].stage, STAGE_NOW);
     }
@@ -433,7 +440,9 @@ mod tests {
             [],
         )
         .unwrap();
-        assert!(list_milestones(&conn, day(2026, 10, 5)).unwrap().is_empty());
+        assert!(list_milestones(&conn, day(2026, 10, 5), None)
+            .unwrap()
+            .is_empty());
     }
 
     #[test]
@@ -441,7 +450,7 @@ mod tests {
         let conn = setup();
         // Started 29 Feb 2024: the 2027 anniversary is 28 Feb.
         policy(&conn, "leap", day(2024, 2, 29), None, "monthly", "100");
-        let list = list_milestones(&conn, day(2026, 12, 20)).unwrap();
+        let list = list_milestones(&conn, day(2026, 12, 20), None).unwrap();
         assert_eq!(list[0].due_day, Some(day(2027, 2, 28)));
     }
 
@@ -450,17 +459,24 @@ mod tests {
         let conn = setup();
         policy(&conn, "p1", day(2020, 12, 24), None, "monthly", "300");
         let today = day(2026, 10, 20);
-        let key = list_milestones(&conn, today).unwrap()[0].key.clone();
+        let key = list_milestones(&conn, today, None).unwrap()[0].key.clone();
 
         set_milestone_state(&conn, &key, MILESTONE_STATE_SNOOZED, today).unwrap();
-        assert!(list_milestones(&conn, today + 6 * DAY).unwrap().is_empty());
-        assert_eq!(list_milestones(&conn, today + 7 * DAY).unwrap().len(), 1);
+        assert!(list_milestones(&conn, today + 6 * DAY, None)
+            .unwrap()
+            .is_empty());
+        assert_eq!(
+            list_milestones(&conn, today + 7 * DAY, None).unwrap().len(),
+            1
+        );
 
         set_milestone_state(&conn, &key, MILESTONE_STATE_DONE, today).unwrap();
-        assert!(list_milestones(&conn, today + 30 * DAY).unwrap().is_empty());
+        assert!(list_milestones(&conn, today + 30 * DAY, None)
+            .unwrap()
+            .is_empty());
 
         clear_milestone_state(&conn, &key).unwrap();
-        assert_eq!(list_milestones(&conn, today).unwrap().len(), 1);
+        assert_eq!(list_milestones(&conn, today, None).unwrap().len(), 1);
     }
 
     #[test]
@@ -469,7 +485,7 @@ mod tests {
         policy(&conn, "b", day(2020, 12, 24), None, "monthly", "1"); // now, deadline 11 Nov
         policy(&conn, "a", day(2020, 12, 10), None, "monthly", "1"); // now, deadline 28 Oct
         policy(&conn, "c", day(2021, 1, 2), None, "monthly", "1"); // soon (remind from 23 Oct)
-        let list = list_milestones(&conn, day(2026, 10, 20)).unwrap();
+        let list = list_milestones(&conn, day(2026, 10, 20), None).unwrap();
         let ids: Vec<_> = list.iter().map(|m| m.source_id.clone().unwrap()).collect();
         assert_eq!(ids, vec!["a", "b", "c"]);
     }
@@ -497,7 +513,7 @@ mod tests {
             [day(2026, 1, 1)],
         )
         .unwrap();
-        let list = list_milestones(&conn, today).unwrap();
+        let list = list_milestones(&conn, today, None).unwrap();
         assert_eq!(
             kinds(&list),
             vec!["insurance_anniversary", "watch_target", "backup_stale"]
@@ -519,17 +535,17 @@ mod tests {
         )
         .unwrap();
         let today = day(2026, 10, 5);
-        let first = list_milestones(&conn, today).unwrap();
+        let first = list_milestones(&conn, today, None).unwrap();
         assert_eq!(first[0].key, format!("backup_stale:{}", day(2026, 8, 1)));
         set_milestone_state(&conn, &first[0].key, MILESTONE_STATE_DONE, today).unwrap();
-        assert!(list_milestones(&conn, today).unwrap().is_empty());
+        assert!(list_milestones(&conn, today, None).unwrap().is_empty());
         // A newer backup that grows old again is a new occurrence.
         conn.execute(
             "UPDATE app_config SET value = ?1 WHERE key = 'backup.lastCreatedAt'",
             [day(2026, 8, 20).to_string()],
         )
         .unwrap();
-        let again = list_milestones(&conn, today).unwrap();
+        let again = list_milestones(&conn, today, None).unwrap();
         assert_eq!(again.len(), 1);
         assert_eq!(again[0].key, format!("backup_stale:{}", day(2026, 8, 20)));
     }
@@ -595,11 +611,45 @@ mod tests {
     }
 
     #[test]
+    fn sync_stalled_is_listed_with_a_status_and_can_be_muted() {
+        use crate::models::sync::{SyncPhase, SyncProblem, SyncStatus};
+        let conn = setup();
+        let today = day(2026, 11, 14);
+        let stalled = SyncStatus {
+            phase: SyncPhase::Error,
+            problem: Some(SyncProblem::Unauthorized),
+            last_success_at: Some(today),
+            pending_changes: 0,
+            held_devices: 0,
+            refused_rows: 0,
+            paid_until: None,
+            deletes_at: None,
+            clock_ahead_until: None,
+            dev_tools: false,
+            own_server: false,
+            server_address: None,
+            server_insecure: false,
+            enabled_at: None,
+        };
+        let count = |sync: Option<&SyncStatus>| {
+            list_milestones(&conn, today, sync)
+                .unwrap()
+                .iter()
+                .filter(|m| m.kind == "sync_stalled")
+                .count()
+        };
+        assert_eq!(count(Some(&stalled)), 1);
+        assert_eq!(count(None), 0);
+        set_muted_kinds(&conn, &["sync_stalled".to_string()]).unwrap();
+        assert_eq!(count(Some(&stalled)), 0);
+    }
+
+    #[test]
     fn muted_kinds_are_left_out_and_round_trip() {
         let conn = setup();
         policy(&conn, "y", day(2025, 10, 20), None, "annually", "4200");
         let today = day(2026, 10, 6);
-        assert!(list_milestones(&conn, today)
+        assert!(list_milestones(&conn, today, None)
             .unwrap()
             .iter()
             .any(|m| m.kind == "insurance_payment"));
@@ -613,7 +663,7 @@ mod tests {
         .unwrap();
         assert_eq!(stored, vec!["insurance_payment".to_string()]);
         assert_eq!(muted_kinds(&conn).unwrap(), stored);
-        assert!(list_milestones(&conn, today)
+        assert!(list_milestones(&conn, today, None)
             .unwrap()
             .iter()
             .all(|m| m.kind != "insurance_payment"));
@@ -658,7 +708,7 @@ mod tests {
         let conn = setup_without_profile();
         profile(&conn, Some("US"), None);
         policy(&conn, "p1", day(2020, 12, 24), None, "monthly", "300");
-        let list = list_milestones(&conn, day(2026, 10, 20)).unwrap();
+        let list = list_milestones(&conn, day(2026, 10, 20), None).unwrap();
         assert_eq!(kinds(&list), vec!["insurance_anniversary"]);
         assert_eq!(list[0].action_day, Some(day(2026, 12, 24) - 50 * DAY));
     }
@@ -669,7 +719,7 @@ mod tests {
         policy(&conn, "p1", day(2020, 12, 24), None, "monthly", "300");
         let today = day(2026, 10, 20);
         let anniversaries = |conn: &Connection| {
-            list_milestones(conn, today)
+            list_milestones(conn, today, None)
                 .unwrap()
                 .into_iter()
                 .filter(|m| m.kind == "insurance_anniversary")

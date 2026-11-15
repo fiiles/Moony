@@ -7,18 +7,36 @@
     "waiting": "Zmiana jest wstrzymana",
     "paused": "Synchronizacja wstrzymana",
     "error": "Błąd synchronizacji",
-    "offline": "Offline"
+    "unreachable": "Serwer poza zasięgiem",
+    "unreachableLong_one": "Brak synchronizacji od {{count}} dnia",
+    "unreachableLong_few": "Brak synchronizacji od {{count}} dni",
+    "unreachableLong_many": "Brak synchronizacji od {{count}} dni",
+    "unreachableLong_other": "Brak synchronizacji od {{count}} dnia"
+  },
+  "age": {
+    "justNow": "przed chwilą",
+    "minutes_one": "{{count}} min temu",
+    "minutes_few": "{{count}} min temu",
+    "minutes_many": "{{count}} min temu",
+    "minutes_other": "{{count}} min temu",
+    "hours_one": "{{count}} godz. temu",
+    "hours_few": "{{count}} godz. temu",
+    "hours_many": "{{count}} godz. temu",
+    "hours_other": "{{count}} godz. temu",
+    "days_one": "{{count}} dzień temu",
+    "days_few": "{{count}} dni temu",
+    "days_many": "{{count}} dni temu",
+    "days_other": "{{count}} dnia temu"
+  },
+  "popover": {
+    "title": "Synchronizacja",
+    "pending": "Oczekuje na wysłanie",
+    "server": "Serwer",
+    "openSettings": "Otwórz ustawienia",
+    "settings": "Ustawienia synchronizacji"
   },
   "status": {
-    "phase": {
-      "off": "Synchronizacja jest wyłączona",
-      "settingUp": "Konfigurowanie synchronizacji",
-      "idle": "Aktualne",
-      "syncing": "Synchronizuję…",
-      "waiting": "Synchronizacja trwa, zmiana z innego urządzenia jest wstrzymana",
-      "paused": "Synchronizacja jest wstrzymana",
-      "error": "Synchronizacja zatrzymana"
-    },
+    "unreachableNote": "Synchronizacja wznowi się, gdy serwer znów będzie w zasięgu.",
     "problem": {
       "captureBroken": "Śledzenie zmian na tym urządzeniu jest uszkodzone, więc synchronizacja się zatrzymała. Można je naprawić.",
       "vaultGone": "Zsynchronizowane dane zostały usunięte z serwera synchronizacji.",
@@ -57,7 +75,9 @@
     "dialogTitle": "Zmień adres serwera",
     "dialogBody": "Użyj tego, gdy Twój serwer synchronizacji zmienił adres. To musi być ten sam serwer z Twoimi zsynchronizowanymi danymi. Każde urządzenie zmienia własny adres, więc powtórz to na pozostałych urządzeniach. Zapisz zestaw odzyskiwania ponownie: zawiera teraz nowy adres.",
     "success": "Adres serwera synchronizacji został zmieniony",
-    "unchanged": "To urządzenie już używa tego adresu."
+    "unchanged": "To urządzenie już używa tego adresu.",
+    "repeatOn": "To samo zrób na: {{devices}}",
+    "repeatOnOthers": "To samo zrób na pozostałych urządzeniach."
   },
   "intro": {
     "description": "Utrzymuj dane aktualne na wszystkich urządzeniach. Są szyfrowane end-to-end: serwer synchronizacji przechowuje tylko dane, których nie potrafi odczytać.",
@@ -69,7 +89,12 @@
       "title": "Anulować konfigurację?",
       "description": "To urządzenie zapomni konto synchronizacji utworzone podczas tej konfiguracji, a dokonana już płatność nie zostanie przeniesiona. Ponowna konfiguracja synchronizacji zaczyna się od początku, z nowym kontem synchronizacji.",
       "keep": "Zachowaj konfigurację"
-    }
+    },
+    "startTitle": "Zacznij synchronizować",
+    "startLead": "To urządzenie będzie pierwsze. Potrzebujesz kodu połączenia swojego serwera synchronizacji.",
+    "joinTitle": "Połącz to urządzenie",
+    "joinLead": "Synchronizujesz już na innym urządzeniu.",
+    "joinButton": "Połącz to urządzenie"
   },
   "setup": {
     "title": "Skonfiguruj synchronizację",
@@ -327,8 +352,6 @@
     "validUntil": "Kod działa do {{time}}."
   },
   "join": {
-    "introPair": "Dołącz z telefonu",
-    "introKit": "Użyj zestawu odzyskiwania",
     "warning": "Dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi. Najpierw obok profilu zapisywana jest kopia zapasowa.",
     "nameLabel": "Nazwa urządzenia",
     "passwordLabel": "Hasło urządzenia",
@@ -342,7 +365,19 @@
     "kitHint": "Wpisz kod odzyskiwania z zestawu odzyskiwania synchronizacji lub tekst jego kodu QR.",
     "codeLabel": "Kod odzyskiwania",
     "accountLabel": "Numer konta",
-    "confirm": "Dołącz i zastąp"
+    "confirm": "Dołącz i zastąp",
+    "choice": {
+      "pair": {
+        "title": "Mam telefon, który synchronizuje",
+        "lead": "Pojawi się kod. Na telefonie: Ustawienia → Synchronizacja → Dodaj urządzenie."
+      },
+      "kit": {
+        "title": "Mam zestaw odzyskiwania synchronizacji",
+        "lead": "Wpisujesz kod z zestawu i adres serwera. Tak dołącza też drugi komputer."
+      }
+    },
+    "connect": "Połącz",
+    "firstRunDone": "To urządzenie jest teraz synchronizowane"
   },
   "phone": {
     "title": "Synchronizacja",
@@ -354,12 +389,21 @@
       "synced": "Aktualna",
       "syncing": "Synchronizowanie…",
       "waiting": "Zmiana jest wstrzymana",
-      "offline": "Offline",
+      "unreachable": "Serwer poza zasięgiem",
+      "unreachableLong_one": "Brak synchronizacji od {{count}} dnia",
+      "unreachableLong_few": "Brak synchronizacji od {{count}} dni",
+      "unreachableLong_many": "Brak synchronizacji od {{count}} dni",
+      "unreachableLong_other": "Brak synchronizacji od {{count}} dnia",
       "paused": "Wstrzymana",
       "error": "Zatrzymana"
     },
-    "setUp": "Skonfiguruj synchronizację na tym telefonie",
-    "scan": "Zeskanuj kod z innego urządzenia",
+    "rowWithAge": "{{state}} · {{age}}",
+    "choice": {
+      "scan": {
+        "title": "Zeskanuj kod z komputera",
+        "lead": "Na komputerze: Ustawienia → Synchronizacja → Dodaj urządzenie. Można też zeskanować kod QR Zestawu odzyskiwania."
+      }
+    },
     "typeCode": "Wpisz kod zestawu odzyskiwania",
     "addDevice": "Dodaj urządzenie",
     "busy": "Nie zamykaj Moony, dopóki to się nie skończy.",
@@ -369,7 +413,7 @@
     "renewUnavailable": "Odnowienie nie jest dostępne w aplikacji na telefon.",
     "scanTitle": "Skanuj kod",
     "scanHint": "Skieruj aparat na kod na drugim urządzeniu (Ustawienia → Synchronizacja → Dodaj urządzenie) albo na kod QR z zestawu odzyskiwania.",
-    "addDeviceHint": "Na nowym urządzeniu wybierz „Dołącz z telefonu” w Ustawienia → Synchronizacja, a potem skieruj aparat na wyświetlony kod.",
+    "addDeviceHint": "Na nowym urządzeniu wybierz „Połącz to urządzenie” w Ustawienia → Synchronizacja, a potem skieruj aparat na wyświetlony kod.",
     "passwordFirst": "Zanim zeskanujesz kod drugiego urządzenia, wpisz hasło urządzenia.",
     "connecting": "Łączenie…",
     "cameraDenied": "Zezwól na dostęp do aparatu w Ustawieniach, aby zeskanować kod.",
@@ -415,6 +459,7 @@
     "onThisDevice": "Na tym urządzeniu:"
   },
   "limits": {
+    "lostTitle": "Zgubiono urządzenie lub Zestaw odzyskiwania?",
     "lostDevice": "Zgubionego urządzenia ani Zestawu odzyskiwania nie można jeszcze odciąć od zsynchronizowanych danych, a kto je ma, może już teraz odczytać to, co zawierają. Jeśli coś zaginie, usuń zsynchronizowane dane i skonfiguruj synchronizację od nowa z nowym Zestawem; pozostałe urządzenia będą musiały wtedy dołączyć ponownie."
   },
   "codes": {
@@ -422,5 +467,9 @@
     "kitNotForSetup": "To jest kod zestawu odzyskiwania, a nie kod połączenia. Użyj go, aby dołączyć do już istniejących zsynchronizowanych danych.",
     "connectionNotHere": "To jest kod połączenia z serwerem synchronizacji. Użyj go podczas konfigurowania synchronizacji, a nie tutaj.",
     "notAServerAddress": "To nie jest adres serwera synchronizacji. Wpisz adres swojego serwera synchronizacji lub wklej jego kod połączenia."
+  },
+  "whatSyncs": {
+    "title": "Co jest synchronizowane",
+    "body": "Synchronizowane jest wszystko, co wprowadzisz do Moony. Język, wygląd, menu, powiadomienia, hasło urządzenia, klucz odzyskiwania i kopie zapasowe należą do każdego urządzenia osobno. Ceny i historia są wyliczane na każdym urządzeniu. Dokumenty i zdjęcia na razie zostają na urządzeniu, na którym je dodano."
   }
 }

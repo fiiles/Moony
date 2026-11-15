@@ -78,7 +78,9 @@
     "backupStale_other": "Ostatnia kopia zapasowa sprzed {{count}} dnia",
     "backupNever": "Brak kopii zapasowej",
     "valuationStale": "Wycena {{name}} ma rok",
+    "syncStalled": "Synchronizacja została zatrzymana",
     "actions": {
+      "open": "Otwórz",
       "record": "Zapisz",
       "categorize": "Przypisz",
       "import": "Importuj",
@@ -874,7 +876,10 @@
       "backup": "Kopia zapasowa"
     },
     "backupTitle": "Zrób kopię zapasową danych",
+    "protectTitle": "Chroń swoje dane",
     "backupLead": "Ten telefon przechowuje jedyną kopię twoich danych, której nie ma w kopii zapasowej telefonu (iCloud ani komputer). Zapisz zaszyfrowaną kopię zapasową w iCloud Drive lub w wybranym folderze; Moony nigdy jej nie widzi.",
+    "syncLead": "Masz serwer synchronizacji?",
+    "syncLink": "Skonfiguruj synchronizację",
     "currencyPick": "Waluta główna",
     "countryPick": "Kraj bankowości",
     "searchCurrency": "Szukaj waluty"

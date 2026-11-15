@@ -7,18 +7,36 @@
     "waiting": "Změna je zadržena",
     "paused": "Synchronizace pozastavena",
     "error": "Chyba synchronizace",
-    "offline": "Offline"
+    "unreachable": "Server mimo dosah",
+    "unreachableLong_one": "Nesynchronizováno {{count}} den",
+    "unreachableLong_few": "Nesynchronizováno {{count}} dny",
+    "unreachableLong_many": "Nesynchronizováno {{count}} dní",
+    "unreachableLong_other": "Nesynchronizováno {{count}} dní"
+  },
+  "age": {
+    "justNow": "právě teď",
+    "minutes_one": "před {{count}} min",
+    "minutes_few": "před {{count}} min",
+    "minutes_many": "před {{count}} min",
+    "minutes_other": "před {{count}} min",
+    "hours_one": "před {{count}} h",
+    "hours_few": "před {{count}} h",
+    "hours_many": "před {{count}} h",
+    "hours_other": "před {{count}} h",
+    "days_one": "před {{count}} dnem",
+    "days_few": "před {{count}} dny",
+    "days_many": "před {{count}} dny",
+    "days_other": "před {{count}} dny"
+  },
+  "popover": {
+    "title": "Synchronizace",
+    "pending": "Čeká na odeslání",
+    "server": "Server",
+    "openSettings": "Otevřít nastavení",
+    "settings": "Nastavení synchronizace"
   },
   "status": {
-    "phase": {
-      "off": "Synchronizace je vypnutá",
-      "settingUp": "Nastavuje se synchronizace",
-      "idle": "Vše aktuální",
-      "syncing": "Synchronizuji…",
-      "waiting": "Synchronizuje se, změna z jiného zařízení je zadržena",
-      "paused": "Synchronizace je pozastavená",
-      "error": "Synchronizace se zastavila"
-    },
+    "unreachableNote": "Synchronizace se obnoví, až bude server v dosahu.",
     "problem": {
       "captureBroken": "Sledování změn na tomto zařízení je poškozené, proto se synchronizace zastavila. Lze ho opravit.",
       "vaultGone": "Synchronizovaná data byla ze synchronizačního serveru smazána.",
@@ -57,7 +75,9 @@
     "dialogTitle": "Změnit adresu serveru",
     "dialogBody": "Použijte to, když se váš synchronizační server přestěhoval na novou adresu. Musí jít o tentýž server, na kterém jsou vaše synchronizovaná data. Každé zařízení si adresu mění samo, stejný postup tedy zopakujte na ostatních zařízeních. Uložte si znovu Záchrannou sadu: nově obsahuje novou adresu.",
     "success": "Adresa synchronizačního serveru je změněna",
-    "unchanged": "Toto zařízení už tuto adresu používá."
+    "unchanged": "Toto zařízení už tuto adresu používá.",
+    "repeatOn": "Totéž udělejte na: {{devices}}",
+    "repeatOnOthers": "Totéž udělejte na ostatních zařízeních."
   },
   "intro": {
     "description": "Udržujte data synchronizovaná na všech svých zařízeních. Jsou koncově šifrovaná: synchronizační server ukládá jen data, která nepřečte.",
@@ -69,7 +89,12 @@
       "title": "Zrušit nastavení?",
       "description": "Toto zařízení zapomene synchronizační účet vytvořený při tomto nastavení a už uhrazená platba se nepřenese. Nastavení synchronizace pak začne od začátku, s novým synchronizačním účtem.",
       "keep": "Ponechat nastavení"
-    }
+    },
+    "startTitle": "Začít synchronizovat",
+    "startLead": "Toto zařízení bude první. Potřebujete připojovací kód svého synchronizačního serveru.",
+    "joinTitle": "Připojit toto zařízení",
+    "joinLead": "Synchronizaci už máte na jiném zařízení.",
+    "joinButton": "Připojit toto zařízení"
   },
   "setup": {
     "title": "Nastavit synchronizaci",
@@ -327,8 +352,6 @@
     "validUntil": "Kód platí do {{time}}."
   },
   "join": {
-    "introPair": "Připojit z telefonu",
-    "introKit": "Použít záchrannou sadu",
     "warning": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Předtím se vedle profilu uloží záloha.",
     "nameLabel": "Název zařízení",
     "passwordLabel": "Heslo zařízení",
@@ -342,7 +365,19 @@
     "kitHint": "Zadejte obnovovací kód ze záchranné sady synchronizace nebo text jejího QR kódu.",
     "codeLabel": "Obnovovací kód",
     "accountLabel": "Číslo účtu",
-    "confirm": "Připojit a nahradit"
+    "confirm": "Připojit a nahradit",
+    "choice": {
+      "pair": {
+        "title": "Mám u sebe telefon se synchronizací",
+        "lead": "Zobrazí se kód. V telefonu: Nastavení → Synchronizace → Přidat zařízení."
+      },
+      "kit": {
+        "title": "Mám Záchrannou sadu synchronizace",
+        "lead": "Zadáte kód ze sady a adresu serveru. Tak se připojuje i druhý počítač."
+      }
+    },
+    "connect": "Připojit",
+    "firstRunDone": "Toto zařízení se teď synchronizuje"
   },
   "phone": {
     "title": "Synchronizace",
@@ -354,12 +389,21 @@
       "synced": "Aktuální",
       "syncing": "Synchronizuje se…",
       "waiting": "Změna je zadržena",
-      "offline": "Offline",
+      "unreachable": "Server mimo dosah",
+      "unreachableLong_one": "Nesynchronizováno {{count}} den",
+      "unreachableLong_few": "Nesynchronizováno {{count}} dny",
+      "unreachableLong_many": "Nesynchronizováno {{count}} dní",
+      "unreachableLong_other": "Nesynchronizováno {{count}} dní",
       "paused": "Pozastaveno",
       "error": "Zastaveno"
     },
-    "setUp": "Nastavit synchronizaci v tomto telefonu",
-    "scan": "Naskenovat kód z jiného zařízení",
+    "rowWithAge": "{{state}} · {{age}}",
+    "choice": {
+      "scan": {
+        "title": "Naskenovat kód z počítače",
+        "lead": "Na počítači: Nastavení → Synchronizace → Přidat zařízení. Naskenovat jde i QR kód Záchranné sady."
+      }
+    },
     "typeCode": "Zadat kód záchranné sady",
     "addDevice": "Přidat zařízení",
     "busy": "Nechte Moony otevřené, dokud to neskončí.",
@@ -369,7 +413,7 @@
     "renewUnavailable": "Obnovení není v aplikaci pro telefon dostupné.",
     "scanTitle": "Naskenovat kód",
     "scanHint": "Namiřte fotoaparát na kód na druhém zařízení (Nastavení → Synchronizace → Přidat zařízení) nebo na QR kód záchranné sady.",
-    "addDeviceHint": "Na novém zařízení zvolte v Nastavení → Synchronizace „Připojit z telefonu“ a pak namiřte fotoaparát na kód, který ukáže.",
+    "addDeviceHint": "Na novém zařízení zvolte v Nastavení → Synchronizace „Připojit toto zařízení“ a pak namiřte fotoaparát na kód, který ukáže.",
     "passwordFirst": "Než naskenujete kód druhého zařízení, zadejte heslo zařízení.",
     "connecting": "Připojování…",
     "cameraDenied": "Aby šlo kód naskenovat, povolte v Nastavení přístup k fotoaparátu.",
@@ -415,6 +459,7 @@
     "onThisDevice": "V tomto zařízení:"
   },
   "limits": {
+    "lostTitle": "Ztratili jste zařízení nebo Záchrannou sadu?",
     "lostDevice": "Ztracené zařízení nebo ztracenou Záchrannou sadu zatím nelze odříznout od synchronizovaných dat a kdo je má, může už teď číst, co obsahují. Pokud se něco ztratí, smažte synchronizovaná data a nastavte synchronizaci znovu s novou sadou; ostatní zařízení se pak musí připojit znovu."
   },
   "codes": {
@@ -422,5 +467,9 @@
     "kitNotForSetup": "Toto je kód ze záchranné sady, ne připojovací kód. Použijte ho při připojení k již existujícím synchronizovaným datům.",
     "connectionNotHere": "Toto je připojovací kód synchronizačního serveru. Použijte ho při nastavování synchronizace, ne tady.",
     "notAServerAddress": "Toto není adresa synchronizačního serveru. Zadejte adresu svého synchronizačního serveru nebo vložte jeho připojovací kód."
+  },
+  "whatSyncs": {
+    "title": "Co se synchronizuje",
+    "body": "Synchronizuje se všechno, co do Moony zadáte. Jazyk, vzhled, menu, oznámení, heslo zařízení, obnovovací klíč a zálohy patří každému zařízení zvlášť. Ceny a historie se dopočítávají na každém zařízení. Dokumenty a fotky zatím zůstávají na zařízení, na kterém jste je přidali."
   }
 }

@@ -49,7 +49,8 @@
   },
   "titles": {
     "backup_stale": "Backup dei dati",
-    "balances_stale": "Saldi dei conti"
+    "balances_stale": "Saldi dei conti",
+    "sync_stalled": "Sincronizzazione"
   },
   "sub": {
     "insurance_anniversary": "Termine del preavviso di disdetta · ricorrenza {{date}}",
@@ -74,7 +75,9 @@
     "backup_never": "Ancora nessun backup",
     "balances_stale_one": "{{count}} conto non aggiornato da oltre 30 giorni",
     "balances_stale_many": "{{count}} conti non aggiornati da oltre 30 giorni",
-    "balances_stale_other": "{{count}} conti non aggiornati da oltre 30 giorni"
+    "balances_stale_other": "{{count}} conti non aggiornati da oltre 30 giorni",
+    "sync_stalled": "Ultima sincronizzazione {{date}}",
+    "sync_stalled_never": "Non ancora sincronizzato"
   },
   "short": {
     "backup_stale": "fai il backup dei dati",
@@ -83,7 +86,8 @@
     "balances_stale_other": "aggiorna {{count}} saldi",
     "valuation_stale": "rivaluta {{title}}",
     "loan_balance_check": "inserisci il saldo attuale di {{title}}",
-    "loan_fixation_expired": "inserisci il nuovo tasso di {{title}}"
+    "loan_fixation_expired": "inserisci il nuovo tasso di {{title}}",
+    "sync_stalled": "controlla la sincronizzazione"
   },
   "groups": {
     "insuranceDates": {
@@ -135,6 +139,11 @@
       "label": "Saldo e tasso dei prestiti",
       "hint": "Inserire il saldo attuale una volta l'anno e il nuovo tasso dopo la fine di un tasso fisso.",
       "mute": "Non ricordarmi saldo e tasso dei prestiti"
+    },
+    "sync": {
+      "label": "Sincronizzazione",
+      "hint": "Quando la sincronizzazione si ferma o ha bisogno di te.",
+      "mute": "Non ricordarmi la sincronizzazione"
     }
   },
   "settings": {

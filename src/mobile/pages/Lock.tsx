@@ -4,7 +4,7 @@
  * The same states as the desktop `auth-page.tsx` — first-run wizard, unlock, three-step recovery —
  * on phone surfaces: the lock is centred under the status bar and above the home indicator, the
  * recovery is a pushed full-height screen with a back button, the first run is the phone's own
- * (`FirstRun`: seven steps in one column, no live preview).
+ * (`FirstRun`: up to eight steps in one column, no live preview).
  * Credential failures show inline under the field; the provider toasts everything else.
  *
  * With biometric unlock switched on, "Odemknout obličejem" comes first and the system prompt opens
@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQuery } from '@tanstack/react-query';
+import { useIsMutating, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -25,6 +25,7 @@ import { Download, Lock as LockIcon, RefreshCw } from 'lucide-react';
 import { z } from 'zod';
 import { recoverSchema, unlockSchema, type BackupInspection } from '@shared/schema';
 import { GREETING_NAME_KEY, LOCKED_AT_KEY, useAuth } from '@/hooks/use-auth';
+import { REPLACE_DEVICE_MUTATION_KEY } from '@/hooks/use-device-sync-mutations';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { useFormat } from '@/lib/use-format';
 import { isAuthApiError } from '@/lib/api-error';
@@ -71,7 +72,7 @@ import { whenVisible } from '@/mobile/lib/when-visible';
 import { FirstRun } from '@/mobile/pages/FirstRun';
 import { RestoreBackupSheet } from '@/mobile/sheets/RestoreBackupSheet';
 import { NavTextButton } from '@/mobile/shell/NavBar';
-import { routes } from '@/mobile/shell/routes';
+import { routes, settingsPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 
 type Panel = 'unlock' | 'recover';
@@ -123,6 +124,8 @@ export default function Lock() {
   const [, setLocation] = useLocation();
   const { i18n } = useTranslation('auth');
   const { updateProfile } = useSettingsMutations();
+  // The first run's Připojení step replaces this profile's data: no language save meanwhile
+  const replacingData = useIsMutating({ mutationKey: REPLACE_DEVICE_MUTATION_KEY }) > 0;
   const [panel, setPanel] = useState<Panel>('unlock');
 
   // First-run wizard: once `needs_setup` has been seen it stays mounted until it reports
@@ -168,15 +171,15 @@ export default function Lock() {
             showFormatSample={false}
             value={selectedLanguage}
             onChange={handleLanguageChange}
-            disabled={updateProfile.isPending}
+            disabled={updateProfile.isPending || replacingData}
           />
         </header>
         {introDone ? (
           <FirstRun
             language={selectedLanguage}
-            onFinished={() => {
+            onFinished={(to) => {
               setWizardDone(true);
-              setLocation(routes.overview);
+              setLocation(to === 'sync' ? settingsPath('sync') : routes.overview);
             }}
           />
         ) : (

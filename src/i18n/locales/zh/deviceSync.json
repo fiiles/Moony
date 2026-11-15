@@ -7,18 +7,24 @@
     "waiting": "更改已暂缓",
     "paused": "同步已暂停",
     "error": "同步出错",
-    "offline": "离线"
+    "unreachable": "服务器无法连接",
+    "unreachableLong_other": "已 {{count}} 天未同步"
+  },
+  "age": {
+    "justNow": "刚刚",
+    "minutes_other": "{{count}} 分钟前",
+    "hours_other": "{{count}} 小时前",
+    "days_other": "{{count}} 天前"
+  },
+  "popover": {
+    "title": "同步",
+    "pending": "等待发送",
+    "server": "服务器",
+    "openSettings": "打开设置",
+    "settings": "同步设置"
   },
   "status": {
-    "phase": {
-      "off": "同步已关闭",
-      "settingUp": "正在设置同步",
-      "idle": "已是最新",
-      "syncing": "正在同步…",
-      "waiting": "正在同步，来自另一台设备的更改已暂缓",
-      "paused": "同步已暂停",
-      "error": "同步已停止"
-    },
+    "unreachableNote": "服务器恢复可达后,同步将自动恢复。",
     "problem": {
       "captureBroken": "此设备的变更跟踪已损坏，因此同步已停止。可以修复。",
       "vaultGone": "已同步的数据已从同步服务器中删除。",
@@ -57,7 +63,9 @@
     "dialogTitle": "更改服务器地址",
     "dialogBody": "当您的同步服务器迁移到新地址时使用。它必须是同一台服务器，并保存着您已同步的数据。每台设备各自更改自己的地址，请在您的其他设备上也这样做。请重新保存恢复包：它现在包含新地址。",
     "success": "同步服务器地址已更改",
-    "unchanged": "此设备已在使用该地址。"
+    "unchanged": "此设备已在使用该地址。",
+    "repeatOn": "请在以下设备上做同样的操作：{{devices}}",
+    "repeatOnOthers": "请在您的其他设备上做同样的操作。"
   },
   "intro": {
     "description": "让您的数据在所有设备上保持一致。数据经端到端加密：同步服务器只保存它无法读取的数据。",
@@ -69,7 +77,12 @@
       "title": "取消设置？",
       "description": "此设备会忘记为本次设置创建的同步账户，已支付的款项也不会转移。再次设置同步将从头开始，并使用新的同步账户。",
       "keep": "继续设置"
-    }
+    },
+    "startTitle": "开始同步",
+    "startLead": "这台设备将是第一台。您需要同步服务器的连接码。",
+    "joinTitle": "连接此设备",
+    "joinLead": "您已在另一台设备上同步。",
+    "joinButton": "连接此设备"
   },
   "setup": {
     "title": "设置同步",
@@ -306,8 +319,6 @@
     "validUntil": "此代码有效期至 {{time}}。"
   },
   "join": {
-    "introPair": "从手机加入",
-    "introKit": "使用恢复包",
     "warning": "此设备的数据将被同步的数据替换。会先在您的配置文件旁保存一份备份。",
     "nameLabel": "设备名称",
     "passwordLabel": "设备密码",
@@ -321,7 +332,19 @@
     "kitHint": "输入同步恢复包中的恢复代码，或其二维码的文本。",
     "codeLabel": "恢复代码",
     "accountLabel": "账户编号",
-    "confirm": "加入并替换"
+    "confirm": "加入并替换",
+    "choice": {
+      "pair": {
+        "title": "我手边有已开启同步的手机",
+        "lead": "将显示一个代码。在手机上：设置 → 同步 → 添加设备。"
+      },
+      "kit": {
+        "title": "我有同步恢复包",
+        "lead": "输入恢复包中的代码和服务器地址。第二台电脑也通过这种方式加入。"
+      }
+    },
+    "connect": "连接",
+    "firstRunDone": "此设备现已同步"
   },
   "phone": {
     "title": "同步",
@@ -333,12 +356,18 @@
       "synced": "已是最新",
       "syncing": "正在同步…",
       "waiting": "更改已暂缓",
-      "offline": "离线",
+      "unreachable": "服务器无法连接",
+      "unreachableLong_other": "已 {{count}} 天未同步",
       "paused": "已暂停",
       "error": "已停止"
     },
-    "setUp": "在这部手机上设置同步",
-    "scan": "扫描另一台设备上的代码",
+    "rowWithAge": "{{state}} · {{age}}",
+    "choice": {
+      "scan": {
+        "title": "扫描电脑上的代码",
+        "lead": "在电脑上:设置 → 同步 → 添加设备。也可以扫描恢复套件的二维码。"
+      }
+    },
     "typeCode": "输入恢复包代码",
     "addDevice": "添加设备",
     "busy": "请保持 Moony 打开，直到完成。",
@@ -348,7 +377,7 @@
     "renewUnavailable": "手机应用中无法续订。",
     "scanTitle": "扫描代码",
     "scanHint": "请将相机对准另一台设备上的代码（设置 → 同步 → 添加设备），或对准恢复包的二维码。",
-    "addDeviceHint": "在新设备上，于 设置 → 同步 中选择“从手机加入”，然后将相机对准它显示的代码。",
+    "addDeviceHint": "在新设备上，于 设置 → 同步 中选择“连接此设备”，然后将相机对准它显示的代码。",
     "passwordFirst": "扫描另一台设备的代码前，请先输入设备密码。",
     "connecting": "正在连接…",
     "cameraDenied": "请在设置中允许访问相机，以便扫描代码。",
@@ -394,6 +423,7 @@
     "onThisDevice": "此设备上："
   },
   "limits": {
+    "lostTitle": "丢失了设备或恢复包？",
     "lostDevice": "目前还无法让丢失的设备或恢复包与您的同步数据断开，而持有它的人现在就能读取其中的内容。如果有设备或恢复包丢失，请删除同步数据，并使用新的恢复包重新设置同步；您的其他设备随后需要重新加入。"
   },
   "codes": {
@@ -401,5 +431,9 @@
     "kitNotForSetup": "这是恢复包代码，不是连接码。加入已有的同步数据时请使用它。",
     "connectionNotHere": "这是同步服务器的连接码。请在设置同步时使用，而不是在这里。",
     "notAServerAddress": "这不是同步服务器地址。请输入您的同步服务器地址，或粘贴其连接码。"
+  },
+  "whatSyncs": {
+    "title": "同步哪些内容",
+    "body": "您在 Moony 中输入的所有内容都会同步。语言、外观、菜单、通知、设备密码、恢复密钥和备份属于每台设备各自所有。价格和历史记录在每台设备上单独计算。文档和照片目前仍保留在添加它们的设备上。"
   }
 }

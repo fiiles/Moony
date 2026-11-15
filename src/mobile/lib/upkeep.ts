@@ -14,6 +14,7 @@ export type UpkeepKind =
   | 'uncategorized'
   | 'statement_due'
   | 'backup_stale'
+  | 'sync_stalled'
   | 'valuation_stale'
   | 'loan_balance_check'
   | 'loan_fixation_expired';
@@ -86,7 +87,7 @@ function balanceDay(account: UpkeepAccount): number {
 
 /**
  * The rows of the Údržba card on Přehled (spec §8.3 item 1), in the order they are shown: stale
- * balances, uncategorized payments, statements, backup, valuations, then the loans' fixations and
+ * balances, uncategorized payments, statements, backup, stalled sync, valuations, then the loans' fixations and
  * balance checks. The card is absent when there are none.
  *
  * `balances_stale`, `backup_stale`, `valuation_stale` and the two loan checks are the desktop's
@@ -163,6 +164,18 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
               params: { count: Math.max(daysBetween(backup.sinceDay, todayDay), 0) },
             },
       milestone: backup,
+    });
+  }
+
+  // Sync stopped for good (the desktop's `sync_stalled` reminder): absent while healthy or merely
+  // out of reach
+  const syncStalled = milestones.find((m) => m.kind === 'sync_stalled');
+  if (syncStalled) {
+    rows.push({
+      id: 'sync_stalled',
+      kind: 'sync_stalled',
+      title: { key: 'upkeep.syncStalled', params: {} },
+      milestone: syncStalled,
     });
   }
 

@@ -4,6 +4,7 @@ import { Check } from 'lucide-react';
 import { FX_SUPPORTED_CODES, currencyName } from '@shared/currencies';
 import type { BackupInspection } from '@shared/schema';
 import { Button } from '@/components/ui/button';
+import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
@@ -22,13 +23,15 @@ const PRIVACY_POINTS = ['encryption', 'localOnly', 'marketData'] as const;
  * the desktop's speak of ordinary files beside the database and of a data folder to back up), and
  * the two choices that shape the rest: the main currency (only one with a rate source) and the
  * banking country (rule packs, the import's bank order). Each opens a picker sheet; the hints under
- * the rows are the desktop's.
+ * the rows are the desktop's. With sync built in, the footer also offers the join path (spec
+ * 2026-11-14 §5.2) next to the restore.
  */
 export function PrivacyStep({ flow }: { flow: FirstRunFlow }) {
   const { t } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
   const { t: tm } = useTranslation('mobile');
   const fmt = useFormat();
+  const syncFeature = useDeviceSyncFeature();
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [countryOpen, setCountryOpen] = useState(false);
   const { pickRestore, restore, restoring } = useRestoreBackup();
@@ -82,9 +85,25 @@ export function PrivacyStep({ flow }: { flow: FirstRunFlow }) {
         {tc('buttons.continue')}
       </Button>
 
-      {/* The desktop wizard's way in for someone moving to this phone or reinstalling: the
-          restored profile replaces the first run, and its own password unlocks it */}
-      <p className={cn(caption, 'mt-5 text-center')}>{t('onboarding.welcome.restoreLead')}</p>
+      {/* The desktop wizard's ways in for someone moving to this phone or reinstalling: joining
+          sync (when built in), or the restored profile, which replaces the first run and is
+          unlocked by its own password */}
+      <p className={cn(caption, 'mt-5 text-center')}>
+        {syncFeature
+          ? t('onboarding.welcome.otherDeviceLead')
+          : t('onboarding.welcome.restoreLead')}
+      </p>
+      {syncFeature && (
+        <button
+          type="button"
+          className={cn(textLink, 'mt-0')}
+          disabled={restoring}
+          onClick={flow.startJoin}
+          data-testid="first-run-join-sync"
+        >
+          {t('onboarding.welcome.joinSync')}
+        </button>
+      )}
       <button
         type="button"
         className={cn(textLink, 'mt-0')}

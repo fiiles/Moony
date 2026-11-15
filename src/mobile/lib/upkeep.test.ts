@@ -405,4 +405,26 @@ describe('buildUpkeepRows', () => {
     expect(ids.filter((id) => id.startsWith('statement_due:'))).toHaveLength(2);
     expect(new Set(ids).size).toBe(ids.length);
   });
+  describe('sync_stalled', () => {
+    it('is one row when the milestone is there, between backup and valuations', () => {
+      const rows = buildUpkeepRows(
+        input({
+          milestones: [
+            milestone('backup_stale', { sinceDay: ago(40) }),
+            milestone('valuation_stale', { sourceId: 'p1', title: 'Byt' }),
+            milestone('sync_stalled'),
+          ],
+        })
+      );
+      expect(rows.map((r) => r.id)).toEqual(['backup_stale', 'sync_stalled', 'valuation_stale:p1']);
+      const row = rows[1];
+      expect(row.title.key).toBe('upkeep.syncStalled');
+      expect(row.milestone?.kind).toBe('sync_stalled');
+    });
+
+    it('is absent without the milestone', () => {
+      const rows = buildUpkeepRows(input({ milestones: [milestone('backup_stale')] }));
+      expect(rows.map((r) => r.kind)).not.toContain('sync_stalled');
+    });
+  });
 });

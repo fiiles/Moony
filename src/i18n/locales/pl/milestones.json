@@ -53,7 +53,8 @@
   },
   "titles": {
     "backup_stale": "Kopia zapasowa danych",
-    "balances_stale": "Salda kont"
+    "balances_stale": "Salda kont",
+    "sync_stalled": "Synchronizacja"
   },
   "sub": {
     "insurance_anniversary": "Termin wypowiedzenia · rocznica {{date}}",
@@ -80,7 +81,9 @@
     "balances_stale_one": "{{count}} konto nie było aktualizowane od ponad 30 dni",
     "balances_stale_few": "{{count}} konta nie były aktualizowane od ponad 30 dni",
     "balances_stale_many": "{{count}} kont nie było aktualizowanych od ponad 30 dni",
-    "balances_stale_other": "{{count}} konta nie było aktualizowane od ponad 30 dni"
+    "balances_stale_other": "{{count}} konta nie było aktualizowane od ponad 30 dni",
+    "sync_stalled": "Ostatnia synchronizacja {{date}}",
+    "sync_stalled_never": "Jeszcze nie zsynchronizowano"
   },
   "short": {
     "backup_stale": "zrób kopię zapasową danych",
@@ -90,7 +93,8 @@
     "balances_stale_other": "zaktualizuj {{count}} salda",
     "valuation_stale": "przeszacuj: {{title}}",
     "loan_balance_check": "wpisz aktualne saldo: {{title}}",
-    "loan_fixation_expired": "wpisz nową stopę: {{title}}"
+    "loan_fixation_expired": "wpisz nową stopę: {{title}}",
+    "sync_stalled": "sprawdź synchronizację"
   },
   "groups": {
     "insuranceDates": {
@@ -142,6 +146,11 @@
       "label": "Saldo i oprocentowanie kredytów",
       "hint": "Coroczne wpisanie aktualnego salda i nowa stopa po końcu stałego oprocentowania.",
       "mute": "Nie przypominaj o saldzie i oprocentowaniu kredytów"
+    },
+    "sync": {
+      "label": "Synchronizacja",
+      "hint": "Gdy synchronizacja się zatrzyma lub potrzebuje Twojej uwagi.",
+      "mute": "Nie przypominaj o synchronizacji"
     }
   },
   "settings": {

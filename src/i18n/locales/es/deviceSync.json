@@ -7,18 +7,32 @@
     "waiting": "Cambio retenido",
     "paused": "Sincronización en pausa",
     "error": "Error de sincronización",
-    "offline": "Sin conexión"
+    "unreachable": "Servidor fuera de alcance",
+    "unreachableLong_one": "Sin sincronizar desde hace {{count}} día",
+    "unreachableLong_many": "Sin sincronizar desde hace {{count}} días",
+    "unreachableLong_other": "Sin sincronizar desde hace {{count}} días"
+  },
+  "age": {
+    "justNow": "ahora mismo",
+    "minutes_one": "hace {{count}} min",
+    "minutes_many": "hace {{count}} min",
+    "minutes_other": "hace {{count}} min",
+    "hours_one": "hace {{count}} h",
+    "hours_many": "hace {{count}} h",
+    "hours_other": "hace {{count}} h",
+    "days_one": "hace {{count}} día",
+    "days_many": "hace {{count}} días",
+    "days_other": "hace {{count}} días"
+  },
+  "popover": {
+    "title": "Sincronización",
+    "pending": "Pendiente de enviar",
+    "server": "Servidor",
+    "openSettings": "Abrir ajustes",
+    "settings": "Ajustes de sincronización"
   },
   "status": {
-    "phase": {
-      "off": "La sincronización está desactivada",
-      "settingUp": "Configurando la sincronización",
-      "idle": "Al día",
-      "syncing": "Sincronizando…",
-      "waiting": "Sincronizando; un cambio de otro dispositivo está retenido",
-      "paused": "La sincronización está en pausa",
-      "error": "La sincronización se detuvo"
-    },
+    "unreachableNote": "La sincronización se reanudará cuando el servidor vuelva a estar al alcance.",
     "problem": {
       "captureBroken": "El seguimiento de cambios de este dispositivo está dañado, por eso la sincronización se detuvo. Se puede reparar.",
       "vaultGone": "Los datos sincronizados se eliminaron del servidor de sincronización.",
@@ -57,7 +71,9 @@
     "dialogTitle": "Cambiar la dirección del servidor",
     "dialogBody": "Úsalo cuando tu servidor de sincronización se haya mudado a una dirección nueva. Debe ser el mismo servidor, con tus datos sincronizados. Cada dispositivo cambia su propia dirección, así que haz lo mismo en tus otros dispositivos. Guarda de nuevo el kit de recuperación: ahora incluye la dirección nueva.",
     "success": "Dirección del servidor de sincronización cambiada",
-    "unchanged": "Este dispositivo ya usa esta dirección."
+    "unchanged": "Este dispositivo ya usa esta dirección.",
+    "repeatOn": "Haz lo mismo en: {{devices}}",
+    "repeatOnOthers": "Haz lo mismo en tus otros dispositivos."
   },
   "intro": {
     "description": "Mantén tus datos al día en todos tus dispositivos. Están cifrados de extremo a extremo: el servidor de sincronización solo guarda datos que no puede leer.",
@@ -69,7 +85,12 @@
       "title": "¿Cancelar la configuración?",
       "description": "Este dispositivo olvida la cuenta de sincronización creada para esta configuración, y un pago ya realizado no se traslada. Si vuelves a configurar la sincronización, empieza desde cero, con una cuenta de sincronización nueva.",
       "keep": "Mantener la configuración"
-    }
+    },
+    "startTitle": "Empezar a sincronizar",
+    "startLead": "Este dispositivo será el primero. Necesitas el código de conexión de tu servidor de sincronización.",
+    "joinTitle": "Conectar este dispositivo",
+    "joinLead": "Ya sincronizas en otro dispositivo.",
+    "joinButton": "Conectar este dispositivo"
   },
   "setup": {
     "title": "Configurar la sincronización",
@@ -320,8 +341,6 @@
     "validUntil": "El código funciona hasta las {{time}}."
   },
   "join": {
-    "introPair": "Unirse desde tu teléfono",
-    "introKit": "Usar un kit de recuperación",
     "warning": "Los datos de este dispositivo se sustituyen por los sincronizados. Antes se guarda una copia de seguridad junto a tu perfil.",
     "nameLabel": "Nombre del dispositivo",
     "passwordLabel": "Contraseña del dispositivo",
@@ -335,7 +354,19 @@
     "kitHint": "Introduce el código de recuperación de tu kit de recuperación de sincronización, o el texto de su código QR.",
     "codeLabel": "Código de recuperación",
     "accountLabel": "Número de cuenta",
-    "confirm": "Unirse y reemplazar"
+    "confirm": "Unirse y reemplazar",
+    "choice": {
+      "pair": {
+        "title": "Tengo un teléfono que sincroniza",
+        "lead": "Aparecerá un código. En el teléfono: Ajustes → Sincronización → Añadir un dispositivo."
+      },
+      "kit": {
+        "title": "Tengo el kit de recuperación de sincronización",
+        "lead": "Introduces el código del kit y la dirección del servidor. Así se une también un segundo ordenador."
+      }
+    },
+    "connect": "Conectar",
+    "firstRunDone": "Este dispositivo ya se sincroniza"
   },
   "phone": {
     "title": "Sincronización",
@@ -347,12 +378,20 @@
       "synced": "Al día",
       "syncing": "Sincronizando…",
       "waiting": "Cambio retenido",
-      "offline": "Sin conexión",
+      "unreachable": "Servidor fuera de alcance",
+      "unreachableLong_one": "Sin sincronizar desde hace {{count}} día",
+      "unreachableLong_many": "Sin sincronizar desde hace {{count}} días",
+      "unreachableLong_other": "Sin sincronizar desde hace {{count}} días",
       "paused": "En pausa",
       "error": "Detenida"
     },
-    "setUp": "Configurar la sincronización en este teléfono",
-    "scan": "Escanear un código de otro dispositivo",
+    "rowWithAge": "{{state}} · {{age}}",
+    "choice": {
+      "scan": {
+        "title": "Escanear un código del ordenador",
+        "lead": "En el ordenador: Ajustes → Sincronización → Añadir un dispositivo. También se puede escanear el código QR del Kit de recuperación."
+      }
+    },
     "typeCode": "Escribir un código del kit de recuperación",
     "addDevice": "Añadir un dispositivo",
     "busy": "Mantén Moony abierto hasta que termine.",
@@ -362,7 +401,7 @@
     "renewUnavailable": "La renovación no está disponible en la app del teléfono.",
     "scanTitle": "Escanear un código",
     "scanHint": "Apunta la cámara al código de tu otro dispositivo (Ajustes → Sincronización → Añadir un dispositivo) o al código QR de tu kit de recuperación.",
-    "addDeviceHint": "En el dispositivo nuevo, elige «Unirse desde tu teléfono» en Ajustes → Sincronización y apunta la cámara al código que muestre.",
+    "addDeviceHint": "En el dispositivo nuevo, elige «Conectar este dispositivo» en Ajustes → Sincronización y apunta la cámara al código que muestre.",
     "passwordFirst": "Introduce la contraseña del dispositivo antes de escanear el código del otro dispositivo.",
     "connecting": "Conectando…",
     "cameraDenied": "Permite el acceso a la cámara en Ajustes para escanear el código.",
@@ -408,6 +447,7 @@
     "onThisDevice": "En este dispositivo:"
   },
   "limits": {
+    "lostTitle": "¿Has perdido un dispositivo o el Kit de recuperación?",
     "lostDevice": "Todavía no se puede cortar el acceso a tus datos sincronizados de un dispositivo o un Kit de recuperación perdido, y quien tenga uno ya puede leer lo que contiene. Si alguno desaparece, elimina los datos sincronizados y vuelve a configurar la sincronización con un Kit nuevo; tus otros dispositivos tendrán que unirse de nuevo."
   },
   "codes": {
@@ -415,5 +455,9 @@
     "kitNotForSetup": "Este es un código del kit de recuperación, no un código de conexión. Úsalo para unirte a datos sincronizados que ya existen.",
     "connectionNotHere": "Este es un código de conexión de un servidor de sincronización. Úsalo al configurar la sincronización, no aquí.",
     "notAServerAddress": "Esta no es la dirección de un servidor de sincronización. Escribe la dirección de tu servidor de sincronización o pega su código de conexión."
+  },
+  "whatSyncs": {
+    "title": "Qué se sincroniza",
+    "body": "Todo lo que introduces en Moony se sincroniza. El idioma, el aspecto, el menú, las notificaciones, la contraseña del dispositivo, la clave de recuperación y las copias de seguridad pertenecen a cada dispositivo. Los precios y el historial se calculan en cada dispositivo. Los documentos y las fotos, por ahora, se quedan en el dispositivo donde los añadiste."
   }
 }

@@ -12,6 +12,7 @@
  * the screen says once why; the way back is Settings, never an offer.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { useIsMutating } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -20,6 +21,7 @@ import { CircleAlert, RefreshCw } from 'lucide-react';
 import { z } from 'zod';
 import { recoverSchema, unlockSchema } from '@shared/schema';
 import { GREETING_NAME_KEY, LOCKED_AT_KEY, useAuth } from '@/hooks/use-auth';
+import { REPLACE_DEVICE_MUTATION_KEY } from '@/hooks/use-device-sync-mutations';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { useBiometricStatus } from '@/hooks/use-biometric-status';
 import { useFormat } from '@/lib/use-format';
@@ -89,6 +91,8 @@ export default function AuthPage() {
   const { t, i18n } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
   const { updateProfile } = useSettingsMutations();
+  // The first run's Připojení step replaces this profile's data: no language save meanwhile
+  const replacingData = useIsMutating({ mutationKey: REPLACE_DEVICE_MUTATION_KEY }) > 0;
   const fmt = useFormat();
   const [panel, setPanel] = useState<Panel>('unlock');
   const [keySaved, setKeySaved] = useState(false);
@@ -241,7 +245,7 @@ export default function AuthPage() {
             showFormatSample={false}
             value={selectedLanguage}
             onChange={handleLanguageChange}
-            disabled={updateProfile.isPending}
+            disabled={updateProfile.isPending || replacingData}
           />
         </header>
         {introDone ? (

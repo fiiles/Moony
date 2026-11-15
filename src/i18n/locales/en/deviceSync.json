@@ -7,18 +7,28 @@
     "waiting": "A change is held",
     "paused": "Sync paused",
     "error": "Sync error",
-    "offline": "Offline"
+    "unreachable": "Server out of reach",
+    "unreachableLong_one": "Not synced for {{count}} day",
+    "unreachableLong_other": "Not synced for {{count}} days"
+  },
+  "age": {
+    "justNow": "just now",
+    "minutes_one": "{{count}} min ago",
+    "minutes_other": "{{count}} min ago",
+    "hours_one": "{{count}} h ago",
+    "hours_other": "{{count}} h ago",
+    "days_one": "{{count}} day ago",
+    "days_other": "{{count}} days ago"
+  },
+  "popover": {
+    "title": "Sync",
+    "pending": "Waiting to be sent",
+    "server": "Server",
+    "openSettings": "Open settings",
+    "settings": "Sync settings"
   },
   "status": {
-    "phase": {
-      "off": "Sync is off",
-      "settingUp": "Setting up sync",
-      "idle": "Up to date",
-      "syncing": "Syncing…",
-      "waiting": "Syncing; a change from another device is held",
-      "paused": "Sync is paused",
-      "error": "Sync stopped"
-    },
+    "unreachableNote": "Sync resumes once the server is in reach.",
     "problem": {
       "captureBroken": "This device's change tracking is damaged, so syncing stopped. It can be repaired.",
       "vaultGone": "The synced data was deleted from the sync server.",
@@ -57,7 +67,9 @@
     "dialogTitle": "Change the server address",
     "dialogBody": "Use this when your sync server moved to a new address. It must be the same server, with your synced data. Every device changes its own address, so do the same on your other devices. Save the Recovery Kit again: it now carries the new address.",
     "success": "Sync server address changed",
-    "unchanged": "This device already uses this address."
+    "unchanged": "This device already uses this address.",
+    "repeatOn": "Do the same on: {{devices}}",
+    "repeatOnOthers": "Do the same on your other devices."
   },
   "intro": {
     "description": "Keep your data in step on all your devices. It is end-to-end encrypted: the sync server only stores data it cannot read.",
@@ -69,7 +81,12 @@
       "title": "Cancel the setup?",
       "description": "This device forgets the sync account created for this setup, and a payment already made for it is not carried over. Setting up sync again starts from the start, with a new sync account.",
       "keep": "Keep setup"
-    }
+    },
+    "startTitle": "Start syncing",
+    "startLead": "This device will be the first. You need your sync server's connection code.",
+    "joinTitle": "Connect this device",
+    "joinLead": "You already sync on another device.",
+    "joinButton": "Connect this device"
   },
   "setup": {
     "title": "Set up sync",
@@ -313,8 +330,6 @@
     "validUntil": "The code is valid until {{time}}."
   },
   "join": {
-    "introPair": "Join from your phone",
-    "introKit": "Use a Recovery Kit",
     "warning": "This device's data is replaced by the synced data. A backup is saved next to your profile first.",
     "nameLabel": "Device name",
     "passwordLabel": "Device password",
@@ -328,7 +343,19 @@
     "kitHint": "Enter the recovery code from your Sync Recovery Kit, or the text of its QR code.",
     "codeLabel": "Recovery code",
     "accountLabel": "Account number",
-    "confirm": "Join and replace"
+    "confirm": "Join and replace",
+    "choice": {
+      "pair": {
+        "title": "I have a phone that syncs",
+        "lead": "A code appears. On the phone: Settings → Sync → Add a device."
+      },
+      "kit": {
+        "title": "I have the Sync Recovery Kit",
+        "lead": "You enter the code from the kit and the server address. This is also how a second computer joins."
+      }
+    },
+    "connect": "Connect",
+    "firstRunDone": "This device is syncing now"
   },
   "phone": {
     "title": "Sync",
@@ -340,12 +367,19 @@
       "synced": "Up to date",
       "syncing": "Syncing…",
       "waiting": "A change is held",
-      "offline": "Offline",
+      "unreachable": "Server out of reach",
+      "unreachableLong_one": "Not synced for {{count}} day",
+      "unreachableLong_other": "Not synced for {{count}} days",
       "paused": "Paused",
       "error": "Stopped"
     },
-    "setUp": "Set up sync on this phone",
-    "scan": "Scan a code from another device",
+    "rowWithAge": "{{state}} · {{age}}",
+    "choice": {
+      "scan": {
+        "title": "Scan a code from the computer",
+        "lead": "On the computer: Settings → Sync → Add a device. The scanner also takes a Recovery Kit QR."
+      }
+    },
     "typeCode": "Type a Recovery Kit code",
     "addDevice": "Add a device",
     "busy": "Keep Moony open until it is done.",
@@ -355,7 +389,7 @@
     "renewUnavailable": "Renewing isn't available in the phone app.",
     "scanTitle": "Scan a code",
     "scanHint": "Point the camera at the code on your other device (Settings → Sync → Add a device) or at the QR code of your Recovery Kit.",
-    "addDeviceHint": "On the new device, choose “Join from your phone” under Settings → Sync, then point the camera at the code it shows.",
+    "addDeviceHint": "On the new device, choose “Connect this device” in Settings → Sync, then point the camera at the code it shows.",
     "passwordFirst": "Enter your device password before you scan the other device's code.",
     "connecting": "Connecting…",
     "cameraDenied": "Allow camera access in Settings to scan the code.",
@@ -401,6 +435,7 @@
     "onThisDevice": "On this device:"
   },
   "limits": {
+    "lostTitle": "Lost a device or the Recovery Kit?",
     "lostDevice": "A lost device or Recovery Kit can't be cut off from your synced data yet, and anyone who has one can already read what it holds. If one goes missing, delete the synced data and set sync up again with a new Kit; your other devices will then need to join again."
   },
   "codes": {
@@ -408,5 +443,9 @@
     "kitNotForSetup": "This is a Recovery Kit code, not a connection code. Use it when you join synced data that already exists.",
     "connectionNotHere": "This is a connection code for a sync server. Use it when you set up sync, not here.",
     "notAServerAddress": "This is not a sync server address. Type the address of your sync server, or paste its connection code."
+  },
+  "whatSyncs": {
+    "title": "What syncs",
+    "body": "Everything you enter into Moony syncs. The language, look, menu, notifications, device password, recovery key and backups belong to each device. Prices and history are worked out on each device. Documents and photos stay on the device that added them for now."
   }
 }

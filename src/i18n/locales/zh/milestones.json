@@ -41,7 +41,8 @@
   },
   "titles": {
     "backup_stale": "数据备份",
-    "balances_stale": "账户余额"
+    "balances_stale": "账户余额",
+    "sync_stalled": "同步"
   },
   "sub": {
     "insurance_anniversary": "解约通知截止日 · 周年日 {{date}}",
@@ -62,14 +63,17 @@
     "valuation_stale": "自 {{date}} 起没有新的估值 · 请重新估值",
     "backup_stale": "上次备份 {{date}}",
     "backup_never": "还没有备份",
-    "balances_stale_other": "{{count}} 个账户已超过 30 天未更新"
+    "balances_stale_other": "{{count}} 个账户已超过 30 天未更新",
+    "sync_stalled": "上次同步 {{date}}",
+    "sync_stalled_never": "尚未同步"
   },
   "short": {
     "backup_stale": "备份您的数据",
     "balances_stale_other": "更新 {{count}} 个余额",
     "valuation_stale": "重新估值 {{title}}",
     "loan_balance_check": "输入{{title}}的当前余额",
-    "loan_fixation_expired": "输入{{title}}的新利率"
+    "loan_fixation_expired": "输入{{title}}的新利率",
+    "sync_stalled": "检查同步"
   },
   "groups": {
     "insuranceDates": {
@@ -121,6 +125,11 @@
       "label": "贷款余额与利率",
       "hint": "每年输入一次当前余额，以及固定利率结束后输入新利率。",
       "mute": "不再提醒贷款余额与利率"
+    },
+    "sync": {
+      "label": "同步",
+      "hint": "当同步停止或需要您处理时提醒。",
+      "mute": "不再提醒同步"
     }
   },
   "settings": {

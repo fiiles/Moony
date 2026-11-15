@@ -35,6 +35,8 @@ export function useDeviceSyncEvents(): void {
         queryClient.setQueryData(['device-sync-status'], event.payload);
         // A gap that appears, heals or ages shows with its held changes
         void queryClient.invalidateQueries({ queryKey: ['device-sync-held-gaps'] });
+        // A stalled sync is a reminder, so the list follows the status
+        void queryClient.invalidateQueries({ queryKey: ['milestones'] });
       })
     );
     const data = safeUnlisten(

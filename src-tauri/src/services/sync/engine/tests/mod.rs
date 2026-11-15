@@ -163,6 +163,25 @@ pub fn institution(conn: &Connection, id: &str) {
     .expect("insert institution");
 }
 
+/// One minimal bank account: a profile that holds something a replace could lose.
+pub fn bank_account(conn: &Connection, id: &str) {
+    conn.execute(
+        "INSERT INTO bank_accounts (id, name) VALUES (?1, 'Account ' || ?1)",
+        [id],
+    )
+    .expect("insert bank account");
+}
+
+/// The profile row a first run writes, created at `at`: only a profile that has one and is
+/// young counts as brand new (`impact::brand_new_profile`).
+pub fn profile_created_at(conn: &Connection, at: i64) {
+    conn.execute(
+        "INSERT INTO user_profile (name, surname, email, created_at) VALUES ('A', 'B', 'a@b.c', ?1)",
+        [at],
+    )
+    .expect("insert profile");
+}
+
 pub fn has_institution(conn: &Connection, id: &str) -> bool {
     conn.query_row(
         "SELECT EXISTS (SELECT 1 FROM institutions WHERE id = ?1)",

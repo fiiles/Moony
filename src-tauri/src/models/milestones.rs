@@ -13,7 +13,7 @@ pub struct Milestone {
     /// `insurance_anniversary`, `insurance_end`, `insurance_payment`, `loan_fixation_end`,
     /// `loan_fixation_expired`, `loan_payoff`, `loan_balance_check`, `bond_maturity`,
     /// `bond_coupon`, `account_termination`, `savings_rate_end`, `balances_stale`,
-    /// `backup_stale`, `valuation_stale`, `watch_target`, `stock_split`.
+    /// `backup_stale`, `valuation_stale`, `watch_target`, `stock_split`, `sync_stalled`.
     pub kind: String,
     /// `now` (in the reminder window) or `soon` (within 90 days).
     pub stage: String,
@@ -54,7 +54,7 @@ pub const MILESTONE_STATE_SNOOZED: &str = "snoozed";
 const MAX_KEY_CHARS: usize = 256;
 
 /// Every kind the service emits; muted kinds must be one of these.
-pub const MILESTONE_KINDS: [&str; 16] = [
+pub const MILESTONE_KINDS: [&str; 17] = [
     "insurance_anniversary",
     "insurance_end",
     "insurance_payment",
@@ -71,6 +71,7 @@ pub const MILESTONE_KINDS: [&str; 16] = [
     "valuation_stale",
     "watch_target",
     "stock_split",
+    "sync_stalled",
 ];
 
 /// Muted kinds ("Nepřipomínat …") must be kinds the service knows.

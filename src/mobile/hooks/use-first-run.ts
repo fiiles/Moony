@@ -5,10 +5,12 @@ import { toast } from 'sonner';
 import type { z } from 'zod';
 import type { CurrencyCode } from '@shared/currencies';
 import type { setupSchema } from '@shared/schema';
-import { useAuth } from '@/hooks/use-auth';
+import { rememberGreetingName, rememberGreetingNameFromProfile, useAuth } from '@/hooks/use-auth';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { authApi, biometricApi, categorizationApi, onboardingApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
+import { profileNameSchema } from '@/utils/form-schemas';
+import type { OnboardingPath } from '@/utils/onboarding-steps';
 import { todayIsoUtc, utcDayStart } from '@/utils/period';
 import {
   RULE_PACK_COUNTRY_IDS,
@@ -20,7 +22,13 @@ import {
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { preferencesWithAreas, type TrackedAreas } from '@/mobile/lib/tracked-areas';
 import { exportsOnThisDevice } from '@/mobile/lib/export-file';
-import { firstRunSteps, nextStep, previousStep, type FirstRunStep } from '@/mobile/lib/first-run';
+import {
+  firstRunSteps,
+  nextStep,
+  previousStep,
+  type FirstRunExit,
+  type FirstRunStep,
+} from '@/mobile/lib/first-run';
 
 /** What the account form holds: the values that become the profile, and the password twice. */
 export type SetupFormValues = z.infer<typeof setupSchema>;
@@ -35,6 +43,13 @@ export interface FirstAccountInput {
   currency: CurrencyCode;
 }
 
+/** The name the declined path asks on Co sledovat (the join path's account step asked none). */
+export interface ProfileNameValues {
+  name: string;
+  surname: string;
+  email: string;
+}
+
 /** The steps whose "Pokračovat" or "Teď ne" does nothing but move on. */
 const STEPS_THAT_JUST_CONTINUE: readonly FirstRunStep[] = ['privacy', 'biometrics'];
 
@@ -44,11 +59,16 @@ const STEPS_THAT_JUST_CONTINUE: readonly FirstRunStep[] = ['privacy', 'biometric
  * country), the account form, the two-phase setup (`setupMutation` prepares the keys and hands over
  * the recovery key, `confirmSetupMutation` creates the encrypted database), the areas, the first
  * account, and then the two steps the phone adds, Biometrie and Záloha. `onFinished` is called once
- * the last step is done.
+ * the last step is done, with where the run ends (the overview, or Settings → Synchronizace).
+ *
+ * With sync built in, the first step also offers the join path (spec 2026-11-14 §5.2): the account
+ * step asks only this device's password, which is kept in memory for Připojení and dropped when
+ * that step ends either way; a join ends the run after Biometrie, Připojení left without sync
+ * continues with the normal steps, the name asked on Co sledovat.
  *
  * The state is the flow's: the steps get what they show and the actions to call. `step` moves to
- * `recovery` by itself when the recovery key arrives and to `areas` when the database exists; from
- * then on there is no way back. The Biometrie step is in the list only where the biometry status
+ * `recovery` by itself when the recovery key arrives and to the next step (`connect` on the join
+ * path, else `areas`) when the database exists; from then on there is no way back. The Biometrie step is in the list only where the biometry status
  * (it needs no session, so it is read from the first screen) says biometrics can be used.
  */
 export function useFirstRun({
@@ -56,16 +76,29 @@ export function useFirstRun({
   onFinished,
 }: {
   language: string;
-  onFinished: () => void;
+  onFinished: (to: FirstRunExit) => void;
 }) {
   const { t } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
+  const { t: tSync } = useTranslation('deviceSync');
   const queryClient = useQueryClient();
-  const { setupMutation, confirmSetupMutation, recoveryKey, clearRecoveryKey } = useAuth();
+  const { appStatus, setupMutation, confirmSetupMutation, recoveryKey, clearRecoveryKey } =
+    useAuth();
   const { createAccount } = useBankAccountMutations();
 
   const systemRegion = useMemo(() => regionFromLocale(navigator.language), []);
   const [step, setStep] = useState<FirstRunStep>('privacy');
+  const [path, setPath] = useState<OnboardingPath>('new');
+  /**
+   * Join path: the device password typed on the account step, kept in memory only for Připojení
+   * (a scanned pairing starts with it, a Kit join sends it) and dropped when that step ends.
+   */
+  const [joinPassword, setJoinPassword] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState<ProfileNameValues>({
+    name: '',
+    surname: '',
+    email: '',
+  });
   const [currency, setCurrency] = useState<CurrencyCode>(() =>
     defaultCurrencyForRegion(systemRegion)
   );
@@ -101,12 +134,14 @@ export function useFirstRun({
   // Where a backup cannot be made (not iOS yet) the run ends without the "Záloha" step (audit C7)
   const canBackup = exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? '');
   const steps = useMemo(
-    () => firstRunSteps({ biometryAvailable, canBackup }),
-    [biometryAvailable, canBackup]
+    () => firstRunSteps({ biometryAvailable, canBackup, path }),
+    [biometryAvailable, canBackup, path]
   );
 
   // The keys are prepared: the recovery key is shown
   if (recoveryKey && step === 'account') setStep('recovery');
+  // A lock closes the database under Připojení: the step can join no more, the password goes
+  if (step === 'connect' && appStatus === 'locked' && joinPassword !== null) setJoinPassword(null);
 
   /** The next step, or the end of the run after the last one (`finish`). */
   const moveOn = (from: FirstRunStep) => {
@@ -121,6 +156,13 @@ export function useFirstRun({
     if (STEPS_THAT_JUST_CONTINUE.includes(step)) moveOn(step);
   };
 
+  /** "Připojit k synchronizaci": the join path's account step (this device's password only). */
+  const startJoin = () => {
+    if (step !== 'privacy') return;
+    setPath('join');
+    setStep('account');
+  };
+
   // ---------------- Účet: prepare the keys ----------------
 
   const submitAccount = (data: SetupFormValues) => {
@@ -129,11 +171,25 @@ export function useFirstRun({
     setupMutation.mutate({ ...data, language, currency });
   };
 
+  /**
+   * Join path: only the device password; the synced profile brings name, surname, e-mail and
+   * currency (the backend checks only the password and the currency here). The password stays in
+   * memory for Připojení.
+   */
+  const submitJoinPassword = (password: string) => {
+    if (setupMutation.isPending) return;
+    setJoinPassword(password);
+    setupMutation.mutate({ name: '', surname: '', email: '', password, language, currency });
+  };
+
   // ---------------- Klíč: discard it, or create the database ----------------
 
   /** Throws the prepared key away; the next "Pokračovat" prepares a new one. */
   const backToAccount = () => {
+    setJoinPassword(null);
     clearRecoveryKey();
+    // The prepared setup (password and key) lives on in the mutation's variables and data
+    setupMutation.reset();
     setStep('account');
     toast(t('onboarding.recovery.discarded'));
   };
@@ -142,9 +198,12 @@ export function useFirstRun({
     confirmSetupMutation.mutate(undefined, {
       onSuccess: () => {
         clearRecoveryKey();
-        // The password has done its work; nothing needs it on this screen any more
+        // The password has done its work; nothing needs it on this screen any more (the mutation
+        // held it, and the key, in its variables and data). Only the join path keeps it, in
+        // `joinPassword`, for Připojení.
         setAccountDraft(null);
-        setStep('areas');
+        setupMutation.reset();
+        setStep(nextStep(steps, 'recovery') ?? 'areas');
       },
     });
   };
@@ -153,22 +212,68 @@ export function useFirstRun({
     if (setupMutation.isPending || confirmSetupMutation.isPending) return;
     const previous = previousStep(steps, step);
     if (previous === null) return;
-    if (step === 'recovery') backToAccount();
-    else setStep(previous);
+    if (step === 'recovery') {
+      backToAccount();
+      return;
+    }
+    if (step === 'account') {
+      // A failed setup keeps the password in the mutation's variables: it goes with the step
+      setupMutation.reset();
+      // Back from the join path's account step: the first step offers both ways again
+      if (path === 'join') {
+        setJoinPassword(null);
+        setPath('new');
+      }
+    }
+    setStep(previous);
+  };
+
+  // ---------------- Připojení (join path) ----------------
+
+  /** The join is done and nothing needs the password any more (a kept backup's sheet comes first). */
+  const forgetJoinPassword = () => setJoinPassword(null);
+
+  /** The join is done: the password goes, the run ends after Biometrie (or now). */
+  const joined = () => {
+    setJoinPassword(null);
+    // The profile was created without a name: the synced one is read for the lock screen's greeting
+    void rememberGreetingNameFromProfile();
+    toast(tSync('join.firstRunDone'));
+    moveOn('connect');
+  };
+
+  /** "Pokračovat bez synchronizace": the password goes, the normal steps follow. */
+  const declineJoin = () => {
+    setJoinPassword(null);
+    setPath('declined');
+    setStep('areas');
   };
 
   // ---------------- Co sledovat ----------------
 
   const saveAreas = async () => {
     if (savingAreas) return;
+    // Declined path: the profile has no name yet (the account step asked only the password)
+    let names: ProfileNameValues | null = null;
+    if (path === 'declined') {
+      const parsed = profileNameSchema.safeParse(profileName);
+      if (!parsed.success) {
+        toast.error(tc(parsed.error.issues[0]?.message ?? 'status.error'));
+        return;
+      }
+      names = { ...parsed.data, email: parsed.data.email ?? '' };
+    }
     setSavingAreas(true);
     try {
       const menuPreferences = preferencesWithAreas(null, areas);
       const profile = await authApi.updateProfile({
+        ...(names ?? {}),
         menuPreferences,
         ...(country !== null ? { country: country.toUpperCase() } : {}),
       });
       queryClient.setQueryData(['user-profile'], profile);
+      // The account step asked no name on this path: the lock screen greets by it from now on
+      if (names) rememberGreetingName(profile.name);
 
       if (country !== null) {
         const packs = await categorizationApi.getRulePacks();
@@ -221,8 +326,8 @@ export function useFirstRun({
 
   // ---------------- The end ----------------
 
-  /** Marks the onboarding done and hands control back to the lock page. */
-  const finish = async () => {
+  /** Marks the onboarding done and hands control back to the lock page, which goes to `to`. */
+  const finish = async (to: FirstRunExit = 'overview') => {
     if (finishing) return;
     setFinishing(true);
     try {
@@ -236,14 +341,23 @@ export function useFirstRun({
       /* private mode */
     }
     setFinishing(false);
-    onFinished();
+    onFinished(to);
   };
 
   return {
     step,
     steps,
+    path,
     goNext,
     goBack,
+    startJoin,
+    submitJoinPassword,
+    joinPassword,
+    joined,
+    forgetJoinPassword,
+    declineJoin,
+    profileName,
+    setProfileName,
     currency,
     setCurrency,
     country,

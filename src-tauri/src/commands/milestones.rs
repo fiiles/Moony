@@ -1,7 +1,8 @@
 //! Milestones commands ("Co vás čeká") — thin wrappers over `services::milestones`.
 
-use tauri::State;
+use tauri::{AppHandle, State};
 
+use crate::commands::sync::current_status;
 use crate::db::Database;
 use crate::error::Result;
 use crate::models::{
@@ -9,11 +10,22 @@ use crate::models::{
 };
 use crate::services::loan_amortization::today_utc_day;
 use crate::services::milestones;
+use crate::services::sync::feature;
 
 /// Every milestone as of today, without the done and snoozed occurrences.
 #[tauri::command]
-pub async fn get_milestones(db: State<'_, Database>) -> Result<Vec<Milestone>> {
-    db.with_conn(|conn| milestones::list_milestones(conn, today_utc_day()))
+pub async fn get_milestones(app: AppHandle, db: State<'_, Database>) -> Result<Vec<Milestone>> {
+    // The stall reminder exists only while the sync flag is on: without it no engine runs.
+    let sync = feature::enabled()
+        .then(|| current_status(&app, &db))
+        .and_then(|status| match status {
+            Ok(s) => Some(s),
+            Err(e) => {
+                log::warn!("[MILESTONES] sync status skipped: {e}");
+                None
+            }
+        });
+    db.with_conn(|conn| milestones::list_milestones(conn, today_utc_day(), sync.as_ref()))
 }
 
 /// Mark one occurrence `done` or `snoozed` (a week; a month for upkeep).

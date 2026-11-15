@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { AlertTriangle, Clock } from 'lucide-react';
+import { AlertTriangle, Clock, RefreshCw } from 'lucide-react';
 import type { HeldGapView, SyncStatus } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useHeldGaps } from '@/hooks/use-device-sync';
@@ -19,6 +19,7 @@ import {
 } from '@/utils/device-sync-problem';
 import { secondsToDate } from '@/utils/sync-status';
 import { hostOf } from '@/utils/sync-setup';
+import { isQuietlyOutOfReach, syncState } from '@/utils/sync-state';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 
@@ -59,7 +60,10 @@ export function SyncStatusBlock({
   const { dateTime, date } = useFormat();
   const { syncNow } = useDeviceSyncMutations();
 
+  const running = syncNow.isPending || status.phase === 'syncing';
+
   const run = async () => {
+    if (running) return;
     try {
       await syncNow.mutateAsync();
     } catch (error) {
@@ -67,6 +71,11 @@ export function SyncStatusBlock({
     }
   };
 
+  const now = Math.floor(Date.now() / 1000);
+  const unreachable = isQuietlyOutOfReach(status, now);
+  // The same state the top bar shows, in the phone's row wording
+  const indicator = syncState(status, now);
+  const stateLabel = indicator ? t(indicator.rowKey, { count: indicator.days }) : '';
   // A note, never a problem: this device's clock stands more than a day ahead (audit M6)
   const clockAheadUntil = secondsToDate(status.clockAheadUntil);
   const lastSynced =
@@ -97,8 +106,11 @@ export function SyncStatusBlock({
           {t('status.clockAhead', { date: date(clockAheadUntil, { dateStyle: 'long' }) })}
         </InlineAlert>
       )}
+      {unreachable && (
+        <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{t('status.unreachableNote')}</p>
+      )}
       <div className={CARD}>
-        <KeyValueRow label={t('phone.status')} value={t(`status.phase.${status.phase}`)} />
+        <KeyValueRow label={t('phone.status')} value={stateLabel} />
         <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} />
         <KeyValueRow label={t('phone.pending')} value={status.pendingChanges} />
         {status.serverAddress && (
@@ -109,12 +121,9 @@ export function SyncStatusBlock({
           />
         )}
       </div>
-      <Button
-        className={BUTTON}
-        onClick={() => void run()}
-        loading={syncNow.isPending || status.phase === 'syncing'}
-      >
-        {t('status.syncNow')}
+      <Button className={BUTTON} onClick={() => void run()} loading={running}>
+        <RefreshCw />
+        {running ? t('indicator.syncing') : t('status.syncNow')}
       </Button>
     </>
   );
@@ -139,6 +148,8 @@ function ProblemAlert({
   const heldGaps = useHeldGaps(status.problem === 'gap' || status.problem === 'clockAhead');
   const problem = status.problem;
   if (!problem) return null;
+  // Out of reach for now: no alert box, the block shows a plain line instead
+  if (isQuietlyOutOfReach(status, Math.floor(Date.now() / 1000))) return null;
 
   const now = Math.floor(Date.now() / 1000);
   const held = heldFor(problem, heldGaps.data);

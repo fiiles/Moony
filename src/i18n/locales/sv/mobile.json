@@ -64,7 +64,9 @@
     "backupStale_other": "Senaste säkerhetskopia för {{count}} dagar sedan",
     "backupNever": "Ingen säkerhetskopia ännu",
     "valuationStale": "Värderingen av {{name}} är ett år gammal",
+    "syncStalled": "Synkroniseringen har stoppats",
     "actions": {
+      "open": "Öppna",
       "record": "Registrera",
       "categorize": "Kategorisera",
       "import": "Importera",
@@ -786,7 +788,10 @@
       "backup": "Säkerhetskopia"
     },
     "backupTitle": "Säkerhetskopiera dina data",
+    "protectTitle": "Skydda dina data",
     "backupLead": "Den här telefonen har den enda kopian av dina data, och den finns inte med i telefonens egen säkerhetskopia (iCloud eller dator). Spara en krypterad säkerhetskopia i iCloud Drive eller i en mapp du väljer; Moony ser den aldrig.",
+    "syncLead": "Har du en synkroniseringsserver?",
+    "syncLink": "Ställ in synkronisering",
     "currencyPick": "Huvudvaluta",
     "countryPick": "Land för bank",
     "searchCurrency": "Sök valuta"

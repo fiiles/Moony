@@ -45,7 +45,8 @@
   },
   "titles": {
     "backup_stale": "Säkerhetskopia av data",
-    "balances_stale": "Kontosaldon"
+    "balances_stale": "Kontosaldon",
+    "sync_stalled": "Synkronisering"
   },
   "sub": {
     "insurance_anniversary": "Sista dag för uppsägning · förnyelse {{date}}",
@@ -68,7 +69,9 @@
     "backup_stale": "Senaste säkerhetskopia {{date}}",
     "backup_never": "Ingen säkerhetskopia ännu",
     "balances_stale_one": "{{count}} konto inte uppdaterat på över 30 dagar",
-    "balances_stale_other": "{{count}} konton inte uppdaterade på över 30 dagar"
+    "balances_stale_other": "{{count}} konton inte uppdaterade på över 30 dagar",
+    "sync_stalled": "Senast synkroniserad {{date}}",
+    "sync_stalled_never": "Inte synkroniserad ännu"
   },
   "short": {
     "backup_stale": "säkerhetskopiera dina data",
@@ -76,7 +79,8 @@
     "balances_stale_other": "uppdatera {{count}} saldon",
     "valuation_stale": "omvärdera {{title}}",
     "loan_balance_check": "ange aktuellt saldo för {{title}}",
-    "loan_fixation_expired": "ange den nya räntan för {{title}}"
+    "loan_fixation_expired": "ange den nya räntan för {{title}}",
+    "sync_stalled": "kontrollera synkroniseringen"
   },
   "groups": {
     "insuranceDates": {
@@ -128,6 +132,11 @@
       "label": "Lånesaldon och räntor",
       "hint": "Att ange aktuellt saldo en gång om året och den nya räntan när en räntebindning upphör.",
       "mute": "Påminn mig inte om lånesaldon och räntor"
+    },
+    "sync": {
+      "label": "Synkronisering",
+      "hint": "När synkroniseringen stannar eller behöver dig.",
+      "mute": "Påminn mig inte om synkronisering"
     }
   },
   "settings": {

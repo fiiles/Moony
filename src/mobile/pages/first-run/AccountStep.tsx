@@ -1,5 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { MIN_PASSWORD_LENGTH, setupSchema } from '@shared/schema';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,8 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { cn } from '@/lib/utils';
 import type { FirstRunFlow, SetupFormValues } from '@/mobile/hooks/use-first-run';
-import { passwordStrength } from '@/mobile/lib/password-strength';
+import { passwordStrength } from '@/utils/password-strength';
+import { devicePasswordSchema } from '@/utils/form-schemas';
 import { StepHead } from './StepHead';
 import { field48, fieldMessage, primaryButton, textLink } from './styles';
 
@@ -31,9 +33,15 @@ const EMPTY: SetupFormValues = {
 /**
  * Účet: name, surname, an optional e-mail (only for the person's own orientation) and the password
  * that encrypts the database. "Pokračovat" prepares the keys; the recovery key arrives and the flow
- * moves to its step. Validation messages show under their field, one column of 48 pt fields.
+ * moves to its step. Validation messages show under their field, one column of 48 pt fields. On
+ * the join path only this device's password is asked (`JoinPasswordStep`).
  */
 export function AccountStep({ flow }: { flow: FirstRunFlow }) {
+  if (flow.path === 'join') return <JoinPasswordStep flow={flow} />;
+  return <NewAccountStep flow={flow} />;
+}
+
+function NewAccountStep({ flow }: { flow: FirstRunFlow }) {
   const { t } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
   const form = useForm<SetupFormValues>({
@@ -189,6 +197,101 @@ export function AccountStep({ flow }: { flow: FirstRunFlow }) {
         </form>
       </Form>
       <button type="button" className={textLink} onClick={goBack} disabled={pending}>
+        {tc('buttons.back')}
+      </button>
+    </div>
+  );
+}
+
+type DevicePasswordValues = z.infer<typeof devicePasswordSchema>;
+
+/**
+ * The join path's account step (spec 2026-11-14 §5.2): this device's password, twice, with the
+ * strength hint. Name, surname and e-mail come from the synced profile; the password unlocks this
+ * phone only and may differ from the other devices'. "Zpět" returns to Soukromí and to the normal
+ * path, and the typed password does not come back.
+ */
+function JoinPasswordStep({ flow }: { flow: FirstRunFlow }) {
+  const { t } = useTranslation('auth');
+  const { t: tc } = useTranslation('common');
+  const form = useForm<DevicePasswordValues>({
+    resolver: zodResolver(devicePasswordSchema),
+    defaultValues: { password: '', confirmPassword: '' },
+  });
+  const pending = flow.pending.setup;
+  const strength = passwordStrength(form.watch('password'));
+
+  return (
+    <div data-testid="first-run-join-account">
+      <StepHead
+        title={t('onboarding.joinAccount.title')}
+        lead={t('onboarding.joinAccount.subtitle')}
+      />
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit((data) => flow.submitJoinPassword(data.password))}
+          aria-busy={pending}
+          className="space-y-3"
+        >
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('onboarding.account.password')}</FormLabel>
+                <FormControl>
+                  <PasswordInput
+                    touch
+                    autoComplete="new-password"
+                    enterKeyHint="next"
+                    className={field48}
+                    readOnly={pending}
+                    {...field}
+                  />
+                </FormControl>
+                {strength && (
+                  <FormDescription
+                    className={cn(
+                      'text-m-sub',
+                      strength === 'weak' && 'text-loss',
+                      strength === 'strong' && 'text-gain'
+                    )}
+                  >
+                    {t(`onboarding.account.strength.${strength}`, { min: MIN_PASSWORD_LENGTH })}
+                  </FormDescription>
+                )}
+                <FormMessage className={fieldMessage} />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('onboarding.account.confirmPassword')}</FormLabel>
+                <FormControl>
+                  <PasswordInput
+                    touch
+                    autoComplete="new-password"
+                    enterKeyHint="go"
+                    className={field48}
+                    readOnly={pending}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage className={fieldMessage} />
+              </FormItem>
+            )}
+          />
+          <div className="pt-2">
+            <Button type="submit" className={primaryButton} disabled={pending} loading={pending}>
+              {tc('buttons.continue')}
+            </Button>
+          </div>
+        </form>
+      </Form>
+      <button type="button" className={textLink} onClick={flow.goBack} disabled={pending}>
         {tc('buttons.back')}
       </button>
     </div>

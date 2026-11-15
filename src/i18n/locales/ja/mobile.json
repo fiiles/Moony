@@ -57,7 +57,9 @@
     "backupStale_other": "最後のバックアップは{{count}}日前",
     "backupNever": "まだバックアップがありません",
     "valuationStale": "{{name}}の評価額は1年前のものです",
+    "syncStalled": "同期が停止しました",
     "actions": {
+      "open": "開く",
       "record": "記録",
       "categorize": "分類",
       "import": "取り込む",
@@ -742,7 +744,10 @@
       "backup": "バックアップ"
     },
     "backupTitle": "データをバックアップ",
+    "protectTitle": "データを守りましょう",
     "backupLead": "このスマートフォンにあるのがデータの唯一のコピーで、スマートフォン自体のバックアップ（iCloud またはパソコン）には含まれません。暗号化したバックアップを iCloud Drive または選んだフォルダに保存してください。Moony がそれを見ることはありません。",
+    "syncLead": "同期サーバーをお持ちですか？",
+    "syncLink": "同期を設定",
     "currencyPick": "基準通貨",
     "countryPick": "取引銀行の国",
     "searchCurrency": "通貨を検索"

@@ -64,7 +64,9 @@
     "backupStale_other": "Last backup {{count}} days ago",
     "backupNever": "No backup yet",
     "valuationStale": "The valuation of {{name}} is a year old",
+    "syncStalled": "Sync has stopped",
     "actions": {
+      "open": "Open",
       "record": "Record",
       "categorize": "Categorize",
       "import": "Import",
@@ -786,7 +788,10 @@
       "backup": "Backup"
     },
     "backupTitle": "Back up your data",
+    "protectTitle": "Protect your data",
     "backupLead": "This phone holds the only copy of your data, and it is not in the phone's own backup (iCloud or a computer). Save an encrypted backup to iCloud Drive or a folder you choose; Moony never sees it.",
+    "syncLead": "Have a sync server?",
+    "syncLink": "Set up sync",
     "currencyPick": "Main currency",
     "countryPick": "Banking country",
     "searchCurrency": "Search currency"

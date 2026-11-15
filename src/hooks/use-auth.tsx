@@ -90,11 +90,25 @@ export const GREETING_NAME_KEY = 'moony-greeting-name';
 export const LOCKED_AT_KEY = 'moony-locked-at';
 
 /** Only the first name, for "Vítejte zpět, Filipe"; nothing else leaves the encrypted database. */
-function rememberGreetingName(name: string | null | undefined) {
+// eslint-disable-next-line react-refresh/only-export-components -- shared with the first run's declined path
+export function rememberGreetingName(name: string | null | undefined) {
   try {
     if (name) localStorage.setItem(GREETING_NAME_KEY, name);
   } catch {
     /* private mode */
+  }
+}
+
+/**
+ * After a join the profile holds the synced name: read it for the lock screen's greeting. A profile
+ * that cannot be read now is skipped silently; nothing waits on this.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- shared with both first runs
+export async function rememberGreetingNameFromProfile() {
+  try {
+    rememberGreetingName((await authApi.getProfile())?.name);
+  } catch {
+    /* the next password unlock stores it */
   }
 }
 

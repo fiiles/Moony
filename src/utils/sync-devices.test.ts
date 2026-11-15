@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { QUIET_AFTER_DAYS, devicePlatformKey, quietDays } from './sync-devices';
+import type { SyncDevice } from '@shared/schema';
+import { QUIET_AFTER_DAYS, devicePlatformKey, otherDeviceNames, quietDays } from './sync-devices';
 
 describe('devicePlatformKey', () => {
   it('maps known platforms to their label keys and the rest to other', () => {
@@ -31,5 +32,30 @@ describe('quietDays', () => {
 
   it('is null for a last activity in the future', () => {
     expect(quietDays(now + DAY, now)).toBeNull();
+  });
+});
+
+describe('otherDeviceNames', () => {
+  const device = (name: string, thisDevice: boolean): SyncDevice => ({
+    id: 'a'.repeat(32),
+    name,
+    platform: 'macos',
+    appVersion: '1.0.0',
+    joinedAt: 0,
+    lastActiveAt: null,
+    thisDevice,
+    held: false,
+  });
+
+  it('lists the other devices by name', () => {
+    expect(
+      otherDeviceNames([
+        device(' iPhone ', false),
+        device('Mac', true),
+        device('', false),
+        device('Windows PC', false),
+      ])
+    ).toEqual(['iPhone', 'Windows PC']);
+    expect(otherDeviceNames(undefined)).toEqual([]);
   });
 });

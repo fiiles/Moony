@@ -13,7 +13,7 @@ use crate::services::sync::hlc::{now_ms, unpack, FUTURE_WARNING_MS};
 use crate::services::sync::relay::http::{
     is_default_relay, is_insecure_address, normalize_base_url,
 };
-use crate::services::sync::{feature, keys, snapshot, state};
+use crate::services::sync::{devices, feature, keys, snapshot, state};
 
 /// The relay deletes a lapsed vault this long after the subscription ended (spec §11.6).
 pub const DELETE_AFTER_LAPSE: i64 = 90 * 86_400;
@@ -78,6 +78,7 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         own_server,
         server_address: address.clone(),
         server_insecure,
+        enabled_at: None,
     };
     let Some(sync) = state::load(conn)? else {
         return Ok(quiet(SyncPhase::Off));
@@ -137,6 +138,7 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         own_server,
         server_address: address,
         server_insecure,
+        enabled_at: devices::this_device_joined_at(conn)?,
     })
 }
 
@@ -372,6 +374,15 @@ mod tests {
         assert!(!off.own_server);
         assert_eq!(off.server_address, None);
         assert!(!off.server_insecure);
+        assert_eq!(off.enabled_at, None);
+    }
+
+    #[test]
+    fn an_enabled_profile_reports_when_this_device_joined() {
+        let conn = enabled_at("https://relay.example.org");
+        devices::record_this_device(&conn, "MacBook", &[0x01; 32], 1_700_000_000).unwrap();
+        let shown = status(&conn, &Runtime::default()).expect("status");
+        assert_eq!(shown.enabled_at, Some(1_700_000_000));
     }
 
     #[test]
@@ -386,5 +397,6 @@ mod tests {
             setting_up.server_address.as_deref(),
             Some("https://relay.example.org")
         );
+        assert_eq!(setting_up.enabled_at, None);
     }
 }

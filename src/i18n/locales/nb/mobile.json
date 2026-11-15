@@ -64,7 +64,9 @@
     "backupStale_other": "Siste sikkerhetskopi for {{count}} dager siden",
     "backupNever": "Ingen sikkerhetskopi ennå",
     "valuationStale": "Verdivurderingen av {{name}} er et år gammel",
+    "syncStalled": "Synkroniseringen har stoppet",
     "actions": {
+      "open": "Åpne",
       "record": "Registrer",
       "categorize": "Kategoriser",
       "import": "Importer",
@@ -786,7 +788,10 @@
       "backup": "Sikkerhetskopi"
     },
     "backupTitle": "Ta sikkerhetskopi av dataene dine",
+    "protectTitle": "Beskytt dataene dine",
     "backupLead": "Denne telefonen har den eneste kopien av dataene dine, og den er ikke med i telefonens egen sikkerhetskopi (iCloud eller datamaskin). Lagre en kryptert sikkerhetskopi i iCloud Drive eller en mappe du velger; Moony ser den aldri.",
+    "syncLead": "Har du en synkroniseringsserver?",
+    "syncLink": "Sett opp synkronisering",
     "currencyPick": "Hovedvaluta",
     "countryPick": "Bankland",
     "searchCurrency": "Søk etter valuta"

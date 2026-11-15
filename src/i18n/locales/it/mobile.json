@@ -71,7 +71,9 @@
     "backupStale_other": "Ultimo backup {{count}} giorni fa",
     "backupNever": "Ancora nessun backup",
     "valuationStale": "La valutazione di {{name}} ha un anno",
+    "syncStalled": "La sincronizzazione si è interrotta",
     "actions": {
+      "open": "Apri",
       "record": "Registra",
       "categorize": "Classifica",
       "import": "Importa",
@@ -830,7 +832,10 @@
       "backup": "Backup"
     },
     "backupTitle": "Fai il backup dei tuoi dati",
+    "protectTitle": "Proteggi i tuoi dati",
     "backupLead": "Questo telefono conserva l'unica copia dei tuoi dati, che non è nel backup del telefono (iCloud o computer). Salva un backup cifrato su iCloud Drive o in una cartella a tua scelta; Moony non lo vede mai.",
+    "syncLead": "Hai un server di sincronizzazione?",
+    "syncLink": "Configura la sincronizzazione",
     "currencyPick": "Valuta principale",
     "countryPick": "Paese della banca",
     "searchCurrency": "Cerca valuta"

@@ -7,18 +7,28 @@
     "waiting": "Änderung zurückgehalten",
     "paused": "Sync pausiert",
     "error": "Sync-Fehler",
-    "offline": "Offline"
+    "unreachable": "Server nicht erreichbar",
+    "unreachableLong_one": "Seit {{count}} Tag nicht synchronisiert",
+    "unreachableLong_other": "Seit {{count}} Tagen nicht synchronisiert"
+  },
+  "age": {
+    "justNow": "gerade eben",
+    "minutes_one": "vor {{count}} Min.",
+    "minutes_other": "vor {{count}} Min.",
+    "hours_one": "vor {{count}} Std.",
+    "hours_other": "vor {{count}} Std.",
+    "days_one": "vor {{count}} Tag",
+    "days_other": "vor {{count}} Tagen"
+  },
+  "popover": {
+    "title": "Synchronisierung",
+    "pending": "Wartet auf Versand",
+    "server": "Server",
+    "openSettings": "Einstellungen öffnen",
+    "settings": "Synchronisierungseinstellungen"
   },
   "status": {
-    "phase": {
-      "off": "Synchronisierung ist aus",
-      "settingUp": "Synchronisierung wird eingerichtet",
-      "idle": "Auf dem neuesten Stand",
-      "syncing": "Synchronisiere…",
-      "waiting": "Synchronisierung läuft, eine Änderung von einem anderen Gerät wird zurückgehalten",
-      "paused": "Synchronisierung pausiert",
-      "error": "Synchronisierung gestoppt"
-    },
+    "unreachableNote": "Die Synchronisierung läuft weiter, sobald der Server wieder erreichbar ist.",
     "problem": {
       "captureBroken": "Die Änderungsverfolgung dieses Geräts ist beschädigt, daher wurde die Synchronisierung gestoppt. Sie lässt sich reparieren.",
       "vaultGone": "Die synchronisierten Daten wurden vom Synchronisierungsserver gelöscht.",
@@ -57,7 +67,9 @@
     "dialogTitle": "Serveradresse ändern",
     "dialogBody": "Verwenden Sie dies, wenn Ihr Synchronisierungsserver auf eine neue Adresse umgezogen ist. Es muss derselbe Server mit Ihren synchronisierten Daten sein. Jedes Gerät ändert seine Adresse selbst, wiederholen Sie das also auf Ihren anderen Geräten. Speichern Sie das Wiederherstellungs-Kit erneut: Es enthält jetzt die neue Adresse.",
     "success": "Adresse des Synchronisierungsservers geändert",
-    "unchanged": "Dieses Gerät verwendet diese Adresse bereits."
+    "unchanged": "Dieses Gerät verwendet diese Adresse bereits.",
+    "repeatOn": "Machen Sie dasselbe auf: {{devices}}",
+    "repeatOnOthers": "Machen Sie dasselbe auf Ihren anderen Geräten."
   },
   "intro": {
     "description": "Halten Sie Ihre Daten auf allen Ihren Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
@@ -69,7 +81,12 @@
       "title": "Einrichtung abbrechen?",
       "description": "Dieses Gerät vergisst das Sync-Konto, das für diese Einrichtung angelegt wurde, und eine bereits geleistete Zahlung wird nicht übernommen. Danach beginnt die Einrichtung der Synchronisierung von vorn, mit einem neuen Sync-Konto.",
       "keep": "Einrichtung fortsetzen"
-    }
+    },
+    "startTitle": "Synchronisierung starten",
+    "startLead": "Dieses Gerät wird das erste. Sie brauchen den Verbindungscode Ihres Synchronisierungsservers.",
+    "joinTitle": "Dieses Gerät verbinden",
+    "joinLead": "Sie synchronisieren bereits auf einem anderen Gerät.",
+    "joinButton": "Dieses Gerät verbinden"
   },
   "setup": {
     "title": "Synchronisierung einrichten",
@@ -313,8 +330,6 @@
     "validUntil": "Der Code gilt bis {{time}}."
   },
   "join": {
-    "introPair": "Vom Smartphone beitreten",
-    "introKit": "Wiederherstellungs-Kit verwenden",
     "warning": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird neben Ihrem Profil eine Sicherung gespeichert.",
     "nameLabel": "Gerätename",
     "passwordLabel": "Gerätepasswort",
@@ -328,7 +343,19 @@
     "kitHint": "Geben Sie den Wiederherstellungscode aus Ihrem Sync-Wiederherstellungs-Kit ein oder den Text seines QR-Codes.",
     "codeLabel": "Wiederherstellungscode",
     "accountLabel": "Kontonummer",
-    "confirm": "Beitreten und ersetzen"
+    "confirm": "Beitreten und ersetzen",
+    "choice": {
+      "pair": {
+        "title": "Ich habe ein Smartphone, das synchronisiert",
+        "lead": "Ein Code erscheint. Auf dem Smartphone: Einstellungen → Synchronisierung → Gerät hinzufügen."
+      },
+      "kit": {
+        "title": "Ich habe das Sync-Wiederherstellungs-Kit",
+        "lead": "Sie geben den Code aus dem Kit und die Serveradresse ein. So tritt auch ein zweiter Computer bei."
+      }
+    },
+    "connect": "Verbinden",
+    "firstRunDone": "Dieses Gerät synchronisiert jetzt"
   },
   "phone": {
     "title": "Synchronisierung",
@@ -340,12 +367,19 @@
       "synced": "Aktuell",
       "syncing": "Synchronisiert…",
       "waiting": "Änderung zurückgehalten",
-      "offline": "Offline",
+      "unreachable": "Server nicht erreichbar",
+      "unreachableLong_one": "Seit {{count}} Tag nicht synchronisiert",
+      "unreachableLong_other": "Seit {{count}} Tagen nicht synchronisiert",
       "paused": "Pausiert",
       "error": "Angehalten"
     },
-    "setUp": "Synchronisierung auf diesem Telefon einrichten",
-    "scan": "Code von einem anderen Gerät scannen",
+    "rowWithAge": "{{state}} · {{age}}",
+    "choice": {
+      "scan": {
+        "title": "Code vom Computer scannen",
+        "lead": "Am Computer: Einstellungen → Synchronisierung → Gerät hinzufügen. Gescannt werden kann auch der QR-Code des Wiederherstellungs-Kits."
+      }
+    },
     "typeCode": "Code des Wiederherstellungs-Kits eingeben",
     "addDevice": "Gerät hinzufügen",
     "busy": "Lassen Sie Moony geöffnet, bis der Vorgang abgeschlossen ist.",
@@ -355,7 +389,7 @@
     "renewUnavailable": "Die Verlängerung ist in der Telefon-App nicht verfügbar.",
     "scanTitle": "Code scannen",
     "scanHint": "Richten Sie die Kamera auf den Code auf Ihrem anderen Gerät (Einstellungen → Synchronisierung → Gerät hinzufügen) oder auf den QR-Code Ihres Wiederherstellungs-Kits.",
-    "addDeviceHint": "Wählen Sie auf dem neuen Gerät unter Einstellungen → Synchronisierung „Vom Smartphone beitreten“ und richten Sie dann die Kamera auf den angezeigten Code.",
+    "addDeviceHint": "Wählen Sie auf dem neuen Gerät unter Einstellungen → Synchronisierung „Dieses Gerät verbinden“ und richten Sie dann die Kamera auf den angezeigten Code.",
     "passwordFirst": "Geben Sie Ihr Gerätepasswort ein, bevor Sie den Code des anderen Geräts scannen.",
     "connecting": "Verbindung wird hergestellt…",
     "cameraDenied": "Erlauben Sie in den Einstellungen den Zugriff auf die Kamera, um den Code zu scannen.",
@@ -401,6 +435,7 @@
     "onThisDevice": "Auf diesem Gerät:"
   },
   "limits": {
+    "lostTitle": "Gerät oder Wiederherstellungs-Kit verloren?",
     "lostDevice": "Ein verlorenes Gerät oder ein verlorenes Wiederherstellungs-Kit kann noch nicht von Ihren synchronisierten Daten abgetrennt werden, und wer eines besitzt, kann schon jetzt lesen, was es enthält. Falls eines abhandenkommt, löschen Sie die synchronisierten Daten und richten Sie die Synchronisierung mit einem neuen Kit neu ein; Ihre anderen Geräte müssen dann erneut beitreten."
   },
   "codes": {
@@ -408,5 +443,9 @@
     "kitNotForSetup": "Das ist ein Code des Wiederherstellungs-Kits, kein Verbindungscode. Verwenden Sie ihn, um bereits vorhandene synchronisierte Daten zu übernehmen.",
     "connectionNotHere": "Das ist ein Verbindungscode für einen Synchronisierungsserver. Verwenden Sie ihn beim Einrichten der Synchronisierung, nicht hier.",
     "notAServerAddress": "Das ist keine Adresse eines Synchronisierungsservers. Geben Sie die Adresse Ihres Synchronisierungsservers ein oder fügen Sie seinen Verbindungscode ein."
+  },
+  "whatSyncs": {
+    "title": "Was synchronisiert wird",
+    "body": "Alles, was Sie in Moony eingeben, wird synchronisiert. Sprache, Aussehen, Menü, Benachrichtigungen, Gerätepasswort, Wiederherstellungsschlüssel und Sicherungen gehören zu jedem Gerät einzeln. Kurse und Verlauf werden auf jedem Gerät selbst berechnet. Dokumente und Fotos bleiben vorerst auf dem Gerät, auf dem Sie sie hinzugefügt haben."
   }
 }

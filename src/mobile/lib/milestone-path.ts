@@ -42,6 +42,8 @@ export function milestonePath(m: Milestone): string | null {
       return id && propertyPath(id);
     case 'backup_stale':
       return settingsPath('backup');
+    case 'sync_stalled':
+      return settingsPath('sync');
     case 'watch_target':
       return id && watchPath(id);
     case 'stock_split':

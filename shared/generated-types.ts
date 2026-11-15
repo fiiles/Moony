@@ -1615,7 +1615,7 @@ key: string;
  * `insurance_anniversary`, `insurance_end`, `insurance_payment`, `loan_fixation_end`,
  * `loan_fixation_expired`, `loan_payoff`, `loan_balance_check`, `bond_maturity`,
  * `bond_coupon`, `account_termination`, `savings_rate_end`, `balances_stale`,
- * `backup_stale`, `valuation_stale`, `watch_target`, `stock_split`.
+ * `backup_stale`, `valuation_stale`, `watch_target`, `stock_split`, `sync_stalled`.
  */
 kind: string; 
 /**
@@ -3520,7 +3520,12 @@ serverAddress: string | null;
 /**
  * The stored address is plain http to a host other than this computer.
  */
-serverInsecure: boolean }
+serverInsecure: boolean; 
+/**
+ * When sync was turned on on this device: `joinedAt` of its own device row (unix seconds);
+ * `None` while off or before the row exists.
+ */
+enabledAt: number | null }
 
 /**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;

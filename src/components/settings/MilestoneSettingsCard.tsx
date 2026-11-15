@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { useAuth } from '@/hooks/use-auth';
+import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { useMilestoneMutedKinds } from '@/hooks/use-milestones';
 import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { parseNoticeDays } from '@/utils/insurance-notice';
-import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
+import { kindsOf, visibleMilestoneGroups } from '@/utils/milestones';
 
 /** Settings → General → Overview reminders: one switch per reminder group, then the insurance notice. */
 export function MilestoneSettingsCard() {
@@ -19,6 +20,7 @@ export function MilestoneSettingsCard() {
   const { updateProfile } = useSettingsMutations();
   const { data: muted } = useMilestoneMutedKinds();
   const { setGroupMuted } = useMilestoneActions();
+  const syncFeature = useDeviceSyncFeature();
 
   // The notice the milestones use (0 = no reminder); the field shows what is typed, else this.
   const stored = user?.insuranceNoticeDays ?? 0;
@@ -42,7 +44,7 @@ export function MilestoneSettingsCard() {
 
   return (
     <SettingsCard title={t('settings.title')} description={t('settings.description')}>
-      {MILESTONE_GROUP_IDS.map((group) => {
+      {visibleMilestoneGroups(syncFeature).map((group) => {
         const on = !kindsOf(group).every((kind) => muted?.includes(kind));
         return (
           <SettingsRow

@@ -7,18 +7,28 @@
     "waiting": "En ändring hålls kvar",
     "paused": "Synkroniseringen är pausad",
     "error": "Synkroniseringsfel",
-    "offline": "Offline"
+    "unreachable": "Servern är utom räckvidd",
+    "unreachableLong_one": "Inte synkroniserad på {{count}} dag",
+    "unreachableLong_other": "Inte synkroniserad på {{count}} dagar"
+  },
+  "age": {
+    "justNow": "just nu",
+    "minutes_one": "för {{count}} min sedan",
+    "minutes_other": "för {{count}} min sedan",
+    "hours_one": "för {{count}} tim sedan",
+    "hours_other": "för {{count}} tim sedan",
+    "days_one": "för {{count}} dag sedan",
+    "days_other": "för {{count}} dagar sedan"
+  },
+  "popover": {
+    "title": "Synkronisering",
+    "pending": "Väntar på att skickas",
+    "server": "Server",
+    "openSettings": "Öppna inställningar",
+    "settings": "Synkroniseringsinställningar"
   },
   "status": {
-    "phase": {
-      "off": "Synkroniseringen är av",
-      "settingUp": "Synkroniseringen ställs in",
-      "idle": "Uppdaterad",
-      "syncing": "Synkroniserar…",
-      "waiting": "Synkroniserar, en ändring från en annan enhet hålls kvar",
-      "paused": "Synkroniseringen är pausad",
-      "error": "Synkroniseringen stoppades"
-    },
+    "unreachableNote": "Synkroniseringen återupptas när servern är inom räckhåll igen.",
     "problem": {
       "captureBroken": "Ändringsspårningen på den här enheten är skadad, så synkroniseringen stoppades. Den kan repareras.",
       "vaultGone": "De synkroniserade uppgifterna raderades från synkroniseringsservern.",
@@ -57,7 +67,9 @@
     "dialogTitle": "Ändra serveradressen",
     "dialogBody": "Använd det här när din synkroniseringsserver har flyttat till en ny adress. Det måste vara samma server, med dina synkroniserade data. Varje enhet ändrar sin egen adress, så gör likadant på dina andra enheter. Spara återställningskitet igen: det innehåller nu den nya adressen.",
     "success": "Synkroniseringsserverns adress har ändrats",
-    "unchanged": "Den här enheten använder redan den här adressen."
+    "unchanged": "Den här enheten använder redan den här adressen.",
+    "repeatOn": "Gör samma sak på: {{devices}}",
+    "repeatOnOthers": "Gör samma sak på dina andra enheter."
   },
   "intro": {
     "description": "Håll dina uppgifter uppdaterade på alla dina enheter. De är end-to-end-krypterade: synkroniseringsservern lagrar bara data den inte kan läsa.",
@@ -69,7 +81,12 @@
       "title": "Avbryta konfigurationen?",
       "description": "Den här enheten glömmer synkroniseringskontot som skapades för den här konfigurationen, och en betalning som redan gjorts förs inte över. Ställer du in synkroniseringen på nytt börjar det om från början, med ett nytt synkroniseringskonto.",
       "keep": "Behåll konfigurationen"
-    }
+    },
+    "startTitle": "Börja synkronisera",
+    "startLead": "Den här enheten blir den första. Du behöver anslutningskoden till din synkroniseringsserver.",
+    "joinTitle": "Anslut den här enheten",
+    "joinLead": "Du synkroniserar redan på en annan enhet.",
+    "joinButton": "Anslut den här enheten"
   },
   "setup": {
     "title": "Ställ in synkronisering",
@@ -313,8 +330,6 @@
     "validUntil": "Koden fungerar till kl. {{time}}."
   },
   "join": {
-    "introPair": "Anslut från telefonen",
-    "introKit": "Använd ett återställningskit",
     "warning": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först bredvid din profil.",
     "nameLabel": "Enhetsnamn",
     "passwordLabel": "Enhetslösenord",
@@ -328,7 +343,19 @@
     "kitHint": "Ange återställningskoden från ditt återställningskit för synkronisering, eller texten i dess QR-kod.",
     "codeLabel": "Återställningskod",
     "accountLabel": "Kontonummer",
-    "confirm": "Anslut och ersätt"
+    "confirm": "Anslut och ersätt",
+    "choice": {
+      "pair": {
+        "title": "Jag har en telefon som synkroniserar",
+        "lead": "En kod visas. På telefonen: Inställningar → Synkronisering → Lägg till en enhet."
+      },
+      "kit": {
+        "title": "Jag har återställningskitet för synkronisering",
+        "lead": "Du anger koden från kitet och serverns adress. Så ansluter även en andra dator."
+      }
+    },
+    "connect": "Anslut",
+    "firstRunDone": "Den här enheten synkroniseras nu"
   },
   "phone": {
     "title": "Synkronisering",
@@ -340,12 +367,19 @@
       "synced": "Uppdaterad",
       "syncing": "Synkroniserar…",
       "waiting": "En ändring hålls kvar",
-      "offline": "Offline",
+      "unreachable": "Servern är utom räckvidd",
+      "unreachableLong_one": "Inte synkroniserad på {{count}} dag",
+      "unreachableLong_other": "Inte synkroniserad på {{count}} dagar",
       "paused": "Pausad",
       "error": "Stoppad"
     },
-    "setUp": "Ställ in synkronisering på den här telefonen",
-    "scan": "Skanna en kod från en annan enhet",
+    "rowWithAge": "{{state}} · {{age}}",
+    "choice": {
+      "scan": {
+        "title": "Skanna en kod från datorn",
+        "lead": "På datorn: Inställningar → Synkronisering → Lägg till en enhet. Du kan också skanna QR-koden i återställningssatsen."
+      }
+    },
     "typeCode": "Skriv in en kod från återställningskitet",
     "addDevice": "Lägg till en enhet",
     "busy": "Låt Moony vara öppet tills det är klart.",
@@ -355,7 +389,7 @@
     "renewUnavailable": "Förnyelse är inte tillgänglig i telefonappen.",
     "scanTitle": "Skanna en kod",
     "scanHint": "Rikta kameran mot koden på den andra enheten (Inställningar → Synkronisering → Lägg till en enhet) eller mot QR-koden i ditt återställningskit.",
-    "addDeviceHint": "Välj ”Anslut från telefonen” under Inställningar → Synkronisering på den nya enheten och rikta sedan kameran mot koden den visar.",
+    "addDeviceHint": "Välj ”Anslut den här enheten” under Inställningar → Synkronisering på den nya enheten och rikta sedan kameran mot koden den visar.",
     "passwordFirst": "Ange enhetslösenordet innan du skannar den andra enhetens kod.",
     "connecting": "Ansluter…",
     "cameraDenied": "Tillåt kameraåtkomst i Inställningar för att skanna koden.",
@@ -401,6 +435,7 @@
     "onThisDevice": "På den här enheten:"
   },
   "limits": {
+    "lostTitle": "Tappat en enhet eller återställningskitet?",
     "lostDevice": "En borttappad enhet eller ett borttappat återställningskit kan ännu inte stängas ute från dina synkroniserade data, och den som har ett kan redan nu läsa vad det innehåller. Om något försvinner raderar du de synkroniserade data och ställer in synkroniseringen på nytt med ett nytt kit; dina andra enheter måste då ansluta igen."
   },
   "codes": {
@@ -408,5 +443,9 @@
     "kitNotForSetup": "Det här är en kod från återställningskitet, inte en anslutningskod. Använd den när du ansluter till synkroniserade data som redan finns.",
     "connectionNotHere": "Det här är en anslutningskod för en synkroniseringsserver. Använd den när du ställer in synkronisering, inte här.",
     "notAServerAddress": "Det här är inte adressen till en synkroniseringsserver. Ange adressen till din synkroniseringsserver eller klistra in dess anslutningskod."
+  },
+  "whatSyncs": {
+    "title": "Vad som synkroniseras",
+    "body": "Allt du skriver in i Moony synkroniseras. Språk, utseende, meny, aviseringar, enhetslösenord, återställningsnyckel och säkerhetskopior hör till varje enhet för sig. Priser och historik räknas fram på varje enhet. Dokument och foton stannar tills vidare på den enhet där du lade till dem."
   }
 }

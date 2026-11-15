@@ -41,7 +41,8 @@
   },
   "titles": {
     "backup_stale": "データのバックアップ",
-    "balances_stale": "口座残高"
+    "balances_stale": "口座残高",
+    "sync_stalled": "同期"
   },
   "sub": {
     "insurance_anniversary": "解約通知の期限 · 更新日 {{date}}",
@@ -62,14 +63,17 @@
     "valuation_stale": "{{date}} 以降、評価の更新がありません · 再評価してください",
     "backup_stale": "最後のバックアップ {{date}}",
     "backup_never": "バックアップはまだありません",
-    "balances_stale_other": "{{count}}件の口座が30日以上更新されていません"
+    "balances_stale_other": "{{count}}件の口座が30日以上更新されていません",
+    "sync_stalled": "最後の同期 {{date}}",
+    "sync_stalled_never": "まだ同期されていません"
   },
   "short": {
     "backup_stale": "データをバックアップ",
     "balances_stale_other": "{{count}}件の残高を更新",
     "valuation_stale": "{{title}}を再評価",
     "loan_balance_check": "{{title}}の現在の残高を入力",
-    "loan_fixation_expired": "{{title}}の新しい金利を入力"
+    "loan_fixation_expired": "{{title}}の新しい金利を入力",
+    "sync_stalled": "同期を確認"
   },
   "groups": {
     "insuranceDates": {
@@ -121,6 +125,11 @@
       "label": "ローンの残高と金利",
       "hint": "年1回の現在残高の入力と、固定金利終了後の新しい金利について通知します。",
       "mute": "ローンの残高と金利を通知しない"
+    },
+    "sync": {
+      "label": "同期",
+      "hint": "同期が止まったときや対応が必要なときに通知します。",
+      "mute": "同期を通知しない"
     }
   },
   "settings": {

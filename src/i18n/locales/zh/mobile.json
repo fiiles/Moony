@@ -57,7 +57,9 @@
     "backupStale_other": "{{count}} 天前备份",
     "backupNever": "尚无备份",
     "valuationStale": "{{name}} 的估值已满一年",
+    "syncStalled": "同步已停止",
     "actions": {
+      "open": "打开",
       "record": "记录",
       "categorize": "分类",
       "import": "导入",
@@ -742,7 +744,10 @@
       "backup": "备份"
     },
     "backupTitle": "备份您的数据",
+    "protectTitle": "保护您的数据",
     "backupLead": "这部手机上保存着您数据的唯一副本，它不在手机自身的备份（iCloud 或电脑）中。请将加密备份保存到 iCloud Drive 或您选择的文件夹；Moony 永远看不到它。",
+    "syncLead": "您有同步服务器吗？",
+    "syncLink": "设置同步",
     "currencyPick": "主货币",
     "countryPick": "银行所在国家",
     "searchCurrency": "搜索货币"

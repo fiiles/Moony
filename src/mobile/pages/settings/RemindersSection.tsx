@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
+import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
 import { useMilestoneMutedKinds } from '@/hooks/use-milestones';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { parseNoticeDays } from '@/utils/insurance-notice';
-import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
+import { kindsOf, visibleMilestoneGroups } from '@/utils/milestones';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { SwitchRow } from '@/mobile/components/SwitchRow';
 
@@ -33,6 +34,7 @@ export default function RemindersSection() {
   const { updateProfile } = useSettingsMutations();
   const { data: muted } = useMilestoneMutedKinds();
   const { setGroupMuted } = useMilestoneActions();
+  const syncFeature = useDeviceSyncFeature();
 
   // The notice the milestones use (0 = no reminder); the field shows what is typed, else this.
   const stored = user?.insuranceNoticeDays ?? 0;
@@ -57,7 +59,7 @@ export default function RemindersSection() {
   return (
     <SectionPage title={t('settings.rows.reminders')} lead={t('settings.remindersLead')}>
       <div className={CARD}>
-        {MILESTONE_GROUP_IDS.map((group) => (
+        {visibleMilestoneGroups(syncFeature).map((group) => (
           <SwitchRow
             key={group}
             id={`milestone-group-${group}`}

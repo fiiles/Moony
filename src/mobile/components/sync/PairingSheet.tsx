@@ -54,6 +54,8 @@ interface PairingSheetProps {
   onJoin: () => void;
   /** What the person saw no longer held and was read again: said above the new numbers. */
   impactChanged: string | null;
+  /** The first run's join (a brand-new profile, nothing replaced): "Připojit", not "Připojit a nahradit". */
+  firstRun?: boolean;
 }
 
 /** The sheet's form for the holder's typed digits, so the footer's Confirm submits it. */
@@ -94,6 +96,7 @@ export function PairingSheet({
   canJoin,
   onJoin,
   impactChanged,
+  firstRun = false,
 }: PairingSheetProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
@@ -254,12 +257,12 @@ export function PairingSheet({
         )}
         {!joinFailure && step === 'received' && (
           <Button
-            variant="destructive"
+            variant={firstRun ? 'default' : 'destructive'}
             className={`${BUTTON} flex-1`}
             disabled={!canJoin}
             onClick={onJoin}
           >
-            {t('join.confirm')}
+            {firstRun ? t('join.connect') : t('join.confirm')}
           </Button>
         )}
       </>

@@ -119,15 +119,17 @@ mod tests {
         split(&conn, "s9", "X", day(2024, 6, 10), "pending");
         let today = day(2024, 8, 1);
         assert_eq!(
-            super::super::list_milestones(&conn, today).unwrap().len(),
+            super::super::list_milestones(&conn, today, None)
+                .unwrap()
+                .len(),
             1
         );
         super::super::set_milestone_state(&conn, "stock_split:s9", "snoozed", today).unwrap();
-        assert!(super::super::list_milestones(&conn, today)
+        assert!(super::super::list_milestones(&conn, today, None)
             .unwrap()
             .is_empty());
         assert_eq!(
-            super::super::list_milestones(&conn, today + 8 * super::super::DAY)
+            super::super::list_milestones(&conn, today + 8 * super::super::DAY, None)
                 .unwrap()
                 .len(),
             1

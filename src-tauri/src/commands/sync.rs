@@ -324,7 +324,7 @@ pub(super) fn sync_on(db: &Database) -> Result<bool> {
 }
 
 /// The status of the open profile, with the running engine's memory of its rounds.
-fn current_status(app: &AppHandle, db: &Database) -> Result<SyncStatus> {
+pub(crate) fn current_status(app: &AppHandle, db: &Database) -> Result<SyncStatus> {
     let runtime = app
         .state::<SyncEngineState>()
         .0

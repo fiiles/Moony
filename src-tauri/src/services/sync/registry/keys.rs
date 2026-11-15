@@ -292,20 +292,6 @@ pub fn schema_number() -> u32 {
     crate::db::known_migration_names().len() as u32
 }
 
-/// The migration from which the documents and photos are synced tables (ADR 0030). A profile that
-/// had sync on before it (`schema_seen` below its position) enrols their rows once at unlock
-/// (`capture::enrol`).
-pub const ATTACHMENTS_SYNCED_MIGRATION: &str = "035_sync_blobs";
-
-/// 1-based position of migration `name` in `known_migration_names()` (a schema number); `None`
-/// for a name this build does not know.
-pub fn migration_position(name: &str) -> Option<u32> {
-    crate::db::known_migration_names()
-        .iter()
-        .position(|known| *known == name)
-        .map(|i| i as u32 + 1)
-}
-
 /// 1-based position of the newest Barrier migration.
 pub fn barrier_number() -> u32 {
     MIGRATION_CLASSES
@@ -692,12 +678,5 @@ mod tests {
     fn schema_number_is_36_and_the_newest_barrier_is_025() {
         assert_eq!(schema_number(), 36);
         assert_eq!(barrier_number(), 25);
-    }
-
-    #[test]
-    fn the_attachments_migration_is_at_position_35() {
-        assert_eq!(migration_position(ATTACHMENTS_SYNCED_MIGRATION), Some(35));
-        assert_eq!(migration_position("001_initial_schema"), Some(1));
-        assert_eq!(migration_position("999_unknown"), None);
     }
 }

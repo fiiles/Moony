@@ -42,12 +42,6 @@ so it cannot ride in envelopes or snapshots.
   condition false → true, local mode) gives it a fresh `'*'` with this device, drops its column
   clocks and queues it, so it travels as a complete insert. `sync_<t>_leave` (true → false)
   records a tombstone. The conversion leaves a row that already has a blob alone.
-- A profile that had sync on before these tables synced (`schema_seen` below
-  `035_sync_blobs`) enrols their unclocked rows once at unlock (`capture::enrol`): each row that
-  meets its condition and has no `'*'` or `'-'` gets a fresh `'*'` with this device and is queued,
-  every photo batch too. Rows received from the vault have a clock and stay as they are; a joined
-  profile starts at the current schema and enrols nothing. A failed enrolment leaves the mark, so
-  the next unlock tries again; it is logged, not a broken capture.
 - No checksum column. The sealed stream is authenticated and bound to the blob ID, and blobs are
   immutable (new content gets a new ID); `files.blobs.sha256` is computed on the receiving device
   when the content is stored.
@@ -137,4 +131,12 @@ documents and photos need a newer server. The app assumes the server's error cod
   - while capture is broken, the guard (ADR 0027) refuses writes to the four tables as to any
     synced table, legacy rows included, so the conversion of legacy files cannot run there; a
     repair is the way out, and a repair replaces, so legacy rows that were never converted go
-    with it (their files stay in the kept backup).
+    with it (their files stay in the kept backup);
+  - a vault created by a development build before documents and photos synced does not carry the
+    attachments that existed then (nobody clocked or queued them), and an edit to such an old
+    attachment row can reach devices that never received the row; such a vault must be set up
+    again (sync off, set up, join the other devices again). No released build can be in that
+    state: sync is unreleased and ships with this ADR's migrations.
+- Release guard: if sync is ever released from a build without this ADR's migrations (035, 036),
+  which it must not be, profiles that synced on it would need a one-time enrolment of their
+  attachment rows, designed so it never overwrites changes other devices made after it.

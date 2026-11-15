@@ -91,11 +91,11 @@
     "backupStale_many": "Última copia de seguridad hace {{count}} días",
     "backupStale_other": "Última copia de seguridad hace {{count}} días",
     "backupNever": "Aún no hay copia de seguridad",
-    "safeCopyStale_one": "Última copia segura hace {{count}} día",
-    "safeCopyStale_many": "Última copia segura hace {{count}} días",
-    "safeCopyStale_other": "Última copia segura hace {{count}} días",
+    "safeCopyStale_one": "{{count}} día sin copia segura",
+    "safeCopyStale_many": "{{count}} días sin copia segura",
+    "safeCopyStale_other": "{{count}} días sin copia segura",
     "safeCopyNever": "Aún no hay copia segura",
-    "bothWaysOut": "Restaura la sincronización o haz una copia de seguridad",
+    "bothWaysOut": "Reactiva la sincronización o haz copia",
     "valuationStale": "La valoración de {{name}} tiene un año",
     "syncStalled": "La sincronización se ha detenido",
     "actions": {
@@ -945,8 +945,8 @@
       "stale": "La última copia tiene más de un mes.",
       "never": "Todavía no tienes ninguna copia.",
       "titleSync": "Protege tus datos de Moony",
-      "staleSync": "Tu última copia segura tiene más de un mes. Restaura la sincronización o haz una copia de seguridad.",
-      "neverSync": "Todavía no tienes ninguna copia segura. Restaura la sincronización o haz una copia de seguridad.",
+      "staleSync": "Tu última copia segura tiene más de un mes. Reactiva la sincronización o haz una copia de seguridad.",
+      "neverSync": "Todavía no tienes ninguna copia segura. Reactiva la sincronización o haz una copia de seguridad.",
       "hintSync": "Cuando ni una copia de seguridad ni una sincronización completa son de hace menos de 30 días."
     },
     "deadline": {

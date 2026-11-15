@@ -99,12 +99,12 @@
     "backupStale_many": "Ostatnia kopia zapasowa sprzed {{count}} dni",
     "backupStale_other": "Ostatnia kopia zapasowa sprzed {{count}} dnia",
     "backupNever": "Brak kopii zapasowej",
-    "safeCopyStale_one": "Ostatnia bezpieczna kopia sprzed {{count}} dnia",
-    "safeCopyStale_few": "Ostatnia bezpieczna kopia sprzed {{count}} dni",
-    "safeCopyStale_many": "Ostatnia bezpieczna kopia sprzed {{count}} dni",
-    "safeCopyStale_other": "Ostatnia bezpieczna kopia sprzed {{count}} dnia",
+    "safeCopyStale_one": "{{count}} dzień bez bezpiecznej kopii",
+    "safeCopyStale_few": "{{count}} dni bez bezpiecznej kopii",
+    "safeCopyStale_many": "{{count}} dni bez bezpiecznej kopii",
+    "safeCopyStale_other": "{{count}} dnia bez bezpiecznej kopii",
     "safeCopyNever": "Brak bezpiecznej kopii",
-    "bothWaysOut": "Przywróć synchronizację albo zrób kopię zapasową",
+    "bothWaysOut": "Wznów synchronizację lub zrób kopię",
     "valuationStale": "Wycena {{name}} ma rok",
     "syncStalled": "Synchronizacja została zatrzymana",
     "actions": {
@@ -993,8 +993,8 @@
       "stale": "Ostatnia kopia jest starsza niż miesiąc.",
       "never": "Nie masz jeszcze żadnej kopii zapasowej.",
       "titleSync": "Chroń dane w Moony",
-      "staleSync": "Ostatnia bezpieczna kopia jest starsza niż miesiąc. Przywróć synchronizację albo zrób kopię zapasową.",
-      "neverSync": "Nie masz jeszcze żadnej bezpiecznej kopii. Przywróć synchronizację albo zrób kopię zapasową.",
+      "staleSync": "Ostatnia bezpieczna kopia jest starsza niż miesiąc. Wznów synchronizację albo zrób kopię zapasową.",
+      "neverSync": "Nie masz jeszcze żadnej bezpiecznej kopii. Wznów synchronizację albo zrób kopię zapasową.",
       "hintSync": "Gdy ani kopia zapasowa, ani pełna synchronizacja nie jest nowsza niż 30 dni."
     },
     "deadline": {

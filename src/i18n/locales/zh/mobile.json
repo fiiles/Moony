@@ -75,7 +75,7 @@
     "lastImport": "上次导入 {{date}}",
     "backupStale_other": "{{count}} 天前备份",
     "backupNever": "尚无备份",
-    "safeCopyStale_other": "上次安全副本在 {{count}} 天前",
+    "safeCopyStale_other": "{{count}} 天没有安全副本",
     "safeCopyNever": "尚无安全副本",
     "bothWaysOut": "请恢复同步或备份",
     "valuationStale": "{{name}} 的估值已满一年",

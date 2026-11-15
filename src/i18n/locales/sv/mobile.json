@@ -83,10 +83,10 @@
     "backupStale_one": "Senaste säkerhetskopia för {{count}} dag sedan",
     "backupStale_other": "Senaste säkerhetskopia för {{count}} dagar sedan",
     "backupNever": "Ingen säkerhetskopia ännu",
-    "safeCopyStale_one": "Senaste säkra kopia för {{count}} dag sedan",
-    "safeCopyStale_other": "Senaste säkra kopia för {{count}} dagar sedan",
+    "safeCopyStale_one": "{{count}} dag utan säker kopia",
+    "safeCopyStale_other": "{{count}} dagar utan säker kopia",
     "safeCopyNever": "Ingen säker kopia ännu",
-    "bothWaysOut": "Återställ synkroniseringen eller gör en säkerhetskopia",
+    "bothWaysOut": "Återuppta synk eller säkerhetskopiera",
     "valuationStale": "Värderingen av {{name}} är ett år gammal",
     "syncStalled": "Synkroniseringen har stoppats",
     "actions": {
@@ -897,8 +897,8 @@
       "stale": "Den senaste säkerhetskopian är över en månad gammal.",
       "never": "Du har ingen säkerhetskopia än.",
       "titleSync": "Skydda dina Moony-data",
-      "staleSync": "Din senaste säkra kopia är över en månad gammal. Återställ synkroniseringen eller gör en säkerhetskopia.",
-      "neverSync": "Du har ingen säker kopia än. Återställ synkroniseringen eller gör en säkerhetskopia.",
+      "staleSync": "Din senaste säkra kopia är över en månad gammal. Återuppta synkroniseringen eller gör en säkerhetskopia.",
+      "neverSync": "Du har ingen säker kopia än. Återuppta synkroniseringen eller gör en säkerhetskopia.",
       "hintSync": "När varken en säkerhetskopia eller en fullständig synkronisering är nyare än 30 dagar."
     },
     "deadline": {

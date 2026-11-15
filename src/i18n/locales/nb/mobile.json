@@ -83,10 +83,10 @@
     "backupStale_one": "Siste sikkerhetskopi for {{count}} dag siden",
     "backupStale_other": "Siste sikkerhetskopi for {{count}} dager siden",
     "backupNever": "Ingen sikkerhetskopi ennå",
-    "safeCopyStale_one": "Siste sikre kopi for {{count}} dag siden",
-    "safeCopyStale_other": "Siste sikre kopi for {{count}} dager siden",
+    "safeCopyStale_one": "{{count}} dag uten sikker kopi",
+    "safeCopyStale_other": "{{count}} dager uten sikker kopi",
     "safeCopyNever": "Ingen sikker kopi ennå",
-    "bothWaysOut": "Gjenoppta synkroniseringen eller ta sikkerhetskopi",
+    "bothWaysOut": "Gjenoppta synk eller ta sikkerhetskopi",
     "valuationStale": "Verdivurderingen av {{name}} er et år gammel",
     "syncStalled": "Synkroniseringen har stoppet",
     "actions": {

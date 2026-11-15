@@ -83,10 +83,10 @@
     "backupStale_one": "Last backup {{count}} day ago",
     "backupStale_other": "Last backup {{count}} days ago",
     "backupNever": "No backup yet",
-    "safeCopyStale_one": "Last safe copy {{count}} day ago",
-    "safeCopyStale_other": "Last safe copy {{count}} days ago",
+    "safeCopyStale_one": "{{count}} day without a safe copy",
+    "safeCopyStale_other": "{{count}} days without a safe copy",
     "safeCopyNever": "No safe copy yet",
-    "bothWaysOut": "Restore sync or make a backup",
+    "bothWaysOut": "Resume sync or back up",
     "valuationStale": "The valuation of {{name}} is a year old",
     "syncStalled": "Sync has stopped",
     "actions": {
@@ -897,8 +897,8 @@
       "stale": "Your last backup is over a month old.",
       "never": "You have no backup yet.",
       "titleSync": "Protect your Moony data",
-      "staleSync": "Your last safe copy is over a month old. Restore sync or make a backup.",
-      "neverSync": "You have no safe copy yet. Restore sync or make a backup.",
+      "staleSync": "Your last safe copy is over a month old. Resume sync or make a backup.",
+      "neverSync": "You have no safe copy yet. Resume sync or make a backup.",
       "hintSync": "When neither a backup nor a complete sync is newer than 30 days."
     },
     "deadline": {

@@ -20,6 +20,7 @@
       "noHistory": "no history yet"
     },
     "emptyDescription": "Add an account or an investment and Moony builds your overview, charts and trends from it. Everything stays on this phone.",
+    "emptyDescriptionSync": "Add an account or an investment and Moony builds your overview, charts and trends from it.",
     "ringCenter": "Assets"
   },
   "money": {
@@ -751,6 +752,7 @@
     "delete": {
       "title": "Delete all data?",
       "lead": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back.",
+      "leadSynced": "Permanently deletes the database, the keys and the attachments from this phone, and the synced data on the sync server: your other devices stop syncing and keep the data they hold. Backup copies outside the phone stay. Make a backup first — it is the only way back for this phone.",
       "confirmLabel": "Type {{word}} to confirm",
       "confirm": "Delete data",
       "failed": "Deletion failed"

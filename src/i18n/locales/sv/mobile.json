@@ -20,6 +20,7 @@
       "noHistory": "ingen historik"
     },
     "emptyDescription": "Lägg till ett konto eller en investering så bygger Moony din översikt, dina diagram och trender utifrån det. Allt stannar på den här telefonen.",
+    "emptyDescriptionSync": "Lägg till ett konto eller en investering så bygger Moony din översikt, dina diagram och trender utifrån det.",
     "ringCenter": "Tillgångar"
   },
   "money": {
@@ -751,6 +752,7 @@
     "delete": {
       "title": "Radera alla data?",
       "lead": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — det är den enda vägen tillbaka.",
+      "leadSynced": "Raderar databasen, nycklarna och bilagorna på den här telefonen samt de synkroniserade data på synkroniseringsservern för gott: dina andra enheter slutar synkronisera och behåller de data de har. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — för den här telefonen är det den enda vägen tillbaka.",
       "confirmLabel": "Skriv {{word}} för att bekräfta",
       "confirm": "Radera data",
       "failed": "Raderingen misslyckades"

@@ -20,6 +20,7 @@
       "noHistory": "ingen historikk"
     },
     "emptyDescription": "Legg til en konto eller en investering, så bygger Moony oversikten, diagrammene og utviklingen din ut fra dem. Alt blir på denne telefonen.",
+    "emptyDescriptionSync": "Legg til en konto eller en investering, så bygger Moony oversikten, diagrammene og utviklingen din ut fra dem.",
     "ringCenter": "Eiendeler"
   },
   "money": {
@@ -751,6 +752,7 @@
     "delete": {
       "title": "Slette alle data?",
       "lead": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake.",
+      "leadSynced": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt, og de synkroniserte dataene på synkroniseringsserveren: de andre enhetene dine slutter å synkronisere og beholder dataene de har. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — for denne telefonen er det den eneste veien tilbake.",
       "confirmLabel": "Skriv {{word}} for å bekrefte",
       "confirm": "Slett data",
       "failed": "Slettingen mislyktes"

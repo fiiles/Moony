@@ -73,6 +73,7 @@
   "empty": {
     "title": "您的净资产将显示在这里",
     "description": "添加账户或投资后，Moony 会据此生成您的概览、图表和趋势。所有内容都保存在这台电脑上。",
+    "descriptionSync": "添加账户或投资后，Moony 会据此生成您的概览、图表和趋势。",
     "addAccount": "添加银行账户并导入账单",
     "addInvestment": "添加投资",
     "setBudget": "设置预算"

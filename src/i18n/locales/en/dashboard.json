@@ -73,6 +73,7 @@
   "empty": {
     "title": "Your net worth will show up here",
     "description": "Add an account or an investment and Moony builds your overview, charts and trends from it. Everything stays on this computer.",
+    "descriptionSync": "Add an account or an investment and Moony builds your overview, charts and trends from it.",
     "addAccount": "Add a bank account and import a statement",
     "addInvestment": "Add an investment",
     "setBudget": "Set a budget"

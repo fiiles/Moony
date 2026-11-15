@@ -73,6 +73,7 @@
   "empty": {
     "title": "Aquí aparecerá tu patrimonio neto",
     "description": "Añade una cuenta o una inversión y Moony construirá a partir de ella tu resumen, gráficos y tendencias. Todo se queda en este ordenador.",
+    "descriptionSync": "Añade una cuenta o una inversión y Moony construirá a partir de ella tu resumen, gráficos y tendencias.",
     "addAccount": "Añadir una cuenta bancaria e importar un extracto",
     "addInvestment": "Añadir una inversión",
     "setBudget": "Definir un presupuesto"

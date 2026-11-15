@@ -60,7 +60,10 @@ export function DangerZoneCard() {
 
   return (
     <SettingsCard danger title={t('dangerZone.title')} description={t('dangerZone.description')}>
-      <SettingsRow label={t('dangerZone.deleteAll')} hint={t('dangerZone.deleteAllHint')}>
+      <SettingsRow
+        label={t('dangerZone.deleteAll')}
+        hint={syncOn ? t('dangerZone.deleteAllHintSynced') : t('dangerZone.deleteAllHint')}
+      >
         <AlertDialog
           open={deleteDialogOpen}
           onOpenChange={(open) => {

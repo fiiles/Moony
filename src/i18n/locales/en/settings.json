@@ -120,8 +120,9 @@
     "confirmWord": "DELETE",
     "deleteAll": "Delete all data",
     "deleteAllHint": "Removes the database, the key files and the attachments on this computer. Copies next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder (Data and backups → Open folder), and so do backups saved outside the app.",
+    "deleteAllHintSynced": "Removes the database, the key files and the attachments on this computer, and the synced data on the sync server: your other devices stop syncing and keep the data they hold. Copies next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder (Data and backups → Open folder), and so do backups saved outside the app.",
     "deleteButton": "Delete data…",
-    "syncDeleted": "Synced data on the sync server is deleted too, so your other devices stop syncing.",
+    "syncDeleted": "Synced data on the sync server is deleted too: your other devices stop syncing and keep the data they hold.",
     "confirmDescriptionSynced": "This action cannot be undone. It permanently deletes your database, the key files and the attachments from this device. Copies that Moony keeps next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder; Settings → Data and backups → Open folder leads there."
   },
   "toast": {

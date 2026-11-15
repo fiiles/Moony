@@ -20,6 +20,7 @@
       "noHistory": "sin historial"
     },
     "emptyDescription": "Añade una cuenta o una inversión y Moony construirá a partir de ella tu resumen, gráficos y tendencias. Todo se queda en este teléfono.",
+    "emptyDescriptionSync": "Añade una cuenta o una inversión y Moony construirá a partir de ella tu resumen, gráficos y tendencias.",
     "ringCenter": "Activos"
   },
   "money": {
@@ -791,6 +792,7 @@
     "delete": {
       "title": "¿Eliminar todos los datos?",
       "lead": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: es la única forma de recuperar los datos.",
+      "leadSynced": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono, y los datos sincronizados en el servidor de sincronización: tus demás dispositivos dejan de sincronizar y conservan los datos que tienen. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: para este teléfono es la única forma de recuperar los datos.",
       "confirmLabel": "Escribe {{word}} para confirmar",
       "confirm": "Eliminar datos",
       "failed": "No se pudo eliminar"

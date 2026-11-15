@@ -73,6 +73,7 @@
   "empty": {
     "title": "Nettoformuen din vises her",
     "description": "Legg til en konto eller en investering, så bygger Moony oversikten, diagrammene og utviklingen din ut fra dem. Alt blir på denne datamaskinen.",
+    "descriptionSync": "Legg til en konto eller en investering, så bygger Moony oversikten, diagrammene og utviklingen din ut fra dem.",
     "addAccount": "Legg til en bankkonto og importer en kontoutskrift",
     "addInvestment": "Legg til en investering",
     "setBudget": "Sett et budsjett"

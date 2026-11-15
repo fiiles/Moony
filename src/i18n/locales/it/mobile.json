@@ -20,6 +20,7 @@
       "noHistory": "nessuno storico"
     },
     "emptyDescription": "Aggiungi un conto o un investimento e Moony costruisce da lì panoramica, grafici e andamenti. Tutto resta su questo telefono.",
+    "emptyDescriptionSync": "Aggiungi un conto o un investimento e Moony costruisce da lì panoramica, grafici e andamenti.",
     "ringCenter": "Attività"
   },
   "money": {
@@ -791,6 +792,7 @@
     "delete": {
       "title": "Eliminare tutti i dati?",
       "lead": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono. Le copie di backup fuori dal telefono restano. Fai prima un backup: è l'unica via per tornare indietro.",
+      "leadSynced": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono, e i dati sincronizzati sul server di sincronizzazione: gli altri tuoi dispositivi smettono di sincronizzare e conservano i dati che hanno. Le copie di backup fuori dal telefono restano. Fai prima un backup: per questo telefono è l'unica via per tornare indietro.",
       "confirmLabel": "Scrivi {{word}} per confermare",
       "confirm": "Elimina i dati",
       "failed": "Eliminazione non riuscita"

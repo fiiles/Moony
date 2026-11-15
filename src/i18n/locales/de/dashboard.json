@@ -73,6 +73,7 @@
   "empty": {
     "title": "Hier erscheint Ihr Nettovermögen",
     "description": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends. Alles bleibt auf diesem Computer.",
+    "descriptionSync": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends.",
     "addAccount": "Bankkonto hinzufügen und Kontoauszug importieren",
     "addInvestment": "Geldanlage hinzufügen",
     "setBudget": "Budget festlegen"

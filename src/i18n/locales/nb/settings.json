@@ -120,8 +120,9 @@
     "confirmWord": "SLETT",
     "deleteAll": "Slett alle data",
     "deleteAllHint": "Fjerner databasen, nøkkelfilene og vedleggene på denne datamaskinen. Kopier ved siden av databasen (moony.db.bak-…, pre-restore-…) blir værende i datamappen (Data og sikkerhetskopier → Åpne mappe), det samme gjør sikkerhetskopier lagret utenfor appen.",
+    "deleteAllHintSynced": "Fjerner databasen, nøkkelfilene og vedleggene på denne datamaskinen, og de synkroniserte dataene på synkroniseringsserveren: de andre enhetene dine slutter å synkronisere og beholder dataene de har. Kopier ved siden av databasen (moony.db.bak-…, pre-restore-…) blir værende i datamappen (Data og sikkerhetskopier → Åpne mappe), det samme gjør sikkerhetskopier lagret utenfor appen.",
     "deleteButton": "Slett data…",
-    "syncDeleted": "Synkroniserte data på synkroniseringsserveren slettes også, så de andre enhetene dine slutter å synkronisere.",
+    "syncDeleted": "Synkroniserte data på synkroniseringsserveren slettes også: de andre enhetene dine slutter å synkronisere og beholder dataene de har.",
     "confirmDescriptionSynced": "Denne handlingen kan ikke angres. Den sletter databasen, nøkkelfilene og vedleggene permanent fra denne enheten. Kopier som Moony lagrer ved siden av databasen (moony.db.bak-…, pre-restore-…) blir værende i datamappen; Innstillinger → Data og sikkerhetskopier → Åpne mappe fører dit."
   },
   "toast": {

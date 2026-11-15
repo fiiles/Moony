@@ -73,6 +73,7 @@
   "empty": {
     "title": "Tady se zobrazí vaše čisté jmění",
     "description": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj. Všechna data zůstávají v tomto počítači.",
+    "descriptionSync": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj.",
     "addAccount": "Přidat bankovní účet a naimportovat výpis",
     "addInvestment": "Přidat investici",
     "setBudget": "Nastavit rozpočet"

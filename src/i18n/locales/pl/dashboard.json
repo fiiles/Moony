@@ -73,6 +73,7 @@
   "empty": {
     "title": "Tutaj pojawi się twój majątek netto",
     "description": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy. Wszystko zostaje na tym komputerze.",
+    "descriptionSync": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy.",
     "addAccount": "Dodaj konto bankowe i zaimportuj wyciąg",
     "addInvestment": "Dodaj inwestycję",
     "setBudget": "Ustaw budżet"

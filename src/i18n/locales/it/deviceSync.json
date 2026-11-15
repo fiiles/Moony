@@ -50,7 +50,7 @@
       "relayError": "Il server di sincronizzazione non risponde come previsto. Moony continua a riprovare.",
       "rateLimited": "Il server di sincronizzazione ha chiesto a Moony di rallentare. Moony riproverà a breve.",
       "unauthorized": "Il server di sincronizzazione non ha accettato questo dispositivo. Potrebbe servire configurare di nuovo la sincronizzazione.",
-      "keyRotated": "La chiave di recupero è stata cambiata su un altro dispositivo. Configura di nuovo la sincronizzazione su questo dispositivo.",
+      "keyRotated": "La chiave di sincronizzazione è stata cambiata su un altro dispositivo. Configura di nuovo la sincronizzazione su questo dispositivo.",
       "secureStorage": "Moony non è riuscita ad accedere all'archivio sicuro di questo dispositivo, quindi la sincronizzazione è in pausa. Riproverà; di solito aiuta sbloccare il dispositivo o riavviare Moony.",
       "serverWentBack": "Il server di sincronizzazione è tornato a uno stato precedente, quindi sugli altri tuoi dispositivi potrebbero mancare delle modifiche. I dati su questo dispositivo sono intatti. Moony non può ancora risolverlo da sola: per riallineare i dispositivi, disattiva la sincronizzazione, configurala di nuovo sul dispositivo con i dati più completi e collega gli altri. Non risincronizzare questo dispositivo: sostituirebbe i suoi dati con la copia più vecchia del server di sincronizzazione. Configurando di nuovo la sincronizzazione si crea un nuovo account di sincronizzazione.",
       "internal": "La sincronizzazione si è fermata per un errore interno."
@@ -130,7 +130,7 @@
         "intro": "Conserva questa pagina in un posto sicuro, lontano dai tuoi dispositivi. Chi ce l'ha può leggere i tuoi dati sincronizzati.",
         "accountLabel": "Account di sincronizzazione",
         "accountNote": "Identifica il tuo account di sincronizzazione. Non apre i tuoi dati.",
-        "codeLabel": "Codice di ripristino",
+        "codeLabel": "Codice del kit di ripristino",
         "codeNote": "Apre i tuoi dati sincronizzati. Tienilo segreto.",
         "qrLabel": "Scansiona per ripristinare su un telefono",
         "created": "Creato il {{date}}",
@@ -351,8 +351,8 @@
     "pairTitle": "Collegati dal telefono",
     "pairHint": "Sul telefono con la sincronizzazione attiva: Impostazioni → Sincronizzazione → Aggiungi un dispositivo",
     "kitTitle": "Usa un kit di ripristino",
-    "kitHint": "Inserisci il codice di ripristino del tuo kit di ripristino della sincronizzazione, o il testo del suo codice QR.",
-    "codeLabel": "Codice di ripristino",
+    "kitHint": "Inserisci il codice del kit di ripristino o il testo del suo codice QR.",
+    "codeLabel": "Codice del kit di ripristino",
     "accountLabel": "Numero dell'account",
     "confirm": "Collega e sostituisci",
     "choice": {
@@ -362,7 +362,7 @@
       },
       "kit": {
         "title": "Ho il kit di ripristino della sincronizzazione",
-        "lead": "Inserisci il codice del kit e l'indirizzo del server. Così si collega anche un secondo computer."
+        "lead": "Inserisci il codice del kit di ripristino e l'indirizzo del server. Così si collega anche un secondo computer."
       }
     },
     "connect": "Collega",
@@ -389,7 +389,7 @@
     "choice": {
       "scan": {
         "title": "Scansiona un codice dal computer",
-        "lead": "Sul computer: Impostazioni → Sincronizzazione → Aggiungi un dispositivo. Si può scansionare anche il QR del Kit di recupero."
+        "lead": "Sul computer: Impostazioni → Sincronizzazione → Aggiungi un dispositivo. Si può scansionare anche il QR del Kit di ripristino."
       }
     },
     "typeCode": "Digita un codice del kit di ripristino",
@@ -452,7 +452,7 @@
   },
   "codes": {
     "pairNotForSetup": "Questo è un codice di abbinamento, non un codice di connessione. Scansionalo quando aggiungi questo dispositivo a una sincronizzazione già attiva.",
-    "kitNotForSetup": "Questo è un codice del kit di recupero, non un codice di connessione. Usalo per unirti a dati sincronizzati già esistenti.",
+    "kitNotForSetup": "Questo è un codice del kit di ripristino, non un codice di connessione. Usalo per unirti a dati sincronizzati già esistenti.",
     "connectionNotHere": "Questo è un codice di connessione di un server di sincronizzazione. Usalo quando configuri la sincronizzazione, non qui.",
     "notAServerAddress": "Questo non è l'indirizzo di un server di sincronizzazione. Digita l'indirizzo del tuo server di sincronizzazione o incolla il suo codice di connessione."
   },

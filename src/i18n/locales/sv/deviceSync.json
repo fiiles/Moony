@@ -46,7 +46,7 @@
       "relayError": "Synkroniseringsservern svarar inte som förväntat. Moony fortsätter försöka.",
       "rateLimited": "Synkroniseringsservern bad Moony sakta ner. Moony försöker snart igen.",
       "unauthorized": "Synkroniseringsservern godtog inte den här enheten. Du kan behöva ställa in synkroniseringen igen.",
-      "keyRotated": "Återställningsnyckeln ändrades på en annan enhet. Ställ in synkroniseringen igen på den här enheten.",
+      "keyRotated": "Synkroniseringsnyckeln ändrades på en annan enhet. Ställ in synkroniseringen igen på den här enheten.",
       "secureStorage": "Moony kom inte åt den säkra lagringen på den här enheten, så synkroniseringen är pausad. Moony försöker igen; det brukar hjälpa att låsa upp enheten eller starta om Moony.",
       "serverWentBack": "Synkroniseringsservern har gått tillbaka till ett äldre tillstånd, så ändringar kan saknas på dina andra enheter. Dina data på den här enheten är intakta. Moony kan inte rätta till detta på egen hand ännu: för att föra ihop enheterna igen, stäng av synkronisering, ställ in den på nytt på enheten med de mest fullständiga uppgifterna och anslut de andra. Synkronisera inte den här enheten igen: det skulle ersätta enhetens data med synkroniseringsserverns äldre kopia. Ställer du in synkroniseringen på nytt skapas ett nytt synkroniseringskonto.",
       "internal": "Synkroniseringen stoppades på grund av ett internt fel."
@@ -126,7 +126,7 @@
         "intro": "Förvara den här sidan säkert, borta från dina enheter. Den som har den kan läsa dina synkroniserade uppgifter.",
         "accountLabel": "Synkroniseringskonto",
         "accountNote": "Identifierar ditt synkroniseringskonto. Det öppnar inte dina uppgifter.",
-        "codeLabel": "Återställningskod",
+        "codeLabel": "Kod från återställningskitet",
         "codeNote": "Öppnar dina synkroniserade uppgifter. Håll den hemlig.",
         "qrLabel": "Skanna för att återställa på en telefon",
         "created": "Skapat {{date}}",
@@ -340,8 +340,8 @@
     "pairTitle": "Anslut från telefonen",
     "pairHint": "På telefonen med synkronisering på: Inställningar → Synkronisering → Lägg till en enhet",
     "kitTitle": "Använd ett återställningskit",
-    "kitHint": "Ange återställningskoden från ditt återställningskit för synkronisering, eller texten i dess QR-kod.",
-    "codeLabel": "Återställningskod",
+    "kitHint": "Ange koden från återställningskitet eller texten i kitets QR-kod.",
+    "codeLabel": "Kod från återställningskitet",
     "accountLabel": "Kontonummer",
     "confirm": "Anslut och ersätt",
     "choice": {
@@ -351,7 +351,7 @@
       },
       "kit": {
         "title": "Jag har återställningskitet för synkronisering",
-        "lead": "Du anger koden från kitet och serverns adress. Så ansluter även en andra dator."
+        "lead": "Du anger koden från återställningskitet och serverns adress. Så ansluter även en andra dator."
       }
     },
     "connect": "Anslut",

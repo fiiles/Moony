@@ -54,7 +54,7 @@
       "relayError": "Synchronizační server neodpovídá tak, jak má. Moony to zkouší dál.",
       "rateLimited": "Synchronizační server požádal Moony o zpomalení. Moony to brzy zkusí znovu.",
       "unauthorized": "Synchronizační server toto zařízení nepřijal. Může být potřeba synchronizaci nastavit znovu.",
-      "keyRotated": "Obnovovací klíč byl změněn na jiném zařízení. Nastavte synchronizaci na tomto zařízení znovu.",
+      "keyRotated": "Klíč synchronizace byl změněn na jiném zařízení. Nastavte synchronizaci na tomto zařízení znovu.",
       "secureStorage": "Moony se nemohla dostat k zabezpečenému úložišti tohoto zařízení, a proto je synchronizace pozastavena. Zkusí to znovu; obvykle pomůže odemknout zařízení nebo restartovat Moony.",
       "serverWentBack": "Synchronizační server se vrátil do staršího stavu, takže na vašich dalších zařízeních mohou chybět změny. Data na tomto zařízení jsou v pořádku. Moony to zatím neumí opravit sama: pokud chcete zařízení znovu sladit, vypněte synchronizaci, znovu ji nastavte na zařízení s nejúplnějšími daty a připojte k ní ostatní. Funkci „Synchronizovat toto zařízení znovu“ nepoužívejte: nahradila by data tohoto zařízení starší kopií ze synchronizačního serveru. Opětovným nastavením synchronizace vznikne nový synchronizační účet.",
       "internal": "Synchronizace se zastavila kvůli vnitřní chybě."
@@ -134,7 +134,7 @@
         "intro": "Uschovejte tuto stránku na bezpečném místě mimo svá zařízení. Kdo ji má, přečte vaše synchronizovaná data.",
         "accountLabel": "Synchronizační účet",
         "accountNote": "Určuje váš synchronizační účet. Data neotevře.",
-        "codeLabel": "Obnovovací kód",
+        "codeLabel": "Kód záchranné sady",
         "codeNote": "Otevře vaše synchronizovaná data. Udržujte ho v tajnosti.",
         "qrLabel": "Naskenujte pro obnovení v telefonu",
         "created": "Vytvořeno {{date}}",
@@ -362,8 +362,8 @@
     "pairTitle": "Připojit z telefonu",
     "pairHint": "Na telefonu se zapnutou synchronizací: Nastavení → Synchronizace → Přidat zařízení",
     "kitTitle": "Použít záchrannou sadu",
-    "kitHint": "Zadejte obnovovací kód ze záchranné sady synchronizace nebo text jejího QR kódu.",
-    "codeLabel": "Obnovovací kód",
+    "kitHint": "Zadejte kód záchranné sady nebo text jejího QR kódu.",
+    "codeLabel": "Kód záchranné sady",
     "accountLabel": "Číslo účtu",
     "confirm": "Připojit a nahradit",
     "choice": {
@@ -373,7 +373,7 @@
       },
       "kit": {
         "title": "Mám Záchrannou sadu synchronizace",
-        "lead": "Zadáte kód ze sady a adresu serveru. Tak se připojuje i druhý počítač."
+        "lead": "Zadáte kód záchranné sady a adresu serveru. Tak se připojuje i druhý počítač."
       }
     },
     "connect": "Připojit",
@@ -464,7 +464,7 @@
   },
   "codes": {
     "pairNotForSetup": "Toto je párovací kód, ne připojovací kód. Naskenujte ho při přidání tohoto zařízení k již běžící synchronizaci.",
-    "kitNotForSetup": "Toto je kód ze záchranné sady, ne připojovací kód. Použijte ho při připojení k již existujícím synchronizovaným datům.",
+    "kitNotForSetup": "Toto je kód záchranné sady, ne připojovací kód. Použijte ho při připojení k již existujícím synchronizovaným datům.",
     "connectionNotHere": "Toto je připojovací kód synchronizačního serveru. Použijte ho při nastavování synchronizace, ne tady.",
     "notAServerAddress": "Toto není adresa synchronizačního serveru. Zadejte adresu svého synchronizačního serveru nebo vložte jeho připojovací kód."
   },

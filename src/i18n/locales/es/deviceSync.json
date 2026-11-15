@@ -50,7 +50,7 @@
       "relayError": "El servidor de sincronización no responde como se esperaba. Moony sigue intentándolo.",
       "rateLimited": "El servidor de sincronización pidió a Moony que fuera más despacio. Moony lo intentará de nuevo pronto.",
       "unauthorized": "El servidor de sincronización no aceptó este dispositivo. Puede que debas configurar la sincronización de nuevo.",
-      "keyRotated": "La clave de recuperación se cambió en otro dispositivo. Configura la sincronización de nuevo en este dispositivo.",
+      "keyRotated": "La clave de sincronización se cambió en otro dispositivo. Configura la sincronización de nuevo en este dispositivo.",
       "secureStorage": "Moony no ha podido acceder al almacenamiento seguro de este dispositivo, así que la sincronización está en pausa. Lo intentará de nuevo; desbloquear el dispositivo o reiniciar Moony suele ayudar.",
       "serverWentBack": "El servidor de sincronización ha vuelto a un estado anterior, así que puede que falten cambios en tus otros dispositivos. Tus datos en este dispositivo están intactos. Moony todavía no puede arreglarlo por sí mismo: para volver a juntar tus dispositivos, desactiva la sincronización, vuelve a configurarla en el dispositivo con los datos más completos y une los demás. No vuelvas a sincronizar este dispositivo: sustituiría sus datos por la copia más antigua del servidor de sincronización. Si configuras la sincronización de nuevo, se crea una cuenta de sincronización nueva.",
       "internal": "La sincronización se detuvo por un error interno."
@@ -130,7 +130,7 @@
         "intro": "Guarda esta página en un lugar seguro, lejos de tus dispositivos. Quien la tenga puede leer tus datos sincronizados.",
         "accountLabel": "Cuenta de sincronización",
         "accountNote": "Identifica tu cuenta de sincronización. No abre tus datos.",
-        "codeLabel": "Código de recuperación",
+        "codeLabel": "Código del kit de recuperación",
         "codeNote": "Abre tus datos sincronizados. Mantenlo en secreto.",
         "qrLabel": "Escanea para restaurar en un teléfono",
         "created": "Creado el {{date}}",
@@ -351,8 +351,8 @@
     "pairTitle": "Unirse desde tu teléfono",
     "pairHint": "En el teléfono con la sincronización activada: Ajustes → Sincronización → Añadir un dispositivo",
     "kitTitle": "Usar un kit de recuperación",
-    "kitHint": "Introduce el código de recuperación de tu kit de recuperación de sincronización, o el texto de su código QR.",
-    "codeLabel": "Código de recuperación",
+    "kitHint": "Introduce el código del kit de recuperación o el texto de su código QR.",
+    "codeLabel": "Código del kit de recuperación",
     "accountLabel": "Número de cuenta",
     "confirm": "Unirse y reemplazar",
     "choice": {
@@ -362,7 +362,7 @@
       },
       "kit": {
         "title": "Tengo el kit de recuperación de sincronización",
-        "lead": "Introduces el código del kit y la dirección del servidor. Así se une también un segundo ordenador."
+        "lead": "Introduces el código del kit de recuperación y la dirección del servidor. Así se une también un segundo ordenador."
       }
     },
     "connect": "Conectar",

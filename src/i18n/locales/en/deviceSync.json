@@ -46,7 +46,7 @@
       "relayError": "The sync server is not answering as expected. Moony keeps trying.",
       "rateLimited": "The sync server asked Moony to slow down. Moony will try again soon.",
       "unauthorized": "The sync server did not accept this device. Setting up sync again may be needed.",
-      "keyRotated": "The recovery key was changed on another device. Set up sync on this device again.",
+      "keyRotated": "The sync key was changed on another device. Set up sync on this device again.",
       "secureStorage": "Moony could not reach this device's secure storage, so syncing is paused. It will try again; unlocking the device or restarting Moony usually helps.",
       "serverWentBack": "The sync server went back to an older state, so changes may be missing on your other devices. Your data on this device is intact. Moony cannot repair this on its own yet: to bring your devices back together, turn sync off, set it up again on the device with the most complete data, and join the others. Don't re-sync: it would replace this device's data with the sync server's older copy. Setting sync up again creates a new sync account.",
       "internal": "Syncing stopped because of an internal error."
@@ -126,7 +126,7 @@
         "intro": "Keep this page somewhere safe, away from your devices. Anyone who has it can read your synced data.",
         "accountLabel": "Sync account",
         "accountNote": "Identifies your sync account. It does not open your data.",
-        "codeLabel": "Recovery code",
+        "codeLabel": "Recovery Kit code",
         "codeNote": "Opens your synced data. Keep it secret.",
         "qrLabel": "Scan to restore on a phone",
         "created": "Created {{date}}",
@@ -340,8 +340,8 @@
     "pairTitle": "Join from your phone",
     "pairHint": "On the phone with sync on: Settings → Sync → Add a device",
     "kitTitle": "Use a Recovery Kit",
-    "kitHint": "Enter the recovery code from your Sync Recovery Kit, or the text of its QR code.",
-    "codeLabel": "Recovery code",
+    "kitHint": "Enter the Recovery Kit code, or the text of the kit's QR code.",
+    "codeLabel": "Recovery Kit code",
     "accountLabel": "Account number",
     "confirm": "Join and replace",
     "choice": {
@@ -351,7 +351,7 @@
       },
       "kit": {
         "title": "I have the Sync Recovery Kit",
-        "lead": "You enter the code from the kit and the server address. This is also how a second computer joins."
+        "lead": "You enter the Recovery Kit code and the server address. This is also how a second computer joins."
       }
     },
     "connect": "Connect",

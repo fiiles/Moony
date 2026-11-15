@@ -1161,7 +1161,7 @@ mod tests {
                 |r| r.get(0),
             )
             .expect("count");
-        assert_eq!(sync_tables, 8);
+        assert_eq!(sync_tables, 9);
 
         let dir = tempfile::tempdir().expect("dir");
         let dest = dir.path().join("export.json");

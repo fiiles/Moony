@@ -428,6 +428,12 @@ pub(super) static TABLES: &[TableSpec] = &[
         class: TableClass::Local,
         ..BASE
     },
+    // This device's queue of document and photo content to move to or from the sync server.
+    TableSpec {
+        name: "sync_blobs",
+        class: TableClass::Local,
+        ..BASE
+    },
     TableSpec {
         name: "attachment_leftovers",
         class: TableClass::Local,

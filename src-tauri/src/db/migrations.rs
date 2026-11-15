@@ -99,6 +99,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("032_sync_snapshot_too_large", MIGRATION_032),
         ("033_sync_snapshot_barrier", MIGRATION_033),
         ("034_asset_logos", MIGRATION_034),
+        ("035_sync_blobs", MIGRATION_035),
     ]
 }
 
@@ -3400,9 +3401,9 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_34_migrations() {
-        assert_eq!(known_migration_names().len(), 34);
-        assert_eq!(known_migration_names().last(), Some(&"034_asset_logos"));
+    fn the_chain_now_has_35_migrations() {
+        assert_eq!(known_migration_names().len(), 35);
+        assert_eq!(known_migration_names().last(), Some(&"035_sync_blobs"));
     }
 }
 
@@ -3463,6 +3464,28 @@ CREATE TABLE asset_logos (
     mime TEXT,
     checked_at INTEGER NOT NULL
 );
+"#;
+
+/// 035: `sync_blobs` (Local): this device's queue of document and photo content to move to or
+/// from the sync server. `state`: `up` = held here, the server has not confirmed it; `down` =
+/// referenced, not held here; `done` = held here and known to the server. `row_at` is the owning
+/// row's `uploaded_at` (documents) or `created_at` (photos). Never leaves the device.
+pub(crate) const MIGRATION_035: &str = r#"
+CREATE TABLE sync_blobs (
+    blob_id TEXT PRIMARY KEY,
+    state TEXT NOT NULL CHECK (state IN ('up', 'down', 'done')),
+    thumbnail INTEGER NOT NULL DEFAULT 0 CHECK (thumbnail IN (0, 1)),
+    wanted INTEGER NOT NULL DEFAULT 0 CHECK (wanted IN (0, 1)),
+    active INTEGER NOT NULL DEFAULT 0 CHECK (active IN (0, 1)),
+    row_at INTEGER NOT NULL DEFAULT 0,
+    queued_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_try_at INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT CHECK (last_error IN
+        ('network', 'server', 'notOnServer', 'unreadable', 'noRoom', 'invalidId', 'local')),
+    last_error_at INTEGER
+) WITHOUT ROWID;
+CREATE INDEX idx_sync_blobs_state ON sync_blobs (state, next_try_at);
 "#;
 
 #[cfg(test)]
@@ -4582,6 +4605,11 @@ mod migration_021 {
                 .expect("query")
                 .map(|r| r.expect("row"))
                 .collect();
+            // `sync_blobs` is the device's transfer queue, not a reference to a blob: a row there
+            // keeps no content alive.
+            if table == "sync_blobs" {
+                continue;
+            }
             for column in columns.into_iter().filter(|c| c.ends_with("blob_id")) {
                 found.push((table.clone(), column));
             }

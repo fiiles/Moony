@@ -304,6 +304,7 @@ fn the_exact_tables_of_each_class_are_pinned() {
         "real_estate_photos",
         "real_estate_documents",
         "insurance_documents",
+        "sync_blobs",
         "sync_state",
         "sync_clock",
         "sync_outbox",

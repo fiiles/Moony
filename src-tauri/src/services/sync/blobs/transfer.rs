@@ -24,6 +24,7 @@
 
 use std::io;
 use std::sync::{Arc, Mutex, PoisonError};
+use std::time::Duration;
 
 use rusqlite::{Connection, OptionalExtension};
 use tokio::time::Instant;
@@ -39,6 +40,13 @@ use crate::services::sync::engine::ConnAccess;
 use crate::services::sync::envelope::blob::{sealed_len, BlobSealer};
 use crate::services::sync::keys::Credentials;
 use crate::services::sync::relay::{Relay, RelayError};
+
+/// The most a sync round spends on uploads before it pushes its changes, waiting for the upload
+/// lane included: a blob never holds the round's changes back for longer.
+pub const PRE_PUSH_BUDGET: Duration = Duration::from_secs(20);
+/// The largest blob (plaintext bytes) a round uploads before its push; larger content waits for
+/// the upload lane.
+pub const PRE_PUSH_MAX_PLAIN: u64 = 8 * 1024 * 1024;
 
 /// How one blob's transfer ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -630,6 +630,7 @@ mod tests {
             server_address: None,
             server_insecure: false,
             enabled_at: None,
+            attachments: Default::default(),
         };
         let count = |sync: Option<&SyncStatus>| {
             list_milestones(&conn, today, sync)

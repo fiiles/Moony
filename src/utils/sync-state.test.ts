@@ -27,6 +27,14 @@ function status(
     serverAddress: null,
     serverInsecure: false,
     enabledAt,
+    attachments: {
+      waitingUpload: 0,
+      waitingUploadBytes: 0,
+      notHere: 0,
+      notOnServer: 0,
+      failed: 0,
+      problem: null,
+    },
   };
 }
 

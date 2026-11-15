@@ -516,8 +516,11 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         Ok(())
     }
 
-    /// Sends the status when it differs from the last one sent.
+    /// Sends the status when it differs from the last one sent, with the attachments problem as
+    /// the blob policy holds it now.
     fn publish(&mut self) -> Result<(), Ended> {
+        let attachments = self.policy.blobs.problem();
+        self.shared.update(|r| r.attachments_problem = attachments);
         let runtime = self.shared.runtime();
         match self.db.with_conn(|conn| status::status(conn, &runtime)) {
             Ok(status) => {

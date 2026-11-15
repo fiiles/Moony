@@ -26,6 +26,8 @@ pub fn collect_types() -> TypeCollection {
     // Device sync status (sync-status-changed)
     types.register::<crate::models::SyncPhase>();
     types.register::<crate::models::SyncProblem>();
+    types.register::<crate::models::SyncAttachmentsProblem>();
+    types.register::<crate::models::SyncAttachments>();
     types.register::<crate::models::SyncStatus>();
     types.register::<crate::models::SyncProfileState>();
 
@@ -123,6 +125,7 @@ pub fn collect_types() -> TypeCollection {
 
     // Attachment models
     types.register::<crate::models::AttachmentKind>();
+    types.register::<crate::models::AttachmentContent>();
     types.register::<crate::models::AttachmentStatus>();
 
     // Other assets models

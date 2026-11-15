@@ -19,7 +19,9 @@ use rusqlite::Connection;
 use crate::error::{AppError, Result};
 use crate::models::sync::{SyncProblem, SyncStatus};
 use crate::services::sync::binding::BindingNative;
+use crate::services::sync::blobs::policy::BlobPolicy;
 use crate::services::sync::blobs::stream::IncomingBlobs;
+use crate::services::sync::blobs::transfer::{run_uploads, PRE_PUSH_BUDGET, PRE_PUSH_MAX_PLAIN};
 use crate::services::sync::capture::guard;
 use crate::services::sync::error::{SyncError, SyncResult, TooLarge};
 use crate::services::sync::held_blobs;
@@ -338,7 +340,8 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    through or finds a newer snapshot (`409`, noted with `state::note_snapshot_barrier`).
 /// 2. Pull. `410` restores the vault's snapshot by merge, then pulls once more (a second `410` is
 ///    a relay error).
-/// 3. Push only when the pull allows it (ruling P1, `PullReport::may_push`). A push that sent
+/// 3. Push only when the pull allows it (ruling P1, `PullReport::may_push`), after sending small
+///    documents and photos within a budget (`upload_before_push`, not in `Drain`). A push that sent
 ///    anything is followed by a second pull, which brings what it sent back (the echo, audit M4):
 ///    only that removes an envelope from `sync_unsent`; a failure of that pull is logged and ends
 ///    the round without an error. After an echo pull that was not stopped or unfinished, the
@@ -535,6 +538,9 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     if !may_push {
         return Ok(());
     }
+    if mode != RoundMode::Drain {
+        upload_before_push(relay, db, creds, &policy.blobs, now).await;
+    }
     let pushed = push::push_all(relay, db, creds).await?;
     let (sent, capped, resent_through) = (
         pushed.pushed > 0,
@@ -592,6 +598,43 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         }
     }
     after_push(relay, db, creds, policy, mode, now, jitter, report).await
+}
+
+/// The round's upload step (attachments design §5.3, ADR 0030): before the push, content of at most
+/// `PRE_PUSH_MAX_PLAIN` bytes goes up (the queue reconciled first, so content added here since the
+/// last merge is queued), so another device that merges a row seldom has to wait for its content.
+/// The whole step, waiting for an upload lane busy with a long transfer included, ends within
+/// `PRE_PUSH_BUDGET` (an upload still running then is dropped and tried again later), and nothing
+/// it meets fails or changes the round: transfer errors stay on their entries, and a local error
+/// is logged and dropped (a locked profile ends the round at its next step).
+async fn upload_before_push<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    policy: &BlobPolicy,
+    now: i64,
+) {
+    let until = tokio::time::Instant::now() + PRE_PUSH_BUDGET;
+    let uploads = run_uploads(
+        relay,
+        db,
+        creds,
+        policy,
+        now,
+        Some(until),
+        Some(PRE_PUSH_MAX_PLAIN),
+    );
+    match tokio::time::timeout_at(until, uploads).await {
+        Ok(Ok(sent)) if sent.uploaded > 0 || sent.failed > 0 => log::debug!(
+            "[SYNC] Before the push: {} documents or photos uploaded, {} failed",
+            sent.uploaded,
+            sent.failed
+        ),
+        Ok(Ok(_)) => {}
+        Ok(Err(AppError::Auth(_))) => {}
+        Ok(Err(error)) => log::warn!("[SYNC] Documents and photos were not uploaded: {error}"),
+        Err(_) => log::info!("[SYNC] Uploads before the push ran out of time; the rest waits"),
+    }
 }
 
 /// Step 4 of `run_round_into`: the vault's info, healing a below-barrier miss, and the snapshot.

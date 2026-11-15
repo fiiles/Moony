@@ -39,6 +39,41 @@ value: string; currency: string;
 valuedAt: number; note: string | null; createdAt: number }
 
 /**
+ * Where an attachment's content is, with device sync (ADR 0030). A row without a blob (a plain
+ * file from before 0.13) and a profile whose store is unavailable report `Here`.
+ */
+export type AttachmentContent = 
+/**
+ * Held on this device, and known to the sync server or not syncing.
+ */
+"here" | 
+/**
+ * Held on this device; the sync server has not confirmed it yet.
+ */
+"waitingUpload" | 
+/**
+ * On another device or the sync server, not fetched here (yet).
+ */
+"notHere" | 
+/**
+ * Being fetched now.
+ */
+"downloading" | 
+/**
+ * The sync server does not have it (not uploaded yet from the other device).
+ */
+"notOnServer" | 
+/**
+ * Fetching it failed in a way a plain retry does not fix (it could not be opened, or its ID
+ * is not valid).
+ */
+"failed" | 
+/**
+ * Neither here nor on its way: the content is lost on this device.
+ */
+"missing"
+
+/**
  * Which attachment table a row id belongs to.
  */
 export type AttachmentKind = "photo" | "real-estate-document" | "insurance-document"
@@ -3327,6 +3362,55 @@ export type SyncAccount = { accountNumber: string; active: boolean;
 paidUntil: number | null }
 
 /**
+ * Where this device's documents and photos stand with sync (attachments design §5.6), counted by
+ * attachment row (a photo once): beside the ordinary phase, never part of it. Zeros while sync is
+ * off.
+ */
+export type SyncAttachments = { 
+/**
+ * Rows whose content is held here and not yet confirmed by the sync server, and can still
+ * upload: while any waits, this device is not synchronised.
+ */
+waitingUpload: number; 
+/**
+ * The plaintext bytes of the content waiting to upload.
+ */
+waitingUploadBytes: number; 
+/**
+ * Rows whose content is on another device or the sync server, not fetched here yet.
+ */
+notHere: number; 
+/**
+ * Rows whose content the sync server does not have yet (not uploaded from the other device).
+ */
+notOnServer: number; 
+/**
+ * Rows whose content could not be fetched, or cannot upload by itself: failed items, which
+ * never keep this device "not synchronised".
+ */
+failed: number; 
+/**
+ * Why documents and photos do not move, while ordinary sync goes on.
+ */
+problem: SyncAttachmentsProblem | null }
+
+/**
+ * Why documents and photos do not move while ordinary sync goes on (ADR 0030): uploads of their
+ * content wait, everything else syncs.
+ */
+export type SyncAttachmentsProblem = 
+/**
+ * The sync server has no room for more content (the vault's quota, or its disk at the
+ * free-space floor): uploads wait; downloads go on.
+ */
+"noRoom" | 
+/**
+ * The sync server does not have the blob routes (no `blobs` feature): nothing moves until it
+ * is updated.
+ */
+"serverNeedsUpdate"
+
+/**
  * A backup a join, repair or re-sync made, as Restore lists it.
  */
 export type SyncBackupEntry = { path: string; 
@@ -3525,7 +3609,11 @@ serverInsecure: boolean;
  * When sync was turned on on this device: `joinedAt` of its own device row (unix seconds);
  * `None` while off or before the row exists.
  */
-enabledAt: number | null }
+enabledAt: number | null; 
+/**
+ * This device's documents and photos: content waiting to move, and their own problem.
+ */
+attachments: SyncAttachments }
 
 /**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;

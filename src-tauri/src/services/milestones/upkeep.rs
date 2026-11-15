@@ -234,6 +234,7 @@ mod tests {
             server_address: None,
             server_insecure: false,
             enabled_at,
+            attachments: Default::default(),
         }
     }
 

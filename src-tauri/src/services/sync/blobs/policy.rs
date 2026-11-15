@@ -245,6 +245,15 @@ impl BlobPolicy {
     }
 }
 
+impl std::fmt::Debug for BlobPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BlobPolicy")
+            .field("problem", &self.problem())
+            .field("eager_full", &self.eager_full())
+            .finish_non_exhaustive()
+    }
+}
+
 impl Default for BlobPolicy {
     fn default() -> Self {
         Self::new(true)

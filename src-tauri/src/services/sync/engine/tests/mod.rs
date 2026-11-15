@@ -6,6 +6,7 @@
 mod backoff;
 mod binding_failure;
 mod blob_queue;
+mod blobs;
 mod clock_snapshots;
 mod clocks;
 mod echo;
@@ -163,6 +164,14 @@ pub async fn vault() -> Vault {
         a: TestConn::new(a),
         b: TestConn::new(b),
     }
+}
+
+/// Attaches an empty attachment store to `device`, as the app opens one with the profile.
+pub fn with_store(device: &TestConn) {
+    let conn = device.lock();
+    conn.execute("ATTACH DATABASE ':memory:' AS files", [])
+        .expect("attach");
+    crate::db::files_schema::migrate(&conn).expect("files schema");
 }
 
 pub fn exec(conn: &Connection, sql: &str) {

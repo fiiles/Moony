@@ -51,15 +51,10 @@ impl BlobState {
     }
 }
 
-/// The longest wait between tries for content no server has (`notOnServer`): its only holder may
-/// have been wiped, so after the first hour the wait keeps doubling up to a day, and each device
-/// asks the server about it once a day, not once an hour, for as long as a row names it.
-pub const NOT_ON_SERVER_MAX_WAIT: i64 = 86_400;
-
-/// The longest wait a failure sets before the next try (`notOnServer`'s cap). An entry due further
+/// The longest wait a failure sets before the next try (`unreadable`'s cap). An entry due further
 /// ahead than this (and not `i64::MAX`, never) was dated by a clock that has since been set back:
 /// it counts as due.
-pub const MAX_BACKOFF: i64 = NOT_ON_SERVER_MAX_WAIT;
+pub const MAX_BACKOFF: i64 = 21_600;
 
 /// Why a transfer failed; `as_str` is the `last_error` code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -104,27 +99,15 @@ impl TransferError {
 
     /// When to try again after the `failures`-th failure in a row: `base · 2^(failures − 1)`
     /// seconds up to a cap per kind (never more than [`MAX_BACKOFF`]); content no server has
-    /// waits 5, 10, 20 and 40 minutes and an hour, then doubles on up to
-    /// [`NOT_ON_SERVER_MAX_WAIT`]; a full server waits a fixed half hour; an invalid ID, a
+    /// waits at most an hour, and a pull that merged another device's changes makes it due at once
+    /// ([`content_may_have_landed`]); a full server waits a fixed half hour; an invalid ID, a
     /// refused blob and a conflict wait forever (`i64::MAX`).
     fn next_try_at(self, failures: u32, now: i64) -> i64 {
         let delay = match self {
             TransferError::Network | TransferError::Server | TransferError::Local => {
                 doubling(30, 1_800, failures)
             }
-            TransferError::NotOnServer => {
-                // The fifth failure reaches the hour; from there the hour doubles.
-                const FAILURES_TO_THE_HOUR: u32 = 5;
-                if failures <= FAILURES_TO_THE_HOUR {
-                    doubling(300, 3_600, failures)
-                } else {
-                    doubling(
-                        3_600,
-                        NOT_ON_SERVER_MAX_WAIT,
-                        failures - FAILURES_TO_THE_HOUR + 1,
-                    )
-                }
-            }
+            TransferError::NotOnServer => doubling(300, 3_600, failures),
             TransferError::Unreadable => doubling(600, 21_600, failures),
             TransferError::NoRoom => 1_800,
             TransferError::InvalidId | TransferError::Refused | TransferError::Conflict => {
@@ -796,6 +779,17 @@ pub fn retry_now(conn: &Connection) -> Result<()> {
         [],
     )?;
     Ok(())
+}
+
+/// Another device's changes were merged here: its uploads are probably landing, so every download
+/// whose last try found nothing on the server is due now. Its count of attempts stays, so content
+/// still missing goes on with its backoff from where it was. How many.
+pub fn content_may_have_landed(conn: &Connection) -> Result<usize> {
+    Ok(conn.execute(
+        "UPDATE main.sync_blobs SET next_try_at = 0 \
+         WHERE state = 'down' AND last_error = ?1 AND next_try_at > 0",
+        [TransferError::NotOnServer.as_str()],
+    )?)
 }
 
 /// Room on the server may have been freed (the daily pass deleted blobs): uploads that waited

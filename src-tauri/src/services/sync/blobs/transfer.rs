@@ -411,7 +411,8 @@ async fn enter(
 }
 
 /// The queue brought in line with the rows (`queue::reconcile_rows`: only newly named blobs are
-/// looked up in the store; the full reconcile is the lane start's and a merging pull's).
+/// looked up in the store; the full reconcile runs at lane start, after a replace and in a full
+/// repair, never per pull).
 fn reconciled_rows<D: ConnAccess>(db: &D, now: i64) -> Result<Reconciled> {
     hold(db, |conn| queue::reconcile_rows(conn, now))
 }
@@ -588,6 +589,9 @@ async fn uploads_in_lane<R: Relay, D: ConnAccess>(
         changed: abandoned || reconciled != Reconciled::default(),
         ..TransferReport::default()
     };
+    if report.changed {
+        policy.note_changed();
+    }
     if !any {
         policy.clear(SyncAttachmentsProblem::ServerNeedsUpdate);
     }
@@ -612,9 +616,11 @@ async fn uploads_in_lane<R: Relay, D: ConnAccess>(
         else {
             break;
         };
+        policy.note_changed();
         let outcome = upload_one(relay, db, creds, &transfer, now).await;
         active.armed = false;
         report.count(outcome, true);
+        policy.note_changed();
         match outcome {
             // Only an accepted body says there is room; a blob the server had stored nothing.
             Outcome::Done => policy.note_uploaded(),
@@ -657,6 +663,9 @@ pub async fn run_downloads<R: Relay, D: ConnAccess>(
         changed: abandoned || reconciled != Reconciled::default(),
         ..TransferReport::default()
     };
+    if report.changed {
+        policy.note_changed();
+    }
     if !any {
         policy.clear(SyncAttachmentsProblem::ServerNeedsUpdate);
         return Ok(report);
@@ -676,9 +685,13 @@ pub async fn run_downloads<R: Relay, D: ConnAccess>(
         else {
             break;
         };
+        // Told at the start (the row reads as downloading: its entry is active) and at the end of
+        // each transfer, not once per run: a run can go on for minutes behind a large file.
+        policy.note_changed();
         let outcome = download_one(relay, db, creds, &transfer, now).await;
         active.armed = false;
         report.count(outcome, false);
+        policy.note_changed();
         match outcome {
             Outcome::Locked => return Err(locked()),
             Outcome::Busy => busy.push(transfer.blob_id),

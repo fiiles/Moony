@@ -20,7 +20,8 @@ use crate::error::{AppError, Result};
 use crate::models::sync::{SyncProblem, SyncStatus};
 use crate::services::sync::binding::BindingNative;
 use crate::services::sync::blobs::pass;
-use crate::services::sync::blobs::policy::BlobPolicy;
+use crate::services::sync::blobs::policy::{BlobPolicy, Lane};
+use crate::services::sync::blobs::queue;
 use crate::services::sync::blobs::stream::IncomingBlobs;
 use crate::services::sync::blobs::transfer::{
     run_uploads_if_free, PRE_PUSH_BUDGET, PRE_PUSH_MAX_PLAIN,
@@ -425,6 +426,7 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         return Ok(());
     }
 
+    queue_local_changes(db, &policy.blobs, now)?;
     if let Err(error) = round_steps(relay, db, &creds, policy, mode, now, jitter, report).await {
         let problem = match error {
             SyncError::VaultNotFound => {
@@ -524,6 +526,11 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         if let Err(error) = db.with_conn(held_blobs::release) {
             log::warn!("[SYNC] Could not release the blobs a replace held: {error}");
         }
+    }
+    if pulled.applied > 0 {
+        // The pull made content the server lacked at its last try due again
+        // (`queue::content_may_have_landed`): the download lane looks now, not after the round.
+        policy.blobs.wake_lane(Lane::Down);
     }
     if pulled.gaps > 0 {
         // Once per round, not per envelope: every later envelope of a waiting author waits too.
@@ -667,6 +674,28 @@ async fn daily_pass<R: Relay, D: ConnAccess>(
 /// backoff keeps the next rounds from spending their budget on it again. Nothing the step meets
 /// fails or changes the round: transfer errors stay on their entries, and a local error is
 /// logged and dropped (a locked profile ends the round at its next step).
+/// Before any network call of the round: the transfer queue learns of documents and photos added
+/// or removed here (`queue::reconcile_rows`: only newly named blobs are looked up in the store),
+/// so the status counts them even when the round then cannot reach the server; the app is told
+/// when the queue changed. A local failure is logged and the round goes on (the upload step
+/// reconciles again); a locked profile ends the round.
+fn queue_local_changes<D: ConnAccess>(db: &D, blobs: &BlobPolicy, now: i64) -> SyncResult<()> {
+    match db.with_conn(|conn| queue::reconcile_rows(conn, now)) {
+        Ok(reconciled) => {
+            if reconciled != queue::Reconciled::default() {
+                blobs.note_changed();
+            }
+            Ok(())
+        }
+        Err(error @ AppError::Auth(_)) => Err(SyncError::Local(error)),
+        Err(error) => {
+            log::warn!("[SYNC] The transfer queue could not be brought up to date");
+            log::debug!("[SYNC] The transfer queue could not be brought up to date: {error}");
+            Ok(())
+        }
+    }
+}
+
 async fn upload_before_push<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,

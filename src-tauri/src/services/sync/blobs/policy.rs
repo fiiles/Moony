@@ -59,6 +59,9 @@ struct Inner {
     down: tokio::sync::Mutex<()>,
     /// One per lane (`Lane::Up`, `Lane::Down`).
     wakes: [Notify; 2],
+    /// What the person sees of documents and photos changed (`note_changed`): the running engine
+    /// tells the app, coalesced.
+    changes: Notify,
     eager_full: bool,
 }
 
@@ -93,6 +96,7 @@ impl BlobPolicy {
                 up: tokio::sync::Mutex::new(()),
                 down: tokio::sync::Mutex::new(()),
                 wakes: [Notify::new(), Notify::new()],
+                changes: Notify::new(),
                 eager_full,
             }),
         }
@@ -230,6 +234,18 @@ impl BlobPolicy {
         if problem == SyncAttachmentsProblem::NoRoom {
             state.paused_until = 0;
         }
+    }
+
+    /// What the person sees of documents and photos changed (a transfer started or ended, the
+    /// queue learnt of content added or removed here): the running engine tells the app
+    /// (`runtime::forward_changes`), at most once per short gap, the last change always.
+    pub fn note_changed(&self) {
+        self.inner.changes.notify_one();
+    }
+
+    /// Notified by [`note_changed`](Self::note_changed).
+    pub fn changes(&self) -> &Notify {
+        &self.inner.changes
     }
 
     /// Wakes both lanes.

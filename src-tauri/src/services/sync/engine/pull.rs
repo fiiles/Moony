@@ -16,6 +16,7 @@ use rusqlite::Connection;
 
 use super::{ConnAccess, PullReport, PullStop};
 use crate::error::{AppError, Result};
+use crate::services::sync::blobs;
 use crate::services::sync::chain::gaps::{self, GapKind};
 use crate::services::sync::chain::{self, EnvelopeMeta, RejoinReport, Verdict};
 use crate::services::sync::changeset::{self, Changeset};
@@ -255,8 +256,16 @@ async fn pull_bounded<R: Relay, D: ConnAccess>(
     let report = pull_pages_from_cursor(relay, db, creds, now, max_pages, scan_from).await?;
     // Each merged changeset brought the transfer queue in line with its rows
     // (`queue::reconcile_rows`); the entries are checked against the store only at lane start,
-    // after a replace and in a full repair, never per pull (ADR 0030).
-    db.with_conn(|conn| settle_gaps(conn, &report))?;
+    // after a replace and in a full repair, never per pull (ADR 0030). Another device's changes
+    // arriving are the best sign its uploads are landing: content the server did not have at the
+    // last try is due again at once (one UPDATE, no store read).
+    db.with_conn(|conn| {
+        settle_gaps(conn, &report)?;
+        if report.applied > 0 {
+            blobs::queue::content_may_have_landed(conn)?;
+        }
+        Ok(())
+    })?;
     Ok(report)
 }
 

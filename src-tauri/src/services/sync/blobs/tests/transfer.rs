@@ -400,6 +400,53 @@ async fn content_sealed_with_a_key_not_here_yet_is_retried_soon_and_arrives_with
     assert_eq!(content(&vault.b, &blob), AttachmentContent::Here);
 }
 
+/// A download tells the app when it starts, before its body arrives, and its row reads as being
+/// downloaded from then on, even when its last try found nothing on the server: the app refetches
+/// at that moment and shows "Downloading…", not "not uploaded yet", for the whole transfer.
+#[tokio::test]
+async fn a_download_is_told_when_it_starts_and_reads_as_downloading() {
+    let vault = devices().await;
+    let blob = queued_document(&vault.a, "d1", &pattern(150_000, 21));
+    uploads(&vault, &vault.a, &BlobPolicy::default()).await;
+    document(&vault.b, "d1", &blob);
+    reconcile(&vault.b);
+    vault
+        .b
+        .lock()
+        .execute(
+            "UPDATE sync_blobs SET last_error = 'notOnServer', attempts = 1, next_try_at = 0 \
+             WHERE blob_id = ?1",
+            [&blob],
+        )
+        .expect("not on the server at the last try");
+    assert_eq!(content(&vault.b, &blob), AttachmentContent::NotOnServer);
+    let policy = BlobPolicy::for_platform(false);
+    let seen: Arc<Mutex<Option<(AttachmentContent, bool)>>> = Arc::default();
+    let (device, watched, id, out) = (
+        vault.b.clone(),
+        policy.clone(),
+        blob.clone(),
+        Arc::clone(&seen),
+    );
+    let relay = Meddling::new(vault.relay.clone()).during_get(move || {
+        use futures_util::FutureExt;
+        let told = watched.changes().notified().now_or_never().is_some();
+        *out.lock().expect("seen") = Some((content(&device, &id), told));
+    });
+
+    let report = run_downloads(&relay, &vault.b, &vault.creds, &policy, NOW, None)
+        .await
+        .expect("downloads");
+
+    assert_eq!(report.stored, 1);
+    assert_eq!(
+        *seen.lock().expect("seen"),
+        Some((AttachmentContent::Downloading, true)),
+        "while its body arrived"
+    );
+    assert_eq!(content(&vault.b, &blob), AttachmentContent::Here);
+}
+
 #[tokio::test]
 async fn no_room_pauses_uploads_and_says_so() {
     let vault = devices().await;

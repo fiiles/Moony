@@ -165,8 +165,6 @@ struct Shared {
     backing_off: AtomicBool,
     /// Something the lanes moved changed the status: the loop publishes it without a round.
     status_dirty: AtomicBool,
-    /// A lane changed content or counts: told to the app, coalesced (`forward_changes`).
-    attachments: Notify,
 }
 
 impl Shared {
@@ -297,7 +295,6 @@ pub fn spawn_with<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
         started: AtomicBool::new(false),
         backing_off: AtomicBool::new(false),
         status_dirty: AtomicBool::new(false),
-        attachments: Notify::new(),
     });
     let (relay, events) = (Arc::new(relay), Arc::new(events));
     let mut policy = SnapshotPolicy::default();
@@ -724,7 +721,8 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
             self.shared.blobs.wake();
         }
         let both = async { tokio::join!(self.lane(Lane::Up), self.lane(Lane::Down)) };
-        let events = forward_changes(&self.shared.attachments, ATTACHMENTS_EVENT_GAP, || {
+        // What the round's upload step and the lanes change (`BlobPolicy::note_changed`).
+        let events = forward_changes(self.shared.blobs.changes(), ATTACHMENTS_EVENT_GAP, || {
             self.events.attachments_changed();
             self.shared.status_dirty.store(true, Ordering::SeqCst);
             self.shared.wake.notify_one();
@@ -759,7 +757,7 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
                     );
                 }
                 if reconciled != queue::Reconciled::default() {
-                    self.shared.attachments.notify_one();
+                    self.shared.blobs.note_changed();
                 }
                 Ok(true)
             }
@@ -837,7 +835,7 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
             }
         };
         if report.changed || policy.problem() != problem {
-            self.shared.attachments.notify_one();
+            self.shared.blobs.note_changed();
         }
         Ok(report.uploaded + report.stored > 0)
     }

@@ -19,6 +19,7 @@ use rusqlite::Connection;
 use crate::error::{AppError, Result};
 use crate::models::sync::{SyncProblem, SyncStatus};
 use crate::services::sync::binding::BindingNative;
+use crate::services::sync::blobs::pass;
 use crate::services::sync::blobs::policy::BlobPolicy;
 use crate::services::sync::blobs::stream::IncomingBlobs;
 use crate::services::sync::blobs::transfer::{
@@ -368,7 +369,8 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    problem: `PullReport::holds_something`).
 /// 4. Not in `Drain`: when the mode asks for it or the policy wants it, read the vault's info,
 ///    heal a below-barrier miss with it, and, after pulls that ended done (rulings P4, P14),
-///    upload a snapshot if due (forced in `FirstSnapshot`).
+///    upload a snapshot if due (forced in `FirstSnapshot`). Then, not in `Drain`, the daily pass of
+///    documents and photos (`daily_pass`), which never fails the round.
 /// 5. A sync state is a problem, not an error (ruling P8): the vault gone (paused in
 ///    `sync_state`), a lapse (with the vault's `paid_until` when the relay still answers), the
 ///    quota, a snapshot too large, a rotated token or an unauthorized one. A transient, rate-limit,
@@ -572,7 +574,9 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     );
     report.push = Some(pushed);
     if !sent {
-        return after_push(relay, db, creds, policy, mode, now, jitter, report).await;
+        after_push(relay, db, creds, policy, mode, now, jitter, report).await?;
+        daily_pass(relay, db, creds, &policy.blobs, mode, now, report).await;
+        return Ok(());
     }
     // The echo (audit M4): what the push sent leaves `sync_unsent` only when this device pulls it
     // back, so the round pulls once more. On an honest relay nothing it sent stays pending, and a
@@ -620,7 +624,38 @@ async fn round_steps<R: Relay, D: ConnAccess>(
             return Ok(());
         }
     }
-    after_push(relay, db, creds, policy, mode, now, jitter, report).await
+    after_push(relay, db, creds, policy, mode, now, jitter, report).await?;
+    daily_pass(relay, db, creds, &policy.blobs, mode, now, report).await;
+    Ok(())
+}
+
+/// The daily pass of documents and photos (`blobs::pass`, ADR 0030), after a `Normal` or
+/// `FirstSnapshot` round's last step went through: once a day, a caught-up device deletes the
+/// server's unreferenced blobs and puts back what the server lost. Nothing it meets fails or
+/// changes the round: it ends within `pass::PASS_BUDGET`, a sync server error ends it (logged
+/// there), a local error is logged here, and a locked profile ends the round at its next step.
+async fn daily_pass<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    blobs: &BlobPolicy,
+    mode: RoundMode,
+    now: i64,
+    report: &RoundReport,
+) {
+    if !matches!(mode, RoundMode::Normal | RoundMode::FirstSnapshot) {
+        return;
+    }
+    let Some(pulled) = report.pull.as_ref() else {
+        return;
+    };
+    match pass::run_if_due(relay, db, creds, blobs, pulled, now).await {
+        Ok(_) | Err(AppError::Auth(_)) => {}
+        Err(error) => {
+            log::warn!("[SYNC] The daily pass of documents and photos failed on this device");
+            log::debug!("[SYNC] The daily pass of documents and photos failed: {error}");
+        }
+    }
 }
 
 /// The round's upload step (attachments design §5.3, ADR 0030): before the push, content of at

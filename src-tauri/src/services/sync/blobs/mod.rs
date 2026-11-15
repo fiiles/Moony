@@ -3,9 +3,11 @@
 //! per blob. `queue` is this device's transfer queue (`sync_blobs`), reconciled from the rows and
 //! the store; `content` says per blob where the content is; `stream` moves one blob between the
 //! store and the wire, sealed and opened a chunk at a time; `transfer` moves one queued blob to or
-//! from the server and runs the queue one blob at a time, under the shared `policy`.
+//! from the server and runs the queue one blob at a time, under the shared `policy`; `pass` is the
+//! daily pass that deletes the server's unreferenced blobs and puts back the ones it lost.
 
 pub mod content;
+pub mod pass;
 pub mod policy;
 pub mod queue;
 pub mod stream;

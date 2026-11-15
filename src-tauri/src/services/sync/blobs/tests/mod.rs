@@ -1,6 +1,7 @@
 //! Blob queue tests: an in-memory profile with its attachment store attached (as the app opens
 //! one) and sync on, where documents and photos name blobs that are held here or not.
 
+mod pass;
 mod queue;
 mod stream;
 mod transfer;

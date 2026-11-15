@@ -242,3 +242,24 @@ documents and photos need a newer server. The app assumes the server's error cod
   and uploads wait. Lock, restore, Delete Account and every sync change wait for the stopped
   engine's tasks to end (at most 5 s). Changes reach the app as `sync-attachments-changed`, at most
   one per 250 ms, the last change always told.
+- **The daily pass (Task 13).** `services/sync/blobs/pass.rs`, run by `engine::daily_pass` after
+  the last step of a `Normal` or `FirstSnapshot` round went through (never in the repair's drain,
+  never in a join or replace); nothing it meets fails or changes the round, sets or clears a
+  problem. Where it is more precise than the decision above: "caught up" also needs the pull not
+  behind the server's head (`PullReport::behind`), and "nothing waiting to upload" counts only
+  content that can still upload: an entry stuck as refused, a conflict or an invalid ID
+  (`queue::STUCK`) does not hold the pass back, one that failed and will be retried does. A row
+  names a blob whether or not it syncs: the columns come from the registry's `TableSpec.requires`,
+  plus every blob a replace holds (`sync_held_blobs`). A blob's age is the smallest `now` of the
+  listing's pages minus its `createdAt`; a page without `now` deletes nothing, a blob dated in the
+  server's future is never old enough. Each delete is preceded by its own check, alone in one
+  hold, that no row names the blob yet, and followed by dropping any queue entry of it, so no
+  `done` entry claims what the server no longer has. Only `done` entries with a canonical ID are
+  queued again, only after a listing of every page, and the upload lane is woken then. The pass
+  ends within 60 seconds (`PASS_BUDGET`, checked before every request, each request cut there). It
+  is done (the Local `app_config` key `sync.blob_pass_at`, never captured) only when it listed
+  every page and sent every delete it chose; a skipped pass, a server that could not be asked
+  (`Skip::ServerUnknown`), a refusal of the vault (logged at `debug`, the round shows it), other
+  server trouble, running out of time or the page cap leaves the next round to try again.
+  Accepted limit: a vault of more than 100,000 blobs (`PASS_MAX_PAGES` pages) never completes a
+  pass; each round then lists 100 pages, deletes among them what qualifies, and puts nothing back.

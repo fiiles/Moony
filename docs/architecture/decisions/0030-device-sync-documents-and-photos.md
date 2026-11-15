@@ -324,13 +324,28 @@ documents and photos need a newer server. The app assumes the server's error cod
     from the primary key's index (`SELECT rowid FROM files.blobs WHERE id = ?1`, never the row),
     that the blob's ID still names that rowid (`read_at_row`, `write_incoming_row`); both must
     match, since SQLite reuses the highest rowid after a delete. Before, every chunk read the hash,
-    which lies past the content, so SQLite walked the blob's overflow pages per chunk (about 25 ms
-    a chunk for a fragmented 100 MiB blob, 1,600 times, with the database held). An upload also
-    stops while a download of the same ID is in progress and checks completeness once more before
-    it seals its last chunk, so an incoming blob begun under the same ID at the same rowid is
-    never sent as content. A download writes only into the row it began; the claim on its ID
+    which lies past the content, so SQLite walked the blob's whole overflow chain per chunk (about
+    25 ms a chunk for a fragmented 100 MiB blob, 1,600 times, with the database held). That walk is
+    gone; a smaller one remains: each chunk opens a fresh incremental blob handle, and a fresh
+    handle follows the chain from its first overflow page up to the chunk's offset. On a
+    contiguous store the pointer map makes that cheap; on a fragmented one it is still a walk per
+    chunk that grows with the offset, so the total stays quadratic in the file size, roughly two to
+    three times cheaper than before. Ruling: no batching of chunks now, since files over about
+    20 MiB are rare; the known follow-up is to read or write several chunks per hold with one
+    handle.
+  - An upload stops while a download of the same ID is in progress (checked inside the hold that
+    reads each chunk, since a download claims its ID before the hold that begins its incoming
+    blob) and checks completeness once more before it seals its last chunk. One window remains:
+    an upload of X whose content is deleted mid-upload and begun again as a download at the same
+    rowid, where that download finishes between two chunks of the upload. The upload then reads
+    zeros for the chunks in between and passes its last check. What covers it: such a download
+    needs the server to hold X complete already, and the server never replaces an existing blob
+    (a `PUT` of an existing ID answers `created: false` and discards the body), so the wrong body
+    is thrown away. A download writes only into the row it began; the claim on its ID
     (`IncomingBlobs`) makes it the only one that finishes that row, through the guarded
-    `finish_incoming`. The public `read_at` and `write_incoming` keep their own checks.
+    `finish_incoming`. A row finished by anyone else is not seen per chunk (that would read the
+    hash), but the download then does not end as stored. The public `read_at` and
+    `write_incoming` keep their own checks.
   - A pull runs only `reconcile_rows`, per merged changeset; the full reconcile no longer runs at
     the end of every pull that merged a change. It stays at lane start, after a replace and in
     `repair::full`. Content lost from the store outside a merge is noticed at the next start of
@@ -348,9 +363,29 @@ documents and photos need a newer server. The app assumes the server's error cod
     header's epoch is not authenticated until a chunk opens, so a server that rewrites it makes the
     content read as on its way and retried rather than "Could not download"; withholding the blob
     has the same effect.
-  - Content no server has (`notOnServer`) is asked for after 5, 10, 20 and 40 minutes and an hour,
-    then doubling up to a day (`queue::NOT_ON_SERVER_MAX_WAIT`), so a blob whose only holder was
-    wiped costs one request a day per device, not one an hour. "Sync now" and "Try again" still
-    make it due at once. An entry due more than a day ahead (`MAX_BACKOFF`, now a day) counts as
-    dated by a clock set back.
+  - Content no server has (`notOnServer`) is asked for after 5, 10, 20 and 40 minutes, then
+    hourly (a first fix let the wait grow to a day; reverted by ruling, because a document from a
+    device that was offline for a day would then stay unreachable on the desktop for up to a day
+    after it is uploaded, with no button to ask for it). Instead, a pull that merged another
+    device's changes makes every such download due at once (`queue::content_may_have_landed`,
+    one UPDATE; the count of attempts stays, so content still missing goes on with its backoff)
+    and the round wakes the download lane: another device's changes arriving are the best sign
+    its uploads are landing.
   - `pass::run_with` (other limits than `Limits::DEFAULT`) exists only in tests.
+- **What a live two-device run showed (2026-11-15).**
+  - The app is told of document and photo changes through `BlobPolicy::note_changed`, which the
+    runtime forwards as `sync-attachments-changed` (coalesced, the last change always told). A
+    transfer tells it when it starts (its entry is active, so the row reads as downloading even
+    when its last try found nothing on the server) and when it ends. Before, a lane told the app
+    once per run, after the run; a run takes new blobs for a second but can go on for minutes
+    behind a large file, so a thumbnail stored before it, or the download that had just begun,
+    stayed unseen until that file was done. The round's own upload step uses the same policy, so
+    an upload before the push is told like a lane's.
+  - A round brings the queue up to date with the rows (`reconcile_rows`) before any network
+    call, and tells the app when that changed it; a document added while the server is out of
+    reach is counted as waiting to upload, and the status published after the round reads it.
+  - Downloads are taken asked-for first (`wanted`), then thumbnails, then the rest by row date.
+    A transfer in flight is never interrupted, so an ask can still wait behind a large file
+    already downloading; on a phone "Download everything" marks everything as asked, so asks
+    cannot be told apart there. Neither is fixed: both need a new column (when it was asked), see
+    the backend fix report.

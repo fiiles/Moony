@@ -5,6 +5,7 @@ import type {
   BankTransaction,
   EffectiveTransactionFlow,
   TransactionCategory,
+  SpendingPlan,
 } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
 import { rowFlowLabel } from '@/utils/money-flows';
@@ -23,6 +24,8 @@ interface LedgerRowProps {
   category: TransactionCategory | null | undefined;
   /** The row's effective meaning, once loaded (a transfer chip, the refund badge). */
   flow: EffectiveTransactionFlow | undefined;
+  /** The spending plan the payment is tagged with, when the list shows it (the account detail). */
+  plan?: Pick<SpendingPlan, 'name' | 'color'>;
   /** Tap and swipe right: the transaction sheet. */
   onOpen: () => void;
   /** Swipe left: the category picker, directly. */
@@ -39,7 +42,15 @@ interface LedgerRowProps {
  * and swipe right open the details, swipe left the category picker (README §13, Gestures); a long
  * press is the row menu, whose `···` stays for screen readers: the tap's sheet has all of it.
  */
-export function LedgerRow({ tx, category, flow, onOpen, onCategorize, onDelete }: LedgerRowProps) {
+export function LedgerRow({
+  tx,
+  category,
+  flow,
+  plan,
+  onOpen,
+  onCategorize,
+  onDelete,
+}: LedgerRowProps) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const moneyText = useMoneyText();
@@ -54,6 +65,18 @@ export function LedgerRow({ tx, category, flow, onOpen, onCategorize, onDelete }
       categoryName(category)
     ) : (
       <RowBadge line="sub">{t('account.ledger.noCategory')}</RowBadge>
+    ),
+    // The plan as a badge with its own colour as a dot: only tagged payments have one, so the
+    // sub-line stays the category alone for the rest
+    plan && (
+      <RowBadge line="sub">
+        <span
+          aria-hidden
+          className="mr-1 size-1.5 flex-none rounded-full"
+          style={{ backgroundColor: plan.color }}
+        />
+        {plan.name}
+      </RowBadge>
     ),
     tx.status === 'pending' && (
       <RowBadge line="sub">{t('bank_accounts:readiness.pending')}</RowBadge>

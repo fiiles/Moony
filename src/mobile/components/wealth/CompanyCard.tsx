@@ -5,9 +5,9 @@ import { priceDecimals } from '@shared/currencies';
 import type { StockCompanyInfo } from '@shared/schema';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
+import { cn } from '@/lib/utils';
 import { formatMarketCap } from '@/utils/stock-monitor';
 import { Button } from '@/components/ui/button';
-import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 
 interface CompanyCardProps {
@@ -56,9 +56,10 @@ export function CompanyCard({ name, info, stockCurrency, pending, onRetry }: Com
   const high = figureText(info?.fiftyTwoWeekHigh, priceText);
 
   const profile = [info?.sector, info?.industry].filter(Boolean).join(' · ');
-  // `stack`: the label over a value that wraps, for the figures too long for the row's right half
-  // (two prices with their currency do not fit a third of a narrow phone in German)
-  const rows: { label: string; value: string | null; stack?: boolean }[] = info
+  // Every fact is its label over its value (device feedback 2026-11-15: rows that put some values
+  // beside the label and some under it read as misaligned). A short figure takes half the card, so
+  // two share a line; `wide` is a text or a pair of prices that needs the full width.
+  const rows: { label: string; value: string | null; wide?: boolean }[] = info
     ? [
         {
           label: ts('detail.companyInfo.peRatio'),
@@ -69,14 +70,14 @@ export function CompanyCard({ name, info, stockCurrency, pending, onRetry }: Com
           value: formatMarketCap(info.marketCap, currency, fmt.locale, currencyCode),
         },
         {
-          label: t('wealth.position.range52'),
-          value: low !== null && high !== null ? `${low} – ${high}` : null,
-          stack: true,
-        },
-        {
           label: ts('detail.companyInfo.dividendYield'),
           // A raw fraction: 0.0331 is 3.31 %
           value: figureText(info.dividendYield, (n) => fmt.percent(n, 2)),
+        },
+        {
+          label: t('wealth.position.range52'),
+          value: low !== null && high !== null ? `${low} – ${high}` : null,
+          wide: true,
         },
       ]
     : [];
@@ -89,11 +90,14 @@ export function CompanyCard({ name, info, stockCurrency, pending, onRetry }: Com
   if (hasData) {
     rest = (
       <>
-        {profile && (
-          <KeyValueRow stack label={ts('detail.companyInfo.sectorIndustry')} value={profile} />
-        )}
-        {figures.map(({ label, value, stack }) => (
-          <KeyValueRow key={label} label={label} value={value} stack={stack} />
+        {factLines([
+          ...(profile
+            ? [{ label: ts('detail.companyInfo.sectorIndustry'), value: profile, wide: true }]
+            : []),
+          { label: tc('labels.currency'), value: currency },
+          ...figures,
+        ]).map((line) => (
+          <FactLine key={line[0].label} facts={line} />
         ))}
       </>
     );
@@ -133,9 +137,50 @@ export function CompanyCard({ name, info, stockCurrency, pending, onRetry }: Com
       aria-busy={skeleton}
       className="mb-3.5 divide-y divide-line-soft rounded-r4 border border-line bg-paper px-4 py-1 shadow-e1"
     >
-      <KeyValueRow stack label={tc('labels.name')} value={name} />
-      <KeyValueRow label={tc('labels.currency')} value={currency} />
+      <FactLine facts={[{ label: tc('labels.name'), value: name, wide: true }]} />
+      {hasData ? null : <FactLine facts={[{ label: tc('labels.currency'), value: currency }]} />}
       {rest}
+    </div>
+  );
+}
+
+interface Fact {
+  label: string;
+  value: string;
+  wide?: boolean;
+}
+
+/** The facts as lines: a wide one alone, the short ones two to a line in their order. */
+function factLines(facts: Fact[]): Fact[][] {
+  const lines: Fact[][] = [];
+  let open: Fact[] | null = null;
+  for (const fact of facts) {
+    if (fact.wide) {
+      lines.push([fact]);
+      open = null;
+    } else if (open) {
+      open.push(fact);
+      open = null;
+    } else {
+      open = [fact];
+      lines.push(open);
+    }
+  }
+  return lines;
+}
+
+/** One line of the card: every fact its label (12 `ink-3`) over its value (15 `ink`), left-aligned. */
+function FactLine({ facts }: { facts: Fact[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-x-4 px-1 py-2.5">
+      {facts.map(({ label, value, wide }) => (
+        <div key={label} className={cn('min-w-0', (wide || facts.length === 1) && 'col-span-2')}>
+          <span className="block text-m-sub text-ink-3">{label}</span>
+          <span className="mt-0.5 block hyphens-auto break-words text-m-body text-ink num">
+            {value}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

@@ -11,13 +11,15 @@ interface PairButton {
 
 /**
  * One button of the pair: 48 pt, radius 10, the label in the lead role and allowed a second line,
- * so a larger text makes the button taller, never wider. `CaptureButtons` draws its two with it.
+ * so a larger text makes the button taller, never wider. A label breaks between words only (no
+ * automatic hyphenation: "Zaznamenat zůsta-tek" read as a defect on the device), so its wording is
+ * kept short enough for half of a 360 pt screen. `CaptureButtons` draws its two with it.
  */
 export const PAIR_BUTTON =
-  'h-auto min-h-12 min-w-0 whitespace-normal rounded-[10px] px-2.5 py-2 text-center text-m-lead font-semibold leading-tight hyphens-auto [&_svg]:size-4';
+  'h-auto min-h-12 min-w-0 whitespace-normal rounded-[10px] px-2.5 py-2 text-center text-m-lead font-semibold leading-tight hyphens-manual break-words [&_svg]:size-4';
 
 /**
- * Two buttons sharing a row (README §13, `.m-btn-pair`): the account detail's "Zaznamenat
+ * Two buttons sharing a row (README §13, `.m-btn-pair`): the account detail's "Změnit
  * zůstatek" (primary) and "Importovat výpis" (secondary) under the nav bar — the spec's kept
  * exception to one primary per screen. A label that does not fit wraps to a second line instead
  * of overflowing (German at 360). A full-width button that belongs under the pair (an other

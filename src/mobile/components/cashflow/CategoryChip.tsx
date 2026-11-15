@@ -9,6 +9,8 @@ interface CategoryChipProps {
   category?: Pick<TransactionCategory, 'icon' | 'color'> | null;
   /** The glyph of a neutral chip without a category (uncategorized rows). */
   fallback?: LucideIcon;
+  /** `sm`: 24 pt with a 13 pt glyph, beside a value in a key-value row (the transaction sheet). */
+  size?: 'row' | 'sm';
 }
 
 /**
@@ -17,10 +19,16 @@ interface CategoryChipProps {
  * `CategoryIconChip` (`cat-chip` lifts the glyph in the dark theme). A category without a hue
  * keeps its icon on `well-2`; without a category the `fallback` icon (a tag) stands there.
  */
-export function CategoryChip({ category, fallback: Fallback = Tag }: CategoryChipProps) {
+export function CategoryChip({
+  category,
+  fallback: Fallback = Tag,
+  size = 'row',
+}: CategoryChipProps) {
   const color = category?.color;
-  const shape =
-    'flex size-9 flex-none items-center justify-center rounded-full [&_svg]:size-4 [&_svg]:[stroke-width:1.75]';
+  const shape = cn(
+    'flex flex-none items-center justify-center rounded-full [&_svg]:[stroke-width:1.75]',
+    size === 'sm' ? 'size-6 [&_svg]:size-[13px]' : 'size-9 [&_svg]:size-4'
+  );
   if (!category || !color) {
     return (
       <span aria-hidden className={cn(shape, 'bg-well-2 text-ink-2')}>

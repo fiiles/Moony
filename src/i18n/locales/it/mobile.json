@@ -231,7 +231,7 @@
     "unsnooze": "Riporta in coda"
   },
   "account": {
-    "record": "Registra saldo",
+    "record": "Aggiorna saldo",
     "import": "Importa estratto conto",
     "menu": {
       "edit": "Modifica conto",

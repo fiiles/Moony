@@ -25,9 +25,9 @@
   /* ---- Ink (text), from primary to faintest ---- */
   --ink: #292822;           /* headings, primary values, names */
   --ink-2: #504d46;         /* body copy, table values */
-  --ink-3: #817e75;         /* secondary text, descriptions */
-  --ink-4: #98948b;         /* labels, captions, eyebrows */
-  --ink-5: #aaa7a0;         /* axis ticks, placeholders */
+  --ink-3: #5f5c56;         /* secondary text, descriptions */
+  --ink-4: #6e6b64;         /* labels, captions, eyebrows */
+  --ink-5: #8a8882;         /* axis ticks, placeholders */
   --ink-inverse: #ffffff;
   --ink-inverse-2: #d6d3cc; /* secondary text on dark material */
   --ink-hover: rgba(41, 40, 34, 0.05); /* 5 % ink: nav and ghost hover */
@@ -60,7 +60,7 @@
   --chart-area: #e1e1ee;    /* area fill start (fades to transparent) */
   --chart-grid: #efeeea;
   --chart-cost: #a8a49b;    /* dashed "invested" step line */
-  --chart-axis: #aaa7a0;
+  --chart-axis: #8a8882;
 
   /* ---- Focus ---- */
   --focus-border: #57544d;
@@ -154,9 +154,9 @@
   /* ---- Ink ---- */
   --ink: #eceae4;
   --ink-2: #cdcbc4;
-  --ink-3: #a3a098;
-  --ink-4: #868379;
-  --ink-5: #6b6962;
+  --ink-3: #aba8a0;
+  --ink-4: #918f85;
+  --ink-5: #73716a;
   --ink-inverse: #1d1c19;
   --ink-inverse-2: #5f5c54;
   --ink-hover: rgba(0, 0, 0, 0.18);
@@ -187,7 +187,7 @@
   --chart-area: #393b52;
   --chart-grid: #302f2c;
   --chart-cost: #78756d;
-  --chart-axis: #6b6962;
+  --chart-axis: #73716a;
 
   /* ---- Focus ---- */
   --focus-border: #a09d94;

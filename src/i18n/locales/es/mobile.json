@@ -231,7 +231,7 @@
     "unsnooze": "Devolver a la cola"
   },
   "account": {
-    "record": "Registrar saldo",
+    "record": "Actualizar saldo",
     "import": "Importar extracto",
     "menu": {
       "edit": "Editar cuenta",

@@ -211,7 +211,7 @@
     "unsnooze": "Zurück in die Liste"
   },
   "account": {
-    "record": "Kontostand erfassen",
+    "record": "Kontostand ändern",
     "import": "Kontoauszug importieren",
     "menu": {
       "edit": "Konto bearbeiten",

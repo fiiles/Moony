@@ -191,7 +191,7 @@
     "unsnooze": "放回队列"
   },
   "account": {
-    "record": "记录余额",
+    "record": "修改余额",
     "import": "导入账单",
     "menu": {
       "edit": "编辑账户",

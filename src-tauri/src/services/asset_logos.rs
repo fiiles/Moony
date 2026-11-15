@@ -1,14 +1,14 @@
-//! Stock logos cached in the encrypted database (spec 2026-11-14-asset-logos).
+//! Stock logos cached in the encrypted database (spec 2026-11-14-asset-logos, ADR 0031).
 //!
 //! The pure half of the feature: which tickers are due, how a Yahoo search answer yields a logo
-//! URL, how downloaded bytes become a small PNG, and the `asset_logos` cache itself (a `Local`
-//! table: never synced). The network half lives next to the other Yahoo search in
-//! `price_api::refresh_asset_logos`.
+//! URL, which Financial Modeling Prep URL serves a ticker's logo, how downloaded bytes become a
+//! small PNG, and the `asset_logos` cache itself (a `Local` table: never synced). The network half
+//! lives next to the other Yahoo search in `price_api::refresh_asset_logos`.
 //!
 //! Only tickers the backend reads from the holdings and the watchlist are looked up, so no name
-//! the frontend passes (a loan, an insurer) can reach the network. Only `https://s.yimg.com/`
-//! URLs are accepted: Yahoo already receives every ticker for prices, its CDN is the only other
-//! host a logo may come from.
+//! the frontend passes (a loan, an insurer) can reach the network. Yahoo is asked first (it already
+//! receives every ticker for prices; only `https://s.yimg.com/` URLs are accepted); a ticker Yahoo
+//! has no logo for is asked of Financial Modeling Prep, which therefore learns those tickers.
 
 use std::collections::HashMap;
 use std::io::Cursor;
@@ -24,6 +24,9 @@ use crate::models::asset_logos::AssetLogo;
 
 /// A remembered miss is looked up again after 30 days; a found logo is kept for good.
 pub const MISS_RETRY_SECS: i64 = 30 * 24 * 3600;
+/// 2026-11-15 00:00 CET, when Financial Modeling Prep became the second source (ADR 0031): a miss
+/// recorded before it was a Yahoo-only miss and is looked up again at once.
+pub const SOURCES_CHANGED_AT: i64 = 1_794_697_200;
 /// At most this many tickers are looked up in one run; the rest follow on the next run.
 pub const MAX_PER_RUN: usize = 40;
 /// A downloaded image larger than this is a miss (Yahoo's brand logos are a few KB).
@@ -34,10 +37,16 @@ pub const LOGO_SIZE: u32 = 96;
 pub const LOGO_HOST: &str = "s.yimg.com";
 /// Every accepted logo URL starts with this.
 const LOGO_URL_PREFIX: &str = "https://s.yimg.com/";
+/// Financial Modeling Prep's public logo images: `<prefix><TICKER>.png`, no API key.
+const FMP_LOGO_PREFIX: &str = "https://financialmodelingprep.com/image-stock/";
+/// A longer ticker is not asked of FMP.
+const MAX_FMP_TICKER_LEN: usize = 20;
 /// A longer `logoUrl` is not a logo URL.
 const MAX_LOGO_URL_LEN: usize = 2048;
 /// A source image claiming a larger side is not decoded (a decompression bomb, not a logo).
 const MAX_SOURCE_SIDE: u32 = 4096;
+/// A source image whose longer side is shorter than this is a favicon, not a logo: a miss.
+const MIN_SOURCE_SIDE: u32 = 32;
 /// Allocation cap while decoding one source image.
 const MAX_DECODE_ALLOC: u64 = 64 * 1024 * 1024;
 const PNG_MIME: &str = "image/png";
@@ -76,8 +85,9 @@ pub fn tracked_tickers(conn: &Connection) -> Result<Vec<String>> {
     Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
-/// The tickers (in the given order, upper case) that need a lookup: no row yet, or a miss checked
-/// at least [`MISS_RETRY_SECS`] ago. At most [`MAX_PER_RUN`].
+/// The tickers (in the given order, upper case) that need a lookup: no row yet, a miss checked at
+/// least [`MISS_RETRY_SECS`] ago, or a miss checked before [`SOURCES_CHANGED_AT`]. At most
+/// [`MAX_PER_RUN`].
 pub fn due(conn: &Connection, tickers: &[String], now: i64) -> Result<Vec<String>> {
     let mut stmt = conn.prepare("SELECT ticker, image IS NOT NULL, checked_at FROM asset_logos")?;
     let known: HashMap<String, (bool, i64)> = stmt
@@ -89,7 +99,9 @@ pub fn due(conn: &Connection, tickers: &[String], now: i64) -> Result<Vec<String
         .filter(|ticker| match known.get(ticker) {
             None => true,
             Some((true, _)) => false,
-            Some((false, checked_at)) => *checked_at <= now - MISS_RETRY_SECS,
+            Some((false, checked_at)) => {
+                *checked_at <= now - MISS_RETRY_SECS || *checked_at < SOURCES_CHANGED_AT
+            }
         })
         .take(MAX_PER_RUN)
         .collect())
@@ -128,9 +140,24 @@ fn is_logo_url(url: &str) -> bool {
     })
 }
 
+/// The Financial Modeling Prep logo URL of `ticker` (upper case), or `None` when the ticker is
+/// not a plain symbol of letters, digits, `.` and `-` (an index such as `^GSPC`, a currency pair
+/// such as `EURUSD=X`, or anything that could change the path): no request is sent then.
+pub fn fmp_logo_url(ticker: &str) -> Option<String> {
+    let ticker = ticker.trim().to_uppercase();
+    let plain = !ticker.is_empty()
+        && ticker.len() <= MAX_FMP_TICKER_LEN
+        && ticker
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+        && !ticker.starts_with('.')
+        && !ticker.contains("..");
+    plain.then(|| format!("{FMP_LOGO_PREFIX}{ticker}.png"))
+}
+
 /// Downloaded bytes as a PNG that fits [`LOGO_SIZE`]×[`LOGO_SIZE`] (never enlarged), or `None`
 /// when they are not a PNG, JPEG or WebP image, do not decode, claim a side over
-/// `MAX_SOURCE_SIDE` or exceed [`MAX_SOURCE_BYTES`]. Re-encoding means the untrusted bytes
+/// `MAX_SOURCE_SIDE`, have a longer side under `MIN_SOURCE_SIDE` or exceed [`MAX_SOURCE_BYTES`]. Re-encoding means the untrusted bytes
 /// never reach the webview as they came.
 pub fn normalize(bytes: &[u8]) -> Option<Vec<u8>> {
     if bytes.is_empty() || bytes.len() > MAX_SOURCE_BYTES {
@@ -150,6 +177,9 @@ pub fn normalize(bytes: &[u8]) -> Option<Vec<u8>> {
     let mut reader = ImageReader::with_format(Cursor::new(bytes), format);
     reader.limits(limits);
     let decoded = reader.decode().ok()?;
+    if decoded.width().max(decoded.height()) < MIN_SOURCE_SIDE {
+        return None;
+    }
     let fitted = if decoded.width() > LOGO_SIZE || decoded.height() > LOGO_SIZE {
         decoded.resize(LOGO_SIZE, LOGO_SIZE, FilterType::Lanczos3)
     } else {
@@ -236,6 +266,54 @@ mod tests {
         let due = due(&conn, &tickers(&["AAPL", "MISS1", "MISS2", "NEW"]), NOW).unwrap();
 
         assert_eq!(due, tickers(&["MISS1", "NEW"]));
+    }
+
+    #[test]
+    fn due_rechecks_misses_recorded_before_the_sources_changed() {
+        let conn = setup_test_db();
+        // A miss from the Yahoo-only days is looked up again at once (FMP may have the logo)...
+        store(&conn, "OLD_MISS", None, SOURCES_CHANGED_AT - 1).unwrap();
+        // ...a miss recorded since then waits the usual 30 days.
+        store(&conn, "NEW_MISS", None, SOURCES_CHANGED_AT + 60).unwrap();
+
+        let due = due(
+            &conn,
+            &tickers(&["OLD_MISS", "NEW_MISS"]),
+            SOURCES_CHANGED_AT + 120,
+        )
+        .unwrap();
+
+        assert_eq!(due, tickers(&["OLD_MISS"]));
+    }
+
+    #[test]
+    fn fmp_url_is_the_image_stock_path_of_the_ticker() {
+        assert_eq!(
+            fmp_logo_url("BRK-B").as_deref(),
+            Some("https://financialmodelingprep.com/image-stock/BRK-B.png")
+        );
+        assert_eq!(
+            fmp_logo_url(" cez.pr ").as_deref(),
+            Some("https://financialmodelingprep.com/image-stock/CEZ.PR.png")
+        );
+        assert_eq!(
+            fmp_logo_url("VWCE.DE").as_deref(),
+            Some("https://financialmodelingprep.com/image-stock/VWCE.DE.png")
+        );
+    }
+
+    #[test]
+    fn fmp_url_refuses_tickers_that_are_not_plain_symbols() {
+        assert_eq!(fmp_logo_url(""), None);
+        assert_eq!(fmp_logo_url("   "), None);
+        assert_eq!(fmp_logo_url("../x"), None);
+        assert_eq!(fmp_logo_url("A/B"), None);
+        assert_eq!(fmp_logo_url("A?B"), None);
+        assert_eq!(fmp_logo_url("AAPL MSFT"), None);
+        assert_eq!(fmp_logo_url(&"A".repeat(40)), None);
+        // An index or a currency pair is not a company: no logo is asked for.
+        assert_eq!(fmp_logo_url("^GSPC"), None);
+        assert_eq!(fmp_logo_url("EURUSD=X"), None);
     }
 
     #[test]
@@ -369,6 +447,16 @@ mod tests {
 
         let truncated = png(150, 150);
         assert_eq!(normalize(&truncated[..truncated.len() / 2]), None);
+    }
+
+    #[test]
+    fn normalize_rejects_icons_too_small_to_show() {
+        // FMP answers some tickers with a 16×16 favicon; enlarged it would only blur.
+        assert_eq!(normalize(&png(16, 16)), None);
+        assert_eq!(normalize(&png(31, 31)), None);
+        // A wide wordmark (FMP's ASML is 128×35) is kept.
+        assert!(normalize(&png(128, 35)).is_some());
+        assert!(normalize(&png(32, 32)).is_some());
     }
 
     #[test]

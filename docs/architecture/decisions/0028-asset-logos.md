@@ -4,7 +4,8 @@ Date: 2026-11-14
 
 ## Status
 
-Accepted
+Accepted; the Yahoo-only rule and "no fallback source" are superseded by
+[0031](0031-financial-modeling-prep-logo-fallback.md)
 
 ## Context
 

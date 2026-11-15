@@ -35,8 +35,9 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0025](0025-device-sync-relay-client.md) | Device sync: the relay client, the device binding and the Recovery Kit | 2026-11-09 | Accepted; builds on 0024; amended by 0027 and 0029 |
 | [0026](0026-device-sync-pairing.md) | Device sync: pairing a second device, joining it and the phone | 2026-11-10 | Accepted; builds on 0024 and 0025; amended by 0027 (protocol 2) |
 | [0027](0027-device-sync-audit-fixes.md) | Device sync: what the security audit found and what was done about it | 2026-11-12 | Accepted; amends 0024, 0025 and 0026; amended by 0029 |
-| [0028](0028-asset-logos.md) | Asset logos: only from a party that already knows the ticker, or bundled | 2026-11-14 | Accepted |
+| [0028](0028-asset-logos.md) | Asset logos: only from a party that already knows the ticker, or bundled | 2026-11-14 | Accepted; the Yahoo-only rule is superseded by 0031 |
 | [0029](0029-self-hosted-sync-server-in-the-app.md) | Device sync: own sync servers in the app | 2026-11-14 | Accepted; amends 0025 and 0027 |
+| [0031](0031-financial-modeling-prep-logo-fallback.md) | Asset logos: Financial Modeling Prep when Yahoo has none | 2026-11-15 | Accepted; supersedes the Yahoo-only rule of 0028 |
 
 ## Rules
 
@@ -44,7 +45,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
   different. To change a decision, write a **new ADR** with the next number
   that links back to the one it supersedes. The only edit ever made to an old
   ADR is flipping its `## Status` to `Superseded by [NNNN](NNNN-....md)`.
-- Numbering is sequential and zero-padded; the next free number is `0030`.
+- Numbering is sequential and zero-padded; the next free number is `0032` (`0030` is taken on feat/sync-attachments).
 - Filename: `NNNN-short-kebab-title.md`. Add every new ADR to the index table
   above.
 - Keep each ADR to one page or less.

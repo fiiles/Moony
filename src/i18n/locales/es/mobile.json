@@ -876,7 +876,7 @@
       },
       "marketData": {
         "title": "Datos de mercado",
-        "text": "– solo se descargan los precios de las acciones, divisas y criptomonedas que sigues (Yahoo Finance, BCE). La app también funciona sin conexión."
+        "text": "– solo se descargan los precios de las acciones, divisas y criptomonedas que sigues y los logotipos de tus acciones (Yahoo Finance, BCE, Financial Modeling Prep). La app también funciona sin conexión."
       }
     },
     "recoveryLead": "Es la única vía para acceder a tus datos si olvidas la contraseña. Guárdala fuera de este teléfono: en un gestor de contraseñas, en Archivos o en papel.",

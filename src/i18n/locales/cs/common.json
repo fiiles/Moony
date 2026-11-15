@@ -653,6 +653,16 @@
       "body": "Moony vytvoří dočasnou nešifrovanou kopii souboru, aby ji mohla otevřít jiná aplikace. Kopii smaže při zamčení nebo zavření Moony. Co si ta aplikace uloží sama, smazat neumí.",
       "dontAsk": "Příště se neptat",
       "confirm": "Otevřít"
+    },
+    "content": {
+      "waitingUpload": "Čeká na synchronizaci",
+      "downloading": "Stahuji…",
+      "notOnServer": "Druhé zařízení ho zatím nenahrálo",
+      "failed": "Nepodařilo se stáhnout",
+      "retry": "Zkusit znovu",
+      "missing": "Obsah chybí",
+      "download": "Stáhnout",
+      "fetching": "Stahuji ze synchronizačního serveru…"
     }
   },
   "filterBadge": {

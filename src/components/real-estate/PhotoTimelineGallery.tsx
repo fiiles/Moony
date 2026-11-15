@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,8 +24,12 @@ import {
   ChevronRight,
   Upload,
   Download,
+  Loader2,
 } from 'lucide-react';
-import { attachmentsApi, realEstateApi } from '@/lib/tauri-api';
+import { attachmentsApi, deviceSyncApi, realEstateApi } from '@/lib/tauri-api';
+import { translateApiError } from '@/lib/translate-api-error';
+import { Skeleton } from '@/components/ui/skeleton';
+import { attachmentView, thumbnailShown } from '@/utils/attachment-content';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '@/lib/use-format';
@@ -52,6 +56,12 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingBatchId, setDeletingBatchId] = useState<string | null>(null);
+  // Images whose load failed although their row said the bytes were here (a race with the sync
+  // lanes); keyed by id and content state, so a new state mounts a fresh element and tries again.
+  const [brokenImages, setBrokenImages] = useState<ReadonlySet<string>>(new Set());
+  const markBroken = (key: string) => setBrokenImages((prev) => new Set(prev).add(key));
+  // Photos whose full content this lightbox visit already asked for (once per open).
+  const requestedFull = useRef<Set<string>>(new Set());
 
   // Upload form state
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
@@ -254,6 +264,39 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
     });
   };
 
+  // A row refetched by the attachments event replaces the lightbox's copy of the photo.
+  const livePhotoById = new Map(batches.flatMap((b) => b.photos).map((p) => [p.id, p]));
+  const livePhotos = lightboxPhotos.map((p) => livePhotoById.get(p.id) ?? p);
+  const lightboxPhoto = lightboxOpen ? livePhotos[lightboxIndex] : undefined;
+  const lightboxPhotoId = lightboxPhoto?.id;
+  const lightboxContent = lightboxPhoto?.content;
+
+  useEffect(() => {
+    if (!lightboxOpen) {
+      requestedFull.current.clear();
+      return;
+    }
+    if (!lightboxPhotoId || lightboxContent !== 'notHere') return;
+    if (requestedFull.current.has(lightboxPhotoId)) return;
+    requestedFull.current.add(lightboxPhotoId);
+    // The list refreshes through the `sync-attachments-changed` event; this changes no financial
+    // data, so no snapshot and no cache writes by hand.
+    deviceSyncApi.downloadAttachment('photo', lightboxPhotoId).catch((error) => {
+      toast.error(tc('status.error'), {
+        description: translateApiError(error instanceof Error ? error : String(error), tc),
+      });
+    });
+  }, [lightboxOpen, lightboxPhotoId, lightboxContent, tc]);
+
+  const retryPhoto = (photo: RealEstatePhoto) => {
+    // Same as the downloads above: the event refreshes the list.
+    deviceSyncApi.retryAttachment('photo', photo.id).catch((error) => {
+      toast.error(tc('status.error'), {
+        description: translateApiError(error instanceof Error ? error : String(error), tc),
+      });
+    });
+  };
+
   const getPhotoUrl = (photo: RealEstatePhoto) => attachmentUrl('photo-thumb', photo.id);
 
   const getFullPhotoUrl = (photo: RealEstatePhoto) => attachmentUrl('photo', photo.id);
@@ -444,7 +487,18 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                       className="aspect-square relative rounded-r1 overflow-hidden border bg-well cursor-pointer hover:opacity-90 transition-opacity group"
                       onClick={() => openLightbox(batch, idx)}
                     >
-                      <img src={getPhotoUrl(photo)} alt="" className="object-cover w-full h-full" />
+                      {thumbnailShown(photo.thumbContent) &&
+                      !brokenImages.has(`thumb:${photo.id}:${photo.thumbContent}`) ? (
+                        <img
+                          key={photo.thumbContent}
+                          src={getPhotoUrl(photo)}
+                          alt=""
+                          onError={() => markBroken(`thumb:${photo.id}:${photo.thumbContent}`)}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <Skeleton className="size-full rounded-none" />
+                      )}
                       <button
                         className="absolute top-1 right-1 p-1 bg-black/50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={(e) => {
@@ -461,6 +515,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                           handleDownloadPhoto(photo);
                         }}
                         title={t('gallery.downloadPhoto')}
+                        disabled={!attachmentView(photo.content, 'desktop').openable}
                       >
                         <Download className="h-3 w-3 text-white" />
                       </button>
@@ -552,9 +607,10 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
             className="absolute top-4 left-4 p-2 text-white hover:bg-white/10 rounded"
             onClick={(e) => {
               e.stopPropagation();
-              handleDownloadPhoto(lightboxPhotos[lightboxIndex]);
+              handleDownloadPhoto(livePhotos[lightboxIndex]);
             }}
             title={t('gallery.downloadPhoto')}
+            disabled={!attachmentView(livePhotos[lightboxIndex].content, 'desktop').openable}
           >
             <Download className="h-6 w-6" />
           </button>
@@ -580,12 +636,69 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
               </button>
             </>
           )}
-          <img
-            src={getFullPhotoUrl(lightboxPhotos[lightboxIndex])}
-            alt=""
-            className="max-h-[90vh] max-w-[90vw] object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {lightboxPhoto &&
+            (() => {
+              const state = attachmentView(lightboxPhoto.content, 'desktop');
+              const fullKey = `full:${lightboxPhoto.id}:${lightboxPhoto.content}`;
+              const thumbKey = `thumb:${lightboxPhoto.id}:${lightboxPhoto.thumbContent}`;
+              const noteText = state.note ? tc(`attachments.content.${state.note}`) : null;
+              if (state.openable && !brokenImages.has(fullKey)) {
+                // Keyed by the content state: a photo that turns `here` mounts a fresh element,
+                // because an `<img>` never retries a load the protocol refused.
+                return (
+                  <img
+                    key={lightboxPhoto.content}
+                    src={getFullPhotoUrl(lightboxPhoto)}
+                    alt=""
+                    onError={() => markBroken(fullKey)}
+                    className="max-h-[90vh] max-w-[90vw] object-contain"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                );
+              }
+              return (
+                <div
+                  className="relative flex items-center justify-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {thumbnailShown(lightboxPhoto.thumbContent) && !brokenImages.has(thumbKey) ? (
+                    <img
+                      key={lightboxPhoto.thumbContent}
+                      src={getPhotoUrl(lightboxPhoto)}
+                      alt=""
+                      onError={() => markBroken(thumbKey)}
+                      className="max-h-[90vh] max-w-[90vw] object-contain"
+                    />
+                  ) : (
+                    <Skeleton className="h-[50vh] w-[50vw]" />
+                  )}
+                  {state.busy && (
+                    <div
+                      role="status"
+                      aria-label={tc('attachments.content.fetching')}
+                      title={tc('attachments.content.fetching')}
+                      className="absolute inset-0 grid place-items-center bg-black/40"
+                    >
+                      <Loader2 aria-hidden className="size-8 animate-spin text-white" />
+                    </div>
+                  )}
+                  {!state.busy && noteText && (
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-black/50 p-2 text-sm text-white">
+                      <span>{noteText}</span>
+                      {state.action === 'retry' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => retryPhoto(lightboxPhoto)}
+                        >
+                          {tc('attachments.content.retry')}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           <div className="absolute bottom-4 text-white text-sm">
             {lightboxIndex + 1} / {lightboxPhotos.length}
           </div>

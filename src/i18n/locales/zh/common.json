@@ -645,6 +645,16 @@
       "body": "Moony 会创建一个未加密的临时副本，以便其他应用打开该文件。锁定或退出 Moony 时会删除该副本，但无法删除其他应用自行保存的内容。",
       "dontAsk": "不再询问",
       "confirm": "打开"
+    },
+    "content": {
+      "waitingUpload": "等待同步",
+      "downloading": "正在下载…",
+      "notOnServer": "另一台设备尚未上传",
+      "failed": "无法下载",
+      "retry": "重试",
+      "missing": "内容缺失",
+      "download": "下载",
+      "fetching": "正在从同步服务器下载…"
     }
   },
   "filterBadge": {

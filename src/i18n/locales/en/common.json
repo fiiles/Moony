@@ -649,6 +649,16 @@
       "body": "Moony creates a temporary unencrypted copy of the file so another app can open it. Moony deletes the copy when you lock or quit it, but it can't delete what the other app saves on its own.",
       "dontAsk": "Don't ask again",
       "confirm": "Open"
+    },
+    "content": {
+      "waitingUpload": "Waiting to sync",
+      "downloading": "Downloading…",
+      "notOnServer": "Not uploaded yet from the other device",
+      "failed": "Could not download",
+      "retry": "Try again",
+      "missing": "The content is missing",
+      "download": "Download",
+      "fetching": "Downloading from the sync server…"
     }
   },
   "filterBadge": {

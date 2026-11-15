@@ -653,6 +653,16 @@
       "body": "Moony crea una copia temporanea non cifrata del file perché un'altra app possa aprirlo. Moony elimina la copia quando viene bloccata o chiusa, ma non può eliminare ciò che l'altra app salva per conto proprio.",
       "dontAsk": "Non chiedere più",
       "confirm": "Apri"
+    },
+    "content": {
+      "waitingUpload": "In attesa di sincronizzazione",
+      "downloading": "Download in corso…",
+      "notOnServer": "L'altro dispositivo non l'ha ancora caricato",
+      "failed": "Impossibile scaricare",
+      "retry": "Riprova",
+      "missing": "Il contenuto manca",
+      "download": "Scarica",
+      "fetching": "Download dal server di sincronizzazione…"
     }
   },
   "filterBadge": {

@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { Plus, FileText, File, ExternalLink, Trash2, FileCheck, Home } from 'lucide-react';
+import { Plus, FileText, File, ExternalLink, Trash2, FileCheck, Home, Loader2 } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { useDocumentOpener } from '@/components/attachments/use-document-opener';
 import { AddRealEstateDocumentModal } from './AddRealEstateDocumentModal';
 import { useFormat } from '@/lib/use-format';
+import { Badge } from '@/components/ui/badge';
+import { attachmentView } from '@/utils/attachment-content';
 
 interface RealEstateDocumentsProps {
   realEstateId: string;
@@ -29,6 +31,7 @@ const getDocumentIcon = (fileType: string) => {
   }
 };
 
+// Kept apart from `@/utils/file-size` on purpose: this list has always said "KB" with a decimal.
 const formatFileSize = (bytes: number | null) => {
   if (!bytes) return '';
   if (bytes < 1024) return `${bytes} B`;
@@ -61,7 +64,12 @@ export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) 
     },
   });
 
-  const { openDocument, dialogs: documentDialogs } = useDocumentOpener('real-estate-document');
+  const {
+    openDocument,
+    retryContent,
+    retryingId,
+    dialogs: documentDialogs,
+  } = useDocumentOpener('real-estate-document');
 
   return (
     <>
@@ -80,55 +88,78 @@ export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) 
             <p className="text-sm text-ink-3">{t('loading')}</p>
           ) : documents && documents.length > 0 ? (
             <div className="space-y-2">
-              {documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between p-4 rounded-r2 border bg-paper hover:bg-well transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    {getDocumentIcon(doc.fileType)}
-                    <div>
-                      <p className="font-medium">{doc.name}</p>
-                      <div className="flex items-center gap-2 text-xs text-ink-3">
-                        <span className="capitalize">
-                          {t(`documents.types.${doc.fileType}`) || doc.fileType}
-                        </span>
-                        {doc.fileSize && (
-                          <>
-                            <span>•</span>
-                            <span>{formatFileSize(doc.fileSize)}</span>
-                          </>
+              {documents.map((doc) => {
+                const state = attachmentView(doc.content, 'desktop');
+                const noteText = state.note ? tc(`attachments.content.${state.note}`) : null;
+                return (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between p-4 rounded-r2 border bg-paper hover:bg-well transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      {getDocumentIcon(doc.fileType)}
+                      <div>
+                        <p className="font-medium">{doc.name}</p>
+                        <div className="flex items-center gap-2 text-xs text-ink-3">
+                          <span className="capitalize">
+                            {t(`documents.types.${doc.fileType}`) || doc.fileType}
+                          </span>
+                          {doc.fileSize && (
+                            <>
+                              <span>•</span>
+                              <span>{formatFileSize(doc.fileSize)}</span>
+                            </>
+                          )}
+                          <span>•</span>
+                          <span>
+                            {fmt.date(new Date(doc.uploadedAt * 1000), { dateStyle: 'medium' })}
+                          </span>
+                          {state.note === 'waitingUpload' && <Badge>{noteText}</Badge>}
+                        </div>
+                        {doc.description && (
+                          <p className="text-sm text-ink-3 mt-1">{doc.description}</p>
                         )}
-                        <span>•</span>
-                        <span>
-                          {fmt.date(new Date(doc.uploadedAt * 1000), { dateStyle: 'medium' })}
-                        </span>
+                        {noteText && state.note !== 'waitingUpload' && (
+                          <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-3">
+                            {state.busy && <Loader2 aria-hidden className="size-3 animate-spin" />}
+                            <span>{noteText}</span>
+                            {state.action === 'retry' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 px-1.5"
+                                loading={retryingId === doc.id}
+                                onClick={() => retryContent(doc.id)}
+                              >
+                                {tc('attachments.content.retry')}
+                              </Button>
+                            )}
+                          </p>
+                        )}
                       </div>
-                      {doc.description && (
-                        <p className="text-sm text-ink-3 mt-1">{doc.description}</p>
-                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openDocument(doc)}
+                        disabled={!state.openable}
+                        title={noteText ?? t('documents.open')}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="icon"
+                        onClick={() => setDeletingDocument(doc)}
+                        title={t('documents.delete')}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openDocument(doc)}
-                      title={t('documents.open')}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="icon"
-                      onClick={() => setDeletingDocument(doc)}
-                      title={t('documents.delete')}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8">

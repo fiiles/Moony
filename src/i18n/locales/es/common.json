@@ -653,6 +653,16 @@
       "body": "Moony crea una copia temporal sin cifrar del archivo para que otra aplicación pueda abrirlo. Moony elimina la copia al bloquearse o cerrarse, pero no puede eliminar lo que la otra aplicación guarde por su cuenta.",
       "dontAsk": "No volver a preguntar",
       "confirm": "Abrir"
+    },
+    "content": {
+      "waitingUpload": "Esperando a sincronizarse",
+      "downloading": "Descargando…",
+      "notOnServer": "El otro dispositivo aún no lo ha subido",
+      "failed": "No se pudo descargar",
+      "retry": "Reintentar",
+      "missing": "Falta el contenido",
+      "download": "Descargar",
+      "fetching": "Descargando desde el servidor de sincronización…"
     }
   },
   "filterBadge": {

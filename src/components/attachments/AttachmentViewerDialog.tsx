@@ -8,7 +8,7 @@ import { lazy, Suspense, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Download, ExternalLink } from 'lucide-react';
-import type { AttachmentKind } from '@shared/schema';
+import type { AttachmentContent, AttachmentKind } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { attachmentsApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
+import { attachmentView } from '@/utils/attachment-content';
 import { attachmentUrl } from '@/utils/attachment-url';
 import { defaultFileName, viewerKind } from '@/utils/attachment-viewer';
 
@@ -29,6 +30,7 @@ export interface ViewableDocument {
   name: string;
   mimeType: string;
   extension: string | null;
+  content: AttachmentContent;
 }
 
 interface AttachmentViewerDialogProps {
@@ -71,7 +73,9 @@ export function AttachmentViewerDialog({
     }
   };
 
-  const url = document ? attachmentUrl(kind, document.id) : '';
+  // Never build a `moony-file` URL for content that is not here (the protocol answers 425/404).
+  const openable = document ? attachmentView(document.content, 'desktop').openable : false;
+  const url = document && openable ? attachmentUrl(kind, document.id) : '';
   const view = document ? viewerKind(document.mimeType) : 'external';
 
   return (
@@ -94,7 +98,7 @@ export function AttachmentViewerDialog({
               {t('attachments.viewer.failed')}
             </p>
           )}
-          {document && view === 'image' && status !== 'failed' && (
+          {document && openable && view === 'image' && status !== 'failed' && (
             <img
               src={url}
               alt={document.name}
@@ -103,7 +107,7 @@ export function AttachmentViewerDialog({
               className="mx-auto max-h-full max-w-full rounded-r2 object-contain"
             />
           )}
-          {document && view === 'pdf' && status !== 'failed' && (
+          {document && openable && view === 'pdf' && status !== 'failed' && (
             <Suspense fallback={null}>
               <PdfPages url={url} onReady={markReady} onError={markFailed} />
             </Suspense>

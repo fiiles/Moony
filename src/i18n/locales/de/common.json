@@ -649,6 +649,16 @@
       "body": "Moony erstellt eine vorübergehende unverschlüsselte Kopie der Datei, damit eine andere App sie öffnen kann. Moony löscht die Kopie beim Sperren oder Beenden, kann aber nicht löschen, was die andere App selbst speichert.",
       "dontAsk": "Nicht mehr fragen",
       "confirm": "Öffnen"
+    },
+    "content": {
+      "waitingUpload": "Wartet auf Synchronisierung",
+      "downloading": "Wird heruntergeladen …",
+      "notOnServer": "Vom anderen Gerät noch nicht hochgeladen",
+      "failed": "Download fehlgeschlagen",
+      "retry": "Erneut versuchen",
+      "missing": "Der Inhalt fehlt",
+      "download": "Herunterladen",
+      "fetching": "Wird vom Synchronisierungsserver heruntergeladen …"
     }
   },
   "filterBadge": {

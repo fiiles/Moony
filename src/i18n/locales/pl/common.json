@@ -657,6 +657,16 @@
       "body": "Moony tworzy tymczasową niezaszyfrowaną kopię pliku, aby inna aplikacja mogła go otworzyć. Moony usuwa kopię przy zablokowaniu lub zamknięciu, ale nie może usunąć tego, co inna aplikacja zapisze sama.",
       "dontAsk": "Nie pytaj ponownie",
       "confirm": "Otwórz"
+    },
+    "content": {
+      "waitingUpload": "Czeka na synchronizację",
+      "downloading": "Pobieranie…",
+      "notOnServer": "Drugie urządzenie jeszcze tego nie przesłało",
+      "failed": "Nie udało się pobrać",
+      "retry": "Spróbuj ponownie",
+      "missing": "Brak zawartości",
+      "download": "Pobierz",
+      "fetching": "Pobieranie z serwera synchronizacji…"
     }
   },
   "filterBadge": {

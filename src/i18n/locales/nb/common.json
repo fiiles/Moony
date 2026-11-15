@@ -649,6 +649,16 @@
       "body": "Moony lager en midlertidig ukryptert kopi av filen slik at en annen app kan åpne den. Moony sletter kopien når du låser eller avslutter, men kan ikke slette det den andre appen lagrer selv.",
       "dontAsk": "Ikke spør igjen",
       "confirm": "Åpne"
+    },
+    "content": {
+      "waitingUpload": "Venter på synkronisering",
+      "downloading": "Laster ned …",
+      "notOnServer": "Ikke lastet opp fra den andre enheten ennå",
+      "failed": "Kunne ikke laste ned",
+      "retry": "Prøv igjen",
+      "missing": "Innholdet mangler",
+      "download": "Last ned",
+      "fetching": "Laster ned fra synkroniseringsserveren …"
     }
   },
   "filterBadge": {

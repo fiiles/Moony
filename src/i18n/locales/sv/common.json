@@ -649,6 +649,16 @@
       "body": "Moony skapar en tillfällig okrypterad kopia av filen så att en annan app kan öppna den. Moony raderar kopian när du låser eller avslutar, men kan inte radera det som den andra appen sparar själv.",
       "dontAsk": "Fråga inte igen",
       "confirm": "Öppna"
+    },
+    "content": {
+      "waitingUpload": "Väntar på synkronisering",
+      "downloading": "Laddar ned …",
+      "notOnServer": "Den andra enheten har inte laddat upp det än",
+      "failed": "Kunde inte laddas ned",
+      "retry": "Försök igen",
+      "missing": "Innehållet saknas",
+      "download": "Ladda ned",
+      "fetching": "Laddar ned från synkroniseringsservern …"
     }
   },
   "filterBadge": {

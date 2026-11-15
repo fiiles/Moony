@@ -23,7 +23,8 @@ use crate::services::sync::hlc::{Clock, DeviceId};
 use crate::services::sync::journal::{build_next, record_sealed, Reader};
 use crate::services::sync::merge::{apply_changeset, Outcome};
 use crate::services::sync::registry::{
-    column_class, schema, synced_tables, tables, ColumnClass, TableClass, APP_CONFIG_SYNCED_KEYS,
+    column_class, row_condition, schema, synced_tables, tables, ColumnClass, TableClass,
+    APP_CONFIG_SYNCED_KEYS,
 };
 use crate::services::sync::state;
 use crate::services::sync::test_support::migrated;
@@ -179,7 +180,7 @@ fn with_orphan(bytes: &[u8]) -> Vec<u8> {
 }
 
 /// Every synced row of every synced table (Local columns left out, `app_config` limited to the
-/// keys that sync), in a stable order.
+/// keys that sync, a table with a row condition to the rows that meet it), in a stable order.
 fn table_dump(conn: &Connection) -> Vec<(String, Vec<String>)> {
     let mut out = Vec::new();
     for spec in synced_tables() {
@@ -198,6 +199,8 @@ fn table_dump(conn: &Connection) -> Vec<(String, Vec<String>)> {
                     .collect::<Vec<_>>()
                     .join(", ")
             )
+        } else if let Some(condition) = row_condition(spec, spec.name) {
+            format!("WHERE {condition}")
         } else {
             String::new()
         };

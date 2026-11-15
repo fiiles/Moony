@@ -11,6 +11,7 @@
 //! picks the same rows every time.
 
 mod assets;
+mod attachments;
 mod bank;
 mod planning;
 mod stocks;
@@ -22,6 +23,10 @@ use rand::RngExt;
 use rusqlite::Connection;
 
 use crate::error::{AppError, Result};
+
+pub(in crate::services::sync::convergence) use attachments::{
+    queue_consistent, queue_matches_rows, settle,
+};
 
 /// What one operation did.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,7 +52,14 @@ type OpFn = fn(&mut Connection, &mut StdRng, &Path) -> Res;
 
 /// Every operation, by name.
 fn catalog() -> Vec<(&'static str, OpFn)> {
-    [bank::OPS, stocks::OPS, assets::OPS, planning::OPS].concat()
+    [
+        bank::OPS,
+        stocks::OPS,
+        assets::OPS,
+        planning::OPS,
+        attachments::OPS,
+    ]
+    .concat()
 }
 
 /// The names of every operation.

@@ -12,6 +12,8 @@
 //! object ID = for a snapshot, its relay sequence `S` as u64 BE
 //! ```
 //!
+//! A blob is the same stream with its own info string and object ID (`blob.rs`).
+//!
 //! Every chunk but the last is full and the last never is, so the chunk boundaries follow from
 //! the length alone. The fixed vectors in the tests are the contract with every other device.
 
@@ -26,10 +28,10 @@ pub const CHUNK: usize = 65_536;
 /// Magic (4) + epoch (4) + salt (32) + nonce prefix (19).
 pub const HEADER_LEN: usize = 59;
 
-const TAG: usize = 16;
-const SEALED_CHUNK: usize = CHUNK + TAG;
-const SALT: usize = 32;
-const PREFIX: usize = 19;
+pub(super) const TAG: usize = 16;
+pub(super) const SEALED_CHUNK: usize = CHUNK + TAG;
+pub(super) const SALT: usize = 32;
+pub(super) const PREFIX: usize = 19;
 
 /// Seals a stream as it is written: every full `CHUNK` is sealed at once, `finish` seals the rest
 /// as the last chunk and returns the whole stream.
@@ -63,13 +65,31 @@ impl StreamSealer {
         salt: [u8; SALT],
         prefix: [u8; PREFIX],
     ) -> Self {
+        Self::new_with_info(
+            SNAPSHOT_INFO,
+            epoch,
+            vault_key,
+            vault_id,
+            object_id,
+            salt,
+            prefix,
+        )
+    }
+
+    /// `new_with` with the stream key derived under `info` instead of the snapshot's.
+    pub(super) fn new_with_info(
+        info: &[u8],
+        epoch: u32,
+        vault_key: &[u8; 32],
+        vault_id: &[u8; 16],
+        object_id: &[u8],
+        salt: [u8; SALT],
+        prefix: [u8; PREFIX],
+    ) -> Self {
         let mut out = Vec::with_capacity(HEADER_LEN + SEALED_CHUNK);
-        out.extend_from_slice(&MAGIC);
-        out.extend_from_slice(&epoch.to_be_bytes());
-        out.extend_from_slice(&salt);
-        out.extend_from_slice(&prefix);
+        out.extend_from_slice(&stream_header(epoch, &salt, &prefix));
         Self {
-            key: hkdf32(vault_key, &salt, SNAPSHOT_INFO),
+            key: hkdf32(vault_key, &salt, info),
             prefix,
             aad: stream_aad(epoch, vault_id, object_id),
             counter: Some(0),
@@ -134,8 +154,19 @@ impl std::io::Write for StreamSealer {
     }
 }
 
-/// Opens a whole stream sealed for `object_id`. `key_for` maps an epoch to its vault key.
+/// Opens a whole snapshot stream sealed for `object_id`. `key_for` maps an epoch to its vault key.
 pub fn open_stream(
+    key_for: impl Fn(u32) -> Option<Zeroizing<[u8; 32]>>,
+    vault_id: &[u8; 16],
+    object_id: &[u8],
+    sealed: &[u8],
+) -> std::result::Result<Vec<u8>, OpenError> {
+    open_stream_with(SNAPSHOT_INFO, key_for, vault_id, object_id, sealed)
+}
+
+/// `open_stream` with the stream key derived under `info` instead of the snapshot's.
+pub(super) fn open_stream_with(
+    info: &[u8],
     key_for: impl Fn(u32) -> Option<Zeroizing<[u8; 32]>>,
     vault_id: &[u8; 16],
     object_id: &[u8],
@@ -155,7 +186,7 @@ pub fn open_stream(
     let vault_key = key_for(epoch).ok_or(OpenError::UnknownEpoch(epoch))?;
     let mut prefix = [0u8; PREFIX];
     prefix.copy_from_slice(&sealed[8 + SALT..HEADER_LEN]);
-    let key = hkdf32(&vault_key, &sealed[8..8 + SALT], SNAPSHOT_INFO);
+    let key = hkdf32(&vault_key, &sealed[8..8 + SALT], info);
     let aad = stream_aad(epoch, vault_id, object_id);
 
     let mut plain = Zeroizing::new(Vec::with_capacity(full_chunks * CHUNK + last_len - TAG));
@@ -175,7 +206,22 @@ pub fn snapshot_object_id(seq: u64) -> [u8; 8] {
     seq.to_be_bytes()
 }
 
-fn chunk_nonce(prefix: &[u8; PREFIX], counter: u32, last: bool) -> [u8; NONCE] {
+/// `"MNY1"` | epoch (u32 BE) | salt | nonce prefix.
+pub(super) fn stream_header(
+    epoch: u32,
+    salt: &[u8; SALT],
+    prefix: &[u8; PREFIX],
+) -> [u8; HEADER_LEN] {
+    let mut header = [0u8; HEADER_LEN];
+    header[0..4].copy_from_slice(&MAGIC);
+    header[4..8].copy_from_slice(&epoch.to_be_bytes());
+    header[8..8 + SALT].copy_from_slice(salt);
+    header[8 + SALT..].copy_from_slice(prefix);
+    header
+}
+
+/// Prefix | chunk counter (u32 BE) | 0x01 on the last chunk, else 0x00.
+pub(super) fn chunk_nonce(prefix: &[u8; PREFIX], counter: u32, last: bool) -> [u8; NONCE] {
     let mut nonce = [0u8; NONCE];
     nonce[..PREFIX].copy_from_slice(prefix);
     nonce[PREFIX..NONCE - 1].copy_from_slice(&counter.to_be_bytes());
@@ -184,7 +230,7 @@ fn chunk_nonce(prefix: &[u8; PREFIX], counter: u32, last: bool) -> [u8; NONCE] {
 }
 
 /// The op AAD followed by the object ID, so one stored object can't stand in for another.
-fn stream_aad(epoch: u32, vault_id: &[u8; 16], object_id: &[u8]) -> Vec<u8> {
+pub(super) fn stream_aad(epoch: u32, vault_id: &[u8; 16], object_id: &[u8]) -> Vec<u8> {
     let mut aad = op_aad(epoch, vault_id).to_vec();
     aad.extend_from_slice(object_id);
     aad

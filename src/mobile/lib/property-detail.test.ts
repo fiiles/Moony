@@ -1000,8 +1000,27 @@ describe('galleryPhotos', () => {
     realEstateId: 'p',
     photoDate,
     description,
-    photos: photoIds.map((photoId) => ({ id: photoId, batchId: id, createdAt: photoDate })),
+    photos: photoIds.map((photoId) => ({
+      id: photoId,
+      batchId: id,
+      createdAt: photoDate,
+      content: 'here',
+      thumbContent: 'here',
+    })),
     createdAt: photoDate,
+  });
+
+  it('carries where the full photo and its thumbnail are, each by itself', () => {
+    const mixed: RealEstatePhotoBatch = {
+      ...batch('b', day(2026, 10, 24), ['x', 'y']),
+      photos: [
+        { id: 'x', batchId: 'b', createdAt: 1, content: 'notHere', thumbContent: 'here' },
+        { id: 'y', batchId: 'b', createdAt: 2, content: 'failed', thumbContent: 'notOnServer' },
+      ],
+    };
+    const [x, y] = galleryPhotos([mixed]);
+    expect([x.content, x.thumbContent]).toEqual(['notHere', 'here']);
+    expect([y.content, y.thumbContent]).toEqual(['failed', 'notOnServer']);
   });
 
   it('lists the photos of the newest batch first, each with its batch, day and description', () => {
@@ -1016,6 +1035,8 @@ describe('galleryPhotos', () => {
       day: day(2026, 10, 24),
       description: 'Po rekonstrukci',
       last: false,
+      content: 'here',
+      thumbContent: 'here',
     });
   });
 
@@ -1060,7 +1081,13 @@ describe('photoDeletion', () => {
     realEstateId: 'p',
     photoDate: TODAY,
     description: null,
-    photos: photoIds.map((photoId) => ({ id: photoId, batchId: id, createdAt: 0 })),
+    photos: photoIds.map((photoId) => ({
+      id: photoId,
+      batchId: id,
+      createdAt: 0,
+      content: 'here',
+      thumbContent: 'here',
+    })),
     createdAt: 0,
   });
 

@@ -46,6 +46,7 @@
     "close": "Lukk",
     "done": "Ferdig",
     "back": "Tilbake",
+    "previous": "Forrige",
     "next": "Neste",
     "submit": "Send",
     "refresh": "Oppdater",
@@ -187,6 +188,8 @@
     "paymentNonNegative": "Betalingen kan ikke være negativ",
     "endDateAfterStart": "Sluttdatoen må være etter startdatoen",
     "attachmentTooLarge": "Filen er større enn 100 MB.",
+    "attachmentNotHereYet": "Dette dokumentet eller bildet har ikke kommet til denne enheten ennå.",
+    "attachmentUnavailable": "Dette dokumentet eller bildet kunne ikke lastes ned til denne enheten.",
     "exportIntoDataFolder": "En kopi kan ikke lagres i datamappen til Moony. Velg et annet sted.",
     "documentNameRequired": "Dokumentnavn er påkrevd",
     "nameTooLong": "Navnet er for langt",
@@ -648,6 +651,15 @@
       "body": "Moony lager en midlertidig ukryptert kopi av filen slik at en annen app kan åpne den. Moony sletter kopien når du låser eller avslutter, men kan ikke slette det den andre appen lagrer selv.",
       "dontAsk": "Ikke spør igjen",
       "confirm": "Åpne"
+    },
+    "content": {
+      "waitingUpload": "Venter på synkronisering",
+      "downloading": "Laster ned …",
+      "notOnServer": "Ikke lastet opp fra den andre enheten ennå",
+      "failed": "Kunne ikke laste ned",
+      "retry": "Prøv igjen",
+      "missing": "Innholdet mangler",
+      "fetching": "Laster ned fra synkroniseringsserveren …"
     }
   },
   "filterBadge": {

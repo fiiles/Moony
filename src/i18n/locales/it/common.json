@@ -46,6 +46,7 @@
     "close": "Chiudi",
     "done": "Fine",
     "back": "Indietro",
+    "previous": "Precedente",
     "next": "Avanti",
     "submit": "Invia",
     "refresh": "Aggiorna",
@@ -187,6 +188,8 @@
     "paymentNonNegative": "Il pagamento non può essere negativo",
     "endDateAfterStart": "La data di fine deve essere successiva alla data di inizio",
     "attachmentTooLarge": "Il file supera i 100 MB.",
+    "attachmentNotHereYet": "Questo documento o questa foto non è ancora arrivato su questo dispositivo.",
+    "attachmentUnavailable": "Non è stato possibile scaricare questo documento o questa foto su questo dispositivo.",
     "exportIntoDataFolder": "Non è possibile salvare una copia nella cartella dei dati di Moony. Scegli un'altra posizione.",
     "documentNameRequired": "Il nome del documento è obbligatorio",
     "nameTooLong": "Il nome è troppo lungo",
@@ -652,6 +655,15 @@
       "body": "Moony crea una copia temporanea non cifrata del file perché un'altra app possa aprirlo. Moony elimina la copia quando viene bloccata o chiusa, ma non può eliminare ciò che l'altra app salva per conto proprio.",
       "dontAsk": "Non chiedere più",
       "confirm": "Apri"
+    },
+    "content": {
+      "waitingUpload": "In attesa di sincronizzazione",
+      "downloading": "Download in corso…",
+      "notOnServer": "L'altro dispositivo non l'ha ancora caricato",
+      "failed": "Impossibile scaricare",
+      "retry": "Riprova",
+      "missing": "Il contenuto manca",
+      "fetching": "Download dal server di sincronizzazione…"
     }
   },
   "filterBadge": {

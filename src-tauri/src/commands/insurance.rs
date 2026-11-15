@@ -128,37 +128,7 @@ pub async fn get_insurance_documents(
     db: State<'_, Database>,
     insurance_id: String,
 ) -> Result<Vec<InsuranceDocument>> {
-    db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at,
-                    mime_type, original_name
-             FROM insurance_documents WHERE insurance_id = ?1 ORDER BY uploaded_at DESC"
-        )?;
-
-        let documents = stmt.query_map([&insurance_id], |row| {
-            let file_path: Option<String> = row.get(4)?;
-            let mime_type: Option<String> = row.get(8)?;
-            let original_name: Option<String> = row.get(9)?;
-            let (mime_type, extension) = crate::services::attachments::document_meta(
-                file_path.as_deref(),
-                mime_type.as_deref(),
-                original_name.as_deref(),
-            );
-            Ok(InsuranceDocument {
-                id: row.get(0)?,
-                insurance_id: row.get(1)?,
-                name: row.get(2)?,
-                description: row.get(3)?,
-                mime_type,
-                extension,
-                file_type: row.get(5)?,
-                file_size: row.get(6)?,
-                uploaded_at: row.get(7)?,
-            })
-        })?.filter_map(|r| r.ok()).collect();
-
-        Ok(documents)
-    })
+    db.with_conn(|conn| attachments::list_insurance_documents(conn, &insurance_id))
 }
 
 /// Add a document to an insurance policy. The file the user picked is stored in the encrypted

@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ExternalLink, Plus, X } from 'lucide-react';
+import { ExternalLink, Loader2, Plus, X } from 'lucide-react';
 import type { InsuranceDocument } from '@shared/schema';
 import { insuranceApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
+import { attachmentView } from '@/utils/attachment-content';
+import { formatFileSize } from '@/utils/file-size';
 import { translateApiError } from '@/lib/translate-api-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,13 +28,6 @@ interface InsuranceDocumentsProps {
   /** Opens the add-document modal the page owns. */
   onAdd: () => void;
 }
-
-const formatFileSize = (bytes: number | null) => {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} kB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
 
 /** The file tile's label: the original extension, at most four characters. */
 const extensionLabel = (extension: string | null) =>
@@ -67,7 +62,12 @@ export function InsuranceDocuments({ insuranceId, onAdd }: InsuranceDocumentsPro
     },
   });
 
-  const { openDocument, dialogs: documentDialogs } = useDocumentOpener('insurance-document');
+  const {
+    openDocument,
+    retryContent,
+    retryingId,
+    dialogs: documentDialogs,
+  } = useDocumentOpener('insurance-document', documents);
 
   return (
     <>
@@ -103,55 +103,84 @@ export function InsuranceDocuments({ insuranceId, onAdd }: InsuranceDocumentsPro
               </TableRow>
             </TableHeader>
             <TableBody>
-              {documents.map((doc) => (
-                <TableRow key={doc.id} className="h-[50px]">
-                  <TableCell>
-                    <div className="flex min-w-0 items-center gap-[10px]">
-                      <span className="inline-grid size-8 shrink-0 place-items-center rounded-r2 bg-well-2 text-[9px] font-700 tracking-[0.02em] text-ink-3">
-                        {extensionLabel(doc.extension)}
-                      </span>
-                      <div className="min-w-0">
-                        <b className="block truncate text-table font-650 text-ink">{doc.name}</b>
-                        <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">
-                          {[formatFileSize(doc.fileSize), doc.description]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </small>
+              {documents.map((doc) => {
+                const state = attachmentView(doc.content, 'desktop');
+                const noteText = state.note ? tc(`attachments.content.${state.note}`) : null;
+                return (
+                  <TableRow key={doc.id} className="h-[50px]">
+                    <TableCell>
+                      <div className="flex min-w-0 items-center gap-[10px]">
+                        <span className="inline-grid size-8 shrink-0 place-items-center rounded-r2 bg-well-2 text-[9px] font-700 tracking-[0.02em] text-ink-3">
+                          {extensionLabel(doc.extension)}
+                        </span>
+                        <div className="min-w-0">
+                          <b className="block truncate text-table font-650 text-ink">{doc.name}</b>
+                          <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">
+                            {[formatFileSize(doc.fileSize), doc.description]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </small>
+                          {noteText && state.note !== 'waitingUpload' && (
+                            <small className="mt-[3px] flex items-center gap-1.5 text-micro font-500 text-ink-3">
+                              {state.busy && (
+                                <Loader2 aria-hidden className="size-3 animate-spin" />
+                              )}
+                              <span className="truncate">{noteText}</span>
+                              {state.action === 'retry' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="-my-0.5 h-6 px-2"
+                                  loading={retryingId === doc.id}
+                                  onClick={() => retryContent(doc.id)}
+                                >
+                                  {tc('attachments.content.retry')}
+                                </Button>
+                              )}
+                            </small>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge>
-                      {t(`documents.types.${doc.fileType}`, { defaultValue: doc.fileType })}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right num text-ink-3">
-                    {fmt.day(doc.uploadedAt)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div data-row-actions className="inline-flex gap-0.5">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={t('documents.open')}
-                        title={t('documents.open')}
-                        onClick={() => openDocument(doc)}
-                      >
-                        <ExternalLink />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={t('documents.delete')}
-                        title={t('documents.delete')}
-                        onClick={() => setPendingDelete(doc)}
-                      >
-                        <X />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      <Badge>
+                        {t(`documents.types.${doc.fileType}`, { defaultValue: doc.fileType })}
+                      </Badge>
+                      {state.note === 'waitingUpload' && (
+                        <Badge className="ml-1.5">{noteText}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right num text-ink-3">
+                      {fmt.day(doc.uploadedAt)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div data-row-actions className="inline-flex gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={t('documents.open')}
+                          title={
+                            state.openable ? t('documents.open') : (noteText ?? t('documents.open'))
+                          }
+                          disabled={!state.openable}
+                          onClick={() => openDocument(doc)}
+                        >
+                          <ExternalLink />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={t('documents.delete')}
+                          title={t('documents.delete')}
+                          onClick={() => setPendingDelete(doc)}
+                        >
+                          <X />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}

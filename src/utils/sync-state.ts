@@ -1,5 +1,6 @@
 import type { SyncProblem, SyncStatus } from '@shared/schema';
 import { daysBetween } from '@/utils/milestones';
+import { uploadsKeepUnsynced } from '@/utils/sync-attachments';
 
 /** Whole UTC days without a success after which the person is asked to look (Rust: `SYNC_STALE_DAYS`). */
 export const SYNC_STALE_DAYS = 7;
@@ -8,16 +9,23 @@ export const SYNC_STALE_DAYS = 7;
 export const TRANSIENT_PROBLEMS: readonly SyncProblem[] = ['offline', 'relayError', 'rateLimited'];
 
 export type SyncStateKind =
-  'synced' | 'syncing' | 'unreachable' | 'unreachableLong' | 'waiting' | 'paused' | 'error';
+  | 'synced'
+  | 'uploading'
+  | 'syncing'
+  | 'unreachable'
+  | 'unreachableLong'
+  | 'waiting'
+  | 'paused'
+  | 'error';
 
 export type SyncTone = 'fresh' | 'neutral' | 'stale';
 
 export interface SyncStateView {
   kind: SyncStateKind;
   tone: SyncTone;
-  /** `deviceSync` key of the label: `indicator.<kind>` (plural for `unreachableLong`, `count: days`). */
+  /** `deviceSync` key of the label: `indicator.<kind>` (plural for `unreachableLong`, `count: days`); `attachments.uploading` for `uploading`. */
   labelKey: string;
-  /** `deviceSync` key of the phone's Settings row: `phone.row.<kind>`. */
+  /** `deviceSync` key of the phone's Settings row: `phone.row.<kind>`; `attachments.uploading` for `uploading`. */
   rowKey: string;
   /** Whole UTC days without a success (`unreachableLong` only), else 0. */
   days: number;
@@ -27,6 +35,7 @@ export interface SyncStateView {
 
 const TONES: Record<SyncStateKind, SyncTone> = {
   synced: 'fresh',
+  uploading: 'neutral',
   syncing: 'neutral',
   unreachable: 'neutral',
   unreachableLong: 'stale',
@@ -39,8 +48,9 @@ function view(kind: SyncStateKind, status: SyncStatus, days = 0): SyncStateView 
   return {
     kind,
     tone: TONES[kind],
-    labelKey: `indicator.${kind}`,
-    rowKey: `phone.row.${kind}`,
+    // "Uploading documents and photos" has one wording on every surface
+    labelKey: kind === 'uploading' ? 'attachments.uploading' : `indicator.${kind}`,
+    rowKey: kind === 'uploading' ? 'attachments.uploading' : `phone.row.${kind}`,
     days,
     ageFrom: kind === 'unreachableLong' ? null : status.lastSuccessAt,
   };
@@ -65,7 +75,12 @@ export function isQuietlyOutOfReach(status: SyncStatus, now: number): boolean {
   return days !== null && days < SYNC_STALE_DAYS;
 }
 
-/** `now` in unix seconds. `null` while sync is off or being set up (no indicator). */
+/**
+ * `now` in unix seconds. `null` while sync is off or being set up (no indicator). Precedence: a
+ * round running, then the server out of reach (stale after 7 days) or a problem phase, then
+ * uploading (idle while documents and photos wait), then synchronised. An attachments problem never
+ * changes the label (`shownProblem` adds its own line elsewhere).
+ */
 export function syncState(status: SyncStatus | undefined, now: number): SyncStateView | null {
   if (!status || status.phase === 'off' || status.phase === 'settingUp') return null;
   // A running retry round shows as syncing even when the server has long been out of reach; the
@@ -79,7 +94,7 @@ export function syncState(status: SyncStatus | undefined, now: number): SyncStat
   }
   switch (status.phase) {
     case 'idle':
-      return view('synced', status);
+      return view(uploadsKeepUnsynced(status) ? 'uploading' : 'synced', status);
     // Held (stale) here, while the Rust reminder is not raised for `waiting` without a problem:
     // a held change with no named problem gives the person nothing to do.
     case 'waiting':

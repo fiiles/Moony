@@ -426,7 +426,7 @@
       "documents": "Documenti: {{count}}",
       "photos": "Foto: {{count}}"
     },
-    "attachments": "I documenti e le foto restano allegati agli elementi presenti anche nei dati sincronizzati; gli altri restano solo nel backup.",
+    "attachments": "Dopo, i documenti e le foto sono quelli dei dati sincronizzati; i documenti e le foto di questo dispositivo che non sono nei dati sincronizzati restano solo nel backup.",
     "unsent": "Moony invia prima le modifiche in attesa; ciò che non riesce a inviare resta solo nel backup.",
     "backupWhere": "Il backup è elencato in Impostazioni → Dati e backup, sotto «Backup creati prima che la sincronizzazione sostituisse i dati».",
     "loading": "Conteggio di ciò che è in gioco…",
@@ -456,8 +456,25 @@
     "connectionNotHere": "Questo è un codice di connessione di un server di sincronizzazione. Usalo quando configuri la sincronizzazione, non qui.",
     "notAServerAddress": "Questo non è l'indirizzo di un server di sincronizzazione. Digita l'indirizzo del tuo server di sincronizzazione o incolla il suo codice di connessione."
   },
+  "attachments": {
+    "title": "Documenti e foto",
+    "allUploaded": "Tutto caricato",
+    "waiting_one": "{{count}} in attesa di caricamento · {{size}}",
+    "waiting_many": "{{count}} in attesa di caricamento · {{size}}",
+    "waiting_other": "{{count}} in attesa di caricamento · {{size}}",
+    "uploading": "Caricamento di documenti e foto",
+    "onOtherDevices_one": "{{count}} documento o foto è sui tuoi altri dispositivi",
+    "onOtherDevices_many": "{{count}} documenti e foto sono sui tuoi altri dispositivi",
+    "onOtherDevices_other": "{{count}} documenti e foto sono sui tuoi altri dispositivi",
+    "downloadEverything": "Scarica tutto su questo telefono",
+    "downloadEverythingStarted": "Download in corso finché Moony è aperto",
+    "problem": {
+      "noRoom": "Documenti e foto sono in attesa: sul server di sincronizzazione non c'è più spazio. Chiedi più spazio a chi lo gestisce.",
+      "serverNeedsUpdate": "Documenti e foto richiedono un server di sincronizzazione più recente. Tutto il resto si sincronizza."
+    }
+  },
   "whatSyncs": {
     "title": "Cosa si sincronizza",
-    "body": "Tutto ciò che inserisci in Moony viene sincronizzato. La lingua, l'aspetto, il menu, le notifiche, la password del dispositivo, la chiave di recupero e i backup appartengono a ciascun dispositivo. I prezzi e la cronologia vengono calcolati su ogni dispositivo. Per ora i documenti e le foto restano sul dispositivo in cui li hai aggiunti."
+    "body": "Tutto ciò che inserisci in Moony viene sincronizzato. La lingua, l'aspetto, il menu, le notifiche, la password del dispositivo, la chiave di recupero e i backup appartengono a ciascun dispositivo. I prezzi e la cronologia vengono calcolati su ogni dispositivo. Anche i documenti e le foto vengono sincronizzati; un telefono scarica ciascuno quando lo apri."
   }
 }

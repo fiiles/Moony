@@ -1,10 +1,13 @@
-//! Audit H3: a replace (a join, a repair, a re-sync) keeps this device's documents and photos,
-//! which never travel in a snapshot, wherever their item is in the vault; the rest go with their
-//! blobs and are counted.
+//! Documents and photos across a replace (a join, a repair, a re-sync): the attachment rows are
+//! the vault's afterwards, like every other synced row. Content this device holds under a blob ID
+//! a vault row names stays (no download later); this device's rows the vault lacks, legacy rows
+//! without a blob included, are gone and counted as orphaned (they remain only in the backup), and
+//! their content is held until the next pull caught up (`held_blobs`).
 
 use super::*;
 use crate::db::files_schema;
 use crate::services::attachment_store;
+use crate::services::sync::blobs::queue as blob_queue;
 
 const POLICY: &str = "INSERT INTO insurance_policies \
       (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
@@ -81,19 +84,12 @@ fn readable(conn: &Connection, blob: &str) -> bool {
         .is_some()
 }
 
-fn kept_tables(conn: &Connection) -> Vec<String> {
-    strings(
-        conn,
-        "SELECT name FROM sqlite_temp_master WHERE name LIKE 'sync_kept_%'",
-    )
-}
-
 fn carry(kept: u32, orphaned: u32) -> AttachmentCarry {
     AttachmentCarry { kept, orphaned }
 }
 
 #[test]
-fn a_resync_keeps_a_policys_document_and_its_blob() {
+fn a_resync_keeps_documents_the_vault_has_and_their_blobs() {
     let a = with_store(device(A));
     policy(&a, "p1");
     let b1 = policy_document(&a, "d1", "p1");
@@ -101,19 +97,19 @@ fn a_resync_keeps_a_policys_document_and_its_blob() {
 
     let report = restore_replace(&a, &mut &bytes[..], NOW).expect("replace");
 
+    assert_eq!(report.attachments, carry(1, 0));
     assert_eq!(
-        count(
+        strings(
             &a,
-            "SELECT COUNT(*) FROM insurance_documents WHERE id = 'd1'"
+            "SELECT id || ' ' || insurance_id || ' ' || blob_id FROM insurance_documents"
         ),
-        1
+        vec![format!("d1 p1 {b1}")]
     );
+    assert!(readable(&a, &b1));
     assert_eq!(
         attachment_store::read_all(&a, &b1).expect("blob"),
         b"%PDF-1.7 d1".to_vec()
     );
-    assert_eq!(report.attachments, carry(1, 0));
-    assert!(kept_tables(&a).is_empty());
 }
 
 #[test]
@@ -135,142 +131,84 @@ fn photos_keep_their_batch_and_both_blobs() {
     );
     assert!(readable(&a, &full));
     assert!(readable(&a, &thumb));
-    assert_eq!(report.attachments, carry(1, 0));
+    assert_eq!(report.attachments, carry(1, 0), "batches are not counted");
 }
 
 #[test]
-fn a_document_whose_parent_the_vault_deleted_goes_and_is_counted() {
+fn a_document_only_this_device_had_is_gone_and_counted() {
     let a = device(A);
     policy(&a, "p1");
-    policy(&a, "p2");
     let c = with_store(device(C));
     apply(&c, &send(&a));
-    let b1 = policy_document(&c, "d1", "p1");
-    let b2 = policy_document(&c, "d2", "p2");
-    exec(&a, "DELETE FROM insurance_policies WHERE id = 'p2'");
-    let (bytes, _) = snapshot(&a, 2);
-
-    let report = restore_replace(&c, &mut &bytes[..], NOW).expect("replace");
-
-    assert_eq!(
-        strings(&c, "SELECT id FROM insurance_documents ORDER BY id"),
-        vec!["d1"]
-    );
-    assert!(readable(&c, &b1));
-    assert!(!readable(&c, &b2), "the orphan's blob is purged");
-    assert_eq!(report.attachments, carry(1, 1));
-}
-
-#[test]
-fn a_property_that_the_vault_deleted_takes_its_photos_and_documents() {
-    let a = device(A);
-    property(&a, "r1");
-    property(&a, "r2");
-    let c = with_store(device(C));
-    apply(&c, &send(&a));
-    let (kept_full, kept_thumb) = photo(&c, "r1", "batch-1", "ph1");
-    let (gone_full, gone_thumb) = photo(&c, "r2", "batch-2", "ph2");
-    let kept_deed = property_document(&c, "rd1", "r1");
-    let deed = property_document(&c, "rd2", "r2");
-    exec(&a, "DELETE FROM real_estate WHERE id = 'r2'");
-    let (bytes, _) = snapshot(&a, 2);
-
-    let report = restore_replace(&c, &mut &bytes[..], NOW).expect("replace");
-
-    assert_eq!(
-        report.attachments,
-        carry(2, 2),
-        "r1's photo and document are re-attached, r2's go; batches are not counted"
-    );
-    assert_eq!(
-        strings(&c, "SELECT id FROM real_estate_photo_batches"),
-        vec!["batch-1"]
-    );
-    assert_eq!(
-        strings(
-            &c,
-            "SELECT id || ' ' || real_estate_id FROM real_estate_documents"
-        ),
-        vec!["rd1 r1"]
-    );
-    assert!(readable(&c, &kept_deed));
-    assert!(readable(&c, &kept_full) && readable(&c, &kept_thumb));
-    assert!(!readable(&c, &gone_full) && !readable(&c, &gone_thumb) && !readable(&c, &deed));
-}
-
-#[test]
-fn a_failed_replace_leaves_attachments_and_drops_the_temp_tables() {
-    let a = device(A);
-    policy(&a, "p1");
-    let (bytes, _) = snapshot(&a, 1);
-    let broken = with_orphan(&bytes);
-
-    let c = with_store(device(C));
-    policy(&c, "p1");
-    let b1 = policy_document(&c, "d1", "p1");
-    property(&c, "r1");
-    let (full, thumb) = photo(&c, "r1", "batch-1", "ph1");
-    let documents = "SELECT id || ' ' || insurance_id || ' ' || blob_id FROM insurance_documents";
-    let photos = "SELECT id || ' ' || batch_id FROM real_estate_photos";
-    let before = (strings(&c, documents), strings(&c, photos));
-
-    restore_replace(&c, &mut &broken[..], NOW).expect_err("stopped");
-
-    assert_eq!((strings(&c, documents), strings(&c, photos)), before);
-    assert!(readable(&c, &b1) && readable(&c, &full) && readable(&c, &thumb));
-    assert!(kept_tables(&c).is_empty());
-    assert!(c.is_autocommit());
-
-    let b = with_store(migrated());
-    policy(&b, "p1");
-    let own = policy_document(&b, "d1", "p1");
-    join(&b, B, &mut &broken[..], NOW).expect_err("stopped");
-    assert_eq!(count(&b, "SELECT COUNT(*) FROM insurance_documents"), 1);
-    assert!(readable(&b, &own));
-    assert!(kept_tables(&b).is_empty());
-}
-
-#[test]
-fn a_new_devices_own_documents_count_as_orphaned() {
-    let a = device(A);
-    policy(&a, "p1");
+    let own = policy_document(&c, "d1", "p1");
     let (bytes, _) = snapshot(&a, 1);
 
-    let b = with_store(migrated());
-    policy(&b, "own");
-    let own = policy_document(&b, "d-own", "own");
-    let report = join(&b, B, &mut &bytes[..], NOW).expect("join");
+    let report = restore_replace(&c, &mut &bytes[..], NOW).expect("replace");
 
     assert_eq!(report.attachments, carry(0, 1));
-    assert_eq!(count(&b, "SELECT COUNT(*) FROM insurance_documents"), 0);
-    assert!(!readable(&b, &own));
-    assert!(kept_tables(&b).is_empty());
+    assert_eq!(count(&c, "SELECT COUNT(*) FROM insurance_documents"), 0);
+    assert!(
+        readable(&c, &own),
+        "held until the next pull caught up: the row may come back with it"
+    );
+    crate::services::sync::held_blobs::release(&c).expect("release");
+    assert!(!readable(&c, &own), "then the orphan's blob is purged");
 }
 
 #[test]
-fn a_kit_rejoin_carries_documents_of_items_the_vault_has() {
-    let a = device(A);
+fn a_joiner_gets_the_vaults_attachment_rows_without_content() {
+    let a = with_store(device(A));
     policy(&a, "p1");
+    property(&a, "r1");
+    let doc = policy_document(&a, "d1", "p1");
+    let (full, thumb) = photo(&a, "r1", "batch-1", "ph1");
     let (bytes, _) = snapshot(&a, 1);
 
     let b = with_store(migrated());
-    policy(&b, "p1");
-    let b1 = policy_document(&b, "d1", "p1");
     let report = join(&b, B, &mut &bytes[..], NOW).expect("join");
 
-    assert_eq!(report.attachments, carry(1, 0));
+    assert_eq!(report.attachments, carry(0, 0));
+    assert_eq!(
+        strings(&b, "SELECT id || ' ' || blob_id FROM insurance_documents"),
+        vec![format!("d1 {doc}")]
+    );
     assert_eq!(
         strings(
             &b,
-            "SELECT id || ' ' || insurance_id FROM insurance_documents"
+            "SELECT id || ' ' || batch_id || ' ' || blob_id || ' ' || thumb_blob_id \
+               || ' ' || COALESCE(file_path, '-') || ' ' || COALESCE(thumbnail_path, '-') \
+             FROM real_estate_photos"
         ),
-        vec!["d1 p1"]
+        vec![format!("ph1 batch-1 {full} {thumb} - -")]
     );
-    assert!(readable(&b, &b1));
+    assert!(
+        !readable(&b, &doc),
+        "content is fetched later, never in a snapshot"
+    );
+    assert!(!readable(&b, &full) && !readable(&b, &thumb));
 }
 
-/// A second replace right after the first (a re-sync tried again) puts the same rows back once
-/// and reports the same counts.
+#[test]
+fn a_legacy_row_is_counted_as_orphaned() {
+    let a = device(A);
+    policy(&a, "p1");
+    let c = with_store(device(C));
+    apply(&c, &send(&a));
+    exec(
+        &c,
+        "INSERT INTO insurance_documents (id, insurance_id, name, file_path) \
+         VALUES ('old', 'p1', 'Old contract', 'insurance/p1/old.pdf')",
+    );
+    let (bytes, _) = snapshot(&a, 1);
+
+    let report = restore_replace(&c, &mut &bytes[..], NOW).expect("replace");
+
+    assert_eq!(report.attachments, carry(0, 1));
+    assert_eq!(count(&c, "SELECT COUNT(*) FROM insurance_documents"), 0);
+}
+
+/// A second replace right after the first (a re-sync tried again) leaves the same rows once and
+/// reports the same counts.
 #[test]
 fn a_second_replace_back_to_back_adds_no_duplicate_attachments() {
     let a = device(A);
@@ -281,6 +219,7 @@ fn a_second_replace_back_to_back_adds_no_duplicate_attachments() {
     let doc = policy_document(&c, "d1", "p1");
     let deed = property_document(&c, "rd1", "r1");
     let (full, thumb) = photo(&c, "r1", "batch-1", "ph1");
+    apply(&a, &send(&c));
     let (bytes, _) = snapshot(&a, 1);
     let rows = "SELECT 'i ' || id FROM insurance_documents \
                 UNION ALL SELECT 'r ' || id FROM real_estate_documents \
@@ -298,5 +237,147 @@ fn a_second_replace_back_to_back_adds_no_duplicate_attachments() {
     assert!(
         readable(&c, &doc) && readable(&c, &deed) && readable(&c, &full) && readable(&c, &thumb)
     );
-    assert!(kept_tables(&c).is_empty());
+}
+
+#[test]
+fn a_failed_replace_leaves_attachments_as_they_were() {
+    let a = device(A);
+    policy(&a, "p1");
+    let (bytes, _) = snapshot(&a, 1);
+    let broken = with_orphan(&bytes);
+
+    let c = with_store(device(C));
+    policy(&c, "p1");
+    let b1 = policy_document(&c, "d1", "p1");
+    property(&c, "r1");
+    let (full, thumb) = photo(&c, "r1", "batch-1", "ph1");
+    exec(
+        &c,
+        "INSERT INTO insurance_documents (id, insurance_id, name, file_path) \
+         VALUES ('old', 'p1', 'Old contract', 'insurance/p1/old.pdf'); \
+         INSERT INTO sync_blobs (blob_id, state, queued_at) VALUES ('queued', 'up', 1);",
+    );
+    let documents = "SELECT id || ' ' || insurance_id || ' ' || COALESCE(blob_id, file_path) \
+                     FROM insurance_documents ORDER BY id";
+    let photos = "SELECT id || ' ' || batch_id FROM real_estate_photos";
+    let before = (strings(&c, documents), strings(&c, photos));
+
+    restore_replace(&c, &mut &broken[..], NOW).expect_err("stopped");
+
+    assert_eq!((strings(&c, documents), strings(&c, photos)), before);
+    assert!(readable(&c, &b1) && readable(&c, &full) && readable(&c, &thumb));
+    assert_eq!(count(&c, "SELECT COUNT(*) FROM sync_blobs"), 1);
+    assert!(c.is_autocommit());
+
+    let b = with_store(migrated());
+    policy(&b, "p1");
+    let own = policy_document(&b, "d1", "p1");
+    join(&b, B, &mut &broken[..], NOW).expect_err("stopped");
+    assert_eq!(count(&b, "SELECT COUNT(*) FROM insurance_documents"), 1);
+    assert!(readable(&b, &own));
+}
+
+/// The transfer queue names blobs of the rows this device had; the rows are the vault's after a
+/// replace, so a queue left behind would be stale. It is emptied with the rest of the bookkeeping
+/// (a later step rebuilds it from the rows and the store).
+#[test]
+fn a_replace_leaves_no_transfer_queue_behind() {
+    let a = device(A);
+    policy(&a, "p1");
+    let (bytes, _) = snapshot(&a, 1);
+    let c = with_store(device(C));
+    exec(
+        &c,
+        "INSERT INTO sync_blobs (blob_id, state, queued_at) VALUES \
+           ('gone-up', 'up', 1), ('gone-down', 'down', 1);",
+    );
+
+    restore_replace(&c, &mut &bytes[..], NOW).expect("replace");
+
+    assert_eq!(count(&c, "SELECT COUNT(*) FROM sync_blobs"), 0);
+}
+
+fn queue(conn: &Connection) -> Vec<String> {
+    strings(
+        conn,
+        "SELECT blob_id || ' ' || state FROM sync_blobs ORDER BY blob_id",
+    )
+}
+
+/// Review requirement 1 of the transfer queue: after a replace it is rebuilt from the vault's rows
+/// and this device's store alone. Content held here waits for the server's confirmation (the
+/// vault may be a new one), content held elsewhere waits to be downloaded, and what the queue
+/// knew before is gone.
+#[test]
+fn a_replace_rebuilds_the_transfer_queue_from_the_rows_and_the_store() {
+    let a = device(A);
+    policy(&a, "p1");
+    let c = with_store(device(C));
+    apply(&c, &send(&a));
+    let own = policy_document(&c, "d1", "p1");
+    apply(&a, &send(&c));
+    let theirs = "0b9e6a52-3a4c-4e0f-9d7a-1c2b3d4e5f60";
+    exec(
+        &a,
+        &format!(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id) \
+             VALUES ('d2', 'p1', 'Other', '{theirs}')"
+        ),
+    );
+    let (bytes, _) = snapshot(&a, 1);
+    blob_queue::reconcile(&c, NOW).expect("reconcile");
+    blob_queue::note_done(&c, &own).expect("confirmed");
+    exec(
+        &c,
+        "INSERT INTO sync_blobs (blob_id, state, queued_at) \
+         VALUES ('7c9e6679-7425-40de-944b-e07fc1f90ae7', 'down', 1)",
+    );
+
+    restore_replace(&c, &mut &bytes[..], NOW).expect("replace");
+
+    let mut expected = vec![format!("{own} up"), format!("{theirs} down")];
+    expected.sort();
+    assert_eq!(queue(&c), expected);
+
+    let b = with_store(migrated());
+    join(&b, B, &mut &bytes[..], NOW).expect("join");
+    let mut expected = vec![format!("{own} down"), format!("{theirs} down")];
+    expected.sort();
+    assert_eq!(queue(&b), expected, "a joiner holds nothing yet");
+}
+
+/// Review requirement 1, audit H3: a row this device pushed after the vault's newest snapshot is
+/// dropped by a replace and comes back with the next pull; its content was held meanwhile and its
+/// upload may never have finished, so it is queued to be confirmed on the server again.
+#[test]
+fn a_held_blob_whose_row_comes_back_with_a_pull_is_queued_for_upload() {
+    let a = device(A);
+    policy(&a, "p1");
+    let from_a = send(&a);
+    let c = with_store(device(C));
+    apply(&c, &from_a);
+    let own = policy_document(&c, "d1", "p1");
+    blob_queue::reconcile(&c, NOW).expect("reconcile");
+    assert_eq!(queue(&c), vec![format!("{own} up")]);
+    let (bytes, _) = snapshot(&a, 1);
+    // The vault gets the row after its snapshot; here another device's changeset carries it back
+    // to C's pull.
+    let d = device(D);
+    apply(&d, &from_a);
+    exec(
+        &d,
+        &format!(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id) \
+             VALUES ('d1', 'p1', 'Contract', '{own}')"
+        ),
+    );
+    let pulled = send(&d);
+
+    restore_replace(&c, &mut &bytes[..], NOW).expect("replace");
+    assert!(queue(&c).is_empty(), "no row names the held blob yet");
+    assert!(readable(&c, &own), "held");
+
+    apply(&c, &pulled);
+
+    assert_eq!(queue(&c), vec![format!("{own} up")]);
 }

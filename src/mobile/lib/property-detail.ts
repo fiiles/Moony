@@ -1,6 +1,7 @@
 import type { QueryKey } from '@tanstack/react-query';
 import type {
   AssetValuation,
+  AttachmentContent,
   InsertRealEstateOneTimeCost,
   InsurancePolicy,
   RealEstate,
@@ -389,6 +390,10 @@ export interface GalleryPhoto {
   description: string | null;
   /** The only photo of its batch: deleting it deletes the batch, so none is left empty. */
   last: boolean;
+  /** Where the full photo is, with device sync (`here` without it). */
+  content: AttachmentContent;
+  /** Where its thumbnail is. */
+  thumbContent: AttachmentContent;
 }
 
 /**
@@ -406,6 +411,8 @@ export function galleryPhotos(batches: readonly RealEstatePhotoBatch[]): Gallery
         day: batch.photoDate,
         description: batch.description,
         last: batch.photos.length === 1,
+        content: photo.content,
+        thumbContent: photo.thumbContent,
       }))
     );
 }

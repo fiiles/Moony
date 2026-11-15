@@ -54,6 +54,12 @@ pub struct TableSpec {
     pub groups: &'static [&'static [&'static str]],
     pub write_once: &'static [&'static str],
     pub monotonic: &'static [&'static str],
+    /// A row syncs only while these columns are all set (not NULL): a document syncs while it
+    /// names its blob, a photo while it names both its blobs (the receiving device's CHECK takes
+    /// both blobs or both paths), and a legacy row (plain files the conversion has not turned
+    /// into blobs) stays on the device. Capture, the journal and snapshots all apply it
+    /// (`row_condition`). Empty: every row syncs.
+    pub requires: &'static [&'static str],
 }
 
 pub fn tables() -> &'static [TableSpec] {
@@ -81,6 +87,22 @@ pub fn is_key_only(table: &str) -> bool {
 
 pub fn synced_tables() -> impl Iterator<Item = &'static TableSpec> {
     tables().iter().filter(|t| t.class == TableClass::Synced)
+}
+
+/// The SQL condition a row of `spec` must meet to sync, over the row named `alias` (a table name or
+/// alias, `NEW` or `OLD`): `{alias}."c" IS NOT NULL` for each column of `requires`, joined with
+/// `AND` (in parentheses when there are several); `None` when every row syncs.
+pub fn row_condition(spec: &TableSpec, alias: &str) -> Option<String> {
+    let each: Vec<String> = spec
+        .requires
+        .iter()
+        .map(|column| format!("{alias}.\"{}\" IS NOT NULL", column.replace('"', "\"\"")))
+        .collect();
+    match each.as_slice() {
+        [] => None,
+        [one] => Some(one.clone()),
+        _ => Some(format!("({})", each.join(" AND "))),
+    }
 }
 
 /// Class of one column. Anything not listed is `Synced`.

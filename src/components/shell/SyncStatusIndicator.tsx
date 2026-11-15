@@ -7,6 +7,7 @@ import { StatusText } from '@/components/shell/DataStatus';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
+import { useAttachmentsStatusText } from '@/hooks/use-attachments-status-text';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { hostOf } from '@/utils/sync-setup';
@@ -25,6 +26,7 @@ export function SyncStatusIndicator() {
   const [open, setOpen] = useState(false);
   const now = Math.floor(Date.now() / 1000);
   const indicator = feature ? syncState(status, now) : null;
+  const attachments = useAttachmentsStatusText(status?.attachments);
   if (!indicator || !status) return null;
 
   const label = t(indicator.labelKey, { count: indicator.days });
@@ -65,6 +67,9 @@ export function SyncStatusIndicator() {
                 {t(`status.problem.${status.problem}`)}
               </p>
             )}
+            {attachments.problem && (
+              <p className="mt-1 text-caption text-ink-3">{attachments.problem}</p>
+            )}
             <p className="mt-1 text-caption text-ink-3">
               {age ? `${label} · ${t(`age.${age.key}`, { count: age.count })}` : label}
             </p>
@@ -74,6 +79,10 @@ export function SyncStatusIndicator() {
             <div className="flex items-center justify-between gap-4 py-2">
               <span className="text-ink-3">{t('popover.pending')}</span>
               <span className="font-600 text-ink">{status.pendingChanges}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4 py-2">
+              <span className="text-ink-3">{t('attachments.title')}</span>
+              <span className="text-right font-600 text-ink">{attachments.value}</span>
             </div>
             {status.serverAddress && (
               <div className="flex items-center justify-between gap-4 py-2">

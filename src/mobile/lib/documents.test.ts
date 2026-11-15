@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
+import type { AttachmentContent } from '@shared/schema';
 import { getFormatters } from '@/lib/format';
 import {
   DOCUMENT_ACCEPT,
   MAX_DOCUMENT_BYTES,
   documentNameFrom,
   documentSub,
-  fileSizeText,
   isDoubleTap,
   pickedFileProblem,
   scrollAfterZoom,
+  type DocumentNoteKey,
 } from './documents';
 
 const cs = getFormatters('cs-CZ', 'CZK');
-const en = getFormatters('en-US', 'USD');
 
 const file = (name: string, type: string, size = 1234) => ({ name, type, size });
 
@@ -107,20 +107,6 @@ describe('documentNameFrom', () => {
   });
 });
 
-describe('fileSizeText', () => {
-  it('writes bytes, kilobytes without decimals and megabytes with one', () => {
-    expect(fileSizeText(512, cs)).toBe('512 B');
-    expect(fileSizeText(830 * 1024, cs)).toBe('830 kB');
-    expect(fileSizeText(Math.round(1.2 * 1024 * 1024), cs)).toBe('1,2 MB');
-    expect(fileSizeText(Math.round(1.2 * 1024 * 1024), en)).toBe('1.2 MB');
-    expect(fileSizeText(100 * 1024 * 1024, cs)).toBe('100 MB');
-  });
-
-  it('never writes 1024 kB', () => {
-    expect(fileSizeText(1024 * 1024 - 1, cs)).toBe('1 MB');
-  });
-});
-
 describe('documentSub', () => {
   // Noon UTC: the same calendar day in every time zone the app runs in
   const UPLOADED = Date.UTC(2026, 9, 24, 12) / 1000;
@@ -146,6 +132,73 @@ describe('documentSub', () => {
     expect(documentSub({ ...doc, fileType: 'appraisal' }, label, cs)).toBe(
       'appraisal · 1,2 MB · 24. 10. 2026'
     );
+  });
+});
+
+describe('documentSub with where the content is', () => {
+  const UPLOADED = Date.UTC(2026, 9, 24, 12) / 1000;
+  const label = (type: string) => ({ contract: 'smlouva', other: 'jiné' })[type] ?? type;
+  const doc = {
+    fileType: 'contract',
+    fileSize: Math.round(1.2 * 1024 * 1024),
+    uploadedAt: UPLOADED,
+    mimeType: 'application/pdf',
+  };
+  const notes: Record<DocumentNoteKey, string> = {
+    elsewhereSub: 'Na vašich dalších zařízeních',
+    notHereSub: 'Na vašich dalších zařízeních · klepnutím stáhnete',
+    waitingUpload: 'Čeká na synchronizaci',
+    downloading: 'Stahuje se…',
+    notOnServer: 'Zatím nenahráno z druhého zařízení',
+    failed: 'Stažení se nepovedlo',
+    missing: 'Obsah chybí',
+  };
+  const note = (key: DocumentNoteKey) => notes[key];
+  const base = 'smlouva · 1,2 MB · 24. 10. 2026';
+
+  it('is byte-identical to the plain line for content that is here, with or without a note source', () => {
+    expect(documentSub({ ...doc, content: 'here' }, label, cs, note)).toBe(base);
+    expect(documentSub({ ...doc, content: 'here' }, label, cs)).toBe(base);
+    expect(documentSub(doc, label, cs, note)).toBe(base);
+  });
+
+  it('puts the note of every other state first', () => {
+    const sub = (content: AttachmentContent) => documentSub({ ...doc, content }, label, cs, note);
+    expect(sub('waitingUpload')).toBe(`Čeká na synchronizaci · ${base}`);
+    expect(sub('notHere')).toBe(`Na vašich dalších zařízeních · klepnutím stáhnete · ${base}`);
+    expect(sub('downloading')).toBe(`Stahuje se… · ${base}`);
+    expect(sub('notOnServer')).toBe(`Zatím nenahráno z druhého zařízení · ${base}`);
+    expect(sub('failed')).toBe(`Stažení se nepovedlo · ${base}`);
+    expect(sub('missing')).toBe(`Obsah chybí · ${base}`);
+  });
+
+  it('says only that a file the phone cannot show is elsewhere, and keeps the other notes', () => {
+    const sub = (content: AttachmentContent, mimeType = 'application/msword') =>
+      documentSub({ ...doc, mimeType, content }, label, cs, note);
+    expect(sub('notHere')).toBe(`Na vašich dalších zařízeních · ${base}`);
+    expect(sub('notHere', 'application/pdf')).toBe(
+      `Na vašich dalších zařízeních · klepnutím stáhnete · ${base}`
+    );
+    expect(sub('notHere', 'image/png')).toContain('klepnutím stáhnete');
+    expect(sub('downloading')).toBe(`Stahuje se… · ${base}`);
+    expect(sub('failed')).toBe(`Stažení se nepovedlo · ${base}`);
+    expect(sub('here')).toBe(base);
+  });
+
+  it('cannot be given where the content is without the file type', () => {
+    // @ts-expect-error a note for the content needs the type: it decides "tap to download"
+    documentSub({ ...doc, mimeType: undefined, content: 'notHere' }, label, cs, note);
+    const withoutType = { fileType: 'contract', fileSize: 1, uploadedAt: UPLOADED };
+    // @ts-expect-error likewise when the field is left out
+    documentSub({ ...withoutType, content: 'notHere' }, label, cs, note);
+  });
+
+  it('asks for the note of a state only when there is one', () => {
+    const asked: string[] = [];
+    documentSub({ ...doc, content: 'here' }, label, cs, (key) => (asked.push(key), ''));
+    expect(asked).toEqual([]);
+    documentSub({ ...doc, content: 'notHere' }, label, cs, (key) => (asked.push(key), ''));
+    expect(asked).toEqual(['notHereSub']);
   });
 });
 

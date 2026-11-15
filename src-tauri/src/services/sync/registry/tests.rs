@@ -81,14 +81,56 @@ fn every_named_column_exists() {
 }
 
 #[test]
-fn the_attachment_tables_are_local_in_v1() {
+fn the_attachment_tables_sync_only_with_their_blob() {
     for t in [
         "real_estate_photo_batches",
         "real_estate_photos",
         "real_estate_documents",
         "insurance_documents",
     ] {
-        assert_eq!(spec(t).unwrap().class, TableClass::Local, "{t}");
+        assert_eq!(spec(t).unwrap().class, TableClass::Synced, "{t}");
+    }
+    for t in ["real_estate_documents", "insurance_documents"] {
+        assert_eq!(spec(t).unwrap().requires, &["blob_id"], "{t}");
+        assert_eq!(column_class(t, "file_path"), ColumnClass::Local, "{t}");
+        assert_eq!(
+            row_condition(spec(t).unwrap(), "t").as_deref(),
+            Some("t.\"blob_id\" IS NOT NULL"),
+            "{t}"
+        );
+    }
+    // A photo needs both blobs: the receiving device's CHECK takes both blobs or both paths.
+    let photos = spec("real_estate_photos").unwrap();
+    assert_eq!(photos.requires, &["blob_id", "thumb_blob_id"]);
+    assert_eq!(
+        row_condition(photos, "NEW").as_deref(),
+        Some("(NEW.\"blob_id\" IS NOT NULL AND NEW.\"thumb_blob_id\" IS NOT NULL)")
+    );
+    assert!(spec("real_estate_photo_batches")
+        .unwrap()
+        .requires
+        .is_empty());
+    assert_eq!(
+        row_condition(spec("real_estate_photo_batches").unwrap(), "t"),
+        None
+    );
+    assert_eq!(
+        column_class("real_estate_photos", "thumbnail_path"),
+        ColumnClass::Local
+    );
+    assert_eq!(
+        column_class("real_estate_photos", "thumb_blob_id"),
+        ColumnClass::Synced
+    );
+    for t in tables().iter().filter(|t| {
+        ![
+            "real_estate_photos",
+            "real_estate_documents",
+            "insurance_documents",
+        ]
+        .contains(&t.name)
+    }) {
+        assert!(t.requires.is_empty(), "{}", t.name);
     }
 }
 
@@ -269,7 +311,11 @@ fn the_exact_tables_of_each_class_are_pinned() {
         "real_estate_valuations",
         "real_estate_loans",
         "real_estate_insurances",
+        "real_estate_photo_batches",
+        "real_estate_photos",
+        "real_estate_documents",
         "insurance_policies",
+        "insurance_documents",
         "other_assets",
         "other_asset_transactions",
         "other_asset_valuations",
@@ -300,10 +346,8 @@ fn the_exact_tables_of_each_class_are_pinned() {
         "attachment_leftovers",
         "loan_legacy_anchors",
         "mcp_pending_refresh",
-        "real_estate_photo_batches",
-        "real_estate_photos",
-        "real_estate_documents",
-        "insurance_documents",
+        "sync_blobs",
+        "sync_held_blobs",
         "sync_state",
         "sync_clock",
         "sync_outbox",
@@ -355,6 +399,9 @@ fn local_recomputed_and_recomputed_or_typed_sets_are_pinned() {
         ("loans", &["updated_at"]),
         ("real_estate", &["updated_at", "photos"]),
         ("other_assets", &["updated_at"]),
+        ("real_estate_photos", &["file_path", "thumbnail_path"]),
+        ("real_estate_documents", &["file_path"]),
+        ("insurance_documents", &["file_path"]),
     ];
     let recomputed: &[(&str, &[&str])] = &[
         ("loans", &["balance_anchor_amount", "balance_anchor_date"]),

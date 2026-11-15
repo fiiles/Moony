@@ -47,7 +47,9 @@ rusqlite = { version = "0.40", features = ["bundled-sqlcipher", "blob", "functio
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net", "sync"] }
 
 # HTTP client for API calls (ECB rates, Frankfurter history, Yahoo search) - see services/http.rs
-reqwest = { version = "0.13", features = ["json"] }
+reqwest = { version = "0.13", features = ["json", "stream"] }
+# Streams a blob body into an upload piece by piece (services/sync/relay/http.rs)
+futures-util = "0.3"
 
 # UUID generation
 uuid = { version = "1", features = ["v4", "v5", "serde"] }
@@ -150,6 +152,14 @@ opt-level = 3
 # The sync journal deflates every envelope it measures (flate2's Rust backend); unoptimised,
 # deflate dominates the 5,000-row journal test.
 [profile.dev.package.miniz_oxide]
+opt-level = 3
+# Sync blobs seal and open up to 100 MiB through XChaCha20-Poly1305; unoptimised, the cipher
+# dominates the blob tests and a debug build's uploads and downloads.
+[profile.dev.package.chacha20]
+opt-level = 3
+[profile.dev.package.poly1305]
+opt-level = 3
+[profile.dev.package.chacha20poly1305]
 opt-level = 3
 
 # tauri-plugin-notification 2.8.0 with the iOS tap crash fixed and `extra` reported on iOS

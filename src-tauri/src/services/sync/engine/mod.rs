@@ -19,8 +19,16 @@ use rusqlite::Connection;
 use crate::error::{AppError, Result};
 use crate::models::sync::{SyncProblem, SyncStatus};
 use crate::services::sync::binding::BindingNative;
+use crate::services::sync::blobs::pass;
+use crate::services::sync::blobs::policy::{BlobPolicy, Lane};
+use crate::services::sync::blobs::queue;
+use crate::services::sync::blobs::stream::IncomingBlobs;
+use crate::services::sync::blobs::transfer::{
+    run_uploads_if_free, PRE_PUSH_BUDGET, PRE_PUSH_MAX_PLAIN,
+};
 use crate::services::sync::capture::guard;
 use crate::services::sync::error::{SyncError, SyncResult, TooLarge};
+use crate::services::sync::held_blobs;
 use crate::services::sync::hlc::DeviceId;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::relay::{Relay, RelayError, VaultInfo};
@@ -41,11 +49,36 @@ pub trait ConnAccess: Clone + Send + Sync + 'static {
     fn round_lock(&self) -> &tokio::sync::Mutex<()> {
         &ROUNDS
     }
+
+    /// `with_conn` if the connection is free right now, else `None` without waiting: for a `Drop`
+    /// that must never hang (it may run inside a hold of this connection). Required, with no
+    /// default: an implementation that never tried would silently leave every cancelled
+    /// download's incoming blob behind (`blobs::stream::StoreSink`'s `Drop`).
+    fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>>;
+
+    /// The blob IDs a download is writing into this profile's attachment store right now
+    /// (`blobs::stream::StoreSink`): one download per blob ID at a time. The app opens one profile
+    /// at a time, so the default is one set for the process.
+    fn incoming_blobs(&self) -> &IncomingBlobs {
+        &INCOMING_BLOBS
+    }
+
+    /// The profile's lane gate: one engine's transfer lanes at a time (`runtime`). A new engine's
+    /// lanes wait on it until an earlier engine's lanes have ended, their dropped transfers
+    /// settled, before they sweep the store and pick work. The app opens one profile at a time, so
+    /// the default is one gate for the process.
+    fn lanes_lock(&self) -> &tokio::sync::Mutex<()> {
+        &LANES
+    }
 }
 
 impl ConnAccess for crate::db::Database {
     fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
         crate::db::Database::with_conn(self, f)
+    }
+
+    fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
+        crate::db::Database::try_with_conn(self, f)
     }
 }
 
@@ -220,6 +253,10 @@ pub trait EngineEvents: Send + Sync + 'static {
     fn binding(&self) -> &dyn BindingNative;
     /// The folder next to the profile: the restore marker and the binding live there.
     fn data_dir(&self) -> PathBuf;
+    /// Documents' or photos' content, or their counts, changed (`sync-attachments-changed`, no
+    /// payload): a transfer lane moved something, or the queue changed. Coalesced by the engine:
+    /// at most a few calls a second, and the last change always gets one.
+    fn attachments_changed(&self);
     /// Whether a binding check already failed in this app start (audit M10, final review A I2):
     /// one mark for the whole process, which outlives any one engine. Every unlock and every sync
     /// change spawns a new engine, and a failed check counts once per app start among all of them.
@@ -283,6 +320,13 @@ fn unechoed<D: ConnAccess>(db: &D) -> Result<(usize, Option<u64>)> {
 /// The process's round lock (`ConnAccess::round_lock`; one profile is open at a time).
 static ROUNDS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+/// The process's lane gate (`ConnAccess::lanes_lock`; one profile is open at a time).
+static LANES: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// The process's downloads in progress (`ConnAccess::incoming_blobs`; one profile is open at a
+/// time).
+static INCOMING_BLOBS: IncomingBlobs = IncomingBlobs::new();
+
 /// Holds off every round of `db`'s profile while the guard lives: the engine's start check (the
 /// binding, a re-join, the marker, the binding write) takes it, so a setup or repair round cannot
 /// interleave with a re-join.
@@ -315,7 +359,8 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    through or finds a newer snapshot (`409`, noted with `state::note_snapshot_barrier`).
 /// 2. Pull. `410` restores the vault's snapshot by merge, then pulls once more (a second `410` is
 ///    a relay error).
-/// 3. Push only when the pull allows it (ruling P1, `PullReport::may_push`). A push that sent
+/// 3. Push only when the pull allows it (ruling P1, `PullReport::may_push`), after sending small
+///    documents and photos within a budget (`upload_before_push`, not in `Drain`). A push that sent
 ///    anything is followed by a second pull, which brings what it sent back (the echo, audit M4):
 ///    only that removes an envelope from `sync_unsent`; a failure of that pull is logged and ends
 ///    the round without an error. After an echo pull that was not stopped or unfinished, the
@@ -325,7 +370,8 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    problem: `PullReport::holds_something`).
 /// 4. Not in `Drain`: when the mode asks for it or the policy wants it, read the vault's info,
 ///    heal a below-barrier miss with it, and, after pulls that ended done (rulings P4, P14),
-///    upload a snapshot if due (forced in `FirstSnapshot`).
+///    upload a snapshot if due (forced in `FirstSnapshot`). Then, not in `Drain`, the daily pass of
+///    documents and photos (`daily_pass`), which never fails the round.
 /// 5. A sync state is a problem, not an error (ruling P8): the vault gone (paused in
 ///    `sync_state`), a lapse (with the vault's `paid_until` when the relay still answers), the
 ///    quota, a snapshot too large, a rotated token or an unauthorized one. A transient, rate-limit,
@@ -356,6 +402,7 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         // A guarded or read-only connection is capture-broken whatever the mark says (it may
         // not have been written): nothing runs against it but the repair's drain.
         let paused = guard::changes_paused(conn);
+        queue_local_changes(conn, &policy.blobs, now)?;
         Ok(keys::credentials(conn)?
             .zip(state::marks(conn)?)
             .map(|(creds, marks)| {
@@ -473,6 +520,18 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         }
         other => other?,
     };
+    if pulled.done() && !pulled.behind {
+        // Caught up to the server's head: the rows a replace's snapshot lacked have come back by
+        // now (ADR 0030). A pull behind the head may not have served them yet.
+        if let Err(error) = db.with_conn(held_blobs::release) {
+            log::warn!("[SYNC] Could not release the blobs a replace held: {error}");
+        }
+    }
+    if pulled.applied > 0 {
+        // The pull made content the server lacked at its last try due again
+        // (`queue::content_may_have_landed`): the download lane looks now, not after the round.
+        policy.blobs.wake_lane(Lane::Down);
+    }
     if pulled.gaps > 0 {
         // Once per round, not per envelope: every later envelope of a waiting author waits too.
         log::info!(
@@ -505,6 +564,15 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     if !may_push {
         return Ok(());
     }
+    if mode != RoundMode::Drain {
+        // Not ordered after the lanes' start (`runtime::Lanes::start`), and harmless: it uploads
+        // only complete blobs a syncing row names that never failed an attempt (`attempts = 0`),
+        // and never writes an incoming blob. Its `fail_abandoned(Up)` can count one failed
+        // attempt on an old engine's upload that is still live only after the 5 s stop wait ran
+        // out, or after a stop without a wait; that blob then has an attempt, so this round never
+        // uploads it again.
+        upload_before_push(relay, db, creds, &policy.blobs, now).await;
+    }
     let pushed = push::push_all(relay, db, creds).await?;
     let (sent, capped, resent_through) = (
         pushed.pushed > 0,
@@ -513,7 +581,9 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     );
     report.push = Some(pushed);
     if !sent {
-        return after_push(relay, db, creds, policy, mode, now, jitter, report).await;
+        after_push(relay, db, creds, policy, mode, now, jitter, report).await?;
+        daily_pass(relay, db, creds, &policy.blobs, mode, now, report).await;
+        return Ok(());
     }
     // The echo (audit M4): what the push sent leaves `sync_unsent` only when this device pulls it
     // back, so the round pulls once more. On an honest relay nothing it sent stays pending, and a
@@ -561,7 +631,100 @@ async fn round_steps<R: Relay, D: ConnAccess>(
             return Ok(());
         }
     }
-    after_push(relay, db, creds, policy, mode, now, jitter, report).await
+    after_push(relay, db, creds, policy, mode, now, jitter, report).await?;
+    daily_pass(relay, db, creds, &policy.blobs, mode, now, report).await;
+    Ok(())
+}
+
+/// The daily pass of documents and photos (`blobs::pass`, ADR 0030), after a `Normal` or
+/// `FirstSnapshot` round's last step went through: once a day, a caught-up device deletes the
+/// server's unreferenced blobs and puts back what the server lost. Nothing it meets fails or
+/// changes the round: it ends within `pass::PASS_BUDGET`, a sync server error ends it (logged
+/// there), a local error is logged here, and a locked profile ends the round at its next step.
+async fn daily_pass<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    blobs: &BlobPolicy,
+    mode: RoundMode,
+    now: i64,
+    report: &RoundReport,
+) {
+    if !matches!(mode, RoundMode::Normal | RoundMode::FirstSnapshot) {
+        return;
+    }
+    let Some(pulled) = report.pull.as_ref() else {
+        return;
+    };
+    match pass::run_if_due(relay, db, creds, blobs, pulled, now).await {
+        Ok(_) | Err(AppError::Auth(_)) => {}
+        Err(error) => {
+            log::warn!("[SYNC] The daily pass of documents and photos failed on this device");
+            log::debug!("[SYNC] The daily pass of documents and photos failed: {error}");
+        }
+    }
+}
+
+/// The round's upload step (attachments design §5.3, ADR 0030): before the push, content of at
+/// most `PRE_PUSH_MAX_PLAIN` bytes goes up, so another device that merges a row seldom has to wait
+/// for its content. The queue is reconciled by its rows first (content added here since the last
+/// merge is queued and counted; the store is asked about new blobs only, never every entry); an
+/// upload lane busy with a long transfer skips the rest at once. The whole step ends within
+/// `PRE_PUSH_BUDGET`: an upload still running then is dropped and counts a failed attempt, so its
+/// backoff keeps the next rounds from spending their budget on it again. Nothing the step meets
+/// fails or changes the round: transfer errors stay on their entries, and a local error is
+/// logged and dropped (a locked profile ends the round at its next step).
+/// In the round's first hold, before any network call: the transfer queue learns of documents and
+/// photos added or removed here (`queue::reconcile_rows`: only newly named blobs are looked up in
+/// the store), so the status counts them even when the round then cannot reach the server; the
+/// app is told when the queue changed. A local failure is logged and the round goes on (the
+/// upload step reconciles again); a locked profile ends the round.
+fn queue_local_changes(conn: &Connection, blobs: &BlobPolicy, now: i64) -> Result<()> {
+    match queue::reconcile_rows(conn, now) {
+        Ok(reconciled) => {
+            if reconciled != queue::Reconciled::default() {
+                blobs.note_changed();
+            }
+            Ok(())
+        }
+        Err(error @ AppError::Auth(_)) => Err(error),
+        Err(error) => {
+            log::warn!("[SYNC] The transfer queue could not be brought up to date");
+            log::debug!("[SYNC] The transfer queue could not be brought up to date: {error}");
+            Ok(())
+        }
+    }
+}
+
+async fn upload_before_push<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    policy: &BlobPolicy,
+    now: i64,
+) {
+    let until = tokio::time::Instant::now() + PRE_PUSH_BUDGET;
+    let uploads = run_uploads_if_free(
+        relay,
+        db,
+        creds,
+        policy,
+        now,
+        Some(until),
+        Some(PRE_PUSH_MAX_PLAIN),
+    );
+    match tokio::time::timeout_at(until, uploads).await {
+        Ok(Ok(Some(sent))) if sent.uploaded > 0 || sent.failed > 0 => log::debug!(
+            "[SYNC] Before the push: {} documents or photos uploaded, {} failed",
+            sent.uploaded,
+            sent.failed
+        ),
+        Ok(Ok(Some(_))) => {}
+        Ok(Ok(None)) => log::debug!("[SYNC] The upload lane is busy: the round sends no content"),
+        Ok(Err(AppError::Auth(_))) => {}
+        Ok(Err(error)) => log::warn!("[SYNC] Documents and photos were not uploaded: {error}"),
+        Err(_) => log::info!("[SYNC] Uploads before the push ran out of time; the rest waits"),
+    }
 }
 
 /// Step 4 of `run_round_into`: the vault's info, healing a below-barrier miss, and the snapshot.

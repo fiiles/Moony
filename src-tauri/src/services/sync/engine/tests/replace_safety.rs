@@ -91,6 +91,11 @@ impl ConnAccess for HoldLog {
         })
     }
 
+    /// Unlogged: only a cancelled download's cleanup tries the connection.
+    fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
+        self.inner.try_with_conn(f)
+    }
+
     fn round_lock(&self) -> &tokio::sync::Mutex<()> {
         self.inner.round_lock()
     }
@@ -208,6 +213,47 @@ impl Relay for WritesBeforeSnapshot {
         vault: &VaultAuth,
     ) -> impl std::future::Future<Output = RelayResult<()>> + Send {
         self.relay.delete_vault(vault)
+    }
+    fn put_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: uuid::Uuid,
+        sealed_len: u64,
+        body: crate::services::sync::relay::BlobBody,
+    ) -> impl std::future::Future<Output = RelayResult<()>> + Send {
+        self.relay.put_blob(vault, blob, sealed_len, body)
+    }
+    fn head_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: uuid::Uuid,
+    ) -> impl std::future::Future<Output = RelayResult<Option<u64>>> + Send {
+        self.relay.head_blob(vault, blob)
+    }
+    fn get_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: uuid::Uuid,
+        sink: &mut (dyn crate::services::sync::relay::BlobSink + Send),
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::Delivery>> + Send
+    {
+        self.relay.get_blob(vault, blob, sink)
+    }
+    fn list_blobs(
+        &self,
+        vault: &VaultAuth,
+        after: Option<uuid::Uuid>,
+        limit: u32,
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::BlobPage>> + Send
+    {
+        self.relay.list_blobs(vault, after, limit)
+    }
+    fn delete_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: uuid::Uuid,
+    ) -> impl std::future::Future<Output = RelayResult<()>> + Send {
+        self.relay.delete_blob(vault, blob)
     }
 }
 

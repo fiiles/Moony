@@ -11,6 +11,7 @@ use super::runtime::{calls_since, device_of, op_devices, routes, write_and_seal}
 use super::*;
 use crate::models::sync::{SyncPhase, SyncProblem, SyncStatus};
 use crate::services::sync::binding::{self, BindingFailure, BindingNative, NoBinding};
+use crate::services::sync::blobs::policy::BlobPolicy;
 use crate::services::sync::engine::runtime::{self, EngineHandle, Trigger};
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
 use crate::services::sync::engine::{run_round, EngineEvents, RoundMode};
@@ -106,6 +107,39 @@ impl Relay for Probe {
     async fn delete_vault(&self, vault: &VaultAuth) -> RelayResult<()> {
         self.around(self.inner.delete_vault(vault)).await
     }
+    async fn put_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: uuid::Uuid,
+        sealed_len: u64,
+        body: crate::services::sync::relay::BlobBody,
+    ) -> RelayResult<()> {
+        self.around(self.inner.put_blob(vault, blob, sealed_len, body))
+            .await
+    }
+    async fn head_blob(&self, vault: &VaultAuth, blob: uuid::Uuid) -> RelayResult<Option<u64>> {
+        self.around(self.inner.head_blob(vault, blob)).await
+    }
+    async fn get_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: uuid::Uuid,
+        sink: &mut (dyn crate::services::sync::relay::BlobSink + Send),
+    ) -> RelayResult<crate::services::sync::relay::Delivery> {
+        self.around(self.inner.get_blob(vault, blob, sink)).await
+    }
+    async fn list_blobs(
+        &self,
+        vault: &VaultAuth,
+        after: Option<uuid::Uuid>,
+        limit: u32,
+    ) -> RelayResult<crate::services::sync::relay::BlobPage> {
+        self.around(self.inner.list_blobs(vault, after, limit))
+            .await
+    }
+    async fn delete_blob(&self, vault: &VaultAuth, blob: uuid::Uuid) -> RelayResult<()> {
+        self.around(self.inner.delete_blob(vault, blob)).await
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -177,14 +211,18 @@ impl BindingNative for Sealing {
 #[derive(Clone, Default)]
 pub(super) struct Seen {
     data_changed: Arc<AtomicUsize>,
+    attachments_changed: Arc<AtomicUsize>,
     statuses: Arc<Mutex<Vec<SyncStatus>>>,
 }
 
 impl Seen {
-    fn statuses(&self) -> Vec<SyncStatus> {
+    pub(super) fn attachments_changed(&self) -> usize {
+        self.attachments_changed.load(Ordering::SeqCst)
+    }
+    pub(super) fn statuses(&self) -> Vec<SyncStatus> {
         self.statuses.lock().expect("statuses").clone()
     }
-    fn last(&self) -> SyncStatus {
+    pub(super) fn last(&self) -> SyncStatus {
         self.statuses().last().cloned().expect("a status")
     }
     fn data_changed(&self) -> usize {
@@ -204,6 +242,9 @@ struct Events {
 impl EngineEvents for Events {
     fn data_changed(&self) {
         self.seen.data_changed.fetch_add(1, Ordering::SeqCst);
+    }
+    fn attachments_changed(&self) {
+        self.seen.attachments_changed.fetch_add(1, Ordering::SeqCst);
     }
     fn status_changed(&self, status: &SyncStatus) {
         self.seen
@@ -265,6 +306,16 @@ pub(super) fn start_in(
 
 /// The engine on any relay and connection, without a binding.
 fn start_on<R: Relay + 'static, D: ConnAccess>(relay: R, db: D) -> Running {
+    start_with(relay, db, BlobPolicy::for_this_platform())
+}
+
+/// The engine on any relay and connection, without a binding, with the transfer policy `blobs`
+/// (a phone's or a desktop's).
+pub(super) fn start_with<R: Relay + 'static, D: ConnAccess>(
+    relay: R,
+    db: D,
+    blobs: BlobPolicy,
+) -> Running {
     let dir = tempfile::tempdir().expect("temp dir");
     let seen = Seen::default();
     let events = Events {
@@ -273,7 +324,7 @@ fn start_on<R: Relay + 'static, D: ConnAccess>(relay: R, db: D) -> Running {
         native: Box::new(NoBinding),
         this_start: Arc::default(),
     };
-    let handle = runtime::spawn(relay, db, events);
+    let handle = runtime::spawn_with(relay, db, events, blobs);
     Running {
         handle,
         seen,
@@ -305,8 +356,17 @@ impl ConnAccess for Counted {
         self.takes.fetch_add(1, Ordering::SeqCst);
         self.inner.with_conn(f)
     }
+    fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
+        self.inner.try_with_conn(f)
+    }
     fn round_lock(&self) -> &tokio::sync::Mutex<()> {
         self.inner.round_lock()
+    }
+    fn lanes_lock(&self) -> &tokio::sync::Mutex<()> {
+        self.inner.lanes_lock()
+    }
+    fn incoming_blobs(&self) -> &crate::services::sync::blobs::stream::IncomingBlobs {
+        self.inner.incoming_blobs()
     }
 }
 

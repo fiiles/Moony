@@ -3,12 +3,14 @@
  * other type in its system app after the D3 warning (unless the user opted out on this device).
  */
 import { useState, type ReactNode } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { AttachmentKind } from '@shared/schema';
-import { insuranceApi, realEstateApi } from '@/lib/tauri-api';
+import { deviceSyncApi, insuranceApi, realEstateApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { readSetting, writeSetting } from '@/utils/device-storage';
+import { attachmentView } from '@/utils/attachment-content';
 import { OPEN_ELSEWHERE_CONFIRMED_KEY, viewerKind } from '@/utils/attachment-viewer';
 import { AttachmentViewerDialog, type ViewableDocument } from './AttachmentViewerDialog';
 import { OpenElsewhereDialog } from './OpenElsewhereDialog';
@@ -18,13 +20,34 @@ type DocumentKind = Exclude<AttachmentKind, 'photo'>;
 const openInSystemApp = (kind: DocumentKind, id: string) =>
   kind === 'insurance-document' ? insuranceApi.openDocument(id) : realEstateApi.openDocument(id);
 
-export function useDocumentOpener(kind: DocumentKind): {
+export function useDocumentOpener(
+  kind: DocumentKind,
+  /** The owner's current rows: a viewer whose document is no longer among them closes quietly. */
+  rows: readonly { id: string }[]
+): {
   openDocument: (document: ViewableDocument) => void;
+  /** "Try again" on a document whose content failed to move; resolves when the ask is made. */
+  retryContent: (id: string) => void;
+  /** The row whose "Try again" is in flight, for its busy button. */
+  retryingId: string | null;
   dialogs: ReactNode;
 } {
   const { t } = useTranslation('common');
   const [viewing, setViewing] = useState<ViewableDocument | null>(null);
   const [confirming, setConfirming] = useState<ViewableDocument | null>(null);
+
+  // The list and the sync status refresh through the `sync-attachments-changed` event; this
+  // changes no financial data, so no snapshot and no cache writes by hand.
+  const retryMutation = useMutation({
+    mutationFn: (id: string) => deviceSyncApi.retryAttachment(kind, id),
+    onError: (error: Error) => {
+      toast.error(t('status.error'), { description: translateApiError(error, t) });
+    },
+  });
+
+  // Another device deleted the document: the list refetches on the attachments event, and the
+  // viewer (whose "save a copy" would now fail with "not found") closes without a message.
+  if (viewing && !rows.some((row) => row.id === viewing.id)) setViewing(null);
 
   const openElsewhere = async (document: ViewableDocument) => {
     try {
@@ -42,6 +65,8 @@ export function useDocumentOpener(kind: DocumentKind): {
   };
 
   const openDocument = (document: ViewableDocument) => {
+    // Content that is not here has no `moony-file` URL to build: the protocol would answer 425/404.
+    if (!attachmentView(document.content, 'desktop').openable) return;
     if (viewerKind(document.mimeType) === 'external') requestOpenElsewhere(document);
     else setViewing(document);
   };
@@ -67,5 +92,10 @@ export function useDocumentOpener(kind: DocumentKind): {
     </>
   );
 
-  return { openDocument, dialogs };
+  return {
+    openDocument,
+    retryContent: (id: string) => retryMutation.mutate(id),
+    retryingId: retryMutation.isPending ? (retryMutation.variables ?? null) : null,
+    dialogs,
+  };
 }

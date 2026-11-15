@@ -6,7 +6,10 @@ use rusqlite::Connection;
 
 use super::{PullEnd, PullReport, PullStop, RoundReport};
 use crate::error::{AppError, Result};
-use crate::models::sync::{SyncPhase, SyncProblem, SyncStatus};
+use crate::models::sync::{
+    SyncAttachments, SyncAttachmentsProblem, SyncPhase, SyncProblem, SyncStatus,
+};
+use crate::services::sync::blobs::queue;
 use crate::services::sync::capture::{self, guard};
 use crate::services::sync::error::{SyncError, TooLarge, Transient};
 use crate::services::sync::hlc::{now_ms, unpack, FUTURE_WARNING_MS};
@@ -36,6 +39,8 @@ pub struct Runtime {
     pub refused_rows: u32,
     /// Rounds finished since the engine started (diagnostics).
     pub rounds: u64,
+    /// Why documents and photos do not move (`BlobPolicy::problem`), as the engine last read it.
+    pub attachments_problem: Option<SyncAttachmentsProblem>,
 }
 
 impl Runtime {
@@ -55,7 +60,8 @@ impl Runtime {
 /// The status of this profile. A profile without a `sync_state` row, or with a disabled one and no
 /// account, is `off`; a disabled row with an account saved is `settingUp`. An enabled profile shows
 /// the pauses kept in `sync_state` first (capture broken, vault gone), then a running round, then
-/// the last round's problem; `idle` when there is none.
+/// the last round's problem; `idle` when there is none. Documents and photos are counted beside
+/// the phase (`SyncStatus::attachments`, zeros while sync is off), never in it.
 pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
     let dev_tools = feature::dev_tools();
     let address = keys::account(conn)?.map(|(url, _)| url);
@@ -79,6 +85,7 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         server_address: address.clone(),
         server_insecure,
         enabled_at: None,
+        attachments: SyncAttachments::default(),
     };
     let Some(sync) = state::load(conn)? else {
         return Ok(quiet(SyncPhase::Off));
@@ -139,7 +146,27 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         server_address: address,
         server_insecure,
         enabled_at: devices::this_device_joined_at(conn)?,
+        attachments: attachments(conn, runtime),
     })
+}
+
+/// Where this device's documents and photos stand (`queue::summary`, read from the queue alone),
+/// with the problem the engine last read from its blob policy. A summary that cannot be read
+/// never hides the ordinary status: its figures are empty, with a warning in the log.
+fn attachments(conn: &Connection, runtime: &Runtime) -> SyncAttachments {
+    let summary = queue::summary(conn).unwrap_or_else(|error| {
+        log::warn!("[SYNC] Documents and photos could not be counted for the status: {error}");
+        Default::default()
+    });
+    SyncAttachments {
+        waiting_upload: summary.waiting_upload,
+        waiting_upload_bytes: summary.waiting_upload_bytes,
+        not_here: summary.not_here,
+        not_on_server: summary.not_on_server,
+        failed: summary.failed,
+        not_on_device: summary.not_on_device,
+        problem: runtime.attachments_problem,
+    }
 }
 
 /// While this device's clock (`capture::clock_now`) is more than `hlc::FUTURE_WARNING_MS` past

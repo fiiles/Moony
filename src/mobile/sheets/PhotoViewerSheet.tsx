@@ -6,8 +6,12 @@ import { cn } from '@/lib/utils';
 import { useFormat } from '@/lib/use-format';
 import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST_WIDE } from '@/mobile/components/import/styles';
+import { viewerLayers } from '@/mobile/lib/attachment-fetch';
 import type { GalleryPhoto } from '@/mobile/lib/property-detail';
+import { FetchingNotice, UnavailableNotice } from '@/mobile/components/documents/AttachmentStates';
+import { useAttachmentFetch } from '@/mobile/hooks/use-attachment-fetch';
 import { attachmentUrl } from '@/utils/attachment-url';
+import { thumbnailShown } from '@/utils/attachment-content';
 
 interface PhotoViewerSheetProps {
   open: boolean;
@@ -18,9 +22,12 @@ interface PhotoViewerSheetProps {
   onDelete: () => void;
   /** A photo is still being uploaded: Smazat fotku waits (the batch it would delete may be growing). */
   deleteDisabled?: boolean;
+  /** When the list the photo comes from was last refreshed: a failed load gets one new attempt per refresh. */
+  refreshedAt?: number;
 }
 
-type Status = 'loading' | 'ready' | 'failed';
+// `fetching`: the full photo is not on the phone yet; nothing is mounted that would load it
+type Status = 'loading' | 'ready' | 'failed' | 'fetching';
 
 /**
  * The photo viewer (spec §8.8 "Galerie", README §13 "Photo viewer"): a tall sheet filled by one
@@ -39,6 +46,7 @@ export function PhotoViewerSheet({
   photo,
   onDelete,
   deleteDisabled = false,
+  refreshedAt,
 }: PhotoViewerSheetProps) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
@@ -47,15 +55,47 @@ export function PhotoViewerSheet({
   const [status, setStatus] = useState<Status>('loading');
   const [wasOpen, setWasOpen] = useState(open);
 
-  // A new photo, and every opening, loads again
-  if (photo !== null && photo !== shown) {
-    setShown(photo);
+  // The thumbnail's bytes failed to load although the row says they are here
+  const [thumbBroken, setThumbBroken] = useState(false);
+  const restart = () => {
     setStatus('loading');
+    setThumbBroken(false);
+  };
+
+  // A new photo, and every opening, loads again; a refreshed row of the same photo does not
+  if (photo !== null && photo !== shown) {
+    const another = photo.id !== shown?.id;
+    setShown(photo);
+    if (another) restart();
   }
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open) setStatus('loading');
+    if (open) restart();
   }
+  // A load that failed gets one new attempt per refresh of the list
+  const [seenRefresh, setSeenRefresh] = useState(refreshedAt);
+  if (seenRefresh !== refreshedAt) {
+    setSeenRefresh(refreshedAt);
+    setThumbBroken(false);
+    if (status === 'failed') setStatus('loading');
+  }
+
+  const { plan, retrying, tryAgain } = useAttachmentFetch({
+    open,
+    kind: 'photo',
+    id: shown?.id,
+    content: shown?.content,
+  });
+  // The status follows the plan: a spinner while the photo comes, a fresh load once it is here
+  // (the note of an unavailable photo is no load: `viewerLayers` keeps the skeleton off it)
+  const planned: Status =
+    plan.stage === 'fetching'
+      ? 'fetching'
+      : status === 'fetching' || plan.stage === 'unavailable'
+        ? 'loading'
+        : status;
+  if (planned !== status) setStatus(planned);
+  const layers = viewerLayers(plan.stage, status);
 
   return (
     <Sheet
@@ -83,7 +123,7 @@ export function PhotoViewerSheet({
       {shown && (
         // A column that fills the sheet's body: the box takes all of it
         <div className="relative flex min-h-0 flex-1 flex-col">
-          {status === 'loading' && (
+          {layers.skeleton && (
             <>
               <Skeleton className="absolute inset-0 z-[1] rounded-r3" />
               <span role="status" className="sr-only">
@@ -94,24 +134,57 @@ export function PhotoViewerSheet({
           <div
             // No text selection, no callout and no context menu on what is shown; a pan scrolls
             // nothing, a pinch does nothing
-            className="flex min-h-0 flex-1 select-none items-center justify-center overflow-hidden overscroll-contain rounded-r3 bg-well p-2 [-webkit-touch-callout:none] [touch-action:pan-x_pan-y]"
+            className="relative flex min-h-0 flex-1 select-none items-center justify-center overflow-hidden overscroll-contain rounded-r3 bg-well p-2 [-webkit-touch-callout:none] [touch-action:pan-x_pan-y]"
             onContextMenu={(event) => event.preventDefault()}
           >
-            {status === 'failed' ? (
-              <p role="alert" className="m-0 px-1 py-6 text-center text-m-body text-ink-3">
-                {t('property.photoFailed')}
-              </p>
-            ) : (
-              <img
-                key={shown.id}
-                src={attachmentUrl('photo', shown.id)}
-                alt=""
-                draggable={false}
-                onLoad={() => setStatus('ready')}
-                onError={() => setStatus('failed')}
-                className="pointer-events-none block max-h-full max-w-full select-none rounded-r2 object-contain [-webkit-touch-callout:none]"
-              />
+            {layers.thumbnail &&
+              (thumbnailShown(shown.thumbContent) && !thumbBroken ? (
+                <img
+                  src={attachmentUrl('photo-thumb', shown.id)}
+                  alt=""
+                  draggable={false}
+                  onError={() => setThumbBroken(true)}
+                  className="pointer-events-none block max-h-full max-w-full select-none rounded-r2 object-contain [-webkit-touch-callout:none]"
+                />
+              ) : (
+                plan.stage === 'fetching' && (
+                  <Skeleton className="absolute inset-0 z-0 rounded-r3" />
+                )
+              ))}
+            {/* The state sits over the thumbnail (or the empty box): the photo itself is not asked for */}
+            {layers.note && (
+              <div className="absolute inset-x-3 bottom-3 z-[2] rounded-r3 bg-paper p-3 shadow-e1">
+                {plan.stage === 'fetching' ? (
+                  <FetchingNotice />
+                ) : (
+                  plan.stage === 'unavailable' && (
+                    <UnavailableNotice
+                      note={plan.note}
+                      retry={plan.retry}
+                      busy={retrying}
+                      onTryAgain={tryAgain}
+                    />
+                  )
+                )}
+              </div>
             )}
+            {!layers.thumbnail &&
+              !layers.note &&
+              (status === 'failed' ? (
+                <p role="alert" className="m-0 px-1 py-6 text-center text-m-body text-ink-3">
+                  {t('property.photoFailed')}
+                </p>
+              ) : (
+                <img
+                  key={shown.id}
+                  src={attachmentUrl('photo', shown.id)}
+                  alt=""
+                  draggable={false}
+                  onLoad={() => setStatus('ready')}
+                  onError={() => setStatus('failed')}
+                  className="pointer-events-none block max-h-full max-w-full select-none rounded-r2 object-contain [-webkit-touch-callout:none]"
+                />
+              ))}
           </div>
         </div>
       )}

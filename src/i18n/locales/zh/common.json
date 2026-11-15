@@ -46,6 +46,7 @@
     "close": "关闭",
     "done": "完成",
     "back": "返回",
+    "previous": "上一个",
     "next": "下一步",
     "submit": "提交",
     "refresh": "刷新",
@@ -187,6 +188,8 @@
     "paymentNonNegative": "付款额不能为负数",
     "endDateAfterStart": "结束日期必须晚于开始日期",
     "attachmentTooLarge": "文件超过 100 MB。",
+    "attachmentNotHereYet": "此文档或照片尚未到达这台设备。",
+    "attachmentUnavailable": "无法将此文档或照片下载到这台设备。",
     "exportIntoDataFolder": "无法将副本保存到 Moony 的数据文件夹。请选择其他位置。",
     "documentNameRequired": "请输入文档名称",
     "nameTooLong": "名称过长",
@@ -644,6 +647,15 @@
       "body": "Moony 会创建一个未加密的临时副本，以便其他应用打开该文件。锁定或退出 Moony 时会删除该副本，但无法删除其他应用自行保存的内容。",
       "dontAsk": "不再询问",
       "confirm": "打开"
+    },
+    "content": {
+      "waitingUpload": "等待同步",
+      "downloading": "正在下载…",
+      "notOnServer": "另一台设备尚未上传",
+      "failed": "无法下载",
+      "retry": "重试",
+      "missing": "内容缺失",
+      "fetching": "正在从同步服务器下载…"
     }
   },
   "filterBadge": {

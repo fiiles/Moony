@@ -12,6 +12,8 @@ interface DocumentRowProps {
   menuLabel: string;
   /** "Smazat". */
   deleteLabel: string;
+  /** A tap opens the viewer; false for content that cannot arrive or is lost (the sub-line says why). */
+  openable?: boolean;
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
   onOpen: () => void;
@@ -29,6 +31,7 @@ export function DocumentRow({
   sub,
   menuLabel,
   deleteLabel,
+  openable = true,
   menuOpen,
   onMenuOpenChange,
   onOpen,
@@ -44,8 +47,9 @@ export function DocumentRow({
       }
       title={doc.name}
       sub={sub}
-      chevron
-      onClick={onOpen}
+      chevron={openable}
+      disabled={!openable}
+      onClick={openable ? onOpen : undefined}
       menu={{
         label: menuLabel,
         // Smazat is nowhere else: the tap opens the viewer

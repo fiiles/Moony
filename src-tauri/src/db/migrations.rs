@@ -99,6 +99,10 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("032_sync_snapshot_too_large", MIGRATION_032),
         ("033_sync_snapshot_barrier", MIGRATION_033),
         ("034_asset_logos", MIGRATION_034),
+        ("035_sync_blobs", MIGRATION_035),
+        ("036_sync_held_blobs", MIGRATION_036),
+        ("037_sync_blobs_refusals", MIGRATION_037),
+        ("038_sync_blobs_size", MIGRATION_038),
     ]
 }
 
@@ -3400,9 +3404,9 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_34_migrations() {
-        assert_eq!(known_migration_names().len(), 34);
-        assert_eq!(known_migration_names().last(), Some(&"034_asset_logos"));
+    fn the_chain_now_has_38_migrations() {
+        assert_eq!(known_migration_names().len(), 38);
+        assert_eq!(known_migration_names().last(), Some(&"038_sync_blobs_size"));
     }
 }
 
@@ -3464,6 +3468,169 @@ CREATE TABLE asset_logos (
     checked_at INTEGER NOT NULL
 );
 "#;
+
+/// 035: `sync_blobs` (Local): this device's queue of document and photo content to move to or
+/// from the sync server. `state`: `up` = held here, the server has not confirmed it; `down` =
+/// referenced, not held here; `done` = held here and known to the server. `row_at` is the owning
+/// row's `uploaded_at` (documents) or `created_at` (photos). Never leaves the device.
+pub(crate) const MIGRATION_035: &str = r#"
+CREATE TABLE sync_blobs (
+    blob_id TEXT PRIMARY KEY,
+    state TEXT NOT NULL CHECK (state IN ('up', 'down', 'done')),
+    thumbnail INTEGER NOT NULL DEFAULT 0 CHECK (thumbnail IN (0, 1)),
+    wanted INTEGER NOT NULL DEFAULT 0 CHECK (wanted IN (0, 1)),
+    active INTEGER NOT NULL DEFAULT 0 CHECK (active IN (0, 1)),
+    row_at INTEGER NOT NULL DEFAULT 0,
+    queued_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_try_at INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT CHECK (last_error IN
+        ('network', 'server', 'notOnServer', 'unreadable', 'noRoom', 'invalidId', 'local')),
+    last_error_at INTEGER
+) WITHOUT ROWID;
+CREATE INDEX idx_sync_blobs_state ON sync_blobs (state, next_try_at);
+"#;
+
+/// 036: `sync_held_blobs` (Local): blobs a device-sync replace holds (ADR 0030). A join, repair or
+/// re-sync records every blob the device's document and photo rows named before it; the blob
+/// sweep keeps them until the first pull after the replace has caught up, so a row that comes
+/// back with that pull finds its content. `held_at` is when the replace held it (unix seconds).
+pub(crate) const MIGRATION_036: &str = r#"
+CREATE TABLE sync_held_blobs (
+    blob_id TEXT PRIMARY KEY,
+    held_at INTEGER NOT NULL
+) WITHOUT ROWID;
+"#;
+
+/// 037: `sync_blobs.last_error` gains `refused` (the sync server refuses the blob for good: too
+/// large, empty, a length it cannot take, or a server without the blob route) and `conflict` (the
+/// server holds other content under the blob's ID). Neither is retried by itself. SQLite cannot
+/// change a CHECK, so the table is rebuilt (create new, copy, drop, rename) with its index.
+pub(crate) const MIGRATION_037: &str = r#"
+CREATE TABLE sync_blobs_new (
+    blob_id TEXT PRIMARY KEY,
+    state TEXT NOT NULL CHECK (state IN ('up', 'down', 'done')),
+    thumbnail INTEGER NOT NULL DEFAULT 0 CHECK (thumbnail IN (0, 1)),
+    wanted INTEGER NOT NULL DEFAULT 0 CHECK (wanted IN (0, 1)),
+    active INTEGER NOT NULL DEFAULT 0 CHECK (active IN (0, 1)),
+    row_at INTEGER NOT NULL DEFAULT 0,
+    queued_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_try_at INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT CHECK (last_error IN
+        ('network', 'server', 'notOnServer', 'unreadable', 'noRoom', 'invalidId', 'local',
+         'refused', 'conflict')),
+    last_error_at INTEGER
+) WITHOUT ROWID;
+INSERT INTO sync_blobs_new
+    (blob_id, state, thumbnail, wanted, active, row_at, queued_at, attempts, next_try_at,
+     last_error, last_error_at)
+SELECT blob_id, state, thumbnail, wanted, active, row_at, queued_at, attempts, next_try_at,
+     last_error, last_error_at
+FROM sync_blobs;
+DROP INDEX idx_sync_blobs_state;
+DROP TABLE sync_blobs;
+ALTER TABLE sync_blobs_new RENAME TO sync_blobs;
+CREATE INDEX idx_sync_blobs_state ON sync_blobs (state, next_try_at);
+"#;
+
+/// 038: `sync_blobs.size`: the plaintext size of an entry's content as the store recorded it when
+/// the entry last became `up`, kept while it is `done` (NULL for `down` entries, and for entries
+/// from before this migration until the next full reconcile). The status and the round's upload pick read it from
+/// the queue, so neither walks the store's blobs (ADR 0030).
+pub(crate) const MIGRATION_038: &str = r#"
+ALTER TABLE sync_blobs ADD COLUMN size INTEGER;
+"#;
+
+#[cfg(test)]
+mod migration_038 {
+    use super::*;
+
+    #[test]
+    fn sync_blobs_keeps_its_entries_and_takes_a_size() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let all = all_migrations();
+        let before: Vec<_> = all
+            .iter()
+            .copied()
+            .filter(|(name, _)| *name < "038_sync_blobs_size")
+            .collect();
+        run_chain(&conn, &before).expect("chain to 037");
+        conn.execute_batch(
+            "INSERT INTO sync_blobs (blob_id, state, queued_at) VALUES ('b1', 'up', 8)",
+        )
+        .expect("entry");
+        run_chain(&conn, &all).expect("038");
+        let size: Option<i64> = conn
+            .query_row(
+                "SELECT size FROM sync_blobs WHERE blob_id = 'b1'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("kept");
+        assert_eq!(size, None, "known at the next full reconcile");
+        conn.execute("UPDATE sync_blobs SET size = 42 WHERE blob_id = 'b1'", [])
+            .expect("size");
+    }
+}
+
+#[cfg(test)]
+mod migration_037 {
+    use super::*;
+
+    #[test]
+    fn sync_blobs_keeps_its_entries_and_takes_the_two_refusals() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let all = all_migrations();
+        let before: Vec<_> = all
+            .iter()
+            .copied()
+            .filter(|(name, _)| *name < "037_sync_blobs_refusals")
+            .collect();
+        run_chain(&conn, &before).expect("chain to 036");
+        conn.execute_batch(
+            "INSERT INTO sync_blobs (blob_id, state, thumbnail, wanted, active, row_at, queued_at, \
+               attempts, next_try_at, last_error, last_error_at) \
+             VALUES ('b1', 'down', 1, 1, 0, 7, 8, 2, 9, 'notOnServer', 10)",
+        )
+        .expect("entry");
+        run_chain(&conn, &all).expect("037");
+        let entry: (String, i64, i64, i64, i64, i64, i64, String, i64) = conn
+            .query_row(
+                "SELECT state, thumbnail, wanted, row_at, queued_at, attempts, next_try_at, \
+                   last_error, last_error_at FROM sync_blobs WHERE blob_id = 'b1'",
+                [],
+                |r| {
+                    Ok((
+                        r.get(0)?,
+                        r.get(1)?,
+                        r.get(2)?,
+                        r.get(3)?,
+                        r.get(4)?,
+                        r.get(5)?,
+                        r.get(6)?,
+                        r.get(7)?,
+                        r.get(8)?,
+                    ))
+                },
+            )
+            .expect("kept");
+        assert_eq!(
+            entry,
+            ("down".into(), 1, 1, 7, 8, 2, 9, "notOnServer".into(), 10)
+        );
+        for code in ["refused", "conflict"] {
+            conn.execute(
+                "UPDATE sync_blobs SET last_error = ?1 WHERE blob_id = 'b1'",
+                [code],
+            )
+            .expect(code);
+        }
+        assert!(conn
+            .execute("UPDATE sync_blobs SET last_error = 'other'", [])
+            .is_err());
+    }
+}
 
 #[cfg(test)]
 mod migration_033 {
@@ -4582,6 +4749,11 @@ mod migration_021 {
                 .expect("query")
                 .map(|r| r.expect("row"))
                 .collect();
+            // `sync_blobs` is the device's transfer queue, not a reference to a blob: a row there
+            // keeps no content alive.
+            if table == "sync_blobs" {
+                continue;
+            }
             for column in columns.into_iter().filter(|c| c.ends_with("blob_id")) {
                 found.push((table.clone(), column));
             }
@@ -4589,6 +4761,7 @@ mod migration_021 {
         found.sort();
         let mut listed: Vec<(String, String)> = crate::services::attachment_store::REFERENCES
             .iter()
+            .chain(&crate::services::attachment_store::HOLDS)
             .map(|(t, c)| (t.to_string(), c.to_string()))
             .collect();
         listed.sort();

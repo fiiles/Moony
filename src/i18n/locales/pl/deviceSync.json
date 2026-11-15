@@ -438,7 +438,7 @@
       "documents": "Dokumenty: {{count}}",
       "photos": "Zdjęcia: {{count}}"
     },
-    "attachments": "Dokumenty i zdjęcia pozostają przypisane do elementów, które mają również dane zsynchronizowane; pozostałe zostają tylko w kopii zapasowej.",
+    "attachments": "Potem dokumenty i zdjęcia są te z danych zsynchronizowanych; dokumenty i zdjęcia tego urządzenia, których nie mają dane zsynchronizowane, zostają tylko w kopii zapasowej.",
     "unsent": "Moony najpierw wysyła oczekujące zmiany; czego nie uda się wysłać, zostaje tylko w kopii zapasowej.",
     "backupWhere": "Kopia zapasowa jest na liście w Ustawienia → Dane i kopie zapasowe, w sekcji „Kopie zapasowe wykonane, zanim synchronizacja zastąpiła dane”.",
     "loading": "Liczenie, co jest zagrożone…",
@@ -468,8 +468,27 @@
     "connectionNotHere": "To jest kod połączenia z serwerem synchronizacji. Użyj go podczas konfigurowania synchronizacji, a nie tutaj.",
     "notAServerAddress": "To nie jest adres serwera synchronizacji. Wpisz adres swojego serwera synchronizacji lub wklej jego kod połączenia."
   },
+  "attachments": {
+    "title": "Dokumenty i zdjęcia",
+    "allUploaded": "Wszystko przesłane",
+    "waiting_one": "{{count}} czeka na przesłanie · {{size}}",
+    "waiting_few": "{{count}} czekają na przesłanie · {{size}}",
+    "waiting_many": "{{count}} czeka na przesłanie · {{size}}",
+    "waiting_other": "{{count}} czeka na przesłanie · {{size}}",
+    "uploading": "Przesyłanie dokumentów i zdjęć",
+    "onOtherDevices_one": "{{count}} dokument lub zdjęcie jest na Twoich innych urządzeniach",
+    "onOtherDevices_few": "{{count}} dokumenty i zdjęcia są na Twoich innych urządzeniach",
+    "onOtherDevices_many": "{{count}} dokumentów i zdjęć jest na Twoich innych urządzeniach",
+    "onOtherDevices_other": "{{count}} dokumentów i zdjęć jest na Twoich innych urządzeniach",
+    "downloadEverything": "Pobierz wszystko na ten telefon",
+    "downloadEverythingStarted": "Pobieranie trwa, dopóki Moony jest otwarte",
+    "problem": {
+      "noRoom": "Dokumenty i zdjęcia czekają: na serwerze synchronizacji zabrakło miejsca. Poproś jego administratora o więcej miejsca.",
+      "serverNeedsUpdate": "Dokumenty i zdjęcia wymagają nowszego serwera synchronizacji. Wszystko inne jest synchronizowane."
+    }
+  },
   "whatSyncs": {
     "title": "Co jest synchronizowane",
-    "body": "Synchronizowane jest wszystko, co wprowadzisz do Moony. Język, wygląd, menu, powiadomienia, hasło urządzenia, klucz odzyskiwania i kopie zapasowe należą do każdego urządzenia osobno. Ceny i historia są wyliczane na każdym urządzeniu. Dokumenty i zdjęcia na razie zostają na urządzeniu, na którym je dodano."
+    "body": "Synchronizowane jest wszystko, co wprowadzisz do Moony. Język, wygląd, menu, powiadomienia, hasło urządzenia, klucz odzyskiwania i kopie zapasowe należą do każdego urządzenia osobno. Ceny i historia są wyliczane na każdym urządzeniu. Dokumenty i zdjęcia też są synchronizowane; telefon pobiera każdy z nich, gdy go otworzysz."
   }
 }

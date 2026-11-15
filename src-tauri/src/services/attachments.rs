@@ -12,7 +12,9 @@
 //! commit; a legacy file outside the current data folder is never deleted.
 
 use crate::error::{AppError, Result};
-use crate::models::{AttachmentKind, InsuranceDocument, RealEstateDocument};
+use crate::models::{AttachmentContent, AttachmentKind, InsuranceDocument, RealEstateDocument};
+use crate::services::sync::blobs::content::{row_syncs, ContentReader};
+use crate::services::sync::blobs::{queue, sync_on};
 use crate::services::{attachment_store, document_files, real_estate_photos};
 use rusqlite::{Connection, OptionalExtension};
 use serde::de::DeserializeOwned;
@@ -65,6 +67,162 @@ pub(crate) fn ensure_outside_data_dir(data_dir: &Path, dest: &Path) -> Result<()
         ));
     }
     Ok(())
+}
+
+/// The error key of content that is not on this device yet (it is on the sync server or another
+/// device). A normal state, never logged above `debug`.
+pub const NOT_HERE_YET: &str = "validation.attachmentNotHereYet";
+
+/// The error key of content that cannot reach this device as things stand (the sync server
+/// refuses it, holds other content under its ID, or its ID is invalid: `queue::STUCK`). Not
+/// retried by opening it; "try again" on its row (`retry`) is the way out.
+pub const UNAVAILABLE: &str = "validation.attachmentUnavailable";
+
+/// The full content of the row `id` of `kind` is asked for (the person chose "Download"): only
+/// content that is not here and can still arrive is wanted and due now; content here, on its way,
+/// or unable to arrive as things stand ([`queue::download_failed`], not on the server) is left
+/// exactly as it is, and the answer is its real state (a failed row is reset by [`retry`], not
+/// by this). `NotFound` for an unknown row; with sync off the content is here and nothing changes.
+pub fn request_download(
+    conn: &Connection,
+    kind: AttachmentKind,
+    id: &str,
+) -> Result<AttachmentContent> {
+    let content = row_content(conn, kind, id)?;
+    if content != AttachmentContent::NotHere {
+        return Ok(content);
+    }
+    queue::want_row(conn, kind, id)?;
+    row_content(conn, kind, id)
+}
+
+/// "Try again" on a row (`queue::retry_row`): its full content is wanted, and every blob of the
+/// row that waits to move, up or down, starts its count again and is due now; that is a failed
+/// upload as well as a failed download, never an entry with an invalid ID. Answers the row's
+/// content after. With sync off nothing changes and the content is here.
+pub fn retry(conn: &Connection, kind: AttachmentKind, id: &str) -> Result<AttachmentContent> {
+    let content = row_content(conn, kind, id)?;
+    if !sync_on(conn)? {
+        return Ok(content);
+    }
+    queue::retry_row(conn, kind, id)?;
+    row_content(conn, kind, id)
+}
+
+/// "Download everything" (`queue::want_all`): every full content not here is wanted and due now.
+/// How many rows have their full content wanted and not here afterwards, those asked for earlier
+/// included (so asking twice answers the same). 0 with sync off.
+pub fn download_everything(conn: &Connection) -> Result<u32> {
+    if !sync_on(conn)? {
+        return Ok(0);
+    }
+    queue::want_all(conn)
+}
+
+/// Whether `id` can be a row ID of an attachment table (the `moony-file` route's rule): 1 to 64
+/// letters, digits and hyphens.
+pub fn is_row_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+}
+
+/// The full content of one row, `NotFound` when there is no such row (or `id` cannot be one).
+fn row_content(conn: &Connection, kind: AttachmentKind, id: &str) -> Result<AttachmentContent> {
+    if !is_row_id(id) {
+        return Err(AppError::NotFound("Attachment not found".into()));
+    }
+    let sql = match kind {
+        AttachmentKind::InsuranceDocument => {
+            "SELECT blob_id, NULL FROM insurance_documents WHERE id = ?1"
+        }
+        AttachmentKind::RealEstateDocument => {
+            "SELECT blob_id, NULL FROM real_estate_documents WHERE id = ?1"
+        }
+        AttachmentKind::Photo => {
+            "SELECT blob_id, thumb_blob_id FROM real_estate_photos WHERE id = ?1"
+        }
+    };
+    let (blob, thumb): (Option<String>, Option<String>) = conn
+        .query_row(sql, [id], |r| Ok((r.get(0)?, r.get(1)?)))
+        .optional()?
+        .ok_or_else(|| AppError::NotFound("Attachment not found".into()))?;
+    ContentLookup::new(conn)?.of(kind, blob.as_deref(), thumb.as_deref(), Variant::Full)
+}
+
+/// Where the content of the rows of one listing is: one per call, so sync is looked up once and a
+/// row costs one queue lookup (the store is only consulted for a blob without a queue entry).
+/// A profile without sync has everything here and is never asked anything else.
+pub struct ContentLookup<'c> {
+    reader: Option<ContentReader<'c>>,
+}
+
+impl<'c> ContentLookup<'c> {
+    pub fn new(conn: &'c Connection) -> Result<Self> {
+        let reader = if sync_on(conn)? {
+            Some(ContentReader::new(conn)?)
+        } else {
+            None
+        };
+        Ok(Self { reader })
+    }
+
+    /// The content of the blob `which` of a row of `kind` with these blob columns (`blob` for a
+    /// document, `blob` and `thumb` for a photo).
+    pub fn of(
+        &self,
+        kind: AttachmentKind,
+        blob: Option<&str>,
+        thumb: Option<&str>,
+        which: Variant,
+    ) -> Result<AttachmentContent> {
+        let Some(reader) = &self.reader else {
+            return Ok(AttachmentContent::Here);
+        };
+        let syncs = row_syncs(kind, blob, thumb)?;
+        reader.of(
+            match which {
+                Variant::Full => blob,
+                Variant::Thumbnail => thumb,
+            },
+            syncs,
+        )
+    }
+}
+
+/// A blob that is not complete here is not content: when it is on its way (an entry that is to
+/// come `down` and can arrive) it is wanted now and the answer is [`NOT_HERE_YET`]; when it
+/// cannot arrive as things stand the answer is [`UNAVAILABLE`] and nothing is asked for. Nothing is read or
+/// created before this answers. A blob that is not here and not on its way (lost, or sync off)
+/// is left to the reader, which says it is not found. An incomplete incoming blob is never read.
+/// With sync off nothing is on its way, so the store is not asked here at all (its completeness
+/// check walks the blob's pages, and the read checks it again).
+fn require_here(conn: &Connection, resolved: &Resolved) -> Result<()> {
+    let Source::Blob(id) = &resolved.source else {
+        return Ok(());
+    };
+    if !sync_on(conn)? {
+        return Ok(());
+    }
+    if attachment_store::is_complete(conn, id)? {
+        return Ok(());
+    }
+    let coming: Option<Option<String>> = conn
+        .query_row(
+            "SELECT last_error FROM main.sync_blobs WHERE blob_id = ?1 AND state = 'down'",
+            [id],
+            |r| r.get(0),
+        )
+        .optional()?;
+    let Some(last_error) = coming else {
+        return Ok(());
+    };
+    // Waiting, being fetched, failed for a passing reason (`unreadable` included: the lane retries
+    // it) or not on the server yet (the other device has not uploaded it) all arrive by
+    // themselves; only an entry that never moves by itself does not.
+    if queue::is_stuck(last_error.as_deref()) {
+        return Err(AppError::Validation(UNAVAILABLE.into()));
+    }
+    queue::want_blob(conn, id)?;
+    Err(AppError::Validation(NOT_HERE_YET.into()))
 }
 
 /// Which rendition of an attachment: photos also have a thumbnail.
@@ -259,6 +417,7 @@ pub fn document_meta(
 
 /// The whole content of a resolved attachment.
 pub fn read_bytes(conn: &Connection, resolved: &Resolved) -> Result<Vec<u8>> {
+    require_here(conn, resolved)?;
     match &resolved.source {
         Source::Blob(id) => attachment_store::read_all(conn, id),
         Source::Legacy(path) => fs::read(path)
@@ -268,6 +427,8 @@ pub fn read_bytes(conn: &Connection, resolved: &Resolved) -> Result<Vec<u8>> {
 
 /// Write a resolved attachment to `dest` (a path the user chose).
 pub fn write_to(conn: &Connection, resolved: &Resolved, dest: &Path) -> Result<()> {
+    // Before the file is created: a document that is not here leaves nothing behind.
+    require_here(conn, resolved)?;
     match &resolved.source {
         Source::Blob(id) => {
             let mut file = File::create(dest)
@@ -325,10 +486,32 @@ pub fn export_photo_batch(
         let rows = stmt.query_map([batch_id], |r| r.get(0))?;
         rows.collect::<rusqlite::Result<_>>()?
     };
-    let mut saved = 0;
+    // Every photo is checked before the first file is written: a batch with a photo that is not
+    // here fails whole, and wants every missing photo so one retry later succeeds.
+    let mut photos = Vec::with_capacity(ids.len());
+    let mut not_here = false;
+    let mut unavailable = false;
     for id in ids {
         let resolved = resolve(conn, data_dir, AttachmentKind::Photo, &id, Variant::Full)?
             .ok_or_else(|| AppError::NotFound("Photo not found".into()))?;
+        match require_here(conn, &resolved) {
+            Err(AppError::Validation(key)) if key == NOT_HERE_YET => not_here = true,
+            Err(AppError::Validation(key)) if key == UNAVAILABLE => unavailable = true,
+            other => other?,
+        }
+        photos.push((id, resolved));
+    }
+    // Every missing photo that can arrive has been wanted by now. When one cannot arrive the
+    // batch is blocked for good until "try again", so that is the truer answer even if others
+    // are still on their way.
+    if unavailable {
+        return Err(AppError::Validation(UNAVAILABLE.into()));
+    }
+    if not_here {
+        return Err(AppError::Validation(NOT_HERE_YET.into()));
+    }
+    let mut saved = 0;
+    for (id, resolved) in photos {
         let short: String = id.chars().take(8).collect();
         write_to(
             conn,
@@ -462,6 +645,8 @@ pub fn open_elsewhere(
 ) -> Result<PathBuf> {
     let resolved = resolve(conn, data_dir, kind, id, Variant::Full)?
         .ok_or_else(|| AppError::NotFound("Attachment not found".into()))?;
+    // Before the private folder exists.
+    require_here(conn, &resolved)?;
     let dir = cache_dir
         .join(OPEN_COPIES_DIR)
         .join(Uuid::new_v4().to_string());
@@ -559,6 +744,7 @@ impl FileFacts {
 
 struct StoredDocument {
     id: String,
+    blob_id: String,
     mime_type: String,
     extension: Option<String>,
     file_size: i64,
@@ -598,6 +784,7 @@ fn insert_document_row(
     )?;
     Ok(StoredDocument {
         id,
+        blob_id: blob_id.to_string(),
         extension: extension_of(&facts.original_name),
         mime_type: facts.mime_type,
         file_size: facts.len,
@@ -605,12 +792,19 @@ fn insert_document_row(
 }
 
 fn insurance_document(
+    conn: &Connection,
     insurance_id: &str,
     doc: &NewDocument,
     stored: StoredDocument,
     now: i64,
-) -> InsuranceDocument {
-    InsuranceDocument {
+) -> Result<InsuranceDocument> {
+    let content = ContentLookup::new(conn)?.of(
+        AttachmentKind::InsuranceDocument,
+        Some(&stored.blob_id),
+        None,
+        Variant::Full,
+    )?;
+    Ok(InsuranceDocument {
         id: stored.id,
         insurance_id: insurance_id.to_string(),
         name: doc.name.to_string(),
@@ -620,16 +814,24 @@ fn insurance_document(
         file_type: doc.file_type.to_string(),
         file_size: Some(stored.file_size),
         uploaded_at: now,
-    }
+        content,
+    })
 }
 
 fn real_estate_document(
+    conn: &Connection,
     real_estate_id: &str,
     doc: &NewDocument,
     stored: StoredDocument,
     now: i64,
-) -> RealEstateDocument {
-    RealEstateDocument {
+) -> Result<RealEstateDocument> {
+    let content = ContentLookup::new(conn)?.of(
+        AttachmentKind::RealEstateDocument,
+        Some(&stored.blob_id),
+        None,
+        Variant::Full,
+    )?;
+    Ok(RealEstateDocument {
         id: stored.id,
         real_estate_id: real_estate_id.to_string(),
         name: doc.name.to_string(),
@@ -639,7 +841,8 @@ fn real_estate_document(
         file_type: doc.file_type.to_string(),
         file_size: Some(stored.file_size),
         uploaded_at: now,
-    }
+        content,
+    })
 }
 
 /// A document may be at most [`attachment_store::MAX_DOCUMENT_BYTES`]. It takes only the length,
@@ -713,7 +916,7 @@ pub fn add_insurance_document(
     now: i64,
 ) -> Result<InsuranceDocument> {
     let stored = store_document(conn, &INSURANCE_TABLES, insurance_id, source, doc, now)?;
-    Ok(insurance_document(insurance_id, doc, stored, now))
+    insurance_document(conn, insurance_id, doc, stored, now)
 }
 
 /// Attach a document to a property.
@@ -725,7 +928,7 @@ pub fn add_real_estate_document(
     now: i64,
 ) -> Result<RealEstateDocument> {
     let stored = store_document(conn, &REAL_ESTATE_TABLES, real_estate_id, source, doc, now)?;
-    Ok(real_estate_document(real_estate_id, doc, stored, now))
+    real_estate_document(conn, real_estate_id, doc, stored, now)
 }
 
 // ----------------------------------------------------------------------------
@@ -847,7 +1050,7 @@ pub fn add_insurance_document_bytes(
         doc,
         now,
     )?;
-    Ok(insurance_document(insurance_id, doc, stored, now))
+    insurance_document(conn, insurance_id, doc, stored, now)
 }
 
 /// Attach a document to a property from its bytes. `file_name` is whatever the picker reported;
@@ -869,7 +1072,111 @@ pub fn add_real_estate_document_bytes(
         doc,
         now,
     )?;
-    Ok(real_estate_document(real_estate_id, doc, stored, now))
+    real_estate_document(conn, real_estate_id, doc, stored, now)
+}
+
+// ============================================================================
+// Listing documents
+// ============================================================================
+
+/// The documents of an insurance policy, newest first, each with where its content is.
+pub fn list_insurance_documents(
+    conn: &Connection,
+    insurance_id: &str,
+) -> Result<Vec<InsuranceDocument>> {
+    let content = ContentLookup::new(conn)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at,
+                mime_type, original_name, blob_id
+         FROM insurance_documents WHERE insurance_id = ?1 ORDER BY uploaded_at DESC",
+    )?;
+    let rows = stmt.query_map([insurance_id], |row| {
+        Ok((
+            InsuranceDocument {
+                id: row.get(0)?,
+                insurance_id: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                mime_type: String::new(),
+                extension: None,
+                file_type: row.get(5)?,
+                file_size: row.get(6)?,
+                uploaded_at: row.get(7)?,
+                content: AttachmentContent::Here,
+            },
+            row.get::<_, Option<String>>(4)?,
+            row.get::<_, Option<String>>(8)?,
+            row.get::<_, Option<String>>(9)?,
+            row.get::<_, Option<String>>(10)?,
+        ))
+    })?;
+    let mut documents = Vec::new();
+    for row in rows {
+        let (mut doc, file_path, mime_type, original_name, blob_id) = row?;
+        (doc.mime_type, doc.extension) = document_meta(
+            file_path.as_deref(),
+            mime_type.as_deref(),
+            original_name.as_deref(),
+        );
+        doc.content = content.of(
+            AttachmentKind::InsuranceDocument,
+            blob_id.as_deref(),
+            None,
+            Variant::Full,
+        )?;
+        documents.push(doc);
+    }
+    Ok(documents)
+}
+
+/// The documents of a property, newest first, each with where its content is.
+pub fn list_real_estate_documents(
+    conn: &Connection,
+    real_estate_id: &str,
+) -> Result<Vec<RealEstateDocument>> {
+    let content = ContentLookup::new(conn)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, real_estate_id, name, description, file_path, file_type, file_size, uploaded_at,
+                mime_type, original_name, blob_id
+         FROM real_estate_documents WHERE real_estate_id = ?1 ORDER BY uploaded_at DESC",
+    )?;
+    let rows = stmt.query_map([real_estate_id], |row| {
+        Ok((
+            RealEstateDocument {
+                id: row.get(0)?,
+                real_estate_id: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                mime_type: String::new(),
+                extension: None,
+                file_type: row.get(5)?,
+                file_size: row.get(6)?,
+                uploaded_at: row.get(7)?,
+                content: AttachmentContent::Here,
+            },
+            row.get::<_, Option<String>>(4)?,
+            row.get::<_, Option<String>>(8)?,
+            row.get::<_, Option<String>>(9)?,
+            row.get::<_, Option<String>>(10)?,
+        ))
+    })?;
+    let mut documents = Vec::new();
+    for row in rows {
+        let (mut doc, file_path, mime_type, original_name, blob_id) = row?;
+        (doc.mime_type, doc.extension) = document_meta(
+            file_path.as_deref(),
+            mime_type.as_deref(),
+            original_name.as_deref(),
+        );
+        doc.content = content.of(
+            AttachmentKind::RealEstateDocument,
+            blob_id.as_deref(),
+            None,
+            Variant::Full,
+        )?;
+        documents.push(doc);
+    }
+    Ok(documents)
 }
 
 // ============================================================================
@@ -1097,6 +1404,7 @@ mod tests {
         files_schema::migrate(&conn).expect("files schema");
         conn.execute_batch(
             r#"
+            CREATE TABLE sync_state (id INTEGER PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE insurance_policies (id TEXT PRIMARY KEY);
             CREATE TABLE real_estate (id TEXT PRIMARY KEY);
             INSERT INTO insurance_policies (id) VALUES ('pol');
@@ -2058,5 +2366,630 @@ mod tests {
     fn bidi_controls_cannot_disguise_an_extension() {
         assert_eq!(sanitize_file_name("cv\u{202E}fdp.exe"), "cv_fdp.exe");
         assert_eq!(sanitize_file_name("a\u{200B}b.pdf"), "a_b.pdf");
+    }
+
+    // ------------------------------------------------------------------------
+    // Content state in the lists, and opening content that is not here (Task 14)
+    // ------------------------------------------------------------------------
+
+    use crate::models::{AttachmentContent, RealEstatePhoto};
+    use crate::services::sync::blobs::queue;
+    use crate::services::sync::hlc::DeviceId;
+    use crate::services::sync::{state, test_support::migrated};
+
+    const NOW: i64 = 1_772_323_200;
+
+    /// A real profile with the attachment store, one policy `p1` and one property `r1`; sync on
+    /// when `sync` is true.
+    fn profile(sync: bool) -> Connection {
+        let conn = migrated();
+        conn.execute("ATTACH DATABASE ':memory:' AS files", [])
+            .expect("attach");
+        files_schema::migrate(&conn).expect("files schema");
+        if sync {
+            state::enable(&conn, DeviceId([7; 16])).expect("enable");
+        }
+        conn.execute_batch(
+            "INSERT INTO insurance_policies \
+               (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
+             VALUES ('p1', 'life', 'Insurer', 'Life', '123', 1767225600, 'monthly'); \
+             INSERT INTO real_estate (id, name, address, type) VALUES ('r1', 'Flat', 'Street', 'flat'); \
+             INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date) \
+               VALUES ('b1', 'r1', 1767225600);",
+        )
+        .expect("owners");
+        conn
+    }
+
+    /// A blob ID no blob here has (content that lives on another device).
+    fn elsewhere(n: u8) -> String {
+        format!("0b9e6a52-3a4c-4e0f-9d7a-1c2b3d4e5f{n:02x}")
+    }
+
+    fn insurance_doc(conn: &Connection, id: &str, blob: &str, at: i64) {
+        conn.execute(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id, uploaded_at) \
+             VALUES (?1, 'p1', 'Contract', ?2, ?3)",
+            rusqlite::params![id, blob, at],
+        )
+        .expect("document");
+    }
+
+    fn estate_doc(conn: &Connection, id: &str, blob: &str, at: i64) {
+        conn.execute(
+            "INSERT INTO real_estate_documents (id, real_estate_id, name, blob_id, uploaded_at) \
+             VALUES (?1, 'r1', 'Deed', ?2, ?3)",
+            rusqlite::params![id, blob, at],
+        )
+        .expect("document");
+    }
+
+    fn photo_row(conn: &Connection, id: &str, full: &str, thumb: &str, at: i64) {
+        conn.execute(
+            "INSERT INTO real_estate_photos (id, batch_id, blob_id, thumb_blob_id, created_at) \
+             VALUES (?1, 'b1', ?2, ?3, ?4)",
+            rusqlite::params![id, full, thumb, at],
+        )
+        .expect("photo");
+    }
+
+    fn confirm(conn: &Connection, blob: &str) {
+        conn.execute(
+            "UPDATE sync_blobs SET state = 'done' WHERE blob_id = ?1",
+            [blob],
+        )
+        .expect("done");
+    }
+
+    fn wanted(conn: &Connection, blob: &str) -> bool {
+        conn.query_row(
+            "SELECT wanted FROM sync_blobs WHERE blob_id = ?1",
+            [blob],
+            |r| r.get(0),
+        )
+        .expect("entry")
+    }
+
+    #[test]
+    fn the_lists_report_each_rows_content() {
+        let conn = profile(true);
+        let confirmed = attachment_store::put_bytes(&conn, b"confirmed")
+            .expect("blob")
+            .id;
+        let waiting = attachment_store::put_bytes(&conn, b"waiting")
+            .expect("blob")
+            .id;
+        let thumb = attachment_store::put_bytes(&conn, b"thumb")
+            .expect("blob")
+            .id;
+        let away = elsewhere(1);
+        insurance_doc(&conn, "d-here", &confirmed, 300);
+        insurance_doc(&conn, "d-up", &waiting, 200);
+        insurance_doc(&conn, "d-down", &away, 100);
+        estate_doc(&conn, "e-down", &elsewhere(2), 100);
+        estate_doc(&conn, "e-newer", &elsewhere(4), 150);
+        photo_row(&conn, "ph", &elsewhere(3), &thumb, 10);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        confirm(&conn, &confirmed);
+        confirm(&conn, &thumb);
+        // `waiting` has an `up` entry; a row the queue has not seen has no entry at all.
+        let unseen = attachment_store::put_bytes(&conn, b"unseen")
+            .expect("blob")
+            .id;
+        insurance_doc(&conn, "d-unseen", &unseen, 50);
+
+        let docs = list_insurance_documents(&conn, "p1").expect("list");
+        let seen: Vec<_> = docs.iter().map(|d| (d.id.as_str(), d.content)).collect();
+        assert_eq!(
+            seen,
+            [
+                ("d-here", AttachmentContent::Here),
+                ("d-up", AttachmentContent::WaitingUpload),
+                ("d-down", AttachmentContent::NotHere),
+                ("d-unseen", AttachmentContent::WaitingUpload),
+            ],
+            "newest first, as the command returned them"
+        );
+        let estate = list_real_estate_documents(&conn, "r1").expect("list");
+        let estate_ids: Vec<_> = estate.iter().map(|d| d.id.as_str()).collect();
+        assert_eq!(estate_ids, ["e-newer", "e-down"], "newest first");
+        assert!(estate
+            .iter()
+            .all(|d| d.content == AttachmentContent::NotHere));
+
+        let batches = real_estate_photos::list_batches(&conn, "r1").expect("batches");
+        let photo = &batches[0].photos[0];
+        assert_eq!(photo.content, AttachmentContent::NotHere);
+        assert_eq!(photo.thumb_content, AttachmentContent::Here);
+    }
+
+    #[test]
+    fn a_profile_without_sync_lists_everything_as_here() {
+        let conn = profile(false);
+        let held = attachment_store::put_bytes(&conn, b"held")
+            .expect("blob")
+            .id;
+        insurance_doc(&conn, "d1", &held, 2);
+        insurance_doc(&conn, "d2", &elsewhere(1), 1); // lost content: sync off knows nothing else
+        estate_doc(&conn, "e1", &held, 1);
+        photo_row(&conn, "ph", &held, &elsewhere(2), 1);
+        // Sync tables empty or never touched: nothing in them is read.
+        conn.execute("DROP TABLE sync_blobs", []).expect("drop");
+
+        let docs = list_insurance_documents(&conn, "p1").expect("list");
+        assert!(docs.iter().all(|d| d.content == AttachmentContent::Here));
+        assert_eq!(docs.len(), 2);
+        assert_eq!(
+            list_real_estate_documents(&conn, "r1").expect("list")[0].content,
+            AttachmentContent::Here
+        );
+        let photo = &real_estate_photos::list_batches(&conn, "r1").expect("batches")[0].photos[0];
+        assert_eq!(
+            (photo.content, photo.thumb_content),
+            (AttachmentContent::Here, AttachmentContent::Here)
+        );
+    }
+
+    #[test]
+    fn a_document_added_here_reads_waiting_with_sync_on_and_here_without() {
+        for (sync, expected) in [
+            (true, AttachmentContent::WaitingUpload),
+            (false, AttachmentContent::Here),
+        ] {
+            let conn = profile(sync);
+            let doc = NewDocument {
+                name: "Contract",
+                description: None,
+                file_type: "other",
+            };
+            let added = add_insurance_document_bytes(&conn, "p1", "a.pdf", b"%PDF-1.7", &doc, NOW)
+                .expect("add");
+            assert_eq!(added.content, expected, "sync {sync}");
+            let added =
+                add_real_estate_document_bytes(&conn, "r1", "a.pdf", b"%PDF-1.7", &doc, NOW)
+                    .expect("add");
+            assert_eq!(added.content, expected, "sync {sync}");
+            let prepared =
+                real_estate_photos::prepared_for_test(b"full".to_vec(), b"thumb".to_vec());
+            let photo: RealEstatePhoto =
+                real_estate_photos::record_photo(&conn, "b1", &prepared, NOW).expect("photo");
+            assert_eq!(
+                (photo.content, photo.thumb_content),
+                (expected, expected),
+                "sync {sync}"
+            );
+        }
+    }
+
+    #[test]
+    fn opening_content_that_is_not_here_asks_for_it() {
+        let conn = profile(true);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (data, cache, out) = (
+            dir.path().join("data"),
+            dir.path().join("cache"),
+            dir.path().join("out"),
+        );
+        for d in [&data, &cache, &out] {
+            fs::create_dir_all(d).expect("mkdir");
+        }
+        let away = elsewhere(1);
+        insurance_doc(&conn, "d", &away, 1);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        assert!(!wanted(&conn, &away));
+        let not_here = |e: AppError| matches!(e, AppError::Validation(k) if k == NOT_HERE_YET);
+        let kind = AttachmentKind::InsuranceDocument;
+
+        let resolved = resolve(&conn, &data, kind, "d", Variant::Full)
+            .expect("resolve")
+            .expect("row");
+        assert!(not_here(read_bytes(&conn, &resolved).expect_err("read")));
+        assert!(wanted(&conn, &away), "reading it asks for it");
+
+        conn.execute("UPDATE sync_blobs SET wanted = 0", [])
+            .expect("reset");
+        let file = out.join("doc.pdf");
+        assert!(not_here(
+            export(&conn, &data, kind, "d", &file).expect_err("export")
+        ));
+        assert!(!file.exists(), "no empty or partial file is left");
+        assert!(wanted(&conn, &away));
+
+        conn.execute("UPDATE sync_blobs SET wanted = 0", [])
+            .expect("reset");
+        assert!(not_here(
+            open_elsewhere(&conn, &data, &cache, kind, "d").expect_err("open")
+        ));
+        assert!(
+            !cache.join(OPEN_COPIES_DIR).exists(),
+            "no folder for a copy"
+        );
+        assert!(wanted(&conn, &away));
+    }
+
+    /// With sync off no content is on its way, so opening asks neither the store's completeness
+    /// nor the queue first: the read itself says the content is missing. (No entry can exist with
+    /// sync off; one is planted here to show it is not consulted.)
+    #[test]
+    fn a_profile_without_sync_never_asks_the_queue_on_open() {
+        let conn = profile(false);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let away = elsewhere(1);
+        insurance_doc(&conn, "d", &away, 1);
+        conn.execute(
+            "INSERT INTO sync_blobs (blob_id, state, thumbnail, row_at, queued_at, next_try_at) \
+             VALUES (?1, 'down', 0, 1, 1, 0)",
+            [&away],
+        )
+        .expect("planted entry");
+        let resolved = resolve(
+            &conn,
+            dir.path(),
+            AttachmentKind::InsuranceDocument,
+            "d",
+            Variant::Full,
+        )
+        .expect("resolve")
+        .expect("row");
+
+        let err = read_bytes(&conn, &resolved).expect_err("read");
+
+        assert!(matches!(err, AppError::NotFound(_)), "got {err:?}");
+        assert!(!wanted(&conn, &away), "nothing was asked for");
+    }
+
+    #[test]
+    fn an_incomplete_incoming_blob_is_not_content() {
+        let conn = profile(true);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let away = elsewhere(1);
+        insurance_doc(&conn, "d", &away, 1);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        attachment_store::begin_incoming(&conn, &away, 4).expect("begin");
+        attachment_store::write_incoming(&conn, &away, 0, b"half").expect("write");
+        let resolved = resolve(
+            &conn,
+            dir.path(),
+            AttachmentKind::InsuranceDocument,
+            "d",
+            Variant::Full,
+        )
+        .expect("resolve")
+        .expect("row");
+        let err = read_bytes(&conn, &resolved).expect_err("read");
+        assert!(matches!(err, AppError::Validation(k) if k == NOT_HERE_YET));
+
+        // Without a queue entry (sync off) it is still never read as content.
+        let conn = profile(false);
+        insurance_doc(&conn, "d", &away, 1);
+        attachment_store::begin_incoming(&conn, &away, 4).expect("begin");
+        attachment_store::write_incoming(&conn, &away, 0, b"half").expect("write");
+        let err = read_bytes(&conn, &resolved).expect_err("read");
+        assert!(matches!(err, AppError::NotFound(_)), "got {err:?}");
+    }
+
+    #[test]
+    fn a_photo_batch_with_a_photo_not_here_fails_before_writing_and_wants_every_missing_one() {
+        let conn = profile(true);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (data, out) = (dir.path().join("data"), dir.path().join("out"));
+        for d in [&data, &out] {
+            fs::create_dir_all(d).expect("mkdir");
+        }
+        let here = attachment_store::put_bytes(&conn, b"here")
+            .expect("blob")
+            .id;
+        let thumb = attachment_store::put_bytes(&conn, b"thumb")
+            .expect("blob")
+            .id;
+        let (a, b) = (elsewhere(1), elsewhere(2));
+        photo_row(&conn, "p1", &here, &thumb, 1);
+        photo_row(&conn, "p2", &a, &thumb, 2);
+        photo_row(&conn, "p3", &b, &thumb, 3);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+
+        let err = export_photo_batch(&conn, &data, "b1", &out).expect_err("export");
+        assert!(matches!(err, AppError::Validation(k) if k == NOT_HERE_YET));
+        assert_eq!(fs::read_dir(&out).expect("dir").count(), 0, "no half batch");
+        assert!(wanted(&conn, &a) && wanted(&conn, &b));
+
+        // One retry later, with both here, the whole batch is written.
+        for (blob, bytes) in [(&a, b"a"), (&b, b"b")] {
+            attachment_store::begin_incoming(&conn, blob, 1).expect("begin");
+            attachment_store::write_incoming(&conn, blob, 0, bytes).expect("write");
+            attachment_store::finish_incoming(&conn, blob, "sha").expect("finish");
+        }
+        assert_eq!(
+            export_photo_batch(&conn, &data, "b1", &out).expect("export"),
+            3
+        );
+    }
+
+    /// Sets the entry of `blob` to a failed `down` with this `last_error`.
+    fn fail_down(conn: &Connection, blob: &str, error: &str) {
+        conn.execute(
+            "UPDATE sync_blobs SET last_error = ?2, attempts = 3, next_try_at = ?3 \
+             WHERE blob_id = ?1",
+            rusqlite::params![blob, error, i64::MAX],
+        )
+        .expect("fail");
+    }
+
+    fn entry(conn: &Connection, blob: &str) -> (bool, i64, Option<String>) {
+        conn.query_row(
+            "SELECT wanted, attempts, last_error FROM sync_blobs WHERE blob_id = ?1",
+            [blob],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .expect("entry")
+    }
+
+    fn read_error(conn: &Connection, id: &str) -> AppError {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let resolved = resolve(
+            conn,
+            dir.path(),
+            AttachmentKind::InsuranceDocument,
+            id,
+            Variant::Full,
+        )
+        .expect("resolve")
+        .expect("row");
+        read_bytes(conn, &resolved).expect_err("not content")
+    }
+
+    #[test]
+    fn content_that_cannot_arrive_is_unavailable_not_on_its_way() {
+        let conn = profile(true);
+        for (i, error) in ["refused", "conflict", "invalidId"].into_iter().enumerate() {
+            let away = elsewhere(10 + i as u8);
+            let id = format!("d-{error}");
+            insurance_doc(&conn, &id, &away, 1);
+            queue::reconcile(&conn, NOW).expect("reconcile");
+            fail_down(&conn, &away, error);
+            let err = read_error(&conn, &id);
+            assert!(
+                matches!(&err, AppError::Validation(k) if k == UNAVAILABLE),
+                "{error}: {err:?}"
+            );
+            assert!(!wanted(&conn, &away), "{error}: nothing is asked for");
+            assert_eq!(entry(&conn, &away).1, 3, "{error}: nothing is reset");
+        }
+    }
+
+    #[test]
+    fn unreadable_content_heals_by_itself_so_it_is_on_its_way_and_wanted_now() {
+        let conn = profile(true);
+        let away = elsewhere(40);
+        insurance_doc(&conn, "d", &away, 1);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        fail_down(&conn, &away, "unreadable");
+        let err = read_error(&conn, "d");
+        assert!(
+            matches!(&err, AppError::Validation(k) if k == NOT_HERE_YET),
+            "{err:?}"
+        );
+        let due: i64 = conn
+            .query_row(
+                "SELECT next_try_at FROM sync_blobs WHERE blob_id = ?1",
+                [&away],
+                |r| r.get(0),
+            )
+            .expect("entry");
+        assert!(wanted(&conn, &away) && due == 0, "wanted and due now");
+        // The content state still reads failed (the UI offers "Try again").
+        assert_eq!(
+            row_content(&conn, AttachmentKind::InsuranceDocument, "d").expect("content"),
+            AttachmentContent::Failed
+        );
+    }
+
+    #[test]
+    fn a_batch_wants_every_missing_photo_before_failing_on_an_unavailable_one() {
+        let conn = profile(true);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (data, out) = (dir.path().join("data"), dir.path().join("out"));
+        for d in [&data, &out] {
+            fs::create_dir_all(d).expect("mkdir");
+        }
+        let thumb = attachment_store::put_bytes(&conn, b"thumb")
+            .expect("blob")
+            .id;
+        let (bad, coming) = (elsewhere(41), elsewhere(42));
+        photo_row(&conn, "p1", &bad, &thumb, 1);
+        photo_row(&conn, "p2", &coming, &thumb, 2);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        fail_down(&conn, &bad, "refused");
+        let err = export_photo_batch(&conn, &data, "b1", &out).expect_err("export");
+        assert!(
+            matches!(&err, AppError::Validation(k) if k == UNAVAILABLE),
+            "{err:?}"
+        );
+        assert!(wanted(&conn, &coming), "the later photo is asked for");
+        assert!(!wanted(&conn, &bad));
+        assert_eq!(
+            fs::read_dir(&out).expect("dir").count(),
+            0,
+            "nothing written"
+        );
+    }
+
+    #[test]
+    fn content_that_will_arrive_is_on_its_way() {
+        let conn = profile(true);
+        // Waiting, failed but retryable (network, server), and not on the server yet: the other
+        // device has not uploaded it, and it IS on its way.
+        for (i, error) in [None, Some("network"), Some("server"), Some("notOnServer")]
+            .into_iter()
+            .enumerate()
+        {
+            let away = elsewhere(20 + i as u8);
+            let id = format!("d-{i}");
+            insurance_doc(&conn, &id, &away, 1);
+            queue::reconcile(&conn, NOW).expect("reconcile");
+            if let Some(error) = error {
+                fail_down(&conn, &away, error);
+            }
+            let err = read_error(&conn, &id);
+            assert!(
+                matches!(&err, AppError::Validation(k) if k == NOT_HERE_YET),
+                "{error:?}: {err:?}"
+            );
+            assert!(wanted(&conn, &away), "{error:?}: it is asked for");
+        }
+    }
+
+    #[test]
+    fn download_asks_for_the_full_content_of_a_row_that_is_not_here() {
+        let conn = profile(true);
+        let (full, thumb) = (elsewhere(1), elsewhere(2));
+        photo_row(&conn, "ph", &full, &thumb, 1);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        let content = request_download(&conn, AttachmentKind::Photo, "ph").expect("download");
+        assert_eq!(content, AttachmentContent::NotHere);
+        assert!(wanted(&conn, &full));
+        assert!(!wanted(&conn, &thumb), "only the full content is asked for");
+
+        let away = elsewhere(3);
+        insurance_doc(&conn, "d", &away, 1);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        request_download(&conn, AttachmentKind::InsuranceDocument, "d").expect("download");
+        assert!(wanted(&conn, &away));
+        estate_doc(&conn, "e", &elsewhere(4), 1);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        request_download(&conn, AttachmentKind::RealEstateDocument, "e").expect("download");
+        assert!(wanted(&conn, &elsewhere(4)));
+    }
+
+    #[test]
+    fn download_of_content_already_here_changes_nothing() {
+        let conn = profile(true);
+        let held = attachment_store::put_bytes(&conn, b"held")
+            .expect("blob")
+            .id;
+        insurance_doc(&conn, "d", &held, 1);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        confirm(&conn, &held);
+        let kind = AttachmentKind::InsuranceDocument;
+        assert_eq!(
+            request_download(&conn, kind, "d").expect("download"),
+            AttachmentContent::Here
+        );
+        assert!(!wanted(&conn, &held));
+    }
+
+    #[test]
+    fn download_of_a_row_that_cannot_arrive_reports_it_and_resets_nothing() {
+        let conn = profile(true);
+        let kind = AttachmentKind::InsuranceDocument;
+        for (i, (error, expected)) in [
+            ("refused", AttachmentContent::Failed),
+            ("conflict", AttachmentContent::Failed),
+            ("unreadable", AttachmentContent::Failed),
+            ("invalidId", AttachmentContent::Failed),
+            ("notOnServer", AttachmentContent::NotOnServer),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let away = elsewhere(30 + i as u8);
+            let id = format!("d{i}");
+            insurance_doc(&conn, &id, &away, 1);
+            queue::reconcile(&conn, NOW).expect("reconcile");
+            fail_down(&conn, &away, error);
+            let before = entry(&conn, &away);
+            assert_eq!(
+                request_download(&conn, kind, &id).expect("download"),
+                expected
+            );
+            assert_eq!(entry(&conn, &away), before, "{error}: nothing changed");
+        }
+    }
+
+    #[test]
+    fn download_of_an_unknown_row_is_not_found() {
+        let conn = profile(true);
+        for bad in ["", "a/b", "../x", &"x".repeat(65)] {
+            let err = request_download(&conn, AttachmentKind::Photo, bad).expect_err("invalid");
+            assert!(matches!(err, AppError::NotFound(_)), "{bad:?}: {err:?}");
+        }
+        let err = request_download(&conn, AttachmentKind::Photo, "nope").expect_err("unknown");
+        assert!(matches!(err, AppError::NotFound(_)), "got {err:?}");
+        let err = retry(&conn, AttachmentKind::RealEstateDocument, "nope").expect_err("unknown");
+        assert!(matches!(err, AppError::NotFound(_)), "got {err:?}");
+    }
+
+    #[test]
+    fn retry_resets_a_failed_download_and_a_failed_upload_of_the_row_only() {
+        let conn = profile(true);
+        let (full, thumb) = (elsewhere(1), elsewhere(2));
+        photo_row(&conn, "ph", &full, &thumb, 1);
+        let other = elsewhere(3);
+        insurance_doc(&conn, "d", &other, 1);
+        let held = attachment_store::put_bytes(&conn, b"held")
+            .expect("blob")
+            .id;
+        insurance_doc(&conn, "up", &held, 2);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        fail_down(&conn, &full, "refused");
+        fail_down(&conn, &other, "refused");
+        fail_down(&conn, &held, "conflict"); // an upload that cannot heal by itself
+
+        let content = retry(&conn, AttachmentKind::Photo, "ph").expect("retry");
+        assert_eq!(content, AttachmentContent::NotHere);
+        assert_eq!(entry(&conn, &full), (true, 0, None), "wanted, count reset");
+        assert_eq!(
+            entry(&conn, &other).2.as_deref(),
+            Some("refused"),
+            "another row"
+        );
+
+        let content = retry(&conn, AttachmentKind::InsuranceDocument, "up").expect("retry");
+        assert_eq!(content, AttachmentContent::WaitingUpload);
+        assert_eq!(entry(&conn, &held), (false, 0, None));
+    }
+
+    #[test]
+    fn with_sync_off_the_commands_answer_here_and_change_nothing() {
+        let conn = profile(false);
+        insurance_doc(&conn, "d", &elsewhere(1), 1);
+        let kind = AttachmentKind::InsuranceDocument;
+        assert_eq!(
+            request_download(&conn, kind, "d").expect("download"),
+            AttachmentContent::Here
+        );
+        assert_eq!(
+            retry(&conn, kind, "d").expect("retry"),
+            AttachmentContent::Here
+        );
+        assert_eq!(download_everything(&conn).expect("everything"), 0);
+        // Even the table of the queue is never read.
+        conn.execute("DROP TABLE sync_blobs", []).expect("drop");
+        assert_eq!(download_everything(&conn).expect("everything"), 0);
+        assert_eq!(
+            request_download(&conn, kind, "d").expect("download"),
+            AttachmentContent::Here
+        );
+        let err = request_download(&conn, kind, "unknown").expect_err("unknown");
+        assert!(matches!(err, AppError::NotFound(_)));
+    }
+
+    #[test]
+    fn download_everything_counts_the_full_contents_wanted_and_is_idempotent() {
+        let conn = profile(true);
+        photo_row(&conn, "ph", &elsewhere(1), &elsewhere(2), 1);
+        insurance_doc(&conn, "d", &elsewhere(3), 2);
+        let held = attachment_store::put_bytes(&conn, b"held")
+            .expect("blob")
+            .id;
+        estate_doc(&conn, "e", &held, 3);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        assert_eq!(download_everything(&conn).expect("everything"), 2);
+        assert!(wanted(&conn, &elsewhere(1)) && wanted(&conn, &elsewhere(3)));
+        assert!(
+            !wanted(&conn, &elsewhere(2)),
+            "a thumbnail is not asked for"
+        );
+        assert_eq!(download_everything(&conn).expect("again"), 2);
     }
 }

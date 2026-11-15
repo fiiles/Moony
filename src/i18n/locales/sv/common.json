@@ -46,6 +46,7 @@
     "close": "Stäng",
     "done": "Klar",
     "back": "Tillbaka",
+    "previous": "Föregående",
     "next": "Nästa",
     "submit": "Skicka",
     "refresh": "Uppdatera",
@@ -187,6 +188,8 @@
     "paymentNonNegative": "Betalningen får inte vara negativ",
     "endDateAfterStart": "Slutdatumet måste vara efter startdatumet",
     "attachmentTooLarge": "Filen är större än 100 MB.",
+    "attachmentNotHereYet": "Det här dokumentet eller fotot har inte kommit till den här enheten ännu.",
+    "attachmentUnavailable": "Det här dokumentet eller fotot kunde inte laddas ned till den här enheten.",
     "exportIntoDataFolder": "En kopia kan inte sparas i Moonys datamapp. Välj en annan plats.",
     "documentNameRequired": "Dokumentnamn krävs",
     "nameTooLong": "Namnet är för långt",
@@ -648,6 +651,15 @@
       "body": "Moony skapar en tillfällig okrypterad kopia av filen så att en annan app kan öppna den. Moony raderar kopian när du låser eller avslutar, men kan inte radera det som den andra appen sparar själv.",
       "dontAsk": "Fråga inte igen",
       "confirm": "Öppna"
+    },
+    "content": {
+      "waitingUpload": "Väntar på synkronisering",
+      "downloading": "Laddar ned …",
+      "notOnServer": "Den andra enheten har inte laddat upp det än",
+      "failed": "Kunde inte laddas ned",
+      "retry": "Försök igen",
+      "missing": "Innehållet saknas",
+      "fetching": "Laddar ned från synkroniseringsservern …"
     }
   },
   "filterBadge": {

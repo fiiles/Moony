@@ -4,15 +4,17 @@
 //!
 //! Rows are read through `journal::Reader`, so a column a repair shows differently travels with
 //! the value typed (a renamed name, a cleared link) and the receiver derives the display itself.
-//! Local columns, non-allowlisted `app_config` keys and Local tables (`sync_state`, `sync_typed`,
-//! the attachment tables) never enter a snapshot.
+//! Local columns, non-allowlisted `app_config` keys, rows outside their table's row condition (a
+//! document or photo without a blob) and Local tables (`sync_state`, `sync_typed`, `sync_blobs`)
+//! never enter a snapshot. Neither does any document or photo content: the attachment rows carry
+//! their blob IDs, and the content travels on its own (ADR 0030).
 //!
 //! Two restores, both through the merge engine (D12–D15) and both followed by `repair::full`:
 //!
 //! - **replace** (a joining device): the synced and Seed tables are emptied first, so the
 //!   joiner's own rows and migration seeds cannot come back (a seed deleted in the vault left a
-//!   tombstone, not a row); this device's documents and photos are kept aside and put back
-//!   wherever the vault has their item (`attachments`, audit H3);
+//!   tombstone, not a row); the attachment rows are the vault's afterwards, and what that did to
+//!   this device's documents and photos is counted (`attachments`);
 //! - **merge** (after `410 snapshot_required`, or a re-join): the device's rows came from the
 //!   vault, so they merge by their clocks; the outbox stays and is pushed afterwards.
 //!
@@ -33,13 +35,14 @@ use rusqlite::{params, params_from_iter, Connection, OptionalExtension};
 use super::capture::{self, triggers::pk_expr, Mode, CLOCK_UPSERT};
 use super::chain;
 use super::changeset::{DevTable, RowChange, RowKey, SqlValue};
+use super::held_blobs;
 use super::hlc::{Clock, DeviceId, Observation};
 use super::in_savepoint;
 use super::journal::{category_depth, Reader};
 use super::merge::{self, MergeCtx, Outcome};
 use super::registry::keys::{fk_depth, schema_number};
 use super::registry::{
-    self, column_class, schema, ColumnClass, KeyShape, TableClass, TableSpec,
+    self, column_class, row_condition, schema, ColumnClass, KeyShape, TableClass, TableSpec,
     APP_CONFIG_SYNCED_KEYS,
 };
 use super::repair;
@@ -134,14 +137,14 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
 pub struct RestoreReport {
     pub stats: DumpStats,
     pub warnings: Vec<String>,
-    /// This device's documents and photos a replace carried over or let go (zero after a merge,
-    /// which keeps them all).
+    /// This device's documents and photos a replace kept or let go (zero after a merge, which
+    /// keeps them all).
     pub attachments: AttachmentCarry,
 }
 
-/// What a replace did with this device's attachment rows, which no snapshot carries: documents
-/// and photos (photo batches are not counted) re-attached to their item from the vault (`kept`),
-/// and those whose item the vault lacks, gone with their blobs (`orphaned`).
+/// What a replace did with this device's documents and photos (photo batches are not counted):
+/// those the vault has too, there again with their content (`kept`), and those it lacks, legacy
+/// rows without a blob included, gone with their blobs and only in the backup (`orphaned`).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct AttachmentCarry {
     pub kept: u32,
@@ -172,16 +175,15 @@ pub fn join(
 
 /// Restores by replacing (a joining device, §8): the synced and Seed tables are emptied (the
 /// `user_profile` row stays, with its synced columns overwritten; only the allowlisted
-/// `app_config` keys go) with `sync_clock`, `sync_outbox`, `sync_heads` and `sync_typed`, then the
-/// snapshot's rows go in through the merge engine, its seeds and heads are written, the cursor
-/// and snapshot bookkeeping set, and every repair runs.
+/// `app_config` keys go) with `sync_clock`, `sync_outbox`, `sync_heads`, `sync_typed` and
+/// `sync_blobs`, then the snapshot's rows go in through the merge engine, its seeds and heads are
+/// written, the cursor and snapshot bookkeeping set, and every repair runs.
 ///
-/// The Local attachment rows that hang off synced rows (`real_estate_photo_batches` and their
-/// photos, `real_estate_documents`, `insurance_documents`) never travel in a snapshot. They are
-/// kept aside before the clear and put back, under their own IDs, wherever the vault has their
-/// real estate or policy (a repair or re-sync, which comes back under the same IDs, or a re-join
-/// of a device that was in the vault); the others go with their blobs, as the joiner's own items
-/// do. `RestoreReport::attachments` counts both.
+/// The attachment rows are synced (ADR 0030): afterwards they are the vault's, legacy rows
+/// without a blob included in what goes. Every blob this device's rows named before the replace
+/// is held (`held_blobs`) until the first pull after it caught up, since a row pushed after the
+/// vault's snapshot comes back only with that pull; then the blobs no row names go.
+/// `RestoreReport::attachments` counts this device's documents and photos there again or not.
 pub fn restore_replace(
     conn: &Connection,
     input: &mut impl Read,
@@ -237,15 +239,13 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<Restor
         capture::install(conn, sync.device)?;
     }
     observe(conn, report.stats.max_hlc, &mut report.warnings)?;
-    // This device's documents and photos (Local, never in a snapshot) are kept aside before the
-    // clear and put back under the items the vault has before the repair, whose blob purge then
-    // takes only the blobs of rows that were not (audit H3).
-    let kept = attachments::keep(conn)?;
-    if let Err(error) = refill(conn, &mut snapshot, &sync, &mut report) {
-        attachments::discard(conn);
-        return Err(error);
-    }
-    report.attachments = attachments::reattach(conn, kept)?;
+    // This device's documents and photos, noted before the clear and looked up again after the
+    // refill: counted only. Their content is held until the next pull caught up (`held_blobs`),
+    // so the repair's blob sweep keeps it even for a row the vault brings back only then.
+    let mine = attachments::mine(conn)?;
+    held_blobs::hold_named(conn, now)?;
+    refill(conn, &mut snapshot, &sync, &mut report)?;
+    report.attachments = attachments::carry(conn, mine)?;
     report.warnings.extend(repair::full(conn, now)?.warnings);
     if !installed {
         capture::uninstall(conn)?;
@@ -426,7 +426,9 @@ fn finish(
 }
 
 /// Empties what a replace restores: every Synced table deepest first (the singleton row stays,
-/// only the allowlisted `app_config` keys go), every Seed table, and the bookkeeping of the rows.
+/// only the allowlisted `app_config` keys go; every attachment row goes, legacy ones too), every
+/// Seed table, and the bookkeeping of the rows. The transfer queue goes too: it names the blobs of
+/// rows that may not come back, and is rebuilt from the rows and the store.
 fn clear(conn: &Connection) -> Result<()> {
     let depth = fk_depth(conn)?;
     let mut synced: Vec<&TableSpec> = registry::synced_tables().collect();
@@ -451,7 +453,7 @@ fn clear(conn: &Connection) -> Result<()> {
     }
     conn.execute_batch(
         "DELETE FROM sync_clock; DELETE FROM sync_outbox; DELETE FROM sync_heads; \
-         DELETE FROM sync_typed;",
+         DELETE FROM sync_typed; DELETE FROM sync_blobs;",
     )?;
     Ok(())
 }
@@ -616,8 +618,8 @@ fn synced_rows(conn: &Connection) -> Result<Vec<RowChange>> {
     Ok(live)
 }
 
-/// The key text of every live row of one Synced table, in key order (allowlisted keys only for
-/// `app_config`).
+/// The key text of every live row of one Synced table that syncs, in key order (allowlisted keys
+/// only for `app_config`, rows meeting the table's row condition only).
 fn live_keys(conn: &Connection, spec: &TableSpec) -> Result<Vec<String>> {
     let pk = schema::primary_key(conn, spec.name)?;
     let (filter, order) = match spec.key {
@@ -629,17 +631,24 @@ fn live_keys(conn: &Connection, spec: &TableSpec) -> Result<Vec<String>> {
             )))
         }
         KeyShape::Primary => {
-            let filter = if spec.name == "app_config" {
+            let allowlist = (spec.name == "app_config").then(|| {
                 format!(
-                    "WHERE t.key IN ({})",
+                    "t.key IN ({})",
                     APP_CONFIG_SYNCED_KEYS
                         .iter()
                         .map(|k| format!("'{k}'"))
                         .collect::<Vec<_>>()
                         .join(", ")
                 )
-            } else {
+            });
+            let conditions: Vec<String> = allowlist
+                .into_iter()
+                .chain(row_condition(spec, "t"))
+                .collect();
+            let filter = if conditions.is_empty() {
                 String::new()
+            } else {
+                format!("WHERE {}", conditions.join(" AND "))
             };
             let order = pk
                 .iter()

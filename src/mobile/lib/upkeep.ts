@@ -1,4 +1,4 @@
-import type { BankAccount, Milestone } from '@shared/schema';
+import type { BankAccount, Milestone, SyncAttachmentsProblem } from '@shared/schema';
 import { daysBetween } from '@/utils/milestones';
 
 /**
@@ -15,6 +15,7 @@ export type UpkeepKind =
   | 'statement_due'
   | 'backup_stale'
   | 'sync_stalled'
+  | 'sync_attachments'
   | 'valuation_stale'
   | 'loan_balance_check'
   | 'loan_fixation_expired';
@@ -73,6 +74,11 @@ export interface UpkeepInput {
    * backup row, which would lead to a button that cannot work (audit C7). Default true.
    */
   canBackup?: boolean;
+  /**
+   * Why documents and photos do not sync while the rest does (no room, or the sync server too old),
+   * with sync on; `null` or absent otherwise. A quiet row, never a reminder.
+   */
+  attachmentsProblem?: SyncAttachmentsProblem | null;
 }
 
 /** A closed account no longer asks for anything (as in the backend's milestones). */
@@ -176,6 +182,16 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
       kind: 'sync_stalled',
       title: { key: 'upkeep.syncStalled', params: {} },
       milestone: syncStalled,
+    });
+  }
+
+  // Documents and photos wait for room or a newer sync server: the phone's own row, no desktop
+  // milestone behind it (so no reminder and no menu); it leaves when the problem does
+  if (input.attachmentsProblem) {
+    rows.push({
+      id: 'sync_attachments',
+      kind: 'sync_attachments',
+      title: { key: `deviceSync:attachments.problem.${input.attachmentsProblem}`, params: {} },
     });
   }
 

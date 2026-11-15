@@ -46,6 +46,7 @@
     "close": "Zavřít",
     "done": "Hotovo",
     "back": "Zpět",
+    "previous": "Předchozí",
     "next": "Další",
     "submit": "Odeslat",
     "refresh": "Obnovit",
@@ -187,6 +188,8 @@
     "paymentNonNegative": "Platba nemůže být záporná",
     "endDateAfterStart": "Datum ukončení musí být po datu začátku",
     "attachmentTooLarge": "Soubor je větší než 100 MB.",
+    "attachmentNotHereYet": "Tento dokument nebo fotka ještě nedorazila do tohoto zařízení.",
+    "attachmentUnavailable": "Tento dokument nebo fotku se nepodařilo stáhnout do tohoto zařízení.",
     "exportIntoDataFolder": "Kopii nejde uložit do složky s daty Moony. Vyberte jiné místo.",
     "documentNameRequired": "Název dokumentu je povinný",
     "nameTooLong": "Název je příliš dlouhý",
@@ -652,6 +655,15 @@
       "body": "Moony vytvoří dočasnou nešifrovanou kopii souboru, aby ji mohla otevřít jiná aplikace. Kopii smaže při zamčení nebo zavření Moony. Co si ta aplikace uloží sama, smazat neumí.",
       "dontAsk": "Příště se neptat",
       "confirm": "Otevřít"
+    },
+    "content": {
+      "waitingUpload": "Čeká na synchronizaci",
+      "downloading": "Stahuji…",
+      "notOnServer": "Druhé zařízení ho zatím nenahrálo",
+      "failed": "Nepodařilo se stáhnout",
+      "retry": "Zkusit znovu",
+      "missing": "Obsah chybí",
+      "fetching": "Stahuji ze synchronizačního serveru…"
     }
   },
   "filterBadge": {

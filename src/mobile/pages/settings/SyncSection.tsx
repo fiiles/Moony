@@ -74,8 +74,9 @@ type Flow = { mode: ScanMode; paste: boolean } | null;
  * Nastavení → Sync (spec §11.3 and the mobile design §13): behind the feature flag, which sends the
  * page back to Nastavení when it is off. With sync off (or half set up) the page offers the ways in:
  * start syncing on this phone (or continue a setup that was started, or cancel it) and "Connect this
- * device", which opens a choice: scan a code from the computer or type a Recovery Kit code. With sync on it shows the status and "Sync now", the devices (this one can be renamed), "Add a device" (a
- * scan), the Recovery Kit behind the device password, re-sync, turn off and delete. With the
+ * device", which opens a choice: scan a code from the computer or type a Recovery Kit code. With
+ * sync on it shows the status and "Sync now", the devices (this one can be renamed), "Add a device"
+ * (a scan), the Recovery Kit behind the device password, re-sync, turn off and delete. With the
  * developer tools on, a pairing code can also be pasted (the simulator cannot scan); release builds
  * say nothing about it. The phone never opens a checkout.
  */

@@ -23,6 +23,7 @@ use zeroize::Zeroizing;
 
 use super::{ConnAccess, PullEnd, PullReport};
 use crate::error::{AppError, Result};
+use crate::services::sync::blobs::policy::BlobPolicy;
 use crate::services::sync::chain;
 use crate::services::sync::envelope::stream::{open_stream, snapshot_object_id, StreamSealer};
 use crate::services::sync::error::{SyncError, SyncResult, TooLarge};
@@ -274,6 +275,9 @@ pub struct SnapshotPolicy {
     pub restored_at: Option<i64>,
     /// The run of consecutive unfinished pulls (`note_pull`).
     unfinished_pulls: u32,
+    /// What the round's upload step shares with the transfer lanes of the same engine (ADR 0030):
+    /// the lane locks, the server's blob routes, the attachments problem.
+    pub blobs: BlobPolicy,
 }
 
 impl SnapshotPolicy {

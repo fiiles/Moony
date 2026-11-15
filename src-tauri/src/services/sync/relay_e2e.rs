@@ -134,7 +134,7 @@ impl Device {
     }
 
     /// Joins the vault of `creds` by replace under `name`.
-    async fn join(&self, relay: &HttpRelay, creds: Credentials, name: &str) {
+    pub(super) async fn join(&self, relay: &HttpRelay, creds: Credentials, name: &str) {
         join_by_replace(relay, &self.db, creds, name, self.dir(), &NoBinding, now())
             .await
             .expect("join");
@@ -222,6 +222,37 @@ impl Relay for Counting<'_> {
 
     async fn delete_vault(&self, vault: &VaultAuth) -> RelayResult<()> {
         self.relay.delete_vault(vault).await
+    }
+    async fn put_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: uuid::Uuid,
+        sealed_len: u64,
+        body: crate::services::sync::relay::BlobBody,
+    ) -> RelayResult<()> {
+        self.relay.put_blob(vault, blob, sealed_len, body).await
+    }
+    async fn head_blob(&self, vault: &VaultAuth, blob: uuid::Uuid) -> RelayResult<Option<u64>> {
+        self.relay.head_blob(vault, blob).await
+    }
+    async fn get_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: uuid::Uuid,
+        sink: &mut (dyn crate::services::sync::relay::BlobSink + Send),
+    ) -> RelayResult<crate::services::sync::relay::Delivery> {
+        self.relay.get_blob(vault, blob, sink).await
+    }
+    async fn list_blobs(
+        &self,
+        vault: &VaultAuth,
+        after: Option<uuid::Uuid>,
+        limit: u32,
+    ) -> RelayResult<crate::services::sync::relay::BlobPage> {
+        self.relay.list_blobs(vault, after, limit).await
+    }
+    async fn delete_blob(&self, vault: &VaultAuth, blob: uuid::Uuid) -> RelayResult<()> {
+        self.relay.delete_blob(vault, blob).await
     }
 }
 

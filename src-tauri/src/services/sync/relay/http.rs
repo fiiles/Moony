@@ -3,22 +3,28 @@
 //! `Moony-Account` header and the bearer token never reach another origin; every body is read
 //! under a cap; every error is typed and carries no URL or body.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
-use reqwest::header::{HeaderValue, AUTHORIZATION, CONTENT_TYPE};
-use reqwest::{Method, RequestBuilder, Response, Url};
+use reqwest::header::{HeaderValue, AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE};
+use reqwest::{Body, Method, RequestBuilder, Response, Url};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use super::{
-    AccountStatus, CheckoutPlan, Mailbox, OutgoingOp, PullPage, PulledOp, PushReceipt, Relay,
-    RelayError, RelayResult, ServerInfo, ServerMode, SnapshotBlob, VaultInfo, MAX_SLOT_BYTES,
+    check_blob_page, is_blob_size, AccountStatus, BlobBody, BlobPage, BlobSink, CheckoutPlan,
+    Delivery, Mailbox, OutgoingOp, PullPage, PulledOp, PushReceipt, Relay, RelayError, RelayResult,
+    RemoteBlob, ServerInfo, ServerMode, SinkFlow, SnapshotBlob, VaultInfo, MAX_BLOB_PAGE,
+    MAX_SLOT_BYTES,
 };
 use crate::error::{AppError, Result};
-use crate::services::http::no_redirect_client;
+use crate::services::http::{no_redirect_client, no_redirect_download_client};
+use crate::services::sync::envelope::blob::MAX_BLOB_SEALED;
 use crate::services::sync::keys::VaultAuth;
 
 /// The relay of release builds (a placeholder until phase 6).
@@ -39,11 +45,19 @@ pub const SNAPSHOT_TIMEOUT: Duration = Duration::from_secs(600);
 /// One push or pull, end to end: a full pull page (~5.4 MiB) or push (~3 MiB) must finish on a
 /// slow link, which the shared 15 s bound would never allow. Other calls keep that bound.
 pub const OPS_TIMEOUT: Duration = Duration::from_secs(120);
+/// One blob upload or download, end to end: 100 MiB on a slow link.
+pub const BLOB_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+/// A blob listing: at most `MAX_BLOB_PAGE` entries of ~80 bytes each.
+const MAX_BLOB_LIST_BODY: usize = 256 * 1024;
 /// The most a body buffer reserves up front, whatever length the answer announces.
 const MAX_PREALLOCATION: usize = 1024 * 1024;
 
 const ACCOUNT_HEADER: &str = "moony-account";
 const SNAPSHOT_SEQ_HEADER: &str = "moony-snapshot-seq";
+/// The error code of a blob route's answer, also on a `HEAD`, which has no body.
+const ERROR_CODE_HEADER: &str = "moony-error";
+/// A blob's stored size, sent with `HEAD` and `GET` besides `Content-Length`.
+const BLOB_SIZE_HEADER: &str = "moony-blob-size";
 
 /// The dev sync server of a debug build (`feature::dev_relay_base`: `MOONY_RELAY_URL` at run
 /// time, else as the binary was built; an iPhone app has no environment), else
@@ -136,6 +150,7 @@ fn parse_base_url(url: &str) -> Result<Url> {
     }
 }
 
+#[derive(Clone)]
 pub struct HttpRelay {
     base: Url,
 }
@@ -183,6 +198,11 @@ impl HttpRelay {
             return Err(RelayError::BadRequest("invalid_vault_id".into()));
         }
         self.url(&format!("v1/vaults/{}{suffix}", vault.vault_id))
+    }
+
+    /// A blob's URL: its ID in lowercase hyphenated form, the only form the server takes.
+    fn blob_url(&self, vault: &VaultAuth, blob: Uuid) -> RelayResult<Url> {
+        self.vault_url(vault, &format!("/blobs/{}", blob.hyphenated()))
     }
 
     fn vault_request(
@@ -338,6 +358,98 @@ async fn expect_status(response: Response, expected: &[u16]) -> RelayResult<Resp
     })
 }
 
+/// `expect_status` for a blob route: an error answer's code is read from its `Moony-Error`
+/// header when there is one (a `HEAD` answer has no body), else from its body.
+async fn expect_blob_status(response: Response, expected: &[u16]) -> RelayResult<Response> {
+    let status = response.status().as_u16();
+    if !expected.contains(&status) && !response.status().is_success() {
+        if let Some(code) = error_code(&response) {
+            return Err(RelayError::from_code(status, code));
+        }
+    }
+    expect_status(response, expected).await
+}
+
+fn error_code(response: &Response) -> Option<&str> {
+    response
+        .headers()
+        .get(ERROR_CODE_HEADER)
+        .and_then(|value| value.to_str().ok())
+}
+
+/// The `Content-Length` header as sent (digits only). Read from the header, not the body: a
+/// `HEAD` answer's body is empty whatever length it announces.
+fn announced_length(response: &Response) -> Option<u64> {
+    digits_header(response, CONTENT_LENGTH.as_str())
+}
+
+/// A header of digits only, as a number.
+fn digits_header(response: &Response, name: &str) -> Option<u64> {
+    response
+        .headers()
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .filter(|text| !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()))
+        .and_then(|text| text.parse::<u64>().ok())
+}
+
+/// A blob body on its way up, held to the length it announced: a piece that runs past it, or an
+/// end before it, becomes an error that stops the upload, and `mismatch` records why.
+struct Measured {
+    body: BlobBody,
+    left: u64,
+    mismatch: Arc<AtomicBool>,
+    done: bool,
+}
+
+impl Measured {
+    fn length_error(&self) -> std::io::Error {
+        self.mismatch.store(true, Ordering::SeqCst);
+        std::io::Error::other("blob length")
+    }
+
+    /// What the source still holds once the announced length is reached: nothing (or only empty
+    /// pieces) is fine; more bytes are a length error, a read error stays an error.
+    fn check_rest(&mut self) -> std::io::Result<()> {
+        loop {
+            match self.body.next() {
+                None => return Ok(()),
+                Some(Ok(piece)) if piece.is_empty() => {}
+                Some(Ok(_)) => return Err(self.length_error()),
+                Some(Err(error)) => return Err(error),
+            }
+        }
+    }
+}
+
+impl Iterator for Measured {
+    type Item = std::io::Result<Vec<u8>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+        let item = match self.body.next() {
+            Some(Ok(piece)) if piece.len() as u64 <= self.left => {
+                self.left -= piece.len() as u64;
+                if self.left > 0 {
+                    return Some(Ok(piece));
+                }
+                // The announced length is reached, and the transport never polls the body
+                // again once it has written that much: the rest of the source is checked now,
+                // before the last piece goes out, or extra bytes would be cut off unseen.
+                Some(self.check_rest().map(|()| piece))
+            }
+            Some(Err(error)) => Some(Err(error)),
+            None if self.left == 0 => None,
+            // Longer than announced, or ended short.
+            Some(Ok(_)) | None => Some(Err(self.length_error())),
+        };
+        self.done = true;
+        item
+    }
+}
+
 async fn read_json<T: DeserializeOwned>(response: Response, cap: usize) -> RelayResult<T> {
     let body = read_capped(response, cap).await?;
     serde_json::from_slice(&body).map_err(|_| RelayError::Protocol("not json".into()))
@@ -375,7 +487,14 @@ struct ServerInfoWire {
     protocol: u32,
     #[serde(rename = "mode")]
     mode: String,
+    /// Optional capabilities, read loosely: a missing field, `null`, anything but an array, and
+    /// any element that is not a string all mean no feature, never an unreadable answer.
+    #[serde(rename = "features", default)]
+    features: Option<serde_json::Value>,
 }
+
+/// The feature a server lists when it has the blob routes.
+const BLOBS_FEATURE: &str = "blobs";
 
 /// What `GET /v1/server` answers as `name`.
 const SERVER_NAME: &str = "moony-sync";
@@ -455,6 +574,34 @@ struct PullWire {
 }
 
 #[derive(Deserialize)]
+struct BlobListWire {
+    #[serde(rename = "blobs")]
+    blobs: Vec<BlobWire>,
+    #[serde(rename = "more")]
+    more: bool,
+    /// The server's clock; read loosely, since an answer without a usable one is still a page.
+    #[serde(rename = "now", default)]
+    now: Option<serde_json::Value>,
+}
+
+#[derive(Deserialize)]
+struct BlobWire {
+    #[serde(rename = "id")]
+    id: String,
+    #[serde(rename = "size")]
+    size: u64,
+    #[serde(rename = "createdAt")]
+    created_at: i64,
+}
+
+/// A blob ID as the server must write it: a UUID in lowercase hyphenated form, nothing else.
+fn canonical_blob_id(text: &str) -> Option<Uuid> {
+    Uuid::try_parse(text)
+        .ok()
+        .filter(|id| id.hyphenated().to_string() == text)
+}
+
+#[derive(Deserialize)]
 struct PullOpWire {
     #[serde(rename = "seq")]
     seq: u64,
@@ -485,6 +632,15 @@ impl Relay for HttpRelay {
             version: answer.version,
             protocol: answer.protocol,
             mode,
+            blobs: answer
+                .features
+                .as_ref()
+                .and_then(serde_json::Value::as_array)
+                .is_some_and(|features| {
+                    features
+                        .iter()
+                        .any(|feature| feature.as_str() == Some(BLOBS_FEATURE))
+                }),
         })
     }
 
@@ -626,6 +782,153 @@ impl Relay for HttpRelay {
         expect_status(send(request).await?, &[204]).await?;
         Ok(())
     }
+
+    async fn put_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: Uuid,
+        sealed_len: u64,
+        body: BlobBody,
+    ) -> RelayResult<()> {
+        let url = self.blob_url(vault, blob)?;
+        if sealed_len > MAX_BLOB_SEALED {
+            return Err(RelayError::Protocol("body too large".into()));
+        }
+        // Streamed piece by piece under the announced length; never one buffer for the blob.
+        let mismatch = Arc::new(AtomicBool::new(false));
+        let measured = Measured {
+            body,
+            left: sealed_len,
+            mismatch: Arc::clone(&mismatch),
+            done: false,
+        };
+        let request = self
+            .vault_request(Method::PUT, url, vault)?
+            .header(CONTENT_TYPE, "application/octet-stream")
+            .header(CONTENT_LENGTH, sealed_len)
+            .timeout(BLOB_TIMEOUT)
+            .body(Body::wrap_stream(futures_util::stream::iter(measured)));
+        let sent = send(request).await;
+        if mismatch.load(Ordering::SeqCst) {
+            return Err(RelayError::BadRequest("length_required".into()));
+        }
+        let response = expect_blob_status(sent?, &[200, 201]).await?;
+        // `201 {"created":true}`, or `200 {"created":false}` for a blob the server already has.
+        let created = response.status().as_u16() == 201;
+        let answer: CreatedWire = read_json(response, MAX_JSON_BODY).await?;
+        if answer.created != created {
+            return Err(RelayError::Protocol("unexpected answer".into()));
+        }
+        Ok(())
+    }
+
+    async fn head_blob(&self, vault: &VaultAuth, blob: Uuid) -> RelayResult<Option<u64>> {
+        let url = self.blob_url(vault, blob)?;
+        let response = send(self.vault_request(Method::HEAD, url, vault)?).await?;
+        // A HEAD answer has no body: a 404 without a code is a missing blob.
+        if response.status().as_u16() == 404 && error_code(&response).is_none() {
+            return Ok(None);
+        }
+        let response = match expect_blob_status(response, &[200]).await {
+            Ok(response) => response,
+            Err(RelayError::BlobNotFound) => return Ok(None),
+            Err(error) => return Err(error),
+        };
+        // A proxy may drop `Content-Length` from a HEAD answer; the server's own header stays.
+        let size = announced_length(&response)
+            .or_else(|| digits_header(&response, BLOB_SIZE_HEADER))
+            .ok_or_else(|| RelayError::Protocol("length".into()))?;
+        if !is_blob_size(size) {
+            return Err(RelayError::Protocol("unexpected answer".into()));
+        }
+        Ok(Some(size))
+    }
+
+    async fn get_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: Uuid,
+        sink: &mut (dyn BlobSink + Send),
+    ) -> RelayResult<Delivery> {
+        let url = self.blob_url(vault, blob)?;
+        // The download client: a stalled body fails after a minute without a byte, not at the
+        // end of `BLOB_TIMEOUT`.
+        let request = no_redirect_download_client()
+            .get(url)
+            .header(AUTHORIZATION, bearer(vault)?)
+            .timeout(BLOB_TIMEOUT);
+        let mut response = expect_blob_status(send(request).await?, &[200]).await?;
+        let sealed_len =
+            announced_length(&response).ok_or_else(|| RelayError::Protocol("length".into()))?;
+        if sealed_len > MAX_BLOB_SEALED {
+            return Err(RelayError::Protocol("body too large".into()));
+        }
+        if sink.begin(sealed_len) == SinkFlow::Stop {
+            return Ok(Delivery::Stopped);
+        }
+        // Each piece goes to the sink as it arrives; the transport holds the body to its
+        // announced length (a short body is a `Network` error).
+        while let Some(piece) = response.chunk().await.map_err(network)? {
+            if sink.piece(&piece) == SinkFlow::Stop {
+                return Ok(Delivery::Stopped);
+            }
+        }
+        Ok(Delivery::Complete)
+    }
+
+    async fn list_blobs(
+        &self,
+        vault: &VaultAuth,
+        after: Option<Uuid>,
+        limit: u32,
+    ) -> RelayResult<BlobPage> {
+        if !(1..=MAX_BLOB_PAGE).contains(&limit) {
+            return Err(RelayError::Protocol("limit".into()));
+        }
+        let mut url = self.vault_url(vault, "/blobs")?;
+        {
+            let mut query = url.query_pairs_mut();
+            if let Some(after) = after {
+                query.append_pair("after", &after.hyphenated().to_string());
+            }
+            query.append_pair("limit", &limit.to_string());
+        }
+        let request = self.vault_request(Method::GET, url, vault)?;
+        let response = expect_blob_status(send(request).await?, &[200]).await?;
+        let answer: BlobListWire = read_json(response, MAX_BLOB_LIST_BODY).await?;
+        let blobs = answer
+            .blobs
+            .into_iter()
+            .map(|blob| {
+                Ok(RemoteBlob {
+                    id: canonical_blob_id(&blob.id)
+                        .ok_or_else(|| RelayError::Protocol("unexpected answer".into()))?,
+                    size: blob.size,
+                    created_at: blob.created_at,
+                })
+            })
+            .collect::<RelayResult<Vec<_>>>()?;
+        // An integer is the server's clock (a negative one is refused below); anything else, or
+        // no field, is no clock.
+        let server_now = answer.now.as_ref().and_then(serde_json::Value::as_i64);
+        let page = BlobPage {
+            blobs,
+            more: answer.more,
+            server_now,
+        };
+        check_blob_page(&page, after)?;
+        Ok(page)
+    }
+
+    async fn delete_blob(&self, vault: &VaultAuth, blob: Uuid) -> RelayResult<()> {
+        let url = self.blob_url(vault, blob)?;
+        let request = self.vault_request(Method::DELETE, url, vault)?;
+        match expect_blob_status(send(request).await?, &[204]).await {
+            // The server answers 204 for a missing blob too; a 404 for it means the same.
+            Ok(_) | Err(RelayError::BlobNotFound) => Ok(()),
+            Err(error) => Err(error),
+        }
+    }
 }
 
 impl Mailbox for HttpRelay {
@@ -671,6 +974,8 @@ impl Mailbox for HttpRelay {
 // These talk to one-shot servers on 127.0.0.1 over plain http, which every build accepts for a
 // server that is not the Moony cloud (`scheme_allowed`). They stay in debug test builds, the ones
 // `cargo test` makes, so a release test run needs no loopback port.
+#[cfg(all(test, debug_assertions))]
+mod blob_tests;
 #[cfg(all(test, debug_assertions))]
 mod mailbox_tests;
 #[cfg(test)]

@@ -82,6 +82,11 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.syncNow,
     onSuccess: refreshSyncState,
   });
+  // Only the status moves (what is left to fetch); the content itself arrives later, row by row
+  const downloadEverything = useMutation({
+    mutationFn: deviceSyncApi.downloadEverything,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-status'] }),
+  });
   const showKitPassword = useRef<string | null>(null);
   const showRecoveryKit = useMutation<RecoveryKit, Error, void>({
     mutationFn: async () => {
@@ -171,6 +176,7 @@ export function useDeviceSyncMutations() {
     copyRecoveryCode,
     finishSetup,
     syncNow,
+    downloadEverything,
     showRecoveryKit,
     showKitWithPassword,
     turnOff,

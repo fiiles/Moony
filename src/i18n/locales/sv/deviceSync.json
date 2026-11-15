@@ -414,7 +414,7 @@
       "documents": "Dokument: {{count}}",
       "photos": "Foton: {{count}}"
     },
-    "attachments": "Dokument och foton förblir kopplade till objekt som de synkroniserade uppgifterna också har; resten finns bara kvar i säkerhetskopian.",
+    "attachments": "Efteråt är dokumenten och fotona de som de synkroniserade uppgifterna har; dokument och foton på den här enheten som de synkroniserade uppgifterna inte har finns bara kvar i säkerhetskopian.",
     "unsent": "Moony skickar de väntande ändringarna först; det som inte kan skickas finns bara kvar i säkerhetskopian.",
     "backupWhere": "Säkerhetskopian finns under Inställningar → Data och säkerhetskopior, under ”Säkerhetskopior gjorda innan synkroniseringen ersatte data”.",
     "loading": "Räknar vad som står på spel …",
@@ -444,8 +444,23 @@
     "connectionNotHere": "Det här är en anslutningskod för en synkroniseringsserver. Använd den när du ställer in synkronisering, inte här.",
     "notAServerAddress": "Det här är inte adressen till en synkroniseringsserver. Ange adressen till din synkroniseringsserver eller klistra in dess anslutningskod."
   },
+  "attachments": {
+    "title": "Dokument och foton",
+    "allUploaded": "Allt är uppladdat",
+    "waiting_one": "{{count}} väntar på uppladdning · {{size}}",
+    "waiting_other": "{{count}} väntar på uppladdning · {{size}}",
+    "uploading": "Laddar upp dokument och foton",
+    "onOtherDevices_one": "{{count}} dokument eller foto finns på dina andra enheter",
+    "onOtherDevices_other": "{{count}} dokument och foton finns på dina andra enheter",
+    "downloadEverything": "Ladda ned allt till den här telefonen",
+    "downloadEverythingStarted": "Laddar ned medan Moony är öppet",
+    "problem": {
+      "noRoom": "Dokument och foton väntar: synkroniseringsservern har fått slut på utrymme. Be den som driver den om mer utrymme.",
+      "serverNeedsUpdate": "Dokument och foton kräver en nyare synkroniseringsserver. Allt annat synkroniseras."
+    }
+  },
   "whatSyncs": {
     "title": "Vad som synkroniseras",
-    "body": "Allt du skriver in i Moony synkroniseras. Språk, utseende, meny, aviseringar, enhetslösenord, återställningsnyckel och säkerhetskopior hör till varje enhet för sig. Priser och historik räknas fram på varje enhet. Dokument och foton stannar tills vidare på den enhet där du lade till dem."
+    "body": "Allt du skriver in i Moony synkroniseras. Språk, utseende, meny, aviseringar, enhetslösenord, återställningsnyckel och säkerhetskopior hör till varje enhet för sig. Priser och historik räknas fram på varje enhet. Dokument och foton synkroniseras också; en telefon laddar ned varje fil när du öppnar den."
   }
 }

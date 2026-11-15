@@ -438,7 +438,7 @@
       "documents": "Dokumenty: {{count}}",
       "photos": "Fotky: {{count}}"
     },
-    "attachments": "Dokumenty a fotky zůstanou přiložené k položkám, které mají i synchronizovaná data; ostatní zůstanou jen v záloze.",
+    "attachments": "Dokumenty a fotky pak budou ty ze synchronizovaných dat; dokumenty a fotky tohoto zařízení, které synchronizovaná data nemají, zůstanou jen v záloze.",
     "unsent": "Moony nejdřív odešle čekající změny; co odeslat nedokáže, zůstane jen v záloze.",
     "backupWhere": "Záloha je v seznamu v Nastavení → Data a zálohy, v části „Zálohy vytvořené před nahrazením dat synchronizací“.",
     "loading": "Počítám, co je v sázce…",
@@ -468,8 +468,25 @@
     "connectionNotHere": "Toto je připojovací kód synchronizačního serveru. Použijte ho při nastavování synchronizace, ne tady.",
     "notAServerAddress": "Toto není adresa synchronizačního serveru. Zadejte adresu svého synchronizačního serveru nebo vložte jeho připojovací kód."
   },
+  "attachments": {
+    "title": "Dokumenty a fotky",
+    "allUploaded": "Vše nahráno",
+    "waiting_one": "{{count}} čeká na nahrání · {{size}}",
+    "waiting_few": "{{count}} čekají na nahrání · {{size}}",
+    "waiting_other": "{{count}} čeká na nahrání · {{size}}",
+    "uploading": "Nahrávám dokumenty a fotky",
+    "onOtherDevices_one": "{{count}} dokument nebo fotka je na vašich dalších zařízeních",
+    "onOtherDevices_few": "{{count}} dokumenty a fotky jsou na vašich dalších zařízeních",
+    "onOtherDevices_other": "{{count}} dokumentů a fotek je na vašich dalších zařízeních",
+    "downloadEverything": "Stáhnout vše do tohoto telefonu",
+    "downloadEverythingStarted": "Stahuji, dokud je Moony otevřené",
+    "problem": {
+      "noRoom": "Dokumenty a fotky čekají: na synchronizačním serveru došlo místo. Požádejte jeho správce o víc místa.",
+      "serverNeedsUpdate": "Dokumenty a fotky potřebují novější synchronizační server. Vše ostatní se synchronizuje."
+    }
+  },
   "whatSyncs": {
     "title": "Co se synchronizuje",
-    "body": "Synchronizuje se všechno, co do Moony zadáte. Jazyk, vzhled, menu, oznámení, heslo zařízení, obnovovací klíč a zálohy patří každému zařízení zvlášť. Ceny a historie se dopočítávají na každém zařízení. Dokumenty a fotky zatím zůstávají na zařízení, na kterém jste je přidali."
+    "body": "Synchronizuje se všechno, co do Moony zadáte. Jazyk, vzhled, menu, oznámení, heslo zařízení, obnovovací klíč a zálohy patří každému zařízení zvlášť. Ceny a historie se dopočítávají na každém zařízení. Dokumenty a fotky se synchronizují také; telefon si je stáhne, až je otevřete."
   }
 }

@@ -5,14 +5,18 @@
 
 mod backoff;
 mod binding_failure;
+mod blob_queue;
+mod blobs;
 mod clock_snapshots;
 mod clocks;
 mod echo;
 mod gap_skip;
 mod gap_skip_miss;
 mod gaps;
+mod held_blobs;
 mod join;
 mod join_new;
+mod lanes;
 mod pull;
 mod push;
 mod relay_faults;
@@ -62,6 +66,11 @@ pub struct TestConn {
     pub locked: Arc<AtomicBool>,
     /// This profile's own round lock, so tests on other profiles never wait for it.
     pub rounds: Arc<tokio::sync::Mutex<()>>,
+    /// This profile's own downloads in progress, so devices downloading one blob in parallel
+    /// tests never see each other's.
+    pub incoming: Arc<crate::services::sync::blobs::stream::IncomingBlobs>,
+    /// This profile's own lane gate, so engines of other tests never wait for it.
+    pub lanes: Arc<tokio::sync::Mutex<()>>,
 }
 
 impl TestConn {
@@ -70,6 +79,8 @@ impl TestConn {
             conn: Arc::new(Mutex::new(conn)),
             locked: Arc::new(AtomicBool::new(false)),
             rounds: Arc::new(tokio::sync::Mutex::new(())),
+            incoming: Arc::default(),
+            lanes: Arc::default(),
         }
     }
 
@@ -89,6 +100,22 @@ impl ConnAccess for TestConn {
 
     fn round_lock(&self) -> &tokio::sync::Mutex<()> {
         &self.rounds
+    }
+
+    fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
+        if self.locked.load(Ordering::SeqCst) {
+            return Some(Err(AppError::Auth("Database is locked".into())));
+        }
+        let conn = self.conn.try_lock().ok()?;
+        Some(f(&conn))
+    }
+
+    fn incoming_blobs(&self) -> &crate::services::sync::blobs::stream::IncomingBlobs {
+        &self.incoming
+    }
+
+    fn lanes_lock(&self) -> &tokio::sync::Mutex<()> {
+        &self.lanes
     }
 }
 
@@ -145,6 +172,14 @@ pub async fn vault() -> Vault {
         a: TestConn::new(a),
         b: TestConn::new(b),
     }
+}
+
+/// Attaches an empty attachment store to `device`, as the app opens one with the profile.
+pub fn with_store(device: &TestConn) {
+    let conn = device.lock();
+    conn.execute("ATTACH DATABASE ':memory:' AS files", [])
+        .expect("attach");
+    crate::db::files_schema::migrate(&conn).expect("files schema");
 }
 
 pub fn exec(conn: &Connection, sql: &str) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SyncPhase, SyncProblem, SyncStatus } from '@shared/schema';
+import type { SyncAttachments, SyncPhase, SyncProblem, SyncStatus } from '@shared/schema';
 import { isQuietlyOutOfReach, syncAge, syncState } from './sync-state';
 import type { SyncAgeKey, SyncStateKind, SyncTone } from './sync-state';
 
@@ -10,7 +10,8 @@ function status(
   phase: SyncPhase,
   problem: SyncProblem | null = null,
   lastSuccessAt: number | null = null,
-  enabledAt: number | null = null
+  enabledAt: number | null = null,
+  attachments: Partial<SyncAttachments> = {}
 ): SyncStatus {
   return {
     phase,
@@ -27,6 +28,16 @@ function status(
     serverAddress: null,
     serverInsecure: false,
     enabledAt,
+    attachments: {
+      waitingUpload: 0,
+      waitingUploadBytes: 0,
+      notHere: 0,
+      notOnServer: 0,
+      failed: 0,
+      notOnDevice: 0,
+      problem: null,
+      ...attachments,
+    },
   };
 }
 
@@ -101,6 +112,59 @@ describe('syncState', () => {
       rowKey: 'phone.row.synced',
       ageFrom: now - 240,
     });
+  });
+});
+
+describe('uploads keep a device unsynchronised', () => {
+  const waiting = { waitingUpload: 3, waitingUploadBytes: 12_000_000 };
+
+  // Precedence: a named problem or the server out of reach (stale after 7 days) > uploading >
+  // synchronised. Uploads only ever replace the idle "synced" state.
+  it('maps idle with uploads waiting to the neutral uploading state, idle without to synced', () => {
+    expect(syncState(status('idle', null, now - 240, null, waiting), now)).toMatchObject({
+      kind: 'uploading',
+      tone: 'neutral',
+      labelKey: 'attachments.uploading',
+      rowKey: 'attachments.uploading',
+      ageFrom: now - 240,
+    });
+    expect(syncState(status('idle', null, now - 240), now)).toMatchObject({
+      kind: 'synced',
+      tone: 'fresh',
+    });
+  });
+
+  it('lets a problem or an unreachable server win over uploading', () => {
+    const rows: [SyncStatus, SyncStateKind][] = [
+      [status('idle', 'offline', now - D, null, waiting), 'unreachable'],
+      [status('idle', 'offline', now - 8 * D, null, waiting), 'unreachableLong'],
+      [status('syncing', null, now - 8 * D, null, waiting), 'syncing'],
+      [status('waiting', 'gap', now, null, waiting), 'waiting'],
+      [status('paused', 'lapsed', now, null, waiting), 'paused'],
+      [status('error', 'internal', now, null, waiting), 'error'],
+    ];
+    for (const [input, kind] of rows) {
+      expect(syncState(input, now)?.kind, JSON.stringify(input)).toBe(kind);
+    }
+  });
+
+  it('leaves the label alone for an attachments problem and for failed or fetchable rows', () => {
+    const rows: Partial<SyncAttachments>[] = [
+      { ...waiting, problem: 'noRoom' },
+      { ...waiting, problem: 'serverNeedsUpdate' },
+      { problem: 'noRoom' },
+      { failed: 2, notHere: 4, notOnServer: 1, notOnDevice: 7 },
+    ];
+    for (const attachments of rows) {
+      const view = syncState(status('idle', null, now, null, attachments), now);
+      const uploading = (attachments.waitingUpload ?? 0) > 0;
+      expect(view?.kind, JSON.stringify(attachments)).toBe(uploading ? 'uploading' : 'synced');
+    }
+  });
+
+  it('shows nothing while sync is off or being set up, whatever waits', () => {
+    expect(syncState(status('off', null, null, null, waiting), now)).toBeNull();
+    expect(syncState(status('settingUp', null, null, null, waiting), now)).toBeNull();
   });
 });
 

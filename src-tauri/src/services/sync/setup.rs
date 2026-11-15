@@ -45,8 +45,10 @@ use super::relay::http::{is_default_relay, normalize_base_url, validate_base_url
 use super::relay::{CheckoutPlan, Relay, RelayError};
 use super::server::check_own_server;
 use super::state;
+use crate::db::files_schema;
 use crate::error::{AppError, Result};
 use crate::models::sync::{CheckoutTarget, RecoveryKit, SyncAccount, SyncPlan, SyncProblem};
+use crate::services::attachment_store;
 
 const KIT_NOT_CONFIRMED: &str = "validation.syncRecoveryKitNotConfirmed";
 const SETUP_INCOMPLETE: &str = "validation.syncSetupIncomplete";
@@ -397,8 +399,9 @@ fn problem_error(problem: SyncProblem) -> SyncError {
 /// and the chain bookkeeping are deleted (`state::disable`), and so is the device list
 /// (`sync_devices`: sync metadata of the old vault, not finance data; a later setup into a new
 /// vault would otherwise publish the old vault's devices and their public keys), in one
-/// transaction; then the binding file and the restore marker are removed
-/// (`binding::forget_binding`). Local data stays, and so does the vault on the
+/// transaction; then the incoming blobs of cut-off downloads are swept
+/// (`sweep_unfinished_downloads`, best effort) and the binding file and the restore marker are
+/// removed (`binding::forget_binding`). Local data stays, and so does the vault on the
 /// relay for the other devices. Repair backups (`sync-repair-*.zip`) are copies of local data and
 /// stay until Delete Account.
 ///
@@ -431,9 +434,29 @@ pub fn turn_off(conn: &Connection, data_dir: &Path) -> Result<()> {
         return Err(error);
     }
     truncate_wal(conn);
+    sweep_unfinished_downloads(conn);
     binding::forget_binding(data_dir)?;
     log::info!("[SYNC] Sync is off on this device; local data stays");
     Ok(())
+}
+
+/// After sync went off: the incoming blobs of downloads that were cut off go
+/// (`attachment_store::sweep_incomplete`). The lanes sweep them when they start, which never
+/// happens again with sync off; each is invisible but as large as its file. No transfer runs
+/// now (the engine was stopped before the change). Best effort: a failure is logged and sync
+/// stays off.
+fn sweep_unfinished_downloads(conn: &Connection) {
+    match files_schema::is_attached(conn) {
+        Ok(true) => match attachment_store::sweep_incomplete(conn) {
+            Ok(0) => {}
+            Ok(swept) => {
+                log::info!("[SYNC] Removed {swept} unfinished downloads of documents or photos")
+            }
+            Err(e) => log::warn!("[SYNC] Unfinished downloads could not be removed: {e}"),
+        },
+        Ok(false) => {}
+        Err(e) => log::warn!("[SYNC] Unfinished downloads could not be looked for: {e}"),
+    }
 }
 
 /// After the sync secrets were deleted (`secure_delete` zeroes their cells, `db::configure`): in
@@ -631,5 +654,53 @@ mod tests {
 
         assert!(!contains(&read_or_empty(&path), MARKER), "database file");
         assert!(!contains(&read_or_empty(&wal), MARKER), "write-ahead log");
+    }
+
+    fn incomplete_blobs(conn: &Connection) -> i64 {
+        conn.query_row(
+            "SELECT COUNT(*) FROM files.blobs WHERE sha256 = ''",
+            [],
+            |r| r.get(0),
+        )
+        .expect("count")
+    }
+
+    /// A download cancelled before sync went off leaves an incoming blob (invisible, but as large
+    /// as the file); with sync off no lane starts again to sweep it, so turning off sweeps it.
+    #[test]
+    fn turning_sync_off_removes_unfinished_downloads_and_keeps_content() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let conn = crate::services::sync::test_support::migrated();
+        conn.execute("ATTACH DATABASE ':memory:' AS files", [])
+            .expect("attach");
+        crate::db::files_schema::migrate(&conn).expect("files schema");
+        state::enable(&conn, crate::services::sync::hlc::DeviceId([7; 16])).expect("enable");
+        let kept = attachment_store::put_bytes(&conn, b"kept")
+            .expect("blob")
+            .id;
+        attachment_store::begin_incoming(&conn, "0b9e6a52-3a4c-4e0f-9d7a-1c2b3d4e5f60", 1024)
+            .expect("left over");
+        assert_eq!(incomplete_blobs(&conn), 1);
+
+        turn_off(&conn, dir.path()).expect("turn off");
+
+        assert_eq!(incomplete_blobs(&conn), 0);
+        assert_eq!(
+            attachment_store::read_all(&conn, &kept).expect("kept"),
+            b"kept".to_vec()
+        );
+    }
+
+    /// Turning off works without the attachment store (it is swept at the next turn-off or lane
+    /// start of a profile that has it).
+    #[test]
+    fn turning_sync_off_without_the_store_still_turns_off() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let conn = crate::services::sync::test_support::migrated();
+        state::enable(&conn, crate::services::sync::hlc::DeviceId([7; 16])).expect("enable");
+
+        turn_off(&conn, dir.path()).expect("turn off");
+
+        assert!(!state::on_or_unreadable(&conn).expect("state"));
     }
 }

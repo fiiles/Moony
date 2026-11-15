@@ -46,6 +46,7 @@
     "close": "閉じる",
     "done": "完了",
     "back": "戻る",
+    "previous": "前へ",
     "next": "次へ",
     "submit": "送信",
     "refresh": "更新",
@@ -187,6 +188,8 @@
     "paymentNonNegative": "支払額は負の値にできません",
     "endDateAfterStart": "終了日は開始日より後にしてください",
     "attachmentTooLarge": "ファイルが100 MBを超えています。",
+    "attachmentNotHereYet": "この書類または写真は、まだこのデバイスに届いていません。",
+    "attachmentUnavailable": "この書類または写真をこのデバイスにダウンロードできませんでした。",
     "exportIntoDataFolder": "Moony のデータフォルダーにはコピーを保存できません。別の場所を選んでください。",
     "documentNameRequired": "書類名を入力してください",
     "nameTooLong": "名前が長すぎます",
@@ -644,6 +647,15 @@
       "body": "別のアプリで開けるように、Moony はファイルの暗号化されていない一時コピーを作成します。コピーはロック時または終了時に削除されますが、そのアプリが独自に保存したものは削除できません。",
       "dontAsk": "今後は確認しない",
       "confirm": "開く"
+    },
+    "content": {
+      "waitingUpload": "同期待ち",
+      "downloading": "ダウンロード中…",
+      "notOnServer": "もう一方のデバイスからまだアップロードされていません",
+      "failed": "ダウンロードできませんでした",
+      "retry": "再試行",
+      "missing": "内容がありません",
+      "fetching": "同期サーバーからダウンロード中…"
     }
   },
   "filterBadge": {

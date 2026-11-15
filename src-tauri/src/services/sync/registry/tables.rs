@@ -21,6 +21,7 @@ const BASE: TableSpec = TableSpec {
     groups: &[],
     write_once: &[],
     monotonic: &[],
+    requires: &[],
 };
 
 pub(super) static TABLES: &[TableSpec] = &[
@@ -266,6 +267,29 @@ pub(super) static TABLES: &[TableSpec] = &[
         class: TableClass::Synced,
         ..BASE
     },
+    // Documents and photos (ADR 0030): a row syncs while it names its blob; a legacy row with only
+    // a plain file stays on the device until the conversion gives it one. The content travels
+    // apart from the rows (`sync_blobs`); the plain-file paths never leave the device.
+    TableSpec {
+        name: "real_estate_photo_batches",
+        class: TableClass::Synced,
+        ..BASE
+    },
+    TableSpec {
+        name: "real_estate_photos",
+        class: TableClass::Synced,
+        local: &["file_path", "thumbnail_path"],
+        // Both blobs: the receiving device's CHECK takes both blobs or both paths.
+        requires: &["blob_id", "thumb_blob_id"],
+        ..BASE
+    },
+    TableSpec {
+        name: "real_estate_documents",
+        class: TableClass::Synced,
+        local: &["file_path"],
+        requires: &["blob_id"],
+        ..BASE
+    },
     TableSpec {
         name: "insurance_policies",
         class: TableClass::Synced,
@@ -273,6 +297,13 @@ pub(super) static TABLES: &[TableSpec] = &[
             &["one_time_payment", "one_time_payment_currency"],
             &["regular_payment", "regular_payment_currency"],
         ],
+        ..BASE
+    },
+    TableSpec {
+        name: "insurance_documents",
+        class: TableClass::Synced,
+        local: &["file_path"],
+        requires: &["blob_id"],
         ..BASE
     },
     TableSpec {
@@ -416,7 +447,7 @@ pub(super) static TABLES: &[TableSpec] = &[
         class: TableClass::Derived,
         ..BASE
     },
-    // Local: never leaves the device (the attachment tables moved here by spec 16a).
+    // Local: never leaves the device.
     TableSpec {
         name: "_migrations",
         class: TableClass::Local,
@@ -425,6 +456,18 @@ pub(super) static TABLES: &[TableSpec] = &[
     // A per-device cache of fetched stock logos (spec 2026-11-14-asset-logos).
     TableSpec {
         name: "asset_logos",
+        class: TableClass::Local,
+        ..BASE
+    },
+    // This device's queue of document and photo content to move to or from the sync server.
+    TableSpec {
+        name: "sync_blobs",
+        class: TableClass::Local,
+        ..BASE
+    },
+    // Blobs a replace holds until the next pull caught up (ADR 0030).
+    TableSpec {
+        name: "sync_held_blobs",
         class: TableClass::Local,
         ..BASE
     },
@@ -440,26 +483,6 @@ pub(super) static TABLES: &[TableSpec] = &[
     },
     TableSpec {
         name: "mcp_pending_refresh",
-        class: TableClass::Local,
-        ..BASE
-    },
-    TableSpec {
-        name: "real_estate_photo_batches",
-        class: TableClass::Local,
-        ..BASE
-    },
-    TableSpec {
-        name: "real_estate_photos",
-        class: TableClass::Local,
-        ..BASE
-    },
-    TableSpec {
-        name: "real_estate_documents",
-        class: TableClass::Local,
-        ..BASE
-    },
-    TableSpec {
-        name: "insurance_documents",
         class: TableClass::Local,
         ..BASE
     },

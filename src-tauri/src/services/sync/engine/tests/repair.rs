@@ -476,7 +476,10 @@ async fn resync_replaces_a_capture_broken_profile_and_keeps_its_unsent_changes_i
 }
 
 /// Audit H3, as reproduced there: a policy with a contract PDF on `B`, then "Re-sync this
-/// device". The policy comes back from the vault under its ID, and so do its document and blob.
+/// device". The document's row reaches the sync server only with the re-sync's own push, after
+/// the vault's newest snapshot, so the replace does not bring it back: the next pull does. Its
+/// content is held through the replace (ADR 0030) and is there when the row comes back, with no
+/// download.
 #[tokio::test]
 async fn a_resync_keeps_the_contract_pdf_of_a_policy_the_vault_has() {
     let vault = vault().await;
@@ -510,6 +513,7 @@ async fn a_resync_keeps_the_contract_pdf_of_a_policy_the_vault_has() {
     resync_by_replace(&vault.relay, &vault.b, consent, dir.path(), &XorNative, NOW)
         .await
         .expect("resync");
+    round(&vault, &vault.b, RoundMode::Normal).await;
 
     let b = vault.b.lock();
     assert_eq!(
@@ -517,11 +521,13 @@ async fn a_resync_keeps_the_contract_pdf_of_a_policy_the_vault_has() {
             &b,
             "SELECT COUNT(*) FROM insurance_documents WHERE id = 'd1'"
         ),
-        1
+        1,
+        "the pull brought the row back"
     );
     assert_eq!(
         crate::services::attachment_store::read_all(&b, &blob).expect("blob"),
-        b"%PDF-1.7 contract".to_vec()
+        b"%PDF-1.7 contract".to_vec(),
+        "its content was held through the replace"
     );
 }
 

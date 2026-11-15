@@ -43,6 +43,7 @@ const ICONS: Record<UpkeepKind, LucideIcon> = {
   statement_due: Upload,
   backup_stale: Download,
   sync_stalled: RefreshCw,
+  sync_attachments: RefreshCw,
   valuation_stale: House,
   // The desktop's upkeep icons (`MilestoneRows`)
   loan_balance_check: FileCheck,
@@ -55,6 +56,7 @@ const VERBS: Record<UpkeepKind, string> = {
   statement_due: 'upkeep.actions.import',
   backup_stale: 'upkeep.actions.backup',
   sync_stalled: 'upkeep.actions.open',
+  sync_attachments: 'upkeep.actions.open',
   valuation_stale: 'upkeep.actions.revalue',
   loan_balance_check: 'upkeep.actions.enterBalance',
   loan_fixation_expired: 'upkeep.actions.enterRate',
@@ -79,6 +81,7 @@ function targetOf(row: UpkeepRow): string {
     case 'loan_fixation_expired':
       return row.sourceId ? loanEventPath(row.sourceId, 'rate_change') : routes.finance;
     case 'sync_stalled':
+    case 'sync_attachments':
       return settingsPath('sync');
     default:
       // `backup_stale`: the other two kinds open a sheet and never ask
@@ -99,7 +102,7 @@ function targetOf(row: UpkeepRow): string {
  * row that opened the sheet while the sheet is still sliding away.
  */
 export function UpkeepCard() {
-  const { t } = useTranslation(['mobile', 'milestones']);
+  const { t } = useTranslation(['mobile', 'milestones', 'deviceSync']);
   const { rows, accounts, lastImportByAccount } = useUpkeep();
   const { openImport } = useImportSheet();
   // Unfolded at first (C11): every row has a verb, and folded each was a tap further away. The
@@ -191,7 +194,7 @@ interface UpkeepItemProps {
  * (right: remind in a month, left: hide) and the long press's menu, the gestures of every row.
  */
 function UpkeepItem({ row, accounts, lastImportByAccount, onRecord, onImport }: UpkeepItemProps) {
-  const { t } = useTranslation(['mobile', 'milestones']);
+  const { t } = useTranslation(['mobile', 'milestones', 'deviceSync']);
   const fmt = useFormat();
   const subLine = useMilestoneSubLine();
   const milestoneActions = useMilestoneActions();

@@ -3,15 +3,18 @@
 //! `HttpRelay` produces for the same situation, including the argument checks `HttpRelay` makes
 //! before it sends anything. On top of that it has fault switches: a failure for the next call of
 //! a route, a lost push answer, pruning, and dishonest-relay knobs (`drop_op`, `replay_op`,
-//! `forget_op`, `set_swallow_pushes`).
+//! `forget_op`, `set_swallow_pushes`). Its blob store and blob knobs live in `fake/blobs.rs`.
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::future::Future;
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use uuid::Uuid;
+
 use super::{
-    AccountStatus, CheckoutPlan, OutgoingOp, PullPage, PulledOp, PushReceipt, Relay, RelayError,
-    RelayResult, ServerInfo, ServerMode, SnapshotBlob, VaultInfo,
+    AccountStatus, BlobBody, BlobPage, BlobSink, CheckoutPlan, Delivery, OutgoingOp, PullPage,
+    PulledOp, PushReceipt, Relay, RelayError, RelayResult, ServerInfo, ServerMode, SnapshotBlob,
+    VaultInfo,
 };
 use crate::services::sync::keys::VaultAuth;
 
@@ -46,6 +49,11 @@ pub enum Route {
     MailboxPut,
     MailboxTake,
     MailboxBurn,
+    PutBlob,
+    HeadBlob,
+    GetBlob,
+    ListBlobs,
+    DeleteBlob,
 }
 
 fn now() -> i64 {
@@ -71,6 +79,7 @@ struct Vault {
     snapshot: Option<SnapshotBlob>,
     /// The token rotation counter `vault_info` answers (`set_rotation`).
     rotation: u32,
+    blobs: blobs::VaultBlobs,
 }
 
 struct FakeState {
@@ -78,6 +87,8 @@ struct FakeState {
     vaults: HashMap<String, Vault>,
     next_account: u64,
     failures: HashMap<usize, VecDeque<RelayError>>,
+    /// Failures that hold for every call of a route until cleared (`set_failing`).
+    failing: HashMap<usize, RelayError>,
     lose_push_answer: bool,
     /// Test override of the per-vault op byte quota.
     op_quota: Option<u64>,
@@ -103,6 +114,12 @@ struct FakeState {
     server_info: Option<ServerInfo>,
     /// A self-hosted server with registration closed: `create_account` answers 403.
     registration_closed: bool,
+    /// The per-vault blob quota in bytes (`set_blob_quota`).
+    blob_quota: u64,
+    /// A full disk: blob and snapshot uploads answer `InsufficientStorage` (`set_no_room`).
+    no_room: bool,
+    /// What a blob listing reports as the server's clock (`set_server_now`); `None` = `now()`.
+    server_now: Option<Option<i64>>,
 }
 
 impl Default for FakeState {
@@ -112,6 +129,7 @@ impl Default for FakeState {
             vaults: HashMap::new(),
             next_account: 0,
             failures: HashMap::new(),
+            failing: HashMap::new(),
             lose_push_answer: false,
             op_quota: None,
             calls: Vec::new(),
@@ -129,8 +147,12 @@ impl Default for FakeState {
                 version: "1.0.0".into(),
                 protocol: 2,
                 mode: ServerMode::SelfHosted,
+                blobs: true,
             }),
             registration_closed: false,
+            blob_quota: blobs::DEFAULT_BLOB_QUOTA,
+            no_room: false,
+            server_now: None,
         }
     }
 }
@@ -198,6 +220,16 @@ impl FakeRelay {
             .push_back(error);
     }
 
+    /// Makes every call of `route` fail with `error` from now on (`None` clears it), unlike
+    /// `fail_next`. A failure queued with `fail_next` comes first.
+    pub fn set_failing(&self, route: Route, error: Option<RelayError>) {
+        let mut state = self.lock();
+        match error {
+            Some(error) => state.failing.insert(route as usize, error),
+            None => state.failing.remove(&(route as usize)),
+        };
+    }
+
     /// The payment page checkout answers: `base` followed by the plan's wire name (default
     /// `https://checkout.example.test/`).
     pub fn set_checkout_base(&self, base: &str) {
@@ -212,7 +244,8 @@ impl FakeRelay {
     }
 
     /// What `server_info` answers from now on; `None` is an old relay that does not know the
-    /// route (`BadRequest("not_found")`). Default: protocol 2, self-hosted, version 1.0.0.
+    /// route (`BadRequest("not_found")`). Default: protocol 2, self-hosted, version 1.0.0, with
+    /// blobs.
     pub fn set_server_info(&self, info: Option<ServerInfo>) {
         self.lock().server_info = info;
     }
@@ -435,11 +468,11 @@ impl FakeState {
     /// Records the call and takes the failure queued for it, if any.
     fn enter(&mut self, route: Route) -> RelayResult<()> {
         self.calls.push(route);
-        match self
+        let queued = self
             .failures
             .get_mut(&(route as usize))
-            .and_then(|queue| queue.pop_front())
-        {
+            .and_then(|queue| queue.pop_front());
+        match queued.or_else(|| self.failing.get(&(route as usize)).cloned()) {
             Some(error) => Err(error),
             None => Ok(()),
         }
@@ -591,6 +624,7 @@ impl Relay for FakeRelay {
                     bytes: 0,
                     snapshot: None,
                     rotation: 0,
+                    blobs: blobs::VaultBlobs::new(),
                 },
             );
             Ok(true)
@@ -755,6 +789,9 @@ impl Relay for FakeRelay {
             if stored.snapshot.as_ref().is_some_and(|s| seq < s.seq) {
                 return Err(RelayError::SnapshotOutdated);
             }
+            if state.no_room {
+                return Err(RelayError::InsufficientStorage);
+            }
             state.vault_mut(&vault.vault_id).snapshot = Some(SnapshotBlob { seq, bytes });
             Ok(())
         })();
@@ -789,8 +826,58 @@ impl Relay for FakeRelay {
         })();
         async move { result }
     }
+
+    fn put_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: Uuid,
+        sealed_len: u64,
+        body: BlobBody,
+    ) -> impl Future<Output = RelayResult<()>> + Send {
+        let result = self.blob_put(vault, blob, sealed_len, body);
+        async move { result }
+    }
+
+    fn head_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: Uuid,
+    ) -> impl Future<Output = RelayResult<Option<u64>>> + Send {
+        let result = self.blob_head(vault, blob);
+        async move { result }
+    }
+
+    fn get_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: Uuid,
+        sink: &mut (dyn BlobSink + Send),
+    ) -> impl Future<Output = RelayResult<Delivery>> + Send {
+        let result = self.blob_get(vault, blob, sink);
+        async move { result }
+    }
+
+    fn list_blobs(
+        &self,
+        vault: &VaultAuth,
+        after: Option<Uuid>,
+        limit: u32,
+    ) -> impl Future<Output = RelayResult<BlobPage>> + Send {
+        let result = self.blob_list(vault, after, limit);
+        async move { result }
+    }
+
+    fn delete_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: Uuid,
+    ) -> impl Future<Output = RelayResult<()>> + Send {
+        let result = self.blob_delete(vault, blob);
+        async move { result }
+    }
 }
 
+mod blobs;
 mod mailbox;
 #[cfg(test)]
 mod tests;

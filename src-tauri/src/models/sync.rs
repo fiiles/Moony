@@ -91,6 +91,51 @@ pub enum SyncProblem {
     Internal,
 }
 
+/// Why documents and photos do not move while ordinary sync goes on (ADR 0030): uploads of their
+/// content wait, everything else syncs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum SyncAttachmentsProblem {
+    /// The sync server has no room for more content (the vault's quota, or its disk at the
+    /// free-space floor): uploads wait; downloads go on.
+    #[serde(rename = "noRoom")]
+    NoRoom,
+    /// The sync server does not have the blob routes (no `blobs` feature): nothing moves until it
+    /// is updated.
+    #[serde(rename = "serverNeedsUpdate")]
+    ServerNeedsUpdate,
+}
+
+/// Where this device's documents and photos stand with sync (attachments design §5.6), counted by
+/// attachment row (a photo once): beside the ordinary phase, never part of it. Zeros while sync is
+/// off.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncAttachments {
+    /// Rows whose content is held here and not yet confirmed by the sync server, and can still
+    /// upload: while any waits, this device is not synchronised.
+    #[serde(rename = "waitingUpload")]
+    pub waiting_upload: u32,
+    /// The plaintext bytes of the content waiting to upload.
+    #[serde(rename = "waitingUploadBytes")]
+    pub waiting_upload_bytes: i64,
+    /// Rows whose content is on another device or the sync server, not fetched here yet.
+    #[serde(rename = "notHere")]
+    pub not_here: u32,
+    /// Rows whose content the sync server does not have yet (not uploaded from the other device).
+    #[serde(rename = "notOnServer")]
+    pub not_on_server: u32,
+    /// Rows whose content could not be fetched, or cannot upload by itself: failed items, which
+    /// never keep this device "not synchronised".
+    #[serde(rename = "failed")]
+    pub failed: u32,
+    /// Rows with any content not complete on this device, whatever the reason (the three counts
+    /// above leave out of each other what they hold): the backup does not have these.
+    #[serde(rename = "notOnDevice")]
+    pub not_on_device: u32,
+    /// Why documents and photos do not move, while ordinary sync goes on.
+    #[serde(rename = "problem")]
+    pub problem: Option<SyncAttachmentsProblem>,
+}
+
 /// What a build without the sync flag can still say about the open profile (`sync_profile_state`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct SyncProfileState {
@@ -152,6 +197,9 @@ pub struct SyncStatus {
     /// `None` while off or before the row exists.
     #[serde(rename = "enabledAt")]
     pub enabled_at: Option<i64>,
+    /// This device's documents and photos: content waiting to move, and their own problem.
+    #[serde(rename = "attachments")]
+    pub attachments: SyncAttachments,
 }
 
 /// The subscription a checkout is for.

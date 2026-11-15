@@ -11,8 +11,9 @@
 //! them; reading and deleting handle both (`services::attachments`).
 
 use crate::error::{AppError, Result};
-use crate::models::RealEstatePhoto;
+use crate::models::{AttachmentKind, RealEstatePhoto, RealEstatePhotoBatch};
 use crate::services::attachment_store;
+use crate::services::attachments::{ContentLookup, Variant};
 use image::imageops::FilterType;
 use image::{DynamicImage, ImageFormat};
 use rusqlite::{Connection, OptionalExtension};
@@ -105,6 +106,13 @@ fn encode_jpeg(img: &DynamicImage) -> Result<Vec<u8>> {
     Ok(out.into_inner())
 }
 
+/// A prepared photo of two given byte strings, for tests that need rows with content without
+/// decoding an image.
+#[cfg(test)]
+pub(crate) fn prepared_for_test(full: Vec<u8>, thumb: Vec<u8>) -> PreparedPhoto {
+    PreparedPhoto { full, thumb }
+}
+
 /// Store a prepared photo in its batch: both blobs and the row, in one transaction.
 pub fn record_photo(
     conn: &Connection,
@@ -113,27 +121,124 @@ pub fn record_photo(
     now: i64,
 ) -> Result<RealEstatePhoto> {
     batch_property(conn, batch_id)?;
-    let photo = RealEstatePhoto {
-        id: Uuid::new_v4().to_string(),
-        batch_id: batch_id.to_string(),
-        created_at: now,
-    };
+    let id = Uuid::new_v4().to_string();
     let tx = conn.unchecked_transaction()?;
     let full = attachment_store::put_bytes(&tx, &prepared.full)?;
     let thumb = attachment_store::put_bytes(&tx, &prepared.thumb)?;
     tx.execute(
         "INSERT INTO real_estate_photos (id, batch_id, blob_id, thumb_blob_id, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params![
-            photo.id,
-            photo.batch_id,
-            full.id,
-            thumb.id,
-            photo.created_at
-        ],
+        rusqlite::params![id, batch_id, full.id, thumb.id, now],
     )?;
     tx.commit()?;
-    Ok(photo)
+    let content = ContentLookup::new(conn)?;
+    let (blob, thumb_blob) = (Some(full.id.as_str()), Some(thumb.id.as_str()));
+    Ok(RealEstatePhoto {
+        id,
+        batch_id: batch_id.to_string(),
+        created_at: now,
+        content: content.of(AttachmentKind::Photo, blob, thumb_blob, Variant::Full)?,
+        thumb_content: content.of(AttachmentKind::Photo, blob, thumb_blob, Variant::Thumbnail)?,
+    })
+}
+
+/// The photos of a batch, oldest first, each with where its content and thumbnail are.
+pub fn list_photos(conn: &Connection, batch_id: &str) -> Result<Vec<RealEstatePhoto>> {
+    photos_of(conn, &ContentLookup::new(conn)?, batch_id)
+}
+
+fn photos_of(
+    conn: &Connection,
+    content: &ContentLookup,
+    batch_id: &str,
+) -> Result<Vec<RealEstatePhoto>> {
+    let mut stmt = conn.prepare_cached(
+        "SELECT id, batch_id, created_at, blob_id, thumb_blob_id
+         FROM real_estate_photos WHERE batch_id = ?1 ORDER BY created_at",
+    )?;
+    let rows = stmt.query_map([batch_id], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, i64>(2)?,
+            row.get::<_, Option<String>>(3)?,
+            row.get::<_, Option<String>>(4)?,
+        ))
+    })?;
+    let mut photos = Vec::new();
+    for row in rows {
+        let (id, batch_id, created_at, blob, thumb) = row?;
+        let (blob, thumb) = (blob.as_deref(), thumb.as_deref());
+        photos.push(RealEstatePhoto {
+            id,
+            batch_id,
+            created_at,
+            content: content.of(AttachmentKind::Photo, blob, thumb, Variant::Full)?,
+            thumb_content: content.of(AttachmentKind::Photo, blob, thumb, Variant::Thumbnail)?,
+        });
+    }
+    Ok(photos)
+}
+
+/// A batch with its photos.
+pub fn batch(conn: &Connection, batch_id: &str) -> Result<RealEstatePhotoBatch> {
+    let content = ContentLookup::new(conn)?;
+    let (id, real_estate_id, photo_date, description, created_at) = conn
+        .query_row(
+            "SELECT id, real_estate_id, photo_date, description, created_at
+             FROM real_estate_photo_batches WHERE id = ?1",
+            [batch_id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, Option<String>>(3)?,
+                    row.get::<_, i64>(4)?,
+                ))
+            },
+        )
+        .optional()?
+        .ok_or_else(|| AppError::NotFound("Batch not found".into()))?;
+    Ok(RealEstatePhotoBatch {
+        photos: photos_of(conn, &content, &id)?,
+        id,
+        real_estate_id,
+        photo_date,
+        description,
+        created_at,
+    })
+}
+
+/// The photo batches of a property, newest first, with their photos (oldest first).
+pub fn list_batches(conn: &Connection, real_estate_id: &str) -> Result<Vec<RealEstatePhotoBatch>> {
+    let content = ContentLookup::new(conn)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, real_estate_id, photo_date, description, created_at
+         FROM real_estate_photo_batches WHERE real_estate_id = ?1 ORDER BY photo_date DESC",
+    )?;
+    let rows = stmt.query_map([real_estate_id], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, i64>(2)?,
+            row.get::<_, Option<String>>(3)?,
+            row.get::<_, i64>(4)?,
+        ))
+    })?;
+    let mut batches = Vec::new();
+    for row in rows {
+        let (id, real_estate_id, photo_date, description, created_at) = row?;
+        batches.push(RealEstatePhotoBatch {
+            photos: photos_of(conn, &content, &id)?,
+            id,
+            real_estate_id,
+            photo_date,
+            description,
+            created_at,
+        });
+    }
+    Ok(batches)
 }
 
 #[cfg(test)]
@@ -152,6 +257,7 @@ mod tests {
         files_schema::migrate(&conn).expect("files schema");
         conn.execute_batch(
             r#"
+            CREATE TABLE sync_state (id INTEGER PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE real_estate_photo_batches (
                 id TEXT PRIMARY KEY,
                 real_estate_id TEXT NOT NULL,
@@ -338,5 +444,46 @@ mod tests {
         let prepared = prepare_photo(&png(10, 10)).expect("prepared");
         assert!(record_photo(&conn, "batch-1", &prepared, 0).is_err());
         assert_eq!(blob_count(&conn), 0);
+    }
+
+    #[test]
+    fn photo_batches_list_with_both_contents_newest_first() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date, description) \
+               VALUES ('old', 'prop-1', 100, 'Old'), ('new', 'prop-1', 300, 'New'), \
+                      ('mid', 'prop-1', 200, NULL), ('other', 'prop-2', 400, 'Other');",
+        )
+        .expect("batches");
+        let full = attachment_store::put_bytes(&conn, b"full")
+            .expect("blob")
+            .id;
+        let thumb = attachment_store::put_bytes(&conn, b"thumb")
+            .expect("blob")
+            .id;
+        for (id, batch, at) in [("p2", "new", 20), ("p1", "new", 10), ("q1", "old", 5)] {
+            conn.execute(
+                "INSERT INTO real_estate_photos (id, batch_id, blob_id, thumb_blob_id, created_at) \
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                rusqlite::params![id, batch, full, thumb, at],
+            )
+            .expect("photo");
+        }
+
+        let batches = list_batches(&conn, "prop-1").expect("list");
+        let order: Vec<_> = batches.iter().map(|b| b.id.as_str()).collect();
+        assert_eq!(order, ["new", "mid", "old", "batch-1"]);
+        let photos: Vec<_> = batches[0].photos.iter().map(|p| p.id.as_str()).collect();
+        assert_eq!(photos, ["p1", "p2"], "oldest photo first");
+        assert!(batches[1].photos.is_empty());
+        assert_eq!(batches[0].description.as_deref(), Some("New"));
+        let photo = &batches[0].photos[0];
+        assert_eq!(
+            (photo.content, photo.thumb_content),
+            (
+                crate::models::AttachmentContent::Here,
+                crate::models::AttachmentContent::Here
+            )
+        );
     }
 }

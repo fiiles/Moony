@@ -433,9 +433,10 @@ pub fn status(
     }
     let legacy_missing = missing;
     // Rows whose encrypted content is gone (an `attachments.db` left behind when the profile was
-    // copied, say) are missing, not stored.
+    // copied, say) are missing, not stored. With device sync on, content the transfer queue
+    // expects to download is not a failed conversion (`rows_without_content_or_download`).
     let content_missing = if store_available {
-        attachment_store::rows_without_content(conn)?
+        attachment_store::rows_without_content_or_download(conn)?
     } else {
         0
     };
@@ -480,6 +481,7 @@ mod tests {
                 id TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE,
                 found_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
+            CREATE TABLE sync_blobs (blob_id TEXT PRIMARY KEY, state TEXT NOT NULL, last_error TEXT);
             "#,
         )
         .expect("schema");
@@ -800,6 +802,45 @@ mod tests {
         .expect("rows");
         let s = status(&conn, data.path(), &ConversionProgress::default()).expect("status");
         assert_eq!((s.stored, s.missing, s.legacy_pending), (1, 1, 0));
+    }
+
+    /// A `down` entry of the device-sync transfer queue is not content: the converted originals in
+    /// the quarantine may be the only copy (the entry may have been `up` before this store lost the
+    /// blob, never confirmed by the sync server).
+    #[test]
+    fn content_on_its_way_never_releases_the_quarantine() {
+        let conn = setup_test_db();
+        let data = tempfile::tempdir().expect("data");
+        fs::create_dir_all(data.path().join(QUARANTINE_DIR)).expect("quarantine");
+        conn.execute_batch(
+            "INSERT INTO real_estate_documents (id, name, blob_id) VALUES ('d', 'x', 'lost-blob');
+             INSERT INTO sync_blobs (blob_id, state) VALUES ('lost-blob', 'down');",
+        )
+        .expect("rows");
+        assert!(!finish_quarantine(&conn, data.path()).expect("finish"));
+        assert!(data.path().join(QUARANTINE_DIR).exists());
+    }
+
+    /// Content the sync server is expected to deliver is not a failed conversion; content with no
+    /// entry, or with an ID that can never be fetched, is missing.
+    #[test]
+    fn content_on_its_way_is_not_counted_missing() {
+        let conn = setup_test_db();
+        let data = tempfile::tempdir().expect("data");
+        let blob = attachment_store::put_bytes(&conn, b"here")
+            .expect("blob")
+            .id;
+        conn.execute_batch(&format!(
+            "INSERT INTO real_estate_documents (id, name, blob_id) VALUES
+               ('a', 'x', '{blob}'), ('b', 'y', 'coming'), ('c', 'z', 'not-on-server'),
+               ('d', 'w', 'lost'), ('e', 'v', 'invalid');
+             INSERT INTO sync_blobs (blob_id, state, last_error) VALUES
+               ('coming', 'down', NULL), ('not-on-server', 'down', 'notOnServer'),
+               ('invalid', 'down', 'invalidId');"
+        ))
+        .expect("rows");
+        let s = status(&conn, data.path(), &ConversionProgress::default()).expect("status");
+        assert_eq!((s.stored, s.missing, s.legacy_pending), (3, 2, 0));
     }
 
     #[test]

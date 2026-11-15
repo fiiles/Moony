@@ -107,6 +107,9 @@ fn fresh_profile(path: &Path) -> Result<Connection> {
     conn.execute_batch(
         "PRAGMA foreign_keys = ON; PRAGMA journal_mode = MEMORY; PRAGMA synchronous = OFF;",
     )?;
+    // The attachment store of the device: in memory, as migrated as the app's own `files` schema.
+    conn.execute("ATTACH DATABASE ':memory:' AS files", [])?;
+    crate::db::files_schema::migrate(&conn)?;
     Ok(conn)
 }
 

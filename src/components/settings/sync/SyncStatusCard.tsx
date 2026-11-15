@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { SyncStatus } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { useAttachmentsStatusText } from '@/hooks/use-attachments-status-text';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { secondsToDate } from '@/utils/sync-status';
@@ -26,6 +27,7 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
   const [serverOpen, setServerOpen] = useState(false);
 
   const running = syncNow.isPending || status.phase === 'syncing';
+  const attachments = useAttachmentsStatusText(status.attachments);
 
   const handleSyncNow = async () => {
     if (running) return;
@@ -77,6 +79,15 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
                 {running ? t('indicator.syncing') : t('status.syncNow')}
               </Button>
             </SettingsRow>
+            <SettingsRow
+              label={t('attachments.title')}
+              hint={
+                <>
+                  {attachments.value}
+                  {attachments.problem && <span className="block">{attachments.problem}</span>}
+                </>
+              }
+            />
             {!status.ownServer && paidUntil && (
               <SettingsRow
                 label={t('status.subscription')}

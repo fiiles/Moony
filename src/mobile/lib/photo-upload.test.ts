@@ -24,6 +24,8 @@ const photo = (batchId: string): RealEstatePhoto => ({
   id: `photo-${batchId}`,
   batchId,
   createdAt: 0,
+  content: 'here',
+  thumbContent: 'here',
 });
 
 /**
@@ -225,7 +227,13 @@ describe('uploadToTodayBatch', () => {
 describe('deletePhotoLive', () => {
   const withPhotos = (id: string, photoIds: string[]): RealEstatePhotoBatch => ({
     ...batch(id, TODAY),
-    photos: photoIds.map((photoId) => ({ id: photoId, batchId: id, createdAt: 0 })),
+    photos: photoIds.map((photoId) => ({
+      id: photoId,
+      batchId: id,
+      createdAt: 0,
+      content: 'here',
+      thumbContent: 'here',
+    })),
   });
 
   /** The backend as it is when the delete confirms: `batches` is the live state. */

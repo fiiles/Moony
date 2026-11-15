@@ -238,6 +238,7 @@ async fn the_status_counts_pending_changes_and_held_devices() {
         paid_until: Some(NOW),
         refused_rows: 2,
         rounds: 0,
+        attachments_problem: None,
     };
 
     let status = status(&vault.a.lock(), &runtime).expect("status");
@@ -259,6 +260,7 @@ async fn the_status_counts_pending_changes_and_held_devices() {
             server_address: Some("https://relay.test".into()),
             server_insecure: false,
             enabled_at: None,
+            attachments: Default::default(),
         }
     );
 }

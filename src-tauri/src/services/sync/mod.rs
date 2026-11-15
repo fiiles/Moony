@@ -10,6 +10,7 @@
 
 pub mod backups;
 pub mod binding;
+pub mod blobs;
 pub mod capture;
 pub mod chain;
 pub mod changeset;
@@ -21,6 +22,7 @@ pub mod engine;
 pub mod envelope;
 pub mod error;
 pub mod feature;
+pub mod held_blobs;
 pub mod hlc;
 pub mod impact;
 pub mod join;
@@ -37,6 +39,8 @@ pub mod relay;
 mod relay_e2e;
 #[cfg(test)]
 mod relay_e2e_admin;
+#[cfg(test)]
+mod relay_e2e_blobs;
 #[cfg(test)]
 mod relay_e2e_pairing;
 pub mod repair;

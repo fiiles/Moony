@@ -427,4 +427,34 @@ describe('buildUpkeepRows', () => {
       expect(rows.map((r) => r.kind)).not.toContain('sync_stalled');
     });
   });
+  describe('sync_attachments', () => {
+    it('is one quiet row without a milestone, after the sync reminder', () => {
+      const rows = buildUpkeepRows(
+        input({
+          milestones: [milestone('sync_stalled')],
+          attachmentsProblem: 'noRoom',
+        })
+      );
+      expect(rows.map((r) => r.id)).toEqual(['sync_stalled', 'sync_attachments']);
+      const row = rows[1];
+      expect(row.title.key).toBe('deviceSync:attachments.problem.noRoom');
+      expect(row.milestone).toBeUndefined();
+    });
+
+    it('names the problem it is about', () => {
+      const rows = buildUpkeepRows(input({ attachmentsProblem: 'serverNeedsUpdate' }));
+      expect(rows.map((r) => r.title.key)).toEqual([
+        'deviceSync:attachments.problem.serverNeedsUpdate',
+      ]);
+    });
+
+    it('is absent for the effective no problem: the caller passes null (noRoom with nothing waiting)', () => {
+      expect(buildUpkeepRows(input({ attachmentsProblem: null }))).toEqual([]);
+    });
+
+    it('is absent without a problem', () => {
+      expect(buildUpkeepRows(input({}))).toEqual([]);
+      expect(buildUpkeepRows(input({ attachmentsProblem: null }))).toEqual([]);
+    });
+  });
 });

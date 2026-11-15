@@ -121,10 +121,13 @@ pub fn after_merge(conn: &Connection, touched: &Touched, now: i64) -> Result<Rep
     })
 }
 
-/// Every repair over every parent and scope, as after a snapshot restore. Queues no history
-/// work: a restored snapshot brings its own.
+/// Every repair over every parent and scope, as after a snapshot restore, then the whole
+/// document and photo transfer queue against the store. Queues no history work: a restored
+/// snapshot brings its own.
 pub fn full(conn: &Connection, now: i64) -> Result<RepairReport> {
-    after_merge(conn, &everything(conn)?, now)
+    let report = after_merge(conn, &everything(conn)?, now)?;
+    super::blobs::queue::reconcile(conn, now)?;
+    Ok(report)
 }
 
 /// A `Touched` naming every parent, ticker, budget and rename scope there is.

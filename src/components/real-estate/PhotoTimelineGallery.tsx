@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,8 +24,19 @@ import {
   ChevronRight,
   Upload,
   Download,
+  Loader2,
 } from 'lucide-react';
-import { attachmentsApi, realEstateApi } from '@/lib/tauri-api';
+import { attachmentsApi, deviceSyncApi, realEstateApi } from '@/lib/tauri-api';
+import { translateApiError } from '@/lib/translate-api-error';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  attachmentView,
+  thumbnailPlaceholder,
+  thumbnailShown,
+  type AttachmentView,
+} from '@/utils/attachment-content';
+import { reconcileLightbox } from '@/utils/lightbox-photos';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '@/lib/use-format';
@@ -52,16 +63,47 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingBatchId, setDeletingBatchId] = useState<string | null>(null);
+  // Images whose load failed although their row said the bytes were here (a race with the sync
+  // lanes); keyed by id and content state, so a new state mounts a fresh element and tries again.
+  const [brokenImages, setBrokenImages] = useState<ReadonlySet<string>>(new Set());
+  const markBroken = (key: string) => setBrokenImages((prev) => new Set(prev).add(key));
+  // Photos whose full content this lightbox visit already asked for (once per open).
+  const requestedFull = useRef<Set<string>>(new Set());
+  // Photos whose ask for the full content failed in this lightbox visit (shown as `failed`).
+  const [failedAsks, setFailedAsks] = useState<ReadonlySet<string>>(new Set());
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  // Counts lightbox visits (every open and close): the late answer of a download ask or retry
+  // from an earlier visit must not mark, or toast over, the one that is open now.
+  const visit = useRef(0);
+
+  const closeLightbox = () => {
+    visit.current += 1;
+    setLightboxOpen(false);
+    setBrokenImages(new Set());
+    setFailedAsks(new Set());
+    setRetryingId(null);
+  };
 
   // Upload form state
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
   const [uploadDescription, setUploadDescription] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  const { data: batches = [], isLoading } = useQuery<RealEstatePhotoBatch[]>({
+  const {
+    data: batches = [],
+    isLoading,
+    dataUpdatedAt,
+  } = useQuery<RealEstatePhotoBatch[]>({
     queryKey: ['real-estate-photo-batches', realEstateId],
     queryFn: () => realEstateApi.getPhotoBatches(realEstateId),
   });
+
+  // Each refetch gives broken images one new attempt (never a timer).
+  const [seenUpdate, setSeenUpdate] = useState(dataUpdatedAt);
+  if (seenUpdate !== dataUpdatedAt) {
+    setSeenUpdate(dataUpdatedAt);
+    setBrokenImages(new Set());
+  }
 
   // Keep the formats the backend decodes; HEIC (not supported) and anything else get a message.
   const processFiles = (files: File[]): { processed: File[]; errors: string[] } => {
@@ -254,13 +296,86 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
     });
   };
 
+  // A row refetched by the attachments event replaces the lightbox's copy of the photo.
+  const livePhotoById = new Map(batches.flatMap((b) => b.photos).map((p) => [p.id, p]));
+  // Photos deleted meanwhile drop out; the snapshot's order stays.
+  const reconciled = reconcileLightbox(
+    lightboxPhotos.map((p) => p.id),
+    new Set(livePhotoById.keys()),
+    lightboxIndex
+  );
+  const livePhotos = reconciled.ids.flatMap((id) => livePhotoById.get(id) ?? []);
+  const shownIndex = reconciled.index;
+  if (lightboxOpen && (reconciled.close || reconciled.ids.length !== lightboxPhotos.length)) {
+    if (reconciled.close) {
+      closeLightbox();
+    } else {
+      setLightboxPhotos(livePhotos);
+      setLightboxIndex(reconciled.index);
+    }
+  }
+  const lightboxPhoto = lightboxOpen ? livePhotos[shownIndex] : undefined;
+  const lightboxPhotoId = lightboxPhoto?.id;
+  const lightboxContent = lightboxPhoto?.content;
+
+  useEffect(() => {
+    if (!lightboxOpen) {
+      requestedFull.current.clear();
+      return;
+    }
+    if (!lightboxPhotoId || lightboxContent !== 'notHere') return;
+    if (requestedFull.current.has(lightboxPhotoId)) return;
+    requestedFull.current.add(lightboxPhotoId);
+    const askedIn = visit.current;
+    // The list refreshes through the `sync-attachments-changed` event; this changes no financial
+    // data, so no snapshot and no cache writes by hand.
+    deviceSyncApi.downloadAttachment('photo', lightboxPhotoId).catch((error) => {
+      if (visit.current !== askedIn) return;
+      setFailedAsks((prev) => new Set(prev).add(lightboxPhotoId));
+      toast.error(tc('status.error'), {
+        description: translateApiError(error instanceof Error ? error : String(error), tc),
+      });
+    });
+  }, [lightboxOpen, lightboxPhotoId, lightboxContent, tc]);
+
+  // "Try again" in the lightbox: ask again for a photo whose content is `notHere`, retry one that
+  // `failed`. The event refreshes the list; no snapshot and no cache writes by hand.
+  const retryPhoto = (photo: RealEstatePhoto) => {
+    if (retryingId) return;
+    const askedIn = visit.current;
+    setRetryingId(photo.id);
+    setFailedAsks((prev) => {
+      const next = new Set(prev);
+      next.delete(photo.id);
+      return next;
+    });
+    const call =
+      photo.content === 'failed'
+        ? deviceSyncApi.retryAttachment('photo', photo.id)
+        : deviceSyncApi.downloadAttachment('photo', photo.id);
+    call
+      .catch((error) => {
+        if (visit.current !== askedIn) return;
+        if (photo.content === 'notHere') setFailedAsks((prev) => new Set(prev).add(photo.id));
+        toast.error(tc('status.error'), {
+          description: translateApiError(error instanceof Error ? error : String(error), tc),
+        });
+      })
+      .finally(() => {
+        if (visit.current === askedIn) setRetryingId(null);
+      });
+  };
+
   const getPhotoUrl = (photo: RealEstatePhoto) => attachmentUrl('photo-thumb', photo.id);
 
   const getFullPhotoUrl = (photo: RealEstatePhoto) => attachmentUrl('photo', photo.id);
 
   const openLightbox = (batch: RealEstatePhotoBatch, photoIndex: number) => {
+    visit.current += 1;
     setLightboxPhotos(batch.photos);
     setLightboxIndex(photoIndex);
+    setBrokenImages(new Set());
+    setFailedAsks(new Set());
     setLightboxOpen(true);
   };
 
@@ -405,14 +520,46 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                         </span>
                       </Button>
                     </label>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDownloadBatch(batch)}
-                      title={t('gallery.downloadBatch')}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    {(() => {
+                      // A batch is saved whole: wait until every photo's content is here.
+                      const blocking = batch.photos
+                        .map((p) => attachmentView(p.content, 'desktop'))
+                        .filter((v) => !v.openable);
+                      const reason = blocking.some((v) => v.busy)
+                        ? 'downloading'
+                        : (blocking[0]?.note ?? null);
+                      const button = (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={reason !== null}
+                          onClick={() => handleDownloadBatch(batch)}
+                          aria-label={t('gallery.downloadBatch')}
+                          title={reason ? undefined : t('gallery.downloadBatch')}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      );
+                      // A disabled button shows no native title in a WKWebView and takes no focus:
+                      // the reason sits on a tooltip whose trigger is the span around it.
+                      return reason ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span
+                              className="inline-flex"
+                              tabIndex={0}
+                              role="group"
+                              aria-label={`${t('gallery.downloadBatch')}: ${tc(`attachments.content.${reason}`)}`}
+                            >
+                              {button}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{tc(`attachments.content.${reason}`)}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        button
+                      );
+                    })()}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -444,26 +591,44 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                       className="aspect-square relative rounded-r1 overflow-hidden border bg-well cursor-pointer hover:opacity-90 transition-opacity group"
                       onClick={() => openLightbox(batch, idx)}
                     >
-                      <img src={getPhotoUrl(photo)} alt="" className="object-cover w-full h-full" />
+                      {thumbnailShown(photo.thumbContent) &&
+                      !brokenImages.has(`thumb:${photo.id}:${photo.thumbContent}`) ? (
+                        <img
+                          key={photo.thumbContent}
+                          src={getPhotoUrl(photo)}
+                          alt=""
+                          onError={() => markBroken(`thumb:${photo.id}:${photo.thumbContent}`)}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : thumbnailPlaceholder(photo.thumbContent) === 'loading' ? (
+                        <Skeleton className="size-full rounded-none" />
+                      ) : (
+                        // Nothing is coming: a still tile, no pulse
+                        <div aria-hidden className="size-full bg-well" />
+                      )}
                       <button
                         className="absolute top-1 right-1 p-1 bg-black/50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={(e) => {
                           e.stopPropagation();
                           deletePhotoMutation.mutate(photo.id);
                         }}
+                        aria-label={tc('buttons.delete')}
                       >
                         <X className="h-3 w-3 text-white" />
                       </button>
-                      <button
-                        className="absolute top-1 left-1 p-1 bg-black/50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownloadPhoto(photo);
-                        }}
-                        title={t('gallery.downloadPhoto')}
-                      >
-                        <Download className="h-3 w-3 text-white" />
-                      </button>
+                      {attachmentView(photo.content, 'desktop').openable && (
+                        <button
+                          className="absolute top-1 left-1 p-1 bg-black/50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadPhoto(photo);
+                          }}
+                          title={t('gallery.downloadPhoto')}
+                          aria-label={t('gallery.downloadPhoto')}
+                        >
+                          <Download className="h-3 w-3 text-white" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -540,32 +705,37 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
       {lightboxOpen && lightboxPhotos.length > 0 && (
         <div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-          onClick={() => setLightboxOpen(false)}
+          onClick={closeLightbox}
         >
           <button
             className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded"
-            onClick={() => setLightboxOpen(false)}
+            onClick={closeLightbox}
+            aria-label={tc('buttons.close')}
           >
             <X className="h-6 w-6" />
           </button>
-          <button
-            className="absolute top-4 left-4 p-2 text-white hover:bg-white/10 rounded"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDownloadPhoto(lightboxPhotos[lightboxIndex]);
-            }}
-            title={t('gallery.downloadPhoto')}
-          >
-            <Download className="h-6 w-6" />
-          </button>
-          {lightboxPhotos.length > 1 && (
+          {lightboxPhoto && attachmentView(lightboxPhoto.content, 'desktop').openable && (
+            <button
+              className="absolute top-4 left-4 p-2 text-white hover:bg-white/10 rounded"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadPhoto(lightboxPhoto);
+              }}
+              title={t('gallery.downloadPhoto')}
+              aria-label={t('gallery.downloadPhoto')}
+            >
+              <Download className="h-6 w-6" />
+            </button>
+          )}
+          {livePhotos.length > 1 && (
             <>
               <button
                 className="absolute left-4 p-2 text-white hover:bg-white/10 rounded"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setLightboxIndex((i) => (i - 1 + lightboxPhotos.length) % lightboxPhotos.length);
+                  setLightboxIndex((i) => (i - 1 + livePhotos.length) % livePhotos.length);
                 }}
+                aria-label={tc('buttons.previous')}
               >
                 <ChevronLeft className="h-8 w-8" />
               </button>
@@ -573,21 +743,88 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                 className="absolute right-4 p-2 text-white hover:bg-white/10 rounded"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setLightboxIndex((i) => (i + 1) % lightboxPhotos.length);
+                  setLightboxIndex((i) => (i + 1) % livePhotos.length);
                 }}
+                aria-label={tc('buttons.next')}
               >
                 <ChevronRight className="h-8 w-8" />
               </button>
             </>
           )}
-          <img
-            src={getFullPhotoUrl(lightboxPhotos[lightboxIndex])}
-            alt=""
-            className="max-h-[90vh] max-w-[90vw] object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {lightboxPhoto &&
+            (() => {
+              // An ask that failed shows as `failed` instead of an endless spinner.
+              const state: AttachmentView =
+                lightboxPhoto.content === 'notHere' && failedAsks.has(lightboxPhoto.id)
+                  ? { openable: false, note: 'failed', action: 'retry', busy: false }
+                  : attachmentView(lightboxPhoto.content, 'desktop');
+              const fullKey = `full:${lightboxPhoto.id}:${lightboxPhoto.content}`;
+              const thumbKey = `thumb:${lightboxPhoto.id}:${lightboxPhoto.thumbContent}`;
+              const noteText = state.note ? tc(`attachments.content.${state.note}`) : null;
+              if (state.openable && !brokenImages.has(fullKey)) {
+                // Keyed by the content state: a photo that turns `here` mounts a fresh element,
+                // because an `<img>` never retries a load the protocol refused.
+                return (
+                  <img
+                    key={lightboxPhoto.content}
+                    src={getFullPhotoUrl(lightboxPhoto)}
+                    alt=""
+                    onError={() => markBroken(fullKey)}
+                    className="max-h-[90vh] max-w-[90vw] object-contain"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                );
+              }
+              return (
+                <div
+                  className="relative flex items-center justify-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {thumbnailShown(lightboxPhoto.thumbContent) && !brokenImages.has(thumbKey) ? (
+                    <img
+                      key={lightboxPhoto.thumbContent}
+                      src={getPhotoUrl(lightboxPhoto)}
+                      alt=""
+                      onError={() => markBroken(thumbKey)}
+                      className="max-h-[90vh] max-w-[90vw] object-contain"
+                    />
+                  ) : (
+                    <Skeleton className="h-[50vh] w-[50vw]" />
+                  )}
+                  {state.busy && (
+                    <div
+                      role="status"
+                      aria-label={tc('attachments.content.fetching')}
+                      title={tc('attachments.content.fetching')}
+                      className="absolute inset-0 grid place-items-center bg-black/40"
+                    >
+                      <Loader2 aria-hidden className="size-8 animate-spin text-white" />
+                    </div>
+                  )}
+                  {!state.busy && noteText && (
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-black/50 p-2 text-sm text-white">
+                      <span>{noteText}</span>
+                      {state.action === 'retry' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          // Same look as the lightbox's other controls: white on the dark overlay.
+                          className="border-white/50 text-white hover:bg-white/10 hover:text-white [&_svg]:text-white"
+                          loading={retryingId === lightboxPhoto.id}
+                          // One retry at a time: while another photo's runs, this would do nothing
+                          disabled={retryingId !== null}
+                          onClick={() => retryPhoto(lightboxPhoto)}
+                        >
+                          {tc('attachments.content.retry')}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           <div className="absolute bottom-4 text-white text-sm">
-            {lightboxIndex + 1} / {lightboxPhotos.length}
+            {shownIndex + 1} / {livePhotos.length}
           </div>
         </div>
       )}

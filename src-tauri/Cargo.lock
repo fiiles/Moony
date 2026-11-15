@@ -3033,6 +3033,7 @@ dependencies = [
  "csv",
  "encoding_rs",
  "flate2",
+ "futures-util",
  "hex",
  "hkdf",
  "hmac",

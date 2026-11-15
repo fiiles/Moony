@@ -317,7 +317,9 @@
     "rowMenu": "More actions: {{name}}",
     "previewFailed": "The preview could not be shown. Open the document in Moony on your computer.",
     "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out"
+    "zoomOut": "Zoom out",
+    "notHereSub": "On your other devices · tap to download",
+    "elsewhereSub": "On your other devices"
   },
   "policy": {
     "copy": "Copy contract number",
@@ -811,6 +813,8 @@
     "restoreConfirmDescription": "The backup from {{date}} (Moony {{version}}, {{attachments}} attachments, {{size}}) replaces the data on this phone. Back up first if you want to keep the current data. Moony then locks; unlock it with the password that was in use when the backup was made.",
     "osBackupNote": "The profile is not saved in the phone's own backup (iCloud or a computer). The Moony backup you save yourself is the only copy outside this phone.",
     "exportSummary": "{{tables}} tables, {{rows}} rows.",
+    "notHere_one": "{{count}} document or photo is not on this phone and is not in this backup.",
+    "notHere_other": "{{count}} documents and photos are not on this phone and are not in this backup.",
     "syncLead": "Moony saves a backup before sync replaces data on this phone. Moony's data is left out of your phone's own backups, so this list and Files are the only way to reach them.",
     "syncSaveCopy": "Save a copy to Files",
     "syncCopySaved": "A copy was saved to Files",

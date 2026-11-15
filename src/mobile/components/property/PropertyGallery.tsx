@@ -6,6 +6,8 @@ import type { RealEstatePhotoBatch } from '@shared/schema';
 import { realEstateApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
+import { Skeleton } from '@/components/ui/skeleton';
+import { thumbnailShown } from '@/utils/attachment-content';
 import { attachmentUrl } from '@/utils/attachment-url';
 import { PHOTO_ACCEPT, splitPhotoFiles } from '@/utils/photo-files';
 import { CaptureButtons } from '@/mobile/components/documents/CaptureButtons';
@@ -45,6 +47,8 @@ export function PropertyGallery({ propertyId }: PropertyGalleryProps) {
     data: batches = NO_BATCHES,
     isLoading,
     error: loadError,
+    isSuccess,
+    dataUpdatedAt,
     refetch,
   } = useQuery<RealEstatePhotoBatch[]>({
     queryKey: ['real-estate-photo-batches', propertyId],
@@ -60,6 +64,20 @@ export function PropertyGallery({ propertyId }: PropertyGalleryProps) {
   // What the confirm sentence says is read from the batches as they are now (refreshed when the
   // sheet opens): an upload may have landed since the thumbnail was tapped. The delete itself decides
   // on a fresh read of its own as well (`deletePhotoLive`).
+  // Thumbnails whose load failed although their row said the bytes were here (a race with the sync
+  // lanes), keyed by id and state; each refresh of the list gives them one new attempt (no timer)
+  const [brokenThumbs, setBrokenThumbs] = useState<ReadonlySet<string>>(new Set());
+  const [seenUpdate, setSeenUpdate] = useState(dataUpdatedAt);
+  if (seenUpdate !== dataUpdatedAt) {
+    setSeenUpdate(dataUpdatedAt);
+    setBrokenThumbs(new Set());
+  }
+  // Deleted on another device while its viewer is open: the sheets close quietly
+  if (viewOpen && viewing && isSuccess && !photos.some((photo) => photo.id === viewing.id)) {
+    setViewOpen(false);
+    setConfirmOpen(false);
+  }
+
   const live = viewing ? (photos.find((photo) => photo.id === viewing.id) ?? viewing) : null;
 
   const chosen = (files: File[]) => {
@@ -112,13 +130,26 @@ export function PropertyGallery({ propertyId }: PropertyGalleryProps) {
                 // No text selection and no callout: a long press must not offer Save or Copy
                 className="relative block aspect-square w-full select-none overflow-hidden rounded-r2 border border-line bg-well p-0 [-webkit-touch-callout:none] active:opacity-80"
               >
-                <img
-                  src={attachmentUrl('photo-thumb', photo.id)}
-                  alt=""
-                  loading="lazy"
-                  draggable={false}
-                  className="pointer-events-none block size-full select-none object-cover [-webkit-touch-callout:none]"
-                />
+                {thumbnailShown(photo.thumbContent) &&
+                !brokenThumbs.has(`${photo.id}:${photo.thumbContent}`) ? (
+                  <img
+                    // Keyed by state: a thumbnail that arrives mounts fresh and loads
+                    key={photo.thumbContent}
+                    src={attachmentUrl('photo-thumb', photo.id)}
+                    alt=""
+                    loading="lazy"
+                    draggable={false}
+                    onError={() =>
+                      setBrokenThumbs((prev) =>
+                        new Set(prev).add(`${photo.id}:${photo.thumbContent}`)
+                      )
+                    }
+                    className="pointer-events-none block size-full select-none object-cover [-webkit-touch-callout:none]"
+                  />
+                ) : (
+                  // No thumbnail on this phone yet: it arrives by itself
+                  <Skeleton className="size-full rounded-none" />
+                )}
               </button>
             </li>
           ))}
@@ -140,7 +171,8 @@ export function PropertyGallery({ propertyId }: PropertyGalleryProps) {
       <PhotoViewerSheet
         open={viewOpen}
         onOpenChange={setViewOpen}
-        photo={viewing}
+        photo={live}
+        refreshedAt={dataUpdatedAt}
         // A photo committed between the delete's re-read of the batches and `deletePhotoBatch`
         // would go with the batch: nothing is deleted while a photo is on its way
         deleteDisabled={upload.isPending}

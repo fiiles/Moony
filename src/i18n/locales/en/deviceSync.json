@@ -414,7 +414,7 @@
       "documents": "Documents: {{count}}",
       "photos": "Photos: {{count}}"
     },
-    "attachments": "Documents and photos stay attached to items the synced data also has; the others stay only in the backup.",
+    "attachments": "Afterwards, the documents and photos are those of the synced data; this device's documents and photos that the synced data does not have stay only in the backup.",
     "unsent": "Moony sends the waiting changes first; anything it cannot send stays only in the backup.",
     "backupWhere": "The backup is listed under Settings → Data and backups, under “Backups made before sync replaced data”.",
     "loading": "Counting what is at stake…",
@@ -444,8 +444,23 @@
     "connectionNotHere": "This is a connection code for a sync server. Use it when you set up sync, not here.",
     "notAServerAddress": "This is not a sync server address. Type the address of your sync server, or paste its connection code."
   },
+  "attachments": {
+    "title": "Documents and photos",
+    "allUploaded": "All uploaded",
+    "waiting_one": "{{count}} waiting to upload · {{size}}",
+    "waiting_other": "{{count}} waiting to upload · {{size}}",
+    "uploading": "Uploading documents and photos",
+    "onOtherDevices_one": "{{count}} document or photo is on your other devices",
+    "onOtherDevices_other": "{{count}} documents and photos are on your other devices",
+    "downloadEverything": "Download everything to this phone",
+    "downloadEverythingStarted": "Downloading while Moony is open",
+    "problem": {
+      "noRoom": "Documents and photos are waiting: the sync server has no room left. Ask whoever runs it for more space.",
+      "serverNeedsUpdate": "Documents and photos need a newer sync server. Everything else syncs."
+    }
+  },
   "whatSyncs": {
     "title": "What syncs",
-    "body": "Everything you enter into Moony syncs. The language, look, menu, notifications, device password, recovery key and backups belong to each device. Prices and history are worked out on each device. Documents and photos stay on the device that added them for now."
+    "body": "Everything you enter into Moony syncs. The language, look, menu, notifications, device password, recovery key and backups belong to each device. Prices and history are worked out on each device. Documents and photos sync too; a phone downloads one when you open it."
   }
 }

@@ -54,6 +54,7 @@ async fn what_is_not_an_own_moony_server_is_refused_before_any_account_call() {
             version: "1.0.0".into(),
             protocol,
             mode,
+            blobs: true,
         })
     };
     type Prepare = Box<dyn Fn(&FakeRelay)>;

@@ -9,6 +9,7 @@ use rusqlite::Connection;
 use super::{links, renames, row_clock, tombstone_local, Touched};
 use crate::db::files_schema;
 use crate::error::Result;
+use crate::services::sync::blobs;
 use crate::services::{attachment_store, loan_events};
 
 /// Tables whose touched rows can break a rule below (`full` marks them all).
@@ -41,12 +42,20 @@ pub fn run(conn: &Connection, touched: &Touched, now: i64) -> Result<()> {
     if touched.touches_any(&["cashflow_items"]) {
         links::recompute(conn)?;
     }
-    if ATTACHMENT_OWNERS
+    let owners_lost = ATTACHMENT_OWNERS
         .iter()
-        .any(|table| touched.deleted.contains(*table))
-        && files_schema::is_attached(conn)?
-    {
+        .any(|table| touched.deleted.contains(*table));
+    if owners_lost && files_schema::is_attached(conn)? {
         attachment_store::delete_unreferenced(conn)?;
+    }
+    // The transfer queue follows the rows: a merge or a restore that brought, changed or removed
+    // attachment rows queues their content or drops it. Checking the entries against the store
+    // is left to the full reconcile (lane start, a replace, `repair::full`), never a pull.
+    let rows_touched = attachment_store::REFERENCES
+        .iter()
+        .any(|(table, _)| touched.rows.contains_key(*table));
+    if owners_lost || rows_touched {
+        blobs::queue::reconcile_rows(conn, now)?;
     }
     Ok(())
 }

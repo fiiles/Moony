@@ -133,6 +133,9 @@ CREATE INDEX idx_stock_value_history_ticker ON stock_value_history(ticker)
 == index idx_stock_value_history_ticker_date ==
 CREATE INDEX idx_stock_value_history_ticker_date ON stock_value_history(ticker, recorded_at)
 
+== index idx_sync_blobs_state ==
+CREATE INDEX idx_sync_blobs_state ON sync_blobs (state, next_try_at)
+
 == index idx_sync_clock_device_hlc ==
 CREATE INDEX idx_sync_clock_device_hlc ON sync_clock(device, hlc)
 
@@ -837,6 +840,23 @@ CREATE TABLE stock_value_history (
     UNIQUE(ticker, recorded_at)
 )
 
+== table sync_blobs ==
+CREATE TABLE "sync_blobs" (
+    blob_id TEXT PRIMARY KEY,
+    state TEXT NOT NULL CHECK (state IN ('up', 'down', 'done')),
+    thumbnail INTEGER NOT NULL DEFAULT 0 CHECK (thumbnail IN (0, 1)),
+    wanted INTEGER NOT NULL DEFAULT 0 CHECK (wanted IN (0, 1)),
+    active INTEGER NOT NULL DEFAULT 0 CHECK (active IN (0, 1)),
+    row_at INTEGER NOT NULL DEFAULT 0,
+    queued_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_try_at INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT CHECK (last_error IN
+        ('network', 'server', 'notOnServer', 'unreadable', 'noRoom', 'invalidId', 'local',
+         'refused', 'conflict')),
+    last_error_at INTEGER
+, size INTEGER) WITHOUT ROWID
+
 == table sync_clock ==
 CREATE TABLE sync_clock (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,
     hlc INTEGER NOT NULL, device BLOB NOT NULL, PRIMARY KEY (tbl, pk, col)) WITHOUT ROWID
@@ -849,6 +869,12 @@ CREATE TABLE sync_devices (id TEXT PRIMARY KEY, public_key TEXT, name TEXT NOT N
 == table sync_heads ==
 CREATE TABLE sync_heads (device BLOB PRIMARY KEY, seq INTEGER NOT NULL, hash BLOB NOT NULL,
     quarantined INTEGER NOT NULL DEFAULT 0) WITHOUT ROWID
+
+== table sync_held_blobs ==
+CREATE TABLE sync_held_blobs (
+    blob_id TEXT PRIMARY KEY,
+    held_at INTEGER NOT NULL
+) WITHOUT ROWID
 
 == table sync_outbox ==
 CREATE TABLE sync_outbox (tbl TEXT NOT NULL, pk TEXT NOT NULL, queued_at INTEGER NOT NULL,

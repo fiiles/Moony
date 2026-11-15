@@ -3,7 +3,11 @@
  * away before anything is read, what a new document is called, and the sub-line of a row. Pure, so
  * the camera, the picker and the section share one answer.
  */
+import type { AttachmentContent } from '@shared/schema';
 import type { Formatters } from '@/lib/format';
+import { fileSizeText } from '@/utils/file-size';
+import { attachmentView, type AttachmentNote } from '@/utils/attachment-content';
+import { viewerKind } from '@/utils/attachment-viewer';
 
 /** The attachment store's limit (`validation.attachmentTooLarge`): the phone refuses before reading. */
 export const MAX_DOCUMENT_BYTES = 100 * 1024 * 1024;
@@ -73,37 +77,54 @@ export function documentNameFrom(
   return base === '' ? clampName(photoName) : base;
 }
 
-const KILOBYTE = 1024;
-const MEGABYTE = 1024 * 1024;
-
-/** "512 B", "830 kB", "1,2 MB": the desktop's units, the number in the language's own form. */
-export function fileSizeText(bytes: number, fmt: Pick<Formatters, 'number'>): string {
-  if (bytes < KILOBYTE) return `${fmt.number(bytes)} B`;
-  const kilobytes = Math.round(bytes / KILOBYTE);
-  // 1 048 575 bytes round to 1024 kB: that is a megabyte
-  if (kilobytes < KILOBYTE) return `${fmt.number(kilobytes)} kB`;
-  return `${fmt.number(bytes / MEGABYTE, { maximumFractionDigits: 1 })} MB`;
-}
-
 /** What a document row's sub-line reads. */
-interface DocumentSubInput {
+type DocumentSubInput = {
   fileType: string;
   fileSize: number | null;
   /** A real instant (the backend stamps it with the clock), not a calendar day. */
   uploadedAt: number;
+} & (
+  | { content?: undefined; mimeType?: string }
+  // Where the content is with device sync always comes with the file's type: a file the phone
+  // cannot show is never downloaded on open, so its row must not say "tap to download".
+  | { content: AttachmentContent; mimeType: string }
+);
+
+/**
+ * The words a row's note can take: `notHereSub` is the phone's own (`mobile.documents`), the rest
+ * are `common.attachments.content.*`. The caller resolves the text.
+ */
+export type DocumentNoteKey = 'notHereSub' | 'elsewhereSub' | AttachmentNote;
+
+/** The note a row's sub-line starts with, or `null` for content that is here. */
+function documentNoteKey(content: AttachmentContent, mimeType: string): DocumentNoteKey | null {
+  // The phone's `notHere` is a document to download, not a spinner (`attachmentView`'s `download`
+  // action)
+  if (content === 'notHere') {
+    // A file the phone cannot show is not downloaded on open (no share action here), so no "tap to
+    // download"
+    return viewerKind(mimeType) === 'external' ? 'elsewhereSub' : 'notHereSub';
+  }
+  return attachmentView(content, 'phone').note;
 }
 
 /**
  * The sub-line of a document row: the type's label · the size · the upload day ("smlouva · 1,2 MB ·
  * 24. 10. 2026"). The size is left out when it is not known. The day is the local one — the upload
- * is a real instant, so a document added at 00:30 is not dated the day before.
+ * is a real instant, so a document added at 00:30 is not dated the day before. A document whose
+ * content is not on the phone starts with the note that says where it is (`noteText` words it;
+ * first, so a narrow screen's cut falls on the day); content that is here (or sync off) gives the
+ * line it always was.
  */
 export function documentSub(
   doc: DocumentSubInput,
   typeLabel: (fileType: string) => string,
-  fmt: Pick<Formatters, 'number' | 'date'>
+  fmt: Pick<Formatters, 'number' | 'date'>,
+  noteText?: (key: DocumentNoteKey) => string
 ): string {
+  const noteKey = doc.content && noteText ? documentNoteKey(doc.content, doc.mimeType) : null;
   return [
+    noteKey && noteText ? noteText(noteKey) : '',
     typeLabel(doc.fileType),
     doc.fileSize ? fileSizeText(doc.fileSize, fmt) : '',
     fmt.date(new Date(doc.uploadedAt * 1000)),

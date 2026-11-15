@@ -25,12 +25,14 @@ use zeroize::Zeroizing;
 
 use crate::error::{AppError, Result};
 
+pub mod blob;
 pub mod stream;
 
 pub const MAGIC: [u8; 4] = *b"MNY1";
 pub const OPS_INFO: &[u8] = b"moony sync ops v1";
 pub const TOKEN_INFO: &[u8] = b"moony sync token v1";
 pub const SNAPSHOT_INFO: &[u8] = b"moony sync snapshot v1";
+pub const BLOB_INFO: &[u8] = b"moony sync blob v1";
 /// The padded plaintext is a multiple of this (and at least this long).
 pub const PAD: usize = 1024;
 /// Magic (4) + epoch (4) + nonce (24) + Poly1305 tag (16).
@@ -230,5 +232,7 @@ fn inflate_padded(plain: &[u8]) -> std::result::Result<Vec<u8>, OpenError> {
     Ok(json)
 }
 
+#[cfg(test)]
+mod blob_tests;
 #[cfg(test)]
 mod tests;

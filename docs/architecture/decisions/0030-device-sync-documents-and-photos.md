@@ -247,19 +247,27 @@ documents and photos need a newer server. The app assumes the server's error cod
   never in a join or replace); nothing it meets fails or changes the round, sets or clears a
   problem. Where it is more precise than the decision above: "caught up" also needs the pull not
   behind the server's head (`PullReport::behind`), and "nothing waiting to upload" counts only
-  content that can still upload: an entry stuck as refused, a conflict or an invalid ID
-  (`queue::STUCK`) does not hold the pass back, one that failed and will be retried does. A row
+  content that can still upload for other reasons than room: an entry stuck as refused, a
+  conflict or an invalid ID (`queue::STUCK`) does not hold the pass back, nor one waiting for room
+  on the server (`noRoom`: its quota or its disk), since the pass may be what frees that room and
+  never deletes a blob a row here names; one that failed for other trouble and will be retried
+  does. After a pass that deleted anything, uploads waiting for room are due at once
+  (`queue::room_freed`, `BlobPolicy::room_may_be_free`) and the upload lane is woken. A row
   names a blob whether or not it syncs: the columns come from the registry's `TableSpec.requires`,
   plus every blob a replace holds (`sync_held_blobs`). A blob's age is the smallest `now` of the
   listing's pages minus its `createdAt`; a page without `now` deletes nothing, a blob dated in the
-  server's future is never old enough. Each delete is preceded by its own check, alone in one
+  server's future or before 2020-01-01 (`CREATED_AT_FLOOR`, a server fault) is never old enough. Each delete is preceded by its own check, alone in one
   hold, that no row names the blob yet, and followed by dropping any queue entry of it, so no
   `done` entry claims what the server no longer has. Only `done` entries with a canonical ID are
   queued again, only after a listing of every page, and the upload lane is woken then. The pass
-  ends within 60 seconds (`PASS_BUDGET`, checked before every request, each request cut there). It
+  ends within 60 seconds (`PASS_BUDGET`, from before it asks the server for its features, checked
+  before every request, each request cut there). It
   is done (the Local `app_config` key `sync.blob_pass_at`, never captured) only when it listed
   every page and sent every delete it chose; a skipped pass, a server that could not be asked
-  (`Skip::ServerUnknown`), a refusal of the vault (logged at `debug`, the round shows it), other
-  server trouble, running out of time or the page cap leaves the next round to try again.
-  Accepted limit: a vault of more than 100,000 blobs (`PASS_MAX_PAGES` pages) never completes a
-  pass; each round then lists 100 pages, deletes among them what qualifies, and puts nothing back.
+  (`Skip::ServerUnknown`) or one without the feature leaves the next round to try again; a pass
+  that started and ended otherwise (a refusal of the vault, logged at `debug` as the round shows
+  it; other server trouble; running out of time; the page cap) is tried again an hour later
+  (`PASS_RETRY_AFTER`, kept in the engine's `BlobPolicy` only, never stored), or at once after
+  "Sync now" (`BlobPolicy::try_again`). Accepted limit: a vault of more than 100,000 blobs
+  (`PASS_MAX_PAGES` pages) never completes a pass; once an hour it lists 100 pages, deletes among
+  them what qualifies, and puts nothing back.

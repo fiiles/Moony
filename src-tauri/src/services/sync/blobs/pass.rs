@@ -13,14 +13,17 @@
 //!
 //! "Caught up" (`pass_allowed`): the round's pull reached the server's end with nothing stopped or
 //! held and the server not past it; nothing waits to push or for its echo; no upload waits that
-//! can still happen (content that never uploads by itself, `queue::STUCK`, does not hold the pass
-//! back); no pause, guard, went-back mark, miss or quarantine. The server must have the blob
-//! routes.
+//! can still happen for other reasons than room (content that never uploads by itself,
+//! `queue::STUCK`, does not hold the pass back, nor content waiting for room on the server: the
+//! pass may be what frees it); no pause, guard, went-back mark, miss or quarantine. The server must
+//! have the blob routes.
 //!
 //! Every database read or write is one `ConnAccess::with_conn` hold, none open across a network
 //! call. The pass ends within [`PASS_BUDGET`] (checked before every request, and every request is
 //! cut there). Only a pass that listed every page, put back what was lost and sent every delete it
-//! chose is done (`PASS_AT_KEY`); any other end leaves the next round to try again.
+//! chose is done (`PASS_AT_KEY`); a pass that started and ended otherwise is tried again an hour
+//! later ([`PASS_RETRY_AFTER`]), or at once after "Sync now". After a pass that deleted anything,
+//! uploads waiting for room are due at once.
 
 use std::collections::HashSet;
 use std::time::Duration;
@@ -31,7 +34,7 @@ use uuid::Uuid;
 
 use super::canonical_id;
 use super::policy::{BlobPolicy, Lane, ServerBlobs};
-use super::queue;
+use super::queue::{self, TransferError, STUCK};
 use crate::error::Result;
 use crate::services::attachment_store::HOLDS;
 use crate::services::sync::capture::guard;
@@ -56,6 +59,13 @@ pub const PASS_BUDGET: Duration = Duration::from_secs(60);
 /// The Local `app_config` key (not in `registry::APP_CONFIG_SYNCED_KEYS`, so never synced and
 /// never captured) holding when this device last completed the pass (unix seconds).
 pub const PASS_AT_KEY: &str = "sync.blob_pass_at";
+/// How long a pass that started and did not complete (the page cap, its budget, a server error)
+/// waits before this engine tries again, unless the person asks ("Sync now"): every round would
+/// otherwise try, each held for up to [`PASS_BUDGET`]. Kept in memory only (`BlobPolicy`).
+pub const PASS_RETRY_AFTER: i64 = 3_600;
+/// 2020-01-01: no server built for this app stored a blob before it, so a `createdAt` earlier
+/// than this is a server fault and the blob's age unknown: never deleted.
+pub const CREATED_AT_FLOOR: i64 = 1_577_836_800;
 
 /// Why the pass did not run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,6 +90,8 @@ pub enum Skip {
     NoServerFeature,
     /// The sync server could not be asked whether it has them; the next round asks again.
     ServerUnknown,
+    /// A pass started less than [`PASS_RETRY_AFTER`] ago and did not complete.
+    TriedRecently,
 }
 
 /// What one pass did: server blobs deleted, blobs queued to upload again, why it did not run, and
@@ -152,7 +164,17 @@ pub fn pass_allowed(conn: &Connection, pull: &PullReport, now: i64) -> Result<Op
     if pending {
         return Ok(Some(Skip::Pending));
     }
-    if queue::waiting(conn, true)? {
+    // Content waiting for room does not hold the pass back: deleting is what may free it, and the
+    // pass never deletes a blob a row here names nor moves an `up` entry.
+    let uploads_waiting: bool = conn.query_row(
+        &format!(
+            "SELECT EXISTS (SELECT 1 FROM main.sync_blobs WHERE state = 'up' \
+               AND COALESCE(last_error, '') NOT IN {STUCK} AND COALESCE(last_error, '') <> ?1)"
+        ),
+        [TransferError::NoRoom.as_str()],
+        |r| r.get(0),
+    )?;
+    if uploads_waiting {
         return Ok(Some(Skip::UploadsWaiting));
     }
     Ok(None)
@@ -184,7 +206,7 @@ pub(crate) fn note_passed(conn: &Connection, at: i64) -> Result<()> {
 /// SQL: every blob ID (lower case) a row on this device names, whether or not the row syncs: each
 /// column of every table's `TableSpec.requires` (so a new attachment table cannot be forgotten),
 /// and every blob a replace holds (`attachment_store::HOLDS`), whose row a pull may still bring.
-pub(crate) fn references_sql() -> String {
+fn references_sql() -> String {
     registry::tables()
         .iter()
         .flat_map(|spec| spec.requires.iter().map(move |column| (spec.name, *column)))
@@ -246,9 +268,10 @@ fn requeue_lost(conn: &Connection, listed: &HashSet<Uuid>, now: i64) -> Result<u
 }
 
 /// The age of `blob` on the server's clock, past the grace, by `server_now`. A blob dated in the
-/// server's future is never old enough.
+/// server's future, or before [`CREATED_AT_FLOOR`], is never old enough.
 fn old_enough(blob: &RemoteBlob, server_now: i64) -> bool {
-    server_now.saturating_sub(blob.created_at) > UNREFERENCED_GRACE
+    blob.created_at >= CREATED_AT_FLOOR
+        && server_now.saturating_sub(blob.created_at) > UNREFERENCED_GRACE
 }
 
 /// How a request of the pass went.
@@ -326,24 +349,74 @@ pub(crate) async fn run_with<R: Relay, D: ConnAccess>(
     now: i64,
     limits: Limits,
 ) -> Result<PassReport> {
-    let mut report = PassReport::default();
     if let Some(skip) = db.with_conn(|conn| pass_allowed(conn, pull, now))? {
-        report.skipped = Some(skip);
-        return Ok(report);
+        return Ok(skipped(skip));
     }
+    if policy.pass_tried_within(now, PASS_RETRY_AFTER) {
+        return Ok(skipped(Skip::TriedRecently));
+    }
+    let attempt = attempt(relay, db, creds, policy, now, limits).await;
+    let report = match &attempt {
+        Ok(report) => *report,
+        Err(_) => PassReport::default(),
+    };
+    // A server without the blob routes, or one that could not be asked, is no attempt: asking
+    // again costs one cached answer or one request.
+    let feature_skip = matches!(
+        report.skipped,
+        Some(Skip::NoServerFeature | Skip::ServerUnknown)
+    );
+    if !report.complete && !feature_skip {
+        policy.note_pass_incomplete(now);
+    }
+    if report.deleted > 0 {
+        // Room may be free now: uploads that waited for it go at once, not after their wait.
+        db.with_conn(queue::room_freed)?;
+        policy.room_may_be_free();
+        policy.wake_lane(Lane::Up);
+    }
+    attempt
+}
+
+fn skipped(skip: Skip) -> PassReport {
+    PassReport {
+        skipped: Some(skip),
+        ..PassReport::default()
+    }
+}
+
+/// One pass past `pass_allowed`: the server's feature, the listing, the requeue, the deletes.
+async fn attempt<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    policy: &BlobPolicy,
+    now: i64,
+    limits: Limits,
+) -> Result<PassReport> {
+    let mut report = PassReport::default();
+    // The deadline comes first: asking the server for its features is part of the budget.
+    let deadline = Instant::now() + limits.budget;
+    let asked = within(deadline, || async move {
+        Ok::<_, RelayError>(policy.server_has_blobs(relay, now).await)
+    })
+    .await;
     // The upload lane's way of asking, without its problem: nothing waits to upload here.
-    match policy.server_has_blobs(relay, now).await {
-        ServerBlobs::Yes => {}
-        ServerBlobs::No => {
+    match asked {
+        Answer::Ok(ServerBlobs::Yes) => {}
+        Answer::Ok(ServerBlobs::No) => {
             report.skipped = Some(Skip::NoServerFeature);
             return Ok(report);
         }
-        ServerBlobs::Unknown => {
+        Answer::Ok(ServerBlobs::Unknown) | Answer::Failed(_) => {
             report.skipped = Some(Skip::ServerUnknown);
             return Ok(report);
         }
+        Answer::OutOfTime => {
+            log_out_of_time();
+            return Ok(report);
+        }
     }
-    let deadline = Instant::now() + limits.budget;
     let auth = creds.auth();
 
     // 1. List every page. A blob's age is measured against the smallest `now` of the pages (the

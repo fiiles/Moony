@@ -71,6 +71,9 @@ struct State {
     paused_until: i64,
     /// Per lane, a wake its `wait` has not taken yet.
     pending: [bool; 2],
+    /// When the daily pass last started and did not complete (`pass::PASS_RETRY_AFTER`); this
+    /// engine's memory only, never stored.
+    pass_tried_at: Option<i64>,
 }
 
 fn index(lane: Lane) -> usize {
@@ -148,12 +151,33 @@ impl BlobPolicy {
         self.state().server = None;
     }
 
-    /// The person's "Sync now" / "try again": the server is asked again and the pause for room
-    /// ends (the problem stays until a body is accepted or nothing waits to upload).
+    /// The person's "Sync now" / "try again": the server is asked again, the pause for room
+    /// ends (the problem stays until a body is accepted or nothing waits to upload) and a daily
+    /// pass that did not complete may run again at once.
     pub fn try_again(&self) {
         let mut state = self.state();
         state.server = None;
         state.paused_until = 0;
+        state.pass_tried_at = None;
+    }
+
+    /// Room on the server may have been freed (the daily pass deleted blobs): uploads stop
+    /// waiting for it. The problem stays until a body is accepted.
+    pub fn room_may_be_free(&self) {
+        self.state().paused_until = 0;
+    }
+
+    /// The daily pass started at `at` and did not complete.
+    pub fn note_pass_incomplete(&self, at: i64) {
+        self.state().pass_tried_at = Some(at);
+    }
+
+    /// Whether the daily pass started less than `wait` seconds before `now` and did not complete.
+    /// A start dated after `now` (a clock since set back) does not count.
+    pub fn pass_tried_within(&self, now: i64, wait: i64) -> bool {
+        self.state()
+            .pass_tried_at
+            .is_some_and(|at| (0..wait).contains(&now.saturating_sub(at)))
     }
 
     pub fn problem(&self) -> Option<SyncAttachmentsProblem> {

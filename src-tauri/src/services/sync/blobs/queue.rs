@@ -721,6 +721,15 @@ pub fn retry_now(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Room on the server may have been freed (the daily pass deleted blobs): uploads that waited
+/// for it are due now. How many.
+pub fn room_freed(conn: &Connection) -> Result<usize> {
+    Ok(conn.execute(
+        "UPDATE main.sync_blobs SET next_try_at = 0 WHERE state = 'up' AND last_error = ?1",
+        [TransferError::NoRoom.as_str()],
+    )?)
+}
+
 /// Rows with content held here that the server has not confirmed and that can still upload (a
 /// photo once; an entry of [`STUCK`] is a failed item, not waiting).
 pub fn uploads_waiting(conn: &Connection) -> Result<u32> {

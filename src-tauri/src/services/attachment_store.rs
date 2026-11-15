@@ -131,6 +131,43 @@ fn rowid_of(conn: &Connection, id: &str) -> Result<i64> {
     .ok_or_else(|| AppError::NotFound("Attachment content not found".into()))
 }
 
+/// The rowid and recorded size of a complete blob, or `None` (absent, or still arriving). The
+/// hash and the size lie past the content in the row, so for a large blob this walks its overflow
+/// pages: a transfer asks it once, when it opens the blob, and then follows the row by ID and
+/// rowid ([`read_at_row`]).
+pub(crate) fn complete_row(conn: &Connection, id: &str) -> Result<Option<(i64, u64)>> {
+    ensure_available(conn)?;
+    let row: Option<(i64, i64)> = conn
+        .query_row(
+            "SELECT rowid, size FROM files.blobs WHERE id = ?1 AND sha256 <> ''",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?;
+    Ok(row.map(|(rowid, size)| (rowid, size as u64)))
+}
+
+/// SQL: the rowid of the blob `?1`. Answered from the primary key's index alone (a test checks the
+/// query plan), never from the row, so it costs the same for any size of blob.
+const ROW_OF_ID: &str = "SELECT rowid FROM files.blobs WHERE id = ?1";
+
+/// `NotFound` unless the blob `id` is still the row at `rowid`. Both must match: SQLite reuses the
+/// highest rowid after a delete, so a rowid alone could name another blob. It cannot see the
+/// row's hash (that would read the content's pages), so whether the row is complete is the
+/// caller's to know from when it found the row.
+fn still_at(conn: &Connection, id: &str, rowid: i64) -> Result<()> {
+    ensure_available(conn)?;
+    let now: Option<i64> = conn
+        .prepare_cached(ROW_OF_ID)?
+        .query_row([id], |r| r.get(0))
+        .optional()?;
+    if now == Some(rowid) {
+        Ok(())
+    } else {
+        Err(AppError::NotFound("Attachment content not found".into()))
+    }
+}
+
 /// The rowid of a blob that is still arriving (`sha256 = ''`), or `NotFound`.
 fn incomplete_rowid_of(conn: &Connection, id: &str) -> Result<i64> {
     ensure_available(conn)?;
@@ -149,8 +186,9 @@ fn incomplete_rowid_of(conn: &Connection, id: &str) -> Result<i64> {
 ///
 /// The delete, the existence check and the insert are separate statements, so the caller must
 /// serialize calls for one ID (one transfer per blob ID at a time). An older incomplete row of the same `id` (an earlier failed
-/// transfer) is replaced; a complete one is never touched.
-pub fn begin_incoming(conn: &Connection, id: &str, len: u64) -> Result<()> {
+/// transfer) is replaced; a complete one is never touched. Returns the new row's rowid, which a
+/// download writes by ([`write_incoming_row`]).
+pub fn begin_incoming(conn: &Connection, id: &str, len: u64) -> Result<i64> {
     ensure_available(conn)?;
     if len > MAX_DOCUMENT_BYTES {
         return Err(AppError::Validation("validation.attachmentTooLarge".into()));
@@ -172,12 +210,35 @@ pub fn begin_incoming(conn: &Connection, id: &str, len: u64) -> Result<()> {
         "INSERT INTO files.blobs (id, data, size, sha256) VALUES (?1, zeroblob(?2), ?2, '')",
         rusqlite::params![id, size],
     )?;
-    Ok(())
+    Ok(conn.last_insert_rowid())
 }
 
 /// Write `bytes` at `offset` into an incomplete blob. Writing past its reserved size is refused.
 pub fn write_incoming(conn: &Connection, id: &str, offset: u64, bytes: &[u8]) -> Result<()> {
     let rowid = incomplete_rowid_of(conn, id)?;
+    write_row(conn, rowid, offset, bytes)
+}
+
+/// [`write_incoming`] for a download that began the blob itself ([`begin_incoming`] gave it
+/// `rowid`): the row is found by an index-only lookup instead of a check of its hash, which would
+/// walk every page of the content before each chunk. `NotFound` when `id` is no longer the row at
+/// `rowid` (abandoned or swept under the download, even when another blob took the rowid).
+///
+/// It cannot see whether the row was completed meanwhile, so the caller must be the only one
+/// that finishes it: the download that holds the blob's ID (`IncomingBlobs`), whose own
+/// [`finish_incoming`] is the guarded update that seals it.
+pub(crate) fn write_incoming_row(
+    conn: &Connection,
+    id: &str,
+    rowid: i64,
+    offset: u64,
+    bytes: &[u8],
+) -> Result<()> {
+    still_at(conn, id, rowid)?;
+    write_row(conn, rowid, offset, bytes)
+}
+
+fn write_row(conn: &Connection, rowid: i64, offset: u64, bytes: &[u8]) -> Result<()> {
     let mut blob = conn.blob_open(files_schema::SCHEMA, "blobs", "data", rowid, false)?;
     let start = usize::try_from(offset)
         .ok()
@@ -236,6 +297,30 @@ pub fn is_complete(conn: &Connection, id: &str) -> Result<bool> {
 /// bytes read (0 at or past the end).
 pub fn read_at(conn: &Connection, id: &str, offset: u64, buf: &mut [u8]) -> Result<usize> {
     let rowid = rowid_of(conn, id)?;
+    read_row(conn, rowid, offset, buf)
+}
+
+/// [`read_at`] for an upload that found the blob complete at `rowid` ([`complete_row`]): the row
+/// is found by an index-only lookup instead of a check of its hash, which would walk every page
+/// of the content before each chunk. `NotFound` when `id` is no longer the row at `rowid`
+/// (deleted under the upload, even when another blob took the rowid).
+///
+/// It cannot see whether the row is still complete: a blob deleted and begun again as an
+/// incoming one under the same ID could take the same rowid. The upload checks that apart
+/// (`blobs::stream::UploadSource`: no download of the ID in progress, complete again before its
+/// last chunk).
+pub(crate) fn read_at_row(
+    conn: &Connection,
+    id: &str,
+    rowid: i64,
+    offset: u64,
+    buf: &mut [u8],
+) -> Result<usize> {
+    still_at(conn, id, rowid)?;
+    read_row(conn, rowid, offset, buf)
+}
+
+fn read_row(conn: &Connection, rowid: i64, offset: u64, buf: &mut [u8]) -> Result<usize> {
     let blob = conn.blob_open(files_schema::SCHEMA, "blobs", "data", rowid, true)?;
     let Ok(start) = usize::try_from(offset) else {
         return Ok(0);
@@ -700,6 +785,90 @@ mod tests {
         assert_eq!(read_all(&conn, "in-1").expect("read"), b"moony".to_vec());
         assert_eq!(size_of(&conn, "in-1").expect("size"), Some(5));
         assert!(verify(&conn, "in-1", &sha(b"moony")).expect("verify"));
+    }
+
+    fn rowid(conn: &Connection, id: &str) -> i64 {
+        conn.query_row("SELECT rowid FROM files.blobs WHERE id = ?1", [id], |r| {
+            r.get(0)
+        })
+        .expect("rowid")
+    }
+
+    /// A transfer finds its blob once (`complete_row`, `begin_incoming`) and then follows it by ID
+    /// and rowid: a blob deleted under it is gone, even when another blob took its rowid (SQLite
+    /// reuses the highest rowid after a delete).
+    #[test]
+    fn an_upload_follows_its_blob_by_id_and_rowid() {
+        let conn = setup_test_db();
+        let first = put_bytes(&conn, b"first").expect("put");
+        let (row, size) = complete_row(&conn, &first.id)
+            .expect("complete_row")
+            .expect("complete");
+        assert_eq!((row, size), (rowid(&conn, &first.id), 5));
+        let mut buf = [0u8; 5];
+        assert_eq!(
+            read_at_row(&conn, &first.id, row, 0, &mut buf).expect("read"),
+            5
+        );
+        assert_eq!(&buf, b"first");
+
+        assert!(delete(&conn, &first.id).expect("delete"));
+        let other = put_bytes(&conn, b"other").expect("put");
+        assert_eq!(rowid(&conn, &other.id), row, "the rowid is reused");
+        assert!(matches!(
+            read_at_row(&conn, &first.id, row, 0, &mut buf),
+            Err(AppError::NotFound(_))
+        ));
+
+        // An incoming blob has no complete row to follow.
+        begin_incoming(&conn, "in-1", 3).expect("begin");
+        assert_eq!(complete_row(&conn, "in-1").expect("incoming"), None);
+        assert_eq!(complete_row(&conn, "absent").expect("absent"), None);
+    }
+
+    #[test]
+    fn a_download_writes_only_into_the_incoming_row_it_began() {
+        let conn = setup_test_db();
+        let row = begin_incoming(&conn, "in-1", 4).expect("begin");
+        assert_eq!(row, rowid(&conn, "in-1"));
+        write_incoming_row(&conn, "in-1", row, 0, b"ab").expect("first piece");
+
+        // Abandoned under the download, and another download took the rowid.
+        abandon_incoming(&conn, "in-1").expect("abandon");
+        let next = begin_incoming(&conn, "in-2", 4).expect("another");
+        assert_eq!(next, row, "the rowid is reused");
+        assert!(matches!(
+            write_incoming_row(&conn, "in-1", row, 2, b"cd"),
+            Err(AppError::NotFound(_))
+        ));
+        let data: Vec<u8> = conn
+            .query_row("SELECT data FROM files.blobs WHERE id = 'in-2'", [], |r| {
+                r.get(0)
+            })
+            .expect("data");
+        assert_eq!(data, vec![0u8; 4], "the other blob is untouched");
+
+        // Writing past the reserved size is still refused.
+        assert!(matches!(
+            write_incoming_row(&conn, "in-2", next, 3, b"cd"),
+            Err(AppError::Internal(m)) if m == "attachments.writePastEnd"
+        ));
+    }
+
+    /// The per-chunk check never reads the row itself: it is answered from the primary key's
+    /// index, so it costs the same for a 100 MiB blob as for an empty one.
+    #[test]
+    fn the_per_chunk_row_check_reads_only_the_index() {
+        let conn = setup_test_db();
+        let plan: Vec<String> = conn
+            .prepare(&format!("EXPLAIN QUERY PLAN {ROW_OF_ID}"))
+            .expect("plan")
+            .query_map(["x"], |r| r.get::<_, String>(3))
+            .expect("query")
+            .map(|r| r.expect("row"))
+            .collect();
+        assert_eq!(plan.len(), 1, "{plan:?}");
+        assert!(plan[0].contains("USING COVERING INDEX"), "{plan:?}");
     }
 
     #[test]

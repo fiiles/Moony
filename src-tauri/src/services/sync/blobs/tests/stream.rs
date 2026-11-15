@@ -398,6 +398,77 @@ fn a_blob_removed_from_the_store_mid_transfer_is_gone_not_stored() {
     assert_absent(&to, &id);
 }
 
+/// The sink follows its incoming row by ID and rowid: abandoned under it, and the rowid taken by
+/// another download, it stops and leaves the other blob alone.
+#[test]
+fn a_download_whose_row_was_abandoned_never_writes_into_the_blob_that_took_its_place() {
+    let plain = pattern(3 * CHUNK + 5);
+    let blob = blob_id(32);
+    let id = blob.to_string();
+    let pieces = wire(&plain, blob);
+    let to = Store::new();
+    let mut sink = sink(&to, blob);
+    assert_eq!(sink.begin(total(&pieces)), SinkFlow::Continue);
+    assert_eq!(sink.piece(&pieces[0]), SinkFlow::Continue);
+    assert_eq!(sink.piece(&pieces[1]), SinkFlow::Continue);
+    let other = blob_id(33).to_string();
+    {
+        let conn = to.lock();
+        attachment_store::abandon_incoming(&conn, &id).expect("abandon");
+        attachment_store::begin_incoming(&conn, &other, plain.len() as u64).expect("other");
+    }
+    assert_eq!(sink.piece(&pieces[2]), SinkFlow::Stop);
+    let outcome = sink.finish(&Ok(Delivery::Stopped));
+    assert!(
+        matches!(outcome, SinkOutcome::Local(AppError::NotFound(_))),
+        "{outcome:?}"
+    );
+    assert_absent(&to, &id);
+    let data: Vec<u8> = to
+        .lock()
+        .query_row(
+            "SELECT data FROM files.blobs WHERE id = ?1",
+            [&other],
+            |r| r.get(0),
+        )
+        .expect("other");
+    assert!(data.iter().all(|b| *b == 0), "the other blob is untouched");
+}
+
+/// Only the download holding the ID finishes its row; a row someone else sealed is not this
+/// download's to store.
+#[test]
+fn a_download_whose_row_someone_else_finished_is_not_stored() {
+    let plain = pattern(3 * CHUNK + 5);
+    let blob = blob_id(34);
+    let id = blob.to_string();
+    let pieces = wire(&plain, blob);
+    let to = Store::new();
+    let mut sink = sink(&to, blob);
+    assert_eq!(sink.begin(total(&pieces)), SinkFlow::Continue);
+    assert_eq!(sink.piece(&pieces[0]), SinkFlow::Continue);
+    attachment_store::finish_incoming(&to.lock(), &id, "someone else").expect("sealed");
+    let mut delivery = COMPLETE;
+    for piece in &pieces[1..] {
+        if sink.piece(piece) == SinkFlow::Stop {
+            delivery = Ok(Delivery::Stopped);
+            break;
+        }
+    }
+    let outcome = sink.finish(&delivery);
+    assert!(
+        matches!(outcome, SinkOutcome::Local(AppError::NotFound(_))),
+        "{outcome:?}"
+    );
+    let sha: String = to
+        .lock()
+        .query_row("SELECT sha256 FROM files.blobs WHERE id = ?1", [&id], |r| {
+            r.get(0)
+        })
+        .expect("sha256");
+    assert_eq!(sha, "someone else", "this download sealed nothing");
+}
+
 #[test]
 fn a_locked_profile_stops_the_sink_and_nothing_stays_readable() {
     let plain = pattern(2 * CHUNK + 1);
@@ -543,6 +614,87 @@ fn a_blob_deleted_during_an_upload_stops_the_source() {
     let err = source.next().expect("an item").expect_err("gone");
     assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
     assert!(source.next().is_none());
+}
+
+/// The upload follows its blob by ID and rowid after the first item, without reading its hash
+/// again: a blob deleted under it whose rowid another blob took is still gone.
+#[test]
+fn a_blob_deleted_during_an_upload_is_gone_even_when_another_blob_takes_its_place() {
+    let plain = pattern(3 * CHUNK + 1);
+    let blob = blob_id(30);
+    let (store, local) = holding(&plain);
+    let sealer = BlobSealer::new(EPOCH, &KEY, &VAULT, &blob);
+    let mut source = UploadSource::new(
+        store.clone(),
+        local.clone(),
+        blob,
+        plain.len() as u64,
+        sealer,
+    );
+    assert!(source.next().expect("header").is_ok());
+    assert!(source.next().expect("chunk").is_ok());
+    let rowid = |id: &str| -> i64 {
+        store
+            .lock()
+            .query_row("SELECT rowid FROM files.blobs WHERE id = ?1", [id], |r| {
+                r.get(0)
+            })
+            .expect("rowid")
+    };
+    let before = rowid(&local);
+    assert!(attachment_store::delete(&store.lock(), &local).expect("delete"));
+    let other = attachment_store::put_bytes(&store.lock(), &plain)
+        .expect("other")
+        .id;
+    assert_eq!(rowid(&other), before, "the rowid is reused");
+    let err = source.next().expect("an item").expect_err("gone");
+    assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+    assert!(source.next().is_none());
+}
+
+/// A blob deleted under an upload and begun again as an incoming blob under the same ID can take
+/// the same rowid; its zeros are never sealed as content. While a download writes it the upload
+/// stops at once; a left-over incoming row (a download dropped without settling) stops it before
+/// its last chunk.
+#[test]
+fn an_upload_never_sends_an_incoming_blob_that_took_its_place() {
+    let plain = pattern(3 * CHUNK + 1);
+    for left_over in [false, true] {
+        let blob = blob_id(31);
+        let (store, local) = holding(&plain);
+        let sealer = BlobSealer::new(EPOCH, &KEY, &VAULT, &blob);
+        let mut source = UploadSource::new(
+            store.clone(),
+            local.clone(),
+            blob,
+            plain.len() as u64,
+            sealer,
+        );
+        assert!(source.next().expect("header").is_ok());
+        assert!(source.next().expect("chunk").is_ok());
+        assert!(attachment_store::delete(&store.lock(), &local).expect("delete"));
+        attachment_store::begin_incoming(&store.lock(), &local, plain.len() as u64)
+            .expect("incoming");
+        if !left_over {
+            assert!(store.incoming_blobs().claim(&local));
+        }
+        let items: Vec<std::io::Result<Vec<u8>>> = source.collect();
+        assert!(
+            items.last().is_some_and(|item| item.is_err()),
+            "left over {left_over}: the last item is an error"
+        );
+        // A body without its last chunk is stored nowhere: the server refuses an incomplete body.
+        assert!(
+            items
+                .iter()
+                .flatten()
+                .all(|piece| piece.len() == SEALED_CHUNK),
+            "left over {left_over}: the last chunk is never sealed"
+        );
+        if !left_over {
+            assert_eq!(items.len(), 1, "a download in progress stops it at once");
+        }
+    }
 }
 
 #[test]

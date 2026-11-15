@@ -9,6 +9,11 @@
 //! download per blob ID runs at a time (`IncomingBlobs`): the store's incoming-blob calls find the
 //! row by ID, so a second transfer of the same ID would write into the first one's row.
 //!
+//! Whether a blob is complete is its hash, which lies past the content in the row, so asking it
+//! walks every page of a large blob. A transfer asks it when it opens the blob (an upload also
+//! before its last chunk) and remembers the row; each chunk in between only checks, from the
+//! primary key's index, that the blob's ID still names that row.
+//!
 //! Each read and each write is one short `ConnAccess::with_conn` hold; none is open while the
 //! network is read or written. The holds are taken from synchronous callbacks the HTTP client
 //! drives on an async worker (the body iterator, the sink), so each one runs through
@@ -81,6 +86,14 @@ impl IncomingBlobs {
             .insert(id.to_string())
     }
 
+    /// Whether a download of `id` is in progress.
+    pub(crate) fn contains(&self, id: &str) -> bool {
+        self.ids
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains(id)
+    }
+
     /// Frees `id` for the next download.
     pub(crate) fn release(&self, id: &str) {
         self.ids
@@ -92,8 +105,16 @@ impl IncomingBlobs {
 
 /// A complete blob of the store on its way up, sealed as it is read: the header, then one sealed
 /// chunk per item. The first item checks, in its own hold, that the blob is complete here at the
-/// declared length; each chunk is read under its own hold into one reused buffer, and the
-/// connection is never held between items.
+/// declared length and remembers its row; each chunk is read under its own hold into one reused
+/// buffer, and the connection is never held between items.
+///
+/// Whether a blob is complete is its hash, which lies past the content in the row: asking it
+/// walks every page of a large blob. So it is asked twice per upload, by the first item and
+/// before the last chunk is sealed; every other chunk only checks, from the primary key's index,
+/// that the blob's ID still names the remembered row (`attachment_store::read_at_row`), and that
+/// no download of the ID is in progress (`IncomingBlobs`). A blob deleted under the upload and
+/// begun again as an incoming one under the same ID could take the same rowid; those two checks
+/// keep its zeros from being sealed as content.
 ///
 /// An error ends it: the item is the error and nothing follows. A blob that is not complete here
 /// (never was, or deleted under the upload) is `ErrorKind::NotFound`; a declared length other
@@ -107,6 +128,9 @@ pub struct UploadSource<D: ConnAccess> {
     blob: Uuid,
     plain_len: u64,
     sealer: BlobSealer,
+    /// The blob's rowid in the store, found complete by the first item; each chunk reads that row
+    /// while the blob's ID still names it.
+    row: Option<i64>,
     /// Plaintext bytes read so far.
     offset: u64,
     /// The one plaintext chunk buffer, reused for every chunk.
@@ -126,6 +150,7 @@ impl<D: ConnAccess> UploadSource<D> {
             blob,
             plain_len,
             sealer,
+            row: None,
             offset: 0,
             buffer: Zeroizing::new(vec![0u8; CHUNK]),
             header_sent: false,
@@ -143,14 +168,17 @@ impl<D: ConnAccess> UploadSource<D> {
         Box::new(self)
     }
 
-    /// The header, once the blob is complete here at the declared length.
-    fn header(&self) -> io::Result<Vec<u8>> {
+    /// The header, once the blob is complete here at the declared length; remembers its row.
+    fn header(&mut self) -> io::Result<Vec<u8>> {
         let (id, declared) = (self.blob_id.as_str(), self.plain_len);
-        let stored = hold(&self.db, |conn| attachment_store::size_of(conn, id))
+        let stored = hold(&self.db, |conn| attachment_store::complete_row(conn, id))
             .map_err(|e| self.io_error(e, io::ErrorKind::Other))?;
         match stored {
-            Some(size) if size == declared => Ok(self.sealer.header().to_vec()),
-            Some(size) => Err(self.io_error(
+            Some((row, size)) if size == declared => {
+                self.row = Some(row);
+                Ok(self.sealer.header().to_vec())
+            }
+            Some((_, size)) => Err(self.io_error(
                 AppError::Internal(format!(
                     "sync blob: declared {declared} bytes, the store holds {size}"
                 )),
@@ -170,10 +198,32 @@ impl<D: ConnAccess> UploadSource<D> {
         let last = left < CHUNK as u64;
         // `left < CHUNK` when it is the last chunk, so the cast cannot truncate.
         let want = if last { left as usize } else { CHUNK };
+        let Some(row) = self.row else {
+            return Err(self.io_error(
+                AppError::Internal("sync blob: a chunk before the header".into()),
+                io::ErrorKind::Other,
+            ));
+        };
         let (id, offset) = (self.blob_id.as_str(), self.offset);
+        if self.db.incoming_blobs().contains(id) {
+            return Err(self.io_error(
+                AppError::Internal("sync blob: a download of it is in progress".into()),
+                io::ErrorKind::Other,
+            ));
+        }
+        let declared = self.plain_len;
         let buffer = &mut self.buffer[..want];
-        hold(&self.db, |conn| read_exact_at(conn, id, offset, buffer))
-            .map_err(|e| self.io_error(e, io::ErrorKind::Other))?;
+        hold(&self.db, |conn| {
+            read_exact_at(conn, id, row, offset, buffer)?;
+            // Before the last chunk is sealed: still the complete blob the header found.
+            if last && attachment_store::complete_row(conn, id)? != Some((row, declared)) {
+                return Err(AppError::NotFound(
+                    "sync blob: the content is not complete on this device".into(),
+                ));
+            }
+            Ok(())
+        })
+        .map_err(|e| self.io_error(e, io::ErrorKind::Other))?;
         self.offset += want as u64;
         let sealed = self
             .sealer
@@ -194,17 +244,20 @@ impl<D: ConnAccess> UploadSource<D> {
     }
 }
 
-/// Fills `buffer` from the complete blob `id` at `offset`; a blob that ends sooner is an error.
+/// Fills `buffer` from the blob `id` at `row` (`attachment_store::read_at_row`) at `offset`; a
+/// blob that ends sooner is an error.
 fn read_exact_at(
     conn: &rusqlite::Connection,
     id: &str,
+    row: i64,
     offset: u64,
     buffer: &mut [u8],
 ) -> Result<()> {
     let mut filled = 0;
     // Runs at least once, so a blob that is gone fails even when nothing is left to read.
     loop {
-        let n = attachment_store::read_at(conn, id, offset + filled as u64, &mut buffer[filled..])?;
+        let at = offset + filled as u64;
+        let n = attachment_store::read_at_row(conn, id, row, at, &mut buffer[filled..])?;
         filled += n;
         if filled == buffer.len() {
             return Ok(());
@@ -268,6 +321,10 @@ pub enum SinkOutcome {
 ///
 /// Plaintext reaches the store before the last chunk authenticated, but only into the incoming
 /// blob, which every reader treats as absent; `finish` deletes it unless the stream checked out.
+/// `begin` checks the store once and remembers the incoming blob's rowid; each chunk then only
+/// checks, from the primary key's index, that the blob's ID still names that row
+/// (`attachment_store::write_incoming_row`), never its hash, which would walk every page written
+/// so far. Holding the ID (`IncomingBlobs`) makes this sink the only one that finishes the row.
 /// Dropping an unsettled sink (a cancelled transfer) abandons it only if the connection is free
 /// that instant, never waiting; otherwise the invisible row stays until the next download of the
 /// ID replaces it or the start-up sweep removes it.
@@ -288,6 +345,9 @@ pub struct StoreSink<D: ConnAccess> {
     claimed: bool,
     /// An incoming blob of this sink's is in the store: it must be finished or abandoned.
     reserved: bool,
+    /// The rowid `begin_incoming` gave this sink's incoming blob; each chunk is written there
+    /// while the blob's ID still names it.
+    row: i64,
     /// Why the sink stopped, for `finish`.
     failure: Option<SinkOutcome>,
 }
@@ -307,6 +367,7 @@ impl<D: ConnAccess> StoreSink<D> {
             written: 0,
             claimed: false,
             reserved: false,
+            row: 0,
             failure: None,
         }
     }
@@ -408,18 +469,18 @@ impl<D: ConnAccess> BlobSink for StoreSink<D> {
         let (id, plain_len) = (self.blob_id.as_str(), opener.plain_len());
         let reserved = hold(&self.db, |conn| {
             if attachment_store::is_complete(conn, id)? {
-                return Ok(false);
+                return Ok(None);
             }
-            attachment_store::begin_incoming(conn, id, plain_len)?;
-            Ok(true)
+            attachment_store::begin_incoming(conn, id, plain_len).map(Some)
         });
         match reserved {
-            Ok(true) => {
+            Ok(Some(row)) => {
                 self.reserved = true;
+                self.row = row;
                 self.opener = Some(opener);
                 SinkFlow::Continue
             }
-            Ok(false) => self.stop(SinkOutcome::AlreadyHere),
+            Ok(None) => self.stop(SinkOutcome::AlreadyHere),
             Err(e) => self.stop(SinkOutcome::Local(e)),
         }
     }
@@ -438,9 +499,9 @@ impl<D: ConnAccess> BlobSink for StoreSink<D> {
             Err(_) => return self.stop(SinkOutcome::Unreadable),
         };
         for chunk in chunks {
-            let (id, offset) = (self.blob_id.as_str(), self.written);
+            let (id, row, offset) = (self.blob_id.as_str(), self.row, self.written);
             if let Err(e) = hold(&self.db, |conn| {
-                attachment_store::write_incoming(conn, id, offset, &chunk)
+                attachment_store::write_incoming_row(conn, id, row, offset, &chunk)
             }) {
                 return self.stop(SinkOutcome::Local(e));
             }

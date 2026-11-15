@@ -1256,7 +1256,7 @@ mod tests {
             CREATE TABLE real_estate_documents (id TEXT PRIMARY KEY, blob_id TEXT, file_path TEXT);
             CREATE TABLE real_estate_photos (id TEXT PRIMARY KEY, blob_id TEXT, thumb_blob_id TEXT,
                 file_path TEXT, thumbnail_path TEXT);
-            CREATE TABLE sync_blobs (blob_id TEXT PRIMARY KEY, state TEXT NOT NULL);
+            CREATE TABLE sync_blobs (blob_id TEXT PRIMARY KEY, state TEXT NOT NULL, last_error TEXT);
             INSERT INTO real_estate_photos (id, file_path, thumbnail_path)
                 VALUES ('legacy', 'real_estate_photos/batch1/a.jpg', 'real_estate_photos/batch1/a.jpg');
             "#,
@@ -1478,6 +1478,25 @@ mod tests {
             [],
         )
         .expect("row");
+        let report = verify_database(&conn).expect("verify");
+        assert!(!report.ok);
+        assert_eq!(
+            report.messages,
+            vec!["attachments: 1 attachment(s) have no content in the store".to_string()]
+        );
+    }
+
+    /// Content the device-sync queue expects to download is still not in the store: the check
+    /// reports it (the content may exist nowhere).
+    #[test]
+    fn verify_database_reports_content_that_is_only_on_its_way() {
+        let dir = tempfile::tempdir().expect("dir");
+        let (conn, _) = seed_account_with_store(dir.path());
+        conn.execute_batch(
+            "INSERT INTO real_estate_documents (id, blob_id) VALUES ('coming', 'coming-blob');
+             INSERT INTO sync_blobs (blob_id, state) VALUES ('coming-blob', 'down');",
+        )
+        .expect("rows");
         let report = verify_database(&conn).expect("verify");
         assert!(!report.ok);
         assert_eq!(

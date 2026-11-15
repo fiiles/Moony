@@ -5,7 +5,7 @@
 use super::*;
 use crate::models::attachments::{AttachmentContent, AttachmentKind};
 use crate::services::sync::blobs::canonical_id;
-use crate::services::sync::blobs::content::ContentReader;
+use crate::services::sync::blobs::content::{row_syncs, ContentReader};
 use crate::services::sync::blobs::queue::{self, *};
 use crate::services::sync::capture::{self, Mode};
 use crate::services::sync::hlc::Clock;
@@ -280,7 +280,7 @@ fn an_invalid_blob_id_is_queued_failed_and_never_offered() {
     assert_eq!(
         ContentReader::new(&conn)
             .expect("reader")
-            .of(Some("../x"))
+            .of(Some("../x"), true)
             .expect("content"),
         AttachmentContent::Failed
     );
@@ -633,7 +633,7 @@ fn content_follows_the_queue_and_the_store() {
     note_gone(&conn, &elsewhere(6)).expect("gone");
 
     let reader = ContentReader::new(&conn).expect("reader");
-    let of = |blob: Option<&str>| reader.of(blob).expect("content");
+    let of = |blob: Option<&str>| reader.of(blob, true).expect("content");
     assert_eq!(of(None), AttachmentContent::Here, "a legacy row");
     assert_eq!(of(Some(&up)), AttachmentContent::WaitingUpload);
     assert_eq!(of(Some(&unqueued)), AttachmentContent::WaitingUpload);
@@ -653,11 +653,11 @@ fn content_follows_the_queue_and_the_store() {
     state::disable(&conn).expect("sync off");
     let off = ContentReader::new(&conn).expect("reader");
     assert_eq!(
-        off.of(Some(&unqueued)).expect("content"),
+        off.of(Some(&unqueued), true).expect("content"),
         AttachmentContent::Here
     );
     assert_eq!(
-        off.of(Some(&elsewhere(1))).expect("content"),
+        off.of(Some(&elsewhere(1)), true).expect("content"),
         AttachmentContent::Missing
     );
     assert_eq!(
@@ -670,7 +670,7 @@ fn content_follows_the_queue_and_the_store() {
     exec(&conn, "DETACH DATABASE files");
     let unavailable = ContentReader::new(&conn).expect("reader");
     assert_eq!(
-        unavailable.of(Some(&elsewhere(1))).expect("content"),
+        unavailable.of(Some(&elsewhere(1)), true).expect("content"),
         AttachmentContent::Here,
         "the unavailable store is reported elsewhere"
     );
@@ -736,37 +736,147 @@ fn a_merge_that_deletes_a_row_or_its_owner_drops_its_entry() {
     assert!(queue_rows(&conn).is_empty());
 }
 
+/// Content on its way is not a failed conversion, but it is not content here either: the strict
+/// count (`rows_without_content`, the quarantine and the integrity check) still counts it.
 #[test]
 fn content_on_its_way_is_not_missing_content() {
     let conn = profile();
+    let coming =
+        |c: &Connection| attachment_store::rows_without_content_or_download(c).expect("count");
+    let strict = |c: &Connection| attachment_store::rows_without_content(c).expect("count");
     document(&conn, "d1", &elsewhere(1), 100);
-    assert_eq!(
-        attachment_store::rows_without_content(&conn).expect("count"),
-        1
-    );
+    assert_eq!((coming(&conn), strict(&conn)), (1, 1));
 
     queue::reconcile(&conn, NOW).expect("reconcile");
-    assert_eq!(
-        attachment_store::rows_without_content(&conn).expect("count"),
-        0
-    );
+    assert_eq!((coming(&conn), strict(&conn)), (0, 1));
 
     // A photo is missing content while either blob is neither here nor on its way.
     let thumb = held(&conn, b"thumb");
     photo(&conn, "ph1", &elsewhere(2), &thumb, 100);
-    assert_eq!(
-        attachment_store::rows_without_content(&conn).expect("count"),
-        1
-    );
+    assert_eq!((coming(&conn), strict(&conn)), (1, 2));
     queue::reconcile(&conn, NOW).expect("reconcile");
-    assert_eq!(
-        attachment_store::rows_without_content(&conn).expect("count"),
-        0
-    );
+    assert_eq!((coming(&conn), strict(&conn)), (0, 2));
 
     note_gone(&conn, &elsewhere(1)).expect("gone");
+    assert_eq!((coming(&conn), strict(&conn)), (1, 2));
+
+    // An ID that can never be fetched is not on its way (the reconcile queues `d1` again).
+    document(&conn, "bad", "../x", 100);
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    assert_eq!((coming(&conn), strict(&conn)), (1, 3));
+}
+
+/// Review fix 2: a row that does not meet its row condition never syncs, so content held for it
+/// is plain "here", never "waiting to upload" (nothing would ever clear that mark). A row that
+/// syncs and has no entry yet (before the next reconcile) waits.
+#[test]
+fn a_row_that_does_not_sync_reads_here_never_waiting() {
+    let conn = profile();
+    let full = held(&conn, b"full");
+    exec(
+        &conn,
+        &format!(
+            "INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date) \
+               VALUES ('batch-1', 'r1', 1767225600); \
+             INSERT INTO real_estate_photos (id, batch_id, file_path, thumbnail_path, blob_id) \
+               VALUES ('ph-half', 'batch-1', 'photos/a.jpg', 'photos/a_thumb.jpg', '{full}');"
+        ),
+    );
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    let reader = ContentReader::new(&conn).expect("reader");
+
+    let half = row_syncs(AttachmentKind::Photo, Some(&full), None).expect("syncs");
+    assert!(!half);
+    assert_eq!(
+        reader.of(Some(&full), half).expect("content"),
+        AttachmentContent::Here
+    );
+    assert_eq!(queue::uploads_waiting(&conn).expect("waiting"), 0);
+
+    let fresh = held(&conn, b"fresh");
+    document(&conn, "fresh", &fresh, 100);
+    let syncs = row_syncs(AttachmentKind::InsuranceDocument, Some(&fresh), None).expect("syncs");
+    assert!(syncs);
+    assert_eq!(
+        reader.of(Some(&fresh), syncs).expect("content"),
+        AttachmentContent::WaitingUpload
+    );
+    assert!(row_syncs(AttachmentKind::Photo, Some(&full), Some(&fresh)).expect("syncs"));
+    assert!(!row_syncs(AttachmentKind::RealEstateDocument, None, None).expect("syncs"));
+}
+
+/// Review fix 3: one definition of content complete on this device (hash recorded, content at its
+/// recorded size) for the queue, the reader and `rows_without_content`.
+#[test]
+fn a_truncated_blob_is_neither_queued_for_upload_nor_here() {
+    let conn = profile();
+    let blob = held(&conn, b"full content");
+    exec(
+        &conn,
+        &format!("UPDATE files.blobs SET data = x'00' WHERE id = '{blob}'"),
+    );
+    document(&conn, "d1", &blob, 100);
+
+    assert_eq!(
+        queue::reconcile(&conn, NOW).expect("reconcile"),
+        reconciled(0, 1, 0, 0)
+    );
+    assert_eq!(next_upload(&conn, NOW, None).expect("next"), None);
+    assert_eq!(
+        ContentReader::new(&conn)
+            .expect("reader")
+            .of(Some(&blob), true)
+            .expect("content"),
+        AttachmentContent::NotHere
+    );
     assert_eq!(
         attachment_store::rows_without_content(&conn).expect("count"),
         1
     );
+}
+
+/// Review fix 5: content complete here under an ID that can never be transferred is "here" in the
+/// reader and counted nowhere in the summary.
+#[test]
+fn a_held_blob_with_an_invalid_id_reads_here_and_counts_nowhere() {
+    let conn = profile();
+    arrive(&conn, "../x", b"content");
+    document(&conn, "d1", "../x", 100);
+    queue::reconcile(&conn, NOW).expect("reconcile");
+
+    assert_eq!(
+        ContentReader::new(&conn)
+            .expect("reader")
+            .of(Some("../x"), true)
+            .expect("content"),
+        AttachmentContent::Here
+    );
+    assert_eq!(
+        summary(&conn).expect("summary"),
+        AttachmentSummary::default()
+    );
+}
+
+/// Review fix 4: a merged changeset reconciles only what rows can change (a merge never removes
+/// content a row still names); a restore, like the end of a pull, reconciles the whole queue, so
+/// content this store lost is fetched again.
+#[test]
+fn a_restore_reconciles_the_whole_queue() {
+    let conn = profile();
+    let blob = held(&conn, b"mine");
+    document(&conn, "d1", &blob, 100);
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    attachment_store::delete(&conn, &blob).expect("lose");
+
+    let mut touched = Touched::default();
+    touched.row("insurance_documents", "d1");
+    repair::after_merge(&conn, &touched, NOW).expect("merge repair");
+    assert_eq!(
+        state_of(&conn, &blob).as_deref(),
+        Some("up"),
+        "left to the full reconcile"
+    );
+
+    repair::full(&conn, NOW).expect("restore repair");
+    assert_eq!(state_of(&conn, &blob).as_deref(), Some("down"));
 }

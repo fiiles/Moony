@@ -346,19 +346,43 @@ pub fn incremental_vacuum(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Attachment rows whose content is missing from the store or does not have its recorded size (a
-/// photo counts once even when both its blobs are affected). Content on its way is not missing:
-/// with device sync on, a blob the transfer queue (`sync_blobs`) holds as `down` comes from the
-/// sync server (ADR 0030). SQLite answers `length()` of a blob from the record header, without
-/// reading the content.
+/// SQL: the blob whose ID is the SQL expression `id` is complete on this device: its hash is
+/// recorded (an incoming blob's is empty) and its content has its recorded size. The one
+/// definition of "held here" for the blob sweep's callers, device sync's transfer queue and its
+/// content states. SQLite answers `length()` of a blob from the record header, without reading
+/// the content.
+pub(crate) fn complete_sql(id: &str) -> String {
+    format!(
+        "EXISTS (SELECT 1 FROM files.blobs cb WHERE cb.id = {id} AND cb.sha256 <> '' \
+           AND length(cb.data) = cb.size)"
+    )
+}
+
+/// Attachment rows whose content is not complete in this device's store (a photo counts once even
+/// when both its blobs are affected). Strict: content another device or the sync server may still
+/// have counts as missing here, so the quarantine of converted originals and the integrity check
+/// never rely on it.
 pub fn rows_without_content(conn: &Connection) -> Result<u32> {
-    ensure_available(conn)?;
-    let present = |column: &str| {
+    count_rows_without(conn, &complete_sql)
+}
+
+/// `rows_without_content` less the rows whose missing content device sync expects to download (a
+/// `down` entry in `sync_blobs` whose ID can be fetched): for the conversion status only, where
+/// content on its way is not a failed conversion.
+pub fn rows_without_content_or_download(conn: &Connection) -> Result<u32> {
+    count_rows_without(conn, &|id: &str| {
         format!(
-            "(EXISTS (SELECT 1 FROM files.blobs b WHERE b.id = {column} AND b.sha256 <> '' AND length(b.data) = b.size) \
-             OR EXISTS (SELECT 1 FROM main.sync_blobs q WHERE q.blob_id = {column} AND q.state = 'down'))"
+            "({} OR EXISTS (SELECT 1 FROM main.sync_blobs q WHERE q.blob_id = {id} \
+               AND q.state = 'down' AND q.last_error IS NOT 'invalidId'))",
+            complete_sql(id)
         )
-    };
+    })
+}
+
+/// Attachment rows with a blob for which `present` (SQL for one blob ID expression) is false for
+/// any of their blobs.
+fn count_rows_without(conn: &Connection, present: &dyn Fn(&str) -> String) -> Result<u32> {
+    ensure_available(conn)?;
     let n: i64 = conn.query_row(
         &format!(
             "SELECT
@@ -436,7 +460,6 @@ mod tests {
             CREATE TABLE real_estate_documents (id TEXT PRIMARY KEY, blob_id TEXT);
             CREATE TABLE real_estate_photos (id TEXT PRIMARY KEY, blob_id TEXT, thumb_blob_id TEXT);
             CREATE TABLE sync_held_blobs (blob_id TEXT PRIMARY KEY, held_at INTEGER NOT NULL);
-            CREATE TABLE sync_blobs (blob_id TEXT PRIMARY KEY, state TEXT NOT NULL);
             CREATE TABLE owners (id TEXT PRIMARY KEY);
             "#,
         )

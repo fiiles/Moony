@@ -49,12 +49,13 @@ pub fn run(conn: &Connection, touched: &Touched, now: i64) -> Result<()> {
         attachment_store::delete_unreferenced(conn)?;
     }
     // The transfer queue follows the rows: a merge or a restore that brought, changed or removed
-    // attachment rows queues their content or drops it.
+    // attachment rows queues their content or drops it. Checking the entries against the store
+    // waits for the end of the pull, or of the restore (`repair::full`).
     let rows_touched = attachment_store::REFERENCES
         .iter()
         .any(|(table, _)| touched.rows.contains_key(*table));
     if owners_lost || rows_touched {
-        blobs::queue::reconcile(conn, now)?;
+        blobs::queue::reconcile_rows(conn, now)?;
     }
     Ok(())
 }

@@ -19,7 +19,7 @@ use super::{canonical_id, sync_on};
 use crate::db::files_schema;
 use crate::error::{AppError, Result};
 use crate::models::attachments::AttachmentKind;
-use crate::services::attachment_store::REFERENCES;
+use crate::services::attachment_store::{complete_sql, REFERENCES};
 use crate::services::sync::in_savepoint;
 use crate::services::sync::registry::{self, TableClass};
 
@@ -174,9 +174,10 @@ fn references() -> Result<String> {
     Ok(parts.join(" UNION ALL "))
 }
 
-/// SQL: the blob `id` is complete in the store (an incoming one is not held yet).
+/// SQL: the blob `id` is complete on this device (`attachment_store::complete_sql`, the one
+/// definition: an incoming or truncated blob is not held).
 fn held(id: &str) -> String {
-    format!("EXISTS (SELECT 1 FROM files.blobs f WHERE f.id = {id} AND f.sha256 <> '')")
+    complete_sql(id)
 }
 
 /// Brings the queue in line with the rows and the store; the same rows and store give the same
@@ -186,7 +187,24 @@ fn held(id: &str) -> String {
 /// `down`, and `down` entries whose content is here into `up` (losing it forgot whether the
 /// server had it; the download lane marks what it fetched `done` itself). Does nothing without the
 /// store or with sync off.
+///
+/// Checking every entry against the store reads each blob's record past its content, so this runs
+/// once per restore and once at the end of a pull that merged anything; each merged changeset runs
+/// only `reconcile_rows`.
 pub fn reconcile(conn: &Connection, now: i64) -> Result<Reconciled> {
+    reconcile_with(conn, now, true)
+}
+
+/// The part of `reconcile` that rows can change, after one merged changeset: drops the entries no
+/// syncing row names any more and adds the newly named blobs. A merge never removes or adds content
+/// of a blob a row still names (the blob sweep takes only blobs no row names, and their entries go
+/// here), so the entries' states against the store are left to the full `reconcile` the pull runs
+/// at its end.
+pub fn reconcile_rows(conn: &Connection, now: i64) -> Result<Reconciled> {
+    reconcile_with(conn, now, false)
+}
+
+fn reconcile_with(conn: &Connection, now: i64, scan_store: bool) -> Result<Reconciled> {
     if !files_schema::is_attached(conn)? || !sync_on(conn)? {
         return Ok(Reconciled::default());
     }
@@ -197,20 +215,25 @@ pub fn reconcile(conn: &Connection, now: i64) -> Result<Reconciled> {
             &format!("DELETE FROM main.sync_blobs WHERE blob_id NOT IN (SELECT b FROM ({refs}))"),
             [],
         )?;
-        let lost = conn.execute(
-            &format!(
-                "UPDATE main.sync_blobs SET state = 'down', {FRESH} \
-                 WHERE state IN ('up', 'done') AND NOT {entry_held}"
-            ),
-            [],
-        )?;
-        let found = conn.execute(
-            &format!(
-                "UPDATE main.sync_blobs SET state = 'up', queued_at = ?1, {FRESH} \
-                 WHERE state = 'down' AND last_error IS NOT 'invalidId' AND {entry_held}"
-            ),
-            [now],
-        )?;
+        let (lost, found) = if scan_store {
+            let lost = conn.execute(
+                &format!(
+                    "UPDATE main.sync_blobs SET state = 'down', {FRESH} \
+                     WHERE state IN ('up', 'done') AND NOT {entry_held}"
+                ),
+                [],
+            )?;
+            let found = conn.execute(
+                &format!(
+                    "UPDATE main.sync_blobs SET state = 'up', queued_at = ?1, {FRESH} \
+                     WHERE state = 'down' AND last_error IS NOT 'invalidId' AND {entry_held}"
+                ),
+                [now],
+            )?;
+            (lost, found)
+        } else {
+            (0, 0)
+        };
         let new: Vec<(String, bool, i64, bool)> = {
             let mut stmt = conn.prepare(&format!(
                 "SELECT n.b, MAX(n.thumbnail), MIN(n.row_at), {held_here} FROM ({refs}) n \
@@ -288,11 +311,14 @@ pub fn next_upload(
     let max_plain = max_plain.map(|m| i64::try_from(m).unwrap_or(i64::MAX));
     let found = conn
         .query_row(
-            "SELECT q.blob_id, q.thumbnail, q.wanted, q.attempts, f.size \
-             FROM main.sync_blobs q JOIN files.blobs f ON f.id = q.blob_id AND f.sha256 <> '' \
-             WHERE q.state = 'up' AND q.active = 0 AND q.next_try_at <= ?1 \
-               AND (?2 IS NULL OR f.size <= ?2) \
-             ORDER BY q.queued_at, q.blob_id LIMIT 1",
+            &format!(
+                "SELECT q.blob_id, q.thumbnail, q.wanted, q.attempts, f.size \
+                 FROM main.sync_blobs q JOIN files.blobs f ON f.id = q.blob_id \
+                 WHERE q.state = 'up' AND q.active = 0 AND q.next_try_at <= ?1 \
+                   AND {complete} AND (?2 IS NULL OR f.size <= ?2) \
+                 ORDER BY q.queued_at, q.blob_id LIMIT 1",
+                complete = held("q.blob_id"),
+            ),
             params![now, max_plain],
             |r| {
                 Ok(Transfer {
@@ -412,7 +438,7 @@ pub fn requeue_upload(conn: &Connection, blob_id: &str, now: i64) -> Result<bool
     Ok(changed > 0)
 }
 
-fn table_of(kind: AttachmentKind) -> &'static str {
+pub(crate) fn table_of(kind: AttachmentKind) -> &'static str {
     match kind {
         AttachmentKind::Photo => "real_estate_photos",
         AttachmentKind::RealEstateDocument => "real_estate_documents",
@@ -504,45 +530,50 @@ pub fn uploads_waiting(conn: &Connection) -> Result<u32> {
     Ok(rows as u32)
 }
 
-/// The rows by where their content is (a photo once, whatever its two blobs do). Among content
-/// not here a row counts in its worst state only (failed, then not on the server, then not here);
-/// `waiting_upload` counts the rows with any blob waiting to upload, `waiting_upload_bytes` the
-/// plaintext size of those blobs.
+/// The rows by where their content is (a photo once, whatever its two blobs do), as
+/// `content::ContentReader` reads each blob: content complete here is never counted as not here,
+/// whatever its entry says. Among content not here a row counts in its worst state only (failed,
+/// then not on the server, then not here); `waiting_upload` counts the rows with any blob waiting
+/// to upload, `waiting_upload_bytes` the plaintext size of those blobs. Nothing without the store
+/// (every row reads as here then).
 pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
+    if !files_schema::is_attached(conn)? {
+        return Ok(AttachmentSummary::default());
+    }
     let (waiting_upload, failed, not_on_server, not_here): (i64, i64, i64, i64) = conn.query_row(
         &format!(
-            "WITH per_row AS (
-               SELECT MAX(q.state = 'up') AS up,
-                 MAX(q.state = 'down' AND q.active = 0
-                     AND COALESCE(q.last_error, '') IN ('unreadable', 'invalidId')) AS failed,
-                 MAX(q.state = 'down' AND q.active = 0
-                     AND COALESCE(q.last_error, '') = 'notOnServer') AS gone,
-                 MAX(q.state = 'down') AS down
-               FROM ({}) r JOIN main.sync_blobs q ON q.blob_id = r.b
-               GROUP BY r.tbl, r.rid)
+            "WITH blobs AS (
+               SELECT r.tbl, r.rid, q.state, q.active, COALESCE(q.last_error, '') AS error,
+                 {held} AS here
+               FROM ({refs}) r JOIN main.sync_blobs q ON q.blob_id = r.b),
+             per_row AS (
+               SELECT MAX(state = 'up' AND here) AS up,
+                 MAX(absent AND active = 0 AND error IN ('unreadable', 'invalidId')) AS failed,
+                 MAX(absent AND active = 0 AND error = 'notOnServer') AS gone,
+                 MAX(absent) AS down
+               FROM (SELECT *, state = 'down' AND NOT here AS absent FROM blobs)
+               GROUP BY tbl, rid)
              SELECT COALESCE(SUM(up), 0), COALESCE(SUM(failed), 0),
                COALESCE(SUM(gone AND NOT failed), 0),
                COALESCE(SUM(down AND NOT failed AND NOT gone), 0)
              FROM per_row",
-            references()?
+            held = held("q.blob_id"),
+            refs = references()?,
         ),
         [],
         |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
     )?;
-    let waiting_upload_bytes: i64 = if files_schema::is_attached(conn)? {
-        conn.query_row(
-            &format!(
-                "SELECT COALESCE(SUM(f.size), 0) FROM main.sync_blobs q \
-                 JOIN files.blobs f ON f.id = q.blob_id AND f.sha256 <> '' \
-                 WHERE q.state = 'up' AND q.blob_id IN (SELECT b FROM ({}))",
-                references()?
-            ),
-            [],
-            |r| r.get(0),
-        )?
-    } else {
-        0
-    };
+    let waiting_upload_bytes: i64 = conn.query_row(
+        &format!(
+            "SELECT COALESCE(SUM(f.size), 0) FROM main.sync_blobs q \
+             JOIN files.blobs f ON f.id = q.blob_id \
+             WHERE q.state = 'up' AND {held} AND q.blob_id IN (SELECT b FROM ({refs}))",
+            held = held("q.blob_id"),
+            refs = references()?,
+        ),
+        [],
+        |r| r.get(0),
+    )?;
     Ok(AttachmentSummary {
         waiting_upload: waiting_upload as u32,
         waiting_upload_bytes,

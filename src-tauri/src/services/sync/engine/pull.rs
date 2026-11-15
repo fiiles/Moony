@@ -16,6 +16,7 @@ use rusqlite::Connection;
 
 use super::{ConnAccess, PullReport, PullStop};
 use crate::error::{AppError, Result};
+use crate::services::sync::blobs;
 use crate::services::sync::chain::gaps::{self, GapKind};
 use crate::services::sync::chain::{self, EnvelopeMeta, RejoinReport, Verdict};
 use crate::services::sync::changeset::{self, Changeset};
@@ -253,7 +254,15 @@ async fn pull_bounded<R: Relay, D: ConnAccess>(
     scan_from: Option<u64>,
 ) -> SyncResult<PullReport> {
     let report = pull_pages_from_cursor(relay, db, creds, now, max_pages, scan_from).await?;
-    db.with_conn(|conn| settle_gaps(conn, &report))?;
+    db.with_conn(|conn| {
+        settle_gaps(conn, &report)?;
+        // Each merged changeset brought the queue in line with its rows; once per pull the
+        // entries are checked against the store (ADR 0030).
+        if report.applied > 0 {
+            blobs::queue::reconcile(conn, now)?;
+        }
+        Ok(())
+    })?;
     Ok(report)
 }
 

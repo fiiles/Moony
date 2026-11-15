@@ -146,14 +146,21 @@ documents and photos need a newer server. The app assumes the server's error cod
 - **The transfer queue (Task 7).** `services/sync/blobs/queue.rs` reconciles `sync_blobs` from the
   rows and the store with set-based SQL over `attachment_store::REFERENCES`, limited to rows that
   meet their row condition (`registry::row_condition`), so a row that never syncs never queues its
-  blob. `repair::invariants` runs it after every merge or restore that touched an attachment row
-  table or lost rows of an owner (after the blob sweep); a replace's `repair::full` therefore
-  rebuilds the emptied queue. A blob held here is queued `up` unless the queue knows the server
-  has it (`done`), so content the queue lost track of is confirmed with the server (a `HEAD`, no
-  body when it is there) rather than assumed uploaded: after a replace every held blob is `up`, a
-  held blob whose row the next pull brings back is `up`, and a `down` entry whose content is found
-  here again becomes `up` (the plan had `done`: losing the copy forgot whether it was ever
-  uploaded). The download lane marks what it stored `done` itself. `ContentReader` gives each
-  blob an `AttachmentContent`; `attachment_store::rows_without_content` leaves out content on its
-  way (a `down` entry), so the conversion status and the database check do not count it as
-  missing.
+  blob. "Held here" has one definition, `attachment_store::complete_sql` (hash recorded, content at
+  its recorded size), for the queue, the content reader and `rows_without_content`, so a truncated
+  blob is neither uploaded nor shown as here. Each merged changeset that touched an attachment row
+  table or lost rows of an owner runs `reconcile_rows` (adds and drops; a merge never adds or
+  removes content of a blob a row still names); the whole `reconcile`, which checks every entry
+  against the store, runs once at the end of a pull that merged anything and after every restore
+  (`repair::full`), because reading a blob's `size` and `sha256` means walking past its content
+  (they follow `data` in `files.blobs`). A blob held here is queued `up` unless the queue knows the
+  server has it (`done`), so content the queue lost track of is confirmed with the server (a
+  `HEAD`, no body when it is there) rather than assumed uploaded: after a replace every held blob
+  is `up`, a held blob whose row the next pull brings back is `up`, and a `down` entry whose
+  content is found here again becomes `up` (the plan had `done`: losing the copy forgot whether it
+  was ever uploaded). The download lane marks what it stored `done` itself. `ContentReader` gives
+  each blob an `AttachmentContent`; a row that does not meet its row condition reads as `Here`,
+  never as waiting to upload. A `down` entry is not content: `rows_without_content` keeps counting
+  it, so the quarantine of converted originals and the integrity check never rely on content that
+  may exist nowhere; only the conversion status leaves out content expected by download
+  (`rows_without_content_or_download`).

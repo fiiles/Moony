@@ -2,10 +2,12 @@
 
 use rusqlite::{Connection, OptionalExtension};
 
-use super::sync_on;
+use super::{queue, sync_on};
 use crate::db::files_schema;
-use crate::error::Result;
-use crate::models::attachments::AttachmentContent;
+use crate::error::{AppError, Result};
+use crate::models::attachments::{AttachmentContent, AttachmentKind};
+use crate::services::attachment_store::complete_sql;
+use crate::services::sync::registry::{self, TableClass};
 
 /// Answers `AttachmentContent` for many blobs of one listing; whether sync is on and the store is
 /// attached is read once, in `new`.
@@ -24,13 +26,15 @@ impl<'c> ContentReader<'c> {
         })
     }
 
-    /// The content of the blob a row names. A row without a blob (a legacy plain file) and an
-    /// unavailable store are `Here` (the store's unavailable state is reported where it is
-    /// read). Held here: `WaitingUpload` while the server has not confirmed it (its entry is `up`,
-    /// or, with sync on, the queue has not seen it yet), else `Here`. Not held: `Missing` without
-    /// an entry, else from the entry: `Downloading`, `NotOnServer`, `Failed` (unreadable or an
-    /// invalid ID) or `NotHere`.
-    pub fn of(&self, blob_id: Option<&str>) -> Result<AttachmentContent> {
+    /// The content of the blob a row names; `syncs` is whether that row meets its row condition
+    /// (`row_syncs`). A row without a blob (a legacy plain file) and an unavailable store are
+    /// `Here` (the store's unavailable state is reported where it is read). Complete here
+    /// (`attachment_store::complete_sql`): for a row that syncs, `WaitingUpload` while the server
+    /// has not confirmed it (its entry is `up`, or, with sync on, the queue has not seen it yet),
+    /// else `Here`; a row that does not sync never uploads, so it is `Here`. Not complete here:
+    /// `Missing` without an entry, else from the entry: `Downloading`, `NotOnServer`, `Failed`
+    /// (unreadable or an invalid ID) or `NotHere`.
+    pub fn of(&self, blob_id: Option<&str>, syncs: bool) -> Result<AttachmentContent> {
         let Some(id) = blob_id else {
             return Ok(AttachmentContent::Here);
         };
@@ -39,9 +43,7 @@ impl<'c> ContentReader<'c> {
         }
         let held: bool = self
             .conn
-            .prepare_cached(
-                "SELECT EXISTS (SELECT 1 FROM files.blobs WHERE id = ?1 AND sha256 <> '')",
-            )?
+            .prepare_cached(&format!("SELECT {}", complete_sql("?1")))?
             .query_row([id], |r| r.get(0))?;
         let entry: Option<(String, bool, Option<String>)> = self
             .conn
@@ -51,6 +53,9 @@ impl<'c> ContentReader<'c> {
             .query_row([id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
             .optional()?;
         if held {
+            if !syncs {
+                return Ok(AttachmentContent::Here);
+            }
             return Ok(match entry {
                 Some((state, _, _)) if state == "up" => AttachmentContent::WaitingUpload,
                 None if self.sync_on => AttachmentContent::WaitingUpload,
@@ -67,4 +72,33 @@ impl<'c> ContentReader<'c> {
             },
         })
     }
+}
+
+/// Whether an attachment row of `kind` with these blob columns syncs (`registry::row_condition`).
+pub fn row_syncs(
+    kind: AttachmentKind,
+    blob_id: Option<&str>,
+    thumb_blob_id: Option<&str>,
+) -> Result<bool> {
+    let table = queue::table_of(kind);
+    let spec = registry::spec(table)
+        .ok_or_else(|| AppError::Internal(format!("{table} is not in the sync registry")))?;
+    if spec.class != TableClass::Synced {
+        return Ok(false);
+    }
+    for column in spec.requires {
+        let value = match *column {
+            "blob_id" => blob_id,
+            "thumb_blob_id" => thumb_blob_id,
+            other => {
+                return Err(AppError::Internal(format!(
+                    "{table}.{other} is a row condition the content reader does not know"
+                )))
+            }
+        };
+        if value.is_none() {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }

@@ -31,7 +31,7 @@ const ADVERSARIAL_ROUNDS: usize = 3;
 const RATES_FROM: i64 = 1_764_547_200;
 /// The operations that seed the vault, in order: one of every kind of entity, so every
 /// operation finds something to act on.
-const SEED_OPS: [&str; 39] = [
+const SEED_OPS: [&str; 42] = [
     "categories::create_category",
     "categories::create_category",
     "bank_accounts::create_account",
@@ -71,6 +71,9 @@ const SEED_OPS: [&str; 39] = [
     "milestones::set_milestone_state",
     "projection::save_settings",
     "stock_import::formats::save_format",
+    "attachments::add_policy_document",
+    "attachments::add_property_document",
+    "attachments::add_photo",
 ];
 
 /// The two rngs of a run: the schedule (operation kinds, devices, pushes, pulls, orders) and the
@@ -266,6 +269,94 @@ fn random_run(seed: u64) -> Vault {
     }
     finish(&mut vault, &mut rngs);
     vault
+}
+
+/// The attachment operations, and what they race with: the deletes that cascade over a policy's
+/// or property's documents, photos and batches, and the creates that give the next ones a parent.
+const ATTACHMENT_RUN_OPS: [&str; 12] = [
+    "attachments::add_policy_document",
+    "attachments::add_property_document",
+    "attachments::add_photo",
+    "attachments::add_photo",
+    "attachments::delete_document",
+    "attachments::delete_photo",
+    "attachments::delete_photo_batch",
+    "insurance::delete_policy",
+    "real_estate::delete_property",
+    "insurance::create_policy",
+    "real_estate::create_property",
+    "real_estate::update_property",
+];
+
+#[test]
+fn attachments_converge_with_cascades_on_two_devices() {
+    let runs = every_seed(|seed| {
+        let mut rngs = Rngs::new(seed ^ 0x00A7_7AC4);
+        let mut vault = Vault::new(format!("attachments, seed {seed}"), 2, seed_vault);
+        for round in 0..ROUNDS {
+            vault.trace.push(format!("--- round {round}"));
+            for _ in 0..rngs.schedule.random_range(2..=8) {
+                let d = rngs.schedule.random_range(0..2);
+                let name =
+                    ATTACHMENT_RUN_OPS[rngs.schedule.random_range(0..ATTACHMENT_RUN_OPS.len())];
+                vault.run_op(d, name, &mut rngs.target);
+            }
+            for d in 0..2 {
+                if rngs.schedule.random_bool(0.6) {
+                    vault.push(d);
+                }
+            }
+            for d in 0..2 {
+                if rngs.schedule.random_bool(0.6) {
+                    let partial = rngs.schedule.random_bool(0.3);
+                    vault.pull_random(d, &mut rngs.schedule, partial);
+                }
+            }
+        }
+        finish(&mut vault, &mut rngs);
+        for (d, device) in vault.devices.iter().enumerate() {
+            let conn = &device.conn;
+            let failed = panic::catch_unwind(AssertUnwindSafe(|| ops::queue_consistent(conn)));
+            if let Err(panic) = failed {
+                let message = panic
+                    .downcast_ref::<String>()
+                    .cloned()
+                    .unwrap_or_else(|| "the queue is inconsistent".into());
+                vault.fail(&format!("device {d}: {message}"));
+            }
+        }
+        vault
+    });
+    // The net holds only if the attachment operations and the cascades landed.
+    let done = |name: &str| -> usize {
+        runs.iter()
+            .map(|v| v.stats.get(name).map_or(0, |c| c[0]))
+            .sum()
+    };
+    for name in ATTACHMENT_RUN_OPS {
+        assert!(done(name) > 0, "{name} never succeeded");
+    }
+    let queued: i64 = runs
+        .iter()
+        .map(|v| {
+            let conn = &v.devices[0].conn;
+            let n: i64 = conn
+                .query_row("SELECT COUNT(*) FROM sync_blobs", [], |r| r.get(0))
+                .expect("queue size");
+            n
+        })
+        .sum();
+    assert!(queued > 0, "no run ended with attachment content queued");
+    let attachment: usize = ATTACHMENT_RUN_OPS[..7].iter().map(|n| done(n)).sum();
+    let all: usize = runs
+        .iter()
+        .flat_map(|v| v.stats.values())
+        .map(|c| c[0])
+        .sum();
+    assert!(
+        attachment * 3 >= all,
+        "attachment operations are {attachment} of {all} successful operations"
+    );
 }
 
 /// The fewest seeds over which the operation-coverage net is asserted, besides the fixed set: a

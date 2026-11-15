@@ -105,6 +105,13 @@ fn encode_jpeg(img: &DynamicImage) -> Result<Vec<u8>> {
     Ok(out.into_inner())
 }
 
+/// A prepared photo of two given byte strings, for tests that need rows with content without
+/// decoding an image.
+#[cfg(test)]
+pub(crate) fn prepared_for_test(full: Vec<u8>, thumb: Vec<u8>) -> PreparedPhoto {
+    PreparedPhoto { full, thumb }
+}
+
 /// Store a prepared photo in its batch: both blobs and the row, in one transaction.
 pub fn record_photo(
     conn: &Connection,

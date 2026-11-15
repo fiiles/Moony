@@ -11,7 +11,7 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use rusqlite::Connection;
 
-use super::{PullEnd, Vault, STEP_MS};
+use super::{ops, PullEnd, Vault, STEP_MS};
 use crate::models::categorization::InsertScopedLearning;
 use crate::models::investments::InsertInvestmentTransaction;
 use crate::models::spending_plans::InsertSpendingPlan;
@@ -976,5 +976,286 @@ fn capture_overhead_on_a_5000_row_statement_import() {
         "capture overhead: {overhead:.1}% ({ROWS} rows: {:.1} ms without sync, {:.1} ms with)",
         plain.as_secs_f64() * 1e3,
         captured.as_secs_f64() * 1e3
+    );
+}
+
+// ----------------------------------------------------------------------------------------------
+// Documents and photos (ADR 0030). Content is not transferred here: a device may hold a row whose
+// content is on another device, and its queue then says `down`.
+// ----------------------------------------------------------------------------------------------
+
+/// The vault's first data for the attachment scenarios: a policy with a document, a property
+/// with a document, and a batch with a photo, all with content on device 0.
+fn attachment_seed(conn: &mut Connection, dir: &Path) {
+    let mut rng = StdRng::seed_from_u64(7);
+    for name in [
+        "insurance::create_policy",
+        "real_estate::create_property",
+        "attachments::add_policy_document",
+        "attachments::add_property_document",
+        "attachments::add_photo",
+    ] {
+        let step = ops::run_op(conn, &mut rng, dir, name)
+            .unwrap_or_else(|e| panic!("seeding {name}: engine error: {e}"));
+        assert_eq!(step.outcome, ops::Outcome::Done, "seeding {name}: {step:?}");
+    }
+}
+
+fn attachment_vault(label: &str, devices: usize) -> Vault {
+    Vault::new(label, devices, attachment_seed)
+}
+
+/// Runs the named operation on device `d`, which must succeed.
+fn op_on(vault: &mut Vault, d: usize, name: &str) {
+    step();
+    vault.run_op(d, name, &mut rng());
+    let last = vault.trace.last().cloned().unwrap_or_default();
+    assert!(last.ends_with("Done"), "{name} on device {d}: {last}");
+}
+
+/// The rows agree everywhere (`assert_converged`), no device has a row without its parent, and
+/// every device's queue agrees with its rows and its store.
+fn assert_attachments_converged(vault: &Vault) {
+    vault.assert_converged();
+    for (d, device) in vault.devices.iter().enumerate() {
+        let orphans = count(
+            &device.conn,
+            "SELECT COUNT(*) FROM pragma_foreign_key_check",
+        );
+        assert_eq!(orphans, 0, "device {d} holds rows without their parent");
+        ops::queue_consistent(&device.conn);
+    }
+}
+
+const ATTACHMENT_ROWS: &str = "SELECT (SELECT COUNT(*) FROM insurance_documents) \
+    || ' ' || (SELECT COUNT(*) FROM real_estate_documents) \
+    || ' ' || (SELECT COUNT(*) FROM real_estate_photos) \
+    || ' ' || (SELECT COUNT(*) FROM real_estate_photo_batches)";
+
+/// A document and a photo added on one device, a document on another: every device ends with the
+/// same rows; only the adding device holds the content, and the others queue it `down`.
+#[test]
+fn documents_and_photos_added_on_two_devices_reach_every_device() {
+    let mut vault = attachment_vault("documents and photos added", DEVICES);
+    op_on(&mut vault, 0, "attachments::add_policy_document");
+    op_on(&mut vault, 0, "attachments::add_photo");
+    op_on(&mut vault, 1, "attachments::add_property_document");
+
+    exchange(&mut vault, 0, 1);
+
+    assert_attachments_converged(&vault);
+    let rows = |d: usize| texts(&vault.devices[d].conn, ATTACHMENT_ROWS);
+    assert_eq!(rows(0), rows(1));
+    assert_eq!(rows(0), rows(2));
+    let down = |d: usize| {
+        count(
+            &vault.devices[d].conn,
+            "SELECT COUNT(*) FROM sync_blobs WHERE state = 'down'",
+        )
+    };
+    assert_eq!(down(0), 1, "device 0 lacks only device 1's document");
+    assert!(down(2) >= 5, "device 2 holds none of the content");
+}
+
+/// A deletes a document; B, offline, renames it (no service renames a document, so the same
+/// statement a rename would run) and edits a photo batch's description.
+#[test]
+fn document_deleted_while_another_device_edits_it() {
+    let mut vault = attachment_vault("delete races edit", DEVICES);
+    op_on(&mut vault, 0, "attachments::delete_document");
+    step();
+    vault.devices[1]
+        .conn
+        .execute_batch(
+            "UPDATE insurance_documents SET name = 'Renamed'; \
+             UPDATE real_estate_documents SET description = 'Edited'; \
+             UPDATE real_estate_photo_batches SET description = 'Edited batch';",
+        )
+        .expect("edits on B");
+
+    exchange(&mut vault, 0, 1);
+
+    assert_attachments_converged(&vault);
+}
+
+/// The same race the other way round: B deletes while A edits.
+#[test]
+fn document_edited_while_another_device_deletes_it() {
+    let mut vault = attachment_vault("edit races delete", DEVICES);
+    step();
+    vault.devices[0]
+        .conn
+        .execute_batch("UPDATE insurance_documents SET name = 'Renamed', description = 'Edited'")
+        .expect("edit on A");
+    for name in ["attachments::delete_document", "attachments::delete_photo"] {
+        op_on(&mut vault, 1, name);
+    }
+
+    exchange(&mut vault, 0, 1);
+
+    assert_attachments_converged(&vault);
+}
+
+/// A deletes the policy; B adds a document under it. Whatever the order, no device keeps a
+/// document without its policy.
+#[test]
+fn policy_deleted_while_another_device_adds_a_document() {
+    let mut vault = attachment_vault("policy deleted under a document", DEVICES);
+    op_on(&mut vault, 0, "insurance::delete_policy");
+    op_on(&mut vault, 1, "attachments::add_policy_document");
+
+    exchange(&mut vault, 0, 1);
+
+    assert_attachments_converged(&vault);
+}
+
+/// A deletes the property; B adds a document and a photo to it.
+#[test]
+fn property_deleted_while_another_device_adds_attachments() {
+    let mut vault = attachment_vault("property deleted under attachments", DEVICES);
+    op_on(&mut vault, 0, "real_estate::delete_property");
+    op_on(&mut vault, 1, "attachments::add_property_document");
+    op_on(&mut vault, 1, "attachments::add_photo");
+
+    exchange(&mut vault, 0, 1);
+
+    assert_attachments_converged(&vault);
+}
+
+/// A deletes the batch with its photo; B adds a photo to that very batch.
+#[test]
+fn batch_deleted_while_another_device_adds_a_photo() {
+    let mut vault = attachment_vault("batch deleted under a photo", DEVICES);
+    op_on(&mut vault, 0, "attachments::delete_photo_batch");
+    step();
+    let conn = &vault.devices[1].conn;
+    let batch = texts(conn, "SELECT id FROM real_estate_photo_batches").remove(0);
+    let prepared = crate::services::real_estate_photos::prepared_for_test(
+        b"full image".to_vec(),
+        b"thumb".to_vec(),
+    );
+    crate::services::real_estate_photos::record_photo(conn, &batch, &prepared, 1_767_225_600)
+        .expect("photo on B");
+
+    exchange(&mut vault, 0, 1);
+
+    assert_attachments_converged(&vault);
+}
+
+/// Rows from before 0.13 (a plain file, no blob) never sync. A converts them to the store while B
+/// adds an unrelated document: the converted rows then reach every device with their blobs, and
+/// B's queue lists their content as `down`.
+#[test]
+fn legacy_rows_converted_on_one_device_while_others_sync_other_rows() {
+    let legacy_seed = |conn: &mut Connection, dir: &Path| {
+        attachment_seed(conn, dir);
+        let policy = texts(conn, "SELECT id FROM insurance_policies").remove(0);
+        let property = texts(conn, "SELECT id FROM real_estate").remove(0);
+        let batch = texts(conn, "SELECT id FROM real_estate_photo_batches").remove(0);
+        let doc_dir = dir.join("insurance_documents").join(&policy);
+        let photo_dir = dir.join("real_estate_photos").join(&property).join(&batch);
+        std::fs::create_dir_all(&doc_dir).expect("document folder");
+        std::fs::create_dir_all(&photo_dir).expect("photo folder");
+        let doc = doc_dir.join("old.pdf");
+        std::fs::write(&doc, b"%PDF-1.4 legacy").expect("legacy document");
+        std::fs::write(photo_dir.join("p.jpg"), b"legacy photo").expect("legacy photo");
+        std::fs::write(photo_dir.join("p_thumb.jpg"), b"legacy thumb").expect("legacy thumb");
+        conn.execute(
+            "INSERT INTO insurance_documents (id, insurance_id, name, file_path, file_type) \
+             VALUES ('legacy-doc', ?1, 'Old contract', ?2, 'contract')",
+            rusqlite::params![policy, doc.to_string_lossy()],
+        )
+        .expect("legacy document row");
+        conn.execute(
+            "INSERT INTO real_estate_photos (id, batch_id, file_path, thumbnail_path) \
+             VALUES ('legacy-photo', ?1, ?2, ?3)",
+            rusqlite::params![
+                batch,
+                format!("real_estate_photos/{property}/{batch}/p.jpg"),
+                format!("real_estate_photos/{property}/{batch}/p_thumb.jpg"),
+            ],
+        )
+        .expect("legacy photo row");
+    };
+    let mut vault = Vault::new("legacy rows converted", DEVICES, legacy_seed);
+    for device in &vault.devices[1..] {
+        assert_eq!(
+            count(
+                &device.conn,
+                "SELECT COUNT(*) FROM insurance_documents WHERE id = 'legacy-doc'"
+            ),
+            0,
+            "a legacy row never syncs"
+        );
+    }
+    op_on(&mut vault, 1, "attachments::add_property_document");
+    step();
+    let dir = vault.dir.path().to_path_buf();
+    let conn = &vault.devices[0].conn;
+    let items = crate::services::attachment_conversion::pending(conn).expect("pending");
+    assert_eq!(items.len(), 2);
+    for item in &items {
+        let sources = crate::services::attachment_conversion::read_sources(&dir, item)
+            .expect("read")
+            .expect("files are there");
+        crate::services::attachment_conversion::convert(conn, &dir, item, &sources)
+            .expect("convert");
+    }
+
+    exchange(&mut vault, 0, 1);
+
+    assert_attachments_converged(&vault);
+    for device in &vault.devices {
+        assert_eq!(
+            count(
+                &device.conn,
+                "SELECT COUNT(*) FROM insurance_documents \
+                 WHERE id = 'legacy-doc' AND blob_id IS NOT NULL AND file_path IS NULL"
+            ),
+            1
+        );
+        assert_eq!(
+            count(
+                &device.conn,
+                "SELECT COUNT(*) FROM real_estate_photos \
+                 WHERE id = 'legacy-photo' AND blob_id IS NOT NULL AND thumb_blob_id IS NOT NULL"
+            ),
+            1
+        );
+    }
+    assert_eq!(
+        count(
+            &vault.devices[1].conn,
+            "SELECT COUNT(*) FROM sync_blobs WHERE state = 'down'"
+        ),
+        count(&vault.devices[0].conn, "SELECT COUNT(*) FROM sync_blobs") - 1,
+        "B holds only its own document's content"
+    );
+}
+
+/// A device joins after attachments exist and while more are added: it gets every row, and its
+/// queue lists all the content as `down`.
+#[test]
+fn a_joining_device_gets_attachment_rows_without_their_content() {
+    let mut vault = attachment_vault("joining with attachments", 2);
+    op_on(&mut vault, 0, "attachments::add_photo");
+    op_on(&mut vault, 1, "attachments::add_policy_document");
+    exchange(&mut vault, 0, 1);
+    op_on(&mut vault, 1, "attachments::add_property_document");
+    let joiner = vault.join_device(0);
+    op_on(&mut vault, 0, "attachments::add_policy_document");
+
+    vault.sync_all(&mut rng());
+
+    assert_attachments_converged(&vault);
+    let conn = &vault.devices[joiner].conn;
+    assert_eq!(count(conn, "SELECT COUNT(*) FROM files.blobs"), 0);
+    assert!(count(conn, "SELECT COUNT(*) FROM sync_blobs") >= 8);
+    assert_eq!(
+        count(
+            conn,
+            "SELECT COUNT(*) FROM sync_blobs WHERE state <> 'down'"
+        ),
+        0
     );
 }

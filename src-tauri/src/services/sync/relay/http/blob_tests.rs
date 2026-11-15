@@ -485,8 +485,8 @@ async fn list_blobs_parses_ids_sizes_creation_and_the_server_now() {
         format!("GET /v1/vaults/{VAULT_ID}/blobs?limit=1000 HTTP/1.1")
     );
 
-    // A `now` that is not a non-negative integer is no clock either.
-    for now in ["-5", "1.5", "\"1794650400\"", "null"] {
+    // A `now` that is not an integer is no clock either.
+    for now in ["1.5", "\"1794650400\"", "null"] {
         let (base, server) = serve_once(json_answer(
             "200 OK",
             &format!(r#"{{"blobs":[],"more":false,"now":{now}}}"#),
@@ -605,5 +605,180 @@ async fn server_info_reads_the_blobs_feature_and_ignores_others() {
 #[test]
 fn the_blob_bounds_are_pinned() {
     assert_eq!(BLOB_TIMEOUT, Duration::from_secs(30 * 60));
+    assert_eq!(
+        crate::services::http::DOWNLOAD_READ_TIMEOUT,
+        Duration::from_secs(60)
+    );
     assert_eq!(MAX_BLOB_PAGE, 1000);
+}
+
+/// One-shot server that reads exactly the declared body and answers 201: what the real server
+/// does when the client stops at `Content-Length`.
+fn accepting_server() -> (String, std::thread::JoinHandle<super::tests::Request>) {
+    serve_once(json_answer("201 Created", r#"{"created":true}"#))
+}
+
+#[tokio::test]
+async fn a_body_whose_extra_bytes_come_in_a_later_piece_is_refused() {
+    let (base, server) = accepting_server();
+    let result = relay(&base)
+        .put_blob(&vault(), blob(), 2, pieces(&[b"ab", b"c"]))
+        .await;
+    assert_eq!(
+        result,
+        Err(RelayError::BadRequest("length_required".into()))
+    );
+    // The server may or may not have seen a request; it never stored a wrong blob through us.
+    let _ = server.join();
+}
+
+#[tokio::test]
+async fn a_source_error_after_the_declared_length_fails_the_upload() {
+    let (base, server) = accepting_server();
+    let failing: BlobBody =
+        Box::new(vec![Ok(b"ab".to_vec()), Err(std::io::Error::other("disk gone"))].into_iter());
+    let error = relay(&base)
+        .put_blob(&vault(), blob(), 2, failing)
+        .await
+        .expect_err("a read error");
+    assert!(matches!(error, RelayError::Network(_)), "{error:?}");
+    let _ = server.join();
+}
+
+/// A listing answer with `entries` (`(id, size, createdAt)`), `more` and a raw `now`.
+fn listing(entries: &[(&str, u64, i64)], more: bool, now: &str) -> Vec<u8> {
+    let blobs: Vec<String> = entries
+        .iter()
+        .map(|(id, size, at)| format!(r#"{{"id":"{id}","size":{size},"createdAt":{at}}}"#))
+        .collect();
+    json_answer(
+        "200 OK",
+        &format!(
+            r#"{{"blobs":[{}],"more":{more},"now":{now}}}"#,
+            blobs.join(",")
+        ),
+    )
+}
+
+async fn list_from(response: Vec<u8>, after: Option<Uuid>) -> RelayResult<BlobPage> {
+    let (base, server) = serve_once(response);
+    let result = relay(&base).list_blobs(&vault(), after, 10).await;
+    server.join().expect("server");
+    result
+}
+
+#[tokio::test]
+async fn a_listing_outside_what_a_server_can_hold_is_a_protocol_error() {
+    const A: &str = "00000000-0000-4000-8000-00000000000a";
+    const B: &str = "00000000-0000-4000-8000-00000000000b";
+    let min = crate::services::sync::envelope::blob::sealed_len(0);
+    let bad = Err(RelayError::Protocol("unexpected answer".into()));
+
+    // The smallest and the largest sealed blob are fine.
+    let page = list_from(
+        listing(&[(A, min, 0), (B, MAX_BLOB_SEALED, 5)], false, "6"),
+        None,
+    )
+    .await
+    .expect("bounds");
+    assert_eq!(page.blobs.len(), 2);
+
+    // Sizes no sealed blob can have.
+    for size in [0, min - 1, MAX_BLOB_SEALED + 1] {
+        assert_eq!(
+            list_from(listing(&[(A, size, 1)], false, "2"), None).await,
+            bad,
+            "{size}"
+        );
+    }
+    // A creation time before 1970, and a negative server clock.
+    assert_eq!(
+        list_from(listing(&[(A, min, -1)], false, "2"), None).await,
+        bad
+    );
+    assert_eq!(
+        list_from(listing(&[(A, min, 1)], false, "-5"), None).await,
+        bad
+    );
+    // Out of order, or the same ID twice.
+    assert_eq!(
+        list_from(listing(&[(B, min, 1), (A, min, 1)], false, "2"), None).await,
+        bad
+    );
+    assert_eq!(
+        list_from(listing(&[(A, min, 1), (A, min, 1)], false, "2"), None).await,
+        bad
+    );
+    // At or before the `after` the page was asked with.
+    let a = Uuid::parse_str(A).expect("uuid");
+    let b = Uuid::parse_str(B).expect("uuid");
+    assert_eq!(
+        list_from(listing(&[(A, min, 1)], false, "2"), Some(a)).await,
+        bad
+    );
+    assert_eq!(
+        list_from(listing(&[(A, min, 1)], false, "2"), Some(b)).await,
+        bad
+    );
+    assert!(list_from(listing(&[(B, min, 1)], false, "2"), Some(a))
+        .await
+        .is_ok());
+    // "More" with nothing on the page would never end.
+    assert_eq!(list_from(listing(&[], true, "2"), None).await, bad);
+}
+
+#[tokio::test]
+async fn head_blob_refuses_a_size_no_blob_can_have() {
+    let min = crate::services::sync::envelope::blob::sealed_len(0);
+    for size in [0, min - 1, MAX_BLOB_SEALED + 1] {
+        let length = size.to_string();
+        let (base, server) = serve_once(answer("200 OK", &[("Content-Length", &length)], b""));
+        assert_eq!(
+            relay(&base).head_blob(&vault(), blob()).await,
+            Err(RelayError::Protocol("unexpected answer".into())),
+            "{size}"
+        );
+        server.join().expect("server");
+    }
+}
+
+#[tokio::test]
+async fn head_blob_falls_back_to_the_blob_size_header() {
+    // A proxy dropped Content-Length from the HEAD answer; the server's own header remains.
+    let raw = b"HTTP/1.1 200 OK\r\nConnection: close\r\nMoony-Blob-Size: 1234\r\n\r\n".to_vec();
+    let (base, server) = serve_once(raw);
+    assert_eq!(
+        relay(&base).head_blob(&vault(), blob()).await,
+        Ok(Some(1234))
+    );
+    server.join().expect("server");
+
+    // Neither header: no size.
+    let raw = b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n".to_vec();
+    let (base, server) = serve_once(raw);
+    assert_eq!(
+        relay(&base).head_blob(&vault(), blob()).await,
+        Err(RelayError::Protocol("length".into()))
+    );
+    server.join().expect("server");
+}
+
+#[tokio::test]
+async fn malformed_features_are_ignored_not_fatal() {
+    async fn blobs(features: &str) -> RelayResult<bool> {
+        let (base, server) = serve_once(json_answer(
+            "200 OK",
+            &format!(
+                r#"{{"name":"moony-sync","version":"1.0.0","protocol":2,"mode":"self_hosted","features":{features}}}"#
+            ),
+        ));
+        let info = relay(&base).server_info().await;
+        server.join().expect("server");
+        info.map(|info| info.blobs)
+    }
+    assert_eq!(blobs(r#"[1,null,{"x":2},"blobs"]"#).await, Ok(true));
+    assert_eq!(blobs(r#"[1,null,["blobs"]]"#).await, Ok(false));
+    assert_eq!(blobs("null").await, Ok(false));
+    assert_eq!(blobs(r#""blobs""#).await, Ok(false));
+    assert_eq!(blobs(r#"{"blobs":true}"#).await, Ok(false));
 }

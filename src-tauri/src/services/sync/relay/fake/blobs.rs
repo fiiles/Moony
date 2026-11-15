@@ -10,8 +10,8 @@ use super::{check_vault, now, Access, FakeRelay, Route};
 use crate::services::sync::envelope::blob::MAX_BLOB_SEALED;
 use crate::services::sync::keys::VaultAuth;
 use crate::services::sync::relay::{
-    BlobBody, BlobPage, BlobSink, Delivery, RelayError, RelayResult, RemoteBlob, SinkFlow,
-    MAX_BLOB_PAGE,
+    check_blob_page, is_blob_size, BlobBody, BlobPage, BlobSink, Delivery, RelayError, RelayResult,
+    RemoteBlob, SinkFlow, MAX_BLOB_PAGE,
 };
 
 /// The server's default blob quota per vault (admin Settings, 10 GiB).
@@ -165,7 +165,12 @@ impl FakeRelay {
         let mut state = self.lock();
         state.enter(Route::HeadBlob)?;
         let stored = state.authorize(vault, Access::Read)?;
-        Ok(stored.blobs.get(&blob).map(|b| b.bytes.len() as u64))
+        let size = stored.blobs.get(&blob).map(|b| b.bytes.len() as u64);
+        // `HttpRelay` refuses a size no sealed blob can have (a cut or tiny stored blob).
+        if size.is_some_and(|size| !is_blob_size(size)) {
+            return Err(RelayError::Protocol("unexpected answer".into()));
+        }
+        Ok(size)
     }
 
     /// `GET /v1/vaults/:id/blobs/:blob`, handed to the sink in pieces.
@@ -226,11 +231,14 @@ impl FakeRelay {
             })
             .peekable();
         let blobs: Vec<RemoteBlob> = listed.by_ref().take(limit as usize).collect();
-        Ok(BlobPage {
+        let page = BlobPage {
             blobs,
             more: listed.peek().is_some(),
             server_now,
-        })
+        };
+        // What `HttpRelay` would refuse in this page, the fake refuses too.
+        check_blob_page(&page, after)?;
+        Ok(page)
     }
 
     /// `DELETE /v1/vaults/:id/blobs/:blob`: the current token, never refused for payment;

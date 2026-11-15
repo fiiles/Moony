@@ -8,6 +8,7 @@ use std::future::Future;
 use serde::Deserialize;
 use uuid::Uuid;
 
+use super::envelope::blob::{sealed_len, MAX_BLOB_SEALED};
 use super::keys::VaultAuth;
 
 #[cfg(test)]
@@ -94,6 +95,36 @@ pub struct BlobPage {
 /// The most blobs one listing page may ask for (the server's cap).
 pub const MAX_BLOB_PAGE: u32 = 1000;
 
+/// The sealed size of an empty blob: the smallest a stored blob can be.
+pub const MIN_BLOB_SEALED: u64 = sealed_len(0);
+
+/// A size a stored (sealed) blob can have.
+pub(crate) fn is_blob_size(size: u64) -> bool {
+    (MIN_BLOB_SEALED..=MAX_BLOB_SEALED).contains(&size)
+}
+
+/// What every listing page must be, whoever answered it (the server is untrusted): sizes a sealed
+/// blob can have, creation times and a clock from 1970 on, IDs strictly ascending and after
+/// `after`, and no "more" on an empty page (it would never end). `HttpRelay` checks the answer,
+/// the fake the page it built, so both refuse the same pages.
+pub(crate) fn check_blob_page(page: &BlobPage, after: Option<Uuid>) -> RelayResult<()> {
+    let refused = || Err(RelayError::Protocol("unexpected answer".into()));
+    if (page.more && page.blobs.is_empty()) || page.server_now.is_some_and(|now| now < 0) {
+        return refused();
+    }
+    let mut previous = after;
+    for blob in &page.blobs {
+        if !is_blob_size(blob.size)
+            || blob.created_at < 0
+            || previous.is_some_and(|previous| blob.id <= previous)
+        {
+            return refused();
+        }
+        previous = Some(blob.id);
+    }
+    Ok(())
+}
+
 /// A blob's sealed bytes on their way up, piece by piece: never one buffer for the whole blob.
 pub type BlobBody = Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send + 'static>;
 
@@ -106,6 +137,10 @@ pub enum SinkFlow {
 
 /// Where a downloaded blob goes, piece by piece: `begin` once with the sealed length the server
 /// announced, then `piece` for each part of the body in order. `Stop` ends the download there.
+///
+/// A download can fail after the sink was handed pieces (the connection drops, the body ends
+/// short, a timeout): `get_blob` then answers an error, and the caller must discard whatever the
+/// sink received, never keep it as the blob or part of one.
 pub trait BlobSink: Send {
     fn begin(&mut self, sealed_len: u64) -> SinkFlow;
     fn piece(&mut self, bytes: &[u8]) -> SinkFlow;

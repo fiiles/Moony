@@ -737,6 +737,11 @@ fn other_auth() -> VaultAuth {
     }
 }
 
+/// A body of `len` bytes, all `byte` (a sealed blob is at least `MIN_BLOB_SEALED` bytes).
+fn sealed(byte: u8, len: usize) -> Vec<u8> {
+    vec![byte; len]
+}
+
 fn blob_id(n: u128) -> uuid::Uuid {
     uuid::Uuid::from_u128(n)
 }
@@ -799,7 +804,8 @@ async fn the_fake_keeps_blobs_per_vault_and_checks_entitlement() {
     // Bigger than one piece the fake hands out, so the sink sees several.
     let big: Vec<u8> = (0..150_000u32).map(|i| (i % 253) as u8).collect();
     put(&relay, &auth(), blob_id(2), &big).await.expect("put");
-    put(&relay, &auth(), blob_id(1), b"one").await.expect("put");
+    let one = sealed(1, 100);
+    put(&relay, &auth(), blob_id(1), &one).await.expect("put");
     put(&relay, &other_auth(), blob_id(3), b"three")
         .await
         .expect("put");
@@ -813,7 +819,7 @@ async fn the_fake_keeps_blobs_per_vault_and_checks_entitlement() {
         .await
         .expect("get");
     assert!(sink.pieces > 1, "{} pieces", sink.pieces);
-    assert_eq!(relay.head_blob(&auth(), blob_id(1)).await, Ok(Some(3)));
+    assert_eq!(relay.head_blob(&auth(), blob_id(1)).await, Ok(Some(100)));
     // Another vault's blob is not this vault's.
     assert_eq!(relay.head_blob(&auth(), blob_id(3)).await, Ok(None));
     assert_eq!(
@@ -828,7 +834,7 @@ async fn the_fake_keeps_blobs_per_vault_and_checks_entitlement() {
             .iter()
             .map(|b| (b.id, b.size))
             .collect::<Vec<_>>(),
-        vec![(blob_id(1), 3)]
+        vec![(blob_id(1), 100)]
     );
     assert!(page.more);
     assert!(page.server_now.is_some_and(|at| (at - now()).abs() < 60));
@@ -881,11 +887,8 @@ async fn the_fake_keeps_blobs_per_vault_and_checks_entitlement() {
         put(&relay, &auth(), blob_id(4), b"four").await,
         Err(RelayError::PaymentRequired)
     );
-    assert_eq!(
-        fetch(&relay, &auth(), blob_id(1)).await,
-        Ok(b"one".to_vec())
-    );
-    assert_eq!(relay.head_blob(&auth(), blob_id(1)).await, Ok(Some(3)));
+    assert_eq!(fetch(&relay, &auth(), blob_id(1)).await, Ok(one.clone()));
+    assert_eq!(relay.head_blob(&auth(), blob_id(1)).await, Ok(Some(100)));
     assert_eq!(
         relay
             .list_blobs(&auth(), None, 10)
@@ -1024,7 +1027,7 @@ async fn a_put_of_an_existing_blob_succeeds_without_storing_again() {
 #[tokio::test]
 async fn a_tampered_or_truncated_blob_is_served_as_changed() {
     let (relay, _) = relay_with_vault().await;
-    let original = b"the sealed bytes".to_vec();
+    let original: Vec<u8> = (0..100u8).collect();
     for n in 1..=3 {
         put(&relay, &auth(), blob_id(n), &original)
             .await
@@ -1043,12 +1046,22 @@ async fn a_tampered_or_truncated_blob_is_served_as_changed() {
         1
     );
 
-    relay.truncate_blob(VAULT_ID, blob_id(2), 4);
+    relay.truncate_blob(VAULT_ID, blob_id(2), 80);
     assert_eq!(
         fetch(&relay, &auth(), blob_id(2)).await,
-        Ok(b"the ".to_vec())
+        Ok(original[..80].to_vec())
     );
-    assert_eq!(relay.head_blob(&auth(), blob_id(2)).await, Ok(Some(4)));
+    assert_eq!(relay.head_blob(&auth(), blob_id(2)).await, Ok(Some(80)));
+    // Cut below any sealed blob's size: the client refuses the size, as `HttpRelay` does.
+    relay.truncate_blob(VAULT_ID, blob_id(2), 4);
+    assert_eq!(
+        relay.head_blob(&auth(), blob_id(2)).await,
+        Err(RelayError::Protocol("unexpected answer".into()))
+    );
+    assert_eq!(
+        relay.list_blobs(&auth(), None, 10).await,
+        Err(RelayError::Protocol("unexpected answer".into()))
+    );
 
     relay.lose_blob(VAULT_ID, blob_id(3));
     assert_eq!(
@@ -1062,7 +1075,9 @@ async fn a_tampered_or_truncated_blob_is_served_as_changed() {
 #[tokio::test]
 async fn the_fake_reports_the_ages_it_is_told() {
     let (relay, _) = relay_with_vault().await;
-    put(&relay, &auth(), blob_id(1), b"x").await.expect("put");
+    put(&relay, &auth(), blob_id(1), &sealed(1, 100))
+        .await
+        .expect("put");
     relay.set_blob_created_at(VAULT_ID, blob_id(1), 1_000);
     relay.set_server_now(Some(2_000));
     let page = relay.list_blobs(&auth(), None, 10).await.expect("list");
@@ -1072,4 +1087,16 @@ async fn the_fake_reports_the_ages_it_is_told() {
     relay.set_server_now(None);
     let page = relay.list_blobs(&auth(), None, 10).await.expect("list");
     assert_eq!(page.server_now, None);
+    // A clock or a creation time before 1970: refused, as `HttpRelay` refuses it.
+    relay.set_server_now(Some(-1));
+    assert_eq!(
+        relay.list_blobs(&auth(), None, 10).await,
+        Err(RelayError::Protocol("unexpected answer".into()))
+    );
+    relay.set_server_now(Some(2_000));
+    relay.set_blob_created_at(VAULT_ID, blob_id(1), -1);
+    assert_eq!(
+        relay.list_blobs(&auth(), None, 10).await,
+        Err(RelayError::Protocol("unexpected answer".into()))
+    );
 }

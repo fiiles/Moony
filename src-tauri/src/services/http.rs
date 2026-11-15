@@ -6,7 +6,8 @@
 //! command forever on a dead network. The Yahoo connector for chart requests builds
 //! its own client (see `price_api::yahoo_connector`) with the same 15 s bound. The sync
 //! relay client uses [`no_redirect_client`]: the same bounds, but a redirect is handed
-//! back as the 3xx answer, never followed, so its credentials stay with the relay.
+//! back as the 3xx answer, never followed, so its credentials stay with the relay; its blob
+//! downloads use [`no_redirect_download_client`], which adds an idle bound on reads.
 
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -47,6 +48,25 @@ pub fn no_redirect_client() -> &'static Client {
     CLIENT.get_or_init(|| {
         client_builder(REQUEST_TIMEOUT)
             .redirect(redirect::Policy::none())
+            .build()
+            .expect("HTTP client with default TLS configuration must build")
+    })
+}
+
+/// How long a sync blob download may go without receiving a byte.
+pub const DOWNLOAD_READ_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// [`no_redirect_client`] with an idle bound on reading the answer: each read must make progress
+/// within [`DOWNLOAD_READ_TIMEOUT`], so a stalled download fails fast instead of holding on until
+/// its total timeout. For blob downloads only: reqwest starts this timer when the request is sent
+/// and does not reset it while a request body uploads, so an upload taking longer than a minute
+/// would be cut off. Its own connection pool.
+pub fn no_redirect_download_client() -> &'static Client {
+    static CLIENT: OnceLock<Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        client_builder(REQUEST_TIMEOUT)
+            .redirect(redirect::Policy::none())
+            .read_timeout(DOWNLOAD_READ_TIMEOUT)
             .build()
             .expect("HTTP client with default TLS configuration must build")
     })

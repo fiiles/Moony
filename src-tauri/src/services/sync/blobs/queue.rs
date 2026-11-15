@@ -51,10 +51,15 @@ impl BlobState {
     }
 }
 
-/// The longest wait a failure sets before the next try (`unreadable`'s cap). An entry due further
+/// The longest wait between tries for content no server has (`notOnServer`): its only holder may
+/// have been wiped, so after the first hour the wait keeps doubling up to a day, and each device
+/// asks the server about it once a day, not once an hour, for as long as a row names it.
+pub const NOT_ON_SERVER_MAX_WAIT: i64 = 86_400;
+
+/// The longest wait a failure sets before the next try (`notOnServer`'s cap). An entry due further
 /// ahead than this (and not `i64::MAX`, never) was dated by a clock that has since been set back:
 /// it counts as due.
-pub const MAX_BACKOFF: i64 = 21_600;
+pub const MAX_BACKOFF: i64 = NOT_ON_SERVER_MAX_WAIT;
 
 /// Why a transfer failed; `as_str` is the `last_error` code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,7 +76,8 @@ pub enum TransferError {
     NoRoom,
     /// The blob ID is not a canonical UUID: never transferred.
     InvalidId,
-    /// A local error (the store, the database).
+    /// A local error (the store, the database), or content sealed with a key epoch this device
+    /// has not received yet (the pull brings it): on its way, retried soon.
     Local,
     /// The sync server refuses the blob for good (too large, empty, a length it cannot take, or
     /// a server without the blob route): not retried by itself.
@@ -97,25 +103,45 @@ impl TransferError {
     }
 
     /// When to try again after the `failures`-th failure in a row: `base · 2^(failures − 1)`
-    /// seconds up to a cap per kind (never more than [`MAX_BACKOFF`]); a full server waits a fixed
-    /// half hour; an invalid ID, a refused blob and a conflict wait forever (`i64::MAX`).
+    /// seconds up to a cap per kind (never more than [`MAX_BACKOFF`]); content no server has
+    /// waits 5, 10, 20 and 40 minutes and an hour, then doubles on up to
+    /// [`NOT_ON_SERVER_MAX_WAIT`]; a full server waits a fixed half hour; an invalid ID, a
+    /// refused blob and a conflict wait forever (`i64::MAX`).
     fn next_try_at(self, failures: u32, now: i64) -> i64 {
-        let (base, cap): (i64, i64) = match self {
-            TransferError::Network | TransferError::Server | TransferError::Local => (30, 1_800),
-            TransferError::NotOnServer => (300, 3_600),
-            TransferError::Unreadable => (600, 21_600),
-            TransferError::NoRoom => return now.saturating_add(1_800),
+        let delay = match self {
+            TransferError::Network | TransferError::Server | TransferError::Local => {
+                doubling(30, 1_800, failures)
+            }
+            TransferError::NotOnServer => {
+                // The fifth failure reaches the hour; from there the hour doubles.
+                const FAILURES_TO_THE_HOUR: u32 = 5;
+                if failures <= FAILURES_TO_THE_HOUR {
+                    doubling(300, 3_600, failures)
+                } else {
+                    doubling(
+                        3_600,
+                        NOT_ON_SERVER_MAX_WAIT,
+                        failures - FAILURES_TO_THE_HOUR + 1,
+                    )
+                }
+            }
+            TransferError::Unreadable => doubling(600, 21_600, failures),
+            TransferError::NoRoom => 1_800,
             TransferError::InvalidId | TransferError::Refused | TransferError::Conflict => {
                 return i64::MAX
             }
         };
-        let doublings = failures.saturating_sub(1);
-        let delay = if doublings >= 32 {
-            cap
-        } else {
-            (base << doublings).min(cap)
-        };
         now.saturating_add(delay)
+    }
+}
+
+/// `base · 2^(failures − 1)` seconds, at most `cap`.
+fn doubling(base: i64, cap: i64, failures: u32) -> i64 {
+    let doublings = failures.saturating_sub(1);
+    if doublings >= 32 {
+        cap
+    } else {
+        (base << doublings).min(cap)
     }
 }
 

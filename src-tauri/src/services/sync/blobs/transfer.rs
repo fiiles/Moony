@@ -316,7 +316,8 @@ fn source_failure(error: &io::Error) -> Outcome {
 /// request, and content already complete here is `Found` (it waits for upload again: whether the
 /// server has it is the server's word, never assumed). Otherwise its stream is opened piece by
 /// piece into an incoming blob that becomes visible only once the whole stream authenticated. A
-/// stream that does not open or ends early is `Failed(Unreadable)` and nothing of it stays. A row
+/// stream that does not open or ends early is `Failed(Unreadable)` and nothing of it stays; one
+/// sealed with a key epoch this device has not received yet is `Failed(Local)` (on its way). A row
 /// that went during the download leaves no blob behind: an incoming blob a sweep removed ends the
 /// transfer as gone, and a blob that completed after its row went is deleted again. The outcome
 /// is recorded in the queue.
@@ -358,6 +359,9 @@ pub async fn download_one<R: Relay, D: ConnAccess>(
         SinkOutcome::AlreadyHere => Outcome::Found,
         SinkOutcome::InProgress => Outcome::Busy,
         SinkOutcome::Unreadable => Outcome::Failed(TransferError::Unreadable),
+        // The pull brings the key soon: on its way, retried like a local failure, never shown as
+        // "Could not download" (a new `last_error` code would need a migration).
+        SinkOutcome::UnknownEpoch => Outcome::Failed(TransferError::Local),
         SinkOutcome::Incomplete => match &delivery {
             Err(e) => classify(e),
             Ok(_) => Outcome::Failed(TransferError::Unreadable),

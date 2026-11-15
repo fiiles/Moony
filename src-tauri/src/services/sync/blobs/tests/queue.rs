@@ -426,6 +426,46 @@ fn uploads_come_oldest_first_and_respect_the_size_limit() {
     assert_eq!(state_of(&conn, &small), None);
 }
 
+/// Content no server has (its only holder was wiped, or has not uploaded it yet) is asked for
+/// after 5, 10, 20 and 40 minutes and an hour, then ever more rarely, doubling up to a day; "sync
+/// now" and "try again" still make it due at once.
+#[test]
+fn content_no_server_has_is_asked_for_ever_more_rarely_up_to_a_day() {
+    let conn = profile();
+    let blob = elsewhere(1);
+    document(&conn, "d1", &blob, 100);
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    let mut delays = Vec::new();
+    for _ in 0..12 {
+        note_failed(&conn, &blob, TransferError::NotOnServer, NOW).expect("failed");
+        delays.push(next_try_at(&conn, &blob) - NOW);
+    }
+    assert_eq!(
+        delays,
+        vec![300, 600, 1_200, 2_400, 3_600, 7_200, 14_400, 28_800, 57_600, 86_400, 86_400, 86_400]
+    );
+    assert_eq!(queue::NOT_ON_SERVER_MAX_WAIT, 86_400);
+    for _ in 0..80 {
+        note_failed(&conn, &blob, TransferError::NotOnServer, NOW).expect("many");
+    }
+    assert_eq!(next_try_at(&conn, &blob), NOW + 86_400, "stays at a day");
+
+    // A day ahead is a backoff, not a clock set back: not due before its time.
+    let due = |now: i64| {
+        queue::next_download(&conn, now, true)
+            .expect("next")
+            .is_some()
+    };
+    assert!(!due(NOW + 86_399));
+    assert!(due(NOW + 86_400));
+
+    retry_now(&conn).expect("sync now");
+    assert_eq!(next_try_at(&conn, &blob), 0, "sync now: due at once");
+    note_failed(&conn, &blob, TransferError::NotOnServer, NOW).expect("again");
+    retry_row(&conn, AttachmentKind::InsuranceDocument, "d1").expect("try again");
+    assert_eq!(next_try_at(&conn, &blob), 0, "try again: due at once");
+}
+
 #[test]
 fn failures_back_off_by_their_kind() {
     // (kind, delay after the 1st, the 2nd failure, the cap, failures to reach the cap)
@@ -433,7 +473,7 @@ fn failures_back_off_by_their_kind() {
         (TransferError::Network, 30, 60, 1_800, 7),
         (TransferError::Server, 30, 60, 1_800, 7),
         (TransferError::Local, 30, 60, 1_800, 7),
-        (TransferError::NotOnServer, 300, 600, 3_600, 5),
+        (TransferError::NotOnServer, 300, 600, 86_400, 10),
         (TransferError::Unreadable, 600, 1_200, 21_600, 7),
         (TransferError::NoRoom, 1_800, 1_800, 1_800, 1),
     ];

@@ -74,8 +74,8 @@ pub(crate) fn ensure_outside_data_dir(data_dir: &Path, dest: &Path) -> Result<()
 pub const NOT_HERE_YET: &str = "validation.attachmentNotHereYet";
 
 /// The error key of content that cannot reach this device as things stand (the sync server
-/// refuses it, holds other content under its ID, or it could not be opened). Not retried by
-/// opening it; "try again" on its row (`retry`) is the way out.
+/// refuses it, holds other content under its ID, or its ID is invalid: `queue::STUCK`). Not
+/// retried by opening it; "try again" on its row (`retry`) is the way out.
 pub const UNAVAILABLE: &str = "validation.attachmentUnavailable";
 
 /// The full content of the row `id` of `kind` is asked for (the person chose "Download"): only
@@ -193,10 +193,15 @@ impl<'c> ContentLookup<'c> {
 /// cannot arrive as things stand the answer is [`UNAVAILABLE`] and nothing is asked for. Nothing is read or
 /// created before this answers. A blob that is not here and not on its way (lost, or sync off)
 /// is left to the reader, which says it is not found. An incomplete incoming blob is never read.
+/// With sync off nothing is on its way, so the store is not asked here at all (its completeness
+/// check walks the blob's pages, and the read checks it again).
 fn require_here(conn: &Connection, resolved: &Resolved) -> Result<()> {
     let Source::Blob(id) = &resolved.source else {
         return Ok(());
     };
+    if !sync_on(conn)? {
+        return Ok(());
+    }
     if attachment_store::is_complete(conn, id)? {
         return Ok(());
     }
@@ -2600,6 +2605,37 @@ mod tests {
             "no folder for a copy"
         );
         assert!(wanted(&conn, &away));
+    }
+
+    /// With sync off no content is on its way, so opening asks neither the store's completeness
+    /// nor the queue first: the read itself says the content is missing. (No entry can exist with
+    /// sync off; one is planted here to show it is not consulted.)
+    #[test]
+    fn a_profile_without_sync_never_asks_the_queue_on_open() {
+        let conn = profile(false);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let away = elsewhere(1);
+        insurance_doc(&conn, "d", &away, 1);
+        conn.execute(
+            "INSERT INTO sync_blobs (blob_id, state, thumbnail, row_at, queued_at, next_try_at) \
+             VALUES (?1, 'down', 0, 1, 1, 0)",
+            [&away],
+        )
+        .expect("planted entry");
+        let resolved = resolve(
+            &conn,
+            dir.path(),
+            AttachmentKind::InsuranceDocument,
+            "d",
+            Variant::Full,
+        )
+        .expect("resolve")
+        .expect("row");
+
+        let err = read_bytes(&conn, &resolved).expect_err("read");
+
+        assert!(matches!(err, AppError::NotFound(_)), "got {err:?}");
+        assert!(!wanted(&conn, &away), "nothing was asked for");
     }
 
     #[test]

@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 use crate::db::files_schema;
 use crate::error::AppError;
@@ -21,7 +22,7 @@ use crate::services::sync::blobs::transfer::{
     classify, download_one, run_downloads, run_uploads, upload_one, Outcome, TransferReport,
 };
 use crate::services::sync::engine::tests::{vault, TestConn, Vault, NOW};
-use crate::services::sync::keys::VaultAuth;
+use crate::services::sync::keys::{VaultAuth, VaultKeys};
 use crate::services::sync::relay::fake::{FakeRelay, Route};
 use crate::services::sync::relay::{
     AccountStatus, BlobBody, BlobPage, BlobSink, CheckoutPlan, Delivery, OutgoingOp, PullPage,
@@ -347,6 +348,56 @@ async fn a_tampered_or_truncated_blob_is_not_stored_and_shows_failed() {
         );
         assert!(next_try_at > NOW, "retried later");
     }
+}
+
+/// Content sealed with a key epoch this device has not received yet (right after a key rotation,
+/// before the pull brings the new key) is on its way, not failed: recorded as a local failure (a
+/// key not here yet), retried as soon as after a network failure, and stored once the key is
+/// here.
+#[tokio::test]
+async fn content_sealed_with_a_key_not_here_yet_is_retried_soon_and_arrives_with_the_key() {
+    let vault = devices().await;
+    let bytes = pattern(150_000, 9);
+    let blob = queued_document(&vault.a, "d1", &bytes);
+    uploads(&vault, &vault.a, &BlobPolicy::default()).await;
+    document(&vault.b, "d1", &blob);
+    reconcile(&vault.b);
+    // The same key (so the same vault token) under another epoch number: the blob's header names
+    // an epoch this device has no key for.
+    let mut before_rotation = vault.creds.clone();
+    let other_epoch = vault.creds.keys.current_epoch() + 1;
+    before_rotation.keys =
+        VaultKeys::single(other_epoch, Zeroizing::new(*vault.creds.keys.current()));
+    let transfer = next_download(&vault.b);
+
+    let outcome = download_one(&vault.relay, &vault.b, &before_rotation, &transfer, NOW).await;
+
+    assert_eq!(outcome, Outcome::Failed(TransferError::Local));
+    let (state, attempts, next_try_at, error) = entry(&vault.b, &blob).expect("entry");
+    assert_eq!(
+        (state.as_str(), attempts, error.as_deref()),
+        ("down", 1, Some("local"))
+    );
+    assert_eq!(
+        next_try_at,
+        NOW + 30,
+        "retried as soon as after a network failure"
+    );
+    assert!(!in_store(&vault.b, &blob), "nothing of it is stored");
+    assert_eq!(content(&vault.b, &blob), AttachmentContent::NotHere);
+    let summary = queue::summary(&vault.b.lock()).expect("summary");
+    assert_eq!((summary.failed, summary.not_here), (0, 1));
+
+    // The pull brought the key.
+    let transfer = next_download(&vault.b);
+    let outcome = download_one(&vault.relay, &vault.b, &vault.creds, &transfer, NOW + 30).await;
+
+    assert_eq!(outcome, Outcome::Done);
+    assert_eq!(
+        attachment_store::read_all(&vault.b.lock(), &blob).expect("read"),
+        bytes
+    );
+    assert_eq!(content(&vault.b, &blob), AttachmentContent::Here);
 }
 
 #[tokio::test]

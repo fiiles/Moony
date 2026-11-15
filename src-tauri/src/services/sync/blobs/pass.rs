@@ -104,8 +104,9 @@ pub struct PassReport {
     pub complete: bool,
 }
 
-/// The pass's bounds; tests shrink them (the end-to-end suite also the grace, since a real
-/// server dates its blobs by its own clock).
+/// The pass's bounds; tests shrink them through `run_with`, which exists only in tests (the
+/// end-to-end suite also the grace, since a real server dates its blobs by its own clock), so the
+/// app always runs the pass within `Limits::DEFAULT`.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Limits {
     pub page: u32,
@@ -340,11 +341,25 @@ pub async fn run_if_due<R: Relay, D: ConnAccess>(
     pull: &PullReport,
     now: i64,
 ) -> Result<PassReport> {
-    run_with(relay, db, creds, policy, pull, now, Limits::DEFAULT).await
+    run_within(relay, db, creds, policy, pull, now, Limits::DEFAULT).await
 }
 
-/// `run_if_due` within `limits`.
+/// `run_if_due` within `limits` (tests only: outside them the pass always runs within
+/// `Limits::DEFAULT`).
+#[cfg(test)]
 pub(crate) async fn run_with<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    policy: &BlobPolicy,
+    pull: &PullReport,
+    now: i64,
+    limits: Limits,
+) -> Result<PassReport> {
+    run_within(relay, db, creds, policy, pull, now, limits).await
+}
+
+async fn run_within<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     creds: &Credentials,

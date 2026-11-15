@@ -38,6 +38,7 @@ use crate::services::attachment_store;
 use crate::services::sync::engine::ConnAccess;
 use crate::services::sync::envelope::blob::{sealed_len, BlobOpener, BlobSealer};
 use crate::services::sync::envelope::stream::CHUNK;
+use crate::services::sync::envelope::OpenError;
 use crate::services::sync::keys::VaultKeys;
 use crate::services::sync::relay::{BlobBody, BlobSink, Delivery, RelayResult, SinkFlow};
 
@@ -300,10 +301,13 @@ pub enum SinkOutcome {
     /// Another download of the same blob ID is in progress in this profile: this one touched
     /// nothing.
     InProgress,
-    /// The stream does not open: a length no stream has, a chunk that fails authentication (it
-    /// was tampered with, or sealed for another blob or vault), or an epoch this device has no
-    /// key for. Nothing is stored.
+    /// The stream does not open: a length no stream has, or a chunk that fails authentication (it
+    /// was tampered with, or sealed for another blob or vault). Nothing is stored.
     Unreadable,
+    /// The stream is sealed with a key epoch this device has no key for yet (another device
+    /// rotated the key and the pull has not brought it). It opens once the key is here, so it is
+    /// a passing failure, not unreadable content. Nothing is stored.
+    UnknownEpoch,
     /// The download failed or ended before the stream's last chunk: nothing is stored.
     Incomplete,
     /// The store failed; nothing is readable. `AppError::NotFound` means the incoming blob was
@@ -496,6 +500,7 @@ impl<D: ConnAccess> BlobSink for StoreSink<D> {
         };
         let chunks = match opener.push(bytes) {
             Ok(chunks) => chunks,
+            Err(OpenError::UnknownEpoch(_)) => return self.stop(SinkOutcome::UnknownEpoch),
             Err(_) => return self.stop(SinkOutcome::Unreadable),
         };
         for chunk in chunks {

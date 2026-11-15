@@ -9,6 +9,7 @@ mod blob_queue;
 mod blobs;
 mod clock_snapshots;
 mod clocks;
+mod complete;
 mod echo;
 mod gap_skip;
 mod gap_skip_miss;

@@ -72,6 +72,13 @@ fn last_success(device: &TestConn) -> Option<i64> {
         .last_success_at
 }
 
+fn last_complete(device: &TestConn) -> Option<i64> {
+    state::marks(&device.lock())
+        .expect("marks")
+        .expect("sync is on")
+        .last_complete_at
+}
+
 fn shown(device: &TestConn) -> SyncAttachments {
     status::status(&device.lock(), &Runtime::default())
         .expect("status")
@@ -235,6 +242,86 @@ async fn a_large_blob_waits_for_the_lane() {
     let attachments = shown(&vault.a);
     assert_eq!(attachments.waiting_upload, 1);
     assert_eq!(attachments.waiting_upload_bytes, size as i64);
+}
+
+/// A document added just before the round, too large for its upload step: the round queues it in
+/// its first hold, so its success is recorded but no complete sync (spec 2026-11-14 §7.2); the
+/// next round after the lane sent it records one.
+#[tokio::test]
+async fn a_document_waiting_for_the_lane_keeps_the_sync_incomplete_until_it_is_up() {
+    // proves a waiting upload blocks "complete" and the next round after the upload records it
+    let vault = vault().await;
+    with_store(&vault.a);
+    owner(&vault.a);
+    let blob = document(&vault.a, "d1", &vec![7u8; 9 * 1024 * 1024]);
+
+    let report = round_on(&vault.relay, &vault.a, RoundMode::Normal).await;
+
+    assert_eq!(report.problem, None);
+    assert_eq!(entry(&vault.a, &blob), Some(("up".into(), 0, false)));
+    assert_eq!(last_success(&vault.a), Some(NOW));
+    assert_eq!(last_complete(&vault.a), None);
+
+    let up = run_uploads(
+        &vault.relay,
+        &vault.a,
+        &vault.creds,
+        &BlobPolicy::default(),
+        NOW + 100,
+        None,
+        None,
+    )
+    .await
+    .expect("uploads");
+    assert_eq!(up.uploaded, 1);
+    assert_eq!(
+        last_complete(&vault.a),
+        None,
+        "the lane records nothing: the next round does"
+    );
+
+    round_at(&vault.relay, &vault.a, RoundMode::Normal, NOW + 300).await;
+
+    assert_eq!(last_complete(&vault.a), Some(NOW + 300));
+}
+
+/// A refused upload is a failed item on the wire, not content waiting to upload, but its content
+/// exists on this device only: the sync is not complete.
+#[tokio::test]
+async fn a_refused_upload_keeps_the_sync_incomplete() {
+    // proves a stuck upload (content on this device only) is not complete although the wire
+    // counts it as `failed`
+    let vault = vault().await;
+    with_store(&vault.a);
+    vault.relay.set_failing(
+        Route::PutBlob,
+        Some(RelayError::BadRequest("blob_too_large".into())),
+    );
+    owner(&vault.a);
+    document(&vault.a, "d1", b"%PDF-1.7 contract");
+
+    let report = round_on(&vault.relay, &vault.a, RoundMode::Normal).await;
+
+    assert_eq!(report.problem, None);
+    assert_eq!(shown(&vault.a).failed, 1);
+    assert_eq!(last_success(&vault.a), Some(NOW));
+    assert_eq!(last_complete(&vault.a), None);
+}
+
+/// Content the round's own upload step sends before the push leaves nothing to upload.
+#[tokio::test]
+async fn a_small_document_sent_before_the_push_leaves_the_round_complete() {
+    // proves the pre-push upload counts
+    let vault = vault().await;
+    with_store(&vault.a);
+    owner(&vault.a);
+    let blob = document(&vault.a, "d1", &[7u8; 200_000]);
+
+    let report = round_on(&vault.relay, &vault.a, RoundMode::Normal).await;
+
+    assert_eq!(report.problem, None);
+    assert_eq!(entry(&vault.a, &blob).expect("queued").0, "done");
+    assert_eq!(last_complete(&vault.a), Some(NOW));
 }
 
 /// The repair's drain sends changes only.
@@ -446,6 +533,11 @@ async fn a_broken_queue_fails_neither_the_round_nor_the_status() {
     assert!(pushed(&report) > 0, "{report:?}");
     assert_eq!(report.problem, None);
     assert_eq!(last_success(&vault.a), Some(NOW));
+    assert_eq!(
+        last_complete(&vault.a),
+        None,
+        "a queue that cannot be read proves nothing is left to upload"
+    );
     let shown = status::status(&vault.a.lock(), &Runtime::default()).expect("status");
     assert_eq!(shown.phase, SyncPhase::Idle);
     assert_eq!(shown.attachments, SyncAttachments::default());

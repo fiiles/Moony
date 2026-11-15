@@ -46,6 +46,7 @@ fn marks(pulled_bytes: u64, snapshot_uploaded_at: Option<i64>) -> EngineMarks {
         snapshot_too_large_at: None,
         binding_written: false,
         last_success_at: None,
+        last_complete_at: None,
         last_error: None,
         snapshot_barrier: 0,
     }

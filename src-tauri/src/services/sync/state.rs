@@ -40,6 +40,8 @@ pub struct EngineMarks {
     pub snapshot_too_large_at: Option<i64>,
     pub binding_written: bool,
     pub last_success_at: Option<i64>,
+    /// When a round last succeeded with nothing left to send (migration 039).
+    pub last_complete_at: Option<i64>,
     pub last_error: Option<String>,
     /// The barrier of the newest snapshot this device uploaded or restored, or the barrier it
     /// started syncing at (migration 033). Below `SyncState::barrier`: the device crossed a
@@ -234,13 +236,15 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
         Option<i64>,
         bool,
         Option<i64>,
+        Option<i64>,
         Option<String>,
         i64,
     )> = conn
         .query_row(
             "SELECT marker_barrier, capture_broken_at, vault_gone_at, pulled_bytes, \
                     pulled_bytes_base, snapshot_uploaded_at, snapshot_too_large_at, \
-                    binding_written, last_success_at, last_error, snapshot_barrier \
+                    binding_written, last_success_at, last_complete_at, last_error, \
+                    snapshot_barrier \
              FROM sync_state WHERE id = 1",
             [],
             |r| {
@@ -256,6 +260,7 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
                     r.get(8)?,
                     r.get(9)?,
                     r.get(10)?,
+                    r.get(11)?,
                 ))
             },
         )
@@ -271,6 +276,7 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
             snapshot_too_large_at,
             binding_written,
             last_success_at,
+            last_complete_at,
             last_error,
             snapshot_barrier,
         )| {
@@ -284,6 +290,7 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
                 snapshot_too_large_at,
                 binding_written,
                 last_success_at,
+                last_complete_at,
                 last_error,
                 snapshot_barrier: unsigned(snapshot_barrier, "snapshot_barrier")?,
             })
@@ -445,6 +452,16 @@ pub fn record_snapshot_too_large(conn: &Connection, at: i64) -> Result<()> {
 pub fn record_success(conn: &Connection, at: i64) -> Result<()> {
     conn.execute(
         "UPDATE sync_state SET last_success_at = ?1, last_error = NULL WHERE id = 1",
+        [at],
+    )?;
+    Ok(())
+}
+
+/// A round succeeded and left nothing to send: stamp the time. Overwrites (never `MAX`), so a
+/// clock that was ahead is healed by the next complete round.
+pub fn record_complete(conn: &Connection, at: i64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET last_complete_at = ?1 WHERE id = 1",
         [at],
     )?;
     Ok(())
@@ -997,6 +1014,27 @@ mod tests {
         assert_eq!(load(&conn).unwrap().unwrap().barrier_seq, Some(8));
         set_barrier_seq(&conn, None).unwrap();
         assert_eq!(load(&conn).unwrap().unwrap().barrier_seq, None);
+    }
+
+    #[test]
+    fn record_complete_stamps_the_time_and_a_later_one_overwrites_it() {
+        // proves: marks() reads the column; a corrected clock heals a time from the future (SET,
+        // not MAX)
+        let conn = migrated();
+        row_with_hash(&conn);
+        assert_eq!(marks(&conn).unwrap().unwrap().last_complete_at, None);
+        record_complete(&conn, 77).unwrap();
+        assert_eq!(marks(&conn).unwrap().unwrap().last_complete_at, Some(77));
+        record_complete(&conn, 50).unwrap();
+        assert_eq!(marks(&conn).unwrap().unwrap().last_complete_at, Some(50));
+        reset_engine_marks(&conn).unwrap();
+        assert_eq!(
+            marks(&conn).unwrap().unwrap().last_complete_at,
+            Some(50),
+            "kept across a replace, as last_success_at is"
+        );
+        disable(&conn).unwrap();
+        assert_eq!(marks(&conn).unwrap(), None, "turning sync off forgets it");
     }
 
     #[test]

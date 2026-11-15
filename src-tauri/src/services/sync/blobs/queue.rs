@@ -817,6 +817,24 @@ pub fn uploads_waiting(conn: &Connection) -> Result<u32> {
     Ok(rows as u32)
 }
 
+/// Whether any content held here still has to reach the sync server: an `up` entry that a row
+/// names (the same row join as `summary`, `references()`), whatever its `last_error`, the stuck
+/// ones ([`STUCK`]) included. Without the attachments store attached: `false` (nothing held here).
+pub fn holds_content_to_upload(conn: &Connection) -> Result<bool> {
+    if !files_schema::is_attached(conn)? {
+        return Ok(false);
+    }
+    Ok(conn.query_row(
+        &format!(
+            "SELECT EXISTS (SELECT 1 FROM ({}) r \
+               JOIN main.sync_blobs q ON q.blob_id = r.b WHERE q.state = 'up')",
+            references()?
+        ),
+        [],
+        |r| r.get(0),
+    )?)
+}
+
 /// The rows by where their content is (a photo once, whatever its two blobs do), read from the
 /// queue alone, never the store (ADR 0030): an entry `up` or `done` is content held here, `down`
 /// content not here, as of the last reconcile; content lost from the store outside a merge reads

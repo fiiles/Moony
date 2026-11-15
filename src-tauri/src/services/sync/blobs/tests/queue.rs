@@ -647,6 +647,61 @@ fn not_on_device_spans_every_row_missing_content() {
     );
 }
 
+/// Content held here that the server has not confirmed keeps a sync incomplete (spec 2026-11-14
+/// §7.2), whatever stops it: a stuck upload's content exists on this device only.
+#[test]
+fn content_to_upload_counts_stuck_entries_and_ignores_the_rest() {
+    // proves: only `up` entries a row names count, stuck ones too
+    let conn = profile();
+    assert!(!holds_content_to_upload(&conn).expect("empty queue"));
+
+    let sent = held(&conn, b"sent");
+    document(&conn, "on-its-way", &elsewhere(1), 100);
+    document(&conn, "sent", &sent, 100);
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    note_done(&conn, &sent).expect("done");
+    assert_eq!(state_of(&conn, &elsewhere(1)).as_deref(), Some("down"));
+    assert!(
+        !holds_content_to_upload(&conn).expect("down and done"),
+        "content not here, or already on the server"
+    );
+
+    exec(
+        &conn,
+        &format!(
+            "INSERT INTO sync_blobs (blob_id, state, queued_at) VALUES ('{}', 'up', 1)",
+            elsewhere(7)
+        ),
+    );
+    assert!(
+        !holds_content_to_upload(&conn).expect("orphan"),
+        "an entry no row names goes at the next reconcile"
+    );
+
+    let waiting = held(&conn, b"waiting");
+    document(&conn, "waiting", &waiting, 100);
+    exec(
+        &conn,
+        &format!(
+            "INSERT INTO sync_blobs (blob_id, state, queued_at) VALUES ('{waiting}', 'up', 1)"
+        ),
+    );
+    assert!(holds_content_to_upload(&conn).expect("waiting"));
+    for code in ["noRoom", "network", "refused", "conflict", "invalidId"] {
+        exec(
+            &conn,
+            &format!("UPDATE sync_blobs SET last_error = '{code}' WHERE blob_id = '{waiting}'"),
+        );
+        assert!(holds_content_to_upload(&conn).expect(code), "{code}");
+    }
+
+    exec(&conn, "DETACH DATABASE files");
+    assert!(
+        !holds_content_to_upload(&conn).expect("no store"),
+        "nothing is held here without the store"
+    );
+}
+
 #[test]
 fn content_follows_the_queue_and_the_store() {
     let conn = profile();

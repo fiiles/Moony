@@ -895,7 +895,7 @@ CREATE TABLE sync_state (
     snapshot_hlc INTEGER NOT NULL DEFAULT 0,
     barrier INTEGER NOT NULL DEFAULT 0, schema_seen INTEGER NOT NULL DEFAULT 0,
     last_error TEXT, last_error_at INTEGER, last_success_at INTEGER
-, barrier_seq INTEGER, marker_barrier INTEGER NOT NULL DEFAULT 0, capture_broken_at INTEGER, vault_gone_at INTEGER, pulled_bytes INTEGER NOT NULL DEFAULT 0, pulled_bytes_base INTEGER NOT NULL DEFAULT 0, snapshot_uploaded_at INTEGER, binding_written INTEGER NOT NULL DEFAULT 0 CHECK (binding_written IN (0, 1)), missed_below_barrier INTEGER, snapshot_too_large_at INTEGER, snapshot_barrier INTEGER NOT NULL DEFAULT 0)
+, barrier_seq INTEGER, marker_barrier INTEGER NOT NULL DEFAULT 0, capture_broken_at INTEGER, vault_gone_at INTEGER, pulled_bytes INTEGER NOT NULL DEFAULT 0, pulled_bytes_base INTEGER NOT NULL DEFAULT 0, snapshot_uploaded_at INTEGER, binding_written INTEGER NOT NULL DEFAULT 0 CHECK (binding_written IN (0, 1)), missed_below_barrier INTEGER, snapshot_too_large_at INTEGER, snapshot_barrier INTEGER NOT NULL DEFAULT 0, last_complete_at INTEGER)
 
 == table sync_typed ==
 CREATE TABLE sync_typed (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,

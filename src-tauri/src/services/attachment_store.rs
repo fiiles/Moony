@@ -318,18 +318,39 @@ pub fn delete(conn: &Connection, id: &str) -> Result<bool> {
 /// the transfer must treat that as "gone", not as an error to retry.
 pub fn delete_unreferenced(conn: &Connection) -> Result<usize> {
     ensure_available(conn)?;
-    let referenced = REFERENCES
+    Ok(conn.execute(
+        &format!(
+            "DELETE FROM files.blobs WHERE id NOT IN ({})",
+            referenced_sql()
+        ),
+        [],
+    )?)
+}
+
+/// Delete the blob `id` if no attachment row references it and no device-sync replace holds it
+/// (the sweep's rule, for one blob: a download that completed after its row went); returns
+/// whether it went.
+pub fn delete_if_unreferenced(conn: &Connection, id: &str) -> Result<bool> {
+    ensure_available(conn)?;
+    Ok(conn.execute(
+        &format!(
+            "DELETE FROM files.blobs WHERE id = ?1 AND id NOT IN ({})",
+            referenced_sql()
+        ),
+        [id],
+    )? > 0)
+}
+
+/// SQL: every blob ID an attachment row references or a replace holds.
+fn referenced_sql() -> String {
+    REFERENCES
         .iter()
         .chain(&HOLDS)
         .map(|(table, column)| {
             format!("SELECT {column} FROM main.{table} WHERE {column} IS NOT NULL")
         })
         .collect::<Vec<_>>()
-        .join(" UNION ");
-    Ok(conn.execute(
-        &format!("DELETE FROM files.blobs WHERE id NOT IN ({referenced})"),
-        [],
-    )?)
+        .join(" UNION ")
 }
 
 /// Pages one [`incremental_vacuum`] call gives back at most, so it never holds the connection for

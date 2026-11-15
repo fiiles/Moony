@@ -2,11 +2,14 @@
 //! any synced row; their content (blobs in `attachments.db`) moves separately, one sealed stream
 //! per blob. `queue` is this device's transfer queue (`sync_blobs`), reconciled from the rows and
 //! the store; `content` says per blob where the content is; `stream` moves one blob between the
-//! store and the wire, sealed and opened a chunk at a time.
+//! store and the wire, sealed and opened a chunk at a time; `transfer` moves one queued blob to or
+//! from the server and runs the queue one blob at a time, under the shared `policy`.
 
 pub mod content;
+pub mod policy;
 pub mod queue;
 pub mod stream;
+pub mod transfer;
 
 #[cfg(test)]
 mod tests;

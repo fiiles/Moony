@@ -415,6 +415,31 @@ pub fn note_failed(conn: &Connection, blob_id: &str, error: TransferError, now: 
     Ok(())
 }
 
+/// Whether a syncing attachment row names `blob_id` (the rows `reconcile` queues from): a transfer
+/// whose row went meanwhile ends as gone.
+pub fn is_named(conn: &Connection, blob_id: &str) -> Result<bool> {
+    Ok(conn.query_row(
+        &format!(
+            "SELECT EXISTS (SELECT 1 FROM ({}) n WHERE n.b = ?1)",
+            references()?
+        ),
+        [blob_id],
+        |r| r.get(0),
+    )?)
+}
+
+/// Whether any content waits to move, up or down (an invalid ID never moves); with `up_only`,
+/// to upload.
+pub fn waiting(conn: &Connection, up_only: bool) -> Result<bool> {
+    Ok(conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM main.sync_blobs \
+           WHERE (state = 'up' OR (state = 'down' AND NOT ?1)) \
+             AND last_error IS NOT 'invalidId')",
+        [up_only],
+        |r| r.get(0),
+    )?)
+}
+
 /// No row names `blob_id` any more (its row went during the transfer): the entry goes.
 pub fn note_gone(conn: &Connection, blob_id: &str) -> Result<()> {
     conn.execute("DELETE FROM main.sync_blobs WHERE blob_id = ?1", [blob_id])?;

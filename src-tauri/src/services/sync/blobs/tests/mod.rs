@@ -3,6 +3,7 @@
 
 mod queue;
 mod stream;
+mod transfer;
 
 use rusqlite::Connection;
 

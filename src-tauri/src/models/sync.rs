@@ -91,6 +91,20 @@ pub enum SyncProblem {
     Internal,
 }
 
+/// Why documents and photos do not move while ordinary sync goes on (ADR 0030): uploads of their
+/// content wait, everything else syncs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum SyncAttachmentsProblem {
+    /// The sync server has no room for more content (the vault's quota, or its disk at the
+    /// free-space floor): uploads wait; downloads go on.
+    #[serde(rename = "noRoom")]
+    NoRoom,
+    /// The sync server does not have the blob routes (no `blobs` feature): nothing moves until it
+    /// is updated.
+    #[serde(rename = "serverNeedsUpdate")]
+    ServerNeedsUpdate,
+}
+
 /// What a build without the sync flag can still say about the open profile (`sync_profile_state`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct SyncProfileState {

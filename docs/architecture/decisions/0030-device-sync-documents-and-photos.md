@@ -167,3 +167,19 @@ documents and photos need a newer server. The app assumes the server's error cod
   it, so the quarantine of converted originals and the integrity check never rely on content that
   may exist nowhere; only the conversion status leaves out content expected by download
   (`rows_without_content_or_download`).
+- **Moving one blob (Task 10).** `services/sync/blobs/transfer.rs` uploads (`HEAD` first, a body
+  only when the server lacks the blob) and downloads one blob at a time; `policy.rs` holds what
+  the round's upload step and the lanes share: the server's `blobs` feature (asked at most every
+  six hours; a failed ask is no problem), the attachments problem (`SyncAttachmentsProblem`:
+  `noRoom` pauses uploads for half an hour, downloads go on; `serverNeedsUpdate` only while content
+  waits), one lane lock per direction and the wake-up. Blob answers are classified there, never by
+  the round's `SyncError`, so no single file fails, pauses or slows a round: done; gone (no syncing
+  row names the blob, or its content left the store under the upload: the entry is dropped and a
+  download that completed after its row went is deleted again); failed with a backoff of that
+  blob's own; blocked by what the round already shows (`402`, `401`, `403 token_read_only`, vault
+  not found: nothing recorded); a locked profile ends the run as `AppError::Auth`. The HTTP client
+  reports any body error as network trouble, so the upload keeps its source's error beside the
+  call and a vanished or unreadable blob is never read as "offline". A blob ID that is not
+  canonical never reaches a URL or the store. A run stops at the first network, server or no-room
+  failure (the next blob would meet it too; the rest waits for the next run) and between blobs
+  when its deadline passed.

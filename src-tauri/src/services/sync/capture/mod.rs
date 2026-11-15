@@ -7,6 +7,7 @@
 //! recalculations after a merge) and then the triggers of `triggers::trigger_sql`.
 
 pub mod bench;
+pub mod enrol;
 pub mod guard;
 pub mod triggers;
 

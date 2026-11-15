@@ -42,6 +42,12 @@ so it cannot ride in envelopes or snapshots.
   condition false → true, local mode) gives it a fresh `'*'` with this device, drops its column
   clocks and queues it, so it travels as a complete insert. `sync_<t>_leave` (true → false)
   records a tombstone. The conversion leaves a row that already has a blob alone.
+- A profile that had sync on before these tables synced (`schema_seen` below
+  `035_sync_blobs`) enrols their unclocked rows once at unlock (`capture::enrol`): each row that
+  meets its condition and has no `'*'` or `'-'` gets a fresh `'*'` with this device and is queued,
+  every photo batch too. Rows received from the vault have a clock and stay as they are; a joined
+  profile starts at the current schema and enrols nothing. A failed enrolment leaves the mark, so
+  the next unlock tries again; it is logged, not a broken capture.
 - No checksum column. The sealed stream is authenticated and bound to the blob ID, and blobs are
   immutable (new content gets a new ID); `files.blobs.sha256` is computed on the receiving device
   when the content is stored.

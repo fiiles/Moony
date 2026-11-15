@@ -26,8 +26,6 @@
     "noRate": "无 {{currency}} 汇率"
   },
   "cashflow": {
-    "subtitle_other": "来自 {{count}} 个账户的实际收入和支出",
-    "subtitleAll": "所有账户的实际收入和支出",
     "shareOfExpenses": "占支出的 {{share}}",
     "shareOfIncome": "占收入的 {{share}}",
     "partial": "本期尚未结束，数据将随下一份对账单补全。",
@@ -50,12 +48,24 @@
       "averageNote": "⌀ 近 6 个月"
     },
     "showMore_other": "再显示 {{count}} 笔交易",
-    "rowMenu": "更多操作：{{title}}"
+    "rowMenu": "更多操作：{{title}}",
+    "scopeAll": "所有账户",
+    "scope_other": "{{count}} 个账户",
+    "limit": {
+      "remaining": "剩余 {{amount}} / {{limit}}",
+      "over": "超出 {{amount}} · 限额 {{limit}}",
+      "exhausted": "已用完 · 限额 {{limit}}"
+    },
+    "trend": {
+      "title_other": "过去 {{count}} 个月",
+      "max": "最高 {{amount}}"
+    },
+    "incomeNote": "未分类的入账计为收入"
   },
   "upkeep": {
     "title": "数据维护",
     "count_other": "{{count}} 项",
-    "balancesStale_other": "{{count}} 个余额已超过一个月未更新",
+    "balancesStale_other": "{{count}} 个余额待更新",
     "uncategorized_other": "{{count}} 笔付款未分类",
     "uncategorizedFrom": "{{account}} · 来自 {{date}} 的对账单",
     "accounts_other": "{{count}} 个账户",
@@ -74,7 +84,11 @@
       "revalue": "重新估值",
       "enterBalance": "输入余额",
       "enterRate": "补充利率"
-    }
+    },
+    "olderThanMonth": "超过一个月",
+    "fromStatement": "{{date}} 的对账单",
+    "loanBalanceFrom": "{{date}} 的余额",
+    "loanFixationEnded": "固定利率于 {{date}} 到期"
   },
   "recordBalances": {
     "title": "记录余额",
@@ -112,8 +126,6 @@
       "insurance": "保险"
     },
     "manual": "手动",
-    "statementOn": "{{date}} 对账单",
-    "balanceOn": "{{date}} 余额",
     "trail": {
       "change": "{{amount}} · 30 天",
       "staleStatement_other": "对账单 {{count}} 天前",
@@ -142,7 +154,7 @@
     "insurance": {
       "type": "保单类型",
       "upcoming": "近期付款",
-      "upcomingNote_other": "{{count}} 天",
+      "upcomingNote_other": "未来 {{count}} 天",
       "showAll_other": "显示全部 {{count}} 笔"
     },
     "cashTrendLabel": "现金走势图",
@@ -498,7 +510,7 @@
       "personal": "自住",
       "investment": "投资",
       "rent": "租金 {{amount}} / 月",
-      "revaluedOn": "{{date}}"
+      "revaluedOn": "{{date}} 估值"
     },
     "empty": {
       "title": "暂无资产",
@@ -590,7 +602,8 @@
       "openPosition": "打开持仓",
       "notesEmpty": "还没有笔记。点按“编辑”添加研究笔记，支持 Markdown。"
     },
-    "assetsTrendLabel": "资产走势图"
+    "assetsTrendLabel": "资产走势图",
+    "changeCaption": "过去 30 天的变化"
   },
   "settings": {
     "rows": {
@@ -855,6 +868,10 @@
     },
     "form": {
       "newDescription": "一年中打算在某一项上花多少钱。在付款详情中将付款加入计划。"
+    },
+    "empty": {
+      "takeOver": "沿用 {{year}} 年的计划，只需调整金额，或创建新计划。",
+      "again": "为今年创建一个计划，例如度假、礼物或日常护理。"
     }
   },
   "gettingStarted": {
@@ -880,5 +897,23 @@
   },
   "pull": {
     "refreshing": "正在刷新…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "退保期限",
+      "insurance_anniversary_passed": "退保期限已过",
+      "insurance_end": "保单到期",
+      "insurance_payment": "保费支付",
+      "loan_fixation_end": "固定利率到期",
+      "loan_payoff": "最后一期还款",
+      "bond_maturity": "到期",
+      "bond_coupon": "付息",
+      "account_termination": "账户终止",
+      "savings_rate_end": "优惠利率到期",
+      "watch_target_below": "已跌至目标",
+      "watch_target_above": "已达目标",
+      "stock_split": "拆股 {{ratio}}"
+    },
+    "splitTrades_other": "{{count}} 笔交易待调整"
   }
 }

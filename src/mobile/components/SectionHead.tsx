@@ -7,6 +7,8 @@ interface SectionHeadProps {
   action?: { label: ReactNode; href: string };
   /** The section's one number ("nesplaceno 2 418 760 Kč", `.m-sec__n`); not tappable, so never with an `action`. */
   note?: ReactNode;
+  /** A short line under the head that says once what every row's figure measures ("Změna za 30 dní"). */
+  caption?: string;
 }
 
 /**
@@ -14,9 +16,15 @@ interface SectionHeadProps {
  * area reaches 44 pt (an `::after` extension, as the contract's small buttons do) — or, when there
  * is nothing to open, the section's one number (`.m-sec__n`).
  */
-export function SectionHead({ title, action, note }: SectionHeadProps) {
-  return (
-    <div className="mx-0.5 mb-2 mt-4 flex items-baseline justify-between gap-3">
+export function SectionHead({ title, action, note, caption }: SectionHeadProps) {
+  const head = (
+    <div
+      className={
+        caption
+          ? 'flex items-baseline justify-between gap-3'
+          : 'mx-0.5 mb-2 mt-4 flex items-baseline justify-between gap-3'
+      }
+    >
       <h2 className="m-0 min-w-0 truncate text-m-section text-ink">{title}</h2>
       {action && (
         <Link
@@ -31,6 +39,13 @@ export function SectionHead({ title, action, note }: SectionHeadProps) {
           {note}
         </span>
       )}
+    </div>
+  );
+  if (!caption) return head;
+  return (
+    <div className="mx-0.5 mb-2 mt-4">
+      {head}
+      <p className="m-0 mt-0.5 truncate text-m-caption text-ink-4">{caption}</p>
     </div>
   );
 }

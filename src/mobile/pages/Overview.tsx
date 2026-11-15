@@ -57,9 +57,9 @@ const MOVES = 5;
 const COMPACT_FROM = 1_000_000;
 
 /**
- * Přehled tab root (spec §8.3, prototype frame 02): the greeting, Údržba (only while something is
- * due), the hero with the scrubbable net-worth line, three stats, "Co vás čeká", Rozložení majetku
- * and Poslední pohyby. Numbers come from the hooks the desktop dashboard uses.
+ * Přehled tab root (spec §8.3, prototype frame 02): the greeting, the hero with the scrubbable
+ * net-worth line and three stats — the app's main number first (audit D4) —, Údržba (only while
+ * something is due), "Co vás čeká", Rozložení majetku and Poslední pohyby. Numbers come from the hooks the desktop dashboard uses.
  */
 export default function Overview() {
   const { t } = useTranslation('mobile');
@@ -79,6 +79,9 @@ export default function Overview() {
   const overview = useNetWorthOverview(period);
   const { reportCurrency, display, unknown, hasHistory, shortHistoryBase } = overview;
   const jumpTip = useNetWorthJumpTip(reportCurrency, moneyText);
+  // The hero has loaded and the profile holds something: the sections under Údržba show
+  const showContent =
+    !overview.isCheckingPortfolio && !overview.metricsError && !overview.isEmptyPortfolio;
 
   const money = (value: number) => moneyText(value, reportCurrency, WHOLE);
   const signedMoney = (value: number) => (
@@ -165,10 +168,6 @@ export default function Overview() {
         </Link>
       }
     >
-      {/* First on the page and only while something is due (it also asks for a first backup). Always
-          mounted: it withholds its rows until its data has loaded, and an open sheet must not
-          unmount when saving makes the portfolio metrics refetch. */}
-      <UpkeepCard />
       {overview.isCheckingPortfolio ? (
         <OverviewSkeleton />
       ) : overview.metricsError ? (
@@ -218,6 +217,15 @@ export default function Overview() {
             )}
           </Hero>
           <StatRow stats={stats} />
+        </>
+      )}
+      {/* Under the net worth and its three stats (D4), only while something is due (it also asks
+          for a first backup). Always mounted in this slot, whichever state the hero is in: it
+          withholds its rows until its data has loaded, and an open sheet must not unmount when
+          saving makes the portfolio metrics refetch. */}
+      <UpkeepCard />
+      {showContent && (
+        <>
           <AgendaSection />
           <AllocationSection
             values={ASSET_CLASSES.map((cls) => ({
@@ -226,6 +234,9 @@ export default function Overview() {
               value: display[cls],
             }))}
             formatValue={money}
+            formatTotal={(value) =>
+              moneyText(value, reportCurrency, { compact: true, decimals: 1 })
+            }
           />
           <RecentMovesSection />
           <GettingStartedCard />
@@ -265,9 +276,11 @@ function AgendaSection() {
 function AllocationSection({
   values,
   formatValue,
+  formatTotal,
 }: {
   values: { key: string; label: string; value: number }[];
   formatValue: (value: number) => string;
+  formatTotal: (value: number) => string;
 }) {
   const { t } = useTranslation('mobile');
   const { t: td } = useTranslation('dashboard');
@@ -293,6 +306,7 @@ function AllocationSection({
           otherLabel={td('cards.other')}
           formatPercent={(ratio) => fmt.percent(ratio, 0)}
           formatValue={formatValue}
+          formatTotal={formatTotal}
         />
       </div>
     </section>

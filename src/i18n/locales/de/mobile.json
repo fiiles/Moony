@@ -26,9 +26,6 @@
     "noRate": "kein Kurs für {{currency}}"
   },
   "cashflow": {
-    "subtitle_one": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konto",
-    "subtitle_other": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konten",
-    "subtitleAll": "Tatsächliche Einnahmen und Ausgaben aller Konten",
     "shareOfExpenses": "{{share}} der Ausgaben",
     "shareOfIncome": "{{share}} der Einnahmen",
     "partial": "Der Zeitraum ist noch nicht zu Ende, die Zahlen vervollständigen sich mit dem nächsten Auszug.",
@@ -52,14 +49,28 @@
     },
     "showMore_one": "{{count}} weitere Transaktion anzeigen",
     "showMore_other": "{{count}} weitere Transaktionen anzeigen",
-    "rowMenu": "Weitere Aktionen: {{title}}"
+    "rowMenu": "Weitere Aktionen: {{title}}",
+    "scopeAll": "Alle Konten",
+    "scope_one": "{{count}} Konto",
+    "scope_other": "{{count}} Konten",
+    "limit": {
+      "remaining": "Noch {{amount}} von {{limit}}",
+      "over": "{{amount}} überschritten · Limit {{limit}}",
+      "exhausted": "Ausgeschöpft · Limit {{limit}}"
+    },
+    "trend": {
+      "title_one": "Letzter {{count}} Monat",
+      "title_other": "Letzte {{count}} Monate",
+      "max": "höchstens {{amount}}"
+    },
+    "incomeNote": "Nicht zugeordnete Zahlungseingänge zählen als Einnahmen"
   },
   "upkeep": {
     "title": "Datenpflege",
     "count_one": "{{count}} Aufgabe",
     "count_other": "{{count}} Aufgaben",
-    "balancesStale_one": "{{count}} Saldo älter als ein Monat",
-    "balancesStale_other": "{{count}} Salden älter als ein Monat",
+    "balancesStale_one": "{{count}} Saldo zu aktualisieren",
+    "balancesStale_other": "{{count}} Salden zu aktualisieren",
     "uncategorized_one": "{{count}} Zahlung ohne Kategorie",
     "uncategorized_other": "{{count}} Zahlungen ohne Kategorie",
     "uncategorizedFrom": "{{account}} · aus dem Auszug vom {{date}}",
@@ -81,7 +92,11 @@
       "revalue": "Neu bewerten",
       "enterBalance": "Saldo eingeben",
       "enterRate": "Zins eintragen"
-    }
+    },
+    "olderThanMonth": "Älter als ein Monat",
+    "fromStatement": "Auszug vom {{date}}",
+    "loanBalanceFrom": "Restschuld vom {{date}}",
+    "loanFixationEnded": "Zinsbindung endete {{date}}"
   },
   "recordBalances": {
     "title": "Salden erfassen",
@@ -122,8 +137,6 @@
       "insurance": "Versicherungen"
     },
     "manual": "manuell",
-    "statementOn": "Auszug {{date}}",
-    "balanceOn": "Saldo {{date}}",
     "trail": {
       "change": "{{amount}} · 30 Tage",
       "staleStatement_one": "Auszug {{count}} Tag alt",
@@ -154,8 +167,8 @@
     "insurance": {
       "type": "Art der Police",
       "upcoming": "Nächste Zahlungen",
-      "upcomingNote_one": "{{count}} Tag",
-      "upcomingNote_other": "{{count}} Tage",
+      "upcomingNote_one": "nächster {{count}} Tag",
+      "upcomingNote_other": "nächste {{count}} Tage",
       "showAll_one": "Alle {{count}} anzeigen",
       "showAll_other": "Alle {{count}} anzeigen"
     },
@@ -532,7 +545,7 @@
       "personal": "selbst genutzt",
       "investment": "Anlageimmobilie",
       "rent": "Miete {{amount}} / Monat",
-      "revaluedOn": "{{date}}"
+      "revaluedOn": "bewertet am {{date}}"
     },
     "empty": {
       "title": "Noch kein Vermögen",
@@ -626,7 +639,8 @@
       "openPosition": "Position öffnen",
       "notesEmpty": "Noch keine Notizen. Tippen Sie auf „Bearbeiten“, um Recherchenotizen hinzuzufügen — Markdown funktioniert."
     },
-    "assetsTrendLabel": "Diagramm zum Vermögensverlauf"
+    "assetsTrendLabel": "Diagramm zum Vermögensverlauf",
+    "changeCaption": "Veränderung in den letzten 30 Tagen"
   },
   "settings": {
     "rows": {
@@ -903,6 +917,10 @@
     },
     "form": {
       "newDescription": "Wie viel Sie in einem Jahr für eine Sache ausgeben möchten. Zahlungen fügen Sie dem Plan in den Zahlungsdetails hinzu."
+    },
+    "empty": {
+      "takeOver": "Übernehmen Sie die Pläne aus {{year}} und passen Sie nur die Beträge an, oder legen Sie einen neuen Plan an.",
+      "again": "Legen Sie einen Plan für dieses Jahr an, etwa für den Urlaub, Geschenke oder regelmäßige Pflege."
     }
   },
   "gettingStarted": {
@@ -928,5 +946,24 @@
   },
   "pull": {
     "refreshing": "Wird aktualisiert…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "Kündigungsfrist",
+      "insurance_anniversary_passed": "Kündigungsfrist abgelaufen",
+      "insurance_end": "Vertrag endet",
+      "insurance_payment": "Beitragszahlung",
+      "loan_fixation_end": "Zinsbindung endet",
+      "loan_payoff": "Letzte Rate",
+      "bond_maturity": "Fälligkeit",
+      "bond_coupon": "Kupon",
+      "account_termination": "Konto endet",
+      "savings_rate_end": "Aktionszins endet",
+      "watch_target_below": "Auf Ziel gefallen",
+      "watch_target_above": "Ziel erreicht",
+      "stock_split": "Split {{ratio}}"
+    },
+    "splitTrades_one": "{{count}} Transaktion anzupassen",
+    "splitTrades_other": "{{count}} Transaktionen anzupassen"
   }
 }

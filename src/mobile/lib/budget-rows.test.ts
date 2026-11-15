@@ -5,6 +5,7 @@ import {
   budgetedCategoryIds,
   budgetRows,
   expenseRowMoney,
+  limitStatus,
   rowLimitAction,
   unbudgetedRows,
 } from './budget-rows';
@@ -392,5 +393,48 @@ describe('expenseRowMoney', () => {
 
   it('has no spend at all when the report amount is unknown and the limit says nothing either', () => {
     expect(expenseRowMoney(row({ amount: 0, amountUnavailable: true }), 'USD').spent).toBeNull();
+  });
+});
+
+describe('limitStatus', () => {
+  const limit = (patch: Partial<RowLimit> = {}): RowLimit => ({
+    state: 'ok',
+    currency: 'CZK',
+    spent: 11_271,
+    limit: 12_500,
+    percentage: 90,
+    remaining: 1_229,
+    ...patch,
+  });
+
+  it('says what remains of the limit', () => {
+    expect(limitStatus(limit(), true)).toEqual({
+      kind: 'remaining',
+      amount: 1_229,
+      limit: 12_500,
+      currency: 'CZK',
+    });
+  });
+
+  it('says how far over, as a positive amount, never a minus', () => {
+    expect(
+      limitStatus(limit({ state: 'over', spent: 15_296, percentage: 122, remaining: -2_796 }), true)
+    ).toEqual({ kind: 'over', amount: 2_796, limit: 12_500, currency: 'CZK' });
+  });
+
+  it('says a limit spent to the unit is used up', () => {
+    expect(
+      limitStatus(limit({ state: 'exhausted', spent: 12_500, percentage: 100, remaining: 0 }), true)
+    ).toEqual({ kind: 'exhausted', amount: 0, limit: 12_500, currency: 'CZK' });
+  });
+
+  it('cannot evaluate a limit without its usage', () => {
+    expect(
+      limitStatus(limit({ state: 'unavailable', percentage: null, remaining: null }), true)
+    ).toEqual({ kind: 'unavailable' });
+  });
+
+  it('does not write a limit whose amounts are in another currency than the row', () => {
+    expect(limitStatus(limit(), false)).toEqual({ kind: 'unavailable' });
   });
 });

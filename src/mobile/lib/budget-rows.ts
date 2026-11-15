@@ -11,7 +11,7 @@ import {
   type BudgetLimitPeriod,
   type BudgetOverviewStatus,
 } from '@/utils/budget-goal-versions';
-import { storedLimitGoal, type ExpenseRow } from '@/utils/cashflow-budget-rows';
+import { storedLimitGoal, type ExpenseRow, type RowLimit } from '@/utils/cashflow-budget-rows';
 import type { LimitAverage, LimitMode } from './budget-limit';
 
 /** One budget of the list: the limit that stands for it and what changes after it. */
@@ -181,4 +181,30 @@ export function expenseRowMoney(
     };
   }
   return { currency: reportCurrency, spent: reportSpent, approx: null, limitAmounts: !foreign };
+}
+
+/**
+ * The one sentence under an expense row with a limit (audit 2026-11-15 D18): "Zbývá X z Y",
+ * "Přečerpáno o X" (the amount over is positive: the word says the direction, never a minus) or
+ * "Vyčerpáno"; `unavailable` when the usage is not known or the limit's amounts are not in the
+ * row's currency (`limitAmounts` of `expenseRowMoney`), when the line names no amount.
+ */
+export type LimitStatus =
+  | { kind: 'remaining' | 'over' | 'exhausted'; amount: number; limit: number; currency: string }
+  | { kind: 'unavailable' };
+
+export function limitStatus(limit: RowLimit, limitAmounts: boolean): LimitStatus {
+  const { state, remaining, currency, percentage } = limit;
+  if (
+    !limitAmounts ||
+    state === 'unavailable' ||
+    percentage === null ||
+    remaining === null ||
+    limit.limit === null ||
+    currency === null
+  ) {
+    return { kind: 'unavailable' };
+  }
+  const kind = remaining < 0 ? 'over' : remaining === 0 ? 'exhausted' : 'remaining';
+  return { kind, amount: Math.abs(remaining), limit: limit.limit, currency };
 }

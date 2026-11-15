@@ -256,12 +256,6 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
       }
     >
       {switcher}
-      {/* Under the switch, not in the title block: the switch keeps its place in both views */}
-      {!accountsLoading && accountCount > 0 && (
-        <p className="mx-0.5 mb-3.5 mt-0 text-m-lead text-ink-3">
-          {scope === null ? t('cashflow.subtitleAll') : t('cashflow.subtitle', { count: scope })}
-        </p>
-      )}
       <PeriodBar
         timeframe={current.timeframe}
         offset={current.offset}
@@ -269,6 +263,16 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
         pending={opening === null}
         onTimeframeChange={(timeframe) => setState({ ...current, timeframe, offset: 0 })}
         onStep={(delta) => setState({ ...current, offset: Math.min(0, current.offset + delta) })}
+        // Whose money it is, under the period (D17): the sentence above it was a row of its own
+        scope={
+          !accountsLoading && accountCount > 0
+            ? {
+                label:
+                  scope === null ? t('cashflow.scopeAll') : t('cashflow.scope', { count: scope }),
+                onOpen: () => setAccountsOpen(true),
+              }
+            : undefined
+        }
       />
       {body === 'error' ? (
         <ScaledReportError onRetry={report.refetch} />
@@ -513,7 +517,7 @@ function ReportBody({
       <section>
         <SectionHead title={tr('actuals.income.title')} note={money(totalIncome)} />
         <EntityRows>{rows(incomeRows, lineMoney, true)}</EntityRows>
-        <SectionFoot lines={[tr('actuals.income.note')]} />
+        <SectionFoot lines={[t('cashflow.incomeNote')]} />
       </section>
       <section>
         <SectionHead title={tr('actuals.transfers.title')} />

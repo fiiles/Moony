@@ -26,9 +26,6 @@
     "noRate": "ingen kurs för {{currency}}"
   },
   "cashflow": {
-    "subtitle_one": "Faktiska inkomster och utgifter från {{count}} konto",
-    "subtitle_other": "Faktiska inkomster och utgifter från {{count}} konton",
-    "subtitleAll": "Faktiska inkomster och utgifter från alla konton",
     "shareOfExpenses": "{{share}} av utgifterna",
     "shareOfIncome": "{{share}} av inkomsterna",
     "partial": "Perioden har inte tagit slut än; siffrorna fylls i med nästa kontoutdrag.",
@@ -52,14 +49,28 @@
     },
     "showMore_one": "Visa {{count}} transaktion till",
     "showMore_other": "Visa {{count}} transaktioner till",
-    "rowMenu": "Fler åtgärder: {{title}}"
+    "rowMenu": "Fler åtgärder: {{title}}",
+    "scopeAll": "Alla konton",
+    "scope_one": "{{count}} konto",
+    "scope_other": "{{count}} konton",
+    "limit": {
+      "remaining": "{{amount}} kvar av {{limit}}",
+      "over": "Överskridet med {{amount}} · gräns {{limit}}",
+      "exhausted": "Förbrukat · gräns {{limit}}"
+    },
+    "trend": {
+      "title_one": "Senaste {{count}} månaden",
+      "title_other": "Senaste {{count}} månaderna",
+      "max": "högst {{amount}}"
+    },
+    "incomeNote": "Inbetalningar utan kategori räknas som inkomst"
   },
   "upkeep": {
     "title": "Dataunderhåll",
     "count_one": "{{count}} sak",
     "count_other": "{{count}} saker",
-    "balancesStale_one": "{{count}} saldo äldre än en månad",
-    "balancesStale_other": "{{count}} saldon äldre än en månad",
+    "balancesStale_one": "{{count}} saldo att uppdatera",
+    "balancesStale_other": "{{count}} saldon att uppdatera",
     "uncategorized_one": "{{count}} betalning utan kategori",
     "uncategorized_other": "{{count}} betalningar utan kategori",
     "uncategorizedFrom": "{{account}} · från kontoutdraget {{date}}",
@@ -81,7 +92,11 @@
       "revalue": "Värdera om",
       "enterBalance": "Ange saldo",
       "enterRate": "Lägg in ränta"
-    }
+    },
+    "olderThanMonth": "Äldre än en månad",
+    "fromStatement": "kontoutdrag {{date}}",
+    "loanBalanceFrom": "Saldo från {{date}}",
+    "loanFixationEnded": "Bindningen slutade {{date}}"
   },
   "recordBalances": {
     "title": "Registrera saldon",
@@ -122,8 +137,6 @@
       "insurance": "Försäkringar"
     },
     "manual": "manuellt",
-    "statementOn": "kontoutdrag {{date}}",
-    "balanceOn": "saldo {{date}}",
     "trail": {
       "change": "{{amount}} · 30 dagar",
       "staleStatement_one": "kontoutdrag {{count}} dag gammalt",
@@ -154,8 +167,8 @@
     "insurance": {
       "type": "Försäkringstyp",
       "upcoming": "Kommande betalningar",
-      "upcomingNote_one": "{{count}} dag",
-      "upcomingNote_other": "{{count}} dagar",
+      "upcomingNote_one": "kommande {{count}} dag",
+      "upcomingNote_other": "kommande {{count}} dagar",
       "showAll_one": "Visa {{count}}",
       "showAll_other": "Visa alla {{count}}"
     },
@@ -532,7 +545,7 @@
       "personal": "egen bostad",
       "investment": "investering",
       "rent": "hyra {{amount}} / månad",
-      "revaluedOn": "{{date}}"
+      "revaluedOn": "värderad {{date}}"
     },
     "empty": {
       "title": "Inget ägt ännu",
@@ -626,7 +639,8 @@
       "openPosition": "Öppna innehavet",
       "notesEmpty": "Inga anteckningar ännu. Tryck på Redigera för att lägga till analysanteckningar — markdown fungerar."
     },
-    "assetsTrendLabel": "Diagram över tillgångar"
+    "assetsTrendLabel": "Diagram över tillgångar",
+    "changeCaption": "Förändring de senaste 30 dagarna"
   },
   "settings": {
     "rows": {
@@ -903,6 +917,10 @@
     },
     "form": {
       "newDescription": "Hur mycket du vill spendera på en sak under ett år. Du lägger till betalningar i planen i betalningens detaljer."
+    },
+    "empty": {
+      "takeOver": "Ta över planerna från {{year}} och justera bara beloppen, eller skapa en ny plan.",
+      "again": "Skapa en plan för i år, till exempel semester, presenter eller regelbunden vård."
     }
   },
   "gettingStarted": {
@@ -928,5 +946,24 @@
   },
   "pull": {
     "refreshing": "Uppdaterar…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "Uppsägningsfrist",
+      "insurance_anniversary_passed": "Uppsägningstiden har gått ut",
+      "insurance_end": "Avtalet upphör",
+      "insurance_payment": "Premiebetalning",
+      "loan_fixation_end": "Bindningstiden slutar",
+      "loan_payoff": "Sista amorteringen",
+      "bond_maturity": "Förfall",
+      "bond_coupon": "Kupong",
+      "account_termination": "Kontot avslutas",
+      "savings_rate_end": "Kampanjräntan slutar",
+      "watch_target_below": "Föll till målet",
+      "watch_target_above": "Nådde målet",
+      "stock_split": "Split {{ratio}}"
+    },
+    "splitTrades_one": "{{count}} transaktion att justera",
+    "splitTrades_other": "{{count}} transaktioner att justera"
   }
 }

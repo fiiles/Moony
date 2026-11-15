@@ -26,9 +26,6 @@
     "noRate": "ingen kurs for {{currency}}"
   },
   "cashflow": {
-    "subtitle_one": "Faktiske inntekter og utgifter fra {{count}} konto",
-    "subtitle_other": "Faktiske inntekter og utgifter fra {{count}} kontoer",
-    "subtitleAll": "Faktiske inntekter og utgifter fra alle kontoer",
     "shareOfExpenses": "{{share}} av utgiftene",
     "shareOfIncome": "{{share}} av inntektene",
     "partial": "Perioden er ikke over ennå; tallene fylles ut med neste kontoutskrift.",
@@ -52,14 +49,28 @@
     },
     "showMore_one": "Vis {{count}} transaksjon til",
     "showMore_other": "Vis {{count}} transaksjoner til",
-    "rowMenu": "Flere handlinger: {{title}}"
+    "rowMenu": "Flere handlinger: {{title}}",
+    "scopeAll": "Alle kontoer",
+    "scope_one": "{{count}} konto",
+    "scope_other": "{{count}} kontoer",
+    "limit": {
+      "remaining": "{{amount}} igjen av {{limit}}",
+      "over": "Overskredet med {{amount}} · grense {{limit}}",
+      "exhausted": "Brukt opp · grense {{limit}}"
+    },
+    "trend": {
+      "title_one": "Siste {{count}} måned",
+      "title_other": "Siste {{count}} måneder",
+      "max": "høyest {{amount}}"
+    },
+    "incomeNote": "Innbetalinger uten kategori regnes som inntekt"
   },
   "upkeep": {
     "title": "Datavedlikehold",
     "count_one": "{{count}} oppgave",
     "count_other": "{{count}} oppgaver",
-    "balancesStale_one": "{{count}} saldo eldre enn en måned",
-    "balancesStale_other": "{{count}} saldoer eldre enn en måned",
+    "balancesStale_one": "{{count}} saldo å oppdatere",
+    "balancesStale_other": "{{count}} saldoer å oppdatere",
     "uncategorized_one": "{{count}} betaling uten kategori",
     "uncategorized_other": "{{count}} betalinger uten kategori",
     "uncategorizedFrom": "{{account}} · fra kontoutskriften {{date}}",
@@ -81,7 +92,11 @@
       "revalue": "Vurder på nytt",
       "enterBalance": "Angi saldo",
       "enterRate": "Legg inn rente"
-    }
+    },
+    "olderThanMonth": "Eldre enn en måned",
+    "fromStatement": "kontoutskrift {{date}}",
+    "loanBalanceFrom": "Saldo fra {{date}}",
+    "loanFixationEnded": "Fastrenten utløp {{date}}"
   },
   "recordBalances": {
     "title": "Registrer saldoer",
@@ -122,8 +137,6 @@
       "insurance": "Forsikringer"
     },
     "manual": "manuelt",
-    "statementOn": "kontoutskrift {{date}}",
-    "balanceOn": "saldo {{date}}",
     "trail": {
       "change": "{{amount}} · 30 dager",
       "staleStatement_one": "kontoutskrift {{count}} dag gammel",
@@ -154,8 +167,8 @@
     "insurance": {
       "type": "Forsikringstype",
       "upcoming": "Neste betalinger",
-      "upcomingNote_one": "{{count}} dag",
-      "upcomingNote_other": "{{count}} dager",
+      "upcomingNote_one": "neste {{count}} dag",
+      "upcomingNote_other": "neste {{count}} dager",
       "showAll_one": "Vis {{count}}",
       "showAll_other": "Vis alle {{count}}"
     },
@@ -532,7 +545,7 @@
       "personal": "egen bolig",
       "investment": "investering",
       "rent": "leie {{amount}} / måned",
-      "revaluedOn": "{{date}}"
+      "revaluedOn": "verdsatt {{date}}"
     },
     "empty": {
       "title": "Ingenting eid ennå",
@@ -626,7 +639,8 @@
       "openPosition": "Åpne beholdningen",
       "notesEmpty": "Ingen notater ennå. Trykk på Rediger for å legge til analysenotater — markdown fungerer."
     },
-    "assetsTrendLabel": "Diagram over eiendeler"
+    "assetsTrendLabel": "Diagram over eiendeler",
+    "changeCaption": "Endring de siste 30 dagene"
   },
   "settings": {
     "rows": {
@@ -903,6 +917,10 @@
     },
     "form": {
       "newDescription": "Hvor mye du vil bruke på én ting i løpet av et år. Du legger betalinger til i planen fra betalingsdetaljene."
+    },
+    "empty": {
+      "takeOver": "Overta planene fra {{year}} og juster bare beløpene, eller opprett en ny plan.",
+      "again": "Opprett en plan for dette året, for eksempel ferie, gaver eller fast pleie."
     }
   },
   "gettingStarted": {
@@ -928,5 +946,24 @@
   },
   "pull": {
     "refreshing": "Oppdaterer…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "Oppsigelsesfrist",
+      "insurance_anniversary_passed": "Oppsigelsesfristen er ute",
+      "insurance_end": "Avtalen slutter",
+      "insurance_payment": "Premiebetaling",
+      "loan_fixation_end": "Fastrenten slutter",
+      "loan_payoff": "Siste avdrag",
+      "bond_maturity": "Forfall",
+      "bond_coupon": "Kupong",
+      "account_termination": "Kontoen avsluttes",
+      "savings_rate_end": "Kampanjerenten slutter",
+      "watch_target_below": "Falt til målet",
+      "watch_target_above": "Nådde målet",
+      "stock_split": "Splitt {{ratio}}"
+    },
+    "splitTrades_one": "{{count}} transaksjon å justere",
+    "splitTrades_other": "{{count}} transaksjoner å justere"
   }
 }

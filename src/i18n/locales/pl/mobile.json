@@ -26,11 +26,6 @@
     "noRate": "brak kursu dla {{currency}}"
   },
   "cashflow": {
-    "subtitle_one": "Rzeczywiste przychody i wydatki z {{count}} konta",
-    "subtitle_few": "Rzeczywiste przychody i wydatki z {{count}} kont",
-    "subtitle_many": "Rzeczywiste przychody i wydatki z {{count}} kont",
-    "subtitle_other": "Rzeczywiste przychody i wydatki z {{count}} konta",
-    "subtitleAll": "Rzeczywiste przychody i wydatki ze wszystkich kont",
     "shareOfExpenses": "{{share}} wydatków",
     "shareOfIncome": "{{share}} przychodów",
     "partial": "Okres jeszcze się nie skończył; liczby uzupełnią się wraz z następnym wyciągiem.",
@@ -56,7 +51,25 @@
     "showMore_few": "Pokaż kolejne {{count}} transakcje",
     "showMore_many": "Pokaż kolejnych {{count}} transakcji",
     "showMore_other": "Pokaż kolejne {{count}} transakcji",
-    "rowMenu": "Więcej akcji: {{title}}"
+    "rowMenu": "Więcej akcji: {{title}}",
+    "scopeAll": "Wszystkie konta",
+    "scope_one": "{{count}} konto",
+    "scope_few": "{{count}} konta",
+    "scope_many": "{{count}} kont",
+    "scope_other": "{{count}} konta",
+    "limit": {
+      "remaining": "Zostało {{amount}} z {{limit}}",
+      "over": "Przekroczono o {{amount}} · limit {{limit}}",
+      "exhausted": "Wyczerpany · limit {{limit}}"
+    },
+    "trend": {
+      "title_one": "Ostatni {{count}} miesiąc",
+      "title_few": "Ostatnie {{count}} miesiące",
+      "title_many": "Ostatnie {{count}} miesięcy",
+      "title_other": "Ostatnie {{count}} miesiąca",
+      "max": "najwięcej {{amount}}"
+    },
+    "incomeNote": "Wpływy bez kategorii liczą się jako przychód"
   },
   "upkeep": {
     "title": "Aktualizacja danych",
@@ -64,10 +77,10 @@
     "count_few": "{{count}} pozycje",
     "count_many": "{{count}} pozycji",
     "count_other": "{{count}} pozycji",
-    "balancesStale_one": "{{count}} saldo starsze niż miesiąc",
-    "balancesStale_few": "{{count}} salda starsze niż miesiąc",
-    "balancesStale_many": "{{count}} sald starszych niż miesiąc",
-    "balancesStale_other": "{{count}} salda starszego niż miesiąc",
+    "balancesStale_one": "{{count}} saldo do aktualizacji",
+    "balancesStale_few": "{{count}} salda do aktualizacji",
+    "balancesStale_many": "{{count}} sald do aktualizacji",
+    "balancesStale_other": "{{count}} salda do aktualizacji",
     "uncategorized_one": "{{count}} płatność bez kategorii",
     "uncategorized_few": "{{count}} płatności bez kategorii",
     "uncategorized_many": "{{count}} płatności bez kategorii",
@@ -95,7 +108,11 @@
       "revalue": "Przeszacuj",
       "enterBalance": "Podaj saldo",
       "enterRate": "Uzupełnij stopę"
-    }
+    },
+    "olderThanMonth": "Starsze niż miesiąc",
+    "fromStatement": "wyciąg z {{date}}",
+    "loanBalanceFrom": "Saldo z {{date}}",
+    "loanFixationEnded": "Stała stopa skończyła się {{date}}"
   },
   "recordBalances": {
     "title": "Zapisz salda",
@@ -142,8 +159,6 @@
       "insurance": "Ubezpieczenia"
     },
     "manual": "ręcznie",
-    "statementOn": "wyciąg z {{date}}",
-    "balanceOn": "saldo z {{date}}",
     "trail": {
       "change": "{{amount}} · 30 dni",
       "staleStatement_one": "wyciąg sprzed {{count}} dnia",
@@ -178,10 +193,10 @@
     "insurance": {
       "type": "Typ polisy",
       "upcoming": "Najbliższe płatności",
-      "upcomingNote_one": "{{count}} dzień",
-      "upcomingNote_few": "{{count}} dni",
-      "upcomingNote_many": "{{count}} dni",
-      "upcomingNote_other": "{{count}} dnia",
+      "upcomingNote_one": "najbliższy {{count}} dzień",
+      "upcomingNote_few": "najbliższe {{count}} dni",
+      "upcomingNote_many": "najbliższe {{count}} dni",
+      "upcomingNote_other": "najbliższe {{count}} dnia",
       "showAll_one": "Pokaż {{count}}",
       "showAll_few": "Pokaż wszystkie {{count}}",
       "showAll_many": "Pokaż wszystkie {{count}}",
@@ -600,7 +615,7 @@
       "personal": "własna",
       "investment": "inwestycyjna",
       "rent": "najem {{amount}} / mies.",
-      "revaluedOn": "{{date}}"
+      "revaluedOn": "wycena z {{date}}"
     },
     "empty": {
       "title": "Jeszcze nic nie posiadasz",
@@ -698,7 +713,8 @@
       "openPosition": "Otwórz pozycję",
       "notesEmpty": "Brak notatek. Stuknij Edytuj, aby dodać notatki z analizy — markdown działa."
     },
-    "assetsTrendLabel": "Wykres aktywów"
+    "assetsTrendLabel": "Wykres aktywów",
+    "changeCaption": "Zmiana w ostatnich 30 dniach"
   },
   "settings": {
     "rows": {
@@ -999,6 +1015,10 @@
     },
     "form": {
       "newDescription": "Ile chcesz wydać w ciągu roku na jedną rzecz. Płatności dodajesz do planu w szczegółach płatności."
+    },
+    "empty": {
+      "takeOver": "Przejmij plany z {{year}} i tylko popraw kwoty albo utwórz nowy plan.",
+      "again": "Utwórz plan na ten rok: na przykład urlop, prezenty albo regularną opiekę."
     }
   },
   "gettingStarted": {
@@ -1024,5 +1044,26 @@
   },
   "pull": {
     "refreshing": "Odświeżanie…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "Termin wypowiedzenia",
+      "insurance_anniversary_passed": "Termin wypowiedzenia minął",
+      "insurance_end": "Polisa się kończy",
+      "insurance_payment": "Płatność składki",
+      "loan_fixation_end": "Koniec stałej stopy",
+      "loan_payoff": "Ostatnia rata",
+      "bond_maturity": "Wykup",
+      "bond_coupon": "Kupon",
+      "account_termination": "Konto się kończy",
+      "savings_rate_end": "Koniec promocyjnej stopy",
+      "watch_target_below": "Spadła do celu",
+      "watch_target_above": "Osiągnęła cel",
+      "stock_split": "Split {{ratio}}"
+    },
+    "splitTrades_one": "{{count}} transakcja do korekty",
+    "splitTrades_few": "{{count}} transakcje do korekty",
+    "splitTrades_many": "{{count}} transakcji do korekty",
+    "splitTrades_other": "{{count}} transakcji do korekty"
   }
 }

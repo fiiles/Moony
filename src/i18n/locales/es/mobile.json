@@ -26,10 +26,6 @@
     "noRate": "sin tipo de cambio para {{currency}}"
   },
   "cashflow": {
-    "subtitle_one": "Ingresos y gastos reales de {{count}} cuenta",
-    "subtitle_many": "Ingresos y gastos reales de {{count}} cuentas",
-    "subtitle_other": "Ingresos y gastos reales de {{count}} cuentas",
-    "subtitleAll": "Ingresos y gastos reales de todas las cuentas",
     "shareOfExpenses": "{{share}} de los gastos",
     "shareOfIncome": "{{share}} de los ingresos",
     "partial": "El periodo aún no ha terminado; las cifras se completarán con el próximo extracto.",
@@ -54,16 +50,32 @@
     "showMore_one": "Mostrar {{count}} movimiento más",
     "showMore_many": "Mostrar {{count}} movimientos más",
     "showMore_other": "Mostrar {{count}} movimientos más",
-    "rowMenu": "Más acciones: {{title}}"
+    "rowMenu": "Más acciones: {{title}}",
+    "scopeAll": "Todas las cuentas",
+    "scope_one": "{{count}} cuenta",
+    "scope_many": "{{count}} cuentas",
+    "scope_other": "{{count}} cuentas",
+    "limit": {
+      "remaining": "Quedan {{amount}} de {{limit}}",
+      "over": "Excedido en {{amount}} · límite {{limit}}",
+      "exhausted": "Agotado · límite {{limit}}"
+    },
+    "trend": {
+      "title_one": "Último {{count}} mes",
+      "title_many": "Últimos {{count}} meses",
+      "title_other": "Últimos {{count}} meses",
+      "max": "máximo {{amount}}"
+    },
+    "incomeNote": "Los cobros sin categoría cuentan como ingresos"
   },
   "upkeep": {
     "title": "Mantenimiento de datos",
     "count_one": "{{count}} tarea",
     "count_many": "{{count}} tareas",
     "count_other": "{{count}} tareas",
-    "balancesStale_one": "{{count}} saldo con más de un mes",
-    "balancesStale_many": "{{count}} saldos con más de un mes",
-    "balancesStale_other": "{{count}} saldos con más de un mes",
+    "balancesStale_one": "{{count}} saldo por actualizar",
+    "balancesStale_many": "{{count}} saldos por actualizar",
+    "balancesStale_other": "{{count}} saldos por actualizar",
     "uncategorized_one": "{{count}} pago sin categoría",
     "uncategorized_many": "{{count}} pagos sin categoría",
     "uncategorized_other": "{{count}} pagos sin categoría",
@@ -88,7 +100,11 @@
       "revalue": "Revalorar",
       "enterBalance": "Indicar saldo",
       "enterRate": "Añadir tipo"
-    }
+    },
+    "olderThanMonth": "De hace más de un mes",
+    "fromStatement": "extracto del {{date}}",
+    "loanBalanceFrom": "Saldo del {{date}}",
+    "loanFixationEnded": "Tipo fijo terminado el {{date}}"
   },
   "recordBalances": {
     "title": "Registrar saldos",
@@ -132,8 +148,6 @@
       "insurance": "Seguros"
     },
     "manual": "manual",
-    "statementOn": "extracto del {{date}}",
-    "balanceOn": "saldo del {{date}}",
     "trail": {
       "change": "{{amount}} · 30 días",
       "staleStatement_one": "extracto de hace {{count}} día",
@@ -166,9 +180,9 @@
     "insurance": {
       "type": "Tipo de póliza",
       "upcoming": "Próximos pagos",
-      "upcomingNote_one": "{{count}} día",
-      "upcomingNote_many": "{{count}} días",
-      "upcomingNote_other": "{{count}} días",
+      "upcomingNote_one": "próximo {{count}} día",
+      "upcomingNote_many": "próximos {{count}} días",
+      "upcomingNote_other": "próximos {{count}} días",
       "showAll_one": "Mostrar todos ({{count}})",
       "showAll_many": "Mostrar todos ({{count}})",
       "showAll_other": "Mostrar todos ({{count}})"
@@ -566,7 +580,7 @@
       "personal": "vivienda habitual",
       "investment": "inversión",
       "rent": "alquiler {{amount}} / mes",
-      "revaluedOn": "{{date}}"
+      "revaluedOn": "valorado el {{date}}"
     },
     "empty": {
       "title": "Aún no tienes nada",
@@ -662,7 +676,8 @@
       "openPosition": "Abrir posición",
       "notesEmpty": "Aún no hay notas. Toca Editar para añadir notas de análisis — markdown funciona."
     },
-    "assetsTrendLabel": "Gráfico de la evolución de los activos"
+    "assetsTrendLabel": "Gráfico de la evolución de los activos",
+    "changeCaption": "Cambio en los últimos 30 días"
   },
   "settings": {
     "rows": {
@@ -951,6 +966,10 @@
     },
     "form": {
       "newDescription": "Cuánto quieres gastar en un año en una sola cosa. Añades pagos al plan desde el detalle del pago."
+    },
+    "empty": {
+      "takeOver": "Recupera los planes de {{year}} y solo ajusta los importes, o crea un plan nuevo.",
+      "again": "Crea un plan para este año: unas vacaciones, regalos o un cuidado periódico, por ejemplo."
     }
   },
   "gettingStarted": {
@@ -976,5 +995,25 @@
   },
   "pull": {
     "refreshing": "Actualizando…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "Plazo de cancelación",
+      "insurance_anniversary_passed": "Plazo de cancelación vencido",
+      "insurance_end": "La póliza termina",
+      "insurance_payment": "Pago de la prima",
+      "loan_fixation_end": "Fin del tipo fijo",
+      "loan_payoff": "Última cuota",
+      "bond_maturity": "Vencimiento",
+      "bond_coupon": "Cupón",
+      "account_termination": "La cuenta termina",
+      "savings_rate_end": "Fin del tipo promocional",
+      "watch_target_below": "Bajó al objetivo",
+      "watch_target_above": "Alcanzó el objetivo",
+      "stock_split": "Split {{ratio}}"
+    },
+    "splitTrades_one": "{{count}} operación por ajustar",
+    "splitTrades_many": "{{count}} operaciones por ajustar",
+    "splitTrades_other": "{{count}} operaciones por ajustar"
   }
 }

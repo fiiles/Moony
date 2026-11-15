@@ -50,6 +50,7 @@ import { RowBadge } from '@/mobile/components/RowBadge';
 import { UpcomingPremiums } from '@/mobile/components/finance/UpcomingPremiums';
 import { Hero } from '@/mobile/components/Hero';
 import { SectionHead } from '@/mobile/components/SectionHead';
+import { SubFacts } from '@/mobile/components/SubFacts';
 import { useCashTrend } from '@/mobile/hooks/use-cash-trend';
 import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
@@ -469,15 +470,20 @@ function UncategorizedRow({ finance }: { finance: FinanceData }) {
   const only = uncategorized.accountIds.length === 1 ? uncategorized.accountIds[0] : undefined;
   const name = accounts.find((a) => a.id === only)?.name ?? '';
   const last = only === undefined ? null : lastImportByAccount[only];
+  // The account and the statement's day: the name gives way, the day stays (C1)
   const sub =
-    only === undefined
-      ? t('upkeep.accounts', { count: uncategorized.accountIds.length })
-      : last != null
-        ? t('upkeep.uncategorizedFrom', {
-            account: name,
-            date: fmt.day(last, shortDayOptions(last)),
-          })
-        : name;
+    only === undefined ? (
+      t('upkeep.accounts', { count: uncategorized.accountIds.length })
+    ) : (
+      <SubFacts
+        lead={name}
+        tail={
+          last != null
+            ? t('upkeep.fromStatement', { date: fmt.day(last, shortDayOptions(last)) })
+            : null
+        }
+      />
+    );
 
   return (
     <EntityRows>
@@ -496,14 +502,13 @@ function UncategorizedRow({ finance }: { finance: FinanceData }) {
   );
 }
 
-/** Účty: one row per account — bank chip, name, "Fio · CZK · výpis 10. 10.", balance and its trail. */
+/** Účty: one row per account — bank chip, name, the bank ("Fio · EUR" when not in the main currency), balance and one trailing fact. */
 function AccountsSection({ finance, sort }: { finance: FinanceData; sort: AccountSort }) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const openWith = useOpenWithIntent();
   const { openImport } = useImportSheet();
-  const fmt = useFormat();
   const moneyText = useMoneyText();
   const approx = useApprox();
   const { accounts, activity, lastImportByAccount, mainCurrency, convert } = finance;
@@ -568,16 +573,14 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
             {account.excludeFromBalance && <RowBadge>{tb('table.excluded')}</RowBadge>}
           </>
         }
-        sub={[
-          sub.institution ?? (sub.manual ? t('finance.manual') : null),
-          sub.currency,
-          sub.stamp &&
-            t(sub.stamp.kind === 'statement' ? 'finance.statementOn' : 'finance.balanceOn', {
-              date: fmt.day(sub.stamp.day, shortDayOptions(sub.stamp.day)),
-            }),
-        ]
-          .filter(Boolean)
-          .join(' · ')}
+        // The bank, and the currency only when it is not the main one (D6); how old the
+        // statement is stands on the right when it matters
+        sub={
+          <SubFacts
+            lead={sub.institution ?? (sub.manual ? t('finance.manual') : null)}
+            tail={sub.currency !== mainCurrency ? sub.currency : null}
+          />
+        }
         value={moneyText(balance, sub.currency, { decimals: 0 })}
         valueSub={valueSub}
         href={accountPath(account.id)}
@@ -651,18 +654,23 @@ function LoansSection({
               </RowChip>
             }
             title={row.loan.name}
-            sub={[
-              fmt.percent(Number(row.loan.interestRate) / 100, 2),
-              // The desktop's loans table wording: the fixation still ahead, else the month an
-              // ended one ran out, else a fixed rate
-              row.fixationEnd !== null
-                ? t('loans:table.fixedUntil', { month: monthYear(row.fixationEnd) })
-                : row.loan.interestRateValidityDate !== null
-                  ? t('loans:table.fixationEnded', {
-                      month: monthYear(row.loan.interestRateValidityDate),
-                    })
-                  : t('loans:table.fixedRate'),
-            ].join(' · ')}
+            // The rate, then the desktop's loans table wording: the fixation still ahead, else the
+            // month an ended one ran out, else a fixed rate — shown whole or left to the detail (C1)
+            sub={
+              <SubFacts
+                mode="drop"
+                lead={fmt.percent(Number(row.loan.interestRate) / 100, 2)}
+                tail={
+                  row.fixationEnd !== null
+                    ? t('loans:table.fixedUntil', { month: monthYear(row.fixationEnd) })
+                    : row.loan.interestRateValidityDate !== null
+                      ? t('loans:table.fixationEnded', {
+                          month: monthYear(row.loan.interestRateValidityDate),
+                        })
+                      : t('loans:table.fixedRate')
+                }
+              />
+            }
             value={moneyText(row.outstanding, row.currency, { decimals: 0 })}
             // A balance in another currency: its "≈" comes before the payment (README §13)
             valueSub={
@@ -735,12 +743,13 @@ function PoliciesSection({
                 </RowChip>
               }
               title={row.policy.policyName}
-              sub={[
-                row.policy.provider,
-                row.frequency && t(`insurance:frequencyShort.${row.frequency}`),
-              ]
-                .filter(Boolean)
-                .join(' · ')}
+              // The provider gives way, the frequency stays (C1)
+              sub={
+                <SubFacts
+                  lead={row.policy.provider}
+                  tail={row.frequency && t(`insurance:frequencyShort.${row.frequency}`)}
+                />
+              }
               value={moneyText(row.premiumNative.amount, row.premiumNative.currency, {
                 decimals: 0,
               })}

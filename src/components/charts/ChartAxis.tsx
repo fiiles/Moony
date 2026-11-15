@@ -69,12 +69,15 @@ export function CategoryAxis({
   gutter = AXIS_WIDTH,
   centered = false,
   actions,
+  strong,
   className,
 }: {
   labels: string[];
   gutter?: number;
   centered?: boolean;
   actions?: AxisAction[];
+  /** Labels set in the axis's strong weight (the phone's chosen month); none by default. */
+  strong?: readonly boolean[];
   className?: string;
 }) {
   return (
@@ -106,7 +109,11 @@ export function CategoryAxis({
         }
         return centered ? (
           <span key={i} className="flex min-w-0 flex-1 justify-center">
-            <span className="shrink-0 whitespace-nowrap">{l}</span>
+            <span
+              className={cn('shrink-0 whitespace-nowrap', strong?.[i] && 'font-650 text-ink-2')}
+            >
+              {l}
+            </span>
           </span>
         ) : (
           <span key={i} className="flex-1 text-center">

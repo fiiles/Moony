@@ -27,6 +27,7 @@ import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
 import { SectionHead } from '@/mobile/components/SectionHead';
+import { SubFacts } from '@/mobile/components/SubFacts';
 import { AddAssetMenu, type AddKind } from '@/mobile/components/wealth/AddAssetMenu';
 import { AllocationBar } from '@/mobile/components/wealth/AllocationBar';
 import { ChangeLine } from '@/mobile/components/wealth/ChangeLine';
@@ -209,8 +210,10 @@ function InvestmentSection({
 
   const title = (cls: InvestmentClass) =>
     cls === 'investments' ? t('stocks:title') : td(`cards.${cls}`);
-  const positions = (count: number, tickers: string) =>
-    [t('stocks:summary.positions', { count }), tickers].filter(Boolean).join(' · ');
+  // The count stays; the names after it show whole or are left to the list one tap away (C1)
+  const positions = (count: number, tickers: string) => (
+    <SubFacts mode="drop" lead={t('stocks:summary.positions', { count })} tail={tickers} />
+  );
 
   const rowFor = (cls: InvestmentClass) => {
     const { icon: Icon, href, add } = INVESTMENT_ROWS[cls];
@@ -243,15 +246,17 @@ function InvestmentSection({
 
     // Held, but nothing converted: "—", and no change that would be measured against nothing
     const shown = state === 'unknown' ? '—' : money(value);
-    // Said on the row: the position rows one screen down show the gain since purchase
+    // The 30-day share alone: the period is said once, in the section head (D23); the position
+    // rows one screen down show the gain since purchase
     const changeLine = change ? (
       <ChangeLine
         change={change}
         currency={reportCurrency}
-        trail={t('dashboard:changePeriod.30D')}
+        trail={null}
+        srLabel={t('dashboard:changePeriod.30D')}
       />
     ) : undefined;
-    let sub: string;
+    let sub: ReactNode;
     let valueSub: ReactNode;
     switch (cls) {
       case 'investments':
@@ -264,22 +269,25 @@ function InvestmentSection({
         break;
       case 'bonds': {
         const { count, nearestMaturity, yearlyCoupon } = wealth.bonds;
-        sub = [
-          t('wealth.bonds.count', { count }),
-          nearestMaturity !== null &&
-            t('wealth.bonds.nearest', {
-              month: fmt.monthInSentence(new Date(nearestMaturity * 1000)),
-            }),
-        ]
-          .filter(Boolean)
-          .join(' · ');
+        sub = (
+          <SubFacts
+            mode="drop"
+            lead={t('wealth.bonds.count', { count })}
+            tail={
+              nearestMaturity !== null &&
+              t('wealth.bonds.nearest', {
+                month: fmt.monthInSentence(new Date(nearestMaturity * 1000)),
+              })
+            }
+          />
+        );
         valueSub =
           yearlyCoupon > 0 ? t('wealth.bonds.coupon', { amount: money(yearlyCoupon) }) : undefined;
         break;
       }
       case 'otherAssets': {
         const { count, names, valuedAt } = wealth.otherAssets;
-        sub = [t('wealth.otherAssets.count', { count }), names].filter(Boolean).join(' · ');
+        sub = <SubFacts mode="drop" lead={t('wealth.otherAssets.count', { count })} tail={names} />;
         valueSub =
           valuedAt !== null
             ? t('wealth.otherAssets.valuedOn', {
@@ -306,6 +314,7 @@ function InvestmentSection({
       <SectionHead
         title={t('wealth.sections.investments')}
         note={known.length > 0 ? money(total) : '—'}
+        caption={visible.some((cls) => classes[cls].change) ? t('wealth.changeCaption') : undefined}
       />
       <EntityRows>{visible.map(rowFor)}</EntityRows>
     </section>
@@ -347,15 +356,20 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
           const price = amountOf(property.marketPrice);
           const priceCurrency = recordCurrency(property.marketPriceCurrency);
           const rent = amountOf(property.monthlyRent) ?? 0;
-          const sub = [
-            t(`wealth.realEstate.${property.type === 'personal' ? 'personal' : 'investment'}`),
-            rent > 0 &&
-              t('wealth.realEstate.rent', {
-                amount: moneyText(rent, recordCurrency(property.monthlyRentCurrency), WHOLE),
-              }),
-          ]
-            .filter(Boolean)
-            .join(' · ');
+          // The kind gives way, the rent stays whole (C1)
+          const sub = (
+            <SubFacts
+              lead={t(
+                `wealth.realEstate.${property.type === 'personal' ? 'personal' : 'investment'}`
+              )}
+              tail={
+                rent > 0 &&
+                t('wealth.realEstate.rent', {
+                  amount: moneyText(rent, recordCurrency(property.monthlyRentCurrency), WHOLE),
+                })
+              }
+            />
+          );
           return (
             <EntityRow
               key={property.id}
@@ -377,15 +391,15 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
               sub={sub}
               // The property's own price in its own currency; the section's number is the converted total
               value={price === null ? '—' : moneyText(price, priceCurrency, WHOLE)}
+              // "≈" first; else the day of the last valuation, said as such (D24) — its change is
+              // on the detail
               valueSub={
                 (price === null ? undefined : approx(price, priceCurrency)) ??
-                (change ? (
-                  <ChangeLine
-                    change={{ delta: 0, ratio: change.ratio }}
-                    currency={reportCurrency}
-                    trail={fmt.day(change.day, shortDayOptions(change.day))}
-                  />
-                ) : undefined)
+                (change
+                  ? t('wealth.realEstate.revaluedOn', {
+                      date: fmt.day(change.day, shortDayOptions(change.day)),
+                    })
+                  : undefined)
               }
               href={propertyPath(property.id)}
               // The property's revaluation, opened on the property (README §13, Gestures)
@@ -416,7 +430,11 @@ function CashSection({ wealth }: { wealth: WealthData }) {
 
   return (
     <section>
-      <SectionHead title={t('wealth.sections.cash')} note={shown} />
+      <SectionHead
+        title={t('wealth.sections.cash')}
+        note={shown}
+        caption={change ? t('wealth.changeCaption') : undefined}
+      />
       <EntityRows>
         <EntityRow
           chip={
@@ -427,13 +445,14 @@ function CashSection({ wealth }: { wealth: WealthData }) {
           title={t('wealth.cash.title')}
           sub={t('upkeep.accounts', { count: cash.accounts })}
           value={shown}
-          // The same 30 days as the investment rows, said on the row
+          // The same 30 days as the investment rows, said in the section head (D23)
           valueSub={
             change ? (
               <ChangeLine
                 change={change}
                 currency={reportCurrency}
-                trail={t('dashboard:changePeriod.30D')}
+                trail={null}
+                srLabel={t('dashboard:changePeriod.30D')}
               />
             ) : undefined
           }

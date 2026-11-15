@@ -72,3 +72,39 @@ export function drilldownRows(
     };
   });
 }
+
+/** Months of the category trend on the drilldown (audit 2026-11-15 D19). */
+export const TREND_MONTHS = 6;
+
+/**
+ * The UTC month starts of the trend: `count` months, oldest first, the last one holding
+ * `periodEnd` (a month, the last month of a quarter or a year).
+ */
+export function trendMonths(periodEnd: number, count: number): number[] {
+  const end = new Date(periodEnd * 1000);
+  const year = end.getUTCFullYear();
+  const month = end.getUTCMonth();
+  return Array.from({ length: count }, (_, i) => Date.UTC(year, month - (count - 1 - i), 1) / 1000);
+}
+
+/**
+ * What a category came to in each month of `months` (UTC month starts, oldest first): the sum of
+ * the rows' report amounts (`signedAmount`: an expense debit-positive, refunds lowering it, every
+ * other role credit-positive). A row without a conversion, or outside the months, is left out.
+ */
+export function monthlyTotals(
+  rows: readonly Pick<ReportTransaction, 'bookingDate' | 'signedAmount'>[],
+  months: readonly number[]
+): number[] {
+  const totals = months.map(() => 0);
+  for (const row of rows) {
+    if (row.signedAmount === null) continue;
+    const amount = Number(row.signedAmount);
+    if (!Number.isFinite(amount)) continue;
+    const date = new Date(row.bookingDate * 1000);
+    const start = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1) / 1000;
+    const index = months.indexOf(start);
+    if (index >= 0) totals[index] += amount;
+  }
+  return totals.map((total) => Math.round(total * 100) / 100);
+}

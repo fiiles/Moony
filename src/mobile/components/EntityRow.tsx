@@ -104,6 +104,8 @@ interface EntityRowProps {
   bar?: ReactNode;
   /** The row has been dealt with (moved elsewhere): the whole row, its divider included, at half strength. */
   muted?: boolean;
+  /** The surface the row lies on: `well` inside an action card (Údržba), `paper` in a list. */
+  surface?: 'paper' | 'well';
   /** The whole row is the tap target: a link … */
   href?: string;
   /**
@@ -142,8 +144,8 @@ interface EntityRowProps {
 /**
  * The entity row (spec §10.3, design system README §13, `.m-row`): a chip, then two lines — the
  * title with the trailing value, the sub with the trailing sub. Each line shares out its own
- * width: the value keeps its width (up to 60 %), the title takes the rest and ends with an
- * ellipsis. 60 pt, 52 single-line. Swipe actions uncover a 98 pt panel on either side; the long
+ * width: the value and the trailing sub keep their whole width (an amount or a date is never cut,
+ * audit C1), the title and the sub take the rest and end with an ellipsis. 60 pt, 52 single-line. Swipe actions uncover a 98 pt panel on either side; the long
  * press opens the row's `menu`, whose `···` follows the row as it slides (README §13, Gestures). A
  * `bar` (the Cashflow categories' progress) is a third line in the main column; `muted` dims a row
  * that has been dealt with.
@@ -160,6 +162,7 @@ export function EntityRow({
   valueSub,
   bar,
   muted = false,
+  surface = 'paper',
   href,
   from,
   onClick,
@@ -204,7 +207,8 @@ export function EntityRow({
           {hasValue && (
             <span
               className={cn(
-                'ml-auto max-w-[60%] flex-none truncate text-m-row num',
+                // An amount is never cut (C1): the title gives way; `max-w-full` only guards the row
+                'ml-auto max-w-full flex-none truncate whitespace-nowrap text-m-row num',
                 valueTone === 'gain' ? 'text-gain' : valueTone === 'loss' ? 'text-loss' : 'text-ink'
               )}
             >
@@ -216,7 +220,7 @@ export function EntityRow({
           <span className="mt-0.5 flex min-w-0 items-baseline gap-2.5">
             <span className="min-w-0 flex-auto truncate text-m-sub text-ink-4">{sub}</span>
             {valueSub !== undefined && valueSub !== null && (
-              <span className="ml-auto max-w-[60%] flex-none truncate text-m-caption text-ink-4 num">
+              <span className="ml-auto max-w-full flex-none truncate whitespace-nowrap text-m-caption text-ink-4 num">
                 {valueSub}
               </span>
             )}
@@ -235,7 +239,7 @@ export function EntityRow({
     // A visible `···` keeps its 44 pt (and 4 pt of edge) at the row's end
     menu?.shown ? 'pr-12' : 'pr-3.5',
     single ? 'min-h-[52px] py-2' : 'min-h-[60px] py-2.5',
-    (href || onClick) && 'active:bg-well',
+    (href || onClick) && (surface === 'well' ? 'active:bg-well-2' : 'active:bg-well'),
     gestures && 'select-none',
     !swipe.dragging && 'transition-transform duration-base ease-moony'
   );
@@ -311,7 +315,8 @@ export function EntityRow({
     <li
       id={id}
       className={cn(
-        "relative overflow-hidden bg-paper before:pointer-events-none before:absolute before:right-0 before:top-0 before:z-[2] before:left-[var(--m-row-inset)] before:border-t before:border-line-soft before:content-[''] first:before:hidden",
+        "relative overflow-hidden before:pointer-events-none before:absolute before:right-0 before:top-0 before:z-[2] before:left-[var(--m-row-inset)] before:border-t before:border-line-soft before:content-[''] first:before:hidden",
+        surface === 'well' ? 'bg-well' : 'bg-paper',
         muted && 'opacity-50',
         className
       )}

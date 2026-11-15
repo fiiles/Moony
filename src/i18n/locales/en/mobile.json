@@ -26,9 +26,6 @@
     "noRate": "no rate for {{currency}}"
   },
   "cashflow": {
-    "subtitle_one": "Actual income and expenses from {{count}} account",
-    "subtitle_other": "Actual income and expenses from {{count}} accounts",
-    "subtitleAll": "Actual income and expenses from all accounts",
     "shareOfExpenses": "{{share}} of expenses",
     "shareOfIncome": "{{share}} of income",
     "partial": "This period has not ended yet; the numbers will fill in with the next statement.",
@@ -52,14 +49,28 @@
     },
     "showMore_one": "Show {{count}} more transaction",
     "showMore_other": "Show {{count}} more transactions",
-    "rowMenu": "More actions: {{title}}"
+    "rowMenu": "More actions: {{title}}",
+    "scopeAll": "All accounts",
+    "scope_one": "{{count}} account",
+    "scope_other": "{{count}} accounts",
+    "limit": {
+      "remaining": "{{amount}} left of {{limit}}",
+      "over": "Over by {{amount}} · limit {{limit}}",
+      "exhausted": "Used up · limit {{limit}}"
+    },
+    "trend": {
+      "title_one": "Last {{count}} month",
+      "title_other": "Last {{count}} months",
+      "max": "highest {{amount}}"
+    },
+    "incomeNote": "Uncategorized incoming payments count as income"
   },
   "upkeep": {
     "title": "Data upkeep",
     "count_one": "{{count}} item",
     "count_other": "{{count}} items",
-    "balancesStale_one": "{{count}} balance older than a month",
-    "balancesStale_other": "{{count}} balances older than a month",
+    "balancesStale_one": "{{count}} balance to update",
+    "balancesStale_other": "{{count}} balances to update",
     "uncategorized_one": "{{count}} payment without a category",
     "uncategorized_other": "{{count}} payments without a category",
     "uncategorizedFrom": "{{account}} · from the statement of {{date}}",
@@ -81,7 +92,11 @@
       "revalue": "Revalue",
       "enterBalance": "Enter balance",
       "enterRate": "Add rate"
-    }
+    },
+    "olderThanMonth": "Older than a month",
+    "fromStatement": "statement of {{date}}",
+    "loanBalanceFrom": "Balance from {{date}}",
+    "loanFixationEnded": "Fixed rate ended {{date}}"
   },
   "recordBalances": {
     "title": "Record balances",
@@ -122,8 +137,6 @@
       "insurance": "Insurance"
     },
     "manual": "by hand",
-    "statementOn": "statement {{date}}",
-    "balanceOn": "balance {{date}}",
     "trail": {
       "change": "{{amount}} · 30 days",
       "staleStatement_one": "statement {{count}} day old",
@@ -154,8 +167,8 @@
     "insurance": {
       "type": "Policy type",
       "upcoming": "Upcoming payments",
-      "upcomingNote_one": "{{count}} day",
-      "upcomingNote_other": "{{count}} days",
+      "upcomingNote_one": "next {{count}} day",
+      "upcomingNote_other": "next {{count}} days",
       "showAll_one": "Show all {{count}}",
       "showAll_other": "Show all {{count}}"
     },
@@ -532,7 +545,7 @@
       "personal": "personal",
       "investment": "investment",
       "rent": "rent {{amount}} / month",
-      "revaluedOn": "{{date}}"
+      "revaluedOn": "valued {{date}}"
     },
     "empty": {
       "title": "Nothing owned yet",
@@ -626,7 +639,8 @@
       "openPosition": "Open position",
       "notesEmpty": "No notes yet. Tap Edit to add research notes — markdown works."
     },
-    "assetsTrendLabel": "Assets trend chart"
+    "assetsTrendLabel": "Assets trend chart",
+    "changeCaption": "Change over the last 30 days"
   },
   "settings": {
     "rows": {
@@ -903,6 +917,10 @@
     },
     "form": {
       "newDescription": "How much you want to spend on one thing in a year. You add payments to the plan in a payment’s details."
+    },
+    "empty": {
+      "takeOver": "Take over the plans from {{year}} and just adjust the amounts, or create a new plan.",
+      "again": "Create a plan for this year: a holiday, gifts or regular care, for example."
     }
   },
   "gettingStarted": {
@@ -928,5 +946,24 @@
   },
   "pull": {
     "refreshing": "Refreshing…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "Notice deadline",
+      "insurance_anniversary_passed": "Notice period has passed",
+      "insurance_end": "Policy ends",
+      "insurance_payment": "Premium payment",
+      "loan_fixation_end": "Fixed rate ends",
+      "loan_payoff": "Last payment",
+      "bond_maturity": "Maturity",
+      "bond_coupon": "Coupon",
+      "account_termination": "Account ends",
+      "savings_rate_end": "Bonus rate ends",
+      "watch_target_below": "Fell to target",
+      "watch_target_above": "Reached target",
+      "stock_split": "Split {{ratio}}"
+    },
+    "splitTrades_one": "{{count}} trade to adjust",
+    "splitTrades_other": "{{count}} trades to adjust"
   }
 }

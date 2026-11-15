@@ -17,14 +17,18 @@ interface AllocationRingProps {
   /** Label of the folded bucket for the fifth and later classes ("Ostatní"). */
   otherLabel: string;
   formatPercent: (ratio: number) => string;
-  /** Amounts for the accessible name (the legend shows the shares). */
+  /** A class's amount, for the legend and the accessible name. */
   formatValue: (value: number) => string;
+  /** The total in the ring's centre, short enough for its 66 pt hole ("8,4 mil. Kč"). */
+  formatTotal: (value: number) => string;
 }
 
 /**
- * Rozložení majetku on the phone (spec §8.3 item 5, prototype frame 02): a 110 pt ring of stroked
- * circles in `s1`–`s4` + `s-other` (at most four classes and Ostatní, as on the desktop ring) on
- * the left, the legend with name and share on the right — never colour alone.
+ * Rozložení majetku on the phone (spec §8.3 item 5, prototype frame 02, audit D5): a 110 pt ring of
+ * stroked circles in `s1`–`s4` + `s-other` (at most four classes and Ostatní, as on the desktop
+ * ring) with the total in its centre under the label, on the left; the legend on the right — name
+ * and share, the amount under the name — never colour alone. The total wraps inside the hole
+ * rather than being cut.
  */
 export function AllocationRing({
   segments,
@@ -32,6 +36,7 @@ export function AllocationRing({
   otherLabel,
   formatPercent,
   formatValue,
+  formatTotal,
 }: AllocationRingProps) {
   const { slices, total } = useMemo(
     () => allocationSlices(segments, { otherLabel }),
@@ -82,16 +87,19 @@ export function AllocationRing({
         </svg>
         <span
           aria-hidden
-          className="absolute inset-0 flex items-center justify-center text-m-caption font-semibold text-ink-3"
+          className="absolute inset-[22px] flex flex-col items-center justify-center text-center leading-tight"
         >
-          {centerLabel}
+          <span className="max-w-full truncate text-[length:calc(10px*var(--m-text-k))] font-semibold text-ink-4">
+            {centerLabel}
+          </span>
+          <span className="text-m-caption font-semibold text-ink num">{formatTotal(total)}</span>
         </span>
       </div>
       <ul className="m-0 min-w-0 list-none p-0 text-m-sub">
         {slices.map((s) => (
           <li
             key={s.key}
-            className="grid grid-cols-[10px_minmax(0,1fr)_auto] items-center gap-2 py-1 text-ink-2"
+            className="grid grid-cols-[10px_minmax(0,1fr)_auto] items-center gap-x-2 py-1 text-ink-2"
           >
             <i
               aria-hidden
@@ -104,6 +112,9 @@ export function AllocationRing({
             />
             <b className="min-w-0 truncate font-semibold text-ink">{s.label}</b>
             <span className="num">{formatPercent(s.percent / 100)}</span>
+            <span className="col-start-2 col-end-4 whitespace-nowrap text-m-caption text-ink-4 num">
+              {formatValue(s.value)}
+            </span>
           </li>
         ))}
       </ul>

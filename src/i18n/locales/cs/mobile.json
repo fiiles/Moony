@@ -26,10 +26,6 @@
     "noRate": "bez kurzu pro {{currency}}"
   },
   "cashflow": {
-    "subtitle_one": "Skutečné příjmy a výdaje z {{count}} účtu",
-    "subtitle_few": "Skutečné příjmy a výdaje ze {{count}} účtů",
-    "subtitle_other": "Skutečné příjmy a výdaje z {{count}} účtů",
-    "subtitleAll": "Skutečné příjmy a výdaje ze všech účtů",
     "shareOfExpenses": "{{share}} výdajů",
     "shareOfIncome": "{{share}} příjmů",
     "partial": "Období ještě neskončilo, čísla se doplní s dalším výpisem.",
@@ -54,16 +50,32 @@
     "showMore_one": "Zobrazit další {{count}} transakci",
     "showMore_few": "Zobrazit další {{count}} transakce",
     "showMore_other": "Zobrazit dalších {{count}} transakcí",
-    "rowMenu": "Další akce: {{title}}"
+    "rowMenu": "Další akce: {{title}}",
+    "scopeAll": "Všechny účty",
+    "scope_one": "{{count}} účet",
+    "scope_few": "{{count}} účty",
+    "scope_other": "{{count}} účtů",
+    "limit": {
+      "remaining": "Zbývá {{amount}} z {{limit}}",
+      "over": "Přečerpáno o {{amount}} · limit {{limit}}",
+      "exhausted": "Vyčerpáno · limit {{limit}}"
+    },
+    "trend": {
+      "title_one": "Poslední {{count}} měsíc",
+      "title_few": "Poslední {{count}} měsíce",
+      "title_other": "Posledních {{count}} měsíců",
+      "max": "nejvíc {{amount}}"
+    },
+    "incomeNote": "Nezařazené příchozí platby se počítají jako příjem"
   },
   "upkeep": {
     "title": "Údržba",
     "count_one": "{{count}} věc",
     "count_few": "{{count}} věci",
     "count_other": "{{count}} věcí",
-    "balancesStale_one": "{{count}} zůstatek starší než měsíc",
-    "balancesStale_few": "{{count}} zůstatky starší než měsíc",
-    "balancesStale_other": "{{count}} zůstatků starších než měsíc",
+    "balancesStale_one": "{{count}} zůstatek k aktualizaci",
+    "balancesStale_few": "{{count}} zůstatky k aktualizaci",
+    "balancesStale_other": "{{count}} zůstatků k aktualizaci",
     "uncategorized_one": "{{count}} platba bez kategorie",
     "uncategorized_few": "{{count}} platby bez kategorie",
     "uncategorized_other": "{{count}} plateb bez kategorie",
@@ -88,7 +100,11 @@
       "revalue": "Přecenit",
       "enterBalance": "Zadat zůstatek",
       "enterRate": "Doplnit sazbu"
-    }
+    },
+    "olderThanMonth": "Starší než měsíc",
+    "fromStatement": "z výpisu {{date}}",
+    "loanBalanceFrom": "Zůstatek z {{date}}",
+    "loanFixationEnded": "Fixace skončila {{date}}"
   },
   "recordBalances": {
     "title": "Zaznamenat zůstatky",
@@ -132,8 +148,6 @@
       "insurance": "Pojištění"
     },
     "manual": "ručně",
-    "statementOn": "výpis {{date}}",
-    "balanceOn": "zůstatek {{date}}",
     "trail": {
       "change": "{{amount}} · 30 dní",
       "staleStatement_one": "výpis {{count}} den starý",
@@ -166,9 +180,9 @@
     "insurance": {
       "type": "Typ pojištění",
       "upcoming": "Nejbližší platby",
-      "upcomingNote_one": "{{count}} den",
-      "upcomingNote_few": "{{count}} dny",
-      "upcomingNote_other": "{{count}} dní",
+      "upcomingNote_one": "příští {{count}} den",
+      "upcomingNote_few": "příští {{count}} dny",
+      "upcomingNote_other": "příštích {{count}} dní",
       "showAll_one": "Zobrazit {{count}}",
       "showAll_few": "Zobrazit všechny {{count}}",
       "showAll_other": "Zobrazit všech {{count}}"
@@ -566,7 +580,7 @@
       "personal": "osobní",
       "investment": "investiční",
       "rent": "nájem {{amount}} / měsíc",
-      "revaluedOn": "{{date}}"
+      "revaluedOn": "oceněno {{date}}"
     },
     "empty": {
       "title": "Zatím žádný majetek",
@@ -662,7 +676,8 @@
       "openPosition": "Otevřít pozici",
       "notesEmpty": "Zatím žádné poznámky. Klepněte na Upravit a přidejte poznámky — markdown funguje."
     },
-    "assetsTrendLabel": "Graf vývoje aktiv"
+    "assetsTrendLabel": "Graf vývoje aktiv",
+    "changeCaption": "Změna za posledních 30 dní"
   },
   "settings": {
     "rows": {
@@ -959,6 +974,10 @@
     },
     "form": {
       "newDescription": "Kolik chcete za rok utratit za jednu věc. Platby do plánu přidáte v detailu platby."
+    },
+    "empty": {
+      "takeOver": "Převezměte plány z roku {{year}} a jen upravte částky, nebo založte nový plán.",
+      "again": "Založte plán na tento rok: třeba dovolenou, dárky nebo pravidelnou péči."
     }
   },
   "gettingStarted": {
@@ -984,5 +1003,25 @@
   },
   "pull": {
     "refreshing": "Aktualizuji…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "Termín výpovědi",
+      "insurance_anniversary_passed": "Lhůta pro výpověď uplynula",
+      "insurance_end": "Smlouva končí",
+      "insurance_payment": "Platba pojistného",
+      "loan_fixation_end": "Konec fixace",
+      "loan_payoff": "Poslední splátka",
+      "bond_maturity": "Splatnost",
+      "bond_coupon": "Kupón",
+      "account_termination": "Účet končí",
+      "savings_rate_end": "Zvýhodněná sazba končí",
+      "watch_target_below": "Klesla na cíl",
+      "watch_target_above": "Dosáhla cíle",
+      "stock_split": "Split {{ratio}}"
+    },
+    "splitTrades_one": "{{count}} transakce k úpravě",
+    "splitTrades_few": "{{count}} transakce k úpravě",
+    "splitTrades_other": "{{count}} transakcí k úpravě"
   }
 }

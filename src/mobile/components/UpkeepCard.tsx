@@ -1,12 +1,10 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Link } from 'wouter';
 import {
   ChevronDown,
   Clock,
   Download,
-  Ellipsis,
   EyeOff,
   FileCheck,
   House,
@@ -17,15 +15,8 @@ import {
   Upload,
   type LucideIcon,
 } from 'lucide-react';
-import type { Milestone } from '@shared/schema';
 import { MilestoneMenuItems } from '@/components/milestones/MilestoneRows';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
 import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
 import { useMilestoneSubLine } from '@/hooks/use-milestone-sub-line';
 import { useFormat } from '@/lib/use-format';
@@ -35,7 +26,6 @@ import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
 import { useUpkeep } from '@/mobile/hooks/use-upkeep';
 import { useUpkeepDismissals } from '@/mobile/hooks/use-upkeep-dismissals';
-import { backState } from '@/mobile/lib/back-label';
 import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { loanEventPath } from '@/mobile/lib/loan-event-param';
@@ -43,8 +33,9 @@ import type { UpkeepKind, UpkeepRow } from '@/mobile/lib/upkeep';
 import { dismissKey, hideRow, restoreRow, snoozeRow } from '@/mobile/lib/upkeep-dismissals';
 import { propertyPath, routes, settingsPath } from '@/mobile/shell/routes';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
-import { useTapToOpen } from '@/mobile/hooks/use-tap-to-open';
-import { ROW_MENU_ITEM } from './RowMenu';
+import { EntityRow, RowChip } from './EntityRow';
+import { ROW_MENU_ITEM, RowMenuItem } from './RowMenu';
+import { SubFacts } from './SubFacts';
 
 const ICONS: Record<UpkeepKind, LucideIcon> = {
   balances_stale: Landmark,
@@ -96,17 +87,16 @@ function targetOf(row: UpkeepRow): string {
 }
 
 /**
- * Údržba (spec §8.3 item 1, prototype frame 02 and note 2): an action card on `well`, first on
- * Přehled, present only while something is due. Unfolded at first (the desktop folds "Údržba dat"
- * under its agenda, but here every row carries its verb): the head (a button: title, count,
- * chevron) folds it to one line naming what is due; unfolded it has one row per item — a 34 pt
- * icon, the title, a sub-line and the verb as a small button (the first row's is primary, the
- * rest secondary), and the "···" of its menu: on a row that stands for a desktop milestone the
- * desktop's (hide, remind in a month, stop reminding), on the phone's own statement and
- * uncategorized rows hide and remind in a month, kept on this device. Folded or not is kept for
- * the app session. The card leaves when the last row is done; the record-balances sheet it
- * opens is kept apart from it, because saving removes the row that opened the sheet while the
- * sheet is still sliding away.
+ * Údržba (spec §8.3 item 1, prototype frame 02, audit 2026-11-15 D3 and D4): an action card on
+ * `well`, right under the net-worth hero on Přehled, present only while something is due. Unfolded
+ * at first; the head (a button: title, count, chevron) folds it to one line naming what is due.
+ * Unfolded it has one entity row per item (`UpkeepItem`): the whole row is the tap target of its
+ * verb, with a one-line title, a short sub-line and a chevron; hiding and reminding later are the
+ * row's swipes and its long press menu — the desktop's milestone menu on a row that stands for a
+ * desktop milestone, Skrýt and Připomenout za měsíc kept on this device on the phone's own statement
+ * and uncategorized rows. Folded or not is kept for the app session. The card leaves when the last
+ * row is done; the record-balances sheet it opens is kept apart from it, because saving removes the
+ * row that opened the sheet while the sheet is still sliding away.
  */
 export function UpkeepCard() {
   const { t } = useTranslation(['mobile', 'milestones']);
@@ -127,7 +117,7 @@ export function UpkeepCard() {
       {rows.length > 0 && (
         <section
           aria-label={t('upkeep.title')}
-          className="relative mb-3.5 rounded-r4 border border-line bg-well px-4 py-3.5"
+          className="relative mb-3.5 overflow-hidden rounded-r4 border border-line bg-well px-3.5 py-3.5"
         >
           <h2 className="m-0 text-m-section text-ink">
             <button
@@ -156,12 +146,12 @@ export function UpkeepCard() {
               {rows.map((row) => t(row.title.key, row.title.params)).join(' · ')}
             </p>
           )}
-          <ul id={listId} hidden={!open} className="m-0 mt-1 list-none p-0">
-            {rows.map((row, index) => (
+          {/* Full-bleed rows: a swipe uncovers its panel to the card's edges */}
+          <ul id={listId} hidden={!open} className="-mx-3.5 -mb-3.5 mt-2 list-none p-0">
+            {rows.map((row) => (
               <UpkeepItem
                 key={row.id}
                 row={row}
-                primary={index === 0}
                 accounts={accounts}
                 lastImportByAccount={lastImportByAccount}
                 onRecord={() => setSheet({ open: true, accountIds: row.accountIds ?? [] })}
@@ -188,45 +178,45 @@ export function UpkeepCard() {
 
 interface UpkeepItemProps {
   row: UpkeepRow;
-  primary: boolean;
   accounts: ReturnType<typeof useUpkeep>['accounts'];
   lastImportByAccount: Record<string, number | null>;
   onRecord: () => void;
   onImport: () => void;
 }
 
-/** One row of the card: icon, title and sub-line, and the verb. */
-function UpkeepItem({
-  row,
-  primary,
-  accounts,
-  lastImportByAccount,
-  onRecord,
-  onImport,
-}: UpkeepItemProps) {
+/**
+ * One row of the card (audit D3): the whole row is the verb's tap target — an icon, a title on one
+ * line, a short sub-line (a count, a date, never a list of names) and a chevron, so every row ends
+ * on the same edge whatever the verb is called in the language. Odložit and Skrýt are the swipes
+ * (right: remind in a month, left: hide) and the long press's menu, the gestures of every row.
+ */
+function UpkeepItem({ row, accounts, lastImportByAccount, onRecord, onImport }: UpkeepItemProps) {
   const { t } = useTranslation(['mobile', 'milestones']);
   const fmt = useFormat();
   const subLine = useMilestoneSubLine();
-  const titleId = useId();
+  const milestoneActions = useMilestoneActions();
+  const { setDismissals } = useUpkeepDismissals();
   const Icon = ICONS[row.kind];
   const byId = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
 
   const shortDay = (unixSeconds: number) => fmt.day(unixSeconds, shortDayOptions(unixSeconds));
 
   const names = (row.accountIds ?? []).flatMap((id) => byId.get(id)?.name ?? []);
-  let sub: string | null = null;
+  let sub: ReactNode = null;
   switch (row.kind) {
     case 'balances_stale':
-      sub = names.join(' · ');
+      sub = t('upkeep.olderThanMonth');
       break;
     case 'uncategorized': {
       const ids = row.accountIds ?? [];
       if (ids.length === 1) {
         const last = lastImportByAccount[ids[0]];
-        sub =
-          last != null
-            ? t('upkeep.uncategorizedFrom', { account: names[0] ?? '', date: shortDay(last) })
-            : (names[0] ?? null);
+        sub = (
+          <SubFacts
+            lead={names[0]}
+            tail={last != null ? t('upkeep.fromStatement', { date: shortDay(last) }) : null}
+          />
+        );
       } else if (ids.length > 1) {
         sub = t('upkeep.accounts', { count: ids.length });
       }
@@ -239,42 +229,20 @@ function UpkeepItem({
           : null;
       break;
     case 'loan_balance_check':
+      sub = row.milestone?.sinceDay
+        ? t('upkeep.loanBalanceFrom', { date: shortDay(row.milestone.sinceDay) })
+        : null;
+      break;
     case 'loan_fixation_expired':
+      sub = row.milestone?.dueDay
+        ? t('upkeep.loanFixationEnded', { date: shortDay(row.milestone.dueDay) })
+        : null;
+      break;
     case 'sync_stalled':
-      // The desktop's upkeep row: the loan's name over its sub-line
       sub = row.milestone ? subLine(row.milestone) : null;
       break;
     default:
       sub = null;
-  }
-
-  const verb = t(VERBS[row.kind]);
-  const buttonClass = cn(
-    'relative h-auto min-h-[34px] rounded-[9px] px-[11px] py-1 text-m-sub font-semibold after:absolute after:inset-x-0 after:-inset-y-[5px] after:content-[""]'
-  );
-  const variant = primary ? 'default' : 'secondary';
-
-  // Zaznamenat and Importovat open a sheet; the other verbs go to a screen
-  let action: ReactNode;
-  if (row.kind === 'balances_stale' || row.kind === 'statement_due') {
-    action = (
-      <Button
-        variant={variant}
-        className={buttonClass}
-        aria-describedby={titleId}
-        onClick={row.kind === 'balances_stale' ? onRecord : onImport}
-      >
-        {verb}
-      </Button>
-    );
-  } else {
-    action = (
-      <Button asChild variant={variant} className={buttonClass}>
-        <Link href={targetOf(row)} state={backState(t('tabs.overview'))} aria-describedby={titleId}>
-          {verb}
-        </Link>
-      </Button>
-    );
   }
 
   // A loan row names the loan and says what is due under it; the folded line keeps the short title
@@ -283,123 +251,92 @@ function UpkeepItem({
     row.milestone?.title
       ? row.milestone.title
       : t(row.title.key, row.title.params);
+  const verb = t(VERBS[row.kind]);
 
-  return (
-    <li
-      className={cn(
-        'grid items-center gap-3 border-t border-line-soft py-2.5 first:border-t-0',
-        row.milestone || dismissKey(row) !== null
-          ? 'grid-cols-[34px_minmax(0,1fr)_auto_auto]'
-          : 'grid-cols-[34px_minmax(0,1fr)_auto]'
-      )}
-    >
-      <span
-        aria-hidden
-        className="flex size-[34px] items-center justify-center rounded-[10px] bg-well text-ink-2 [&_svg]:size-[17px]"
-      >
-        <Icon strokeWidth={1.75} />
-      </span>
-      <div className="min-w-0">
-        <div
-          id={titleId}
-          className="text-[length:calc(14px*var(--m-text-k))] font-semibold tracking-[-0.01em] text-ink"
-        >
-          {title}
-        </div>
-        {sub && <div className="mt-px truncate text-m-sub text-ink-4">{sub}</div>}
-      </div>
-      {action}
-      {row.milestone ? (
-        <UpkeepMenu m={row.milestone} title={title} />
-      ) : (
-        dismissKey(row) !== null && <PhoneRowMenu row={row} title={title} />
-      )}
-    </li>
-  );
-}
+  // Zaznamenat and Importovat open a sheet; the other verbs go to a screen
+  const opensSheet = row.kind === 'balances_stale' || row.kind === 'statement_due';
+  const target = opensSheet
+    ? { onClick: row.kind === 'balances_stale' ? onRecord : onImport }
+    : { href: targetOf(row), from: t('tabs.overview') };
 
-/** The 32 pt `···` of a row (44 pt to tap). */
-const MENU_TRIGGER =
-  "relative -ml-1.5 inline-flex size-8 items-center justify-center rounded-[9px] text-ink-3 [-webkit-touch-callout:none] after:absolute after:-inset-1.5 after:content-[''] active:bg-well-2 data-[state=open]:text-ink";
-
-/**
- * "···" of a row the phone works out itself (B4: "Je čas na výpis z …", "Nezařazené"): Skrýt and
- * Připomenout za měsíc in the desktop milestone menu's words, kept on this device
- * (`useUpkeepDismissals`), each with a "Vrátit" toast. A hidden statement row comes back with the
- * account's next import, a hidden "Nezařazené" once more payments wait than now.
- */
-function PhoneRowMenu({ row, title }: { row: UpkeepRow; title: string }) {
-  const [open, setOpen] = useState(false);
-  const tap = useTapToOpen(open, setOpen);
-  const { t } = useTranslation('milestones');
-  const { setDismissals } = useUpkeepDismissals();
+  // Odložit and Skrýt: the desktop milestone's own state, or the phone's dismissal kept here
+  const { milestone } = row;
+  const phoneDismiss = !milestone && dismissKey(row) !== null;
   const undo = {
-    label: t('actions.undo'),
+    label: t('milestones:actions.undo'),
     onClick: () => setDismissals((d) => restoreRow(d, row)),
   };
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={t('card.rowMenu', { title })}
-          className={MENU_TRIGGER}
-          {...tap}
-        >
-          <Ellipsis aria-hidden className="size-5" strokeWidth={1.75} />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[220px]">
-        <DropdownMenuItem
-          className={ROW_MENU_ITEM}
-          onSelect={() => {
-            setDismissals((d) => hideRow(d, row));
-            toast(t('toast.hidden'), { action: undo });
-          }}
-        >
-          <EyeOff />
-          {t('actions.hide')}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className={ROW_MENU_ITEM}
-          onSelect={() => {
-            setDismissals((d) => snoozeRow(d, row, utcDayFloor(Date.now() / 1000)));
-            toast(t('toast.snoozedMonth'), { action: undo });
-          }}
-        >
-          <Clock />
-          {t('actions.remindMonth')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
+  const hide = milestone
+    ? () => milestoneActions.hide(milestone)
+    : phoneDismiss
+      ? () => {
+          setDismissals((d) => hideRow(d, row));
+          toast(t('milestones:toast.hidden'), { action: undo });
+        }
+      : undefined;
+  const remind = milestone
+    ? () => milestoneActions.remindLater(milestone)
+    : phoneDismiss
+      ? () => {
+          setDismissals((d) => snoozeRow(d, row, utcDayFloor(Date.now() / 1000)));
+          toast(t('milestones:toast.snoozedMonth'), { action: undo });
+        }
+      : undefined;
 
-/**
- * "···" of a row that stands for a desktop milestone: the desktop's menu (Skrýt, Připomenout za
- * měsíc, Nepřipomínat …), so a reminder put off here stays off there too. 32 pt drawn, 44 pt to tap.
- */
-function UpkeepMenu({ m, title }: { m: Milestone; title: string }) {
-  const [open, setOpen] = useState(false);
-  const tap = useTapToOpen(open, setOpen);
-  const { t } = useTranslation('milestones');
-  // Kept by the row, not by the items: it keeps the muted kinds observed (`MilestoneMenuItems`)
-  const actions = useMilestoneActions();
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={t('card.rowMenu', { title })}
-          className={MENU_TRIGGER}
-          {...tap}
-        >
-          <Ellipsis aria-hidden className="size-5" strokeWidth={1.75} />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[220px]">
-        <MilestoneMenuItems m={m} actions={actions} itemClassName={ROW_MENU_ITEM} />
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <EntityRow
+      surface="well"
+      chip={
+        <RowChip square>
+          <Icon strokeWidth={1.75} />
+        </RowChip>
+      }
+      title={
+        <>
+          {title}
+          {/* What the tap does, for VoiceOver: the row is the verb's button */}
+          <span className="sr-only">, {verb}</span>
+        </>
+      }
+      sub={sub ?? undefined}
+      chevron
+      {...target}
+      onSwipeRight={remind}
+      swipeRightLabel={t('milestones:actions.remindMonth')}
+      swipeRightIcon={Clock}
+      onSwipeLeft={hide}
+      swipeLeftLabel={t('milestones:actions.hide')}
+      swipeLeftIcon={EyeOff}
+      menu={
+        milestone
+          ? {
+              label: t('milestones:card.rowMenu', { title }),
+              children: (
+                <MilestoneMenuItems
+                  m={milestone}
+                  actions={milestoneActions}
+                  itemClassName={ROW_MENU_ITEM}
+                />
+              ),
+            }
+          : hide && remind
+            ? {
+                label: t('milestones:card.rowMenu', { title }),
+                children: (
+                  <>
+                    <RowMenuItem onSelect={hide}>
+                      <EyeOff />
+                      {t('milestones:actions.hide')}
+                    </RowMenuItem>
+                    <RowMenuItem onSelect={remind}>
+                      <Clock />
+                      {t('milestones:actions.remindMonth')}
+                    </RowMenuItem>
+                  </>
+                ),
+              }
+            : undefined
+      }
+    />
   );
 }

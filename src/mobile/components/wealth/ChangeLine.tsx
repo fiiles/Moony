@@ -13,7 +13,7 @@ interface ChangeLineProps {
   currency: string;
   /** Formatting of the amount; whole signed amounts unless told otherwise. */
   options?: MoneyOptions;
-  /** Stands where the amount would: a date ("5. 10."), "dnes". */
+  /** Stands where the amount would: a date ("5. 10."), "dnes"; `null` for the badge alone. */
   trail?: ReactNode;
   /** What the share measures, for VoiceOver only (a list that names it once for the eye). */
   srLabel?: string;
@@ -60,7 +60,9 @@ export function ChangeLine({
           {fmt.percent(Math.abs(ratio), 1)}
         </span>
       )}
-      {trail ?? (
+      {trail !== undefined ? (
+        trail
+      ) : (
         <Money
           value={change.delta}
           currency={currency}

@@ -5,7 +5,9 @@ import {
   notInBackup,
   offerDownloadEverything,
   onOtherDevices,
+  shownProblem,
   uploadsKeepUnsynced,
+  withoutDanglingSize,
 } from './sync-attachments';
 
 const zeros: SyncAttachments = {
@@ -20,6 +22,23 @@ const zeros: SyncAttachments = {
 
 const attachments = (over: Partial<SyncAttachments>): SyncAttachments => ({ ...zeros, ...over });
 
+describe('shownProblem', () => {
+  it('shows noRoom only while something waits to upload', () => {
+    expect(shownProblem(attachments({ problem: 'noRoom' }))).toBeNull();
+    expect(shownProblem(attachments({ problem: 'noRoom', waitingUpload: 2 }))).toBe('noRoom');
+  });
+  it('shows serverNeedsUpdate whenever it is set', () => {
+    expect(shownProblem(attachments({ problem: 'serverNeedsUpdate' }))).toBe('serverNeedsUpdate');
+    expect(shownProblem(attachments({ problem: 'serverNeedsUpdate', waitingUpload: 3 }))).toBe(
+      'serverNeedsUpdate'
+    );
+  });
+  it('is none without a problem', () => {
+    expect(shownProblem(zeros)).toBeNull();
+    expect(shownProblem(attachments({ waitingUpload: 1 }))).toBeNull();
+  });
+});
+
 describe('attachmentsLine', () => {
   it('reads all uploaded on zeros, whatever is missing here', () => {
     expect(attachmentsLine(zeros)).toEqual({ kind: 'allUploaded' });
@@ -28,24 +47,59 @@ describe('attachmentsLine', () => {
     });
   });
 
-  it('counts what waits with its size', () => {
+  it('counts what waits with its size, also beside a problem', () => {
+    const waiting = { kind: 'waiting', count: 3, bytes: 12_000_000 };
     expect(
       attachmentsLine(attachments({ waitingUpload: 3, waitingUploadBytes: 12_000_000 }))
-    ).toEqual({ kind: 'waiting', count: 3, bytes: 12_000_000 });
+    ).toEqual(waiting);
+    expect(
+      attachmentsLine(
+        attachments({ waitingUpload: 3, waitingUploadBytes: 12_000_000, problem: 'noRoom' })
+      )
+    ).toEqual(waiting);
+    expect(
+      attachmentsLine(
+        attachments({
+          waitingUpload: 3,
+          waitingUploadBytes: 12_000_000,
+          problem: 'serverNeedsUpdate',
+        })
+      )
+    ).toEqual(waiting);
   });
 
-  it('lets a problem win while anything waits, else it does not change the line', () => {
-    expect(attachmentsLine(attachments({ waitingUpload: 2, problem: 'noRoom' }))).toEqual({
-      kind: 'problem',
-      problem: 'noRoom',
+  it('never says all uploaded while a problem is shown', () => {
+    expect(attachmentsLine(attachments({ problem: 'serverNeedsUpdate' }))).toEqual({
+      kind: 'none',
     });
-    expect(
-      attachmentsLine(attachments({ waitingUpload: 1, problem: 'serverNeedsUpdate' }))
-    ).toEqual({
-      kind: 'problem',
-      problem: 'serverNeedsUpdate',
-    });
+  });
+
+  it('treats noRoom with nothing waiting as no problem', () => {
     expect(attachmentsLine(attachments({ problem: 'noRoom' }))).toEqual({ kind: 'allUploaded' });
+  });
+});
+
+describe('withoutDanglingSize', () => {
+  it('drops the separator left by an empty size', () => {
+    expect(withoutDanglingSize('3 waiting to upload · ')).toBe('3 waiting to upload');
+    expect(withoutDanglingSize('3 waiting to upload · 12.0 MB')).toBe(
+      '3 waiting to upload · 12.0 MB'
+    );
+  });
+});
+
+describe('the waiting strings of every locale', () => {
+  const files = import.meta.glob<{ attachments: Record<string, string> }>(
+    '../i18n/locales/*/deviceSync.json',
+    { eager: true, import: 'default' }
+  );
+  it('end with the size, so an empty size leaves only a separator to strip', () => {
+    expect(Object.keys(files)).toHaveLength(10);
+    for (const [path, tree] of Object.entries(files)) {
+      const forms = Object.entries(tree.attachments).filter(([k]) => k.startsWith('waiting_'));
+      expect(forms.length, path).toBeGreaterThan(0);
+      for (const [key, text] of forms) expect(text, `${path} ${key}`).toMatch(/ · \{\{size\}\}$/);
+    }
   });
 });
 

@@ -6,6 +6,7 @@ import { useLastImports } from '@/mobile/hooks/use-account-upkeep';
 import { useCategorizeQueue } from '@/mobile/hooks/use-categorize-queue';
 import { queueSummary } from '@/mobile/lib/categorize-queue';
 import { useUpkeepDismissals } from '@/mobile/hooks/use-upkeep-dismissals';
+import { shownProblem } from '@/utils/sync-attachments';
 import { exportsOnThisDevice } from '@/mobile/lib/export-file';
 import { buildUpkeepRows, type UpkeepRow } from '@/mobile/lib/upkeep';
 import { isDismissed } from '@/mobile/lib/upkeep-dismissals';
@@ -56,7 +57,7 @@ export function useUpkeep(): Upkeep {
         uncategorized,
         uncategorizedAccountIds: withPayments,
         canBackup: exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? ''),
-        attachmentsProblem: syncOn ? syncStatus.attachments.problem : null,
+        attachmentsProblem: syncOn ? shownProblem(syncStatus.attachments) : null,
       }).filter((row) => !isDismissed(row, dismissals, todayDay))
     : [];
 

@@ -79,7 +79,7 @@ export function isQuietlyOutOfReach(status: SyncStatus, now: number): boolean {
  * `now` in unix seconds. `null` while sync is off or being set up (no indicator). Precedence: a
  * round running, then the server out of reach (stale after 7 days) or a problem phase, then
  * uploading (idle while documents and photos wait), then synchronised. An attachments problem never
- * changes the label (`status.attachments.problem` adds its own line elsewhere).
+ * changes the label (`shownProblem` adds its own line elsewhere).
  */
 export function syncState(status: SyncStatus | undefined, now: number): SyncStateView | null {
   if (!status || status.phase === 'off' || status.phase === 'settingUp') return null;

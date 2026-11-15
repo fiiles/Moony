@@ -448,6 +448,10 @@ describe('buildUpkeepRows', () => {
       ]);
     });
 
+    it('is absent for the effective no problem: the caller passes null (noRoom with nothing waiting)', () => {
+      expect(buildUpkeepRows(input({ attachmentsProblem: null }))).toEqual([]);
+    });
+
     it('is absent without a problem', () => {
       expect(buildUpkeepRows(input({}))).toEqual([]);
       expect(buildUpkeepRows(input({ attachmentsProblem: null }))).toEqual([]);

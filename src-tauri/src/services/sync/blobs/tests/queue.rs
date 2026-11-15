@@ -900,6 +900,7 @@ fn a_held_blob_with_an_invalid_id_reads_here_and_counts_as_failed() {
         ..AttachmentSummary::default()
     };
 
+    // Phase 1, held: reads here, failed, and `not_on_device` stays 0 (the content is here).
     assert_eq!(
         entry(&conn),
         ("up".into(), Some("invalidId".into()), i64::MAX)
@@ -914,6 +915,7 @@ fn a_held_blob_with_an_invalid_id_reads_here_and_counts_as_failed() {
         ("up".into(), Some("invalidId".into()), i64::MAX)
     );
 
+    // Phase 2, after the content is lost: failed and not on the device (`not_on_device` 1).
     attachment_store::delete(&conn, "../x").expect("lose");
     queue::reconcile(&conn, NOW).expect("reconcile");
     assert_eq!(

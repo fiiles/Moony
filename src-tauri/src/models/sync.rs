@@ -200,6 +200,16 @@ pub struct SyncStatus {
     /// This device's documents and photos: content waiting to move, and their own problem.
     #[serde(rename = "attachments")]
     pub attachments: SyncAttachments,
+    /// When a round last succeeded with nothing left to send here: no change, no document or photo
+    /// waiting to upload or unable to (unix seconds; spec 2026-11-14 §7.2). `None` while off or
+    /// before the first.
+    #[serde(rename = "lastCompleteAt")]
+    pub last_complete_at: Option<i64>,
+    /// Sync keeps this device's data safe now (spec §7.3, `milestones::sync_protects`): on, nothing
+    /// needs the person, a complete sync less than 7 whole UTC days old, and nothing held here that
+    /// exists nowhere else (no unsent change, no document or photo left to upload).
+    #[serde(rename = "protectsData")]
+    pub protects_data: bool,
 }
 
 /// The subscription a checkout is for.

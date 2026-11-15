@@ -3634,7 +3634,19 @@ enabledAt: number | null;
 /**
  * This device's documents and photos: content waiting to move, and their own problem.
  */
-attachments: SyncAttachments }
+attachments: SyncAttachments; 
+/**
+ * When a round last succeeded with nothing left to send here: no change, no document or photo
+ * waiting to upload or unable to (unix seconds; spec 2026-11-14 §7.2). `None` while off or
+ * before the first.
+ */
+lastCompleteAt: number | null; 
+/**
+ * Sync keeps this device's data safe now (spec §7.3, `milestones::sync_protects`): on, nothing
+ * needs the person, a complete sync less than 7 whole UTC days old, and nothing held here that
+ * exists nowhere else (no unsent change, no document or photo left to upload).
+ */
+protectsData: boolean }
 
 /**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;

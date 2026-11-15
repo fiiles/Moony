@@ -648,6 +648,70 @@ fn the_status_counts_waiting_uploads_and_content_elsewhere() {
     assert_eq!(off_status.attachments, SyncAttachments::default());
 }
 
+/// The verdict (`protects_data`, spec 2026-11-14 §7.3) is withdrawn while this device holds
+/// something only it has, although its last complete sync is a day old: a change not sent, a
+/// document waiting to upload, or one the server refused (a failed item on the wire, so read from
+/// the queue); and while the queue cannot be read.
+#[test]
+fn the_verdict_waits_for_what_only_this_device_holds() {
+    let device = TestConn::new(migrated());
+    with_store(&device);
+    state::enable(&device.lock(), A).expect("enable");
+    owner(&device);
+    let sent = |conn: &Connection| exec(conn, "DELETE FROM sync_outbox; DELETE FROM sync_unsent;");
+    {
+        let conn = device.lock();
+        sent(&conn);
+        state::record_complete(&conn, chrono::Utc::now().timestamp() - 86_400).expect("complete");
+    }
+    let verdict = || {
+        status::status(&device.lock(), &Runtime::default())
+            .expect("status")
+            .protects_data
+    };
+    assert!(verdict());
+
+    institution(&device.lock(), "i1");
+    assert!(!verdict(), "a change not sent");
+    sent(&device.lock());
+    assert!(verdict());
+
+    let blob = document(&device, "d1", b"%PDF-1.7 contract");
+    {
+        let conn = device.lock();
+        sent(&conn);
+        queue::reconcile(&conn, NOW).expect("reconcile");
+    }
+    assert_eq!(shown(&device).waiting_upload, 1);
+    assert!(!verdict(), "a document waiting to upload");
+
+    device
+        .lock()
+        .execute(
+            "UPDATE sync_blobs SET last_error = 'refused' WHERE blob_id = ?1",
+            [&blob],
+        )
+        .expect("refused");
+    let attachments = shown(&device);
+    assert_eq!((attachments.waiting_upload, attachments.failed), (0, 1));
+    assert!(!verdict(), "a refused upload");
+
+    device
+        .lock()
+        .execute(
+            "UPDATE sync_blobs SET state = 'done', last_error = NULL WHERE blob_id = ?1",
+            [&blob],
+        )
+        .expect("up");
+    assert!(verdict());
+
+    exec(
+        &device.lock(),
+        "ALTER TABLE sync_blobs RENAME TO sync_blobs_away",
+    );
+    assert!(!verdict(), "a queue that cannot be read proves nothing");
+}
+
 // ---------------------------------------------------------------------------------------------
 // Two devices: rows and their content (the rounds and the lanes' runs, driven by hand)
 

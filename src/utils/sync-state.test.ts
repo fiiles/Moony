@@ -38,6 +38,8 @@ function status(
       problem: null,
       ...attachments,
     },
+    lastCompleteAt: null,
+    protectsData: false,
   };
 }
 

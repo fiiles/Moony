@@ -9,6 +9,8 @@ use crate::error::{AppError, Result};
 use crate::models::sync::{
     SyncAttachments, SyncAttachmentsProblem, SyncPhase, SyncProblem, SyncStatus,
 };
+use crate::services::loan_amortization::today_utc_day;
+use crate::services::milestones::sync_protects;
 use crate::services::sync::blobs::queue;
 use crate::services::sync::capture::{self, guard};
 use crate::services::sync::error::{SyncError, TooLarge, Transient};
@@ -61,7 +63,8 @@ impl Runtime {
 /// account, is `off`; a disabled row with an account saved is `settingUp`. An enabled profile shows
 /// the pauses kept in `sync_state` first (capture broken, vault gone), then a running round, then
 /// the last round's problem; `idle` when there is none. Documents and photos are counted beside
-/// the phase (`SyncStatus::attachments`, zeros while sync is off), never in it.
+/// the phase (`SyncStatus::attachments`, zeros while sync is off), never in it. The last complete
+/// sync and the verdict on it (`milestones::sync_protects`) are `None` and `false` while off.
 pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
     let dev_tools = feature::dev_tools();
     let address = keys::account(conn)?.map(|(url, _)| url);
@@ -86,6 +89,8 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         server_insecure,
         enabled_at: None,
         attachments: SyncAttachments::default(),
+        last_complete_at: None,
+        protects_data: false,
     };
     let Some(sync) = state::load(conn)? else {
         return Ok(quiet(SyncPhase::Off));
@@ -131,7 +136,7 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
             .filter(|at| displayable(*at)),
         _ => None,
     };
-    Ok(SyncStatus {
+    let mut shown = SyncStatus {
         phase,
         problem,
         last_success_at: marks.last_success_at,
@@ -147,6 +152,22 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         server_insecure,
         enabled_at: devices::this_device_joined_at(conn)?,
         attachments: attachments(conn, runtime),
+        last_complete_at: marks.last_complete_at,
+        protects_data: false,
+    };
+    shown.protects_data = sync_protects(today_utc_day(), &shown, content_to_upload(conn));
+    Ok(shown)
+}
+
+/// Whether documents or photos held here may still have to reach the sync server, stuck uploads
+/// and ones not queued yet included (`queue::holds_content_to_upload`), for the verdict. A queue
+/// that cannot be read counts as content left (logged): the verdict is never "protected" on an
+/// error.
+fn content_to_upload(conn: &Connection) -> bool {
+    queue::holds_content_to_upload(conn).unwrap_or_else(|error| {
+        log::warn!("[SYNC] The transfer queue could not be read for the status");
+        log::debug!("[SYNC] The transfer queue could not be read for the status: {error}");
+        true
     })
 }
 
@@ -402,6 +423,40 @@ mod tests {
         assert_eq!(off.server_address, None);
         assert!(!off.server_insecure);
         assert_eq!(off.enabled_at, None);
+        assert_eq!(off.last_complete_at, None);
+        assert!(!off.protects_data);
+    }
+
+    #[test]
+    fn the_status_carries_the_last_complete_sync_and_its_verdict() {
+        let conn = enabled_at("https://relay.example.org");
+        let before = status(&conn, &Runtime::default()).expect("status");
+        assert_eq!(before.phase, SyncPhase::Idle);
+        assert_eq!(before.last_complete_at, None);
+        assert!(!before.protects_data);
+
+        let now = chrono::Utc::now().timestamp();
+        state::record_complete(&conn, now).expect("complete");
+        let after = status(&conn, &Runtime::default()).expect("status");
+        assert_eq!(after.last_complete_at, Some(now));
+        assert!(after.protects_data);
+
+        // A problem that needs the person withdraws the verdict; the time stays.
+        let stopped = Runtime {
+            problem: Some(SyncProblem::Unauthorized),
+            ..Runtime::default()
+        };
+        let shown = status(&conn, &stopped).expect("status");
+        assert_eq!(shown.last_complete_at, Some(now));
+        assert!(!shown.protects_data);
+
+        // Sync off (an account kept): no time, no verdict.
+        conn.execute("UPDATE sync_state SET enabled = 0 WHERE id = 1", [])
+            .expect("disable");
+        let setting_up = status(&conn, &Runtime::default()).expect("status");
+        assert_eq!(setting_up.phase, SyncPhase::SettingUp);
+        assert_eq!(setting_up.last_complete_at, None);
+        assert!(!setting_up.protects_data);
     }
 
     #[test]

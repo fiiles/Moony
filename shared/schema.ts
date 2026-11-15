@@ -126,6 +126,10 @@ export interface SyncStatus {
   enabledAt: number | null;
   /** This device's documents and photos: content waiting to move, and their own problem. */
   attachments: SyncAttachments;
+  /** When a round last succeeded with nothing left to send: no change, no document or photo waiting to upload or unable to (unix seconds); `null` while off or before the first. */
+  lastCompleteAt: number | null;
+  /** Sync keeps this device's data safe now: on, nothing needs the person, a complete sync less than 7 whole UTC days old, and nothing held here that exists nowhere else (Rust `sync_protects`). */
+  protectsData: boolean;
 }
 
 /**

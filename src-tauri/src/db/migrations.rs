@@ -3535,8 +3535,8 @@ CREATE INDEX idx_sync_blobs_state ON sync_blobs (state, next_try_at);
 "#;
 
 /// 038: `sync_blobs.size`: the plaintext size of an entry's content as the store recorded it when
-/// the entry last became `up` (NULL for content not held here, and for entries from before this
-/// migration until the next full reconcile). The status and the round's upload pick read it from
+/// the entry last became `up`, kept while it is `done` (NULL for `down` entries, and for entries
+/// from before this migration until the next full reconcile). The status and the round's upload pick read it from
 /// the queue, so neither walks the store's blobs (ADR 0030).
 pub(crate) const MIGRATION_038: &str = r#"
 ALTER TABLE sync_blobs ADD COLUMN size INTEGER;

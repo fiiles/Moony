@@ -76,9 +76,24 @@ fn shown(device: &TestConn) -> SyncAttachments {
 }
 
 async fn round_on(relay: &impl Relay, device: &TestConn, mode: RoundMode) -> RoundReport {
-    run_round(relay, device, &mut SnapshotPolicy::default(), mode, NOW, 0)
+    round_at(relay, device, mode, NOW).await
+}
+
+async fn round_at(relay: &impl Relay, device: &TestConn, mode: RoundMode, now: i64) -> RoundReport {
+    run_round(relay, device, &mut SnapshotPolicy::default(), mode, now, 0)
         .await
         .expect("round")
+}
+
+fn next_try_at(device: &TestConn, blob: &str) -> i64 {
+    device
+        .lock()
+        .query_row(
+            "SELECT next_try_at FROM sync_blobs WHERE blob_id = ?1",
+            [blob],
+            |r| r.get(0),
+        )
+        .expect("entry")
 }
 
 fn pushed(report: &RoundReport) -> usize {
@@ -299,6 +314,39 @@ async fn an_upload_that_stalls_ends_at_the_budget() {
     assert!(pushed(&report) > 0, "{report:?}");
     assert_eq!(report.problem, None);
     assert_eq!(entry(&vault.a, &blob), Some(("up".into(), 1, false)));
+    // The backoff runs from the cut, not from the round's start.
+    let budget = i64::try_from(PRE_PUSH_BUDGET.as_secs()).expect("budget");
+    assert_eq!(next_try_at(&vault.a, &blob), NOW + budget + 30);
+}
+
+/// A blob that has failed an attempt is left to the lanes: a later round does not spend its budget
+/// on it again even once its backoff is over, while a fresh blob still goes up before the push.
+#[tokio::test(start_paused = true)]
+async fn a_blob_that_failed_once_is_left_to_the_lanes() {
+    let vault = vault().await;
+    with_store(&vault.a);
+    owner(&vault.a);
+    let slow = document(&vault.a, "d1", &[1u8; 300_000]);
+    let relay = StalledUploads(
+        vault.relay.clone(),
+        Some(uuid::Uuid::parse_str(&slow).expect("id")),
+    );
+    ends(round_on(&relay, &vault.a, RoundMode::Normal)).await;
+    let fresh = document(&vault.a, "d2", b"%PDF-1.7 fresh");
+    let later = NOW + 3_600;
+    assert!(later > next_try_at(&vault.a, &slow), "the backoff is over");
+    let started = tokio::time::Instant::now();
+
+    let report = ends(round_at(&relay, &vault.a, RoundMode::Normal, later)).await;
+
+    assert!(
+        started.elapsed() < Duration::from_secs(1),
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(report.problem, None);
+    assert_eq!(entry(&vault.a, &fresh).expect("queued").0, "done");
+    assert_eq!(entry(&vault.a, &slow), Some(("up".into(), 1, false)));
 }
 
 /// A blob cut by the budget waits for its backoff: the next round does not spend its budget on it

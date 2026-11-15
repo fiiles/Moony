@@ -13,7 +13,7 @@
 //!
 //! The queue is also where everything that runs often reads where content is (the status, the
 //! content of a listing, the upload pick): `up` and `done` are content held here, `down` content
-//! not here, as of the last reconcile, and `size` is an `up` entry's plaintext size. Reading the
+//! not here, as of the last reconcile, and `size` is the plaintext size of content held here. Reading the
 //! store instead would walk each blob's pages (ADR 0030).
 //!
 //! A blob held here is queued `up` unless the queue knows the server has it: an upload starts by
@@ -181,6 +181,13 @@ pub fn is_stuck(last_error: Option<&str>) -> bool {
 /// Clears an entry's retry bookkeeping when its state changes.
 const FRESH: &str = "attempts = 0, next_try_at = 0, last_error = NULL, last_error_at = NULL";
 
+/// [`FRESH`] for the full reconcile's state changes, except that an entry with an invalid ID keeps
+/// its failure: an ID does not become valid when its content appears or disappears.
+const FRESH_KEEPING_INVALID: &str = "attempts = 0, \
+    next_try_at = CASE WHEN last_error = 'invalidId' THEN next_try_at ELSE 0 END, \
+    last_error_at = CASE WHEN last_error = 'invalidId' THEN last_error_at END, \
+    last_error = CASE WHEN last_error = 'invalidId' THEN last_error END";
+
 /// Every blob a syncing attachment row names, as `(b, thumbnail, row_at, tbl, rid)`: one line per
 /// row and blob column of `attachment_store::REFERENCES`, only rows of synced tables that meet
 /// their row condition (`registry::row_condition`), since no other row ever reaches the server.
@@ -225,10 +232,11 @@ fn store_size(id: &str) -> String {
 /// Brings the queue in line with the rows and the store; the same rows and store give the same
 /// queue however often it runs. Drops entries no syncing row names; adds each newly named blob as
 /// `up` when held here and `down` otherwise, with its recorded size when held (a blob ID that is
-/// not canonical with `invalidId`, never offered: `done` when held here, else `down`); turns `up` and `done` entries whose content is no longer here into
-/// `down`, and `down` entries whose content is here into `up` (losing it forgot whether the
-/// server had it; the download lane marks what it fetched `done` itself). Does nothing without the
-/// store or with sync off.
+/// not canonical with `invalidId` and a retry time never reached: never offered, never taken as on
+/// the server); turns `up` and `done` entries whose content is no longer here into `down`, and
+/// `down` entries whose content is here into `up` (losing it forgot whether the server had it; the
+/// download lane marks what it fetched `done` itself; an invalid ID keeps its failure either
+/// way). Does nothing without the store or with sync off.
 ///
 /// Checking every entry against the store reads each blob's record past its content, so this runs
 /// once per restore and replace, once at the end of a pull that merged anything, and when a lane
@@ -262,7 +270,8 @@ fn reconcile_with(conn: &Connection, now: i64, scan_store: bool) -> Result<Recon
         let (lost, found) = if scan_store {
             let lost = conn.execute(
                 &format!(
-                    "UPDATE main.sync_blobs SET state = 'down', size = NULL, {FRESH} \
+                    "UPDATE main.sync_blobs SET state = 'down', size = NULL, \
+                       {FRESH_KEEPING_INVALID} \
                      WHERE state IN ('up', 'done') AND NOT {entry_held}"
                 ),
                 [],
@@ -270,8 +279,8 @@ fn reconcile_with(conn: &Connection, now: i64, scan_store: bool) -> Result<Recon
             let found = conn.execute(
                 &format!(
                     "UPDATE main.sync_blobs SET state = 'up', queued_at = ?1, size = {size}, \
-                       {FRESH} \
-                     WHERE state = 'down' AND last_error IS NOT 'invalidId' AND {entry_held}",
+                       {FRESH_KEEPING_INVALID} \
+                     WHERE state = 'down' AND {entry_held}",
                     size = store_size("sync_blobs.blob_id"),
                 ),
                 [now],
@@ -322,10 +331,10 @@ fn reconcile_with(conn: &Connection, now: i64, scan_store: bool) -> Result<Recon
         for (blob, thumbnail, row_at, held_here, size) in new {
             if canonical_id(&blob).is_none() {
                 log::debug!("[SYNC] A document or photo names an invalid blob ID: {blob}");
-                // Never transferred: content held here has nothing to move (`done`, so the queue
-                // alone reads it as here), content not here is a failed item (`down`).
+                // Never transferred, never taken as on the server: held here it is `up` and
+                // never picked (it reads as here and counts as failed), else a failed `down`.
                 let state = if held_here {
-                    BlobState::Done
+                    BlobState::Up
                 } else {
                     report.queued_down += 1;
                     BlobState::Down
@@ -339,7 +348,7 @@ fn reconcile_with(conn: &Connection, now: i64, scan_store: bool) -> Result<Recon
                     i64::MAX,
                     TransferError::InvalidId.as_str(),
                     now,
-                    None::<i64>
+                    if held_here { size } else { None }
                 ])?;
                 continue;
             }
@@ -379,6 +388,26 @@ pub fn next_upload(
     now: i64,
     max_plain: Option<u64>,
 ) -> Result<Option<Transfer>> {
+    next_upload_of(conn, now, max_plain, false)
+}
+
+/// `next_upload` among entries that never failed an attempt (`attempts = 0`): the sync round's
+/// pick. Content that failed once (a cut, a passing error) is left to the lanes, so its backoff
+/// running out never costs a round its budget again.
+pub fn next_untried_upload(
+    conn: &Connection,
+    now: i64,
+    max_plain: Option<u64>,
+) -> Result<Option<Transfer>> {
+    next_upload_of(conn, now, max_plain, true)
+}
+
+fn next_upload_of(
+    conn: &Connection,
+    now: i64,
+    max_plain: Option<u64>,
+    untried_only: bool,
+) -> Result<Option<Transfer>> {
     if !files_schema::is_attached(conn)? {
         return Ok(None);
     }
@@ -388,11 +417,11 @@ pub fn next_upload(
             &format!(
                 "SELECT blob_id, thumbnail, wanted, attempts, size FROM main.sync_blobs \
                  WHERE state = 'up' AND active = 0 AND {due} \
-                   AND (?2 IS NULL OR size <= ?2) \
+                   AND (?2 IS NULL OR size <= ?2) AND (NOT ?3 OR attempts = 0) \
                  ORDER BY queued_at, blob_id LIMIT 1",
                 due = due("next_try_at"),
             ),
-            params![now, max_plain],
+            params![now, max_plain, untried_only],
             |r| {
                 Ok(Transfer {
                     blob_id: r.get(0)?,

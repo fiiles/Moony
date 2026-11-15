@@ -447,14 +447,18 @@ async fn server_ready<R: Relay>(relay: &R, policy: &BlobPolicy, now: i64) -> boo
 struct Active<'a, D: ConnAccess> {
     db: &'a D,
     blob_id: String,
+    /// The run's time (unix seconds) when the transfer was taken, and the same moment on the
+    /// runtime's clock: a drop dates its failure from the drop, so the backoff runs from there.
     now: i64,
+    taken: Instant,
     armed: bool,
 }
 
 impl<D: ConnAccess> Drop for Active<'_, D> {
     fn drop(&mut self) {
         if self.armed {
-            let (id, now) = (self.blob_id.as_str(), self.now);
+            let ran = i64::try_from(self.taken.elapsed().as_secs()).unwrap_or(i64::MAX);
+            let (id, now) = (self.blob_id.as_str(), self.now.saturating_add(ran));
             log::debug!("[SYNC] A transfer of blob {id} was dropped before it ended");
             let _ = self
                 .db
@@ -481,6 +485,7 @@ fn take<'a, D: ConnAccess>(
             db,
             blob_id: transfer.blob_id.clone(),
             now,
+            taken: Instant::now(),
             armed: true,
         };
         (transfer, active)
@@ -520,12 +525,26 @@ pub async fn run_uploads<R: Relay, D: ConnAccess>(
         return Ok(TransferReport::default());
     };
     let reconciled = reconciled_rows(db, now)?;
-    uploads_in_lane(relay, db, creds, policy, now, until, max_plain, reconciled).await
+    let pick = Pick {
+        max_plain,
+        untried_only: false,
+    };
+    uploads_in_lane(relay, db, creds, policy, now, until, pick, reconciled).await
+}
+
+/// Which uploads a run takes: of at most `max_plain` bytes when given, and only those that never
+/// failed an attempt with `untried_only`.
+#[derive(Clone, Copy)]
+struct Pick {
+    max_plain: Option<u64>,
+    untried_only: bool,
 }
 
 /// The sync round's upload step: the queue is reconciled by its rows (so content added here is
 /// queued and counted even when the step does nothing else), then `run_uploads` runs only if the
-/// upload lane is free right now; `None` when another transfer holds it.
+/// upload lane is free right now (`None` when another transfer holds it), and only over content
+/// that never failed an attempt (`queue::next_untried_upload`): what failed once, a cut by the
+/// round's budget included, is left to the lanes.
 pub async fn run_uploads_if_free<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -539,7 +558,11 @@ pub async fn run_uploads_if_free<R: Relay, D: ConnAccess>(
     let Ok(_lane) = policy.up_lane().try_lock() else {
         return Ok(None);
     };
-    uploads_in_lane(relay, db, creds, policy, now, until, max_plain, reconciled)
+    let pick = Pick {
+        max_plain,
+        untried_only: true,
+    };
+    uploads_in_lane(relay, db, creds, policy, now, until, pick, reconciled)
         .await
         .map(Some)
 }
@@ -553,7 +576,7 @@ async fn uploads_in_lane<R: Relay, D: ConnAccess>(
     policy: &BlobPolicy,
     now: i64,
     until: Option<Instant>,
-    max_plain: Option<u64>,
+    pick: Pick,
     reconciled: Reconciled,
 ) -> Result<TransferReport> {
     let (abandoned, any, up) = lane_start(db, BlobState::Up, now)?;
@@ -575,8 +598,13 @@ async fn uploads_in_lane<R: Relay, D: ConnAccess>(
         if until.is_some_and(|at| Instant::now() >= at) {
             break;
         }
-        let Some((transfer, mut active)) =
-            take(db, now, |conn| queue::next_upload(conn, now, max_plain))?
+        let Some((transfer, mut active)) = take(db, now, |conn| {
+            if pick.untried_only {
+                queue::next_untried_upload(conn, now, pick.max_plain)
+            } else {
+                queue::next_upload(conn, now, pick.max_plain)
+            }
+        })?
         else {
             break;
         };

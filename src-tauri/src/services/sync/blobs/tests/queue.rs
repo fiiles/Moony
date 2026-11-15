@@ -839,25 +839,63 @@ fn a_truncated_blob_is_neither_queued_for_upload_nor_here() {
     );
 }
 
-/// Review fix 5: content complete here under an ID that can never be transferred is "here" in the
-/// reader and counted nowhere in the summary.
+/// Review fix 5, Task 11 fix round 2: content complete here under an ID that can never be
+/// transferred is "here" in the reader and a failed item in the summary, never waiting to upload
+/// and never taken as on the server: `up` with `invalidId`, never picked. Losing its content keeps
+/// the failure, and so does "try again".
 #[test]
-fn a_held_blob_with_an_invalid_id_reads_here_and_counts_nowhere() {
+fn a_held_blob_with_an_invalid_id_reads_here_and_counts_as_failed() {
     let conn = profile();
     arrive(&conn, "../x", b"content");
     document(&conn, "d1", "../x", 100);
     queue::reconcile(&conn, NOW).expect("reconcile");
-
-    assert_eq!(
-        ContentReader::new(&conn)
+    let entry = |conn: &Connection| -> (String, Option<String>, i64) {
+        conn.query_row(
+            "SELECT state, last_error, next_try_at FROM sync_blobs WHERE blob_id = '../x'",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .expect("entry")
+    };
+    let read = |conn: &Connection| {
+        ContentReader::new(conn)
             .expect("reader")
             .of(Some("../x"), true)
-            .expect("content"),
-        AttachmentContent::Here
-    );
+            .expect("content")
+    };
+    let failed_only = AttachmentSummary {
+        failed: 1,
+        ..AttachmentSummary::default()
+    };
+
     assert_eq!(
-        summary(&conn).expect("summary"),
-        AttachmentSummary::default()
+        entry(&conn),
+        ("up".into(), Some("invalidId".into()), i64::MAX)
+    );
+    assert_eq!(read(&conn), AttachmentContent::Here);
+    assert_eq!(summary(&conn).expect("summary"), failed_only);
+    assert_eq!(queue::next_upload(&conn, NOW, None).expect("next"), None);
+
+    queue::retry_row(&conn, AttachmentKind::InsuranceDocument, "d1").expect("try again");
+    assert_eq!(
+        entry(&conn),
+        ("up".into(), Some("invalidId".into()), i64::MAX)
+    );
+
+    attachment_store::delete(&conn, "../x").expect("lose");
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    assert_eq!(
+        entry(&conn),
+        ("down".into(), Some("invalidId".into()), i64::MAX)
+    );
+    assert_eq!(read(&conn), AttachmentContent::Failed);
+    assert_eq!(summary(&conn).expect("summary"), failed_only);
+
+    arrive(&conn, "../x", b"content");
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    assert_eq!(
+        entry(&conn),
+        ("up".into(), Some("invalidId".into()), i64::MAX)
     );
 }
 
@@ -893,10 +931,11 @@ fn content_of(conn: &Connection, blob: &str) -> AttachmentContent {
 }
 
 /// Fix round 2, item 1: content held here that the server refused for good, that conflicts with
-/// what the server holds, or whose ID is invalid can never upload by itself: it reads as failed,
-/// counts as failed and never as waiting (so the device can count as synchronised), until "try
-/// again" on its row makes a refused or conflicting one wait again. An entry merely backing off
-/// still waits.
+/// what the server holds, or whose ID is invalid can never upload by itself: it counts as failed
+/// and never as waiting (so the device can count as synchronised), and reads as failed (an invalid
+/// ID reads as here: the content is here and nothing will ever move it, Task 11 fix round 2),
+/// until "try again" on its row makes a refused or conflicting one wait again. An entry merely
+/// backing off still waits.
 #[test]
 fn an_upload_that_cannot_move_by_itself_reads_failed_until_tried_again() {
     for error in [
@@ -912,12 +951,13 @@ fn an_upload_that_cannot_move_by_itself_reads_failed_until_tried_again() {
         queue::reconcile(&conn, NOW).expect("reconcile");
         note_failed(&conn, &stuck, error, NOW).expect("stuck");
         note_failed(&conn, &backing_off, TransferError::Network, NOW).expect("backing off");
+        let reads_failed = if error == TransferError::InvalidId {
+            AttachmentContent::Here
+        } else {
+            AttachmentContent::Failed
+        };
 
-        assert_eq!(
-            content_of(&conn, &stuck),
-            AttachmentContent::Failed,
-            "{error:?}"
-        );
+        assert_eq!(content_of(&conn, &stuck), reads_failed, "{error:?}");
         assert_eq!(
             content_of(&conn, &backing_off),
             AttachmentContent::WaitingUpload,
@@ -952,7 +992,7 @@ fn an_upload_that_cannot_move_by_itself_reads_failed_until_tried_again() {
         let expected = if again {
             AttachmentContent::WaitingUpload
         } else {
-            AttachmentContent::Failed
+            reads_failed
         };
         assert_eq!(content_of(&conn, &stuck), expected, "{error:?}");
         let counts = summary(&conn).expect("summary");

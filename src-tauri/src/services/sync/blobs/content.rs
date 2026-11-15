@@ -33,9 +33,9 @@ impl<'c> ContentReader<'c> {
     ///
     /// A blob with a queue entry is answered from the entry alone, never the store (ADR 0030: the
     /// store's completeness check walks the blob's pages): `up` is `WaitingUpload` for a row that
-    /// syncs, or `Failed` when it never moves by itself (`queue::STUCK`: refused, a conflict, an
-    /// invalid ID; "try again" makes it wait again); `done` is `Here` (and `up` for a row that
-    /// does not sync); `down` is `Downloading`, `NotOnServer`, `Failed` (unreadable, an invalid
+    /// syncs, or `Failed` when the server refused it or holds a conflict (`queue::STUCK`; "try
+    /// again" makes it wait again); `done` is `Here`, and so is `up` for a row that does not sync
+    /// and `up` under an invalid ID (held here, never transferred; the summary counts it failed); `down` is `Downloading`, `NotOnServer`, `Failed` (unreadable, an invalid
     /// ID, refused by the server or a conflict there) or `NotHere`. Content lost from the store
     /// outside a merge therefore reads as held until the next full reconcile. Only a blob without
     /// an entry (sync off, a row that does not sync, a row the queue has not seen yet) is looked
@@ -67,7 +67,8 @@ impl<'c> ContentReader<'c> {
             });
         };
         Ok(match state.as_str() {
-            "up" if !syncs => AttachmentContent::Here,
+            // Content held here under an ID that can never sync: here, nothing to wait for.
+            "up" if !syncs || error.as_deref() == Some("invalidId") => AttachmentContent::Here,
             "up" if queue::is_stuck(error.as_deref()) => AttachmentContent::Failed,
             "up" => AttachmentContent::WaitingUpload,
             "down" if active => AttachmentContent::Downloading,

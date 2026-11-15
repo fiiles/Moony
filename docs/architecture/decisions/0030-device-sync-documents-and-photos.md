@@ -131,8 +131,9 @@ documents and photos need a newer server. The app assumes the server's error cod
     and an upload that takes it finds the content gone and drops the entry, which the next
     reconcile queues again as not here;
   - an upload or download dropped mid-flight (the round's 20-second budget, an engine stopped)
-    counts a failed attempt of the network's kind, so a blob too slow for the round's budget waits
-    out its backoff (30 s, doubling) between rounds and is finished by the lane;
+    counts a failed attempt of the network's kind, dated from the drop, and a blob that failed an
+    attempt is never taken by a round again, so a blob too slow for the round's budget costs one
+    round its 20 seconds and is finished by the lane;
   - file sizes are visible to the server as they are (not padded);
   - the "only in the backup" count of a replace can overstate: a row pushed after the vault's
     newest snapshot is counted as orphaned, and the next pull brings it back with its held
@@ -207,14 +208,18 @@ documents and photos need a newer server. The app assumes the server's error cod
   fragmented 4 MiB blob). Nothing that runs often asks the store about every blob. The queue is
   the cheap source: an entry says where the content is as of the last reconcile (`up` or `done`:
   complete here; `down`: not here), and `sync_blobs.size` (migration 038) keeps the plaintext size
-  of an `up` entry, recorded when it became `up`. Read from the queue alone: the status summary
+  of content held here, recorded when the entry became `up` and kept while it is `done`. Read from the queue alone: the status summary
   (`queue::summary`, also the bytes waiting to upload), the upload pick (`queue::next_upload`,
   also the round's 8 MiB limit) and `ContentReader` whenever the blob has an entry (the store is
   consulted only for a blob without one: sync off, a row that does not sync, a row not queued
   yet). The store is consulted by the full `reconcile` (the end of a merging pull, a restore or
   replace, a lane start), by `reconcile_rows` for newly named blobs only (one blob each), and by a
-  transfer for the one blob it handles. A held blob with an invalid ID is queued `done` (nothing
-  ever moves it; the queue alone reads it as here), one not held `down` (a failed item).
+  transfer for the one blob it handles. A held blob with an invalid ID is queued `up` with `invalidId`
+  and a retry time never reached (an entry is `done` only on the server's word): it reads as here,
+  counts as a failed item, never as waiting; one not held is `down` with `invalidId`. The full
+  reconcile's lost and found moves keep `invalidId`, and "try again" never touches it. The round's
+  upload step picks only content that never failed an attempt; what failed once (a cut by the
+  budget included, dated from the cut) is left to the lanes.
 - **Uploads in the round (Task 11).** Before its push (not in the repair's drain) a round runs
   `reconcile_rows`, so content added here is queued and counted even when the round sends none,
   then, only if the upload lane is free at that moment, uploads blobs of at most 8 MiB; the whole

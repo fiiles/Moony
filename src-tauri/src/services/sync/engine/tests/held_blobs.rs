@@ -7,7 +7,8 @@ use super::join::{join, round, snapshot_of_a, XorNative};
 use super::*;
 use crate::services::attachment_store;
 use crate::services::sync::binding::NoBinding;
-use crate::services::sync::engine::RoundMode;
+use crate::services::sync::engine::pull::pull_all;
+use crate::services::sync::engine::{PullEnd, RoundMode};
 use crate::services::sync::join::resync_by_replace;
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::RelayError;
@@ -180,4 +181,76 @@ async fn a_join_holds_the_new_devices_own_content_until_the_pull_catches_up() {
     let c = joiner.lock();
     assert!(!readable(&c, &blob));
     assert_eq!(count(&c, "SELECT COUNT(*) FROM sync_held_blobs"), 0);
+}
+
+/// `B` re-syncs by replace with a failed push, so its document never reaches the vault and its
+/// content is held; returns the blob's ID.
+async fn held_after_a_failed_resync(vault: &Vault) -> String {
+    snapshot_of_a(vault, "a1").await;
+    round(vault, &vault.b, RoundMode::Normal).await;
+    let blob = {
+        let b = vault.b.lock();
+        with_store(&b);
+        policy(&b, "p-own");
+        document(&b, "d-own", "p-own")
+    };
+    let consent = agreed(&vault.b);
+    vault.relay.fail_next(Route::Push, RelayError::Server(503));
+    let dir = tempfile::tempdir().expect("dir");
+    resync_by_replace(&vault.relay, &vault.b, consent, dir.path(), &XorNative, NOW)
+        .await
+        .expect("resync");
+    blob
+}
+
+/// `A` writes `id` and pushes it; returns the envelope's sequence.
+async fn a_pushes(vault: &Vault, id: &str) -> u64 {
+    institution(&vault.a.lock(), id);
+    round(vault, &vault.a, RoundMode::Normal).await;
+    vault.relay.ops().last().expect("an op").seq
+}
+
+/// The sync server withholds its newest envelope: the pull ends done but behind the server's head,
+/// so a row the replace lacked may still be in what it withholds, and the content stays held.
+#[tokio::test]
+async fn a_pull_that_is_done_but_behind_keeps_the_holds() {
+    let vault = vault().await;
+    let blob = held_after_a_failed_resync(&vault).await;
+    let seq = a_pushes(&vault, "a2").await;
+    vault.relay.drop_op(seq);
+    // What the round's own pull meets (a pull alone releases nothing); the round's report carries
+    // its echo pull's ending instead.
+    let pull = pull_all(&vault.relay, &vault.b, &vault.creds, NOW)
+        .await
+        .expect("pull");
+    assert!(pull.done() && pull.behind, "{pull:?}");
+
+    round(&vault, &vault.b, RoundMode::Normal).await;
+
+    let b = vault.b.lock();
+    assert_eq!(count(&b, "SELECT COUNT(*) FROM sync_held_blobs"), 1);
+    sweep_after_restart(&b);
+    assert!(readable(&b, &blob), "held while the pull is behind");
+}
+
+/// A pull held by a gap (an earlier envelope of `A` is missing) has not caught up: the content
+/// stays held.
+#[tokio::test]
+async fn a_pull_held_by_a_gap_keeps_the_holds() {
+    let vault = vault().await;
+    let blob = held_after_a_failed_resync(&vault).await;
+    let first = a_pushes(&vault, "a2").await;
+    a_pushes(&vault, "a3").await;
+    vault.relay.forget_op(first);
+    let pull = pull_all(&vault.relay, &vault.b, &vault.creds, NOW)
+        .await
+        .expect("pull");
+    assert_eq!(pull.end(), PullEnd::Waiting, "{pull:?}");
+
+    round(&vault, &vault.b, RoundMode::Normal).await;
+
+    let b = vault.b.lock();
+    assert_eq!(count(&b, "SELECT COUNT(*) FROM sync_held_blobs"), 1);
+    sweep_after_restart(&b);
+    assert!(readable(&b, &blob), "held while the pull waits for a gap");
 }

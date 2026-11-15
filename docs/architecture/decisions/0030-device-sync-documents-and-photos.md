@@ -34,9 +34,10 @@ so it cannot ride in envelopes or snapshots.
   `file_path` and `thumbnail_path` are Local columns.
 - A row syncs only while it names its blobs: `TableSpec.requires` is `["blob_id"]` on the two
   document tables and `["blob_id", "thumb_blob_id"]` on `real_estate_photos`, whose CHECK on the
-  receiving device takes both blobs or both paths (`registry::row_condition`). Capture, the journal reader and the snapshot dump all apply
-  it, so a legacy row (a plain file from before 0.13 the conversion has not turned into a blob) is
-  never captured, read or dumped, and its edits and deletes record nothing.
+  receiving device takes both blobs or both paths (`registry::row_condition`). Capture, the
+  journal reader and the snapshot dump all apply it, so a legacy row (a plain file from before
+  0.13 the conversion has not turned into a blob) is never captured, read or dumped, and its edits
+  and deletes record nothing.
 - A legacy row that gets its blobs enrols as a new row: the `sync_<t>_enrol` trigger (the row
   condition false → true, local mode) gives it a fresh `'*'` with this device, drops its column
   clocks and queues it, so it travels as a complete insert. `sync_<t>_leave` (true → false)

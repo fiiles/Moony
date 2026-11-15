@@ -474,8 +474,9 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         }
         other => other?,
     };
-    if pulled.done() {
-        // Caught up: the rows a replace's snapshot lacked have come back by now (ADR 0030).
+    if pulled.done() && !pulled.behind {
+        // Caught up to the server's head: the rows a replace's snapshot lacked have come back by
+        // now (ADR 0030). A pull behind the head may not have served them yet.
         if let Err(error) = db.with_conn(held_blobs::release) {
             log::warn!("[SYNC] Could not release the blobs a replace held: {error}");
         }

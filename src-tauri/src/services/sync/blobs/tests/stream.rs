@@ -268,17 +268,25 @@ fn a_tampered_stream_stores_nothing() {
     let plain = pattern(3 * CHUNK + 5);
     let blob = blob_id(6);
     let pieces = wire(&plain, blob);
-    // The epoch in the header (no key for it), the salt (another key), a middle chunk, and the
+    // The epoch in the header (no key for it: indistinguishable from a key not received yet, so
+    // it is retried rather than shown as failed), the salt (another key), a middle chunk, and the
     // last chunk, after which every earlier chunk was written already.
     for (piece, at) in [(0, 4), (0, 10), (2, 100), (4, 3)] {
         let mut tampered = pieces.clone();
         tampered[piece][at] ^= 0x01;
         let to = Store::new();
         let outcome = download(&to, blob, total(&tampered), &tampered);
-        assert!(
-            matches!(outcome, SinkOutcome::Unreadable),
-            "piece {piece} byte {at}: {outcome:?}"
-        );
+        if (piece, at) == (0, 4) {
+            assert!(
+                matches!(outcome, SinkOutcome::UnknownEpoch),
+                "piece {piece} byte {at}: {outcome:?}"
+            );
+        } else {
+            assert!(
+                matches!(outcome, SinkOutcome::Unreadable),
+                "piece {piece} byte {at}: {outcome:?}"
+            );
+        }
         assert_absent(&to, &blob.to_string());
     }
 }

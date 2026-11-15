@@ -368,9 +368,12 @@ mod tests {
         conn.execute("ATTACH DATABASE ':memory:' AS files", [])
             .expect("attach");
         files_schema::migrate(&conn).expect("files schema");
+        // Every profile has `sync_state` (migration 029); opening content asks it whether sync is
+        // on before anything else.
         conn.execute_batch(
             "CREATE TABLE insurance_documents (id TEXT PRIMARY KEY, file_path TEXT, blob_id TEXT,
-                 mime_type TEXT, original_name TEXT);",
+                 mime_type TEXT, original_name TEXT);
+             CREATE TABLE sync_state (id INTEGER PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 0);",
         )
         .expect("schema");
         let blob = attachment_store::put_bytes(&conn, b"%PDF-1.7").expect("put");

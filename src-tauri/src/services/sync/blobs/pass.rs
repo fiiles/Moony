@@ -104,13 +104,16 @@ pub struct PassReport {
     pub complete: bool,
 }
 
-/// The pass's bounds; tests shrink them.
+/// The pass's bounds; tests shrink them (the end-to-end suite also the grace, since a real
+/// server dates its blobs by its own clock).
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Limits {
     pub page: u32,
     pub max_pages: usize,
     pub max_deletes: usize,
     pub budget: Duration,
+    /// How old an unreferenced blob must be on the server's clock before it is deleted.
+    pub grace: i64,
 }
 
 impl Limits {
@@ -119,6 +122,7 @@ impl Limits {
         max_pages: PASS_MAX_PAGES,
         max_deletes: PASS_MAX_DELETES,
         budget: PASS_BUDGET,
+        grace: UNREFERENCED_GRACE,
     };
 }
 
@@ -267,11 +271,11 @@ fn requeue_lost(conn: &Connection, listed: &HashSet<Uuid>, now: i64) -> Result<u
     Ok(requeued)
 }
 
-/// The age of `blob` on the server's clock, past the grace, by `server_now`. A blob dated in the
-/// server's future, or before [`CREATED_AT_FLOOR`], is never old enough.
-fn old_enough(blob: &RemoteBlob, server_now: i64) -> bool {
-    blob.created_at >= CREATED_AT_FLOOR
-        && server_now.saturating_sub(blob.created_at) > UNREFERENCED_GRACE
+/// The age of `blob` on the server's clock, past `grace` ([`UNREFERENCED_GRACE`] outside tests),
+/// by `server_now`. A blob dated in the server's future, or before [`CREATED_AT_FLOOR`], is never
+/// old enough.
+fn old_enough(blob: &RemoteBlob, server_now: i64, grace: i64) -> bool {
+    blob.created_at >= CREATED_AT_FLOOR && server_now.saturating_sub(blob.created_at) > grace
 }
 
 /// How a request of the pass went.
@@ -478,7 +482,7 @@ async fn attempt<R: Relay, D: ConnAccess>(
             let named = db.with_conn(references)?;
             listed
                 .iter()
-                .filter(|blob| old_enough(blob, server_now))
+                .filter(|blob| old_enough(blob, server_now, limits.grace))
                 .filter(|blob| !named.contains(&blob.id.hyphenated().to_string()))
                 .map(|blob| blob.id)
                 .take(limits.max_deletes)

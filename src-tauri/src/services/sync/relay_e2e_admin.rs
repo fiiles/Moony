@@ -158,6 +158,21 @@ impl Admin {
         self.set_state(id, "active").await;
     }
 
+    /// The server's per-vault blob quota in bytes (admin Settings; one value for every vault).
+    pub(super) async fn blob_quota(&self) -> u64 {
+        let response = self.call(Method::GET, "settings", None).await;
+        let settings = self.json(response, StatusCode::OK).await;
+        settings["blobQuotaBytes"].as_u64().expect("blobQuotaBytes")
+    }
+
+    /// Sets the server's per-vault blob quota to `bytes`.
+    pub(super) async fn set_blob_quota(&self, bytes: u64) {
+        let body = json!({ "blobQuotaBytes": bytes });
+        let response = self.call(Method::PUT, "settings", Some(body)).await;
+        let saved = self.json(response, StatusCode::OK).await;
+        assert_eq!(saved["blobQuotaBytes"].as_u64(), Some(bytes), "{saved}");
+    }
+
     /// Deletes the person with their vaults.
     pub(super) async fn delete(&self, id: &str) {
         let response = self

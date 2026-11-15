@@ -40,6 +40,8 @@ mod relay_e2e;
 #[cfg(test)]
 mod relay_e2e_admin;
 #[cfg(test)]
+mod relay_e2e_blobs;
+#[cfg(test)]
 mod relay_e2e_pairing;
 pub mod repair;
 pub mod server;

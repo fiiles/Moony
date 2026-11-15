@@ -134,7 +134,7 @@ impl Device {
     }
 
     /// Joins the vault of `creds` by replace under `name`.
-    async fn join(&self, relay: &HttpRelay, creds: Credentials, name: &str) {
+    pub(super) async fn join(&self, relay: &HttpRelay, creds: Credentials, name: &str) {
         join_by_replace(relay, &self.db, creds, name, self.dir(), &NoBinding, now())
             .await
             .expect("join");

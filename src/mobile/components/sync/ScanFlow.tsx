@@ -6,6 +6,7 @@ import { useReplaceImpact } from '@/hooks/use-device-sync';
 import { useServerChoice } from '@/hooks/use-server-choice';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
+import { joinPresentation } from '@/utils/join-context';
 import { consentOf } from '@/utils/replace-impact';
 import { IMPACT_CHANGED_KEY } from '@/components/settings/sync/replace-outcome';
 import { ReplaceImpactBlock } from '@/mobile/components/sync/ReplaceImpactBlock';
@@ -35,6 +36,15 @@ interface ScanFlowProps {
   onDone: () => void;
   /** A join is done: its headline and outcome (the page says where the backup is). */
   onReplaced: (headline: string, outcome: ReplaceOutcomeView) => void;
+  /**
+   * The first run's Připojení step (spec 2026-11-14 §5.2), `join` only: the step is this flow's
+   * details screen, so the flow starts as if the details had been submitted with these (the
+   * password typed a step earlier, the name on the step), and every way back to the details goes
+   * back to the step. A brand-new profile has nothing to replace: no replace warning, no impact
+   * list (the impact is still read: the join sends it as its consent), and the join reads
+   * "Připojit".
+   */
+  firstRun?: { password: string; deviceName: string };
 }
 
 /**
@@ -56,15 +66,19 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
  * unmounting it (a lock, leaving the page) cancels the camera and gives the pairing up
  * (`useDevicePairing`).
  */
-export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlowProps) {
+export function ScanFlow({ mode, paste, devTools, onDone, onReplaced, firstRun }: ScanFlowProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
+  const presentation = joinPresentation(
+    firstRun ? { kind: 'firstRun', password: firstRun.password } : { kind: 'settings' }
+  );
   const pairing = useDevicePairing();
   const { joinWithRecoveryKit, turnOff } = useDeviceSyncMutations();
-  const [step, setStep] = useState<Step>('details');
+  // The first run starts past the details: at the paste sheet, or at the camera (started below)
+  const [step, setStep] = useState<Step>(firstRun ? (paste ? 'paste' : 'scanning') : 'details');
   const [detailsError, setDetailsError] = useState<string | null>(null);
   /** The details between "Continue" and the request that uses them; never rendered. */
-  const details = useRef<ScanDetails | null>(null);
+  const details = useRef<ScanDetails | null>(firstRun ?? null);
   /** A scanned Recovery Kit QR between the scan and "Join" (it holds the recovery key); not rendered. */
   const kitText = useRef<string | null>(null);
   /** Why the scanned QR is no code for this flow (the `notMoony` sheet's sentence). */
@@ -112,30 +126,40 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
   const confirming = step === 'kitConfirm' || (step === 'pairing' && stage === 'received');
   const impact = useReplaceImpact(confirming);
   const shownImpact = impact.isFetching ? undefined : impact.data;
-  const impactBlock = (
-    <ReplaceImpactBlock
-      flow="join"
-      impact={shownImpact}
-      error={impact.isError ? (impact.error as Error) : null}
-    />
-  );
+  // The first run lists nothing, but a failed read still says why the join stays off
+  const impactBlock =
+    presentation.showImpact || impact.isError ? (
+      <ReplaceImpactBlock
+        flow="join"
+        impact={shownImpact}
+        error={impact.isError ? (impact.error as Error) : null}
+      />
+    ) : null;
 
   const fail = (error: unknown) =>
     toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
-
-  /** Back to the details with what went wrong; the password is typed again. */
-  const backToDetails = (error: unknown) => {
-    details.current = null;
-    kitText.current = null;
-    setDetailsError(translateApiError(error as Error, tc));
-    setStep('details');
-  };
 
   /** Every way out goes through here: the password typed for the scan goes with it. */
   const finish = () => {
     details.current = null;
     kitText.current = null;
     onDone();
+  };
+
+  /**
+   * Back to the details with what went wrong; the password is typed again. In the first run the
+   * details are the Připojení step: the flow ends there, and the toast says what went wrong.
+   */
+  const backToDetails = (error: unknown) => {
+    if (firstRun) {
+      fail(error);
+      finish();
+      return;
+    }
+    details.current = null;
+    kitText.current = null;
+    setDetailsError(translateApiError(error as Error, tc));
+    setStep('details');
   };
 
   const giveUp = async () => {
@@ -184,6 +208,11 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
       case 'kitJoin': {
         // A QR is read at a glance: say which account and server it joins before the data goes
         const summary = kitQrSummary(text);
+        if (!summary.ok && firstRun) {
+          toast.error(tc(summary.problem));
+          finish();
+          return;
+        }
         if (!summary.ok) {
           details.current = null;
           setDetailsError(tc(summary.problem));
@@ -260,6 +289,15 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
     else void scanNow();
   };
 
+  // The first run: the step's details stand in for the details sheet, once, as the flow mounts
+  const started = useRef(false);
+  useEffect(() => {
+    if (!firstRun || started.current) return;
+    started.current = true;
+    submitDetails(firstRun);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per mount, with the details it mounted with
+  }, []);
+
   const runJoin = async () => {
     setJoinFailure(null);
     setImpactChanged(null);
@@ -299,8 +337,9 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
     void runJoin();
   };
 
-  // The join ended the pairing: back to the details for a fresh one
+  // The join ended the pairing: back to the details for a fresh one (the first run's are the step)
   const startAgain = async () => {
+    if (firstRun) return giveUp();
     try {
       await pairing.cancel();
     } catch {
@@ -316,15 +355,17 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
 
   return (
     <>
-      <JoinDetailsSheet
-        open={step === 'details'}
-        onOpenChange={(next) => {
-          if (!next) void giveUp();
-        }}
-        mode={mode}
-        error={detailsError}
-        onSubmit={submitDetails}
-      />
+      {!firstRun && (
+        <JoinDetailsSheet
+          open={step === 'details'}
+          onOpenChange={(next) => {
+            if (!next) void giveUp();
+          }}
+          mode={mode}
+          error={detailsError}
+          onSubmit={submitDetails}
+        />
+      )}
       {step === 'scanning' && (
         <ScanOverlay
           hint={mode === 'add' ? t('phone.addDeviceHint') : t('phone.scanHint')}
@@ -392,19 +433,19 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
           if (!next) void giveUp();
         }}
         title={t('phone.kitConfirmTitle')}
-        description={t('phone.kitConfirmBody')}
+        description={presentation.showReplaceWarning ? t('phone.kitConfirmBody') : undefined}
         footer={
           <>
             <Button variant="ghost" className={`${BUTTON} px-[18px]`} onClick={() => void giveUp()}>
               {tc('buttons.cancel')}
             </Button>
             <Button
-              variant="destructive"
+              variant={firstRun ? 'default' : 'destructive'}
               className={`${BUTTON} flex-1`}
               disabled={!shownImpact || !kitServerChecked}
               onClick={() => void joinWithKit()}
             >
-              {t('join.confirm')}
+              {firstRun ? t('join.connect') : t('join.confirm')}
             </Button>
           </>
         }
@@ -480,6 +521,7 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced }: ScanFlow
           canJoin={shownImpact !== undefined && (!joinNeedsAcknowledgement || insecureAcknowledged)}
           onJoin={() => void runJoin()}
           impactChanged={impactChanged}
+          firstRun={firstRun !== undefined}
         />
       )}
     </>

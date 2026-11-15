@@ -787,8 +787,10 @@
       "biometrics": "Biometrie",
       "backup": "Sicherung"
     },
-    "backupTitle": "Sichern Sie Ihre Daten",
+    "backupTitle": "Schützen Sie Ihre Daten",
     "backupLead": "Dieses Telefon enthält die einzige Kopie Ihrer Daten; sie ist nicht in der Sicherung des Telefons (iCloud oder Computer) enthalten. Speichern Sie eine verschlüsselte Sicherung in iCloud Drive oder in einem Ordner Ihrer Wahl; Moony sieht sie nie.",
+    "syncLead": "Haben Sie einen Synchronisierungsserver?",
+    "syncLink": "Synchronisierung einrichten",
     "currencyPick": "Hauptwährung",
     "countryPick": "Land der Bank",
     "searchCurrency": "Währung suchen"

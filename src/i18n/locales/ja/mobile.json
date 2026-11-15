@@ -743,8 +743,10 @@
       "biometrics": "生体認証",
       "backup": "バックアップ"
     },
-    "backupTitle": "データをバックアップ",
+    "backupTitle": "データを守りましょう",
     "backupLead": "このスマートフォンにあるのがデータの唯一のコピーで、スマートフォン自体のバックアップ（iCloud またはパソコン）には含まれません。暗号化したバックアップを iCloud Drive または選んだフォルダに保存してください。Moony がそれを見ることはありません。",
+    "syncLead": "同期サーバーをお持ちですか？",
+    "syncLink": "同期を設定",
     "currencyPick": "基準通貨",
     "countryPick": "取引銀行の国",
     "searchCurrency": "通貨を検索"

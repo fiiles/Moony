@@ -787,8 +787,10 @@
       "biometrics": "Biometri",
       "backup": "Säkerhetskopia"
     },
-    "backupTitle": "Säkerhetskopiera dina data",
+    "backupTitle": "Skydda dina data",
     "backupLead": "Den här telefonen har den enda kopian av dina data, och den finns inte med i telefonens egen säkerhetskopia (iCloud eller dator). Spara en krypterad säkerhetskopia i iCloud Drive eller i en mapp du väljer; Moony ser den aldrig.",
+    "syncLead": "Har du en synkroniseringsserver?",
+    "syncLink": "Ställ in synkronisering",
     "currencyPick": "Huvudvaluta",
     "countryPick": "Land för bank",
     "searchCurrency": "Sök valuta"

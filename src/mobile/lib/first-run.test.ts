@@ -13,7 +13,7 @@ const withoutBiometry = firstRunSteps({ biometryAvailable: false });
 
 describe('firstRunSteps', () => {
   it('lists seven steps with biometry and six without', () => {
-    expect(withBiometry).toEqual([...FIRST_RUN_STEPS]);
+    expect(withBiometry).toEqual(FIRST_RUN_STEPS.filter((step) => step !== 'connect'));
     expect(withBiometry).toHaveLength(7);
     expect(withoutBiometry).toEqual([
       'privacy',
@@ -23,6 +23,67 @@ describe('firstRunSteps', () => {
       'firstAccount',
       'backup',
     ]);
+  });
+});
+
+describe('firstRunSteps by path (spec 2026-11-14 §5.2)', () => {
+  it('the join path goes from the key to Připojení and ends with biometrics, never Záloha', () => {
+    expect(firstRunSteps({ biometryAvailable: true, canBackup: true, path: 'join' })).toEqual([
+      'privacy',
+      'account',
+      'recovery',
+      'connect',
+      'biometrics',
+    ]);
+    expect(firstRunSteps({ biometryAvailable: false, canBackup: true, path: 'join' })).toEqual([
+      'privacy',
+      'account',
+      'recovery',
+      'connect',
+    ]);
+  });
+
+  it('a declined join continues with every normal step', () => {
+    expect(firstRunSteps({ biometryAvailable: true, canBackup: true, path: 'declined' })).toEqual([
+      ...FIRST_RUN_STEPS,
+    ]);
+    expect(FIRST_RUN_STEPS).toHaveLength(8);
+  });
+
+  it('the new path has no Připojení', () => {
+    expect(firstRunSteps({ biometryAvailable: true, canBackup: true })).toEqual([
+      'privacy',
+      'account',
+      'recovery',
+      'areas',
+      'firstAccount',
+      'biometrics',
+      'backup',
+    ]);
+    expect(firstRunSteps({ biometryAvailable: true, canBackup: true, path: 'new' })).not.toContain(
+      'connect'
+    );
+  });
+
+  it('has no way back from Připojení', () => {
+    const joinSteps = firstRunSteps({ biometryAvailable: true, path: 'join' });
+    expect(canLeaveWithoutAccount('connect')).toBe(false);
+    expect(previousStep(joinSteps, 'connect')).toBeNull();
+    expect(canLeaveWithoutAccount('recovery')).toBe(true);
+  });
+
+  it('ends the join path after Připojení without biometry', () => {
+    expect(nextStep(['privacy', 'account', 'recovery', 'connect'], 'connect')).toBeNull();
+    expect(nextStep(firstRunSteps({ biometryAvailable: true, path: 'join' }), 'connect')).toBe(
+      'biometrics'
+    );
+    expect(nextStep(firstRunSteps({ biometryAvailable: true, path: 'join' }), 'recovery')).toBe(
+      'connect'
+    );
+  });
+
+  it('goes from the key to Co sledovat on the new path', () => {
+    expect(nextStep(withBiometry, 'recovery')).toBe('areas');
   });
 });
 
@@ -86,11 +147,12 @@ describe('stepIndex', () => {
 });
 
 describe('canLeaveWithoutAccount', () => {
-  it('is true while there is no database and false from the areas step on', () => {
+  it('is true while there is no database and false from Připojení on', () => {
     expect(FIRST_RUN_STEPS.map((step) => [step, canLeaveWithoutAccount(step)] as const)).toEqual([
       ['privacy', true],
       ['account', true],
       ['recovery', true],
+      ['connect', false],
       ['areas', false],
       ['firstAccount', false],
       ['biometrics', false],

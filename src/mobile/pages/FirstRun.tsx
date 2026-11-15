@@ -1,7 +1,8 @@
 /**
  * The phone's first run (spec §8.2, ruling R11): the desktop wizard's five steps in one column and
  * without the live preview, then Biometrie and Záloha, in the "explain first, then the system
- * prompt" pattern. `Lock.tsx` mounts it while the first run lasts (the language menu floats above
+ * prompt" pattern; with sync built in, the join path's Připojení after the key (spec 2026-11-14
+ * §5.2). `Lock.tsx` mounts it while the first run lasts (the language menu floats above
  * it); the flow is `use-first-run.ts`, the order `lib/first-run.ts`, one file per step in
  * `first-run/`. The frame is the lock page's: it scrolls inside itself (the document never does),
  * clears the status bar and the home indicator, and starts every step at its top.
@@ -12,11 +13,12 @@ import { MoonMark } from '@/components/common/MoonMark';
 import { useAuth } from '@/hooks/use-auth';
 import { StepProgress } from '@/mobile/components/StepProgress';
 import { useFirstRun } from '@/mobile/hooks/use-first-run';
-import { stepIndex, type FirstRunStep } from '@/mobile/lib/first-run';
+import { stepIndex, type FirstRunExit, type FirstRunStep } from '@/mobile/lib/first-run';
 import { AccountStep } from '@/mobile/pages/first-run/AccountStep';
 import { AreasStep } from '@/mobile/pages/first-run/AreasStep';
 import { BackupStep } from '@/mobile/pages/first-run/BackupStep';
 import { BiometricsStep } from '@/mobile/pages/first-run/BiometricsStep';
+import { ConnectStep } from '@/mobile/pages/first-run/ConnectStep';
 import { FirstAccountStep } from '@/mobile/pages/first-run/FirstAccountStep';
 import { PrivacyStep } from '@/mobile/pages/first-run/PrivacyStep';
 import { RecoveryStep } from '@/mobile/pages/first-run/RecoveryStep';
@@ -24,8 +26,11 @@ import { RecoveryStep } from '@/mobile/pages/first-run/RecoveryStep';
 interface FirstRunProps {
   /** The UI language (the country names follow it; it is saved with the profile). */
   language: string;
-  /** Called once the last step is done; `Lock.tsx` then leaves for the overview. */
-  onFinished: () => void;
+  /**
+   * Called once the last step is done; `Lock.tsx` then leaves for the overview, or for Settings →
+   * Synchronizace (`sync`: "Nastavte synchronizaci" on Záloha).
+   */
+  onFinished: (to: FirstRunExit) => void;
 }
 
 export function FirstRun({ language, onFinished }: FirstRunProps) {
@@ -45,6 +50,7 @@ export function FirstRun({ language, onFinished }: FirstRunProps) {
     privacy: t('onboarding.steps.welcome'),
     account: t('onboarding.steps.account'),
     recovery: t('onboarding.steps.recovery'),
+    connect: t('onboarding.steps.connect'),
     areas: t('onboarding.steps.areas'),
     firstAccount: t('onboarding.steps.firstAccount'),
     biometrics: tm('firstRun.steps.biometrics'),
@@ -79,6 +85,7 @@ export function FirstRun({ language, onFinished }: FirstRunProps) {
         {step === 'recovery' && recoveryKey && (
           <RecoveryStep flow={flow} recoveryKey={recoveryKey} />
         )}
+        {step === 'connect' && <ConnectStep flow={flow} />}
         {step === 'areas' && <AreasStep flow={flow} />}
         {step === 'firstAccount' && <FirstAccountStep flow={flow} />}
         {step === 'biometrics' && <BiometricsStep flow={flow} />}

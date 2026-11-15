@@ -831,8 +831,10 @@
       "biometrics": "Biometría",
       "backup": "Copia de seguridad"
     },
-    "backupTitle": "Haz una copia de seguridad de tus datos",
+    "backupTitle": "Protege tus datos",
     "backupLead": "Este teléfono guarda la única copia de tus datos, y no está en la copia de seguridad del propio teléfono (iCloud u ordenador). Guarda una copia de seguridad cifrada en iCloud Drive o en una carpeta que elijas; Moony nunca la ve.",
+    "syncLead": "¿Tienes un servidor de sincronización?",
+    "syncLink": "Configurar la sincronización",
     "currencyPick": "Moneda principal",
     "countryPick": "País del banco",
     "searchCurrency": "Buscar moneda"

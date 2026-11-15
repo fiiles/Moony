@@ -8,6 +8,7 @@ import { useReplaceImpact } from '@/hooks/use-device-sync';
 import { useServerChoice } from '@/hooks/use-server-choice';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
+import { joinPassword, joinPresentation, type JoinContext } from '@/utils/join-context';
 import { consentOf } from '@/utils/replace-impact';
 import { IMPACT_CHANGED_KEY } from '@/components/settings/sync/replace-outcome';
 import { ReplaceImpactBlock } from '@/mobile/components/sync/ReplaceImpactBlock';
@@ -26,6 +27,13 @@ interface RecoveryJoinSheetProps {
   onOpenChange: (open: boolean) => void;
   /** The join is done: its headline and outcome (the page says where the backup is). */
   onReplaced: (headline: string, outcome: ReplaceOutcomeView) => void;
+  /**
+   * The first run's Připojení step (spec 2026-11-14 §5.2): the device name and password come from
+   * the step (no fields for them), and a brand-new profile has nothing to replace: no replace
+   * warning, no impact list (the impact is still read: the join sends it as its consent), and the
+   * join reads "Připojit".
+   */
+  firstRun?: { password: string; deviceName: string };
 }
 
 /** A field that takes a code or an address never feeds the keyboard's corrections. */
@@ -43,9 +51,18 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
  * steps aside for the busy cover while it runs and comes back with the error when it fails, the
  * fields as they were (the mutation's copy of the password is reset).
  */
-export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJoinSheetProps) {
+export function RecoveryJoinSheet({
+  open,
+  onOpenChange,
+  onReplaced,
+  firstRun,
+}: RecoveryJoinSheetProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
+  const context: JoinContext = firstRun
+    ? { kind: 'firstRun', password: firstRun.password }
+    : { kind: 'settings' };
+  const presentation = joinPresentation(context);
   const { joinWithRecoveryKit } = useDeviceSyncMutations();
   // What the join puts at stake, read each time the sheet opens; the join sends its consent
   const impact = useReplaceImpact(open);
@@ -72,6 +89,9 @@ export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJo
   }
 
   const busy = joinWithRecoveryKit.isPending;
+  // The first run's name and password, or the ones typed here
+  const devicePassword = joinPassword(context, password);
+  const deviceName = firstRun ? firstRun.deviceName : name.trim();
   const codeProblem = kitCodeProblem(code);
   const kind = scannedCodeKind(code);
   const needsAccount = kind === 'recoveryCode';
@@ -87,9 +107,9 @@ export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJo
     code.trim() !== '' &&
     (need === 'none' || server.ready) &&
     codeProblem === null &&
-    password !== '' &&
+    devicePassword !== '' &&
     shownImpact !== undefined &&
-    name.trim() !== '' &&
+    deviceName !== '' &&
     (!needsAccount || account.trim() !== '');
 
   const change = (next: boolean) => {
@@ -106,8 +126,8 @@ export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJo
         code: code.trim(),
         account: needsAccount ? account.trim() : undefined,
         relayUrl: need === 'typed' ? server.check?.address : undefined,
-        deviceName: name.trim(),
-        password,
+        deviceName,
+        password: devicePassword,
         consent: consentOf('join', shownImpact),
       });
       onOpenChange(false);
@@ -127,7 +147,7 @@ export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJo
       open={open && !busy}
       onOpenChange={change}
       title={t('join.kitTitle')}
-      description={t('join.warning')}
+      description={presentation.showReplaceWarning ? t('join.warning') : undefined}
       dirty={code !== '' || account !== ''}
       footer={
         <>
@@ -135,18 +155,21 @@ export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJo
             {tc('buttons.cancel')}
           </Button>
           <Button type="submit" form={formId} className={`${BUTTON} flex-1`} disabled={!ready}>
-            {t('join.confirm')}
+            {firstRun ? t('join.connect') : t('join.confirm')}
           </Button>
         </>
       }
     >
       <form id={formId} onSubmit={submit} noValidate className="space-y-3">
         <p className="m-0 text-m-sub text-ink-3">{t('join.kitHint')}</p>
-        <ReplaceImpactBlock
-          flow="join"
-          impact={shownImpact}
-          error={impact.isError ? (impact.error as Error) : null}
-        />
+        {/* The first run lists nothing, but a failed read still says why the join stays off */}
+        {(presentation.showImpact || impact.isError) && (
+          <ReplaceImpactBlock
+            flow="join"
+            impact={shownImpact}
+            error={impact.isError ? (impact.error as Error) : null}
+          />
+        )}
         <div className="space-y-1.5">
           <Label htmlFor={`${fieldId}-code`}>{t('join.codeLabel')}</Label>
           <textarea
@@ -181,40 +204,51 @@ export function RecoveryJoinSheet({ open, onOpenChange, onReplaced }: RecoveryJo
             />
           </div>
         )}
-        <div className="space-y-1.5">
-          <Label htmlFor={`${fieldId}-name`}>{t('join.nameLabel')}</Label>
-          <Input
-            id={`${fieldId}-name`}
-            value={name}
-            maxLength={60}
-            onChange={(event) => setName(event.target.value)}
-            autoComplete="off"
-            enterKeyHint="next"
-            className={field48}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor={`${fieldId}-password`}>{t('join.passwordLabel')}</Label>
-          <PasswordInput
-            id={`${fieldId}-password`}
-            touch
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value);
-              setError(null);
-            }}
-            autoComplete="current-password"
-            enterKeyHint="go"
-            className={field48}
-            aria-invalid={error ? true : undefined}
-            {...PLAIN_FIELD}
-          />
-          {error && (
-            <p role="alert" className={`m-0 text-loss ${fieldMessage}`}>
-              {error}
-            </p>
-          )}
-        </div>
+        {/* The first run asked neither (the name on the step, the password a step earlier); a
+            failed join says why here, where the password field would be */}
+        {!presentation.askPassword && error && (
+          <p role="alert" className={`m-0 text-loss ${fieldMessage}`}>
+            {error}
+          </p>
+        )}
+        {presentation.askPassword && (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor={`${fieldId}-name`}>{t('join.nameLabel')}</Label>
+              <Input
+                id={`${fieldId}-name`}
+                value={name}
+                maxLength={60}
+                onChange={(event) => setName(event.target.value)}
+                autoComplete="off"
+                enterKeyHint="next"
+                className={field48}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`${fieldId}-password`}>{t('join.passwordLabel')}</Label>
+              <PasswordInput
+                id={`${fieldId}-password`}
+                touch
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setError(null);
+                }}
+                autoComplete="current-password"
+                enterKeyHint="go"
+                className={field48}
+                aria-invalid={error ? true : undefined}
+                {...PLAIN_FIELD}
+              />
+              {error && (
+                <p role="alert" className={`m-0 text-loss ${fieldMessage}`}>
+                  {error}
+                </p>
+              )}
+            </div>
+          </>
+        )}
         {need === 'typed' && <ServerChoiceBlock state={server} showCloud />}
         {need === 'qr' && <ServerCheckBlock state={server} />}
       </form>

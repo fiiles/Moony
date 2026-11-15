@@ -261,7 +261,9 @@
     "schedule": {
       "left": "剩余 {{amount}}",
       "yearSub_other": "{{count}} 笔还款 · 利息 {{interest}}",
-      "showAll_other": "显示全部 {{count}} 笔"
+      "showAll_other": "显示全部 {{count}} 笔",
+      "interest": "利息 {{amount}}",
+      "principal": "本金 {{amount}}"
     },
     "extra": {
       "noChange": "该金额不会改变还款期限、月供或利息。"
@@ -512,7 +514,7 @@
       "noUpcoming": "未来一年内没有票息或到期。",
       "allRepaid": "所有债券均已兑付。在“···”菜单中开启“{{action}}”即可查看。",
       "loadFailed": "无法加载债券。",
-      "rateNote": "{{rate}} 年化 加权平均",
+      "rateNote": "{{rate}} 年化",
       "nextPayment": "下次付款",
       "notGiven": "未填写"
     },
@@ -551,7 +553,7 @@
       "pricesOn": "价格 {{date}}",
       "invested": "已投入 {{amount}}",
       "yieldNote": "收益率 {{percent}}",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "暂无历史",
       "positionsTab": "持仓 · {{count}}",
@@ -576,8 +578,7 @@
       "watchedTabPlain": "关注"
     },
     "crypto": {
-      "largestNote": "占加密货币 {{share}}",
-      "heldNote": "占加密货币 {{share}} · {{date}}"
+      "largestNote": "占加密货币 {{share}}"
     },
     "closed": {
       "on": "{{date}} 平仓",
@@ -586,16 +587,17 @@
     },
     "position": {
       "heroLabel": "持仓价值 · {{quantity}} {{unit}}",
-      "perUnit": "每单位 {{price}}",
+      "perUnit": "{{price}}/个",
       "stats": {
         "inCurrency": "以 {{currency}} 计",
         "asOf": "截至 {{when}}"
       },
       "tx": {
-        "buy": "买入 · {{quantity}} {{unit}}",
-        "sell": "卖出 · {{quantity}} {{unit}}",
+        "buy": "买入",
+        "sell": "卖出",
         "showAll_other": "显示全部 {{count}} 条",
-        "menu": "交易菜单"
+        "menu": "交易菜单",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "股息菜单"
@@ -980,5 +982,10 @@
     "year": "{{amount}}/年",
     "avgMonth": "平均 {{amount}}/月"
   },
-  "labelValue": "{{label}}：{{value}}"
+  "labelValue": "{{label}}：{{value}}",
+  "statNote": {
+    "notRented": "未出租",
+    "returns": "返还 {{amount}}",
+    "average": "⌀ {{price}}"
+  }
 }

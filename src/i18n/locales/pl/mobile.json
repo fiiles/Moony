@@ -333,7 +333,9 @@
       "showAll_one": "Pokaż {{count}}",
       "showAll_few": "Pokaż wszystkie {{count}}",
       "showAll_many": "Pokaż wszystkie {{count}}",
-      "showAll_other": "Pokaż wszystkie {{count}}"
+      "showAll_other": "Pokaż wszystkie {{count}}",
+      "interest": "odsetki {{amount}}",
+      "principal": "kapitał {{amount}}"
     },
     "extra": {
       "noChange": "Ta kwota nie zmienia ani okresu spłaty, ani raty, ani odsetek."
@@ -614,7 +616,7 @@
       "noUpcoming": "W najbliższym roku nie przypada żaden kupon ani termin wykupu.",
       "allRepaid": "Wszystkie emisje zostały wykupione. Włącz w menu ··· „{{action}}”, aby je zobaczyć.",
       "loadFailed": "Nie udało się wczytać obligacji.",
-      "rateNote": "{{rate}} rocznie, ważona",
+      "rateNote": "{{rate}} rocznie",
       "nextPayment": "Następna płatność",
       "notGiven": "nie podano"
     },
@@ -655,8 +657,8 @@
       "pricesAt": "ceny {{time}}",
       "pricesOn": "ceny {{date}}",
       "invested": "zainwestowano {{amount}}",
-      "yieldNote": "stopa dywidendy {{percent}}",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "yieldNote": "stopa {{percent}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "jeszcze brak historii",
       "positionsTab": "Pozycje · {{count}}",
@@ -684,8 +686,7 @@
       "watchedTabPlain": "Obserwowane"
     },
     "crypto": {
-      "largestNote": "{{share}} krypto",
-      "heldNote": "{{share}} krypto · {{date}}"
+      "largestNote": "{{share}} krypto"
     },
     "closed": {
       "on": "zamknięta {{date}}",
@@ -694,19 +695,20 @@
     },
     "position": {
       "heroLabel": "Wartość pozycji · {{quantity}} {{unit}}",
-      "perUnit": "{{price}} za sztukę",
+      "perUnit": "{{price}}/szt.",
       "stats": {
         "inCurrency": "w {{currency}}",
         "asOf": "stan na {{when}}"
       },
       "tx": {
-        "buy": "Zakup · {{quantity}} {{unit}}",
-        "sell": "Sprzedaż · {{quantity}} {{unit}}",
+        "buy": "Zakup",
+        "sell": "Sprzedaż",
         "showAll_one": "Pokaż {{count}}",
         "showAll_few": "Pokaż wszystkie {{count}}",
         "showAll_many": "Pokaż wszystkie {{count}}",
         "showAll_other": "Pokaż wszystkie {{count}}",
-        "menu": "Menu transakcji"
+        "menu": "Menu transakcji",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "Menu dywidendy"
@@ -1130,5 +1132,10 @@
     "year": "{{amount}} / rok",
     "avgMonth": "⌀ {{amount}} / mies."
   },
-  "labelValue": "{{label}}: {{value}}"
+  "labelValue": "{{label}}: {{value}}",
+  "statNote": {
+    "notRented": "niewynajęte",
+    "returns": "zwrot {{amount}}",
+    "average": "⌀ {{price}}"
+  }
 }

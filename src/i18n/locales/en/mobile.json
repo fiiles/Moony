@@ -285,7 +285,9 @@
       "yearSub_one": "{{count}} payment · interest {{interest}}",
       "yearSub_other": "{{count}} payments · interest {{interest}}",
       "showAll_one": "Show all {{count}}",
-      "showAll_other": "Show all {{count}}"
+      "showAll_other": "Show all {{count}}",
+      "interest": "interest {{amount}}",
+      "principal": "principal {{amount}}"
     },
     "extra": {
       "noChange": "This amount changes neither the term nor the payment nor the interest."
@@ -546,7 +548,7 @@
       "noUpcoming": "No coupon or maturity in the coming year.",
       "allRepaid": "Every issue is repaid. Turn on “{{action}}” in the ··· menu to see them.",
       "loadFailed": "Bonds could not be loaded.",
-      "rateNote": "{{rate}} p.a. weighted",
+      "rateNote": "{{rate}} p.a.",
       "nextPayment": "Next payment",
       "notGiven": "not given"
     },
@@ -586,7 +588,7 @@
       "pricesOn": "prices {{date}}",
       "invested": "invested {{amount}}",
       "yieldNote": "yield {{percent}}",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "no history yet",
       "positionsTab": "Positions · {{count}}",
@@ -612,8 +614,7 @@
       "watchedTabPlain": "Watched"
     },
     "crypto": {
-      "largestNote": "{{share}} of crypto",
-      "heldNote": "{{share}} of crypto · {{date}}"
+      "largestNote": "{{share}} of crypto"
     },
     "closed": {
       "on": "closed {{date}}",
@@ -622,17 +623,18 @@
     },
     "position": {
       "heroLabel": "Position value · {{quantity}} {{unit}}",
-      "perUnit": "{{price}} per unit",
+      "perUnit": "{{price}} each",
       "stats": {
         "inCurrency": "in {{currency}}",
         "asOf": "as of {{when}}"
       },
       "tx": {
-        "buy": "Buy · {{quantity}} {{unit}}",
-        "sell": "Sell · {{quantity}} {{unit}}",
+        "buy": "Buy",
+        "sell": "Sell",
         "showAll_one": "Show all {{count}}",
         "showAll_other": "Show all {{count}}",
-        "menu": "Transaction menu"
+        "menu": "Transaction menu",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "Dividend options"
@@ -1030,5 +1032,10 @@
     "year": "{{amount}} / yr",
     "avgMonth": "⌀ {{amount}} / mo"
   },
-  "labelValue": "{{label}}: {{value}}"
+  "labelValue": "{{label}}: {{value}}",
+  "statNote": {
+    "notRented": "not rented",
+    "returns": "returns {{amount}}",
+    "average": "⌀ {{price}}"
+  }
 }

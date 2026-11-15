@@ -309,7 +309,9 @@
       "yearSub_other": "{{count}} splátek · úrok {{interest}}",
       "showAll_one": "Zobrazit {{count}}",
       "showAll_few": "Zobrazit všechny {{count}}",
-      "showAll_other": "Zobrazit všech {{count}}"
+      "showAll_other": "Zobrazit všech {{count}}",
+      "interest": "úrok {{amount}}",
+      "principal": "jistina {{amount}}"
     },
     "extra": {
       "noChange": "Tato částka nezmění ani dobu splácení, ani splátku, ani úroky."
@@ -580,7 +582,7 @@
       "noUpcoming": "V nejbližším roce nepřipadá žádný kupón ani splatnost.",
       "allRepaid": "Všechny emise jsou splacené. Zapněte v nabídce ··· „{{action}}“, abyste je viděli.",
       "loadFailed": "Dluhopisy se nepodařilo načíst.",
-      "rateNote": "{{rate}} p. a. vážený průměr",
+      "rateNote": "{{rate}} p. a.",
       "nextPayment": "Další platba",
       "notGiven": "neuvedeno"
     },
@@ -621,7 +623,7 @@
       "pricesOn": "ceny {{date}}",
       "invested": "vloženo {{amount}}",
       "yieldNote": "výnos {{percent}}",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "zatím bez historie",
       "positionsTab": "Pozice · {{count}}",
@@ -648,8 +650,7 @@
       "watchedTabPlain": "Sledované"
     },
     "crypto": {
-      "largestNote": "{{share}} z krypta",
-      "heldNote": "{{share}} z krypta · {{date}}"
+      "largestNote": "{{share}} z krypta"
     },
     "closed": {
       "on": "uzavřeno {{date}}",
@@ -658,18 +659,19 @@
     },
     "position": {
       "heroLabel": "Hodnota pozice · {{quantity}} {{unit}}",
-      "perUnit": "{{price}} za kus",
+      "perUnit": "{{price}}/ks",
       "stats": {
         "inCurrency": "v {{currency}}",
         "asOf": "k {{when}}"
       },
       "tx": {
-        "buy": "Nákup · {{quantity}} {{unit}}",
-        "sell": "Prodej · {{quantity}} {{unit}}",
+        "buy": "Nákup",
+        "sell": "Prodej",
         "showAll_one": "Zobrazit {{count}}",
         "showAll_few": "Zobrazit všechny {{count}}",
         "showAll_other": "Zobrazit všech {{count}}",
-        "menu": "Nabídka transakce"
+        "menu": "Nabídka transakce",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "Nabídka dividendy"
@@ -1088,5 +1090,10 @@
     "year": "{{amount}} / rok",
     "avgMonth": "⌀ {{amount}} / měs."
   },
-  "labelValue": "{{label}}: {{value}}"
+  "labelValue": "{{label}}: {{value}}",
+  "statNote": {
+    "notRented": "nepronajato",
+    "returns": "vrátí {{amount}}",
+    "average": "⌀ {{price}}"
+  }
 }

@@ -7,7 +7,7 @@ import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { priceStamp } from '@/mobile/lib/position-rows';
-import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
+import { isCompactAmount, statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
 
 /**
  * The dividends of a year as the sixth stat of a stock's position: the yearly dividend of the
@@ -26,7 +26,7 @@ export function useDividendStat(holding: StockRow, reportCurrency: string): Stat
   const percentNote =
     dividend === null
       ? ts('detail.noDividend')
-      : ts('detail.dividendNote', {
+      : t('wealth.stocks.yieldNote', {
           percent: fmt.percent(
             marketValue !== null && marketValue > 0 ? dividend / marketValue : 0,
             1
@@ -118,7 +118,15 @@ export function PositionStats({
     {
       label: t('stat.invested'),
       value: totalCost === null ? '—' : statMoney(totalCost),
-      note: average === null ? undefined : ts('detail.avgShort', { price: unitMoney(average) }),
+      // A seven-digit price per unit goes compact so the note keeps one line (C2, A11)
+      note:
+        average === null
+          ? undefined
+          : t('statNote.average', {
+              price: isCompactAmount(average)
+                ? moneyText(average, reportCurrency, { compact: true, decimals: 2 })
+                : unitMoney(average),
+            }),
     },
   ];
   const second: StatItem[] = [
@@ -128,9 +136,8 @@ export function PositionStats({
       tone: statTone(gainLoss),
       note:
         gainLoss !== null && holding.gainLossPercent !== null
-          ? ts('detail.vsInvestedPct', {
-              percent: fmt.percent(holding.gainLossPercent / 100, 1, { signed: true }),
-            })
+          ? // The percent alone (C2: one line); "oproti vloženému" is the hero's
+            fmt.percent(holding.gainLossPercent / 100, 1, { signed: true })
           : undefined,
     },
     {
@@ -146,7 +153,8 @@ export function PositionStats({
           ? ts('detail.realizedDividends', { amount: statMoney(dividendsReceived) })
           : sells > 0
             ? ts('detail.sells', { count: sells })
-            : ts('detail.noSells'),
+            : // No sells: the value says it; a sentence would not fit one line (C2)
+              undefined,
     },
     sixth,
   ];

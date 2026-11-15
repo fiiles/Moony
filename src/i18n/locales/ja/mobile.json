@@ -261,7 +261,9 @@
     "schedule": {
       "left": "残り {{amount}}",
       "yearSub_other": "{{count}}回 · 利息 {{interest}}",
-      "showAll_other": "全{{count}}回を表示"
+      "showAll_other": "全{{count}}回を表示",
+      "interest": "利息 {{amount}}",
+      "principal": "元金 {{amount}}"
     },
     "extra": {
       "noChange": "この金額では、返済期間も返済額も利息も変わりません。"
@@ -512,7 +514,7 @@
       "noUpcoming": "今後1年間にクーポンや満期はありません。",
       "allRepaid": "すべての銘柄が償還済みです。メニュー「···」の「{{action}}」をオンにすると表示されます。",
       "loadFailed": "債券を読み込めませんでした。",
-      "rateNote": "年率 {{rate}} 加重平均",
+      "rateNote": "年率 {{rate}}",
       "nextPayment": "次回の支払い",
       "notGiven": "未入力"
     },
@@ -551,7 +553,7 @@
       "pricesOn": "価格 {{date}}",
       "invested": "投資額 {{amount}}",
       "yieldNote": "利回り {{percent}}",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "履歴はまだありません",
       "positionsTab": "ポジション · {{count}}",
@@ -576,8 +578,7 @@
       "watchedTabPlain": "ウォッチ中"
     },
     "crypto": {
-      "largestNote": "暗号資産の{{share}}",
-      "heldNote": "暗号資産の{{share}} · {{date}}"
+      "largestNote": "暗号資産の{{share}}"
     },
     "closed": {
       "on": "{{date}}に決済",
@@ -586,16 +587,17 @@
     },
     "position": {
       "heroLabel": "ポジションの評価額 · {{quantity}} {{unit}}",
-      "perUnit": "1単位あたり {{price}}",
+      "perUnit": "{{price}}/個",
       "stats": {
         "inCurrency": "{{currency}}建て",
         "asOf": "{{when}}時点"
       },
       "tx": {
-        "buy": "買付 · {{quantity}} {{unit}}",
-        "sell": "売却 · {{quantity}} {{unit}}",
+        "buy": "買付",
+        "sell": "売却",
         "showAll_other": "{{count}} 件をすべて表示",
-        "menu": "取引メニュー"
+        "menu": "取引メニュー",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "配当メニュー"
@@ -980,5 +982,10 @@
     "year": "{{amount}}/年",
     "avgMonth": "平均 {{amount}}/月"
   },
-  "labelValue": "{{label}}：{{value}}"
+  "labelValue": "{{label}}：{{value}}",
+  "statNote": {
+    "notRented": "賃貸なし",
+    "returns": "償還 {{amount}}",
+    "average": "⌀ {{price}}"
+  }
 }

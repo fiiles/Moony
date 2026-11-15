@@ -285,7 +285,9 @@
       "yearSub_one": "{{count}} Rate · Zinsen {{interest}}",
       "yearSub_other": "{{count}} Raten · Zinsen {{interest}}",
       "showAll_one": "Alle {{count}} anzeigen",
-      "showAll_other": "Alle {{count}} anzeigen"
+      "showAll_other": "Alle {{count}} anzeigen",
+      "interest": "Zinsen {{amount}}",
+      "principal": "Tilgung {{amount}}"
     },
     "extra": {
       "noChange": "Dieser Betrag ändert weder Laufzeit noch Rate noch Zinsen."
@@ -546,7 +548,7 @@
       "noUpcoming": "Im kommenden Jahr ist kein Kupon und keine Fälligkeit fällig.",
       "allRepaid": "Alle Emissionen sind getilgt. Aktivieren Sie im Menü ··· „{{action}}“, um sie zu sehen.",
       "loadFailed": "Die Anleihen konnten nicht geladen werden.",
-      "rateNote": "{{rate}} p. a. gewichtet",
+      "rateNote": "{{rate}} p. a.",
       "nextPayment": "Nächste Zahlung",
       "notGiven": "nicht angegeben"
     },
@@ -586,7 +588,7 @@
       "pricesOn": "Kurse {{date}}",
       "invested": "investiert {{amount}}",
       "yieldNote": "Rendite {{percent}}",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "noch kein Verlauf",
       "positionsTab": "Positionen · {{count}}",
@@ -612,8 +614,7 @@
       "watchedTabPlain": "Beobachtet"
     },
     "crypto": {
-      "largestNote": "{{share}} der Kryptos",
-      "heldNote": "{{share}} der Kryptos · {{date}}"
+      "largestNote": "{{share}} Anteil"
     },
     "closed": {
       "on": "geschlossen {{date}}",
@@ -622,17 +623,18 @@
     },
     "position": {
       "heroLabel": "Positionswert · {{quantity}} {{unit}}",
-      "perUnit": "{{price}} pro Stück",
+      "perUnit": "{{price}}/Stk.",
       "stats": {
         "inCurrency": "in {{currency}}",
         "asOf": "Stand {{when}}"
       },
       "tx": {
-        "buy": "Kauf · {{quantity}} {{unit}}",
-        "sell": "Verkauf · {{quantity}} {{unit}}",
+        "buy": "Kauf",
+        "sell": "Verkauf",
         "showAll_one": "Alle {{count}} anzeigen",
         "showAll_other": "Alle {{count}} anzeigen",
-        "menu": "Transaktionsmenü"
+        "menu": "Transaktionsmenü",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "Dividendenmenü"
@@ -1030,5 +1032,10 @@
     "year": "{{amount}} / Jahr",
     "avgMonth": "⌀ {{amount}} / Monat"
   },
-  "labelValue": "{{label}}: {{value}}"
+  "labelValue": "{{label}}: {{value}}",
+  "statNote": {
+    "notRented": "nicht vermietet",
+    "returns": "zahlt {{amount}}",
+    "average": "⌀ {{price}}"
+  }
 }

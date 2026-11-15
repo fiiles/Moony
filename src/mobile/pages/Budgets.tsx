@@ -28,6 +28,7 @@ import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { BudgetDeleteSheet, type PendingDelete } from '@/mobile/sheets/BudgetDeleteSheet';
 import { BudgetLimitSheet } from '@/mobile/sheets/BudgetLimitSheet';
+import { SubFacts } from '@/mobile/components/SubFacts';
 
 /** Whole amounts ("3 000 Kč"). */
 
@@ -413,10 +414,14 @@ function UnbudgetedItem({ row, category, currency, onSetLimit }: UnbudgetedItemP
   const moneyText = useMoneyText();
   const titleId = useId();
   const name = category ? categoryName(category) : row.categoryId;
-  const sub = [
-    t('period.avgMonth', { amount: moneyText(row.average, currency, WHOLE) }),
-    t('bank_accounts:ledger.footer', { count: row.count }),
-  ].join(' · ');
+  // The average stays whole, the count shows when it fits (C1)
+  const sub = (
+    <SubFacts
+      mode="drop"
+      lead={t('period.avgMonth', { amount: moneyText(row.average, currency, WHOLE) })}
+      tail={t('bank_accounts:ledger.footer', { count: row.count })}
+    />
+  );
 
   return (
     <li className="relative flex min-h-[60px] list-none items-center gap-3 px-3.5 py-2.5 before:pointer-events-none before:absolute before:left-[62px] before:right-0 before:top-0 before:border-t before:border-line-soft before:content-[''] first:before:hidden">

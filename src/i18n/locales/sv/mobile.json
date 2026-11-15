@@ -285,7 +285,9 @@
       "yearSub_one": "{{count}} betalning · ränta {{interest}}",
       "yearSub_other": "{{count}} betalningar · ränta {{interest}}",
       "showAll_one": "Visa {{count}}",
-      "showAll_other": "Visa alla {{count}}"
+      "showAll_other": "Visa alla {{count}}",
+      "interest": "ränta {{amount}}",
+      "principal": "amortering {{amount}}"
     },
     "extra": {
       "noChange": "Beloppet ändrar varken löptiden, betalningen eller räntan."
@@ -546,7 +548,7 @@
       "noUpcoming": "Inga kuponger eller förfall under det kommande året.",
       "allRepaid": "Alla emissioner är återbetalda. Slå på ”{{action}}” i menyn ··· för att se dem.",
       "loadFailed": "Obligationerna kunde inte läsas in.",
-      "rateNote": "{{rate}} per år, viktad",
+      "rateNote": "{{rate}} per år",
       "nextPayment": "Nästa betalning",
       "notGiven": "inte angivet"
     },
@@ -585,8 +587,8 @@
       "pricesAt": "kurser {{time}}",
       "pricesOn": "kurser {{date}}",
       "invested": "investerat {{amount}}",
-      "yieldNote": "avkastning {{percent}}",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "yieldNote": "avk. {{percent}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "ingen historik ännu",
       "positionsTab": "Innehav · {{count}}",
@@ -612,8 +614,7 @@
       "watchedTabPlain": "Bevakade"
     },
     "crypto": {
-      "largestNote": "{{share}} av krypto",
-      "heldNote": "{{share}} av krypto · {{date}}"
+      "largestNote": "{{share}} av krypto"
     },
     "closed": {
       "on": "stängt {{date}}",
@@ -622,17 +623,18 @@
     },
     "position": {
       "heroLabel": "Innehavets värde · {{quantity}} {{unit}}",
-      "perUnit": "{{price}} per st",
+      "perUnit": "{{price}}/st",
       "stats": {
         "inCurrency": "i {{currency}}",
         "asOf": "per {{when}}"
       },
       "tx": {
-        "buy": "Köp · {{quantity}} {{unit}}",
-        "sell": "Försäljning · {{quantity}} {{unit}}",
+        "buy": "Köp",
+        "sell": "Försäljning",
         "showAll_one": "Visa {{count}}",
         "showAll_other": "Visa alla {{count}}",
-        "menu": "Transaktionsmeny"
+        "menu": "Transaktionsmeny",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "Utdelningsmeny"
@@ -1030,5 +1032,10 @@
     "year": "{{amount}} / år",
     "avgMonth": "⌀ {{amount}} / mån"
   },
-  "labelValue": "{{label}}: {{value}}"
+  "labelValue": "{{label}}: {{value}}",
+  "statNote": {
+    "notRented": "ej uthyrd",
+    "returns": "ger {{amount}}",
+    "average": "⌀ {{price}}"
+  }
 }

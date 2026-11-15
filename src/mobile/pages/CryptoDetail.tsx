@@ -8,7 +8,7 @@ import { useCryptoTransactionMutations } from '@/hooks/use-crypto-mutations';
 import { useFormat } from '@/lib/use-format';
 import { monthsBetween } from '@/utils/duration';
 import type { ChartPeriod } from '@/utils/period';
-import { amountOf, type CryptoRow } from '@/utils/positions';
+import { type CryptoRow } from '@/utils/positions';
 import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { BuyCryptoModal } from '@/components/crypto/BuyCryptoModal';
@@ -149,7 +149,6 @@ export default function CryptoDetail() {
             holding={view.holding}
             reportCurrency={reportCurrency}
             transactions={data.transactions}
-            classValue={amountOf(view.positions?.totals.value) ?? 0}
           />
           <PositionLedger
             ledger={ledger}
@@ -199,13 +198,10 @@ function CoinStats({
   holding,
   reportCurrency,
   transactions,
-  classValue,
 }: {
   holding: CryptoRow;
   reportCurrency: string;
   transactions: readonly CryptoTransaction[];
-  /** What all the coins are worth in the report currency: the base of the coin's share. */
-  classValue: number;
 }) {
   const { t } = useTranslation('mobile');
   const { t: tcr } = useTranslation('crypto');
@@ -233,12 +229,6 @@ function CoinStats({
           ? tcr('detail.duration.years', { count: held.years })
           : tcr('detail.duration.months', { count: held.months });
 
-  // The share of the class is the open coin's value over all the coins'; a coin that is closed or
-  // has no rate has none to say
-  const share =
-    holding.quantity > 0 && holding.marketValue !== null && classValue > 0
-      ? holding.marketValue / classValue
-      : null;
   const since = firstBuy
     ? fmt.day(firstBuy.transactionDate, shortDayOptions(firstBuy.transactionDate))
     : null;
@@ -248,9 +238,8 @@ function CoinStats({
     note:
       since === null
         ? tcr('detail.sinceFirst.none')
-        : share === null
-          ? tcr('detail.heldSince', { date: since })
-          : t('wealth.crypto.heldNote', { date: since, share: fmt.percent(share, 0) }),
+        : // One fact on the note's one line (C2): the day it began; the share is the hero's
+          tcr('detail.heldSince', { date: since }),
   };
 
   return (

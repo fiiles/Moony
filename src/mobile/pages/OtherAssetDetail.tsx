@@ -336,7 +336,6 @@ function AssetHero({
  */
 function AssetStats({ row }: { row: OtherAssetRow }) {
   const { t } = useTranslation('mobile');
-  const { t: ts } = useTranslation('stocks');
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const { quantity, price, priceCurrency, currency, avgPurchase, costNative, gainNative } = row;
@@ -356,10 +355,7 @@ function AssetStats({ row }: { row: OtherAssetRow }) {
     {
       label: t('stat.avgPrice'),
       value: avgPurchase > 0 ? unitMoney(avgPurchase, currency) : '—',
-      note:
-        costNative > 0
-          ? t('wealth.stocks.invested', { amount: moneyText(costNative, currency, WHOLE) })
-          : undefined,
+      // What was put in stands in the hero; a foreign amount would not fit the note's line (C2)
     },
     {
       label: t('stat.unrealizedGain'),
@@ -373,9 +369,7 @@ function AssetStats({ row }: { row: OtherAssetRow }) {
       tone: statTone(gainNative),
       note:
         gainNative !== null && costNative > 0
-          ? ts('detail.vsInvestedPct', {
-              percent: fmt.percent(gainNative / costNative, 1, { signed: true }),
-            })
+          ? fmt.percent(gainNative / costNative, 1, { signed: true })
           : undefined,
     },
   ];

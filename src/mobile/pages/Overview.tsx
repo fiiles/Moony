@@ -42,7 +42,7 @@ import { LockButton } from '@/mobile/shell/LockButton';
 import { addAccountPath } from '@/mobile/lib/getting-started';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
-import { statMoneyOptions } from '@/mobile/lib/stat-money';
+import { isCompactAmount, statMoneyOptions } from '@/mobile/lib/stat-money';
 
 /** Agenda rows shown on Přehled before "Zobrazit vše (N)". */
 const AGENDA_ROWS = 3;
@@ -229,8 +229,14 @@ export default function Overview() {
               value: display[cls],
             }))}
             formatValue={money}
+            // Compact from seven digits only (A11): German compact keeps thousands whole and
+            // would add a decimal ("642.982,4 €")
             formatTotal={(value) =>
-              moneyText(value, reportCurrency, { compact: true, decimals: 1 })
+              moneyText(
+                value,
+                reportCurrency,
+                isCompactAmount(value) ? { compact: true, decimals: 1 } : WHOLE
+              )
             }
           />
         </>

@@ -73,7 +73,7 @@ export function PropertyStats({ row, balance, currency }: PropertyStatsProps) {
               ? money(gross.rent.main)
               : money(gross.rent.native.amount, gross.rent.native.currency),
         })
-      : tr('detail.stats.noRentNote'),
+      : t('statNote.notRented'),
   };
 
   const cashflowStat: StatItem = {

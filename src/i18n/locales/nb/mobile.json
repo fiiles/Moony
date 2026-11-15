@@ -285,7 +285,9 @@
       "yearSub_one": "{{count}} termin · renter {{interest}}",
       "yearSub_other": "{{count}} terminer · renter {{interest}}",
       "showAll_one": "Vis {{count}}",
-      "showAll_other": "Vis alle {{count}}"
+      "showAll_other": "Vis alle {{count}}",
+      "interest": "renter {{amount}}",
+      "principal": "avdrag {{amount}}"
     },
     "extra": {
       "noChange": "Dette beløpet endrer verken løpetiden, terminen eller rentene."
@@ -546,7 +548,7 @@
       "noUpcoming": "Ingen kuponger eller forfall det kommende året.",
       "allRepaid": "Alle emisjoner er innfridd. Slå på «{{action}}» i menyen ··· for å se dem.",
       "loadFailed": "Obligasjonene kunne ikke lastes.",
-      "rateNote": "{{rate}} p.a. vektet",
+      "rateNote": "{{rate}} p.a.",
       "nextPayment": "Neste betaling",
       "notGiven": "ikke oppgitt"
     },
@@ -585,8 +587,8 @@
       "pricesAt": "kurser {{time}}",
       "pricesOn": "kurser {{date}}",
       "invested": "investert {{amount}}",
-      "yieldNote": "avkastning {{percent}}",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "yieldNote": "avk. {{percent}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "ingen historikk ennå",
       "positionsTab": "Beholdninger · {{count}}",
@@ -612,8 +614,7 @@
       "watchedTabPlain": "Fulgte"
     },
     "crypto": {
-      "largestNote": "{{share}} av krypto",
-      "heldNote": "{{share}} av krypto · {{date}}"
+      "largestNote": "{{share}} av krypto"
     },
     "closed": {
       "on": "avsluttet {{date}}",
@@ -622,17 +623,18 @@
     },
     "position": {
       "heroLabel": "Verdi av beholdningen · {{quantity}} {{unit}}",
-      "perUnit": "{{price}} per stk.",
+      "perUnit": "{{price}}/stk.",
       "stats": {
         "inCurrency": "i {{currency}}",
         "asOf": "per {{when}}"
       },
       "tx": {
-        "buy": "Kjøp · {{quantity}} {{unit}}",
-        "sell": "Salg · {{quantity}} {{unit}}",
+        "buy": "Kjøp",
+        "sell": "Salg",
         "showAll_one": "Vis {{count}}",
         "showAll_other": "Vis alle {{count}}",
-        "menu": "Transaksjonsmeny"
+        "menu": "Transaksjonsmeny",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "Utbyttemeny"
@@ -1030,5 +1032,10 @@
     "year": "{{amount}} / år",
     "avgMonth": "⌀ {{amount}} / mnd."
   },
-  "labelValue": "{{label}}: {{value}}"
+  "labelValue": "{{label}}: {{value}}",
+  "statNote": {
+    "notRented": "ikke utleid",
+    "returns": "gir {{amount}}",
+    "average": "⌀ {{price}}"
+  }
 }

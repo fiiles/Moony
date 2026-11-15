@@ -309,7 +309,9 @@
       "yearSub_other": "{{count}} cuotas · intereses {{interest}}",
       "showAll_one": "Mostrar todas ({{count}})",
       "showAll_many": "Mostrar todas ({{count}})",
-      "showAll_other": "Mostrar todas ({{count}})"
+      "showAll_other": "Mostrar todas ({{count}})",
+      "interest": "intereses {{amount}}",
+      "principal": "capital {{amount}}"
     },
     "extra": {
       "noChange": "Este importe no cambia ni el plazo, ni la cuota, ni los intereses."
@@ -580,7 +582,7 @@
       "noUpcoming": "No hay cupones ni vencimientos en el próximo año.",
       "allRepaid": "Todas las emisiones están amortizadas. Activa «{{action}}» en el menú ··· para verlas.",
       "loadFailed": "No se pudieron cargar los bonos.",
-      "rateNote": "{{rate}} anual ponderado",
+      "rateNote": "{{rate}} anual",
       "nextPayment": "Próximo pago",
       "notGiven": "no indicada"
     },
@@ -620,8 +622,8 @@
       "pricesAt": "precios {{time}}",
       "pricesOn": "precios {{date}}",
       "invested": "invertido {{amount}}",
-      "yieldNote": "rendimiento {{percent}}",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "yieldNote": "rent. {{percent}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "aún sin historial",
       "positionsTab": "Posiciones · {{count}}",
@@ -648,8 +650,7 @@
       "watchedTabPlain": "Seguidas"
     },
     "crypto": {
-      "largestNote": "{{share}} de cripto",
-      "heldNote": "{{share}} de cripto · {{date}}"
+      "largestNote": "{{share}} de cripto"
     },
     "closed": {
       "on": "cerrada el {{date}}",
@@ -658,18 +659,19 @@
     },
     "position": {
       "heroLabel": "Valor de la posición · {{quantity}} {{unit}}",
-      "perUnit": "{{price}} por unidad",
+      "perUnit": "{{price}}/ud.",
       "stats": {
         "inCurrency": "en {{currency}}",
         "asOf": "a {{when}}"
       },
       "tx": {
-        "buy": "Compra · {{quantity}} {{unit}}",
-        "sell": "Venta · {{quantity}} {{unit}}",
+        "buy": "Compra",
+        "sell": "Venta",
         "showAll_one": "Mostrar todas ({{count}})",
         "showAll_many": "Mostrar todas ({{count}})",
         "showAll_other": "Mostrar todas ({{count}})",
-        "menu": "Menú del movimiento"
+        "menu": "Menú del movimiento",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "Menú del dividendo"
@@ -1080,5 +1082,10 @@
     "year": "{{amount}} / año",
     "avgMonth": "⌀ {{amount}} / mes"
   },
-  "labelValue": "{{label}}: {{value}}"
+  "labelValue": "{{label}}: {{value}}",
+  "statNote": {
+    "notRented": "sin alquilar",
+    "returns": "paga {{amount}}",
+    "average": "⌀ {{price}}"
+  }
 }

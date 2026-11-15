@@ -244,7 +244,7 @@ function BondStats({ metrics, currency }: { metrics: BondsMetrics; currency: str
       value: nearestDay !== null ? fmt.day(nearestDay) : '—',
       note:
         nearestDay !== null && returns !== null
-          ? tb('summary.returns', { amount: returns })
+          ? t('statNote.returns', { amount: returns })
           : metrics.liveCount > 0
             ? tb('summary.noMaturity')
             : tb('summary.noneLive'),

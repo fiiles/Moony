@@ -237,7 +237,8 @@ function CryptoStats({
       label: t('stat.realized'),
       value: realized === null ? '—' : statMoney(realized),
       tone: statTone(realized),
-      note: sells > 0 ? tcr('detail.sells', { count: sells }) : tcr('detail.noSells'),
+      // No sells: the value says it, the note stays empty (C2)
+      note: sells > 0 ? tcr('detail.sells', { count: sells }) : undefined,
     },
     {
       label: t('stat.largest'),

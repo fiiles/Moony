@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { sheetHeightClass } from '@/lib/sheet-height';
 import { useSheetDrag } from '@/hooks/use-sheet-drag';
 import { useSheetHistory } from '@/mobile/hooks/use-sheet-history';
+import { sheetStack } from '@/mobile/lib/sheet-stack';
 
 interface SheetProps {
   open: boolean;
@@ -13,8 +14,18 @@ interface SheetProps {
   title: string;
   /** The one sentence under the title (13 / 450 `ink-3`). */
   description?: string;
-  /** The footer's buttons: the ghost "Zrušit" first, the primary action last (it takes the rest of the row). */
-  footer: ReactNode;
+  /**
+   * The footer, only for a sheet that acts (README §13, "Sheet footers"): the ghost "Zrušit" (or the
+   * lesser choice) first, the one filled primary last (it takes the rest of the row). A sheet that
+   * only shows something or picks on a tap has none: it closes from the head's text action.
+   */
+  footer?: ReactNode;
+  /**
+   * The text action at the right of the head, which closes the sheet: "Hotovo" for a sheet that
+   * shows something or saves as it goes (the default without a footer), "Zrušit" for a picker whose
+   * tap is the choice. A sheet with a footer has none unless it asks for one.
+   */
+  dismiss?: 'done' | 'cancel';
   /** A tall sheet (pickers): 95 % of the screen instead of 93 %, always below the top safe area. */
   full?: boolean;
   /**
@@ -42,9 +53,10 @@ function startedOnToast(event: { detail: { originalEvent: Event } }): boolean {
 
 /**
  * Bottom sheet (spec §10.3, design system README §13, `.m-sheet`): paper with a 17 pt top radius, a
- * 36 × 5 drag handle on `well-3`, the 20 / 650 title and one sentence, a body that scrolls and a
- * footer on `well` with a hairline above it. It covers the tab bar. It closes on a tap on the
- * scrim, on Escape, from its own buttons, on Android back (`useSheetHistory`) and when dragged
+ * 36 × 5 drag handle on `well-3` (hidden while another sheet covers this one), the 20 / 650 title
+ * and one sentence, a body that scrolls and, for a sheet that acts, a footer on `well` with a
+ * hairline above it; a sheet that does not act closes from a text action in its head instead. It
+ * covers the tab bar. It closes on a tap on the scrim, on Escape, from its own buttons, on Android back (`useSheetHistory`) and when dragged
  * down (`useSheetDrag`). A `dirty` sheet asks before any of those but its own buttons.
  *
  * Radix Dialog underneath (focus trap, scroll lock, `aria-modal`), portalled into `#root` so that
@@ -62,7 +74,9 @@ export function Sheet({
   fill = false,
   children,
   dirty,
+  dismiss = footer === undefined ? 'done' : undefined,
 }: SheetProps) {
+  const { t } = useTranslation('common');
   // "Zahodit změny?" is up, over the sheet
   const [asking, setAsking] = useState(false);
   if (asking && !open) setAsking(false);
@@ -79,6 +93,15 @@ export function Sheet({
   const [content, setContent] = useState<HTMLDivElement | null>(null);
   // A sheet that stays open after the drag comes back up (`useSheetDrag`)
   useSheetDrag(content, () => void requestClose());
+  // A sheet that another sheet covers hides its handle: one grabber on screen (audit C12)
+  const stackId = useId();
+  useEffect(() => {
+    if (!open) return;
+    sheetStack.open(stackId);
+    return () => sheetStack.close(stackId);
+  }, [open, stackId]);
+  useSyncExternalStore(sheetStack.subscribe, sheetStack.version);
+  const covered = sheetStack.covered(stackId);
 
   return (
     <>
@@ -107,29 +130,48 @@ export function Sheet({
           >
             <div
               aria-hidden
-              className="mx-auto mt-2 h-[5px] w-9 flex-none rounded-[3px] bg-well-3"
+              className={cn(
+                'mx-auto mt-2 h-[5px] w-9 flex-none rounded-[3px] bg-well-3 transition-opacity duration-fast',
+                covered && 'opacity-0'
+              )}
             />
-            <div className="flex-none px-5 pb-1 pt-3">
-              <DialogPrimitive.Title className="m-0 hyphens-auto break-words text-m-title text-ink">
-                {title}
-              </DialogPrimitive.Title>
-              {description && (
-                <DialogPrimitive.Description className="mt-[3px] text-m-lead text-ink-3">
-                  {description}
-                </DialogPrimitive.Description>
+            <div className="flex flex-none items-start gap-3 px-5 pb-1 pt-3">
+              <div className="min-w-0 flex-1">
+                <DialogPrimitive.Title className="m-0 hyphens-auto break-words text-m-title text-ink">
+                  {title}
+                </DialogPrimitive.Title>
+                {description && (
+                  <DialogPrimitive.Description className="mt-[3px] text-m-lead text-ink-3">
+                    {description}
+                  </DialogPrimitive.Description>
+                )}
+              </div>
+              {dismiss && (
+                <button
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  // 44 pt hit area around the word, its text on the title's first line
+                  className="relative -mr-2 -mt-[9px] flex min-h-11 flex-none items-center rounded-[10px] px-2 text-m-row font-semibold text-ink [-webkit-touch-callout:none] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
+                >
+                  {dismiss === 'done' ? t('buttons.done') : t('buttons.cancel')}
+                </button>
               )}
             </div>
             <div
               className={cn(
-                'min-h-0 flex-auto px-4 pb-3.5 pt-2',
+                'min-h-0 flex-auto px-4 pt-2',
+                // Without a footer the body runs to the bottom edge, clear of the home indicator
+                footer === undefined ? 'pb-[calc(14px+var(--safe-bottom))]' : 'pb-3.5',
                 fill ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'
               )}
             >
               {children}
             </div>
-            <div className="flex flex-none items-center gap-2.5 border-t border-line bg-well px-4 pb-[calc(12px+var(--safe-bottom))] pt-3">
-              {footer}
-            </div>
+            {footer !== undefined && (
+              <div className="flex flex-none items-center gap-2.5 border-t border-line bg-well px-4 pb-[calc(12px+var(--safe-bottom))] pt-3">
+                {footer}
+              </div>
+            )}
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>

@@ -1,9 +1,15 @@
-import { useId, type ComponentProps } from 'react';
+import { useContext, useId, useState, type ComponentProps } from 'react';
+import { CurrencyContext } from '@/lib/currency';
+import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
+import { fieldUnitLabel, groupAmountText } from '@/mobile/lib/amount-input';
 
 interface AmountFieldProps extends Omit<ComponentProps<'input'>, 'type' | 'inputMode' | 'id'> {
   label: string;
-  /** The currency, inside the field on the right. */
+  /**
+   * The currency (its code) or another unit, inside the field on the right. The main currency is
+   * shown by its symbol, as rows write it ("Kč"); any other unit as given ("EUR", "BTC", "ks").
+   */
   unit: string;
   /** Under the field, in `loss`; also marks the field invalid. */
   error?: string;
@@ -24,7 +30,9 @@ interface AmountFieldProps extends Omit<ComponentProps<'input'>, 'type' | 'input
  * field with the currency inside it on the right and, optionally, the ± toggle on the left (a 48 pt
  * hit area around a 32 pt chip), the decimal keypad, an optional hint under it. The field is plain text
  * (`parseAmountInput` reads what the keypad of the system language types); `type="number"` would
- * refuse a comma in a WebView whose language is not the keypad's.
+ * refuse a comma in a WebView whose language is not the keypad's. While the field is not focused, a
+ * typed string value shows its thousands grouped in the UI language ("12 500", audit A5); the
+ * parent keeps the text as typed, and focusing the field shows it again for editing.
  */
 export function AmountField({
   label,
@@ -35,8 +43,15 @@ export function AmountField({
   onNegativeChange,
   negativeLabel,
   className,
+  onFocus,
+  onBlur,
+  value,
   ...props
 }: AmountFieldProps) {
+  const fmt = useFormat();
+  const mainCurrency = useContext(CurrencyContext)?.currencyCode;
+  const [focused, setFocused] = useState(false);
+  const shown = !focused && typeof value === 'string' ? groupAmountText(value, fmt.locale) : value;
   const id = useId();
   const unitId = `${id}-unit`;
   const errorId = `${id}-error`;
@@ -71,6 +86,15 @@ export function AmountField({
         )}
         <input
           {...props}
+          value={shown}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
           id={id}
           type="text"
           inputMode="decimal"
@@ -88,7 +112,7 @@ export function AmountField({
           id={unitId}
           className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-m-sub font-semibold text-ink-4"
         >
-          {unit}
+          {fieldUnitLabel(unit, mainCurrency, fmt.locale)}
         </span>
       </div>
       {error ? (

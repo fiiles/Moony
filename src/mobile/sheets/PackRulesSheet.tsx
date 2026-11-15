@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { ScaledReportError } from '@/mobile/components/Scaled';
@@ -18,7 +17,6 @@ interface PackRulesSheetProps {
 export function PackRulesSheet({ pack, onClose }: PackRulesSheetProps) {
   const { t } = useTranslation('categorization');
   const { t: tm } = useTranslation('mobile');
-  const { t: tc } = useTranslation('common');
   const { t: ts } = useTranslation('settings');
   const categoryName = useCategoryName();
   const { categories } = useCategories();
@@ -93,15 +91,6 @@ export function PackRulesSheet({ pack, onClose }: PackRulesSheetProps) {
       description={shown ? ts('rulePacks.rulesCount', { count: shown.ruleCount }) : undefined}
       full
       fill
-      footer={
-        <Button
-          variant="ghost"
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={onClose}
-        >
-          {tc('buttons.close')}
-        </Button>
-      }
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <SearchField

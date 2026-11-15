@@ -220,15 +220,14 @@ function LimitSheet({
   const category = categories.find((c) => c.id === categoryId);
   const name = category ? categoryName(category) : (categoryId ?? '');
 
-  // The average is over the months the report observed, which may be fewer than six: say how many
+  // What the person usually spends, in one plain sentence (audit D21)
   const observed = categoryId === null ? undefined : averages.get(categoryId);
   const averageHint =
     averages.size === 0
       ? undefined
       : observed && observed.average > 0
-        ? tb('readiness.observedAverage', {
+        ? t('cashflow.limitSheet.usual', {
             amount: reportMoney(observed.average, averageCurrency),
-            count: observed.months,
           })
         : tb('dialog.noAverage');
 
@@ -274,13 +273,8 @@ function LimitSheet({
       open={open}
       onOpenChange={onOpenChange}
       title={editing ? tb('dialog.editTitle') : tb('dialog.addTitle')}
-      description={
-        picking
-          ? t('cashflow.limitSheet.pick')
-          : editing
-            ? tb('dialog.editDescription', { category: name })
-            : tb('dialog.addDescription')
-      }
+      // The category is named once, by its card in the form (audit D21)
+      description={picking ? t('cashflow.limitSheet.pick') : tb('dialog.addDescription')}
       full
       footer={
         picking ? (
@@ -340,12 +334,14 @@ function LimitSheet({
               <MonthField
                 label={tb('readiness.effectiveMonth')}
                 value={input.from}
+                emptyText={t('fields.pickMonth')}
                 onChange={(from) => edit({ from })}
                 error={fromError}
               />
               <MonthField
                 label={tb('readiness.effectiveUntil')}
                 value={input.until}
+                emptyText={tb('readiness.openEnded')}
                 onChange={(until) => edit({ until })}
                 error={untilError}
                 action={
@@ -356,7 +352,11 @@ function LimitSheet({
               />
             </div>
             <p className="mx-0.5 mb-3 text-m-caption text-ink-3">
-              {tb(form.until === null ? 'readiness.rangeOpenHelp' : 'readiness.rangeClosedHelp')}
+              {t(
+                form.until === null
+                  ? 'cashflow.limitSheet.openHelp'
+                  : 'cashflow.limitSheet.closedHelp'
+              )}
             </p>
             {scheduled.length > 0 && (
               <div className="mb-3 rounded-r2 border border-line bg-well px-3 py-2.5 text-m-sub text-ink-3">

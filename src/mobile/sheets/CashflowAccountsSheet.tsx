@@ -37,6 +37,7 @@ export function CashflowAccountsSheet({
 }: CashflowAccountsSheetProps) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
+  const { t: tc } = useTranslation('common');
   const [draft, setDraft] = useState(() => draftOf(value, accounts));
 
   // Every opening starts from the report's accounts
@@ -53,13 +54,22 @@ export function CashflowAccountsSheet({
       title={t('cashflow.accounts.title')}
       description={tr('readiness.accountScopeHelp')}
       footer={
-        <Button
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          disabled={draft.size === 0}
-          onClick={() => onDone([...draft])}
-        >
-          {t('cashflow.accounts.done')}
-        </Button>
+        <>
+          <Button
+            variant="ghost"
+            className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-[18px] text-m-row"
+            onClick={() => onOpenChange(false)}
+          >
+            {tc('buttons.cancel')}
+          </Button>
+          <Button
+            className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
+            disabled={draft.size === 0}
+            onClick={() => onDone([...draft])}
+          >
+            {t('cashflow.accounts.done')}
+          </Button>
+        </>
       }
     >
       <Button

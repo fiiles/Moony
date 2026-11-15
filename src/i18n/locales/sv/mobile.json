@@ -38,7 +38,10 @@
       "done": "Klar"
     },
     "limitSheet": {
-      "pick": "Välj den kategori vars utgifter du vill hålla koll på."
+      "pick": "Välj den kategori vars utgifter du vill hålla koll på.",
+      "usual": "Du brukar spendera {{amount}} i månaden.",
+      "openHelp": "Gäller tills du ändrar den.",
+      "closedHelp": "Efter sista månaden gäller den tidigare gränsen igen."
     },
     "budgets": {
       "averageNote": "⌀ senaste 6 månaderna"
@@ -331,10 +334,15 @@
   },
   "transaction": {
     "flowSaved": "Betydelse sparad",
-    "counterparty": "Motpart",
-    "date": "Datum",
     "category": "Kategori",
-    "flow": "Betydelse",
+    "flow": "Räknas som",
+    "auto": "Automatiskt",
+    "by": {
+      "explicit": "valt av dig",
+      "category": "efter kategori",
+      "direction": "efter betalningsriktning",
+      "ownAccount": "mellan egna konton"
+    },
     "details": "Detaljer",
     "sourceLabel": "Källa",
     "source": {
@@ -345,6 +353,8 @@
     "status": "Status",
     "booked": "Bokförd",
     "currency": "Valuta",
+    "counterpartyAccount": "Motpartens konto",
+    "copied": "Kopierat: {{label}}",
     "plan": "Utgiftsplan",
     "noPlan": "Ingen plan"
   },
@@ -353,8 +363,19 @@
     "recent": "Nyligen använda",
     "all": "Alla kategorier",
     "suggested": "Förslag",
+    "current": "Nuvarande",
     "decline": "Avvisa förslaget",
-    "empty": "Ingen kategori matchar"
+    "empty": "Ingen kategori matchar",
+    "remember": "Gör likadant nästa gång",
+    "rememberFrom": "Framtida betalningar från {{who}} till det här kontot får samma kategori.",
+    "rememberTo": "Framtida betalningar till {{who}} från det här kontot får samma kategori.",
+    "applyHistory_one": "Ändra även {{count}} tidigare betalning",
+    "applyHistory_other": "Ändra även {{count}} tidigare betalningar",
+    "applyHistorySub": "Nu: {{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "Vanliga",
+    "all": "Alla valutor"
   },
   "import": {
     "title": "Importera kontoutdrag",
@@ -740,7 +761,8 @@
       "usageBudgets_one": "{{count}} budget",
       "usageBudgets_other": "{{count}} budgetar"
     },
-    "remindersLead": "Välj vad Dataunderhåll och ”Vad som väntar” i Översikt påminner dig om; aviseringarna följer samma lista. En typ du stänger av visas ingenstans, inte heller på datorn. När aviseringar kommer ställer du in under Aviseringar."
+    "remindersLead": "Välj vad Dataunderhåll och ”Vad som väntar” i Översikt påminner dig om; aviseringarna följer samma lista. En typ du stänger av visas ingenstans, inte heller på datorn. När aviseringar kommer ställer du in under Aviseringar.",
+    "saveTimeout": "Det tar för lång tid att spara. Försök igen."
   },
   "backup": {
     "lead": "En säkerhetskopia är en krypterad fil: databasen, nycklarna och bilagorna. Bara ditt lösenord öppnar den.",
@@ -891,6 +913,10 @@
       "keep": "Fortsätt redigera",
       "confirm": "Släng"
     }
+  },
+  "fields": {
+    "pickDay": "Välj en dag",
+    "pickMonth": "Välj en månad"
   },
   "loadError": {
     "overview": "Översikten kunde inte läsas in.",

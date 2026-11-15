@@ -117,6 +117,7 @@
     "deleting": "Usuwanie...",
     "backupFirst": "Wskazówka: najpierw zrób kopię zapasową (Ustawienia → Dane i kopie zapasowe) — to jedyny sposób, by odzyskać te dane.",
     "confirmLabel": "Wpisz {{word}}, aby potwierdzić",
+    "confirmWord": "USUŃ",
     "deleteAll": "Usuń wszystkie dane",
     "deleteAllHint": "Usuwa bazę danych, pliki kluczy i załączniki na tym komputerze. Kopie obok bazy (moony.db.bak-…, pre-restore-…) zostają w folderze danych (Dane i kopie zapasowe → Otwórz folder), tak samo jak kopie zapasowe zapisane poza aplikacją.",
     "deleteButton": "Usuń dane…",
@@ -133,7 +134,8 @@
     "verificationFailed": "Weryfikacja nie powiodła się",
     "updateFailed": "Aktualizacja nie powiodła się",
     "deletionFailed": "Usuwanie nie powiodło się",
-    "languageChanged": "Język zmieniony"
+    "languageChanged": "Język zmieniony",
+    "currencyChanged": "Główna waluta to teraz {{currency}}. Sumy zostały przeliczone."
   },
   "rulePacks": {
     "title": "Pakiety reguł kategoryzacji",

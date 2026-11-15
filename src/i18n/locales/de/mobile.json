@@ -38,7 +38,10 @@
       "done": "Fertig"
     },
     "limitSheet": {
-      "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten."
+      "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten.",
+      "usual": "Sie geben üblicherweise {{amount}} im Monat aus.",
+      "openHelp": "Gilt, bis Sie es ändern.",
+      "closedHelp": "Nach dem letzten Monat gilt wieder das vorherige Limit."
     },
     "budgets": {
       "averageNote": "⌀ der letzten 6 Monate"
@@ -331,10 +334,15 @@
   },
   "transaction": {
     "flowSaved": "Bedeutung gespeichert",
-    "counterparty": "Gegenpartei",
-    "date": "Datum",
     "category": "Kategorie",
-    "flow": "Bedeutung",
+    "flow": "Zählt als",
+    "auto": "Automatisch",
+    "by": {
+      "explicit": "von Ihnen gewählt",
+      "category": "nach Kategorie",
+      "direction": "nach Zahlungsrichtung",
+      "ownAccount": "zwischen eigenen Konten"
+    },
     "details": "Details",
     "sourceLabel": "Quelle",
     "source": {
@@ -345,6 +353,8 @@
     "status": "Status",
     "booked": "Gebucht",
     "currency": "Währung",
+    "counterpartyAccount": "Konto der Gegenpartei",
+    "copied": "Kopiert: {{label}}",
     "plan": "Ausgabenplan",
     "noPlan": "Kein Plan"
   },
@@ -353,8 +363,19 @@
     "recent": "Zuletzt verwendet",
     "all": "Alle Kategorien",
     "suggested": "Vorschlag",
+    "current": "Aktuell",
     "decline": "Vorschlag ablehnen",
-    "empty": "Keine Kategorie passt"
+    "empty": "Keine Kategorie passt",
+    "remember": "Beim nächsten Mal genauso",
+    "rememberFrom": "Künftige Zahlungen von {{who}} auf dieses Konto erhalten dieselbe Kategorie.",
+    "rememberTo": "Künftige Zahlungen an {{who}} von diesem Konto erhalten dieselbe Kategorie.",
+    "applyHistory_one": "Auch {{count}} frühere Zahlung ändern",
+    "applyHistory_other": "Auch {{count}} frühere Zahlungen ändern",
+    "applyHistorySub": "Jetzt: {{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "Häufig",
+    "all": "Alle Währungen"
   },
   "import": {
     "title": "Kontoauszug importieren",
@@ -740,7 +761,8 @@
       "usageBudgets_one": "{{count}} Budget",
       "usageBudgets_other": "{{count}} Budgets"
     },
-    "remindersLead": "Wählen Sie, woran die Datenpflege und „Was ansteht“ in der Übersicht erinnern; die Benachrichtigungen folgen derselben Liste. Eine ausgeschaltete Art erscheint nirgends, auch nicht am Computer. Wann Benachrichtigungen kommen, legen Sie unter Benachrichtigungen fest."
+    "remindersLead": "Wählen Sie, woran die Datenpflege und „Was ansteht“ in der Übersicht erinnern; die Benachrichtigungen folgen derselben Liste. Eine ausgeschaltete Art erscheint nirgends, auch nicht am Computer. Wann Benachrichtigungen kommen, legen Sie unter Benachrichtigungen fest.",
+    "saveTimeout": "Das Speichern dauert zu lange. Bitte versuchen Sie es erneut."
   },
   "backup": {
     "lead": "Eine Sicherung ist eine verschlüsselte Datei: Datenbank, Schlüssel und Anhänge. Nur Ihr Passwort öffnet sie.",
@@ -891,6 +913,10 @@
       "keep": "Weiter bearbeiten",
       "confirm": "Verwerfen"
     }
+  },
+  "fields": {
+    "pickDay": "Tag wählen",
+    "pickMonth": "Monat wählen"
   },
   "loadError": {
     "overview": "Die Übersicht konnte nicht geladen werden.",

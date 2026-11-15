@@ -68,6 +68,9 @@ export function useSettingsMutations() {
       }
       if (variables?.language) {
         toast(i18n.getFixedT(variables.language, 'settings')('toast.languageChanged'));
+      } else if (variables?.currency) {
+        // Say what changed and what followed: every total is now in the new main currency
+        toast(t('toast.currencyChanged', { currency: variables.currency }));
       } else {
         toast(t('toast.profileUpdated'));
       }

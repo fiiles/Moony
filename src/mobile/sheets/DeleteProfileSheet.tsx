@@ -4,16 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { confirmWordMatches } from '@/lib/confirm-word';
 import { authApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { Sheet } from '@/mobile/components/Sheet';
 import { cancelAllNotifications } from '@/mobile/hooks/use-notification-schedule';
-
-/**
- * The word to type before everything is deleted: the same as the desktop's confirmation word
- * (`DELETE_ACCOUNT_CONFIRM_WORD` in `components/settings/DangerZoneCard.tsx`, not exported there).
- */
-const DELETE_ACCOUNT_CONFIRM_WORD = 'DELETE';
 
 interface DeleteProfileSheetProps {
   open: boolean;
@@ -22,15 +17,19 @@ interface DeleteProfileSheetProps {
 
 /**
  * "Smazat všechna data?" (spec §8.9, §10.5): the destructive confirmation with the typed word of
- * the desktop's danger zone. The database, the key files and the attachments of this phone go
+ * the desktop's danger zone, translated. The database, the key files and the attachments of this phone go
  * (`authApi.deleteAccount`); afterwards the UI preferences of the account go too and the webview
  * reloads, which leaves the shell at `needs_setup` — the first run.
  */
 export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetProps) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
+  const { t: ts } = useTranslation('settings');
   const [typed, setTyped] = useState('');
-  const confirmed = typed.trim().toUpperCase() === DELETE_ACCOUNT_CONFIRM_WORD;
+  // The word to type before everything is deleted, in the UI language and as the desktop's
+  // danger zone asks for it ("SMAZAT"); any case will do (audit B5)
+  const word = ts('dangerZone.confirmWord');
+  const confirmed = confirmWordMatches(typed, word);
 
   const remove = useMutation({
     mutationFn: () => authApi.deleteAccount(),
@@ -87,13 +86,13 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
       }
     >
       <label htmlFor="delete-profile-confirm" className="block text-m-sub font-semibold text-ink-2">
-        {t('settings.delete.confirmLabel', { word: DELETE_ACCOUNT_CONFIRM_WORD })}
+        {t('settings.delete.confirmLabel', { word })}
       </label>
       <Input
         id="delete-profile-confirm"
         value={typed}
         onChange={(event) => setTyped(event.target.value)}
-        placeholder={DELETE_ACCOUNT_CONFIRM_WORD}
+        placeholder={word}
         autoComplete="off"
         autoCapitalize="off"
         autoCorrect="off"

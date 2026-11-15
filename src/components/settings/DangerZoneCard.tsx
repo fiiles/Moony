@@ -20,10 +20,8 @@ import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { authApi } from '@/lib/tauri-api';
 import { clearEnrolmentAsked } from '@/lib/biometrics';
+import { confirmWordMatches } from '@/lib/confirm-word';
 import { translateApiError } from '@/lib/translate-api-error';
-
-// Word the user must type before the account can be deleted (DZ-01)
-const DELETE_ACCOUNT_CONFIRM_WORD = 'DELETE';
 
 /** Settings → Account → Nebezpečná zóna (prototype `settings.html`): delete everything, typed confirmation. */
 export function DangerZoneCard() {
@@ -42,7 +40,9 @@ export function DangerZoneCard() {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const deleteConfirmed = deleteConfirmText.trim().toUpperCase() === DELETE_ACCOUNT_CONFIRM_WORD;
+  // Word the user must type before the account can be deleted (DZ-01), in the UI language; any case
+  const confirmWord = t('dangerZone.confirmWord');
+  const deleteConfirmed = confirmWordMatches(deleteConfirmText, confirmWord);
 
   const deleteAccountMutation = useMutation({
     mutationFn: async () => {
@@ -94,13 +94,13 @@ export function DangerZoneCard() {
             </AlertDialogHeader>
             <div className="space-y-2">
               <Label htmlFor="delete-account-confirm">
-                {t('dangerZone.confirmLabel', { word: DELETE_ACCOUNT_CONFIRM_WORD })}
+                {t('dangerZone.confirmLabel', { word: confirmWord })}
               </Label>
               <Input
                 id="delete-account-confirm"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder={DELETE_ACCOUNT_CONFIRM_WORD}
+                placeholder={confirmWord}
                 autoComplete="off"
                 autoCapitalize="off"
                 spellCheck={false}

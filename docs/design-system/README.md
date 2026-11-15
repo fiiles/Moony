@@ -675,6 +675,23 @@ caption. Credential failures show under the field, everything else as a toast.
 | Learned format sheet | `.m-sheet`, `.m-kv`, `--stack`, `.m-btn--danger`, `.m-btn--destructive` | `mobile/sheets/LearnedFormatSheet.tsx` | A learned format tapped on Nastavení → Import: "Naučený formát", the name as a 48 pt field (the rename sheets' own, `maxLength` 60) over key-value rows on `line-soft` — Účet (name and institution; no row when the account is gone), Naučeno, Naposledy použito (full day) and Sloupce, a stacked row so it wraps: "Datum: Datum zaúčtování · Částka: Objem", or the pair with its sides named, "Výdaje: A · Příjmy: B" (the recognition's strings) — a quiet caption (12 / 500 `ink-3`) under them for a format a bank preset now shadows ("Soubory s tímto uspořádáním sloupců čte vestavěný formát banky; tento naučený formát se nepoužije."), then the text-only danger button "Smazat formát", 48 pt, full width. Footer: ghost Zrušit and the primary Uložit, off while the name is unchanged or empty; saving closes the sheet and toasts "Formát přejmenován". "Smazat formát" asks first in a confirm sheet ("Smazat formát Fio banka?", "Příští soubor v tomto formátu znovu projde rozpoznáním.", the destructive "Smazat formát"); the sheet closes with it and toasts "Formát smazán". The store's refusal (a name over 60 characters or empty) is the error toast with the translated reason; the sheet stays. |
 | Export guides sheet | `.m-sheet--full`, `.m-pick`, `.m-guide` | `mobile/sheets/ExportGuidesSheet.tsx` | "Jak získat výpis z banky" from Nastavení → Import: a tall sheet holding the import sheet's own list of bank guides (Export guide: "Návody bank" by country and name, a tap opens that bank's three steps in place under a text button back to the list) and one primary, Zavřít. The presets are the ones the import reads. |
 
+**Sheet footers: one rule (audit 2026-11-15 C7, C12).** A sheet has a footer only when it acts, and
+this rule replaces what the Sheet row of the table above says about the footer. A sheet that acts
+(saves, imports, deletes, turns something on) has the footer on `well`: a ghost text button on the
+left ("Zrušit", or the lesser choice: "Teď ne", "Vymazat") and the one filled primary on the right,
+taking the rest of the row (a destructive act fills it with `destructive`). A sheet that only shows
+something (the import history, closed positions, a photo, a document, the transaction sheet, whose
+rows save as they change) has no filled button at all: it closes by a drag, the scrim, back, and
+**Hotovo**, a 15 / 600 `ink` text action at the right of its head (`Sheet`'s `dismiss="done"`, the
+default without a footer). A picker whose tap is the choice (language, currency, category, day,
+country, plan) has no footer either; its head says **Zrušit** (`dismiss="cancel"`). A viewer may keep
+one tool or one secondary act in the footer (the document's zoom, "Smazat fotku" as a ghost `loss`
+text), never a filled "Zavřít". A picker whose tap saves before it closes (the language, the main
+currency) shows the save on the picked row: a spinning ring where the check goes, the other rows
+faded and disabled (`PickRow`'s `pending` and `dimmed`, `usePendingPick`), and after 12 s a toast that
+it is taking too long. A sheet opened over another sheet shows one grabber: the covered sheet hides its
+handle while the newer one is open (`lib/sheet-stack.ts`).
+
 **Amounts are always shown.** There is no eye and no hide-amounts setting on the phone. Phone code
 formats money through `useMoneyText()` (a plain string, where the text sizes itself — `Hero.formatValue`
 and `StatItem.value` are strings for that reason — and as the formatter handed to shared hooks),

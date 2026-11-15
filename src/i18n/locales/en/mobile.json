@@ -38,7 +38,10 @@
       "done": "Done"
     },
     "limitSheet": {
-      "pick": "Choose the category whose spending you want to keep in check."
+      "pick": "Choose the category whose spending you want to keep in check.",
+      "usual": "You usually spend {{amount}} a month.",
+      "openHelp": "Applies until you change it.",
+      "closedHelp": "After the last month, the limit that applied before returns."
     },
     "budgets": {
       "averageNote": "⌀ over the last 6 months"
@@ -331,10 +334,15 @@
   },
   "transaction": {
     "flowSaved": "Meaning saved",
-    "counterparty": "Counterparty",
-    "date": "Date",
     "category": "Category",
-    "flow": "Meaning",
+    "flow": "Counts as",
+    "auto": "Automatic",
+    "by": {
+      "explicit": "chosen by you",
+      "category": "from its category",
+      "direction": "from the direction of the payment",
+      "ownAccount": "between your own accounts"
+    },
     "details": "Details",
     "sourceLabel": "Source",
     "source": {
@@ -345,6 +353,8 @@
     "status": "Status",
     "booked": "Booked",
     "currency": "Currency",
+    "counterpartyAccount": "Counterparty account",
+    "copied": "Copied: {{label}}",
     "plan": "Spending plan",
     "noPlan": "No plan"
   },
@@ -353,8 +363,19 @@
     "recent": "Recently used",
     "all": "All categories",
     "suggested": "Suggested",
+    "current": "Current",
     "decline": "Decline suggestion",
-    "empty": "No category matches"
+    "empty": "No category matches",
+    "remember": "Do the same next time",
+    "rememberFrom": "Future payments from {{who}} to this account get the same category.",
+    "rememberTo": "Future payments to {{who}} from this account get the same category.",
+    "applyHistory_one": "Also change {{count}} earlier payment",
+    "applyHistory_other": "Also change {{count}} earlier payments",
+    "applyHistorySub": "Now: {{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "Frequent",
+    "all": "All currencies"
   },
   "import": {
     "title": "Import statement",
@@ -740,7 +761,8 @@
       "usageBudgets_one": "{{count}} budget",
       "usageBudgets_other": "{{count}} budgets"
     },
-    "remindersLead": "Choose what Data upkeep and “What's coming up” on Overview remind you of; notifications follow the same list. A kind you switch off is hidden everywhere, on your computer too. When notifications arrive is set in Notifications."
+    "remindersLead": "Choose what Data upkeep and “What's coming up” on Overview remind you of; notifications follow the same list. A kind you switch off is hidden everywhere, on your computer too. When notifications arrive is set in Notifications.",
+    "saveTimeout": "Saving is taking too long. Please try again."
   },
   "backup": {
     "lead": "A backup is one encrypted file: the database, the keys and the attachments. Only your password opens it.",
@@ -891,6 +913,10 @@
       "keep": "Keep editing",
       "confirm": "Discard"
     }
+  },
+  "fields": {
+    "pickDay": "Pick a day",
+    "pickMonth": "Pick a month"
   },
   "loadError": {
     "overview": "The overview could not be loaded.",

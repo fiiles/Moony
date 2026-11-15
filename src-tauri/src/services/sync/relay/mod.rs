@@ -6,6 +6,7 @@
 use std::future::Future;
 
 use serde::Deserialize;
+use uuid::Uuid;
 
 use super::keys::VaultAuth;
 
@@ -60,12 +61,61 @@ pub enum ServerMode {
     Other,
 }
 
-/// `GET /v1/server`. `version` is 1–32 characters of `[0-9A-Za-z.+-]`.
+/// `GET /v1/server`. `version` is 1–32 characters of `[0-9A-Za-z.+-]`. `blobs`: the server's
+/// `features` list names `"blobs"` (the blob routes exist); a server without the list has no
+/// features, and features this app does not know are ignored.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerInfo {
     pub version: String,
     pub protocol: u32,
     pub mode: ServerMode,
+    pub blobs: bool,
+}
+
+/// One blob of a listing (`GET /v1/vaults/:id/blobs`): its ID, its stored (sealed) size and when
+/// the server stored it, in unix seconds on the server's clock.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RemoteBlob {
+    pub id: Uuid,
+    pub size: u64,
+    pub created_at: i64,
+}
+
+/// One page of a blob listing, ascending by ID. `server_now` is the listing's `now` (unix seconds
+/// on the server's clock, the clock `created_at` is on): what a blob's age is measured against.
+/// `None` when the server sent no `now` or one that is not a non-negative integer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlobPage {
+    pub blobs: Vec<RemoteBlob>,
+    pub more: bool,
+    pub server_now: Option<i64>,
+}
+
+/// The most blobs one listing page may ask for (the server's cap).
+pub const MAX_BLOB_PAGE: u32 = 1000;
+
+/// A blob's sealed bytes on their way up, piece by piece: never one buffer for the whole blob.
+pub type BlobBody = Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send + 'static>;
+
+/// What a `BlobSink` wants after it was handed something.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SinkFlow {
+    Continue,
+    Stop,
+}
+
+/// Where a downloaded blob goes, piece by piece: `begin` once with the sealed length the server
+/// announced, then `piece` for each part of the body in order. `Stop` ends the download there.
+pub trait BlobSink: Send {
+    fn begin(&mut self, sealed_len: u64) -> SinkFlow;
+    fn piece(&mut self, bytes: &[u8]) -> SinkFlow;
+}
+
+/// How a download ended: every byte handed to the sink, or the sink said `Stop`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Delivery {
+    Complete,
+    Stopped,
 }
 
 /// One sealed op on its way to the relay.
@@ -174,6 +224,13 @@ pub enum RelayError {
     /// `410 mailbox_gone`: the mailbox expired or was burnt.
     #[error("pairing mailbox gone")]
     MailboxGone,
+    /// `404 blob_not_found`: the vault has no blob of that ID (never uploaded, deleted, or its
+    /// file is gone on the server).
+    #[error("blob not found")]
+    BlobNotFound,
+    /// `507` (`server_full`): the server's disk is at its free-space floor. By status alone.
+    #[error("insufficient storage")]
+    InsufficientStorage,
     #[error("bad request: {0}")]
     BadRequest(String),
     #[error("server error {0}")]
@@ -198,6 +255,8 @@ const BAD_REQUEST_CODES: &[&str] = &[
     "invalid_rekey",
     "bad_mailbox",
     "bad_slot",
+    "invalid_blob_id",
+    "incomplete_body",
 ];
 
 #[derive(Deserialize)]
@@ -208,24 +267,44 @@ struct ErrorBody {
 
 impl RelayError {
     /// The typed error of a relay answer that is not a success, by status and the `"error"` code
-    /// of its `{"error": "<code>"}` body. Rate limits, redirects, `408` and 5xx go by status alone
-    /// (an edge or proxy may answer them with HTML); everything else needs the documented code for
-    /// its status, and an unknown code or a body that is not that JSON shape is `Protocol`. A `502`
-    /// / `503` of the checkout route is `CheckoutUnavailable`, decided by the caller, which knows
-    /// the route.
+    /// of its `{"error": "<code>"}` body. Rate limits, redirects, `408`, `507` and 5xx go by
+    /// status alone (an edge or proxy may answer them with HTML); everything else needs the
+    /// documented code for its status, and an unknown code or a body that is not that JSON shape
+    /// is `Protocol`. A `502` / `503` of the checkout route is `CheckoutUnavailable`, decided by
+    /// the caller, which knows the route.
     pub fn from_response(status: u16, body: &[u8]) -> Self {
-        match status {
-            300..=399 => return RelayError::Protocol("redirect".into()),
-            429 => return RelayError::RateLimited,
-            // A slow upload (`408 body_timeout`) passes like a busy server (`503 busy`).
-            408 | 500..=599 => return RelayError::Server(status),
-            400..=499 => {}
-            _ => return RelayError::Protocol("unexpected status".into()),
+        if let Some(error) = Self::by_status(status) {
+            return error;
         }
         let Ok(ErrorBody { error: code }) = serde_json::from_slice::<ErrorBody>(body) else {
             return RelayError::Protocol("not json".into());
         };
-        match (status, code.as_str()) {
+        Self::by_code(status, &code)
+    }
+
+    /// The typed error of an answer whose code came from its `Moony-Error` header (blob routes;
+    /// a `HEAD` answer has no body): the same status rules and code table as `from_response`.
+    pub fn from_code(status: u16, code: &str) -> Self {
+        Self::by_status(status).unwrap_or_else(|| Self::by_code(status, code))
+    }
+
+    /// The statuses decided without a code; `None` for a 4xx, which needs its code.
+    fn by_status(status: u16) -> Option<Self> {
+        Some(match status {
+            300..=399 => RelayError::Protocol("redirect".into()),
+            // `429 too_many_uploads` (two blob uploads of a vault running) passes the same way.
+            429 => RelayError::RateLimited,
+            // `507 server_full`: the server's disk is at its free-space floor.
+            507 => RelayError::InsufficientStorage,
+            // A slow upload (`408 body_timeout`) passes like a busy server (`503 busy`).
+            408 | 500..=599 => RelayError::Server(status),
+            400..=499 => return None,
+            _ => RelayError::Protocol("unexpected status".into()),
+        })
+    }
+
+    fn by_code(status: u16, code: &str) -> Self {
+        match (status, code) {
             (400, code) => match BAD_REQUEST_CODES.iter().find(|known| **known == code) {
                 Some(known) => RelayError::BadRequest((*known).to_string()),
                 None => RelayError::Protocol("unknown error code".into()),
@@ -239,6 +318,7 @@ impl RelayError {
             (404, "account_not_found") => RelayError::AccountNotFound,
             (404, "vault_not_found") => RelayError::VaultNotFound,
             (404, "no_snapshot") => RelayError::NoSnapshot,
+            (404, "blob_not_found") => RelayError::BlobNotFound,
             (404, "not_found") => RelayError::BadRequest("not_found".into()),
             (405, "method_not_allowed") => RelayError::BadRequest("method_not_allowed".into()),
             (409, "vault_exists") => RelayError::VaultExists,
@@ -258,6 +338,7 @@ impl RelayError {
             (413, "snapshot_too_large") => RelayError::SnapshotTooLarge,
             (413, "body_too_large") => RelayError::BadRequest("body_too_large".into()),
             (413, "rekey_too_large") => RelayError::BadRequest("rekey_too_large".into()),
+            (413, "blob_too_large") => RelayError::BadRequest("blob_too_large".into()),
             _ => RelayError::Protocol("unknown error code".into()),
         }
     }
@@ -317,6 +398,43 @@ pub trait Relay: Send + Sync {
     ) -> impl Future<Output = RelayResult<SnapshotBlob>> + Send;
     /// `DELETE /v1/vaults/:id`.
     fn delete_vault(&self, vault: &VaultAuth) -> impl Future<Output = RelayResult<()>> + Send;
+    /// `PUT /v1/vaults/:id/blobs/:blob`: `body` streamed with `Content-Length: sealed_len`. A
+    /// blob the server already holds succeeds without being stored again. A body that is not
+    /// `sealed_len` bytes is `BadRequest("length_required")`; one over the blob cap is refused
+    /// before anything is sent.
+    fn put_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: Uuid,
+        sealed_len: u64,
+        body: BlobBody,
+    ) -> impl Future<Output = RelayResult<()>> + Send;
+    /// `HEAD /v1/vaults/:id/blobs/:blob` → the stored size, or `None` when the blob is missing.
+    fn head_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: Uuid,
+    ) -> impl Future<Output = RelayResult<Option<u64>>> + Send;
+    /// `GET /v1/vaults/:id/blobs/:blob`, handed to `sink` piece by piece as it arrives.
+    fn get_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: Uuid,
+        sink: &mut (dyn BlobSink + Send),
+    ) -> impl Future<Output = RelayResult<Delivery>> + Send;
+    /// `GET /v1/vaults/:id/blobs?after=&limit=` (`after` exclusive; `limit` 1..=`MAX_BLOB_PAGE`).
+    fn list_blobs(
+        &self,
+        vault: &VaultAuth,
+        after: Option<Uuid>,
+        limit: u32,
+    ) -> impl Future<Output = RelayResult<BlobPage>> + Send;
+    /// `DELETE /v1/vaults/:id/blobs/:blob`; a blob that is already gone is success.
+    fn delete_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: Uuid,
+    ) -> impl Future<Output = RelayResult<()>> + Send;
 }
 
 /// The most a pairing slot holds (Moony-relay `MAX_MAILBOX_SLOT_BYTES`).
@@ -414,6 +532,15 @@ mod tests {
             (404, "empty", E::SlotEmpty),
             (410, "consumed", E::SlotConsumed),
             (410, "mailbox_gone", E::MailboxGone),
+            // Blobs (Moony-relay DESIGN.md "Blobs", src/blob-api.ts).
+            (404, "blob_not_found", E::BlobNotFound),
+            (400, "invalid_blob_id", bad("invalid_blob_id")),
+            (400, "incomplete_body", bad("incomplete_body")),
+            (413, "blob_too_large", bad("blob_too_large")),
+            (429, "too_many_uploads", E::RateLimited),
+            (507, "anything", E::InsufficientStorage),
+            (507, "server_full", E::InsufficientStorage),
+            (500, "internal_error", E::Server(500)),
             // A documented code under the wrong status, or an unknown code.
             (404, "snapshot_required", unknown_code()),
             (410, "vault_not_found", unknown_code()),
@@ -468,6 +595,47 @@ mod tests {
         );
     }
 
+    /// A blob route's code may come from its `Moony-Error` header (a `HEAD` has no body): the
+    /// same status rules and the same table as a body's code.
+    #[test]
+    fn a_header_code_maps_like_a_body_code() {
+        assert_eq!(
+            RelayError::from_code(404, "blob_not_found"),
+            E::BlobNotFound
+        );
+        assert_eq!(
+            RelayError::from_code(404, "vault_not_found"),
+            E::VaultNotFound
+        );
+        assert_eq!(
+            RelayError::from_code(507, "server_full"),
+            E::InsufficientStorage
+        );
+        assert_eq!(
+            RelayError::from_code(429, "too_many_uploads"),
+            E::RateLimited
+        );
+        assert_eq!(RelayError::from_code(404, "../x"), unknown_code());
+    }
+
+    /// A full server backs off like the `507` it was before it had a variant; a missing blob is a
+    /// refusal the caller handles.
+    #[test]
+    fn blob_answers_take_their_sync_classes() {
+        use crate::services::sync::error::{SyncError, Transient};
+        let full = SyncError::from(E::InsufficientStorage);
+        assert!(
+            matches!(full, SyncError::Transient(Transient::Relay)),
+            "{full:?}"
+        );
+        assert!(full.backs_off());
+        let missing = SyncError::from(E::BlobNotFound);
+        assert!(
+            matches!(missing, SyncError::Refused(E::BlobNotFound)),
+            "{missing:?}"
+        );
+    }
+
     #[test]
     fn answers_without_the_json_shape_are_protocol_errors() {
         let not_json = E::Protocol("not json".into());
@@ -489,6 +657,10 @@ mod tests {
             E::Server(500)
         );
         assert_eq!(RelayError::from_response(599, b""), E::Server(599));
+        assert_eq!(
+            RelayError::from_response(507, b"<html>"),
+            E::InsufficientStorage
+        );
         assert_eq!(
             RelayError::from_response(302, b""),
             E::Protocol("redirect".into())

@@ -60,7 +60,8 @@ impl From<RelayError> for SyncError {
             RelayError::SnapshotTooLarge => SyncError::TooLarge(TooLarge::Snapshot),
             RelayError::RateLimited => SyncError::RateLimited,
             RelayError::Network(_) => SyncError::Transient(Transient::Offline),
-            RelayError::Protocol(_) | RelayError::Server(_) => {
+            // A full disk (`507`) backs off like any passing server error.
+            RelayError::Protocol(_) | RelayError::Server(_) | RelayError::InsufficientStorage => {
                 SyncError::Transient(Transient::Relay)
             }
             refused @ (RelayError::VaultLimitReached
@@ -76,6 +77,7 @@ impl From<RelayError> for SyncError {
             | RelayError::SlotEmpty
             | RelayError::SlotConsumed
             | RelayError::MailboxGone
+            | RelayError::BlobNotFound
             | RelayError::BadRequest(_)) => SyncError::Refused(refused),
         }
     }

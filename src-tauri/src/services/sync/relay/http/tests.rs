@@ -803,6 +803,7 @@ async fn server_info_reads_the_documented_answer() {
             version: "1.0.0".into(),
             protocol: 2,
             mode: ServerMode::SelfHosted,
+            blobs: false,
         }
     );
     let request = server.join().expect("server");
@@ -851,6 +852,7 @@ async fn server_info_refuses_what_is_not_a_moony_server() {
             version: "1.2.3-rc.1+b5".into(),
             protocol: 2,
             mode: ServerMode::Cloud,
+            blobs: false,
         })
     );
     assert_eq!(

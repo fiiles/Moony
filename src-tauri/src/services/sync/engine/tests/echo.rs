@@ -536,6 +536,37 @@ impl Relay for FailSecondPull {
     async fn delete_vault(&self, vault: &VaultAuth) -> RelayResult<()> {
         self.inner.delete_vault(vault).await
     }
+    async fn put_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: uuid::Uuid,
+        sealed_len: u64,
+        body: crate::services::sync::relay::BlobBody,
+    ) -> RelayResult<()> {
+        self.inner.put_blob(vault, blob, sealed_len, body).await
+    }
+    async fn head_blob(&self, vault: &VaultAuth, blob: uuid::Uuid) -> RelayResult<Option<u64>> {
+        self.inner.head_blob(vault, blob).await
+    }
+    async fn get_blob(
+        &self,
+        vault: &VaultAuth,
+        blob: uuid::Uuid,
+        sink: &mut (dyn crate::services::sync::relay::BlobSink + Send),
+    ) -> RelayResult<crate::services::sync::relay::Delivery> {
+        self.inner.get_blob(vault, blob, sink).await
+    }
+    async fn list_blobs(
+        &self,
+        vault: &VaultAuth,
+        after: Option<uuid::Uuid>,
+        limit: u32,
+    ) -> RelayResult<crate::services::sync::relay::BlobPage> {
+        self.inner.list_blobs(vault, after, limit).await
+    }
+    async fn delete_blob(&self, vault: &VaultAuth, blob: uuid::Uuid) -> RelayResult<()> {
+        self.inner.delete_blob(vault, blob).await
+    }
 }
 
 /// Review minor 1: the echo pull failing does not fail a round whose push went through; the next

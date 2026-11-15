@@ -580,6 +580,37 @@ impl Relay for Inflated {
     async fn delete_vault(&self, _: &VaultAuth) -> RelayResult<()> {
         unreachable!("not a push call")
     }
+    async fn put_blob(
+        &self,
+        _: &VaultAuth,
+        _: uuid::Uuid,
+        _: u64,
+        _: crate::services::sync::relay::BlobBody,
+    ) -> RelayResult<()> {
+        unreachable!("not a push call")
+    }
+    async fn head_blob(&self, _: &VaultAuth, _: uuid::Uuid) -> RelayResult<Option<u64>> {
+        unreachable!("not a push call")
+    }
+    async fn get_blob(
+        &self,
+        _: &VaultAuth,
+        _: uuid::Uuid,
+        _: &mut (dyn crate::services::sync::relay::BlobSink + Send),
+    ) -> RelayResult<crate::services::sync::relay::Delivery> {
+        unreachable!("not a push call")
+    }
+    async fn list_blobs(
+        &self,
+        _: &VaultAuth,
+        _: Option<uuid::Uuid>,
+        _: u32,
+    ) -> RelayResult<crate::services::sync::relay::BlobPage> {
+        unreachable!("not a push call")
+    }
+    async fn delete_blob(&self, _: &VaultAuth, _: uuid::Uuid) -> RelayResult<()> {
+        unreachable!("not a push call")
+    }
 }
 
 /// Task 6 review obligation: a receipt claiming more ops than were sent is outside the relay

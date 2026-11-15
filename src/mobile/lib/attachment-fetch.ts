@@ -63,7 +63,10 @@ export interface ViewerLayers {
   note: boolean;
 }
 
-/** The loading skeleton belongs to a full load that is really under way, never to a state's note card. */
+/**
+ * The loading skeleton belongs to a full load that is really under way, never to a state's note
+ * card.
+ */
 export function viewerLayers(
   stage: FetchPlan['stage'],
   status: 'loading' | 'ready' | 'failed' | 'fetching'
@@ -76,11 +79,10 @@ export function viewerLayers(
 }
 
 /**
- * Whether tapping a row opens the viewer. Deliberately differs from `attachmentView(…, 'phone')
- * .openable` for `failed` and `downloading`: a failed row opens to "Try again", a downloading one
- * to the spinner. Everything does but content that cannot arrive
- * (`notOnServer`: the other device has not uploaded it) or is lost (`missing`): the row's own note
- * says so. A failed or downloading one opens to its state, with Try again for a failed one.
+ * Whether tapping a row opens the viewer. It deliberately differs from
+ * `attachmentView(…, 'phone').openable`: a failed row opens to "Try again" and a downloading row
+ * opens to the spinner. Only content that is not on the server yet (`notOnServer`) or is lost
+ * (`missing`) does not open; the row's own note says why.
  */
 export function rowOpensViewer(content: AttachmentContent): boolean {
   return content !== 'notOnServer' && content !== 'missing';

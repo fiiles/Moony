@@ -665,7 +665,6 @@
       "failed": "Nie udało się pobrać",
       "retry": "Spróbuj ponownie",
       "missing": "Brak zawartości",
-      "download": "Pobierz",
       "fetching": "Pobieranie z serwera synchronizacji…"
     }
   },

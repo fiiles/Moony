@@ -5,6 +5,7 @@
  */
 import type { AttachmentContent } from '@shared/schema';
 import type { Formatters } from '@/lib/format';
+import { fileSizeText } from '@/utils/file-size';
 import { attachmentView, type AttachmentNote } from '@/utils/attachment-content';
 import { viewerKind } from '@/utils/attachment-viewer';
 
@@ -76,29 +77,18 @@ export function documentNameFrom(
   return base === '' ? clampName(photoName) : base;
 }
 
-const KILOBYTE = 1024;
-const MEGABYTE = 1024 * 1024;
-
-/** "512 B", "830 kB", "1,2 MB": the desktop's units, the number in the language's own form. */
-export function fileSizeText(bytes: number, fmt: Pick<Formatters, 'number'>): string {
-  if (bytes < KILOBYTE) return `${fmt.number(bytes)} B`;
-  const kilobytes = Math.round(bytes / KILOBYTE);
-  // 1 048 575 bytes round to 1024 kB: that is a megabyte
-  if (kilobytes < KILOBYTE) return `${fmt.number(kilobytes)} kB`;
-  return `${fmt.number(bytes / MEGABYTE, { maximumFractionDigits: 1 })} MB`;
-}
-
 /** What a document row's sub-line reads. */
-interface DocumentSubInput {
+type DocumentSubInput = {
   fileType: string;
   fileSize: number | null;
   /** A real instant (the backend stamps it with the clock), not a calendar day. */
   uploadedAt: number;
-  /** Where the content is with device sync; left out (or `here`) the line has no note. */
-  content?: AttachmentContent;
-  /** The file's type: one the phone cannot show is never downloaded on open. */
-  mimeType?: string;
-}
+} & (
+  | { content?: undefined; mimeType?: string }
+  // Where the content is with device sync always comes with the file's type: a file the phone
+  // cannot show is never downloaded on open, so its row must not say "tap to download".
+  | { content: AttachmentContent; mimeType: string }
+);
 
 /**
  * The words a row's note can take: `notHereSub` is the phone's own (`mobile.documents`), the rest
@@ -107,16 +97,13 @@ interface DocumentSubInput {
 export type DocumentNoteKey = 'notHereSub' | 'elsewhereSub' | AttachmentNote;
 
 /** The note a row's sub-line starts with, or `null` for content that is here. */
-function documentNoteKey(
-  doc: DocumentSubInput & { content: AttachmentContent }
-): DocumentNoteKey | null {
-  const { content } = doc;
-  // The phone's `notHere` is a document to download, not a spinner (`attachmentView`'s `download` action)
+function documentNoteKey(content: AttachmentContent, mimeType: string): DocumentNoteKey | null {
+  // The phone's `notHere` is a document to download, not a spinner (`attachmentView`'s `download`
+  // action)
   if (content === 'notHere') {
-    // A file the phone cannot show is not downloaded on open (no share action here), so no "tap to download"
-    return doc.mimeType !== undefined && viewerKind(doc.mimeType) === 'external'
-      ? 'elsewhereSub'
-      : 'notHereSub';
+    // A file the phone cannot show is not downloaded on open (no share action here), so no "tap to
+    // download"
+    return viewerKind(mimeType) === 'external' ? 'elsewhereSub' : 'notHereSub';
   }
   return attachmentView(content, 'phone').note;
 }
@@ -125,8 +112,9 @@ function documentNoteKey(
  * The sub-line of a document row: the type's label · the size · the upload day ("smlouva · 1,2 MB ·
  * 24. 10. 2026"). The size is left out when it is not known. The day is the local one — the upload
  * is a real instant, so a document added at 00:30 is not dated the day before. A document whose
- * content is not on the phone starts with the note that says where it is (`noteText` words it; first, so a narrow screen's cut falls on the day);
- * content that is here (or sync off) gives the line it always was.
+ * content is not on the phone starts with the note that says where it is (`noteText` words it;
+ * first, so a narrow screen's cut falls on the day); content that is here (or sync off) gives the
+ * line it always was.
  */
 export function documentSub(
   doc: DocumentSubInput,
@@ -134,8 +122,7 @@ export function documentSub(
   fmt: Pick<Formatters, 'number' | 'date'>,
   noteText?: (key: DocumentNoteKey) => string
 ): string {
-  const noteKey =
-    doc.content && noteText ? documentNoteKey({ ...doc, content: doc.content }) : null;
+  const noteKey = doc.content && noteText ? documentNoteKey(doc.content, doc.mimeType) : null;
   return [
     noteKey && noteText ? noteText(noteKey) : '',
     typeLabel(doc.fileType),

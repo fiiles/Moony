@@ -29,7 +29,13 @@ import {
 import { attachmentsApi, deviceSyncApi, realEstateApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { Skeleton } from '@/components/ui/skeleton';
-import { attachmentView, thumbnailShown, type AttachmentView } from '@/utils/attachment-content';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  attachmentView,
+  thumbnailPlaceholder,
+  thumbnailShown,
+  type AttachmentView,
+} from '@/utils/attachment-content';
 import { reconcileLightbox } from '@/utils/lightbox-photos';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -66,8 +72,12 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
   // Photos whose ask for the full content failed in this lightbox visit (shown as `failed`).
   const [failedAsks, setFailedAsks] = useState<ReadonlySet<string>>(new Set());
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  // Counts lightbox visits (every open and close): the late answer of a download ask or retry
+  // from an earlier visit must not mark, or toast over, the one that is open now.
+  const visit = useRef(0);
 
   const closeLightbox = () => {
+    visit.current += 1;
     setLightboxOpen(false);
     setBrokenImages(new Set());
     setFailedAsks(new Set());
@@ -316,9 +326,11 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
     if (!lightboxPhotoId || lightboxContent !== 'notHere') return;
     if (requestedFull.current.has(lightboxPhotoId)) return;
     requestedFull.current.add(lightboxPhotoId);
+    const askedIn = visit.current;
     // The list refreshes through the `sync-attachments-changed` event; this changes no financial
     // data, so no snapshot and no cache writes by hand.
     deviceSyncApi.downloadAttachment('photo', lightboxPhotoId).catch((error) => {
+      if (visit.current !== askedIn) return;
       setFailedAsks((prev) => new Set(prev).add(lightboxPhotoId));
       toast.error(tc('status.error'), {
         description: translateApiError(error instanceof Error ? error : String(error), tc),
@@ -329,6 +341,8 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
   // "Try again" in the lightbox: ask again for a photo whose content is `notHere`, retry one that
   // `failed`. The event refreshes the list; no snapshot and no cache writes by hand.
   const retryPhoto = (photo: RealEstatePhoto) => {
+    if (retryingId) return;
+    const askedIn = visit.current;
     setRetryingId(photo.id);
     setFailedAsks((prev) => {
       const next = new Set(prev);
@@ -341,12 +355,15 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
         : deviceSyncApi.downloadAttachment('photo', photo.id);
     call
       .catch((error) => {
+        if (visit.current !== askedIn) return;
         if (photo.content === 'notHere') setFailedAsks((prev) => new Set(prev).add(photo.id));
         toast.error(tc('status.error'), {
           description: translateApiError(error instanceof Error ? error : String(error), tc),
         });
       })
-      .finally(() => setRetryingId(null));
+      .finally(() => {
+        if (visit.current === askedIn) setRetryingId(null);
+      });
   };
 
   const getPhotoUrl = (photo: RealEstatePhoto) => attachmentUrl('photo-thumb', photo.id);
@@ -354,6 +371,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
   const getFullPhotoUrl = (photo: RealEstatePhoto) => attachmentUrl('photo', photo.id);
 
   const openLightbox = (batch: RealEstatePhotoBatch, photoIndex: number) => {
+    visit.current += 1;
     setLightboxPhotos(batch.photos);
     setLightboxIndex(photoIndex);
     setBrokenImages(new Set());
@@ -510,20 +528,31 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                       const reason = blocking.some((v) => v.busy)
                         ? 'downloading'
                         : (blocking[0]?.note ?? null);
-                      return (
+                      const button = (
                         <Button
                           variant="ghost"
                           size="icon"
                           disabled={reason !== null}
                           onClick={() => handleDownloadBatch(batch)}
-                          title={
-                            reason
-                              ? tc(`attachments.content.${reason}`)
-                              : t('gallery.downloadBatch')
-                          }
+                          aria-label={t('gallery.downloadBatch')}
+                          title={reason ? undefined : t('gallery.downloadBatch')}
                         >
                           <Download className="h-4 w-4" />
                         </Button>
+                      );
+                      // A disabled button shows no native title in a WKWebView and takes no focus:
+                      // the reason sits on a tooltip whose trigger is the span around it.
+                      return reason ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex" tabIndex={0}>
+                              {button}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{tc(`attachments.content.${reason}`)}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        button
                       );
                     })()}
                     <Button
@@ -566,8 +595,11 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                           onError={() => markBroken(`thumb:${photo.id}:${photo.thumbContent}`)}
                           className="object-cover w-full h-full"
                         />
-                      ) : (
+                      ) : thumbnailPlaceholder(photo.thumbContent) === 'loading' ? (
                         <Skeleton className="size-full rounded-none" />
+                      ) : (
+                        // Nothing is coming: a still tile, no pulse
+                        <div aria-hidden className="size-full bg-well" />
                       )}
                       <button
                         className="absolute top-1 right-1 p-1 bg-black/50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
@@ -578,24 +610,18 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                       >
                         <X className="h-3 w-3 text-white" />
                       </button>
-                      <button
-                        className={`absolute top-1 left-1 p-1 bg-black/50 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-                          attachmentView(photo.content, 'desktop').openable
-                            ? ''
-                            : 'cursor-not-allowed !opacity-40'
-                        }`}
-                        onClick={(e) => {
-                          // aria-disabled, not disabled: a click on a disabled button would
-                          // fall through to the tile and open the lightbox.
-                          e.stopPropagation();
-                          if (attachmentView(photo.content, 'desktop').openable)
+                      {attachmentView(photo.content, 'desktop').openable && (
+                        <button
+                          className="absolute top-1 left-1 p-1 bg-black/50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleDownloadPhoto(photo);
-                        }}
-                        title={t('gallery.downloadPhoto')}
-                        aria-disabled={!attachmentView(photo.content, 'desktop').openable}
-                      >
-                        <Download className="h-3 w-3 text-white" />
-                      </button>
+                          }}
+                          title={t('gallery.downloadPhoto')}
+                        >
+                          <Download className="h-3 w-3 text-white" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -680,24 +706,18 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
           >
             <X className="h-6 w-6" />
           </button>
-          <button
-            className={`absolute top-4 left-4 p-2 text-white hover:bg-white/10 rounded ${
-              lightboxPhoto && attachmentView(lightboxPhoto.content, 'desktop').openable
-                ? ''
-                : 'cursor-not-allowed opacity-40'
-            }`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (lightboxPhoto && attachmentView(lightboxPhoto.content, 'desktop').openable)
+          {lightboxPhoto && attachmentView(lightboxPhoto.content, 'desktop').openable && (
+            <button
+              className="absolute top-4 left-4 p-2 text-white hover:bg-white/10 rounded"
+              onClick={(e) => {
+                e.stopPropagation();
                 handleDownloadPhoto(lightboxPhoto);
-            }}
-            title={t('gallery.downloadPhoto')}
-            aria-disabled={
-              !(lightboxPhoto && attachmentView(lightboxPhoto.content, 'desktop').openable)
-            }
-          >
-            <Download className="h-6 w-6" />
-          </button>
+              }}
+              title={t('gallery.downloadPhoto')}
+            >
+              <Download className="h-6 w-6" />
+            </button>
+          )}
           {livePhotos.length > 1 && (
             <>
               <button

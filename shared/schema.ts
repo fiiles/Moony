@@ -140,7 +140,10 @@ export type SyncAttachmentsProblem = 'noRoom' | 'serverNeedsUpdate';
  * once): beside the ordinary phase, never part of it. Zeros while sync is off.
  */
 export interface SyncAttachments {
-  /** Rows whose content is held here, not yet confirmed by the sync server, and can still upload: while any waits, this device is not synchronised. */
+  /**
+   * Rows whose content is held here, not yet confirmed by the sync server, and can still upload:
+   * while any waits, this device is not synchronised.
+   */
   waitingUpload: number;
   /** The plaintext bytes of the content waiting to upload. */
   waitingUploadBytes: number;
@@ -148,9 +151,15 @@ export interface SyncAttachments {
   notHere: number;
   /** Rows whose content the sync server does not have yet (not uploaded from the other device). */
   notOnServer: number;
-  /** Rows whose content could not be fetched, or cannot upload by itself: failed items, which never keep this device "not synchronised". */
+  /**
+   * Rows whose content could not be fetched, or cannot upload by itself: failed items, which never
+   * keep this device "not synchronised".
+   */
   failed: number;
-  /** Rows with any content not complete on this device, whatever the reason (the three counts above leave out of each other what they hold): a backup made here does not have these. */
+  /**
+   * Rows with any content not complete on this device, whatever the reason (the three counts above
+   * leave out of each other what they hold): a backup made here does not have these.
+   */
   notOnDevice: number;
   /** Why documents and photos do not move, while ordinary sync goes on. */
   problem: SyncAttachmentsProblem | null;

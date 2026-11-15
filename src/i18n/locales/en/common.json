@@ -657,7 +657,6 @@
       "failed": "Could not download",
       "retry": "Try again",
       "missing": "The content is missing",
-      "download": "Download",
       "fetching": "Downloading from the sync server…"
     }
   },

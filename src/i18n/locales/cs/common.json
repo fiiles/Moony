@@ -661,7 +661,6 @@
       "failed": "Nepodařilo se stáhnout",
       "retry": "Zkusit znovu",
       "missing": "Obsah chybí",
-      "download": "Stáhnout",
       "fetching": "Stahuji ze synchronizačního serveru…"
     }
   },

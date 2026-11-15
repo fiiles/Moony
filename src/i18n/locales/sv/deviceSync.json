@@ -452,8 +452,8 @@
     "uploading": "Laddar upp dokument och foton",
     "onOtherDevices_one": "{{count}} dokument eller foto finns på dina andra enheter",
     "onOtherDevices_other": "{{count}} dokument och foton finns på dina andra enheter",
-    "downloadEverything": "Hämta allt till den här telefonen",
-    "downloadEverythingStarted": "Hämtar medan Moony är öppet",
+    "downloadEverything": "Ladda ned allt till den här telefonen",
+    "downloadEverythingStarted": "Laddar ned medan Moony är öppet",
     "problem": {
       "noRoom": "Dokument och foton väntar: synkroniseringsservern har fått slut på utrymme. Be den som driver den om mer utrymme.",
       "serverNeedsUpdate": "Dokument och foton kräver en nyare synkroniseringsserver. Allt annat synkroniseras."
@@ -461,6 +461,6 @@
   },
   "whatSyncs": {
     "title": "Vad som synkroniseras",
-    "body": "Allt du skriver in i Moony synkroniseras. Språk, utseende, meny, aviseringar, enhetslösenord, återställningsnyckel och säkerhetskopior hör till varje enhet för sig. Priser och historik räknas fram på varje enhet. Dokument och foton synkroniseras också; en telefon hämtar varje fil när du öppnar den."
+    "body": "Allt du skriver in i Moony synkroniseras. Språk, utseende, meny, aviseringar, enhetslösenord, återställningsnyckel och säkerhetskopior hör till varje enhet för sig. Priser och historik räknas fram på varje enhet. Dokument och foton synkroniseras också; en telefon laddar ned varje fil när du öppnar den."
   }
 }

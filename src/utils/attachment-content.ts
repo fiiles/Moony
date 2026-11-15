@@ -69,3 +69,12 @@ export function attachmentView(
 export function thumbnailShown(content: AttachmentContent): boolean {
   return content === 'here' || content === 'waitingUpload';
 }
+
+/**
+ * What fills a thumbnail's box when no image is drawn: a pulsing skeleton only while the bytes may
+ * still arrive (`notHere`, `downloading`), a still tile when nothing is coming (failed, missing,
+ * not on the server) or when the image itself would not load.
+ */
+export function thumbnailPlaceholder(content: AttachmentContent): 'loading' | 'static' {
+  return content === 'notHere' || content === 'downloading' ? 'loading' : 'static';
+}

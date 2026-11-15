@@ -9,7 +9,8 @@ import { DOCUMENT_KINDS, type DocumentKind } from '@/mobile/components/documents
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
 import { PickGroup, PickRow } from '@/mobile/components/PickRow';
 import { Sheet } from '@/mobile/components/Sheet';
-import { documentNameFrom, fileSizeText, type DocumentSource } from '@/mobile/lib/documents';
+import { documentNameFrom, type DocumentSource } from '@/mobile/lib/documents';
+import { fileSizeText } from '@/utils/file-size';
 
 /** A file the person has chosen or photographed, and where it came from. */
 export interface PickedDocument {

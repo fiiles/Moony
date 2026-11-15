@@ -657,7 +657,6 @@
       "failed": "Download fehlgeschlagen",
       "retry": "Erneut versuchen",
       "missing": "Der Inhalt fehlt",
-      "download": "Herunterladen",
       "fetching": "Wird vom Synchronisierungsserver heruntergeladen …"
     }
   },

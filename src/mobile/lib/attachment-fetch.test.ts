@@ -101,9 +101,10 @@ describe('viewerLayers', () => {
   it.each([
     ['show', 'loading', { skeleton: true, thumbnail: false, note: false }],
     ['show', 'ready', { skeleton: false, thumbnail: false, note: false }],
+    ['show', 'failed', { skeleton: false, thumbnail: false, note: false }],
     ['fetching', 'fetching', { skeleton: false, thumbnail: true, note: true }],
     ['unavailable', 'loading', { skeleton: false, thumbnail: true, note: true }],
-  ] as [FetchPlan['stage'], 'loading' | 'ready' | 'fetching', ViewerLayers][])(
+  ] as [FetchPlan['stage'], 'loading' | 'ready' | 'failed' | 'fetching', ViewerLayers][])(
     '%s while %s',
     (stage, status, layers) => {
       expect(viewerLayers(stage, status)).toEqual(layers);

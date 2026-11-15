@@ -661,7 +661,6 @@
       "failed": "No se pudo descargar",
       "retry": "Reintentar",
       "missing": "Falta el contenido",
-      "download": "Descargar",
       "fetching": "Descargando desde el servidor de sincronización…"
     }
   },

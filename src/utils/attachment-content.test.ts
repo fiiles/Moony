@@ -3,6 +3,7 @@ import type { AttachmentContent } from '@shared/schema';
 import {
   ATTACHMENT_CONTENT_VALUES,
   attachmentView,
+  thumbnailPlaceholder,
   thumbnailShown,
   type AttachmentPlatform,
   type AttachmentView,
@@ -73,6 +74,23 @@ describe('thumbnailShown', () => {
     };
     for (const content of Object.keys(expected) as AttachmentContent[]) {
       expect(thumbnailShown(content), content).toBe(expected[content]);
+    }
+  });
+});
+
+describe('thumbnailPlaceholder', () => {
+  it('pulses only while a thumbnail may still come', () => {
+    const expected: Record<AttachmentContent, 'loading' | 'static'> = {
+      here: 'static',
+      waitingUpload: 'static',
+      notHere: 'loading',
+      downloading: 'loading',
+      notOnServer: 'static',
+      failed: 'static',
+      missing: 'static',
+    };
+    for (const content of Object.keys(expected) as AttachmentContent[]) {
+      expect(thumbnailPlaceholder(content), content).toBe(expected[content]);
     }
   });
 });

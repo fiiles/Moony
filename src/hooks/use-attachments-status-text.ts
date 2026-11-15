@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { SyncAttachments } from '@shared/schema';
-import { formatFileSize } from '@/utils/file-size';
+import { useFormat } from '@/lib/use-format';
+import { fileSizeText } from '@/utils/file-size';
 import { attachmentsLine, shownProblem, withoutDanglingSize } from '@/utils/sync-attachments';
 
 /** Before the status has answered: nothing waits, nothing is wrong. */
@@ -25,6 +26,7 @@ export function useAttachmentsStatusText(status: SyncAttachments | undefined): {
   problem: string | null;
 } {
   const { t } = useTranslation('deviceSync');
+  const fmt = useFormat();
   const a = status ?? NONE;
   const line = attachmentsLine(a);
   const problem = shownProblem(a);
@@ -32,7 +34,10 @@ export function useAttachmentsStatusText(status: SyncAttachments | undefined): {
   if (line.kind === 'allUploaded') value = t('attachments.allUploaded');
   if (line.kind === 'waiting') {
     value = withoutDanglingSize(
-      t('attachments.waiting', { count: line.count, size: formatFileSize(line.bytes) })
+      t('attachments.waiting', {
+        count: line.count,
+        size: line.bytes > 0 ? fileSizeText(line.bytes, fmt) : '',
+      })
     );
   }
   return { value, problem: problem ? t(`attachments.problem.${problem}`) : null };

@@ -657,7 +657,6 @@
       "failed": "Kunde inte laddas ned",
       "retry": "Försök igen",
       "missing": "Innehållet saknas",
-      "download": "Ladda ned",
       "fetching": "Laddar ned från synkroniseringsservern …"
     }
   },

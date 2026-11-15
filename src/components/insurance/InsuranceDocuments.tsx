@@ -130,7 +130,7 @@ export function InsuranceDocuments({ insuranceId, onAdd }: InsuranceDocumentsPro
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-5 px-1.5"
+                                  className="-my-0.5 h-6 px-2"
                                   loading={retryingId === doc.id}
                                   onClick={() => retryContent(doc.id)}
                                 >

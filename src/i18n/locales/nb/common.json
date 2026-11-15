@@ -657,7 +657,6 @@
       "failed": "Kunne ikke laste ned",
       "retry": "Prøv igjen",
       "missing": "Innholdet mangler",
-      "download": "Last ned",
       "fetching": "Laster ned fra synkroniseringsserveren …"
     }
   },

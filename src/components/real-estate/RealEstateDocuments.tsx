@@ -32,7 +32,7 @@ const getDocumentIcon = (fileType: string) => {
 };
 
 // Kept apart from `@/utils/file-size` on purpose: this list has always said "KB" with a decimal.
-const formatFileSize = (bytes: number | null) => {
+const formatSizeKb = (bytes: number | null) => {
   if (!bytes) return '';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -107,7 +107,7 @@ export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) 
                           {doc.fileSize && (
                             <>
                               <span>•</span>
-                              <span>{formatFileSize(doc.fileSize)}</span>
+                              <span>{formatSizeKb(doc.fileSize)}</span>
                             </>
                           )}
                           <span>•</span>
@@ -127,7 +127,7 @@ export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) 
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-5 px-1.5"
+                                className="-my-0.5 h-6 px-2"
                                 loading={retryingId === doc.id}
                                 onClick={() => retryContent(doc.id)}
                               >

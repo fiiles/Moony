@@ -18,7 +18,9 @@ export type AttachmentsLine =
   /** A problem is shown and nothing waits: the row has no value, the problem line stands alone. */
   | { kind: 'none' };
 
-/** What waits, with its size; else all uploaded, but never while a problem is shown (then nothing). */
+/**
+ * What waits, with its size; else all uploaded, but never while a problem is shown (then nothing).
+ */
 export function attachmentsLine(a: SyncAttachments): AttachmentsLine {
   if (a.waitingUpload > 0) {
     return { kind: 'waiting', count: a.waitingUpload, bytes: a.waitingUploadBytes };
@@ -51,7 +53,10 @@ export function onOtherDevices(a: SyncAttachments): number {
   return a.notHere + a.notOnServer;
 }
 
-/** Whether "Download everything" has something to fetch now (phone only; callers decide the platform). */
+/**
+ * Whether "Download everything" has something to fetch now (phone only; callers decide the
+ * platform).
+ */
 export function offerDownloadEverything(a: SyncAttachments): boolean {
   return a.notHere > 0;
 }

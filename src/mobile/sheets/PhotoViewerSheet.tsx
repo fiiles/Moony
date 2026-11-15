@@ -138,50 +138,54 @@ export function PhotoViewerSheet({
             className="relative flex min-h-0 flex-1 select-none items-center justify-center overflow-hidden overscroll-contain rounded-r3 bg-well p-2 [-webkit-touch-callout:none] [touch-action:pan-x_pan-y]"
             onContextMenu={(event) => event.preventDefault()}
           >
-            {plan.stage !== 'show' ? (
-              <>
-                {thumbnailShown(shown.thumbContent) && !thumbBroken ? (
-                  <img
-                    src={attachmentUrl('photo-thumb', shown.id)}
-                    alt=""
-                    draggable={false}
-                    onError={() => setThumbBroken(true)}
-                    className="pointer-events-none block max-h-full max-w-full select-none rounded-r2 object-contain [-webkit-touch-callout:none]"
-                  />
+            {layers.thumbnail &&
+              (thumbnailShown(shown.thumbContent) && !thumbBroken ? (
+                <img
+                  src={attachmentUrl('photo-thumb', shown.id)}
+                  alt=""
+                  draggable={false}
+                  onError={() => setThumbBroken(true)}
+                  className="pointer-events-none block max-h-full max-w-full select-none rounded-r2 object-contain [-webkit-touch-callout:none]"
+                />
+              ) : (
+                plan.stage === 'fetching' && (
+                  <Skeleton className="absolute inset-0 z-0 rounded-r3" />
+                )
+              ))}
+            {/* The state sits over the thumbnail (or the empty box): the photo itself is not asked for */}
+            {layers.note && (
+              <div className="absolute inset-x-3 bottom-3 z-[2] rounded-r3 bg-paper p-3 shadow-e1">
+                {plan.stage === 'fetching' ? (
+                  <FetchingNotice />
                 ) : (
-                  plan.stage === 'fetching' && (
-                    <Skeleton className="absolute inset-0 z-0 rounded-r3" />
-                  )
-                )}
-                {/* The state sits over the thumbnail (or the empty box): the photo itself is not asked for */}
-                <div className="absolute inset-x-3 bottom-3 z-[2] rounded-r3 bg-paper p-3 shadow-e1">
-                  {plan.stage === 'fetching' ? (
-                    <FetchingNotice />
-                  ) : (
+                  plan.stage === 'unavailable' && (
                     <UnavailableNotice
                       note={plan.note}
                       retry={plan.retry}
                       busy={retrying}
                       onTryAgain={tryAgain}
                     />
-                  )}
-                </div>
-              </>
-            ) : status === 'failed' ? (
-              <p role="alert" className="m-0 px-1 py-6 text-center text-m-body text-ink-3">
-                {t('property.photoFailed')}
-              </p>
-            ) : (
-              <img
-                key={shown.id}
-                src={attachmentUrl('photo', shown.id)}
-                alt=""
-                draggable={false}
-                onLoad={() => setStatus('ready')}
-                onError={() => setStatus('failed')}
-                className="pointer-events-none block max-h-full max-w-full select-none rounded-r2 object-contain [-webkit-touch-callout:none]"
-              />
+                  )
+                )}
+              </div>
             )}
+            {!layers.thumbnail &&
+              !layers.note &&
+              (status === 'failed' ? (
+                <p role="alert" className="m-0 px-1 py-6 text-center text-m-body text-ink-3">
+                  {t('property.photoFailed')}
+                </p>
+              ) : (
+                <img
+                  key={shown.id}
+                  src={attachmentUrl('photo', shown.id)}
+                  alt=""
+                  draggable={false}
+                  onLoad={() => setStatus('ready')}
+                  onError={() => setStatus('failed')}
+                  className="pointer-events-none block max-h-full max-w-full select-none rounded-r2 object-contain [-webkit-touch-callout:none]"
+                />
+              ))}
           </div>
         </div>
       )}

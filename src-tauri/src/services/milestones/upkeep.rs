@@ -31,26 +31,39 @@ fn sync_on(sync: &SyncStatus) -> bool {
     !matches!(sync.phase, SyncPhase::Off | SyncPhase::SettingUp)
 }
 
-/// The newest safe copy (spec §7.1): the later of the last manual backup and, while sync is on,
-/// the last complete sync. A time in the future is returned as it is; callers compare whole UTC
-/// days, so it counts as fresh, never as a negative age.
-pub(super) fn newest_safe_copy(last_backup: Option<i64>, sync: Option<&SyncStatus>) -> Option<i64> {
-    let synced = sync.filter(|s| sync_on(s)).and_then(|s| s.last_complete_at);
-    last_backup.max(synced)
+/// The last complete sync while sync is on, unless it is dated after tomorrow (UTC): a clock that
+/// was far ahead at one complete round would otherwise count as a fresh safe copy for as long as
+/// it was ahead. Up to tomorrow it counts (a clock a little ahead, a time zone), as today's.
+fn trusted_complete(today: i64, sync: &SyncStatus) -> Option<i64> {
+    sync.last_complete_at
+        .filter(|at| sync_on(sync) && day_floor(*at) <= today + DAY)
 }
 
-/// Sync protects this device's data now (spec §7.3): on, `sync_stalled` quiet, a complete sync on
-/// one of the last `SYNC_STALE_DAYS` UTC days (`day_floor(at) > today - SYNC_STALE_DAYS * DAY`; one
-/// in the future counts as today's), and nothing held here that exists nowhere else: no unsent
+/// The newest safe copy (spec §7.1): the later of the last manual backup and the trusted last
+/// complete sync (`trusted_complete`). A backup time is not capped; a time in the future counts as
+/// fresh, never as a negative age, since callers compare whole UTC days.
+pub(super) fn newest_safe_copy(
+    today: i64,
+    last_backup: Option<i64>,
+    sync: Option<&SyncStatus>,
+) -> Option<i64> {
+    last_backup.max(sync.and_then(|s| trusted_complete(today, s)))
+}
+
+/// Sync protects this device's data now (spec §7.3): on, `sync_stalled` quiet, no problem on
+/// record that needs the person (a round running after one keeps it, and `sync_stalled` is quiet
+/// while a round runs; only `TRANSIENT_PROBLEMS` may stand), a trusted complete sync
+/// (`trusted_complete`, the same one the backup reminder reads, so the two never overlap) on one of
+/// the last `SYNC_STALE_DAYS` UTC days, and nothing held here that exists nowhere else: no unsent
 /// change (`pending_changes`), no document or photo waiting to upload (`attachments`) and none that
-/// cannot (`content_to_upload`, read from the queue by the caller, `queue::holds_content_to_upload`:
-/// the status counts a stuck upload among failed downloads). The last complete time is a high-water
-/// mark, so this last part is what withdraws the verdict when something new is made here.
+/// cannot or is not queued yet (`content_to_upload`, read from the queue by the caller). The
+/// complete time is not lowered by what is made after it, so these "right now" checks are what
+/// withdraw the verdict when something new is made here.
 pub(crate) fn sync_protects(today: i64, sync: &SyncStatus, content_to_upload: bool) -> bool {
     sync_on(sync)
         && sync_stalled(today, sync).is_none()
-        && sync
-            .last_complete_at
+        && sync.problem.is_none_or(|p| TRANSIENT_PROBLEMS.contains(&p))
+        && trusted_complete(today, sync)
             .is_some_and(|at| day_floor(at) > today - SYNC_STALE_DAYS * DAY)
         && sync.pending_changes == 0
         && sync.attachments.waiting_upload == 0
@@ -74,7 +87,7 @@ pub(super) fn backup(
         )
         .optional()?
         .and_then(|v| v.trim().parse().ok());
-    let last = newest_safe_copy(last_backup, sync);
+    let last = newest_safe_copy(today, last_backup, sync);
     let since_day = match last {
         Some(at) => {
             let last_day = day_floor(at);
@@ -151,7 +164,11 @@ pub(super) fn sync_stalled(today: i64, sync: &SyncStatus) -> Option<Milestone> {
         }
         SyncPhase::Idle | SyncPhase::Syncing => false,
     };
-    let anchor = sync.last_success_at.or(sync.enabled_at);
+    // A last success dated after tomorrow (a clock that was far ahead) is no anchor.
+    let success = sync
+        .last_success_at
+        .filter(|a| day_floor(*a) <= today + DAY);
+    let anchor = success.or(sync.enabled_at);
     let out_of_reach = sync
         .problem
         .is_some_and(|p| TRANSIENT_PROBLEMS.contains(&p));
@@ -634,17 +651,77 @@ mod tests {
     }
 
     #[test]
-    fn a_safe_copy_in_the_future_counts_as_fresh() {
-        // Review Focus 4: never a negative age, never stale.
+    fn a_complete_sync_is_trusted_up_to_tomorrow() {
+        // Review Focus 4, as ruled in the final review: a complete time up to tomorrow (UTC) is
+        // fresh, never a negative age; one dated later is ignored, so one round with a clock far
+        // ahead cannot silence the reminder for as long as the clock was ahead. A manual backup
+        // time is not capped.
         let conn = setup();
         let today = day(2026, 10, 5);
         profile(&conn, day(2026, 1, 1));
+        let tomorrow = complete(SyncPhase::Idle, None, Some(today + DAY + 3_600));
+        assert_eq!(backup(&conn, today, Some(&tomorrow)).unwrap(), None);
+        assert_eq!(
+            newest_safe_copy(today, None, Some(&tomorrow)),
+            Some(today + DAY + 3_600)
+        );
+        assert!(sync_protects(today, &tomorrow, false));
+
         let ahead = complete(SyncPhase::Idle, None, Some(today + 40 * DAY));
+        assert_eq!(newest_safe_copy(today, None, Some(&ahead)), None);
+        assert!(!sync_protects(today, &ahead, false));
+        // The reminder follows the backup alone: none, an old profile → asked for one.
+        let alone = backup(&conn, today, None).unwrap();
+        assert!(alone.is_some());
+        assert_eq!(backup(&conn, today, Some(&ahead)).unwrap(), alone);
+        backed_up(&conn, Some(today - 3 * DAY));
         assert_eq!(backup(&conn, today, Some(&ahead)).unwrap(), None);
-        assert_eq!(newest_safe_copy(None, Some(&ahead)), Some(today + 40 * DAY));
+
         backed_up(&conn, Some(today + 40 * DAY));
         assert_eq!(backup(&conn, today, None).unwrap(), None);
-        assert!(sync_protects(today, &ahead, false));
+        assert_eq!(backup(&conn, today, Some(&ahead)).unwrap(), None);
+    }
+
+    #[test]
+    fn a_running_round_does_not_protect_over_a_problem_that_needs_the_person() {
+        // A round running after one that ended on such a problem keeps it (`sync_stalled` is
+        // quiet while a round runs): the verdict stays withdrawn for the length of the round.
+        let today = day(2026, 11, 14);
+        for problem in [
+            SyncProblem::Unauthorized,
+            SyncProblem::Lapsed,
+            SyncProblem::Gap,
+            SyncProblem::ServerWentBack,
+        ] {
+            let s = complete(SyncPhase::Syncing, Some(problem), Some(today - 3 * DAY));
+            assert!(sync_stalled(today, &s).is_none(), "{problem:?}");
+            assert!(!sync_protects(today, &s, false), "{problem:?}");
+        }
+        // A problem the engine retries by itself (server out of reach) changes nothing.
+        for problem in [None].into_iter().chain(TRANSIENT_PROBLEMS.map(Some)) {
+            let s = complete(SyncPhase::Syncing, problem, Some(today - 3 * DAY));
+            assert!(sync_protects(today, &s, false), "{problem:?}");
+        }
+    }
+
+    #[test]
+    fn a_last_success_dated_after_tomorrow_does_not_hold_off_a_stall() {
+        // Out of reach since a clock far ahead stamped the last success: the week counts from
+        // when this device joined, as without a success.
+        let today = day(2026, 11, 14);
+        let s = sync(
+            SyncPhase::Paused,
+            Some(SyncProblem::Offline),
+            Some(today + 40 * DAY),
+            Some(today - 40 * DAY),
+        );
+        let m = sync_stalled(today, &s).expect("stalled");
+        assert_eq!(m.key, format!("sync_stalled:{}", today - 40 * DAY));
+        let tomorrow = SyncStatus {
+            last_success_at: Some(today + DAY + 3_600),
+            ..s
+        };
+        assert!(sync_stalled(today, &tomorrow).is_none());
     }
 
     #[test]
@@ -675,7 +752,14 @@ mod tests {
             (SyncPhase::Idle, None, None, false),
             (SyncPhase::Off, None, Some(today), false),
             (SyncPhase::SettingUp, None, Some(today), false),
-            (SyncPhase::Idle, None, Some(today + 5 * DAY), true),
+            (SyncPhase::Idle, None, Some(today + DAY + 3_600), true),
+            (SyncPhase::Idle, None, Some(today + 2 * DAY), false),
+            (
+                SyncPhase::Syncing,
+                Some(SyncProblem::Unauthorized),
+                Some(today),
+                false,
+            ),
         ];
         for (phase, problem, last_complete, expected) in cases {
             let s = complete(phase, problem, last_complete);
@@ -720,13 +804,17 @@ mod tests {
         let ages = |days: std::ops::RangeInclusive<i64>| {
             std::iter::once(None)
                 .chain(days.map(|d| Some(today - d * DAY + 3_600)))
-                .chain(std::iter::once(Some(today + 5 * DAY)))
+                .chain([1, 5, 40].map(|d| Some(today + d * DAY + 3_600)))
                 .collect::<Vec<_>>()
         };
         let phases = [
             (SyncPhase::Idle, None),
             (SyncPhase::Syncing, None),
             (SyncPhase::Syncing, Some(SyncProblem::Offline)),
+            (SyncPhase::Syncing, Some(SyncProblem::Unauthorized)),
+            (SyncPhase::Syncing, Some(SyncProblem::Lapsed)),
+            (SyncPhase::Syncing, Some(SyncProblem::Gap)),
+            (SyncPhase::Syncing, Some(SyncProblem::ServerWentBack)),
             (SyncPhase::Paused, Some(SyncProblem::Offline)),
             (SyncPhase::Error, Some(SyncProblem::RelayError)),
             (SyncPhase::Error, Some(SyncProblem::Unauthorized)),

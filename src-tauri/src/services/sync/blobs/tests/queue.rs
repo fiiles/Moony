@@ -985,3 +985,29 @@ fn a_found_note_that_finds_nothing_still_ends_the_transfer() {
     assert_eq!(state_of(&conn, &blob).as_deref(), Some("down"));
     assert_eq!(content_of(&conn, &blob), AttachmentContent::NotHere);
 }
+
+/// The queue keeps an `up` entry's plaintext size, so the status never reads the store for it: a
+/// new entry records it, and the full reconcile fills it for an entry that lacks it (one from
+/// before migration 038).
+#[test]
+fn an_up_entry_keeps_its_size() {
+    let conn = profile();
+    let blob = held(&conn, b"twelve bytes");
+    document(&conn, "d1", &blob, 100);
+    let size = |conn: &Connection| -> Option<i64> {
+        conn.query_row(
+            "SELECT size FROM sync_blobs WHERE blob_id = ?1",
+            [&blob],
+            |r| r.get(0),
+        )
+        .expect("entry")
+    };
+
+    queue::reconcile_rows(&conn, NOW).expect("reconcile rows");
+    assert_eq!(size(&conn), Some(12));
+
+    exec(&conn, "UPDATE sync_blobs SET size = NULL");
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    assert_eq!(size(&conn), Some(12));
+    assert_eq!(summary(&conn).expect("summary").waiting_upload_bytes, 12);
+}

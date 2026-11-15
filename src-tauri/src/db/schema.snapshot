@@ -855,7 +855,7 @@ CREATE TABLE "sync_blobs" (
         ('network', 'server', 'notOnServer', 'unreadable', 'noRoom', 'invalidId', 'local',
          'refused', 'conflict')),
     last_error_at INTEGER
-) WITHOUT ROWID
+, size INTEGER) WITHOUT ROWID
 
 == table sync_clock ==
 CREATE TABLE sync_clock (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,

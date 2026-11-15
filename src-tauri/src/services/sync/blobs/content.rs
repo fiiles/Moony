@@ -1,4 +1,5 @@
-//! Where an attachment's content is (`AttachmentContent`), from the store and the transfer queue.
+//! Where an attachment's content is (`AttachmentContent`), from the transfer queue, and from the
+//! store only for a blob the queue has no entry for.
 
 use rusqlite::{Connection, OptionalExtension};
 
@@ -28,13 +29,18 @@ impl<'c> ContentReader<'c> {
 
     /// The content of the blob a row names; `syncs` is whether that row meets its row condition
     /// (`row_syncs`). A row without a blob (a legacy plain file) and an unavailable store are
-    /// `Here` (the store's unavailable state is reported where it is read). Complete here
-    /// (`attachment_store::complete_sql`): for a row that syncs, `WaitingUpload` while the server
-    /// has not confirmed it (its entry is `up`, or, with sync on, the queue has not seen it yet),
-    /// `Failed` for an `up` entry that never moves by itself (`queue::STUCK`: refused, a
-    /// conflict, an invalid ID; "try again" makes it wait again), else `Here`; a row that does not sync never uploads, so it is `Here`. Not complete here:
-    /// `Missing` without an entry, else from the entry: `Downloading`, `NotOnServer`, `Failed`
-    /// (unreadable, an invalid ID, refused by the server or a conflict there) or `NotHere`.
+    /// `Here` (the store's unavailable state is reported where it is read).
+    ///
+    /// A blob with a queue entry is answered from the entry alone, never the store (ADR 0030: the
+    /// store's completeness check walks the blob's pages): `up` is `WaitingUpload` for a row that
+    /// syncs, or `Failed` when it never moves by itself (`queue::STUCK`: refused, a conflict, an
+    /// invalid ID; "try again" makes it wait again); `done` is `Here` (and `up` for a row that
+    /// does not sync); `down` is `Downloading`, `NotOnServer`, `Failed` (unreadable, an invalid
+    /// ID, refused by the server or a conflict there) or `NotHere`. Content lost from the store
+    /// outside a merge therefore reads as held until the next full reconcile. Only a blob without
+    /// an entry (sync off, a row that does not sync, a row the queue has not seen yet) is looked
+    /// up in the store: complete there, `WaitingUpload` for a row that syncs with sync on, else
+    /// `Here`; not complete, `Missing`.
     pub fn of(&self, blob_id: Option<&str>, syncs: bool) -> Result<AttachmentContent> {
         let Some(id) = blob_id else {
             return Ok(AttachmentContent::Here);
@@ -42,10 +48,6 @@ impl<'c> ContentReader<'c> {
         if !self.store {
             return Ok(AttachmentContent::Here);
         }
-        let held: bool = self
-            .conn
-            .prepare_cached(&format!("SELECT {}", complete_sql("?1")))?
-            .query_row([id], |r| r.get(0))?;
         let entry: Option<(String, bool, Option<String>)> = self
             .conn
             .prepare_cached(
@@ -53,32 +55,30 @@ impl<'c> ContentReader<'c> {
             )?
             .query_row([id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
             .optional()?;
-        if held {
-            if !syncs {
-                return Ok(AttachmentContent::Here);
-            }
-            return Ok(match entry {
-                Some((state, _, error)) if state == "up" => {
-                    if queue::is_stuck(error.as_deref()) {
-                        AttachmentContent::Failed
-                    } else {
-                        AttachmentContent::WaitingUpload
-                    }
-                }
-                None if self.sync_on => AttachmentContent::WaitingUpload,
-                _ => AttachmentContent::Here,
+        let Some((state, active, error)) = entry else {
+            let held: bool = self
+                .conn
+                .prepare_cached(&format!("SELECT {}", complete_sql("?1")))?
+                .query_row([id], |r| r.get(0))?;
+            return Ok(match held {
+                true if syncs && self.sync_on => AttachmentContent::WaitingUpload,
+                true => AttachmentContent::Here,
+                false => AttachmentContent::Missing,
             });
-        }
-        Ok(match entry {
-            None => AttachmentContent::Missing,
-            Some((_, true, _)) => AttachmentContent::Downloading,
-            Some((_, false, error)) => match error.as_deref() {
+        };
+        Ok(match state.as_str() {
+            "up" if !syncs => AttachmentContent::Here,
+            "up" if queue::is_stuck(error.as_deref()) => AttachmentContent::Failed,
+            "up" => AttachmentContent::WaitingUpload,
+            "down" if active => AttachmentContent::Downloading,
+            "down" => match error.as_deref() {
                 Some("notOnServer") => AttachmentContent::NotOnServer,
                 Some("unreadable" | "invalidId" | "refused" | "conflict") => {
                     AttachmentContent::Failed
                 }
                 _ => AttachmentContent::NotHere,
             },
+            _ => AttachmentContent::Here,
         })
     }
 }

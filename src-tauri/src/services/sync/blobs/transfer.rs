@@ -31,7 +31,7 @@ use tokio::time::Instant;
 
 use super::canonical_id;
 use super::policy::{BlobPolicy, ServerBlobs};
-use super::queue::{self, Reconciled, Transfer, TransferError};
+use super::queue::{self, BlobState, Reconciled, Transfer, TransferError};
 use super::stream::{hold, SinkOutcome, StoreSink, UploadSource};
 use crate::error::{AppError, Result};
 use crate::models::sync::SyncAttachmentsProblem;
@@ -406,12 +406,19 @@ async fn enter(
     }
 }
 
-/// The queue brought in line with the rows and the store, and whether content waits to move at
-/// all and to upload.
-fn reconciled<D: ConnAccess>(db: &D, now: i64) -> Result<(Reconciled, bool, bool)> {
+/// The queue brought in line with the rows (`queue::reconcile_rows`: only newly named blobs are
+/// looked up in the store; the full reconcile is the lane start's and a merging pull's).
+fn reconciled_rows<D: ConnAccess>(db: &D, now: i64) -> Result<Reconciled> {
+    hold(db, |conn| queue::reconcile_rows(conn, now))
+}
+
+/// Run by the holder of `state`'s lane before it picks work: entries left active by a dropped
+/// transfer count a failed attempt (`queue::fail_abandoned`); then whether content waits to move
+/// at all and to upload. Whether anything was abandoned comes first.
+fn lane_start<D: ConnAccess>(db: &D, state: BlobState, now: i64) -> Result<(bool, bool, bool)> {
     hold(db, |conn| {
         Ok((
-            queue::reconcile(conn, now)?,
+            queue::fail_abandoned(conn, state, now)? > 0,
             queue::waiting(conn, false)?,
             queue::waiting(conn, true)?,
         ))
@@ -432,22 +439,26 @@ async fn server_ready<R: Relay>(relay: &R, policy: &BlobPolicy, now: i64) -> boo
     }
 }
 
-/// An entry marked active for its transfer; a transfer dropped before it settled (a cancelled
-/// run) clears the mark if the connection is free, so the entry is not skipped until the lanes
-/// restart.
+/// An entry marked active for its transfer. A transfer dropped before it settled (cut by the
+/// round's budget, or its engine stopped) records a failed attempt of the network's kind if the
+/// connection is free, so its backoff applies and the next run does not start it again at once;
+/// if the connection is busy, the next run of its lane finds the entry still active and records
+/// it then (`lane_start`).
 struct Active<'a, D: ConnAccess> {
     db: &'a D,
     blob_id: String,
+    now: i64,
     armed: bool,
 }
 
 impl<D: ConnAccess> Drop for Active<'_, D> {
     fn drop(&mut self) {
         if self.armed {
-            let id = self.blob_id.as_str();
+            let (id, now) = (self.blob_id.as_str(), self.now);
+            log::debug!("[SYNC] A transfer of blob {id} was dropped before it ended");
             let _ = self
                 .db
-                .try_with_conn(|conn| queue::set_active(conn, id, false));
+                .try_with_conn(|conn| queue::note_failed(conn, id, TransferError::Network, now));
         }
     }
 }
@@ -455,6 +466,7 @@ impl<D: ConnAccess> Drop for Active<'_, D> {
 /// The next transfer `next` finds, marked active in the same hold.
 fn take<'a, D: ConnAccess>(
     db: &'a D,
+    now: i64,
     next: impl FnOnce(&Connection) -> Result<Option<Transfer>>,
 ) -> Result<Option<(Transfer, Active<'a, D>)>> {
     let transfer = hold(db, |conn| {
@@ -468,6 +480,7 @@ fn take<'a, D: ConnAccess>(
         let active = Active {
             db,
             blob_id: transfer.blob_id.clone(),
+            now,
             armed: true,
         };
         (transfer, active)
@@ -489,10 +502,11 @@ fn stops(outcome: Outcome) -> bool {
 /// each of at most `max_plain` bytes when given, until none is due, `until` passed (checked
 /// before each blob and while waiting for the lane), or the next blob would meet the same
 /// trouble: no room (uploads pause, the policy shows it), passing trouble (the rest waits for the
-/// next run) or a refusal of this vault (`Blocked`). The queue is reconciled first. Nothing runs
-/// while the server lacks the blob routes (the policy then shows that, as long as content
-/// waits), while it cannot be asked, or while uploads are paused. A transfer error is never an
-/// `Err`: only a local error of the queue is, and a locked profile (`AppError::Auth`).
+/// next run) or a refusal of this vault (`Blocked`). The queue is reconciled by its rows first,
+/// and entries a dropped upload left active count a failed attempt. Nothing runs while the server
+/// lacks the blob routes (the policy then shows that, as long as content waits), while it cannot
+/// be asked, or while uploads are paused. A transfer error is never an `Err`: only a local error
+/// of the queue is, and a locked profile (`AppError::Auth`).
 pub async fn run_uploads<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -505,9 +519,46 @@ pub async fn run_uploads<R: Relay, D: ConnAccess>(
     let Some(_lane) = enter(policy.up_lane(), until).await else {
         return Ok(TransferReport::default());
     };
-    let (reconciled, any, up) = reconciled(db, now)?;
+    let reconciled = reconciled_rows(db, now)?;
+    uploads_in_lane(relay, db, creds, policy, now, until, max_plain, reconciled).await
+}
+
+/// The sync round's upload step: the queue is reconciled by its rows (so content added here is
+/// queued and counted even when the step does nothing else), then `run_uploads` runs only if the
+/// upload lane is free right now; `None` when another transfer holds it.
+pub async fn run_uploads_if_free<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    policy: &BlobPolicy,
+    now: i64,
+    until: Option<Instant>,
+    max_plain: Option<u64>,
+) -> Result<Option<TransferReport>> {
+    let reconciled = reconciled_rows(db, now)?;
+    let Ok(_lane) = policy.up_lane().try_lock() else {
+        return Ok(None);
+    };
+    uploads_in_lane(relay, db, creds, policy, now, until, max_plain, reconciled)
+        .await
+        .map(Some)
+}
+
+/// `run_uploads` once the upload lane is held and the queue reconciled.
+#[allow(clippy::too_many_arguments)]
+async fn uploads_in_lane<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    policy: &BlobPolicy,
+    now: i64,
+    until: Option<Instant>,
+    max_plain: Option<u64>,
+    reconciled: Reconciled,
+) -> Result<TransferReport> {
+    let (abandoned, any, up) = lane_start(db, BlobState::Up, now)?;
     let mut report = TransferReport {
-        changed: reconciled != Reconciled::default(),
+        changed: abandoned || reconciled != Reconciled::default(),
         ..TransferReport::default()
     };
     if !any {
@@ -525,7 +576,7 @@ pub async fn run_uploads<R: Relay, D: ConnAccess>(
             break;
         }
         let Some((transfer, mut active)) =
-            take(db, |conn| queue::next_upload(conn, now, max_plain))?
+            take(db, now, |conn| queue::next_upload(conn, now, max_plain))?
         else {
             break;
         };
@@ -553,8 +604,9 @@ pub async fn run_uploads<R: Relay, D: ConnAccess>(
 /// first, then thumbnails, then the oldest row; full content only when wanted unless the policy
 /// fetches eagerly), until none is due, `until` passed, passing trouble (the rest waits for the
 /// next run) or the server refused this vault (`Blocked`). A blob another download of this
-/// profile holds is passed over until the next run. The queue is reconciled first; nothing runs
-/// while the server lacks the blob routes or cannot be asked. A transfer error is never an `Err`:
+/// profile holds is passed over until the next run. The queue is reconciled by its rows first,
+/// and entries a dropped download left active count a failed attempt; nothing runs while the
+/// server lacks the blob routes or cannot be asked. A transfer error is never an `Err`:
 /// only a local error of the queue is, and a locked profile (`AppError::Auth`).
 pub async fn run_downloads<R: Relay, D: ConnAccess>(
     relay: &R,
@@ -567,9 +619,10 @@ pub async fn run_downloads<R: Relay, D: ConnAccess>(
     let Some(_lane) = enter(policy.down_lane(), until).await else {
         return Ok(TransferReport::default());
     };
-    let (reconciled, any, _) = reconciled(db, now)?;
+    let reconciled = reconciled_rows(db, now)?;
+    let (abandoned, any, _) = lane_start(db, BlobState::Down, now)?;
     let mut report = TransferReport {
-        changed: reconciled != Reconciled::default(),
+        changed: abandoned || reconciled != Reconciled::default(),
         ..TransferReport::default()
     };
     if !any {
@@ -585,7 +638,7 @@ pub async fn run_downloads<R: Relay, D: ConnAccess>(
         if until.is_some_and(|at| Instant::now() >= at) {
             break;
         }
-        let Some((transfer, mut active)) = take(db, |conn| {
+        let Some((transfer, mut active)) = take(db, now, |conn| {
             queue::next_download_skipping(conn, now, eager_full, &busy)
         })?
         else {

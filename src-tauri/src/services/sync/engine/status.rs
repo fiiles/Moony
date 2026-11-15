@@ -146,22 +146,26 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         server_address: address,
         server_insecure,
         enabled_at: devices::this_device_joined_at(conn)?,
-        attachments: attachments(conn, runtime)?,
+        attachments: attachments(conn, runtime),
     })
 }
 
-/// Where this device's documents and photos stand (`queue::summary`), with the problem the engine
-/// last read from its blob policy.
-fn attachments(conn: &Connection, runtime: &Runtime) -> Result<SyncAttachments> {
-    let summary = queue::summary(conn)?;
-    Ok(SyncAttachments {
+/// Where this device's documents and photos stand (`queue::summary`, read from the queue alone),
+/// with the problem the engine last read from its blob policy. A summary that cannot be read
+/// never hides the ordinary status: its figures are empty, with a warning in the log.
+fn attachments(conn: &Connection, runtime: &Runtime) -> SyncAttachments {
+    let summary = queue::summary(conn).unwrap_or_else(|error| {
+        log::warn!("[SYNC] Documents and photos could not be counted for the status: {error}");
+        Default::default()
+    });
+    SyncAttachments {
         waiting_upload: summary.waiting_upload,
         waiting_upload_bytes: summary.waiting_upload_bytes,
         not_here: summary.not_here,
         not_on_server: summary.not_on_server,
         failed: summary.failed,
         problem: runtime.attachments_problem,
-    })
+    }
 }
 
 /// While this device's clock (`capture::clock_now`) is more than `hlc::FUTURE_WARNING_MS` past

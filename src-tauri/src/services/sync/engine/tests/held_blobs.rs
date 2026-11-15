@@ -23,12 +23,6 @@ fn policy(conn: &Connection, id: &str) {
     .expect("policy");
 }
 
-fn with_store(conn: &Connection) {
-    conn.execute("ATTACH DATABASE ':memory:' AS files", [])
-        .expect("attach");
-    crate::db::files_schema::migrate(conn).expect("files schema");
-}
-
 /// A document `id` under `policy` with a new blob; returns the blob's ID.
 fn document(conn: &Connection, id: &str, policy: &str) -> String {
     let blob = attachment_store::put_bytes(conn, format!("%PDF-1.7 {id}").as_bytes())
@@ -61,9 +55,9 @@ async fn a_blob_whose_row_the_vault_never_gets_is_held_until_the_pull_catches_up
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;
     round(&vault, &vault.b, RoundMode::Normal).await;
+    with_store(&vault.b);
     let blob = {
         let b = vault.b.lock();
-        with_store(&b);
         policy(&b, "p-own");
         document(&b, "d-own", "p-own")
     };
@@ -112,9 +106,9 @@ async fn an_unrelated_delete_in_the_catch_up_pull_keeps_a_held_blob() {
         "DELETE FROM insurance_policies WHERE id = 'p2'",
     );
     round(&vault, &vault.a, RoundMode::Normal).await;
+    with_store(&vault.b);
     let blob = {
         let b = vault.b.lock();
-        with_store(&b);
         document(&b, "d1", "p1")
     };
     let consent = agreed(&vault.b);
@@ -156,9 +150,9 @@ async fn a_join_holds_the_new_devices_own_content_until_the_pull_catches_up() {
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;
     let joiner = TestConn::new(migrated());
+    with_store(&joiner);
     let blob = {
         let c = joiner.lock();
-        with_store(&c);
         policy(&c, "own");
         document(&c, "d-own", "own")
     };
@@ -188,9 +182,9 @@ async fn a_join_holds_the_new_devices_own_content_until_the_pull_catches_up() {
 async fn held_after_a_failed_resync(vault: &Vault) -> String {
     snapshot_of_a(vault, "a1").await;
     round(vault, &vault.b, RoundMode::Normal).await;
+    with_store(&vault.b);
     let blob = {
         let b = vault.b.lock();
-        with_store(&b);
         policy(&b, "p-own");
         document(&b, "d-own", "p-own")
     };

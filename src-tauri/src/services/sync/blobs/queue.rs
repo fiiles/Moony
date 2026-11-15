@@ -5,9 +5,16 @@
 //!
 //! The queue is a function of the rows and the store, never fed by hooks in the services:
 //! `reconcile` adds what a row names, drops what no row names, and moves an entry when its
-//! content was lost or found. It runs after every merge and restore that touched attachments
-//! (`repair::invariants`) and before the lanes take work. Turning sync off empties the queue, and
+//! content was lost or found. The full `reconcile` (every entry checked against the store) runs at
+//! the end of a pull that merged anything, after every restore and replace, and when a lane
+//! starts; each merged changeset, each sync round and each transfer run uses `reconcile_rows`,
+//! which looks up only newly named blobs in the store. Turning sync off empties the queue, and
 //! so does a replace, whose repair then rebuilds it from the vault's rows and this store.
+//!
+//! The queue is also where everything that runs often reads where content is (the status, the
+//! content of a listing, the upload pick): `up` and `done` are content held here, `down` content
+//! not here, as of the last reconcile, and `size` is an `up` entry's plaintext size. Reading the
+//! store instead would walk each blob's pages (ADR 0030).
 //!
 //! A blob held here is queued `up` unless the queue knows the server has it: an upload starts by
 //! asking the server, so confirming a blob the server already holds costs no body, while
@@ -202,28 +209,38 @@ fn references() -> Result<String> {
 }
 
 /// SQL: the blob `id` is complete on this device (`attachment_store::complete_sql`, the one
-/// definition: an incoming or truncated blob is not held).
+/// definition: an incoming or truncated blob is not held). It reads the blob's record past its
+/// content (the store's overflow pages), so only the full `reconcile` asks it of every entry;
+/// everything else asks it of one blob at a time (ADR 0030).
 fn held(id: &str) -> String {
     complete_sql(id)
 }
 
+/// SQL: the recorded plaintext size of the blob `id` in the store (one blob: past its content,
+/// like [`held`]); what `sync_blobs.size` keeps for an `up` entry.
+fn store_size(id: &str) -> String {
+    format!("(SELECT sf.size FROM files.blobs sf WHERE sf.id = {id})")
+}
+
 /// Brings the queue in line with the rows and the store; the same rows and store give the same
 /// queue however often it runs. Drops entries no syncing row names; adds each newly named blob as
-/// `up` when held here and `down` otherwise (a blob ID that is not canonical as `down` with
-/// `invalidId`, never offered); turns `up` and `done` entries whose content is no longer here into
+/// `up` when held here and `down` otherwise, with its recorded size when held (a blob ID that is
+/// not canonical with `invalidId`, never offered: `done` when held here, else `down`); turns `up` and `done` entries whose content is no longer here into
 /// `down`, and `down` entries whose content is here into `up` (losing it forgot whether the
 /// server had it; the download lane marks what it fetched `done` itself). Does nothing without the
 /// store or with sync off.
 ///
 /// Checking every entry against the store reads each blob's record past its content, so this runs
-/// once per restore and once at the end of a pull that merged anything; each merged changeset runs
-/// only `reconcile_rows`.
+/// once per restore and replace, once at the end of a pull that merged anything, and when a lane
+/// starts; each merged changeset, each sync round and each transfer run uses only
+/// `reconcile_rows`.
 pub fn reconcile(conn: &Connection, now: i64) -> Result<Reconciled> {
     reconcile_with(conn, now, true)
 }
 
-/// The part of `reconcile` that rows can change, after one merged changeset: drops the entries no
-/// syncing row names any more and adds the newly named blobs. A merge never removes or adds content
+/// The part of `reconcile` that rows can change (after one merged changeset, before a round's
+/// uploads, at a transfer run): drops the entries no syncing row names any more and adds the newly
+/// named blobs, looking each new one up in the store. A merge never removes or adds content
 /// of a blob a row still names (the blob sweep takes only blobs no row names, and their entries go
 /// here), so the entries' states against the store are left to the full `reconcile` the pull runs
 /// at its end.
@@ -245,31 +262,49 @@ fn reconcile_with(conn: &Connection, now: i64, scan_store: bool) -> Result<Recon
         let (lost, found) = if scan_store {
             let lost = conn.execute(
                 &format!(
-                    "UPDATE main.sync_blobs SET state = 'down', {FRESH} \
+                    "UPDATE main.sync_blobs SET state = 'down', size = NULL, {FRESH} \
                      WHERE state IN ('up', 'done') AND NOT {entry_held}"
                 ),
                 [],
             )?;
             let found = conn.execute(
                 &format!(
-                    "UPDATE main.sync_blobs SET state = 'up', queued_at = ?1, {FRESH} \
-                     WHERE state = 'down' AND last_error IS NOT 'invalidId' AND {entry_held}"
+                    "UPDATE main.sync_blobs SET state = 'up', queued_at = ?1, size = {size}, \
+                       {FRESH} \
+                     WHERE state = 'down' AND last_error IS NOT 'invalidId' AND {entry_held}",
+                    size = store_size("sync_blobs.blob_id"),
                 ),
                 [now],
+            )?;
+            // Content held here whose size the queue does not know yet (an entry from before
+            // migration 038).
+            conn.execute(
+                &format!(
+                    "UPDATE main.sync_blobs SET size = {} \
+                     WHERE state IN ('up', 'done') AND size IS NULL",
+                    store_size("sync_blobs.blob_id")
+                ),
+                [],
             )?;
             (lost, found)
         } else {
             (0, 0)
         };
-        let new: Vec<(String, bool, i64, bool)> = {
+        // Only newly named blobs are looked up in the store, one at a time.
+        let new: Vec<(String, bool, i64, bool, Option<i64>)> = {
             let mut stmt = conn.prepare(&format!(
-                "SELECT n.b, MAX(n.thumbnail), MIN(n.row_at), {held_here} FROM ({refs}) n \
-                 WHERE NOT EXISTS (SELECT 1 FROM main.sync_blobs q WHERE q.blob_id = n.b) \
-                 GROUP BY n.b ORDER BY n.b",
+                "SELECT b, thumbnail, row_at, here, CASE WHEN here THEN {size} END FROM ( \
+                   SELECT n.b AS b, MAX(n.thumbnail) AS thumbnail, MIN(n.row_at) AS row_at, \
+                     {held_here} AS here FROM ({refs}) n \
+                   WHERE NOT EXISTS (SELECT 1 FROM main.sync_blobs q WHERE q.blob_id = n.b) \
+                   GROUP BY n.b) ORDER BY b",
                 held_here = held("n.b"),
+                size = store_size("b"),
             ))?;
             let rows = stmt
-                .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
+                .query_map([], |r| {
+                    Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+                })?
                 .collect::<std::result::Result<_, _>>()?;
             rows
         };
@@ -280,23 +315,32 @@ fn reconcile_with(conn: &Connection, now: i64, scan_store: bool) -> Result<Recon
         };
         let mut insert = conn.prepare(
             "INSERT INTO main.sync_blobs \
-               (blob_id, state, thumbnail, row_at, queued_at, next_try_at, last_error, last_error_at) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+               (blob_id, state, thumbnail, row_at, queued_at, next_try_at, last_error, \
+                last_error_at, size) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         )?;
-        for (blob, thumbnail, row_at, held_here) in new {
+        for (blob, thumbnail, row_at, held_here, size) in new {
             if canonical_id(&blob).is_none() {
                 log::debug!("[SYNC] A document or photo names an invalid blob ID: {blob}");
+                // Never transferred: content held here has nothing to move (`done`, so the queue
+                // alone reads it as here), content not here is a failed item (`down`).
+                let state = if held_here {
+                    BlobState::Done
+                } else {
+                    report.queued_down += 1;
+                    BlobState::Down
+                };
                 insert.execute(params![
                     blob,
-                    BlobState::Down.as_str(),
+                    state.as_str(),
                     thumbnail,
                     row_at,
                     now,
                     i64::MAX,
                     TransferError::InvalidId.as_str(),
-                    now
+                    now,
+                    None::<i64>
                 ])?;
-                report.queued_down += 1;
                 continue;
             }
             let state = if held_here {
@@ -314,7 +358,8 @@ fn reconcile_with(conn: &Connection, now: i64, scan_store: bool) -> Result<Recon
                 now,
                 0,
                 None::<String>,
-                None::<i64>
+                None::<i64>,
+                if held_here { size } else { None }
             ])?;
         }
         Ok(report)
@@ -325,8 +370,10 @@ fn attempts_of(value: i64) -> u32 {
     u32::try_from(value.max(0)).unwrap_or(u32::MAX)
 }
 
-/// The next upload that is due: an `up` entry held here, not being transferred, of at most
-/// `max_plain` bytes when given; the oldest queued first.
+/// The next upload that is due: an `up` entry not being transferred, of at most `max_plain`
+/// bytes by the size the queue recorded when given (an entry of unknown size only without a
+/// limit); the oldest queued first. Read from the queue alone: the transfer checks the one blob it
+/// takes against the store (ADR 0030).
 pub fn next_upload(
     conn: &Connection,
     now: i64,
@@ -339,13 +386,11 @@ pub fn next_upload(
     let found = conn
         .query_row(
             &format!(
-                "SELECT q.blob_id, q.thumbnail, q.wanted, q.attempts, f.size \
-                 FROM main.sync_blobs q JOIN files.blobs f ON f.id = q.blob_id \
-                 WHERE q.state = 'up' AND q.active = 0 AND {due} \
-                   AND {complete} AND (?2 IS NULL OR f.size <= ?2) \
-                 ORDER BY q.queued_at, q.blob_id LIMIT 1",
-                due = due("q.next_try_at"),
-                complete = held("q.blob_id"),
+                "SELECT blob_id, thumbnail, wanted, attempts, size FROM main.sync_blobs \
+                 WHERE state = 'up' AND active = 0 AND {due} \
+                   AND (?2 IS NULL OR size <= ?2) \
+                 ORDER BY queued_at, blob_id LIMIT 1",
+                due = due("next_try_at"),
             ),
             params![now, max_plain],
             |r| {
@@ -355,7 +400,9 @@ pub fn next_upload(
                     thumbnail: r.get(1)?,
                     wanted: r.get(2)?,
                     attempts: attempts_of(r.get(3)?),
-                    size: Some(u64::try_from(r.get::<_, i64>(4)?).unwrap_or(0)),
+                    size: r
+                        .get::<_, Option<i64>>(4)?
+                        .map(|size| u64::try_from(size).unwrap_or(0)),
                 })
             },
         )
@@ -429,8 +476,10 @@ pub fn note_found(conn: &Connection, blob_id: &str, now: i64) -> Result<bool> {
     set_active(conn, blob_id, false)?;
     Ok(conn.execute(
         &format!(
-            "UPDATE main.sync_blobs SET state = 'up', active = 0, queued_at = ?2, {FRESH} \
+            "UPDATE main.sync_blobs SET state = 'up', active = 0, queued_at = ?2, size = {}, \
+               {FRESH} \
              WHERE blob_id = ?1 AND state = 'down' AND {}",
+            store_size("sync_blobs.blob_id"),
             held("sync_blobs.blob_id")
         ),
         params![blob_id, now],
@@ -444,6 +493,25 @@ pub fn set_active(conn: &Connection, blob_id: &str, active: bool) -> Result<()> 
         params![blob_id, active],
     )?;
     Ok(())
+}
+
+/// Entries in `state` still marked active while the caller holds that state's lane, so no
+/// transfer of them can be running: a transfer of an earlier run was dropped (cut by its budget,
+/// or its engine stopped) and could not record it. Each counts a failed attempt of the network's
+/// kind, so its backoff applies as after any passing trouble. How many there were.
+pub fn fail_abandoned(conn: &Connection, state: BlobState, now: i64) -> Result<usize> {
+    let abandoned: Vec<String> = {
+        let mut stmt =
+            conn.prepare("SELECT blob_id FROM main.sync_blobs WHERE state = ?1 AND active = 1")?;
+        let rows = stmt
+            .query_map([state.as_str()], |r| r.get(0))?
+            .collect::<std::result::Result<_, _>>()?;
+        rows
+    };
+    for blob_id in &abandoned {
+        note_failed(conn, blob_id, TransferError::Network, now)?;
+    }
+    Ok(abandoned.len())
 }
 
 /// No transfer runs (a lane starting): every entry stops being active.
@@ -532,8 +600,10 @@ pub fn requeue_upload(conn: &Connection, blob_id: &str, now: i64) -> Result<bool
     }
     let changed = conn.execute(
         &format!(
-            "UPDATE main.sync_blobs SET state = 'up', queued_at = ?2, {FRESH} \
+            "UPDATE main.sync_blobs SET state = 'up', queued_at = ?2, \
+               size = COALESCE(size, {}), {FRESH} \
              WHERE blob_id = ?1 AND state = 'done' AND {}",
+            store_size("sync_blobs.blob_id"),
             held("sync_blobs.blob_id")
         ),
         params![blob_id, now],
@@ -638,50 +708,46 @@ pub fn uploads_waiting(conn: &Connection) -> Result<u32> {
     Ok(rows as u32)
 }
 
-/// The rows by where their content is (a photo once, whatever its two blobs do), as
-/// `content::ContentReader` reads each blob: content complete here is never counted as not here,
-/// whatever its entry says. Among content not here a row counts in its worst state only (failed,
-/// then not on the server, then not here); `waiting_upload` counts the rows with any blob waiting
-/// to upload, `waiting_upload_bytes` the plaintext size of those blobs; a held blob that never
-/// uploads by itself ([`STUCK`]) counts its row as failed instead. Nothing without the store
-/// (every row reads as here then).
+/// The rows by where their content is (a photo once, whatever its two blobs do), read from the
+/// queue alone, never the store (ADR 0030): an entry `up` or `done` is content held here, `down`
+/// content not here, as of the last reconcile; content lost from the store outside a merge reads
+/// as held until the next full `reconcile`. Among content not here a row counts in its worst
+/// state only (failed, then not on the server, then not here); `waiting_upload` counts the rows
+/// with any blob waiting to upload, `waiting_upload_bytes` the plaintext size the queue recorded
+/// for those blobs; a held blob that never uploads by itself ([`STUCK`]) counts its row as failed
+/// instead. Nothing without the store (every row reads as here then).
 pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
     if !files_schema::is_attached(conn)? {
         return Ok(AttachmentSummary::default());
     }
+    let refs = references()?;
     let (waiting_upload, failed, not_on_server, not_here): (i64, i64, i64, i64) = conn.query_row(
         &format!(
             "WITH blobs AS (
-               SELECT r.tbl, r.rid, q.state, q.active, COALESCE(q.last_error, '') AS error,
-                 {held} AS here
+               SELECT r.tbl, r.rid, q.state, q.active, COALESCE(q.last_error, '') AS error
                FROM ({refs}) r JOIN main.sync_blobs q ON q.blob_id = r.b),
              per_row AS (
-               SELECT MAX(state = 'up' AND here AND error NOT IN {STUCK}) AS up,
-                 MAX((absent AND active = 0
+               SELECT MAX(state = 'up' AND error NOT IN {STUCK}) AS up,
+                 MAX((state = 'down' AND active = 0
                      AND error IN ('unreadable', 'invalidId', 'refused', 'conflict'))
-                   OR (state = 'up' AND here AND error IN {STUCK})) AS failed,
-                 MAX(absent AND active = 0 AND error = 'notOnServer') AS gone,
-                 MAX(absent) AS down
-               FROM (SELECT *, state = 'down' AND NOT here AS absent FROM blobs)
+                   OR (state = 'up' AND error IN {STUCK})) AS failed,
+                 MAX(state = 'down' AND active = 0 AND error = 'notOnServer') AS gone,
+                 MAX(state = 'down') AS down
+               FROM blobs
                GROUP BY tbl, rid)
              SELECT COALESCE(SUM(up), 0), COALESCE(SUM(failed), 0),
                COALESCE(SUM(gone AND NOT failed), 0),
                COALESCE(SUM(down AND NOT failed AND NOT gone), 0)
-             FROM per_row",
-            held = held("q.blob_id"),
-            refs = references()?,
+             FROM per_row"
         ),
         [],
         |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
     )?;
     let waiting_upload_bytes: i64 = conn.query_row(
         &format!(
-            "SELECT COALESCE(SUM(f.size), 0) FROM main.sync_blobs q \
-             JOIN files.blobs f ON f.id = q.blob_id \
-             WHERE q.state = 'up' AND {held} AND q.blob_id IN (SELECT b FROM ({refs})) \
-               AND COALESCE(q.last_error, '') NOT IN {STUCK}",
-            held = held("q.blob_id"),
-            refs = references()?,
+            "SELECT COALESCE(SUM(q.size), 0) FROM main.sync_blobs q \
+             WHERE q.state = 'up' AND q.blob_id IN (SELECT b FROM ({refs})) \
+               AND COALESCE(q.last_error, '') NOT IN {STUCK}"
         ),
         [],
         |r| r.get(0),

@@ -21,7 +21,9 @@ use crate::models::sync::{SyncProblem, SyncStatus};
 use crate::services::sync::binding::BindingNative;
 use crate::services::sync::blobs::policy::BlobPolicy;
 use crate::services::sync::blobs::stream::IncomingBlobs;
-use crate::services::sync::blobs::transfer::{run_uploads, PRE_PUSH_BUDGET, PRE_PUSH_MAX_PLAIN};
+use crate::services::sync::blobs::transfer::{
+    run_uploads_if_free, PRE_PUSH_BUDGET, PRE_PUSH_MAX_PLAIN,
+};
 use crate::services::sync::capture::guard;
 use crate::services::sync::error::{SyncError, SyncResult, TooLarge};
 use crate::services::sync::held_blobs;
@@ -600,13 +602,15 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     after_push(relay, db, creds, policy, mode, now, jitter, report).await
 }
 
-/// The round's upload step (attachments design §5.3, ADR 0030): before the push, content of at most
-/// `PRE_PUSH_MAX_PLAIN` bytes goes up (the queue reconciled first, so content added here since the
-/// last merge is queued), so another device that merges a row seldom has to wait for its content.
-/// The whole step, waiting for an upload lane busy with a long transfer included, ends within
-/// `PRE_PUSH_BUDGET` (an upload still running then is dropped and tried again later), and nothing
-/// it meets fails or changes the round: transfer errors stay on their entries, and a local error
-/// is logged and dropped (a locked profile ends the round at its next step).
+/// The round's upload step (attachments design §5.3, ADR 0030): before the push, content of at
+/// most `PRE_PUSH_MAX_PLAIN` bytes goes up, so another device that merges a row seldom has to wait
+/// for its content. The queue is reconciled by its rows first (content added here since the last
+/// merge is queued and counted; the store is asked about new blobs only, never every entry); an
+/// upload lane busy with a long transfer skips the rest at once. The whole step ends within
+/// `PRE_PUSH_BUDGET`: an upload still running then is dropped and counts a failed attempt, so its
+/// backoff keeps the next rounds from spending their budget on it again. Nothing the step meets
+/// fails or changes the round: transfer errors stay on their entries, and a local error is
+/// logged and dropped (a locked profile ends the round at its next step).
 async fn upload_before_push<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -615,7 +619,7 @@ async fn upload_before_push<R: Relay, D: ConnAccess>(
     now: i64,
 ) {
     let until = tokio::time::Instant::now() + PRE_PUSH_BUDGET;
-    let uploads = run_uploads(
+    let uploads = run_uploads_if_free(
         relay,
         db,
         creds,
@@ -625,12 +629,13 @@ async fn upload_before_push<R: Relay, D: ConnAccess>(
         Some(PRE_PUSH_MAX_PLAIN),
     );
     match tokio::time::timeout_at(until, uploads).await {
-        Ok(Ok(sent)) if sent.uploaded > 0 || sent.failed > 0 => log::debug!(
+        Ok(Ok(Some(sent))) if sent.uploaded > 0 || sent.failed > 0 => log::debug!(
             "[SYNC] Before the push: {} documents or photos uploaded, {} failed",
             sent.uploaded,
             sent.failed
         ),
-        Ok(Ok(_)) => {}
+        Ok(Ok(Some(_))) => {}
+        Ok(Ok(None)) => log::debug!("[SYNC] The upload lane is busy: the round sends no content"),
         Ok(Err(AppError::Auth(_))) => {}
         Ok(Err(error)) => log::warn!("[SYNC] Documents and photos were not uploaded: {error}"),
         Err(_) => log::info!("[SYNC] Uploads before the push ran out of time; the rest waits"),

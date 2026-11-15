@@ -234,52 +234,62 @@ async fn a_drain_round_uploads_nothing() {
     assert!(!vault.relay.calls().contains(&Route::ServerInfo));
 }
 
-/// The upload lane is busy with a long transfer: the round waits for it at most its budget, then
-/// pushes without uploading.
+/// A round with a stalled transfer hangs instead of failing: the budget bounds the step, and this
+/// bounds the test.
+async fn ends<T>(round: impl std::future::Future<Output = T>) -> T {
+    tokio::time::timeout(Duration::from_secs(3_600), round)
+        .await
+        .expect("the round ends")
+}
+
+/// The upload lane is busy with a long transfer: the round skips its upload step at once and
+/// pushes; the attachment added meanwhile is still queued and counted.
 #[tokio::test(start_paused = true)]
-async fn a_busy_lane_costs_the_round_at_most_its_budget() {
+async fn a_busy_lane_is_skipped_at_once() {
     let vault = vault().await;
     with_store(&vault.a);
     owner(&vault.a);
-    document(&vault.a, "d1", b"%PDF-1.7 contract");
+    let blob = document(&vault.a, "d1", b"%PDF-1.7 contract");
     let mut policy = SnapshotPolicy::default();
     let lanes = policy.blobs.clone();
     let _long_transfer = lanes.up_lane().lock().await;
     let started = tokio::time::Instant::now();
 
-    let report = run_round(
+    let report = ends(run_round(
         &vault.relay,
         &vault.a,
         &mut policy,
         RoundMode::Normal,
         NOW,
         0,
-    )
+    ))
     .await
     .expect("round");
 
     assert!(
-        started.elapsed() <= PRE_PUSH_BUDGET,
+        started.elapsed() < Duration::from_secs(1),
         "{:?}",
         started.elapsed()
     );
     assert!(pushed(&report) > 0, "{report:?}");
     assert_eq!(report.problem, None);
     assert_eq!(blob_calls(&vault.relay), Vec::<Route>::new());
+    assert_eq!(entry(&vault.a, &blob), Some(("up".into(), 0, false)));
+    assert_eq!(shown(&vault.a).waiting_upload, 1);
 }
 
 /// An upload that never ends (a sync server that stalls mid-body) is cut at the budget: the round
-/// pushes, and the entry is left for the next try, not marked as being transferred.
+/// pushes, and the entry counts a failed attempt, so its backoff applies.
 #[tokio::test(start_paused = true)]
 async fn an_upload_that_stalls_ends_at_the_budget() {
     let vault = vault().await;
     with_store(&vault.a);
     owner(&vault.a);
     let blob = document(&vault.a, "d1", b"%PDF-1.7 contract");
-    let relay = StalledUploads(vault.relay.clone());
+    let relay = StalledUploads(vault.relay.clone(), None);
     let started = tokio::time::Instant::now();
 
-    let report = round_on(&relay, &vault.a, RoundMode::Normal).await;
+    let report = ends(round_on(&relay, &vault.a, RoundMode::Normal)).await;
 
     let spent = started.elapsed();
     assert!(
@@ -288,7 +298,151 @@ async fn an_upload_that_stalls_ends_at_the_budget() {
     );
     assert!(pushed(&report) > 0, "{report:?}");
     assert_eq!(report.problem, None);
-    assert_eq!(entry(&vault.a, &blob), Some(("up".into(), 0, false)));
+    assert_eq!(entry(&vault.a, &blob), Some(("up".into(), 1, false)));
+}
+
+/// A blob cut by the budget waits for its backoff: the next round does not spend its budget on it
+/// again, and a smaller blob behind it goes up.
+#[tokio::test(start_paused = true)]
+async fn a_cut_upload_does_not_hold_up_the_next_round() {
+    let vault = vault().await;
+    with_store(&vault.a);
+    owner(&vault.a);
+    let slow = document(&vault.a, "d1", &[1u8; 300_000]);
+    let relay = StalledUploads(
+        vault.relay.clone(),
+        Some(uuid::Uuid::parse_str(&slow).expect("id")),
+    );
+    ends(round_on(&relay, &vault.a, RoundMode::Normal)).await;
+    let small = document(&vault.a, "d2", b"%PDF-1.7 small");
+    let started = tokio::time::Instant::now();
+
+    let report = ends(round_on(&relay, &vault.a, RoundMode::Normal)).await;
+
+    assert!(
+        started.elapsed() < Duration::from_secs(1),
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(report.problem, None);
+    assert_eq!(entry(&vault.a, &small).expect("queued").0, "done");
+    assert_eq!(entry(&vault.a, &slow), Some(("up".into(), 1, false)));
+}
+
+/// A dropped transfer whose drop could not reach the connection leaves its entry marked active:
+/// the next run that holds the lane counts it a failed attempt before it picks work, so it waits
+/// for its backoff instead of being skipped for good or started again at once.
+#[tokio::test]
+async fn an_entry_left_active_by_an_earlier_run_counts_a_failed_attempt() {
+    let vault = vault().await;
+    with_store(&vault.a);
+    owner(&vault.a);
+    let blob = document(&vault.a, "d1", b"%PDF-1.7 contract");
+    {
+        let conn = vault.a.lock();
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        queue::set_active(&conn, &blob, true).expect("left active");
+    }
+
+    let report = round_on(&vault.relay, &vault.a, RoundMode::Normal).await;
+
+    assert!(pushed(&report) > 0, "{report:?}");
+    assert_eq!(entry(&vault.a, &blob), Some(("up".into(), 1, false)));
+    assert_eq!(
+        blob_calls(&vault.relay),
+        Vec::<Route>::new(),
+        "waits for its backoff"
+    );
+}
+
+/// The round sends content of exactly its size limit; one byte more is left to the lane.
+#[tokio::test]
+async fn the_size_limit_is_inclusive() {
+    let limit = usize::try_from(PRE_PUSH_MAX_PLAIN).expect("limit");
+    for (size, sent) in [(limit, true), (limit + 1, false)] {
+        let vault = vault().await;
+        with_store(&vault.a);
+        owner(&vault.a);
+        let blob = document(&vault.a, "d1", &vec![3u8; size]);
+
+        round_on(&vault.relay, &vault.a, RoundMode::Normal).await;
+
+        assert_eq!(
+            vault.relay.calls().contains(&Route::PutBlob),
+            sent,
+            "{size} bytes"
+        );
+        let state = entry(&vault.a, &blob).expect("queued").0;
+        assert_eq!(state, if sent { "done" } else { "up" }, "{size} bytes");
+    }
+}
+
+/// A local failure of the upload step (here the queue cannot be read) leaves the round a success,
+/// and the status stays readable with empty attachment figures.
+#[tokio::test]
+async fn a_broken_queue_fails_neither_the_round_nor_the_status() {
+    let vault = vault().await;
+    with_store(&vault.a);
+    owner(&vault.a);
+    document(&vault.a, "d1", b"%PDF-1.7 contract");
+    exec(
+        &vault.a.lock(),
+        "ALTER TABLE sync_blobs RENAME TO sync_blobs_away",
+    );
+
+    let report = round_on(&vault.relay, &vault.a, RoundMode::Normal).await;
+
+    assert!(pushed(&report) > 0, "{report:?}");
+    assert_eq!(report.problem, None);
+    assert_eq!(last_success(&vault.a), Some(NOW));
+    let shown = status::status(&vault.a.lock(), &Runtime::default()).expect("status");
+    assert_eq!(shown.phase, SyncPhase::Idle);
+    assert_eq!(shown.attachments, SyncAttachments::default());
+}
+
+/// Content lost from the store outside a merge: the status and the content state read the queue,
+/// never the store, so it still shows as waiting to upload (with its size) until a full reconcile.
+#[test]
+fn the_status_reads_the_queue_not_the_store() {
+    let device = TestConn::new(migrated());
+    with_store(&device);
+    state::enable(&device.lock(), A).expect("enable");
+    owner(&device);
+    let bytes = b"%PDF-1.7 lost after it was queued";
+    let blob = document(&device, "d1", bytes);
+    {
+        let conn = device.lock();
+        queue::reconcile(&conn, NOW).expect("reconcile");
+        attachment_store::delete(&conn, &blob).expect("the store loses it");
+    }
+
+    let attachments = shown(&device);
+
+    assert_eq!(attachments.waiting_upload, 1);
+    assert_eq!(attachments.waiting_upload_bytes, bytes.len() as i64);
+    let conn = device.lock();
+    let content = ContentReader::new(&conn)
+        .expect("reader")
+        .of(Some(&blob), true)
+        .expect("content");
+    assert_eq!(content, AttachmentContent::WaitingUpload);
+}
+
+/// A round that merged nothing does not check the store: content lost outside a merge stays
+/// `done` until a full reconcile.
+#[tokio::test]
+async fn a_round_without_a_merge_leaves_the_store_unread() {
+    let vault = vault().await;
+    with_store(&vault.a);
+    owner(&vault.a);
+    let blob = document(&vault.a, "d1", b"%PDF-1.7 contract");
+    round_on(&vault.relay, &vault.a, RoundMode::Normal).await;
+    assert_eq!(entry(&vault.a, &blob).expect("queued").0, "done");
+    attachment_store::delete(&vault.a.lock(), &blob).expect("the store loses it");
+
+    round_on(&vault.relay, &vault.a, RoundMode::Normal).await;
+
+    assert_eq!(entry(&vault.a, &blob).expect("queued").0, "done");
 }
 
 /// The status counts rows by where their content is, beside the ordinary phase: one document
@@ -350,8 +504,9 @@ fn the_status_counts_waiting_uploads_and_content_elsewhere() {
     assert_eq!(off_status.attachments, SyncAttachments::default());
 }
 
-/// The fake sync server, except that an upload's body is never taken: the call never ends.
-struct StalledUploads(FakeRelay);
+/// The fake sync server, except that the upload of the given blob (of any blob with `None`) never
+/// takes its body: the call never ends.
+struct StalledUploads(FakeRelay, Option<uuid::Uuid>);
 
 impl Relay for StalledUploads {
     async fn server_info(&self) -> RelayResult<ServerInfo> {
@@ -389,12 +544,15 @@ impl Relay for StalledUploads {
     }
     async fn put_blob(
         &self,
-        _vault: &VaultAuth,
-        _blob: uuid::Uuid,
-        _sealed_len: u64,
-        _body: BlobBody,
+        vault: &VaultAuth,
+        blob: uuid::Uuid,
+        sealed_len: u64,
+        body: BlobBody,
     ) -> RelayResult<()> {
-        std::future::pending().await
+        if self.1.is_none_or(|stalled| stalled == blob) {
+            return std::future::pending().await;
+        }
+        self.0.put_blob(vault, blob, sealed_len, body).await
     }
     async fn head_blob(&self, vault: &VaultAuth, blob: uuid::Uuid) -> RelayResult<Option<u64>> {
         self.0.head_blob(vault, blob).await

@@ -102,6 +102,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("035_sync_blobs", MIGRATION_035),
         ("036_sync_held_blobs", MIGRATION_036),
         ("037_sync_blobs_refusals", MIGRATION_037),
+        ("038_sync_blobs_size", MIGRATION_038),
     ]
 }
 
@@ -3403,12 +3404,9 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_37_migrations() {
-        assert_eq!(known_migration_names().len(), 37);
-        assert_eq!(
-            known_migration_names().last(),
-            Some(&"037_sync_blobs_refusals")
-        );
+    fn the_chain_now_has_38_migrations() {
+        assert_eq!(known_migration_names().len(), 38);
+        assert_eq!(known_migration_names().last(), Some(&"038_sync_blobs_size"));
     }
 }
 
@@ -3535,6 +3533,46 @@ DROP TABLE sync_blobs;
 ALTER TABLE sync_blobs_new RENAME TO sync_blobs;
 CREATE INDEX idx_sync_blobs_state ON sync_blobs (state, next_try_at);
 "#;
+
+/// 038: `sync_blobs.size`: the plaintext size of an entry's content as the store recorded it when
+/// the entry last became `up` (NULL for content not held here, and for entries from before this
+/// migration until the next full reconcile). The status and the round's upload pick read it from
+/// the queue, so neither walks the store's blobs (ADR 0030).
+pub(crate) const MIGRATION_038: &str = r#"
+ALTER TABLE sync_blobs ADD COLUMN size INTEGER;
+"#;
+
+#[cfg(test)]
+mod migration_038 {
+    use super::*;
+
+    #[test]
+    fn sync_blobs_keeps_its_entries_and_takes_a_size() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let all = all_migrations();
+        let before: Vec<_> = all
+            .iter()
+            .copied()
+            .filter(|(name, _)| *name < "038_sync_blobs_size")
+            .collect();
+        run_chain(&conn, &before).expect("chain to 037");
+        conn.execute_batch(
+            "INSERT INTO sync_blobs (blob_id, state, queued_at) VALUES ('b1', 'up', 8)",
+        )
+        .expect("entry");
+        run_chain(&conn, &all).expect("038");
+        let size: Option<i64> = conn
+            .query_row(
+                "SELECT size FROM sync_blobs WHERE blob_id = 'b1'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("kept");
+        assert_eq!(size, None, "known at the next full reconcile");
+        conn.execute("UPDATE sync_blobs SET size = 42 WHERE blob_id = 'b1'", [])
+            .expect("size");
+    }
+}
 
 #[cfg(test)]
 mod migration_037 {

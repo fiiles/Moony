@@ -125,6 +125,14 @@ documents and photos need a newer server. The app assumes the server's error cod
     the row is out;
   - a blob whose only holder is wiped before it uploads is lost; the row stays and shows "not
     uploaded yet from the other device" for good;
+  - content lost from the store outside a merge (a damaged or edited `attachments.db`) is shown as
+    here, or as waiting to upload, until the next full reconcile (the end of a merging pull, a
+    restore or replace, a lane start); opening it until then fails as a missing file does today,
+    and an upload that takes it finds the content gone and drops the entry, which the next
+    reconcile queues again as not here;
+  - an upload or download dropped mid-flight (the round's 20-second budget, an engine stopped)
+    counts a failed attempt of the network's kind, so a blob too slow for the round's budget waits
+    out its backoff (30 s, doubling) between rounds and is finished by the lane;
   - file sizes are visible to the server as they are (not padded);
   - the "only in the backup" count of a replace can overstate: a row pushed after the vault's
     newest snapshot is counted as orphaned, and the next pull brings it back with its held
@@ -193,3 +201,25 @@ documents and photos need a newer server. The app assumes the server's error cod
   server or no-room failure (the next blob would meet it too), passes over a blob another download
   holds, and stops between blobs when its deadline passed. Times come from the caller; an entry
   or a pause dated further ahead than its longest wait (a clock set back) counts as due.
+- **Where content is read from (Task 11, review ruling).** Reading whether a blob is complete in
+  the store means reading `sha256` and `size`, which follow `data` in `files.blobs`, so SQLite
+  walks the blob's overflow chain (a handful of pages when contiguous, about a thousand for a
+  fragmented 4 MiB blob). Nothing that runs often asks the store about every blob. The queue is
+  the cheap source: an entry says where the content is as of the last reconcile (`up` or `done`:
+  complete here; `down`: not here), and `sync_blobs.size` (migration 038) keeps the plaintext size
+  of an `up` entry, recorded when it became `up`. Read from the queue alone: the status summary
+  (`queue::summary`, also the bytes waiting to upload), the upload pick (`queue::next_upload`,
+  also the round's 8 MiB limit) and `ContentReader` whenever the blob has an entry (the store is
+  consulted only for a blob without one: sync off, a row that does not sync, a row not queued
+  yet). The store is consulted by the full `reconcile` (the end of a merging pull, a restore or
+  replace, a lane start), by `reconcile_rows` for newly named blobs only (one blob each), and by a
+  transfer for the one blob it handles. A held blob with an invalid ID is queued `done` (nothing
+  ever moves it; the queue alone reads it as here), one not held `down` (a failed item).
+- **Uploads in the round (Task 11).** Before its push (not in the repair's drain) a round runs
+  `reconcile_rows`, so content added here is queued and counted even when the round sends none,
+  then, only if the upload lane is free at that moment, uploads blobs of at most 8 MiB; the whole
+  step ends within 20 seconds, an upload still running then is dropped (and counts a failed
+  attempt). Whatever happens there, the round pushes, pulls and records success as without
+  attachments. `SyncStatus.attachments` carries the counts and the attachments problem beside the
+  ordinary phase, never in it; a summary that cannot be read leaves them empty, with a warning in
+  the log, and the rest of the status as it is.

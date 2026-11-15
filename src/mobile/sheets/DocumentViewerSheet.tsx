@@ -11,12 +11,16 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ZoomIn, ZoomOut } from 'lucide-react';
+import type { AttachmentContent } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Sheet } from '@/mobile/components/Sheet';
+import { FetchingNotice, UnavailableNotice } from '@/mobile/components/documents/AttachmentStates';
 import { FOOTER_GHOST_WIDE } from '@/mobile/components/import/styles';
 import type { DocumentKind } from '@/mobile/components/documents/document-kind';
+import { useAttachmentFetch } from '@/mobile/hooks/use-attachment-fetch';
+import type { FetchPlan } from '@/mobile/lib/attachment-fetch';
 import { isDoubleTap, scrollAfterZoom, type TapPoint } from '@/mobile/lib/documents';
 import { attachmentUrl } from '@/utils/attachment-url';
 import { viewerKind } from '@/utils/attachment-viewer';
@@ -29,6 +33,8 @@ export interface ViewableDocument {
   id: string;
   name: string;
   mimeType: string;
+  /** Where the content is with device sync; the viewer follows it while it is open. */
+  content: AttachmentContent;
 }
 
 interface DocumentViewerSheetProps {
@@ -39,9 +45,15 @@ interface DocumentViewerSheetProps {
   doc: ViewableDocument | null;
   /** The one line under the name ("smlouva · 2,1 MB · 9. 1. 2024"). */
   sub?: string;
+  /**
+   * When the list the document comes from was last refreshed: a preview that failed to load gets
+   * one new attempt per refresh (and per opening), never a timer.
+   */
+  refreshedAt?: number;
 }
 
-type Status = 'loading' | 'ready' | 'failed';
+// `fetching`: the content is not on the phone yet; nothing is mounted that would load it
+type Status = 'loading' | 'ready' | 'failed' | 'fetching';
 
 /** The zoom step: the content is this many times the box's width. */
 const ZOOM = 2;
@@ -71,6 +83,7 @@ export function DocumentViewerSheet({
   kind,
   doc,
   sub,
+  refreshedAt,
 }: DocumentViewerSheetProps) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
@@ -88,15 +101,39 @@ export function DocumentViewerSheet({
     setZoomed(false);
   };
   if (doc !== null && doc !== shown) {
+    // A refreshed row of the same document updates it without loading again
+    const another = doc.id !== shown?.id;
     setShown(doc);
-    restart();
+    if (another) restart();
   }
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) restart();
   }
+  // A preview that failed gets one new attempt per refresh of the list
+  const [seenRefresh, setSeenRefresh] = useState(refreshedAt);
+  if (seenRefresh !== refreshedAt) {
+    setSeenRefresh(refreshedAt);
+    if (status === 'failed') setStatus('loading');
+  }
 
   const view = shown ? viewerKind(shown.mimeType) : 'external';
+  // A file the phone cannot show has nothing to download for: it says so whatever the content is
+  const { plan, retrying, tryAgain } = useAttachmentFetch({
+    open,
+    kind,
+    id: shown?.id,
+    content: shown?.content,
+    skip: view === 'external',
+  });
+  // The status follows the plan: a spinner while the content comes, a fresh load once it is here
+  const planned: Status =
+    plan.stage === 'fetching'
+      ? 'fetching'
+      : status === 'fetching' || plan.stage === 'unavailable'
+        ? 'loading'
+        : status;
+  if (planned !== status) setStatus(planned);
   // Stable: `PdfPages` starts over whenever one of them changes
   const markReady = useCallback(() => setStatus('ready'), []);
   const markFailed = useCallback(() => setStatus('failed'), []);
@@ -135,7 +172,7 @@ export function DocumentViewerSheet({
 
   // A document the phone cannot show (`external`) or one that failed is a line of text: it gets a
   // normal-height sheet and no zoom, not a tall one that is nearly empty
-  const showsDocument = view !== 'external' && status !== 'failed';
+  const showsDocument = view !== 'external' && status !== 'failed' && plan.stage !== 'unavailable';
   return (
     <Sheet
       open={open}
@@ -174,6 +211,9 @@ export function DocumentViewerSheet({
           kind={kind}
           doc={shown}
           view={view}
+          plan={plan}
+          retrying={retrying}
+          onTryAgain={tryAgain}
           status={status}
           zoomed={zoomed}
           boxRef={box}
@@ -190,6 +230,9 @@ interface ViewerBodyProps {
   kind: DocumentKind;
   doc: ViewableDocument;
   view: ReturnType<typeof viewerKind>;
+  plan: FetchPlan;
+  retrying: boolean;
+  onTryAgain: () => void;
   status: Status;
   zoomed: boolean;
   boxRef: RefObject<HTMLDivElement | null>;
@@ -202,6 +245,9 @@ function ViewerBody({
   kind,
   doc,
   view,
+  plan,
+  retrying,
+  onTryAgain,
   status,
   zoomed,
   boxRef,
@@ -219,6 +265,26 @@ function ViewerBody({
       <p className="m-0 px-1 py-6 text-center text-m-body text-ink-3">
         {t('documents.openOnComputer')}
       </p>
+    );
+  }
+  if (plan.stage === 'unavailable') {
+    return (
+      <div className="px-1 py-6">
+        <UnavailableNotice
+          note={plan.note}
+          retry={plan.retry}
+          busy={retrying}
+          onTryAgain={onTryAgain}
+        />
+      </div>
+    );
+  }
+  if (plan.stage === 'fetching' || status === 'fetching') {
+    return (
+      // Fills the sheet like the document will; nothing here loads a URL for content that is not here
+      <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center rounded-r3 bg-well p-4">
+        <FetchingNotice />
+      </div>
     );
   }
   if (status === 'failed') {

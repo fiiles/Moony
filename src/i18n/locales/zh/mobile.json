@@ -262,7 +262,8 @@
     "rowMenu": "更多操作：{{name}}",
     "previewFailed": "无法显示预览。请在电脑上的 Moony 中打开该文档。",
     "zoomIn": "放大",
-    "zoomOut": "缩小"
+    "zoomOut": "缩小",
+    "notHereSub": "在其他设备上 · 点按即可下载"
   },
   "policy": {
     "copy": "复制合同编号",

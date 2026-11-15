@@ -286,7 +286,8 @@
     "rowMenu": "Weitere Aktionen: {{name}}",
     "previewFailed": "Die Vorschau konnte nicht angezeigt werden. Öffnen Sie das Dokument in Moony auf Ihrem Computer.",
     "zoomIn": "Vergrößern",
-    "zoomOut": "Verkleinern"
+    "zoomOut": "Verkleinern",
+    "notHereSub": "Auf Ihren anderen Geräten · zum Laden tippen"
   },
   "policy": {
     "copy": "Vertragsnummer kopieren",

@@ -6,10 +6,12 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
+import { rowOpensViewer } from '@/mobile/lib/attachment-fetch';
 import {
   DOCUMENT_ACCEPT,
   documentSub,
   pickedFileProblem,
+  type DocumentNoteKey,
   type DocumentSource,
 } from '@/mobile/lib/documents';
 import { AddDocumentSheet, type PickedDocument } from '@/mobile/sheets/AddDocumentSheet';
@@ -52,6 +54,8 @@ export function DocumentsSection({ kind, ownerId, fileTypes, typeLabel }: Docume
     data: documents = [],
     isLoading,
     error: loadError,
+    isSuccess,
+    dataUpdatedAt,
   } = useQuery<PhoneDocument[]>({
     queryKey: listKey,
     queryFn: () => config.list(ownerId),
@@ -64,6 +68,12 @@ export function DocumentsSection({ kind, ownerId, fileTypes, typeLabel }: Docume
   const pickCount = useRef(0);
   const [viewing, setViewing] = useState<PhoneDocument | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
+  // The viewer follows the row as the list refreshes (its content moves from "not here" to "here")
+  const liveViewing = viewing ? (documents.find((doc) => doc.id === viewing.id) ?? viewing) : null;
+  // Deleted on another device while it is open: the sheet closes quietly
+  if (viewOpen && viewing && isSuccess && !documents.some((doc) => doc.id === viewing.id)) {
+    setViewOpen(false);
+  }
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PhoneDocument | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -80,7 +90,9 @@ export function DocumentsSection({ kind, ownerId, fileTypes, typeLabel }: Docume
     },
   });
 
-  const sub = (doc: PhoneDocument) => documentSub(doc, typeLabel, fmt);
+  const noteText = (key: DocumentNoteKey) =>
+    key === 'notHereSub' ? t('documents.notHereSub') : tc(`attachments.content.${key}`);
+  const sub = (doc: PhoneDocument) => documentSub(doc, typeLabel, fmt, noteText);
 
   const chosen = (files: File[], source: DocumentSource) => {
     const file = files[0];
@@ -121,6 +133,7 @@ export function DocumentsSection({ kind, ownerId, fileTypes, typeLabel }: Docume
               sub={sub(doc)}
               menuLabel={t('documents.rowMenu', { name: doc.name })}
               deleteLabel={td('documents.delete')}
+              openable={rowOpensViewer(doc.content)}
               menuOpen={menuFor === doc.id}
               onMenuOpenChange={(next) => setMenuFor(next ? doc.id : null)}
               onOpen={() => {
@@ -154,8 +167,10 @@ export function DocumentsSection({ kind, ownerId, fileTypes, typeLabel }: Docume
         open={viewOpen}
         onOpenChange={setViewOpen}
         kind={kind}
-        doc={viewing}
-        sub={viewing ? sub(viewing) : undefined}
+        doc={liveViewing}
+        // Without the row's note: the viewer shows where the content is itself
+        sub={liveViewing ? documentSub(liveViewing, typeLabel, fmt) : undefined}
+        refreshedAt={dataUpdatedAt}
       />
       <ConfirmSheet
         open={confirmOpen}

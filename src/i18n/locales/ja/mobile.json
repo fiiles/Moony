@@ -262,7 +262,8 @@
     "rowMenu": "その他の操作: {{name}}",
     "previewFailed": "プレビューを表示できませんでした。パソコンの Moony でドキュメントを開いてください。",
     "zoomIn": "拡大",
-    "zoomOut": "縮小"
+    "zoomOut": "縮小",
+    "notHereSub": "他のデバイスにあります · タップしてダウンロード"
   },
   "policy": {
     "copy": "契約番号をコピー",

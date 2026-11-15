@@ -334,7 +334,8 @@
     "rowMenu": "Więcej akcji: {{name}}",
     "previewFailed": "Nie udało się wyświetlić podglądu. Otwórz dokument w Moony na komputerze.",
     "zoomIn": "Powiększ",
-    "zoomOut": "Pomniejsz"
+    "zoomOut": "Pomniejsz",
+    "notHereSub": "Na innych urządzeniach · dotknij, aby pobrać"
   },
   "policy": {
     "copy": "Skopiuj numer umowy",

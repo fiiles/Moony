@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { AttachmentContent } from '@shared/schema';
 import { getFormatters } from '@/lib/format';
 import {
   DOCUMENT_ACCEPT,
@@ -9,6 +10,7 @@ import {
   isDoubleTap,
   pickedFileProblem,
   scrollAfterZoom,
+  type DocumentNoteKey,
 } from './documents';
 
 const cs = getFormatters('cs-CZ', 'CZK');
@@ -146,6 +148,50 @@ describe('documentSub', () => {
     expect(documentSub({ ...doc, fileType: 'appraisal' }, label, cs)).toBe(
       'appraisal · 1,2 MB · 24. 10. 2026'
     );
+  });
+});
+
+describe('documentSub with where the content is', () => {
+  const UPLOADED = Date.UTC(2026, 9, 24, 12) / 1000;
+  const label = (type: string) => ({ contract: 'smlouva', other: 'jiné' })[type] ?? type;
+  const doc = {
+    fileType: 'contract',
+    fileSize: Math.round(1.2 * 1024 * 1024),
+    uploadedAt: UPLOADED,
+  };
+  const notes: Record<DocumentNoteKey, string> = {
+    notHereSub: 'Na vašich dalších zařízeních · klepnutím stáhnete',
+    waitingUpload: 'Čeká na synchronizaci',
+    downloading: 'Stahuje se…',
+    notOnServer: 'Zatím nenahráno z druhého zařízení',
+    failed: 'Stažení se nepovedlo',
+    missing: 'Obsah chybí',
+  };
+  const note = (key: DocumentNoteKey) => notes[key];
+  const base = 'smlouva · 1,2 MB · 24. 10. 2026';
+
+  it('is byte-identical to the plain line for content that is here, with or without a note source', () => {
+    expect(documentSub({ ...doc, content: 'here' }, label, cs, note)).toBe(base);
+    expect(documentSub({ ...doc, content: 'here' }, label, cs)).toBe(base);
+    expect(documentSub(doc, label, cs, note)).toBe(base);
+  });
+
+  it('appends the note of every other state', () => {
+    const sub = (content: AttachmentContent) => documentSub({ ...doc, content }, label, cs, note);
+    expect(sub('waitingUpload')).toBe(`${base} · Čeká na synchronizaci`);
+    expect(sub('notHere')).toBe(`${base} · Na vašich dalších zařízeních · klepnutím stáhnete`);
+    expect(sub('downloading')).toBe(`${base} · Stahuje se…`);
+    expect(sub('notOnServer')).toBe(`${base} · Zatím nenahráno z druhého zařízení`);
+    expect(sub('failed')).toBe(`${base} · Stažení se nepovedlo`);
+    expect(sub('missing')).toBe(`${base} · Obsah chybí`);
+  });
+
+  it('asks for the note of a state only when there is one', () => {
+    const asked: string[] = [];
+    documentSub({ ...doc, content: 'here' }, label, cs, (key) => (asked.push(key), ''));
+    expect(asked).toEqual([]);
+    documentSub({ ...doc, content: 'notHere' }, label, cs, (key) => (asked.push(key), ''));
+    expect(asked).toEqual(['notHereSub']);
   });
 });
 

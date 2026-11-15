@@ -310,7 +310,8 @@
     "rowMenu": "Další akce: {{name}}",
     "previewFailed": "Náhled se nepodařilo zobrazit. Otevřete dokument v Moony na počítači.",
     "zoomIn": "Přiblížit",
-    "zoomOut": "Oddálit"
+    "zoomOut": "Oddálit",
+    "notHereSub": "Na vašich dalších zařízeních · klepnutím stáhnete"
   },
   "policy": {
     "copy": "Zkopírovat číslo smlouvy",

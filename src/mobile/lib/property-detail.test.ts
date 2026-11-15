@@ -1010,6 +1010,19 @@ describe('galleryPhotos', () => {
     createdAt: photoDate,
   });
 
+  it('carries where the full photo and its thumbnail are, each by itself', () => {
+    const mixed: RealEstatePhotoBatch = {
+      ...batch('b', day(2026, 10, 24), ['x', 'y']),
+      photos: [
+        { id: 'x', batchId: 'b', createdAt: 1, content: 'notHere', thumbContent: 'here' },
+        { id: 'y', batchId: 'b', createdAt: 2, content: 'failed', thumbContent: 'notOnServer' },
+      ],
+    };
+    const [x, y] = galleryPhotos([mixed]);
+    expect([x.content, x.thumbContent]).toEqual(['notHere', 'here']);
+    expect([y.content, y.thumbContent]).toEqual(['failed', 'notOnServer']);
+  });
+
   it('lists the photos of the newest batch first, each with its batch, day and description', () => {
     const photos = galleryPhotos([
       batch('old', day(2025, 6, 1), ['o1']),
@@ -1022,6 +1035,8 @@ describe('galleryPhotos', () => {
       day: day(2026, 10, 24),
       description: 'Po rekonstrukci',
       last: false,
+      content: 'here',
+      thumbContent: 'here',
     });
   });
 

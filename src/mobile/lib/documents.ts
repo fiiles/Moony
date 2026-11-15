@@ -3,7 +3,9 @@
  * away before anything is read, what a new document is called, and the sub-line of a row. Pure, so
  * the camera, the picker and the section share one answer.
  */
+import type { AttachmentContent } from '@shared/schema';
 import type { Formatters } from '@/lib/format';
+import { attachmentView, type AttachmentNote } from '@/utils/attachment-content';
 
 /** The attachment store's limit (`validation.attachmentTooLarge`): the phone refuses before reading. */
 export const MAX_DOCUMENT_BYTES = 100 * 1024 * 1024;
@@ -91,22 +93,42 @@ interface DocumentSubInput {
   fileSize: number | null;
   /** A real instant (the backend stamps it with the clock), not a calendar day. */
   uploadedAt: number;
+  /** Where the content is with device sync; left out (or `here`) the line has no note. */
+  content?: AttachmentContent;
+}
+
+/**
+ * The words a row's note can take: `notHereSub` is the phone's own (`mobile.documents`), the rest
+ * are `common.attachments.content.*`. The caller resolves the text.
+ */
+export type DocumentNoteKey = 'notHereSub' | AttachmentNote;
+
+/** The note a row's sub-line ends with, or `null` for content that is here. */
+function documentNoteKey(content: AttachmentContent): DocumentNoteKey | null {
+  // The phone's `notHere` is a document to download, not a spinner (`attachmentView`'s `download` action)
+  if (content === 'notHere') return 'notHereSub';
+  return attachmentView(content, 'phone').note;
 }
 
 /**
  * The sub-line of a document row: the type's label · the size · the upload day ("smlouva · 1,2 MB ·
  * 24. 10. 2026"). The size is left out when it is not known. The day is the local one — the upload
- * is a real instant, so a document added at 00:30 is not dated the day before.
+ * is a real instant, so a document added at 00:30 is not dated the day before. A document whose
+ * content is not on the phone ends with the note that says where it is (`noteText` words it);
+ * content that is here (or sync off) gives the line it always was.
  */
 export function documentSub(
   doc: DocumentSubInput,
   typeLabel: (fileType: string) => string,
-  fmt: Pick<Formatters, 'number' | 'date'>
+  fmt: Pick<Formatters, 'number' | 'date'>,
+  noteText?: (key: DocumentNoteKey) => string
 ): string {
+  const noteKey = doc.content && noteText ? documentNoteKey(doc.content) : null;
   return [
     typeLabel(doc.fileType),
     doc.fileSize ? fileSizeText(doc.fileSize, fmt) : '',
     fmt.date(new Date(doc.uploadedAt * 1000)),
+    noteKey && noteText ? noteText(noteKey) : '',
   ]
     .filter(Boolean)
     .join(' · ');

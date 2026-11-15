@@ -286,7 +286,8 @@
     "rowMenu": "Fler åtgärder: {{name}}",
     "previewFailed": "Förhandsvisningen kunde inte visas. Öppna dokumentet i Moony på datorn.",
     "zoomIn": "Zooma in",
-    "zoomOut": "Zooma ut"
+    "zoomOut": "Zooma ut",
+    "notHereSub": "På dina andra enheter · tryck för att ladda ned"
   },
   "policy": {
     "copy": "Kopiera avtalsnummer",

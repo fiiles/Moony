@@ -310,7 +310,8 @@
     "rowMenu": "Más acciones: {{name}}",
     "previewFailed": "No se pudo mostrar la vista previa. Abre el documento en Moony en tu ordenador.",
     "zoomIn": "Acercar",
-    "zoomOut": "Alejar"
+    "zoomOut": "Alejar",
+    "notHereSub": "En tus otros dispositivos · toca para descargar"
   },
   "policy": {
     "copy": "Copiar número de contrato",

@@ -261,7 +261,7 @@ Device sync (spec `docs/specs/2026-11-06-device-sync-client-design.md`, ADR 0024
 
 ## Outbound HTTP
 
-ECB rates, Frankfurter history and the Yahoo coin search go through one shared `reqwest::Client` (`src-tauri/src/services/http.rs`: 15 s connect + total timeout, `User-Agent: Moony/<version>`). Yahoo Finance chart requests (stock and crypto prices and history) use the `yahoo_finance_api` connector, built with the same 15 s bound in `services/price_api.rs`. Never call `reqwest::get` (no timeout). Device sync's relay client (`services/sync/relay/http.rs`) uses the shared client with redirects disabled (`services::http::no_redirect_client`), caps every answer body and raises the bound per request only for push and pull (120 s) and snapshots (600 s).
+ECB rates, Frankfurter history, the Yahoo coin search and the stock logo lookups (Yahoo search, then the logo images from `s.yimg.com` or Financial Modeling Prep, ADR 0031, the images with redirects disabled) go through one shared `reqwest::Client` (`src-tauri/src/services/http.rs`: 15 s connect + total timeout, `User-Agent: Moony/<version>`). Yahoo Finance chart requests (stock and crypto prices and history) use the `yahoo_finance_api` connector, built with the same 15 s bound in `services/price_api.rs`. Never call `reqwest::get` (no timeout). Device sync's relay client (`services/sync/relay/http.rs`) uses the shared client with redirects disabled (`services::http::no_redirect_client`), caps every answer body and raises the bound per request only for push and pull (120 s) and snapshots (600 s).
 
 ## Known Structural Debt
 

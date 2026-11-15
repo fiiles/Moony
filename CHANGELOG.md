@@ -8,6 +8,10 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Added
 
+- **Logos for stocks and coins.** Stocks, ETFs and followed stocks show their company's logo, from
+  Yahoo Finance or, where Yahoo has none (most European stocks and ETFs, and many US companies),
+  from Financial Modeling Prep, which then learns those tickers (see PRIVACY.md). Logos are kept in
+  the encrypted database and never synced; coin icons ship with the app.
 - **Spending plans on the phone.** The Cashflow tab shows a card with what is left in this year's
   plans and which ones run over, and opens the list of plans for any year. Each plan has a detail
   with what is left, spend per month, spend per category and its payments. From a payment's

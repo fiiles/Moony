@@ -456,8 +456,12 @@ decisions:
   still never show together). A manual backup time is not capped, so the reminder without sync
   reads exactly as before. The stalled-sync reminder's week also ignores a last success dated
   after tomorrow and counts from when this device joined. Reason: one round with a clock far ahead
-  would otherwise silence the reminder for as long as the clock was ahead. Cost: a device whose
-  clock is more than a day ahead gets no credit for its complete syncs until the clock is right.
+  would otherwise silence the reminder for as long as the clock was ahead. A device that simply
+  runs ahead is not affected: it stamps and reads with the same clock. Cost: a device whose clock
+  was ahead at its last complete round and was corrected afterwards gets no credit for that round
+  until its next complete one, at most five minutes later while the server can be reached. During
+  an outage right after such a correction the stalled-sync reminder can show at once, counted from
+  when the device joined, until the next round that succeeds.
 - `SyncAttachments.failedUpload`: the rows among `failed` whose content is here and cannot upload
   by itself (refused, a conflict, an invalid ID), a photo once. Their content is on this device
   only and keeps every sync incomplete until "try again" on the row. The status surfaces show a

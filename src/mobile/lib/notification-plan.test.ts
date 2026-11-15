@@ -61,12 +61,14 @@ function plan(patch: {
   milestones?: Milestone[];
   mutedKinds?: MilestoneKind[];
   prefs?: NotificationPrefs;
+  syncOn?: boolean;
 }): PlannedNotification[] {
   return buildNotificationPlan({
     now: patch.now ?? NOW,
     milestones: patch.milestones ?? [],
     mutedKinds: patch.mutedKinds ?? [],
     prefs: patch.prefs ?? DEADLINES_ONLY,
+    syncOn: patch.syncOn,
   });
 }
 
@@ -315,6 +317,36 @@ describe('buildNotificationPlan: backup', () => {
   it('says there is no backup at all when the milestone has no last day', () => {
     const [item] = plan({ milestones: [stale({ sinceDay: null })], prefs: BACKUP_ONLY });
     expect(item.body).toEqual({ key: 'notifications.backup.never' });
+  });
+
+  it('names sync in the backup reminder under its own id while sync is on', () => {
+    // Review Focus 1: the old id and text return when sync is off again
+    const sync = plan({ milestones: [stale()], prefs: BACKUP_ONLY, syncOn: true });
+    expect(sync).toHaveLength(1);
+    expect(sync[0]).toMatchObject({
+      id: notificationId('backup', 'backupSync'),
+      kind: 'backup',
+      title: { key: 'notifications.backup.titleSync' },
+      body: { key: 'notifications.backup.staleSync' },
+      path: '/settings/backup',
+    });
+    expect(notificationId('backup', 'backupSync')).not.toBe(notificationId('backup', 'backup'));
+    const never = plan({
+      milestones: [stale({ sinceDay: null })],
+      prefs: BACKUP_ONLY,
+      syncOn: true,
+    });
+    expect(never[0].body).toEqual({ key: 'notifications.backup.neverSync' });
+
+    const off = plan({ milestones: [stale()], prefs: BACKUP_ONLY, syncOn: false });
+    expect(off[0].id).toBe(notificationId('backup', 'backup'));
+    expect(off[0].title).toEqual({ key: 'notifications.backup.title' });
+    expect(off[0].body).toEqual({ key: 'notifications.backup.stale' });
+    // A different id changes the signature, so a pending old reminder is planned again
+    expect(planSignature(sync)).not.toBe(planSignature(off));
+    expect(planSignature(off)).toBe(
+      planSignature(plan({ milestones: [stale()], prefs: BACKUP_ONLY }))
+    );
   });
 
   it('tomorrow crosses month and year ends', () => {

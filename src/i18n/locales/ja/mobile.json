@@ -75,6 +75,9 @@
     "lastImport": "前回の取り込み {{date}}",
     "backupStale_other": "最後のバックアップは{{count}}日前",
     "backupNever": "まだバックアップがありません",
+    "safeCopyStale_other": "最後の安全なコピーは{{count}}日前",
+    "safeCopyNever": "安全なコピーはまだありません",
+    "bothWaysOut": "同期を再開するか、バックアップを取ってください",
     "valuationStale": "{{name}}の評価額は1年前のものです",
     "syncStalled": "同期が停止しました",
     "actions": {
@@ -841,7 +844,11 @@
       "hint": "最後のバックアップから30日以上たったとき。",
       "title": "Moonyをバックアップしましょう",
       "stale": "最後のバックアップは1か月以上前です。",
-      "never": "まだバックアップがありません。"
+      "never": "まだバックアップがありません。",
+      "titleSync": "Moonyのデータを守りましょう",
+      "staleSync": "最後の安全なコピーは1か月以上前です。同期を再開するか、バックアップを取ってください。",
+      "neverSync": "安全なコピーはまだありません。同期を再開するか、バックアップを取ってください。",
+      "hintSync": "バックアップも完全な同期も30日より新しくないときに通知します。"
     },
     "deadline": {
       "title": "{{title}}",

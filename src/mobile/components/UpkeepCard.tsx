@@ -245,7 +245,8 @@ function UpkeepItem({ row, accounts, lastImportByAccount, onRecord, onImport }: 
       sub = row.milestone ? subLine(row.milestone) : null;
       break;
     default:
-      sub = null;
+      // The row's own second line (the backup row with sync on)
+      sub = row.sub ? t(row.sub.key, row.sub.params) : null;
   }
 
   // A loan row names the loan and says what is due under it; the folded line keeps the short title

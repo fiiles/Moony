@@ -73,6 +73,8 @@
     "valuation_stale": "Sin tasación nueva desde el {{date}} · vuelve a valorarlo",
     "backup_stale": "Última copia de seguridad el {{date}}",
     "backup_never": "Aún no hay copia de seguridad",
+    "backup_stale_sync": "Última copia segura el {{date}}: restaura la sincronización o haz una copia de seguridad",
+    "backup_never_sync": "Aún no hay copia segura: restaura la sincronización o haz una copia de seguridad",
     "balances_stale_one": "{{count}} cuenta sin actualizar desde hace más de 30 días",
     "balances_stale_many": "{{count}} cuentas sin actualizar desde hace más de 30 días",
     "balances_stale_other": "{{count}} cuentas sin actualizar desde hace más de 30 días",
@@ -123,6 +125,7 @@
     "backup": {
       "label": "Copias de seguridad de los datos",
       "hint": "Cuando la última copia de seguridad tiene más de 30 días.",
+      "hintSync": "Cuando ni una copia de seguridad ni una sincronización completa son de hace menos de 30 días.",
       "mute": "No recordarme copias de seguridad"
     },
     "balances": {

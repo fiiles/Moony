@@ -83,6 +83,10 @@
     "backupStale_one": "Siste sikkerhetskopi for {{count}} dag siden",
     "backupStale_other": "Siste sikkerhetskopi for {{count}} dager siden",
     "backupNever": "Ingen sikkerhetskopi ennå",
+    "safeCopyStale_one": "Siste sikre kopi for {{count}} dag siden",
+    "safeCopyStale_other": "Siste sikre kopi for {{count}} dager siden",
+    "safeCopyNever": "Ingen sikker kopi ennå",
+    "bothWaysOut": "Gjenoppta synkroniseringen eller ta sikkerhetskopi",
     "valuationStale": "Verdivurderingen av {{name}} er et år gammel",
     "syncStalled": "Synkroniseringen har stoppet",
     "actions": {
@@ -888,7 +892,11 @@
       "hint": "Når den siste sikkerhetskopien er eldre enn 30 dager.",
       "title": "Ta sikkerhetskopi av Moony",
       "stale": "Den siste sikkerhetskopien er over en måned gammel.",
-      "never": "Du har ingen sikkerhetskopi ennå."
+      "never": "Du har ingen sikkerhetskopi ennå.",
+      "titleSync": "Beskytt Moony-dataene dine",
+      "staleSync": "Den siste sikre kopien er over en måned gammel. Gjenoppta synkroniseringen eller ta sikkerhetskopi.",
+      "neverSync": "Du har ingen sikker kopi ennå. Gjenoppta synkroniseringen eller ta sikkerhetskopi.",
+      "hintSync": "Når verken en sikkerhetskopi eller en fullstendig synkronisering er nyere enn 30 dager."
     },
     "deadline": {
       "title": "{{title}}",

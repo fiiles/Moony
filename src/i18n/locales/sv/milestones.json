@@ -68,6 +68,8 @@
     "valuation_stale": "Ingen ny värdering sedan {{date}} · omvärdera",
     "backup_stale": "Senaste säkerhetskopia {{date}}",
     "backup_never": "Ingen säkerhetskopia ännu",
+    "backup_stale_sync": "Senaste säkra kopia {{date}}: återställ synkroniseringen eller gör en säkerhetskopia",
+    "backup_never_sync": "Ingen säker kopia ännu: återställ synkroniseringen eller gör en säkerhetskopia",
     "balances_stale_one": "{{count}} konto inte uppdaterat på över 30 dagar",
     "balances_stale_other": "{{count}} konton inte uppdaterade på över 30 dagar",
     "sync_stalled": "Senast synkroniserad {{date}}",
@@ -116,6 +118,7 @@
     "backup": {
       "label": "Säkerhetskopior av data",
       "hint": "När den senaste säkerhetskopian är äldre än 30 dagar.",
+      "hintSync": "När varken en säkerhetskopia eller en fullständig synkronisering är nyare än 30 dagar.",
       "mute": "Påminn mig inte om säkerhetskopior"
     },
     "balances": {

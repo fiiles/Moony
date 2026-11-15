@@ -73,6 +73,8 @@
     "valuation_stale": "Bez nového odhadu od {{date}} · přeceňte",
     "backup_stale": "Poslední záloha {{date}}",
     "backup_never": "Zatím žádná záloha",
+    "backup_stale_sync": "Poslední bezpečná kopie {{date}}: obnovte synchronizaci, nebo zálohujte",
+    "backup_never_sync": "Zatím žádná bezpečná kopie: obnovte synchronizaci, nebo zálohujte",
     "balances_stale_one": "{{count}} účet bez aktualizace přes 30 dní",
     "balances_stale_few": "{{count}} účty bez aktualizace přes 30 dní",
     "balances_stale_other": "{{count}} účtů bez aktualizace přes 30 dní",
@@ -123,6 +125,7 @@
     "backup": {
       "label": "Zálohy dat",
       "hint": "Když je poslední záloha starší než 30 dní.",
+      "hintSync": "Když není záloha ani úplná synchronizace novější než 30 dní.",
       "mute": "Nepřipomínat zálohy"
     },
     "balances": {

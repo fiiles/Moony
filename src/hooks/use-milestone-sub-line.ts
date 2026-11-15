@@ -3,8 +3,10 @@ import type { Milestone } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import type { Formatters } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useCurrency } from '@/lib/currency';
 import { utcDayFloor } from '@/utils/chart-axis';
+import { syncIsOn } from '@/utils/safe-copy';
 import { formatNativePrice } from '@/utils/stock-monitor';
 
 /**
@@ -17,6 +19,10 @@ export function useMilestoneSubLine(formatMoney?: Formatters['money']) {
   const { t } = useTranslation('milestones');
   const fmt = useFormat();
   const { currencyCode } = useCurrency();
+  const featureOn = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
+  // With sync on the backup reminder follows the newest safe copy and names both ways out
+  const syncOn = syncIsOn(featureOn, syncStatus);
   const thisYear = new Date(utcDayFloor(Date.now() / 1000) * 1000).getUTCFullYear();
   // Day and month inside the current year, the full date otherwise: "17. 4." for a valuation
   // from this spring, "17. 4. 2024" for one from two years ago.
@@ -55,8 +61,8 @@ export function useMilestoneSubLine(formatMoney?: Formatters['money']) {
         });
       case 'backup_stale':
         return m.sinceDay === null
-          ? t('sub.backup_never')
-          : t('sub.backup_stale', { date: day(m.sinceDay) });
+          ? t(syncOn ? 'sub.backup_never_sync' : 'sub.backup_never')
+          : t(syncOn ? 'sub.backup_stale_sync' : 'sub.backup_stale', { date: day(m.sinceDay) });
       case 'sync_stalled':
         return m.sinceDay === null
           ? t('sub.sync_stalled_never')

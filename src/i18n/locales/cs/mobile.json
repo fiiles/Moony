@@ -91,6 +91,11 @@
     "backupStale_few": "Záloha před {{count}} dny",
     "backupStale_other": "Záloha před {{count}} dny",
     "backupNever": "Zatím žádná záloha",
+    "safeCopyStale_one": "Poslední bezpečná kopie před {{count}} dnem",
+    "safeCopyStale_few": "Poslední bezpečná kopie před {{count}} dny",
+    "safeCopyStale_other": "Poslední bezpečná kopie před {{count}} dny",
+    "safeCopyNever": "Zatím žádná bezpečná kopie",
+    "bothWaysOut": "Obnovte synchronizaci, nebo zálohujte",
     "valuationStale": "Ocenění {{name}} je rok staré",
     "syncStalled": "Synchronizace se zastavila",
     "actions": {
@@ -943,7 +948,11 @@
       "hint": "Když je poslední záloha starší než 30 dní.",
       "title": "Zálohujte Moony",
       "stale": "Poslední záloha je starší než měsíc.",
-      "never": "Zatím nemáte žádnou zálohu."
+      "never": "Zatím nemáte žádnou zálohu.",
+      "titleSync": "Ochraňte data v Moony",
+      "staleSync": "Poslední bezpečná kopie je starší než měsíc. Obnovte synchronizaci, nebo zálohujte.",
+      "neverSync": "Zatím nemáte žádnou bezpečnou kopii. Obnovte synchronizaci, nebo zálohujte.",
+      "hintSync": "Když není záloha ani úplná synchronizace novější než 30 dní."
     },
     "deadline": {
       "title": "{{title}}",

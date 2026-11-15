@@ -83,6 +83,10 @@
     "backupStale_one": "Letzte Sicherung vor {{count}} Tag",
     "backupStale_other": "Letzte Sicherung vor {{count}} Tagen",
     "backupNever": "Noch keine Sicherung",
+    "safeCopyStale_one": "Letzte sichere Kopie vor {{count}} Tag",
+    "safeCopyStale_other": "Letzte sichere Kopie vor {{count}} Tagen",
+    "safeCopyNever": "Noch keine sichere Kopie",
+    "bothWaysOut": "Synchronisierung wiederherstellen oder sichern",
     "valuationStale": "Die Bewertung von {{name}} ist ein Jahr alt",
     "syncStalled": "Die Synchronisierung wurde angehalten",
     "actions": {
@@ -888,7 +892,11 @@
       "hint": "Wenn die letzte Sicherung älter als 30 Tage ist.",
       "title": "Moony sichern",
       "stale": "Die letzte Sicherung ist älter als ein Monat.",
-      "never": "Sie haben noch keine Sicherung."
+      "never": "Sie haben noch keine Sicherung.",
+      "titleSync": "Moony-Daten schützen",
+      "staleSync": "Ihre letzte sichere Kopie ist älter als ein Monat. Stellen Sie die Synchronisierung wieder her oder sichern Sie.",
+      "neverSync": "Sie haben noch keine sichere Kopie. Stellen Sie die Synchronisierung wieder her oder sichern Sie.",
+      "hintSync": "Wenn weder eine Sicherung noch eine vollständige Synchronisierung neuer als 30 Tage ist."
     },
     "deadline": {
       "title": "{{title}}",

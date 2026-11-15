@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useFormat } from '@/lib/use-format';
+import { syncIsOn } from '@/utils/safe-copy';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { SwitchRow } from '@/mobile/components/SwitchRow';
@@ -43,6 +45,9 @@ export default function NotificationsSection() {
   const { state, request, isPending } = useNotificationPermission();
   const [prefs, setPrefs] = useNotificationPrefs();
   const [dayOpen, setDayOpen] = useState(false);
+  const featureOn = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
+  const syncOn = syncIsOn(featureOn, syncStatus);
 
   const granted = state === 'granted';
   // "Allow notifications first" only once the system has answered: until then a switch says what
@@ -128,7 +133,11 @@ export default function NotificationsSection() {
         <SwitchRow
           id="notify-backup"
           label={t('notifications.backup.label')}
-          sub={needsPermission ? needed : t('notifications.backup.hint')}
+          sub={
+            needsPermission
+              ? needed
+              : t(syncOn ? 'notifications.backup.hintSync' : 'notifications.backup.hint')
+          }
           checked={granted && prefs.backup}
           disabled={!granted}
           onCheckedChange={(on) => setPrefs({ ...prefs, backup: on })}

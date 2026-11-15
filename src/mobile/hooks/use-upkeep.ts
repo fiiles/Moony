@@ -1,11 +1,12 @@
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
-import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useMilestones } from '@/hooks/use-milestones';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { useLastImports } from '@/mobile/hooks/use-account-upkeep';
 import { useCategorizeQueue } from '@/mobile/hooks/use-categorize-queue';
 import { queueSummary } from '@/mobile/lib/categorize-queue';
 import { useUpkeepDismissals } from '@/mobile/hooks/use-upkeep-dismissals';
+import { syncIsOn } from '@/utils/safe-copy';
 import { shownProblem } from '@/utils/sync-attachments';
 import { exportsOnThisDevice } from '@/mobile/lib/export-file';
 import { buildUpkeepRows, type UpkeepRow } from '@/mobile/lib/upkeep';
@@ -39,8 +40,9 @@ export function useUpkeep(): Upkeep {
   const queue = useCategorizeQueue();
   const { dismissals } = useUpkeepDismissals();
   // Only with sync on (the status exists only with the feature, and says nothing while it is off)
+  const featureOn = useDeviceSyncFeature();
   const { data: syncStatus } = useDeviceSyncStatus();
-  const syncOn = syncStatus !== undefined && !['off', 'settingUp'].includes(syncStatus.phase);
+  const syncOn = syncIsOn(featureOn, syncStatus);
 
   const ready = !milestonesPending && !accountsLoading && !queue.isPending && !importsPending;
 
@@ -57,7 +59,8 @@ export function useUpkeep(): Upkeep {
         uncategorized,
         uncategorizedAccountIds: withPayments,
         canBackup: exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? ''),
-        attachmentsProblem: syncOn ? shownProblem(syncStatus.attachments) : null,
+        attachmentsProblem: syncOn && syncStatus ? shownProblem(syncStatus.attachments) : null,
+        syncOn,
       }).filter((row) => !isDismissed(row, dismissals, todayDay))
     : [];
 

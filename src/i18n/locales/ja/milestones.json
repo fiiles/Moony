@@ -63,6 +63,8 @@
     "valuation_stale": "{{date}} 以降、評価の更新がありません · 再評価してください",
     "backup_stale": "最後のバックアップ {{date}}",
     "backup_never": "バックアップはまだありません",
+    "backup_stale_sync": "最後の安全なコピー {{date}}: 同期を再開するか、バックアップを取ってください",
+    "backup_never_sync": "安全なコピーはまだありません: 同期を再開するか、バックアップを取ってください",
     "balances_stale_other": "{{count}}件の口座が30日以上更新されていません",
     "sync_stalled": "最後の同期 {{date}}",
     "sync_stalled_never": "まだ同期されていません"
@@ -109,6 +111,7 @@
     "backup": {
       "label": "データのバックアップ",
       "hint": "最後のバックアップが30日より古いときに通知します。",
+      "hintSync": "バックアップも完全な同期も30日より新しくないときに通知します。",
       "mute": "バックアップを通知しない"
     },
     "balances": {

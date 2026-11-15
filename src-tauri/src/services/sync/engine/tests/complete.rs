@@ -137,3 +137,52 @@ async fn a_failed_round_records_neither() {
         (Some(NOW), Some(NOW))
     );
 }
+
+/// A document added after the round's queue update (here: the update fails, so its blob gets no
+/// entry) is pushed with the round and leaves the outbox empty, but its content exists only here:
+/// the round records its success and no complete sync.
+#[tokio::test]
+async fn a_document_whose_blob_has_no_queue_entry_keeps_the_sync_incomplete() {
+    // proves a row naming a blob that has no queue entry counts as content left to upload
+    let vault = vault().await;
+    with_store(&vault.a);
+    {
+        let a = vault.a.lock();
+        exec(
+            &a,
+            "INSERT INTO insurance_policies \
+               (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
+             VALUES ('p1', 'life', 'Insurer', 'Life', '123', 1767225600, 'monthly'); \
+             CREATE TEMP TRIGGER no_entries BEFORE INSERT ON sync_blobs \
+             BEGIN SELECT RAISE(ABORT, 'no queue entries in this test'); END;",
+        );
+        let blob = crate::services::attachment_store::put_bytes(&a, b"%PDF-1.7 contract")
+            .expect("blob")
+            .id;
+        a.execute(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id, uploaded_at) \
+             VALUES ('d1', 'p1', 'Contract', ?1, 1767225600)",
+            [&blob],
+        )
+        .expect("document");
+    }
+
+    let report = round_at(&vault, &vault.a, NOW).await;
+
+    assert_eq!(report.problem, None);
+    assert_eq!(
+        count(&vault.a.lock(), "SELECT COUNT(*) FROM sync_outbox"),
+        0,
+        "the row was pushed"
+    );
+    assert_eq!(
+        count(&vault.a.lock(), "SELECT COUNT(*) FROM sync_blobs"),
+        0,
+        "its blob has no entry"
+    );
+    let marks = marks(&vault.a);
+    assert_eq!(
+        (marks.last_success_at, marks.last_complete_at),
+        (Some(NOW), None)
+    );
+}

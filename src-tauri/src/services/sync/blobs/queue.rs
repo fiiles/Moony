@@ -817,17 +817,18 @@ pub fn uploads_waiting(conn: &Connection) -> Result<u32> {
     Ok(rows as u32)
 }
 
-/// Whether any content held here still has to reach the sync server: an `up` entry that a row
-/// names (the same row join as `summary`, `references()`), whatever its `last_error`, the stuck
-/// ones ([`STUCK`]) included. Without the attachments store attached: `false` (nothing held here).
+/// Whether any content held here may still have to reach the sync server: a row (the same rows
+/// as `summary`, `references()`) whose blob has an `up` entry, whatever its `last_error`, the
+/// stuck ones ([`STUCK`]) included, or no entry at all yet (a row added after the last queue
+/// update: its content is here until the queue says otherwise). `down` and `done` entries and
+/// entries no row names do not count. Read from `main` alone, so a store that failed to open
+/// does not make content waiting in it read as sent; a profile without such rows has none.
 pub fn holds_content_to_upload(conn: &Connection) -> Result<bool> {
-    if !files_schema::is_attached(conn)? {
-        return Ok(false);
-    }
     Ok(conn.query_row(
         &format!(
             "SELECT EXISTS (SELECT 1 FROM ({}) r \
-               JOIN main.sync_blobs q ON q.blob_id = r.b WHERE q.state = 'up')",
+               LEFT JOIN main.sync_blobs q ON q.blob_id = r.b \
+               WHERE q.blob_id IS NULL OR q.state = 'up')",
             references()?
         ),
         [],

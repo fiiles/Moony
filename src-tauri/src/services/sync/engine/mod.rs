@@ -385,7 +385,8 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    round with no problem, or only a waiting gap (`Gap`) or change (`ClockAhead`), records its
 ///    success; one with any other problem records its fixed reason. A round with no problem that
 ///    leaves no change to send (`sync_outbox`, `sync_unsent`) and no document or photo to upload,
-///    stuck ones included (`queue::holds_content_to_upload`), also records a complete sync
+///    stuck ones and ones not queued yet included (`queue::holds_content_to_upload`), also
+///    records a complete sync
 ///    (`state::record_complete`, spec 2026-11-14 §7.2).
 #[allow(clippy::too_many_arguments)]
 pub async fn run_round_into<R: Relay, D: ConnAccess>(

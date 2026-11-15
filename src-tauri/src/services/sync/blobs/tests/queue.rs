@@ -651,13 +651,18 @@ fn not_on_device_spans_every_row_missing_content() {
 /// §7.2), whatever stops it: a stuck upload's content exists on this device only.
 #[test]
 fn content_to_upload_counts_stuck_entries_and_ignores_the_rest() {
-    // proves: only `up` entries a row names count, stuck ones too
+    // proves: `up` entries a row names count, stuck ones too, and so does a row whose blob has
+    // no entry yet; `down` and `done` entries and entries no row names do not
     let conn = profile();
     assert!(!holds_content_to_upload(&conn).expect("empty queue"));
 
     let sent = held(&conn, b"sent");
     document(&conn, "on-its-way", &elsewhere(1), 100);
     document(&conn, "sent", &sent, 100);
+    assert!(
+        holds_content_to_upload(&conn).expect("not queued yet"),
+        "a row whose blob has no entry yet (added after the queue update) is content left"
+    );
     queue::reconcile(&conn, NOW).expect("reconcile");
     note_done(&conn, &sent).expect("done");
     assert_eq!(state_of(&conn, &elsewhere(1)).as_deref(), Some("down"));
@@ -695,10 +700,21 @@ fn content_to_upload_counts_stuck_entries_and_ignores_the_rest() {
         assert!(holds_content_to_upload(&conn).expect(code), "{code}");
     }
 
+    // Without the store (it failed to open): the answer still comes from the rows and the queue
+    // in `main`, so content that waits in a store that did not open is not "nothing left".
     exec(&conn, "DETACH DATABASE files");
+    assert!(holds_content_to_upload(&conn).expect("no store"));
+    exec(
+        &conn,
+        &format!(
+            "UPDATE sync_blobs SET state = 'done', last_error = NULL WHERE blob_id = '{waiting}'"
+        ),
+    );
+    assert!(!holds_content_to_upload(&conn).expect("no store, all sent"));
+    exec(&conn, "DELETE FROM insurance_documents");
     assert!(
-        !holds_content_to_upload(&conn).expect("no store"),
-        "nothing is held here without the store"
+        !holds_content_to_upload(&conn).expect("no rows"),
+        "a profile without attachment rows has nothing to upload"
     );
 }
 

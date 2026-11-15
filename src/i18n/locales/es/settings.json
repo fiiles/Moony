@@ -209,7 +209,10 @@
       "deleteBody": "Esta copia de seguridad se elimina para siempre.",
       "deleteBodyKept": "Esta copia de seguridad contiene cambios que no están en ningún otro sitio. Se elimina para siempre y esos cambios se pierden.",
       "deleted": "Copia de seguridad eliminada"
-    }
+    },
+    "notInBackup_one": "{{count}} documento o foto aún no está en este ordenador, así que una copia de seguridad hecha ahora no lo incluirá.",
+    "notInBackup_many": "{{count}} documentos y fotos aún no están en este ordenador, así que una copia de seguridad hecha ahora no los incluirá.",
+    "notInBackup_other": "{{count}} documentos y fotos aún no están en este ordenador, así que una copia de seguridad hecha ahora no los incluirá."
   },
   "autoLock": {
     "title": "Bloqueo automático",

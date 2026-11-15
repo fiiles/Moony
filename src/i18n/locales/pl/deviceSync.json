@@ -490,5 +490,11 @@
   "whatSyncs": {
     "title": "Co jest synchronizowane",
     "body": "Synchronizowane jest wszystko, co wprowadzisz do Moony. Język, wygląd, menu, powiadomienia, hasło urządzenia, klucz odzyskiwania i kopie zapasowe należą do każdego urządzenia osobno. Ceny i historia są wyliczane na każdym urządzeniu. Dokumenty i zdjęcia też są synchronizowane; telefon pobiera każdy z nich, gdy go otworzysz."
+  },
+  "protection": {
+    "line_one": "Synchronizacja chroni twoje dane (ostatnia pełna synchronizacja: {{age}}, {{count}} urządzenie). Utwórz kopię zapasową, gdy chcesz zachować stan z określonego dnia.",
+    "line_few": "Synchronizacja chroni twoje dane (ostatnia pełna synchronizacja: {{age}}, {{count}} urządzenia). Utwórz kopię zapasową, gdy chcesz zachować stan z określonego dnia.",
+    "line_many": "Synchronizacja chroni twoje dane (ostatnia pełna synchronizacja: {{age}}, {{count}} urządzeń). Utwórz kopię zapasową, gdy chcesz zachować stan z określonego dnia.",
+    "line_other": "Synchronizacja chroni twoje dane (ostatnia pełna synchronizacja: {{age}}, {{count}} urządzeń). Utwórz kopię zapasową, gdy chcesz zachować stan z określonego dnia."
   }
 }

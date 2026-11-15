@@ -209,7 +209,10 @@
       "deleteBody": "Questo backup viene eliminato definitivamente.",
       "deleteBodyKept": "Questo backup contiene modifiche che non esistono altrove. Viene eliminato definitivamente e quelle modifiche vanno perse.",
       "deleted": "Backup eliminato"
-    }
+    },
+    "notInBackup_one": "{{count}} documento o foto non è ancora su questo computer, quindi un backup fatto ora non lo includerà.",
+    "notInBackup_many": "{{count}} documenti e foto non sono ancora su questo computer, quindi un backup fatto ora non li includerà.",
+    "notInBackup_other": "{{count}} documenti e foto non sono ancora su questo computer, quindi un backup fatto ora non li includerà."
   },
   "autoLock": {
     "title": "Blocco automatico",

@@ -207,7 +207,9 @@
       "deleteBody": "This backup is deleted for good.",
       "deleteBodyKept": "This backup holds changes found nowhere else. It is deleted for good, and those changes are lost.",
       "deleted": "Backup deleted"
-    }
+    },
+    "notInBackup_one": "{{count}} document or photo is not on this computer yet, so a backup made now leaves it out.",
+    "notInBackup_other": "{{count}} documents and photos are not on this computer yet, so a backup made now leaves them out."
   },
   "autoLock": {
     "title": "Auto-lock",

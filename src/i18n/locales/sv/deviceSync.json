@@ -462,5 +462,9 @@
   "whatSyncs": {
     "title": "Vad som synkroniseras",
     "body": "Allt du skriver in i Moony synkroniseras. Språk, utseende, meny, aviseringar, enhetslösenord, återställningsnyckel och säkerhetskopior hör till varje enhet för sig. Priser och historik räknas fram på varje enhet. Dokument och foton synkroniseras också; en telefon laddar ned varje fil när du öppnar den."
+  },
+  "protection": {
+    "line_one": "Synkroniseringen skyddar dina data (senaste fullständiga synkronisering: {{age}}, {{count}} enhet). Gör en säkerhetskopia när du vill spara hur allt stod en viss dag.",
+    "line_other": "Synkroniseringen skyddar dina data (senaste fullständiga synkronisering: {{age}}, {{count}} enheter). Gör en säkerhetskopia när du vill spara hur allt stod en viss dag."
   }
 }

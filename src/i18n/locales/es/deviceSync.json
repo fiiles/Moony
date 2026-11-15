@@ -476,5 +476,10 @@
   "whatSyncs": {
     "title": "Qué se sincroniza",
     "body": "Todo lo que introduces en Moony se sincroniza. El idioma, el aspecto, el menú, las notificaciones, la contraseña del dispositivo, la clave de recuperación y las copias de seguridad pertenecen a cada dispositivo. Los precios y el historial se calculan en cada dispositivo. Los documentos y las fotos también se sincronizan; un teléfono descarga cada uno al abrirlo."
+  },
+  "protection": {
+    "line_one": "La sincronización protege tus datos (última sincronización completa: {{age}}, {{count}} dispositivo). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto.",
+    "line_many": "La sincronización protege tus datos (última sincronización completa: {{age}}, {{count}} dispositivos). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto.",
+    "line_other": "La sincronización protege tus datos (última sincronización completa: {{age}}, {{count}} dispositivos). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto."
   }
 }

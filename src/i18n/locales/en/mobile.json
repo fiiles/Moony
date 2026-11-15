@@ -823,7 +823,10 @@
     "syncSaveCopy": "Save a copy to Files",
     "syncCopySaved": "A copy was saved to Files",
     "syncLeadNoFiles": "Moony saves a backup before sync replaces data on this phone. You can restore or delete them here.",
-    "syncNoCopy": "Saving a copy outside Moony is not available on this phone yet. A backup can be restored from this list. It is lost if Moony's data is removed from the phone."
+    "syncNoCopy": "Saving a copy outside Moony is not available on this phone yet. A backup can be restored from this list. It is lost if Moony's data is removed from the phone.",
+    "leadSync": "Sync keeps your devices in step. A backup is one encrypted file for a one-off move or a copy to keep: the database, the keys and the documents and photos on this phone. Only your password opens it.",
+    "restoreLeadSync": "Restore a backup from this phone, or move a profile once from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created. Sync keeps your devices in step.",
+    "osBackupNoteSync": "The profile is not saved in the phone's own backup (iCloud or a computer). Outside this phone, your data is on the sync server and your other devices, and in any Moony backup you save yourself."
   },
   "firstRun": {
     "privacyLead": "Moony stores everything in an encrypted database on this phone. No cloud, no account with us.",

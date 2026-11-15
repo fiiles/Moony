@@ -209,7 +209,11 @@
       "deleteBody": "Tato záloha se nenávratně smaže.",
       "deleteBodyKept": "Tato záloha obsahuje změny, které nejsou nikde jinde. Nenávratně se smaže a tyto změny se ztratí.",
       "deleted": "Záloha smazána"
-    }
+    },
+    "notInBackup_one": "{{count}} dokument nebo fotka zatím není v tomto počítači, záloha vytvořená teď ji proto nebude obsahovat.",
+    "notInBackup_few": "{{count}} dokumenty a fotky zatím nejsou v tomto počítači, záloha vytvořená teď je proto nebude obsahovat.",
+    "notInBackup_many": "{{count}} dokumentů a fotek zatím není v tomto počítači, záloha vytvořená teď je proto nebude obsahovat.",
+    "notInBackup_other": "{{count}} dokumentů a fotek zatím není v tomto počítači, záloha vytvořená teď je proto nebude obsahovat."
   },
   "autoLock": {
     "title": "Automatické zamykání",

@@ -207,7 +207,9 @@
       "deleteBody": "Diese Sicherung wird endgültig gelöscht.",
       "deleteBodyKept": "Diese Sicherung enthält Änderungen, die es sonst nirgends gibt. Sie wird endgültig gelöscht, und diese Änderungen gehen verloren.",
       "deleted": "Sicherung gelöscht"
-    }
+    },
+    "notInBackup_one": "{{count}} Dokument oder Foto ist noch nicht auf diesem Computer, eine jetzt erstellte Sicherung enthält es daher nicht.",
+    "notInBackup_other": "{{count}} Dokumente und Fotos sind noch nicht auf diesem Computer, eine jetzt erstellte Sicherung enthält sie daher nicht."
   },
   "autoLock": {
     "title": "Automatische Sperre",

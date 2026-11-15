@@ -919,7 +919,10 @@
     "syncSaveCopy": "Zapisz kopię w Plikach",
     "syncCopySaved": "Kopia została zapisana w Plikach",
     "syncLeadNoFiles": "Moony zapisuje kopię zapasową, zanim synchronizacja zastąpi dane na tym telefonie. Tutaj możesz je przywrócić lub usunąć.",
-    "syncNoCopy": "Zapisanie kopii poza Moony nie jest jeszcze dostępne na tym telefonie. Kopię zapasową można przywrócić z tej listy. Przepadnie, jeśli dane Moony zostaną usunięte z telefonu."
+    "syncNoCopy": "Zapisanie kopii poza Moony nie jest jeszcze dostępne na tym telefonie. Kopię zapasową można przywrócić z tej listy. Przepadnie, jeśli dane Moony zostaną usunięte z telefonu.",
+    "leadSync": "Synchronizacja utrzymuje urządzenia w zgodzie. Kopia zapasowa to jeden zaszyfrowany plik do jednorazowego przeniesienia lub kopia do schowania: baza danych, klucze oraz dokumenty i zdjęcia na tym telefonie. Otworzy ją tylko twoje hasło.",
+    "restoreLeadSync": "Przywróć kopię zapasową z tego telefonu albo jednorazowo przenieś profil z Moony na komputerze: wybierz plik kopii, a po przywróceniu odblokuj hasłem, które obowiązywało w chwili jej utworzenia. Urządzenia w zgodzie utrzymuje synchronizacja.",
+    "osBackupNoteSync": "Profil nie jest zapisywany w kopii zapasowej telefonu (iCloud ani komputer). Poza tym telefonem twoje dane są na serwerze synchronizacji, na innych urządzeniach i w każdej kopii Moony, którą zapiszesz sam."
   },
   "firstRun": {
     "privacyLead": "Moony przechowuje wszystko w zaszyfrowanej bazie danych na tym telefonie. Bez chmury, bez konta u nas.",

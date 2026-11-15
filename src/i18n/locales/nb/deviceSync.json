@@ -462,5 +462,9 @@
   "whatSyncs": {
     "title": "Hva som synkroniseres",
     "body": "Alt du legger inn i Moony, synkroniseres. Språk, utseende, meny, varsler, enhetspassord, gjenopprettingsnøkkel og sikkerhetskopier hører til hver enkelt enhet. Priser og historikk beregnes på hver enhet. Dokumenter og bilder synkroniseres også; en telefon laster ned hvert enkelt når du åpner det."
+  },
+  "protection": {
+    "line_one": "Synkroniseringen beskytter dataene dine (siste fullstendige synkronisering: {{age}}, {{count}} enhet). Ta en sikkerhetskopi når du vil bevare hvordan ting sto på en bestemt dag.",
+    "line_other": "Synkroniseringen beskytter dataene dine (siste fullstendige synkronisering: {{age}}, {{count}} enheter). Ta en sikkerhetskopi når du vil bevare hvordan ting sto på en bestemt dag."
   }
 }

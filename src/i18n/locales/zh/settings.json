@@ -205,7 +205,8 @@
       "deleteBody": "此备份将被永久删除。",
       "deleteBodyKept": "此备份包含其他地方没有的更改。它将被永久删除，这些更改也会丢失。",
       "deleted": "备份已删除"
-    }
+    },
+    "notInBackup_other": "有 {{count}} 个文档或照片尚未在此电脑上，因此现在创建的备份不会包含它们。"
   },
   "autoLock": {
     "title": "自动锁定",

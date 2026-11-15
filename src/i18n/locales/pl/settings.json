@@ -211,7 +211,11 @@
       "deleteBody": "Ta kopia zapasowa zostanie usunięta na zawsze.",
       "deleteBodyKept": "Ta kopia zapasowa zawiera zmiany, których nie ma nigdzie indziej. Zostanie usunięta na zawsze, a te zmiany przepadną.",
       "deleted": "Kopia zapasowa usunięta"
-    }
+    },
+    "notInBackup_one": "{{count}} dokument lub zdjęcie nie jest jeszcze na tym komputerze, więc kopia zapasowa wykonana teraz go nie zawiera.",
+    "notInBackup_few": "{{count}} dokumenty i zdjęcia nie są jeszcze na tym komputerze, więc kopia zapasowa wykonana teraz ich nie zawiera.",
+    "notInBackup_many": "{{count}} dokumentów i zdjęć nie ma jeszcze na tym komputerze, więc kopia zapasowa wykonana teraz ich nie zawiera.",
+    "notInBackup_other": "{{count}} dokumentów i zdjęć nie ma jeszcze na tym komputerze, więc kopia zapasowa wykonana teraz ich nie zawiera."
   },
   "autoLock": {
     "title": "Automatyczna blokada",

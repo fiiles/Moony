@@ -207,7 +207,9 @@
       "deleteBody": "Den här säkerhetskopian tas bort för gott.",
       "deleteBodyKept": "Den här säkerhetskopian innehåller ändringar som inte finns någon annanstans. Den tas bort för gott och ändringarna går förlorade.",
       "deleted": "Säkerhetskopian är borttagen"
-    }
+    },
+    "notInBackup_one": "{{count}} dokument eller foto finns inte på den här datorn än, så en säkerhetskopia som görs nu utelämnar det.",
+    "notInBackup_other": "{{count}} dokument och foton finns inte på den här datorn än, så en säkerhetskopia som görs nu utelämnar dem."
   },
   "autoLock": {
     "title": "Autolås",

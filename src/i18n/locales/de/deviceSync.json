@@ -462,5 +462,9 @@
   "whatSyncs": {
     "title": "Was synchronisiert wird",
     "body": "Alles, was Sie in Moony eingeben, wird synchronisiert. Sprache, Aussehen, Menü, Benachrichtigungen, Gerätepasswort, Wiederherstellungsschlüssel und Sicherungen gehören zu jedem Gerät einzeln. Kurse und Verlauf werden auf jedem Gerät selbst berechnet. Dokumente und Fotos werden ebenfalls synchronisiert; ein Telefon lädt sie erst herunter, wenn Sie sie öffnen."
+  },
+  "protection": {
+    "line_one": "Die Synchronisierung schützt Ihre Daten (letzte vollständige Synchronisierung: {{age}}, {{count}} Gerät). Erstellen Sie eine Sicherung, wenn Sie den Stand eines bestimmten Tages festhalten möchten.",
+    "line_other": "Die Synchronisierung schützt Ihre Daten (letzte vollständige Synchronisierung: {{age}}, {{count}} Geräte). Erstellen Sie eine Sicherung, wenn Sie den Stand eines bestimmten Tages festhalten möchten."
   }
 }

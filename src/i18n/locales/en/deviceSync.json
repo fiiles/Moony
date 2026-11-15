@@ -462,5 +462,9 @@
   "whatSyncs": {
     "title": "What syncs",
     "body": "Everything you enter into Moony syncs. The language, look, menu, notifications, device password, recovery key and backups belong to each device. Prices and history are worked out on each device. Documents and photos sync too; a phone downloads one when you open it."
+  },
+  "protection": {
+    "line_one": "Sync protects your data (last complete sync {{age}}, {{count}} device). Make a backup when you want to keep how things stood on a given day.",
+    "line_other": "Sync protects your data (last complete sync {{age}}, {{count}} devices). Make a backup when you want to keep how things stood on a given day."
   }
 }

@@ -488,5 +488,11 @@
   "whatSyncs": {
     "title": "Co se synchronizuje",
     "body": "Synchronizuje se všechno, co do Moony zadáte. Jazyk, vzhled, menu, oznámení, heslo zařízení, obnovovací klíč a zálohy patří každému zařízení zvlášť. Ceny a historie se dopočítávají na každém zařízení. Dokumenty a fotky se synchronizují také; telefon si je stáhne, až je otevřete."
+  },
+  "protection": {
+    "line_one": "Vaše data chrání synchronizace (naposledy {{age}}, {{count}} zařízení). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",
+    "line_few": "Vaše data chrání synchronizace (naposledy {{age}}, {{count}} zařízení). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",
+    "line_many": "Vaše data chrání synchronizace (naposledy {{age}}, {{count}} zařízení). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",
+    "line_other": "Vaše data chrání synchronizace (naposledy {{age}}, {{count}} zařízení). Zálohu si udělejte, když chcete uchovat stav k určitému dni."
   }
 }

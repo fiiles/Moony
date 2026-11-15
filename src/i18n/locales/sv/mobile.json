@@ -823,7 +823,10 @@
     "syncSaveCopy": "Spara en kopia i Filer",
     "syncCopySaved": "En kopia sparades i Filer",
     "syncLeadNoFiles": "Moony sparar en säkerhetskopia innan synkroniseringen ersätter data på den här telefonen. Här kan du återställa eller ta bort dem.",
-    "syncNoCopy": "Att spara en kopia utanför Moony går inte än på den här telefonen. En säkerhetskopia kan återställas från den här listan. Den går förlorad om Moonys data tas bort från telefonen."
+    "syncNoCopy": "Att spara en kopia utanför Moony går inte än på den här telefonen. En säkerhetskopia kan återställas från den här listan. Den går förlorad om Moonys data tas bort från telefonen.",
+    "leadSync": "Synkroniseringen håller dina enheter i takt. En säkerhetskopia är en krypterad fil för en engångsflytt eller en kopia att spara: databasen, nycklarna och dokumenten och fotona på den här telefonen. Bara ditt lösenord öppnar den.",
+    "restoreLeadSync": "Återställ en säkerhetskopia från den här telefonen, eller flytta en profil en gång från Moony på datorn: välj säkerhetskopian och lås upp efter återställningen med lösenordet som gällde när den skapades. Synkroniseringen håller enheterna i takt.",
+    "osBackupNoteSync": "Profilen sparas inte i telefonens egen säkerhetskopia (iCloud eller en dator). Utanför den här telefonen finns dina data på synkroniseringsservern, på dina andra enheter och i varje Moony-säkerhetskopia som du sparar själv."
   },
   "firstRun": {
     "privacyLead": "Moony lagrar allt i en krypterad databas på den här telefonen. Inget moln, inget konto hos oss.",

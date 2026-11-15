@@ -871,7 +871,10 @@
     "syncSaveCopy": "Guardar una copia en Archivos",
     "syncCopySaved": "Se guardó una copia en Archivos",
     "syncLeadNoFiles": "Moony guarda una copia de seguridad antes de que la sincronización reemplace datos en este teléfono. Aquí puedes restaurarlas o eliminarlas.",
-    "syncNoCopy": "Guardar una copia fuera de Moony todavía no está disponible en este teléfono. Puedes restaurar una copia de seguridad desde esta lista. Se pierde si los datos de Moony se eliminan del teléfono."
+    "syncNoCopy": "Guardar una copia fuera de Moony todavía no está disponible en este teléfono. Puedes restaurar una copia de seguridad desde esta lista. Se pierde si los datos de Moony se eliminan del teléfono.",
+    "leadSync": "La sincronización mantiene tus dispositivos al día. Una copia de seguridad es un archivo cifrado para un traslado puntual o una copia que guardar: la base de datos, las claves y los documentos y fotos de este teléfono. Solo tu contraseña la abre.",
+    "restoreLeadSync": "Restaura una copia de seguridad de este teléfono, o traslada una vez un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó. La sincronización mantiene tus dispositivos al día.",
+    "osBackupNoteSync": "El perfil no se guarda en la copia de seguridad del propio teléfono (iCloud u ordenador). Fuera de este teléfono, tus datos están en el servidor de sincronización, en tus otros dispositivos y en cualquier copia de seguridad de Moony que guardes tú."
   },
   "firstRun": {
     "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",

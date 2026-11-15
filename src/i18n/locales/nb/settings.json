@@ -207,7 +207,9 @@
       "deleteBody": "Denne sikkerhetskopien slettes for godt.",
       "deleteBodyKept": "Denne sikkerhetskopien har endringer som ikke finnes andre steder. Den slettes for godt, og endringene går tapt.",
       "deleted": "Sikkerhetskopien er slettet"
-    }
+    },
+    "notInBackup_one": "{{count}} dokument eller bilde er ikke på denne datamaskinen ennå, så en sikkerhetskopi laget nå utelater det.",
+    "notInBackup_other": "{{count}} dokumenter og bilder er ikke på denne datamaskinen ennå, så en sikkerhetskopi laget nå utelater dem."
   },
   "autoLock": {
     "title": "Automatisk låsing",

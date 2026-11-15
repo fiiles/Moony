@@ -38,7 +38,12 @@ struct Store {
     most_open: Arc<AtomicUsize>,
     holds: Arc<AtomicUsize>,
     incoming: Arc<IncomingBlobs>,
+    /// Runs once at the start of the next `with_conn`, with the connection, before its work: what
+    /// another task does the moment a hold is taken.
+    before_hold: Arc<Mutex<Option<BeforeHold>>>,
 }
+
+type BeforeHold = Box<dyn FnOnce(&Connection) + Send>;
 
 impl Store {
     fn new() -> Self {
@@ -53,6 +58,7 @@ impl Store {
             most_open: Arc::new(AtomicUsize::new(0)),
             holds: Arc::new(AtomicUsize::new(0)),
             incoming: Arc::default(),
+            before_hold: Arc::default(),
         }
     }
 
@@ -76,6 +82,10 @@ impl Store {
     fn set_locked(&self, locked: bool) {
         self.locked.store(locked, Ordering::SeqCst);
     }
+
+    fn before_next_hold(&self, hook: impl FnOnce(&Connection) + Send + 'static) {
+        *self.before_hold.lock().expect("hook") = Some(Box::new(hook));
+    }
 }
 
 impl ConnAccess for Store {
@@ -86,7 +96,13 @@ impl ConnAccess for Store {
         let now = self.open.fetch_add(1, Ordering::SeqCst) + 1;
         self.most_open.fetch_max(now, Ordering::SeqCst);
         self.holds.fetch_add(1, Ordering::SeqCst);
-        let out = f(&self.lock());
+        let hook = self.before_hold.lock().expect("hook").take();
+        let conn = self.lock();
+        if let Some(hook) = hook {
+            hook(&conn);
+        }
+        let out = f(&conn);
+        drop(conn);
         self.open.fetch_sub(1, Ordering::SeqCst);
         out
     }
@@ -443,10 +459,11 @@ fn a_download_whose_row_was_abandoned_never_writes_into_the_blob_that_took_its_p
     assert!(data.iter().all(|b| *b == 0), "the other blob is untouched");
 }
 
-/// Only the download holding the ID finishes its row; a row someone else sealed is not this
-/// download's to store.
+/// Only the download holding the ID finishes its row. A row someone else sealed is not seen per
+/// chunk (that would read the hash past the content), so this download keeps writing into it; what
+/// this proves is that the transfer does not END as stored: its own guarded finish fails.
 #[test]
-fn a_download_whose_row_someone_else_finished_is_not_stored() {
+fn a_download_whose_row_someone_else_finished_does_not_end_as_stored() {
     let plain = pattern(3 * CHUNK + 5);
     let blob = blob_id(34);
     let id = blob.to_string();
@@ -703,6 +720,38 @@ fn an_upload_never_sends_an_incoming_blob_that_took_its_place() {
             assert_eq!(items.len(), 1, "a download in progress stops it at once");
         }
     }
+}
+
+/// A download that claims the ID and begins its incoming blob at the old rowid in the instant
+/// before an upload's next read: the upload sees the claim inside the same hold and stops, so those
+/// zeros are never read or sealed.
+#[test]
+fn a_download_starting_between_an_uploads_check_and_its_read_stops_the_upload() {
+    let plain = pattern(3 * CHUNK + 1);
+    let blob = blob_id(35);
+    let (store, local) = holding(&plain);
+    let sealer = BlobSealer::new(EPOCH, &KEY, &VAULT, &blob);
+    let mut source = UploadSource::new(
+        store.clone(),
+        local.clone(),
+        blob,
+        plain.len() as u64,
+        sealer,
+    );
+    assert!(source.next().expect("header").is_ok());
+    assert!(source.next().expect("chunk").is_ok());
+    let (incoming, id, len) = (store.incoming.clone(), local.clone(), plain.len() as u64);
+    store.before_next_hold(move |conn| {
+        assert!(attachment_store::delete(conn, &id).expect("delete"));
+        assert!(incoming.claim(&id));
+        attachment_store::begin_incoming(conn, &id, len).expect("incoming");
+    });
+    let err = source.next().expect("an item").expect_err("stopped");
+    assert!(
+        err.to_string().contains("in progress"),
+        "a download in progress: {err}"
+    );
+    assert!(source.next().is_none(), "nothing more is sent");
 }
 
 #[test]

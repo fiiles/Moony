@@ -206,15 +206,17 @@ impl<D: ConnAccess> UploadSource<D> {
             ));
         };
         let (id, offset) = (self.blob_id.as_str(), self.offset);
-        if self.db.incoming_blobs().contains(id) {
-            return Err(self.io_error(
-                AppError::Internal("sync blob: a download of it is in progress".into()),
-                io::ErrorKind::Other,
-            ));
-        }
         let declared = self.plain_len;
+        let incoming = self.db.incoming_blobs();
         let buffer = &mut self.buffer[..want];
         hold(&self.db, |conn| {
+            // Inside the hold: a download claims its ID before the hold in which it begins its
+            // incoming blob, so a download that began before this read is seen here.
+            if incoming.contains(id) {
+                return Err(AppError::Internal(
+                    "sync blob: a download of it is in progress".into(),
+                ));
+            }
             read_exact_at(conn, id, row, offset, buffer)?;
             // Before the last chunk is sealed: still the complete blob the header found.
             if last && attachment_store::complete_row(conn, id)? != Some((row, declared)) {

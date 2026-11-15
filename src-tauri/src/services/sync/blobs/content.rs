@@ -33,7 +33,7 @@ impl<'c> ContentReader<'c> {
     /// has not confirmed it (its entry is `up`, or, with sync on, the queue has not seen it yet),
     /// else `Here`; a row that does not sync never uploads, so it is `Here`. Not complete here:
     /// `Missing` without an entry, else from the entry: `Downloading`, `NotOnServer`, `Failed`
-    /// (unreadable or an invalid ID) or `NotHere`.
+    /// (unreadable, an invalid ID, refused by the server or a conflict there) or `NotHere`.
     pub fn of(&self, blob_id: Option<&str>, syncs: bool) -> Result<AttachmentContent> {
         let Some(id) = blob_id else {
             return Ok(AttachmentContent::Here);
@@ -67,7 +67,9 @@ impl<'c> ContentReader<'c> {
             Some((_, true, _)) => AttachmentContent::Downloading,
             Some((_, false, error)) => match error.as_deref() {
                 Some("notOnServer") => AttachmentContent::NotOnServer,
-                Some("unreadable" | "invalidId") => AttachmentContent::Failed,
+                Some("unreadable" | "invalidId" | "refused" | "conflict") => {
+                    AttachmentContent::Failed
+                }
                 _ => AttachmentContent::NotHere,
             },
         })

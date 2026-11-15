@@ -50,7 +50,10 @@ fn blocking<T>(f: impl FnOnce() -> T) -> T {
 }
 
 /// One short hold of the connection, through [`blocking`].
-fn hold<D: ConnAccess, T>(db: &D, f: impl FnOnce(&rusqlite::Connection) -> Result<T>) -> Result<T> {
+pub(super) fn hold<D: ConnAccess, T>(
+    db: &D,
+    f: impl FnOnce(&rusqlite::Connection) -> Result<T>,
+) -> Result<T> {
     blocking(|| db.with_conn(f))
 }
 
@@ -71,14 +74,15 @@ impl IncomingBlobs {
     }
 
     /// Claims `id`; false when a download of it is in progress.
-    fn claim(&self, id: &str) -> bool {
+    pub(crate) fn claim(&self, id: &str) -> bool {
         self.ids
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .insert(id.to_string())
     }
 
-    fn release(&self, id: &str) {
+    /// Frees `id` for the next download.
+    pub(crate) fn release(&self, id: &str) {
         self.ids
             .lock()
             .unwrap_or_else(PoisonError::into_inner)

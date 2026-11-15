@@ -15,7 +15,7 @@ use crate::models::attachments::{AttachmentContent, AttachmentKind};
 use crate::models::sync::SyncAttachmentsProblem;
 use crate::services::attachment_store;
 use crate::services::sync::blobs::content::ContentReader;
-use crate::services::sync::blobs::policy::BlobPolicy;
+use crate::services::sync::blobs::policy::{BlobPolicy, Lane, ServerBlobs};
 use crate::services::sync::blobs::queue::{self, BlobState, Transfer, TransferError};
 use crate::services::sync::blobs::transfer::{
     classify, download_one, run_downloads, run_uploads, upload_one, Outcome, TransferReport,
@@ -26,7 +26,7 @@ use crate::services::sync::relay::fake::{FakeRelay, Route};
 use crate::services::sync::relay::{
     AccountStatus, BlobBody, BlobPage, BlobSink, CheckoutPlan, Delivery, OutgoingOp, PullPage,
     PushReceipt, Relay, RelayError, RelayResult, ServerInfo, ServerMode, SinkFlow, SnapshotBlob,
-    VaultInfo,
+    VaultInfo, MIN_BLOB_SEALED,
 };
 
 /// The blob routes of the fake's call log.
@@ -202,15 +202,41 @@ fn next_download(device: &TestConn) -> Transfer {
 }
 
 async fn uploads(vault: &Vault, device: &TestConn, policy: &BlobPolicy) -> TransferReport {
-    run_uploads(&vault.relay, device, &vault.creds, policy, None, None)
+    uploads_at(vault, device, policy, NOW).await
+}
+
+async fn uploads_at(
+    vault: &Vault,
+    device: &TestConn,
+    policy: &BlobPolicy,
+    now: i64,
+) -> TransferReport {
+    run_uploads(&vault.relay, device, &vault.creds, policy, now, None, None)
         .await
         .expect("uploads")
 }
 
 async fn downloads(vault: &Vault, device: &TestConn, policy: &BlobPolicy) -> TransferReport {
-    run_downloads(&vault.relay, device, &vault.creds, policy, None)
+    run_downloads(&vault.relay, device, &vault.creds, policy, NOW, None)
         .await
         .expect("downloads")
+}
+
+fn server_asks(relay: &FakeRelay) -> usize {
+    relay
+        .calls()
+        .iter()
+        .filter(|route| **route == Route::ServerInfo)
+        .count()
+}
+
+fn server_with_blobs(blobs: bool) -> ServerInfo {
+    ServerInfo {
+        version: "1.0.0".into(),
+        protocol: 2,
+        mode: ServerMode::SelfHosted,
+        blobs,
+    }
 }
 
 #[tokio::test]
@@ -311,7 +337,6 @@ async fn a_tampered_or_truncated_blob_is_not_stored_and_shows_failed() {
     let report = downloads(&vault, &vault.b, &BlobPolicy::default()).await;
 
     assert_eq!((report.stored, report.failed), (0, 2));
-    let now = chrono::Utc::now().timestamp();
     for blob in [&tampered, &truncated] {
         assert!(!in_store(&vault.b, blob), "nothing of it is stored");
         assert_eq!(content(&vault.b, blob), AttachmentContent::Failed);
@@ -320,7 +345,7 @@ async fn a_tampered_or_truncated_blob_is_not_stored_and_shows_failed() {
             (state.as_str(), attempts, error.as_deref()),
             ("down", 1, Some("unreadable"))
         );
-        assert!(next_try_at > now, "retried later");
+        assert!(next_try_at > NOW, "retried later");
     }
 }
 
@@ -339,7 +364,7 @@ async fn no_room_pauses_uploads_and_says_so() {
     let report = uploads(&vault, &vault.a, &policy).await;
     assert_eq!((report.uploaded, report.failed), (0, 1));
     assert_eq!(policy.problem(), Some(SyncAttachmentsProblem::NoRoom));
-    assert!(policy.uploads_paused(chrono::Utc::now().timestamp()));
+    assert!(policy.uploads_paused(NOW));
     let (state, _, _, error) = entry(&vault.a, &second).expect("entry");
     assert_eq!((state.as_str(), error.as_deref()), ("up", Some("noRoom")));
 
@@ -374,7 +399,7 @@ async fn no_room_pauses_uploads_and_says_so() {
         .execute("UPDATE sync_blobs SET next_try_at = 0", [])
         .expect("due");
     let policy = BlobPolicy::default();
-    policy.note_no_room(0);
+    policy.note_no_room(NOW - 1_800);
     let report = uploads(&vault, &vault.a, &policy).await;
     assert_eq!(report.uploaded, 1);
     assert_eq!(policy.problem(), None);
@@ -423,7 +448,7 @@ async fn a_server_without_blobs_transfers_nothing() {
         mode: ServerMode::SelfHosted,
         blobs: true,
     }));
-    policy.forget_server();
+    policy.try_again();
     let up = uploads(&vault, &vault.a, &policy).await;
     assert_eq!(up.uploaded, 1);
     assert_eq!(policy.problem(), None);
@@ -433,40 +458,104 @@ async fn a_server_without_blobs_transfers_nothing() {
 async fn the_servers_answer_is_kept_for_six_hours() {
     let relay = FakeRelay::new();
     let policy = BlobPolicy::default();
-    assert!(policy.server_has_blobs(&relay, NOW).await);
-    relay.set_server_info(None);
-    assert!(
+    assert_eq!(policy.server_has_blobs(&relay, NOW).await, ServerBlobs::Yes);
+    relay.fail_next(Route::ServerInfo, RelayError::Network("connect".into()));
+    assert_eq!(
         policy.server_has_blobs(&relay, NOW + 6 * 3_600 - 1).await,
+        ServerBlobs::Yes,
         "cached"
     );
-    assert!(
-        !policy.server_has_blobs(&relay, NOW + 6 * 3_600).await,
-        "asked again"
+    assert_eq!(
+        policy.server_has_blobs(&relay, NOW + 6 * 3_600).await,
+        ServerBlobs::Unknown,
+        "asked again, and asking failed"
     );
     assert_eq!(
         policy.problem(),
         None,
         "a server that cannot be asked sets no problem"
     );
-    let asked = relay
-        .calls()
-        .iter()
-        .filter(|route| **route == Route::ServerInfo)
-        .count();
-    assert_eq!(asked, 2);
+    assert_eq!(server_asks(&relay), 2);
 }
 
-#[tokio::test(start_paused = true)]
-async fn a_wake_reaches_each_lane_once_even_while_it_runs() {
+/// C1: asking the server failed (offline): the run tries nothing, shows nothing and remembers
+/// nothing, so the next run asks again and moves the content.
+#[tokio::test]
+async fn an_unreachable_server_is_asked_again_and_shows_no_problem() {
+    let vault = devices().await;
+    let blob = queued_document(&vault.a, "d1", &pattern(10_000, 21));
+    vault
+        .relay
+        .fail_next(Route::ServerInfo, RelayError::Network("connect".into()));
     let policy = BlobPolicy::default();
-    // Woken while neither lane waits: each lane's next wait returns at once, then waits again.
-    policy.wake();
+
+    let offline = uploads(&vault, &vault.a, &policy).await;
+    assert_eq!((offline.uploaded, offline.failed), (0, 0));
+    assert_eq!(policy.problem(), None);
+    assert!(blob_calls(&vault.relay).is_empty());
+
+    let online = uploads(&vault, &vault.a, &policy).await;
+    assert_eq!(online.uploaded, 1);
+    assert_eq!(policy.problem(), None);
+    assert_eq!(state_of(&vault.a, &blob).as_deref(), Some("done"));
+}
+
+/// C1: a server's "no blob routes" is kept for six hours from when it said so, however many runs
+/// meet it meanwhile; then it is asked again and a server that gained the routes is used.
+#[tokio::test]
+async fn a_servers_no_expires_after_six_hours() {
+    let vault = devices().await;
+    vault.relay.set_server_info(Some(server_with_blobs(false)));
+    let blob = queued_document(&vault.a, "d1", &pattern(10_000, 22));
+    let policy = BlobPolicy::default();
+
+    uploads_at(&vault, &vault.a, &policy, NOW).await;
+    assert_eq!(
+        policy.problem(),
+        Some(SyncAttachmentsProblem::ServerNeedsUpdate)
+    );
+    uploads_at(&vault, &vault.a, &policy, NOW + 3 * 3_600).await;
+    uploads_at(&vault, &vault.a, &policy, NOW + 6 * 3_600 - 1).await;
+    assert_eq!(server_asks(&vault.relay), 1, "the cached answer");
+
+    vault.relay.set_server_info(Some(server_with_blobs(true)));
+    let report = uploads_at(&vault, &vault.a, &policy, NOW + 6 * 3_600).await;
+
+    assert_eq!(server_asks(&vault.relay), 2, "asked again");
+    assert_eq!(report.uploaded, 1);
+    assert_eq!(policy.problem(), None);
+    assert_eq!(state_of(&vault.a, &blob).as_deref(), Some("done"));
+}
+
+/// M4: a wake goes to each lane once, kept for a lane that is busy, and a lane never takes the
+/// other's.
+#[tokio::test(start_paused = true)]
+async fn a_wake_for_one_lane_is_not_taken_by_the_other() {
+    let minute = std::time::Duration::from_secs(60);
+    let policy = BlobPolicy::default();
     let started = tokio::time::Instant::now();
-    policy.wait(std::time::Duration::from_secs(60)).await;
-    policy.wait(std::time::Duration::from_secs(60)).await;
-    assert_eq!(started.elapsed(), std::time::Duration::ZERO);
-    policy.wait(std::time::Duration::from_secs(60)).await;
-    assert_eq!(started.elapsed(), std::time::Duration::from_secs(60));
+
+    policy.wake_lane(Lane::Down);
+    policy.wait(Lane::Up, minute).await;
+    assert_eq!(started.elapsed(), minute, "the upload lane slept");
+    policy.wait(Lane::Down, minute).await;
+    assert_eq!(
+        started.elapsed(),
+        minute,
+        "the download lane's wake was kept"
+    );
+
+    // Both woken while neither waits: each lane once, however often the other waits.
+    policy.wake();
+    policy.wait(Lane::Up, minute).await;
+    policy.wait(Lane::Up, minute).await;
+    assert_eq!(started.elapsed(), 2 * minute, "one wake per lane");
+    policy.wait(Lane::Down, minute).await;
+    assert_eq!(
+        started.elapsed(),
+        2 * minute,
+        "the download lane's wake was kept"
+    );
 }
 
 #[tokio::test]
@@ -613,6 +702,248 @@ async fn a_blob_already_downloading_is_skipped() {
     assert_eq!(state_of(&vault.b, &blob).as_deref(), Some("done"));
 }
 
+/// M3: a blob another download holds here is left for the next run; the run goes on with the
+/// next blob instead of ending or taking it again.
+#[tokio::test]
+async fn a_blob_another_download_holds_is_skipped_for_the_next() {
+    let vault = devices().await;
+    let one = queued_document(&vault.a, "d1", &pattern(30_000, 23));
+    let two = queued_document(&vault.a, "d2", &pattern(30_000, 24));
+    uploads(&vault, &vault.a, &BlobPolicy::default()).await;
+    document(&vault.b, "d1", &one);
+    document(&vault.b, "d2", &two);
+    reconcile(&vault.b);
+    let held = next_download(&vault.b).blob_id;
+    let other = if held == one { &two } else { &one };
+    assert!(vault.b.incoming.claim(&held));
+    let policy = BlobPolicy::default();
+
+    let report = downloads(&vault, &vault.b, &policy).await;
+
+    assert_eq!((report.stored, report.failed), (1, 0));
+    assert_eq!(content(&vault.b, other), AttachmentContent::Here);
+    let (state, attempts, next_try_at, error) = entry(&vault.b, &held).expect("entry");
+    assert_eq!(
+        (state.as_str(), attempts, next_try_at, error),
+        ("down", 0, 0, None),
+        "nothing recorded"
+    );
+
+    vault.b.incoming.release(&held);
+    let report = downloads(&vault, &vault.b, &policy).await;
+    assert_eq!(report.stored, 1);
+    assert_eq!(content(&vault.b, &held), AttachmentContent::Here);
+}
+
+/// I1: content that turned up here while its download waited (a restore, a copy) is not taken as
+/// on the server: the entry waits for upload again, and the upload's `HEAD` decides.
+#[tokio::test]
+async fn content_that_turns_up_here_waits_for_the_servers_word() {
+    let vault = devices().await;
+    let blob = queued_document(&vault.a, "d1", &pattern(30_000, 25));
+    document(&vault.b, "d1", &blob);
+    reconcile(&vault.b);
+    let transfer = next_download(&vault.b);
+    copy_blob(&vault.a, &vault.b, &blob);
+
+    let outcome = download_one(&vault.relay, &vault.b, &vault.creds, &transfer, NOW).await;
+
+    assert_eq!(outcome, Outcome::Found);
+    assert_eq!(state_of(&vault.b, &blob).as_deref(), Some("up"));
+    assert!(blob_calls(&vault.relay).is_empty());
+    // Nobody had uploaded it: B's upload sends it.
+    let report = uploads(&vault, &vault.b, &BlobPolicy::default()).await;
+    assert_eq!(report.uploaded, 1);
+    assert_eq!(vault.relay.blob_ids(&vault_id(&vault)), vec![uuid(&blob)]);
+    assert_eq!(state_of(&vault.b, &blob).as_deref(), Some("done"));
+}
+
+/// I2: a download the server refuses for good (an old server's plain `not_found`) shows as
+/// failed, is not retried by itself, and the run goes on with the next blob.
+#[tokio::test]
+async fn a_refused_download_shows_failed_and_the_run_goes_on() {
+    let vault = devices().await;
+    let one = queued_document(&vault.a, "d1", &pattern(10_000, 35));
+    let two = queued_document(&vault.a, "d2", &pattern(10_000, 36));
+    uploads(&vault, &vault.a, &BlobPolicy::default()).await;
+    document(&vault.b, "d1", &one);
+    document(&vault.b, "d2", &two);
+    vault
+        .relay
+        .fail_next(Route::GetBlob, RelayError::BadRequest("not_found".into()));
+
+    let report = downloads(&vault, &vault.b, &BlobPolicy::default()).await;
+
+    assert_eq!((report.stored, report.failed), (1, 1));
+    let refused = if content(&vault.b, &one) == AttachmentContent::Here {
+        &two
+    } else {
+        &one
+    };
+    assert_eq!(content(&vault.b, refused), AttachmentContent::Failed);
+    let (_, _, next_try_at, error) = entry(&vault.b, refused).expect("entry");
+    assert_eq!((next_try_at, error.as_deref()), (i64::MAX, Some("refused")));
+}
+
+/// I2: a blob the server refuses for good fails with its reason, is not retried by itself (nor
+/// by "Sync now"), only by "try again" on its row, and does not end the run.
+#[tokio::test]
+async fn a_refused_blob_fails_for_good_without_ending_the_run() {
+    let vault = devices().await;
+    let one = queued_document(&vault.a, "d1", &pattern(10_000, 26));
+    let two = queued_document(&vault.a, "d2", &pattern(10_000, 27));
+    vault.relay.fail_next(
+        Route::PutBlob,
+        RelayError::BadRequest("blob_too_large".into()),
+    );
+
+    let report = uploads(&vault, &vault.a, &BlobPolicy::default()).await;
+
+    assert_eq!((report.uploaded, report.failed), (1, 1));
+    let (refused, document_id) = if entry(&vault.a, &one).expect("entry").3.is_some() {
+        (&one, "d1")
+    } else {
+        (&two, "d2")
+    };
+    let (state, attempts, next_try_at, error) = entry(&vault.a, refused).expect("entry");
+    assert_eq!(
+        (state.as_str(), attempts, next_try_at, error.as_deref()),
+        ("up", 1, i64::MAX, Some("refused"))
+    );
+    queue::retry_now(&vault.a.lock()).expect("sync now");
+    assert_eq!(
+        queue::next_upload(&vault.a.lock(), NOW + 86_400, None).expect("next"),
+        None
+    );
+    queue::retry_row(
+        &vault.a.lock(),
+        AttachmentKind::InsuranceDocument,
+        document_id,
+    )
+    .expect("try again");
+    assert_eq!(
+        queue::next_upload(&vault.a.lock(), NOW, None)
+            .expect("next")
+            .map(|t| t.blob_id),
+        Some(refused.clone())
+    );
+}
+
+/// M1: the server holds something of another size under the blob's ID: no `done` on its word,
+/// a conflict that is not retried by itself (the server never overwrites a blob), and the run
+/// goes on.
+#[tokio::test]
+async fn a_server_copy_of_another_size_is_a_conflict() {
+    let vault = devices().await;
+    let blob = queued_document(&vault.a, "d1", &pattern(30_000, 28));
+    uploads(&vault, &vault.a, &BlobPolicy::default()).await;
+    vault
+        .relay
+        .truncate_blob(&vault_id(&vault), uuid(&blob), MIN_BLOB_SEALED as usize);
+    assert!(queue::requeue_upload(&vault.a.lock(), &blob, NOW).expect("requeue"));
+    let other = queued_document(&vault.a, "d2", &pattern(10_000, 29));
+    let puts = vault.relay.blob_puts();
+
+    let report = uploads(&vault, &vault.a, &BlobPolicy::default()).await;
+
+    assert_eq!((report.uploaded, report.failed), (1, 1));
+    let (state, _, next_try_at, error) = entry(&vault.a, &blob).expect("entry");
+    assert_eq!(
+        (state.as_str(), next_try_at, error.as_deref()),
+        ("up", i64::MAX, Some("conflict"))
+    );
+    assert_eq!(state_of(&vault.a, &other).as_deref(), Some("done"));
+    assert_eq!(
+        vault.relay.blob_puts(),
+        puts + 1,
+        "only the other one's body"
+    );
+}
+
+/// M5: a `HEAD` hit stores nothing, so it does not say there is room again; an accepted body
+/// does.
+#[tokio::test]
+async fn only_an_accepted_body_ends_no_room() {
+    let vault = devices().await;
+    let blob = queued_document(&vault.a, "d1", &pattern(10_000, 30));
+    uploads(&vault, &vault.a, &BlobPolicy::default()).await;
+    copy_blob(&vault.a, &vault.b, &blob);
+    document(&vault.b, "d1", &blob);
+    reconcile(&vault.b);
+    let policy = BlobPolicy::default();
+    policy.note_no_room(NOW - 1_800);
+
+    let confirmed = uploads(&vault, &vault.b, &policy).await;
+    assert_eq!(confirmed.uploaded, 1);
+    assert_eq!(policy.problem(), Some(SyncAttachmentsProblem::NoRoom));
+
+    queued_document(&vault.a, "d2", &pattern(10_000, 31));
+    let sent = uploads(&vault, &vault.a, &policy).await;
+    assert_eq!(sent.uploaded, 1);
+    assert_eq!(policy.problem(), None);
+}
+
+/// M7: the row went while its upload ran (the content stayed): the upload ends as gone, like a
+/// download would; the server's copy is left to the daily pass.
+#[tokio::test]
+async fn an_upload_whose_row_went_meanwhile_ends_gone() {
+    let vault = devices().await;
+    let blob = queued_document(&vault.a, "d1", &pattern(150_000, 32));
+    let transfer = next_upload(&vault.a);
+    let device = vault.a.clone();
+    let relay = Meddling::new(vault.relay.clone()).during_put(move || {
+        device
+            .lock()
+            .execute("DELETE FROM insurance_documents WHERE id = 'd1'", [])
+            .expect("delete row");
+    });
+
+    let outcome = upload_one(&relay, &vault.a, &vault.creds, &transfer, NOW).await;
+
+    assert_eq!(outcome, Outcome::Gone);
+    assert_eq!(entry(&vault.a, &blob), None);
+    assert_eq!(vault.relay.blob_ids(&vault_id(&vault)), vec![uuid(&blob)]);
+}
+
+/// M2: a time set by a clock that ran ahead does not freeze anything once the clock is set back:
+/// an entry due further ahead than the longest backoff is due, so is a pause longer than its own
+/// length; "try again" ends a pause, and "Sync now" also retries what waited for room.
+#[tokio::test]
+async fn a_clock_set_back_does_not_freeze_transfers() {
+    let vault = devices().await;
+    let blob = queued_document(&vault.a, "d1", &pattern(10_000, 33));
+    vault
+        .a
+        .lock()
+        .execute(
+            "UPDATE sync_blobs SET next_try_at = ?1, last_error = 'network', attempts = 3",
+            [NOW + 100_000],
+        )
+        .expect("ahead");
+    let policy = BlobPolicy::default();
+    policy.note_no_room(NOW + 100_000);
+    assert!(!policy.uploads_paused(NOW), "a pause dated ahead is over");
+
+    let report = uploads(&vault, &vault.a, &policy).await;
+    assert_eq!(report.uploaded, 1);
+    assert_eq!(state_of(&vault.a, &blob).as_deref(), Some("done"));
+
+    policy.note_no_room(NOW);
+    assert!(policy.uploads_paused(NOW + 1));
+    policy.try_again();
+    assert!(!policy.uploads_paused(NOW + 1), "try again ends the pause");
+
+    let waiting = queued_document(&vault.a, "d2", &pattern(10_000, 34));
+    queue::note_failed(&vault.a.lock(), &waiting, TransferError::NoRoom, NOW).expect("no room");
+    queue::retry_now(&vault.a.lock()).expect("sync now");
+    assert_eq!(
+        queue::next_upload(&vault.a.lock(), NOW, None)
+            .expect("next")
+            .map(|t| t.blob_id),
+        Some(waiting)
+    );
+}
+
 #[tokio::test]
 async fn an_invalid_blob_id_is_never_requested() {
     let vault = devices().await;
@@ -709,6 +1040,7 @@ async fn a_locked_profile_ends_the_run() {
         &vault.a,
         &vault.creds,
         &BlobPolicy::default(),
+        NOW,
         None,
         None,
     )
@@ -733,15 +1065,17 @@ async fn the_runs_go_on_a_multi_threaded_runtime() {
         vault.creds.clone(),
         policy.clone(),
     );
-    let up = tokio::spawn(async move { run_uploads(&relay, &a, &creds, &lanes, None, None).await })
-        .await
-        .expect("join")
-        .expect("uploads");
+    let up =
+        tokio::spawn(async move { run_uploads(&relay, &a, &creds, &lanes, NOW, None, None).await })
+            .await
+            .expect("join")
+            .expect("uploads");
     let (relay, b, creds) = (vault.relay.clone(), vault.b.clone(), vault.creds.clone());
-    let down = tokio::spawn(async move { run_downloads(&relay, &b, &creds, &policy, None).await })
-        .await
-        .expect("join")
-        .expect("downloads");
+    let down =
+        tokio::spawn(async move { run_downloads(&relay, &b, &creds, &policy, NOW, None).await })
+            .await
+            .expect("join")
+            .expect("downloads");
 
     assert_eq!((up.uploaded, down.stored), (1, 1));
     assert_eq!(
@@ -768,9 +1102,27 @@ fn every_blob_answer_has_its_transfer_class() {
             E::BadRequest("incomplete_body".into()),
             Outcome::Failed(T::Server),
         ),
+        // Refused for good (I2): decided by the client, or the server's own refusals of the body
+        // and an old server's plain `not_found` on a blob route.
+        (
+            E::Protocol("body too large".into()),
+            Outcome::Failed(T::Refused),
+        ),
+        (
+            E::BadRequest("blob_too_large".into()),
+            Outcome::Failed(T::Refused),
+        ),
+        (
+            E::BadRequest("empty_body".into()),
+            Outcome::Failed(T::Refused),
+        ),
         (
             E::BadRequest("length_required".into()),
-            Outcome::Failed(T::Server),
+            Outcome::Failed(T::Refused),
+        ),
+        (
+            E::BadRequest("not_found".into()),
+            Outcome::Failed(T::Refused),
         ),
         (E::BlobNotFound, Outcome::Failed(T::NotOnServer)),
         (E::QuotaExceeded, Outcome::Failed(T::NoRoom)),

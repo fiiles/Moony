@@ -497,6 +497,8 @@ fn failures_back_off_by_their_kind() {
             TransferError::NoRoom,
             TransferError::InvalidId,
             TransferError::Local,
+            TransferError::Refused,
+            TransferError::Conflict,
         ]
         .map(TransferError::as_str),
         [
@@ -506,11 +508,14 @@ fn failures_back_off_by_their_kind() {
             "unreadable",
             "noRoom",
             "invalidId",
-            "local"
+            "local",
+            "refused",
+            "conflict"
         ]
     );
 
-    // A retry now makes every waiting transfer due except a full server and an invalid ID.
+    // A retry now makes every waiting transfer due, a full server's included, except an invalid
+    // ID (and a refusal or a conflict, which never move by themselves either).
     retry_now(&conn).expect("retry now");
     let waiting: Vec<(String, i64)> = conn
         .prepare("SELECT COALESCE(last_error, '-'), next_try_at FROM sync_blobs ORDER BY 1")
@@ -521,7 +526,6 @@ fn failures_back_off_by_their_kind() {
         .collect();
     for (error, next) in waiting {
         let expected = match error.as_str() {
-            "noRoom" => NOW + 1_800,
             "invalidId" => i64::MAX,
             _ => 0,
         };

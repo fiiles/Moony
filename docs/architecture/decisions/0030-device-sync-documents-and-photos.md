@@ -169,17 +169,25 @@ documents and photos need a newer server. The app assumes the server's error cod
   (`rows_without_content_or_download`).
 - **Moving one blob (Task 10).** `services/sync/blobs/transfer.rs` uploads (`HEAD` first, a body
   only when the server lacks the blob) and downloads one blob at a time; `policy.rs` holds what
-  the round's upload step and the lanes share: the server's `blobs` feature (asked at most every
-  six hours; a failed ask is no problem), the attachments problem (`SyncAttachmentsProblem`:
-  `noRoom` pauses uploads for half an hour, downloads go on; `serverNeedsUpdate` only while content
-  waits), one lane lock per direction and the wake-up. Blob answers are classified there, never by
-  the round's `SyncError`, so no single file fails, pauses or slows a round: done; gone (no syncing
-  row names the blob, or its content left the store under the upload: the entry is dropped and a
-  download that completed after its row went is deleted again); failed with a backoff of that
-  blob's own; blocked by what the round already shows (`402`, `401`, `403 token_read_only`, vault
-  not found: nothing recorded); a locked profile ends the run as `AppError::Auth`. The HTTP client
-  reports any body error as network trouble, so the upload keeps its source's error beside the
-  call and a vanished or unreadable blob is never read as "offline". A blob ID that is not
-  canonical never reaches a URL or the store. A run stops at the first network, server or no-room
-  failure (the next blob would meet it too; the rest waits for the next run) and between blobs
-  when its deadline passed.
+  the round's upload step and the lanes share: the server's `blobs` feature (a fresh answer is
+  kept six hours from when it was given; a server that cannot be asked is "unknown": that run
+  stops, nothing is kept and no problem shown), the attachments problem
+  (`SyncAttachmentsProblem`: `noRoom` pauses uploads for half an hour and ends only when a body is
+  accepted, downloads go on; `serverNeedsUpdate` only while content waits), one lane lock per
+  direction and a wake-up per lane. Blob answers are classified there, never by the round's
+  `SyncError`, so no single file fails, pauses or slows a round: `done` only on the server's word
+  (an accepted body, or a `HEAD` that finds the blob at its sealed size; content that merely
+  turned up here waits for upload again); gone (no syncing row names the blob, or its content
+  left the store under the upload: the entry is dropped and a blob stored after its row went is
+  deleted again; an upload whose row went ends gone too, its server copy left to the daily pass);
+  failed with a per-blob backoff (network, server, `429`, unreadable, not on the server, no room,
+  local); failed for good, moved only by "try again" or a rebuilt queue (an invalid ID; `refused`:
+  too large, empty, a length refused, an old server's plain `not_found`; `conflict`: the server
+  holds another size under the ID and never overwrites; migration 037 adds the two codes);
+  blocked by what the round already shows (`402`, `401`, `403 token_read_only`, vault not found:
+  nothing recorded); a locked profile ends the run as `AppError::Auth`. The HTTP client reports
+  any body error as network trouble, so the upload keeps its source's error beside the call and a
+  vanished or unreadable blob is never read as "offline". A run stops at the first network,
+  server or no-room failure (the next blob would meet it too), passes over a blob another download
+  holds, and stops between blobs when its deadline passed. Times come from the caller; an entry
+  or a pause dated further ahead than its longest wait (a clock set back) counts as due.

@@ -101,6 +101,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("034_asset_logos", MIGRATION_034),
         ("035_sync_blobs", MIGRATION_035),
         ("036_sync_held_blobs", MIGRATION_036),
+        ("037_sync_blobs_refusals", MIGRATION_037),
     ]
 }
 
@@ -3402,9 +3403,12 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_36_migrations() {
-        assert_eq!(known_migration_names().len(), 36);
-        assert_eq!(known_migration_names().last(), Some(&"036_sync_held_blobs"));
+    fn the_chain_now_has_37_migrations() {
+        assert_eq!(known_migration_names().len(), 37);
+        assert_eq!(
+            known_migration_names().last(),
+            Some(&"037_sync_blobs_refusals")
+        );
     }
 }
 
@@ -3499,6 +3503,96 @@ CREATE TABLE sync_held_blobs (
     held_at INTEGER NOT NULL
 ) WITHOUT ROWID;
 "#;
+
+/// 037: `sync_blobs.last_error` gains `refused` (the sync server refuses the blob for good: too
+/// large, empty, a length it cannot take, or a server without the blob route) and `conflict` (the
+/// server holds other content under the blob's ID). Neither is retried by itself. SQLite cannot
+/// change a CHECK, so the table is rebuilt (create new, copy, drop, rename) with its index.
+pub(crate) const MIGRATION_037: &str = r#"
+CREATE TABLE sync_blobs_new (
+    blob_id TEXT PRIMARY KEY,
+    state TEXT NOT NULL CHECK (state IN ('up', 'down', 'done')),
+    thumbnail INTEGER NOT NULL DEFAULT 0 CHECK (thumbnail IN (0, 1)),
+    wanted INTEGER NOT NULL DEFAULT 0 CHECK (wanted IN (0, 1)),
+    active INTEGER NOT NULL DEFAULT 0 CHECK (active IN (0, 1)),
+    row_at INTEGER NOT NULL DEFAULT 0,
+    queued_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_try_at INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT CHECK (last_error IN
+        ('network', 'server', 'notOnServer', 'unreadable', 'noRoom', 'invalidId', 'local',
+         'refused', 'conflict')),
+    last_error_at INTEGER
+) WITHOUT ROWID;
+INSERT INTO sync_blobs_new
+    (blob_id, state, thumbnail, wanted, active, row_at, queued_at, attempts, next_try_at,
+     last_error, last_error_at)
+SELECT blob_id, state, thumbnail, wanted, active, row_at, queued_at, attempts, next_try_at,
+     last_error, last_error_at
+FROM sync_blobs;
+DROP INDEX idx_sync_blobs_state;
+DROP TABLE sync_blobs;
+ALTER TABLE sync_blobs_new RENAME TO sync_blobs;
+CREATE INDEX idx_sync_blobs_state ON sync_blobs (state, next_try_at);
+"#;
+
+#[cfg(test)]
+mod migration_037 {
+    use super::*;
+
+    #[test]
+    fn sync_blobs_keeps_its_entries_and_takes_the_two_refusals() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let all = all_migrations();
+        let before: Vec<_> = all
+            .iter()
+            .copied()
+            .filter(|(name, _)| *name < "037_sync_blobs_refusals")
+            .collect();
+        run_chain(&conn, &before).expect("chain to 036");
+        conn.execute_batch(
+            "INSERT INTO sync_blobs (blob_id, state, thumbnail, wanted, active, row_at, queued_at, \
+               attempts, next_try_at, last_error, last_error_at) \
+             VALUES ('b1', 'down', 1, 1, 0, 7, 8, 2, 9, 'notOnServer', 10)",
+        )
+        .expect("entry");
+        run_chain(&conn, &all).expect("037");
+        let entry: (String, i64, i64, i64, i64, i64, i64, String, i64) = conn
+            .query_row(
+                "SELECT state, thumbnail, wanted, row_at, queued_at, attempts, next_try_at, \
+                   last_error, last_error_at FROM sync_blobs WHERE blob_id = 'b1'",
+                [],
+                |r| {
+                    Ok((
+                        r.get(0)?,
+                        r.get(1)?,
+                        r.get(2)?,
+                        r.get(3)?,
+                        r.get(4)?,
+                        r.get(5)?,
+                        r.get(6)?,
+                        r.get(7)?,
+                        r.get(8)?,
+                    ))
+                },
+            )
+            .expect("kept");
+        assert_eq!(
+            entry,
+            ("down".into(), 1, 1, 7, 8, 2, 9, "notOnServer".into(), 10)
+        );
+        for code in ["refused", "conflict"] {
+            conn.execute(
+                "UPDATE sync_blobs SET last_error = ?1 WHERE blob_id = 'b1'",
+                [code],
+            )
+            .expect(code);
+        }
+        assert!(conn
+            .execute("UPDATE sync_blobs SET last_error = 'other'", [])
+            .is_err());
+    }
+}
 
 #[cfg(test)]
 mod migration_033 {

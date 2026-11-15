@@ -4,16 +4,23 @@
 //! `upload_one` and `download_one` move one queued blob and record how it went in the queue
 //! (`sync_blobs`); `run_uploads` and `run_downloads` take the queue one blob at a time under a lane
 //! lock of the shared [`BlobPolicy`], so one upload and one download run at once, and stop between
-//! two blobs when nothing is due, the caller's deadline passed, or the server refuses this vault.
+//! two blobs when nothing is due, the caller's deadline passed, or the next blob would meet the
+//! same trouble.
 //!
 //! Blob errors are classified here and never reach the sync round's error path
 //! (`services/sync/error.rs`): a blob that does not move never fails, pauses or slows a round.
-//! A transfer ends as one of [`Outcome`]: done; gone (its row or its content no longer exists: the
-//! entry is dropped); failed, recorded on the entry with a backoff of that blob's own (passing
-//! trouble: the network, a busy or failing server, `429`; no room on the server, which also
-//! pauses uploads through the policy; an unreadable download, content the server does not have
-//! yet, an invalid ID, a local store error); blocked by what the round already shows (payment,
-//! token, vault: nothing is recorded); or a locked profile.
+//! A transfer ends as one of [`Outcome`]: done on the server's word (an accepted body, or a
+//! `HEAD` that finds the blob at its size); gone (its row or its content no longer exists: the
+//! entry is dropped); found (content that turned up here waits for the server's word); failed,
+//! recorded on the entry with a backoff of that blob's own (passing trouble: the network, a busy
+//! or failing server, `429`; no room on the server, which also pauses uploads through the policy;
+//! an unreadable download, content the server does not have yet, a local store error) or for good
+//! (an invalid ID, a refusal of the blob, a conflict on the server); blocked by what the round
+//! already shows (payment, token, vault: nothing is recorded); skipped while another download of
+//! it runs; or a locked profile.
+//!
+//! Every database hold goes through `stream::hold`, off the async worker on a multi-threaded
+//! runtime, and none is open across a network call.
 
 use std::io;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -22,38 +29,46 @@ use rusqlite::{Connection, OptionalExtension};
 use tokio::time::Instant;
 
 use super::canonical_id;
-use super::policy::BlobPolicy;
+use super::policy::{BlobPolicy, ServerBlobs};
 use super::queue::{self, Reconciled, Transfer, TransferError};
-use super::stream::{SinkOutcome, StoreSink, UploadSource};
+use super::stream::{hold, SinkOutcome, StoreSink, UploadSource};
 use crate::error::{AppError, Result};
 use crate::models::sync::SyncAttachmentsProblem;
 use crate::services::attachment_store::{self, complete_sql};
 use crate::services::sync::engine::ConnAccess;
-use crate::services::sync::envelope::blob::BlobSealer;
+use crate::services::sync::envelope::blob::{sealed_len, BlobSealer};
 use crate::services::sync::keys::Credentials;
 use crate::services::sync::relay::{Relay, RelayError};
 
 /// How one blob's transfer ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Outcome {
-    /// The server has the blob (an upload), or it is complete in the store (a download).
+    /// The server accepted the blob's body (an upload), or the blob was downloaded and stored.
     Done,
+    /// The server already had the blob at its size (a `HEAD`): done without a body.
+    Confirmed,
     /// No syncing row names the blob any more, or its content left the store under an upload: the
-    /// entry is dropped, nothing is retried and nothing is left in the store.
+    /// entry is dropped, nothing is retried and no blob of it is left in the store.
     Gone,
-    /// Recorded on the entry (`last_error`) with that error's backoff.
+    /// The content of a blob being fetched turned up complete here: not taken as on the server,
+    /// the entry waits for upload again (its `HEAD` decides).
+    Found,
+    /// Recorded on the entry (`last_error`) with that error's backoff (`i64::MAX`: only "try
+    /// again" moves it).
     Failed(TransferError),
     /// The server refuses this vault (payment, token, vault gone): the round shows why; nothing is
     /// recorded and the run stops.
     Blocked,
     /// The profile is locked: nothing more can be read or recorded.
     Locked,
-    /// Another download of the same blob is running here: skipped for now, nothing recorded.
+    /// Another download of the same blob is running here: nothing recorded; the run goes on with
+    /// the next blob and leaves this one for its next run.
     Busy,
 }
 
-/// What a run did: blobs uploaded (confirmed by the server) and stored here, transfers that
-/// failed, and whether anything the person sees changed (the queue's reconcile included).
+/// What a run did: blobs uploaded (the server took the body or already had it) and stored here,
+/// transfers that failed, and whether anything the person sees changed (the queue's reconcile
+/// included).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct TransferReport {
     pub uploaded: usize,
@@ -65,27 +80,33 @@ pub struct TransferReport {
 impl TransferReport {
     fn count(&mut self, outcome: Outcome, upload: bool) {
         match outcome {
-            Outcome::Done if upload => self.uploaded += 1,
-            Outcome::Done => self.stored += 1,
+            Outcome::Done | Outcome::Confirmed if upload => self.uploaded += 1,
+            Outcome::Done | Outcome::Confirmed => self.stored += 1,
             Outcome::Failed(_) => self.failed += 1,
-            Outcome::Gone => {}
+            Outcome::Gone | Outcome::Found => {}
             Outcome::Blocked | Outcome::Locked | Outcome::Busy => return,
         }
         self.changed = true;
     }
 }
 
-fn unix_now() -> i64 {
-    chrono::Utc::now().timestamp()
-}
-
 fn locked() -> AppError {
     AppError::Auth("Database is locked".into())
 }
 
+/// The server's own refusals of a blob that no retry changes (`400` / `411` / `413` of the blob
+/// routes), and an old server's plain `404 not_found` for a route it does not have.
+const REFUSALS: &[&str] = &[
+    "blob_too_large",
+    "empty_body",
+    "length_required",
+    "not_found",
+];
+
 /// The transfer class of a sync server answer to a blob call. Passing trouble (`Network`, a
-/// server error, `429`, an answer outside the contract, a refused body) is retried later per
-/// blob; the round's own classes (`SyncError`) are never consulted.
+/// server error, `429`, an answer outside the contract, a body cut short) is retried later per
+/// blob; a refusal of the blob itself (one the client decides, "body too large", or the server's
+/// `REFUSALS`) fails for good; the round's own classes (`SyncError`) are never consulted.
 pub(super) fn classify(error: &RelayError) -> Outcome {
     match error {
         RelayError::Network(_) => Outcome::Failed(TransferError::Network),
@@ -96,6 +117,12 @@ pub(super) fn classify(error: &RelayError) -> Outcome {
         RelayError::BadRequest(code) if code == "invalid_blob_id" => {
             Outcome::Failed(TransferError::InvalidId)
         }
+        RelayError::BadRequest(code) if REFUSALS.contains(&code.as_str()) => {
+            Outcome::Failed(TransferError::Refused)
+        }
+        RelayError::Protocol(reason) if reason == "body too large" => {
+            Outcome::Failed(TransferError::Refused)
+        }
         RelayError::PaymentRequired
         | RelayError::Unauthorized
         | RelayError::TokenReadOnly
@@ -105,12 +132,15 @@ pub(super) fn classify(error: &RelayError) -> Outcome {
 }
 
 /// Records `outcome` of `blob_id`'s transfer in the queue (one hold) and returns it: done, gone
-/// (the entry goes), failed (one more attempt and its backoff), else the entry only stops being
-/// active. A locked profile is `Locked`; another local error is logged and `Failed(Local)`.
+/// (the entry goes), found (the entry waits for upload), failed (one more attempt and its
+/// backoff), else the entry only stops being active. A locked profile is `Locked`; another local
+/// error is logged and `Failed(Local)`. `Done` and `Confirmed` of an upload go through
+/// [`confirmed`] instead.
 fn record<D: ConnAccess>(db: &D, blob_id: &str, outcome: Outcome, now: i64) -> Outcome {
-    let recorded = db.with_conn(|conn| match outcome {
-        Outcome::Done => queue::note_done(conn, blob_id),
+    let recorded = hold(db, |conn| match outcome {
+        Outcome::Done | Outcome::Confirmed => queue::note_done(conn, blob_id),
         Outcome::Gone => queue::note_gone(conn, blob_id),
+        Outcome::Found => queue::note_found(conn, blob_id, now).map(|_| ()),
         Outcome::Failed(error) => queue::note_failed(conn, blob_id, error, now),
         Outcome::Blocked | Outcome::Locked | Outcome::Busy => {
             queue::set_active(conn, blob_id, false)
@@ -118,12 +148,17 @@ fn record<D: ConnAccess>(db: &D, blob_id: &str, outcome: Outcome, now: i64) -> O
     });
     match recorded {
         Ok(()) => outcome,
-        Err(AppError::Auth(_)) => Outcome::Locked,
-        Err(e) => {
-            log::warn!("[SYNC] A document or photo transfer could not be recorded: {e}");
-            Outcome::Failed(TransferError::Local)
-        }
+        Err(e) => local_unrecorded(e),
     }
+}
+
+/// A local error that could not even be recorded: `Locked`, or logged as `Failed(Local)`.
+fn local_unrecorded(error: AppError) -> Outcome {
+    if matches!(error, AppError::Auth(_)) {
+        return Outcome::Locked;
+    }
+    log::warn!("[SYNC] A document or photo transfer could not be recorded: {error}");
+    Outcome::Failed(TransferError::Local)
 }
 
 /// A local error before or after a transfer: `Locked` for a locked profile, else recorded as a
@@ -134,6 +169,21 @@ fn local<D: ConnAccess>(db: &D, blob_id: &str, error: AppError, now: i64) -> Out
     }
     log::warn!("[SYNC] A document or photo transfer failed on this device: {error}");
     record(db, blob_id, Outcome::Failed(TransferError::Local), now)
+}
+
+/// The server has the blob (`outcome` is `Done` or `Confirmed`): `done` while a syncing row still
+/// names it; else its row went during the upload and the entry goes (`Gone`; the server's copy is
+/// left to the daily pass).
+fn confirmed<D: ConnAccess>(db: &D, blob_id: &str, outcome: Outcome) -> Outcome {
+    let settled = hold(db, |conn| {
+        if queue::is_named(conn, blob_id)? {
+            queue::note_done(conn, blob_id)?;
+            return Ok(outcome);
+        }
+        queue::note_gone(conn, blob_id)?;
+        Ok(Outcome::Gone)
+    });
+    settled.unwrap_or_else(local_unrecorded)
 }
 
 /// The recorded size of `blob_id` when a syncing row names it and it is complete here
@@ -156,12 +206,14 @@ fn named_and_held(conn: &Connection, blob_id: &str) -> Result<Option<u64>> {
 }
 
 /// Uploads one blob held here: checks that a syncing row still names it and that it is complete
-/// (else `Gone`), asks the server whether it has it (`HEAD`: then `Done` without a body), and
-/// otherwise streams it up sealed under the current key epoch. A blob ID that is not canonical
-/// fails as `InvalidId` before any request or store read. A local error of the upload's source
-/// (the content left the store, a locked profile, a read error) is recovered beside the call, so
-/// it is never mistaken for the network trouble the HTTP client reports it as. The outcome is
-/// recorded in the queue.
+/// (else `Gone`), asks the server whether it has it (`HEAD`: at the blob's sealed size it is
+/// `Confirmed` without a body; at another size the server holds something else under this ID,
+/// which it never overwrites: `Failed(Conflict)`), and otherwise streams it up sealed under the
+/// current key epoch. A blob ID that is not canonical fails as `InvalidId` before any request or
+/// store read. A local error of the upload's source (the content left the store, a locked
+/// profile, a read error) is recovered beside the call, so it is never mistaken for the network
+/// trouble the HTTP client reports it as. A row that went during the upload ends it as `Gone`. The
+/// outcome is recorded in the queue.
 pub async fn upload_one<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -174,14 +226,23 @@ pub async fn upload_one<R: Relay, D: ConnAccess>(
         log::debug!("[SYNC] Not uploading {id}: not a valid blob ID");
         return record(db, id, Outcome::Failed(TransferError::InvalidId), now);
     };
-    let size = match db.with_conn(|conn| named_and_held(conn, id)) {
+    let size = match hold(db, |conn| named_and_held(conn, id)) {
         Ok(Some(size)) => size,
         Ok(None) => return record(db, id, Outcome::Gone, now),
         Err(e) => return local(db, id, e, now),
     };
+    let declared = transfer.size.unwrap_or(size);
     let auth = creds.auth();
     match relay.head_blob(&auth, blob).await {
-        Ok(Some(_)) => return record(db, id, Outcome::Done, now),
+        Ok(Some(stored)) if stored == sealed_len(declared) => {
+            return confirmed(db, id, Outcome::Confirmed)
+        }
+        Ok(Some(stored)) => {
+            log::warn!(
+                "[SYNC] The sync server holds {stored} bytes under blob {blob}, not this content"
+            );
+            return record(db, id, Outcome::Failed(TransferError::Conflict), now);
+        }
         Ok(None) => {}
         Err(e) => return record(db, id, classify(&e), now),
     }
@@ -191,22 +252,20 @@ pub async fn upload_one<R: Relay, D: ConnAccess>(
         &creds.vault_id.0,
         &blob,
     );
-    let declared = transfer.size.unwrap_or(size);
     let source = UploadSource::new(db.clone(), id.to_string(), blob, declared, sealer);
-    let sealed_len = source.sealed_len();
+    let sealed = source.sealed_len();
     let cause = Arc::new(Mutex::new(None));
     let body = Box::new(Watched {
         body: source,
         cause: Arc::clone(&cause),
     });
-    let sent = relay.put_blob(&auth, blob, sealed_len, body).await;
+    let sent = relay.put_blob(&auth, blob, sealed, body).await;
     let source_failure = cause.lock().unwrap_or_else(PoisonError::into_inner).take();
-    let outcome = match (sent, source_failure) {
-        (Ok(()), _) => Outcome::Done,
-        (Err(_), Some(failure)) => failure,
-        (Err(e), None) => classify(&e),
-    };
-    record(db, id, outcome, now)
+    match (sent, source_failure) {
+        (Ok(()), _) => confirmed(db, id, Outcome::Done),
+        (Err(_), Some(failure)) => record(db, id, failure, now),
+        (Err(e), None) => record(db, id, classify(&e), now),
+    }
 }
 
 /// An upload body that keeps what its first error meant locally: the HTTP client turns any body
@@ -245,13 +304,14 @@ fn source_failure(error: &io::Error) -> Outcome {
     }
 }
 
-/// Downloads one blob into the store: a blob no syncing row names any more is `Gone`, one already
-/// complete here `Done`, without a request; otherwise its stream is opened piece by piece into an
-/// incoming blob that becomes visible only once the whole stream authenticated. A stream that
-/// does not open or ends early is `Failed(Unreadable)` and nothing of it stays. A row that went
-/// during the download leaves no blob behind: an incoming blob a sweep removed ends the transfer
-/// as gone, and a blob that completed after its row went is deleted again. The outcome is recorded
-/// in the queue.
+/// Downloads one blob into the store: a blob no syncing row names any more is `Gone` without a
+/// request, and content already complete here is `Found` (it waits for upload again: whether the
+/// server has it is the server's word, never assumed). Otherwise its stream is opened piece by
+/// piece into an incoming blob that becomes visible only once the whole stream authenticated. A
+/// stream that does not open or ends early is `Failed(Unreadable)` and nothing of it stays. A row
+/// that went during the download leaves no blob behind: an incoming blob a sweep removed ends the
+/// transfer as gone, and a blob that completed after its row went is deleted again. The outcome
+/// is recorded in the queue.
 pub async fn download_one<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -264,7 +324,7 @@ pub async fn download_one<R: Relay, D: ConnAccess>(
         log::debug!("[SYNC] Not downloading {id}: not a valid blob ID");
         return record(db, id, Outcome::Failed(TransferError::InvalidId), now);
     };
-    let before = db.with_conn(|conn| {
+    let before = hold(db, |conn| {
         let named = queue::is_named(conn, id)?;
         let here: bool = conn.query_row(&format!("SELECT {}", complete_sql("?1")), [id], |r| {
             r.get(0)
@@ -273,7 +333,7 @@ pub async fn download_one<R: Relay, D: ConnAccess>(
     });
     match before {
         Ok((false, _)) => return record(db, id, Outcome::Gone, now),
-        Ok((true, true)) => return record(db, id, Outcome::Done, now),
+        Ok((true, true)) => return record(db, id, Outcome::Found, now),
         Ok((true, false)) => {}
         Err(e) => return local(db, id, e, now),
     }
@@ -287,7 +347,7 @@ pub async fn download_one<R: Relay, D: ConnAccess>(
     let delivery = relay.get_blob(&creds.auth(), blob, &mut sink).await;
     let outcome = match sink.finish(&delivery) {
         SinkOutcome::Stored => return stored(db, id, now),
-        SinkOutcome::AlreadyHere => Outcome::Done,
+        SinkOutcome::AlreadyHere => Outcome::Found,
         SinkOutcome::InProgress => Outcome::Busy,
         SinkOutcome::Unreadable => Outcome::Failed(TransferError::Unreadable),
         SinkOutcome::Incomplete => match &delivery {
@@ -295,7 +355,7 @@ pub async fn download_one<R: Relay, D: ConnAccess>(
             Ok(_) => Outcome::Failed(TransferError::Unreadable),
         },
         SinkOutcome::Local(AppError::NotFound(_)) => {
-            match db.with_conn(|conn| queue::is_named(conn, id)) {
+            match hold(db, |conn| queue::is_named(conn, id)) {
                 Ok(false) => Outcome::Gone,
                 Ok(true) => Outcome::Failed(TransferError::Local),
                 Err(e) => return local(db, id, e, now),
@@ -312,7 +372,7 @@ pub async fn download_one<R: Relay, D: ConnAccess>(
 /// A download completed: `Done` while a syncing row names the blob; else its row went during the
 /// download, so the blob is deleted again (unless a replace holds it) and the entry dropped.
 fn stored<D: ConnAccess>(db: &D, blob_id: &str, now: i64) -> Outcome {
-    let settled = db.with_conn(|conn| {
+    let settled = hold(db, |conn| {
         if queue::is_named(conn, blob_id)? {
             queue::note_done(conn, blob_id)?;
             return Ok(Outcome::Done);
@@ -341,13 +401,27 @@ async fn enter(
 /// The queue brought in line with the rows and the store, and whether content waits to move at
 /// all and to upload.
 fn reconciled<D: ConnAccess>(db: &D, now: i64) -> Result<(Reconciled, bool, bool)> {
-    db.with_conn(|conn| {
+    hold(db, |conn| {
         Ok((
             queue::reconcile(conn, now)?,
             queue::waiting(conn, false)?,
             queue::waiting(conn, true)?,
         ))
     })
+}
+
+/// Whether the run may go on, by the server's blob routes: an answer "no" shows that the server
+/// needs an update (callers ask only while content waits); a server that could not be asked
+/// stops this run and shows nothing.
+async fn server_ready<R: Relay>(relay: &R, policy: &BlobPolicy, now: i64) -> bool {
+    match policy.server_has_blobs(relay, now).await {
+        ServerBlobs::Yes => true,
+        ServerBlobs::No => {
+            policy.note_server(false, now);
+            false
+        }
+        ServerBlobs::Unknown => false,
+    }
 }
 
 /// An entry marked active for its transfer; a transfer dropped before it settled (a cancelled
@@ -375,7 +449,7 @@ fn take<'a, D: ConnAccess>(
     db: &'a D,
     next: impl FnOnce(&Connection) -> Result<Option<Transfer>>,
 ) -> Result<Option<(Transfer, Active<'a, D>)>> {
-    let transfer = db.with_conn(|conn| {
+    let transfer = hold(db, |conn| {
         let transfer = next(conn)?;
         if let Some(transfer) = &transfer {
             queue::set_active(conn, &transfer.blob_id, true)?;
@@ -392,25 +466,37 @@ fn take<'a, D: ConnAccess>(
     }))
 }
 
-/// Uploads the blobs that are due, one at a time, oldest first (`queue::next_upload`), each of at
-/// most `max_plain` bytes when given, until none is due, `until` passed (checked before each
-/// blob and while waiting for the lane), or the server refused: no room (uploads pause, the
-/// policy shows it), passing trouble (the rest waits for the next run) or this vault (`Blocked`).
-/// The queue is reconciled first. Nothing runs while the server lacks the blob routes (the policy
-/// then shows that, as long as content waits) or while uploads are paused. A transfer error is
-/// never an `Err`: only a local error of the queue is, and a locked profile (`AppError::Auth`).
+/// Whether an outcome ends the run: the network's or the server's trouble, or its refusal of this
+/// vault, would meet the next blob as well. (A refusal or a conflict of one blob does not.)
+fn stops(outcome: Outcome) -> bool {
+    matches!(
+        outcome,
+        Outcome::Failed(TransferError::Network | TransferError::Server | TransferError::NoRoom)
+            | Outcome::Blocked
+            | Outcome::Locked
+    )
+}
+
+/// Uploads the blobs that are due at `now`, one at a time, oldest first (`queue::next_upload`),
+/// each of at most `max_plain` bytes when given, until none is due, `until` passed (checked
+/// before each blob and while waiting for the lane), or the next blob would meet the same
+/// trouble: no room (uploads pause, the policy shows it), passing trouble (the rest waits for the
+/// next run) or a refusal of this vault (`Blocked`). The queue is reconciled first. Nothing runs
+/// while the server lacks the blob routes (the policy then shows that, as long as content
+/// waits), while it cannot be asked, or while uploads are paused. A transfer error is never an
+/// `Err`: only a local error of the queue is, and a locked profile (`AppError::Auth`).
 pub async fn run_uploads<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     creds: &Credentials,
     policy: &BlobPolicy,
+    now: i64,
     until: Option<Instant>,
     max_plain: Option<u64>,
 ) -> Result<TransferReport> {
     let Some(_lane) = enter(policy.up_lane(), until).await else {
         return Ok(TransferReport::default());
     };
-    let now = unix_now();
     let (reconciled, any, up) = reconciled(db, now)?;
     let mut report = TransferReport {
         changed: reconciled != Reconciled::default(),
@@ -423,18 +509,13 @@ pub async fn run_uploads<R: Relay, D: ConnAccess>(
         policy.clear(SyncAttachmentsProblem::NoRoom);
         return Ok(report);
     }
-    if !policy.server_has_blobs(relay, now).await {
-        policy.note_server(false, now);
-        return Ok(report);
-    }
-    if policy.uploads_paused(now) {
+    if !server_ready(relay, policy, now).await || policy.uploads_paused(now) {
         return Ok(report);
     }
     loop {
         if until.is_some_and(|at| Instant::now() >= at) {
             break;
         }
-        let now = unix_now();
         let Some((transfer, mut active)) =
             take(db, |conn| queue::next_upload(conn, now, max_plain))?
         else {
@@ -444,12 +525,15 @@ pub async fn run_uploads<R: Relay, D: ConnAccess>(
         active.armed = false;
         report.count(outcome, true);
         match outcome {
+            // Only an accepted body says there is room; a blob the server had stored nothing.
             Outcome::Done => policy.note_uploaded(),
             Outcome::Failed(TransferError::NoRoom) => {
                 policy.note_no_room(now);
                 break;
             }
             Outcome::Locked => return Err(locked()),
+            // An upload is never busy; were it, the same entry would come back at once.
+            Outcome::Busy => break,
             _ if stops(outcome) => break,
             _ => {}
         }
@@ -457,37 +541,24 @@ pub async fn run_uploads<R: Relay, D: ConnAccess>(
     Ok(report)
 }
 
-/// Whether an outcome ends the run: the network's or the server's trouble, or its refusal of this
-/// vault, would meet the next blob as well, and a blob another download is fetching would be
-/// taken again at once.
-fn stops(outcome: Outcome) -> bool {
-    matches!(
-        outcome,
-        Outcome::Failed(TransferError::Network | TransferError::Server | TransferError::NoRoom)
-            | Outcome::Blocked
-            | Outcome::Busy
-            | Outcome::Locked
-    )
-}
-
-/// Downloads the blobs that are due, one at a time (`queue::next_download`: wanted first, then
-/// thumbnails, then the oldest row; full content only when wanted unless the policy fetches
-/// eagerly), until none is due, `until` passed, passing trouble (the rest waits for the next run),
-/// the server refused this vault (`Blocked`), or another download of the next blob runs here
-/// (`Busy`). The queue is reconciled first; nothing runs while the server lacks the blob routes.
-/// A transfer error is never an `Err`: only a local error of the queue is, and a locked profile
-/// (`AppError::Auth`).
+/// Downloads the blobs that are due at `now`, one at a time (`queue::next_download`: wanted
+/// first, then thumbnails, then the oldest row; full content only when wanted unless the policy
+/// fetches eagerly), until none is due, `until` passed, passing trouble (the rest waits for the
+/// next run) or the server refused this vault (`Blocked`). A blob another download of this
+/// profile holds is passed over until the next run. The queue is reconciled first; nothing runs
+/// while the server lacks the blob routes or cannot be asked. A transfer error is never an `Err`:
+/// only a local error of the queue is, and a locked profile (`AppError::Auth`).
 pub async fn run_downloads<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     creds: &Credentials,
     policy: &BlobPolicy,
+    now: i64,
     until: Option<Instant>,
 ) -> Result<TransferReport> {
     let Some(_lane) = enter(policy.down_lane(), until).await else {
         return Ok(TransferReport::default());
     };
-    let now = unix_now();
     let (reconciled, any, _) = reconciled(db, now)?;
     let mut report = TransferReport {
         changed: reconciled != Reconciled::default(),
@@ -497,18 +568,18 @@ pub async fn run_downloads<R: Relay, D: ConnAccess>(
         policy.clear(SyncAttachmentsProblem::ServerNeedsUpdate);
         return Ok(report);
     }
-    if !policy.server_has_blobs(relay, now).await {
-        policy.note_server(false, now);
+    if !server_ready(relay, policy, now).await {
         return Ok(report);
     }
     let eager_full = policy.eager_full();
+    let mut busy = Vec::new();
     loop {
         if until.is_some_and(|at| Instant::now() >= at) {
             break;
         }
-        let now = unix_now();
-        let Some((transfer, mut active)) =
-            take(db, |conn| queue::next_download(conn, now, eager_full))?
+        let Some((transfer, mut active)) = take(db, |conn| {
+            queue::next_download_skipping(conn, now, eager_full, &busy)
+        })?
         else {
             break;
         };
@@ -517,6 +588,7 @@ pub async fn run_downloads<R: Relay, D: ConnAccess>(
         report.count(outcome, false);
         match outcome {
             Outcome::Locked => return Err(locked()),
+            Outcome::Busy => busy.push(transfer.blob_id),
             _ if stops(outcome) => break,
             _ => {}
         }

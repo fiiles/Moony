@@ -44,6 +44,11 @@ impl BlobState {
     }
 }
 
+/// The longest wait a failure sets before the next try (`unreadable`'s cap). An entry due further
+/// ahead than this (and not `i64::MAX`, never) was dated by a clock that has since been set back:
+/// it counts as due.
+pub const MAX_BACKOFF: i64 = 21_600;
+
 /// Why a transfer failed; `as_str` is the `last_error` code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransferError {
@@ -61,6 +66,12 @@ pub enum TransferError {
     InvalidId,
     /// A local error (the store, the database).
     Local,
+    /// The sync server refuses the blob for good (too large, empty, a length it cannot take, or
+    /// a server without the blob route): not retried by itself.
+    Refused,
+    /// The sync server holds other content under the blob's ID (a stored size that is not this
+    /// blob's); it never overwrites a blob, so an upload cannot heal it: not retried by itself.
+    Conflict,
 }
 
 impl TransferError {
@@ -73,18 +84,23 @@ impl TransferError {
             TransferError::NoRoom => "noRoom",
             TransferError::InvalidId => "invalidId",
             TransferError::Local => "local",
+            TransferError::Refused => "refused",
+            TransferError::Conflict => "conflict",
         }
     }
 
     /// When to try again after the `failures`-th failure in a row: `base · 2^(failures − 1)`
-    /// seconds up to a cap per kind; a full server waits a fixed half hour, an invalid ID forever.
+    /// seconds up to a cap per kind (never more than [`MAX_BACKOFF`]); a full server waits a fixed
+    /// half hour; an invalid ID, a refused blob and a conflict wait forever (`i64::MAX`).
     fn next_try_at(self, failures: u32, now: i64) -> i64 {
         let (base, cap): (i64, i64) = match self {
             TransferError::Network | TransferError::Server | TransferError::Local => (30, 1_800),
             TransferError::NotOnServer => (300, 3_600),
             TransferError::Unreadable => (600, 21_600),
             TransferError::NoRoom => return now.saturating_add(1_800),
-            TransferError::InvalidId => return i64::MAX,
+            TransferError::InvalidId | TransferError::Refused | TransferError::Conflict => {
+                return i64::MAX
+            }
         };
         let doublings = failures.saturating_sub(1);
         let delay = if doublings >= 32 {
@@ -314,9 +330,10 @@ pub fn next_upload(
             &format!(
                 "SELECT q.blob_id, q.thumbnail, q.wanted, q.attempts, f.size \
                  FROM main.sync_blobs q JOIN files.blobs f ON f.id = q.blob_id \
-                 WHERE q.state = 'up' AND q.active = 0 AND q.next_try_at <= ?1 \
+                 WHERE q.state = 'up' AND q.active = 0 AND {due} \
                    AND {complete} AND (?2 IS NULL OR f.size <= ?2) \
                  ORDER BY q.queued_at, q.blob_id LIMIT 1",
+                due = due("q.next_try_at"),
                 complete = held("q.blob_id"),
             ),
             params![now, max_plain],
@@ -339,13 +356,34 @@ pub fn next_upload(
 /// thumbnail, or any full content when `eager_full` (a desktop); wanted first, then thumbnails,
 /// then the oldest row.
 pub fn next_download(conn: &Connection, now: i64, eager_full: bool) -> Result<Option<Transfer>> {
+    next_download_skipping(conn, now, eager_full, &[])
+}
+
+/// `next_download` passing over the blobs in `skip` (a run leaves a blob another download of
+/// this profile holds for its next run).
+pub fn next_download_skipping(
+    conn: &Connection,
+    now: i64,
+    eager_full: bool,
+    skip: &[String],
+) -> Result<Option<Transfer>> {
+    let skipped = (0..skip.len())
+        .map(|i| format!("?{}", i + 3))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let mut values: Vec<&dyn rusqlite::ToSql> = vec![&now, &eager_full];
+    values.extend(skip.iter().map(|id| id as &dyn rusqlite::ToSql));
     let found = conn
         .query_row(
-            "SELECT blob_id, thumbnail, wanted, attempts FROM main.sync_blobs \
-             WHERE state = 'down' AND active = 0 AND next_try_at <= ?1 \
-               AND last_error IS NOT 'invalidId' AND (wanted = 1 OR thumbnail = 1 OR ?2) \
-             ORDER BY wanted DESC, thumbnail DESC, row_at, blob_id LIMIT 1",
-            params![now, eager_full],
+            &format!(
+                "SELECT blob_id, thumbnail, wanted, attempts FROM main.sync_blobs \
+                 WHERE state = 'down' AND active = 0 AND {due} \
+                   AND last_error IS NOT 'invalidId' AND (wanted = 1 OR thumbnail = 1 OR ?2) \
+                   AND blob_id NOT IN ({skipped}) \
+                 ORDER BY wanted DESC, thumbnail DESC, row_at, blob_id LIMIT 1",
+                due = due("next_try_at"),
+            ),
+            values.as_slice(),
             |r| {
                 Ok(Transfer {
                     blob_id: r.get(0)?,
@@ -359,6 +397,30 @@ pub fn next_download(conn: &Connection, now: i64, eager_full: bool) -> Result<Op
         )
         .optional()?;
     Ok(found)
+}
+
+/// SQL: the entry whose `next_try_at` is the SQL expression `column` is due at `?1`, the now of
+/// the query: its time has come, or it lies further ahead than [`MAX_BACKOFF`] (set by a clock
+/// that has since gone back), except `i64::MAX` (never by itself).
+fn due(column: &str) -> String {
+    format!(
+        "({column} <= ?1 OR ({column} > ?1 + {MAX_BACKOFF} AND {column} < {never}))",
+        never = i64::MAX
+    )
+}
+
+/// The content of a `down` entry turned up here (a restore, a copy) before its download: the
+/// entry waits for upload again, as `reconcile` would make it, so the server's `HEAD` says
+/// whether it has it; nothing claims it is there. Whether it changed.
+pub fn note_found(conn: &Connection, blob_id: &str, now: i64) -> Result<bool> {
+    Ok(conn.execute(
+        &format!(
+            "UPDATE main.sync_blobs SET state = 'up', active = 0, queued_at = ?2, {FRESH} \
+             WHERE blob_id = ?1 AND state = 'down' AND {}",
+            held("sync_blobs.blob_id")
+        ),
+        params![blob_id, now],
+    )? > 0)
 }
 
 /// Marks a transfer of `blob_id` as running or not.
@@ -530,12 +592,14 @@ pub fn want_all(conn: &Connection) -> Result<u32> {
     Ok(rows as u32)
 }
 
-/// "Sync now": every transfer waiting for its backoff is due now, except those waiting for room
-/// on the server and those that can never move.
+/// "Sync now": every transfer waiting for its backoff is due now, those that waited for room on
+/// the server included; never those that do not move by themselves (an invalid ID, a refusal, a
+/// conflict: "try again" on their row moves them).
 pub fn retry_now(conn: &Connection) -> Result<()> {
     conn.execute(
         "UPDATE main.sync_blobs SET next_try_at = 0 \
-         WHERE state IN ('up', 'down') AND COALESCE(last_error, '') NOT IN ('noRoom', 'invalidId')",
+         WHERE state IN ('up', 'down') \
+           AND COALESCE(last_error, '') NOT IN ('invalidId', 'refused', 'conflict')",
         [],
     )?;
     Ok(())
@@ -573,7 +637,8 @@ pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
                FROM ({refs}) r JOIN main.sync_blobs q ON q.blob_id = r.b),
              per_row AS (
                SELECT MAX(state = 'up' AND here) AS up,
-                 MAX(absent AND active = 0 AND error IN ('unreadable', 'invalidId')) AS failed,
+                 MAX(absent AND active = 0
+                   AND error IN ('unreadable', 'invalidId', 'refused', 'conflict')) AS failed,
                  MAX(absent AND active = 0 AND error = 'notOnServer') AS gone,
                  MAX(absent) AS down
                FROM (SELECT *, state = 'down' AND NOT here AS absent FROM blobs)

@@ -1,4 +1,9 @@
 import { useId } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useFormat } from '@/lib/use-format';
+import { cn } from '@/lib/utils';
+import { PICKER_FRAME, PICKER_INPUT, openPicker } from '@/mobile/components/field-styles';
+import { isoDayToUtcSeconds } from '@/mobile/lib/picker-value';
 
 interface DateFieldProps {
   label: string;
@@ -9,35 +14,47 @@ interface DateFieldProps {
   max?: string;
   /** Under the field, in `loss`; also marks the field invalid. */
   error?: string;
+  /** What an empty field says ("Vyberte den" by default). */
+  emptyText?: string;
 }
 
 /**
- * A 48 pt date field of a phone form (README §13, `.m-field__i`) with its label above: the system's
- * date picker in the field's frame, the way the ledger filter's custom range has it, its text in the
- * field role (`text-m-field`, never under 16 px, or iOS zooms the page into it). The value is
- * the ISO day the input speaks, so it never goes through a `Date` of the local time zone; a day the
- * backend keeps is its UTC-midnight second (`isoToUtcDay`). The input carries the month field's
- * guards for WKWebView, whose date input is otherwise a centred, margined, system-styled box of
- * its own: `appearance-none`, no margin, left-aligned text and value (`MonthField`).
+ * A 48 pt date field of a phone form (README §13, `.m-field__i`) with its label above. The system's
+ * date picker lies transparent over the field, so a tap opens it, while the field shows the day
+ * written by the app's formatter in the app's language (`fmt.day`), not the native input's text,
+ * which follows the system language and shows dashes when empty (audit B8); an empty field says
+ * `emptyText` in `ink-5`. The value is the ISO day the input speaks, so it never goes through a
+ * `Date` of the local time zone; a day the backend keeps is its UTC-midnight second (`isoToUtcDay`).
  */
-export function DateField({ label, value, onChange, max, error }: DateFieldProps) {
+export function DateField({ label, value, onChange, max, error, emptyText }: DateFieldProps) {
+  const { t } = useTranslation('mobile');
+  const fmt = useFormat();
   const id = useId();
   const errorId = `${id}-error`;
+  const seconds = isoDayToUtcSeconds(value);
   return (
     <div className="min-w-0">
       <label htmlFor={id} className="mx-0.5 mb-1.5 block text-m-sub font-semibold text-ink-2">
         {label}
       </label>
-      <input
-        id={id}
-        type="date"
-        value={value}
-        max={max}
-        onChange={(event) => onChange(event.target.value)}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
-        className="m-0 flex h-12 w-full min-w-0 appearance-none items-center rounded-[10px] border border-line-strong bg-paper px-3.5 text-left text-m-field text-ink num transition-[border-color,box-shadow] duration-fast focus:border-focus focus:shadow-focus focus-visible:outline-none aria-[invalid=true]:border-loss aria-[invalid=true]:focus:shadow-loss-ring [&::-webkit-date-and-time-value]:text-left"
-      />
+      <div className="relative">
+        <input
+          id={id}
+          type="date"
+          value={value}
+          max={max}
+          onChange={(event) => onChange(event.target.value)}
+          onClick={(event) => openPicker(event.currentTarget)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          className={PICKER_INPUT}
+        />
+        <div aria-hidden className={PICKER_FRAME}>
+          <span className={cn('truncate num', seconds === null ? 'text-ink-5' : 'text-ink')}>
+            {seconds === null ? (emptyText ?? t('fields.pickDay')) : fmt.day(seconds)}
+          </span>
+        </div>
+      </div>
       {error && (
         <p
           id={errorId}

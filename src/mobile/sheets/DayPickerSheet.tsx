@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
 import { useFormat } from '@/lib/use-format';
 import { PickGroup, PickRow } from '@/mobile/components/PickRow';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -32,7 +31,6 @@ function showChosen(list: HTMLElement | null) {
  */
 export function DayPickerSheet({ open, onOpenChange, value, onPick }: DayPickerSheetProps) {
   const { t } = useTranslation('mobile');
-  const { t: tc } = useTranslation('common');
   const fmt = useFormat();
 
   return (
@@ -41,15 +39,7 @@ export function DayPickerSheet({ open, onOpenChange, value, onPick }: DayPickerS
       onOpenChange={onOpenChange}
       title={t('notifications.upkeep.label')}
       full
-      footer={
-        <Button
-          variant="ghost"
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={() => onOpenChange(false)}
-        >
-          {tc('buttons.cancel')}
-        </Button>
-      }
+      dismiss="cancel"
     >
       <div ref={showChosen}>
         <PickGroup title={t('notifications.upkeep.day')}>

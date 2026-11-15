@@ -1,6 +1,7 @@
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import type {
   BankTransaction,
   EffectiveTransactionFlow,
@@ -13,7 +14,6 @@ import { PlanChip } from '@/components/spending-plans/PlanChip';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
-import { Button } from '@/components/ui/button';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -49,11 +49,14 @@ type FlowChoice = 'auto' | FlowKind;
 const FLOW_CHOICES: readonly FlowChoice[] = ['auto', 'income', 'expense', 'transfer'];
 
 /**
- * The transaction sheet (spec §8.4, README §13): the amount, the counterparty, the date, the
- * category (a row that opens the picker over this sheet), the meaning of the movement (Automaticky
- * or one of the roles, with what the automatic meaning comes to), the note, and the technical
- * details folded under "Podrobnosti", then Smazat as a text danger action, which asks first in a
- * confirm sheet. Changes save as they are made; the footer's one button closes.
+ * The transaction sheet (spec §8.4, README §13, audit D11): the head says who, when and how much
+ * once — the counterparty as the title, the day in words under it, the amount and the payment's
+ * note below — and the rows hold only what can be changed: the category (a row that opens the
+ * picker over this sheet), the spending plan (not for income, unless one is set), and what the
+ * payment counts as (Automaticky or one of the roles, with what the automatic choice comes to and
+ * why, in plain words). The technical details fold under "Podrobnosti", each shown in full and
+ * copied with a tap; then Smazat as a text danger action, which asks first in a confirm sheet.
+ * Changes save as they are made, so the sheet has no footer: "Hotovo" in the head closes it (C7).
  */
 export function TransactionSheet({
   tx,
@@ -104,28 +107,46 @@ export function TransactionSheet({
 
   const flowOptions = FLOW_CHOICES.map((choice) => ({
     value: choice,
-    label: tb(`readiness.flow.${choice}`),
+    // "Automaticky" short, so the four choices fit at 360 in every language
+    label: choice === 'auto' ? t('transaction.auto') : tb(`readiness.flow.${choice}`),
   }));
+  // What the automatic choice comes to and why, in plain words ("Příjem · podle kategorie")
   const meaning =
     auto && flow
-      ? `${tb(`readiness.flow.${flow.effectiveFlowKind}`)} · ${tb(`readiness.source.${flow.flowSource}`)}`
+      ? `${tb(`readiness.flow.${flow.effectiveFlowKind}`)} · ${t(`transaction.by.${flow.flowSource}`)}`
       : undefined;
+  // A spending plan is for spending: income has no row for it, unless a plan is set (to take it off)
+  const effectiveKind =
+    shown.flowKind ?? flow?.effectiveFlowKind ?? (shown.type === 'credit' ? 'income' : 'expense');
+  const showPlan = effectiveKind !== 'income' || shown.spendingPlanId !== null;
   const changeFlow = (choice: FlowChoice) => {
     const flowKind = choice === 'auto' ? null : choice;
     setFlowKind.mutate({ id: shown.id, flowKind }, { onSuccess: () => onChange?.({ flowKind }) });
   };
 
-  const technical: [string, ReactNode][] = [
-    [tb('readiness.detail.bankId'), shown.transactionId],
-    [tb('readiness.detail.valueDate'), shown.valueDate === null ? null : fmt.day(shown.valueDate)],
-    [tb('readiness.detail.file'), shown.importFileName],
-    [tb('readiness.detail.line'), shown.importLine],
-    [t('transaction.sourceLabel'), t(`transaction.source.${shown.dataSource}`)],
-    [
-      t('transaction.status'),
-      shown.status === 'pending' ? tb('readiness.pending') : t('transaction.booked'),
-    ],
-    [t('transaction.currency'), shown.currency],
+  // The technical details: identifiers copy with a tap, the short facts are plain rows
+  const technical: { label: string; value: string | null; copy?: boolean }[] = [
+    {
+      label: t('transaction.counterpartyAccount'),
+      value: label.title === null ? null : label.subtitle,
+      copy: true,
+    },
+    { label: tb('readiness.detail.bankId'), value: shown.transactionId, copy: true },
+    {
+      label: tb('readiness.detail.valueDate'),
+      value: shown.valueDate === null ? null : fmt.day(shown.valueDate),
+    },
+    { label: tb('readiness.detail.file'), value: shown.importFileName, copy: true },
+    {
+      label: tb('readiness.detail.line'),
+      value: shown.importLine === null ? null : String(shown.importLine),
+    },
+    { label: t('transaction.sourceLabel'), value: t(`transaction.source.${shown.dataSource}`) },
+    {
+      label: t('transaction.status'),
+      value: shown.status === 'pending' ? tb('readiness.pending') : t('transaction.booked'),
+    },
+    { label: t('transaction.currency'), value: shown.currency },
   ];
 
   return (
@@ -136,47 +157,36 @@ export function TransactionSheet({
         onOpenChange={changeOpen}
         title={title}
         description={fmt.day(shown.bookingDate, { day: 'numeric', month: 'long', year: 'numeric' })}
-        footer={
-          // Every change is saved as it is made: the footer only closes. The delete is a text
-          // action at the end of the sheet (spec §8.4), not where other sheets put Zrušit (C11)
-          <Button
-            className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-            onClick={close}
-          >
-            {t('common:buttons.close')}
-          </Button>
-        }
       >
         <Amount tx={shown} />
+        {note.length > 0 && (
+          <p className="mx-1 mb-2 mt-0 hyphens-auto whitespace-pre-line break-words text-m-body text-ink-3">
+            {note.join('\n')}
+          </p>
+        )}
         <div className="divide-y divide-line-soft">
-          {label.title && (
-            <KeyValueRow
-              label={t('transaction.counterparty')}
-              value={label.title}
-              sub={label.subtitle}
-            />
-          )}
-          <KeyValueRow label={t('transaction.date')} value={fmt.day(shown.bookingDate)} />
           <KeyValueRow
             label={t('transaction.category')}
             value={category ? categoryName(category) : t('account.ledger.noCategory')}
             onClick={onPickCategory}
           />
-          <KeyValueRow
-            label={t('transaction.plan')}
-            value={
-              plan ? (
-                <span className="inline-flex max-w-full items-center justify-end gap-2">
-                  <PlanChip plan={plan} size="sm" />
-                  <span className="truncate">{plan.name}</span>
-                </span>
-              ) : (
-                planText
-              )
-            }
-            ariaLabel={`${t('transaction.plan')}, ${planText}`}
-            onClick={() => setPlanOpen(true)}
-          />
+          {showPlan && (
+            <KeyValueRow
+              label={t('transaction.plan')}
+              value={
+                plan ? (
+                  <span className="inline-flex max-w-full items-center justify-end gap-2">
+                    <PlanChip plan={plan} size="sm" />
+                    <span className="truncate">{plan.name}</span>
+                  </span>
+                ) : (
+                  planText
+                )
+              }
+              ariaLabel={`${t('transaction.plan')}, ${planText}`}
+              onClick={() => setPlanOpen(true)}
+            />
+          )}
           <KeyValueRow
             stack
             label={t('transaction.flow')}
@@ -190,9 +200,6 @@ export function TransactionSheet({
             }
             sub={meaning}
           />
-          {note.length > 0 && (
-            <KeyValueRow stack label={tb('transaction.description')} value={note.join('\n')} />
-          )}
         </div>
         <button
           type="button"
@@ -210,11 +217,12 @@ export function TransactionSheet({
         </button>
         {expanded && (
           <div id={detailsId} className="divide-y divide-line-soft">
-            {technical
-              .filter(([, value]) => value !== null)
-              .map(([name, value]) => (
-                <KeyValueRow key={name} label={name} value={value} />
-              ))}
+            {technical.flatMap(({ label: name, value, copy }) => {
+              if (value === null || value === '') return [];
+              return copy
+                ? [<CopyRow key={name} label={name} value={value} />]
+                : [<KeyValueRow key={name} label={name} value={value} />];
+            })}
           </div>
         )}
         <button
@@ -249,6 +257,39 @@ export function TransactionSheet({
         isPending={deleteTransaction.isPending}
       />
     </>
+  );
+}
+
+/**
+ * A technical detail shown in full (an ID, a file name wraps anywhere rather than end in an
+ * ellipsis) whose row copies it with a tap (audit D11): the label above, the value under it, the
+ * copy icon at the end, a toast to say it is on the clipboard.
+ */
+function CopyRow({ label, value }: { label: string; value: string }) {
+  const { t } = useTranslation('mobile');
+  const { t: tc } = useTranslation('common');
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast(t('transaction.copied', { label }));
+    } catch {
+      // No clipboard (or no permission to write to it): the value is still on screen in full
+      toast.error(tc('status.error'));
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      aria-label={`${label}, ${value}. ${tc('buttons.copy')}`}
+      className="flex min-h-11 w-full items-center gap-3 px-1 py-2 text-left [-webkit-touch-callout:none] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-m-sub text-ink-3">{label}</span>
+        <span className="mt-0.5 block break-all text-m-body text-ink num">{value}</span>
+      </span>
+      <Copy aria-hidden className="size-4 flex-none text-ink-4" strokeWidth={1.75} />
+    </button>
   );
 }
 

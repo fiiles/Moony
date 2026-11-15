@@ -43,7 +43,10 @@
       "done": "Hotovo"
     },
     "limitSheet": {
-      "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje."
+      "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje.",
+      "usual": "Obvykle utratíte {{amount}} měsíčně.",
+      "openHelp": "Platí, dokud ho nezměníte.",
+      "closedHelp": "Po posledním měsíci se vrátí limit, který platil předtím."
     },
     "budgets": {
       "averageNote": "⌀ za posledních 6 měsíců"
@@ -359,10 +362,15 @@
   },
   "transaction": {
     "flowSaved": "Význam uložen",
-    "counterparty": "Protistrana",
-    "date": "Datum",
     "category": "Kategorie",
-    "flow": "Význam pohybu",
+    "flow": "Počítat jako",
+    "auto": "Automaticky",
+    "by": {
+      "explicit": "zvoleno vámi",
+      "category": "podle kategorie",
+      "direction": "podle směru platby",
+      "ownAccount": "mezi vlastními účty"
+    },
     "details": "Podrobnosti",
     "sourceLabel": "Zdroj",
     "source": {
@@ -373,6 +381,8 @@
     "status": "Stav",
     "booked": "Zaúčtováno",
     "currency": "Měna",
+    "counterpartyAccount": "Účet protistrany",
+    "copied": "Zkopírováno: {{label}}",
     "plan": "Výdajový plán",
     "noPlan": "Bez plánu"
   },
@@ -381,8 +391,20 @@
     "recent": "Naposledy použité",
     "all": "Všechny kategorie",
     "suggested": "Návrh",
+    "current": "Současná",
     "decline": "Odmítnout návrh",
-    "empty": "Žádná kategorie neodpovídá"
+    "empty": "Žádná kategorie neodpovídá",
+    "remember": "Příště zařadit stejně",
+    "rememberFrom": "Další platby od {{who}} na tento účet dostanou stejnou kategorii.",
+    "rememberTo": "Další platby pro {{who}} z tohoto účtu dostanou stejnou kategorii.",
+    "applyHistory_one": "Přeřadit i {{count}} dřívější platbu",
+    "applyHistory_few": "Přeřadit i {{count}} dřívější platby",
+    "applyHistory_other": "Přeřadit i {{count}} dřívějších plateb",
+    "applyHistorySub": "Teď: {{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "Časté",
+    "all": "Všechny měny"
   },
   "import": {
     "title": "Import výpisu",
@@ -794,7 +816,8 @@
       "usageBudgets_many": "{{count}} rozpočtu",
       "usageBudgets_other": "{{count}} rozpočtů"
     },
-    "remindersLead": "Vyberte, co vám připomíná Údržba a „Co vás čeká“ na Přehledu; oznámení se řídí stejným seznamem. Vypnutý druh se nezobrazí nikde, ani na počítači. Kdy oznámení chodí, nastavíte v Oznámeních."
+    "remindersLead": "Vyberte, co vám připomíná Údržba a „Co vás čeká“ na Přehledu; oznámení se řídí stejným seznamem. Vypnutý druh se nezobrazí nikde, ani na počítači. Kdy oznámení chodí, nastavíte v Oznámeních.",
+    "saveTimeout": "Ukládání trvá příliš dlouho. Zkuste to znovu."
   },
   "backup": {
     "lead": "Záloha je šifrovaný soubor: databáze, klíče a přílohy. Otevře ji jen vaše heslo.",
@@ -948,6 +971,10 @@
       "keep": "Pokračovat v úpravách",
       "confirm": "Zahodit"
     }
+  },
+  "fields": {
+    "pickDay": "Vyberte den",
+    "pickMonth": "Vyberte měsíc"
   },
   "loadError": {
     "overview": "Přehled se nepodařilo načíst.",

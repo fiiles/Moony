@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useIsFetching, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
 import { biometricApi } from '@/lib/tauri-api';
@@ -20,6 +20,11 @@ import {
 import { useReturnWalkActive } from '@/mobile/hooks/use-sheet-history';
 import { routes } from '@/mobile/shell/routes';
 
+/** How long nothing may load before the screen under the offer counts as drawn (audit D2). */
+const OFFER_QUIET_MS = 800;
+/** The longest the offer waits for that quiet: a screen that keeps loading still gets it then. */
+const OFFER_MAX_WAIT_MS = 10_000;
+
 function storage(): Storage | null {
   try {
     return localStorage;
@@ -37,7 +42,9 @@ function storage(): Storage | null {
  *
  * It never opens over the import sheet: a statement shared into Moony while it was locked opens
  * first (`sharedPending`, from `ReceivedFileHost`), and the offer follows once that sheet has
- * closed (`enrolmentOfferOpen`).
+ * closed (`enrolmentOfferOpen`). Nor does it rise over a screen that is still loading (audit D2):
+ * after the unlock it waits until no query has been fetching for `OFFER_QUIET_MS` (the Overview,
+ * or the screen the lock covered, has drawn its data), at most `OFFER_MAX_WAIT_MS`.
  */
 export function EnableBiometricsSheet({ sharedPending = false }: { sharedPending?: boolean }) {
   const { t } = useTranslation('mobile');
@@ -59,6 +66,21 @@ export function EnableBiometricsSheet({ sharedPending = false }: { sharedPending
     appStatus === 'unlocked' &&
     unlockMutation.isSuccess &&
     unlockMutation.submittedAt > lockMutation.submittedAt;
+
+  // The screen under the offer has drawn: nothing loading for a moment, once per password unlock
+  const fetching = useIsFetching();
+  const [settledFor, setSettledFor] = useState<number | null>(null);
+  const settled = settledFor === unlockEvent;
+  useEffect(() => {
+    if (!passwordUnlocked || settled || fetching > 0) return;
+    const quiet = setTimeout(() => setSettledFor(unlockEvent), OFFER_QUIET_MS);
+    return () => clearTimeout(quiet);
+  }, [fetching, passwordUnlocked, settled, unlockEvent]);
+  useEffect(() => {
+    if (!passwordUnlocked || settled) return;
+    const cap = setTimeout(() => setSettledFor(unlockEvent), OFFER_MAX_WAIT_MS);
+    return () => clearTimeout(cap);
+  }, [passwordUnlocked, settled, unlockEvent]);
 
   const status = useQuery({
     queryKey: BIOMETRIC_STATUS_KEY,
@@ -84,6 +106,7 @@ export function EnableBiometricsSheet({ sharedPending = false }: { sharedPending
     location !== routes.auth &&
     passwordUnlocked &&
     !returning &&
+    (settled || enable.isPending) &&
     enrolmentOfferOpen({
       offered: shouldOfferEnrolment(status.data, asked),
       enabling: enable.isPending,

@@ -382,11 +382,11 @@ export default function Settings() {
         value={currencyCode}
         // The main currency needs a rate source, as on the desktop
         options={FX_SUPPORTED_CODES}
-        onPick={(code) => {
-          // The sheet closes itself after a pick; the same currency is nothing to save
-          if (code === currencyCode || updateProfile.isPending) return;
-          updateProfile.mutate({ currency: code });
-        }}
+        // The same currency is nothing to save (the sheet just closes); a new one keeps the sheet
+        // open on its row until the profile is saved, then the toast names it (audit E3, A10)
+        onPick={(code) =>
+          code === currencyCode ? undefined : updateProfile.mutateAsync({ currency: code })
+        }
       />
       <AppearanceSheet open={sheet === 'appearance'} onOpenChange={closeSheet} />
       <DeleteProfileSheet open={sheet === 'delete'} onOpenChange={closeSheet} />

@@ -42,7 +42,10 @@
       "done": "Ferdig"
     },
     "limitSheet": {
-      "pick": "Velg kategorien du vil følge opp utgiftene i."
+      "pick": "Velg kategorien du vil følge opp utgiftene i.",
+      "usual": "Du bruker vanligvis {{amount}} i måneden.",
+      "openHelp": "Gjelder til du endrer den.",
+      "closedHelp": "Etter siste måned gjelder grensen fra før igjen."
     },
     "budgets": {
       "averageNote": "⌀ siste 6 måneder"
@@ -333,10 +336,15 @@
   },
   "transaction": {
     "flowSaved": "Betydning lagret",
-    "counterparty": "Motpart",
-    "date": "Dato",
     "category": "Kategori",
-    "flow": "Betydning",
+    "flow": "Regnes som",
+    "auto": "Automatisk",
+    "by": {
+      "explicit": "valgt av deg",
+      "category": "etter kategori",
+      "direction": "etter betalingsretning",
+      "ownAccount": "mellom egne kontoer"
+    },
     "details": "Detaljer",
     "sourceLabel": "Kilde",
     "source": {
@@ -347,6 +355,8 @@
     "status": "Status",
     "booked": "Bokført",
     "currency": "Valuta",
+    "counterpartyAccount": "Motpartens konto",
+    "copied": "Kopiert: {{label}}",
     "plan": "Utgiftsplan",
     "noPlan": "Ingen plan"
   },
@@ -355,8 +365,19 @@
     "recent": "Nylig brukt",
     "all": "Alle kategorier",
     "suggested": "Forslag",
+    "current": "Nåværende",
     "decline": "Avslå forslaget",
-    "empty": "Ingen kategori passer"
+    "empty": "Ingen kategori passer",
+    "remember": "Gjør det samme neste gang",
+    "rememberFrom": "Fremtidige betalinger fra {{who}} til denne kontoen får samme kategori.",
+    "rememberTo": "Fremtidige betalinger til {{who}} fra denne kontoen får samme kategori.",
+    "applyHistory_one": "Endre også {{count}} tidligere betaling",
+    "applyHistory_other": "Endre også {{count}} tidligere betalinger",
+    "applyHistorySub": "Nå: {{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "Mest brukt",
+    "all": "Alle valutaer"
   },
   "import": {
     "title": "Importer kontoutskrift",
@@ -742,7 +763,8 @@
       "usageBudgets_one": "{{count}} budsjett",
       "usageBudgets_other": "{{count}} budsjetter"
     },
-    "remindersLead": "Velg hva Datavedlikehold og «Det som kommer» på Oversikt minner deg om; varslene følger den samme listen. En type du slår av, vises ingen steder, heller ikke på datamaskinen. Når varslene kommer, stiller du inn under Varsler."
+    "remindersLead": "Velg hva Datavedlikehold og «Det som kommer» på Oversikt minner deg om; varslene følger den samme listen. En type du slår av, vises ingen steder, heller ikke på datamaskinen. Når varslene kommer, stiller du inn under Varsler.",
+    "saveTimeout": "Lagringen tar for lang tid. Prøv igjen."
   },
   "backup": {
     "lead": "En sikkerhetskopi er én kryptert fil: databasen, nøklene og vedleggene. Bare passordet ditt åpner den.",
@@ -893,6 +915,10 @@
       "keep": "Fortsett å redigere",
       "confirm": "Forkast"
     }
+  },
+  "fields": {
+    "pickDay": "Velg en dag",
+    "pickMonth": "Velg en måned"
   },
   "loadError": {
     "overview": "Oversikten kunne ikke lastes.",

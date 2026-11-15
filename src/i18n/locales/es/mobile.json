@@ -43,7 +43,10 @@
       "done": "Listo"
     },
     "limitSheet": {
-      "pick": "Elige la categoría cuyos gastos quieres controlar."
+      "pick": "Elige la categoría cuyos gastos quieres controlar.",
+      "usual": "Sueles gastar {{amount}} al mes.",
+      "openHelp": "Se aplica hasta que lo cambies.",
+      "closedHelp": "Después del último mes vuelve el límite anterior."
     },
     "budgets": {
       "averageNote": "⌀ de los últimos 6 meses"
@@ -359,10 +362,15 @@
   },
   "transaction": {
     "flowSaved": "Significado guardado",
-    "counterparty": "Contraparte",
-    "date": "Fecha",
     "category": "Categoría",
-    "flow": "Significado",
+    "flow": "Cuenta como",
+    "auto": "Automático",
+    "by": {
+      "explicit": "elegido por ti",
+      "category": "según la categoría",
+      "direction": "según el sentido del pago",
+      "ownAccount": "entre tus propias cuentas"
+    },
     "details": "Detalles",
     "sourceLabel": "Origen",
     "source": {
@@ -373,6 +381,8 @@
     "status": "Estado",
     "booked": "Contabilizado",
     "currency": "Moneda",
+    "counterpartyAccount": "Cuenta de la contraparte",
+    "copied": "Copiado: {{label}}",
     "plan": "Plan de gastos",
     "noPlan": "Sin plan"
   },
@@ -381,8 +391,20 @@
     "recent": "Usadas recientemente",
     "all": "Todas las categorías",
     "suggested": "Sugerencia",
+    "current": "Actual",
     "decline": "Rechazar sugerencia",
-    "empty": "Ninguna categoría coincide"
+    "empty": "Ninguna categoría coincide",
+    "remember": "Hacer lo mismo la próxima vez",
+    "rememberFrom": "Los próximos pagos de {{who}} a esta cuenta tendrán la misma categoría.",
+    "rememberTo": "Los próximos pagos a {{who}} desde esta cuenta tendrán la misma categoría.",
+    "applyHistory_one": "Cambiar también {{count}} pago anterior",
+    "applyHistory_many": "Cambiar también {{count}} pagos anteriores",
+    "applyHistory_other": "Cambiar también {{count}} pagos anteriores",
+    "applyHistorySub": "Ahora: {{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "Frecuentes",
+    "all": "Todas las monedas"
   },
   "import": {
     "title": "Importar extracto",
@@ -786,7 +808,8 @@
       "usageBudgets_many": "{{count}} presupuestos",
       "usageBudgets_other": "{{count}} presupuestos"
     },
-    "remindersLead": "Elige qué te recuerdan Mantenimiento de datos y «Próximas fechas» en Resumen; las notificaciones siguen la misma lista. Un tipo que desactives no aparece en ningún sitio, tampoco en el ordenador. Cuándo llegan las notificaciones se ajusta en Notificaciones."
+    "remindersLead": "Elige qué te recuerdan Mantenimiento de datos y «Próximas fechas» en Resumen; las notificaciones siguen la misma lista. Un tipo que desactives no aparece en ningún sitio, tampoco en el ordenador. Cuándo llegan las notificaciones se ajusta en Notificaciones.",
+    "saveTimeout": "El guardado tarda demasiado. Inténtalo de nuevo."
   },
   "backup": {
     "lead": "Una copia de seguridad es un archivo cifrado: la base de datos, las claves y los adjuntos. Solo la abre tu contraseña.",
@@ -940,6 +963,10 @@
       "keep": "Seguir editando",
       "confirm": "Descartar"
     }
+  },
+  "fields": {
+    "pickDay": "Elige un día",
+    "pickMonth": "Elige un mes"
   },
   "loadError": {
     "overview": "No se pudo cargar el resumen.",

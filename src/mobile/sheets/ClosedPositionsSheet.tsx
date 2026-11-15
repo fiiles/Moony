@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import { useFormat } from '@/lib/use-format';
 import type { PositionRowBase } from '@/utils/positions';
-import { Button } from '@/components/ui/button';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { Sheet } from '@/mobile/components/Sheet';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
@@ -42,7 +41,6 @@ export function ClosedPositionsSheet<
   R extends PositionRowBase & { companyName?: string; name?: string },
 >({ open, onOpenChange, rows, kind, trades, currency, hrefOf }: ClosedPositionsSheetProps<R>) {
   const { t } = useTranslation('mobile');
-  const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const [, setLocation] = useLocation();
@@ -59,14 +57,6 @@ export function ClosedPositionsSheet<
       onOpenChange={onOpenChange}
       title={t('wealth.stocks.menu.closed')}
       description={closed.length === 0 ? t('wealth.closed.empty') : undefined}
-      footer={
-        <Button
-          className="h-auto min-h-12 flex-1 whitespace-normal rounded-[10px] py-2 text-m-row"
-          onClick={() => onOpenChange(false)}
-        >
-          {tc('buttons.close')}
-        </Button>
-      }
     >
       {closed.length > 0 && (
         <EntityRows className="mb-0">

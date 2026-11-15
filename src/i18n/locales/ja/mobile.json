@@ -41,7 +41,10 @@
       "done": "完了"
     },
     "limitSheet": {
-      "pick": "支出を管理したいカテゴリを選んでください。"
+      "pick": "支出を管理したいカテゴリを選んでください。",
+      "usual": "普段は月に{{amount}}使っています。",
+      "openHelp": "変更するまで有効です。",
+      "closedHelp": "最後の月が過ぎると、以前の上限に戻ります。"
     },
     "budgets": {
       "averageNote": "直近6か月の平均"
@@ -307,10 +310,15 @@
   },
   "transaction": {
     "flowSaved": "意味を保存しました",
-    "counterparty": "取引相手",
-    "date": "日付",
     "category": "カテゴリ",
-    "flow": "意味",
+    "flow": "扱い",
+    "auto": "自動",
+    "by": {
+      "explicit": "手動で選択",
+      "category": "カテゴリーから",
+      "direction": "入出金の向きから",
+      "ownAccount": "自分の口座間"
+    },
     "details": "詳細",
     "sourceLabel": "入力元",
     "source": {
@@ -321,6 +329,8 @@
     "status": "状態",
     "booked": "確定",
     "currency": "通貨",
+    "counterpartyAccount": "取引相手の口座",
+    "copied": "コピーしました：{{label}}",
     "plan": "支出プラン",
     "noPlan": "プランなし"
   },
@@ -329,8 +339,18 @@
     "recent": "最近使ったもの",
     "all": "すべてのカテゴリ",
     "suggested": "提案",
+    "current": "現在",
     "decline": "提案を却下",
-    "empty": "一致するカテゴリがありません"
+    "empty": "一致するカテゴリがありません",
+    "remember": "次回も同じにする",
+    "rememberFrom": "今後、{{who}}からこの口座への入金にも同じカテゴリーを付けます。",
+    "rememberTo": "今後、この口座から{{who}}への支払いにも同じカテゴリーを付けます。",
+    "applyHistory_other": "以前の支払い{{count}}件も変更",
+    "applyHistorySub": "現在：{{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "よく使う通貨",
+    "all": "すべての通貨"
   },
   "import": {
     "title": "明細をインポート",
@@ -698,7 +718,8 @@
       "usagePayees_other": "{{count}}件の学習済み取引先",
       "usageBudgets_other": "{{count}}件の予算"
     },
-    "remindersLead": "概要の「データの更新」と「今後の予定」で知らせる内容を選びます。通知も同じ一覧に従います。オフにした種類はどこにも表示されません（パソコンでも）。通知が届くタイミングは「通知」で設定します。"
+    "remindersLead": "概要の「データの更新」と「今後の予定」で知らせる内容を選びます。通知も同じ一覧に従います。オフにした種類はどこにも表示されません（パソコンでも）。通知が届くタイミングは「通知」で設定します。",
+    "saveTimeout": "保存に時間がかかっています。もう一度お試しください。"
   },
   "backup": {
     "lead": "バックアップは暗号化された1つのファイルで、データベース、キー、添付ファイルが入っています。開けるのはあなたのパスワードだけです。",
@@ -846,6 +867,10 @@
       "keep": "編集を続ける",
       "confirm": "破棄"
     }
+  },
+  "fields": {
+    "pickDay": "日付を選択",
+    "pickMonth": "月を選択"
   },
   "loadError": {
     "overview": "概要を読み込めませんでした。",

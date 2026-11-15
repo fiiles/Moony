@@ -117,6 +117,7 @@
     "deleting": "Sletter...",
     "backupFirst": "Tips: ta en sikkerhetskopi først (Innstillinger → Data og sikkerhetskopier) — det er den eneste måten å få disse dataene tilbake på.",
     "confirmLabel": "Skriv {{word}} for å bekrefte",
+    "confirmWord": "SLETT",
     "deleteAll": "Slett alle data",
     "deleteAllHint": "Fjerner databasen, nøkkelfilene og vedleggene på denne datamaskinen. Kopier ved siden av databasen (moony.db.bak-…, pre-restore-…) blir værende i datamappen (Data og sikkerhetskopier → Åpne mappe), det samme gjør sikkerhetskopier lagret utenfor appen.",
     "deleteButton": "Slett data…",
@@ -133,7 +134,8 @@
     "verificationFailed": "Bekreftelsen mislyktes",
     "updateFailed": "Oppdateringen mislyktes",
     "deletionFailed": "Slettingen mislyktes",
-    "languageChanged": "Språket er endret"
+    "languageChanged": "Språket er endret",
+    "currencyChanged": "Hovedvalutaen er nå {{currency}}. Summene er regnet om."
   },
   "rulePacks": {
     "title": "Regelpakker for kategorisering",

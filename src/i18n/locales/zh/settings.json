@@ -117,6 +117,7 @@
     "deleting": "正在删除…",
     "backupFirst": "提示：请先创建备份（设置 → 数据与备份）——这是找回这些数据的唯一方法。",
     "confirmLabel": "请输入 {{word}} 以确认",
+    "confirmWord": "删除",
     "deleteAll": "删除所有数据",
     "deleteAllHint": "移除这台电脑上的数据库、密钥文件和附件。数据库旁边的副本（moony.db.bak-…、pre-restore-…）会留在数据文件夹中（数据与备份 → 打开文件夹），保存在应用之外的备份同样不受影响。",
     "deleteButton": "删除数据…",
@@ -133,7 +134,8 @@
     "verificationFailed": "验证失败",
     "updateFailed": "更新失败",
     "deletionFailed": "删除失败",
-    "languageChanged": "语言已更改"
+    "languageChanged": "语言已更改",
+    "currencyChanged": "主要货币已改为{{currency}}。合计已重新计算。"
   },
   "rulePacks": {
     "title": "分类规则包",

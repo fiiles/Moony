@@ -41,7 +41,10 @@
       "done": "完成"
     },
     "limitSheet": {
-      "pick": "请选择要控制支出的类别。"
+      "pick": "请选择要控制支出的类别。",
+      "usual": "您通常每月花费{{amount}}。",
+      "openHelp": "在您更改之前一直有效。",
+      "closedHelp": "最后一个月之后，恢复之前的限额。"
     },
     "budgets": {
       "averageNote": "⌀ 近 6 个月"
@@ -307,10 +310,15 @@
   },
   "transaction": {
     "flowSaved": "含义已保存",
-    "counterparty": "交易对方",
-    "date": "日期",
     "category": "类别",
-    "flow": "含义",
+    "flow": "计为",
+    "auto": "自动",
+    "by": {
+      "explicit": "手动选择",
+      "category": "按类别",
+      "direction": "按收支方向",
+      "ownAccount": "自有账户之间"
+    },
     "details": "详情",
     "sourceLabel": "来源",
     "source": {
@@ -321,6 +329,8 @@
     "status": "状态",
     "booked": "已入账",
     "currency": "货币",
+    "counterpartyAccount": "对方账户",
+    "copied": "已复制：{{label}}",
     "plan": "支出计划",
     "noPlan": "无计划"
   },
@@ -329,8 +339,18 @@
     "recent": "最近使用",
     "all": "所有类别",
     "suggested": "建议",
+    "current": "当前",
     "decline": "拒绝建议",
-    "empty": "没有匹配的类别"
+    "empty": "没有匹配的类别",
+    "remember": "下次也这样分类",
+    "rememberFrom": "今后{{who}}转入此账户的款项也将归入此类别。",
+    "rememberTo": "今后此账户付给{{who}}的款项也将归入此类别。",
+    "applyHistory_other": "同时更改之前的{{count}}笔付款",
+    "applyHistorySub": "当前：{{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "常用",
+    "all": "所有货币"
   },
   "import": {
     "title": "导入账单",
@@ -698,7 +718,8 @@
       "usagePayees_other": "{{count}} 个已学习的收款方",
       "usageBudgets_other": "{{count}} 项预算"
     },
-    "remindersLead": "选择概览中的“数据维护”和“即将到来”提醒您哪些内容；通知遵循同一列表。关闭的类型在任何地方都不会显示，电脑上也一样。通知何时送达请在“通知”中设置。"
+    "remindersLead": "选择概览中的“数据维护”和“即将到来”提醒您哪些内容；通知遵循同一列表。关闭的类型在任何地方都不会显示，电脑上也一样。通知何时送达请在“通知”中设置。",
+    "saveTimeout": "保存时间过长，请重试。"
   },
   "backup": {
     "lead": "备份是一个加密文件：包含数据库、密钥和附件。只有您的密码才能打开。",
@@ -846,6 +867,10 @@
       "keep": "继续编辑",
       "confirm": "放弃"
     }
+  },
+  "fields": {
+    "pickDay": "选择日期",
+    "pickMonth": "选择月份"
   },
   "loadError": {
     "overview": "无法加载概览。",

@@ -117,6 +117,7 @@
     "deleting": "Wird gelöscht...",
     "backupFirst": "Tipp: Erstellen Sie zuerst eine Sicherung (Einstellungen → Daten und Sicherungen) — nur so erhalten Sie diese Daten zurück.",
     "confirmLabel": "Geben Sie zur Bestätigung {{word}} ein",
+    "confirmWord": "LÖSCHEN",
     "deleteAll": "Alle Daten löschen",
     "deleteAllHint": "Entfernt die Datenbank, die Schlüsseldateien und die Anhänge auf diesem Computer. Kopien neben der Datenbank (moony.db.bak-…, pre-restore-…) bleiben im Datenordner (Daten und Sicherungen → Ordner öffnen), ebenso außerhalb der App gespeicherte Sicherungen.",
     "deleteButton": "Daten löschen…",
@@ -133,7 +134,8 @@
     "verificationFailed": "Überprüfung fehlgeschlagen",
     "updateFailed": "Aktualisierung fehlgeschlagen",
     "deletionFailed": "Löschen fehlgeschlagen",
-    "languageChanged": "Sprache geändert"
+    "languageChanged": "Sprache geändert",
+    "currencyChanged": "Ihre Hauptwährung ist jetzt {{currency}}. Die Summen wurden neu berechnet."
   },
   "rulePacks": {
     "title": "Kategorisierungs-Regelpakete",

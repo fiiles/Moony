@@ -5,6 +5,9 @@ import {
   shownText,
   parseAmountInput,
   signedAmountInput,
+  setAmountInputLocale,
+  groupAmountText,
+  fieldUnitLabel,
 } from './amount-input';
 
 describe('parseAmountInput', () => {
@@ -168,5 +171,111 @@ describe('shownText', () => {
     expect(shownText('', '12.50', 'cs')).toBe('12,50');
     expect(shownText('5', 0, 'cs')).toBe('');
     expect(shownText('', 0.1 + 0.2, 'cs')).toBe('0,3');
+  });
+});
+
+describe('parseAmountInput with the UI locale (audit A7)', () => {
+  it('reads a lone group separator before exactly three digits as thousands', () => {
+    expect(parseAmountInput('1.234', 'de-DE')).toBe('1234');
+    expect(parseAmountInput('1,234', 'en-US')).toBe('1234');
+    expect(parseAmountInput('12.500', 'es-ES')).toBe('12500');
+    expect(parseAmountInput('-1.234', 'de-DE')).toBe('-1234');
+  });
+
+  it('reads several groups of three', () => {
+    expect(parseAmountInput('1.234.567', 'de-DE')).toBe('1234567');
+    expect(parseAmountInput('1,234,567', 'ja-JP')).toBe('1234567');
+  });
+
+  it('keeps the separator decimal when it is not the locale group separator', () => {
+    // Czech groups with a space: a point is a decimal one
+    expect(parseAmountInput('1.234', 'cs-CZ')).toBe('1.234');
+    expect(parseAmountInput('1,234', 'de-DE')).toBe('1.234');
+    expect(parseAmountInput('1,234', 'cs-CZ')).toBe('1.234');
+  });
+
+  it('keeps the separator decimal when the digits after it are not exactly three', () => {
+    expect(parseAmountInput('1.5', 'de-DE')).toBe('1.5');
+    expect(parseAmountInput('1.2345', 'de-DE')).toBe('1.2345');
+    expect(parseAmountInput('1,25', 'en-US')).toBe('1.25');
+  });
+
+  it('keeps a leading zero group decimal ("0.125" is not 125)', () => {
+    expect(parseAmountInput('0.125', 'de-DE')).toBe('0.125');
+    expect(parseAmountInput('.125', 'de-DE')).toBe('0.125');
+    expect(parseAmountInput('1234.567', 'de-DE')).toBe('1234.567');
+  });
+
+  it('leaves text with both separators to the last-one-is-decimal rule', () => {
+    expect(parseAmountInput('1.234,5', 'de-DE')).toBe('1234.5');
+    expect(parseAmountInput('1,234.5', 'en-US')).toBe('1234.5');
+  });
+
+  it('behaves as before without a locale', () => {
+    expect(parseAmountInput('1.234')).toBe('1.234');
+    expect(parseAmountInput('1,234')).toBe('1.234');
+  });
+
+  it('takes the default locale set for the app', () => {
+    setAmountInputLocale('de-DE');
+    try {
+      expect(parseAmountInput('1.234')).toBe('1234');
+      expect(signedAmountInput('1.234', true)).toBe('-1234');
+      expect(decimalTextToDot('2.500')).toBe('2500');
+    } finally {
+      setAmountInputLocale(undefined);
+    }
+  });
+});
+
+describe('groupAmountText (audit A5)', () => {
+  it('groups the thousands of typed text in the UI locale and keeps the typed decimals', () => {
+    expect(groupAmountText('12500', 'cs-CZ')).toBe('12 500');
+    expect(groupAmountText('1234,5', 'cs-CZ')).toBe('1 234,5');
+    expect(groupAmountText('12500', 'en-US')).toBe('12,500');
+    expect(groupAmountText('1234.50', 'en-US')).toBe('1,234.50');
+    expect(groupAmountText('12500', 'de-DE')).toBe('12.500');
+    expect(groupAmountText('-1234567', 'de-DE')).toBe('-1.234.567');
+  });
+
+  it('follows the language rule for four digits (Polish and Spanish do not group them)', () => {
+    expect(groupAmountText('1234', 'pl-PL')).toBe('1234');
+    expect(groupAmountText('12345', 'pl-PL')).toBe('12 345');
+    expect(groupAmountText('1234', 'es-ES')).toBe('1234');
+  });
+
+  it('reads back to the same amount', () => {
+    for (const locale of ['cs-CZ', 'en-US', 'de-DE', 'ja-JP', 'pl-PL', 'sv-SE', 'nb-NO']) {
+      const grouped = groupAmountText('1234567,25', locale);
+      expect(parseAmountInput(grouped, locale)).toBe('1234567.25');
+    }
+  });
+
+  it('leaves text that is not a number, half typed or empty as it is', () => {
+    expect(groupAmountText('', 'cs-CZ')).toBe('');
+    expect(groupAmountText('abc', 'cs-CZ')).toBe('abc');
+    expect(groupAmountText('12,', 'cs-CZ')).toBe('12,');
+    expect(groupAmountText('-', 'cs-CZ')).toBe('-');
+    expect(groupAmountText('950', 'cs-CZ')).toBe('950');
+  });
+});
+
+describe('fieldUnitLabel (audit A5)', () => {
+  it('writes the main currency by its symbol, as rows do', () => {
+    expect(fieldUnitLabel('CZK', 'CZK', 'cs-CZ')).toBe('Kč');
+    expect(fieldUnitLabel('USD', 'USD', 'en-US')).toBe('$');
+    expect(fieldUnitLabel('EUR', 'EUR', 'de-DE')).toBe('€');
+  });
+
+  it('writes any other currency by its code', () => {
+    expect(fieldUnitLabel('EUR', 'CZK', 'cs-CZ')).toBe('EUR');
+    expect(fieldUnitLabel('CZK', 'USD', 'en-US')).toBe('CZK');
+  });
+
+  it('leaves units that are not the main currency alone (a ticker, pieces, %)', () => {
+    expect(fieldUnitLabel('BTC', 'CZK', 'cs-CZ')).toBe('BTC');
+    expect(fieldUnitLabel('ks', 'CZK', 'cs-CZ')).toBe('ks');
+    expect(fieldUnitLabel('%', 'CZK', 'cs-CZ')).toBe('%');
+    expect(fieldUnitLabel('CZK', undefined, 'cs-CZ')).toBe('CZK');
   });
 });

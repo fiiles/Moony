@@ -113,6 +113,11 @@ impl ConnAccess for Holds {
             out
         })
     }
+
+    /// Unlogged: only a cancelled download's cleanup tries the connection.
+    fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
+        self.inner.try_with_conn(f)
+    }
 }
 
 #[tokio::test]

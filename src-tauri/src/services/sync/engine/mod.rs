@@ -45,11 +45,10 @@ pub trait ConnAccess: Clone + Send + Sync + 'static {
     }
 
     /// `with_conn` if the connection is free right now, else `None` without waiting: for a `Drop`
-    /// that must never hang (it may run inside a hold of this connection). The default never
-    /// tries.
-    fn try_with_conn<T>(&self, _f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
-        None
-    }
+    /// that must never hang (it may run inside a hold of this connection). Required, with no
+    /// default: an implementation that never tried would silently leave every cancelled
+    /// download's incoming blob behind (`blobs::stream::StoreSink`'s `Drop`).
+    fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>>;
 
     /// The blob IDs a download is writing into this profile's attachment store right now
     /// (`blobs::stream::StoreSink`): one download per blob ID at a time. The app opens one profile

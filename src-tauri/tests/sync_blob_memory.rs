@@ -88,6 +88,11 @@ impl ConnAccess for Db {
     fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
         f(&self.0.lock().expect("connection"))
     }
+
+    fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
+        let conn = self.0.try_lock().ok()?;
+        Some(f(&conn))
+    }
 }
 
 /// `left` pseudo-random bytes (xorshift64), so no chunk repeats and nothing compresses.

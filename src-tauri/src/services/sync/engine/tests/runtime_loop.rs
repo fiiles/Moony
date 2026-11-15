@@ -338,6 +338,9 @@ impl ConnAccess for Counted {
         self.takes.fetch_add(1, Ordering::SeqCst);
         self.inner.with_conn(f)
     }
+    fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
+        self.inner.try_with_conn(f)
+    }
     fn round_lock(&self) -> &tokio::sync::Mutex<()> {
         self.inner.round_lock()
     }

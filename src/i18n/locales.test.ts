@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { captionWidth } from './caption-width';
 import { SUPPORTED_LANGUAGES } from './languages';
 import { compareNamespace, pluralForms, type LocaleTree } from './locale-parity';
 
@@ -129,5 +130,27 @@ describe.each(SUPPORTED_LANGUAGES)('%s sync copy', (language) => {
     expect(server['cloud']).toBe('Moony cloud');
     const pay = (files_['setup'] as LocaleTree)['pay'] as LocaleTree;
     expect(pay['ownServer']).toContain('Moony cloud');
+  });
+});
+
+/**
+ * The label of a stat tile is one line (README §13, Stat row; audit 2026-11-15 C2, B2): a third of
+ * the row at 360 pt leaves 80 px for it, half of it 137 px. The phone's labels live in
+ * `mobile:stat` (thirds) and `mobile:statWide` (halves); the budget keeps a little slack for
+ * kerning and the measuring.
+ */
+describe('stat tile labels', () => {
+  const budgets = { stat: 78, statWide: 130 } as const;
+  describe.each(SUPPORTED_LANGUAGES)('%s', (language) => {
+    const mobile = files[`./locales/${language}/mobile.json`] as Record<string, LocaleTree>;
+    it.each(Object.keys(budgets) as (keyof typeof budgets)[])('%s fits one line', (group) => {
+      const labels = mobile[group] as Record<string, string>;
+      const over = Object.entries(labels)
+        // A note under the value has its own line and size
+        .filter(([key]) => !key.endsWith('Note'))
+        .map(([key, text]) => ({ key, text, width: Math.round(captionWidth(text)) }))
+        .filter(({ width }) => width > budgets[group]);
+      expect(over).toEqual([]);
+    });
   });
 });

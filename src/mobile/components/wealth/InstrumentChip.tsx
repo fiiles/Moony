@@ -24,7 +24,10 @@ export function InstrumentChip({ ticker, type }: { ticker: string; type: 'stock'
           className="size-full rounded-full border border-line bg-white object-contain p-[12%]"
         />
       ) : (
-        letters
+        // The monogram in the logo's own circle and hairline, so a list of both reads as one (C3)
+        <span className="flex size-full items-center justify-center rounded-full border border-line">
+          {letters}
+        </span>
       )}
     </RowChip>
   );

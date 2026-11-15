@@ -23,7 +23,8 @@
   },
   "money": {
     "approx": "≈ {{amount}}",
-    "noRate": "无 {{currency}} 汇率"
+    "noRate": "无 {{currency}} 汇率",
+    "inclFx": "含汇率"
   },
   "cashflow": {
     "shareOfExpenses": "占支出的 {{share}}",
@@ -131,7 +132,6 @@
       "staleStatement_other": "对账单 {{count}} 天前",
       "staleBalance_other": "余额 {{count}} 天前"
     },
-    "perMonth": "{{amount}} / 月",
     "nextPayment": "下次付款 {{date}}",
     "menu": {
       "sort": "排序",
@@ -200,11 +200,6 @@
     },
     "addTx": {
       "noCategorySub": "您可以稍后再分类"
-    },
-    "stats": {
-      "changeThisYear": "今年变动",
-      "avgPerMonth": "月均",
-      "yearlyInterest": "年利息"
     },
     "flows": {
       "title": "收支"
@@ -277,8 +272,7 @@
       "title": "固定期结束后",
       "rate": "利率 {{rate}} 时",
       "current": "当前利率",
-      "delta": "{{delta}} 个百分点",
-      "perMonth": "每月还款"
+      "delta": "{{delta}} 个百分点"
     },
     "legend": {
       "tapHint": "轻点标记即可查看发生了什么。"
@@ -320,13 +314,11 @@
   "property": {
     "notFound": "该房产已不存在。",
     "ltv": "LTV {{ltv}}",
-    "rentYear": "年租金 {{rent}}",
     "perYear": "每年",
-    "loanPayment": "还款额 {{amount}} / 月",
+    "loanPayment": "还款额 {{amount}}",
     "rowMenu": "更多操作：{{name}}",
     "costKindRecurring": "定期",
     "costKindOneTime": "一次性",
-    "costYear": "每年 {{amount}}",
     "costCurrent": "当前 {{amount}}",
     "costDateInFuture": "费用日期不能晚于今天。",
     "costNameRequired": "请输入费用名称。",
@@ -514,7 +506,7 @@
     "bonds": {
       "count_other": "{{count}} 只债券",
       "nearest": "最近到期 {{month}}",
-      "coupon": "票息 {{amount}} / 年",
+      "coupon": "票息 {{amount}}",
       "upcoming": "近期票息与到期",
       "noUpcoming": "未来一年内没有票息或到期。",
       "allRepaid": "所有债券均已兑付。在“···”菜单中开启“{{action}}”即可查看。",
@@ -533,7 +525,7 @@
     "realEstate": {
       "personal": "自住",
       "investment": "投资",
-      "rent": "租金 {{amount}} / 月",
+      "rent": "租金 {{amount}}",
       "revaluedOn": "{{date}} 估值"
     },
     "empty": {
@@ -558,7 +550,6 @@
       "pricesOn": "价格 {{date}}",
       "invested": "已投入 {{amount}}",
       "yieldNote": "收益率 {{percent}}",
-      "twrYtd": "今年收益",
       "twrNote": "TWR · MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "暂无历史",
@@ -581,7 +572,7 @@
       "target": "目标价 {{price}}",
       "targetReached": "已达目标价",
       "dayChange": "今日",
-      "realizedShort": "已实现 {{amount}}"
+      "watchedTabPlain": "关注"
     },
     "crypto": {
       "largestNote": "占加密货币 {{share}}",
@@ -596,9 +587,7 @@
       "heroLabel": "持仓价值 · {{quantity}} {{unit}}",
       "perUnit": "每单位 {{price}}",
       "stats": {
-        "value": "价值",
         "inCurrency": "以 {{currency}} 计",
-        "price": "价格",
         "asOf": "截至 {{when}}"
       },
       "tx": {
@@ -620,8 +609,6 @@
     },
     "watch": {
       "stats": {
-        "today": "今日",
-        "since": "关注以来",
         "noTarget": "未设置目标价"
       },
       "above": "高于",
@@ -648,7 +635,8 @@
       "tracking": "跟踪内容",
       "categories": "类别",
       "categoriesSub_other": "{{count}} 个类别",
-      "categorization": "自动分类"
+      "categorization": "自动分类",
+      "lockSub": "立即锁定应用"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "无遥测",
@@ -942,5 +930,53 @@
       "stock_split": "拆股 {{ratio}}"
     },
     "splitTrades_other": "{{count}} 笔交易待调整"
+  },
+  "stat": {
+    "assets": "总资产",
+    "liabilities": "负债",
+    "freeCash": "可用现金",
+    "freeCashNote": "账户中",
+    "unrealizedGain": "未实现收益",
+    "unrealizedLoss": "未实现亏损",
+    "dividends": "股息估算",
+    "returnYtd": "今年收益",
+    "faceValue": "面值",
+    "yearlyCoupon": "年票息",
+    "nextMaturity": "最近到期",
+    "realized": "已实现收益",
+    "largest": "最大持仓",
+    "changeYtd": "今年变动",
+    "avgPerMonth": "月均",
+    "yearlyInterest": "年利息",
+    "today": "今日",
+    "target": "目标价",
+    "sinceFollowing": "关注以来",
+    "value": "价值",
+    "price": "价格",
+    "invested": "投入",
+    "heldFor": "持有时长",
+    "quantity": "数量",
+    "avgPrice": "平均价格",
+    "yearlyYield": "年收益",
+    "imported": "已导入",
+    "duplicates": "重复",
+    "errors": "错误"
+  },
+  "statWide": {
+    "interest": "已付利息",
+    "principal": "已还本金",
+    "remaining": "剩余还款",
+    "fixation": "固定利率期结束",
+    "value": "价值",
+    "equity": "权益",
+    "grossYield": "毛收益率",
+    "netCashflow": "净现金流"
+  },
+  "period": {
+    "month": "{{amount}}/月",
+    "quarter": "{{amount}}/季",
+    "halfYear": "{{amount}}/半年",
+    "year": "{{amount}}/年",
+    "avgMonth": "平均 {{amount}}/月"
   }
 }

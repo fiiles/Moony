@@ -13,7 +13,9 @@ import { useSpendingPlanIndex } from '@/hooks/use-spending-plans';
 import { PlanChip } from '@/components/spending-plans/PlanChip';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
-import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
+import { transactionDetails } from '@/utils/transaction-text';
+import { completeAccountIdentifier } from '@/utils/iban-utils';
+import { transactionTitle } from '@/mobile/lib/transaction-title';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -89,10 +91,15 @@ export function TransactionSheet({
     onOpenChange(next);
   };
   const close = () => changeOpen(false);
-  const label = counterpartyLabel(shown);
   const details = transactionDetails(shown);
-  // The row's own title (as the ledger shows it), the note is what is left of the description
-  const title = label.title ?? details[0] ?? tb('transaction.counterparty');
+  // The row's own title (`transactionTitle`, as every list shows it); the note is the rest of the
+  // description and the bank's remittance text, which only this sheet shows (C4)
+  const title = transactionTitle(shown) ?? tb('transaction.counterparty');
+  const account = completeAccountIdentifier(
+    shown.counterpartyIban,
+    null,
+    shown.counterpartyBankCode
+  );
   const note = details.filter((text) => text !== title);
   const auto = shown.flowKind === null;
   const plan = planIndex.data?.find((s) => s.plan.id === shown.spendingPlanId)?.plan;
@@ -128,7 +135,8 @@ export function TransactionSheet({
   const technical: { label: string; value: string | null; copy?: boolean }[] = [
     {
       label: t('transaction.counterpartyAccount'),
-      value: label.title === null ? null : label.subtitle,
+      // The counterparty's account, unless it is the title already
+      value: account !== title ? account : null,
       copy: true,
     },
     { label: tb('readiness.detail.bankId'), value: shown.transactionId, copy: true },

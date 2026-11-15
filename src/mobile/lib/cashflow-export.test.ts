@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CashflowActuals, CashflowGroup } from '@shared/schema';
-import { CASHFLOW_EXPORT_FILE, cashflowCsv } from './cashflow-export';
+import { CASHFLOW_EXPORT_FILE, cashflowCsv, csvMonth } from './cashflow-export';
 
 const group = (patch: Partial<CashflowGroup>): CashflowGroup => ({
   key: 'cat_food',
@@ -130,5 +130,12 @@ describe('cashflowCsv', () => {
 describe('CASHFLOW_EXPORT_FILE', () => {
   it('is the fixed name Rust allow-lists', () => {
     expect(CASHFLOW_EXPORT_FILE).toBe('moony-cashflow.csv');
+  });
+});
+
+describe('csvMonth', () => {
+  it('writes a month as yyyy-MM in every language (B10)', () => {
+    expect(csvMonth(1_756_684_800)).toBe('2025-09');
+    expect(csvMonth(Date.UTC(2026, 0, 1) / 1000)).toBe('2026-01');
   });
 });

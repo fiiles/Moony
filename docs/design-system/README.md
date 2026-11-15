@@ -571,6 +571,76 @@ side under it). Pages with a short fixed name (Nastavení and its sections, Co v
 rozpočty, the categorize queue, the lock's recovery) keep the title in the bar. The Cashflow
 category detail is a record detail by this rule too.
 
+**Stat tiles: one grid** (audit 2026-11-15 C2, B2). A stat row is one grid of three tracks, label ·
+value · note, which every tile shares (`grid-template-rows: subgrid`): the values of a row stand on one
+baseline and the notes on another whatever a tile holds, and a label that wraps at a large text size
+moves the whole row's values together. A label is one line at 360 pt and never breaks inside a word:
+the phone's labels are its own short ones (`mobile:stat` for thirds, `mobile:statWide` for halves —
+"Aktiva", "Nominál", "Ø cena", "Return YTD"), which `src/i18n/locales.test.ts` measures against a
+width table of Inter 500 at 11 px (`src/i18n/caption-width.ts`: 78 px a third, 130 px a half). The
+desktop keeps its longer words. A note is one line; what does not fit in it belongs to the detail
+(Akcie's realized result is the closed positions' sheet's, not a second note line). From seven whole
+digits a summary amount is compact ("6,78 mil. Kč", "¥1.54億"; `isCompactAmount`, the phone's one
+threshold, A11).
+
+**Transactions: one face everywhere** (audit 2026-11-15 C3, C4). A payment looks the same on every
+list — Přehled's Poslední pohyby, the account's ledger, the Cashflow category, the categorize queue,
+the import preview — and in its sheet's head. Its title is `transactionTitle`
+(`mobile/lib/transaction-title.ts`): the named counterparty, else the payment's description, else the
+counterparty's account number. Its avatar is its category's chip (`CategoryChip`: the desktop's icon in
+the category's hue; a tag while it has none, a transfer's arrows), never initials. Its sub-line is
+`transactionSubFacts`, always in one order — day · account · category — leaving out what the screen
+already says (the ledger has day heads and is the account; the category detail is the category). The
+bank's remittance note is raw statement text: only the transaction sheet shows it, in full (the
+categorize queue keeps it in its sub, as the words a category is chosen by). Other avatars: a stock or
+a coin is its logo on white, else its ticker's two letters in the same 36 pt circle
+(`InstrumentChip`, also for trades on Přehled); every account is its type's icon (`AccountChip`), so
+two accounts at one bank no longer share initials.
+
+**Dates and periods** (audit 2026-11-15 C5, C6, B1, B6). The phone shell provides the `phone` format
+style (`FormatStyleContext` in `MobileApp`; `src/lib/format.ts`), so every date of the phone follows one
+table; the desktop's output is unchanged.
+
+| Form | Czech | English | Where |
+|---|---|---|---|
+| Day | 15. 11. | Nov 15 | sub-lines and short facts (`shortDayOptions`), the year added when it is not this one |
+| Day with year | 15. 11. 2026 | Nov 15, 2026 | details, fields, a day in a sentence (`fmt.day`) |
+| Long day | 15. listopadu 2026 | November 15, 2026 | a sheet's or a hero's own date only |
+| Month with year | Listopad 2026 · 11/2026 | November 2026 · 11/2026 | the word form standing alone (a period, Konec fixace); the numeric form inside a sentence, where the word would need a case |
+| Chart axis | 15. 11. · 11/2025 | Nov 15 · 11/2025 | a short span by days, a long one by month and the full year (`fmt.axisMonth`), never "listopad 25", which reads as a day |
+| Time | 8:51 | 8:51 AM | two digits on a 24-hour clock in the languages that write them, no leading zero on a 12-hour one |
+
+In English the month of a day is always a word (B1): "11/8" is a different day to most English
+readers outside the US, and the phone follows the language, not a region. A machine's month is
+`yyyy-MM` (the Cashflow CSV, `csvMonth`, B10). An amount for a period carries its unit right after it,
+one form for all (`mobile:period`, `usePeriodText`, `periodUnit`): "2 270 Kč / měs.", "11 216 Kč / rok",
+"⌀ 12 900 Kč / měs.", "{{amount}}/月" in Japanese and Chinese — a policy's premium, a loan's payment,
+a rent, a coupon, a cost. A period word in a column of its own ("měsíčně" beside an amount) is gone.
+
+**Loading states: no false zero** (audit 2026-11-15 E1, E4). Until a list's query has answered, its
+count and its section stand in outline (`LineSkeleton`, a section of `RowsSkeleton`), never "0 pozic"
+and never a section that is missing: a class row of Majetek is never "empty" while its list loads
+(`classRowState`'s `loading`), Nemovitosti stands in outline when the hero's total holds property, the
+Sledované segment has no count before its list. A zero is a result. On Přehled the sections with
+queries of their own (Údržba, Co vás čeká, Poslední pohyby) show as soon as they answer, not after the
+hero. The hero itself waits for its one query: a lock clears the query cache, so there is no "last
+known" net worth after an unlock, by design.
+
+**Rows and section links** (audit 2026-11-15 C8). One decision for all four tabs: a row that carries
+a value on the right (an account, a position, a payment, a class) is a tap target as a whole and has
+no chevron; a row that only leads somewhere (Nastavení, Údržba, a class without records, a next step)
+has the chevron. A section head that leads to a fuller list or screen has one link form, the label and
+a small chevron in `ink-3` (`SectionHead`'s `action`; "Zobrazit vše (7)", "Majetek"), never a text
+arrow; it is there whenever such a list exists (Co vás čeká always opens the agenda) and missing only
+where none does (Poslední pohyby: accounts, trades and assets have no one list). The collapsed bar of
+a tab root names the tab, Přehled's too, whose large title is the greeting (`Screen`'s `barTitle`, C9);
+a large title wraps between words and is never cut (B4).
+
+**Change lines and exchange rates** (audit 2026-11-15 A8). A total in the main currency that holds
+something in another currency moves with the rate: its change line ends "· vč. kurzu"
+(`movesWithRates`, `mobile:money.inclFx`) — on Finance's hero when an account counted in it is in
+another currency, on Majetek's when an account, a position, a property or another asset is.
+
 **Screen.** A screen is the nav bar (44 pt under the top safe area) over one scroll area with a 16 pt
 gutter and room at the bottom for the tab bar (56 pt above the bottom safe area), which is fixed over it.
 Safe areas come from `env(safe-area-inset-*)` as `--safe-top` / `--safe-bottom` (`index.html` asks for
@@ -648,7 +718,7 @@ caption. Credential failures show under the field, everything else as a toast.
 | Section head | `.m-sec`, `__t`, `__a`, `__n`, `__cap` | `mobile/components/SectionHead.tsx` | 16 / 620 title, 12 / 600 `ink-3` action (`__a`, a link whose hit area reaches 44 pt) or the section's one number (`__n`, the `note` prop: "Restschuld 2 418 760 Kč"; nothing to tap, never beside an action). An optional 11 `ink-4` caption under the head (`caption`) says once what every row's trailing figure measures ("Změna za posledních 30 dní" on Majetek), so the rows do not repeat it. |
 | Hero | `.m-card--hero`, `.m-hero__label`, `__value`, `__delta`, `__seg`, `__chart` | `mobile/components/Hero.tsx`, `ScrubChart.tsx` | Label, display number, change line (badge + context), period segment, chart 160 pt; the desktop circle at 60 %. `step` (the account detail's balance records) draws a step line (`stepAfter`): a value holds until the next point, and the ○ marks sit on it (`stepValueAt`), not on an interpolated slope. `children` follow the chart, or in the compact hero (below) the change line: Majetek's allocation bar and legend, a chart legend. A position's hero adds the dashed "Vloženo" (`ScrubChart`'s `cost`: a 1.5 pt `stepAfter` line in `chart-cost`, dash `4 4`, drawn under the value line, the value domain widened to hold it) and the mark tap: a tap on a buy or sell mark opens its callout and calls `onMarkTap` with the events, so the page can flash the matching rows. `projectedFrom` (a loan's schedule after today) draws the line as a plan from that time on: the readings after it go on as a dashed `chart-line` line (`.m-chart__projected`, 1.5 pt, dash `4 4`, the same `step` curve, no area under it; its colour comes from `useChartTokens()` like the solid line's, so it follows a theme switch) that meets the solid line on the day the plan starts, the end ring sits on the last solid reading, and a scrub over the plan reports the planned value (`splitProjected`, `mobile/lib/scrub.ts`). `Hero<E, P>` takes the segment's value as a type parameter (a `ChartPeriod` by default) with `periodLabel` for options that are not periods (the loan's Dosud · 5 let · Do splacení); the chart is drawn whenever `points` is given and the segment only with `period`, `periods` (two at least) and `onPeriodChange` — a chart without them stands without a segment (a property's valuation trace), 12 pt under the change line. |
 | Compact hero | `.m-card--hero.m-card--compact` | `mobile/components/Hero.tsx` (without `points`) | The hero without its segment and chart — label, number, change line (or "bez pohybů za 30 dní"), the card ending 14 px under the change line: Finance's "Celkem na účtech" until there is a cash history to draw. Once there is (or a period other than 30 dní is picked), Finance's hero is the charted one with the cash line (the trend card that stood under the policies before 2026-10-29), its change line measured over the chart (`lineChange`, "od 3. 10." when the line starts later than the period). Majetek's hero is charted too: the assets line (`useNetWorthOverview().assetPoints`) over its own period (`wealth.period`; the class rows keep their 30-day change), the allocation bar and its legend after the chart. |
-| Stat row | `.m-stats`, `--2`, `--1`, `.m-stat`, `--flat`, `__l`, `__v`, `__n` | `mobile/components/StatRow.tsx` | Three (or two, or one — the account detail shows only the stats that have data) stats: label 11 (may wrap, hyphenated), value 17, note 10 (up to two lines); values sit on one line across the row. The value keeps 17 px down to the 86 px box of a third at 390 pt, then shrinks with the card (19.7 cqi); a third holds about nine characters ("6,78 mil.", "214 380"), a longer amount goes in a row of two. A signed result takes the tone of its sign on the value (`.m-stat__v--gain` / `--loss`, `StatItem.tone`); the sign stays in the text. |
+| Stat row | `.m-stats`, `--2`, `--1`, `.m-stat`, `--flat`, `__l`, `__v`, `__n` | `mobile/components/StatRow.tsx` | Three (or two, or one — the account detail shows only the stats that have data) stats on one fixed grid (see "Stat tiles" in §13): label 11 on one line, never hyphenated, value 17, note 10 on one line; the tiles share the row's tracks (`grid-template-rows: subgrid`), so values and notes stand on one baseline each. The value keeps 17 px down to the 86 px box of a third at 390 pt, then shrinks with the card (19.7 cqi); a third holds about nine characters ("6,78 mil.", "214 380"), a longer amount goes in a row of two. A signed result takes the tone of its sign on the value (`.m-stat__v--gain` / `--loss`, `StatItem.tone`); the sign stays in the text. |
 | Entity row | `.m-rows`, `.m-row`, `--single`, `--noicon`, `--chev`, `--bar`, `__chip` (`--sq`, `--dark`, `--gain`), `__main`, `__line`, `__t`, `__s`, `__v` (`--gain`, `--loss`), `__vs`, `__bar`, `__chev`, `--act`, `--muted` | `mobile/components/EntityRow.tsx`, `AgendaRow.tsx`, `mobile/pages/Budgets.tsx` | See the row rule below. A budget row of Spravovat rozpočty: the limit as the value, "Naplánováno" / "ukončen" as the trailing sub, and an ended budget `--muted` (the whole row and its divider at half strength). A row whose one action is a small button at the end (`--act`: "Výdaje bez limitu" with "Nastavit limit") is not a tap target itself; the button keeps its 44 pt hit area, so it is laid out like an Údržba row, not through the value slot (which clips). A row may carry a second block inside the same box (`EntityRow`'s `below`, the categorize queue's pill row): the row keeps its own 60 pt, its swipe panels and its menu, the block does not slide, and the divider and the background belong to both. |
 | Badge | `.m-badge`, `--gain`, `--loss` | — | 20 px, 12 / 500; the desktop meaning (green and red only for a signed change, always with ▲ / ▼). |
 | Row badge | `.m-row__badge`, `--loss` | `mobile/components/RowBadge.tsx` (`line="title"` by default, `line="sub"`, `tone="loss"`): Finance, Majetek, the class rows, the ledger and the import preview | A badge inside a row's title ("Vyloučeno" after an excluded account's name): 18 px, 11 / 600 `ink-3` on `well-2`, 6 px after the name; the title still ends with an ellipsis. In a sub-line ("Bez kategorie", "Čekající", "Vratka") it has no leading gap and joins the other parts with " · ". `--loss` (red on `loss-soft`) is the import preview's "Chyba". |

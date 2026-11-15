@@ -1,7 +1,10 @@
-import { useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import { useLanguage } from '@/i18n/I18nProvider';
-import { getFormatters, type Formatters } from '@/lib/format';
+import { getFormatters, type Formatters, type FormatStyle } from '@/lib/format';
 import { CurrencyContext } from '@/lib/currency';
+
+/** Which shell writes: the phone shell provides `phone` (its date table, README §13). */
+export const FormatStyleContext = createContext<FormatStyle>('desktop');
 
 /**
  * Locale-bound formatters for the current UI language. Use this for
@@ -15,5 +18,6 @@ export function useFormat(): Formatters {
   const locale = getLocale();
   // Optional read: the profile currency is the only one shown as a symbol.
   const mainCurrency = useContext(CurrencyContext)?.currencyCode;
-  return useMemo(() => getFormatters(locale, mainCurrency), [locale, mainCurrency]);
+  const style = useContext(FormatStyleContext);
+  return useMemo(() => getFormatters(locale, mainCurrency, style), [locale, mainCurrency, style]);
 }

@@ -337,7 +337,6 @@ function AssetHero({
 function AssetStats({ row }: { row: OtherAssetRow }) {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
-  const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const { quantity, price, priceCurrency, currency, avgPurchase, costNative, gainNative } = row;
@@ -347,7 +346,7 @@ function AssetStats({ row }: { row: OtherAssetRow }) {
 
   const stats: StatItem[] = [
     {
-      label: tc('labels.quantity'),
+      label: t('stat.quantity'),
       value: fmt.number(quantity, { maximumFractionDigits: QUANTITY_DIGITS }),
       note:
         price > 0
@@ -355,7 +354,7 @@ function AssetStats({ row }: { row: OtherAssetRow }) {
           : undefined,
     },
     {
-      label: ts('table.avgCost'),
+      label: t('stat.avgPrice'),
       value: avgPurchase > 0 ? unitMoney(avgPurchase, currency) : '—',
       note:
         costNative > 0
@@ -363,7 +362,7 @@ function AssetStats({ row }: { row: OtherAssetRow }) {
           : undefined,
     },
     {
-      label: ts('detail.unrealized'),
+      label: t('stat.unrealizedGain'),
       value:
         gainNative === null
           ? '—'
@@ -394,6 +393,7 @@ function AssetStats({ row }: { row: OtherAssetRow }) {
  * nothing. One stat on its own row: a fourth beside the three would not fit.
  */
 function YieldStat({ row }: { row: OtherAssetRow }) {
+  const { t } = useTranslation('mobile');
   const { t: to } = useTranslation('otherAssets');
   const fmt = useFormat();
   const moneyText = useMoneyText();
@@ -413,7 +413,7 @@ function YieldStat({ row }: { row: OtherAssetRow }) {
     <StatRow
       stats={[
         {
-          label: to('summary.yearlyYield'),
+          label: t('stat.yearlyYield'),
           value: moneyText(yieldNative, yieldCurrency, {
             ...statMoneyOptions(yieldNative),
             signed: true,

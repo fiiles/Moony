@@ -255,7 +255,8 @@ export default function Settings() {
         <SettingsRow
           icon={User}
           title={t('settings.rows.profile')}
-          sub={user?.email || t('settings.rows.profileNoEmail')}
+          // The e-mail is in the head above; the row says what the page holds (D28)
+          sub={t('settings.rows.profileNoEmail')}
           href={settingsPath('profile')}
         />
         <SettingsRow
@@ -351,6 +352,8 @@ export default function Settings() {
         <SettingsRow
           icon={Lock}
           title={tc('nav.lockApp')}
+          // Every row of Nastavení carries a sub, so the rows are one height (D28)
+          sub={t('settings.rows.lockSub')}
           onClick={() => {
             if (lockMutation.isPending) return;
             // The lock screen stays quiet after this lock: Face ID only from its button.

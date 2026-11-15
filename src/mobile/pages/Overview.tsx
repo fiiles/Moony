@@ -1,22 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'wouter';
-import {
-  Bitcoin,
-  Landmark,
-  Settings,
-  TrendingDown,
-  TrendingUp,
-  Wallet,
-  type LucideIcon,
-} from 'lucide-react';
+import { Landmark, Settings, Wallet } from 'lucide-react';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useDatedMainConvert } from '@/hooks/use-fx';
 import { useGreeting } from '@/hooks/use-greeting';
 import { useMilestones } from '@/hooks/use-milestones';
 import { ASSET_CLASSES, useNetWorthOverview } from '@/hooks/use-net-worth-overview';
 import { useNetWorthJumpTip } from '@/hooks/use-net-worth-jump-tip';
-import { useRecentMoves, type MoveKind, type RecentMove } from '@/hooks/use-recent-moves';
+import { useRecentMoves, type RecentMove } from '@/hooks/use-recent-moves';
 import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { splitMilestones } from '@/utils/milestones';
@@ -30,7 +22,7 @@ import {
 import { LoadError } from '@/mobile/components/LoadError';
 import { AgendaRow } from '@/mobile/components/AgendaRow';
 import { AllocationRing } from '@/mobile/components/AllocationRing';
-import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
+import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { GettingStartedCard } from '@/mobile/components/GettingStartedCard';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
@@ -41,20 +33,21 @@ import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
 import { useTransactionDay } from '@/mobile/hooks/use-transaction-day';
-import { initials } from '@/mobile/lib/initials';
+import { transactionSubFacts, transactionTitle } from '@/mobile/lib/transaction-title';
+import { CategoryChip } from '@/mobile/components/cashflow/CategoryChip';
+import { InstrumentChip } from '@/mobile/components/wealth/InstrumentChip';
 import { exactMoneyOptions, SIGNED_WHOLE, WHOLE } from '@/mobile/lib/money-rule';
 import { movePath } from '@/mobile/lib/move-path';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { addAccountPath } from '@/mobile/lib/getting-started';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { statMoneyOptions } from '@/mobile/lib/stat-money';
 
 /** Agenda rows shown on Přehled before "Zobrazit vše (N)". */
 const AGENDA_ROWS = 3;
 /** Rows of "Poslední pohyby". */
 const MOVES = 5;
-/** From a million on, a stat shows the compact amount ("6,78 mil. Kč") so a third holds it. */
-const COMPACT_FROM = 1_000_000;
 
 /**
  * Přehled tab root (spec §8.3, prototype frame 02): the greeting, the hero with the scrubbable
@@ -89,9 +82,7 @@ export default function Overview() {
   );
   const statMoney = (value: number, isUnknown: boolean) => {
     if (isUnknown) return '—';
-    return Math.abs(value) >= COMPACT_FROM
-      ? moneyText(value, reportCurrency, { compact: true, decimals: 2 })
-      : money(value);
+    return moneyText(value, reportCurrency, statMoneyOptions(value));
   };
 
   // "za 30 dní", or "od 3. 10." when the history is shorter than the period
@@ -112,7 +103,7 @@ export default function Overview() {
   const stats = useMemo<StatItem[]>(
     () => [
       {
-        label: t('dashboard:stats.totalAssets'),
+        label: t('stat.assets'),
         value: statMoney(display.assets, unknown.assets),
         note: unknown.assets
           ? undefined
@@ -121,7 +112,7 @@ export default function Overview() {
             : t('overview.stats.noHistory'),
       },
       {
-        label: td('stats.totalLiabilities'),
+        label: t('stat.liabilities'),
         value: statMoney(display.liabilities, unknown.liabilities),
         note: unknown.liabilities
           ? undefined
@@ -132,9 +123,9 @@ export default function Overview() {
               : signedMoney(overview.liabilitiesDelta),
       },
       {
-        label: t('dashboard:stats.freeCash'),
+        label: t('stat.freeCash'),
         value: statMoney(display.savings, false),
-        note: t('dashboard:stats.freeCashNote'),
+        note: t('stat.freeCashNote'),
       },
     ],
     // The formatters close over the same inputs; the metrics response drives every value
@@ -154,6 +145,8 @@ export default function Overview() {
     <Screen
       onRefresh={refetchShown}
       title={greeting}
+      // Collapsed, the bar names the tab, as every other tab's does (C9)
+      barTitle={t('tabs.overview')}
       large
       subtitle={asOf}
       leading={<LockButton />}
@@ -224,9 +217,11 @@ export default function Overview() {
           withholds its rows until its data has loaded, and an open sheet must not unmount when
           saving makes the portfolio metrics refetch. */}
       <UpkeepCard />
+      {/* The sections with queries of their own do not wait for the hero (E4): each shows as soon
+          as it has answered and hides itself when it has nothing; a new or failed profile has none */}
+      {(showContent || overview.isCheckingPortfolio) && <AgendaSection />}
       {showContent && (
         <>
-          <AgendaSection />
           <AllocationSection
             values={ASSET_CLASSES.map((cls) => ({
               key: cls,
@@ -238,10 +233,10 @@ export default function Overview() {
               moneyText(value, reportCurrency, { compact: true, decimals: 1 })
             }
           />
-          <RecentMovesSection />
-          <GettingStartedCard />
         </>
       )}
+      {(showContent || overview.isCheckingPortfolio) && <RecentMovesSection />}
+      {showContent && <GettingStartedCard />}
     </Screen>
   );
 }
@@ -257,11 +252,8 @@ function AgendaSection() {
     <section>
       <SectionHead
         title={t('card.title')}
-        action={
-          agenda.length > AGENDA_ROWS
-            ? { label: t('card.showAll', { count: agenda.length }), href: routes.agenda }
-            : undefined
-        }
+        // The whole agenda is one tap away whenever there is one (C8)
+        action={{ label: t('card.showAll', { count: agenda.length }), href: routes.agenda }}
       />
       <EntityRows>
         {agenda.slice(0, AGENDA_ROWS).map((m) => (
@@ -290,14 +282,7 @@ function AllocationSection({
     <section>
       <SectionHead
         title={td('allocation.title')}
-        action={{
-          label: (
-            <>
-              {t('tabs.wealth')} <span aria-hidden>→</span>
-            </>
-          ),
-          href: routes.wealth,
-        }}
+        action={{ label: t('tabs.wealth'), href: routes.wealth }}
       />
       <div className="mb-3.5 rounded-r4 border border-line bg-[linear-gradient(180deg,var(--paper),var(--paper-2))] px-4 py-3.5 shadow-e1">
         <AllocationRing
@@ -313,16 +298,9 @@ function AllocationSection({
   );
 }
 
-const MOVE_ICONS: Partial<Record<MoveKind, LucideIcon>> = {
-  buy: TrendingUp,
-  sell: TrendingDown,
-  cryptoBuy: Bitcoin,
-  cryptoSell: Bitcoin,
-};
-
 /**
- * Poslední pohyby (spec §8.3 item 6): five entity rows — initials of the counterparty (an icon
- * for a trade), "Dnes · účet · kategorie", the exact amount in the move's own currency (the
+ * Poslední pohyby (spec §8.3 item 6): five entity rows — a payment as every payment row (its
+ * category's chip and `transactionTitle`), a trade with its instrument's logo or monogram, "Dnes · účet · kategorie", the exact amount in the move's own currency (the
  * account's, the trade's) and, when that is not the main currency, "≈" its worth at its day's rate
  * under it (README §13, "Money and currencies"). Only a bank credit is green with a plus; a debit
  * carries a minus; trades are neutral amounts whose direction is in the sub. A tap opens the
@@ -360,24 +338,35 @@ function MoveRows({ moves }: { moves: RecentMove[] }) {
     <EntityRows>
       {moves.map((move) => {
         const bank = move.kind === 'bankIn' || move.kind === 'bankOut';
-        const title = move.title || t(`moves.kind.${move.kind}`);
+        // A payment is titled as on every list of payments, a trade by its instrument (C4)
+        const title =
+          (move.naming && transactionTitle(move.naming)) ||
+          move.title ||
+          t(`moves.kind.${move.kind}`);
         const category = move.categoryId ? categoryById.get(move.categoryId) : undefined;
         const sub = bank
-          ? [dayLabel(move.date), move.source, category ? categoryName(category) : null]
+          ? transactionSubFacts({
+              day: dayLabel(move.date),
+              account: move.source,
+              category: category ? categoryName(category) : null,
+            })
           : [dayLabel(move.date), t(`moves.kind.${move.kind}`), move.source];
-        const Icon = MOVE_ICONS[move.kind];
         const sign = move.kind === 'bankIn' ? '+ ' : move.kind === 'bankOut' ? '− ' : '';
         return (
           <EntityRow
             key={move.id}
+            // The avatar as everywhere (C3): a payment's category, a trade's logo or monogram
             chip={
-              <RowChip tone={move.kind === 'bankIn' ? 'gain' : 'default'}>
-                {Icon ? (
-                  <Icon strokeWidth={1.75} />
-                ) : (
-                  initials(title) || <Landmark strokeWidth={1.75} />
-                )}
-              </RowChip>
+              bank ? (
+                <CategoryChip category={category} />
+              ) : (
+                <InstrumentChip
+                  ticker={move.source}
+                  type={
+                    move.kind === 'cryptoBuy' || move.kind === 'cryptoSell' ? 'crypto' : 'stock'
+                  }
+                />
+              )
             }
             title={title}
             sub={sub.filter(Boolean).join(' · ')}

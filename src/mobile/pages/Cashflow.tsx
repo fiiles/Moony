@@ -58,7 +58,7 @@ import { rowLimitAction } from '@/mobile/lib/budget-rows';
 import type { LimitMode } from '@/mobile/lib/budget-limit';
 import { cashflowViewSearch, viewFromSearch, type CashflowView } from '@/mobile/lib/cashflow-view';
 import { plansCardSummary } from '@/mobile/lib/plan-rows';
-import { CASHFLOW_EXPORT_FILE, cashflowCsv } from '@/mobile/lib/cashflow-export';
+import { CASHFLOW_EXPORT_FILE, csvMonth, cashflowCsv } from '@/mobile/lib/cashflow-export';
 import { afterHistorySettles } from '@/mobile/lib/history-settle';
 import { budgetsPath, cashflowCategoryPath, plansPath, routes } from '@/mobile/shell/routes';
 import { LockButton } from '@/mobile/shell/LockButton';
@@ -138,7 +138,6 @@ export default function Cashflow() {
 function CashflowReportView({ switcher }: { switcher: ReactNode }) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
-  const fmt = useFormat();
   const { categories } = useCategories();
   const categoryName = useCategoryName();
   const [state, setState] = useCashflowState();
@@ -210,17 +209,14 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
       uncategorizedTransfers: tr('actuals.uncategorizedTransfers'),
     };
     void runExport(CASHFLOW_EXPORT_FILE, async () =>
-      cashflowCsv(
-        actuals,
-        (month) => fmt.day(month, { year: 'numeric', month: '2-digit' }),
-        (group) =>
-          categoryTitle(
-            group.key,
-            group.flowKind,
-            categoryById.get(group.key) ?? null,
-            group.name,
-            titleLabels
-          )
+      cashflowCsv(actuals, csvMonth, (group) =>
+        categoryTitle(
+          group.key,
+          group.flowKind,
+          categoryById.get(group.key) ?? null,
+          group.name,
+          titleLabels
+        )
       )
     );
   };
@@ -390,7 +386,7 @@ function ReportBody({
   // The average per month counts only with two or more completed months, as on the desktop
   const perMonth = (average: string | null) =>
     average !== null && actuals.averageCompletedMonths.length >= 2
-      ? tr('actuals.stats.perMonth', { amount: money(amount(average)) })
+      ? t('period.avgMonth', { amount: money(amount(average)) })
       : undefined;
   const pace = periodPace(actuals.periodStart, actuals.periodEnd);
   const evaluated = tb('settings.evaluationNote', {

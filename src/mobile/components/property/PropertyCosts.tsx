@@ -13,6 +13,8 @@ import { usePropertyCostMutations } from '@/mobile/hooks/use-property-mutations'
 import { costRows, type OneTimeCostRow, type RecurringCostRow } from '@/mobile/lib/property-detail';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { CostSheet } from '@/mobile/sheets/CostSheet';
+import { usePeriodText } from '@/mobile/hooks/use-period-text';
+import { periodUnit } from '@/mobile/lib/period-unit';
 
 /** Whole amounts: the head's note shows no decimals. */
 const WHOLE = { decimals: 0 } as const;
@@ -70,6 +72,7 @@ export function PropertyCosts({ property, costs, balance, currency }: PropertyCo
     setPending(next);
     setConfirmOpen(true);
   };
+  const periodText = usePeriodText();
   const frequency = (value: string) => tr(`detail.frequency.${value}`, { defaultValue: value });
 
   const confirmed = () => {
@@ -111,12 +114,11 @@ export function PropertyCosts({ property, costs, balance, currency }: PropertyCo
                   </RowChip>
                 }
                 title={row.name}
-                sub={frequency(row.frequency)}
-                value={row.amount}
+                // The amount with its period next to it (C6); a frequency without one keeps its word
+                sub={periodUnit(row.frequency) === null ? frequency(row.frequency) : undefined}
+                value={periodText(row.amount, periodUnit(row.frequency))}
                 // A year's payments, when a payment is not a year's already
-                valueSub={
-                  row.perYear > 1 ? t('property.costYear', { amount: row.yearly }) : undefined
-                }
+                valueSub={row.perYear > 1 ? t('period.year', { amount: row.yearly }) : undefined}
                 onClick={() => setMenuFor(key)}
                 menu={{
                   label: t('property.rowMenu', { name: row.name }),

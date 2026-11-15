@@ -223,7 +223,7 @@ function CryptoStats({
 
   const stats: StatItem[] = [
     {
-      label: (unrealized ?? 0) >= 0 ? tcr('summary.unrealizedGain') : tcr('summary.unrealizedLoss'),
+      label: (unrealized ?? 0) >= 0 ? t('stat.unrealizedGain') : t('stat.unrealizedLoss'),
       value: unrealized === null ? '—' : statMoney(unrealized),
       tone: statTone(unrealized),
       note:
@@ -232,13 +232,13 @@ function CryptoStats({
           : undefined,
     },
     {
-      label: tcr('summary.realized'),
+      label: t('stat.realized'),
       value: realized === null ? '—' : statMoney(realized),
       tone: statTone(realized),
       note: sells > 0 ? tcr('detail.sells', { count: sells }) : tcr('detail.noSells'),
     },
     {
-      label: tcr('summary.largest'),
+      label: t('stat.largest'),
       value: largest?.ticker ?? '—',
       note: largest
         ? t('wealth.crypto.largestNote', { share: fmt.percent(share, 0) })

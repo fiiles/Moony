@@ -5,7 +5,8 @@ import type { CsvPreviewRow, TransactionCategory } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
 import { useFormat } from '@/lib/use-format';
 import { translateRowMessage } from '@/utils/csv-import-messages';
-import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
+import { transactionDetails } from '@/utils/transaction-text';
+import { transactionTitle } from '@/mobile/lib/transaction-title';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { RowBadge } from '@/mobile/components/RowBadge';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -75,7 +76,7 @@ export function PreviewRows({
       remittanceInfo: null,
     };
     const details = transactionDetails(text);
-    const title = counterpartyLabel(text).title ?? details[0] ?? tb('transaction.counterparty');
+    const title = transactionTitle(text) ?? tb('transaction.counterparty');
     const amount = previewAmount(row, accountCurrency);
     const credit = amount?.type === 'credit';
     const picked = overrides.get(row.line);

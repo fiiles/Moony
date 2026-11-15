@@ -94,13 +94,17 @@ export function allocationInput(
  * What a class row of Investice shows: `unknown` (held, nothing converted: "—"), `empty` (no
  * record of the class at all and no value: a row that leads to adding the first one) or `valued`.
  * Emptiness is by records, not by the open ones: a class whose bonds have all matured or whose
- * coins are all sold keeps its row, which opens the list that still holds them.
+ * coins are all sold keeps its row, which opens the list that still holds them. While the class's
+ * list is still `loading` its records are not known yet: the row is never empty then (audit
+ * 2026-11-15 E1), its count stands in outline.
  */
 export function classRowState(input: {
   records: number;
   value: number;
   unknown: boolean;
+  loading?: boolean;
 }): 'unknown' | 'empty' | 'valued' {
   if (input.unknown) return 'unknown';
+  if (input.loading) return 'valued';
   return input.records === 0 && input.value === 0 ? 'empty' : 'valued';
 }

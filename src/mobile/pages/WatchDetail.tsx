@@ -252,13 +252,13 @@ export default function WatchDetail() {
 
     const stats: StatItem[] = [
       {
-        label: t('wealth.watch.stats.today'),
+        label: t('stat.today'),
         value: todayPct === null ? '—' : fmt.percent(todayPct / 100, 1, { signed: true }),
         tone: statTone(todayPct),
         note: today ? watchPriceText(fmt, today.abs, currency, true) : undefined,
       },
       {
-        label: tm('table.target'),
+        label: t('stat.target'),
         value: targetValue !== null ? price(targetValue) : '—',
         note:
           targetState === 'reached'
@@ -272,7 +272,7 @@ export default function WatchDetail() {
                 : undefined,
       },
       {
-        label: t('wealth.watch.stats.since'),
+        label: t('stat.sinceFollowing'),
         value: sincePct === null ? '—' : fmt.percent(sincePct / 100, 1, { signed: true }),
         tone: statTone(sincePct),
         note:

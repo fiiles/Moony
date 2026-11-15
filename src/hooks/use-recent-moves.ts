@@ -19,6 +19,13 @@ export interface RecentMove {
   href: string;
   /** Category of a bank move; null when uncategorized, absent for investments. */
   categoryId?: string | null;
+  /** What names a bank move (the phone titles it by one rule with its other payment lists). */
+  naming?: {
+    counterpartyName: string | null;
+    counterpartyIban: string | null;
+    counterpartyBankCode: string | null;
+    description: string | null;
+  };
 }
 
 /**
@@ -75,6 +82,12 @@ export function useRecentMoves(limit = 5) {
           currency: tx.currency || account.currency,
           href: `/bank-accounts/${account.id}`,
           categoryId: tx.categoryId,
+          naming: {
+            counterpartyName: tx.counterpartyName,
+            counterpartyIban: tx.counterpartyIban,
+            counterpartyBankCode: tx.counterpartyBankCode,
+            description: tx.description,
+          },
         });
       }
     });

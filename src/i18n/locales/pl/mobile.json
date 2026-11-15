@@ -23,7 +23,8 @@
   },
   "money": {
     "approx": "≈ {{amount}}",
-    "noRate": "brak kursu dla {{currency}}"
+    "noRate": "brak kursu dla {{currency}}",
+    "inclFx": "z kursami walut"
   },
   "cashflow": {
     "shareOfExpenses": "{{share}} wydatków",
@@ -170,7 +171,6 @@
       "staleBalance_many": "saldo sprzed {{count}} dni",
       "staleBalance_other": "saldo sprzed {{count}} dnia"
     },
-    "perMonth": "{{amount}} / mies.",
     "nextPayment": "następna płatność {{date}}",
     "menu": {
       "sort": "Sortuj",
@@ -261,11 +261,6 @@
     "addTx": {
       "noCategorySub": "Przypiszesz ją później"
     },
-    "stats": {
-      "changeThisYear": "Zmiana w tym roku",
-      "avgPerMonth": "Średnio miesięcznie",
-      "yearlyInterest": "Roczne odsetki"
-    },
     "flows": {
       "title": "Przepływy"
     },
@@ -349,8 +344,7 @@
       "title": "Po okresie stałej stopy",
       "rate": "Przy {{rate}}",
       "current": "obecna stopa",
-      "delta": "{{delta}} p.p.",
-      "perMonth": "rata miesięczna"
+      "delta": "{{delta}} p.p."
     },
     "legend": {
       "tapHint": "Stuknij znacznik, aby zobaczyć, co się stało."
@@ -395,13 +389,11 @@
   "property": {
     "notFound": "Ta nieruchomość już nie istnieje.",
     "ltv": "LTV {{ltv}}",
-    "rentYear": "{{rent}} rocznie",
     "perYear": "rocznie",
-    "loanPayment": "rata {{amount}} / mies.",
+    "loanPayment": "rata {{amount}}",
     "rowMenu": "Więcej akcji: {{name}}",
     "costKindRecurring": "Cykliczny",
     "costKindOneTime": "Jednorazowy",
-    "costYear": "{{amount}} rocznie",
     "costCurrent": "Teraz {{amount}}",
     "costDateInFuture": "Data kosztu nie może być z przyszłości.",
     "costNameRequired": "Podaj nazwę kosztu.",
@@ -616,7 +608,7 @@
       "count_many": "{{count}} emisji",
       "count_other": "{{count}} emisji",
       "nearest": "najbliższy wykup {{month, lower}}",
-      "coupon": "kupon {{amount}} / rok",
+      "coupon": "kupon {{amount}}",
       "upcoming": "Najbliższe kupony i terminy wykupu",
       "noUpcoming": "W najbliższym roku nie przypada żaden kupon ani termin wykupu.",
       "allRepaid": "Wszystkie emisje zostały wykupione. Włącz w menu ··· „{{action}}”, aby je zobaczyć.",
@@ -638,7 +630,7 @@
     "realEstate": {
       "personal": "własna",
       "investment": "inwestycyjna",
-      "rent": "najem {{amount}} / mies.",
+      "rent": "najem {{amount}}",
       "revaluedOn": "wycena z {{date}}"
     },
     "empty": {
@@ -663,7 +655,6 @@
       "pricesOn": "ceny {{date}}",
       "invested": "zainwestowano {{amount}}",
       "yieldNote": "stopa dywidendy {{percent}}",
-      "twrYtd": "Zwrot w tym roku",
       "twrNote": "TWR · MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "jeszcze brak historii",
@@ -689,7 +680,7 @@
       "target": "cel {{price}}",
       "targetReached": "cel osiągnięty",
       "dayChange": "dziś",
-      "realizedShort": "zrealizowano {{amount}}"
+      "watchedTabPlain": "Obserwowane"
     },
     "crypto": {
       "largestNote": "{{share}} krypto",
@@ -704,9 +695,7 @@
       "heroLabel": "Wartość pozycji · {{quantity}} {{unit}}",
       "perUnit": "{{price}} za sztukę",
       "stats": {
-        "value": "Wartość",
         "inCurrency": "w {{currency}}",
-        "price": "Cena",
         "asOf": "stan na {{when}}"
       },
       "tx": {
@@ -731,8 +720,6 @@
     },
     "watch": {
       "stats": {
-        "today": "Dziś",
-        "since": "Od obserwacji",
         "noTarget": "brak celu"
       },
       "above": "Powyżej",
@@ -762,7 +749,8 @@
       "categoriesSub_few": "{{count}} kategorie",
       "categoriesSub_many": "{{count}} kategorii",
       "categoriesSub_other": "{{count}} kategorii",
-      "categorization": "Kategoryzacja"
+      "categorization": "Kategoryzacja",
+      "lockSub": "Blokuje aplikację od razu"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "bez telemetrii",
@@ -1092,5 +1080,53 @@
     "splitTrades_few": "{{count}} transakcje do korekty",
     "splitTrades_many": "{{count}} transakcji do korekty",
     "splitTrades_other": "{{count}} transakcji do korekty"
+  },
+  "stat": {
+    "assets": "Aktywa razem",
+    "liabilities": "Zobowiązania",
+    "freeCash": "Gotówka",
+    "freeCashNote": "na kontach",
+    "unrealizedGain": "Wynik otwarty",
+    "unrealizedLoss": "Wynik otwarty",
+    "dividends": "Dywidendy",
+    "returnYtd": "Zwrot YTD",
+    "faceValue": "Nominał",
+    "yearlyCoupon": "Kupon roczny",
+    "nextMaturity": "Wykup",
+    "realized": "Zrealizowane",
+    "largest": "Największa",
+    "changeYtd": "Zmiana YTD",
+    "avgPerMonth": "Na miesiąc",
+    "yearlyInterest": "Odsetki / rok",
+    "today": "Dziś",
+    "target": "Cel",
+    "sinceFollowing": "Od obserwacji",
+    "value": "Wartość",
+    "price": "Cena",
+    "invested": "Wpłacono",
+    "heldFor": "W portfelu",
+    "quantity": "Ilość",
+    "avgPrice": "Średnia cena",
+    "yearlyYield": "Dochód / rok",
+    "imported": "Dodano",
+    "duplicates": "Duplikaty",
+    "errors": "Błędy"
+  },
+  "statWide": {
+    "interest": "Zapłacone odsetki",
+    "principal": "Spłacony kapitał",
+    "remaining": "Pozostałe raty",
+    "fixation": "Koniec stałej stopy",
+    "value": "Wartość",
+    "equity": "Kapitał własny",
+    "grossYield": "Stopa brutto",
+    "netCashflow": "Przepływy netto"
+  },
+  "period": {
+    "month": "{{amount}} / mies.",
+    "quarter": "{{amount}} / kwartał",
+    "halfYear": "{{amount}} / półrocze",
+    "year": "{{amount}} / rok",
+    "avgMonth": "⌀ {{amount}} / mies."
   }
 }

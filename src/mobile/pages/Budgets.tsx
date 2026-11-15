@@ -409,13 +409,12 @@ interface UnbudgetedItemProps {
 function UnbudgetedItem({ row, category, currency, onSetLimit }: UnbudgetedItemProps) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('budgeting');
-  const { t: tr } = useTranslation('reports');
   const categoryName = useCategoryName();
   const moneyText = useMoneyText();
   const titleId = useId();
   const name = category ? categoryName(category) : row.categoryId;
   const sub = [
-    tr('actuals.stats.perMonth', { amount: moneyText(row.average, currency, WHOLE) }),
+    t('period.avgMonth', { amount: moneyText(row.average, currency, WHOLE) }),
     t('bank_accounts:ledger.footer', { count: row.count }),
   ].join(' · ');
 

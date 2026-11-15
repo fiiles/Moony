@@ -23,7 +23,8 @@
   },
   "money": {
     "approx": "≈ {{amount}}",
-    "noRate": "{{currency}}のレートなし"
+    "noRate": "{{currency}}のレートなし",
+    "inclFx": "為替込み"
   },
   "cashflow": {
     "shareOfExpenses": "支出の{{share}}",
@@ -131,7 +132,6 @@
       "staleStatement_other": "明細は{{count}}日前",
       "staleBalance_other": "残高は{{count}}日前"
     },
-    "perMonth": "月 {{amount}}",
     "nextPayment": "次回の支払い {{date}}",
     "menu": {
       "sort": "並べ替え",
@@ -200,11 +200,6 @@
     },
     "addTx": {
       "noCategorySub": "あとで分類できます"
-    },
-    "stats": {
-      "changeThisYear": "今年の増減",
-      "avgPerMonth": "月平均",
-      "yearlyInterest": "年間利息"
     },
     "flows": {
       "title": "入出金の推移"
@@ -277,8 +272,7 @@
       "title": "固定期間の終了後",
       "rate": "金利{{rate}}の場合",
       "current": "現在の金利",
-      "delta": "{{delta}}ポイント",
-      "perMonth": "月々の返済"
+      "delta": "{{delta}}ポイント"
     },
     "legend": {
       "tapHint": "マークをタップすると内容が表示されます。"
@@ -320,13 +314,11 @@
   "property": {
     "notFound": "この物件は存在しません。",
     "ltv": "LTV {{ltv}}",
-    "rentYear": "年間 {{rent}}",
     "perYear": "年間",
-    "loanPayment": "返済額 月 {{amount}}",
+    "loanPayment": "返済額 {{amount}}",
     "rowMenu": "その他の操作: {{name}}",
     "costKindRecurring": "定期",
     "costKindOneTime": "一時",
-    "costYear": "年間 {{amount}}",
     "costCurrent": "現在 {{amount}}",
     "costDateInFuture": "費用の日付は未来にできません。",
     "costNameRequired": "費用の名前を入力してください。",
@@ -514,7 +506,7 @@
     "bonds": {
       "count_other": "{{count}}銘柄",
       "nearest": "直近の満期 {{month}}",
-      "coupon": "クーポン {{amount}} / 年",
+      "coupon": "クーポン {{amount}}",
       "upcoming": "直近のクーポンと満期",
       "noUpcoming": "今後1年間にクーポンや満期はありません。",
       "allRepaid": "すべての銘柄が償還済みです。メニュー「···」の「{{action}}」をオンにすると表示されます。",
@@ -533,7 +525,7 @@
     "realEstate": {
       "personal": "自己居住用",
       "investment": "投資用",
-      "rent": "家賃 {{amount}} / 月",
+      "rent": "家賃 {{amount}}",
       "revaluedOn": "{{date}}に評価"
     },
     "empty": {
@@ -558,7 +550,6 @@
       "pricesOn": "価格 {{date}}",
       "invested": "投資額 {{amount}}",
       "yieldNote": "利回り {{percent}}",
-      "twrYtd": "今年のリターン",
       "twrNote": "TWR · MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "履歴はまだありません",
@@ -581,7 +572,7 @@
       "target": "目標 {{price}}",
       "targetReached": "目標に到達",
       "dayChange": "本日",
-      "realizedShort": "確定 {{amount}}"
+      "watchedTabPlain": "ウォッチ中"
     },
     "crypto": {
       "largestNote": "暗号資産の{{share}}",
@@ -596,9 +587,7 @@
       "heroLabel": "ポジションの評価額 · {{quantity}} {{unit}}",
       "perUnit": "1単位あたり {{price}}",
       "stats": {
-        "value": "評価額",
         "inCurrency": "{{currency}}建て",
-        "price": "価格",
         "asOf": "{{when}}時点"
       },
       "tx": {
@@ -620,8 +609,6 @@
     },
     "watch": {
       "stats": {
-        "today": "本日",
-        "since": "フォロー開始以降",
         "noTarget": "目標未設定"
       },
       "above": "上回る",
@@ -648,7 +635,8 @@
       "tracking": "追跡する項目",
       "categories": "カテゴリ",
       "categoriesSub_other": "{{count}}件のカテゴリ",
-      "categorization": "自動分類"
+      "categorization": "自動分類",
+      "lockSub": "今すぐアプリをロックします"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "テレメトリなし",
@@ -942,5 +930,53 @@
       "stock_split": "分割 {{ratio}}"
     },
     "splitTrades_other": "調整する取引 {{count}}件"
+  },
+  "stat": {
+    "assets": "総資産",
+    "liabilities": "負債",
+    "freeCash": "使える現金",
+    "freeCashNote": "口座の残高",
+    "unrealizedGain": "含み益",
+    "unrealizedLoss": "含み損",
+    "dividends": "配当予想",
+    "returnYtd": "年初来収益",
+    "faceValue": "額面",
+    "yearlyCoupon": "年間クーポン",
+    "nextMaturity": "直近の満期",
+    "realized": "確定損益",
+    "largest": "最大の保有",
+    "changeYtd": "今年の増減",
+    "avgPerMonth": "月平均",
+    "yearlyInterest": "年間利息",
+    "today": "本日",
+    "target": "目標",
+    "sinceFollowing": "フォロー以降",
+    "value": "評価額",
+    "price": "価格",
+    "invested": "投資額",
+    "heldFor": "保有期間",
+    "quantity": "数量",
+    "avgPrice": "平均取得単価",
+    "yearlyYield": "年間の収益",
+    "imported": "取込済み",
+    "duplicates": "重複",
+    "errors": "エラー"
+  },
+  "statWide": {
+    "interest": "支払済みの利息",
+    "principal": "返済済みの元金",
+    "remaining": "残りの返済",
+    "fixation": "固定金利の終了",
+    "value": "評価額",
+    "equity": "自己資本",
+    "grossYield": "表面利回り",
+    "netCashflow": "純キャッシュフロー"
+  },
+  "period": {
+    "month": "{{amount}}/月",
+    "quarter": "{{amount}}/四半期",
+    "halfYear": "{{amount}}/半年",
+    "year": "{{amount}}/年",
+    "avgMonth": "平均 {{amount}}/月"
   }
 }

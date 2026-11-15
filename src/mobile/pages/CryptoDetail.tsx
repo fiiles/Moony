@@ -243,7 +243,7 @@ function CoinStats({
     ? fmt.day(firstBuy.transactionDate, shortDayOptions(firstBuy.transactionDate))
     : null;
   const sixth: StatItem = {
-    label: tcr('detail.held'),
+    label: t('stat.heldFor'),
     value: durationText ?? '—',
     note:
       since === null

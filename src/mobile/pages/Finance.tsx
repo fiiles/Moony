@@ -56,6 +56,8 @@ import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useFinance, type Finance as FinanceData } from '@/mobile/hooks/use-finance';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
+import { usePeriodText } from '@/mobile/hooks/use-period-text';
+import { periodUnit } from '@/mobile/lib/period-unit';
 import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useOpenWithIntent } from '@/mobile/hooks/use-row-intent';
@@ -71,12 +73,13 @@ import {
 import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { opensAddAccount } from '@/mobile/lib/getting-started';
-import { initials } from '@/mobile/lib/initials';
 import { effectiveType, policyTypes } from '@/mobile/lib/upcoming-premiums';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { accountPath, loanPath, policyPath, routes } from '@/mobile/shell/routes';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
+import { movesWithRates } from '@/mobile/lib/money-rule';
+import { AccountChip } from '@/mobile/components/finance/AccountChip';
 
 type AddKind = 'account' | 'loan' | 'policy';
 
@@ -171,6 +174,13 @@ export default function Finance() {
 
   // Every account that counts toward the total is in a currency without a rate: nothing to sum
   const countedAccounts = accounts.filter((a) => !a.excludeFromBalance);
+  // Accounts in another currency move the total with the rate: the change line says so (A8)
+  const fxTail = movesWithRates(
+    countedAccounts.map((a) => a.currency),
+    mainCurrency
+  )
+    ? ` · ${t('money.inclFx')}`
+    : '';
   const totalUnknown =
     countedAccounts.length > 0 &&
     countedAccounts.every((a) => totals.missing.includes(recordCurrency(a.currency)));
@@ -385,7 +395,7 @@ export default function Finance() {
                           text: `${moneyText(trendChange.delta, mainCurrency, {
                             signed: true,
                             decimals: 0,
-                          })} ${trendLabel}`,
+                          })} ${trendLabel}${fxTail}`,
                         }
                       : undefined
                   }
@@ -406,12 +416,13 @@ export default function Finance() {
                     change
                       ? {
                           ratio: change.ratio,
-                          text: t('finance.change30', {
-                            amount: moneyText(change.delta, mainCurrency, {
-                              signed: true,
-                              decimals: 0,
-                            }),
-                          }),
+                          text:
+                            t('finance.change30', {
+                              amount: moneyText(change.delta, mainCurrency, {
+                                signed: true,
+                                decimals: 0,
+                              }),
+                            }) + fxTail,
                         }
                       : undefined
                   }
@@ -562,11 +573,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
     return (
       <EntityRow
         key={account.id}
-        chip={
-          <RowChip>
-            {initials(sub.institution ?? account.name) || <Landmark strokeWidth={1.75} />}
-          </RowChip>
-        }
+        chip={<AccountChip type={account.accountType} />}
         title={
           <>
             {account.name}
@@ -677,7 +684,7 @@ function LoansSection({
               row.matured
                 ? t('loans:table.matured')
                 : (approx(row.outstanding, row.currency) ??
-                  t('finance.perMonth', {
+                  t('period.month', {
                     amount: moneyText(row.payment, row.currency, { decimals: 0 }),
                   }))
             }
@@ -716,6 +723,7 @@ function PoliciesSection({
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const periodText = usePeriodText();
   const approx = useApprox();
   const { t: tc } = useTranslation('common');
   const openWith = useOpenWithIntent();
@@ -726,7 +734,7 @@ function PoliciesSection({
     <section>
       <SectionHead
         title={t('finance.sections.insurance')}
-        note={t('insurance:table.footer.yearly', {
+        note={t('period.year', {
           amount: moneyText(insurance.metrics.yearlyTotal, mainCurrency, { decimals: 0 }),
         })}
       />
@@ -743,16 +751,12 @@ function PoliciesSection({
                 </RowChip>
               }
               title={row.policy.policyName}
-              // The provider gives way, the frequency stays (C1)
-              sub={
-                <SubFacts
-                  lead={row.policy.provider}
-                  tail={row.frequency && t(`insurance:frequencyShort.${row.frequency}`)}
-                />
-              }
-              value={moneyText(row.premiumNative.amount, row.premiumNative.currency, {
-                decimals: 0,
-              })}
+              sub={row.policy.provider}
+              // The premium with its period next to it, "2 270 Kč / měs." (C6)
+              value={periodText(
+                moneyText(row.premiumNative.amount, row.premiumNative.currency, { decimals: 0 }),
+                periodUnit(row.frequency)
+              )}
               // A premium in another currency: its "≈" comes before the next payment's day,
               // which "Nejbližší platby" under the policies lists (README §13)
               valueSub={

@@ -44,8 +44,8 @@ export function LoanAfterFixation({ row, stats }: { row: LoanRow; stats: LoanDet
                     )}`,
                   })
             }
-            value={moneyText(scenario.payment, row.currency, WHOLE)}
-            valueSub={t('loan.afterFixation.perMonth')}
+            // The payment with its period next to it (C6)
+            value={t('period.month', { amount: moneyText(scenario.payment, row.currency, WHOLE) })}
           />
         ))}
       </EntityRows>

@@ -23,7 +23,8 @@
   },
   "money": {
     "approx": "≈ {{amount}}",
-    "noRate": "no rate for {{currency}}"
+    "noRate": "no rate for {{currency}}",
+    "inclFx": "incl. FX"
   },
   "cashflow": {
     "shareOfExpenses": "{{share}} of expenses",
@@ -144,7 +145,6 @@
       "staleBalance_one": "balance {{count}} day old",
       "staleBalance_other": "balance {{count}} days old"
     },
-    "perMonth": "{{amount}} / mo",
     "nextPayment": "next payment {{date}}",
     "menu": {
       "sort": "Sort",
@@ -221,11 +221,6 @@
     "addTx": {
       "noCategorySub": "You can categorize it later"
     },
-    "stats": {
-      "changeThisYear": "Change this year",
-      "avgPerMonth": "Average per month",
-      "yearlyInterest": "Yearly interest"
-    },
     "flows": {
       "title": "Flows"
     },
@@ -301,8 +296,7 @@
       "title": "After the fixed rate ends",
       "rate": "At {{rate}}",
       "current": "today’s rate",
-      "delta": "{{delta}} pp",
-      "perMonth": "monthly payment"
+      "delta": "{{delta}} pp"
     },
     "legend": {
       "tapHint": "Tap a mark to see what happened."
@@ -345,13 +339,11 @@
   "property": {
     "notFound": "This property no longer exists.",
     "ltv": "LTV {{ltv}}",
-    "rentYear": "{{rent}} a year",
     "perYear": "a year",
-    "loanPayment": "payment {{amount}} / mo",
+    "loanPayment": "payment {{amount}}",
     "rowMenu": "More actions: {{name}}",
     "costKindRecurring": "Recurring",
     "costKindOneTime": "One-time",
-    "costYear": "{{amount}} a year",
     "costCurrent": "Currently {{amount}}",
     "costDateInFuture": "The date of a cost can't be in the future.",
     "costNameRequired": "Enter a name for the cost.",
@@ -548,7 +540,7 @@
       "count_one": "{{count}} issue",
       "count_other": "{{count}} issues",
       "nearest": "nearest maturity {{month}}",
-      "coupon": "coupon {{amount}} / year",
+      "coupon": "coupon {{amount}}",
       "upcoming": "Next coupons and maturities",
       "noUpcoming": "No coupon or maturity in the coming year.",
       "allRepaid": "Every issue is repaid. Turn on “{{action}}” in the ··· menu to see them.",
@@ -568,7 +560,7 @@
     "realEstate": {
       "personal": "personal",
       "investment": "investment",
-      "rent": "rent {{amount}} / month",
+      "rent": "rent {{amount}}",
       "revaluedOn": "valued {{date}}"
     },
     "empty": {
@@ -593,7 +585,6 @@
       "pricesOn": "prices {{date}}",
       "invested": "invested {{amount}}",
       "yieldNote": "yield {{percent}}",
-      "twrYtd": "Return this year",
       "twrNote": "TWR · MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "no history yet",
@@ -617,7 +608,7 @@
       "target": "target {{price}}",
       "targetReached": "target reached",
       "dayChange": "today",
-      "realizedShort": "realized {{amount}}"
+      "watchedTabPlain": "Watched"
     },
     "crypto": {
       "largestNote": "{{share}} of crypto",
@@ -632,9 +623,7 @@
       "heroLabel": "Position value · {{quantity}} {{unit}}",
       "perUnit": "{{price}} per unit",
       "stats": {
-        "value": "Value",
         "inCurrency": "in {{currency}}",
-        "price": "Price",
         "asOf": "as of {{when}}"
       },
       "tx": {
@@ -657,8 +646,6 @@
     },
     "watch": {
       "stats": {
-        "today": "Today",
-        "since": "Since following",
         "noTarget": "no target set"
       },
       "above": "Above",
@@ -686,7 +673,8 @@
       "categories": "Categories",
       "categoriesSub_one": "{{count}} category",
       "categoriesSub_other": "{{count}} categories",
-      "categorization": "Categorization"
+      "categorization": "Categorization",
+      "lockSub": "Locks the app right away"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "no telemetry",
@@ -992,5 +980,53 @@
     },
     "splitTrades_one": "{{count}} trade to adjust",
     "splitTrades_other": "{{count}} trades to adjust"
+  },
+  "stat": {
+    "assets": "Total assets",
+    "liabilities": "Liabilities",
+    "freeCash": "Free cash",
+    "freeCashNote": "in accounts",
+    "unrealizedGain": "Unrealized",
+    "unrealizedLoss": "Unrealized",
+    "dividends": "Dividends",
+    "returnYtd": "Return YTD",
+    "faceValue": "Face value",
+    "yearlyCoupon": "Yearly coupon",
+    "nextMaturity": "Next maturity",
+    "realized": "Realized",
+    "largest": "Largest",
+    "changeYtd": "Change YTD",
+    "avgPerMonth": "Average / mo",
+    "yearlyInterest": "Interest / yr",
+    "today": "Today",
+    "target": "Target",
+    "sinceFollowing": "Since added",
+    "value": "Value",
+    "price": "Price",
+    "invested": "Invested",
+    "heldFor": "Held for",
+    "quantity": "Quantity",
+    "avgPrice": "Average price",
+    "yearlyYield": "Yearly yield",
+    "imported": "Imported",
+    "duplicates": "Duplicates",
+    "errors": "Errors"
+  },
+  "statWide": {
+    "interest": "Interest paid",
+    "principal": "Principal repaid",
+    "remaining": "Payments left",
+    "fixation": "Fixed rate ends",
+    "value": "Value",
+    "equity": "Equity",
+    "grossYield": "Gross yield",
+    "netCashflow": "Net cashflow"
+  },
+  "period": {
+    "month": "{{amount}} / mo",
+    "quarter": "{{amount}} / qtr",
+    "halfYear": "{{amount}} / half-year",
+    "year": "{{amount}} / yr",
+    "avgMonth": "⌀ {{amount}} / mo"
   }
 }

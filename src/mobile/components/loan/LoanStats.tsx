@@ -31,7 +31,7 @@ export function LoanStats({ row, stats, today }: LoanStatsProps) {
   const lastDue = trajectory.upcoming[trajectory.upcoming.length - 1]?.dueDay ?? null;
 
   const interest = {
-    label: tl('detail.stats.interest'),
+    label: t('statWide.interest'),
     value: money(stats.interestPaid),
     note: stats.started
       ? t('loan.stats.since', { month: text.monthYear(stats.startDay) })
@@ -39,7 +39,7 @@ export function LoanStats({ row, stats, today }: LoanStatsProps) {
   };
 
   const principal = {
-    label: tl('detail.stats.principal'),
+    label: t('statWide.principal'),
     value: money(stats.principalRepaid),
     note: [
       fmt.percent(stats.repaidShare, 0),
@@ -65,7 +65,7 @@ export function LoanStats({ row, stats, today }: LoanStatsProps) {
       : tl('detail.stats.remainingNone');
   })();
   const remaining = {
-    label: tl('detail.stats.remaining'),
+    label: t('statWide.remaining'),
     value: stats.remaining !== null ? fmt.number(stats.remaining) : '—',
     note: remainingNote,
   };
@@ -73,10 +73,11 @@ export function LoanStats({ row, stats, today }: LoanStatsProps) {
   // The fixation still ahead; one that has ended (the validity day is today or past) says so; a
   // loan without a validity date has a fixed rate, as the Finance list words it
   const fixation = {
-    label: tl('detail.stats.fixation'),
+    label: t('statWide.fixation'),
     ...(stats.fixationEnd !== null
       ? {
-          value: text.monthYear(stats.fixationEnd),
+          // A month standing alone is a word ("Srpen 2029"); in a sentence it stays numeric (C5)
+          value: fmt.month(new Date(stats.fixationEnd * 1000)),
           // One short note; the payments at other rates are their own section (D13)
           note: t('loan.stats.fixationIn', {
             duration: text.months(monthsAhead(today, stats.fixationEnd)),
@@ -84,7 +85,7 @@ export function LoanStats({ row, stats, today }: LoanStatsProps) {
         }
       : stats.fixationEnded !== null
         ? {
-            value: text.monthYear(stats.fixationEnded),
+            value: fmt.month(new Date(stats.fixationEnded * 1000)),
             note: tl('table.fixationEnded', { month: text.monthYear(stats.fixationEnded) }),
           }
         : { value: '—', note: tl('table.fixedRate') }),

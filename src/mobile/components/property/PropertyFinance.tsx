@@ -15,6 +15,8 @@ import { usePropertyMutations } from '@/mobile/hooks/use-property-mutations';
 import { policyPremium } from '@/mobile/lib/property-detail';
 import { loanPath, policyPath } from '@/mobile/shell/routes';
 import { LinkSheet } from '@/mobile/sheets/LinkSheet';
+import { usePeriodText } from '@/mobile/hooks/use-period-text';
+import { periodUnit } from '@/mobile/lib/period-unit';
 
 /** Whole amounts: the rows show no decimals. */
 const WHOLE = { decimals: 0 } as const;
@@ -48,6 +50,7 @@ export function PropertyFinance({
   const { t: tr } = useTranslation('realEstate');
   const { t: ti } = useTranslation('insurance');
   const moneyText = useMoneyText();
+  const periodText = usePeriodText();
   const { link, unlink } = usePropertyMutations(property.id);
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -115,7 +118,9 @@ export function PropertyFinance({
                 }
                 title={loan.name}
                 sub={t('property.loanPayment', {
-                  amount: moneyText(Number(loan.monthlyPayment) || 0, code, WHOLE),
+                  amount: t('period.month', {
+                    amount: moneyText(Number(loan.monthlyPayment) || 0, code, WHOLE),
+                  }),
                 })}
                 value={moneyText(Number(loan.outstandingBalance) || 0, code, WHOLE)}
                 href={loanPath(loan.id)}
@@ -148,10 +153,16 @@ export function PropertyFinance({
                 }
                 title={policy.policyName}
                 sub={policy.provider}
-                value={moneyText(premium.amount, premium.currency, WHOLE)}
+                // The premium with its period next to it, as on Finance (C6)
+                value={periodText(
+                  moneyText(premium.amount, premium.currency, WHOLE),
+                  periodUnit(premium.frequency)
+                )}
                 valueSub={
                   premium.frequency
-                    ? ti(`frequencyShort.${premium.frequency}`)
+                    ? periodUnit(premium.frequency) === null
+                      ? ti(`frequencyShort.${premium.frequency}`)
+                      : undefined
                     : policy.paymentFrequency
                 }
                 href={policyPath(policy.id)}

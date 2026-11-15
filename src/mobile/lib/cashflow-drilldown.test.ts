@@ -31,7 +31,7 @@ const NO_CHANGES: ReadonlyMap<string, string | null> = new Map();
 const day = (bookingDate: number) => `day ${bookingDate}`;
 
 describe('drilldownRows', () => {
-  it('titles a row by its counterparty and adds the first detail after the account', () => {
+  it('titles a row by its counterparty, with the day and the account under it (no note)', () => {
     const [row] = drilldownRows(
       [
         tx({
@@ -45,18 +45,29 @@ describe('drilldownRows', () => {
       day
     );
     expect(row.title).toBe('Albert');
-    expect(row.sub).toEqual([`day ${tx().bookingDate}`, 'Běžný účet', 'Nákup potravin']);
+    expect(row.sub).toEqual([`day ${tx().bookingDate}`, 'Běžný účet']);
   });
 
-  it('titles a row without a name by the counterparty account', () => {
+  it('titles a row without a name by its description before the counterparty account', () => {
     const [row] = drilldownRows(
       [tx({ counterpartyIban: 'CZ6508000000192000145399' })],
       NO_CHANGES,
       'cat_x',
       day
     );
+    expect(row.title).toBe('Nákup potravin');
+    expect(row.sub).toEqual([`day ${tx().bookingDate}`, 'Běžný účet']);
+  });
+
+  it('titles a row without a name or a description by the counterparty account', () => {
+    const [row] = drilldownRows(
+      [tx({ description: null, counterpartyIban: 'CZ6508000000192000145399' })],
+      NO_CHANGES,
+      'cat_x',
+      day
+    );
     expect(row.title).toBe('19-2000145399/0800');
-    expect(row.sub).toEqual([`day ${tx().bookingDate}`, 'Běžný účet', 'Nákup potravin']);
+    expect(row.sub).toEqual([`day ${tx().bookingDate}`, 'Běžný účet']);
   });
 
   it('titles a row without a counterparty by its description, with no detail in the sub', () => {

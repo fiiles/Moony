@@ -26,7 +26,6 @@ interface PropertyStatsProps {
 export function PropertyStats({ row, balance, currency }: PropertyStatsProps) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('realEstate');
-  const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const items = propertyStatItems(row, balance);
@@ -37,7 +36,7 @@ export function PropertyStats({ row, balance, currency }: PropertyStatsProps) {
   // The direction of the share as it is written (one decimal), as the desktop's badge
   const direction = changeDirection(appreciation, 1);
   const valueStat: StatItem = {
-    label: tc('labels.value'),
+    label: t('statWide.value'),
     value:
       value.amount !== null
         ? money(value.amount)
@@ -57,7 +56,7 @@ export function PropertyStats({ row, balance, currency }: PropertyStatsProps) {
   };
 
   const equityStat: StatItem = {
-    label: tr('detail.heroEquity'),
+    label: t('statWide.equity'),
     value: equity.amount !== null ? money(equity.amount) : '—',
     note: equity.hasLoan
       ? t('property.ltv', { ltv: equity.ltv !== null ? fmt.percent(equity.ltv, 0) : '—' })
@@ -65,11 +64,11 @@ export function PropertyStats({ row, balance, currency }: PropertyStatsProps) {
   };
 
   const yieldStat: StatItem = {
-    label: tr('detail.stats.grossYield'),
+    label: t('statWide.grossYield'),
     value: gross.ratio !== null ? fmt.percent(gross.ratio, 1) : '—',
     note: gross.rent
-      ? t('property.rentYear', {
-          rent:
+      ? t('period.year', {
+          amount:
             gross.rent.main !== null
               ? money(gross.rent.main)
               : money(gross.rent.native.amount, gross.rent.native.currency),
@@ -78,7 +77,7 @@ export function PropertyStats({ row, balance, currency }: PropertyStatsProps) {
   };
 
   const cashflowStat: StatItem = {
-    label: tr('detail.stats.cashflow'),
+    label: t('statWide.netCashflow'),
     value:
       cashflow.amount !== null
         ? moneyText(cashflow.amount, currency, { signed: true, ...WHOLE })

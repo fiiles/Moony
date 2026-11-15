@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { Info, Landmark, Tag } from 'lucide-react';
+import { Info, Tag } from 'lucide-react';
+import { useCategories } from '@/hooks/use-categories';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
-import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
+import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
+import { CategoryChip } from './CategoryChip';
 import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
-import { initials } from '@/mobile/lib/initials';
 import { signedAmountText } from '@/mobile/lib/signed-amount';
 import type { DrilldownRow as DrilldownRowData } from '@/mobile/lib/cashflow-drilldown';
 
@@ -17,7 +18,8 @@ interface DrilldownRowProps {
 }
 
 /**
- * One payment as an entity row: initials chip (green for a credit), who and what, the exact amount
+ * One payment as an entity row, as every payment row (README §13, "Transactions"): the chip of the
+ * category it has now (a change made here shows at once), its title, the exact amount
  * in its own currency ("− 129,90 Kč", as every list of payments writes it) and, when that is not
  * the report currency, "≈" its worth in it (README §13, "Money and currencies"; "bez kurzu pro
  * EUR" when it could not be converted). A moved row is dimmed and says
@@ -29,7 +31,9 @@ export function DrilldownTransactionRow({ row, onOpen, onCategorize }: Drilldown
   const { t: tr } = useTranslation('reports');
   const moneyText = useMoneyText();
   const approx = useApprox();
+  const { categories } = useCategories();
   const { tx, credit } = row;
+  const category = categories.find((candidate) => candidate.id === row.categoryId);
   // The marker leads: the sub-line ends in an ellipsis when it is too long, and "přesunuto" is
   // the one sign of a moved row that is not its dimming
   const sub = (row.moved ? [tr('readiness.moved'), ...row.sub] : row.sub).join(' · ');
@@ -41,11 +45,7 @@ export function DrilldownTransactionRow({ row, onOpen, onCategorize }: Drilldown
 
   return (
     <EntityRow
-      chip={
-        <RowChip tone={credit ? 'gain' : 'default'}>
-          {initials(row.title) || <Landmark strokeWidth={1.75} />}
-        </RowChip>
-      }
+      chip={<CategoryChip category={category} />}
       title={row.title}
       sub={sub}
       value={signedAmountText(moneyText, {

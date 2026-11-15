@@ -50,6 +50,7 @@ import { NavIconButton } from '@/mobile/shell/NavBar';
 import { propertyPath, routes } from '@/mobile/shell/routes';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
+import { LineSkeleton } from '@/mobile/components/LineSkeleton';
 
 /** Whole amounts: Majetek shows no decimals. */
 const WHOLE = { decimals: 0 } as const;
@@ -160,6 +161,7 @@ export default function Wealth() {
                           options={{ signed: true, ...WHOLE }}
                         />{' '}
                         {changeLabel}
+                        {wealth.movesWithRates && ` · ${t('money.inclFx')}`}
                       </>
                     ),
                   }
@@ -218,8 +220,10 @@ function InvestmentSection({
   const rowFor = (cls: InvestmentClass) => {
     const { icon: Icon, href, add } = INVESTMENT_ROWS[cls];
     const { value, unknown, change } = classes[cls];
-    const { records } = wealth[cls === 'investments' ? 'stocks' : cls];
-    const state = classRowState({ records, value, unknown });
+    const { records, loading } = wealth[cls === 'investments' ? 'stocks' : cls];
+    // Until the class's list has answered, its row is held, not empty (E1): the total is the
+    // hero's, the count and names stand in outline
+    const state = classRowState({ records, value, unknown, loading });
     const common = {
       chip: (
         <RowChip>
@@ -258,45 +262,55 @@ function InvestmentSection({
     ) : undefined;
     let sub: ReactNode;
     let valueSub: ReactNode;
-    switch (cls) {
-      case 'investments':
-        sub = positions(wealth.stocks.count, wealth.stocks.tickers);
-        valueSub = changeLine;
-        break;
-      case 'crypto':
-        sub = positions(wealth.crypto.count, wealth.crypto.tickers);
-        valueSub = changeLine;
-        break;
-      case 'bonds': {
-        const { count, nearestMaturity, yearlyCoupon } = wealth.bonds;
-        sub = (
-          <SubFacts
-            mode="drop"
-            lead={t('wealth.bonds.count', { count })}
-            tail={
-              nearestMaturity !== null &&
-              t('wealth.bonds.nearest', {
-                month: fmt.monthInSentence(new Date(nearestMaturity * 1000)),
-              })
-            }
-          />
-        );
-        valueSub =
-          yearlyCoupon > 0 ? t('wealth.bonds.coupon', { amount: money(yearlyCoupon) }) : undefined;
-        break;
+    if (loading) {
+      sub = <LineSkeleton />;
+      valueSub = changeLine;
+    } else
+      switch (cls) {
+        case 'investments':
+          sub = positions(wealth.stocks.count, wealth.stocks.tickers);
+          valueSub = changeLine;
+          break;
+        case 'crypto':
+          sub = positions(wealth.crypto.count, wealth.crypto.tickers);
+          valueSub = changeLine;
+          break;
+        case 'bonds': {
+          const { count, nearestMaturity, yearlyCoupon } = wealth.bonds;
+          sub = (
+            <SubFacts
+              mode="drop"
+              lead={t('wealth.bonds.count', { count })}
+              tail={
+                nearestMaturity !== null &&
+                t('wealth.bonds.nearest', {
+                  month: fmt.monthInSentence(new Date(nearestMaturity * 1000)),
+                })
+              }
+            />
+          );
+          valueSub =
+            yearlyCoupon > 0
+              ? t('wealth.bonds.coupon', {
+                  amount: t('period.year', { amount: money(yearlyCoupon) }),
+                })
+              : undefined;
+          break;
+        }
+        case 'otherAssets': {
+          const { count, names, valuedAt } = wealth.otherAssets;
+          sub = (
+            <SubFacts mode="drop" lead={t('wealth.otherAssets.count', { count })} tail={names} />
+          );
+          valueSub =
+            valuedAt !== null
+              ? t('wealth.otherAssets.valuedOn', {
+                  date: fmt.day(valuedAt, shortDayOptions(valuedAt)),
+                })
+              : undefined;
+          break;
+        }
       }
-      case 'otherAssets': {
-        const { count, names, valuedAt } = wealth.otherAssets;
-        sub = <SubFacts mode="drop" lead={t('wealth.otherAssets.count', { count })} tail={names} />;
-        valueSub =
-          valuedAt !== null
-            ? t('wealth.otherAssets.valuedOn', {
-                date: fmt.day(valuedAt, shortDayOptions(valuedAt)),
-              })
-            : undefined;
-        break;
-      }
-    }
     return (
       <EntityRow
         key={cls}
@@ -334,8 +348,18 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
   const approx = useApprox();
   const openWith = useOpenWithIntent();
   const { user } = useAuth();
-  const { reportCurrency, classes, properties } = wealth;
-  if (!(user?.menuPreferences?.realEstate ?? true) || properties.length === 0) return null;
+  const { reportCurrency, classes, properties, propertiesLoading } = wealth;
+  if (!(user?.menuPreferences?.realEstate ?? true)) return null;
+  // While the list is read, a section the hero says holds something stands in outline (E1)
+  if (propertiesLoading) {
+    return classes.realEstate.value > 0 || classes.realEstate.unknown ? (
+      <section aria-busy="true">
+        <SectionHead title={t('wealth.sections.realEstate')} />
+        <RowsSkeleton count={1} />
+      </section>
+    ) : null;
+  }
+  if (properties.length === 0) return null;
   const excludePersonal = user?.excludePersonalRealEstate ?? false;
 
   return (
@@ -360,7 +384,9 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
           const sub =
             rent > 0
               ? t('wealth.realEstate.rent', {
-                  amount: moneyText(rent, recordCurrency(property.monthlyRentCurrency), WHOLE),
+                  amount: t('period.month', {
+                    amount: moneyText(rent, recordCurrency(property.monthlyRentCurrency), WHOLE),
+                  }),
                 })
               : t(`wealth.realEstate.${property.type === 'personal' ? 'personal' : 'investment'}`);
           return (
@@ -436,7 +462,7 @@ function CashSection({ wealth }: { wealth: WealthData }) {
             </RowChip>
           }
           title={t('wealth.cash.title')}
-          sub={t('upkeep.accounts', { count: cash.accounts })}
+          sub={cash.loading ? <LineSkeleton /> : t('upkeep.accounts', { count: cash.accounts })}
           value={shown}
           // The same 30 days as the investment rows, said in the section head (D23)
           valueSub={
@@ -479,6 +505,26 @@ function EmptyWealth() {
   );
 }
 
+/** Rows in outline: a card of `count` rows, as a section stands while its list is read. */
+function RowsSkeleton({ count }: { count: number }) {
+  return (
+    <div
+      aria-hidden
+      className="mb-3.5 overflow-hidden rounded-r4 border border-line bg-paper shadow-e1"
+    >
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="flex min-h-[60px] items-center gap-3 px-3.5 py-2.5">
+          <div className="skeleton size-9 flex-none rounded-full" />
+          <div className="min-w-0 flex-1">
+            <div className="skeleton h-3.5 w-2/5" />
+            <div className="skeleton mt-2 h-3 w-3/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** While the metrics settle: the hero and three rows in outline. */
 function WealthSkeleton() {
   return (
@@ -489,17 +535,7 @@ function WealthSkeleton() {
         <div className="skeleton mt-3 h-3 w-40" />
         <div className="skeleton mt-4 h-2 w-full" />
       </div>
-      <div className="mb-3.5 overflow-hidden rounded-r4 border border-line bg-paper shadow-e1">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="flex min-h-[60px] items-center gap-3 px-3.5 py-2.5">
-            <div className="skeleton size-9 flex-none rounded-full" />
-            <div className="min-w-0 flex-1">
-              <div className="skeleton h-3.5 w-2/5" />
-              <div className="skeleton mt-2 h-3 w-3/5" />
-            </div>
-          </div>
-        ))}
-      </div>
+      <RowsSkeleton count={3} />
     </div>
   );
 }

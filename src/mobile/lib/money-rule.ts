@@ -56,3 +56,19 @@ export function approxOf(args: {
   if (Math.round(Math.abs(converted) * scale) === 0) return { kind: 'none' };
   return { kind: 'approx', value: converted };
 }
+
+/**
+ * Whether a total in `main` moves with exchange rates (audit 2026-11-15 A8): something in it is
+ * held in another currency, so its change line says "vč. kurzu" — a rise of the rate is not money
+ * that came in. Blank currencies (not known) count as none.
+ */
+export function movesWithRates(
+  currencies: readonly (string | null | undefined)[],
+  main: string
+): boolean {
+  const own = main.trim().toUpperCase();
+  return currencies.some((currency) => {
+    const code = currency?.trim().toUpperCase();
+    return !!code && code !== own;
+  });
+}

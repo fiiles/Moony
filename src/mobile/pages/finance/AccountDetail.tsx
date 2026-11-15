@@ -739,7 +739,7 @@ function BalanceStats({
   const stats: StatItem[] = [];
   if (thisYear) {
     stats.push({
-      label: t('account.stats.changeThisYear'),
+      label: t('stat.changeYtd'),
       value: signed0(thisYear.delta),
       note: tb('balanceStats.vsRecordAt', { date: fmt.day(thisYear.baseDay) }),
     });
@@ -747,7 +747,7 @@ function BalanceStats({
   // One month's change is no average (D10)
   if (avg && hasMonthlyAverage(avg)) {
     stats.push({
-      label: t('account.stats.avgPerMonth'),
+      label: t('stat.avgPerMonth'),
       value: signed0(avg.perMonth),
       note: avg.sinceFirst
         ? tb('balanceStats.sinceFirstRecord', { count: avg.months })
@@ -756,7 +756,7 @@ function BalanceStats({
   }
   if (zoned || simpleRate > 0) {
     stats.push({
-      label: t('account.stats.yearlyInterest'),
+      label: t('stat.yearlyInterest'),
       value: moneyText(yearlyInterest, currency, { decimals: 0 }),
       note: zoned
         ? tb('balanceStats.effectiveZoned', {

@@ -23,7 +23,8 @@
   },
   "money": {
     "approx": "≈ {{amount}}",
-    "noRate": "nessun cambio per {{currency}}"
+    "noRate": "nessun cambio per {{currency}}",
+    "inclFx": "incl. cambio"
   },
   "cashflow": {
     "shareOfExpenses": "{{share}} delle uscite",
@@ -157,7 +158,6 @@
       "staleBalance_many": "saldo di {{count}} giorni fa",
       "staleBalance_other": "saldo di {{count}} giorni fa"
     },
-    "perMonth": "{{amount}} / mese",
     "nextPayment": "prossimo pagamento {{date}}",
     "menu": {
       "sort": "Ordina",
@@ -241,11 +241,6 @@
     "addTx": {
       "noCategorySub": "Potrai categorizzarla più tardi"
     },
-    "stats": {
-      "changeThisYear": "Variazione quest'anno",
-      "avgPerMonth": "Media mensile",
-      "yearlyInterest": "Interessi annui"
-    },
     "flows": {
       "title": "Flussi"
     },
@@ -325,8 +320,7 @@
       "title": "Dopo il tasso fisso",
       "rate": "Al {{rate}}",
       "current": "tasso attuale",
-      "delta": "{{delta}} p.p.",
-      "perMonth": "rata mensile"
+      "delta": "{{delta}} p.p."
     },
     "legend": {
       "tapHint": "Tocca un segno per vedere cosa è successo."
@@ -370,13 +364,11 @@
   "property": {
     "notFound": "Questo immobile non esiste più.",
     "ltv": "LTV {{ltv}}",
-    "rentYear": "{{rent}} all'anno",
     "perYear": "all'anno",
-    "loanPayment": "rata {{amount}} / mese",
+    "loanPayment": "rata {{amount}}",
     "rowMenu": "Altre azioni: {{name}}",
     "costKindRecurring": "Ricorrente",
     "costKindOneTime": "Una tantum",
-    "costYear": "{{amount}} all'anno",
     "costCurrent": "Attualmente {{amount}}",
     "costDateInFuture": "La data di un costo non può essere futura.",
     "costNameRequired": "Inserisci un nome per il costo.",
@@ -582,7 +574,7 @@
       "count_many": "{{count}} emissioni",
       "count_other": "{{count}} emissioni",
       "nearest": "prossima scadenza {{month, lower}}",
-      "coupon": "cedola {{amount}} / anno",
+      "coupon": "cedola {{amount}}",
       "upcoming": "Prossime cedole e scadenze",
       "noUpcoming": "Nel prossimo anno non sono previste cedole né scadenze.",
       "allRepaid": "Tutte le emissioni sono rimborsate. Attiva «{{action}}» nel menu ··· per vederle.",
@@ -603,7 +595,7 @@
     "realEstate": {
       "personal": "uso personale",
       "investment": "investimento",
-      "rent": "affitto {{amount}} / mese",
+      "rent": "affitto {{amount}}",
       "revaluedOn": "valutato il {{date}}"
     },
     "empty": {
@@ -628,7 +620,6 @@
       "pricesOn": "prezzi {{date}}",
       "invested": "investito {{amount}}",
       "yieldNote": "rendimento {{percent}}",
-      "twrYtd": "Rendimento quest'anno",
       "twrNote": "TWR · MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "ancora nessuno storico",
@@ -653,7 +644,7 @@
       "target": "obiettivo {{price}}",
       "targetReached": "obiettivo raggiunto",
       "dayChange": "oggi",
-      "realizedShort": "realizzati {{amount}}"
+      "watchedTabPlain": "Osservate"
     },
     "crypto": {
       "largestNote": "{{share}} delle cripto",
@@ -668,9 +659,7 @@
       "heroLabel": "Valore della posizione · {{quantity}} {{unit}}",
       "perUnit": "{{price}} per unità",
       "stats": {
-        "value": "Valore",
         "inCurrency": "in {{currency}}",
-        "price": "Prezzo",
         "asOf": "al {{when}}"
       },
       "tx": {
@@ -694,8 +683,6 @@
     },
     "watch": {
       "stats": {
-        "today": "Oggi",
-        "since": "Da quando segui",
         "noTarget": "nessun obiettivo"
       },
       "above": "Sopra",
@@ -724,7 +711,8 @@
       "categoriesSub_one": "{{count}} categoria",
       "categoriesSub_many": "{{count}} categorie",
       "categoriesSub_other": "{{count}} categorie",
-      "categorization": "Categorizzazione"
+      "categorization": "Categorizzazione",
+      "lockSub": "Blocca subito l'app"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "nessuna telemetria",
@@ -1042,5 +1030,53 @@
     "splitTrades_one": "{{count}} operazione da adeguare",
     "splitTrades_many": "{{count}} operazioni da adeguare",
     "splitTrades_other": "{{count}} operazioni da adeguare"
+  },
+  "stat": {
+    "assets": "Attività totali",
+    "liabilities": "Passività",
+    "freeCash": "Liquidità",
+    "freeCashNote": "sui conti",
+    "unrealizedGain": "Non realizzato",
+    "unrealizedLoss": "Non realizzato",
+    "dividends": "Dividendi",
+    "returnYtd": "Resa YTD",
+    "faceValue": "Nominale",
+    "yearlyCoupon": "Cedola annua",
+    "nextMaturity": "Scadenza",
+    "realized": "Realizzato",
+    "largest": "La maggiore",
+    "changeYtd": "Variaz. YTD",
+    "avgPerMonth": "Media / mese",
+    "yearlyInterest": "Interessi annui",
+    "today": "Oggi",
+    "target": "Obiettivo",
+    "sinceFollowing": "Dall'inizio",
+    "value": "Valore",
+    "price": "Prezzo",
+    "invested": "Investito",
+    "heldFor": "Detenuta da",
+    "quantity": "Quantità",
+    "avgPrice": "Prezzo medio",
+    "yearlyYield": "Rendita annua",
+    "imported": "Importati",
+    "duplicates": "Duplicati",
+    "errors": "Errori"
+  },
+  "statWide": {
+    "interest": "Interessi pagati",
+    "principal": "Capitale rimborsato",
+    "remaining": "Rate rimanenti",
+    "fixation": "Fine del tasso fisso",
+    "value": "Valore",
+    "equity": "Capitale proprio",
+    "grossYield": "Rendimento lordo",
+    "netCashflow": "Flusso di cassa netto"
+  },
+  "period": {
+    "month": "{{amount}} / mese",
+    "quarter": "{{amount}} / trimestre",
+    "halfYear": "{{amount}} / semestre",
+    "year": "{{amount}} / anno",
+    "avgMonth": "⌀ {{amount}} / mese"
   }
 }

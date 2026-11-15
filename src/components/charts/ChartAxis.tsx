@@ -20,7 +20,8 @@ interface TimeAxisProps {
 
 /**
  * Time axis under a chart (design system §8): evenly spaced labels in
- * `chart-axis` 10 px, "2. 10." for short spans, "zář 26" for long ones.
+ * `chart-axis` 10 px, "2. 10." for short spans, "zář 26" for long ones (the phone: "9/2026",
+ * `fmt.axisMonth`).
  */
 export function TimeAxis({ t0, t1, count = 5, gutter = AXIS_WIDTH, className }: TimeAxisProps) {
   const fmt = useFormat();
@@ -30,9 +31,7 @@ export function TimeAxis({ t0, t1, count = 5, gutter = AXIS_WIDTH, className }: 
   const today = utcDayFloor(Date.now() / 1000);
   const label = (stamp: number, isLast: boolean) => {
     if (isLast && utcDayFloor(stamp) === today) return t('charts.today');
-    return short
-      ? fmt.day(stamp, { day: 'numeric', month: 'numeric' })
-      : fmt.day(stamp, { month: 'short', year: '2-digit' });
+    return short ? fmt.day(stamp, { day: 'numeric', month: 'numeric' }) : fmt.axisMonth(stamp);
   };
   return (
     <div

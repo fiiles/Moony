@@ -16,6 +16,7 @@ import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
  */
 // eslint-disable-next-line react-refresh/only-export-components -- the stock's sixth stat lives with the stats it completes
 export function useDividendStat(holding: StockRow, reportCurrency: string): StatItem {
+  const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
   const fmt = useFormat();
   const moneyText = useMoneyText();
@@ -32,7 +33,7 @@ export function useDividendStat(holding: StockRow, reportCurrency: string): Stat
           ),
         });
   return {
-    label: ts('summary.estimatedDividend'),
+    label: t('stat.dividends'),
     value:
       dividend === null
         ? '—'
@@ -105,24 +106,24 @@ export function PositionStats({
 
   const first: StatItem[] = [
     {
-      label: t('wealth.position.stats.value'),
+      label: t('stat.value'),
       value: priced ? statMoney(holding.quantity * nativePrice, stockCurrency) : '—',
       note: stampNote,
     },
     {
-      label: t('wealth.position.stats.price'),
+      label: t('stat.price'),
       value: price,
       note: priced ? approx(nativePrice, stockCurrency) : undefined,
     },
     {
-      label: ts('detail.invested'),
+      label: t('stat.invested'),
       value: totalCost === null ? '—' : statMoney(totalCost),
       note: average === null ? undefined : ts('detail.avgShort', { price: unitMoney(average) }),
     },
   ];
   const second: StatItem[] = [
     {
-      label: ts('detail.unrealized'),
+      label: t('stat.unrealizedGain'),
       value: gainLoss === null ? '—' : statMoney(gainLoss, reportCurrency, true),
       tone: statTone(gainLoss),
       note:
@@ -133,7 +134,7 @@ export function PositionStats({
           : undefined,
     },
     {
-      label: ts('detail.realized'),
+      label: t('stat.realized'),
       value: realizedGain === null ? '—' : statMoney(realizedGain, reportCurrency, true),
       tone: statTone(realizedGain),
       // The desktop's two parts, the dividends first. A third of the row holds two short lines at

@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider } from '@/hooks/use-auth';
 import { CurrencyProvider } from '@/lib/currency-provider';
+import { FormatStyleContext } from '@/lib/use-format';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { I18nProvider, useLanguage } from '@/i18n/I18nProvider';
 import { ThemeProvider, useResolvedTheme } from '@/theme/ThemeProvider';
@@ -86,29 +87,32 @@ export default function MobileApp() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>
-          <I18nProvider>
-            <CurrencyProvider>
-              <SyncProvider>
-                <TooltipProvider delayDuration={200}>
-                  <BackgroundLock />
-                  <StatusBarStyle />
-                  <AmountInputLocale />
-                  <ErrorBoundary>
-                    <MobileShell />
-                  </ErrorBoundary>
-                  <Toaster
-                    position="bottom-center"
-                    offset={TOAST_OFFSET}
-                    mobileOffset={TOAST_OFFSET}
-                  />
-                </TooltipProvider>
-              </SyncProvider>
-            </CurrencyProvider>
-          </I18nProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      {/* The phone's date table (README §13, "Dates and periods") for every formatter under it */}
+      <FormatStyleContext.Provider value="phone">
+        <AuthProvider>
+          <ThemeProvider>
+            <I18nProvider>
+              <CurrencyProvider>
+                <SyncProvider>
+                  <TooltipProvider delayDuration={200}>
+                    <BackgroundLock />
+                    <StatusBarStyle />
+                    <AmountInputLocale />
+                    <ErrorBoundary>
+                      <MobileShell />
+                    </ErrorBoundary>
+                    <Toaster
+                      position="bottom-center"
+                      offset={TOAST_OFFSET}
+                      mobileOffset={TOAST_OFFSET}
+                    />
+                  </TooltipProvider>
+                </SyncProvider>
+              </CurrencyProvider>
+            </I18nProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </FormatStyleContext.Provider>
     </QueryClientProvider>
   );
 }

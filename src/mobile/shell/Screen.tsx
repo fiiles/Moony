@@ -18,6 +18,11 @@ import { NavBar } from './NavBar';
 interface ScreenProps {
   title: string;
   /**
+   * The bar's title once the large one has scrolled away, when it is not the large title itself:
+   * Přehled's greeting is a sentence, its bar says the tab's name (audit 2026-11-15 C9, B4).
+   */
+  barTitle?: string;
+  /**
    * A 30 pt large title in the content that collapses into the nav bar on scroll: a tab root, and a
    * pushed detail screen (README §13, "Detail screens"), whose name may be long and so wraps here
    * instead of being cut between the back button and `···`.
@@ -51,6 +56,7 @@ interface ScreenProps {
  */
 export function Screen({
   title,
+  barTitle,
   large = false,
   subtitle,
   leading,
@@ -82,7 +88,7 @@ export function Screen({
       className="flex h-full flex-col overflow-hidden bg-canvas bg-[radial-gradient(520px_320px_at_100%_0%,var(--canvas-glow),transparent_70%)] text-m-body text-ink-2"
     >
       <NavBar
-        title={title}
+        title={barTitle ?? title}
         large={large}
         collapsed={collapsed}
         leading={leading}
@@ -118,7 +124,8 @@ export function Screen({
             <h1
               ref={setMarker}
               // Holds its line while a detail's record loads, so the content does not jump
-              className="mx-0.5 mb-[3px] mt-1.5 min-h-[1.2em] hyphens-auto break-words text-m-title-lg text-ink"
+              // Wraps between words, never hyphenated or cut (B4)
+              className="mx-0.5 mb-[3px] mt-1.5 min-h-[1.2em] break-words text-m-title-lg text-ink [hyphens:manual]"
             >
               {title}
             </h1>

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createFormatters } from '@/lib/format';
-import { approxMoneyOptions, approxOf, exactMoneyOptions, WHOLE } from './money-rule';
+import {
+  approxMoneyOptions,
+  approxOf,
+  exactMoneyOptions,
+  movesWithRates,
+  WHOLE,
+} from './money-rule';
 
 describe('exactMoneyOptions', () => {
   it('keeps the minor units of an amount that has them', () => {
@@ -98,5 +104,14 @@ describe('approxMoneyOptions', () => {
   it('stays whole for a currency without decimals', () => {
     expect(approxMoneyOptions(0.6, 'JPY')).toEqual(WHOLE);
     expect(approxMoneyOptions(0.6, 'CZK')).toEqual(WHOLE);
+  });
+});
+
+describe('movesWithRates', () => {
+  it('is true when anything is held in another currency than the main one (A8)', () => {
+    expect(movesWithRates(['CZK', 'EUR'], 'CZK')).toBe(true);
+    expect(movesWithRates(['czk', ' CZK '], 'CZK')).toBe(false);
+    expect(movesWithRates([], 'USD')).toBe(false);
+    expect(movesWithRates([null, undefined, ''], 'USD')).toBe(false);
   });
 });

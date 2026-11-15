@@ -347,13 +347,16 @@ pub fn incremental_vacuum(conn: &Connection) -> Result<()> {
 }
 
 /// Attachment rows whose content is missing from the store or does not have its recorded size (a
-/// photo counts once even when both its blobs are affected). SQLite answers `length()` of a blob
-/// from the record header, without reading the content.
+/// photo counts once even when both its blobs are affected). Content on its way is not missing:
+/// with device sync on, a blob the transfer queue (`sync_blobs`) holds as `down` comes from the
+/// sync server (ADR 0030). SQLite answers `length()` of a blob from the record header, without
+/// reading the content.
 pub fn rows_without_content(conn: &Connection) -> Result<u32> {
     ensure_available(conn)?;
-    let intact = |column: &str| {
+    let present = |column: &str| {
         format!(
-            "EXISTS (SELECT 1 FROM files.blobs b WHERE b.id = {column} AND b.sha256 <> '' AND length(b.data) = b.size)"
+            "(EXISTS (SELECT 1 FROM files.blobs b WHERE b.id = {column} AND b.sha256 <> '' AND length(b.data) = b.size) \
+             OR EXISTS (SELECT 1 FROM main.sync_blobs q WHERE q.blob_id = {column} AND q.state = 'down'))"
         )
     };
     let n: i64 = conn.query_row(
@@ -365,9 +368,9 @@ pub fn rows_without_content(conn: &Connection) -> Result<u32> {
                   WHERE d.blob_id IS NOT NULL AND NOT {doc})
              + (SELECT count(*) FROM main.real_estate_photos p
                   WHERE p.blob_id IS NOT NULL AND NOT ({full} AND {thumb}))",
-            doc = intact("d.blob_id"),
-            full = intact("p.blob_id"),
-            thumb = intact("p.thumb_blob_id"),
+            doc = present("d.blob_id"),
+            full = present("p.blob_id"),
+            thumb = present("p.thumb_blob_id"),
         ),
         [],
         |r| r.get(0),
@@ -433,6 +436,7 @@ mod tests {
             CREATE TABLE real_estate_documents (id TEXT PRIMARY KEY, blob_id TEXT);
             CREATE TABLE real_estate_photos (id TEXT PRIMARY KEY, blob_id TEXT, thumb_blob_id TEXT);
             CREATE TABLE sync_held_blobs (blob_id TEXT PRIMARY KEY, held_at INTEGER NOT NULL);
+            CREATE TABLE sync_blobs (blob_id TEXT PRIMARY KEY, state TEXT NOT NULL);
             CREATE TABLE owners (id TEXT PRIMARY KEY);
             "#,
         )

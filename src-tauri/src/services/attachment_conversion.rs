@@ -433,7 +433,8 @@ pub fn status(
     }
     let legacy_missing = missing;
     // Rows whose encrypted content is gone (an `attachments.db` left behind when the profile was
-    // copied, say) are missing, not stored.
+    // copied, say) are missing, not stored. With device sync on, content the transfer queue is
+    // fetching from the sync server is not missing (`rows_without_content` leaves it out).
     let content_missing = if store_available {
         attachment_store::rows_without_content(conn)?
     } else {
@@ -480,6 +481,7 @@ mod tests {
                 id TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE,
                 found_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
+            CREATE TABLE sync_blobs (blob_id TEXT PRIMARY KEY, state TEXT NOT NULL);
             "#,
         )
         .expect("schema");

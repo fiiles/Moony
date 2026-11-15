@@ -7,6 +7,7 @@
 use super::*;
 use crate::db::files_schema;
 use crate::services::attachment_store;
+use crate::services::sync::blobs::queue as blob_queue;
 
 const POLICY: &str = "INSERT INTO insurance_policies \
       (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
@@ -294,4 +295,89 @@ fn a_replace_leaves_no_transfer_queue_behind() {
     restore_replace(&c, &mut &bytes[..], NOW).expect("replace");
 
     assert_eq!(count(&c, "SELECT COUNT(*) FROM sync_blobs"), 0);
+}
+
+fn queue(conn: &Connection) -> Vec<String> {
+    strings(
+        conn,
+        "SELECT blob_id || ' ' || state FROM sync_blobs ORDER BY blob_id",
+    )
+}
+
+/// Review requirement 1 of the transfer queue: after a replace it is rebuilt from the vault's rows
+/// and this device's store alone. Content held here waits for the server's confirmation (the
+/// vault may be a new one), content held elsewhere waits to be downloaded, and what the queue
+/// knew before is gone.
+#[test]
+fn a_replace_rebuilds_the_transfer_queue_from_the_rows_and_the_store() {
+    let a = device(A);
+    policy(&a, "p1");
+    let c = with_store(device(C));
+    apply(&c, &send(&a));
+    let own = policy_document(&c, "d1", "p1");
+    apply(&a, &send(&c));
+    let theirs = "0b9e6a52-3a4c-4e0f-9d7a-1c2b3d4e5f60";
+    exec(
+        &a,
+        &format!(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id) \
+             VALUES ('d2', 'p1', 'Other', '{theirs}')"
+        ),
+    );
+    let (bytes, _) = snapshot(&a, 1);
+    blob_queue::reconcile(&c, NOW).expect("reconcile");
+    blob_queue::note_done(&c, &own).expect("confirmed");
+    exec(
+        &c,
+        "INSERT INTO sync_blobs (blob_id, state, queued_at) \
+         VALUES ('7c9e6679-7425-40de-944b-e07fc1f90ae7', 'down', 1)",
+    );
+
+    restore_replace(&c, &mut &bytes[..], NOW).expect("replace");
+
+    let mut expected = vec![format!("{own} up"), format!("{theirs} down")];
+    expected.sort();
+    assert_eq!(queue(&c), expected);
+
+    let b = with_store(migrated());
+    join(&b, B, &mut &bytes[..], NOW).expect("join");
+    let mut expected = vec![format!("{own} down"), format!("{theirs} down")];
+    expected.sort();
+    assert_eq!(queue(&b), expected, "a joiner holds nothing yet");
+}
+
+/// Review requirement 1, audit H3: a row this device pushed after the vault's newest snapshot is
+/// dropped by a replace and comes back with the next pull; its content was held meanwhile and its
+/// upload may never have finished, so it is queued to be confirmed on the server again.
+#[test]
+fn a_held_blob_whose_row_comes_back_with_a_pull_is_queued_for_upload() {
+    let a = device(A);
+    policy(&a, "p1");
+    let from_a = send(&a);
+    let c = with_store(device(C));
+    apply(&c, &from_a);
+    let own = policy_document(&c, "d1", "p1");
+    blob_queue::reconcile(&c, NOW).expect("reconcile");
+    assert_eq!(queue(&c), vec![format!("{own} up")]);
+    let (bytes, _) = snapshot(&a, 1);
+    // The vault gets the row after its snapshot; here another device's changeset carries it back
+    // to C's pull.
+    let d = device(D);
+    apply(&d, &from_a);
+    exec(
+        &d,
+        &format!(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id) \
+             VALUES ('d1', 'p1', 'Contract', '{own}')"
+        ),
+    );
+    let pulled = send(&d);
+
+    restore_replace(&c, &mut &bytes[..], NOW).expect("replace");
+    assert!(queue(&c).is_empty(), "no row names the held blob yet");
+    assert!(readable(&c, &own), "held");
+
+    apply(&c, &pulled);
+
+    assert_eq!(queue(&c), vec![format!("{own} up")]);
 }

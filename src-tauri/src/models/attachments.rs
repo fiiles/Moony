@@ -12,6 +12,34 @@ pub enum AttachmentKind {
     InsuranceDocument,
 }
 
+/// Where an attachment's content is, with device sync (ADR 0030). A row without a blob (a plain
+/// file from before 0.13) and a profile whose store is unavailable report `Here`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum AttachmentContent {
+    /// Held on this device, and known to the sync server or not syncing.
+    #[serde(rename = "here")]
+    Here,
+    /// Held on this device; the sync server has not confirmed it yet.
+    #[serde(rename = "waitingUpload")]
+    WaitingUpload,
+    /// On another device or the sync server, not fetched here (yet).
+    #[serde(rename = "notHere")]
+    NotHere,
+    /// Being fetched now.
+    #[serde(rename = "downloading")]
+    Downloading,
+    /// The sync server does not have it (not uploaded yet from the other device).
+    #[serde(rename = "notOnServer")]
+    NotOnServer,
+    /// Fetching it failed in a way a plain retry does not fix (it could not be opened, or its ID
+    /// is not valid).
+    #[serde(rename = "failed")]
+    Failed,
+    /// Neither here nor on its way: the content is lost on this device.
+    #[serde(rename = "missing")]
+    Missing,
+}
+
 /// What the Data settings page shows about attachments: the encrypted store, the conversion of
 /// plain files from earlier versions, and plain originals the app will not delete (ADR 0017).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

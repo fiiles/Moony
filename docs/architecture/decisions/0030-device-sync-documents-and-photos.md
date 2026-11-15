@@ -140,3 +140,20 @@ documents and photos need a newer server. The app assumes the server's error cod
 - Release guard: if sync is ever released from a build without this ADR's migrations (035, 036),
   which it must not be, profiles that synced on it would need a one-time enrolment of their
   attachment rows, designed so it never overwrites changes other devices made after it.
+
+## As built
+
+- **The transfer queue (Task 7).** `services/sync/blobs/queue.rs` reconciles `sync_blobs` from the
+  rows and the store with set-based SQL over `attachment_store::REFERENCES`, limited to rows that
+  meet their row condition (`registry::row_condition`), so a row that never syncs never queues its
+  blob. `repair::invariants` runs it after every merge or restore that touched an attachment row
+  table or lost rows of an owner (after the blob sweep); a replace's `repair::full` therefore
+  rebuilds the emptied queue. A blob held here is queued `up` unless the queue knows the server
+  has it (`done`), so content the queue lost track of is confirmed with the server (a `HEAD`, no
+  body when it is there) rather than assumed uploaded: after a replace every held blob is `up`, a
+  held blob whose row the next pull brings back is `up`, and a `down` entry whose content is found
+  here again becomes `up` (the plan had `done`: losing the copy forgot whether it was ever
+  uploaded). The download lane marks what it stored `done` itself. `ContentReader` gives each
+  blob an `AttachmentContent`; `attachment_store::rows_without_content` leaves out content on its
+  way (a `down` entry), so the conversion status and the database check do not count it as
+  missing.

@@ -1256,6 +1256,7 @@ mod tests {
             CREATE TABLE real_estate_documents (id TEXT PRIMARY KEY, blob_id TEXT, file_path TEXT);
             CREATE TABLE real_estate_photos (id TEXT PRIMARY KEY, blob_id TEXT, thumb_blob_id TEXT,
                 file_path TEXT, thumbnail_path TEXT);
+            CREATE TABLE sync_blobs (blob_id TEXT PRIMARY KEY, state TEXT NOT NULL);
             INSERT INTO real_estate_photos (id, file_path, thumbnail_path)
                 VALUES ('legacy', 'real_estate_photos/batch1/a.jpg', 'real_estate_photos/batch1/a.jpg');
             "#,

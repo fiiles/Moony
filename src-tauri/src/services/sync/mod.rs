@@ -10,6 +10,7 @@
 
 pub mod backups;
 pub mod binding;
+pub mod blobs;
 pub mod capture;
 pub mod chain;
 pub mod changeset;

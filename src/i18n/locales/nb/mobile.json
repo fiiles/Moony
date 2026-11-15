@@ -950,7 +950,7 @@
   "agenda": {
     "what": {
       "insurance_anniversary": "Oppsigelsesfrist",
-      "insurance_anniversary_passed": "Oppsigelsesfristen er ute",
+      "insurance_anniversary_passed": "Fristen er ute",
       "insurance_end": "Avtalen slutter",
       "insurance_payment": "Premiebetaling",
       "loan_fixation_end": "Fastrenten slutter",

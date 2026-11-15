@@ -144,7 +144,9 @@ export function PlansView({ year, onYearChange, switcher, leading }: PlansViewPr
         }
         className="px-5 py-8"
         action={
-          <div className="flex w-full flex-col items-stretch gap-2">
+          // As wide as the sentence above (its 320 pt), not the label: the empty state centres and
+          // shrink-wraps its action
+          <div className="flex w-[min(320px,calc(100vw-72px))] flex-col items-stretch gap-2">
             {inserts.length > 0 && (
               <Button className={NEW_PLAN_BUTTON} onClick={() => setTakeOverOpen(true)}>
                 <Copy />

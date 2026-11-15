@@ -2850,8 +2850,16 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
     root.querySelectorAll("*").forEach(function (el) {
       if (getComputedStyle(el).textOverflow !== "ellipsis" || !el.getBoundingClientRect().width) return;
       var cs = getComputedStyle(el), pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-      var r = document.createRange(); r.selectNodeContents(el);
-      if (r.getBoundingClientRect().width > el.getBoundingClientRect().width - pad + 0.05 && /\d/.test(el.textContent)) out.push(el.textContent.trim());
+      /* Visible text only: a screen reader's `.sr-only` words are clipped, not cut */
+      var box = el.getBoundingClientRect(), left = Infinity, right = -Infinity, text = "", walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), node;
+      while ((node = walk.nextNode())) {
+        if (node.parentElement.closest(".sr-only")) continue;
+        var r = document.createRange(); r.selectNodeContents(node);
+        /* A line clipped away below the box (a `drop` tail) is not shown, so it is not cut */
+        [].forEach.call(r.getClientRects(), function (b) { if (b.top >= box.bottom - 1) return; left = Math.min(left, b.left); right = Math.max(right, b.right); });
+        text += node.textContent;
+      }
+      if (right - left > el.getBoundingClientRect().width - pad + 0.05 && /\d/.test(text)) out.push(text.trim());
     });
     return out;
   }

@@ -1007,7 +1007,7 @@
   "agenda": {
     "what": {
       "insurance_anniversary": "Termín výpovědi",
-      "insurance_anniversary_passed": "Lhůta pro výpověď uplynula",
+      "insurance_anniversary_passed": "Po lhůtě pro výpověď",
       "insurance_end": "Smlouva končí",
       "insurance_payment": "Platba pojistného",
       "loan_fixation_end": "Konec fixace",

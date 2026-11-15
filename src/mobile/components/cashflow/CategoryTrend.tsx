@@ -19,7 +19,7 @@ const BAR_HEIGHT = 44;
 /**
  * The small trend under the category's hero on the drilldown (audit 2026-11-15 D19): six month
  * bars on one baseline, each named by its short month under it, the shown period's bars in `s1`
- * and the months before it in `well-3`; the largest month's amount stands at the top right so the
+ * and the months before it in `s-other`; the largest month's amount stands at the top right so the
  * scale reads without an axis. A month that came out negative (refunds) draws no bar. The whole
  * card is one image for VoiceOver, its name listing month and amount.
  */
@@ -54,8 +54,9 @@ export function CategoryTrend({ months, totals, selected, formatValue }: Categor
             <div key={month} aria-hidden className="flex min-w-0 flex-col items-center">
               <div className="flex w-full items-end justify-center" style={{ height: BAR_HEIGHT }}>
                 <span
-                  className={cn('block w-full max-w-7 rounded-t-[4px]', on ? 'bg-s1' : 'bg-well-3')}
-                  style={{ height }}
+                  className={cn('block w-full max-w-7 rounded-t-[4px]', on && 'bg-s1')}
+                  // The months before the period in the ring's quiet tone, seen in both themes
+                  style={{ height, background: on ? undefined : 'var(--s-other)' }}
                 />
               </div>
               <span

@@ -950,7 +950,7 @@
   "agenda": {
     "what": {
       "insurance_anniversary": "Notice deadline",
-      "insurance_anniversary_passed": "Notice period has passed",
+      "insurance_anniversary_passed": "Notice period over",
       "insurance_end": "Policy ends",
       "insurance_payment": "Premium payment",
       "loan_fixation_end": "Fixed rate ends",

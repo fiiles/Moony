@@ -87,12 +87,14 @@ export function AllocationRing({
         </svg>
         <span
           aria-hidden
-          className="absolute inset-[22px] flex flex-col items-center justify-center text-center leading-tight"
+          className="absolute inset-[25px] flex flex-col items-center justify-center text-center leading-tight"
         >
           <span className="max-w-full truncate text-[length:calc(10px*var(--m-text-k))] font-semibold text-ink-4">
             {centerLabel}
           </span>
-          <span className="text-m-caption font-semibold text-ink num">{formatTotal(total)}</span>
+          <span className="text-m-caption font-semibold text-ink num">
+            {wrapBeforeUnit(formatTotal(total))}
+          </span>
         </span>
       </div>
       <ul className="m-0 min-w-0 list-none p-0 text-m-sub">
@@ -120,6 +122,14 @@ export function AllocationRing({
       </ul>
     </div>
   );
+}
+
+/**
+ * The total may break before its unit ("15,7 mil." over "Kč") instead of touching the ring: the
+ * last no-break space of the formatted amount becomes an ordinary one.
+ */
+function wrapBeforeUnit(text: string): string {
+  return text.replace(/[\u00a0\u202f](?=[^\u00a0\u202f]*$)/, ' ');
 }
 
 function color(series: 0 | 1 | 2 | 3 | 'other'): string {

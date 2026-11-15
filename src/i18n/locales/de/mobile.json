@@ -950,7 +950,7 @@
   "agenda": {
     "what": {
       "insurance_anniversary": "Kündigungsfrist",
-      "insurance_anniversary_passed": "Kündigungsfrist abgelaufen",
+      "insurance_anniversary_passed": "Frist abgelaufen",
       "insurance_end": "Vertrag endet",
       "insurance_payment": "Beitragszahlung",
       "loan_fixation_end": "Zinsbindung endet",

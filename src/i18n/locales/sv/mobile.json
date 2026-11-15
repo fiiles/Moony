@@ -950,7 +950,7 @@
   "agenda": {
     "what": {
       "insurance_anniversary": "Uppsägningsfrist",
-      "insurance_anniversary_passed": "Uppsägningstiden har gått ut",
+      "insurance_anniversary_passed": "Fristen har gått ut",
       "insurance_end": "Avtalet upphör",
       "insurance_payment": "Premiebetalning",
       "loan_fixation_end": "Bindningstiden slutar",

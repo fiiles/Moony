@@ -356,20 +356,13 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
           const price = amountOf(property.marketPrice);
           const priceCurrency = recordCurrency(property.marketPriceCurrency);
           const rent = amountOf(property.monthlyRent) ?? 0;
-          // The kind gives way, the rent stays whole (C1)
-          const sub = (
-            <SubFacts
-              lead={t(
-                `wealth.realEstate.${property.type === 'personal' ? 'personal' : 'investment'}`
-              )}
-              tail={
-                rent > 0 &&
-                t('wealth.realEstate.rent', {
+          // One fact (C1): the rent when there is one (it says the property earns), else its kind
+          const sub =
+            rent > 0
+              ? t('wealth.realEstate.rent', {
                   amount: moneyText(rent, recordCurrency(property.monthlyRentCurrency), WHOLE),
                 })
-              }
-            />
-          );
+              : t(`wealth.realEstate.${property.type === 'personal' ? 'personal' : 'investment'}`);
           return (
             <EntityRow
               key={property.id}

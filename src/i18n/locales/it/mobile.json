@@ -999,7 +999,7 @@
   "agenda": {
     "what": {
       "insurance_anniversary": "Termine per la disdetta",
-      "insurance_anniversary_passed": "Termine di disdetta scaduto",
+      "insurance_anniversary_passed": "Termine scaduto",
       "insurance_end": "La polizza scade",
       "insurance_payment": "Pagamento del premio",
       "loan_fixation_end": "Fine del tasso fisso",

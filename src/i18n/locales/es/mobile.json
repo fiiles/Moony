@@ -999,7 +999,7 @@
   "agenda": {
     "what": {
       "insurance_anniversary": "Plazo de cancelación",
-      "insurance_anniversary_passed": "Plazo de cancelación vencido",
+      "insurance_anniversary_passed": "Plazo vencido",
       "insurance_end": "La póliza termina",
       "insurance_payment": "Pago de la prima",
       "loan_fixation_end": "Fin del tipo fijo",

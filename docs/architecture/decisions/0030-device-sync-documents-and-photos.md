@@ -344,7 +344,10 @@ documents and photos need a newer server. The app assumes the server's error cod
   - Content sealed with a key epoch this device has not received yet (right after a key rotation,
     before the pull brings it) is no longer `unreadable` ("Could not download", up to 6 h between
     tries): it is recorded as `local` (30 s, doubling to 30 minutes) and reads as on its way. A new
-    reason code would have needed a migration to widen the `last_error` CHECK of `sync_blobs`.
+    reason code would have needed a migration to widen the `last_error` CHECK of `sync_blobs`. The
+    header's epoch is not authenticated until a chunk opens, so a server that rewrites it makes the
+    content read as on its way and retried rather than "Could not download"; withholding the blob
+    has the same effect.
   - Content no server has (`notOnServer`) is asked for after 5, 10, 20 and 40 minutes and an hour,
     then doubling up to a day (`queue::NOT_ON_SERVER_MAX_WAIT`), so a blob whose only holder was
     wiped costs one request a day per device, not one an hour. "Sync now" and "Try again" still

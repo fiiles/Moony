@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '@/lib/use-format';
+import { DetailSub } from '@/mobile/components/DetailSub';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { priceStamp } from '@/mobile/lib/position-rows';
 
@@ -12,8 +13,8 @@ interface PricesLineProps {
 
 /**
  * The caption under a class page's title: the count and the age of the prices, "3 pozice · ceny
- * 9:40" today, "ceny 12. 10." on an older day, "ceny nenačteny" for never. The nav bar keeps its
- * one title, so this is the first line of the page.
+ * 9:40" today, "ceny 12. 10." on an older day, "ceny nenačteny" for never: the sub-line under
+ * the class page's large title (`DetailSub`).
  */
 export function PricesLine({ count, rows }: PricesLineProps) {
   const { t } = useTranslation('mobile');
@@ -38,7 +39,5 @@ export function PricesLine({ count, rows }: PricesLineProps) {
         : ts('summary.notUpdated'),
   ].join(' · ');
 
-  return (
-    <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">{line}</p>
-  );
+  return <DetailSub>{line}</DetailSub>;
 }

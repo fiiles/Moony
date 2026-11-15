@@ -160,6 +160,14 @@ export function PositionLedger<T extends LedgerTx>({
           )}
         </EntityRows>
       )}
+      {/* The source of Yahoo's dividends, once under the list instead of on every row (D27) */}
+      {shown.some((entry) => entry.kind === 'dividend' && entry.dividend.source === 'yahoo') && (
+        <p className="mx-0.5 -mt-2 mb-3.5 text-m-note text-ink-4">
+          {t('wealth.position.dividendSource', {
+            source: ts('detail.dividendRecords.sourceYahoo'),
+          })}
+        </p>
+      )}
       <ConfirmSheet
         open={pendingDelete !== null}
         onOpenChange={(open) => {

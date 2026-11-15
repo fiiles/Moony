@@ -7,7 +7,9 @@ import { cn } from '@/lib/utils';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
 import { Money } from '@/mobile/components/Money';
+import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { exactMoneyOptions } from '@/mobile/lib/money-rule';
 import { nativeTotal, type LedgerTx } from '@/mobile/lib/position-series';
 
 interface TradeRowProps<T extends LedgerTx> {
@@ -31,9 +33,10 @@ interface TradeRowProps<T extends LedgerTx> {
 /**
  * A buy or a sell of the position (spec §8.8, prototype frame 12): the entity row with a ▲ / ▽
  * chip (green for a sell), "Nákup · 12 ks" over the day and the price in the trade's currency, and
- * the total at the rates of the trade's day — "− 32 750 Kč" for a buy, "+ 12 880 Kč" for a sell —
- * over the native total. Without a rate for that day the native total stands in the value and
- * the sub-line says so. A tap or a long press opens the row's menu (Upravit when the row can be
+ * the total in the trade's own currency, exactly — "− 1 350,50 USD" for a buy, "+ 520 USD" for a
+ * sell — over its conversion into the main currency at the rates of the trade's day ("≈ 32 750
+ * Kč"; README §13, "Money and currencies", audit A6). A trade in the main currency has no second
+ * line; without a rate for that day the second line says so. A tap or a long press opens the row's menu (Upravit when the row can be
  * edited, Smazat), anchored like the agenda row's.
  */
 export function TradeRow<T extends LedgerTx>({
@@ -52,6 +55,7 @@ export function TradeRow<T extends LedgerTx>({
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const approx = useApprox();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const sell = tx.type === 'sell';
@@ -84,18 +88,15 @@ export function TradeRow<T extends LedgerTx>({
         decimals: priceDecimals(price, txCurrency),
       })}`}
       value={
-        converted !== null ? (
-          <Money value={converted} currency={currency} options={{ decimals: 0 }} sign={sign} />
-        ) : (
-          <Money value={total} currency={txCurrency} options={{ decimals: 0 }} sign={sign} />
-        )
+        <Money
+          value={total}
+          currency={txCurrency}
+          options={exactMoneyOptions(total, txCurrency)}
+          sign={sign}
+        />
       }
       valueTone={sell ? 'gain' : undefined}
-      valueSub={
-        converted === null && ratesReady
-          ? t('wealth.noRate', { currency: txCurrency })
-          : moneyText(total, txCurrency, { decimals: 2 })
-      }
+      valueSub={approx(total, txCurrency, { converted, pending: !ratesReady })}
       onClick={() => setMenuOpen(true)}
       menu={{
         label: t('wealth.position.tx.menu'),

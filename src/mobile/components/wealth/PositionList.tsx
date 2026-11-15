@@ -75,10 +75,6 @@ export function PositionList<R extends PositionRowBase & { companyName?: string;
           onChange={setSort}
           label={t('wealth.stocks.sort.label')}
         />
-        {/* Says once what the badge of every row measures (the class rows say 30 days) */}
-        <span className="min-w-0 flex-1 truncate text-right text-m-note text-ink-3">
-          {t('wealth.gainSincePurchase')}
-        </span>
         <NavIconButton
           aria-label={t('wealth.stocks.searchToggle')}
           aria-pressed={searchOpen}
@@ -97,6 +93,12 @@ export function PositionList<R extends PositionRowBase & { companyName?: string;
             clearLabel={t('common:a11y.clearSearch')}
           />
         </div>
+      )}
+      {/* Says once what the badge of every row measures, right over the badges' column (D25) */}
+      {shownRows.length > 0 && (
+        <p className="mx-0.5 mb-1.5 mt-0 text-right text-m-note text-ink-3">
+          {t('wealth.gainSincePurchase')}
+        </p>
       )}
       {shownRows.length === 0 ? (
         <p className="mx-0.5 py-6 text-center text-m-body text-ink-3">

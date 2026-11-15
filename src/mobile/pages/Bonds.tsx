@@ -93,6 +93,7 @@ export default function Bonds() {
   return (
     <Screen
       title={td('cards.bonds')}
+      large
       leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         <>

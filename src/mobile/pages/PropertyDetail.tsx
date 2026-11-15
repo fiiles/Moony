@@ -28,6 +28,7 @@ import { monthlyRent, propertyOwnKeys } from '@/mobile/lib/property-detail';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { propertyPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { DetailSub } from '@/mobile/components/DetailSub';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { RevalueSheet } from '@/mobile/sheets/RevalueSheet';
 
@@ -98,6 +99,7 @@ function PropertyDetailPage({ id }: { id: string | undefined }) {
   return (
     <Screen
       title={view?.property.name ?? ''}
+      large
       leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         view && (
@@ -156,7 +158,7 @@ function PropertyBody({ view, currency, onRevalue }: PropertyBodyProps) {
   const moneyText = useMoneyText();
   const { property, row, balance, trace, missing, loans, policies, costs } = view;
 
-  // The nav bar keeps its one title, so the address, the type and the rent are the first lines
+  // The address, the type and the rent under the large title
   const rent = monthlyRent(property, balance);
   const state = balance.hasRent
     ? tr('detail.rented', {
@@ -169,12 +171,15 @@ function PropertyBody({ view, currency, onRevalue }: PropertyBodyProps) {
 
   return (
     <>
-      <div className="mx-0.5 -mt-0.5 mb-2.5 text-center text-m-caption text-ink-3">
-        {property.address && <p className="m-0 truncate">{property.address}</p>}
-        <p className="m-0">
-          {[tr(`types.${property.type}`, { defaultValue: property.type }), state].join(' · ')}
-        </p>
-      </div>
+      <DetailSub>
+        {property.address && (
+          <>
+            {property.address}
+            <br />
+          </>
+        )}
+        {[tr(`types.${property.type}`, { defaultValue: property.type }), state].join(' · ')}
+      </DetailSub>
       {/* Amounts that could not be converted into the main currency (left out of its totals) */}
       <ScaledConversionNote
         quality={{ missingCurrencies: missing }}

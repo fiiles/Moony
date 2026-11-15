@@ -36,6 +36,7 @@ import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { otherAssetPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { DetailSub } from '@/mobile/components/DetailSub';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { RevalueSheet } from '@/mobile/sheets/RevalueSheet';
 
@@ -118,6 +119,7 @@ export default function OtherAssetDetail() {
   return (
     <Screen
       title={view?.asset.name ?? ''}
+      large
       leading={<NavTextButton label={td('cards.otherAssets')} onClick={back} chevron />}
       trailing={
         view && (
@@ -131,13 +133,13 @@ export default function OtherAssetDetail() {
     >
       {view ? (
         <>
-          {/* The nav bar keeps its one title, so the quantity and the price currency are the first line */}
-          <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
+          {/* The quantity and the price currency under the large title */}
+          <DetailSub>
             {[
               `${fmt.number(view.row.quantity, { maximumFractionDigits: QUANTITY_DIGITS })} ${to('table.unit')}`,
               view.row.priceCurrency,
             ].join(' · ')}
-          </p>
+          </DetailSub>
           <AssetHero
             row={view.row}
             valuations={data.valuations}

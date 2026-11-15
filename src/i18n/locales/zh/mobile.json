@@ -229,7 +229,12 @@
     "importHistory": {
       "menu": "导入选项"
     },
-    "autoCategorizeAllDone": "此账户的所有付款都已有类别。"
+    "autoCategorizeAllDone": "此账户的所有付款都已有类别。",
+    "manual": "手动记账",
+    "noBalance": {
+      "label": "余额",
+      "note": "尚未录入余额"
+    }
   },
   "loan": {
     "nextPayment": "下次还款 {{amount}} · {{date}}",
@@ -237,7 +242,8 @@
     "stats": {
       "since": "自 {{month}}",
       "extra": "额外还款 {{amount}}",
-      "until": "至 {{month}}"
+      "until": "至 {{month}}",
+      "fixationIn": "{{duration}}后"
     },
     "alerts": {
       "fixationSoon_other": "固定利率期将在 {{count}} 天后结束。银行确认新利率后，请您记录下来，月供和还款计划会重新计算。",
@@ -254,6 +260,16 @@
     },
     "events": {
       "menu": "事件菜单"
+    },
+    "afterFixation": {
+      "title": "固定期结束后",
+      "rate": "利率 {{rate}} 时",
+      "current": "当前利率",
+      "delta": "{{delta}} 个百分点",
+      "perMonth": "每月还款"
+    },
+    "legend": {
+      "tapHint": "轻点标记即可查看发生了什么。"
     }
   },
   "documents": {
@@ -279,7 +295,15 @@
     "anniversary": "周年日 {{date}}",
     "notice": "解约通知截止日",
     "limitsTotal": "合计 {{amount}}",
-    "total": "合计 · {{payments}}"
+    "total": "合计 · {{payments}}",
+    "hero": {
+      "label": "保费 · {{frequency}}",
+      "next": "下次付款 {{date}} · {{distance}}",
+      "ended": "保单已于 {{date}} 结束",
+      "endedPlain": "此保单已结束",
+      "paidOn": "已于 {{date}} 支付",
+      "noPremium": "未填写保费"
+    }
   },
   "property": {
     "notFound": "该房产已不存在。",
@@ -562,7 +586,8 @@
       "stats": {
         "value": "价值",
         "inCurrency": "以 {{currency}} 计",
-        "price": "价格"
+        "price": "价格",
+        "asOf": "截至 {{when}}"
       },
       "tx": {
         "buy": "买入 · {{quantity}} {{unit}}",
@@ -577,7 +602,9 @@
       "following": "已关注",
       "followed": "已添加到自选列表",
       "range52": "52 周区间",
-      "renamed": "名称已保存"
+      "renamed": "名称已保存",
+      "historyComputing": "正在计算历史数据…",
+      "dividendSource": "股息来源：{{source}}"
     },
     "watch": {
       "stats": {

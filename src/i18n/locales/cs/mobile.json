@@ -267,7 +267,12 @@
     "importHistory": {
       "menu": "Nabídka importu"
     },
-    "autoCategorizeAllDone": "Všechny platby tohoto účtu už mají kategorii."
+    "autoCategorizeAllDone": "Všechny platby tohoto účtu už mají kategorii.",
+    "manual": "Vedeno ručně",
+    "noBalance": {
+      "label": "Zůstatek",
+      "note": "Zůstatek zatím nezadán"
+    }
   },
   "loan": {
     "nextPayment": "Příští splátka {{amount}} · {{date}}",
@@ -275,7 +280,8 @@
     "stats": {
       "since": "od {{month}}",
       "extra": "mimořádně {{amount}}",
-      "until": "do {{month}}"
+      "until": "do {{month}}",
+      "fixationIn": "za {{duration}}"
     },
     "alerts": {
       "fixationSoon_one": "Fixace končí za {{count}} den. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
@@ -300,6 +306,16 @@
     },
     "events": {
       "menu": "Nabídka události"
+    },
+    "afterFixation": {
+      "title": "Po konci fixace",
+      "rate": "Při sazbě {{rate}}",
+      "current": "dnešní sazba",
+      "delta": "{{delta}} p. b.",
+      "perMonth": "splátka měsíčně"
+    },
+    "legend": {
+      "tapHint": "Klepnutím na značku zjistíte, co se stalo."
     }
   },
   "documents": {
@@ -327,7 +343,15 @@
     "anniversary": "výročí {{date}}",
     "notice": "Výpověď nejpozději",
     "limitsTotal": "celkem {{amount}}",
-    "total": "Celkem · {{payments}}"
+    "total": "Celkem · {{payments}}",
+    "hero": {
+      "label": "Pojistné · {{frequency}}",
+      "next": "Příští platba {{date}} · {{distance}}",
+      "ended": "Pojistka skončila {{date}}",
+      "endedPlain": "Pojistka je ukončená",
+      "paidOn": "Zaplaceno {{date}}",
+      "noPremium": "Pojistné není zadané"
+    }
   },
   "property": {
     "notFound": "Tato nemovitost už neexistuje.",
@@ -632,7 +656,8 @@
       "stats": {
         "value": "Hodnota",
         "inCurrency": "v {{currency}}",
-        "price": "Cena"
+        "price": "Cena",
+        "asOf": "k {{when}}"
       },
       "tx": {
         "buy": "Nákup · {{quantity}} {{unit}}",
@@ -649,7 +674,9 @@
       "following": "Sledováno",
       "followed": "Přidáno do sledovaných",
       "range52": "52T rozpětí",
-      "renamed": "Název uložen"
+      "renamed": "Název uložen",
+      "historyComputing": "Historie se teprve dopočítává…",
+      "dividendSource": "Dividendy podle {{source}}"
     },
     "watch": {
       "stats": {

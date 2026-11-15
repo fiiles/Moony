@@ -27,6 +27,8 @@ interface HeroProps<E extends ChartEvent, P extends string> {
   /** The change line; without it `note` stands there ("zatím bez historie"). */
   change?: HeroChange;
   note?: ReactNode;
+  /** A quiet second line under the change line ("Vloženo 1 234 Kč"), so neither is cut. */
+  detail?: ReactNode;
   /**
    * The chart and its period segment. Without `points` the hero is the compact one (Finance's
    * "Celkem na účtech"): no segment, no chart. With `points` the chart is drawn; the segment above
@@ -74,6 +76,7 @@ export function Hero<E extends ChartEvent, P extends string = ChartPeriod>({
   formatValue,
   change,
   note,
+  detail,
   period,
   periods,
   onPeriodChange,
@@ -130,16 +133,18 @@ export function Hero<E extends ChartEvent, P extends string = ChartPeriod>({
       >
         <span>{shownValue}</span>
       </div>
-      <div className="flex min-h-5 min-w-0 items-center gap-1.5 whitespace-nowrap text-m-sub text-ink-3">
+      {/* The change line wraps under itself rather than ending in an ellipsis (audit D25): the
+          badge runs inline with the words, so a second line starts under the badge */}
+      <div className="min-h-5 text-m-sub leading-5 text-ink-3">
         {scrub ? (
-          <span className="min-w-0 truncate num">
+          <span className="num">
             {fmt.day(scrub.t, { day: 'numeric', month: 'numeric', year: 'numeric' })}
           </span>
         ) : change ? (
           <>
             <span
               className={cn(
-                'inline-flex min-h-5 flex-none items-center gap-1 rounded-r1 px-[7px] py-0.5 text-m-sub leading-none num',
+                'mr-1.5 inline-flex min-h-5 items-center gap-1 whitespace-nowrap rounded-r1 px-[7px] py-0.5 align-top text-m-sub leading-none num',
                 up
                   ? 'bg-gain-soft text-gain'
                   : down
@@ -155,12 +160,13 @@ export function Hero<E extends ChartEvent, P extends string = ChartPeriod>({
               )}
               {fmt.percent(Math.abs(change.ratio), 1)}
             </span>
-            <span className="min-w-0 truncate">{change.text}</span>
+            {change.text}
           </>
         ) : (
-          note && <span className="min-w-0 truncate">{note}</span>
+          note
         )}
       </div>
+      {detail && <div className="mt-0.5 text-m-sub leading-5 text-ink-3">{detail}</div>}
       {segmented && (
         <Segment
           value={period}

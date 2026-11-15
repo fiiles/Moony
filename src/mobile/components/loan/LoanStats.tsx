@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useLoanText } from '@/hooks/use-loan-text';
 import { useFormat } from '@/lib/use-format';
-import { annuityPayment } from '@/utils/loan-trajectory';
 import { monthsAhead, type LoanRow } from '@/utils/loans';
 import { StatRow } from '@/mobile/components/StatRow';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -29,7 +28,6 @@ export function LoanStats({ row, stats, today }: LoanStatsProps) {
   const text = useLoanText();
   const { loan, currency, trajectory } = row;
   const money = (value: number) => moneyText(value, currency, WHOLE);
-  const rate = Number(loan.interestRate) || 0;
   const lastDue = trajectory.upcoming[trajectory.upcoming.length - 1]?.dueDay ?? null;
 
   const interest = {
@@ -79,14 +77,9 @@ export function LoanStats({ row, stats, today }: LoanStatsProps) {
     ...(stats.fixationEnd !== null
       ? {
           value: text.monthYear(stats.fixationEnd),
-          note: tl('detail.stats.fixationNote', {
+          // One short note; the payments at other rates are their own section (D13)
+          note: t('loan.stats.fixationIn', {
             duration: text.months(monthsAhead(today, stats.fixationEnd)),
-            up: fmt.percent((rate + 1) / 100, 0),
-            upPayment: money(annuityPayment(stats.balance, rate + 1, stats.remaining ?? 360)),
-            down: fmt.percent(Math.max(0, rate - 1) / 100, 0),
-            downPayment: money(
-              annuityPayment(stats.balance, Math.max(0, rate - 1), stats.remaining ?? 360)
-            ),
           }),
         }
       : stats.fixationEnded !== null

@@ -248,7 +248,12 @@
     "importHistory": {
       "menu": "Importoptionen"
     },
-    "autoCategorizeAllDone": "Alle Zahlungen dieses Kontos haben bereits eine Kategorie."
+    "autoCategorizeAllDone": "Alle Zahlungen dieses Kontos haben bereits eine Kategorie.",
+    "manual": "Manuell geführt",
+    "noBalance": {
+      "label": "Kontostand",
+      "note": "Noch kein Kontostand erfasst"
+    }
   },
   "loan": {
     "nextPayment": "Nächste Rate {{amount}} · {{date}}",
@@ -256,7 +261,8 @@
     "stats": {
       "since": "seit {{month}}",
       "extra": "Sonderzahlung {{amount}}",
-      "until": "bis {{month}}"
+      "until": "bis {{month}}",
+      "fixationIn": "in {{duration}}"
     },
     "alerts": {
       "fixationSoon_one": "Die Zinsbindung endet in {{count}} Tag. Sobald die Bank den neuen Zinssatz bestätigt, tragen Sie ihn ein — Rate und Plan werden neu berechnet.",
@@ -277,6 +283,16 @@
     },
     "events": {
       "menu": "Ereignismenü"
+    },
+    "afterFixation": {
+      "title": "Nach der Zinsbindung",
+      "rate": "Bei {{rate}}",
+      "current": "heutiger Zinssatz",
+      "delta": "{{delta}} Pp.",
+      "perMonth": "Monatsrate"
+    },
+    "legend": {
+      "tapHint": "Tippen Sie auf eine Markierung, um zu sehen, was passiert ist."
     }
   },
   "documents": {
@@ -303,7 +319,15 @@
     "anniversary": "Jahrestag {{date}}",
     "notice": "Kündigung bis",
     "limitsTotal": "gesamt {{amount}}",
-    "total": "Gesamt · {{payments}}"
+    "total": "Gesamt · {{payments}}",
+    "hero": {
+      "label": "Prämie · {{frequency}}",
+      "next": "Nächste Zahlung {{date}} · {{distance}}",
+      "ended": "Vertrag endete am {{date}}",
+      "endedPlain": "Der Vertrag ist beendet",
+      "paidOn": "Bezahlt am {{date}}",
+      "noPremium": "Keine Prämie erfasst"
+    }
   },
   "property": {
     "notFound": "Diese Immobilie existiert nicht mehr.",
@@ -597,7 +621,8 @@
       "stats": {
         "value": "Wert",
         "inCurrency": "in {{currency}}",
-        "price": "Kurs"
+        "price": "Kurs",
+        "asOf": "Stand {{when}}"
       },
       "tx": {
         "buy": "Kauf · {{quantity}} {{unit}}",
@@ -613,7 +638,9 @@
       "following": "Beobachtet",
       "followed": "Zur Beobachtungsliste hinzugefügt",
       "range52": "52-Wochen-Spanne",
-      "renamed": "Name gespeichert"
+      "renamed": "Name gespeichert",
+      "historyComputing": "Der Verlauf wird noch berechnet…",
+      "dividendSource": "Dividenden laut {{source}}"
     },
     "watch": {
       "stats": {

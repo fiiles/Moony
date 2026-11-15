@@ -29,15 +29,6 @@
   },
   "status": {
     "unreachableNote": "Die Synchronisierung läuft weiter, sobald der Server wieder erreichbar ist.",
-    "phase": {
-      "off": "Synchronisierung ist aus",
-      "settingUp": "Synchronisierung wird eingerichtet",
-      "idle": "Auf dem neuesten Stand",
-      "syncing": "Synchronisiere…",
-      "waiting": "Synchronisierung läuft, eine Änderung von einem anderen Gerät wird zurückgehalten",
-      "paused": "Synchronisierung pausiert",
-      "error": "Synchronisierung gestoppt"
-    },
     "problem": {
       "captureBroken": "Die Änderungsverfolgung dieses Geräts ist beschädigt, daher wurde die Synchronisierung gestoppt. Sie lässt sich reparieren.",
       "vaultGone": "Die synchronisierten Daten wurden vom Synchronisierungsserver gelöscht.",

@@ -37,15 +37,6 @@
   },
   "status": {
     "unreachableNote": "Synchronizace se obnoví, až bude server v dosahu.",
-    "phase": {
-      "off": "Synchronizace je vypnutá",
-      "settingUp": "Nastavuje se synchronizace",
-      "idle": "Vše aktuální",
-      "syncing": "Synchronizuji…",
-      "waiting": "Synchronizuje se, změna z jiného zařízení je zadržena",
-      "paused": "Synchronizace je pozastavená",
-      "error": "Synchronizace se zastavila"
-    },
     "problem": {
       "captureBroken": "Sledování změn na tomto zařízení je poškozené, proto se synchronizace zastavila. Lze ho opravit.",
       "vaultGone": "Synchronizovaná data byla ze synchronizačního serveru smazána.",

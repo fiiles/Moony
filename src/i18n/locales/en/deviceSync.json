@@ -29,15 +29,6 @@
   },
   "status": {
     "unreachableNote": "Sync resumes once the server is in reach.",
-    "phase": {
-      "off": "Sync is off",
-      "settingUp": "Setting up sync",
-      "idle": "Up to date",
-      "syncing": "Syncing…",
-      "waiting": "Syncing; a change from another device is held",
-      "paused": "Sync is paused",
-      "error": "Sync stopped"
-    },
     "problem": {
       "captureBroken": "This device's change tracking is damaged, so syncing stopped. It can be repaired.",
       "vaultGone": "The synced data was deleted from the sync server.",

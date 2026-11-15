@@ -25,15 +25,6 @@
   },
   "status": {
     "unreachableNote": "服务器恢复可达后,同步将自动恢复。",
-    "phase": {
-      "off": "同步已关闭",
-      "settingUp": "正在设置同步",
-      "idle": "已是最新",
-      "syncing": "正在同步…",
-      "waiting": "正在同步，来自另一台设备的更改已暂缓",
-      "paused": "同步已暂停",
-      "error": "同步已停止"
-    },
     "problem": {
       "captureBroken": "此设备的变更跟踪已损坏，因此同步已停止。可以修复。",
       "vaultGone": "已同步的数据已从同步服务器中删除。",

@@ -33,15 +33,6 @@
   },
   "status": {
     "unreachableNote": "La sincronización se reanudará cuando el servidor vuelva a estar al alcance.",
-    "phase": {
-      "off": "La sincronización está desactivada",
-      "settingUp": "Configurando la sincronización",
-      "idle": "Al día",
-      "syncing": "Sincronizando…",
-      "waiting": "Sincronizando; un cambio de otro dispositivo está retenido",
-      "paused": "La sincronización está en pausa",
-      "error": "La sincronización se detuvo"
-    },
     "problem": {
       "captureBroken": "El seguimiento de cambios de este dispositivo está dañado, por eso la sincronización se detuvo. Se puede reparar.",
       "vaultGone": "Los datos sincronizados se eliminaron del servidor de sincronización.",

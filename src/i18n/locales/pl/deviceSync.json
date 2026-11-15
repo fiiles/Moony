@@ -37,15 +37,6 @@
   },
   "status": {
     "unreachableNote": "Synchronizacja wznowi się, gdy serwer znów będzie w zasięgu.",
-    "phase": {
-      "off": "Synchronizacja jest wyłączona",
-      "settingUp": "Konfigurowanie synchronizacji",
-      "idle": "Aktualne",
-      "syncing": "Synchronizuję…",
-      "waiting": "Synchronizacja trwa, zmiana z innego urządzenia jest wstrzymana",
-      "paused": "Synchronizacja jest wstrzymana",
-      "error": "Synchronizacja zatrzymana"
-    },
     "problem": {
       "captureBroken": "Śledzenie zmian na tym urządzeniu jest uszkodzone, więc synchronizacja się zatrzymała. Można je naprawić.",
       "vaultGone": "Zsynchronizowane dane zostały usunięte z serwera synchronizacji.",

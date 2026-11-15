@@ -7,14 +7,14 @@ import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { secondsToDate } from '@/utils/sync-status';
 import { hostOf } from '@/utils/sync-setup';
-import { isQuietlyOutOfReach } from '@/utils/sync-state';
+import { isQuietlyOutOfReach, syncState } from '@/utils/sync-state';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { ChangeServerDialog } from '@/components/settings/sync/ChangeServerDialog';
 import { ShowRecoveryKitFlow } from '@/components/settings/sync/ShowRecoveryKitFlow';
 import { SyncProblemAlert } from '@/components/settings/sync/SyncProblemAlert';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Clock } from 'lucide-react';
+import { Clock, RefreshCw } from 'lucide-react';
 
 /** Settings → Sync, sync on: where sync stands, what is waiting, and the two everyday actions. */
 export function SyncStatusCard({ status }: { status: SyncStatus }) {
@@ -36,7 +36,11 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
     }
   };
 
-  const unreachable = isQuietlyOutOfReach(status, Math.floor(Date.now() / 1000));
+  const now = Math.floor(Date.now() / 1000);
+  const unreachable = isQuietlyOutOfReach(status, now);
+  // The same label the top bar shows, so the surfaces never contradict each other
+  const indicator = syncState(status, now);
+  const stateLabel = indicator ? t(indicator.labelKey, { count: indicator.days }) : '';
   const paidUntil = secondsToDate(status.paidUntil);
   // A note, never a problem: this device's clock stands more than a day ahead (audit M6)
   const clockAheadUntil = secondsToDate(status.clockAheadUntil);
@@ -65,11 +69,12 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
           )}
           <div>
             <SettingsRow
-              label={t(`status.phase.${status.phase}`)}
+              label={stateLabel}
               hint={`${lastSynced} · ${t('status.pending', { number: status.pendingChanges })}`}
             >
               <Button type="button" onClick={handleSyncNow} loading={running}>
-                {t('status.syncNow')}
+                <RefreshCw />
+                {running ? t('indicator.syncing') : t('status.syncNow')}
               </Button>
             </SettingsRow>
             {!status.ownServer && paidUntil && (

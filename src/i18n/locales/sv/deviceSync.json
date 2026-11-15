@@ -29,15 +29,6 @@
   },
   "status": {
     "unreachableNote": "Synkroniseringen återupptas när servern är inom räckhåll igen.",
-    "phase": {
-      "off": "Synkroniseringen är av",
-      "settingUp": "Synkroniseringen ställs in",
-      "idle": "Uppdaterad",
-      "syncing": "Synkroniserar…",
-      "waiting": "Synkroniserar, en ändring från en annan enhet hålls kvar",
-      "paused": "Synkroniseringen är pausad",
-      "error": "Synkroniseringen stoppades"
-    },
     "problem": {
       "captureBroken": "Ändringsspårningen på den här enheten är skadad, så synkroniseringen stoppades. Den kan repareras.",
       "vaultGone": "De synkroniserade uppgifterna raderades från synkroniseringsservern.",

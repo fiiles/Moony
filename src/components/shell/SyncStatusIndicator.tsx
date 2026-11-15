@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { RefreshCw } from 'lucide-react';
 import { StatusText } from '@/components/shell/DataStatus';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -94,7 +95,8 @@ export function SyncStatusIndicator() {
           ) : (
             <div className="flex items-center justify-between gap-4">
               <Button variant="outline" size="sm" onClick={handleSyncNow} loading={running}>
-                {t('status.syncNow')}
+                <RefreshCw />
+                {running ? t('indicator.syncing') : t('status.syncNow')}
               </Button>
               <Link href="/settings/sync" onClick={() => setOpen(false)} className={linkClass}>
                 {t('popover.settings')} →

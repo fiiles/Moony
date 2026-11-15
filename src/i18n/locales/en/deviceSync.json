@@ -452,6 +452,8 @@
     "uploading": "Uploading documents and photos",
     "onOtherDevices_one": "{{count}} document or photo is on your other devices",
     "onOtherDevices_other": "{{count}} documents and photos are on your other devices",
+    "failedUpload_one": "{{count}} document or photo could not be uploaded and is only on this device.",
+    "failedUpload_other": "{{count}} documents and photos could not be uploaded and are only on this device.",
     "downloadEverything": "Download everything to this phone",
     "downloadEverythingStarted": "Downloading while Moony is open",
     "problem": {
@@ -464,7 +466,7 @@
     "body": "Everything you enter into Moony syncs. The language, look, menu, notifications, device password, recovery key and backups belong to each device. Prices and history are worked out on each device. Documents and photos sync too; a phone downloads one when you open it."
   },
   "protection": {
-    "line_one": "Sync protects your data (last complete sync {{age}}, {{count}} device). Make a backup when you want to keep how things stood on a given day.",
-    "line_other": "Sync protects your data (last complete sync {{age}}, {{count}} devices). Make a backup when you want to keep how things stood on a given day."
+    "line_one": "Sync protects your data: a copy is on the sync server (last complete sync: {{age}}, devices in sync: {{count}}). Make a backup when you want to keep how things stood on a given day.",
+    "line_other": "Sync protects your data: a copy is on the sync server (last complete sync: {{age}}, devices in sync: {{count}}). Make a backup when you want to keep how things stood on a given day."
   }
 }

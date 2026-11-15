@@ -452,6 +452,8 @@
     "uploading": "Dokumente und Fotos werden hochgeladen",
     "onOtherDevices_one": "{{count}} Dokument oder Foto ist auf Ihren anderen Geräten",
     "onOtherDevices_other": "{{count}} Dokumente und Fotos sind auf Ihren anderen Geräten",
+    "failedUpload_one": "{{count}} Dokument oder Foto konnte nicht hochgeladen werden und ist nur auf diesem Gerät.",
+    "failedUpload_other": "{{count}} Dokumente und Fotos konnten nicht hochgeladen werden und sind nur auf diesem Gerät.",
     "downloadEverything": "Alles auf dieses Telefon herunterladen",
     "downloadEverythingStarted": "Der Download läuft, solange Moony geöffnet ist",
     "problem": {
@@ -464,7 +466,7 @@
     "body": "Alles, was Sie in Moony eingeben, wird synchronisiert. Sprache, Aussehen, Menü, Benachrichtigungen, Gerätepasswort, Wiederherstellungsschlüssel und Sicherungen gehören zu jedem Gerät einzeln. Kurse und Verlauf werden auf jedem Gerät selbst berechnet. Dokumente und Fotos werden ebenfalls synchronisiert; ein Telefon lädt sie erst herunter, wenn Sie sie öffnen."
   },
   "protection": {
-    "line_one": "Die Synchronisierung schützt Ihre Daten (letzte vollständige Synchronisierung: {{age}}, {{count}} Gerät). Erstellen Sie eine Sicherung, wenn Sie den Stand eines bestimmten Tages festhalten möchten.",
-    "line_other": "Die Synchronisierung schützt Ihre Daten (letzte vollständige Synchronisierung: {{age}}, {{count}} Geräte). Erstellen Sie eine Sicherung, wenn Sie den Stand eines bestimmten Tages festhalten möchten."
+    "line_one": "Die Synchronisierung schützt Ihre Daten: Eine Kopie liegt auf dem Synchronisierungsserver (letzte vollständige Synchronisierung: {{age}}, Geräte in der Synchronisierung: {{count}}). Erstellen Sie eine Sicherung, wenn Sie den Stand eines bestimmten Tages festhalten möchten.",
+    "line_other": "Die Synchronisierung schützt Ihre Daten: Eine Kopie liegt auf dem Synchronisierungsserver (letzte vollständige Synchronisierung: {{age}}, Geräte in der Synchronisierung: {{count}}). Erstellen Sie eine Sicherung, wenn Sie den Stand eines bestimmten Tages festhalten möchten."
   }
 }

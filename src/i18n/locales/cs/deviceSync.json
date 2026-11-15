@@ -478,6 +478,10 @@
     "onOtherDevices_one": "{{count}} dokument nebo fotka je na vašich dalších zařízeních",
     "onOtherDevices_few": "{{count}} dokumenty a fotky jsou na vašich dalších zařízeních",
     "onOtherDevices_other": "{{count}} dokumentů a fotek je na vašich dalších zařízeních",
+    "failedUpload_one": "Nepodařilo se nahrát dokumenty a fotky: {{count}}. Jsou jen v tomto zařízení.",
+    "failedUpload_few": "Nepodařilo se nahrát dokumenty a fotky: {{count}}. Jsou jen v tomto zařízení.",
+    "failedUpload_many": "Nepodařilo se nahrát dokumenty a fotky: {{count}}. Jsou jen v tomto zařízení.",
+    "failedUpload_other": "Nepodařilo se nahrát dokumenty a fotky: {{count}}. Jsou jen v tomto zařízení.",
     "downloadEverything": "Stáhnout vše do tohoto telefonu",
     "downloadEverythingStarted": "Stahuji, dokud je Moony otevřené",
     "problem": {
@@ -490,9 +494,9 @@
     "body": "Synchronizuje se všechno, co do Moony zadáte. Jazyk, vzhled, menu, oznámení, heslo zařízení, obnovovací klíč a zálohy patří každému zařízení zvlášť. Ceny a historie se dopočítávají na každém zařízení. Dokumenty a fotky se synchronizují také; telefon si je stáhne, až je otevřete."
   },
   "protection": {
-    "line_one": "Vaše data chrání synchronizace (naposledy {{age}}, {{count}} zařízení). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",
-    "line_few": "Vaše data chrání synchronizace (naposledy {{age}}, {{count}} zařízení). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",
-    "line_many": "Vaše data chrání synchronizace (naposledy {{age}}, {{count}} zařízení). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",
-    "line_other": "Vaše data chrání synchronizace (naposledy {{age}}, {{count}} zařízení). Zálohu si udělejte, když chcete uchovat stav k určitému dni."
+    "line_one": "Vaše data chrání synchronizace: kopie je na synchronizačním serveru (naposledy: {{age}}, zařízení v synchronizaci: {{count}}). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",
+    "line_few": "Vaše data chrání synchronizace: kopie je na synchronizačním serveru (naposledy: {{age}}, zařízení v synchronizaci: {{count}}). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",
+    "line_many": "Vaše data chrání synchronizace: kopie je na synchronizačním serveru (naposledy: {{age}}, zařízení v synchronizaci: {{count}}). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",
+    "line_other": "Vaše data chrání synchronizace: kopie je na synchronizačním serveru (naposledy: {{age}}, zařízení v synchronizaci: {{count}}). Zálohu si udělejte, když chcete uchovat stav k určitému dni."
   }
 }

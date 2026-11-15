@@ -72,7 +72,7 @@
     "repeatOnOthers": "Gör samma sak på dina andra enheter."
   },
   "intro": {
-    "description": "Håll dina uppgifter, även dokument och foton, uppdaterade på alla dina enheter. De är end-to-end-krypterade: synkroniseringsservern lagrar bara data den inte kan läsa.",
+    "description": "Håll dina data, även dokument och foton, uppdaterade på alla dina enheter. De är end-to-end-krypterade: synkroniseringsservern lagrar bara data den inte kan läsa.",
     "privacy": "Dina uppgifter lämnar aldrig dina enheter okrypterade.",
     "start": "Ställ in synkronisering",
     "resume": "Fortsätt inställningen",
@@ -452,6 +452,8 @@
     "uploading": "Laddar upp dokument och foton",
     "onOtherDevices_one": "{{count}} dokument eller foto finns på dina andra enheter",
     "onOtherDevices_other": "{{count}} dokument och foton finns på dina andra enheter",
+    "failedUpload_one": "{{count}} dokument eller foto kunde inte laddas upp och finns bara på den här enheten.",
+    "failedUpload_other": "{{count}} dokument och foton kunde inte laddas upp och finns bara på den här enheten.",
     "downloadEverything": "Ladda ned allt till den här telefonen",
     "downloadEverythingStarted": "Laddar ned medan Moony är öppet",
     "problem": {
@@ -464,7 +466,7 @@
     "body": "Allt du skriver in i Moony synkroniseras. Språk, utseende, meny, aviseringar, enhetslösenord, återställningsnyckel och säkerhetskopior hör till varje enhet för sig. Priser och historik räknas fram på varje enhet. Dokument och foton synkroniseras också; en telefon laddar ned varje fil när du öppnar den."
   },
   "protection": {
-    "line_one": "Synkroniseringen skyddar dina data (senaste fullständiga synkronisering: {{age}}, {{count}} enhet). Gör en säkerhetskopia när du vill spara hur allt stod en viss dag.",
-    "line_other": "Synkroniseringen skyddar dina data (senaste fullständiga synkronisering: {{age}}, {{count}} enheter). Gör en säkerhetskopia när du vill spara hur allt stod en viss dag."
+    "line_one": "Synkroniseringen skyddar dina data: en kopia finns på synkroniseringsservern (senaste fullständiga synkronisering: {{age}}, enheter som synkroniseras: {{count}}). Gör en säkerhetskopia när du vill spara hur allt stod en viss dag.",
+    "line_other": "Synkroniseringen skyddar dina data: en kopia finns på synkroniseringsservern (senaste fullständiga synkronisering: {{age}}, enheter som synkroniseras: {{count}}). Gör en säkerhetskopia när du vill spara hur allt stod en viss dag."
   }
 }

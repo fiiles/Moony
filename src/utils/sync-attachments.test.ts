@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SyncAttachments, SyncPhase, SyncStatus } from '@shared/schema';
 import {
   attachmentsLine,
+  failedUploadLine,
   notInBackup,
   offerDownloadEverything,
   onOtherDevices,
@@ -154,5 +155,23 @@ describe('notInBackup', () => {
     ).toBe(6);
     // a stuck upload is failed but its content is here: not missing from a backup
     expect(notInBackup(attachments({ failed: 1 }))).toBe(0);
+  });
+});
+
+describe('failedUploadLine', () => {
+  it('is the count of stuck uploads, null when there are none', () => {
+    expect(failedUploadLine(zeros)).toBeNull();
+    expect(failedUploadLine(attachments({ failed: 3 }))).toBeNull();
+    expect(failedUploadLine(attachments({ failed: 3, failedUpload: 2 }))).toBe(2);
+  });
+  it('never lets the row read all uploaded while one is stuck', () => {
+    expect(attachmentsLine(attachments({ failed: 1, failedUpload: 1 }))).toEqual({ kind: 'none' });
+  });
+  it('keeps the waiting text as the value beside a stuck upload', () => {
+    expect(
+      attachmentsLine(
+        attachments({ waitingUpload: 2, waitingUploadBytes: 500, failed: 1, failedUpload: 1 })
+      )
+    ).toEqual({ kind: 'waiting', count: 2, bytes: 500 });
   });
 });

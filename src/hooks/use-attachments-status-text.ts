@@ -2,7 +2,12 @@ import { useTranslation } from 'react-i18next';
 import type { SyncAttachments } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { fileSizeText } from '@/utils/file-size';
-import { attachmentsLine, shownProblem, withoutDanglingSize } from '@/utils/sync-attachments';
+import {
+  attachmentsLine,
+  failedUploadLine,
+  shownProblem,
+  withoutDanglingSize,
+} from '@/utils/sync-attachments';
 
 /** Before the status has answered: nothing waits, nothing is wrong. */
 const NONE: SyncAttachments = {
@@ -20,11 +25,13 @@ const NONE: SyncAttachments = {
  * The words of the "Documents and photos" status row, shared by every surface that shows it:
  * `value` is "All uploaded" or what waits (with its size), `null` while only a problem is shown;
  * `problem` the line of the problem that keeps documents and photos from moving (the rest of sync
- * goes on), `null` when there is none to tell (`shownProblem`).
+ * goes on), `null` when there is none to tell (`shownProblem`); `failedUpload` the line about uploads
+ * that cannot go by themselves, shown under the value, `null` when none.
  */
 export function useAttachmentsStatusText(status: SyncAttachments | undefined): {
   value: string | null;
   problem: string | null;
+  failedUpload: string | null;
 } {
   const { t } = useTranslation('deviceSync');
   const fmt = useFormat();
@@ -41,5 +48,10 @@ export function useAttachmentsStatusText(status: SyncAttachments | undefined): {
       })
     );
   }
-  return { value, problem: problem ? t(`attachments.problem.${problem}`) : null };
+  const stuck = failedUploadLine(a);
+  return {
+    value,
+    problem: problem ? t(`attachments.problem.${problem}`) : null,
+    failedUpload: stuck === null ? null : t('attachments.failedUpload', { count: stuck }),
+  };
 }

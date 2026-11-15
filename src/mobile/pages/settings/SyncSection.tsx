@@ -27,6 +27,7 @@ import {
   useDeviceSyncStatus,
   useSyncDevices,
 } from '@/hooks/use-device-sync';
+import { syncIsOn } from '@/utils/safe-copy';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -240,7 +241,7 @@ export default function SyncSection() {
     );
   }
 
-  const syncOn = status !== undefined && status.phase !== 'off' && status.phase !== 'settingUp';
+  const syncOn = syncIsOn(feature.enabled, status);
   const pending = status?.pendingChanges ?? 0;
   const devTools = status?.devTools === true;
   const deleteAfterwards = t(

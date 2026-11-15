@@ -123,7 +123,7 @@ export default function SecuritySection() {
               />
             ))}
           </EntityRows>
-          <SyncKitSheet open={kitOpen} onOpenChange={setKitOpen} />
+          {keepSafe.includes('kit') && <SyncKitSheet open={kitOpen} onOpenChange={setKitOpen} />}
         </>
       )}
       <ChangePasswordSheet open={passwordOpen} onOpenChange={setPasswordOpen} />

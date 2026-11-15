@@ -141,6 +141,9 @@ export function SyncStatusBlock({
       {attachments.problem && (
         <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{attachments.problem}</p>
       )}
+      {attachments.failedUpload && (
+        <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{attachments.failedUpload}</p>
+      )}
       {elsewhere > 0 && (
         <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">
           {t('attachments.onOtherDevices', { count: elsewhere })}

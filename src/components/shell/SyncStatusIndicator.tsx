@@ -70,6 +70,9 @@ export function SyncStatusIndicator() {
             {attachments.problem && (
               <p className="mt-1 text-caption text-ink-3">{attachments.problem}</p>
             )}
+            {attachments.failedUpload && (
+              <p className="mt-1 text-caption text-ink-3">{attachments.failedUpload}</p>
+            )}
             <p className="mt-1 text-caption text-ink-3">
               {age ? `${label} · ${t(`age.${age.key}`, { count: age.count })}` : label}
             </p>

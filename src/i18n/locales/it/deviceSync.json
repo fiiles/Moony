@@ -466,6 +466,9 @@
     "onOtherDevices_one": "{{count}} documento o foto è sui tuoi altri dispositivi",
     "onOtherDevices_many": "{{count}} documenti e foto sono sui tuoi altri dispositivi",
     "onOtherDevices_other": "{{count}} documenti e foto sono sui tuoi altri dispositivi",
+    "failedUpload_one": "{{count}} documento o foto non è stato caricato e si trova solo su questo dispositivo.",
+    "failedUpload_many": "{{count}} documenti e foto non sono stati caricati e si trovano solo su questo dispositivo.",
+    "failedUpload_other": "{{count}} documenti e foto non sono stati caricati e si trovano solo su questo dispositivo.",
     "downloadEverything": "Scarica tutto su questo telefono",
     "downloadEverythingStarted": "Download in corso finché Moony è aperto",
     "problem": {
@@ -478,8 +481,8 @@
     "body": "Tutto ciò che inserisci in Moony viene sincronizzato. La lingua, l'aspetto, il menu, le notifiche, la password del dispositivo, la chiave di recupero e i backup appartengono a ciascun dispositivo. I prezzi e la cronologia vengono calcolati su ogni dispositivo. Anche i documenti e le foto vengono sincronizzati; un telefono scarica ciascuno quando lo apri."
   },
   "protection": {
-    "line_one": "La sincronizzazione protegge i tuoi dati (ultima sincronizzazione completa: {{age}}, {{count}} dispositivo). Fai un backup quando vuoi conservare la situazione di un giorno preciso.",
-    "line_many": "La sincronizzazione protegge i tuoi dati (ultima sincronizzazione completa: {{age}}, {{count}} dispositivi). Fai un backup quando vuoi conservare la situazione di un giorno preciso.",
-    "line_other": "La sincronizzazione protegge i tuoi dati (ultima sincronizzazione completa: {{age}}, {{count}} dispositivi). Fai un backup quando vuoi conservare la situazione di un giorno preciso."
+    "line_one": "La sincronizzazione protegge i tuoi dati: una copia si trova sul server di sincronizzazione (ultima sincronizzazione completa: {{age}}, dispositivi sincronizzati: {{count}}). Fai un backup quando vuoi conservare la situazione di un giorno preciso.",
+    "line_many": "La sincronizzazione protegge i tuoi dati: una copia si trova sul server di sincronizzazione (ultima sincronizzazione completa: {{age}}, dispositivi sincronizzati: {{count}}). Fai un backup quando vuoi conservare la situazione di un giorno preciso.",
+    "line_other": "La sincronizzazione protegge i tuoi dati: una copia si trova sul server di sincronizzazione (ultima sincronizzazione completa: {{age}}, dispositivi sincronizzati: {{count}}). Fai un backup quando vuoi conservare la situazione di un giorno preciso."
   }
 }

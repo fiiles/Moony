@@ -466,6 +466,9 @@
     "onOtherDevices_one": "{{count}} documento o foto está en tus otros dispositivos",
     "onOtherDevices_many": "{{count}} documentos y fotos están en tus otros dispositivos",
     "onOtherDevices_other": "{{count}} documentos y fotos están en tus otros dispositivos",
+    "failedUpload_one": "{{count}} documento o foto no se pudo subir y solo está en este dispositivo.",
+    "failedUpload_many": "{{count}} documentos y fotos no se pudieron subir y solo están en este dispositivo.",
+    "failedUpload_other": "{{count}} documentos y fotos no se pudieron subir y solo están en este dispositivo.",
     "downloadEverything": "Descargar todo en este teléfono",
     "downloadEverythingStarted": "Descargando mientras Moony esté abierto",
     "problem": {
@@ -478,8 +481,8 @@
     "body": "Todo lo que introduces en Moony se sincroniza. El idioma, el aspecto, el menú, las notificaciones, la contraseña del dispositivo, la clave de recuperación y las copias de seguridad pertenecen a cada dispositivo. Los precios y el historial se calculan en cada dispositivo. Los documentos y las fotos también se sincronizan; un teléfono descarga cada uno al abrirlo."
   },
   "protection": {
-    "line_one": "La sincronización protege tus datos (última sincronización completa: {{age}}, {{count}} dispositivo). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto.",
-    "line_many": "La sincronización protege tus datos (última sincronización completa: {{age}}, {{count}} dispositivos). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto.",
-    "line_other": "La sincronización protege tus datos (última sincronización completa: {{age}}, {{count}} dispositivos). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto."
+    "line_one": "La sincronización protege tus datos: hay una copia en el servidor de sincronización (última sincronización completa: {{age}}, dispositivos sincronizados: {{count}}). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto.",
+    "line_many": "La sincronización protege tus datos: hay una copia en el servidor de sincronización (última sincronización completa: {{age}}, dispositivos sincronizados: {{count}}). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto.",
+    "line_other": "La sincronización protege tus datos: hay una copia en el servidor de sincronización (última sincronización completa: {{age}}, dispositivos sincronizados: {{count}}). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto."
   }
 }

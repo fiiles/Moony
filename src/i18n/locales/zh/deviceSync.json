@@ -438,6 +438,7 @@
     "waiting_other": "{{count}} 项等待上传 · {{size}}",
     "uploading": "正在上传文档和照片",
     "onOtherDevices_other": "{{count}} 个文档和照片在您的其他设备上",
+    "failedUpload_other": "有 {{count}} 个文档或照片无法上传，仅保存在此设备上。",
     "downloadEverything": "全部下载到这部手机",
     "downloadEverythingStarted": "Moony 打开期间会持续下载",
     "problem": {
@@ -450,6 +451,6 @@
     "body": "您在 Moony 中输入的所有内容都会同步。语言、外观、菜单、通知、设备密码、恢复密钥和备份属于每台设备各自所有。价格和历史记录在每台设备上单独计算。文档和照片也会同步；手机会在您打开时下载。"
   },
   "protection": {
-    "line_other": "同步正在保护您的数据（最近一次完整同步：{{age}}，{{count}} 台设备）。想保留某一天的状态时，请创建备份。"
+    "line_other": "同步正在保护您的数据：副本保存在同步服务器上（最近一次完整同步：{{age}}，同步中的设备：{{count}} 台）。想保留某一天的状态时，请创建备份。"
   }
 }

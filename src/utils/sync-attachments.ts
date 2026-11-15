@@ -19,13 +19,22 @@ export type AttachmentsLine =
   | { kind: 'none' };
 
 /**
- * What waits, with its size; else all uploaded, but never while a problem is shown (then nothing).
+ * What waits, with its size; else all uploaded, but never while a problem is shown or an upload is stuck (then nothing).
  */
 export function attachmentsLine(a: SyncAttachments): AttachmentsLine {
   if (a.waitingUpload > 0) {
     return { kind: 'waiting', count: a.waitingUpload, bytes: a.waitingUploadBytes };
   }
-  return shownProblem(a) ? { kind: 'none' } : { kind: 'allUploaded' };
+  return shownProblem(a) || a.failedUpload > 0 ? { kind: 'none' } : { kind: 'allUploaded' };
+}
+
+/**
+ * How many documents and photos have an upload that cannot go by itself (refused, conflict,
+ * invalid ID), `null` when none. Shown under the row's value, in addition to it; while it is set
+ * the value never reads "All uploaded".
+ */
+export function failedUploadLine(a: SyncAttachments): number | null {
+  return a.failedUpload > 0 ? a.failedUpload : null;
 }
 
 /**

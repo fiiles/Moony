@@ -88,6 +88,8 @@
     "setBudgetHint": "Limiti mensili per categoria di spesa.",
     "makeBackup": "Fai un backup",
     "makeBackupHint": "Un unico file con tutto, in Impostazioni → Dati e backup.",
+    "protectData": "Proteggi i tuoi dati",
+    "protectDataHint": "Fai un backup in Impostazioni → Dati e backup, oppure attiva la sincronizzazione.",
     "dismiss": "Chiudi",
     "done": "Fatto",
     "optional": "Facoltativo"

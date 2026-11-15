@@ -2,11 +2,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Check, X } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { onboardingApi } from '@/lib/tauri-api';
 import { cn } from '@/lib/utils';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { exportsOnThisDevice } from '@/mobile/lib/export-file';
 import { phoneGettingStartedItems } from '@/mobile/lib/getting-started';
+import { syncIsOn } from '@/utils/safe-copy';
 
 /** The progress the desktop card, Nastavení and the backup read: one cache entry. */
 const PROGRESS_KEY = ['onboarding-progress'] as const;
@@ -22,6 +24,8 @@ export function GettingStartedCard() {
   const { t: tm } = useTranslation('mobile');
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const featureOn = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
   const { data: progress } = useQuery({
     queryKey: PROGRESS_KEY,
     queryFn: () => onboardingApi.getProgress(),
@@ -32,7 +36,8 @@ export function GettingStartedCard() {
   const items = phoneGettingStartedItems(
     progress,
     user?.menuPreferences,
-    exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? '')
+    exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? ''),
+    { featureOn, syncOn: syncIsOn(featureOn, syncStatus) }
   );
   if (items.every((item) => item.done)) return null;
   const doneCount = items.filter((item) => item.done).length;
@@ -89,8 +94,8 @@ export function GettingStartedCard() {
               </span>
             }
             sub={[
-              item.key === 'makeBackup'
-                ? tm('gettingStarted.makeBackupHint')
+              item.key === 'makeBackup' || item.key === 'protectData'
+                ? tm(`gettingStarted.${item.key}Hint`)
                 : t(`gettingStarted.${item.key}Hint`),
               item.optional && !item.done ? t('gettingStarted.optional') : null,
             ]

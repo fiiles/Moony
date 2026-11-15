@@ -946,7 +946,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "Eine verschlüsselte Datei mit allem, unter Einstellungen → Sicherung und Übertragung."
+    "makeBackupHint": "Eine verschlüsselte Datei mit allem, unter Einstellungen → Sicherung und Übertragung.",
+    "protectDataHint": "Erstellen Sie eine Sicherung unter Einstellungen → Sicherung und Übertragung oder schalten Sie die Synchronisierung ein."
   },
   "sheet": {
     "discard": {

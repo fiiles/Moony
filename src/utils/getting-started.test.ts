@@ -63,4 +63,35 @@ describe('gettingStartedItems', () => {
       'makeBackup',
     ]);
   });
+
+  it('keeps "Make a backup" without the sync flag', () => {
+    const last = (items: ReturnType<typeof gettingStartedItems>) => items[items.length - 1];
+    for (const sync of [undefined, { featureOn: false, syncOn: true }]) {
+      const item = last(gettingStartedItems(nothingDone, prefs(), sync));
+      expect(item).toEqual({
+        key: 'makeBackup',
+        done: false,
+        href: '/settings/data',
+        optional: false,
+      });
+    }
+  });
+
+  it('asks to protect the data with the flag on', () => {
+    const last = (lastBackupAt: number | null, syncOn: boolean) => {
+      const items = gettingStartedItems({ ...nothingDone, lastBackupAt }, prefs(), {
+        featureOn: true,
+        syncOn,
+      });
+      return items[items.length - 1];
+    };
+    expect(last(null, false)).toEqual({
+      key: 'protectData',
+      done: false,
+      href: '/settings/data',
+      optional: false,
+    });
+    expect(last(null, true).done).toBe(true);
+    expect(last(1, false).done).toBe(true);
+  });
 });

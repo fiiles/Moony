@@ -52,4 +52,13 @@ describe('opensAddAccount', () => {
     expect(opensAddAccount('?add=loan')).toBe(false);
     expect(opensAddAccount('')).toBe(false);
   });
+
+  it('leads "Protect your data" to Záloha a přenos and drops it where backups cannot be made', () => {
+    const sync = { featureOn: true, syncOn: false };
+    const items = phoneGettingStartedItems(progress, undefined, true, sync);
+    expect(items.find((i) => i.key === 'protectData')?.href).toBe('/settings/backup');
+    expect(items.some((i) => i.key === 'makeBackup')).toBe(false);
+    const noBackup = phoneGettingStartedItems(progress, undefined, false, sync);
+    expect(noBackup.some((i) => i.key === 'protectData' || i.key === 'makeBackup')).toBe(false);
+  });
 });

@@ -3,6 +3,7 @@ import {
   gettingStartedItems,
   type GettingStartedItem,
   type GettingStartedKey,
+  type GettingStartedSync,
 } from '@/utils/getting-started';
 import { routes, settingsPath } from '@/mobile/shell/routes';
 
@@ -28,10 +29,11 @@ export function phoneGettingStartedItems(
     'hasTransactions' | 'hasInvestment' | 'hasBudget' | 'lastBackupAt'
   >,
   prefs: MenuPreferences | undefined,
-  canBackup = true
+  canBackup = true,
+  sync?: GettingStartedSync
 ): GettingStartedItem[] {
-  return gettingStartedItems(progress, prefs)
-    .filter((item) => canBackup || item.key !== 'makeBackup')
+  return gettingStartedItems(progress, prefs, sync)
+    .filter((item) => canBackup || (item.key !== 'makeBackup' && item.key !== 'protectData'))
     .map((item) => ({ ...item, href: phoneHref(item.key, item.href) }));
 }
 
@@ -45,6 +47,7 @@ function phoneHref(key: GettingStartedKey, desktopHref: string): string {
     case 'setBudget':
       return routes.budgets;
     case 'makeBackup':
+    case 'protectData':
       return settingsPath('backup');
   }
 }

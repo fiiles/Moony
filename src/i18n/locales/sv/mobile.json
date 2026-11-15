@@ -946,7 +946,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "En krypterad fil med allt, under Inställningar → Säkerhetskopia och överföring."
+    "makeBackupHint": "En krypterad fil med allt, under Inställningar → Säkerhetskopia och överföring.",
+    "protectDataHint": "Gör en säkerhetskopia under Inställningar → Säkerhetskopia och överföring, eller slå på synkronisering."
   },
   "sheet": {
     "discard": {

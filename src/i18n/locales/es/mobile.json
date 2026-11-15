@@ -996,7 +996,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "Un archivo cifrado con todo, en Ajustes → Copia de seguridad y traslado."
+    "makeBackupHint": "Un archivo cifrado con todo, en Ajustes → Copia de seguridad y traslado.",
+    "protectDataHint": "Haz una copia de seguridad en Ajustes → Copia de seguridad y traslado, o activa la sincronización."
   },
   "sheet": {
     "discard": {

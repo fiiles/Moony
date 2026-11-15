@@ -1004,7 +1004,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "Jeden šifrovaný soubor se vším, v Nastavení → Záloha a přenos."
+    "makeBackupHint": "Jeden šifrovaný soubor se vším, v Nastavení → Záloha a přenos.",
+    "protectDataHint": "Udělejte zálohu v Nastavení → Záloha a přenos, nebo zapněte synchronizaci."
   },
   "sheet": {
     "discard": {

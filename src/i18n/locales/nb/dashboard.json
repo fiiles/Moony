@@ -88,6 +88,8 @@
     "setBudgetHint": "Månedlige grenser per utgiftskategori.",
     "makeBackup": "Ta en sikkerhetskopi",
     "makeBackupHint": "Én fil med alt, under Innstillinger → Data og sikkerhetskopier.",
+    "protectData": "Beskytt dataene dine",
+    "protectDataHint": "Ta en sikkerhetskopi under Innstillinger → Data og sikkerhetskopier, eller slå på synkronisering.",
     "dismiss": "Lukk",
     "done": "Ferdig",
     "optional": "Valgfritt"

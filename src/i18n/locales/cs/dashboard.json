@@ -88,6 +88,8 @@
     "setBudgetHint": "Měsíční limity pro jednotlivé kategorie výdajů.",
     "makeBackup": "Udělat zálohu",
     "makeBackupHint": "Jeden soubor se vším, v Nastavení → Data a zálohy.",
+    "protectData": "Ochránit data",
+    "protectDataHint": "Udělejte zálohu v Nastavení → Data a zálohy, nebo zapněte synchronizaci.",
     "dismiss": "Skrýt",
     "done": "Hotovo",
     "optional": "Volitelné"

@@ -946,7 +946,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "Én kryptert fil med alt, under Innstillinger → Sikkerhetskopi og overføring."
+    "makeBackupHint": "Én kryptert fil med alt, under Innstillinger → Sikkerhetskopi og overføring.",
+    "protectDataHint": "Ta en sikkerhetskopi under Innstillinger → Sikkerhetskopi og overføring, eller slå på synkronisering."
   },
   "sheet": {
     "discard": {

@@ -1046,7 +1046,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "Jeden zaszyfrowany plik ze wszystkim, w Ustawienia → Kopia zapasowa i przenoszenie."
+    "makeBackupHint": "Jeden zaszyfrowany plik ze wszystkim, w Ustawienia → Kopia zapasowa i przenoszenie.",
+    "protectDataHint": "Zrób kopię zapasową w Ustawienia → Kopia zapasowa i przenoszenie albo włącz synchronizację."
   },
   "sheet": {
     "discard": {

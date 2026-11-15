@@ -946,7 +946,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "One encrypted file with everything, in Settings → Backup and transfer."
+    "makeBackupHint": "One encrypted file with everything, in Settings → Backup and transfer.",
+    "protectDataHint": "Make a backup in Settings → Backup and transfer, or turn on sync."
   },
   "sheet": {
     "discard": {

@@ -996,7 +996,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "Un file cifrato con tutto, in Impostazioni → Backup e trasferimento."
+    "makeBackupHint": "Un file cifrato con tutto, in Impostazioni → Backup e trasferimento.",
+    "protectDataHint": "Fai un backup in Impostazioni → Backup e trasferimento, oppure attiva la sincronizzazione."
   },
   "sheet": {
     "discard": {

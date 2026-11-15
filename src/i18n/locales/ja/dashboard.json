@@ -88,6 +88,8 @@
     "setBudgetHint": "支出カテゴリごとの月次上限。",
     "makeBackup": "バックアップを作成",
     "makeBackupHint": "すべてを1つのファイルに。設定 → データとバックアップから。",
+    "protectData": "データを守る",
+    "protectDataHint": "設定 → データとバックアップでバックアップを作成するか、同期をオンにしてください。",
     "dismiss": "閉じる",
     "done": "完了",
     "optional": "任意"

@@ -88,6 +88,8 @@
     "setBudgetHint": "Límites mensuales por categoría de gasto.",
     "makeBackup": "Hacer una copia de seguridad",
     "makeBackupHint": "Un solo archivo con todo, en Ajustes → Datos y copias de seguridad.",
+    "protectData": "Proteger tus datos",
+    "protectDataHint": "Haz una copia de seguridad en Ajustes → Datos y copias de seguridad, o activa la sincronización.",
     "dismiss": "Descartar",
     "done": "Hecho",
     "optional": "Opcional"

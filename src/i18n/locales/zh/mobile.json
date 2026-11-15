@@ -896,7 +896,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "一个包含全部内容的加密文件，在 设置 → 备份与迁移 中。"
+    "makeBackupHint": "一个包含全部内容的加密文件，在 设置 → 备份与迁移 中。",
+    "protectDataHint": "请在 设置 → 备份与迁移 中创建备份，或开启同步。"
   },
   "sheet": {
     "discard": {

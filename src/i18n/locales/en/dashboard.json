@@ -88,6 +88,8 @@
     "setBudgetHint": "Monthly limits per spending category.",
     "makeBackup": "Make a backup",
     "makeBackupHint": "One file with everything, in Settings → Data and backups.",
+    "protectData": "Protect your data",
+    "protectDataHint": "Make a backup in Settings → Data and backups, or turn on sync.",
     "dismiss": "Dismiss",
     "done": "Done",
     "optional": "Optional"

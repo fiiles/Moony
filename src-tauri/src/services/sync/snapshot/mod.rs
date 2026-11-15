@@ -35,6 +35,7 @@ use rusqlite::{params, params_from_iter, Connection, OptionalExtension};
 use super::capture::{self, triggers::pk_expr, Mode, CLOCK_UPSERT};
 use super::chain;
 use super::changeset::{DevTable, RowChange, RowKey, SqlValue};
+use super::held_blobs;
 use super::hlc::{Clock, DeviceId, Observation};
 use super::in_savepoint;
 use super::journal::{category_depth, Reader};
@@ -179,9 +180,10 @@ pub fn join(
 /// written, the cursor and snapshot bookkeeping set, and every repair runs.
 ///
 /// The attachment rows are synced (ADR 0030): afterwards they are the vault's, legacy rows
-/// without a blob included in what goes. Content this device holds under a blob ID a vault row
-/// names stays (`repair::full`'s sweep keeps referenced blobs); the blobs of rows that went are
-/// purged and remain only in the backup. `RestoreReport::attachments` counts both.
+/// without a blob included in what goes. Every blob this device's rows named before the replace
+/// is held (`held_blobs`) until the first pull after it caught up, since a row pushed after the
+/// vault's snapshot comes back only with that pull; then the blobs no row names go.
+/// `RestoreReport::attachments` counts this device's documents and photos there again or not.
 pub fn restore_replace(
     conn: &Connection,
     input: &mut impl Read,
@@ -238,8 +240,10 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<Restor
     }
     observe(conn, report.stats.max_hlc, &mut report.warnings)?;
     // This device's documents and photos, noted before the clear and looked up again after the
-    // refill: counted only. The repair's blob sweep then keeps the content of every row there is.
+    // refill: counted only. Their content is held until the next pull caught up (`held_blobs`),
+    // so the repair's blob sweep keeps it even for a row the vault brings back only then.
     let mine = attachments::mine(conn)?;
+    held_blobs::hold_named(conn, now)?;
     refill(conn, &mut snapshot, &sync, &mut report)?;
     report.attachments = attachments::carry(conn, mine)?;
     report.warnings.extend(repair::full(conn, now)?.warnings);

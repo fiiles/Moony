@@ -426,7 +426,7 @@
       "documents": "Documentos: {{count}}",
       "photos": "Fotos: {{count}}"
     },
-    "attachments": "Los documentos y las fotos siguen adjuntos a los elementos que también tienen los datos sincronizados; el resto queda solo en la copia de seguridad.",
+    "attachments": "Después, los documentos y las fotos son los de los datos sincronizados; los documentos y las fotos de este dispositivo que no tienen los datos sincronizados quedan solo en la copia de seguridad.",
     "unsent": "Moony envía primero los cambios pendientes; lo que no pueda enviar queda solo en la copia de seguridad.",
     "backupWhere": "La copia de seguridad aparece en Ajustes → Datos y copias de seguridad, en «Copias de seguridad hechas antes de que la sincronización reemplazara datos».",
     "loading": "Contando lo que está en juego…",

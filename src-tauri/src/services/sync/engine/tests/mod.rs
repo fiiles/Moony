@@ -11,6 +11,7 @@ mod echo;
 mod gap_skip;
 mod gap_skip_miss;
 mod gaps;
+mod held_blobs;
 mod join;
 mod join_new;
 mod pull;

@@ -438,7 +438,7 @@
       "documents": "Dokumenty: {{count}}",
       "photos": "Fotky: {{count}}"
     },
-    "attachments": "Dokumenty a fotky zůstanou přiložené k položkám, které mají i synchronizovaná data; ostatní zůstanou jen v záloze.",
+    "attachments": "Dokumenty a fotky pak budou ty ze synchronizovaných dat; dokumenty a fotky tohoto zařízení, které synchronizovaná data nemají, zůstanou jen v záloze.",
     "unsent": "Moony nejdřív odešle čekající změny; co odeslat nedokáže, zůstane jen v záloze.",
     "backupWhere": "Záloha je v seznamu v Nastavení → Data a zálohy, v části „Zálohy vytvořené před nahrazením dat synchronizací“.",
     "loading": "Počítám, co je v sázce…",

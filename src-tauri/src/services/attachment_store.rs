@@ -29,6 +29,11 @@ pub(crate) const REFERENCES: [(&str, &str); 4] = [
     ("real_estate_photos", "thumb_blob_id"),
 ];
 
+/// Main-schema columns that hold a blob without being an attachment row: the blobs a device-sync
+/// replace holds until the next pull caught up (`sync_held_blobs`, ADR 0030). The sweep keeps
+/// them as it keeps referenced blobs; nothing else reads them as references.
+pub(crate) const HOLDS: [(&str, &str); 1] = [("sync_held_blobs", "blob_id")];
+
 /// A stored blob.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlobRef {
@@ -304,7 +309,8 @@ pub fn delete(conn: &Connection, id: &str) -> Result<bool> {
     Ok(conn.execute("DELETE FROM files.blobs WHERE id = ?1", [id])? > 0)
 }
 
-/// Delete every blob that no attachment row references (D8); returns how many went.
+/// Delete every blob that no attachment row references (D8) and no device-sync replace holds
+/// (`HOLDS`); returns how many went.
 ///
 /// Incomplete blobs are not exempt. An incoming blob is safe from this sweep only while a row
 /// references its ID, so a transfer must begin only for a blob a row already names. If the row
@@ -314,6 +320,7 @@ pub fn delete_unreferenced(conn: &Connection) -> Result<usize> {
     ensure_available(conn)?;
     let referenced = REFERENCES
         .iter()
+        .chain(&HOLDS)
         .map(|(table, column)| {
             format!("SELECT {column} FROM main.{table} WHERE {column} IS NOT NULL")
         })
@@ -425,6 +432,7 @@ mod tests {
             CREATE TABLE insurance_documents (id TEXT PRIMARY KEY, blob_id TEXT);
             CREATE TABLE real_estate_documents (id TEXT PRIMARY KEY, blob_id TEXT);
             CREATE TABLE real_estate_photos (id TEXT PRIMARY KEY, blob_id TEXT, thumb_blob_id TEXT);
+            CREATE TABLE sync_held_blobs (blob_id TEXT PRIMARY KEY, held_at INTEGER NOT NULL);
             CREATE TABLE owners (id TEXT PRIMARY KEY);
             "#,
         )
@@ -556,9 +564,15 @@ mod tests {
             [],
         )
         .expect("legacy photo");
+        let held = put_bytes(&conn, b"held").expect("put").id;
+        conn.execute(
+            "INSERT INTO sync_held_blobs (blob_id, held_at) VALUES (?1, 1)",
+            [&held],
+        )
+        .expect("hold");
 
         assert_eq!(delete_unreferenced(&conn).expect("sweep"), 1);
-        for id in &ids[..4] {
+        for id in ids[..4].iter().chain([&held]) {
             assert!(size_of(&conn, id).expect("size").is_some());
         }
         assert!(size_of(&conn, &ids[4]).expect("size").is_none());

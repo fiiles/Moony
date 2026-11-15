@@ -100,6 +100,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("033_sync_snapshot_barrier", MIGRATION_033),
         ("034_asset_logos", MIGRATION_034),
         ("035_sync_blobs", MIGRATION_035),
+        ("036_sync_held_blobs", MIGRATION_036),
     ]
 }
 
@@ -3401,9 +3402,9 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_35_migrations() {
-        assert_eq!(known_migration_names().len(), 35);
-        assert_eq!(known_migration_names().last(), Some(&"035_sync_blobs"));
+    fn the_chain_now_has_36_migrations() {
+        assert_eq!(known_migration_names().len(), 36);
+        assert_eq!(known_migration_names().last(), Some(&"036_sync_held_blobs"));
     }
 }
 
@@ -3486,6 +3487,17 @@ CREATE TABLE sync_blobs (
     last_error_at INTEGER
 ) WITHOUT ROWID;
 CREATE INDEX idx_sync_blobs_state ON sync_blobs (state, next_try_at);
+"#;
+
+/// 036: `sync_held_blobs` (Local): blobs a device-sync replace holds (ADR 0030). A join, repair or
+/// re-sync records every blob the device's document and photo rows named before it; the blob
+/// sweep keeps them until the first pull after the replace has caught up, so a row that comes
+/// back with that pull finds its content. `held_at` is when the replace held it (unix seconds).
+pub(crate) const MIGRATION_036: &str = r#"
+CREATE TABLE sync_held_blobs (
+    blob_id TEXT PRIMARY KEY,
+    held_at INTEGER NOT NULL
+) WITHOUT ROWID;
 "#;
 
 #[cfg(test)]
@@ -4617,6 +4629,7 @@ mod migration_021 {
         found.sort();
         let mut listed: Vec<(String, String)> = crate::services::attachment_store::REFERENCES
             .iter()
+            .chain(&crate::services::attachment_store::HOLDS)
             .map(|(t, c)| (t.to_string(), c.to_string()))
             .collect();
         listed.sort();

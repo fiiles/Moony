@@ -1002,3 +1002,159 @@ fn deleting_a_policy_tombstones_its_documents_at_the_policy_clock() {
         ]
     );
 }
+
+const PROPERTY: &str = "INSERT INTO real_estate (id, name, address, type) \
+    VALUES ('r1', 'Flat', 'Street', 'flat'); \
+  INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date) \
+    VALUES ('pb1', 'r1', 1767225600);";
+
+/// `first` (sync on as `DEVICE`, everything it holds sealed) and a device `OTHER` joined from its
+/// snapshot, as a real second device starts.
+fn joined_pair(first: Connection) -> (Connection, Connection) {
+    use crate::services::sync::snapshot;
+    seal(&first);
+    let mut dumped = Vec::new();
+    snapshot::dump(&first, 1, &mut dumped).expect("dump");
+    let second = migrated();
+    snapshot::join(&second, OTHER, &mut &dumped[..], 1_772_323_200).expect("join");
+    (first, second)
+}
+
+/// Applies sealed changesets on `to`; a stopped merge fails the test.
+fn apply_on(to: &Connection, sealed: &[(crate::services::sync::changeset::Changeset, [u8; 32])]) {
+    use crate::services::sync::merge::{apply_changeset, Outcome};
+    for (changeset, hash) in sealed {
+        match apply_changeset(to, changeset, *hash, 1_772_323_200).expect("apply") {
+            Outcome::Applied(_) => {}
+            Outcome::Stopped(reason) => panic!("stopped: {reason:?}"),
+        }
+    }
+}
+
+/// The receiving device's CHECK takes both blobs or both paths, so a photo syncs only once it
+/// names both its blobs; naming the second one enrols it.
+#[test]
+fn a_photo_syncs_only_with_both_blobs() {
+    let conn = installed();
+    exec(&conn, PROPERTY);
+    exec(
+        &conn,
+        "INSERT INTO real_estate_photos (id, batch_id, file_path, thumbnail_path, blob_id) \
+           VALUES ('ph1', 'pb1', 'p/ph1.jpg', 'p/ph1_thumb.jpg', 'blob-full'); \
+         DELETE FROM sync_outbox;",
+    );
+    exec(
+        &conn,
+        "UPDATE real_estate_photos SET file_path = 'p/moved.jpg' WHERE id = 'ph1'",
+    );
+    assert_eq!(outbox(&conn), Vec::<(String, String)>::new());
+    assert!(clocks(&conn, "real_estate_photos").is_empty());
+    assert_eq!(
+        crate::services::sync::journal::read_row(&conn, "real_estate_photos", "ph1").expect("read"),
+        None
+    );
+
+    exec(
+        &conn,
+        "UPDATE real_estate_photos SET thumb_blob_id = 'blob-thumb' WHERE id = 'ph1'",
+    );
+
+    assert_eq!(outbox(&conn), vec![row("real_estate_photos", "ph1")]);
+    assert_eq!(clock_cols(&conn, "real_estate_photos", "ph1"), vec!["*"]);
+    let change = crate::services::sync::journal::read_row(&conn, "real_estate_photos", "ph1")
+        .expect("read")
+        .expect("a live row");
+    assert!(change.insert);
+
+    exec(&conn, "DELETE FROM sync_outbox");
+    exec(
+        &conn,
+        "UPDATE real_estate_photos SET thumb_blob_id = NULL WHERE id = 'ph1'",
+    );
+    assert_eq!(outbox(&conn), vec![row("real_estate_photos", "ph1")]);
+    assert_eq!(
+        clock_cols(&conn, "real_estate_photos", "ph1"),
+        vec!["*", "-"],
+        "losing either blob leaves"
+    );
+}
+
+/// A delete from another device cascades, in merge mode, over this device's legacy rows (no
+/// blob, never synced): nothing is captured and the merge goes through.
+#[test]
+fn a_remote_delete_cascading_over_legacy_rows_records_nothing() {
+    let first = migrated();
+    crate::services::sync::state::enable(&first, DEVICE).expect("enable");
+    exec(&first, POLICY);
+    exec(&first, PROPERTY);
+    let (first, second) = joined_pair(first);
+    exec(
+        &second,
+        "INSERT INTO insurance_documents (id, insurance_id, name, file_path) \
+           VALUES ('old-doc', 'p1', 'Old', 'insurance/p1/old.pdf'); \
+         INSERT INTO real_estate_documents (id, real_estate_id, name, file_path) \
+           VALUES ('old-deed', 'r1', 'Deed', 'real_estate/r1/deed.pdf'); \
+         INSERT INTO real_estate_photos (id, batch_id, file_path, thumbnail_path) \
+           VALUES ('old-photo', 'pb1', 'p/old.jpg', 'p/old_thumb.jpg');",
+    );
+    exec(&second, "DELETE FROM sync_outbox");
+
+    exec(
+        &first,
+        "DELETE FROM insurance_policies WHERE id = 'p1'; \
+         DELETE FROM real_estate_photo_batches WHERE id = 'pb1'; \
+         DELETE FROM real_estate WHERE id = 'r1';",
+    );
+    apply_on(&second, &seal(&first));
+
+    for (table, id) in [
+        ("insurance_documents", "old-doc"),
+        ("real_estate_documents", "old-deed"),
+        ("real_estate_photos", "old-photo"),
+    ] {
+        assert_eq!(
+            count(
+                &second,
+                &format!("SELECT COUNT(*) FROM {table} WHERE id = '{id}'")
+            ),
+            0,
+            "{table} {id} cascaded"
+        );
+        assert!(clock_cols(&second, table, id).is_empty(), "{table} {id}");
+    }
+    assert_eq!(outbox(&second), Vec::<(String, String)>::new());
+    crate::services::sync::test_support::assert_converged(&[&first, &second]);
+}
+
+/// D13: one device deletes a batch while the other adds a photo to it. The photo is dropped on
+/// every device, tombstoned at the batch's clock, and the devices converge.
+#[test]
+fn a_photo_added_to_a_batch_deleted_elsewhere_is_dropped_everywhere() {
+    let first = migrated();
+    crate::services::sync::state::enable(&first, DEVICE).expect("enable");
+    exec(&first, PROPERTY);
+    let (first, second) = joined_pair(first);
+
+    exec(
+        &first,
+        "DELETE FROM real_estate_photo_batches WHERE id = 'pb1'",
+    );
+    exec(
+        &second,
+        "INSERT INTO real_estate_photos (id, batch_id, blob_id, thumb_blob_id) \
+           VALUES ('ph1', 'pb1', 'blob-full', 'blob-thumb')",
+    );
+    let (from_first, from_second) = (seal(&first), seal(&second));
+    apply_on(&second, &from_first);
+    apply_on(&first, &from_second);
+
+    for conn in [&first, &second] {
+        assert_eq!(count(conn, "SELECT COUNT(*) FROM real_estate_photos"), 0);
+        assert_eq!(
+            clock_of(conn, "real_estate_photos", "ph1", "-"),
+            clock_of(conn, "real_estate_photo_batches", "pb1", "-"),
+            "the photo is tombstoned at the batch's clock"
+        );
+    }
+    crate::services::sync::test_support::assert_converged(&[&first, &second]);
+}

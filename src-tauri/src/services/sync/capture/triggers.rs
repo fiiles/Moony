@@ -158,23 +158,29 @@ fn table_triggers(conn: &Connection, spec: &TableSpec, device: &str) -> Result<V
         ));
     }
 
-    // A row that starts or stops syncing because its required column was set or cleared (a
-    // legacy document the conversion gave a blob; a blob cleared again). It never was on another
-    // device, so it enrols as a new row: a fresh generation with this device, no column clocks,
-    // queued, and the journal sends it whole. Leaving is a tombstone.
-    if let Some(column) = spec.requires {
+    // A row that starts or stops syncing because a required column was set or cleared (a legacy
+    // document or photo the conversion gave its blobs; a blob cleared again). It never was on
+    // another device, so it enrols as a new row: a fresh generation with this device, no column
+    // clocks, queued, and the journal sends it whole. Leaving is a tombstone.
+    if let (Some(was), Some(is)) = (row_condition(spec, "OLD"), row_condition(spec, "NEW")) {
         let (base_new, base_old) = allowlist_filter(spec);
+        let of = spec
+            .requires
+            .iter()
+            .map(|c| format!("\"{c}\""))
+            .collect::<Vec<_>>()
+            .join(", ");
         out.push(format!(
-            "CREATE TEMP TRIGGER sync_{t}_enrol AFTER UPDATE OF \"{column}\" ON main.{t} \
-             WHEN {LOCAL} AND {base_new} AND OLD.\"{column}\" IS NULL AND NEW.\"{column}\" IS NOT NULL{same_key} \
+            "CREATE TEMP TRIGGER sync_{t}_enrol AFTER UPDATE OF {of} ON main.{t} \
+             WHEN {LOCAL} AND {base_new} AND NOT ({was}) AND {is}{same_key} \
              BEGIN SELECT sync_hlc_tick(); {} {} {} END;",
             table.local_clock(&new_key, "'*'", "1"),
             table.clear_columns(&new_key, "1"),
             table.queue(&new_key, "1"),
         ));
         out.push(format!(
-            "CREATE TEMP TRIGGER sync_{t}_leave AFTER UPDATE OF \"{column}\" ON main.{t} \
-             WHEN {LOCAL} AND {base_old} AND OLD.\"{column}\" IS NOT NULL AND NEW.\"{column}\" IS NULL{same_key} \
+            "CREATE TEMP TRIGGER sync_{t}_leave AFTER UPDATE OF {of} ON main.{t} \
+             WHEN {LOCAL} AND {base_old} AND {was} AND NOT ({is}){same_key} \
              BEGIN SELECT sync_hlc_tick(); {} {} {} END;",
             table.local_clock(&old_key, "'-'", "1"),
             table.clear_columns(&old_key, "1"),

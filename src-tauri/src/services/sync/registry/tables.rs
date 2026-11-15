@@ -21,7 +21,7 @@ const BASE: TableSpec = TableSpec {
     groups: &[],
     write_once: &[],
     monotonic: &[],
-    requires: None,
+    requires: &[],
 };
 
 pub(super) static TABLES: &[TableSpec] = &[
@@ -279,14 +279,15 @@ pub(super) static TABLES: &[TableSpec] = &[
         name: "real_estate_photos",
         class: TableClass::Synced,
         local: &["file_path", "thumbnail_path"],
-        requires: Some("blob_id"),
+        // Both blobs: the receiving device's CHECK takes both blobs or both paths.
+        requires: &["blob_id", "thumb_blob_id"],
         ..BASE
     },
     TableSpec {
         name: "real_estate_documents",
         class: TableClass::Synced,
         local: &["file_path"],
-        requires: Some("blob_id"),
+        requires: &["blob_id"],
         ..BASE
     },
     TableSpec {
@@ -302,7 +303,7 @@ pub(super) static TABLES: &[TableSpec] = &[
         name: "insurance_documents",
         class: TableClass::Synced,
         local: &["file_path"],
-        requires: Some("blob_id"),
+        requires: &["blob_id"],
         ..BASE
     },
     TableSpec {
@@ -461,6 +462,12 @@ pub(super) static TABLES: &[TableSpec] = &[
     // This device's queue of document and photo content to move to or from the sync server.
     TableSpec {
         name: "sync_blobs",
+        class: TableClass::Local,
+        ..BASE
+    },
+    // Blobs a replace holds until the next pull caught up (ADR 0030).
+    TableSpec {
+        name: "sync_held_blobs",
         class: TableClass::Local,
         ..BASE
     },

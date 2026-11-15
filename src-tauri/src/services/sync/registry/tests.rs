@@ -90,12 +90,8 @@ fn the_attachment_tables_sync_only_with_their_blob() {
     ] {
         assert_eq!(spec(t).unwrap().class, TableClass::Synced, "{t}");
     }
-    for t in [
-        "real_estate_photos",
-        "real_estate_documents",
-        "insurance_documents",
-    ] {
-        assert_eq!(spec(t).unwrap().requires, Some("blob_id"), "{t}");
+    for t in ["real_estate_documents", "insurance_documents"] {
+        assert_eq!(spec(t).unwrap().requires, &["blob_id"], "{t}");
         assert_eq!(column_class(t, "file_path"), ColumnClass::Local, "{t}");
         assert_eq!(
             row_condition(spec(t).unwrap(), "t").as_deref(),
@@ -103,7 +99,17 @@ fn the_attachment_tables_sync_only_with_their_blob() {
             "{t}"
         );
     }
-    assert_eq!(spec("real_estate_photo_batches").unwrap().requires, None);
+    // A photo needs both blobs: the receiving device's CHECK takes both blobs or both paths.
+    let photos = spec("real_estate_photos").unwrap();
+    assert_eq!(photos.requires, &["blob_id", "thumb_blob_id"]);
+    assert_eq!(
+        row_condition(photos, "NEW").as_deref(),
+        Some("(NEW.\"blob_id\" IS NOT NULL AND NEW.\"thumb_blob_id\" IS NOT NULL)")
+    );
+    assert!(spec("real_estate_photo_batches")
+        .unwrap()
+        .requires
+        .is_empty());
     assert_eq!(
         row_condition(spec("real_estate_photo_batches").unwrap(), "t"),
         None
@@ -124,7 +130,7 @@ fn the_attachment_tables_sync_only_with_their_blob() {
         ]
         .contains(&t.name)
     }) {
-        assert_eq!(t.requires, None, "{}", t.name);
+        assert!(t.requires.is_empty(), "{}", t.name);
     }
 }
 
@@ -341,6 +347,7 @@ fn the_exact_tables_of_each_class_are_pinned() {
         "loan_legacy_anchors",
         "mcp_pending_refresh",
         "sync_blobs",
+        "sync_held_blobs",
         "sync_state",
         "sync_clock",
         "sync_outbox",

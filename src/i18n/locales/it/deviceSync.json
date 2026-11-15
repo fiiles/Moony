@@ -426,7 +426,7 @@
       "documents": "Documenti: {{count}}",
       "photos": "Foto: {{count}}"
     },
-    "attachments": "I documenti e le foto restano allegati agli elementi presenti anche nei dati sincronizzati; gli altri restano solo nel backup.",
+    "attachments": "Dopo, i documenti e le foto sono quelli dei dati sincronizzati; i documenti e le foto di questo dispositivo che non sono nei dati sincronizzati restano solo nel backup.",
     "unsent": "Moony invia prima le modifiche in attesa; ciò che non riesce a inviare resta solo nel backup.",
     "backupWhere": "Il backup è elencato in Impostazioni → Dati e backup, sotto «Backup creati prima che la sincronizzazione sostituisse i dati».",
     "loading": "Conteggio di ciò che è in gioco…",

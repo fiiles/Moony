@@ -414,7 +414,7 @@
       "documents": "Dokumente: {{count}}",
       "photos": "Fotos: {{count}}"
     },
-    "attachments": "Dokumente und Fotos bleiben an Elementen angehängt, die auch die synchronisierten Daten enthalten; die übrigen bleiben nur in der Sicherung.",
+    "attachments": "Danach sind die Dokumente und Fotos die der synchronisierten Daten; Dokumente und Fotos dieses Geräts, die die synchronisierten Daten nicht enthalten, bleiben nur in der Sicherung.",
     "unsent": "Moony sendet zuerst die wartenden Änderungen; was nicht gesendet werden kann, bleibt nur in der Sicherung.",
     "backupWhere": "Die Sicherung finden Sie unter Einstellungen → Daten und Sicherungen, im Abschnitt „Sicherungen vor dem Ersetzen von Daten durch die Synchronisierung“.",
     "loading": "Es wird gezählt, was betroffen ist …",

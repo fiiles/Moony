@@ -1,8 +1,8 @@
 //! Documents and photos across a replace (a join, a repair, a re-sync): the attachment rows are
 //! the vault's afterwards, like every other synced row. Content this device holds under a blob ID
 //! a vault row names stays (no download later); this device's rows the vault lacks, legacy rows
-//! without a blob included, are gone with their blobs and counted as orphaned (they remain only in
-//! the backup).
+//! without a blob included, are gone and counted as orphaned (they remain only in the backup), and
+//! their content is held until the next pull caught up (`held_blobs`).
 
 use super::*;
 use crate::db::files_schema;
@@ -146,7 +146,12 @@ fn a_document_only_this_device_had_is_gone_and_counted() {
 
     assert_eq!(report.attachments, carry(0, 1));
     assert_eq!(count(&c, "SELECT COUNT(*) FROM insurance_documents"), 0);
-    assert!(!readable(&c, &own), "the orphan's blob is purged");
+    assert!(
+        readable(&c, &own),
+        "held until the next pull caught up: the row may come back with it"
+    );
+    crate::services::sync::held_blobs::release(&c).expect("release");
+    assert!(!readable(&c, &own), "then the orphan's blob is purged");
 }
 
 #[test]

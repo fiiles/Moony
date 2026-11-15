@@ -438,7 +438,7 @@
       "documents": "Dokumenty: {{count}}",
       "photos": "Zdjęcia: {{count}}"
     },
-    "attachments": "Dokumenty i zdjęcia pozostają przypisane do elementów, które mają również dane zsynchronizowane; pozostałe zostają tylko w kopii zapasowej.",
+    "attachments": "Potem dokumenty i zdjęcia są te z danych zsynchronizowanych; dokumenty i zdjęcia tego urządzenia, których nie mają dane zsynchronizowane, zostają tylko w kopii zapasowej.",
     "unsent": "Moony najpierw wysyła oczekujące zmiany; czego nie uda się wysłać, zostaje tylko w kopii zapasowej.",
     "backupWhere": "Kopia zapasowa jest na liście w Ustawienia → Dane i kopie zapasowe, w sekcji „Kopie zapasowe wykonane, zanim synchronizacja zastąpiła dane”.",
     "loading": "Liczenie, co jest zagrożone…",

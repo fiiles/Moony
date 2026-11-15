@@ -414,7 +414,7 @@
       "documents": "Documents: {{count}}",
       "photos": "Photos: {{count}}"
     },
-    "attachments": "Documents and photos stay attached to items the synced data also has; the others stay only in the backup.",
+    "attachments": "Afterwards, the documents and photos are those of the synced data; this device's documents and photos that the synced data does not have stay only in the backup.",
     "unsent": "Moony sends the waiting changes first; anything it cannot send stays only in the backup.",
     "backupWhere": "The backup is listed under Settings → Data and backups, under “Backups made before sync replaced data”.",
     "loading": "Counting what is at stake…",

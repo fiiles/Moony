@@ -32,14 +32,15 @@ so it cannot ride in envelopes or snapshots.
   `insurance_documents` are Synced: per-column clocks, tombstones, parents before children,
   cascaded deletes stamped with the parent's clock, exactly as every other synced table.
   `file_path` and `thumbnail_path` are Local columns.
-- A row syncs only while it names a blob: `TableSpec.requires = Some("blob_id")` on the three row
-  tables (`registry::row_condition`). Capture, the journal reader and the snapshot dump all apply
+- A row syncs only while it names its blobs: `TableSpec.requires` is `["blob_id"]` on the two
+  document tables and `["blob_id", "thumb_blob_id"]` on `real_estate_photos`, whose CHECK on the
+  receiving device takes both blobs or both paths (`registry::row_condition`). Capture, the journal reader and the snapshot dump all apply
   it, so a legacy row (a plain file from before 0.13 the conversion has not turned into a blob) is
   never captured, read or dumped, and its edits and deletes record nothing.
-- A legacy row that gets its blob enrols as a new row: the `sync_<t>_enrol` trigger (blob column
-  NULL → not NULL, local mode) gives it a fresh `'*'` with this device, drops its column clocks and
-  queues it, so it travels as a complete insert. `sync_<t>_leave` (not NULL → NULL) records a
-  tombstone. The conversion leaves a row that already has a blob alone.
+- A legacy row that gets its blobs enrols as a new row: the `sync_<t>_enrol` trigger (the row
+  condition false → true, local mode) gives it a fresh `'*'` with this device, drops its column
+  clocks and queues it, so it travels as a complete insert. `sync_<t>_leave` (true → false)
+  records a tombstone. The conversion leaves a row that already has a blob alone.
 - No checksum column. The sealed stream is authenticated and bound to the blob ID, and blobs are
   immutable (new content gets a new ID); `files.blobs.sha256` is computed on the receiving device
   when the content is stored.
@@ -83,11 +84,21 @@ blobs and deletes those no local row names that are older than 7 days by the ser
 listing's `now`, never the device's; without it nothing is deleted), at most 1,000 per pass; it
 re-queues for upload the blobs its rows name, the server lacks and this device holds.
 
-**Replaces keep content by blob ID.** After a join, repair or re-sync the attachment rows are the
-vault's. Content this device holds under a blob ID a vault row names stays and is not downloaded
-again; this device's rows the vault lacks (legacy rows included) go with the replace, their blobs
-are purged by `repair::full`'s sweep, and they remain only in the backup.
-`RestoreReport.attachments` counts them (`kept`, `orphaned`; batches are not counted).
+**Replaces keep content by blob ID, and hold the rest until the next pull caught up.** After a
+join, repair or re-sync the attachment rows are the vault's. Content this device holds under a
+blob ID a vault row names stays and is not downloaded again. A replace also holds the content of
+every blob this device's rows named before it (the Local table `sync_held_blobs`, migration 036,
+written inside the replace's savepoint): `attachment_store::delete_unreferenced` keeps every held
+blob (`attachment_store::HOLDS`), so neither the repair after each changeset, nor the sweep after
+the next unlock, nor the maintenance command removes it. The first pull after the replace that
+reaches the sync server's end with nothing stopped or held (`PullReport::done`) releases every
+hold and sweeps; only then do the blobs no row names go. The reason is audit H3: a row this
+device pushed after the vault's newest snapshot (the re-sync pushes before it replaces) is not in
+the snapshot, so the replace drops it and the next pull brings it back; without the hold its
+content was swept in between, and if its upload had not finished, only the backup had it.
+Turning sync off drops the holds. `RestoreReport.attachments` counts this device's documents and
+photos as before (`kept` if the replace brought them back, else `orphaned`, "only in the
+backup"; batches are not counted).
 
 **The server.** `GET /v1/server` announces `features: ["blobs"]` (an absent field means none);
 `protocol` stays 2, so a server without the feature still syncs everything else and the app says
@@ -111,5 +122,12 @@ documents and photos need a newer server. The app assumes the server's error cod
   - a blob whose only holder is wiped before it uploads is lost; the row stays and shows "not
     uploaded yet from the other device" for good;
   - file sizes are visible to the server as they are (not padded);
-  - the guard (ADR 0027) refuses writes to the attachment tables as to any synced table, legacy
-    rows included, while capture is broken.
+  - the "only in the backup" count of a replace can overstate: a row pushed after the vault's
+    newest snapshot is counted as orphaned, and the next pull brings it back with its held
+    content (the backup is still marked kept, as before);
+  - a hold lasts until a pull catches up; while a gap or a quarantine holds the pull, held blobs
+    stay on the device (space only, never data);
+  - while capture is broken, the guard (ADR 0027) refuses writes to the four tables as to any
+    synced table, legacy rows included, so the conversion of legacy files cannot run there; a
+    repair is the way out, and a repair replaces, so legacy rows that were never converted go
+    with it (their files stay in the kept backup).

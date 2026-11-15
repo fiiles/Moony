@@ -192,7 +192,7 @@ pub fn disable(conn: &Connection) -> Result<()> {
         conn.execute_batch(
             "DELETE FROM sync_state; DELETE FROM sync_clock; DELETE FROM sync_outbox; \
              DELETE FROM sync_heads; DELETE FROM sync_own_log; DELETE FROM sync_unsent; \
-             DELETE FROM sync_typed; DELETE FROM sync_blobs;",
+             DELETE FROM sync_typed; DELETE FROM sync_blobs; DELETE FROM sync_held_blobs;",
         )?;
         clear_vault_went_back(conn)?;
         clear_skipped_miss(conn)?;
@@ -760,12 +760,14 @@ mod tests {
     }
 
     #[test]
-    fn turning_sync_off_forgets_the_blob_queue() {
+    fn turning_sync_off_forgets_the_blob_queue_and_the_held_blobs() {
         let conn = migrated();
         enable(&conn, DEVICE).unwrap();
         conn.execute_batch(
             "INSERT INTO sync_blobs (blob_id, state, queued_at) \
-             VALUES ('7c9e6679-7425-40de-944b-e07fc1f90ae7', 'up', 1);",
+             VALUES ('7c9e6679-7425-40de-944b-e07fc1f90ae7', 'up', 1); \
+             INSERT INTO sync_held_blobs (blob_id, held_at) \
+             VALUES ('7c9e6679-7425-40de-944b-e07fc1f90ae8', 1);",
         )
         .unwrap();
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_blobs"), 1);
@@ -773,6 +775,7 @@ mod tests {
         disable(&conn).unwrap();
 
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_blobs"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_held_blobs"), 0);
     }
 
     #[test]

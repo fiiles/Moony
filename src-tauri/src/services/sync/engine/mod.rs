@@ -21,6 +21,7 @@ use crate::models::sync::{SyncProblem, SyncStatus};
 use crate::services::sync::binding::BindingNative;
 use crate::services::sync::capture::guard;
 use crate::services::sync::error::{SyncError, SyncResult, TooLarge};
+use crate::services::sync::held_blobs;
 use crate::services::sync::hlc::DeviceId;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::relay::{Relay, RelayError, VaultInfo};
@@ -473,6 +474,12 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         }
         other => other?,
     };
+    if pulled.done() {
+        // Caught up: the rows a replace's snapshot lacked have come back by now (ADR 0030).
+        if let Err(error) = db.with_conn(held_blobs::release) {
+            log::warn!("[SYNC] Could not release the blobs a replace held: {error}");
+        }
+    }
     if pulled.gaps > 0 {
         // Once per round, not per envelope: every later envelope of a waiting author waits too.
         log::info!(

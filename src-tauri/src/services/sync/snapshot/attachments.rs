@@ -1,8 +1,9 @@
 //! This device's documents and photos across a replace (ADR 0030). The attachment tables are
 //! Synced: the clear empties them with the rest, and the refill brings back the vault's rows.
-//! Content this device holds under a blob ID a vault row names stays (the repair's sweep keeps
-//! every referenced blob), so nothing is downloaded again; this device's rows the vault lacks,
-//! legacy rows without a blob included, are gone with their blobs and remain only in the backup.
+//! Content this device holds under a blob ID a vault row names stays, so nothing is downloaded
+//! again; this device's rows the vault lacks, legacy rows without a blob included, are gone and
+//! counted as only in the backup, and their content is held until the next pull caught up
+//! (`held_blobs`: such a row may come back with it).
 //!
 //! Nothing is set aside or put back here: `mine` notes this device's rows before the clear and
 //! `carry` counts which of them are there again after the refill.

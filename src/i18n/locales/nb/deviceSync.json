@@ -414,7 +414,7 @@
       "documents": "Dokumenter: {{count}}",
       "photos": "Bilder: {{count}}"
     },
-    "attachments": "Dokumenter og bilder blir værende på elementer som de synkroniserte dataene også har; resten finnes bare i sikkerhetskopien.",
+    "attachments": "Etterpå er dokumentene og bildene de som de synkroniserte dataene har; dokumenter og bilder på denne enheten som de synkroniserte dataene ikke har, finnes bare i sikkerhetskopien.",
     "unsent": "Moony sender de ventende endringene først; det som ikke kan sendes, finnes bare i sikkerhetskopien.",
     "backupWhere": "Sikkerhetskopien står under Innstillinger → Data og sikkerhetskopier, under «Sikkerhetskopier laget før synkronisering erstattet data».",
     "loading": "Teller hva som står på spill …",

@@ -48,9 +48,9 @@ pub(crate) fn noise(len: usize, seed: u64) -> String {
 pub(crate) type ClockRow = (String, String, String, i64, Vec<u8>);
 
 /// Every synced row of every synced table (Local columns left out, `app_config` limited to the
-/// keys that sync, a table with a row condition to the rows that meet it), then every Derived table's rows without their device-local key and stamps
-/// (`id`, `created_at`, `updated_at`: a rebuild mints them), in a stable order: what must be
-/// identical on every device.
+/// keys that sync, a table with a row condition to the rows that meet it), then every Derived
+/// table's rows without their device-local key and stamps (`id`, `created_at`, `updated_at`: a
+/// rebuild mints them), in a stable order: what must be identical on every device.
 pub(crate) fn dump(conn: &Connection) -> Vec<(String, Vec<String>)> {
     let mut out = Vec::new();
     let derived = tables().iter().filter(|t| t.class == TableClass::Derived);

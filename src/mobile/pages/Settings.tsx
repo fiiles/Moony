@@ -59,6 +59,7 @@ import { AppearanceSheet } from '@/mobile/sheets/AppearanceSheet';
 import { CurrencyPickerSheet } from '@/mobile/sheets/CurrencyPickerSheet';
 import { DeleteProfileSheet } from '@/mobile/sheets/DeleteProfileSheet';
 import { LanguagePickerSheet } from '@/mobile/sheets/LanguagePickerSheet';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 type SheetKind = 'language' | 'currency' | 'appearance' | 'delete';
 
@@ -115,6 +116,7 @@ export default function Settings() {
   const { t: tc } = useTranslation('common');
   const { t: ts } = useTranslation('settings');
   const { t: tsync } = useTranslation('deviceSync');
+  const list = useListText();
   const { user, lockMutation } = useAuth();
   const { language } = useLanguage();
   const { preference } = useTheme();
@@ -224,7 +226,7 @@ export default function Settings() {
   const trackingSub =
     shownAreas.length === 3
       ? t('settings.tracking.all')
-      : shownAreas.join(', ') || t('settings.tracking.none');
+      : list(shownAreas as string[]) || t('settings.tracking.none');
 
   // The same letters as the avatar on Přehled
   const avatar = `${user?.name?.charAt(0) ?? ''}${user?.surname?.charAt(0) ?? ''}`.toUpperCase();

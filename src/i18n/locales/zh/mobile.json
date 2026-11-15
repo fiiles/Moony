@@ -19,7 +19,8 @@
       "unchanged": "无变化",
       "noHistory": "暂无历史"
     },
-    "emptyDescription": "添加账户或投资后，Moony 会据此生成您的概览、图表和趋势。所有内容都保存在这部手机上。"
+    "emptyDescription": "添加账户或投资后，Moony 会据此生成您的概览、图表和趋势。所有内容都保存在这部手机上。",
+    "ringCenter": "总资产"
   },
   "money": {
     "approx": "≈ {{amount}}",
@@ -978,5 +979,6 @@
     "halfYear": "{{amount}}/半年",
     "year": "{{amount}}/年",
     "avgMonth": "平均 {{amount}}/月"
-  }
+  },
+  "labelValue": "{{label}}：{{value}}"
 }

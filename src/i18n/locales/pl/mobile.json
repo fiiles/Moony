@@ -19,7 +19,8 @@
       "unchanged": "bez zmian",
       "noHistory": "brak historii"
     },
-    "emptyDescription": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy. Wszystko zostaje na tym telefonie."
+    "emptyDescription": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy. Wszystko zostaje na tym telefonie.",
+    "ringCenter": "Aktywa"
   },
   "money": {
     "approx": "≈ {{amount}}",
@@ -1128,5 +1129,6 @@
     "halfYear": "{{amount}} / półrocze",
     "year": "{{amount}} / rok",
     "avgMonth": "⌀ {{amount}} / mies."
-  }
+  },
+  "labelValue": "{{label}}: {{value}}"
 }

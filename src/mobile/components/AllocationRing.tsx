@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { allocationSlices, type AllocationSegment } from '@/utils/allocation-percent';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 /** 110 pt ring (spec §10.4), 22 pt thick (prototype `.ring-m`). */
 const SIZE = 110;
@@ -38,6 +39,7 @@ export function AllocationRing({
   formatValue,
   formatTotal,
 }: AllocationRingProps) {
+  const list = useListText();
   const { slices, total } = useMemo(
     () => allocationSlices(segments, { otherLabel }),
     [segments, otherLabel]
@@ -57,9 +59,11 @@ export function AllocationRing({
     <div className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-4">
       <div
         role="img"
-        aria-label={slices
-          .map((s) => `${s.label} ${formatPercent(s.percent / 100)} (${formatValue(s.value)})`)
-          .join(', ')}
+        aria-label={list(
+          slices.map(
+            (s) => `${s.label} ${formatPercent(s.percent / 100)} (${formatValue(s.value)})`
+          )
+        )}
         className="relative size-[110px]"
       >
         <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="-rotate-90">
@@ -87,9 +91,11 @@ export function AllocationRing({
         </svg>
         <span
           aria-hidden
-          className="absolute inset-[25px] flex flex-col items-center justify-center text-center leading-tight"
+          // Inside the ring's hole with room to spare (B3): the 60 pt square's corners would
+          // reach the ring, so the text keeps to its middle 52 pt and never touches the stroke
+          className="absolute inset-[25px] flex flex-col items-center justify-center px-1 text-center leading-tight"
         >
-          <span className="max-w-full truncate text-[length:calc(10px*var(--m-text-k))] font-semibold text-ink-4">
+          <span className="max-w-full break-words text-[length:calc(10px*var(--m-text-k))] font-semibold text-ink-4 [hyphens:manual]">
             {centerLabel}
           </span>
           <span className="text-m-caption font-semibold text-ink num">

@@ -65,7 +65,7 @@ export function PeriodBar({
             <button
               type="button"
               disabled={pending}
-              aria-label={`${t('periods.label')}: ${label}`}
+              aria-label={t('mobile:labelValue', { label: t('periods.label'), value: label })}
               className={cn(
                 'relative inline-flex min-h-11 max-w-full items-center gap-1 rounded-[10px] px-2 text-m-row font-650 text-ink [-webkit-touch-callout:none] active:bg-well-2 focus-visible:outline-none focus-visible:shadow-focus num',
                 pending && 'invisible'

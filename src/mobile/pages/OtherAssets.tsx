@@ -176,7 +176,7 @@ function AssetRow({ row, currency }: { row: OtherAssetRow; currency: string }) {
       }
       href={otherAssetPath(asset.id)}
       menu={{
-        label: `${tc('labels.actions')}: ${asset.name}`,
+        label: tc('mobile:labelValue', { label: tc('labels.actions'), value: asset.name }),
         children: (
           <>
             <RowMenuItem onSelect={() => openWith(otherAssetPath(asset.id), 'buy')}>

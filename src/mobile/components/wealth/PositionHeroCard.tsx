@@ -12,6 +12,7 @@ import { useTradeEventTip } from '@/mobile/hooks/use-trade-event-tip';
 import { changeSinceDayOptions } from '@/mobile/lib/change';
 import { pointsChange, trendChangeBase } from '@/mobile/lib/class-trend';
 import { positionEvents, positionPoints, type LedgerTx } from '@/mobile/lib/position-series';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 /** The period a position's detail opens on. */
 export const POSITION_PERIOD: ChartPeriod = '30D';
@@ -59,6 +60,7 @@ export function PositionHeroCard({
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
   const { t: td } = useTranslation('dashboard');
+  const list = useListText();
   const fmt = useFormat();
   const moneyText = useMoneyText();
 
@@ -144,7 +146,7 @@ export function PositionHeroCard({
       )}
       {missing.length > 0 && (
         <p className="mb-0 mt-2 text-m-note font-semibold text-loss" role="note">
-          {ts('detail.chartFxMissing', { currencies: missing.join(', ') })}
+          {ts('detail.chartFxMissing', { currencies: list(missing) })}
         </p>
       )}
     </Hero>

@@ -19,7 +19,8 @@
       "unchanged": "beze změny",
       "noHistory": "bez historie"
     },
-    "emptyDescription": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj. Všechna data zůstávají v tomto telefonu."
+    "emptyDescription": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj. Všechna data zůstávají v tomto telefonu.",
+    "ringCenter": "Aktiva"
   },
   "money": {
     "approx": "≈ {{amount}}",
@@ -1086,5 +1087,6 @@
     "halfYear": "{{amount}} / pololetí",
     "year": "{{amount}} / rok",
     "avgMonth": "⌀ {{amount}} / měs."
-  }
+  },
+  "labelValue": "{{label}}: {{value}}"
 }

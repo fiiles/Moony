@@ -128,7 +128,10 @@ export function KitBody({
           <span className="text-m-row text-ink num">{groupAccountNumber(kit.accountNumber)}</span>
           {kit.relayUrl && (
             <span className="break-all text-m-caption text-ink-3">
-              {t('setup.kit.file.relayLabel')}: {kit.relayUrl}
+              {t('mobile:labelValue', {
+                label: t('setup.kit.file.relayLabel'),
+                value: kit.relayUrl,
+              })}
             </span>
           )}
         </div>

@@ -166,7 +166,9 @@ export function createFormatters(
       });
       // numberFormat() falls back to a plain format for codes Intl rejects;
       // detect that and append the code ourselves.
-      const text = nf.format(value);
+      // The phone writes the yen narrow: Japanese's full-width "￥" stands heavy beside Latin
+      // digits (audit 2026-11-15 B11); the desktop keeps Intl's sign
+      const text = style === 'phone' ? nf.format(value).replace('\uFFE5', '¥') : nf.format(value);
       const out = nf.resolvedOptions().style === 'currency' ? text : `${text} ${label}`;
       return opts.signed ? spaceSign(out) : out;
     }

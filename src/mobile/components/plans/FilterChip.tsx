@@ -12,7 +12,7 @@ export function FilterChip({ label, onClear }: { label: string; onClear: () => v
     <button
       type="button"
       onClick={onClear}
-      aria-label={`${t('filterBadge.clear')}: ${label}`}
+      aria-label={t('mobile:labelValue', { label: t('filterBadge.clear'), value: label })}
       className="relative inline-flex min-h-8 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-dark py-1 pl-3 pr-2 text-m-sub font-semibold text-ink-inverse [-webkit-touch-callout:none] after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] active:opacity-80 focus-visible:outline-none focus-visible:shadow-focus"
     >
       <span className="min-w-0 truncate">{label}</span>

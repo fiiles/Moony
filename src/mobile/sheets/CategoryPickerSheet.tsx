@@ -215,7 +215,10 @@ function PickerBody({
             <button
               type="button"
               onClick={accept}
-              aria-label={`${tb('categorization.acceptSuggestion')}: ${categoryName(suggestion)}`}
+              aria-label={tb('mobile:labelValue', {
+                label: tb('categorization.acceptSuggestion'),
+                value: categoryName(suggestion),
+              })}
               className="relative inline-flex min-h-9 min-w-0 items-center gap-2 rounded-[10px] border border-dashed border-line-strong bg-paper py-1 pl-2.5 pr-3 text-m-sub font-semibold text-ink-2 [-webkit-touch-callout:none] after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
             >
               <Sparkles aria-hidden className="size-3.5 flex-none text-ink-3" strokeWidth={1.75} />

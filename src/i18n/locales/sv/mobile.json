@@ -19,7 +19,8 @@
       "unchanged": "oförändrat",
       "noHistory": "ingen historik"
     },
-    "emptyDescription": "Lägg till ett konto eller en investering så bygger Moony din översikt, dina diagram och trender utifrån det. Allt stannar på den här telefonen."
+    "emptyDescription": "Lägg till ett konto eller en investering så bygger Moony din översikt, dina diagram och trender utifrån det. Allt stannar på den här telefonen.",
+    "ringCenter": "Tillgångar"
   },
   "money": {
     "approx": "≈ {{amount}}",
@@ -1028,5 +1029,6 @@
     "halfYear": "{{amount}} / halvår",
     "year": "{{amount}} / år",
     "avgMonth": "⌀ {{amount}} / mån"
-  }
+  },
+  "labelValue": "{{label}}: {{value}}"
 }

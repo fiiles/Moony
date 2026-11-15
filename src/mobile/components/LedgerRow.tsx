@@ -89,7 +89,7 @@ export function LedgerRow({ tx, category, flow, onOpen, onCategorize, onDelete }
       swipeRightLabel={t('account.ledger.details')}
       swipeRightIcon={Info}
       menu={{
-        label: `${tc('labels.actions')}: ${title}`,
+        label: tc('mobile:labelValue', { label: tc('labels.actions'), value: title }),
         children: (
           <>
             <RowMenuItem onSelect={onOpen}>

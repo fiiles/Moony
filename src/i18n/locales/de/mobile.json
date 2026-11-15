@@ -19,7 +19,8 @@
       "unchanged": "unverändert",
       "noHistory": "kein Verlauf"
     },
-    "emptyDescription": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends. Alles bleibt auf diesem Telefon."
+    "emptyDescription": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends. Alles bleibt auf diesem Telefon.",
+    "ringCenter": "Aktiva"
   },
   "money": {
     "approx": "≈ {{amount}}",
@@ -1028,5 +1029,6 @@
     "halfYear": "{{amount}} / Halbjahr",
     "year": "{{amount}} / Jahr",
     "avgMonth": "⌀ {{amount}} / Monat"
-  }
+  },
+  "labelValue": "{{label}}: {{value}}"
 }

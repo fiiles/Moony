@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { allocationSlices, type AllocationSegment } from '@/utils/allocation-percent';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
 const OTHER = 'var(--s-other)';
@@ -30,6 +31,7 @@ export function AllocationBar({
   formatPercent,
   formatValue,
 }: AllocationBarProps) {
+  const list = useListText();
   const { slices } = useMemo(
     () => allocationSlices(segments, { otherLabel }),
     [segments, otherLabel]
@@ -39,9 +41,11 @@ export function AllocationBar({
     <div className="mt-3">
       <div
         role="img"
-        aria-label={slices
-          .map((s) => `${s.label} ${formatPercent(s.percent / 100)} (${formatValue(s.value)})`)
-          .join(', ')}
+        aria-label={list(
+          slices.map(
+            (s) => `${s.label} ${formatPercent(s.percent / 100)} (${formatValue(s.value)})`
+          )
+        )}
         className="flex h-2 overflow-hidden rounded-full bg-well-2"
       >
         {slices.map((s) => (

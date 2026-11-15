@@ -35,6 +35,7 @@ import { ClosedPositionsSheet } from '@/mobile/sheets/ClosedPositionsSheet';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { cryptoPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 /**
  * Krypto, the class page of Majetek (spec §8.8: "Krypto is the same page"): the value of the coins
@@ -52,6 +53,7 @@ export default function Crypto() {
   const { t: tcr } = useTranslation('crypto');
   const { t: td } = useTranslation('dashboard');
   const { t: tc } = useTranslation('common');
+  const list = useListText();
   const back = useBack(routes.wealth);
   const { positions, rows, reportCurrency, isLoading, isError } = useCryptoPositions();
   const { transactions: trades, convertAt } = useCryptoTrades();
@@ -147,7 +149,7 @@ export default function Crypto() {
               action={{ label: tcr('unpricedBanner.pick'), onClick: () => setPickRow(unpriced[0]) }}
             >
               {tcr('unpricedBanner.message', {
-                tickers: unpriced.map((row) => row.ticker).join(', '),
+                tickers: list(unpriced.map((row) => row.ticker)),
               })}
             </InlineAlert>
           )}

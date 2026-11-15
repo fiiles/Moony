@@ -109,6 +109,7 @@ import { FilterSheet } from '@/mobile/sheets/FilterSheet';
 import { ImportHistorySheet } from '@/mobile/sheets/ImportHistorySheet';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
 import { TransactionSheet } from '@/mobile/sheets/TransactionSheet';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 type SheetKind =
   | 'record'
@@ -788,6 +789,7 @@ function FlowsSection({
 }) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
+  const list = useListText();
   const fmt = useFormat();
   const flows = useMemo(() => monthlyFlows(historyRows, currentMonth), [historyRows, currentMonth]);
   const flow = flows.find((f) => f.month === selected);
@@ -828,7 +830,7 @@ function FlowsSection({
         {/* Rows of a currency without a rate for their day are left out, and said so */}
         {foreignMissing.length > 0 && (
           <p className="mb-0 mt-1 text-m-caption text-loss">
-            {tb('readiness.foreignMissing', { currencies: foreignMissing.join(', ') })}
+            {tb('readiness.foreignMissing', { currencies: list(foreignMissing) })}
           </p>
         )}
       </div>

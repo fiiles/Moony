@@ -19,7 +19,8 @@
       "unchanged": "unchanged",
       "noHistory": "no history yet"
     },
-    "emptyDescription": "Add an account or an investment and Moony builds your overview, charts and trends from it. Everything stays on this phone."
+    "emptyDescription": "Add an account or an investment and Moony builds your overview, charts and trends from it. Everything stays on this phone.",
+    "ringCenter": "Assets"
   },
   "money": {
     "approx": "≈ {{amount}}",
@@ -1028,5 +1029,6 @@
     "halfYear": "{{amount}} / half-year",
     "year": "{{amount}} / yr",
     "avgMonth": "⌀ {{amount}} / mo"
-  }
+  },
+  "labelValue": "{{label}}: {{value}}"
 }

@@ -11,6 +11,7 @@ import { performanceNotes, type PerformanceNote } from '@/mobile/lib/performance
 import { useStockPerformance } from '@/hooks/use-stock-performance';
 import { toStockRow } from '@/utils/positions';
 import { ytdRange } from '@/mobile/lib/position-series';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 /**
  * The positions as the backend values them in the report currency (ADR 0011): the query of the
@@ -118,6 +119,7 @@ export function useTwrThisYear(enabled: boolean): {
   isLoading: boolean;
 } {
   const { currencyCode } = useCurrency();
+  const list = useListText();
   const nowSec = Date.now() / 1000;
   const performance = useStockPerformance(
     enabled
@@ -129,7 +131,7 @@ export function useTwrThisYear(enabled: boolean): {
       : null
   );
   const { data } = performance;
-  const notes = data === undefined ? [] : performanceNotes(data, currencyCode);
+  const notes = data === undefined ? [] : performanceNotes(data, currencyCode, list);
   if (data === undefined || data.dates.length < 2) {
     return { twr: null, mwr: null, notes, isLoading: performance.isLoading };
   }

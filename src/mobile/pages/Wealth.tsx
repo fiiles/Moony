@@ -146,7 +146,8 @@ export default function Wealth() {
             className="mx-0.5 mb-3.5"
           />
           <Hero
-            label={t('dashboard:stats.totalAssets')}
+            // The total-assets word of the tile on Přehled (B3: in German not the tab's "Vermögen")
+            label={t('stat.assets')}
             value={unknown.assets ? null : display.assets}
             formatValue={money}
             change={
@@ -423,7 +424,10 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
               href={propertyPath(property.id)}
               // The property's revaluation, opened on the property (README §13, Gestures)
               menu={{
-                label: `${tc('labels.actions')}: ${property.name}`,
+                label: tc('mobile:labelValue', {
+                  label: tc('labels.actions'),
+                  value: property.name,
+                }),
                 children: (
                   <RowMenuItem onSelect={() => openWith(propertyPath(property.id), 'revalue')}>
                     <ArrowUp strokeWidth={1.75} aria-hidden />

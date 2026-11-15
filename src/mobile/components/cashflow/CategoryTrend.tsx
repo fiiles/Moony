@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 interface CategoryTrendProps {
   /** UTC month starts, oldest first. */
@@ -25,6 +26,7 @@ const BAR_HEIGHT = 44;
  */
 export function CategoryTrend({ months, totals, selected, formatValue }: CategoryTrendProps) {
   const { t } = useTranslation('mobile');
+  const list = useListText();
   const fmt = useFormat();
   const max = Math.max(0, ...totals);
   const label = (month: number) => fmt.day(month, { month: 'short' });
@@ -42,7 +44,7 @@ export function CategoryTrend({ months, totals, selected, formatValue }: Categor
       </div>
       <div
         role="img"
-        aria-label={months.map((m, i) => `${label(m)} ${formatValue(totals[i])}`).join(', ')}
+        aria-label={list(months.map((m, i) => `${label(m)} ${formatValue(totals[i])}`))}
         className="grid gap-2"
         style={{ gridTemplateColumns: `repeat(${months.length}, minmax(0, 1fr))` }}
       >

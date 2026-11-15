@@ -145,7 +145,10 @@ export function QueueRow({
         <PillButton
           tone="dark"
           onClick={onAccept}
-          label={`${tb('categorization.acceptSuggestion')}: ${name} (${source})`}
+          label={tb('mobile:labelValue', {
+            label: tb('categorization.acceptSuggestion'),
+            value: `${name} (${source})`,
+          })}
         >
           <Check aria-hidden strokeWidth={2} />
           <span className="min-w-0 truncate">{name}</span>
@@ -199,7 +202,7 @@ export function QueueRow({
       swipeRightLabel={t('account.ledger.details')}
       swipeRightIcon={Info}
       menu={{
-        label: `${tc('labels.actions')}: ${title}`,
+        label: tc('mobile:labelValue', { label: tc('labels.actions'), value: title }),
         // Podrobnosti (and Nechat on a row with a suggestion) are nowhere else on the row
         shown: true,
         children: (

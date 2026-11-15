@@ -152,5 +152,10 @@ describe('stat tile labels', () => {
         .filter(({ width }) => width > budgets[group]);
       expect(over).toEqual([]);
     });
+    // The allocation ring's centre word, 10 px in the 52 pt middle of its hole (B3)
+    it('ring centre fits its hole', () => {
+      const word = (mobile.overview as Record<string, string>).ringCenter;
+      expect(Math.round((captionWidth(word) * 10) / 11)).toBeLessThanOrEqual(52);
+    });
   });
 });

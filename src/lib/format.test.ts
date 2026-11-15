@@ -151,6 +151,13 @@ describe('phone style (README §13, "Dates and periods")', () => {
     ).toBe('8/2029');
   });
 
+  it('writes the yen with the narrow sign in Japanese, as next to Latin digits (B11)', () => {
+    const ja = createFormatters('ja-JP', 'JPY', 'phone');
+    expect(norm(ja.money(247949, 'JPY'))).toBe('¥247,949');
+    expect(norm(ja.money(-247949, 'JPY', { signed: true }))).toBe('− ¥247,949');
+    expect(norm(createFormatters('ja-JP', 'JPY').money(247949, 'JPY'))).toBe('￥247,949');
+  });
+
   it('labels a long axis with the month and the full year, which never reads as a day (C5)', () => {
     expect(norm(cs.axisMonth(SEPT_30))).toBe('9/2026');
     expect(norm(en.axisMonth(SEPT_30))).toBe('9/2026');

@@ -19,7 +19,8 @@
       "unchanged": "invariato",
       "noHistory": "nessuno storico"
     },
-    "emptyDescription": "Aggiungi un conto o un investimento e Moony costruisce da lì panoramica, grafici e andamenti. Tutto resta su questo telefono."
+    "emptyDescription": "Aggiungi un conto o un investimento e Moony costruisce da lì panoramica, grafici e andamenti. Tutto resta su questo telefono.",
+    "ringCenter": "Attività"
   },
   "money": {
     "approx": "≈ {{amount}}",
@@ -1078,5 +1079,6 @@
     "halfYear": "{{amount}} / semestre",
     "year": "{{amount}} / anno",
     "avgMonth": "⌀ {{amount}} / mese"
-  }
+  },
+  "labelValue": "{{label}}: {{value}}"
 }

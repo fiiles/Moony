@@ -593,7 +593,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
         href={accountPath(account.id)}
         // The account's two buttons and its new transaction, opened on the account (README §13)
         menu={{
-          label: `${tc('labels.actions')}: ${account.name}`,
+          label: tc('mobile:labelValue', { label: tc('labels.actions'), value: account.name }),
           children: (
             <>
               <RowMenuItem onSelect={() => openWith(accountPath(account.id), 'record')}>
@@ -691,7 +691,7 @@ function LoansSection({
             href={loanPath(row.loan.id)}
             // The loan's event dialogs, opened on the loan (README §13)
             menu={{
-              label: `${tc('labels.actions')}: ${row.loan.name}`,
+              label: tc('mobile:labelValue', { label: tc('labels.actions'), value: row.loan.name }),
               children: (
                 <>
                   <RowMenuItem onSelect={() => openWith(loanPath(row.loan.id), 'balanceCheck')}>
@@ -772,7 +772,10 @@ function PoliciesSection({
               href={policyPath(row.policy.id)}
               // The policy's form and its end, opened on the policy (README §13)
               menu={{
-                label: `${tc('labels.actions')}: ${row.policy.policyName}`,
+                label: tc('mobile:labelValue', {
+                  label: tc('labels.actions'),
+                  value: row.policy.policyName,
+                }),
                 children: (
                   <>
                     <RowMenuItem onSelect={() => openWith(policyPath(row.policy.id), 'edit')}>

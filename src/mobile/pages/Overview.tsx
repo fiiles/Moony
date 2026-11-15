@@ -287,7 +287,8 @@ function AllocationSection({
       <div className="mb-3.5 rounded-r4 border border-line bg-[linear-gradient(180deg,var(--paper),var(--paper-2))] px-4 py-3.5 shadow-e1">
         <AllocationRing
           segments={values}
-          centerLabel={td('allocation.center')}
+          // Its own short word (B3): the tab is Majetek, the tile Celková aktiva, the ring's centre Aktiva
+          centerLabel={t('overview.ringCenter')}
           otherLabel={td('cards.other')}
           formatPercent={(ratio) => fmt.percent(ratio, 0)}
           formatValue={formatValue}

@@ -19,7 +19,8 @@
       "unchanged": "変化なし",
       "noHistory": "履歴なし"
     },
-    "emptyDescription": "口座または投資を追加すると、Moony が概要、グラフ、推移を作成します。すべてのデータはこのスマートフォン内に保存されます。"
+    "emptyDescription": "口座または投資を追加すると、Moony が概要、グラフ、推移を作成します。すべてのデータはこのスマートフォン内に保存されます。",
+    "ringCenter": "総資産"
   },
   "money": {
     "approx": "≈ {{amount}}",
@@ -978,5 +979,6 @@
     "halfYear": "{{amount}}/半年",
     "year": "{{amount}}/年",
     "avgMonth": "平均 {{amount}}/月"
-  }
+  },
+  "labelValue": "{{label}}：{{value}}"
 }

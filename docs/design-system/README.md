@@ -617,6 +617,17 @@ one form for all (`mobile:period`, `usePeriodText`, `periodUnit`): "2 270 Kč / 
 "⌀ 12 900 Kč / měs.", "{{amount}}/月" in Japanese and Chinese — a policy's premium, a loan's payment,
 a rent, a coupon, a cost. A period word in a column of its own ("měsíčně" beside an amount) is gone.
 
+**Words and languages** (audit 2026-11-15 B3, B7, B9, B11). One word per concept and one concept per
+word: in German the tab is "Vermögen", the allocation ring's centre "Aktiva" and the total-assets tile
+and Majetek's hero "Gesamtaktiva" (`mobile:overview.ringCenter`, `mobile:stat.assets`); the ring's
+centre word keeps to the middle 52 pt of its hole, never touching the stroke (`locales.test.ts` measures
+it). A list is joined by the language (`useListText`, `Intl.ListFormat`: "USD, EUR a GBP", "株式、暗号資産"),
+never by a comma in code; "label: value" is one key (`mobile:labelValue`, "：" in Japanese and
+Chinese); whole sentences run on with `sentences` (no space after "。"). A period amount in Japanese
+and Chinese is "{{amount}}/月". The phone writes the yen narrow ("¥247,949", not "￥"); the sign of
+an amount stays the money rule's "− " with its no-break space in every language, so Intl's own sign
+placement is not used.
+
 **Loading states: no false zero** (audit 2026-11-15 E1, E4). Until a list's query has answered, its
 count and its section stand in outline (`LineSkeleton`, a section of `RowsSkeleton`), never "0 pozic"
 and never a section that is missing: a class row of Majetek is never "empty" while its list loads

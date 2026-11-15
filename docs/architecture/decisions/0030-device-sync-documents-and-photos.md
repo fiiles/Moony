@@ -117,6 +117,9 @@ documents and photos need a newer server. The app assumes the server's error cod
   (`docs/DEPRECATED.md`); `mine` and `carry` only count.
 - Known limits, accepted:
   - no resume: a broken transfer of a large file starts again from the first byte;
+  - starting or abandoning the download of a very large file holds the database for as long as
+    allocating or freeing it takes (the incoming blob is reserved whole, as incremental blob I/O
+    needs); every other step of a transfer holds it for one chunk;
   - a row that stays unpushed for more than 7 days after its blob went up may have its blob
     deleted by another device's pass; the next pass on a device that holds it puts it back once
     the row is out;

@@ -1,9 +1,13 @@
 //! Streaming a blob between the encrypted store and the wire holds a few chunks in memory, never
-//! the blob: a 100 MiB blob is read from the store and sealed piece by piece, and the pieces are
-//! opened into the store again, while a counting allocator watches the peak of live bytes.
+//! the blob: a blob is read from the store and sealed piece by piece, and the pieces are opened
+//! into the store again, while a counting allocator watches the peak of live bytes.
 //!
 //! SQLite allocates through its own allocator, not Rust's, so the store's pages are not counted;
 //! every buffer the upload source and the store sink hold is.
+//!
+//! The default run streams 16 MiB (eight times the bound, so a buffered blob still fails). The
+//! full 100 MiB document limit takes about half a minute in a debug build and is ignored by
+//! default: run it with `cargo test --test sync_blob_memory -- --ignored`.
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::io::Read;
@@ -18,7 +22,7 @@ use moony_lib::services::sync::blobs::stream::{SinkOutcome, StoreSink, UploadSou
 use moony_lib::services::sync::engine::ConnAccess;
 use moony_lib::services::sync::envelope::blob::BlobSealer;
 use moony_lib::services::sync::keys::VaultKeys;
-use moony_lib::services::sync::relay::{BlobSink, SinkFlow};
+use moony_lib::services::sync::relay::{BlobSink, Delivery, SinkFlow};
 use rusqlite::Connection;
 use uuid::Uuid;
 use zeroize::Zeroizing;
@@ -108,19 +112,27 @@ impl Read for Noise {
     }
 }
 
-const SIZE: u64 = attachment_store::MAX_DOCUMENT_BYTES;
 const KEY: [u8; 32] = [0x11; 32];
 const VAULT: [u8; 16] = [0x22; 16];
+const BOUND: usize = 2 * 1024 * 1024;
 
-#[test]
-fn a_100_mib_blob_seals_and_opens_within_a_fixed_memory_bound() {
+/// The tests share the allocator's counters, so they never run at the same time.
+static ONE_AT_A_TIME: Mutex<()> = Mutex::new(());
+
+/// Stores `size` pseudo-random bytes, streams them through an `UploadSource` into a `StoreSink`
+/// under another ID of the same store, and returns the peak growth of live bytes meanwhile;
+/// checks that the copy is stored with the original's hash.
+fn peak_growth_of_a_round_trip(size: u64) -> usize {
+    let _alone = ONE_AT_A_TIME
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let conn = Connection::open_in_memory().expect("main");
     files_schema::attach(&conn, Path::new(":memory:")).expect("store");
     let mut noise = Noise {
         state: 0x9e37_79b9_7f4a_7c15,
-        left: SIZE,
+        left: size,
     };
-    let original = attachment_store::put_reader(&conn, &mut noise, SIZE).expect("original");
+    let original = attachment_store::put_reader(&conn, &mut noise, size).expect("original");
     let db = Db(Arc::new(Mutex::new(conn)));
     let blob = Uuid::new_v4();
     let copy = blob.to_string();
@@ -129,24 +141,20 @@ fn a_100_mib_blob_seals_and_opens_within_a_fixed_memory_bound() {
     PEAK.store(baseline, Ordering::SeqCst);
 
     let sealer = BlobSealer::new(0, &KEY, &VAULT, &blob);
-    let source = UploadSource::new(db.clone(), original.id.clone(), blob, SIZE, sealer);
+    let source = UploadSource::new(db.clone(), original.id.clone(), blob, size, sealer);
     let keys = VaultKeys::single(0, Zeroizing::new(KEY));
     let mut sink = StoreSink::new(db.clone(), copy.clone(), blob, keys, VAULT);
     assert_eq!(sink.begin(source.sealed_len()), SinkFlow::Continue);
     for piece in source.into_body() {
         assert_eq!(sink.piece(&piece.expect("piece")), SinkFlow::Continue);
     }
-    let outcome = sink.finish();
+    let outcome = sink.finish(&Ok(Delivery::Complete));
 
     let peak_growth = PEAK.load(Ordering::SeqCst).saturating_sub(baseline);
     assert!(matches!(outcome, SinkOutcome::Stored), "{outcome:?}");
     assert!(
         peak_growth >= 64 * 1024,
         "the allocator saw no chunk: {peak_growth} bytes"
-    );
-    assert!(
-        peak_growth < 2 * 1024 * 1024,
-        "peak growth {peak_growth} bytes"
     );
 
     db.with_conn(|conn| {
@@ -163,4 +171,19 @@ fn a_100_mib_blob_seals_and_opens_within_a_fixed_memory_bound() {
         Ok(())
     })
     .expect("compare");
+    peak_growth
+}
+
+#[test]
+fn a_16_mib_blob_seals_and_opens_within_a_fixed_memory_bound() {
+    let peak_growth = peak_growth_of_a_round_trip(16 * 1024 * 1024);
+    assert!(peak_growth < BOUND, "peak growth {peak_growth} bytes");
+}
+
+#[test]
+#[ignore = "about half a minute in a debug build; run with -- --ignored"]
+fn a_100_mib_blob_seals_and_opens_within_a_fixed_memory_bound() {
+    let peak_growth = peak_growth_of_a_round_trip(attachment_store::MAX_DOCUMENT_BYTES);
+    println!("peak growth for 100 MiB: {peak_growth} bytes");
+    assert!(peak_growth < BOUND, "peak growth {peak_growth} bytes");
 }

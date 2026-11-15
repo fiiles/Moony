@@ -64,6 +64,9 @@ pub struct TestConn {
     pub locked: Arc<AtomicBool>,
     /// This profile's own round lock, so tests on other profiles never wait for it.
     pub rounds: Arc<tokio::sync::Mutex<()>>,
+    /// This profile's own downloads in progress, so devices downloading one blob in parallel
+    /// tests never see each other's.
+    pub incoming: Arc<crate::services::sync::blobs::stream::IncomingBlobs>,
 }
 
 impl TestConn {
@@ -72,6 +75,7 @@ impl TestConn {
             conn: Arc::new(Mutex::new(conn)),
             locked: Arc::new(AtomicBool::new(false)),
             rounds: Arc::new(tokio::sync::Mutex::new(())),
+            incoming: Arc::default(),
         }
     }
 
@@ -91,6 +95,18 @@ impl ConnAccess for TestConn {
 
     fn round_lock(&self) -> &tokio::sync::Mutex<()> {
         &self.rounds
+    }
+
+    fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
+        if self.locked.load(Ordering::SeqCst) {
+            return Some(Err(AppError::Auth("Database is locked".into())));
+        }
+        let conn = self.conn.try_lock().ok()?;
+        Some(f(&conn))
+    }
+
+    fn incoming_blobs(&self) -> &crate::services::sync::blobs::stream::IncomingBlobs {
+        &self.incoming
     }
 }
 

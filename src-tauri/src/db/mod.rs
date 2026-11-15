@@ -210,6 +210,30 @@ impl Database {
         f(conn)
     }
 
+    /// `with_conn` if the connection is free right now, else `None` without waiting (a `Drop`
+    /// that must never hang, even when it runs inside a hold of this connection).
+    pub fn try_with_conn<F, T>(&self, f: F) -> Option<Result<T>>
+    where
+        F: FnOnce(&Connection) -> Result<T>,
+    {
+        let guard = match self.conn.try_lock() {
+            Ok(guard) => guard,
+            Err(std::sync::TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
+            Err(std::sync::TryLockError::WouldBlock) => return None,
+        };
+        let run = || {
+            require_session(
+                self.expected_session,
+                self.session_epoch.load(Ordering::SeqCst),
+            )?;
+            let conn = guard
+                .as_ref()
+                .ok_or_else(|| AppError::Auth("Database is locked".into()))?;
+            f(conn)
+        };
+        Some(run())
+    }
+
     /// Execute a mutable function with the database connection
     pub fn with_conn_mut<F, T>(&self, f: F) -> Result<T>
     where

@@ -19,6 +19,7 @@ use rusqlite::Connection;
 use crate::error::{AppError, Result};
 use crate::models::sync::{SyncProblem, SyncStatus};
 use crate::services::sync::binding::BindingNative;
+use crate::services::sync::blobs::stream::IncomingBlobs;
 use crate::services::sync::capture::guard;
 use crate::services::sync::error::{SyncError, SyncResult, TooLarge};
 use crate::services::sync::held_blobs;
@@ -42,11 +43,29 @@ pub trait ConnAccess: Clone + Send + Sync + 'static {
     fn round_lock(&self) -> &tokio::sync::Mutex<()> {
         &ROUNDS
     }
+
+    /// `with_conn` if the connection is free right now, else `None` without waiting: for a `Drop`
+    /// that must never hang (it may run inside a hold of this connection). The default never
+    /// tries.
+    fn try_with_conn<T>(&self, _f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
+        None
+    }
+
+    /// The blob IDs a download is writing into this profile's attachment store right now
+    /// (`blobs::stream::StoreSink`): one download per blob ID at a time. The app opens one profile
+    /// at a time, so the default is one set for the process.
+    fn incoming_blobs(&self) -> &IncomingBlobs {
+        &INCOMING_BLOBS
+    }
 }
 
 impl ConnAccess for crate::db::Database {
     fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
         crate::db::Database::with_conn(self, f)
+    }
+
+    fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
+        crate::db::Database::try_with_conn(self, f)
     }
 }
 
@@ -283,6 +302,10 @@ fn unechoed<D: ConnAccess>(db: &D) -> Result<(usize, Option<u64>)> {
 
 /// The process's round lock (`ConnAccess::round_lock`; one profile is open at a time).
 static ROUNDS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// The process's downloads in progress (`ConnAccess::incoming_blobs`; one profile is open at a
+/// time).
+static INCOMING_BLOBS: IncomingBlobs = IncomingBlobs::new();
 
 /// Holds off every round of `db`'s profile while the guard lives: the engine's start check (the
 /// binding, a re-join, the marker, the binding write) takes it, so a setup or repair round cannot

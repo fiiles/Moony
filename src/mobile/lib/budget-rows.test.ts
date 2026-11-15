@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { BudgetGoal, BudgetGoalVersion } from '@shared/schema';
-import { budgetedCategoryIds, budgetRows, rowLimitAction, unbudgetedRows } from './budget-rows';
+import type { RowLimit } from '@/utils/cashflow-budget-rows';
+import {
+  budgetedCategoryIds,
+  budgetRows,
+  expenseRowMoney,
+  rowLimitAction,
+  unbudgetedRows,
+} from './budget-rows';
 
 const month = (year: number, index: number) => Date.UTC(year, index, 1) / 1000;
 /** October 2026, the month the tests run in. */
@@ -306,5 +313,84 @@ describe('rowLimitAction', () => {
       hasLimit: true,
       mode: { kind: 'edit', goal: stored, effectiveMonth: periodStart },
     });
+  });
+});
+
+describe('expenseRowMoney', () => {
+  const limit = (patch: Partial<RowLimit> = {}): RowLimit => ({
+    state: 'ok',
+    currency: 'CZK',
+    spent: 11_271,
+    limit: 12_500,
+    percentage: 90,
+    remaining: 1_229,
+    ...patch,
+  });
+  const row = (patch: {
+    amount?: number;
+    amountUnavailable?: boolean;
+    limit?: RowLimit | null;
+  }) => ({
+    amount: 516.4,
+    amountUnavailable: false,
+    limit: null,
+    ...patch,
+  });
+
+  it('is the report amount for a row without a limit', () => {
+    expect(expenseRowMoney(row({}), 'USD')).toEqual({
+      currency: 'USD',
+      spent: 516.4,
+      approx: null,
+      limitAmounts: true,
+    });
+  });
+
+  it('is the report amount when the limit is in the report currency', () => {
+    expect(expenseRowMoney(row({ amount: 11_271, limit: limit() }), 'CZK')).toEqual({
+      currency: 'CZK',
+      spent: 11_271,
+      approx: null,
+      limitAmounts: true,
+    });
+  });
+
+  it("is the budget's own spend when the limit is in another currency, the report amount its ≈", () => {
+    expect(expenseRowMoney(row({ limit: limit() }), 'USD')).toEqual({
+      currency: 'CZK',
+      spent: 11_271,
+      approx: 516.4,
+      limitAmounts: true,
+    });
+  });
+
+  it('has no ≈ when the report amount is unknown or nothing', () => {
+    expect(
+      expenseRowMoney(row({ amount: 0, amountUnavailable: true, limit: limit() }), 'USD').approx
+    ).toBeNull();
+    expect(
+      expenseRowMoney(row({ amount: 0, limit: limit({ spent: 0, remaining: 12_500 }) }), 'USD')
+    ).toEqual({ currency: 'CZK', spent: 0, approx: null, limitAmounts: true });
+  });
+
+  it('keeps the report amount and writes no limit amount when a foreign limit cannot be evaluated', () => {
+    const unavailable = limit({
+      state: 'unavailable',
+      spent: null,
+      percentage: null,
+      remaining: null,
+    });
+    expect(expenseRowMoney(row({ limit: unavailable }), 'USD')).toEqual({
+      currency: 'USD',
+      spent: 516.4,
+      approx: null,
+      limitAmounts: false,
+    });
+    // In the report currency the limit amount is no second currency
+    expect(expenseRowMoney(row({ limit: unavailable }), 'CZK').limitAmounts).toBe(true);
+  });
+
+  it('has no spend at all when the report amount is unknown and the limit says nothing either', () => {
+    expect(expenseRowMoney(row({ amount: 0, amountUnavailable: true }), 'USD').spent).toBeNull();
   });
 });

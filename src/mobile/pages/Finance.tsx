@@ -55,6 +55,7 @@ import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useFinance, type Finance as FinanceData } from '@/mobile/hooks/use-finance';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
+import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useOpenWithIntent } from '@/mobile/hooks/use-row-intent';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
@@ -504,6 +505,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
   const { openImport } = useImportSheet();
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const approx = useApprox();
   const { accounts, activity, lastImportByAccount, mainCurrency, convert } = finance;
   const todayDay = utcDayFloor(Date.now() / 1000);
 
@@ -529,7 +531,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
       last30: a ? { net: a.last30.net, count: a.last30.count } : undefined,
       stamp: sub.stamp,
       todayDay,
-      converted: convert(balance, sub.currency),
+      balance,
     });
     let valueSub: string | undefined;
     switch (trail.kind) {
@@ -539,12 +541,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
         });
         break;
       case 'converted':
-        valueSub =
-          trail.value === null
-            ? t('finance.trail.noRate', { currency: sub.currency })
-            : t('finance.trail.approx', {
-                amount: moneyText(trail.value, mainCurrency, { decimals: 0 }),
-              });
+        valueSub = approx(balance, sub.currency);
         break;
       case 'stale':
         valueSub = t(
@@ -630,6 +627,7 @@ function LoansSection({
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const approx = useApprox();
   const { monthYear } = useLoanText();
   const openWith = useOpenWithIntent();
   if (rows.length === 0) return null;
@@ -666,12 +664,14 @@ function LoansSection({
                   : t('loans:table.fixedRate'),
             ].join(' · ')}
             value={moneyText(row.outstanding, row.currency, { decimals: 0 })}
+            // A balance in another currency: its "≈" comes before the payment (README §13)
             valueSub={
               row.matured
                 ? t('loans:table.matured')
-                : t('finance.perMonth', {
+                : (approx(row.outstanding, row.currency) ??
+                  t('finance.perMonth', {
                     amount: moneyText(row.payment, row.currency, { decimals: 0 }),
-                  })
+                  }))
             }
             href={loanPath(row.loan.id)}
             // The loan's event dialogs, opened on the loan (README §13)
@@ -708,6 +708,7 @@ function PoliciesSection({
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const approx = useApprox();
   const { t: tc } = useTranslation('common');
   const openWith = useOpenWithIntent();
   if (rows.length === 0) return null;
@@ -743,14 +744,17 @@ function PoliciesSection({
               value={moneyText(row.premiumNative.amount, row.premiumNative.currency, {
                 decimals: 0,
               })}
+              // A premium in another currency: its "≈" comes before the next payment's day,
+              // which "Nejbližší platby" under the policies lists (README §13)
               valueSub={
                 row.ended
                   ? t('insurance:table.ended')
-                  : nextPayment
-                    ? t('finance.nextPayment', {
-                        date: fmt.day(nextPayment, shortDayOptions(nextPayment)),
-                      })
-                    : undefined
+                  : (approx(row.premiumNative.amount, row.premiumNative.currency) ??
+                    (nextPayment
+                      ? t('finance.nextPayment', {
+                          date: fmt.day(nextPayment, shortDayOptions(nextPayment)),
+                        })
+                      : undefined))
               }
               href={policyPath(row.policy.id)}
               // The policy's form and its end, opened on the policy (README §13)

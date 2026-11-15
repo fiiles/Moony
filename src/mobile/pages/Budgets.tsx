@@ -4,7 +4,6 @@ import { useSearch } from 'wouter';
 import { Pencil, PiggyBank, Plus, Trash2 } from 'lucide-react';
 import type { TransactionCategory } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
-import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { currentMonthStart, type BudgetLimitPeriod } from '@/utils/budget-goal-versions';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useBudgetLimitSheet } from '@/mobile/hooks/use-budget-limit-sheet';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { exactMoneyOptions, WHOLE } from '@/mobile/lib/money-rule';
 import {
   budgetRows,
   unbudgetedRows,
@@ -30,7 +30,6 @@ import { BudgetDeleteSheet, type PendingDelete } from '@/mobile/sheets/BudgetDel
 import { BudgetLimitSheet } from '@/mobile/sheets/BudgetLimitSheet';
 
 /** Whole amounts ("3 000 Kč"). */
-const WHOLE: MoneyOptions = { decimals: 0 };
 
 /**
  * Spravovat rozpočty (spec §8.7, pushed on the Cashflow tab): one row per budget — its limit in
@@ -220,6 +219,9 @@ function BudgetItem({ row, category, onEdit, onEditFrom, onDelete }: BudgetItemP
   const monthLabel = (month: number) => fmt.monthInSentence(new Date(month * 1000));
   const limitText = (amount: string | null, currency: string) =>
     moneyText(Number(amount), currency, WHOLE);
+  // The delete sentence names the limit exactly (the row's value is rounded to whole amounts)
+  const exactLimit = (amount: string | null, currency: string) =>
+    moneyText(Number(amount), currency, exactMoneyOptions(Number(amount), currency));
   // A running row says only where it starts: what follows is in its sub-line
   const validity = ({ version, end }: BudgetLimitPeriod, running: boolean) => {
     const start = monthLabel(version.effectiveMonth);
@@ -255,8 +257,7 @@ function BudgetItem({ row, category, onEdit, onEditFrom, onDelete }: BudgetItemP
         effectiveMonth: main.version.effectiveMonth,
       },
       name: row.name,
-      // The sentence names the limit exactly (the row's value is rounded to whole amounts)
-      amount: moneyText(Number(main.version.amount), main.version.currency),
+      amount: exactLimit(main.version.amount, main.version.currency),
       period: validity(main, false),
     });
 
@@ -318,7 +319,7 @@ function BudgetItem({ row, category, onEdit, onEditFrom, onDelete }: BudgetItemP
                 effectiveMonth: period.version.effectiveMonth,
               },
               name: row.name,
-              amount: moneyText(Number(period.version.amount), period.version.currency),
+              amount: exactLimit(period.version.amount, period.version.currency),
               period: validity(period, false),
             })
           }

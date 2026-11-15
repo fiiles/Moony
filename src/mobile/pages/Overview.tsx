@@ -17,13 +17,11 @@ import { useMilestones } from '@/hooks/use-milestones';
 import { ASSET_CLASSES, useNetWorthOverview } from '@/hooks/use-net-worth-overview';
 import { useNetWorthJumpTip } from '@/hooks/use-net-worth-jump-tip';
 import { useRecentMoves, type MoveKind, type RecentMove } from '@/hooks/use-recent-moves';
-import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { splitMilestones } from '@/utils/milestones';
 import { CHART_PERIODS, type ChartPeriod } from '@/utils/period';
 import { Button } from '@/components/ui/button';
-import { ConvertedMoney } from '@/components/common/ConvertedMoney';
 import {
   ScaledChartLegend,
   ScaledConversionNote,
@@ -39,10 +37,12 @@ import { Money } from '@/mobile/components/Money';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { UpkeepCard } from '@/mobile/components/UpkeepCard';
+import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
 import { useTransactionDay } from '@/mobile/hooks/use-transaction-day';
 import { initials } from '@/mobile/lib/initials';
+import { exactMoneyOptions, SIGNED_WHOLE, WHOLE } from '@/mobile/lib/money-rule';
 import { movePath } from '@/mobile/lib/move-path';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { addAccountPath } from '@/mobile/lib/getting-started';
@@ -55,9 +55,6 @@ const AGENDA_ROWS = 3;
 const MOVES = 5;
 /** From a million on, a stat shows the compact amount ("6,78 mil. Kč") so a third holds it. */
 const COMPACT_FROM = 1_000_000;
-/** Whole amounts, and whole amounts with their sign ("+ 86 420 Kč"). */
-const WHOLE: MoneyOptions = { decimals: 0 };
-const SIGNED_WHOLE: MoneyOptions = { signed: true, decimals: 0 };
 
 /**
  * Přehled tab root (spec §8.3, prototype frame 02): the greeting, Údržba (only while something is
@@ -311,10 +308,12 @@ const MOVE_ICONS: Partial<Record<MoveKind, LucideIcon>> = {
 
 /**
  * Poslední pohyby (spec §8.3 item 6): five entity rows — initials of the counterparty (an icon
- * for a trade), "Dnes · účet · kategorie", the amount in the main currency at its day's rate. Only
- * a bank credit is green with a plus; a debit carries a minus; trades are neutral amounts whose
- * direction is in the sub. A tap opens the payment in its account (its sheet open) or the trade's
- * position. Hidden when there is nothing yet.
+ * for a trade), "Dnes · účet · kategorie", the exact amount in the move's own currency (the
+ * account's, the trade's) and, when that is not the main currency, "≈" its worth at its day's rate
+ * under it (README §13, "Money and currencies"). Only a bank credit is green with a plus; a debit
+ * carries a minus; trades are neutral amounts whose direction is in the sub. A tap opens the
+ * payment in its account (its sheet open) or the trade's position. Hidden when there is nothing
+ * yet.
  */
 function RecentMovesSection() {
   const { t: td } = useTranslation('dashboard');
@@ -333,6 +332,7 @@ function MoveRows({ moves }: { moves: RecentMove[] }) {
   const { t } = useTranslation('dashboard');
   const { t: tm } = useTranslation('mobile');
   const moneyText = useMoneyText();
+  const approx = useApprox();
   const { categories } = useCategories();
   const categoryName = useCategoryName();
   const first = Math.min(...moves.map((m) => m.date));
@@ -367,16 +367,16 @@ function MoveRows({ moves }: { moves: RecentMove[] }) {
             }
             title={title}
             sub={sub.filter(Boolean).join(' · ')}
-            value={
-              <ConvertedMoney
-                prefix={sign}
-                value={convertAt(move.amount, move.currency, move.date)}
-                amount={move.amount}
-                currency={move.currency}
-                pending={!ready}
-                format={moneyText}
-              />
-            }
+            // The move's own amount; its worth in the main currency is the "≈" under it
+            value={`${sign}${moneyText(
+              move.amount,
+              move.currency,
+              exactMoneyOptions(move.amount, move.currency)
+            )}`}
+            valueSub={approx(move.amount, move.currency, {
+              converted: convertAt(move.amount, move.currency, move.date),
+              pending: !ready,
+            })}
             valueTone={move.kind === 'bankIn' ? 'gain' : undefined}
             // A payment opens in its account with its sheet, a trade on its position (C11)
             href={movePath(move) ?? undefined}

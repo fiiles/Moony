@@ -50,14 +50,15 @@ export function accountSub(
 /** What stands under an account's balance on the right (prototype frame 03). */
 export type AccountTrail =
   | { kind: 'change'; net: number }
-  | { kind: 'converted'; value: number | null }
+  | { kind: 'converted' }
   | { kind: 'stale'; what: 'statement' | 'balance'; days: number }
   | { kind: 'none' };
 
 /**
- * The trailing sub of an account row, by precedence: the 30-day change when the account moved,
- * else the main-currency equivalent of a foreign balance (`null` when its currency has no rate),
- * else how old a stale statement or balance is, else nothing.
+ * The trailing sub of an account row, by precedence: the main-currency equivalent of a balance in
+ * another currency (the "≈" line of README §13, worded by `useApprox`; an empty account has none),
+ * else the 30-day change when the account moved, else how old a stale statement or balance is,
+ * else nothing.
  */
 export function accountTrail(args: {
   currency: string;
@@ -65,11 +66,12 @@ export function accountTrail(args: {
   last30: { net: number; count: number } | undefined;
   stamp: AccountSub['stamp'];
   todayDay: number;
-  converted: number | null;
+  /** The account's balance in its own currency. */
+  balance: number;
 }): AccountTrail {
-  const { currency, mainCurrency, last30, stamp, todayDay, converted } = args;
+  const { currency, mainCurrency, last30, stamp, todayDay, balance } = args;
+  if (currency !== mainCurrency && balance !== 0) return { kind: 'converted' };
   if (last30 && last30.count > 0) return { kind: 'change', net: last30.net };
-  if (currency !== mainCurrency) return { kind: 'converted', value: converted };
   if (stamp) {
     const days = daysBetween(stamp.day, todayDay);
     if (days > STALE_DAYS) return { kind: 'stale', what: stamp.kind, days };

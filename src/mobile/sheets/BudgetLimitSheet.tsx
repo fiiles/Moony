@@ -15,6 +15,7 @@ import { MonthField } from '@/mobile/components/cashflow/MonthField';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { Sheet } from '@/mobile/components/Sheet';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { exactMoneyOptions, WHOLE } from '@/mobile/lib/money-rule';
 import {
   limitDefaults,
   limitFormState,
@@ -33,7 +34,6 @@ import {
   versionInEffect,
 } from '@/utils/budget-goal-versions';
 import { preserveMoneyText } from '@/utils/money-flows';
-import { formatReportMoney } from '@/utils/report-currencies';
 
 export type { LimitMode };
 
@@ -208,8 +208,9 @@ function LimitSheet({
   };
 
   const monthLabel = (month: number) => fmt.monthInSentence(new Date(month * 1000));
-  const reportMoney = (amount: number, currency: string) =>
-    formatReportMoney({ money }, amount, currency);
+  // A stored limit is named exactly, without ",00" on a whole one (README §13, "Decimals")
+  const limitMoney = (amount: number, currency: string) =>
+    money(amount, currency, exactMoneyOptions(amount, currency));
   const periodLabel = (start: number, end: number | null) => {
     if (end === null) return tb('settings.from', { month: monthLabel(start) });
     const first = monthLabel(start);
@@ -227,7 +228,7 @@ function LimitSheet({
       ? undefined
       : observed && observed.average > 0
         ? tb('readiness.observedAverage', {
-            amount: reportMoney(observed.average, averageCurrency),
+            amount: money(observed.average, averageCurrency, WHOLE),
             count: observed.months,
           })
         : tb('dialog.noAverage');
@@ -372,7 +373,7 @@ function LimitSheet({
                           })
                         : tb('readiness.scheduledLimit', {
                             month: monthLabel(version.effectiveMonth),
-                            amount: reportMoney(Number(version.amount), version.currency),
+                            amount: limitMoney(Number(version.amount), version.currency),
                           })}
                     </li>
                   ))}
@@ -394,7 +395,7 @@ function LimitSheet({
                         end === null ? null : intervalLastMonth(versions, version.effectiveMonth)
                       )}
                       {': '}
-                      {reportMoney(Number(version.amount), version.currency)}
+                      {limitMoney(Number(version.amount), version.currency)}
                     </li>
                   ))}
                 </ul>

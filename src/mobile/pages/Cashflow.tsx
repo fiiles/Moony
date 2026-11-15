@@ -8,7 +8,6 @@ import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useSpendingPlansOverview } from '@/hooks/use-spending-plans';
 import { budgetingApi } from '@/lib/tauri-api';
-import { useReportMoney } from '@/lib/use-report-money';
 import { periodPace } from '@/utils/budget-pace';
 import { isPartialLimit, storedLimitGoal, type ExpenseRow } from '@/utils/cashflow-budget-rows';
 import { yearFromSearch } from '@/utils/spending-plans';
@@ -31,6 +30,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow } from '@/mobile/components/StatRow';
 import { useBudgetLimitSheet } from '@/mobile/hooks/use-budget-limit-sheet';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
+import { useSummaryMoney } from '@/mobile/hooks/use-summary-money';
 import { useCsvExport } from '@/mobile/hooks/use-csv-export';
 import {
   useCashflowReport,
@@ -332,8 +332,8 @@ interface ReportBodyProps {
 
 /**
  * The report of a period that has transactions or limits (or, with neither, its bars and an empty
- * line). Report amounts are at the currency's minor units, as on the desktop (`useReportMoney`), so
- * the rows add up to the totals.
+ * line). Every amount here is a summary and so whole (`useSummaryMoney`, README §13 "Money and
+ * currencies"); the single payments of a category are exact on its own page.
  */
 function ReportBody({
   actuals,
@@ -353,7 +353,7 @@ function ReportBody({
   const { categories } = useCategories();
   const categoryName = useCategoryName();
   const { range, expenses, periodLabel } = report;
-  const { money, signedMoney, nativeMoney } = useReportMoney(actuals.reportCurrency);
+  const { money, signedMoney, nativeMoney } = useSummaryMoney(actuals.reportCurrency);
   // A net refund reads "− 100 Kč" with the minus sign of the signed amounts
   const lineMoney = (value: number) => (value < 0 ? signedMoney(value) : money(value));
 
@@ -501,6 +501,7 @@ function ReportBody({
           const goal = row.hasLimit ? storedLimitGoal(row, goals) : null;
           return goal !== null && isPartialLimit(goal, range.start, range.end);
         }}
+        reportCurrency={actuals.reportCurrency}
         money={lineMoney}
         native={nativeMoney}
         evaluationNote={evaluationNote}

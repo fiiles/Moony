@@ -30,6 +30,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { AddAssetMenu, type AddKind } from '@/mobile/components/wealth/AddAssetMenu';
 import { AllocationBar } from '@/mobile/components/wealth/AllocationBar';
 import { ChangeLine } from '@/mobile/components/wealth/ChangeLine';
+import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
@@ -311,12 +312,17 @@ function InvestmentSection({
   );
 }
 
-/** Nemovitosti: a row per property at its own market price; the number is the converted total. */
+/**
+ * Nemovitosti: a row per property at its own market price, with "≈" its worth in the main currency
+ * under it when the price is in another one (README §13; it takes the place of the last
+ * revaluation's change); the section's number is the converted total.
+ */
 function PropertySection({ wealth }: { wealth: WealthData }) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const approx = useApprox();
   const openWith = useOpenWithIntent();
   const { user } = useAuth();
   const { reportCurrency, classes, properties } = wealth;
@@ -339,6 +345,7 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
           // section's number: the row stays, and says so (the desktop's badge and wording)
           const excluded = excludePersonal && property.type === 'personal';
           const price = amountOf(property.marketPrice);
+          const priceCurrency = recordCurrency(property.marketPriceCurrency);
           const rent = amountOf(property.monthlyRent) ?? 0;
           const sub = [
             t(`wealth.realEstate.${property.type === 'personal' ? 'personal' : 'investment'}`),
@@ -369,19 +376,16 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
               }
               sub={sub}
               // The property's own price in its own currency; the section's number is the converted total
-              value={
-                price === null
-                  ? '—'
-                  : moneyText(price, recordCurrency(property.marketPriceCurrency), WHOLE)
-              }
+              value={price === null ? '—' : moneyText(price, priceCurrency, WHOLE)}
               valueSub={
-                change ? (
+                (price === null ? undefined : approx(price, priceCurrency)) ??
+                (change ? (
                   <ChangeLine
                     change={{ delta: 0, ratio: change.ratio }}
                     currency={reportCurrency}
                     trail={fmt.day(change.day, shortDayOptions(change.day))}
                   />
-                ) : undefined
+                ) : undefined)
               }
               href={propertyPath(property.id)}
               // The property's revaluation, opened on the property (README §13, Gestures)

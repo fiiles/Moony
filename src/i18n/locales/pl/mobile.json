@@ -21,6 +21,10 @@
     },
     "emptyDescription": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy. Wszystko zostaje na tym telefonie."
   },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "brak kursu dla {{currency}}"
+  },
   "cashflow": {
     "subtitle_one": "Rzeczywiste przychody i wydatki z {{count}} konta",
     "subtitle_few": "Rzeczywiste przychody i wydatki z {{count}} kont",
@@ -146,9 +150,7 @@
       "staleBalance_one": "saldo sprzed {{count}} dnia",
       "staleBalance_few": "saldo sprzed {{count}} dni",
       "staleBalance_many": "saldo sprzed {{count}} dni",
-      "staleBalance_other": "saldo sprzed {{count}} dnia",
-      "approx": "≈ {{amount}}",
-      "noRate": "brak kursu dla {{currency}}"
+      "staleBalance_other": "saldo sprzed {{count}} dnia"
     },
     "perMonth": "{{amount}} / mies.",
     "nextPayment": "następna płatność {{date}}",

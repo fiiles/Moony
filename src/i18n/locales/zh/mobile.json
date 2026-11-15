@@ -21,6 +21,10 @@
     },
     "emptyDescription": "添加账户或投资后，Moony 会据此生成您的概览、图表和趋势。所有内容都保存在这部手机上。"
   },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "无 {{currency}} 汇率"
+  },
   "cashflow": {
     "subtitle_other": "来自 {{count}} 个账户的实际收入和支出",
     "subtitleAll": "所有账户的实际收入和支出",
@@ -110,9 +114,7 @@
     "trail": {
       "change": "{{amount}} · 30 天",
       "staleStatement_other": "对账单 {{count}} 天前",
-      "staleBalance_other": "余额 {{count}} 天前",
-      "approx": "≈ {{amount}}",
-      "noRate": "无 {{currency}} 汇率"
+      "staleBalance_other": "余额 {{count}} 天前"
     },
     "perMonth": "{{amount}} / 月",
     "nextPayment": "下次付款 {{date}}",

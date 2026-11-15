@@ -8,8 +8,9 @@ import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { EntityRow } from '@/mobile/components/EntityRow';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
+import { useApprox } from '@/mobile/hooks/use-approx';
 import type { LimitMode } from '@/mobile/lib/budget-limit';
-import type { RowLimitAction } from '@/mobile/lib/budget-rows';
+import { expenseRowMoney, type RowLimitAction } from '@/mobile/lib/budget-rows';
 import { CategoryChip } from './CategoryChip';
 import { ProgressBar } from './ProgressBar';
 
@@ -28,9 +29,9 @@ interface ExpenseCategoryRowProps {
   title: string;
   /** The category's icon and hue; `null` for the uncategorized group. */
   category: TransactionCategory | null;
-  /** A report amount at the currency's minor units; a net refund reads with its minus sign. */
-  money: (amount: number) => string;
-  /** An amount in its own currency (the limit's), at its minor units. */
+  /** The currency of the report: the row's amount, unless its limit is in another one. */
+  reportCurrency: string;
+  /** A whole amount in the given currency (the report's or the limit's). */
   native: (amount: number, currency: string, opts?: { signed?: boolean }) => string;
   /** The category's transactions in the period; `undefined` when it has none (a limit alone). */
   href: string | undefined;
@@ -52,12 +53,15 @@ interface ExpenseCategoryRowProps {
 
 /**
  * An expense category of the Cashflow report (the desktop's `ExpensesByCategoryCard` row, spec
- * `2026-11-07-mobile-cashflow-parity-design.md`): chip, name, what was spent in the report currency
- * ("—" when no payment could be converted; never red, as on the desktop) and "47 % výdajů · 3
- * transakce". A row with a limit has the usage bar (red when over, the pace tick in a running
- * period) and, under the row and outside its tap target, the limit line: the state word and the
- * usage, what remains (or how far over) in the limit's own currency, "Jen část období" — or
- * "Čerpání nelze vyhodnotit" — and the limit amount as a 44 pt button that edits it. A row without
+ * `2026-11-07-mobile-cashflow-parity-design.md`): chip, name, what was spent ("—" when no payment
+ * could be converted; never red, as on the desktop) and "47 % výdajů · 3 transakce". A row with a
+ * limit has the usage bar (red when over, the pace tick in a running period) and, under the row and
+ * outside its tap target, the limit line: the state word and the usage, what remains (or how far
+ * over), "Jen část období" — or "Čerpání nelze vyhodnotit" — and the limit amount as a 44 pt
+ * button that edits it. Every amount of a row is in one currency (`expenseRowMoney`, README §13):
+ * the report's, or — when the limit is in another one — the limit's, with the report amount as the
+ * "≈" under what was spent; a foreign limit that cannot be evaluated is named "Upravit limit"
+ * instead of by its amount. All amounts are whole (a summary). A row without
  * a limit has the share bar; only in the "Bez limitu" filter (`offerSetLimit`) does it get the line
  * "Bez limitu · Nastavit limit". The long press keeps its menu, "Zobrazit transakce" and the same
  * limit action. Colour is never the only signal: the state is worded and "over" has its arrow.
@@ -66,7 +70,7 @@ export function ExpenseCategoryRow({
   row,
   title,
   category,
-  money,
+  reportCurrency,
   native,
   href,
   partial,
@@ -80,8 +84,10 @@ export function ExpenseCategoryRow({
   const { t: tb } = useTranslation('budgeting');
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
+  const approx = useApprox();
   const [, setLocation] = useLocation();
   const { limit } = row;
+  const amounts = expenseRowMoney(row, reportCurrency);
   const evaluated = limit && limit.state !== 'unavailable' && limit.percentage !== null;
   const over = limit?.state === 'over';
   const canOpen = !busy && href !== undefined;
@@ -92,13 +98,24 @@ export function ExpenseCategoryRow({
     { count: row.count }
   )}`;
   const fxUnavailable = tr('readiness.fxUnavailable');
-  const value = row.amountUnavailable ? (
-    <span title={fxUnavailable}>
-      —<span className="sr-only">{fxUnavailable}</span>
-    </span>
-  ) : (
-    money(row.amount)
-  );
+  const value =
+    amounts.spent === null ? (
+      <span title={fxUnavailable}>
+        —<span className="sr-only">{fxUnavailable}</span>
+      </span>
+    ) : (
+      // A net refund reads "− 100 Kč" with the minus sign of the signed amounts
+      native(amounts.spent, amounts.currency, amounts.spent < 0 ? { signed: true } : undefined)
+    );
+  // Written in the limit's currency: the report amount (the one the total adds up) is its "≈"
+  const valueSub =
+    amounts.currency === reportCurrency || amounts.spent === null
+      ? undefined
+      : amounts.approx !== null
+        ? approx(amounts.spent, amounts.currency, { converted: amounts.approx, pending: false })
+        : row.amountUnavailable
+          ? fxUnavailable
+          : undefined;
 
   // The limit line's sentence, its parts joined by " · "
   const parts: ReactNode[] = [];
@@ -109,7 +126,7 @@ export function ExpenseCategoryRow({
         {tb(STATE_KEYS[limit.state])} {fmt.percent((limit.percentage ?? 0) / 100, 0)}
       </span>
     );
-    if (limit.remaining !== null && limit.currency) {
+    if (limit.remaining !== null && limit.currency && amounts.limitAmounts) {
       parts.push(
         limit.remaining < 0 ? (
           <span className="text-loss">
@@ -129,7 +146,7 @@ export function ExpenseCategoryRow({
   if (limit && partial) parts.push(tr('actuals.expenses.partialPeriod'));
 
   const limitLabel = action?.hasLimit
-    ? limit?.limit != null && limit.currency
+    ? limit?.limit != null && limit.currency && amounts.limitAmounts
       ? native(limit.limit, limit.currency)
       : tb('actions.editLimit')
     : tb('actions.setLimit');
@@ -173,6 +190,7 @@ export function ExpenseCategoryRow({
       title={title}
       sub={sub}
       value={value}
+      valueSub={valueSub}
       bar={
         limit && evaluated ? (
           <ProgressBar

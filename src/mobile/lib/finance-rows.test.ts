@@ -70,7 +70,7 @@ describe('accountTrail', () => {
     currency: 'CZK',
     mainCurrency: 'CZK',
     todayDay: TODAY,
-    converted: 86_420,
+    balance: 86_420,
     stamp: null,
     last30: undefined,
   };
@@ -80,15 +80,25 @@ describe('accountTrail', () => {
       net: 9_870,
     });
   });
-  it('is the main-currency equivalent for a foreign account without movements', () => {
-    expect(accountTrail({ ...base, currency: 'EUR', converted: 30_660 })).toEqual({
+  it('is the main-currency equivalent for an account in another currency, moved or not', () => {
+    expect(accountTrail({ ...base, currency: 'EUR' })).toEqual({ kind: 'converted' });
+    // The "≈" comes before the 30-day change: the balance above it is not in the main currency
+    expect(accountTrail({ ...base, currency: 'EUR', last30: { net: 9_870, count: 12 } })).toEqual({
       kind: 'converted',
-      value: 30_660,
     });
-    expect(accountTrail({ ...base, currency: 'CHF', converted: null })).toEqual({
-      kind: 'converted',
-      value: null,
+  });
+  it('has no equivalent for an empty foreign account: the change or the age, as any account', () => {
+    const empty = { ...base, currency: 'EUR', balance: 0 };
+    expect(accountTrail({ ...empty, last30: { net: -120, count: 2 } })).toEqual({
+      kind: 'change',
+      net: -120,
     });
+    expect(accountTrail({ ...empty, stamp: { kind: 'balance', day: TODAY - 38 * DAY } })).toEqual({
+      kind: 'stale',
+      what: 'balance',
+      days: 38,
+    });
+    expect(accountTrail(empty)).toEqual({ kind: 'none' });
   });
   it('says how old a stale statement or balance is', () => {
     expect(accountTrail({ ...base, stamp: { kind: 'statement', day: TODAY - 38 * DAY } })).toEqual({

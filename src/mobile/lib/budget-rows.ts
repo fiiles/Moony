@@ -144,3 +144,41 @@ export function rowLimitAction(
       : { kind: 'add', categoryId: row.key, effectiveMonth: periodStart },
   };
 }
+
+/** The amounts of an expense row of the Cashflow report, all in one currency. */
+export interface ExpenseRowMoney {
+  /** The currency every amount of the row is written in. */
+  currency: string;
+  /** What was spent, in `currency`; null when it is not known ("—"). */
+  spent: number | null;
+  /** The report amount of a row written in another currency: its "≈" line. Null for none. */
+  approx: number | null;
+  /** The limit and what remains are in `currency`, so they may be written as amounts. */
+  limitAmounts: boolean;
+}
+
+/**
+ * The currency an expense row speaks (README §13, "One currency inside a row"). A limit is
+ * evaluated by the backend in the budget's own currency — what was spent, the limit and what
+ * remains are all native there — so a row whose limit is in another currency than the report is
+ * written in the limit's currency, and the report amount (the one the section's total adds up) is
+ * its "≈". Nothing is converted here. A foreign limit that cannot be evaluated has no spend in
+ * its currency: the row keeps the report amount and its limit is not written as an amount.
+ */
+export function expenseRowMoney(
+  row: Pick<ExpenseRow, 'amount' | 'amountUnavailable' | 'limit'>,
+  reportCurrency: string
+): ExpenseRowMoney {
+  const { limit } = row;
+  const reportSpent = row.amountUnavailable ? null : row.amount;
+  const foreign = !!limit?.currency && limit.currency !== reportCurrency;
+  if (foreign && limit.currency && limit.spent !== null) {
+    return {
+      currency: limit.currency,
+      spent: limit.spent,
+      approx: reportSpent === null || reportSpent === 0 ? null : reportSpent,
+      limitAmounts: true,
+    };
+  }
+  return { currency: reportCurrency, spent: reportSpent, approx: null, limitAmounts: !foreign };
+}

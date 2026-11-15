@@ -1,14 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { Info, Landmark, Tag } from 'lucide-react';
-import type { MoneyOptions } from '@/lib/format';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
-import { Money } from '@/mobile/components/Money';
+import { useApprox } from '@/mobile/hooks/use-approx';
+import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { initials } from '@/mobile/lib/initials';
+import { signedAmountText } from '@/mobile/lib/signed-amount';
 import type { DrilldownRow as DrilldownRowData } from '@/mobile/lib/cashflow-drilldown';
-
-/** An amount with its sign ("− 250,00 Kč", "+ 32 000 Kč"). */
-const SIGNED: MoneyOptions = { signed: true };
 
 interface DrilldownRowProps {
   row: DrilldownRowData;
@@ -19,25 +17,27 @@ interface DrilldownRowProps {
 }
 
 /**
- * One payment as an entity row: initials chip (green for a credit), who and what, the amount in
- * its own currency with its worth in the report currency under it. A moved row is dimmed and says
+ * One payment as an entity row: initials chip (green for a credit), who and what, the exact amount
+ * in its own currency ("− 129,90 Kč", as every list of payments writes it) and, when that is not
+ * the report currency, "≈" its worth in it (README §13, "Money and currencies"; "bez kurzu pro
+ * EUR" when it could not be converted). A moved row is dimmed and says
  * so. As every payment (README §13, Gestures): a tap and a swipe to the right open the transaction
  * sheet, a swipe to the left the category picker; the long press's menu has both.
  */
 export function DrilldownTransactionRow({ row, onOpen, onCategorize }: DrilldownRowProps) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
+  const moneyText = useMoneyText();
+  const approx = useApprox();
   const { tx, credit } = row;
   // The marker leads: the sub-line ends in an ellipsis when it is too long, and "přesunuto" is
   // the one sign of a moved row that is not its dimming
   const sub = (row.moved ? [tr('readiness.moved'), ...row.sub] : row.sub).join(' · ');
-  // The converted amount carries the row's own sign (`reportAmount`), not the report line's
-  const valueSub =
-    row.reportAmount === null ? (
-      tr('readiness.fxUnavailable')
-    ) : tx.currency !== tx.reportCurrency ? (
-      <Money value={row.reportAmount} currency={tx.reportCurrency} options={SIGNED} />
-    ) : undefined;
+  // The report's own conversion, at the payment's day; the sign is on the amount above it
+  const valueSub = approx(Number(tx.amount) || 0, tx.currency, {
+    converted: row.reportAmount,
+    pending: false,
+  });
 
   return (
     <EntityRow
@@ -48,13 +48,11 @@ export function DrilldownTransactionRow({ row, onOpen, onCategorize }: Drilldown
       }
       title={row.title}
       sub={sub}
-      value={
-        <Money
-          value={Number(tx.amount) * (credit ? 1 : -1)}
-          currency={tx.currency}
-          options={SIGNED}
-        />
-      }
+      value={signedAmountText(moneyText, {
+        type: credit ? 'credit' : 'debit',
+        amount: tx.amount,
+        currency: tx.currency,
+      })}
       valueTone={credit ? 'gain' : undefined}
       valueSub={valueSub}
       muted={row.moved}

@@ -21,6 +21,10 @@
     },
     "emptyDescription": "Añade una cuenta o una inversión y Moony construirá a partir de ella tu resumen, gráficos y tendencias. Todo se queda en este teléfono."
   },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "sin tipo de cambio para {{currency}}"
+  },
   "cashflow": {
     "subtitle_one": "Ingresos y gastos reales de {{count}} cuenta",
     "subtitle_many": "Ingresos y gastos reales de {{count}} cuentas",
@@ -134,9 +138,7 @@
       "staleStatement_other": "extracto de hace {{count}} días",
       "staleBalance_one": "saldo de hace {{count}} día",
       "staleBalance_many": "saldo de hace {{count}} días",
-      "staleBalance_other": "saldo de hace {{count}} días",
-      "approx": "≈ {{amount}}",
-      "noRate": "sin tipo de cambio para {{currency}}"
+      "staleBalance_other": "saldo de hace {{count}} días"
     },
     "perMonth": "{{amount}} / mes",
     "nextPayment": "próximo pago {{date}}",

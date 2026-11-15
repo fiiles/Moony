@@ -21,6 +21,10 @@
     },
     "emptyDescription": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends. Alles bleibt auf diesem Telefon."
   },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "kein Kurs für {{currency}}"
+  },
   "cashflow": {
     "subtitle_one": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konto",
     "subtitle_other": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konten",
@@ -122,9 +126,7 @@
       "staleStatement_one": "Auszug {{count}} Tag alt",
       "staleStatement_other": "Auszug {{count}} Tage alt",
       "staleBalance_one": "Saldo {{count}} Tag alt",
-      "staleBalance_other": "Saldo {{count}} Tage alt",
-      "approx": "≈ {{amount}}",
-      "noRate": "kein Kurs für {{currency}}"
+      "staleBalance_other": "Saldo {{count}} Tage alt"
     },
     "perMonth": "{{amount}} / Monat",
     "nextPayment": "nächste Zahlung {{date}}",

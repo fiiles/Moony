@@ -21,6 +21,10 @@
     },
     "emptyDescription": "Legg til en konto eller en investering, så bygger Moony oversikten, diagrammene og utviklingen din ut fra dem. Alt blir på denne telefonen."
   },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "ingen kurs for {{currency}}"
+  },
   "cashflow": {
     "subtitle_one": "Faktiske inntekter og utgifter fra {{count}} konto",
     "subtitle_other": "Faktiske inntekter og utgifter fra {{count}} kontoer",
@@ -122,9 +126,7 @@
       "staleStatement_one": "kontoutskrift {{count}} dag gammel",
       "staleStatement_other": "kontoutskrift {{count}} dager gammel",
       "staleBalance_one": "saldo {{count}} dag gammel",
-      "staleBalance_other": "saldo {{count}} dager gammel",
-      "approx": "≈ {{amount}}",
-      "noRate": "ingen kurs for {{currency}}"
+      "staleBalance_other": "saldo {{count}} dager gammel"
     },
     "perMonth": "{{amount}} / mnd",
     "nextPayment": "neste betaling {{date}}",

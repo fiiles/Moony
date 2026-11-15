@@ -21,6 +21,10 @@
     },
     "emptyDescription": "Add an account or an investment and Moony builds your overview, charts and trends from it. Everything stays on this phone."
   },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "no rate for {{currency}}"
+  },
   "cashflow": {
     "subtitle_one": "Actual income and expenses from {{count}} account",
     "subtitle_other": "Actual income and expenses from {{count}} accounts",
@@ -122,9 +126,7 @@
       "staleStatement_one": "statement {{count}} day old",
       "staleStatement_other": "statement {{count}} days old",
       "staleBalance_one": "balance {{count}} day old",
-      "staleBalance_other": "balance {{count}} days old",
-      "approx": "≈ {{amount}}",
-      "noRate": "no rate for {{currency}}"
+      "staleBalance_other": "balance {{count}} days old"
     },
     "perMonth": "{{amount}} / mo",
     "nextPayment": "next payment {{date}}",

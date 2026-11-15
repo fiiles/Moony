@@ -21,6 +21,10 @@
     },
     "emptyDescription": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj. Všechna data zůstávají v tomto telefonu."
   },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "bez kurzu pro {{currency}}"
+  },
   "cashflow": {
     "subtitle_one": "Skutečné příjmy a výdaje z {{count}} účtu",
     "subtitle_few": "Skutečné příjmy a výdaje ze {{count}} účtů",
@@ -134,9 +138,7 @@
       "staleStatement_other": "výpis {{count}} dní starý",
       "staleBalance_one": "zůstatek {{count}} den starý",
       "staleBalance_few": "zůstatek {{count}} dny starý",
-      "staleBalance_other": "zůstatek {{count}} dní starý",
-      "approx": "≈ {{amount}}",
-      "noRate": "bez kurzu pro {{currency}}"
+      "staleBalance_other": "zůstatek {{count}} dní starý"
     },
     "perMonth": "{{amount}} / měs",
     "nextPayment": "příští platba {{date}}",

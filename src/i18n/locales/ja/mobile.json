@@ -21,6 +21,10 @@
     },
     "emptyDescription": "口座または投資を追加すると、Moony が概要、グラフ、推移を作成します。すべてのデータはこのスマートフォン内に保存されます。"
   },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "{{currency}}のレートなし"
+  },
   "cashflow": {
     "subtitle_other": "{{count}}口座の実際の収入と支出",
     "subtitleAll": "すべての口座の実際の収入と支出",
@@ -110,9 +114,7 @@
     "trail": {
       "change": "{{amount}} · 30日間",
       "staleStatement_other": "明細は{{count}}日前",
-      "staleBalance_other": "残高は{{count}}日前",
-      "approx": "≈ {{amount}}",
-      "noRate": "{{currency}}のレートなし"
+      "staleBalance_other": "残高は{{count}}日前"
     },
     "perMonth": "月 {{amount}}",
     "nextPayment": "次回の支払い {{date}}",

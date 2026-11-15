@@ -143,6 +143,10 @@ struct StreamKey {
 
 /// Opens one blob of a known sealed length as its bytes arrive, returning each chunk once it is
 /// complete and authenticated. It buffers at most one sealed chunk.
+///
+/// Each chunk authenticates on its own, but a stream cut short after any full chunk still opens
+/// chunk by chunk: the plaintext `push` returns is provisional until `finish` returns `Ok`, and a
+/// caller that stores it must be able to discard all of it when `finish` fails.
 pub struct BlobOpener {
     /// Until the header is in; dropped (and wiped) once the stream key is derived.
     keys: Option<VaultKeys>,
@@ -203,6 +207,10 @@ impl BlobOpener {
 
     /// Takes the next sealed bytes and returns the plaintext of every chunk they complete, in
     /// order. After an error the opener stays failed.
+    ///
+    /// The returned plaintext is provisional until `finish` returns `Ok`: truncation is found only
+    /// there. One call holds at most one sealed chunk plus the plaintext of the chunks the pushed
+    /// piece completes (about the piece's length), so push small pieces to keep memory small.
     pub fn push(
         &mut self,
         sealed: &[u8],

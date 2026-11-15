@@ -1,10 +1,12 @@
 //! Document and photo content on the sync server (ADR 0030). The rows travel in changesets like
 //! any synced row; their content (blobs in `attachments.db`) moves separately, one sealed stream
 //! per blob. `queue` is this device's transfer queue (`sync_blobs`), reconciled from the rows and
-//! the store; `content` says per blob where the content is.
+//! the store; `content` says per blob where the content is; `stream` moves one blob between the
+//! store and the wire, sealed and opened a chunk at a time.
 
 pub mod content;
 pub mod queue;
+pub mod stream;
 
 #[cfg(test)]
 mod tests;

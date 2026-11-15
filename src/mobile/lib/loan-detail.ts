@@ -7,6 +7,7 @@ import {
 } from '@shared/calculations/loan-amortization';
 import type { ChartEvent } from '@/utils/chart-scale';
 import {
+  annuityPayment,
   clipSeries,
   stepValueAt,
   type ExtraPaymentWhatIf,
@@ -355,4 +356,37 @@ export function extraPaymentText(
   return drop <= 0 && interestSaved <= 0
     ? { kind: 'noEffect' }
     : { kind: 'payment', drop, interestSaved };
+}
+
+/** One rate the loan could be refixed at, with the monthly payment it would bring. */
+export interface FixationScenario {
+  /** The annual rate in percent. */
+  rate: number;
+  /** Percentage points against today's rate (−1, 0, +1). */
+  delta: number;
+  payment: number;
+}
+
+/**
+ * "Po konci fixace" (audit D13): the monthly payment at today's rate and one point either side of
+ * it, for the balance and the payments left (the desktop's ±1 p. b. what-if, `annuityPayment`;
+ * 360 months when the count is not known). A rate under one point has no lower step: the floor is
+ * 0 %, and a step that would repeat today's rate is left out. Lowest rate first.
+ */
+export function fixationScenarios(
+  balance: number,
+  rate: number,
+  remaining: number | null
+): FixationScenario[] {
+  const months = remaining ?? 360;
+  // Today's rate first, so a step that lands on it is the one dropped
+  const steps = [0, -1, 1]
+    .map((delta) => ({ delta, rate: Math.max(0, rate + delta) }))
+    .filter((step, index, all) => all.findIndex((s) => s.rate === step.rate) === index)
+    .sort((a, b) => a.rate - b.rate);
+  return steps.map(({ delta, rate: stepRate }) => ({
+    rate: stepRate,
+    delta: delta === 0 ? 0 : stepRate - rate,
+    payment: annuityPayment(balance, stepRate, months),
+  }));
 }

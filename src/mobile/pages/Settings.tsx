@@ -59,6 +59,7 @@ import { AppearanceSheet } from '@/mobile/sheets/AppearanceSheet';
 import { CurrencyPickerSheet } from '@/mobile/sheets/CurrencyPickerSheet';
 import { DeleteProfileSheet } from '@/mobile/sheets/DeleteProfileSheet';
 import { LanguagePickerSheet } from '@/mobile/sheets/LanguagePickerSheet';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 type SheetKind = 'language' | 'currency' | 'appearance' | 'delete';
 
@@ -115,6 +116,7 @@ export default function Settings() {
   const { t: tc } = useTranslation('common');
   const { t: ts } = useTranslation('settings');
   const { t: tsync } = useTranslation('deviceSync');
+  const list = useListText();
   const { user, lockMutation } = useAuth();
   const { language } = useLanguage();
   const { preference } = useTheme();
@@ -224,7 +226,7 @@ export default function Settings() {
   const trackingSub =
     shownAreas.length === 3
       ? t('settings.tracking.all')
-      : shownAreas.join(', ') || t('settings.tracking.none');
+      : list(shownAreas as string[]) || t('settings.tracking.none');
 
   // The same letters as the avatar on Přehled
   const avatar = `${user?.name?.charAt(0) ?? ''}${user?.surname?.charAt(0) ?? ''}`.toUpperCase();
@@ -255,7 +257,8 @@ export default function Settings() {
         <SettingsRow
           icon={User}
           title={t('settings.rows.profile')}
-          sub={user?.email || t('settings.rows.profileNoEmail')}
+          // The e-mail is in the head above; the row says what the page holds (D28)
+          sub={t('settings.rows.profileNoEmail')}
           href={settingsPath('profile')}
         />
         <SettingsRow
@@ -351,6 +354,8 @@ export default function Settings() {
         <SettingsRow
           icon={Lock}
           title={tc('nav.lockApp')}
+          // Every row of Nastavení carries a sub, so the rows are one height (D28)
+          sub={t('settings.rows.lockSub')}
           onClick={() => {
             if (lockMutation.isPending) return;
             // The lock screen stays quiet after this lock: Face ID only from its button.
@@ -382,11 +387,11 @@ export default function Settings() {
         value={currencyCode}
         // The main currency needs a rate source, as on the desktop
         options={FX_SUPPORTED_CODES}
-        onPick={(code) => {
-          // The sheet closes itself after a pick; the same currency is nothing to save
-          if (code === currencyCode || updateProfile.isPending) return;
-          updateProfile.mutate({ currency: code });
-        }}
+        // The same currency is nothing to save (the sheet just closes); a new one keeps the sheet
+        // open on its row until the profile is saved, then the toast names it (audit E3, A10)
+        onPick={(code) =>
+          code === currencyCode ? undefined : updateProfile.mutateAsync({ currency: code })
+        }
       />
       <AppearanceSheet open={sheet === 'appearance'} onOpenChange={closeSheet} />
       <DeleteProfileSheet open={sheet === 'delete'} onOpenChange={closeSheet} />

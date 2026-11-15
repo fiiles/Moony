@@ -48,7 +48,7 @@ interface ClassHeroProps {
 /**
  * The value of a class (spec §8.8): the line of the period with today's value as its last point
  * and, when the trades are given, the buy and sell days as marks (a tap opens the day), the change
- * over the period and what is invested. The legend names the marks.
+ * over the period and, on a line of its own, what is invested. The legend names the marks.
  */
 export function ClassHero({
   trendClass,
@@ -136,20 +136,18 @@ export function ClassHero({
                     options={{ signed: true, ...WHOLE }}
                   />{' '}
                   {changeLabel}
-                  {invested !== null && (
-                    <>
-                      {' · '}
-                      {t('wealth.stocks.invested', {
-                        amount: moneyText(invested, currency, WHOLE),
-                      })}
-                    </>
-                  )}
                 </>
               ),
             }
           : undefined
       }
       note={t('overview.stats.noHistory')}
+      // What is invested is its own line: joined to the change it was cut at 360 pt (D25)
+      detail={
+        invested !== null
+          ? t('wealth.stocks.invested', { amount: moneyText(invested, currency, WHOLE) })
+          : undefined
+      }
       period={period}
       periods={CHART_PERIODS}
       onPeriodChange={setPeriod}

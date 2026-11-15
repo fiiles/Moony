@@ -60,6 +60,7 @@ import { SyncStatusBlock } from '@/mobile/components/sync/SyncStatusBlock';
 import type { ReplaceSaved } from '@/mobile/lib/replace-saved';
 import type { ScanMode } from '@/mobile/lib/sync-scan';
 import { routes } from '@/mobile/shell/routes';
+import { sentences } from '@/mobile/lib/list-text';
 
 /** The key the backend sends when a repair could not send every change and replaced nothing. */
 const DRAIN_INCOMPLETE_KEY = 'validation.syncRepairDrainIncomplete';
@@ -88,7 +89,7 @@ export default function SyncSection() {
   const { repairDevice, resyncDevice, turnOff, deleteSyncedData, skipMissingChange } =
     useDeviceSyncMutations();
   const { t: tc } = useTranslation('common');
-  const { date } = useFormat();
+  const { date, locale } = useFormat();
   const renderDate = (seconds: number) => {
     const when = secondsToDate(seconds);
     return when ? date(when, { dateStyle: 'long' }) : '';
@@ -225,7 +226,7 @@ export default function SyncSection() {
           open={open === 'turnOff'}
           onOpenChange={close}
           title={t('turnOff.title')}
-          description={`${t('leftover.phoneDescription')} ${t('leftover.noServer')}`}
+          description={sentences(locale, [t('leftover.phoneDescription'), t('leftover.noServer')])}
           note={
             leftoverPending > 0
               ? t('turnOff.pendingChanges', { count: leftoverPending })
@@ -262,7 +263,7 @@ export default function SyncSection() {
       {status && !syncOn && (
         <>
           <p className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3">
-            {t('intro.description')} {t('intro.privacy')}
+            {sentences(locale, [t('intro.description'), t('intro.privacy')])}
           </p>
           <EntityRows>
             <SettingsRow
@@ -464,7 +465,7 @@ export default function SyncSection() {
         open={open === 'turnOff'}
         onOpenChange={close}
         title={t('turnOff.title')}
-        description={`${t('phone.turnOffBody')} ${t('turnOff.noCutOff')}`}
+        description={sentences(locale, [t('phone.turnOffBody'), t('turnOff.noCutOff')])}
         note={pending > 0 ? t('turnOff.pendingChanges', { count: pending }) : undefined}
         confirmLabel={t('turnOff.confirm')}
         destructive

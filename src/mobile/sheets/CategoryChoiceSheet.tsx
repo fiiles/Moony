@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Tag } from 'lucide-react';
 import type { TransactionCategory } from '@shared/schema';
 import { CategoryIconChip } from '@/components/common/CategoryIcon';
-import { Button } from '@/components/ui/button';
 import { useCategoryName } from '@/hooks/use-categories';
 import { NeutralChip, PickGroup, PickRow } from '@/mobile/components/PickRow';
 import { SearchField } from '@/mobile/components/SearchField';
@@ -59,21 +58,7 @@ export function CategoryChoiceSheet({
   };
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={onOpenChange}
-      title={t('picker.title')}
-      full
-      footer={
-        <Button
-          variant="ghost"
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={() => onOpenChange(false)}
-        >
-          {tc('buttons.cancel')}
-        </Button>
-      }
-    >
+    <Sheet open={open} onOpenChange={onOpenChange} title={t('picker.title')} full dismiss="cancel">
       <SearchField
         value={query}
         onChange={setQuery}

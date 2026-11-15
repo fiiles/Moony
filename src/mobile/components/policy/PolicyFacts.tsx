@@ -10,6 +10,8 @@ import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { PolicyFact } from '@/mobile/lib/policy-detail';
 import { backState } from '@/mobile/lib/back-label';
 import { propertyPath } from '@/mobile/shell/routes';
+import { usePeriodText } from '@/mobile/hooks/use-period-text';
+import { periodUnit } from '@/mobile/lib/period-unit';
 
 /** The contract card's material: a list of key-value rows on paper. */
 const CARD =
@@ -82,6 +84,7 @@ export function PolicyFacts({ facts, today, from }: PolicyFactsProps) {
   const { t: ti } = useTranslation('insurance');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const periodText = usePeriodText();
   const duration = useDurationText('insurance');
   const [, setLocation] = useLocation();
 
@@ -117,12 +120,12 @@ export function PolicyFacts({ facts, today, from }: PolicyFactsProps) {
                 label={ti('detail.contract.premium')}
                 value={
                   <Wrapping>
-                    {fact.frequency
+                    {fact.frequency && periodUnit(fact.frequency) === null
                       ? t('policy.premium', {
                           amount,
                           frequency: ti(`frequencyShort.${fact.frequency}`),
                         })
-                      : amount}
+                      : periodText(amount, periodUnit(fact.frequency))}
                   </Wrapping>
                 }
               />

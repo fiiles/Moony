@@ -10,6 +10,7 @@ import {
   monthlyRent,
   type BalanceRow,
 } from '@/mobile/lib/property-detail';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 /** Whole amounts: the card shows no decimals. */
 const WHOLE = { decimals: 0 } as const;
@@ -38,6 +39,7 @@ interface YearlyBalanceCardProps {
 export function YearlyBalanceCard({ property, balance, currency }: YearlyBalanceCardProps) {
   const { t } = useTranslation('realEstate');
   const { t: tc } = useTranslation('common');
+  const list = useListText();
   const moneyText = useMoneyText();
   const signed = (value: number) => moneyText(value, currency, { signed: true, ...WHOLE });
 
@@ -55,7 +57,7 @@ export function YearlyBalanceCard({ property, balance, currency }: YearlyBalance
     note.kind === 'empty'
       ? t('detail.balance.empty')
       : note.kind === 'missing'
-        ? tc('fxQuality.missing', { currency, currencies: note.currencies.join(', ') })
+        ? tc('fxQuality.missing', { currency, currencies: list(note.currencies) })
         : t(note.kind === 'costs' ? 'detail.balance.costs' : 'detail.balance.earns', {
             amount: moneyText(note.monthly, currency, WHOLE),
             income: signed(note.income),

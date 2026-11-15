@@ -36,6 +36,7 @@ import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { otherAssetPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { DetailSub } from '@/mobile/components/DetailSub';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { RevalueSheet } from '@/mobile/sheets/RevalueSheet';
 
@@ -118,6 +119,7 @@ export default function OtherAssetDetail() {
   return (
     <Screen
       title={view?.asset.name ?? ''}
+      large
       leading={<NavTextButton label={td('cards.otherAssets')} onClick={back} chevron />}
       trailing={
         view && (
@@ -131,13 +133,13 @@ export default function OtherAssetDetail() {
     >
       {view ? (
         <>
-          {/* The nav bar keeps its one title, so the quantity and the price currency are the first line */}
-          <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
+          {/* The quantity and the price currency under the large title */}
+          <DetailSub>
             {[
               `${fmt.number(view.row.quantity, { maximumFractionDigits: QUANTITY_DIGITS })} ${to('table.unit')}`,
               view.row.priceCurrency,
             ].join(' · ')}
-          </p>
+          </DetailSub>
           <AssetHero
             row={view.row}
             valuations={data.valuations}
@@ -334,8 +336,6 @@ function AssetHero({
  */
 function AssetStats({ row }: { row: OtherAssetRow }) {
   const { t } = useTranslation('mobile');
-  const { t: ts } = useTranslation('stocks');
-  const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const { quantity, price, priceCurrency, currency, avgPurchase, costNative, gainNative } = row;
@@ -345,7 +345,7 @@ function AssetStats({ row }: { row: OtherAssetRow }) {
 
   const stats: StatItem[] = [
     {
-      label: tc('labels.quantity'),
+      label: t('stat.quantity'),
       value: fmt.number(quantity, { maximumFractionDigits: QUANTITY_DIGITS }),
       note:
         price > 0
@@ -353,15 +353,12 @@ function AssetStats({ row }: { row: OtherAssetRow }) {
           : undefined,
     },
     {
-      label: ts('table.avgCost'),
+      label: t('stat.avgPrice'),
       value: avgPurchase > 0 ? unitMoney(avgPurchase, currency) : '—',
-      note:
-        costNative > 0
-          ? t('wealth.stocks.invested', { amount: moneyText(costNative, currency, WHOLE) })
-          : undefined,
+      // What was put in stands in the hero; a foreign amount would not fit the note's line (C2)
     },
     {
-      label: ts('detail.unrealized'),
+      label: t('stat.unrealizedGain'),
       value:
         gainNative === null
           ? '—'
@@ -372,9 +369,7 @@ function AssetStats({ row }: { row: OtherAssetRow }) {
       tone: statTone(gainNative),
       note:
         gainNative !== null && costNative > 0
-          ? ts('detail.vsInvestedPct', {
-              percent: fmt.percent(gainNative / costNative, 1, { signed: true }),
-            })
+          ? fmt.percent(gainNative / costNative, 1, { signed: true })
           : undefined,
     },
   ];
@@ -392,6 +387,7 @@ function AssetStats({ row }: { row: OtherAssetRow }) {
  * nothing. One stat on its own row: a fourth beside the three would not fit.
  */
 function YieldStat({ row }: { row: OtherAssetRow }) {
+  const { t } = useTranslation('mobile');
   const { t: to } = useTranslation('otherAssets');
   const fmt = useFormat();
   const moneyText = useMoneyText();
@@ -411,7 +407,7 @@ function YieldStat({ row }: { row: OtherAssetRow }) {
     <StatRow
       stats={[
         {
-          label: to('summary.yearlyYield'),
+          label: t('stat.yearlyYield'),
           value: moneyText(yieldNative, yieldCurrency, {
             ...statMoneyOptions(yieldNative),
             signed: true,

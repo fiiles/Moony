@@ -65,7 +65,9 @@ export function RowMenu({ open, onOpenChange, label, shown = false, children }: 
           <Ellipsis aria-hidden className="size-5" strokeWidth={1.75} />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[220px]">
+      {/* 16 pt from every edge, the tab bar included; the width cap and the wrapping of a long
+          item are the shell's rule in index.css */}
+      <DropdownMenuContent align="end" collisionPadding={16} className="min-w-[220px]">
         {children}
       </DropdownMenuContent>
     </DropdownMenu>

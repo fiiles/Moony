@@ -11,6 +11,7 @@ import { otherDeviceNames } from '@/utils/sync-devices';
 import { Sheet } from '@/mobile/components/Sheet';
 import { ServerChoiceBlock } from '@/mobile/components/sync/ServerChoiceBlock';
 import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
 
@@ -25,6 +26,7 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
 export function ChangeServerSheet({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
+  const list = useListText();
   const { changeServerAddress } = useDeviceSyncMutations();
   const server = useServerChoice('addressOrCode', 'server');
   const { data: status } = useDeviceSyncStatus();
@@ -50,7 +52,7 @@ export function ChangeServerSheet({ onClose }: { onClose: () => void }) {
         title={t('server.success')}
         description={
           names.length > 0
-            ? t('server.repeatOn', { devices: names.join(', ') })
+            ? t('server.repeatOn', { devices: list(names) })
             : t('server.repeatOnOthers')
         }
         footer={

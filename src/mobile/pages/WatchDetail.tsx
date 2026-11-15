@@ -57,6 +57,7 @@ import { WatchTargetSheet } from '@/mobile/sheets/WatchTargetSheet';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { DetailSub } from '@/mobile/components/DetailSub';
 
 /** A series that is not there yet: one array, so a memo over it does not run on every render. */
 const NO_POINTS: StockPricePoint[] = [];
@@ -251,13 +252,13 @@ export default function WatchDetail() {
 
     const stats: StatItem[] = [
       {
-        label: t('wealth.watch.stats.today'),
+        label: t('stat.today'),
         value: todayPct === null ? '—' : fmt.percent(todayPct / 100, 1, { signed: true }),
         tone: statTone(todayPct),
         note: today ? watchPriceText(fmt, today.abs, currency, true) : undefined,
       },
       {
-        label: tm('table.target'),
+        label: t('stat.target'),
         value: targetValue !== null ? price(targetValue) : '—',
         note:
           targetState === 'reached'
@@ -271,7 +272,7 @@ export default function WatchDetail() {
                 : undefined,
       },
       {
-        label: t('wealth.watch.stats.since'),
+        label: t('stat.sinceFollowing'),
         value: sincePct === null ? '—' : fmt.percent(sincePct / 100, 1, { signed: true }),
         tone: statTone(sincePct),
         note:
@@ -283,15 +284,12 @@ export default function WatchDetail() {
 
     body = (
       <>
-        {/* The nav bar keeps its one title, so the name and the exchange are the first line */}
-        <p className="mx-0.5 -mt-0.5 mb-2.5 flex items-center justify-center gap-1.5 text-m-caption text-ink-3">
-          <InstrumentHeadLogo ticker={ticker} type="stock" className="size-5" />
-          <span className="min-w-0 truncate">
-            {[name, detail.exchange ? exchangeName(detail.exchange) : null]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
-        </p>
+        {/* The name and the exchange under the large title */}
+        <DetailSub icon={<InstrumentHeadLogo ticker={ticker} type="stock" className="size-5" />}>
+          {[name, detail.exchange ? exchangeName(detail.exchange) : null]
+            .filter(Boolean)
+            .join(' · ')}
+        </DetailSub>
         <Hero
           label={tm('detail.price')}
           value={current}
@@ -391,6 +389,7 @@ export default function WatchDetail() {
   return (
     <Screen
       title={ticker}
+      large
       leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={menu}
     >

@@ -149,3 +149,23 @@ export function accountScope(
   const chosen = new Set(accountIds.filter((id) => known.has(id))).size;
   return chosen === known.size ? null : chosen;
 }
+
+/** How a bar's month stands under the twelve-month chart. */
+export type BarLabel = 'strong' | 'shown' | 'hidden';
+
+/**
+ * Which months the bar chart names (audit 2026-11-15 D20): a month report names its own month,
+ * strong, and every third month counted from it, so the chosen month is always labelled; a
+ * quarter or a year keeps every third month from the first.
+ */
+export function barAxisLabels(bars: readonly Pick<BarDatum, 'muted'>[]): BarLabel[] {
+  const chosen = bars.flatMap((bar, index) => (bar.muted ? [] : [index]));
+  const anchor = chosen.length === 1 ? chosen[0] : 0;
+  return bars.map((_, index) =>
+    chosen.length === 1 && index === anchor
+      ? 'strong'
+      : (index - anchor) % 3 === 0
+        ? 'shown'
+        : 'hidden'
+  );
+}

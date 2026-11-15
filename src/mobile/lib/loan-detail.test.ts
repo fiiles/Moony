@@ -9,6 +9,7 @@ import {
 import { loanRow, type LoanRow } from '@/utils/loans';
 import {
   extraPaymentText,
+  fixationScenarios,
   loanAlerts,
   loanChartEvents,
   loanDetailStats,
@@ -620,5 +621,40 @@ describe('extraPaymentText', () => {
     );
     expect(whatIf).toBeNull();
     expect(extraPaymentText(whatIf, stuck.plan.monthlyPayment)).toBeNull();
+  });
+});
+
+describe('fixationScenarios', () => {
+  it('prices today’s rate and one point either side, lowest first', () => {
+    const steps = fixationScenarios(1_000_000, 4, 240);
+    expect(steps.map((s) => [s.rate, s.delta])).toEqual([
+      [3, -1],
+      [4, 0],
+      [5, 1],
+    ]);
+    expect(steps[1].payment).toBeCloseTo(annuityPayment(1_000_000, 4, 240));
+    expect(steps[0].payment).toBeLessThan(steps[1].payment);
+    expect(steps[2].payment).toBeGreaterThan(steps[1].payment);
+  });
+
+  it('floors the lower step at 0 % and keeps its real distance', () => {
+    expect(fixationScenarios(100_000, 0.5, 60).map((s) => [s.rate, s.delta])).toEqual([
+      [0, -0.5],
+      [0.5, 0],
+      [1.5, 1],
+    ]);
+  });
+
+  it('drops a step that would repeat today’s rate', () => {
+    expect(fixationScenarios(100_000, 0, 60).map((s) => [s.rate, s.delta])).toEqual([
+      [0, 0],
+      [1, 1],
+    ]);
+  });
+
+  it('assumes 360 months when the payments left are not known', () => {
+    expect(fixationScenarios(500_000, 3, null)[1].payment).toBeCloseTo(
+      annuityPayment(500_000, 3, 360)
+    );
   });
 });

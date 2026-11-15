@@ -11,7 +11,7 @@ import {
   type BudgetLimitPeriod,
   type BudgetOverviewStatus,
 } from '@/utils/budget-goal-versions';
-import { storedLimitGoal, type ExpenseRow } from '@/utils/cashflow-budget-rows';
+import { storedLimitGoal, type ExpenseRow, type RowLimit } from '@/utils/cashflow-budget-rows';
 import type { LimitAverage, LimitMode } from './budget-limit';
 
 /** One budget of the list: the limit that stands for it and what changes after it. */
@@ -143,4 +143,68 @@ export function rowLimitAction(
       ? { kind: 'edit', goal, effectiveMonth: periodStart }
       : { kind: 'add', categoryId: row.key, effectiveMonth: periodStart },
   };
+}
+
+/** The amounts of an expense row of the Cashflow report, all in one currency. */
+export interface ExpenseRowMoney {
+  /** The currency every amount of the row is written in. */
+  currency: string;
+  /** What was spent, in `currency`; null when it is not known ("—"). */
+  spent: number | null;
+  /** The report amount of a row written in another currency: its "≈" line. Null for none. */
+  approx: number | null;
+  /** The limit and what remains are in `currency`, so they may be written as amounts. */
+  limitAmounts: boolean;
+}
+
+/**
+ * The currency an expense row speaks (README §13, "One currency inside a row"). A limit is
+ * evaluated by the backend in the budget's own currency — what was spent, the limit and what
+ * remains are all native there — so a row whose limit is in another currency than the report is
+ * written in the limit's currency, and the report amount (the one the section's total adds up) is
+ * its "≈". Nothing is converted here. A foreign limit that cannot be evaluated has no spend in
+ * its currency: the row keeps the report amount and its limit is not written as an amount.
+ */
+export function expenseRowMoney(
+  row: Pick<ExpenseRow, 'amount' | 'amountUnavailable' | 'limit'>,
+  reportCurrency: string
+): ExpenseRowMoney {
+  const { limit } = row;
+  const reportSpent = row.amountUnavailable ? null : row.amount;
+  const foreign = !!limit?.currency && limit.currency !== reportCurrency;
+  if (foreign && limit.currency && limit.spent !== null) {
+    return {
+      currency: limit.currency,
+      spent: limit.spent,
+      approx: reportSpent === null || reportSpent === 0 ? null : reportSpent,
+      limitAmounts: true,
+    };
+  }
+  return { currency: reportCurrency, spent: reportSpent, approx: null, limitAmounts: !foreign };
+}
+
+/**
+ * The one sentence under an expense row with a limit (audit 2026-11-15 D18): "Zbývá X z Y",
+ * "Přečerpáno o X" (the amount over is positive: the word says the direction, never a minus) or
+ * "Vyčerpáno"; `unavailable` when the usage is not known or the limit's amounts are not in the
+ * row's currency (`limitAmounts` of `expenseRowMoney`), when the line names no amount.
+ */
+export type LimitStatus =
+  | { kind: 'remaining' | 'over' | 'exhausted'; amount: number; limit: number; currency: string }
+  | { kind: 'unavailable' };
+
+export function limitStatus(limit: RowLimit, limitAmounts: boolean): LimitStatus {
+  const { state, remaining, currency, percentage } = limit;
+  if (
+    !limitAmounts ||
+    state === 'unavailable' ||
+    percentage === null ||
+    remaining === null ||
+    limit.limit === null ||
+    currency === null
+  ) {
+    return { kind: 'unavailable' };
+  }
+  const kind = remaining < 0 ? 'over' : remaining === 0 ? 'exhausted' : 'remaining';
+  return { kind, amount: Math.abs(remaining), limit: limit.limit, currency };
 }

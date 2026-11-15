@@ -5,12 +5,14 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider } from '@/hooks/use-auth';
 import { CurrencyProvider } from '@/lib/currency-provider';
+import { FormatStyleContext } from '@/lib/use-format';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { I18nProvider } from '@/i18n/I18nProvider';
+import { I18nProvider, useLanguage } from '@/i18n/I18nProvider';
 import { ThemeProvider, useResolvedTheme } from '@/theme/ThemeProvider';
 import { SyncProvider } from '@/hooks/SyncProvider';
 import { MobileShell } from '@/mobile/shell/MobileShell';
 import { useBackgroundLock } from '@/mobile/hooks/use-background-lock';
+import { setAmountInputLocale } from '@/mobile/lib/amount-input';
 import { applyStatusBarStyle } from '@/mobile/lib/status-bar';
 import { useTypeScale } from '@/mobile/lib/use-type-scale';
 import { useVisibleHeight } from '@/mobile/lib/use-visible-height';
@@ -52,6 +54,18 @@ function StatusBarStyle() {
 }
 
 /**
+ * The amount fields read a lone "." or "," the way the UI language groups thousands (audit A7:
+ * a German "1.234" is 1234): `parseAmountInput` takes this locale when its caller names none. Set
+ * during render, so the first field already reads with it; must sit inside `I18nProvider`.
+ */
+function AmountInputLocale() {
+  const locale = useLanguage().getLocale();
+  setAmountInputLocale(locale);
+  useEffect(() => () => setAmountInputLocale(undefined), []);
+  return null;
+}
+
+/**
  * Root of the phone shell: the provider stack of `App.tsx` without the desktop-only updater,
  * around `MobileShell` (tab bar, nav bar, the four tab roots). The `ThemeProvider` is the
  * desktop's, unchanged: `theme-boot.js` stamps `data-theme` before the first paint, the provider
@@ -73,28 +87,32 @@ export default function MobileApp() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>
-          <I18nProvider>
-            <CurrencyProvider>
-              <SyncProvider>
-                <TooltipProvider delayDuration={200}>
-                  <BackgroundLock />
-                  <StatusBarStyle />
-                  <ErrorBoundary>
-                    <MobileShell />
-                  </ErrorBoundary>
-                  <Toaster
-                    position="bottom-center"
-                    offset={TOAST_OFFSET}
-                    mobileOffset={TOAST_OFFSET}
-                  />
-                </TooltipProvider>
-              </SyncProvider>
-            </CurrencyProvider>
-          </I18nProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      {/* The phone's date table (README §13, "Dates and periods") for every formatter under it */}
+      <FormatStyleContext.Provider value="phone">
+        <AuthProvider>
+          <ThemeProvider>
+            <I18nProvider>
+              <CurrencyProvider>
+                <SyncProvider>
+                  <TooltipProvider delayDuration={200}>
+                    <BackgroundLock />
+                    <StatusBarStyle />
+                    <AmountInputLocale />
+                    <ErrorBoundary>
+                      <MobileShell />
+                    </ErrorBoundary>
+                    <Toaster
+                      position="bottom-center"
+                      offset={TOAST_OFFSET}
+                      mobileOffset={TOAST_OFFSET}
+                    />
+                  </TooltipProvider>
+                </SyncProvider>
+              </CurrencyProvider>
+            </I18nProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </FormatStyleContext.Provider>
     </QueryClientProvider>
   );
 }

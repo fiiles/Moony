@@ -50,11 +50,15 @@ import { RowBadge } from '@/mobile/components/RowBadge';
 import { UpcomingPremiums } from '@/mobile/components/finance/UpcomingPremiums';
 import { Hero } from '@/mobile/components/Hero';
 import { SectionHead } from '@/mobile/components/SectionHead';
+import { SubFacts } from '@/mobile/components/SubFacts';
 import { useCashTrend } from '@/mobile/hooks/use-cash-trend';
 import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useFinance, type Finance as FinanceData } from '@/mobile/hooks/use-finance';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
+import { usePeriodText } from '@/mobile/hooks/use-period-text';
+import { periodUnit } from '@/mobile/lib/period-unit';
+import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useOpenWithIntent } from '@/mobile/hooks/use-row-intent';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
@@ -69,12 +73,13 @@ import {
 import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { opensAddAccount } from '@/mobile/lib/getting-started';
-import { initials } from '@/mobile/lib/initials';
 import { effectiveType, policyTypes } from '@/mobile/lib/upcoming-premiums';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { accountPath, loanPath, policyPath, routes } from '@/mobile/shell/routes';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
+import { movesWithRates } from '@/mobile/lib/money-rule';
+import { AccountChip } from '@/mobile/components/finance/AccountChip';
 
 type AddKind = 'account' | 'loan' | 'policy';
 
@@ -169,6 +174,13 @@ export default function Finance() {
 
   // Every account that counts toward the total is in a currency without a rate: nothing to sum
   const countedAccounts = accounts.filter((a) => !a.excludeFromBalance);
+  // Accounts in another currency move the total with the rate: the change line says so (A8)
+  const fxTail = movesWithRates(
+    countedAccounts.map((a) => a.currency),
+    mainCurrency
+  )
+    ? ` · ${t('money.inclFx')}`
+    : '';
   const totalUnknown =
     countedAccounts.length > 0 &&
     countedAccounts.every((a) => totals.missing.includes(recordCurrency(a.currency)));
@@ -383,7 +395,7 @@ export default function Finance() {
                           text: `${moneyText(trendChange.delta, mainCurrency, {
                             signed: true,
                             decimals: 0,
-                          })} ${trendLabel}`,
+                          })} ${trendLabel}${fxTail}`,
                         }
                       : undefined
                   }
@@ -404,12 +416,13 @@ export default function Finance() {
                     change
                       ? {
                           ratio: change.ratio,
-                          text: t('finance.change30', {
-                            amount: moneyText(change.delta, mainCurrency, {
-                              signed: true,
-                              decimals: 0,
-                            }),
-                          }),
+                          text:
+                            t('finance.change30', {
+                              amount: moneyText(change.delta, mainCurrency, {
+                                signed: true,
+                                decimals: 0,
+                              }),
+                            }) + fxTail,
                         }
                       : undefined
                   }
@@ -468,15 +481,20 @@ function UncategorizedRow({ finance }: { finance: FinanceData }) {
   const only = uncategorized.accountIds.length === 1 ? uncategorized.accountIds[0] : undefined;
   const name = accounts.find((a) => a.id === only)?.name ?? '';
   const last = only === undefined ? null : lastImportByAccount[only];
+  // The account and the statement's day: the name gives way, the day stays (C1)
   const sub =
-    only === undefined
-      ? t('upkeep.accounts', { count: uncategorized.accountIds.length })
-      : last != null
-        ? t('upkeep.uncategorizedFrom', {
-            account: name,
-            date: fmt.day(last, shortDayOptions(last)),
-          })
-        : name;
+    only === undefined ? (
+      t('upkeep.accounts', { count: uncategorized.accountIds.length })
+    ) : (
+      <SubFacts
+        lead={name}
+        tail={
+          last != null
+            ? t('upkeep.fromStatement', { date: fmt.day(last, shortDayOptions(last)) })
+            : null
+        }
+      />
+    );
 
   return (
     <EntityRows>
@@ -495,15 +513,15 @@ function UncategorizedRow({ finance }: { finance: FinanceData }) {
   );
 }
 
-/** Účty: one row per account — bank chip, name, "Fio · CZK · výpis 10. 10.", balance and its trail. */
+/** Účty: one row per account — bank chip, name, the bank ("Fio · EUR" when not in the main currency), balance and one trailing fact. */
 function AccountsSection({ finance, sort }: { finance: FinanceData; sort: AccountSort }) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const openWith = useOpenWithIntent();
   const { openImport } = useImportSheet();
-  const fmt = useFormat();
   const moneyText = useMoneyText();
+  const approx = useApprox();
   const { accounts, activity, lastImportByAccount, mainCurrency, convert } = finance;
   const todayDay = utcDayFloor(Date.now() / 1000);
 
@@ -529,7 +547,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
       last30: a ? { net: a.last30.net, count: a.last30.count } : undefined,
       stamp: sub.stamp,
       todayDay,
-      converted: convert(balance, sub.currency),
+      balance,
     });
     let valueSub: string | undefined;
     switch (trail.kind) {
@@ -539,12 +557,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
         });
         break;
       case 'converted':
-        valueSub =
-          trail.value === null
-            ? t('finance.trail.noRate', { currency: sub.currency })
-            : t('finance.trail.approx', {
-                amount: moneyText(trail.value, mainCurrency, { decimals: 0 }),
-              });
+        valueSub = approx(balance, sub.currency);
         break;
       case 'stale':
         valueSub = t(
@@ -560,33 +573,27 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
     return (
       <EntityRow
         key={account.id}
-        chip={
-          <RowChip>
-            {initials(sub.institution ?? account.name) || <Landmark strokeWidth={1.75} />}
-          </RowChip>
-        }
+        chip={<AccountChip type={account.accountType} />}
         title={
           <>
             {account.name}
             {account.excludeFromBalance && <RowBadge>{tb('table.excluded')}</RowBadge>}
           </>
         }
-        sub={[
-          sub.institution ?? (sub.manual ? t('finance.manual') : null),
-          sub.currency,
-          sub.stamp &&
-            t(sub.stamp.kind === 'statement' ? 'finance.statementOn' : 'finance.balanceOn', {
-              date: fmt.day(sub.stamp.day, shortDayOptions(sub.stamp.day)),
-            }),
-        ]
-          .filter(Boolean)
-          .join(' · ')}
+        // The bank, and the currency only when it is not the main one (D6); how old the
+        // statement is stands on the right when it matters
+        sub={
+          <SubFacts
+            lead={sub.institution ?? (sub.manual ? t('finance.manual') : null)}
+            tail={sub.currency !== mainCurrency ? sub.currency : null}
+          />
+        }
         value={moneyText(balance, sub.currency, { decimals: 0 })}
         valueSub={valueSub}
         href={accountPath(account.id)}
         // The account's two buttons and its new transaction, opened on the account (README §13)
         menu={{
-          label: `${tc('labels.actions')}: ${account.name}`,
+          label: tc('mobile:labelValue', { label: tc('labels.actions'), value: account.name }),
           children: (
             <>
               <RowMenuItem onSelect={() => openWith(accountPath(account.id), 'record')}>
@@ -630,6 +637,7 @@ function LoansSection({
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const approx = useApprox();
   const { monthYear } = useLoanText();
   const openWith = useOpenWithIntent();
   if (rows.length === 0) return null;
@@ -653,30 +661,37 @@ function LoansSection({
               </RowChip>
             }
             title={row.loan.name}
-            sub={[
-              fmt.percent(Number(row.loan.interestRate) / 100, 2),
-              // The desktop's loans table wording: the fixation still ahead, else the month an
-              // ended one ran out, else a fixed rate
-              row.fixationEnd !== null
-                ? t('loans:table.fixedUntil', { month: monthYear(row.fixationEnd) })
-                : row.loan.interestRateValidityDate !== null
-                  ? t('loans:table.fixationEnded', {
-                      month: monthYear(row.loan.interestRateValidityDate),
-                    })
-                  : t('loans:table.fixedRate'),
-            ].join(' · ')}
+            // The rate, then the desktop's loans table wording: the fixation still ahead, else the
+            // month an ended one ran out, else a fixed rate — shown whole or left to the detail (C1)
+            sub={
+              <SubFacts
+                mode="drop"
+                lead={fmt.percent(Number(row.loan.interestRate) / 100, 2)}
+                tail={
+                  row.fixationEnd !== null
+                    ? t('loans:table.fixedUntil', { month: monthYear(row.fixationEnd) })
+                    : row.loan.interestRateValidityDate !== null
+                      ? t('loans:table.fixationEnded', {
+                          month: monthYear(row.loan.interestRateValidityDate),
+                        })
+                      : t('loans:table.fixedRate')
+                }
+              />
+            }
             value={moneyText(row.outstanding, row.currency, { decimals: 0 })}
+            // A balance in another currency: its "≈" comes before the payment (README §13)
             valueSub={
               row.matured
                 ? t('loans:table.matured')
-                : t('finance.perMonth', {
+                : (approx(row.outstanding, row.currency) ??
+                  t('period.month', {
                     amount: moneyText(row.payment, row.currency, { decimals: 0 }),
-                  })
+                  }))
             }
             href={loanPath(row.loan.id)}
             // The loan's event dialogs, opened on the loan (README §13)
             menu={{
-              label: `${tc('labels.actions')}: ${row.loan.name}`,
+              label: tc('mobile:labelValue', { label: tc('labels.actions'), value: row.loan.name }),
               children: (
                 <>
                   <RowMenuItem onSelect={() => openWith(loanPath(row.loan.id), 'balanceCheck')}>
@@ -708,6 +723,8 @@ function PoliciesSection({
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const periodText = usePeriodText();
+  const approx = useApprox();
   const { t: tc } = useTranslation('common');
   const openWith = useOpenWithIntent();
   if (rows.length === 0) return null;
@@ -717,7 +734,7 @@ function PoliciesSection({
     <section>
       <SectionHead
         title={t('finance.sections.insurance')}
-        note={t('insurance:table.footer.yearly', {
+        note={t('period.year', {
           amount: moneyText(insurance.metrics.yearlyTotal, mainCurrency, { decimals: 0 }),
         })}
       />
@@ -734,28 +751,31 @@ function PoliciesSection({
                 </RowChip>
               }
               title={row.policy.policyName}
-              sub={[
-                row.policy.provider,
-                row.frequency && t(`insurance:frequencyShort.${row.frequency}`),
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-              value={moneyText(row.premiumNative.amount, row.premiumNative.currency, {
-                decimals: 0,
-              })}
+              sub={row.policy.provider}
+              // The premium with its period next to it, "2 270 Kč / měs." (C6)
+              value={periodText(
+                moneyText(row.premiumNative.amount, row.premiumNative.currency, { decimals: 0 }),
+                periodUnit(row.frequency)
+              )}
+              // A premium in another currency: its "≈" comes before the next payment's day,
+              // which "Nejbližší platby" under the policies lists (README §13)
               valueSub={
                 row.ended
                   ? t('insurance:table.ended')
-                  : nextPayment
-                    ? t('finance.nextPayment', {
-                        date: fmt.day(nextPayment, shortDayOptions(nextPayment)),
-                      })
-                    : undefined
+                  : (approx(row.premiumNative.amount, row.premiumNative.currency) ??
+                    (nextPayment
+                      ? t('finance.nextPayment', {
+                          date: fmt.day(nextPayment, shortDayOptions(nextPayment)),
+                        })
+                      : undefined))
               }
               href={policyPath(row.policy.id)}
               // The policy's form and its end, opened on the policy (README §13)
               menu={{
-                label: `${tc('labels.actions')}: ${row.policy.policyName}`,
+                label: tc('mobile:labelValue', {
+                  label: tc('labels.actions'),
+                  value: row.policy.policyName,
+                }),
                 children: (
                   <>
                     <RowMenuItem onSelect={() => openWith(policyPath(row.policy.id), 'edit')}>

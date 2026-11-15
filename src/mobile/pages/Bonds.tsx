@@ -93,6 +93,7 @@ export default function Bonds() {
   return (
     <Screen
       title={td('cards.bonds')}
+      large
       leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         <>
@@ -221,14 +222,14 @@ function BondStats({ metrics, currency }: { metrics: BondsMetrics; currency: str
 
   const stats: StatItem[] = [
     {
-      label: tb('summary.nominal'),
+      label: t('stat.faceValue'),
       value: unconverted
         ? '—'
         : moneyText(metrics.totalValue, currency, statMoneyOptions(metrics.totalValue)),
       note: tb('summary.issues', { count: metrics.liveCount }),
     },
     {
-      label: tb('summary.yearlyCoupon'),
+      label: t('stat.yearlyCoupon'),
       value: unconverted
         ? '—'
         : moneyText(income, currency, { ...statMoneyOptions(income), signed: true }),
@@ -239,11 +240,11 @@ function BondStats({ metrics, currency }: { metrics: BondsMetrics; currency: str
         : t('wealth.bonds.rateNote', { rate: fmt.percent(metrics.averageYield / 100, 2) }),
     },
     {
-      label: tb('summary.nearestMaturity'),
+      label: t('stat.nextMaturity'),
       value: nearestDay !== null ? fmt.day(nearestDay) : '—',
       note:
         nearestDay !== null && returns !== null
-          ? tb('summary.returns', { amount: returns })
+          ? t('statNote.returns', { amount: returns })
           : metrics.liveCount > 0
             ? tb('summary.noMaturity')
             : tb('summary.noneLive'),

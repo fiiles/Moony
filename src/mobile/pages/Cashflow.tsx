@@ -8,7 +8,6 @@ import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useSpendingPlansOverview } from '@/hooks/use-spending-plans';
 import { budgetingApi } from '@/lib/tauri-api';
-import { useReportMoney } from '@/lib/use-report-money';
 import { periodPace } from '@/utils/budget-pace';
 import { isPartialLimit, storedLimitGoal, type ExpenseRow } from '@/utils/cashflow-budget-rows';
 import { yearFromSearch } from '@/utils/spending-plans';
@@ -31,6 +30,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow } from '@/mobile/components/StatRow';
 import { useBudgetLimitSheet } from '@/mobile/hooks/use-budget-limit-sheet';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
+import { useSummaryMoney } from '@/mobile/hooks/use-summary-money';
 import { useCsvExport } from '@/mobile/hooks/use-csv-export';
 import {
   useCashflowReport,
@@ -58,7 +58,7 @@ import { rowLimitAction } from '@/mobile/lib/budget-rows';
 import type { LimitMode } from '@/mobile/lib/budget-limit';
 import { cashflowViewSearch, viewFromSearch, type CashflowView } from '@/mobile/lib/cashflow-view';
 import { plansCardSummary } from '@/mobile/lib/plan-rows';
-import { CASHFLOW_EXPORT_FILE, cashflowCsv } from '@/mobile/lib/cashflow-export';
+import { CASHFLOW_EXPORT_FILE, csvMonth, cashflowCsv } from '@/mobile/lib/cashflow-export';
 import { afterHistorySettles } from '@/mobile/lib/history-settle';
 import { budgetsPath, cashflowCategoryPath, plansPath, routes } from '@/mobile/shell/routes';
 import { LockButton } from '@/mobile/shell/LockButton';
@@ -138,7 +138,6 @@ export default function Cashflow() {
 function CashflowReportView({ switcher }: { switcher: ReactNode }) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
-  const fmt = useFormat();
   const { categories } = useCategories();
   const categoryName = useCategoryName();
   const [state, setState] = useCashflowState();
@@ -210,17 +209,14 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
       uncategorizedTransfers: tr('actuals.uncategorizedTransfers'),
     };
     void runExport(CASHFLOW_EXPORT_FILE, async () =>
-      cashflowCsv(
-        actuals,
-        (month) => fmt.day(month, { year: 'numeric', month: '2-digit' }),
-        (group) =>
-          categoryTitle(
-            group.key,
-            group.flowKind,
-            categoryById.get(group.key) ?? null,
-            group.name,
-            titleLabels
-          )
+      cashflowCsv(actuals, csvMonth, (group) =>
+        categoryTitle(
+          group.key,
+          group.flowKind,
+          categoryById.get(group.key) ?? null,
+          group.name,
+          titleLabels
+        )
       )
     );
   };
@@ -256,12 +252,6 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
       }
     >
       {switcher}
-      {/* Under the switch, not in the title block: the switch keeps its place in both views */}
-      {!accountsLoading && accountCount > 0 && (
-        <p className="mx-0.5 mb-3.5 mt-0 text-m-lead text-ink-3">
-          {scope === null ? t('cashflow.subtitleAll') : t('cashflow.subtitle', { count: scope })}
-        </p>
-      )}
       <PeriodBar
         timeframe={current.timeframe}
         offset={current.offset}
@@ -269,6 +259,16 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
         pending={opening === null}
         onTimeframeChange={(timeframe) => setState({ ...current, timeframe, offset: 0 })}
         onStep={(delta) => setState({ ...current, offset: Math.min(0, current.offset + delta) })}
+        // Whose money it is, under the period (D17): the sentence above it was a row of its own
+        scope={
+          !accountsLoading && accountCount > 0
+            ? {
+                label:
+                  scope === null ? t('cashflow.scopeAll') : t('cashflow.scope', { count: scope }),
+                onOpen: () => setAccountsOpen(true),
+              }
+            : undefined
+        }
       />
       {body === 'error' ? (
         <ScaledReportError onRetry={report.refetch} />
@@ -332,8 +332,8 @@ interface ReportBodyProps {
 
 /**
  * The report of a period that has transactions or limits (or, with neither, its bars and an empty
- * line). Report amounts are at the currency's minor units, as on the desktop (`useReportMoney`), so
- * the rows add up to the totals.
+ * line). Every amount here is a summary and so whole (`useSummaryMoney`, README §13 "Money and
+ * currencies"); the single payments of a category are exact on its own page.
  */
 function ReportBody({
   actuals,
@@ -353,7 +353,7 @@ function ReportBody({
   const { categories } = useCategories();
   const categoryName = useCategoryName();
   const { range, expenses, periodLabel } = report;
-  const { money, signedMoney, nativeMoney } = useReportMoney(actuals.reportCurrency);
+  const { money, signedMoney, nativeMoney } = useSummaryMoney(actuals.reportCurrency);
   // A net refund reads "− 100 Kč" with the minus sign of the signed amounts
   const lineMoney = (value: number) => (value < 0 ? signedMoney(value) : money(value));
 
@@ -386,7 +386,7 @@ function ReportBody({
   // The average per month counts only with two or more completed months, as on the desktop
   const perMonth = (average: string | null) =>
     average !== null && actuals.averageCompletedMonths.length >= 2
-      ? tr('actuals.stats.perMonth', { amount: money(amount(average)) })
+      ? t('period.avgMonth', { amount: money(amount(average)) })
       : undefined;
   const pace = periodPace(actuals.periodStart, actuals.periodEnd);
   const evaluated = tb('settings.evaluationNote', {
@@ -501,6 +501,7 @@ function ReportBody({
           const goal = row.hasLimit ? storedLimitGoal(row, goals) : null;
           return goal !== null && isPartialLimit(goal, range.start, range.end);
         }}
+        reportCurrency={actuals.reportCurrency}
         money={lineMoney}
         native={nativeMoney}
         evaluationNote={evaluationNote}
@@ -512,7 +513,7 @@ function ReportBody({
       <section>
         <SectionHead title={tr('actuals.income.title')} note={money(totalIncome)} />
         <EntityRows>{rows(incomeRows, lineMoney, true)}</EntityRows>
-        <SectionFoot lines={[tr('actuals.income.note')]} />
+        <SectionFoot lines={[t('cashflow.incomeNote')]} />
       </section>
       <section>
         <SectionHead title={tr('actuals.transfers.title')} />

@@ -8,7 +8,9 @@ import { cn } from '@/lib/utils';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
 import { Money } from '@/mobile/components/Money';
+import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { exactMoneyOptions } from '@/mobile/lib/money-rule';
 
 interface DividendRowProps {
   dividend: StockDividend;
@@ -27,7 +29,8 @@ interface DividendRowProps {
 /**
  * A received dividend of a stock position (spec §A3): a `Coins` chip in the gain tone, "Dividenda"
  * over the ex-date and what the payout was (per share for Yahoo's, the note for a manual one),
- * and the gross "+ X" at the rates of the ex-date over the native gross. A Yahoo dividend has no
+ * and the gross "+ X" in the dividend's own currency, exactly, over its "≈" conversion at the
+ * rates of the ex-date (A6). That Yahoo is the source is said once, under the list (D27). A Yahoo dividend has no
  * menu and no tap (it cannot be changed); a manual one opens Upravit (not when superseded) and
  * Smazat, anchored like `TradeRow`'s. A superseded one is dimmed with the value struck through.
  */
@@ -45,6 +48,7 @@ export function DividendRow({
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const approx = useApprox();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isYahoo = dividend.source === 'yahoo';
@@ -80,21 +84,16 @@ export function DividendRow({
       sub={detail ? `${fmt.day(dividend.exDate)} · ${detail}` : fmt.day(dividend.exDate)}
       value={
         <span className={struck}>
-          {converted !== null ? (
-            <Money value={converted} currency={currency} options={{ decimals: 0 }} sign="+ " />
-          ) : (
-            <Money value={gross} currency={dividend.currency} options={{ decimals: 0 }} sign="+ " />
-          )}
+          <Money
+            value={gross}
+            currency={dividend.currency}
+            options={exactMoneyOptions(gross, dividend.currency)}
+            sign="+ "
+          />
         </span>
       }
       valueTone="gain"
-      valueSub={
-        converted === null && ratesReady
-          ? t('wealth.noRate', { currency: dividend.currency })
-          : isYahoo
-            ? ts('detail.dividendRecords.sourceYahoo')
-            : moneyText(gross, dividend.currency, { decimals: 2 })
-      }
+      valueSub={approx(gross, dividend.currency, { converted, pending: !ratesReady })}
       onClick={menu ? () => setMenuOpen(true) : undefined}
       menu={
         menu

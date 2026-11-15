@@ -150,7 +150,13 @@ export function DataTools() {
             ))}
             {status && status.leftovers.length > 0 && (
               <p className="m-0">
-                {t('data.attachments.leftoversTitle')}: {status.leftovers.length}.{' '}
+                {/* One key for "label: value" (B9): its colon is the language's */}
+                <span className="block">
+                  {t('mobile:labelValue', {
+                    label: t('data.attachments.leftoversTitle'),
+                    value: status.leftovers.length,
+                  })}
+                </span>
                 {t('data.attachments.leftoversBody')}
               </p>
             )}

@@ -1030,7 +1030,7 @@ pub async fn search_crypto(query: &str) -> Result<Vec<CryptoSearchResult>> {
 }
 
 // ============================================================================
-// Stock logos (Yahoo search + s.yimg.com)
+// Stock logos (Yahoo search + s.yimg.com, then Financial Modeling Prep)
 // ============================================================================
 
 /// What one ticker's logo lookup ended as.
@@ -1063,8 +1063,8 @@ const LOGO_REQUEST_GAP: std::time::Duration = std::time::Duration::from_millis(3
 /// finds only what the first left due.
 static LOGO_REFRESH: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
-/// The logo run stops here: Yahoo answered HTTP 429, or a request could not be sent at all (the
-/// network is down). Like `Retry`, nothing is written for the ticker.
+/// The logo run stops here: Yahoo or FMP answered HTTP 429, or a request could not be sent at all
+/// (the network is down). Like `Retry`, nothing is written for the ticker.
 struct StopRun;
 
 /// `Err(StopRun)` for a 429, the outcome otherwise.
@@ -1079,9 +1079,19 @@ fn unless_rate_limited(
     }
 }
 
-/// The logo of one ticker: one search request, then (when Yahoo names a `s.yimg.com` logo for
-/// exactly this ticker) one image request. Errors never name the URL (it carries the ticker).
+/// The logo of one ticker: Yahoo first, then Financial Modeling Prep when Yahoo has none
+/// (ADR 0031). A Yahoo retry or a stopped run never falls through to FMP, so FMP only learns a
+/// ticker Yahoo cleanly has no logo for. Errors never name the URL (it carries the ticker).
 async fn fetch_asset_logo(ticker: &str) -> std::result::Result<LogoOutcome, StopRun> {
+    match fetch_yahoo_logo(ticker).await? {
+        LogoOutcome::Miss => fetch_fmp_logo(ticker).await,
+        other => Ok(other),
+    }
+}
+
+/// One search request, then (when Yahoo names a `s.yimg.com` logo for exactly this ticker) one
+/// image request.
+async fn fetch_yahoo_logo(ticker: &str) -> std::result::Result<LogoOutcome, StopRun> {
     use crate::services::asset_logos;
 
     let search_url = format!(
@@ -1101,8 +1111,8 @@ async fn fetch_asset_logo(ticker: &str) -> std::result::Result<LogoOutcome, Stop
     };
     let status = response.status();
     if let Some(outcome) = outcome_for_status(status.as_u16()) {
-        // A 4xx other than 408/429 is Yahoo rejecting this ticker: remembered as a miss. A rate
-        // limit or a server error is not: nothing is remembered.
+        // A 4xx other than 408/429 is Yahoo rejecting this ticker: a miss (FMP is asked next). A
+        // rate limit or a server error is not: nothing is remembered.
         log::warn!("[LOGOS] Search answered HTTP {}", status.as_u16());
         return unless_rate_limited(status.as_u16(), outcome);
     }
@@ -1116,10 +1126,25 @@ async fn fetch_asset_logo(ticker: &str) -> std::result::Result<LogoOutcome, Stop
     let Some(logo_url) = asset_logos::logo_url_from_search(&body, ticker) else {
         return Ok(LogoOutcome::Miss);
     };
+    download_logo_image(&logo_url).await
+}
 
-    // Redirects are not followed: a hop off `s.yimg.com` would reach a new party.
+/// FMP's public logo image of the ticker (`asset_logos::fmp_logo_url`); a ticker that is not a
+/// plain symbol is a miss without a request. FMP answers an unknown ticker with HTTP 404.
+async fn fetch_fmp_logo(ticker: &str) -> std::result::Result<LogoOutcome, StopRun> {
+    match crate::services::asset_logos::fmp_logo_url(ticker) {
+        Some(url) => download_logo_image(&url).await,
+        None => Ok(LogoOutcome::Miss),
+    }
+}
+
+/// Download one logo image and normalize it. Redirects are not followed: a hop to another host
+/// would reach a party the privacy statement does not name.
+async fn download_logo_image(url: &str) -> std::result::Result<LogoOutcome, StopRun> {
+    use crate::services::asset_logos;
+
     let mut response = match crate::services::http::no_redirect_client()
-        .get(&logo_url)
+        .get(url)
         .send()
         .await
     {

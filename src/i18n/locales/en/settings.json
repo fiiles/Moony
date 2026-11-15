@@ -117,6 +117,7 @@
     "deleting": "Deleting...",
     "backupFirst": "Tip: make a backup first (Settings → Data and backups) — it is the only way to get this data back.",
     "confirmLabel": "Type {{word}} to confirm",
+    "confirmWord": "DELETE",
     "deleteAll": "Delete all data",
     "deleteAllHint": "Removes the database, the key files and the attachments on this computer. Copies next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder (Data and backups → Open folder), and so do backups saved outside the app.",
     "deleteButton": "Delete data…",
@@ -133,7 +134,8 @@
     "verificationFailed": "Verification failed",
     "updateFailed": "Update failed",
     "deletionFailed": "Deletion failed",
-    "languageChanged": "Language changed"
+    "languageChanged": "Language changed",
+    "currencyChanged": "Your main currency is now {{currency}}. Totals have been recalculated."
   },
   "rulePacks": {
     "title": "Categorization Rule Packs",

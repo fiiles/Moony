@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FlowKind, ReportTransaction } from '@shared/schema';
-import { DRILLDOWN_PAGE, drilldownRows } from './cashflow-drilldown';
+import { DRILLDOWN_PAGE, drilldownRows, monthlyTotals, trendMonths } from './cashflow-drilldown';
 
 function tx(patch: Partial<ReportTransaction> = {}): ReportTransaction {
   return {
@@ -31,7 +31,7 @@ const NO_CHANGES: ReadonlyMap<string, string | null> = new Map();
 const day = (bookingDate: number) => `day ${bookingDate}`;
 
 describe('drilldownRows', () => {
-  it('titles a row by its counterparty and adds the first detail after the account', () => {
+  it('titles a row by its counterparty, with the day and the account under it (no note)', () => {
     const [row] = drilldownRows(
       [
         tx({
@@ -45,18 +45,29 @@ describe('drilldownRows', () => {
       day
     );
     expect(row.title).toBe('Albert');
-    expect(row.sub).toEqual([`day ${tx().bookingDate}`, 'Běžný účet', 'Nákup potravin']);
+    expect(row.sub).toEqual([`day ${tx().bookingDate}`, 'Běžný účet']);
   });
 
-  it('titles a row without a name by the counterparty account', () => {
+  it('titles a row without a name by its description before the counterparty account', () => {
     const [row] = drilldownRows(
       [tx({ counterpartyIban: 'CZ6508000000192000145399' })],
       NO_CHANGES,
       'cat_x',
       day
     );
+    expect(row.title).toBe('Nákup potravin');
+    expect(row.sub).toEqual([`day ${tx().bookingDate}`, 'Běžný účet']);
+  });
+
+  it('titles a row without a name or a description by the counterparty account', () => {
+    const [row] = drilldownRows(
+      [tx({ description: null, counterpartyIban: 'CZ6508000000192000145399' })],
+      NO_CHANGES,
+      'cat_x',
+      day
+    );
     expect(row.title).toBe('19-2000145399/0800');
-    expect(row.sub).toEqual([`day ${tx().bookingDate}`, 'Běžný účet', 'Nákup potravin']);
+    expect(row.sub).toEqual([`day ${tx().bookingDate}`, 'Běžný účet']);
   });
 
   it('titles a row without a counterparty by its description, with no detail in the sub', () => {
@@ -258,5 +269,48 @@ describe('drilldownRows', () => {
 
   it('pages by a hundred rows', () => {
     expect(DRILLDOWN_PAGE).toBe(100);
+  });
+});
+
+describe('trendMonths', () => {
+  const day = (y: number, m: number, d: number) => Date.UTC(y, m, d) / 1000;
+
+  it('lists the month starts ending with the period end, oldest first', () => {
+    expect(trendMonths(day(2026, 9, 31) + 86_399, 3)).toEqual([
+      day(2026, 7, 1),
+      day(2026, 8, 1),
+      day(2026, 9, 1),
+    ]);
+  });
+
+  it('crosses a year', () => {
+    expect(trendMonths(day(2026, 1, 15), 4)).toEqual([
+      day(2025, 10, 1),
+      day(2025, 11, 1),
+      day(2026, 0, 1),
+      day(2026, 1, 1),
+    ]);
+  });
+});
+
+describe('monthlyTotals', () => {
+  const day = (y: number, m: number, d: number) => Date.UTC(y, m, d) / 1000;
+  const months = [day(2026, 8, 1), day(2026, 9, 1)];
+  const tx = (bookingDate: number, signedAmount: string | null) =>
+    ({ bookingDate, signedAmount }) as Parameters<typeof monthlyTotals>[0][number];
+
+  it('adds the report amounts of each month, refunds lowering them', () => {
+    expect(
+      monthlyTotals(
+        [tx(day(2026, 8, 3), '120.50'), tx(day(2026, 8, 20), '-20.50'), tx(day(2026, 9, 1), '300')],
+        months
+      )
+    ).toEqual([100, 300]);
+  });
+
+  it('skips rows without a conversion and outside the months', () => {
+    expect(monthlyTotals([tx(day(2026, 9, 5), null), tx(day(2026, 6, 5), '50')], months)).toEqual([
+      0, 0,
+    ]);
   });
 });

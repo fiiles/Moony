@@ -19,14 +19,16 @@ export function performanceNotes(
     StockPerformance,
     'fxQuality' | 'unpricedTickers' | 'dividendGapTickers' | 'suspectTradeTickers'
   >,
-  currency: string
+  currency: string,
+  /** How a list of currencies or tickers is joined: the language's (`listText`, B9). */
+  list: (items: readonly string[]) => string = (items) => items.join(', ')
 ): PerformanceNote[] {
   const notes: PerformanceNote[] = [];
   const { missingCurrencies, estimated } = data.fxQuality;
   if (missingCurrencies.length > 0) {
     notes.push({
       key: 'common:fxQuality.missing',
-      values: { currency, currencies: missingCurrencies.join(', ') },
+      values: { currency, currencies: list(missingCurrencies) },
     });
   }
   if (estimated) notes.push({ key: 'common:fxQuality.estimated', values: {} });
@@ -39,7 +41,7 @@ export function performanceNotes(
     if (tickers.length > 0) {
       notes.push({
         key: `reports:stocksAnalysis.performance.${name}`,
-        values: { tickers: tickers.join(', ') },
+        values: { tickers: list(tickers) },
       });
     }
   }

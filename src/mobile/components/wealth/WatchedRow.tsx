@@ -63,7 +63,7 @@ export function WatchedRow({ row }: { row: WatchedStockRow }) {
       }
       href={path}
       menu={{
-        label: `${tc('labels.actions')}: ${row.ticker}`,
+        label: tc('mobile:labelValue', { label: tc('labels.actions'), value: row.ticker }),
         children: (
           <>
             <RowMenuItem onSelect={() => openWith(path, 'target')}>

@@ -9,6 +9,7 @@ import type {
   FlowKind,
   ReportTransaction,
 } from '@shared/schema';
+import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { getCompleteBankHistory } from '@/lib/bank-history';
 import { useCurrency } from '@/lib/currency';
@@ -22,14 +23,27 @@ import {
   DrilldownTransactionRow,
 } from '@/mobile/components/cashflow/DrilldownRow';
 import { EntityRows } from '@/mobile/components/EntityRow';
-import { usePeriodLabel } from '@/mobile/hooks/use-cashflow';
+import { useCashflowReport, usePeriodLabel } from '@/mobile/hooks/use-cashflow';
 import { useTransactionDay } from '@/mobile/hooks/use-transaction-day';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useRecentCategoryIds } from '@/mobile/hooks/use-categorize-queue';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { cashflowSearch, parseCashflowSearch } from '@/mobile/lib/cashflow-period';
-import { DRILLDOWN_PAGE, drilldownRows } from '@/mobile/lib/cashflow-drilldown';
-import { categoryTitle } from '@/mobile/lib/cashflow-rows';
+import {
+  DRILLDOWN_PAGE,
+  drilldownRows,
+  monthlyTotals,
+  TREND_MONTHS,
+  trendMonths,
+} from '@/mobile/lib/cashflow-drilldown';
+import { expenseRowMoney, limitStatus } from '@/mobile/lib/budget-rows';
+import { CashflowHero } from '@/mobile/components/cashflow/CashflowHero';
+import { CategoryTrend } from '@/mobile/components/cashflow/CategoryTrend';
+import { ProgressBar } from '@/mobile/components/cashflow/ProgressBar';
+import { SectionHead } from '@/mobile/components/SectionHead';
+import { useSummaryMoney } from '@/mobile/hooks/use-summary-money';
+import { accountScope, categoryTitle } from '@/mobile/lib/cashflow-rows';
+import { DetailSub } from '@/mobile/components/DetailSub';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -41,6 +55,10 @@ const FLOWS: readonly FlowKind[] = ['expense', 'income', 'transfer'];
 /**
  * The payments behind one category of the Cashflow report (spec §8.7, `/cashflow/category/<flow>/
  * <key>`): the selected period's list, with the period and the account scope it was pushed with.
+ * The category's name is the large title (README §13, "Detail screens", C10), with the flow and the
+ * account scope under it. It opens with what the category came to (audit 2026-11-15 D19): the hero with the period's
+ * total, the limit's state in one sentence and its bar (an expense category with a limit), the
+ * small six-month trend (`CategoryTrend`), then the payments under a head that counts them.
  * A tap on a row opens its transaction sheet (the category and the meaning of the movement can be
  * changed there, the payment deleted); a swipe to the left and the long press's menu open the
  * category picker of Finance directly. The report behind refreshes at once. A row that leaves the
@@ -89,6 +107,7 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
+  const { t: tb } = useTranslation('budgeting');
   const queryClient = useQueryClient();
   const { currencyCode, fxRevision } = useCurrency();
   const { categories } = useCategories();
@@ -96,6 +115,8 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
   const state = useMemo(() => parseCashflowSearch(search), [search]);
   const back = useBack(routes.cashflow + cashflowSearch(state));
   const { range, periodLabel } = usePeriodLabel(state);
+  const { accounts } = useBankAccounts();
+  const scope = accountScope(state.accountIds, accounts);
 
   // Outside the money-flow refresh keys and dropped on leaving, so a recategorization never
   // reshuffles the open list (the desktop dialog's query, key for key).
@@ -196,13 +217,70 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
       uncategorizedTransfers: tr('actuals.uncategorizedTransfers'),
     }
   );
-  const summary = [
-    periodLabel,
-    snapshot && tr('readiness.countedTransactions', { count: rows.length }),
-    moved > 0 && tr('readiness.movedCount', { count: moved }),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  // The hero (D19): what the category came to in the period — the report's own line, as on the
+  // tab — with the limit's state and its bar for an expense category that has one
+  const report = useCashflowReport(state);
+  const { money, nativeMoney } = useSummaryMoney(report.reportCurrency);
+  const expenseRow =
+    flowKind === 'expense' ? report.expenses.find((row) => row.key === categoryKey) : undefined;
+  const group =
+    flowKind === 'income'
+      ? report.actuals?.incomeCategories.find((g) => g.key === categoryKey)
+      : flowKind === 'transfer'
+        ? report.actuals?.transfers.find((g) => g.key === categoryKey)
+        : undefined;
+  const total = !report.actuals
+    ? undefined
+    : expenseRow
+      ? expenseRow.amountUnavailable
+        ? null
+        : expenseRow.amount
+      : group
+        ? Number(group.amount) || 0
+        : 0;
+  const rowLimit = expenseRow?.limit ?? null;
+  const status =
+    rowLimit && expenseRow
+      ? limitStatus(rowLimit, expenseRowMoney(expenseRow, report.reportCurrency).limitAmounts)
+      : null;
+  const limitNote =
+    status === null
+      ? expenseRow && !expenseRow.hasLimit
+        ? tb('noBudget')
+        : undefined
+      : status.kind === 'unavailable'
+        ? tb('readiness.usageUnavailable')
+        : t(`cashflow.limit.${status.kind}`, {
+            amount: nativeMoney(status.amount, status.currency),
+            limit: nativeMoney(status.limit, status.currency),
+          });
+
+  // The small trend: the category's months up to the period's last one
+  const months = useMemo(() => trendMonths(range.end, TREND_MONTHS), [range.end]);
+  const trendQuery = useQuery({
+    queryKey: [
+      'report-drilldown-trend',
+      { flowKind, categoryId: categoryKey },
+      months[0],
+      range.end,
+      state.accountIds,
+      currencyCode,
+      fxRevision,
+    ],
+    queryFn: () =>
+      cashflowApi.getTransactions(months[0], range.end, {
+        accountIds: state.accountIds,
+        flowKind,
+        categoryId: categoryKey,
+        reportCurrency: currencyCode,
+      }),
+    gcTime: 0,
+    staleTime: Infinity,
+  });
+  const trend = useMemo(
+    () => (trendQuery.data ? monthlyTotals(trendQuery.data, months) : null),
+    [trendQuery.data, months]
+  );
 
   // The newest tap wins: a row opened while another is still being read replaces it
   const opening = useRef(0);
@@ -230,9 +308,55 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
   return (
     <Screen
       title={title}
+      large
       leading={<NavTextButton chevron label={t('tabs.cashflow')} onClick={back} />}
     >
-      <p className="mx-0.5 mb-3.5 text-m-lead text-ink-3">{summary}</p>
+      {/* What the category is, under its large title (README §13, "Detail screens"): the flow
+          it belongs to and whose accounts the list covers */}
+      <DetailSub>
+        {flowKind === 'expense'
+          ? tr('sections.expenses')
+          : flowKind === 'income'
+            ? tr('sections.income')
+            : tr('actuals.transfers.title')}
+        {' · '}
+        {scope === null ? t('cashflow.scopeAll') : t('cashflow.scope', { count: scope })}
+      </DetailSub>
+      {total !== undefined && (
+        <CashflowHero
+          label={periodLabel}
+          value={total}
+          formatValue={money}
+          tone="neutral"
+          note={
+            limitNote && (
+              <span className={status?.kind === 'over' ? 'text-loss' : undefined}>{limitNote}</span>
+            )
+          }
+          bar={
+            rowLimit && status && status.kind !== 'unavailable' ? (
+              <ProgressBar
+                value={(rowLimit.percentage ?? 0) / 100}
+                tone={status.kind === 'over' ? 'over' : 'limit'}
+              />
+            ) : undefined
+          }
+        />
+      )}
+      {trend && trend.some((value) => value !== 0) && (
+        <CategoryTrend
+          months={months}
+          totals={trend}
+          selected={(month) => month >= range.start && month <= range.end}
+          formatValue={money}
+        />
+      )}
+      {snapshot !== null && rows.length > 0 && (
+        <SectionHead
+          title={tr('readiness.countedTransactions', { count: rows.length })}
+          note={moved > 0 ? tr('readiness.movedCount', { count: moved }) : undefined}
+        />
+      )}
       {snapshot === null ? (
         isError ? (
           <ScaledReportError onRetry={() => void refetch()} />

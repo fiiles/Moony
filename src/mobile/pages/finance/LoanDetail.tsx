@@ -12,6 +12,8 @@ import type { LoanRow } from '@/utils/loans';
 import { Button } from '@/components/ui/button';
 import { LoanEventDialog } from '@/components/loans/LoanEventDialog';
 import { MissingOrFailed } from '@/mobile/components/LoadError';
+import { DetailSub } from '@/mobile/components/DetailSub';
+import { LoanAfterFixation } from '@/mobile/components/loan/LoanAfterFixation';
 import { LoanAlerts } from '@/mobile/components/loan/LoanAlerts';
 import { LoanEvents } from '@/mobile/components/loan/LoanEvents';
 import { LoanHeroCard } from '@/mobile/components/loan/LoanHeroCard';
@@ -127,6 +129,7 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
   return (
     <Screen
       title={loan?.name ?? ''}
+      large
       leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         loan && (
@@ -243,10 +246,8 @@ function LoanBody({
 
   return (
     <>
-      {/* The nav bar keeps its one title, so the currency, the rate and the fixation are the first line */}
-      <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
-        {caption}
-      </p>
+      {/* The currency, the rate and the fixation under the large title */}
+      <DetailSub>{caption}</DetailSub>
       <LoanHeroCard
         row={row}
         events={events}
@@ -267,6 +268,7 @@ function LoanBody({
       {noExtra && (
         <p className="mx-0.5 mb-0 mt-1.5 text-center text-m-caption text-ink-3">{noExtraReason}</p>
       )}
+      <LoanAfterFixation row={row} stats={stats} />
       <LoanSchedule row={row} schedule={schedule} />
       <LoanEvents loan={row.loan} events={events} />
     </>

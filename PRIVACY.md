@@ -58,9 +58,10 @@ Full-disk encryption (FileVault, BitLocker, LUKS) is the right complement to all
 Moony makes network requests only in these situations. Every request also reveals your IP
 address to the service that receives it, as any internet request does.
 
-The requests to the ECB and Frankfurter, and the coin search requests to Yahoo Finance, identify
-the app as `Moony/<version>` (for example `Moony/1.0.0`) in the `User-Agent` header, so those
-services can see which version is asking. The other Yahoo Finance requests carry the fixed,
+The requests to the ECB and Frankfurter, the coin search and company logo requests to Yahoo
+Finance, and the logo requests to Financial Modeling Prep identify the app as `Moony/<version>`
+(for example `Moony/1.0.0`) in the `User-Agent` header, so those services can see which version
+is asking. The other Yahoo Finance requests carry the fixed,
 browser-style user agent that the price library sets (the same string on every operating
 system), not Moony's name. The update check uses the
 updater plugin's own user agent, described in the GitHub row.
@@ -68,6 +69,7 @@ updater plugin's own user agent, described in the GitHub row.
 | Service | What is sent | When | Can you avoid it? |
 | --- | --- | --- | --- |
 | **Yahoo Finance** (`query1.finance.yahoo.com`, `query2.finance.yahoo.com`, `fc.yahoo.com` and, for company logos, its image server `s.yimg.com`) | The ticker symbols of your stock positions and of the stocks you follow in Stock Monitor (also sent once per ticker to look up the company's logo; the image server is then asked for that logo's picture), search text you type, the symbols and ISINs of the securities in a stock CSV file you import (to find their Yahoo tickers), the Yahoo symbols of your crypto holdings (for example `BTC-USD`), the coin names or tickers you search for or that the app looks up to find a holding's Yahoo listing, and the date ranges needed for price history (which can reveal roughly when you started investing). Before company data is requested, the price library also fetches a session cookie from `fc.yahoo.com` and a one-time token ("crumb") from `query1.finance.yahoo.com`, and sends both back with that request. They are held in memory only while the refresh runs; Moony does not store them. | After unlocking, when you add or import stock transactions (the review step of a stock CSV import looks the file's securities up as it opens), when you open Stock Monitor or a stock position's detail (company data such as sector and P/E, at most once a day per ticker once Yahoo has answered; this is the only request that needs the cookie and token), when you add a crypto holding or search for a coin, when the app looks up the listing of a crypto holding that has none yet, when the history of a crypto holding is rebuilt, and when you refresh stale prices. | Yes — Moony works offline; prices can be set manually per position. Without refreshes the prices simply go stale. |
+| **Financial Modeling Prep** (`financialmodelingprep.com`, company logos only) | The ticker symbol of each stock position and followed stock that Yahoo Finance has no logo for, as part of the address of that logo's picture (for example `/image-stock/BRK-B.png`). Nothing else: no account, no key, no amounts. Index and currency symbols (such as `^GSPC` or `EURUSD=X`) are never sent. | After unlocking and after you add or follow a stock, at most once per ticker: a found logo is kept; a ticker without one is asked again after 30 days. | Only by not tracking stocks; there is no switch for logos. Without it, stocks Yahoo has no logo for show their initials. |
 | **European Central Bank** (`www.ecb.europa.eu`) | Nothing from your data; it is a download of the public daily reference rates. The ECB sees your IP address and the `Moony/<version>` user agent. | When exchange rates are stale. | Yes — rates then simply go stale. Currencies the ECB does not publish never get an automatic rate (Settings → General → Currency explains this). |
 | **Frankfurter** (`api.frankfurter.dev`, serves ECB historical rates) | The ISO codes of the currencies found in your data (accounts, transactions, stock and crypto positions and their quotes, properties, loans, bonds, insurance, budgets, your profile; the euro itself and currencies without a rate source are left out) and the date range still missing, which can reach back to your earliest dated record (a transaction, a purchase date, a loan start) minus ten days. | When you enter or import transactions in a currency whose history is missing, and on rate refresh. Best effort: failures are ignored. | Yes — without it historical conversions fall back to current rates. |
 | **GitHub** (`github.com` and `release-assets.githubusercontent.com`) | A plain request for `latest.json` of the latest release (`github.com/fiiles/Moony/releases/latest/download/latest.json`), which GitHub redirects to its release-asset host. The request carries the user agent of the updater plugin, `tauri-plugin-updater/<plugin version>` (`tauri-plugin-updater/2.14.0` in Moony 1.0.0), and `Accept: application/json`. Moony's own version, your operating system and your CPU architecture are not part of the request. If you accept an update, the installer for your platform is downloaded from the same release with the same user agent (so GitHub can tell which platform's file you fetched), and its signature is verified against the public key built into the app. GitHub decides which host serves release files and can change it, so a firewall rule may need to allow `*.githubusercontent.com`. | Once per app start, after you unlock, and whenever you press the manual check. | Yes — Settings → Security → Updates has a switch for the automatic check. |
@@ -77,9 +79,9 @@ Notes:
 
 - The web view that renders the interface is restricted by a content-security policy to its
   own files: it does not load fonts, scripts, logos or images from any website. Company logos
-  are downloaded by the Rust backend from Yahoo Finance only (which already receives those
-  tickers for prices), re-encoded and kept in the encrypted database; coin icons ship with the
-  app.
+  are downloaded by the Rust backend, from Yahoo Finance first (which already receives those
+  tickers for prices) and from Financial Modeling Prep for the tickers Yahoo has no logo for,
+  then re-encoded and kept in the encrypted database; coin icons ship with the app.
 - All data requests go through the Rust backend; the interface itself makes no network calls.
 
 ### The optional MCP server (AI assistant)
@@ -100,7 +102,7 @@ trust, and regenerate the token when you stop using one.
 - No account, login or registration, and no server operated by the project.
 - No telemetry: no crash reporting, no analytics, no tracking SDKs.
 - No advertising, no tracking cookies and no third-party fonts or images, apart from the
-  company logos from Yahoo Finance described above. The interface
+  company logos from Yahoo Finance and Financial Modeling Prep described above. The interface
   sets no cookies; the only cookie is the Yahoo Finance session cookie described above, which the
   price library keeps in memory for its requests.
 - No remote configuration and no code that is loaded while the app runs: the only code that

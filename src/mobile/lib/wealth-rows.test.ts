@@ -121,4 +121,8 @@ describe('classRowState', () => {
     expect(classRowState({ records: 2, value: 0, unknown: true })).toBe('unknown');
     expect(classRowState({ records: 0, value: 0, unknown: true })).toBe('unknown');
   });
+  it('is never empty while the class list is still being read (E1)', () => {
+    expect(classRowState({ records: 0, value: 0, unknown: false, loading: true })).toBe('valued');
+    expect(classRowState({ records: 0, value: 0, unknown: true, loading: true })).toBe('unknown');
+  });
 });

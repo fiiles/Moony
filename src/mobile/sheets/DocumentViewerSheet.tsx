@@ -86,7 +86,6 @@ export function DocumentViewerSheet({
   refreshedAt,
 }: DocumentViewerSheetProps) {
   const { t } = useTranslation('mobile');
-  const { t: tc } = useTranslation('common');
   const [shown, setShown] = useState(doc);
   const [status, setStatus] = useState<Status>('loading');
   const [zoomed, setZoomed] = useState(false);
@@ -181,28 +180,25 @@ export function DocumentViewerSheet({
       fill={showsDocument}
       title={shown?.name ?? ''}
       description={sub}
+      dismiss="done"
       footer={
-        <>
-          {showsDocument && (
-            <Button
-              type="button"
-              variant="secondary"
-              className="size-12 flex-none rounded-[10px] p-0 [&_svg]:size-5"
-              aria-label={zoomed ? t('documents.zoomOut') : t('documents.zoomIn')}
-              disabled={status !== 'ready'}
-              onClick={() => toggleZoom()}
-            >
-              {zoomed ? (
-                <ZoomOut strokeWidth={1.75} aria-hidden />
-              ) : (
-                <ZoomIn strokeWidth={1.75} aria-hidden />
-              )}
-            </Button>
-          )}
-          <Button variant="ghost" className={FOOTER_GHOST_WIDE} onClick={() => onOpenChange(false)}>
-            {tc('buttons.close')}
+        // "Hotovo" is in the head (C7); the footer keeps the viewer's one tool within thumb reach
+        showsDocument ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className={FOOTER_GHOST_WIDE}
+            disabled={status !== 'ready'}
+            onClick={() => toggleZoom()}
+          >
+            {zoomed ? (
+              <ZoomOut strokeWidth={1.75} aria-hidden />
+            ) : (
+              <ZoomIn strokeWidth={1.75} aria-hidden />
+            )}
+            {zoomed ? t('documents.zoomOut') : t('documents.zoomIn')}
           </Button>
-        </>
+        ) : undefined
       }
     >
       {shown && (

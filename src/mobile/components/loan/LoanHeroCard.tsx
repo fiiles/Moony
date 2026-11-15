@@ -166,24 +166,22 @@ export function LoanHeroCard({
       chartLabel={label}
     >
       {view.points.length > 1 && (
-        <ScaledChartLegend
-          items={[
-            { label: tl('detail.chart.legend.balance'), swatch: { kind: 'line' } },
-            {
-              label: tl('detail.chart.legend.schedule'),
-              swatch: { kind: 'dash', color: 'var(--chart-line)' },
-            },
-            { label: tl('detail.chart.legend.drawdown'), swatch: { kind: 'event', type: 'buy' } },
-            {
-              label: tl('detail.chart.legend.extraPayment'),
-              swatch: { kind: 'event', type: 'income' },
-            },
-            {
-              label: tl('detail.chart.legend.milestones'),
-              swatch: { kind: 'event', type: 'mark' },
-            },
-          ]}
-        />
+        <>
+          <ScaledChartLegend
+            items={[
+              { label: tl('detail.chart.legend.balance'), swatch: { kind: 'line' } },
+              {
+                label: tl('detail.chart.legend.schedule'),
+                swatch: { kind: 'dash', color: 'var(--chart-line)' },
+              },
+              // Three entries at most (C13): every mark is "an event", a tap on it says which
+              { label: tl('detail.events.title'), swatch: { kind: 'event', type: 'mark' } },
+            ]}
+          />
+          {marks.length > 0 && (
+            <p className="mb-0 mt-1.5 text-m-note text-ink-4">{t('loan.legend.tapHint')}</p>
+          )}
+        </>
       )}
     </Hero>
   );

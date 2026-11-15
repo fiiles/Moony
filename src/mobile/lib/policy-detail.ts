@@ -2,7 +2,7 @@ import type { InsurancePolicy, RealEstate } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import { parsePaymentFrequency, type PaymentFrequency } from '@shared/calculations';
 import { dayFloor, dueDay } from '@shared/calculations/loan-amortization';
-import { paidSeries, type InsuranceRow, type PaidPoint } from '@/utils/insurance';
+import { paidSeries, PERIOD_MONTHS, type InsuranceRow, type PaidPoint } from '@/utils/insurance';
 
 /**
  * The policy detail's numbers as pure functions (spec §8.8 "Pojistka"): the contract facts, the
@@ -133,7 +133,7 @@ export function policyFacts(
 }
 
 export interface PremiumPoints {
-  /** Cumulative premiums: the payments made and today, then the next twelve (the plan). */
+  /** Cumulative premiums: the payments made and today, then the year ahead (the plan). */
   points: PaidPoint[];
   paidToDay: number;
   paymentsMade: number;
@@ -141,7 +141,9 @@ export interface PremiumPoints {
 
 /**
  * The cumulative-premiums line of the detail: `paidSeries` (the payments made, a reading today and
- * the next twelve payments) as one series, in the policy's own currency. A policy that has not
+ * the payments of the year ahead) as one series, in the policy's own currency. The plan reaches a
+ * year, never twelve payments: an open-ended yearly policy would otherwise be drawn a decade ahead
+ * (audit D16). A policy that has not
  * started has paid nothing and has no line yet.
  *
  * `paidSeries` adds a one-time amount to the regular premiums as plain numbers. A recurring
@@ -150,13 +152,65 @@ export interface PremiumPoints {
  * policy's lump sum is its whole premium and stays, in its own currency.
  */
 export function premiumPoints(policy: InsurancePolicy, today: number): PremiumPoints {
-  const lump = oneTimeOf(policy, parsePaymentFrequency(policy.paymentFrequency));
+  const frequency = parsePaymentFrequency(policy.paymentFrequency);
+  const lump = oneTimeOf(policy, frequency);
   const foreign = lump !== null && lump.currency !== recordCurrency(policy.regularPaymentCurrency);
-  const series = paidSeries(foreign ? { ...policy, oneTimePayment: null } : policy, today, 12);
+  const period = frequency ? PERIOD_MONTHS[frequency] : 0;
+  const yearAhead = period > 0 ? Math.max(1, Math.ceil(12 / period)) : 0;
+  const series = paidSeries(
+    foreign ? { ...policy, oneTimePayment: null } : policy,
+    today,
+    yearAhead
+  );
   const started = dayFloor(policy.startDate) <= dayFloor(today);
   return {
     points: started ? [...series.past, ...series.future] : [],
     paidToDay: series.paidToDay,
     paymentsMade: series.paymentsMade,
+  };
+}
+
+/** What the policy's hero says (audit D15): the premium as its number, the next payment as its note. */
+export type PolicyHero =
+  | {
+      kind: 'recurring';
+      amount: number;
+      currency: string;
+      frequency: PaymentFrequency;
+      /** The next payment day; `null` once the policy has ended or nothing is due. */
+      nextPayment: number | null;
+      ended: boolean;
+      endDay: number | null;
+    }
+  | { kind: 'oneTime'; amount: number; currency: string; paidOn: number; ended: boolean }
+  /** No premium recorded: the hero says so instead of showing 0. */
+  | { kind: 'none' };
+
+/**
+ * The hero of the policy detail, as the account's and the loan's heroes lead with their number: a
+ * recurring premium with its frequency and the next payment, or the one-time amount and the day it
+ * was paid (the start), in the policy's own currency. An ended policy keeps its premium and says it
+ * has ended instead of naming a payment.
+ */
+export function policyHero(policy: InsurancePolicy, row: InsuranceRow): PolicyHero {
+  const { amount, currency } = row.premiumNative;
+  if (!(amount > 0) || row.frequency === null) return { kind: 'none' };
+  if (row.frequency === 'one_time') {
+    return {
+      kind: 'oneTime',
+      amount,
+      currency,
+      paidOn: dayFloor(policy.startDate),
+      ended: row.ended,
+    };
+  }
+  return {
+    kind: 'recurring',
+    amount,
+    currency,
+    frequency: row.frequency,
+    nextPayment: row.ended ? null : row.nextPayment,
+    ended: row.ended,
+    endDay: row.endDay,
   };
 }

@@ -117,6 +117,7 @@
     "deleting": "削除中...",
     "backupFirst": "ヒント：先にバックアップを作成してください（設定 → データとバックアップ）。このデータを取り戻す唯一の方法です。",
     "confirmLabel": "確認のため {{word}} と入力してください",
+    "confirmWord": "削除",
     "deleteAll": "すべてのデータを削除",
     "deleteAllHint": "このコンピュータ上のデータベース、キーファイル、添付ファイルを削除します。データベースの隣にあるコピー（moony.db.bak-…、pre-restore-…）は、アプリ外に保存したバックアップと同様、データフォルダに残ります（データとバックアップ → フォルダを開く）。",
     "deleteButton": "データを削除…",
@@ -133,7 +134,8 @@
     "verificationFailed": "確認に失敗しました",
     "updateFailed": "更新に失敗しました",
     "deletionFailed": "削除に失敗しました",
-    "languageChanged": "言語を変更しました"
+    "languageChanged": "言語を変更しました",
+    "currencyChanged": "メイン通貨を{{currency}}に変更しました。合計は再計算されました。"
   },
   "rulePacks": {
     "title": "分類ルールパック",

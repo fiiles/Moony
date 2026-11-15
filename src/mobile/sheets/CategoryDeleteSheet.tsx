@@ -118,15 +118,7 @@ export function CategoryDeleteSheet({ row, usageText, onClose }: CategoryDeleteS
         onOpenChange={setPicking}
         title={t('categoryManagement.moveTo')}
         full
-        footer={
-          <Button
-            variant="ghost"
-            className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-            onClick={() => setPicking(false)}
-          >
-            {tc('buttons.cancel')}
-          </Button>
-        }
+        dismiss="cancel"
       >
         <PickGroup title={t('categoryManagement.moveToPlaceholder')}>
           {targets.map((c) => (

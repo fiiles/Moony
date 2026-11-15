@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
 import { RULE_PACK_COUNTRY_IDS, countryOptionsFromPacks } from '@/utils/locale-defaults';
 import { PickRow } from '@/mobile/components/PickRow';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -22,7 +21,6 @@ interface CountryPickerSheetProps {
 export function CountryPickerSheet({ open, onOpenChange, value, onPick }: CountryPickerSheetProps) {
   const { t, i18n } = useTranslation('mobile');
   const { t: ta } = useTranslation('auth');
-  const { t: tc } = useTranslation('common');
   const options = useMemo(
     () => countryOptionsFromPacks([...RULE_PACK_COUNTRY_IDS], i18n.language),
     [i18n.language]
@@ -39,15 +37,7 @@ export function CountryPickerSheet({ open, onOpenChange, value, onPick }: Countr
       onOpenChange={onOpenChange}
       title={t('firstRun.countryPick')}
       full
-      footer={
-        <Button
-          variant="ghost"
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={() => onOpenChange(false)}
-        >
-          {tc('buttons.cancel')}
-        </Button>
-      }
+      dismiss="cancel"
     >
       <div
         role="radiogroup"

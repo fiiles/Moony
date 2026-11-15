@@ -45,6 +45,11 @@ export interface Formatters {
    * ("septiembre de 2026", "září 2026"), capitalised where it does not ("October 2026").
    */
   monthInSentence: (date: Date, opts?: Intl.DateTimeFormatOptions) => string;
+  /**
+   * The month label of a time axis over a long span (a UTC day). The desktop writes "zář 26"; the
+   * phone "9/2026", the month and the full year, which never reads as a day (audit 2026-11-15 C5).
+   */
+  axisMonth: (unixSeconds: number) => string;
 }
 
 /** `-0` and NaN never reach the user. */
@@ -105,8 +110,40 @@ function spaceSign(text: string): string {
  * with no profile context pass `undefined` explicitly, and then every currency
  * shows its ISO code.
  */
-export function createFormatters(locale: string, mainCurrency: string | undefined): Formatters {
+/**
+ * Where the formatters write: the desktop, or the phone shell, whose dates follow one table
+ * (README §13, "Dates and periods"): in English a day's month is a word ("Sep 30", never "9/30",
+ * audit 2026-11-15 B1), a long axis is "9/2026" (C5). Every other output is the same.
+ */
+export type FormatStyle = 'desktop' | 'phone';
+
+/** A day's numeric month as a word, for the phone's English (a month without a day stays). */
+function phoneDayOptions(
+  locale: string,
+  style: FormatStyle,
+  opts: Intl.DateTimeFormatOptions
+): Intl.DateTimeFormatOptions {
+  if (style !== 'phone' || !locale.toLowerCase().startsWith('en')) return opts;
+  if (opts.day === undefined || (opts.month !== 'numeric' && opts.month !== '2-digit')) return opts;
+  return { ...opts, month: 'short' };
+}
+
+/**
+ * The hour of a time: two digits on a 24-hour clock ("08:51"), a bare number on a 12-hour one
+ * ("8:51 AM", audit 2026-11-15 B6), as each clock is written.
+ */
+function hourOption(locale: string): '2-digit' | 'numeric' {
+  const cycle = dateFormat(locale, { hour: 'numeric' }).resolvedOptions().hourCycle;
+  return cycle === 'h12' || cycle === 'h11' ? 'numeric' : '2-digit';
+}
+
+export function createFormatters(
+  locale: string,
+  mainCurrency: string | undefined,
+  style: FormatStyle = 'desktop'
+): Formatters {
   const main = mainCurrency?.trim().toUpperCase();
+  const hour = hourOption(locale);
   const money: Formatters['money'] = (amount, currency, opts = {}) => {
     const label = (currency || '').trim();
     const code = label.toUpperCase();
@@ -129,7 +166,9 @@ export function createFormatters(locale: string, mainCurrency: string | undefine
       });
       // numberFormat() falls back to a plain format for codes Intl rejects;
       // detect that and append the code ourselves.
-      const text = nf.format(value);
+      // The phone writes the yen narrow: Japanese's full-width "￥" stands heavy beside Latin
+      // digits (audit 2026-11-15 B11); the desktop keeps Intl's sign
+      const text = style === 'phone' ? nf.format(value).replace('\uFFE5', '¥') : nf.format(value);
       const out = nf.resolvedOptions().style === 'currency' ? text : `${text} ${label}`;
       return opts.signed ? spaceSign(out) : out;
     }
@@ -164,7 +203,9 @@ export function createFormatters(locale: string, mainCurrency: string | undefine
     const base: Intl.DateTimeFormatOptions = Object.keys(opts).length
       ? opts
       : { year: 'numeric', month: 'numeric', day: 'numeric' };
-    return dateFormat(locale, { ...base, timeZone: 'UTC' }).format(new Date(unixSeconds * 1000));
+    return dateFormat(locale, { ...phoneDayOptions(locale, style, base), timeZone: 'UTC' }).format(
+      new Date(unixSeconds * 1000)
+    );
   };
 
   const dateTime: Formatters['dateTime'] = (unixSeconds, opts = {}) => {
@@ -173,13 +214,15 @@ export function createFormatters(locale: string, mainCurrency: string | undefine
     const styled = opts.dateStyle !== undefined || opts.timeStyle !== undefined;
     const base: Intl.DateTimeFormatOptions = styled
       ? {}
-      : { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return dateFormat(locale, { ...base, ...opts }).format(new Date(unixSeconds * 1000));
+      : { year: 'numeric', month: 'numeric', day: 'numeric', hour, minute: '2-digit' };
+    return dateFormat(locale, phoneDayOptions(locale, style, { ...base, ...opts })).format(
+      new Date(unixSeconds * 1000)
+    );
   };
 
   const time: Formatters['time'] = (unixSeconds, opts = {}) => {
     if (!Number.isFinite(new Date(unixSeconds * 1000).getTime())) return '';
-    return dateFormat(locale, { hour: '2-digit', minute: '2-digit', ...opts }).format(
+    return dateFormat(locale, { hour, minute: '2-digit', ...opts }).format(
       new Date(unixSeconds * 1000)
     );
   };
@@ -194,7 +237,7 @@ export function createFormatters(locale: string, mainCurrency: string | undefine
     const base: Intl.DateTimeFormatOptions = hasDatePart
       ? opts
       : { year: 'numeric', month: 'numeric', day: 'numeric', ...opts };
-    return dateFormat(locale, base).format(d);
+    return dateFormat(locale, phoneDayOptions(locale, style, base)).format(d);
   };
 
   const monthInSentence: Formatters['monthInSentence'] = (value, opts = {}) =>
@@ -211,16 +254,40 @@ export function createFormatters(locale: string, mainCurrency: string | undefine
     return text.charAt(0).toUpperCase() + text.slice(1);
   };
 
-  return { locale, money, number, percent, day, dateTime, time, date, month, monthInSentence };
+  const axisMonth: Formatters['axisMonth'] = (unixSeconds) =>
+    day(
+      unixSeconds,
+      style === 'phone'
+        ? { month: 'numeric', year: 'numeric' }
+        : { month: 'short', year: '2-digit' }
+    );
+
+  return {
+    locale,
+    money,
+    number,
+    percent,
+    day,
+    dateTime,
+    time,
+    date,
+    month,
+    monthInSentence,
+    axisMonth,
+  };
 }
 
 const formatterCache = new Map<string, Formatters>();
-/** Memoized per locale and main currency (formatters are pure). */
-export function getFormatters(locale: string, mainCurrency: string | undefined): Formatters {
-  const key = `${locale}|${mainCurrency?.trim().toUpperCase() ?? ''}`;
+/** Memoized per locale, main currency and style (formatters are pure). */
+export function getFormatters(
+  locale: string,
+  mainCurrency: string | undefined,
+  style: FormatStyle = 'desktop'
+): Formatters {
+  const key = `${locale}|${mainCurrency?.trim().toUpperCase() ?? ''}|${style}`;
   let f = formatterCache.get(key);
   if (!f) {
-    f = createFormatters(locale, mainCurrency);
+    f = createFormatters(locale, mainCurrency, style);
     formatterCache.set(key, f);
   }
   return f;

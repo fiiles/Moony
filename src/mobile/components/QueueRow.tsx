@@ -4,7 +4,8 @@ import { Banknote, Check, Clock, Info, Tag } from 'lucide-react';
 import type { CategorizeQueueRow, TransactionCategory } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
 import { cn } from '@/lib/utils';
-import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
+import { transactionDetails } from '@/utils/transaction-text';
+import { transactionTitle } from '@/mobile/lib/transaction-title';
 import { DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -110,7 +111,9 @@ export function QueueRow({
   const { transaction: tx, suggestion } = row;
   const credit = tx.type === 'credit';
   const details = transactionDetails(tx);
-  const title = counterpartyLabel(tx).title ?? details[0] ?? tb('transaction.counterparty');
+  // The title of every payment row (C4); the queue keeps the rest of the text in its sub, as the
+  // words of the payment are what a category is chosen by
+  const title = transactionTitle(tx) ?? tb('transaction.counterparty');
   const detail = details.filter((text) => text !== title).join(' · ');
 
   const sub = [dayText(tx.bookingDate), detail].filter(Boolean).join(' · ');
@@ -142,7 +145,10 @@ export function QueueRow({
         <PillButton
           tone="dark"
           onClick={onAccept}
-          label={`${tb('categorization.acceptSuggestion')}: ${name} (${source})`}
+          label={tb('mobile:labelValue', {
+            label: tb('categorization.acceptSuggestion'),
+            value: `${name} (${source})`,
+          })}
         >
           <Check aria-hidden strokeWidth={2} />
           <span className="min-w-0 truncate">{name}</span>
@@ -196,7 +202,7 @@ export function QueueRow({
       swipeRightLabel={t('account.ledger.details')}
       swipeRightIcon={Info}
       menu={{
-        label: `${tc('labels.actions')}: ${title}`,
+        label: tc('mobile:labelValue', { label: tc('labels.actions'), value: title }),
         // Podrobnosti (and Nechat on a row with a suggestion) are nowhere else on the row
         shown: true,
         children: (

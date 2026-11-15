@@ -19,12 +19,15 @@
       "unchanged": "uendret",
       "noHistory": "ingen historikk"
     },
-    "emptyDescription": "Legg til en konto eller en investering, så bygger Moony oversikten, diagrammene og utviklingen din ut fra dem. Alt blir på denne telefonen."
+    "emptyDescription": "Legg til en konto eller en investering, så bygger Moony oversikten, diagrammene og utviklingen din ut fra dem. Alt blir på denne telefonen.",
+    "ringCenter": "Eiendeler"
+  },
+  "money": {
+    "approx": "≈ {{amount}}",
+    "noRate": "ingen kurs for {{currency}}",
+    "inclFx": "inkl. valuta"
   },
   "cashflow": {
-    "subtitle_one": "Faktiske inntekter og utgifter fra {{count}} konto",
-    "subtitle_other": "Faktiske inntekter og utgifter fra {{count}} kontoer",
-    "subtitleAll": "Faktiske inntekter og utgifter fra alle kontoer",
     "shareOfExpenses": "{{share}} av utgiftene",
     "shareOfIncome": "{{share}} av inntektene",
     "partial": "Perioden er ikke over ennå; tallene fylles ut med neste kontoutskrift.",
@@ -38,21 +41,38 @@
       "done": "Ferdig"
     },
     "limitSheet": {
-      "pick": "Velg kategorien du vil følge opp utgiftene i."
+      "pick": "Velg kategorien du vil følge opp utgiftene i.",
+      "usual": "Du bruker vanligvis {{amount}} i måneden.",
+      "openHelp": "Gjelder til du endrer den.",
+      "closedHelp": "Etter siste måned gjelder grensen fra før igjen."
     },
     "budgets": {
       "averageNote": "⌀ siste 6 måneder"
     },
     "showMore_one": "Vis {{count}} transaksjon til",
     "showMore_other": "Vis {{count}} transaksjoner til",
-    "rowMenu": "Flere handlinger: {{title}}"
+    "rowMenu": "Flere handlinger: {{title}}",
+    "scopeAll": "Alle kontoer",
+    "scope_one": "{{count}} konto",
+    "scope_other": "{{count}} kontoer",
+    "limit": {
+      "remaining": "{{amount}} igjen av {{limit}}",
+      "over": "Overskredet med {{amount}} · grense {{limit}}",
+      "exhausted": "Brukt opp · grense {{limit}}"
+    },
+    "trend": {
+      "title_one": "Siste {{count}} måned",
+      "title_other": "Siste {{count}} måneder",
+      "max": "høyest {{amount}}"
+    },
+    "incomeNote": "Innbetalinger uten kategori regnes som inntekt"
   },
   "upkeep": {
     "title": "Datavedlikehold",
     "count_one": "{{count}} oppgave",
     "count_other": "{{count}} oppgaver",
-    "balancesStale_one": "{{count}} saldo eldre enn en måned",
-    "balancesStale_other": "{{count}} saldoer eldre enn en måned",
+    "balancesStale_one": "{{count}} saldo å oppdatere",
+    "balancesStale_other": "{{count}} saldoer å oppdatere",
     "uncategorized_one": "{{count}} betaling uten kategori",
     "uncategorized_other": "{{count}} betalinger uten kategori",
     "uncategorizedFrom": "{{account}} · fra kontoutskriften {{date}}",
@@ -74,7 +94,11 @@
       "revalue": "Vurder på nytt",
       "enterBalance": "Angi saldo",
       "enterRate": "Legg inn rente"
-    }
+    },
+    "olderThanMonth": "Eldre enn en måned",
+    "fromStatement": "kontoutskrift {{date}}",
+    "loanBalanceFrom": "Saldo fra {{date}}",
+    "loanFixationEnded": "Fastrenten utløp {{date}}"
   },
   "recordBalances": {
     "title": "Registrer saldoer",
@@ -115,18 +139,13 @@
       "insurance": "Forsikringer"
     },
     "manual": "manuelt",
-    "statementOn": "kontoutskrift {{date}}",
-    "balanceOn": "saldo {{date}}",
     "trail": {
       "change": "{{amount}} · 30 dager",
       "staleStatement_one": "kontoutskrift {{count}} dag gammel",
       "staleStatement_other": "kontoutskrift {{count}} dager gammel",
       "staleBalance_one": "saldo {{count}} dag gammel",
-      "staleBalance_other": "saldo {{count}} dager gammel",
-      "approx": "≈ {{amount}}",
-      "noRate": "ingen kurs for {{currency}}"
+      "staleBalance_other": "saldo {{count}} dager gammel"
     },
-    "perMonth": "{{amount}} / mnd",
     "nextPayment": "neste betaling {{date}}",
     "menu": {
       "sort": "Sorter",
@@ -149,8 +168,8 @@
     "insurance": {
       "type": "Forsikringstype",
       "upcoming": "Neste betalinger",
-      "upcomingNote_one": "{{count}} dag",
-      "upcomingNote_other": "{{count}} dager",
+      "upcomingNote_one": "neste {{count}} dag",
+      "upcomingNote_other": "neste {{count}} dager",
       "showAll_one": "Vis {{count}}",
       "showAll_other": "Vis alle {{count}}"
     },
@@ -192,7 +211,7 @@
     "unsnooze": "Tilbake i køen"
   },
   "account": {
-    "record": "Registrer saldo",
+    "record": "Endre saldo",
     "import": "Importer kontoutskrift",
     "menu": {
       "edit": "Rediger konto",
@@ -202,11 +221,6 @@
     },
     "addTx": {
       "noCategorySub": "Du kan kategorisere den senere"
-    },
-    "stats": {
-      "changeThisYear": "Endring i år",
-      "avgPerMonth": "Gjennomsnitt per måned",
-      "yearlyInterest": "Årlig rente"
     },
     "flows": {
       "title": "Pengestrømmer"
@@ -243,7 +257,12 @@
     "importHistory": {
       "menu": "Importvalg"
     },
-    "autoCategorizeAllDone": "Alle betalinger på denne kontoen har allerede en kategori."
+    "autoCategorizeAllDone": "Alle betalinger på denne kontoen har allerede en kategori.",
+    "manual": "Føres manuelt",
+    "noBalance": {
+      "label": "Saldo",
+      "note": "Ingen saldo registrert ennå"
+    }
   },
   "loan": {
     "nextPayment": "Neste termin {{amount}} · {{date}}",
@@ -251,7 +270,8 @@
     "stats": {
       "since": "siden {{month, lower}}",
       "extra": "ekstra {{amount}}",
-      "until": "til {{month, lower}}"
+      "until": "til {{month, lower}}",
+      "fixationIn": "om {{duration}}"
     },
     "alerts": {
       "fixationSoon_one": "Bindingstiden utløper om {{count}} dag. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
@@ -265,13 +285,24 @@
       "yearSub_one": "{{count}} termin · renter {{interest}}",
       "yearSub_other": "{{count}} terminer · renter {{interest}}",
       "showAll_one": "Vis {{count}}",
-      "showAll_other": "Vis alle {{count}}"
+      "showAll_other": "Vis alle {{count}}",
+      "interest": "renter {{amount}}",
+      "principal": "avdrag {{amount}}"
     },
     "extra": {
       "noChange": "Dette beløpet endrer verken løpetiden, terminen eller rentene."
     },
     "events": {
       "menu": "Hendelsesmeny"
+    },
+    "afterFixation": {
+      "title": "Etter bindingstiden",
+      "rate": "Med {{rate}}",
+      "current": "dagens rente",
+      "delta": "{{delta}} pp"
+    },
+    "legend": {
+      "tapHint": "Trykk på et merke for å se hva som skjedde."
     }
   },
   "documents": {
@@ -300,18 +331,24 @@
     "anniversary": "årsdag {{date}}",
     "notice": "Si opp innen",
     "limitsTotal": "totalt {{amount}}",
-    "total": "Totalt · {{payments}}"
+    "total": "Totalt · {{payments}}",
+    "hero": {
+      "label": "Premie · {{frequency}}",
+      "next": "Neste betaling {{date}} · {{distance}}",
+      "ended": "Avtalen endte {{date}}",
+      "endedPlain": "Avtalen er avsluttet",
+      "paidOn": "Betalt {{date}}",
+      "noPremium": "Ingen premie registrert"
+    }
   },
   "property": {
     "notFound": "Denne eiendommen finnes ikke lenger.",
     "ltv": "LTV {{ltv}}",
-    "rentYear": "{{rent}} i året",
     "perYear": "i året",
-    "loanPayment": "termin {{amount}} / mnd",
+    "loanPayment": "termin {{amount}}",
     "rowMenu": "Flere handlinger: {{name}}",
     "costKindRecurring": "Fast",
     "costKindOneTime": "Engangs",
-    "costYear": "{{amount}} i året",
     "costCurrent": "Nå {{amount}}",
     "costDateInFuture": "Datoen for en kostnad kan ikke ligge i fremtiden.",
     "costNameRequired": "Skriv inn et navn på kostnaden.",
@@ -333,10 +370,15 @@
   },
   "transaction": {
     "flowSaved": "Betydning lagret",
-    "counterparty": "Motpart",
-    "date": "Dato",
     "category": "Kategori",
-    "flow": "Betydning",
+    "flow": "Regnes som",
+    "auto": "Automatisk",
+    "by": {
+      "explicit": "valgt av deg",
+      "category": "etter kategori",
+      "direction": "etter betalingsretning",
+      "ownAccount": "mellom egne kontoer"
+    },
     "details": "Detaljer",
     "sourceLabel": "Kilde",
     "source": {
@@ -347,6 +389,8 @@
     "status": "Status",
     "booked": "Bokført",
     "currency": "Valuta",
+    "counterpartyAccount": "Motpartens konto",
+    "copied": "Kopiert: {{label}}",
     "plan": "Utgiftsplan",
     "noPlan": "Ingen plan"
   },
@@ -355,8 +399,19 @@
     "recent": "Nylig brukt",
     "all": "Alle kategorier",
     "suggested": "Forslag",
+    "current": "Nåværende",
     "decline": "Avslå forslaget",
-    "empty": "Ingen kategori passer"
+    "empty": "Ingen kategori passer",
+    "remember": "Gjør det samme neste gang",
+    "rememberFrom": "Fremtidige betalinger fra {{who}} til denne kontoen får samme kategori.",
+    "rememberTo": "Fremtidige betalinger til {{who}} fra denne kontoen får samme kategori.",
+    "applyHistory_one": "Endre også {{count}} tidligere betaling",
+    "applyHistory_other": "Endre også {{count}} tidligere betalinger",
+    "applyHistorySub": "Nå: {{breakdown}}"
+  },
+  "currencyPicker": {
+    "frequent": "Mest brukt",
+    "all": "Alle valutaer"
   },
   "import": {
     "title": "Importer kontoutskrift",
@@ -490,12 +545,12 @@
       "count_one": "{{count}} emisjon",
       "count_other": "{{count}} emisjoner",
       "nearest": "nærmeste forfall {{month, lower}}",
-      "coupon": "kupong {{amount}} / år",
+      "coupon": "kupong {{amount}}",
       "upcoming": "Neste kuponger og forfall",
       "noUpcoming": "Ingen kuponger eller forfall det kommende året.",
       "allRepaid": "Alle emisjoner er innfridd. Slå på «{{action}}» i menyen ··· for å se dem.",
       "loadFailed": "Obligasjonene kunne ikke lastes.",
-      "rateNote": "{{rate}} p.a. vektet",
+      "rateNote": "{{rate}} p.a.",
       "nextPayment": "Neste betaling",
       "notGiven": "ikke oppgitt"
     },
@@ -510,8 +565,8 @@
     "realEstate": {
       "personal": "egen bolig",
       "investment": "investering",
-      "rent": "leie {{amount}} / måned",
-      "revaluedOn": "{{date}}"
+      "rent": "leie {{amount}}",
+      "revaluedOn": "verdsatt {{date}}"
     },
     "empty": {
       "title": "Ingenting eid ennå",
@@ -534,9 +589,8 @@
       "pricesAt": "kurser {{time}}",
       "pricesOn": "kurser {{date}}",
       "invested": "investert {{amount}}",
-      "yieldNote": "avkastning {{percent}}",
-      "twrYtd": "Avkastning i år",
-      "twrNote": "TWR · MWR {{mwr}}",
+      "yieldNote": "avk. {{percent}}",
+      "twrNote": "MWR {{mwr}}",
       "twrOnlyNote": "TWR",
       "twrNoHistory": "ingen historikk ennå",
       "positionsTab": "Beholdninger · {{count}}",
@@ -559,11 +613,10 @@
       "target": "mål {{price}}",
       "targetReached": "målet nådd",
       "dayChange": "i dag",
-      "realizedShort": "realisert {{amount}}"
+      "watchedTabPlain": "Fulgte"
     },
     "crypto": {
-      "largestNote": "{{share}} av krypto",
-      "heldNote": "{{share}} av krypto · {{date}}"
+      "largestNote": "{{share}} av krypto"
     },
     "closed": {
       "on": "avsluttet {{date}}",
@@ -572,18 +625,18 @@
     },
     "position": {
       "heroLabel": "Verdi av beholdningen · {{quantity}} {{unit}}",
-      "perUnit": "{{price}} per stk.",
+      "perUnit": "{{price}}/stk.",
       "stats": {
-        "value": "Verdi",
         "inCurrency": "i {{currency}}",
-        "price": "Kurs"
+        "asOf": "per {{when}}"
       },
       "tx": {
-        "buy": "Kjøp · {{quantity}} {{unit}}",
-        "sell": "Salg · {{quantity}} {{unit}}",
+        "buy": "Kjøp",
+        "sell": "Salg",
         "showAll_one": "Vis {{count}}",
         "showAll_other": "Vis alle {{count}}",
-        "menu": "Transaksjonsmeny"
+        "menu": "Transaksjonsmeny",
+        "quantity": "{{quantity}} {{unit}}"
       },
       "dividend": {
         "menu": "Utbyttemeny"
@@ -592,12 +645,12 @@
       "following": "Følger",
       "followed": "Lagt til i følgelisten",
       "range52": "52-ukers spenn",
-      "renamed": "Navn lagret"
+      "renamed": "Navn lagret",
+      "historyComputing": "Historikken regnes fortsatt ut …",
+      "dividendSource": "Utbytte fra {{source}}"
     },
     "watch": {
       "stats": {
-        "today": "I dag",
-        "since": "Siden følging",
         "noTarget": "ingen mål satt"
       },
       "above": "Over",
@@ -605,7 +658,8 @@
       "openPosition": "Åpne beholdningen",
       "notesEmpty": "Ingen notater ennå. Trykk på Rediger for å legge til analysenotater — markdown fungerer."
     },
-    "assetsTrendLabel": "Diagram over eiendeler"
+    "assetsTrendLabel": "Diagram over eiendeler",
+    "changeCaption": "Endring de siste 30 dagene"
   },
   "settings": {
     "rows": {
@@ -624,7 +678,8 @@
       "categories": "Kategorier",
       "categoriesSub_one": "{{count}} kategori",
       "categoriesSub_other": "{{count}} kategorier",
-      "categorization": "Kategorisering"
+      "categorization": "Kategorisering",
+      "lockSub": "Låser appen med en gang"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "ingen telemetri",
@@ -742,7 +797,8 @@
       "usageBudgets_one": "{{count}} budsjett",
       "usageBudgets_other": "{{count}} budsjetter"
     },
-    "remindersLead": "Velg hva Datavedlikehold og «Det som kommer» på Oversikt minner deg om; varslene følger den samme listen. En type du slår av, vises ingen steder, heller ikke på datamaskinen. Når varslene kommer, stiller du inn under Varsler."
+    "remindersLead": "Velg hva Datavedlikehold og «Det som kommer» på Oversikt minner deg om; varslene følger den samme listen. En type du slår av, vises ingen steder, heller ikke på datamaskinen. Når varslene kommer, stiller du inn under Varsler.",
+    "saveTimeout": "Lagringen tar for lang tid. Prøv igjen."
   },
   "backup": {
     "lead": "En sikkerhetskopi er én kryptert fil: databasen, nøklene og vedleggene. Bare passordet ditt åpner den.",
@@ -778,7 +834,7 @@
       },
       "marketData": {
         "title": "Markedsdata",
-        "text": "– bare kursene på aksjene, valutaene og kryptovalutaene du følger, hentes (Yahoo Finance, ESB). Appen fungerer også uten nett."
+        "text": "– bare kursene på aksjene, valutaene og kryptovalutaene du følger, og logoene til aksjene dine hentes (Yahoo Finance, ESB, Financial Modeling Prep). Appen fungerer også uten nett."
       }
     },
     "recoveryLead": "Den eneste veien til dataene dine hvis du glemmer passordet. Oppbevar den utenfor denne telefonen – i en passordbehandler, i Filer eller på papir.",
@@ -883,6 +939,10 @@
     },
     "form": {
       "newDescription": "Hvor mye du vil bruke på én ting i løpet av et år. Du legger betalinger til i planen fra betalingsdetaljene."
+    },
+    "empty": {
+      "takeOver": "Overta planene fra {{year}} og juster bare beløpene, eller opprett en ny plan.",
+      "again": "Opprett en plan for dette året, for eksempel ferie, gaver eller fast pleie."
     }
   },
   "gettingStarted": {
@@ -896,6 +956,10 @@
       "confirm": "Forkast"
     }
   },
+  "fields": {
+    "pickDay": "Velg en dag",
+    "pickMonth": "Velg en måned"
+  },
   "loadError": {
     "overview": "Oversikten kunne ikke lastes.",
     "finance": "Økonomien kunne ikke lastes.",
@@ -904,5 +968,78 @@
   },
   "pull": {
     "refreshing": "Oppdaterer…"
+  },
+  "agenda": {
+    "what": {
+      "insurance_anniversary": "Oppsigelsesfrist",
+      "insurance_anniversary_passed": "Fristen er ute",
+      "insurance_end": "Avtalen slutter",
+      "insurance_payment": "Premiebetaling",
+      "loan_fixation_end": "Fastrenten slutter",
+      "loan_payoff": "Siste avdrag",
+      "bond_maturity": "Forfall",
+      "bond_coupon": "Kupong",
+      "account_termination": "Kontoen avsluttes",
+      "savings_rate_end": "Kampanjerenten slutter",
+      "watch_target_below": "Falt til målet",
+      "watch_target_above": "Nådde målet",
+      "stock_split": "Splitt {{ratio}}"
+    },
+    "splitTrades_one": "{{count}} transaksjon å justere",
+    "splitTrades_other": "{{count}} transaksjoner å justere"
+  },
+  "stat": {
+    "assets": "Sum eiendeler",
+    "liabilities": "Gjeld",
+    "freeCash": "Kontanter",
+    "freeCashNote": "på konto",
+    "unrealizedGain": "Urealisert",
+    "unrealizedLoss": "Urealisert",
+    "dividends": "Utbytte",
+    "returnYtd": "Avkastning i år",
+    "faceValue": "Pålydende",
+    "yearlyCoupon": "Årlig kupong",
+    "nextMaturity": "Neste forfall",
+    "realized": "Realisert",
+    "largest": "Største",
+    "changeYtd": "Endring i år",
+    "avgPerMonth": "Snitt / mnd.",
+    "yearlyInterest": "Rente / år",
+    "today": "I dag",
+    "target": "Mål",
+    "sinceFollowing": "Siden følging",
+    "value": "Verdi",
+    "price": "Kurs",
+    "invested": "Investert",
+    "heldFor": "Holdt i",
+    "quantity": "Antall",
+    "avgPrice": "Snittpris",
+    "yearlyYield": "Årsavkastning",
+    "imported": "Importert",
+    "duplicates": "Duplikater",
+    "errors": "Feil"
+  },
+  "statWide": {
+    "interest": "Betalte renter",
+    "principal": "Nedbetalt hovedstol",
+    "remaining": "Gjenstående terminer",
+    "fixation": "Bindingstiden utløper",
+    "value": "Verdi",
+    "equity": "Egenkapital",
+    "grossYield": "Brutto avkastning",
+    "netCashflow": "Netto kontantstrøm"
+  },
+  "period": {
+    "month": "{{amount}} / mnd.",
+    "quarter": "{{amount}} / kvartal",
+    "halfYear": "{{amount}} / halvår",
+    "year": "{{amount}} / år",
+    "avgMonth": "⌀ {{amount}} / mnd."
+  },
+  "labelValue": "{{label}}: {{value}}",
+  "statNote": {
+    "notRented": "ikke utleid",
+    "returns": "gir {{amount}}",
+    "average": "⌀ {{price}}"
   }
 }

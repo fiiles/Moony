@@ -35,6 +35,7 @@ import { ClosedPositionsSheet } from '@/mobile/sheets/ClosedPositionsSheet';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { cryptoPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { useListText } from '@/mobile/hooks/use-list-text';
 
 /**
  * Krypto, the class page of Majetek (spec §8.8: "Krypto is the same page"): the value of the coins
@@ -52,6 +53,7 @@ export default function Crypto() {
   const { t: tcr } = useTranslation('crypto');
   const { t: td } = useTranslation('dashboard');
   const { t: tc } = useTranslation('common');
+  const list = useListText();
   const back = useBack(routes.wealth);
   const { positions, rows, reportCurrency, isLoading, isError } = useCryptoPositions();
   const { transactions: trades, convertAt } = useCryptoTrades();
@@ -73,6 +75,7 @@ export default function Crypto() {
       // A pull from the top refreshes the prices, as `···` › Aktualizovat ceny does (spec §8.8)
       onRefresh={() => refresh.mutateAsync()}
       title={td('cards.crypto')}
+      large
       leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
       trailing={
         <>
@@ -114,7 +117,7 @@ export default function Crypto() {
         )
       ) : (
         <>
-          {/* The nav bar keeps its one title, so the count and the age of the prices are the first line */}
+          {/* The count and the age of the prices under the large title */}
           <PricesLine count={tcr('summary.positions', { count: open.length })} rows={rows} />
           {/* Amounts the backend could not convert into the report currency (left out) */}
           <ScaledConversionNote
@@ -146,7 +149,7 @@ export default function Crypto() {
               action={{ label: tcr('unpricedBanner.pick'), onClick: () => setPickRow(unpriced[0]) }}
             >
               {tcr('unpricedBanner.message', {
-                tickers: unpriced.map((row) => row.ticker).join(', '),
+                tickers: list(unpriced.map((row) => row.ticker)),
               })}
             </InlineAlert>
           )}
@@ -222,7 +225,7 @@ function CryptoStats({
 
   const stats: StatItem[] = [
     {
-      label: (unrealized ?? 0) >= 0 ? tcr('summary.unrealizedGain') : tcr('summary.unrealizedLoss'),
+      label: (unrealized ?? 0) >= 0 ? t('stat.unrealizedGain') : t('stat.unrealizedLoss'),
       value: unrealized === null ? '—' : statMoney(unrealized),
       tone: statTone(unrealized),
       note:
@@ -231,13 +234,14 @@ function CryptoStats({
           : undefined,
     },
     {
-      label: tcr('summary.realized'),
+      label: t('stat.realized'),
       value: realized === null ? '—' : statMoney(realized),
       tone: statTone(realized),
-      note: sells > 0 ? tcr('detail.sells', { count: sells }) : tcr('detail.noSells'),
+      // No sells: the value says it, the note stays empty (C2)
+      note: sells > 0 ? tcr('detail.sells', { count: sells }) : undefined,
     },
     {
-      label: tcr('summary.largest'),
+      label: t('stat.largest'),
       value: largest?.ticker ?? '—',
       note: largest
         ? t('wealth.crypto.largestNote', { share: fmt.percent(share, 0) })

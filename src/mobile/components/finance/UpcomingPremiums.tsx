@@ -8,6 +8,7 @@ import { DateChip, DATE_CHIP_WIDTH } from '@/mobile/components/DateChip';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { MoreRow } from '@/mobile/components/wealth/MoreRow';
+import { useApprox } from '@/mobile/hooks/use-approx';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import {
   UPCOMING_DAYS,
@@ -34,7 +35,8 @@ interface UpcomingPremiumsProps {
  * "Nejbližší platby" under the policy rows (spec §8.4, §8.8): the premiums and the loan payments
  * ("Splátka úvěru" in the sub-line, C11) falling due in the next 90 days as a dated list in place of the desktop's 12-month calendar chart — a date chip (the day
  * over its weekday), the policy's name, the insurer with the distance ("Allianz · za 73 dní") and
- * the amount in the policy's own currency (never converted, never summed). The
+ * the amount in the policy's or the loan's own currency (never summed), with "≈" its worth in the
+ * main currency under it when that is another one (README §13, "Money and currencies"). The
  * distance is in the sub-line, not in the chip: "in 2 Monaten" does not fit 54 pt, a weekday
  * always does; a long insurer is the part of the sub-line that gives way. Five rows, then "Zobrazit
  * všech N" unfolds the rest in place; a tap opens the policy. Nothing is rendered without a payment
@@ -44,6 +46,7 @@ export function UpcomingPremiums({ rows, loans = NO_LOANS, today }: UpcomingPrem
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const approx = useApprox();
   const [expanded, setExpanded] = useState(false);
   const loanSub = t('finance.loanPayment');
   // Premiums and loan payments in one dated list, nearest first (a stable merge: premiums first
@@ -105,6 +108,7 @@ export function UpcomingPremiums({ rows, loans = NO_LOANS, today }: UpcomingPrem
                 </span>
               }
               value={moneyText(payment.amount, payment.currency, { decimals: 0 })}
+              valueSub={approx(payment.amount, payment.currency)}
               href={payment.href}
             />
           );

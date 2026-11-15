@@ -26,7 +26,8 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           type={visible ? 'text' : 'password'}
           className={cn(
             'pr-10 tracking-[0.08em] num',
-            touch && 'pr-12',
+            // Phone: the spacing is for the dots of a typed password, not the placeholder (audit D1)
+            touch && 'pr-12 placeholder-shown:tracking-normal',
             visible && 'tracking-normal',
             className
           )}

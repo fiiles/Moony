@@ -4,7 +4,6 @@ import { Trash2 } from 'lucide-react';
 import type { BankBalanceRecord } from '@shared/schema';
 import { useBalanceRecordMutations } from '@/hooks/use-balance-records';
 import { useFormat } from '@/lib/use-format';
-import { Button } from '@/components/ui/button';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -59,14 +58,6 @@ export function BalanceHistorySheet({
         newest
           ? t('balanceHistory.sub', { count: records.length, date: fmt.day(newest.asOf) })
           : t('balanceHistory.empty')
-      }
-      footer={
-        <Button
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={() => onOpenChange(false)}
-        >
-          {tc('buttons.close')}
-        </Button>
       }
     >
       {newestFirst.length > 0 && (

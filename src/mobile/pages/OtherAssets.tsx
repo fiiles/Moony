@@ -62,6 +62,7 @@ export default function OtherAssets() {
   return (
     <Screen
       title={td('cards.otherAssets')}
+      large
       leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
       trailing={
         <>
@@ -175,7 +176,7 @@ function AssetRow({ row, currency }: { row: OtherAssetRow; currency: string }) {
       }
       href={otherAssetPath(asset.id)}
       menu={{
-        label: `${tc('labels.actions')}: ${asset.name}`,
+        label: tc('mobile:labelValue', { label: tc('labels.actions'), value: asset.name }),
         children: (
           <>
             <RowMenuItem onSelect={() => openWith(otherAssetPath(asset.id), 'buy')}>

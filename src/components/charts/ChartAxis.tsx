@@ -20,7 +20,8 @@ interface TimeAxisProps {
 
 /**
  * Time axis under a chart (design system §8): evenly spaced labels in
- * `chart-axis` 10 px, "2. 10." for short spans, "zář 26" for long ones.
+ * `chart-axis` 10 px, "2. 10." for short spans, "zář 26" for long ones (the phone: "9/2026",
+ * `fmt.axisMonth`).
  */
 export function TimeAxis({ t0, t1, count = 5, gutter = AXIS_WIDTH, className }: TimeAxisProps) {
   const fmt = useFormat();
@@ -30,9 +31,7 @@ export function TimeAxis({ t0, t1, count = 5, gutter = AXIS_WIDTH, className }: 
   const today = utcDayFloor(Date.now() / 1000);
   const label = (stamp: number, isLast: boolean) => {
     if (isLast && utcDayFloor(stamp) === today) return t('charts.today');
-    return short
-      ? fmt.day(stamp, { day: 'numeric', month: 'numeric' })
-      : fmt.day(stamp, { month: 'short', year: '2-digit' });
+    return short ? fmt.day(stamp, { day: 'numeric', month: 'numeric' }) : fmt.axisMonth(stamp);
   };
   return (
     <div
@@ -69,12 +68,15 @@ export function CategoryAxis({
   gutter = AXIS_WIDTH,
   centered = false,
   actions,
+  strong,
   className,
 }: {
   labels: string[];
   gutter?: number;
   centered?: boolean;
   actions?: AxisAction[];
+  /** Labels set in the axis's strong weight (the phone's chosen month); none by default. */
+  strong?: readonly boolean[];
   className?: string;
 }) {
   return (
@@ -106,7 +108,11 @@ export function CategoryAxis({
         }
         return centered ? (
           <span key={i} className="flex min-w-0 flex-1 justify-center">
-            <span className="shrink-0 whitespace-nowrap">{l}</span>
+            <span
+              className={cn('shrink-0 whitespace-nowrap', strong?.[i] && 'font-650 text-ink-2')}
+            >
+              {l}
+            </span>
           </span>
         ) : (
           <span key={i} className="flex-1 text-center">

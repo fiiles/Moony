@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
 import { bankAccountsApi } from '@/lib/tauri-api';
 import { BankGuides } from '@/mobile/components/import/ExportGuide';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -21,7 +20,6 @@ interface ExportGuidesSheetProps {
  */
 export function ExportGuidesSheet({ open, onOpenChange }: ExportGuidesSheetProps) {
   const { t } = useTranslation('mobile');
-  const { t: tc } = useTranslation('common');
   const { data: presets = [] } = useQuery({
     queryKey: ['csv-presets'],
     queryFn: () => bankAccountsApi.getCsvPresets(),
@@ -31,20 +29,7 @@ export function ExportGuidesSheet({ open, onOpenChange }: ExportGuidesSheetProps
   const guides = useMemo(() => guidesList(presets), [presets]);
 
   return (
-    <Sheet
-      full
-      open={open}
-      onOpenChange={onOpenChange}
-      title={t('settings.import.guidesRow')}
-      footer={
-        <Button
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={() => onOpenChange(false)}
-        >
-          {tc('buttons.close')}
-        </Button>
-      }
-    >
+    <Sheet full open={open} onOpenChange={onOpenChange} title={t('settings.import.guidesRow')}>
       <BankGuides presets={guides} />
     </Sheet>
   );

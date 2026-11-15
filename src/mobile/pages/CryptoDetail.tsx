@@ -8,7 +8,7 @@ import { useCryptoTransactionMutations } from '@/hooks/use-crypto-mutations';
 import { useFormat } from '@/lib/use-format';
 import { monthsBetween } from '@/utils/duration';
 import type { ChartPeriod } from '@/utils/period';
-import { amountOf, type CryptoRow } from '@/utils/positions';
+import { type CryptoRow } from '@/utils/positions';
 import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { BuyCryptoModal } from '@/components/crypto/BuyCryptoModal';
@@ -17,7 +17,7 @@ import { ButtonPair } from '@/mobile/components/ButtonPair';
 import type { StatItem } from '@/mobile/components/StatRow';
 import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { CryptoMenu } from '@/mobile/components/wealth/CryptoMenu';
-import { PositionHeroCard } from '@/mobile/components/wealth/PositionHeroCard';
+import { POSITION_PERIOD, PositionHeroCard } from '@/mobile/components/wealth/PositionHeroCard';
 import { PositionLedger } from '@/mobile/components/wealth/PositionLedger';
 import { PositionStats } from '@/mobile/components/wealth/PositionStats';
 import { useBack } from '@/mobile/hooks/use-back';
@@ -30,6 +30,7 @@ import { shortDayOptions } from '@/mobile/lib/format-day';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { cryptoPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { DetailSub } from '@/mobile/components/DetailSub';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 
 /** What the screen shows of a loaded coin: the record and what is read from it. */
@@ -60,7 +61,7 @@ export default function CryptoDetail() {
   const { t: td } = useTranslation('dashboard');
   const [, params] = useRoute(routes.cryptoDetail);
   const back = useBack(routes.cryptoList);
-  const [period, setPeriod] = useState<ChartPeriod>('30D');
+  const [period, setPeriod] = useState<ChartPeriod>(POSITION_PERIOD);
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const remove = useDeleteCrypto(params?.id);
@@ -99,18 +100,20 @@ export default function CryptoDetail() {
   return (
     <Screen
       title={view?.holding.ticker ?? ''}
+      large
       leading={<NavTextButton label={td('cards.crypto')} onClick={back} chevron />}
       trailing={view && <CryptoMenu holding={view.holding} onDelete={() => setDeleteOpen(true)} />}
     >
       {view ? (
         <>
-          {/* The nav bar keeps its one title, so the name and the currency are the first line */}
-          <p className="mx-0.5 -mt-0.5 mb-2.5 flex items-center justify-center gap-1.5 text-m-caption text-ink-3">
-            <InstrumentHeadLogo ticker={view.holding.ticker} type="crypto" className="size-5" />
-            <span className="min-w-0 truncate">
-              {[view.holding.name, view.holding.originalCurrency].join(' · ')}
-            </span>
-          </p>
+          {/* The name and the currency under the large title */}
+          <DetailSub
+            icon={
+              <InstrumentHeadLogo ticker={view.holding.ticker} type="crypto" className="size-5" />
+            }
+          >
+            {[view.holding.name, view.holding.originalCurrency].join(' · ')}
+          </DetailSub>
           {/* The list's quality, shown when this coin is one of those not converted */}
           <ScaledConversionNote
             quality={
@@ -124,6 +127,7 @@ export default function CryptoDetail() {
           <PositionHeroCard
             holding={view.holding}
             history={view.history}
+            backfilling={data.historyBackfilling}
             transactions={data.transactions}
             unit={view.holding.ticker}
             quantityDigits={COIN_DIGITS}
@@ -145,7 +149,6 @@ export default function CryptoDetail() {
             holding={view.holding}
             reportCurrency={reportCurrency}
             transactions={data.transactions}
-            classValue={amountOf(view.positions?.totals.value) ?? 0}
           />
           <PositionLedger
             ledger={ledger}
@@ -195,13 +198,10 @@ function CoinStats({
   holding,
   reportCurrency,
   transactions,
-  classValue,
 }: {
   holding: CryptoRow;
   reportCurrency: string;
   transactions: readonly CryptoTransaction[];
-  /** What all the coins are worth in the report currency: the base of the coin's share. */
-  classValue: number;
 }) {
   const { t } = useTranslation('mobile');
   const { t: tcr } = useTranslation('crypto');
@@ -229,24 +229,17 @@ function CoinStats({
           ? tcr('detail.duration.years', { count: held.years })
           : tcr('detail.duration.months', { count: held.months });
 
-  // The share of the class is the open coin's value over all the coins'; a coin that is closed or
-  // has no rate has none to say
-  const share =
-    holding.quantity > 0 && holding.marketValue !== null && classValue > 0
-      ? holding.marketValue / classValue
-      : null;
   const since = firstBuy
     ? fmt.day(firstBuy.transactionDate, shortDayOptions(firstBuy.transactionDate))
     : null;
   const sixth: StatItem = {
-    label: tcr('detail.held'),
+    label: t('stat.heldFor'),
     value: durationText ?? '—',
     note:
       since === null
         ? tcr('detail.sinceFirst.none')
-        : share === null
-          ? tcr('detail.heldSince', { date: since })
-          : t('wealth.crypto.heldNote', { date: since, share: fmt.percent(share, 0) }),
+        : // One fact on the note's one line (C2): the day it began; the share is the hero's
+          tcr('detail.heldSince', { date: since }),
   };
 
   return (

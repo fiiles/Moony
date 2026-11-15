@@ -73,6 +73,7 @@ export default function Crypto() {
       // A pull from the top refreshes the prices, as `···` › Aktualizovat ceny does (spec §8.8)
       onRefresh={() => refresh.mutateAsync()}
       title={td('cards.crypto')}
+      large
       leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
       trailing={
         <>
@@ -114,7 +115,7 @@ export default function Crypto() {
         )
       ) : (
         <>
-          {/* The nav bar keeps its one title, so the count and the age of the prices are the first line */}
+          {/* The count and the age of the prices under the large title */}
           <PricesLine count={tcr('summary.positions', { count: open.length })} rows={rows} />
           {/* Amounts the backend could not convert into the report currency (left out) */}
           <ScaledConversionNote

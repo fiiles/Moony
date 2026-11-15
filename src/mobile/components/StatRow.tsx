@@ -1,4 +1,5 @@
 import { useRef, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useFitText } from '@/mobile/hooks/use-fit-text';
 
@@ -10,6 +11,8 @@ export interface StatItem {
   note?: ReactNode;
   /** Colours the value for a signed result (`.m-stat__v--gain` / `--loss`); the sign stays in the text. */
   tone?: 'gain' | 'loss';
+  /** The value is still being computed: a skeleton bar stands in its place, never a bare "—". */
+  loading?: boolean;
 }
 
 /**
@@ -30,9 +33,10 @@ const CONTAINER_SIZE = `clamp(${STAT_FLOOR}, 19.7cqi, var(--m-fs-stat))`;
  * `STAT_FLOOR`).
  */
 export function StatRow({ stats }: { stats: StatItem[] }) {
+  const { t } = useTranslation('common');
   const rowRef = useRef<HTMLDivElement>(null);
   // The fit follows the shown values' text (a "—" is narrower than an amount).
-  const fit = useFitText(rowRef, stats.map((stat) => stat.value).join('\n'));
+  const fit = useFitText(rowRef, stats.map((stat) => (stat.loading ? '' : stat.value)).join('\n'));
 
   return (
     <div
@@ -50,21 +54,28 @@ export function StatRow({ stats }: { stats: StatItem[] }) {
           <span className="mb-[3px] hyphens-auto break-words text-m-caption text-ink-3">
             {stat.label}
           </span>
-          <span
-            data-fit-text
-            className={cn(
-              'mt-auto block overflow-hidden text-ellipsis whitespace-nowrap text-m-stat num',
-              stat.tone === 'gain' ? 'text-gain' : stat.tone === 'loss' ? 'text-loss' : 'text-ink'
-            )}
-            style={{
-              fontSize:
-                fit === null
-                  ? CONTAINER_SIZE
-                  : `clamp(${STAT_FLOOR}, min(${fit}px, 19.7cqi), var(--m-fs-stat))`,
-            }}
-          >
-            <span>{stat.value}</span>
-          </span>
+          {stat.loading ? (
+            <span aria-busy="true" className="mt-auto flex h-[1.25em] items-center text-m-stat">
+              <span aria-hidden className="skeleton block h-[0.8em] w-4/5" />
+              <span className="sr-only">{t('status.loading')}</span>
+            </span>
+          ) : (
+            <span
+              data-fit-text
+              className={cn(
+                'mt-auto block overflow-hidden text-ellipsis whitespace-nowrap text-m-stat num',
+                stat.tone === 'gain' ? 'text-gain' : stat.tone === 'loss' ? 'text-loss' : 'text-ink'
+              )}
+              style={{
+                fontSize:
+                  fit === null
+                    ? CONTAINER_SIZE
+                    : `clamp(${STAT_FLOOR}, min(${fit}px, 19.7cqi), var(--m-fs-stat))`,
+              }}
+            >
+              <span>{stat.value}</span>
+            </span>
+          )}
           {stat.note !== undefined && stat.note !== null && (
             <span className="mt-[3px] line-clamp-2 break-words text-m-note text-ink-4">
               {stat.note}

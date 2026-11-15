@@ -555,6 +555,22 @@ in the section head's caption (D23); a property's trailing sub is labelled ("oce
 The overflow check of `mobile.html` lists every cut text and fails a frame whose cut text holds a
 digit; run the same check (its `cutFigures` function) over the live phone shell.
 
+**Detail screens** (audit `docs/audits/2026-11-15-mobile-ux-audit-currencies-languages.md`, C10, D8,
+D15). One rule for every screen pushed to show a record or a class — an account, a loan, a policy, a
+position, a coin, a watched ticker, a property, another asset, a spending plan, and the class pages
+Akcie, Krypto, Dluhopisy and Ostatní: the name is the **large title** under the bar (`<Screen large>`,
+the tab roots' 30 pt title), which wraps to as many lines as it needs and is never cut, so a long
+policy or account name no longer ends in an ellipsis between "‹ Finance" and `···`. The back button
+keeps the parent's name; the bar shows the title only once the large one has scrolled away, and only
+there may it end in an ellipsis, the name having been read in full. What the record is ("Fio ·
+2100123456/2010", "Apple Inc. · USD", the insurer, type and state) is the one line under the large
+title, `DetailSub` (13 / 450 `ink-3`, wrapping, an instrument's logo first), never a centred caption.
+A record's detail then opens with its hero — the balance, the outstanding amount, the premium with the
+next payment — also when there is nothing recorded yet ("Zůstatek zatím nezadán", the actions side by
+side under it). Pages with a short fixed name (Nastavení and its sections, Co vás čeká, Spravovat
+rozpočty, the categorize queue, the lock's recovery) keep the title in the bar. The Cashflow
+category detail is a record detail by this rule too.
+
 **Screen.** A screen is the nav bar (44 pt under the top safe area) over one scroll area with a 16 pt
 gutter and room at the bottom for the tab bar (56 pt above the bottom safe area), which is fixed over it.
 Safe areas come from `env(safe-area-inset-*)` as `--safe-top` / `--safe-bottom` (`index.html` asks for

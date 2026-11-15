@@ -281,7 +281,12 @@
     "importHistory": {
       "menu": "Opzioni dell’importazione"
     },
-    "autoCategorizeAllDone": "Tutti i pagamenti di questo conto hanno già una categoria."
+    "autoCategorizeAllDone": "Tutti i pagamenti di questo conto hanno già una categoria.",
+    "manual": "Gestito a mano",
+    "noBalance": {
+      "label": "Saldo",
+      "note": "Nessun saldo ancora registrato"
+    }
   },
   "loan": {
     "nextPayment": "Prossima rata {{amount}} · {{date}}",
@@ -289,7 +294,8 @@
     "stats": {
       "since": "da {{month, lower}}",
       "extra": "extra {{amount}}",
-      "until": "fino a {{month, lower}}"
+      "until": "fino a {{month, lower}}",
+      "fixationIn": "tra {{duration}}"
     },
     "alerts": {
       "fixationSoon_one": "Il tasso fisso termina tra {{count}} giorno. Quando la banca conferma il nuovo tasso, registralo: la rata e il piano vengono ricalcolati.",
@@ -314,6 +320,16 @@
     },
     "events": {
       "menu": "Menu dell'evento"
+    },
+    "afterFixation": {
+      "title": "Dopo il tasso fisso",
+      "rate": "Al {{rate}}",
+      "current": "tasso attuale",
+      "delta": "{{delta}} p.p.",
+      "perMonth": "rata mensile"
+    },
+    "legend": {
+      "tapHint": "Tocca un segno per vedere cosa è successo."
     }
   },
   "documents": {
@@ -341,7 +357,15 @@
     "anniversary": "ricorrenza {{date}}",
     "notice": "Disdetta entro",
     "limitsTotal": "totale {{amount}}",
-    "total": "Totale · {{payments}}"
+    "total": "Totale · {{payments}}",
+    "hero": {
+      "label": "Premio · {{frequency}}",
+      "next": "Prossimo pagamento {{date}} · {{distance}}",
+      "ended": "Polizza terminata il {{date}}",
+      "endedPlain": "La polizza è terminata",
+      "paidOn": "Pagato il {{date}}",
+      "noPremium": "Nessun premio inserito"
+    }
   },
   "property": {
     "notFound": "Questo immobile non esiste più.",
@@ -646,7 +670,8 @@
       "stats": {
         "value": "Valore",
         "inCurrency": "in {{currency}}",
-        "price": "Prezzo"
+        "price": "Prezzo",
+        "asOf": "al {{when}}"
       },
       "tx": {
         "buy": "Acquisto · {{quantity}} {{unit}}",
@@ -663,7 +688,9 @@
       "following": "Seguita",
       "followed": "Aggiunta alla lista di osservazione",
       "range52": "Intervallo 52 settimane",
-      "renamed": "Nome salvato"
+      "renamed": "Nome salvato",
+      "historyComputing": "Lo storico è ancora in calcolo…",
+      "dividendSource": "Dividendi secondo {{source}}"
     },
     "watch": {
       "stats": {

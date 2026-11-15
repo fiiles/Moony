@@ -131,6 +131,7 @@ export default function Stocks() {
       // A pull from the top refreshes the prices, as `···` › Aktualizovat ceny does (spec §8.8)
       onRefresh={() => refresh.mutateAsync()}
       title={ts('title')}
+      large
       leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
       trailing={
         <>
@@ -180,7 +181,7 @@ export default function Stocks() {
         <>
           {hasPositions && (
             <>
-              {/* The nav bar keeps its one title, so the count and the age of the prices are the first line */}
+              {/* The count and the age of the prices under the large title */}
               <PricesLine count={ts('summary.positions', { count: open.length })} rows={rows} />
               {/* Amounts the backend could not convert into the report currency (left out) */}
               <ScaledConversionNote
@@ -410,6 +411,8 @@ function PortfolioStats({
     {
       label: t('wealth.stocks.twrYtd'),
       value: twr === null ? '—' : fmt.percent(twr / 100, 1, { signed: true }),
+      // A skeleton while the report is computed, never a bare dash (D25)
+      loading: twr === null && twrLoading,
       tone: statTone(twr),
       // While the report loads there is nothing to say yet; "no history yet" is for a report that
       // has fewer than two days (or failed)

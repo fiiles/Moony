@@ -62,6 +62,7 @@ export default function OtherAssets() {
   return (
     <Screen
       title={td('cards.otherAssets')}
+      large
       leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
       trailing={
         <>

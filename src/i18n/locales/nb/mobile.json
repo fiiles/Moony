@@ -261,7 +261,12 @@
     "importHistory": {
       "menu": "Importvalg"
     },
-    "autoCategorizeAllDone": "Alle betalinger på denne kontoen har allerede en kategori."
+    "autoCategorizeAllDone": "Alle betalinger på denne kontoen har allerede en kategori.",
+    "manual": "Føres manuelt",
+    "noBalance": {
+      "label": "Saldo",
+      "note": "Ingen saldo registrert ennå"
+    }
   },
   "loan": {
     "nextPayment": "Neste termin {{amount}} · {{date}}",
@@ -269,7 +274,8 @@
     "stats": {
       "since": "siden {{month, lower}}",
       "extra": "ekstra {{amount}}",
-      "until": "til {{month, lower}}"
+      "until": "til {{month, lower}}",
+      "fixationIn": "om {{duration}}"
     },
     "alerts": {
       "fixationSoon_one": "Bindingstiden utløper om {{count}} dag. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
@@ -290,6 +296,16 @@
     },
     "events": {
       "menu": "Hendelsesmeny"
+    },
+    "afterFixation": {
+      "title": "Etter bindingstiden",
+      "rate": "Med {{rate}}",
+      "current": "dagens rente",
+      "delta": "{{delta}} pp",
+      "perMonth": "per måned"
+    },
+    "legend": {
+      "tapHint": "Trykk på et merke for å se hva som skjedde."
     }
   },
   "documents": {
@@ -316,7 +332,15 @@
     "anniversary": "årsdag {{date}}",
     "notice": "Si opp innen",
     "limitsTotal": "totalt {{amount}}",
-    "total": "Totalt · {{payments}}"
+    "total": "Totalt · {{payments}}",
+    "hero": {
+      "label": "Premie · {{frequency}}",
+      "next": "Neste betaling {{date}} · {{distance}}",
+      "ended": "Avtalen endte {{date}}",
+      "endedPlain": "Avtalen er avsluttet",
+      "paidOn": "Betalt {{date}}",
+      "noPremium": "Ingen premie registrert"
+    }
   },
   "property": {
     "notFound": "Denne eiendommen finnes ikke lenger.",
@@ -610,7 +634,8 @@
       "stats": {
         "value": "Verdi",
         "inCurrency": "i {{currency}}",
-        "price": "Kurs"
+        "price": "Kurs",
+        "asOf": "per {{when}}"
       },
       "tx": {
         "buy": "Kjøp · {{quantity}} {{unit}}",
@@ -626,7 +651,9 @@
       "following": "Følger",
       "followed": "Lagt til i følgelisten",
       "range52": "52-ukers spenn",
-      "renamed": "Navn lagret"
+      "renamed": "Navn lagret",
+      "historyComputing": "Historikken regnes fortsatt ut …",
+      "dividendSource": "Utbytte fra {{source}}"
     },
     "watch": {
       "stats": {

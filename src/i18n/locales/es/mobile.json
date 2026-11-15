@@ -281,7 +281,12 @@
     "importHistory": {
       "menu": "Opciones de la importación"
     },
-    "autoCategorizeAllDone": "Todos los pagos de esta cuenta ya tienen categoría."
+    "autoCategorizeAllDone": "Todos los pagos de esta cuenta ya tienen categoría.",
+    "manual": "Gestionada a mano",
+    "noBalance": {
+      "label": "Saldo",
+      "note": "Aún no hay saldo registrado"
+    }
   },
   "loan": {
     "nextPayment": "Próxima cuota {{amount}} · {{date}}",
@@ -289,7 +294,8 @@
     "stats": {
       "since": "desde {{month, lower}}",
       "extra": "extra {{amount}}",
-      "until": "hasta {{month, lower}}"
+      "until": "hasta {{month, lower}}",
+      "fixationIn": "dentro de {{duration}}"
     },
     "alerts": {
       "fixationSoon_one": "El tipo fijo termina en {{count}} día. Cuando el banco confirme el nuevo tipo, regístralo: la cuota y el plan se recalcularán.",
@@ -314,6 +320,16 @@
     },
     "events": {
       "menu": "Menú del evento"
+    },
+    "afterFixation": {
+      "title": "Al terminar el tipo fijo",
+      "rate": "Al {{rate}}",
+      "current": "tipo actual",
+      "delta": "{{delta}} p. p.",
+      "perMonth": "cuota mensual"
+    },
+    "legend": {
+      "tapHint": "Toca una marca para ver qué pasó."
     }
   },
   "documents": {
@@ -341,7 +357,15 @@
     "anniversary": "aniversario {{date}}",
     "notice": "Cancelar antes de",
     "limitsTotal": "total {{amount}}",
-    "total": "Total · {{payments}}"
+    "total": "Total · {{payments}}",
+    "hero": {
+      "label": "Prima · {{frequency}}",
+      "next": "Próximo pago {{date}} · {{distance}}",
+      "ended": "La póliza terminó el {{date}}",
+      "endedPlain": "La póliza ha terminado",
+      "paidOn": "Pagado el {{date}}",
+      "noPremium": "No se ha indicado la prima"
+    }
   },
   "property": {
     "notFound": "Este inmueble ya no existe.",
@@ -646,7 +670,8 @@
       "stats": {
         "value": "Valor",
         "inCurrency": "en {{currency}}",
-        "price": "Precio"
+        "price": "Precio",
+        "asOf": "a {{when}}"
       },
       "tx": {
         "buy": "Compra · {{quantity}} {{unit}}",
@@ -663,7 +688,9 @@
       "following": "Siguiendo",
       "followed": "Añadida a la lista de seguimiento",
       "range52": "Rango de 52 semanas",
-      "renamed": "Nombre guardado"
+      "renamed": "Nombre guardado",
+      "historyComputing": "El historial aún se está calculando…",
+      "dividendSource": "Dividendos según {{source}}"
     },
     "watch": {
       "stats": {

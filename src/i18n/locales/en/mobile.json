@@ -261,7 +261,12 @@
     "importHistory": {
       "menu": "Import options"
     },
-    "autoCategorizeAllDone": "Every payment on this account already has a category."
+    "autoCategorizeAllDone": "Every payment on this account already has a category.",
+    "manual": "Kept by hand",
+    "noBalance": {
+      "label": "Balance",
+      "note": "No balance recorded yet"
+    }
   },
   "loan": {
     "nextPayment": "Next payment {{amount}} · {{date}}",
@@ -269,7 +274,8 @@
     "stats": {
       "since": "since {{month}}",
       "extra": "extra {{amount}}",
-      "until": "until {{month}}"
+      "until": "until {{month}}",
+      "fixationIn": "in {{duration}}"
     },
     "alerts": {
       "fixationSoon_one": "The fixed rate ends in {{count}} day. Once the bank confirms the new rate, record it — the payment and the plan are recalculated.",
@@ -290,6 +296,16 @@
     },
     "events": {
       "menu": "Event menu"
+    },
+    "afterFixation": {
+      "title": "After the fixed rate ends",
+      "rate": "At {{rate}}",
+      "current": "today’s rate",
+      "delta": "{{delta}} pp",
+      "perMonth": "monthly payment"
+    },
+    "legend": {
+      "tapHint": "Tap a mark to see what happened."
     }
   },
   "documents": {
@@ -316,7 +332,15 @@
     "anniversary": "anniversary {{date}}",
     "notice": "Cancel by",
     "limitsTotal": "total {{amount}}",
-    "total": "Total · {{payments}}"
+    "total": "Total · {{payments}}",
+    "hero": {
+      "label": "Premium · {{frequency}}",
+      "next": "Next payment {{date}} · {{distance}}",
+      "ended": "Policy ended {{date}}",
+      "endedPlain": "This policy has ended",
+      "paidOn": "Paid {{date}}",
+      "noPremium": "No premium entered"
+    }
   },
   "property": {
     "notFound": "This property no longer exists.",
@@ -610,7 +634,8 @@
       "stats": {
         "value": "Value",
         "inCurrency": "in {{currency}}",
-        "price": "Price"
+        "price": "Price",
+        "asOf": "as of {{when}}"
       },
       "tx": {
         "buy": "Buy · {{quantity}} {{unit}}",
@@ -626,7 +651,9 @@
       "following": "Watching",
       "followed": "Added to the watchlist",
       "range52": "52-week range",
-      "renamed": "Name saved"
+      "renamed": "Name saved",
+      "historyComputing": "The history is still being worked out…",
+      "dividendSource": "Dividends from {{source}}"
     },
     "watch": {
       "stats": {

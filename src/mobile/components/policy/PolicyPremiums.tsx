@@ -20,7 +20,7 @@ interface PolicyPremiumsProps {
  * "Zaplaceno na pojistném" (spec §8.8 "Pojistka", prototype frame 14), the last section of the
  * detail: a card on the trend card's pattern, without its segment — "Celkem · 11 plateb", what has
  * been paid in the policy's own currency, and the 120 pt line of the premiums added up, a step at
- * each payment, solid up to today and dashed through the next twelve (the plan). A finger on the
+ * each payment, solid up to today and dashed through the year ahead (the plan). A finger on the
  * line rewrites the label and the figure to that day and says whether it was paid or is planned.
  * A policy that has not started (or has a single reading) has no line, and then no section.
  */

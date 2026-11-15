@@ -15,7 +15,8 @@ import { useStockDividendMutations } from '@/hooks/use-stock-dividend-mutations'
 import { useInvestmentTransactionMutations } from '@/hooks/use-investment-mutations';
 import type { ChartPeriod } from '@/utils/period';
 import { amountOf, type StockRow } from '@/utils/positions';
-import { MissingOrFailed } from '@/mobile/components/LoadError';
+import { DetailSub } from '@/mobile/components/DetailSub';
+import { LoadError, MissingOrFailed } from '@/mobile/components/LoadError';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
 import { EditTransactionModal } from '@/components/stocks/EditTransactionModal';
@@ -25,7 +26,7 @@ import { ButtonPair } from '@/mobile/components/ButtonPair';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { AppliedSplits } from '@/mobile/components/wealth/AppliedSplits';
 import { CompanyCard } from '@/mobile/components/wealth/CompanyCard';
-import { PositionHeroCard } from '@/mobile/components/wealth/PositionHeroCard';
+import { POSITION_PERIOD, PositionHeroCard } from '@/mobile/components/wealth/PositionHeroCard';
 import { PositionLedger } from '@/mobile/components/wealth/PositionLedger';
 import { PositionMenu } from '@/mobile/components/wealth/PositionMenu';
 import { PositionStats, useDividendStat } from '@/mobile/components/wealth/PositionStats';
@@ -37,11 +38,15 @@ import { useRefreshStockPrices } from '@/mobile/hooks/use-stock-positions';
 import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { useRowIntent } from '@/mobile/hooks/use-row-intent';
+import { useTimedOut } from '@/mobile/hooks/use-timed-out';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { positionPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { DividendSheet } from '@/mobile/sheets/DividendSheet';
+
+/** How long the position may load before the skeleton gives way to `LoadError` (audit E2). */
+const LOAD_TIMEOUT_MS = 15_000;
 
 /** What the screen shows of a loaded position: the record and what is read from it. */
 interface PositionView {
@@ -72,7 +77,7 @@ export default function PositionDetail() {
   const back = useBack(routes.stocks);
   // The page the push came from (another tab, a sheet: `backLabel`), else the parent
   const backText = useBackLabel(t('wealth.stocks.back'));
-  const [period, setPeriod] = useState<ChartPeriod>('30D');
+  const [period, setPeriod] = useState<ChartPeriod>(POSITION_PERIOD);
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
   const [editing, setEditing] = useState<InvestmentTransaction | null>(null);
   const [dividendSheet, setDividendSheet] = useState<{
@@ -109,6 +114,8 @@ export default function PositionDetail() {
   const kept = useRetained(current);
   // A position being deleted stays on screen (as it was) until the screen has left
   const view = exit.deleting ? kept : current;
+  // A position the list did not hold (a deep link, a cold cache) that does not arrive in time
+  const timedOut = useTimedOut(!view && data.isLoading, LOAD_TIMEOUT_MS);
   // A position row's menu (README §13, Gestures) opens the trade dialog here
   useRowIntent(
     {
@@ -125,6 +132,7 @@ export default function PositionDetail() {
       // A pull from the top refreshes the prices (spec §8.8), as `···` › Aktualizovat ceny does
       onRefresh={() => refreshPrices.mutateAsync()}
       title={view?.holding.ticker ?? ''}
+      large
       leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         view && (
@@ -139,13 +147,14 @@ export default function PositionDetail() {
     >
       {view ? (
         <>
-          {/* The nav bar keeps its one title, so the name and the currency are the first line */}
-          <p className="mx-0.5 -mt-0.5 mb-2.5 flex items-center justify-center gap-1.5 text-m-caption text-ink-3">
-            <InstrumentHeadLogo ticker={view.holding.ticker} type="stock" className="size-5" />
-            <span className="min-w-0 truncate">
-              {[view.holding.companyName, view.holding.originalCurrency].join(' · ')}
-            </span>
-          </p>
+          {/* The name and the currency under the large title */}
+          <DetailSub
+            icon={
+              <InstrumentHeadLogo ticker={view.holding.ticker} type="stock" className="size-5" />
+            }
+          >
+            {[view.holding.companyName, view.holding.originalCurrency].join(' · ')}
+          </DetailSub>
           {/* Amounts the backend could not convert into the report currency (left out) */}
           <ScaledConversionNote
             quality={view.position?.fxQuality}
@@ -157,6 +166,7 @@ export default function PositionDetail() {
           <PositionHeroCard
             holding={view.holding}
             history={view.history}
+            backfilling={data.historyBackfilling}
             transactions={data.transactions}
             unit={ts('table.unit')}
             reportCurrency={reportCurrency}
@@ -247,6 +257,8 @@ export default function PositionDetail() {
             onConfirm={() => exit.run(view.holding.id)}
           />
         </>
+      ) : timedOut ? (
+        <LoadError message={t('loadError.detail')} onRetry={data.retry} />
       ) : data.isLoading ? (
         <PositionSkeleton />
       ) : (

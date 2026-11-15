@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { InsurancePolicy } from '@shared/schema';
 import { insuranceRow, paidSeries, type InsuranceRow } from '@/utils/insurance';
-import { noticeDeadline, policyFacts, premiumPoints } from './policy-detail';
+import { noticeDeadline, policyFacts, policyHero, premiumPoints } from './policy-detail';
 
 const DAY = 86_400;
 const day = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d) / 1000;
@@ -226,16 +226,30 @@ describe('policyFacts', () => {
 });
 
 describe('premiumPoints', () => {
-  it('is the paid series, the payments so far and the next twelve, as one line', () => {
+  it('is the paid series, the payments so far and a year ahead, as one line', () => {
     const p = policy();
-    const series = paidSeries(p, TODAY, 12);
+    // Quarterly: the year ahead is four payments
+    const series = paidSeries(p, TODAY, 4);
     const { points } = premiumPoints(p, TODAY);
     expect(points).toEqual([...series.past, ...series.future]);
-    expect(series.future).toHaveLength(12);
-    // 12 payments made by today; the last of the 12 ahead is the 24th, 9. 10. 2029
-    expect(points[points.length - 1]).toEqual({ t: day(2029, 10, 9), value: 24 * 2150 });
+    expect(series.future).toHaveLength(4);
+    // 12 payments made by today; the last of the four ahead is the 16th, 9. 10. 2027
+    expect(points[points.length - 1]).toEqual({ t: day(2027, 10, 9), value: 16 * 2150 });
     const times = points.map((point) => point.t);
     expect(times).toEqual([...times].sort((a, b) => a - b));
+  });
+
+  it('never projects an open-ended policy more than a year ahead (D16)', () => {
+    for (const [frequency, ahead] of [
+      ['monthly', 12],
+      ['semi_annually', 2],
+      ['annually', 1],
+    ] as const) {
+      const { points } = premiumPoints(policy({ paymentFrequency: frequency }), TODAY);
+      const future = points.filter((point) => point.t > TODAY);
+      expect(future).toHaveLength(ahead);
+      expect(future[future.length - 1].t - TODAY).toBeLessThanOrEqual(366 * DAY);
+    }
   });
 
   it('passes what has been paid and the number of payments through', () => {
@@ -282,5 +296,42 @@ describe('premiumPoints', () => {
   it('is empty for a policy that has not started, whose payments are all still ahead', () => {
     const result = premiumPoints(policy({ startDate: day(2026, 12, 1) }), TODAY);
     expect(result).toEqual({ points: [], paidToDay: 0, paymentsMade: 0 });
+  });
+});
+
+describe('policyHero', () => {
+  const hero = (p: InsurancePolicy) => policyHero(p, rowOf(p));
+
+  it('leads a recurring policy with its premium and the next payment', () => {
+    const p = policy();
+    expect(hero(p)).toEqual({
+      kind: 'recurring',
+      amount: 2150,
+      currency: 'CZK',
+      frequency: 'quarterly',
+      nextPayment: rowOf(p).nextPayment,
+      ended: false,
+      endDay: null,
+    });
+    expect(rowOf(p).nextPayment).toBe(day(2027, 1, 9));
+  });
+
+  it('names no payment for an ended policy', () => {
+    const result = hero(policy(ENDED));
+    expect(result).toMatchObject({ kind: 'recurring', ended: true, nextPayment: null });
+  });
+
+  it('shows a one-time policy’s lump sum in its own currency and the day it was paid', () => {
+    expect(hero(policy(ONE_TIME))).toEqual({
+      kind: 'oneTime',
+      amount: 12000,
+      currency: 'EUR',
+      paidOn: day(2024, 1, 9),
+      ended: false,
+    });
+  });
+
+  it('says so when no premium is recorded', () => {
+    expect(hero(policy({ regularPayment: '0' }))).toEqual({ kind: 'none' });
   });
 });

@@ -261,7 +261,12 @@
     "importHistory": {
       "menu": "Importalternativ"
     },
-    "autoCategorizeAllDone": "Alla betalningar på det här kontot har redan en kategori."
+    "autoCategorizeAllDone": "Alla betalningar på det här kontot har redan en kategori.",
+    "manual": "Förs manuellt",
+    "noBalance": {
+      "label": "Saldo",
+      "note": "Inget saldo registrerat än"
+    }
   },
   "loan": {
     "nextPayment": "Nästa betalning {{amount}} · {{date}}",
@@ -269,7 +274,8 @@
     "stats": {
       "since": "sedan {{month, lower}}",
       "extra": "extra {{amount}}",
-      "until": "till {{month, lower}}"
+      "until": "till {{month, lower}}",
+      "fixationIn": "om {{duration}}"
     },
     "alerts": {
       "fixationSoon_one": "Räntebindningen upphör om {{count}} dag. När banken har bekräftat den nya räntan, registrera den – betalningen och planen räknas om.",
@@ -290,6 +296,16 @@
     },
     "events": {
       "menu": "Händelsemeny"
+    },
+    "afterFixation": {
+      "title": "Efter bindningstiden",
+      "rate": "Vid {{rate}}",
+      "current": "dagens ränta",
+      "delta": "{{delta}} procentenheter",
+      "perMonth": "per månad"
+    },
+    "legend": {
+      "tapHint": "Tryck på en markering för att se vad som hände."
     }
   },
   "documents": {
@@ -316,7 +332,15 @@
     "anniversary": "förnyelse {{date}}",
     "notice": "Säg upp senast",
     "limitsTotal": "totalt {{amount}}",
-    "total": "Totalt · {{payments}}"
+    "total": "Totalt · {{payments}}",
+    "hero": {
+      "label": "Premie · {{frequency}}",
+      "next": "Nästa betalning {{date}} · {{distance}}",
+      "ended": "Försäkringen upphörde {{date}}",
+      "endedPlain": "Försäkringen har upphört",
+      "paidOn": "Betald {{date}}",
+      "noPremium": "Ingen premie angiven"
+    }
   },
   "property": {
     "notFound": "Den här fastigheten finns inte längre.",
@@ -610,7 +634,8 @@
       "stats": {
         "value": "Värde",
         "inCurrency": "i {{currency}}",
-        "price": "Kurs"
+        "price": "Kurs",
+        "asOf": "per {{when}}"
       },
       "tx": {
         "buy": "Köp · {{quantity}} {{unit}}",
@@ -626,7 +651,9 @@
       "following": "Bevakas",
       "followed": "Tillagd i bevakningslistan",
       "range52": "52-veckorsintervall",
-      "renamed": "Namn sparat"
+      "renamed": "Namn sparat",
+      "historyComputing": "Historiken räknas fortfarande fram …",
+      "dividendSource": "Utdelningar enligt {{source}}"
     },
     "watch": {
       "stats": {

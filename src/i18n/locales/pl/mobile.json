@@ -301,7 +301,12 @@
     "importHistory": {
       "menu": "Opcje importu"
     },
-    "autoCategorizeAllDone": "Wszystkie płatności na tym koncie mają już kategorię."
+    "autoCategorizeAllDone": "Wszystkie płatności na tym koncie mają już kategorię.",
+    "manual": "Prowadzone ręcznie",
+    "noBalance": {
+      "label": "Saldo",
+      "note": "Saldo nie zostało jeszcze wpisane"
+    }
   },
   "loan": {
     "nextPayment": "Następna rata {{amount}} · {{date}}",
@@ -309,7 +314,8 @@
     "stats": {
       "since": "od {{month, lower}}",
       "extra": "nadpłaty {{amount}}",
-      "until": "do {{month, lower}}"
+      "until": "do {{month, lower}}",
+      "fixationIn": "za {{duration}}"
     },
     "alerts": {
       "fixationSoon_one": "Stała stopa kończy się za {{count}} dzień. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
@@ -338,6 +344,16 @@
     },
     "events": {
       "menu": "Menu zdarzenia"
+    },
+    "afterFixation": {
+      "title": "Po okresie stałej stopy",
+      "rate": "Przy {{rate}}",
+      "current": "obecna stopa",
+      "delta": "{{delta}} p.p.",
+      "perMonth": "rata miesięczna"
+    },
+    "legend": {
+      "tapHint": "Stuknij znacznik, aby zobaczyć, co się stało."
     }
   },
   "documents": {
@@ -366,7 +382,15 @@
     "anniversary": "rocznica {{date}}",
     "notice": "Wypowiedzenie do",
     "limitsTotal": "łącznie {{amount}}",
-    "total": "Razem · {{payments}}"
+    "total": "Razem · {{payments}}",
+    "hero": {
+      "label": "Składka · {{frequency}}",
+      "next": "Następna płatność {{date}} · {{distance}}",
+      "ended": "Polisa zakończyła się {{date}}",
+      "endedPlain": "Polisa została zakończona",
+      "paidOn": "Zapłacono {{date}}",
+      "noPremium": "Składka nie została wpisana"
+    }
   },
   "property": {
     "notFound": "Ta nieruchomość już nie istnieje.",
@@ -682,7 +706,8 @@
       "stats": {
         "value": "Wartość",
         "inCurrency": "w {{currency}}",
-        "price": "Cena"
+        "price": "Cena",
+        "asOf": "stan na {{when}}"
       },
       "tx": {
         "buy": "Zakup · {{quantity}} {{unit}}",
@@ -700,7 +725,9 @@
       "following": "Obserwowana",
       "followed": "Dodano do obserwowanych",
       "range52": "Zakres 52 tyg.",
-      "renamed": "Nazwa zapisana"
+      "renamed": "Nazwa zapisana",
+      "historyComputing": "Historia jest jeszcze obliczana…",
+      "dividendSource": "Dywidendy według {{source}}"
     },
     "watch": {
       "stats": {

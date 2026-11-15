@@ -241,7 +241,12 @@
     "importHistory": {
       "menu": "インポートのオプション"
     },
-    "autoCategorizeAllDone": "この口座のすべての支払いにはすでにカテゴリがあります。"
+    "autoCategorizeAllDone": "この口座のすべての支払いにはすでにカテゴリがあります。",
+    "manual": "手動で管理",
+    "noBalance": {
+      "label": "残高",
+      "note": "残高はまだ入力されていません"
+    }
   },
   "loan": {
     "nextPayment": "次回の返済 {{amount}} · {{date}}",
@@ -249,7 +254,8 @@
     "stats": {
       "since": "{{month}}から",
       "extra": "追加返済 {{amount}}",
-      "until": "{{month}}まで"
+      "until": "{{month}}まで",
+      "fixationIn": "あと{{duration}}"
     },
     "alerts": {
       "fixationSoon_other": "固定金利はあと{{count}}日で終了します。銀行が新しい金利を確定したら記録してください。返済額と計画が再計算されます。",
@@ -266,6 +272,16 @@
     },
     "events": {
       "menu": "イベントメニュー"
+    },
+    "afterFixation": {
+      "title": "固定期間の終了後",
+      "rate": "金利{{rate}}の場合",
+      "current": "現在の金利",
+      "delta": "{{delta}}ポイント",
+      "perMonth": "月々の返済"
+    },
+    "legend": {
+      "tapHint": "マークをタップすると内容が表示されます。"
     }
   },
   "documents": {
@@ -291,7 +307,15 @@
     "anniversary": "更新日 {{date}}",
     "notice": "解約通知の期限",
     "limitsTotal": "合計 {{amount}}",
-    "total": "合計 · {{payments}}"
+    "total": "合計 · {{payments}}",
+    "hero": {
+      "label": "保険料 · {{frequency}}",
+      "next": "次回の支払い {{date}} · {{distance}}",
+      "ended": "{{date}}に終了しました",
+      "endedPlain": "この保険は終了しています",
+      "paidOn": "{{date}}に支払い済み",
+      "noPremium": "保険料が入力されていません"
+    }
   },
   "property": {
     "notFound": "この物件は存在しません。",
@@ -574,7 +598,8 @@
       "stats": {
         "value": "評価額",
         "inCurrency": "{{currency}}建て",
-        "price": "価格"
+        "price": "価格",
+        "asOf": "{{when}}時点"
       },
       "tx": {
         "buy": "買付 · {{quantity}} {{unit}}",
@@ -589,7 +614,9 @@
       "following": "フォロー中",
       "followed": "ウォッチリストに追加しました",
       "range52": "52週レンジ",
-      "renamed": "名称を保存しました"
+      "renamed": "名称を保存しました",
+      "historyComputing": "履歴を計算しています…",
+      "dividendSource": "配当の出典: {{source}}"
     },
     "watch": {
       "stats": {

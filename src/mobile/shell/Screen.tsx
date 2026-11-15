@@ -17,9 +17,16 @@ import { NavBar } from './NavBar';
 
 interface ScreenProps {
   title: string;
-  /** Tab root: a 30 pt large title in the content that collapses into the nav bar on scroll. */
+  /**
+   * A 30 pt large title in the content that collapses into the nav bar on scroll: a tab root, and a
+   * pushed detail screen (README §13, "Detail screens"), whose name may be long and so wraps here
+   * instead of being cut between the back button and `···`.
+   */
   large?: boolean;
-  /** The one sentence under the large title (`.m-title-sub`, 13 / 450 `ink-3`). */
+  /**
+   * The one sentence under the large title (`.m-title-sub`, 13 / 450 `ink-3`); a detail screen
+   * draws its sub-line with `DetailSub` instead, under its loaded record.
+   */
   subtitle?: ReactNode;
   leading?: ReactNode;
   trailing?: ReactNode;
@@ -110,7 +117,8 @@ export function Screen({
           {large ? (
             <h1
               ref={setMarker}
-              className="mx-0.5 mb-[3px] mt-1.5 hyphens-auto break-words text-m-title-lg text-ink"
+              // Holds its line while a detail's record loads, so the content does not jump
+              className="mx-0.5 mb-[3px] mt-1.5 min-h-[1.2em] hyphens-auto break-words text-m-title-lg text-ink"
             >
               {title}
             </h1>

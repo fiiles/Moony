@@ -600,6 +600,7 @@ fn summary_counts_rows_not_blobs() {
             not_here: 1,
             not_on_server: 1,
             failed: 2,
+            not_on_device: 4,
         }
     );
     assert_eq!(uploads_waiting(&conn).expect("waiting"), 1);
@@ -613,6 +614,37 @@ fn summary_counts_rows_not_blobs() {
     assert_eq!(summary(&conn).expect("summary").waiting_upload_bytes, 700);
     note_done(&conn, &full).expect("done");
     assert_eq!(uploads_waiting(&conn).expect("waiting"), 0);
+}
+
+/// `not_on_device` is every row with content not complete here, whatever the reason: the three
+/// counts of the worst state (failed, not on the server, not here) leave out of each other what
+/// they hold, and this one spans the downloads among them. A stuck upload (content here) is a
+/// failed row, not one missing on this device.
+#[test]
+fn not_on_device_spans_every_row_missing_content() {
+    let conn = profile();
+    let here = held(&conn, b"here");
+    let stuck = held(&conn, b"stuck");
+    document(&conn, "fetchable", &elsewhere(1), 100);
+    document(&conn, "gone", &elsewhere(2), 100);
+    document(&conn, "broken", &elsewhere(3), 100);
+    document(&conn, "stuck", &stuck, 100);
+    document(&conn, "here", &here, 100);
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    note_failed(&conn, &elsewhere(2), TransferError::NotOnServer, NOW).expect("gone");
+    note_failed(&conn, &elsewhere(3), TransferError::Unreadable, NOW).expect("broken");
+    note_failed(&conn, &stuck, TransferError::Refused, NOW).expect("stuck");
+
+    let counts = summary(&conn).expect("summary");
+    assert_eq!(
+        (
+            counts.not_here,
+            counts.not_on_server,
+            counts.failed,
+            counts.not_on_device
+        ),
+        (1, 1, 2, 3)
+    );
 }
 
 #[test]
@@ -889,7 +921,14 @@ fn a_held_blob_with_an_invalid_id_reads_here_and_counts_as_failed() {
         ("down".into(), Some("invalidId".into()), i64::MAX)
     );
     assert_eq!(read(&conn), AttachmentContent::Failed);
-    assert_eq!(summary(&conn).expect("summary"), failed_only);
+    // The content is gone from this device now: failed, and not on the device either.
+    assert_eq!(
+        summary(&conn).expect("summary"),
+        AttachmentSummary {
+            not_on_device: 1,
+            ..failed_only
+        }
+    );
 
     arrive(&conn, "../x", b"content");
     queue::reconcile(&conn, NOW).expect("reconcile");

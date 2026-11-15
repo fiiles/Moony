@@ -164,6 +164,7 @@ fn attachments(conn: &Connection, runtime: &Runtime) -> SyncAttachments {
         not_here: summary.not_here,
         not_on_server: summary.not_on_server,
         failed: summary.failed,
+        not_on_device: summary.not_on_device,
         problem: runtime.attachments_problem,
     }
 }

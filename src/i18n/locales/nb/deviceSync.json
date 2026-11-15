@@ -444,8 +444,23 @@
     "connectionNotHere": "Dette er en tilkoblingskode for en synkroniseringsserver. Bruk den når du setter opp synkronisering, ikke her.",
     "notAServerAddress": "Dette er ikke adressen til en synkroniseringsserver. Skriv inn adressen til synkroniseringsserveren din, eller lim inn tilkoblingskoden."
   },
+  "attachments": {
+    "title": "Dokumenter og bilder",
+    "allUploaded": "Alt er lastet opp",
+    "waiting_one": "{{count}} venter på å lastes opp · {{size}}",
+    "waiting_other": "{{count}} venter på å lastes opp · {{size}}",
+    "uploading": "Laster opp dokumenter og bilder",
+    "onOtherDevices_one": "{{count}} dokument eller bilde er på de andre enhetene dine",
+    "onOtherDevices_other": "{{count}} dokumenter og bilder er på de andre enhetene dine",
+    "downloadEverything": "Last ned alt til denne telefonen",
+    "downloadEverythingStarted": "Laster ned mens Moony er åpen",
+    "problem": {
+      "noRoom": "Dokumenter og bilder venter: synkroniseringsserveren har ikke mer plass. Be den som drifter den om mer plass.",
+      "serverNeedsUpdate": "Dokumenter og bilder trenger en nyere synkroniseringsserver. Alt annet synkroniseres."
+    }
+  },
   "whatSyncs": {
     "title": "Hva som synkroniseres",
-    "body": "Alt du legger inn i Moony, synkroniseres. Språk, utseende, meny, varsler, enhetspassord, gjenopprettingsnøkkel og sikkerhetskopier hører til hver enkelt enhet. Priser og historikk beregnes på hver enhet. Dokumenter og bilder blir foreløpig værende på enheten der du la dem til."
+    "body": "Alt du legger inn i Moony, synkroniseres. Språk, utseende, meny, varsler, enhetspassord, gjenopprettingsnøkkel og sikkerhetskopier hører til hver enkelt enhet. Priser og historikk beregnes på hver enhet. Dokumenter og bilder synkroniseres også; en telefon laster ned hvert enkelt når du åpner det."
   }
 }

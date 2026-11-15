@@ -756,6 +756,8 @@
     "restoreConfirmDescription": "Sikkerhetskopien fra {{date}} (Moony {{version}}, {{attachments}} vedlegg, {{size}}) erstatter dataene på denne telefonen. Ta en sikkerhetskopi først hvis du vil beholde dagens data. Moony låses etterpå; lås den opp med passordet som var i bruk da sikkerhetskopien ble laget.",
     "osBackupNote": "Profilen lagres ikke i telefonens egen sikkerhetskopi (iCloud eller datamaskin). Moony-sikkerhetskopien du selv lagrer, er den eneste kopien utenfor telefonen.",
     "exportSummary": "{{tables}} tabeller, {{rows}} rader.",
+    "notHere_one": "{{count}} dokument eller bilde er ikke på denne telefonen og ikke i denne sikkerhetskopien.",
+    "notHere_other": "{{count}} dokumenter og bilder er ikke på denne telefonen og ikke i denne sikkerhetskopien.",
     "syncLead": "Moony lagrer en sikkerhetskopi før synkroniseringen erstatter data på denne telefonen. Moonys data holdes utenfor telefonens egne sikkerhetskopier, så denne listen og Filer er eneste vei dit.",
     "syncSaveCopy": "Lagre en kopi i Filer",
     "syncCopySaved": "En kopi ble lagret i Filer",

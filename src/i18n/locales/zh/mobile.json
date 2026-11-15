@@ -712,6 +712,7 @@
     "restoreConfirmDescription": "创建于 {{date}} 的备份（Moony {{version}}，{{attachments}} 个附件，{{size}}）将替换这部手机上的数据。如需保留当前数据，请先备份。之后 Moony 会锁定；请使用创建该备份时的密码解锁。",
     "osBackupNote": "个人资料不会保存到手机自身的备份中（iCloud 或电脑）。您自己保存的 Moony 备份是手机之外的唯一副本。",
     "exportSummary": "{{tables}} 个表，{{rows}} 行。",
+    "notHere_other": "{{count}} 个文档和照片不在这部手机上，也不在此备份中。",
     "syncLead": "在同步替换此手机上的数据之前，Moony 会先保存一份备份。Moony 的数据不包含在手机自身的备份中，因此这份列表和“文件”是访问它们的唯一途径。",
     "syncSaveCopy": "将副本保存到“文件”",
     "syncCopySaved": "副本已保存到“文件”",

@@ -156,6 +156,10 @@ pub struct AttachmentSummary {
     /// Rows with content that could not be fetched (unreadable, refused, a conflict, or an invalid
     /// ID), or held here and unable to upload by itself ([`STUCK`]).
     pub failed: u32,
+    /// Rows with any content not complete here, whatever the reason: the three counts above split
+    /// the same rows by their worst state (a held blob that cannot upload is failed, not here), so
+    /// this is the downloads among them.
+    pub not_on_device: u32,
 }
 
 /// The owning row's date per attachment table: the download order among rows (`row_at`).
@@ -800,13 +804,20 @@ pub fn uploads_waiting(conn: &Connection) -> Result<u32> {
 /// state only (failed, then not on the server, then not here); `waiting_upload` counts the rows
 /// with any blob waiting to upload, `waiting_upload_bytes` the plaintext size the queue recorded
 /// for those blobs; a held blob that never uploads by itself ([`STUCK`]) counts its row as failed
-/// instead. Nothing without the store (every row reads as here then).
+/// instead; `not_on_device` counts every row with any download, before that split. Nothing without
+/// the store (every row reads as here then).
 pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
     if !files_schema::is_attached(conn)? {
         return Ok(AttachmentSummary::default());
     }
     let refs = references()?;
-    let (waiting_upload, failed, not_on_server, not_here): (i64, i64, i64, i64) = conn.query_row(
+    let (waiting_upload, failed, not_on_server, not_here, not_on_device): (
+        i64,
+        i64,
+        i64,
+        i64,
+        i64,
+    ) = conn.query_row(
         &format!(
             "WITH blobs AS (
                SELECT r.tbl, r.rid, q.state, q.active, COALESCE(q.last_error, '') AS error
@@ -822,11 +833,12 @@ pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
                GROUP BY tbl, rid)
              SELECT COALESCE(SUM(up), 0), COALESCE(SUM(failed), 0),
                COALESCE(SUM(gone AND NOT failed), 0),
-               COALESCE(SUM(down AND NOT failed AND NOT gone), 0)
+               COALESCE(SUM(down AND NOT failed AND NOT gone), 0),
+               COALESCE(SUM(down), 0)
              FROM per_row"
         ),
         [],
-        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
     )?;
     let waiting_upload_bytes: i64 = conn.query_row(
         &format!(
@@ -843,5 +855,6 @@ pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
         not_here: not_here as u32,
         not_on_server: not_on_server as u32,
         failed: failed as u32,
+        not_on_device: not_on_device as u32,
     })
 }

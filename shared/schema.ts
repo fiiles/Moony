@@ -150,6 +150,8 @@ export interface SyncAttachments {
   notOnServer: number;
   /** Rows whose content could not be fetched, or cannot upload by itself: failed items, which never keep this device "not synchronised". */
   failed: number;
+  /** Rows with any content not complete on this device, whatever the reason (the three counts above leave out of each other what they hold): a backup made here does not have these. */
+  notOnDevice: number;
   /** Why documents and photos do not move, while ordinary sync goes on. */
   problem: SyncAttachmentsProblem | null;
 }

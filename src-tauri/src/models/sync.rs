@@ -127,6 +127,10 @@ pub struct SyncAttachments {
     /// never keep this device "not synchronised".
     #[serde(rename = "failed")]
     pub failed: u32,
+    /// Rows with any content not complete on this device, whatever the reason (the three counts
+    /// above leave out of each other what they hold): the backup does not have these.
+    #[serde(rename = "notOnDevice")]
+    pub not_on_device: u32,
     /// Why documents and photos do not move, while ordinary sync goes on.
     #[serde(rename = "problem")]
     pub problem: Option<SyncAttachmentsProblem>,

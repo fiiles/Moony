@@ -432,8 +432,21 @@
     "connectionNotHere": "这是同步服务器的连接码。请在设置同步时使用，而不是在这里。",
     "notAServerAddress": "这不是同步服务器地址。请输入您的同步服务器地址，或粘贴其连接码。"
   },
+  "attachments": {
+    "title": "文档和照片",
+    "allUploaded": "全部已上传",
+    "waiting_other": "{{count}} 项等待上传 · {{size}}",
+    "uploading": "正在上传文档和照片",
+    "onOtherDevices_other": "{{count}} 个文档和照片在您的其他设备上",
+    "downloadEverything": "全部下载到这部手机",
+    "downloadEverythingStarted": "Moony 打开期间会持续下载",
+    "problem": {
+      "noRoom": "文档和照片正在等待：同步服务器已没有空间。请联系服务器管理员增加空间。",
+      "serverNeedsUpdate": "文档和照片需要更新版本的同步服务器。其他内容都会正常同步。"
+    }
+  },
   "whatSyncs": {
     "title": "同步哪些内容",
-    "body": "您在 Moony 中输入的所有内容都会同步。语言、外观、菜单、通知、设备密码、恢复密钥和备份属于每台设备各自所有。价格和历史记录在每台设备上单独计算。文档和照片目前仍保留在添加它们的设备上。"
+    "body": "您在 Moony 中输入的所有内容都会同步。语言、外观、菜单、通知、设备密码、恢复密钥和备份属于每台设备各自所有。价格和历史记录在每台设备上单独计算。文档和照片也会同步；手机会在您打开时下载。"
   }
 }

@@ -756,6 +756,8 @@
     "restoreConfirmDescription": "Die Sicherung vom {{date}} (Moony {{version}}, {{attachments}} Anhänge, {{size}}) ersetzt die Daten auf diesem Telefon. Sichern Sie zuerst, wenn Sie die aktuellen Daten behalten möchten. Danach sperrt sich Moony; entsperren Sie es mit dem Passwort, das beim Erstellen der Sicherung galt.",
     "osBackupNote": "Das Profil wird nicht in der Sicherung des Telefons (iCloud oder Computer) gespeichert. Die Moony-Sicherung, die Sie selbst speichern, ist die einzige Kopie außerhalb des Telefons.",
     "exportSummary": "{{tables}} Tabellen, {{rows}} Zeilen.",
+    "notHere_one": "{{count}} Dokument oder Foto ist nicht auf diesem Smartphone und nicht in dieser Sicherung.",
+    "notHere_other": "{{count}} Dokumente und Fotos sind nicht auf diesem Smartphone und nicht in dieser Sicherung.",
     "syncLead": "Moony legt eine Sicherung an, bevor die Synchronisierung Daten auf diesem Telefon ersetzt. Die Daten von Moony sind von den eigenen Sicherungen Ihres Telefons ausgenommen, daher sind diese Liste und Dateien der einzige Weg dorthin.",
     "syncSaveCopy": "Kopie in Dateien sichern",
     "syncCopySaved": "Eine Kopie wurde in Dateien gespeichert",

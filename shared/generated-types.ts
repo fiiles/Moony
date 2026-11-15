@@ -3406,6 +3406,11 @@ notOnServer: number;
  */
 failed: number; 
 /**
+ * Rows with any content not complete on this device, whatever the reason (the three counts
+ * above leave out of each other what they hold): the backup does not have these.
+ */
+notOnDevice: number; 
+/**
  * Why documents and photos do not move, while ordinary sync goes on.
  */
 problem: SyncAttachmentsProblem | null }

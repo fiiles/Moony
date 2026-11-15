@@ -444,8 +444,23 @@
     "connectionNotHere": "Das ist ein Verbindungscode für einen Synchronisierungsserver. Verwenden Sie ihn beim Einrichten der Synchronisierung, nicht hier.",
     "notAServerAddress": "Das ist keine Adresse eines Synchronisierungsservers. Geben Sie die Adresse Ihres Synchronisierungsservers ein oder fügen Sie seinen Verbindungscode ein."
   },
+  "attachments": {
+    "title": "Dokumente und Fotos",
+    "allUploaded": "Alles hochgeladen",
+    "waiting_one": "{{count}} wartet auf das Hochladen · {{size}}",
+    "waiting_other": "{{count}} warten auf das Hochladen · {{size}}",
+    "uploading": "Dokumente und Fotos werden hochgeladen",
+    "onOtherDevices_one": "{{count}} Dokument oder Foto ist auf Ihren anderen Geräten",
+    "onOtherDevices_other": "{{count}} Dokumente und Fotos sind auf Ihren anderen Geräten",
+    "downloadEverything": "Alles auf dieses Smartphone laden",
+    "downloadEverythingStarted": "Der Download läuft, solange Moony geöffnet ist",
+    "problem": {
+      "noRoom": "Dokumente und Fotos warten: Auf dem Synchronisierungsserver ist kein Platz mehr. Bitten Sie den Betreiber um mehr Speicherplatz.",
+      "serverNeedsUpdate": "Dokumente und Fotos brauchen einen neueren Synchronisierungsserver. Alles andere wird synchronisiert."
+    }
+  },
   "whatSyncs": {
     "title": "Was synchronisiert wird",
-    "body": "Alles, was Sie in Moony eingeben, wird synchronisiert. Sprache, Aussehen, Menü, Benachrichtigungen, Gerätepasswort, Wiederherstellungsschlüssel und Sicherungen gehören zu jedem Gerät einzeln. Kurse und Verlauf werden auf jedem Gerät selbst berechnet. Dokumente und Fotos bleiben vorerst auf dem Gerät, auf dem Sie sie hinzugefügt haben."
+    "body": "Alles, was Sie in Moony eingeben, wird synchronisiert. Sprache, Aussehen, Menü, Benachrichtigungen, Gerätepasswort, Wiederherstellungsschlüssel und Sicherungen gehören zu jedem Gerät einzeln. Kurse und Verlauf werden auf jedem Gerät selbst berechnet. Dokumente und Fotos werden ebenfalls synchronisiert; ein Smartphone lädt sie erst, wenn Sie sie öffnen."
   }
 }

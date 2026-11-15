@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useFormat } from '@/lib/use-format';
+import { notInBackup } from '@/utils/sync-attachments';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { SectionPage } from '@/mobile/components/SectionPage';
@@ -36,6 +38,11 @@ export default function BackupSection() {
   const { createBackup, pickRestore, inspectPath, restore, busy, lastBackupAt, canExport } =
     useBackup();
   const [inspection, setInspection] = useState<BackupInspection | null>(null);
+  // Sync on: documents and photos not downloaded here are not in a backup made here (spec §5.7).
+  // The status exists only with the feature on, and counts nothing while sync is off.
+  const { data: syncStatus } = useDeviceSyncStatus();
+  const syncOn = syncStatus !== undefined && !['off', 'settingUp'].includes(syncStatus.phase);
+  const missing = syncOn ? notInBackup(syncStatus.attachments) : 0;
 
   const chooseRestore = async () => {
     const picked = await pickRestore();
@@ -82,6 +89,11 @@ export default function BackupSection() {
       <p className="mx-0.5 mb-0 mt-3 text-m-sub text-ink-3">
         {canExport ? t('backup.what') : t('backup.unavailableHere')}
       </p>
+      {missing > 0 && (
+        <p className="mx-0.5 mb-0 mt-2 text-m-sub text-ink-3">
+          {t('backup.notHere', { count: missing })}
+        </p>
+      )}
 
       <SectionHead title={t('backup.restoreTitle')} />
       <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3">{t('backup.restoreLead')}</p>

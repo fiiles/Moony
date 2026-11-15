@@ -1,10 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { AlertTriangle, Clock, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Clock, Download, RefreshCw } from 'lucide-react';
 import type { HeldGapView, SyncStatus } from '@shared/schema';
 import { Button } from '@/components/ui/button';
+import { useAttachmentsStatusText } from '@/hooks/use-attachments-status-text';
 import { useHeldGaps } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { cn } from '@/lib/utils';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
 import {
@@ -19,6 +21,7 @@ import {
 } from '@/utils/device-sync-problem';
 import { secondsToDate } from '@/utils/sync-status';
 import { hostOf } from '@/utils/sync-setup';
+import { offerDownloadEverything, onOtherDevices } from '@/utils/sync-attachments';
 import { isQuietlyOutOfReach, syncState } from '@/utils/sync-state';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
@@ -58,7 +61,9 @@ export function SyncStatusBlock({
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { dateTime, date } = useFormat();
-  const { syncNow } = useDeviceSyncMutations();
+  const { syncNow, downloadEverything } = useDeviceSyncMutations();
+  const attachments = useAttachmentsStatusText(status.attachments);
+  const elsewhere = onOtherDevices(status.attachments);
 
   const running = syncNow.isPending || status.phase === 'syncing';
 
@@ -66,6 +71,17 @@ export function SyncStatusBlock({
     if (running) return;
     try {
       await syncNow.mutateAsync();
+    } catch (error) {
+      toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
+    }
+  };
+
+  // The phone's button: this shell only runs on a phone (the desktop fetches everything by itself)
+  const download = async () => {
+    if (downloadEverything.isPending) return;
+    try {
+      await downloadEverything.mutateAsync();
+      toast.success(t('attachments.downloadEverythingStarted'));
     } catch (error) {
       toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
     }
@@ -113,6 +129,7 @@ export function SyncStatusBlock({
         <KeyValueRow label={t('phone.status')} value={stateLabel} />
         <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} />
         <KeyValueRow label={t('phone.pending')} value={status.pendingChanges} />
+        <KeyValueRow label={t('attachments.title')} value={attachments.value} />
         {status.serverAddress && (
           <KeyValueRow
             label={t('server.label')}
@@ -121,6 +138,25 @@ export function SyncStatusBlock({
           />
         )}
       </div>
+      {attachments.problem && (
+        <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{attachments.problem}</p>
+      )}
+      {elsewhere > 0 && (
+        <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">
+          {t('attachments.onOtherDevices', { count: elsewhere })}
+        </p>
+      )}
+      {offerDownloadEverything(status.attachments) && (
+        <Button
+          variant="secondary"
+          className={cn(BUTTON, 'mb-3')}
+          onClick={() => void download()}
+          loading={downloadEverything.isPending}
+        >
+          <Download />
+          {t('attachments.downloadEverything')}
+        </Button>
+      )}
       <Button className={BUTTON} onClick={() => void run()} loading={running}>
         <RefreshCw />
         {running ? t('indicator.syncing') : t('status.syncNow')}

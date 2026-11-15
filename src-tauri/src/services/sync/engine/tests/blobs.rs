@@ -532,6 +532,7 @@ fn the_status_counts_waiting_uploads_and_content_elsewhere() {
             not_here: 1,
             not_on_server: 0,
             failed: 0,
+            not_on_device: 1,
             problem: None,
         }
     );

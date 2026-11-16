@@ -17,6 +17,34 @@ export function bondYearlyCoupon(bond: Bond): number {
   return (bondFaceValue(bond) * rate) / 100;
 }
 
+/** The anniversary of a maturity day in `year` as a UTC day; 29 February is the 28th in a common year. */
+function maturityAnniversary(maturitySec: number, year: number): number {
+  const maturity = new Date(maturitySec * 1000);
+  const lastOfMonth = new Date(Date.UTC(year, maturity.getUTCMonth() + 1, 0)).getUTCDate();
+  return (
+    Date.UTC(year, maturity.getUTCMonth(), Math.min(maturity.getUTCDate(), lastOfMonth)) / 1000
+  );
+}
+
+/**
+ * The coupon paid on `dueSec`, an anniversary of the maturity or the maturity itself, in the
+ * bond's own currency. It covers the year since the previous anniversary, but only from the
+ * purchase day when the bond was bought inside that year (days held / days of the coupon year),
+ * so a bond held three months returns three months of interest. Without a purchase day, or for
+ * a bond without a maturity, the full yearly coupon.
+ */
+export function bondCouponDue(bond: Bond, dueSec: number): number {
+  const yearly = bondYearlyCoupon(bond);
+  if (bond.maturityDate === null || bond.purchaseDate === null) return yearly;
+  const previous = maturityAnniversary(
+    bond.maturityDate,
+    new Date(dueSec * 1000).getUTCFullYear() - 1
+  );
+  if (bond.purchaseDate <= previous) return yearly;
+  if (bond.purchaseDate >= dueSec) return 0;
+  return (yearly * (dueSec - bond.purchaseDate)) / (dueSec - previous);
+}
+
 /** The bond's currency (legacy rows without one are CZK). */
 export function bondCurrency(bond: Bond): string {
   return recordCurrency(bond.currency);
@@ -41,14 +69,15 @@ export interface LadderYear {
   year: number;
   /** Face value returned that year, main currency. */
   principal: number;
-  /** Coupons still due that year, main currency (yearly coupon assumed on the maturity anniversary). */
+  /** Coupons still due that year, main currency (paid on the maturity anniversary, see `bondCouponDue`). */
   coupons: number;
 }
 
 /**
  * Cash coming back per calendar year from today's year to the last maturity:
- * principal in the maturity year, one yearly coupon on each remaining
- * anniversary of the maturity date. Bonds without a maturity pay a coupon
+ * principal in the maturity year, one coupon on each remaining anniversary of
+ * the maturity date (`bondCouponDue`: the first one after a purchase pays only
+ * the days held). Bonds without a maturity pay a coupon
  * every year of the range. Capped at `maxYears` columns. Bonds without a rate are left
  * out (the summary reports their currencies).
  */
@@ -74,15 +103,16 @@ export function bondLadder(
     let principal = 0;
     let coupons = 0;
     for (const bond of live) {
-      const coupon = bondCoupon(bond, convert) ?? 0;
       if (bond.maturityDate === null) {
-        coupons += coupon;
+        coupons += bondCoupon(bond, convert) ?? 0;
         continue;
       }
       const maturity = new Date(bond.maturityDate * 1000);
       if (maturity.getUTCFullYear() === year) principal += bondValue(bond, convert) ?? 0;
       const anniversary = Date.UTC(year, maturity.getUTCMonth(), maturity.getUTCDate()) / 1000;
-      if (anniversary > todaySec && anniversary <= bond.maturityDate) coupons += coupon;
+      if (anniversary > todaySec && anniversary <= bond.maturityDate) {
+        coupons += convert(bondCouponDue(bond, anniversary), bondCurrency(bond)) ?? 0;
+      }
     }
     years.push({ year, principal, coupons });
   }

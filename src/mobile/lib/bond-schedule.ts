@@ -1,5 +1,5 @@
 import type { Bond } from '@shared/schema';
-import { bondCurrency, bondFaceValue, bondYearlyCoupon } from '@/utils/bonds';
+import { bondCouponDue, bondCurrency, bondFaceValue } from '@/utils/bonds';
 
 /** One payment of a bond to come: a yearly coupon, or the maturity (the principal with the last coupon). */
 export interface BondPayment {
@@ -56,7 +56,6 @@ export function upcomingBondPayments(
     const maturity = bond.maturityDate;
     if (maturity === null || maturity < todaySec) continue;
     const currency = bondCurrency(bond);
-    const coupon = bondYearlyCoupon(bond);
     const lastYear = new Date(maturity * 1000).getUTCFullYear();
 
     for (let year = firstYear; year <= lastYear; year++) {
@@ -64,6 +63,8 @@ export function upcomingBondPayments(
       const t = year === lastYear ? maturity : anniversary(maturity, year);
       if (t < todaySec) continue;
       if (t >= end) break;
+      // Bought inside a coupon year, the bond earns only the days held (`bondCouponDue`)
+      const coupon = bondCouponDue(bond, t);
       if (year === lastYear) {
         payments.push({
           t,

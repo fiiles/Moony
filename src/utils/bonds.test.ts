@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Bond } from '@shared/schema';
 import {
+  bondCouponDue,
   bondFaceValue,
   bondLadder,
   bondYearlyCoupon,
@@ -54,6 +55,58 @@ describe('bond values', () => {
   });
 });
 
+describe('bondCouponDue', () => {
+  // 1 700 000 CZK at 3.75 %: a full year pays 63 750
+  const short = (purchaseDate: number | null) =>
+    bond({
+      couponValue: '1',
+      quantity: '1700000',
+      interestRate: '3.75',
+      maturityDate: day('2027-01-15'),
+      purchaseDate,
+    });
+
+  it('pays the full yearly coupon when the purchase day is unknown', () => {
+    expect(bondCouponDue(short(null), day('2027-01-15'))).toBeCloseTo(63_750);
+  });
+
+  it('pays only the days held when the bond was bought inside the coupon year', () => {
+    // Bought 2026-10-05: 102 of the 365 days from 2026-01-15 to the maturity
+    expect(bondCouponDue(short(day('2026-10-05')), day('2027-01-15'))).toBeCloseTo(
+      (63_750 * 102) / 365
+    );
+  });
+
+  it('pays the full coupon when the bond was bought before the coupon year began', () => {
+    expect(bondCouponDue(short(day('2025-12-01')), day('2027-01-15'))).toBeCloseTo(63_750);
+  });
+
+  it('pro-rates the first coupon after the purchase and pays later ones in full', () => {
+    const long = bond({
+      couponValue: '1000',
+      quantity: '10',
+      interestRate: '5',
+      maturityDate: day('2029-03-15'),
+      purchaseDate: day('2026-09-15'),
+    });
+    // 2026-09-15 → 2027-03-15 is 181 of the 365 days of that coupon year
+    expect(bondCouponDue(long, day('2027-03-15'))).toBeCloseTo((500 * 181) / 365);
+    expect(bondCouponDue(long, day('2028-03-15'))).toBeCloseTo(500);
+  });
+
+  it('measures the coupon year of a 29 February maturity from 28 February', () => {
+    const leap = bond({
+      couponValue: '1000',
+      quantity: '1',
+      interestRate: '4',
+      maturityDate: day('2028-02-29'),
+      purchaseDate: day('2027-08-31'),
+    });
+    // 2027-02-28 → 2028-02-29 is 366 days; held from 2027-08-31: 182 of them
+    expect(bondCouponDue(leap, day('2028-02-29'))).toBeCloseTo((40 * 182) / 366);
+  });
+});
+
 describe('bondLadder', () => {
   const bonds = [
     bond({
@@ -90,6 +143,21 @@ describe('bondLadder', () => {
     // 2030: bond b matures
     expect(ladder[4].principal).toBe(100_000);
     expect(ladder[4].coupons).toBeCloseTo(4_500);
+  });
+
+  it('pays a short bond only the coupon for the days it was held', () => {
+    const short = bond({
+      id: 's',
+      couponValue: '1',
+      quantity: '1700000',
+      interestRate: '3.75',
+      maturityDate: day('2027-01-15'),
+      purchaseDate: day('2026-10-02'),
+    });
+    const ladder = bondLadder([short], TODAY, convert);
+    // 2026-10-02 → 2027-01-15 is 105 of 365 days
+    expect(ladder[1].principal).toBe(1_700_000);
+    expect(ladder[1].coupons).toBeCloseTo((63_750 * 105) / 365);
   });
 
   it('ignores matured bonds and is empty without live bonds', () => {

@@ -752,10 +752,12 @@
     "delete": {
       "title": "Radera alla data?",
       "lead": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — det är den enda vägen tillbaka.",
-      "leadSynced": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott samt de synkroniserade data på synkroniseringsservern (om den kan nås): dina andra enheter slutar synkronisera och behåller de data de har. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — för den här telefonen är det den enda vägen tillbaka.",
+      "leadSynced": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — det är den enda vägen tillbaka. De synkroniserade data finns kvar på synkroniseringsservern för dina andra enheter. Du kan radera dem under Inställningar → Synkronisering.",
       "confirmLabel": "Skriv {{word}} för att bekräfta",
       "confirm": "Radera data",
-      "failed": "Raderingen misslyckades"
+      "failed": "Raderingen misslyckades",
+      "syncDeleteLabel": "Radera även de synkroniserade data från servern — för alla enheter",
+      "syncDeleteHint": "Dina andra enheter slutar då synkronisera och behåller de data de har. Om servern inte kan nås finns dessa data kvar där, krypterade."
     },
     "tracking": {
       "lead": "Välj vad du vill följa i Moony.",

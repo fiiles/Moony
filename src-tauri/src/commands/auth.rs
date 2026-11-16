@@ -331,16 +331,20 @@ pub async fn delete_account(
     app: AppHandle,
     db: State<'_, Database>,
     session: State<'_, SessionKey>,
+    delete_synced_data: Option<bool>,
 ) -> Result<()> {
     let db_path = get_db_path(&app)?;
     // The engine stops first, so no round holds the round lock through the vault deletion's
-    // budget; then the synced data goes too, while the profile is open and its sync row still on
-    // (ruling P8). A failure never stops the deletion.
+    // budget. Deleting the profile only removes this device: the synced data on the server stays
+    // for the other devices unless the owner ticked the opt-in box, and then it goes while the
+    // profile is open and its sync row still on (ruling P8). A failure never stops the deletion.
     crate::commands::sync::stop_engine_and_wait(&app).await;
     crate::commands::sync::forget_kit_window();
     crate::commands::sync_pairing::forget_pairing();
     crate::commands::sync::clear_copied_code(&app);
-    crate::commands::sync::delete_vault_with_account(&db).await;
+    if delete_synced_data.unwrap_or(false) {
+        crate::commands::sync::delete_vault_with_account(&db).await;
+    }
     crate::commands::attachments::wipe_open_copies(&app);
     let deleted = auth::delete_account(&db, &session, &db_path);
     // The marker went with the account files, so the key stored for biometric unlock goes too.

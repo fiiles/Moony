@@ -752,10 +752,12 @@
     "delete": {
       "title": "Slette alle data?",
       "lead": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake.",
-      "leadSynced": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt, og de synkroniserte dataene på synkroniseringsserveren (hvis den kan nås): de andre enhetene dine slutter å synkronisere og beholder dataene de har. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — for denne telefonen er det den eneste veien tilbake.",
+      "leadSynced": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake. De synkroniserte dataene blir liggende på synkroniseringsserveren for de andre enhetene dine. Du kan slette dem under Innstillinger → Synkronisering.",
       "confirmLabel": "Skriv {{word}} for å bekrefte",
       "confirm": "Slett data",
-      "failed": "Slettingen mislyktes"
+      "failed": "Slettingen mislyktes",
+      "syncDeleteLabel": "Slett også de synkroniserte dataene fra serveren — for alle enheter",
+      "syncDeleteHint": "De andre enhetene dine slutter da å synkronisere og beholder dataene de har. Hvis serveren ikke kan nås, blir dataene liggende der, kryptert."
     },
     "tracking": {
       "lead": "Velg hva du vil følge i Moony.",

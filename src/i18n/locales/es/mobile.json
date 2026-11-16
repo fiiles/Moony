@@ -792,10 +792,12 @@
     "delete": {
       "title": "¿Eliminar todos los datos?",
       "lead": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: es la única forma de recuperar los datos.",
-      "leadSynced": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono, y los datos sincronizados en el servidor de sincronización (si se puede contactar con él): tus demás dispositivos dejan de sincronizar y conservan los datos que tienen. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: para este teléfono es la única forma de recuperar los datos.",
+      "leadSynced": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: es la única forma de recuperar los datos. Los datos sincronizados se quedan en el servidor de sincronización para tus demás dispositivos. Puedes eliminarlos en Ajustes → Sincronización.",
       "confirmLabel": "Escribe {{word}} para confirmar",
       "confirm": "Eliminar datos",
-      "failed": "No se pudo eliminar"
+      "failed": "No se pudo eliminar",
+      "syncDeleteLabel": "Eliminar también los datos sincronizados del servidor, para todos los dispositivos",
+      "syncDeleteHint": "Tus demás dispositivos dejan entonces de sincronizar y conservan los datos que tienen. Si no se puede contactar con el servidor, esos datos se quedan allí, cifrados."
     },
     "tracking": {
       "lead": "Elige qué quieres seguir en Moony.",

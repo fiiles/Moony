@@ -793,10 +793,12 @@
     "delete": {
       "title": "Smazat všechna data?",
       "lead": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — je to jediná cesta zpět.",
-      "leadSynced": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu i synchronizovaná data na synchronizačním serveru (pokud je dostupný): ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — pro tento telefon je to jediná cesta zpět.",
+      "leadSynced": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — je to jediná cesta zpět. Synchronizovaná data zůstanou na synchronizačním serveru pro vaše ostatní zařízení. Smazat je můžete v Nastavení → Synchronizace.",
       "confirmLabel": "Pro potvrzení napište {{word}}",
       "confirm": "Smazat data",
-      "failed": "Smazání selhalo"
+      "failed": "Smazání selhalo",
+      "syncDeleteLabel": "Smazat i synchronizovaná data ze serveru — pro všechna zařízení",
+      "syncDeleteHint": "Vaše ostatní zařízení se pak přestanou synchronizovat a data, která mají, si ponechají. Pokud server není dostupný, data na něm zůstanou, šifrovaná."
     },
     "tracking": {
       "lead": "Vyberte, co chcete v Moony sledovat.",

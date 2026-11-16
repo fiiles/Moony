@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { confirmWordMatches } from '@/lib/confirm-word';
@@ -31,13 +32,15 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
   const { data: syncStatus } = useDeviceSyncStatus();
   const syncOn = syncIsOn(syncFeature, syncStatus);
   const [typed, setTyped] = useState('');
+  // Opt-in, off by default: deleting the profile only removes this phone
+  const [deleteSynced, setDeleteSynced] = useState(false);
   // The word to type before everything is deleted, in the UI language and as the desktop's
   // danger zone asks for it ("SMAZAT"); any case will do (audit B5)
   const word = ts('dangerZone.confirmWord');
   const confirmed = confirmWordMatches(typed, word);
 
   const remove = useMutation({
-    mutationFn: () => authApi.deleteAccount(),
+    mutationFn: () => authApi.deleteAccount(syncOn && deleteSynced),
     onSuccess: async () => {
       // The notifications scheduled for the deleted profile must not outlive it (best effort, iOS)
       await cancelAllNotifications();
@@ -58,7 +61,10 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
   const change = (next: boolean) => {
     // Nothing leaves the sheet while the database is being deleted
     if (!next && remove.isPending) return;
-    if (!next) setTyped('');
+    if (!next) {
+      setTyped('');
+      setDeleteSynced(false);
+    }
     onOpenChange(next);
   };
 
@@ -67,7 +73,9 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
       open={open}
       onOpenChange={change}
       title={t('settings.delete.title')}
-      description={syncOn ? t('settings.delete.leadSynced') : t('settings.delete.lead')}
+      description={
+        syncOn && !deleteSynced ? t('settings.delete.leadSynced') : t('settings.delete.lead')
+      }
       footer={
         <>
           <Button
@@ -90,6 +98,26 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
         </>
       }
     >
+      {syncOn && (
+        <label
+          htmlFor="delete-profile-synced"
+          className="mb-4 flex items-start gap-3 text-m-sub text-ink-2"
+        >
+          <Checkbox
+            id="delete-profile-synced"
+            className="mt-0.5"
+            checked={deleteSynced}
+            disabled={remove.isPending}
+            onCheckedChange={(checked) => setDeleteSynced(checked === true)}
+          />
+          <span className="block">
+            <span className="block font-semibold text-ink">
+              {t('settings.delete.syncDeleteLabel')}
+            </span>
+            <span className="block">{t('settings.delete.syncDeleteHint')}</span>
+          </span>
+        </label>
+      )}
       <label htmlFor="delete-profile-confirm" className="block text-m-sub font-semibold text-ink-2">
         {t('settings.delete.confirmLabel', { word })}
       </label>

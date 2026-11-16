@@ -34,6 +34,7 @@ import { queryClient } from '@/lib/queryClient';
 import { biometricApi } from '@/lib/tauri-api';
 import { cn } from '@/lib/utils';
 import { deviceStorage } from '@/utils/device-storage';
+import { vocative } from '@/utils/vocative';
 import { isSupportedLanguage, type SupportedLanguage } from '@/i18n/index';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -213,7 +214,7 @@ function UnlockScreen({
 }) {
   const { unlockMutation, unlockWithPassword, unlockWithBiometricsMutation, lockMutation } =
     useAuth();
-  const { t } = useTranslation('auth');
+  const { t, i18n } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
   const { t: tm } = useTranslation('mobile');
   const fmt = useFormat();
@@ -330,7 +331,9 @@ function UnlockScreen({
           </div>
 
           <h1 className="m-0 text-[length:calc(22px*var(--m-text-k))] font-650 tracking-[-0.04em] text-ink">
-            {greetingName ? t('login.titleNamed', { name: greetingName }) : t('login.title')}
+            {greetingName
+              ? t('login.titleNamed', { name: vocative(greetingName, i18n.language) })
+              : t('login.title')}
           </h1>
           <p className="mb-[26px] mt-1.5 text-m-sub text-ink-3">
             {lockedAt !== null

@@ -37,6 +37,14 @@ describe('upcomingBondPayments', () => {
     ]);
   });
 
+  it('pays with the principal only the coupon for the days the bond was held', () => {
+    // Bought 2026-10-24, maturing 2027-02-10: 109 of the 365 days of the coupon year
+    const short = bond({ maturityDate: day(2027, 2, 10), purchaseDate: TODAY });
+    const [payment] = upcomingBondPayments([short], TODAY);
+    expect(payment.kind).toBe('maturity');
+    expect(payment.amount).toBeCloseTo(10_000 + (500 * 109) / 365);
+  });
+
   it('moves a 29 February coupon to the last day of February in a year without one', () => {
     const leap = bond({
       couponValue: '1000',

@@ -7,8 +7,8 @@ use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::Zeroizing;
 
 use super::bundle::{
-    build, open, open_body_with_key, BundleInput, Header, Notice, OldKey, Opened, Reason,
-    Recipient, HEADER_LEN, MAX_BUNDLE_BYTES,
+    body_json, build, build_with_json, open, open_body_with_key, BundleInput, Header, Notice,
+    OldKey, Opened, Reason, Recipient, HEADER_LEN, MAX_BUNDLE_BYTES,
 };
 use crate::error::Result;
 use crate::services::sync::hlc::DeviceId;
@@ -126,7 +126,7 @@ fn hex(bytes: &[u8]) -> String {
 fn opened_as_recipient(bytes: &[u8], dev: Dev) -> bool {
     matches!(
         open(bytes, &VAULT, &dev.box_secret()),
-        Ok(Opened::Recipient { .. })
+        Ok(Opened::Recipient(_))
     )
 }
 
@@ -242,14 +242,25 @@ fn the_bundle_matches_the_frozen_vector() {
 fn each_recipient_opens_the_new_key_and_the_removed_device_only_its_notice() {
     let bytes = bundle();
     for dev in [A, B] {
-        let Ok(Opened::Recipient {
-            new_key,
-            header,
-            body,
-        }) = open(&bytes, &VAULT, &dev.box_secret())
-        else {
-            panic!("a recipient opens the new key");
+        let open_unverified = || match open(&bytes, &VAULT, &dev.box_secret()) {
+            Ok(Opened::Recipient(unverified)) => unverified,
+            other => panic!("a recipient opens the new key: {other:?}"),
         };
+        let unverified = open_unverified();
+        assert_eq!(unverified.signer(), &A.cert());
+        assert_eq!(unverified.header().to_epoch, 1);
+        assert!(
+            !format!("{unverified:?}").contains("90, 90"),
+            "no key bytes in Debug"
+        );
+        assert!(
+            open_unverified().verify(&sign_pub(&B.seed())).is_err(),
+            "not by B"
+        );
+        let verified = unverified
+            .verify(&sign_pub(&A.seed()))
+            .expect("signed by A");
+        let (new_key, header, body) = (verified.new_key, verified.header, verified.body);
         assert_eq!(*new_key, NEW_KEY);
         assert_eq!(
             header,
@@ -260,8 +271,6 @@ fn each_recipient_opens_the_new_key_and_the_removed_device_only_its_notice() {
                 eph_pub: PublicKey::from(&StaticSecret::from([0x01; 32])).to_bytes(),
             }
         );
-        body.verify(&sign_pub(&A.seed())).expect("signed by A");
-        assert!(body.verify(&sign_pub(&B.seed())).is_err(), "not by B");
         assert_eq!(body.by, A.id());
         assert_eq!(body.at, AT);
         assert_eq!(body.reason, Reason::Remove);
@@ -288,16 +297,30 @@ fn each_recipient_opens_the_new_key_and_the_removed_device_only_its_notice() {
 #[test]
 fn the_body_opens_with_the_new_key_alone() {
     let bytes = bundle();
-    let (header, body) = open_body_with_key(&bytes, &VAULT, &NEW_KEY).expect("the Kit's key");
-    assert_eq!((header.from_epoch, header.to_epoch), (0, 1));
-    body.verify(&sign_pub(&A.seed())).expect("signed by A");
+    let unverified = open_body_with_key(&bytes, &VAULT, &NEW_KEY).expect("the Kit's key");
+    assert_eq!(
+        (unverified.header().from_epoch, unverified.header().to_epoch),
+        (0, 1)
+    );
+    let verified = unverified
+        .verify(&sign_pub(&A.seed()))
+        .expect("signed by A");
+    assert_eq!(*verified.new_key, NEW_KEY);
+    assert!(open_body_with_key(&bytes, &VAULT, &NEW_KEY)
+        .expect("opens")
+        .verify(&sign_pub(&B.seed()))
+        .is_err());
     assert!(open_body_with_key(&bytes, &VAULT, &OLD_KEY).is_err());
     assert!(open_body_with_key(&bytes, &[0x12; 16], &NEW_KEY).is_err());
 }
 
 #[test]
 fn the_older_keys_round_trip_with_their_heads() {
-    let (_, body) = open_body_with_key(&bundle(), &VAULT, &NEW_KEY).expect("opens");
+    let body = open_body_with_key(&bundle(), &VAULT, &NEW_KEY)
+        .expect("opens")
+        .verify(&sign_pub(&A.seed()))
+        .expect("signed by A")
+        .body;
     let keys: Vec<(u32, [u8; 32], Option<u64>)> = body
         .keys
         .iter()
@@ -482,4 +505,128 @@ fn a_bundle_of_64_recipients_fits() {
     let bytes = build(&input, &mut counter(1)).expect("64 recipients");
     assert!(bytes.len() < 64 * 1024, "{} bytes", bytes.len());
     assert!(opened_as_recipient(&bytes, Dev(0x10 + 63)));
+}
+
+// ── Review of Task 6: what `open` refuses ───────────────────────────────────────────────────
+
+#[test]
+fn a_truncated_bundle_or_one_with_a_trailing_byte_is_refused() {
+    let bytes = bundle();
+    for cut in [HEADER_LEN + 2, HEADER_LEN + 40, bytes.len() - 1] {
+        assert!(
+            open(&bytes[..cut], &VAULT, &A.box_secret()).is_err(),
+            "cut at {cut}"
+        );
+        assert!(open_body_with_key(&bytes[..cut], &VAULT, &NEW_KEY).is_err());
+    }
+    let mut longer = bytes.clone();
+    longer.push(0);
+    assert!(!opened_as_recipient(&longer, A));
+    assert!(open_body_with_key(&longer, &VAULT, &NEW_KEY).is_err());
+}
+
+#[test]
+fn a_low_order_ephemeral_key_opens_nothing() {
+    let mut bytes = bundle();
+    // The all-zero point is of low order: no contributory exchange, no entry for anyone.
+    bytes[29..HEADER_LEN].fill(0);
+    assert!(matches!(
+        open(&bytes, &VAULT, &A.box_secret()).expect("parses"),
+        Opened::Nothing
+    ));
+}
+
+/// The test bundle with its body JSON passed through `edit`, signed by A.
+fn bundle_with_json(edit: impl Fn(&str) -> String) -> Vec<u8> {
+    let new_key = Zeroizing::new(NEW_KEY);
+    let keys = [OldKey {
+        epoch: 0,
+        key: Zeroizing::new(OLD_KEY),
+        head: Some(0),
+    }];
+    let removal = A.removes(C);
+    let recipients = [A.recipient(), B.recipient()];
+    let signer_cert = A.cert();
+    let signer = A.seed();
+    let input = BundleInput {
+        vault_id: VAULT,
+        from_epoch: 0,
+        to_epoch: 1,
+        new_key: &new_key,
+        recipients: &recipients,
+        notices: &[],
+        signer: &signer,
+        signer_cert: &signer_cert,
+        at: AT,
+        reason: Reason::Remove,
+        removed: std::slice::from_ref(&removal),
+        keys: &keys,
+    };
+    let json = Zeroizing::new(edit(&body_json(&input)));
+    build_with_json(&input, json, &mut counter(1)).expect("bundle")
+}
+
+#[test]
+fn a_body_that_breaks_its_own_rules_is_refused() {
+    // The untouched JSON opens: the edits below are what fails.
+    assert!(open_body_with_key(&bundle_with_json(|j| j.to_string()), &VAULT, &NEW_KEY).is_ok());
+    let a = A.id().to_hex();
+    let b = B.id().to_hex();
+    let c = C.id().to_hex();
+    let old = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, OLD_KEY);
+    let cases: Vec<(&str, Box<dyn Fn(&str) -> String>)> = vec![
+        (
+            "a duplicate epoch in keys",
+            Box::new(move |j: &str| {
+                j.replace(
+                    "\"keys\":[",
+                    &format!("\"keys\":[{{\"epoch\":0,\"key\":\"{old}\"}},"),
+                )
+            }),
+        ),
+        (
+            "by is not the signer certificate's device",
+            Box::new({
+                let a = a.clone();
+                let b = b.clone();
+                move |j: &str| j.replacen(&format!("\"by\":\"{a}\""), &format!("\"by\":\"{b}\""), 1)
+            }),
+        ),
+        (
+            "a certificate listed under another device",
+            Box::new({
+                let b = b.clone();
+                let c = c.clone();
+                move |j: &str| {
+                    j.replacen(
+                        &format!("{{\"device\":\"{b}\",\"cert\""),
+                        &format!("{{\"device\":\"{c}\",\"cert\""),
+                        1,
+                    )
+                }
+            }),
+        ),
+        (
+            "a record listed under another device",
+            Box::new(move |j: &str| {
+                j.replacen(
+                    &format!("{{\"device\":\"{c}\",\"record\""),
+                    &format!("{{\"device\":\"{b}\",\"record\""),
+                    1,
+                )
+            }),
+        ),
+    ];
+    for (what, edit) in cases {
+        let bytes = bundle_with_json(|j| {
+            let edited = edit(j);
+            assert_ne!(edited, j, "{what}: the edit applies");
+            edited
+        });
+        assert!(
+            open_body_with_key(&bytes, &VAULT, &NEW_KEY).is_err(),
+            "{what}"
+        );
+        assert!(open(&bytes, &VAULT, &A.box_secret()).is_err(), "{what}");
+    }
 }

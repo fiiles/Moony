@@ -24,10 +24,14 @@
 //! trial decryption, so the server learns their count and nothing else; one ephemeral X25519
 //! pair per bundle; entries are bound to the header and their index, and the body to every entry.
 //!
-//! This module builds and opens the bytes and checks the bundle's own signature
-//! (`BundleBody::verify`); whether the signer is trusted, and what the bundle then teaches, is
-//! the trust store's question (`identity::trust::import_bundle`). New keys, the ephemeral secret
-//! and the body's older keys live in `Zeroizing` buffers, and `Debug` prints `<redacted>`.
+//! This module builds and opens the bytes and checks the bundle's own signature: an opened body
+//! is `Unverified`, and its new key, older keys and contents are reachable only through
+//! `Unverified::verify` with the signer's key, which gives `Verified`. Whether that signer may
+//! sign a key change is the caller's question (Task 10): its certificate must be the one pinned
+//! here, `trusted` and not `kit_unconfirmed`, and `to_epoch` must be this device's epoch + 1;
+//! what the bundle then teaches is `identity::trust::import_bundle`'s. New keys, the ephemeral
+//! secret, the body's older keys and every buffer holding the body JSON live in `Zeroizing`
+//! buffers, and `Debug` prints `<redacted>`.
 
 use std::fmt;
 
@@ -190,7 +194,7 @@ pub struct BundleInput<'a> {
 }
 
 /// A bundle's opened body: who signed it, when and why, the certificates it endorses, the
-/// removal records it carries and the older keys.
+/// removal records it carries and the older keys. Reached only through `Verified`.
 pub struct BundleBody {
     pub by: DeviceId,
     pub at: i64,
@@ -200,15 +204,69 @@ pub struct BundleBody {
     pub removed: Vec<(DeviceId, Record)>,
     pub keys: Vec<OldKey>,
     sig: [u8; 64],
-    /// `"moony rekey v1" ‖ header ‖ SHA-256(entries) ‖ JSON`: what `sig` signs.
-    signed: Vec<u8>,
+    /// `"moony rekey v1" ‖ header ‖ SHA-256(entries) ‖ JSON`: what `sig` signs (the JSON carries
+    /// the older keys, so the buffer is wiped).
+    signed: Zeroizing<Vec<u8>>,
 }
 
-impl BundleBody {
-    /// The signature is `signer_pub`'s (the caller decides whose key that is, from its store or
-    /// the bundled certificate).
-    pub fn verify(&self, signer_pub: &[u8; 32]) -> Result<()> {
-        verify_sig(signer_pub, &self.signed, &self.sig).map_err(|_| invalid())
+/// A body that opened but whose signature is not checked yet. Only its header and its signer's
+/// certificate (whose device is the body's `by`) can be read, to find the key to check it with;
+/// the new key and everything else come out of `verify`.
+pub struct Unverified {
+    new_key: Zeroizing<[u8; 32]>,
+    header: Header,
+    body: Box<BundleBody>,
+}
+
+impl Unverified {
+    pub fn header(&self) -> &Header {
+        &self.header
+    }
+
+    /// The certificate the body names as its signer (`by` is its device). The caller looks the
+    /// device up in its own store: the key to verify with is the pinned one, never this
+    /// certificate's on its own word.
+    pub fn signer(&self) -> &Certificate {
+        &self.body.signer
+    }
+
+    /// The new key and the body, when the signature is `signer_pub`'s. The caller has also to
+    /// check that this signer is pinned here with that key, `trusted` and not `kit_unconfirmed`,
+    /// and that `to_epoch` is its own epoch + 1.
+    pub fn verify(self, signer_pub: &[u8; 32]) -> Result<Verified> {
+        verify_sig(signer_pub, &self.body.signed, &self.body.sig).map_err(|_| invalid())?;
+        Ok(Verified {
+            new_key: self.new_key,
+            header: self.header,
+            body: self.body,
+        })
+    }
+}
+
+impl fmt::Debug for Unverified {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Unverified")
+            .field("new_key", &"<redacted>")
+            .field("header", &self.header)
+            .field("by", &self.body.by)
+            .finish_non_exhaustive()
+    }
+}
+
+/// A body whose signature verified with the key the caller passed.
+pub struct Verified {
+    pub new_key: Zeroizing<[u8; 32]>,
+    pub header: Header,
+    pub body: Box<BundleBody>,
+}
+
+impl fmt::Debug for Verified {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Verified")
+            .field("new_key", &"<redacted>")
+            .field("header", &self.header)
+            .field("body", &self.body)
+            .finish()
     }
 }
 
@@ -227,12 +285,9 @@ impl fmt::Debug for BundleBody {
 
 /// What this device found in a bundle.
 pub enum Opened {
-    /// An entry sealed the new key to this device, and the body opened with it.
-    Recipient {
-        new_key: Zeroizing<[u8; 32]>,
-        header: Header,
-        body: Box<BundleBody>,
-    },
+    /// An entry sealed the new key to this device, and the body opened with it; its signature is
+    /// not checked yet.
+    Recipient(Unverified),
     /// An entry carried a removal notice for this device (its record is not checked here).
     Notice { header: Header, record: Record },
     /// No entry opens for this device.
@@ -242,12 +297,7 @@ pub enum Opened {
 impl fmt::Debug for Opened {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Opened::Recipient { header, body, .. } => f
-                .debug_struct("Recipient")
-                .field("new_key", &"<redacted>")
-                .field("header", header)
-                .field("body", body)
-                .finish(),
+            Opened::Recipient(unverified) => f.debug_tuple("Recipient").field(unverified).finish(),
             Opened::Notice { header, record } => f
                 .debug_struct("Notice")
                 .field("header", header)
@@ -326,8 +376,16 @@ fn body_aad(header: &[u8; HEADER_LEN], entries_hash: &[u8; 32]) -> Vec<u8> {
     aad
 }
 
-fn signed_message(header: &[u8; HEADER_LEN], entries_hash: &[u8; 32], json: &[u8]) -> Vec<u8> {
-    let mut message = Vec::with_capacity(SIG_DOMAIN.len() + HEADER_LEN + 32 + json.len());
+/// What the signature signs, in a wiped buffer (the JSON carries the older keys), reserved up
+/// front so it never reallocates.
+fn signed_message(
+    header: &[u8; HEADER_LEN],
+    entries_hash: &[u8; 32],
+    json: &[u8],
+) -> Zeroizing<Vec<u8>> {
+    let mut message = Zeroizing::new(Vec::with_capacity(
+        SIG_DOMAIN.len() + HEADER_LEN + 32 + json.len(),
+    ));
     message.extend_from_slice(SIG_DOMAIN);
     message.extend_from_slice(header);
     message.extend_from_slice(entries_hash);
@@ -355,7 +413,7 @@ fn open_sealed(
 }
 
 /// The body JSON in one wiped buffer (it carries the older keys).
-fn body_json(input: &BundleInput<'_>) -> Zeroizing<String> {
+pub(super) fn body_json(input: &BundleInput<'_>) -> Zeroizing<String> {
     let signer = input.signer_cert.to_b64();
     let recipients: Vec<(String, String)> = input
         .recipients
@@ -441,6 +499,15 @@ pub fn build(
     input: &BundleInput<'_>,
     fill: &mut dyn FnMut(&mut [u8]) -> Result<()>,
 ) -> Result<Vec<u8>> {
+    build_with_json(input, body_json(input), fill)
+}
+
+/// `build` with the body JSON given: tests make bodies the build would never write.
+pub(super) fn build_with_json(
+    input: &BundleInput<'_>,
+    json: Zeroizing<String>,
+    fill: &mut dyn FnMut(&mut [u8]) -> Result<()>,
+) -> Result<Vec<u8>> {
     let refuse = |what: &str| AppError::Internal(format!("sync: a key-change bundle {what}"));
     if input.from_epoch.checked_add(1) != Some(input.to_epoch) {
         return Err(refuse("must move one epoch on"));
@@ -468,7 +535,7 @@ pub fn build(
 
     let count = input.recipients.len() + input.notices.len();
     let mut entries = Vec::with_capacity(2 + count * 220);
-    entries.extend_from_slice(&(count as u16).to_be_bytes());
+    entries.extend_from_slice(&to_u16(count)?.to_be_bytes());
     let mut plain = Zeroizing::new(Vec::with_capacity(1 + 160));
     let sealed_to = input
         .recipients
@@ -497,15 +564,14 @@ pub fn build(
         .ok_or_else(|| refuse("names a low-order box key"))?;
         let mut nonce = [0u8; NONCE];
         fill(&mut nonce)?;
-        let sealed = seal(&key, &nonce, &plain, &entry_aad(&header, index as u16))?;
-        entries.extend_from_slice(&(sealed.len() as u16).to_be_bytes());
+        let sealed = seal(&key, &nonce, &plain, &entry_aad(&header, to_u16(index)?))?;
+        entries.extend_from_slice(&to_u16(sealed.len())?.to_be_bytes());
         entries.extend_from_slice(&nonce);
         entries.extend_from_slice(&sealed);
     }
     drop(eph_secret);
     let entries_hash: [u8; 32] = Sha256::digest(&entries).into();
 
-    let json = body_json(input);
     let sig = input
         .signer
         .sign(&signed_message(&header, &entries_hash, json.as_bytes()));
@@ -530,6 +596,12 @@ pub fn build(
         return Err(refuse("is over 256 KiB"));
     }
     Ok(bundle)
+}
+
+/// A length or index as the u16 the bytes carry; refused when it does not fit.
+fn to_u16(value: usize) -> Result<u16> {
+    u16::try_from(value)
+        .map_err(|_| AppError::Internal("sync: a key-change bundle part is too long".into()))
 }
 
 /// A bundle split into its parts, its sizes checked.
@@ -637,7 +709,7 @@ fn device_of(hex: &str) -> Result<DeviceId> {
 /// Opens and reads the body with `new_key`: every certificate and record decodes and names the
 /// device it is listed under in this vault, `by` is the signer certificate's device, the older
 /// keys are 32 bytes, below `to_epoch` and each epoch once. The signature is not checked here
-/// (`BundleBody::verify`).
+/// (`Unverified::verify`).
 fn open_body(parts: &Parts<'_>, new_key: &[u8; 32]) -> Result<BundleBody> {
     let vault = &parts.header.vault_id;
     let plain = open_sealed(
@@ -721,9 +793,10 @@ fn open_body(parts: &Parts<'_>, new_key: &[u8; 32]) -> Result<BundleBody> {
 
 /// Opens a bundle for this device (spec §6.3): the entries are tried in order with its box
 /// secret; the first that opens decides. A new key opens the body (a body that then does not
-/// open, or does not read, is an error: the bundle was tampered with); a removal notice is
-/// returned with its record unchecked. A bundle of another vault, or one that does not parse, is
-/// an error; one with no entry for this device is `Nothing`.
+/// open, or does not read, is an error: the bundle was tampered with) and comes back
+/// `Unverified`; a removal notice is returned with its record unchecked. A bundle of another
+/// vault, or one that does not parse, is an error; one with no entry for this device, or whose
+/// ephemeral key is of low order, is `Nothing`.
 pub fn open(bytes: &[u8], vault_id: &[u8; 16], my_box_secret: &StaticSecret) -> Result<Opened> {
     let parts = split(bytes, vault_id)?;
     let box_pub = PublicKey::from(my_box_secret).to_bytes();
@@ -739,7 +812,7 @@ pub fn open(bytes: &[u8], vault_id: &[u8; 16], my_box_secret: &StaticSecret) -> 
         parts.header.to_epoch,
     );
     for (index, (nonce, sealed)) in parts.entries.iter().enumerate() {
-        let aad = entry_aad(&parts.header_bytes, index as u16);
+        let aad = entry_aad(&parts.header_bytes, to_u16(index)?);
         let Some(plain) = open_sealed(&key, nonce, sealed, &aad) else {
             continue;
         };
@@ -747,11 +820,11 @@ pub fn open(bytes: &[u8], vault_id: &[u8; 16], my_box_secret: &StaticSecret) -> 
             Some((&KIND_KEY, rest)) if rest.len() == 32 => {
                 let new_key = Zeroizing::new(array::<32>(rest));
                 let body = Box::new(open_body(&parts, &new_key)?);
-                Ok(Opened::Recipient {
+                Ok(Opened::Recipient(Unverified {
                     new_key,
                     header: parts.header.clone(),
                     body,
-                })
+                }))
             }
             Some((&KIND_NOTICE, rest)) => {
                 let record = Record::decode(rest).map_err(|_| invalid())?;
@@ -769,13 +842,14 @@ pub fn open(bytes: &[u8], vault_id: &[u8; 16], my_box_secret: &StaticSecret) -> 
     Ok(Opened::Nothing)
 }
 
-/// Opens a bundle's body with a key alone (a Recovery Kit holding the new key, spec §8.3).
-pub fn open_body_with_key(
-    bytes: &[u8],
-    vault_id: &[u8; 16],
-    key: &[u8; 32],
-) -> Result<(Header, BundleBody)> {
+/// Opens a bundle's body with a key alone (a Recovery Kit holding the new key, spec §8.3); its
+/// signature is not checked yet.
+pub fn open_body_with_key(bytes: &[u8], vault_id: &[u8; 16], key: &[u8; 32]) -> Result<Unverified> {
     let parts = split(bytes, vault_id)?;
-    let body = open_body(&parts, key)?;
-    Ok((parts.header, body))
+    let body = Box::new(open_body(&parts, key)?);
+    Ok(Unverified {
+        new_key: Zeroizing::new(*key),
+        header: parts.header,
+        body,
+    })
 }

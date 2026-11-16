@@ -323,6 +323,7 @@
     "syncSnapshotBelowBarrier": "您数据的同步副本早于最新的 Moony 更新，无法使用。需要由安装了最新版本的设备上传新副本。",
     "syncSnapshotClockAhead": "您的数据的同步副本日期比现在晚十年以上，因此未被使用。需要由日期和时间正确的设备上传新的副本。",
     "syncSnapshotInvalid": "您数据的同步副本已损坏，无法恢复。",
+    "syncTooManyDevices": "密钥最多只能交给 64 台设备。请先从列表中移除不再使用的设备。",
     "syncSnapshotNewerSchema": "您数据的同步副本来自更新版本的 Moony。请先在此设备上更新 Moony。",
     "syncSnapshotPending": "此设备仍有等待发送的更改。请在下次同步后重试。",
     "syncDeviceNameInvalid": "设备名称必须为 1 到 60 个字符。",

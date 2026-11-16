@@ -323,6 +323,7 @@
     "syncSnapshotBelowBarrier": "Den synkroniserade kopian av dina data är äldre än den senaste Moony-uppdateringen och kan inte användas. En enhet med den senaste versionen behöver ladda upp en ny.",
     "syncSnapshotClockAhead": "Den synkroniserade kopian av dina uppgifter är daterad mer än tio år framåt i tiden, så den användes inte. En enhet med rätt datum och tid behöver ladda upp en ny.",
     "syncSnapshotInvalid": "Den synkroniserade kopian av dina data är skadad och kunde inte återställas.",
+    "syncTooManyDevices": "Nyckeln kan ges till högst 64 enheter. Ta först bort de enheter du inte längre använder från listan.",
     "syncSnapshotNewerSchema": "Den synkroniserade kopian av dina data kommer från en nyare version av Moony. Uppdatera Moony på den här enheten först.",
     "syncSnapshotPending": "Den här enheten har fortfarande ändringar som väntar på att skickas. Försök igen efter nästa synkronisering.",
     "syncDeviceNameInvalid": "Ett enhetsnamn måste ha 1 till 60 tecken.",

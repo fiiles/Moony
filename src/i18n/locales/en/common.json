@@ -323,6 +323,7 @@
     "syncSnapshotBelowBarrier": "The synced copy of your data was made before the latest Moony update and cannot be used. A device with the latest version needs to upload a new one.",
     "syncSnapshotClockAhead": "The synced copy of your data is dated more than ten years ahead, so it was not used. A device with the correct date and time needs to upload a new one.",
     "syncSnapshotInvalid": "The synced copy of your data is damaged and could not be restored.",
+    "syncTooManyDevices": "The key can be passed on to at most 64 devices. First remove the devices you no longer use from the list.",
     "syncSnapshotNewerSchema": "The synced copy of your data comes from a newer version of Moony. Update Moony on this device first.",
     "syncSnapshotPending": "This device still has changes waiting to be sent. Try again after the next sync.",
     "syncDeviceNameInvalid": "A device name must have 1 to 60 characters.",

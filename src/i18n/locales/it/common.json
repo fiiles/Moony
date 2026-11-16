@@ -323,6 +323,7 @@
     "syncSnapshotBelowBarrier": "La copia sincronizzata dei tuoi dati è precedente all'ultimo aggiornamento di Moony e non può essere usata. Un dispositivo con la versione più recente deve caricarne una nuova.",
     "syncSnapshotClockAhead": "La copia sincronizzata dei tuoi dati ha una data più di dieci anni avanti, quindi non è stata usata. Un dispositivo con data e ora corrette deve caricarne una nuova.",
     "syncSnapshotInvalid": "La copia sincronizzata dei tuoi dati è danneggiata e non è stato possibile ripristinarla.",
+    "syncTooManyDevices": "La chiave può essere passata al massimo a 64 dispositivi. Prima rimuovi dall'elenco i dispositivi che non usi più.",
     "syncSnapshotNewerSchema": "La copia sincronizzata dei tuoi dati proviene da una versione più recente di Moony. Aggiorna prima Moony su questo dispositivo.",
     "syncSnapshotPending": "Su questo dispositivo ci sono ancora modifiche in attesa di invio. Riprova dopo la prossima sincronizzazione.",
     "syncDeviceNameInvalid": "Il nome del dispositivo deve avere da 1 a 60 caratteri.",

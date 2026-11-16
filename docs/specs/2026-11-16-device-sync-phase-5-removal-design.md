@@ -829,3 +829,6 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
    always sealed to its pinned `box_pub`, whatever the row's `public_key` says.
 9. **Merge:** `removal_record` keeps the older value whoever stamped it; `cert` and `left_record`
    follow `public_key`'s own-ID stamp rule (migration 040, `merge/columns.rs`).
+10. **`validation.syncTooManyDevices` got its text in all ten locales with Task 3**, not Task 16:
+    the Rust gate `every_sync_validation_key_has_an_english_translation` fails as soon as a key
+    appears in Rust code. Czech and English are §9.2's; Task 16 finds it already there.

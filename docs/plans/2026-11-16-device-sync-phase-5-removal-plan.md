@@ -174,6 +174,8 @@
 - [ ] Implement `RemovalMode {ListOnly, Rotate}`, `plan(conn, removing, mode, now) -> Result<Plan>`, `consent(&Plan) -> String` (hex SHA-256 over a canonical encoding of the fields the spec names), `async fn remove<R, D>(relay, db, consent, mode, removing, now) -> SyncResult<Outcome>` under `engine::exclusive` (password checked by the command, Task 16), `async fn resolve_pending<R, D>(relay, db) -> SyncResult<Option<Outcome>>`. The pending JSON (secret-bearing) is written and read only in `rotate.rs`. Commit everything of a `200` in one savepoint; the re-seal of the remover's own unsent envelopes calls Task 10's `reseal::reseal_unsent` (write a stub in this task that Task 10 fills, or order Task 10's `reseal.rs` part first: implementer's choice, note it in the commit).
 - [ ] Verify: gates. Commit: `feat(sync): remove a device or change the key, with a pending change that always resolves`.
 
+> **Done (spec As built 46–60):** `rotate::{plan, consent, remove, resolve_pending, pending}`; Task 10's pickup was built in the same pass (the race needs it), so the race tests pick the winner up here. Re-sealing is not called at the commit: the round re-seals before its push (As built 46).
+
 ### Task 10 [opus]: Picking up a new key; the removed device (spec §7.1–§7.5)
 
 **Files:** new `services/sync/rekey/{pickup.rs,reseal.rs}`, `engine/{mod.rs,pull.rs,push.rs,status.rs,runtime.rs}`, `setup.rs` (turn off as removed), `models/sync.rs` (two problems; the wire part is Task 16, so add the variants here with their serde names), new `engine/tests/rekey_pickup.rs`.
@@ -191,6 +193,8 @@
 - [ ] Implement `reseal::reseal_unsent(conn, creds) -> Result<usize>` (one savepoint; leaves envelopes already under the current epoch alone, so it is idempotent), `pickup::pick_up<R, D>(relay, db, now) -> SyncResult<Pickup>` with `Pickup::{Nothing, Adopted {..}, RemovedHere {..}, NotGiven, Unverified}`, `rekey::removed_here(conn, data_dir, by, at)` (counts unsent, writes the notice key, calls `setup::turn_off`), the hooks in `push.rs` / `pull.rs` / engine start, the problems `KeyNotGiven` and `KeyChangeUnverified` with the precedence of spec §7.5.
 - [ ] Verify: gates. Commit: `feat(sync): devices pick up a new key, re-seal what they had not sent, and a removed device turns sync off`.
 
+> **Done (spec As built 46–51).** The pickup does not run `trust::refresh` after adopting: Task 11's refresh hook (after a merge that touched `sync_devices`, at unlock, after a pickup) should, and handle its `about_me` with `rekey::removed_here` (inside a round pass `None` and set `RoundReport::removed_here`, which ends the loop and removes the binding file).
+
 ### Task 11 [sonnet]: Leaving, list-only removals arriving, records about this device (spec §6.5, §7.4)
 
 **Files:** `services/sync/setup.rs`, `identity/trust.rs` (refresh after merge), `engine/pull.rs` (refresh hook), `commands/auth.rs` (`delete_account` else-branch), `commands/sync.rs` (`sync_turn_off` calls the leave first), new `engine/tests/rekey_leave.rs`.
@@ -198,6 +202,8 @@
 - [ ] Tests first: `leave_best_effort` signs a `left` record, writes it to this device's row and pushes it within its budget (fake relay with a delay over 5 s: turn-off still completes and nothing waits); after a pull that merged a `left` row, the other device's entry is `left`; after a pull that merged a `removed` record naming this device (list-only removal elsewhere), this device turns sync off through `removed_here`; a `left` record for this device that it did not sign does the same; `trust::refresh` runs after every merge that touched `sync_devices` and at unlock.
 - [ ] Implement `setup::leave_best_effort<R, D>(relay, db, budget)` (sign, write captured, one push round without pull, ignore every failure), call it from `sync_turn_off` (sync on) and from `delete_account` when `delete_synced_data` is false and sync is on (rebased branch (a)); the refresh hook and its `about_me` handling.
 - [ ] Verify: gates. Commit: `feat(sync): a device that turns sync off or is deleted says it left`.
+
+> **For Task 11 (from Tasks 9–10):** `rekey::removed_here(conn, data_dir, by, at)` is the turn-off of §7.4 (notice, then `setup::turn_off` / `turn_off_keeping_binding_file`); `trust::record_counts` judges a record naming this device; `RoundReport::removed_here` is the in-round signal. `leave_best_effort` must not run for a removed device.
 
 ### Task 12 [sonnet]: The Recovery Kit after a key change (spec §8)
 
@@ -207,6 +213,8 @@
 - [ ] Implement the four steps of spec §8.3 in `recovery_credentials`, the template line, `setup::mark_kit_saved(conn)`.
 - [ ] Verify: gates. Commit: `feat(sync): the Recovery Kit works after a key change and old Kits are refused`.
 
+> **For Task 12 (from Tasks 9–10):** the pickup passes over bundles whose `to_epoch` is at or below the device's epoch, so a joiner needs no `rekey_seen` of its own; a Kit joiner still has to record the heads (As built 43). `bundle::peek` reads a bundle's header without opening it.
+
 ### Task 13 [sonnet]: Documents and photos across a key change (spec §7.6)
 
 **Files:** `services/sync/blobs/{transfer.rs,queue.rs,pass.rs,stream.rs}`, `engine/tests/blobs.rs`.
@@ -215,6 +223,8 @@
 - [ ] Implement what the tests need; check first how `lane_may_run` treats `KeyRotated` (`engine/runtime.rs`) and keep downloads running.
 - [ ] Verify: gates. Commit: `fix(sync): uploads interrupted by a key change are sealed again under the new key`.
 
+> **For Task 13 (from Tasks 9–10):** the lanes treat `KeyNotGiven` and `KeyChangeUnverified` like `KeyRotated` (downloads only). Uploads still use the token of the moment; a `403` there does not run the pickup (only the round's push and snapshot upload do).
+
 ### Task 14 [opus]: Multi-device scenarios and a property test (spec §10, §14.1)
 
 **Files:** new `src-tauri/src/services/sync/engine/tests/rekey_scenarios.rs` (register in `engine/tests/mod.rs`).
@@ -222,6 +232,8 @@
 - [ ] Write these as tests over the fake relay with real rounds (helpers of `join_new.rs`): A removes C while B is offline with unsent changes, B returns; A and B remove each other at once (exactly one wins; the loser is removed, or sees the race); A removes C while B is pairing D (D ends `keyNotGiven`, then pairs again); a list-only removal of C on B followed by a key change on A (C gets the notice and turns off); a pre-phase-5 vault (no certificates) syncs and refuses removal.
 - [ ] Property test (the crate's existing property-test style, a fixed seed list plus N random seeds, bounded runtime under 60 s): four devices, random edits, offline periods, list-only removals, key changes and removals; at the end every remaining device's synced tables are equal (`test_support::divergence`), every own envelope was applied exactly once on every other remaining device, and no removed device holds a key of an epoch after its removal.
 - [ ] Verify: gates. Commit: `test(sync): multi-device removal and key-change scenarios`.
+
+> **For Task 14 (from Tasks 9–10):** `engine/tests/rekey_fixture.rs` builds a three-device phase-5 vault (`three()`, `pair_with`, `remove`, `remove_in`, `unsent_epochs`); `rekey_rotate.rs` and `rekey_pickup.rs` already cover two removals at once (the winner picked up, `AlreadyRemoved`), a lost answer, a crash before the call, a removed device turning off, a two-change walk, a server that went back after a key change, and the engine's first-round trigger.
 
 ### Task 15 [sonnet]: Against a real sync server (spec §14.2)
 
@@ -238,6 +250,8 @@
   Stop the server afterwards. The relay checkout is read-only for this plan; if a test exposes a server defect, stop and report.
 - [ ] Commit: `test(sync): key changes against a real sync server`.
 
+> **For Task 15 (from Tasks 9–10):** `rotate::remove` against the real server is the e2e's remover; `pickup::pick_up` its pickup.
+
 ### Task 16 [sonnet]: Commands, status and the wire contract (spec §9, §11.4) — the one mixed commit
 
 **Files:** new `src-tauri/src/commands/sync_devices.rs`, `commands/mod.rs`, `commands/sync.rs` (flag scan prefix), `lib.rs`, `models/sync.rs`, `bindings.rs`, `services/sync/devices.rs`, `engine/status.rs`, `shared/schema.ts`, `shared/generated-types.ts`, `src/lib/tauri-api.ts`, `src/i18n/locales/*/common.json` (the new `validation.sync…` texts).
@@ -249,6 +263,8 @@
 - [ ] Wire, the seven steps of `docs/standards/type-contract.md`: the `SyncDevice` fields, `RemovalPlan`, `RemovalOutcome`, `SyncStatus` fields and `SyncProblem` variants exactly as spec §11.4, per-field `#[serde(rename)]`, registered in `bindings.rs`, `cargo test generate_bindings -- --ignored`, `shared/schema.ts` by hand, `tauri-api.ts` wrappers (`removalPlan`, `removeDevices`, `kitSaved`, `dismissSyncNotice`).
 - [ ] Error texts in all ten locales: `syncRemovalPlanChanged`, `syncRotationRaced`, `syncTooManyKeyChanges`, `syncTooManyDevices`, `syncRemovalUnsupported`, `syncRemoveThisDevice`, `syncRecoveryKitNeedsSnapshot`, and the reworded `syncRecoveryKitRotated` (spec §8.3).
 - [ ] Verify: both gate sets. Commit: `feat(sync): device removal commands and status on the wire`.
+
+> **For Task 16 (from Tasks 9–10):** `sync_removal_plan` runs a round first (spec §6.4 step 1), then `rotate::plan`; `sync_remove_devices` calls `rotate::remove(relay, db, Removal {..}, data_dir, &commands::sync_pairing::forget_pairing, now)` and runs a round after a `Changed` or `Listed` outcome so the records and the re-sealed changes go out; map `Outcome::Pending` to the "Dokončí se samo" step, `AlreadyRemoved` to "{name} už odebralo jiné zařízení", `RemovedHere` to the removed notice. `SyncStatus.rotationPending` = `rotate::pending`, `keyChange` = `rekey::key_change_notice`, `removedNotice` = `rekey::removed_notice` (readable with sync off; dismissing deletes `state::KEY_CHANGE_NOTICE_KEY` / `state::REMOVED_NOTICE_KEY`). `SyncProblem::{KeyNotGiven, KeyChangeUnverified}` exist in `models/sync.rs`; `generated-types.ts` and `schema.ts` are not regenerated yet (CI's drift check fails until this task). The five new validation keys already have their texts in all ten locales (`syncRemovalPlanChanged`, `syncRotationRaced` with `{{name}}`, `syncTooManyKeyChanges`, `syncRemovalUnsupported`, `syncRemoveThisDevice`); a pending change of this device answers `syncChangeInProgress`.
 
 ## Group B — Frontend (each task its own commit, `src/` only)
 

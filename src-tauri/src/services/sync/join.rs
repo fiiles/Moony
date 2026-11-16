@@ -43,6 +43,7 @@ use super::identity::{self, trust, Issuer};
 use super::impact::{self, ReplaceConsent, ReplaceKind, DRAIN_INCOMPLETE};
 use super::in_savepoint;
 use super::keys::{self, Credentials, VaultKeys};
+use super::pairing::PairingIdentity;
 use super::recovery::RecoveryInput;
 use super::relay::http::{normalize_base_url, validate_base_url};
 use super::relay::{Relay, RelayError};
@@ -59,6 +60,7 @@ const SETUP_PENDING: &str = "validation.syncJoinSetupPending";
 const KIT_ACCOUNT_INVALID: &str = "validation.syncRecoveryAccountInvalid";
 const KIT_VAULT_NOT_FOUND: &str = "validation.syncRecoveryVaultNotFound";
 const KIT_ROTATED: &str = "validation.syncRecoveryKitRotated";
+const PAIRING_FAILED: &str = "validation.syncPairingFailed";
 
 /// Drain rounds a repair runs at most; it also stops after two rounds in a row that neither shrank
 /// `pending_items + pending_batches` nor moved the pull cursor on.
@@ -66,6 +68,9 @@ pub const MAX_DRAIN_ROUNDS: usize = 20;
 
 /// How a new device gets its identity in the vault (phase 5 §5.3, §5.5).
 pub enum JoinIdentity {
+    /// A pairing (protocol 3): the holder's trust store seeds this device's, and the holder's
+    /// one-time ticket signs its paired certificate.
+    Paired(PairingIdentity),
     /// A Sync Recovery Kit join: it signs its own Kit certificate and trusts, on first use, every
     /// certificate in what it restores (§5.4).
     RecoveryKit,
@@ -506,6 +511,9 @@ fn replace_profile(
             let public = keys::new_device_keypair(conn)?;
             let cert = match who {
                 NewIdentity::Successor => identity::successor(conn, predecessor, now)?,
+                NewIdentity::Join(JoinIdentity::Paired(paired)) => {
+                    Some(paired_identity(conn, paired, now)?)
+                }
                 NewIdentity::Join(JoinIdentity::RecoveryKit) => {
                     Some(identity::create_own(conn, Issuer::RecoveryKit, now)?)
                 }
@@ -542,6 +550,40 @@ fn replace_profile(
         log::warn!("[SYNC] Could not clear the restore marker after the join: {e}");
     }
     Ok(joined)
+}
+
+/// A paired joiner's identity, inside the join's savepoint after the replace (spec §5.3, §5.4):
+/// the holder's trust store seeds this device's empty one (`trust::import_export`: it must hold
+/// the holder, trusted, and verify throughout), then this device signs its paired certificate
+/// with the holder's one-time ticket, which must be signed by the holder's pinned key. A
+/// payload that fails either is `validation.syncPairingFailed`: an authenticated holder sent
+/// something this device cannot trust, and joining unverified would hide it.
+fn paired_identity(
+    conn: &Connection,
+    paired: &PairingIdentity,
+    now: i64,
+) -> Result<identity::Certificate> {
+    let refused = |what: &str, error: AppError| {
+        log::warn!("[SYNC] The holder's identity was refused: {what}");
+        log::debug!("[SYNC] The holder's identity was refused: {what}: {error}");
+        AppError::Validation(PAIRING_FAILED.into())
+    };
+    trust::import_export(conn, &paired.export, paired.holder, now)
+        .map_err(|error| refused("its trust store", error))?;
+    let holder_sign_pub = trust::entry(conn, paired.holder)?
+        .ok_or_else(|| AppError::Internal("sync join: the holder is not pinned".into()))?
+        .sign_pub;
+    identity::create_own(
+        conn,
+        Issuer::Ticket {
+            secret: &paired.ticket_secret,
+            ticket: &paired.ticket,
+            holder: paired.holder,
+            holder_sign_pub,
+        },
+        now,
+    )
+    .map_err(|error| refused("its join ticket", error))
 }
 
 /// Repairs a profile whose change capture broke (ruling P3).

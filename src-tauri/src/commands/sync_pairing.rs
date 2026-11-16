@@ -43,16 +43,19 @@ use crate::models::sync::{
 use crate::services::sync::connection_code::server_address_from_input;
 use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::impact::IMPACT_CHANGED;
-use crate::services::sync::keys::{self, Credentials};
+use crate::services::sync::keys;
+use crate::services::sync::pairing::holder;
 use crate::services::sync::pairing::session::{keeps_session, PairingSession, Stage};
-use crate::services::sync::pairing::{pairing_code_text, typed_code_digits, MailboxId, Role, Side};
+use crate::services::sync::pairing::{
+    pairing_code_text, typed_code_digits, MailboxId, Role, Side, SlotPayload,
+};
 use crate::services::sync::recovery::{qr_svg, read_recovery_input};
 use crate::services::sync::relay::http::{
     default_base_url, display_host, is_default_relay, is_insecure_address, normalize_base_url,
     HttpRelay,
 };
 use crate::services::sync::relay::Mailbox;
-use crate::services::sync::{devices, join, state};
+use crate::services::sync::{devices, engine, join};
 
 const NOT_STARTED: &str = "validation.syncPairingNotStarted";
 const EXPIRED: &str = "validation.syncPairingExpired";
@@ -380,18 +383,20 @@ async fn announced<M: Mailbox>(
 
 /// The holder's credentials when its confirm will seal them (holder, in Compare, not contested),
 /// read with sync on only; `None` for every other confirm.
-fn holder_credentials(session: &PairingSession, db: &Database) -> SyncResult<Option<Credentials>> {
+/// What the holder seals into slot 2 (protocol 3: its credentials, key heads and identity with
+/// a fresh join ticket), read holding off every round so it is one consistent state; `None`
+/// unless this session is a holder at Compare. The caller drops it right after sealing, which
+/// wipes the ticket's secret.
+async fn holder_payload(
+    session: &PairingSession,
+    db: &Database,
+) -> SyncResult<Option<SlotPayload>> {
     if session.role() != Role::Holder || session.stage() != Stage::Compare || session.contested() {
         return Ok(None);
     }
-    let creds = db.with_conn(|conn| {
-        if !state::load(conn)?.is_some_and(|sync| sync.enabled) {
-            return Ok(None);
-        }
-        keys::credentials(conn)
-    })?;
-    match creds {
-        Some(creds) => Ok(Some(creds)),
+    let _no_round = engine::exclusive(db).await;
+    match db.with_conn(|conn| holder::holder_payload(conn, now()))? {
+        Some(payload) => Ok(Some(payload)),
         None => Err(AppError::Validation(FAILED.into()).into()),
     }
 }
@@ -619,24 +624,28 @@ pub async fn sync_pairing_confirm(
         let relay = HttpRelay::new(slot.session.relay_url())?;
         // The vault keys are read only for text that can be a code: the session answers
         // `CODE_INCOMPLETE` for anything else before it needs them.
-        let creds = if typed_code
+        let payload = if typed_code
             .as_deref()
             .is_some_and(|typed| typed_code_digits(typed).is_some())
         {
-            holder_credentials(&slot.session, &session)
+            holder_payload(&slot.session, &session).await
         } else {
             Ok(None)
         };
-        match creds {
-            Ok(creds) => {
-                slot.session
-                    .confirm(
+        match payload {
+            Ok(payload) => {
+                let confirmed = slot
+                    .session
+                    .confirm_with(
                         &relay,
-                        creds.as_ref(),
+                        payload.as_ref(),
                         typed_code.as_deref().map(String::as_str),
                         now(),
                     )
-                    .await
+                    .await;
+                // The join ticket's secret goes as soon as slot 2 is sealed (or not).
+                drop(payload);
+                confirmed
             }
             Err(error) => Err(error),
         }
@@ -680,11 +689,16 @@ pub async fn sync_pairing_join(
     let dir = data_dir(&app)?;
     let mut pairing = PAIRING.lock().await;
     let slot = pairing.live(&owner, now())?;
-    // The slot keeps its own copy of the credentials for "Try again" (review PF6).
+    // The slot keeps its own copy of the credentials and the holder's identity for "Try again"
+    // (review PF6).
     let (Some(creds), Some(device_name)) =
         (slot.session.received().cloned(), slot.device_name.clone())
     else {
         return Err(AppError::Validation(FAILED.into()));
+    };
+    let identity = match slot.session.received_identity() {
+        Some(paired) => join::JoinIdentity::Paired(paired.duplicate()),
+        None => join::JoinIdentity::Unvouched,
     };
     let relay = HttpRelay::new(&creds.relay_url)?;
     let relay_url = creds.relay_url.clone();
@@ -695,7 +709,7 @@ pub async fn sync_pairing_join(
         creds,
         &device_name,
         consent,
-        join::JoinIdentity::Unvouched,
+        identity,
         &dir,
         &native,
         now(),

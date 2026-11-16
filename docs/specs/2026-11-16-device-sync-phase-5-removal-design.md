@@ -856,3 +856,25 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     every round): an enabled profile without a seed gets one (`identity::ensure_seed`); a
     failure is logged and sync goes on.
 16. The `sync_epochs` row for epoch 0 of a new setup or join is not written here (Task 8).
+
+**Task 5 (pairing protocol 3).**
+
+17. **Slot 2 v2 JSON:** `{"v":2,"relayUrl","accountNumber","vaultId","keys":[{"epoch","key",
+    "head"?}],"identity":null | {"holder":"<hex>","export":{"entries":[…]},"ticket":{"secret",
+    "holderSig","issuedAt"}}}`. `export` is `trust::TrustExport` as it serialises (item 6), not a
+    bare array; the ticket's public key is not sent (it is the secret's). A key whose head the
+    holder does not know travels without `head` (the holder writes epoch 0's as 0 and every
+    epoch `sync_epochs` records); `identity` may be `null` or absent. Only `v: 2` opens.
+18. **A store that does not fit:** the 48 KiB cap holds about 70 entries; a holder whose payload
+    would exceed it refuses to seal with `validation.syncTooManyDevices` (its text already says
+    to take unused devices off the list).
+19. **Who reads what:** `pairing::holder::holder_payload` builds the holder's payload (holding
+    off every round in `sync_pairing_confirm`), with a fresh ticket per call; the command drops
+    it right after `confirm_with`, which wipes the ticket's secret. The joiner's session keeps
+    the whole payload (`received`, `received_identity`, `received_heads`) and wipes it with the
+    credentials. `confirm(…, Option<&Credentials>, …)` survives only as a test shorthand
+    (identity `null`).
+20. **A paired join that does not verify is refused** with `validation.syncPairingFailed`
+    inside the replace's savepoint (nothing replaced, the backup `-unused`): an export that
+    `import_export` refuses, or a ticket the holder's pinned key did not sign.
+21. The received heads are not stored yet: Task 8 writes them to `sync_epochs` at the join.

@@ -293,7 +293,7 @@ async fn run_app() {
             commands::sync_kit::sync_save_recovery_kit,
             commands::sync::sync_finish_setup,
             commands::sync::sync_now,
-            commands::sync::sync_show_recovery_kit,
+            commands::sync::sync_print_recovery_kit,
             commands::sync::sync_turn_off,
             commands::sync::sync_delete_synced_data,
             commands::sync::sync_repair_device,

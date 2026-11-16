@@ -274,6 +274,7 @@ pub fn disable(conn: &Connection) -> Result<()> {
             UNVERIFIED_EPOCHS_KEY,
             KEY_CHANGE_OVERRUN_KEY,
             REMOVAL_NOT_DONE_KEY,
+            KIT_READ_SEEN_KEY,
             super::identity::trust::NEW_DEVICES_KEY,
         ] {
             conn.execute("DELETE FROM app_config WHERE key = ?1", [key])?;
@@ -554,6 +555,10 @@ pub fn note_rekey_seen(conn: &Connection, rotation: u32) -> Result<()> {
 /// (phase 5 §7.3, `rekey::KeyChangeNotice`): kept until the person dismisses it; turning sync off
 /// clears it.
 pub const KEY_CHANGE_NOTICE_KEY: &str = "sync.key_change_notice";
+/// The Local `app_config` key holding the newest Recovery Kit read the person already knows of
+/// (unix seconds): "Vím o tom" on the `kitUsed` notice (revision §2.8,
+/// `engine::status::kit_used`).
+pub const KIT_READ_SEEN_KEY: &str = "sync.kit_read_seen";
 
 /// The Local `app_config` key holding why sync went off on this device: another device removed
 /// it (phase 5 §7.4, `rekey::RemovedNotice`). Unlike every other sync key it survives turning

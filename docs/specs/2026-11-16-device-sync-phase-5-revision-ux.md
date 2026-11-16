@@ -1212,3 +1212,50 @@ R-35. **The list-only test of review finding 3** (a key change signed by a devic
      (`rekey_fixture::record_removal`): with D2 the case arises only from a server that holds a
      key change back. Not built here: the Local `sync.key_change_unverified = {by}` of §7.1 (the
      status's `rejoinBy`); Task 24 writes it with the status field that reads it.
+
+**Task 18 (setup and the Kit lifecycle).**
+
+R-36. **The draft** is `setup::KitDraft {secret, vault_id, created_at, storage}` (no `Debug` of
+     the seed), made by `setup::prepare_kit(conn, open_draft, now)` (refused with sync on:
+     `syncAlreadyEnabled`; an open draft of the same vault is shown again, any other gets a new
+     Kit) and shown by `setup::kit_view` (v2 code in 19 groups, v2 QR; the wire's `accountNumber`
+     is still filled until Task 24 drops it). `KitDraft::from_new_kit` takes a key change's
+     `NewKit` (for Task 24's removal commands). The command keeps the draft in `KIT_DRAFT` beside
+     the copy window, both ten minutes now (`KIT_COPY_WINDOW`, was five), wiped wherever the
+     window was (`forget_kit_window`: lock, restore, account deletion, sync off, synced data
+     deleted) and after `sync_finish_setup` succeeds; a failed finish puts it back for the retry.
+     `with_kit_draft` is the one gate of copy, print and save (`validation.syncPasswordRequired`
+     without an open draft). The Kit's certificate is dated at the draft's `created_at`, so a
+     retry signs the same bytes.
+R-37. **Registration at `finish_setup`:** after sync is on and this device is pinned,
+     `register_kit` puts the Kit (`PUT /kit`, the envelope of epoch 0 with this device and the Kit
+     as its confirmed set) and only then, in one savepoint, writes the Kit's row with the draft's
+     storage, pins it (`trust::pin_created_kit`) and confirms this device and the Kit. A Kit
+     already pinned here is not put again (a retry after registration; a copy that re-joined
+     keeps it). **`409 kit_exists`** (the server holds another Kit of this vault: an earlier try
+     registered a draft that expired before its answer came back) leaves the server as it is and
+     registers nothing here: the device has "no Kit" and the server's Kit can only be replaced by
+     "Vytvořit sadu" (R-31). A server whose `/v1/server` lacks `kit` (or that has no such route)
+     is refused before the vault is created (`validation.syncServerNeedsUpdate`).
+R-38. **Storage:** `setup::note_kit_storage(conn, draft, storage)` keeps the strongest value in the
+     draft and in the Kit's row when the row exists (a Kit a key change made); copy notes `copied`
+     whether the copy was native or the UI's, save `file` or `cloud` (`looks_cloud_synced`),
+     `sync_print_recovery_kit` (new, `WebviewWindow::print`) `paper` once the print dialog opened.
+     `sync_finish_setup` lost `kitSaved`; an absent draft or one without storage is
+     `syncRecoveryKitNotConfirmed`. `sync_show_recovery_kit` and `setup::recovery_kit` are
+     deleted. **Frontend not touched** (Task 24/27): `tauri-api.ts` still sends `kitSaved`
+     (ignored) and still has `showRecoveryKit` (its command is gone), and the setup UI must call
+     copy, save or print before "Sadu mám, pokračovat"; until Task 27 the old setup flow fails
+     at finish unless the code was copied or the Kit saved.
+R-39. **"Ověřit sadu"** is `setup::check_kit(conn, code_or_qr) -> KitCheck::{Valid, Replaced {at,
+     current_created_at}, OtherSync, Unknown}` (`at` = the old Kit's `state_at` here,
+     `current_created_at` = the trusted Kit's certificate date); a code that does not read is
+     `syncRecoveryCodeInvalid`; no network. The command and the wire type are Task 24's.
+R-40. **`kitUsed`** is `engine::status::kit_used(conn, last_read, now)` with
+     `Runtime::kit_last_read` (from the round's vault info) and `dismiss_kit_used` ("Vím o tom",
+     the Local `sync.kit_read_seen`, cleared by turning sync off and a join's replace); a read is
+     news more than an hour after it, and a kind-3 entry with `pinned_at` at or after `read − 1 h`
+     explains it. The status field is Task 24's. The macOS clipboard already carried
+     `org.nspasteboard.TransientType` (keychain plugin, phase 2): nothing changed there.
+R-41. **The v1 code functions stay until Task 19** (R-1 put their deletion in Tasks 18/19): the
+     Kit join still reads a v1 Kit until Task 19 rewrites it; setup no longer uses them.

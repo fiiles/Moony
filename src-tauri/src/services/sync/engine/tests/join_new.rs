@@ -235,12 +235,29 @@ async fn a_desktop_joins_from_a_phone_that_holds_the_vault() {
     assert_joined(&vault, &device, &zip, dir.path()).await;
 }
 
+/// A v1 Kit: the code of the vault's current key and the account (the Kit join reads it until Task
+/// 19 rewrites it for the v2 Kit).
+struct V1Kit {
+    recovery_code: String,
+    account_number: String,
+}
+
+fn v1_kit(conn: &Connection) -> V1Kit {
+    let creds = keys::credentials(conn).expect("creds").expect("bound");
+    V1Kit {
+        recovery_code: crate::services::sync::recovery::format_recovery_code(
+            &encode_recovery_code(&creds.vault_id, creds.keys.current()),
+        )
+        .to_string(),
+        account_number: creds.account,
+    }
+}
+
 #[tokio::test]
 async fn a_recovery_kit_join_finds_the_epoch_and_converges() {
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;
-    let kit = setup::recovery_kit(&vault.a.lock()).expect("kit");
-    assert_eq!(kit.relay_url.as_deref(), Some(RELAY));
+    let kit = v1_kit(&vault.a.lock());
     let scanned = recovery_qr_payload(&kit.account_number, &kit.recovery_code, Some(RELAY));
     let inputs = [
         read_recovery_input(&scanned, None, None, DEFAULT_RELAY_URL).expect("scanned"),
@@ -286,7 +303,7 @@ async fn a_recovery_kit_join_signs_its_own_certificate_and_trusts_what_it_restor
     let vault = vault().await;
     let a_cert = with_genesis(&vault.a.lock(), "Mac");
     snapshot_of_a(&vault, "a1").await;
-    let kit = setup::recovery_kit(&vault.a.lock()).expect("kit");
+    let kit = v1_kit(&vault.a.lock());
     let input = read_recovery_input(
         &kit.recovery_code,
         Some(&kit.account_number),

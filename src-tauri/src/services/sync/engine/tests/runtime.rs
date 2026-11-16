@@ -241,6 +241,7 @@ async fn the_status_counts_pending_changes_and_held_devices() {
         refused_rows: 2,
         rounds: 0,
         attachments_problem: None,
+        kit_last_read: None,
     };
 
     let status = status(&vault.a.lock(), &runtime).expect("status");

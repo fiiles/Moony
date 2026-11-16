@@ -39,6 +39,7 @@ use crate::services::sync::engine::runtime::{self, EngineHandle, Trigger};
 use crate::services::sync::engine::{status, ConnAccess, EngineEvents};
 use crate::services::sync::error::{SyncError, SyncResult, ACCOUNT_BLOCKED};
 use crate::services::sync::merge::DATA_CHANGED_EVENT;
+use crate::services::sync::rekey::kit::KitStorage;
 use crate::services::sync::relay::http::{default_base_url, is_default_relay, HttpRelay};
 use crate::services::sync::{feature, join, keys, server, setup, state};
 
@@ -50,10 +51,12 @@ pub(super) const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
 const PASSWORD_REQUIRED: &str = "validation.syncPasswordRequired";
 const PASSWORD_NEEDED: &str = "validation.syncPasswordNeeded";
 const COPY_FAILED: &str = "validation.syncCopyFailed";
+const KIT_NOT_CONFIRMED: &str = "validation.syncRecoveryKitNotConfirmed";
 
-/// How long after `sync_prepare_recovery_kit` or `sync_show_recovery_kit` checked the password the
-/// code may be copied and the Kit saved (audit M11: every showing needs the password).
-const KIT_COPY_WINDOW: Duration = Duration::from_secs(5 * 60);
+/// How long after `sync_prepare_recovery_kit` checked the password the Kit draft lives: the code may
+/// be copied, the Kit printed or saved, and setup finished with it (audit M11: every showing needs
+/// the password; revision §2.2: the draft lives at most ten minutes).
+const KIT_COPY_WINDOW: Duration = Duration::from_secs(10 * 60);
 
 /// How long a copied recovery code stays on the clipboard if nothing else was copied since.
 const CLIPBOARD_CLEAR_AFTER: Duration = Duration::from_secs(60);
@@ -460,8 +463,8 @@ pub(super) struct KitOwner {
     pub(super) session: u64,
 }
 
-/// `sync_prepare_recovery_kit` or `sync_show_recovery_kit` checked the password of `owner` at
-/// `opened`.
+/// `sync_prepare_recovery_kit` checked the password of `owner` at `opened` (or a key change made a
+/// new Kit then): the Kit draft of that moment is open.
 #[derive(Debug, Clone)]
 pub(super) struct KitWindow {
     owner: KitOwner,
@@ -486,9 +489,44 @@ fn open_kit_window(owner: KitOwner, opened: Instant) {
     *kit_window_slot() = Some(KitWindow { owner, opened });
 }
 
-/// Closes the copy window (lock, restore, account deletion, sync off, synced data deleted).
+/// The Recovery Kit draft (revision §2.2): the Kit's seed while a flow shows it, never stored.
+/// It lives with the copy window and goes with it (`forget_kit_window`).
+static KIT_DRAFT: Mutex<Option<setup::KitDraft>> = Mutex::new(None);
+
+fn kit_draft_slot() -> std::sync::MutexGuard<'static, Option<setup::KitDraft>> {
+    KIT_DRAFT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// Opens the copy window for `owner` with `draft` as the Kit it shows.
+pub(super) fn open_kit_draft(owner: KitOwner, draft: setup::KitDraft) {
+    *kit_draft_slot() = Some(draft);
+    open_kit_window(owner, Instant::now());
+}
+
+/// `work` on the open Kit draft of this profile session, within the copy window
+/// (`validation.syncPasswordRequired` otherwise, or when no draft is open).
+pub(super) fn with_kit_draft<T>(
+    app: &AppHandle,
+    db: &Database,
+    work: impl FnOnce(&mut setup::KitDraft) -> Result<T>,
+) -> Result<T> {
+    if !copy_allowed(kit_window().as_ref(), &kit_owner(app, db)?, Instant::now()) {
+        return Err(AppError::Validation(PASSWORD_REQUIRED.into()));
+    }
+    let mut slot = kit_draft_slot();
+    let draft = slot
+        .as_mut()
+        .ok_or_else(|| AppError::Validation(PASSWORD_REQUIRED.into()))?;
+    work(draft)
+}
+
+/// Closes the copy window and wipes the Kit draft (lock, restore, account deletion, sync off,
+/// synced data deleted, the flow's end).
 pub(crate) fn forget_kit_window() {
     *kit_window_slot() = None;
+    *kit_draft_slot() = None;
 }
 
 pub(super) fn kit_owner(app: &AppHandle, db: &Database) -> Result<KitOwner> {
@@ -715,9 +753,10 @@ pub async fn sync_start_checkout(
         .map_err(app_error)
 }
 
-/// The kit during setup, every time behind the device password (the first showing included,
-/// audit M11); opens `KIT_COPY_WINDOW` for `sync_copy_recovery_code` and `sync_save_recovery_kit`.
-/// With sync on, `validation.syncAlreadyEnabled` (see `sync_show_recovery_kit`).
+/// The Kit during setup, every time behind the device password (the first showing included,
+/// audit M11): makes the Kit draft, or shows the one still open for this vault again (revision
+/// §2.2), and opens `KIT_COPY_WINDOW` for copying, printing, saving and finishing setup with it.
+/// With sync on, `validation.syncAlreadyEnabled` (a Kit after setup comes from a key change).
 #[tauri::command]
 pub async fn sync_prepare_recovery_kit(
     app: AppHandle,
@@ -728,28 +767,35 @@ pub async fn sync_prepare_recovery_kit(
     require_feature()?;
     password_given(&password)?;
     verify_password(&app, password).await?;
-    let kit = db.with_conn(setup::setup_recovery_kit)?;
-    open_kit_window(kit_owner(&app, &db)?, Instant::now());
+    let owner = kit_owner(&app, &db)?;
+    let open = copy_allowed(kit_window().as_ref(), &owner, Instant::now())
+        .then(|| kit_draft_slot().take())
+        .flatten();
+    let draft = db.with_conn(|conn| setup::prepare_kit(conn, open, now()))?;
+    let kit = db.with_conn(|conn| setup::kit_view(conn, &draft))?;
+    open_kit_draft(owner, draft);
     Ok(kit)
 }
 
-/// Copies the recovery code natively (hidden from clipboard managers) and clears the clipboard
+/// Copies the Kit's code natively (hidden from clipboard managers) and clears the clipboard
 /// after `CLIPBOARD_CLEAR_AFTER`, or earlier at exit or lock (`clear_copied_code`), if nothing
-/// else was copied since. The code is read here from `sync_state` and never crosses IPC. Only
-/// within `KIT_COPY_WINDOW` (`validation.syncPasswordRequired` otherwise). `false`: no native copy
-/// on this platform, so the UI copies itself and clears it; any other failure is
+/// else was copied since. The code is read here from the open Kit draft and never crosses IPC.
+/// Only within `KIT_COPY_WINDOW` (`validation.syncPasswordRequired` otherwise). The Kit counts as
+/// copied (`KitStorage::Copied`, revision §2.7) either way. `false`: no native copy on this
+/// platform, so the UI copies itself and clears it; any other failure is
 /// `validation.syncCopyFailed` (`copy_outcome`).
 #[tauri::command]
 pub async fn sync_copy_recovery_code(app: AppHandle, db: State<'_, Database>) -> Result<bool> {
     require_feature()?;
-    let owner = kit_owner(&app, &db)?;
-    let window = kit_window();
-    if !copy_allowed(window.as_ref(), &owner, Instant::now()) {
-        return Err(AppError::Validation(PASSWORD_REQUIRED.into()));
-    }
-    // The kit wipes its code when dropped.
-    let kit = db.with_conn(setup::recovery_kit)?;
-    let Some(token) = copy_outcome(app.keychain().copy_secret_text(&kit.recovery_code))? else {
+    let code = with_kit_draft(&app, &db, |draft| {
+        db.with_conn(|conn| setup::kit_code(conn, draft))
+    })?;
+    let copied = copy_outcome(app.keychain().copy_secret_text(&code))?;
+    drop(code);
+    with_kit_draft(&app, &db, |draft| {
+        db.with_conn(|conn| setup::note_kit_storage(conn, draft, KitStorage::Copied))
+    })?;
+    let Some(token) = copied else {
         return Ok(false);
     };
     // Owed until the timer, an exit or a lock clears it (`clear_copied_code`).
@@ -768,31 +814,58 @@ pub async fn sync_copy_recovery_code(app: AppHandle, db: State<'_, Database>) ->
     Ok(true)
 }
 
+/// "Vytisknout" (revision §6.3): the window's print dialog, while a print stylesheet shows only
+/// the Kit sheet; Moony writes nothing to disk. Within `KIT_COPY_WINDOW`; the Kit counts as
+/// printed (`KitStorage::Paper`) once the dialog was opened.
+#[tauri::command]
+pub async fn sync_print_recovery_kit(
+    app: AppHandle,
+    db: State<'_, Database>,
+    window: tauri::WebviewWindow,
+) -> Result<()> {
+    require_feature()?;
+    with_kit_draft(&app, &db, |_| Ok(()))?;
+    window
+        .print()
+        .map_err(|e| AppError::Internal(format!("The print dialog did not open: {e}")))?;
+    with_kit_draft(&app, &db, |draft| {
+        db.with_conn(|conn| setup::note_kit_storage(conn, draft, KitStorage::Paper))
+    })
+}
+
 /// Finishes setup (`setup::finish_setup`) and starts the engine; the status after it.
 #[tauri::command]
 pub async fn sync_finish_setup(
     app: AppHandle,
     db: State<'_, Database>,
     device_name: String,
-    kit_saved: bool,
 ) -> Result<SyncStatus> {
     require_feature()?;
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
-    let finish = setup::finish_setup(
-        &relay,
-        &session,
-        &device_name,
-        kit_saved,
-        &dir,
-        &native,
-        now(),
-    );
+    // The open Kit draft (revision §2.2); none, or one the person did nothing with, is
+    // `validation.syncRecoveryKitNotConfirmed`.
+    let owner = kit_owner(&app, &db)?;
+    let draft = copy_allowed(kit_window().as_ref(), &owner, Instant::now())
+        .then(|| kit_draft_slot().take())
+        .flatten()
+        .ok_or_else(|| AppError::Validation(KIT_NOT_CONFIRMED.into()))?;
+    let finish = setup::finish_setup(&relay, &session, &device_name, &draft, &dir, &native, now());
     // A person blocked between the steps of an own server never reads "subscription" copy.
     let finish = mapped_for_setup(stored_relay_url(&db)?, finish);
-    guarded_change(&AppEngine { app: &app, db: &db }, finish).await?;
+    match guarded_change(&AppEngine { app: &app, db: &db }, finish).await {
+        Ok(()) => forget_kit_window(),
+        Err(error) => {
+            // A retry finishes with the same Kit while the window is open.
+            let mut slot = kit_draft_slot();
+            if slot.is_none() && copy_allowed(kit_window().as_ref(), &owner, Instant::now()) {
+                *slot = Some(draft);
+            }
+            return Err(error);
+        }
+    }
     current_status(&app, &db)
 }
 
@@ -850,23 +923,6 @@ pub(crate) fn wake_transfers(app: &AppHandle) {
     {
         handle.wake_transfers();
     }
-}
-
-/// The kit after setup, once the device password is checked; opens `KIT_COPY_WINDOW` for
-/// `sync_copy_recovery_code` and `sync_save_recovery_kit`.
-#[tauri::command]
-pub async fn sync_show_recovery_kit(
-    app: AppHandle,
-    db: State<'_, Database>,
-    password: String,
-) -> Result<RecoveryKit> {
-    let password = Zeroizing::new(password);
-    require_feature()?;
-    password_given(&password)?;
-    verify_password(&app, password).await?;
-    let kit = db.with_conn(setup::recovery_kit)?;
-    open_kit_window(kit_owner(&app, &db)?, Instant::now());
-    Ok(kit)
 }
 
 /// Whether turning sync off (or deleting the synced data) ends a running pairing. A holder's
@@ -1550,13 +1606,14 @@ mod tests {
     /// before the kit is read.
     #[test]
     fn every_kit_showing_checks_the_password_first() {
-        for name in ["sync_prepare_recovery_kit", "sync_show_recovery_kit"] {
+        {
+            let name = "sync_prepare_recovery_kit";
             let body = command_body(name);
             let checked = body
                 .find("verify_password(&app, password).await?")
                 .unwrap_or_else(|| panic!("`{name}` must call `verify_password(`"));
             let read = body
-                .find("recovery_kit)?")
+                .find("prepare_kit(")
                 .unwrap_or_else(|| panic!("`{name}` reads the kit"));
             assert!(
                 checked < read,

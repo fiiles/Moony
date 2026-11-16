@@ -5,6 +5,8 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
+use zeroize::Zeroizing;
+
 use super::join::{validation_key, XorNative};
 use super::*;
 use crate::models::sync::{CheckoutTarget, SyncAccount, SyncPlan};
@@ -19,14 +21,16 @@ use crate::services::sync::engine::{run_round, RoundMode};
 use crate::services::sync::envelope::open_op;
 use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::identity::trust::{self, TrustState};
-use crate::services::sync::identity::{self, CertKind};
+use crate::services::sync::identity::{self, CertKind, KitSecret};
+use crate::services::sync::keys::VaultId;
+use crate::services::sync::rekey::kit::KitStorage;
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
 use crate::services::sync::relay::RelayError;
 use crate::services::sync::setup::{
     account_status, checkout_url, connect_own_server, create_account, delete_synced_data,
-    delete_vault_best_effort, finish_setup, recovery_kit, setup_recovery_kit,
-    turn_off_between_rounds,
+    delete_vault_best_effort, finish_setup, kit_view, note_kit_storage, prepare_kit,
+    turn_off_between_rounds, KitDraft,
 };
 use crate::services::sync::snapshot::{read_record, Record};
 
@@ -52,15 +56,34 @@ fn command_key(result: SyncResult<impl std::fmt::Debug>) -> String {
     }
 }
 
+/// The setup's Kit draft, printed: one Kit per vault (a resumed setup finishes with the same
+/// one), or a Kit of no vault before the vault's secrets exist.
+pub(super) fn printed_kit(conn: &Connection) -> KitDraft {
+    let vault_id = keys::credentials(conn)
+        .expect("credentials")
+        .map_or(VaultId([0xee; 16]), |creds| creds.vault_id);
+    let seed = Zeroizing::new([vault_id.0[0] ^ 0x5a; 32]);
+    let mut draft = KitDraft::new(vault_id, KitSecret::from_bytes(seed), NOW);
+    note_kit_storage(conn, &mut draft, KitStorage::Paper).expect("printed");
+    draft
+}
+
 async fn finish(relay: &FakeRelay, device: &TestConn, dir: &Path) -> SyncResult<()> {
-    finish_setup(relay, device, "Laptop", true, dir, &XorNative, NOW).await
+    let kit = printed_kit(&device.lock());
+    finish_setup(relay, device, "Laptop", &kit, dir, &XorNative, NOW).await
+}
+
+/// The Kit as setup shows it, of a new draft.
+fn view_of(conn: &Connection) -> crate::models::sync::RecoveryKit {
+    let draft = prepare_kit(conn, None, NOW).expect("draft");
+    kit_view(conn, &draft).expect("kit")
 }
 
 /// A profile with sync set up on `relay`: account, payment, kit, finish.
 pub(super) async fn set_up(relay: &FakeRelay, device: &TestConn, dir: &Path) -> Credentials {
     let account = create_account(relay, device, RELAY).await.expect("account");
     relay.set_paid(&account.account_number, true);
-    recovery_kit(&device.lock()).expect("kit");
+    prepare_kit(&device.lock(), None, NOW).expect("kit");
     finish(relay, device, dir).await.expect("setup");
     keys::credentials(&device.lock())
         .expect("credentials")
@@ -142,7 +165,7 @@ async fn first_device_setup_creates_the_vault_pushes_and_uploads_a_snapshot() {
     assert!(paid.active);
     assert!(paid.paid_until.is_some_and(|until| until > NOW));
 
-    let kit = recovery_kit(&device.lock()).expect("kit");
+    let kit = view_of(&device.lock());
     assert_eq!(kit.account_number, account.account_number);
     assert_eq!(kit.relay_url.as_deref(), Some(RELAY));
 
@@ -178,6 +201,14 @@ async fn first_device_setup_creates_the_vault_pushes_and_uploads_a_snapshot() {
         ),
         ("app_config", "Single(\"rule_packs_enabled\")".to_string()),
         ("sync_devices", format!("Single({:?})", this.to_hex())),
+        // The Recovery Kit's row (revision §2.3).
+        (
+            "sync_devices",
+            format!(
+                "Single({:?})",
+                printed_kit(&device.lock()).keys().id().to_hex()
+            ),
+        ),
     ]
     .into_iter()
     .map(|(t, k)| (t.to_string(), k))
@@ -304,11 +335,11 @@ async fn a_resumed_setup_keeps_its_certificate() {
         .await
         .expect("account");
     relay.set_paid(&account.account_number, true);
-    recovery_kit(&device.lock()).expect("kit");
+    prepare_kit(&device.lock(), None, NOW).expect("kit");
     relay.fail_next(Route::Pull, RelayError::Network("timeout".into()));
     assert!(finish(&relay, &device, dir.path()).await.is_err());
     let first = trust::entries(&device.lock()).expect("entries");
-    assert_eq!(first.len(), 1);
+    assert_eq!(first.len(), 2, "this device and the Kit");
 
     finish(&relay, &device, dir.path()).await.expect("resumed");
 
@@ -325,19 +356,26 @@ async fn the_setup_kit_is_refused_once_sync_is_on() {
         .expect("account");
     relay.set_paid(&account.account_number, true);
 
-    // While setup runs, the same kit as `recovery_kit`, as often as asked.
-    let during = setup_recovery_kit(&device.lock()).expect("kit during setup");
-    let kit = recovery_kit(&device.lock()).expect("kit");
+    // While setup runs, the open draft is shown again, as often as asked (revision §2.2).
+    let draft = prepare_kit(&device.lock(), None, NOW).expect("kit during setup");
+    let kit = kit_view(&device.lock(), &draft).expect("kit");
+    let again = prepare_kit(&device.lock(), Some(draft), NOW + 60).expect("again");
+    let during = kit_view(&device.lock(), &again).expect("kit");
     assert_eq!(during.recovery_code, kit.recovery_code);
     assert_eq!(during.account_number, account.account_number);
+    let other = prepare_kit(&device.lock(), None, NOW).expect("new");
+    assert_ne!(
+        kit_view(&device.lock(), &other).expect("kit").recovery_code,
+        kit.recovery_code,
+        "a closed draft is never shown again: a new Kit"
+    );
 
-    // Once sync is on, only the password-checked path shows it (`sync_show_recovery_kit`).
+    // Once sync is on, a Kit comes only from a key change.
     finish(&relay, &device, dir.path()).await.expect("setup");
     assert_eq!(
-        key_of(setup_recovery_kit(&device.lock()).map_err(SyncError::from)),
+        key_of(prepare_kit(&device.lock(), None, NOW).map_err(SyncError::from)),
         "validation.syncAlreadyEnabled"
     );
-    assert!(recovery_kit(&device.lock()).is_ok(), "the kit itself stays");
 }
 
 #[tokio::test]
@@ -347,18 +385,20 @@ async fn setup_resumes_with_the_stored_account_and_vault_after_a_restart() {
     let first = create_account(&relay, &device, RELAY)
         .await
         .expect("account");
-    let kit = recovery_kit(&device.lock()).expect("kit");
+    let kit = prepare_kit(&device.lock(), None, NOW).expect("kit");
 
     // The app restarts: a new relay handle on the same relay, the same profile.
     let again = relay.clone();
     let second = create_account(&again, &device, &format!("{RELAY}/"))
         .await
         .expect("account again");
-    let kit_again = recovery_kit(&device.lock()).expect("kit again");
+    let kit_again = prepare_kit(&device.lock(), None, NOW).expect("kit again");
 
     assert_eq!(second.account_number, first.account_number);
-    assert_eq!(kit_again.recovery_code, kit.recovery_code);
-    assert_eq!(kit_again.qr_svg, kit.qr_svg);
+    assert!(
+        kit_again.vault_id() == kit.vault_id(),
+        "the vault's ID and key are made once"
+    );
     assert_eq!(
         relay
             .calls()
@@ -399,11 +439,17 @@ async fn finishing_without_a_saved_kit_or_payment_is_refused() {
     let device = fresh();
     let dir = tempfile::tempdir().expect("dir");
 
+    // A Kit the person did nothing with (not printed, copied or saved).
+    let unsaved = KitDraft::new(
+        VaultId([0xee; 16]),
+        KitSecret::generate().expect("seed"),
+        NOW,
+    );
     let unconfirmed = finish_setup(
         &relay,
         &device,
         "Laptop",
-        false,
+        &unsaved,
         dir.path(),
         &XorNative,
         NOW,
@@ -425,8 +471,9 @@ async fn finishing_without_a_saved_kit_or_payment_is_refused() {
         "validation.syncSetupIncomplete",
         "no Recovery Kit yet"
     );
-    recovery_kit(&device.lock()).expect("kit");
-    let unnamed = finish_setup(&relay, &device, "  ", true, dir.path(), &XorNative, NOW);
+    prepare_kit(&device.lock(), None, NOW).expect("kit");
+    let kit = printed_kit(&device.lock());
+    let unnamed = finish_setup(&relay, &device, "  ", &kit, dir.path(), &XorNative, NOW);
     assert_eq!(key_of(unnamed.await), "validation.syncDeviceNameInvalid");
 
     let unpaid = finish(&relay, &device, dir.path()).await;
@@ -585,7 +632,7 @@ async fn a_self_hosted_relay_answers_checkout_without_a_url() {
             .active
     );
 
-    let kit = recovery_kit(&device.lock()).expect("kit");
+    let kit = view_of(&device.lock());
     assert_eq!(kit.relay_url.as_deref(), Some("https://sync.example.org"));
     let dir = tempfile::tempdir().expect("dir");
     finish(&relay, &device, dir.path()).await.expect("setup");
@@ -641,23 +688,28 @@ async fn a_kit_carries_a_custom_relay_and_not_the_default_one() {
     create_account(&relay, &custom, RELAY)
         .await
         .expect("account");
-    let kit = recovery_kit(&custom.lock()).expect("kit");
+    let kit = view_of(&custom.lock());
     assert_eq!(kit.relay_url.as_deref(), Some(RELAY));
 
     let default = fresh();
     create_account(&relay, &default, DEFAULT_RELAY_URL)
         .await
         .expect("account");
-    let kit = recovery_kit(&default.lock()).expect("kit");
+    let kit = view_of(&default.lock());
     assert_eq!(kit.relay_url, None);
-    assert_eq!(kit.recovery_code.len(), 95, "16 groups of five");
-    assert_eq!(kit.recovery_code.matches('-').count(), 15);
-    assert!(kit.qr_svg.contains("</svg>"));
-    let (vault_id, keys) = keys::ensure_vault_secrets(&default.lock()).expect("secrets");
-    let code = crate::services::sync::recovery::encode_recovery_code(&vault_id, keys.current());
     assert_eq!(
-        kit.recovery_code,
-        *crate::services::sync::recovery::format_recovery_code(&code)
+        kit.recovery_code.len(),
+        113,
+        "19 groups of five (revision §2.2)"
+    );
+    assert_eq!(kit.recovery_code.matches('-').count(), 18);
+    assert!(kit.qr_svg.contains("</svg>"));
+    let code = crate::services::sync::recovery::decode_kit_code(&kit.recovery_code).expect("v2");
+    let (vault_id, _) = keys::ensure_vault_secrets(&default.lock()).expect("secrets");
+    assert!(code.vault_id == vault_id);
+    assert_eq!(
+        code.account, kit.account_number,
+        "the account is in the code"
     );
 }
 
@@ -674,7 +726,8 @@ async fn turning_off_keeps_local_data_and_forgets_every_secret() {
     let finance_before = institutions(&device.lock());
     assert_eq!(
         count(&device.lock(), "SELECT COUNT(*) FROM sync_devices"),
-        1
+        2,
+        "this device and the Kit"
     );
     device
         .lock()
@@ -820,7 +873,7 @@ async fn the_best_effort_delete_reports_whether_the_vault_is_gone() {
 fn recovery_kit_debug_output_hides_the_code() {
     let conn = migrated();
     keys::save_account(&conn, RELAY, "4417938205561273").expect("account");
-    let kit = recovery_kit(&conn).expect("kit");
+    let kit = view_of(&conn);
     let printed = format!("{kit:?} {kit:#?}");
     assert_eq!(format!("{kit:?}"), "RecoveryKit { .. }");
     assert!(!printed.contains(&kit.recovery_code[..10]));
@@ -843,12 +896,22 @@ async fn a_new_setup_after_turning_off_publishes_only_this_device() {
 
     let this = device_of(&device.lock());
     assert_ne!(this, old_device, "a new vault, a new device ID");
-    let only_this = vec![format!("Single({:?})", this.to_hex())];
+    let kit = printed_kit(&device.lock()).keys().id();
+    let mut only_this = vec![
+        format!("Single({:?})", this.to_hex()),
+        format!("Single({:?})", kit.to_hex()),
+    ];
+    only_this.sort();
     let ops = relay.ops();
     assert_eq!(ops.len(), 1);
     let json = open_op(|epoch| creds.keys.get(epoch), &creds.vault_id.0, &ops[0].ct).expect("open");
     let cs = from_json(&json).expect("changeset");
-    assert_eq!(device_keys(&cs.rows), only_this, "the first envelope");
+    let mut published = device_keys(&cs.rows);
+    published.sort();
+    assert_eq!(
+        published, only_this,
+        "the first envelope: this device and its Kit"
+    );
 
     let blob = relay.get_snapshot(&creds.auth()).await.expect("snapshot");
     let plain = open_sealed(&creds, &blob).expect("opens");
@@ -874,7 +937,7 @@ async fn a_first_round_that_pushed_nothing_fails_setup_and_resumes() {
         .await
         .expect("account");
     relay.set_paid(&account.account_number, true);
-    recovery_kit(&device.lock()).expect("kit");
+    prepare_kit(&device.lock(), None, NOW).expect("kit");
     relay.fail_next(Route::Push, RelayError::PaymentRequired);
 
     let lapsed = finish(&relay, &device, dir.path()).await;
@@ -904,7 +967,7 @@ async fn a_resumed_setup_on_a_restored_copy_rejoins_before_its_first_push() {
         .await
         .expect("account");
     relay.set_paid(&account.account_number, true);
-    recovery_kit(&device.lock()).expect("kit");
+    prepare_kit(&device.lock(), None, NOW).expect("kit");
     relay.fail_next(Route::Pull, RelayError::Network("timeout".into()));
     let stopped = finish(&relay, &device, dir.path()).await;
     assert!(
@@ -950,7 +1013,7 @@ async fn a_vault_the_relay_lost_during_setup_is_found_again_on_retry() {
         .await
         .expect("account");
     relay.set_paid(&account.account_number, true);
-    recovery_kit(&device.lock()).expect("kit");
+    prepare_kit(&device.lock(), None, NOW).expect("kit");
     relay.fail_next(Route::Pull, RelayError::VaultNotFound);
 
     let gone = finish(&relay, &device, dir.path()).await;
@@ -968,17 +1031,16 @@ async fn a_kit_for_the_longest_relay_address_renders_and_reads_back() {
     create_account(&relay, &device, &longest)
         .await
         .expect("a 256-character address");
-    let kit = recovery_kit(&device.lock()).expect("kit");
+    let kit = view_of(&device.lock());
     assert_eq!(kit.relay_url.as_deref(), Some(longest.as_str()));
     assert!(kit.qr_svg.contains("</svg>"));
 
-    let payload = crate::services::sync::recovery::recovery_qr_payload(
-        &kit.account_number,
-        &kit.recovery_code,
+    let payload = crate::services::sync::recovery::kit_qr_payload(
+        &kit.recovery_code.replace('-', ""),
         Some(&longest),
     );
     assert!(payload.len() <= 512, "{}", payload.len());
-    let qr = crate::services::sync::recovery::parse_recovery_qr_payload(&payload).expect("reads");
+    let qr = crate::services::sync::recovery::parse_kit_qr_payload(&payload).expect("reads");
     assert_eq!(qr.relay_url.as_deref(), Some(longest.as_str()));
 
     assert_eq!(
@@ -1015,7 +1077,7 @@ async fn an_own_server_code_adopts_the_account_and_skips_payment() {
     );
     assert_eq!(fake.calls(), [Route::ServerInfo, Route::AccountStatus]);
 
-    let kit = recovery_kit(&device.lock()).expect("kit");
+    let kit = view_of(&device.lock());
     assert_eq!(kit.relay_url.as_deref(), Some(RELAY));
     finish(&fake, &device, dir.path()).await.expect("finish");
     assert!(enabled(&device.lock()));
@@ -1085,7 +1147,7 @@ async fn the_same_code_resumes_and_another_replaces_only_while_off() {
         Some((RELAY.to_string(), second.clone()))
     );
 
-    recovery_kit(&device.lock()).expect("kit");
+    prepare_kit(&device.lock(), None, NOW).expect("kit");
     finish(&fake, &device, dir.path()).await.expect("finish");
     assert_eq!(
         command_key(connect_own_server(&fake, &device, &code_for(&first)).await),
@@ -1106,7 +1168,7 @@ async fn a_person_blocked_before_finish_reads_the_own_server_key() {
     connect_own_server(&fake, &device, &code_for(&acct))
         .await
         .expect("connect");
-    recovery_kit(&device.lock()).expect("kit");
+    prepare_kit(&device.lock(), None, NOW).expect("kit");
     fake.block(&acct, NOW - 10);
     let error = finish(&fake, &device, dir.path())
         .await
@@ -1116,4 +1178,427 @@ async fn a_person_blocked_before_finish_reads_the_own_server_key() {
         AppError::Validation(key) => assert_eq!(key, "validation.syncAccountBlocked"),
         other => panic!("not a validation key: {other:?}"),
     }
+}
+
+// ── Revision §2.2, §2.7, §2.8: the Recovery Kit at setup and after ──────────────────────────
+
+/// Every value of every table, as text, for looking for a secret in it.
+fn every_value(conn: &Connection) -> Vec<String> {
+    let tables: Vec<String> = conn
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+        .expect("tables")
+        .query_map([], |r| r.get(0))
+        .expect("rows")
+        .map(|t| t.expect("table"))
+        .collect();
+    let mut values = Vec::new();
+    for table in tables {
+        let mut stmt = conn
+            .prepare(&format!("SELECT * FROM \"{table}\""))
+            .expect("select");
+        let columns = stmt.column_count();
+        let rows = stmt
+            .query_map([], |r| {
+                (0..columns)
+                    .map(|i| {
+                        r.get::<_, Value>(i).map(|v| match v {
+                            Value::Text(text) => text,
+                            Value::Blob(blob) => hex::encode(blob),
+                            other => format!("{other:?}"),
+                        })
+                    })
+                    .collect::<rusqlite::Result<Vec<_>>>()
+            })
+            .expect("rows");
+        for row in rows {
+            values.extend(row.expect("row"));
+        }
+    }
+    values
+}
+
+/// A profile with an account at `RELAY`, paid, and its vault's secrets: ready for the Kit step.
+async fn ready_for_the_kit(relay: &FakeRelay, device: &TestConn) {
+    let account = create_account(relay, device, RELAY).await.expect("account");
+    relay.set_paid(&account.account_number, true);
+    prepare_kit(&device.lock(), None, NOW).expect("vault secrets");
+}
+
+/// Revision §2.2: the Kit's seed lives in the draft only, never in the database.
+#[tokio::test]
+async fn the_kit_seed_is_never_stored() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    ready_for_the_kit(&relay, &device).await;
+    let kit = printed_kit(&device.lock());
+
+    finish_setup(&relay, &device, "Laptop", &kit, dir.path(), &XorNative, NOW)
+        .await
+        .expect("setup");
+
+    let seed = *KitSecret::from_bytes(Zeroizing::new([kit.vault_id().0[0] ^ 0x5a; 32])).expose();
+    let keys = kit.keys();
+    let secrets = [
+        hex::encode(seed),
+        base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, seed),
+        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, seed),
+        keys.token().to_string(),
+        hex::encode(keys.sign_seed().expose()),
+    ];
+    for value in every_value(&device.lock()) {
+        for secret in &secrets {
+            assert!(!value.contains(secret.as_str()), "a Kit secret is stored");
+        }
+    }
+}
+
+/// Revision §2.2, §2.3: `finish_setup` puts the Kit on the server and writes and pins its row; a
+/// retry finishes with the same Kit.
+#[tokio::test]
+async fn finishing_setup_registers_the_kit_once_even_when_retried() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    ready_for_the_kit(&relay, &device).await;
+    let kit = printed_kit(&device.lock());
+    let keys = kit.keys();
+    // The Kit's answer is lost: the server stored it (put here by hand), the device did not
+    // hear so. Nothing is registered here before the server holds the Kit.
+    relay.fail_next(Route::PutKit, RelayError::Network("offline".into()));
+    assert!(
+        finish_setup(&relay, &device, "Laptop", &kit, dir.path(), &XorNative, NOW)
+            .await
+            .is_err()
+    );
+    assert!(trust::entry(&device.lock(), keys.id())
+        .expect("entry")
+        .is_none());
+    let auth = keys::credentials(&device.lock())
+        .expect("creds")
+        .expect("bound")
+        .auth();
+    assert!(relay
+        .put_kit(&auth, keys.token(), b"stored before the answer was lost")
+        .await
+        .expect("stored"));
+
+    finish_setup(&relay, &device, "Laptop", &kit, dir.path(), &XorNative, NOW)
+        .await
+        .expect("resumed");
+    let puts = |relay: &FakeRelay| {
+        relay
+            .calls()
+            .iter()
+            .filter(|r| **r == Route::PutKit)
+            .count()
+    };
+    assert_eq!(
+        puts(&relay),
+        3,
+        "the lost one, by hand, the retry's (idempotent)"
+    );
+
+    let creds = keys::credentials(&device.lock())
+        .expect("creds")
+        .expect("bound");
+    let read = relay
+        .get_kit(&creds.vault_id.to_b64(), keys.token())
+        .await
+        .expect("the Kit reads its envelope");
+    let opened =
+        crate::services::sync::rekey::envelope::open(&read.envelope, &keys).expect("opens");
+    let me = device_of(&device.lock());
+    assert_eq!(opened.header.epoch, 0);
+    assert_eq!(opened.by, me);
+    let confirmed: Vec<DeviceId> = opened.confirmed.iter().map(|c| c.device).collect();
+    let mut expected = vec![me, keys.id()];
+    expected.sort();
+    assert_eq!(confirmed, expected);
+    let conn = device.lock();
+    let rows: Vec<(String, String, Option<String>)> = conn
+        .prepare("SELECT id, platform, kit_storage FROM sync_devices WHERE platform = ?1")
+        .expect("rows")
+        .query_map([crate::services::sync::rekey::kit::KIT_PLATFORM], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })
+        .expect("rows")
+        .map(|r| r.expect("row"))
+        .collect();
+    assert_eq!(
+        rows,
+        vec![(
+            keys.id().to_hex(),
+            "recoveryKit".to_string(),
+            Some("paper".to_string())
+        )]
+    );
+    let entry = trust::entry(&conn, keys.id())
+        .expect("entry")
+        .expect("pinned");
+    assert_eq!(entry.state, TrustState::Trusted);
+    assert_eq!(entry.kind, CertKind::Kit);
+    assert!(entry.confirmed);
+    assert!(
+        trust::entry(&conn, me)
+            .expect("entry")
+            .expect("pinned")
+            .confirmed
+    );
+    assert_eq!(
+        trust::recipients(&conn, &[])
+            .expect("recipients")
+            .kit
+            .map(|k| k.device),
+        Some(keys.id())
+    );
+}
+
+/// Revision §2.9: setup refuses a sync server that does not keep a Recovery Kit, before it
+/// creates anything there.
+#[tokio::test]
+async fn a_server_without_the_kit_refuses_setup() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    ready_for_the_kit(&relay, &device).await;
+    relay.set_server_info(Some(crate::services::sync::relay::ServerInfo {
+        version: "1.0.0".into(),
+        protocol: 2,
+        mode: crate::services::sync::relay::ServerMode::SelfHosted,
+        blobs: true,
+        kit: false,
+    }));
+
+    let refused = finish(&relay, &device, dir.path()).await;
+
+    assert_eq!(key_of(refused), "validation.syncServerNeedsUpdate");
+    assert!(!relay.calls().contains(&Route::CreateVault));
+    assert!(!enabled(&device.lock()));
+}
+
+/// Revision §2.7: where the Kit is kept only gets stronger (`cloud` > `file` > `copied` >
+/// `paper`), in the draft and, once the Kit has a row, in the row (which syncs).
+#[tokio::test]
+async fn the_kit_storage_keeps_the_strongest_value() {
+    use KitStorage::{Cloud, Copied, File, Paper};
+    assert!(Paper < Copied && Copied < File && File < Cloud);
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    ready_for_the_kit(&relay, &device).await;
+    let vault_id = keys::credentials(&device.lock())
+        .expect("creds")
+        .expect("bound")
+        .vault_id;
+    let kit_of = || {
+        KitDraft::new(
+            vault_id,
+            KitSecret::from_bytes(Zeroizing::new([7; 32])),
+            NOW,
+        )
+    };
+    let mut draft = kit_of();
+    assert_eq!(draft.storage(), None);
+    for (noted, kept) in [
+        (Copied, Copied),
+        (Paper, Copied),
+        (File, File),
+        (Copied, File),
+        (Cloud, Cloud),
+        (Paper, Cloud),
+    ] {
+        note_kit_storage(&device.lock(), &mut draft, noted).expect("noted");
+        assert_eq!(draft.storage(), Some(kept), "after {noted:?}");
+    }
+    finish_setup(
+        &relay,
+        &device,
+        "Laptop",
+        &draft,
+        dir.path(),
+        &XorNative,
+        NOW,
+    )
+    .await
+    .expect("setup");
+
+    let conn = device.lock();
+    let id = draft.keys().id();
+    assert_eq!(
+        crate::services::sync::rekey::kit::storage(&conn, id).expect("row"),
+        Some(Cloud),
+        "the row is written with the draft's value"
+    );
+    // A Kit with a row (one a key change made): the row follows, never weaker.
+    conn.execute(
+        "UPDATE sync_devices SET kit_storage = 'copied' WHERE id = ?1",
+        [id.to_hex()],
+    )
+    .expect("weaker");
+    let mut registered = kit_of();
+    assert_eq!(registered.keys().id(), id, "the same Kit");
+    note_kit_storage(&conn, &mut registered, Paper).expect("noted");
+    assert_eq!(
+        crate::services::sync::rekey::kit::storage(&conn, id).expect("row"),
+        Some(Copied),
+        "never weaker"
+    );
+    note_kit_storage(&conn, &mut registered, File).expect("noted");
+    assert_eq!(
+        crate::services::sync::rekey::kit::storage(&conn, id).expect("row"),
+        Some(File)
+    );
+}
+
+/// Revision §2.8: "Ověřit sadu" tells a valid Kit, a replaced one, one of another sync and one
+/// this vault does not know, with no network.
+#[tokio::test]
+async fn checking_a_kit_tells_valid_replaced_other_and_unknown() {
+    use crate::services::sync::recovery::{encode_kit_code, format_recovery_code, kit_qr_payload};
+    use crate::services::sync::setup::{check_kit, KitCheck};
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    ready_for_the_kit(&relay, &device).await;
+    let kit = printed_kit(&device.lock());
+    let code = kit_view(&device.lock(), &kit)
+        .expect("view")
+        .recovery_code
+        .clone();
+    finish_setup(&relay, &device, "Laptop", &kit, dir.path(), &XorNative, NOW)
+        .await
+        .expect("setup");
+    let calls = relay.calls().len();
+    let conn = device.lock();
+    let creds = keys::credentials(&conn).expect("creds").expect("bound");
+
+    assert_eq!(check_kit(&conn, &code).expect("valid"), KitCheck::Valid);
+    let raw = code.replace('-', "");
+    assert_eq!(
+        check_kit(&conn, &kit_qr_payload(&raw, Some(RELAY))).expect("scanned"),
+        KitCheck::Valid
+    );
+    let stranger = KitSecret::generate().expect("seed");
+    let unknown = format_recovery_code(
+        &encode_kit_code(&creds.vault_id, &stranger, &creds.account).expect("code"),
+    );
+    assert_eq!(
+        check_kit(&conn, &unknown).expect("unknown"),
+        KitCheck::Unknown
+    );
+    let other = format_recovery_code(
+        &encode_kit_code(&VaultId([0x44; 16]), &stranger, &creds.account).expect("code"),
+    );
+    assert_eq!(
+        check_kit(&conn, &other).expect("other"),
+        KitCheck::OtherSync
+    );
+    assert_eq!(
+        check_kit(&conn, "ABCDE-FGHJK")
+            .map_err(|e| e.to_string())
+            .expect_err("not a code"),
+        AppError::Validation("validation.syncRecoveryCodeInvalid".into()).to_string()
+    );
+    assert_eq!(relay.calls().len(), calls, "nothing reaches the server");
+
+    // A Kit a key change replaced (by hand here: the old Kit's removal, the new Kit pinned).
+    let new_keys = KitSecret::generate()
+        .expect("seed")
+        .derive(&creds.vault_id.0);
+    let seed = identity::own_seed(&conn).expect("seed").expect("seed");
+    let me = device_of(&conn);
+    let removal = identity::Record::sign(
+        identity::RecordType::Removed,
+        creds.vault_id.0,
+        kit.keys().id(),
+        me,
+        NOW + 100,
+        0,
+        &seed,
+    )
+    .expect("record");
+    trust::mark_removed(&conn, &removal, Some(1)).expect("removed");
+    let new_cert = identity::cert::issue_kit(&seed, me, &new_keys, NOW + 100).expect("new Kit");
+    trust::pin_created_kit(&conn, &new_cert, NOW + 100).expect("pinned");
+
+    assert_eq!(
+        check_kit(&conn, &code).expect("replaced"),
+        KitCheck::Replaced {
+            at: Some(NOW + 100),
+            current_created_at: Some(NOW + 100),
+        }
+    );
+}
+
+/// Revision §2.8: a Kit read the server reports is `kitUsed` once it is more than an hour old,
+/// newer than what the person knows of, and no Kit join was pinned here since an hour before it;
+/// the join is judged by when this device pinned it, never by the date its certificate claims.
+#[test]
+fn kit_used_judges_a_kit_join_by_when_it_was_pinned_here() {
+    use crate::services::sync::engine::status::{dismiss_kit_used, kit_used};
+    let conn = migrated();
+    let read = NOW - 2 * 3600;
+    assert_eq!(kit_used(&conn, None, NOW).expect("none"), None);
+    assert_eq!(kit_used(&conn, Some(read), NOW).expect("used"), Some(read));
+    assert_eq!(
+        kit_used(&conn, Some(NOW - 1800), NOW).expect("too fresh"),
+        None,
+        "an hour's grace for the join to show up"
+    );
+    // A Kit join whose certificate claims a time after the read but that this device pinned
+    // well before it does not explain the read.
+    let vault = [0x11; 16];
+    let kit = KitSecret::from_bytes(Zeroizing::new([3; 32])).derive(&vault);
+    let joiner = identity::new_sign_seed().expect("seed");
+    let joined = identity::cert::issue_kit_join(
+        &kit,
+        &identity::cert::CertFields {
+            vault_id: vault,
+            device: DeviceId([9; 16]),
+            box_pub: [9; 32],
+            issued_at: read + 600,
+        },
+        &joiner,
+    )
+    .expect("Kit join");
+    let pin = |pinned_at: i64| {
+        conn.execute("DELETE FROM sync_trust", []).expect("clear");
+        conn.execute(
+            "INSERT INTO sync_trust (device, cert, kind, issuer, sign_pub, box_pub, state, \
+               pinned_at) VALUES (?1, ?2, 3, ?3, ?4, ?5, 'trusted', ?6)",
+            rusqlite::params![
+                joined.body.device.to_hex(),
+                joined.to_b64(),
+                kit.id().to_hex(),
+                joined.body.sign_pub.to_vec(),
+                joined.body.box_pub.to_vec(),
+                pinned_at
+            ],
+        )
+        .expect("pinned");
+    };
+    pin(read - 3 * 3600);
+    assert_eq!(kit_used(&conn, Some(read), NOW).expect("used"), Some(read));
+    pin(read - 1800);
+    assert_eq!(
+        kit_used(&conn, Some(read), NOW).expect("explained"),
+        None,
+        "a join within the hour before the read explains it"
+    );
+    pin(read + 600);
+    assert_eq!(kit_used(&conn, Some(read), NOW).expect("explained"), None);
+
+    conn.execute("DELETE FROM sync_trust", []).expect("clear");
+    dismiss_kit_used(&conn, read).expect("dismissed");
+    assert_eq!(
+        kit_used(&conn, Some(read), NOW).expect("known"),
+        None,
+        "Vím o tom"
+    );
+    assert_eq!(
+        kit_used(&conn, Some(read + 60), NOW).expect("newer"),
+        Some(read + 60),
+        "a newer read is news again"
+    );
 }

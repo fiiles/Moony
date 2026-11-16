@@ -9,7 +9,7 @@ use crate::services::sync::error::SyncResult;
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::RelayError;
 use crate::services::sync::server::change_server_address;
-use crate::services::sync::setup::recovery_kit;
+use crate::services::sync::setup::{kit_view, KitDraft};
 
 const NEW: &str = "http://192.168.1.20:8787";
 
@@ -84,9 +84,19 @@ async fn a_new_address_of_the_same_server_is_stored_in_one_write() {
         relay.calls()[calls_before..],
         [Route::ServerInfo, Route::AccountStatus, Route::VaultInfo]
     );
+    let vault_id = keys::credentials(&a.lock())
+        .expect("creds")
+        .expect("bound")
+        .vault_id;
+    let draft = KitDraft::new(
+        vault_id,
+        crate::services::sync::identity::KitSecret::generate().expect("seed"),
+        NOW,
+    );
     assert_eq!(
-        recovery_kit(&a.lock()).expect("kit").relay_url,
-        Some(NEW.to_string())
+        kit_view(&a.lock(), &draft).expect("kit").relay_url,
+        Some(NEW.to_string()),
+        "the Kit names the new address"
     );
 }
 

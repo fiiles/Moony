@@ -30,7 +30,6 @@ use super::relay::{Mailbox, RelayError, RelayResult};
 use super::relay_e2e::{
     add_finances, command_key, converged, first_device, now, relay_at, relay_url, Device,
 };
-use super::setup::recovery_kit;
 
 /// The address `device` stored with its account (the holder shows its mailbox there).
 fn stored_relay(device: &Device) -> String {
@@ -437,18 +436,24 @@ async fn a_desktop_joins_from_a_phone_and_the_phone_types_the_code() {
 async fn a_device_joins_with_the_recovery_kit() {
     let url = relay_url();
     let (a, b) = holder_and_new_device(&url).await;
-    let kit = recovery_kit(&a.db.lock()).expect("kit");
+    // The v1 Kit (the current key) the join reads until Task 19 rewrites it.
+    let held = a.credentials();
+    let code = super::recovery::format_recovery_code(&super::recovery::encode_recovery_code(
+        &held.vault_id,
+        held.keys.current(),
+    ));
+    let number = held.account.clone();
 
     // Typed: the grouped code, the account with spaces, the server's address as written.
     let account = format!(
         "{} {} {} {}",
-        &kit.account_number[..4],
-        &kit.account_number[4..8],
-        &kit.account_number[8..12],
-        &kit.account_number[12..]
+        &number[..4],
+        &number[4..8],
+        &number[8..12],
+        &number[12..]
     );
     let input = read_recovery_input(
-        &kit.recovery_code,
+        &code,
         Some(&account),
         Some(&format!("{url}/")),
         DEFAULT_RELAY_URL,

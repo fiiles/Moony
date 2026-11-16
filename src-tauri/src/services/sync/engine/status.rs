@@ -2,7 +2,7 @@
 //! `sync_state` row (the pauses that outlive a restart) and from the engine's memory of its last
 //! round (`Runtime`).
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 use super::{PullEnd, PullReport, PullStop, RoundReport};
 use crate::error::{AppError, Result};
@@ -15,6 +15,7 @@ use crate::services::sync::blobs::queue;
 use crate::services::sync::capture::{self, guard};
 use crate::services::sync::error::{SyncError, TooLarge, Transient};
 use crate::services::sync::hlc::{now_ms, unpack, FUTURE_WARNING_MS};
+use crate::services::sync::identity::CertKind;
 use crate::services::sync::relay::http::{
     is_default_relay, is_insecure_address, normalize_base_url,
 };
@@ -43,6 +44,9 @@ pub struct Runtime {
     pub rounds: u64,
     /// Why documents and photos do not move (`BlobPolicy::problem`), as the engine last read it.
     pub attachments_problem: Option<SyncAttachmentsProblem>,
+    /// The minute of the Recovery Kit's last read, as the server last reported it (`kitUsed`,
+    /// revision §2.8; `None`: never read, or not reported).
+    pub kit_last_read: Option<i64>,
 }
 
 impl Runtime {
@@ -52,6 +56,7 @@ impl Runtime {
         self.problem = report.problem;
         if let Some(vault) = &report.vault {
             self.paid_until = Some(vault.paid_until);
+            self.kit_last_read = vault.kit.and_then(|kit| kit.last_read);
         }
         if let Some(push) = &report.push {
             self.refused_rows = u32::try_from(push.refused).unwrap_or(u32::MAX);
@@ -164,6 +169,56 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
     let content_left = summary.as_ref().is_none_or(|s| s.content_left);
     shown.protects_data = sync_protects(today_utc_day(), &shown, content_left);
     Ok(shown)
+}
+
+/// A Kit read is news only once it is this old, and a Kit join this close before it explains it.
+pub const KIT_READ_GRACE_SECS: i64 = 3600;
+
+/// `kitUsed` (revision §2.8): the time of the Kit's last read the sync server reports
+/// (`last_read`), when it is newer than what the person already knows of
+/// (`state::KIT_READ_SEEN_KEY`), more than an hour old at `now`, and no device joined with a Kit since an
+/// hour before it, judged by when this device pinned the joiner's certificate (`pinned_at`, its
+/// own clock), never the certificate's own date, which a Kit holder chooses.
+pub fn kit_used(conn: &Connection, last_read: Option<i64>, now: i64) -> Result<Option<i64>> {
+    let Some(read) = last_read else {
+        return Ok(None);
+    };
+    let seen: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [state::KIT_READ_SEEN_KEY],
+            |r| r.get(0),
+        )
+        .optional()?;
+    if seen
+        .and_then(|value| value.parse::<i64>().ok())
+        .is_some_and(|seen| read <= seen)
+    {
+        return Ok(None);
+    }
+    if now.saturating_sub(read) <= KIT_READ_GRACE_SECS {
+        return Ok(None);
+    }
+    let joined: bool = conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sync_trust WHERE kind = ?1 AND pinned_at >= ?2)",
+        rusqlite::params![
+            CertKind::RecoveryKit.as_u8(),
+            read.saturating_sub(KIT_READ_GRACE_SECS)
+        ],
+        |r| r.get(0),
+    )?;
+    Ok((!joined).then_some(read))
+}
+
+/// "Vím o tom": the person knows of the Kit read at `read`; `kit_used` stays quiet until a newer
+/// one.
+pub fn dismiss_kit_used(conn: &Connection, read: i64) -> Result<()> {
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2) \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        rusqlite::params![state::KIT_READ_SEEN_KEY, read.to_string()],
+    )?;
+    Ok(())
 }
 
 /// Where this device's documents and photos stand (`queue::summary`, read from the queue alone),

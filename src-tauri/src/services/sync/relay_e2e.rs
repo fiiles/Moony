@@ -41,7 +41,8 @@ use super::relay::{
 use super::relay_e2e_admin::{admin, Person};
 use super::server::change_server_address;
 use super::setup::{
-    account_status, connect_own_server, delete_synced_data, finish_setup, recovery_kit,
+    account_status, connect_own_server, delete_synced_data, finish_setup, note_kit_storage,
+    prepare_kit, KitDraft,
 };
 use super::state;
 use super::test_support::{assert_converged, migrated, noise};
@@ -368,8 +369,20 @@ async fn device_of_new_person(relay: &HttpRelay, url: &str, name: &str) -> (Devi
         .await
         .expect("status");
     assert!(status.active, "{status:?}");
-    recovery_kit(&device.db.lock()).expect("kit");
     (device, person)
+}
+
+/// The Recovery Kit draft of setup, printed (revision §2.2, §2.7).
+pub(super) fn printed_kit(device: &Device) -> KitDraft {
+    let conn = device.db.lock();
+    let mut draft = prepare_kit(&conn, None, now()).expect("kit");
+    note_kit_storage(
+        &conn,
+        &mut draft,
+        crate::services::sync::rekey::kit::KitStorage::Paper,
+    )
+    .expect("printed");
+    draft
 }
 
 /// A first device with sync on: a person added by the admin, its connection code, its Recovery
@@ -377,12 +390,13 @@ async fn device_of_new_person(relay: &HttpRelay, url: &str, name: &str) -> (Devi
 /// delete them.
 pub(super) async fn first_device_of(relay: &HttpRelay, url: &str, name: &str) -> (Device, Person) {
     let (device, person) = device_of_new_person(relay, url, name).await;
+    let kit = printed_kit(&device);
     sync_until_allowed(|| {
         finish_setup(
             relay,
             &device.db,
             name,
-            true,
+            &kit,
             device.dir(),
             &NoBinding,
             now(),
@@ -523,6 +537,7 @@ async fn a_blocked_person_cannot_create_a_vault_until_unblocked() {
     let url = relay_url();
     let relay = relay_at(&url);
     let (device, person) = device_of_new_person(&relay, &url, "Blocked").await;
+    let kit = printed_kit(&device);
     let admin = admin(&url).await;
     admin.block(&person.id).await;
 
@@ -531,7 +546,7 @@ async fn a_blocked_person_cannot_create_a_vault_until_unblocked() {
             &relay,
             &device.db,
             "Laptop",
-            true,
+            &kit,
             device.dir(),
             &NoBinding,
             now(),
@@ -548,7 +563,7 @@ async fn a_blocked_person_cannot_create_a_vault_until_unblocked() {
             &relay,
             &device.db,
             "Laptop",
-            true,
+            &kit,
             device.dir(),
             &NoBinding,
             now(),

@@ -13,8 +13,8 @@ use uuid::Uuid;
 
 use super::{
     AccountStatus, BlobBody, BlobPage, BlobSink, CheckoutPlan, Delivery, OutgoingOp, PullPage,
-    PulledOp, PushReceipt, Relay, RelayError, RelayResult, ServerInfo, ServerMode, SnapshotBlob,
-    VaultInfo,
+    PulledOp, PushReceipt, Rekey, RekeyPage, Relay, RelayError, RelayResult, Rotated, ServerInfo,
+    ServerMode, SnapshotBlob, VaultInfo, MAX_REKEY_BUNDLE, MAX_REKEY_PAGE, MAX_REKEY_PAGE_BYTES,
 };
 use crate::services::sync::keys::VaultAuth;
 
@@ -27,6 +27,10 @@ const MAX_VAULT_OP_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_SNAPSHOT_BYTES: usize = 100 * 1024 * 1024;
 const MAX_VAULTS_PER_ACCOUNT: usize = 5;
 const READ_GRACE_SECONDS: i64 = 30 * 86_400;
+/// How long a retired token reads and a key-change bundle is kept (the server's 30 days).
+const PREVIOUS_TOKEN_SECONDS: i64 = 30 * 86_400;
+/// Bundles a vault keeps (younger than 30 days) before it refuses another rotation.
+const MAX_REKEYS_KEPT: usize = 32;
 /// How far `set_paid(.., true)` pushes `paid_until`.
 const PAID_FOR_SECONDS: i64 = 365 * 86_400;
 /// The `paid_until` a self-hosted server gives a person (year 9999).
@@ -46,6 +50,8 @@ pub enum Route {
     PutSnapshot,
     GetSnapshot,
     DeleteVault,
+    RotateToken,
+    Rekeys,
     MailboxPut,
     MailboxTake,
     MailboxBurn,
@@ -79,7 +85,18 @@ struct Vault {
     snapshot: Option<SnapshotBlob>,
     /// The token rotation counter `vault_info` answers (`set_rotation`).
     rotation: u32,
+    /// Tokens rotated away, with when (the fake's clock): read-only for 30 days.
+    prev_tokens: Vec<(String, i64)>,
+    /// Key-change bundles by rotation, oldest first.
+    rekeys: Vec<StoredRekey>,
     blobs: blobs::VaultBlobs,
+}
+
+struct StoredRekey {
+    rotation: u32,
+    head: u64,
+    at: i64,
+    bundle: Vec<u8>,
 }
 
 struct FakeState {
@@ -120,6 +137,9 @@ struct FakeState {
     no_room: bool,
     /// What a blob listing reports as the server's clock (`set_server_now`); `None` = `now()`.
     server_now: Option<Option<i64>>,
+    /// Seconds the fake's clock is ahead of the real one (`advance_clock`): what the 30-day rules
+    /// of a retired token and a key-change bundle are measured on.
+    clock_offset: i64,
 }
 
 impl Default for FakeState {
@@ -153,6 +173,7 @@ impl Default for FakeState {
             blob_quota: blobs::DEFAULT_BLOB_QUOTA,
             no_room: false,
             server_now: None,
+            clock_offset: 0,
         }
     }
 }
@@ -439,6 +460,25 @@ impl FakeRelay {
         }
     }
 
+    /// Moves the fake's clock `seconds` ahead: retired tokens and key-change bundles expire 30 days
+    /// after their rotation on this clock.
+    pub fn advance_clock(&self, seconds: i64) {
+        self.lock().clock_offset += seconds;
+    }
+
+    /// The bundle of rotation `rotation`, as stored (a test reads what the server holds).
+    pub fn stored_rekey(&self, vault_id: &str, rotation: u32) -> Option<Vec<u8>> {
+        let state = self.lock();
+        let now = state.now();
+        state
+            .vaults
+            .get(vault_id)?
+            .rekeys
+            .iter()
+            .find(|r| r.rotation == rotation && r.at + PREVIOUS_TOKEN_SECONDS > now)
+            .map(|r| r.bundle.clone())
+    }
+
     /// A server restored from an older backup: the vault's head (and the ops past it) go back to
     /// `head`. Never raises a head.
     pub fn roll_back_head(&self, vault_id: &str, head: u64) {
@@ -478,25 +518,41 @@ impl FakeState {
         }
     }
 
+    /// The fake's clock: the real one plus `advance_clock`.
+    fn now(&self) -> i64 {
+        now() + self.clock_offset
+    }
+
     fn paid_until(&self, account: &str) -> i64 {
         self.accounts.get(account).map_or(0, |a| a.paid_until)
     }
 
-    /// `VaultDO.authorize`: the vault exists, the token is its current one, the subscription is
-    /// live (write) or within the read grace (read); `Owner` needs neither.
+    /// `Vaults.verdict`: the vault exists; the token is its current one, or one rotated away less
+    /// than 30 days ago (which may read only); the subscription is live (write) or within the
+    /// read grace (read); `Owner` needs no subscription.
     fn authorize(&self, vault: &VaultAuth, access: Access) -> RelayResult<&Vault> {
         let stored = self
             .vaults
             .get(&vault.vault_id)
             .ok_or(RelayError::VaultNotFound)?;
+        let now = self.now();
         if stored.token != *vault.token {
-            return Err(RelayError::Unauthorized);
+            let previous = stored
+                .prev_tokens
+                .iter()
+                .any(|(token, at)| *token == *vault.token && at + PREVIOUS_TOKEN_SECONDS > now);
+            if !previous {
+                return Err(RelayError::Unauthorized);
+            }
+            if access != Access::Read {
+                return Err(RelayError::TokenReadOnly);
+            }
         }
         let paid_until = self.paid_until(&stored.account);
         let entitled = match access {
             Access::Owner => true,
-            Access::Write => paid_until > now(),
-            Access::Read => paid_until + READ_GRACE_SECONDS > now(),
+            Access::Write => paid_until > now,
+            Access::Read => paid_until + READ_GRACE_SECONDS > now,
         };
         if entitled {
             Ok(stored)
@@ -624,6 +680,8 @@ impl Relay for FakeRelay {
                     bytes: 0,
                     snapshot: None,
                     rotation: 0,
+                    prev_tokens: Vec::new(),
+                    rekeys: Vec::new(),
                     blobs: blobs::VaultBlobs::new(),
                 },
             );
@@ -823,6 +881,120 @@ impl Relay for FakeRelay {
                 stored.vaults.retain(|id| id != &vault.vault_id);
             }
             Ok(())
+        })();
+        async move { result }
+    }
+
+    fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> impl Future<Output = RelayResult<Rotated>> + Send {
+        let result = (|| {
+            check_vault(vault)?;
+            // The argument checks of `HttpRelay`, before anything is sent.
+            if !is_base64url(new_token, 43) {
+                return Err(RelayError::BadRequest("invalid_token".into()));
+            }
+            if bundle.is_empty() {
+                return Err(RelayError::BadRequest("invalid_rekey".into()));
+            }
+            if bundle.len() > MAX_REKEY_BUNDLE {
+                return Err(RelayError::BadRequest("rekey_too_large".into()));
+            }
+            let mut state = self.lock();
+            state.enter(Route::RotateToken)?;
+            // Only the current token rotates (a retired one is `TokenReadOnly`, so of two
+            // concurrent rotations the second fails); no subscription is needed.
+            let stored = state.authorize(vault, Access::Owner)?;
+            let now = state.now();
+            // A token that was ever the vault's (and is still remembered) cannot come back.
+            let known = stored.token == new_token
+                || stored
+                    .prev_tokens
+                    .iter()
+                    .any(|(token, at)| token == new_token && at + PREVIOUS_TOKEN_SECONDS > now);
+            if known {
+                return Err(RelayError::BadRequest("invalid_token".into()));
+            }
+            let kept = stored
+                .rekeys
+                .iter()
+                .filter(|r| r.at + PREVIOUS_TOKEN_SECONDS > now)
+                .count();
+            if kept >= MAX_REKEYS_KEPT {
+                return Err(RelayError::TooManyRotations);
+            }
+            let stored = state.vault_mut(&vault.vault_id);
+            // A token retired over 30 days ago may still be remembered: it is current again.
+            stored.prev_tokens.retain(|(token, _)| token != new_token);
+            let retired = std::mem::replace(&mut stored.token, new_token.to_string());
+            stored.prev_tokens.push((retired, now));
+            stored.rotation += 1;
+            let rotation = stored.rotation;
+            let head = stored.head;
+            stored.rekeys.push(StoredRekey {
+                rotation,
+                head,
+                at: now,
+                bundle: bundle.to_vec(),
+            });
+            let lose_answer = state
+                .lose_answers
+                .iter()
+                .position(|r| *r == Route::RotateToken);
+            if let Some(index) = lose_answer {
+                state.lose_answers.remove(index);
+                return Err(RelayError::Server(503));
+            }
+            Ok(Rotated { rotation, head })
+        })();
+        async move { result }
+    }
+
+    fn rekeys(
+        &self,
+        vault: &VaultAuth,
+        after: u32,
+        limit: u32,
+    ) -> impl Future<Output = RelayResult<RekeyPage>> + Send {
+        let result = (|| {
+            check_vault(vault)?;
+            let mut state = self.lock();
+            state.enter(Route::Rekeys)?;
+            if limit == 0 {
+                return Err(RelayError::BadRequest("invalid_limit".into()));
+            }
+            let limit = limit.min(MAX_REKEY_PAGE) as usize;
+            let stored = state.authorize(vault, Access::Read)?;
+            let now = state.now();
+            let mut live = stored
+                .rekeys
+                .iter()
+                .filter(|r| r.rotation > after && r.at + PREVIOUS_TOKEN_SECONDS > now)
+                .peekable();
+            let mut page = Vec::new();
+            let mut bytes = 0usize;
+            while let Some(next) = live.peek() {
+                if page.len() >= limit
+                    || (!page.is_empty() && bytes + next.bundle.len() > MAX_REKEY_PAGE_BYTES)
+                {
+                    break;
+                }
+                bytes += next.bundle.len();
+                page.push(Rekey {
+                    rotation: next.rotation,
+                    head: next.head,
+                    at: next.at,
+                    bundle: next.bundle.clone(),
+                });
+                live.next();
+            }
+            Ok(RekeyPage {
+                rekeys: page,
+                more: live.peek().is_some(),
+            })
         })();
         async move { result }
     }

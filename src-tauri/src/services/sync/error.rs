@@ -70,6 +70,7 @@ impl From<RelayError> for SyncError {
             | RelayError::VaultExists
             | RelayError::AccountHasVaults
             | RelayError::SnapshotOutdated
+            | RelayError::TooManyRotations
             | RelayError::CheckoutUnavailable
             | RelayError::SelfHosted
             | RelayError::RegistrationClosed

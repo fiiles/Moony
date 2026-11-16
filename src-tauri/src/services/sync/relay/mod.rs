@@ -50,6 +50,75 @@ pub struct VaultInfo {
     pub rotation: u32,
 }
 
+/// The relay's answer to a token rotation (`POST /v1/vaults/:id/token`): the new rotation number
+/// and the vault's head at the moment of the rotation (the position the new key starts after).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rotated {
+    pub rotation: u32,
+    pub head: u64,
+}
+
+/// One stored key-change bundle (`GET /v1/vaults/:id/rekey`): the rotation it belongs to, the
+/// vault head when it was made, when (unix seconds on the server's clock) and its opaque bytes.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Rekey {
+    pub rotation: u32,
+    pub head: u64,
+    pub at: i64,
+    pub bundle: Vec<u8>,
+}
+
+impl std::fmt::Debug for Rekey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Rekey")
+            .field("rotation", &self.rotation)
+            .field("head", &self.head)
+            .field("at", &self.at)
+            .field("bundle", &self.bundle.len())
+            .finish()
+    }
+}
+
+/// One page of key-change bundles, oldest first; `more` says to ask again after the last rotation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RekeyPage {
+    pub rekeys: Vec<Rekey>,
+    pub more: bool,
+}
+
+/// The largest bundle the server stores (decoded).
+pub const MAX_REKEY_BUNDLE: usize = 256 * 1024;
+/// The most bundles one page may ask for (the server's cap).
+pub const MAX_REKEY_PAGE: u32 = 32;
+/// The most bundle bytes the client accepts in one page (the server cuts a page at 4 MiB).
+pub const MAX_REKEY_PAGE_BYTES: usize = 4 * 1024 * 1024;
+
+/// What every page of bundles must be, whoever answered it (the server is untrusted): at most
+/// `limit` bundles, rotations strictly ascending and above `after`, each bundle non-empty and within
+/// the cap, the page within its byte cap, and no "more" on an empty page (it would never end).
+/// `HttpRelay` checks the answer, the fake the page it built.
+pub(crate) fn check_rekey_page(page: &RekeyPage, after: u32, limit: u32) -> RelayResult<()> {
+    let refused = || Err(RelayError::Protocol("unexpected answer".into()));
+    if (page.more && page.rekeys.is_empty()) || page.rekeys.len() > limit as usize {
+        return refused();
+    }
+    let mut previous = after;
+    let mut bytes = 0usize;
+    for rekey in &page.rekeys {
+        bytes += rekey.bundle.len();
+        if rekey.rotation <= previous
+            || rekey.at < 0
+            || rekey.bundle.is_empty()
+            || rekey.bundle.len() > MAX_REKEY_BUNDLE
+            || bytes > MAX_REKEY_PAGE_BYTES
+        {
+            return refused();
+        }
+        previous = rekey.rotation;
+    }
+    Ok(())
+}
+
 /// What a server says it is (`GET /v1/server`, spec §9.3): `protocol` is the version of this
 /// contract, `mode` how the server is run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -216,6 +285,10 @@ pub enum RelayError {
     Unauthorized,
     #[error("token read-only")]
     TokenReadOnly,
+    /// `409 too_many_rotations`: the vault already holds 32 key-change bundles younger than 30
+    /// days.
+    #[error("too many key changes")]
+    TooManyRotations,
     #[error("vault limit reached")]
     VaultLimitReached,
     #[error("account not found")]
@@ -347,6 +420,7 @@ impl RelayError {
             (401, "unauthorized") => RelayError::Unauthorized,
             (402, "payment_required") => RelayError::PaymentRequired,
             (403, "token_read_only") => RelayError::TokenReadOnly,
+            (409, "too_many_rotations") => RelayError::TooManyRotations,
             (403, "vault_limit_reached") => RelayError::VaultLimitReached,
             (403, "registration_closed") => RelayError::RegistrationClosed,
             (403, "managed_by_operator") => RelayError::BadRequest("managed_by_operator".into()),
@@ -433,6 +507,25 @@ pub trait Relay: Send + Sync {
     ) -> impl Future<Output = RelayResult<SnapshotBlob>> + Send;
     /// `DELETE /v1/vaults/:id`.
     fn delete_vault(&self, vault: &VaultAuth) -> impl Future<Output = RelayResult<()>> + Send;
+    /// `POST /v1/vaults/:id/token {token, rekey}`: the current token hands the vault to
+    /// `new_token` and stores `bundle` (1 B to 256 KiB, opaque to the server). The retired token
+    /// reads for 30 days and writes nothing: a second rotation with it is `TokenReadOnly`
+    /// (the other of two concurrent rotations lost), the 33rd inside 30 days `TooManyRotations`.
+    fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> impl Future<Output = RelayResult<Rotated>> + Send;
+    /// `GET /v1/vaults/:id/rekey?after=&limit=` (current or previous token): the bundles of
+    /// rotations above `after`, oldest first, `limit` 1..=`MAX_REKEY_PAGE`. Bundles older than 30
+    /// days are gone.
+    fn rekeys(
+        &self,
+        vault: &VaultAuth,
+        after: u32,
+        limit: u32,
+    ) -> impl Future<Output = RelayResult<RekeyPage>> + Send;
     /// `PUT /v1/vaults/:id/blobs/:blob`: `body` streamed with `Content-Length: sealed_len`. A
     /// blob the server already holds succeeds without being stored again. A body that is not
     /// `sealed_len` bytes is `BadRequest("length_required")`; one over the blob cap is refused
@@ -555,14 +648,13 @@ mod tests {
             // Routes the relay serves but no phase 2 call reaches.
             (404, "not_found", bad("not_found")),
             (405, "method_not_allowed", bad("method_not_allowed")),
-            // Token rotation (no call of this client sends it: the 400s are bad requests and the
-            // other codes are outside this client's contract) and the pairing mailbox.
+            // Token rotation (`rotate_token`) and the pairing mailbox.
             (400, "invalid_token", bad("invalid_token")),
             (400, "invalid_rekey", bad("invalid_rekey")),
             (400, "bad_mailbox", bad("bad_mailbox")),
             (400, "bad_slot", bad("bad_slot")),
             (413, "rekey_too_large", bad("rekey_too_large")),
-            (409, "too_many_rotations", unknown_code()),
+            (409, "too_many_rotations", E::TooManyRotations),
             (409, "slot_taken", E::SlotTaken),
             (404, "empty", E::SlotEmpty),
             (410, "consumed", E::SlotConsumed),

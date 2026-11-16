@@ -624,6 +624,22 @@ impl<F: Fn(u64, PullPage) -> PullPage + Send + Sync> Relay for Mangled<F> {
     async fn delete_vault(&self, _: &VaultAuth) -> RelayResult<()> {
         unreachable!("not a pull call")
     }
+    async fn rotate_token(
+        &self,
+        _: &VaultAuth,
+        _: &str,
+        _: &[u8],
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        unreachable!("not a pull call")
+    }
+    async fn rekeys(
+        &self,
+        _: &VaultAuth,
+        _: u32,
+        _: u32,
+    ) -> RelayResult<crate::services::sync::relay::RekeyPage> {
+        unreachable!("not a pull call")
+    }
     async fn put_blob(
         &self,
         _: &VaultAuth,

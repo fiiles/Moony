@@ -439,6 +439,22 @@ impl Relay for CountingBlobs<'_> {
     async fn delete_vault(&self, vault: &VaultAuth) -> RelayResult<()> {
         self.relay.delete_vault(vault).await
     }
+    async fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        self.relay.rotate_token(vault, new_token, bundle).await
+    }
+    async fn rekeys(
+        &self,
+        vault: &VaultAuth,
+        after: u32,
+        limit: u32,
+    ) -> RelayResult<crate::services::sync::relay::RekeyPage> {
+        self.relay.rekeys(vault, after, limit).await
+    }
     async fn put_blob(
         &self,
         vault: &VaultAuth,

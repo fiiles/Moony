@@ -1100,3 +1100,371 @@ async fn the_fake_reports_the_ages_it_is_told() {
         Err(RelayError::Protocol("unexpected answer".into()))
     );
 }
+
+const NEW_TOKEN: &str = "bmV3LXRva2VuLW5ldy10b2tlbi1uZXctdG9rZW4tbmV";
+const THIRD_TOKEN: &str = "dGhpcmQtdG9rZW4tdGhpcmQtdG9rZW4tdGhpcmQtdG9";
+const DAY: i64 = 86_400;
+
+fn new_auth() -> VaultAuth {
+    VaultAuth {
+        vault_id: VAULT_ID.into(),
+        token: Zeroizing::new(NEW_TOKEN.into()),
+    }
+}
+
+/// A vault with two ops, a snapshot and a blob, rotated once to `NEW_TOKEN` with bundle `[1; 9]`.
+async fn rotated_vault() -> (FakeRelay, String, Uuid) {
+    let (relay, account) = relay_with_vault().await;
+    relay
+        .push(&auth(), &[op("a", 4), op("b", 4)])
+        .await
+        .expect("push");
+    relay
+        .put_snapshot(&auth(), 1, vec![1; 8])
+        .await
+        .expect("snapshot");
+    let blob = Uuid::new_v4();
+    let sealed = crate::services::sync::relay::MIN_BLOB_SEALED;
+    relay
+        .put_blob(
+            &auth(),
+            blob,
+            sealed,
+            Box::new(std::iter::once(Ok(vec![5u8; sealed as usize]))),
+        )
+        .await
+        .expect("blob");
+    let rotated = relay
+        .rotate_token(&auth(), NEW_TOKEN, &[1; 9])
+        .await
+        .expect("rotate");
+    assert_eq!(
+        rotated,
+        Rotated {
+            rotation: 1,
+            head: 2
+        }
+    );
+    (relay, account, blob)
+}
+
+#[tokio::test]
+async fn a_rotation_answers_its_number_and_the_head_and_counts_in_vault_info() {
+    let (relay, _) = relay_with_vault().await;
+    relay.push(&auth(), &[op("a", 4)]).await.expect("push");
+    assert_eq!(relay.vault_info(&auth()).await.expect("info").rotation, 0);
+    relay.push(&auth(), &[op("b", 4)]).await.expect("push");
+    let first = relay
+        .rotate_token(&auth(), NEW_TOKEN, &[1])
+        .await
+        .expect("first");
+    // The head recorded per bundle is the head at the rotation.
+    assert_eq!(
+        first,
+        Rotated {
+            rotation: 1,
+            head: 2
+        }
+    );
+    relay
+        .push(&new_auth(), &[op("c", 4)])
+        .await
+        .expect("push with the new token");
+    let second = relay
+        .rotate_token(&new_auth(), THIRD_TOKEN, &[2])
+        .await
+        .expect("second");
+    assert_eq!(
+        second,
+        Rotated {
+            rotation: 2,
+            head: 3
+        }
+    );
+    let third = VaultAuth {
+        vault_id: VAULT_ID.into(),
+        token: Zeroizing::new(THIRD_TOKEN.into()),
+    };
+    assert_eq!(relay.vault_info(&third).await.expect("info").rotation, 2);
+    let page = relay.rekeys(&third, 0, 8).await.expect("rekeys");
+    let heads: Vec<(u32, u64)> = page.rekeys.iter().map(|r| (r.rotation, r.head)).collect();
+    assert_eq!(heads, vec![(1, 2), (2, 3)]);
+    assert_eq!(page.rekeys[0].bundle, vec![1]);
+}
+
+#[tokio::test]
+async fn the_old_token_reads_everything_and_writes_nothing() {
+    let (relay, _, blob) = rotated_vault().await;
+    // Reads: pull, vault info, snapshot, rekey bundles, blob get/head/list.
+    assert_eq!(relay.pull(&auth(), 0, 10).await.expect("pull").ops.len(), 2);
+    assert_eq!(relay.vault_info(&auth()).await.expect("info").rotation, 1);
+    assert_eq!(relay.get_snapshot(&auth()).await.expect("snapshot").seq, 1);
+    let page = relay.rekeys(&auth(), 0, 8).await.expect("rekeys");
+    assert_eq!(page.rekeys.len(), 1);
+    assert!(relay
+        .head_blob(&auth(), blob)
+        .await
+        .expect("head")
+        .is_some());
+    assert_eq!(
+        relay
+            .list_blobs(&auth(), None, 10)
+            .await
+            .expect("list")
+            .blobs
+            .len(),
+        1
+    );
+    struct Count(u64);
+    impl BlobSink for Count {
+        fn begin(&mut self, _: u64) -> SinkFlow {
+            SinkFlow::Continue
+        }
+        fn piece(&mut self, bytes: &[u8]) -> SinkFlow {
+            self.0 += bytes.len() as u64;
+            SinkFlow::Continue
+        }
+    }
+    let mut sink = Count(0);
+    assert_eq!(
+        relay.get_blob(&auth(), blob, &mut sink).await.expect("get"),
+        Delivery::Complete
+    );
+    assert!(sink.0 > 0);
+
+    // Writes: push, snapshot put, blob put and delete, vault delete, a second rotation.
+    let read_only = Err(RelayError::TokenReadOnly);
+    assert_eq!(
+        relay.push(&auth(), &[op("c", 4)]).await.map(|_| ()),
+        read_only
+    );
+    assert_eq!(relay.put_snapshot(&auth(), 2, vec![2; 8]).await, read_only);
+    let sealed = crate::services::sync::relay::MIN_BLOB_SEALED;
+    assert_eq!(
+        relay
+            .put_blob(
+                &auth(),
+                Uuid::new_v4(),
+                sealed,
+                Box::new(std::iter::once(Ok(vec![5u8; sealed as usize]))),
+            )
+            .await,
+        read_only
+    );
+    assert_eq!(relay.delete_blob(&auth(), blob).await, read_only);
+    assert_eq!(relay.delete_vault(&auth()).await, read_only);
+    assert_eq!(
+        relay
+            .rotate_token(&auth(), THIRD_TOKEN, &[2])
+            .await
+            .map(|_| ()),
+        read_only
+    );
+    // Nothing of that landed.
+    assert_eq!(
+        relay.vault_info(&new_auth()).await.expect("info").rotation,
+        1
+    );
+    assert!(relay
+        .head_blob(&new_auth(), blob)
+        .await
+        .expect("head")
+        .is_some());
+}
+
+#[tokio::test]
+async fn a_rotation_needs_no_subscription_and_refuses_a_remembered_token() {
+    let (relay, account) = relay_with_vault().await;
+    relay.set_paid(&account, false);
+    relay
+        .rotate_token(&auth(), NEW_TOKEN, &[1])
+        .await
+        .expect("an unpaid vault still rotates");
+    // The retired token can never come back while it is remembered; neither can the current one.
+    for token in [TOKEN, NEW_TOKEN] {
+        let error = relay
+            .rotate_token(&new_auth(), token, &[1])
+            .await
+            .expect_err("known token");
+        assert_eq!(error, RelayError::BadRequest("invalid_token".into()));
+    }
+    // A stranger's token is unauthorized, a missing vault is not found.
+    let stranger = vault_with(VAULT_ID, THIRD_TOKEN);
+    assert_eq!(
+        relay.rotate_token(&stranger, NEW_TOKEN, &[1]).await,
+        Err(RelayError::Unauthorized)
+    );
+    assert_eq!(
+        relay
+            .rotate_token(&vault_with(&vault_id(7), TOKEN), THIRD_TOKEN, &[1])
+            .await,
+        Err(RelayError::VaultNotFound)
+    );
+}
+
+#[tokio::test]
+async fn bad_arguments_are_refused_like_the_http_client_does() {
+    let (relay, _) = relay_with_vault().await;
+    assert_eq!(
+        relay.rotate_token(&auth(), "short", &[1]).await,
+        Err(RelayError::BadRequest("invalid_token".into()))
+    );
+    assert_eq!(
+        relay.rotate_token(&auth(), NEW_TOKEN, &[]).await,
+        Err(RelayError::BadRequest("invalid_rekey".into()))
+    );
+    assert_eq!(
+        relay
+            .rotate_token(&auth(), NEW_TOKEN, &vec![0; MAX_REKEY_BUNDLE + 1])
+            .await,
+        Err(RelayError::BadRequest("rekey_too_large".into()))
+    );
+    assert_eq!(
+        relay.rekeys(&auth(), 0, 0).await,
+        Err(RelayError::BadRequest("invalid_limit".into()))
+    );
+}
+
+#[tokio::test]
+async fn the_old_token_and_its_bundle_expire_after_thirty_days() {
+    let (relay, _, _) = rotated_vault().await;
+    relay.advance_clock(30 * DAY - 60);
+    assert!(relay.vault_info(&auth()).await.is_ok());
+    assert_eq!(
+        relay
+            .rekeys(&auth(), 0, 8)
+            .await
+            .expect("rekeys")
+            .rekeys
+            .len(),
+        1
+    );
+    relay.advance_clock(120);
+    assert_eq!(
+        relay.vault_info(&auth()).await,
+        Err(RelayError::Unauthorized)
+    );
+    assert_eq!(
+        relay.rekeys(&auth(), 0, 8).await,
+        Err(RelayError::Unauthorized)
+    );
+    // The bundle is gone for the current token too.
+    assert!(relay
+        .rekeys(&new_auth(), 0, 8)
+        .await
+        .expect("rekeys")
+        .rekeys
+        .is_empty());
+    assert_eq!(relay.stored_rekey(VAULT_ID, 1), None);
+}
+
+#[tokio::test]
+async fn the_thirty_third_rotation_within_thirty_days_is_refused() {
+    let (relay, _) = relay_with_vault().await;
+    let token_n = |n: u32| format!("{:0>43}", format!("t{n}"));
+    let mut current = auth();
+    for n in 1..=32u32 {
+        let next = token_n(n);
+        relay
+            .rotate_token(&current, &next, &[n as u8])
+            .await
+            .unwrap_or_else(|e| panic!("rotation {n}: {e:?}"));
+        current = vault_with(VAULT_ID, &next);
+    }
+    assert_eq!(
+        relay
+            .rotate_token(&current, &token_n(33), &[33])
+            .await
+            .map(|_| ()),
+        Err(RelayError::TooManyRotations)
+    );
+    // A bundle older than 30 days frees its slot.
+    relay.advance_clock(30 * DAY + 60);
+    relay
+        .rotate_token(&current, &token_n(33), &[33])
+        .await
+        .expect("a slot is free again");
+}
+
+#[tokio::test]
+async fn rekey_pages_are_cut_by_limit_and_bytes_and_start_after_a_rotation() {
+    let (relay, _) = relay_with_vault().await;
+    let mut current = auth();
+    for n in 1..=5u32 {
+        let next = format!("{:0>43}", format!("p{n}"));
+        relay
+            .rotate_token(&current, &next, &[n as u8; 100])
+            .await
+            .expect("rotate");
+        current = vault_with(VAULT_ID, &next);
+    }
+    let page = relay.rekeys(&current, 0, 2).await.expect("page");
+    assert_eq!(
+        (
+            page.rekeys.iter().map(|r| r.rotation).collect::<Vec<_>>(),
+            page.more
+        ),
+        (vec![1, 2], true)
+    );
+    let page = relay.rekeys(&current, 2, 8).await.expect("page");
+    assert_eq!(
+        (
+            page.rekeys.iter().map(|r| r.rotation).collect::<Vec<_>>(),
+            page.more
+        ),
+        (vec![3, 4, 5], false)
+    );
+    assert!(relay
+        .rekeys(&current, 5, 8)
+        .await
+        .expect("page")
+        .rekeys
+        .is_empty());
+    // The limit is clamped to 32.
+    assert_eq!(
+        relay
+            .rekeys(&current, 0, 1000)
+            .await
+            .expect("page")
+            .rekeys
+            .len(),
+        5
+    );
+
+    // Big bundles: a page stops at 4 MiB but always carries at least one.
+    let (relay, _) = relay_with_vault().await;
+    let mut current = auth();
+    for n in 1..=17u32 {
+        let next = format!("{:0>43}", format!("q{n}"));
+        relay
+            .rotate_token(&current, &next, &vec![0u8; MAX_REKEY_BUNDLE])
+            .await
+            .expect("rotate");
+        current = vault_with(VAULT_ID, &next);
+    }
+    let page = relay.rekeys(&current, 0, 32).await.expect("page");
+    assert_eq!(page.rekeys.len(), 16);
+    assert!(page.more);
+    crate::services::sync::relay::check_rekey_page(&page, 0, 32).expect("a valid page");
+    let rest = relay.rekeys(&current, 16, 32).await.expect("page");
+    assert_eq!((rest.rekeys.len(), rest.more), (1, false));
+}
+
+#[tokio::test]
+async fn a_lost_rotation_answer_keeps_the_rotation() {
+    let (relay, _) = relay_with_vault().await;
+    relay.lose_next_answer(Route::RotateToken);
+    assert_eq!(
+        relay.rotate_token(&auth(), NEW_TOKEN, &[1]).await,
+        Err(RelayError::Server(503))
+    );
+    // It landed: the new token works, the old one is read-only.
+    assert_eq!(
+        relay.vault_info(&new_auth()).await.expect("info").rotation,
+        1
+    );
+    assert_eq!(
+        relay.push(&auth(), &[op("a", 4)]).await.map(|_| ()),
+        Err(RelayError::TokenReadOnly)
+    );
+}

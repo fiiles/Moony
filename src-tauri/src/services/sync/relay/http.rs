@@ -17,10 +17,10 @@ use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use super::{
-    check_blob_page, is_blob_size, AccountStatus, BlobBody, BlobPage, BlobSink, CheckoutPlan,
-    Delivery, Mailbox, OutgoingOp, PullPage, PulledOp, PushReceipt, Relay, RelayError, RelayResult,
-    RemoteBlob, ServerInfo, ServerMode, SinkFlow, SnapshotBlob, VaultInfo, MAX_BLOB_PAGE,
-    MAX_SLOT_BYTES,
+    check_blob_page, check_rekey_page, is_blob_size, AccountStatus, BlobBody, BlobPage, BlobSink,
+    CheckoutPlan, Delivery, Mailbox, OutgoingOp, PullPage, PulledOp, PushReceipt, Rekey, RekeyPage,
+    Relay, RelayError, RelayResult, RemoteBlob, Rotated, ServerInfo, ServerMode, SinkFlow,
+    SnapshotBlob, VaultInfo, MAX_BLOB_PAGE, MAX_REKEY_BUNDLE, MAX_REKEY_PAGE, MAX_SLOT_BYTES,
 };
 use crate::error::{AppError, Result};
 use crate::services::http::{no_redirect_client, no_redirect_download_client};
@@ -601,6 +601,42 @@ fn canonical_blob_id(text: &str) -> Option<Uuid> {
         .filter(|id| id.hyphenated().to_string() == text)
 }
 
+#[derive(Serialize)]
+struct RotateWire<'a> {
+    #[serde(rename = "token")]
+    token: &'a str,
+    #[serde(rename = "rekey")]
+    rekey: String,
+}
+
+#[derive(Deserialize)]
+struct RotatedWire {
+    #[serde(rename = "rotation")]
+    rotation: u32,
+    #[serde(rename = "head")]
+    head: u64,
+}
+
+#[derive(Deserialize)]
+struct RekeyListWire {
+    #[serde(rename = "rekeys")]
+    rekeys: Vec<RekeyWire>,
+    #[serde(rename = "more")]
+    more: bool,
+}
+
+#[derive(Deserialize)]
+struct RekeyWire {
+    #[serde(rename = "rotation")]
+    rotation: u32,
+    #[serde(rename = "head")]
+    head: u64,
+    #[serde(rename = "at")]
+    at: i64,
+    #[serde(rename = "rekey")]
+    rekey: String,
+}
+
 #[derive(Deserialize)]
 struct PullOpWire {
     #[serde(rename = "seq")]
@@ -781,6 +817,68 @@ impl Relay for HttpRelay {
         let request = self.vault_request(Method::DELETE, url, vault)?;
         expect_status(send(request).await?, &[204]).await?;
         Ok(())
+    }
+
+    async fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> RelayResult<Rotated> {
+        let url = self.vault_url(vault, "/token")?;
+        if !is_base64url(new_token, 43) {
+            return Err(RelayError::BadRequest("invalid_token".into()));
+        }
+        if bundle.is_empty() {
+            return Err(RelayError::BadRequest("invalid_rekey".into()));
+        }
+        if bundle.len() > MAX_REKEY_BUNDLE {
+            return Err(RelayError::BadRequest("rekey_too_large".into()));
+        }
+        // Standard base64 with padding: the server checks `length % 4`.
+        let body = RotateWire {
+            token: new_token,
+            rekey: STANDARD.encode(bundle),
+        };
+        let request = self.vault_request(Method::POST, url, vault)?.json(&body);
+        let response = expect_status(send(request).await?, &[200]).await?;
+        let answer: RotatedWire = read_json(response, MAX_JSON_BODY).await?;
+        Ok(Rotated {
+            rotation: answer.rotation,
+            head: answer.head,
+        })
+    }
+
+    async fn rekeys(&self, vault: &VaultAuth, after: u32, limit: u32) -> RelayResult<RekeyPage> {
+        if limit == 0 || limit > MAX_REKEY_PAGE {
+            return Err(RelayError::BadRequest("invalid_limit".into()));
+        }
+        let mut url = self.vault_url(vault, "/rekey")?;
+        url.query_pairs_mut()
+            .append_pair("after", &after.to_string())
+            .append_pair("limit", &limit.to_string());
+        let request = self.vault_request(Method::GET, url, vault)?;
+        let response = expect_status(send(request).await?, &[200]).await?;
+        // Up to 4 MiB of bundles, which base64 makes ~5.4 MiB, plus the JSON around them.
+        let answer: RekeyListWire = read_json(response, MAX_PULL_BODY).await?;
+        let rekeys = answer
+            .rekeys
+            .into_iter()
+            .map(|rekey| {
+                Ok(Rekey {
+                    rotation: rekey.rotation,
+                    head: rekey.head,
+                    at: rekey.at,
+                    bundle: decode_ct(&rekey.rekey)?,
+                })
+            })
+            .collect::<RelayResult<Vec<_>>>()?;
+        let page = RekeyPage {
+            rekeys,
+            more: answer.more,
+        };
+        check_rekey_page(&page, after, limit)?;
+        Ok(page)
     }
 
     async fn put_blob(

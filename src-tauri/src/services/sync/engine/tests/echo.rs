@@ -536,6 +536,22 @@ impl Relay for FailSecondPull {
     async fn delete_vault(&self, vault: &VaultAuth) -> RelayResult<()> {
         self.inner.delete_vault(vault).await
     }
+    async fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        self.inner.rotate_token(vault, new_token, bundle).await
+    }
+    async fn rekeys(
+        &self,
+        vault: &VaultAuth,
+        after: u32,
+        limit: u32,
+    ) -> RelayResult<crate::services::sync::relay::RekeyPage> {
+        self.inner.rekeys(vault, after, limit).await
+    }
     async fn put_blob(
         &self,
         vault: &VaultAuth,

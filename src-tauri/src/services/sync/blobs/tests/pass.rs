@@ -1152,6 +1152,24 @@ impl Relay for Hooked {
     fn delete_vault(&self, vault: &VaultAuth) -> impl Future<Output = RelayResult<()>> + Send {
         self.relay.delete_vault(vault)
     }
+    fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::Rotated>> + Send
+    {
+        self.relay.rotate_token(vault, new_token, bundle)
+    }
+    fn rekeys(
+        &self,
+        vault: &VaultAuth,
+        after: u32,
+        limit: u32,
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::RekeyPage>> + Send
+    {
+        self.relay.rekeys(vault, after, limit)
+    }
     fn put_blob(
         &self,
         vault: &VaultAuth,

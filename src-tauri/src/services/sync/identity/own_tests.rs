@@ -120,6 +120,32 @@ fn a_paired_certificate_is_issued_with_the_holders_ticket() {
     cert.verify_signatures().expect("verifies");
 }
 
+/// A holder whose clock runs ahead of the joiner's: the certificate is dated no earlier than the
+/// ticket, so it still verifies (the ticket lives an hour from its own time).
+#[test]
+fn a_paired_certificate_is_dated_no_earlier_than_its_ticket() {
+    let conn = profile();
+    let holder = SignSeed::from_bytes(Zeroizing::new([0x77; 32]));
+    let holder_id = DeviceId([0x07; 16]);
+    let (secret, ticket) =
+        cert::issue_ticket(&holder, VAULT, holder_id, NOW + 120).expect("ticket");
+
+    let cert = create_own(
+        &conn,
+        Issuer::Ticket {
+            secret: &secret,
+            ticket: &ticket,
+            holder: holder_id,
+            holder_sign_pub: sign_pub(&holder),
+        },
+        NOW,
+    )
+    .expect("paired");
+
+    assert_eq!(cert.body.issued_at, NOW + 120);
+    cert.verify_signatures().expect("verifies");
+}
+
 #[test]
 fn a_ticket_of_another_holder_signs_nothing_and_stores_nothing() {
     let conn = profile();

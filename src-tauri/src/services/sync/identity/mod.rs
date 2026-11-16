@@ -221,12 +221,20 @@ pub fn create_own(conn: &Connection, issuer: Issuer<'_>, now: i64) -> Result<Cer
     let cert = match issuer {
         Issuer::Genesis => cert::issue_self(CertKind::Genesis, &fields, &seed)?,
         Issuer::RecoveryKit => cert::issue_self(CertKind::RecoveryKit, &fields, &seed)?,
+        // Dated no earlier than the ticket: a holder's clock ahead of this one's must not make
+        // the certificate look older than its ticket (`cert::TICKET_LIFETIME_SECS`).
         Issuer::Ticket {
             secret,
             ticket,
             holder,
             holder_sign_pub,
-        } => cert::issue_paired(secret, ticket, holder, &holder_sign_pub, &fields, &seed)?,
+        } => {
+            let fields = CertFields {
+                issued_at: fields.issued_at.max(ticket.issued_at),
+                ..fields.clone()
+            };
+            cert::issue_paired(secret, ticket, holder, &holder_sign_pub, &fields, &seed)?
+        }
         Issuer::Predecessor {
             seed: old,
             device: old_device,

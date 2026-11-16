@@ -32,6 +32,10 @@ const TICKET_DOMAIN: &[u8; 20] = b"moony join ticket v1";
 const BODY_LEN: usize = 20 + 1 + 16 + 16 + 32 + 32 + 8 + 16 + 32;
 const TICKET_LEN: usize = 32 + 8 + 64;
 const SIGS_LEN: usize = 64 + 64;
+/// How long a join ticket vouches: a paired certificate is issued no earlier than its ticket and
+/// at most this long after it (the joiner signs it within the pairing's lifetime; its own clock is
+/// taken no earlier than the ticket's, `identity::create_own`).
+pub const TICKET_LIFETIME_SECS: i64 = 3600;
 /// The longest encoding (a paired certificate) in base64url without padding.
 const MAX_B64_LEN: usize = (BODY_LEN + TICKET_LEN + SIGS_LEN).div_ceil(3) * 4;
 
@@ -288,7 +292,8 @@ impl Certificate {
 
     /// The per-kind rules of spec §5.3, without any trust lookup: a genesis or Kit certificate
     /// names itself as issuer and is signed by its own key; a paired one carries a ticket the
-    /// named holder signed and is signed by that ticket; a re-join one names an older ID and is
+    /// named holder signed, is issued within `TICKET_LIFETIME_SECS` after it and is signed by that
+    /// ticket; a re-join one names an older ID and is
     /// signed by its key; every kind carries the subject's proof of possession.
     pub fn verify_signatures(&self) -> Result<()> {
         let body = &self.body;
@@ -309,6 +314,11 @@ impl Certificate {
                     ticket
                         .verify(&body.vault_id, body.issuer_device, &body.issuer_sign_pub)
                         .map_err(|_| invalid())?;
+                    let fresh = body.issued_at >= ticket.issued_at
+                        && body.issued_at - ticket.issued_at <= TICKET_LIFETIME_SECS;
+                    if !fresh {
+                        return Err(invalid());
+                    }
                     ticket.ticket_pub
                 }
                 None => body.issuer_sign_pub,

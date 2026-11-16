@@ -543,3 +543,38 @@ fn new_seeds_are_random_and_issue_tickets() {
     assert_eq!(ticket.ticket_pub, sign_pub(secret.as_seed()));
     assert_eq!(ticket.issued_at, AT);
 }
+
+/// Review of Task 5 (M2): a join ticket lives one hour. A paired certificate issued before its
+/// ticket or more than an hour after it does not verify, and the issuer refuses to make one.
+#[test]
+fn a_paired_certificate_must_be_issued_within_an_hour_of_its_ticket() {
+    let (secret, ticket) = ticket_from_a();
+    let issue = |at: i64| {
+        cert::issue_paired(
+            &secret,
+            &ticket,
+            A,
+            &sign_pub(&seed(0x01)),
+            &CertFields {
+                issued_at: at,
+                ..fields(B, 0xb2)
+            },
+            &seed(0x02),
+        )
+    };
+    assert!(issue(TICKET_AT).is_ok(), "at the ticket's time");
+    assert!(
+        issue(TICKET_AT + cert::TICKET_LIFETIME_SECS).is_ok(),
+        "an hour on"
+    );
+    assert!(issue(TICKET_AT + cert::TICKET_LIFETIME_SECS + 1).is_err());
+    assert!(issue(TICKET_AT - 1).is_err());
+
+    // Forged past the issuer's check: verification refuses it on its own.
+    for at in [TICKET_AT - 1, TICKET_AT + cert::TICKET_LIFETIME_SECS + 1] {
+        let mut body = paired_b().body;
+        body.issued_at = at;
+        let late = forge(body, Some(ticket.clone()), secret.as_seed(), &seed(0x02));
+        assert!(late.verify_signatures().is_err(), "issued at {at}");
+    }
+}

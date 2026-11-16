@@ -298,8 +298,8 @@ fn a_removed_issuer_vouches_only_for_what_it_issued_before_its_removal() {
     // C was paired before B's removal, D after it.
     row(&conn, C, Some(&C.paired_by_at(B, 0x71, NOW + 5, NOW + 10)));
     row(&conn, D, Some(&D.paired_by_at(B, 0x72, NOW + 5, NOW + 11)));
-    // E's ticket is from after the removal.
-    row(&conn, E, Some(&E.paired_by_at(B, 0x73, NOW + 11, NOW + 9)));
+    // E's ticket is from after the removal (a certificate is never older than its ticket).
+    row(&conn, E, Some(&E.paired_by_at(B, 0x73, NOW + 11, NOW + 11)));
 
     trust::refresh(&conn, NOW).unwrap();
 
@@ -316,14 +316,18 @@ fn a_device_that_left_vouches_only_for_what_it_issued_before_it_left() {
     set_record(&conn, B, "left_record", &B.left_at(NOW + 10));
     row(&conn, C, Some(&C.paired_by_at(B, 0x71, NOW + 5, NOW + 10)));
     row(&conn, D, Some(&D.paired_by_at(B, 0x72, NOW + 5, NOW + 11)));
-    row(&conn, E, Some(&E.paired_by_at(B, 0x73, NOW + 11, NOW + 9)));
+    row(&conn, E, Some(&E.paired_by_at(B, 0x73, NOW + 11, NOW + 11)));
 
     trust::refresh(&conn, NOW).unwrap();
 
     assert_eq!(state_of(&conn, B), Some(TrustState::Left));
     assert_eq!(state_of(&conn, C), Some(TrustState::Trusted));
     assert_eq!(state_of(&conn, D), None, "certificate after leaving");
-    assert_eq!(state_of(&conn, E), None, "ticket after leaving");
+    assert_eq!(
+        state_of(&conn, E),
+        None,
+        "ticket (and so certificate) after leaving"
+    );
 
     // A re-join successor of a device that left: the same bound.
     let conn = supported();

@@ -544,6 +544,21 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                 return Err(Ended);
             }
         }
+        // The trust store catches up with the device list at unlock (phase 5 plan Task 11): a
+        // merge made while no refresh ran, or by an older build, may have left records and
+        // certificates unapplied. A record that removes this device ends sync before any round.
+        match self
+            .db
+            .with_conn(|conn| rekey::refresh_trust(conn, Some(&dir), unix_now()))
+        {
+            Ok(true) => return self.removed_here().map(|()| false),
+            Ok(false) => {}
+            Err(error) if locked(&error) => return Err(Ended),
+            Err(error) => {
+                log::warn!("[SYNC] The device list could not be checked at unlock");
+                log::debug!("[SYNC] The device list check failed: {error}");
+            }
+        }
         Ok(true)
     }
 

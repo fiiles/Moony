@@ -1034,7 +1034,7 @@ R-16. **Where positions are noted:** `engine::pull::note_trust_positions(conn, r
 R-17. The D3 trap is exercised at the trust level in `engine/tests/trust_order.rs` (an announced
      pairing whose certificate reaches the server after its holder's `left` record stays a
      recipient; an unannounced one is `LateVouch`). The refresh after a pull is still called by
-     hand there: the pull's refresh hook is Task 20's.
+     hand there: the pull's refresh hook is Task 20's (built, R-49).
 
 **Task 16 (relay client and fake: the Kit).**
 
@@ -1323,3 +1323,32 @@ R-47. **v1 is gone:** `recovery::{encode_recovery_code, decode_recovery_code,
      `engine/tests/join_new.rs` are replaced by `engine/tests/kit_join.rs`; the e2e Kit join
      (`relay_e2e_pairing.rs`) types a v2 code of the Kit its setup registered
      (`relay_e2e::first_device_with_kit`) and lifts the hold before converging (Task 23 runs it).
+
+**Task 20 (leaving and records about this device).**
+
+R-48. **Leaving** (`setup`): `write_left_record(conn, now)` signs this device's `left` record (its own
+     key, the current epoch) and writes it into its own row, which the capture queues; `false` when
+     sync is off, there is no signing key or row, or the write-once column holds one already.
+     `leave_best_effort(relay, db, budget)` takes the round lock, writes it and runs one
+     `push_all` (no pull), all inside `LEAVE_BUDGET` (5 s, waiting for a round counted); every failure
+     and the timeout are logged and ignored, and a profile with sync off sends nothing, so a device
+     another one removed never signs one. The push sends envelopes in sequence order, so a holder's
+     ticket announcement (queued at the confirm) always goes before its `left` record
+     (`trust_order.rs` now leaves through the real function). `commands::sync::say_left(db)` (flag on,
+     sync on, a valid relay address) is called by `sync_turn_off` inside its `guarded_change`, only with
+     sync on and the password checked, and by `delete_account` when "delete the synced data" is off.
+R-49. **The refresh hook** is `rekey::refresh_trust(conn, data_dir, now) -> bool`: `trust::refresh`, then
+     a verified record naming this device (`RefreshReport::about_me`, its first one) ends sync through
+     `removed_here(conn, data_dir, record.signer, record.at)` and the function returns `true`. A refresh
+     that fails is logged and counts as nothing new (a store that is behind leaves devices out, never
+     lets one in); a locked profile is the error. Called (1) in the pull, right after an applied
+     changeset that touched `sync_devices` (`PullReport::devices_changed`, per op, so a pull that fails
+     later still refreshed; a hit sets `PullReport::removed_here`, ends the pull and `round_pass`
+     returns `Pass::Done` with `RoundReport::removed_here`); (2) after a snapshot restore in
+     `round_pass`; (3) after a key pickup adopted a key (`round_steps`); (4) at the end of the engine's
+     `start()` (unlock), with the data folder (the binding file goes with the turn-off). A `left` record
+     another holder of this device's key made turns sync off the same way; the notice's `by` is then this
+     device's own name (the record's signer).
+R-50. **Not done:** `sync_pairing`'s joiner and the Kit join call `trust::refresh` by hand as before (their
+     savepoints are not rounds). The notice of a removal that arrives by record has `unsent` counting the
+     outbox and unsent envelopes at that moment, as a removal notice does.

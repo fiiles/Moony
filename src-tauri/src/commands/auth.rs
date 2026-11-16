@@ -344,6 +344,9 @@ pub async fn delete_account(
     crate::commands::sync::clear_copied_code(&app);
     if delete_synced_data.unwrap_or(false) {
         crate::commands::sync::delete_vault_with_account(&db).await;
+    } else {
+        // The vault stays for the other devices, which learn that this one left.
+        crate::commands::sync::say_left(&db).await;
     }
     crate::commands::attachments::wipe_open_copies(&app);
     let deleted = auth::delete_account(&db, &session, &db_path);

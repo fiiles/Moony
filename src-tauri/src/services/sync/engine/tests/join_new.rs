@@ -275,8 +275,9 @@ async fn a_paired_device_is_vouched_for_by_its_holder() {
         let report = round(&vault, side, RoundMode::Normal).await;
         assert_eq!(report.problem, None, "{label}: {report:?}");
     }
+    // A's pull pinned the joiner by itself (the refresh hook), so a refresh by hand finds nothing.
     let refreshed = trust::refresh(&vault.a.lock(), NOW).expect("refresh");
-    assert_eq!(refreshed.pinned, vec![joiner], "A verifies whom it paired");
+    assert!(refreshed.pinned.is_empty(), "A verified whom it paired");
     assert_eq!(
         trust::entry(&vault.a.lock(), joiner)
             .expect("entry")

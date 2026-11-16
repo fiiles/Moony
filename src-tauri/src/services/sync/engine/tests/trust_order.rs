@@ -16,6 +16,7 @@ use crate::services::sync::identity::cert::{self, CertFields};
 use crate::services::sync::identity::trust::{self, ExclusionReason};
 use crate::services::sync::identity::{self, sign_pub, Record, RecordType, SignSeed};
 use crate::services::sync::pairing::holder;
+use crate::services::sync::setup;
 
 const N: DeviceId = DeviceId([0x0e; 16]);
 
@@ -53,21 +54,10 @@ fn unsent_changesets(conn: &Connection) -> Vec<Changeset> {
         .collect()
 }
 
-/// `device` writes its own `left` record into its row (captured, so it goes out with the next
-/// push), as leaving does.
-fn leave(conn: &Connection, device: DeviceId, at: i64) {
-    let seed = identity::own_seed(conn).expect("seed").expect("key");
-    let vault = keys::credentials(conn)
-        .expect("creds")
-        .expect("bound")
-        .vault_id
-        .0;
-    let record = Record::sign(RecordType::Left, vault, device, device, at, 0, &seed).expect("left");
-    conn.execute(
-        "UPDATE sync_devices SET left_record = ?1 WHERE id = ?2",
-        params![record.to_b64(), device.to_hex()],
-    )
-    .expect("left record");
+/// A device writes its own `left` record into its row (captured, so it goes out with the next
+/// push), as leaving does (`setup::write_left_record`, shared with `rekey_leave`).
+fn leave(conn: &Connection, at: i64) {
+    assert!(setup::write_left_record(conn, at).expect("left record"));
 }
 
 /// N's certificate, paired by A with `ticket`, as a forged changeset of N's own chain.
@@ -135,9 +125,9 @@ async fn the_announcement_goes_out_before_the_holders_later_left_record() {
     assert_eq!(announcement.device, A);
     drop(payload);
 
-    leave(&three.vault.a.lock(), A, NOW + 60);
-    let report = round_of(&three.vault, &three.vault.a).await;
-    assert_eq!(report.problem, None);
+    // A leaves as turning sync off does: the announcement queued at the confirm is ahead of the
+    // `left` record in the one push (`setup::leave_best_effort`).
+    setup::leave_best_effort(&three.vault.relay, &three.vault.a, setup::LEAVE_BUDGET).await;
     let report = round_of(&three.vault, &three.vault.b).await;
     assert_eq!(
         report.problem, None,
@@ -170,7 +160,7 @@ async fn a_pairing_announced_before_its_holder_left_keeps_its_device_whatever_or
         } else {
             cert::issue_ticket(&a_seed, three.vault.creds.vault_id.0, A, NOW).expect("ticket")
         };
-        leave(&three.vault.a.lock(), A, NOW + 60);
+        leave(&three.vault.a.lock(), NOW + 60);
         round_of(&three.vault, &three.vault.a).await;
         push(
             &three.vault.relay,
@@ -185,8 +175,8 @@ async fn a_pairing_announced_before_its_holder_left_keeps_its_device_whatever_or
         .await;
 
         round_of(&three.vault, &three.vault.b).await;
+        // The pull's own refresh hook applied what arrived; no refresh by hand.
         let b = three.vault.b.lock();
-        trust::refresh(&b, NOW).expect("refresh");
         assert_eq!(
             trust::entry(&b, A).expect("entry").map(|e| e.state),
             Some(trust::TrustState::Left)

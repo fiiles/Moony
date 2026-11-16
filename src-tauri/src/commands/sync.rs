@@ -651,6 +651,28 @@ pub(crate) async fn delete_vault_with_account(db: &Database) {
     }
 }
 
+/// A device leaving says so (phase 5 plan Task 11): while sync is on here, `setup::leave_best_effort`
+/// signs a `left` record and sends it within `setup::LEAVE_BUDGET`. Called for turning sync off
+/// and for Delete Account without the "delete the synced data" box (the vault stays for the other
+/// devices); the engine has stopped, so no round holds the round lock. Never blocks and never
+/// fails the change: every failure is logged there.
+pub(crate) async fn say_left(db: &Database) {
+    if !feature::enabled() {
+        return;
+    }
+    let Ok(session) = db.current_session() else {
+        return;
+    };
+    if !sync_on(&session).unwrap_or(false) {
+        return;
+    }
+    let Ok(relay) = profile_relay(&session) else {
+        log::warn!("[SYNC] This device did not say that it left: no valid sync server address");
+        return;
+    };
+    setup::leave_best_effort(&relay, &session, setup::LEAVE_BUDGET).await;
+}
+
 // ============================================================================
 // Commands
 // ============================================================================
@@ -981,10 +1003,14 @@ pub async fn sync_turn_off(
     if forgets_pairing_on_turn_off(was_on) {
         super::sync_pairing::forget_pairing();
     }
-    guarded_change(
-        &AppEngine { app: &app, db: &db },
-        turn_off_rechecked(&session, &dir, checked),
-    )
+    guarded_change(&AppEngine { app: &app, db: &db }, async {
+        // Turning sync off with sync on says so to the other devices first (best effort, a few
+        // seconds at most); a setup that never finished has nobody to tell.
+        if was_on && checked {
+            say_left(&db).await;
+        }
+        turn_off_rechecked(&session, &dir, checked).await
+    })
     .await
 }
 

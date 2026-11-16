@@ -170,6 +170,12 @@ pub struct PullReport {
     /// The pull stopped on an op whose (unauthenticated) header names this epoch, above this
     /// device's current one: a hint to pick up a new key (phase 5 §7.1), never proof.
     pub key_hint: Option<u32>,
+    /// A merged changeset touched the device list: the trust store is brought up to date
+    /// (`rekey::refresh_trust`) before the pull goes on.
+    devices_changed: bool,
+    /// The refresh found a verified record that ends sync on this device (a removal, or a `left`
+    /// record made with its key; phase 5 §7.4): sync is off here now, the pull ended there.
+    pub removed_here: bool,
 }
 
 impl PullReport {
@@ -631,6 +637,14 @@ async fn round_steps<R: Relay, D: ConnAccess>(
                         ))
                     })?;
                     check_heads = true;
+                    // The pickup changed the store (a bundle's recipients and records); the
+                    // rows merged so far may now verify too.
+                    if db.with_conn(|conn| {
+                        crate::services::sync::rekey::refresh_trust(conn, None, now)
+                    })? {
+                        report.removed_here = true;
+                        return Ok(());
+                    }
                 }
                 // Nothing new before the pull: the pass runs as it would have.
                 Pickup::Nothing if cause == Trigger::Info => {}
@@ -667,6 +681,7 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         trigger = match round_pass(relay, db, &creds, policy, mode, now, jitter, report).await {
             // The vault's info: a rotation above `rekey_seen` and above what this round already
             // looked at is a key change this device has not looked at.
+            Ok(Pass::Done) if report.removed_here => return Ok(()),
             Ok(Pass::Done) => {
                 let rotation = report.vault.as_ref().map(|info| info.rotation);
                 let rotated = match rotation {
@@ -733,6 +748,11 @@ async fn round_pass<R: Relay, D: ConnAccess>(
             restored?;
             report.restored = true;
             log::info!("[SYNC] Restored the vault's snapshot after the relay pruned this cursor");
+            // The restore merged the device list too.
+            if db.with_conn(|conn| crate::services::sync::rekey::refresh_trust(conn, None, now))? {
+                report.removed_here = true;
+                return Ok(Pass::Done);
+            }
             match pull::pull_all(relay, db, creds, now).await {
                 Err(SyncError::SnapshotRequired) => {
                     log::warn!("[SYNC] The relay asked for a snapshot restore twice in a round");
@@ -783,6 +803,15 @@ async fn round_pass<R: Relay, D: ConnAccess>(
         if !pulled.holds_something() {
             report.problem = Some(SyncProblem::RelayError);
         }
+    }
+    if pulled.removed_here {
+        // A verified record ended sync on this device during the pull: nothing more happens.
+        report.removed_here = true;
+        match report.pull.as_mut() {
+            Some(first) => absorb(first, pulled),
+            None => report.pull = Some(pulled),
+        }
+        return Ok(Pass::Done);
     }
     let key_hint = pulled.key_hint.is_some() && pulled.stop == Some(PullStop::Undecryptable);
     // How far this pass's own pull got when it stopped nowhere (`reseal::may_reseal`).
@@ -1077,6 +1106,7 @@ fn absorb(first: &mut PullReport, later: PullReport) {
     first.reach = later.reach.or(first.reach);
     first.through = first.through.max(later.through);
     first.key_hint = later.key_hint;
+    first.removed_here |= later.removed_here;
 }
 
 /// "Sync now" on a paused vault (ruling P9): asks the relay for the vault once and lifts the pause

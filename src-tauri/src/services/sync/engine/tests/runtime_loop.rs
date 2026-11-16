@@ -416,7 +416,7 @@ impl ConnAccess for Counted {
     }
 }
 
-fn start_plain(vault: &Vault, device: &TestConn) -> Running {
+pub(super) fn start_plain(vault: &Vault, device: &TestConn) -> Running {
     start(
         vault,
         device,
@@ -851,8 +851,10 @@ async fn back_off_sleeps_instead_of_spinning() {
     assert_eq!(rounds, 6);
     assert_eq!(running.handle.runtime().problem, Some(SyncProblem::Offline));
     assert!(takes_31s <= 2 * 12, "{takes_31s} takes in 31 s");
+    // Each round takes the profile about a dozen times, and the unlock's check of the device
+    // list (`rekey::refresh_trust`) once more.
     assert!(
-        takes <= 6 * 12,
+        takes <= 6 * 12 + 1,
         "{takes} takes over 31 minutes: the loop spun"
     );
 }

@@ -69,6 +69,10 @@ const SERVER_NEEDS_UPDATE: &str = "validation.syncServerNeedsUpdate";
 /// How long Delete Account waits for the relay to delete the vault.
 pub const DELETE_BUDGET: Duration = Duration::from_secs(5);
 
+/// How long a device that is turning sync off, or being deleted, spends telling the other devices
+/// that it left (`leave_best_effort`), waiting for a running round included.
+pub const LEAVE_BUDGET: Duration = Duration::from_secs(5);
+
 fn refused(key: &str) -> SyncError {
     SyncError::Local(AppError::Validation(key.into()))
 }
@@ -820,6 +824,67 @@ pub async fn delete_vault_best_effort<R: Relay, D: ConnAccess>(relay: &R, db: &D
             log::warn!("[SYNC] The relay did not delete the synced data in time");
             false
         }
+    }
+}
+
+/// Signs this device's `left` record and writes it into its own row, which the capture queues
+/// (phase 5 plan Task 11, revision Task 20). `false` when there is nothing to write: sync is
+/// off, the device has no signing key (a vault from before phase 5) or no row, or the row holds
+/// a `left` record already (the column is write-once; a turn-off that failed after the first
+/// leave keeps it).
+pub(crate) fn write_left_record(conn: &Connection, now: i64) -> Result<bool> {
+    let Some(sync) = state::load(conn)?.filter(|sync| sync.enabled) else {
+        return Ok(false);
+    };
+    let (Some(creds), Some(seed)) = (keys::credentials(conn)?, identity::own_seed(conn)?) else {
+        return Ok(false);
+    };
+    let record = identity::Record::sign(
+        identity::RecordType::Left,
+        creds.vault_id.0,
+        sync.device,
+        sync.device,
+        now,
+        creds.keys.current_epoch(),
+        &seed,
+    )?;
+    let written = conn.execute(
+        "UPDATE sync_devices SET left_record = ?1 WHERE id = ?2 AND left_record IS NULL",
+        rusqlite::params![record.to_b64(), sync.device.to_hex()],
+    )?;
+    Ok(written == 1)
+}
+
+/// A device that turns sync off or is deleted says so (phase 5 plan Task 11): under the round
+/// lock it signs a `left` record, writes it into its row and sends it in one push round without
+/// a pull, all within `budget` (waiting for a running round counts). Every failure, and running
+/// out of time, is ignored: the person's turn-off never waits for the server, and a device that
+/// could not say it left is simply cut off at the next key change. Nothing happens when sync is
+/// off (a device another one removed signs nothing: its key went with its sync state). What was
+/// queued before, a pairing's ticket announcement included, goes out first, since the push
+/// sends envelopes in sequence order: a holder's announcement always reaches the server before
+/// its `left` record (revision §3.1).
+pub async fn leave_best_effort<R: Relay, D: ConnAccess>(relay: &R, db: &D, budget: Duration) {
+    let attempt = async {
+        let _no_round = engine::exclusive(db).await;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs() as i64);
+        if !on_db(db, move |conn| write_left_record(conn, now)).await? {
+            return Ok(());
+        }
+        let Some(creds) = on_db(db, keys::credentials).await? else {
+            return Ok(());
+        };
+        engine::push::push_all(relay, db, &creds).await.map(|_| ())
+    };
+    match tokio::time::timeout(budget, attempt).await {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => {
+            log::info!("[SYNC] This device could not tell the others that it left");
+            log::debug!("[SYNC] The leave record was not sent: {error}");
+        }
+        Err(_) => log::info!("[SYNC] The sync server did not take the leave record in time"),
     }
 }
 

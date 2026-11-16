@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::{AppError, Result};
 use crate::services::sync::engine::status;
 use crate::services::sync::hlc::DeviceId;
+use crate::services::sync::identity::trust;
 use crate::services::sync::{binding, devices, setup, state};
 
 /// What another device's key change tells the person (phase 5 §7.3), kept in the Local
@@ -183,6 +184,35 @@ pub fn removed_here(
     }
     log::warn!("[SYNC] Another device removed this one from sync: sync is off here, data stays");
     Ok(())
+}
+
+/// Brings the trust store up to date with the device list (`trust::refresh`) and acts on what it
+/// finds about this device (phase 5 plan Task 11, revision Task 20): a verified record naming it,
+/// a removal, or a `left` record that another holder of its key made, ends sync here as a key
+/// change's removal notice does (`removed_here`, with `data_dir` as there). `true` then.
+///
+/// Called after every merge that touched the device list (a pulled change, a restored snapshot),
+/// after a key pickup and at unlock: nothing else pins a paired device, applies a `left` record
+/// or notices that this device was removed. A refresh that fails is logged and treated as
+/// "nothing new": the store only ever gains a pin or a state here, so a store that is behind
+/// leaves devices out of the next key change rather than letting one in.
+pub(crate) fn refresh_trust(conn: &Connection, data_dir: Option<&Path>, now: i64) -> Result<bool> {
+    let report = match trust::refresh(conn, now) {
+        Ok(report) => report,
+        Err(error @ AppError::Auth(_)) => return Err(error),
+        Err(error) => {
+            log::warn!("[SYNC] The trust store could not be brought up to date");
+            log::debug!("[SYNC] The trust store refresh failed: {error}");
+            return Ok(false);
+        }
+    };
+    match report.about_me.first() {
+        Some(record) => {
+            removed_here(conn, data_dir, record.signer, record.at)?;
+            Ok(true)
+        }
+        None => Ok(false),
+    }
 }
 
 /// The engine's runtime after a round that turned sync off because this device was removed: the

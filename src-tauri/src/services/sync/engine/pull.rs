@@ -228,6 +228,7 @@ fn act(
                     trust::note_ticket(conn, ticket, cs.device, meta.position)?;
                 }
                 report.applied += 1;
+                report.devices_changed |= cs.rows.iter().any(|row| row.table == "sync_devices");
                 OpStep::Advance
             }
             // The merge rolled back: the parent may come in a later envelope (a resent one, or
@@ -437,8 +438,19 @@ async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
                     state::set_cursor(conn, op.seq)?;
                     state::add_pulled_bytes(conn, op.ct.len() as u64)?;
                 }
+                // The device list changed: pins, `left` and removal records apply now, and a
+                // record naming this device ends sync here (phase 5 §7.4). The envelope is
+                // dealt with either way; a pull that ends here leaves the rest to nobody.
+                if std::mem::take(&mut report.devices_changed)
+                    && crate::services::sync::rekey::refresh_trust(conn, None, now)?
+                {
+                    report.removed_here = true;
+                }
                 Ok(step)
             })?;
+            if report.removed_here {
+                return Ok(report);
+            }
             match step {
                 OpStep::Stop(PullStop::NewerSchema) => {
                     report.stop = Some(PullStop::NewerSchema);

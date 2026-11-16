@@ -541,6 +541,13 @@
     "staleRates": "Nessun tasso attuale per {{currencies}} — i valori usano l'ultimo tasso di oltre {{days}} giorni fa",
     "fresh": "Dati aggiornati"
   },
+  "dataStatus": {
+    "title": "Stato dei dati",
+    "prices": "Prezzi e cambi",
+    "problems_one": "{{count}} problema con i dati",
+    "problems_many": "{{count}} problemi con i dati",
+    "problems_other": "{{count}} problemi con i dati"
+  },
   "fxQuality": {
     "missing": "Non convertiti in {{currency}}: nessun tasso di cambio per {{currencies}}. I totali escludono quelle posizioni.",
     "estimated": "Alcuni importi usano il tasso di cambio di oggi perché quello del loro giorno non è ancora disponibile."

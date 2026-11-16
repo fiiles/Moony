@@ -14,8 +14,10 @@
     "rowMenu": "Opzioni del promemoria: {{title}}"
   },
   "status": {
-    "deadline": "{{title}} · {{when}}",
-    "more": "+{{count}}",
+    "count_one": "{{count}} scadenza",
+    "count_many": "{{count}} scadenze",
+    "count_other": "{{count}} scadenze",
+    "first": "la prima",
     "title": "Scadenze nei prossimi 14 giorni",
     "openOverview": "Apri la panoramica"
   },

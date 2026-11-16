@@ -14,8 +14,11 @@
     "rowMenu": "Opcje przypomnienia: {{title}}"
   },
   "status": {
-    "deadline": "{{title}} · {{when}}",
-    "more": "+{{count}}",
+    "count_one": "{{count}} termin",
+    "count_few": "{{count}} terminy",
+    "count_many": "{{count}} terminów",
+    "count_other": "{{count}} terminu",
+    "first": "pierwszy",
     "title": "Terminy w ciągu 14 dni",
     "openOverview": "Otwórz przegląd"
   },

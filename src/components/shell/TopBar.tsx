@@ -6,10 +6,8 @@ import { resolveSettingsSection } from '@/components/settings/settings-sections'
 import { useLanguage } from '@/i18n/I18nProvider';
 import { DataStatus } from '@/components/shell/DataStatus';
 import { UpdateStatus } from '@/components/shell/UpdateStatus';
-import { SyncStatusIndicator } from '@/components/shell/SyncStatusIndicator';
 import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { MilestonesStatus } from '@/components/shell/MilestonesStatus';
-import { HistoryRecalculationBadge } from '@/components/common/HistoryRecalculationBadge';
 import { useShell } from '@/components/shell/shell-context';
 
 interface Crumb {
@@ -20,9 +18,10 @@ interface Crumb {
 }
 
 /**
- * Top bar (design system §5): breadcrumb left, data status right, 40 px
- * below. List pages read "Peníze / bankovní účty", details
- * "Investice / Akcie / Běžný účet", settings "Nastavení / obecné".
+ * Top bar (design system §5): breadcrumb left; right, what asks for the person (deadlines, an
+ * update), a rule, then the one "Stav dat" indicator; 40 px below. List pages read
+ * "Peníze / bankovní účty", details "Investice / Akcie / Běžný účet", settings
+ * "Nastavení / obecné".
  */
 export function TopBar() {
   const [location] = useLocation();
@@ -86,10 +85,12 @@ export function TopBar() {
         ))}
       </nav>
       <div className="flex shrink-0 items-center gap-4">
-        <HistoryRecalculationBadge />
-        <SyncStatusIndicator />
-        <MilestonesStatus />
-        <UpdateStatus />
+        {/* What asks for the person (deadlines, an update), then a rule, then "Stav dat". */}
+        <div className="peer flex items-center gap-4 empty:hidden">
+          {nav?.item.id !== 'overview' && <MilestonesStatus />}
+          <UpdateStatus />
+        </div>
+        <span aria-hidden className="h-3.5 w-px bg-line-strong peer-empty:hidden" />
         <DataStatus override={page.status} />
       </div>
     </div>

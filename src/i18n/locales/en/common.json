@@ -538,6 +538,12 @@
     "staleRates": "No current rate for {{currencies}} — values use the last rate from {{days}}+ days ago",
     "fresh": "Data up to date"
   },
+  "dataStatus": {
+    "title": "Data status",
+    "prices": "Prices and rates",
+    "problems_one": "{{count}} data problem",
+    "problems_other": "{{count}} data problems"
+  },
   "fxQuality": {
     "missing": "Not converted to {{currency}}: no exchange rate for {{currencies}}. Totals leave those positions out.",
     "estimated": "Some amounts use today's exchange rate because the rate of their day is not available yet."

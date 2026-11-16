@@ -14,8 +14,9 @@
     "rowMenu": "Reminder options: {{title}}"
   },
   "status": {
-    "deadline": "{{title}} · {{when}}",
-    "more": "+{{count}}",
+    "count_one": "{{count}} deadline",
+    "count_other": "{{count}} deadlines",
+    "first": "first",
     "title": "Deadlines in the next 14 days",
     "openOverview": "Open overview"
   },

@@ -14,8 +14,9 @@
     "rowMenu": "Erinnerungsoptionen: {{title}}"
   },
   "status": {
-    "deadline": "{{title}} · {{when}}",
-    "more": "+{{count}}",
+    "count_one": "{{count}} Frist",
+    "count_other": "{{count}} Fristen",
+    "first": "erste",
     "title": "Fristen in den nächsten 14 Tagen",
     "openOverview": "Übersicht öffnen"
   },

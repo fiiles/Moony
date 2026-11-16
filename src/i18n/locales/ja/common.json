@@ -535,6 +535,11 @@
     "staleRates": "{{currencies}}の最新レートがありません。{{days}}日以上前の最後のレートを使用しています",
     "fresh": "データは最新です"
   },
+  "dataStatus": {
+    "title": "データの状態",
+    "prices": "価格と為替レート",
+    "problems_other": "データの問題 {{count}} 件"
+  },
   "fxQuality": {
     "missing": "{{currency}}に換算されていません：{{currencies}}の為替レートがありません。合計からこれらのポジションは除外されます。",
     "estimated": "その日のレートがまだ取得できないため、一部の金額には本日の為替レートを使用しています。"

@@ -20,6 +20,7 @@
       "noHistory": "brak historii"
     },
     "emptyDescription": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy. Wszystko zostaje na tym telefonie.",
+    "emptyDescriptionSync": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy.",
     "ringCenter": "Aktywa"
   },
   "money": {
@@ -99,6 +100,12 @@
     "backupStale_many": "Ostatnia kopia zapasowa sprzed {{count}} dni",
     "backupStale_other": "Ostatnia kopia zapasowa sprzed {{count}} dnia",
     "backupNever": "Brak kopii zapasowej",
+    "safeCopyStale_one": "{{count}} dzień bez bezpiecznej kopii",
+    "safeCopyStale_few": "{{count}} dni bez bezpiecznej kopii",
+    "safeCopyStale_many": "{{count}} dni bez bezpiecznej kopii",
+    "safeCopyStale_other": "{{count}} dnia bez bezpiecznej kopii",
+    "safeCopyNever": "Brak bezpiecznej kopii",
+    "bothWaysOut": "Wznów synchronizację lub zrób kopię",
     "valuationStale": "Wycena {{name}} ma rok",
     "syncStalled": "Synchronizacja została zatrzymana",
     "actions": {
@@ -825,6 +832,7 @@
     "delete": {
       "title": "Usunąć wszystkie dane?",
       "lead": "Trwale usuwa bazę danych, klucze i załączniki z tego telefonu. Kopie zapasowe poza telefonem zostają. Najpierw zrób kopię zapasową — to jedyna droga powrotu.",
+      "leadSynced": "Trwale usuwa bazę danych, klucze i załączniki z tego telefonu oraz zsynchronizowane dane na serwerze synchronizacji (jeśli jest osiągalny): twoje pozostałe urządzenia przestaną się synchronizować i zachowają dane, które mają. Kopie zapasowe poza telefonem zostają. Najpierw zrób kopię zapasową — dla tego telefonu to jedyna droga powrotu.",
       "confirmLabel": "Aby potwierdzić, wpisz {{word}}",
       "confirm": "Usuń dane",
       "failed": "Nie udało się usunąć"
@@ -913,7 +921,10 @@
     "syncSaveCopy": "Zapisz kopię w Plikach",
     "syncCopySaved": "Kopia została zapisana w Plikach",
     "syncLeadNoFiles": "Moony zapisuje kopię zapasową, zanim synchronizacja zastąpi dane na tym telefonie. Tutaj możesz je przywrócić lub usunąć.",
-    "syncNoCopy": "Zapisanie kopii poza Moony nie jest jeszcze dostępne na tym telefonie. Kopię zapasową można przywrócić z tej listy. Przepadnie, jeśli dane Moony zostaną usunięte z telefonu."
+    "syncNoCopy": "Zapisanie kopii poza Moony nie jest jeszcze dostępne na tym telefonie. Kopię zapasową można przywrócić z tej listy. Przepadnie, jeśli dane Moony zostaną usunięte z telefonu.",
+    "leadSync": "Synchronizacja utrzymuje urządzenia w zgodzie. Kopia zapasowa to jeden zaszyfrowany plik do jednorazowego przeniesienia lub kopia do schowania: baza danych, klucze oraz dokumenty i zdjęcia na tym telefonie. Otworzy ją tylko twoje hasło.",
+    "restoreLeadSync": "Przywróć kopię zapasową z tego telefonu albo jednorazowo przenieś profil z Moony na komputerze: wybierz plik kopii, a po przywróceniu odblokuj hasłem, które obowiązywało w chwili jej utworzenia. Urządzenia w zgodzie utrzymuje synchronizacja.",
+    "osBackupNoteSync": "Profil nie jest zapisywany w kopii zapasowej telefonu (iCloud ani komputer). Poza tym telefonem twoje dane, gdy tylko się zsynchronizują, są na serwerze synchronizacji i na innych urządzeniach, a także w każdej kopii Moony, którą zapiszesz sam."
   },
   "firstRun": {
     "privacyLead": "Moony przechowuje wszystko w zaszyfrowanej bazie danych na tym telefonie. Bez chmury, bez konta u nas.",
@@ -924,7 +935,8 @@
       },
       "localOnly": {
         "title": "Bez chmury",
-        "text": "– nigdzie niczego nie wysyłamy; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive."
+        "text": "– nigdzie niczego nie wysyłamy; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive.",
+        "textSync": "– Twoje dane opuszczają ten telefon tylko wtedy, gdy włączysz synchronizację, i wtedy trafiają wyłącznie na wybrany przez Ciebie serwer synchronizacji, szyfrowane end-to-end; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive."
       },
       "marketData": {
         "title": "Dane rynkowe",
@@ -981,7 +993,11 @@
       "hint": "Gdy ostatnia kopia jest starsza niż 30 dni.",
       "title": "Zrób kopię zapasową Moony",
       "stale": "Ostatnia kopia jest starsza niż miesiąc.",
-      "never": "Nie masz jeszcze żadnej kopii zapasowej."
+      "never": "Nie masz jeszcze żadnej kopii zapasowej.",
+      "titleSync": "Chroń dane w Moony",
+      "staleSync": "Ostatnia bezpieczna kopia jest starsza niż miesiąc. Wznów synchronizację albo zrób kopię zapasową.",
+      "neverSync": "Nie masz jeszcze żadnej bezpiecznej kopii. Wznów synchronizację albo zrób kopię zapasową.",
+      "hintSync": "Gdy ani kopia zapasowa, ani pełna synchronizacja nie jest nowsza niż 30 dni."
     },
     "deadline": {
       "title": "{{title}}",
@@ -1046,7 +1062,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "Jeden zaszyfrowany plik ze wszystkim, w Ustawienia → Kopia zapasowa i przenoszenie."
+    "makeBackupHint": "Jeden zaszyfrowany plik ze wszystkim, w Ustawienia → Kopia zapasowa i przenoszenie.",
+    "protectDataHint": "Zrób kopię zapasową w Ustawienia → Kopia zapasowa i przenoszenie albo włącz synchronizację."
   },
   "sheet": {
     "discard": {

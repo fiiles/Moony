@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
+import { useDeviceSyncFeature, useDeviceSyncStatus, useSyncDevices } from '@/hooks/use-device-sync';
+import { protectionLine, syncIsOn } from '@/utils/safe-copy';
 import { useFormat } from '@/lib/use-format';
 import { notInBackup } from '@/utils/sync-attachments';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
@@ -34,6 +35,7 @@ const BUTTON =
 export default function BackupSection() {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('settings');
+  const { t: tSync } = useTranslation('deviceSync');
   const fmt = useFormat();
   const { createBackup, pickRestore, inspectPath, restore, busy, lastBackupAt, canExport } =
     useBackup();
@@ -41,8 +43,11 @@ export default function BackupSection() {
   // Sync on: documents and photos not downloaded here are not in a backup made here (spec §5.7).
   // The status exists only with the feature on, and counts nothing while sync is off.
   const { data: syncStatus } = useDeviceSyncStatus();
-  const syncOn = syncStatus !== undefined && !['off', 'settingUp'].includes(syncStatus.phase);
-  const missing = syncOn ? notInBackup(syncStatus.attachments) : 0;
+  const featureOn = useDeviceSyncFeature();
+  const syncOn = syncIsOn(featureOn, syncStatus);
+  const missing = syncOn && syncStatus ? notInBackup(syncStatus.attachments) : 0;
+  const { data: syncDevices } = useSyncDevices();
+  const protection = protectionLine(featureOn, syncStatus, syncDevices, Date.now() / 1000);
 
   const chooseRestore = async () => {
     const picked = await pickRestore();
@@ -71,7 +76,18 @@ export default function BackupSection() {
   };
 
   return (
-    <SectionPage title={t('settings.rows.backup')} lead={t('backup.lead')}>
+    <SectionPage
+      title={t('settings.rows.backup')}
+      lead={t(syncOn ? 'backup.leadSync' : 'backup.lead')}
+    >
+      {protection && (
+        <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3">
+          {tSync('protection.line', {
+            count: protection.devices,
+            age: tSync(`age.${protection.age.key}`, { count: protection.age.count }),
+          })}
+        </p>
+      )}
       <div className={CARD}>
         <KeyValueRow
           label={t('backup.last')}
@@ -96,7 +112,9 @@ export default function BackupSection() {
       )}
 
       <SectionHead title={t('backup.restoreTitle')} />
-      <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3">{t('backup.restoreLead')}</p>
+      <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3">
+        {t(syncOn ? 'backup.restoreLeadSync' : 'backup.restoreLead')}
+      </p>
       <Button
         variant="secondary"
         className={BUTTON}
@@ -115,7 +133,9 @@ export default function BackupSection() {
 
       <DataTools />
 
-      <p className="mx-0.5 mb-0 mt-6 text-m-caption text-ink-4">{t('backup.osBackupNote')}</p>
+      <p className="mx-0.5 mb-0 mt-6 text-m-caption text-ink-4">
+        {t(syncOn ? 'backup.osBackupNoteSync' : 'backup.osBackupNote')}
+      </p>
 
       <RestoreBackupSheet
         inspection={inspection}

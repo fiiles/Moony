@@ -20,6 +20,7 @@
       "noHistory": "no history yet"
     },
     "emptyDescription": "Add an account or an investment and Moony builds your overview, charts and trends from it. Everything stays on this phone.",
+    "emptyDescriptionSync": "Add an account or an investment and Moony builds your overview, charts and trends from it.",
     "ringCenter": "Assets"
   },
   "money": {
@@ -83,6 +84,10 @@
     "backupStale_one": "Last backup {{count}} day ago",
     "backupStale_other": "Last backup {{count}} days ago",
     "backupNever": "No backup yet",
+    "safeCopyStale_one": "{{count}} day without a safe copy",
+    "safeCopyStale_other": "{{count}} days without a safe copy",
+    "safeCopyNever": "No safe copy yet",
+    "bothWaysOut": "Resume sync or back up",
     "valuationStale": "The valuation of {{name}} is a year old",
     "syncStalled": "Sync has stopped",
     "actions": {
@@ -747,6 +752,7 @@
     "delete": {
       "title": "Delete all data?",
       "lead": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back.",
+      "leadSynced": "Permanently deletes the database, the keys and the attachments from this phone, and the synced data on the sync server (if it can be reached): your other devices stop syncing and keep the data they hold. Backup copies outside the phone stay. Make a backup first — it is the only way back for this phone.",
       "confirmLabel": "Type {{word}} to confirm",
       "confirm": "Delete data",
       "failed": "Deletion failed"
@@ -819,7 +825,10 @@
     "syncSaveCopy": "Save a copy to Files",
     "syncCopySaved": "A copy was saved to Files",
     "syncLeadNoFiles": "Moony saves a backup before sync replaces data on this phone. You can restore or delete them here.",
-    "syncNoCopy": "Saving a copy outside Moony is not available on this phone yet. A backup can be restored from this list. It is lost if Moony's data is removed from the phone."
+    "syncNoCopy": "Saving a copy outside Moony is not available on this phone yet. A backup can be restored from this list. It is lost if Moony's data is removed from the phone.",
+    "leadSync": "Sync keeps your devices in step. A backup is one encrypted file for a one-off move or a copy to keep: the database, the keys and the documents and photos on this phone. Only your password opens it.",
+    "restoreLeadSync": "Restore a backup from this phone, or move a profile once from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created. Sync keeps your devices in step.",
+    "osBackupNoteSync": "The profile is not saved in the phone's own backup (iCloud or a computer). Outside this phone, your data is on the sync server and your other devices once it has synced, and in any Moony backup you save yourself."
   },
   "firstRun": {
     "privacyLead": "Moony stores everything in an encrypted database on this phone. No cloud, no account with us.",
@@ -830,7 +839,8 @@
       },
       "localOnly": {
         "title": "No cloud",
-        "text": "– we send nothing anywhere; you save the backup to Files or iCloud Drive yourself."
+        "text": "– we send nothing anywhere; you save the backup to Files or iCloud Drive yourself.",
+        "textSync": "– your data leaves this phone only if you turn on sync, and then end-to-end encrypted to a sync server you choose; you save the backup to Files or iCloud Drive yourself."
       },
       "marketData": {
         "title": "Market data",
@@ -887,7 +897,11 @@
       "hint": "When the last backup is older than 30 days.",
       "title": "Back up Moony",
       "stale": "Your last backup is over a month old.",
-      "never": "You have no backup yet."
+      "never": "You have no backup yet.",
+      "titleSync": "Protect your Moony data",
+      "staleSync": "Your last safe copy is over a month old. Resume sync or make a backup.",
+      "neverSync": "You have no safe copy yet. Resume sync or make a backup.",
+      "hintSync": "When neither a backup nor a complete sync is newer than 30 days."
     },
     "deadline": {
       "title": "{{title}}",
@@ -946,7 +960,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "One encrypted file with everything, in Settings → Backup and transfer."
+    "makeBackupHint": "One encrypted file with everything, in Settings → Backup and transfer.",
+    "protectDataHint": "Make a backup in Settings → Backup and transfer, or turn on sync."
   },
   "sheet": {
     "discard": {

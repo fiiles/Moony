@@ -120,8 +120,9 @@
     "confirmWord": "USUŃ",
     "deleteAll": "Usuń wszystkie dane",
     "deleteAllHint": "Usuwa bazę danych, pliki kluczy i załączniki na tym komputerze. Kopie obok bazy (moony.db.bak-…, pre-restore-…) zostają w folderze danych (Dane i kopie zapasowe → Otwórz folder), tak samo jak kopie zapasowe zapisane poza aplikacją.",
+    "deleteAllHintSynced": "Usuwa bazę danych, pliki kluczy i załączniki na tym komputerze oraz zsynchronizowane dane na serwerze synchronizacji (jeśli jest osiągalny): twoje pozostałe urządzenia przestaną się synchronizować i zachowają dane, które mają. Kopie obok bazy (moony.db.bak-…, pre-restore-…) zostają w folderze danych (Dane i kopie zapasowe → Otwórz folder), tak samo jak kopie zapasowe zapisane poza aplikacją.",
     "deleteButton": "Usuń dane…",
-    "syncDeleted": "Zsynchronizowane dane na serwerze synchronizacji również zostaną usunięte, więc twoje pozostałe urządzenia przestaną się synchronizować.",
+    "syncDeleted": "Zsynchronizowane dane na serwerze synchronizacji również zostaną usunięte: twoje pozostałe urządzenia przestaną się synchronizować i zachowają dane, które mają. Jeśli serwer jest nieosiągalny, dane tam zostaną, zaszyfrowane.",
     "confirmDescriptionSynced": "Tej operacji nie można cofnąć. Trwale usuwa bazę danych, pliki kluczy i załączniki z tego urządzenia. Kopie, które Moony trzyma obok bazy (moony.db.bak-…, pre-restore-…), zostają w folderze danych; prowadzi do niego Ustawienia → Dane i kopie zapasowe → Otwórz folder."
   },
   "toast": {
@@ -211,7 +212,11 @@
       "deleteBody": "Ta kopia zapasowa zostanie usunięta na zawsze.",
       "deleteBodyKept": "Ta kopia zapasowa zawiera zmiany, których nie ma nigdzie indziej. Zostanie usunięta na zawsze, a te zmiany przepadną.",
       "deleted": "Kopia zapasowa usunięta"
-    }
+    },
+    "notInBackup_one": "{{count}} dokument lub zdjęcie nie jest jeszcze na tym komputerze, więc kopia zapasowa wykonana teraz go nie zawiera.",
+    "notInBackup_few": "{{count}} dokumenty i zdjęcia nie są jeszcze na tym komputerze, więc kopia zapasowa wykonana teraz ich nie zawiera.",
+    "notInBackup_many": "{{count}} dokumentów i zdjęć nie ma jeszcze na tym komputerze, więc kopia zapasowa wykonana teraz ich nie zawiera.",
+    "notInBackup_other": "{{count}} dokumentów i zdjęć nie ma jeszcze na tym komputerze, więc kopia zapasowa wykonana teraz ich nie zawiera."
   },
   "autoLock": {
     "title": "Automatyczna blokada",
@@ -255,6 +260,23 @@
       "touchId": "Ten Mac nie ma Touch ID albo nie dodano w nim odcisku palca.",
       "windowsHello": "Windows Hello nie jest skonfigurowane. Można je skonfigurować w Ustawieniach systemu Windows → Konta → Opcje logowania.",
       "generic": "Biometria nie jest dostępna na tym komputerze."
+    }
+  },
+  "keepSafe": {
+    "title": "Co warto zachować",
+    "description": "Każda z tych rzeczy służy do czegoś innego.",
+    "password": {
+      "title": "Hasło urządzenia",
+      "text": "Odblokowuje Moony na tym urządzeniu."
+    },
+    "recoveryKey": {
+      "title": "Klucz odzyskiwania",
+      "text": "Resetuje hasło na tym urządzeniu. Każde urządzenie ma własny."
+    },
+    "kit": {
+      "title": "Zestaw odzyskiwania synchronizacji",
+      "text": "Przywraca zsynchronizowane dane, gdy stracisz wszystkie urządzenia. Jeden dla wszystkich urządzeń.",
+      "show": "Pokaż"
     }
   }
 }

@@ -418,3 +418,72 @@ The sections above are the design as approved and are not rewritten. Where the b
   surname on the next step, since the join path creates the profile without them.
 - Not done: the phone flows were not run in a simulator or on a device (the desktop was checked
   live against a local sync server); part C (§7) waits for documents and photos to sync.
+
+## 13. As built (part C, 2026-11-16)
+
+The sections above are the design as approved and are not rewritten. Where the build of part C
+(plan `docs/plans/2026-11-15-sync-aware-app-part-c.md`) differs from §7 and from the plan's
+decisions:
+
+- §7.2, what "complete" means: a round with no problem at all that leaves nothing here to send:
+  `sync_outbox` and `sync_unsent` empty, no `up` entry in `sync_blobs` that a row names (stuck
+  uploads included: refused, a conflict, an invalid ID), and no attachment row whose blob has no
+  queue entry yet. It is read from `main` only (`queue::summary`'s `content_left`). A queue that
+  cannot be read counts as content left: the round's success stands and no complete time is
+  recorded. The time is written with a plain `SET` (never `MAX`) in the same hold that records the
+  round's success, in `sync_state.last_complete_at` (migration 039). A replace keeps it; turning
+  sync off forgets it. No round is woken when a lane finishes an upload, so the time arrives with
+  the next round, at most five minutes later.
+- A profile whose attachments store failed to open, and that has attachment rows, never records a
+  complete sync until the store opens again: its content cannot be shown to be on the server.
+- §7.3 and plan Decision 4, the verdict (`SyncStatus.protectsData`, `milestones::sync_protects`):
+  besides "sync on, `sync_stalled` quiet, a complete sync on one of the last 7 UTC days", nothing
+  on this device waits to be sent right now (no unsent change, no upload waiting or stuck, no
+  content without a queue entry, no blob held across a replace in `sync_held_blobs`), and no
+  problem that needs the person is on record, also while a round runs (a running round keeps the
+  last round's problem, and `sync_stalled` is quiet while a round runs; only the problems the
+  engine retries by itself may stand). Reason: the complete time is not lowered by what is made
+  after it, so without these checks the line could show over a document that exists on one device
+  only, or flash on during every retry round of a lapsed account. Cost: the line goes away for the
+  seconds between a local change and its upload. Right after unlock the engine has no problem on
+  record until the first round ends, so for those seconds the verdict rests on the stored times
+  alone.
+- The status computes the verdict from the same pass over the attachment rows that gives
+  `SyncStatus.attachments` (`queue::summary`). When that pass fails, the figures are empty and
+  `protectsData` is false; never empty figures with "protected".
+- Plan Decision 5 is changed: a complete-sync time dated after tomorrow (UTC) is ignored by both
+  the backup reminder and the verdict (`upkeep::trusted_complete`, one helper for both, so the two
+  still never show together). A manual backup time is not capped, so the reminder without sync
+  reads exactly as before. The stalled-sync reminder's week also ignores a last success dated
+  after tomorrow and counts from when this device joined. Reason: one round with a clock far ahead
+  would otherwise silence the reminder for as long as the clock was ahead. A device that simply
+  runs ahead is not affected: it stamps and reads with the same clock. Cost: a device whose clock
+  was ahead at its last complete round and was corrected afterwards gets no credit for that round
+  until its next complete one, at most five minutes later while the server can be reached. During
+  an outage right after such a correction the stalled-sync reminder can show at once, counted from
+  when the device joined, until the next round that succeeds.
+- `SyncAttachments.failedUpload`: the rows among `failed` whose content is here and cannot upload
+  by itself (refused, a conflict, an invalid ID), a photo once. Their content is on this device
+  only and keeps every sync incomplete until "try again" on the row. The status surfaces show a
+  line for them under "Documents and photos", and that row never says "All uploaded" while any
+  exist.
+- Migration 039 changes only a local column, but it raises the schema number every change carries.
+  A paired device on an older build stops at the first change from an updated device and pauses
+  with "newer schema" until it is updated too. Update both devices together.
+- Wording decided during the build that differs from the text of §7 (the exact strings are in the
+  locale files):
+  - The protection line says where the copy is (on the sync server) and counts the devices in
+    sync, with a colon before the age, so "just now" reads naturally.
+  - The phone's backup row in Údržba leads with the number of days without a safe copy; its
+    sub-line is a short imperative that fits one line. The desktop sub-line and the notification
+    keep the longer wording.
+  - Where the reminder says to get sync going again, it uses "resume" or "reactivate" wording, not
+    "restore", which reads as restoring data in several languages.
+  - The delete texts say the synced data on the server is deleted only when the server can be
+    reached; otherwise it stays there, encrypted.
+- Known gaps, left for the owner:
+  - `delete_account` does not report whether the server data was deleted; the deletion is best
+    effort and only logged when the server cannot be reached.
+  - No list shows which document or photo has a stuck upload; the status gives only the number.
+  - Getting started's "Protect your data" is ticked as soon as sync is on, before the first
+    complete sync.

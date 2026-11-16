@@ -151,6 +151,11 @@ export interface NotificationPlanInput {
    * reminder is planned, as it would lead to a button that cannot work. Default true.
    */
   canBackup?: boolean;
+  /**
+   * Sync is on (`syncIsOn`): the backup reminder names both ways out, under its own id. Default
+   * false: the reminder is as before.
+   */
+  syncOn?: boolean;
 }
 
 /**
@@ -165,7 +170,7 @@ export interface NotificationPlanInput {
  * says the screen its tap opens (`path`).
  */
 export function buildNotificationPlan(input: NotificationPlanInput): PlannedNotification[] {
-  const { now, milestones, mutedKinds, prefs, canBackup = true } = input;
+  const { now, milestones, mutedKinds, prefs, canBackup = true, syncOn = false } = input;
   const items: PlannedNotification[] = [];
 
   if (prefs.deadlines) {
@@ -210,15 +215,21 @@ export function buildNotificationPlan(input: NotificationPlanInput): PlannedNoti
   const staleBackup = milestones.find((m) => m.kind === 'backup_stale');
   if (canBackup && prefs.backup && staleBackup && !mutedKinds.includes('backup_stale')) {
     items.push({
-      id: notificationId('backup', 'backup'),
+      // Its own id with sync on: the signature changes, so a pending reminder with the old text
+      // is cancelled and planned again (and back when sync goes off)
+      id: notificationId('backup', syncOn ? 'backupSync' : 'backup'),
       kind: 'backup',
       at: tomorrow(now),
-      title: { key: 'notifications.backup.title' },
+      title: { key: syncOn ? 'notifications.backup.titleSync' : 'notifications.backup.title' },
       body: {
         key:
           staleBackup.sinceDay === null
-            ? 'notifications.backup.never'
-            : 'notifications.backup.stale',
+            ? syncOn
+              ? 'notifications.backup.neverSync'
+              : 'notifications.backup.never'
+            : syncOn
+              ? 'notifications.backup.staleSync'
+              : 'notifications.backup.stale',
       },
       path: settingsPath('backup'),
     });

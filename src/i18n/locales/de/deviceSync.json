@@ -46,7 +46,7 @@
       "relayError": "Der Synchronisierungsserver antwortet nicht wie erwartet. Moony versucht es weiter.",
       "rateLimited": "Der Synchronisierungsserver hat Moony gebeten, langsamer zu sein. Moony versucht es bald erneut.",
       "unauthorized": "Der Synchronisierungsserver hat dieses Gerät nicht akzeptiert. Die Synchronisierung muss eventuell neu eingerichtet werden.",
-      "keyRotated": "Der Wiederherstellungsschlüssel wurde auf einem anderen Gerät geändert. Richten Sie die Synchronisierung auf diesem Gerät neu ein.",
+      "keyRotated": "Der Synchronisierungsschlüssel wurde auf einem anderen Gerät geändert. Richten Sie die Synchronisierung auf diesem Gerät neu ein.",
       "secureStorage": "Moony konnte nicht auf den sicheren Speicher dieses Geräts zugreifen, daher ist die Synchronisierung pausiert. Moony versucht es erneut; meist hilft es, das Gerät zu entsperren oder Moony neu zu starten.",
       "serverWentBack": "Der Synchronisierungsserver ist auf einen älteren Stand zurückgefallen, daher können auf Ihren anderen Geräten Änderungen fehlen. Ihre Daten auf diesem Gerät sind unversehrt. Moony kann das noch nicht selbst beheben: Um Ihre Geräte wieder zusammenzuführen, schalten Sie die Synchronisierung aus, richten Sie sie auf dem Gerät mit den vollständigsten Daten neu ein und verbinden Sie die anderen Geräte. Synchronisieren Sie dieses Gerät nicht neu: Das würde die Daten dieses Geräts durch die ältere Kopie des Synchronisierungsservers ersetzen. Wenn Sie die Synchronisierung neu einrichten, entsteht ein neues Sync-Konto.",
       "internal": "Die Synchronisierung wurde wegen eines internen Fehlers gestoppt."
@@ -72,7 +72,7 @@
     "repeatOnOthers": "Machen Sie dasselbe auf Ihren anderen Geräten."
   },
   "intro": {
-    "description": "Halten Sie Ihre Daten auf allen Ihren Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
+    "description": "Halten Sie Ihre Daten, einschließlich Dokumente und Fotos, auf allen Ihren Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
     "privacy": "Ihre Daten verlassen Ihre Geräte nie unverschlüsselt.",
     "start": "Synchronisierung einrichten",
     "resume": "Einrichtung fortsetzen",
@@ -126,7 +126,7 @@
         "intro": "Bewahren Sie diese Seite sicher und getrennt von Ihren Geräten auf. Wer sie hat, kann Ihre synchronisierten Daten lesen.",
         "accountLabel": "Sync-Konto",
         "accountNote": "Bezeichnet Ihr Sync-Konto. Es öffnet Ihre Daten nicht.",
-        "codeLabel": "Wiederherstellungscode",
+        "codeLabel": "Code des Wiederherstellungs-Kits",
         "codeNote": "Öffnet Ihre synchronisierten Daten. Halten Sie ihn geheim.",
         "qrLabel": "Zum Wiederherstellen auf dem Handy scannen",
         "created": "Erstellt am {{date}}",
@@ -340,8 +340,8 @@
     "pairTitle": "Vom Smartphone beitreten",
     "pairHint": "Auf dem Smartphone mit eingeschalteter Synchronisierung: Einstellungen → Synchronisierung → Gerät hinzufügen",
     "kitTitle": "Wiederherstellungs-Kit verwenden",
-    "kitHint": "Geben Sie den Wiederherstellungscode aus Ihrem Sync-Wiederherstellungs-Kit ein oder den Text seines QR-Codes.",
-    "codeLabel": "Wiederherstellungscode",
+    "kitHint": "Geben Sie den Code des Wiederherstellungs-Kits oder den Text seines QR-Codes ein.",
+    "codeLabel": "Code des Wiederherstellungs-Kits",
     "accountLabel": "Kontonummer",
     "confirm": "Beitreten und ersetzen",
     "choice": {
@@ -351,7 +351,7 @@
       },
       "kit": {
         "title": "Ich habe das Sync-Wiederherstellungs-Kit",
-        "lead": "Sie geben den Code aus dem Kit und die Serveradresse ein. So tritt auch ein zweiter Computer bei."
+        "lead": "Sie geben den Code des Wiederherstellungs-Kits und die Serveradresse ein. So tritt auch ein zweiter Computer bei."
       }
     },
     "connect": "Verbinden",
@@ -452,6 +452,8 @@
     "uploading": "Dokumente und Fotos werden hochgeladen",
     "onOtherDevices_one": "{{count}} Dokument oder Foto ist auf Ihren anderen Geräten",
     "onOtherDevices_other": "{{count}} Dokumente und Fotos sind auf Ihren anderen Geräten",
+    "failedUpload_one": "{{count}} Dokument oder Foto konnte nicht hochgeladen werden und ist nur auf diesem Gerät.",
+    "failedUpload_other": "{{count}} Dokumente und Fotos konnten nicht hochgeladen werden und sind nur auf diesem Gerät.",
     "downloadEverything": "Alles auf dieses Telefon herunterladen",
     "downloadEverythingStarted": "Der Download läuft, solange Moony geöffnet ist",
     "problem": {
@@ -462,5 +464,9 @@
   "whatSyncs": {
     "title": "Was synchronisiert wird",
     "body": "Alles, was Sie in Moony eingeben, wird synchronisiert. Sprache, Aussehen, Menü, Benachrichtigungen, Gerätepasswort, Wiederherstellungsschlüssel und Sicherungen gehören zu jedem Gerät einzeln. Kurse und Verlauf werden auf jedem Gerät selbst berechnet. Dokumente und Fotos werden ebenfalls synchronisiert; ein Telefon lädt sie erst herunter, wenn Sie sie öffnen."
+  },
+  "protection": {
+    "line_one": "Die Synchronisierung schützt Ihre Daten: Eine Kopie liegt auf dem Synchronisierungsserver (letzte vollständige Synchronisierung: {{age}}, Geräte in der Synchronisierung: {{count}}). Erstellen Sie eine Sicherung, wenn Sie den Stand eines bestimmten Tages festhalten möchten.",
+    "line_other": "Die Synchronisierung schützt Ihre Daten: Eine Kopie liegt auf dem Synchronisierungsserver (letzte vollständige Synchronisierung: {{age}}, Geräte in der Synchronisierung: {{count}}). Erstellen Sie eine Sicherung, wenn Sie den Stand eines bestimmten Tages festhalten möchten."
   }
 }

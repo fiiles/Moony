@@ -15,6 +15,9 @@ import { useFormat } from '@/lib/use-format';
 import { formatBytes } from '@/utils/format-bytes';
 import { todayIsoUtc } from '@/utils/period';
 import { cn } from '@/lib/utils';
+import { useDeviceSyncFeature, useDeviceSyncStatus, useSyncDevices } from '@/hooks/use-device-sync';
+import { protectionLine, syncIsOn } from '@/utils/safe-copy';
+import { notInBackup } from '@/utils/sync-attachments';
 import type { IntegrityReport } from '@shared/schema';
 
 type Busy = 'backup' | 'restore' | 'export' | 'verify' | null;
@@ -26,7 +29,18 @@ type Busy = 'backup' | 'restore' | 'export' | 'verify' | null;
 export function DataSection() {
   const { t } = useTranslation('settings');
   const { t: tc } = useTranslation('common');
+  const { t: tSync } = useTranslation('deviceSync');
   const fmt = useFormat();
+
+  // Sync on: the line says when sync protects the data (spec §7.3); documents and photos not yet
+  // downloaded here are not in a backup made here (attachments §5.7). Nothing is read with the flag
+  // or sync off.
+  const featureOn = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
+  const { data: syncDevices } = useSyncDevices();
+  const protection = protectionLine(featureOn, syncStatus, syncDevices, Date.now() / 1000);
+  const missing =
+    syncIsOn(featureOn, syncStatus) && syncStatus ? notInBackup(syncStatus.attachments) : 0;
 
   const [busy, setBusy] = useState<Busy>(null);
   const [integrity, setIntegrity] = useState<IntegrityReport | null>(null);
@@ -140,7 +154,28 @@ export function DataSection() {
 
       <AttachmentsStatusRow />
 
-      <SettingsRow label={t('data.backupRow')} hint={t('data.hint')}>
+      {protection && (
+        <p className="mb-0 mt-1 text-caption text-ink-3" data-testid="sync-protection-line">
+          {tSync('protection.line', {
+            count: protection.devices,
+            age: tSync(`age.${protection.age.key}`, { count: protection.age.count }),
+          })}
+        </p>
+      )}
+
+      <SettingsRow
+        label={t('data.backupRow')}
+        hint={
+          missing > 0 ? (
+            <>
+              {t('data.hint')}
+              <span className="mt-0.5 block">{t('data.notInBackup', { count: missing })}</span>
+            </>
+          ) : (
+            t('data.hint')
+          )
+        }
+      >
         <RestoreBackup onBusyChange={(b) => setBusy(b ? 'restore' : null)}>
           {(pick) => (
             <Button

@@ -73,6 +73,7 @@
   "empty": {
     "title": "Din nettoförmögenhet visas här",
     "description": "Lägg till ett konto eller en investering så bygger Moony din översikt, dina diagram och trender utifrån det. Allt stannar på den här datorn.",
+    "descriptionSync": "Lägg till ett konto eller en investering så bygger Moony din översikt, dina diagram och trender utifrån det.",
     "addAccount": "Lägg till ett bankkonto och importera ett kontoutdrag",
     "addInvestment": "Lägg till en investering",
     "setBudget": "Sätt en budget"
@@ -88,6 +89,9 @@
     "setBudgetHint": "Månadsgränser per utgiftskategori.",
     "makeBackup": "Gör en säkerhetskopia",
     "makeBackupHint": "En fil med allt, i Inställningar → Data och säkerhetskopior.",
+    "protectData": "Skydda dina data",
+    "protectDataHint": "Gör en säkerhetskopia under Inställningar → Data och säkerhetskopior, eller slå på synkronisering.",
+    "setUpSync": "Ställ in synkronisering",
     "dismiss": "Avfärda",
     "done": "Klart",
     "optional": "Valfritt"

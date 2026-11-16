@@ -85,6 +85,9 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
                 <>
                   {attachments.value}
                   {attachments.problem && <span className="block">{attachments.problem}</span>}
+                  {attachments.failedUpload && (
+                    <span className="block">{attachments.failedUpload}</span>
+                  )}
                 </>
               }
             />

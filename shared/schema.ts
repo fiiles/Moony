@@ -126,6 +126,10 @@ export interface SyncStatus {
   enabledAt: number | null;
   /** This device's documents and photos: content waiting to move, and their own problem. */
   attachments: SyncAttachments;
+  /** When a round last succeeded with nothing left to send: no change, no document or photo waiting to upload or unable to (unix seconds); `null` while off or before the first. */
+  lastCompleteAt: number | null;
+  /** Sync keeps this device's data safe now: on, nothing needs the person, a complete sync less than 7 whole UTC days old, and nothing held here that exists nowhere else (Rust `sync_protects`). */
+  protectsData: boolean;
 }
 
 /**
@@ -161,6 +165,12 @@ export interface SyncAttachments {
    * leave out of each other what they hold): a backup made here does not have these.
    */
   notOnDevice: number;
+  /**
+   * Rows among `failed` whose content is held here and cannot upload by itself (refused by the
+   * sync server, a conflict with what it holds, an invalid ID): on this device only until tried
+   * again. An upload backing off (no room, the network) is in `waitingUpload` instead.
+   */
+  failedUpload: number;
   /** Why documents and photos do not move, while ordinary sync goes on. */
   problem: SyncAttachmentsProblem | null;
 }

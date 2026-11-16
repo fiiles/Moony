@@ -20,6 +20,7 @@
       "noHistory": "sin historial"
     },
     "emptyDescription": "Añade una cuenta o una inversión y Moony construirá a partir de ella tu resumen, gráficos y tendencias. Todo se queda en este teléfono.",
+    "emptyDescriptionSync": "Añade una cuenta o una inversión y Moony construirá a partir de ella tu resumen, gráficos y tendencias.",
     "ringCenter": "Activos"
   },
   "money": {
@@ -91,6 +92,11 @@
     "backupStale_many": "Última copia de seguridad hace {{count}} días",
     "backupStale_other": "Última copia de seguridad hace {{count}} días",
     "backupNever": "Aún no hay copia de seguridad",
+    "safeCopyStale_one": "{{count}} día sin copia segura",
+    "safeCopyStale_many": "{{count}} días sin copia segura",
+    "safeCopyStale_other": "{{count}} días sin copia segura",
+    "safeCopyNever": "Aún no hay copia segura",
+    "bothWaysOut": "Reactiva la sincronización o haz copia",
     "valuationStale": "La valoración de {{name}} tiene un año",
     "syncStalled": "La sincronización se ha detenido",
     "actions": {
@@ -786,6 +792,7 @@
     "delete": {
       "title": "¿Eliminar todos los datos?",
       "lead": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: es la única forma de recuperar los datos.",
+      "leadSynced": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono, y los datos sincronizados en el servidor de sincronización (si se puede contactar con él): tus demás dispositivos dejan de sincronizar y conservan los datos que tienen. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: para este teléfono es la única forma de recuperar los datos.",
       "confirmLabel": "Escribe {{word}} para confirmar",
       "confirm": "Eliminar datos",
       "failed": "No se pudo eliminar"
@@ -866,7 +873,10 @@
     "syncSaveCopy": "Guardar una copia en Archivos",
     "syncCopySaved": "Se guardó una copia en Archivos",
     "syncLeadNoFiles": "Moony guarda una copia de seguridad antes de que la sincronización reemplace datos en este teléfono. Aquí puedes restaurarlas o eliminarlas.",
-    "syncNoCopy": "Guardar una copia fuera de Moony todavía no está disponible en este teléfono. Puedes restaurar una copia de seguridad desde esta lista. Se pierde si los datos de Moony se eliminan del teléfono."
+    "syncNoCopy": "Guardar una copia fuera de Moony todavía no está disponible en este teléfono. Puedes restaurar una copia de seguridad desde esta lista. Se pierde si los datos de Moony se eliminan del teléfono.",
+    "leadSync": "La sincronización mantiene tus dispositivos al día. Una copia de seguridad es un archivo cifrado para un traslado puntual o una copia que guardar: la base de datos, las claves y los documentos y fotos de este teléfono. Solo tu contraseña la abre.",
+    "restoreLeadSync": "Restaura una copia de seguridad de este teléfono, o traslada una vez un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó. La sincronización mantiene tus dispositivos al día.",
+    "osBackupNoteSync": "El perfil no se guarda en la copia de seguridad del propio teléfono (iCloud u ordenador). Fuera de este teléfono, tus datos, una vez sincronizados, están en el servidor de sincronización y en tus otros dispositivos, y en cualquier copia de seguridad de Moony que guardes tú."
   },
   "firstRun": {
     "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",
@@ -877,7 +887,8 @@
       },
       "localOnly": {
         "title": "Sin nube",
-        "text": "– no enviamos nada a ninguna parte; la copia de seguridad la guardas tú en Archivos o iCloud Drive."
+        "text": "– no enviamos nada a ninguna parte; la copia de seguridad la guardas tú en Archivos o iCloud Drive.",
+        "textSync": "– tus datos salen de este teléfono solo si activas la sincronización, y entonces solo cifrados de extremo a extremo hacia un servidor de sincronización que eliges tú; la copia de seguridad la guardas tú en Archivos o iCloud Drive."
       },
       "marketData": {
         "title": "Datos de mercado",
@@ -934,7 +945,11 @@
       "hint": "Cuando la última copia tiene más de 30 días.",
       "title": "Haz una copia de Moony",
       "stale": "La última copia tiene más de un mes.",
-      "never": "Todavía no tienes ninguna copia."
+      "never": "Todavía no tienes ninguna copia.",
+      "titleSync": "Protege tus datos de Moony",
+      "staleSync": "Tu última copia segura tiene más de un mes. Reactiva la sincronización o haz una copia de seguridad.",
+      "neverSync": "Todavía no tienes ninguna copia segura. Reactiva la sincronización o haz una copia de seguridad.",
+      "hintSync": "Cuando ni una copia de seguridad ni una sincronización completa son de hace menos de 30 días."
     },
     "deadline": {
       "title": "{{title}}",
@@ -996,7 +1011,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "Un archivo cifrado con todo, en Ajustes → Copia de seguridad y traslado."
+    "makeBackupHint": "Un archivo cifrado con todo, en Ajustes → Copia de seguridad y traslado.",
+    "protectDataHint": "Haz una copia de seguridad en Ajustes → Copia de seguridad y traslado, o activa la sincronización."
   },
   "sheet": {
     "discard": {

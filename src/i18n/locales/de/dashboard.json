@@ -73,6 +73,7 @@
   "empty": {
     "title": "Hier erscheint Ihr Nettovermögen",
     "description": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends. Alles bleibt auf diesem Computer.",
+    "descriptionSync": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends.",
     "addAccount": "Bankkonto hinzufügen und Kontoauszug importieren",
     "addInvestment": "Geldanlage hinzufügen",
     "setBudget": "Budget festlegen"
@@ -88,6 +89,9 @@
     "setBudgetHint": "Monatliche Limits pro Ausgabenkategorie.",
     "makeBackup": "Sicherung erstellen",
     "makeBackupHint": "Eine Datei mit allem, unter Einstellungen → Daten und Sicherungen.",
+    "protectData": "Daten schützen",
+    "protectDataHint": "Erstellen Sie eine Sicherung unter Einstellungen → Daten und Sicherungen oder schalten Sie die Synchronisierung ein.",
+    "setUpSync": "Synchronisierung einrichten",
     "dismiss": "Ausblenden",
     "done": "Erledigt",
     "optional": "Optional"

@@ -20,6 +20,7 @@
       "noHistory": "kein Verlauf"
     },
     "emptyDescription": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends. Alles bleibt auf diesem Telefon.",
+    "emptyDescriptionSync": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends.",
     "ringCenter": "Aktiva"
   },
   "money": {
@@ -83,6 +84,10 @@
     "backupStale_one": "Letzte Sicherung vor {{count}} Tag",
     "backupStale_other": "Letzte Sicherung vor {{count}} Tagen",
     "backupNever": "Noch keine Sicherung",
+    "safeCopyStale_one": "{{count}} Tag ohne sichere Kopie",
+    "safeCopyStale_other": "{{count}} Tage ohne sichere Kopie",
+    "safeCopyNever": "Noch keine sichere Kopie",
+    "bothWaysOut": "Sync fortsetzen oder sichern",
     "valuationStale": "Die Bewertung von {{name}} ist ein Jahr alt",
     "syncStalled": "Die Synchronisierung wurde angehalten",
     "actions": {
@@ -747,6 +752,7 @@
     "delete": {
       "title": "Alle Daten löschen?",
       "lead": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon dauerhaft. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — sie ist der einzige Weg zurück.",
+      "leadSynced": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon dauerhaft, ebenso die synchronisierten Daten auf dem Synchronisierungsserver (sofern erreichbar): Ihre anderen Geräte hören auf zu synchronisieren und behalten die Daten, die sie haben. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — für dieses Telefon ist sie der einzige Weg zurück.",
       "confirmLabel": "Geben Sie zur Bestätigung {{word}} ein",
       "confirm": "Daten löschen",
       "failed": "Löschen fehlgeschlagen"
@@ -819,7 +825,10 @@
     "syncSaveCopy": "Kopie in Dateien sichern",
     "syncCopySaved": "Eine Kopie wurde in Dateien gespeichert",
     "syncLeadNoFiles": "Moony legt eine Sicherung an, bevor die Synchronisierung Daten auf diesem Telefon ersetzt. Hier können Sie sie wiederherstellen oder löschen.",
-    "syncNoCopy": "Eine Kopie außerhalb von Moony zu speichern ist auf diesem Telefon noch nicht möglich. Eine Sicherung lässt sich aus dieser Liste wiederherstellen. Sie geht verloren, wenn die Daten von Moony vom Telefon entfernt werden."
+    "syncNoCopy": "Eine Kopie außerhalb von Moony zu speichern ist auf diesem Telefon noch nicht möglich. Eine Sicherung lässt sich aus dieser Liste wiederherstellen. Sie geht verloren, wenn die Daten von Moony vom Telefon entfernt werden.",
+    "leadSync": "Die Synchronisierung hält Ihre Geräte auf demselben Stand. Eine Sicherung ist eine verschlüsselte Datei für einen einmaligen Umzug oder eine Kopie zum Aufbewahren: die Datenbank, die Schlüssel sowie die Dokumente und Fotos auf diesem Telefon. Nur Ihr Passwort öffnet sie.",
+    "restoreLeadSync": "Stellen Sie eine Sicherung von diesem Telefon wieder her oder übertragen Sie ein Profil einmalig aus Moony auf dem Computer: Wählen Sie die Sicherungsdatei und entsperren Sie nach der Wiederherstellung mit dem Passwort, das bei ihrer Erstellung galt. Die Geräte hält die Synchronisierung auf demselben Stand.",
+    "osBackupNoteSync": "Das Profil wird nicht in der eigenen Sicherung des Telefons gespeichert (iCloud oder Computer). Außerhalb dieses Telefons liegen Ihre Daten, sobald sie synchronisiert sind, auf dem Synchronisierungsserver und auf Ihren anderen Geräten sowie in jeder Moony-Sicherung, die Sie selbst speichern."
   },
   "firstRun": {
     "privacyLead": "Moony speichert alles in einer verschlüsselten Datenbank auf diesem Telefon. Keine Cloud, kein Konto bei uns.",
@@ -830,7 +839,8 @@
       },
       "localOnly": {
         "title": "Keine Cloud",
-        "text": "– wir senden nichts irgendwohin; die Sicherung speichern Sie selbst in „Dateien“ oder iCloud Drive."
+        "text": "– wir senden nichts irgendwohin; die Sicherung speichern Sie selbst in „Dateien“ oder iCloud Drive.",
+        "textSync": "– Ihre Daten verlassen dieses Telefon nur, wenn Sie die Synchronisierung einschalten, und dann nur Ende-zu-Ende-verschlüsselt zu einem Synchronisierungsserver, den Sie wählen; die Sicherung speichern Sie selbst in „Dateien“ oder iCloud Drive."
       },
       "marketData": {
         "title": "Marktdaten",
@@ -887,7 +897,11 @@
       "hint": "Wenn die letzte Sicherung älter als 30 Tage ist.",
       "title": "Moony sichern",
       "stale": "Die letzte Sicherung ist älter als ein Monat.",
-      "never": "Sie haben noch keine Sicherung."
+      "never": "Sie haben noch keine Sicherung.",
+      "titleSync": "Moony-Daten schützen",
+      "staleSync": "Ihre letzte sichere Kopie ist älter als ein Monat. Setzen Sie die Synchronisierung fort oder erstellen Sie eine Sicherung.",
+      "neverSync": "Sie haben noch keine sichere Kopie. Setzen Sie die Synchronisierung fort oder erstellen Sie eine Sicherung.",
+      "hintSync": "Wenn weder eine Sicherung noch eine vollständige Synchronisierung neuer als 30 Tage ist."
     },
     "deadline": {
       "title": "{{title}}",
@@ -946,7 +960,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "Eine verschlüsselte Datei mit allem, unter Einstellungen → Sicherung und Übertragung."
+    "makeBackupHint": "Eine verschlüsselte Datei mit allem, unter Einstellungen → Sicherung und Übertragung.",
+    "protectDataHint": "Erstellen Sie eine Sicherung unter Einstellungen → Sicherung und Übertragung oder schalten Sie die Synchronisierung ein."
   },
   "sheet": {
     "discard": {

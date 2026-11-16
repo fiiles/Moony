@@ -73,6 +73,7 @@
   "empty": {
     "title": "Nettoformuen din vises her",
     "description": "Legg til en konto eller en investering, så bygger Moony oversikten, diagrammene og utviklingen din ut fra dem. Alt blir på denne datamaskinen.",
+    "descriptionSync": "Legg til en konto eller en investering, så bygger Moony oversikten, diagrammene og utviklingen din ut fra dem.",
     "addAccount": "Legg til en bankkonto og importer en kontoutskrift",
     "addInvestment": "Legg til en investering",
     "setBudget": "Sett et budsjett"
@@ -88,6 +89,9 @@
     "setBudgetHint": "Månedlige grenser per utgiftskategori.",
     "makeBackup": "Ta en sikkerhetskopi",
     "makeBackupHint": "Én fil med alt, under Innstillinger → Data og sikkerhetskopier.",
+    "protectData": "Beskytt dataene dine",
+    "protectDataHint": "Ta en sikkerhetskopi under Innstillinger → Data og sikkerhetskopier, eller slå på synkronisering.",
+    "setUpSync": "Sett opp synkronisering",
     "dismiss": "Lukk",
     "done": "Ferdig",
     "optional": "Valgfritt"

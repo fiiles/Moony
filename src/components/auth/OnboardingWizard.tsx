@@ -421,7 +421,11 @@ export function OnboardingWizard({
                       <b className="font-650 text-ink">
                         {t(`onboarding.welcome.points.${key}.title`)}
                       </b>{' '}
-                      {t(`onboarding.welcome.points.${key}.text`)}
+                      {t(
+                        key === 'localOnly' && syncFeature
+                          ? 'onboarding.welcome.points.localOnly.textSync'
+                          : `onboarding.welcome.points.${key}.text`
+                      )}
                     </span>
                   </div>
                 ))}

@@ -54,7 +54,7 @@
       "relayError": "Serwer synchronizacji nie odpowiada tak, jak powinien. Moony próbuje dalej.",
       "rateLimited": "Serwer synchronizacji poprosił Moony o zwolnienie tempa. Moony wkrótce spróbuje ponownie.",
       "unauthorized": "Serwer synchronizacji nie przyjął tego urządzenia. Może być potrzebna ponowna konfiguracja synchronizacji.",
-      "keyRotated": "Klucz odzyskiwania został zmieniony na innym urządzeniu. Skonfiguruj synchronizację na tym urządzeniu ponownie.",
+      "keyRotated": "Klucz synchronizacji został zmieniony na innym urządzeniu. Skonfiguruj synchronizację na tym urządzeniu ponownie.",
       "secureStorage": "Moony nie mogła uzyskać dostępu do bezpiecznego magazynu tego urządzenia, więc synchronizacja jest wstrzymana. Spróbuje ponownie; zwykle pomaga odblokowanie urządzenia lub ponowne uruchomienie Moony.",
       "serverWentBack": "Serwer synchronizacji wrócił do starszego stanu, więc na innych urządzeniach może brakować zmian. Dane na tym urządzeniu są nienaruszone. Moony nie potrafi jeszcze sama tego naprawić: aby ponownie połączyć urządzenia, wyłącz synchronizację, skonfiguruj ją od nowa na urządzeniu z najpełniejszymi danymi i dołącz pozostałe. Nie synchronizuj tego urządzenia ponownie: zastąpiłoby to jego dane starszą kopią z serwera synchronizacji. Ponowna konfiguracja synchronizacji tworzy nowe konto synchronizacji.",
       "internal": "Synchronizacja zatrzymała się z powodu błędu wewnętrznego."
@@ -80,7 +80,7 @@
     "repeatOnOthers": "To samo zrób na pozostałych urządzeniach."
   },
   "intro": {
-    "description": "Utrzymuj dane aktualne na wszystkich urządzeniach. Są szyfrowane end-to-end: serwer synchronizacji przechowuje tylko dane, których nie potrafi odczytać.",
+    "description": "Utrzymuj dane, także dokumenty i zdjęcia, aktualne na wszystkich urządzeniach. Są szyfrowane end-to-end: serwer synchronizacji przechowuje tylko dane, których nie potrafi odczytać.",
     "privacy": "Twoje dane nigdy nie opuszczają urządzeń w postaci niezaszyfrowanej.",
     "start": "Skonfiguruj synchronizację",
     "resume": "Dokończ konfigurację",
@@ -134,7 +134,7 @@
         "intro": "Przechowuj tę stronę w bezpiecznym miejscu, z dala od urządzeń. Kto ją ma, może odczytać Twoje zsynchronizowane dane.",
         "accountLabel": "Konto synchronizacji",
         "accountNote": "Wskazuje Twoje konto synchronizacji. Nie otwiera danych.",
-        "codeLabel": "Kod odzyskiwania",
+        "codeLabel": "Kod zestawu odzyskiwania",
         "codeNote": "Otwiera Twoje zsynchronizowane dane. Zachowaj go w tajemnicy.",
         "qrLabel": "Zeskanuj, aby odzyskać na telefonie",
         "created": "Utworzono {{date}}",
@@ -362,8 +362,8 @@
     "pairTitle": "Dołącz z telefonu",
     "pairHint": "Na telefonie z włączoną synchronizacją: Ustawienia → Synchronizacja → Dodaj urządzenie",
     "kitTitle": "Użyj zestawu odzyskiwania",
-    "kitHint": "Wpisz kod odzyskiwania z zestawu odzyskiwania synchronizacji lub tekst jego kodu QR.",
-    "codeLabel": "Kod odzyskiwania",
+    "kitHint": "Wpisz kod zestawu odzyskiwania lub tekst kodu QR zestawu.",
+    "codeLabel": "Kod zestawu odzyskiwania",
     "accountLabel": "Numer konta",
     "confirm": "Dołącz i zastąp",
     "choice": {
@@ -373,7 +373,7 @@
       },
       "kit": {
         "title": "Mam zestaw odzyskiwania synchronizacji",
-        "lead": "Wpisujesz kod z zestawu i adres serwera. Tak dołącza też drugi komputer."
+        "lead": "Wpisujesz kod zestawu odzyskiwania i adres serwera. Tak dołącza też drugi komputer."
       }
     },
     "connect": "Połącz",
@@ -480,6 +480,10 @@
     "onOtherDevices_few": "{{count}} dokumenty i zdjęcia są na Twoich innych urządzeniach",
     "onOtherDevices_many": "{{count}} dokumentów i zdjęć jest na Twoich innych urządzeniach",
     "onOtherDevices_other": "{{count}} dokumentów i zdjęć jest na Twoich innych urządzeniach",
+    "failedUpload_one": "Nie udało się przesłać dokumentów i zdjęć: {{count}}. Są tylko na tym urządzeniu.",
+    "failedUpload_few": "Nie udało się przesłać dokumentów i zdjęć: {{count}}. Są tylko na tym urządzeniu.",
+    "failedUpload_many": "Nie udało się przesłać dokumentów i zdjęć: {{count}}. Są tylko na tym urządzeniu.",
+    "failedUpload_other": "Nie udało się przesłać dokumentów i zdjęć: {{count}}. Są tylko na tym urządzeniu.",
     "downloadEverything": "Pobierz wszystko na ten telefon",
     "downloadEverythingStarted": "Pobieranie trwa, dopóki Moony jest otwarte",
     "problem": {
@@ -490,5 +494,11 @@
   "whatSyncs": {
     "title": "Co jest synchronizowane",
     "body": "Synchronizowane jest wszystko, co wprowadzisz do Moony. Język, wygląd, menu, powiadomienia, hasło urządzenia, klucz odzyskiwania i kopie zapasowe należą do każdego urządzenia osobno. Ceny i historia są wyliczane na każdym urządzeniu. Dokumenty i zdjęcia też są synchronizowane; telefon pobiera każdy z nich, gdy go otworzysz."
+  },
+  "protection": {
+    "line_one": "Synchronizacja chroni twoje dane: kopia jest na serwerze synchronizacji (ostatnia pełna synchronizacja: {{age}}, liczba urządzeń w synchronizacji: {{count}}). Utwórz kopię zapasową, gdy chcesz zachować stan z określonego dnia.",
+    "line_few": "Synchronizacja chroni twoje dane: kopia jest na serwerze synchronizacji (ostatnia pełna synchronizacja: {{age}}, liczba urządzeń w synchronizacji: {{count}}). Utwórz kopię zapasową, gdy chcesz zachować stan z określonego dnia.",
+    "line_many": "Synchronizacja chroni twoje dane: kopia jest na serwerze synchronizacji (ostatnia pełna synchronizacja: {{age}}, liczba urządzeń w synchronizacji: {{count}}). Utwórz kopię zapasową, gdy chcesz zachować stan z określonego dnia.",
+    "line_other": "Synchronizacja chroni twoje dane: kopia jest na serwerze synchronizacji (ostatnia pełna synchronizacja: {{age}}, liczba urządzeń w synchronizacji: {{count}}). Utwórz kopię zapasową, gdy chcesz zachować stan z określonego dnia."
   }
 }

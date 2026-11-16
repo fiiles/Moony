@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Landmark, Plus, Target, Wallet } from 'lucide-react';
 import { useFormat } from '@/lib/use-format';
 import { useAuth } from '@/hooks/use-auth';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useGreeting } from '@/hooks/use-greeting';
 import {
   ASSET_CLASSES,
@@ -13,6 +14,7 @@ import {
 import { useNetWorthJumpTip } from '@/hooks/use-net-worth-jump-tip';
 import { useRecentMoves } from '@/hooks/use-recent-moves';
 import type { JumpEvent } from '@/utils/net-worth-jumps';
+import { syncIsOn } from '@/utils/safe-copy';
 import { investmentPage } from '@/utils/getting-started';
 import { CHART_PERIODS } from '@/utils/period';
 import TimePeriodSelector, { type Period } from '@/components/cashflow/TimePeriodSelector';
@@ -32,6 +34,9 @@ import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 
 export default function Dashboard() {
   const { t } = useTranslation('dashboard');
+  const syncFeature = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
+  const syncOn = syncIsOn(syncFeature, syncStatus);
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const fmt = useFormat();
@@ -159,7 +164,7 @@ export default function Dashboard() {
         <EmptyState
           icon={<Wallet />}
           title={t('empty.title')}
-          description={t('empty.description')}
+          description={syncOn ? t('empty.descriptionSync') : t('empty.description')}
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button onClick={() => setLocation('/bank-accounts')}>

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { deviceSyncApi } from '@/lib/tauri-api';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { syncIsOn } from '@/utils/safe-copy';
 
 /**
  * Whether device sync is built in and enabled, and whether that is still being asked (a screen
@@ -76,7 +77,7 @@ export function useDeviceSyncAccount(
 export function useSyncDevices() {
   const enabled = useDeviceSyncFeature();
   const { data: status } = useDeviceSyncStatus();
-  const syncOn = status !== undefined && status.phase !== 'off' && status.phase !== 'settingUp';
+  const syncOn = syncIsOn(true, status);
   return useQuery({
     queryKey: ['device-sync-devices'],
     queryFn: () => deviceSyncApi.listDevices(),

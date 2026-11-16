@@ -120,8 +120,9 @@
     "confirmWord": "SMAZAT",
     "deleteAll": "Smazat všechna data",
     "deleteAllHint": "Odstraní databázi, soubory s klíči a přílohy na tomto počítači. Kopie vedle databáze (moony.db.bak-…, pre-restore-…) zůstanou v datové složce (Data a zálohy → Otevřít složku), stejně jako zálohy uložené mimo aplikaci.",
+    "deleteAllHintSynced": "Odstraní databázi, soubory s klíči a přílohy na tomto počítači i synchronizovaná data na synchronizačním serveru (pokud je dostupný): ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají. Kopie vedle databáze (moony.db.bak-…, pre-restore-…) zůstanou v datové složce (Data a zálohy → Otevřít složku), stejně jako zálohy uložené mimo aplikaci.",
     "deleteButton": "Smazat data…",
-    "syncDeleted": "Smažou se i synchronizovaná data na synchronizačním serveru, takže se vaše ostatní zařízení přestanou synchronizovat.",
+    "syncDeleted": "Smažou se i synchronizovaná data na synchronizačním serveru: vaše ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají. Pokud server není dostupný, data na něm zůstanou, šifrovaná.",
     "confirmDescriptionSynced": "Tuto akci nelze vrátit zpět. Trvale smaže databázi, soubory s klíči a přílohy z tohoto zařízení. Kopie, které Moony ukládá vedle databáze (moony.db.bak-…, pre-restore-…), zůstanou v datové složce; vede do ní Nastavení → Data a zálohy → Otevřít složku."
   },
   "toast": {
@@ -209,7 +210,11 @@
       "deleteBody": "Tato záloha se nenávratně smaže.",
       "deleteBodyKept": "Tato záloha obsahuje změny, které nejsou nikde jinde. Nenávratně se smaže a tyto změny se ztratí.",
       "deleted": "Záloha smazána"
-    }
+    },
+    "notInBackup_one": "{{count}} dokument nebo fotka zatím není v tomto počítači, záloha vytvořená teď ji proto nebude obsahovat.",
+    "notInBackup_few": "{{count}} dokumenty a fotky zatím nejsou v tomto počítači, záloha vytvořená teď je proto nebude obsahovat.",
+    "notInBackup_many": "{{count}} dokumentů a fotek zatím není v tomto počítači, záloha vytvořená teď je proto nebude obsahovat.",
+    "notInBackup_other": "{{count}} dokumentů a fotek zatím není v tomto počítači, záloha vytvořená teď je proto nebude obsahovat."
   },
   "autoLock": {
     "title": "Automatické zamykání",
@@ -253,6 +258,23 @@
       "touchId": "Tento Mac nemá Touch ID nebo v něm není přidaný otisk.",
       "windowsHello": "Windows Hello není nastavené. Nastavíte ho v Nastavení Windows → Účty → Možnosti přihlášení.",
       "generic": "Na tomto počítači není biometrie k dispozici."
+    }
+  },
+  "keepSafe": {
+    "title": "Co si uschovat",
+    "description": "Každá z těchto věcí slouží k něčemu jinému.",
+    "password": {
+      "title": "Heslo zařízení",
+      "text": "Odemyká Moony na tomto zařízení."
+    },
+    "recoveryKey": {
+      "title": "Obnovovací klíč",
+      "text": "Obnoví heslo na tomto zařízení. Každé zařízení má vlastní."
+    },
+    "kit": {
+      "title": "Záchranná sada synchronizace",
+      "text": "Vrátí synchronizovaná data, když přijdete o všechna zařízení. Jedna pro všechna zařízení.",
+      "show": "Zobrazit"
     }
   }
 }

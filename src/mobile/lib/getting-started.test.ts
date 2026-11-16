@@ -53,3 +53,27 @@ describe('opensAddAccount', () => {
     expect(opensAddAccount('')).toBe(false);
   });
 });
+
+describe('phoneGettingStartedItems with sync', () => {
+  it('leads "Protect your data" to Záloha a přenos and drops it where backups cannot be made', () => {
+    const sync = { featureOn: true, syncOn: false };
+    const items = phoneGettingStartedItems(progress, undefined, true, sync);
+    expect(items.find((i) => i.key === 'protectData')?.href).toBe('/settings/backup');
+    expect(items.some((i) => i.key === 'makeBackup')).toBe(false);
+    const noBackup = phoneGettingStartedItems(progress, undefined, false, sync);
+    expect(noBackup.some((i) => i.key === 'protectData' || i.key === 'makeBackup')).toBe(false);
+  });
+
+  it('ticks "Protect your data" when sync is on', () => {
+    const on = phoneGettingStartedItems(progress, undefined, true, {
+      featureOn: true,
+      syncOn: true,
+    });
+    expect(on.find((i) => i.key === 'protectData')?.done).toBe(true);
+    const off = phoneGettingStartedItems(progress, undefined, true, {
+      featureOn: true,
+      syncOn: false,
+    });
+    expect(off.find((i) => i.key === 'protectData')?.done).toBe(false);
+  });
+});

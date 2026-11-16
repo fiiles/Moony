@@ -73,6 +73,7 @@
   "empty": {
     "title": "Tutaj pojawi się twój majątek netto",
     "description": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy. Wszystko zostaje na tym komputerze.",
+    "descriptionSync": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy.",
     "addAccount": "Dodaj konto bankowe i zaimportuj wyciąg",
     "addInvestment": "Dodaj inwestycję",
     "setBudget": "Ustaw budżet"
@@ -88,6 +89,9 @@
     "setBudgetHint": "Miesięczne limity dla kategorii wydatków.",
     "makeBackup": "Zrób kopię zapasową",
     "makeBackupHint": "Jeden plik ze wszystkim, w Ustawienia → Dane i kopie zapasowe.",
+    "protectData": "Chroń swoje dane",
+    "protectDataHint": "Zrób kopię zapasową w Ustawienia → Dane i kopie zapasowe albo włącz synchronizację.",
+    "setUpSync": "Skonfiguruj synchronizację",
     "dismiss": "Odrzuć",
     "done": "Gotowe",
     "optional": "Opcjonalne"

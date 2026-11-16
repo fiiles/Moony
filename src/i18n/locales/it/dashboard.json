@@ -73,6 +73,7 @@
   "empty": {
     "title": "Qui comparirà il tuo patrimonio netto",
     "description": "Aggiungi un conto o un investimento e Moony costruisce da lì panoramica, grafici e andamenti. Tutto resta su questo computer.",
+    "descriptionSync": "Aggiungi un conto o un investimento e Moony costruisce da lì panoramica, grafici e andamenti.",
     "addAccount": "Aggiungi un conto bancario e importa un estratto conto",
     "addInvestment": "Aggiungi un investimento",
     "setBudget": "Imposta un budget"
@@ -88,6 +89,9 @@
     "setBudgetHint": "Limiti mensili per categoria di spesa.",
     "makeBackup": "Fai un backup",
     "makeBackupHint": "Un unico file con tutto, in Impostazioni → Dati e backup.",
+    "protectData": "Proteggi i tuoi dati",
+    "protectDataHint": "Fai un backup in Impostazioni → Dati e backup, oppure attiva la sincronizzazione.",
+    "setUpSync": "Configura la sincronizzazione",
     "dismiss": "Chiudi",
     "done": "Fatto",
     "optional": "Facoltativo"

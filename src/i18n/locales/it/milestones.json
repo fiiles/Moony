@@ -73,6 +73,8 @@
     "valuation_stale": "Nessuna nuova valutazione dal {{date}} · rivalutalo",
     "backup_stale": "Ultimo backup {{date}}",
     "backup_never": "Ancora nessun backup",
+    "backup_stale_sync": "Ultima copia sicura {{date}}: riattiva la sincronizzazione o fai un backup",
+    "backup_never_sync": "Ancora nessuna copia sicura: riattiva la sincronizzazione o fai un backup",
     "balances_stale_one": "{{count}} conto non aggiornato da oltre 30 giorni",
     "balances_stale_many": "{{count}} conti non aggiornati da oltre 30 giorni",
     "balances_stale_other": "{{count}} conti non aggiornati da oltre 30 giorni",
@@ -123,6 +125,7 @@
     "backup": {
       "label": "Backup dei dati",
       "hint": "Quando l'ultimo backup risale a più di 30 giorni fa.",
+      "hintSync": "Quando né un backup né una sincronizzazione completa risalgono a meno di 30 giorni fa.",
       "mute": "Non ricordarmi i backup"
     },
     "balances": {

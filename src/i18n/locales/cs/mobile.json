@@ -20,6 +20,7 @@
       "noHistory": "bez historie"
     },
     "emptyDescription": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj. Všechna data zůstávají v tomto telefonu.",
+    "emptyDescriptionSync": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj.",
     "ringCenter": "Aktiva"
   },
   "money": {
@@ -91,6 +92,11 @@
     "backupStale_few": "Záloha před {{count}} dny",
     "backupStale_other": "Záloha před {{count}} dny",
     "backupNever": "Zatím žádná záloha",
+    "safeCopyStale_one": "{{count}} den bez bezpečné kopie",
+    "safeCopyStale_few": "{{count}} dny bez bezpečné kopie",
+    "safeCopyStale_other": "{{count}} dní bez bezpečné kopie",
+    "safeCopyNever": "Zatím žádná bezpečná kopie",
+    "bothWaysOut": "Obnovte synchronizaci, nebo zálohujte",
     "valuationStale": "Ocenění {{name}} je rok staré",
     "syncStalled": "Synchronizace se zastavila",
     "actions": {
@@ -787,6 +793,7 @@
     "delete": {
       "title": "Smazat všechna data?",
       "lead": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — je to jediná cesta zpět.",
+      "leadSynced": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu i synchronizovaná data na synchronizačním serveru (pokud je dostupný): ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — pro tento telefon je to jediná cesta zpět.",
       "confirmLabel": "Pro potvrzení napište {{word}}",
       "confirm": "Smazat data",
       "failed": "Smazání selhalo"
@@ -874,7 +881,10 @@
     "syncSaveCopy": "Uložit kopii do Souborů",
     "syncCopySaved": "Kopie byla uložena do Souborů",
     "syncLeadNoFiles": "Moony uloží zálohu, než synchronizace v tomto telefonu nahradí data. Tady je můžete obnovit nebo smazat.",
-    "syncNoCopy": "Uložení kopie mimo Moony zatím na tomto telefonu není k dispozici. Zálohu lze obnovit z tohoto seznamu. Pokud se data Moony z telefonu odstraní, zálohy zmizí."
+    "syncNoCopy": "Uložení kopie mimo Moony zatím na tomto telefonu není k dispozici. Zálohu lze obnovit z tohoto seznamu. Pokud se data Moony z telefonu odstraní, zálohy zmizí.",
+    "leadSync": "Synchronizace drží vaše zařízení ve shodě. Záloha je jeden šifrovaný soubor pro jednorázový přenos nebo kopii k uschování: databáze, klíče a dokumenty a fotky v tomto telefonu. Otevře ji jen vaše heslo.",
+    "restoreLeadSync": "Obnovte zálohu z tohoto telefonu, nebo jednorázově přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření. Zařízení ve shodě drží synchronizace.",
+    "osBackupNoteSync": "Profil se neukládá do zálohy telefonu (iCloud ani počítač). Mimo telefon jsou vaše data, jakmile se synchronizují, na synchronizačním serveru a na dalších zařízeních a v zálohách Moony, které si sami uložíte."
   },
   "firstRun": {
     "privacyLead": "Moony ukládá vše do šifrované databáze v tomto telefonu. Žádný cloud, žádný účet u nás.",
@@ -885,7 +895,8 @@
       },
       "localOnly": {
         "title": "Bez cloudu",
-        "text": "– data nikam neposíláme; zálohu si uložíte do Souborů nebo iCloud Drive sami."
+        "text": "– data nikam neposíláme; zálohu si uložíte do Souborů nebo iCloud Drive sami.",
+        "textSync": "– data opustí tento telefon, jen když zapnete synchronizaci, a pak jen koncově šifrovaná na synchronizační server, který si zvolíte; zálohu si uložíte do Souborů nebo iCloud Drive sami."
       },
       "marketData": {
         "title": "Tržní data",
@@ -942,7 +953,11 @@
       "hint": "Když je poslední záloha starší než 30 dní.",
       "title": "Zálohujte Moony",
       "stale": "Poslední záloha je starší než měsíc.",
-      "never": "Zatím nemáte žádnou zálohu."
+      "never": "Zatím nemáte žádnou zálohu.",
+      "titleSync": "Ochraňte data v Moony",
+      "staleSync": "Poslední bezpečná kopie je starší než měsíc. Obnovte synchronizaci, nebo zálohujte.",
+      "neverSync": "Zatím nemáte žádnou bezpečnou kopii. Obnovte synchronizaci, nebo zálohujte.",
+      "hintSync": "Když není záloha ani úplná synchronizace novější než 30 dní."
     },
     "deadline": {
       "title": "{{title}}",
@@ -1004,7 +1019,8 @@
     }
   },
   "gettingStarted": {
-    "makeBackupHint": "Jeden šifrovaný soubor se vším, v Nastavení → Záloha a přenos."
+    "makeBackupHint": "Jeden šifrovaný soubor se vším, v Nastavení → Záloha a přenos.",
+    "protectDataHint": "Udělejte zálohu v Nastavení → Záloha a přenos, nebo zapněte synchronizaci."
   },
   "sheet": {
     "discard": {

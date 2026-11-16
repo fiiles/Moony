@@ -261,6 +261,8 @@ async fn the_status_counts_pending_changes_and_held_devices() {
             server_insecure: false,
             enabled_at: None,
             attachments: Default::default(),
+            last_complete_at: None,
+            protects_data: false,
         }
     );
 }

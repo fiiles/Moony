@@ -383,7 +383,11 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 ///    of none, a gap, a change held for its date, an invalid chain or a relay error
 ///    (`status::went_back`). A
 ///    round with no problem, or only a waiting gap (`Gap`) or change (`ClockAhead`), records its
-///    success; one with any other problem records its fixed reason.
+///    success; one with any other problem records its fixed reason. A round with no problem that
+///    leaves no change to send (`sync_outbox`, `sync_unsent`) and no document or photo to upload,
+///    stuck ones and ones not queued yet included, nor a blob a replace still holds
+///    (`queue::holds_content_to_upload`), also records a complete sync
+///    (`state::record_complete`, spec 2026-11-14 §7.2).
 #[allow(clippy::too_many_arguments)]
 pub async fn run_round_into<R: Relay, D: ConnAccess>(
     relay: &R,
@@ -468,7 +472,14 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         Some(problem @ (SyncProblem::Gap | SyncProblem::ClockAhead)) if stalled => {
             state::record_error(conn, status::reason(problem))
         }
-        None | Some(SyncProblem::Gap | SyncProblem::ClockAhead) => state::record_success(conn, now),
+        None => {
+            state::record_success(conn, now)?;
+            if status::unsent_changes(conn)? == 0 && !content_to_upload(conn)? {
+                state::record_complete(conn, now)?;
+            }
+            Ok(())
+        }
+        Some(SyncProblem::Gap | SyncProblem::ClockAhead) => state::record_success(conn, now),
         Some(problem) => state::record_error(conn, status::reason(problem)),
     })?;
     Ok(())
@@ -693,6 +704,22 @@ fn queue_local_changes(conn: &Connection, blobs: &BlobPolicy, now: i64) -> Resul
             log::debug!("[SYNC] The transfer queue could not be brought up to date: {error}");
             Ok(())
         }
+    }
+}
+
+/// Whether the round leaves content here to upload (`queue::holds_content_to_upload`, the
+/// summary's `content_left`: the same definition the status's verdict reads), for the complete
+/// sync of step 6. A queue that cannot be read is logged and counts as content left (no
+/// complete sync is recorded, the round's success stands); a locked profile ends the round.
+fn content_to_upload(conn: &Connection) -> Result<bool> {
+    match queue::holds_content_to_upload(conn) {
+        Err(error @ AppError::Auth(_)) => Err(error),
+        Err(error) => {
+            log::warn!("[SYNC] The transfer queue could not be read: no complete sync recorded");
+            log::debug!("[SYNC] The transfer queue could not be read: {error}");
+            Ok(true)
+        }
+        held => held,
     }
 }
 

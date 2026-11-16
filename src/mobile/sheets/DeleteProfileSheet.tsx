@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { confirmWordMatches } from '@/lib/confirm-word';
 import { authApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
+import { syncIsOn } from '@/utils/safe-copy';
 import { Sheet } from '@/mobile/components/Sheet';
 import { cancelAllNotifications } from '@/mobile/hooks/use-notification-schedule';
 
@@ -25,6 +27,9 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const { t: ts } = useTranslation('settings');
+  const syncFeature = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
+  const syncOn = syncIsOn(syncFeature, syncStatus);
   const [typed, setTyped] = useState('');
   // The word to type before everything is deleted, in the UI language and as the desktop's
   // danger zone asks for it ("SMAZAT"); any case will do (audit B5)
@@ -62,7 +67,7 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
       open={open}
       onOpenChange={change}
       title={t('settings.delete.title')}
-      description={t('settings.delete.lead')}
+      description={syncOn ? t('settings.delete.leadSynced') : t('settings.delete.lead')}
       footer={
         <>
           <Button

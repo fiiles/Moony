@@ -81,7 +81,11 @@ Brokers / IBKR, Revolut, Degiro, Fio, Air Bank, …), keyboard keys.
 | Stock monitor / watchlist | Aktienmonitor / Beobachtungsliste | Monitor de acciones / lista de seguimiento | Monitor azioni / lista di osservazione | Aksjemonitor / følgeliste | Monitor akcji / lista obserwowanych | Aktiebevakning / bevakningslista | 株式モニター / ウォッチリスト | 股票监控 / 自选列表 |
 | Lock / unlock | Sperren / Entsperren | Bloquear / desbloquear | Blocca / sblocca | Lås / lås opp | Zablokuj / odblokuj | Lås / lås upp | ロック / ロック解除 | 锁定 / 解锁 |
 | Password | Passwort | Contraseña | Password | Passord | Hasło | Lösenord | パスワード | 密码 |
-| Recovery key | Wiederherstellungsschlüssel | Clave de recuperación | Chiave di recupero | Gjenopprettingsnøkkel | Klucz odzyskiwania | Återställningsnyckel | 復旧キー | 恢复密钥 |
+| Recovery key (cs obnovovací klíč; one per device, resets that device's password) | Wiederherstellungsschlüssel | Clave de recuperación | Chiave di recupero | Gjenopprettingsnøkkel | Klucz odzyskiwania | Återställningsnyckel | 復旧キー | 恢复密钥 |
+| Device password (cs heslo zařízení; unlocks one device) | Gerätepasswort | Contraseña del dispositivo | Password del dispositivo | Enhetspassord | Hasło urządzenia | Enhetens lösenord | デバイスのパスワード | 设备密码 |
+| Sync Recovery Kit (cs Záchranná sada synchronizace; one for all devices) | Sync-Wiederherstellungs-Kit | Kit de recuperación de sincronización | Kit di ripristino della sincronizzazione | Gjenopprettingssett for synkronisering | Zestaw odzyskiwania synchronizacji | Återställningskit för synkronisering | 同期リカバリーキット | 同步恢复包 |
+| Recovery Kit code (cs kód záchranné sady; never "recovery code" / "obnovovací kód") | Code des Wiederherstellungs-Kits | Código del kit de recuperación | Codice del kit di ripristino | Kode fra gjenopprettingssettet | Kod zestawu odzyskiwania | Kod från återställningskitet | リカバリーキットのコード | 恢复包代码 |
+| Connection code (cs připojovací kód; from the sync server's admin) | Verbindungscode | Código de conexión | Codice di connessione | Tilkoblingskode | Kod połączenia | Anslutningskod | 接続コード | 连接码 |
 | Backup | Sicherung | Copia de seguridad | Backup | Sikkerhetskopi | Kopia zapasowa | Säkerhetskopia | バックアップ | 备份 |
 | Import / export | Import / Export | Importar / exportar | Importa / esporta | Import / eksport | Import / eksport | Import / export | インポート / エクスポート | 导入 / 导出 |
 | Settings | Einstellungen | Ajustes | Impostazioni | Innstillinger | Ustawienia | Inställningar | 設定 | 设置 |

@@ -120,8 +120,9 @@
     "confirmWord": "ELIMINA",
     "deleteAll": "Elimina tutti i dati",
     "deleteAllHint": "Rimuove il database, i file delle chiavi e gli allegati su questo computer. Le copie accanto al database (moony.db.bak-…, pre-restore-…) restano nella cartella dei dati (Dati e backup → Apri cartella), come i backup salvati fuori dall'app.",
+    "deleteAllHintSynced": "Rimuove il database, i file delle chiavi e gli allegati su questo computer, e i dati sincronizzati sul server di sincronizzazione (se raggiungibile): gli altri tuoi dispositivi smettono di sincronizzare e conservano i dati che hanno. Le copie accanto al database (moony.db.bak-…, pre-restore-…) restano nella cartella dei dati (Dati e backup → Apri cartella), come i backup salvati fuori dall'app.",
     "deleteButton": "Elimina i dati…",
-    "syncDeleted": "Vengono eliminati anche i dati sincronizzati sul server di sincronizzazione, quindi gli altri tuoi dispositivi smettono di sincronizzare.",
+    "syncDeleted": "Vengono eliminati anche i dati sincronizzati sul server di sincronizzazione: gli altri tuoi dispositivi smettono di sincronizzare e conservano i dati che hanno. Se il server non è raggiungibile, quei dati restano lì, cifrati.",
     "confirmDescriptionSynced": "Questa azione non si può annullare. Elimina definitivamente il database, i file delle chiavi e gli allegati da questo dispositivo. Le copie che Moony conserva accanto al database (moony.db.bak-…, pre-restore-…) restano nella cartella dei dati; Impostazioni → Dati e backup → Apri cartella porta fin lì."
   },
   "toast": {
@@ -209,7 +210,10 @@
       "deleteBody": "Questo backup viene eliminato definitivamente.",
       "deleteBodyKept": "Questo backup contiene modifiche che non esistono altrove. Viene eliminato definitivamente e quelle modifiche vanno perse.",
       "deleted": "Backup eliminato"
-    }
+    },
+    "notInBackup_one": "{{count}} documento o foto non è ancora su questo computer, quindi un backup fatto ora non lo includerà.",
+    "notInBackup_many": "{{count}} documenti e foto non sono ancora su questo computer, quindi un backup fatto ora non li includerà.",
+    "notInBackup_other": "{{count}} documenti e foto non sono ancora su questo computer, quindi un backup fatto ora non li includerà."
   },
   "autoLock": {
     "title": "Blocco automatico",
@@ -252,6 +256,23 @@
       "touchId": "Questo Mac non ha Touch ID o non ha impronte aggiunte.",
       "windowsHello": "Windows Hello non è configurato. Configuralo in Impostazioni di Windows → Account → Opzioni di accesso.",
       "generic": "La biometria non è disponibile su questo computer."
+    }
+  },
+  "keepSafe": {
+    "title": "Cosa conservare",
+    "description": "Ognuna di queste cose ha uno scopo diverso.",
+    "password": {
+      "title": "Password del dispositivo",
+      "text": "Sblocca Moony su questo dispositivo."
+    },
+    "recoveryKey": {
+      "title": "Chiave di recupero",
+      "text": "Reimposta la password su questo dispositivo. Ogni dispositivo ha la sua."
+    },
+    "kit": {
+      "title": "Kit di ripristino della sincronizzazione",
+      "text": "Riporta i tuoi dati sincronizzati quando perdi tutti i dispositivi. Uno solo per tutti i tuoi dispositivi.",
+      "show": "Mostra"
     }
   }
 }

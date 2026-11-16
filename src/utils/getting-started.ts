@@ -5,7 +5,14 @@
  */
 import type { MenuPreferences, OnboardingProgress } from '@shared/schema';
 
-export type GettingStartedKey = 'importStatement' | 'addInvestment' | 'setBudget' | 'makeBackup';
+export type GettingStartedKey =
+  'importStatement' | 'addInvestment' | 'setBudget' | 'makeBackup' | 'protectData';
+
+/** With the sync flag on, the last core item is "Ochránit data", done by a backup or by sync on (spec §7.3); without it today's "Udělat zálohu". */
+export interface GettingStartedSync {
+  featureOn: boolean;
+  syncOn: boolean;
+}
 
 export interface GettingStartedItem {
   key: GettingStartedKey;
@@ -32,7 +39,8 @@ export function investmentPage(prefs: MenuPreferences | undefined): string | nul
 
 export function gettingStartedItems(
   progress: Progress,
-  prefs: MenuPreferences | undefined
+  prefs: MenuPreferences | undefined,
+  sync: GettingStartedSync = { featureOn: false, syncOn: false }
 ): GettingStartedItem[] {
   const items: GettingStartedItem[] = [
     {
@@ -54,12 +62,30 @@ export function gettingStartedItems(
   }
   items.push(
     { key: 'setBudget', done: progress.hasBudget, href: '/reports/cashflow', optional: true },
-    {
-      key: 'makeBackup',
-      done: progress.lastBackupAt !== null,
-      href: '/settings/data',
-      optional: false,
-    }
+    sync.featureOn
+      ? {
+          key: 'protectData',
+          done: progress.lastBackupAt !== null || sync.syncOn,
+          href: '/settings/data',
+          optional: false,
+        }
+      : {
+          key: 'makeBackup',
+          done: progress.lastBackupAt !== null,
+          href: '/settings/data',
+          optional: false,
+        }
   );
   return items;
+}
+
+/**
+ * Whether the checklist item offers a second link, to the sync settings: only "Protect your data"
+ * (its own link leads to the backup), while the flag is on, sync is off and the item is not done.
+ */
+export function offerSyncLink(
+  item: Pick<GettingStartedItem, 'key' | 'done'>,
+  sync: GettingStartedSync
+): boolean {
+  return item.key === 'protectData' && sync.featureOn && !sync.syncOn && !item.done;
 }

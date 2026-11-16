@@ -120,8 +120,9 @@
     "confirmWord": "DELETE",
     "deleteAll": "Delete all data",
     "deleteAllHint": "Removes the database, the key files and the attachments on this computer. Copies next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder (Data and backups → Open folder), and so do backups saved outside the app.",
+    "deleteAllHintSynced": "Removes the database, the key files and the attachments on this computer, and the synced data on the sync server (if it can be reached): your other devices stop syncing and keep the data they hold. Copies next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder (Data and backups → Open folder), and so do backups saved outside the app.",
     "deleteButton": "Delete data…",
-    "syncDeleted": "Synced data on the sync server is deleted too, so your other devices stop syncing.",
+    "syncDeleted": "Synced data on the sync server is deleted too: your other devices stop syncing and keep the data they hold. If the server cannot be reached, that data stays there, encrypted.",
     "confirmDescriptionSynced": "This action cannot be undone. It permanently deletes your database, the key files and the attachments from this device. Copies that Moony keeps next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder; Settings → Data and backups → Open folder leads there."
   },
   "toast": {
@@ -207,7 +208,9 @@
       "deleteBody": "This backup is deleted for good.",
       "deleteBodyKept": "This backup holds changes found nowhere else. It is deleted for good, and those changes are lost.",
       "deleted": "Backup deleted"
-    }
+    },
+    "notInBackup_one": "{{count}} document or photo is not on this computer yet, so a backup made now leaves it out.",
+    "notInBackup_other": "{{count}} documents and photos are not on this computer yet, so a backup made now leaves them out."
   },
   "autoLock": {
     "title": "Auto-lock",
@@ -249,6 +252,23 @@
       "touchId": "This Mac has no Touch ID, or no fingerprint is added to it.",
       "windowsHello": "Windows Hello is not set up. Set it up in Windows Settings → Accounts → Sign-in options.",
       "generic": "Biometrics are not available on this computer."
+    }
+  },
+  "keepSafe": {
+    "title": "What to keep safe",
+    "description": "Each of these does a different job.",
+    "password": {
+      "title": "Device password",
+      "text": "Unlocks Moony on this device."
+    },
+    "recoveryKey": {
+      "title": "Recovery key",
+      "text": "Resets the password on this device. Each device has its own."
+    },
+    "kit": {
+      "title": "Sync Recovery Kit",
+      "text": "Brings your synced data back when every device is lost. One for all your devices.",
+      "show": "Show"
     }
   }
 }

@@ -68,6 +68,8 @@
     "valuation_stale": "Ingen ny verdivurdering siden {{date}} · vurder den på nytt",
     "backup_stale": "Siste sikkerhetskopi {{date}}",
     "backup_never": "Ingen sikkerhetskopi ennå",
+    "backup_stale_sync": "Siste sikre kopi {{date}}: gjenoppta synkroniseringen eller ta sikkerhetskopi",
+    "backup_never_sync": "Ingen sikker kopi ennå: gjenoppta synkroniseringen eller ta sikkerhetskopi",
     "balances_stale_one": "{{count}} konto er ikke oppdatert på over 30 dager",
     "balances_stale_other": "{{count}} kontoer er ikke oppdatert på over 30 dager",
     "sync_stalled": "Sist synkronisert {{date}}",
@@ -116,6 +118,7 @@
     "backup": {
       "label": "Sikkerhetskopier av data",
       "hint": "Når den siste sikkerhetskopien er eldre enn 30 dager.",
+      "hintSync": "Når verken en sikkerhetskopi eller en fullstendig synkronisering er nyere enn 30 dager.",
       "mute": "Ikke påminn meg om sikkerhetskopier"
     },
     "balances": {

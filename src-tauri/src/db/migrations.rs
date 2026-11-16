@@ -103,6 +103,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("036_sync_held_blobs", MIGRATION_036),
         ("037_sync_blobs_refusals", MIGRATION_037),
         ("038_sync_blobs_size", MIGRATION_038),
+        ("039_sync_last_complete", MIGRATION_039),
     ]
 }
 
@@ -3404,9 +3405,12 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_38_migrations() {
-        assert_eq!(known_migration_names().len(), 38);
-        assert_eq!(known_migration_names().last(), Some(&"038_sync_blobs_size"));
+    fn the_chain_now_has_39_migrations() {
+        assert_eq!(known_migration_names().len(), 39);
+        assert_eq!(
+            known_migration_names().last(),
+            Some(&"039_sync_last_complete")
+        );
     }
 }
 
@@ -3541,6 +3545,60 @@ CREATE INDEX idx_sync_blobs_state ON sync_blobs (state, next_try_at);
 pub(crate) const MIGRATION_038: &str = r#"
 ALTER TABLE sync_blobs ADD COLUMN size INTEGER;
 "#;
+
+/// 039: sync_state.last_complete_at (Local): when a round last succeeded with nothing left to send
+/// here (spec 2026-11-14 §7.2); NULL before the first.
+pub(crate) const MIGRATION_039: &str = r#"
+ALTER TABLE sync_state ADD COLUMN last_complete_at INTEGER;
+"#;
+
+#[cfg(test)]
+mod migration_039 {
+    use super::*;
+
+    #[test]
+    fn sync_state_takes_an_empty_last_complete_at() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let all = all_migrations();
+        let before: Vec<_> = all
+            .iter()
+            .copied()
+            .filter(|(name, _)| *name < "039_sync_last_complete")
+            .collect();
+        run_chain(&conn, &before).expect("chain to 038");
+        conn.execute_batch(
+            "INSERT INTO sync_state (id, device_id, last_success_at) VALUES (1, x'00', 5)",
+        )
+        .expect("row");
+        run_chain(&conn, &all).expect("039");
+        let (success, complete): (Option<i64>, Option<i64>) = conn
+            .query_row(
+                "SELECT last_success_at, last_complete_at FROM sync_state",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("column");
+        assert_eq!(
+            (success, complete),
+            (Some(5), None),
+            "no backfill: the next complete round fills it"
+        );
+        conn.execute("UPDATE sync_state SET last_complete_at = 9", [])
+            .expect("set");
+    }
+
+    #[test]
+    fn a_profile_without_sync_takes_the_column_too() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()).expect("full chain");
+        let rows: i64 = conn
+            .query_row("SELECT COUNT(last_complete_at) FROM sync_state", [], |r| {
+                r.get(0)
+            })
+            .expect("column");
+        assert_eq!(rows, 0);
+    }
+}
 
 #[cfg(test)]
 mod migration_038 {

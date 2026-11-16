@@ -73,6 +73,7 @@
   "empty": {
     "title": "Tady se zobrazí vaše čisté jmění",
     "description": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj. Všechna data zůstávají v tomto počítači.",
+    "descriptionSync": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj.",
     "addAccount": "Přidat bankovní účet a naimportovat výpis",
     "addInvestment": "Přidat investici",
     "setBudget": "Nastavit rozpočet"
@@ -88,6 +89,9 @@
     "setBudgetHint": "Měsíční limity pro jednotlivé kategorie výdajů.",
     "makeBackup": "Udělat zálohu",
     "makeBackupHint": "Jeden soubor se vším, v Nastavení → Data a zálohy.",
+    "protectData": "Ochránit data",
+    "protectDataHint": "Udělejte zálohu v Nastavení → Data a zálohy, nebo zapněte synchronizaci.",
+    "setUpSync": "Nastavit synchronizaci",
     "dismiss": "Skrýt",
     "done": "Hotovo",
     "optional": "Volitelné"

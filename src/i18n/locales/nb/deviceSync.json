@@ -46,7 +46,7 @@
       "relayError": "Synkroniseringsserveren svarer ikke som forventet. Moony fortsetter å prøve.",
       "rateLimited": "Synkroniseringsserveren ba Moony om å senke farten. Moony prøver igjen snart.",
       "unauthorized": "Synkroniseringsserveren godtok ikke denne enheten. Du må kanskje sette opp synkronisering på nytt.",
-      "keyRotated": "Gjenopprettingsnøkkelen ble endret på en annen enhet. Sett opp synkronisering på nytt på denne enheten.",
+      "keyRotated": "Synkroniseringsnøkkelen ble endret på en annen enhet. Sett opp synkronisering på nytt på denne enheten.",
       "secureStorage": "Moony kom ikke til den sikre lagringen på denne enheten, så synkroniseringen er satt på pause. Moony prøver igjen; det hjelper som regel å låse opp enheten eller starte Moony på nytt.",
       "serverWentBack": "Synkroniseringsserveren har gått tilbake til en eldre tilstand, så endringer kan mangle på de andre enhetene dine. Dataene dine på denne enheten er intakte. Moony kan ikke rette opp dette selv ennå: for å samle enhetene igjen, slå av synkronisering, sett den opp på nytt på enheten med de mest fullstendige dataene, og koble til de andre. Ikke synkroniser denne enheten på nytt: det ville erstatte dataene på enheten med den eldre kopien på synkroniseringsserveren. Når du setter opp synkronisering på nytt, opprettes en ny synkroniseringskonto.",
       "internal": "Synkroniseringen stoppet på grunn av en intern feil."
@@ -72,7 +72,7 @@
     "repeatOnOthers": "Gjør det samme på de andre enhetene dine."
   },
   "intro": {
-    "description": "Hold dataene dine oppdatert på alle enhetene dine. De er ende-til-ende-kryptert: synkroniseringsserveren lagrer bare data den ikke kan lese.",
+    "description": "Hold dataene dine, også dokumenter og bilder, oppdatert på alle enhetene dine. De er ende-til-ende-kryptert: synkroniseringsserveren lagrer bare data den ikke kan lese.",
     "privacy": "Dataene dine forlater aldri enhetene dine ukryptert.",
     "start": "Sett opp synkronisering",
     "resume": "Fortsett oppsettet",
@@ -126,7 +126,7 @@
         "intro": "Oppbevar denne siden trygt, unna enhetene dine. Alle som har den, kan lese de synkroniserte dataene dine.",
         "accountLabel": "Synkroniseringskonto",
         "accountNote": "Identifiserer synkroniseringskontoen din. Den åpner ikke dataene dine.",
-        "codeLabel": "Gjenopprettingskode",
+        "codeLabel": "Kode fra gjenopprettingssettet",
         "codeNote": "Åpner de synkroniserte dataene dine. Hold den hemmelig.",
         "qrLabel": "Skann for å gjenopprette på en telefon",
         "created": "Opprettet {{date}}",
@@ -340,8 +340,8 @@
     "pairTitle": "Bli med fra telefonen",
     "pairHint": "På telefonen med synkronisering på: Innstillinger → Synkronisering → Legg til en enhet",
     "kitTitle": "Bruk et gjenopprettingssett",
-    "kitHint": "Skriv inn gjenopprettingskoden fra gjenopprettingssettet for synkronisering, eller teksten i QR-koden.",
-    "codeLabel": "Gjenopprettingskode",
+    "kitHint": "Skriv inn koden fra gjenopprettingssettet, eller teksten i settets QR-kode.",
+    "codeLabel": "Kode fra gjenopprettingssettet",
     "accountLabel": "Kontonummer",
     "confirm": "Bli med og erstatt",
     "choice": {
@@ -351,7 +351,7 @@
       },
       "kit": {
         "title": "Jeg har gjenopprettingssettet for synkronisering",
-        "lead": "Du skriver inn koden fra settet og serveradressen. Slik kobles også en datamaskin nummer to til."
+        "lead": "Du skriver inn koden fra gjenopprettingssettet og serveradressen. Slik kobles også en datamaskin nummer to til."
       }
     },
     "connect": "Koble til",
@@ -452,6 +452,8 @@
     "uploading": "Laster opp dokumenter og bilder",
     "onOtherDevices_one": "{{count}} dokument eller bilde er på de andre enhetene dine",
     "onOtherDevices_other": "{{count}} dokumenter og bilder er på de andre enhetene dine",
+    "failedUpload_one": "{{count}} dokument eller bilde kunne ikke lastes opp og finnes bare på denne enheten.",
+    "failedUpload_other": "{{count}} dokumenter og bilder kunne ikke lastes opp og finnes bare på denne enheten.",
     "downloadEverything": "Last ned alt til denne telefonen",
     "downloadEverythingStarted": "Laster ned mens Moony er åpen",
     "problem": {
@@ -462,5 +464,9 @@
   "whatSyncs": {
     "title": "Hva som synkroniseres",
     "body": "Alt du legger inn i Moony, synkroniseres. Språk, utseende, meny, varsler, enhetspassord, gjenopprettingsnøkkel og sikkerhetskopier hører til hver enkelt enhet. Priser og historikk beregnes på hver enhet. Dokumenter og bilder synkroniseres også; en telefon laster ned hvert enkelt når du åpner det."
+  },
+  "protection": {
+    "line_one": "Synkroniseringen beskytter dataene dine: en kopi ligger på synkroniseringsserveren (siste fullstendige synkronisering: {{age}}, enheter som synkroniseres: {{count}}). Ta en sikkerhetskopi når du vil bevare hvordan ting sto på en bestemt dag.",
+    "line_other": "Synkroniseringen beskytter dataene dine: en kopi ligger på synkroniseringsserveren (siste fullstendige synkronisering: {{age}}, enheter som synkroniseres: {{count}}). Ta en sikkerhetskopi når du vil bevare hvordan ting sto på en bestemt dag."
   }
 }

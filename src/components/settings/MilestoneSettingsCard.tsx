@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { useAuth } from '@/hooks/use-auth';
-import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useMilestoneMutedKinds } from '@/hooks/use-milestones';
 import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { parseNoticeDays } from '@/utils/insurance-notice';
+import { syncIsOn } from '@/utils/safe-copy';
 import { kindsOf, visibleMilestoneGroups } from '@/utils/milestones';
 
 /** Settings → General → Overview reminders: one switch per reminder group, then the insurance notice. */
@@ -21,6 +22,8 @@ export function MilestoneSettingsCard() {
   const { data: muted } = useMilestoneMutedKinds();
   const { setGroupMuted } = useMilestoneActions();
   const syncFeature = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
+  const syncOn = syncIsOn(syncFeature, syncStatus);
 
   // The notice the milestones use (0 = no reminder); the field shows what is typed, else this.
   const stored = user?.insuranceNoticeDays ?? 0;
@@ -51,7 +54,9 @@ export function MilestoneSettingsCard() {
             key={group}
             htmlFor={`milestone-group-${group}`}
             label={t(`groups.${group}.label`)}
-            hint={t(`groups.${group}.hint`)}
+            hint={t(
+              group === 'backup' && syncOn ? 'groups.backup.hintSync' : `groups.${group}.hint`
+            )}
           >
             <Switch
               id={`milestone-group-${group}`}

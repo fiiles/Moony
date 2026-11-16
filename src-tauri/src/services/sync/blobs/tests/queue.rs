@@ -601,6 +601,8 @@ fn summary_counts_rows_not_blobs() {
             not_on_server: 1,
             failed: 2,
             not_on_device: 4,
+            failed_upload: 0,
+            content_left: true,
         }
     );
     assert_eq!(uploads_waiting(&conn).expect("waiting"), 1);
@@ -645,6 +647,167 @@ fn not_on_device_spans_every_row_missing_content() {
         ),
         (1, 1, 2, 3)
     );
+}
+
+/// Whether content held here may still have to reach the server (`AttachmentSummary::content_left`,
+/// the one definition `holds_content_to_upload` returns): the summary's own answer, checked against
+/// the wrapper every time.
+fn content_left(conn: &Connection) -> bool {
+    let left = summary(conn).expect("summary").content_left;
+    assert_eq!(
+        holds_content_to_upload(conn).expect("holds"),
+        left,
+        "one definition"
+    );
+    left
+}
+
+/// Content held here that the server has not confirmed keeps a sync incomplete (spec 2026-11-14
+/// §7.2), whatever stops it: a stuck upload's content exists on this device only.
+#[test]
+fn content_to_upload_counts_stuck_entries_and_ignores_the_rest() {
+    // proves: `up` entries a row names count, stuck ones too, and so does a row whose blob has
+    // no entry yet, and a blob a replace holds; `down` and `done` entries and entries no row names
+    // do not
+    let conn = profile();
+    assert!(!content_left(&conn), "empty queue");
+
+    let sent = held(&conn, b"sent");
+    document(&conn, "on-its-way", &elsewhere(1), 100);
+    document(&conn, "sent", &sent, 100);
+    assert!(
+        content_left(&conn),
+        "a row whose blob has no entry yet (added after the queue update) is content left"
+    );
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    note_done(&conn, &sent).expect("done");
+    assert_eq!(state_of(&conn, &elsewhere(1)).as_deref(), Some("down"));
+    assert!(
+        !content_left(&conn),
+        "content not here, or already on the server"
+    );
+
+    exec(
+        &conn,
+        &format!(
+            "INSERT INTO sync_blobs (blob_id, state, queued_at) VALUES ('{}', 'up', 1)",
+            elsewhere(7)
+        ),
+    );
+    assert!(
+        !content_left(&conn),
+        "an entry no row names goes at the next reconcile"
+    );
+
+    let waiting = held(&conn, b"waiting");
+    document(&conn, "waiting", &waiting, 100);
+    exec(
+        &conn,
+        &format!(
+            "INSERT INTO sync_blobs (blob_id, state, queued_at) VALUES ('{waiting}', 'up', 1)"
+        ),
+    );
+    assert!(content_left(&conn), "waiting");
+    for code in ["noRoom", "network", "refused", "conflict", "invalidId"] {
+        exec(
+            &conn,
+            &format!("UPDATE sync_blobs SET last_error = '{code}' WHERE blob_id = '{waiting}'"),
+        );
+        assert!(content_left(&conn), "{code}");
+    }
+
+    // Without the store (it failed to open): the per-state counts are zero, but the answer still
+    // comes from the rows and the queue in `main`, so content that waits in a store that did not
+    // open is not "nothing left".
+    exec(&conn, "DETACH DATABASE files");
+    let counts = summary(&conn).expect("summary");
+    assert_eq!(
+        AttachmentSummary {
+            content_left: false,
+            ..counts
+        },
+        AttachmentSummary::default()
+    );
+    assert!(content_left(&conn), "no store");
+    exec(
+        &conn,
+        &format!(
+            "UPDATE sync_blobs SET state = 'done', last_error = NULL WHERE blob_id = '{waiting}'"
+        ),
+    );
+    assert!(!content_left(&conn), "no store, all sent");
+    exec(&conn, "DELETE FROM insurance_documents");
+    assert!(
+        !content_left(&conn),
+        "a profile without attachment rows has nothing to upload"
+    );
+
+    // A blob a replace holds until its row comes back with the pull may be the only copy.
+    exec(
+        &conn,
+        "INSERT INTO sync_held_blobs (blob_id, held_at) VALUES ('held-across-a-replace', 1)",
+    );
+    assert!(content_left(&conn), "held across a replace");
+    exec(&conn, "DELETE FROM sync_held_blobs");
+    assert!(!content_left(&conn), "released");
+}
+
+/// `failed_upload` counts the rows whose upload cannot go by itself (`STUCK`: refused, a conflict,
+/// an invalid ID), a photo once, among the failed rows; an upload merely backing off (no room, the
+/// network) still waits, and a failed download is not one.
+#[test]
+fn failed_upload_counts_uploads_that_cannot_go_by_themselves() {
+    let conn = profile();
+    let mut stuck = Vec::new();
+    for (n, error) in [
+        TransferError::Refused,
+        TransferError::Conflict,
+        TransferError::InvalidId,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let blob = held(&conn, format!("stuck {n}").as_bytes());
+        document(&conn, &format!("stuck-{n}"), &blob, 100);
+        stuck.push((blob, error));
+    }
+    let mut waits = Vec::new();
+    for (n, error) in [
+        Some(TransferError::NoRoom),
+        Some(TransferError::Network),
+        None,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let blob = held(&conn, format!("waits {n}").as_bytes());
+        document(&conn, &format!("waits-{n}"), &blob, 100);
+        waits.push((blob, error));
+    }
+    let full = held(&conn, b"photo, full");
+    let thumb = held(&conn, b"photo, thumbnail");
+    photo(&conn, "ph1", &full, &thumb, 100);
+    document(&conn, "broken", &elsewhere(1), 100);
+    queue::reconcile(&conn, NOW).expect("reconcile");
+    for (blob, error) in &stuck {
+        note_failed(&conn, blob, *error, NOW).expect("stuck");
+    }
+    for (blob, error) in &waits {
+        if let Some(error) = error {
+            note_failed(&conn, blob, *error, NOW).expect("backing off");
+        }
+    }
+    note_failed(&conn, &full, TransferError::Refused, NOW).expect("photo");
+    note_failed(&conn, &thumb, TransferError::Conflict, NOW).expect("thumbnail");
+    note_failed(&conn, &elsewhere(1), TransferError::Refused, NOW).expect("download");
+
+    let counts = summary(&conn).expect("summary");
+    assert_eq!(
+        (counts.failed_upload, counts.waiting_upload, counts.failed),
+        (4, 3, 5),
+        "three documents and a photo cannot upload; a refused download is failed, not an upload"
+    );
+    assert!(counts.content_left);
 }
 
 #[test]
@@ -897,6 +1060,8 @@ fn a_held_blob_with_an_invalid_id_reads_here_and_counts_as_failed() {
     };
     let failed_only = AttachmentSummary {
         failed: 1,
+        failed_upload: 1,
+        content_left: true,
         ..AttachmentSummary::default()
     };
 
@@ -928,6 +1093,8 @@ fn a_held_blob_with_an_invalid_id_reads_here_and_counts_as_failed() {
         summary(&conn).expect("summary"),
         AttachmentSummary {
             not_on_device: 1,
+            failed_upload: 0,
+            content_left: false,
             ..failed_only
         }
     );

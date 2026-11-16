@@ -268,6 +268,42 @@ describe('buildUpkeepRows', () => {
     });
   });
 
+  describe('backup_stale with sync on', () => {
+    it('names the newest safe copy and both ways out', () => {
+      const rows = buildUpkeepRows(
+        input({ syncOn: true, milestones: [milestone('backup_stale', { sinceDay: ago(41) })] })
+      );
+      expect(rows).toHaveLength(1);
+      expect(rows[0].title).toEqual({ key: 'upkeep.safeCopyStale', params: { count: 41 } });
+      expect(rows[0].sub).toEqual({ key: 'upkeep.bothWaysOut', params: {} });
+
+      const never = buildUpkeepRows(
+        input({ syncOn: true, milestones: [milestone('backup_stale')] })
+      );
+      expect(never[0].title).toEqual({ key: 'upkeep.safeCopyNever', params: {} });
+      expect(never[0].sub).toEqual({ key: 'upkeep.bothWaysOut', params: {} });
+    });
+
+    it('reads as today without sync', () => {
+      // Review Focus 1: flag off or sync off changes nothing
+      for (const syncOn of [undefined, false]) {
+        const rows = buildUpkeepRows(
+          input({ syncOn, milestones: [milestone('backup_stale', { sinceDay: ago(41) })] })
+        );
+        expect(rows[0].title).toEqual({ key: 'upkeep.backupStale', params: { count: 41 } });
+        expect(rows[0].sub).toBeUndefined();
+        expect('sub' in rows[0]).toBe(false);
+      }
+    });
+
+    it('still has no backup row where backups cannot be made', () => {
+      const rows = buildUpkeepRows(
+        input({ syncOn: true, canBackup: false, milestones: [milestone('backup_stale')] })
+      );
+      expect(rows).toEqual([]);
+    });
+  });
+
   describe('valuation_stale', () => {
     it('is one row per property, named', () => {
       const rows = buildUpkeepRows(

@@ -35,9 +35,12 @@ function status(
       notOnServer: 0,
       failed: 0,
       notOnDevice: 0,
+      failedUpload: 0,
       problem: null,
       ...attachments,
     },
+    lastCompleteAt: null,
+    protectsData: false,
   };
 }
 

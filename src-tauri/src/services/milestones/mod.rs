@@ -23,6 +23,7 @@ use crate::models::sync::SyncStatus;
 use crate::models::{Milestone, MILESTONE_KINDS, MILESTONE_STATE_DONE, MILESTONE_STATE_SNOOZED};
 
 pub use insurance::effective_notice_days as effective_insurance_notice_days;
+pub(crate) use upkeep::sync_protects;
 
 pub(crate) const DAY: i64 = 86_400;
 /// `soon` covers events up to this many days ahead.
@@ -48,7 +49,7 @@ pub(crate) const STAGE_SOON: &str = "soon";
 pub(crate) const TONE_ACTION: &str = "action";
 pub(crate) const TONE_INFO: &str = "info";
 
-type Builder = fn(&Connection, i64) -> Result<Vec<Milestone>>;
+type Builder<'a> = &'a dyn Fn(&Connection, i64) -> Result<Vec<Milestone>>;
 
 /// Stage of a dated item: `now` from `remind_from` on, `soon` while the event is at most
 /// 90 days away, otherwise None (not shown yet).
@@ -120,14 +121,14 @@ pub fn list_milestones(
     today: i64,
     sync: Option<&SyncStatus>,
 ) -> Result<Vec<Milestone>> {
-    let builders: [(&str, Builder); 7] = [
-        ("insurance", insurance::build),
-        ("loans", loans::build),
-        ("bonds", bonds::build),
-        ("accounts", accounts::build),
-        ("upkeep", upkeep::build),
-        ("watchlist", watchlist::build),
-        ("stock_splits", stock_splits::build),
+    let builders: [(&str, Builder<'_>); 7] = [
+        ("insurance", &insurance::build),
+        ("loans", &loans::build),
+        ("bonds", &bonds::build),
+        ("accounts", &accounts::build),
+        ("upkeep", &|c, t| upkeep::build(c, t, sync)),
+        ("watchlist", &watchlist::build),
+        ("stock_splits", &stock_splits::build),
     ];
     let mut all = Vec::new();
     for (name, build) in builders {
@@ -631,6 +632,8 @@ mod tests {
             server_insecure: false,
             enabled_at: None,
             attachments: Default::default(),
+            last_complete_at: None,
+            protects_data: false,
         };
         let count = |sync: Option<&SyncStatus>| {
             list_milestones(&conn, today, sync)
@@ -643,6 +646,57 @@ mod tests {
         assert_eq!(count(None), 0);
         set_muted_kinds(&conn, &["sync_stalled".to_string()]).unwrap();
         assert_eq!(count(Some(&stalled)), 0);
+    }
+
+    #[test]
+    fn the_backup_reminder_reads_the_sync_status() {
+        use crate::models::sync::{SyncPhase, SyncProblem, SyncStatus};
+        // An old profile without a backup: a healthy sync keeps the reminder away, a sync stalled
+        // for 40 days brings it back (beside its own stall reminder), and muting still hides it.
+        let conn = setup_without_profile();
+        conn.execute(
+            "INSERT INTO user_profile (name, created_at) VALUES ('F', ?1)",
+            [day(2026, 1, 1)],
+        )
+        .unwrap();
+        let today = day(2026, 11, 14);
+        let status = |phase, problem, last_complete: i64| SyncStatus {
+            phase,
+            problem,
+            last_success_at: Some(last_complete),
+            pending_changes: 0,
+            held_devices: 0,
+            refused_rows: 0,
+            paid_until: None,
+            deletes_at: None,
+            clock_ahead_until: None,
+            dev_tools: false,
+            own_server: false,
+            server_address: None,
+            server_insecure: false,
+            enabled_at: None,
+            attachments: Default::default(),
+            last_complete_at: Some(last_complete),
+            protects_data: false,
+        };
+        let healthy = status(SyncPhase::Idle, None, today);
+        let stalled = status(
+            SyncPhase::Paused,
+            Some(SyncProblem::Offline),
+            today - 40 * DAY,
+        );
+        let backups = |sync: Option<&SyncStatus>| {
+            list_milestones(&conn, today, sync)
+                .unwrap()
+                .into_iter()
+                .filter(|m| m.kind == "backup_stale")
+                .count()
+        };
+        assert_eq!(backups(None), 1);
+        assert_eq!(backups(Some(&healthy)), 0);
+        assert_eq!(backups(Some(&stalled)), 1);
+        set_muted_kinds(&conn, &["backup_stale".to_string()]).unwrap();
+        assert_eq!(backups(Some(&stalled)), 0);
     }
 
     #[test]

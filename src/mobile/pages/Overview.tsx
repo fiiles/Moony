@@ -4,6 +4,7 @@ import { Link, useLocation } from 'wouter';
 import { Landmark, Settings, Wallet } from 'lucide-react';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useDatedMainConvert } from '@/hooks/use-fx';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useGreeting } from '@/hooks/use-greeting';
 import { useMilestones } from '@/hooks/use-milestones';
 import { ASSET_CLASSES, useNetWorthOverview } from '@/hooks/use-net-worth-overview';
@@ -11,6 +12,7 @@ import { useNetWorthJumpTip } from '@/hooks/use-net-worth-jump-tip';
 import { useRecentMoves, type RecentMove } from '@/hooks/use-recent-moves';
 import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
+import { syncIsOn } from '@/utils/safe-copy';
 import { splitMilestones } from '@/utils/milestones';
 import { CHART_PERIODS, type ChartPeriod } from '@/utils/period';
 import { Button } from '@/components/ui/button';
@@ -406,13 +408,16 @@ function EmptyOverview() {
   const { t } = useTranslation('dashboard');
   const { t: tm } = useTranslation('mobile');
   const [, setLocation] = useLocation();
+  const syncFeature = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
+  const syncOn = syncIsOn(syncFeature, syncStatus);
   return (
     <>
       <ScaledEmptyState
         icon={<Wallet />}
         title={t('empty.title')}
-        // The desktop's sentence says "on this computer"
-        description={tm('overview.emptyDescription')}
+        // The desktop's sentence says "on this computer"; with sync on neither device claims it
+        description={syncOn ? tm('overview.emptyDescriptionSync') : tm('overview.emptyDescription')}
         className="px-5 py-10"
         action={
           <Button

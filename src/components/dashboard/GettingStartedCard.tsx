@@ -7,14 +7,29 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'wouter';
-import { Archive, Check, Landmark, PiggyBank, TrendingUp, X, type LucideIcon } from 'lucide-react';
+import {
+  Archive,
+  Check,
+  Landmark,
+  PiggyBank,
+  ShieldCheck,
+  TrendingUp,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { onboardingApi } from '@/lib/tauri-api';
 import { cn } from '@/lib/utils';
-import { gettingStartedItems, type GettingStartedKey } from '@/utils/getting-started';
+import { syncIsOn } from '@/utils/safe-copy';
+import {
+  gettingStartedItems,
+  offerSyncLink,
+  type GettingStartedKey,
+} from '@/utils/getting-started';
 
 const ONBOARDING_PROGRESS_KEY = ['onboarding-progress'] as const;
 
@@ -23,12 +38,15 @@ const ICONS: Record<GettingStartedKey, LucideIcon> = {
   addInvestment: TrendingUp,
   setBudget: PiggyBank,
   makeBackup: Archive,
+  protectData: ShieldCheck,
 };
 
 export function GettingStartedCard({ className }: { className?: string }) {
   const { t } = useTranslation('dashboard');
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const featureOn = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
   const { data: progress } = useQuery({
     queryKey: ONBOARDING_PROGRESS_KEY,
     queryFn: () => onboardingApi.getProgress(),
@@ -37,7 +55,8 @@ export function GettingStartedCard({ className }: { className?: string }) {
 
   if (!progress || progress.checklistDismissed) return null;
 
-  const items = gettingStartedItems(progress, user?.menuPreferences);
+  const sync = { featureOn, syncOn: syncIsOn(featureOn, syncStatus) };
+  const items = gettingStartedItems(progress, user?.menuPreferences, sync);
   if (items.every((i) => i.done)) return null;
 
   const dismiss = async () => {
@@ -115,6 +134,14 @@ export function GettingStartedCard({ className }: { className?: string }) {
                   </span>
                 </span>
               </Link>
+              {offerSyncLink(item, sync) && (
+                <Link
+                  href="/settings/sync"
+                  className="-mt-1.5 mb-3 ml-[30px] block w-fit text-micro font-500 text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                >
+                  {t('gettingStarted.setUpSync')}
+                </Link>
+              )}
             </li>
           );
         })}

@@ -49,6 +49,8 @@ export interface UpkeepRow {
    * rows the phone works out itself have none.
    */
   milestone?: Milestone;
+  /** A second line the row brings itself (the backup row with sync on). */
+  sub?: UpkeepTitle;
 }
 
 /** What the card needs of an account (`BankAccount`, or one with its institution). */
@@ -79,6 +81,11 @@ export interface UpkeepInput {
    * with sync on; `null` or absent otherwise. A quiet row, never a reminder.
    */
   attachmentsProblem?: SyncAttachmentsProblem | null;
+  /**
+   * Sync is on (`syncIsOn`): the backup row names the newest safe copy (a backup or a complete
+   * sync) and both ways out. Default false: the row reads as before.
+   */
+  syncOn?: boolean;
 }
 
 /** A closed account no longer asks for anything (as in the backend's milestones). */
@@ -103,7 +110,7 @@ function balanceDay(account: UpkeepAccount): number {
  * closed, dated more than 30 days ago). `statement_due` and `uncategorized` are computed here.
  */
 export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
-  const { todayDay, milestones, accounts, lastImportByAccount } = input;
+  const { todayDay, milestones, accounts, lastImportByAccount, syncOn = false } = input;
   const open = accounts.filter((account) => !isClosed(account, todayDay));
   const rows: UpkeepRow[] = [];
 
@@ -164,11 +171,12 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
       kind: 'backup_stale',
       title:
         backup.sinceDay === null
-          ? { key: 'upkeep.backupNever', params: {} }
+          ? { key: syncOn ? 'upkeep.safeCopyNever' : 'upkeep.backupNever', params: {} }
           : {
-              key: 'upkeep.backupStale',
+              key: syncOn ? 'upkeep.safeCopyStale' : 'upkeep.backupStale',
               params: { count: Math.max(daysBetween(backup.sinceDay, todayDay), 0) },
             },
+      ...(syncOn ? { sub: { key: 'upkeep.bothWaysOut', params: {} } } : {}),
       milestone: backup,
     });
   }

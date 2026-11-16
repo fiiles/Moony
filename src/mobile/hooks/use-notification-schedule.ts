@@ -7,6 +7,7 @@ import {
 } from '@tauri-apps/plugin-notification';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useMilestoneMutedKinds, useMilestones } from '@/hooks/use-milestones';
 import { useNotificationPermission } from '@/mobile/hooks/use-notification-permission';
 import { useNotificationPrefs } from '@/mobile/hooks/use-notification-prefs';
@@ -20,6 +21,7 @@ import {
 import { exportsOnThisDevice } from '@/mobile/lib/export-file';
 import { notificationPaths } from '@/mobile/lib/notification-target';
 import { renderTextRef } from '@/mobile/lib/settings-summary';
+import { syncIsOn } from '@/utils/safe-copy';
 
 /**
  * Whether this build schedules notifications: iOS only. A desktop shell (the phone UI opened there
@@ -93,6 +95,9 @@ export function useNotificationSchedule(): void {
   const { data: milestones } = useMilestones();
   const { data: mutedKinds } = useMilestoneMutedKinds();
   const [prefs] = useNotificationPrefs();
+  const featureOn = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
+  const syncOn = syncIsOn(featureOn, syncStatus);
   // The signature of what is scheduled: `null` while the schedule is being replaced or incomplete
   const scheduled = useRef<string | null>(null);
 
@@ -106,6 +111,7 @@ export function useNotificationSchedule(): void {
       mutedKinds,
       prefs,
       canBackup: exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? ''),
+      syncOn,
     });
     // The screens a tap opens, by id: the fallback when a tap reports no `extra` (the unpatched
     // iOS plugin did not). Kept through a lock, when a tap must still find its screen after it.
@@ -144,5 +150,5 @@ export function useNotificationSchedule(): void {
     return () => {
       current = false;
     };
-  }, [appStatus, permission, milestones, mutedKinds, prefs, t, i18n.language]);
+  }, [appStatus, permission, milestones, mutedKinds, prefs, syncOn, t, i18n.language]);
 }

@@ -131,6 +131,11 @@ pub struct SyncAttachments {
     /// above leave out of each other what they hold): the backup does not have these.
     #[serde(rename = "notOnDevice")]
     pub not_on_device: u32,
+    /// Rows among `failed` whose content is held here and cannot upload by itself (refused by the
+    /// sync server, a conflict with what it holds, an invalid ID): on this device only until tried
+    /// again. An upload backing off (no room, the network) is in `waiting_upload` instead.
+    #[serde(rename = "failedUpload")]
+    pub failed_upload: u32,
     /// Why documents and photos do not move, while ordinary sync goes on.
     #[serde(rename = "problem")]
     pub problem: Option<SyncAttachmentsProblem>,
@@ -200,6 +205,16 @@ pub struct SyncStatus {
     /// This device's documents and photos: content waiting to move, and their own problem.
     #[serde(rename = "attachments")]
     pub attachments: SyncAttachments,
+    /// When a round last succeeded with nothing left to send here: no change, no document or photo
+    /// waiting to upload or unable to (unix seconds; spec 2026-11-14 §7.2). `None` while off or
+    /// before the first.
+    #[serde(rename = "lastCompleteAt")]
+    pub last_complete_at: Option<i64>,
+    /// Sync keeps this device's data safe now (spec §7.3, `milestones::sync_protects`): on, nothing
+    /// needs the person, a complete sync less than 7 whole UTC days old, and nothing held here that
+    /// exists nowhere else (no unsent change, no document or photo left to upload).
+    #[serde(rename = "protectsData")]
+    pub protects_data: bool,
 }
 
 /// The subscription a checkout is for.

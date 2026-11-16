@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MenuPreferences } from '@shared/schema';
-import { gettingStartedItems } from './getting-started';
+import { gettingStartedItems, offerSyncLink } from './getting-started';
 
 const nothingDone = {
   hasTransactions: false,
@@ -62,5 +62,56 @@ describe('gettingStartedItems', () => {
       'setBudget',
       'makeBackup',
     ]);
+  });
+
+  it('keeps "Make a backup" without the sync flag', () => {
+    const last = (items: ReturnType<typeof gettingStartedItems>) => items[items.length - 1];
+    for (const sync of [undefined, { featureOn: false, syncOn: true }]) {
+      const item = last(gettingStartedItems(nothingDone, prefs(), sync));
+      expect(item).toEqual({
+        key: 'makeBackup',
+        done: false,
+        href: '/settings/data',
+        optional: false,
+      });
+    }
+  });
+
+  it('asks to protect the data with the flag on', () => {
+    const last = (lastBackupAt: number | null, syncOn: boolean) => {
+      const items = gettingStartedItems({ ...nothingDone, lastBackupAt }, prefs(), {
+        featureOn: true,
+        syncOn,
+      });
+      return items[items.length - 1];
+    };
+    expect(last(null, false)).toEqual({
+      key: 'protectData',
+      done: false,
+      href: '/settings/data',
+      optional: false,
+    });
+    expect(last(null, true).done).toBe(true);
+    expect(last(1, false).done).toBe(true);
+  });
+});
+
+describe('offerSyncLink', () => {
+  const items = (sync: { featureOn: boolean; syncOn: boolean }) =>
+    gettingStartedItems(nothingDone, prefs(), sync);
+  const offered = (sync: { featureOn: boolean; syncOn: boolean }) =>
+    items(sync)
+      .filter((i) => offerSyncLink(i, sync))
+      .map((i) => i.key);
+
+  it('offers the link on "Protect your data" while the flag is on and sync is off', () => {
+    expect(offered({ featureOn: true, syncOn: false })).toEqual(['protectData']);
+  });
+  it('offers nothing with the flag off, with sync on, or once the item is done', () => {
+    expect(offered({ featureOn: false, syncOn: false })).toEqual([]);
+    expect(offered({ featureOn: true, syncOn: true })).toEqual([]);
+    const sync = { featureOn: true, syncOn: false };
+    const done = gettingStartedItems({ ...nothingDone, lastBackupAt: 1 }, prefs(), sync);
+    expect(done.some((i) => offerSyncLink(i, sync))).toBe(false);
   });
 });

@@ -120,8 +120,9 @@
     "confirmWord": "删除",
     "deleteAll": "删除所有数据",
     "deleteAllHint": "移除这台电脑上的数据库、密钥文件和附件。数据库旁边的副本（moony.db.bak-…、pre-restore-…）会留在数据文件夹中（数据与备份 → 打开文件夹），保存在应用之外的备份同样不受影响。",
+    "deleteAllHintSynced": "移除这台电脑上的数据库、密钥文件和附件，以及同步服务器上的同步数据（若能连接）：您的其他设备将停止同步，并保留它们已有的数据。数据库旁边的副本（moony.db.bak-…、pre-restore-…）会留在数据文件夹中（数据与备份 → 打开文件夹），保存在应用之外的备份同样不受影响。",
     "deleteButton": "删除数据…",
-    "syncDeleted": "同步服务器上的同步数据也会被删除，因此您的其他设备将停止同步。",
+    "syncDeleted": "同步服务器上的同步数据也会被删除：您的其他设备将停止同步，并保留它们已有的数据。如果无法连接服务器，这些数据会以加密形式保留在服务器上。",
     "confirmDescriptionSynced": "此操作无法撤销。这将从此设备上永久删除数据库、密钥文件和附件。Moony 保存在数据库旁边的副本（moony.db.bak-…、pre-restore-…）会留在数据文件夹中；可通过 设置 → 数据与备份 → 打开文件夹 找到它。"
   },
   "toast": {
@@ -205,7 +206,8 @@
       "deleteBody": "此备份将被永久删除。",
       "deleteBodyKept": "此备份包含其他地方没有的更改。它将被永久删除，这些更改也会丢失。",
       "deleted": "备份已删除"
-    }
+    },
+    "notInBackup_other": "有 {{count}} 个文档或照片尚未在此电脑上，因此现在创建的备份不会包含它们。"
   },
   "autoLock": {
     "title": "自动锁定",
@@ -246,6 +248,23 @@
       "touchId": "这台 Mac 没有 Touch ID，或尚未添加指纹。",
       "windowsHello": "尚未设置 Windows Hello。请在 Windows 设置 → 帐户 → 登录选项中设置。",
       "generic": "这台电脑无法使用生物识别。"
+    }
+  },
+  "keepSafe": {
+    "title": "需要妥善保管的内容",
+    "description": "它们各有不同的用途。",
+    "password": {
+      "title": "设备密码",
+      "text": "在此设备上解锁 Moony。"
+    },
+    "recoveryKey": {
+      "title": "恢复密钥",
+      "text": "重置此设备上的密码。每台设备都有自己的密钥。"
+    },
+    "kit": {
+      "title": "同步恢复包",
+      "text": "在所有设备都丢失时找回已同步的数据。所有设备共用一个。",
+      "show": "显示"
     }
   }
 }

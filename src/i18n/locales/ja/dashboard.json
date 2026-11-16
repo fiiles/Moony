@@ -73,6 +73,7 @@
   "empty": {
     "title": "ここに純資産が表示されます",
     "description": "口座または投資を追加すると、Moony が概要、グラフ、推移を作成します。すべてのデータはこのコンピュータ内に保存されます。",
+    "descriptionSync": "口座または投資を追加すると、Moony が概要、グラフ、推移を作成します。",
     "addAccount": "銀行口座を追加して明細をインポート",
     "addInvestment": "投資を追加",
     "setBudget": "予算を設定"
@@ -88,6 +89,9 @@
     "setBudgetHint": "支出カテゴリごとの月次上限。",
     "makeBackup": "バックアップを作成",
     "makeBackupHint": "すべてを1つのファイルに。設定 → データとバックアップから。",
+    "protectData": "データを守る",
+    "protectDataHint": "設定 → データとバックアップでバックアップを作成するか、同期をオンにしてください。",
+    "setUpSync": "同期を設定",
     "dismiss": "閉じる",
     "done": "完了",
     "optional": "任意"

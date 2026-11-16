@@ -63,6 +63,8 @@
     "valuation_stale": "自 {{date}} 起没有新的估值 · 请重新估值",
     "backup_stale": "上次备份 {{date}}",
     "backup_never": "还没有备份",
+    "backup_stale_sync": "上次安全副本 {{date}}：请恢复同步或备份",
+    "backup_never_sync": "还没有安全副本：请恢复同步或备份",
     "balances_stale_other": "{{count}} 个账户已超过 30 天未更新",
     "sync_stalled": "上次同步 {{date}}",
     "sync_stalled_never": "尚未同步"
@@ -109,6 +111,7 @@
     "backup": {
       "label": "数据备份",
       "hint": "当上次备份已超过 30 天时提醒。",
+      "hintSync": "当备份和完整同步都已超过 30 天时。",
       "mute": "不再提醒备份"
     },
     "balances": {

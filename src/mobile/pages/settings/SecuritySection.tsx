@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { KeyRound } from 'lucide-react';
+import { FileKey, KeyRound, LifeBuoy } from 'lucide-react';
 import { biometricApi } from '@/lib/tauri-api';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { deviceStorage } from '@/utils/device-storage';
-import { EntityRows } from '@/mobile/components/EntityRow';
+import { keepSafeItems, type KeepSafeItem } from '@/utils/keep-safe';
+import { syncIsOn } from '@/utils/safe-copy';
+import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
+import { SectionHead } from '@/mobile/components/SectionHead';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { Segment } from '@/mobile/components/Segment';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
@@ -17,7 +21,10 @@ import {
 } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY, biometricCopy } from '@/lib/biometrics';
 import { biometryMethodKey, lockAfterOption, renderTextRef } from '@/mobile/lib/settings-summary';
+import { SyncKitSheet } from '@/mobile/components/sync/SyncKitSheet';
 import { ChangePasswordSheet } from '@/mobile/sheets/ChangePasswordSheet';
+
+const KEEP_SAFE_ICONS = { password: KeyRound, recoveryKey: FileKey, kit: LifeBuoy } as const;
 
 /** The card the section's controls sit in (`.m-card`), rows `line-soft` apart. */
 const CARD =
@@ -31,10 +38,15 @@ const CARD =
  */
 export default function SecuritySection() {
   const { t } = useTranslation('mobile');
+  const { t: ts } = useTranslation('settings');
   const status = useQuery({ queryKey: BIOMETRIC_STATUS_KEY, queryFn: biometricApi.status });
   const { enable, disable } = useBiometricEnrolment();
   const [lockMinutes, setLockMinutes] = useState(() => readBackgroundLockMinutes(deviceStorage()));
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [kitOpen, setKitOpen] = useState(false);
+  const featureOn = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
+  const keepSafe = keepSafeItems(featureOn, syncIsOn(featureOn, syncStatus));
 
   const data = status.data;
   const enrolled = data?.enrolled ?? false;
@@ -97,7 +109,57 @@ export default function SecuritySection() {
           onClick={() => setPasswordOpen(true)}
         />
       </EntityRows>
+      {keepSafe.length > 0 && (
+        <>
+          <SectionHead title={ts('keepSafe.title')} caption={ts('keepSafe.description')} />
+          <EntityRows>
+            {keepSafe.map((item) => (
+              <KeepSafeRow
+                key={item}
+                item={item}
+                title={ts(`keepSafe.${item}.title`)}
+                sub={ts(`keepSafe.${item}.text`)}
+                onShow={() => setKitOpen(true)}
+              />
+            ))}
+          </EntityRows>
+          {keepSafe.includes('kit') && <SyncKitSheet open={kitOpen} onOpenChange={setKitOpen} />}
+        </>
+      )}
       <ChangePasswordSheet open={passwordOpen} onOpenChange={setPasswordOpen} />
     </SectionPage>
+  );
+}
+
+/**
+ * One row of "Co si uschovat". The Kit row opens its sheet (which asks for the device password
+ * first); the other two only say what the secret is for, so they carry no chevron and no press
+ * state (`EntityRow` without `onClick`).
+ */
+function KeepSafeRow({
+  item,
+  title,
+  sub,
+  onShow,
+}: {
+  item: KeepSafeItem;
+  title: string;
+  sub: string;
+  onShow: () => void;
+}) {
+  const Icon = KEEP_SAFE_ICONS[item];
+  // The sub-line is the explanation itself, so it wraps instead of ending with an ellipsis
+  const text = <span className="block whitespace-normal">{sub}</span>;
+  if (item === 'kit') return <SettingsRow icon={Icon} title={title} sub={text} onClick={onShow} />;
+  return (
+    <EntityRow
+      chip={
+        <RowChip square>
+          <Icon strokeWidth={1.75} />
+        </RowChip>
+      }
+      title={title}
+      sub={text}
+    />
   );
 }

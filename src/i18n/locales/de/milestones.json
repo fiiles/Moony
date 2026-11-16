@@ -68,6 +68,8 @@
     "valuation_stale": "Keine neue Bewertung seit {{date}} · neu bewerten",
     "backup_stale": "Letzte Sicherung {{date}}",
     "backup_never": "Noch keine Sicherung",
+    "backup_stale_sync": "Letzte sichere Kopie {{date}}: Synchronisierung fortsetzen oder sichern",
+    "backup_never_sync": "Noch keine sichere Kopie: Synchronisierung fortsetzen oder sichern",
     "balances_stale_one": "{{count}} Konto seit über 30 Tagen nicht aktualisiert",
     "balances_stale_other": "{{count}} Konten seit über 30 Tagen nicht aktualisiert",
     "sync_stalled": "Zuletzt synchronisiert {{date}}",
@@ -116,6 +118,7 @@
     "backup": {
       "label": "Datensicherungen",
       "hint": "Wenn die letzte Sicherung älter als 30 Tage ist.",
+      "hintSync": "Wenn weder eine Sicherung noch eine vollständige Synchronisierung neuer als 30 Tage ist.",
       "mute": "Nicht an Sicherungen erinnern"
     },
     "balances": {

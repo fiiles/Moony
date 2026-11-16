@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
+import { syncIsOn } from '@/utils/safe-copy';
 import { authApi } from '@/lib/tauri-api';
 import { clearEnrolmentAsked } from '@/lib/biometrics';
 import { confirmWordMatches } from '@/lib/confirm-word';
@@ -31,10 +32,7 @@ export function DangerZoneCard() {
 
   const syncFeature = useDeviceSyncFeature();
   const { data: syncStatus } = useDeviceSyncStatus();
-  const syncOn =
-    syncFeature &&
-    syncStatus !== undefined &&
-    ['idle', 'syncing', 'waiting', 'paused', 'error'].includes(syncStatus.phase);
+  const syncOn = syncIsOn(syncFeature, syncStatus);
   // Japanese and Chinese run sentences together without a space
   const sentenceGap = ['ja', 'zh'].includes(i18n.language) ? '' : ' ';
 
@@ -62,7 +60,10 @@ export function DangerZoneCard() {
 
   return (
     <SettingsCard danger title={t('dangerZone.title')} description={t('dangerZone.description')}>
-      <SettingsRow label={t('dangerZone.deleteAll')} hint={t('dangerZone.deleteAllHint')}>
+      <SettingsRow
+        label={t('dangerZone.deleteAll')}
+        hint={syncOn ? t('dangerZone.deleteAllHintSynced') : t('dangerZone.deleteAllHint')}
+      >
         <AlertDialog
           open={deleteDialogOpen}
           onOpenChange={(open) => {

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { deviceSyncApi } from '@/lib/tauri-api';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { syncIsOn } from '@/utils/safe-copy';
+import { syncStatusRefetchInterval } from '@/utils/device-sync-refetch';
 
 /**
  * Whether device sync is built in and enabled, and whether that is still being asked (a screen
@@ -51,6 +52,7 @@ export function useDeviceSyncStatus() {
     queryKey: ['device-sync-status'],
     queryFn: () => deviceSyncApi.getStatus(),
     enabled,
+    refetchInterval: (query) => syncStatusRefetchInterval(query.state.data),
   });
 }
 

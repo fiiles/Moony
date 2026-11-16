@@ -39,7 +39,7 @@ The owner accepts that trade for the coverage.
   without a request.
 - **Favicons are misses:** an image whose longer side is under 32 px is not stored (both sources).
 - **Earlier misses are looked up again once:** a miss recorded before
-  `asset_logos::SOURCES_CHANGED_AT` (2026-11-15) is due at once instead of after 30 days.
+  `asset_logos::SOURCES_CHANGED_AT` (2026-11-16 12:00 CET, after the last Yahoo-only dev run) is due at once instead of after 30 days.
 - Everything else from ADR 0028 stands: the backend builds the ticker list from holdings and
   watched stocks, at most 40 tickers per run, PNG of at most 96 px in the encrypted `asset_logos`
   table (Local, never synced), the webview never loads an image from the network, coins use the

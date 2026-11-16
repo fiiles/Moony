@@ -24,9 +24,11 @@ use crate::models::asset_logos::AssetLogo;
 
 /// A remembered miss is looked up again after 30 days; a found logo is kept for good.
 pub const MISS_RETRY_SECS: i64 = 30 * 24 * 3600;
-/// 2026-11-15 00:00 CET, when Financial Modeling Prep became the second source (ADR 0031): a miss
-/// recorded before it was a Yahoo-only miss and is looked up again at once.
-pub const SOURCES_CHANGED_AT: i64 = 1_794_697_200;
+/// 2026-11-16 12:00 CET, after the last run of a Yahoo-only build (Financial Modeling Prep became
+/// the second source in ADR 0031, merged 2026-11-15 evening; a Yahoo-only dev build still ran at
+/// 20:09 that day). A miss recorded before it may be a Yahoo-only miss and is looked up again at
+/// once; a released build never had the Yahoo-only lookup.
+pub const SOURCES_CHANGED_AT: i64 = 1_794_826_800;
 /// At most this many tickers are looked up in one run; the rest follow on the next run.
 pub const MAX_PER_RUN: usize = 40;
 /// A downloaded image larger than this is a miss (Yahoo's brand logos are a few KB).
@@ -284,6 +286,19 @@ mod tests {
         .unwrap();
 
         assert_eq!(due, tickers(&["OLD_MISS"]));
+    }
+
+    #[test]
+    fn due_rechecks_the_last_yahoo_only_run() {
+        // The owner's profile: a Yahoo-only build recorded TTWO and eight others as misses on
+        // 2026-11-15 at 20:09 CET, after FMP was decided but before the FMP build ran.
+        let conn = setup_test_db();
+        let last_yahoo_only_run = 1_794_769_784;
+        store(&conn, "TTWO", None, last_yahoo_only_run).unwrap();
+
+        let due = due(&conn, &tickers(&["TTWO"]), last_yahoo_only_run + 15 * 3600).unwrap();
+
+        assert_eq!(due, tickers(&["TTWO"]));
     }
 
     #[test]

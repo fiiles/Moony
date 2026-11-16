@@ -89,10 +89,11 @@ pub fn holder_payload(conn: &Connection, now: i64) -> Result<Option<SlotPayload>
     }))
 }
 
-/// The rotation head of every epoch of `creds` that `sync_epochs` records; epoch 0 starts at 0
-/// (spec §6.1) whether recorded or not.
+/// The rotation head of every epoch of `creds` that `sync_epochs` records and this device
+/// verified (`rekey::head::verified_epochs`); epoch 0 starts at 0 (spec §6.1) whether recorded or
+/// not.
 fn epoch_heads(conn: &Connection, creds: &Credentials) -> Result<BTreeMap<u32, u64>> {
-    let mut heads = state::epochs(conn)?;
+    let mut heads = crate::services::sync::rekey::head::verified_epochs(conn)?;
     heads.entry(0).or_insert(0);
     heads.retain(|epoch, _| creds.keys.get(*epoch).is_some());
     Ok(heads)

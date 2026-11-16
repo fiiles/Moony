@@ -331,6 +331,8 @@ pub fn problem_of_pull(pull: &PullReport) -> Option<SyncProblem> {
             PullStop::Invalid => P::InvalidChain,
             PullStop::Undecryptable => P::Undecryptable,
             PullStop::NewerSchema => P::NewerSchema,
+            // Waiting for the remover's signed head: "picking up the new key".
+            PullStop::KeyChangeUnconfirmed => P::KeyRotated,
         }),
     }
 }

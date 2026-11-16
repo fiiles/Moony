@@ -1,56 +1,64 @@
 //! Picking up another device's key change (phase 5 spec §7.1, §7.2, §7.4, §7.5).
 //!
 //! The engine notices a key change three ways (a push answered `403 token_read_only`, a pulled op
-//! whose header names a later epoch, and at its start a vault whose `rotation` is above
-//! `sync_state.rekey_seen`) and then calls `pick_up`, which fetches every bundle after
-//! `rekey_seen` and opens them in order, each from the epoch the one before gave:
+//! whose header names a later epoch, and the vault's info, read before the round's pull, with a
+//! `rotation` above `sync_state.rekey_seen`) and then calls `pick_up`, which fetches every bundle
+//! after `rekey_seen` and opens them in order, each from the epoch the one before gave. Each page
+//! must list rotations strictly above the last one taken, and one walk takes at most
+//! `MAX_BUNDLES_PER_WALK` bundles: anything else is a relay error (a server that pages for ever).
 //!
 //! - **Adopted:** an entry seals the new key to this device's box key, the body opens with it, its
-//!   signer's certificate is the one pinned here, `trusted` and not `kit_unconfirmed`, the
-//!   signature verifies with the pinned key, the bundle moves this device's epoch on by exactly
-//!   one, and what it says of older epochs (keys, heads) agrees with what this device holds. Then,
-//!   in one savepoint, the bundle's certificates and removals go into the trust store
+//!   signer's certificate is the one pinned here, `trusted` and not `kit_unconfirmed`, no removal
+//!   or leave of the signer that this device already knows of (in its list, verified, or in its
+//!   own pending change) counts, the signature verifies with the pinned key, the bundle moves this
+//!   device's epoch on by exactly one, what it says of older epochs (keys, heads) agrees with what
+//!   this device holds, and the server knows the token of the new key (`vault_info` with it, so a
+//!   signer this device still trusts cannot hand it a key nobody rotated to). Then, in one
+//!   savepoint, the bundle's certificates and removals go into the trust store
 //!   (`trust::import_bundle`), the new key becomes the current one, `sync_epochs` records where
-//!   the epoch starts (the server's head of the rotation, below), devices that left or were
-//!   removed from the list are cut off, `rekey_seen` moves on and the person's notice is written.
+//!   the epoch starts (the server's head, provisional until the remover's signed head confirms it:
+//!   `rekey::head`), devices that left or were removed from the list are cut off, `rekey_seen`
+//!   moves on and the person's notice is written.
 //! - **Removed here:** the entry this device opens is a removal notice whose record verifies
 //!   against this device's store, or the adopted bundle carries a counted removal of this device:
 //!   sync turns off here (`rekey::removed_here`), local data stays.
 //! - **Not given:** no entry opens for this device, or the bundle does not parse: sync pauses
 //!   (`keyNotGiven`) and is never turned off on a server's word.
 //! - **Unverified:** an entry opened but anything after it failed (an unknown or untrusted signer,
-//!   a signature, a contradiction): sync pauses (`keyChangeUnverified`).
+//!   a signature, a contradiction, a token the server does not know): sync pauses
+//!   (`keyChangeUnverified`).
 //!
 //! A bundle of a key change this device already holds (`to_epoch` at or below its own; a device
-//! that joined after it, or the remover itself) is passed over by its unauthenticated header.
+//! that joined after it, or the remover itself) is passed over only when its body opens with the
+//! key this device holds for that epoch; one that does not (a header the server made up, with a
+//! rotation number that would hide the real ones) moves nothing and is `keyChangeUnverified`.
 //!
-//! **The head is the server's.** `sync_epochs` records the head the server reports with the
-//! bundle (`Rekey::head`, `Rotated::head` on the remover); nothing signed carries it, since the
-//! remover cannot know it before the server answers. A server that reports a wrong head can only
-//! make an honest op look misplaced to the epoch rule (§6.1), which stops the pull (`Invalid`): a
-//! stall it could cause anyway. It cannot make a device take an op it should refuse: the new key
-//! exists only after the rotation, so no op under it can sit at or below the true head, and the
-//! retired token is read-only, so no op under an older key can sit above it. Re-sealing waits for
-//! the pull to reach the reported head; an own envelope a lying server hides below a head it
-//! reports too low surfaces later above that head under the old epoch, where the epoch rule stops
-//! it before the chain could read it as a copy of this device.
+//! **The head is the server's, then the signer's.** The head the server reports with the bundle
+//! (`Rekey::head`) is recorded but only provisionally (`head::note_unverified`): until the
+//! remover's signed head confirms it, no op under an older epoch past where this device stood is
+//! applied, and nothing is sealed again under the new key (`rekey::head` module doc).
 
 use std::path::Path;
 
 use zeroize::Zeroizing;
 
-use super::bundle::{self, Opened, Unverified, Verified};
-use super::{device_name, removed_here, write_key_change_notice, KeyChangeNotice};
+use super::bundle::{self, BundleBody, Header, Opened, Unverified, Verified};
+use super::{device_name, head, removed_here, rotate, write_key_change_notice, KeyChangeNotice};
 use crate::error::{AppError, Result};
 use crate::services::sync::engine::ConnAccess;
-use crate::services::sync::error::SyncResult;
+use crate::services::sync::envelope::vault_token;
+use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::hlc::DeviceId;
 use crate::services::sync::identity::{trust, Record};
 use crate::services::sync::in_savepoint;
-use crate::services::sync::keys::{self, Credentials, OlderKey};
-use crate::services::sync::relay::{Rekey, Relay, MAX_REKEY_PAGE};
+use crate::services::sync::keys::{self, Credentials, OlderKey, VaultAuth, VaultKeys};
+use crate::services::sync::relay::{Rekey, RekeyPage, Relay, RelayError, MAX_REKEY_PAGE};
 use crate::services::sync::state::{self, EpochRecord};
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
+
+/// Bundles one walk takes at most: the server keeps a vault's bundles for 30 days and refuses a
+/// 33rd change in that time, so an honest walk is far below this.
+pub const MAX_BUNDLES_PER_WALK: usize = 64;
 
 /// What `pick_up` did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,20 +75,60 @@ pub enum Pickup {
     Unverified,
 }
 
+/// A bundle that passed every check made under the connection lock; the server's knowledge of
+/// the new key's token is checked next, without it. Never printed (it holds the new key).
+pub(crate) struct Prepared {
+    next: VaultKeys,
+    header: Header,
+    body: Box<BundleBody>,
+    new_heads: Vec<(u32, u64)>,
+    by: DeviceId,
+}
+
+impl Prepared {
+    /// The token the new key gives the vault.
+    fn new_auth(&self, creds: &Credentials) -> VaultAuth {
+        VaultAuth {
+            vault_id: creds.vault_id.to_b64(),
+            token: Zeroizing::new(vault_token(self.next.current(), &creds.vault_id.0)),
+        }
+    }
+}
+
 /// What one bundle did.
 enum Step {
     Passed,
+    Probe(Box<Prepared>),
     Adopted { epoch: u32, by: DeviceId },
     Removed { by: DeviceId, at: i64 },
     NotGiven,
     Unverified,
 }
 
+fn refused(what: &str) -> SyncError {
+    log::warn!("[SYNC] The sync server's list of key changes is refused: {what}");
+    SyncError::from(RelayError::Protocol(format!("key changes: {what}")))
+}
+
+/// A page of the walk: every rotation above `after` and strictly increasing (a page the server
+/// repeats, or one going back, would be walked for ever).
+fn check_walk_page(page: &RekeyPage, after: u32) -> SyncResult<()> {
+    let mut previous = after;
+    for rekey in &page.rekeys {
+        if rekey.rotation <= previous {
+            return Err(refused("a rotation is not above the one before"));
+        }
+        previous = rekey.rotation;
+    }
+    Ok(())
+}
+
 /// Fetches every key-change bundle after `rekey_seen`, page by page, and takes each in order
 /// (module doc). Each page is fetched with the credentials as they stand after the one before
 /// (a new key's token reads every bundle). A removal of this device turns sync off here
 /// (`removed_here` with `data_dir`; `None` inside a round, whose runtime removes the binding
-/// file). A relay failure is returned as its `SyncError`; nothing of a bundle not taken is kept.
+/// file). A relay failure is returned as its `SyncError`, and so is a page outside the walk's
+/// rules (`check_walk_page`, `MAX_BUNDLES_PER_WALK`); nothing of a bundle not taken is kept.
 pub async fn pick_up<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -88,6 +136,7 @@ pub async fn pick_up<R: Relay, D: ConnAccess>(
     now: i64,
 ) -> SyncResult<Pickup> {
     let mut result = Pickup::Nothing;
+    let mut walked = 0usize;
     loop {
         let ready = db.with_conn(|conn| {
             Ok(keys::credentials(conn)?.map(|creds| (creds, state::rekey_seen(conn))))
@@ -97,9 +146,32 @@ pub async fn pick_up<R: Relay, D: ConnAccess>(
         };
         let after = after?;
         let page = relay.rekeys(&creds.auth(), after, MAX_REKEY_PAGE).await?;
+        check_walk_page(&page, after)?;
         for rekey in &page.rekeys {
-            match db.with_conn(|conn| take(conn, rekey, now))? {
+            walked += 1;
+            if walked > MAX_BUNDLES_PER_WALK {
+                return Err(refused("more bundles than one walk takes"));
+            }
+            let step = match db.with_conn(|conn| take(conn, rekey))? {
+                Step::Probe(prepared) => match relay.vault_info(&prepared.new_auth(&creds)).await {
+                    Ok(_) => db.with_conn(|conn| adopt(conn, *prepared, rekey, now))?,
+                    Err(RelayError::Unauthorized) => {
+                        log::warn!(
+                            "[SYNC] A key change names a key the sync server has no token for"
+                        );
+                        Step::Unverified
+                    }
+                    Err(error) => return Err(error.into()),
+                },
+                step => step,
+            };
+            match step {
                 Step::Passed => {}
+                Step::Probe(_) => {
+                    return Err(SyncError::Local(AppError::Internal(
+                        "sync pickup: a bundle was probed twice".into(),
+                    )))
+                }
                 Step::Adopted { epoch, by } => {
                     log::info!("[SYNC] Picked up the new sync key of epoch {epoch}");
                     result = Pickup::Adopted { epoch, by };
@@ -125,7 +197,7 @@ pub async fn pick_up<R: Relay, D: ConnAccess>(
 }
 
 /// One bundle, under the connection lock.
-fn take(conn: &Connection, rekey: &Rekey, now: i64) -> Result<Step> {
+fn take(conn: &Connection, rekey: &Rekey) -> Result<Step> {
     let creds = keys::credentials(conn)?
         .ok_or_else(|| AppError::Internal("sync pickup: sync is not set up".into()))?;
     let me = state::load(conn)?
@@ -137,6 +209,18 @@ fn take(conn: &Connection, rekey: &Rekey, now: i64) -> Result<Step> {
         return Ok(Step::NotGiven);
     };
     if header.to_epoch <= current {
+        // Passed over only when it opens with the key this device holds for that epoch: a header
+        // alone is the server's word, and its rotation would move `rekey_seen` past real ones.
+        let opens = creds.keys.get(header.to_epoch).is_some_and(|key| {
+            bundle::open_body_with_key(&rekey.bundle, &creds.vault_id.0, &key).is_ok()
+        });
+        if !opens {
+            log::warn!(
+                "[SYNC] Key-change bundle {} names an epoch this device holds but does not open",
+                rekey.rotation
+            );
+            return Ok(Step::Unverified);
+        }
         state::note_rekey_seen(conn, rekey.rotation)?;
         return Ok(Step::Passed);
     }
@@ -156,7 +240,7 @@ fn take(conn: &Connection, rekey: &Rekey, now: i64) -> Result<Step> {
     match opened {
         Opened::Nothing => Ok(Step::NotGiven),
         Opened::Notice { record, .. } => Ok(notice(conn, &record, me)?),
-        Opened::Recipient(unverified) => accept(conn, &creds, unverified, rekey, me, now),
+        Opened::Recipient(unverified) => check(conn, &creds, unverified, rekey),
     }
 }
 
@@ -173,14 +257,36 @@ fn notice(conn: &Connection, record: &Record, me: DeviceId) -> Result<Step> {
     Ok(Step::Unverified)
 }
 
-/// The checks of §6.3 on a bundle that sealed the new key to this device, then the adoption.
-fn accept(
+/// Whether this device already knows `device` was removed or left: a record in its list row
+/// that counts here (the store may not have caught up with it yet), or this device's own pending
+/// key change removing it.
+fn known_gone(conn: &Connection, device: DeviceId) -> Result<bool> {
+    let row: Option<(Option<String>, Option<String>)> = conn
+        .query_row(
+            "SELECT removal_record, left_record FROM sync_devices WHERE id = ?1",
+            [device.to_hex()],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?;
+    if let Some((removal, left)) = row {
+        for value in [removal, left].into_iter().flatten() {
+            if let Ok(record) = Record::from_b64(&value) {
+                if record.subject == device && trust::record_counts(conn, &record)? {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+    Ok(rotate::pending_removals(conn)?.contains(&device))
+}
+
+/// The checks of §6.3 on a bundle that sealed the new key to this device, short of the server's
+/// token (`pick_up` probes it, then `adopt`).
+fn check(
     conn: &Connection,
     creds: &Credentials,
     unverified: Unverified,
     rekey: &Rekey,
-    me: DeviceId,
-    now: i64,
 ) -> Result<Step> {
     let current = creds.keys.current_epoch();
     let header = unverified.header();
@@ -200,6 +306,13 @@ fn accept(
         );
         return Ok(Step::Unverified);
     };
+    if known_gone(conn, by)? {
+        log::warn!(
+            "[SYNC] A key change is signed by device {}, which this device knows was removed",
+            &by.to_hex()[..8]
+        );
+        return Ok(Step::Unverified);
+    }
     let Ok(Verified {
         new_key,
         header,
@@ -239,7 +352,27 @@ fn accept(
         log::warn!("[SYNC] The new epoch is recorded here with another start");
         return Ok(Step::Unverified);
     }
-    let next = keys.with_next(new_key)?;
+    Ok(Step::Probe(Box::new(Prepared {
+        next: keys.with_next(new_key)?,
+        header,
+        body,
+        new_heads,
+        by,
+    })))
+}
+
+/// The adoption of a bundle `check` passed and whose token the server knows, in one savepoint.
+fn adopt(conn: &Connection, prepared: Prepared, rekey: &Rekey, now: i64) -> Result<Step> {
+    let Prepared {
+        next,
+        header,
+        body,
+        new_heads,
+        by,
+    } = prepared;
+    let sync = state::load(conn)?
+        .ok_or_else(|| AppError::Internal("sync pickup: sync is not set up".into()))?;
+    let me = sync.device;
     let recipients: Vec<_> = body.recipients.iter().map(|(_, c)| c.clone()).collect();
     let removed: Vec<Record> = body.removed.iter().map(|(_, r)| r.clone()).collect();
     in_savepoint(conn, "sync_pickup", || {
@@ -269,12 +402,22 @@ fn accept(
         for (epoch, head) in &new_heads {
             state::record_epoch(conn, *epoch, *head, None, now)?;
         }
-        if state::record_epoch(conn, header.to_epoch, rekey.head, Some(by), now)?
-            == EpochRecord::Differs
-        {
-            return Err(AppError::Internal(
-                "sync pickup: the new epoch's start changed under the pickup".into(),
-            ));
+        match state::record_epoch(conn, header.to_epoch, rekey.head, Some(by), now)? {
+            EpochRecord::Differs => {
+                return Err(AppError::Internal(
+                    "sync pickup: the new epoch's start changed under the pickup".into(),
+                ))
+            }
+            // The server's head, until the remover's signed head confirms it.
+            EpochRecord::Added => head::note_unverified(
+                conn,
+                header.to_epoch,
+                rekey.head,
+                rekey.rotation,
+                by,
+                sync.cursor,
+            )?,
+            EpochRecord::Same => {}
         }
         trust::cut_off_all_pending(conn, header.to_epoch)?;
         state::note_rekey_seen(conn, rekey.rotation)?;

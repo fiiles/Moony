@@ -30,6 +30,7 @@ use crate::services::sync::identity;
 use crate::services::sync::in_savepoint;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::merge::{apply_changeset, Outcome, StopReason};
+use crate::services::sync::rekey::head;
 use crate::services::sync::relay::{PullPage, PulledOp, Relay};
 use crate::services::sync::state;
 
@@ -89,12 +90,24 @@ pub fn handle_op(
     };
     // The epoch is authenticated now. Only a misbehaving server puts an op on the wrong side of a
     // key change (phase 5 §6.1).
-    if !epoch_fits_position(conn, creds, envelope_epoch(&op.ct), op.seq)? {
+    let epoch = envelope_epoch(&op.ct);
+    if !epoch_fits_position(conn, creds, epoch, op.seq)? {
         log::warn!(
             "[SYNC] Relay op {} is sealed under an epoch that does not fit its place",
             op.seq
         );
         return Ok(OpStep::Stop(PullStop::Invalid));
+    }
+    // An older op past where this device stood at a key change waits for the remover's signed
+    // head: the server's alone could have been moved to let a removed device's ops in.
+    if let Some(epoch) = epoch {
+        if head::awaits_head(conn, epoch, op.seq)? {
+            log::info!(
+                "[SYNC] Relay op {} waits for the signed start of a key change",
+                op.seq
+            );
+            return Ok(OpStep::Stop(PullStop::KeyChangeUnconfirmed));
+        }
     }
     let Ok(cs) = changeset::from_json(&json) else {
         log::warn!("[SYNC] Relay op {} holds no valid changeset", op.seq);

@@ -268,10 +268,14 @@ pub fn disable(conn: &Connection) -> Result<()> {
         )?;
         clear_vault_went_back(conn)?;
         clear_skipped_miss(conn)?;
-        conn.execute(
-            "DELETE FROM app_config WHERE key = ?1",
-            [KEY_CHANGE_NOTICE_KEY],
-        )?;
+        for key in [
+            KEY_CHANGE_NOTICE_KEY,
+            UNVERIFIED_EPOCHS_KEY,
+            KEY_CHANGE_OVERRUN_KEY,
+            REMOVAL_NOT_DONE_KEY,
+        ] {
+            conn.execute("DELETE FROM app_config WHERE key = ?1", [key])?;
+        }
         super::binding::forget_failed_starts(conn)?;
         super::chain::gaps::forget_all(conn)
     })
@@ -553,6 +557,18 @@ pub const KEY_CHANGE_NOTICE_KEY: &str = "sync.key_change_notice";
 /// it (phase 5 §7.4, `rekey::RemovedNotice`). Unlike every other sync key it survives turning
 /// sync off; only the person's dismissal clears it.
 pub const REMOVED_NOTICE_KEY: &str = "sync.removed_notice";
+
+/// The Local `app_config` key holding the key epochs this device adopted whose head the remover's
+/// signed head has not confirmed yet (`rekey::head`). Cleared with `sync_epochs`.
+pub const UNVERIFIED_EPOCHS_KEY: &str = "sync.epochs_unverified";
+
+/// The Local `app_config` key holding the notice that this device applied changes past a key
+/// change the server hid from it (`rekey::KeyChangeOverrun`). Turning sync off clears it.
+pub const KEY_CHANGE_OVERRUN_KEY: &str = "sync.key_change_overrun";
+
+/// The Local `app_config` key holding the notice that a removal the person confirmed was not
+/// done (`rekey::RemovalNotDone`). Turning sync off clears it.
+pub const REMOVAL_NOT_DONE_KEY: &str = "sync.removal_not_done";
 
 /// Whether this device crossed a barrier and has not yet uploaded (or restored, or found newer
 /// on the relay) a snapshot at it: its next clean round forces an upload (ruling T8-2), which

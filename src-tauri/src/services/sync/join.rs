@@ -512,6 +512,10 @@ fn replace_profile(
                 NewIdentity::Successor => identity::predecessor(conn)?,
                 NewIdentity::Join(_) => {
                     conn.execute_batch("DELETE FROM sync_trust; DELETE FROM sync_epochs;")?;
+                    conn.execute(
+                        "DELETE FROM app_config WHERE key = ?1",
+                        [state::UNVERIFIED_EPOCHS_KEY],
+                    )?;
                     None
                 }
             };

@@ -2,9 +2,12 @@
 //! device stores on the sync server with the token rotation, which every remaining device opens
 //! to pick the new key up and a removed device opens only as its removal notice. `rotate` makes a
 //! key change (or a removal from the list) on this device, `pickup` takes another device's key
-//! change in, and `reseal` seals again, under the new key, what this device had not yet sent.
+//! change in, `head` signs where a key change starts (on the remover) and checks the server's
+//! word against that signature (everywhere else), and `reseal` seals again, under the new key,
+//! what this device had not yet sent.
 
 pub mod bundle;
+pub mod head;
 pub mod pickup;
 pub mod reseal;
 pub mod rotate;
@@ -48,6 +51,37 @@ pub struct RemovedNotice {
     pub unsent: u32,
 }
 
+/// This device had applied changes past where a key change started before it learnt of the key
+/// change (the server hid it, phase 5 As built 65), kept in the Local `app_config` key
+/// `state::KEY_CHANGE_OVERRUN_KEY` until dismissed: the epoch, its verified head and how far this
+/// device's cursor had gone. Nothing was undone.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KeyChangeOverrun {
+    #[serde(rename = "epoch")]
+    pub epoch: u32,
+    #[serde(rename = "head")]
+    pub head: u64,
+    #[serde(rename = "through")]
+    pub through: u64,
+}
+
+/// A removal or key change the person confirmed that a background resolution found not done
+/// (phase 5 As built 69): another device changed the key first, or the server refused it. Kept in
+/// the Local `app_config` key `state::REMOVAL_NOT_DONE_KEY` until dismissed: who changed the key
+/// first (its name, when picked up), the names of the devices the person meant to remove, and
+/// whether that other change had already removed every one of them.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RemovalNotDone {
+    #[serde(rename = "by")]
+    pub by: Option<String>,
+    #[serde(rename = "devices")]
+    pub devices: Vec<String>,
+    #[serde(rename = "alreadyRemoved")]
+    pub already_removed: bool,
+}
+
 /// A device's name as this device's list knows it, or the first 8 hex characters of its ID.
 pub(crate) fn device_name(conn: &Connection, device: DeviceId) -> Result<String> {
     Ok(devices::device_row(conn, device)?
@@ -83,6 +117,24 @@ pub fn key_change_notice(conn: &Connection) -> Result<Option<KeyChangeNotice>> {
 
 pub(crate) fn write_key_change_notice(conn: &Connection, notice: &KeyChangeNotice) -> Result<()> {
     write_config(conn, state::KEY_CHANGE_NOTICE_KEY, notice)
+}
+
+/// Changes applied past a key change the server hid, if any and not dismissed.
+pub fn key_change_overrun(conn: &Connection) -> Result<Option<KeyChangeOverrun>> {
+    read_config(conn, state::KEY_CHANGE_OVERRUN_KEY)
+}
+
+pub(crate) fn write_key_change_overrun(conn: &Connection, notice: &KeyChangeOverrun) -> Result<()> {
+    write_config(conn, state::KEY_CHANGE_OVERRUN_KEY, notice)
+}
+
+/// A confirmed removal a background round found not done, if any and not dismissed.
+pub fn removal_not_done(conn: &Connection) -> Result<Option<RemovalNotDone>> {
+    read_config(conn, state::REMOVAL_NOT_DONE_KEY)
+}
+
+pub(crate) fn write_removal_not_done(conn: &Connection, notice: &RemovalNotDone) -> Result<()> {
+    write_config(conn, state::REMOVAL_NOT_DONE_KEY, notice)
 }
 
 /// Why sync went off here, if another device removed this one and the person has not dismissed

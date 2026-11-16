@@ -183,6 +183,8 @@ async fn only_what_never_reached_the_server_is_sealed_again_and_the_chain_holds(
     remove(&three, A, &[], RemovalMode::Rotate)
         .await
         .expect("changed");
+    // A sends its signed head, which B waits for before it applies b1's place (As built 62–63).
+    round_of(&three.vault, &three.vault.a).await;
     let ops_before = three.vault.relay.ops().len();
 
     let report = round_of(&three.vault, &three.vault.b).await;
@@ -306,6 +308,8 @@ async fn a_gap_before_the_key_change_does_not_hold_the_reseal() {
     remove(&three, A, &[], RemovalMode::Rotate)
         .await
         .expect("changed");
+    // A sends its signed head, which B waits for before it handles c2's place (As built 62–63).
+    round_of(&three.vault, &three.vault.a).await;
 
     let report = round_of(&three.vault, &three.vault.b).await;
 

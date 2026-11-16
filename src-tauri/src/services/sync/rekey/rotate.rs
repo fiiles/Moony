@@ -19,8 +19,11 @@
 //! A pending change is resolved at every engine start and at the start of every round, before
 //! anything else and with no person needed (the consent was given): the new token reads the vault
 //! → the change landed, commit it with the head of its bundle; the new token is unknown (`401`) →
-//! it did not land, send it again; a retired token then (`403`) → another device changed the key
-//! first. No round pushes while a change is pending. The pending JSON holds the new key: it is
+//! it did not land, send it again; a retired token then (`403`) → its own bundle on the server
+//! means it landed after all (commit), else another device changed the key first. A change a
+//! resolution ends without it happening leaves a notice (`rekey::RemovalNotDone`). The commit
+//! queues the signed head of the change (`rekey::head`). No round pushes while a change is
+//! pending. The pending JSON holds the new key: it is
 //! written and read only here, in wiped buffers, and never logged.
 //!
 //! What the remover had not sent is sealed again under the new key by its next round
@@ -39,6 +42,7 @@ use zeroize::Zeroizing;
 
 use super::bundle::{self, BundleInput, Notice, OldKey, Reason, Recipient};
 use super::pickup::{self, Pickup};
+use super::{device_name, head, write_removal_not_done, RemovalNotDone};
 use crate::error::{AppError, Result};
 use crate::services::sync::capture::guard;
 use crate::services::sync::engine::{self, ConnAccess};
@@ -149,6 +153,15 @@ pub fn pending(conn: &Connection) -> Result<bool> {
         )
         .optional()?;
     Ok(pending.unwrap_or(false))
+}
+
+/// The devices this device's pending key change removes (none when nothing is pending; a value
+/// that does not read removes nobody here, `resolve_pending` reports it).
+pub(crate) fn pending_removals(conn: &Connection) -> Result<Vec<DeviceId>> {
+    Ok(load_pending(conn)
+        .unwrap_or(None)
+        .map(|change| change.removed_devices())
+        .unwrap_or_default())
 }
 
 /// The plan for removing `removing` in `mode`, `opted_in` ticked (spec §6.4 steps 1–2). Refuses:
@@ -488,7 +501,7 @@ pub async fn remove<R: Relay, D: ConnAccess>(
         Ok(prepared) => prepared,
     };
     forget_pairing();
-    match send(relay, db, &creds, &change, Some(data_dir), now).await? {
+    match send(relay, db, &creds, &change, Some(data_dir), false, now).await? {
         Sent::Done(Outcome::Raced { by: Some(name) }) => Err(SyncError::Local(
             AppError::validation_with(ROTATION_RACED, serde_json::json!({ "name": name })),
         )),
@@ -595,7 +608,8 @@ fn prepare(conn: &Connection, creds: &Credentials, plan: &Plan, now: i64) -> Res
             }),
     );
     notices.truncate(bundle::MAX_NOTICE_ENTRIES);
-    let heads = state::epochs(conn)?;
+    // Only heads this device verified travel (a provisional one is the server's word).
+    let heads = head::verified_epochs(conn)?;
     let older: Vec<OldKey> = creds
         .keys
         .epochs()
@@ -645,13 +659,23 @@ enum Sent {
     Pending(SyncError),
 }
 
-/// The token call (spec §6.4 step 4) and what its answer does (step 5).
+/// The token call (spec §6.4 step 4) and what its answer does (step 5). `background`: a
+/// resolution no person is waiting for (`resolve_pending`), which leaves a notice when the change
+/// the person confirmed does not happen (`rekey::RemovalNotDone`).
+///
+/// A retired token (`403`) is first checked against the bundles on the server: one with this
+/// change's bytes means it landed after all (an answer lost, then a `401` for the new token that
+/// was wrong), and it commits as this device's own. Otherwise another device changed the key
+/// first: its change is picked up while this one is still stored (so a signer it removes is
+/// refused), and only then is this one wiped, so a failure in between keeps it for the next
+/// resolution.
 async fn send<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     creds: &Credentials,
     change: &PendingChange,
     data_dir: Option<&Path>,
+    background: bool,
     now: i64,
 ) -> SyncResult<Sent> {
     let new_token = change.new_auth(creds).token;
@@ -668,18 +692,33 @@ async fn send<R: Relay, D: ConnAccess>(
             }))
         }
         Err(RelayError::TokenReadOnly) => {
-            db.with_conn(wipe_pending)?;
+            let seen = db.with_conn(state::rekey_seen)?;
+            if let Some(rotated) = own_rotation(relay, &creds.auth(), seen, &change.bundle).await? {
+                let epoch = db.with_conn(|conn| commit(conn, change, rotated, now))?;
+                log::info!("[SYNC] A key change of this device had landed: the key is at {epoch}");
+                return Ok(Sent::Done(Outcome::Changed {
+                    epoch,
+                    removed: change.removed_devices(),
+                }));
+            }
             log::info!("[SYNC] Another device changed the sync key first");
-            raced(relay, db, change, data_dir, now)
-                .await
-                .map(Sent::Done)
+            let outcome = raced(relay, db, change, data_dir, now).await?;
+            if outcome != Outcome::RemovedHere {
+                let by = match &outcome {
+                    Outcome::Raced { by } => by.clone(),
+                    Outcome::AlreadyRemoved { by } => Some(by.clone()),
+                    _ => None,
+                };
+                db.with_conn(|conn| wipe_not_done(conn, change, background, by))?;
+            }
+            Ok(Sent::Done(outcome))
         }
         Err(RelayError::TooManyRotations) => {
-            db.with_conn(wipe_pending)?;
+            db.with_conn(|conn| wipe_not_done(conn, change, background, None))?;
             Err(SyncError::Local(validation(TOO_MANY_KEY_CHANGES)))
         }
         Err(RelayError::BadRequest(code)) => {
-            db.with_conn(wipe_pending)?;
+            db.with_conn(|conn| wipe_not_done(conn, change, background, None))?;
             Err(SyncError::Local(AppError::Internal(format!(
                 "sync: the sync server refused a key change: {code}"
             ))))
@@ -692,10 +731,46 @@ async fn send<R: Relay, D: ConnAccess>(
             | RelayError::InsufficientStorage),
         ) => Ok(Sent::Pending(error.into())),
         Err(error) => {
-            db.with_conn(wipe_pending)?;
+            db.with_conn(|conn| wipe_not_done(conn, change, background, None))?;
             Err(error.into())
         }
     }
+}
+
+/// Wipes the pending change, and in the background leaves the notice that it was not done: `by`
+/// changed the key first (when known), and whether every device it meant to remove is removed
+/// here anyway. In one hold, so the notice is there whenever the change is gone.
+fn wipe_not_done(
+    conn: &Connection,
+    change: &PendingChange,
+    background: bool,
+    by: Option<String>,
+) -> Result<()> {
+    wipe_pending(conn)?;
+    if !background {
+        return Ok(());
+    }
+    let devices = change
+        .removed
+        .iter()
+        .map(|record| device_name(conn, record.subject))
+        .collect::<Result<Vec<_>>>()?;
+    let already_removed = !change.removed.is_empty()
+        && change.removed.iter().all(|record| {
+            trust::entry(conn, record.subject)
+                .ok()
+                .flatten()
+                .is_some_and(|e| e.state == TrustState::Removed)
+        });
+    log::warn!("[SYNC] A confirmed removal or key change was not done");
+    write_removal_not_done(
+        conn,
+        &RemovalNotDone {
+            by,
+            devices,
+            already_removed,
+        },
+    )
 }
 
 /// A `200` (spec §6.4 step 5), in one savepoint: the new key current, its epoch's start, the
@@ -720,6 +795,9 @@ fn commit(conn: &Connection, change: &PendingChange, rotated: Rotated, now: i64)
                 "sync: the new epoch is recorded with another start".into(),
             ));
         }
+        // The first envelope under the new key: the signed head every other device checks the
+        // server's word against (`rekey::head`).
+        head::queue_signed_head(conn, me, change.from, change.to, rotated)?;
         for record in &change.removed {
             write_removal(conn, record)?;
             trust::mark_removed(conn, record, Some(change.to))?;
@@ -761,7 +839,7 @@ async fn raced<R: Relay, D: ConnAccess>(
     match pickup::pick_up(relay, db, data_dir, now).await? {
         Pickup::RemovedHere { .. } => Ok(Outcome::RemovedHere),
         Pickup::Adopted { by, .. } => Ok(db.with_conn(|conn| {
-            let by = super::device_name(conn, by)?;
+            let by = device_name(conn, by)?;
             let all_removed = change.removed.iter().all(|record| {
                 trust::entry(conn, record.subject)
                     .ok()
@@ -794,9 +872,10 @@ pub async fn resolve_pending<R: Relay, D: ConnAccess>(
         };
         let creds = keys::credentials(conn)?.ok_or_else(not_set_up)?;
         if creds.keys.current_epoch() != change.from {
-            // Committed already (the key moved on), or left from another vault: nothing to send.
+            // The key moved on without it (a commit clears it in the same savepoint): another
+            // device's change was picked up first. Nothing to send.
             log::warn!("[SYNC] A pending key change no longer fits this device's key: dropped");
-            wipe_pending(conn)?;
+            wipe_not_done(conn, &change, true, None)?;
             return Ok(None);
         }
         Ok(Some((change, creds, state::rekey_seen(conn)?)))
@@ -807,7 +886,13 @@ pub async fn resolve_pending<R: Relay, D: ConnAccess>(
     let new_auth = change.new_auth(&creds);
     match relay.vault_info(&new_auth).await {
         Ok(_) => {
-            let rotated = landed_rotation(relay, &new_auth, seen, &change.bundle).await?;
+            let rotated = own_rotation(relay, &new_auth, seen, &change.bundle)
+                .await?
+                .ok_or_else(|| {
+                    SyncError::from(RelayError::Protocol(
+                        "the new token reads the vault but its key change is not listed".into(),
+                    ))
+                })?;
             let epoch = db.with_conn(|conn| commit(conn, &change, rotated, now))?;
             log::info!("[SYNC] A pending key change had landed: the key is at epoch {epoch}");
             Ok(Some(Outcome::Changed {
@@ -816,7 +901,7 @@ pub async fn resolve_pending<R: Relay, D: ConnAccess>(
             }))
         }
         Err(RelayError::Unauthorized) => {
-            match send(relay, db, &creds, &change, data_dir, now).await? {
+            match send(relay, db, &creds, &change, data_dir, true, now).await? {
                 Sent::Done(outcome) => Ok(Some(outcome)),
                 Sent::Pending(error) => Err(error),
             }
@@ -825,29 +910,36 @@ pub async fn resolve_pending<R: Relay, D: ConnAccess>(
     }
 }
 
-/// The rotation and head of the bundle this device stored, read with its new token.
-async fn landed_rotation<R: Relay>(
+/// The rotation and head of the bundle this device stored, if the server lists it (read with
+/// `auth`, a token that reads the vault). Rotations must go up from page to page, and the walk
+/// takes at most `pickup::MAX_BUNDLES_PER_WALK` bundles: a server paging for ever is refused.
+async fn own_rotation<R: Relay>(
     relay: &R,
     auth: &VaultAuth,
     seen: u32,
     bundle: &[u8],
-) -> SyncResult<Rotated> {
+) -> SyncResult<Option<Rotated>> {
     let mut after = seen;
+    let mut walked = 0usize;
     loop {
         let page = relay.rekeys(auth, after, MAX_REKEY_PAGE).await?;
-        if let Some(found) = page.rekeys.iter().find(|r| r.bundle == bundle) {
-            return Ok(Rotated {
-                rotation: found.rotation,
-                head: found.head,
-            });
-        }
-        match page.rekeys.last() {
-            Some(last) if page.more => after = last.rotation,
-            _ => {
+        for rekey in &page.rekeys {
+            walked += 1;
+            if rekey.rotation <= after || walked > pickup::MAX_BUNDLES_PER_WALK {
                 return Err(SyncError::from(RelayError::Protocol(
-                    "the new token reads the vault but its key change is not listed".into(),
-                )))
+                    "the list of key changes does not end".into(),
+                )));
             }
+            after = rekey.rotation;
+            if rekey.bundle == bundle {
+                return Ok(Some(Rotated {
+                    rotation: rekey.rotation,
+                    head: rekey.head,
+                }));
+            }
+        }
+        if !page.more || page.rekeys.is_empty() {
+            return Ok(None);
         }
     }
 }

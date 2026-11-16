@@ -576,7 +576,12 @@ async fn a_restore_marker_rejoins_before_the_first_round() {
             .expect("row")
             .binding_written
     );
-    assert_eq!(calls_since(&vault.relay, from).first(), Some(&Route::Pull));
+    // Nothing before the re-join: the first round's first calls are its vault info (read before
+    // the pull, phase 5 As built 64) and its pull.
+    assert_eq!(
+        calls_since(&vault.relay, from)[..2],
+        [Route::VaultInfo, Route::Pull]
+    );
     assert_eq!(
         op_devices(&vault, 0),
         [new_id],

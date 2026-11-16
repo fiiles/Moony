@@ -21,6 +21,7 @@ mod lanes;
 mod pull;
 mod push;
 mod rekey_fixture;
+mod rekey_head;
 mod rekey_pickup;
 mod rekey_rotate;
 mod relay_faults;
@@ -298,6 +299,7 @@ pub fn changeset(
         seq,
         prev,
         rows,
+        rekey_head: None,
     }
 }
 

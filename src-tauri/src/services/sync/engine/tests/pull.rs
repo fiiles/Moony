@@ -585,7 +585,7 @@ async fn a_withheld_trailing_envelope_leaves_the_cursor_and_reports_behind() {
 type Mangle = fn(u64, PullPage) -> PullPage;
 
 /// A relay that serves `FakeRelay`'s pull pages through `mangle` (given the `after` of the call).
-/// A pull makes no other call.
+/// A pull makes no other call; a round's vault info is the fake's.
 pub(super) struct Mangled<F> {
     pub(super) inner: FakeRelay,
     pub(super) mangle: F,
@@ -607,8 +607,9 @@ impl<F: Fn(u64, PullPage) -> PullPage + Send + Sync> Relay for Mangled<F> {
     async fn create_vault(&self, _: &str, _: &VaultAuth) -> RelayResult<bool> {
         unreachable!("not a pull call")
     }
-    async fn vault_info(&self, _: &VaultAuth) -> RelayResult<VaultInfo> {
-        unreachable!("not a pull call")
+    async fn vault_info(&self, vault: &VaultAuth) -> RelayResult<VaultInfo> {
+        // A round reads it before its pull (phase 5 As built 64).
+        self.inner.vault_info(vault).await
     }
     async fn push(&self, _: &VaultAuth, _: &[OutgoingOp]) -> RelayResult<PushReceipt> {
         unreachable!("not a pull call")

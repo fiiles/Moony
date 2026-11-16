@@ -136,13 +136,14 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
 
 /// Every vault key epoch this device holds with the relay position at which the epoch started
 /// (phase 5 §8.4): epoch 0 starts at 0 whether `sync_epochs` has its row or not, an epoch it
-/// has no row for travels without a head. `None` when no vault keys are stored (a profile that
+/// has no row for, or whose head it has not verified yet (`rekey::head`), travels without a
+/// head. `None` when no vault keys are stored (a profile that
 /// is not bound to a vault: only tests dump one).
 fn dumped_keys(conn: &Connection) -> Result<Option<Vec<EpochKey>>> {
     let Some(held) = keys::vault_keys(conn)? else {
         return Ok(None);
     };
-    let mut heads = state::epochs(conn)?;
+    let mut heads = crate::services::sync::rekey::head::verified_epochs(conn)?;
     heads.entry(0).or_insert(0);
     Ok(Some(
         held.epochs()

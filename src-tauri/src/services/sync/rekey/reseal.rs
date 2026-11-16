@@ -20,7 +20,6 @@ use crate::services::sync::changeset;
 use crate::services::sync::envelope::{envelope_epoch, envelope_hash, open_op, seal_op};
 use crate::services::sync::in_savepoint;
 use crate::services::sync::keys::Credentials;
-use crate::services::sync::state;
 
 fn corrupt(what: &str) -> AppError {
     AppError::Internal(format!("sync re-seal: {what}"))
@@ -42,10 +41,12 @@ pub fn holds_older(conn: &Connection, creds: &Credentials) -> Result<bool> {
 }
 
 /// Whether a pull that looked at every op up to relay position `through` lets this device
-/// re-seal: the current epoch started at a head this device knows (`sync_epochs`) and the pull
-/// got there.
+/// re-seal: the current epoch started at a head this device knows and verified
+/// (`head::verified_epochs`: the remover's own, or one its signed head confirmed; a head only the
+/// server reported, perhaps lowered below an own envelope it took, never counts) and the pull got
+/// there.
 pub fn may_reseal(conn: &Connection, creds: &Credentials, through: u64) -> Result<bool> {
-    let heads = state::epochs(conn)?;
+    let heads = super::head::verified_epochs(conn)?;
     Ok(heads
         .get(&creds.keys.current_epoch())
         .is_some_and(|head| through >= *head))

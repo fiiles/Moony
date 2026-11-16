@@ -18,7 +18,7 @@
 use std::collections::BTreeSet;
 use std::fmt;
 
-use rusqlite::{Connection, Transaction};
+use rusqlite::Connection;
 
 use super::ConnAccess;
 use crate::error::{AppError, Result};
@@ -178,7 +178,7 @@ fn seal_hold(
 
 /// Seals `built` under the vault's current key, keeps it in `sync_unsent` under its sequence and
 /// records it in the own log, moving the chain on.
-fn seal_into_unsent(tx: &Transaction<'_>, creds: &Credentials, built: &Built) -> Result<()> {
+pub(crate) fn seal_into_unsent(tx: &Connection, creds: &Credentials, built: &Built) -> Result<()> {
     let json = to_json(&built.changeset)?;
     let envelope = seal_op(
         creds.keys.current_epoch(),

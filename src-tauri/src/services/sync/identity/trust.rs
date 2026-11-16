@@ -232,7 +232,7 @@ fn this_device(conn: &Connection) -> Result<DeviceId> {
 }
 
 /// The bound vault's ID.
-pub(super) fn vault_id(conn: &Connection) -> Result<[u8; 16]> {
+pub(crate) fn vault_id(conn: &Connection) -> Result<[u8; 16]> {
     let stored: Option<String> = conn
         .query_row("SELECT vault_id FROM sync_state WHERE id = 1", [], |r| {
             r.get(0)
@@ -843,7 +843,8 @@ pub fn refresh(conn: &Connection, now: i64) -> Result<RefreshReport> {
     in_savepoint(conn, "sync_trust_refresh", || {
         let mut report = RefreshReport::default();
         settle(conn, now, &mut report, |cert, seen| match cert.body.kind {
-            CertKind::Genesis => Verdict::Wait,
+            // Judged in Task 14 (revision §2.3).
+            CertKind::Genesis | CertKind::Kit => Verdict::Wait,
             CertKind::RecoveryKit => judge_kit(cert, seen),
             CertKind::Paired | CertKind::Rejoin => match vouch(seen.store, cert) {
                 Some(kit_unconfirmed) => Verdict::Pin { kit_unconfirmed },
@@ -867,6 +868,8 @@ pub fn tofu_from_rows(conn: &Connection, now: i64) -> Result<RefreshReport> {
                 kit_unconfirmed: false,
             },
             CertKind::RecoveryKit => judge_kit(cert, seen),
+            // Judged in Task 14 (revision §2.3).
+            CertKind::Kit => Verdict::Wait,
             CertKind::Paired | CertKind::Rejoin => {
                 let issuer = cert.body.issuer_device;
                 match vouch(seen.store, cert) {

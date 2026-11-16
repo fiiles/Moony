@@ -5,6 +5,7 @@ use rusqlite::Connection;
 use zeroize::Zeroizing;
 
 use super::cert::{self, CertKind};
+use super::kit::KitSecret;
 use super::trust::{self, TrustState};
 use super::{
     create_own, ensure_seed, own_seed, predecessor, sign_pub, successor, Issuer, SignSeed,
@@ -81,11 +82,13 @@ fn a_device_with_its_certificate_keeps_it_when_asked_again() {
 }
 
 #[test]
-fn a_recovery_kit_certificate_is_self_issued_with_its_kind() {
+fn a_kit_joiners_certificate_is_issued_by_the_kit() {
     let conn = profile();
-    let cert = create_own(&conn, Issuer::RecoveryKit, NOW).expect("kit");
+    let kit = KitSecret::from_bytes(Zeroizing::new([0x0c; 32])).derive(&VAULT);
+    let cert = create_own(&conn, Issuer::Kit { kit: &kit }, NOW).expect("kit join");
     assert_eq!(cert.body.kind, CertKind::RecoveryKit);
-    assert_eq!(cert.body.issuer_device, ME);
+    assert_eq!(cert.body.issuer_device, kit.id());
+    assert_eq!(&cert.body.issuer_sign_pub, kit.sign_pub());
     assert_eq!(
         trust::entry(&conn, ME)
             .expect("entry")
@@ -93,6 +96,11 @@ fn a_recovery_kit_certificate_is_self_issued_with_its_kind() {
             .kind,
         CertKind::RecoveryKit
     );
+    // A Kit of another vault signs nothing here.
+    let conn = profile();
+    let other = KitSecret::from_bytes(Zeroizing::new([0x0c; 32])).derive(&[0x33; 16]);
+    assert!(create_own(&conn, Issuer::Kit { kit: &other }, NOW).is_err());
+    assert!(own_seed(&conn).expect("seed").is_none(), "nothing stored");
 }
 
 #[test]

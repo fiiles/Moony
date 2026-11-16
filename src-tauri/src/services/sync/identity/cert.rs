@@ -1,5 +1,5 @@
-//! Device certificates (phase 5 spec §5.3): the bytes, the four issuers and the per-kind
-//! signature rules. All integers are big-endian; every signature is Ed25519 over the bytes before
+//! Device certificates (phase 5 spec §5.3, revision §2.3): the bytes, the five issuers and the
+//! per-kind signature rules. All integers are big-endian; every signature is Ed25519 over the bytes before
 //! it, which start with the domain string:
 //!
 //! ```text
@@ -13,7 +13,11 @@
 //! ```
 //!
 //! This module checks a certificate on its own (`verify_signatures`); whether its issuer is
-//! trusted is the trust store's question.
+//! trusted is the trust store's question. The Recovery Kit is a paper device (revision §2.3): its
+//! own certificate (kind 5) is issued by the device that created it, and a device that joins with
+//! it gets a kind-3 certificate issued by the Kit. Both bind the Kit's ID to its signing key
+//! (`identity::kit::kit_id`), so a Kit certificate names its own ID and a Kit joiner names it as
+//! issuer.
 
 use std::fmt;
 
@@ -22,6 +26,7 @@ use base64::Engine;
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
+use super::kit::{kit_id, KitKeys};
 use super::{new_sign_seed, sign_pub, verify_sig, SignSeed};
 use crate::error::{AppError, Result};
 use crate::services::sync::hlc::DeviceId;
@@ -46,10 +51,14 @@ pub enum CertKind {
     Genesis = 1,
     /// A holder paired it; signed by the holder's one-time join ticket.
     Paired = 2,
-    /// It joined with the Recovery Kit; signed by itself (spec O10).
+    /// It joined with the Recovery Kit; issued by the Kit (`issuer_device` = the Kit's ID,
+    /// `issuer_sign_pub` = its signing key; revision §2.3).
     RecoveryKit = 3,
     /// The re-join successor of an older ID; signed by the older ID's key.
     Rejoin = 4,
+    /// The Recovery Kit itself (revision §2.3): its ID, signing key and box key, issued by the
+    /// device that created it; the subject signature is the Kit's own key.
+    Kit = 5,
 }
 
 impl CertKind {
@@ -63,6 +72,7 @@ impl CertKind {
             2 => Some(CertKind::Paired),
             3 => Some(CertKind::RecoveryKit),
             4 => Some(CertKind::Rejoin),
+            5 => Some(CertKind::Kit),
             _ => None,
         }
     }
@@ -72,7 +82,7 @@ impl CertKind {
     }
 
     fn self_issued(self) -> bool {
-        matches!(self, CertKind::Genesis | CertKind::RecoveryKit)
+        self == CertKind::Genesis
     }
 }
 
@@ -290,14 +300,28 @@ impl Certificate {
         Sha256::digest(self.encode()).into()
     }
 
-    /// The per-kind rules of spec §5.3, without any trust lookup: a genesis or Kit certificate
-    /// names itself as issuer and is signed by its own key; a paired one carries a ticket the
-    /// named holder signed, is issued within `TICKET_LIFETIME_SECS` after it and is signed by that
-    /// ticket; a re-join one names an older ID and is
-    /// signed by its key; every kind carries the subject's proof of possession.
+    /// The per-kind rules of spec §5.3 and revision §2.3, without any trust lookup: a genesis
+    /// certificate names itself as issuer and is signed by its own key; a paired one carries a
+    /// ticket the named holder signed, is issued within `TICKET_LIFETIME_SECS` after it and is
+    /// signed by that ticket; a re-join one names an older ID and is signed by its key; a Kit
+    /// joiner's (kind 3) names the Kit as issuer and is signed by the Kit's key; the Kit's own
+    /// (kind 5) names its creator as issuer and is signed by the creator's key. A Kit's ID is
+    /// bound to its signing key (`kit_id`): a kind 5 names it as its device, a kind 3 as its
+    /// issuer. Every kind carries the subject's proof of possession, and no kind but genesis
+    /// names itself as issuer.
     pub fn verify_signatures(&self) -> Result<()> {
         let body = &self.body;
         if self.ticket.is_some() != body.kind.has_ticket() {
+            return Err(invalid());
+        }
+        let kit_bound = match body.kind {
+            CertKind::Kit => body.device == kit_id(&body.vault_id, &body.sign_pub),
+            CertKind::RecoveryKit => {
+                body.issuer_device == kit_id(&body.vault_id, &body.issuer_sign_pub)
+            }
+            _ => true,
+        };
+        if !kit_bound {
             return Err(invalid());
         }
         let issuer_key = if body.kind.self_issued() {
@@ -374,11 +398,11 @@ fn body(
     }
 }
 
-/// A genesis (setup) or Recovery Kit certificate: the subject is its own issuer.
+/// A genesis (setup) certificate: the subject is its own issuer.
 pub fn issue_self(kind: CertKind, fields: &CertFields, subject: &SignSeed) -> Result<Certificate> {
     if !kind.self_issued() {
         return Err(AppError::Internal(
-            "sync: only a genesis or Recovery Kit certificate is self-issued".into(),
+            "sync: only a genesis certificate is self-issued".into(),
         ));
     }
     let body = body(kind, fields, subject, fields.device, sign_pub(subject));
@@ -457,4 +481,52 @@ pub fn issue_rejoin(
     }
     let body = body(CertKind::Rejoin, fields, subject, old_device, sign_pub(old));
     Certificate::signed(body, None, old, subject)
+}
+
+/// The Recovery Kit's own certificate (kind 5, revision §2.3), issued by its creator
+/// (`creator_device`, signing key `creator`) at `issued_at`: the Kit's ID, signing key and box
+/// key, with the Kit's proof of possession (the creator holds the Kit's seed while it creates it).
+pub fn issue_kit(
+    creator: &SignSeed,
+    creator_device: DeviceId,
+    kit: &KitKeys,
+    issued_at: i64,
+) -> Result<Certificate> {
+    if creator_device == kit.id() {
+        return Err(invalid());
+    }
+    let fields = CertFields {
+        vault_id: *kit.vault_id(),
+        device: kit.id(),
+        box_pub: *kit.box_pub(),
+        issued_at,
+    };
+    let body = body(
+        CertKind::Kit,
+        &fields,
+        kit.sign_seed(),
+        creator_device,
+        sign_pub(creator),
+    );
+    Certificate::signed(body, None, creator, kit.sign_seed())
+}
+
+/// The certificate of a device joining with the Recovery Kit (kind 3, revision §2.3), issued by
+/// the Kit's key. Refuses `fields` of another vault than the Kit's, or naming the Kit itself.
+pub fn issue_kit_join(
+    kit: &KitKeys,
+    fields: &CertFields,
+    subject: &SignSeed,
+) -> Result<Certificate> {
+    if &fields.vault_id != kit.vault_id() || fields.device == kit.id() {
+        return Err(invalid());
+    }
+    let body = body(
+        CertKind::RecoveryKit,
+        fields,
+        subject,
+        kit.id(),
+        *kit.sign_pub(),
+    );
+    Certificate::signed(body, None, kit.sign_seed(), subject)
 }

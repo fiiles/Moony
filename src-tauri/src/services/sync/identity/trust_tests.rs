@@ -5,6 +5,7 @@ use rusqlite::{params, Connection};
 use zeroize::Zeroizing;
 
 use super::cert::{self, CertFields, CertKind, Certificate, TicketSecret};
+use super::kit::{KitKeys, KitSecret};
 use super::record::{Record, RecordType};
 use super::trust::{self, ConflictKind, ExclusionReason, TrustExport, TrustState};
 use super::{sign_pub, SignSeed};
@@ -38,8 +39,9 @@ impl Dev {
     fn genesis(self) -> Certificate {
         cert::issue_self(CertKind::Genesis, &self.fields(NOW), &self.seed()).expect("genesis")
     }
+    /// Joined with the test vault's Kit (kind 3, issued by the Kit).
     fn kit(self) -> Certificate {
-        cert::issue_self(CertKind::RecoveryKit, &self.fields(NOW), &self.seed()).expect("kit")
+        cert::issue_kit_join(&the_kit(), &self.fields(NOW), &self.seed()).expect("kit join")
     }
     /// Paired by `holder` with the one-time ticket whose seed is `ticket` repeated.
     fn paired_by(self, holder: Dev, ticket: u8) -> Certificate {
@@ -98,6 +100,11 @@ impl Dev {
         )
         .expect("removed")
     }
+}
+
+/// The test vault's Recovery Kit (revision §2.3), from a fixed seed.
+fn the_kit() -> KitKeys {
+    KitSecret::from_bytes(Zeroizing::new([0x0c; 32])).derive(&VAULT)
 }
 
 const ME: Dev = Dev(0x01);
@@ -272,7 +279,7 @@ fn a_recovery_kit_certificate_is_pinned_with_its_kind() {
     trust::refresh(&conn, NOW).expect("refresh");
     let entry = trust::entry(&conn, B.id()).unwrap().expect("pinned");
     assert_eq!(entry.kind, CertKind::RecoveryKit);
-    assert_eq!(entry.issuer, B.id());
+    assert_eq!(entry.issuer, the_kit().id());
 }
 
 #[test]
@@ -370,8 +377,9 @@ fn an_issuer_whose_pinned_key_differs_from_the_certificates_is_not_trusted() {
 #[test]
 fn a_certificate_for_another_vault_or_another_row_is_not_pinned() {
     let conn = supported();
-    let other_vault = cert::issue_self(
-        CertKind::RecoveryKit,
+    let other_kit = KitSecret::from_bytes(Zeroizing::new([0x0c; 32])).derive(&[0x22; 16]);
+    let other_vault = cert::issue_kit_join(
+        &other_kit,
         &CertFields {
             vault_id: [0x22; 16],
             ..B.fields(NOW)
@@ -1223,7 +1231,7 @@ fn a_kit_certificate_for_a_device_another_certificate_names_is_refused() {
     // C was paired by B (B's real key); B's own certificate has not arrived. A Kit certificate
     // for B's ID with another key would squat it.
     let squatter =
-        cert::issue_self(CertKind::RecoveryKit, &B.fields(NOW), &Dev(0x0e).seed()).expect("kit");
+        cert::issue_kit_join(&the_kit(), &B.fields(NOW), &Dev(0x0e).seed()).expect("kit join");
     let conn = supported();
     row(&conn, C, Some(&C.paired_by(B, 0x71)));
     row(&conn, B, Some(&squatter));

@@ -894,3 +894,45 @@ that covers an old Kit; R1 restated as freshness with the push hold; the R2 log-
 pass-safe for the D3 trap by a ticket announcement in the holder's own chain (a first-seen position alone
 would fail the trap whenever the new phone's row reaches the server after the old phone's `left`
 record); R4 and R5 stated.
+
+## As built (revision)
+
+Decisions made while building, in the spirit of this document; each supersedes the text above it.
+Numbered R-1, R-2, … so they never clash with the phase-5 spec's items 1–69.
+
+**Task 13 (Kit formats).**
+
+R-1. **The v1 code stays beside v2 until Tasks 18 and 19.** Setup still shows a v1 Kit and the
+     Kit join still reads one; deleting v1 now would break both before they are rewritten. The v2
+     API is separate: `recovery::{encode_kit_code, decode_kit_code, kit_qr_payload,
+     parse_kit_qr_payload, read_kit_input, KitCode, KitQr, KitInput, KIT_CODE_LEN}`.
+     `read_kit_input(code, relay_url, default_relay)` takes no account (it is in the code). The v2
+     reader refuses an 80-character code and a `moony-recover:1:` QR with
+     `validation.syncRecoveryCodeInvalid`; an account field of 10^16 or more is refused the same
+     way. Tasks 18/19 delete `encode_recovery_code`, `decode_recovery_code`, `recovery_qr_payload`,
+     `parse_recovery_qr_payload`, `read_recovery_input` and their types.
+R-2. **`identity::kit`:** `KitSecret` (the seed: `generate`, `from_bytes`, `expose`; prints
+     `<redacted>`) and `KitSecret::derive(vault_id) -> KitKeys` (`box_secret`, `box_pub`,
+     `sign_seed`, `sign_pub`, `token`, `id`, `vault_id`); `kit::kit_id(vault_id, sign_pub)`. The
+     box secret is the HKDF output taken as an X25519 scalar (clamped by `x25519-dalek`).
+R-3. **A Kit's ID is bound to its key inside the certificate check.** Besides "a kind 3 whose
+     issuer is its subject", `verify_signatures` refuses a kind 5 whose device is not
+     `kit_id(vault, sign_pub)` and a kind 3 whose issuer is not `kit_id(vault, issuer_sign_pub)`.
+     So a Kit certificate cannot claim another device's ID, which retires the phase-5 squat check
+     (As built 30, `KitClaimsKnownDevice`). Kinds 3, 4 and 5 share one signature shape (no ticket,
+     `issuer_sig` by `issuer_sign_pub`); only genesis is self-issued (`issue_self` refuses every
+     other kind). The kind-3 variant keeps its name `CertKind::RecoveryKit`; kind 5 is
+     `CertKind::Kit`. Issuers: `cert::issue_kit(creator, creator_device, &KitKeys, issued_at)`,
+     `cert::issue_kit_join(&KitKeys, fields, subject)`; `Issuer::Kit { kit: &KitKeys }`.
+R-4. **The v1 Kit join until Task 19** signs its kind-3 certificate with a throwaway Kit (a fresh
+     `KitSecret`): no other device knows that Kit, so the joiner stays unverified there, as any
+     Kit joiner without a pinned Kit would. Task 19 replaces it with the Kit from the code.
+R-5. **The envelope** is `rekey::envelope::{build, open, peek, Envelope, EnvelopeInput, Confirmed,
+     Header}`, with `bundle::OldKey` for its keys. `open(bytes, &KitKeys)` checks the header's
+     vault and Kit ID, opens the body, and verifies the signature with the bundled signer
+     certificate (which must verify on its own, name the vault and be `by`'s); the store check of
+     §2.6 step 6 is the Kit join's. Keys must be at least one, strictly ascending, the last the
+     header's epoch; confirmed items name each device once (lowercase hex, 64-hex hashes). Every
+     refusal is one internal error ("a Kit envelope is not valid"), which Task 19 maps to
+     `validation.syncRecoveryKitUnreadable`. The envelope does not judge heads: the sealer passes
+     only verified ones (`head::verified_epochs`, Task 17).

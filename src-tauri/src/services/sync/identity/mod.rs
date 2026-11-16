@@ -7,11 +7,12 @@
 //!
 //! This device's own identity (spec §5.2, §5.3, §5.5) is made where its device ID is: at setup
 //! (a genesis certificate), at a pairing join (signed with the holder's one-time ticket), at a
-//! Recovery Kit join (self-signed), and at a re-join or a replace of the same device (signed by
-//! the older ID's key). A device whose vault has no certificates (set up before phase 5, or
+//! Recovery Kit join (signed by the Kit's key, `kit`; revision §2.3), and at a re-join or a
+//! replace of the same device (signed by the older ID's key). A device whose vault has no certificates (set up before phase 5, or
 //! paired by a holder that sent no identity) gets a signing key and no certificate.
 
 pub mod cert;
+pub mod kit;
 pub mod record;
 pub mod trust;
 
@@ -35,6 +36,7 @@ use super::state;
 use crate::error::{AppError, Result};
 
 pub use cert::{CertBody, CertFields, CertKind, Certificate, Ticket, TicketSecret};
+pub use kit::{KitKeys, KitSecret};
 pub use record::{Record, RecordType};
 
 /// An Ed25519 signing seed (32 bytes): this device's signing key, or a one-time join ticket's.
@@ -154,8 +156,8 @@ pub fn write_once_value_valid(
 pub enum Issuer<'a> {
     /// It creates the vault (kind 1).
     Genesis,
-    /// It joins with the Recovery Kit (kind 3).
-    RecoveryKit,
+    /// It joins with the Recovery Kit, whose key signs (kind 3, revision §2.3).
+    Kit { kit: &'a KitKeys },
     /// The holder `holder` (signing key `holder_sign_pub`) paired it with a one-time join ticket
     /// (kind 2).
     Ticket {
@@ -221,7 +223,7 @@ pub fn create_own(conn: &Connection, issuer: Issuer<'_>, now: i64) -> Result<Cer
     let seed = new_sign_seed()?;
     let cert = match issuer {
         Issuer::Genesis => cert::issue_self(CertKind::Genesis, &fields, &seed)?,
-        Issuer::RecoveryKit => cert::issue_self(CertKind::RecoveryKit, &fields, &seed)?,
+        Issuer::Kit { kit } => cert::issue_kit_join(kit, &fields, &seed)?,
         // Dated no earlier than the ticket: a holder's clock ahead of this one's must not make
         // the certificate look older than its ticket (`cert::TICKET_LIFETIME_SECS`).
         Issuer::Ticket {

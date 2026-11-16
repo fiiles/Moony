@@ -7,6 +7,7 @@
 //! what this device had not yet sent.
 
 pub mod bundle;
+pub mod envelope;
 pub mod head;
 pub mod pickup;
 pub mod reseal;
@@ -185,3 +186,5 @@ pub(crate) fn forget_binding_after_removal(data_dir: &Path) -> Result<()> {
 
 #[cfg(test)]
 mod bundle_tests;
+#[cfg(test)]
+mod envelope_tests;

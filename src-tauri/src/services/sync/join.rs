@@ -531,7 +531,11 @@ fn replace_profile(
                     Some(paired_identity(conn, paired, now)?)
                 }
                 NewIdentity::Join(JoinIdentity::RecoveryKit) => {
-                    Some(identity::create_own(conn, Issuer::RecoveryKit, now)?)
+                    // Until Task 19 (revision §2.6): a v1 Kit carries no Kit seed, so the joiner
+                    // signs with a throwaway Kit no other device knows; its certificate stays
+                    // unverified there.
+                    let kit = identity::KitSecret::generate()?.derive(&trust::vault_id(conn)?);
+                    Some(identity::create_own(conn, Issuer::Kit { kit: &kit }, now)?)
                 }
                 NewIdentity::Join(JoinIdentity::Unvouched(_)) => {
                     identity::create_uncertified(conn)?;

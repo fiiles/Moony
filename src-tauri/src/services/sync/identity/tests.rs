@@ -7,6 +7,7 @@
 use zeroize::Zeroizing;
 
 use super::cert::{self, CertFields, CertKind, Certificate, Ticket, TicketSecret};
+use super::kit::{self, KitKeys, KitSecret};
 use super::record::{Record, RecordType};
 use super::{sign_pub, SignSeed};
 use crate::services::sync::hlc::DeviceId;
@@ -58,8 +59,19 @@ fn paired_b() -> Certificate {
     .expect("paired")
 }
 
+/// The test vault's Recovery Kit, from a fixed seed.
+fn the_kit() -> KitKeys {
+    KitSecret::from_bytes(Zeroizing::new([0x0c; 32])).derive(&VAULT)
+}
+
+/// B joined with the Kit (kind 3): issued by the Kit's key.
 fn kit_b() -> Certificate {
-    cert::issue_self(CertKind::RecoveryKit, &fields(B, 0xb2), &seed(0x02)).expect("kit")
+    cert::issue_kit_join(&the_kit(), &fields(B, 0xb2), &seed(0x02)).expect("kit join")
+}
+
+/// The Kit's own certificate (kind 5), issued by A, which created it.
+fn kit_itself() -> Certificate {
+    cert::issue_kit(&seed(0x01), A, &the_kit(), AT).expect("kit")
 }
 
 fn rejoin_c() -> Certificate {
@@ -84,6 +96,7 @@ fn all_certs() -> Vec<(&'static str, Certificate)> {
         ("paired", paired_b()),
         ("recovery kit", kit_b()),
         ("re-join", rejoin_c()),
+        ("kit", kit_itself()),
     ]
 }
 
@@ -109,14 +122,25 @@ const PAIRED_HEX: &str = "
     73a2d23b08967102b08f53665718626514ff2e9ab8ab417c2c81ff28ec1b08bd4674c6b956b4523e037d28e7517c0d4d
     1fd156d81896e4cd4e5fafe21de592f967e26f5e04
 ";
+/// Kind 3 (revision §2.3): B joined with the Kit, so the Kit issued it.
 const KIT_HEX: &str = "
     6d6f6f6e792064657669636520636572742076310311111111111111111111111111111111a2a2a2a2a2a2a2a2a2a2a2
     a2a2a2a2a28139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394b2b2b2b2b2b2b2b2b2b2b2
-    b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2000000006afab800a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2813977
-    0ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b3943707c7ff7b3b1867d1c831900e95c096ba9c99
-    27a946670e1d5a9e0f170071214bf22d717e16c8a002502eea6472f80416748c18a72fac3a46e52ba3bbdc840563ffd8
-    00a1814ff4489d8c2a7b4450af976752a9a2388cc1988f623d0970b50af1ab6c6e95c6670124e016c48d552c9ec67b1b
-    7404849a35a4b9fbd5eb5e1204
+    b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2000000006afab80043abe7eaba581f0b87fa9095629ebe6ea472a0
+    9834a436f6014ee95c47940c7838e5f12c563acb09d1ea646a115872a9b57ef6af8f0817d22fafb37889cb456f8cf612
+    0964cd759b72c54fc16d149f43fbfa74b67df6885b9492b87dabb568d1c92534097a3aec8383b2e47ce4dbfc00beffb1
+    5a8d5f957ae933484ea69883a38125a5436e3925d7ee1f0c0805b150cee993e9ec2dbb5e5669e25caf251d3ad7e99ed4
+    e466d691d00ada1a0137dea407
+";
+/// Kind 5: the Kit itself, issued by A.
+const KIT_ITSELF_HEX: &str = "
+    6d6f6f6e79206465766963652063657274207631051111111111111111111111111111111143abe7eaba581f0b87fa90
+    95629ebe6ea472a09834a436f6014ee95c47940c7838e5f12c563acb09d1ea646a115872a9fa008eccd68cb1f8389aba
+    d67627c9d3c2bec62456e509e42a63f1bcc7f67829000000006afab800a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a18a88e3
+    dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c9024532e173b746f8aac8cdeb3075001862c5f
+    7e34af62a6811bc7f01b92928442506a3ae29731a41c92496a3ab7710607e6d16d8b3ef2f30a9d7b0ba9ff3d0a945a78
+    423b744b439a237da02af9aa15aa2430d196b67312ea801f43d8ac8b5aa340e1b98e4bcaebe4eb63f496a3378d82a207
+    14b0352a841e8bfd60ebb86906
 ";
 const REJOIN_HEX: &str = "
     6d6f6f6e792064657669636520636572742076310411111111111111111111111111111111a3a3a3a3a3a3a3a3a3a3a3
@@ -158,6 +182,7 @@ fn certificates_match_the_frozen_vectors() {
     assert_eq!(hex::encode(paired_b().encode()), squash(PAIRED_HEX));
     assert_eq!(hex::encode(kit_b().encode()), squash(KIT_HEX));
     assert_eq!(hex::encode(rejoin_c().encode()), squash(REJOIN_HEX));
+    assert_eq!(hex::encode(kit_itself().encode()), squash(KIT_ITSELF_HEX));
 }
 
 #[test]
@@ -172,7 +197,7 @@ fn records_match_the_frozen_vectors() {
 
 #[test]
 fn frozen_vectors_decode_and_verify() {
-    for hex in [GENESIS_HEX, PAIRED_HEX, KIT_HEX, REJOIN_HEX] {
+    for hex in [GENESIS_HEX, PAIRED_HEX, KIT_HEX, REJOIN_HEX, KIT_ITSELF_HEX] {
         let bytes = hex::decode(squash(hex)).expect("hex");
         let cert = Certificate::decode(&bytes).expect("decodes");
         cert.verify_signatures().expect("verifies");
@@ -378,7 +403,7 @@ fn a_paired_certificate_without_a_ticket_is_refused() {
 #[test]
 fn other_kinds_with_a_ticket_are_refused() {
     let (_, ticket) = ticket_from_a();
-    for cert in [genesis_a(), kit_b(), rejoin_c()] {
+    for cert in [genesis_a(), kit_b(), rejoin_c(), kit_itself()] {
         let bytes = cert.encode();
         let mut padded = bytes[..BODY_LEN].to_vec();
         padded.extend_from_slice(&ticket.encode());
@@ -457,20 +482,16 @@ fn a_paired_issuer_signature_by_another_key_than_the_ticket_fails() {
 
 #[test]
 fn a_self_issued_certificate_naming_another_issuer_fails() {
-    for kind in [CertKind::Genesis, CertKind::RecoveryKit] {
-        let mut body = genesis_a().body;
-        body.kind = kind;
-        body.issuer_device = B;
-        assert!(forge(body.clone(), None, &seed(0x01), &seed(0x01))
-            .verify_signatures()
-            .is_err());
-        let mut body = genesis_a().body;
-        body.kind = kind;
-        body.issuer_sign_pub = sign_pub(&seed(0x02));
-        assert!(forge(body, None, &seed(0x02), &seed(0x01))
-            .verify_signatures()
-            .is_err());
-    }
+    let mut body = genesis_a().body;
+    body.issuer_device = B;
+    assert!(forge(body, None, &seed(0x01), &seed(0x01))
+        .verify_signatures()
+        .is_err());
+    let mut body = genesis_a().body;
+    body.issuer_sign_pub = sign_pub(&seed(0x02));
+    assert!(forge(body, None, &seed(0x02), &seed(0x01))
+        .verify_signatures()
+        .is_err());
 }
 
 #[test]
@@ -503,8 +524,17 @@ fn a_rejoin_or_pairing_naming_itself_as_issuer_fails() {
 
 #[test]
 fn issue_self_refuses_the_other_kinds() {
-    assert!(cert::issue_self(CertKind::Paired, &fields(A, 0xb1), &seed(0x01)).is_err());
-    assert!(cert::issue_self(CertKind::Rejoin, &fields(A, 0xb1), &seed(0x01)).is_err());
+    for kind in [
+        CertKind::Paired,
+        CertKind::RecoveryKit,
+        CertKind::Rejoin,
+        CertKind::Kit,
+    ] {
+        assert!(
+            cert::issue_self(kind, &fields(A, 0xb1), &seed(0x01)).is_err(),
+            "{kind:?}"
+        );
+    }
 }
 
 // ── Records ─────────────────────────────────────────────────────────────────────────────────
@@ -603,4 +633,180 @@ fn a_paired_certificate_must_be_issued_within_an_hour_of_its_ticket() {
         let late = forge(body, Some(ticket.clone()), secret.as_seed(), &seed(0x02));
         assert!(late.verify_signatures().is_err(), "issued at {at}");
     }
+}
+
+// ── The Kit (revision §2.2, §2.3) ───────────────────────────────────────────────────────────
+
+/// The four derivations of revision §2.2 from a fixed seed and vault, frozen. The token and the
+/// ID were cross-checked with Python's `hmac`/`hashlib` (HKDF-SHA256 by hand).
+#[test]
+fn the_kit_derivations_match_the_frozen_vectors() {
+    let kit = the_kit();
+    assert_eq!(
+        hex::encode(kit.box_pub()),
+        "fa008eccd68cb1f8389abad67627c9d3c2bec62456e509e42a63f1bcc7f67829"
+    );
+    assert_eq!(
+        hex::encode(kit.sign_pub()),
+        "a472a09834a436f6014ee95c47940c7838e5f12c563acb09d1ea646a115872a9"
+    );
+    assert_eq!(kit.token(), "1kqnYkRc_-n9HgspfgILRSOJtkqiKvSd9B6e1wceLuw");
+    assert_eq!(kit.token().len(), kit::KIT_TOKEN_LEN);
+    assert_eq!(kit.id().to_hex(), "43abe7eaba581f0b87fa9095629ebe6e");
+    assert_eq!(kit.id(), kit::kit_id(&VAULT, kit.sign_pub()));
+    assert_eq!(kit.vault_id(), &VAULT);
+
+    // Independently: each value is HKDF-SHA256(salt = vault_id, ikm = seed, info).
+    use hkdf::Hkdf;
+    use sha2::Sha256;
+    let expand = |info: &[u8]| {
+        let mut out = [0u8; 32];
+        Hkdf::<Sha256>::new(Some(&VAULT), &[0x0c; 32])
+            .expand(info, &mut out)
+            .unwrap();
+        out
+    };
+    let box_secret = x25519_dalek::StaticSecret::from(expand(b"moony kit box v1"));
+    assert_eq!(
+        &x25519_dalek::PublicKey::from(&box_secret).to_bytes(),
+        kit.box_pub()
+    );
+    assert_eq!(
+        &sign_pub(&SignSeed::from_bytes(Zeroizing::new(expand(
+            b"moony kit sign v1"
+        )))),
+        kit.sign_pub()
+    );
+    assert_eq!(kit.sign_seed().expose(), &expand(b"moony kit sign v1"));
+    assert_eq!(kit.box_secret().to_bytes(), box_secret.to_bytes());
+}
+
+#[test]
+fn a_kit_is_bound_to_its_vault_and_seed() {
+    let other_vault = KitSecret::from_bytes(Zeroizing::new([0x0c; 32])).derive(&[0x12; 16]);
+    let other_seed = KitSecret::from_bytes(Zeroizing::new([0x0d; 32])).derive(&VAULT);
+    let kit = the_kit();
+    for other in [&other_vault, &other_seed] {
+        assert_ne!(other.id(), kit.id());
+        assert_ne!(other.sign_pub(), kit.sign_pub());
+        assert_ne!(other.box_pub(), kit.box_pub());
+        assert_ne!(other.token(), kit.token());
+    }
+    let fresh = KitSecret::generate().expect("seed");
+    assert_ne!(fresh.expose(), &[0x0c; 32]);
+    assert_eq!(format!("{fresh:?}"), "KitSecret(<redacted>)");
+    let debug = format!("{kit:?}");
+    assert!(!debug.contains(kit.token()), "{debug}");
+    assert!(!debug.contains(&hex::encode(kit.sign_seed().expose())));
+}
+
+/// Every field of the Kit's certificate and a Kit joiner's sits where revision §2.3 says.
+#[test]
+fn kit_certificates_name_the_kit_where_the_spec_says() {
+    let kit = the_kit();
+    let itself = kit_itself().encode();
+    assert_eq!(itself[20], 5, "kind");
+    assert_eq!(&itself[37..53], &kit.id().0, "device = kit_id");
+    assert_eq!(&itself[53..85], kit.sign_pub(), "sign_pub");
+    assert_eq!(&itself[85..117], kit.box_pub(), "box_pub");
+    assert_eq!(&itself[125..141], &A.0, "issuer = the creator");
+    assert_eq!(&itself[141..173], &sign_pub(&seed(0x01)), "creator's key");
+    assert_eq!(itself.len(), 173 + 128, "no ticket");
+
+    let joined = kit_b().encode();
+    assert_eq!(joined[20], 3, "kind");
+    assert_eq!(&joined[37..53], &B.0, "device");
+    assert_eq!(&joined[125..141], &kit.id().0, "issuer = the Kit");
+    assert_eq!(&joined[141..173], kit.sign_pub(), "the Kit's key");
+    assert_eq!(joined.len(), 173 + 128, "no ticket");
+}
+
+#[test]
+fn a_kit_joiner_naming_itself_as_issuer_fails() {
+    let mut body = kit_b().body;
+    body.issuer_device = B;
+    body.issuer_sign_pub = sign_pub(&seed(0x02));
+    assert!(forge(body, None, &seed(0x02), &seed(0x02))
+        .verify_signatures()
+        .is_err());
+}
+
+#[test]
+fn a_kit_joiner_signed_by_another_key_than_the_kits_fails() {
+    let body = kit_b().body;
+    assert!(forge(body, None, &seed(0x01), &seed(0x02))
+        .verify_signatures()
+        .is_err());
+    // Another key named as the Kit's: the Kit's ID does not belong to it.
+    let mut body = kit_b().body;
+    body.issuer_sign_pub = sign_pub(&seed(0x05));
+    assert!(forge(body, None, &seed(0x05), &seed(0x02))
+        .verify_signatures()
+        .is_err());
+}
+
+#[test]
+fn a_kit_certificate_must_name_the_id_of_its_key() {
+    let kit = the_kit();
+    // Signed by A and by the Kit's key, but for another device ID.
+    let mut body = kit_itself().body;
+    body.device = C;
+    assert!(forge(body, None, &seed(0x01), kit.sign_seed())
+        .verify_signatures()
+        .is_err());
+    // A Kit certificate its creator did not sign.
+    let body = kit_itself().body;
+    assert!(forge(body, None, &seed(0x09), kit.sign_seed())
+        .verify_signatures()
+        .is_err());
+    // A Kit naming itself as its creator.
+    let mut body = kit_itself().body;
+    body.issuer_device = kit.id();
+    body.issuer_sign_pub = *kit.sign_pub();
+    assert!(forge(body, None, kit.sign_seed(), kit.sign_seed())
+        .verify_signatures()
+        .is_err());
+    assert!(cert::issue_kit(kit.sign_seed(), kit.id(), &kit, AT).is_err());
+}
+
+#[test]
+fn issue_kit_join_refuses_another_vault_or_the_kit_itself() {
+    let kit = the_kit();
+    let mut other = fields(B, 0xb2);
+    other.vault_id = [0x12; 16];
+    assert!(cert::issue_kit_join(&kit, &other, &seed(0x02)).is_err());
+    let itself = fields(kit.id(), 0xb2);
+    assert!(cert::issue_kit_join(&kit, &itself, &seed(0x02)).is_err());
+}
+
+/// The merge's validity check (As built 28) knows the Kit's row: its kind-5 certificate and a
+/// removal record naming it (the old Kit when a new one replaces it).
+#[test]
+fn the_kits_row_values_are_valid_on_their_own() {
+    let kit = the_kit();
+    let row = kit.id().to_hex();
+    let cert = kit_itself().to_b64();
+    assert!(super::write_once_value_valid(
+        "cert",
+        &row,
+        &cert,
+        Some(&VAULT),
+        None
+    ));
+    assert!(!super::write_once_value_valid(
+        "cert",
+        &A.to_hex(),
+        &cert,
+        Some(&VAULT),
+        None
+    ));
+    let removal = Record::sign(RecordType::Removed, VAULT, kit.id(), A, AT, 0, &seed(0x01))
+        .expect("removal of the Kit");
+    assert!(super::write_once_value_valid(
+        "removal_record",
+        &row,
+        &removal.to_b64(),
+        Some(&VAULT),
+        Some(&cert)
+    ));
 }

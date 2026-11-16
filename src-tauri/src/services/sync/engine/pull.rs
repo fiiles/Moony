@@ -12,6 +12,8 @@
 //! later envelopes of its author as gaps behind it, until the person skips it (audit M6,
 //! `chain::too_far_ahead`).
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use rusqlite::Connection;
 
 use super::{ConnAccess, PullReport, PullStop};
@@ -21,7 +23,7 @@ use crate::services::sync::chain::gaps::{self, GapKind};
 use crate::services::sync::chain::{self, EnvelopeMeta, RejoinReport, Verdict};
 use crate::services::sync::changeset::{self, Changeset};
 use crate::services::sync::devices;
-use crate::services::sync::envelope::{envelope_hash, open_op};
+use crate::services::sync::envelope::{envelope_epoch, envelope_hash, open_op};
 use crate::services::sync::error::SyncResult;
 use crate::services::sync::hlc::now_ms;
 use crate::services::sync::identity;
@@ -78,6 +80,15 @@ pub fn handle_op(
             return Ok(OpStep::Stop(PullStop::Undecryptable));
         }
     };
+    // The epoch is authenticated now. Only a misbehaving server puts an op on the wrong side of a
+    // key change (phase 5 §6.1).
+    if !epoch_fits_position(conn, creds, envelope_epoch(&op.ct), op.seq)? {
+        log::warn!(
+            "[SYNC] Relay op {} is sealed under an epoch that does not fit its place",
+            op.seq
+        );
+        return Ok(OpStep::Stop(PullStop::Invalid));
+    }
     let Ok(cs) = changeset::from_json(&json) else {
         log::warn!("[SYNC] Relay op {} holds no valid changeset", op.seq);
         return Ok(OpStep::Stop(PullStop::Invalid));
@@ -97,6 +108,37 @@ pub fn handle_op(
         Some(OpStep::Advance) => Ok(OpStep::Rejoined),
         Some(step) => Ok(step),
     }
+}
+
+/// The epoch rule (phase 5 §6.1): for every key change this device knows the relay position of
+/// (`sync_epochs`, epoch k at head h), an op above h is sealed under epoch k or later and an op at
+/// or below h under an earlier one. A key epoch this device holds a key for but has no head for
+/// is not checked (logged once per run).
+fn epoch_fits_position(
+    conn: &Connection,
+    creds: &Credentials,
+    epoch: Option<u32>,
+    position: u64,
+) -> Result<bool> {
+    let Some(epoch) = epoch else {
+        return Ok(false);
+    };
+    let heads = state::epochs(conn)?;
+    for (known, head) in &heads {
+        if (position > *head) != (epoch >= *known) {
+            return Ok(false);
+        }
+    }
+    static LOGGED: AtomicBool = AtomicBool::new(false);
+    if creds
+        .keys
+        .epochs()
+        .any(|(known, _)| known > 0 && !heads.contains_key(&known))
+        && !LOGGED.swap(true, Ordering::Relaxed)
+    {
+        log::warn!("[SYNC] A key epoch has no known relay position: it is not checked");
+    }
+    Ok(true)
 }
 
 /// Acts on `verdict` for `cs`; `None` for `Clone`, which the caller answers with a re-join.

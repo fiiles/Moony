@@ -3,6 +3,7 @@
 //! refuses, `restore` what each restore leaves behind.
 
 mod attachments;
+mod keys_record;
 mod restore;
 mod stream;
 

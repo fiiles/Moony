@@ -126,6 +126,25 @@ impl VaultKeys {
         self.keys.get(&epoch).map(|key| Zeroizing::new(**key))
     }
 
+    /// Adds the key of an epoch below the current one that this device does not hold yet (a
+    /// snapshot's `Keys` record, phase 5 §8.4). The current epoch's key, and every other key
+    /// already held, is never replaced: a different key for a held epoch is `Differs`, an epoch
+    /// above the current one `Newer` (a snapshot this device opened was sealed under an epoch it
+    /// holds, so it cannot name a later one); nothing changes then.
+    pub fn insert_older(&mut self, epoch: u32, key: Zeroizing<[u8; 32]>) -> OlderKey {
+        if epoch > self.current {
+            return OlderKey::Newer;
+        }
+        match self.keys.get(&epoch) {
+            Some(held) if **held == *key => OlderKey::Same,
+            Some(_) => OlderKey::Differs,
+            None => {
+                self.keys.insert(epoch, key);
+                OlderKey::Added
+            }
+        }
+    }
+
     /// `{"<epoch>":"<base64url key>",…}` in ascending epoch order, built in one wiped buffer.
     fn to_json(&self) -> Zeroizing<String> {
         // `"4294967295":"<43 characters>",` is 59 bytes; reserving up front keeps the buffer
@@ -174,6 +193,17 @@ impl VaultKeys {
         }
         Self::checked(current, keys)
     }
+}
+
+/// What `VaultKeys::insert_older` did with a key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OlderKey {
+    Added,
+    Same,
+    /// This device holds another key for that epoch.
+    Differs,
+    /// The epoch is above the current one.
+    Newer,
 }
 
 impl fmt::Debug for VaultKeys {
@@ -454,6 +484,27 @@ pub fn credentials(conn: &Connection) -> Result<Option<Credentials>> {
         vault_id,
         keys,
     }))
+}
+
+/// The stored vault keys, or `None` until the vault secrets are there.
+pub fn vault_keys(conn: &Connection) -> Result<Option<VaultKeys>> {
+    Ok(vault_secrets(conn)?.map(|(_, keys)| keys))
+}
+
+/// Stores `keys` (every epoch) of the vault this row is already bound to; the vault ID, the
+/// current epoch's bookkeeping and everything else stay. Only keys added for older epochs go
+/// through here (`VaultKeys::insert_older`): a change of the current epoch is a key change, which
+/// stores the vault secrets whole.
+pub fn store_older_keys(conn: &Connection, keys: &VaultKeys) -> Result<()> {
+    let json = keys.to_json();
+    let changed = conn.execute(
+        "UPDATE sync_state SET vault_keys = ?1 WHERE id = 1 AND key_epoch = ?2",
+        params![json.as_str(), keys.current_epoch()],
+    )?;
+    if changed == 0 {
+        return Err(not_set_up());
+    }
+    Ok(())
 }
 
 /// This device's X25519 public key, generating the key pair the first time. The write only

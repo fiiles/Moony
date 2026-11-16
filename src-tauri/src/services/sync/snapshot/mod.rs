@@ -24,7 +24,7 @@
 mod attachments;
 mod stream;
 
-pub use stream::{read_record, Head, Record};
+pub use stream::{read_record, EpochKey, Head, Record};
 
 use std::collections::{BTreeMap, HashMap};
 use std::io::{Read, Write};
@@ -39,6 +39,7 @@ use super::held_blobs;
 use super::hlc::{Clock, DeviceId, Observation};
 use super::in_savepoint;
 use super::journal::{category_depth, Reader};
+use super::keys;
 use super::merge::{self, MergeCtx, Outcome};
 use super::registry::keys::{fk_depth, schema_number};
 use super::registry::{
@@ -111,6 +112,9 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
         &encode(&Record::Devices(devs.into_vec()), &mut no_devs),
     )?;
     write_record(out, &encode(&header, &mut no_devs))?;
+    if let Some(keys) = dumped_keys(conn)? {
+        write_record(out, &encode(&Record::Keys(keys), &mut no_devs))?;
+    }
     for row in &encoded {
         write_record(out, row)?;
     }
@@ -128,6 +132,69 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
         ),
     )?;
     Ok(stats)
+}
+
+/// Every vault key epoch this device holds with the relay position at which the epoch started
+/// (phase 5 §8.4): epoch 0 starts at 0 whether `sync_epochs` has its row or not, an epoch it
+/// has no row for travels without a head. `None` when no vault keys are stored (a profile that
+/// is not bound to a vault: only tests dump one).
+fn dumped_keys(conn: &Connection) -> Result<Option<Vec<EpochKey>>> {
+    let Some(held) = keys::vault_keys(conn)? else {
+        return Ok(None);
+    };
+    let mut heads = state::epochs(conn)?;
+    heads.entry(0).or_insert(0);
+    Ok(Some(
+        held.epochs()
+            .map(|(epoch, key)| EpochKey {
+                epoch,
+                key,
+                head: heads.get(&epoch).copied(),
+            })
+            .collect(),
+    ))
+}
+
+/// A snapshot's `Keys` record meets this device's keys (phase 5 §8.4): a key for an epoch this
+/// device holds one for must be the same, an epoch above this device's current one cannot be (the
+/// snapshot was sealed under an epoch this device holds, and names none after it), and a head for
+/// an epoch `sync_epochs` has another head for refuses too: any of these is
+/// `validation.syncSnapshotInvalid`. What is missing is added, keys and heads alike. Nothing is
+/// written before every entry has passed, and the caller's savepoint undoes a failure after.
+fn adopt_keys(conn: &Connection, listed: Option<&[EpochKey]>, now: i64) -> Result<()> {
+    let Some(listed) = listed else {
+        return Ok(());
+    };
+    let Some(mut held) = keys::vault_keys(conn)? else {
+        return Err(invalid());
+    };
+    let known = state::epochs(conn)?;
+    let mut added = false;
+    for entry in listed {
+        match held.insert_older(entry.epoch, entry.key.clone()) {
+            keys::OlderKey::Added => added = true,
+            keys::OlderKey::Same => {}
+            keys::OlderKey::Differs | keys::OlderKey::Newer => {
+                log::warn!("[SYNC] A snapshot's keys disagree with this device's: it is refused");
+                return Err(invalid());
+            }
+        }
+        if let (Some(head), Some(recorded)) = (entry.head, known.get(&entry.epoch)) {
+            if head != *recorded {
+                log::warn!("[SYNC] A snapshot's key epochs disagree with this device's");
+                return Err(invalid());
+            }
+        }
+    }
+    if added {
+        keys::store_older_keys(conn, &held)?;
+    }
+    for entry in listed {
+        if let Some(head) = entry.head {
+            state::record_epoch(conn, entry.epoch, head, None, now)?;
+        }
+    }
+    Ok(())
 }
 
 /// What a restore did: the stream's counts, and what it could not do exactly or found suspicious
@@ -204,6 +271,7 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
     let snapshot = read_all(input)?;
     in_savepoint(conn, "sync_snapshot_merge", || {
         let sync = admissible(conn, &snapshot)?;
+        adopt_keys(conn, snapshot.keys.as_deref(), now)?;
         let mut report = RestoreReport {
             stats: stats_of(&snapshot),
             ..RestoreReport::default()
@@ -227,6 +295,7 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
 /// The body of `restore_replace`, inside the caller's savepoint.
 fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<RestoreReport> {
     let sync = admissible(conn, &snapshot)?;
+    adopt_keys(conn, snapshot.keys.as_deref(), now)?;
     let mut report = RestoreReport {
         stats: stats_of(&snapshot),
         ..RestoreReport::default()

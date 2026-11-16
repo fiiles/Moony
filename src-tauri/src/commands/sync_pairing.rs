@@ -657,9 +657,10 @@ pub async fn sync_pairing_join(
     else {
         return Err(AppError::Validation(FAILED.into()));
     };
+    let heads = slot.session.received_heads().cloned().unwrap_or_default();
     let identity = match slot.session.received_identity() {
-        Some(paired) => join::JoinIdentity::Paired(paired.duplicate()),
-        None => join::JoinIdentity::Unvouched,
+        Some(paired) => join::JoinIdentity::Paired(paired.duplicate(), heads),
+        None => join::JoinIdentity::Unvouched(heads),
     };
     let relay = HttpRelay::new(&creds.relay_url)?;
     let relay_url = creds.relay_url.clone();

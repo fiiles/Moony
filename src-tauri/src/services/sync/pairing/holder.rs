@@ -92,16 +92,7 @@ pub fn holder_payload(conn: &Connection, now: i64) -> Result<Option<SlotPayload>
 /// The rotation head of every epoch of `creds` that `sync_epochs` records; epoch 0 starts at 0
 /// (spec §6.1) whether recorded or not.
 fn epoch_heads(conn: &Connection, creds: &Credentials) -> Result<BTreeMap<u32, u64>> {
-    let mut stmt = conn.prepare("SELECT epoch, rotation_head FROM sync_epochs")?;
-    let recorded = stmt
-        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?)))?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
-    let mut heads = BTreeMap::new();
-    for (epoch, head) in recorded {
-        if let (Ok(epoch), Ok(head)) = (u32::try_from(epoch), u64::try_from(head)) {
-            heads.insert(epoch, head);
-        }
-    }
+    let mut heads = state::epochs(conn)?;
     heads.entry(0).or_insert(0);
     heads.retain(|epoch, _| creds.keys.get(*epoch).is_some());
     Ok(heads)

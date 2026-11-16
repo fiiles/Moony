@@ -70,14 +70,18 @@ pub const MAX_DRAIN_ROUNDS: usize = 20;
 pub enum JoinIdentity {
     /// A pairing (protocol 3): the holder's trust store seeds this device's, and the holder's
     /// one-time ticket signs its paired certificate.
-    Paired(PairingIdentity),
+    Paired(PairingIdentity, EpochHeads),
     /// A Sync Recovery Kit join: it signs its own Kit certificate and trusts, on first use, every
     /// certificate in what it restores (§5.4).
     RecoveryKit,
     /// A pairing from a holder that sent no identity (a vault set up before phase 5): a signing
     /// key and no certificate, so removal stays unavailable there.
-    Unvouched,
+    Unvouched(EpochHeads),
 }
+
+/// The relay position at which each key epoch started, as the holder of a pairing sent them
+/// (slot 2 carries a head for every epoch it knows one for); written to `sync_epochs` at the join.
+pub type EpochHeads = std::collections::BTreeMap<u32, u64>;
 
 /// The identity a replace gives this device under its new device ID.
 enum NewIdentity {
@@ -119,7 +123,7 @@ pub(crate) async fn join_by_replace<R: Relay, D: ConnAccess>(
     let _no_round = engine::exclusive(db).await;
     let plain = fetched_snapshot(relay, &creds).await?;
     let (joiner, dir, name) = (db.clone(), data_dir.to_path_buf(), device_name.to_string());
-    let who = NewIdentity::Join(JoinIdentity::Unvouched);
+    let who = NewIdentity::Join(JoinIdentity::Unvouched(EpochHeads::new()));
     let report = off_thread(move || {
         joiner.with_conn(|conn| replace_profile(conn, &dir, &creds, &name, &plain, &who, now))
     })
@@ -507,7 +511,7 @@ fn replace_profile(
             let predecessor = match who {
                 NewIdentity::Successor => identity::predecessor(conn)?,
                 NewIdentity::Join(_) => {
-                    conn.execute("DELETE FROM sync_trust", [])?;
+                    conn.execute_batch("DELETE FROM sync_trust; DELETE FROM sync_epochs;")?;
                     None
                 }
             };
@@ -519,18 +523,21 @@ fn replace_profile(
             let public = keys::new_device_keypair(conn)?;
             let cert = match who {
                 NewIdentity::Successor => identity::successor(conn, predecessor, now)?,
-                NewIdentity::Join(JoinIdentity::Paired(paired)) => {
+                NewIdentity::Join(JoinIdentity::Paired(paired, _)) => {
                     Some(paired_identity(conn, paired, now)?)
                 }
                 NewIdentity::Join(JoinIdentity::RecoveryKit) => {
                     Some(identity::create_own(conn, Issuer::RecoveryKit, now)?)
                 }
-                NewIdentity::Join(JoinIdentity::Unvouched) => {
+                NewIdentity::Join(JoinIdentity::Unvouched(_)) => {
                     identity::create_uncertified(conn)?;
                     None
                 }
             };
             devices::record_this_device(conn, device_name, &public, cert.as_ref(), now)?;
+            if let NewIdentity::Join(joining) = who {
+                record_joined_epochs(conn, creds, joining, now)?;
+            }
             if matches!(who, NewIdentity::Join(JoinIdentity::RecoveryKit)) {
                 trust::tofu_from_rows(conn, now)?;
             }
@@ -558,6 +565,35 @@ fn replace_profile(
         log::warn!("[SYNC] Could not clear the restore marker after the join: {e}");
     }
     Ok(joined)
+}
+
+/// A joiner's key epochs (phase 5 §6.1): the heads its holder sent for the epochs it holds keys
+/// for, with epoch 0 at relay position 0 when it holds that key; what the snapshot's `Keys` record
+/// already recorded must agree. A head that does not is `validation.syncPairingFailed`: two
+/// authenticated sources contradict each other.
+fn record_joined_epochs(
+    conn: &Connection,
+    creds: &Credentials,
+    joining: &JoinIdentity,
+    now: i64,
+) -> Result<()> {
+    let mut heads = match joining {
+        JoinIdentity::Paired(_, heads) | JoinIdentity::Unvouched(heads) => heads.clone(),
+        JoinIdentity::RecoveryKit => EpochHeads::new(),
+    };
+    if creds.keys.get(0).is_some() {
+        heads.entry(0).or_insert(0);
+    }
+    for (epoch, head) in heads {
+        if creds.keys.get(epoch).is_none() {
+            continue;
+        }
+        if state::record_epoch(conn, epoch, head, None, now)? == state::EpochRecord::Differs {
+            log::warn!("[SYNC] The holder's key epochs disagree with the vault's snapshot");
+            return Err(AppError::Validation(PAIRING_FAILED.into()));
+        }
+    }
+    Ok(())
 }
 
 /// A paired joiner's identity, inside the join's savepoint after the replace (spec §5.3, §5.4):

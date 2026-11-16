@@ -1022,3 +1022,66 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     with the pinned key, and that `to_epoch` is this device's epoch + 1. The signed bytes are
     `Zeroizing`; lengths and indexes go through `u16::try_from`. Not changed: the joiner still
     discards the received heads (L3, Task 8).
+
+**Task 7 (the relay client and the fake).**
+
+39. **`RelayError::TooManyRotations`** (`409 too_many_rotations`, a refusal, not retried) is the
+    only new error; `invalid_rekey` and `rekey_too_large` stay `BadRequest(code)`. `Relay::rotate_token
+    (vault, new_token, bundle) -> Rotated {rotation, head}` and `Relay::rekeys(vault, after, limit) ->
+    RekeyPage {rekeys: [Rekey {rotation, head, at, bundle}], more}`. Both check their arguments
+    before anything is sent, as the server would (new token 43 base64url characters, bundle 1 B to
+    256 KiB, limit 1..=32 → `BadRequest("invalid_token" | "invalid_rekey" | "rekey_too_large" |
+    "invalid_limit")`); the bundle goes up as standard padded base64. A page from the server is
+    checked like a blob page (`relay::check_rekey_page`): at most `limit` bundles, rotations
+    strictly ascending and above `after`, non-empty bundles of at most 256 KiB, at most 4 MiB per
+    page, no `more` on an empty page; anything else is `Protocol("unexpected answer")`.
+40. **The fake relay follows the server**: a rotation needs the current token (a retired one is
+    `TokenReadOnly`, so of two concurrent rotations the second fails) and no subscription; a token
+    that is, or was within 30 days, the vault's is `invalid_token`; the 33rd bundle younger than 30
+    days is `TooManyRotations`; the retired token reads (pull, vault info, snapshot, rekey, blob get,
+    head, list) and is `TokenReadOnly` for push, snapshot put, blob put and delete, vault delete and a
+    second rotation; after 30 days on the fake's clock it is `Unauthorized` and its bundle is gone.
+    `FakeRelay::advance_clock(seconds)` moves that clock; `lose_next_answer(Route::RotateToken)` makes
+    the next rotation land and answer `Server(503)` (Task 9's "answer lost"); `stored_rekey` reads a
+    bundle as the server holds it. `set_rotation` still sets the counter by hand; a real rotation adds
+    one to it.
+
+**Task 8 (older keys in snapshots, epoch heads, the epoch rule).**
+
+41. **The `Keys` record** is `{"r":"keys","keys":[{"epoch":n,"key":"<base64url>","head":h?}]}` (JSON
+    keys sorted, `head` omitted when the dumper does not know it), written once right after the
+    header, before the rows, ascending by epoch, with at most 4096 entries; a reader refuses a second
+    one, one after a row or seed, repeated or descending epochs, keys that are not 32 bytes and
+    unknown fields. A snapshot with none (from a build before phase 5) restores as before. The dump
+    writes it only when the profile has vault keys stored (always, in production; some tests dump a
+    profile with none). Epoch 0 travels with head 0 whether `sync_epochs` has its row or not. The
+    reader parses the record straight into wiped buffers; the dumper's JSON text of the keys passes
+    through ordinary `serde_json` values, as does the rest of the stream until it is sealed.
+42. **Restoring it** (replace and merge alike, right after `admissible`, before anything is written):
+    every key is added when this device holds none for that epoch (`VaultKeys::insert_older`,
+    `keys::store_older_keys`), left alone when it is the same; a different key for a held epoch, an
+    epoch above this device's current one (a snapshot this device opened was sealed under an epoch
+    it holds and names none after it), a head that differs from the one `sync_epochs` records, or a
+    record when this device holds no vault keys at all refuses the snapshot with
+    `validation.syncSnapshotInvalid`. Then each head not yet recorded is written
+    (`state::record_epoch`, a recorded row is never changed: `EpochRecord::{Added, Same, Differs}`).
+43. **`sync_epochs` is written where an epoch starts**: `state::enable` (first device, epoch 0 at
+    0, used by setup), and every new device's join (`replace_profile` clears the table with the
+    trust store, the snapshot's `Keys` record adds what it knows, then the holder's heads and epoch
+    0 at 0 for the epochs it holds keys for; a head for an epoch it holds no key for is ignored; a
+    head that contradicts the snapshot's is `validation.syncPairingFailed`, nothing replaced). A
+    repair and a re-sync keep the table. `JoinIdentity` is now `Paired(PairingIdentity, EpochHeads)`,
+    `RecoveryKit` and `Unvouched(EpochHeads)`: the heads of slot 2 travel with every pairing, with or
+    without an identity (`session.received_heads()`). **For Task 12**: a Kit joiner gets epoch 0 at 0
+    only when its keys hold epoch 0; at a later epoch it must record the heads from the bundle's
+    `keys` (or the snapshot's `Keys` record, which `adopt_keys` already records) itself, and
+    `RecoveryKit` has no heads field yet.
+44. **The holder** reads its heads with `state::epochs` (epoch 0 is 0 whether recorded or not,
+    only epochs it holds keys for travel); migration 040 wrote the row for profiles that had a
+    `key_epoch`.
+45. **The epoch rule** (`engine/pull.rs::epoch_fits_position`, in `handle_op` right after the
+    envelope opens, so the epoch is authenticated): for every `(k, head)` of `sync_epochs`, an op
+    above `head` must be sealed under epoch ≥ k and one at or below it under epoch < k; either
+    breach stops the pull as `Invalid` (problem `invalidChain`) before the changeset is read. An
+    epoch this device holds a key for, above 0, with no row is not checked and logged once per run.
+    Not applied in scan mode after a `NewerSchema` stop (nothing is applied there).

@@ -281,6 +281,19 @@ async fn setup_signs_and_pins_a_genesis_certificate_that_syncs() {
     );
 }
 
+/// Phase 5 §6.1: setup records epoch 0 at relay position 0.
+#[tokio::test]
+async fn setup_records_epoch_zero() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    set_up(&relay, &device, dir.path()).await;
+    assert_eq!(
+        crate::services::sync::state::epochs(&device.lock()).expect("epochs"),
+        std::collections::BTreeMap::from([(0, 0)])
+    );
+}
+
 /// A setup resumed after sync was turned on keeps the certificate it signed the first time.
 #[tokio::test]
 async fn a_resumed_setup_keeps_its_certificate() {

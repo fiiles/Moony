@@ -58,13 +58,14 @@ fn local_data_never_enters_a_snapshot() {
            ON CONFLICT(key) DO UPDATE SET value = excluded.value; \
          INSERT INTO app_config (key, value) VALUES ('backup.lastCreatedAt', 'backup-marker') \
            ON CONFLICT(key) DO UPDATE SET value = excluded.value; \
-         UPDATE sync_state SET relay_url = 'relay-marker', vault_keys = 'vault-marker'; \
+         UPDATE sync_state SET relay_url = 'relay-marker'; \
          INSERT INTO real_estate (id, name, address, type) VALUES ('re-1', 'Flat', 'Street', 'flat'); \
          INSERT INTO real_estate_documents (id, real_estate_id, name, file_path) \
            VALUES ('doc-1', 're-1', 'doc-marker', 'path-marker');",
     );
     let (bytes, _) = snapshot(&a, 1);
     let text = String::from_utf8_lossy(&bytes);
+    // The vault keys travel in the `Keys` record only (phase 5 §8.4), sealed with the stream.
     for marker in [
         "xx-language-marker",
         "token-marker",
@@ -72,7 +73,6 @@ fn local_data_never_enters_a_snapshot() {
         "fx-marker",
         "backup-marker",
         "relay-marker",
-        "vault-marker",
         "doc-marker",
         "path-marker",
         "fx_reference",

@@ -6,7 +6,7 @@ use std::sync::atomic::Ordering;
 use super::*;
 use crate::services::sync::capture;
 use crate::services::sync::devices;
-use crate::services::sync::engine::pull::{pull_all, pull_pages, PULL_PAGE};
+use crate::services::sync::engine::pull::{handle_op, pull_all, pull_pages, OpStep, PULL_PAGE};
 use crate::services::sync::engine::{PullEnd, PullReport, PullStop};
 use crate::services::sync::error::SyncError;
 use crate::services::sync::keys::VaultAuth;
@@ -932,4 +932,108 @@ async fn an_envelope_fetched_again_counts_its_bytes_once() {
             "only what the cursor moved past counts"
         );
     }
+}
+
+/// The vault's credentials with a second key epoch (1), as a device that picked up one key change.
+fn credentials_at_epoch_one(vault: &Vault) -> Credentials {
+    let first = *vault.creds.keys.current();
+    Credentials {
+        keys: VaultKeys::from_parts(1, BTreeMap::from([(0, first), (1, [9; 32])])).expect("keys"),
+        ..vault.creds.clone()
+    }
+}
+
+/// `handle_op` for a fresh author's first (empty) envelope sealed under `epoch` and served at
+/// relay position `position`.
+fn handle_at(
+    conn: &Connection,
+    creds: &Credentials,
+    author: u8,
+    epoch: u32,
+    position: u64,
+) -> OpStep {
+    let cs = changeset(DeviceId([author; 16]), 1, None, vec![]);
+    let key = creds.keys.get(epoch).expect("a key for the epoch");
+    let ct = seal_op(epoch, &key, &creds.vault_id.0, &to_json(&cs).expect("json")).expect("seal");
+    let op = PulledOp {
+        seq: position,
+        id: op_id(&ct),
+        ct,
+    };
+    handle_op(conn, creds, &op, NOW, &mut PullReport::default()).expect("handle")
+}
+
+/// Phase 5 §6.1: epoch 1 started at relay position 50.
+#[tokio::test]
+async fn an_op_must_sit_on_its_own_side_of_a_key_change() {
+    let vault = vault().await;
+    let creds = credentials_at_epoch_one(&vault);
+    let a = vault.a.lock();
+    state::record_epoch(&a, 1, 50, None, NOW).expect("epoch 1");
+
+    // Above the key change under the old epoch, and at or below it under the new one: a
+    // misbehaving server only.
+    assert_eq!(
+        handle_at(&a, &creds, 10, 0, 51),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(
+        handle_at(&a, &creds, 11, 1, 50),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(
+        handle_at(&a, &creds, 12, 1, 1),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    // The right sides apply.
+    assert_eq!(handle_at(&a, &creds, 13, 1, 60), OpStep::Advance);
+    assert_eq!(handle_at(&a, &creds, 14, 0, 50), OpStep::Advance);
+    assert_eq!(handle_at(&a, &creds, 15, 0, 3), OpStep::Advance);
+    assert_eq!(handle_at(&a, &creds, 16, 1, 51), OpStep::Advance);
+    // Nothing of the refused ones was applied: their authors have no chain here.
+    assert_eq!(head(&a, DeviceId([10; 16])), None);
+    assert_eq!(head(&a, DeviceId([11; 16])), None);
+}
+
+/// An epoch whose relay position this device never learned is not checked.
+#[tokio::test]
+async fn an_epoch_with_no_known_position_is_not_checked() {
+    let vault = vault().await;
+    let creds = credentials_at_epoch_one(&vault);
+    let a = vault.a.lock();
+    assert!(state::epochs(&a).expect("epochs").get(&1).is_none());
+
+    assert_eq!(handle_at(&a, &creds, 10, 0, 500), OpStep::Advance);
+    assert_eq!(handle_at(&a, &creds, 11, 1, 2), OpStep::Advance);
+}
+
+/// Every key change is judged on its own: with epochs 1 (at 50) and 2 (at 80) known, an op at
+/// 70 belongs to epoch 1 and no other.
+#[tokio::test]
+async fn several_key_changes_each_fix_their_own_range() {
+    let vault = vault().await;
+    let first = *vault.creds.keys.current();
+    let creds = Credentials {
+        keys: VaultKeys::from_parts(2, BTreeMap::from([(0, first), (1, [9; 32]), (2, [8; 32])]))
+            .expect("keys"),
+        ..vault.creds.clone()
+    };
+    let a = vault.a.lock();
+    state::record_epoch(&a, 1, 50, None, NOW).expect("epoch 1");
+    state::record_epoch(&a, 2, 80, None, NOW).expect("epoch 2");
+
+    assert_eq!(handle_at(&a, &creds, 10, 1, 70), OpStep::Advance);
+    assert_eq!(
+        handle_at(&a, &creds, 11, 0, 70),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(
+        handle_at(&a, &creds, 12, 2, 70),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(handle_at(&a, &creds, 13, 2, 81), OpStep::Advance);
+    assert_eq!(
+        handle_at(&a, &creds, 14, 1, 81),
+        OpStep::Stop(PullStop::Invalid)
+    );
 }

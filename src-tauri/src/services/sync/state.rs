@@ -1,6 +1,8 @@
 //! The single `sync_state` row (spec §6.2): whether sync is on, this device's identity and the
 //! engine's bookkeeping, and turning sync on and off on this device.
 
+use std::collections::BTreeMap;
+
 use rusqlite::{params, Connection, OptionalExtension};
 
 use super::capture;
@@ -169,7 +171,73 @@ pub fn enable(conn: &Connection, device: DeviceId) -> Result<()> {
         ensure_row(conn, device)?;
         capture::install(conn, device)?;
         packs::persist_effective(conn)?;
-        note_starting_barrier(conn)
+        note_starting_barrier(conn)?;
+        // The first device of a vault starts at epoch 0, at relay position 0 (phase 5 §6.1).
+        record_epoch(conn, 0, 0, None, 0).map(|_| ())
+    })
+}
+
+/// What `record_epoch` found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EpochRecord {
+    /// A new row.
+    Added,
+    /// The epoch was recorded with this head already.
+    Same,
+    /// The epoch is recorded with another head: nothing changed.
+    Differs,
+}
+
+/// The relay position at which each key epoch started (`sync_epochs`, phase 5 §6.1): epoch 0 at 0,
+/// epoch n+1 at the head the relay answered when the token rotated. An epoch with no row has no
+/// known head.
+pub fn epochs(conn: &Connection) -> Result<BTreeMap<u32, u64>> {
+    let mut stmt = conn.prepare_cached("SELECT epoch, rotation_head FROM sync_epochs")?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?)))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let mut heads = BTreeMap::new();
+    for (epoch, head) in rows {
+        heads.insert(
+            unsigned(epoch, "sync_epochs.epoch")?,
+            unsigned(head, "sync_epochs.rotation_head")?,
+        );
+    }
+    Ok(heads)
+}
+
+/// Records where `epoch` started. A recorded epoch is never changed: the same head is `Same`, another
+/// one `Differs` (the caller decides whether that stops what it is doing). `by` is the device that
+/// made the key change, when known; `now` the time this device adopted it.
+pub fn record_epoch(
+    conn: &Connection,
+    epoch: u32,
+    head: u64,
+    by: Option<DeviceId>,
+    now: i64,
+) -> Result<EpochRecord> {
+    let added = conn.execute(
+        "INSERT INTO sync_epochs (epoch, rotation_head, adopted_at, by_device) \
+         VALUES (?1, ?2, ?3, ?4) ON CONFLICT(epoch) DO NOTHING",
+        params![
+            epoch,
+            signed(head, "rotation_head")?,
+            now,
+            by.map(|d| d.to_hex())
+        ],
+    )?;
+    if added > 0 {
+        return Ok(EpochRecord::Added);
+    }
+    let held: i64 = conn.query_row(
+        "SELECT rotation_head FROM sync_epochs WHERE epoch = ?1",
+        [epoch],
+        |r| r.get(0),
+    )?;
+    Ok(if held == signed(head, "rotation_head")? {
+        EpochRecord::Same
+    } else {
+        EpochRecord::Differs
     })
 }
 
@@ -806,7 +874,7 @@ mod tests {
                rekey_seen = 2, kit_epoch_saved = 1, snapshot_epoch_due = 1; \
              INSERT INTO sync_trust (device, cert, kind, issuer, sign_pub, box_pub, state, \
                pinned_at) VALUES ('d', 'c', 1, 'd', x'01', x'02', 'trusted', 1); \
-             INSERT INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (0, 0, 1);",
+             INSERT OR IGNORE INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (0, 0, 1);",
         )
         .unwrap();
 

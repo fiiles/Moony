@@ -101,9 +101,10 @@ async fn pair(vault: &Vault, holder: &TestConn, joiner_shows: bool) -> (Credenti
             .expect("read the credentials"),
         Stage::Received
     );
+    let heads = joiner_session.received_heads().cloned().unwrap_or_default();
     let identity = match joiner_session.received_identity() {
-        Some(paired) => JoinIdentity::Paired(paired.duplicate()),
-        None => JoinIdentity::Unvouched,
+        Some(paired) => JoinIdentity::Paired(paired.duplicate(), heads),
+        None => JoinIdentity::Unvouched(heads),
     };
     (
         joiner_session.received().expect("the credentials").clone(),
@@ -119,7 +120,15 @@ async fn join_as(
     name: &str,
     dir: &Path,
 ) -> SyncResult<std::path::PathBuf> {
-    join_via(vault, device, creds, name, dir, JoinIdentity::Unvouched).await
+    join_via(
+        vault,
+        device,
+        creds,
+        name,
+        dir,
+        JoinIdentity::Unvouched(Default::default()),
+    )
+    .await
 }
 
 async fn join_via(
@@ -335,7 +344,7 @@ async fn a_paired_device_is_vouched_for_by_its_holder() {
     let dir = tempfile::tempdir().expect("dir");
 
     let (received, identity) = pair(&vault, &vault.a, true).await;
-    let JoinIdentity::Paired(paired) = &identity else {
+    let JoinIdentity::Paired(paired, _) = &identity else {
         panic!("a holder with a certificate vouches");
     };
     let ticket = paired.ticket.ticket_pub;
@@ -382,7 +391,7 @@ async fn a_join_with_an_identity_that_does_not_verify_is_refused() {
     let device = newcomer();
     let dir = tempfile::tempdir().expect("dir");
     let (received, identity) = pair(&vault, &vault.a, false).await;
-    let JoinIdentity::Paired(mut paired) = identity else {
+    let JoinIdentity::Paired(mut paired, heads) = identity else {
         panic!("a holder with a certificate vouches");
     };
     paired.ticket.holder_sig[0] ^= 1;
@@ -393,7 +402,7 @@ async fn a_join_with_an_identity_that_does_not_verify_is_refused() {
         received,
         "iPhone",
         dir.path(),
-        JoinIdentity::Paired(paired),
+        JoinIdentity::Paired(paired, heads),
     )
     .await
     .expect_err("refused");
@@ -418,7 +427,7 @@ async fn a_join_from_a_holder_without_an_identity_makes_no_certificate() {
     let dir = tempfile::tempdir().expect("dir");
 
     let (received, identity) = pair(&vault, &vault.a, false).await;
-    assert!(matches!(identity, JoinIdentity::Unvouched));
+    assert!(matches!(identity, JoinIdentity::Unvouched(_)));
     join_via(&vault, &device, received, "iPhone", dir.path(), identity)
         .await
         .expect("join");
@@ -727,10 +736,10 @@ async fn a_committed_paired_join_spends_its_ticket() {
     let device = newcomer();
     let dir = tempfile::tempdir().expect("dir");
     let (received, identity) = pair(&vault, &vault.a, true).await;
-    let JoinIdentity::Paired(paired) = &identity else {
+    let JoinIdentity::Paired(paired, _) = &identity else {
         panic!("a holder with a certificate vouches");
     };
-    let again = JoinIdentity::Paired(paired.duplicate());
+    let again = JoinIdentity::Paired(paired.duplicate(), Default::default());
     assert!(
         !crate::services::sync::join::pairing_spent(&device.lock()).expect("spent"),
         "nothing committed yet: a failure may keep the pairing"
@@ -864,4 +873,126 @@ async fn a_wrong_code_or_a_failed_slot_write_seals_no_ticket() {
         Some("validation.syncPairingFailed")
     );
     assert_eq!(slot_2(&vault, &other), None);
+}
+
+fn epoch_rows(conn: &Connection) -> Vec<(i64, i64)> {
+    let mut stmt = conn
+        .prepare("SELECT epoch, rotation_head FROM sync_epochs ORDER BY epoch")
+        .expect("prepare");
+    stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .expect("query")
+        .map(|r| r.expect("row"))
+        .collect()
+}
+
+/// Phase 5 §6.1: a join writes epoch 0's row (relay position 0) whichever way it joins, and a
+/// pairing's heads for the epochs it holds keys for.
+#[tokio::test]
+async fn a_join_records_epoch_zero_and_the_holders_heads() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+
+    // A pairing joiner takes the heads the holder sent.
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+    let (received, identity) = pair(&vault, &vault.a, true).await;
+    join_via(&vault, &device, received, "iPhone", dir.path(), identity)
+        .await
+        .expect("join");
+    assert_eq!(epoch_rows(&device.lock()), vec![(0, 0)]);
+
+    // A holder that sent no identity, a Kit and a plain join record epoch 0 as well.
+    for identity in [
+        JoinIdentity::Unvouched(Default::default()),
+        JoinIdentity::RecoveryKit,
+    ] {
+        let device = newcomer();
+        let dir = tempfile::tempdir().expect("dir");
+        join_via(
+            &vault,
+            &device,
+            holder_creds(&vault.a),
+            "Laptop",
+            dir.path(),
+            identity,
+        )
+        .await
+        .expect("join");
+        assert_eq!(epoch_rows(&device.lock()), vec![(0, 0)]);
+    }
+}
+
+/// A joiner that holds epochs 0 and 1 (a pairing after one key change) records the head of
+/// epoch 1 the holder sent; heads of epochs it holds no key for are ignored, and a stale row of
+/// an earlier binding is gone.
+#[tokio::test]
+async fn a_join_after_a_key_change_records_every_epoch_head() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let first = *vault.creds.keys.current();
+    let creds = Credentials {
+        keys: VaultKeys::from_parts(1, BTreeMap::from([(0, first), (1, [9; 32])])).expect("keys"),
+        ..vault.creds.clone()
+    };
+    // The vault changed key on the server.
+    let rotated = vault
+        .relay
+        .rotate_token(&vault.creds.auth(), &creds.token(), &[1])
+        .await
+        .expect("rotate");
+    let heads = BTreeMap::from([(0, 0), (1, rotated.head), (5, 99)]);
+    let device = newcomer();
+    exec(
+        &device.lock(),
+        "INSERT INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (3, 7, 1)",
+    );
+    let dir = tempfile::tempdir().expect("dir");
+
+    join_via(
+        &vault,
+        &device,
+        creds,
+        "iPhone",
+        dir.path(),
+        JoinIdentity::Unvouched(heads),
+    )
+    .await
+    .expect("join");
+
+    let conn = device.lock();
+    assert_eq!(epoch_rows(&conn), vec![(0, 0), (1, rotated.head as i64)]);
+    let held = keys::vault_keys(&conn).expect("keys").expect("bound");
+    assert_eq!(held.current_epoch(), 1);
+}
+
+/// Two authenticated sources that disagree (the holder's heads against the snapshot's `Keys`
+/// record) refuse the join and leave the profile as it was.
+#[tokio::test]
+async fn heads_that_contradict_the_snapshot_refuse_the_join() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    let error = join_via(
+        &vault,
+        &device,
+        holder_creds(&vault.a),
+        "iPhone",
+        dir.path(),
+        JoinIdentity::Unvouched(BTreeMap::from([(0, 5)])),
+    )
+    .await
+    .expect_err("refused");
+
+    assert_eq!(
+        validation_key(&error),
+        Some("validation.syncPairingFailed"),
+        "{error:?}"
+    );
+    let conn = device.lock();
+    assert!(has_institution(&conn, "local-only"), "nothing was replaced");
+    assert!(!state::load(&conn)
+        .expect("state")
+        .is_some_and(|s| s.enabled));
 }

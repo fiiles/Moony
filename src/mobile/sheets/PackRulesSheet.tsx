@@ -54,12 +54,12 @@ export function PackRulesSheet({ pack, onClose }: PackRulesSheetProps) {
           return (
             <li key={rule.id} className="flex min-h-[52px] items-center gap-2 py-1.5">
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-m-body text-ink">{rule.name}</span>
-                <span className="mt-0.5 block truncate text-m-sub text-ink-4">
+                <span className="block break-words text-m-body text-ink">{rule.name}</span>
+                <span className="mt-0.5 block break-words text-m-sub text-ink-4">
                   {rule.pattern} → {category ? categoryName(category) : rule.categoryId}
                 </span>
                 {rule.disabled && (
-                  <span className="block truncate text-m-caption text-ink-4">
+                  <span className="block break-words text-m-caption text-ink-4">
                     {t('packTab.disabledNote')}
                   </span>
                 )}

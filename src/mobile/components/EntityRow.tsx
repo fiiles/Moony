@@ -140,7 +140,7 @@ interface EntityRowProps {
    */
   below?: ReactNode;
   /**
-   * Let the labels wrap instead of ending with an ellipsis: the title up to two lines, the sub
+   * Let the labels wrap instead of ending with an ellipsis: the title and the sub
    * line in full. For rows of words (settings, devices), where a cut label hides the meaning;
    * ledger rows keep the one-line rule so an amount stays beside its payee.
    */
@@ -213,7 +213,7 @@ export function EntityRow({
           <span
             className={cn(
               'min-w-0 flex-auto text-m-row text-ink',
-              wrap ? 'line-clamp-2 break-words' : 'truncate'
+              wrap ? 'break-words' : 'truncate'
             )}
           >
             {title}

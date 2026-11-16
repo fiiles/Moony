@@ -14,6 +14,12 @@ interface SubFactsProps {
    * whole, else it is left to the detail (a loan's fixation, a list of tickers).
    */
   mode?: 'keep' | 'drop';
+  /**
+   * Both facts run on as ordinary text and wrap onto a second line, the tail kept whole. For a row of
+   * words (an agenda row's "what happens", an upkeep row's explanation), where a cut sentence hides
+   * the meaning; with it `mode` does not apply.
+   */
+  wrap?: boolean;
 }
 
 /**
@@ -21,9 +27,19 @@ interface SubFactsProps {
  * an ellipsis. `keep` cuts the text before the tail; `drop` wraps a tail that does not fit onto a
  * second line that is clipped away, so it is either whole or gone.
  */
-export function SubFacts({ lead, tail, mode = 'keep' }: SubFactsProps) {
+export function SubFacts({ lead, tail, mode = 'keep', wrap = false }: SubFactsProps) {
   const hasLead = lead !== undefined && lead !== null && lead !== false && lead !== '';
   const hasTail = tail !== undefined && tail !== null && tail !== false && tail !== '';
+  if (wrap) {
+    if (!hasLead && !hasTail) return null;
+    return (
+      <span className="block min-w-0 break-words">
+        {hasLead && lead}
+        {hasLead && hasTail && ' · '}
+        {hasTail && <span className="whitespace-nowrap">{tail}</span>}
+      </span>
+    );
+  }
   if (!hasTail) return hasLead ? <span className="block min-w-0 truncate">{lead}</span> : null;
   if (!hasLead) return <span className="whitespace-nowrap">{tail}</span>;
   if (mode === 'drop') {

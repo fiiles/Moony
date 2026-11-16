@@ -97,6 +97,7 @@ export function FirstAccountStep({ flow }: { flow: FirstRunFlow }) {
             label={t('onboarding.firstAccount.currency')}
             value={`${currency} · ${currencyName(currency, fmt.locale)}`}
             onClick={() => setCurrencyOpen(true)}
+            wrap
           />
         </div>
 

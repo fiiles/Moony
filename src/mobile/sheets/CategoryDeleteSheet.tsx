@@ -105,7 +105,7 @@ export function CategoryDeleteSheet({ row, usageText, onClose }: CategoryDeleteS
               <span className="block text-m-sub font-semibold text-ink-3">
                 {t('categoryManagement.moveTo')}
               </span>
-              <span className="block truncate">
+              <span className="block break-words">
                 {target ? categoryName(target) : t('categoryManagement.moveToPlaceholder')}
               </span>
             </span>

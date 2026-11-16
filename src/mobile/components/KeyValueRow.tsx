@@ -21,6 +21,12 @@ interface KeyValueRowProps {
    * instead of sitting at the right of a one-line value.
    */
   stack?: boolean;
+  /**
+   * The value and its sub-line wrap instead of ending with an ellipsis: for a value that names a
+   * choice in words ("CZK · Czech koruna"), where a cut name hides which one it is. Data beside an
+   * amount keeps the single line.
+   */
+  wrap?: boolean;
 }
 
 /**
@@ -38,6 +44,7 @@ export function KeyValueRow({
   chevron = onClick !== undefined,
   ariaLabel,
   stack = false,
+  wrap = false,
 }: KeyValueRowProps) {
   const content = stack ? (
     <div className="min-w-0 flex-1">
@@ -53,8 +60,14 @@ export function KeyValueRow({
         {label}
       </span>
       <div className="min-w-0 flex-1 text-right">
-        <div className="truncate text-m-body text-ink num">{value}</div>
-        {sub && <div className="truncate text-m-caption text-ink-4 num">{sub}</div>}
+        <div className={cn(wrap ? 'break-words' : 'truncate', 'text-m-body text-ink num')}>
+          {value}
+        </div>
+        {sub && (
+          <div className={cn(wrap ? 'break-words' : 'truncate', 'text-m-caption text-ink-4 num')}>
+            {sub}
+          </div>
+        )}
       </div>
     </>
   );

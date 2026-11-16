@@ -25,7 +25,7 @@ export function PackRow({ pack, label, disabled, onToggle, onOpen }: PackRowProp
         className="flex min-h-11 min-w-0 flex-1 items-center gap-2 py-2 pl-3.5 text-left [-webkit-touch-callout:none] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
       >
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-m-row text-ink">{label}</span>
+          <span className="block break-words text-m-row text-ink">{label}</span>
           <span className="mt-0.5 block text-m-sub text-ink-4">
             {ts('rulePacks.rulesCount', { count: pack.ruleCount })}
           </span>

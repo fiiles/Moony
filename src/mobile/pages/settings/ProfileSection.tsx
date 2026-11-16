@@ -154,6 +154,7 @@ export default function ProfileSection() {
       <div className="mt-6 rounded-r4 border border-line bg-paper px-3 pb-2.5 shadow-e1">
         <KeyValueRow
           label={ts('profile.country')}
+          wrap
           value={countryName ?? ts('profile.countryNone')}
           onClick={() => {
             if (!updateProfile.isPending) setCountryOpen(true);

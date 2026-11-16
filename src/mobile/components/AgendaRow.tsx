@@ -96,12 +96,13 @@ export function AgendaRow({ m, from }: { m: Milestone; from: string }) {
     }
   }
   const distance = t(`relative.${rel.key}`, { count: rel.count });
-  const sub = <SubFacts lead={what} tail={todayChip ? tail : distance} />;
+  const sub = <SubFacts wrap lead={what} tail={todayChip ? tail : distance} />;
 
   return (
     <EntityRow
       chip={chip}
       chipWidth={DATE_CHIP_WIDTH}
+      wrap
       title={m.title}
       sub={sub}
       value={value}

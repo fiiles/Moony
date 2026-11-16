@@ -95,9 +95,9 @@ export function CashflowAccountsSheet({
                 }
               />
               <span className="min-w-0">
-                <span className="block truncate text-m-row text-ink">{account.name}</span>
+                <span className="block break-words text-m-row text-ink">{account.name}</span>
                 {account.institution && (
-                  <span className="block truncate text-m-sub text-ink-4">
+                  <span className="block break-words text-m-sub text-ink-4">
                     {account.institution.name}
                   </span>
                 )}

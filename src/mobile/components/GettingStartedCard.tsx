@@ -106,6 +106,7 @@ export function GettingStartedCard() {
               .join(' · ')}
             href={item.href}
             from={tm('tabs.overview')}
+            wrap
             chevron
           />,
           ...(offerSyncLink(item, sync)
@@ -115,6 +116,7 @@ export function GettingStartedCard() {
                   title={t('gettingStarted.setUpSync')}
                   href={settingsPath('sync')}
                   from={tm('tabs.overview')}
+                  wrap
                   chevron
                 />,
               ]

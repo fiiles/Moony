@@ -52,6 +52,7 @@ export function SyncDeviceRows({ devices, onRename }: SyncDeviceRowsProps) {
             sub={sub}
             onClick={device.thisDevice ? () => onRename(device) : undefined}
             chevron={device.thisDevice}
+            wrap
           />
         );
       })}

@@ -139,6 +139,12 @@ interface EntityRowProps {
    * not slide.
    */
   below?: ReactNode;
+  /**
+   * Let the labels wrap instead of ending with an ellipsis: the title up to two lines, the sub
+   * line in full. For rows of words (settings, devices), where a cut label hides the meaning;
+   * ledger rows keep the one-line rule so an amount stays beside its payee.
+   */
+  wrap?: boolean;
 }
 
 /**
@@ -178,6 +184,7 @@ export function EntityRow({
   swipeRightIcon,
   menu,
   below,
+  wrap = false,
 }: EntityRowProps) {
   const [ownMenuOpen, setOwnMenuOpen] = useState(false);
   const menuOpen = menu?.open ?? ownMenuOpen;
@@ -203,7 +210,14 @@ export function EntityRow({
       {chip}
       <span className="block min-w-0">
         <span className="flex min-w-0 items-baseline gap-2.5">
-          <span className="min-w-0 flex-auto truncate text-m-row text-ink">{title}</span>
+          <span
+            className={cn(
+              'min-w-0 flex-auto text-m-row text-ink',
+              wrap ? 'line-clamp-2 break-words' : 'truncate'
+            )}
+          >
+            {title}
+          </span>
           {hasValue && (
             <span
               className={cn(
@@ -218,7 +232,14 @@ export function EntityRow({
         </span>
         {hasSubLine && (
           <span className="mt-0.5 flex min-w-0 items-baseline gap-2.5">
-            <span className="min-w-0 flex-auto truncate text-m-sub text-ink-4">{sub}</span>
+            <span
+              className={cn(
+                'min-w-0 flex-auto text-m-sub text-ink-4',
+                wrap ? 'break-words' : 'truncate'
+              )}
+            >
+              {sub}
+            </span>
             {valueSub !== undefined && valueSub !== null && (
               <span className="ml-auto max-w-full flex-none truncate whitespace-nowrap text-m-caption text-ink-4 num">
                 {valueSub}

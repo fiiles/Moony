@@ -81,3 +81,11 @@ Do NOT use the `Database` struct in tests — it requires SQLCipher key setup. U
 Coverage thresholds are a **planned** gate, not yet enforced. Enabling them is blocked
 on the untested modules in `shared/calculations/` — turning them
 on today would fail the build on pre-existing gaps rather than on new code.
+
+## UI verification (live and visual checks)
+
+Every live or visual check of a changed screen, by a person or an LLM tester, views it in at
+least English, Czech, German (long words) and Japanese (CJK), and for mobile screens on the
+narrowest supported phone width (320 pt). The check fails on a cut-off or overlapping label
+(an ellipsis on a title or an explanation, text under a button or chip), however good the
+English looks.

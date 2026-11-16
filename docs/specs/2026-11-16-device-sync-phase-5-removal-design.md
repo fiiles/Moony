@@ -521,6 +521,13 @@ preselected.
   "odebráno", "neověřené", "nahrazeno a od té doby bez změn", "chybí klíč").
 - Devices the device being removed added (issuer = it): a note "Tato zařízení přidal(o) {name}:" and a
   tick box per row "Odebrat také" (unticked). Ticking rebuilds the plan.
+- Devices this device has not confirmed because a Recovery Kit vouches for them (As built item 29,
+  reason `kitUnconfirmed`): one row each with an opt-in tick box **"Poslat nový klíč i tomuto
+  zařízení — připojeno záchrannou sadou"** ("Also send the new key to this device — joined with a
+  Recovery Kit"), unticked, and one line under them: "Zařízení, které nezaškrtnete, nový klíč
+  nedostane a bude se muset připojit znovu." ("A device you leave unticked won't get the new key
+  and will have to join again."). Ticked ones are recipients and count toward the 64; ticking
+  rebuilds the plan (the ticks are part of the consent).
 - "Heslo do Moony" field (focused), then the primary **"Odebrat zařízení"** (destructive) — or
   "Odebrat ze seznamu" in list-only mode, which skips the recipient lists.
 
@@ -898,3 +905,66 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     against its store (§7.4). `build` takes its random source as
     `&mut dyn FnMut(&mut [u8]) -> Result<()>` (`bundle::os_fill` in production);
     `Opened::Recipient` carries the body boxed.
+
+**Fix round after the review of the trust store (Tasks 1–3).**
+
+26. **A removal counts whatever order the news arrives in.** A `removed` record counts when its
+    signer is pinned, not `kit_unconfirmed` (item 29), and either `trusted`, or `left`/`removed` by
+    a record whose time is not before the removal's own (`record.at ≤ signer.state_at`): what a
+    device signed while it was in counts whether its leaving or removal is known first or not.
+    Within a pass records are still judged against the store before it (item 4). The same rule
+    holds for `mark_removed` and `import_bundle` (item 31). Supersedes item 3's "a `removed` record
+    still needs a `trusted` signer". Limits: a record its signer dates *after* its own state time
+    (possible only with that device's key, e.g. a phone removed list-only, or with a wrong clock)
+    counts on a device that has not heard of the state change yet and not on one that has, while a
+    backdated one counts everywhere; mutual or cyclic removals with interleaved times can also end
+    differently by arrival order. Only a key change, which cuts the device off, ends what its key
+    can still put into the list.
+27. **A device that left or was removed vouches only for what it issued before.** A paired or
+    re-join certificate whose issuer is `left` or `removed` is pinned only when both its
+    `issued_at` and its ticket's `issued_at` are ≤ the issuer's `state_at`; a `trusted` issuer
+    vouches as before. Supersedes item 3's unbounded vouching and item 4's "a certificate whose
+    issuer is removed in the same pull is not pinned" (it is, when issued before the removal).
+    Open for the coordinator: a device removed list-only whose key is still in a thief's hands
+    can backdate a pairing, and the next key change would seal to it; Tasks 9/19/21 may want to
+    flag recipients whose issuer is left or removed.
+28. **A certificate or record that verifies beats one that does not** (merge of `cert`,
+    `left_record`, `removal_record`). `identity::write_once_value_valid(column, row_id_hex, value,
+    vault, row_cert) -> bool` is pure: the value decodes, has its column's shape, names the row's
+    device and the vault (skipped when `vault` is `None`), and its self-contained signatures
+    verify — a certificate's `verify_signatures`; a `left` record against the signing key of the
+    row's certificate as the merge leaves it when that one is valid, else shape only; a removal
+    record shape and vault only. `merge::columns` lets a valid value beat an invalid one whatever
+    the clocks and stamps; between two valid or two invalid values item 9's rule stands; NULL
+    still loses to anything. The merge reads the bound vault (`identity::bound_vault`) for
+    `sync_devices` rows only. `trust::refresh` logs each value it ignores once per call.
+29. **Recovery Kit certificates are pinned unconfirmed.** Migration 040 (not applied anywhere
+    yet, so amended in place) gives `sync_trust` `kit_unconfirmed INTEGER NOT NULL DEFAULT 0 CHECK
+    (kit_unconfirmed IN (0, 1))`; `TrustEntry::kit_unconfirmed`. It is set on a Kit certificate
+    arriving through sync (`refresh`, and a Kit joiner's `tofu_from_rows`) and inherited by what an
+    unconfirmed issuer vouches for (else a forged Kit device could pair a "trusted" one); never on
+    this device's own entry. An unconfirmed entry is left out of `recipients` unless the person
+    ticked it (`recipients(conn, removing, kit_ticked)`, `ExclusionReason::KitUnconfirmed`),
+    counts toward the 64 only when ticked, and signs no removal that counts here; it still moves
+    to `left` or `removed`. It is confirmed by `trust::confirm_kit(conn, &[DeviceId]) ->
+    Result<usize>` (Task 9 calls it for the ticked IDs inside the commit of the key change), by
+    `import_bundle` for its signer and every recipient it names (certificates new from a bundle are
+    pinned confirmed), and, for a paired or re-join entry, when its issuer becomes confirmed
+    (`refresh` promotes). The pairing export entry carries `"kitUnconfirmed": true` (omitted when
+    false) and an export whose holder entry is unconfirmed is refused. Consequence: a device that
+    joined with a Kit stays unconfirmed on the other devices until one ticks it in a key change or
+    picks up a bundle naming it, and until then its removals there do not count and a bundle it
+    signs is not verified there (Task 10: `keyChangeUnverified`). The UI is §9.2's new bullet.
+30. **A Kit certificate cannot squat a known device ID.** It is refused
+    (`ConflictKind::KitClaimsKnownDevice`) when any paired or re-join certificate — in a row,
+    verifying on its own, or pinned — names its device ID as issuer with *another* signing key. Not
+    "names it at all": a device that joined with a Kit and then paired another is named by that
+    pairing with its own key and must stay verifiable. Limit: a holder of the vault key can write
+    such a naming certificate to keep a genuine Kit device unverified (a denial only).
+31. **`import_bundle` returns `Result<Vec<Record>>`**: its removal records are judged by item 26
+    against the store with the bundle's certificates pinned and before any of its removals; one
+    that does not count fails the whole import (nothing written); one naming this device is not
+    applied but returned, for the caller to end sync as with `RefreshReport::about_me` (Task 10).
+    Supersedes item 7's "a removal record's signer is unknown".
+32. Not changed: two certificates sharing one join ticket still pin the lower device ID (item 4);
+    telling them apart needs the ticket secret.

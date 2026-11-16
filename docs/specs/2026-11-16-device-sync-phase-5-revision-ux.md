@@ -936,3 +936,56 @@ R-5. **The envelope** is `rekey::envelope::{build, open, peek, Envelope, Envelop
      refusal is one internal error ("a Kit envelope is not valid"), which Task 19 maps to
      `validation.syncRecoveryKitUnreadable`. The envelope does not judge heads: the sealer passes
      only verified ones (`head::verified_epochs`, Task 17).
+
+**Task 14 (trust store revision, migration 041).**
+
+R-6. **A device that a `LateVouch` entry vouches for is `LateVouch` too** (an extension of §3.1,
+     which makes only `IssuerRemoved` transitive). Without it a backdated certificate from a left
+     device's copy (excluded) could pair a second device, whose issuer is then `trusted`, and that
+     second device would get the next key: the R2 mitigation would be laundered one step down. The
+     fixpoint (`excluded_by_issuer`) carries each reason down its own chain; `IssuerRemoved` wins
+     where both apply. The UI text of a `LateVouch` descendant ("{by} no longer syncs") does not fit
+     it exactly; Tasks 24/26 may want a third `checkReason` or the issuer-removed wording.
+R-7. **The chain runs through entries of every state.** A device in an `IssuerRemoved` chain that
+     has since left still passes the reason on to what it paired (it is reported as `Left` itself).
+     A `confirmed` entry and this device are never in the set and stop the chain; so does an entry
+     whose issuer is not pinned here (trusted on first use by a Kit joiner).
+R-8. **Positions:** a vouch is late only when both positions are known and the vouch's is greater
+     than the issuer's end; an unknown position on either side counts as in time (that side came
+     by a vetted path: an export, a bundle, this device, or before migration 041). The vouch's
+     position is the earlier of its certificate's first sighting and the announcement of its
+     ticket by its own issuer (an announcement by another device does not count). The end is the
+     earlier of the issuer's `left` record's first sighting (when it left) and its earliest pinned
+     re-join successor's certificate's first sighting. `trust::{note_seen, note_ticket, SeenWhat}`
+     write them (first one wins); Task 15 calls them.
+R-9. **`speaks_at` takes the store** (`trust::Store`, the entries and each superseded ID's earliest
+     successor `issued_at`) and bounds a superseded ID whatever its state, records included (a
+     removal it signs after its successor does not count).
+R-10. **At most one trusted Kit:** in `refresh`/`tofu_from_rows` a kind 5 is pinned only while no
+     other Kit is `trusted`, at most one per pass (lower ID first), else `ConflictKind::SecondKit`
+     (reported, not stored: a later pass after the first Kit's removal pins it). Records apply
+     before certificates, so the removal of the old Kit and the new Kit arriving together pin the
+     new one. `import_bundle(conn, signer, recipients, kit: Option<BundleKit {cert, replaces}>,
+     removed, to_epoch, now)` applies `replaces` with the removals and then pins and confirms the
+     Kit; a Kit that is not kind 5, or a second Kit once the removals are applied, fails the whole
+     import. `ConflictKind::KitClaimsKnownDevice` is gone (R-3).
+R-11. **`recipients(conn, removing) -> Recipients {included, excluded, kit}`**: the Kit (the
+     `trusted` kind-5 entry) only in `kit`; a Kit's row that is not pinned (`platform =
+     'recoveryKit'`) in no list. A Kit entry takes part in the issuer chain like any other: a Kit
+     whose creator was removed and that no key change confirmed passes `IssuerRemoved` to its
+     joiners (Task 17's commit and every bundle confirm the Kit, so a genuine one never does).
+R-12. **`keep(conn, device) -> bool`** refuses this device and an entry not pinned or not
+     `trusted`; `mark_confirmed(conn, devices)` (the remover's commit; passes over entries no
+     longer `trusted`); `apply_confirmed_set(conn, &[(device, cert hash)]) -> usize`. Confirmation
+     records (type 3) are no longer read by `refresh`, and `record_counts` answers `false` for one.
+R-13. **New-device notices** (`trust::NEW_DEVICES_KEY` = `sync.new_devices`, `trust::new_devices`,
+     `NewDevice {device, by, at, viaKit}`; `at` is this device's clock when it pinned the entry,
+     never the certificate's own date; newest 20 kept) are written by `refresh` only (not by an
+     import, a bundle or a Kit joiner's first store). Turning sync off and a join's replace clear
+     the key and the two new tables (`state::disable`, `join::replace_profile`: minimal additions
+     to files of later tasks).
+R-14. **Minimal changes to `rotate.rs` (Task 17's file) so it compiles:** `plan` and `Removal` lose
+     `opted_in`; `Plan::confirming` is every recipient but this device, and the commit calls
+     `trust::mark_confirmed` for them instead of `trust::confirm`. `pickup.rs` passes no Kit to
+     `import_bundle` and drops the `kit_unconfirmed` check. The `rekey_rotate` test of the Kit tick
+     became "a key change confirms every recipient".

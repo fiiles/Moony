@@ -357,6 +357,8 @@ fn the_exact_tables_of_each_class_are_pinned() {
         "sync_typed",
         "sync_trust",
         "sync_epochs",
+        "sync_trust_seen",
+        "sync_tickets",
     ];
     assert_eq!(names_of(TableClass::Synced), sorted(&synced));
     assert_eq!(names_of(TableClass::Seed), sorted(&seed));
@@ -634,4 +636,17 @@ fn the_device_certificate_and_records_are_synced_write_once() {
     }
     assert_eq!(column_class("sync_devices", "removed"), ColumnClass::Synced);
     assert!(spec("sync_devices").unwrap().local.is_empty());
+}
+
+/// Revision §7.2: where the Kit is kept syncs, last writer wins, and is not write-once.
+#[test]
+fn the_kits_storage_is_an_ordinary_synced_column() {
+    assert_eq!(
+        column_class("sync_devices", "kit_storage"),
+        ColumnClass::Synced
+    );
+    assert!(!spec("sync_devices")
+        .unwrap()
+        .write_once
+        .contains(&"kit_storage"));
 }

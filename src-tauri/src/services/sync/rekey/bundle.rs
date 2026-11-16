@@ -28,7 +28,7 @@
 //! is `Unverified`, and its new key, older keys and contents are reachable only through
 //! `Unverified::verify` with the signer's key, which gives `Verified`. Whether that signer may
 //! sign a key change is the caller's question (Task 10): its certificate must be the one pinned
-//! here, `trusted` and not `kit_unconfirmed`, and `to_epoch` must be this device's epoch + 1;
+//! here and `trusted`, and `to_epoch` must be this device's epoch + 1;
 //! what the bundle then teaches is `identity::trust::import_bundle`'s. New keys, the ephemeral
 //! secret, the body's older keys and every buffer holding the body JSON live in `Zeroizing`
 //! buffers, and `Debug` prints `<redacted>`.
@@ -231,7 +231,7 @@ impl Unverified {
     }
 
     /// The new key and the body, when the signature is `signer_pub`'s. The caller has also to
-    /// check that this signer is pinned here with that key, `trusted` and not `kit_unconfirmed`,
+    /// check that this signer is pinned here with that key and `trusted`,
     /// and that `to_epoch` is its own epoch + 1.
     pub fn verify(self, signer_pub: &[u8; 32]) -> Result<Verified> {
         verify_sig(signer_pub, &self.body.signed, &self.body.sig).map_err(|_| invalid())?;

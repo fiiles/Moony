@@ -264,7 +264,8 @@ pub fn disable(conn: &Connection) -> Result<()> {
             "DELETE FROM sync_state; DELETE FROM sync_clock; DELETE FROM sync_outbox; \
              DELETE FROM sync_heads; DELETE FROM sync_own_log; DELETE FROM sync_unsent; \
              DELETE FROM sync_typed; DELETE FROM sync_blobs; DELETE FROM sync_held_blobs; \
-             DELETE FROM sync_trust; DELETE FROM sync_epochs;",
+             DELETE FROM sync_trust; DELETE FROM sync_epochs; DELETE FROM sync_trust_seen; \
+             DELETE FROM sync_tickets;",
         )?;
         clear_vault_went_back(conn)?;
         clear_skipped_miss(conn)?;
@@ -273,6 +274,7 @@ pub fn disable(conn: &Connection) -> Result<()> {
             UNVERIFIED_EPOCHS_KEY,
             KEY_CHANGE_OVERRUN_KEY,
             REMOVAL_NOT_DONE_KEY,
+            super::identity::trust::NEW_DEVICES_KEY,
         ] {
             conn.execute("DELETE FROM app_config WHERE key = ?1", [key])?;
         }
@@ -942,7 +944,10 @@ mod tests {
                rekey_seen = 2, kit_epoch_saved = 1, snapshot_epoch_due = 1; \
              INSERT INTO sync_trust (device, cert, kind, issuer, sign_pub, box_pub, state, \
                pinned_at) VALUES ('d', 'c', 1, 'd', x'01', x'02', 'trusted', 1); \
-             INSERT OR IGNORE INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (0, 0, 1);",
+             INSERT OR IGNORE INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (0, 0, 1); \
+             INSERT INTO sync_trust_seen (device, what, pos) VALUES ('d', 'cert', 4); \
+             INSERT INTO sync_tickets (ticket_pub, issuer, pos) VALUES (x'07', 'd', 3); \
+             INSERT INTO app_config (key, value) VALUES ('sync.new_devices', '[]');",
         )
         .unwrap();
 
@@ -950,6 +955,15 @@ mod tests {
 
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_trust"), 0);
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_epochs"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_trust_seen"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_tickets"), 0);
+        assert_eq!(
+            count(
+                &conn,
+                "SELECT COUNT(*) FROM app_config WHERE key = 'sync.new_devices'"
+            ),
+            0
+        );
         assert_eq!(
             count(&conn, "SELECT COUNT(*) FROM sync_state"),
             0,

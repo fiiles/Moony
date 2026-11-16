@@ -105,6 +105,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("038_sync_blobs_size", MIGRATION_038),
         ("039_sync_last_complete", MIGRATION_039),
         ("040_sync_device_removal", MIGRATION_040),
+        ("041_sync_recovery_kit", MIGRATION_041),
     ]
 }
 
@@ -3406,11 +3407,11 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_40_migrations() {
-        assert_eq!(known_migration_names().len(), 40);
+    fn the_chain_now_has_41_migrations() {
+        assert_eq!(known_migration_names().len(), 41);
         assert_eq!(
             known_migration_names().last(),
-            Some(&"040_sync_device_removal")
+            Some(&"041_sync_recovery_kit")
         );
     }
 }
@@ -3591,6 +3592,80 @@ CREATE TABLE sync_epochs (epoch INTEGER PRIMARY KEY, rotation_head INTEGER NOT N
 INSERT INTO sync_epochs (epoch, rotation_head, adopted_at)
     SELECT key_epoch, 0, strftime('%s','now') FROM sync_state WHERE key_epoch IS NOT NULL;
 "#;
+
+/// 041: the Recovery Kit as a paper device and automatic confirmation (spec
+/// 2026-11-16-device-sync-phase-5-revision-ux §7.2). `sync_devices.kit_storage` (Synced,
+/// last-writer-wins, only on the Kit's row): where the Kit was saved (`paper`, `copied`, `file`,
+/// `cloud`), NULL while it was not. `sync_trust_seen` (Local): the relay position at which this
+/// device first saw a device's certificate or `left` record (the first one wins).
+/// `sync_tickets` (Local): the join tickets holders announced, with the announcing device and the
+/// relay position. `sync_trust.kit_unconfirmed` and `sync_state.kit_epoch_saved` stay unused.
+pub(crate) const MIGRATION_041: &str = r#"
+ALTER TABLE sync_devices ADD COLUMN kit_storage TEXT;
+CREATE TABLE sync_trust_seen (device TEXT NOT NULL,
+    what TEXT NOT NULL CHECK (what IN ('cert','left')), pos INTEGER NOT NULL,
+    PRIMARY KEY (device, what));
+CREATE TABLE sync_tickets (ticket_pub BLOB PRIMARY KEY, issuer TEXT NOT NULL,
+    pos INTEGER NOT NULL);
+"#;
+
+#[cfg(test)]
+mod migration_041 {
+    use super::*;
+
+    fn before_041(conn: &Connection) {
+        let all = all_migrations();
+        let before: Vec<_> = all
+            .iter()
+            .copied()
+            .filter(|(name, _)| *name < "041_sync_recovery_kit")
+            .collect();
+        run_chain(conn, &before).expect("chain to 040");
+    }
+
+    #[test]
+    fn sync_devices_takes_an_empty_kit_storage_column() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        before_041(&conn);
+        conn.execute_batch(
+            "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
+             VALUES ('aa', 'KEY', 'Mac', 'macos', '1.0', 1)",
+        )
+        .expect("row");
+        run_chain(&conn, &all_migrations()).expect("041");
+        let storage: Option<String> = conn
+            .query_row("SELECT kit_storage FROM sync_devices", [], |r| r.get(0))
+            .expect("kit_storage");
+        assert_eq!(storage, None);
+    }
+
+    #[test]
+    fn the_first_seen_positions_and_the_tickets_exist_with_their_rules() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()).expect("full chain");
+        let seen = |device: &str, what: &str, pos: i64| {
+            conn.execute(
+                "INSERT INTO sync_trust_seen (device, what, pos) VALUES (?1, ?2, ?3)",
+                rusqlite::params![device, what, pos],
+            )
+        };
+        seen("d", "cert", 5).expect("cert");
+        seen("d", "left", 9).expect("left");
+        assert!(
+            seen("d", "cert", 7).is_err(),
+            "one position per device and kind"
+        );
+        assert!(seen("d", "removal", 7).is_err(), "the CHECK");
+        let ticket = |pub_key: &[u8], pos: i64| {
+            conn.execute(
+                "INSERT INTO sync_tickets (ticket_pub, issuer, pos) VALUES (?1, 'h', ?2)",
+                rusqlite::params![pub_key, pos],
+            )
+        };
+        ticket(b"ticket", 3).expect("ticket");
+        assert!(ticket(b"ticket", 4).is_err(), "one position per ticket");
+    }
+}
 
 #[cfg(test)]
 mod migration_040 {

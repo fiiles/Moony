@@ -511,11 +511,13 @@ fn replace_profile(
             let predecessor = match who {
                 NewIdentity::Successor => identity::predecessor(conn)?,
                 NewIdentity::Join(_) => {
-                    conn.execute_batch("DELETE FROM sync_trust; DELETE FROM sync_epochs;")?;
-                    conn.execute(
-                        "DELETE FROM app_config WHERE key = ?1",
-                        [state::UNVERIFIED_EPOCHS_KEY],
+                    conn.execute_batch(
+                        "DELETE FROM sync_trust; DELETE FROM sync_epochs; \
+                         DELETE FROM sync_trust_seen; DELETE FROM sync_tickets;",
                     )?;
+                    for key in [state::UNVERIFIED_EPOCHS_KEY, trust::NEW_DEVICES_KEY] {
+                        conn.execute("DELETE FROM app_config WHERE key = ?1", [key])?;
+                    }
                     None
                 }
             };

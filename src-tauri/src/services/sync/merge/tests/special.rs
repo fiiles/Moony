@@ -670,7 +670,13 @@ fn cert_of(device: DeviceId, vault: [u8; 16], byte: u8) -> Certificate {
 fn poisonable_row(column: &str, value: &str, at: Clock, with_cert: bool) -> RowChange {
     // Every column of the row is carried, as the journal sends it.
     let mut change = device_change(A, "KA", at);
-    for other in ["cert", "left_record", "removal_record", "confirm_record"] {
+    for other in [
+        "cert",
+        "left_record",
+        "removal_record",
+        "confirm_record",
+        "kit_storage",
+    ] {
         set(&mut change, other, SqlValue::Null, at);
     }
     set(&mut change, "removed", SqlValue::Integer(0), at);

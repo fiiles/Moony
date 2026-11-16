@@ -538,4 +538,16 @@ pub(super) static TABLES: &[TableSpec] = &[
         class: TableClass::Local,
         ..BASE
     },
+    // Where this device first saw a certificate or `left` record, and the join tickets holders
+    // announced (revision §3.1, migration 041).
+    TableSpec {
+        name: "sync_trust_seen",
+        class: TableClass::Local,
+        ..BASE
+    },
+    TableSpec {
+        name: "sync_tickets",
+        class: TableClass::Local,
+        ..BASE
+    },
 ];

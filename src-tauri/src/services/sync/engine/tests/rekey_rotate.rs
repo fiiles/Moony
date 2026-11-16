@@ -61,16 +61,16 @@ async fn the_plan_lists_who_gets_the_key_and_its_consent_follows_what_is_confirm
     let three = three().await;
     let a = three.vault.a.lock();
 
-    let plan = rotate::plan(&a, &[C], RemovalMode::Rotate, &[]).expect("plan");
+    let plan = rotate::plan(&a, &[C], RemovalMode::Rotate).expect("plan");
 
     let recipients: Vec<DeviceId> = plan.recipients.iter().map(|e| e.device).collect();
     assert_eq!(recipients, vec![A, B]);
     assert_eq!(plan.excluded, vec![(C, ExclusionReason::Removing)]);
     assert_eq!(plan.removing, vec![C]);
     assert_eq!(plan.epoch, 0);
-    let other_mode = rotate::plan(&a, &[C], RemovalMode::ListOnly, &[]).expect("plan");
-    let other_set = rotate::plan(&a, &[B, C], RemovalMode::Rotate, &[]).expect("plan");
-    let nobody = rotate::plan(&a, &[], RemovalMode::Rotate, &[]).expect("plan");
+    let other_mode = rotate::plan(&a, &[C], RemovalMode::ListOnly).expect("plan");
+    let other_set = rotate::plan(&a, &[B, C], RemovalMode::Rotate).expect("plan");
+    let nobody = rotate::plan(&a, &[], RemovalMode::Rotate).expect("plan");
     let consents = [
         &plan.consent,
         &other_mode.consent,
@@ -83,7 +83,7 @@ async fn the_plan_lists_who_gets_the_key_and_its_consent_follows_what_is_confirm
         }
     }
     assert_eq!(
-        rotate::plan(&a, &[C], RemovalMode::Rotate, &[])
+        rotate::plan(&a, &[C], RemovalMode::Rotate)
             .expect("plan")
             .consent,
         plan.consent,
@@ -102,7 +102,7 @@ async fn the_plan_lists_who_gets_the_key_and_its_consent_follows_what_is_confirm
 #[tokio::test]
 async fn a_stale_consent_is_refused_and_nothing_is_written() {
     let three = three().await;
-    let stale = rotate::plan(&three.vault.a.lock(), &[C], RemovalMode::Rotate, &[])
+    let stale = rotate::plan(&three.vault.a.lock(), &[C], RemovalMode::Rotate)
         .expect("plan")
         .consent;
 
@@ -112,7 +112,6 @@ async fn a_stale_consent_is_refused_and_nothing_is_written() {
         Removal {
             mode: RemovalMode::Rotate,
             removing: &[B, C],
-            opted_in: &[],
             consent: &stale,
         },
         three.dir.path(),
@@ -138,19 +137,19 @@ async fn removal_refuses_an_older_vault_this_device_and_a_paused_profile() {
     // A vault set up before phase 5: no certificates.
     let old = vault().await;
     assert_eq!(
-        rotate::plan(&old.a.lock(), &[B], RemovalMode::Rotate, &[]).map_err(|e| e.to_string()),
+        rotate::plan(&old.a.lock(), &[B], RemovalMode::Rotate).map_err(|e| e.to_string()),
         Err(AppError::Validation(rotate::REMOVAL_UNSUPPORTED.into()).to_string())
     );
 
     let three = three().await;
     let a = three.vault.a.lock();
     assert_eq!(
-        rotate::plan(&a, &[A], RemovalMode::Rotate, &[]).map_err(|e| e.to_string()),
+        rotate::plan(&a, &[A], RemovalMode::Rotate).map_err(|e| e.to_string()),
         Err(AppError::Validation(rotate::REMOVE_THIS_DEVICE.into()).to_string())
     );
     state::mark_capture_broken(&a, NOW).expect("broken");
     assert_eq!(
-        rotate::plan(&a, &[C], RemovalMode::Rotate, &[]).map_err(|e| e.to_string()),
+        rotate::plan(&a, &[C], RemovalMode::Rotate).map_err(|e| e.to_string()),
         Err(AppError::Validation("validation.syncChangesPaused".into()).to_string())
     );
 }
@@ -160,7 +159,7 @@ async fn a_list_only_removal_writes_records_and_calls_nobody() {
     let three = three().await;
     let calls = three.vault.relay.calls().len();
     let forgot = AtomicBool::new(false);
-    let consent = rotate::plan(&three.vault.a.lock(), &[C], RemovalMode::ListOnly, &[])
+    let consent = rotate::plan(&three.vault.a.lock(), &[C], RemovalMode::ListOnly)
         .expect("plan")
         .consent;
 
@@ -170,7 +169,6 @@ async fn a_list_only_removal_writes_records_and_calls_nobody() {
         Removal {
             mode: RemovalMode::ListOnly,
             removing: &[C],
-            opted_in: &[],
             consent: &consent,
         },
         three.dir.path(),
@@ -203,7 +201,7 @@ async fn a_key_change_commits_everything_and_seals_the_key_to_the_others_only() 
         .expect("list-only");
     let forgot = AtomicBool::new(false);
     let relay = &three.vault.relay;
-    let consent = rotate::plan(&three.vault.a.lock(), &[C], RemovalMode::Rotate, &[])
+    let consent = rotate::plan(&three.vault.a.lock(), &[C], RemovalMode::Rotate)
         .expect("plan")
         .consent;
 
@@ -213,7 +211,6 @@ async fn a_key_change_commits_everything_and_seals_the_key_to_the_others_only() 
         Removal {
             mode: RemovalMode::Rotate,
             removing: &[C],
-            opted_in: &[],
             consent: &consent,
         },
         three.dir.path(),
@@ -368,13 +365,13 @@ async fn a_retired_token_at_the_call_wipes_the_pending_change() {
 async fn a_race_lost_at_the_call_names_the_winner_or_says_it_already_removed() {
     for b_removes_c in [false, true] {
         let three = three().await;
-        let consent = rotate::plan(&three.vault.a.lock(), &[C], RemovalMode::Rotate, &[])
+        let consent = rotate::plan(&three.vault.a.lock(), &[C], RemovalMode::Rotate)
             .expect("plan")
             .consent;
         let relay = &three.vault.relay;
         // B's change lands while A stores its pending change (after A's vault check).
         let b_removing: &[DeviceId] = if b_removes_c { &[C] } else { &[] };
-        let b_consent = rotate::plan(&three.vault.b.lock(), b_removing, RemovalMode::Rotate, &[])
+        let b_consent = rotate::plan(&three.vault.b.lock(), b_removing, RemovalMode::Rotate)
             .expect("plan")
             .consent;
         let b_done = std::sync::Mutex::new(None);
@@ -384,7 +381,6 @@ async fn a_race_lost_at_the_call_names_the_winner_or_says_it_already_removed() {
             Removal {
                 mode: RemovalMode::Rotate,
                 removing: &[C],
-                opted_in: &[],
                 consent: &consent,
             },
             three.dir.path(),
@@ -397,7 +393,6 @@ async fn a_race_lost_at_the_call_names_the_winner_or_says_it_already_removed() {
                     Removal {
                         mode: RemovalMode::Rotate,
                         removing: b_removing,
-                        opted_in: &[],
                         consent: &b_consent,
                     },
                     three.dir.path(),
@@ -587,27 +582,21 @@ async fn a_pending_change_that_lost_a_race_meanwhile_resolves_as_raced() {
 }
 
 /// The ticks of §9.2 are recipients, and the commit confirms them (As built 33).
+/// Revision §3.1: the remover's commit marks every recipient `confirmed` (it replaces the
+/// person-signed confirmation records of As built 33, which are no longer written).
 #[tokio::test]
-async fn a_ticked_kit_device_gets_the_key_and_is_confirmed() {
+async fn a_key_change_confirms_every_recipient() {
     let three = three().await;
-    // On A, C is known only through a Recovery Kit vouching for it.
-    three
-        .vault
-        .a
-        .lock()
-        .execute(
-            "UPDATE sync_trust SET kit_unconfirmed = 1 WHERE device = ?1",
-            [C.to_hex()],
-        )
-        .expect("kit");
-    let unticked =
-        rotate::plan(&three.vault.a.lock(), &[], RemovalMode::Rotate, &[]).expect("plan");
-    assert!(unticked
-        .excluded
-        .contains(&(C, ExclusionReason::KitUnconfirmed)));
-    let ticked = rotate::plan(&three.vault.a.lock(), &[], RemovalMode::Rotate, &[C]).expect("plan");
-    assert_ne!(ticked.consent, unticked.consent);
-    assert_eq!(ticked.confirming, vec![C]);
+    for device in [B, C] {
+        assert!(
+            !trust::entry(&three.vault.a.lock(), device)
+                .expect("entry")
+                .expect("pinned")
+                .confirmed
+        );
+    }
+    let plan = rotate::plan(&three.vault.a.lock(), &[], RemovalMode::Rotate).expect("plan");
+    assert_eq!(plan.confirming, vec![B, C]);
 
     rotate::remove(
         &three.vault.relay,
@@ -615,8 +604,7 @@ async fn a_ticked_kit_device_gets_the_key_and_is_confirmed() {
         Removal {
             mode: RemovalMode::Rotate,
             removing: &[],
-            opted_in: &[C],
-            consent: &ticked.consent,
+            consent: &plan.consent,
         },
         three.dir.path(),
         &|| {},
@@ -626,14 +614,20 @@ async fn a_ticked_kit_device_gets_the_key_and_is_confirmed() {
     .expect("changed");
 
     let a = three.vault.a.lock();
-    let entry = trust::entry(&a, C).expect("entry").expect("pinned");
-    assert!(entry.confirmed && !entry.kit_unconfirmed);
-    let confirmed: Option<String> = a
+    for device in [B, C] {
+        assert!(
+            trust::entry(&a, device)
+                .expect("entry")
+                .expect("pinned")
+                .confirmed
+        );
+    }
+    let records: i64 = a
         .query_row(
-            "SELECT confirm_record FROM sync_devices WHERE id = ?1",
-            [C.to_hex()],
+            "SELECT COUNT(*) FROM sync_devices WHERE confirm_record IS NOT NULL",
+            [],
             |r| r.get(0),
         )
-        .expect("row");
-    assert!(confirmed.is_some(), "the confirmation syncs");
+        .expect("rows");
+    assert_eq!(records, 0, "no confirmation record is written any more");
 }

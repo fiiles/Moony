@@ -149,7 +149,7 @@ pub async fn remove_in(
     removing: &[DeviceId],
     mode: RemovalMode,
 ) -> crate::services::sync::error::SyncResult<Outcome> {
-    let consent = rotate::plan(&device.lock(), removing, mode, &[])
+    let consent = rotate::plan(&device.lock(), removing, mode)
         .expect("plan")
         .consent;
     rotate::remove(
@@ -158,7 +158,6 @@ pub async fn remove_in(
         Removal {
             mode,
             removing,
-            opted_in: &[],
             consent: &consent,
         },
         dir,

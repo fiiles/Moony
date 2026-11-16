@@ -8,7 +8,7 @@
 //! `MAX_BUNDLES_PER_WALK` bundles: anything else is a relay error (a server that pages for ever).
 //!
 //! - **Adopted:** an entry seals the new key to this device's box key, the body opens with it, its
-//!   signer's certificate is the one pinned here, `trusted` and not `kit_unconfirmed`, no removal
+//!   signer's certificate is the one pinned here and `trusted`, no removal
 //!   or leave of the signer that this device already knows of (in its list, verified, or in its
 //!   own pending change) counts, the signature verifies with the pinned key, the bundle moves this
 //!   device's epoch on by exactly one, what it says of older epochs (keys, heads) agrees with what
@@ -296,9 +296,8 @@ fn check(
     }
     let signer = unverified.signer().clone();
     let by = signer.body.device;
-    let pinned = trust::entry(conn, by)?.filter(|entry| {
-        entry.cert == signer && entry.state == trust::TrustState::Trusted && !entry.kit_unconfirmed
-    });
+    let pinned = trust::entry(conn, by)?
+        .filter(|entry| entry.cert == signer && entry.state == trust::TrustState::Trusted);
     let Some(pinned) = pinned else {
         log::warn!(
             "[SYNC] A key change is signed by device {}, which this device does not trust",
@@ -380,6 +379,8 @@ fn adopt(conn: &Connection, prepared: Prepared, rekey: &Rekey, now: i64) -> Resu
             conn,
             &body.signer,
             &recipients,
+            // The bundle's Kit is Task 17's (bundle v2, revision §2.5).
+            None,
             &removed,
             header.to_epoch,
             now,

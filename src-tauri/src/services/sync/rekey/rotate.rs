@@ -91,10 +91,11 @@ pub struct Plan {
     /// Devices a removed device added (it issued their certificate) that are not removed: the
     /// person may tick them too ("Odebrat také"), which makes another plan.
     pub added_by_removing: Vec<DeviceId>,
-    /// Ticked recipients the key change confirms (`trust::confirm`) when it commits.
+    /// The recipients other than this device, which the key change marks `confirmed` when it
+    /// commits (revision §3.1, `trust::mark_confirmed`).
     pub confirming: Vec<DeviceId>,
     /// Hex SHA-256 over the mode, the epoch, the removed devices and each recipient with its
-    /// certificate's hash (the ticks show as recipients).
+    /// certificate's hash.
     pub consent: String,
 }
 
@@ -122,9 +123,6 @@ pub enum Outcome {
 pub struct Removal<'a> {
     pub mode: RemovalMode,
     pub removing: &'a [DeviceId],
-    /// Devices ticked to get the key although a Recovery Kit vouches for them or their issuer is
-    /// gone (spec §9.2, As built 33–34).
-    pub opted_in: &'a [DeviceId],
     pub consent: &'a str,
 }
 
@@ -164,21 +162,15 @@ pub(crate) fn pending_removals(conn: &Connection) -> Result<Vec<DeviceId>> {
         .unwrap_or_default())
 }
 
-/// The plan for removing `removing` in `mode`, `opted_in` ticked (spec §6.4 steps 1–2). Refuses:
+/// The plan for removing `removing` in `mode` (spec §6.4 steps 1–2). Refuses:
 /// sync off (`syncSetupIncomplete`); capture broken (`syncChangesPaused`); a vault set up before
 /// phase 5 or this device no longer trusted (`syncRemovalUnsupported`); a key change pending
 /// (`syncChangeInProgress`); removing this device (`syncRemoveThisDevice`: that is turning sync
 /// off); a list-only removal of nobody or a device the list does not know
 /// (`syncRemovalPlanChanged`); more than 64 recipients (`syncTooManyDevices`).
-pub fn plan(
-    conn: &Connection,
-    removing: &[DeviceId],
-    mode: RemovalMode,
-    opted_in: &[DeviceId],
-) -> Result<Plan> {
+pub fn plan(conn: &Connection, removing: &[DeviceId], mode: RemovalMode) -> Result<Plan> {
     let me = check(conn)?;
     let removing = sorted(removing);
-    let opted_in = sorted(opted_in);
     if removing.contains(&me) {
         return Err(validation(REMOVE_THIS_DEVICE));
     }
@@ -212,14 +204,14 @@ pub fn plan(
     let (recipients, excluded) = match mode {
         RemovalMode::ListOnly => (Vec::new(), Vec::new()),
         RemovalMode::Rotate => {
-            let r = trust::recipients(conn, &removing, &opted_in)?;
+            let r = trust::recipients(conn, &removing)?;
             (r.included, r.excluded)
         }
     };
     let confirming = recipients
         .iter()
         .map(|e| e.device)
-        .filter(|d| *d != me && opted_in.contains(d))
+        .filter(|d| *d != me)
         .collect();
     let mut plan = Plan {
         mode,
@@ -481,7 +473,7 @@ pub async fn remove<R: Relay, D: ConnAccess>(
         }
     }
     let prepared = db.with_conn(|conn| {
-        let plan = plan(conn, request.removing, request.mode, request.opted_in)?;
+        let plan = plan(conn, request.removing, request.mode)?;
         if plan.consent != request.consent {
             return Err(validation(PLAN_CHANGED));
         }
@@ -804,21 +796,9 @@ fn commit(conn: &Connection, change: &PendingChange, rotated: Rotated, now: i64)
             trust::mark_removed(conn, record, Some(change.to))?;
         }
         trust::cut_off_all_pending(conn, change.to)?;
-        // Ticked devices still trusted here (one that left meanwhile is not confirmed).
-        let confirm: Vec<DeviceId> = change
-            .confirm
-            .iter()
-            .copied()
-            .filter(|device| {
-                trust::entry(conn, *device)
-                    .ok()
-                    .flatten()
-                    .is_some_and(|e| e.state == TrustState::Trusted)
-            })
-            .collect();
-        if !confirm.is_empty() {
-            trust::confirm(conn, &confirm, now)?;
-        }
+        // Every recipient still trusted here is confirmed (revision §3.1; one that left
+        // meanwhile is passed over).
+        trust::mark_confirmed(conn, &change.confirm)?;
         conn.execute(
             "UPDATE sync_state SET rotation_pending = NULL, \
                rekey_seen = MAX(rekey_seen, ?1), snapshot_epoch_due = ?2 WHERE id = 1",

@@ -131,7 +131,6 @@ fn identity() -> PairingIdentity {
                 state: TrustState::Trusted,
                 record: None,
                 cut_off_epoch: None,
-                kit_unconfirmed: false,
                 confirmed: false,
             }],
         },

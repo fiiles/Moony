@@ -1,9 +1,10 @@
 # Device sync, phase 5 revision: the Recovery Kit as a paper device, one removal, a plain device list — design
 
 Date: 2026-11-16. Status: the owner's decisions D1–D4 of 2026-11-16 (taken on the recommendations of
-`../Moony-tauri/docs/specs/2026-11-16-device-sync-ux-review.md`, "the review"), worked out for building.
-Sync stays behind the runtime flag (`feature::RELEASED = false`); everything here lands **before** the
-flag is turned on. Old development vaults are not upgraded: the owner sets sync up again.
+`../Moony-tauri/docs/specs/2026-11-16-device-sync-ux-review.md`, "the review"), worked out for building,
+with the security review of this document folded in (§9 lists what it changed). Sync stays behind the
+runtime flag (`feature::RELEASED = false`); everything here lands **before** the flag is turned on. Old
+development vaults are not upgraded: the owner sets sync up again.
 
 This revises `2026-11-16-device-sync-phase-5-removal-design.md` ("the phase-5 spec") and its plan.
 Where they differ, this document wins; the phase-5 spec's "As built" items 1–69 stay true except where
@@ -12,26 +13,30 @@ Where they differ, this document wins; the phase-5 spec's "As built" items 1–6
 ## 0. Security verdict on D1–D4 (read first)
 
 None of D1–D4 is unsound. Three of them trade a property away; each trade is stated here so it is
-accepted knowingly, and each is repeated in §8.
+accepted knowingly, and each is repeated as a residual in §8.
 
-1. **D1 weakens one case that today's design covers: a removed device colluding with the sync server
-   can impersonate the vault to a later Kit join.** Sealing a key to the Kit needs only the Kit's
-   public key, and every device that was ever in the vault since the Kit was made knows it. A removed
-   device plus a dishonest server can therefore hand a person who joins with the Kit a forged envelope
-   and a stale copy of the data, and then read what that person types afterwards. Today's Kit (it holds
-   the current vault key) is immune once a key change happened. This cannot be fixed without giving
-   the Kit something new at every key change, which is exactly what D1 removes. It needs a dishonest
-   server operator (for a self-hosted server, usually the person themselves) *and* a stolen removed
-   device *and* a Kit join; accepted as residual R1 (§8).
-2. **D1: a copied Kit is cut off only by "Vytvořit novou sadu"**, never by removing a device (the review's
-   §3.5 point 1). Partly compensated by making Kit use visible (§2.8).
-3. **D3 trusts a vouch made before the issuer left.** For an issuer that was *removed* this is airtight
-   (removal always changes the key, §3.2). For an issuer that *left*, a copy of its signing key made
-   before it left (a profile backup made while sync was on) can still add a device that keeps getting
-   keys. The As built 34 tick box was the only guard, and it only worked when the person unticked the
-   right row; it cost a genuine phone otherwise. Accepted as residual R2, with visibility (§3.3).
+1. **D1: the Kit cannot tell a fresh envelope from an old one (R1).** The Kit learns nothing at a key
+   change, so a person joining with it cannot check that what the server hands over is current. A
+   dishonest server can replay a genuine envelope from before a removal (or, with a removed device's
+   help, forge one for the Kit's public key) and serve the matching stale data; a removed device
+   colluding with it would then read whatever the person types next. Today's Kit (it holds the current
+   key) is immune once a key change happened. Not fixable without giving the Kit something new at every
+   key change, which is what D1 removes. **Mitigation adopted (§2.6):** a Kit joiner sends nothing until
+   the person answers "Data jsou zpět"; in such a stale copy the removed device is still on the list, and
+   "Odebrat je" makes a key change that leaves it out. It bites only if the person keeps a device there
+   that they had removed.
+2. **D1: a copied Kit is cut off only by "Vytvořit novou sadu"**, never by removing a device. Inherent;
+   compensated by making Kit use visible (§2.8).
+3. **D3 trusts a vouch made before the issuer left (R2).** For an issuer that was *removed* this is
+   airtight (removal always changes the key, §3.2). For an issuer that *left*, or an older ID that was
+   superseded, a copy of its signing key made earlier (a profile backup made while sync was on) could
+   add a device that keeps getting keys. **Mitigation adopted (§3.1):** such a certificate counts only
+   when the issuer announced its pairing in the log before it left; otherwise the device is
+   "Zkontrolujte" and gets nothing until a person keeps it.
 4. D2 and D4 are sound. D2's costs are availability ones: the 32-changes-per-30-days cap now counts
    every removal, and a device offline for more than 30 days re-joins after any removal.
+5. Unchanged by this revision but now stated for the owner: what a dishonest server can still do around
+   a key change (As built 65 (b) and (c), R4 and R5 in §8).
 
 ## 1. Decisions and what they supersede
 
@@ -60,11 +65,11 @@ accepted knowingly, and each is repeated in §8.
 | O4 (unverified rows never get a key) | Kept | Shown as "Zkontrolujte" (§6). |
 | O5 (new Kit after every key change) | **Superseded by D1** | A new Kit only when the Kit is replaced (§2.7). |
 | O6 (verified notice turns sync off) | Kept | The notice is also shown at unlock and in "Stav dat" (§6.4). |
-| O7 (no per-change signatures) | Kept | — |
+| O7 (no per-change signatures) | Kept | The cost is R4 (§8). |
 | O8 ("Vyměnit klíč" without removal) | **Superseded by D1/D2** | The only rotation that removes no device is "Vytvořit novou sadu". |
 | O9 (first key change wins) | Kept | — |
 | O10 (Kit joiner trusted, labelled) | **Superseded by D1** | A Kit joiner's certificate is signed by the Kit's key: verifiable like a pairing. |
-| O11 (superseded rows) | Kept in substance | A quiet superseded row is hidden; one that still writes is "{name} (kopie)", "Zkontrolujte". |
+| O11 (superseded rows) | Kept in substance | A quiet superseded row is hidden; one that still writes is "{name} (kopie)", "Zkontrolujte"; a superseded ID vouches only for what it issued before its successor (§3.1). |
 | O12 (no retry after a lost race) | Kept | — |
 
 ### 1.3 Phase-5 text and As built items superseded
@@ -72,15 +77,18 @@ accepted knowingly, and each is repeated in §8.
 | Item | Fate |
 |---|---|
 | Spec §5.3 kind 3 ("recovery kit", self-issued) | Re-meant: issuer = the Kit (§2.3). New kind 5 = the Kit itself. |
-| Spec §5.4 "A Kit joiner's first store" | Kept (trust on first use) plus a Kit anchor check (§2.6). |
+| Spec §5.4 "A Kit joiner's first store" | Kept (trust on first use) plus the Kit anchor, the envelope's confirmed set and the push hold (§2.6). |
 | Spec §6.4 step 3 (list-only), §6.6, §8 (whole), §9 (whole), §11.3 ("server: no change"), §13 item 10 | Replaced by §2, §4, §6 and the relay change. §13 item 10 (`syncRecoveryKitNeedsSnapshot`) disappears. |
-| As built 14, 43 (Kit join identity, Kit heads) | Amended: `JoinIdentity::RecoveryKit(KitJoin)` carries the envelope's heads (§2.6). |
+| As built 14, 43 (Kit join identity, Kit heads) | Amended: `JoinIdentity::RecoveryKit(KitJoin)` carries the envelope's heads and confirmed set (§2.6). |
+| As built 27 (who vouches) | Amended: a superseded ID speaks only until its successor's `issued_at`; a vouch by a left or superseded issuer also needs the §3.1 log-order check. |
 | As built 29 (`kit_unconfirmed`) | **Withdrawn.** The column stays in migration 040, always 0. |
 | As built 33 (person-signed `confirmed` records, `sync_confirm_device`) | **Withdrawn.** Record type 3 and `confirm_record` stay in the format, unused; the command is not built. |
-| As built 34 (`IssuerGone` opt-in ticks) | **Replaced** by the rule of §3.1 (`IssuerRemoved`, no tick). |
+| As built 34 (`IssuerGone` opt-in ticks) | **Replaced** by §3.1 (`IssuerRemoved`, transitive; `LateVouch`). |
+| As built 45 (an epoch with no head is not checked) | Amended for Kit joins: never unchecked (§2.6 step 5). Elsewhere unchanged. |
 | As built 53, 54, 56, 57, 60 (removal API with mode, `opted_in`, `confirming`; list-only checks; pending JSON; commit confirms the ticked) | Amended in §4.2 and §7.1. |
 | As built 50 ("a signer … not `kit_unconfirmed`") | The clause goes; everything else stands. |
-| Plan Tasks 11–24 | Replaced by Tasks 11–32 (§7.3). |
+| As built 65 residuals (b), (c) | Unchanged; restated for the owner as R4, R5. |
+| Plan Tasks 11–24 | Replaced by Tasks 11–33 (§7.3). |
 
 ### 1.4 Review recommendations not adopted
 
@@ -131,8 +139,8 @@ D1: no device, and so no removed device and no profile backup, can open the enve
 - **Kind 5, "kit"** (new): subject `kit_id` with `kit_sign_pub` and `kit_box_pub`; issuer = the device
   that created it (`issuer_sig` with that device's signing key, no ticket); `subject_sig` with
   `kit_sign_seed` (the creator holds the seed while it creates the Kit). Pinned when its issuer vouches
-  (`trust::vouch`, unchanged). **At most one Kit is `trusted`**: a second Kit certificate is pinned only
-  in the same pass or bundle that removes the first; otherwise it is refused (`ConflictKind::SecondKit`).
+  (`trust::vouch`). **At most one Kit is `trusted`**: a second Kit certificate is pinned only in the same
+  pass or bundle that removes the first; otherwise it is refused (`ConflictKind::SecondKit`).
 - **Kind 3, "joined with the Kit"** (re-meant): issuer = `kit_id`, `issuer_sign_pub = kit_sign_pub`,
   `issuer_sig` by `kit_sign_seed`; no ticket. Pinned when the Kit vouches (pinned, the same key,
   `speaks_at` the certificate's time). The byte layout is unchanged; `verify_signatures` refuses a kind 3
@@ -154,14 +162,17 @@ key    = HKDF-SHA256(salt = vault_id, ikm = X25519(eph_secret, kit_box_pub),
                      info = "moony kit envelope v1" ‖ eph_pub ‖ kit_box_pub ‖ epoch)
 body   = nonce (24) ‖ XChaCha20-Poly1305(key, AAD = header, plain)
 plain  = sig (64) ‖ JSON {"v":1, "by":"<hex>", "at":<unix s>, "signer":"<cert b64>",
-                          "keys":[{"epoch":n, "key":"<b64url>", "head":h?}]}   — ascending, last = header epoch
+                          "keys":[{"epoch":n, "key":"<b64url>", "head":h?}],
+                          "confirmed":[{"device":"<hex>", "cert":"<hex SHA-256 of the certificate>"}]}
 sig    = Ed25519(signer, "moony kit envelope v1" ‖ header ‖ JSON bytes)
 ```
 
 Built in `rekey/envelope.rs` like the bundle's entries (`bundle::os_fill`, wiped buffers, at most
-256 KiB, vectors from fixed seeds). `keys` carries every epoch the sealer holds; `head` only for
-**verified** heads (As built 63); the newest epoch never has one, because the envelope is sealed before the
-server answers the rotation's head (§2.6 says how the joiner gets it).
+256 KiB, vectors from fixed seeds). `keys` carries every epoch the sealer holds, ascending, the last one
+the header's epoch; `head` only for **verified** heads (As built 63), so never for the newest epoch (the
+envelope is sealed before the server answers the rotation's head; §2.6 step 5 covers it). `confirmed`
+is the sealer's `confirmed` set after the key change commits (every recipient of this change plus those
+confirmed before), so a Kit joiner learns what a bundle would have told it (§2.6 step 6).
 
 **Who seals it, when:** whoever makes a key change (the remover), every time, in the same
 `POST /token` call (§2.5). The server never holds an envelope for an older key than the current token's.
@@ -191,29 +202,48 @@ fetched with device tokens and expire after 30 days, which is what the Kit must 
 1. Decode the code (v2), derive `kit_token`, `kit_box_secret`, `kit_sign_seed`, `kit_id`.
 2. `account_status(account)` as today (`syncRecoveryAccountInvalid`).
 3. `GET /v1/vaults/:id/kit` with `Authorization: Bearer <kit_token>`:
-   `401` / `404 vault_not_found` → `validation.syncRecoveryVaultNotFound`;
-   `410 kit_replaced {replacedAt}` → `validation.syncRecoveryKitReplaced|{"at":<unix s>}` (replaces
-   `syncRecoveryKitRotated`).
+   `401` / `404 vault_not_found` → `validation.syncRecoveryVaultNotFound`, reworded to cover a long
+   replaced Kit (§2.9); `410 kit_replaced {replacedAt}` → `validation.syncRecoveryKitReplaced|{"at":<unix s>}`
+   (replaces `syncRecoveryKitRotated`).
 4. Open the envelope: header `vault_id` and `kit_id` must be the derived ones; the signature must verify
-   with the bundled signer certificate (self-consistent; nothing pinned yet); keys ascending, 32 bytes,
-   the last one = the header epoch. Any failure → `validation.syncRecoveryKitUnreadable` (new).
+   with the bundled signer certificate; keys ascending, 32 bytes, the last one = the header epoch E. Any
+   failure → `validation.syncRecoveryKitUnreadable` (new). (The signer is checked against the restored
+   store in step 6.)
 5. Credentials = all keys (`VaultKeys::from_parts`); `vault_info` with the derived token. Then the join
    as today (snapshot, replace, pull), with `JoinIdentity::RecoveryKit(KitJoin {kit_sign_seed, kit_id,
-   heads})`: the envelope's heads go into `sync_epochs`; the newest epoch's head is taken provisionally
-   from `GET /rekey` (`head::note_unverified`, verified by the remover's signed head record like on any
-   device) or from the restored snapshot's `Keys` record when it names it (verified there). When neither
-   has it (no bundle younger than 30 days and no snapshot under the newest epoch; `snapshot_epoch_due`
-   makes that rare), the epoch stays unchecked as As built 45 allows, logged once.
-6. **Kit anchor:** the restored rows must contain the Kit's row with a kind-5 certificate whose
-   `sign_pub` is the derived one and no removal record that verifies; otherwise
-   `syncRecoveryKitUnreadable`, nothing replaced (inside the replace's savepoint). The joiner pins it,
-   signs its own kind-3 certificate with `kit_sign_seed` (`Issuer::Kit`), then `tofu_from_rows` as today.
-7. The joiner writes the Local notice `sync.after_kit_join = {"devices": [ids]}`: every other active
-   device (§6.5 "Data jsou zpět").
+   heads, confirmed, signer})`. The envelope's heads go into `sync_epochs`. **The newest epoch E is never
+   left unchecked** (As built 45's "no row" case does not apply to a Kit join):
+   - E's head is recorded **verified** when the restored snapshot's `Keys` record names it (a snapshot
+     only hands on verified heads, As built 63);
+   - else, when the restored snapshot is **sealed under E**, it was taken after E began: an op past the
+     snapshot's position sealed under an epoch below E is refused as `Invalid` (`invalidChain`), exactly
+     the epoch rule with the snapshot's position standing in for the head; the head itself is learnt from
+     the signed head record when the pull meets it;
+   - else (the snapshot is older than E) E goes into `sync.epochs_unverified` with `after` = the
+     snapshot's position, the server's head from `GET /rekey` when a bundle is younger than 30 days
+     (otherwise none), and `by` = the envelope's signer, which is E's remover (an envelope is only
+     replaced at a key change, by the device making it). `head::awaits_head` then holds every old-epoch
+     op past `after` until the remover's signed head record is found and verified, exactly as on any
+     device (As built 63); with no server head, the record's own head is taken once its signature
+     verifies.
+6. **Kit anchor and the store.** Inside the replace's savepoint: the restored rows must contain the Kit's
+   row with a kind-5 certificate whose `sign_pub` is the derived one and no removal record that verifies;
+   the joiner pins it, signs its own kind-3 certificate with `kit_sign_seed` (`Issuer::Kit`), then
+   `tofu_from_rows` as today. Then **the envelope's signer must be pinned** with the bundled certificate
+   and `speak_at` the envelope's `at`; then every `confirmed` item whose device is pinned with a
+   certificate of that hash is marked `confirmed` (others are ignored). Any failure →
+   `syncRecoveryKitUnreadable`, nothing replaced.
+7. **Push hold.** The joiner writes the Local `sync.after_kit_join = {"devices": [ids], "newestChangeAt"}`
+   (every other active device; the newest change's time) and, **while that key exists, its rounds pull
+   but push nothing** (no changes, not even its own device row). The status shows "Data jsou zpět"
+   (§6.4): "Odebrat je" opens the removal of the listed devices (a key change, after which the hold is
+   lifted); "Mám je" lifts the hold. With no other active device the key is not written. Why: in a stale
+   copy served by a dishonest server (R1) the removed device is still listed as active, so "Odebrat je"
+   leaves it out of the new key before the person's first change goes anywhere.
 
-**What a Kit joiner trusts:** the Kit (derived from the paper) and, on first use, every certificate in
-the restored data that verifies (phase-5 §5.4 TOFU, unchanged). It does not trust the envelope's signer
-beyond the signature binding the envelope's bytes.
+**What a Kit joiner trusts:** the Kit (derived from the paper), on first use every certificate in the
+restored data that verifies (phase-5 §5.4 TOFU), and the envelope's confirmed set as far as its signer is
+one of those. Freshness it cannot check (R1); the push hold is the answer.
 
 **The review's note on phase-5 §8.3 step 3** (an old Kit marked valid while an old snapshot is still on
 the server): resolved by construction. Nothing is probed against snapshots; the server answers a
@@ -236,8 +266,11 @@ that shows the Kit (the creator; the Kit cannot be shown anywhere else):
 | NULL | nothing done (the flow was closed) | — (the Kit row says "neuložená", §6.3) |
 
 The strongest value wins (`cloud` > `file` > `copied` > `paper`). During setup the value sits in the draft
-and is written with the Kit's row at `finish_setup`. A screenshot or a photo of the screen is not
-detected (residual R3).
+and is written with the Kit's row at `finish_setup`. **The clipboard** already gets the concealed type
+and the clipboard-history exclusion and is cleared after 60 s (macOS, Windows; iOS `.localOnly` with a
+60 s expiry, phase 2); this revision adds `org.nspasteboard.TransientType` on macOS so clipboard tools
+that honour it never keep the code. Not detected: a screenshot, a photo of the screen, a pasted code in a
+synced note, and a PDF printed or saved into iCloud from the print dialog (R3).
 
 **Replacing = one key change** that removes the old Kit and adds a new one (`replaces_kit` in the plan,
 §4.2), combined with the removal when (b) applies. Order: the key change commits first, the new Kit is
@@ -258,9 +291,10 @@ are ordinary recipients and the bundle names them (§3.1). The new-Kit dialog li
   wiped before it answers. The sync server sees nothing.
 - **Kit reads are visible**: the server records the minute of the last successful `GET /kit` and reports
   it in vault info (`kit.lastRead`). The Kit row shows "Naposledy použita {date}". When `lastRead` is
-  newer than the Local `sync.kit_read_seen`, more than an hour old, and no kind-3 certificate issued since
-  `lastRead − 1 h` is pinned, the status carries `kitUsed` (§6.3). A dishonest server can hide a read;
-  an honest one cannot be fooled by the reader.
+  newer than the Local `sync.kit_read_seen`, more than an hour old, and no kind-3 entry was **pinned on
+  this device** (`sync_trust.pinned_at`, this device's clock; never the certificate's own `issued_at`,
+  which a Kit holder chooses) since `lastRead − 1 h`, the status carries `kitUsed` (§6.3). A dishonest
+  server can hide a read; an honest one cannot be fooled by the reader.
 - **Kit joins are visible**: a newly pinned kind-3 entry gives every other device the strong notice of §6.3.
 
 ### 2.9 The relay change (Moony-relay)
@@ -292,12 +326,20 @@ CREATE TABLE kits_retired (
 | `GET` | `/v1/vaults/:id` | Gains `"kit": {"since","lastRead"} | null`. |
 | `GET` | `/v1/server` | `features: ["blobs","kit"]` (protocol stays 2). The app refuses setup on a server without `kit` (`validation.syncServerNeedsUpdate`). |
 
-Limits: a new limiter `kitRead` (10 per minute per client key) and `kitVault` (30 per hour per vault)
-before the token check of `GET /kit`; the usual `vaultIp` applies. Retired Kit hashes: the newest 32 per
-vault are kept (housekeeping). Deleting a vault or a person cascades. Backup: in the database copy already.
-DESIGN.md: the routes, the storage line, Limits ("Kit envelope 256 KiB", "Kit reads"), and *What the
-server knows*: "per vault, the SHA-256 of the Kit token and of replaced Kit tokens, the Kit envelope
-(ciphertext it cannot open), when the Kit was set, last replaced and last read".
+**Limits.** A new limiter `kitRead` (10 per minute per client key) before the token check of
+`GET /kit`; the usual `vaultIp` applies. A per-vault limit counts **only failed** Kit token attempts
+(`401`/`410`, 30 per hour per vault, `kitVaultFailures`): a successful read with the right token never
+waits on it, so nobody without the Kit (a removed device included) can lock the owner out of recovery.
+**Retired Kit hashes** are kept, the newest 256 per vault (32 bytes each; at the 32-changes cap that is
+eight months of nothing but new Kits). A Kit older than that reads `401`; the app's text for `401` on a
+Kit join therefore covers it: "Tuto sadu server nezná: buď ji mezitím nahradila novější, nebo patří k
+jiné synchronizaci či jinému serveru. Zkontrolujte kód a adresu serveru." / "The server doesn't know this
+kit: a newer kit may have replaced it, or it belongs to another sync or server. Check the code and the
+server address." (Cosmetic otherwise.) Deleting a vault or a person cascades. Backup: in the database
+copy already. DESIGN.md: the routes, the storage line, Limits ("Kit envelope 256 KiB", "Kit reads",
+"failed Kit attempts"), and *What the server knows*: "per vault, the SHA-256 of the Kit token and of up
+to 256 replaced Kit tokens, the Kit envelope (ciphertext it cannot open), when the Kit was set, last
+replaced and last read".
 
 **Admin:** `GET /admin/api/people/:id` vaults gain `kitSince`, `kitLastRead`; Person detail shows per
 profile "Záchranná sada: vytvořena {date} · naposledy použita {date | nikdy}" / "Recovery kit: created
@@ -308,16 +350,16 @@ wording point: the admin's "profil" gets the subtitle "synchronizovaná data jed
 
 | Attacker | Can | Cannot | Detected by |
 |---|---|---|---|
-| **Stolen or copied Kit** (with the server address) | Read everything, past and future, until "Vytvořit novou sadu"; join as a device | Survive "Vytvořit novou sadu": the new key and the new envelope are sealed to keys it lacks, its token gets `410` | `kitUsed` (read without a join), the Kit-join notice on every device |
+| **Stolen or copied Kit** (with the server address) | Read everything, past and future, until "Vytvořit novou sadu"; join as a device | Survive "Vytvořit novou sadu": the new key and the new envelope are sealed to keys it lacks, its token gets `410` | `kitUsed` (read without a join, judged on this device's clock), the Kit-join notice on every device |
 | **Stolen Kit + dishonest server** | The above, and the server can hide the read | Survive a new Kit: the cut-off is cryptographic, not the server's | The Kit-join notice only |
-| **Server alone** | Deny, delay, serve an older envelope (older keys only: the joiner then cannot read current data or gets `410`/`401` paths) | Read anything: it never sees a key, `kit_box_pub` or the seed | Joins fail visibly |
-| **Removed device** (with its old keys and signing key) | Nothing new: it has no Kit token (the seed was never stored) unless it kept the Kit file or code, which is why §2.7 replaces the Kit then | Read the envelope; write anything (its token is read-only, then unknown) | — |
-| **Removed device + dishonest server** | Forge an envelope for the public `kit_box_pub` and serve a stale fork to someone joining with the Kit, then read what that person writes (R1). The fork-slot residual of As built 65(b) also stands | Read data written by devices that stayed | "Data jsou zpět" names the newest change's date; nothing more |
-| **Device that left, from a profile backup with its signing key** | Until the next key change: everything (O2); also add a backdated device that survives later key changes (R2) | After a key change without such a device: nothing | New-device notice (§3.3) |
+| **Server alone** | Deny, delay; replay an older genuine envelope with the matching older data to a Kit joiner (R1) | Read anything: it never sees a key, `kit_box_pub` or the seed; read what the joiner writes (it has no key of its own) | The push hold and "Data jsou zpět" (date of the newest change, the device list) |
+| **Removed device** (with its old keys and signing key) | Nothing new: it has no Kit token (the seed was never stored) unless it kept the Kit file or code, which is why §2.7 replaces the Kit then | Read the envelope; write anything (its token is read-only, then unknown); add a device that gets keys (§3.1, transitive) | — |
+| **Removed device + dishonest server** | R1: serve a Kit joiner a stale copy (replayed or forged envelope); with the push hold it reads the joiner's changes only if the person keeps that device ("Mám je"). R4: fill not-yet-pulled slots before a key change with its own later changes for a lagging device | Read data written by devices that stayed | "Data jsou zpět"; `keyChangeOverrun` in part |
+| **Device that left, or a superseded ID, from a profile backup with its signing key** | Until the next key change: everything (O2); after it: nothing, unless a person keeps a device it adds | Add a device that silently gets keys: a certificate it backdates appears in the log after its `left` record (or its successor), so it is "Zkontrolujte" and excluded (§3.1) | "Zkontrolujte" row, new-device notice |
 
 **Rotation head interaction:** the envelope carries only verified heads, never the newest (unknown when
-sealed); the joiner verifies the newest through the signed head record like any device (§2.6 step 5).
-The signed head, the provisional heads and pickup-before-pull of the running fix round are unchanged.
+sealed); a Kit joiner checks the newest epoch as §2.6 step 5 says, never leaving it unchecked. The signed
+head, the provisional heads and pickup-before-pull of the running fix round are unchanged.
 
 ## 3. Automatic confirmation (D3)
 
@@ -331,14 +373,41 @@ The signed head, the provisional heads and pickup-before-pull of the running fix
 | `Removing` | the person removes it now |
 | `Left`, `Removed` | its state (as today) |
 | `SupersededQuiet` | O11, as today |
-| `IssuerRemoved` (new) | its issuer (paired, re-join or Kit-joined) is `removed` here **and** it is not `confirmed` |
+| `IssuerRemoved` (new, **transitive**) | it is not `confirmed` and its issuer (paired, re-join or Kit-joined) is `removed` here **or is itself `IssuerRemoved`**; computed to a fixpoint (`trust::issuer_removed_set`, replacing `issuer_gone` in `recipients`), so a whole chain hanging off a removed device drops, however deep. A `confirmed` entry stops the chain. |
+| `LateVouch` (new) | it is not `confirmed`, its issuer is `left` or superseded, and it was not seen in time (below) |
 | `Unverified`, `NoKey` | a row without a pinned certificate (as today) |
 
-`confirmed` (the migration-040 column) now means "named as a recipient by a verified key change": set by
-the remover's own commit for every recipient and the Kit, and by `import_bundle` for the signer, every
-recipient and the Kit. No person, no tick, no record. `KitUnconfirmed` and `IssuerGone` are gone; an
-issuer that **left** vouches for what it issued before it left (`vouch`, As built 27, unchanged) and
-that device is an ordinary recipient.
+`confirmed` (the migration-040 column) means "named as a recipient by a verified key change, or kept by a
+person on this device": set by the remover's own commit for every recipient and the Kit, by
+`import_bundle` for the signer, every recipient and the Kit, by a Kit join from the envelope's confirmed
+set (§2.6), and locally by "Je moje" on a "Zkontrolujte" row (§6.1); the next key change this device
+makes then names it, which confirms it everywhere. No records, no tick boxes.
+
+**Seen in time** (the R2 mitigation; Local data from migration 041):
+
+- *Where things were first seen.* The pull notes, for each applied `sync_devices` change that brings a
+  `cert` or `left_record` value, the relay position of its op in the Local table
+  `sync_trust_seen (device, what ∈ {cert, left}, pos)` (first one wins). Rows restored from a snapshot
+  get the snapshot's position. Entries that came from a pairing export, a bundle, this device or a Kit
+  join's envelope need nothing: they are vetted or `confirmed`.
+- *Pairings announced by the holder.* `pairing::holder::confirm` queues, under the holder's current key,
+  an envelope with no rows and the changeset's new optional field `"tickets": ["<ticket_pub b64url>"]`
+  (the shape of the signed head record, As built 62: a reader before this build ignores it); it leaves
+  through `sync_unsent` in the holder's own chain, so it always reaches the server **before** a later
+  `left` record of the same device. Receivers record it in the Local table
+  `sync_tickets (ticket_pub PRIMARY KEY, issuer, pos)`.
+- A paired certificate whose issuer is `left` is **in time** when its ticket was announced, or the
+  certificate itself was seen, at a position before the issuer's `left` record was seen; a re-join or
+  Kit-free certificate likewise by its own first-seen position. For a superseded issuer the end is the
+  position where its successor's certificate was first seen. Equal positions (both in one restored
+  snapshot) count as in time, the trust-on-first-use of a joiner.
+- **A superseded ID speaks only until its successor**: `speaks_at` bounds a `trusted` entry that has a
+  pinned re-join successor at the successor's `issued_at`, as it bounds a left entry at `state_at`
+  (`successor_at`, already computed in `recipients`, moves into `entry_map`'s caller so `vouch` and
+  `removal_counts` see it).
+
+The D3 trap still passes: O pairs N, O's announcement goes out before O's `left` record, so N is in time
+on a device D that was offline throughout, whatever order N's row arrives in.
 
 ### 3.2 Why it is safe
 
@@ -350,29 +419,32 @@ row into the vault. Case by case:
 - **Issuer trusted** (it, or its unlocked thief, is a member): it can add devices anyway (O9, phase-5
   §12). Nothing changes.
 - **Issuer removed:** D2 makes every removal a key change, so the issuer's key-holder lost the current
-  vault key at that moment and cannot write rows. Its only path is the fork residual of As built 65(b): a
-  dishonest server serving a lagging device old-epoch ops in pre-rotation slots. Such a certificate was
-  not named by the bundle that cut its issuer off, so it is `IssuerRemoved` and gets nothing. A genuine
-  device the remover did know was a plain recipient (its issuer was still `trusted` at plan time) and
-  is `confirmed` everywhere through the bundle. A genuine device the remover did not know yet (paired a
-  minute before) never got the new key in either design; it shows "Připojit znovu".
-- **Issuer left:** the honest device deleted its signing key when it left. Its key survives only in a
-  copy made earlier (a profile backup made while sync was on, phase-5 §12), and that copy also holds the
-  current vault key until the next key change, so it can write a backdated certificate (R2). The As
-  built 34 tick guarded this only when the person unticked exactly the forged row and kept every genuine
-  one; in the common case (a new phone paired from an old one that was then turned off) it cost the
-  genuine phone. The same recognition is available without the cost: §3.3.
+  vault key at that moment and cannot write rows. Its only path is the fork residual of As built 65(b)
+  (R4): a dishonest server serving a lagging device old-epoch ops in pre-rotation slots. Such a
+  certificate was not named by the bundle that cut its issuer off, so it is `IssuerRemoved` and gets
+  nothing, **and so does everything it vouches for**, because the exclusion is transitive: a forged B
+  that pairs a C cannot launder C into the recipients. A genuine device the remover did know was a plain
+  recipient (its issuer was still `trusted` at plan time) and is `confirmed` everywhere through the
+  bundle, which stops the chain. A genuine device the remover did not know yet (paired a minute before)
+  never got the new key in either design; it shows "Připojit znovu".
+- **Issuer left or superseded:** the honest device deleted its signing key when it left (a superseded ID
+  lives on only as a copy). The key survives only in a copy made earlier (a profile backup made while
+  sync was on, phase-5 §12), and that copy also holds the current vault key until the next key change,
+  so it can write a backdated certificate. On an honest server it can only append to the log, after the
+  issuer's `left` record (or successor) and without an earlier announcement of its ticket, so the
+  certificate is `LateVouch`: listed as "Zkontrolujte", excluded, kept only if a person says "Je moje".
+  On a dishonest server, forking slots that a lagging device has not read yet, it is R4.
 - **Issuer = the Kit:** a Kit holder can add devices by design (D1); visible, cut off by a new Kit,
-  after which its later joiners are `IssuerRemoved` unless the new-Kit bundle named them.
+  after which its later joiners (and what they pair) are `IssuerRemoved` unless the new-Kit bundle
+  named them.
 
 ### 3.3 What the person still sees
 
 - Each device's details: "Přidáno {date} ze zařízení {name}" / "Připojeno záchrannou sadou {date}".
 - **A new-device notice on every other device** when an entry is pinned outside a join
   (`trust::refresh` appends to the Local `sync.new_devices`, at most 20, kinds 2 and 3; re-joins say
-  nothing): "Přibylo zařízení {name}, přidané ze zařízení {by} {date}." When the issuer had already
-  left or been removed on this device before the entry arrived, the stronger text with two buttons
-  (§6.3). Kit joins always get the strong notice.
+  nothing): "Přibylo zařízení {name}, přidané ze zařízení {by} {date}." A `LateVouch` entry gets the
+  stronger text with "Je moje" · "Odebrat" (§6.3); Kit joins always get the strong notice.
 - The removal dialog's "Synchronizovat dál budou" list (§4.3): the people the new key goes to.
 
 ## 4. Always-rotate removal (D2)
@@ -385,7 +457,8 @@ row into the vault. Case by case:
 | Left (signed record) | "Dřívější zařízení", no action | — | gets a notice entry and is cut off (`cut_off_all_pending`, unchanged) |
 | Superseded, quiet | hidden (the successor's details say "Znovu připojeno {date}") | — | left out (O11) |
 | Superseded, still writing | "{name} (kopie)", Zkontrolujte | "Odebrat" → key change | — |
-| `IssuerRemoved`, unverified | Zkontrolujte | "Odebrat" → key change | left out |
+| `IssuerRemoved`, `Unverified` | Zkontrolujte | "Odebrat" → key change | left out |
+| `LateVouch` | Zkontrolujte | "Je moje" (kept, then included) or "Odebrat" → key change | left out until kept |
 | Removed | "Dřívější zařízení", no action | — | — |
 
 "Dřívější zařízení" rows are listed for 30 days after their state time (`devices::list` leaves older
@@ -394,12 +467,15 @@ ones out); the rows and the trust entries stay in the database.
 ### 4.2 The API
 
 - `RemovalMode` and the list-only path are deleted (`rotate.rs`, its tests; `sync_removal_plan` takes no
-  mode). Removal records naming this device that arrive through sync are still handled (Task 19): a
+  mode). Removal records naming this device that arrive through sync are still handled (Task 20): a
   commit writes them into rows, so they still sync.
 - `rotate::plan(conn, removing, also_remove, new_kit) -> Plan {epoch, removing, recipients, excluded,
   added_by_removing, kit: Option<TrustEntry>, replaces_kit, consent}`. `replaces_kit` = `new_kit`, or the
-  §2.7 table says so for a device in `removing`. `added_by_removing` includes devices joined with the
-  Kit when `new_kit`.
+  §2.7 table says so for a device in `removing`. **`added_by_removing` holds every descendant** of the
+  devices being removed through issuer links, at any depth (a device a removed device paired, what that
+  one paired, …), Kit-joined devices included when the path runs through a Kit that is being replaced
+  (`new_kit`, or `replaces_kit` from §2.7). A Kit that stays is not a removed issuer, so its joiners are
+  not listed.
 - `consent` = hex SHA-256 over the domain string, the epoch, the removed IDs, each recipient's ID and
   certificate hash, the current Kit's certificate hash (or none) and `replaces_kit`.
 - `remove(relay, db, Removal {removing, consent, new_kit}, data_dir, forget_pairing, now)` →
@@ -410,11 +486,12 @@ ones out); the rows and the trust entries stay in the database.
 
 ### 4.3 The dialog (one screen)
 
-Title, what happens, who stays, devices the removed one added (ticks, unticked), the "in your hand"
-hint, the Kit line when `replaces_kit`, the password, "Zrušit" · "Odebrat zařízení". Then "Odebírám
-{name}…" in the dialog body, then a toast, or the Kit step when `replaces_kit`. Texts in §6.2. The
-excluded list is shown only for rows that are **active or Zkontrolujte** and still drop out
-("Synchronizovat se přestanou i:"), which under §3.1 is only `IssuerRemoved` and unverified rows.
+Title, what happens, who stays, devices the removed one added (all descendants, ticks, unticked), the
+"in your hand" hint, the Kit line when `replaces_kit`, the password, "Zrušit" · "Odebrat zařízení". Then
+"Odebírám {name}…" in the dialog body, then a toast, or the Kit step when `replaces_kit`. Texts in §6.2.
+The excluded list is shown only for rows that are **active or Zkontrolujte** and still drop out
+("Synchronizovat se přestanou i:"): `IssuerRemoved`, `LateVouch` (with "Je moje" inline, which keeps it
+and reloads the plan) and unverified rows.
 
 ### 4.4 The 32-per-30-days cap and the 64-device cap
 
@@ -459,6 +536,7 @@ in doubt), and one button; where there is none, say that Moony keeps trying.
 | … unverified | Tohle zařízení se nepodařilo ověřit. Až příště odeberete nějaké zařízení, přestane se synchronizovat. Pokud je vaše, připojte ho znovu: na něm vypněte synchronizaci a zvolte Připojit. | This device couldn't be verified. The next time you remove a device, it will stop syncing. If it's yours, connect it again: turn sync off on it and choose Connect. |
 | … copy (name "{name} (kopie)") | Toto zařízení se znovu připojilo, ale jeho dřívější kopie pořád zapisuje změny. Pokud ji nepoznáváte, odeberte ji. | This device connected again, but its earlier copy still writes changes. If you don't recognise it, remove it. |
 | … issuer removed | Přidalo ho zařízení, které jste odebrali, a nová data už nedostává. Pokud je vaše, připojte ho znovu. | It was added by a device you removed and no longer gets new data. If it's yours, connect it again. |
+| … late vouch | Přidalo ho zařízení {by}, které se už nesynchronizuje, a Moony nemůže ověřit, že to bylo dřív, než se odpojilo. Až příště odeberete nějaké zařízení, přestane se synchronizovat, pokud ho nepotvrdíte. · Je moje · Odebrat | {by} added it, but {by} no longer syncs and Moony can't confirm this happened before it left. The next time you remove a device, it will stop syncing unless you keep it. · It's mine · Remove |
 | Folded group | Dřívější zařízení ({n}) | Former devices ({n}) |
 | Former row | odpojeno {date} · odebráno {date} zařízením {name} | left on {date} · removed on {date} by {name} |
 | Under the list | Ztracené, prodané nebo vymazané zařízení odeberte. Nic nového už neuvidí. | Remove a lost, sold or wiped device. It won't see anything new. |
@@ -466,7 +544,8 @@ in doubt), and one button; where there is none, say that Moony keeps trying.
 
 Desktop: a row expands for its details and the "Odebrat…" button; phone: other devices' rows open the
 device sheet (details as label-value rows, "Odebrat zařízení" as a danger text button). The
-"Ztratili jste zařízení…" collapsible goes.
+"Ztratili jste zařízení…" collapsible goes. "Je moje" needs no password (it gives nothing now; the next
+removal, which needs one, is where it takes effect) and sets `confirmed` locally (`sync_keep_device`).
 
 ### 6.2 Removal and the new Kit
 
@@ -476,7 +555,7 @@ device sheet (details as label-value rows, "Odebrat zařízení" as a danger tex
 | Body | {name} přestane dostávat nová data a nebude moct nic měnit. Co už v něm je, tam zůstane; chrání to heslo do Moony. | {name} will stop getting new data and won't be able to change anything. What's already on it stays there, protected by its Moony password. |
 | Who stays | Synchronizovat dál budou: · {name} (toto zařízení) | These will keep syncing: · {name} (this device) |
 | Who drops out (only if any) | Synchronizovat se přestanou i: | These will also stop syncing: |
-| Added by the removed one | Tato zařízení jste přidali ze zařízení {name}. Odeberte i ta, která nepoznáváte. ☐ {device} · přidáno {date} | You added these from {name}. Remove any you don't recognise too. ☐ {device} · added {date} |
+| Added by the removed one | Tato zařízení jste přidali ze zařízení {name} (nebo z nich). Odeberte i ta, která nepoznáváte. ☐ {device} · přidáno {date} | You added these from {name} (or from them). Remove any you don't recognise too. ☐ {device} · added {date} |
 | In hand | Máte {name} u sebe? Stačí na něm synchronizaci vypnout. | Have {name} with you? Just turn sync off on it. |
 | Kit line (`replaces_kit`) | Na zařízení {name} jste si uložili záchrannou sadu, proto přestane platit. Hned potom si vytvoříte novou. | Your recovery kit was saved on {name}, so it will stop working. You'll make a new one right after. |
 | Kit line (`cloud`) | Záchrannou sadu máte ve složce, která se synchronizuje s cloudem, proto přestane platit. Hned potom si vytvoříte novou. | Your recovery kit is in a folder that syncs to the cloud, so it will stop working. You'll make a new one right after. |
@@ -505,7 +584,7 @@ device sheet (details as label-value rows, "Odebrat zařízení" as a danger tex
 | `kitUsed` | Záchranná sada byla použita {date}, ale žádné zařízení se jí nepřipojilo. Pokud jste to nebyli vy, má ji někdo další: vytvořte si novou. · Vytvořit novou sadu · Vím o tom | Your recovery kit was used on {date}, but no device joined with it. If it wasn't you, someone else has it: make a new one. · Make a new kit · I know about it |
 | Kit join (other devices) | **Zařízení se připojilo záchrannou sadou** · {name} se připojilo {date}. Pokud jste to nebyli vy, má vaši sadu někdo další. · To jsem já · Odebrat a vytvořit novou sadu | **A device joined with your recovery kit** · {name} joined on {date}. If it wasn't you, someone else has your kit. · That was me · Remove it and make a new kit |
 | New device | Přibylo zařízení {name}, přidané ze zařízení {by} {date}. · Zavřít | {name} was added from {by} on {date}. · Close |
-| New device, issuer already gone | Přibylo zařízení {name}. Přidalo ho zařízení {by} {date}, které už se nesynchronizuje. Pokud {name} nepoznáváte, odeberte ho. · Je moje · Odebrat | {name} was added. {by} added it on {date} and no longer syncs. If you don't recognise {name}, remove it. · It's mine · Remove |
+| New device, late vouch | Přibylo zařízení {name}. Přidalo ho zařízení {by}, které už se nesynchronizuje. Pokud {name} nepoznáváte, odeberte ho. · Je moje · Odebrat | {name} was added. {by} added it and no longer syncs. If you don't recognise {name}, remove it. · It's mine · Remove |
 | Setup, Kit step | **Záchranná sada** · Kdybyste přišli o všechna zařízení najednou, vrátí vám data jen tato sada. Vytiskněte ji a uložte mimo tento počítač, třeba k dokladům nebo do správce hesel. · Vytisknout · Uložit jako soubor… · Zkopírovat kód · Sadu ukážeme jen teď. Když ji ztratíte, vytvoříte si v Nastavení novou. · Není to obnovovací klíč tohoto zařízení; ten obnoví jen zapomenuté heslo. → Sadu mám, pokračovat | **Recovery kit** · If you lose every device at once, only this kit gets your data back. Print it and keep it away from this computer, with your documents or in a password manager. · Print · Save as file… · Copy code · We show the kit only now. If you lose it, make a new one in Settings. · It isn't this device's recovery key; that only resets a forgotten password. → I have the kit, continue |
 | Setup, done screen | **Synchronizace je zapnutá** · Nahrávám první kopii dat. Můžete pracovat dál. · Přidat druhé zařízení · Později | **Sync is on** · Uploading the first copy of your data. You can keep working. · Add another device · Later |
 | Server address change | Novou adresu si připište na záchrannou sadu. | Write the new address on your recovery kit. |
@@ -527,18 +606,19 @@ soubor…" becomes the primary and the button is hidden (the decision is recorde
 | `removalNotice` (Local `sync.key_change_notice`) | Zařízení {by} odebralo {names} ({date}). / Zařízení {by} vytvořilo novou záchrannou sadu ({date}); stará už neplatí. | {by} removed {names} ({date}). / {by} made a new recovery kit ({date}); the old one no longer works. | Zavřít |
 | `removalNotDone` | Odebrání zařízení {devices} se nedokončilo: seznam zařízení mezitím změnilo zařízení {by}. Zkontrolujte ho a zkuste to znovu. / {devices} mezitím odebralo zařízení {by}. / (by null) Synchronizační server odebrání odmítl. Zkuste to znovu. / (kit) Nová záchranná sada nezačala platit; vytvořte si ji znovu. | Removing {devices} didn't finish: {by} changed the device list in the meantime. Check it and try again. / {by} removed {devices} in the meantime. / The sync server refused the removal. Try again. / The new recovery kit didn't start working; make it again. | Zavřít |
 | problems `keyNotGiven`, `keyChangeUnverified`, `unauthorized` (one UI state) | **Toto zařízení je potřeba připojit znovu** · Bylo dlouho bez spojení, nebo se mezitím změnilo, kdo má k datům přístup. Data v tomto zařízení jsou v pořádku, jen se nesynchronizují. (+ `rejoinBy`: Změnu provedlo zařízení {by}, které toto zařízení nezná.) | **This device needs to connect again** · It was offline for a long time, or who can access the data changed meanwhile. The data on this device are fine; they just don't sync. (+ {by}, which this device doesn't know, made the change.) | Připojit znovu |
+| problem `keyRotated` for more than a day (R5: a head that never verifies) | **Synchronizace čeká na zařízení {by}** · Toto zařízení čeká na potvrzení od zařízení {by}, které naposledy měnilo seznam zařízení. Data tady jsou v pořádku. Pokud {by} už nepoužíváte, připojte toto zařízení znovu. | **Sync is waiting for {by}** · This device is waiting for a confirmation from {by}, which last changed the device list. The data here are fine. If you no longer use {by}, connect this device again. | Připojit znovu |
 | `keyChangeOverrun` | Synchronizační server poslal tomuto zařízení změny, které po odebrání zařízení {date} poslat neměl, a Moony je použila. Pokud jste zařízení odebrali kvůli krádeži, zkontrolujte změny z posledních dní. | The sync server sent this device changes it shouldn't have after a device was removed on {date}, and Moony applied them. If you removed that device because it was stolen, check the changes of the last few days. | Zavřít |
 | `removedNotice` (readable with sync off) | **Toto zařízení bylo odebráno ze synchronizace** · Odebralo ho zařízení {by} {date}. Vaše data tady zůstala, jen se už nesynchronizují. (+ {n} změn z tohoto zařízení se do synchronizace nedostalo; zůstávají jen tady. — plurals) | **This device was removed from sync** · {by} removed it on {date}. Your data stayed here; they just don't sync any more. (+ {n} changes from this device didn't make it into sync; they stay only here.) | Rozumím · Připojit znovu |
-| `afterKitJoin` (the Kit joiner only) | **Data jsou zpět** · Poslední změna je z {date}. V seznamu zůstala vaše dřívější zařízení: {names}. Pokud jste o ně přišli, odeberte je, ať nic nového neuvidí. | **Your data are back** · The newest change is from {date}. Your earlier devices are still on the list: {names}. If you lost them, remove them so they see nothing new. | Odebrat je · Mám je |
+| `afterKitJoin` (the Kit joiner only; holds pushes) | **Data jsou zpět** · Poslední změna je z {date}. V seznamu zůstala vaše dřívější zařízení: {names}. Pokud jste o ně přišli, nebo pokud mezi nimi je zařízení, které jste už dřív odebrali, odeberte je. Dokud se nerozhodnete, nic odsud neodešleme. | **Your data are back** · The newest change is from {date}. Your earlier devices are still on the list: {names}. If you lost them, or if one of them is a device you had already removed, remove them. Until you decide, nothing is sent from here. | Odebrat je · Mám je |
 
 "Připojit znovu" = password → turn sync off (local data stay) → the join choice; before replacing, the
 replace notice adds "Změny, které odsud neodešly, zůstanou v záloze." (the `-kept` backup). The removed
 notice shows in Settings → Sync, **once at unlock** (desktop dialog, phone sheet) and as a line in the
 top-bar "Stav dat" popover ("Synchronizace je vypnutá: toto zařízení bylo odebráno.") until "Rozumím".
-`newDevices`, `kitUsed` and `removalNotice` add one line each to the popover. Other phase-5 texts and
-the three worst of today per the review §4.9 table ("Čeká se na změnu z jiného zařízení", `captureBroken`,
-`invalidChain`) are reworded in the same task. The turn-off dialog: review §4.6 texts; `turnOff.noCutOff`
-goes; "Synchronizovat toto zařízení znovu" moves under the problems card.
+`newDevices`, `kitUsed`, `removalNotice` and `afterKitJoin` add one line each to the popover. Other
+phase-5 texts and the three worst of today per the review §4.9 table ("Čeká se na změnu z jiného
+zařízení", `captureBroken`, `invalidChain`) are reworded in the same task. The turn-off dialog: review
+§4.6 texts; `turnOff.noCutOff` goes; "Synchronizovat toto zařízení znovu" moves under the problems card.
 
 Glossary (`docs/standards/i18n-glossary.md`): add odebrat zařízení / remove device, dřívější zařízení /
 former devices, připojit znovu / connect again, zkontrolujte / check this, záchranná sada (lower case) /
@@ -548,14 +628,15 @@ synchronizační účet, číslo účtu (own server).
 ### 6.5 Wire (`shared/schema.ts`, the seven steps)
 
 - `SyncDevice` gains `status: 'active' | 'check' | 'former'`, `checkReason: 'unverified' | 'copy' |
-  'issuerRemoved' | null`, `formerReason: 'left' | 'removed' | null`, `joinedVia: 'created' | 'paired' |
-  'recoveryKit' | 'rejoined' | 'unknown'`, `addedBy: string | null`, `stateAt: number | null`,
+  'issuerRemoved' | 'lateVouch' | null`, `formerReason: 'left' | 'removed' | null`, `joinedVia: 'created' |
+  'paired' | 'recoveryKit' | 'rejoined' | 'unknown'`, `addedBy: string | null`, `stateAt: number | null`,
   `stateBy: string | null`, `removalPending: boolean`, `inactiveDays: number | null`.
 - `SyncStatus` gains `removalSupported`, `removalPending`, `removalNotice`, `removalNotDone`,
-  `keyChangeOverrun`, `removedNotice`, `rejoinBy`, `newDevices: {id, name, by, at, viaKit, issuerGone}[]`,
-  `recoveryKit: {createdAt, createdBy, storage, lastReadAt} | null`, `kitUsed: number | null`,
-  `afterKitJoin: {names: string[], newestChangeAt: number | null} | null`, `syncingSince: number | null`,
-  `firstUpload: boolean`. `SyncProblem` gains `keyNotGiven`, `keyChangeUnverified`.
+  `keyChangeOverrun`, `removedNotice`, `rejoinBy`, `waitingForRemover: {by, since} | null` (R5 text),
+  `newDevices: {id, name, by, at, viaKit, lateVouch}[]`, `recoveryKit: {createdAt, createdBy, storage,
+  lastReadAt} | null`, `kitUsed: number | null`, `afterKitJoin: {names: string[], newestChangeAt: number |
+  null} | null`, `syncingSince: number | null`, `firstUpload: boolean`. `SyncProblem` gains `keyNotGiven`,
+  `keyChangeUnverified`.
 - `RecoveryKit`: `accountNumber` goes; gains `createdAt`, `createdBy`; `recoveryCode` is 19 groups.
 - New: `RemovalPlan {removing, staying, droppingOut: {device, reason}[], addedByRemoving, replacesKit:
   'no' | 'creatorRemoved' | 'cloud' | 'asked', consent}`, `RemovalOutcome {kind: 'done' | 'pending' |
@@ -563,14 +644,15 @@ synchronizační účet, číslo účtu (own server).
   | 'otherSync' | 'unknown', replacedAt, currentCreatedAt}`.
 - Commands: `sync_removal_plan(deviceIds, alsoRemove, newKit)`, `sync_remove_devices(password, deviceIds,
   alsoRemove, newKit, consent)`, `sync_check_recovery_kit(code)`, `sync_print_recovery_kit()`,
+  `sync_keep_device(deviceId)` ("Je moje"), `sync_kit_join_decided(removeThem: boolean)` (lifts the push
+  hold; with `true` the UI opens the removal of the listed devices first and calls it after the removal),
   `sync_dismiss_notice(kind)` with kinds `removal | removed | removalNotDone | keyChangeOverrun |
-  newDevices | kitUsed | afterKitJoin`. **Deleted:** `sync_show_recovery_kit` (and `setup::recovery_kit`).
-  Changed: `sync_prepare_recovery_kit` makes the draft; `sync_finish_setup(deviceName)` loses `kitSaved`
-  (refuses with `validation.syncRecoveryKitNotConfirmed` while the draft has no storage value).
+  newDevices | kitUsed`. **Deleted:** `sync_show_recovery_kit` (and `setup::recovery_kit`). Changed:
+  `sync_prepare_recovery_kit` makes the draft; `sync_finish_setup(deviceName)` loses `kitSaved` (refuses
+  with `validation.syncRecoveryKitNotConfirmed` while the draft has no storage value).
 - New validation keys: `syncRecoveryKitReplaced` (`{at}`), `syncRecoveryKitUnreadable`. Reworded:
-  `syncRotationRaced`, `syncTooManyKeyChanges`, `syncTooManyDevices`, `syncRecoveryVaultNotFound`
-  ("K této sadě server žádná data nemá. Zkontrolujte kód a adresu serveru." / "The server has no data for
-  this kit. Check the code and the server address."). Never added: `syncRecoveryKitNeedsSnapshot`.
+  `syncRotationRaced`, `syncTooManyKeyChanges`, `syncTooManyDevices`, `syncRecoveryVaultNotFound` (the
+  `401` text of §2.9). Never added: `syncRecoveryKitNeedsSnapshot`.
 
 ## 7. Impact on the plan
 
@@ -581,27 +663,41 @@ synchronizační účet, číslo účtu (own server).
 | `identity/cert.rs`, `identity/tests.rs` | `CertKind::Kit = 5`; kind 3 issuer = the Kit; `issue_kit(creator, fields, kit_seed)`, `issue_kit_join(kit_seed, kit_id, fields, subject)`; `verify_signatures` per kind; kind-3 vectors regenerated, kind-5 added. |
 | new `identity/kit.rs` | `KitSecret` (seed, redacting), the four derivations of §2.2, `kit_id`. |
 | `identity/mod.rs` | `Issuer::RecoveryKit` → `Issuer::Kit {seed, kit}`; `write_once_value_valid` knows kind 5. |
-| `identity/trust.rs`, `trust_tests.rs` | `judge_kit` → kind 5 via `vouch` + one trusted Kit (`ConflictKind::SecondKit`); kind 3 via `vouch`; `kit_unconfirmed` never set (column stays); `recipients(conn, removing)` returns `kit`, drops `opted_in`, `KitUnconfirmed`, `IssuerGone`, adds `IssuerRemoved`; `import_bundle` takes the bundle's `kit`; `confirm` deleted; `export` drops `kitUnconfirmed`; `tofu_from_rows` keeps; `refresh` writes `sync.new_devices`. Tests of As built 29/33/34 rewritten as §3 cases. |
-| `pairing/holder.rs`, `pairing/tests.rs` | The export carries kind 5 entries; vectors of slot 2 v2 regenerated only if they include `kitUnconfirmed`. |
+| `identity/trust.rs`, `trust_tests.rs` | `judge_kit` → kind 5 via `vouch` + one trusted Kit (`ConflictKind::SecondKit`); kind 3 via `vouch`; `kit_unconfirmed` never set (column stays); **`speaks_at` bounds a superseded `trusted` entry at its successor's `issued_at`** (the successor map moves out of `recipients`); `recipients(conn, removing)` returns `kit`, drops `opted_in`, `KitUnconfirmed`, `IssuerGone` (the one-level `issuer_gone` closure, around line 1188), adds **transitive** `IssuerRemoved` (`issuer_removed_set`, fixpoint) and `LateVouch`; `keep(conn, device)` sets `confirmed`; `import_bundle` takes the bundle's `kit`; `apply_confirmed_set(conn, items)` for a Kit join; `confirm` deleted; `export` drops `kitUnconfirmed`; `refresh` writes `sync.new_devices`. Tests of As built 29/33/34 rewritten as §3 cases. |
+| `changeset.rs` | Optional `"tickets"` field next to `"rekey"` (As built 62's pattern); unknown to older readers. |
+| `pairing/holder.rs`, `pairing/tests.rs` | `confirm` queues the ticket announcement (§3.1) in the same hold that reads the payload; the export carries kind 5 entries; slot-2 vectors regenerated only if they include `kitUnconfirmed`. |
+| `engine/pull.rs` | Records `sync_trust_seen` and `sync_tickets` positions for applied changes; the Kit-join epoch rule for E (§2.6 step 5: the snapshot position as the bound when the snapshot is under E). |
+| `engine/mod.rs` / `engine/push.rs` | No push while `sync.after_kit_join` exists (pull only). |
+| `rekey/head.rs` | `note_unverified` accepts no server head (the signed record's head is taken); `verify_heads` then uses the record's head. The envelope reads `head::verified_epochs`. |
 | `rekey/bundle.rs`, `bundle_tests.rs` | Version 0x02, JSON `v: 2`, `kit` field (`BundleInput.kit`, `BundleBody.kit`); vectors. |
-| new `rekey/envelope.rs` (+ tests) | §2.4. |
+| new `rekey/envelope.rs` (+ tests) | §2.4, with `confirmed`. |
 | `relay/{mod,http,fake}.rs` (+ tests) | `rotate_token(vault, new_token, bundle, kit: Option<&KitUpdate>)`, `put_kit`, `get_kit(vault_id, kit_token)`, `VaultInfo.kit`, feature `kit`, errors `KitReplaced {at}`, `KitExists`; fake mirrors §2.9. |
-| `rekey/rotate.rs`, `engine/tests/rekey_rotate.rs` | §4.2: no `RemovalMode`, `Plan`/`Removal`/`Outcome` as there; envelope built and sent; pending JSON gains `kit`; commit marks every recipient and the Kit `confirmed` (replaces `trust::confirm(ticked)`), writes the new Kit row and the old Kit's removal record; consent covers the Kit. |
+| `rekey/rotate.rs`, `engine/tests/rekey_rotate.rs` | §4.2: no `RemovalMode`, `Plan`/`Removal`/`Outcome` as there, `added_by_removing` all descendants; envelope built (with the confirmed set) and sent; pending JSON gains `kit`; commit marks every recipient and the Kit `confirmed` (replaces `trust::confirm(ticked)`), writes the new Kit row and the old Kit's removal record; consent covers the Kit. |
 | `rekey/pickup.rs`, `engine/tests/rekey_pickup.rs` | The signer check loses `kit_unconfirmed`; `import_bundle` with `kit`; Local `sync.key_change_unverified = {by}` on `Unverified`. |
-| `rekey/head.rs` | None (the envelope reads `head::verified_epochs`). |
 | `recovery.rs` | Code v2 (§2.2). |
-| `join.rs` | `recovery_credentials` per §2.6; `JoinIdentity::RecoveryKit(KitJoin)`. |
+| `join.rs` | `recovery_credentials` per §2.6; `JoinIdentity::RecoveryKit(KitJoin)`; the push-hold key. |
 | `setup.rs`, `commands/sync.rs`, `commands/sync_kit.rs`, `kit_file.rs` | Kit draft, registration at `finish_setup`, storage values, print, the deleted re-show; the Kit page header line. |
-| `devices.rs`, `impact.rs` | Skip the Kit row; statuses of §6.5. |
+| `src-tauri/plugins/moony-keychain/macos/…` | `org.nspasteboard.TransientType` next to the concealed type. |
+| `devices.rs`, `impact.rs`, `engine/status.rs` | Skip the Kit row; statuses of §6.5; `waitingForRemover` from `head::unverified_epochs` older than a day. |
 
 ### 7.2 Migration, schema, wire
 
 - **Migration 041 `041_sync_recovery_kit`** (main ends at 039, this branch has 040, no other branch has
-  04x): `ALTER TABLE sync_devices ADD COLUMN kit_storage TEXT;`. Registry: Synced, last-writer-wins, not
-  write-once; schema number 41 (the barrier stays). `sync_trust.kit_unconfirmed` and
-  `sync_state.kit_epoch_saved` stay unused (documented in `database.md`).
+  04x):
+  ```sql
+  ALTER TABLE sync_devices ADD COLUMN kit_storage TEXT;               -- synced, LWW, only on the Kit's row
+  CREATE TABLE sync_trust_seen (device TEXT NOT NULL,
+      what TEXT NOT NULL CHECK (what IN ('cert','left')), pos INTEGER NOT NULL,
+      PRIMARY KEY (device, what));                                    -- Local
+  CREATE TABLE sync_tickets (ticket_pub BLOB PRIMARY KEY, issuer TEXT NOT NULL,
+      pos INTEGER NOT NULL);                                          -- Local
+  ```
+  Registry: `kit_storage` Synced, last-writer-wins, not write-once; both tables Local, skipped by the
+  export, deleted by `turn_off` and a join's replace (kept by a repair or re-sync, like `sync_trust`).
+  Schema number 41 (the barrier stays). `sync_trust.kit_unconfirmed` and `sync_state.kit_epoch_saved`
+  stay unused (documented in `database.md`).
 - Relay schema 7 (§2.9).
-- Wire: §6.5, one mixed commit (Task 23).
+- Wire: §6.5, one mixed commit (Task 24).
 
 ### 7.3 Revised tasks (replace plan Tasks 11–24)
 
@@ -616,8 +712,9 @@ npm run typecheck && npm test` (and `npm --prefix admin-ui test` for Task 12).
 Kit token (200, `last_read` minute), with a vault token (`401`), with a retired Kit token (`410` +
 `replacedAt`); rotation without `kit` on a vault with a Kit (`400 kit_required`), with `kit.envelope`
 (replaced atomically; a failed rotation leaves the old envelope), with `kit.token` (old token retired);
-a Kit token equal to a vault token refused; limits (`kitRead`, `kitVault`, 256 KiB); cascade on vault and
-person delete; info's `kit`; `features`. Done: all green, DESIGN.md updated.
+a Kit token equal to a vault token refused; `kitRead`; **the per-vault limit counts only failures: 100
+wrong-token attempts then the right token still reads**; the 257th retired hash drops the oldest; 256 KiB;
+cascade on vault and person delete; info's `kit`; `features`. Done: all green, DESIGN.md updated.
 
 **Task 12 [sonnet] Relay admin: the Kit per profile (§2.9).** Files: `src/admin/api.ts`,
 `admin-ui/src/screens/PersonDetail.tsx`, `admin-ui/src/i18n/{cs,en}.ts`, `test/admin-people.test.ts`.
@@ -626,109 +723,174 @@ Done: `kitSince`, `kitLastRead` in the person view; the line shows "nikdy" / "ne
 **Task 13 [opus] Kit formats: code v2, derivations, kind 5 and kind 3, envelope (§2.2–§2.4).** Files:
 `recovery.rs`, new `identity/kit.rs`, `identity/cert.rs`, `identity/mod.rs`, new `rekey/envelope.rs`, tests
 and vectors. Tests first: code v2 round trip, typo and v1 refusal, QR v2; derivation vectors; kind 5 and
-the new kind 3 sign/verify, flipped bytes; envelope vectors, a stranger cannot open, a changed header,
-signature or key order fails, 256 KiB cap. Done: gates green, vectors committed.
+the new kind 3 sign/verify, flipped bytes; envelope vectors (with a `confirmed` set), a stranger cannot
+open, a changed header, signature, key order or confirmed item fails, 256 KiB cap. Done: gates green,
+vectors committed.
 
 **Task 14 [opus] Trust store revision and migration 041 (§2.3, §3).** Files: `db/migrations.rs`,
 `db/schema.snapshot`, `registry/tables.rs`, `registry/keys.rs`, `merge/columns.rs`, `identity/trust.rs`,
 `trust_tests.rs`, `docs/architecture/database.md`. Tests first: the Kit pinned via its creator, one
 trusted Kit, `SecondKit`; kind 3 via the Kit, refused after the Kit's removal unless dated before;
-`recipients`: a phone paired from a device that left is included (the As built 34 trap, both arrival
-orders); a device whose issuer was removed is `IssuerRemoved` unless a bundle named it; the Kit returned
-apart, never counted; `import_bundle` confirms recipients and the Kit and applies `replaces`; new-device
-notices written for kinds 2 and 3 outside a join, not for this device or kind 4; migration 041 test.
-Done: no code reads or sets `kit_unconfirmed`; `trust::confirm` gone.
+**transitive `IssuerRemoved`, both chain cases**: (a) A removed, B paired by A and not named by the
+bundle, C paired by B → B and C excluded; (b) A removed, B as in (a), C paired by B, D re-joined from C
+→ all three excluded, while a `confirmed` B stops the chain (C and D included); (c) a replaced Kit, a
+device it joined that the bundle did not name, and a device that one paired → both excluded; **superseded `speaks_at`**: a certificate issued by an older ID after its successor's
+`issued_at` is not pinned; `LateVouch`: a cert of a left issuer seen after its `left` record without an
+announcement is excluded, with an earlier announcement included (the D3 trap, both arrival orders), equal
+positions included, `keep` includes it; a superseded issuer likewise against its successor's position; the
+Kit returned apart, never counted; `import_bundle` confirms recipients and the Kit and applies
+`replaces`; `apply_confirmed_set` marks only matching certificate hashes; new-device notices written for
+kinds 2 and 3 outside a join, not for this device or kind 4; migration 041 test. Done: no code reads or
+sets `kit_unconfirmed`; `trust::confirm` and `issuer_gone` gone.
 
-**Task 15 [sonnet] Relay client and fake: the Kit (§2.9).** Files: `relay/{mod,http,fake}.rs`,
+**Task 15 [opus] Where entries were first seen; pairing announcements (§3.1).** Files: `changeset.rs`,
+`pairing/holder.rs`, `pairing/tests.rs`, `engine/pull.rs`, `engine/tests/pull.rs`, new
+`engine/tests/trust_order.rs`. Tests first: a holder's confirm queues one empty envelope with `tickets`
+before anything else it sends; it reaches the server before a later `left` record of the same device
+(`leave_best_effort` after a pairing); the pull records first-seen positions for `cert` and `left_record`
+values and ticket announcements, keeps the first, records the snapshot's position for restored rows;
+an older reader ignores `tickets`. Done: gates green.
+
+**Task 16 [sonnet] Relay client and fake: the Kit (§2.9).** Files: `relay/{mod,http,fake}.rs`,
 `relay/fake/tests.rs`, `relay/http/tests.rs`, every `impl Relay for`. Tests: the HTTP shapes and error
 mapping; the fake's atomic rotation with the envelope, `kit_required`, `410` with `replacedAt`, info's
-`kit`. Done: gates green.
+`kit`, failures-only limit. Done: gates green.
 
-**Task 16 [opus] Removal with the Kit, always rotating (§2.5, §2.7, §4).** Files: `rekey/rotate.rs`,
+**Task 17 [opus] Removal with the Kit, always rotating (§2.5, §2.7, §4).** Files: `rekey/rotate.rs`,
 `rekey/bundle.rs`, `rekey/pickup.rs`, `engine/tests/rekey_rotate.rs`, `rekey_pickup.rs`, `rekey_fixture.rs`.
-Tests first: the plan's `replaces_kit` per the §2.7 table; consent changes with the Kit; a removal sends
-the envelope sealed to the current Kit (opened with its secret: every key, verified heads only); a new-Kit
-change retires the old token on the fake, the old Kit reads `410`, the new one opens; pending keeps and
-re-sends the Kit part; commit confirms all recipients and writes the Kit rows; a pickup pins the bundle's
-Kit; list-only tests deleted. Done: gates green; the running fix round's tests still pass.
+Tests first: the plan's `replaces_kit` per the §2.7 table; consent changes with the Kit; **`added_by_removing`
+lists grandchildren and Kit-joined descendants when the Kit is replaced, not when it stays**; a removal
+sends the envelope sealed to the current Kit (opened with its secret: every key, verified heads only, the
+confirmed set equal to the store's after commit); a new-Kit change retires the old token on the fake, the
+old Kit reads `410`, the new one opens; pending keeps and re-sends the Kit part; commit confirms all
+recipients and writes the Kit rows; a pickup pins the bundle's Kit; list-only tests deleted. Done: gates
+green; the running fix round's tests still pass.
 
-**Task 17 [sonnet] Setup and the Kit lifecycle (§2.2, §2.7, §2.8).** Files: `setup.rs`, `commands/sync.rs`,
-`commands/sync_kit.rs`, `kit_file.rs`, `engine/status.rs`. Tests: the draft is never in the database
-(scan `sync_state` and `sync_devices` after setup for the seed bytes); `finish_setup` writes the Kit row
-and calls `put_kit` (idempotent on retry); storage values and their order; `check_kit` results; a server
-without `kit` refuses setup; `kitUsed` rule (an hour's grace, explained by a Kit join). Done: gates green.
+**Task 18 [sonnet] Setup and the Kit lifecycle (§2.2, §2.7, §2.8).** Files: `setup.rs`, `commands/sync.rs`,
+`commands/sync_kit.rs`, `kit_file.rs`, `engine/status.rs`, the macOS keychain plugin (TransientType). Tests:
+the draft is never in the database (scan `sync_state` and `sync_devices` after setup for the seed bytes);
+`finish_setup` writes the Kit row and calls `put_kit` (idempotent on retry); storage values and their
+order; `check_kit` results; a server without `kit` refuses setup; `kitUsed` uses `pinned_at`: a Kit join
+whose certificate claims a time after the read but was pinned before it does not explain the read, and an
+hour's grace holds. Done: gates green.
 
-**Task 18 [opus] Joining with the Kit (§2.6).** Files: `join.rs`, `engine/tests/join_new.rs`. Tests first:
-join after 0, 1 and 3 key changes; after 31 days (bundles gone; heads from the snapshot's `Keys` record
-or unchecked); a replaced Kit (`410` → `syncRecoveryKitReplaced`); an unknown one (`401`); a tampered
-envelope or a missing/removed Kit row (`syncRecoveryKitUnreadable`, nothing replaced); the joiner's
-kind-3 certificate pins on another device; `sync.after_kit_join` written. Done: gates green.
+**Task 19 [opus] Joining with the Kit (§2.6).** Files: `join.rs`, `rekey/head.rs`, `engine/pull.rs`,
+`engine/mod.rs`, `engine/tests/join_new.rs`, new `engine/tests/kit_join.rs`. Tests first: join after 0, 1
+and 3 key changes; after 31 days with (i) the snapshot's `Keys` naming E, (ii) a snapshot under E without
+it (an old-epoch op injected past the snapshot is `Invalid`), (iii) a snapshot older than E (old-epoch ops
+past it wait until the envelope signer's head record verifies, then apply; a record by another signer
+refutes); a replaced Kit (`410`); an unknown one (`401`, the reworded text); a tampered envelope, a
+missing or removed Kit row, an envelope signer not in the restored store or not speaking at `at`
+(`syncRecoveryKitUnreadable`, nothing replaced); the confirmed set keeps a genuine device whose issuer was
+removed (bundles expired) as a recipient; the joiner's kind-3 certificate pins on another device;
+**the push hold**: nothing pushed (not even the own row) until `sync_kit_join_decided`, pulls go on; in a
+stale copy where a removed device is listed, "Odebrat je" makes a key change that leaves it out. Done:
+gates green.
 
-**Task 19 [sonnet] Leaving and records about this device** = plan Task 11 without the list-only parts
-(files and tests as written there).
+**Task 20 [sonnet] Leaving and records about this device** = plan Task 11 without the list-only parts
+(files and tests as written there), plus: a device that pairs and then leaves sends the ticket
+announcement first (shared fixture with Task 15).
 
-**Task 20 [sonnet] Documents and photos across a key change** = plan Task 13, unchanged.
+**Task 21 [sonnet] Documents and photos across a key change** = plan Task 13, unchanged.
 
-**Task 21 [opus] Multi-device scenarios** = plan Task 14, amended: no list-only cases; add the D3 trap
-(O pairs N, O turns sync off, D offline throughout, then D removes X: N keeps syncing); a removed issuer's
-late certificate stays out; a new Kit while a Kit-joined device is offline (it picks up and stays); a Kit
-join after the property test's key changes. Property: also "the Kit opens the newest envelope with every
-key".
+**Task 22 [opus] Multi-device scenarios** = plan Task 14, amended: no list-only cases; the D3 trap (O pairs
+N, O turns sync off, D offline throughout, then D removes X: N keeps syncing, both arrival orders); a
+backdated certificate from a left device's copy appended later stays out until kept; the transitive
+chain from a removed issuer through a forked slot (fake relay serving a lagging device) stays out; a new
+Kit while a Kit-joined device is offline (it picks up and stays); a Kit join after the property test's
+key changes. Property: also "the Kit opens the newest envelope with every key" and "no excluded chain
+member ever holds a key of an epoch after its issuer's removal".
 
-**Task 22 [sonnet] Against a real sync server** = plan Task 15, plus the Kit routes and a Kit join after a
-rotation, run against Task 11's relay branch (`npm run build` there first).
+**Task 23 [sonnet] Against a real sync server** = plan Task 15, plus the Kit routes, a Kit join after a
+rotation and the failures-only limit, run against Task 11's relay branch (`npm run build` there first).
 
-**Task 23 [sonnet] Commands, status and the wire (§6.5)** — the one mixed commit, as plan Task 16, with
-§6.5's fields, commands and keys (all ten locales for the validation keys).
+**Task 24 [sonnet] Commands, status and the wire (§6.5)** — the one mixed commit, as plan Task 16, with
+§6.5's fields, commands (`sync_keep_device`, `sync_kit_join_decided` included) and keys (all ten locales
+for the validation keys).
 
-**Task 24 [sonnet] Hooks and helpers.** Files: `src/hooks/use-device-sync*.ts`, `src/utils/sync-devices.ts`,
+**Task 25 [sonnet] Hooks and helpers.** Files: `src/hooks/use-device-sync*.ts`, `src/utils/sync-devices.ts`,
 `sync-removal.ts`, `sync-state.ts` (+ tests). Tests: grouping (active, check, former; former older than
-30 days already absent), `checkReason` and `joinedVia` keys, `replacesKit` → Kit line key, the three
-problems → one rejoin state, `syncingSince` → "longer than usual" after 60 s, popover lines.
+30 days already absent), `checkReason` (with `lateVouch`) and `joinedVia` keys, `replacesKit` → Kit line
+key, the three problems → one rejoin state, `waitingForRemover` → its state, `syncingSince` → "longer than
+usual" after 60 s, popover lines.
 
-**Task 25 [sonnet] Desktop device list and removal dialog (§4.3, §6.1, §6.2).** Files:
+**Task 26 [sonnet] Desktop device list and removal dialog (§4.3, §6.1, §6.2).** Files:
 `SyncDevicesCard.tsx`, new `DeviceRow.tsx`, `RemoveDeviceDialog.tsx`, locales ×10.
 
-**Task 26 [sonnet] Desktop Kit: setup step, done screen, Kit row, check, new Kit (§6.3).** Files:
+**Task 27 [sonnet] Desktop Kit: setup step, done screen, Kit row, check, new Kit (§6.3).** Files:
 `SyncSetupDialog.tsx`, `RecoveryKitPanel.tsx`, delete `ShowRecoveryKitFlow.tsx`, new `KitRow.tsx`,
 `CheckKitDialog.tsx`, `NewKitDialog.tsx`, print stylesheet, locales ×10.
 
-**Task 27 [sonnet] Desktop pairing-code entry and the holder's finish (§5).** Files: `join/JoinChoice.tsx`,
+**Task 28 [sonnet] Desktop pairing-code entry and the holder's finish (§5).** Files: `join/JoinChoice.tsx`,
 `join/PairingJoinFlow.tsx`, `AddDeviceDialog.tsx`, `src/mobile/components/sync/PairingSheet.tsx` (holder
 finish), locales ×10.
 
-**Task 28 [sonnet] Desktop notices and status (§6.4).** Files: `SyncSection.tsx`, `SyncProblemAlert.tsx`,
+**Task 29 [sonnet] Desktop notices and status (§6.4).** Files: `SyncSection.tsx`, `SyncProblemAlert.tsx`,
 `SyncStatusCard.tsx`, `TurnOffSyncDialog.tsx`, `SyncDangerCard.tsx`, the top-bar `SyncStatusSection.tsx`,
-an unlock-time removed dialog, new `NoticeList.tsx`, locales ×10.
+an unlock-time removed dialog, new `NoticeList.tsx`, the "Data jsou zpět" card wired to
+`sync_kit_join_decided`, locales ×10.
 
-**Task 29 [sonnet] Phone list, device sheet, removal sheet** = plan Task 21 with §6.1–§6.2.
+**Task 30 [sonnet] Phone list, device sheet, removal sheet** = plan Task 21 with §6.1–§6.2 ("Je moje"
+included).
 
-**Task 30 [sonnet] Phone Kit and notices** = plan Task 22 plus the Kit row, check, new Kit and setup step
-(`SyncKitSheet.tsx`, `KitBody.tsx`, `SetupSheet.tsx`), the removed sheet at unlock, locales ×10.
+**Task 31 [sonnet] Phone Kit and notices** = plan Task 22 plus the Kit row, check, new Kit, setup step
+(`SyncKitSheet.tsx`, `KitBody.tsx`, `SetupSheet.tsx`), "Data jsou zpět", the removed sheet at unlock,
+locales ×10.
 
-**Task 31 [sonnet] Docs.** ADR 0032 (phase 5 with this revision: D1–D4, §0, §2.10, residuals), ADR 0026
-(typed codes everywhere, Kit v2), ADR 0027 status line, `decisions/README.md`, the phase-5 spec's As built
-pointer to this document, `overview.md`, glossary (§6.4), relay `DESIGN.md` check.
+**Task 32 [sonnet] Docs.** ADR 0032 (phase 5 with this revision: D1–D4, §0, §2.10, the residuals of §8
+verbatim in substance), ADR 0026 (typed codes everywhere, Kit v2, the ticket announcement), ADR 0027 status
+line, `decisions/README.md`, the phase-5 spec's As built pointer to this document, `overview.md`,
+glossary (§6.4), relay `DESIGN.md` check.
 
-**Task 32 [opus] Live checks and the final review** = plan Task 24, with: two desktops paired **by typed
+**Task 33 [opus] Live checks and the final review** = plan Task 24, with: two desktops paired **by typed
 code**; the phone by QR; remove the phone (no Kit step when the Kit was printed); remove the creator of a
 saved Kit (Kit step follows); "Ověřit sadu" with the old and the new page; a Kit join on a fresh profile
-after two removals; the removed phone's notice at unlock; the "longer than usual" line (stop the server
-mid-round). Languages en, cs, de, ja on desktop and phone; the phone at **320 pt** width with the largest
-text size (rows wrap); one pass in dark mode; the relay admin's Kit line. Then the final review against the
-plan's Review Focus plus: the Kit seed never in the database, logs or IPC outside `RecoveryKit`; no UI
-string contains "klíč synchronizace" or "výměna klíče" (`grep` in `src/i18n/locales/cs`).
+after two removals, including the "Data jsou zpět" hold; the removed phone's notice at unlock; the
+"longer than usual" line (stop the server mid-round). Languages en, cs, de, ja on desktop and phone; the
+phone at **320 pt** width with the largest text size (rows wrap); one pass in dark mode; the relay admin's
+Kit line. Then the final review against the plan's Review Focus plus: the Kit seed never in the
+database, logs or IPC outside `RecoveryKit`; no UI string contains "klíč synchronizace" or "výměna klíče"
+(`grep` in `src/i18n/locales/cs`); `IssuerRemoved` transitive and `LateVouch` covered by tests.
 
-## 8. Residuals and open questions
+## 8. Residuals for the owner
 
-1. **R1, removed device + dishonest server vs a Kit join** (§0.1, §2.10). Accepted by D1; the "Data jsou
-   zpět" card names the newest change's date. Owner: confirm acceptance.
-2. **R2, a left device's leaked signing key** can add a device that survives key changes (§3.2). Visible
-   through the new-device notice. Owner: confirm acceptance, or ask that leaving also rotates when another
-   device is online (not proposed: the leaving device would generate and so know the new key).
-3. **R3, Kit storage is what the app saw.** Screenshots, photos and pasting the copied code into a synced
-   note are invisible; `copied` is treated like a file on the creator only.
-4. **Printing from the built app** (`WebviewWindow::print`) is unverified on macOS, Windows and Linux;
-   Task 32 decides between "Vytisknout" and "Uložit jako soubor…" as the primary.
-5. **Open: should a Kit read without a join (`kitUsed`) also be surfaced by the relay admin?** Not
-   designed; the person sees it in the app.
+Each is accepted by the decision named, or needs the owner's yes. **The owner accepted R1–R5 and the copied-Kit trade on 2026-11-16.**
+
+- **R1 — An old copy served to a Kit join (D1).** The Kit cannot check that the server's copy is current.
+  A dishonest server (with a removed device, to read the result) can hand someone joining with the Kit a
+  stale copy from before a removal. Bites only if the person, at "Data jsou zpět", keeps a device on the
+  list that they had removed earlier ("Mám je"); otherwise the joiner's first key change leaves it out
+  before anything is sent. Today's design does not have this.
+- **R2 — A device added from a backup of a device that left (D3).** A profile backup made while sync was
+  on holds that device's signing key. On an honest server a device it adds after the original left
+  shows as "Zkontrolujte" and gets nothing; it bites only if the person answers "Je moje" for a device
+  they don't own. On a dishonest server it falls under R4.
+- **R3 — Where the Kit is kept is what the app saw.** A screenshot, a photo of the screen, a code pasted
+  into a synced note or a PDF saved to iCloud from the print dialog is not known to Moony, so removing that
+  device does not replace the Kit. Bites if such a copy sits on a stolen device; the remedy is "Vytvořit
+  novou sadu".
+- **R4 — Slots before a key change (As built 65 (b), O7).** The signed head fixes where a key change
+  happened, not what fills the positions before it. A dishonest server working with a removed device can
+  give a device that was behind (had not yet downloaded those positions) the removed device's later
+  changes as if they were older ones; Moony applies them (and says so afterwards only in part,
+  `keyChangeOverrun`). Only signing every change per device (not in phase 5) closes it. Bites only with a
+  dishonest server operator plus a stolen removed device plus a device that was offline over the removal.
+- **R5 — Waiting for the remover (As built 65 (c)).** A device that was behind waits for the remover's
+  signed confirmation before it accepts older changes past its place. If the remover never syncs again
+  (lost right after removing), that device stays at "Synchronizace čeká na zařízení {by}"; the way out is
+  "Připojit znovu" (turn off, join again; unsent changes stay in the backup).
+- **Also accepted, no action:** a copied Kit is cut off only by a new Kit (D1, made visible by `kitUsed`
+  and the Kit-join notice); printing from the built app is unverified until Task 33 (the primary button
+  may become "Uložit jako soubor…").
+
+## 9. Changes from the security review
+
+Adopted: transitive `IssuerRemoved` and descendants in `added_by_removing` (HIGH 1); a Kit join never
+leaves the newest epoch unchecked (MEDIUM 2); the envelope carries the confirmed set (MEDIUM 3);
+superseded IDs bounded and under the R2 rule (MEDIUM 4); failures-only per-vault Kit limit; `kitUsed` on
+`pinned_at`; the envelope signer checked against the restored store; TransientType on the macOS clipboard
+(concealed type and 60 s clear already existed, so not 90 s); 256 retired Kit hashes plus a `401` text
+that covers an old Kit; R1 restated as freshness with the push hold; the R2 log-order rule, made
+pass-safe for the D3 trap by a ticket announcement in the holder's own chain (a first-seen position alone
+would fail the trap whenever the new phone's row reaches the server after the old phone's `left`
+record); R4 and R5 stated.

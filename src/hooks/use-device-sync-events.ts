@@ -25,12 +25,18 @@ const ATTACHMENT_LIST_KEYS = [
 ] as const;
 
 /** A rejected `listen` leaves nothing to unlisten; it must not go unhandled. */
-function safeUnlisten(pending: Promise<UnlistenFn>): () => void {
+function safeUnlisten(pending: Promise<UnlistenFn>): {
+  unlisten: () => void;
+  ready: Promise<void>;
+} {
   const settled = pending.then(
     (unlisten) => unlisten,
     () => undefined
   );
-  return () => void settled.then((unlisten) => unlisten?.());
+  return {
+    unlisten: () => void settled.then((unlisten) => unlisten?.()),
+    ready: settled.then(() => undefined),
+  };
 }
 
 /**
@@ -67,10 +73,18 @@ export function useDeviceSyncEvents(): void {
       })
     );
 
+    // An event sent before the listeners were attached is lost, and a status fetch that resolves
+    // after a newer event overwrites it: read the status once more once all are attached.
+    let cancelled = false;
+    void Promise.all([status.ready, data.ready, attachments.ready]).then(() => {
+      if (!cancelled) void queryClient.invalidateQueries({ queryKey: ['device-sync-status'] });
+    });
+
     return () => {
-      status();
-      data();
-      attachments();
+      cancelled = true;
+      status.unlisten();
+      data.unlisten();
+      attachments.unlisten();
     };
   }, [queryClient, enabled]);
 }

@@ -130,7 +130,7 @@ export function UpkeepCard() {
               onClick={() => setOpen(!open)}
               className="relative flex w-full items-baseline justify-between gap-3 text-left after:absolute after:-inset-y-3.5 after:inset-x-0 after:content-['']"
             >
-              <span className="min-w-0 truncate">{t('upkeep.title')}</span>
+              <span className="min-w-0 break-words">{t('upkeep.title')}</span>
               <span className="flex flex-none items-center gap-1 self-center whitespace-nowrap text-m-sub font-semibold text-ink-3">
                 {t('upkeep.count', { count: rows.length })}
                 <ChevronDown
@@ -145,7 +145,7 @@ export function UpkeepCard() {
             </button>
           </h2>
           {!open && (
-            <p className="m-0 mt-1 truncate text-m-sub text-ink-3">
+            <p className="m-0 mt-1 break-words text-m-sub text-ink-3">
               {rows.map((row) => t(row.title.key, row.title.params)).join(' · ')}
             </p>
           )}
@@ -216,6 +216,7 @@ function UpkeepItem({ row, accounts, lastImportByAccount, onRecord, onImport }: 
         const last = lastImportByAccount[ids[0]];
         sub = (
           <SubFacts
+            wrap
             lead={names[0]}
             tail={last != null ? t('upkeep.fromStatement', { date: shortDay(last) }) : null}
           />
@@ -303,6 +304,7 @@ function UpkeepItem({ row, accounts, lastImportByAccount, onRecord, onImport }: 
         </>
       }
       sub={sub ?? undefined}
+      wrap
       chevron
       {...target}
       onSwipeRight={remind}

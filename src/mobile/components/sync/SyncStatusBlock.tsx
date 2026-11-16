@@ -126,15 +126,16 @@ export function SyncStatusBlock({
         <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{t('status.unreachableNote')}</p>
       )}
       <div className={CARD}>
-        <KeyValueRow label={t('phone.status')} value={stateLabel} />
-        <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} />
-        <KeyValueRow label={t('phone.pending')} value={status.pendingChanges} />
-        <KeyValueRow label={t('attachments.title')} value={attachments.value} />
+        <KeyValueRow label={t('phone.status')} value={stateLabel} wrap />
+        <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} wrap />
+        <KeyValueRow label={t('phone.pending')} value={status.pendingChanges} wrap />
+        <KeyValueRow label={t('attachments.title')} value={attachments.value} wrap />
         {status.serverAddress && (
           <KeyValueRow
             label={t('server.label')}
             value={hostOf(status.serverAddress)}
             sub={status.serverInsecure ? t('server.insecure') : undefined}
+            wrap
           />
         )}
       </div>

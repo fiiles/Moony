@@ -28,10 +28,8 @@ import { kitQrSummary, scanRoute, type ScanMode } from '@/mobile/lib/sync-scan';
 interface ScanFlowProps {
   /** `join`: sync is off ("Scan a code from another device"); `add`: sync is on ("Add a device"). */
   mode: ScanMode;
-  /** Developer tools only: the pasted code takes the camera's place from the start. */
+  /** The code typed or pasted takes the camera's place from the start. */
   paste: boolean;
-  /** The developer tools are on (`status.devTools`): the scanner offers the paste sheet too. */
-  devTools: boolean;
   /** The flow is over (finished, cancelled or failed): the caller unmounts it. */
   onDone: () => void;
   /** A join is done: its headline and outcome (the page says where the backup is). */
@@ -66,7 +64,7 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
  * unmounting it (a lock, leaving the page) cancels the camera and gives the pairing up
  * (`useDevicePairing`).
  */
-export function ScanFlow({ mode, paste, devTools, onDone, onReplaced, firstRun }: ScanFlowProps) {
+export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlowProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const presentation = joinPresentation(
@@ -369,14 +367,10 @@ export function ScanFlow({ mode, paste, devTools, onDone, onReplaced, firstRun }
       {step === 'scanning' && (
         <ScanOverlay
           hint={mode === 'add' ? t('phone.addDeviceHint') : t('phone.scanHint')}
-          onDevPaste={
-            devTools
-              ? () => {
-                  toPaste.current = true;
-                  void cancelQrScan();
-                }
-              : undefined
-          }
+          onEnterCode={() => {
+            toPaste.current = true;
+            void cancelQrScan();
+          }}
         />
       )}
       <Sheet

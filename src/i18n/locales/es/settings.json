@@ -120,10 +120,12 @@
     "confirmWord": "ELIMINAR",
     "deleteAll": "Eliminar todos los datos",
     "deleteAllHint": "Elimina la base de datos, los archivos de claves y los adjuntos de este ordenador. Las copias junto a la base de datos (moony.db.bak-…, pre-restore-…) permanecen en la carpeta de datos (Datos y copias de seguridad → Abrir carpeta), igual que las copias de seguridad guardadas fuera de la app.",
-    "deleteAllHintSynced": "Elimina la base de datos, los archivos de claves y los adjuntos de este ordenador, y los datos sincronizados en el servidor de sincronización (si se puede contactar con él): tus demás dispositivos dejan de sincronizar y conservan los datos que tienen. Las copias junto a la base de datos (moony.db.bak-…, pre-restore-…) permanecen en la carpeta de datos (Datos y copias de seguridad → Abrir carpeta), igual que las copias de seguridad guardadas fuera de la app.",
+    "deleteAllHintSynced": "Elimina la base de datos, los archivos de claves y los adjuntos de este ordenador. Las copias junto a la base de datos (moony.db.bak-…, pre-restore-…) permanecen en la carpeta de datos (Datos y copias de seguridad → Abrir carpeta), igual que las copias de seguridad guardadas fuera de la app. Los datos sincronizados se quedan en el servidor de sincronización para tus demás dispositivos. Puedes eliminarlos en Ajustes → Sincronización.",
     "deleteButton": "Eliminar datos…",
-    "syncDeleted": "Los datos sincronizados en el servidor de sincronización también se eliminan: tus demás dispositivos dejan de sincronizar y conservan los datos que tienen. Si no se puede contactar con el servidor, esos datos se quedan allí, cifrados.",
-    "confirmDescriptionSynced": "Esta acción no se puede deshacer. Elimina de forma permanente la base de datos, los archivos de claves y los adjuntos de este dispositivo. Las copias que Moony guarda junto a la base de datos (moony.db.bak-…, pre-restore-…) permanecen en la carpeta de datos; Ajustes → Datos y copias de seguridad → Abrir carpeta lleva hasta ella."
+    "confirmDescriptionSynced": "Esta acción no se puede deshacer. Elimina de forma permanente la base de datos, los archivos de claves y los adjuntos de este dispositivo. Las copias que Moony guarda junto a la base de datos (moony.db.bak-…, pre-restore-…) permanecen en la carpeta de datos; Ajustes → Datos y copias de seguridad → Abrir carpeta lleva hasta ella.",
+    "syncKept": "Los datos sincronizados se quedan en el servidor de sincronización para tus demás dispositivos. Puedes eliminarlos en Ajustes → Sincronización.",
+    "syncDeleteLabel": "Eliminar también los datos sincronizados del servidor, para todos los dispositivos",
+    "syncDeleteHint": "Tus demás dispositivos dejan entonces de sincronizar y conservan los datos que tienen. Si no se puede contactar con el servidor, esos datos se quedan allí, cifrados."
   },
   "toast": {
     "profileUpdated": "Perfil actualizado",
@@ -262,7 +264,7 @@
     "title": "Qué conviene guardar",
     "description": "Cada una de estas cosas tiene una función distinta.",
     "password": {
-      "title": "Contraseña del dispositivo",
+      "title": "Contraseña de Moony",
       "text": "Desbloquea Moony en este dispositivo."
     },
     "recoveryKey": {

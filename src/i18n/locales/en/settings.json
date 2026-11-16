@@ -120,10 +120,12 @@
     "confirmWord": "DELETE",
     "deleteAll": "Delete all data",
     "deleteAllHint": "Removes the database, the key files and the attachments on this computer. Copies next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder (Data and backups → Open folder), and so do backups saved outside the app.",
-    "deleteAllHintSynced": "Removes the database, the key files and the attachments on this computer, and the synced data on the sync server (if it can be reached): your other devices stop syncing and keep the data they hold. Copies next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder (Data and backups → Open folder), and so do backups saved outside the app.",
+    "deleteAllHintSynced": "Removes the database, the key files and the attachments on this computer. Copies next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder (Data and backups → Open folder), and so do backups saved outside the app. The synced data stays on the sync server for your other devices. You can delete it in Settings → Sync.",
     "deleteButton": "Delete data…",
-    "syncDeleted": "Synced data on the sync server is deleted too: your other devices stop syncing and keep the data they hold. If the server cannot be reached, that data stays there, encrypted.",
-    "confirmDescriptionSynced": "This action cannot be undone. It permanently deletes your database, the key files and the attachments from this device. Copies that Moony keeps next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder; Settings → Data and backups → Open folder leads there."
+    "confirmDescriptionSynced": "This action cannot be undone. It permanently deletes your database, the key files and the attachments from this device. Copies that Moony keeps next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder; Settings → Data and backups → Open folder leads there.",
+    "syncKept": "The synced data stays on the sync server for your other devices. You can delete it in Settings → Sync.",
+    "syncDeleteLabel": "Also delete the synced data from the server — for all devices",
+    "syncDeleteHint": "Your other devices then stop syncing and keep the data they hold. If the server cannot be reached, that data stays there, encrypted."
   },
   "toast": {
     "profileUpdated": "Profile updated",
@@ -258,7 +260,7 @@
     "title": "What to keep safe",
     "description": "Each of these does a different job.",
     "password": {
-      "title": "Device password",
+      "title": "Moony password",
       "text": "Unlocks Moony on this device."
     },
     "recoveryKey": {

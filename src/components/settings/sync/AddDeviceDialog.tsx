@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
 import { PairingSteps } from '@/components/settings/sync/PairingSteps';
 import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialog';
@@ -20,7 +19,6 @@ import { Button } from '@/components/ui/button';
 export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
-  const status = useDeviceSyncStatus().data;
   const { view, error, isError, start, confirm, confirmError, cancel } = useDevicePairing();
 
   const close = async () => {
@@ -86,7 +84,6 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
         <PairingSteps
           view={view}
           scanHint={t('pairing.scanHint')}
-          devTools={status?.devTools === true}
           error={isError ? (error as Error) : null}
           confirmError={confirmError}
           onConfirm={handleConfirm}

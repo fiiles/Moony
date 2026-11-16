@@ -68,7 +68,7 @@ const DRAIN_INCOMPLETE_KEY = 'validation.syncRepairDrainIncomplete';
 
 type Open = 'kit' | 'kitJoin' | 'server' | 'repair' | 'resync' | 'turnOff' | 'delete' | null;
 
-/** A scan under way: joining (sync off) or adding a device (sync on); `paste` is the developer tool. */
+/** A scan under way: joining (sync off) or adding a device (sync on); `paste`: the code is typed or pasted. */
 type Flow = { mode: ScanMode; paste: boolean } | null;
 
 /**
@@ -77,9 +77,8 @@ type Flow = { mode: ScanMode; paste: boolean } | null;
  * start syncing on this phone (or continue a setup that was started, or cancel it) and "Connect this
  * device", which opens a choice: scan a code from the computer or type a Recovery Kit code. With
  * sync on it shows the status and "Sync now", the devices (this one can be renamed), "Add a device"
- * (a scan), the Recovery Kit behind the device password, re-sync, turn off and delete. With the
- * developer tools on, a pairing code can also be pasted (the simulator cannot scan); release builds
- * say nothing about it. The phone never opens a checkout.
+ * (a scan), the Recovery Kit behind the device password, re-sync, turn off and delete. A
+ * pairing code can also be entered manually, in every build. The phone never opens a checkout.
  */
 export default function SyncSection() {
   const { t } = useTranslation('deviceSync');
@@ -243,7 +242,6 @@ export default function SyncSection() {
 
   const syncOn = syncIsOn(feature.enabled, status);
   const pending = status?.pendingChanges ?? 0;
-  const devTools = status?.devTools === true;
   const deleteAfterwards = t(
     status?.ownServer ? 'delete.afterwardsOwnServer' : 'delete.afterwards'
   );
@@ -251,10 +249,10 @@ export default function SyncSection() {
     if (method === 'kit') setOpen('kitJoin');
     else setFlow({ mode: 'join', paste: method === 'paste' });
   };
-  const devPasteRow = devTools && (
+  const enterCodeRow = (
     <SettingsRow
       icon={ClipboardPaste}
-      title={t('phone.devPasteTitle')}
+      title={t('phone.enterCodeTitle')}
       onClick={() => setFlow({ mode: syncOn ? 'add' : 'join', paste: true })}
     />
   );
@@ -327,7 +325,7 @@ export default function SyncSection() {
               title={t('phone.addDevice')}
               onClick={() => setFlow({ mode: 'add', paste: false })}
             />
-            {devPasteRow}
+            {enterCodeRow}
           </EntityRows>
 
           <EntityRows>
@@ -414,12 +412,7 @@ export default function SyncSection() {
         onConfirm={() => void cancelSetup()}
         isPending={turnOff.isPending}
       />
-      <JoinChoiceSheet
-        open={choosing}
-        onOpenChange={setChoosing}
-        devTools={devTools}
-        onPick={joinWith}
-      />
+      <JoinChoiceSheet open={choosing} onOpenChange={setChoosing} onPick={joinWith} />
       <SyncKitSheet open={open === 'kit'} onOpenChange={close} />
       {/* Mounted only while open: unmounting forgets the typed password and the server check */}
       {open === 'server' && <ChangeServerSheet onClose={() => setOpen(null)} />}
@@ -431,7 +424,6 @@ export default function SyncSection() {
         <ScanFlow
           mode={flow.mode}
           paste={flow.paste}
-          devTools={devTools}
           onDone={() => setFlow(null)}
           onReplaced={replaced}
         />

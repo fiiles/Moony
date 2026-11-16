@@ -14,8 +14,9 @@
 //!   the code already answered keeps that session.
 //! - Both roles check the device password before a QR is shown or slot 1 is written (`begin`,
 //!   review PF1). The role is the profile's own: holder with sync on, joiner without.
-//! - The pairing code's text crosses IPC only with the developer tools (review PF2); the QR and
-//!   the six digits are not secret, and the received credentials never leave Rust.
+//! - The pairing code's text crosses IPC with the QR in every build (a person without a camera
+//!   types or pastes it; it holds what the QR holds, lives minutes and is guarded by the
+//!   comparison step); the received credentials never leave Rust.
 //! - Joins run as a sync change (`guarded_change`: one at a time, engine stopped and started).
 //!
 //! No command logs its arguments; passwords and recovery codes stay in `Zeroizing` once received.
@@ -51,7 +52,7 @@ use crate::services::sync::relay::http::{
     HttpRelay,
 };
 use crate::services::sync::relay::Mailbox;
-use crate::services::sync::{devices, feature, join, state};
+use crate::services::sync::{devices, join, state};
 
 const NOT_STARTED: &str = "validation.syncPairingNotStarted";
 const EXPIRED: &str = "validation.syncPairingExpired";
@@ -203,7 +204,6 @@ impl PairingGuard<'_> {
         owner_now: Option<KitOwner>,
         session: PairingSession,
         device_name: Option<String>,
-        dev_tools: bool,
     ) -> Result<PairingView> {
         let slot = PairingSlot {
             owner: owner.clone(),
@@ -214,7 +214,7 @@ impl PairingGuard<'_> {
             (self.pairings.dispose)(slot);
             return Err(AppError::Validation(NOT_STARTED.into()));
         }
-        let view = match view_of(&slot.session, dev_tools) {
+        let view = match view_of(&slot.session) {
             Ok(view) => view,
             Err(error) => {
                 (self.pairings.dispose)(slot);
@@ -279,9 +279,9 @@ fn after_join_error(error: &SyncError) -> bool {
         )
 }
 
-/// The session as the UI shows it. The QR (and, with the developer tools only, the same code as
-/// text) while this device shows the code and waits for the scan.
-fn view_of(session: &PairingSession, dev_tools: bool) -> Result<PairingView> {
+/// The session as the UI shows it. The QR and the same code as text (to copy and type on the other
+/// device when it cannot scan) while this device shows the code and waits for the scan.
+fn view_of(session: &PairingSession) -> Result<PairingView> {
     let showing = session.side() == Side::Shower && session.stage() == Stage::WaitingForScan;
     let code = showing.then(|| pairing_code_text(&session.code()));
     let qr = code.as_deref().map(qr_svg).transpose()?;
@@ -297,7 +297,7 @@ fn view_of(session: &PairingSession, dev_tools: bool) -> Result<PairingView> {
             Role::Joiner => PairingRole::Joiner,
         },
         qr_svg: qr,
-        pairing_code: code.filter(|_| dev_tools),
+        pairing_code: code,
         comparison_code: session.comparison_code(),
         contested: session.contested(),
         expires_at: session.wiped_at(),
@@ -423,7 +423,7 @@ fn current_view(pairing: &Option<PairingSlot>) -> Result<PairingView> {
     let slot = pairing
         .as_ref()
         .ok_or_else(|| AppError::Validation(NOT_STARTED.into()))?;
-    view_of(&slot.session, feature::dev_tools())
+    view_of(&slot.session)
 }
 
 /// A new shown pairing, made under the slot's lock (one start or scan at a time): the older
@@ -434,11 +434,10 @@ async fn start_under_lock(
     owner_now: impl FnOnce() -> Option<KitOwner>,
     session: PairingSession,
     device_name: Option<String>,
-    dev_tools: bool,
 ) -> SyncResult<PairingView> {
     let mut pairing = pairings.lock().await;
     pairing.dispose_current();
-    Ok(pairing.install(owner, owner_now(), session, device_name, dev_tools)?)
+    Ok(pairing.install(owner, owner_now(), session, device_name)?)
 }
 
 /// A scanned pairing, made under the slot's lock. A repeated scan of the code this profile
@@ -453,18 +452,17 @@ async fn scan_under_lock<M: Mailbox>(
     mailbox: &M,
     device_name: Option<String>,
     now: i64,
-    dev_tools: bool,
 ) -> SyncResult<PairingView> {
     let mut pairing = pairings.lock().await;
     if let Some(slot) = pairing.as_ref() {
         let alive = slot.owner == *owner && now < slot.session.wiped_at();
         if alive && slot.session.side() == Side::Scanner && same_code(&slot.session, &scanned) {
-            return Ok(view_of(&slot.session, dev_tools)?);
+            return Ok(view_of(&slot.session)?);
         }
     }
     pairing.dispose_current();
     let session = announced(scanned, mailbox, now).await?;
-    Ok(pairing.install(owner, owner_now(), session, device_name, dev_tools)?)
+    Ok(pairing.install(owner, owner_now(), session, device_name)?)
 }
 
 /// How long the wiper sleeps before it looks at the wall clock again: at most
@@ -525,8 +523,7 @@ pub async fn sync_pairing_start(
     begin(password, verify, async {
         let shown = PairingSession::show(role, &relay_url, now())?;
         let owner_now = || kit_owner(&app, &db).ok();
-        let dev_tools = feature::dev_tools();
-        start_under_lock(&PAIRING, &owner, owner_now, shown, device_name, dev_tools).await
+        start_under_lock(&PAIRING, &owner, owner_now, shown, device_name).await
     })
     .await
 }
@@ -554,7 +551,6 @@ pub async fn sync_pairing_scan(
         let scanned = PairingSession::scan(role, &code, now)?;
         let relay = HttpRelay::new(scanned.relay_url())?;
         let owner_now = || kit_owner(&app, &db).ok();
-        let dev_tools = feature::dev_tools();
         scan_under_lock(
             &PAIRING,
             &owner,
@@ -563,7 +559,6 @@ pub async fn sync_pairing_scan(
             &relay,
             device_name,
             now,
-            dev_tools,
         )
         .await
     })
@@ -649,6 +644,11 @@ pub async fn sync_pairing_confirm(
     if let Err(error) = confirmed {
         pairing.end_unless_kept(&error);
         return Err(app_error(error));
+    }
+    // The holder confirmed: the new device joins within minutes and shows in the device list when
+    // this device pulls, so the engine pulls often for a while instead of every 5 minutes.
+    if typed_code.is_some() {
+        super::sync::fast_poll_engine(&app);
     }
     current_view(&pairing)
 }

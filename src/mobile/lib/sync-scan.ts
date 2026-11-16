@@ -5,7 +5,7 @@ import { groupAccountNumber } from '@/utils/recovery-kit';
 
 /**
  * The pure parts of scanning on the phone (Nastavení → Sync): what a scanned or pasted text leads
- * to, what the Recovery Kit and the developer paste sheets refuse, the phone's default device name
+ * to, what the Recovery Kit and the manual-entry sheets refuse, the phone's default device name
  * and the step a pairing sheet shows.
  */
 
@@ -96,7 +96,7 @@ export function kitQrSummary(text: string): KitQrSummary {
   return { ok: true, account: groupAccountNumber(account), server };
 }
 
-/** The developer paste sheet takes a pairing code only (a `deviceSync` key otherwise). */
+/** The manual-entry sheet takes a pairing code only (a `deviceSync` key otherwise). */
 export function pairingCodeProblem(code: string): string | null {
   switch (scannedCodeKind(code)) {
     case 'pair':

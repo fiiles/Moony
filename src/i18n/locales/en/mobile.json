@@ -752,10 +752,12 @@
     "delete": {
       "title": "Delete all data?",
       "lead": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back.",
-      "leadSynced": "Permanently deletes the database, the keys and the attachments from this phone, and the synced data on the sync server (if it can be reached): your other devices stop syncing and keep the data they hold. Backup copies outside the phone stay. Make a backup first — it is the only way back for this phone.",
+      "leadSynced": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back. The synced data stays on the sync server for your other devices. You can delete it in Settings → Sync.",
       "confirmLabel": "Type {{word}} to confirm",
       "confirm": "Delete data",
-      "failed": "Deletion failed"
+      "failed": "Deletion failed",
+      "syncDeleteLabel": "Also delete the synced data from the server — for all devices",
+      "syncDeleteHint": "Your other devices then stop syncing and keep the data they hold. If the server cannot be reached, that data stays there, encrypted."
     },
     "tracking": {
       "lead": "Choose what you want to track in Moony.",

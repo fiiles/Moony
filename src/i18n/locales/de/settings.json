@@ -120,10 +120,12 @@
     "confirmWord": "LÖSCHEN",
     "deleteAll": "Alle Daten löschen",
     "deleteAllHint": "Entfernt die Datenbank, die Schlüsseldateien und die Anhänge auf diesem Computer. Kopien neben der Datenbank (moony.db.bak-…, pre-restore-…) bleiben im Datenordner (Daten und Sicherungen → Ordner öffnen), ebenso außerhalb der App gespeicherte Sicherungen.",
-    "deleteAllHintSynced": "Entfernt die Datenbank, die Schlüsseldateien und die Anhänge auf diesem Computer sowie die synchronisierten Daten auf dem Synchronisierungsserver (sofern erreichbar): Ihre anderen Geräte hören auf zu synchronisieren und behalten die Daten, die sie haben. Kopien neben der Datenbank (moony.db.bak-…, pre-restore-…) bleiben im Datenordner (Daten und Sicherungen → Ordner öffnen), ebenso außerhalb der App gespeicherte Sicherungen.",
+    "deleteAllHintSynced": "Entfernt die Datenbank, die Schlüsseldateien und die Anhänge auf diesem Computer. Kopien neben der Datenbank (moony.db.bak-…, pre-restore-…) bleiben im Datenordner (Daten und Sicherungen → Ordner öffnen), ebenso außerhalb der App gespeicherte Sicherungen. Die synchronisierten Daten bleiben auf dem Synchronisierungsserver für Ihre anderen Geräte. Löschen können Sie sie unter Einstellungen → Synchronisierung.",
     "deleteButton": "Daten löschen…",
-    "syncDeleted": "Synchronisierte Daten auf dem Synchronisierungsserver werden ebenfalls gelöscht: Ihre anderen Geräte hören auf zu synchronisieren und behalten die Daten, die sie haben. Ist der Server nicht erreichbar, bleiben diese Daten dort, verschlüsselt.",
-    "confirmDescriptionSynced": "Diese Aktion lässt sich nicht rückgängig machen. Sie löscht die Datenbank, die Schlüsseldateien und die Anhänge dauerhaft von diesem Gerät. Kopien, die Moony neben der Datenbank ablegt (moony.db.bak-…, pre-restore-…), bleiben im Datenordner; Einstellungen → Daten und Sicherungen → Ordner öffnen führt dorthin."
+    "confirmDescriptionSynced": "Diese Aktion lässt sich nicht rückgängig machen. Sie löscht die Datenbank, die Schlüsseldateien und die Anhänge dauerhaft von diesem Gerät. Kopien, die Moony neben der Datenbank ablegt (moony.db.bak-…, pre-restore-…), bleiben im Datenordner; Einstellungen → Daten und Sicherungen → Ordner öffnen führt dorthin.",
+    "syncKept": "Die synchronisierten Daten bleiben auf dem Synchronisierungsserver für Ihre anderen Geräte. Löschen können Sie sie unter Einstellungen → Synchronisierung.",
+    "syncDeleteLabel": "Auch die synchronisierten Daten vom Server löschen — für alle Geräte",
+    "syncDeleteHint": "Ihre anderen Geräte hören dann auf zu synchronisieren und behalten die Daten, die sie haben. Ist der Server nicht erreichbar, bleiben diese Daten dort, verschlüsselt."
   },
   "toast": {
     "profileUpdated": "Profil aktualisiert",
@@ -258,7 +260,7 @@
     "title": "Was Sie aufbewahren sollten",
     "description": "Jedes davon hat eine andere Aufgabe.",
     "password": {
-      "title": "Gerätepasswort",
+      "title": "Moony-Passwort",
       "text": "Entsperrt Moony auf diesem Gerät."
     },
     "recoveryKey": {

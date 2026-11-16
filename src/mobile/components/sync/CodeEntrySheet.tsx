@@ -17,9 +17,9 @@ interface CodeEntrySheetProps {
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
 
 /**
- * "Paste a pairing code — developer tool": the simulator has no camera, so with the developer tools
- * on (`status.devTools`, review PF2) a pairing code copied from the other device can be pasted
- * instead of scanned. It takes a pairing code only; release builds never show it.
+ * "Enter the code manually": a pairing code shown as text on the other device (under its QR code)
+ * can be typed or pasted instead of scanned, for a camera that cannot read it or a phone without
+ * one. It takes a pairing code only.
  */
 export function CodeEntrySheet({ open, onOpenChange, onSubmit }: CodeEntrySheetProps) {
   const { t } = useTranslation('deviceSync');
@@ -49,7 +49,7 @@ export function CodeEntrySheet({ open, onOpenChange, onSubmit }: CodeEntrySheetP
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      title={t('phone.devPasteTitle')}
+      title={t('phone.enterCodeTitle')}
       footer={
         <>
           <Button
@@ -71,7 +71,8 @@ export function CodeEntrySheet({ open, onOpenChange, onSubmit }: CodeEntrySheetP
       }
     >
       <form id={formId} onSubmit={submit} noValidate className="space-y-1.5">
-        <Label htmlFor={fieldId}>{t('phone.devPasteLabel')}</Label>
+        <p className="m-0 mb-2 text-m-lead text-ink-3">{t('phone.enterCodeHint')}</p>
+        <Label htmlFor={fieldId}>{t('phone.enterCodeLabel')}</Label>
         <textarea
           id={fieldId}
           value={code}

@@ -14,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
@@ -38,13 +39,15 @@ export function DangerZoneCard() {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  // Opt-in, off by default: deleting the profile only removes this device
+  const [deleteSynced, setDeleteSynced] = useState(false);
   // Word the user must type before the account can be deleted (DZ-01), in the UI language; any case
   const confirmWord = t('dangerZone.confirmWord');
   const deleteConfirmed = confirmWordMatches(deleteConfirmText, confirmWord);
 
   const deleteAccountMutation = useMutation({
     mutationFn: async () => {
-      await authApi.deleteAccount();
+      await authApi.deleteAccount(syncOn && deleteSynced);
     },
     onSuccess: () => {
       // UI preferences belong to the deleted account. A new account on this machine is offered
@@ -68,7 +71,10 @@ export function DangerZoneCard() {
           open={deleteDialogOpen}
           onOpenChange={(open) => {
             setDeleteDialogOpen(open);
-            if (!open) setDeleteConfirmText('');
+            if (!open) {
+              setDeleteConfirmText('');
+              setDeleteSynced(false);
+            }
           }}
         >
           <AlertDialogTrigger asChild>
@@ -83,16 +89,32 @@ export function DangerZoneCard() {
                     ? t('dangerZone.confirmDescriptionSynced')
                     : t('dangerZone.confirmDescription')}
                 </span>
-                {syncOn && (
+                {syncOn && !deleteSynced && (
                   <>
                     {sentenceGap}
-                    <span>{t('dangerZone.syncDeleted')}</span>
+                    <span>{t('dangerZone.syncKept')}</span>
                   </>
                 )}
                 {sentenceGap}
                 <span>{t('dangerZone.backupFirst')}</span>
               </AlertDialogDescription>
             </AlertDialogHeader>
+            {syncOn && (
+              <div className="flex items-start gap-2.5">
+                <Checkbox
+                  id="delete-account-synced"
+                  className="mt-0.5"
+                  checked={deleteSynced}
+                  onCheckedChange={(checked) => setDeleteSynced(checked === true)}
+                />
+                <Label htmlFor="delete-account-synced" className="block space-y-1 leading-snug">
+                  <span className="block">{t('dangerZone.syncDeleteLabel')}</span>
+                  <span className="block text-xs font-normal text-ink-3">
+                    {t('dangerZone.syncDeleteHint')}
+                  </span>
+                </Label>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="delete-account-confirm">
                 {t('dangerZone.confirmLabel', { word: confirmWord })}

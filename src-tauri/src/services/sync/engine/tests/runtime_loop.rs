@@ -911,3 +911,64 @@ async fn a_forced_snapshot_survives_a_restart() {
     assert_eq!(marks.snapshot_barrier, sync.barrier);
     assert!(!state::needs_forced_snapshot(&sync, &marks));
 }
+
+// ---------------------------------------------------------------------------------------------
+// The fast-poll window after a device was paired
+
+#[test]
+fn rounds_run_every_few_seconds_only_while_the_fast_poll_window_is_open() {
+    use crate::services::sync::engine::runtime::{
+        fast_window_open, periodic_gap, FAST_EVERY, PERIODIC,
+    };
+    let now = tokio::time::Instant::now();
+    let until = now + Duration::from_secs(60);
+
+    assert_eq!(
+        periodic_gap(now, None),
+        PERIODIC,
+        "no window: the ordinary pace"
+    );
+    assert_eq!(
+        periodic_gap(now, Some(until)),
+        FAST_EVERY,
+        "open: the fast pace"
+    );
+    assert_eq!(
+        periodic_gap(until, Some(until)),
+        PERIODIC,
+        "the window is over at its end"
+    );
+    assert!(fast_window_open(
+        until - Duration::from_millis(1),
+        Some(until)
+    ));
+    assert!(!fast_window_open(until, Some(until)));
+    assert!(!fast_window_open(now, None));
+    assert!(FAST_EVERY < PERIODIC);
+}
+
+#[test]
+fn the_fast_poll_window_closes_when_it_runs_out_or_a_device_was_added() {
+    use crate::services::sync::engine::runtime::fast_window_done;
+    let now = tokio::time::Instant::now();
+    let until = Some(now + Duration::from_secs(60));
+
+    assert!(!fast_window_done(now, until, Some(2), Some(2)), "unchanged");
+    assert!(
+        fast_window_done(now, until, Some(2), Some(3)),
+        "a device joined"
+    );
+    assert!(
+        !fast_window_done(now, until, Some(2), Some(1)),
+        "fewer is no growth"
+    );
+    assert!(!fast_window_done(now, until, None, Some(3)), "no baseline");
+    assert!(
+        !fast_window_done(now, until, Some(2), None),
+        "count unreadable"
+    );
+    assert!(
+        fast_window_done(now + Duration::from_secs(60), until, Some(2), Some(2)),
+        "the window ran out"
+    );
+}

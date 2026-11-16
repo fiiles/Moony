@@ -752,10 +752,12 @@
     "delete": {
       "title": "Alle Daten löschen?",
       "lead": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon dauerhaft. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — sie ist der einzige Weg zurück.",
-      "leadSynced": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon dauerhaft, ebenso die synchronisierten Daten auf dem Synchronisierungsserver (sofern erreichbar): Ihre anderen Geräte hören auf zu synchronisieren und behalten die Daten, die sie haben. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — für dieses Telefon ist sie der einzige Weg zurück.",
+      "leadSynced": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon dauerhaft. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — sie ist der einzige Weg zurück. Die synchronisierten Daten bleiben auf dem Synchronisierungsserver für Ihre anderen Geräte. Löschen können Sie sie unter Einstellungen → Synchronisierung.",
       "confirmLabel": "Geben Sie zur Bestätigung {{word}} ein",
       "confirm": "Daten löschen",
-      "failed": "Löschen fehlgeschlagen"
+      "failed": "Löschen fehlgeschlagen",
+      "syncDeleteLabel": "Auch die synchronisierten Daten vom Server löschen — für alle Geräte",
+      "syncDeleteHint": "Ihre anderen Geräte hören dann auf zu synchronisieren und behalten die Daten, die sie haben. Ist der Server nicht erreichbar, bleiben diese Daten dort, verschlüsselt."
     },
     "tracking": {
       "lead": "Wählen Sie, was Sie in Moony verfolgen möchten.",

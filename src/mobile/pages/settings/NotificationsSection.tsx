@@ -82,7 +82,7 @@ export default function NotificationsSection() {
   return (
     <SectionPage title={t('settings.rows.notifications')} lead={t('notifications.lead')}>
       <div className={CARD}>
-        <KeyValueRow label={t('notifications.permission.label')} value={permissionValue} />
+        <KeyValueRow label={t('notifications.permission.label')} value={permissionValue} wrap />
         {state === 'default' && (
           <div className="px-1 py-3">
             <Button
@@ -126,6 +126,7 @@ export default function NotificationsSection() {
         {granted && prefs.upkeep && (
           <KeyValueRow
             label={t('notifications.upkeep.day')}
+            wrap
             value={t('notifications.upkeep.dayValue', { day })}
             onClick={() => setDayOpen(true)}
           />

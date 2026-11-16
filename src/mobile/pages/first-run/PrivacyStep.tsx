@@ -72,6 +72,7 @@ export function PrivacyStep({ flow }: { flow: FirstRunFlow }) {
             label={t('onboarding.welcome.currency')}
             value={`${flow.currency} · ${currencyName(flow.currency, fmt.locale)}`}
             onClick={() => setCurrencyOpen(true)}
+            wrap
           />
           <p className={caption}>{t('onboarding.welcome.currencyHint')}</p>
         </div>
@@ -80,6 +81,7 @@ export function PrivacyStep({ flow }: { flow: FirstRunFlow }) {
             label={t('onboarding.welcome.country')}
             value={flow.countryName ?? t('onboarding.welcome.countryNone')}
             onClick={() => setCountryOpen(true)}
+            wrap
           />
           <p className={caption}>{t('onboarding.welcome.countryHint')}</p>
         </div>

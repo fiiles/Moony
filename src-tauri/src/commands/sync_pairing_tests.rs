@@ -168,33 +168,30 @@ fn a_transient_join_failure_keeps_the_received_session() {
 }
 
 #[test]
-fn the_pairing_code_text_is_a_developer_tool() {
+fn the_pairing_code_text_is_shown_with_the_qr() {
     let session = PairingSession::show(Role::Holder, HOME, T0).expect("session");
     let text = pairing_code_text(&session.code());
     assert!(text.starts_with("moony-pair:2:"));
 
-    let release = view_of(&session, false).expect("view");
+    let view = view_of(&session).expect("view");
     assert_eq!(
-        release.pairing_code, None,
-        "a release build shows the QR only"
+        view.pairing_code.as_deref(),
+        Some(text.as_str()),
+        "the text goes with the QR in every build"
     );
-    assert!(release
+    assert!(view
         .qr_svg
         .as_deref()
         .is_some_and(|svg| svg.contains("<svg")));
-    assert_eq!(release.stage, PairingStage::WaitingForScan);
-    assert_eq!(release.role, PairingRole::Holder);
-    assert_eq!(release.comparison_code, None);
-    assert!(!release.contested);
-    assert_eq!(release.expires_at, T0 + 600);
+    assert_eq!(view.stage, PairingStage::WaitingForScan);
+    assert_eq!(view.role, PairingRole::Holder);
+    assert_eq!(view.comparison_code, None);
+    assert!(!view.contested);
+    assert_eq!(view.expires_at, T0 + 600);
 
-    let dev = view_of(&session, true).expect("view");
-    assert_eq!(dev.pairing_code.as_deref(), Some(text.as_str()));
-    assert_eq!(dev.qr_svg, release.qr_svg);
-
-    // A scanner shows no code of its own, with or without the developer tools.
+    // A scanner shows no code of its own,
     let scanner = PairingSession::scan(Role::Joiner, &text, T0).expect("scanner");
-    let view = view_of(&scanner, true).expect("view");
+    let view = view_of(&scanner).expect("view");
     assert_eq!(view.stage, PairingStage::Announcing);
     assert_eq!(view.role, PairingRole::Joiner);
     assert_eq!((view.qr_svg, view.pairing_code), (None, None));
@@ -203,9 +200,9 @@ fn the_pairing_code_text_is_a_developer_tool() {
 #[test]
 fn the_view_names_a_custom_server_and_the_holders_attempts() {
     let default = PairingSession::show(Role::Holder, &default_base_url(), T0).expect("shower");
-    assert_eq!(view_of(&default, false).expect("view").server_host, None);
+    assert_eq!(view_of(&default).expect("view").server_host, None);
     let own = PairingSession::show(Role::Holder, "https://sync.example.org:8443", T0).expect("own");
-    let view = view_of(&own, false).expect("view");
+    let view = view_of(&own).expect("view");
     assert_eq!(view.server_host.as_deref(), Some("sync.example.org:8443"));
     assert_eq!(view.attempts_left, None, "only in compare");
     assert_eq!(view.comparison_code, None);
@@ -227,13 +224,13 @@ async fn a_holder_at_compare_has_no_digits_and_all_its_attempts() {
     shower.poll(&relay, T0).await.expect("acknowledge");
     holder.poll(&relay, T0).await.expect("verify");
     assert_eq!(holder.stage(), Stage::Compare);
-    let view = view_of(&holder, false).expect("view");
+    let view = view_of(&holder).expect("view");
     assert_eq!(view.stage, PairingStage::Compare);
     assert_eq!(view.role, PairingRole::Holder);
     assert_eq!(view.comparison_code, None);
     assert_eq!(view.attempts_left, Some(3));
     // The joiner shows its digits and has no attempts to count.
-    let joiner = view_of(&shower, false).expect("view");
+    let joiner = view_of(&shower).expect("view");
     assert!(joiner.comparison_code.is_some());
     assert_eq!(joiner.attempts_left, None);
 }
@@ -339,19 +336,19 @@ async fn received_joiner(server: &str) -> PairingSession {
 #[tokio::test]
 async fn the_view_names_an_insecure_join_server() {
     let plain = received_joiner("http://192.168.1.20:8787").await;
-    let view = view_of(&plain, false).expect("view");
+    let view = view_of(&plain).expect("view");
     assert_eq!(view.stage, PairingStage::Received);
     assert_eq!(view.join_server.as_deref(), Some("192.168.1.20:8787"));
     assert!(view.join_server_insecure);
 
     let secure = received_joiner("https://sync.example.com").await;
-    let view = view_of(&secure, false).expect("view");
+    let view = view_of(&secure).expect("view");
     assert_eq!(view.join_server.as_deref(), Some("sync.example.com"));
     assert!(!view.join_server_insecure);
 
     // A holder's view, and a joiner before the credentials, name nothing.
     let holder = PairingSession::show(Role::Holder, HOME, T0).expect("holder");
-    let view = view_of(&holder, false).expect("view");
+    let view = view_of(&holder).expect("view");
     assert_eq!((view.join_server, view.join_server_insecure), (None, false));
 }
 
@@ -458,35 +455,17 @@ async fn a_repeated_scan_of_the_same_code_keeps_its_session() {
     let relay = FakeRelay::new();
     let scan = || PairingSession::scan(Role::Holder, &text, T0).expect("scan");
 
-    let first = scan_under_lock(
-        &pairings,
-        &a,
-        || Some(a.clone()),
-        scan(),
-        &relay,
-        None,
-        T0,
-        false,
-    )
-    .await
-    .expect("first scan");
+    let first = scan_under_lock(&pairings, &a, || Some(a.clone()), scan(), &relay, None, T0)
+        .await
+        .expect("first scan");
     // Answered, waiting for the shower's acknowledgement: nothing to show yet.
     assert_eq!(first.stage, PairingStage::Connecting);
     assert!(!first.contested);
 
     // The camera reports the same QR again: the same session answers, nothing is written.
-    let again = scan_under_lock(
-        &pairings,
-        &a,
-        || Some(a.clone()),
-        scan(),
-        &relay,
-        None,
-        T0,
-        false,
-    )
-    .await
-    .expect("repeated scan");
+    let again = scan_under_lock(&pairings, &a, || Some(a.clone()), scan(), &relay, None, T0)
+        .await
+        .expect("repeated scan");
     assert_eq!(again, first);
     assert_eq!(put_count(&relay), 1, "slot 1 is written once");
     assert_eq!(disposed.load(Ordering::SeqCst), 0);
@@ -502,7 +481,6 @@ async fn a_repeated_scan_of_the_same_code_keeps_its_session() {
         &relay,
         None,
         T0,
-        false,
     )
     .await
     .expect("another code");
@@ -530,7 +508,6 @@ async fn concurrent_scans_of_one_code_answer_it_once() {
             &relay,
             None,
             T0,
-            false,
         )
     };
     let (one, two) = tokio::join!(scan(), scan());
@@ -552,7 +529,6 @@ async fn concurrent_starts_leave_one_pairing() {
             || Some(a.clone()),
             PairingSession::show(Role::Holder, HOME, T0).expect("show"),
             None,
-            false,
         )
     };
     let (one, two) = tokio::join!(start(), start());
@@ -561,7 +537,7 @@ async fn concurrent_starts_leave_one_pairing() {
     assert_eq!(disposed.load(Ordering::SeqCst), 1, "the first is abandoned");
     let installed = pairings.lock().await;
     let installed = installed.as_ref().expect("one pairing");
-    assert_eq!(view_of(&installed.session, false).expect("view"), two);
+    assert_eq!(view_of(&installed.session).expect("view"), two);
 }
 
 #[tokio::test]
@@ -574,7 +550,6 @@ async fn a_pairing_started_by_a_session_that_ended_is_not_installed() {
         || Some(owner("/profiles/a/moony.db", 2)),
         PairingSession::show(Role::Holder, HOME, T0).expect("show"),
         None,
-        false,
     )
     .await;
     assert_eq!(

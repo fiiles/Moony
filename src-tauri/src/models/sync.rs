@@ -186,9 +186,6 @@ pub struct SyncStatus {
     /// elsewhere before it. `None` otherwise, and for a date past year 9999 (audit M6).
     #[serde(rename = "clockAheadUntil")]
     pub clock_ahead_until: Option<i64>,
-    /// The developer tools are offered (debug build with sync on).
-    #[serde(rename = "devTools")]
-    pub dev_tools: bool,
     /// The stored server is not the Moony cloud: a person's own sync server.
     #[serde(rename = "ownServer")]
     pub own_server: bool,
@@ -398,7 +395,7 @@ pub struct PairingView {
     /// The pairing code as an SVG QR code, while this device shows it (`waitingForScan`).
     #[serde(rename = "qrSvg")]
     pub qr_svg: Option<String>,
-    /// The same code as text, only with the developer tools (a simulator cannot scan).
+    /// The same code as text, to copy and type on a device that cannot scan.
     #[serde(rename = "pairingCode")]
     pub pairing_code: Option<String>,
     /// The six digits the joiner shows, from `compare` on; never set on the holder, whose person

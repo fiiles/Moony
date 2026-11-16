@@ -91,6 +91,7 @@ export default function BackupSection() {
       <div className={CARD}>
         <KeyValueRow
           label={t('backup.last')}
+          wrap
           value={lastBackupAt !== null ? fmt.dateTime(lastBackupAt) : t('backup.never')}
         />
       </div>

@@ -1811,7 +1811,7 @@ export type PairingView = { stage: PairingStage; role: PairingRole;
  */
 qrSvg: string | null; 
 /**
- * The same code as text, only with the developer tools (a simulator cannot scan).
+ * The same code as text, to copy and type on a device that cannot scan.
  */
 pairingCode: string | null; 
 /**
@@ -3616,10 +3616,6 @@ deletesAt: number | null;
  * elsewhere before it. `None` otherwise, and for a date past year 9999 (audit M6).
  */
 clockAheadUntil: number | null; 
-/**
- * The developer tools are offered (debug build with sync on).
- */
-devTools: boolean; 
 /**
  * The stored server is not the Moony cloud: a person's own sync server.
  */

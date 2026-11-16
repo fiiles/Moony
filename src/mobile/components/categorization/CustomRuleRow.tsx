@@ -69,6 +69,7 @@ export function CustomRuleRow({
         </>
       }
       sub={line}
+      wrap
       muted={!rule.isActive}
       value={
         <span className="-my-3 -mr-1.5 inline-flex size-11 items-center justify-center align-middle">

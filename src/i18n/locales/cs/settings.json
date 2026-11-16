@@ -120,10 +120,12 @@
     "confirmWord": "SMAZAT",
     "deleteAll": "Smazat všechna data",
     "deleteAllHint": "Odstraní databázi, soubory s klíči a přílohy na tomto počítači. Kopie vedle databáze (moony.db.bak-…, pre-restore-…) zůstanou v datové složce (Data a zálohy → Otevřít složku), stejně jako zálohy uložené mimo aplikaci.",
-    "deleteAllHintSynced": "Odstraní databázi, soubory s klíči a přílohy na tomto počítači i synchronizovaná data na synchronizačním serveru (pokud je dostupný): ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají. Kopie vedle databáze (moony.db.bak-…, pre-restore-…) zůstanou v datové složce (Data a zálohy → Otevřít složku), stejně jako zálohy uložené mimo aplikaci.",
+    "deleteAllHintSynced": "Odstraní databázi, soubory s klíči a přílohy na tomto počítači. Kopie vedle databáze (moony.db.bak-…, pre-restore-…) zůstanou v datové složce (Data a zálohy → Otevřít složku), stejně jako zálohy uložené mimo aplikaci. Synchronizovaná data zůstanou na synchronizačním serveru pro vaše ostatní zařízení. Smazat je můžete v Nastavení → Synchronizace.",
     "deleteButton": "Smazat data…",
-    "syncDeleted": "Smažou se i synchronizovaná data na synchronizačním serveru: vaše ostatní zařízení se přestanou synchronizovat a data, která mají, si ponechají. Pokud server není dostupný, data na něm zůstanou, šifrovaná.",
-    "confirmDescriptionSynced": "Tuto akci nelze vrátit zpět. Trvale smaže databázi, soubory s klíči a přílohy z tohoto zařízení. Kopie, které Moony ukládá vedle databáze (moony.db.bak-…, pre-restore-…), zůstanou v datové složce; vede do ní Nastavení → Data a zálohy → Otevřít složku."
+    "confirmDescriptionSynced": "Tuto akci nelze vrátit zpět. Trvale smaže databázi, soubory s klíči a přílohy z tohoto zařízení. Kopie, které Moony ukládá vedle databáze (moony.db.bak-…, pre-restore-…), zůstanou v datové složce; vede do ní Nastavení → Data a zálohy → Otevřít složku.",
+    "syncKept": "Synchronizovaná data zůstanou na synchronizačním serveru pro vaše ostatní zařízení. Smazat je můžete v Nastavení → Synchronizace.",
+    "syncDeleteLabel": "Smazat i synchronizovaná data ze serveru — pro všechna zařízení",
+    "syncDeleteHint": "Vaše ostatní zařízení se pak přestanou synchronizovat a data, která mají, si ponechají. Pokud server není dostupný, data na něm zůstanou, šifrovaná."
   },
   "toast": {
     "profileUpdated": "Profil aktualizován",
@@ -264,7 +266,7 @@
     "title": "Co si uschovat",
     "description": "Každá z těchto věcí slouží k něčemu jinému.",
     "password": {
-      "title": "Heslo zařízení",
+      "title": "Heslo do Moony",
       "text": "Odemyká Moony na tomto zařízení."
     },
     "recoveryKey": {

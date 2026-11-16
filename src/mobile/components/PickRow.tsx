@@ -80,10 +80,10 @@ export function PickRow({
     >
       {icon}
       <span className="min-w-0 flex-1">
-        <span lang={lang} className="block truncate">
+        <span lang={lang} className="block break-words">
           {label}
         </span>
-        {sub && <span className="block truncate text-m-sub text-ink-4">{sub}</span>}
+        {sub && <span className="block break-words text-m-sub text-ink-4">{sub}</span>}
       </span>
       {pending ? (
         <Loader2

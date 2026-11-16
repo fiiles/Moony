@@ -15,8 +15,6 @@ interface PairingStepsProps {
   view: PairingView;
   /** The text shown under the QR: where to scan it (differs per role). */
   scanHint: string;
-  /** The developer tools are on (`status.devTools`): the code is offered as text too. */
-  devTools: boolean;
   /** A failed poll or a confirm that ended the pairing (expired, cancelled, interfered). */
   error: Error | null;
   /** The last confirm's answer when the pairing goes on (a wrong code, a momentary failure). */
@@ -38,7 +36,6 @@ interface PairingStepsProps {
 export function PairingSteps({
   view,
   scanHint,
-  devTools,
   error,
   confirmError,
   onConfirm,
@@ -109,11 +106,22 @@ export function PairingSteps({
             <p className="m-0 text-center text-micro font-500 text-ink-4">
               {t('pairing.validFor')}
             </p>
-            {devTools && view.pairingCode && (
-              <Button type="button" variant="outline" size="sm" onClick={copyCode}>
-                {copied ? <Check /> : <Copy />}
-                {t('pairing.copyCodeDev')}
-              </Button>
+            {view.pairingCode && (
+              <div className="grid w-full justify-items-center gap-2">
+                <p className="m-0 text-center text-micro font-500 text-ink-3">
+                  {t('pairing.codeHint')}
+                </p>
+                <code
+                  data-testid="pairing-code-text"
+                  className="m-0 block max-h-20 w-full select-all overflow-y-auto break-all rounded-r2 bg-well px-3 py-2 text-left font-mono text-micro text-ink-2"
+                >
+                  {view.pairingCode}
+                </code>
+                <Button type="button" variant="outline" size="sm" onClick={copyCode}>
+                  {copied ? <Check /> : <Copy />}
+                  {copied ? t('pairing.copiedCode') : t('pairing.copyCode')}
+                </Button>
+              </div>
             )}
           </div>
         );

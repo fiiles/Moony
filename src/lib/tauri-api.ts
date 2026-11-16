@@ -253,7 +253,8 @@ export const authApi = {
     recoveryKey: string;
   }) => tauriInvoke<void>('confirm_change_password', { data }),
 
-  deleteAccount: () => tauriInvoke<void>('delete_account'),
+  deleteAccount: (deleteSyncedData = false) =>
+    tauriInvoke<void>('delete_account', { deleteSyncedData }),
 
   setMcpServerEnabled: (enabled: boolean) =>
     tauriInvoke<UserProfile>('set_mcp_server_enabled', { enabled }),

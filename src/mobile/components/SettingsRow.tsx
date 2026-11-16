@@ -47,6 +47,7 @@ export function SettingsRow({
       onClick={disabled ? undefined : onClick}
       chevron={!disabled}
       disabled={disabled}
+      wrap
     />
   );
 }

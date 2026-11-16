@@ -817,6 +817,27 @@ pub(super) fn wake_engine(app: &AppHandle) {
     }
 }
 
+/// Opens the running engine's fast-poll window (a round every few seconds for a few minutes, or
+/// until the device list grows): a device the holder just paired shows up in its list when it
+/// pulls. Nothing while no engine runs.
+pub(super) fn fast_poll_engine(app: &AppHandle) {
+    // The count is taken here, before the window opens: a round already in flight may pull the new
+    // device at any moment
+    let baseline = app
+        .state::<Database>()
+        .with_conn(crate::services::sync::devices::count_devices)
+        .ok();
+    if let Some(handle) = app
+        .state::<SyncEngineState>()
+        .0
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .as_ref()
+    {
+        handle.fast_poll(baseline);
+    }
+}
+
 /// Asks the running engine's transfer lanes to look at their queue now (content was wanted or
 /// reset here); nothing while no engine runs (locked, sync off).
 pub(crate) fn wake_transfers(app: &AppHandle) {

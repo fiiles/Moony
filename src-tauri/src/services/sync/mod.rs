@@ -24,6 +24,7 @@ pub mod error;
 pub mod feature;
 pub mod held_blobs;
 pub mod hlc;
+pub mod identity;
 pub mod impact;
 pub mod join;
 pub mod journal;

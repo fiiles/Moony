@@ -71,6 +71,7 @@ chacha20poly1305 = { version = "0.11", default-features = false, features = ["al
 hkdf = "0.13"                    # Device sync key derivation (already in Cargo.lock through another crate)
 hmac = "0.13"                    # Device sync pairing acknowledgement (already in Cargo.lock through hkdf)
 x25519-dalek = { version = "3", features = ["static_secrets"] }  # Device sync: this device's key pair (spec §11.1)
+ed25519-dalek = { version = "3", default-features = false, features = ["fast", "zeroize"] }  # Device sync: signing identities, certificates and key-change bundles (phase 5 spec §5.2)
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }  # Sync Recovery Kit QR (SVG only)
 
 # Error handling

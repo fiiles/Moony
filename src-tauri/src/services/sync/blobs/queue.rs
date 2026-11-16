@@ -217,34 +217,6 @@ pub fn download_failed(last_error: Option<&str>) -> bool {
     is_stuck(last_error) || last_error == Some("unreadable")
 }
 
-#[cfg(test)]
-mod list_tests {
-    use super::*;
-
-    #[test]
-    fn the_sql_lists_and_the_helpers_agree() {
-        for code in [
-            "invalidId",
-            "refused",
-            "conflict",
-            "unreadable",
-            "network",
-            "notOnServer",
-        ] {
-            assert_eq!(
-                STUCK.contains(&format!("'{code}'")),
-                is_stuck(Some(code)),
-                "{code}"
-            );
-            assert_eq!(
-                DOWNLOAD_FAILED.contains(&format!("'{code}'")),
-                download_failed(Some(code)),
-                "{code}"
-            );
-        }
-    }
-}
-
 /// Clears an entry's retry bookkeeping when its state changes.
 const FRESH: &str = "attempts = 0, next_try_at = 0, last_error = NULL, last_error_at = NULL";
 
@@ -914,4 +886,32 @@ pub fn summary(conn: &Connection) -> Result<AttachmentSummary> {
         failed_upload: failed_upload as u32,
         content_left,
     })
+}
+
+#[cfg(test)]
+mod list_tests {
+    use super::*;
+
+    #[test]
+    fn the_sql_lists_and_the_helpers_agree() {
+        for code in [
+            "invalidId",
+            "refused",
+            "conflict",
+            "unreadable",
+            "network",
+            "notOnServer",
+        ] {
+            assert_eq!(
+                STUCK.contains(&format!("'{code}'")),
+                is_stuck(Some(code)),
+                "{code}"
+            );
+            assert_eq!(
+                DOWNLOAD_FAILED.contains(&format!("'{code}'")),
+                download_failed(Some(code)),
+                "{code}"
+            );
+        }
+    }
 }

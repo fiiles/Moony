@@ -104,6 +104,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("037_sync_blobs_refusals", MIGRATION_037),
         ("038_sync_blobs_size", MIGRATION_038),
         ("039_sync_last_complete", MIGRATION_039),
+        ("040_sync_device_removal", MIGRATION_040),
     ]
 }
 
@@ -3405,11 +3406,11 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_39_migrations() {
-        assert_eq!(known_migration_names().len(), 39);
+    fn the_chain_now_has_40_migrations() {
+        assert_eq!(known_migration_names().len(), 40);
         assert_eq!(
             known_migration_names().last(),
-            Some(&"039_sync_last_complete")
+            Some(&"040_sync_device_removal")
         );
     }
 }
@@ -3551,6 +3552,192 @@ ALTER TABLE sync_blobs ADD COLUMN size INTEGER;
 pub(crate) const MIGRATION_039: &str = r#"
 ALTER TABLE sync_state ADD COLUMN last_complete_at INTEGER;
 "#;
+
+/// 040: removing a device and changing the key (spec 2026-11-16-device-sync-phase-5-removal-design
+/// §11.1). `sync_devices` gains three Synced write-once columns: `cert`, the device's certificate
+/// (base64url, how it got in), `left_record` and `removal_record`, the signed records that it
+/// left or that another device removed it (`removed` is set with the latter). `sync_state` gains
+/// Local columns: `device_sign_key` (this device's Ed25519 seed), `rotation_pending` (a key
+/// change sent or about to be sent, secret-bearing JSON), `rekey_seen` (the newest relay rotation
+/// processed), `kit_epoch_saved` (the epoch of the newest saved Recovery Kit; NULL is the setup
+/// Kit, epoch 0) and `snapshot_epoch_due` (a snapshot under the new key is due). `sync_trust` is
+/// the pinned store of verified devices (`state` only moves forward; `cut_off_epoch` is the first
+/// epoch a left or removed device does not have, NULL while it still knows the current key;
+/// `ticket_pub` is UNIQUE, a join ticket is used once). `sync_epochs` records the relay position
+/// each key epoch started at; an enabled profile gets its epoch 0 row at head 0.
+pub(crate) const MIGRATION_040: &str = r#"
+ALTER TABLE sync_devices ADD COLUMN cert TEXT;
+ALTER TABLE sync_devices ADD COLUMN left_record TEXT;
+ALTER TABLE sync_devices ADD COLUMN removal_record TEXT;
+ALTER TABLE sync_state ADD COLUMN device_sign_key BLOB;
+ALTER TABLE sync_state ADD COLUMN rotation_pending TEXT;
+ALTER TABLE sync_state ADD COLUMN rekey_seen INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sync_state ADD COLUMN kit_epoch_saved INTEGER;
+ALTER TABLE sync_state ADD COLUMN snapshot_epoch_due INTEGER NOT NULL DEFAULT 0;
+CREATE TABLE sync_trust (device TEXT PRIMARY KEY, cert TEXT NOT NULL, kind INTEGER NOT NULL,
+    issuer TEXT NOT NULL, sign_pub BLOB NOT NULL, box_pub BLOB NOT NULL,
+    ticket_pub BLOB UNIQUE, state TEXT NOT NULL CHECK (state IN ('trusted','left','removed')),
+    state_record TEXT, state_by TEXT, state_at INTEGER, cut_off_epoch INTEGER,
+    pinned_at INTEGER NOT NULL);
+CREATE TABLE sync_epochs (epoch INTEGER PRIMARY KEY, rotation_head INTEGER NOT NULL,
+    adopted_at INTEGER NOT NULL, by_device TEXT);
+INSERT INTO sync_epochs (epoch, rotation_head, adopted_at)
+    SELECT key_epoch, 0, strftime('%s','now') FROM sync_state WHERE key_epoch IS NOT NULL;
+"#;
+
+#[cfg(test)]
+mod migration_040 {
+    use super::*;
+
+    fn before_040(conn: &Connection) {
+        let all = all_migrations();
+        let before: Vec<_> = all
+            .iter()
+            .copied()
+            .filter(|(name, _)| *name < "040_sync_device_removal")
+            .collect();
+        run_chain(conn, &before).expect("chain to 039");
+    }
+
+    fn columns(conn: &Connection, table: &str) -> Vec<String> {
+        let mut stmt = conn
+            .prepare(&format!("SELECT name FROM pragma_table_info('{table}')"))
+            .expect("pragma");
+        stmt.query_map([], |r| r.get(0))
+            .expect("rows")
+            .map(|r| r.expect("name"))
+            .collect()
+    }
+
+    #[test]
+    fn sync_devices_takes_three_empty_columns() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        before_040(&conn);
+        conn.execute_batch(
+            "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
+             VALUES ('aa', 'KEY', 'Mac', 'macos', '1.0', 1)",
+        )
+        .expect("row");
+        run_chain(&conn, &all_migrations()).expect("040");
+        let row: (Option<String>, Option<String>, Option<String>, i64) = conn
+            .query_row(
+                "SELECT cert, left_record, removal_record, removed FROM sync_devices",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .expect("columns");
+        assert_eq!(row, (None, None, None, 0));
+    }
+
+    #[test]
+    fn sync_state_takes_the_local_columns_with_their_defaults() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        before_040(&conn);
+        conn.execute_batch("INSERT INTO sync_state (id, device_id) VALUES (1, x'00')")
+            .expect("row");
+        run_chain(&conn, &all_migrations()).expect("040");
+        let row: (Option<Vec<u8>>, Option<String>, i64, Option<i64>, i64) = conn
+            .query_row(
+                "SELECT device_sign_key, rotation_pending, rekey_seen, kit_epoch_saved, \
+                   snapshot_epoch_due FROM sync_state",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+            )
+            .expect("columns");
+        assert_eq!(row, (None, None, 0, None, 0));
+    }
+
+    #[test]
+    fn the_trust_store_and_the_epochs_exist_with_the_specs_columns() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()).expect("full chain");
+        assert_eq!(
+            columns(&conn, "sync_trust"),
+            [
+                "device",
+                "cert",
+                "kind",
+                "issuer",
+                "sign_pub",
+                "box_pub",
+                "ticket_pub",
+                "state",
+                "state_record",
+                "state_by",
+                "state_at",
+                "cut_off_epoch",
+                "pinned_at"
+            ]
+        );
+        assert_eq!(
+            columns(&conn, "sync_epochs"),
+            ["epoch", "rotation_head", "adopted_at", "by_device"]
+        );
+        let insert = |device: &str, state: &str, ticket: Option<&[u8]>| {
+            conn.execute(
+                "INSERT INTO sync_trust (device, cert, kind, issuer, sign_pub, box_pub, \
+                   ticket_pub, state, pinned_at) VALUES (?1, 'c', 2, 'i', x'01', x'02', ?2, ?3, 1)",
+                rusqlite::params![device, ticket, state],
+            )
+        };
+        for (i, state) in ["trusted", "left", "removed"].iter().enumerate() {
+            insert(&format!("d{i}"), state, None).expect(state);
+        }
+        assert!(insert("d9", "superseded", None).is_err(), "the CHECK");
+        insert("t1", "trusted", Some(b"ticket")).expect("first use of a ticket");
+        assert!(
+            insert("t2", "trusted", Some(b"ticket")).is_err(),
+            "a ticket is pinned once"
+        );
+        assert!(
+            insert("d0", "trusted", None).is_err(),
+            "one entry per device"
+        );
+    }
+
+    #[test]
+    fn an_enabled_profile_gets_its_epoch_0_row() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        before_040(&conn);
+        conn.execute_batch(
+            "INSERT INTO sync_state (id, enabled, device_id, key_epoch) VALUES (1, 1, x'00', 0)",
+        )
+        .expect("row");
+        run_chain(&conn, &all_migrations()).expect("040");
+        let rows: Vec<(i64, i64, Option<String>)> = conn
+            .prepare("SELECT epoch, rotation_head, by_device FROM sync_epochs")
+            .expect("prepare")
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .expect("rows")
+            .map(|r| r.expect("row"))
+            .collect();
+        assert_eq!(rows, [(0, 0, None)]);
+        let adopted: i64 = conn
+            .query_row("SELECT adopted_at FROM sync_epochs", [], |r| r.get(0))
+            .expect("adopted_at");
+        assert!(adopted > 1_700_000_000, "unix seconds of the migration");
+    }
+
+    #[test]
+    fn a_profile_without_a_vault_gets_no_epoch() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        before_040(&conn);
+        conn.execute_batch("INSERT INTO sync_state (id, device_id) VALUES (1, x'00')")
+            .expect("row");
+        run_chain(&conn, &all_migrations()).expect("040");
+        let rows: i64 = conn
+            .query_row("SELECT COUNT(*) FROM sync_epochs", [], |r| r.get(0))
+            .expect("count");
+        assert_eq!(rows, 0);
+
+        let fresh = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&fresh, &all_migrations()).expect("full chain");
+        let rows: i64 = fresh
+            .query_row("SELECT COUNT(*) FROM sync_epochs", [], |r| r.get(0))
+            .expect("count");
+        assert_eq!(rows, 0, "a profile without sync has no row");
+    }
+}
 
 #[cfg(test)]
 mod migration_039 {

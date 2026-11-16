@@ -596,6 +596,14 @@ async fn turning_off_keeps_local_data_and_forgets_every_secret() {
         count(&device.lock(), "SELECT COUNT(*) FROM sync_devices"),
         1
     );
+    device
+        .lock()
+        .execute_batch(
+            "INSERT INTO sync_trust (device, cert, kind, issuer, sign_pub, box_pub, state, \
+               pinned_at) VALUES ('d', 'c', 1, 'd', x'01', x'02', 'trusted', 1); \
+             INSERT OR IGNORE INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (0, 0, 1);",
+        )
+        .expect("trust and epochs");
 
     turn_off_between_rounds(&device, dir.path())
         .await
@@ -629,6 +637,8 @@ async fn turning_off_keeps_local_data_and_forgets_every_secret() {
         "sync_unsent",
         "sync_typed",
         "sync_devices",
+        "sync_trust",
+        "sync_epochs",
     ] {
         assert_eq!(
             count(&conn, &format!("SELECT COUNT(*) FROM {table}")),

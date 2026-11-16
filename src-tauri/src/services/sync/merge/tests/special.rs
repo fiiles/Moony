@@ -470,6 +470,115 @@ fn a_key_stamped_with_the_devices_own_id_beats_any_other() {
     assert_eq!(key_of(&e, A).as_deref(), Some("KA"));
 }
 
+/// `id`'s full `sync_devices` row with key `KA` and `column` = `value`, every column at `at`.
+fn device_row_with(id: DeviceId, column: &str, value: &str, at: Clock) -> RowChange {
+    let mut change = device_change(id, "KA", at);
+    set(&mut change, column, text(value), at);
+    change
+}
+
+fn column_of(conn: &Connection, id: DeviceId, column: &str) -> Option<String> {
+    conn.query_row(
+        &format!("SELECT {column} FROM sync_devices WHERE id = ?1"),
+        [id.to_hex()],
+        |r| r.get(0),
+    )
+    .expect("column")
+}
+
+/// Phase 5: a device's certificate and its `left` record follow the public key's rule.
+#[test]
+fn a_certificate_or_left_record_stamped_with_the_devices_own_id_beats_any_other() {
+    for column in ["cert", "left_record"] {
+        let a = device(A);
+        own_device_row(&a, A, Some("KA"));
+        exec(&a, &format!("UPDATE sync_devices SET {column} = 'OWN'"));
+        let from_a = send(&a);
+        let c = device(C);
+        apply(&c, &from_a);
+        let forged = changeset(B, 1, vec![device_row_with(A, column, "EVIL", clock(1, B))]);
+
+        let report = applied(&c, &forged);
+
+        assert_eq!(column_of(&c, A, column).as_deref(), Some("OWN"), "{column}");
+        assert_eq!(report.warnings.len(), 1, "{column}: {:?}", report.warnings);
+        assert!(
+            !report.warnings[0].contains("OWN") && !report.warnings[0].contains("EVIL"),
+            "the warning never names a value: {:?}",
+            report.warnings
+        );
+        let d = device(D);
+        applied(&d, &forged);
+        assert_eq!(column_of(&d, A, column).as_deref(), Some("EVIL"));
+        apply(&d, &from_a);
+        assert_eq!(column_of(&d, A, column).as_deref(), Some("OWN"), "{column}");
+        assert_converged(&[&a, &c, &d]);
+    }
+}
+
+#[test]
+fn a_later_certificate_for_a_device_that_has_one_is_ignored() {
+    let a = device(A);
+    own_device_row(&a, A, Some("KA"));
+    exec(&a, "UPDATE sync_devices SET cert = 'CERT-1'");
+    let c = device(C);
+    apply(&c, &send(&a));
+    let renewed = changeset(
+        A,
+        2,
+        vec![device_row_with(
+            A,
+            "cert",
+            "CERT-2",
+            clock(pack(now_ms() + 60_000, 0), A),
+        )],
+    );
+
+    let report = applied(&c, &renewed);
+
+    assert_eq!(column_of(&c, A, "cert").as_deref(), Some("CERT-1"));
+    assert_eq!(report.warnings.len(), 1, "{:?}", report.warnings);
+}
+
+/// A removal record is signed by another device, so no stamp is preferred: the older stays, in
+/// both orders.
+#[test]
+fn the_older_removal_record_stays_whoever_stamped_it() {
+    let older = changeset(
+        B,
+        1,
+        vec![device_row_with(
+            A,
+            "removal_record",
+            "BY-B",
+            clock(pack(now_ms() + 60_000, 0), B),
+        )],
+    );
+    let newer_own = changeset(
+        A,
+        1,
+        vec![device_row_with(
+            A,
+            "removal_record",
+            "BY-A",
+            clock(pack(now_ms() + 120_000, 0), A),
+        )],
+    );
+    let c = device(C);
+    applied(&c, &older);
+    applied(&c, &newer_own);
+    let d = device(D);
+    applied(&d, &newer_own);
+    applied(&d, &older);
+
+    for conn in [&c, &d] {
+        assert_eq!(
+            column_of(conn, A, "removal_record").as_deref(),
+            Some("BY-B")
+        );
+    }
+}
+
 /// The residual the rule leaves (audit M6): the clock's device is written by whoever seals the
 /// changeset, so a holder of the vault key can stamp a key with another device's own ID and an
 /// older clock, and it is taken. Nothing may trust the column for rekeying until changes are

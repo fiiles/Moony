@@ -187,14 +187,16 @@ pub fn note_starting_barrier(conn: &Connection) -> Result<()> {
 }
 
 /// Turns sync off on this device (§11.6, local part): capture goes, and so does every sync row
-/// (the held gaps' Local keys included). Local data stays.
+/// (the held gaps' Local keys, the trust store and the key epochs included; the `sync_state` row
+/// goes whole, with its signing key and any pending key change). Local data stays.
 pub fn disable(conn: &Connection) -> Result<()> {
     in_savepoint(conn, "sync_disable", || {
         capture::uninstall(conn)?;
         conn.execute_batch(
             "DELETE FROM sync_state; DELETE FROM sync_clock; DELETE FROM sync_outbox; \
              DELETE FROM sync_heads; DELETE FROM sync_own_log; DELETE FROM sync_unsent; \
-             DELETE FROM sync_typed; DELETE FROM sync_blobs; DELETE FROM sync_held_blobs;",
+             DELETE FROM sync_typed; DELETE FROM sync_blobs; DELETE FROM sync_held_blobs; \
+             DELETE FROM sync_trust; DELETE FROM sync_epochs;",
         )?;
         clear_vault_went_back(conn)?;
         clear_skipped_miss(conn)?;
@@ -793,6 +795,30 @@ mod tests {
 
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_blobs"), 0);
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_held_blobs"), 0);
+    }
+
+    #[test]
+    fn turning_sync_off_forgets_the_trust_store_and_the_epochs() {
+        let conn = migrated();
+        enable(&conn, DEVICE).unwrap();
+        conn.execute_batch(
+            "UPDATE sync_state SET device_sign_key = x'01', rotation_pending = '{}', \
+               rekey_seen = 2, kit_epoch_saved = 1, snapshot_epoch_due = 1; \
+             INSERT INTO sync_trust (device, cert, kind, issuer, sign_pub, box_pub, state, \
+               pinned_at) VALUES ('d', 'c', 1, 'd', x'01', x'02', 'trusted', 1); \
+             INSERT INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (0, 0, 1);",
+        )
+        .unwrap();
+
+        disable(&conn).unwrap();
+
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_trust"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_epochs"), 0);
+        assert_eq!(
+            count(&conn, "SELECT COUNT(*) FROM sync_state"),
+            0,
+            "the row and its new columns go"
+        );
     }
 
     #[test]

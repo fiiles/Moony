@@ -1,7 +1,8 @@
 //! Per-column merge of a live row (D12): last writer wins by `(hlc, device)`, column groups taken
 //! whole from the newer side, the weak `pending` of `stock_splits.status` (correction 9), and the
-//! write-once `sync_devices.public_key`, where a key stamped with the device's own ID beats one
-//! stamped with any other (audit M6; see `own_key` for what that stamp is worth).
+//! write-once `sync_devices` columns, where a public key, certificate or `left` record stamped
+//! with the device's own ID beats one stamped with any other (audit M6; see `own_key` for what
+//! that stamp is worth).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
@@ -55,8 +56,9 @@ pub(super) fn merge(
                     (false, false) => *clock > ours,
                 }
             }
-            // Non-NULL beats NULL. A device's public key stamped with the device's own ID (the
-            // clock's device is the row's, `own_key`) beats one stamped with any other ID (audit
+            // Non-NULL beats NULL. A device's public key, certificate or `left` record stamped
+            // with the device's own ID (the clock's device is the row's, `own_key`) beats one
+            // stamped with any other ID (audit
             // M6); between two alike the older clock wins (write-once, as `devices.rs` keeps the
             // first key with `COALESCE`). A fixed order on (value, clock), so the outcome does not
             // depend on the order the devices see them in.
@@ -118,14 +120,18 @@ pub(super) fn merge(
     merged
 }
 
-/// Whether `clock` stamps a device's public key with the device's own ID: the row of
-/// `sync_devices` is keyed by the device's ID in hex, and the clock's device is that ID. Always
-/// `false` for every other column. The stamp is not proof: any holder of the vault key writes
-/// changesets with whatever clock device it likes, so it can forge it. It only stops an honest
-/// device's stale or mistaken write from replacing another device's key; the column must not be
-/// trusted for rekeying until changes are signed per device.
+/// Whether `clock` stamps a device's public key, certificate or `left` record with the device's
+/// own ID: the row of `sync_devices` is keyed by the device's ID in hex, and the clock's device is
+/// that ID; each of the three is written by the device itself. Always `false` for every other
+/// column (`removal_record` is signed by another device, so the older value stays). The stamp is
+/// not proof: any holder of the vault key writes changesets with whatever clock device it likes,
+/// so it can forge it. It only stops an honest device's stale or mistaken write from replacing
+/// another device's value; what decides who gets a new key is the signed certificate, verified
+/// and pinned by the trust store (phase 5), never this column alone.
 fn own_key(table: &str, column: &str, pk: &str, clock: Clock) -> bool {
-    table == "sync_devices" && column == "public_key" && pk == clock.device.to_hex()
+    table == "sync_devices"
+        && matches!(column, "public_key" | "cert" | "left_record")
+        && pk == clock.device.to_hex()
 }
 
 fn is_weak_value(table: &str, column: &str, value: &SqlValue) -> bool {

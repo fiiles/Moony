@@ -1110,15 +1110,14 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     `last_hash` follows. A second call changes nothing (envelopes under the current epoch before
     the first older one are left alone). An envelope whose header does not read is not "older"
     and goes as it stands.
-48. **`sync_epochs` records the server's head** (coordinator's ruling 1 on Tasks 7–8):
-    `Rotated::head` on the remover, `Rekey::head` on everyone else, never cross-checked against
-    anything signed: the remover cannot know the head before the server answers, and changing
-    the bundle bytes would need a new version. It is safe because a wrong head can only stall: the
-    new key exists only after the rotation (no op under it at or below the true head) and the
-    retired token is read-only (no op under an older key above it), so a head reported too high
-    stops the pull at the first new-epoch op (`Invalid`), one too low stops it at an old-epoch op
-    above it (`Invalid`, before the chain could read an own envelope as a copy), and re-sealing
-    waits for the reported head. A server can stall sync anyway.
+48. **`sync_epochs` records the server's head, provisionally on every device but the remover**
+    (coordinator's ruling 1 on Tasks 7–8, corrected by the review of Tasks 9–10; superseded in
+    part by items 62–65). `Rotated::head` on the remover, `Rekey::head` on everyone else. The
+    claim this item first made, that a wrong head "can only stall", is false: a removed device
+    keeps the old key, and a server colluding with it can take its pushes after the true head and
+    report a head above them to another device, whose epoch rule then lets those old-key ops in.
+    The head the server reports with a bundle is therefore only provisional until the remover's
+    signed head confirms it (item 62); the remover's own head is what it signs.
 49. **A server that went back after a key change** (coordinator's ruling 2): the page check runs
     before any op is judged (`pull::check_page`, head below the cursor → `ServerWentBack`), and
     positions the restore reissues lie past the rotation head under the new epoch, so the epoch
@@ -1146,6 +1145,10 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
       (`keys::store_key_change`, refused unless the stored epoch is the one before), the older
       epochs' missing heads, the new epoch's head (by the signer), `cut_off_all_pending`,
       `rekey_seen` and the notice.
+    (Amended by items 63, 66 and 67: the new epoch's head is recorded provisionally, the
+    server's token for the new key is probed before anything is stored, a signer this device
+    knows was removed is refused, a passed-over bundle must open with the key held for its
+    epoch, and the pager is bounded.)
 51. **The triggers in the round** (`engine::round_steps`): a pull stopped on an op whose header
     names a later epoch (`PullReport::key_hint`), and a push or snapshot upload answered
     `ReadOnlyToken`, run the pickup; adopted, the round runs again with the new key (its pull
@@ -1157,7 +1160,8 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     runs the pickup. No extra call, and nothing on the network outside a round's deadline (a call
     in the engine's start check, which holds the round lock and has no deadline, could pin it).
     The pending change of this device is likewise resolved by the first round, not by the start
-    check (§6.4 step 6's "at every engine start" is that round).
+    check (§6.4 step 6's "at every engine start" is that round). (Amended by item 64: the vault's
+    info is now read before the pull.)
 52. **The removed device** (`rekey::removed_here(conn, data_dir, by, at)`): writes the Local
     `sync.removed_notice` = `{"by": "<name>", "at": n, "unsent": n}` (`unsent` = outbox rows +
     unsent envelopes; `by` the remover's name in this device's list, else its 8 hex characters)
@@ -1219,3 +1223,104 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     `ServerWentBack` outranks them (`status::went_back`); the lanes treat them like `KeyRotated`
     (downloads only). The wire (`shared/schema.ts`, `generated-types.ts`) is Task 16's, so the
     generated types drift until then.
+
+**Review of Tasks 9–10 (a lying server and the key change).**
+
+62. **The remover signs the head** (`rekey::head`). In `rotate::commit`'s savepoint, after the new
+    key is current, `head::queue_signed_head` seals this device's next envelope under the new key
+    with no rows and a `HeadRecord` in the changeset's new optional `"rekey"` field (base64url;
+    `Changeset::rekey_head`; a reader from before phase 5 ignores it):
+    `"moony rekey head v1" ‖ vault_id (16) ‖ signer (16) ‖ from_epoch (u32) ‖ to_epoch (u32) ‖
+    rotation (u32) ‖ head (u64) ‖ sig (64)`, Ed25519 by the remover's device key over every byte
+    before `sig` (its own domain tag, not the device record's). It is the first envelope sealed
+    under the new key and goes out through `sync_unsent` like any other, so a crash cannot lose
+    it; envelopes this device had not sent under the old key come before it in its chain and are
+    sealed again in front of it (item 47), which keeps the record's content. Receivers apply it as
+    an empty changeset. Design choice: the record rides in a changeset (no new wire object, no
+    table, no migration) rather than in a row.
+63. **Every other device takes the server's head provisionally** (`head::note_unverified`, at
+    adoption when the epoch's row is new): the Local `app_config` key `sync.epochs_unverified`
+    holds `[{"epoch", "head", "rotation", "by", "after", "scanned", "refuted"}]`, `after` being
+    this device's cursor when it adopted the key (what it had pulled before the key change). The
+    key goes with `sync_epochs` (turning off, a join's replace); a re-join keeps both. Until the
+    head is verified:
+    - the pull stops before an op sealed under an epoch below an unverified one at a position past
+      that entry's `after` (`head::awaits_head`, checked right after the epoch rule;
+      `PullStop::KeyChangeUnconfirmed`, problem `keyRotated`, "Přebírám nový klíč…"; nothing past
+      it applied, no push, as for any stopped pull);
+    - nothing is sealed again under the new key: `reseal::may_reseal` reads only verified heads
+      (`head::verified_epochs`), which also fixes the double send a lowered head allowed;
+    - the heads this device hands on (a holder's slot 2, a snapshot's `Keys` record, a bundle's
+      older keys) are only verified ones: an unverified epoch travels without a head.
+    Before every pass of a round, `head::verify_heads` reads ops past the provisional head with
+    ordinary pulls (from where the last look-ahead stopped, `MAX_LOOKAHEAD_PAGES` = 4 pages of 500
+    per epoch and round), applying nothing, for an envelope under that epoch or a later one that
+    opens here and carries a head record from the bundle's signer (`sync_epochs.by_device`) whose
+    signature verifies with that signer's pinned key. Same `from + 1 = to`, head and rotation as
+    the server reported → the entry goes (verified). Anything else → the entry is marked
+    `refuted` and every round ends with `keyChangeUnverified` before it pulls (nothing past the
+    cursor applied; the way out is turning sync off and joining again). Not found → waits; a
+    `410` there also only waits. Design choice: only old-epoch ops past `after` wait; new-epoch
+    ops (which a removed device cannot forge) are applied as soon as the epoch rule allows, so a
+    device that was caught up at the key change does not wait for the remover at all.
+64. **A key change is picked up before the pull** (review finding 1a): when the round reads the
+    vault's info (`Normal` when the snapshot policy wants it, always in `FirstSnapshot`, never in
+    `Drain`; a new engine's first round always does), it reads it before the pull, and a
+    `rotation` above `rekey_seen` runs the pickup first. The snapshot step still reads the info
+    again after the push (the snapshot's sequence is the head then, rulings P4/P14), so a round
+    that reads the info at all now reads it twice: one more call per policy check, not per round
+    (a design choice over reusing a stale head). A round whose policy does not want the info
+    still learns of a key change only from the pull (an op under a later epoch) or the push
+    (`403`). `rekey_seen` and whether a head waits are read in the round's first connection hold
+    (`engine::KeyState`), so a round with nothing waiting costs no extra hold.
+65. **Ops applied past a key change the server hid** (review finding 1d): when a head is verified
+    and the cursor this device had at adoption (`after`) is past it, this device applied old-key
+    ops past the key change before it learnt of it. It keeps the Local notice
+    `sync.key_change_overrun` = `{"epoch", "head", "through"}` (`rekey::key_change_overrun`;
+    cleared by turning off) and logs it; nothing is undone. **Residuals:** (a) a server that hides
+    a key change from a device (no `rotation` in its info, no new-key op served) partitions it,
+    and what it then serves under the old key is applied until the device learns of the change;
+    the notice only says so afterwards, and it reads the cursor, so ops applied behind a held gap
+    past the head go unnoticed. (b) The signed head binds the rotation point the server gave the
+    remover; it says nothing of what fills the positions up to it. A device that had not pulled
+    them yet can still be served a removed device's later old-key ops in those slots (the server
+    serving different devices different contents there; ops are authenticated only by the epoch
+    key, per-change signatures are not in phase 5), and a server that answers the remover with a
+    head above its real one leaves that many slots to fill. (c) A lagging device with old-key ops
+    past its place waits for the remover to push its signed head; a remover that never syncs again
+    leaves it waiting (`keyRotated`) until it turns sync off and joins again. (d) Ops pruned
+    below a snapshot before the look-ahead read them: the head stays unverified.
+66. **The pickup checks the server's token and the signer's removal** (review finding 3). A
+    bundle that passed every check under the lock is `Step::Probe`: `pick_up` asks `vault_info`
+    with the token the new key gives and adopts only when the server knows it (`401` →
+    `keyChangeUnverified`; any other failure ends the walk with the error, nothing kept). Before
+    the signature is checked, a signer this device already knows was removed or left is refused
+    (`keyChangeUnverified`): a removal or leave record in its list row that counts here
+    (`trust::record_counts`; the store may not have caught up with the row yet), or this device's
+    own pending key change removing it (`rotate::pending_removals`). A colluding server that also
+    accepts the token is not stopped by the probe; the signer check covers what this device
+    already knows.
+67. **The bundle pager ends** (review finding 4): every page's rotations must be above `after`
+    and strictly increasing (`pickup::check_walk_page`), and one walk takes at most
+    `MAX_BUNDLES_PER_WALK` = 64 bundles; otherwise the walk ends with a relay error
+    (`Transient(Relay)`). `rotate::own_rotation` (the remover's lookup of its own bundle) has the
+    same rules. A bundle whose header names an epoch this device holds is passed over (moving
+    `rekey_seen`) only when its body opens with the key held for that epoch; one that does not is
+    `keyChangeUnverified` and moves nothing, so a made-up header with a high rotation cannot hide
+    the real bundles. A header that does not parse stays `keyNotGiven` (visible) and blocks the
+    walk at it, as before.
+68. **A retired token at the call is checked against this device's own bundle** (review finding
+    5): on `403`, `send` first lists the bundles after `rekey_seen` (old token, read-only); one
+    with this change's exact bytes means it landed (an answer lost, then a wrong `401` for the new
+    token) and commits as this device's own (records, confirmations, the signed head). Otherwise
+    the other change is picked up **while this one is still stored** (so `pending_removals`
+    refuses a signer it removes), and only then is it wiped: a failure in between (the pickup's
+    network) keeps it, and the next resolution meets the `403` again (supersedes item 58's "wipe
+    the pending change" order for `403`).
+69. **A confirmed removal that did not happen leaves a notice** (review finding 2). When
+    `resolve_pending` (a round, no person waiting) ends a pending change without it happening —
+    a lost race (`Raced`, `AlreadyRemoved`), `409`, `400` or another refusal, or a change dropped
+    because the key moved on — it writes the Local `sync.removal_not_done` =
+    `{"by": "<name>"|null, "devices": ["<name>"], "alreadyRemoved": bool}` in the same hold as the
+    wipe (`rekey::removal_not_done`; cleared by turning off). `remove`, whose person sees the
+    answer, writes none. No new validation key: the texts are Task 16's status ones.

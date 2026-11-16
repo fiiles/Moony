@@ -772,3 +772,96 @@ async fn a_committed_paired_join_spends_its_ticket() {
         "no second certificate with the same ticket"
     );
 }
+
+/// A holder session at Compare with a joiner (the joiner shows), and the joiner's digits.
+async fn holder_at_compare(vault: &Vault) -> (PairingSession, PairingSession, String) {
+    let mut joiner = PairingSession::show(Role::Joiner, DEFAULT_RELAY_URL, NOW).expect("show");
+    let mut holder =
+        PairingSession::scan(Role::Holder, &pairing_code_text(&joiner.code()), NOW).expect("scan");
+    holder.announce(&vault.relay, NOW).await.expect("announce");
+    assert_eq!(
+        joiner.poll(&vault.relay, NOW).await.expect("scan"),
+        Stage::Compare
+    );
+    assert_eq!(
+        holder.poll(&vault.relay, NOW).await.expect("ack"),
+        Stage::Compare
+    );
+    let digits = joiner.comparison_code().expect("digits");
+    (holder, joiner, digits)
+}
+
+fn slot_2(vault: &Vault, session: &PairingSession) -> Option<Vec<u8>> {
+    vault.relay.peek_slot(&session.code().mailbox.to_b64(), 2)
+}
+
+/// Review of Task 5: the holder reads what it seals (with a fresh join ticket) holding off every
+/// round, and seals nothing on a wrong code or a failed slot write.
+#[tokio::test]
+async fn the_holders_confirm_reads_its_payload_holding_off_rounds() {
+    use crate::services::sync::pairing::holder;
+    let vault = vault().await;
+    with_genesis(&vault.a.lock(), "Mac");
+    let (mut session, _joiner, digits) = holder_at_compare(&vault).await;
+
+    // A round holds the profile: the confirm waits for it before it reads anything.
+    let round = vault.a.round_lock().lock().await;
+    let waiting = tokio::time::timeout(
+        std::time::Duration::from_millis(200),
+        holder::confirm(&mut session, &vault.relay, &vault.a, Some(&digits), NOW),
+    )
+    .await;
+    assert!(waiting.is_err(), "the confirm waits for the round");
+    assert_eq!(slot_2(&vault, &session), None);
+    drop(round);
+
+    let stage = holder::confirm(&mut session, &vault.relay, &vault.a, Some(&digits), NOW)
+        .await
+        .expect("confirm");
+    assert_eq!(stage, Stage::Sent);
+    assert!(slot_2(&vault, &session).is_some());
+}
+
+#[tokio::test]
+async fn a_wrong_code_or_a_failed_slot_write_seals_no_ticket() {
+    use crate::services::sync::pairing::holder;
+    let vault = vault().await;
+    with_genesis(&vault.a.lock(), "Mac");
+    let (mut session, _joiner, digits) = holder_at_compare(&vault).await;
+    let wrong = if digits == "000000" {
+        "111111"
+    } else {
+        "000000"
+    };
+
+    let mismatch = holder::confirm(&mut session, &vault.relay, &vault.a, Some(wrong), NOW)
+        .await
+        .expect_err("a wrong code");
+    assert_eq!(
+        validation_key(&mismatch),
+        Some("validation.syncPairingCodeMismatch")
+    );
+    assert_eq!(slot_2(&vault, &session), None, "nothing sealed");
+    assert_eq!(session.stage(), Stage::Compare);
+
+    vault
+        .relay
+        .fail_next(Route::MailboxPut, RelayError::Server(503));
+    let failed = holder::confirm(&mut session, &vault.relay, &vault.a, Some(&digits), NOW)
+        .await
+        .expect_err("the slot write fails");
+    assert!(matches!(failed, SyncError::Transient(_)), "{failed:?}");
+    assert_eq!(slot_2(&vault, &session), None, "nothing sealed");
+
+    // Sync off: nothing to seal, the pairing fails before any relay call.
+    let off = newcomer();
+    let (mut other, _joiner, digits) = holder_at_compare(&vault).await;
+    let refused = holder::confirm(&mut other, &vault.relay, &off, Some(&digits), NOW)
+        .await
+        .expect_err("sync is off");
+    assert_eq!(
+        validation_key(&refused),
+        Some("validation.syncPairingFailed")
+    );
+    assert_eq!(slot_2(&vault, &other), None);
+}

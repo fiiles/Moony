@@ -46,16 +46,14 @@ use crate::services::sync::impact::IMPACT_CHANGED;
 use crate::services::sync::keys;
 use crate::services::sync::pairing::holder;
 use crate::services::sync::pairing::session::{keeps_session, PairingSession, Stage};
-use crate::services::sync::pairing::{
-    pairing_code_text, typed_code_digits, MailboxId, Role, Side, SlotPayload,
-};
+use crate::services::sync::pairing::{pairing_code_text, MailboxId, Role, Side};
 use crate::services::sync::recovery::{qr_svg, read_recovery_input};
 use crate::services::sync::relay::http::{
     default_base_url, display_host, is_default_relay, is_insecure_address, normalize_base_url,
     HttpRelay,
 };
 use crate::services::sync::relay::Mailbox;
-use crate::services::sync::{devices, engine, join};
+use crate::services::sync::{devices, join};
 
 const NOT_STARTED: &str = "validation.syncPairingNotStarted";
 const EXPIRED: &str = "validation.syncPairingExpired";
@@ -381,26 +379,6 @@ async fn announced<M: Mailbox>(
     }
 }
 
-/// The holder's credentials when its confirm will seal them (holder, in Compare, not contested),
-/// read with sync on only; `None` for every other confirm.
-/// What the holder seals into slot 2 (protocol 3: its credentials, key heads and identity with
-/// a fresh join ticket), read holding off every round so it is one consistent state; `None`
-/// unless this session is a holder at Compare. The caller drops it right after sealing, which
-/// wipes the ticket's secret.
-async fn holder_payload(
-    session: &PairingSession,
-    db: &Database,
-) -> SyncResult<Option<SlotPayload>> {
-    if session.role() != Role::Holder || session.stage() != Stage::Compare || session.contested() {
-        return Ok(None);
-    }
-    let _no_round = engine::exclusive(db).await;
-    match db.with_conn(|conn| holder::holder_payload(conn, now()))? {
-        Some(payload) => Ok(Some(payload)),
-        None => Err(AppError::Validation(FAILED.into()).into()),
-    }
-}
-
 fn mailbox_of(session: &PairingSession) -> MailboxId {
     session.code().mailbox
 }
@@ -622,33 +600,16 @@ pub async fn sync_pairing_confirm(
     let confirmed = {
         let slot = pairing.live(&owner, now())?;
         let relay = HttpRelay::new(slot.session.relay_url())?;
-        // The vault keys are read only for text that can be a code: the session answers
-        // `CODE_INCOMPLETE` for anything else before it needs them.
-        let payload = if typed_code
-            .as_deref()
-            .is_some_and(|typed| typed_code_digits(typed).is_some())
-        {
-            holder_payload(&slot.session, &session).await
-        } else {
-            Ok(None)
-        };
-        match payload {
-            Ok(payload) => {
-                let confirmed = slot
-                    .session
-                    .confirm_with(
-                        &relay,
-                        payload.as_ref(),
-                        typed_code.as_deref().map(String::as_str),
-                        now(),
-                    )
-                    .await;
-                // The join ticket's secret goes as soon as slot 2 is sealed (or not).
-                drop(payload);
-                confirmed
-            }
-            Err(error) => Err(error),
-        }
+        // The vault keys are read only for text that can be a code, holding off every round;
+        // the join ticket's secret goes as soon as slot 2 is sealed (or not).
+        holder::confirm(
+            &mut slot.session,
+            &relay,
+            &session,
+            typed_code.as_deref().map(String::as_str),
+            now(),
+        )
+        .await
     };
     if let Err(error) = confirmed {
         pairing.end_unless_kept(&error);

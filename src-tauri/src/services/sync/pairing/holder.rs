@@ -8,11 +8,50 @@ use std::collections::BTreeMap;
 
 use rusqlite::Connection;
 
-use super::{PairingIdentity, SlotPayload};
-use crate::error::Result;
+use super::session::{PairingSession, Stage};
+use super::{typed_code_digits, PairingIdentity, Role, SlotPayload};
+use crate::error::{AppError, Result};
+use crate::services::sync::engine::{self, ConnAccess};
+use crate::services::sync::error::SyncResult;
 use crate::services::sync::identity::{self, cert, trust};
 use crate::services::sync::keys::{self, Credentials};
+use crate::services::sync::relay::Mailbox;
 use crate::services::sync::state;
+
+const FAILED: &str = "validation.syncPairingFailed";
+
+/// The person confirmed on this device (`PairingSession::confirm_with`). For a holder at Compare,
+/// not contested, with typed text that can be a code, the slot-2 payload is read first holding
+/// off every round of the profile (`engine::exclusive`, released before any relay call), so it is
+/// one consistent state; sync off or missing secrets answer `validation.syncPairingFailed`. The
+/// payload, and with it the join ticket's secret, is a local of this call: it is dropped (wiped)
+/// on every path, sealed or not — a wrong code, a slot write that failed, an expired session.
+pub async fn confirm<M: Mailbox, D: ConnAccess>(
+    session: &mut PairingSession,
+    mailbox: &M,
+    db: &D,
+    typed: Option<&str>,
+    now: i64,
+) -> SyncResult<Stage> {
+    let seals = session.role() == Role::Holder
+        && session.stage() == Stage::Compare
+        && !session.contested()
+        && typed.is_some_and(|typed| typed_code_digits(typed).is_some());
+    let payload = if seals {
+        let _no_round = engine::exclusive(db).await;
+        match db.with_conn(|conn| holder_payload(conn, now))? {
+            Some(payload) => Some(payload),
+            None => return Err(AppError::Validation(FAILED.into()).into()),
+        }
+    } else {
+        None
+    };
+    let confirmed = session
+        .confirm_with(mailbox, payload.as_ref(), typed, now)
+        .await;
+    drop(payload);
+    confirmed
+}
 
 /// The holder's slot-2 payload, `None` while sync is off or the vault's secrets are missing.
 pub fn holder_payload(conn: &Connection, now: i64) -> Result<Option<SlotPayload>> {

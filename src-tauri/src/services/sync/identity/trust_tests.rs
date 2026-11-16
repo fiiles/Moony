@@ -291,16 +291,46 @@ fn a_rejoin_certificate_is_pinned_when_its_predecessor_is_trusted() {
 }
 
 #[test]
-fn a_certificate_from_a_removed_issuer_is_not_pinned() {
+fn a_removed_issuer_vouches_only_for_what_it_issued_before_its_removal() {
     let conn = supported();
-    row(&conn, B, Some(&B.kit()));
-    trust::refresh(&conn, NOW).unwrap();
-    set_record(&conn, B, "removal_record", &ME.removes(B));
-    row(&conn, C, Some(&C.paired_by(B, 0x71)));
+    with_b(&conn);
+    set_record(&conn, B, "removal_record", &ME.removes_at(B, NOW + 10));
+    // C was paired before B's removal, D after it.
+    row(&conn, C, Some(&C.paired_by_at(B, 0x71, NOW + 5, NOW + 10)));
+    row(&conn, D, Some(&D.paired_by_at(B, 0x72, NOW + 5, NOW + 11)));
+    // E's ticket is from after the removal.
+    row(&conn, E, Some(&E.paired_by_at(B, 0x73, NOW + 11, NOW + 9)));
 
     trust::refresh(&conn, NOW).unwrap();
 
     assert_eq!(state_of(&conn, B), Some(TrustState::Removed));
+    assert_eq!(state_of(&conn, C), Some(TrustState::Trusted));
+    assert_eq!(state_of(&conn, D), None);
+    assert_eq!(state_of(&conn, E), None);
+}
+
+#[test]
+fn a_device_that_left_vouches_only_for_what_it_issued_before_it_left() {
+    let conn = supported();
+    with_b(&conn);
+    set_record(&conn, B, "left_record", &B.left_at(NOW + 10));
+    row(&conn, C, Some(&C.paired_by_at(B, 0x71, NOW + 5, NOW + 10)));
+    row(&conn, D, Some(&D.paired_by_at(B, 0x72, NOW + 5, NOW + 11)));
+    row(&conn, E, Some(&E.paired_by_at(B, 0x73, NOW + 11, NOW + 9)));
+
+    trust::refresh(&conn, NOW).unwrap();
+
+    assert_eq!(state_of(&conn, B), Some(TrustState::Left));
+    assert_eq!(state_of(&conn, C), Some(TrustState::Trusted));
+    assert_eq!(state_of(&conn, D), None, "certificate after leaving");
+    assert_eq!(state_of(&conn, E), None, "ticket after leaving");
+
+    // A re-join successor of a device that left: the same bound.
+    let conn = supported();
+    with_b(&conn);
+    set_record(&conn, B, "left_record", &B.left_at(NOW + 10));
+    row(&conn, C, Some(&C.rejoin_of(B, NOW + 11)));
+    trust::refresh(&conn, NOW).unwrap();
     assert_eq!(state_of(&conn, C), None);
 }
 

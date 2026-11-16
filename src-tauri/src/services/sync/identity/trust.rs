@@ -15,9 +15,10 @@
 //! recipients a key-change bundle endorses (`import_bundle`), and a Kit joiner's trust on first
 //! use (`tofu_from_rows`). A genesis certificate arriving through sync is never pinned.
 //!
-//! An issuer vouches when its entry is pinned with the same signing key and is not `removed`: a
-//! device that left signed what it paired while it was in (its signing key goes with its
-//! `sync_state` row when it leaves), so its earlier pairings stay verifiable. A `removed` record
+//! An issuer vouches when its entry is pinned with the same signing key and is `trusted`, or left
+//! or was removed after it issued the certificate and its join ticket (`vouches`): a device that
+//! left signed what it paired while it was in (its signing key goes with its `sync_state` row when
+//! it leaves), so its earlier pairings stay verifiable, and nothing it dates later. A `removed` record
 //! counts when its signer is pinned and either `trusted`, or left or removed by a record whose
 //! time is not before the removal's own (`speaks_at`): what a device signed while it was in counts
 //! whether the news of its leaving arrives before or after. Within one `refresh` pass every record
@@ -449,12 +450,18 @@ fn apply_move(conn: &Connection, record: &Record, cut_off_epoch: Option<u32>) ->
     Ok(changed > 0)
 }
 
-/// Whether `issuer` vouches for a certificate naming it with `issuer_sign_pub`: pinned with that
-/// key and not removed.
-fn vouches(store: &BTreeMap<DeviceId, TrustEntry>, issuer: DeviceId, sign_pub: &[u8; 32]) -> bool {
-    store
-        .get(&issuer)
-        .is_some_and(|e| e.state != TrustState::Removed && &e.sign_pub == sign_pub)
+/// Whether the issuer of a paired or re-join `cert` vouches for it: pinned with the signing key
+/// the certificate names, and `speaks_at` both the certificate's `issued_at` and its ticket's (a
+/// device that left or was removed vouches only for what it issued until then).
+fn vouches(store: &BTreeMap<DeviceId, TrustEntry>, cert: &Certificate) -> bool {
+    store.get(&cert.body.issuer_device).is_some_and(|issuer| {
+        issuer.sign_pub == cert.body.issuer_sign_pub
+            && speaks_at(issuer, cert.body.issued_at)
+            && cert
+                .ticket
+                .as_ref()
+                .is_none_or(|ticket| speaks_at(issuer, ticket.issued_at))
+    })
 }
 
 /// Whether `signer` speaks for a record it signed at `at`: while it is `trusted`, and after it
@@ -613,9 +620,7 @@ pub fn refresh(conn: &Connection, now: i64) -> Result<RefreshReport> {
         settle(conn, now, &mut report, |cert, store| match cert.body.kind {
             CertKind::Genesis => false,
             CertKind::RecoveryKit => true,
-            CertKind::Paired | CertKind::Rejoin => {
-                vouches(store, cert.body.issuer_device, &cert.body.issuer_sign_pub)
-            }
+            CertKind::Paired | CertKind::Rejoin => vouches(store, cert),
         })?;
         Ok(report)
     })

@@ -58,6 +58,7 @@ import { RecoverySteps } from '@/components/auth/RecoverySteps';
 import { BiometricUnlockButton } from '@/components/auth/BiometricUnlockButton';
 import { RestoreBackup } from '@/components/common/RestoreBackup';
 import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
+import { vocative } from '@/utils/vocative';
 
 type Panel = 'unlock' | 'recover' | 'newKey';
 
@@ -286,12 +287,11 @@ export default function AuthPage() {
 
         {showPanel === 'unlock' && (
           <>
-            <h1 className="m-0 text-[24px] font-650 tracking-[-0.05em] text-ink">
-              {greetingName ? t('login.titleNamed', { name: greetingName }) : t('login.title')}
+            <h1 className="mb-6 mt-0 text-[24px] font-650 tracking-[-0.05em] text-ink">
+              {greetingName
+                ? t('login.titleNamed', { name: vocative(greetingName, i18n.language) })
+                : t('login.title')}
             </h1>
-            <p className="mb-6 mt-2 text-body leading-[1.5] text-ink-3">
-              {t(syncFeature ? 'login.leadSync' : 'login.lead')}
-            </p>
             {biometricReady && (
               <div className="mb-5 space-y-4">
                 <BiometricUnlockButton

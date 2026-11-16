@@ -1,14 +1,18 @@
 //! Device identities (phase 5 spec §5.2): each device's Ed25519 signing key, the certificates
 //! that bind a device ID to its signing and box keys inside one vault and say how it got in
-//! (`cert`), and the signed `left` and `removed` records (`record`). The signing seed lives in
+//! (`cert`), the signed `left` and `removed` records (`record`), and the pinned store of the
+//! devices this device has verified (`trust`). The signing seed lives in
 //! `sync_state.device_sign_key`, never crosses IPC and never appears in a log line; like every
 //! sync secret it sits in a `Zeroizing` buffer and prints `<redacted>`.
 
 pub mod cert;
 pub mod record;
+pub mod trust;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod trust_tests;
 
 use std::fmt;
 

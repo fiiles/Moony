@@ -782,3 +782,50 @@ its own `DATA_DIR`:
    start the server: the change completes by itself.
 7. Languages: English, Czech, German, Japanese for steps 1–4 on the desktop and the phone; the phone
    at 360 pt wide with the largest text size (rows wrap, nothing overflows); one pass in dark mode.
+
+## As built (phase 5)
+
+Decisions made while building, in the spirit of the spec; each supersedes the text above it.
+
+**Tasks 1–3 (identities, migration 040, trust store).**
+
+1. **Record shapes are checked at decode.** A `left` record must name its subject as signer; a
+   `removed` record must not (removing itself is "Vypnout synchronizaci", §6.4). A paired or
+   re-join certificate whose issuer device is the subject itself is refused, as is a genesis or
+   Kit certificate whose issuer fields differ from the subject's.
+2. **Every certificate and record is checked against this device's vault ID** before it is
+   pinned or applied; a certificate in a `sync_devices` row must also name that row's ID.
+3. **An issuer vouches when it is pinned with the signing key the certificate names and is not
+   `removed`**, so a device that **left** still vouches for what it paired or re-joined before
+   (§5.4's table says "`trusted`"). Reason: pairing a new phone from an old one and then retiring
+   the old one is common; with "`trusted`" only, any device that hears of both at once would leave
+   the new phone unverified for good. A device that left signs nothing afterwards (its signing key
+   goes with its `sync_state` row). A `removed` record still needs a `trusted` signer, as written.
+4. **Order inside one `trust::refresh` pass:** every record is judged against the store as it was
+   before the pass (so two records that arrive together, "B removed C" and "A removed B", both
+   apply whatever the row order), records apply before certificates (a certificate whose issuer is
+   removed in the same pull is not pinned), and the pass repeats until nothing changes. Two new
+   certificates that share one join ticket in the same pass: the lower device ID is pinned, the
+   other is reported as `TicketReused`.
+5. **`RefreshReport.about_me`** holds every verified removal record naming this device and every
+   verified `left` record naming it: this device signs its own `left` record only on its way out,
+   after which its store is gone, so one it meets while syncing was made by another holder of its
+   key. The store's own entry is never moved; the caller ends sync (§7.4).
+6. **Pairing export JSON** (`trust::TrustExport`): `{"entries":[{"cert":"<b64>","state":
+   "trusted"|"left"|"removed","record":"<b64>"?,"cutOffEpoch":n?}]}`, unknown fields refused, at
+   most 256 entries. `import_export` seeds an **empty** store only (the join clears or starts
+   empty); the holder must be in it as `trusted`; a `trusted` entry carries no record and no
+   cut-off; a `left` record must verify with its subject's key, a `removed` one with another
+   entry's.
+7. **`trust::import_bundle`** never replaces a pinned certificate (the pin wins, logged), skips a
+   recipient whose join ticket is already pinned to another ID (logged), and fails as a whole when
+   a certificate does not verify or a removal record's signer is unknown.
+8. **Signatures** (small API differences from the plan): `import_export(conn, export, holder,
+   now)` takes the pin time; `recipients(conn, removing)` takes no time (O11 compares the old ID's
+   newest `sync_clock` second with its successor's `issued_at`); `mark_left(conn, record)` and
+   `mark_removed(conn, record, cut_off_epoch)` take the subject from the record and verify it
+   (`mark_removed` needs a `trusted` signer). `recipients` lists rows without a pinned certificate
+   as `Unverified` when they have a public key and `NoKey` when they have none; a pinned entry is
+   always sealed to its pinned `box_pub`, whatever the row's `public_key` says.
+9. **Merge:** `removal_record` keeps the older value whoever stamped it; `cert` and `left_record`
+   follow `public_key`'s own-ID stamp rule (migration 040, `merge/columns.rs`).

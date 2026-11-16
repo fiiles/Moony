@@ -1246,10 +1246,21 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     head is verified:
     - the pull stops before an op sealed under an epoch below an unverified one at a position past
       that entry's `after` (`head::awaits_head`, checked right after the epoch rule;
-      `PullStop::KeyChangeUnconfirmed`, problem `keyRotated`, "Přebírám nový klíč…"; nothing past
-      it applied, no push, as for any stopped pull);
-    - nothing is sealed again under the new key: `reseal::may_reseal` reads only verified heads
-      (`head::verified_epochs`), which also fixes the double send a lowered head allowed;
+      `PullStop::KeyChangeUnconfirmed`, problem `keyChangeWaiting`, a new `SyncProblem` in phase
+      `paused`, the lanes downloading only: "Čeká se, až se připojí zařízení, které změnu
+      provedlo"; nothing past it applied, no push, as for any stopped pull);
+    - what this device had not sent is sealed again under the new key only when the round's pull
+      reached the current epoch's start and either that start is verified, or (only the
+      server's, not refuted) this pass's own pull got there **without any stop**
+      (`reseal::may_reseal(conn, creds, through, clean_through)`). Why the second case is safe
+      from a double send: every op up to the head was then dealt with, so every own envelope the
+      server holds up to it came back and left `sync_unsent`; a head lowered below an own envelope
+      the server took puts that envelope above the head under the old epoch, where the epoch rule
+      stops the pull (`Invalid`), a head raised above new-key ops stops it the same way, and a
+      removed device's old-key ops past `after` stop it (`KeyChangeUnconfirmed`). A server that
+      withholds an own envelope from this device alone could still make it sealed again; that
+      holds with a verified head as well, and the copy then quarantines its author elsewhere (a
+      fork, visible), never applies twice;
     - the heads this device hands on (a holder's slot 2, a snapshot's `Keys` record, a bundle's
       older keys) are only verified ones: an unverified epoch travels without a head.
     Before every pass of a round, `head::verify_heads` reads ops past the provisional head with
@@ -1259,10 +1270,28 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     signature verifies with that signer's pinned key. Same `from + 1 = to`, head and rotation as
     the server reported → the entry goes (verified). Anything else → the entry is marked
     `refuted` and every round ends with `keyChangeUnverified` before it pulls (nothing past the
-    cursor applied; the way out is turning sync off and joining again). Not found → waits; a
-    `410` there also only waits. Design choice: only old-epoch ops past `after` wait; new-epoch
-    ops (which a removed device cannot forge) are applied as soon as the epoch rule allows, so a
-    device that was caught up at the key change does not wait for the remover at all.
+    cursor applied; the way out is turning sync off and joining again). Not found → waits. Design
+    choice: only old-epoch ops past `after` wait; new-epoch ops (which a removed device cannot
+    forge) are applied as soon as the epoch rule allows. So a device that was caught up at the key
+    change (no old-epoch op past `after`) does not wait for the remover: its pulls apply, and with
+    a clean pull it seals again and pushes what it had not sent (above). Only a device with
+    old-key ops still to pull past its place waits (`keyChangeWaiting`). The look-ahead reads 4
+    ops a page under `cfg(test)`, so a test reaches the page cap.
+
+    **After a snapshot restore** (review round 2, `head::after_restore`, in the restore's
+    savepoint after `adopt_keys`, by merge and by replace): an entry whose head the snapshot's
+    `Keys` record names alike is verified (a `Keys` entry carries that epoch's key, which
+    `adopt_keys` checks against the one held, so only a holder of the new key can name its head,
+    and a dumper names only heads it verified); every other entry's look-ahead starts at the
+    snapshot's sequence, below which the server pruned the ops. A look-ahead that meets `410`
+    goes on from this device's cursor next time. A snapshot naming another head than the
+    provisional one is refused by `adopt_keys` (`syncSnapshotInvalid`), as before.
+
+    **A refuted device and later key changes:** the refutation stays (in `sync.epochs_unverified`)
+    and every round ends with `keyChangeUnverified` before it pulls, whatever is picked up later.
+    A later bundle that names the refuted epoch's start (signed) contradicts the server's head and
+    is not taken (`keyChangeUnverified`); one that names none is taken, and the new epoch is
+    provisional in its turn. Either way nothing past the cursor is applied.
 64. **A key change is picked up before the pull** (review finding 1a): when the round reads the
     vault's info (`Normal` when the snapshot policy wants it, always in `FirstSnapshot`, never in
     `Drain`; a new engine's first round always does), it reads it before the pull, and a
@@ -1272,7 +1301,9 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     (a design choice over reusing a stale head). A round whose policy does not want the info
     still learns of a key change only from the pull (an op under a later epoch) or the push
     (`403`). `rekey_seen` and whether a head waits are read in the round's first connection hold
-    (`engine::KeyState`), so a round with nothing waiting costs no extra hold.
+    (`engine::KeyState`), so a round with nothing waiting costs no extra hold. A pass reacts to
+    the info only when its rotation is above what the round already looked at (review round 2),
+    so a counter with nothing to pick up costs one bundle walk a round, not two.
 65. **Ops applied past a key change the server hid** (review finding 1d): when a head is verified
     and the cursor this device had at adoption (`after`) is past it, this device applied old-key
     ops past the key change before it learnt of it. It keeps the Local notice
@@ -1288,8 +1319,13 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     key, per-change signatures are not in phase 5), and a server that answers the remover with a
     head above its real one leaves that many slots to fill. (c) A lagging device with old-key ops
     past its place waits for the remover to push its signed head; a remover that never syncs again
-    leaves it waiting (`keyRotated`) until it turns sync off and joins again. (d) Ops pruned
-    below a snapshot before the look-ahead read them: the head stays unverified.
+    leaves it waiting (`keyChangeWaiting`) until it turns sync off and joins again. (d) Ops pruned
+    below a snapshot before the look-ahead read them: a restored snapshot that names the head
+    settles it; one that does not moves the look-ahead past the prune, and a signed head that was
+    itself pruned leaves the head unverified until a later snapshot names it (a device holding it
+    verified, the remover included, dumps it). Meanwhile it applies new-epoch ops, seals again
+    once a pull past the head is clean (the restore acknowledged the own envelopes the snapshot
+    holds, as their echo would have), and hands the epoch on without a head.
 66. **The pickup checks the server's token and the signer's removal** (review finding 3). A
     bundle that passed every check under the lock is `Step::Probe`: `pick_up` asks `vault_info`
     with the token the new key gives and adopts only when the server knows it (`401` →
@@ -1316,7 +1352,10 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     the other change is picked up **while this one is still stored** (so `pending_removals`
     refuses a signer it removes), and only then is it wiped: a failure in between (the pickup's
     network) keeps it, and the next resolution meets the `403` again (supersedes item 58's "wipe
-    the pending change" order for `403`).
+    the pending change" order for `403`). The listing (here and in
+    `own_rotation`) is the server's word, trusted as the rotation and head of a `200` are. A crash
+    after the pickup adopted the other change and before the wipe: the next resolution finds the
+    key moved on, wipes it and leaves the notice of item 69.
 69. **A confirmed removal that did not happen leaves a notice** (review finding 2). When
     `resolve_pending` (a round, no person waiting) ends a pending change without it happening —
     a lost race (`Raced`, `AlreadyRemoved`), `409`, `400` or another refusal, or a change dropped

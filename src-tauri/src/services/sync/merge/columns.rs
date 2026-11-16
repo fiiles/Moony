@@ -145,7 +145,11 @@ pub(super) fn merge(
 
 /// The write-once columns whose values are checked on their own (`identity::write_once_value_valid`).
 fn is_checked(table: &str, column: &str) -> bool {
-    table == "sync_devices" && matches!(column, "cert" | "left_record" | "removal_record")
+    table == "sync_devices"
+        && matches!(
+            column,
+            "cert" | "left_record" | "removal_record" | "confirm_record"
+        )
 }
 
 /// Whether `value` of the checked column holds up on its own. The row's certificate for a `left`
@@ -175,7 +179,8 @@ fn valid(
 /// Whether `clock` stamps a device's public key, certificate or `left` record with the device's
 /// own ID: the row of `sync_devices` is keyed by the device's ID in hex, and the clock's device is
 /// that ID; each of the three is written by the device itself. Always `false` for every other
-/// column (`removal_record` is signed by another device, so the older value stays). The stamp is
+/// column (`removal_record` and `confirm_record` are signed by another device, so the older
+/// value stays). The stamp is
 /// not proof: any holder of the vault key writes changesets with whatever clock device it likes,
 /// so it can forge it. It only stops an honest device's stale or mistaken write from replacing
 /// another device's value; what decides who gets a new key is the signed certificate, verified

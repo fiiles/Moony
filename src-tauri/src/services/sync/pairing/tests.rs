@@ -132,6 +132,7 @@ fn identity() -> PairingIdentity {
                 record: None,
                 cut_off_epoch: None,
                 kit_unconfirmed: false,
+                confirmed: false,
             }],
         },
         ticket_secret: secret,

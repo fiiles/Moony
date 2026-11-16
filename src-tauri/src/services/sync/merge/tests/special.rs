@@ -670,7 +670,7 @@ fn cert_of(device: DeviceId, vault: [u8; 16], byte: u8) -> Certificate {
 fn poisonable_row(column: &str, value: &str, at: Clock, with_cert: bool) -> RowChange {
     // Every column of the row is carried, as the journal sends it.
     let mut change = device_change(A, "KA", at);
-    for other in ["cert", "left_record", "removal_record"] {
+    for other in ["cert", "left_record", "removal_record", "confirm_record"] {
         set(&mut change, other, SqlValue::Null, at);
     }
     set(&mut change, "removed", SqlValue::Integer(0), at);
@@ -696,7 +696,12 @@ fn an_invalid_write_once_value_never_beats_a_valid_one_in_either_order() {
     let forged_left = Record::sign(RecordType::Left, VAULT, A, A, NOW, 0, &seed(0x0c))
         .expect("left")
         .to_b64();
+    let confirmation =
+        Record::sign(RecordType::Confirmed, VAULT, A, B, NOW, 0, &seed(0x0b)).expect("confirmed");
     let cases: Vec<(&str, String, String)> = vec![
+        ("confirm_record", confirmation.to_b64(), "EVIL".into()),
+        // A removal record in the confirmation column has the wrong shape for it.
+        ("confirm_record", confirmation.to_b64(), removal.to_b64()),
         ("cert", cert_of(A, VAULT, 0x0a).to_b64(), "EVIL".into()),
         ("cert", cert_of(A, VAULT, 0x0a).to_b64(), other_vault),
         ("left_record", left.to_b64(), "EVIL".into()),

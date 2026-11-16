@@ -1144,7 +1144,12 @@ fn a_confirmed_kit_device_confirms_what_it_paired_and_its_removals_count() {
     assert_eq!(state_of(&conn, C), Some(TrustState::Trusted));
 
     // The person ticked B in a key change that committed.
-    assert_eq!(trust::confirm_kit(&conn, &[B.id()]).unwrap(), 1);
+    conn.execute(
+        "UPDATE sync_state SET device_sign_key = ?1",
+        [ME.seed().expose().to_vec()],
+    )
+    .unwrap();
+    assert_eq!(trust::confirm(&conn, &[B.id()], NOW).unwrap().len(), 1);
     let report = trust::refresh(&conn, NOW).unwrap();
 
     assert_eq!(kit_flag(&conn, B), Some(false));
@@ -1310,4 +1315,170 @@ fn a_bundle_removal_of_this_device_is_returned_not_applied() {
     assert_eq!(about_me, vec![B.removes(ME)]);
     assert_eq!(state_of(&conn, ME), Some(TrustState::Trusted));
     assert_eq!(state_of(&conn, D), Some(TrustState::Removed));
+}
+
+// ── Confirming a device; devices whose issuer is gone (fix round 2) ──────────────────────────
+
+impl Dev {
+    /// `self` confirms `subject`.
+    fn confirms(self, subject: Dev) -> Record {
+        Record::sign(
+            RecordType::Confirmed,
+            VAULT,
+            subject.id(),
+            self.id(),
+            NOW,
+            0,
+            &self.seed(),
+        )
+        .expect("confirmed")
+    }
+}
+
+/// `supported()` with this device's signing seed stored, so it can sign.
+fn signing() -> Connection {
+    let conn = supported();
+    conn.execute(
+        "UPDATE sync_state SET device_sign_key = ?1",
+        [ME.seed().expose().to_vec()],
+    )
+    .unwrap();
+    conn
+}
+
+fn confirmed(conn: &Connection, dev: Dev) -> Option<bool> {
+    trust::entry(conn, dev.id()).unwrap().map(|e| e.confirmed)
+}
+
+fn confirm_column(conn: &Connection, dev: Dev) -> Option<String> {
+    conn.query_row(
+        "SELECT confirm_record FROM sync_devices WHERE id = ?1",
+        [dev.id().to_hex()],
+        |r| r.get(0),
+    )
+    .unwrap()
+}
+
+#[test]
+fn confirming_a_kit_device_signs_publishes_and_applies_a_record() {
+    let conn = signing();
+    row(&conn, B, Some(&B.kit()));
+    row(&conn, D, Some(&D.paired_by(B, 0x72)));
+    trust::refresh(&conn, NOW).unwrap();
+    assert_eq!(kit_flag(&conn, B), Some(true));
+
+    let records = trust::confirm(&conn, &[B.id()], NOW).expect("confirm");
+
+    assert_eq!(records, vec![ME.confirms(B)]);
+    assert_eq!(kit_flag(&conn, B), Some(false));
+    assert_eq!(confirmed(&conn, B), Some(true));
+    assert_eq!(confirm_column(&conn, B), Some(ME.confirms(B).to_b64()));
+    trust::refresh(&conn, NOW).unwrap();
+    assert_eq!(kit_flag(&conn, D), Some(false), "what B paired follows");
+}
+
+#[test]
+fn confirm_refuses_this_device_an_unknown_one_or_one_that_is_gone() {
+    let conn = signing();
+    row(&conn, B, Some(&B.kit()));
+    row(&conn, C, Some(&C.kit()));
+    trust::refresh(&conn, NOW).unwrap();
+    trust::mark_removed(&conn, &ME.removes(C), None).unwrap();
+    for devices in [
+        vec![ME.id()],
+        vec![D.id()],
+        vec![C.id()],
+        vec![B.id(), D.id()],
+    ] {
+        assert!(trust::confirm(&conn, &devices, NOW).is_err(), "{devices:?}");
+    }
+    assert_eq!(kit_flag(&conn, B), Some(true), "nothing written");
+    assert_eq!(confirm_column(&conn, B), None);
+
+    // A device without its signing key confirms nothing.
+    let conn = supported();
+    row(&conn, B, Some(&B.kit()));
+    trust::refresh(&conn, NOW).unwrap();
+    assert!(trust::confirm(&conn, &[B.id()], NOW).is_err());
+}
+
+#[test]
+fn a_confirmation_from_another_device_counts_by_the_signer_rule() {
+    let conn = supported();
+    row(&conn, B, Some(&B.kit()));
+    row(&conn, C, Some(&C.paired_by(ME, 0x71)));
+    row(&conn, D, Some(&D.kit()));
+    row(&conn, E, Some(&E.kit()));
+    trust::refresh(&conn, NOW).unwrap();
+    // C (trusted) confirms B; D (an unconfirmed Kit device) confirms E.
+    set_record(&conn, B, "confirm_record", &C.confirms(B));
+    set_record(&conn, E, "confirm_record", &D.confirms(E));
+
+    trust::refresh(&conn, NOW).unwrap();
+
+    assert_eq!(kit_flag(&conn, B), Some(false));
+    assert_eq!(confirmed(&conn, B), Some(true));
+    assert_eq!(
+        kit_flag(&conn, E),
+        Some(true),
+        "an unconfirmed signer confirms nobody"
+    );
+}
+
+#[test]
+fn a_device_whose_issuer_is_gone_gets_the_key_only_when_ticked_or_confirmed() {
+    let conn = signing();
+    row(&conn, B, Some(&B.paired_by(ME, 0x70)));
+    row(&conn, C, Some(&C.paired_by(B, 0x71)));
+    row(&conn, D, Some(&D.rejoin_of(B, NOW)));
+    trust::refresh(&conn, NOW).unwrap();
+    trust::mark_left(&conn, &B.left_at(NOW + 10)).unwrap();
+
+    let plan = trust::recipients(&conn, &[], &[]).unwrap();
+    let included: Vec<DeviceId> = plan.included.iter().map(|e| e.device).collect();
+    assert_eq!(included, vec![ME.id()]);
+    assert!(plan
+        .excluded
+        .contains(&(C.id(), ExclusionReason::IssuerGone)));
+    assert!(plan
+        .excluded
+        .contains(&(D.id(), ExclusionReason::IssuerGone)));
+    assert!(plan.excluded.contains(&(B.id(), ExclusionReason::Left)));
+
+    let plan = trust::recipients(&conn, &[], &[C.id()]).unwrap();
+    let included: Vec<DeviceId> = plan.included.iter().map(|e| e.device).collect();
+    assert_eq!(included, vec![ME.id(), C.id()]);
+
+    // Confirmed once, it is a recipient from then on.
+    trust::confirm(&conn, &[D.id()], NOW).unwrap();
+    let plan = trust::recipients(&conn, &[], &[]).unwrap();
+    let included: Vec<DeviceId> = plan.included.iter().map(|e| e.device).collect();
+    assert_eq!(included, vec![ME.id(), D.id()]);
+}
+
+#[test]
+fn an_export_carries_the_confirmation() {
+    let holder = signing();
+    row(&holder, B, Some(&B.kit()));
+    trust::refresh(&holder, NOW).unwrap();
+    trust::confirm(&holder, &[B.id()], NOW).unwrap();
+    let export = trust::export(&holder).unwrap();
+    let json = serde_json::to_string(&export).unwrap();
+    assert!(json.contains("\"confirmed\":true"), "{json}");
+
+    let conn = joiner();
+    trust::import_export(&conn, &export, ME.id(), NOW).unwrap();
+    assert_eq!(confirmed(&conn, B), Some(true));
+    assert_eq!(kit_flag(&conn, B), Some(false));
+}
+
+#[test]
+fn a_bundle_confirms_what_it_names() {
+    let conn = supported();
+    row(&conn, B, Some(&B.paired_by(ME, 0x70)));
+    row(&conn, C, Some(&C.paired_by(B, 0x71)));
+    trust::refresh(&conn, NOW).unwrap();
+    trust::mark_left(&conn, &B.left_at(NOW + 10)).unwrap();
+    trust::import_bundle(&conn, &ME.genesis(), &[C.paired_by(B, 0x71)], &[], 1, NOW).unwrap();
+    assert_eq!(confirmed(&conn, C), Some(true));
 }

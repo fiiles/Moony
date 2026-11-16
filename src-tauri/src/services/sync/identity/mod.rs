@@ -112,13 +112,13 @@ fn valid_row_cert(value: &str, row_id: DeviceId, vault: Option<&[u8; 16]>) -> Op
     ok.then_some(cert)
 }
 
-/// Whether `value` of the write-once `sync_devices` column `column` (`cert`, `left_record` or
-/// `removal_record`) in the row of `row_id` (hex) holds up on its own, without looking at any
+/// Whether `value` of the write-once `sync_devices` column `column` (`cert`, `left_record`,
+/// `removal_record` or `confirm_record`) in the row of `row_id` (hex) holds up on its own, without looking at any
 /// other row: it decodes, has the shape of its column, names that row's device and `vault` (when
 /// known), and its self-contained signatures verify. A certificate checks its proof of
 /// possession and its issuer's signature (and ticket); a `left` record checks its signature with
 /// the signing key of `row_cert` (the same row's certificate) when that is valid, else its shape
-/// only; a removal record checks its shape (its signer is another device). The merge lets a valid
+/// only; a removal or confirmation record checks its shape (its signer is another device). The merge lets a valid
 /// value beat an invalid one whatever their clocks (`merge::columns`), so a holder of the vault
 /// key cannot lock a column with an older value that never verifies. Every other column: `true`.
 pub fn write_once_value_valid(
@@ -145,6 +145,7 @@ pub fn write_once_value_valid(
             }
         }),
         "removal_record" => record_of(RecordType::Removed).is_some(),
+        "confirm_record" => record_of(RecordType::Confirmed).is_some(),
         _ => true,
     }
 }

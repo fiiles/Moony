@@ -485,7 +485,13 @@ fn local_recomputed_and_recomputed_or_typed_sets_are_pinned() {
     }
     assert_eq!(
         spec("sync_devices").unwrap().write_once,
-        &["public_key", "cert", "left_record", "removal_record"]
+        &[
+            "public_key",
+            "cert",
+            "left_record",
+            "removal_record",
+            "confirm_record"
+        ]
     );
     assert_eq!(spec("stock_splits").unwrap().monotonic, &["status"]);
 }
@@ -613,7 +619,13 @@ fn key_only_tables_match_the_schema() {
 /// Phase 5: the certificate and the two records sync, and each is written once.
 #[test]
 fn the_device_certificate_and_records_are_synced_write_once() {
-    for column in ["public_key", "cert", "left_record", "removal_record"] {
+    for column in [
+        "public_key",
+        "cert",
+        "left_record",
+        "removal_record",
+        "confirm_record",
+    ] {
         assert_eq!(
             column_class("sync_devices", column),
             ColumnClass::WriteOnce,

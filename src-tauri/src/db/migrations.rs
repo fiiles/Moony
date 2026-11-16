@@ -3556,7 +3556,8 @@ ALTER TABLE sync_state ADD COLUMN last_complete_at INTEGER;
 /// 040: removing a device and changing the key (spec 2026-11-16-device-sync-phase-5-removal-design
 /// §11.1). `sync_devices` gains three Synced write-once columns: `cert`, the device's certificate
 /// (base64url, how it got in), `left_record` and `removal_record`, the signed records that it
-/// left or that another device removed it (`removed` is set with the latter). `sync_state` gains
+/// left or that another device removed it (`removed` is set with the latter), and
+/// `confirm_record`, the signed record that a person confirmed it on a trusted device. `sync_state` gains
 /// Local columns: `device_sign_key` (this device's Ed25519 seed), `rotation_pending` (a key
 /// change sent or about to be sent, secret-bearing JSON), `rekey_seen` (the newest relay rotation
 /// processed), `kit_epoch_saved` (the epoch of the newest saved Recovery Kit; NULL is the setup
@@ -3564,13 +3565,15 @@ ALTER TABLE sync_state ADD COLUMN last_complete_at INTEGER;
 /// the pinned store of verified devices (`state` only moves forward; `cut_off_epoch` is the first
 /// epoch a left or removed device does not have, NULL while it still knows the current key;
 /// `ticket_pub` is UNIQUE, a join ticket is used once; `kit_unconfirmed` marks a device vouched
-/// for only by a Recovery Kit certificate, which gets a new key only when the person ticks it).
+/// for only by a Recovery Kit certificate, which gets a new key only when the person ticks it;
+/// `confirmed`, a person confirmed it).
 /// `sync_epochs` records the relay position
 /// each key epoch started at; an enabled profile gets its epoch 0 row at head 0.
 pub(crate) const MIGRATION_040: &str = r#"
 ALTER TABLE sync_devices ADD COLUMN cert TEXT;
 ALTER TABLE sync_devices ADD COLUMN left_record TEXT;
 ALTER TABLE sync_devices ADD COLUMN removal_record TEXT;
+ALTER TABLE sync_devices ADD COLUMN confirm_record TEXT;
 ALTER TABLE sync_state ADD COLUMN device_sign_key BLOB;
 ALTER TABLE sync_state ADD COLUMN rotation_pending TEXT;
 ALTER TABLE sync_state ADD COLUMN rekey_seen INTEGER NOT NULL DEFAULT 0;
@@ -3581,7 +3584,8 @@ CREATE TABLE sync_trust (device TEXT PRIMARY KEY, cert TEXT NOT NULL, kind INTEG
     ticket_pub BLOB UNIQUE, state TEXT NOT NULL CHECK (state IN ('trusted','left','removed')),
     state_record TEXT, state_by TEXT, state_at INTEGER, cut_off_epoch INTEGER,
     pinned_at INTEGER NOT NULL,
-    kit_unconfirmed INTEGER NOT NULL DEFAULT 0 CHECK (kit_unconfirmed IN (0, 1)));
+    kit_unconfirmed INTEGER NOT NULL DEFAULT 0 CHECK (kit_unconfirmed IN (0, 1)),
+    confirmed INTEGER NOT NULL DEFAULT 0 CHECK (confirmed IN (0, 1)));
 CREATE TABLE sync_epochs (epoch INTEGER PRIMARY KEY, rotation_head INTEGER NOT NULL,
     adopted_at INTEGER NOT NULL, by_device TEXT);
 INSERT INTO sync_epochs (epoch, rotation_head, adopted_at)
@@ -3630,6 +3634,10 @@ mod migration_040 {
             )
             .expect("columns");
         assert_eq!(row, (None, None, None, 0));
+        let confirmation: Option<String> = conn
+            .query_row("SELECT confirm_record FROM sync_devices", [], |r| r.get(0))
+            .expect("confirm_record");
+        assert_eq!(confirmation, None);
     }
 
     #[test]
@@ -3670,7 +3678,8 @@ mod migration_040 {
                 "state_at",
                 "cut_off_epoch",
                 "pinned_at",
-                "kit_unconfirmed"
+                "kit_unconfirmed",
+                "confirmed"
             ]
         );
         assert_eq!(

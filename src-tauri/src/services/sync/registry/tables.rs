@@ -387,7 +387,13 @@ pub(super) static TABLES: &[TableSpec] = &[
     TableSpec {
         name: "sync_devices",
         class: TableClass::Synced,
-        write_once: &["public_key", "cert", "left_record", "removal_record"],
+        write_once: &[
+            "public_key",
+            "cert",
+            "left_record",
+            "removal_record",
+            "confirm_record",
+        ],
         ..BASE
     },
     // Seed: copied into a new device's snapshot, never merged.

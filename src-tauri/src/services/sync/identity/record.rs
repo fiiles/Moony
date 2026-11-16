@@ -1,15 +1,16 @@
-//! Signed device records (phase 5 spec §5.4): a device says it `left`, or a trusted device says
-//! it `removed` another. Stored base64url in the synced write-once columns
-//! `sync_devices.left_record` and `removal_record`.
+//! Signed device records (phase 5 spec §5.4): a device says it `left`, a trusted device says it
+//! `removed` another, or that the person `confirmed` another on it (As built item 33). Stored
+//! base64url in the synced write-once columns `sync_devices.left_record`, `removal_record` and
+//! `confirm_record`.
 //!
 //! ```text
-//! record = "moony device record v1" ‖ type (u8: 1 left, 2 removed) ‖ vault_id (16)
+//! record = "moony device record v1" ‖ type (u8: 1 left, 2 removed, 3 confirmed) ‖ vault_id (16)
 //!          ‖ subject_device (16) ‖ signer_device (16) ‖ at (i64) ‖ epoch (u32) ‖ sig (64)
 //! ```
 //!
 //! `sig` is Ed25519 by the signer over every byte before it. A `left` record names its subject as
-//! signer; a `removed` record never does (removing itself is turning sync off). Whether the
-//! signer is trusted is the trust store's question.
+//! signer; a `removed` or `confirmed` record never does (removing itself is turning sync off; a
+//! device cannot vouch for itself). Whether the signer is trusted is the trust store's question.
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
@@ -27,6 +28,8 @@ const MAX_B64_LEN: usize = RECORD_LEN.div_ceil(3) * 4;
 pub enum RecordType {
     Left = 1,
     Removed = 2,
+    /// The person confirmed the subject on the signer (spec §9.1 "Potvrdit zařízení").
+    Confirmed = 3,
 }
 
 impl RecordType {
@@ -34,6 +37,7 @@ impl RecordType {
         match value {
             1 => Some(RecordType::Left),
             2 => Some(RecordType::Removed),
+            3 => Some(RecordType::Confirmed),
             _ => None,
         }
     }
@@ -61,11 +65,11 @@ fn array<const N: usize>(bytes: &[u8]) -> [u8; N] {
     out
 }
 
-/// A `left` record is signed by its subject; a `removed` one by another device.
+/// A `left` record is signed by its subject; a `removed` or `confirmed` one by another device.
 fn check_shape(kind: RecordType, subject: DeviceId, signer: DeviceId) -> Result<()> {
     let ok = match kind {
         RecordType::Left => subject == signer,
-        RecordType::Removed => subject != signer,
+        RecordType::Removed | RecordType::Confirmed => subject != signer,
     };
     ok.then_some(()).ok_or_else(invalid)
 }

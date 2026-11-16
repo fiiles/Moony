@@ -864,7 +864,7 @@ CREATE TABLE sync_clock (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,
 == table sync_devices ==
 CREATE TABLE sync_devices (id TEXT PRIMARY KEY, public_key TEXT, name TEXT NOT NULL,
     platform TEXT NOT NULL, app_version TEXT NOT NULL, joined_at INTEGER NOT NULL,
-    removed INTEGER NOT NULL DEFAULT 0 CHECK (removed IN (0, 1)), cert TEXT, left_record TEXT, removal_record TEXT)
+    removed INTEGER NOT NULL DEFAULT 0 CHECK (removed IN (0, 1)), cert TEXT, left_record TEXT, removal_record TEXT, confirm_record TEXT)
 
 == table sync_epochs ==
 CREATE TABLE sync_epochs (epoch INTEGER PRIMARY KEY, rotation_head INTEGER NOT NULL,
@@ -907,7 +907,8 @@ CREATE TABLE sync_trust (device TEXT PRIMARY KEY, cert TEXT NOT NULL, kind INTEG
     ticket_pub BLOB UNIQUE, state TEXT NOT NULL CHECK (state IN ('trusted','left','removed')),
     state_record TEXT, state_by TEXT, state_at INTEGER, cut_off_epoch INTEGER,
     pinned_at INTEGER NOT NULL,
-    kit_unconfirmed INTEGER NOT NULL DEFAULT 0 CHECK (kit_unconfirmed IN (0, 1)))
+    kit_unconfirmed INTEGER NOT NULL DEFAULT 0 CHECK (kit_unconfirmed IN (0, 1)),
+    confirmed INTEGER NOT NULL DEFAULT 0 CHECK (confirmed IN (0, 1)))
 
 == table sync_typed ==
 CREATE TABLE sync_typed (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,

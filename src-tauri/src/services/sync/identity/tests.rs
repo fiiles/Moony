@@ -74,6 +74,10 @@ fn removed_b_by_a() -> Record {
     Record::sign(RecordType::Removed, VAULT, B, A, AT, 3, &seed(0x01)).expect("removed")
 }
 
+fn confirmed_b_by_a() -> Record {
+    Record::sign(RecordType::Confirmed, VAULT, B, A, AT, 3, &seed(0x01)).expect("confirmed")
+}
+
 fn all_certs() -> Vec<(&'static str, Certificate)> {
     vec![
         ("genesis", genesis_a()),
@@ -136,6 +140,14 @@ const REMOVED_HEX: &str = "
     93670e
 ";
 
+/// A record of type 3 (the person confirmed a device, fix round of the trust store review).
+const CONFIRMED_HEX: &str = "
+    6d6f6f6e7920646576696365207265636f72642076310311111111111111111111111111111111a2a2a2a2a2a2a2a2a2
+    a2a2a2a2a2a2a2a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1000000006afab80000000003efedb55a6153912bf53ebe5889
+    1e5f50bd6ccda094c7aa03408494259d13fe6c6035cd962207bc932dd4fdd63818c501d552deb5aeb23e3f2e5a99e285
+    35180f
+";
+
 fn squash(hex: &str) -> String {
     hex.split_whitespace().collect()
 }
@@ -152,6 +164,10 @@ fn certificates_match_the_frozen_vectors() {
 fn records_match_the_frozen_vectors() {
     assert_eq!(hex::encode(left_a().encode()), squash(LEFT_HEX));
     assert_eq!(hex::encode(removed_b_by_a().encode()), squash(REMOVED_HEX));
+    assert_eq!(
+        hex::encode(confirmed_b_by_a().encode()),
+        squash(CONFIRMED_HEX)
+    );
 }
 
 #[test]
@@ -511,6 +527,16 @@ fn a_left_record_must_be_signed_by_its_subject() {
 #[test]
 fn a_device_cannot_sign_its_own_removal() {
     assert!(Record::sign(RecordType::Removed, VAULT, A, A, AT, 0, &seed(0x01)).is_err());
+}
+
+#[test]
+fn a_device_cannot_confirm_itself_and_a_confirmation_verifies_with_its_signer() {
+    assert!(Record::sign(RecordType::Confirmed, VAULT, A, A, AT, 0, &seed(0x01)).is_err());
+    let record = confirmed_b_by_a();
+    assert_eq!(record.kind, RecordType::Confirmed);
+    record.verify(&sign_pub(&seed(0x01))).expect("by A");
+    assert!(record.verify(&sign_pub(&seed(0x02))).is_err());
+    assert_eq!(Record::from_b64(&record.to_b64()).expect("decodes"), record);
 }
 
 #[test]

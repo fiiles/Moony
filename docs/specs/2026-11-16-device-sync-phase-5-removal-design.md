@@ -878,3 +878,23 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     inside the replace's savepoint (nothing replaced, the backup `-unused`): an export that
     `import_export` refuses, or a ticket the holder's pinned key did not sign.
 21. The received heads are not stored yet: Task 8 writes them to `sync_epochs` at the join.
+
+**Task 6 (the bundle's bytes).**
+
+22. **Spelled out where §6.2 was loose:** an entry's `len` counts its ciphertext with the tag
+    (the nonce is fixed-length); the body key is `HKDF-SHA256(salt = vault_id, ikm = new_key,
+    info = "moony sync rekey body v1")`; the signed JSON is exactly the body's JSON bytes; a
+    `keys` item whose head the signer does not know has no `head`.
+23. **Entry limits:** at most 64 recipient entries (§5.4) and, separately, at most 64 notice
+    entries, so a full vault can still remove a device; the 256 KiB cap applies to the whole
+    bundle. A low-order box key refuses the build; on open it reads as `Nothing`.
+24. **Decode checks of the body:** `by` is the signer certificate's device; every listed
+    certificate and record names the device it is listed under and this vault; older keys are
+    32 bytes, below `to_epoch`, each epoch once. `BundleBody::verify` checks only the bundle's
+    signature; trust is `import_bundle`'s.
+25. **Opening:** the first entry that opens decides. A key entry whose body then fails to open
+    or read is an error (the bundle was tampered with), not `Nothing`. A notice is bound to the
+    header and its index only, not to the body; its record is signed and the caller verifies it
+    against its store (§7.4). `build` takes its random source as
+    `&mut dyn FnMut(&mut [u8]) -> Result<()>` (`bundle::os_fill` in production);
+    `Opened::Recipient` carries the body boxed.

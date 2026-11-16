@@ -35,6 +35,7 @@ pub mod natural_id;
 pub mod pairing;
 pub mod recovery;
 pub mod registry;
+pub mod rekey;
 pub mod relay;
 #[cfg(test)]
 mod relay_e2e;

@@ -97,6 +97,58 @@ pub(crate) fn verify_sig(public: &[u8; 32], message: &[u8], sig: &[u8; 64]) -> R
         .map_err(|_| bad())
 }
 
+/// The vault bound on this profile, if any (a missing or unreadable one is `None`).
+pub fn bound_vault(conn: &Connection) -> Option<[u8; 16]> {
+    trust::vault_id(conn).ok()
+}
+
+/// A certificate for the `sync_devices` row `row_id` that verifies on its own: it decodes, names
+/// that row's device and `vault` (when known), and its signatures hold (`verify_signatures`).
+fn valid_row_cert(value: &str, row_id: DeviceId, vault: Option<&[u8; 16]>) -> Option<Certificate> {
+    let cert = Certificate::from_b64(value).ok()?;
+    let ok = cert.body.device == row_id
+        && vault.is_none_or(|v| &cert.body.vault_id == v)
+        && cert.verify_signatures().is_ok();
+    ok.then_some(cert)
+}
+
+/// Whether `value` of the write-once `sync_devices` column `column` (`cert`, `left_record` or
+/// `removal_record`) in the row of `row_id` (hex) holds up on its own, without looking at any
+/// other row: it decodes, has the shape of its column, names that row's device and `vault` (when
+/// known), and its self-contained signatures verify. A certificate checks its proof of
+/// possession and its issuer's signature (and ticket); a `left` record checks its signature with
+/// the signing key of `row_cert` (the same row's certificate) when that is valid, else its shape
+/// only; a removal record checks its shape (its signer is another device). The merge lets a valid
+/// value beat an invalid one whatever their clocks (`merge::columns`), so a holder of the vault
+/// key cannot lock a column with an older value that never verifies. Every other column: `true`.
+pub fn write_once_value_valid(
+    column: &str,
+    row_id: &str,
+    value: &str,
+    vault: Option<&[u8; 16]>,
+    row_cert: Option<&str>,
+) -> bool {
+    let Ok(row_id) = DeviceId::from_hex(row_id) else {
+        return false;
+    };
+    let record_of = |kind: RecordType| {
+        Record::from_b64(value).ok().filter(|r| {
+            r.kind == kind && r.subject == row_id && vault.is_none_or(|v| &r.vault_id == v)
+        })
+    };
+    match column {
+        "cert" => valid_row_cert(value, row_id, vault).is_some(),
+        "left_record" => record_of(RecordType::Left).is_some_and(|record| {
+            match row_cert.and_then(|c| valid_row_cert(c, row_id, vault)) {
+                Some(cert) => record.verify(&cert.body.sign_pub).is_ok(),
+                None => true,
+            }
+        }),
+        "removal_record" => record_of(RecordType::Removed).is_some(),
+        _ => true,
+    }
+}
+
 /// Who signs this device's certificate (spec §5.3), and so its kind.
 pub enum Issuer<'a> {
     /// It creates the vault (kind 1).

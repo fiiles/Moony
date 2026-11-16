@@ -573,6 +573,30 @@ fn pin_candidates(
     Ok(pinned_any)
 }
 
+/// Logs, once per call, every certificate or record in the rows that does not hold up on its own
+/// (`identity::write_once_value_valid`); the passes ignore them.
+fn log_invalid(rows: &[DeviceRow], vault: &[u8; 16]) {
+    for row in rows {
+        let id = row.id.to_hex();
+        for (column, value) in [
+            ("cert", &row.cert),
+            ("left_record", &row.left),
+            ("removal_record", &row.removal),
+        ] {
+            let Some(value) = value.as_deref() else {
+                continue;
+            };
+            if !super::write_once_value_valid(column, &id, value, Some(vault), row.cert.as_deref())
+            {
+                log::warn!(
+                    "[SYNC] Ignored a {column} for {} that does not verify",
+                    short(row.id)
+                );
+            }
+        }
+    }
+}
+
 /// The fixpoint of records then certificates over `sync_devices`, until nothing changes.
 fn settle(
     conn: &Connection,
@@ -583,6 +607,7 @@ fn settle(
     let own = this_device(conn)?;
     let vault = vault_id(conn)?;
     let rows = device_rows(conn)?;
+    log_invalid(&rows, &vault);
     loop {
         let store = entry_map(conn)?;
         let (moves, about_me) = judge_records(&rows, &store, own, &vault);

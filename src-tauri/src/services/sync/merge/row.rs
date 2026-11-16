@@ -34,6 +34,7 @@ use crate::error::{AppError, Result};
 use crate::services::sync::capture::CLOCK_UPSERT;
 use crate::services::sync::changeset::{RowChange, RowKey, SqlValue};
 use crate::services::sync::hlc::{Clock, DeviceId};
+use crate::services::sync::identity;
 use crate::services::sync::registry::keys::OnDelete;
 use crate::services::sync::registry::{
     self, column_class, schema, ColumnClass, KeyShape, TableClass, TableSpec,
@@ -115,7 +116,19 @@ pub fn apply_row(conn: &Connection, change: &RowChange, ctx: &mut MergeCtx) -> R
         let verdict = match live.as_ref().filter(|_| !fresh) {
             None => parents::check(conn, ctx, &table, change, &pk, &mut columns)?,
             Some(old) => {
-                let mut m = columns::merge(&table, change, &columns, old, &clocks, generation, &pk);
+                let vault = (table.spec.name == "sync_devices")
+                    .then(|| identity::bound_vault(conn))
+                    .flatten();
+                let mut m = columns::merge(
+                    &table,
+                    change,
+                    &columns,
+                    old,
+                    &clocks,
+                    generation,
+                    &pk,
+                    vault.as_ref(),
+                );
                 let verdict = parents::check(conn, ctx, &table, change, &pk, &mut m.writes)?;
                 merged = Some(m);
                 verdict

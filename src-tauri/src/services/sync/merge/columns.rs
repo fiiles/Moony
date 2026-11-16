@@ -2,13 +2,15 @@
 //! whole from the newer side, the weak `pending` of `stock_splits.status` (correction 9), and the
 //! write-once `sync_devices` columns, where a public key, certificate or `left` record stamped
 //! with the device's own ID beats one stamped with any other (audit M6; see `own_key` for what
-//! that stamp is worth).
+//! that stamp is worth), and a certificate or record that holds up on its own beats one that does
+//! not (`identity::write_once_value_valid`).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use super::row::{Columns, RowImage, Table};
 use crate::services::sync::changeset::{RowChange, SqlValue};
 use crate::services::sync::hlc::Clock;
+use crate::services::sync::identity;
 use crate::services::sync::registry::{column_class, group_of, ColumnClass};
 
 /// The value a detection inserts and that a later apply or dismiss always beats.
@@ -22,7 +24,9 @@ pub(super) struct Merged {
 }
 
 /// Merges the carried `incoming` columns into the local row `local`, whose column clocks are
-/// `clocks` (a column without one has the row clock `generation`).
+/// `clocks` (a column without one has the row clock `generation`). `vault` is the bound vault's
+/// ID, which a `sync_devices` certificate or record must name (unchecked when `None`).
+#[allow(clippy::too_many_arguments)]
 pub(super) fn merge(
     table: &Table,
     change: &RowChange,
@@ -31,6 +35,7 @@ pub(super) fn merge(
     clocks: &HashMap<String, Clock>,
     generation: Clock,
     pk: &str,
+    vault: Option<&[u8; 16]>,
 ) -> Merged {
     let name = table.spec.name;
     let local_clock = |column: &str| clocks.get(column).copied().unwrap_or(generation);
@@ -66,6 +71,24 @@ pub(super) fn merge(
                 (SqlValue::Null, SqlValue::Null) => *clock > ours,
                 (SqlValue::Null, _) => true,
                 (_, SqlValue::Null) => false,
+                // A certificate or record that holds up on its own beats one that does not,
+                // whatever the clocks and stamps: an older value that never verifies cannot lock
+                // the column. A `left` record is checked against the row's certificate as this
+                // merge leaves it ("cert" sorts before "left_record", so it is decided already).
+                (kept, offered)
+                    if is_checked(name, column)
+                        && valid(column, pk, kept, vault, &merged.writes, local)
+                            != valid(column, pk, offered, vault, &merged.writes, local) =>
+                {
+                    let theirs_win = valid(column, pk, offered, vault, &merged.writes, local);
+                    let refused = if theirs_win { ours } else { *clock };
+                    merged.warnings.push(format!(
+                        "{name} {pk}: device {} offered a {column} that does not verify; kept \
+                         the one that does",
+                        refused.device.to_b64()
+                    ));
+                    theirs_win
+                }
                 (kept, offered) => {
                     let own = |clock: Clock| own_key(name, column, pk, clock);
                     let theirs_win = match (own(ours), own(*clock)) {
@@ -118,6 +141,35 @@ pub(super) fn merge(
         }
     }
     merged
+}
+
+/// The write-once columns whose values are checked on their own (`identity::write_once_value_valid`).
+fn is_checked(table: &str, column: &str) -> bool {
+    table == "sync_devices" && matches!(column, "cert" | "left_record" | "removal_record")
+}
+
+/// Whether `value` of the checked column holds up on its own. The row's certificate for a `left`
+/// record is the one this merge writes, else the local one.
+fn valid(
+    column: &str,
+    pk: &str,
+    value: &SqlValue,
+    vault: Option<&[u8; 16]>,
+    writes: &BTreeMap<String, (SqlValue, Clock)>,
+    local: &RowImage,
+) -> bool {
+    let SqlValue::Text(value) = value else {
+        return false;
+    };
+    let row_cert = writes
+        .get("cert")
+        .map(|(v, _)| v)
+        .or_else(|| local.get("cert"))
+        .and_then(|v| match v {
+            SqlValue::Text(text) => Some(text.as_str()),
+            _ => None,
+        });
+    identity::write_once_value_valid(column, pk, value, vault, row_cert)
 }
 
 /// Whether `clock` stamps a device's public key, certificate or `left` record with the device's

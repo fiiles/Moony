@@ -3,6 +3,8 @@
 use super::*;
 use crate::services::sync::changeset::max_hlc;
 use crate::services::sync::hlc::{now_ms, pack};
+use crate::services::sync::identity::cert::{self, CertFields, CertKind, Certificate};
+use crate::services::sync::identity::{Record, RecordType, SignSeed};
 
 const SPLIT_DAY: i64 = 1_767_225_600;
 
@@ -630,4 +632,146 @@ fn a_rejoined_devices_restamped_key_clock_keeps_the_stored_key() {
     assert_eq!(key_of(&c, A).as_deref(), Some("KA"));
     assert_eq!(key_clock(&c, A), stored);
     assert!(report.warnings.is_empty(), "{:?}", report.warnings);
+}
+
+// Fix round (phase 5): a write-once `cert`, `left_record` or `removal_record` that does not
+// verify on its own never locks out one that does, whatever their clocks or stamps.
+
+const VAULT: [u8; 16] = [0x11; 16];
+
+fn bind_vault(conn: &Connection) {
+    conn.execute(
+        "UPDATE sync_state SET vault_id = ?1",
+        [crate::services::sync::keys::VaultId(VAULT).to_b64()],
+    )
+    .expect("vault");
+}
+
+fn seed(byte: u8) -> SignSeed {
+    SignSeed::from_bytes(zeroize::Zeroizing::new([byte; 32]))
+}
+
+/// `device`'s genesis certificate in `vault`, signed with `seed(byte)`.
+fn cert_of(device: DeviceId, vault: [u8; 16], byte: u8) -> Certificate {
+    cert::issue_self(
+        CertKind::Genesis,
+        &CertFields {
+            vault_id: vault,
+            device,
+            box_pub: [byte ^ 0xb0; 32],
+            issued_at: NOW,
+        },
+        &seed(byte),
+    )
+    .expect("cert")
+}
+
+/// A's row with `column` = `value` (and, for a `left` record, A's real certificate) at `at`.
+fn poisonable_row(column: &str, value: &str, at: Clock, with_cert: bool) -> RowChange {
+    // Every column of the row is carried, as the journal sends it.
+    let mut change = device_change(A, "KA", at);
+    for other in ["cert", "left_record", "removal_record"] {
+        set(&mut change, other, SqlValue::Null, at);
+    }
+    set(&mut change, "removed", SqlValue::Integer(0), at);
+    set(&mut change, column, text(value), at);
+    if with_cert {
+        set(
+            &mut change,
+            "cert",
+            text(&cert_of(A, VAULT, 0x0a).to_b64()),
+            at,
+        );
+    }
+    change
+}
+
+#[test]
+fn an_invalid_write_once_value_never_beats_a_valid_one_in_either_order() {
+    let left = Record::sign(RecordType::Left, VAULT, A, A, NOW, 0, &seed(0x0a)).expect("left");
+    let removal =
+        Record::sign(RecordType::Removed, VAULT, A, B, NOW, 0, &seed(0x0b)).expect("removal");
+    let other_vault = cert_of(A, [0x22; 16], 0x0a).to_b64();
+    // A `left` record signed with a key other than the one in the row's certificate.
+    let forged_left = Record::sign(RecordType::Left, VAULT, A, A, NOW, 0, &seed(0x0c))
+        .expect("left")
+        .to_b64();
+    let cases: Vec<(&str, String, String)> = vec![
+        ("cert", cert_of(A, VAULT, 0x0a).to_b64(), "EVIL".into()),
+        ("cert", cert_of(A, VAULT, 0x0a).to_b64(), other_vault),
+        ("left_record", left.to_b64(), "EVIL".into()),
+        ("left_record", left.to_b64(), forged_left),
+        ("removal_record", removal.to_b64(), "EVIL".into()),
+        (
+            "removal_record",
+            removal.to_b64(),
+            Record::sign(RecordType::Removed, [0x22; 16], A, B, NOW, 0, &seed(0x0b))
+                .expect("removal")
+                .to_b64(),
+        ),
+    ];
+    for (column, real, poison) in cases {
+        let with_cert = column == "left_record";
+        // The poison is older and stamped with A's own ID: under the plain write-once rule it
+        // would win for good.
+        let poisoned = changeset(
+            B,
+            1,
+            vec![poisonable_row(column, &poison, clock(1, A), with_cert)],
+        );
+        let genuine = changeset(
+            A,
+            1,
+            vec![poisonable_row(
+                column,
+                &real,
+                clock(pack(now_ms(), 0), A),
+                with_cert,
+            )],
+        );
+        let c = device(C);
+        bind_vault(&c);
+        applied(&c, &poisoned);
+        applied(&c, &genuine);
+        let d = device(D);
+        bind_vault(&d);
+        applied(&d, &genuine);
+        applied(&d, &poisoned);
+
+        for conn in [&c, &d] {
+            assert_eq!(
+                column_of(conn, A, column).as_deref(),
+                Some(real.as_str()),
+                "{column} vs {poison}"
+            );
+        }
+        assert_converged(&[&c, &d]);
+    }
+}
+
+#[test]
+fn between_two_valid_values_the_write_once_rule_stays() {
+    // Two certificates that both verify: the older one stamped with A's own ID stays, as before.
+    let first = cert_of(A, VAULT, 0x0a).to_b64();
+    let second = cert_of(A, VAULT, 0x0d).to_b64();
+    let older = changeset(
+        A,
+        1,
+        vec![poisonable_row("cert", &first, clock(1, A), false)],
+    );
+    let newer = changeset(
+        A,
+        2,
+        vec![poisonable_row(
+            "cert",
+            &second,
+            clock(pack(now_ms(), 0), A),
+            false,
+        )],
+    );
+    let c = device(C);
+    bind_vault(&c);
+    applied(&c, &newer);
+    applied(&c, &older);
+    assert_eq!(column_of(&c, A, "cert").as_deref(), Some(first.as_str()));
 }

@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 use rusqlite::{params, Connection, OptionalExtension};
 
 use super::hlc::{unpack, DeviceId};
+use super::identity::Certificate;
 use super::state;
 use crate::error::{AppError, Result};
 use crate::models::SyncDevice;
@@ -50,14 +51,15 @@ pub fn validate_device_name(name: &str) -> Result<()> {
     }
 }
 
-/// Writes this device's row: created with `public_key` and `joined_at = now` the first time,
-/// afterwards the (trimmed) name, platform and app version change, and the public key only fills
-/// an empty column: the merge's write-once rule (NULL may take a value once, a value never
-/// changes).
+/// Writes this device's row: created with `public_key`, its certificate (phase 5; `None` in a
+/// vault without certificates) and `joined_at = now` the first time, afterwards the (trimmed)
+/// name, platform and app version change, and the public key and the certificate only fill an
+/// empty column: the merge's write-once rule (NULL may take a value once, a value never changes).
 pub fn record_this_device(
     conn: &Connection,
     name: &str,
     public_key: &[u8; 32],
+    cert: Option<&Certificate>,
     now: i64,
 ) -> Result<()> {
     validate_device_name(name)?;
@@ -65,18 +67,20 @@ pub fn record_this_device(
         .ok_or_else(|| AppError::Internal("sync: sync is not set up on this device".into()))?
         .device;
     conn.execute(
-        "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6) \
+        "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at, cert) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) \
          ON CONFLICT(id) DO UPDATE SET name = excluded.name, platform = excluded.platform, \
            app_version = excluded.app_version, \
-           public_key = COALESCE(sync_devices.public_key, excluded.public_key)",
+           public_key = COALESCE(sync_devices.public_key, excluded.public_key), \
+           cert = COALESCE(sync_devices.cert, excluded.cert)",
         params![
             device.to_hex(),
             URL_SAFE_NO_PAD.encode(public_key),
             name.trim(),
             platform(),
             env!("CARGO_PKG_VERSION"),
-            now
+            now,
+            cert.map(Certificate::to_b64)
         ],
     )?;
     Ok(())
@@ -247,12 +251,49 @@ mod tests {
             .collect()
     }
 
+    /// Phase 5: the certificate takes a value once, like the public key; a later one never
+    /// replaces it, and `None` never clears it.
+    #[test]
+    fn the_certificate_is_written_once() {
+        use crate::services::sync::identity::{cert, CertFields, CertKind, SignSeed};
+        use zeroize::Zeroizing;
+        let issue = |byte: u8| {
+            let fields = CertFields {
+                vault_id: [7; 16],
+                device: DEVICE,
+                box_pub: [1; 32],
+                issued_at: 1,
+            };
+            let seed = SignSeed::from_bytes(Zeroizing::new([byte; 32]));
+            cert::issue_self(CertKind::Genesis, &fields, &seed).unwrap()
+        };
+        let cert_of = |conn: &Connection| -> Option<String> {
+            conn.query_row("SELECT cert FROM sync_devices", [], |r| r.get(0))
+                .unwrap()
+        };
+        let conn = migrated();
+        state::enable(&conn, DEVICE).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 1).unwrap();
+        assert_eq!(cert_of(&conn), None);
+
+        let first = issue(0x31);
+        record_this_device(&conn, "MacBook", &[1; 32], Some(&first), 2).unwrap();
+        assert_eq!(
+            cert_of(&conn),
+            Some(first.to_b64()),
+            "an empty column fills"
+        );
+        record_this_device(&conn, "MacBook", &[1; 32], Some(&issue(0x32)), 3).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 4).unwrap();
+        assert_eq!(cert_of(&conn), Some(first.to_b64()), "never replaced");
+    }
+
     #[test]
     fn count_devices_counts_the_rows_not_removed() {
         let conn = migrated();
         assert_eq!(count_devices(&conn).unwrap(), 0);
         state::enable(&conn, DEVICE).unwrap();
-        record_this_device(&conn, "MacBook", &[0x01; 32], 1_800_000_000).unwrap();
+        record_this_device(&conn, "MacBook", &[0x01; 32], None, 1_800_000_000).unwrap();
         conn.execute(
             "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
              VALUES (?1, NULL, 'iPhone', 'ios', '1.0.0', 1_850_000_000)",
@@ -275,7 +316,7 @@ mod tests {
         state::enable(&conn, DEVICE).unwrap();
         assert_eq!(this_device_joined_at(&conn).unwrap(), None);
 
-        record_this_device(&conn, "MacBook", &[0x01; 32], 1_800_000_000).unwrap();
+        record_this_device(&conn, "MacBook", &[0x01; 32], None, 1_800_000_000).unwrap();
         assert_eq!(this_device_joined_at(&conn).unwrap(), Some(1_800_000_000));
 
         // Another device joined later: this device's own row is still the one read.
@@ -286,7 +327,7 @@ mod tests {
         )
         .unwrap();
         // A second record under another name changes neither the row's age nor which row is read.
-        record_this_device(&conn, "Work Mac", &[0x01; 32], 1_900_000_000).unwrap();
+        record_this_device(&conn, "Work Mac", &[0x01; 32], None, 1_900_000_000).unwrap();
         assert_eq!(this_device_joined_at(&conn).unwrap(), Some(1_800_000_000));
     }
 
@@ -296,7 +337,7 @@ mod tests {
         state::enable(&conn, DEVICE).unwrap();
         assert_eq!(this_device(&conn).unwrap(), None);
 
-        record_this_device(&conn, "  MacBook  ", &[0x01; 32], 1_800_000_000).unwrap();
+        record_this_device(&conn, "  MacBook  ", &[0x01; 32], None, 1_800_000_000).unwrap();
 
         assert_eq!(
             row(&conn),
@@ -316,7 +357,7 @@ mod tests {
         );
         conn.execute_batch("DELETE FROM sync_outbox").unwrap();
 
-        record_this_device(&conn, "Work Mac", &[0x02; 32], 1_900_000_000).unwrap();
+        record_this_device(&conn, "Work Mac", &[0x02; 32], None, 1_900_000_000).unwrap();
 
         let (_, public_key, name, _, _, joined_at, _) = row(&conn);
         assert_eq!(
@@ -342,13 +383,13 @@ mod tests {
 
         conn.execute_batch("UPDATE sync_devices SET public_key = NULL")
             .unwrap();
-        record_this_device(&conn, "Work Mac", &[0x03; 32], 1_950_000_000).unwrap();
+        record_this_device(&conn, "Work Mac", &[0x03; 32], None, 1_950_000_000).unwrap();
         assert_eq!(
             row(&conn).1.as_deref(),
             Some("AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM"),
             "an empty public key takes a value once"
         );
-        record_this_device(&conn, "Work Mac", &[0x02; 32], 1_960_000_000).unwrap();
+        record_this_device(&conn, "Work Mac", &[0x02; 32], None, 1_960_000_000).unwrap();
         assert_eq!(
             row(&conn).1.as_deref(),
             Some("AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM")
@@ -358,7 +399,7 @@ mod tests {
     #[test]
     fn recording_needs_the_sync_row() {
         let conn = migrated();
-        assert!(record_this_device(&conn, "MacBook", &[0x01; 32], 1).is_err());
+        assert!(record_this_device(&conn, "MacBook", &[0x01; 32], None, 1).is_err());
         assert_eq!(this_device(&conn).unwrap(), None);
     }
 
@@ -380,7 +421,7 @@ mod tests {
 
         let conn = migrated();
         state::enable(&conn, DEVICE).unwrap();
-        assert!(record_this_device(&conn, " ", &[0x01; 32], 1).is_err());
+        assert!(record_this_device(&conn, " ", &[0x01; 32], None, 1).is_err());
         assert_eq!(this_device(&conn).unwrap(), None);
     }
 
@@ -412,7 +453,7 @@ mod tests {
     fn the_list_marks_this_device_and_orders_by_last_change() {
         let conn = migrated();
         state::enable(&conn, DEVICE).unwrap();
-        record_this_device(&conn, "MacBook", &[1; 32], 1_700_000_000).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 1_700_000_000).unwrap();
         conn.execute("UPDATE sync_state SET last_success_at = 1_750_000_000", [])
             .unwrap();
         let (b, c, d) = (DeviceId([8; 16]), DeviceId([9; 16]), DeviceId([6; 16]));
@@ -458,7 +499,7 @@ mod tests {
     fn a_held_device_is_flagged() {
         let conn = migrated();
         state::enable(&conn, DEVICE).unwrap();
-        record_this_device(&conn, "MacBook", &[1; 32], 1).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 1).unwrap();
         let b = DeviceId([8; 16]);
         insert_other(&conn, b, "Phone");
         conn.execute(
@@ -481,7 +522,7 @@ mod tests {
     fn a_device_without_clocks_has_no_last_change() {
         let conn = migrated();
         state::enable(&conn, DEVICE).unwrap();
-        record_this_device(&conn, "MacBook", &[1; 32], 1).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 1).unwrap();
         insert_other(&conn, DeviceId([8; 16]), "Phone");
         let list = list_devices(&conn).unwrap();
         assert_eq!(list[0].last_active_at, None, "this device never synced");
@@ -526,7 +567,7 @@ mod tests {
     fn renaming_this_device_is_captured_and_validated() {
         let conn = migrated();
         state::enable(&conn, DEVICE).unwrap();
-        record_this_device(&conn, "MacBook", &[1; 32], 1).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 1).unwrap();
         let b = DeviceId([8; 16]);
         insert_other(&conn, b, "Phone");
         conn.execute_batch("DELETE FROM sync_outbox").unwrap();

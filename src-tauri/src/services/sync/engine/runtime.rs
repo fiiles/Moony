@@ -43,6 +43,7 @@ use crate::services::sync::blobs::transfer::{run_downloads, run_uploads};
 use crate::services::sync::capture::guard;
 use crate::services::sync::devices;
 use crate::services::sync::error::{SyncError, Transient};
+use crate::services::sync::identity;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::relay::Relay;
 use crate::services::sync::state;
@@ -542,7 +543,27 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                 return Err(Ended);
             }
         }
+        self.ensure_signing_key()?;
         Ok(true)
+    }
+
+    /// Phase 5 §5.5: a profile whose sync was set up before phase 5 gets its signing key (and no
+    /// certificate) at the first start. A failure is logged; the next start tries again, and
+    /// sync goes on without it (removal stays unavailable there anyway).
+    fn ensure_signing_key(&self) -> Result<(), Ended> {
+        match self.db.with_conn(identity::ensure_seed) {
+            Ok(true) => {
+                log::info!("[SYNC] This device made its signing key (no certificate: older vault)");
+                Ok(())
+            }
+            Ok(false) => Ok(()),
+            Err(error) if locked(&error) => Err(Ended),
+            Err(error) => {
+                log::warn!("[SYNC] This device's signing key could not be made");
+                log::debug!("[SYNC] This device's signing key could not be made: {error}");
+                Ok(())
+            }
+        }
     }
 
     /// Writes the binding at start when sync is on and none is written yet (a seal that failed

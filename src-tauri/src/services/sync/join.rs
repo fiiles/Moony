@@ -39,6 +39,7 @@ use super::engine::snapshots::{off_thread, open_sealed, SnapshotPolicy};
 use super::engine::{self, ConnAccess, PullEnd, PullReport, RoundMode};
 use super::error::SyncResult;
 use super::hlc::DeviceId;
+use super::identity::{self, trust, Issuer};
 use super::impact::{self, ReplaceConsent, ReplaceKind, DRAIN_INCOMPLETE};
 use super::in_savepoint;
 use super::keys::{self, Credentials, VaultKeys};
@@ -62,6 +63,25 @@ const KIT_ROTATED: &str = "validation.syncRecoveryKitRotated";
 /// Drain rounds a repair runs at most; it also stops after two rounds in a row that neither shrank
 /// `pending_items + pending_batches` nor moved the pull cursor on.
 pub const MAX_DRAIN_ROUNDS: usize = 20;
+
+/// How a new device gets its identity in the vault (phase 5 §5.3, §5.5).
+pub enum JoinIdentity {
+    /// A Sync Recovery Kit join: it signs its own Kit certificate and trusts, on first use, every
+    /// certificate in what it restores (§5.4).
+    RecoveryKit,
+    /// A pairing from a holder that sent no identity (a vault set up before phase 5): a signing
+    /// key and no certificate, so removal stays unavailable there.
+    Unvouched,
+}
+
+/// The identity a replace gives this device under its new device ID.
+enum NewIdentity {
+    /// A device new to the vault: its trust store starts over.
+    Join(JoinIdentity),
+    /// This device again (a repair or a re-sync): its older ID vouches for it, as at a re-join,
+    /// and its trust store stays.
+    Successor,
+}
 
 /// What a join, repair or re-sync did: its backup (with the mark it settled to), this device's
 /// documents and photos it carried over or left only in the backup, and the changes of this
@@ -94,8 +114,9 @@ pub(crate) async fn join_by_replace<R: Relay, D: ConnAccess>(
     let _no_round = engine::exclusive(db).await;
     let plain = fetched_snapshot(relay, &creds).await?;
     let (joiner, dir, name) = (db.clone(), data_dir.to_path_buf(), device_name.to_string());
+    let who = NewIdentity::Join(JoinIdentity::Unvouched);
     let report = off_thread(move || {
-        joiner.with_conn(|conn| replace_profile(conn, &dir, &creds, &name, &plain, now))
+        joiner.with_conn(|conn| replace_profile(conn, &dir, &creds, &name, &plain, &who, now))
     })
     .await?;
     write_binding_after_replace(db, data_dir, native);
@@ -167,6 +188,8 @@ struct HoldInput {
     creds: Credentials,
     device_name: String,
     plain: Zeroizing<Vec<u8>>,
+    /// Who this device is after the replace.
+    identity: NewIdentity,
     now: i64,
     /// A re-sync: the sequences its push just handed to the relay (`PushReport::acknowledged`).
     /// They wait for an echo the replace never pulls, but the relay took them: they are not counted
@@ -225,6 +248,7 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
             &input.creds,
             &input.device_name,
             &input.plain,
+            &input.identity,
             input.now,
         )?;
         Ok(Replaced {
@@ -318,7 +342,8 @@ fn outcome((backup, kept): (PathBuf, bool), replaced: &Replaced) -> ReplaceOutco
 ///    clock → `validation.syncReplaceImpactChanged`, the verified backup marked kept
 ///    (`sync-repair-<now>-kept.zip`) before the replace commits, then `replace_profile`: in one
 ///    savepoint the credentials are bound, the profile replaced under a new device ID with a new
-///    key pair and this device recorded under `device_name`. A failure leaves the profile as it
+///    key pair, a signing key and the certificate `identity` calls for, and this device recorded
+///    under `device_name`. A failure leaves the profile as it
 ///    was and the backup, if one was written, `-unused`.
 /// 4. The backup stays `-kept`, the only copy of what the join replaced, unless the profile was
 ///    brand new (`impact::brand_new_profile`), when it settles to plain. The binding is written.
@@ -329,6 +354,7 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
     creds: Credentials,
     device_name: &str,
     consent: ReplaceConsent,
+    identity: JoinIdentity,
     data_dir: &Path,
     native: &dyn BindingNative,
     now: i64,
@@ -348,6 +374,7 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
             creds,
             device_name: device_name.to_string(),
             plain,
+            identity: NewIdentity::Join(identity),
             now,
             acknowledged: Vec::new(),
         },
@@ -434,8 +461,12 @@ pub async fn recovery_credentials<R: Relay, D: ConnAccess>(
 /// forgets the old one's relay positions); this device's chain starts over and the pauses and
 /// counters of the old binding go (`binding_written` among them); `binding::join_leaving_marker`
 /// restores the snapshot by replace under a new device ID (the cursor, heads and snapshot
-/// bookkeeping become the snapshot's) and installs capture; a new key pair is made and this device
-/// recorded with it under `device_name`, queued for the next push. Any failure rolls all of it
+/// bookkeeping become the snapshot's) and installs capture; a new key pair and signing key are
+/// made and this device recorded with them under `device_name`, queued for the next push, with
+/// the certificate `who` calls for (phase 5 §5.3): a joining device's trust store starts over, a
+/// Kit joiner signs its own certificate and trusts what it restored on first use, a holder
+/// without an identity leaves it without one, and a repair or re-sync is vouched for by the ID it
+/// had before. Any failure rolls all of it
 /// back and reinstalls the capture (or the guard) that ran before. Only after the commit is a
 /// leftover restore marker cleared.
 fn replace_profile(
@@ -444,6 +475,7 @@ fn replace_profile(
     creds: &Credentials,
     device_name: &str,
     plain: &[u8],
+    who: &NewIdentity,
     now: i64,
 ) -> Result<RestoreReport> {
     // The device whose capture runs on this connection now, if any, and whether the guard of a
@@ -458,13 +490,34 @@ fn replace_profile(
     // savepoint (the replace writes synced tables) and imposed again on every failure.
     let joined = guard::lift(conn).and_then(|()| {
         in_savepoint(conn, "sync_join_by_replace", || {
+            // Read before the device ID changes: what vouches for this device's next ID.
+            let predecessor = match who {
+                NewIdentity::Successor => identity::predecessor(conn)?,
+                NewIdentity::Join(_) => {
+                    conn.execute("DELETE FROM sync_trust", [])?;
+                    None
+                }
+            };
             keys::save_credentials(conn, creds)?;
             state::reset_chain(conn)?;
             state::reset_engine_marks(conn)?;
             let report =
                 binding::join_leaving_marker(conn, DeviceId::random(), &mut &plain[..], now)?;
             let public = keys::new_device_keypair(conn)?;
-            devices::record_this_device(conn, device_name, &public, now)?;
+            let cert = match who {
+                NewIdentity::Successor => identity::successor(conn, predecessor, now)?,
+                NewIdentity::Join(JoinIdentity::RecoveryKit) => {
+                    Some(identity::create_own(conn, Issuer::RecoveryKit, now)?)
+                }
+                NewIdentity::Join(JoinIdentity::Unvouched) => {
+                    identity::create_uncertified(conn)?;
+                    None
+                }
+            };
+            devices::record_this_device(conn, device_name, &public, cert.as_ref(), now)?;
+            if matches!(who, NewIdentity::Join(JoinIdentity::RecoveryKit)) {
+                trust::tofu_from_rows(conn, now)?;
+            }
             Ok(report)
         })
     });
@@ -599,6 +652,7 @@ async fn repair_after_backup<R: Relay, D: ConnAccess>(
                 creds: creds.clone(),
                 device_name: name.to_string(),
                 plain,
+                identity: NewIdentity::Successor,
                 now,
                 acknowledged: Vec::new(),
             },
@@ -672,6 +726,7 @@ pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
             creds,
             device_name: name,
             plain,
+            identity: NewIdentity::Successor,
             now,
             acknowledged,
         },

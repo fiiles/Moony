@@ -18,7 +18,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::binding::NoBinding;
 use super::devices::list_devices;
-use super::join::{join_new_device, recovery_credentials};
+use super::join::{join_new_device, recovery_credentials, JoinIdentity};
 use super::keys::{self, Credentials};
 use super::pairing::session::{
     keeps_session, PairingSession, Stage, CODE_MISMATCH, CODE_MISMATCH_FINAL,
@@ -50,7 +50,13 @@ fn add_own_rows(device: &Device) {
 
 /// The joiner joins with `creds` on their own relay; then a round on each converges them, and
 /// the holder lists the new device.
-async fn join_and_converge(holder: &Device, joiner: &Device, creds: Credentials, name: &str) {
+async fn join_and_converge(
+    holder: &Device,
+    joiner: &Device,
+    creds: Credentials,
+    name: &str,
+    identity: JoinIdentity,
+) {
     let relay = HttpRelay::new(&creds.relay_url).expect("the received relay address");
     let consent = super::engine::tests::agreed(&joiner.db);
     let backup: PathBuf = join_new_device(
@@ -59,6 +65,7 @@ async fn join_and_converge(holder: &Device, joiner: &Device, creds: Credentials,
         creds,
         name,
         consent,
+        identity,
         joiner.dir(),
         &NoBinding,
         now(),
@@ -340,7 +347,7 @@ async fn a_phone_joins_a_desktop_that_types_its_code() {
         "the joiner burns the mailbox once it has read: {burnt:?}"
     );
 
-    join_and_converge(&a, &b, creds, "B").await;
+    join_and_converge(&a, &b, creds, "B", JoinIdentity::Unvouched).await;
 }
 
 #[tokio::test]
@@ -408,7 +415,7 @@ async fn a_desktop_joins_from_a_phone_and_the_phone_types_the_code() {
     assert_eq!(creds.account, held.account);
     assert_eq!(creds.vault_id, held.vault_id);
 
-    join_and_converge(&a, &b, creds, "B").await;
+    join_and_converge(&a, &b, creds, "B", JoinIdentity::Unvouched).await;
 }
 
 #[tokio::test]
@@ -442,7 +449,7 @@ async fn a_device_joins_with_the_recovery_kit() {
     assert_eq!(creds.account, held.account);
     assert_eq!(creds.vault_id, held.vault_id);
 
-    join_and_converge(&a, &b, creds, "B").await;
+    join_and_converge(&a, &b, creds, "B", JoinIdentity::RecoveryKit).await;
 }
 
 #[tokio::test]

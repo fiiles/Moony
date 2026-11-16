@@ -13,8 +13,12 @@ use crate::services::sync::backups::{self, BackupMark};
 use crate::services::sync::binding::{write_rejoin_marker, NoBinding};
 use crate::services::sync::engine::RoundMode;
 use crate::services::sync::error::SyncError;
+use crate::services::sync::identity::trust::{self, TrustState};
+use crate::services::sync::identity::CertKind;
 use crate::services::sync::impact::{self, DRAIN_INCOMPLETE, IMPACT_CHANGED};
-use crate::services::sync::join::{join_new_device, repair_capture, resync_by_replace};
+use crate::services::sync::join::{
+    join_new_device, repair_capture, resync_by_replace, JoinIdentity,
+};
 use crate::services::sync::keys::VaultAuth;
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::{
@@ -273,6 +277,7 @@ async fn the_join_backs_up_and_replaces_in_one_connection_hold() {
         vault.creds.clone(),
         "Laptop",
         consent,
+        JoinIdentity::Unvouched,
         dir.path(),
         &NoBinding,
         NOW,
@@ -321,6 +326,7 @@ async fn a_join_into_a_profile_with_data_keeps_its_backup() {
         vault.creds.clone(),
         "Laptop",
         consent,
+        JoinIdentity::Unvouched,
         dir.path(),
         &NoBinding,
         NOW,
@@ -352,6 +358,7 @@ async fn a_join_into_a_brand_new_profile_leaves_a_plain_backup() {
         vault.creds.clone(),
         "Laptop",
         consent,
+        JoinIdentity::Unvouched,
         dir.path(),
         &NoBinding,
         NOW,
@@ -389,6 +396,7 @@ async fn join_keeping_check(prepare: impl FnOnce(&Connection)) {
         vault.creds.clone(),
         "Laptop",
         consent,
+        JoinIdentity::Unvouched,
         dir.path(),
         &NoBinding,
         NOW,
@@ -444,6 +452,7 @@ async fn an_account_written_after_the_confirmation_keeps_the_backup() {
         vault.creds.clone(),
         "Laptop",
         consent,
+        JoinIdentity::Unvouched,
         dir.path(),
         &NoBinding,
         NOW,
@@ -668,6 +677,7 @@ async fn a_join_with_more_attachments_than_agreed_stops() {
         vault.creds.clone(),
         "Laptop",
         consent,
+        JoinIdentity::Unvouched,
         dir.path(),
         &NoBinding,
         NOW,
@@ -901,6 +911,7 @@ async fn a_forged_consent_replaces_nothing() {
         vault.creds.clone(),
         "Laptop",
         inflated,
+        JoinIdentity::Unvouched,
         dir.path(),
         &NoBinding,
         NOW,
@@ -912,4 +923,39 @@ async fn a_forged_consent_replaces_nothing() {
     assert_eq!(profile(&joiner.lock()), before);
     assert!(state::load(&joiner.lock()).expect("state").is_none());
     assert!(repair_backups(dir.path()).is_empty(), "no backup");
+}
+
+/// Phase 5 §5.2: a re-sync continues under a new device ID with a new signing key, vouched for
+/// by the old ID like any re-join; the old ID stays trusted here.
+#[tokio::test]
+async fn a_resync_is_vouched_for_by_the_old_id() {
+    let vault = vault().await;
+    let old = with_genesis(&vault.a.lock(), "Mac");
+    snapshot_of_a(&vault, "a1").await;
+    let consent = agreed(&vault.a);
+    let dir = tempfile::tempdir().expect("dir");
+
+    resync_by_replace(
+        &vault.relay,
+        &vault.a,
+        consent,
+        dir.path(),
+        &NoBinding,
+        NOW + 60,
+    )
+    .await
+    .expect("resync");
+
+    let conn = vault.a.lock();
+    let new = device_of(&conn);
+    assert_ne!(new, A);
+    let entry = trust::entry(&conn, new).expect("entry").expect("pinned");
+    assert_eq!(entry.kind, CertKind::Rejoin);
+    assert_eq!(entry.issuer, A);
+    assert_eq!(entry.cert.body.issuer_sign_pub, old.body.sign_pub);
+    assert_eq!(
+        trust::entry(&conn, A).expect("entry").map(|e| e.state),
+        Some(TrustState::Trusted)
+    );
+    assert!(trust::is_supported(&conn).expect("supported"));
 }

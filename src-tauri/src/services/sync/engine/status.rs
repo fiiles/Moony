@@ -455,7 +455,7 @@ mod tests {
     #[test]
     fn an_enabled_profile_reports_when_this_device_joined() {
         let conn = enabled_at("https://relay.example.org");
-        devices::record_this_device(&conn, "MacBook", &[0x01; 32], 1_700_000_000).unwrap();
+        devices::record_this_device(&conn, "MacBook", &[0x01; 32], None, 1_700_000_000).unwrap();
         let shown = status(&conn, &Runtime::default()).expect("status");
         assert_eq!(shown.enabled_at, Some(1_700_000_000));
     }

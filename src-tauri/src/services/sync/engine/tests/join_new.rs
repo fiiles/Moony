@@ -11,7 +11,9 @@ use crate::services::sync::binding::NoBinding;
 use crate::services::sync::devices;
 use crate::services::sync::engine::RoundMode;
 use crate::services::sync::error::{SyncError, SyncResult, Transient};
-use crate::services::sync::join::{join_new_device, recovery_credentials};
+use crate::services::sync::identity::trust;
+use crate::services::sync::identity::{self, CertKind};
+use crate::services::sync::join::{join_new_device, recovery_credentials, JoinIdentity};
 use crate::services::sync::pairing::session::{PairingSession, Stage};
 use crate::services::sync::pairing::{pairing_code_text, Role};
 use crate::services::sync::recovery::{
@@ -99,12 +101,24 @@ async fn pair(vault: &Vault, holder: &TestConn, joiner_shows: bool) -> Credentia
     joiner_session.received().expect("the credentials").clone()
 }
 
+/// A join from a holder that sends no identity (a vault set up before phase 5).
 async fn join_as(
     vault: &Vault,
     device: &TestConn,
     creds: Credentials,
     name: &str,
     dir: &Path,
+) -> SyncResult<std::path::PathBuf> {
+    join_via(vault, device, creds, name, dir, JoinIdentity::Unvouched).await
+}
+
+async fn join_via(
+    vault: &Vault,
+    device: &TestConn,
+    creds: Credentials,
+    name: &str,
+    dir: &Path,
+    identity: JoinIdentity,
 ) -> SyncResult<std::path::PathBuf> {
     let consent = agreed(device);
     join_new_device(
@@ -113,6 +127,7 @@ async fn join_as(
         creds,
         name,
         consent,
+        identity,
         dir,
         &NoBinding,
         NOW,
@@ -229,11 +244,101 @@ async fn a_recovery_kit_join_finds_the_epoch_and_converges() {
         assert_eq!(creds.vault_id, vault.creds.vault_id);
         assert_eq!(*creds.auth().token, *vault.creds.auth().token);
 
-        let zip = join_as(&vault, &device, creds, "Laptop", dir.path())
-            .await
-            .expect("join");
+        let zip = join_via(
+            &vault,
+            &device,
+            creds,
+            "Laptop",
+            dir.path(),
+            JoinIdentity::RecoveryKit,
+        )
+        .await
+        .expect("join");
         assert_joined(&vault, &device, &zip, dir.path()).await;
     }
+}
+
+/// Phase 5 §5.3, §5.4: a Kit joiner signs its own Recovery Kit certificate and trusts, on first
+/// use, every certificate in what it restored.
+#[tokio::test]
+async fn a_recovery_kit_join_signs_its_own_certificate_and_trusts_what_it_restored() {
+    let vault = vault().await;
+    let a_cert = with_genesis(&vault.a.lock(), "Mac");
+    snapshot_of_a(&vault, "a1").await;
+    let kit = setup::recovery_kit(&vault.a.lock()).expect("kit");
+    let input = read_recovery_input(
+        &kit.recovery_code,
+        Some(&kit.account_number),
+        Some(RELAY),
+        DEFAULT_RELAY_URL,
+    )
+    .expect("typed");
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+    let creds = recovery_credentials(&vault.relay, &device, input)
+        .await
+        .expect("credentials");
+
+    join_via(
+        &vault,
+        &device,
+        creds,
+        "Laptop",
+        dir.path(),
+        JoinIdentity::RecoveryKit,
+    )
+    .await
+    .expect("join");
+
+    let conn = device.lock();
+    let me = device_of(&conn);
+    let own = trust::entry(&conn, me).expect("entry").expect("pinned");
+    assert_eq!(own.kind, CertKind::RecoveryKit);
+    let seed = identity::own_seed(&conn).expect("seed").expect("stored");
+    assert_eq!(own.sign_pub, identity::sign_pub(&seed));
+    let row_cert: Option<String> = conn
+        .query_row(
+            "SELECT cert FROM sync_devices WHERE id = ?1",
+            [me.to_hex()],
+            |r| r.get(0),
+        )
+        .expect("own row");
+    assert_eq!(row_cert, Some(own.cert.to_b64()));
+    assert_eq!(
+        trust::entry(&conn, A).expect("entry").map(|e| e.cert),
+        Some(a_cert),
+        "the genesis row it restored, trusted on first use"
+    );
+    assert_eq!(trust::entries(&conn).expect("entries").len(), 2);
+    assert!(trust::is_supported(&conn).expect("supported"));
+}
+
+/// Phase 5 §5.5: a holder that sends no identity (a vault set up before phase 5) leaves its
+/// joiner with a signing key and no certificate, so removal stays unavailable there.
+#[tokio::test]
+async fn a_join_from_a_holder_without_an_identity_makes_no_certificate() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    let received = pair(&vault, &vault.a, false).await;
+    join_as(&vault, &device, received, "iPhone", dir.path())
+        .await
+        .expect("join");
+
+    let conn = device.lock();
+    assert!(identity::own_seed(&conn).expect("seed").is_some());
+    assert!(trust::entries(&conn).expect("entries").is_empty());
+    assert!(!trust::is_supported(&conn).expect("supported"));
+    let row_cert: Option<String> = conn
+        .query_row(
+            "SELECT cert FROM sync_devices WHERE id = ?1",
+            [device_of(&conn).to_hex()],
+            |r| r.get(0),
+        )
+        .expect("own row");
+    assert_eq!(row_cert, None);
 }
 
 #[tokio::test]

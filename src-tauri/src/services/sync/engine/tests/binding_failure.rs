@@ -12,7 +12,10 @@ use super::runtime_loop::{rounds, start, start_in, until, Sealing};
 use super::*;
 use crate::models::sync::SyncProblem;
 use crate::services::sync::binding::{self, BindingFailure, BindingNative};
+use crate::services::sync::engine::pull::rejoin_as_new_device;
 use crate::services::sync::engine::runtime::Trigger;
+use crate::services::sync::identity::trust::{self, TrustState};
+use crate::services::sync::identity::{self, CertKind};
 
 /// `Sealing`, but the first `failures` opens fail as a passing native error would.
 struct FlakyOpening {
@@ -172,4 +175,79 @@ async fn three_separate_failed_starts_rejoin() {
     assert!(device_of(&vault.a.lock()) > A, "the third start re-joined");
     assert_eq!(failed_starts(&vault.a.lock()), None, "the count reset");
     running.handle.stop();
+}
+
+/// Phase 5 §5.2–§5.3: a re-join gives the new ID a signing key of its own and a re-join
+/// certificate signed by the old ID's key; the old ID stays trusted here.
+#[tokio::test]
+async fn a_rejoin_is_vouched_for_by_the_old_id() {
+    let vault = super::vault().await;
+    let old = with_genesis(&vault.a.lock(), "Mac");
+
+    let conn = vault.a.lock();
+    rejoin_as_new_device(&conn, None, NOW + 60).expect("re-join");
+
+    let new = device_of(&conn);
+    assert!(new > A);
+    let entry = trust::entry(&conn, new).expect("entry").expect("pinned");
+    assert_eq!(entry.kind, CertKind::Rejoin);
+    assert_eq!(entry.issuer, A);
+    assert_eq!(entry.cert.body.issuer_sign_pub, old.body.sign_pub);
+    assert_ne!(entry.sign_pub, old.body.sign_pub, "a new signing key");
+    let row_cert: Option<String> = conn
+        .query_row(
+            "SELECT cert FROM sync_devices WHERE id = ?1",
+            [new.to_hex()],
+            |r| r.get(0),
+        )
+        .expect("the new row");
+    assert_eq!(row_cert, Some(entry.cert.to_b64()));
+    assert_eq!(
+        trust::entry(&conn, A).expect("entry").map(|e| e.state),
+        Some(TrustState::Trusted),
+        "the old ID stays trusted"
+    );
+    assert!(trust::is_supported(&conn).expect("supported"));
+}
+
+/// Phase 5 §5.5: a vault set up before phase 5 re-joins with a new signing key but no
+/// certificate, so removal stays unavailable.
+#[tokio::test]
+async fn a_rejoin_of_a_vault_without_certificates_makes_a_key_and_no_certificate() {
+    let vault = super::vault().await;
+    let conn = vault.a.lock();
+    rejoin_as_new_device(&conn, None, NOW).expect("re-join");
+
+    assert!(identity::own_seed(&conn).expect("seed").is_some());
+    assert!(trust::entries(&conn).expect("entries").is_empty());
+    let row_cert: Option<String> = conn
+        .query_row(
+            "SELECT cert FROM sync_devices WHERE id = ?1",
+            [device_of(&conn).to_hex()],
+            |r| r.get(0),
+        )
+        .expect("the new row");
+    assert_eq!(row_cert, None);
+}
+
+/// Phase 5 §5.5: at unlock, a profile whose sync was set up before phase 5 gets its signing key
+/// and no certificate; removal stays unavailable and sync goes on.
+#[tokio::test]
+async fn at_unlock_a_vault_without_certificates_gets_a_signing_key_only() {
+    let vault = super::vault().await;
+    assert!(identity::own_seed(&vault.a.lock()).expect("seed").is_none());
+
+    let running = start(
+        &vault,
+        &vault.a,
+        tempfile::tempdir().expect("temp dir"),
+        Box::new(Sealing),
+    );
+    rounds(&running, 1).await;
+    running.handle.stop();
+
+    let conn = vault.a.lock();
+    assert!(identity::own_seed(&conn).expect("seed").is_some());
+    assert!(trust::entries(&conn).expect("entries").is_empty());
+    assert!(!trust::is_supported(&conn).expect("supported"));
 }

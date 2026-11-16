@@ -37,6 +37,7 @@ use super::engine::{self, ConnAccess, RoundMode, RoundReport};
 use super::error::{
     SyncError, SyncResult, TooLarge, Transient, ACCOUNT_BLOCKED, CONNECTION_CODE_REVOKED,
 };
+use super::identity::{self, Issuer};
 use super::in_savepoint;
 use super::join::rejoin_if_copy_under_lock;
 use super::keys::{self, Credentials};
@@ -232,8 +233,9 @@ pub fn setup_recovery_kit(conn: &Connection) -> Result<RecoveryKit> {
 ///    are and read `validation.syncPaymentRequired` and `validation.syncVaultLimitReached` at the
 ///    command).
 /// 3. In one savepoint: sync is turned on for the device the row holds (`binding::enable`, which
-///    also clears a stale restore marker), the key pair made once, and this device recorded under
-///    `device_name`. The device ID does not change, so a written binding stays valid. Then the
+///    also clears a stale restore marker), the key pair made once, this device's signing key and
+///    genesis certificate made once and pinned (phase 5 §5.3), and this device recorded under
+///    `device_name` with that certificate. The device ID does not change, so a written binding stays valid. Then the
 ///    binding is written when due; a failed seal is logged, and the engine's start tries again
 ///    (`binding::binding_due`).
 /// 4. After the lock, a `FirstSnapshot` round (ruling P4): pulls (nothing yet), pushes the rule
@@ -304,7 +306,10 @@ fn turn_on(conn: &Connection, data_dir: &Path, name: &str, enable: bool, now: i6
             binding::enable(conn, data_dir, device)?;
         }
         let public = keys::ensure_device_keypair(conn)?;
-        devices::record_this_device(conn, name, &public, now)?;
+        // The vault's first device vouches for itself (phase 5 §5.3); a resumed setup keeps the
+        // certificate it signed the first time.
+        let cert = identity::create_own(conn, Issuer::Genesis, now)?;
+        devices::record_this_device(conn, name, &public, Some(&cert), now)?;
         // The relay has just created or confirmed the vault: a pause from a first round that found
         // it gone (`vault_gone_at`) no longer holds, or the retry's round would not run.
         state::set_vault_gone(conn, None)

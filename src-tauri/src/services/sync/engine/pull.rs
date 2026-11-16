@@ -24,6 +24,7 @@ use crate::services::sync::devices;
 use crate::services::sync::envelope::{envelope_hash, open_op};
 use crate::services::sync::error::SyncResult;
 use crate::services::sync::hlc::now_ms;
+use crate::services::sync::identity;
 use crate::services::sync::in_savepoint;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::merge::{apply_changeset, Outcome, StopReason};
@@ -425,10 +426,11 @@ fn check_page(page: &PullPage, after: u64, limit: u32) -> std::result::Result<()
 }
 
 /// Re-join after a clone or rollback (§11.4), in one savepoint: `chain::rejoin` under an ID drawn
-/// above the old one (`chain::rejoin_device_id`), a new device key pair, this device's
-/// `sync_devices` row under the new ID with the old row's name (`"Moony"` when there was none;
-/// the platform is this build's), and the vault binding marked unwritten (Task 12 writes it
-/// again).
+/// above the old one (`chain::rejoin_device_id`), a new device key pair and signing key with a
+/// re-join certificate signed by the old ID's key (phase 5 §5.3; none when the old ID had no
+/// pinned certificate, §5.5), this device's `sync_devices` row under the new ID with the old
+/// row's name (`"Moony"` when there was none; the platform is this build's) and that certificate,
+/// and the vault binding marked unwritten (Task 12 writes it again).
 pub fn rejoin_as_new_device(
     conn: &Connection,
     trigger: Option<&EnvelopeMeta>,
@@ -440,9 +442,12 @@ pub fn rejoin_as_new_device(
             .device;
         let name = devices::device_row(conn, old)?
             .map_or_else(|| DEFAULT_DEVICE_NAME.to_string(), |(name, _)| name);
+        // The old ID's key vouches for the new one (phase 5 §5.3), read before the ID changes.
+        let predecessor = identity::predecessor(conn)?;
         let report = chain::rejoin(conn, chain::rejoin_device_id(old)?, trigger)?;
         let public = keys::new_device_keypair(conn)?;
-        devices::record_this_device(conn, &name, &public, now)?;
+        let cert = identity::successor(conn, predecessor, now)?;
+        devices::record_this_device(conn, &name, &public, cert.as_ref(), now)?;
         state::set_binding_written(conn, false)?;
         Ok(report)
     })

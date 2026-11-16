@@ -832,3 +832,27 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
 10. **`validation.syncTooManyDevices` got its text in all ten locales with Task 3**, not Task 16:
     the Rust gate `every_sync_validation_key_has_an_english_translation` fails as soon as a key
     appears in Rust code. Czech and English are §9.2's; Task 16 finds it already there.
+
+**Task 4 (this device's identity).**
+
+11. **`identity::create_own(conn, issuer, now)`** takes the kind from the issuer:
+    `Issuer::{Genesis, RecoveryKit, Ticket {..}, Predecessor {..}}` (borrowed secrets, so a join
+    can keep its ticket for "Try again"). It signs with a fresh seed, stores it and pins the
+    certificate in one savepoint; a device whose own certificate is already pinned gets that one
+    back (a resumed setup signs nothing new). `identity::create_uncertified` is the seed without a
+    certificate (§5.5).
+12. **A re-join certifies only when the old ID's own certificate is pinned here**
+    (`identity::predecessor`): a pre-phase-5 profile that got a seed at unlock has no pinned
+    certificate, and an ID nobody could verify vouches for nobody. Its successor gets a seed and
+    no certificate.
+13. **A repair and a re-sync are re-joins too.** Both replace the profile under a new device ID;
+    the old ID vouches for the new one with a re-join certificate, as at a clone, and the trust
+    store stays. Without this a supported device would lose removal after a re-sync.
+14. **A join starts its store over.** `join_new_device` takes a `JoinIdentity` (`RecoveryKit`,
+    `Unvouched` for a holder that sent no identity; Task 5 adds the paired one); the replace
+    clears `sync_trust` before it seeds anything. A Kit joiner then runs `trust::tofu_from_rows`
+    after recording its own row.
+15. **"At unlock" is the engine's start** (the runtime loop's `start`, after the copy check, holding off
+    every round): an enabled profile without a seed gets one (`identity::ensure_seed`); a
+    failure is logged and sync goes on.
+16. The `sync_epochs` row for epoch 0 of a new setup or join is not written here (Task 8).

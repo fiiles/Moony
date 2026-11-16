@@ -186,7 +186,8 @@ fn this_device(conn: &Connection) -> Result<DeviceId> {
         .ok_or_else(|| refused("sync is not set up on this device"))
 }
 
-fn vault_id(conn: &Connection) -> Result<[u8; 16]> {
+/// The bound vault's ID.
+pub(super) fn vault_id(conn: &Connection) -> Result<[u8; 16]> {
     let stored: Option<String> = conn
         .query_row("SELECT vault_id FROM sync_state WHERE id = 1", [], |r| {
             r.get(0)

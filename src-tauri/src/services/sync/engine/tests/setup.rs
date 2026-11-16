@@ -18,6 +18,8 @@ use crate::services::sync::engine::snapshots::{open_sealed, SnapshotPolicy};
 use crate::services::sync::engine::{run_round, RoundMode};
 use crate::services::sync::envelope::open_op;
 use crate::services::sync::error::{SyncError, SyncResult};
+use crate::services::sync::identity::trust::{self, TrustState};
+use crate::services::sync::identity::{self, CertKind};
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
 use crate::services::sync::relay::RelayError;
@@ -233,6 +235,71 @@ async fn first_device_setup_creates_the_vault_pushes_and_uploads_a_snapshot() {
         StartupCheck::Fine,
         "the binding matches the device ID sync runs under"
     );
+}
+
+/// Phase 5 §5.2–§5.3: setup gives the first device its signing key and a genesis certificate,
+/// pinned in its own store and carried by its row in the first push.
+#[tokio::test]
+async fn setup_signs_and_pins_a_genesis_certificate_that_syncs() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    let creds = set_up(&relay, &device, dir.path()).await;
+
+    let conn = device.lock();
+    let this = device_of(&conn);
+    let seed = identity::own_seed(&conn)
+        .expect("seed")
+        .expect("a signing key");
+    let entry = trust::entry(&conn, this).expect("entry").expect("pinned");
+    assert_eq!(entry.kind, CertKind::Genesis);
+    assert_eq!(entry.state, TrustState::Trusted);
+    assert_eq!(entry.sign_pub, identity::sign_pub(&seed));
+    assert!(trust::is_supported(&conn).expect("supported"));
+    let row_cert: Option<String> = conn
+        .query_row(
+            "SELECT cert FROM sync_devices WHERE id = ?1",
+            [this.to_hex()],
+            |r| r.get(0),
+        )
+        .expect("row");
+    assert_eq!(row_cert, Some(entry.cert.to_b64()));
+
+    let ops = relay.ops();
+    let json = open_op(|epoch| creds.keys.get(epoch), &creds.vault_id.0, &ops[0].ct).expect("open");
+    let cs = from_json(&json).expect("changeset");
+    let pushed = cs
+        .rows
+        .iter()
+        .find(|row| row.table == "sync_devices")
+        .and_then(|row| row.columns.get("cert"))
+        .map(|(value, _)| value.clone());
+    assert_eq!(
+        pushed,
+        Some(SqlValue::Text(entry.cert.to_b64())),
+        "the certificate went out with the row"
+    );
+}
+
+/// A setup resumed after sync was turned on keeps the certificate it signed the first time.
+#[tokio::test]
+async fn a_resumed_setup_keeps_its_certificate() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    let account = create_account(&relay, &device, RELAY)
+        .await
+        .expect("account");
+    relay.set_paid(&account.account_number, true);
+    recovery_kit(&device.lock()).expect("kit");
+    relay.fail_next(Route::Pull, RelayError::Network("timeout".into()));
+    assert!(finish(&relay, &device, dir.path()).await.is_err());
+    let first = trust::entries(&device.lock()).expect("entries");
+    assert_eq!(first.len(), 1);
+
+    finish(&relay, &device, dir.path()).await.expect("resumed");
+
+    assert_eq!(trust::entries(&device.lock()).expect("entries"), first);
 }
 
 #[tokio::test]

@@ -94,7 +94,7 @@ async fn clone_rejoins_then_rejudges_the_triggering_envelope() {
     let key_before: Vec<u8> = {
         let a = vault.a.lock();
         let public = keys::ensure_device_keypair(&a).expect("key pair");
-        devices::record_this_device(&a, "Filip's Mac", &public, NOW).expect("device row");
+        devices::record_this_device(&a, "Filip's Mac", &public, None, NOW).expect("device row");
         state::set_binding_written(&a, true).expect("binding");
         a.query_row("SELECT device_secret_key FROM sync_state", [], |r| r.get(0))
             .expect("key")

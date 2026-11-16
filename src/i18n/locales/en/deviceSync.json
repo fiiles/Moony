@@ -309,7 +309,6 @@
     "qrAlt": "Pairing code",
     "preparing": "Preparing the pairing…",
     "scanHint": "Scan this with Moony on your phone: Settings → Sync → Scan a code",
-    "copyCodeDev": "Copy code",
     "validFor": "The code works for 10 minutes.",
     "typeTitle": "Type the code",
     "showTitle": "Your pairing code",
@@ -327,7 +326,10 @@
     "tryAgain": "Try again",
     "startAgain": "Start again",
     "readyToJoin": "The sync details arrived. Check what is replaced, then join.",
-    "validUntil": "The code is valid until {{time}}."
+    "validUntil": "The code is valid until {{time}}.",
+    "copyCode": "Copy code",
+    "copiedCode": "Copied",
+    "codeHint": "No camera? Type or paste this code on the other device."
   },
   "join": {
     "warning": "This device's data is replaced by the synced data. A backup is saved next to your profile first.",
@@ -400,10 +402,11 @@
     "kitConfirmBody": "This phone's data is replaced by the synced data (a backup is kept).",
     "notAKitCode": "This is not a Recovery Kit code",
     "notAPairingCode": "This is not a pairing code.",
-    "devPasteTitle": "Paste a pairing code — developer tool",
-    "devPasteLabel": "Pairing code",
     "notAConnectionCode": "This QR code is not a connection code for a sync server.",
-    "scanConnectionHint": "Point the camera at the connection code of your sync server."
+    "scanConnectionHint": "Point the camera at the connection code of your sync server.",
+    "enterCodeTitle": "Enter the code manually",
+    "enterCodeHint": "The code is shown as text on your other device, under the QR code.",
+    "enterCodeLabel": "Pairing code"
   },
   "replace": {
     "lines": {

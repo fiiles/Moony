@@ -331,7 +331,6 @@
     "qrAlt": "Párovací kód",
     "preparing": "Připravuje se párování…",
     "scanHint": "Naskenujte to v Moony na telefonu: Nastavení → Synchronizace → Naskenovat kód",
-    "copyCodeDev": "Kopírovat kód",
     "validFor": "Kód platí 10 minut.",
     "typeTitle": "Zadejte kód",
     "showTitle": "Váš párovací kód",
@@ -349,7 +348,10 @@
     "tryAgain": "Zkusit znovu",
     "startAgain": "Začít znovu",
     "readyToJoin": "Údaje k synchronizaci dorazily. Zkontrolujte, co se nahradí, a pak se připojte.",
-    "validUntil": "Kód platí do {{time}}."
+    "validUntil": "Kód platí do {{time}}.",
+    "copyCode": "Kopírovat kód",
+    "copiedCode": "Zkopírováno",
+    "codeHint": "Bez fotoaparátu? Tento kód zadejte nebo vložte na druhém zařízení."
   },
   "join": {
     "warning": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Předtím se vedle profilu uloží záloha.",
@@ -424,10 +426,11 @@
     "kitConfirmBody": "Data tohoto telefonu budou nahrazena synchronizovanými daty (záloha se uchová).",
     "notAKitCode": "Toto není kód záchranné sady",
     "notAPairingCode": "Toto není párovací kód.",
-    "devPasteTitle": "Vložit párovací kód — vývojářský nástroj",
-    "devPasteLabel": "Párovací kód",
     "notAConnectionCode": "Tento QR kód není připojovací kód synchronizačního serveru.",
-    "scanConnectionHint": "Namiřte fotoaparát na připojovací kód svého synchronizačního serveru."
+    "scanConnectionHint": "Namiřte fotoaparát na připojovací kód svého synchronizačního serveru.",
+    "enterCodeTitle": "Zadat kód ručně",
+    "enterCodeHint": "Kód najdete na druhém zařízení pod QR kódem.",
+    "enterCodeLabel": "Párovací kód"
   },
   "replace": {
     "lines": {

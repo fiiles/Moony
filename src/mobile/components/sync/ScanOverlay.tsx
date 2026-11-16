@@ -8,11 +8,8 @@ import { cancelQrScan } from '@/mobile/lib/qr-scanner';
 interface ScanOverlayProps {
   /** Under the title: what to point the camera at (differs when adding a device). */
   hint: string;
-  /**
-   * Developer tools only (`status.devTools`): "Paste a pairing code — developer tool", for the
-   * simulator, which has no camera. Left out in release builds, which say nothing about pasting.
-   */
-  onDevPaste?: () => void;
+  /** "Enter the code manually": the code shown as text on the other device, in place of a scan. */
+  onEnterCode?: () => void;
 }
 
 /** The 48 pt buttons of the overlay's card. */
@@ -26,7 +23,7 @@ const BUTTON =
  * and Cancel. Cancel, Android back, the app going to the background and the overlay going away all
  * cancel the scan; the scan's own promise then answers `cancelled` to whoever started it.
  */
-export function ScanOverlay({ hint, onDevPaste }: ScanOverlayProps) {
+export function ScanOverlay({ hint, onEnterCode }: ScanOverlayProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -75,9 +72,9 @@ export function ScanOverlay({ hint, onDevPaste }: ScanOverlayProps) {
           {hint}
         </p>
         <div className="mt-4 grid gap-2">
-          {onDevPaste && (
-            <Button variant="outline" className={BUTTON} onClick={onDevPaste}>
-              {t('phone.devPasteTitle')}
+          {onEnterCode && (
+            <Button variant="outline" className={BUTTON} onClick={onEnterCode}>
+              {t('phone.enterCodeTitle')}
             </Button>
           )}
           <Button variant="ghost" className={BUTTON} onClick={() => void cancelQrScan()}>

@@ -320,7 +320,6 @@
     "qrAlt": "Código de vinculación",
     "preparing": "Preparando la vinculación…",
     "scanHint": "Escanea esto con Moony en tu teléfono: Ajustes → Sincronización → Escanear un código",
-    "copyCodeDev": "Copiar código",
     "validFor": "El código funciona durante 10 minutos.",
     "typeTitle": "Escribe el código",
     "showTitle": "Tu código de vinculación",
@@ -338,7 +337,10 @@
     "tryAgain": "Reintentar",
     "startAgain": "Empezar de nuevo",
     "readyToJoin": "Han llegado los datos de sincronización. Revisa qué se reemplaza y después únete.",
-    "validUntil": "El código funciona hasta las {{time}}."
+    "validUntil": "El código funciona hasta las {{time}}.",
+    "copyCode": "Copiar código",
+    "copiedCode": "Copiado",
+    "codeHint": "¿Sin cámara? Escribe o pega este código en el otro dispositivo."
   },
   "join": {
     "warning": "Los datos de este dispositivo se sustituyen por los sincronizados. Antes se guarda una copia de seguridad junto a tu perfil.",
@@ -412,10 +414,11 @@
     "kitConfirmBody": "Los datos de este teléfono se sustituyen por los sincronizados (se guarda una copia de seguridad).",
     "notAKitCode": "Esto no es un código del kit de recuperación",
     "notAPairingCode": "Esto no es un código de vinculación.",
-    "devPasteTitle": "Pegar un código de vinculación — herramienta de desarrollo",
-    "devPasteLabel": "Código de vinculación",
     "notAConnectionCode": "Este código QR no es un código de conexión de un servidor de sincronización.",
-    "scanConnectionHint": "Apunta la cámara al código de conexión de tu servidor de sincronización."
+    "scanConnectionHint": "Apunta la cámara al código de conexión de tu servidor de sincronización.",
+    "enterCodeTitle": "Introducir el código a mano",
+    "enterCodeHint": "El código aparece en tu otro dispositivo, debajo del código QR.",
+    "enterCodeLabel": "Código de vinculación"
   },
   "replace": {
     "lines": {

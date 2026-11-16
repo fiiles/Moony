@@ -298,7 +298,6 @@
     "qrAlt": "配对码",
     "preparing": "正在准备配对…",
     "scanHint": "请用手机上的 Moony 扫描：设置 → 同步 → 扫描代码",
-    "copyCodeDev": "复制代码",
     "validFor": "此代码在 10 分钟内有效。",
     "typeTitle": "输入代码",
     "showTitle": "您的配对码",
@@ -316,7 +315,10 @@
     "tryAgain": "重试",
     "startAgain": "重新开始",
     "readyToJoin": "同步信息已到达。请先查看将被替换的内容，然后加入。",
-    "validUntil": "此代码有效期至 {{time}}。"
+    "validUntil": "此代码有效期至 {{time}}。",
+    "copyCode": "复制代码",
+    "copiedCode": "已复制",
+    "codeHint": "无法扫描？请在另一台设备上输入或粘贴此代码。"
   },
   "join": {
     "warning": "此设备的数据将被同步的数据替换。会先在您的配置文件旁保存一份备份。",
@@ -388,10 +390,11 @@
     "kitConfirmBody": "这部手机的数据将被同步的数据替换（会保留一份备份）。",
     "notAKitCode": "这不是恢复包代码",
     "notAPairingCode": "这不是配对码。",
-    "devPasteTitle": "粘贴配对码 — 开发者工具",
-    "devPasteLabel": "配对码",
     "notAConnectionCode": "此二维码不是同步服务器的连接码。",
-    "scanConnectionHint": "请将相机对准同步服务器的连接码。"
+    "scanConnectionHint": "请将相机对准同步服务器的连接码。",
+    "enterCodeTitle": "手动输入代码",
+    "enterCodeHint": "代码显示在另一台设备上的二维码下方。",
+    "enterCodeLabel": "配对码"
   },
   "replace": {
     "lines": {

@@ -320,7 +320,6 @@
     "qrAlt": "Codice di associazione",
     "preparing": "Preparazione dell'associazione…",
     "scanHint": "Inquadralo con Moony sul telefono: Impostazioni → Sincronizzazione → Scansiona un codice",
-    "copyCodeDev": "Copia il codice",
     "validFor": "Il codice è valido per 10 minuti.",
     "typeTitle": "Digita il codice",
     "showTitle": "Il tuo codice di associazione",
@@ -338,7 +337,10 @@
     "tryAgain": "Riprova",
     "startAgain": "Ricomincia",
     "readyToJoin": "I dettagli di sincronizzazione sono arrivati. Controlla cosa viene sostituito, poi collega.",
-    "validUntil": "Il codice è valido fino alle {{time}}."
+    "validUntil": "Il codice è valido fino alle {{time}}.",
+    "copyCode": "Copia il codice",
+    "copiedCode": "Copiato",
+    "codeHint": "Niente fotocamera? Scrivi o incolla questo codice sull'altro dispositivo."
   },
   "join": {
     "warning": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup accanto al tuo profilo.",
@@ -412,10 +414,11 @@
     "kitConfirmBody": "I dati di questo telefono vengono sostituiti con quelli sincronizzati (viene conservato un backup).",
     "notAKitCode": "Questo non è un codice del kit di ripristino",
     "notAPairingCode": "Questo non è un codice di associazione.",
-    "devPasteTitle": "Incolla un codice di associazione — strumento per sviluppatori",
-    "devPasteLabel": "Codice di associazione",
     "notAConnectionCode": "Questo codice QR non è un codice di connessione di un server di sincronizzazione.",
-    "scanConnectionHint": "Inquadra con la fotocamera il codice di connessione del tuo server di sincronizzazione."
+    "scanConnectionHint": "Inquadra con la fotocamera il codice di connessione del tuo server di sincronizzazione.",
+    "enterCodeTitle": "Inserisci il codice a mano",
+    "enterCodeHint": "Il codice si trova sull'altro dispositivo, sotto il codice QR.",
+    "enterCodeLabel": "Codice di associazione"
   },
   "replace": {
     "lines": {

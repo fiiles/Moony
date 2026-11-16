@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
 import type { ReplaceOutcomeView } from '@shared/schema';
-import { useDeviceSyncStatus, useReplaceImpact } from '@/hooks/use-device-sync';
+import { useReplaceImpact } from '@/hooks/use-device-sync';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
@@ -72,7 +72,6 @@ export function PairingJoinFlow({
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const presentation = joinPresentation(context);
-  const status = useDeviceSyncStatus().data;
   const pairing = useDevicePairing();
   const { error, isError, start, confirm, confirmError, cancel, join, afterFailedJoin } = pairing;
   const { turnOff } = useDeviceSyncMutations();
@@ -243,7 +242,6 @@ export function PairingJoinFlow({
       <PairingSteps
         view={view}
         scanHint={t('join.pairHint')}
-        devTools={status?.devTools === true}
         error={isError ? (error as Error) : null}
         confirmError={confirmError}
         onConfirm={handleConfirm}

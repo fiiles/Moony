@@ -309,7 +309,6 @@
     "qrAlt": "Parkopplingskod",
     "preparing": "Förbereder parkopplingen …",
     "scanHint": "Skanna detta med Moony på telefonen: Inställningar → Synkronisering → Skanna en kod",
-    "copyCodeDev": "Kopiera kod",
     "validFor": "Koden fungerar i 10 minuter.",
     "typeTitle": "Skriv koden",
     "showTitle": "Din parkopplingskod",
@@ -327,7 +326,10 @@
     "tryAgain": "Försök igen",
     "startAgain": "Börja om",
     "readyToJoin": "Synkroniseringsuppgifterna har kommit. Se vad som ersätts och anslut sedan.",
-    "validUntil": "Koden fungerar till kl. {{time}}."
+    "validUntil": "Koden fungerar till kl. {{time}}.",
+    "copyCode": "Kopiera kod",
+    "copiedCode": "Kopierat",
+    "codeHint": "Ingen kamera? Skriv eller klistra in den här koden på den andra enheten."
   },
   "join": {
     "warning": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först bredvid din profil.",
@@ -400,10 +402,11 @@
     "kitConfirmBody": "Telefonens data ersätts med de synkroniserade uppgifterna (en säkerhetskopia sparas).",
     "notAKitCode": "Det här är ingen kod från ett återställningskit",
     "notAPairingCode": "Det här är ingen parkopplingskod.",
-    "devPasteTitle": "Klistra in en parkopplingskod — utvecklarverktyg",
-    "devPasteLabel": "Parkopplingskod",
     "notAConnectionCode": "Den här QR-koden är inte en anslutningskod för en synkroniseringsserver.",
-    "scanConnectionHint": "Rikta kameran mot anslutningskoden för din synkroniseringsserver."
+    "scanConnectionHint": "Rikta kameran mot anslutningskoden för din synkroniseringsserver.",
+    "enterCodeTitle": "Ange koden manuellt",
+    "enterCodeHint": "Koden visas på din andra enhet, under QR-koden.",
+    "enterCodeLabel": "Parkopplingskod"
   },
   "replace": {
     "lines": {

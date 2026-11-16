@@ -18,7 +18,7 @@ use crate::services::sync::hlc::{now_ms, unpack, FUTURE_WARNING_MS};
 use crate::services::sync::relay::http::{
     is_default_relay, is_insecure_address, normalize_base_url,
 };
-use crate::services::sync::{devices, feature, keys, snapshot, state};
+use crate::services::sync::{devices, keys, snapshot, state};
 
 /// The relay deletes a lapsed vault this long after the subscription ended (spec §11.6).
 pub const DELETE_AFTER_LAPSE: i64 = 90 * 86_400;
@@ -66,7 +66,6 @@ impl Runtime {
 /// the phase (`SyncStatus::attachments`, zeros while sync is off), never in it. The last complete
 /// sync and the verdict on it (`milestones::sync_protects`) are `None` and `false` while off.
 pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
-    let dev_tools = feature::dev_tools();
     let address = keys::account(conn)?.map(|(url, _)| url);
     let own_server = address.as_deref().is_some_and(|url| !is_default_relay(url));
     let server_insecure = address
@@ -83,7 +82,6 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         paid_until: None,
         deletes_at: None,
         clock_ahead_until: None,
-        dev_tools,
         own_server,
         server_address: address.clone(),
         server_insecure,
@@ -153,7 +151,6 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         paid_until,
         deletes_at,
         clock_ahead_until: clock_ahead_until(conn, now_ms())?.filter(|at| displayable(*at)),
-        dev_tools,
         own_server,
         server_address: address,
         server_insecure,

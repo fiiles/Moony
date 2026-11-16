@@ -309,7 +309,6 @@
     "qrAlt": "Koblingskode",
     "preparing": "Forbereder koblingen …",
     "scanHint": "Skann dette med Moony på telefonen: Innstillinger → Synkronisering → Skann en kode",
-    "copyCodeDev": "Kopier kode",
     "validFor": "Koden fungerer i 10 minutter.",
     "typeTitle": "Skriv inn koden",
     "showTitle": "Koblingskoden din",
@@ -327,7 +326,10 @@
     "tryAgain": "Prøv igjen",
     "startAgain": "Start på nytt",
     "readyToJoin": "Synkroniseringsopplysningene er kommet. Se hva som erstattes, og bli deretter med.",
-    "validUntil": "Koden fungerer til kl. {{time}}."
+    "validUntil": "Koden fungerer til kl. {{time}}.",
+    "copyCode": "Kopier kode",
+    "copiedCode": "Kopiert",
+    "codeHint": "Ingen kamera? Skriv inn eller lim inn denne koden på den andre enheten."
   },
   "join": {
     "warning": "Dataene på denne enheten erstattes med de synkroniserte dataene. En sikkerhetskopi lagres først ved siden av profilen din.",
@@ -400,10 +402,11 @@
     "kitConfirmBody": "Dataene på denne telefonen erstattes med de synkroniserte dataene (en sikkerhetskopi beholdes).",
     "notAKitCode": "Dette er ikke en kode fra et gjenopprettingssett",
     "notAPairingCode": "Dette er ikke en koblingskode.",
-    "devPasteTitle": "Lim inn en koblingskode — utviklerverktøy",
-    "devPasteLabel": "Koblingskode",
     "notAConnectionCode": "Denne QR-koden er ikke en tilkoblingskode for en synkroniseringsserver.",
-    "scanConnectionHint": "Rett kameraet mot tilkoblingskoden til synkroniseringsserveren din."
+    "scanConnectionHint": "Rett kameraet mot tilkoblingskoden til synkroniseringsserveren din.",
+    "enterCodeTitle": "Skriv inn koden manuelt",
+    "enterCodeHint": "Koden står på den andre enheten, under QR-koden.",
+    "enterCodeLabel": "Koblingskode"
   },
   "replace": {
     "lines": {

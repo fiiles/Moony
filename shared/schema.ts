@@ -114,8 +114,6 @@ export interface SyncStatus {
    * stamped with until then (unix seconds). A note, never a problem; `null` otherwise.
    */
   clockAheadUntil: number | null;
-  /** The developer tools are offered (debug build with sync on). */
-  devTools: boolean;
   /** The stored server is not the Moony cloud: a person's own sync server. */
   ownServer: boolean;
   /** The stored server's address, in every phase that has one. */
@@ -264,7 +262,7 @@ export interface PairingView {
   role: PairingRole;
   /** The pairing code as an SVG QR code, while this device shows it (`waitingForScan`). */
   qrSvg: string | null;
-  /** The same code as text, only with the developer tools (a simulator cannot scan). */
+  /** The same code as text, to copy and type on a device that cannot scan. */
   pairingCode: string | null;
   /** The six digits the joiner shows, from `compare` on; never set on the holder, whose person types them. */
   comparisonCode: string | null;

@@ -255,7 +255,6 @@ async fn the_status_counts_pending_changes_and_held_devices() {
             paid_until: Some(NOW),
             deletes_at: None,
             clock_ahead_until: None,
-            dev_tools: crate::services::sync::feature::dev_tools(),
             own_server: true,
             server_address: Some("https://relay.test".into()),
             server_insecure: false,

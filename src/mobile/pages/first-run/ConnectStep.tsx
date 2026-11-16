@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { ClipboardPaste, QrCode, RefreshCw, Type } from 'lucide-react';
 import type { ReplaceOutcomeView } from '@shared/schema';
 import { Input } from '@/components/ui/input';
-import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { REPLACE_DEVICE_MUTATION_KEY } from '@/hooks/use-device-sync-mutations';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
@@ -21,8 +20,8 @@ import { field48, fieldLabel, textLink } from './styles';
 /**
  * Připojení, the join path's step after the recovery key (spec 2026-11-14 §5.2): the name this
  * phone joins under and the way in, as in Nastavení → Synchronizace ("Naskenovat kód z počítače",
- * which also takes a Recovery Kit QR, or "Zadat kód záchranné sady"; with the developer tools, a
- * pasted pairing code). The choice runs the flows Settings runs (`ScanFlow`, `RecoveryJoinSheet`)
+ * which also takes a Recovery Kit QR, or "Zadat kód záchranné sady", or "Zadat kód ručně" for
+ * a pairing code). The choice runs the flows Settings runs (`ScanFlow`, `RecoveryJoinSheet`)
  * in their first-run mode: the password typed on the account step, no replace warning and no
  * impact list (the profile is brand new).
  *
@@ -36,7 +35,6 @@ export function ConnectStep({ flow }: { flow: FirstRunFlow }) {
   const { t } = useTranslation('auth');
   const { t: tSync } = useTranslation('deviceSync');
   const fieldId = useId();
-  const devTools = useDeviceSyncStatus().data?.devTools === true;
   const [name, setName] = useState(() =>
     tSync(`setup.defaultName.${phoneDeviceKey(import.meta.env.TAURI_ENV_PLATFORM ?? '')}`)
   );
@@ -130,14 +128,13 @@ export function ConnectStep({ flow }: { flow: FirstRunFlow }) {
                 disabled={deviceName === ''}
                 onClick={() => pick('kit')}
               />
-              {devTools && (
-                <SettingsRow
-                  icon={ClipboardPaste}
-                  title={tSync('phone.devPasteTitle')}
-                  disabled={deviceName === ''}
-                  onClick={() => pick('paste')}
-                />
-              )}
+              <SettingsRow
+                icon={ClipboardPaste}
+                title={tSync('phone.enterCodeTitle')}
+                sub={tSync('phone.enterCodeHint')}
+                disabled={deviceName === ''}
+                onClick={() => pick('paste')}
+              />
             </EntityRows>
           </>
         )
@@ -160,7 +157,6 @@ export function ConnectStep({ flow }: { flow: FirstRunFlow }) {
         <ScanFlow
           mode="join"
           paste={method === 'paste'}
-          devTools={devTools}
           firstRun={firstRun}
           onDone={() => setMethod(null)}
           onReplaced={replaced}

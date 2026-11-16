@@ -15,7 +15,7 @@ const base: SyncStatus = {
   paidUntil: null,
   deletesAt: null,
   clockAheadUntil: null,
-  devTools: false,
+
   ownServer: false,
   serverAddress: null,
   serverInsecure: false,

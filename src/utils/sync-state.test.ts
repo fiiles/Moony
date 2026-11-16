@@ -23,7 +23,7 @@ function status(
     paidUntil: null,
     deletesAt: null,
     clockAheadUntil: null,
-    devTools: false,
+
     ownServer: false,
     serverAddress: null,
     serverInsecure: false,

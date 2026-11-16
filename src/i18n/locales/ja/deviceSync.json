@@ -298,7 +298,6 @@
     "qrAlt": "ペアリングコード",
     "preparing": "ペアリングを準備しています…",
     "scanHint": "スマートフォンの Moony でこれをスキャンしてください：設定 → 同期 → コードをスキャン",
-    "copyCodeDev": "コードをコピー",
     "validFor": "このコードは10分間有効です。",
     "typeTitle": "コードを入力",
     "showTitle": "ペアリングコード",
@@ -316,7 +315,10 @@
     "tryAgain": "もう一度試す",
     "startAgain": "最初からやり直す",
     "readyToJoin": "同期の情報が届きました。置き換えられる内容を確認してから参加してください。",
-    "validUntil": "このコードは {{time}} まで有効です。"
+    "validUntil": "このコードは {{time}} まで有効です。",
+    "copyCode": "コードをコピー",
+    "copiedCode": "コピーしました",
+    "codeHint": "カメラが使えない場合は、このコードをもう一方のデバイスに入力または貼り付けてください。"
   },
   "join": {
     "warning": "このデバイスのデータは同期済みのデータに置き換えられます。先にプロファイルの隣にバックアップを保存します。",
@@ -388,10 +390,11 @@
     "kitConfirmBody": "このスマートフォンのデータは同期済みのデータに置き換えられます（バックアップは保存されます）。",
     "notAKitCode": "これはリカバリーキットのコードではありません",
     "notAPairingCode": "これはペアリングコードではありません。",
-    "devPasteTitle": "ペアリングコードを貼り付け — 開発者ツール",
-    "devPasteLabel": "ペアリングコード",
     "notAConnectionCode": "この QR コードは同期サーバーの接続コードではありません。",
-    "scanConnectionHint": "同期サーバーの接続コードにカメラを向けてください。"
+    "scanConnectionHint": "同期サーバーの接続コードにカメラを向けてください。",
+    "enterCodeTitle": "コードを手入力",
+    "enterCodeHint": "コードは、もう一方のデバイスの QR コードの下に表示されています。",
+    "enterCodeLabel": "ペアリングコード"
   },
   "replace": {
     "lines": {

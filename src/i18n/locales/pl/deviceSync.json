@@ -331,7 +331,6 @@
     "qrAlt": "Kod parowania",
     "preparing": "Przygotowywanie parowania…",
     "scanHint": "Zeskanuj to w Moony na telefonie: Ustawienia → Synchronizacja → Skanuj kod",
-    "copyCodeDev": "Kopiuj kod",
     "validFor": "Kod działa przez 10 minut.",
     "typeTitle": "Wpisz kod",
     "showTitle": "Twój kod parowania",
@@ -349,7 +348,10 @@
     "tryAgain": "Spróbuj ponownie",
     "startAgain": "Zacznij od nowa",
     "readyToJoin": "Dane synchronizacji dotarły. Sprawdź, co zostanie zastąpione, i dołącz.",
-    "validUntil": "Kod działa do {{time}}."
+    "validUntil": "Kod działa do {{time}}.",
+    "copyCode": "Kopiuj kod",
+    "copiedCode": "Skopiowano",
+    "codeHint": "Brak aparatu? Wpisz lub wklej ten kod na drugim urządzeniu."
   },
   "join": {
     "warning": "Dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi. Najpierw obok profilu zapisywana jest kopia zapasowa.",
@@ -424,10 +426,11 @@
     "kitConfirmBody": "Dane tego telefonu zostaną zastąpione danymi zsynchronizowanymi (kopia zapasowa zostanie zachowana).",
     "notAKitCode": "To nie jest kod zestawu odzyskiwania",
     "notAPairingCode": "To nie jest kod parowania.",
-    "devPasteTitle": "Wklej kod parowania — narzędzie deweloperskie",
-    "devPasteLabel": "Kod parowania",
     "notAConnectionCode": "Ten kod QR nie jest kodem połączenia z serwerem synchronizacji.",
-    "scanConnectionHint": "Skieruj aparat na kod połączenia swojego serwera synchronizacji."
+    "scanConnectionHint": "Skieruj aparat na kod połączenia swojego serwera synchronizacji.",
+    "enterCodeTitle": "Wpisz kod ręcznie",
+    "enterCodeHint": "Kod jest na drugim urządzeniu, pod kodem QR.",
+    "enterCodeLabel": "Kod parowania"
   },
   "replace": {
     "lines": {

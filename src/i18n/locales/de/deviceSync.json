@@ -309,7 +309,6 @@
     "qrAlt": "Kopplungscode",
     "preparing": "Kopplung wird vorbereitet …",
     "scanHint": "Scannen Sie dies mit Moony auf Ihrem Smartphone: Einstellungen → Synchronisierung → Code scannen",
-    "copyCodeDev": "Code kopieren",
     "validFor": "Der Code gilt 10 Minuten.",
     "typeTitle": "Code eingeben",
     "showTitle": "Ihr Kopplungscode",
@@ -327,7 +326,10 @@
     "tryAgain": "Erneut versuchen",
     "startAgain": "Neu beginnen",
     "readyToJoin": "Die Synchronisierungsdaten sind angekommen. Prüfen Sie, was ersetzt wird, und treten Sie dann bei.",
-    "validUntil": "Der Code gilt bis {{time}}."
+    "validUntil": "Der Code gilt bis {{time}}.",
+    "copyCode": "Code kopieren",
+    "copiedCode": "Kopiert",
+    "codeHint": "Keine Kamera? Geben Sie diesen Code auf dem anderen Gerät ein oder fügen Sie ihn ein."
   },
   "join": {
     "warning": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird neben Ihrem Profil eine Sicherung gespeichert.",
@@ -400,10 +402,11 @@
     "kitConfirmBody": "Die Daten dieses Telefons werden durch die synchronisierten Daten ersetzt (eine Sicherung bleibt erhalten).",
     "notAKitCode": "Das ist kein Code eines Wiederherstellungs-Kits",
     "notAPairingCode": "Das ist kein Kopplungscode.",
-    "devPasteTitle": "Kopplungscode einfügen — Entwicklerwerkzeug",
-    "devPasteLabel": "Kopplungscode",
     "notAConnectionCode": "Dieser QR-Code ist kein Verbindungscode für einen Synchronisierungsserver.",
-    "scanConnectionHint": "Richten Sie die Kamera auf den Verbindungscode Ihres Synchronisierungsservers."
+    "scanConnectionHint": "Richten Sie die Kamera auf den Verbindungscode Ihres Synchronisierungsservers.",
+    "enterCodeTitle": "Code manuell eingeben",
+    "enterCodeHint": "Den Code finden Sie auf Ihrem anderen Gerät unter dem QR-Code.",
+    "enterCodeLabel": "Kopplungscode"
   },
   "replace": {
     "lines": {

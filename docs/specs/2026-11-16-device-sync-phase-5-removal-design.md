@@ -853,8 +853,8 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     clears `sync_trust` before it seeds anything. A Kit joiner then runs `trust::tofu_from_rows`
     after recording its own row.
 15. **"At unlock" is the engine's start** (the runtime loop's `start`, after the copy check, holding off
-    every round): an enabled profile without a seed gets one (`identity::ensure_seed`); a
-    failure is logged and sync goes on.
+    every round, in the same connection hold as the binding check): an enabled profile without a
+    seed gets one (`identity::ensure_seed`); a failure is logged and sync goes on.
 16. The `sync_epochs` row for epoch 0 of a new setup or join is not written here (Task 8).
 
 **Task 5 (pairing protocol 3).**

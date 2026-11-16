@@ -543,33 +543,31 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                 return Err(Ended);
             }
         }
-        self.ensure_signing_key()?;
         Ok(true)
-    }
-
-    /// Phase 5 §5.5: a profile whose sync was set up before phase 5 gets its signing key (and no
-    /// certificate) at the first start. A failure is logged; the next start tries again, and
-    /// sync goes on without it (removal stays unavailable there anyway).
-    fn ensure_signing_key(&self) -> Result<(), Ended> {
-        match self.db.with_conn(identity::ensure_seed) {
-            Ok(true) => {
-                log::info!("[SYNC] This device made its signing key (no certificate: older vault)");
-                Ok(())
-            }
-            Ok(false) => Ok(()),
-            Err(error) if locked(&error) => Err(Ended),
-            Err(error) => {
-                log::warn!("[SYNC] This device's signing key could not be made");
-                log::debug!("[SYNC] This device's signing key could not be made: {error}");
-                Ok(())
-            }
-        }
     }
 
     /// Writes the binding at start when sync is on and none is written yet (a seal that failed
     /// for a passing reason earlier), so the check does not stay off for good.
+    ///
+    /// In the same connection hold (phase 5 §5.5): a profile whose sync was set up before phase 5
+    /// gets its signing key, and no certificate. A re-join made one already, so only this path
+    /// needs it. A failure is logged; the next start tries again, and sync goes on without it
+    /// (removal stays unavailable there anyway).
     fn write_binding_if_due(&self) -> Result<(), Ended> {
-        match self.db.with_conn(binding::binding_due) {
+        let checked = self.db.with_conn(|conn| {
+            match identity::ensure_seed(conn) {
+                Ok(true) => log::info!(
+                    "[SYNC] This device made its signing key (no certificate: older vault)"
+                ),
+                Ok(false) => {}
+                Err(error) => {
+                    log::warn!("[SYNC] This device's signing key could not be made");
+                    log::debug!("[SYNC] This device's signing key could not be made: {error}");
+                }
+            }
+            binding::binding_due(conn)
+        });
+        match checked {
             Ok(true) => self.write_binding(),
             Ok(false) => Ok(()),
             Err(error) if locked(&error) => Err(Ended),

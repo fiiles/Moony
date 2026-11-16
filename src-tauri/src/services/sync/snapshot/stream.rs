@@ -13,7 +13,7 @@ use std::io::{Read, Write};
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value as Json};
 use zeroize::Zeroizing;
 
@@ -216,6 +216,51 @@ pub(super) fn encode(record: &Record, devs: &mut DevTable) -> Json {
     Json::Object(out)
 }
 
+/// Writes the `Keys` record (same bytes as `write_record(encode(Record::Keys))`) without a plain
+/// copy of the keys: the base64 text and the serialized record live in wiped buffers sized up
+/// front, so nothing is reallocated and left behind.
+pub(super) fn write_keys_record(out: &mut impl Write, keys: &[EpochKey]) -> Result<()> {
+    #[derive(Serialize)]
+    struct KeyOut<'a> {
+        epoch: u32,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        head: Option<u64>,
+        key: &'a str,
+    }
+    #[derive(Serialize)]
+    struct KeysOut<'a> {
+        keys: Vec<KeyOut<'a>>,
+        r: &'static str,
+    }
+    let texts: Vec<Zeroizing<String>> = keys
+        .iter()
+        .map(|k| {
+            let mut text = Zeroizing::new(String::with_capacity(44));
+            URL_SAFE_NO_PAD.encode_string(k.key.as_slice(), &mut text);
+            text
+        })
+        .collect();
+    let record = KeysOut {
+        keys: keys
+            .iter()
+            .zip(&texts)
+            .map(|(k, text)| KeyOut {
+                epoch: k.epoch,
+                head: k.head,
+                key: text.as_str(),
+            })
+            .collect(),
+        r: "keys",
+    };
+    let mut bytes = Zeroizing::new(Vec::with_capacity(64 + 128 * keys.len()));
+    serde_json::to_writer(&mut *bytes, &record)?;
+    let len = u32::try_from(bytes.len())
+        .map_err(|_| AppError::Internal("sync snapshot: a record exceeds 4 GiB".into()))?;
+    out.write_all(&len.to_be_bytes())?;
+    out.write_all(&bytes)?;
+    Ok(())
+}
+
 /// Writes one length-prefixed record.
 pub(super) fn write_record(out: &mut impl Write, record: &Json) -> Result<()> {
     // Wiped after the write: a `Keys` record carries vault keys.
@@ -285,7 +330,8 @@ struct KeyWire {
     head: Option<u64>,
 }
 
-/// A `Keys` record: epochs strictly ascending (so each once), every key 32 bytes.
+/// A `Keys` record: epochs strictly ascending (so each once), every key 32 bytes, heads that
+/// are given never decreasing, and epoch 0 with head 0 or none.
 fn decode_keys(bytes: &[u8]) -> Result<Vec<EpochKey>> {
     // The serde error may quote the value, so it is dropped.
     let wire: KeysWire = serde_json::from_slice(bytes).map_err(|_| invalid())?;
@@ -293,9 +339,20 @@ fn decode_keys(bytes: &[u8]) -> Result<Vec<EpochKey>> {
         return Err(invalid());
     }
     let mut keys: Vec<EpochKey> = Vec::with_capacity(wire.keys.len());
+    // Relay positions never decrease from one epoch to the next (phase 5 §6.1); epoch 0 starts at 0.
+    let mut floor = 0u64;
     for entry in wire.keys {
         if keys.last().is_some_and(|last| entry.epoch <= last.epoch) {
             return Err(invalid());
+        }
+        if entry.epoch == 0 && entry.head.is_some_and(|head| head != 0) {
+            return Err(invalid());
+        }
+        if let Some(head) = entry.head {
+            if head < floor {
+                return Err(invalid());
+            }
+            floor = head;
         }
         let decoded = Zeroizing::new(
             URL_SAFE_NO_PAD

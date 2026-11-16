@@ -290,3 +290,93 @@ fn a_key_of_the_wrong_length_or_an_unknown_field_is_refused() {
         assert!(read_record(&mut &out[..], &[]).is_err(), "{text}");
     }
 }
+
+fn stream_with_keys(listed: Vec<EpochKey>) -> Vec<u8> {
+    let (bytes, _) = snapshot(&dumper(), 3);
+    let mut all = records(&bytes);
+    all[2] = Record::Keys(listed);
+    stream_of(&all)
+}
+
+fn entry(epoch: u32, n: u8, head: Option<u64>) -> EpochKey {
+    EpochKey {
+        epoch,
+        key: key(n),
+        head,
+    }
+}
+
+#[test]
+fn heads_that_decrease_across_epochs_are_refused() {
+    for listed in [
+        vec![
+            entry(0, 0x10, Some(0)),
+            entry(1, 0x11, Some(50)),
+            entry(2, 0x12, Some(49)),
+        ],
+        // An epoch without a head does not hide the order of the others.
+        vec![
+            entry(0, 0x10, Some(0)),
+            entry(1, 0x11, Some(50)),
+            entry(2, 0x12, None),
+            entry(3, 0x13, Some(10)),
+        ],
+    ] {
+        let bytes = stream_with_keys(listed);
+        let b = device(B);
+        bind(&b, &[(3, 0x13)]);
+        refused_with(&b, &bytes, true);
+        refused_with(&b, &bytes, false);
+    }
+    // Equal heads are allowed (two key changes without an op between them).
+    let bytes = stream_with_keys(vec![
+        entry(0, 0x10, Some(0)),
+        entry(1, 0x11, Some(50)),
+        entry(2, 0x12, Some(50)),
+    ]);
+    let b = device(B);
+    bind(&b, &[(2, 0x12)]);
+    restore_merge(&b, &mut &bytes[..], NOW).expect("merge");
+    assert_eq!(epoch_rows(&b), vec![(0, 0), (1, 50), (2, 50)]);
+}
+
+#[test]
+fn a_listed_head_below_a_recorded_earlier_one_is_refused() {
+    // This device recorded epoch 2 at 40; the snapshot puts epoch 1 at 50.
+    let bytes = stream_with_keys(vec![entry(0, 0x10, Some(0)), entry(1, 0x11, Some(50))]);
+    let b = device(B);
+    bind(&b, &[(2, 0x12)]);
+    state::record_epoch(&b, 2, 40, None, 1).expect("epoch 2");
+    refused_with(&b, &bytes, true);
+}
+
+#[test]
+fn epoch_zero_starts_at_zero_or_has_no_head() {
+    let bytes = stream_with_keys(vec![entry(0, 0x10, Some(5)), entry(1, 0x11, Some(50))]);
+    let b = device(B);
+    bind(&b, &[(1, 0x11)]);
+    refused_with(&b, &bytes, true);
+    // No head at all is fine.
+    let bytes = stream_with_keys(vec![entry(0, 0x10, None), entry(1, 0x11, Some(50))]);
+    let b = device(B);
+    bind(&b, &[(1, 0x11)]);
+    restore_merge(&b, &mut &bytes[..], NOW).expect("merge");
+    assert_eq!(epoch_rows(&b), vec![(0, 0), (1, 50)]);
+}
+
+#[test]
+fn the_dumped_keys_record_is_written_without_a_plain_copy_of_the_keys() {
+    // The dump and the fixed-shape record agree byte for byte.
+    let (bytes, _) = snapshot(&dumper(), 3);
+    let all = records(&bytes);
+    let listed = keys_of(&all)[0].clone();
+    let mut expected = Vec::new();
+    write_record(
+        &mut expected,
+        &encode(&Record::Keys(listed.clone()), &mut DevTable::new()),
+    )
+    .expect("write");
+    let mut direct = Vec::new();
+    write_keys_record(&mut direct, &listed).expect("write");
+    assert_eq!(direct, expected);
+}

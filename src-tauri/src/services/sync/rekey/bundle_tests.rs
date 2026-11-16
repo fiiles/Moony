@@ -574,7 +574,8 @@ fn a_body_that_breaks_its_own_rules_is_refused() {
     let b = B.id().to_hex();
     let c = C.id().to_hex();
     let old = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, OLD_KEY);
-    let cases: Vec<(&str, Box<dyn Fn(&str) -> String>)> = vec![
+    type Edit = Box<dyn Fn(&str) -> String>;
+    let cases: Vec<(&str, Edit)> = vec![
         (
             "a duplicate epoch in keys",
             Box::new(move |j: &str| {

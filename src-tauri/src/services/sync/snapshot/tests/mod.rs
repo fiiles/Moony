@@ -13,7 +13,7 @@ use rusqlite::types::Value;
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
 
-use super::stream::{encode, write_record};
+use super::stream::{encode, write_keys_record, write_record};
 use super::*;
 use crate::models::budgeting::InsertBudgetGoal;
 use crate::services::budgeting;

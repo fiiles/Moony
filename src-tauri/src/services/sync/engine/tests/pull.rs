@@ -6,7 +6,9 @@ use std::sync::atomic::Ordering;
 use super::*;
 use crate::services::sync::capture;
 use crate::services::sync::devices;
-use crate::services::sync::engine::pull::{handle_op, pull_all, pull_pages, OpStep, PULL_PAGE};
+use crate::services::sync::engine::pull::{
+    epoch_fits_position, handle_op, pull_all, pull_pages, OpStep, PULL_PAGE,
+};
 use crate::services::sync::engine::{PullEnd, PullReport, PullStop};
 use crate::services::sync::error::SyncError;
 use crate::services::sync::keys::VaultAuth;
@@ -1001,7 +1003,7 @@ async fn an_epoch_with_no_known_position_is_not_checked() {
     let vault = vault().await;
     let creds = credentials_at_epoch_one(&vault);
     let a = vault.a.lock();
-    assert!(state::epochs(&a).expect("epochs").get(&1).is_none());
+    assert!(!state::epochs(&a).expect("epochs").contains_key(&1));
 
     assert_eq!(handle_at(&a, &creds, 10, 0, 500), OpStep::Advance);
     assert_eq!(handle_at(&a, &creds, 11, 1, 2), OpStep::Advance);
@@ -1036,4 +1038,44 @@ async fn several_key_changes_each_fix_their_own_range() {
         handle_at(&a, &creds, 14, 1, 81),
         OpStep::Stop(PullStop::Invalid)
     );
+}
+
+/// An op exactly at a key change's head belongs to the epochs before it, with several changes
+/// known as with one.
+#[tokio::test]
+async fn an_op_at_exactly_a_key_changes_head_belongs_to_the_earlier_epoch() {
+    let vault = vault().await;
+    let first = *vault.creds.keys.current();
+    let creds = Credentials {
+        keys: VaultKeys::from_parts(2, BTreeMap::from([(0, first), (1, [9; 32]), (2, [8; 32])]))
+            .expect("keys"),
+        ..vault.creds.clone()
+    };
+    let a = vault.a.lock();
+    state::record_epoch(&a, 1, 50, None, NOW).expect("epoch 1");
+    state::record_epoch(&a, 2, 80, None, NOW).expect("epoch 2");
+
+    assert_eq!(handle_at(&a, &creds, 10, 0, 50), OpStep::Advance);
+    assert_eq!(
+        handle_at(&a, &creds, 11, 1, 50),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(handle_at(&a, &creds, 12, 1, 80), OpStep::Advance);
+    assert_eq!(
+        handle_at(&a, &creds, 13, 2, 80),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(handle_at(&a, &creds, 14, 2, 81), OpStep::Advance);
+}
+
+/// An envelope whose epoch cannot be read fits no place, with key changes known or not.
+#[tokio::test]
+async fn an_envelope_without_a_readable_epoch_fits_no_position() {
+    let vault = vault().await;
+    let a = vault.a.lock();
+    assert!(!epoch_fits_position(&a, &vault.creds, None, 10).expect("rule"));
+    state::record_epoch(&a, 1, 50, None, NOW).expect("epoch 1");
+    assert!(!epoch_fits_position(&a, &vault.creds, None, 10).expect("rule"));
+    assert!(!epoch_fits_position(&a, &vault.creds, None, 60).expect("rule"));
+    assert!(epoch_fits_position(&a, &vault.creds, Some(1), 60).expect("rule"));
 }

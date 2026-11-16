@@ -49,7 +49,7 @@ use super::registry::{
 use super::repair;
 use super::state::{self, SyncState};
 use crate::error::{AppError, Result};
-use stream::{encode, invalid, read_all, write_record, Snapshot};
+use stream::{encode, invalid, read_all, write_keys_record, write_record, Snapshot};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DumpStats {
@@ -113,7 +113,7 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
     )?;
     write_record(out, &encode(&header, &mut no_devs))?;
     if let Some(keys) = dumped_keys(conn)? {
-        write_record(out, &encode(&Record::Keys(keys), &mut no_devs))?;
+        write_keys_record(out, &keys)?;
     }
     for row in &encoded {
         write_record(out, row)?;
@@ -169,6 +169,17 @@ fn adopt_keys(conn: &Connection, listed: Option<&[EpochKey]>, now: i64) -> Resul
         return Err(invalid());
     };
     let known = state::epochs(conn)?;
+    // The heads this device records and the snapshot's together must not decrease with the epoch.
+    let mut all = known.clone();
+    for entry in listed {
+        if let Some(head) = entry.head {
+            all.entry(entry.epoch).or_insert(head);
+        }
+    }
+    if all.values().zip(all.values().skip(1)).any(|(a, b)| b < a) {
+        log::warn!("[SYNC] A snapshot's key epochs do not fit this device's");
+        return Err(invalid());
+    }
     let mut added = false;
     for entry in listed {
         match held.insert_older(entry.epoch, entry.key.clone()) {

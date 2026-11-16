@@ -13,7 +13,9 @@ use crate::services::sync::engine::RoundMode;
 use crate::services::sync::error::{SyncError, SyncResult, Transient};
 use crate::services::sync::identity::trust;
 use crate::services::sync::identity::{self, CertKind};
-use crate::services::sync::join::{join_new_device, recovery_credentials, JoinIdentity};
+use crate::services::sync::join::{
+    join_new_device, record_joined_epochs, recovery_credentials, JoinIdentity,
+};
 use crate::services::sync::pairing::holder::holder_payload;
 use crate::services::sync::pairing::session::{PairingSession, Stage};
 use crate::services::sync::pairing::{pairing_code_text, Role};
@@ -995,4 +997,32 @@ async fn heads_that_contradict_the_snapshot_refuse_the_join() {
     assert!(!state::load(&conn)
         .expect("state")
         .is_some_and(|s| s.enabled));
+}
+
+/// The heads of epochs whose keys reached the joiner only through the snapshot's `Keys` record
+/// are recorded too: the keys are read from the profile after the restore, not from the
+/// credentials the join began with (which hold the current epoch alone).
+#[test]
+fn heads_for_keys_that_came_with_the_snapshot_are_recorded() {
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine as _;
+
+    let conn = migrated();
+    state::ensure_row(&conn, B).expect("row");
+    // As after the restore: the older keys are stored next to the current one.
+    let json = (0..=2u8)
+        .map(|n| format!("\"{n}\":\"{}\"", URL_SAFE_NO_PAD.encode([n + 1; 32])))
+        .collect::<Vec<_>>()
+        .join(",");
+    conn.execute(
+        "UPDATE sync_state SET vault_id = 'AAECAwQFBgcICQoLDA0ODw', key_epoch = 2, vault_keys = ?1 \
+         WHERE id = 1",
+        [format!("{{{json}}}")],
+    )
+    .expect("bind");
+    let heads = BTreeMap::from([(1, 50), (2, 80), (7, 99)]);
+
+    record_joined_epochs(&conn, &JoinIdentity::Unvouched(heads), NOW).expect("record");
+
+    assert_eq!(epoch_rows(&conn), vec![(0, 0), (1, 50), (2, 80)]);
 }

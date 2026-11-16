@@ -120,8 +120,8 @@ pub fn handle_op(
 /// The epoch rule (phase 5 §6.1): for every key change this device knows the relay position of
 /// (`sync_epochs`, epoch k at head h), an op above h is sealed under epoch k or later and an op at
 /// or below h under an earlier one. A key epoch this device holds a key for but has no head for
-/// is not checked (logged once per run).
-fn epoch_fits_position(
+/// is not checked (a warning is logged once per process, not per op or round).
+pub(super) fn epoch_fits_position(
     conn: &Connection,
     creds: &Credentials,
     epoch: Option<u32>,
@@ -136,6 +136,7 @@ fn epoch_fits_position(
             return Ok(false);
         }
     }
+    // One warning per process: every op of every round would meet the same gap.
     static LOGGED: AtomicBool = AtomicBool::new(false);
     if creds
         .keys

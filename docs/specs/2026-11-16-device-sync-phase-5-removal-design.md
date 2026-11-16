@@ -1083,8 +1083,16 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     envelope opens, so the epoch is authenticated): for every `(k, head)` of `sync_epochs`, an op
     above `head` must be sealed under epoch ≥ k and one at or below it under epoch < k; either
     breach stops the pull as `Invalid` (problem `invalidChain`) before the changeset is read. An
-    epoch this device holds a key for, above 0, with no row is not checked and logged once per run.
+    epoch this device holds a key for, above 0, with no row is not checked and warned about once per process.
     Not applied in scan mode after a `NewerSchema` stop (nothing is applied there).
+
+46. **Task 8 review fixes.** `record_joined_epochs` reads the keys from the profile after the
+    snapshot's restore (so heads for older epochs whose keys came only with the `Keys` record are
+    recorded). The dump serializes the `Keys` record into wiped buffers (`write_keys_record`). A
+    `Keys` record whose heads decrease with the epoch, or whose epoch 0 has a head other than 0,
+    is `validation.syncSnapshotInvalid`; `adopt_keys` also checks the listed heads together with
+    the recorded ones. At the epoch rule, an op at exactly `head` belongs to the earlier epoch, and
+    an envelope with no readable epoch is `Invalid`.
 
 **Tasks 9–10 (removing and changing the key here; picking a key change up).**
 

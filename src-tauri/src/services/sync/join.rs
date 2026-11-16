@@ -536,7 +536,7 @@ fn replace_profile(
             };
             devices::record_this_device(conn, device_name, &public, cert.as_ref(), now)?;
             if let NewIdentity::Join(joining) = who {
-                record_joined_epochs(conn, creds, joining, now)?;
+                record_joined_epochs(conn, joining, now)?;
             }
             if matches!(who, NewIdentity::Join(JoinIdentity::RecoveryKit)) {
                 trust::tofu_from_rows(conn, now)?;
@@ -569,23 +569,25 @@ fn replace_profile(
 
 /// A joiner's key epochs (phase 5 §6.1): the heads its holder sent for the epochs it holds keys
 /// for, with epoch 0 at relay position 0 when it holds that key; what the snapshot's `Keys` record
-/// already recorded must agree. A head that does not is `validation.syncPairingFailed`: two
+/// already recorded must agree. The keys are read from the profile after the snapshot's restore,
+/// not from the credentials the join started with: the restore added the older epochs' keys. A head that does not is `validation.syncPairingFailed`: two
 /// authenticated sources contradict each other.
-fn record_joined_epochs(
+pub(super) fn record_joined_epochs(
     conn: &Connection,
-    creds: &Credentials,
     joining: &JoinIdentity,
     now: i64,
 ) -> Result<()> {
+    let held = keys::vault_keys(conn)?
+        .ok_or_else(|| AppError::Internal("sync join: no vault keys after the restore".into()))?;
     let mut heads = match joining {
         JoinIdentity::Paired(_, heads) | JoinIdentity::Unvouched(heads) => heads.clone(),
         JoinIdentity::RecoveryKit => EpochHeads::new(),
     };
-    if creds.keys.get(0).is_some() {
+    if held.get(0).is_some() {
         heads.entry(0).or_insert(0);
     }
     for (epoch, head) in heads {
-        if creds.keys.get(epoch).is_none() {
+        if held.get(epoch).is_none() {
             continue;
         }
         if state::record_epoch(conn, epoch, head, None, now)? == state::EpochRecord::Differs {

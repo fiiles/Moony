@@ -140,7 +140,16 @@ struct FakeState {
     /// Seconds the fake's clock is ahead of the real one (`advance_clock`): what the 30-day rules
     /// of a retired token and a key-change bundle are measured on.
     clock_offset: i64,
+    /// A relay colluding with a removed device: a retired token still writes
+    /// (`set_accept_retired_writes`).
+    accept_retired_writes: bool,
+    /// What `rekeys` answers instead of the stored bundles (`set_rekeys_answer`): a lying relay's
+    /// pages, built from `after`, never checked against the contract.
+    rekeys_answer: Option<RekeysAnswer>,
 }
+
+/// A scripted `rekeys` answer: the page for `after`.
+pub type RekeysAnswer = Arc<dyn Fn(u32) -> RekeyPage + Send + Sync>;
 
 impl Default for FakeState {
     fn default() -> Self {
@@ -174,6 +183,8 @@ impl Default for FakeState {
             no_room: false,
             server_now: None,
             clock_offset: 0,
+            accept_retired_writes: false,
+            rekeys_answer: None,
         }
     }
 }
@@ -479,6 +490,50 @@ impl FakeRelay {
             .map(|r| r.bundle.clone())
     }
 
+    /// A relay colluding with a removed device: from now on (until switched off) a retired token
+    /// pushes as if it were current. Only rotations still need the current token.
+    pub fn set_accept_retired_writes(&self, accept: bool) {
+        self.lock().accept_retired_writes = accept;
+    }
+
+    /// A lying relay: `rekeys` reports `head` as the vault's head at rotation `rotation`.
+    pub fn set_rekey_head(&self, vault_id: &str, rotation: u32, head: u64) {
+        if let Some(vault) = self.lock().vaults.get_mut(vault_id) {
+            for rekey in vault.rekeys.iter_mut().filter(|r| r.rotation == rotation) {
+                rekey.head = head;
+            }
+        }
+    }
+
+    /// A lying relay: stores `bundle` as the next key change's (the rotation counter moves on,
+    /// the head is the vault's) without rotating the token, so no key the bundle carries has a
+    /// token here.
+    pub fn insert_rekey(&self, vault_id: &str, bundle: &[u8]) {
+        let mut state = self.lock();
+        let now = state.now();
+        if let Some(vault) = state.vaults.get_mut(vault_id) {
+            vault.rotation += 1;
+            vault.rekeys.push(StoredRekey {
+                rotation: vault.rotation,
+                head: vault.head,
+                at: now,
+                bundle: bundle.to_vec(),
+            });
+        }
+    }
+
+    /// A lying relay: `rekeys` answers `answer(after)` (any page, unchecked) until cleared.
+    pub fn set_rekeys_answer(&self, answer: Option<RekeysAnswer>) {
+        self.lock().rekeys_answer = answer;
+    }
+
+    /// Serves an op `drop_op` hid again.
+    pub fn undrop_op(&self, seq: u64) {
+        for vault in self.lock().vaults.values_mut() {
+            vault.dropped.remove(&seq);
+        }
+    }
+
     /// A server restored from an older backup: the vault's head (and the ops past it) go back to
     /// `head`. Never raises a head.
     pub fn roll_back_head(&self, vault_id: &str, head: u64) {
@@ -544,7 +599,7 @@ impl FakeState {
             if !previous {
                 return Err(RelayError::Unauthorized);
             }
-            if access != Access::Read {
+            if access != Access::Read && !(self.accept_retired_writes && access == Access::Write) {
                 return Err(RelayError::TokenReadOnly);
             }
         }
@@ -968,6 +1023,9 @@ impl Relay for FakeRelay {
             }
             let limit = limit.min(MAX_REKEY_PAGE) as usize;
             let stored = state.authorize(vault, Access::Read)?;
+            if let Some(answer) = &state.rekeys_answer {
+                return Ok(answer(after));
+            }
             let now = state.now();
             let mut live = stored
                 .rekeys

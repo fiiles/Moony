@@ -127,7 +127,7 @@
     "currentPasswordRequired": "Obecne hasło jest wymagane",
     "passwordMinLength": "Hasło musi mieć co najmniej 8 znaków",
     "recoveryKeyRequired": "Klucz odzyskiwania jest wymagany",
-    "syncRecoveryCodeInvalid": "Ten kod zestawu odzyskiwania jest nieprawidłowy. Sprawdź, czy wpisano wszystkie 80 znaków – wielkość liter, spacje i myślniki nie mają znaczenia.",
+    "syncRecoveryCodeInvalid": "Ten kod zestawu odzyskiwania jest nieprawidłowy. Sprawdź, czy wpisano wszystkie 95 znaków – wielkość liter, spacje i myślniki nie mają znaczenia.",
     "tickerRequired": "Ticker jest wymagany",
     "companyNameRequired": "Nazwa firmy jest wymagana",
     "quantityRequired": "Ilość jest wymagana",
@@ -383,8 +383,9 @@
     "syncGapNotSkippableYet": "Tę zmianę można pominąć dopiero po 14 dniach od jej wstrzymania.",
     "syncCopyFailed": "Nie udało się skopiować kodu. Spróbuj ponownie albo zachowaj zestaw w inny sposób, który pokazuje ten ekran.",
     "syncRecoveryAccountInvalid": "Sprawdź numer konta: to 16 cyfr z zestawu odzyskiwania synchronizacji.",
-    "syncRecoveryVaultNotFound": "Serwer synchronizacji nie ma zsynchronizowanych danych dla tego kodu zestawu odzyskiwania. Sprawdź kod i adres serwera synchronizacji w zestawie odzyskiwania synchronizacji.",
-    "syncRecoveryKitRotated": "Klucze tej synchronizacji zostały wymienione; dołączanie za pomocą zestawu odzyskiwania po takiej wymianie nie jest jeszcze obsługiwane.",
+    "syncRecoveryVaultNotFound": "Serwer nie zna tego zestawu odzyskiwania: albo zastąpił go nowszy, albo należy do innej synchronizacji lub innego serwera. Sprawdź kod i adres serwera.",
+    "syncRecoveryKitReplaced": "Ten zestaw odzyskiwania został zastąpiony nowszym {{at, unixdate}}. Użyj nowszego zestawu.",
+    "syncRecoveryKitUnreadable": "Moony nie może odczytać tego zestawu odzyskiwania: dane na serwerze synchronizacji do niego nie pasują. Nic nie zostało zmienione.",
     "syncJoinSetupPending": "Najpierw dokończ lub anuluj konfigurację synchronizacji na tym urządzeniu."
   },
   "auth": {

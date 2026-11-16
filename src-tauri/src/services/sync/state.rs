@@ -275,6 +275,8 @@ pub fn disable(conn: &Connection) -> Result<()> {
             KEY_CHANGE_OVERRUN_KEY,
             REMOVAL_NOT_DONE_KEY,
             KIT_READ_SEEN_KEY,
+            AFTER_KIT_JOIN_KEY,
+            KIT_EPOCH_FLOOR_KEY,
             super::identity::trust::NEW_DEVICES_KEY,
         ] {
             conn.execute("DELETE FROM app_config WHERE key = ?1", [key])?;
@@ -568,6 +570,51 @@ pub const REMOVED_NOTICE_KEY: &str = "sync.removed_notice";
 /// The Local `app_config` key holding the key epochs this device adopted whose head the remover's
 /// signed head has not confirmed yet (`rekey::head`). Cleared with `sync_epochs`.
 pub const UNVERIFIED_EPOCHS_KEY: &str = "sync.epochs_unverified";
+
+/// The Local `app_config` key of a Recovery Kit joiner's push hold (revision §2.6 step 7,
+/// `join::AfterKitJoin`): while it exists, rounds pull and push nothing. Only the person lifts it
+/// (`join::lift_kit_join_hold`); turning sync off and a join's replace clear it.
+pub const AFTER_KIT_JOIN_KEY: &str = "sync.after_kit_join";
+
+/// The Local `app_config` key of a Kit joiner's bound on its newest epoch when the snapshot it
+/// restored was sealed under that epoch without naming its head (revision §2.6 step 5,
+/// `KitEpochFloor`). Cleared with `sync_epochs`.
+pub const KIT_EPOCH_FLOOR_KEY: &str = "sync.kit_epoch_floor";
+
+/// A Kit joiner restored a snapshot at relay position `after` sealed under `epoch`, whose head it
+/// does not know: that epoch began at or before `after`, so an op past `after` sealed under an
+/// older epoch breaks the epoch rule (`engine::pull::epoch_fits_position`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KitEpochFloor {
+    #[serde(rename = "epoch")]
+    pub epoch: u32,
+    #[serde(rename = "after")]
+    pub after: u64,
+}
+
+/// The Kit joiner's epoch bound, if any (a value that does not read is none).
+pub fn kit_epoch_floor(conn: &Connection) -> Result<Option<KitEpochFloor>> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [KIT_EPOCH_FLOOR_KEY],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(value.and_then(|v| serde_json::from_str(&v).ok()))
+}
+
+pub(crate) fn set_kit_epoch_floor(conn: &Connection, floor: KitEpochFloor) -> Result<()> {
+    let json = serde_json::to_string(&floor)
+        .map_err(|e| AppError::Internal(format!("sync: the Kit epoch bound: {e}")))?;
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2) \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![KIT_EPOCH_FLOOR_KEY, json],
+    )?;
+    Ok(())
+}
 
 /// The Local `app_config` key holding the notice that this device applied changes past a key
 /// change the server hid from it (`rekey::KeyChangeOverrun`). Turning sync off clears it.

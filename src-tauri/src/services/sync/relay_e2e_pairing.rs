@@ -24,7 +24,7 @@ use super::pairing::session::{
     keeps_session, PairingSession, Stage, CODE_MISMATCH, CODE_MISMATCH_FINAL,
 };
 use super::pairing::{pairing_code_text, parse_pairing_code, MailboxId, Role};
-use super::recovery::read_recovery_input;
+use super::recovery::read_kit_input;
 use super::relay::http::{normalize_base_url, HttpRelay, DEFAULT_RELAY_URL};
 use super::relay::{Mailbox, RelayError, RelayResult};
 use super::relay_e2e::{
@@ -74,6 +74,8 @@ async fn join_and_converge(
     .backup;
     assert!(backup.exists(), "the join's backup stays");
     assert!(joiner.enabled());
+    // A Kit joiner holds its pushes until the person answers "Data jsou zpět": here "Mám je".
+    super::join::lift_kit_join_hold(&joiner.db.lock()).expect("decided");
     assert_eq!(
         joiner.count("SELECT COUNT(*) FROM bank_accounts WHERE id = 'acc-own'"),
         0,
@@ -435,40 +437,36 @@ async fn a_desktop_joins_from_a_phone_and_the_phone_types_the_code() {
 #[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn a_device_joins_with_the_recovery_kit() {
     let url = relay_url();
-    let (a, b) = holder_and_new_device(&url).await;
-    // The v1 Kit (the current key) the join reads until Task 19 rewrites it.
+    let relay = relay_at(&url);
+    let (a, _, kit) = super::relay_e2e::first_device_with_kit(&relay, &url, "A").await;
+    add_finances(&a);
+    a.round(&relay).await;
+    let b = Device::new();
+    add_own_rows(&b);
+    // Typed: the grouped v2 code (the account is in it), the server's address as written.
     let held = a.credentials();
-    let code = super::recovery::format_recovery_code(&super::recovery::encode_recovery_code(
-        &held.vault_id,
-        held.keys.current(),
-    ));
-    let number = held.account.clone();
-
-    // Typed: the grouped code, the account with spaces, the server's address as written.
-    let account = format!(
-        "{} {} {} {}",
-        &number[..4],
-        &number[4..8],
-        &number[8..12],
-        &number[12..]
+    let code = super::recovery::format_recovery_code(
+        &super::recovery::encode_kit_code(&held.vault_id, kit.secret(), &held.account)
+            .expect("code"),
     );
-    let input = read_recovery_input(
-        &code,
-        Some(&account),
-        Some(&format!("{url}/")),
-        DEFAULT_RELAY_URL,
-    )
-    .expect("kit input");
+    let input =
+        read_kit_input(&code, Some(&format!("{url}/")), DEFAULT_RELAY_URL).expect("kit input");
     let relay = HttpRelay::new(&input.relay_url).expect("relay");
-    let creds = recovery_credentials(&relay, &b.db, input)
+    let (creds, kit_join) = recovery_credentials(&relay, &b.db, input)
         .await
         .expect("kit credentials");
-    let held = a.credentials();
     assert_eq!(creds.relay_url, stored_relay(&a));
     assert_eq!(creds.account, held.account);
     assert_eq!(creds.vault_id, held.vault_id);
 
-    join_and_converge(&a, &b, creds, "B", JoinIdentity::RecoveryKit).await;
+    join_and_converge(
+        &a,
+        &b,
+        creds,
+        "B",
+        JoinIdentity::RecoveryKit(Box::new(kit_join)),
+    )
+    .await;
 }
 
 #[tokio::test]

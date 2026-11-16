@@ -1259,3 +1259,67 @@ R-40. **`kitUsed`** is `engine::status::kit_used(conn, last_read, now)` with
      `org.nspasteboard.TransientType` (keychain plugin, phase 2): nothing changed there.
 R-41. **The v1 code functions stay until Task 19** (R-1 put their deletion in Tasks 18/19): the
      Kit join still reads a v1 Kit until Task 19 rewrites it; setup no longer uses them.
+
+**Task 19 (joining with the Kit).**
+
+R-42. **`join::recovery_credentials(relay, db, KitInput) -> (Credentials, KitJoin)`**: the account
+     from the code (`syncRecoveryAccountInvalid`), `GET /kit` with the derived token, the envelope
+     opened (`rekey::envelope::open`), the credentials with every key it carries (the newest
+     current), `vault_info` with that key's token, and the head and rotation of the newest key
+     change's bundle when the server still lists it (`KitJoin.server_head`; read from the bundle's
+     unauthenticated header, which only makes the head provisional). `get_kit`'s refusals are
+     read on the `RelayError` (`kit_read_refused`), never through `SyncError::Unauthorized`:
+     `401` and `404` → `syncRecoveryVaultNotFound` (reworded per §2.9: one text for a wrong code,
+     a vault without a Kit, an old Kit, another sync or server), `410` →
+     `syncRecoveryKitReplaced|{"at":…}`, a `400` (a token or vault ID the server's rules refuse:
+     only a code that does not read gives one) → `syncRecoveryCodeInvalid`, `429` stays
+     `RateLimited`, `402` the subscription's reading. Every envelope failure, an envelope whose
+     newest key's token the vault does not know (`401` at `vault_info`), a missing, unverifiable
+     or replaced Kit row, an envelope signer not pinned with the bundled certificate or removed or
+     left in the restored store, and a head of the envelope the snapshot contradicts are
+     `syncRecoveryKitUnreadable`, with nothing replaced (the replace's savepoint rolls back).
+     `syncRecoveryKitRotated` is gone from Rust and the locales; `syncRecoveryCodeInvalid` says
+     95 characters now. The command `sync_join_with_recovery_kit` reads a v2 code
+     (`read_kit_input`) and ignores its `account` argument until Task 24 drops it from the wire.
+     The UI shows `{{at, unixdate}}` with a new i18next formatter (`src/i18n/index.ts`: unix
+     seconds through `getFormatters().date`, long style).
+R-43. **The store** (in the replace's savepoint, after the restore): `trust::pin_kit_anchor`
+     pins the restored Kit row's kind 5 (`trusted`, `confirmed`) when its `sign_pub` is the
+     derived one and no removal record on the row verifies against its signer's row certificate;
+     then this device's kind 3 (`Issuer::Kit`), its row, the envelope's verified heads
+     (`record_joined_epochs`), and `trust::tofu_from_rows(conn, now, genesis)`, which now takes
+     the set of genesis certificates it may trust (`trust::kit_join_genesis`: the genesis at the
+     top of the anchored Kit's issuer chain in the rows, and any the confirmed set names with that
+     certificate's hash; any other genesis is never pinned, and what it vouched for waits for it,
+     closing the genesis gap of R-28). The signer check (R-28: pinned with exactly the envelope's
+     certificate and `trusted`, the envelope's `at` not consulted) comes after the TOFU, then
+     `trust::apply_confirmed_set`.
+R-44. **The newest epoch E** (§2.6 step 5): known from the snapshot's `Keys` record → nothing
+     more; a snapshot sealed under E (its stream header's epoch, `fetched_snapshot_at`) → the Local
+     `sync.kit_epoch_floor = {epoch, after}` (`state::KitEpochFloor`), which
+     `engine::pull::epoch_fits_position` applies as a head would (an op past `after` under an
+     older epoch is `Invalid`); an older snapshot → `head::note_unverified` with the server's head
+     and rotation when it listed the bundle (also recorded provisionally in `sync_epochs`, as a
+     pickup does), else with neither: `UnverifiedEpoch.head` and `.rotation` are `Option` now,
+     the look-ahead starts at `after`, and `settle` takes the signed record's head and rotation
+     (recorded in `sync_epochs`; a different recorded head refutes). `head::verify_heads` takes
+     `now` for that. The floor and the hold are cleared by turning sync off and a join's replace.
+R-45. **The push hold** (§2.6 step 7) is the Local `sync.after_kit_join` (`join::AfterKitJoin
+     {devices, newestChangeAt}`: every other `trusted` non-Kit entry and the newest change time
+     among the other devices' clocks; not written when there is none). `engine::round_pass`
+     returns before the reseal, the blob upload, the push, the snapshot and the daily pass while
+     it exists (pulls go on). `join::after_kit_join` reads it (an unreadable value still holds),
+     `join::lift_kit_join_hold` lifts it; the command (`sync_kit_join_decided`) and the status
+     field are Task 24's. **Not held:** the runtime's blob transfer lanes (uploads of documents
+     the person adds meanwhile) — Task 24 should gate the upload lane on the same key.
+R-46. **A Kit joiner's removal before its row went out:** a device it removes while the hold
+     stands never saw the joiner (its row waited behind the hold), so it cannot verify the
+     removal notice and shows `keyChangeUnverified` rather than "removed" (it gets no key either
+     way: "Odebrat je" still leaves it out). Accepted; Task 22 may want a scenario for it.
+R-47. **v1 is gone:** `recovery::{encode_recovery_code, decode_recovery_code,
+     recovery_qr_payload, parse_recovery_qr_payload, read_recovery_input, RecoveryKey,
+     RecoveryQr, RecoveryInput, RECOVERY_CODE_LEN}` and their tests are deleted (R-1, R-41); the
+     v2 reader's v1-refusal test keeps a frozen v1 string. The v1 Kit-join tests of
+     `engine/tests/join_new.rs` are replaced by `engine/tests/kit_join.rs`; the e2e Kit join
+     (`relay_e2e_pairing.rs`) types a v2 code of the Kit its setup registered
+     (`relay_e2e::first_device_with_kit`) and lifts the hold before converging (Task 23 runs it).

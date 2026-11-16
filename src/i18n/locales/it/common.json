@@ -127,7 +127,7 @@
     "currentPasswordRequired": "La password attuale è obbligatoria",
     "passwordMinLength": "La password deve contenere almeno 8 caratteri",
     "recoveryKeyRequired": "La chiave di recupero è obbligatoria",
-    "syncRecoveryCodeInvalid": "Questo codice del kit di ripristino non è valido. Controlla di aver inserito tutti gli 80 caratteri: maiuscole, spazi e trattini non contano.",
+    "syncRecoveryCodeInvalid": "Questo codice del kit di ripristino non è valido. Controlla di aver inserito tutti gli 95 caratteri: maiuscole, spazi e trattini non contano.",
     "tickerRequired": "Il ticker è obbligatorio",
     "companyNameRequired": "Il nome della società è obbligatorio",
     "quantityRequired": "La quantità è obbligatoria",
@@ -383,8 +383,9 @@
     "syncGapNotSkippableYet": "Questa modifica si può saltare solo dopo 14 giorni da quando è trattenuta.",
     "syncCopyFailed": "Non è stato possibile copiare il codice. Riprova oppure conserva il kit in un altro modo tra quelli mostrati in questa schermata.",
     "syncRecoveryAccountInvalid": "Controlla il numero di account: sono le 16 cifre del kit di ripristino della sincronizzazione.",
-    "syncRecoveryVaultNotFound": "Il server di sincronizzazione non ha dati sincronizzati per questo codice del kit di ripristino. Controlla il codice e l'indirizzo del server di sincronizzazione nel kit di ripristino della sincronizzazione.",
-    "syncRecoveryKitRotated": "Le chiavi di questa sincronizzazione sono state cambiate; unirsi con un kit di ripristino dopo questo cambio non è ancora supportato.",
+    "syncRecoveryVaultNotFound": "Il server non conosce questo kit di ripristino: potrebbe averlo sostituito uno più recente, oppure appartiene a un'altra sincronizzazione o a un altro server. Controlla il codice e l'indirizzo del server.",
+    "syncRecoveryKitReplaced": "Un kit di ripristino più recente ha sostituito questo il {{at, unixdate}}. Usa il kit più recente.",
+    "syncRecoveryKitUnreadable": "Moony non è riuscito a leggere questo kit di ripristino: i dati sul server di sincronizzazione non corrispondono. Non è stato modificato nulla.",
     "syncJoinSetupPending": "Prima completa o annulla la configurazione della sincronizzazione su questo dispositivo."
   },
   "auth": {

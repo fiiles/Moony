@@ -127,7 +127,7 @@
     "currentPasswordRequired": "Current password is required",
     "passwordMinLength": "Password must be at least 8 characters",
     "recoveryKeyRequired": "Recovery key is required",
-    "syncRecoveryCodeInvalid": "This Recovery Kit code is not valid. Check that you entered all 80 characters - capitalization, spaces and dashes don't matter.",
+    "syncRecoveryCodeInvalid": "This Recovery Kit code is not valid. Check that you entered all 95 characters - capitalization, spaces and dashes don't matter.",
     "tickerRequired": "Ticker is required",
     "companyNameRequired": "Company name is required",
     "quantityRequired": "Quantity is required",
@@ -383,8 +383,9 @@
     "syncGapNotSkippableYet": "This change can be skipped only after it has been held for 14 days.",
     "syncCopyFailed": "The code couldn't be copied. Try again, or keep the Kit another way shown on this screen.",
     "syncRecoveryAccountInvalid": "Check the account number: it is the 16 digits on your Sync Recovery Kit.",
-    "syncRecoveryVaultNotFound": "The sync server has no synced data for this Recovery Kit code. Check the code and the sync server address on your Sync Recovery Kit.",
-    "syncRecoveryKitRotated": "This sync was re-keyed; joining with a Recovery Kit after that is not supported yet.",
+    "syncRecoveryVaultNotFound": "The server doesn't know this kit: a newer kit may have replaced it, or it belongs to another sync or server. Check the code and the server address.",
+    "syncRecoveryKitReplaced": "A newer recovery kit replaced this one on {{at, unixdate}}. Use the newer kit.",
+    "syncRecoveryKitUnreadable": "Moony couldn't read this recovery kit: the data on the sync server don't match it. Nothing was changed.",
     "syncJoinSetupPending": "Finish or cancel the sync setup on this device first."
   },
   "auth": {

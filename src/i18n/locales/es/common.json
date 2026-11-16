@@ -127,7 +127,7 @@
     "currentPasswordRequired": "La contraseña actual es obligatoria",
     "passwordMinLength": "La contraseña debe tener al menos 8 caracteres",
     "recoveryKeyRequired": "La clave de recuperación es obligatoria",
-    "syncRecoveryCodeInvalid": "Este código del kit de recuperación no es válido. Comprueba que has introducido los 80 caracteres; las mayúsculas, los espacios y los guiones no importan.",
+    "syncRecoveryCodeInvalid": "Este código del kit de recuperación no es válido. Comprueba que has introducido los 95 caracteres; las mayúsculas, los espacios y los guiones no importan.",
     "tickerRequired": "El ticker es obligatorio",
     "companyNameRequired": "El nombre de la empresa es obligatorio",
     "quantityRequired": "La cantidad es obligatoria",
@@ -383,8 +383,9 @@
     "syncGapNotSkippableYet": "Este cambio solo se puede omitir cuando lleve 14 días retenido.",
     "syncCopyFailed": "No se pudo copiar el código. Inténtalo de nuevo o guarda el kit de otra forma de las que se muestran en esta pantalla.",
     "syncRecoveryAccountInvalid": "Comprueba el número de cuenta: son los 16 dígitos de tu kit de recuperación de sincronización.",
-    "syncRecoveryVaultNotFound": "El servidor de sincronización no tiene datos sincronizados para este código del kit de recuperación. Comprueba el código y la dirección del servidor de sincronización en tu kit de recuperación de sincronización.",
-    "syncRecoveryKitRotated": "Las claves de esta sincronización se cambiaron; todavía no es posible unirse con un kit de recuperación después de ese cambio.",
+    "syncRecoveryVaultNotFound": "El servidor no conoce este kit de recuperación: puede que lo haya sustituido uno más reciente o que pertenezca a otra sincronización u otro servidor. Comprueba el código y la dirección del servidor.",
+    "syncRecoveryKitReplaced": "Un kit de recuperación más reciente sustituyó a este el {{at, unixdate}}. Usa el kit más reciente.",
+    "syncRecoveryKitUnreadable": "Moony no ha podido leer este kit de recuperación: los datos del servidor de sincronización no coinciden con él. No se ha cambiado nada.",
     "syncJoinSetupPending": "Primero termina o cancela la configuración de la sincronización en este dispositivo."
   },
   "auth": {

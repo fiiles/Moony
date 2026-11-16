@@ -251,6 +251,12 @@ impl KitDraft {
     pub fn storage(&self) -> Option<KitStorage> {
         self.storage
     }
+
+    /// The seed (the e2e tests type the Kit's code from it; the app shows it by `kit_view`).
+    #[cfg(test)]
+    pub(crate) fn secret(&self) -> &KitSecret {
+        &self.secret
+    }
 }
 
 /// The Kit draft for setup (`sync_prepare_recovery_kit`, after the device password was checked):

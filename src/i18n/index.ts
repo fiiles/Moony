@@ -163,6 +163,16 @@ export const i18nReady = i18n
 // which leaves text that is already lower case alone.
 i18n.services.formatter?.add('lower', (value, lng) => String(value).toLocaleLowerCase(lng));
 
+// `{{at, unixdate}}`: a date the backend sends as unix seconds in a validation key's values
+// (`syncRecoveryKitReplaced`), written in the person's language.
+i18n.services.formatter?.add('unixdate', (value, lng) => {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds)) return String(value);
+  return getFormatters(lng ?? 'en', undefined).date(new Date(seconds * 1000), {
+    dateStyle: 'long',
+  });
+});
+
 export default i18n;
 
 /**

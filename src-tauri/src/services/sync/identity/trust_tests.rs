@@ -988,6 +988,55 @@ fn a_bundle_never_replaces_a_pinned_certificate_and_writes_nothing_when_it_fails
     assert_eq!(trust::entries(&conn).unwrap(), before);
 }
 
+/// The genesis certificates a Kit joiner may trust on first use.
+fn genesis(devices: &[Dev]) -> std::collections::BTreeSet<DeviceId> {
+    devices.iter().map(|d| d.id()).collect()
+}
+
+/// As built R-28: a genesis row the Kit's chain and the confirmed set do not name is not trusted
+/// on first use, and what it vouches for waits for it (never a recipient).
+#[test]
+fn a_kit_joiner_trusts_only_the_genesis_its_kit_or_the_confirmed_set_names() {
+    let conn = profile();
+    trust::seed_own(&conn, &ME.kit(), NOW).unwrap();
+    row(&conn, B, Some(&B.genesis()));
+    row(&conn, C, Some(&C.genesis()));
+    row(&conn, D, Some(&D.paired_by(C, 0x72)));
+
+    trust::tofu_from_rows(&conn, NOW, &genesis(&[B])).expect("tofu");
+
+    assert_eq!(state_of(&conn, B), Some(TrustState::Trusted));
+    assert_eq!(state_of(&conn, C), None, "a genesis nothing names");
+    assert_eq!(state_of(&conn, D), None, "it waits for its issuer");
+    assert_eq!(
+        trust::kit_join_genesis(&conn, ME.id(), &[(C.id(), C.genesis().hash())]).unwrap(),
+        genesis(&[C]),
+        "the confirmed set names C with its certificate"
+    );
+    assert!(
+        trust::kit_join_genesis(&conn, ME.id(), &[(C.id(), [0; 32])])
+            .unwrap()
+            .is_empty(),
+        "another certificate's hash names nothing"
+    );
+}
+
+#[test]
+fn a_kit_joiners_kit_chain_names_the_genesis_above_it() {
+    let conn = profile();
+    trust::seed_own(&conn, &ME.kit(), NOW).unwrap();
+    row(&conn, B, Some(&B.genesis()));
+    row(&conn, C, Some(&C.paired_by(B, 0x71)));
+    // The Kit, made by C (paired by B).
+    let kit = KitSecret::from_bytes(Zeroizing::new([0x31; 32])).derive(&VAULT);
+    kit_row(&conn, &kit, &C.creates_kit(&kit, NOW));
+
+    assert_eq!(
+        trust::kit_join_genesis(&conn, kit.id(), &[]).unwrap(),
+        genesis(&[B])
+    );
+}
+
 #[test]
 fn a_kit_joiner_trusts_every_row_that_verifies_on_first_use() {
     let conn = profile();
@@ -1000,7 +1049,7 @@ fn a_kit_joiner_trusts_every_row_that_verifies_on_first_use() {
     row(&conn, E, Some(&broken));
     set_record(&conn, C, "left_record", &C.left());
 
-    trust::tofu_from_rows(&conn, NOW).expect("tofu");
+    trust::tofu_from_rows(&conn, NOW, &genesis(&[B])).expect("tofu");
 
     assert_eq!(state_of(&conn, B), Some(TrustState::Trusted), "genesis too");
     assert_eq!(state_of(&conn, C), Some(TrustState::Left), "records apply");
@@ -1453,7 +1502,7 @@ fn this_device_is_never_left_out_for_its_issuer() {
     trust::seed_own(&conn, &ME.paired_by(B, 0x70), NOW).unwrap();
     // B arrives (vouched for by nobody here: trusted on first use).
     row(&conn, B, Some(&B.genesis()));
-    trust::tofu_from_rows(&conn, NOW).unwrap();
+    trust::tofu_from_rows(&conn, NOW, &genesis(&[B])).unwrap();
     row(&conn, C, Some(&C.paired_by(ME, 0x71)));
     trust::refresh(&conn, NOW).unwrap();
     conn.execute(
@@ -1724,7 +1773,7 @@ fn new_device_notices_are_written_for_pairings_and_kit_joins_only() {
     trust::seed_own(&conn, &ME.kit(), NOW).unwrap();
     row(&conn, B, Some(&B.genesis()));
     row(&conn, C, Some(&C.paired_by(B, 0x71)));
-    trust::tofu_from_rows(&conn, NOW).unwrap();
+    trust::tofu_from_rows(&conn, NOW, &genesis(&[B])).unwrap();
     assert!(trust::new_devices(&conn).unwrap().is_empty());
 }
 
@@ -1830,7 +1879,7 @@ fn a_kit_joiner_restoring_a_left_issuer_and_its_late_vouch_together_leaves_it_ou
     row(&conn, O, Some(&O.genesis()));
     row(&conn, N, Some(&n_cert()));
     set_record(&conn, O, "left_record", &O.left_at(NOW + 50));
-    trust::tofu_from_rows(&conn, NOW).unwrap();
+    trust::tofu_from_rows(&conn, NOW, &genesis(&[O])).unwrap();
     assert_eq!(state_of(&conn, O), Some(TrustState::Left));
     seen(&conn, O, trust::SeenWhat::Left, 300);
     seen(&conn, N, trust::SeenWhat::Cert, 300);
@@ -1886,7 +1935,7 @@ fn a_device_whose_issuer_is_not_pinned_gets_nothing_unless_confirmed() {
     row(&conn, B, Some(&B.genesis()));
     row(&conn, D, Some(&D.paired_by(E, 0x72)));
     row(&conn, C, Some(&C.paired_by(D, 0x73)));
-    trust::tofu_from_rows(&conn, NOW).unwrap();
+    trust::tofu_from_rows(&conn, NOW, &genesis(&[B])).unwrap();
     assert_eq!(state_of(&conn, D), Some(TrustState::Trusted));
     assert_eq!(state_of(&conn, C), Some(TrustState::Trusted));
     assert_eq!(included(&conn), vec![ME.id(), B.id()]);

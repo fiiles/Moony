@@ -127,7 +127,7 @@
     "currentPasswordRequired": "请输入当前密码",
     "passwordMinLength": "密码至少需要 8 个字符",
     "recoveryKeyRequired": "请输入恢复密钥",
-    "syncRecoveryCodeInvalid": "此恢复包代码无效。请检查是否输入了全部 80 个字符——大小写、空格和连字符均不影响。",
+    "syncRecoveryCodeInvalid": "此恢复包代码无效。请检查是否输入了全部 95 个字符——大小写、空格和连字符均不影响。",
     "tickerRequired": "请输入代码",
     "companyNameRequired": "请输入公司名称",
     "quantityRequired": "请输入数量",
@@ -383,8 +383,9 @@
     "syncGapNotSkippableYet": "此更改需暂缓满 14 天后才能跳过。",
     "syncCopyFailed": "无法复制代码。请重试，或使用此屏幕上显示的其他方式保存恢复包。",
     "syncRecoveryAccountInvalid": "请检查账户号码：即同步恢复包上的 16 位数字。",
-    "syncRecoveryVaultNotFound": "同步服务器上没有与此恢复包代码对应的同步数据。请检查同步恢复包上的恢复包代码和同步服务器地址。",
-    "syncRecoveryKitRotated": "此同步的密钥已更换；更换后暂不支持使用恢复包加入。",
+    "syncRecoveryVaultNotFound": "服务器不认识此恢复包：可能已被较新的恢复包取代，或它属于其他同步或其他服务器。请检查代码和服务器地址。",
+    "syncRecoveryKitReplaced": "此恢复包已于 {{at, unixdate}} 被较新的恢复包取代。请使用较新的恢复包。",
+    "syncRecoveryKitUnreadable": "Moony 无法读取此恢复包：同步服务器上的数据与它不符。未做任何更改。",
     "syncJoinSetupPending": "请先在此设备上完成或取消同步设置。"
   },
   "auth": {

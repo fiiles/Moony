@@ -127,7 +127,7 @@
     "currentPasswordRequired": "Aktuelles Passwort ist erforderlich",
     "passwordMinLength": "Das Passwort muss mindestens 8 Zeichen lang sein",
     "recoveryKeyRequired": "Wiederherstellungsschlüssel ist erforderlich",
-    "syncRecoveryCodeInvalid": "Dieser Code des Wiederherstellungs-Kits ist ungültig. Prüfen Sie, ob Sie alle 80 Zeichen eingegeben haben – Groß- und Kleinschreibung, Leerzeichen und Bindestriche spielen keine Rolle.",
+    "syncRecoveryCodeInvalid": "Dieser Code des Wiederherstellungs-Kits ist ungültig. Prüfen Sie, ob Sie alle 95 Zeichen eingegeben haben – Groß- und Kleinschreibung, Leerzeichen und Bindestriche spielen keine Rolle.",
     "tickerRequired": "Ticker ist erforderlich",
     "companyNameRequired": "Firmenname ist erforderlich",
     "quantityRequired": "Menge ist erforderlich",
@@ -383,8 +383,9 @@
     "syncGapNotSkippableYet": "Diese Änderung kann erst übersprungen werden, wenn sie seit 14 Tagen zurückgehalten wird.",
     "syncCopyFailed": "Der Code konnte nicht kopiert werden. Versuchen Sie es erneut oder bewahren Sie das Kit auf einem anderen Weg auf, der auf diesem Bildschirm angezeigt wird.",
     "syncRecoveryAccountInvalid": "Prüfen Sie die Kontonummer: Es sind die 16 Ziffern auf Ihrem Sync-Wiederherstellungs-Kit.",
-    "syncRecoveryVaultNotFound": "Zu diesem Code des Wiederherstellungs-Kits gibt es auf dem Sync-Server keine synchronisierten Daten. Prüfen Sie den Code und die Adresse des Sync-Servers auf Ihrem Sync-Wiederherstellungs-Kit.",
-    "syncRecoveryKitRotated": "Die Schlüssel dieser Synchronisierung wurden erneuert; ein Beitritt mit einem Wiederherstellungs-Kit ist danach noch nicht möglich.",
+    "syncRecoveryVaultNotFound": "Der Server kennt dieses Wiederherstellungs-Kit nicht: Entweder hat es inzwischen ein neueres ersetzt, oder es gehört zu einer anderen Synchronisierung oder einem anderen Server. Prüfen Sie den Code und die Serveradresse.",
+    "syncRecoveryKitReplaced": "Dieses Wiederherstellungs-Kit wurde am {{at, unixdate}} durch ein neueres ersetzt. Verwenden Sie das neuere Kit.",
+    "syncRecoveryKitUnreadable": "Moony konnte dieses Wiederherstellungs-Kit nicht lesen: Die Daten auf dem Sync-Server passen nicht dazu. Es wurde nichts geändert.",
     "syncJoinSetupPending": "Schließen Sie zuerst die Einrichtung der Synchronisierung auf diesem Gerät ab oder brechen Sie sie ab."
   },
   "auth": {

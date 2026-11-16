@@ -127,7 +127,7 @@
     "currentPasswordRequired": "Nuvarande lösenord krävs",
     "passwordMinLength": "Lösenordet måste vara minst 8 tecken",
     "recoveryKeyRequired": "Återställningsnyckel krävs",
-    "syncRecoveryCodeInvalid": "Den här koden från återställningskitet är ogiltig. Kontrollera att du har skrivit in alla 80 tecken – versaler, mellanslag och bindestreck spelar ingen roll.",
+    "syncRecoveryCodeInvalid": "Den här koden från återställningskitet är ogiltig. Kontrollera att du har skrivit in alla 95 tecken – versaler, mellanslag och bindestreck spelar ingen roll.",
     "tickerRequired": "Ticker krävs",
     "companyNameRequired": "Företagsnamn krävs",
     "quantityRequired": "Antal krävs",
@@ -383,8 +383,9 @@
     "syncGapNotSkippableYet": "Den här ändringen kan hoppas över först när den har hållits kvar i 14 dagar.",
     "syncCopyFailed": "Koden kunde inte kopieras. Försök igen, eller spara kitet på ett annat sätt som visas på den här skärmen.",
     "syncRecoveryAccountInvalid": "Kontrollera kontonumret: det är de 16 siffrorna i återställningskitet för synkronisering.",
-    "syncRecoveryVaultNotFound": "Synkroniseringsservern har inga synkroniserade data för den här koden från återställningskitet. Kontrollera koden och synkroniseringsserverns adress i återställningskitet för synkronisering.",
-    "syncRecoveryKitRotated": "Nycklarna för den här synkroniseringen har bytts ut; att ansluta med ett återställningskit efter det stöds inte ännu.",
+    "syncRecoveryVaultNotFound": "Servern känner inte till det här återställningskitet: antingen har ett nyare ersatt det, eller så hör det till en annan synkronisering eller server. Kontrollera koden och serverns adress.",
+    "syncRecoveryKitReplaced": "Ett nyare återställningskit ersatte det här {{at, unixdate}}. Använd det nyare kitet.",
+    "syncRecoveryKitUnreadable": "Moony kunde inte läsa det här återställningskitet: data på synkroniseringsservern stämmer inte med det. Inget har ändrats.",
     "syncJoinSetupPending": "Slutför eller avbryt konfigurationen av synkroniseringen på den här enheten först."
   },
   "auth": {

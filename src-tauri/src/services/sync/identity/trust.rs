@@ -982,16 +982,24 @@ pub fn new_devices(conn: &Connection) -> Result<Vec<NewDevice>> {
         .unwrap_or_default())
 }
 
-/// A Recovery Kit joiner's first store (spec §5.4, §13): trust on first use of every row whose
-/// certificate verifies, genesis and unknown issuers included, then the records as `refresh`
-/// applies them. A certificate whose issuer is pinned or has a row still waiting is judged as
-/// `refresh` judges it (it waits for its issuer); one whose issuer has no verifiable row is
-/// trusted on first use. At most one Kit is pinned, as in `refresh`. Writes no new-device notice.
-pub fn tofu_from_rows(conn: &Connection, now: i64) -> Result<RefreshReport> {
+/// A Recovery Kit joiner's first store (spec §5.4, §13; revision §2.6 step 6): trust on first
+/// use of every row whose certificate verifies, unknown issuers included, then the records as
+/// `refresh` applies them. A genesis certificate is trusted only when it is in `genesis`
+/// (`kit_join_genesis`: the anchored Kit's chain or the envelope's confirmed set, As built R-28);
+/// any other never vouches here. A certificate whose issuer is pinned or has a row still waiting
+/// is judged as `refresh` judges it (it waits for its issuer); one whose issuer has no verifiable
+/// row is trusted on first use (and left out for it, `IssuerUnknown`, until confirmed). At most
+/// one Kit is pinned, as in `refresh`. Writes no new-device notice.
+pub fn tofu_from_rows(
+    conn: &Connection,
+    now: i64,
+    genesis: &BTreeSet<DeviceId>,
+) -> Result<RefreshReport> {
     in_savepoint(conn, "sync_trust_tofu", || {
         let mut report = RefreshReport::default();
         settle(conn, now, &mut report, |cert, seen| match cert.body.kind {
-            CertKind::Genesis => Verdict::Pin,
+            CertKind::Genesis if genesis.contains(&cert.body.device) => Verdict::Pin,
+            CertKind::Genesis => Verdict::Wait,
             CertKind::Paired | CertKind::Rejoin | CertKind::RecoveryKit | CertKind::Kit => {
                 let issuer = cert.body.issuer_device;
                 if vouch(seen.store, cert) {
@@ -1005,6 +1013,98 @@ pub fn tofu_from_rows(conn: &Connection, now: i64) -> Result<RefreshReport> {
         })?;
         Ok(report)
     })
+}
+
+/// A Kit joiner's anchor (revision §2.6 step 6), inside the join's savepoint after the restore:
+/// the restored row of the Kit `kit` must hold a kind-5 certificate that verifies, names that row
+/// and carries `sign_pub` (the key the person's Kit derives), and no removal record on it may
+/// verify (by its signer's row certificate). The Kit is pinned `trusted` and `confirmed`: it came
+/// from the paper. Anything else is refused and nothing is pinned.
+pub fn pin_kit_anchor(
+    conn: &Connection,
+    kit: DeviceId,
+    sign_pub: &[u8; 32],
+    now: i64,
+) -> Result<Certificate> {
+    let vault = vault_id(conn)?;
+    let rows = device_rows(conn)?;
+    let row = rows
+        .iter()
+        .find(|row| row.id == kit)
+        .ok_or_else(|| refused("the restored data has no row of this Kit"))?;
+    let cert = row_cert(row, &vault)
+        .filter(|cert| cert.body.kind == CertKind::Kit && &cert.body.sign_pub == sign_pub)
+        .ok_or_else(|| refused("the Kit's row holds no certificate of this Kit"))?;
+    if let Some(record) = row
+        .removal
+        .as_deref()
+        .and_then(|value| Record::from_b64(value).ok())
+        .filter(|r| r.kind == RecordType::Removed && r.subject == kit && r.vault_id == vault)
+    {
+        let signed = rows
+            .iter()
+            .find(|row| row.id == record.signer)
+            .and_then(|row| row_cert(row, &vault))
+            .is_some_and(|signer| record.verify(&signer.body.sign_pub).is_ok());
+        if signed {
+            return Err(refused("the Kit was replaced in the restored data"));
+        }
+    }
+    if entry(conn, kit)?.is_some() || Store::load(conn)?.has_kit() {
+        return Err(refused("a Kit is pinned here already"));
+    }
+    pin(conn, &cert, now)?;
+    set_confirmed(conn, kit)?;
+    Ok(cert)
+}
+
+/// The genesis certificates a Kit joiner trusts on first use (As built R-28): the genesis at the
+/// top of the anchored Kit's issuer chain in the restored rows, and any the envelope's confirmed
+/// set names with that very certificate. Any other genesis row is no vouch of anything here (a
+/// vault-key holder could have written it).
+pub fn kit_join_genesis(
+    conn: &Connection,
+    kit: DeviceId,
+    confirmed: &[(DeviceId, [u8; 32])],
+) -> Result<BTreeSet<DeviceId>> {
+    let vault = vault_id(conn)?;
+    let certs: BTreeMap<DeviceId, Certificate> = device_rows(conn)?
+        .iter()
+        .filter_map(|row| row_cert(row, &vault).map(|cert| (row.id, cert)))
+        .collect();
+    let mut allowed: BTreeSet<DeviceId> = certs
+        .iter()
+        .filter(|(device, cert)| {
+            cert.body.kind == CertKind::Genesis
+                && confirmed
+                    .iter()
+                    .any(|(d, hash)| d == *device && *hash == cert.hash())
+        })
+        .map(|(device, _)| *device)
+        .collect();
+    let mut at = kit;
+    let mut walked = BTreeSet::new();
+    while let Some(cert) = certs.get(&at) {
+        if !walked.insert(at) {
+            break;
+        }
+        if cert.body.kind == CertKind::Genesis {
+            allowed.insert(at);
+            break;
+        }
+        at = cert.body.issuer_device;
+    }
+    Ok(allowed)
+}
+
+/// The newest change any device but `except` made, as this device's clocks hold it (unix
+/// seconds).
+pub fn newest_change_secs(conn: &Connection, except: DeviceId) -> Result<Option<i64>> {
+    Ok(newest_clock_secs(conn)?
+        .into_iter()
+        .filter(|(device, _)| *device != except)
+        .map(|(_, at)| at)
+        .max())
 }
 
 /// This device's whole store, for a joiner it pairs, with where it first saw each entry's

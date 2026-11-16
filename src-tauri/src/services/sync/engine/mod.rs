@@ -655,7 +655,7 @@ async fn round_steps<R: Relay, D: ConnAccess>(
             }
         }
         if check_heads {
-            match head::verify_heads(relay, db, &creds).await? {
+            match head::verify_heads(relay, db, &creds, now).await? {
                 HeadCheck::Refuted => {
                     report.problem = Some(SyncProblem::KeyChangeUnverified);
                     return Ok(());
@@ -796,6 +796,15 @@ async fn round_pass<R: Relay, D: ConnAccess>(
         return Ok(Pass::KeyHint);
     }
     if !may_push {
+        return Ok(Pass::Done);
+    }
+    // A Recovery Kit joiner sends nothing, not even its own row, until the person answers
+    // "Data jsou zpět" (revision §2.6 step 7): its pulls go on.
+    if db
+        .with_conn(crate::services::sync::join::after_kit_join)?
+        .is_some()
+    {
+        log::info!("[SYNC] Nothing is sent until the person decides about the Kit join");
         return Ok(Pass::Done);
     }
     // Nothing sealed under an older key goes out after a key change (phase 5 §7.2): it is sealed

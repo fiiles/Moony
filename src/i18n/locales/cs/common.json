@@ -127,7 +127,7 @@
     "currentPasswordRequired": "Současné heslo je povinné",
     "passwordMinLength": "Heslo musí mít alespoň 8 znaků",
     "recoveryKeyRequired": "Obnovovací klíč je povinný",
-    "syncRecoveryCodeInvalid": "Tento kód záchranné sady není platný. Zkontrolujte, že jste zadali všech 80 znaků – na velikosti písmen, mezerách a pomlčkách nezáleží.",
+    "syncRecoveryCodeInvalid": "Tento kód záchranné sady není platný. Zkontrolujte, že jste zadali všech 95 znaků – na velikosti písmen, mezerách a pomlčkách nezáleží.",
     "tickerRequired": "Symbol je povinný",
     "companyNameRequired": "Název společnosti je povinný",
     "quantityRequired": "Množství je povinné",
@@ -383,8 +383,9 @@
     "syncGapNotSkippableYet": "Tuto změnu lze přeskočit, až bude zadržena 14 dní.",
     "syncCopyFailed": "Kód se nepodařilo zkopírovat. Zkuste to znovu, nebo sadu uchovejte jiným způsobem, který tato obrazovka nabízí.",
     "syncRecoveryAccountInvalid": "Zkontrolujte číslo účtu: je to 16 číslic ze Záchranné sady synchronizace.",
-    "syncRecoveryVaultNotFound": "Synchronizační server nemá k tomuto kódu záchranné sady žádná synchronizovaná data. Zkontrolujte kód a adresu synchronizačního serveru v Záchranné sadě synchronizace.",
-    "syncRecoveryKitRotated": "Klíče této synchronizace byly vyměněny; připojení pomocí Záchranné sady po takové výměně zatím není podporováno.",
+    "syncRecoveryVaultNotFound": "Tuto sadu server nezná: buď ji mezitím nahradila novější, nebo patří k jiné synchronizaci či jinému serveru. Zkontrolujte kód a adresu serveru.",
+    "syncRecoveryKitReplaced": "Tuto záchrannou sadu {{at, unixdate}} nahradila novější. Použijte tu novější.",
+    "syncRecoveryKitUnreadable": "Záchrannou sadu se nepodařilo přečíst: data na synchronizačním serveru k ní nesedí. Nic se nezměnilo.",
     "syncJoinSetupPending": "Nejprve na tomto zařízení dokončete nebo zrušte nastavení synchronizace."
   },
   "auth": {

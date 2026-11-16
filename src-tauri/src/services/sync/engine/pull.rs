@@ -161,8 +161,9 @@ pub(crate) fn note_trust_positions(
 
 /// The epoch rule (phase 5 §6.1): for every key change this device knows the relay position of
 /// (`sync_epochs`, epoch k at head h), an op above h is sealed under epoch k or later and an op at
-/// or below h under an earlier one. A key epoch this device holds a key for but has no head for
-/// is not checked (a warning is logged once per process, not per op or round).
+/// or below h under an earlier one; a Kit joiner's bound (`state::KitEpochFloor`) holds as a head
+/// would for the ops past it. A key epoch this device holds a key for but has no head for is not
+/// checked (a warning is logged once per process, not per op or round).
 pub(super) fn epoch_fits_position(
     conn: &Connection,
     creds: &Credentials,
@@ -175,6 +176,13 @@ pub(super) fn epoch_fits_position(
     let heads = state::epochs(conn)?;
     for (known, head) in &heads {
         if (position > *head) != (epoch >= *known) {
+            return Ok(false);
+        }
+    }
+    // A Kit joiner's newest epoch began at or before the snapshot it restored (revision §2.6
+    // step 5): nothing past that snapshot is sealed under an older epoch.
+    if let Some(floor) = state::kit_epoch_floor(conn)? {
+        if position > floor.after && epoch < floor.epoch {
             return Ok(false);
         }
     }

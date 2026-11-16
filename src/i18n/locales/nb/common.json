@@ -127,7 +127,7 @@
     "currentPasswordRequired": "Nåværende passord er påkrevd",
     "passwordMinLength": "Passordet må ha minst 8 tegn",
     "recoveryKeyRequired": "Gjenopprettingsnøkkel er påkrevd",
-    "syncRecoveryCodeInvalid": "Denne koden fra gjenopprettingssettet er ugyldig. Sjekk at du har skrevet inn alle 80 tegnene – store og små bokstaver, mellomrom og bindestreker spiller ingen rolle.",
+    "syncRecoveryCodeInvalid": "Denne koden fra gjenopprettingssettet er ugyldig. Sjekk at du har skrevet inn alle 95 tegnene – store og små bokstaver, mellomrom og bindestreker spiller ingen rolle.",
     "tickerRequired": "Ticker er påkrevd",
     "companyNameRequired": "Selskapsnavn er påkrevd",
     "quantityRequired": "Antall er påkrevd",
@@ -383,8 +383,9 @@
     "syncGapNotSkippableYet": "Denne endringen kan først hoppes over når den har vært holdt tilbake i 14 dager.",
     "syncCopyFailed": "Koden kunne ikke kopieres. Prøv igjen, eller ta vare på settet på en annen måte som vises på denne skjermen.",
     "syncRecoveryAccountInvalid": "Sjekk kontonummeret: det er de 16 sifrene i gjenopprettingssettet for synkronisering.",
-    "syncRecoveryVaultNotFound": "Synkroniseringsserveren har ingen synkroniserte data for denne koden fra gjenopprettingssettet. Sjekk koden og adressen til synkroniseringsserveren i gjenopprettingssettet for synkronisering.",
-    "syncRecoveryKitRotated": "Nøklene for denne synkroniseringen er byttet ut; å bli med ved hjelp av et gjenopprettingssett etter det støttes ikke ennå.",
+    "syncRecoveryVaultNotFound": "Serveren kjenner ikke dette gjenopprettingssettet: Enten har et nyere erstattet det, eller så hører det til en annen synkronisering eller server. Sjekk koden og serveradressen.",
+    "syncRecoveryKitReplaced": "Et nyere gjenopprettingssett erstattet dette {{at, unixdate}}. Bruk det nyere settet.",
+    "syncRecoveryKitUnreadable": "Moony kunne ikke lese dette gjenopprettingssettet: Dataene på synkroniseringsserveren stemmer ikke med det. Ingenting ble endret.",
     "syncJoinSetupPending": "Fullfør eller avbryt oppsettet av synkronisering på denne enheten først."
   },
   "auth": {

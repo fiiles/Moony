@@ -17,6 +17,7 @@ mod gaps;
 mod held_blobs;
 mod join;
 mod join_new;
+mod kit_join;
 mod lanes;
 mod pull;
 mod push;

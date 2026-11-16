@@ -163,11 +163,13 @@ impl HeadRecord {
 pub struct UnverifiedEpoch {
     #[serde(rename = "epoch")]
     pub epoch: u32,
-    /// The head the server reported with the bundle (also in `sync_epochs`).
+    /// The head the server reported with the bundle (also in `sync_epochs`); `None` for a Kit
+    /// joiner that found no bundle (revision §2.6 step 5): the signed head's own is taken then.
     #[serde(rename = "head")]
-    pub head: u64,
+    pub head: Option<u64>,
+    /// The rotation of that bundle, when there was one.
     #[serde(rename = "rotation")]
-    pub rotation: u32,
+    pub rotation: Option<u32>,
     /// The bundle's signer (hex), whose signed head confirms it.
     #[serde(rename = "by")]
     pub by: String,
@@ -199,12 +201,15 @@ fn store(conn: &Connection, epochs: &[UnverifiedEpoch]) -> Result<()> {
 }
 
 /// The pickup adopted `epoch` at the server's `head` (rotation `rotation`, signed by `by`), with
-/// this device's cursor at `after`: the head is provisional until verified.
+/// this device's cursor at `after`: the head is provisional until verified. A Kit joiner with no
+/// bundle to read them from passes neither (revision §2.6 step 5): the signed head of `by` then
+/// gives them, once its signature verifies, and until then every op under an older epoch past
+/// `after` waits.
 pub(crate) fn note_unverified(
     conn: &Connection,
     epoch: u32,
-    head: u64,
-    rotation: u32,
+    head: Option<u64>,
+    rotation: Option<u32>,
     by: DeviceId,
     after: u64,
 ) -> Result<()> {
@@ -216,7 +221,7 @@ pub(crate) fn note_unverified(
         rotation,
         by: by.to_hex(),
         after,
-        scanned: head,
+        scanned: head.unwrap_or(after),
         refuted: false,
     });
     epochs.sort_by_key(|e| e.epoch);
@@ -297,6 +302,7 @@ pub async fn verify_heads<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     creds: &Credentials,
+    now: i64,
 ) -> SyncResult<HeadCheck> {
     let pending = db.with_conn(unverified_epochs)?;
     if pending.iter().any(|e| e.refuted) {
@@ -305,7 +311,7 @@ pub async fn verify_heads<R: Relay, D: ConnAccess>(
     for entry in pending {
         match look_ahead(relay, db, creds, &entry).await? {
             Found::Record(record) => {
-                let verified = db.with_conn(|conn| settle(conn, &entry, &record))?;
+                let verified = db.with_conn(|conn| settle(conn, &entry, &record, now))?;
                 if !verified {
                     return Ok(HeadCheck::Refuted);
                 }
@@ -340,7 +346,9 @@ async fn look_ahead<R: Relay, D: ConnAccess>(
     creds: &Credentials,
     entry: &UnverifiedEpoch,
 ) -> SyncResult<Found> {
-    let mut after = entry.scanned.max(entry.head);
+    let mut after = entry
+        .head
+        .map_or(entry.scanned, |head| entry.scanned.max(head));
     let Ok(by) = DeviceId::from_hex(&entry.by) else {
         return Ok(Found::NotYet(after));
     };
@@ -400,11 +408,11 @@ fn signed_head_in(creds: &Credentials, op: &PulledOp, epoch: u32) -> Option<Head
     HeadRecord::decode(cs.rekey_head.as_deref()?).ok()
 }
 
-/// `entry`'s head is verified: a cursor that had already passed it when the key was adopted is
-/// reported (the server hid the key change from this device).
-fn note_verified(conn: &Connection, entry: &UnverifiedEpoch) -> Result<()> {
+/// `entry`'s head is verified at `head`: a cursor that had already passed it when the key was
+/// adopted is reported (the server hid the key change from this device).
+fn note_verified(conn: &Connection, entry: &UnverifiedEpoch, head: u64) -> Result<()> {
     log::info!("[SYNC] The start of key epoch {} is verified", entry.epoch);
-    if entry.after > entry.head {
+    if entry.after > head {
         log::warn!(
             "[SYNC] This device applied changes past the start of key epoch {}: the server hid \
              the key change from it",
@@ -414,7 +422,7 @@ fn note_verified(conn: &Connection, entry: &UnverifiedEpoch) -> Result<()> {
             conn,
             &KeyChangeOverrun {
                 epoch: entry.epoch,
-                head: entry.head,
+                head,
                 through: entry.after,
             },
         )?;
@@ -435,9 +443,9 @@ pub(crate) fn after_restore(conn: &Connection, seq: u64, heads: &[(u32, u64)]) -
     for mut entry in epochs {
         let named = heads
             .iter()
-            .any(|(epoch, head)| *epoch == entry.epoch && *head == entry.head);
-        if named && !entry.refuted {
-            note_verified(conn, &entry)?;
+            .find(|(epoch, head)| *epoch == entry.epoch && entry.head.is_none_or(|h| h == *head));
+        if let Some((_, head)) = named.filter(|_| !entry.refuted) {
+            note_verified(conn, &entry, *head)?;
             continue;
         }
         entry.scanned = entry.scanned.max(seq);
@@ -447,15 +455,28 @@ pub(crate) fn after_restore(conn: &Connection, seq: u64, heads: &[(u32, u64)]) -
 }
 
 /// A signed head found for `entry`: it matches (the entry goes) or not (the entry is refuted).
-/// Whether it matched.
-fn settle(conn: &Connection, entry: &UnverifiedEpoch, record: &HeadRecord) -> Result<bool> {
+/// An entry with no server head (a Kit joiner's, revision §2.6 step 5) takes the record's head
+/// and rotation, recorded in `sync_epochs` (a different head there refutes). Whether it matched.
+fn settle(
+    conn: &Connection,
+    entry: &UnverifiedEpoch,
+    record: &HeadRecord,
+    now: i64,
+) -> Result<bool> {
     let mut epochs = unverified_epochs(conn)?;
-    let matches = record.from_epoch.checked_add(1) == Some(record.to_epoch)
-        && record.head == entry.head
-        && record.rotation == entry.rotation;
+    let mut matches = record.from_epoch.checked_add(1) == Some(record.to_epoch)
+        && entry.head.is_none_or(|head| head == record.head)
+        && entry
+            .rotation
+            .is_none_or(|rotation| rotation == record.rotation);
+    if matches && entry.head.is_none() {
+        let recorded =
+            state::record_epoch(conn, entry.epoch, record.head, Some(record.signer), now)?;
+        matches = recorded != state::EpochRecord::Differs;
+    }
     if matches {
         epochs.retain(|e| e.epoch != entry.epoch);
-        note_verified(conn, entry)?;
+        note_verified(conn, entry, record.head)?;
     } else {
         log::warn!(
             "[SYNC] The sync server reported another start for key epoch {} than its signer",

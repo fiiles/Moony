@@ -25,7 +25,8 @@
 
 use std::path::{Path, PathBuf};
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
+use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
 use super::backups::{self, BackupMark};
@@ -37,16 +38,18 @@ use super::engine::push;
 use super::engine::runtime::{rejoin_if_copy, CopyCheck};
 use super::engine::snapshots::{off_thread, open_sealed, SnapshotPolicy};
 use super::engine::{self, ConnAccess, PullEnd, PullReport, RoundMode};
-use super::error::SyncResult;
+use super::error::{SyncError, SyncResult};
 use super::hlc::DeviceId;
+use super::identity::KitKeys;
 use super::identity::{self, trust, Issuer};
 use super::impact::{self, ReplaceConsent, ReplaceKind, DRAIN_INCOMPLETE};
 use super::in_savepoint;
 use super::keys::{self, Credentials, VaultKeys};
 use super::pairing::PairingIdentity;
-use super::recovery::RecoveryInput;
+use super::recovery::KitInput;
+use super::rekey::{bundle, envelope, head, pickup};
 use super::relay::http::{normalize_base_url, validate_base_url};
-use super::relay::{Relay, RelayError};
+use super::relay::{Relay, RelayError, MAX_REKEY_PAGE};
 use super::snapshot::{AttachmentCarry, RestoreReport};
 use super::state;
 use crate::error::{AppError, Result};
@@ -59,7 +62,9 @@ const ALREADY_ENABLED: &str = "validation.syncAlreadyEnabled";
 const SETUP_PENDING: &str = "validation.syncJoinSetupPending";
 const KIT_ACCOUNT_INVALID: &str = "validation.syncRecoveryAccountInvalid";
 const KIT_VAULT_NOT_FOUND: &str = "validation.syncRecoveryVaultNotFound";
-const KIT_ROTATED: &str = "validation.syncRecoveryKitRotated";
+const KIT_REPLACED: &str = "validation.syncRecoveryKitReplaced";
+const KIT_UNREADABLE: &str = "validation.syncRecoveryKitUnreadable";
+const CODE_INVALID: &str = "validation.syncRecoveryCodeInvalid";
 const PAIRING_FAILED: &str = "validation.syncPairingFailed";
 
 /// Drain rounds a repair runs at most; it also stops after two rounds in a row that neither shrank
@@ -71,9 +76,10 @@ pub enum JoinIdentity {
     /// A pairing (protocol 3): the holder's trust store seeds this device's, and the holder's
     /// one-time ticket signs its paired certificate.
     Paired(PairingIdentity, EpochHeads),
-    /// A Sync Recovery Kit join: it signs its own Kit certificate and trusts, on first use, every
-    /// certificate in what it restores (§5.4).
-    RecoveryKit,
+    /// A Recovery Kit join (revision §2.6): the Kit's key signs this device's certificate, the
+    /// Kit anchors its store, which trusts on first use what it restores (§5.4) and takes the
+    /// envelope's confirmed set; its newest epoch is never left unchecked; it holds its pushes.
+    RecoveryKit(Box<KitJoin>),
     /// A pairing from a holder that sent no identity (a vault set up before phase 5): a signing
     /// key and no certificate, so removal stays unavailable there.
     Unvouched(EpochHeads),
@@ -139,6 +145,15 @@ async fn fetched_snapshot<R: Relay>(
     relay: &R,
     creds: &Credentials,
 ) -> SyncResult<Zeroizing<Vec<u8>>> {
+    Ok(fetched_snapshot_at(relay, creds).await?.0)
+}
+
+/// `fetched_snapshot`, with where the snapshot was taken and the epoch it is sealed under (read
+/// from the sealed stream's header, which the open authenticated with that epoch's key).
+async fn fetched_snapshot_at<R: Relay>(
+    relay: &R,
+    creds: &Credentials,
+) -> SyncResult<(Zeroizing<Vec<u8>>, SnapshotAt)> {
     let blob = match relay.get_snapshot(&creds.auth()).await {
         Ok(blob) => blob,
         Err(RelayError::NoSnapshot) => {
@@ -146,8 +161,16 @@ async fn fetched_snapshot<R: Relay>(
         }
         Err(error) => return Err(error.into()),
     };
+    let at = SnapshotAt {
+        seq: blob.seq,
+        epoch: blob
+            .bytes
+            .get(4..8)
+            .map_or(0, |b| u32::from_be_bytes([b[0], b[1], b[2], b[3]])),
+    };
     let opener = creds.clone();
-    off_thread(move || open_sealed(&opener, &blob)).await
+    let plain = off_thread(move || open_sealed(&opener, &blob)).await?;
+    Ok((plain, at))
 }
 
 /// After the replace committed: the binding is written for the new device ID; a failure is logged
@@ -363,7 +386,7 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
     creds: Credentials,
     device_name: &str,
     consent: ReplaceConsent,
-    identity: JoinIdentity,
+    mut identity: JoinIdentity,
     data_dir: &Path,
     native: &dyn BindingNative,
     now: i64,
@@ -372,7 +395,10 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
     validate_base_url(&creds.relay_url)?;
     let _no_round = engine::exclusive(db).await;
     db.with_conn(|conn| may_join(conn, &creds))?;
-    let plain = fetched_snapshot(relay, &creds).await?;
+    let (plain, at) = fetched_snapshot_at(relay, &creds).await?;
+    if let JoinIdentity::RecoveryKit(join) = &mut identity {
+        join.snapshot = Some(at);
+    }
     let hold = held(
         db,
         HoldInput {
@@ -425,53 +451,222 @@ fn may_join(conn: &Connection, creds: &Credentials) -> Result<()> {
     Ok(())
 }
 
-/// The credentials of a Sync Recovery Kit (review PF7), from the relay at `input.relay_url` (the
-/// caller builds it from that address). In this order:
+/// What a Recovery Kit join takes from the Kit and its envelope (revision §2.6): the Kit's keys
+/// (derived from the paper; they sign this device's certificate and anchor the store), the heads
+/// and the confirmed set the envelope carries, its signer's certificate, the newest epoch it holds
+/// a key for (E) and, when the server still lists the bundle of E's key change, the head and the
+/// rotation it reported with it. `Debug` prints no secret.
+pub struct KitJoin {
+    pub kit: KitKeys,
+    pub heads: EpochHeads,
+    pub confirmed: Vec<(DeviceId, [u8; 32])>,
+    pub signer: identity::Certificate,
+    pub newest_epoch: u32,
+    pub server_head: Option<(u64, u32)>,
+    /// Where the snapshot the join restores was taken and the epoch it is sealed under; the join
+    /// fills it in once it has fetched the snapshot.
+    pub snapshot: Option<SnapshotAt>,
+}
+
+/// A fetched snapshot's relay position and the epoch it is sealed under.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SnapshotAt {
+    pub seq: u64,
+    pub epoch: u32,
+}
+
+impl std::fmt::Debug for KitJoin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KitJoin")
+            .field("kit", &self.kit.id())
+            .field("newest_epoch", &self.newest_epoch)
+            .field("signer", &self.signer.body.device)
+            .finish_non_exhaustive()
+    }
+}
+
+/// The push hold of a Kit joiner (revision §2.6 step 7), the Local `app_config` key
+/// `state::AFTER_KIT_JOIN_KEY`: every other active device of what it restored and the time of the
+/// newest change in it. While it exists, rounds pull and push nothing.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AfterKitJoin {
+    #[serde(rename = "devices")]
+    pub devices: Vec<String>,
+    #[serde(rename = "newestChangeAt")]
+    pub newest_change_at: Option<i64>,
+}
+
+/// The Kit joiner's push hold, if it holds (`AfterKitJoin`).
+pub fn after_kit_join(conn: &Connection) -> Result<Option<AfterKitJoin>> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [state::AFTER_KIT_JOIN_KEY],
+            |r| r.get(0),
+        )
+        .optional()?;
+    // A value that does not read still holds: only the person lifts it.
+    Ok(value.map(|v| {
+        serde_json::from_str(&v).unwrap_or(AfterKitJoin {
+            devices: Vec::new(),
+            newest_change_at: None,
+        })
+    }))
+}
+
+/// "Mám je", or "Odebrat je" once the removal is done (revision §2.6 step 7): the push hold is
+/// lifted and the next round sends what waited.
+pub fn lift_kit_join_hold(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "DELETE FROM app_config WHERE key = ?1",
+        [state::AFTER_KIT_JOIN_KEY],
+    )?;
+    Ok(())
+}
+
+fn unreadable() -> SyncError {
+    AppError::Validation(KIT_UNREADABLE.into()).into()
+}
+
+/// What `GET /kit` refused, as the person reads it (revision §2.6 step 3; review of Task 16):
+/// mapped on the relay's answer, never through `SyncError::Unauthorized` (which reads "the key
+/// changed"). A wrong code and a vault without a Kit look alike to the server (`401`), as does a
+/// Kit replaced too long ago: one text covers them, and an unknown vault too
+/// (`syncRecoveryVaultNotFound`). A Kit replaced since says when (`syncRecoveryKitReplaced`). A
+/// Kit token or vault ID the server's rules refuse can only come from a code that does not read
+/// (`syncRecoveryCodeInvalid`). A rate limit, a lapsed subscription and the network keep their
+/// own readings.
+fn kit_read_refused(error: RelayError) -> SyncError {
+    match error {
+        RelayError::Unauthorized | RelayError::VaultNotFound => {
+            AppError::Validation(KIT_VAULT_NOT_FOUND.into()).into()
+        }
+        RelayError::KitReplaced { replaced_at } => {
+            AppError::validation_with(KIT_REPLACED, serde_json::json!({ "at": replaced_at })).into()
+        }
+        RelayError::BadRequest(_) => AppError::Validation(CODE_INVALID.into()).into(),
+        other => other.into(),
+    }
+}
+
+/// The credentials of a Recovery Kit and what its envelope says (revision §2.6 steps 1–5), from
+/// the sync server at `input.relay_url` (the caller builds it from that address). In this order:
 ///
 /// 1. Sync on → `validation.syncAlreadyEnabled`, before any relay call.
-/// 2. The relay must know the account (`account_status`; `AccountNotFound` →
+/// 2. The server must know the account in the code (`AccountNotFound` →
 ///    `validation.syncRecoveryAccountInvalid`).
-/// 3. The kit's key is the vault's key of epoch 0; the vault must answer its token (`vault_info`;
-///    `Unauthorized` or `VaultNotFound` → `validation.syncRecoveryVaultNotFound`).
-/// 4. A vault whose token was rotated (`rotation != 0`) is refused with
-///    `validation.syncRecoveryKitRotated`: a kit holds the first key only, and finding a later
-///    epoch is phase 5.
+/// 3. `GET /kit` with the Kit's token (`kit_read_refused` reads its refusals).
+/// 4. The envelope opens with the Kit's keys and its signature verifies with the certificate it
+///    bundles (`rekey::envelope::open`); any failure is `validation.syncRecoveryKitUnreadable`.
+///    Whether its signer may speak is the store's question, at the join (step 6).
+/// 5. The credentials hold every key it carries, the newest current; the vault must answer that
+///    key's token (`vault_info`: an unknown token means the envelope does not hold the vault's
+///    key, `syncRecoveryKitUnreadable`). The bundle of the newest key change, when the server
+///    still lists it (30 days), gives that epoch's head as the server reports it.
 ///
-/// Any other relay answer comes back as its `SyncError`. Nothing is stored.
+/// Nothing is stored.
 pub async fn recovery_credentials<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
-    input: RecoveryInput,
-) -> SyncResult<Credentials> {
+    input: KitInput,
+) -> SyncResult<(Credentials, KitJoin)> {
     let enabled = db.with_conn(|conn| Ok(state::load(conn)?.is_some_and(|sync| sync.enabled)))?;
     if enabled {
         return Err(AppError::Validation(ALREADY_ENABLED.into()).into());
     }
-    match relay.account_status(&input.account).await {
+    let KitInput { relay_url, code } = input;
+    match relay.account_status(&code.account).await {
         Ok(_) => {}
         Err(RelayError::AccountNotFound) => {
             return Err(AppError::Validation(KIT_ACCOUNT_INVALID.into()).into());
         }
         Err(error) => return Err(error.into()),
     }
+    let kit = code.seed.derive(&code.vault_id.0);
+    let read = relay
+        .get_kit(&code.vault_id.to_b64(), kit.token())
+        .await
+        .map_err(kit_read_refused)?;
+    let envelope = envelope::open(&read.envelope, &kit).map_err(|_| {
+        log::warn!("[SYNC] The Recovery Kit's envelope does not open or verify");
+        unreadable()
+    })?;
+    let newest_epoch = envelope.header.epoch;
+    let mut held = std::collections::BTreeMap::new();
+    let mut heads = EpochHeads::new();
+    for old in &envelope.keys {
+        held.insert(old.epoch, *old.key);
+        if let Some(head) = old.head {
+            heads.insert(old.epoch, head);
+        }
+    }
+    let keys = VaultKeys::from_parts(newest_epoch, held).map_err(|_| unreadable())?;
     let creds = Credentials {
-        relay_url: input.relay_url,
-        account: input.account,
-        vault_id: input.vault_id,
-        keys: VaultKeys::single(0, input.key.into_secret()),
+        relay_url,
+        account: code.account.clone(),
+        vault_id: code.vault_id,
+        keys,
     };
-    let info = match relay.vault_info(&creds.auth()).await {
-        Ok(info) => info,
-        Err(RelayError::Unauthorized | RelayError::VaultNotFound) => {
+    match relay.vault_info(&creds.auth()).await {
+        Ok(_) => {}
+        Err(RelayError::Unauthorized) => {
+            log::warn!("[SYNC] The Recovery Kit's envelope does not hold the vault's key");
+            return Err(unreadable());
+        }
+        Err(RelayError::VaultNotFound) => {
             return Err(AppError::Validation(KIT_VAULT_NOT_FOUND.into()).into());
         }
         Err(error) => return Err(error.into()),
-    };
-    if info.rotation != 0 {
-        log::info!("[SYNC] The vault was re-keyed; a Recovery Kit join is not supported yet");
-        return Err(AppError::Validation(KIT_ROTATED.into()).into());
     }
-    Ok(creds)
+    let server_head = newest_bundle_head(relay, &creds, newest_epoch).await?;
+    let join = KitJoin {
+        kit,
+        heads,
+        confirmed: envelope
+            .confirmed
+            .iter()
+            .map(|c| (c.device, c.cert_hash))
+            .collect(),
+        signer: envelope.signer,
+        newest_epoch,
+        server_head,
+        snapshot: None,
+    };
+    Ok((creds, join))
+}
+
+/// The head and rotation the server reports with the bundle of the key change to `epoch`, when it
+/// still lists one (it keeps bundles for 30 days): `None` otherwise, or for epoch 0.
+async fn newest_bundle_head<R: Relay>(
+    relay: &R,
+    creds: &Credentials,
+    epoch: u32,
+) -> SyncResult<Option<(u64, u32)>> {
+    if epoch == 0 {
+        return Ok(None);
+    }
+    let auth = creds.auth();
+    let mut after = 0;
+    for _ in 0..pickup::MAX_BUNDLES_PER_WALK {
+        let page = relay.rekeys(&auth, after, MAX_REKEY_PAGE).await?;
+        for rekey in &page.rekeys {
+            if rekey.rotation <= after {
+                return Err(
+                    RelayError::Protocol("the list of key changes does not end".into()).into(),
+                );
+            }
+            after = rekey.rotation;
+            let to = bundle::peek(&rekey.bundle, &creds.vault_id.0).map(|h| h.to_epoch);
+            if to.is_ok_and(|to| to == epoch) {
+                return Ok(Some((rekey.head, rekey.rotation)));
+            }
+        }
+        if !page.more || page.rekeys.is_empty() {
+            break;
+        }
+    }
+    Ok(None)
 }
 
 /// The replace itself, in one savepoint: the credentials are bound (binding another vault
@@ -518,6 +713,8 @@ fn replace_profile(
                     for key in [
                         state::UNVERIFIED_EPOCHS_KEY,
                         state::KIT_READ_SEEN_KEY,
+                        state::AFTER_KIT_JOIN_KEY,
+                        state::KIT_EPOCH_FLOOR_KEY,
                         trust::NEW_DEVICES_KEY,
                     ] {
                         conn.execute("DELETE FROM app_config WHERE key = ?1", [key])?;
@@ -536,12 +733,15 @@ fn replace_profile(
                 NewIdentity::Join(JoinIdentity::Paired(paired, _)) => {
                     Some(paired_identity(conn, paired, now)?)
                 }
-                NewIdentity::Join(JoinIdentity::RecoveryKit) => {
-                    // Until Task 19 (revision §2.6): a v1 Kit carries no Kit seed, so the joiner
-                    // signs with a throwaway Kit no other device knows; its certificate stays
-                    // unverified there.
-                    let kit = identity::KitSecret::generate()?.derive(&trust::vault_id(conn)?);
-                    Some(identity::create_own(conn, Issuer::Kit { kit: &kit }, now)?)
+                NewIdentity::Join(JoinIdentity::RecoveryKit(join)) => {
+                    // The Kit's row anchors the store (revision §2.6 step 6); its key signs.
+                    trust::pin_kit_anchor(conn, join.kit.id(), join.kit.sign_pub(), now)
+                        .map_err(|error| kit_refused("its row", error))?;
+                    Some(identity::create_own(
+                        conn,
+                        Issuer::Kit { kit: &join.kit },
+                        now,
+                    )?)
                 }
                 NewIdentity::Join(JoinIdentity::Unvouched(_)) => {
                     identity::create_uncertified(conn)?;
@@ -552,8 +752,8 @@ fn replace_profile(
             if let NewIdentity::Join(joining) = who {
                 record_joined_epochs(conn, joining, now)?;
             }
-            if matches!(who, NewIdentity::Join(JoinIdentity::RecoveryKit)) {
-                trust::tofu_from_rows(conn, now)?;
+            if let NewIdentity::Join(JoinIdentity::RecoveryKit(join)) = who {
+                kit_join_store(conn, join, now)?;
             }
             Ok(report)
         })
@@ -595,7 +795,7 @@ pub(super) fn record_joined_epochs(
         .ok_or_else(|| AppError::Internal("sync join: no vault keys after the restore".into()))?;
     let mut heads = match joining {
         JoinIdentity::Paired(_, heads) | JoinIdentity::Unvouched(heads) => heads.clone(),
-        JoinIdentity::RecoveryKit => EpochHeads::new(),
+        JoinIdentity::RecoveryKit(join) => join.heads.clone(),
     };
     if held.get(0).is_some() {
         heads.entry(0).or_insert(0);
@@ -606,8 +806,110 @@ pub(super) fn record_joined_epochs(
         }
         if state::record_epoch(conn, epoch, head, None, now)? == state::EpochRecord::Differs {
             log::warn!("[SYNC] The holder's key epochs disagree with the vault's snapshot");
-            return Err(AppError::Validation(PAIRING_FAILED.into()));
+            let key = match joining {
+                JoinIdentity::RecoveryKit(_) => KIT_UNREADABLE,
+                _ => PAIRING_FAILED,
+            };
+            return Err(AppError::Validation(key.into()));
         }
+    }
+    Ok(())
+}
+
+/// A Kit join that does not hold up: `validation.syncRecoveryKitUnreadable`, which rolls the
+/// replace back.
+fn kit_refused(what: &str, error: AppError) -> AppError {
+    log::warn!("[SYNC] The Recovery Kit join was refused: {what}");
+    log::debug!("[SYNC] The Recovery Kit join was refused: {what}: {error}");
+    AppError::Validation(KIT_UNREADABLE.into())
+}
+
+/// Steps 5–7 of a Kit join (revision §2.6), in the replace's savepoint once this device's row is
+/// recorded and the Kit anchored:
+///
+/// - the store: trust on first use of what was restored, a genesis only when the Kit's chain or
+///   the envelope's confirmed set names it (As built R-28); then the envelope's signer must be
+///   pinned with the certificate the envelope bundles and be neither removed nor left here (its
+///   own `at` is the signer's claim and is not consulted, R-28), and only then is the confirmed
+///   set applied;
+/// - the newest epoch E is never left unchecked: its head is known when the snapshot's `Keys`
+///   record named it; a snapshot sealed under E bounds older ops past it
+///   (`state::KitEpochFloor`); an older snapshot leaves E provisional (`head::note_unverified`,
+///   with the server's head when it still lists the bundle) until the signer's signed head is
+///   verified;
+/// - the push hold (`AfterKitJoin`), with every other active device restored, unless there is
+///   none.
+fn kit_join_store(conn: &Connection, join: &KitJoin, now: i64) -> Result<()> {
+    let me = state::load(conn)?
+        .ok_or_else(|| AppError::Internal("sync join: no sync state after the replace".into()))?
+        .device;
+    let genesis = trust::kit_join_genesis(conn, join.kit.id(), &join.confirmed)?;
+    trust::tofu_from_rows(conn, now, &genesis)?;
+    let signer = join.signer.body.device;
+    let speaks = trust::entry(conn, signer)?
+        .is_some_and(|e| e.cert == join.signer && e.state == trust::TrustState::Trusted);
+    if !speaks {
+        return Err(kit_refused(
+            "its envelope's signer",
+            AppError::Internal("not pinned with that certificate, or removed or left".into()),
+        ));
+    }
+    trust::apply_confirmed_set(conn, &join.confirmed)?;
+    let newest = join.newest_epoch;
+    if !state::epochs(conn)?.contains_key(&newest) {
+        let at = join.snapshot.ok_or_else(|| {
+            AppError::Internal("sync join: the snapshot's place is unknown".into())
+        })?;
+        if at.epoch == newest {
+            state::set_kit_epoch_floor(
+                conn,
+                state::KitEpochFloor {
+                    epoch: newest,
+                    after: at.seq,
+                },
+            )?;
+        } else {
+            if let Some((head, _)) = join.server_head {
+                if state::record_epoch(conn, newest, head, Some(signer), now)?
+                    == state::EpochRecord::Differs
+                {
+                    return Err(kit_refused(
+                        "the newest epoch's start",
+                        AppError::Internal("recorded with another head".into()),
+                    ));
+                }
+            }
+            head::note_unverified(
+                conn,
+                newest,
+                join.server_head.map(|(head, _)| head),
+                join.server_head.map(|(_, rotation)| rotation),
+                signer,
+                at.seq,
+            )?;
+        }
+    }
+    let others: Vec<String> = trust::entries(conn)?
+        .into_iter()
+        .filter(|e| {
+            e.state == trust::TrustState::Trusted
+                && e.kind != identity::CertKind::Kit
+                && e.device != me
+        })
+        .map(|e| e.device.to_hex())
+        .collect();
+    if !others.is_empty() {
+        let hold = AfterKitJoin {
+            devices: others,
+            newest_change_at: trust::newest_change_secs(conn, me)?,
+        };
+        let json = serde_json::to_string(&hold)
+            .map_err(|e| AppError::Internal(format!("sync join: the push hold: {e}")))?;
+        conn.execute(
+            "INSERT INTO app_config (key, value) VALUES (?1, ?2) \
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            rusqlite::params![state::AFTER_KIT_JOIN_KEY, json],
+        )?;
     }
     Ok(())
 }

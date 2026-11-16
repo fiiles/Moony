@@ -19,9 +19,7 @@ use crate::services::sync::join::{
 use crate::services::sync::pairing::holder::holder_payload;
 use crate::services::sync::pairing::session::{PairingSession, Stage};
 use crate::services::sync::pairing::{pairing_code_text, Role};
-use crate::services::sync::recovery::{
-    encode_recovery_code, read_recovery_input, recovery_qr_payload, RecoveryInput,
-};
+use crate::services::sync::recovery::{encode_kit_code, read_kit_input, KitInput};
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
 use crate::services::sync::relay::RelayError;
@@ -194,9 +192,11 @@ async fn assert_joined(vault: &Vault, device: &TestConn, zip: &Path, dir: &Path)
     id
 }
 
-fn kit_input(account: &str, vault_id: &VaultId, key: &[u8; 32]) -> RecoveryInput {
-    let code = encode_recovery_code(vault_id, key);
-    read_recovery_input(&code, Some(account), Some(RELAY), DEFAULT_RELAY_URL).expect("input")
+/// A typed v2 Kit code of `account` and `vault_id` (with a Kit no device made).
+fn kit_input(account: &str, vault_id: &VaultId) -> KitInput {
+    let secret = crate::services::sync::identity::KitSecret::generate().expect("seed");
+    let code = encode_kit_code(vault_id, &secret, account).expect("code");
+    read_kit_input(&code, Some(RELAY), DEFAULT_RELAY_URL).expect("input")
 }
 
 #[tokio::test]
@@ -233,122 +233,6 @@ async fn a_desktop_joins_from_a_phone_that_holds_the_vault() {
         .expect("join");
 
     assert_joined(&vault, &device, &zip, dir.path()).await;
-}
-
-/// A v1 Kit: the code of the vault's current key and the account (the Kit join reads it until Task
-/// 19 rewrites it for the v2 Kit).
-struct V1Kit {
-    recovery_code: String,
-    account_number: String,
-}
-
-fn v1_kit(conn: &Connection) -> V1Kit {
-    let creds = keys::credentials(conn).expect("creds").expect("bound");
-    V1Kit {
-        recovery_code: crate::services::sync::recovery::format_recovery_code(
-            &encode_recovery_code(&creds.vault_id, creds.keys.current()),
-        )
-        .to_string(),
-        account_number: creds.account,
-    }
-}
-
-#[tokio::test]
-async fn a_recovery_kit_join_finds_the_epoch_and_converges() {
-    let vault = vault().await;
-    snapshot_of_a(&vault, "a1").await;
-    let kit = v1_kit(&vault.a.lock());
-    let scanned = recovery_qr_payload(&kit.account_number, &kit.recovery_code, Some(RELAY));
-    let inputs = [
-        read_recovery_input(&scanned, None, None, DEFAULT_RELAY_URL).expect("scanned"),
-        read_recovery_input(
-            &kit.recovery_code,
-            Some(&kit.account_number),
-            Some(RELAY),
-            DEFAULT_RELAY_URL,
-        )
-        .expect("typed"),
-    ];
-
-    for input in inputs {
-        let device = newcomer();
-        let dir = tempfile::tempdir().expect("dir");
-        let creds = recovery_credentials(&vault.relay, &device, input)
-            .await
-            .expect("credentials");
-        assert_eq!(creds.keys.current_epoch(), 0);
-        assert_eq!(creds.relay_url, RELAY);
-        assert_eq!(creds.account, vault.creds.account);
-        assert_eq!(creds.vault_id, vault.creds.vault_id);
-        assert_eq!(*creds.auth().token, *vault.creds.auth().token);
-
-        let zip = join_via(
-            &vault,
-            &device,
-            creds,
-            "Laptop",
-            dir.path(),
-            JoinIdentity::RecoveryKit,
-        )
-        .await
-        .expect("join");
-        assert_joined(&vault, &device, &zip, dir.path()).await;
-    }
-}
-
-/// Phase 5 §5.3, §5.4: a Kit joiner signs its own Recovery Kit certificate and trusts, on first
-/// use, every certificate in what it restored.
-#[tokio::test]
-async fn a_recovery_kit_join_signs_its_own_certificate_and_trusts_what_it_restored() {
-    let vault = vault().await;
-    let a_cert = with_genesis(&vault.a.lock(), "Mac");
-    snapshot_of_a(&vault, "a1").await;
-    let kit = v1_kit(&vault.a.lock());
-    let input = read_recovery_input(
-        &kit.recovery_code,
-        Some(&kit.account_number),
-        Some(RELAY),
-        DEFAULT_RELAY_URL,
-    )
-    .expect("typed");
-    let device = newcomer();
-    let dir = tempfile::tempdir().expect("dir");
-    let creds = recovery_credentials(&vault.relay, &device, input)
-        .await
-        .expect("credentials");
-
-    join_via(
-        &vault,
-        &device,
-        creds,
-        "Laptop",
-        dir.path(),
-        JoinIdentity::RecoveryKit,
-    )
-    .await
-    .expect("join");
-
-    let conn = device.lock();
-    let me = device_of(&conn);
-    let own = trust::entry(&conn, me).expect("entry").expect("pinned");
-    assert_eq!(own.kind, CertKind::RecoveryKit);
-    let seed = identity::own_seed(&conn).expect("seed").expect("stored");
-    assert_eq!(own.sign_pub, identity::sign_pub(&seed));
-    let row_cert: Option<String> = conn
-        .query_row(
-            "SELECT cert FROM sync_devices WHERE id = ?1",
-            [me.to_hex()],
-            |r| r.get(0),
-        )
-        .expect("own row");
-    assert_eq!(row_cert, Some(own.cert.to_b64()));
-    assert_eq!(
-        trust::entry(&conn, A).expect("entry").map(|e| e.cert),
-        Some(a_cert),
-        "the genesis row it restored, trusted on first use"
-    );
-    assert_eq!(trust::entries(&conn).expect("entries").len(), 2);
-    assert!(trust::is_supported(&conn).expect("supported"));
 }
 
 /// Phase 5 §5.3, §5.4 (pairing protocol 3): the holder's store seeds the joiner's, the joiner
@@ -466,40 +350,11 @@ async fn a_join_from_a_holder_without_an_identity_makes_no_certificate() {
 }
 
 #[tokio::test]
-async fn a_code_of_another_vault_is_refused_before_any_backup() {
-    let vault = vault().await;
-    snapshot_of_a(&vault, "a1").await;
-    let device = newcomer();
-    let before = profile(&device.lock());
-    let key = *vault.creds.keys.current();
-
-    // A vault the relay does not know, and this vault's ID with a wrong key.
-    for input in [
-        kit_input(&vault.creds.account, &VaultId::random().expect("id"), &key),
-        kit_input(&vault.creds.account, &vault.creds.vault_id, &[0x5a; 32]),
-    ] {
-        let error = recovery_credentials(&vault.relay, &device, input)
-            .await
-            .expect_err("another vault");
-        assert_eq!(
-            validation_key(&error),
-            Some("validation.syncRecoveryVaultNotFound"),
-            "{error:?}"
-        );
-    }
-    assert_eq!(profile(&device.lock()), before);
-}
-
-#[tokio::test]
 async fn a_kit_with_an_unknown_account_is_refused() {
     let vault = vault().await;
     let device = newcomer();
     let before = vault.relay.calls().len();
-    let input = kit_input(
-        "1111222233334444",
-        &vault.creds.vault_id,
-        vault.creds.keys.current(),
-    );
+    let input = kit_input("1111222233334444", &vault.creds.vault_id);
 
     let error = recovery_credentials(&vault.relay, &device, input)
         .await
@@ -518,41 +373,10 @@ async fn a_kit_with_an_unknown_account_is_refused() {
 }
 
 #[tokio::test]
-async fn a_kit_of_a_rotated_vault_is_refused() {
-    let vault = vault().await;
-    snapshot_of_a(&vault, "a1").await;
-    vault.relay.set_rotation(&vault.creds.vault_id.to_b64(), 1);
-    let device = newcomer();
-    let before = profile(&device.lock());
-    let input = kit_input(
-        &vault.creds.account,
-        &vault.creds.vault_id,
-        vault.creds.keys.current(),
-    );
-
-    let error = recovery_credentials(&vault.relay, &device, input)
-        .await
-        .expect_err("rotated");
-
-    assert_eq!(
-        validation_key(&error),
-        Some("validation.syncRecoveryKitRotated"),
-        "{error:?}"
-    );
-    let c = device.lock();
-    assert_eq!(keys::account(&c).expect("account"), None, "nothing stored");
-    assert_eq!(profile(&c), before);
-}
-
-#[tokio::test]
 async fn a_kit_join_with_sync_on_is_refused_before_any_network_call() {
     let vault = vault().await;
     let before = vault.relay.calls();
-    let input = kit_input(
-        &vault.creds.account,
-        &vault.creds.vault_id,
-        vault.creds.keys.current(),
-    );
+    let input = kit_input(&vault.creds.account, &vault.creds.vault_id);
 
     let error = recovery_credentials(&vault.relay, &vault.a, input)
         .await
@@ -920,11 +744,9 @@ async fn a_join_records_epoch_zero_and_the_holders_heads() {
         .expect("join");
     assert_eq!(epoch_rows(&device.lock()), vec![(0, 0)]);
 
-    // A holder that sent no identity, a Kit and a plain join record epoch 0 as well.
-    for identity in [
-        JoinIdentity::Unvouched(Default::default()),
-        JoinIdentity::RecoveryKit,
-    ] {
+    // A holder that sent no identity records epoch 0 as well (a Kit join: `kit_join`).
+    {
+        let identity = JoinIdentity::Unvouched(Default::default());
         let device = newcomer();
         let dir = tempfile::tempdir().expect("dir");
         join_via(

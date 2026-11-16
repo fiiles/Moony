@@ -389,6 +389,16 @@ pub(super) fn printed_kit(device: &Device) -> KitDraft {
 /// Kit, setup finished under `name`. The person comes back with it, for the tests that block or
 /// delete them.
 pub(super) async fn first_device_of(relay: &HttpRelay, url: &str, name: &str) -> (Device, Person) {
+    let (device, person, _) = first_device_with_kit(relay, url, name).await;
+    (device, person)
+}
+
+/// `first_device_of`, with the Recovery Kit its setup registered.
+pub(super) async fn first_device_with_kit(
+    relay: &HttpRelay,
+    url: &str,
+    name: &str,
+) -> (Device, Person, KitDraft) {
     let (device, person) = device_of_new_person(relay, url, name).await;
     let kit = printed_kit(&device);
     sync_until_allowed(|| {
@@ -405,7 +415,7 @@ pub(super) async fn first_device_of(relay: &HttpRelay, url: &str, name: &str) ->
     .await
     .expect("finish setup");
     assert!(device.enabled());
-    (device, person)
+    (device, person, kit)
 }
 
 pub(super) async fn first_device(relay: &HttpRelay, url: &str, name: &str) -> Device {

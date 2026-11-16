@@ -418,8 +418,8 @@ fn adopt(conn: &Connection, prepared: Prepared, rekey: &Rekey, now: i64) -> Resu
             EpochRecord::Added => head::note_unverified(
                 conn,
                 header.to_epoch,
-                rekey.head,
-                rekey.rotation,
+                Some(rekey.head),
+                Some(rekey.rotation),
                 by,
                 sync.cursor,
             )?,

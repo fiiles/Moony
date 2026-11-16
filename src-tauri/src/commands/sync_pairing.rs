@@ -47,7 +47,7 @@ use crate::services::sync::keys;
 use crate::services::sync::pairing::holder;
 use crate::services::sync::pairing::session::{keeps_session, PairingSession, Stage};
 use crate::services::sync::pairing::{pairing_code_text, MailboxId, Role, Side};
-use crate::services::sync::recovery::{qr_svg, read_recovery_input};
+use crate::services::sync::recovery::{qr_svg, read_kit_input};
 use crate::services::sync::relay::http::{
     default_base_url, display_host, is_default_relay, is_insecure_address, normalize_base_url,
     HttpRelay,
@@ -701,10 +701,11 @@ pub async fn sync_pairing_join(
     }
 }
 
-/// Joins with a Sync Recovery Kit (its QR text or typed code, with the account number and an
+/// Joins with a Recovery Kit (its QR text or typed v2 code, which holds the account, with an
 /// optional sync server for a typed one) once the device password is checked: backup, then join
 /// by replace, as a sync change, within what the person agreed to (`consent`, as
-/// `sync_pairing_join`); the outcome.
+/// `sync_pairing_join`); the outcome. `account` is no longer read (the v2 code carries it); the
+/// wire drops it with the next contract change.
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn sync_join_with_recovery_kit(
@@ -724,12 +725,8 @@ pub async fn sync_join_with_recovery_kit(
     devices::validate_device_name(&device_name)?;
     let verify = verify_password(&app, password.clone());
     begin(password, verify, std::future::ready(Ok(()))).await?;
-    let input = read_recovery_input(
-        &code,
-        account.as_deref(),
-        relay_url.as_deref(),
-        &default_base_url(),
-    )?;
+    drop(account);
+    let input = read_kit_input(&code, relay_url.as_deref(), &default_base_url())?;
     drop(code);
     let relay = HttpRelay::new(&input.relay_url)?;
     let relay_url = input.relay_url.clone();
@@ -737,14 +734,14 @@ pub async fn sync_join_with_recovery_kit(
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
     let join = async {
-        let creds = join::recovery_credentials(&relay, &session, input).await?;
+        let (creds, kit) = join::recovery_credentials(&relay, &session, input).await?;
         join::join_new_device(
             &relay,
             &session,
             creds,
             &device_name,
             consent,
-            join::JoinIdentity::RecoveryKit,
+            join::JoinIdentity::RecoveryKit(Box::new(kit)),
             &dir,
             &native,
             now(),

@@ -1243,3 +1243,67 @@ fn a_kit_certificate_for_a_device_another_certificate_names_is_refused() {
     assert_eq!(kit_flag(&conn, B), Some(true));
     assert_eq!(kit_flag(&conn, C), Some(true));
 }
+
+// ── import_bundle: who may remove, and records about this device (fix round) ────────────────
+
+#[test]
+fn a_bundle_removal_counts_by_the_rule_of_refresh() {
+    // C left at NOW + 10: what it removed before counts, what it dates after does not.
+    let conn = with_four();
+    trust::mark_left(&conn, &C.left_at(NOW + 10)).unwrap();
+    trust::import_bundle(
+        &conn,
+        &B.paired_by(ME, 0x70),
+        &[],
+        &[C.removes_at(D, NOW + 9)],
+        2,
+        NOW,
+    )
+    .expect("signed while C was in");
+    assert_eq!(state_of(&conn, D), Some(TrustState::Removed));
+    let before = trust::entries(&conn).unwrap();
+    assert!(trust::import_bundle(
+        &conn,
+        &B.paired_by(ME, 0x70),
+        &[],
+        &[C.removes_at(E, NOW + 11)],
+        2,
+        NOW
+    )
+    .is_err());
+    assert_eq!(trust::entries(&conn).unwrap(), before, "nothing written");
+
+    // An unconfirmed Kit device's removal does not count.
+    let conn = with_four();
+    row(&conn, Dev(0x06), Some(&Dev(0x06).kit()));
+    trust::refresh(&conn, NOW).unwrap();
+    assert!(trust::import_bundle(
+        &conn,
+        &B.paired_by(ME, 0x70),
+        &[],
+        &[Dev(0x06).removes(E)],
+        2,
+        NOW
+    )
+    .is_err());
+    assert_eq!(state_of(&conn, E), Some(TrustState::Trusted));
+}
+
+#[test]
+fn a_bundle_removal_of_this_device_is_returned_not_applied() {
+    let conn = with_four();
+
+    let about_me = trust::import_bundle(
+        &conn,
+        &B.paired_by(ME, 0x70),
+        &[C.paired_by(ME, 0x71)],
+        &[B.removes(ME), B.removes(D)],
+        2,
+        NOW,
+    )
+    .expect("import");
+
+    assert_eq!(about_me, vec![B.removes(ME)]);
+    assert_eq!(state_of(&conn, ME), Some(TrustState::Trusted));
+    assert_eq!(state_of(&conn, D), Some(TrustState::Removed));
+}

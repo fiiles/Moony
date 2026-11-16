@@ -929,7 +929,10 @@ pub fn import_export(
 /// stays) and confirmed (`kit_unconfirmed` cleared: the signer's person ticked them), and its
 /// removal records move their subjects to `removed`, cut off at `to_epoch`. The caller has
 /// checked the bundle and its signer (pinned, trusted, not `kit_unconfirmed`). Every certificate
-/// and record must verify, or nothing is written. One savepoint.
+/// must verify and every removal record must count as `refresh` judges it once the bundle's
+/// certificates are in (its signer pinned, not `kit_unconfirmed`, and `trusted` or left or
+/// removed no earlier than the record), or nothing is written. A removal naming this device is
+/// not applied but returned: the caller ends sync here (spec §7.4). One savepoint.
 pub fn import_bundle(
     conn: &Connection,
     signer_cert: &Certificate,
@@ -937,8 +940,9 @@ pub fn import_bundle(
     removed_records: &[Record],
     to_epoch: u32,
     now: i64,
-) -> Result<()> {
+) -> Result<Vec<Record>> {
     let vault = vault_id(conn)?;
+    let own = this_device(conn)?;
     let certs: Vec<&Certificate> = std::iter::once(signer_cert).chain(recipients).collect();
     for cert in &certs {
         verified_in(cert, &vault)?;
@@ -973,16 +977,30 @@ pub fn import_bundle(
                 }
             }
         }
+        // Every record is judged against the store with the bundle's certificates in and before
+        // any of its removals, as one `refresh` pass judges records.
+        let store = entry_map(conn)?;
+        let mut about_me = Vec::new();
         for record in removed_records {
             if record.kind != RecordType::Removed || record.vault_id != vault {
                 return Err(refused("a key change carries an invalid removal record"));
             }
-            let signer = entry(conn, record.signer)?
-                .ok_or_else(|| refused("a key change carries a removal by an unknown device"))?;
-            record.verify(&signer.sign_pub)?;
-            apply_move(conn, record, Some(to_epoch))?;
+            if !removal_counts(record, &store) {
+                return Err(refused(
+                    "a key change carries a removal by a device not trusted here",
+                ));
+            }
+            if record.subject == own {
+                log::warn!("[SYNC] A key change says this device was removed");
+                about_me.push(record.clone());
+            }
         }
-        Ok(())
+        for record in removed_records {
+            if record.subject != own {
+                apply_move(conn, record, Some(to_epoch))?;
+            }
+        }
+        Ok(about_me)
     })
 }
 

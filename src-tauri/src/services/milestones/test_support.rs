@@ -80,6 +80,7 @@ pub(crate) fn setup() -> Connection {
             maturity_date INTEGER,
             currency TEXT NOT NULL DEFAULT 'CZK',
             quantity TEXT NOT NULL DEFAULT '1',
+            purchase_date INTEGER,
             created_at INTEGER NOT NULL DEFAULT (unixepoch()),
             updated_at INTEGER NOT NULL DEFAULT (unixepoch())
         );

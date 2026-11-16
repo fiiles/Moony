@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 
 /** The back button never grows past this (`.m-nav__back`). */
 const NAV_BACK_MAX = 120;
+/** The bar's grid gap (`gap-1`). */
+const NAV_GAP = 4;
 
 interface NavBarProps {
   title: string;
@@ -39,6 +41,7 @@ export function NavBar({ title, large = false, collapsed, leading, trailing }: N
     >
       <div className="flex items-center gap-0.5">{leading}</div>
       <Title
+        data-nav-title=""
         aria-hidden={large || undefined}
         className={cn(
           'min-w-0 truncate text-center text-m-title text-ink transition-opacity duration-base ease-moony',
@@ -78,17 +81,26 @@ export function NavTextButton({
     if (!chevron) return;
     const button = buttonRef.current;
     const text = textRef.current;
-    const slot = button?.parentElement;
-    if (!button || !text || !slot) return;
+    const header = button?.closest('header');
+    if (!button || !text || !header) return;
+    const title = header.querySelector<HTMLElement>('[data-nav-title]');
     const measure = () => {
       // The label's natural width (scrollWidth holds it even while it is folded to 0)
       const chrome = button.offsetWidth - text.offsetWidth;
-      setFits(text.scrollWidth + chrome <= Math.min(NAV_BACK_MAX, slot.clientWidth));
+      const style = getComputedStyle(header);
+      const inner =
+        header.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      // The title is centred and keeps its whole width; the back label gets what is left of the
+      // left half beside it (and the gap), at most the button's own maximum
+      const titleHalf = title ? title.scrollWidth / 2 : 0;
+      const room = inner / 2 - titleHalf - NAV_GAP;
+      setFits(text.scrollWidth + chrome <= Math.min(NAV_BACK_MAX, room));
     };
     measure();
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(measure);
-    observer.observe(slot);
+    observer.observe(header);
+    if (title) observer.observe(title);
     return () => observer.disconnect();
   }, [chevron, label]);
 

@@ -32,7 +32,7 @@ export function TabBar({ active }: TabBarProps) {
   return (
     <nav
       aria-label={tc('nav.main')}
-      className="fixed inset-x-0 bottom-0 z-30 grid h-[calc(var(--m-tabbar-h)+var(--safe-bottom))] select-none grid-cols-4 border-t border-line bg-paper px-2.5 pb-[var(--safe-bottom)] pt-[7px] [-webkit-touch-callout:none]"
+      className="fixed inset-x-0 bottom-0 z-30 grid min-h-[calc(var(--m-tabbar-h)+var(--safe-bottom))] select-none grid-cols-4 border-t border-line bg-paper px-2.5 pb-[var(--safe-bottom)] pt-[7px] [-webkit-touch-callout:none]"
     >
       {TABS.map((tab) => {
         const Icon = TAB_ICONS[tab];
@@ -53,7 +53,9 @@ export function TabBar({ active }: TabBarProps) {
             )}
           >
             <Icon aria-hidden className="size-6 flex-none" strokeWidth={1.75} />
-            <span className="max-w-full truncate">{t(`tabs.${tab}`)}</span>
+            <span className="max-w-full text-center leading-[1.15] [overflow-wrap:anywhere]">
+              {t(`tabs.${tab}`)}
+            </span>
           </Link>
         );
       })}

@@ -260,7 +260,7 @@
     "title": "What to keep safe",
     "description": "Each of these does a different job.",
     "password": {
-      "title": "Device password",
+      "title": "Moony password",
       "text": "Unlocks Moony on this device."
     },
     "recoveryKey": {

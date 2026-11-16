@@ -266,11 +266,11 @@
     "phoneDescription": "Lokale data på denne telefonen blir værende. De andre enhetene dine synkroniserer videre. For å bli med igjen senere trenger du en versjon av Moony med synkronisering."
   },
   "password": {
-    "label": "Enhetspassord"
+    "label": "Moony-passord"
   },
   "showKit": {
     "title": "Gjenopprettingssett for synkronisering",
-    "description": "Skriv inn enhetspassordet for å vise settet.",
+    "description": "Skriv inn Moony-passordet for å vise settet.",
     "again": "Skriv inn passordet på nytt for å vise settet.",
     "confirm": "Vis settet"
   },
@@ -304,7 +304,7 @@
   "pairing": {
     "addTitle": "Legg til en enhet",
     "addDescription": "Koble en annen enhet til synkroniseringskontoen din. Ingenting forlater enhetene dine ukryptert.",
-    "passwordFirst": "Skriv inn enhetspassordet for å vise koblingskoden.",
+    "passwordFirst": "Skriv inn Moony-passordet for å vise koblingskoden.",
     "showCode": "Vis kode",
     "qrAlt": "Koblingskode",
     "preparing": "Forbereder koblingen …",
@@ -332,7 +332,7 @@
   "join": {
     "warning": "Dataene på denne enheten erstattes med de synkroniserte dataene. En sikkerhetskopi lagres først ved siden av profilen din.",
     "nameLabel": "Enhetsnavn",
-    "passwordLabel": "Enhetspassord",
+    "passwordLabel": "Moony-passord",
     "serverLabel": "Adresse til synkroniseringsserveren",
     "serverHint": "Skriv adressen til synkroniseringsserveren din, eller lim inn tilkoblingskoden.",
     "insecureAtJoin": "Synkroniseringsdetaljene du blir med på, peker til {{host}}, som nås over vanlig http. Dataene dine forblir krypterte, men alle på samme nettverk kan fange opp tilgangen til synkroniseringen og slette eller blokkere de synkroniserte dataene på serveren.",
@@ -390,7 +390,7 @@
     "scanTitle": "Skann en kode",
     "scanHint": "Rett kameraet mot koden på den andre enheten (Innstillinger → Synkronisering → Legg til en enhet) eller mot QR-koden i gjenopprettingssettet.",
     "addDeviceHint": "På den nye enheten velger du «Koble til denne enheten» under Innstillinger → Synkronisering, og så retter du kameraet mot koden den viser.",
-    "passwordFirst": "Skriv inn enhetspassordet før du skanner koden på den andre enheten.",
+    "passwordFirst": "Skriv inn Moony-passordet før du skanner koden på den andre enheten.",
     "connecting": "Kobler til…",
     "cameraDenied": "Gi tilgang til kameraet i Innstillinger for å skanne koden.",
     "openSettings": "Åpne Innstillinger",
@@ -463,7 +463,7 @@
   },
   "whatSyncs": {
     "title": "Hva som synkroniseres",
-    "body": "Alt du legger inn i Moony, synkroniseres. Språk, utseende, meny, varsler, enhetspassord, gjenopprettingsnøkkel og sikkerhetskopier hører til hver enkelt enhet. Priser og historikk beregnes på hver enhet. Dokumenter og bilder synkroniseres også; en telefon laster ned hvert enkelt når du åpner det."
+    "body": "Alt du legger inn i Moony, synkroniseres. Språk, utseende, meny, varsler, Moony-passord, gjenopprettingsnøkkel og sikkerhetskopier hører til hver enkelt enhet. Priser og historikk beregnes på hver enhet. Dokumenter og bilder synkroniseres også; en telefon laster ned hvert enkelt når du åpner det."
   },
   "protection": {
     "line_one": "Synkroniseringen beskytter dataene dine: en kopi ligger på synkroniseringsserveren (siste fullstendige synkronisering: {{age}}, enheter som synkroniseres: {{count}}). Ta en sikkerhetskopi når du vil bevare hvordan ting sto på en bestemt dag.",

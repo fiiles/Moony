@@ -266,11 +266,11 @@
     "phoneDescription": "Local data on this phone stays. Your other devices keep syncing. Joining again later needs a version of Moony that has sync."
   },
   "password": {
-    "label": "Device password"
+    "label": "Moony password"
   },
   "showKit": {
     "title": "Sync Recovery Kit",
-    "description": "Enter your device password to show the kit.",
+    "description": "Enter your Moony password to show the kit.",
     "again": "Enter your password again to show the kit.",
     "confirm": "Show kit"
   },
@@ -304,7 +304,7 @@
   "pairing": {
     "addTitle": "Add a device",
     "addDescription": "Pair another device with your sync account. Nothing leaves your devices unencrypted.",
-    "passwordFirst": "Enter your device password to show the pairing code.",
+    "passwordFirst": "Enter your Moony password to show the pairing code.",
     "showCode": "Show code",
     "qrAlt": "Pairing code",
     "preparing": "Preparing the pairing…",
@@ -332,7 +332,7 @@
   "join": {
     "warning": "This device's data is replaced by the synced data. A backup is saved next to your profile first.",
     "nameLabel": "Device name",
-    "passwordLabel": "Device password",
+    "passwordLabel": "Moony password",
     "serverLabel": "Sync server address",
     "serverHint": "Type the address of your sync server, or paste its connection code.",
     "insecureAtJoin": "The sync details you are joining with point to {{host}}, which is reached over plain http. Your data stays encrypted, but anyone on the same network can capture the access to sync and delete or block the synced data on the server.",
@@ -390,7 +390,7 @@
     "scanTitle": "Scan a code",
     "scanHint": "Point the camera at the code on your other device (Settings → Sync → Add a device) or at the QR code of your Recovery Kit.",
     "addDeviceHint": "On the new device, choose “Connect this device” in Settings → Sync, then point the camera at the code it shows.",
-    "passwordFirst": "Enter your device password before you scan the other device's code.",
+    "passwordFirst": "Enter your Moony password before you scan the other device's code.",
     "connecting": "Connecting…",
     "cameraDenied": "Allow camera access in Settings to scan the code.",
     "openSettings": "Open Settings",
@@ -463,7 +463,7 @@
   },
   "whatSyncs": {
     "title": "What syncs",
-    "body": "Everything you enter into Moony syncs. The language, look, menu, notifications, device password, recovery key and backups belong to each device. Prices and history are worked out on each device. Documents and photos sync too; a phone downloads one when you open it."
+    "body": "Everything you enter into Moony syncs. The language, look, menu, notifications, Moony password, recovery key and backups belong to each device. Prices and history are worked out on each device. Documents and photos sync too; a phone downloads one when you open it."
   },
   "protection": {
     "line_one": "Sync protects your data: a copy is on the sync server (last complete sync: {{age}}, devices in sync: {{count}}). Make a backup when you want to keep how things stood on a given day.",

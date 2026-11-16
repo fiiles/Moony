@@ -264,7 +264,7 @@
     "title": "Qué conviene guardar",
     "description": "Cada una de estas cosas tiene una función distinta.",
     "password": {
-      "title": "Contraseña del dispositivo",
+      "title": "Contraseña de Moony",
       "text": "Desbloquea Moony en este dispositivo."
     },
     "recoveryKey": {

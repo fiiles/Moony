@@ -268,7 +268,7 @@
     "title": "Co warto zachować",
     "description": "Każda z tych rzeczy służy do czegoś innego.",
     "password": {
-      "title": "Hasło urządzenia",
+      "title": "Hasło do Moony",
       "text": "Odblokowuje Moony na tym urządzeniu."
     },
     "recoveryKey": {

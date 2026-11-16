@@ -260,7 +260,7 @@
     "title": "Was Sie aufbewahren sollten",
     "description": "Jedes davon hat eine andere Aufgabe.",
     "password": {
-      "title": "Gerätepasswort",
+      "title": "Moony-Passwort",
       "text": "Entsperrt Moony auf diesem Gerät."
     },
     "recoveryKey": {

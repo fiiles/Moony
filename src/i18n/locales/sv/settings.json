@@ -260,7 +260,7 @@
     "title": "Vad du bör spara",
     "description": "Var och en av dessa har en egen uppgift.",
     "password": {
-      "title": "Enhetslösenord",
+      "title": "Moony-lösenord",
       "text": "Låser upp Moony på den här enheten."
     },
     "recoveryKey": {

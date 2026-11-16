@@ -276,11 +276,11 @@
     "phoneDescription": "Los datos locales de este teléfono se conservan. Tus demás dispositivos siguen sincronizando. Para volver a unirte más adelante necesitas una versión de Moony con sincronización."
   },
   "password": {
-    "label": "Contraseña del dispositivo"
+    "label": "Contraseña de Moony"
   },
   "showKit": {
     "title": "Kit de recuperación de sincronización",
-    "description": "Introduce la contraseña del dispositivo para mostrar el kit.",
+    "description": "Introduce la contraseña de Moony para mostrar el kit.",
     "again": "Vuelve a introducir tu contraseña para mostrar el kit.",
     "confirm": "Mostrar el kit"
   },
@@ -315,7 +315,7 @@
   "pairing": {
     "addTitle": "Añadir un dispositivo",
     "addDescription": "Vincula otro dispositivo a tu cuenta de sincronización. Nada sale de tus dispositivos sin cifrar.",
-    "passwordFirst": "Introduce la contraseña del dispositivo para mostrar el código de vinculación.",
+    "passwordFirst": "Introduce la contraseña de Moony para mostrar el código de vinculación.",
     "showCode": "Mostrar código",
     "qrAlt": "Código de vinculación",
     "preparing": "Preparando la vinculación…",
@@ -343,7 +343,7 @@
   "join": {
     "warning": "Los datos de este dispositivo se sustituyen por los sincronizados. Antes se guarda una copia de seguridad junto a tu perfil.",
     "nameLabel": "Nombre del dispositivo",
-    "passwordLabel": "Contraseña del dispositivo",
+    "passwordLabel": "Contraseña de Moony",
     "serverLabel": "Dirección del servidor de sincronización",
     "serverHint": "Escribe la dirección de tu servidor de sincronización o pega su código de conexión.",
     "insecureAtJoin": "Los datos de sincronización con los que te unes apuntan a {{host}}, al que se accede por http sin cifrar. Tus datos siguen cifrados, pero cualquiera en la misma red puede capturar el acceso a la sincronización y borrar o bloquear los datos sincronizados en el servidor.",
@@ -402,7 +402,7 @@
     "scanTitle": "Escanear un código",
     "scanHint": "Apunta la cámara al código de tu otro dispositivo (Ajustes → Sincronización → Añadir un dispositivo) o al código QR de tu kit de recuperación.",
     "addDeviceHint": "En el dispositivo nuevo, elige «Conectar este dispositivo» en Ajustes → Sincronización y apunta la cámara al código que muestre.",
-    "passwordFirst": "Introduce la contraseña del dispositivo antes de escanear el código del otro dispositivo.",
+    "passwordFirst": "Introduce la contraseña de Moony antes de escanear el código del otro dispositivo.",
     "connecting": "Conectando…",
     "cameraDenied": "Permite el acceso a la cámara en Ajustes para escanear el código.",
     "openSettings": "Abrir Ajustes",
@@ -478,7 +478,7 @@
   },
   "whatSyncs": {
     "title": "Qué se sincroniza",
-    "body": "Todo lo que introduces en Moony se sincroniza. El idioma, el aspecto, el menú, las notificaciones, la contraseña del dispositivo, la clave de recuperación y las copias de seguridad pertenecen a cada dispositivo. Los precios y el historial se calculan en cada dispositivo. Los documentos y las fotos también se sincronizan; un teléfono descarga cada uno al abrirlo."
+    "body": "Todo lo que introduces en Moony se sincroniza. El idioma, el aspecto, el menú, las notificaciones, la contraseña de Moony, la clave de recuperación y las copias de seguridad pertenecen a cada dispositivo. Los precios y el historial se calculan en cada dispositivo. Los documentos y las fotos también se sincronizan; un teléfono descarga cada uno al abrirlo."
   },
   "protection": {
     "line_one": "La sincronización protege tus datos: hay una copia en el servidor de sincronización (última sincronización completa: {{age}}, dispositivos sincronizados: {{count}}). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto.",

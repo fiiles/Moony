@@ -266,11 +266,11 @@
     "phoneDescription": "Die lokalen Daten auf diesem Telefon bleiben erhalten. Ihre anderen Geräte synchronisieren weiter. Um später wieder beizutreten, brauchen Sie eine Version von Moony mit Synchronisierung."
   },
   "password": {
-    "label": "Gerätepasswort"
+    "label": "Moony-Passwort"
   },
   "showKit": {
     "title": "Sync-Wiederherstellungs-Kit",
-    "description": "Geben Sie Ihr Gerätepasswort ein, um das Kit anzuzeigen.",
+    "description": "Geben Sie Ihr Moony-Passwort ein, um das Kit anzuzeigen.",
     "again": "Geben Sie Ihr Passwort erneut ein, um das Kit anzuzeigen.",
     "confirm": "Kit anzeigen"
   },
@@ -304,7 +304,7 @@
   "pairing": {
     "addTitle": "Gerät hinzufügen",
     "addDescription": "Koppeln Sie ein weiteres Gerät mit Ihrem Sync-Konto. Nichts verlässt Ihre Geräte unverschlüsselt.",
-    "passwordFirst": "Geben Sie Ihr Gerätepasswort ein, um den Kopplungscode anzuzeigen.",
+    "passwordFirst": "Geben Sie Ihr Moony-Passwort ein, um den Kopplungscode anzuzeigen.",
     "showCode": "Code anzeigen",
     "qrAlt": "Kopplungscode",
     "preparing": "Kopplung wird vorbereitet …",
@@ -332,7 +332,7 @@
   "join": {
     "warning": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird neben Ihrem Profil eine Sicherung gespeichert.",
     "nameLabel": "Gerätename",
-    "passwordLabel": "Gerätepasswort",
+    "passwordLabel": "Moony-Passwort",
     "serverLabel": "Adresse des Synchronisierungsservers",
     "serverHint": "Geben Sie die Adresse Ihres Synchronisierungsservers ein oder fügen Sie seinen Verbindungscode ein.",
     "insecureAtJoin": "Die Synchronisierungsdaten, mit denen Sie beitreten, verweisen auf {{host}}, das über einfaches http erreicht wird. Ihre Daten bleiben verschlüsselt, aber jeder im selben Netzwerk kann den Zugang zur Synchronisierung abgreifen und die synchronisierten Daten auf dem Server löschen oder sperren.",
@@ -390,7 +390,7 @@
     "scanTitle": "Code scannen",
     "scanHint": "Richten Sie die Kamera auf den Code auf Ihrem anderen Gerät (Einstellungen → Synchronisierung → Gerät hinzufügen) oder auf den QR-Code Ihres Wiederherstellungs-Kits.",
     "addDeviceHint": "Wählen Sie auf dem neuen Gerät unter Einstellungen → Synchronisierung „Dieses Gerät verbinden“ und richten Sie dann die Kamera auf den angezeigten Code.",
-    "passwordFirst": "Geben Sie Ihr Gerätepasswort ein, bevor Sie den Code des anderen Geräts scannen.",
+    "passwordFirst": "Geben Sie Ihr Moony-Passwort ein, bevor Sie den Code des anderen Geräts scannen.",
     "connecting": "Verbindung wird hergestellt…",
     "cameraDenied": "Erlauben Sie in den Einstellungen den Zugriff auf die Kamera, um den Code zu scannen.",
     "openSettings": "Einstellungen öffnen",
@@ -463,7 +463,7 @@
   },
   "whatSyncs": {
     "title": "Was synchronisiert wird",
-    "body": "Alles, was Sie in Moony eingeben, wird synchronisiert. Sprache, Aussehen, Menü, Benachrichtigungen, Gerätepasswort, Wiederherstellungsschlüssel und Sicherungen gehören zu jedem Gerät einzeln. Kurse und Verlauf werden auf jedem Gerät selbst berechnet. Dokumente und Fotos werden ebenfalls synchronisiert; ein Telefon lädt sie erst herunter, wenn Sie sie öffnen."
+    "body": "Alles, was Sie in Moony eingeben, wird synchronisiert. Sprache, Aussehen, Menü, Benachrichtigungen, Moony-Passwort, Wiederherstellungsschlüssel und Sicherungen gehören zu jedem Gerät einzeln. Kurse und Verlauf werden auf jedem Gerät selbst berechnet. Dokumente und Fotos werden ebenfalls synchronisiert; ein Telefon lädt sie erst herunter, wenn Sie sie öffnen."
   },
   "protection": {
     "line_one": "Die Synchronisierung schützt Ihre Daten: Eine Kopie liegt auf dem Synchronisierungsserver (letzte vollständige Synchronisierung: {{age}}, Geräte in der Synchronisierung: {{count}}). Erstellen Sie eine Sicherung, wenn Sie den Stand eines bestimmten Tages festhalten möchten.",

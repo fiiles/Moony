@@ -256,7 +256,7 @@
     "title": "需要妥善保管的内容",
     "description": "它们各有不同的用途。",
     "password": {
-      "title": "设备密码",
+      "title": "Moony 密码",
       "text": "在此设备上解锁 Moony。"
     },
     "recoveryKey": {

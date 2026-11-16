@@ -264,7 +264,7 @@
     "title": "Cosa conservare",
     "description": "Ognuna di queste cose ha uno scopo diverso.",
     "password": {
-      "title": "Password del dispositivo",
+      "title": "Password di Moony",
       "text": "Sblocca Moony su questo dispositivo."
     },
     "recoveryKey": {

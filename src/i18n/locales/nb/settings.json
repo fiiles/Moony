@@ -260,7 +260,7 @@
     "title": "Hva du bør ta vare på",
     "description": "Hver av disse har en egen oppgave.",
     "password": {
-      "title": "Enhetspassord",
+      "title": "Moony-passord",
       "text": "Låser opp Moony på denne enheten."
     },
     "recoveryKey": {

@@ -256,7 +256,7 @@
     "title": "保管しておくもの",
     "description": "それぞれ役割が異なります。",
     "password": {
-      "title": "デバイスのパスワード",
+      "title": "Moony のパスワード",
       "text": "このデバイスで Moony のロックを解除します。"
     },
     "recoveryKey": {

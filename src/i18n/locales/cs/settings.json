@@ -266,7 +266,7 @@
     "title": "Co si uschovat",
     "description": "Každá z těchto věcí slouží k něčemu jinému.",
     "password": {
-      "title": "Heslo zařízení",
+      "title": "Heslo do Moony",
       "text": "Odemyká Moony na tomto zařízení."
     },
     "recoveryKey": {

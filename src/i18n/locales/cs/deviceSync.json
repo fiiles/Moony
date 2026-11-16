@@ -286,11 +286,11 @@
     "phoneDescription": "Místní data v tomto telefonu zůstanou. Ostatní zařízení se synchronizují dál. K pozdějšímu opětovnému připojení je potřeba verze Moony se synchronizací."
   },
   "password": {
-    "label": "Heslo zařízení"
+    "label": "Heslo do Moony"
   },
   "showKit": {
     "title": "Záchranná sada synchronizace",
-    "description": "Zadejte heslo zařízení, aby se sada zobrazila.",
+    "description": "Zadejte heslo do Moony, aby se sada zobrazila.",
     "again": "Zadejte heslo znovu, aby se sada zobrazila.",
     "confirm": "Zobrazit sadu"
   },
@@ -326,7 +326,7 @@
   "pairing": {
     "addTitle": "Přidat zařízení",
     "addDescription": "Spárujte další zařízení se svým synchronizačním účtem. Nic neopouští vaše zařízení nešifrované.",
-    "passwordFirst": "Zadejte heslo zařízení, aby se zobrazil párovací kód.",
+    "passwordFirst": "Zadejte heslo do Moony, aby se zobrazil párovací kód.",
     "showCode": "Zobrazit kód",
     "qrAlt": "Párovací kód",
     "preparing": "Připravuje se párování…",
@@ -354,7 +354,7 @@
   "join": {
     "warning": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Předtím se vedle profilu uloží záloha.",
     "nameLabel": "Název zařízení",
-    "passwordLabel": "Heslo zařízení",
+    "passwordLabel": "Heslo do Moony",
     "serverLabel": "Adresa synchronizačního serveru",
     "serverHint": "Napište adresu svého synchronizačního serveru nebo vložte jeho připojovací kód.",
     "insecureAtJoin": "Synchronizační údaje, se kterými se připojujete, ukazují na server {{host}}, ke kterému se přistupuje přes prosté http. Data zůstávají šifrovaná, ale kdokoli ve stejné síti může zachytit přístup k synchronizaci a synchronizovaná data na serveru smazat nebo zablokovat.",
@@ -414,7 +414,7 @@
     "scanTitle": "Naskenovat kód",
     "scanHint": "Namiřte fotoaparát na kód na druhém zařízení (Nastavení → Synchronizace → Přidat zařízení) nebo na QR kód záchranné sady.",
     "addDeviceHint": "Na novém zařízení zvolte v Nastavení → Synchronizace „Připojit toto zařízení“ a pak namiřte fotoaparát na kód, který ukáže.",
-    "passwordFirst": "Než naskenujete kód druhého zařízení, zadejte heslo zařízení.",
+    "passwordFirst": "Než naskenujete kód druhého zařízení, zadejte heslo do Moony.",
     "connecting": "Připojování…",
     "cameraDenied": "Aby šlo kód naskenovat, povolte v Nastavení přístup k fotoaparátu.",
     "openSettings": "Otevřít Nastavení",
@@ -491,7 +491,7 @@
   },
   "whatSyncs": {
     "title": "Co se synchronizuje",
-    "body": "Synchronizuje se všechno, co do Moony zadáte. Jazyk, vzhled, menu, oznámení, heslo zařízení, obnovovací klíč a zálohy patří každému zařízení zvlášť. Ceny a historie se dopočítávají na každém zařízení. Dokumenty a fotky se synchronizují také; telefon si je stáhne, až je otevřete."
+    "body": "Synchronizuje se všechno, co do Moony zadáte. Jazyk, vzhled, menu, oznámení, heslo do Moony, obnovovací klíč a zálohy patří každému zařízení zvlášť. Ceny a historie se dopočítávají na každém zařízení. Dokumenty a fotky se synchronizují také; telefon si je stáhne, až je otevřete."
   },
   "protection": {
     "line_one": "Vaše data chrání synchronizace: kopie je na synchronizačním serveru (naposledy: {{age}}, zařízení v synchronizaci: {{count}}). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",

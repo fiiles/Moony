@@ -484,6 +484,7 @@ Order: this device first, then active devices by newest change, then a folded gr
 |---|---|---|---|
 | This device | "Toto zařízení" | platform · how it joined · last synced · version | "Přejmenovat" |
 | Active, verified | — (plus today's "Změny pozastaveny", "Žádné změny … za N dní") | platform · "Spárováno se zařízením MacBook 3. 11. 2026" / "Připojeno záchrannou sadou 5. 11." / "Založilo synchronizaci" / "Znovu připojeno (dříve iPhone)" · last change · version | "Odebrat…" |
+| Active, Kit-unconfirmed (As built 29, 33) | "Nepotvrzené" | platform · "Připojeno záchrannou sadou 5. 11." (or "Spárováno se zařízením {Kit device}") + "Nový klíč dostane, jen když ho potvrdíte." | "Potvrdit zařízení" (password), "Odebrat…" |
 | Active, unverified | "Neověřené" | + "Toto zařízení neumí ověřit, kdo ho přidal. Nový klíč nedostane; připojte ho znovu." | "Odebrat…" (list-only preselected) |
 | Superseded | "Nahrazeno" | "Znovu se připojilo jako {new name} {date}" | "Odebrat…" (list-only preselected) |
 | Left | "Odpojeno" (folded group) | "Odpojeno 12. 11. 2026" | "Odebrat ze seznamu" |
@@ -528,6 +529,12 @@ preselected.
   nedostane a bude se muset připojit znovu." ("A device you leave unticked won't get the new key
   and will have to join again."). Ticked ones are recipients and count toward the 64; ticking
   rebuilds the plan (the ticks are part of the consent).
+- Devices added by a device that has since left or was removed, not confirmed (As built 34,
+  reason `issuerGone`): the same kind of row with the opt-in tick **"Poslat nový klíč i tomuto
+  zařízení — spárováno zařízením {name}, které už není v synchronizaci"** ("Also send the new key
+  to this device — paired by {name}, which is no longer in sync"), unticked, under the same line.
+  A ticked device of either kind is confirmed when the key change commits (`trust::confirm`), so
+  it is not asked about again.
 - "Heslo do Moony" field (focused), then the primary **"Odebrat zařízení"** (destructive) — or
   "Odebrat ze seznamu" in list-only mode, which skips the recipient lists.
 
@@ -944,10 +951,10 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     arriving through sync (`refresh`, and a Kit joiner's `tofu_from_rows`) and inherited by what an
     unconfirmed issuer vouches for (else a forged Kit device could pair a "trusted" one); never on
     this device's own entry. An unconfirmed entry is left out of `recipients` unless the person
-    ticked it (`recipients(conn, removing, kit_ticked)`, `ExclusionReason::KitUnconfirmed`),
+    ticked it (`recipients(conn, removing, opted_in)`, `ExclusionReason::KitUnconfirmed`),
     counts toward the 64 only when ticked, and signs no removal that counts here; it still moves
-    to `left` or `removed`. It is confirmed by `trust::confirm_kit(conn, &[DeviceId]) ->
-    Result<usize>` (Task 9 calls it for the ticked IDs inside the commit of the key change), by
+    to `left` or `removed`. It is confirmed by `trust::confirm` (item 33; Task 9 calls it for the
+    ticked IDs inside the commit of the key change), by
     `import_bundle` for its signer and every recipient it names (certificates new from a bundle are
     pinned confirmed), and, for a paired or re-join entry, when its issuer becomes confirmed
     (`refresh` promotes). The pairing export entry carries `"kitUnconfirmed": true` (omitted when
@@ -968,3 +975,50 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     Supersedes item 7's "a removal record's signer is unknown".
 32. Not changed: two certificates sharing one join ticket still pin the lower device ID (item 4);
     telling them apart needs the ticket secret.
+
+**Coordinator's rulings on items 26, 27 and 29, and the review of Tasks 4–6.**
+
+33. **A person confirms a device, and every device learns it** (supersedes item 29's local
+    `confirm_kit`). Records gain type 3, `confirmed` (signer ≠ subject; vector in
+    `identity/tests.rs`), published in a new synced write-once column
+    `sync_devices.confirm_record` (migration 040, still unapplied, amended; merge rule as item 28:
+    a valid confirmation beats an invalid one, else the older stays). `sync_trust` gains
+    `confirmed` (0/1; `TrustEntry::confirmed`; export entry `"confirmed": true`, omitted when
+    false). `trust::confirm(conn, devices, now) -> Result<Vec<Record>>` signs one record per
+    device with this device's key, marks each `confirmed` (clearing `kit_unconfirmed`) and writes
+    the record into the device's row where none is; this device must be pinned, `trusted`, not
+    `kit_unconfirmed` and hold its seed, and each device pinned, `trusted` and not this one, or
+    nothing is written. `refresh` applies a confirmation whose signer counts by item 26's rule
+    (pinned, not `kit_unconfirmed`, speaking at its time). A bundle naming a device and a pairing
+    export marked `confirmed` confirm it too. The "Potvrdit zařízení" action (§9.1, password
+    required) is the command around `trust::confirm` (Task 16). Limit: like any record, a
+    confirmation is only as good as its signer: a confirmed device's key in a thief's hands can
+    confirm a squatter it made, until a key change cuts it off.
+34. **A device whose issuer left or was removed opts in** (ruling on item 27). `recipients` leaves
+    out an unconfirmed paired or re-join entry whose issuer is pinned and `left` or `removed`
+    (`ExclusionReason::IssuerGone`) unless the person ticked it; ticked, it counts toward the 64.
+    Its third argument is now `opted_in` (Kit and issuer-gone ticks alike). Consequence: pairing a
+    new phone from an old one and then retiring the old one (`left`) asks once at the next key
+    change, and so does the successor of an older ID removed from the list after a re-join, unless
+    a person confirmed it before; the tick confirms it for good.
+35. **A join ticket vouches for one hour** (review M2). `cert::TICKET_LIFETIME_SECS = 3600`: a
+    paired certificate verifies only when `ticket.issued_at ≤ issued_at ≤ ticket.issued_at +
+    3600`, and `issue_paired` refuses outside that. `create_own` dates a paired certificate no
+    earlier than its ticket, so a holder whose clock runs ahead still pairs.
+36. **A paired join that replaced the profile spends its pairing** (review M1).
+    `join::pairing_spent(conn)` (sync is on) tells the command to give the received pairing up
+    whatever error the join answered after the replace; a retry was already refused before
+    anything was signed (`syncAlreadyEnabled`, `may_join`), now the "Try again" is not offered.
+37. **The holder's confirm is a service** (review): `pairing::holder::confirm(session, mailbox,
+    db, typed, now)` reads the slot-2 payload holding off every round (only for a holder at
+    Compare with typed digits), confirms, and drops the payload (the ticket's secret) on every
+    path; the command calls it.
+38. **A bundle's key comes out only after its signature verifies** (review L1, L2, L4).
+    `bundle::open` returns `Opened::Recipient(Unverified)` and `open_body_with_key` returns
+    `Unverified`; only `Unverified::header()` and `::signer()` (the certificate the body names;
+    `by` is its device) are readable, and `Unverified::verify(signer_pub) -> Result<Verified>`
+    gives `Verified { new_key, header, body }`. Task 10 must also check that the signer's
+    certificate is the one pinned here and its entry `trusted` and not `kit_unconfirmed`, verify
+    with the pinned key, and that `to_epoch` is this device's epoch + 1. The signed bytes are
+    `Zeroizing`; lengths and indexes go through `u16::try_from`. Not changed: the joiner still
+    discards the received heads (L3, Task 8).

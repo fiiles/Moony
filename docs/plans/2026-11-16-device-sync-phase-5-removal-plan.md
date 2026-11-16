@@ -160,7 +160,7 @@
 
 **Files:** new `services/sync/rekey/rotate.rs`, `engine/mod.rs` (resolve first), `engine/runtime.rs` (resolve at start), `engine/status.rs` (`rotation_pending`), `state.rs`, new `engine/tests/rekey_rotate.rs`.
 
-> **Fix round (spec As built 26–31):** `plan`/`remove` take the Kit device IDs the person ticked and pass them to `trust::recipients(conn, removing, kit_ticked)`; the ticks are part of the consent; ticked devices are recipients of the bundle, and the `200` commit calls `trust::confirm_kit(conn, ticked)` in its savepoint. `mark_removed` accepts a signer that left or was removed no earlier than the record (item 26); an unconfirmed signer's removal is refused.
+> **Fix round (spec As built 26–31):** `plan`/`remove` take the device IDs the person ticked (Kit-unconfirmed and issuer-gone alike, As built 33–34) and pass them to `trust::recipients(conn, removing, opted_in)`; the ticks are part of the consent; ticked devices are recipients of the bundle, and the `200` commit calls `trust::confirm(conn, ticked, now)` in its savepoint (it writes `confirm_record` into their rows, through the capture). `mark_removed` accepts a signer that left or was removed no earlier than the record (item 26); an unconfirmed signer's removal is refused.
 
 - [ ] Tests first (fake relay, engine test helpers of `engine/tests/mod.rs`):
   - `plan` for `[C]` lists A and B as recipients and C as removing; the consent changes when a recipient's certificate, the epoch, the mode or the removed set changes; `remove` with a stale consent answers `validation.syncRemovalPlanChanged` and writes nothing;
@@ -178,7 +178,7 @@
 
 **Files:** new `services/sync/rekey/{pickup.rs,reseal.rs}`, `engine/{mod.rs,pull.rs,push.rs,status.rs,runtime.rs}`, `setup.rs` (turn off as removed), `models/sync.rs` (two problems; the wire part is Task 16, so add the variants here with their serde names), new `engine/tests/rekey_pickup.rs`.
 
-> **Fix round (spec As built 29, 31):** a bundle's signer must be pinned, `trusted` and not `kit_unconfirmed` to verify; `trust::import_bundle` now returns the removal records naming this device (not applied) — handle them like `RefreshReport::about_me`.
+> **Fix round (spec As built 29, 31, 38):** `bundle::open` gives `Opened::Recipient(Unverified)`: look the signer up by `unverified.signer().body.device`, require its pinned certificate to equal the bundled one and its entry to be `trusted` and not `kit_unconfirmed`, call `verify(&pinned.sign_pub)` to get `Verified { new_key, header, body }`, and require `to_epoch == current + 1`; otherwise `keyChangeUnverified`. `trust::import_bundle` returns the removal records naming this device (not applied) — handle them like `RefreshReport::about_me`.
 
 - [ ] Tests first:
   - triggers: a push answered `TokenReadOnly`, an op whose header names a higher epoch, and `vault_info.rotation > rekey_seen` at engine start each run the pickup once;
@@ -242,7 +242,7 @@
 
 **Files:** new `src-tauri/src/commands/sync_devices.rs`, `commands/mod.rs`, `commands/sync.rs` (flag scan prefix), `lib.rs`, `models/sync.rs`, `bindings.rs`, `services/sync/devices.rs`, `engine/status.rs`, `shared/schema.ts`, `shared/generated-types.ts`, `src/lib/tauri-api.ts`, `src/i18n/locales/*/common.json` (the new `validation.sync…` texts).
 
-> **Fix round (spec As built 29):** `sync_removal_plan` and `sync_remove_devices` also take `kitTicked: string[]` (device IDs); the plan's excluded rows gain the reason `kitUnconfirmed`; `SyncDevice` may carry `kitUnconfirmed` for the list label.
+> **Fix round (spec As built 29):** `sync_removal_plan` and `sync_remove_devices` also take `optedIn: string[]` (device IDs); the plan's excluded rows gain the reasons `kitUnconfirmed` and `issuerGone` (with the issuer's name); `SyncDevice` carries `kitUnconfirmed` and `confirmed`. New command `sync_confirm_device(password, deviceId)` (password checked, flag first, a sync change) calling `trust::confirm(conn, &[id], now)`, then a round so the record goes out (As built 33).
 
 - [ ] Tests first (Rust): `list_devices` returns every row with `state`, `verified`, `joinedVia`, `addedBy`, `stateAt`, `stateBy`, `keepsKey`, `pending` (left and removed rows included; ordering: this device, active by newest change, then the rest); status: `removalSupported`, `rotationPending`, `kitOutdated` (`kit_epoch_saved < key_epoch`, NULL counts as 0), `keyChange`, `removedNotice` (also with sync off), `keptKeyCount`; the flag scan covers `commands::sync_devices::`.
 - [ ] Commands (each checks the flag first, the password where named, maps errors with `app_error_for`): `sync_removal_plan(device_ids, mode, also_remove) -> RemovalPlan`; `sync_remove_devices(password, mode, device_ids, consent) -> RemovalOutcome` (password required for both modes; runs as a sync change, `guarded_change`); `sync_kit_saved()`; `sync_dismiss_notice(kind: "keyChange" | "removed")`. Register in `lib.rs`.
@@ -264,6 +264,8 @@
 
 **Files:** `src/components/settings/sync/SyncDevicesCard.tsx`, new `DeviceRow.tsx`, locales `deviceSync.json` ×10.
 
+> **Fix round (spec §9.1, As built 33):** a Kit-unconfirmed device's row shows the badge "Nepotvrzené", the hint "Nový klíč dostane, jen když ho potvrdíte." and the action "Potvrdit zařízení", which asks for the "Heslo do Moony" and calls `sync_confirm_device`. Strings in ten locales.
+
 - [ ] Rows per spec §9.1: badges, hint line with how it joined, the folded group "Odpojená a odebraná zařízení (n)" in a `Collapsible`, actions "Odebrat…" (outline sm), "Odebrat ze seznamu", "Vyměnit klíč"; a pending removal shows "Odebírá se…"; a pre-phase-5 vault shows the O3 note and no actions; the "Ztratili jste zařízení…" collapsible text replaced (spec §9.1).
 - [ ] Strings (cs binding, en source): `devices.joinedVia.{created,paired,recoveryKit,rejoined}`, `devices.state.{left,removed,removedKeepsKey,superseded,unverified,pending}`, `devices.folded_*` (plural), `devices.remove`, `devices.removeFromList`, `devices.changeKey`, `devices.unsupported`, `limits.lostDevice` (new text). Ten locales.
 - [ ] Verify: frontend gates. Commit: `feat(sync-ui): the desktop device list shows how each device joined and lets you remove it`.
@@ -272,7 +274,7 @@
 
 **Files:** new `src/components/settings/sync/{RemoveDeviceDialog,RemovalRecipients,NewKitStep}.tsx`, `RecoveryKitPanel.tsx` / `ShowRecoveryKitFlow.tsx` (reuse, do not fork), `SyncDevicesCard.tsx` (open it), locales ×10.
 
-> **Fix round (spec §9.2, As built 29):** step 2 lists `kitUnconfirmed` devices with the opt-in tick "Poslat nový klíč i tomuto zařízení — připojeno záchrannou sadou" (unticked) and the line "Zařízení, které nezaškrtnete, nový klíč nedostane a bude se muset připojit znovu."; ticking reloads the plan with `kitTicked`. Strings in ten locales.
+> **Fix round (spec §9.2, As built 29):** step 2 lists `kitUnconfirmed` devices with the opt-in tick "Poslat nový klíč i tomuto zařízení — připojeno záchrannou sadou" (unticked) and the line "Zařízení, které nezaškrtnete, nový klíč nedostane a bude se muset připojit znovu."; the issuer-gone rows with "Poslat nový klíč i tomuto zařízení — spárováno zařízením {name}, které už není v synchronizaci" (spec §9.2, As built 34); ticking reloads the plan with `optedIn`. Strings in ten locales.
 
 - [ ] Steps 1–4 and the failure table of spec §9.2 exactly: choice cards (`ChoiceCard` in `RadioGroup`, "Doporučeno" badge), recipient and excluded lists, "Odebrat také" ticks that reload the plan, the "Heslo do Moony" field focused, the destructive primary named like the title, progress in the dialog body, the Kit step with the tick "Novou záchrannou sadu mám uloženou" and "Hotovo"; `syncRemovalPlanChanged` reloads step 2; the pending outcome closes with its sentence; "Vyměnit klíč" opens the same dialog at step 2 with nobody removed (title "Vyměnit klíč synchronizace?").
 - [ ] Strings: `remove.*` (titles, both cards, list heads, reasons, progress steps, every failure line), `newKit.*`. Ten locales.
@@ -289,7 +291,7 @@
 
 **Files:** `src/mobile/components/sync/SyncDeviceRows.tsx`, new `DeviceSheet.tsx`, `RemoveDeviceSheet.tsx`, `NewKitSheet.tsx` (reusing `KitBody.tsx`), `src/mobile/pages/settings/SyncSection.tsx`, locales `mobile.json`/`deviceSync.json` ×10.
 
-> **Fix round (spec §9.2, As built 29):** the removal sheet's step 2 has the same Kit opt-in ticks and line as the desktop (same keys).
+> **Fix round (spec §9.1, §9.2, As built 29, 33, 34):** the removal sheet's step 2 has the same Kit and issuer-gone opt-in ticks and line as the desktop (same keys); a Kit-unconfirmed device's sheet has "Potvrdit zařízení" (password via `SyncPasswordSheet`'s field pattern), as on the desktop.
 
 - [ ] Other devices' rows open the device sheet (label-value rows, "Odebrat zařízení" as a danger text button); the folded group as one row opening a sheet of the folded rows; the removal sheet runs the same four steps as the desktop dialog with the same keys where the text is the same; the password field uses `SyncPasswordSheet`'s field pattern (16 px field floor); the Kit sheet with the tick. Rows wrap (branch (f)).
 - [ ] Verify: frontend gates. No `mobile.css` change is expected; if you do touch it, update `docs/design-system/mobile.html` and run its overflow check (README §13). Commit: `feat(mobile): remove a device or change the key on the phone`.

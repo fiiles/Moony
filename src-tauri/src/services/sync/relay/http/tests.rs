@@ -575,6 +575,7 @@ async fn vault_info_and_delete_use_the_bearer_token() {
             paid_until: 1_800_000_000,
             bytes: 4096,
             rotation: 0,
+            kit: None,
         }
     );
     let request = server.join().expect("server");
@@ -804,6 +805,7 @@ async fn server_info_reads_the_documented_answer() {
             protocol: 2,
             mode: ServerMode::SelfHosted,
             blobs: false,
+            kit: false,
         }
     );
     let request = server.join().expect("server");
@@ -853,6 +855,7 @@ async fn server_info_refuses_what_is_not_a_moony_server() {
             protocol: 2,
             mode: ServerMode::Cloud,
             blobs: false,
+            kit: false,
         })
     );
     assert_eq!(

@@ -635,6 +635,25 @@ impl<F: Fn(u64, PullPage) -> PullPage + Send + Sync> Relay for Mangled<F> {
     ) -> RelayResult<crate::services::sync::relay::Rotated> {
         unreachable!("not a pull call")
     }
+    async fn rotate_token_with_kit(
+        &self,
+        _: &VaultAuth,
+        _: &str,
+        _: &[u8],
+        _: crate::services::sync::relay::KitRotation<'_>,
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        unreachable!("not a pull call")
+    }
+    async fn put_kit(&self, _: &VaultAuth, _: &str, _: &[u8]) -> RelayResult<bool> {
+        unreachable!("not a pull call")
+    }
+    async fn get_kit(
+        &self,
+        _: &str,
+        _: &str,
+    ) -> RelayResult<crate::services::sync::relay::KitRead> {
+        unreachable!("not a pull call")
+    }
     async fn rekeys(
         &self,
         _: &VaultAuth,

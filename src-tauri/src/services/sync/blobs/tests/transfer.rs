@@ -237,6 +237,7 @@ fn server_with_blobs(blobs: bool) -> ServerInfo {
         protocol: 2,
         mode: ServerMode::SelfHosted,
         blobs,
+        kit: true,
     }
 }
 
@@ -511,6 +512,7 @@ async fn a_server_without_blobs_transfers_nothing() {
         protocol: 2,
         mode: ServerMode::SelfHosted,
         blobs: false,
+        kit: true,
     }));
     let policy = BlobPolicy::default();
 
@@ -545,6 +547,7 @@ async fn a_server_without_blobs_transfers_nothing() {
         protocol: 2,
         mode: ServerMode::SelfHosted,
         blobs: true,
+        kit: true,
     }));
     policy.try_again();
     let up = uploads(&vault, &vault.a, &policy).await;
@@ -1400,6 +1403,33 @@ impl Relay for Meddling {
     ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::Rotated>> + Send
     {
         self.relay.rotate_token(vault, new_token, bundle)
+    }
+    fn rotate_token_with_kit(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+        kit: crate::services::sync::relay::KitRotation<'_>,
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::Rotated>> + Send
+    {
+        self.relay
+            .rotate_token_with_kit(vault, new_token, bundle, kit)
+    }
+    fn put_kit(
+        &self,
+        vault: &VaultAuth,
+        kit_token: &str,
+        envelope: &[u8],
+    ) -> impl std::future::Future<Output = RelayResult<bool>> + Send {
+        self.relay.put_kit(vault, kit_token, envelope)
+    }
+    fn get_kit(
+        &self,
+        vault_id: &str,
+        kit_token: &str,
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::KitRead>> + Send
+    {
+        self.relay.get_kit(vault_id, kit_token)
     }
     fn rekeys(
         &self,

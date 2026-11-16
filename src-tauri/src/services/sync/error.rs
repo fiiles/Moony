@@ -79,6 +79,8 @@ impl From<RelayError> for SyncError {
             | RelayError::SlotConsumed
             | RelayError::MailboxGone
             | RelayError::BlobNotFound
+            | RelayError::KitExists
+            | RelayError::KitReplaced { .. }
             | RelayError::BadRequest(_)) => SyncError::Refused(refused),
         }
     }

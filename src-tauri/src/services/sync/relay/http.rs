@@ -18,9 +18,10 @@ use zeroize::Zeroizing;
 
 use super::{
     check_blob_page, check_rekey_page, is_blob_size, AccountStatus, BlobBody, BlobPage, BlobSink,
-    CheckoutPlan, Delivery, Mailbox, OutgoingOp, PullPage, PulledOp, PushReceipt, Rekey, RekeyPage,
-    Relay, RelayError, RelayResult, RemoteBlob, Rotated, ServerInfo, ServerMode, SinkFlow,
-    SnapshotBlob, VaultInfo, MAX_BLOB_PAGE, MAX_REKEY_BUNDLE, MAX_REKEY_PAGE, MAX_SLOT_BYTES,
+    CheckoutPlan, Delivery, KitInfo, KitRead, KitRotation, Mailbox, OutgoingOp, PullPage, PulledOp,
+    PushReceipt, Rekey, RekeyPage, Relay, RelayError, RelayResult, RemoteBlob, Rotated, ServerInfo,
+    ServerMode, SinkFlow, SnapshotBlob, VaultInfo, MAX_BLOB_PAGE, MAX_KIT_ENVELOPE,
+    MAX_REKEY_BUNDLE, MAX_REKEY_PAGE, MAX_SLOT_BYTES,
 };
 use crate::error::{AppError, Result};
 use crate::services::http::{no_redirect_client, no_redirect_download_client};
@@ -47,6 +48,8 @@ pub const SNAPSHOT_TIMEOUT: Duration = Duration::from_secs(600);
 pub const OPS_TIMEOUT: Duration = Duration::from_secs(120);
 /// One blob upload or download, end to end: 100 MiB on a slow link.
 pub const BLOB_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+/// A Kit answer: an envelope of at most 256 KiB, which base64 makes ~342 KiB, plus the JSON.
+const MAX_KIT_BODY: usize = 512 * 1024;
 /// A blob listing: at most `MAX_BLOB_PAGE` entries of ~80 bytes each.
 const MAX_BLOB_LIST_BODY: usize = 256 * 1024;
 /// The most a body buffer reserves up front, whatever length the answer announces.
@@ -229,6 +232,48 @@ impl HttpRelay {
         }
     }
 
+    /// `POST /v1/vaults/:id/token`, with the Kit's part when there is one.
+    async fn rotate(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+        kit: Option<KitRotation<'_>>,
+    ) -> RelayResult<Rotated> {
+        let url = self.vault_url(vault, "/token")?;
+        if !is_base64url(new_token, 43) {
+            return Err(RelayError::BadRequest("invalid_token".into()));
+        }
+        if bundle.is_empty() {
+            return Err(RelayError::BadRequest("invalid_rekey".into()));
+        }
+        if bundle.len() > MAX_REKEY_BUNDLE {
+            return Err(RelayError::BadRequest("rekey_too_large".into()));
+        }
+        if let Some(kit) = &kit {
+            check_kit_envelope(kit.envelope)?;
+            if kit.token.is_some_and(|token| !is_base64url(token, 43)) {
+                return Err(RelayError::BadRequest("invalid_kit_token".into()));
+            }
+        }
+        // Standard base64 with padding: the server checks `length % 4`.
+        let body = RotateWire {
+            token: new_token,
+            rekey: STANDARD.encode(bundle),
+            kit: kit.map(|kit| RotateKitWire {
+                envelope: STANDARD.encode(kit.envelope),
+                token: kit.token,
+            }),
+        };
+        let request = self.vault_request(Method::POST, url, vault)?.json(&body);
+        let response = expect_status(send(request).await?, &[200]).await?;
+        let answer: RotatedWire = read_json(response, MAX_JSON_BODY).await?;
+        Ok(Rotated {
+            rotation: answer.rotation,
+            head: answer.head,
+        })
+    }
+
     /// `POST /v1/vaults/:id/ops` with the ops as standard padded base64.
     fn push_request(&self, vault: &VaultAuth, ops: &[OutgoingOp]) -> RelayResult<RequestBuilder> {
         let url = self.vault_url(vault, "/ops")?;
@@ -289,13 +334,18 @@ fn account_header(account: &str) -> RelayResult<HeaderValue> {
 
 /// `Bearer <token>`, built in a wiped buffer and marked sensitive.
 fn bearer(vault: &VaultAuth) -> RelayResult<HeaderValue> {
-    let invalid = || RelayError::BadRequest("invalid_token".into());
-    if !is_base64url(&vault.token, 43) {
+    bearer_of(&vault.token, "invalid_token")
+}
+
+/// `bearer` for any 43-character token; `code` is the `BadRequest` of one that is not.
+fn bearer_of(token: &str, code: &str) -> RelayResult<HeaderValue> {
+    let invalid = || RelayError::BadRequest(code.into());
+    if !is_base64url(token, 43) {
         return Err(invalid());
     }
-    let mut text = Zeroizing::new(String::with_capacity(7 + vault.token.len()));
+    let mut text = Zeroizing::new(String::with_capacity(7 + token.len()));
     text.push_str("Bearer ");
-    text.push_str(&vault.token);
+    text.push_str(token);
     let mut value = HeaderValue::from_str(&text).map_err(|_| invalid())?;
     value.set_sensitive(true);
     Ok(value)
@@ -495,6 +545,8 @@ struct ServerInfoWire {
 
 /// The feature a server lists when it has the blob routes.
 const BLOBS_FEATURE: &str = "blobs";
+/// The feature a server lists when it has the Recovery Kit routes.
+const KIT_FEATURE: &str = "kit";
 
 /// What `GET /v1/server` answers as `name`.
 const SERVER_NAME: &str = "moony-sync";
@@ -539,6 +591,17 @@ struct VaultInfoWire {
     bytes: u64,
     #[serde(rename = "rotation")]
     rotation: u32,
+    /// A server from before the Kit sends no field: no Kit.
+    #[serde(rename = "kit", default)]
+    kit: Option<KitInfoWire>,
+}
+
+#[derive(Deserialize)]
+struct KitInfoWire {
+    #[serde(rename = "since")]
+    since: i64,
+    #[serde(rename = "lastRead")]
+    last_read: Option<i64>,
 }
 
 #[derive(Serialize)]
@@ -607,6 +670,45 @@ struct RotateWire<'a> {
     token: &'a str,
     #[serde(rename = "rekey")]
     rekey: String,
+    #[serde(rename = "kit", skip_serializing_if = "Option::is_none")]
+    kit: Option<RotateKitWire<'a>>,
+}
+
+#[derive(Serialize)]
+struct RotateKitWire<'a> {
+    #[serde(rename = "envelope")]
+    envelope: String,
+    #[serde(rename = "token", skip_serializing_if = "Option::is_none")]
+    token: Option<&'a str>,
+}
+
+#[derive(Serialize)]
+struct PutKitWire<'a> {
+    #[serde(rename = "token")]
+    token: &'a str,
+    #[serde(rename = "envelope")]
+    envelope: String,
+}
+
+#[derive(Deserialize)]
+struct KitReadWire {
+    #[serde(rename = "envelope")]
+    envelope: String,
+    #[serde(rename = "since")]
+    since: i64,
+    #[serde(rename = "updatedAt")]
+    updated_at: i64,
+}
+
+/// The argument checks before a Kit envelope is sent (the server judges the same).
+fn check_kit_envelope(envelope: &[u8]) -> RelayResult<()> {
+    if envelope.is_empty() {
+        return Err(RelayError::BadRequest("invalid_kit".into()));
+    }
+    if envelope.len() > MAX_KIT_ENVELOPE {
+        return Err(RelayError::BadRequest("kit_too_large".into()));
+    }
+    Ok(())
 }
 
 #[derive(Deserialize)]
@@ -676,6 +778,15 @@ impl Relay for HttpRelay {
                     features
                         .iter()
                         .any(|feature| feature.as_str() == Some(BLOBS_FEATURE))
+                }),
+            kit: answer
+                .features
+                .as_ref()
+                .and_then(serde_json::Value::as_array)
+                .is_some_and(|features| {
+                    features
+                        .iter()
+                        .any(|feature| feature.as_str() == Some(KIT_FEATURE))
                 }),
         })
     }
@@ -748,6 +859,10 @@ impl Relay for HttpRelay {
             paid_until: answer.paid_until,
             bytes: answer.bytes,
             rotation: answer.rotation,
+            kit: answer.kit.map(|kit| KitInfo {
+                since: kit.since,
+                last_read: kit.last_read,
+            }),
         })
     }
 
@@ -825,27 +940,63 @@ impl Relay for HttpRelay {
         new_token: &str,
         bundle: &[u8],
     ) -> RelayResult<Rotated> {
-        let url = self.vault_url(vault, "/token")?;
-        if !is_base64url(new_token, 43) {
-            return Err(RelayError::BadRequest("invalid_token".into()));
+        self.rotate(vault, new_token, bundle, None).await
+    }
+
+    async fn rotate_token_with_kit(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+        kit: KitRotation<'_>,
+    ) -> RelayResult<Rotated> {
+        self.rotate(vault, new_token, bundle, Some(kit)).await
+    }
+
+    async fn put_kit(
+        &self,
+        vault: &VaultAuth,
+        kit_token: &str,
+        envelope: &[u8],
+    ) -> RelayResult<bool> {
+        let url = self.vault_url(vault, "/kit")?;
+        if !is_base64url(kit_token, 43) {
+            return Err(RelayError::BadRequest("invalid_kit_token".into()));
         }
-        if bundle.is_empty() {
-            return Err(RelayError::BadRequest("invalid_rekey".into()));
-        }
-        if bundle.len() > MAX_REKEY_BUNDLE {
-            return Err(RelayError::BadRequest("rekey_too_large".into()));
-        }
-        // Standard base64 with padding: the server checks `length % 4`.
-        let body = RotateWire {
-            token: new_token,
-            rekey: STANDARD.encode(bundle),
+        check_kit_envelope(envelope)?;
+        let body = PutKitWire {
+            token: kit_token,
+            envelope: STANDARD.encode(envelope),
         };
-        let request = self.vault_request(Method::POST, url, vault)?.json(&body);
+        let request = self.vault_request(Method::PUT, url, vault)?.json(&body);
+        let response = expect_status(send(request).await?, &[200, 201]).await?;
+        let created = response.status().as_u16() == 201;
+        let answer: CreatedWire = read_json(response, MAX_JSON_BODY).await?;
+        if answer.created != created {
+            return Err(RelayError::Protocol("unexpected answer".into()));
+        }
+        Ok(created)
+    }
+
+    async fn get_kit(&self, vault_id: &str, kit_token: &str) -> RelayResult<KitRead> {
+        // The Kit token is the bearer, never a vault token: a `VaultAuth` is not built for it.
+        if !is_base64url(vault_id, 22) {
+            return Err(RelayError::BadRequest("invalid_vault_id".into()));
+        }
+        let url = self.url(&format!("v1/vaults/{vault_id}/kit"))?;
+        let request = no_redirect_client()
+            .request(Method::GET, url)
+            .header(AUTHORIZATION, bearer_of(kit_token, "invalid_kit_token")?);
         let response = expect_status(send(request).await?, &[200]).await?;
-        let answer: RotatedWire = read_json(response, MAX_JSON_BODY).await?;
-        Ok(Rotated {
-            rotation: answer.rotation,
-            head: answer.head,
+        let answer: KitReadWire = read_json(response, MAX_KIT_BODY).await?;
+        let envelope = decode_ct(&answer.envelope)?;
+        if check_kit_envelope(&envelope).is_err() || answer.since < 0 || answer.updated_at < 0 {
+            return Err(RelayError::Protocol("unexpected answer".into()));
+        }
+        Ok(KitRead {
+            envelope,
+            since: answer.since,
+            updated_at: answer.updated_at,
         })
     }
 
@@ -1074,6 +1225,8 @@ impl Mailbox for HttpRelay {
 // `cargo test` makes, so a release test run needs no loopback port.
 #[cfg(all(test, debug_assertions))]
 mod blob_tests;
+#[cfg(all(test, debug_assertions))]
+mod kit_tests;
 #[cfg(all(test, debug_assertions))]
 mod mailbox_tests;
 #[cfg(test)]

@@ -1014,3 +1014,34 @@ R-17. The D3 trap is exercised at the trust level in `engine/tests/trust_order.r
      pairing whose certificate reaches the server after its holder's `left` record stays a
      recipient; an unannounced one is `LateVouch`). The refresh after a pull is still called by
      hand there: the pull's refresh hook is Task 20's.
+
+**Task 16 (relay client and fake: the Kit).**
+
+R-18. **The calls** (`relay/mod.rs`, `Relay`; all three are implemented by `HttpRelay`, `FakeRelay`
+     and every forwarding test relay): `put_kit(vault: &VaultAuth, kit_token: &str, envelope: &[u8])
+     -> bool` (`true` = created, `false` = a retried setup replaced the envelope);
+     `get_kit(vault_id: &str, kit_token: &str) -> KitRead {envelope, since, updated_at}` (the Kit
+     token is the only credential, so it takes the vault ID, not a `VaultAuth`);
+     `rotate_token_with_kit(vault, new_token, bundle, KitRotation {envelope, token: Option<&str>})`.
+     **`rotate_token` keeps its signature** (a rotation without a Kit part, which a vault with a
+     Kit refuses with `BadRequest("kit_required")`); Task 17 calls the new method always. Also new:
+     `VaultInfo.kit: Option<KitInfo {since, last_read: Option<i64>}>` (a server without the field
+     reads as `None`), `ServerInfo.kit: bool` (the `"kit"` feature), `MAX_KIT_ENVELOPE` (256 KiB).
+R-19. **Errors:** `RelayError::KitExists` (`409 kit_exists`) and `RelayError::KitReplaced
+     { replaced_at }` (`410 kit_replaced`; a body without a non-negative `replacedAt` is
+     `Protocol`; a `429` stays `RateLimited`), both `SyncError::Refused`. `kit_required`,
+     `invalid_kit`, `invalid_kit_token` are `BadRequest(code)` and `kit_too_large`
+     `BadRequest("kit_too_large")`, like `invalid_rekey` / `rekey_too_large`. The client refuses
+     bad Kit arguments (token not 43 base64url characters, envelope empty or over the cap) before
+     sending, as for the rekey bundle.
+R-20. **The fake's limit** is the server's failures-only rule per vault only (the fake has no
+     clients): the 31st failed `get_kit` (`Unauthorized` case) inside a fake-clock hour answers
+     `RateLimited`; the right Kit token and a replaced one (`KitReplaced`) are never counted or
+     limited. The per-client limits are not modelled (tests use `fail_next(Route::GetKit,
+     RateLimited)`). The fake's routes: `Route::PutKit`, `Route::GetKit`; a rotation with or
+     without a Kit is `Route::RotateToken`. The fake checks in the server's order (DESIGN.md "As
+     built: Recovery Kit", item 5) and a refused rotation changes nothing; a lost answer
+     (`lose_next_answer(RotateToken)`) keeps the whole rotation including the Kit.
+R-21. **Tests of this task** live in new files beside the existing ones, as the blob and mailbox
+     tests do: `relay/http/kit_tests.rs`, `relay/fake/kit_tests.rs`, and the error mapping in
+     `relay/mod.rs`'s tests; not in `http/tests.rs` / `fake/tests.rs`.

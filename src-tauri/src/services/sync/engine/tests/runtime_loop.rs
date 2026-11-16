@@ -116,6 +116,35 @@ impl Relay for Probe {
         self.around(self.inner.rotate_token(vault, new_token, bundle))
             .await
     }
+    async fn rotate_token_with_kit(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+        kit: crate::services::sync::relay::KitRotation<'_>,
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        self.around(
+            self.inner
+                .rotate_token_with_kit(vault, new_token, bundle, kit),
+        )
+        .await
+    }
+    async fn put_kit(
+        &self,
+        vault: &VaultAuth,
+        kit_token: &str,
+        envelope: &[u8],
+    ) -> RelayResult<bool> {
+        self.around(self.inner.put_kit(vault, kit_token, envelope))
+            .await
+    }
+    async fn get_kit(
+        &self,
+        vault_id: &str,
+        kit_token: &str,
+    ) -> RelayResult<crate::services::sync::relay::KitRead> {
+        self.around(self.inner.get_kit(vault_id, kit_token)).await
+    }
     async fn rekeys(
         &self,
         vault: &VaultAuth,

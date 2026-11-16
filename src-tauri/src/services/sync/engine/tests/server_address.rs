@@ -187,6 +187,7 @@ async fn a_server_that_fails_the_check_or_sync_off_changes_nothing() {
         protocol: 2,
         mode: crate::services::sync::relay::ServerMode::SelfHosted,
         blobs: true,
+        kit: true,
     }));
 
     // A bad address is refused before any call.

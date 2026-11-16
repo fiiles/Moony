@@ -12,6 +12,8 @@ use super::pull::write_and_seal;
 use super::rekey_fixture::*;
 use super::*;
 use crate::models::sync::SyncProblem;
+use crate::services::sync::engine::snapshots::SnapshotPolicy;
+use crate::services::sync::engine::{run_round, RoundMode};
 use crate::services::sync::envelope::vault_token;
 use crate::services::sync::error::{SyncError, Transient};
 use crate::services::sync::identity::{self, trust};
@@ -162,6 +164,24 @@ async fn a_head_the_server_raised_for_one_device_is_refused_and_nothing_past_it_
     let report = round_of(&three.vault, &three.vault.b).await;
     assert_eq!(report.problem, Some(SyncProblem::KeyChangeUnverified));
     assert!(!has_institution(&three.vault.b.lock(), "c-forged"));
+
+    // A later key change: the refutation stays and still holds the pull.
+    remove(&three, A, &[], RemovalMode::Rotate)
+        .await
+        .expect("second change");
+    let report = round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(report.problem, Some(SyncProblem::KeyChangeUnverified));
+    let b = three.vault.b.lock();
+    // A's second bundle names the true start of epoch 1 (signed), which contradicts the
+    // server's: not taken either.
+    assert_eq!(key_epoch(&b), 1);
+    let entries = head::unverified_epochs(&b).expect("unverified");
+    assert!(
+        entries.iter().any(|e| e.epoch == 1 && e.refuted),
+        "{entries:?}"
+    );
+    assert!(head::awaits_head(&b, 0, head + 1).expect("awaits"));
+    assert!(!has_institution(&b, "c-forged"));
 }
 
 /// A lagging device with old-key changes still to pull past its place waits (visibly, as
@@ -177,7 +197,11 @@ async fn a_device_behind_waits_for_the_signed_head_and_then_goes_on() {
 
     let report = round_of(&three.vault, &three.vault.b).await;
 
-    assert_eq!(report.problem, Some(SyncProblem::KeyRotated), "{report:?}");
+    assert_eq!(
+        report.problem,
+        Some(SyncProblem::KeyChangeWaiting),
+        "{report:?}"
+    );
     assert_eq!(key_epoch(&three.vault.b.lock()), 1, "the key was picked up");
     assert!(!has_institution(&three.vault.b.lock(), "a-before"));
     assert_eq!(
@@ -623,4 +647,329 @@ async fn a_removal_a_background_round_finds_not_done_leaves_a_notice() {
             already_removed: true,
         })
     );
+}
+
+/// The entry for `epoch` of `conn`'s provisional heads.
+fn entry(conn: &rusqlite::Connection, epoch: u32) -> Option<head::UnverifiedEpoch> {
+    head::unverified_epochs(conn)
+        .expect("unverified")
+        .into_iter()
+        .find(|e| e.epoch == epoch)
+}
+
+/// A's credentials (after its key change).
+fn a_creds(three: &Three) -> Credentials {
+    keys::credentials(&three.vault.a.lock())
+        .expect("creds")
+        .expect("bound")
+}
+
+/// Review MEDIUM 2: a device that was caught up at the key change seals what it had not sent
+/// again and pushes it without waiting for the remover's signed head (its pull reached the
+/// server's head without a stop), and the head stays provisional meanwhile.
+#[tokio::test]
+async fn a_caught_up_device_sends_its_unsent_changes_without_the_signed_head() {
+    let three = three().await;
+    write_and_seal(&three.vault, &three.vault.b, "b-unsent");
+    remove(&three, A, &[], RemovalMode::Rotate)
+        .await
+        .expect("changed");
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    assert!(
+        unsent_epochs(&three.vault.b.lock()).is_empty(),
+        "sent, echoed"
+    );
+    assert!(
+        entry(&three.vault.b.lock(), 1).is_some(),
+        "still provisional"
+    );
+    round_of(&three.vault, &three.vault.a).await;
+    assert!(has_institution(&three.vault.a.lock(), "b-unsent"));
+}
+
+/// Review MEDIUM 2, the constraint: with the head lowered below an own envelope the server took
+/// and no signed head yet, the pull stops at that envelope, so nothing is sealed again or sent
+/// twice.
+#[tokio::test]
+async fn a_lowered_head_without_the_signed_head_stops_the_pull_and_sends_nothing() {
+    let three = three().await;
+    let b1 = write_and_seal(&three.vault, &three.vault.b, "b1");
+    push(&three.vault.relay, &three.vault.creds, &[b1]).await;
+    let b1_at = last_seq(&three);
+    write_and_seal(&three.vault, &three.vault.b, "b2");
+    remove(&three, A, &[], RemovalMode::Rotate)
+        .await
+        .expect("changed");
+    three
+        .vault
+        .relay
+        .set_rekey_head(&vault_b64(&three), 1, b1_at - 1);
+    let ops_before = three.vault.relay.ops().len();
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(
+        report.problem,
+        Some(SyncProblem::InvalidChain),
+        "{report:?}"
+    );
+    assert_eq!(three.vault.relay.ops().len(), ops_before, "nothing pushed");
+    let epochs: Vec<u32> = unsent_epochs(&three.vault.b.lock())
+        .into_iter()
+        .map(|(_, epoch)| epoch)
+        .collect();
+    assert_eq!(epochs, vec![0, 0], "nothing sealed again");
+}
+
+/// Review MEDIUM 1: the signed head was pruned below a snapshot; the snapshot B restores names
+/// the same head (its dumper verified it), which settles B's provisional one.
+#[tokio::test]
+async fn a_restored_snapshot_naming_the_head_verifies_it() {
+    let three = three().await;
+    remove(&three, A, &[], RemovalMode::Rotate)
+        .await
+        .expect("changed");
+    let head = true_head(&three);
+    // A's next round sends its signed head and the snapshot owed under the new key.
+    round_of(&three.vault, &three.vault.a).await;
+    let seq = three.vault.relay.snapshot_seq().expect("A's snapshot");
+    assert!(seq > head, "{seq} {head}");
+    three.vault.relay.prune_to(seq);
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    assert!(report.restored, "{report:?}");
+    let b = three.vault.b.lock();
+    assert_eq!(key_epoch(&b), 1);
+    assert!(head::unverified_epochs(&b).expect("unverified").is_empty());
+}
+
+/// Review MEDIUM 1: a restored snapshot that does not name the head (its dumper held it only
+/// provisionally) moves the look-ahead to the snapshot, past the pruned ops, and the signed head
+/// above it is found the next round.
+#[tokio::test]
+async fn a_restored_snapshot_without_the_head_moves_the_look_ahead_past_the_prune() {
+    let three = three().await;
+    institution(&three.vault.a.lock(), "a-before");
+    round_of(&three.vault, &three.vault.a).await;
+    round_of(&three.vault, &three.c).await;
+    remove(&three, A, &[], RemovalMode::Rotate)
+        .await
+        .expect("changed");
+    let head = true_head(&three);
+    // C takes the key provisionally, writes under it and uploads a snapshot naming no head.
+    institution(&three.c.lock(), "c-after");
+    let report = round_of(&three.vault, &three.c).await;
+    assert_eq!(report.problem, None, "{report:?}");
+    assert!(entry(&three.c.lock(), 1).is_some());
+    run_round(
+        &three.vault.relay,
+        &three.c,
+        &mut SnapshotPolicy::default(),
+        RoundMode::FirstSnapshot,
+        NOW,
+        0,
+    )
+    .await
+    .expect("C's snapshot");
+    let seq = three.vault.relay.snapshot_seq().expect("snapshot");
+    assert!(seq > head, "{seq} {head}");
+    // A sends its signed head above C's snapshot, and owes no snapshot of its own here (it would
+    // name the head and settle it as in the test above).
+    exec(
+        &three.vault.a.lock(),
+        "UPDATE sync_state SET snapshot_epoch_due = 0",
+    );
+    round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(
+        three.vault.relay.snapshot_seq(),
+        Some(seq),
+        "C's snapshot stays the newest"
+    );
+    three.vault.relay.prune_to(seq);
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert!(report.restored, "{report:?}");
+    let waiting =
+        entry(&three.vault.b.lock(), 1).unwrap_or_else(|| panic!("still provisional: {report:?}"));
+    assert!(waiting.scanned >= seq && !waiting.refuted, "{waiting:?}");
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    let b = three.vault.b.lock();
+    assert!(head::unverified_epochs(&b).expect("unverified").is_empty());
+    assert!(has_institution(&b, "a-before") && has_institution(&b, "c-after"));
+}
+
+/// Back-to-back key changes by one remover that sent nothing in between: its first signed head
+/// is sealed again under the second key, and B, behind by both, verifies both heads in one round.
+#[tokio::test]
+async fn two_signed_heads_of_back_to_back_key_changes_verify_in_one_round() {
+    let three = three().await;
+    remove(&three, A, &[], RemovalMode::Rotate)
+        .await
+        .expect("first");
+    remove(&three, A, &[], RemovalMode::Rotate)
+        .await
+        .expect("second");
+    let unsent: Vec<u32> = unsent_epochs(&three.vault.a.lock())
+        .into_iter()
+        .map(|(_, epoch)| epoch)
+        .collect();
+    assert_eq!(unsent, vec![1, 2], "a signed head per change");
+
+    let report = round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(report.problem, None, "{report:?}");
+    let sent: Vec<Option<u32>> = three
+        .vault
+        .relay
+        .ops()
+        .iter()
+        .rev()
+        .take(2)
+        .map(|op| crate::services::sync::envelope::envelope_epoch(&op.ct))
+        .collect();
+    assert_eq!(sent, vec![Some(2), Some(2)], "the first sealed again");
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    let b = three.vault.b.lock();
+    assert_eq!(key_epoch(&b), 2);
+    assert!(head::unverified_epochs(&b).expect("unverified").is_empty());
+}
+
+/// A head record signed by the bundle's signer but naming another epoch, another vault, or
+/// another signer is no confirmation and no refutation: B keeps waiting until the real one.
+#[tokio::test]
+async fn a_signed_head_for_something_else_neither_confirms_nor_refutes() {
+    let three = three().await;
+    remove(&three, A, &[], RemovalMode::Rotate)
+        .await
+        .expect("changed");
+    let head = true_head(&three);
+    let creds = a_creds(&three);
+    let seed = identity::own_seed(&three.vault.a.lock())
+        .expect("seed")
+        .expect("A's key");
+    let vault = creds.vault_id.0;
+    let records = [
+        head::HeadRecord::sign(vault, A, 0, 5, 1, head, &seed),
+        head::HeadRecord::sign([0x99; 16], A, 0, 1, 1, head, &seed),
+        head::HeadRecord::sign(vault, C, 0, 1, 1, head + 7, &seed),
+    ];
+    let forged: Vec<Vec<u8>> = records
+        .iter()
+        .enumerate()
+        .map(|(i, record)| {
+            let mut cs = changeset(DeviceId([0x90 + i as u8; 16]), 1, None, Vec::new());
+            cs.rekey_head = Some(record.encode());
+            forge(&creds, &cs)
+        })
+        .collect();
+    push(&three.vault.relay, &creds, &forged).await;
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    let waiting = entry(&three.vault.b.lock(), 1).expect("still provisional");
+    assert!(!waiting.refuted, "{waiting:?}");
+
+    push_a_unsent(&three).await;
+    round_of(&three.vault, &three.vault.b).await;
+    assert!(entry(&three.vault.b.lock(), 1).is_none(), "verified");
+}
+
+/// The look-ahead reads at most `MAX_LOOKAHEAD_PAGES` pages a round (a few ops each in tests): a
+/// signed head past them is found in a later round, the scan going on from where it stopped.
+#[tokio::test]
+async fn a_signed_head_past_the_look_ahead_cap_is_found_in_a_later_round() {
+    let three = three().await;
+    remove(&three, A, &[], RemovalMode::Rotate)
+        .await
+        .expect("changed");
+    let head = true_head(&three);
+    let creds = a_creds(&three);
+    let author = DeviceId([0x70; 16]);
+    let mut prev = None;
+    let filler: Vec<Vec<u8>> = (1..=20u64)
+        .map(|seq| {
+            let ct = forge(&creds, &changeset(author, seq, prev, Vec::new()));
+            prev = Some(crate::services::sync::envelope::envelope_hash(&ct));
+            ct
+        })
+        .collect();
+    push(&three.vault.relay, &creds, &filler).await;
+    push_a_unsent(&three).await;
+
+    round_of(&three.vault, &three.vault.b).await;
+
+    let waiting = entry(&three.vault.b.lock(), 1).expect("not found yet");
+    assert_eq!(waiting.scanned, head + 16, "{waiting:?}");
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    assert!(entry(&three.vault.b.lock(), 1).is_none(), "found on");
+}
+
+/// Review: a crash after the lost race's pickup adopted the other change and before the pending
+/// change was wiped; the next resolution finds the key moved on, wipes it and leaves the notice.
+#[tokio::test]
+async fn a_crash_between_the_races_adoption_and_the_wipe_resolves_with_the_notice() {
+    let three = three().await;
+    three
+        .vault
+        .relay
+        .fail_next(Route::RotateToken, RelayError::Network("offline".into()));
+    remove(&three, A, &[C], RemovalMode::Rotate)
+        .await
+        .expect("pending");
+    remove(&three, B, &[], RemovalMode::Rotate)
+        .await
+        .expect("B changes the key");
+    let picked = pickup::pick_up(&three.vault.relay, &three.vault.a, None, NOW)
+        .await
+        .expect("pickup");
+    assert_eq!(picked, Pickup::Adopted { epoch: 1, by: B });
+    assert!(rotation_pending(&three.vault.a.lock()), "the crash");
+
+    let resolved = rotate::resolve_pending(&three.vault.relay, &three.vault.a, None, NOW)
+        .await
+        .expect("resolved");
+
+    assert_eq!(resolved, None);
+    let a = three.vault.a.lock();
+    assert!(!rotation_pending(&a));
+    assert_eq!(
+        rekey::removal_not_done(&a).expect("notice"),
+        Some(RemovalNotDone {
+            by: None,
+            devices: vec!["iPad".into()],
+            already_removed: false,
+        })
+    );
+}
+
+/// Review LOW: a rotation counter above `rekey_seen` with nothing to pick up (bundles gone) is
+/// acted on once a round, not again after the pass for the same info.
+#[tokio::test]
+async fn a_rotation_with_nothing_to_pick_up_is_looked_at_once_a_round() {
+    let three = three().await;
+    three.vault.relay.set_rotation(&vault_b64(&three), 5);
+    let from = three.vault.relay.calls().len();
+
+    round_of(&three.vault, &three.vault.b).await;
+
+    let walks = three.vault.relay.calls()[from..]
+        .iter()
+        .filter(|route| **route == Route::Rekeys)
+        .count();
+    assert_eq!(walks, 1);
 }

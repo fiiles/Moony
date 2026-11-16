@@ -86,6 +86,12 @@ pub enum SyncProblem {
     /// does not trust, or contradicting what it holds (phase 5 §7.5). Paused.
     #[serde(rename = "keyChangeUnverified")]
     KeyChangeUnverified,
+    /// This device picked up a key change and waits for the device that made it to send the
+    /// signed start of the change (phase 5 As built 63) before it applies older changes past where
+    /// it stood: paused on another device ("Čeká se, až se připojí zařízení, které změnu
+    /// provedlo").
+    #[serde(rename = "keyChangeWaiting")]
+    KeyChangeWaiting,
     /// This device's secure storage could not be reached (the device binding could not be
     /// checked); paused, and tried again at the next trigger.
     #[serde(rename = "secureStorage")]

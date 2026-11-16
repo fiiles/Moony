@@ -692,6 +692,7 @@ async fn send<R: Relay, D: ConnAccess>(
             }))
         }
         Err(RelayError::TokenReadOnly) => {
+            // The listing is the server's word, trusted as the `200`'s rotation and head are.
             let seen = db.with_conn(state::rekey_seen)?;
             if let Some(rotated) = own_rotation(relay, &creds.auth(), seen, &change.bundle).await? {
                 let epoch = db.with_conn(|conn| commit(conn, change, rotated, now))?;
@@ -912,7 +913,8 @@ pub async fn resolve_pending<R: Relay, D: ConnAccess>(
 
 /// The rotation and head of the bundle this device stored, if the server lists it (read with
 /// `auth`, a token that reads the vault). Rotations must go up from page to page, and the walk
-/// takes at most `pickup::MAX_BUNDLES_PER_WALK` bundles: a server paging for ever is refused.
+/// takes at most `pickup::MAX_BUNDLES_PER_WALK` bundles: a server paging for ever is refused. The
+/// rotation and head it finds are the server's word, trusted as those of a `200` are.
 async fn own_rotation<R: Relay>(
     relay: &R,
     auth: &VaultAuth,

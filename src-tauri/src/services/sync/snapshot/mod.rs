@@ -209,6 +209,18 @@ fn adopt_keys(conn: &Connection, listed: Option<&[EpochKey]>, now: i64) -> Resul
     Ok(())
 }
 
+/// The heads a restored snapshot names settle the key-change heads this device holds only
+/// provisionally, and the look-ahead for the others starts at the snapshot (`rekey::head`).
+fn settle_heads(conn: &Connection, snapshot: &Snapshot) -> Result<()> {
+    let heads: Vec<(u32, u64)> = snapshot
+        .keys
+        .iter()
+        .flatten()
+        .filter_map(|entry| entry.head.map(|head| (entry.epoch, head)))
+        .collect();
+    crate::services::sync::rekey::head::after_restore(conn, snapshot.seq, &heads)
+}
+
 /// What a restore did: the stream's counts, and what it could not do exactly or found suspicious
 /// (a clock far ahead of this device's time, a merge or repair warning). The restore still
 /// committed; the engine shows the warnings in Sync diagnostics.
@@ -284,6 +296,7 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
     in_savepoint(conn, "sync_snapshot_merge", || {
         let sync = admissible(conn, &snapshot)?;
         adopt_keys(conn, snapshot.keys.as_deref(), now)?;
+        settle_heads(conn, &snapshot)?;
         let mut report = RestoreReport {
             stats: stats_of(&snapshot),
             ..RestoreReport::default()
@@ -308,6 +321,7 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
 fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<RestoreReport> {
     let sync = admissible(conn, &snapshot)?;
     adopt_keys(conn, snapshot.keys.as_deref(), now)?;
+    settle_heads(conn, &snapshot)?;
     let mut report = RestoreReport {
         stats: stats_of(&snapshot),
         ..RestoreReport::default()

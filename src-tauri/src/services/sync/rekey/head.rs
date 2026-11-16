@@ -13,8 +13,10 @@
 //! (`note_unverified`: an entry of the Local `app_config` key `state::UNVERIFIED_EPOCHS_KEY`, with
 //! where this device's cursor stood when it adopted the key). Until the head is verified, the pull
 //! stops before any op sealed under an older epoch at a position past that cursor
-//! (`awaits_head`, `PullStop::KeyChangeUnconfirmed`, shown as `keyRotated`), and nothing is sealed
-//! again under the new key (`verified_epochs`, read by `reseal::may_reseal`). Each round looks
+//! (`awaits_head`, `PullStop::KeyChangeUnconfirmed`, shown as `keyChangeWaiting`), and what was
+//! not sent is sealed again under the new key only after a pull that reached the head without a
+//! stop (`reseal::may_reseal`); only verified heads are handed on (`verified_epochs`). A restored
+//! snapshot naming the same head verifies it (`after_restore`). Each round looks
 //! ahead past the provisional head with ordinary pull reads, applying nothing (`verify_heads`):
 //! the signed head of the bundle's signer, opened with a key this device holds, either matches
 //! (the entry goes, the epoch is verified) or not (the entry is marked `refuted` and stays:
@@ -51,6 +53,9 @@ const HEAD_LEN: usize = SIGNED_LEN + 64;
 /// Pages of ops one look-ahead reads at most per epoch and round (it goes on from there next
 /// round).
 pub const MAX_LOOKAHEAD_PAGES: usize = 4;
+
+/// Ops per look-ahead page: a pull page, a few in tests (so a test reaches the page cap).
+const LOOKAHEAD_PAGE: u32 = if cfg!(test) { 4 } else { PULL_PAGE };
 
 /// `"moony rekey head v1" ‖ vault_id (16) ‖ signer (16) ‖ from_epoch (u32) ‖ to_epoch (u32) ‖
 /// rotation (u32) ‖ head (u64) ‖ sig (64)`, `sig` Ed25519 by the signer over every byte before it.
@@ -347,12 +352,15 @@ async fn look_ahead<R: Relay, D: ConnAccess>(
     };
     let auth = creds.auth();
     for _ in 0..MAX_LOOKAHEAD_PAGES {
-        let page = match relay.pull(&auth, after, PULL_PAGE).await {
+        let page = match relay.pull(&auth, after, LOOKAHEAD_PAGE).await {
             Ok(page) => page,
             Err(RelayError::SnapshotRequired) => {
-                log::warn!(
-                    "[SYNC] The ops after a key change were pruned: its head stays unverified"
-                );
+                // Pruned below a snapshot: go on from this device's place, past the floor once
+                // its own pull has restored (`after_restore` moves `scanned` there too).
+                let cursor =
+                    db.with_conn(|conn| Ok(state::load(conn)?.map_or(0, |sync| sync.cursor)))?;
+                log::info!("[SYNC] The ops after a key change were pruned: looking past them");
+                after = after.max(cursor);
                 break;
             }
             Err(error) => return Err(error.into()),
@@ -392,8 +400,54 @@ fn signed_head_in(creds: &Credentials, op: &PulledOp, epoch: u32) -> Option<Head
     HeadRecord::decode(cs.rekey_head.as_deref()?).ok()
 }
 
-/// A signed head found for `entry`: it matches (the entry goes; a cursor that had already passed
-/// the head is reported) or not (the entry is refuted). Whether it matched.
+/// `entry`'s head is verified: a cursor that had already passed it when the key was adopted is
+/// reported (the server hid the key change from this device).
+fn note_verified(conn: &Connection, entry: &UnverifiedEpoch) -> Result<()> {
+    log::info!("[SYNC] The start of key epoch {} is verified", entry.epoch);
+    if entry.after > entry.head {
+        log::warn!(
+            "[SYNC] This device applied changes past the start of key epoch {}: the server hid \
+             the key change from it",
+            entry.epoch
+        );
+        super::write_key_change_overrun(
+            conn,
+            &KeyChangeOverrun {
+                epoch: entry.epoch,
+                head: entry.head,
+                through: entry.after,
+            },
+        )?;
+    }
+    Ok(())
+}
+
+/// After a snapshot restore at relay position `seq` (in its savepoint): a provisional head the
+/// snapshot's `Keys` record names alike is verified (only a holder of that epoch's key can name it
+/// there, since the record carries the key, and a dumper names only heads it verified); the
+/// look-ahead of every other one starts at `seq`, below which the server pruned the ops.
+pub(crate) fn after_restore(conn: &Connection, seq: u64, heads: &[(u32, u64)]) -> Result<()> {
+    let epochs = unverified_epochs(conn)?;
+    if epochs.is_empty() {
+        return Ok(());
+    }
+    let mut left = Vec::new();
+    for mut entry in epochs {
+        let named = heads
+            .iter()
+            .any(|(epoch, head)| *epoch == entry.epoch && *head == entry.head);
+        if named && !entry.refuted {
+            note_verified(conn, &entry)?;
+            continue;
+        }
+        entry.scanned = entry.scanned.max(seq);
+        left.push(entry);
+    }
+    store(conn, &left)
+}
+
+/// A signed head found for `entry`: it matches (the entry goes) or not (the entry is refuted).
+/// Whether it matched.
 fn settle(conn: &Connection, entry: &UnverifiedEpoch, record: &HeadRecord) -> Result<bool> {
     let mut epochs = unverified_epochs(conn)?;
     let matches = record.from_epoch.checked_add(1) == Some(record.to_epoch)
@@ -401,22 +455,7 @@ fn settle(conn: &Connection, entry: &UnverifiedEpoch, record: &HeadRecord) -> Re
         && record.rotation == entry.rotation;
     if matches {
         epochs.retain(|e| e.epoch != entry.epoch);
-        log::info!("[SYNC] The start of key epoch {} is verified", entry.epoch);
-        if entry.after > entry.head {
-            log::warn!(
-                "[SYNC] This device applied changes past the start of key epoch {}: the server \
-                 hid the key change from it",
-                entry.epoch
-            );
-            super::write_key_change_overrun(
-                conn,
-                &KeyChangeOverrun {
-                    epoch: entry.epoch,
-                    head: entry.head,
-                    through: entry.after,
-                },
-            )?;
-        }
+        note_verified(conn, entry)?;
     } else {
         log::warn!(
             "[SYNC] The sync server reported another start for key epoch {} than its signer",

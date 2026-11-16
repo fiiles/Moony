@@ -380,9 +380,10 @@ fn problem_error(problem: SyncProblem) -> SyncError {
         SyncProblem::VaultGone => SyncError::VaultNotFound,
         SyncProblem::QuotaExceeded => SyncError::TooLarge(TooLarge::Quota),
         SyncProblem::SnapshotTooLarge => SyncError::TooLarge(TooLarge::Snapshot),
-        SyncProblem::KeyRotated | SyncProblem::KeyNotGiven | SyncProblem::KeyChangeUnverified => {
-            SyncError::ReadOnlyToken
-        }
+        SyncProblem::KeyRotated
+        | SyncProblem::KeyNotGiven
+        | SyncProblem::KeyChangeUnverified
+        | SyncProblem::KeyChangeWaiting => SyncError::ReadOnlyToken,
         SyncProblem::Unauthorized => SyncError::Unauthorized,
         SyncProblem::RateLimited => SyncError::RateLimited,
         SyncProblem::Offline => SyncError::Transient(Transient::Offline),

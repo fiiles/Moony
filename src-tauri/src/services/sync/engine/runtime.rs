@@ -1023,7 +1023,8 @@ pub(crate) fn lane_may_run(lane: Lane, problem: Option<SyncProblem>) -> bool {
             SyncProblem::Lapsed
             | SyncProblem::KeyRotated
             | SyncProblem::KeyNotGiven
-            | SyncProblem::KeyChangeUnverified,
+            | SyncProblem::KeyChangeUnverified
+            | SyncProblem::KeyChangeWaiting,
         ) => lane == Lane::Down,
         _ => true,
     }

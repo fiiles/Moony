@@ -40,16 +40,40 @@ pub fn holds_older(conn: &Connection, creds: &Credentials) -> Result<bool> {
     Ok(false)
 }
 
-/// Whether a pull that looked at every op up to relay position `through` lets this device
-/// re-seal: the current epoch started at a head this device knows and verified
-/// (`head::verified_epochs`: the remover's own, or one its signed head confirmed; a head only the
-/// server reported, perhaps lowered below an own envelope it took, never counts) and the pull got
-/// there.
-pub fn may_reseal(conn: &Connection, creds: &Credentials, through: u64) -> Result<bool> {
-    let heads = super::head::verified_epochs(conn)?;
-    Ok(heads
-        .get(&creds.keys.current_epoch())
-        .is_some_and(|head| through >= *head))
+/// Whether the round's pulls let this device re-seal. `through`: every op up to that relay
+/// position was looked at in this round; `clean_through`: how far the pull of this pass got when
+/// it stopped nowhere (`None` when it stopped). The current epoch's start must be known:
+///
+/// - **verified** (`head::verified_epochs`: the remover's own, or one its signed head confirmed):
+///   the round's pulls got there (`through`);
+/// - **only the server's** (not refuted): this pass's pull got there **and stopped nowhere**.
+///   Every op up to the head was then dealt with, so every own envelope the server holds up to it
+///   came back and left `sync_unsent`. A head lowered below an own envelope the server took
+///   cannot pass this: that envelope sits above the lowered head under the old epoch, where the
+///   epoch rule stops the pull (`Invalid`); a head raised above new-key ops stops it the same way,
+///   and a removed device's old-key ops above where this device stood stop it too
+///   (`KeyChangeUnconfirmed`). So nothing is sent twice, and a caught-up device does not wait
+///   for the remover's signed head to send what it has.
+pub fn may_reseal(
+    conn: &Connection,
+    creds: &Credentials,
+    through: u64,
+    clean_through: Option<u64>,
+) -> Result<bool> {
+    let current = creds.keys.current_epoch();
+    if let Some(head) = super::head::verified_epochs(conn)?.get(&current) {
+        return Ok(through >= *head);
+    }
+    let refuted = super::head::unverified_epochs(conn)?
+        .iter()
+        .any(|e| e.epoch == current && e.refuted);
+    let head = crate::services::sync::state::epochs(conn)?
+        .get(&current)
+        .copied();
+    Ok(!refuted
+        && head
+            .zip(clean_through)
+            .is_some_and(|(head, through)| through >= head))
 }
 
 /// Re-seals, in sequence order and in one savepoint, every envelope in `sync_unsent` sealed under

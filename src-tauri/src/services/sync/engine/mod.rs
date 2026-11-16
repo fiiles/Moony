@@ -103,7 +103,7 @@ pub enum PullStop {
     NewerSchema,
     /// An op under an older epoch past where this device stood when it adopted a key change whose
     /// head the remover's signed head has not confirmed yet (`rekey::head`): it waits for it
-    /// (`keyRotated`, "picking up the new key"), nothing past it applied.
+    /// (`keyChangeWaiting`, on the device that made the change), nothing past it applied.
     KeyChangeUnconfirmed,
 }
 
@@ -600,11 +600,15 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     // The vault's info, read before the pull when the round reads it at all (its snapshot step
     // reads it again after the push: the snapshot's sequence is the head then).
     let mut trigger = None;
+    // The newest rotation this round already looked at: a pass reacts only to a rotation above
+    // it (an info read again with the same counter, or not read again at all, is not news).
+    let mut looked_at = None;
     if wants_info(policy, mode, now) {
         let info = relay.vault_info(&creds.auth()).await?;
         if info.rotation > seen {
             trigger = Some(Trigger::Info);
         }
+        looked_at = Some(info.rotation);
         report.vault = Some(info);
     }
     // Heads to check: those waiting from an earlier round, and any a pickup adopts now.
@@ -661,16 +665,20 @@ async fn round_steps<R: Relay, D: ConnAccess>(
             }
         }
         trigger = match round_pass(relay, db, &creds, policy, mode, now, jitter, report).await {
-            // The vault's info, when the round read it: a rotation above `rekey_seen` is a key
-            // change this device has not looked at.
+            // The vault's info: a rotation above `rekey_seen` and above what this round already
+            // looked at is a key change this device has not looked at.
             Ok(Pass::Done) => {
-                let rotated = match report.vault.as_ref() {
-                    Some(info) => info.rotation > db.with_conn(state::rekey_seen)?,
-                    None => false,
+                let rotation = report.vault.as_ref().map(|info| info.rotation);
+                let rotated = match rotation {
+                    Some(rotation) if looked_at.is_none_or(|seen| rotation > seen) => {
+                        rotation > db.with_conn(state::rekey_seen)?
+                    }
+                    _ => false,
                 };
                 if !rotated {
                     return Ok(());
                 }
+                looked_at = rotation;
                 Some(Trigger::AfterPass)
             }
             Ok(Pass::KeyHint) => Some(Trigger::KeyHint),
@@ -777,6 +785,8 @@ async fn round_pass<R: Relay, D: ConnAccess>(
         }
     }
     let key_hint = pulled.key_hint.is_some() && pulled.stop == Some(PullStop::Undecryptable);
+    // How far this pass's own pull got when it stopped nowhere (`reseal::may_reseal`).
+    let clean_through = pulled.stop.is_none().then_some(pulled.through);
     match report.pull.as_mut() {
         // A pass after a key pickup: its pull goes on from where the first one stopped.
         Some(first) => absorb(first, pulled),
@@ -789,14 +799,15 @@ async fn round_pass<R: Relay, D: ConnAccess>(
         return Ok(Pass::Done);
     }
     // Nothing sealed under an older key goes out after a key change (phase 5 §7.2): it is sealed
-    // again once the pull has reached the current epoch's start, and until then nothing is
-    // pushed (`KeyRotated`, "picking up the new key").
+    // again once the pull has reached the current epoch's start (a start only the server
+    // reported: reached by this pass's pull without a stop), and until then nothing is pushed
+    // (`KeyRotated`, "picking up the new key").
     let through = report.pull.as_ref().map_or(0, |pull| pull.through);
     let sendable = db.with_conn(|conn| {
         if !reseal::holds_older(conn, creds)? {
             return Ok(true);
         }
-        if !reseal::may_reseal(conn, creds, through)? {
+        if !reseal::may_reseal(conn, creds, through, clean_through)? {
             return Ok(false);
         }
         let resealed = reseal::reseal_unsent(conn, creds)?;

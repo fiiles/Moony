@@ -247,7 +247,8 @@ pub fn phase_of(problem: SyncProblem) -> SyncPhase {
         | P::NewerSchema
         | P::Offline
         | P::RateLimited
-        | P::SecureStorage => SyncPhase::Paused,
+        | P::SecureStorage
+        | P::KeyChangeWaiting => SyncPhase::Paused,
         P::CaptureBroken
         | P::SnapshotTooLarge
         | P::Undecryptable
@@ -331,8 +332,8 @@ pub fn problem_of_pull(pull: &PullReport) -> Option<SyncProblem> {
             PullStop::Invalid => P::InvalidChain,
             PullStop::Undecryptable => P::Undecryptable,
             PullStop::NewerSchema => P::NewerSchema,
-            // Waiting for the remover's signed head: "picking up the new key".
-            PullStop::KeyChangeUnconfirmed => P::KeyRotated,
+            // Waiting for the remover's signed head, on the device that made the change.
+            PullStop::KeyChangeUnconfirmed => P::KeyChangeWaiting,
         }),
     }
 }
@@ -363,6 +364,7 @@ pub fn reason(problem: SyncProblem) -> &'static str {
         P::KeyRotated => "sync stopped: keyRotated",
         P::KeyNotGiven => "sync stopped: keyNotGiven",
         P::KeyChangeUnverified => "sync stopped: keyChangeUnverified",
+        P::KeyChangeWaiting => "sync paused: keyChangeWaiting",
         P::SecureStorage => "sync stopped: secureStorage",
         P::ServerWentBack => "sync stopped: serverWentBack",
         P::Internal => "sync stopped: internal",

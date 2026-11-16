@@ -41,6 +41,7 @@ use crate::services::sync::blobs::queue;
 use crate::services::sync::blobs::stream::hold;
 use crate::services::sync::blobs::transfer::{run_downloads, run_uploads};
 use crate::services::sync::capture::guard;
+use crate::services::sync::devices;
 use crate::services::sync::error::{SyncError, Transient};
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::relay::Relay;
@@ -57,6 +58,10 @@ pub const OUTBOX_POLL: Duration = Duration::from_secs(5);
 pub const LOCAL_WRITE_MAX_WAIT: i64 = 60;
 /// A round runs at least this often.
 pub const PERIODIC: Duration = Duration::from_secs(300);
+/// While a fast-poll window is open (a device was just paired) a round runs this often.
+pub const FAST_EVERY: Duration = Duration::from_secs(5);
+/// How long a fast-poll window stays open at most.
+pub const FAST_WINDOW: Duration = Duration::from_secs(300);
 /// The longest a round may run before it is dropped as a transient failure.
 pub const ROUND_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 /// The loop never sleeps less than this, whatever its deadlines say.
@@ -135,6 +140,21 @@ impl OutboxWatch {
     }
 }
 
+/// How long after a round at `now` the next periodic round is due: `FAST_EVERY` while the fast-poll
+/// window (`fast_until`) is open, `PERIODIC` otherwise.
+pub fn periodic_gap(now: Instant, fast_until: Option<Instant>) -> Duration {
+    if fast_window_open(now, fast_until) {
+        FAST_EVERY
+    } else {
+        PERIODIC
+    }
+}
+
+/// Whether the fast-poll window set to end at `fast_until` is still open at `now`.
+pub fn fast_window_open(now: Instant, fast_until: Option<Instant>) -> bool {
+    fast_until.is_some_and(|until| now < until)
+}
+
 /// Why a round is asked for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Trigger {
@@ -165,6 +185,8 @@ struct Shared {
     backing_off: AtomicBool,
     /// Something the lanes moved changed the status: the loop publishes it without a round.
     status_dirty: AtomicBool,
+    /// The end of the open fast-poll window (`EngineHandle::fast_poll`), if any.
+    fast_until: Mutex<Option<Instant>>,
 }
 
 impl Shared {
@@ -201,6 +223,19 @@ impl EngineHandle {
         };
         flag.store(true, Ordering::SeqCst);
         self.shared.wake.notify_one();
+    }
+
+    /// Opens a fast-poll window of `FAST_WINDOW`: a round every `FAST_EVERY` until it ends or the
+    /// device list grows (a device that was just paired shows up when this device pulls, which
+    /// otherwise waits for the next periodic round). Starts a round now.
+    pub fn fast_poll(&self) {
+        *self
+            .shared
+            .fast_until
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) =
+            Some(Instant::now() + FAST_WINDOW);
+        self.wake(Trigger::Periodic);
     }
 
     /// Wakes both transfer lanes: they look at their queue now (content added or wanted here).
@@ -295,6 +330,7 @@ pub fn spawn_with<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
         started: AtomicBool::new(false),
         backing_off: AtomicBool::new(false),
         status_dirty: AtomicBool::new(false),
+        fast_until: Mutex::new(None),
     });
     let (relay, events) = (Arc::new(relay), Arc::new(events));
     let mut policy = SnapshotPolicy::default();
@@ -317,6 +353,7 @@ pub fn spawn_with<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
         started: false,
         last_sent: None,
         retry_at: None,
+        fast_baseline: None,
         next_periodic: Instant::now() + PERIODIC,
         next_poll: Instant::now() + OUTBOX_POLL,
     };
@@ -353,6 +390,8 @@ struct Engine<R, D, E> {
     started: bool,
     last_sent: Option<SyncStatus>,
     retry_at: Option<Instant>,
+    /// The number of devices when the open fast-poll window was first seen.
+    fast_baseline: Option<usize>,
     next_periodic: Instant,
     next_poll: Instant,
 }
@@ -376,9 +415,13 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
             if poll_due {
                 self.next_poll = now + OUTBOX_POLL;
             }
+            let fast_until = self.fast_until();
+            if fast_window_open(now, fast_until) && self.fast_baseline.is_none() {
+                self.fast_baseline = self.device_count();
+            }
             let periodic_due = now >= self.next_periodic;
             if periodic_due {
-                self.next_periodic = now + PERIODIC;
+                self.next_periodic = now + periodic_gap(now, fast_until);
             }
             let mut due = false;
             if sync_now {
@@ -414,6 +457,7 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
             if self.shared.status_dirty.swap(false, Ordering::SeqCst) {
                 self.publish()?;
             }
+            self.end_fast_poll_if_done(now);
             // While backing off, only the retry (or a message: stop, Sync now) wakes the loop.
             let deadline = match self.retry_at {
                 Some(at) => at,
@@ -633,7 +677,8 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         self.shared
             .backing_off
             .store(self.retry_at.is_some(), Ordering::SeqCst);
-        self.next_periodic = Instant::now() + PERIODIC;
+        let after = Instant::now();
+        self.next_periodic = after + periodic_gap(after, self.fast_until());
         let pending = self.outbox_count()?;
         self.watch.after_round(pending);
         self.shared.update(|r| r.running_round = false);
@@ -664,6 +709,45 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                 log::debug!("[SYNC] The sync status could not be read: {error}");
                 Ok(())
             }
+        }
+    }
+
+    fn fast_until(&self) -> Option<Instant> {
+        *self
+            .shared
+            .fast_until
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    /// The number of devices in the local list; `None` when it cannot be read.
+    fn device_count(&self) -> Option<usize> {
+        self.db
+            .with_conn(|conn| devices::list_devices(conn).map(|list| list.len()))
+            .ok()
+    }
+
+    /// Closes the fast-poll window once it ran out or the device list has a device that was not
+    /// there when it opened.
+    fn end_fast_poll_if_done(&mut self, now: Instant) {
+        let until = self.fast_until();
+        if until.is_none() {
+            self.fast_baseline = None;
+            return;
+        }
+        let grown = match (self.fast_baseline, self.device_count()) {
+            (Some(before), Some(now_count)) => now_count > before,
+            _ => false,
+        };
+        if grown || !fast_window_open(now, until) {
+            *self
+                .shared
+                .fast_until
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+            self.fast_baseline = None;
+            // The periodic round after the window is the ordinary one again
+            self.next_periodic = Instant::now() + PERIODIC;
         }
     }
 

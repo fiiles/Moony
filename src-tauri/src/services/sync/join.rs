@@ -391,6 +391,14 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
     Ok(outcome)
 }
 
+/// Whether a paired join on this profile has already replaced it (sync is on): its join ticket
+/// is spent, so the caller gives the received pairing up whatever error the join answered and
+/// never offers "Try again" with it (a second certificate with the same ticket would be refused by
+/// every other device as `TicketReused`). The device just goes on syncing, or pairs again.
+pub fn pairing_spent(conn: &Connection) -> Result<bool> {
+    Ok(state::load(conn)?.is_some_and(|sync| sync.enabled))
+}
+
 /// Step 1 of `join_new_device`: sync is off, and no setup with another account, or the same
 /// account on another sync server, is under way. Both addresses compare normalized; a stored one
 /// that does not read as an address counts as another server.

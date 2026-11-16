@@ -715,3 +715,60 @@ async fn a_device_that_turned_sync_off_joins_again() {
     let second = assert_joined(&vault, &device, &zip, again.path()).await;
     assert_ne!(second, first, "a new device ID");
 }
+
+/// Review of Task 5 (M1): once a paired join's replace committed, the join ticket is spent. The
+/// caller gives the received pairing up whatever error followed (`join::pairing_spent`), and a
+/// retry with the same ticket is refused before it signs anything.
+#[tokio::test]
+async fn a_committed_paired_join_spends_its_ticket() {
+    let vault = vault().await;
+    with_genesis(&vault.a.lock(), "Mac");
+    snapshot_of_a(&vault, "a1").await;
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+    let (received, identity) = pair(&vault, &vault.a, true).await;
+    let JoinIdentity::Paired(paired) = &identity else {
+        panic!("a holder with a certificate vouches");
+    };
+    let again = JoinIdentity::Paired(paired.duplicate());
+    assert!(
+        !crate::services::sync::join::pairing_spent(&device.lock()).expect("spent"),
+        "nothing committed yet: a failure may keep the pairing"
+    );
+
+    join_via(
+        &vault,
+        &device,
+        received.clone(),
+        "iPhone",
+        dir.path(),
+        identity,
+    )
+    .await
+    .expect("join");
+    let (me, cert) = {
+        let conn = device.lock();
+        let me = device_of(&conn);
+        (
+            me,
+            trust::entry(&conn, me)
+                .expect("entry")
+                .expect("pinned")
+                .cert,
+        )
+    };
+    assert!(crate::services::sync::join::pairing_spent(&device.lock()).expect("spent"));
+
+    let retry = join_via(&vault, &device, received, "iPhone", dir.path(), again).await;
+    assert_eq!(
+        retry.as_ref().err().and_then(validation_key),
+        Some("validation.syncAlreadyEnabled")
+    );
+    let conn = device.lock();
+    assert_eq!(device_of(&conn), me, "no second device ID");
+    assert_eq!(
+        trust::entry(&conn, me).expect("entry").map(|e| e.cert),
+        Some(cert),
+        "no second certificate with the same ticket"
+    );
+}

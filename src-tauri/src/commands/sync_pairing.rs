@@ -726,7 +726,12 @@ pub async fn sync_pairing_join(
             Ok(outcome_view(&outcome))
         }
         Err(error) => {
-            if !after_join_error(&error) {
+            // A join whose replace committed has spent its ticket: no "Try again" with it.
+            let spent = session.with_conn(join::pairing_spent).unwrap_or_else(|e| {
+                log::warn!("[SYNC] Could not tell whether the join replaced the profile: {e}");
+                true
+            });
+            if spent || !after_join_error(&error) {
                 pairing.dispose_current();
             }
             Err(app_error_for(&relay_url, error))

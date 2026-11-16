@@ -1352,3 +1352,23 @@ R-49. **The refresh hook** is `rekey::refresh_trust(conn, data_dir, now) -> bool
 R-50. **Not done:** `sync_pairing`'s joiner and the Kit join call `trust::refresh` by hand as before (their
      savepoints are not rounds). The notice of a removal that arrives by record has `unsent` counting the
      outbox and unsent envelopes at that moment, as a removal notice does.
+
+**Task 21 (documents and photos across a key change).**
+
+R-51. **What already held, now tested** (`engine/tests/blobs.rs`, module `key_change`): an upload the
+     retired token meets (`TokenReadOnly`, `Outcome::Blocked`) records nothing (attempts stay 0, the
+     entry is inactive) and the run stops at it (one `PUT` for two blobs); after the pickup the content
+     is sealed again from the local plaintext under epoch 1 (an upload is sealed as it streams) and a
+     device at epoch 1 opens it; content under an epoch a device lacks reads as a local failure ("on
+     its way", `SinkOutcome::UnknownEpoch`) and opens after the pickup; a blob sealed under epoch 0
+     opens at epoch 1; the retired token cannot delete a blob (the fake authorises `DELETE` as owner)
+     and a removed device stops at its removal. A token that rotates while the body streams is the
+     same path (`classify` maps the answer, whenever it comes, to `Blocked`; `blobs/tests/transfer.rs`
+     has that mapping), and the fake checks the token before the body, so it has no separate test.
+R-52. **The one code change:** `engine::daily_pass` does not run while the round's own look at the vault
+     (`RoundReport::vault`) shows a rotation above `rekey_seen`: the pickup follows the pass
+     (`Trigger::AfterPass`), the token in hand is retired, and the pass would only fail its deletes
+     and count as a started pass (`PASS_RETRY_AFTER`). It runs in the next round with the new token.
+R-53. **Not done, for Task 24:** the runtime's transfer lanes still read the credentials of the moment
+     and run uploads while only the round knows of a pending change (the lane stops on the first
+     refusal, R-51); the `after_kit_join` hold (R-45) is not applied to the upload lane either.

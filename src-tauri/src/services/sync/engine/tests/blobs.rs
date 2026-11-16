@@ -1108,3 +1108,308 @@ impl Relay for StalledUploads {
         self.0.delete_blob(vault, blob).await
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Across a key change (phase 5 plan Task 13, revision Task 21)
+
+mod key_change {
+    use super::super::rekey_fixture::{new_kit, remove, round_of, three, Three};
+    use super::*;
+    use crate::services::sync::engine::daily_pass;
+    use crate::services::sync::relay::RelayError;
+
+    fn current_creds(device: &TestConn) -> Credentials {
+        keys::credentials(&device.lock())
+            .expect("credentials")
+            .expect("bound")
+    }
+
+    /// Three devices with an attachment store each; policy `p1` and a document with `bytes` on `A`.
+    async fn with_document(bytes: &[u8]) -> (Three, String) {
+        let three = three().await;
+        for device in [&three.vault.a, &three.vault.b, &three.c] {
+            with_store(device);
+        }
+        owner(&three.vault.a);
+        let blob = document(&three.vault.a, "d1", bytes);
+        (three, blob)
+    }
+
+    async fn downloads(relay: &FakeRelay, device: &TestConn, now: i64) -> TransferReport {
+        let creds = current_creds(device);
+        run_downloads(relay, device, &creds, &BlobPolicy::default(), now, None)
+            .await
+            .expect("downloads")
+    }
+
+    use crate::services::sync::blobs::transfer::TransferReport;
+    use crate::services::sync::keys::Credentials;
+
+    /// `A`'s upload meets the retired token: it is not recorded as a failure (no backoff, no
+    /// attempt), the run stops at it instead of trying every blob, and once `A` picked the key up
+    /// the content is sealed again under epoch 1, which a device at epoch 1 opens.
+    #[tokio::test]
+    async fn an_upload_met_by_a_key_change_rests_and_is_sealed_again_under_the_new_key() {
+        let (three, blob) = with_document(b"%PDF-1.7 contract").await;
+        let second = document(&three.vault.a, "d2", b"%PDF-1.7 second");
+        new_kit(&three, B).await.expect("changed");
+        let stale = three.vault.creds.clone();
+        let policy = BlobPolicy::default();
+
+        let report = run_uploads(
+            &three.vault.relay,
+            &three.vault.a,
+            &stale,
+            &policy,
+            NOW,
+            None,
+            None,
+        )
+        .await
+        .expect("uploads");
+
+        assert_eq!(report.uploaded, 0);
+        let puts = three
+            .vault
+            .relay
+            .calls()
+            .iter()
+            .filter(|route| **route == Route::PutBlob)
+            .count();
+        assert_eq!(puts, 1, "the run stopped at the refusal");
+        for id in [&blob, &second] {
+            assert_eq!(
+                entry(&three.vault.a, id),
+                Some(("up".into(), 0, false)),
+                "{id}"
+            );
+        }
+
+        // A's round picks the key up and sends again; the lane uploads what is left.
+        let report = round_of(&three.vault, &three.vault.a).await;
+        assert_eq!(report.problem, None, "{report:?}");
+        assert_eq!(key_epoch_of(&three.vault.a), 1);
+        let fresh = current_creds(&three.vault.a);
+        run_uploads(
+            &three.vault.relay,
+            &three.vault.a,
+            &fresh,
+            &policy,
+            NOW,
+            None,
+            None,
+        )
+        .await
+        .expect("uploads");
+        for id in [&blob, &second] {
+            assert_eq!(
+                entry(&three.vault.a, id).map(|(state, ..)| state),
+                Some("done".into()),
+                "{id} is done"
+            );
+        }
+
+        round_of(&three.vault, &three.vault.b).await;
+        let report = downloads(&three.vault.relay, &three.vault.b, NOW).await;
+        assert_eq!(report.stored, 2, "{report:?}");
+        assert_eq!(read(&three.vault.b, &blob), b"%PDF-1.7 contract");
+        assert_eq!(read(&three.vault.b, &second), b"%PDF-1.7 second");
+    }
+
+    fn key_epoch_of(device: &TestConn) -> u32 {
+        current_creds(device).keys.current_epoch()
+    }
+
+    /// Content sealed under epoch 1 is "on its way" for a device that has not picked the key up
+    /// yet: nothing is stored and the entry waits as a local failure (never shown as an error);
+    /// after the pickup it opens.
+    #[tokio::test]
+    async fn content_under_a_key_a_device_lacks_is_on_its_way_until_it_picks_the_key_up() {
+        let (three, blob) = with_document(b"%PDF-1.7 contract").await;
+        // The row reaches C under epoch 0; the content cannot yet (the upload fails once).
+        three
+            .vault
+            .relay
+            .set_failing(Route::PutBlob, Some(RelayError::Server(503)));
+        round_of(&three.vault, &three.vault.a).await;
+        three.vault.relay.set_failing(Route::PutBlob, None);
+        let report = round_at(&three.vault.relay, &three.c, RoundMode::Normal, NOW).await;
+        assert_eq!(report.problem, None, "{report:?}");
+        assert_eq!(key_epoch_of(&three.c), 0);
+
+        // A key change; A picks it up and the lane uploads the content under epoch 1 later.
+        new_kit(&three, B).await.expect("changed");
+        let later = NOW + 3_600;
+        round_at(&three.vault.relay, &three.vault.a, RoundMode::Normal, later).await;
+        let fresh = current_creds(&three.vault.a);
+        run_uploads(
+            &three.vault.relay,
+            &three.vault.a,
+            &fresh,
+            &BlobPolicy::default(),
+            later,
+            None,
+            None,
+        )
+        .await
+        .expect("uploads");
+        assert_eq!(
+            entry(&three.vault.a, &blob).map(|(state, ..)| state),
+            Some("done".into()),
+            "uploaded"
+        );
+
+        // C, still at epoch 0, cannot open it yet.
+        let report = downloads(&three.vault.relay, &three.c, later).await;
+        assert_eq!((report.stored, report.failed), (0, 1), "{report:?}");
+        assert!(!held_here(&three.c, &blob));
+
+        round_at(&three.vault.relay, &three.c, RoundMode::Normal, later).await;
+        assert_eq!(key_epoch_of(&three.c), 1);
+        let report = downloads(&three.vault.relay, &three.c, later + 3_600).await;
+        assert_eq!(report.stored, 1, "{report:?}");
+        assert_eq!(read(&three.c, &blob), b"%PDF-1.7 contract");
+    }
+
+    /// A blob sealed under epoch 0 opens on a device at epoch 1 (it keeps every epoch's key).
+    #[tokio::test]
+    async fn a_blob_sealed_under_epoch_zero_opens_on_a_device_at_epoch_one() {
+        let (three, blob) = with_document(b"%PDF-1.7 contract").await;
+        round_at(&three.vault.relay, &three.vault.a, RoundMode::Normal, NOW).await;
+        run_uploads(
+            &three.vault.relay,
+            &three.vault.a,
+            &three.vault.creds,
+            &BlobPolicy::default(),
+            NOW,
+            None,
+            None,
+        )
+        .await
+        .expect("uploads");
+        assert_eq!(
+            entry(&three.vault.a, &blob).map(|(state, ..)| state),
+            Some("done".into()),
+            "uploaded at epoch 0"
+        );
+
+        new_kit(&three, A).await.expect("changed");
+        // A's round sends its signed head, which B waits for.
+        round_of(&three.vault, &three.vault.a).await;
+        let report = round_of(&three.vault, &three.vault.b).await;
+        assert_eq!(report.problem, None, "{report:?}");
+        assert_eq!(key_epoch_of(&three.vault.b), 1);
+        let report = downloads(&three.vault.relay, &three.vault.b, NOW).await;
+
+        assert_eq!(report.stored, 1, "{report:?}");
+        assert_eq!(read(&three.vault.b, &blob), b"%PDF-1.7 contract");
+    }
+
+    /// A removed device's old token cannot delete a blob, and it opens nothing uploaded after the
+    /// change.
+    #[tokio::test]
+    async fn a_removed_device_deletes_nothing_and_reads_nothing_new() {
+        let (three, blob) = with_document(b"%PDF-1.7 contract").await;
+        remove(&three, A, &[C]).await.expect("removed");
+        round_of(&three.vault, &three.vault.a).await;
+        let fresh = current_creds(&three.vault.a);
+        run_uploads(
+            &three.vault.relay,
+            &three.vault.a,
+            &fresh,
+            &BlobPolicy::default(),
+            NOW,
+            None,
+            None,
+        )
+        .await
+        .expect("uploads");
+        let id = uuid::Uuid::parse_str(&blob).expect("blob id");
+
+        let refused = three
+            .vault
+            .relay
+            .delete_blob(&three.vault.creds.auth(), id)
+            .await;
+
+        assert!(
+            matches!(refused, Err(RelayError::TokenReadOnly)),
+            "{refused:?}"
+        );
+        let listed = three
+            .vault
+            .relay
+            .list_blobs(&fresh.auth(), None, 100)
+            .await
+            .expect("list");
+        assert!(listed.blobs.iter().any(|b| b.id == id), "the blob stays");
+        // C, sealed out, gets nothing of it: its engine stopped when it learned of the removal.
+        let report = round_of(&three.vault, &three.c).await;
+        assert!(report.removed_here, "{report:?}");
+        assert!(!held_here(&three.c, &blob));
+    }
+
+    /// The daily clean-up lists and deletes with the token of the moment: while the round's own
+    /// look at the vault shows a key change it has not picked up, it does not run at all.
+    #[tokio::test]
+    async fn the_daily_clean_up_waits_while_a_pickup_is_due() {
+        let three = three().await;
+        let relay = &three.vault.relay;
+        let creds = three.vault.creds.clone();
+        let device = &three.vault.b;
+        with_store(device);
+        let info = |rotation| VaultInfo {
+            head: 0,
+            floor: 0,
+            snapshot_seq: None,
+            paid_until: i64::MAX / 2,
+            bytes: 0,
+            rotation,
+            kit: None,
+        };
+        let report = |rotation| {
+            let mut report = RoundReport::default();
+            report.pull = Some(Default::default());
+            report.vault = Some(info(rotation));
+            report
+        };
+        let listings = || {
+            relay
+                .calls()
+                .iter()
+                .filter(|route| **route == Route::ListBlobs)
+                .count()
+        };
+        // Days later, so no pass from the setup rounds is still fresh.
+        let later = NOW + 3 * 86_400;
+        let before = listings();
+
+        daily_pass(
+            relay,
+            device,
+            &creds,
+            &BlobPolicy::default(),
+            RoundMode::Normal,
+            later,
+            &report(1),
+        )
+        .await;
+        assert_eq!(
+            listings(),
+            before,
+            "a key change is waiting to be picked up"
+        );
+
+        daily_pass(
+            relay,
+            device,
+            &creds,
+            &BlobPolicy::default(),
+            RoundMode::Normal,
+            later,
+            &report(0),
+        )
+        .await;
+        assert!(listings() > before, "with nothing to pick up it runs");
+    }
+}

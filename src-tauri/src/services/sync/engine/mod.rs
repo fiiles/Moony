@@ -949,6 +949,24 @@ async fn daily_pass<R: Relay, D: ConnAccess>(
     let Some(pulled) = report.pull.as_ref() else {
         return;
     };
+    // A key change this round has seen the vault announce and not picked up yet (the pickup
+    // follows the pass, `Trigger::AfterPass`): the token in hand is retired, so the pass's
+    // deletes would be refused and its listing would count as a failed pass. It waits for the
+    // next round, with the new token (phase 5 revision Task 21).
+    if let Some(info) = report.vault.as_ref() {
+        match db.with_conn(state::rekey_seen) {
+            Ok(seen) if info.rotation > seen => {
+                log::info!("[SYNC] The daily pass of documents and photos waits for a key pickup");
+                return;
+            }
+            Ok(_) => {}
+            Err(AppError::Auth(_)) => return,
+            Err(error) => {
+                log::debug!("[SYNC] The daily pass could not read the key epoch: {error}");
+                return;
+            }
+        }
+    }
     match pass::run_if_due(relay, db, creds, blobs, pulled, now).await {
         Ok(_) | Err(AppError::Auth(_)) => {}
         Err(error) => {

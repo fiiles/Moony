@@ -989,3 +989,28 @@ R-14. **Minimal changes to `rotate.rs` (Task 17's file) so it compiles:** `plan`
      `trust::mark_confirmed` for them instead of `trust::confirm`. `pickup.rs` passes no Kit to
      `import_bundle` and drops the `kit_unconfirmed` check. The `rekey_rotate` test of the Kit tick
      became "a key change confirms every recipient".
+
+**Task 15 (first-seen positions, ticket announcements).**
+
+R-15. **The announcement** is `Changeset::tickets` (`"tickets"`: an array of base64url ticket
+     public keys, at most 16, left out when empty; a reader skips fields it does not know, so a
+     build from before the revision applies the envelope as an empty change).
+     `pairing::holder::announced_payload(conn, now)` builds the slot-2 payload and, when it carries
+     an identity, queues the announcement (`announce_ticket`: `journal::build_marker` +
+     `push::seal_into_unsent`, one savepoint) in the same `engine::exclusive` hold `confirm`
+     already takes. It is queued before the person's typed code is checked: a wrong code leaves an
+     announced ticket nobody can use (its secret is wiped with the payload), which is harmless. A
+     failure to queue fails the confirm (the pairing is not sealed).
+R-16. **Where positions are noted:** `engine::pull::note_trust_positions(conn, rows, position)` for
+     every `sync_devices` row carrying a non-NULL `cert` or `left_record` value, called by `act`
+     after a changeset applied (`Outcome::Applied`, the op's relay position) and by the snapshot
+     restore (`settle_heads`, both replace and merge, the snapshot's `seq`); an applied changeset's
+     `tickets` go to `trust::note_ticket` with the changeset's author as issuer. A value is noted
+     whether or not the merge kept it (a later, losing value of a write-once column still counts as
+     a sighting of that column): only the first position of each kind matters, and before the
+     issuer's `left` record its key could vouch anyway (O9). Held, quarantined, skipped and scanned
+     envelopes note nothing.
+R-17. The D3 trap is exercised at the trust level in `engine/tests/trust_order.rs` (an announced
+     pairing whose certificate reaches the server after its holder's `left` record stays a
+     recipient; an unannounced one is `LateVouch`). The refresh after a pull is still called by
+     hand there: the pull's refresh hook is Task 20's.

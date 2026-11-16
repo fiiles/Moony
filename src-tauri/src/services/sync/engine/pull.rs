@@ -21,12 +21,12 @@ use crate::error::{AppError, Result};
 use crate::services::sync::blobs;
 use crate::services::sync::chain::gaps::{self, GapKind};
 use crate::services::sync::chain::{self, EnvelopeMeta, RejoinReport, Verdict};
-use crate::services::sync::changeset::{self, Changeset};
+use crate::services::sync::changeset::{self, Changeset, RowChange, RowKey, SqlValue};
 use crate::services::sync::devices;
 use crate::services::sync::envelope::{envelope_epoch, envelope_hash, open_op, OpenError};
 use crate::services::sync::error::SyncResult;
-use crate::services::sync::hlc::now_ms;
-use crate::services::sync::identity;
+use crate::services::sync::hlc::{now_ms, DeviceId};
+use crate::services::sync::identity::{self, trust};
 use crate::services::sync::in_savepoint;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::merge::{apply_changeset, Outcome, StopReason};
@@ -130,6 +130,35 @@ pub fn handle_op(
     }
 }
 
+/// Notes where this device first saw each device's certificate and `left` record (phase 5
+/// revision §3.1, `trust::note_seen`; the first one wins): every `sync_devices` row of `rows` that
+/// carries a `cert` or `left_record` value, at relay position `position`. The pull calls it for an
+/// applied changeset (with its op's position), a snapshot restore for its rows (with the
+/// snapshot's).
+pub(crate) fn note_trust_positions(
+    conn: &Connection,
+    rows: &[RowChange],
+    position: u64,
+) -> Result<()> {
+    for row in rows.iter().filter(|row| row.table == "sync_devices") {
+        let RowKey::Single(id) = &row.key else {
+            continue;
+        };
+        let Ok(device) = DeviceId::from_hex(id) else {
+            continue;
+        };
+        for (column, what) in [
+            ("cert", trust::SeenWhat::Cert),
+            ("left_record", trust::SeenWhat::Left),
+        ] {
+            if matches!(row.columns.get(column), Some((SqlValue::Text(_), _))) {
+                trust::note_seen(conn, device, what, position)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 /// The epoch rule (phase 5 §6.1): for every key change this device knows the relay position of
 /// (`sync_epochs`, epoch k at head h), an op above h is sealed under epoch k or later and an op at
 /// or below h under an earlier one. A key epoch this device holds a key for but has no head for
@@ -186,6 +215,10 @@ fn act(
         }
         Verdict::Apply => match apply_changeset(conn, cs, meta.hash, now)? {
             Outcome::Applied(_) => {
+                note_trust_positions(conn, &cs.rows, meta.position)?;
+                for ticket in &cs.tickets {
+                    trust::note_ticket(conn, ticket, cs.device, meta.position)?;
+                }
                 report.applied += 1;
                 OpStep::Advance
             }

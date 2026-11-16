@@ -34,6 +34,7 @@ mod server;
 mod server_address;
 mod setup;
 mod snapshots;
+mod trust_order;
 mod went_back;
 
 use std::collections::BTreeMap;
@@ -300,6 +301,7 @@ pub fn changeset(
         prev,
         rows,
         rekey_head: None,
+        tickets: Vec::new(),
     }
 }
 

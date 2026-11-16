@@ -73,6 +73,7 @@ pub fn build_next(tx: &Transaction<'_>) -> Result<(Option<Built>, Vec<Refused>)>
         prev: sync.last_hash,
         rows: Vec::new(),
         rekey_head: None,
+        tickets: Vec::new(),
     };
     let cut = cut::cut(envelope, &queue, |q| {
         let Some(row) = reader.read(&q.table, &q.pk)? else {
@@ -111,6 +112,7 @@ pub fn build_marker(conn: &Connection) -> Result<Built> {
             prev: sync.last_hash,
             rows: Vec::new(),
             rekey_head: None,
+            tickets: Vec::new(),
         },
         min_hlc: hlc,
         max_hlc: hlc,

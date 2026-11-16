@@ -108,6 +108,7 @@ fn changeset(device: DeviceId, seq: u64, rows: Vec<RowChange>) -> (Changeset, [u
         prev: None,
         rows,
         rekey_head: None,
+        tickets: Vec::new(),
     };
     let hash = hash_of(&cs);
     (cs, hash)

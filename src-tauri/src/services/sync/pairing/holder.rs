@@ -3,6 +3,11 @@
 //! own certificate is pinned, its identity: its whole trust store and a fresh one-time join
 //! ticket. A vault without certificates (§5.5) sends `identity: null`. The ticket's secret lives
 //! in the returned payload only; the caller drops it right after sealing.
+//!
+//! The holder also announces the ticket in its own chain (phase 5 revision §3.1): an envelope with
+//! no rows whose changeset lists the ticket's public key (`"tickets"`), queued in `sync_unsent`
+//! in the same hold that reads the payload. It goes out before anything this device writes later,
+//! its `left` record included, so every other device can tell that the pairing came first.
 
 use std::collections::BTreeMap;
 
@@ -11,9 +16,12 @@ use rusqlite::Connection;
 use super::session::{PairingSession, Stage};
 use super::{typed_code_digits, PairingIdentity, Role, SlotPayload};
 use crate::error::{AppError, Result};
+use crate::services::sync::engine::push::seal_into_unsent;
 use crate::services::sync::engine::{self, ConnAccess};
 use crate::services::sync::error::SyncResult;
 use crate::services::sync::identity::{self, cert, trust};
+use crate::services::sync::in_savepoint;
+use crate::services::sync::journal::build_marker;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::relay::Mailbox;
 use crate::services::sync::state;
@@ -25,7 +33,9 @@ const FAILED: &str = "validation.syncPairingFailed";
 /// off every round of the profile (`engine::exclusive`, released before any relay call), so it is
 /// one consistent state; sync off or missing secrets answer `validation.syncPairingFailed`. The
 /// payload, and with it the join ticket's secret, is a local of this call: it is dropped (wiped)
-/// on every path, sealed or not — a wrong code, a slot write that failed, an expired session.
+/// on every path, sealed or not — a wrong code, a slot write that failed, an expired session. A
+/// payload with an identity has its ticket announced in the same hold (`announced_payload`); a
+/// ticket announced and never used is harmless (its secret is gone).
 pub async fn confirm<M: Mailbox, D: ConnAccess>(
     session: &mut PairingSession,
     mailbox: &M,
@@ -39,7 +49,7 @@ pub async fn confirm<M: Mailbox, D: ConnAccess>(
         && typed.is_some_and(|typed| typed_code_digits(typed).is_some());
     let payload = if seals {
         let _no_round = engine::exclusive(db).await;
-        match db.with_conn(|conn| holder_payload(conn, now))? {
+        match db.with_conn(|conn| announced_payload(conn, now))? {
             Some(payload) => Some(payload),
             None => return Err(AppError::Validation(FAILED.into()).into()),
         }
@@ -51,6 +61,16 @@ pub async fn confirm<M: Mailbox, D: ConnAccess>(
         .await;
     drop(payload);
     confirmed
+}
+
+/// `holder_payload`, with its ticket announced (`announce_ticket`) when it carries an identity:
+/// what `confirm` reads in its hold.
+pub fn announced_payload(conn: &Connection, now: i64) -> Result<Option<SlotPayload>> {
+    let payload = holder_payload(conn, now)?;
+    if let Some(identity) = payload.as_ref().and_then(|p| p.identity.as_ref()) {
+        announce_ticket(conn, &identity.ticket.ticket_pub)?;
+    }
+    Ok(payload)
 }
 
 /// The holder's slot-2 payload, `None` while sync is off or the vault's secrets are missing.
@@ -87,6 +107,22 @@ pub fn holder_payload(conn: &Connection, now: i64) -> Result<Option<SlotPayload>
         heads,
         identity,
     }))
+}
+
+/// Queues this holder's announcement of the join ticket `ticket_pub` (module doc): the next
+/// envelope of its chain, under its current key, with no rows and `"tickets": [ticket_pub]`. One
+/// savepoint.
+pub fn announce_ticket(conn: &Connection, ticket_pub: &[u8; 32]) -> Result<()> {
+    let creds = keys::credentials(conn)?
+        .ok_or_else(|| AppError::Internal("sync: a pairing without credentials".into()))?;
+    in_savepoint(conn, "sync_announce_ticket", || {
+        let mut built = build_marker(conn)?;
+        built.changeset.tickets = vec![*ticket_pub];
+        seal_into_unsent(conn, &creds, &built)?;
+        let sync = state::load(conn)?
+            .ok_or_else(|| AppError::Internal("sync: sync is not set up".into()))?;
+        state::note_sealed_at_barrier(conn, sync.barrier)
+    })
 }
 
 /// The rotation head of every epoch of `creds` that `sync_epochs` records and this device
@@ -126,6 +162,21 @@ mod tests {
     #[test]
     fn a_holder_with_sync_off_has_nothing_to_send() {
         assert!(holder_payload(&migrated(), NOW).expect("payload").is_none());
+    }
+
+    /// Revision §3.1: only a payload that carries a ticket is announced.
+    #[test]
+    fn a_holder_without_a_certificate_announces_nothing() {
+        let (conn, _) = holder();
+        identity::ensure_seed(&conn).expect("seed");
+        let payload = announced_payload(&conn, NOW)
+            .expect("payload")
+            .expect("sync is on");
+        assert!(payload.identity.is_none());
+        let unsent: i64 = conn
+            .query_row("SELECT COUNT(*) FROM sync_unsent", [], |r| r.get(0))
+            .expect("count");
+        assert_eq!(unsent, 0);
     }
 
     #[test]

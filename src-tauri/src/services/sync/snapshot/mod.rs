@@ -210,7 +210,8 @@ fn adopt_keys(conn: &Connection, listed: Option<&[EpochKey]>, now: i64) -> Resul
 }
 
 /// The heads a restored snapshot names settle the key-change heads this device holds only
-/// provisionally, and the look-ahead for the others starts at the snapshot (`rekey::head`).
+/// provisionally, and the look-ahead for the others starts at the snapshot (`rekey::head`); the
+/// restored certificates and `left` records count as first seen at the snapshot's position.
 fn settle_heads(conn: &Connection, snapshot: &Snapshot) -> Result<()> {
     let heads: Vec<(u32, u64)> = snapshot
         .keys
@@ -218,7 +219,10 @@ fn settle_heads(conn: &Connection, snapshot: &Snapshot) -> Result<()> {
         .flatten()
         .filter_map(|entry| entry.head.map(|head| (entry.epoch, head)))
         .collect();
-    crate::services::sync::rekey::head::after_restore(conn, snapshot.seq, &heads)
+    crate::services::sync::rekey::head::after_restore(conn, snapshot.seq, &heads)?;
+    // Where this device first saw each restored certificate and `left` record: the snapshot's
+    // position (revision §3.1; the first one wins, so a merge keeps earlier sightings).
+    crate::services::sync::engine::pull::note_trust_positions(conn, &snapshot.rows, snapshot.seq)
 }
 
 /// What a restore did: the stream's counts, and what it could not do exactly or found suspicious

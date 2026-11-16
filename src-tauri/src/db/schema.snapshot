@@ -906,7 +906,8 @@ CREATE TABLE sync_trust (device TEXT PRIMARY KEY, cert TEXT NOT NULL, kind INTEG
     issuer TEXT NOT NULL, sign_pub BLOB NOT NULL, box_pub BLOB NOT NULL,
     ticket_pub BLOB UNIQUE, state TEXT NOT NULL CHECK (state IN ('trusted','left','removed')),
     state_record TEXT, state_by TEXT, state_at INTEGER, cut_off_epoch INTEGER,
-    pinned_at INTEGER NOT NULL)
+    pinned_at INTEGER NOT NULL,
+    kit_unconfirmed INTEGER NOT NULL DEFAULT 0 CHECK (kit_unconfirmed IN (0, 1)))
 
 == table sync_typed ==
 CREATE TABLE sync_typed (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,

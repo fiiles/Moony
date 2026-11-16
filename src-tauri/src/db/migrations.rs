@@ -3563,7 +3563,9 @@ ALTER TABLE sync_state ADD COLUMN last_complete_at INTEGER;
 /// Kit, epoch 0) and `snapshot_epoch_due` (a snapshot under the new key is due). `sync_trust` is
 /// the pinned store of verified devices (`state` only moves forward; `cut_off_epoch` is the first
 /// epoch a left or removed device does not have, NULL while it still knows the current key;
-/// `ticket_pub` is UNIQUE, a join ticket is used once). `sync_epochs` records the relay position
+/// `ticket_pub` is UNIQUE, a join ticket is used once; `kit_unconfirmed` marks a device vouched
+/// for only by a Recovery Kit certificate, which gets a new key only when the person ticks it).
+/// `sync_epochs` records the relay position
 /// each key epoch started at; an enabled profile gets its epoch 0 row at head 0.
 pub(crate) const MIGRATION_040: &str = r#"
 ALTER TABLE sync_devices ADD COLUMN cert TEXT;
@@ -3578,7 +3580,8 @@ CREATE TABLE sync_trust (device TEXT PRIMARY KEY, cert TEXT NOT NULL, kind INTEG
     issuer TEXT NOT NULL, sign_pub BLOB NOT NULL, box_pub BLOB NOT NULL,
     ticket_pub BLOB UNIQUE, state TEXT NOT NULL CHECK (state IN ('trusted','left','removed')),
     state_record TEXT, state_by TEXT, state_at INTEGER, cut_off_epoch INTEGER,
-    pinned_at INTEGER NOT NULL);
+    pinned_at INTEGER NOT NULL,
+    kit_unconfirmed INTEGER NOT NULL DEFAULT 0 CHECK (kit_unconfirmed IN (0, 1)));
 CREATE TABLE sync_epochs (epoch INTEGER PRIMARY KEY, rotation_head INTEGER NOT NULL,
     adopted_at INTEGER NOT NULL, by_device TEXT);
 INSERT INTO sync_epochs (epoch, rotation_head, adopted_at)
@@ -3666,7 +3669,8 @@ mod migration_040 {
                 "state_by",
                 "state_at",
                 "cut_off_epoch",
-                "pinned_at"
+                "pinned_at",
+                "kit_unconfirmed"
             ]
         );
         assert_eq!(
@@ -3684,6 +3688,11 @@ mod migration_040 {
             insert(&format!("d{i}"), state, None).expect(state);
         }
         assert!(insert("d9", "superseded", None).is_err(), "the CHECK");
+        assert!(
+            conn.execute("UPDATE sync_trust SET kit_unconfirmed = 2", [])
+                .is_err(),
+            "kit_unconfirmed is 0 or 1"
+        );
         insert("t1", "trusted", Some(b"ticket")).expect("first use of a ticket");
         assert!(
             insert("t2", "trusted", Some(b"ticket")).is_err(),

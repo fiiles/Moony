@@ -15,6 +15,13 @@
 //! recipients a key-change bundle endorses (`import_bundle`), and a Kit joiner's trust on first
 //! use (`tofu_from_rows`). A genesis certificate arriving through sync is never pinned.
 //!
+//! Anyone with the vault key can make a Recovery Kit certificate, so one is pinned
+//! `kit_unconfirmed`, and so is what it vouches for: such an entry gets a new key only when the
+//! person ticks it (`recipients`), does not count toward the 64 otherwise, and signs no removal
+//! that counts here, until it is confirmed (`confirm_kit`, or a key change naming it). A Kit
+//! certificate for a device ID another certificate names as its issuer with another signing key
+//! is refused (`ConflictKind::KitClaimsKnownDevice`).
+//!
 //! An issuer vouches when its entry is pinned with the same signing key and is `trusted`, or left
 //! or was removed after it issued the certificate and its join ticket (`vouches`): a device that
 //! left signed what it paired while it was in (its signing key goes with its `sync_state` row when
@@ -89,6 +96,12 @@ pub struct TrustEntry {
     pub state_at: Option<i64>,
     pub cut_off_epoch: Option<u32>,
     pub pinned_at: i64,
+    /// Vouched for only by a Recovery Kit certificate (its own, or its issuer's): anyone with
+    /// the vault key can make one, so it gets a new key only when the person ticks it
+    /// (`recipients`), does not count toward the cap otherwise, and signs no removal that counts
+    /// here. Cleared by `confirm_kit` and by a key change naming it; never set on this device's
+    /// own entry.
+    pub kit_unconfirmed: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -97,6 +110,9 @@ pub enum ConflictKind {
     OtherCertificate,
     /// A paired certificate uses a join ticket another device was pinned with.
     TicketReused,
+    /// A Recovery Kit certificate for a device ID another certificate names as its issuer with
+    /// another signing key (it would squat a device not yet pinned here).
+    KitClaimsKnownDevice,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -132,6 +148,9 @@ pub enum ExclusionReason {
     SupersededQuiet,
     /// Neither a pinned certificate nor a public key.
     NoKey,
+    /// Vouched for only by a Recovery Kit certificate and not ticked by the person (spec §9.2:
+    /// "Poslat nový klíč i tomuto zařízení"); it must join again if left out.
+    KitUnconfirmed,
 }
 
 /// The recipients of a new key and every other device with its reason.
@@ -168,6 +187,13 @@ pub struct ExportEntry {
         skip_serializing_if = "Option::is_none"
     )]
     pub cut_off_epoch: Option<u32>,
+    /// `TrustEntry::kit_unconfirmed`; written only when true.
+    #[serde(
+        rename = "kitUnconfirmed",
+        default,
+        skip_serializing_if = "std::ops::Not::not"
+    )]
+    pub kit_unconfirmed: bool,
 }
 
 fn corrupt() -> AppError {
@@ -202,7 +228,7 @@ pub(super) fn vault_id(conn: &Connection) -> Result<[u8; 16]> {
 }
 
 const ENTRY_COLUMNS: &str = "device, cert, state, state_record, state_by, state_at, \
-    cut_off_epoch, pinned_at";
+    cut_off_epoch, pinned_at, kit_unconfirmed";
 
 type RawEntry = (
     String,
@@ -213,6 +239,7 @@ type RawEntry = (
     Option<i64>,
     Option<i64>,
     i64,
+    bool,
 );
 
 fn raw_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawEntry> {
@@ -225,13 +252,14 @@ fn raw_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawEntry> {
         row.get(5)?,
         row.get(6)?,
         row.get(7)?,
+        row.get(8)?,
     ))
 }
 
 /// An entry from its stored columns; the key columns are read back from the certificate, which
 /// was verified when it was pinned.
 fn parse_entry(raw: RawEntry) -> Result<TrustEntry> {
-    let (device, cert, state, record, by, at, cut_off, pinned_at) = raw;
+    let (device, cert, state, record, by, at, cut_off, pinned_at, kit_unconfirmed) = raw;
     let device = DeviceId::from_hex(&device).map_err(|_| corrupt())?;
     let cert = Certificate::from_b64(&cert).map_err(|_| corrupt())?;
     if cert.body.device != device {
@@ -260,6 +288,7 @@ fn parse_entry(raw: RawEntry) -> Result<TrustEntry> {
             .transpose()
             .map_err(|_| corrupt())?,
         pinned_at,
+        kit_unconfirmed,
     })
 }
 
@@ -290,11 +319,13 @@ fn entry_map(conn: &Connection) -> Result<BTreeMap<DeviceId, TrustEntry>> {
     Ok(entries(conn)?.into_iter().map(|e| (e.device, e)).collect())
 }
 
-/// Pins `cert` as `trusted` (the caller has verified it).
-fn pin(conn: &Connection, cert: &Certificate, now: i64) -> Result<()> {
+/// Pins `cert` as `trusted` (the caller has verified it), unconfirmed when it is vouched for only
+/// by a Recovery Kit certificate.
+fn pin(conn: &Connection, cert: &Certificate, now: i64, kit_unconfirmed: bool) -> Result<()> {
     conn.execute(
         "INSERT INTO sync_trust (device, cert, kind, issuer, sign_pub, box_pub, ticket_pub, \
-           state, pinned_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'trusted', ?8)",
+           state, pinned_at, kit_unconfirmed) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'trusted', ?8, ?9)",
         params![
             cert.body.device.to_hex(),
             cert.to_b64(),
@@ -303,7 +334,8 @@ fn pin(conn: &Connection, cert: &Certificate, now: i64) -> Result<()> {
             cert.body.sign_pub.to_vec(),
             cert.body.box_pub.to_vec(),
             cert.ticket.as_ref().map(|t| t.ticket_pub.to_vec()),
-            now
+            now,
+            kit_unconfirmed
         ],
     )?;
     Ok(())
@@ -340,7 +372,7 @@ pub fn seed_own(conn: &Connection, cert: &Certificate, now: i64) -> Result<()> {
     match entry(conn, own)? {
         Some(pinned) if &pinned.cert == cert => Ok(()),
         Some(_) => Err(refused("this device already has another certificate")),
-        None => pin(conn, cert, now),
+        None => pin(conn, cert, now, false),
     }
 }
 
@@ -452,16 +484,76 @@ fn apply_move(conn: &Connection, record: &Record, cut_off_epoch: Option<u32>) ->
 
 /// Whether the issuer of a paired or re-join `cert` vouches for it: pinned with the signing key
 /// the certificate names, and `speaks_at` both the certificate's `issued_at` and its ticket's (a
-/// device that left or was removed vouches only for what it issued until then).
-fn vouches(store: &BTreeMap<DeviceId, TrustEntry>, cert: &Certificate) -> bool {
-    store.get(&cert.body.issuer_device).is_some_and(|issuer| {
-        issuer.sign_pub == cert.body.issuer_sign_pub
-            && speaks_at(issuer, cert.body.issued_at)
-            && cert
-                .ticket
-                .as_ref()
-                .is_none_or(|ticket| speaks_at(issuer, ticket.issued_at))
-    })
+/// device that left or was removed vouches only for what it issued until then). `Some` carries
+/// the issuer's `kit_unconfirmed`, which the certificate inherits.
+fn vouch(store: &BTreeMap<DeviceId, TrustEntry>, cert: &Certificate) -> Option<bool> {
+    store
+        .get(&cert.body.issuer_device)
+        .filter(|issuer| {
+            issuer.sign_pub == cert.body.issuer_sign_pub
+                && speaks_at(issuer, cert.body.issued_at)
+                && cert
+                    .ticket
+                    .as_ref()
+                    .is_none_or(|ticket| speaks_at(issuer, ticket.issued_at))
+        })
+        .map(|issuer| issuer.kit_unconfirmed)
+}
+
+/// Every signing key some paired or re-join certificate (in a row, verifying on its own, or
+/// pinned) names for its issuer device.
+fn issuer_keys(
+    rows: &[DeviceRow],
+    store: &BTreeMap<DeviceId, TrustEntry>,
+    vault: &[u8; 16],
+) -> BTreeMap<DeviceId, BTreeSet<[u8; 32]>> {
+    let mut named: BTreeMap<DeviceId, BTreeSet<[u8; 32]>> = BTreeMap::new();
+    let row_certs = rows.iter().filter_map(|row| row_cert(row, vault));
+    let pinned = store.values().map(|e| e.cert.clone());
+    for cert in row_certs.chain(pinned) {
+        if matches!(cert.body.kind, CertKind::Paired | CertKind::Rejoin) {
+            named
+                .entry(cert.body.issuer_device)
+                .or_default()
+                .insert(cert.body.issuer_sign_pub);
+        }
+    }
+    named
+}
+
+/// What a pass does with a certificate that verifies on its own and is not pinned yet.
+enum Verdict {
+    Pin {
+        kit_unconfirmed: bool,
+    },
+    /// Not now; a later pass may pin it.
+    Wait,
+    Refuse(ConflictKind),
+}
+
+/// What a pass knows when it judges a certificate.
+struct Seen<'a> {
+    store: &'a BTreeMap<DeviceId, TrustEntry>,
+    /// `issuer_keys`.
+    issuer_keys: &'a BTreeMap<DeviceId, BTreeSet<[u8; 32]>>,
+    /// Rows whose certificate verifies on its own and is not pinned.
+    waiting: &'a BTreeSet<DeviceId>,
+}
+
+/// A Recovery Kit certificate is pinned unconfirmed, unless another certificate names its device
+/// as an issuer with another signing key (spec §5.4 as amended: it would squat that device).
+fn judge_kit(cert: &Certificate, seen: &Seen<'_>) -> Verdict {
+    let squats = seen
+        .issuer_keys
+        .get(&cert.body.device)
+        .is_some_and(|keys| keys.iter().any(|key| key != &cert.body.sign_pub));
+    if squats {
+        Verdict::Refuse(ConflictKind::KitClaimsKnownDevice)
+    } else {
+        Verdict::Pin {
+            kit_unconfirmed: true,
+        }
+    }
 }
 
 /// Whether `signer` speaks for a record it signed at `at`: while it is `trusted`, and after it
@@ -475,10 +567,13 @@ fn speaks_at(signer: &TrustEntry, at: i64) -> bool {
     }
 }
 
-/// `record`, a removal, verifies by a signer pinned in `store` that `speaks_at` its time.
+/// `record`, a removal, verifies by a signer pinned in `store`, not `kit_unconfirmed`, that
+/// `speaks_at` its time.
 fn removal_counts(record: &Record, store: &BTreeMap<DeviceId, TrustEntry>) -> bool {
     store.get(&record.signer).is_some_and(|signer| {
-        speaks_at(signer, record.at) && record.verify(&signer.sign_pub).is_ok()
+        !signer.kit_unconfirmed
+            && speaks_at(signer, record.at)
+            && record.verify(&signer.sign_pub).is_ok()
     })
 }
 
@@ -542,35 +637,75 @@ fn pin_candidates(
     vault: &[u8; 16],
     now: i64,
     report: &mut RefreshReport,
-    accept: impl Fn(&Certificate, &BTreeMap<DeviceId, TrustEntry>) -> bool,
+    accept: impl Fn(&Certificate, &Seen<'_>) -> Verdict,
 ) -> Result<bool> {
     let store = entry_map(conn)?;
+    let candidates: Vec<(DeviceId, Certificate)> = rows
+        .iter()
+        .filter_map(|row| row_cert(row, vault).map(|cert| (row.id, cert)))
+        .collect();
+    let waiting: BTreeSet<DeviceId> = candidates
+        .iter()
+        .map(|(id, _)| *id)
+        .filter(|id| !store.contains_key(id))
+        .collect();
+    let issuer_keys = issuer_keys(rows, &store, vault);
+    let seen = Seen {
+        store: &store,
+        issuer_keys: &issuer_keys,
+        waiting: &waiting,
+    };
     let mut tickets: HashSet<[u8; 32]> = HashSet::new();
     let mut pinned_any = false;
-    for row in rows {
-        let Some(cert) = row_cert(row, vault) else {
-            continue;
-        };
-        if let Some(pinned) = store.get(&row.id) {
+    for (id, cert) in candidates {
+        if let Some(pinned) = store.get(&id) {
             if pinned.cert != cert {
-                push_conflict(report, row.id, ConflictKind::OtherCertificate);
+                push_conflict(report, id, ConflictKind::OtherCertificate);
             }
             continue;
         }
-        if !accept(&cert, &store) {
-            continue;
-        }
+        let kit_unconfirmed = match accept(&cert, &seen) {
+            Verdict::Pin { kit_unconfirmed } => kit_unconfirmed,
+            Verdict::Wait => continue,
+            Verdict::Refuse(kind) => {
+                push_conflict(report, id, kind);
+                continue;
+            }
+        };
         if let Some(ticket) = &cert.ticket {
             if !tickets.insert(ticket.ticket_pub) || ticket_used(conn, &ticket.ticket_pub)? {
-                push_conflict(report, row.id, ConflictKind::TicketReused);
+                push_conflict(report, id, ConflictKind::TicketReused);
                 continue;
             }
         }
-        pin(conn, &cert, now)?;
-        report.pinned.push(row.id);
+        pin(conn, &cert, now, kit_unconfirmed)?;
+        report.pinned.push(id);
         pinned_any = true;
     }
     Ok(pinned_any)
+}
+
+/// Confirms every unconfirmed paired or re-join entry whose issuer now vouches for it confirmed
+/// (its Kit-joined issuer was confirmed). Returns whether anything changed.
+fn promote(conn: &Connection) -> Result<bool> {
+    let store = entry_map(conn)?;
+    let mut changed = false;
+    for entry in store.values() {
+        if entry.kit_unconfirmed
+            && matches!(entry.kind, CertKind::Paired | CertKind::Rejoin)
+            && vouch(&store, &entry.cert) == Some(false)
+        {
+            changed |= set_confirmed(conn, entry.device)?;
+        }
+    }
+    Ok(changed)
+}
+
+fn set_confirmed(conn: &Connection, device: DeviceId) -> Result<bool> {
+    Ok(conn.execute(
+        "UPDATE sync_trust SET kit_unconfirmed = 0 WHERE device = ?1 AND kit_unconfirmed = 1",
+        [device.to_hex()],
+    )? > 0)
 }
 
 /// Logs, once per call, every certificate or record in the rows that does not hold up on its own
@@ -602,7 +737,7 @@ fn settle(
     conn: &Connection,
     now: i64,
     report: &mut RefreshReport,
-    accept: impl Fn(&Certificate, &BTreeMap<DeviceId, TrustEntry>) -> bool,
+    accept: impl Fn(&Certificate, &Seen<'_>) -> Verdict,
 ) -> Result<()> {
     let own = this_device(conn)?;
     let vault = vault_id(conn)?;
@@ -629,6 +764,7 @@ fn settle(
             }
         }
         changed |= pin_candidates(conn, &rows, &vault, now, report, &accept)?;
+        changed |= promote(conn)?;
         if !changed {
             return Ok(());
         }
@@ -637,15 +773,19 @@ fn settle(
 
 /// Brings the store up to date with `sync_devices` (spec §5.4): after every merge that touched it,
 /// at unlock and after a key pickup. Pins paired and re-join certificates whose issuer vouches
-/// and Recovery Kit certificates, applies verified records, and repeats until nothing new
-/// verifies. One savepoint.
+/// (unconfirmed when the issuer is) and Recovery Kit certificates (unconfirmed; refused when they
+/// would squat a device another certificate names), confirms what a newly confirmed issuer
+/// vouches for, applies verified records, and repeats until nothing new verifies. One savepoint.
 pub fn refresh(conn: &Connection, now: i64) -> Result<RefreshReport> {
     in_savepoint(conn, "sync_trust_refresh", || {
         let mut report = RefreshReport::default();
-        settle(conn, now, &mut report, |cert, store| match cert.body.kind {
-            CertKind::Genesis => false,
-            CertKind::RecoveryKit => true,
-            CertKind::Paired | CertKind::Rejoin => vouches(store, cert),
+        settle(conn, now, &mut report, |cert, seen| match cert.body.kind {
+            CertKind::Genesis => Verdict::Wait,
+            CertKind::RecoveryKit => judge_kit(cert, seen),
+            CertKind::Paired | CertKind::Rejoin => match vouch(seen.store, cert) {
+                Some(kit_unconfirmed) => Verdict::Pin { kit_unconfirmed },
+                None => Verdict::Wait,
+            },
         })?;
         Ok(report)
     })
@@ -653,11 +793,30 @@ pub fn refresh(conn: &Connection, now: i64) -> Result<RefreshReport> {
 
 /// A Recovery Kit joiner's first store (spec §5.4, §13): trust on first use of every row whose
 /// certificate verifies, genesis and unknown issuers included, then the records as `refresh`
-/// applies them.
+/// applies them. Other Recovery Kit certificates are pinned unconfirmed as in `refresh`, and what
+/// they vouch for inherits it, so a paired or re-join certificate whose issuer has a row still
+/// waiting waits for it; one whose issuer has no verifiable row is trusted on first use.
 pub fn tofu_from_rows(conn: &Connection, now: i64) -> Result<RefreshReport> {
     in_savepoint(conn, "sync_trust_tofu", || {
         let mut report = RefreshReport::default();
-        settle(conn, now, &mut report, |_, _| true)?;
+        settle(conn, now, &mut report, |cert, seen| match cert.body.kind {
+            CertKind::Genesis => Verdict::Pin {
+                kit_unconfirmed: false,
+            },
+            CertKind::RecoveryKit => judge_kit(cert, seen),
+            CertKind::Paired | CertKind::Rejoin => {
+                let issuer = cert.body.issuer_device;
+                match vouch(seen.store, cert) {
+                    Some(kit_unconfirmed) => Verdict::Pin { kit_unconfirmed },
+                    None if seen.store.contains_key(&issuer) || seen.waiting.contains(&issuer) => {
+                        Verdict::Wait
+                    }
+                    None => Verdict::Pin {
+                        kit_unconfirmed: false,
+                    },
+                }
+            }
+        })?;
         Ok(report)
     })
 }
@@ -672,6 +831,7 @@ pub fn export(conn: &Connection) -> Result<TrustExport> {
                 state: e.state,
                 record: e.state_record.map(|r| r.to_b64()),
                 cut_off_epoch: e.cut_off_epoch,
+                kit_unconfirmed: e.kit_unconfirmed,
             })
             .collect(),
     })
@@ -708,7 +868,7 @@ pub fn import_export(
         }
     }
     match certs.get(&holder) {
-        Some((_, item)) if item.state == TrustState::Trusted => {}
+        Some((_, item)) if item.state == TrustState::Trusted && !item.kit_unconfirmed => {}
         _ => return Err(invalid()),
     }
     let mut checked = Vec::with_capacity(certs.len());
@@ -744,7 +904,7 @@ pub fn import_export(
             return Err(refused("the trust store is not empty"));
         }
         for (cert, item, record) in &checked {
-            pin(conn, cert, now)?;
+            pin(conn, cert, now, item.kit_unconfirmed)?;
             if let Some(record) = record {
                 conn.execute(
                     "UPDATE sync_trust SET state = ?2, state_record = ?3, state_by = ?4, \
@@ -766,9 +926,10 @@ pub fn import_export(
 
 /// What an accepted key-change bundle teaches (spec §6.3): its signer's and its recipients'
 /// certificates, endorsed by the signer, are pinned where this device has none (a pinned one
-/// stays), and its removal records move their subjects to `removed`, cut off at `to_epoch`. The
-/// caller has checked the bundle and its signer. Every certificate and record must verify, or
-/// nothing is written. One savepoint.
+/// stays) and confirmed (`kit_unconfirmed` cleared: the signer's person ticked them), and its
+/// removal records move their subjects to `removed`, cut off at `to_epoch`. The caller has
+/// checked the bundle and its signer (pinned, trusted, not `kit_unconfirmed`). Every certificate
+/// and record must verify, or nothing is written. One savepoint.
 pub fn import_bundle(
     conn: &Connection,
     signer_cert: &Certificate,
@@ -792,6 +953,8 @@ pub fn import_bundle(
                              one stays",
                             short(cert.body.device)
                         );
+                    } else {
+                        set_confirmed(conn, pinned.device)?;
                     }
                 }
                 None => {
@@ -805,7 +968,7 @@ pub fn import_bundle(
                             short(cert.body.device)
                         );
                     } else {
-                        pin(conn, cert, now)?;
+                        pin(conn, cert, now, false)?;
                     }
                 }
             }
@@ -854,6 +1017,18 @@ pub fn mark_removed(
     apply_move(conn, record, cut_off_epoch)
 }
 
+/// Confirms `devices` (clears `kit_unconfirmed`): the person ticked them in a key change that
+/// committed (spec §9.2). Returns how many changed; an unknown or confirmed device is skipped.
+pub fn confirm_kit(conn: &Connection, devices: &[DeviceId]) -> Result<usize> {
+    in_savepoint(conn, "sync_trust_confirm", || {
+        let mut changed = 0;
+        for device in devices {
+            changed += usize::from(set_confirmed(conn, *device)?);
+        }
+        Ok(changed)
+    })
+}
+
 /// After a key change to `epoch`: every left or removed entry that still knew the key is cut off
 /// at it. Returns how many.
 pub fn cut_off_all_pending(conn: &Connection, epoch: u32) -> Result<usize> {
@@ -881,10 +1056,17 @@ fn newest_clock_secs(conn: &Connection) -> Result<BTreeMap<DeviceId, i64>> {
 }
 
 /// Who would receive a new key if `removing` were removed now (spec §5.4, §9.2): every `trusted`
-/// entry, this device included, minus `removing` and minus superseded IDs that wrote nothing
-/// after their successor appeared (O11); every other device of the list or the store with its
-/// reason. Refuses more than 64 recipients (`validation.syncTooManyDevices`).
-pub fn recipients(conn: &Connection, removing: &[DeviceId]) -> Result<Recipients> {
+/// entry, this device included, minus `removing`, minus superseded IDs that wrote nothing after
+/// their successor appeared (O11) and minus `kit_unconfirmed` entries the person did not tick
+/// (`kit_ticked`, the opt-in boxes of §9.2; this device is never one); every other device of the
+/// list or the store with its reason. Refuses more than 64 recipients
+/// (`validation.syncTooManyDevices`); unticked unconfirmed entries do not count.
+pub fn recipients(
+    conn: &Connection,
+    removing: &[DeviceId],
+    kit_ticked: &[DeviceId],
+) -> Result<Recipients> {
+    let own = this_device(conn)?;
     let store = entry_map(conn)?;
     let mut rows: BTreeMap<DeviceId, bool> = BTreeMap::new();
     let mut stmt = conn.prepare("SELECT id, public_key IS NOT NULL FROM sync_devices")?;
@@ -904,6 +1086,7 @@ pub fn recipients(conn: &Connection, removing: &[DeviceId]) -> Result<Recipients
     }
     let clocks = newest_clock_secs(conn)?;
     let removing: BTreeSet<DeviceId> = removing.iter().copied().collect();
+    let ticked: BTreeSet<DeviceId> = kit_ticked.iter().copied().collect();
     let devices: BTreeSet<DeviceId> = store.keys().chain(rows.keys()).copied().collect();
     let mut included = Vec::new();
     let mut excluded = Vec::new();
@@ -913,6 +1096,11 @@ pub fn recipients(conn: &Connection, removing: &[DeviceId]) -> Result<Recipients
             Some(entry) => match entry.state {
                 TrustState::Left => Some(ExclusionReason::Left),
                 TrustState::Removed => Some(ExclusionReason::Removed),
+                TrustState::Trusted
+                    if entry.kit_unconfirmed && device != own && !ticked.contains(&device) =>
+                {
+                    Some(ExclusionReason::KitUnconfirmed)
+                }
                 TrustState::Trusted => successor_at.get(&device).and_then(|since| {
                     let wrote_since = clocks.get(&device).is_some_and(|at| at > since);
                     (!wrote_since).then_some(ExclusionReason::SupersededQuiet)

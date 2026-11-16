@@ -23,7 +23,7 @@ use crate::services::sync::chain::gaps::{self, GapKind};
 use crate::services::sync::chain::{self, EnvelopeMeta, RejoinReport, Verdict};
 use crate::services::sync::changeset::{self, Changeset};
 use crate::services::sync::devices;
-use crate::services::sync::envelope::{envelope_epoch, envelope_hash, open_op};
+use crate::services::sync::envelope::{envelope_epoch, envelope_hash, open_op, OpenError};
 use crate::services::sync::error::SyncResult;
 use crate::services::sync::hlc::now_ms;
 use crate::services::sync::identity;
@@ -77,6 +77,13 @@ pub fn handle_op(
         Ok(json) => json,
         Err(error) => {
             log::warn!("[SYNC] Relay op {} does not open: {error}", op.seq);
+            // A later epoch than this device's is a hint to look for a key change (phase 5 §7.1);
+            // the pickup decides, the op itself proves nothing.
+            if let OpenError::UnknownEpoch(epoch) = error {
+                if epoch > creds.keys.current_epoch() {
+                    report.key_hint = Some(epoch);
+                }
+            }
             return Ok(OpStep::Stop(PullStop::Undecryptable));
         }
     };
@@ -339,7 +346,10 @@ async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
             .ok_or_else(|| AppError::Internal("sync pull: sync is not set up".into()))
     })?;
     let auth = creds.auth();
-    let mut report = PullReport::default();
+    let mut report = PullReport {
+        through: after,
+        ..PullReport::default()
+    };
     let mut holding = false;
     // After a `NewerSchema` stop: only this device's own envelopes are looked at.
     let mut scanning = false;
@@ -363,6 +373,7 @@ async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
                     db.with_conn(|conn| acknowledge_if_own(conn, creds, op))?;
                 }
                 after = op.seq;
+                report.through = op.seq;
                 continue;
             }
             let step = db.with_conn(|conn| {
@@ -389,6 +400,7 @@ async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
                 OpStep::Advance | OpStep::Rejoined => {}
             }
             after = op.seq;
+            report.through = op.seq;
         }
         if scanning {
             if !db.with_conn(waiting_for_echo)? {

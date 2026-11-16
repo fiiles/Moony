@@ -145,6 +145,20 @@ impl VaultKeys {
         }
     }
 
+    /// These keys with `key` as the next epoch's, which becomes the current one (a key change,
+    /// phase 5 §6.4, §7.2). Every older key stays.
+    pub fn with_next(&self, key: Zeroizing<[u8; 32]>) -> Result<Self> {
+        let next = self.current.checked_add(1).ok_or_else(|| {
+            AppError::Internal("sync: the key epoch cannot move past its last value".into())
+        })?;
+        let mut keys = self.keys.clone();
+        keys.insert(next, key);
+        Ok(VaultKeys {
+            current: next,
+            keys,
+        })
+    }
+
     /// `{"<epoch>":"<base64url key>",…}` in ascending epoch order, built in one wiped buffer.
     fn to_json(&self) -> Zeroizing<String> {
         // `"4294967295":"<43 characters>",` is 59 bytes; reserving up front keeps the buffer
@@ -505,6 +519,54 @@ pub fn store_older_keys(conn: &Connection, keys: &VaultKeys) -> Result<()> {
         return Err(not_set_up());
     }
     Ok(())
+}
+
+/// Stores `keys` after a key change of the vault this row is bound to: the current epoch moves
+/// on by one (`VaultKeys::with_next`) and every key is written whole, as `write_vault_secrets`
+/// writes them. Refused (nothing written) unless the stored epoch is the one before.
+pub fn store_key_change(conn: &Connection, keys: &VaultKeys) -> Result<()> {
+    let before = keys
+        .current_epoch()
+        .checked_sub(1)
+        .ok_or_else(|| AppError::Internal("sync: a key change starts after epoch 0".into()))?;
+    let json = keys.to_json();
+    let changed = conn.execute(
+        "UPDATE sync_state SET key_epoch = ?1, vault_keys = ?2 WHERE id = 1 AND key_epoch = ?3",
+        params![keys.current_epoch(), json.as_str(), before],
+    )?;
+    if changed == 0 {
+        return Err(AppError::Internal(
+            "sync: a key change does not follow the stored epoch".into(),
+        ));
+    }
+    Ok(())
+}
+
+/// This device's X25519 secret (the box key a new vault key is sealed to, phase 5 §6.2), or
+/// `None` while it has none. The stored bytes pass through wiped buffers; the `StaticSecret`
+/// wipes itself when it drops.
+pub fn device_box_secret(conn: &Connection) -> Result<Option<StaticSecret>> {
+    let stored: Option<Option<Vec<u8>>> = conn
+        .query_row(
+            "SELECT device_secret_key FROM sync_state WHERE id = 1",
+            [],
+            |r| r.get(0),
+        )
+        .optional()?;
+    stored
+        .flatten()
+        .map(|bytes| {
+            let bytes = Zeroizing::new(bytes);
+            if bytes.len() != 32 {
+                return Err(AppError::Internal(
+                    "sync_state.device_secret_key is not 32 bytes".into(),
+                ));
+            }
+            let mut secret = Zeroizing::new([0u8; 32]);
+            secret.copy_from_slice(&bytes);
+            Ok(StaticSecret::from(*secret))
+        })
+        .transpose()
 }
 
 /// This device's X25519 public key, generating the key pair the first time. The write only

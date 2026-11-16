@@ -45,6 +45,7 @@ use crate::services::sync::devices;
 use crate::services::sync::error::{SyncError, Transient};
 use crate::services::sync::identity;
 use crate::services::sync::keys::{self, Credentials};
+use crate::services::sync::rekey;
 use crate::services::sync::relay::Relay;
 use crate::services::sync::state;
 
@@ -546,6 +547,14 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         Ok(true)
     }
 
+    /// Another device removed this one and sync is off here now (`rekey::removed_here`): the
+    /// status says so, and the loop ends.
+    fn removed_here(&mut self) -> Result<(), Ended> {
+        self.shared.update(|r| r.problem = None);
+        self.publish()?;
+        Err(Ended)
+    }
+
     /// Writes the binding at start when sync is on and none is written yet (a seal that failed
     /// for a passing reason earlier), so the check does not stay off for good.
     ///
@@ -695,6 +704,16 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         }
         if report.data_changed() {
             self.events.data_changed();
+        }
+        if report.removed_here {
+            // The round turned sync off (a verified removal, phase 5 §7.4); the binding file
+            // goes as `setup::turn_off` removes it.
+            if let Err(error) = rekey::forget_binding_after_removal(&self.events.data_dir()) {
+                log::warn!("[SYNC] The device binding could not be removed after the removal");
+                log::debug!("[SYNC] The device binding could not be removed: {error}");
+            }
+            self.shared.update(|r| r.running_round = false);
+            return self.removed_here();
         }
         self.shared.update(|r| r.after_round(&report));
         match result {
@@ -1000,7 +1019,12 @@ pub(crate) fn lane_may_run(lane: Lane, problem: Option<SyncProblem>) -> bool {
         Some(SyncProblem::CaptureBroken | SyncProblem::VaultGone | SyncProblem::Unauthorized) => {
             false
         }
-        Some(SyncProblem::Lapsed | SyncProblem::KeyRotated) => lane == Lane::Down,
+        Some(
+            SyncProblem::Lapsed
+            | SyncProblem::KeyRotated
+            | SyncProblem::KeyNotGiven
+            | SyncProblem::KeyChangeUnverified,
+        ) => lane == Lane::Down,
         _ => true,
     }
 }

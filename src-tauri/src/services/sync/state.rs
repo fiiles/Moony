@@ -268,6 +268,10 @@ pub fn disable(conn: &Connection) -> Result<()> {
         )?;
         clear_vault_went_back(conn)?;
         clear_skipped_miss(conn)?;
+        conn.execute(
+            "DELETE FROM app_config WHERE key = ?1",
+            [KEY_CHANGE_NOTICE_KEY],
+        )?;
         super::binding::forget_failed_starts(conn)?;
         super::chain::gaps::forget_all(conn)
     })
@@ -470,7 +474,8 @@ pub fn record_snapshot_uploaded(conn: &Connection, seq: u64, max_hlc: u64, at: i
         "UPDATE sync_state SET snapshot_seq = MAX(COALESCE(snapshot_seq, 0), ?1), \
            snapshot_hlc = MAX(snapshot_hlc, ?2), snapshot_uploaded_at = ?3, \
            snapshot_too_large_at = NULL, pulled_bytes = 0, pulled_bytes_base = ?1, \
-           snapshot_barrier = MAX(snapshot_barrier, barrier) WHERE id = 1",
+           snapshot_barrier = MAX(snapshot_barrier, barrier), snapshot_epoch_due = 0 \
+         WHERE id = 1",
         params![
             signed(seq, "snapshot_seq")?,
             signed(max_hlc, "snapshot_hlc")?,
@@ -496,11 +501,58 @@ pub fn snapshot_seq(conn: &Connection) -> Result<Option<u64>> {
 /// (`409 snapshot_outdated`): the forced upload after a crossing is done (`snapshot_barrier`).
 pub fn note_snapshot_barrier(conn: &Connection) -> Result<()> {
     conn.execute(
-        "UPDATE sync_state SET snapshot_barrier = MAX(snapshot_barrier, barrier) WHERE id = 1",
+        "UPDATE sync_state SET snapshot_barrier = MAX(snapshot_barrier, barrier), \
+           snapshot_epoch_due = 0 WHERE id = 1",
         [],
     )?;
     Ok(())
 }
+
+/// Whether this device changed the key and has not yet uploaded a snapshot under the new one
+/// (`snapshot_epoch_due`, phase 5 §6.4): its next clean round forces an upload, as after a barrier
+/// crossing. An upload clears it (`record_snapshot_uploaded`), and so does a newer snapshot found
+/// on the relay (`note_snapshot_barrier`): the old token cannot upload one, so a newer snapshot is
+/// sealed under the new key or a later one.
+pub fn snapshot_epoch_owed(conn: &Connection) -> Result<bool> {
+    let due: Option<i64> = conn
+        .query_row(
+            "SELECT snapshot_epoch_due FROM sync_state WHERE id = 1 AND enabled = 1",
+            [],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(due.is_some_and(|epoch| epoch > 0))
+}
+
+/// The newest relay rotation whose key change this device has dealt with (`rekey_seen`): adopted,
+/// made itself, or passed over because it already held that key.
+pub fn rekey_seen(conn: &Connection) -> Result<u32> {
+    let seen: Option<i64> = conn
+        .query_row("SELECT rekey_seen FROM sync_state WHERE id = 1", [], |r| {
+            r.get(0)
+        })
+        .optional()?;
+    unsigned(seen.unwrap_or(0), "rekey_seen")
+}
+
+/// Raises `rekey_seen` to `rotation` (never lowers it).
+pub fn note_rekey_seen(conn: &Connection, rotation: u32) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET rekey_seen = MAX(rekey_seen, ?1) WHERE id = 1",
+        [rotation],
+    )?;
+    Ok(())
+}
+
+/// The Local `app_config` key holding the notice of the newest key change another device made
+/// (phase 5 §7.3, `rekey::KeyChangeNotice`): kept until the person dismisses it; turning sync off
+/// clears it.
+pub const KEY_CHANGE_NOTICE_KEY: &str = "sync.key_change_notice";
+
+/// The Local `app_config` key holding why sync went off on this device: another device removed
+/// it (phase 5 §7.4, `rekey::RemovedNotice`). Unlike every other sync key it survives turning
+/// sync off; only the person's dismissal clears it.
+pub const REMOVED_NOTICE_KEY: &str = "sync.removed_notice";
 
 /// Whether this device crossed a barrier and has not yet uploaded (or restored, or found newer
 /// on the relay) a snapshot at it: its next clean round forces an upload (ruling T8-2), which

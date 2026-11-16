@@ -196,10 +196,11 @@ pub fn clock_ahead_until(conn: &Connection, now_ms: u64) -> Result<Option<i64>> 
 }
 
 /// `problem`, unless the sync server went back (`state::vault_went_back_at`): then
-/// `ServerWentBack` stands for no problem, a waiting gap or change, a relay error and an invalid
-/// chain (the head below this device's place is one), in every round until a replace or turning
-/// sync off. Problems that say
-/// what to do about something else (a pause, a lapse, a stop) keep their place.
+/// `ServerWentBack` stands for no problem, a waiting gap or change, a relay error, an invalid
+/// chain (the head below this device's place is one) and a key change this device did not get or
+/// cannot verify (phase 5 §7.5: a server that went back may have lost the key change), in every
+/// round until a replace or turning sync off. Problems that say what to do about something else
+/// (a pause, a lapse, a stop) keep their place.
 pub fn went_back(conn: &Connection, problem: Option<SyncProblem>) -> Result<Option<SyncProblem>> {
     let outranked = matches!(
         problem,
@@ -207,6 +208,8 @@ pub fn went_back(conn: &Connection, problem: Option<SyncProblem>) -> Result<Opti
             | Some(SyncProblem::ClockAhead)
             | Some(SyncProblem::InvalidChain)
             | Some(SyncProblem::RelayError)
+            | Some(SyncProblem::KeyNotGiven)
+            | Some(SyncProblem::KeyChangeUnverified)
     );
     if outranked && state::vault_went_back_at(conn)?.is_some() {
         return Ok(Some(SyncProblem::ServerWentBack));
@@ -255,6 +258,8 @@ pub fn phase_of(problem: SyncProblem) -> SyncPhase {
         | P::ServerWentBack
         | P::Unauthorized
         | P::KeyRotated
+        | P::KeyNotGiven
+        | P::KeyChangeUnverified
         | P::Internal => SyncPhase::Error,
     }
 }
@@ -354,6 +359,8 @@ pub fn reason(problem: SyncProblem) -> &'static str {
         P::RateLimited => "sync stopped: rateLimited",
         P::Unauthorized => "sync stopped: unauthorized",
         P::KeyRotated => "sync stopped: keyRotated",
+        P::KeyNotGiven => "sync stopped: keyNotGiven",
+        P::KeyChangeUnverified => "sync stopped: keyChangeUnverified",
         P::SecureStorage => "sync stopped: secureStorage",
         P::ServerWentBack => "sync stopped: serverWentBack",
         P::Internal => "sync stopped: internal",

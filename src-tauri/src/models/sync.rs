@@ -78,6 +78,14 @@ pub enum SyncProblem {
     /// The vault's token was rotated by another device (`403 token_read_only`).
     #[serde(rename = "keyRotated")]
     KeyRotated,
+    /// The key changed and this device got no new key and no verifiable removal notice (phase 5
+    /// §7.5): paused, never turned off by a server's word alone; the person may turn sync off.
+    #[serde(rename = "keyNotGiven")]
+    KeyNotGiven,
+    /// A key change opened for this device but cannot be verified: signed by a device this one
+    /// does not trust, or contradicting what it holds (phase 5 §7.5). Paused.
+    #[serde(rename = "keyChangeUnverified")]
+    KeyChangeUnverified,
     /// This device's secure storage could not be reached (the device binding could not be
     /// checked); paused, and tried again at the next trigger.
     #[serde(rename = "secureStorage")]

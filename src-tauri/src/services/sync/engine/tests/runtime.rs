@@ -163,6 +163,8 @@ fn status_phases_follow_the_problem() {
         (P::RateLimited, Paused),
         (P::Unauthorized, Error),
         (P::KeyRotated, Error),
+        (P::KeyNotGiven, Error),
+        (P::KeyChangeUnverified, Error),
         (P::SecureStorage, Paused),
         (P::Internal, Error),
     ];

@@ -1163,6 +1163,21 @@ pub fn confirm(conn: &Connection, devices: &[DeviceId], now: i64) -> Result<Vec<
     })
 }
 
+/// Whether `record` names this vault and counts here as `refresh` judges records: a removal or a
+/// confirmation by a signer pinned here, not `kit_unconfirmed`, that speaks for the record's time
+/// (`removal_counts`); a `left` record signed by its subject's pinned key. For a removal notice a
+/// key-change bundle carries to this device (phase 5 §7.4).
+pub fn record_counts(conn: &Connection, record: &Record) -> Result<bool> {
+    if record.vault_id != vault_id(conn)? {
+        return Ok(false);
+    }
+    Ok(match record.kind {
+        RecordType::Removed | RecordType::Confirmed => removal_counts(record, &entry_map(conn)?),
+        RecordType::Left => entry(conn, record.subject)?
+            .is_some_and(|subject| record.verify(&subject.sign_pub).is_ok()),
+    })
+}
+
 /// After a key change to `epoch`: every left or removed entry that still knew the key is cut off
 /// at it. Returns how many.
 pub fn cut_off_all_pending(conn: &Connection, epoch: u32) -> Result<usize> {

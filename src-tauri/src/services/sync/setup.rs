@@ -380,7 +380,9 @@ fn problem_error(problem: SyncProblem) -> SyncError {
         SyncProblem::VaultGone => SyncError::VaultNotFound,
         SyncProblem::QuotaExceeded => SyncError::TooLarge(TooLarge::Quota),
         SyncProblem::SnapshotTooLarge => SyncError::TooLarge(TooLarge::Snapshot),
-        SyncProblem::KeyRotated => SyncError::ReadOnlyToken,
+        SyncProblem::KeyRotated | SyncProblem::KeyNotGiven | SyncProblem::KeyChangeUnverified => {
+            SyncError::ReadOnlyToken
+        }
         SyncProblem::Unauthorized => SyncError::Unauthorized,
         SyncProblem::RateLimited => SyncError::RateLimited,
         SyncProblem::Offline => SyncError::Transient(Transient::Offline),
@@ -415,6 +417,16 @@ fn problem_error(problem: SyncProblem) -> SyncError {
 /// savepoint, so local data is writable again once sync is off; a failure puts back whichever of
 /// them the profile had.
 pub fn turn_off(conn: &Connection, data_dir: &Path) -> Result<()> {
+    turn_off_keeping_binding_file(conn)?;
+    binding::forget_binding(data_dir)?;
+    log::info!("[SYNC] Sync is off on this device; local data stays");
+    Ok(())
+}
+
+/// `turn_off` without removing the binding file and the restore marker: for a caller inside a
+/// round that does not know the data folder (a removed device, phase 5 §7.4), which leaves them to
+/// the engine's runtime (`binding::forget_binding`).
+pub(crate) fn turn_off_keeping_binding_file(conn: &Connection) -> Result<()> {
     let was_guarded = guard::is_imposed(conn);
     let was_read_only: bool = conn.pragma_query_value(None, "query_only", |r| r.get(0))?;
     let off = guard::lift(conn)
@@ -440,8 +452,6 @@ pub fn turn_off(conn: &Connection, data_dir: &Path) -> Result<()> {
     }
     truncate_wal(conn);
     sweep_unfinished_downloads(conn);
-    binding::forget_binding(data_dir)?;
-    log::info!("[SYNC] Sync is off on this device; local data stays");
     Ok(())
 }
 

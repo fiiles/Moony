@@ -791,6 +791,14 @@ fn open_body(parts: &Parts<'_>, new_key: &[u8; 32]) -> Result<BundleBody> {
     })
 }
 
+/// The header of a bundle whose parts are well formed (sizes, magic, version, this vault), read
+/// without opening anything: not authenticated. A device uses it only to pass over a bundle of a
+/// key change it already holds (`to_epoch` at or below its own), and to tell a bundle that does
+/// not parse from one that opens and then fails its checks.
+pub fn peek(bytes: &[u8], vault_id: &[u8; 16]) -> Result<Header> {
+    Ok(split(bytes, vault_id)?.header)
+}
+
 /// Opens a bundle for this device (spec §6.3): the entries are tried in order with its box
 /// secret; the first that opens decides. A new key opens the body (a body that then does not
 /// open, or does not read, is an error: the bundle was tampered with) and comes back

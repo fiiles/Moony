@@ -80,7 +80,7 @@ accepted knowingly, and each is repeated as a residual in §8.
 | Spec §5.4 "A Kit joiner's first store" | Kept (trust on first use) plus the Kit anchor, the envelope's confirmed set and the push hold (§2.6). |
 | Spec §6.4 step 3 (list-only), §6.6, §8 (whole), §9 (whole), §11.3 ("server: no change"), §13 item 10 | Replaced by §2, §4, §6 and the relay change. §13 item 10 (`syncRecoveryKitNeedsSnapshot`) disappears. |
 | As built 14, 43 (Kit join identity, Kit heads) | Amended: `JoinIdentity::RecoveryKit(KitJoin)` carries the envelope's heads and confirmed set (§2.6). |
-| As built 27 (who vouches) | Amended: a superseded ID speaks only until its successor's `issued_at`; a vouch by a left or superseded issuer also needs the §3.1 log-order check. |
+| As built 27 (who vouches) | Amended: a superseded ID speaks only until this device pinned its successor (R-25; not the successor's `issued_at`); a vouch by a left or superseded issuer also needs the §3.1 log-order check; a device left out for its issuer speaks for nothing (R-22). |
 | As built 29 (`kit_unconfirmed`) | **Withdrawn.** The column stays in migration 040, always 0. |
 | As built 33 (person-signed `confirmed` records, `sync_confirm_device`) | **Withdrawn.** Record type 3 and `confirm_record` stay in the format, unused; the command is not built. |
 | As built 34 (`IssuerGone` opt-in ticks) | **Replaced** by §3.1 (`IssuerRemoved`, transitive; `LateVouch`). |
@@ -139,8 +139,11 @@ D1: no device, and so no removed device and no profile backup, can open the enve
 - **Kind 5, "kit"** (new): subject `kit_id` with `kit_sign_pub` and `kit_box_pub`; issuer = the device
   that created it (`issuer_sig` with that device's signing key, no ticket); `subject_sig` with
   `kit_sign_seed` (the creator holds the seed while it creates the Kit). Pinned when its issuer vouches
-  (`trust::vouch`). **At most one Kit is `trusted`**: a second Kit certificate is pinned only in the same
-  pass or bundle that removes the first; otherwise it is refused (`ConflictKind::SecondKit`).
+  (`trust::vouch`) and its creator may speak (§3.1), and only as the vault's **first** Kit: while no Kit
+  was ever pinned here and it is the only Kit certificate in the pass. **At most one Kit is `trusted`**:
+  a replacement Kit is pinned only through the verified key-change bundle that names it (`kit`, with the
+  old Kit's removal, §2.5) or by the device that creates it; a refresh never pins one, and never chooses
+  between Kits by ID (`ConflictKind::SecondKit`; As built R-24).
 - **Kind 3, "joined with the Kit"** (re-meant): issuer = `kit_id`, `issuer_sign_pub = kit_sign_pub`,
   `issuer_sig` by `kit_sign_seed`; no ticket. Pinned when the Kit vouches (pinned, the same key,
   `speaks_at` the certificate's time). The byte layout is unchanged; `verify_signatures` refuses a kind 3
@@ -374,8 +377,16 @@ head, the provisional heads and pickup-before-pull of the running fix round are 
 | `Left`, `Removed` | its state (as today) |
 | `SupersededQuiet` | O11, as today |
 | `IssuerRemoved` (new, **transitive**) | it is not `confirmed` and its issuer (paired, re-join or Kit-joined) is `removed` here **or is itself `IssuerRemoved`**; computed to a fixpoint (`trust::issuer_removed_set`, replacing `issuer_gone` in `recipients`), so a whole chain hanging off a removed device drops, however deep. A `confirmed` entry stops the chain. |
-| `LateVouch` (new) | it is not `confirmed`, its issuer is `left` or superseded, and it was not seen in time (below) |
-| `Unverified`, `NoKey` | a row without a pinned certificate (as today) |
+| `LateVouch` (new) | it is not `confirmed`, its issuer is `left` or superseded, and it was not seen in time (below); or its issuer is itself `LateVouch` (As built R-6) |
+| `IssuerUnknown` (As built R-23) | it is not `confirmed` and its issuer is not pinned here (a certificate a Kit joiner trusted on first use whose issuer has no row), or its issuer is itself `IssuerUnknown` |
+| `Unverified`, `NoKey` | a row without a pinned certificate (as today); a row that only calls itself `recoveryKit` without a Kit certificate that verifies is such a row (R-26) |
+
+**Who may speak** (As built R-22). An entry left out for its issuer (`IssuerRemoved`, `LateVouch`,
+`IssuerUnknown`) gets no key from this device and speaks for nothing on it: its key change is not taken
+(`keyChangeUnverified`; `trust::speaker`), a bundle it signs is refused before anything is pinned or
+confirmed, and its removal records count nowhere (`removal_counts`). Kept ("Je moje") or named by a key
+change, it is `confirmed` and speaks again. It still vouches: what it pairs is pinned (so it can show as
+"Zkontrolujte" and be kept) and left out with it by the transitive rule; a Kit it creates is not pinned.
 
 `confirmed` (the migration-040 column) means "named as a recipient by a verified key change, or kept by a
 person on this device": set by the remover's own commit for every recipient and the Kit, by
@@ -387,9 +398,12 @@ makes then names it, which confirms it everywhere. No records, no tick boxes.
 
 - *Where things were first seen.* The pull notes, for each applied `sync_devices` change that brings a
   `cert` or `left_record` value, the relay position of its op in the Local table
-  `sync_trust_seen (device, what ∈ {cert, left}, pos)` (first one wins). Rows restored from a snapshot
-  get the snapshot's position. Entries that came from a pairing export, a bundle, this device or a Kit
-  join's envelope need nothing: they are vetted or `confirmed`.
+  `sync_trust_seen (device, what ∈ {cert, left}, pos)` (first one wins), when the row now holds that value
+  and it verifies (As built R-27). Rows restored from a snapshot get the snapshot's position. A pairing
+  export carries the holder's positions (`certSeen`, `leftSeen`, `ticketSeen`), which replace the
+  joiner's own for the exported devices, so a joiner leaves out for their issuer what its holder does
+  (R-23). Entries that came from a bundle, this device or a Kit join's envelope need nothing: they are
+  `confirmed`.
 - *Pairings announced by the holder.* `pairing::holder::confirm` queues, under the holder's current key,
   an envelope with no rows and the changeset's new optional field `"tickets": ["<ticket_pub b64url>"]`
   (the shape of the signed head record, As built 62: a reader before this build ignores it); it leaves
@@ -399,15 +413,22 @@ makes then names it, which confirms it everywhere. No records, no tick boxes.
 - A paired certificate whose issuer is `left` is **in time** when its ticket was announced, or the
   certificate itself was seen, at a position before the issuer's `left` record was seen; a re-join or
   Kit-free certificate likewise by its own first-seen position. For a superseded issuer the end is the
-  position where its successor's certificate was first seen. Equal positions (both in one restored
-  snapshot) count as in time, the trust-on-first-use of a joiner.
+  position where its successor's certificate (another than the one judged) was first seen. **Equal
+  positions are late** (As built R-23): only one restored snapshot gives them, and it cannot tell which
+  came first (a joiner, by pairing or by Kit, and a device catching up from a snapshot alike). An
+  unknown position on either side is in time (that side came by a vetted path).
 - **A superseded ID speaks only until its successor**: `speaks_at` bounds a `trusted` entry that has a
-  pinned re-join successor at the successor's `issued_at`, as it bounds a left entry at `state_at`
-  (`successor_at`, already computed in `recipients`, moves into `entry_map`'s caller so `vouch` and
-  `removal_counts` see it).
+  pinned re-join successor at the time **this device pinned** its first successor (`pinned_at`, this
+  device's clock), as it bounds a left entry at `state_at`; never at the successor's own `issued_at`,
+  which whoever made the certificate chose (As built R-25). O11's "wrote since its successor" counts from
+  the earlier of the two.
 
-The D3 trap still passes: O pairs N, O's announcement goes out before O's `left` record, so N is in time
-on a device D that was offline throughout, whatever order N's row arrives in.
+The D3 trap still passes on a device that pulls the ops: O pairs N, O's announcement goes out before O's
+`left` record, so N is in time on a device D that was offline throughout, whatever order N's row arrives
+in. A device that gets O's `left` record and N's certificate from one restored snapshot (a Kit joiner, or
+a device catching up past compacted ops) cannot see the announcement: N is "Zkontrolujte" there until the
+next key change names it or the person keeps it (accepted UX cost, R-23). A pairing joiner takes its
+holder's positions, so it judges N as its holder does.
 
 ### 3.2 Why it is safe
 
@@ -1045,3 +1066,97 @@ R-20. **The fake's limit** is the server's failures-only rule per vault only (th
 R-21. **Tests of this task** live in new files beside the existing ones, as the blob and mailbox
      tests do: `relay/http/kit_tests.rs`, `relay/fake/kit_tests.rs`, and the error mapping in
      `relay/mod.rs`'s tests; not in `http/tests.rs` / `fake/tests.rs`.
+
+**Fixes from the review of Tasks 13–15.**
+
+R-22. **A device left out for its issuer speaks for nothing** (finding 1). As built 50 had dropped
+     the `kit_unconfirmed` clause with no replacement, so a `LateVouch` or `IssuerRemoved` entry (still
+     `trusted`) could make a key change every device took (its signer then `confirmed` everywhere) or
+     sign removals that counted. Now the trust store computes the issuer exclusions with every load
+     (`Store::excluded`); `trust::speaker(conn, cert)` (pinned with exactly that certificate,
+     `trusted`, not excluded) is the pickup's signer check; `import_bundle` refuses, before it pins or
+     confirms anything, a signer that is not such a speaker (also one not pinned here: the pickup never
+     passes one); `removal_counts` (and so `refresh`, `mark_removed`, `record_counts`, a bundle's
+     removals) ignores a record by an excluded signer. A `confirmed` entry is never excluded, so "Je
+     moje" or a key change naming it gives it its voice back (a removal it signed then counts at the
+     next `refresh`). **`vouch` is unchanged:** an excluded issuer's pairings are still pinned, so they
+     show as "Zkontrolujte" and can be kept; the transitive exclusion leaves them out and silent too.
+     Refusing to pin them would hide them from the person and gain nothing. The one exception is a Kit
+     (R-24).
+R-23. **Restored positions, a pairing joiner, ghost issuers** (finding 2). (a) **Equal positions are
+     late** (`vouch >= end`; the two tests that asserted "in time" were rewritten). Only one restored
+     snapshot gives a certificate and its issuer's end the same position, and it cannot tell their
+     order; the lead's decision ("a restored entry whose issuer is gone counts as late") is implemented
+     as this, which is the same where it matters and narrower in one case that is sound: an entry
+     restored at the snapshot's position whose issuer's `left` record was seen *later* (by an op after
+     the snapshot) is in time, because the log order is then known. The successor whose position is
+     its superseded issuer's end is not judged against itself (`end_of` leaves the judged entry's own
+     sighting out). Cost (accepted by the lead): on a device that gets both from one snapshot, a
+     genuine device paired by one that has since left is "Zkontrolujte" until a key change names it
+     or the person keeps it. (b) **A pairing export carries the holder's positions** (`ExportEntry`
+     `certSeen`, `leftSeen`, `ticketSeen`, each left out when unknown; the announcement only when its
+     issuer made it); `import_export` replaces the joiner's own positions for every exported device
+     with them (the join's snapshot restore has already noted its own position for everything), so the
+     joiner's verdicts are its holder's, unknown positions included. Positions rather than verdicts:
+     they are relay positions, the same on every device, and the verdicts follow from them and the
+     exported states; verdicts would go stale. The export also refuses more than one `trusted` Kit.
+     (c) **Ghost issuers:** an unconfirmed entry whose issuer is not pinned is left out
+     (`ExclusionReason::IssuerUnknown`, new, transitive like `LateVouch`, so R-7's "an unpinned issuer
+     stops the chain" is withdrawn). `tofu_from_rows` still pins such certificates (trust on first use),
+     now excluded: the envelope's confirmed set (§2.6) or "Je moje" lets them in. Tasks 24/26 map the
+     new reason (wording as for `LateVouch`).
+R-24. **The Kit is never chosen by ID** (finding 4). `refresh`/`tofu_from_rows` pin a kind 5 only as
+     the vault's first Kit: no Kit entry of any state is pinned here, it is the only Kit certificate
+     the pass would pin, and its creator is not excluded (R-22); otherwise every candidate is
+     `SecondKit` (two first Kits in one pass: neither). A replacement Kit is pinned only by
+     `import_bundle` from the bundle that names it (or, Task 17, by the device that creates it), so a
+     rogue member's Kit posted ahead of a replacement never wins, whichever order the old Kit's removal
+     and the bundle arrive in. `Recipients.kit` (`sealing_kit`) is a `trusted` Kit not excluded for its
+     creator, the `confirmed` one when there is one, and none when that leaves more than one (logged).
+     R-10's "a later pass after the first Kit's removal pins it" and "lower ID first" are withdrawn.
+R-25. **A superseded ID's bound is this device's `pinned_at` of its first successor** (finding 3),
+     not the successor's `issued_at`, which whoever made the certificate chose: a copy of a live device
+     posting a back-dated re-join used to void everything the live device had signed since that date,
+     here and inside later bundles. `speaks_at` uses the earliest `pinned_at` of the pinned re-join
+     successors (positions were the other option, but `speaks_at` compares a signer's own times, and
+     `pinned_at` is a time); `end_of` keeps using the successor's first-seen position. A second re-join
+     of an ID already superseded is a separate row and entry (the merge keeps write-once `cert`s per
+     row) and, pinned later, cannot move the bound earlier. O11's quiet check (`SupersededQuiet`) counts
+     writes since the earlier of the first successor's `pinned_at` and `issued_at`: a back-dated
+     re-join makes the live device count as writing (it stays a recipient), and a future-dated one can
+     no longer make it look quiet.
+R-26. **A Kit's row is a row whose certificate is a Kit's** (minor 10): `recipients` skips an unpinned
+     row only when its `cert` is a kind 5 that verifies in this vault and names that row
+     (`trust::is_kit_row`), whatever its `platform`; a row that only calls itself `recoveryKit` is listed
+     as `Unverified`/`NoKey`. Task 24's `devices::list` filter must use `is_kit_row` too, not the
+     platform.
+R-27. **Only a value the row holds and that verifies is a sighting** (minor 6): `trust::note_sighting`
+     (called by `note_trust_positions`) notes a `cert` that the row now holds and that verifies for the
+     row in this vault, and a `left_record` the row holds that its subject's pinned key (else the row's
+     own certificate's key) verifies. The snapshot restore notes after the rows are in (replace and
+     merge), no longer in `settle_heads`. R-16's "noted whether or not the merge kept it" is withdrawn.
+R-28. **Notes for later tasks, not built here.**
+     - *Task 17:* the bundle v2 `kit` must reach `import_bundle` (today pickup passes `None`, so a
+       bundle never confirms or pins a Kit, review minor 12; with R-24 a replacement Kit is then pinned
+       nowhere until Task 17 lands: test it — a receiver of a new-Kit bundle seals its next change to
+       the new Kit). The device that makes a new Kit must pin it itself at commit (a `refresh` will not,
+       R-24) and mark it `confirmed`. Its own signer check is `trust::speaker` as in pickup.
+     - *Task 19:* the Kit joiner trusts the envelope's confirmed set only from a signer that is not
+       `removed` or `left` in the restored store, ignoring the envelope's own `at` (review minor 9: `at`
+       is the signer's claim). The R-4 throwaway Kit is deleted then; the sync flag stays off until it
+       is (minor 11). **Genesis on first use:** `tofu_from_rows` pins every genesis certificate in the
+       restored rows, and an unconfirmed genesis is never left out for its issuer, so a genesis row a
+       vault-key holder wrote (honest devices never pin one through sync) is a recipient on a Kit
+       joiner. Task 19 should pin genesis certificates on first use only when the anchored Kit's chain
+       or the confirmed set names them, or exclude unconfirmed ones there.
+     - *Tasks 24/26:* "Je moje" (`trust::keep`) should run `trust::refresh` after it, so records the
+       kept device signed apply at once; map `IssuerUnknown`.
+     - *Task 27:* consider ticking "Odebrat také" by default for a removed device's descendants
+       (review minor 9).
+     - *Not fixed (minor 13):* `StaticSecret::from(*eph)` / `from(*expand(..))` copy a secret into a
+       by-value temporary; `x25519-dalek` 3 has no constructor from a reference, so there is no trivial
+       fix (bundle.rs has the same pattern from Tasks 1–10).
+     - *Observation for the lead:* a vault-key holder (e.g. a copy of a device that left, before the
+       next key change) can upload a snapshot that omits a `left` record; a device that later joins or
+       catches up from it sees that device as `trusted`. Positions cannot catch an omission; this is
+       snapshot integrity, outside these findings.

@@ -131,10 +131,10 @@ pub fn handle_op(
 }
 
 /// Notes where this device first saw each device's certificate and `left` record (phase 5
-/// revision §3.1, `trust::note_seen`; the first one wins): every `sync_devices` row of `rows` that
-/// carries a `cert` or `left_record` value, at relay position `position`. The pull calls it for an
-/// applied changeset (with its op's position), a snapshot restore for its rows (with the
-/// snapshot's).
+/// revision §3.1, `trust::note_sighting`; the first one wins): every `cert` or `left_record` value
+/// of a `sync_devices` row of `rows` that the row now holds and that verifies, at relay position
+/// `position`. The pull calls it for an applied changeset (with its op's position), a snapshot
+/// restore for its rows (with the snapshot's).
 pub(crate) fn note_trust_positions(
     conn: &Connection,
     rows: &[RowChange],
@@ -151,8 +151,8 @@ pub(crate) fn note_trust_positions(
             ("cert", trust::SeenWhat::Cert),
             ("left_record", trust::SeenWhat::Left),
         ] {
-            if matches!(row.columns.get(column), Some((SqlValue::Text(_), _))) {
-                trust::note_seen(conn, device, what, position)?;
+            if let Some((SqlValue::Text(value), _)) = row.columns.get(column) {
+                trust::note_sighting(conn, device, what, value, position)?;
             }
         }
     }

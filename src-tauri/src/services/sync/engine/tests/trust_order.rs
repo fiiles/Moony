@@ -216,6 +216,22 @@ async fn the_pull_records_where_certificates_and_left_records_were_first_seen() 
         hlc: pack(NOW as u64 * 1000, 0),
         device: A,
     };
+    let a_cert_value: String = b
+        .query_row(
+            "SELECT cert FROM sync_devices WHERE id = ?1",
+            [A.to_hex()],
+            |r| r.get(0),
+        )
+        .expect("A's row");
+    let rows = vec![row(
+        "sync_devices",
+        &A.to_hex(),
+        clock,
+        &[("cert", text(&a_cert_value))],
+    )];
+    note_trust_positions(&b, &rows, 9_998).expect("note");
+    assert_eq!(seen(&b, A, "cert"), Some(a_cert));
+    // Junk, or a value the row does not hold (the merge discarded it), is no sighting (R-27).
     let rows = vec![row(
         "sync_devices",
         &A.to_hex(),
@@ -223,7 +239,25 @@ async fn the_pull_records_where_certificates_and_left_records_were_first_seen() 
         &[("cert", text("again")), ("left_record", text("left"))],
     )];
     note_trust_positions(&b, &rows, 9_999).expect("note");
-    assert_eq!(seen(&b, A, "cert"), Some(a_cert));
+    assert_eq!(seen(&b, A, "left"), None);
+    // A `left` record the row holds and A signed: noted.
+    let a_seed = identity::own_seed(&three.vault.a.lock())
+        .expect("seed")
+        .expect("A's key");
+    let vault = three.vault.creds.vault_id.0;
+    let left = Record::sign(RecordType::Left, vault, A, A, NOW, 0, &a_seed).expect("left");
+    b.execute(
+        "UPDATE sync_devices SET left_record = ?1 WHERE id = ?2",
+        params![left.to_b64(), A.to_hex()],
+    )
+    .expect("held");
+    let rows = vec![row(
+        "sync_devices",
+        &A.to_hex(),
+        clock,
+        &[("left_record", text(&left.to_b64()))],
+    )];
+    note_trust_positions(&b, &rows, 9_999).expect("note");
     assert_eq!(seen(&b, A, "left"), Some(9_999));
     // Other tables and NULL values are not sightings.
     let rows = vec![

@@ -380,6 +380,84 @@ async fn a_key_change_signed_by_an_unknown_device_is_not_taken() {
     assert_eq!(state::rekey_seen(&b).expect("seen"), 0);
 }
 
+/// A key change signed by a device this one trusts but leaves out for its issuer (revision §3.1;
+/// review of Tasks 13–15, finding 1): C was paired by A; here A left before C's certificate was
+/// seen (a late vouch), or A was removed (its issuer removed). C's key change is not taken
+/// (`keyChangeUnverified`) until the person keeps C ("Je moje").
+#[tokio::test]
+async fn a_key_change_by_a_device_left_out_for_its_issuer_is_not_taken_until_it_is_kept() {
+    for removed in [false, true] {
+        let three = three().await;
+        let vault = three.vault.creds.vault_id.0;
+        {
+            let b = three.vault.b.lock();
+            if removed {
+                let b_seed = identity::own_seed(&b).expect("seed").expect("B's key");
+                let record = identity::Record::sign(
+                    identity::RecordType::Removed,
+                    vault,
+                    A,
+                    B,
+                    NOW,
+                    0,
+                    &b_seed,
+                )
+                .expect("removal");
+                trust::mark_removed(&b, &record, None).expect("A removed here");
+            } else {
+                let a_seed = identity::own_seed(&three.vault.a.lock())
+                    .expect("seed")
+                    .expect("A's key");
+                let record = identity::Record::sign(
+                    identity::RecordType::Left,
+                    vault,
+                    A,
+                    A,
+                    NOW,
+                    0,
+                    &a_seed,
+                )
+                .expect("left");
+                trust::mark_left(&b, &record).expect("A left here");
+                // A's `left` record was seen before C's certificate.
+                trust::note_seen(&b, A, trust::SeenWhat::Left, 0).expect("seen");
+            }
+            assert!(trust::recipients(&b, &[])
+                .expect("recipients")
+                .excluded
+                .iter()
+                .any(|(device, _)| *device == C));
+        }
+        let (c_seed, c_cert) = {
+            let c = three.c.lock();
+            let seed = identity::own_seed(&c).expect("seed").expect("C's key");
+            let cert = trust::entry(&c, C).expect("entry").expect("pinned").cert;
+            (seed, cert)
+        };
+        rotate_by_hand(&three, &c_seed, &c_cert, &[A, B, C]).await;
+
+        let report = round_of(&three.vault, &three.vault.b).await;
+
+        assert_eq!(
+            report.problem,
+            Some(SyncProblem::KeyChangeUnverified),
+            "removed: {removed}: {report:?}"
+        );
+        assert_eq!(key_epoch(&three.vault.b.lock()), 0);
+        assert!(
+            !trust::entry(&three.vault.b.lock(), C)
+                .expect("entry")
+                .expect("pinned")
+                .confirmed
+        );
+
+        assert!(trust::keep(&three.vault.b.lock(), C).expect("kept"));
+        let report = round_of(&three.vault, &three.vault.b).await;
+        assert_eq!(report.problem, None, "removed: {removed}: {report:?}");
+        assert_eq!(key_epoch(&three.vault.b.lock()), 1);
+    }
+}
+
 /// Junk the server stores as a bundle: nothing opens (`keyNotGiven`).
 #[tokio::test]
 async fn a_junk_bundle_pauses_sync() {

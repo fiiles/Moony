@@ -8,7 +8,8 @@
 //! `MAX_BUNDLES_PER_WALK` bundles: anything else is a relay error (a server that pages for ever).
 //!
 //! - **Adopted:** an entry seals the new key to this device's box key, the body opens with it, its
-//!   signer's certificate is the one pinned here and `trusted`, no removal
+//!   signer's certificate is the one pinned here and its device may speak (`trusted` and not left
+//!   out for its issuer, `trust::speaker`), no removal
 //!   or leave of the signer that this device already knows of (in its list, verified, or in its
 //!   own pending change) counts, the signature verifies with the pinned key, the bundle moves this
 //!   device's epoch on by exactly one, what it says of older epochs (keys, heads) agrees with what
@@ -296,11 +297,11 @@ fn check(
     }
     let signer = unverified.signer().clone();
     let by = signer.body.device;
-    let pinned = trust::entry(conn, by)?
-        .filter(|entry| entry.cert == signer && entry.state == trust::TrustState::Trusted);
-    let Some(pinned) = pinned else {
+    // Pinned with this certificate, `trusted`, and not left out for its issuer (revision
+    // As built R-22): a device that gets no key from this one makes no key change for it either.
+    let Some(pinned) = trust::speaker(conn, &signer)? else {
         log::warn!(
-            "[SYNC] A key change is signed by device {}, which this device does not trust",
+            "[SYNC] A key change is signed by device {}, which may not speak here",
             &by.to_hex()[..8]
         );
         return Ok(Step::Unverified);

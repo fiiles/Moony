@@ -907,11 +907,13 @@ fn an_export_rejects_unknown_fields() {
 
 #[test]
 fn a_bundle_pins_its_signer_and_recipients_and_applies_its_removals_at_once() {
-    // This device knows B only; the signer C and the recipient D come in by the bundle, which
-    // also removes B.
+    // This device knows B and the signer C; the recipient D comes in by the bundle, which also
+    // removes B. (A signer not pinned here is refused: `a_bundle_signed_by_a_device_not_pinned…`.)
     let conn = supported();
     with_b(&conn);
     let signer = C.paired_by(B, 0x71);
+    row(&conn, C, Some(&signer));
+    trust::refresh(&conn, NOW).unwrap();
     let d = D.paired_by(E, 0x72); // E is unknown here: endorsed by the signer anyway.
 
     trust::import_bundle(
@@ -931,13 +933,42 @@ fn a_bundle_pins_its_signer_and_recipients_and_applies_its_removals_at_once() {
     let b = trust::entry(&conn, B.id()).unwrap().unwrap();
     assert_eq!(b.state, TrustState::Removed);
     assert_eq!(b.cut_off_epoch, Some(3));
+    // The signer is confirmed: B's removal does not drop it.
+    assert!(trust::entry(&conn, C.id()).unwrap().unwrap().confirmed);
+    assert!(included(&conn).contains(&C.id()));
+}
+
+#[test]
+fn a_bundle_signed_by_a_device_not_pinned_here_or_with_another_certificate_is_refused() {
+    let conn = supported();
+    with_b(&conn);
+    let before = trust::entries(&conn).unwrap();
+    // C is not pinned here.
+    assert!(trust::import_bundle(
+        &conn,
+        &C.paired_by(B, 0x71),
+        &[ME.genesis()],
+        None,
+        &[],
+        1,
+        NOW
+    )
+    .is_err());
+    // B is, with another certificate.
+    assert!(trust::import_bundle(&conn, &B.kit(), &[ME.genesis()], None, &[], 1, NOW).is_err());
+    assert_eq!(trust::entries(&conn).unwrap(), before);
 }
 
 #[test]
 fn a_bundle_never_replaces_a_pinned_certificate_and_writes_nothing_when_it_fails() {
-    let conn = supported();
-    with_b(&conn);
-    let before = trust::entries(&conn).unwrap();
+    let with_c = || {
+        let conn = kit_supported();
+        with_b(&conn);
+        row(&conn, C, Some(&C.kit()));
+        trust::refresh(&conn, NOW).unwrap();
+        conn
+    };
+    let conn = with_c();
 
     // B's certificate in the bundle differs from the pinned one: the pin stays.
     trust::import_bundle(&conn, &C.kit(), &[B.kit()], None, &[], 1, NOW).unwrap();
@@ -947,8 +978,8 @@ fn a_bundle_never_replaces_a_pinned_certificate_and_writes_nothing_when_it_fails
     );
 
     // A recipient that does not verify fails the whole import.
-    let conn = supported();
-    with_b(&conn);
+    let conn = with_c();
+    let before = trust::entries(&conn).unwrap();
     let mut broken = D.kit();
     broken.subject_sig[0] ^= 1;
     assert!(
@@ -1039,10 +1070,10 @@ fn recipients_are_the_trusted_devices_minus_the_removed_ones_with_reasons() {
 fn a_superseded_id_gets_the_key_only_after_a_change_since_its_successor() {
     let conn = supported();
     with_b(&conn);
-    // C re-joined as D at NOW + 100.
+    // C re-joined as D at NOW + 100; this device pinned D then.
     row(&conn, C, Some(&C.paired_by(ME, 0x71)));
     row(&conn, D, Some(&D.rejoin_of(C, NOW + 100)));
-    trust::refresh(&conn, NOW).unwrap();
+    trust::refresh(&conn, NOW + 100).unwrap();
     clock(&conn, C, NOW + 50);
 
     let plan = trust::recipients(&conn, &[]).unwrap();
@@ -1219,7 +1250,7 @@ fn a_kit_whose_creator_is_unknown_waits_and_an_unpinned_kit_row_is_not_listed() 
 }
 
 #[test]
-fn a_second_kit_is_refused_until_the_first_is_removed_in_the_same_pass() {
+fn a_second_kit_is_never_pinned_by_a_refresh_even_once_the_first_is_removed() {
     let conn = supported();
     let first = the_kit();
     let second = second_kit();
@@ -1233,7 +1264,8 @@ fn a_second_kit_is_refused_until_the_first_is_removed_in_the_same_pass() {
         kind: ConflictKind::SecondKit,
     }));
 
-    // The first Kit's removal arrives with the second: records apply first, so it is pinned.
+    // The first Kit's removal arrives with the second: the second still waits for the key
+    // change that names it (R-24; `a_replacement_kit_is_pinned_only_through_…`).
     conn.execute(
         "UPDATE sync_devices SET removal_record = ?1 WHERE id = ?2",
         params![
@@ -1247,20 +1279,8 @@ fn a_second_kit_is_refused_until_the_first_is_removed_in_the_same_pass() {
         trust::entry(&conn, first.id()).unwrap().map(|e| e.state),
         Some(TrustState::Removed)
     );
-    assert!(trust::entry(&conn, second.id()).unwrap().is_some());
-    assert_eq!(
-        trust::recipients(&conn, &[]).unwrap().kit.map(|k| k.device),
-        Some(second.id())
-    );
-
-    // Two new Kits in one pass: only the lower ID.
-    let conn = supported();
-    kit_row(&conn, &first, &ME.creates_kit(&first, NOW));
-    kit_row(&conn, &second, &ME.creates_kit(&second, NOW));
-    let report = trust::refresh(&conn, NOW).unwrap();
-    assert_eq!(report.pinned.len(), 1);
-    assert_eq!(report.conflicts.len(), 1);
-    assert_eq!(report.conflicts[0].kind, ConflictKind::SecondKit);
+    assert_eq!(trust::entry(&conn, second.id()).unwrap(), None);
+    assert_eq!(trust::recipients(&conn, &[]).unwrap().kit, None);
 }
 
 #[test]
@@ -1310,9 +1330,9 @@ fn a_kit_joiner_is_pinned_through_the_kit_and_after_its_removal_only_if_dated_be
 fn a_superseded_id_vouches_only_for_what_it_issued_before_its_successor() {
     let conn = supported();
     with_b(&conn);
-    // B re-joined as C at NOW + 100.
+    // B re-joined as C at NOW + 100; this device pinned C then.
     row(&conn, C, Some(&C.rejoin_of(B, NOW + 100)));
-    trust::refresh(&conn, NOW).unwrap();
+    trust::refresh(&conn, NOW + 100).unwrap();
     assert_eq!(state_of(&conn, C), Some(TrustState::Trusted));
     // A copy of B pairs D after that, and E before.
     row(
@@ -1431,8 +1451,9 @@ fn this_device_is_never_left_out_for_its_issuer() {
     // ME was paired by B, which is removed later; ME is not confirmed.
     let conn = profile();
     trust::seed_own(&conn, &ME.paired_by(B, 0x70), NOW).unwrap();
-    // B arrives (vouched for by nobody here: it is put in directly as a bundle would).
-    trust::import_bundle(&conn, &B.genesis(), &[], None, &[], 1, NOW).unwrap();
+    // B arrives (vouched for by nobody here: trusted on first use).
+    row(&conn, B, Some(&B.genesis()));
+    trust::tofu_from_rows(&conn, NOW).unwrap();
     row(&conn, C, Some(&C.paired_by(ME, 0x71)));
     trust::refresh(&conn, NOW).unwrap();
     conn.execute(
@@ -1500,11 +1521,17 @@ fn an_announcement_before_the_left_record_makes_it_in_time_whatever_order_the_ro
 }
 
 #[test]
-fn equal_positions_and_unknown_ones_are_in_time() {
-    // One restored snapshot holds both: the joiner's trust on first use.
+fn equal_positions_are_late_and_unknown_ones_in_time() {
+    // One restored snapshot holds both (a joiner, or a device catching up from a snapshot): the
+    // order cannot be told, so it is late (review of Tasks 13–15, finding 2, R-23).
     let conn = left_holder();
     seen(&conn, O, trust::SeenWhat::Left, 100);
     seen(&conn, N, trust::SeenWhat::Cert, 100);
+    assert!(reasons(&conn).contains(&(N.id(), ExclusionReason::LateVouch)));
+    // Restored with the issuer's `left` record seen later (it left after the snapshot): in time.
+    let conn = left_holder();
+    seen(&conn, N, trust::SeenWhat::Cert, 100);
+    seen(&conn, O, trust::SeenWhat::Left, 101);
     assert!(included(&conn).contains(&N.id()));
     // The cert came by a vetted path (no position), or the left record did.
     let conn = left_holder();
@@ -1699,4 +1726,394 @@ fn new_device_notices_are_written_for_pairings_and_kit_joins_only() {
     row(&conn, C, Some(&C.paired_by(B, 0x71)));
     trust::tofu_from_rows(&conn, NOW).unwrap();
     assert!(trust::new_devices(&conn).unwrap().is_empty());
+}
+
+// ── Review of Tasks 13–15: who may speak (finding 1) ───────────────────────────────────────
+
+/// `left_holder()` with N a late vouch (O's `left` record seen at 100, N's certificate at 150)
+/// and D paired by this device.
+fn late_n() -> Connection {
+    let conn = left_holder();
+    seen(&conn, O, trust::SeenWhat::Left, 100);
+    seen(&conn, N, trust::SeenWhat::Cert, 150);
+    row(&conn, D, Some(&D.paired_by(ME, 0x71)));
+    trust::refresh(&conn, NOW).unwrap();
+    assert!(reasons(&conn).contains(&(N.id(), ExclusionReason::LateVouch)));
+    conn
+}
+
+fn n_cert() -> Certificate {
+    N.paired_by_at(O, 0x7e, NOW + 10, NOW + 10)
+}
+
+#[test]
+fn a_late_vouch_signs_no_key_change_and_no_removal_until_it_is_kept() {
+    let conn = late_n();
+    let before = trust::entries(&conn).unwrap();
+    // Its key change naming every device is refused, and does not confirm it.
+    assert!(trust::import_bundle(
+        &conn,
+        &n_cert(),
+        &[ME.genesis(), D.paired_by(ME, 0x71)],
+        None,
+        &[],
+        1,
+        NOW
+    )
+    .is_err());
+    assert_eq!(trust::entries(&conn).unwrap(), before, "nothing written");
+    // Its removal of D counts nowhere: not in a row, not in a bundle another device signed.
+    let removal = N.removes_at(D, NOW + 70);
+    assert!(!trust::record_counts(&conn, &removal).unwrap());
+    assert!(trust::mark_removed(&conn, &removal, None).is_err());
+    assert!(trust::import_bundle(
+        &conn,
+        &ME.genesis(),
+        &[],
+        None,
+        std::slice::from_ref(&removal),
+        1,
+        NOW
+    )
+    .is_err());
+    set_record(&conn, D, "removal_record", &removal);
+    trust::refresh(&conn, NOW).unwrap();
+    assert_eq!(state_of(&conn, D), Some(TrustState::Trusted));
+
+    // Kept by the person ("Je moje"): it speaks.
+    assert!(trust::keep(&conn, N.id()).unwrap());
+    assert!(trust::record_counts(&conn, &removal).unwrap());
+    trust::refresh(&conn, NOW).unwrap();
+    assert_eq!(state_of(&conn, D), Some(TrustState::Removed));
+    trust::import_bundle(&conn, &n_cert(), &[ME.genesis()], None, &[], 1, NOW)
+        .expect("a kept device's key change");
+}
+
+#[test]
+fn a_device_left_out_because_its_issuer_was_removed_signs_nothing() {
+    let conn = removal_chain();
+    let f = Dev(0x06);
+    row(&conn, f, Some(&f.paired_by(ME, 0x75)));
+    trust::refresh(&conn, NOW).unwrap();
+    let before = trust::entries(&conn).unwrap();
+    // C (paired by B, paired by the removed A) makes a key change: refused.
+    assert!(trust::import_bundle(
+        &conn,
+        &C.paired_by(B, 0x72),
+        &[ME.genesis(), f.paired_by(ME, 0x75)],
+        None,
+        &[],
+        2,
+        NOW
+    )
+    .is_err());
+    assert_eq!(trust::entries(&conn).unwrap(), before, "nothing written");
+    // B removes f: it does not count.
+    let removal = B.removes_at(f, NOW + 40);
+    assert!(!trust::record_counts(&conn, &removal).unwrap());
+    set_record(&conn, f, "removal_record", &removal);
+    trust::refresh(&conn, NOW).unwrap();
+    assert_eq!(state_of(&conn, f), Some(TrustState::Trusted));
+    // Named by a key change (confirmed), B speaks again.
+    trust::mark_confirmed(&conn, &[B.id()]).unwrap();
+    trust::refresh(&conn, NOW).unwrap();
+    assert_eq!(state_of(&conn, f), Some(TrustState::Removed));
+}
+
+// ── Review of Tasks 13–15: restored positions, a pairing joiner, ghost issuers (finding 2) ─
+
+#[test]
+fn a_kit_joiner_restoring_a_left_issuer_and_its_late_vouch_together_leaves_it_out() {
+    // The restored rows: O (genesis) left; N paired by O. Both seen at the snapshot's position.
+    let conn = profile();
+    trust::seed_own(&conn, &ME.kit(), NOW).unwrap();
+    row(&conn, O, Some(&O.genesis()));
+    row(&conn, N, Some(&n_cert()));
+    set_record(&conn, O, "left_record", &O.left_at(NOW + 50));
+    trust::tofu_from_rows(&conn, NOW).unwrap();
+    assert_eq!(state_of(&conn, O), Some(TrustState::Left));
+    seen(&conn, O, trust::SeenWhat::Left, 300);
+    seen(&conn, N, trust::SeenWhat::Cert, 300);
+    assert!(reasons(&conn).contains(&(N.id(), ExclusionReason::LateVouch)));
+    // The envelope's confirmed set names it: included.
+    trust::apply_confirmed_set(&conn, &[(N.id(), n_cert().hash())]).unwrap();
+    assert!(included(&conn).contains(&N.id()));
+}
+
+#[test]
+fn a_pairing_joiner_judges_late_vouches_as_its_holder_does() {
+    // On the holder: N is late (never announced), P in time (announced before O left).
+    let holder = left_holder();
+    let p = Dev(0x0d);
+    row(
+        &holder,
+        p,
+        Some(&p.paired_by_at(O, 0x7d, NOW + 20, NOW + 20)),
+    );
+    trust::refresh(&holder, NOW).unwrap();
+    clock(&holder, p, NOW + 60);
+    trust::note_ticket(&holder, &ticket_pub(0x7d), O.id(), 40).unwrap();
+    seen(&holder, O, trust::SeenWhat::Left, 100);
+    seen(&holder, N, trust::SeenWhat::Cert, 150);
+    seen(&holder, p, trust::SeenWhat::Cert, 160);
+    assert!(reasons(&holder).contains(&(N.id(), ExclusionReason::LateVouch)));
+    assert!(included(&holder).contains(&p.id()));
+    let json = serde_json::to_string(&trust::export(&holder).unwrap()).unwrap();
+    let export: TrustExport = serde_json::from_str(&json).unwrap();
+
+    // The joiner restored a snapshot holding all of it (seen at its position), or nothing.
+    for restored in [true, false] {
+        let conn = joiner();
+        if restored {
+            seen(&conn, O, trust::SeenWhat::Left, 500);
+            seen(&conn, N, trust::SeenWhat::Cert, 500);
+            seen(&conn, p, trust::SeenWhat::Cert, 500);
+        }
+        trust::import_export(&conn, &export, ME.id(), NOW).expect("import");
+        assert!(
+            reasons(&conn).contains(&(N.id(), ExclusionReason::LateVouch)),
+            "restored: {restored}"
+        );
+        assert!(included(&conn).contains(&p.id()), "restored: {restored}");
+    }
+}
+
+#[test]
+fn a_device_whose_issuer_is_not_pinned_gets_nothing_unless_confirmed() {
+    // A Kit joiner trusts D on first use: its issuer E has no row.
+    let conn = profile();
+    trust::seed_own(&conn, &ME.kit(), NOW).unwrap();
+    row(&conn, B, Some(&B.genesis()));
+    row(&conn, D, Some(&D.paired_by(E, 0x72)));
+    row(&conn, C, Some(&C.paired_by(D, 0x73)));
+    trust::tofu_from_rows(&conn, NOW).unwrap();
+    assert_eq!(state_of(&conn, D), Some(TrustState::Trusted));
+    assert_eq!(state_of(&conn, C), Some(TrustState::Trusted));
+    assert_eq!(included(&conn), vec![ME.id(), B.id()]);
+    // Confirmed by the envelope's set: D, and what it paired.
+    trust::apply_confirmed_set(&conn, &[(D.id(), D.paired_by(E, 0x72).hash())]).unwrap();
+    assert_eq!(included(&conn), vec![ME.id(), B.id(), C.id(), D.id()]);
+}
+
+// ── Review of Tasks 13–15: a backdated re-join (finding 3) ──────────────────────────────────
+
+#[test]
+fn a_backdated_rejoin_of_a_live_device_does_not_void_what_it_signed_before_it_was_seen() {
+    let conn = supported();
+    with_b(&conn);
+    row(&conn, D, Some(&D.paired_by(ME, 0x71)));
+    trust::refresh(&conn, NOW).unwrap();
+    // A copy of B posts a re-join E dated long before; this device pins it at NOW + 100.
+    row(&conn, E, Some(&E.rejoin_of(B, NOW - 10_000)));
+    trust::refresh(&conn, NOW + 100).unwrap();
+    assert_eq!(state_of(&conn, E), Some(TrustState::Trusted));
+    // What B signed before this device saw the re-join still counts.
+    let removal = B.removes_at(D, NOW + 50);
+    assert!(trust::record_counts(&conn, &removal).unwrap());
+    let f = Dev(0x06);
+    row(&conn, f, Some(&f.paired_by_at(B, 0x75, NOW + 60, NOW + 60)));
+    trust::refresh(&conn, NOW + 110).unwrap();
+    assert_eq!(state_of(&conn, f), Some(TrustState::Trusted));
+    // A second, earlier-dated re-join pinned later does not move the bound.
+    let g = Dev(0x07);
+    row(&conn, g, Some(&g.rejoin_of(B, NOW - 20_000)));
+    trust::refresh(&conn, NOW + 200).unwrap();
+    assert_eq!(state_of(&conn, g), Some(TrustState::Trusted));
+    assert!(trust::record_counts(&conn, &removal).unwrap());
+    // A key change carrying B's earlier removal is taken.
+    trust::import_bundle(
+        &conn,
+        &B.paired_by(ME, 0x70),
+        &[ME.genesis()],
+        None,
+        &[removal],
+        1,
+        NOW,
+    )
+    .expect("B's removal signed before the re-join was seen");
+    assert_eq!(state_of(&conn, D), Some(TrustState::Removed));
+    // What B signs after this device saw its re-join does not.
+    assert!(!trust::record_counts(&conn, &B.removes_at(f, NOW + 150)).unwrap());
+    // B wrote after the re-join appeared here: no quiet copy whatever the re-join's own date.
+    clock(&conn, B, NOW + 120);
+    assert!(included(&conn).contains(&B.id()));
+}
+
+// ── Review of Tasks 13–15: choosing the Kit (finding 4) ─────────────────────────────────────
+
+/// Two Kits other than `the_kit()`: (rogue, genuine), the rogue's ID the lower one.
+fn rogue_and_genuine_kits() -> (KitKeys, KitKeys) {
+    let a = second_kit();
+    let b = KitSecret::from_bytes(Zeroizing::new([0x0e; 32])).derive(&VAULT);
+    if a.id() < b.id() {
+        (a, b)
+    } else {
+        (b, a)
+    }
+}
+
+#[test]
+fn a_replacement_kit_is_pinned_only_through_the_key_change_that_names_it() {
+    for genuine_row in [true, false] {
+        let conn = kit_supported();
+        with_b(&conn);
+        row(&conn, C, Some(&C.paired_by(ME, 0x71)));
+        trust::refresh(&conn, NOW).unwrap();
+        let first = the_kit();
+        let (rogue, genuine) = rogue_and_genuine_kits();
+        // A rogue member (C) posts its own Kit; B replaces the Kit with a key change.
+        kit_row(&conn, &rogue, &C.creates_kit(&rogue, NOW + 1));
+        let genuine_cert = B.creates_kit(&genuine, NOW + 5);
+        if genuine_row {
+            kit_row(&conn, &genuine, &genuine_cert);
+        }
+        let replaces = kit_removal(B, &first, NOW + 5);
+        // The old Kit's removal reaches the rows first.
+        conn.execute(
+            "UPDATE sync_devices SET removal_record = ?1 WHERE id = ?2",
+            params![replaces.to_b64(), first.id().to_hex()],
+        )
+        .unwrap();
+        trust::refresh(&conn, NOW).unwrap();
+        assert_eq!(
+            trust::entry(&conn, first.id()).unwrap().map(|e| e.state),
+            Some(TrustState::Removed)
+        );
+        assert_eq!(trust::entry(&conn, rogue.id()).unwrap(), None);
+        assert_eq!(trust::entry(&conn, genuine.id()).unwrap(), None);
+        // Then the bundle that names the new Kit.
+        trust::import_bundle(
+            &conn,
+            &B.paired_by(ME, 0x70),
+            &[ME.genesis(), C.paired_by(ME, 0x71)],
+            Some(trust::BundleKit {
+                cert: &genuine_cert,
+                replaces: Some(&replaces),
+            }),
+            &[],
+            2,
+            NOW,
+        )
+        .expect("import");
+        assert_eq!(
+            trust::recipients(&conn, &[]).unwrap().kit.map(|k| k.device),
+            Some(genuine.id()),
+            "genuine row: {genuine_row}"
+        );
+        trust::refresh(&conn, NOW).unwrap();
+        assert_eq!(trust::entry(&conn, rogue.id()).unwrap(), None);
+    }
+}
+
+#[test]
+fn a_first_kit_is_never_chosen_among_several_or_from_a_creator_that_may_not_speak() {
+    // Two first Kits in one pass: neither.
+    let conn = supported();
+    with_b(&conn);
+    let (one, two) = rogue_and_genuine_kits();
+    kit_row(&conn, &one, &ME.creates_kit(&one, NOW));
+    kit_row(&conn, &two, &B.creates_kit(&two, NOW));
+    let report = trust::refresh(&conn, NOW).unwrap();
+    assert_eq!(trust::entry(&conn, one.id()).unwrap(), None);
+    assert_eq!(trust::entry(&conn, two.id()).unwrap(), None);
+    assert_eq!(
+        report
+            .conflicts
+            .iter()
+            .filter(|c| c.kind == ConflictKind::SecondKit)
+            .count(),
+        2
+    );
+    // A Kit made by a late vouch: not pinned.
+    let conn = late_n();
+    let kit = the_kit();
+    kit_row(&conn, &kit, &N.creates_kit(&kit, NOW + 70));
+    trust::refresh(&conn, NOW).unwrap();
+    assert_eq!(trust::entry(&conn, kit.id()).unwrap(), None);
+}
+
+#[test]
+fn the_kit_of_a_creator_left_out_for_its_issuer_is_not_sealed_to() {
+    let a = Dev(0x0a);
+    let conn = supported();
+    row(&conn, a, Some(&a.paired_by(ME, 0x70)));
+    row(&conn, B, Some(&B.paired_by(a, 0x71)));
+    trust::refresh(&conn, NOW).unwrap();
+    let kit = the_kit();
+    kit_row(&conn, &kit, &B.creates_kit(&kit, NOW + 5));
+    trust::refresh(&conn, NOW).unwrap();
+    assert_eq!(
+        trust::recipients(&conn, &[]).unwrap().kit.map(|k| k.device),
+        Some(kit.id())
+    );
+    trust::mark_removed(&conn, &ME.removes_at(a, NOW + 20), Some(1)).unwrap();
+    assert_eq!(trust::recipients(&conn, &[]).unwrap().kit, None);
+    // Named by a key change, it is again.
+    trust::mark_confirmed(&conn, &[kit.id()]).unwrap();
+    assert_eq!(
+        trust::recipients(&conn, &[]).unwrap().kit.map(|k| k.device),
+        Some(kit.id())
+    );
+}
+
+// ── Review of Tasks 13–15: minors ───────────────────────────────────────────────────────────
+
+#[test]
+fn a_kit_labelled_row_without_a_kit_certificate_is_listed_as_unverified() {
+    let conn = supported();
+    // A row that calls itself a Kit, with no certificate, or a device's certificate.
+    conn.execute(
+        "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
+         VALUES (?1, 'PK', '', 'recoveryKit', '1.0', 1)",
+        [B.id().to_hex()],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at, cert) \
+         VALUES (?1, 'PK', '', 'recoveryKit', '1.0', 1, ?2)",
+        params![C.id().to_hex(), C.genesis().to_b64()],
+    )
+    .unwrap();
+    // A real Kit's row whose Kit is not pinned (its creator is unknown): not listed.
+    let kit = the_kit();
+    kit_row(&conn, &kit, &D.creates_kit(&kit, NOW));
+    trust::refresh(&conn, NOW).unwrap();
+    assert_eq!(
+        reasons(&conn),
+        vec![
+            (B.id(), ExclusionReason::Unverified),
+            (C.id(), ExclusionReason::Unverified),
+        ]
+    );
+}
+
+#[test]
+fn only_a_value_the_row_holds_and_that_verifies_is_a_sighting() {
+    let conn = supported();
+    with_b(&conn);
+    let held = B.paired_by(ME, 0x70);
+    // Junk, or a valid certificate the row does not hold: nothing.
+    trust::note_sighting(&conn, B.id(), trust::SeenWhat::Cert, "junk", 10).unwrap();
+    trust::note_sighting(
+        &conn,
+        B.id(),
+        trust::SeenWhat::Cert,
+        &B.genesis().to_b64(),
+        11,
+    )
+    .unwrap();
+    trust::note_sighting(&conn, B.id(), trust::SeenWhat::Left, "junk", 12).unwrap();
+    let forged = Record::sign(RecordType::Left, VAULT, B.id(), B.id(), NOW, 0, &C.seed()).unwrap();
+    set_record(&conn, B, "left_record", &forged);
+    trust::note_sighting(&conn, B.id(), trust::SeenWhat::Left, &forged.to_b64(), 13).unwrap();
+    let count = |conn: &Connection| -> i64 {
+        conn.query_row("SELECT COUNT(*) FROM sync_trust_seen", [], |r| r.get(0))
+            .unwrap()
+    };
+    assert_eq!(count(&conn), 0);
+    // The held certificate and a left record its subject signed: noted.
+    trust::note_sighting(&conn, B.id(), trust::SeenWhat::Cert, &held.to_b64(), 20).unwrap();
+    set_record(&conn, B, "left_record", &B.left());
+    trust::note_sighting(&conn, B.id(), trust::SeenWhat::Left, &B.left().to_b64(), 21).unwrap();
+    assert_eq!(count(&conn), 2);
 }

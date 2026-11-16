@@ -21,8 +21,12 @@
 //! An issuer vouches when its entry is pinned with the same signing key and `speaks_at` the
 //! certificate's time and its ticket's (`vouch`): while it is `trusted`; after it left or was
 //! removed, for what it issued until then; and an older ID that has a pinned re-join successor
-//! only until that successor's `issued_at` (a superseded ID lives on only as a copy). A `removed`
-//! record counts when its signer is pinned and speaks at the record's time (`removal_counts`).
+//! only until this device pinned that successor (a superseded ID lives on only as a copy; never
+//! the successor's own `issued_at`, revision As built R-25). A `removed` record counts when its
+//! signer is pinned, speaks at the record's time and is not left out for its issuer
+//! (`removal_counts`). An entry left out for its issuer speaks for nothing: its removals do not
+//! count and its key changes are not taken (`speaker`, R-22). A Kit (kind 5) is pinned this way
+//! only as the vault's first (R-24); a replacement comes in only by the key change naming it.
 //! Within one `refresh` pass every record is judged against the store as it was before the pass,
 //! so the outcome never depends on row order; records apply before certificates, so a certificate
 //! whose issuer is removed in the same pull is pinned only when issued before.
@@ -31,9 +35,10 @@
 //! minus the removed, the left and the quiet superseded ones, minus every device whose issuer was
 //! removed or is itself left out for that (`IssuerRemoved`, transitive), minus every device a left
 //! or superseded issuer vouched for that was not seen in time (`LateVouch`, the R2 mitigation, by
-//! first-seen relay positions: `sync_trust_seen`, `sync_tickets`). A `confirmed` entry (named by a
-//! verified key change, a Kit join's envelope, or kept by the person, `keep`) is never left out for
-//! its issuer and stops the chain.
+//! first-seen relay positions: `sync_trust_seen`, `sync_tickets`; equal positions are late, R-23),
+//! minus every device whose issuer is not pinned here (`IssuerUnknown`, R-23). A `confirmed` entry
+//! (named by a verified key change, a Kit join's envelope, or kept by the person, `keep`) is never
+//! left out for its issuer and stops the chain.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
@@ -161,6 +166,10 @@ pub enum ExclusionReason {
     /// (revision §3.1, the R2 mitigation); or its issuer is itself left out for this reason. Kept
     /// by the person (`keep`), it is included.
     LateVouch,
+    /// Not confirmed, and its issuer is not pinned here (a certificate a Kit joiner trusted on
+    /// first use whose issuer has no row), or its issuer is itself left out for this reason. Kept
+    /// by the person (`keep`) or named by a key change, it is included.
+    IssuerUnknown,
 }
 
 /// The recipients of a new key, every other device with its reason, and the Kit apart.
@@ -230,6 +239,21 @@ pub struct ExportEntry {
         skip_serializing_if = "std::ops::Not::not"
     )]
     pub confirmed: bool,
+    /// Where the holder first saw this certificate (`sync_trust_seen`, R-23); written only when
+    /// known. The joiner takes the holder's positions over its own, so it judges late vouches as
+    /// the holder does.
+    #[serde(rename = "certSeen", default, skip_serializing_if = "Option::is_none")]
+    pub cert_seen: Option<u64>,
+    /// Where the holder first saw this device's `left` record.
+    #[serde(rename = "leftSeen", default, skip_serializing_if = "Option::is_none")]
+    pub left_seen: Option<u64>,
+    /// Where the holder saw this certificate's issuer announce its join ticket (`sync_tickets`).
+    #[serde(
+        rename = "ticketSeen",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub ticket_seen: Option<u64>,
 }
 
 fn corrupt() -> AppError {
@@ -253,14 +277,18 @@ fn this_device(conn: &Connection) -> Result<DeviceId> {
 
 /// The bound vault's ID.
 pub(crate) fn vault_id(conn: &Connection) -> Result<[u8; 16]> {
+    bound_vault(conn)?.ok_or_else(|| refused("no vault is bound on this device"))
+}
+
+/// The bound vault's ID, if a vault is bound.
+fn bound_vault(conn: &Connection) -> Result<Option<[u8; 16]>> {
     let stored: Option<String> = conn
         .query_row("SELECT vault_id FROM sync_state WHERE id = 1", [], |r| {
             r.get(0)
         })
         .optional()?
         .flatten();
-    let stored = stored.ok_or_else(|| refused("no vault is bound on this device"))?;
-    Ok(VaultId::from_b64(&stored)?.0)
+    stored.map(|s| Ok(VaultId::from_b64(&s)?.0)).transpose()
 }
 
 const ENTRY_COLUMNS: &str = "device, cert, state, state_record, state_by, state_at, \
@@ -351,28 +379,46 @@ pub fn entries(conn: &Connection) -> Result<Vec<TrustEntry>> {
     raws.into_iter().map(parse_entry).collect()
 }
 
-/// The store as the rules read it: every entry, and when each superseded ID's earliest pinned
-/// re-join successor was issued (a superseded ID speaks only until then, revision §3.1).
+/// When a superseded ID's re-join successors appeared: the earliest time this device pinned one
+/// (`pinned_at`, this device's clock: the bound of what the old ID speaks for, revision §3.1 as
+/// amended by R-25) and the earliest of that and any successor's own `issued_at` (`since`: what
+/// the old ID wrote after it is no quiet copy, O11).
+#[derive(Clone, Copy)]
+struct Successors {
+    pinned_at: i64,
+    since: i64,
+}
+
+/// The store as the rules read it: every entry, each superseded ID's successors, and every entry
+/// left out for its issuer (`excluded_by_issuer`), which speaks for nothing (R-22).
 struct Store {
     entries: BTreeMap<DeviceId, TrustEntry>,
-    successor_at: BTreeMap<DeviceId, i64>,
+    successors: BTreeMap<DeviceId, Successors>,
+    excluded: BTreeMap<DeviceId, ExclusionReason>,
 }
 
 impl Store {
     fn load(conn: &Connection) -> Result<Self> {
         let entries: BTreeMap<DeviceId, TrustEntry> =
             entries(conn)?.into_iter().map(|e| (e.device, e)).collect();
-        let mut successor_at: BTreeMap<DeviceId, i64> = BTreeMap::new();
+        let mut successors: BTreeMap<DeviceId, Successors> = BTreeMap::new();
         for entry in entries.values() {
             if entry.kind == CertKind::Rejoin {
-                let at = successor_at.entry(entry.issuer).or_insert(i64::MAX);
-                *at = (*at).min(entry.cert.body.issued_at);
+                let at = successors.entry(entry.issuer).or_insert(Successors {
+                    pinned_at: i64::MAX,
+                    since: i64::MAX,
+                });
+                at.pinned_at = at.pinned_at.min(entry.pinned_at);
+                at.since = at.since.min(entry.pinned_at).min(entry.cert.body.issued_at);
             }
         }
-        Ok(Store {
+        let mut store = Store {
             entries,
-            successor_at,
-        })
+            successors,
+            excluded: BTreeMap::new(),
+        };
+        store.excluded = excluded_by_issuer(&store, &Positions::load(conn)?, this_device(conn)?);
+        Ok(store)
     }
 
     fn get(&self, device: &DeviceId) -> Option<&TrustEntry> {
@@ -384,7 +430,20 @@ impl Store {
     }
 
     fn superseded(&self, device: &DeviceId) -> bool {
-        self.successor_at.contains_key(device)
+        self.successors.contains_key(device)
+    }
+
+    /// Whether `device` is left out for its issuer (`IssuerRemoved`, `LateVouch`,
+    /// `IssuerUnknown`): it speaks for nothing, whatever it signed and whenever (R-22).
+    fn silenced(&self, device: &DeviceId) -> bool {
+        self.excluded.contains_key(device)
+    }
+
+    /// Whether `device` may speak now: pinned, `trusted`, and not left out for its issuer.
+    fn may_speak(&self, device: &DeviceId) -> bool {
+        self.get(device)
+            .is_some_and(|e| e.state == TrustState::Trusted)
+            && !self.silenced(device)
     }
 
     /// Whether some Kit other than `except` is `trusted`.
@@ -392,6 +451,11 @@ impl Store {
         self.entries.values().any(|e| {
             e.kind == CertKind::Kit && e.state == TrustState::Trusted && e.device != except
         })
+    }
+
+    /// Whether any Kit was ever pinned here, whatever its state.
+    fn has_kit(&self) -> bool {
+        self.entries.values().any(|e| e.kind == CertKind::Kit)
     }
 }
 
@@ -561,7 +625,9 @@ fn apply_move(conn: &Connection, record: &Record, cut_off_epoch: Option<u32>) ->
 
 /// Whether the issuer of a paired, re-join, Kit-joined or Kit `cert` vouches for it: pinned with
 /// the signing key the certificate names, and `speaks_at` both the certificate's `issued_at` and
-/// its ticket's.
+/// its ticket's. An issuer left out for its issuer still vouches (R-22): what it vouches for is
+/// left out with it (the exclusion is transitive) and is pinned only so that it shows as
+/// "Zkontrolujte" and can be kept; a Kit is the exception (`pin_candidates`).
 fn vouch(store: &Store, cert: &Certificate) -> bool {
     store.get(&cert.body.issuer_device).is_some_and(|issuer| {
         issuer.sign_pub == cert.body.issuer_sign_pub
@@ -589,25 +655,29 @@ struct Seen<'a> {
 
 /// Whether `signer` speaks for something it signed at `at`: while it is `trusted`; after it left
 /// or was removed, for what it signed until then (`at` no later than the `state_at` of the record
-/// that changed its state); and, when a re-join successor of it is pinned, only until that
-/// successor's `issued_at` (revision §3.1: a superseded ID lives on only as a copy). So a record
-/// counts on every device whether it arrives before or after the news of its signer's leaving.
+/// that changed its state); and, when a re-join successor of it is pinned, only until this device
+/// pinned the first one (revision §3.1: a superseded ID lives on only as a copy; R-25: never the
+/// successor's own `issued_at`, which whoever made it chose). So a record counts on every device
+/// whether it arrives before or after the news of its signer's leaving.
 fn speaks_at(store: &Store, signer: &TrustEntry, at: i64) -> bool {
     let in_state = match signer.state {
         TrustState::Trusted => true,
         TrustState::Left | TrustState::Removed => signer.state_at.is_some_and(|until| at <= until),
     };
     let before_successor = store
-        .successor_at
+        .successors
         .get(&signer.device)
-        .is_none_or(|until| at <= *until);
+        .is_none_or(|s| at <= s.pinned_at);
     in_state && before_successor
 }
 
-/// `record`, a removal, verifies by a signer pinned in `store` that `speaks_at` its time.
+/// `record`, a removal, verifies by a signer pinned in `store` that `speaks_at` its time and is
+/// not left out for its issuer (R-22).
 fn removal_counts(record: &Record, store: &Store) -> bool {
     store.get(&record.signer).is_some_and(|signer| {
-        speaks_at(store, signer, record.at) && record.verify(&signer.sign_pub).is_ok()
+        !store.silenced(&record.signer)
+            && speaks_at(store, signer, record.at)
+            && record.verify(&signer.sign_pub).is_ok()
     })
 }
 
@@ -669,8 +739,10 @@ fn push_conflict(report: &mut RefreshReport, device: DeviceId, kind: ConflictKin
 }
 
 /// One pass over the rows' certificates: pins what `accept` allows, by ascending ID, a join
-/// ticket at most once and a Kit only while no other is `trusted` (one per pass). Returns whether
-/// anything was pinned.
+/// ticket at most once. A Kit only as the vault's first (R-24): while no Kit was ever pinned here,
+/// the only one `accept` allows in the pass, and its creator not left out for its issuer; any
+/// other is `SecondKit` (a replacement Kit comes in only by the key change that names it,
+/// `import_bundle`). Returns whether anything was pinned.
 fn pin_candidates(
     conn: &Connection,
     rows: &[DeviceRow],
@@ -693,9 +765,7 @@ fn pin_candidates(
         store: &store,
         waiting: &waiting,
     };
-    let mut tickets: HashSet<[u8; 32]> = HashSet::new();
-    let mut kit_pinned = false;
-    let mut pinned_any = false;
+    let mut accepted = Vec::new();
     for (id, cert) in candidates {
         if let Some(pinned) = store.get(&id) {
             if pinned.cert != cert {
@@ -703,15 +773,26 @@ fn pin_candidates(
             }
             continue;
         }
-        if let Verdict::Wait = accept(&cert, &seen) {
-            continue;
+        if let Verdict::Pin = accept(&cert, &seen) {
+            accepted.push((id, cert));
         }
+    }
+    // Never chosen by ID: with another Kit known, or several in one pass, none is pinned.
+    let kits = accepted
+        .iter()
+        .filter(|(_, cert)| cert.body.kind == CertKind::Kit)
+        .count();
+    let mut tickets: HashSet<[u8; 32]> = HashSet::new();
+    let mut pinned_any = false;
+    for (id, cert) in accepted {
         if cert.body.kind == CertKind::Kit {
-            if kit_pinned || store.trusted_kit_other_than(id) {
+            if store.has_kit() || kits > 1 {
                 push_conflict(report, id, ConflictKind::SecondKit);
                 continue;
             }
-            kit_pinned = true;
+            if store.silenced(&cert.body.issuer_device) {
+                continue;
+            }
         }
         if let Some(ticket) = &cert.ticket {
             if !tickets.insert(ticket.ticket_pub) || ticket_used(conn, &ticket.ticket_pub)? {
@@ -897,12 +978,17 @@ pub fn tofu_from_rows(conn: &Connection, now: i64) -> Result<RefreshReport> {
     })
 }
 
-/// This device's whole store, for a joiner it pairs.
+/// This device's whole store, for a joiner it pairs, with where it first saw each entry's
+/// certificate, `left` record and ticket announcement (R-23).
 pub fn export(conn: &Connection) -> Result<TrustExport> {
+    let positions = Positions::load(conn)?;
     Ok(TrustExport {
         entries: entries(conn)?
             .into_iter()
             .map(|e| ExportEntry {
+                cert_seen: positions.seen(e.device, SeenWhat::Cert),
+                left_seen: positions.seen(e.device, SeenWhat::Left),
+                ticket_seen: positions.announced(&e),
                 cert: e.cert.to_b64(),
                 state: e.state,
                 record: e.state_record.map(|r| r.to_b64()),
@@ -914,10 +1000,13 @@ pub fn export(conn: &Connection) -> Result<TrustExport> {
 }
 
 /// Seeds an empty store from a holder's export, received over the authenticated pairing channel:
-/// it must contain the `holder`'s own certificate in state `trusted`, and every entry must verify
-/// (its certificate on its own and in this vault; a `left` record signed by its subject, a
-/// `removed` record by another entry of the export; no record for a `trusted` entry). Anything
-/// wrong refuses the whole export and writes nothing.
+/// it must contain the `holder`'s own certificate in state `trusted`, at most one `trusted` Kit,
+/// and every entry must verify (its certificate on its own and in this vault; a `left` record
+/// signed by its subject, a `removed` record by another entry of the export; no record for a
+/// `trusted` entry; a ticket position only for a certificate with a ticket). Anything wrong
+/// refuses the whole export and writes nothing. The holder's positions replace whatever this
+/// device noted for the exported devices (a join's snapshot restore notes its own position for
+/// everything, R-23), so the joiner leaves out for their issuer exactly what the holder does.
 pub fn import_export(
     conn: &Connection,
     export: &TrustExport,
@@ -947,6 +1036,13 @@ pub fn import_export(
         Some((_, item)) if item.state == TrustState::Trusted => {}
         _ => return Err(invalid()),
     }
+    let trusted_kits = certs
+        .values()
+        .filter(|(cert, item)| cert.body.kind == CertKind::Kit && item.state == TrustState::Trusted)
+        .count();
+    if trusted_kits > 1 {
+        return Err(invalid());
+    }
     let mut checked = Vec::with_capacity(certs.len());
     for (device, (cert, item)) in &certs {
         let record = item
@@ -970,6 +1066,15 @@ pub fn import_export(
             if r.subject != *device || r.vault_id != vault {
                 return Err(invalid());
             }
+        }
+        if item.ticket_seen.is_some() && cert.ticket.is_none() {
+            return Err(invalid());
+        }
+        for pos in [item.cert_seen, item.left_seen, item.ticket_seen]
+            .into_iter()
+            .flatten()
+        {
+            position(pos).map_err(|_| invalid())?;
         }
         checked.push((cert, item, record));
     }
@@ -998,6 +1103,31 @@ pub fn import_export(
                     ],
                 )?;
             }
+            let device = cert.body.device;
+            conn.execute(
+                "DELETE FROM sync_trust_seen WHERE device = ?1",
+                [device.to_hex()],
+            )?;
+            for (what, pos) in [
+                (SeenWhat::Cert, item.cert_seen),
+                (SeenWhat::Left, item.left_seen),
+            ] {
+                if let Some(pos) = pos {
+                    note_seen(conn, device, what, pos)?;
+                }
+            }
+            if let (Some(ticket), Some(pos)) = (&cert.ticket, item.ticket_seen) {
+                conn.execute(
+                    "INSERT INTO sync_tickets (ticket_pub, issuer, pos) VALUES (?1, ?2, ?3) \
+                     ON CONFLICT(ticket_pub) DO UPDATE SET issuer = excluded.issuer, \
+                       pos = excluded.pos",
+                    params![
+                        ticket.ticket_pub.to_vec(),
+                        cert.body.issuer_device.to_hex(),
+                        position(pos)?
+                    ],
+                )?;
+            }
         }
         Ok(())
     })
@@ -1007,12 +1137,13 @@ pub fn import_export(
 /// its recipients' certificates, endorsed by the signer, are pinned where this device has none (a
 /// pinned one stays) and marked `confirmed`; its removal records, and the Kit's `replaces` record,
 /// move their subjects to `removed`, cut off at `to_epoch`; then its Kit is pinned (where none is)
-/// and `confirmed`. The caller has checked the bundle and its signer (pinned, trusted). Every
-/// certificate must verify (the Kit's must be a kind 5), every removal record must count as
-/// `refresh` judges it once the bundle's certificates are in (its signer pinned and speaking at
-/// the record's time), and the Kit must not be a second one once the removals are applied, or
-/// nothing is written. A removal naming this device is not applied but returned: the caller ends
-/// sync here (spec §7.4). One savepoint.
+/// and `confirmed`. The signer must `may_speak` here with exactly this certificate (pinned,
+/// `trusted`, not left out for its issuer: R-22; the caller checks the bundle's signature with
+/// `speaker`). Every certificate must verify (the Kit's must be a kind 5), every removal record
+/// must count as `refresh` judges it once the bundle's certificates are in (its signer pinned,
+/// speaking at the record's time and not left out for its issuer), and the Kit must not be a
+/// second one once the removals are applied, or nothing is written. A removal naming this device
+/// is not applied but returned: the caller ends sync here (spec §7.4). One savepoint.
 pub fn import_bundle(
     conn: &Connection,
     signer_cert: &Certificate,
@@ -1039,6 +1170,13 @@ pub fn import_bundle(
         .chain(kit.as_ref().and_then(|k| k.replaces))
         .collect();
     in_savepoint(conn, "sync_trust_bundle", || {
+        // Before anything is pinned or confirmed: the bundle's endorsements are worth only what
+        // its signer may say.
+        if !speaks_now(&Store::load(conn)?, signer_cert) {
+            return Err(refused(
+                "a key change is signed by a device that may not speak here",
+            ));
+        }
         for cert in &certs {
             pin_endorsed(conn, cert, now)?;
         }
@@ -1075,6 +1213,26 @@ pub fn import_bundle(
         }
         Ok(about_me)
     })
+}
+
+/// Whether `cert` is pinned in `store` exactly and its device may speak now.
+fn speaks_now(store: &Store, cert: &Certificate) -> bool {
+    store
+        .get(&cert.body.device)
+        .is_some_and(|pinned| &pinned.cert == cert)
+        && store.may_speak(&cert.body.device)
+}
+
+/// The entry of the device `cert` names when it is pinned with exactly `cert` and may speak now
+/// (R-22): `trusted` and not left out for its issuer (`IssuerRemoved`, `LateVouch`,
+/// `IssuerUnknown`; a `confirmed` entry never is). Whoever signs a key change must be one
+/// (`rekey::pickup`).
+pub fn speaker(conn: &Connection, cert: &Certificate) -> Result<Option<TrustEntry>> {
+    let mut store = Store::load(conn)?;
+    if !speaks_now(&store, cert) {
+        return Ok(None);
+    }
+    Ok(store.entries.remove(&cert.body.device))
 }
 
 /// A certificate a verified key change endorses: pinned where this device has none (unless its
@@ -1234,6 +1392,57 @@ pub fn note_seen(conn: &Connection, device: DeviceId, what: SeenWhat, pos: u64) 
     Ok(())
 }
 
+/// Notes `value`, a `cert` or `left_record` value of `device`'s row an applied change or a
+/// restored snapshot brought at relay position `pos`, as a sighting (`note_seen`) only when the
+/// row now holds it (the merge kept it) and it verifies: a certificate on its own in this vault
+/// and for this row; a `left` record signed by its subject's pinned key, or else by the key of the
+/// row's own certificate (R-27). So junk, or a value the merge discarded, never moves a first
+/// sighting earlier. Nothing is noted while no vault is bound.
+pub fn note_sighting(
+    conn: &Connection,
+    device: DeviceId,
+    what: SeenWhat,
+    value: &str,
+    pos: u64,
+) -> Result<()> {
+    let Some(vault) = bound_vault(conn)? else {
+        return Ok(());
+    };
+    let held: Option<(Option<String>, Option<String>)> = conn
+        .query_row(
+            "SELECT cert, left_record FROM sync_devices WHERE id = ?1",
+            [device.to_hex()],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?;
+    let Some((cert, left)) = held else {
+        return Ok(());
+    };
+    let row = DeviceRow {
+        id: device,
+        cert,
+        left,
+        removal: None,
+    };
+    let counts = match what {
+        SeenWhat::Cert => row.cert.as_deref() == Some(value) && row_cert(&row, &vault).is_some(),
+        SeenWhat::Left => {
+            let key = match entry(conn, device)? {
+                Some(pinned) => Some(pinned.sign_pub),
+                None => row_cert(&row, &vault).map(|c| c.body.sign_pub),
+            };
+            row.left.as_deref() == Some(value)
+                && row_record(Some(value), RecordType::Left, device, &vault)
+                    .zip(key)
+                    .is_some_and(|(record, key)| record.verify(&key).is_ok())
+        }
+    };
+    if counts {
+        note_seen(conn, device, what, pos)?;
+    }
+    Ok(())
+}
+
 /// Records that `issuer` announced the join ticket `ticket_pub` at relay position `pos`
 /// (`sync_tickets`, Local; the first one wins).
 pub fn note_ticket(
@@ -1309,17 +1518,20 @@ impl Positions {
         self.seen.get(&(device, what)).copied()
     }
 
-    /// Where `issuer` stopped speaking in the log: where its `left` record was first seen, or
-    /// where its earliest re-join successor's certificate was, whichever comes first. `None` when
-    /// neither was seen (it came by a vetted path: an export, a bundle, this device).
-    fn end_of(&self, store: &Store, issuer: &TrustEntry) -> Option<u64> {
+    /// Where `issuer` stopped speaking in the log, as `entry` is judged: where its `left` record
+    /// was first seen, or where its earliest re-join successor's certificate (other than `entry`'s
+    /// own) was, whichever comes first. `None` when neither was seen (it came by a vetted path: an
+    /// export without positions, a bundle, this device).
+    fn end_of(&self, store: &Store, issuer: &TrustEntry, entry: DeviceId) -> Option<u64> {
         let left = (issuer.state != TrustState::Trusted)
             .then(|| self.seen(issuer.device, SeenWhat::Left))
             .flatten();
         let successor = store
             .entries
             .values()
-            .filter(|e| e.kind == CertKind::Rejoin && e.issuer == issuer.device)
+            .filter(|e| {
+                e.kind == CertKind::Rejoin && e.issuer == issuer.device && e.device != entry
+            })
             .filter_map(|e| self.seen(e.device, SeenWhat::Cert))
             .min();
         match (left, successor) {
@@ -1328,15 +1540,20 @@ impl Positions {
         }
     }
 
+    /// Where `entry`'s issuer announced its join ticket, if it did.
+    fn announced(&self, entry: &TrustEntry) -> Option<u64> {
+        entry
+            .ticket_pub
+            .and_then(|t| self.tickets.get(&t))
+            .filter(|(by, _)| *by == entry.issuer)
+            .map(|(_, pos)| *pos)
+    }
+
     /// Where `entry`'s vouch was first seen: its certificate, or the announcement of its join
     /// ticket by its issuer, whichever comes first. `None` when neither was seen.
     fn vouch_of(&self, entry: &TrustEntry) -> Option<u64> {
         let cert = self.seen(entry.device, SeenWhat::Cert);
-        let ticket = entry
-            .ticket_pub
-            .and_then(|t| self.tickets.get(&t))
-            .filter(|(by, _)| *by == entry.issuer)
-            .map(|(_, pos)| *pos);
+        let ticket = self.announced(entry);
         match (cert, ticket) {
             (Some(a), Some(b)) => Some(a.min(b)),
             (a, b) => a.or(b),
@@ -1345,13 +1562,15 @@ impl Positions {
 }
 
 /// Every entry left out for its issuer (revision §3.1), computed to a fixpoint: not `confirmed`,
-/// not this device, and its issuer is `removed` here or is itself in the set for that
-/// (`IssuerRemoved`); or its issuer left or was superseded and its vouch was first seen after the
-/// issuer's end (`LateVouch`, `Positions::end_of`; equal positions, one restored snapshot, are in
-/// time; an unknown position on either side is in time: the entry or the end came by a vetted
-/// path), or its issuer is itself in the set for that (`LateVouch`). Entries of every state take
-/// part, so a chain through a device that has since left still drops. A `confirmed` entry and this
-/// device are never in the set and stop the chain.
+/// not this device, not a genesis, and its issuer is `removed` here or is itself in the set for
+/// that (`IssuerRemoved`); or its issuer left or was superseded and its vouch was not first seen
+/// before the issuer's end (`LateVouch`, `Positions::end_of`; equal positions, which only one
+/// restored snapshot gives, cannot be told apart and are late, R-23; an unknown position on either
+/// side is in time: the entry or the end came by a vetted path); or its issuer is not pinned here
+/// (`IssuerUnknown`, R-23); or its issuer is itself in the set for one of the last two, which it
+/// passes on. Entries of every state take part, so a chain through a device that has since left
+/// still drops. A `confirmed` entry and this device are never in the set and stop the chain.
+/// What is in the set also speaks for nothing (R-22).
 fn excluded_by_issuer(
     store: &Store,
     positions: &Positions,
@@ -1369,17 +1588,20 @@ fn excluded_by_issuer(
                 continue;
             }
             let Some(issuer) = store.get(&entry.issuer) else {
+                out.insert(entry.device, ExclusionReason::IssuerUnknown);
+                changed = true;
                 continue;
             };
             let reason = if issuer.state == TrustState::Removed
                 || out.get(&issuer.device) == Some(&ExclusionReason::IssuerRemoved)
             {
                 Some(ExclusionReason::IssuerRemoved)
-            } else if out.get(&issuer.device) == Some(&ExclusionReason::LateVouch) {
-                Some(ExclusionReason::LateVouch)
+            } else if let Some(passed) = out.get(&issuer.device) {
+                Some(*passed)
             } else if issuer.state == TrustState::Left || store.superseded(&issuer.device) {
-                let late = match (positions.vouch_of(entry), positions.end_of(store, issuer)) {
-                    (Some(vouch), Some(end)) => vouch > end,
+                let end = positions.end_of(store, issuer, entry.device);
+                let late = match (positions.vouch_of(entry), end) {
+                    (Some(vouch), Some(end)) => vouch >= end,
                     _ => false,
                 };
                 late.then_some(ExclusionReason::LateVouch)
@@ -1413,47 +1635,80 @@ fn newest_clock_secs(conn: &Connection) -> Result<BTreeMap<DeviceId, i64>> {
         .collect())
 }
 
+/// Whether a `sync_devices` row's `cert` is a Kit's own certificate (kind 5) that verifies on
+/// its own in `vault` and names this row: the only row that is a Kit's, whatever its `platform`
+/// says (a row that only calls itself `recoveryKit` is an ordinary unverified row, R-26).
+pub(crate) fn is_kit_row(row_id: DeviceId, cert: Option<&str>, vault: &[u8; 16]) -> bool {
+    cert.and_then(|c| Certificate::from_b64(c).ok())
+        .is_some_and(|c| {
+            c.body.kind == CertKind::Kit
+                && c.body.device == row_id
+                && verified_in(&c, vault).is_ok()
+        })
+}
+
+/// The Kit a new key is sealed to (revision §2.5): among the `trusted` Kits not left out for
+/// their creator (R-24), the `confirmed` one, else the only one; none when that is not one Kit
+/// (never chosen by ID; the store holds at most one `trusted` Kit unless something is wrong).
+fn sealing_kit(store: &Store) -> Option<TrustEntry> {
+    let usable: Vec<&TrustEntry> = store
+        .entries
+        .values()
+        .filter(|e| {
+            e.kind == CertKind::Kit && e.state == TrustState::Trusted && !store.silenced(&e.device)
+        })
+        .collect();
+    let confirmed: Vec<&TrustEntry> = usable.iter().copied().filter(|e| e.confirmed).collect();
+    let pick = if confirmed.is_empty() {
+        usable
+    } else {
+        confirmed
+    };
+    match pick.as_slice() {
+        [one] => Some((*one).clone()),
+        [] => None,
+        _ => {
+            log::warn!("[SYNC] More than one Recovery Kit could be sealed to; none is");
+            None
+        }
+    }
+}
+
 /// Who would receive a new key if `removing` were removed now (revision §3.1): every pinned
 /// `trusted` device entry, this device included, minus `removing`, minus superseded IDs that
 /// wrote nothing after their successor appeared (O11), minus the entries `excluded_by_issuer`
-/// leaves out (`IssuerRemoved`, `LateVouch`; never this device). Every other device of the list
-/// or the store comes with its reason. The Kit is returned apart (`Recipients::kit`, the `trusted`
-/// kind-5 entry) and never listed otherwise, nor is a Kit's row (`platform = 'recoveryKit'`) that
-/// is not pinned. Refuses more than 64 recipients (`validation.syncTooManyDevices`); what is left
-/// out does not count.
+/// leaves out (`IssuerRemoved`, `LateVouch`, `IssuerUnknown`; never this device). Every other
+/// device of the list or the store comes with its reason. The Kit is returned apart
+/// (`Recipients::kit`, `sealing_kit`) and never listed otherwise, nor is the row of a Kit that is
+/// not pinned (`is_kit_row`). Refuses more than 64 recipients (`validation.syncTooManyDevices`);
+/// what is left out does not count.
 pub fn recipients(conn: &Connection, removing: &[DeviceId]) -> Result<Recipients> {
-    let own = this_device(conn)?;
     let store = Store::load(conn)?;
-    let positions = Positions::load(conn)?;
+    let vault = vault_id(conn)?;
     // Each row: whether it has a public key, and whether it is a Kit's.
     let mut rows: BTreeMap<DeviceId, (bool, bool)> = BTreeMap::new();
-    let mut stmt = conn
-        .prepare("SELECT id, public_key IS NOT NULL, platform = 'recoveryKit' FROM sync_devices")?;
+    let mut stmt = conn.prepare("SELECT id, public_key IS NOT NULL, cert FROM sync_devices")?;
     for row in stmt.query_map([], |r| {
         Ok((
             r.get::<_, String>(0)?,
             r.get::<_, bool>(1)?,
-            r.get::<_, Option<bool>>(2)?,
+            r.get::<_, Option<String>>(2)?,
         ))
     })? {
-        let (id, has_key, kit_row) = row?;
+        let (id, has_key, cert) = row?;
         if let Ok(id) = DeviceId::from_hex(&id) {
-            rows.insert(id, (has_key, kit_row.unwrap_or(false)));
+            rows.insert(id, (has_key, is_kit_row(id, cert.as_deref(), &vault)));
         }
     }
     let clocks = newest_clock_secs(conn)?;
     let removing: BTreeSet<DeviceId> = removing.iter().copied().collect();
-    let by_issuer = excluded_by_issuer(&store, &positions, own);
     let devices: BTreeSet<DeviceId> = store.entries.keys().chain(rows.keys()).copied().collect();
     let mut included = Vec::new();
     let mut excluded = Vec::new();
-    let mut kit = None;
+    let kit = sealing_kit(&store);
     for device in devices {
         let entry = store.get(&device);
-        if let Some(entry) = entry.filter(|e| e.kind == CertKind::Kit) {
-            if entry.state == TrustState::Trusted && kit.is_none() {
-                kit = Some(entry.clone());
-            }
+        if entry.is_some_and(|e| e.kind == CertKind::Kit) {
             continue;
         }
         if entry.is_none() && rows.get(&device).is_some_and(|(_, kit_row)| *kit_row) {
@@ -1464,9 +1719,10 @@ pub fn recipients(conn: &Connection, removing: &[DeviceId]) -> Result<Recipients
             Some(entry) => match entry.state {
                 TrustState::Left => Some(ExclusionReason::Left),
                 TrustState::Removed => Some(ExclusionReason::Removed),
-                TrustState::Trusted => by_issuer.get(&device).copied().or_else(|| {
-                    store.successor_at.get(&device).and_then(|since| {
-                        let wrote_since = clocks.get(&device).is_some_and(|at| at > since);
+                TrustState::Trusted => store.excluded.get(&device).copied().or_else(|| {
+                    store.successors.get(&device).and_then(|successors| {
+                        let wrote_since =
+                            clocks.get(&device).is_some_and(|at| *at > successors.since);
                         (!wrote_since).then_some(ExclusionReason::SupersededQuiet)
                     })
                 }),

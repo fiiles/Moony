@@ -821,6 +821,12 @@ pub(super) fn wake_engine(app: &AppHandle) {
 /// until the device list grows): a device the holder just paired shows up in its list when it
 /// pulls. Nothing while no engine runs.
 pub(super) fn fast_poll_engine(app: &AppHandle) {
+    // The count is taken here, before the window opens: a round already in flight may pull the new
+    // device at any moment
+    let baseline = app
+        .state::<Database>()
+        .with_conn(crate::services::sync::devices::count_devices)
+        .ok();
     if let Some(handle) = app
         .state::<SyncEngineState>()
         .0
@@ -828,7 +834,7 @@ pub(super) fn fast_poll_engine(app: &AppHandle) {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .as_ref()
     {
-        handle.fast_poll();
+        handle.fast_poll(baseline);
     }
 }
 

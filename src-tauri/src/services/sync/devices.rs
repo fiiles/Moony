@@ -116,6 +116,17 @@ pub fn device_row(conn: &Connection, device: DeviceId) -> Result<Option<(String,
         .optional()?)
 }
 
+/// How many devices the list holds (rows not removed): a plain count, cheap enough to ask every few
+/// seconds, where `list_devices` reads the clock index too.
+pub fn count_devices(conn: &Connection) -> Result<usize> {
+    let n: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM sync_devices WHERE removed = 0",
+        [],
+        |r| r.get(0),
+    )?;
+    Ok(usize::try_from(n).unwrap_or(0))
+}
+
 /// The devices of this account as Settings lists them: this device first, then the newest change
 /// first (a device without one last), then by name. A device that re-joined or turned sync off
 /// keeps its old row until phase 5's removal. `last_active_at` of this device is its last
@@ -234,6 +245,27 @@ mod tests {
             .unwrap()
             .map(|r| r.unwrap())
             .collect()
+    }
+
+    #[test]
+    fn count_devices_counts_the_rows_not_removed() {
+        let conn = migrated();
+        assert_eq!(count_devices(&conn).unwrap(), 0);
+        state::enable(&conn, DEVICE).unwrap();
+        record_this_device(&conn, "MacBook", &[0x01; 32], 1_800_000_000).unwrap();
+        conn.execute(
+            "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
+             VALUES (?1, NULL, 'iPhone', 'ios', '1.0.0', 1_850_000_000)",
+            [DeviceId([9; 16]).to_hex()],
+        )
+        .unwrap();
+        assert_eq!(count_devices(&conn).unwrap(), 2);
+        conn.execute(
+            "UPDATE sync_devices SET removed = 1 WHERE id = ?1",
+            [DeviceId([9; 16]).to_hex()],
+        )
+        .unwrap();
+        assert_eq!(count_devices(&conn).unwrap(), 1);
     }
 
     #[test]

@@ -155,6 +155,18 @@ pub fn fast_window_open(now: Instant, fast_until: Option<Instant>) -> bool {
     fast_until.is_some_and(|until| now < until)
 }
 
+/// Whether the fast-poll window is done: it ran out, or the device list holds more devices than it
+/// did when the window opened (`baseline`; unknown on either side, it cannot have grown).
+pub fn fast_window_done(
+    now: Instant,
+    fast_until: Option<Instant>,
+    baseline: Option<usize>,
+    count: Option<usize>,
+) -> bool {
+    let grown = matches!((baseline, count), (Some(before), Some(now_count)) if now_count > before);
+    grown || !fast_window_open(now, fast_until)
+}
+
 /// Why a round is asked for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Trigger {
@@ -187,6 +199,9 @@ struct Shared {
     status_dirty: AtomicBool,
     /// The end of the open fast-poll window (`EngineHandle::fast_poll`), if any.
     fast_until: Mutex<Option<Instant>>,
+    /// The number of devices when the window opened (taken by the caller of `fast_poll`, before
+    /// any round that pulls the new device can run).
+    fast_baseline: Mutex<Option<usize>>,
 }
 
 impl Shared {
@@ -227,8 +242,15 @@ impl EngineHandle {
 
     /// Opens a fast-poll window of `FAST_WINDOW`: a round every `FAST_EVERY` until it ends or the
     /// device list grows (a device that was just paired shows up when this device pulls, which
-    /// otherwise waits for the next periodic round). Starts a round now.
-    pub fn fast_poll(&self) {
+    /// otherwise waits for the next periodic round). Starts a round now. `baseline` is the number of
+    /// devices at this moment, counted by the caller: a round already in flight that pulls the new
+    /// device then still closes the window.
+    pub fn fast_poll(&self, baseline: Option<usize>) {
+        *self
+            .shared
+            .fast_baseline
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = baseline;
         *self
             .shared
             .fast_until
@@ -331,6 +353,7 @@ pub fn spawn_with<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
         backing_off: AtomicBool::new(false),
         status_dirty: AtomicBool::new(false),
         fast_until: Mutex::new(None),
+        fast_baseline: Mutex::new(None),
     });
     let (relay, events) = (Arc::new(relay), Arc::new(events));
     let mut policy = SnapshotPolicy::default();
@@ -353,7 +376,6 @@ pub fn spawn_with<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
         started: false,
         last_sent: None,
         retry_at: None,
-        fast_baseline: None,
         next_periodic: Instant::now() + PERIODIC,
         next_poll: Instant::now() + OUTBOX_POLL,
     };
@@ -390,8 +412,6 @@ struct Engine<R, D, E> {
     started: bool,
     last_sent: Option<SyncStatus>,
     retry_at: Option<Instant>,
-    /// The number of devices when the open fast-poll window was first seen.
-    fast_baseline: Option<usize>,
     next_periodic: Instant,
     next_poll: Instant,
 }
@@ -416,9 +436,6 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                 self.next_poll = now + OUTBOX_POLL;
             }
             let fast_until = self.fast_until();
-            if fast_window_open(now, fast_until) && self.fast_baseline.is_none() {
-                self.fast_baseline = self.device_count();
-            }
             let periodic_due = now >= self.next_periodic;
             if periodic_due {
                 self.next_periodic = now + periodic_gap(now, fast_until);
@@ -722,9 +739,7 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
 
     /// The number of devices in the local list; `None` when it cannot be read.
     fn device_count(&self) -> Option<usize> {
-        self.db
-            .with_conn(|conn| devices::list_devices(conn).map(|list| list.len()))
-            .ok()
+        self.db.with_conn(devices::count_devices).ok()
     }
 
     /// Closes the fast-poll window once it ran out or the device list has a device that was not
@@ -732,20 +747,30 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
     fn end_fast_poll_if_done(&mut self, now: Instant) {
         let until = self.fast_until();
         if until.is_none() {
-            self.fast_baseline = None;
             return;
         }
-        let grown = match (self.fast_baseline, self.device_count()) {
-            (Some(before), Some(now_count)) => now_count > before,
-            _ => false,
+        let baseline = *self
+            .shared
+            .fast_baseline
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        // The count is only asked while the window is open and could still grow
+        let count = if fast_window_open(now, until) && baseline.is_some() {
+            self.device_count()
+        } else {
+            None
         };
-        if grown || !fast_window_open(now, until) {
+        if fast_window_done(now, until, baseline, count) {
             *self
                 .shared
                 .fast_until
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
-            self.fast_baseline = None;
+            *self
+                .shared
+                .fast_baseline
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
             // The periodic round after the window is the ordinary one again
             self.next_periodic = Instant::now() + PERIODIC;
         }

@@ -544,6 +544,14 @@
     "staleRates": "Brak aktualnego kursu dla {{currencies}} — wartości używają ostatniego kursu sprzed co najmniej {{days}} dni",
     "fresh": "Dane aktualne"
   },
+  "dataStatus": {
+    "title": "Stan danych",
+    "prices": "Ceny i kursy",
+    "problems_one": "{{count}} problem z danymi",
+    "problems_few": "{{count}} problemy z danymi",
+    "problems_many": "{{count}} problemów z danymi",
+    "problems_other": "{{count}} problemu z danymi"
+  },
   "fxQuality": {
     "missing": "Nie przeliczono na {{currency}}: brak kursu wymiany dla {{currencies}}. Sumy pomijają te pozycje.",
     "estimated": "Niektóre kwoty używają dzisiejszego kursu wymiany, bo kurs z ich dnia nie jest jeszcze dostępny."

@@ -535,6 +535,11 @@
     "staleRates": "没有 {{currencies}} 的当前汇率——数值使用 {{days}}+ 天前的最近汇率",
     "fresh": "数据已是最新"
   },
+  "dataStatus": {
+    "title": "数据状态",
+    "prices": "价格和汇率",
+    "problems_other": "{{count}} 个数据问题"
+  },
   "fxQuality": {
     "missing": "未折算为 {{currency}}：缺少 {{currencies}} 的汇率。合计不包含这些持仓。",
     "estimated": "部分金额使用了今天的汇率，因为当天的汇率尚不可用。"

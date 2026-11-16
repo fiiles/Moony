@@ -5,10 +5,15 @@ import { useTranslation } from 'react-i18next';
 import { Check, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { SyncStatusSection } from '@/components/shell/SyncStatusSection';
 import { portfolioApi, priceApi } from '@/lib/tauri-api';
 import { useSyncStatus } from '@/hooks/sync-context';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
+import { useHistoryRecalculation } from '@/hooks/use-history-recalculation';
 import { FX_HISTORY_KEY, FX_SNAPSHOT_KEY } from '@/hooks/use-fx';
 import { cn } from '@/lib/utils';
+import { dataStatus } from '@/utils/data-status';
+import { syncState } from '@/utils/sync-state';
 import type { ShellStatus, ShellStatusTone } from '@/components/shell/shell-context';
 
 /** Age after which a held currency's newest stored rate counts as stale (mirrors the backend). */
@@ -42,16 +47,24 @@ export function StatusText({
 }
 
 /**
- * Data status in the top bar (design system §5): green when prices are
- * fresh, red-brown when anything is stale, neutral while historical prices
- * load. Clicking opens the detail (stock, crypto and FX age) with a refresh
- * action. A page can replace the text through `useShellPage`.
+ * "Stav dat" (design system §5): the one top-bar indicator for prices, sync and history, at the
+ * right edge. Its label follows `dataStatus()`: a problem is named (or counted) on every page, a
+ * page's own status (`useShellPage`) shows when nothing is wrong, work in progress is neutral and
+ * the calm state is a green "Data aktuální". The popover has a section per source, each with its
+ * own action under it.
  */
 export function DataStatus({ override }: { override?: ShellStatus }) {
   const { t } = useTranslation('common');
+  const { t: tSync } = useTranslation('deviceSync');
   const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isSyncing } = useSyncStatus();
+  const { isSyncing: loadingHistory } = useSyncStatus();
+  const recalculating = useHistoryRecalculation().length > 0;
+  const syncFeature = useDeviceSyncFeature();
+  const { data: deviceSync } = useDeviceSyncStatus();
+  const now = Math.floor(Date.now() / 1000);
+  const syncView = syncFeature ? syncState(deviceSync, now) : null;
 
   const { data: priceStatus, refetch } = useQuery({
     queryKey: ['price-status'],
@@ -68,13 +81,46 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
   // Held currencies whose newest stored rate is more than two weeks old.
   const staleCurrencies = priceStatus?.staleCurrencies ?? [];
 
-  const isStale =
+  const pricesStale =
     !!priceStatus &&
     (priceStatus.stocksStale ||
       priceStatus.cryptoStale ||
       priceStatus.exchangeRatesStale ||
       missingCurrencies.length > 0 ||
       staleCurrencies.length > 0);
+
+  const { tone, label } = dataStatus({
+    pricesStale,
+    sync: syncView,
+    page: override,
+    loadingHistory,
+    recalculating,
+  });
+
+  let text: string;
+  switch (label.kind) {
+    case 'problems':
+      text = t('dataStatus.problems', { count: label.count });
+      break;
+    case 'pricesStale':
+      text = t('priceStatus.stale');
+      break;
+    case 'sync':
+      text = tSync(label.sync.labelKey, { count: label.sync.days });
+      break;
+    case 'page':
+      text = label.text;
+      break;
+    case 'loadingHistory':
+      text = t('sync.loadingHistorical');
+      break;
+    case 'recalculating':
+      text = t('sync.recalculatingHistory');
+      break;
+    case 'fresh':
+      text = t('priceStatus.fresh');
+      break;
+  }
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -103,22 +149,6 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
     return t('priceStatus.daysAgo', { count: Math.floor(hours / 24) });
   };
 
-  let tone: ShellStatusTone;
-  let text: string;
-  if (override) {
-    tone = override.tone ?? 'neutral';
-    text = override.text;
-  } else if (isSyncing) {
-    tone = 'neutral';
-    text = t('sync.loadingHistorical');
-  } else if (isStale) {
-    tone = 'stale';
-    text = t('priceStatus.stale');
-  } else {
-    tone = 'fresh';
-    text = t('priceStatus.fresh');
-  }
-
   const rows: { label: string; stale: boolean; text: string }[] = priceStatus
     ? [
         {
@@ -146,25 +176,28 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
     : [];
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="rounded-r1 px-1 py-0.5 focus-visible:outline-none focus-visible:shadow-focus"
+          className="min-w-0 rounded-r1 px-1 py-0.5 focus-visible:outline-none focus-visible:shadow-focus"
           data-testid="data-status"
-          aria-label={t('priceStatus.title')}
+          aria-label={t('dataStatus.title')}
         >
-          <StatusText tone={tone}>{text}</StatusText>
+          <StatusText tone={tone}>
+            <span className="truncate">{text}</span>
+          </StatusText>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80" align="end">
-        <div className="space-y-4">
-          <div>
-            <h4 className="text-h3 text-ink">{t('priceStatus.title')}</h4>
-            <p className="mt-1 text-caption text-ink-3">{t('priceStatus.description')}</p>
-          </div>
+      <PopoverContent className="w-[340px]" align="end">
+        <h4 className="text-h3 text-ink">{t('dataStatus.title')}</h4>
 
-          <div className="divide-y divide-line-soft text-table">
+        <section className="mt-3">
+          <div className="text-eyebrow uppercase text-ink-4">{t('dataStatus.prices')}</div>
+          {pricesStale && (
+            <p className="mt-1 text-caption text-ink-3">{t('priceStatus.description')}</p>
+          )}
+          <div className="mt-1 divide-y divide-line-soft text-table">
             {rows.map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-4 py-2">
                 <span className="text-ink-3">{row.label}</span>
@@ -191,20 +224,37 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
                 })}
               </p>
             )}
+            {loadingHistory && (
+              <p className="py-2 text-caption text-ink-3">{t('sync.loadingHistorical')}</p>
+            )}
+            {recalculating && (
+              <p className="py-2 text-caption text-ink-3">{t('sync.recalculatingHistory')}</p>
+            )}
           </div>
+          <div className="mt-2.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              loading={isRefreshing}
+              disabled={isRefreshing}
+            >
+              <RefreshCw />
+              {isRefreshing ? t('priceStatus.refreshing') : t('priceStatus.refresh')}
+            </Button>
+          </div>
+        </section>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={handleRefresh}
-            loading={isRefreshing}
-            disabled={isRefreshing}
-          >
-            <RefreshCw />
-            {isRefreshing ? t('priceStatus.refreshing') : t('priceStatus.refresh')}
-          </Button>
-        </div>
+        {syncView && deviceSync && (
+          <div className="mt-4 border-t border-line-soft pt-3.5">
+            <SyncStatusSection
+              status={deviceSync}
+              indicator={syncView}
+              now={now}
+              onNavigate={() => setOpen(false)}
+            />
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

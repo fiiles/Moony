@@ -14,8 +14,9 @@
     "rowMenu": "Alternativ för påminnelsen: {{title}}"
   },
   "status": {
-    "deadline": "{{title}} · {{when}}",
-    "more": "+{{count}}",
+    "count_one": "{{count}} frist",
+    "count_other": "{{count}} frister",
+    "first": "första",
     "title": "Tidsfrister de kommande 14 dagarna",
     "openOverview": "Öppna översikten"
   },

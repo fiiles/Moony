@@ -538,6 +538,12 @@
     "staleRates": "Ingen aktuell kurs för {{currencies}} — värdena använder den senaste kursen från för {{days}}+ dagar sedan",
     "fresh": "Datan är aktuell"
   },
+  "dataStatus": {
+    "title": "Datastatus",
+    "prices": "Priser och kurser",
+    "problems_one": "{{count}} dataproblem",
+    "problems_other": "{{count}} dataproblem"
+  },
   "fxQuality": {
     "missing": "Inte omräknat till {{currency}}: ingen växelkurs för {{currencies}}. Summorna utelämnar de innehaven.",
     "estimated": "Vissa belopp använder dagens växelkurs eftersom kursen för deras dag inte finns ännu."

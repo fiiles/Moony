@@ -14,8 +14,10 @@
     "rowMenu": "Opciones del recordatorio: {{title}}"
   },
   "status": {
-    "deadline": "{{title}} · {{when}}",
-    "more": "+{{count}}",
+    "count_one": "{{count}} plazo",
+    "count_many": "{{count}} plazos",
+    "count_other": "{{count}} plazos",
+    "first": "el primero",
     "title": "Plazos de los próximos 14 días",
     "openOverview": "Abrir resumen"
   },

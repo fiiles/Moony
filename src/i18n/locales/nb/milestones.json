@@ -14,8 +14,9 @@
     "rowMenu": "Påminnelsesvalg: {{title}}"
   },
   "status": {
-    "deadline": "{{title}} · {{when}}",
-    "more": "+{{count}}",
+    "count_one": "{{count}} frist",
+    "count_other": "{{count}} frister",
+    "first": "første",
     "title": "Frister de neste 14 dagene",
     "openOverview": "Åpne oversikten"
   },

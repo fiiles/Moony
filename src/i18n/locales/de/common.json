@@ -538,6 +538,12 @@
     "staleRates": "Kein aktueller Kurs für {{currencies}} — die Werte nutzen den letzten Kurs von vor {{days}}+ Tagen",
     "fresh": "Daten aktuell"
   },
+  "dataStatus": {
+    "title": "Datenstatus",
+    "prices": "Preise und Kurse",
+    "problems_one": "{{count}} Datenproblem",
+    "problems_other": "{{count}} Datenprobleme"
+  },
   "fxQuality": {
     "missing": "Nicht in {{currency}} umgerechnet: kein Wechselkurs für {{currencies}}. Die Summen lassen diese Positionen aus.",
     "estimated": "Einige Beträge nutzen den heutigen Wechselkurs, weil der Kurs ihres Tages noch nicht vorliegt."

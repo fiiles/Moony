@@ -14,8 +14,8 @@
     "rowMenu": "提醒选项：{{title}}"
   },
   "status": {
-    "deadline": "{{title}} · {{when}}",
-    "more": "+{{count}}",
+    "count_other": "{{count}} 个期限",
+    "first": "最早",
     "title": "未来 14 天内的截止日期",
     "openOverview": "打开概览"
   },

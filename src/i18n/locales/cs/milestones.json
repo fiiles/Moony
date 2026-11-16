@@ -14,8 +14,11 @@
     "rowMenu": "Možnosti připomínky: {{title}}"
   },
   "status": {
-    "deadline": "{{title}} · {{when}}",
-    "more": "+{{count}}",
+    "count_one": "{{count}} termín",
+    "count_few": "{{count}} termíny",
+    "count_many": "{{count}} termínu",
+    "count_other": "{{count}} termínů",
+    "first": "první",
     "title": "Termíny do 14 dní",
     "openOverview": "Otevřít přehled"
   },

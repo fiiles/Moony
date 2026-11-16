@@ -14,8 +14,8 @@
     "rowMenu": "リマインダーのオプション：{{title}}"
   },
   "status": {
-    "deadline": "{{title}} · {{when}}",
-    "more": "+{{count}}",
+    "count_other": "期限 {{count}} 件",
+    "first": "最初は",
     "title": "今後14日間の期限",
     "openOverview": "概要を開く"
   },

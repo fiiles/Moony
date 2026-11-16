@@ -215,8 +215,24 @@ Analýza akcií and Sledování akcií (one toggle per `menuPreferences` flag).
   fit a 900 px window; the middle region scrolls, Nastavení and the account stay pinned.
 - Account row: avatar initials, name, "Účet a zámek aplikace"; click opens the existing menu (Pravidla
   kategorizace, Zamknout aplikaci).
-- Top bar status: dot + text. `status--fresh` green for fresh prices, `status--stale` red for stale.
-- Milestones indicator: left of the update status, a neutral `.status` with `ink-2` text, shown only when a deadline (notice deadline, contract or fixed-rate end, maturity, account or promotional-rate end) is at most 14 days away; it names the nearest one ("Spořicí účet · za 10 dní", "+N" for more) and opens a popover with those deadlines. Information, data upkeep and target prices never appear there.
+- Top bar right (spec and prototype `docs/specs/2026-11-16-topbar-status-prototype.html`): what asks
+  for the person first (deadlines, an available update), then a 1 × 14 px `line-strong` rule (only when
+  something stands before it), then **Stav dat** at the right edge.
+- **Stav dat** (`shell/DataStatus.tsx`, rule in `utils/data-status.ts`): the one dot + text indicator for
+  prices, sync and history; there is no separate sync or recalculation indicator. A problem (stale prices,
+  sync stale) is `status--stale` and named, two are counted ("2 problémy s daty"), on every page; then a
+  page's own status (`useShellPage`); then work in progress, neutral (historical prices, history
+  recalculation, a sync round, server out of reach under 7 days); then `status--fresh` "Data aktuální".
+  The popover has a section per source (eyebrow Ceny a kurzy, then Synchronizace while sync is on, above
+  a `line-soft` rule), each with its own small outline button with an icon directly under its rows:
+  Aktualizovat ceny; Synchronizovat with the "Nastavení synchronizace →" link, or Otevřít nastavení
+  once sync needs the person.
+- Deadlines (`shell/MilestonesStatus.tsx`): a calendar icon (never a status dot), shown only when a deadline
+  (notice deadline, contract or fixed-rate end, maturity, account or promotional-rate end) is at most 14
+  days away. One is named ("Spořicí účet · za 10 dní", title truncated at 240 px), more are counted
+  ("4 termíny · první za 4 dny"). The distance is a dark badge at most 7 days away (the agenda chip's
+  rule), plain `ink-3` text otherwise. The popover lists those deadlines. Not shown on Přehled, whose
+  agenda lists the same. Information, data upkeep and target prices never appear there.
 
 ## 6. Components
 
@@ -249,7 +265,7 @@ Each entry names the CSS class in `moony.css` and the React component that imple
 | Empty state | `.empty` | `common/EmptyState.tsx` | Icon in ink-5, title, one sentence, button. |
 | Milestone row | — | `milestones/MilestoneRows.tsx` | Agenda row: a 60 × 42 px date chip on `well` (day and month 12/650, distance under it 10/500 `ink-4`; dark material only for a deadline at most 7 days away, where the distance is `ink-inverse-2`; a crossed target's chip reads "Dnes / cíl"), title 12/650, one sub-line 10/500 `ink-4`, a ghost `icon-sm` '···' (always visible, `ink-4`, named "Možnosti připomínky: {title}" for assistive tech) next to the link, never inside it, opening Skrýt / Připomenout za týden (upkeep: za měsíc; not offered for an item at most 7 days away) / Nepřipomínat …. Upkeep rows use an icon in a `well` square instead of the chip. |
 | Skeleton | `.skeleton` | `ui/skeleton.tsx` | Shaped like the content it replaces; no page spinners. |
-| Breadcrumb, status, back link | `.topbar`, `.crumb`, `.status`, `.back` | `shell/TopBar.tsx`, `shell/DataStatus.tsx` | See §5. |
+| Breadcrumb, status, back link | `.topbar`, `.crumb`, `.status`, `.back` | `shell/TopBar.tsx`, `shell/DataStatus.tsx` (+ `SyncStatusSection.tsx`), `shell/MilestonesStatus.tsx` | See §5. |
 
 Carousel, menubar, navigation-menu, hover-card, aspect-ratio, input-otp and drawer have no place in a
 desktop-only app and are not used. Radix primitives provide the behavior; the design system restyles them.

@@ -541,6 +541,14 @@
     "staleRates": "Pro {{currencies}} chybí aktuální kurz — hodnoty používají kurz starší než {{days}} dní",
     "fresh": "Data aktuální"
   },
+  "dataStatus": {
+    "title": "Stav dat",
+    "prices": "Ceny a kurzy",
+    "problems_one": "{{count}} problém s daty",
+    "problems_few": "{{count}} problémy s daty",
+    "problems_many": "{{count}} problému s daty",
+    "problems_other": "{{count}} problémů s daty"
+  },
   "fxQuality": {
     "missing": "Nepřepočteno na {{currency}}: chybí kurz pro {{currencies}}. Součty tyto pozice nezahrnují.",
     "estimated": "Některé částky používají dnešní kurz, protože kurz jejich dne zatím není k dispozici."

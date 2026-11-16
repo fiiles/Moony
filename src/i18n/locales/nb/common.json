@@ -538,6 +538,12 @@
     "staleRates": "Ingen gjeldende kurs for {{currencies}} — verdiene bruker den siste kursen fra {{days}}+ dager siden",
     "fresh": "Dataene er oppdatert"
   },
+  "dataStatus": {
+    "title": "Datastatus",
+    "prices": "Priser og kurser",
+    "problems_one": "{{count}} dataproblem",
+    "problems_other": "{{count}} dataproblemer"
+  },
   "fxQuality": {
     "missing": "Ikke omregnet til {{currency}}: ingen valutakurs for {{currencies}}. Summene utelater disse beholdningene.",
     "estimated": "Noen beløp bruker dagens valutakurs fordi kursen for deres dag ikke er tilgjengelig ennå."

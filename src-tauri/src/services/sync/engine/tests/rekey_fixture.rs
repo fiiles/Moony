@@ -10,7 +10,10 @@ use super::*;
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
 use crate::services::sync::engine::{run_round, RoundMode, RoundReport};
 use crate::services::sync::identity::{self, cert, trust, Certificate, Issuer};
-use crate::services::sync::rekey::rotate::{self, Outcome, Removal, RemovalMode};
+use crate::services::sync::identity::{KitKeys, KitSecret};
+use crate::services::sync::rekey::kit::{self, KitStorage};
+use crate::services::sync::rekey::rotate::{self, Outcome, Removal};
+use crate::services::sync::relay::Relay;
 use crate::services::sync::{devices, keys, snapshot, state};
 
 pub struct Three {
@@ -125,19 +128,34 @@ pub async fn settle(three: &Three) {
 
 fn no_pairing() {}
 
-/// `remover` removes `removing` in `mode` with the plan as it stands (the person confirmed it).
+/// `remover` removes `removing` with the plan as it stands (the person confirmed it); the Kit
+/// is replaced only where the plan says so.
 pub async fn remove(
     three: &Three,
     remover: DeviceId,
     removing: &[DeviceId],
-    mode: RemovalMode,
 ) -> crate::services::sync::error::SyncResult<Outcome> {
     remove_in(
         &three.vault,
         three.device(remover),
         three.dir.path(),
         removing,
-        mode,
+        false,
+    )
+    .await
+}
+
+/// `device` makes a new Recovery Kit ("Vytvořit novou sadu"): a key change that removes nobody.
+pub async fn new_kit(
+    three: &Three,
+    device: DeviceId,
+) -> crate::services::sync::error::SyncResult<Outcome> {
+    remove_in(
+        &three.vault,
+        three.device(device),
+        three.dir.path(),
+        &[],
+        true,
     )
     .await
 }
@@ -147,17 +165,17 @@ pub async fn remove_in(
     device: &TestConn,
     dir: &Path,
     removing: &[DeviceId],
-    mode: RemovalMode,
+    new_kit: bool,
 ) -> crate::services::sync::error::SyncResult<Outcome> {
-    let consent = rotate::plan(&device.lock(), removing, mode)
+    let consent = rotate::plan(&device.lock(), removing, &[], new_kit)
         .expect("plan")
         .consent;
     rotate::remove(
         &vault.relay,
         device,
         Removal {
-            mode,
             removing,
+            new_kit,
             consent: &consent,
         },
         dir,
@@ -165,6 +183,89 @@ pub async fn remove_in(
         NOW,
     )
     .await
+}
+
+/// `creator` sets the vault's first Recovery Kit up, as setup does (revision §2.2): the Kit's row
+/// with `storage`, its certificate pinned there, the envelope on the sync server; then every
+/// device syncs and pins it (its creator vouches). The Kit's secret.
+pub async fn with_kit(three: &Three, creator: DeviceId, storage: Option<KitStorage>) -> KitSecret {
+    let (secret, envelope, token) = {
+        let conn = three.device(creator).lock();
+        let creds = keys::credentials(&conn).expect("creds").expect("bound");
+        let seed = identity::own_seed(&conn).expect("seed").expect("seed");
+        let own = trust::entry(&conn, creator)
+            .expect("entry")
+            .expect("pinned");
+        let (secret, keys, cert) =
+            kit::create(creator, &seed, &creds.vault_id.0, NOW).expect("Kit");
+        kit::write_row(&conn, &cert, storage, NOW).expect("row");
+        trust::pin_created_kit(&conn, &cert, NOW).expect("pinned");
+        let store = trust::entries(&conn).expect("entries");
+        let confirmed = kit::confirmed_after(&store, std::slice::from_ref(&own), &[], None, &cert);
+        let envelope = kit::seal(&conn, &creds.keys, &cert, &seed, &own.cert, &confirmed, NOW)
+            .expect("envelope");
+        (secret, envelope, keys.token().to_string())
+    };
+    three
+        .vault
+        .relay
+        .put_kit(&three.vault.creds.auth(), &token, &envelope)
+        .await
+        .expect("put_kit");
+    settle(three).await;
+    let kit_id = kit_keys(three, &secret).id();
+    for id in [A, B, C] {
+        let conn = three.device(id).lock();
+        trust::refresh(&conn, NOW).expect("refresh");
+        let entry = trust::entry(&conn, kit_id).expect("entry");
+        assert!(
+            entry.is_some_and(|e| e.state == trust::TrustState::Trusted),
+            "{id:?} pinned the Kit"
+        );
+    }
+    secret
+}
+
+/// What `secret` derives in the test vault.
+pub fn kit_keys(three: &Three, secret: &KitSecret) -> KitKeys {
+    secret.derive(&three.vault.creds.vault_id.0)
+}
+
+/// Where the Kit `kit` is kept, set on `device`'s list as "Vytisknout" and the like would.
+pub fn set_kit_storage(conn: &Connection, kit: DeviceId, storage: Option<KitStorage>) {
+    conn.execute(
+        "UPDATE sync_devices SET kit_storage = ?1 WHERE id = ?2",
+        rusqlite::params![storage.map(KitStorage::as_str), kit.to_hex()],
+    )
+    .expect("storage");
+}
+
+/// A removal record with no key change (what a list-only removal wrote before revision D2; now
+/// only a record that reached a device ahead of its key change looks like this): `remover` signs
+/// the removal of `device` at its epoch into the row (captured) and into its store.
+pub fn record_removal(conn: &Connection, remover: DeviceId, device: DeviceId) {
+    let seed = identity::own_seed(conn).expect("seed").expect("seed");
+    let vault = keys::credentials(conn)
+        .expect("creds")
+        .expect("bound")
+        .vault_id
+        .0;
+    let record = identity::Record::sign(
+        identity::RecordType::Removed,
+        vault,
+        device,
+        remover,
+        NOW,
+        key_epoch(conn),
+        &seed,
+    )
+    .expect("record");
+    conn.execute(
+        "UPDATE sync_devices SET removal_record = ?1, removed = 1 WHERE id = ?2",
+        rusqlite::params![record.to_b64(), device.to_hex()],
+    )
+    .expect("row");
+    trust::mark_removed(conn, &record, None).expect("store");
 }
 
 pub fn key_epoch(conn: &Connection) -> u32 {

@@ -1160,3 +1160,55 @@ R-28. **Notes for later tasks, not built here.**
        next key change) can upload a snapshot that omits a `left` record; a device that later joins or
        catches up from it sees that device as `trusted`. Positions cannot catch an omission; this is
        snapshot integrity, outside these findings.
+
+**Task 17 (removal with the Kit, always rotating).**
+
+R-29. **Bundle v2** (`rekey::bundle`): version byte 0x02, JSON `v: 2`; `kit` is the JSON's last
+     field and is left out when the vault has no Kit (`BundleInput.kit` / `BundleBody.kit`:
+     `KitPart {cert, replaces: Option<Record>}`, the replaced Kit's ID being the record's subject).
+     `build` and `open` refuse a Kit certificate that is not a kind 5 of the vault, a `replaces`
+     that is not a removal, names another device than it is listed under, or removes the new Kit
+     itself. The frozen vector changed; a second vector covers a bundle with a Kit and `replaces`.
+R-30. **The removal API** (`rekey::rotate`): `plan(conn, removing, also_remove, new_kit)` removes
+     the union of `removing` and the ticked `also_remove` (the consent is over the union, so the
+     command may pass the ticks either way); `Removal {removing, new_kit, consent}` takes the
+     union. `Plan {epoch, removing, recipients, excluded, added_by_removing, kit, replaces_kit,
+     consent}`; `Plan::confirming` is gone (the commit confirms every recipient, this device
+     included, and the Kit). `ReplacesKit::{No, CreatorRemoved, Cloud, Asked}` (the wire's
+     `replacesKit`): asked wins; a Kit `copied`, `file` or `cloud` whose creator is removed is
+     `CreatorRemoved`; else `cloud` with any device removed is `Cloud`; `paper` and NULL never.
+     **Nobody removed and no new Kit is refused** (`syncRemovalPlanChanged`: D2 has no "change the
+     key"), and so is removing a Kit's ID. `added_by_removing` descends from the devices asked for
+     (and the replaced Kit), through entries of every state, lists only `trusted` ones and never
+     this device; a ticked device stays listed, so its tick box does not vanish.
+R-31. **Without a Kit there is no Kit part.** A vault with no `trusted` Kit here (`Recipients.kit`
+     `None`) and no new Kit asked rotates with `rotate_token` (no `kit`), the only case that still
+     does; every other change calls `rotate_token_with_kit`. A vault whose server holds a Kit this
+     device has not pinned then gets `400 kit_required` (the change is wiped, an internal error):
+     the way out is "Vytvořit sadu", whose token replaces the server's Kit. Honest vaults made by
+     Task 18 always have one.
+R-32. **The Kit at the commit:** a replaced Kit's removal record is written into its row and
+     applied like the device removals (cut off at the new epoch); the new Kit's row is written by
+     `rekey::kit::write_row` (`kit_storage` NULL until the person saves it: "neuložená") and pinned
+     `trusted` + `confirmed` by `trust::pin_created_kit` (new; R-28), which refuses a Kit not made
+     by this device or a second trusted Kit. `Outcome::{Changed {epoch, removed, kit}, Pending
+     {kit}, …}` carry `rekey::kit::NewKit {secret, id, created_at}` (the seed, for the command to
+     show once; `Debug` without it; `Outcome` is no longer `Clone`). A resolution in the background
+     returns `kit: None`. `RemovalNotDone.kitReplaced` and `KeyChangeNotice.kitReplaced` (the
+     bundle's Kit has `replaces`) are new, both `false` when absent.
+R-33. **The envelope's confirmed set** is computed at `prepare` as what the store will hold after
+     the commit: every `trusted` entry `confirmed` now, minus the removed devices and the replaced
+     Kit, plus every recipient (this device included) and the Kit sealed to; the commit confirms
+     exactly the recipients and that Kit (`rekey::kit::confirmed_after`). Its keys are every epoch
+     with the new key last; heads only from `head::verified_epochs` plus epoch 0's (it starts at
+     0, as in the bundle), never the newest's. The pending JSON is version 2 with an optional
+     `kit` (`envelope`, and `token` with `cert` for a new Kit, `replaces`); `resolve_pending` sends
+     it unchanged. Notices never go to a Kit entry.
+R-34. **`rekey::kit`** (new) is shared with setup (Task 18): `KitStorage` (`paper` < `copied` <
+     `file` < `cloud`), `NewKit`, `create`, `storage`, `write_row`, `confirmed_after`, `seal`
+     (the vault comes from the Kit's certificate).
+R-35. **The list-only test of review finding 3** (a key change signed by a device whose removal
+     record this device already holds) now writes that record by hand
+     (`rekey_fixture::record_removal`): with D2 the case arises only from a server that holds a
+     key change back. Not built here: the Local `sync.key_change_unverified = {by}` of §7.1 (the
+     status's `rejoinBy`); Task 24 writes it with the status field that reads it.

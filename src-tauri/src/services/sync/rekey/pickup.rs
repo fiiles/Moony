@@ -15,8 +15,8 @@
 //!   device's epoch on by exactly one, what it says of older epochs (keys, heads) agrees with what
 //!   this device holds, and the server knows the token of the new key (`vault_info` with it, so a
 //!   signer this device still trusts cannot hand it a key nobody rotated to). Then, in one
-//!   savepoint, the bundle's certificates and removals go into the trust store
-//!   (`trust::import_bundle`), the new key becomes the current one, `sync_epochs` records where
+//!   savepoint, the bundle's certificates, its Kit and its removals (the Kit it replaces among
+//!   them) go into the trust store (`trust::import_bundle`), the new key becomes the current one, `sync_epochs` records where
 //!   the epoch starts (the server's head, provisional until the remover's signed head confirms it:
 //!   `rekey::head`), devices that left or were removed from the list are cut off, `rekey_seen`
 //!   moves on and the person's notice is written.
@@ -380,8 +380,12 @@ fn adopt(conn: &Connection, prepared: Prepared, rekey: &Rekey, now: i64) -> Resu
             conn,
             &body.signer,
             &recipients,
-            // The bundle's Kit is Task 17's (bundle v2, revision §2.5).
-            None,
+            // The vault's Kit after the change: pinned and confirmed, the one it replaces
+            // removed (revision §2.5).
+            body.kit.as_ref().map(|kit| trust::BundleKit {
+                cert: &kit.cert,
+                replaces: kit.replaces.as_ref(),
+            }),
             &removed,
             header.to_epoch,
             now,
@@ -434,6 +438,7 @@ fn adopt(conn: &Connection, prepared: Prepared, rekey: &Rekey, now: i64) -> Resu
                 by: device_name(conn, by)?,
                 at: body.at,
                 removed: removed_names,
+                kit_replaced: body.kit.as_ref().is_some_and(|k| k.replaces.is_some()),
             },
         )?;
         Ok(Step::Adopted {

@@ -2,7 +2,7 @@
 //! All integers are big-endian.
 //!
 //! ```text
-//! header  = "MNYK" ‖ 0x01 ‖ vault_id (16) ‖ from_epoch (u32) ‖ to_epoch (u32) ‖ eph_pub (32)
+//! header  = "MNYK" ‖ 0x02 ‖ vault_id (16) ‖ from_epoch (u32) ‖ to_epoch (u32) ‖ eph_pub (32)
 //! entries = count (u16) ‖ count × ( len (u16) ‖ nonce (24) ‖ ciphertext+tag (len) )
 //!   entry key_i = HKDF-SHA256(salt = vault_id, ikm = X25519(eph_secret, box_pub_i),
 //!                             info = "moony sync rekey seal v1" ‖ eph_pub ‖ box_pub_i ‖ to_epoch)
@@ -17,10 +17,13 @@
 //! ```
 //!
 //! `len` counts the ciphertext with its tag (the nonce has a fixed length). The JSON is
-//! `{"v":1,"by":"<hex>","at":n,"reason":"remove"|"rotate","signer":"<cert b64>",
+//! `{"v":2,"by":"<hex>","at":n,"reason":"remove"|"rotate","signer":"<cert b64>",
 //! "recipients":[{"device":"<hex>","cert":"<b64>"}],"removed":[{"device":"<hex>",
-//! "record":"<b64>"}],"keys":[{"epoch":n,"key":"<b64>","head":h}]}`, `keys` carrying every
-//! epoch up to `from_epoch` (a head the signer does not know is left out). Entries are found by
+//! "record":"<b64>"}],"keys":[{"epoch":n,"key":"<b64>","head":h}],"kit":{"device":"<hex>",
+//! "cert":"<kind-5 cert b64>","replaces":{"device":"<hex>","record":"<b64>"}?}?}`, `keys`
+//! carrying every epoch up to `from_epoch` (a head the signer does not know is left out), `kit`
+//! the vault's Recovery Kit after the change whenever it has one, with the removal of the Kit it
+//! replaces (revision §2.5; version 2 of the bytes and the JSON). Entries are found by
 //! trial decryption, so the server learns their count and nothing else; one ephemeral X25519
 //! pair per bundle; entries are bound to the header and their index, and the body to every entry.
 //!
@@ -47,11 +50,13 @@ use zeroize::Zeroizing;
 
 use crate::error::{AppError, Result};
 use crate::services::sync::hlc::DeviceId;
-use crate::services::sync::identity::{sign_pub, verify_sig, Certificate, Record, SignSeed};
+use crate::services::sync::identity::{
+    sign_pub, verify_sig, CertKind, Certificate, Record, RecordType, SignSeed,
+};
 use crate::services::sync::keys::{os_random, SecretString};
 
 const MAGIC: &[u8; 4] = b"MNYK";
-const VERSION: u8 = 0x01;
+const VERSION: u8 = 0x02;
 const SEAL_INFO: &[u8] = b"moony sync rekey seal v1";
 const BODY_INFO: &[u8] = b"moony sync rekey body v1";
 const SIG_DOMAIN: &[u8] = b"moony rekey v1";
@@ -68,7 +73,7 @@ pub const MAX_RECIPIENT_ENTRIES: usize = 64;
 /// … and at most this many removal notices in one bundle.
 pub const MAX_NOTICE_ENTRIES: usize = 64;
 const MAX_ENTRIES: usize = MAX_RECIPIENT_ENTRIES + MAX_NOTICE_ENTRIES;
-const JSON_VERSION: u32 = 1;
+const JSON_VERSION: u32 = 2;
 
 fn invalid() -> AppError {
     AppError::Internal("sync: a key-change bundle is not valid".into())
@@ -175,6 +180,14 @@ impl fmt::Debug for OldKey {
     }
 }
 
+/// The vault's Recovery Kit as a key change names it (revision §2.5): its kind-5 certificate, and
+/// the removal record of the Kit it replaces when the change makes a new Kit.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KitPart {
+    pub cert: Certificate,
+    pub replaces: Option<Record>,
+}
+
 /// What a bundle is built from. `recipients` and `notices` become entries in their order
 /// (recipients first); `removed` are the body's removal records; `keys` every epoch up to
 /// `from_epoch`.
@@ -191,6 +204,7 @@ pub struct BundleInput<'a> {
     pub reason: Reason,
     pub removed: &'a [Record],
     pub keys: &'a [OldKey],
+    pub kit: Option<&'a KitPart>,
 }
 
 /// A bundle's opened body: who signed it, when and why, the certificates it endorses, the
@@ -203,6 +217,7 @@ pub struct BundleBody {
     pub recipients: Vec<(DeviceId, Certificate)>,
     pub removed: Vec<(DeviceId, Record)>,
     pub keys: Vec<OldKey>,
+    pub kit: Option<KitPart>,
     sig: [u8; 64],
     /// `"moony rekey v1" ‖ header ‖ SHA-256(entries) ‖ JSON`: what `sig` signs (the JSON carries
     /// the older keys, so the buffer is wiped).
@@ -279,6 +294,7 @@ impl fmt::Debug for BundleBody {
             .field("recipients", &self.recipients.len())
             .field("removed", &self.removed.len())
             .field("keys", &self.keys)
+            .field("kit", &self.kit.as_ref().map(|k| k.cert.body.device))
             .finish_non_exhaustive()
     }
 }
@@ -425,7 +441,20 @@ pub(super) fn body_json(input: &BundleInput<'_>) -> Zeroizing<String> {
         .iter()
         .map(|r| (r.subject.to_hex(), r.to_b64()))
         .collect();
-    let plain_len = signer.len()
+    let kit = input.kit.map(|kit| {
+        (
+            kit.cert.body.device.to_hex(),
+            kit.cert.to_b64(),
+            kit.replaces
+                .as_ref()
+                .map(|r| (r.subject.to_hex(), r.to_b64())),
+        )
+    });
+    let kit_len = kit.as_ref().map_or(0, |(d, c, r)| {
+        d.len() + c.len() + r.as_ref().map_or(0, |(d, r)| d.len() + r.len()) + 64
+    });
+    let plain_len = kit_len
+        + signer.len()
         + recipients
             .iter()
             .map(|(d, c)| d.len() + c.len() + 32)
@@ -486,7 +515,23 @@ pub(super) fn body_json(input: &BundleInput<'_>) -> Zeroizing<String> {
         }
         json.push('}');
     }
-    json.push_str("]}");
+    json.push(']');
+    if let Some((device, cert, replaces)) = &kit {
+        json.push_str(",\"kit\":{\"device\":\"");
+        json.push_str(device);
+        json.push_str("\",\"cert\":\"");
+        json.push_str(cert);
+        json.push('"');
+        if let Some((device, record)) = replaces {
+            json.push_str(",\"replaces\":{\"device\":\"");
+            json.push_str(device);
+            json.push_str("\",\"record\":\"");
+            json.push_str(record);
+            json.push_str("\"}");
+        }
+        json.push('}');
+    }
+    json.push('}');
     json
 }
 
@@ -494,7 +539,8 @@ pub(super) fn body_json(input: &BundleInput<'_>) -> Zeroizing<String> {
 /// entry's nonce in order, then the body's), so a test can fix them; production passes
 /// `os_fill`. Refuses `to_epoch` other than `from_epoch + 1`, a signer certificate that is not
 /// `signer`'s, more than `MAX_RECIPIENT_ENTRIES` recipients or `MAX_NOTICE_ENTRIES` notices, a
-/// low-order box key, an older key at or past `to_epoch`, and a result over `MAX_BUNDLE_BYTES`.
+/// low-order box key, an older key at or past `to_epoch`, a Kit certificate that is not a kind 5
+/// or a Kit replacing itself, and a result over `MAX_BUNDLE_BYTES`.
 pub fn build(
     input: &BundleInput<'_>,
     fill: &mut dyn FnMut(&mut [u8]) -> Result<()>,
@@ -520,6 +566,15 @@ pub(super) fn build_with_json(
     }
     if input.keys.iter().any(|old| old.epoch >= input.to_epoch) {
         return Err(refuse("carries a key that is not older"));
+    }
+    if let Some(kit) = input.kit {
+        let replaces_itself = kit
+            .replaces
+            .as_ref()
+            .is_some_and(|r| r.subject == kit.cert.body.device || r.kind != RecordType::Removed);
+        if kit.cert.body.kind != CertKind::Kit || replaces_itself {
+            return Err(refuse("names a Kit that is not one"));
+        }
     }
     let mut eph = Zeroizing::new([0u8; 32]);
     fill(&mut eph[..])?;
@@ -673,6 +728,17 @@ struct BodyIn {
     recipients: Vec<DeviceCertIn>,
     removed: Vec<DeviceRecordIn>,
     keys: Vec<KeyIn>,
+    #[serde(default)]
+    kit: Option<KitIn>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct KitIn {
+    device: String,
+    cert: String,
+    #[serde(default)]
+    replaces: Option<DeviceRecordIn>,
 }
 
 #[derive(Deserialize)]
@@ -708,7 +774,8 @@ fn device_of(hex: &str) -> Result<DeviceId> {
 
 /// Opens and reads the body with `new_key`: every certificate and record decodes and names the
 /// device it is listed under in this vault, `by` is the signer certificate's device, the older
-/// keys are 32 bytes, below `to_epoch` and each epoch once. The signature is not checked here
+/// keys are 32 bytes, below `to_epoch` and each epoch once, the Kit's certificate is a kind 5 and
+/// what it replaces is a removal of another device. The signature is not checked here
 /// (`Unverified::verify`).
 fn open_body(parts: &Parts<'_>, new_key: &[u8; 32]) -> Result<BundleBody> {
     let vault = &parts.header.vault_id;
@@ -778,6 +845,37 @@ fn open_body(parts: &Parts<'_>, new_key: &[u8; 32]) -> Result<BundleBody> {
             head: entry.head,
         });
     }
+    let kit = parsed
+        .kit
+        .as_ref()
+        .map(|k| {
+            let device = device_of(&k.device)?;
+            let cert = Certificate::from_b64(&k.cert).map_err(|_| invalid())?;
+            if cert.body.device != device
+                || &cert.body.vault_id != vault
+                || cert.body.kind != CertKind::Kit
+            {
+                return Err(invalid());
+            }
+            let replaces = k
+                .replaces
+                .as_ref()
+                .map(|r| {
+                    let old = device_of(&r.device)?;
+                    let record = Record::from_b64(&r.record).map_err(|_| invalid())?;
+                    if record.subject != old
+                        || old == device
+                        || &record.vault_id != vault
+                        || record.kind != RecordType::Removed
+                    {
+                        return Err(invalid());
+                    }
+                    Ok(record)
+                })
+                .transpose()?;
+            Ok(KitPart { cert, replaces })
+        })
+        .transpose()?;
     Ok(BundleBody {
         by,
         at: parsed.at,
@@ -786,6 +884,7 @@ fn open_body(parts: &Parts<'_>, new_key: &[u8; 32]) -> Result<BundleBody> {
         recipients,
         removed,
         keys,
+        kit,
         sig,
         signed: signed_message(&parts.header_bytes, &parts.entries_hash, json),
     })

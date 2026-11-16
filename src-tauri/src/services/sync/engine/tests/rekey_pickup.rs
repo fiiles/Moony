@@ -13,12 +13,16 @@ use crate::services::sync::engine::{run_round, RoundMode};
 use crate::services::sync::envelope::vault_token;
 use crate::services::sync::identity::cert::{self, CertFields};
 use crate::services::sync::identity::trust;
+use crate::services::sync::identity::KitSecret;
 use crate::services::sync::identity::{self, CertKind};
 use crate::services::sync::rekey::bundle::{self, BundleInput, OldKey, Reason, Recipient};
+use crate::services::sync::rekey::envelope;
+use crate::services::sync::rekey::kit::KitStorage;
 use crate::services::sync::rekey::pickup::{self, Pickup};
-use crate::services::sync::rekey::rotate::{Outcome, RemovalMode};
+use crate::services::sync::rekey::rotate::Outcome;
 use crate::services::sync::rekey::{self, KeyChangeNotice, RemovedNotice};
 use crate::services::sync::relay::fake::Route;
+use crate::services::sync::relay::Relay;
 use crate::services::sync::relay::RelayError;
 
 /// A key change no honest device made: signed by `signer` (with its certificate), sealing a new
@@ -62,6 +66,7 @@ async fn rotate_by_hand(
                 reason: Reason::Rotate,
                 removed: &[],
                 keys: &older,
+                kit: None,
             },
             &mut bundle::os_fill,
         )
@@ -95,9 +100,7 @@ fn device_removed(conn: &rusqlite::Connection, device: DeviceId) -> bool {
 async fn the_others_pick_the_key_up_and_the_removed_device_turns_off() {
     let three = three().await;
     institution(&three.c.lock(), "c-unsent");
-    let outcome = remove(&three, A, &[C], RemovalMode::Rotate)
-        .await
-        .expect("removed");
+    let outcome = remove(&three, A, &[C]).await.expect("removed");
     assert!(matches!(outcome, Outcome::Changed { epoch: 1, .. }));
     // A's next round sends the removal record under the new key.
     let report = round_of(&three.vault, &three.vault.a).await;
@@ -120,6 +123,7 @@ async fn the_others_pick_the_key_up_and_the_removed_device_turns_off() {
                 by: "Mac".into(),
                 at: NOW,
                 removed: vec!["iPad".into()],
+                kit_replaced: false,
             })
         );
         let entry = trust::entry(&b, C).expect("entry").expect("pinned");
@@ -153,9 +157,7 @@ async fn the_others_pick_the_key_up_and_the_removed_device_turns_off() {
 #[tokio::test]
 async fn a_push_refused_by_the_retired_token_picks_the_key_up_and_sends_again() {
     let three = three().await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     institution(&three.vault.b.lock(), "b-after");
 
     let report = round_of(&three.vault, &three.vault.b).await;
@@ -180,9 +182,7 @@ async fn only_what_never_reached_the_server_is_sealed_again_and_the_chain_holds(
     write_and_seal(&three.vault, &three.vault.b, "b2");
     push(&three.vault.relay, &creds, &[first]).await;
     assert_eq!(unsent_epochs(&three.vault.b.lock()).len(), 2);
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     // A sends its signed head, which B waits for before it applies b1's place (As built 62–63).
     round_of(&three.vault, &three.vault.a).await;
     let ops_before = three.vault.relay.ops().len();
@@ -209,13 +209,9 @@ async fn only_what_never_reached_the_server_is_sealed_again_and_the_chain_holds(
 #[tokio::test]
 async fn a_device_behind_by_two_key_changes_walks_both() {
     let three = three().await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("first");
+    new_kit(&three, A).await.expect("first");
     round_of(&three.vault, &three.vault.a).await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("second");
+    new_kit(&three, A).await.expect("second");
     institution(&three.vault.a.lock(), "a-at-2");
     round_of(&three.vault, &three.vault.a).await;
 
@@ -242,9 +238,7 @@ async fn a_device_behind_by_two_key_changes_walks_both() {
 #[tokio::test]
 async fn a_rotation_above_what_was_seen_is_picked_up() {
     let three = three().await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     let info = three
         .vault
         .relay
@@ -274,9 +268,7 @@ async fn nothing_is_sealed_again_or_pushed_before_the_pull_reaches_the_key_chang
     *tampered.last_mut().expect("tag") ^= 1;
     push(&three.vault.relay, &three.vault.creds, &[tampered]).await;
     write_and_seal(&three.vault, &three.vault.b, "b-waits");
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     pickup::pick_up(&three.vault.relay, &three.vault.b, None, NOW)
         .await
         .expect("pickup");
@@ -305,9 +297,7 @@ async fn a_gap_before_the_key_change_does_not_hold_the_reseal() {
     // C's second envelope arrives without its first: a gap on every other device.
     push(&three.vault.relay, &three.vault.creds, &[c2]).await;
     institution(&three.vault.b.lock(), "b-later");
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     // A sends its signed head, which B waits for before it handles c2's place (As built 62–63).
     round_of(&three.vault, &three.vault.a).await;
 
@@ -487,9 +477,7 @@ async fn a_junk_bundle_pauses_sync() {
 #[tokio::test]
 async fn a_server_that_went_back_after_a_key_change_does_not_stop_the_pull_for_good() {
     let three = three().await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     let rotation_head = *state::epochs(&three.vault.a.lock())
         .expect("epochs")
         .get(&1)
@@ -573,9 +561,7 @@ async fn the_engine_picks_a_key_change_up_in_its_first_round() {
     use super::runtime_loop::{start, until};
     use crate::services::sync::binding::NoBinding;
     let three = three().await;
-    remove(&three, A, &[C], RemovalMode::Rotate)
-        .await
-        .expect("removed");
+    remove(&three, A, &[C]).await.expect("removed");
 
     let b = start(
         &three.vault,
@@ -608,9 +594,7 @@ async fn sealing_again_is_idempotent() {
     let three = three().await;
     write_and_seal(&three.vault, &three.vault.b, "b1");
     write_and_seal(&three.vault, &three.vault.b, "b2");
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     pickup::pick_up(&three.vault.relay, &three.vault.b, None, NOW)
         .await
         .expect("pickup");
@@ -635,4 +619,138 @@ async fn sealing_again_is_idempotent() {
 
 fn first_seq(conn: &rusqlite::Connection) -> i64 {
     count(conn, "SELECT MIN(seq) FROM sync_unsent")
+}
+
+// ── Revision §2.5 (As built R-28): the bundle's Kit ─────────────────────────────────────────
+
+/// A device that picks up a new-Kit change pins the new Kit and confirms it, removes the old one
+/// (before the rows arrive) and tells the person; its own next key change seals to the new Kit.
+#[tokio::test]
+async fn a_pickup_pins_the_bundles_kit_and_the_next_change_seals_to_it() {
+    let three = three().await;
+    let old = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    let old_id = kit_keys(&three, &old).id();
+    let Outcome::Changed { kit: Some(new), .. } = new_kit(&three, A).await.expect("changed") else {
+        panic!("a new Kit");
+    };
+
+    let picked = pickup::pick_up(&three.vault.relay, &three.vault.b, None, NOW)
+        .await
+        .expect("pickup");
+
+    assert_eq!(picked, Pickup::Adopted { epoch: 1, by: A });
+    {
+        let b = three.vault.b.lock();
+        let entry = trust::entry(&b, new.id).expect("entry").expect("pinned");
+        assert_eq!(entry.state, trust::TrustState::Trusted);
+        assert!(entry.confirmed);
+        let old_entry = trust::entry(&b, old_id).expect("entry").expect("pinned");
+        assert_eq!(old_entry.state, trust::TrustState::Removed);
+        assert_eq!(old_entry.cut_off_epoch, Some(1));
+        let notice = notice(&b).expect("notice");
+        assert!(notice.kit_replaced, "{notice:?}");
+        assert!(notice.removed.is_empty());
+    }
+
+    // B removes C next: the envelope is the new Kit's (R-28 regression: before the bundle's Kit
+    // reached `import_bundle`, nothing pinned the replacement here).
+    remove(&three, B, &[C]).await.expect("removed");
+
+    let keys = kit_keys(&three, &new.secret);
+    let read = three
+        .vault
+        .relay
+        .get_kit(&three.vault.creds.vault_id.to_b64(), keys.token())
+        .await
+        .expect("reads");
+    let opened = envelope::open(&read.envelope, &keys).expect("the new Kit opens it");
+    assert_eq!(opened.header.epoch, 2);
+    assert_eq!(opened.by, B);
+}
+
+/// A bundle naming a second Kit with no removal of the first is refused whole.
+#[tokio::test]
+async fn a_bundle_naming_a_second_kit_is_not_taken() {
+    let three = three().await;
+    with_kit(&three, A, Some(KitStorage::Paper)).await;
+    let (seed, cert) = {
+        let c = three.c.lock();
+        let seed = identity::own_seed(&c).expect("seed").expect("seed");
+        let cert = trust::entry(&c, C).expect("entry").expect("pinned").cert;
+        (seed, cert)
+    };
+    let rogue = KitSecret::generate()
+        .expect("seed")
+        .derive(&three.vault.creds.vault_id.0);
+    let rogue_cert = cert::issue_kit(&seed, C, &rogue, NOW).expect("Kit");
+    let creds = three.vault.creds.clone();
+    let recipients: Vec<Recipient> = [A, B, C]
+        .iter()
+        .map(|d| {
+            let e = trust::entry(&three.vault.b.lock(), *d)
+                .expect("entry")
+                .expect("pinned");
+            Recipient {
+                box_pub: e.box_pub,
+                cert: e.cert,
+            }
+        })
+        .collect();
+    let key = Zeroizing::new([0x71; 32]);
+    let older = [OldKey {
+        epoch: 0,
+        key: Zeroizing::new(*creds.keys.current()),
+        head: Some(0),
+    }];
+    let part = bundle::KitPart {
+        cert: rogue_cert,
+        replaces: None,
+    };
+    let bytes = bundle::build(
+        &BundleInput {
+            vault_id: creds.vault_id.0,
+            from_epoch: 0,
+            to_epoch: 1,
+            new_key: &key,
+            recipients: &recipients,
+            notices: &[],
+            signer: &seed,
+            signer_cert: &cert,
+            at: NOW,
+            reason: Reason::Rotate,
+            removed: &[],
+            keys: &older,
+            kit: Some(&part),
+        },
+        &mut bundle::os_fill,
+    )
+    .expect("bundle");
+    let envelope_token = KitSecret::generate()
+        .expect("seed")
+        .derive(&creds.vault_id.0);
+    three
+        .vault
+        .relay
+        .rotate_token_with_kit(
+            &creds.auth(),
+            &vault_token(&key, &creds.vault_id.0),
+            &bytes,
+            crate::services::sync::relay::KitRotation {
+                envelope: &[1, 2, 3],
+                token: Some(envelope_token.token()),
+            },
+        )
+        .await
+        .expect("C rotates");
+
+    let picked = pickup::pick_up(&three.vault.relay, &three.vault.b, None, NOW)
+        .await
+        .expect("pickup");
+
+    assert_eq!(picked, Pickup::Unverified);
+    let b = three.vault.b.lock();
+    assert_eq!(key_epoch(&b), 0);
+    assert!(trust::entry(&b, part.cert.body.device)
+        .expect("entry")
+        .is_none());
 }

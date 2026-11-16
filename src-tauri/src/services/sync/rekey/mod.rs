@@ -9,6 +9,7 @@
 pub mod bundle;
 pub mod envelope;
 pub mod head;
+pub mod kit;
 pub mod pickup;
 pub mod reseal;
 pub mod rotate;
@@ -25,8 +26,9 @@ use crate::services::sync::{binding, devices, setup, state};
 
 /// What another device's key change tells the person (phase 5 §7.3), kept in the Local
 /// `app_config` key `state::KEY_CHANGE_NOTICE_KEY` until dismissed: who changed the key (its
-/// name as this device knew it), when (the bundle's signed time) and the names of the devices it
-/// removed.
+/// name as this device knew it), when (the bundle's signed time), the names of the devices it
+/// removed and whether it made a new Recovery Kit (revision §6.4, "vytvořilo novou záchrannou
+/// sadu").
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct KeyChangeNotice {
@@ -36,6 +38,8 @@ pub struct KeyChangeNotice {
     pub at: i64,
     #[serde(rename = "removed")]
     pub removed: Vec<String>,
+    #[serde(rename = "kitReplaced", default)]
+    pub kit_replaced: bool,
 }
 
 /// Why sync went off on this device (phase 5 §7.4), kept in the Local `app_config` key
@@ -70,8 +74,9 @@ pub struct KeyChangeOverrun {
 /// A removal or key change the person confirmed that a background resolution found not done
 /// (phase 5 As built 69): another device changed the key first, or the server refused it. Kept in
 /// the Local `app_config` key `state::REMOVAL_NOT_DONE_KEY` until dismissed: who changed the key
-/// first (its name, when picked up), the names of the devices the person meant to remove, and
-/// whether that other change had already removed every one of them.
+/// first (its name, when picked up), the names of the devices the person meant to remove,
+/// whether that other change had already removed every one of them, and whether the change was
+/// to make a new Recovery Kit, which then never started working (revision §2.7, §6.4).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RemovalNotDone {
@@ -81,6 +86,8 @@ pub struct RemovalNotDone {
     pub devices: Vec<String>,
     #[serde(rename = "alreadyRemoved")]
     pub already_removed: bool,
+    #[serde(rename = "kitReplaced", default)]
+    pub kit_replaced: bool,
 }
 
 /// A device's name as this device's list knows it, or the first 8 hex characters of its ID.

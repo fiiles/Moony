@@ -514,6 +514,35 @@ pub fn seed_own(conn: &Connection, cert: &Certificate, now: i64) -> Result<()> {
     }
 }
 
+/// Pins a Kit this device made (revision §2.3; As built R-28: a `refresh` never pins a
+/// replacement Kit, so its creator does, at setup or when its key change commits): a kind 5 of
+/// this vault that verifies, issued by this device with its pinned signing key, while no other
+/// Kit is `trusted` here (a Kit it replaces is removed first). Pinned `trusted` and `confirmed`;
+/// the same certificate again only confirms it.
+pub fn pin_created_kit(conn: &Connection, cert: &Certificate, now: i64) -> Result<()> {
+    let own = this_device(conn)?;
+    let own_entry = entry(conn, own)?.ok_or_else(|| refused("this device is not pinned"))?;
+    if cert.body.kind != CertKind::Kit
+        || cert.body.issuer_device != own
+        || cert.body.issuer_sign_pub != own_entry.sign_pub
+    {
+        return Err(refused("not a Kit this device made"));
+    }
+    verified_in(cert, &vault_id(conn)?)?;
+    in_savepoint(conn, "sync_trust_own_kit", || {
+        if Store::load(conn)?.trusted_kit_other_than(cert.body.device) {
+            return Err(refused("another Kit is trusted here"));
+        }
+        match entry(conn, cert.body.device)? {
+            Some(pinned) if &pinned.cert == cert => {}
+            Some(_) => return Err(refused("the Kit's ID is pinned with another certificate")),
+            None => pin(conn, cert, now)?,
+        }
+        set_confirmed(conn, cert.body.device)?;
+        Ok(())
+    })
+}
+
 /// Whether removal and key changes are possible here: this device's own certificate is pinned.
 /// A vault set up before phase 5 has none (spec §5.5, O3).
 pub fn is_supported(conn: &Connection) -> Result<bool> {

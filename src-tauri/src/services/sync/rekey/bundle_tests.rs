@@ -7,8 +7,8 @@ use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::Zeroizing;
 
 use super::bundle::{
-    body_json, build, build_with_json, open, open_body_with_key, BundleInput, Header, Notice,
-    OldKey, Opened, Reason, Recipient, HEADER_LEN, MAX_BUNDLE_BYTES,
+    body_json, build, build_with_json, open, open_body_with_key, BundleInput, Header, KitPart,
+    Notice, OldKey, Opened, Reason, Recipient, HEADER_LEN, MAX_BUNDLE_BYTES,
 };
 use crate::error::Result;
 use crate::services::sync::hlc::DeviceId;
@@ -111,6 +111,7 @@ fn bundle_with(fill_start: u8, to_epoch: u32) -> Vec<u8> {
         reason: Reason::Remove,
         removed: std::slice::from_ref(&removal),
         keys: &keys,
+        kit: None,
     };
     build(&input, &mut counter(fill_start)).expect("bundle")
 }
@@ -150,7 +151,7 @@ fn the_bundle_matches_the_frozen_vector() {
     let eph_pub = PublicKey::from(&StaticSecret::from([0x01; 32])).to_bytes();
     let mut header = Vec::new();
     header.extend_from_slice(b"MNYK");
-    header.push(0x01);
+    header.push(0x02);
     header.extend_from_slice(&VAULT);
     header.extend_from_slice(&0u32.to_be_bytes());
     header.extend_from_slice(&1u32.to_be_bytes());
@@ -212,7 +213,7 @@ fn the_bundle_matches_the_frozen_vector() {
         .expect("the body");
     let json = std::str::from_utf8(&plain[64..]).expect("JSON");
     assert!(json.starts_with(&format!(
-        "{{\"v\":1,\"by\":\"{}\",\"at\":{AT},\"reason\":\"remove\",\"signer\":\"{}\",\
+        "{{\"v\":2,\"by\":\"{}\",\"at\":{AT},\"reason\":\"remove\",\"signer\":\"{}\",\
          \"recipients\":[{{\"device\":\"{}\",\"cert\":\"",
         A.id().to_hex(),
         A.cert().to_b64(),
@@ -233,7 +234,7 @@ fn the_bundle_matches_the_frozen_vector() {
         .expect("A's signature over the domain, header, entries hash and JSON");
     assert_eq!(
         hex(&Sha256::digest(&bytes)),
-        "34a8024e3c51b0cd385066b0f1a4eb54ed27b05362dc9bf0497aa423bbeac9ca"
+        "686e3c2b1c26b046257ae11d549fb8fb4ea6b0ecf6417643ae74497d1809b7c6"
     );
     assert_eq!(bundle(), bytes, "deterministic from its inputs");
 }
@@ -444,6 +445,7 @@ fn a_bundle_out_of_bounds_refuses_to_build() {
         reason: Reason::Rotate,
         removed: &[],
         keys: &[],
+        kit: None,
     };
     assert!(build(&base(), &mut counter(1)).is_ok());
     let b_cert = B.cert();
@@ -501,6 +503,7 @@ fn a_bundle_of_64_recipients_fits() {
         reason: Reason::Rotate,
         removed: &[],
         keys: &[],
+        kit: None,
     };
     let bytes = build(&input, &mut counter(1)).expect("64 recipients");
     assert!(bytes.len() < 64 * 1024, "{} bytes", bytes.len());
@@ -561,6 +564,7 @@ fn bundle_with_json(edit: impl Fn(&str) -> String) -> Vec<u8> {
         reason: Reason::Remove,
         removed: std::slice::from_ref(&removal),
         keys: &keys,
+        kit: None,
     };
     let json = Zeroizing::new(edit(&body_json(&input)));
     build_with_json(&input, json, &mut counter(1)).expect("bundle")
@@ -629,5 +633,225 @@ fn a_body_that_breaks_its_own_rules_is_refused() {
             "{what}"
         );
         assert!(open(&bytes, &VAULT, &A.box_secret()).is_err(), "{what}");
+    }
+}
+
+// ── Revision §2.5: the bundle names the vault's Kit ─────────────────────────────────────────
+
+/// The test Kit (from a fixed seed), created by A.
+fn kit_keys(byte: u8) -> crate::services::sync::identity::KitKeys {
+    crate::services::sync::identity::KitSecret::from_bytes(Zeroizing::new([byte; 32]))
+        .derive(&VAULT)
+}
+
+fn kit_cert(byte: u8) -> Certificate {
+    cert::issue_kit(&A.seed(), A.id(), &kit_keys(byte), AT).expect("Kit certificate")
+}
+
+/// A replaces the Kit of seed 0x31 with the Kit of seed 0x32, nobody removed: what `with` makes
+/// of that input.
+fn with_kit_input<T>(kit: &KitPart, with: impl FnOnce(&BundleInput<'_>) -> T) -> T {
+    let new_key = Zeroizing::new(NEW_KEY);
+    let recipients = [A.recipient(), B.recipient()];
+    let signer_cert = A.cert();
+    let signer = A.seed();
+    let input = BundleInput {
+        vault_id: VAULT,
+        from_epoch: 0,
+        to_epoch: 1,
+        new_key: &new_key,
+        recipients: &recipients,
+        notices: &[],
+        signer: &signer,
+        signer_cert: &signer_cert,
+        at: AT,
+        reason: Reason::Rotate,
+        removed: &[],
+        keys: &[],
+        kit: Some(kit),
+    };
+    with(&input)
+}
+
+fn kit_input_bundle(kit: &KitPart) -> Vec<u8> {
+    with_kit_input(kit, |input| build(input, &mut counter(1)).expect("bundle"))
+}
+
+fn replacing_kit() -> KitPart {
+    let old = kit_keys(0x31).id();
+    KitPart {
+        cert: kit_cert(0x32),
+        replaces: Some(
+            Record::sign(RecordType::Removed, VAULT, old, A.id(), AT, 0, &A.seed())
+                .expect("record"),
+        ),
+    }
+}
+
+#[test]
+fn the_kit_and_what_it_replaces_round_trip_and_match_their_vector() {
+    let kit = replacing_kit();
+    let bytes = kit_input_bundle(&kit);
+
+    let verified = open_body_with_key(&bytes, &VAULT, &NEW_KEY)
+        .expect("opens")
+        .verify(&sign_pub(&A.seed()))
+        .expect("verifies");
+
+    assert_eq!(verified.body.kit.as_ref(), Some(&kit));
+    // The JSON ends with the Kit, its replaced Kit's removal last.
+    let json = with_kit_input(&kit, |input| body_json(input).to_string());
+    let old = kit.replaces.as_ref().expect("replaces");
+    assert!(
+        json.ends_with(&format!(
+            "\"keys\":[],\"kit\":{{\"device\":\"{}\",\"cert\":\"{}\",\
+             \"replaces\":{{\"device\":\"{}\",\"record\":\"{}\"}}}}}}",
+            kit.cert.body.device.to_hex(),
+            kit.cert.to_b64(),
+            old.subject.to_hex(),
+            old.to_b64()
+        )),
+        "{json}"
+    );
+    assert_eq!(
+        hex(&Sha256::digest(&bytes)),
+        "2929ddc14ec502c2fd4d86e4553c7ff470cb0e963ede370bb4c797455d033190"
+    );
+    assert_eq!(
+        kit_input_bundle(&kit),
+        bytes,
+        "deterministic from its inputs"
+    );
+    // A Kit that stays: no `replaces`.
+    let staying = KitPart {
+        cert: kit_cert(0x32),
+        replaces: None,
+    };
+    let opened = open_body_with_key(&kit_input_bundle(&staying), &VAULT, &NEW_KEY)
+        .expect("opens")
+        .verify(&sign_pub(&A.seed()))
+        .expect("verifies");
+    assert_eq!(opened.body.kit, Some(staying));
+    // No Kit: no field at all.
+    let plain = open_body_with_key(&bundle(), &VAULT, &NEW_KEY)
+        .expect("opens")
+        .verify(&sign_pub(&A.seed()))
+        .expect("verifies");
+    assert_eq!(plain.body.kit, None);
+}
+
+#[test]
+fn a_kit_that_is_not_one_refuses_to_build_or_open() {
+    // Built: a device certificate as the Kit, or a Kit replacing itself, or a left record.
+    let as_kit = KitPart {
+        cert: B.cert(),
+        replaces: None,
+    };
+    let new_key = Zeroizing::new(NEW_KEY);
+    let signer_cert = A.cert();
+    let signer = A.seed();
+    let itself = KitPart {
+        cert: kit_cert(0x32),
+        replaces: Some(
+            Record::sign(
+                RecordType::Removed,
+                VAULT,
+                kit_keys(0x32).id(),
+                A.id(),
+                AT,
+                0,
+                &A.seed(),
+            )
+            .expect("record"),
+        ),
+    };
+    let left = KitPart {
+        cert: kit_cert(0x32),
+        replaces: Some(
+            Record::sign(
+                RecordType::Left,
+                VAULT,
+                kit_keys(0x31).id(),
+                kit_keys(0x31).id(),
+                AT,
+                0,
+                kit_keys(0x31).sign_seed(),
+            )
+            .expect("record"),
+        ),
+    };
+    for kit in [&as_kit, &itself, &left] {
+        let input = BundleInput {
+            vault_id: VAULT,
+            from_epoch: 0,
+            to_epoch: 1,
+            new_key: &new_key,
+            recipients: &[],
+            notices: &[],
+            signer: &signer,
+            signer_cert: &signer_cert,
+            at: AT,
+            reason: Reason::Rotate,
+            removed: &[],
+            keys: &[],
+            kit: Some(kit),
+        };
+        assert!(build(&input, &mut counter(1)).is_err(), "{kit:?}");
+    }
+    // Opened: a JSON edited the same ways (signed by A all the same) is refused.
+    let kit = replacing_kit();
+    let new_device = kit.cert.body.device.to_hex();
+    let old_device = kit.replaces.as_ref().expect("old").subject.to_hex();
+    let b_cert = B.cert().to_b64();
+    let kit_b64 = kit.cert.to_b64();
+    type Edit = Box<dyn Fn(&str) -> String>;
+    let cases: Vec<(&str, Edit)> = vec![
+        (
+            "a device certificate as the Kit",
+            Box::new({
+                let new_device = new_device.clone();
+                move |j: &str| {
+                    j.replace(&kit_b64, &b_cert)
+                        .replace(&new_device, &B.id().to_hex())
+                }
+            }),
+        ),
+        (
+            "the Kit listed under another device",
+            Box::new({
+                let new_device = new_device.clone();
+                move |j: &str| {
+                    j.replace(
+                        &format!("\"kit\":{{\"device\":\"{new_device}\""),
+                        &format!("\"kit\":{{\"device\":\"{}\"", C.id().to_hex()),
+                    )
+                }
+            }),
+        ),
+        (
+            "the removal listed under another device",
+            Box::new(move |j: &str| {
+                j.replace(
+                    &format!("\"replaces\":{{\"device\":\"{old_device}\""),
+                    &format!("\"replaces\":{{\"device\":\"{}\"", C.id().to_hex()),
+                )
+            }),
+        ),
+    ];
+    for (what, edit) in cases {
+        let bytes = with_kit_input(&kit, |input| {
+            let original = body_json(input);
+            let edited = edit(&original);
+            assert_ne!(
+                edited.as_str(),
+                original.as_str(),
+                "{what}: the edit applies"
+            );
+            build_with_json(input, Zeroizing::new(edited), &mut counter(1)).expect("bundle")
+        });
+        assert!(
+            open_body_with_key(&bytes, &VAULT, &NEW_KEY).is_err(),
+            "{what}"
+        );
     }
 }

@@ -1,35 +1,35 @@
-//! Removing devices and changing the key on this device (phase 5 spec §6.4, §6.6, §10).
+//! Removing devices on this device, which always changes the key (phase 5 spec §6.4, §10;
+//! revision §2.5, §2.7, §4).
 //!
 //! `plan` lists what a removal would do (who gets the new key, who does not and why, which devices
-//! the removed ones added) and a consent hash over it; `remove` rebuilds the plan, refuses one
-//! that changed (`validation.syncRemovalPlanChanged`) and carries it out under
-//! `engine::exclusive`:
-//!
-//! - **List only:** a `removed` record per device, signed now at the current epoch, written into
-//!   its row (captured, so it syncs) and moved into the trust store with no cut-off epoch. No
-//!   relay call.
-//! - **Key change:** a new key, the bundle (sealed to every recipient's pinned box key, a notice to
-//!   every removed device and to every device that left or was removed without a cut-off), and
-//!   the pending change (`sync_state.rotation_pending`) stored before anything is sent; then any
-//!   pairing in progress is given up and the token rotates with the bundle. `200` commits in one
-//!   savepoint (`commit`); a lost race (`403 token_read_only`), `409 too_many_rotations` and any
-//!   other refusal wipe the pending change; no answer at all (the network, a timeout, a server
-//!   error, a rate limit) keeps it.
+//! the removed ones added, whether the Recovery Kit is replaced) and a consent hash over it;
+//! `remove` rebuilds the plan, refuses one that changed (`validation.syncRemovalPlanChanged`) and
+//! carries it out under `engine::exclusive`: a new key, the bundle (sealed to every recipient's
+//! pinned box key, a notice to every removed device and to every device that left or was removed
+//! without a cut-off, the vault's Kit named in it), the Kit envelope (every key, sealed to the
+//! Kit that holds after the change: a new one when it is replaced), and the pending change
+//! (`sync_state.rotation_pending`) stored before anything is sent; then any pairing in progress
+//! is given up and the token rotates with the bundle and the envelope in one call. `200` commits
+//! in one savepoint (`commit`); a lost race (`403 token_read_only`), `409 too_many_rotations`
+//! and any other refusal wipe the pending change; no answer at all (the network, a timeout, a
+//! server error, a rate limit) keeps it. The only key change that removes no device makes a new
+//! Kit ("Vytvořit novou sadu").
 //!
 //! A pending change is resolved at every engine start and at the start of every round, before
 //! anything else and with no person needed (the consent was given): the new token reads the vault
 //! → the change landed, commit it with the head of its bundle; the new token is unknown (`401`) →
-//! it did not land, send it again; a retired token then (`403`) → its own bundle on the server
-//! means it landed after all (commit), else another device changed the key first. A change a
-//! resolution ends without it happening leaves a notice (`rekey::RemovalNotDone`). The commit
-//! queues the signed head of the change (`rekey::head`). No round pushes while a change is
-//! pending. The pending JSON holds the new key: it is
-//! written and read only here, in wiped buffers, and never logged.
+//! it did not land, send it again (its Kit part unchanged); a retired token then (`403`) → its own
+//! bundle on the server means it landed after all (commit), else another device changed the key
+//! first. A change a resolution ends without it happening leaves a notice
+//! (`rekey::RemovalNotDone`). The commit queues the signed head of the change (`rekey::head`). No
+//! round pushes while a change is pending. The pending JSON holds the new key and the new Kit's
+//! token (never its seed): it is written and read only here, in wiped buffers, and never logged.
 //!
 //! What the remover had not sent is sealed again under the new key by its next round
 //! (`reseal`), once its pull has passed the rotation point; a crash after the commit leaves that
 //! to the first round.
 
+use std::collections::BTreeSet;
 use std::fmt;
 use std::path::Path;
 
@@ -40,7 +40,8 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
-use super::bundle::{self, BundleInput, Notice, OldKey, Reason, Recipient};
+use super::bundle::{self, BundleInput, KitPart, Notice, OldKey, Reason, Recipient};
+use super::kit::{self, KitStorage, NewKit};
 use super::pickup::{self, Pickup};
 use super::{device_name, head, write_removal_not_done, RemovalNotDone};
 use crate::error::{AppError, Result};
@@ -50,10 +51,10 @@ use crate::services::sync::envelope::vault_token;
 use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::hlc::DeviceId;
 use crate::services::sync::identity::trust::{self, TrustEntry, TrustState};
-use crate::services::sync::identity::{self, CertKind, Record, RecordType};
+use crate::services::sync::identity::{self, CertKind, Certificate, Record, RecordType};
 use crate::services::sync::in_savepoint;
 use crate::services::sync::keys::{self, Credentials, SecretString, VaultAuth};
-use crate::services::sync::relay::{Relay, RelayError, Rotated, MAX_REKEY_PAGE};
+use crate::services::sync::relay::{KitRotation, Relay, RelayError, Rotated, MAX_REKEY_PAGE};
 use crate::services::sync::state::{self, EpochRecord};
 
 pub const PLAN_CHANGED: &str = "validation.syncRemovalPlanChanged";
@@ -66,48 +67,68 @@ const NOT_SET_UP: &str = "validation.syncSetupIncomplete";
 const IN_PROGRESS: &str = "validation.syncChangeInProgress";
 const KEY_ROTATED: &str = "validation.syncKeyRotated";
 
-/// What a removal does to the key.
+/// Whether, and why, a removal replaces the Recovery Kit (revision §2.7, §4.2; the wire's
+/// `replacesKit`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RemovalMode {
-    /// "Jen odebrat ze seznamu": records only, the key stays.
-    ListOnly,
-    /// "Odebrat a vyměnit klíč", or "Vyměnit klíč synchronizace" with nobody removed.
-    Rotate,
+pub enum ReplacesKit {
+    /// The Kit stays (or the vault has none and none is asked for).
+    No,
+    /// The Kit was copied or saved to a file on a device being removed: its creator.
+    CreatorRemoved,
+    /// The Kit is in a folder that syncs to a cloud, and a device is being removed.
+    Cloud,
+    /// The person asked for a new Kit ("Vytvořit novou sadu").
+    Asked,
 }
 
-/// What a removal would do, as the person confirms it (spec §9.2).
+impl ReplacesKit {
+    fn as_u8(self) -> u8 {
+        match self {
+            ReplacesKit::No => 0,
+            ReplacesKit::CreatorRemoved => 1,
+            ReplacesKit::Cloud => 2,
+            ReplacesKit::Asked => 3,
+        }
+    }
+}
+
+/// What a removal would do, as the person confirms it (revision §4.2, §4.3).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Plan {
-    pub mode: RemovalMode,
     /// This device's key epoch.
     pub epoch: u32,
-    /// The devices removed, ascending.
+    /// The devices removed, ascending (those asked for and the ticked ones).
     pub removing: Vec<DeviceId>,
-    /// Who gets the new key (this device included), each sealed to its pinned box key; empty for
-    /// a list-only removal.
+    /// Who gets the new key (this device included), each sealed to its pinned box key.
     pub recipients: Vec<TrustEntry>,
-    /// Every other device with its reason; empty for a list-only removal.
+    /// Every other device with its reason.
     pub excluded: Vec<(DeviceId, trust::ExclusionReason)>,
-    /// Devices a removed device added (it issued their certificate) that are not removed: the
+    /// Every `trusted` descendant of the removed devices through issuer links, at any depth (a
+    /// device a removed one paired, what that one paired, …), Kit-joined ones included when the
+    /// path runs through a Kit being replaced; not the devices asked for, nor this one. The
     /// person may tick them too ("Odebrat také"), which makes another plan.
     pub added_by_removing: Vec<DeviceId>,
-    /// The recipients other than this device, which the key change marks `confirmed` when it
-    /// commits (revision §3.1, `trust::mark_confirmed`).
-    pub confirming: Vec<DeviceId>,
-    /// Hex SHA-256 over the mode, the epoch, the removed devices and each recipient with its
-    /// certificate's hash.
+    /// The vault's Kit as it stands (sealed to when it stays, removed when it is replaced).
+    pub kit: Option<TrustEntry>,
+    pub replaces_kit: ReplacesKit,
+    /// Hex SHA-256 over the epoch, the removed devices, each recipient with its certificate's
+    /// hash, the current Kit's certificate hash and `replaces_kit`.
     pub consent: String,
 }
 
-/// What `remove` (and `resolve_pending`) did.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// What `remove` (and `resolve_pending`) did. A new Kit (`kit`) is there only for the person who
+/// made the change, once; a background resolution never has one (the seed was never stored).
+#[derive(Debug, PartialEq, Eq)]
 pub enum Outcome {
-    /// List-only: the records are written.
-    Listed { removed: Vec<DeviceId> },
     /// The key changed to `epoch`.
-    Changed { epoch: u32, removed: Vec<DeviceId> },
-    /// The sync server did not answer: the change is pending and completes by itself.
-    Pending,
+    Changed {
+        epoch: u32,
+        removed: Vec<DeviceId>,
+        kit: Option<NewKit>,
+    },
+    /// The sync server did not answer: the change is pending and completes by itself (a new Kit
+    /// starts working then).
+    Pending { kit: Option<NewKit> },
     /// Another device changed the key first and had already removed every device asked for
     /// (`by` its name).
     AlreadyRemoved { by: String },
@@ -118,11 +139,12 @@ pub enum Outcome {
     RemovedHere,
 }
 
-/// The person's request: what they confirmed, with the plan's consent.
+/// The person's request: the devices removed (the ones asked for and the ticked ones), whether a
+/// new Kit is asked for, and the plan's consent.
 #[derive(Clone, Copy, Debug)]
 pub struct Removal<'a> {
-    pub mode: RemovalMode,
     pub removing: &'a [DeviceId],
+    pub new_kit: bool,
     pub consent: &'a str,
 }
 
@@ -162,19 +184,26 @@ pub(crate) fn pending_removals(conn: &Connection) -> Result<Vec<DeviceId>> {
         .unwrap_or_default())
 }
 
-/// The plan for removing `removing` in `mode` (spec §6.4 steps 1–2). Refuses:
-/// sync off (`syncSetupIncomplete`); capture broken (`syncChangesPaused`); a vault set up before
-/// phase 5 or this device no longer trusted (`syncRemovalUnsupported`); a key change pending
-/// (`syncChangeInProgress`); removing this device (`syncRemoveThisDevice`: that is turning sync
-/// off); a list-only removal of nobody or a device the list does not know
-/// (`syncRemovalPlanChanged`); more than 64 recipients (`syncTooManyDevices`).
-pub fn plan(conn: &Connection, removing: &[DeviceId], mode: RemovalMode) -> Result<Plan> {
+/// The plan for removing `removing` and the ticked `also_remove`, and for a new Kit when
+/// `new_kit` (revision §4.2). Refuses: sync off (`syncSetupIncomplete`); capture broken
+/// (`syncChangesPaused`); a vault set up before phase 5 or this device no longer trusted
+/// (`syncRemovalUnsupported`); a key change pending (`syncChangeInProgress`); removing this
+/// device (`syncRemoveThisDevice`: that is turning sync off); nobody removed and no new Kit, a
+/// device the list does not know, or a Kit (`syncRemovalPlanChanged`); more than 64 recipients
+/// (`syncTooManyDevices`).
+pub fn plan(
+    conn: &Connection,
+    removing: &[DeviceId],
+    also_remove: &[DeviceId],
+    new_kit: bool,
+) -> Result<Plan> {
     let me = check(conn)?;
-    let removing = sorted(removing);
+    let asked = sorted(removing);
+    let removing = sorted(&[removing, also_remove].concat());
     if removing.contains(&me) {
         return Err(validation(REMOVE_THIS_DEVICE));
     }
-    if mode == RemovalMode::ListOnly && removing.is_empty() {
+    if removing.is_empty() && !new_kit {
         return Err(validation(PLAN_CHANGED));
     }
     let store = trust::entries(conn)?;
@@ -184,47 +213,95 @@ pub fn plan(conn: &Connection, removing: &[DeviceId], mode: RemovalMode) -> Resu
             [device.to_hex()],
             |r| r.get(0),
         )?;
-        if !listed && !store.iter().any(|e| e.device == *device) {
+        let pinned = store.iter().find(|e| e.device == *device);
+        if (!listed && pinned.is_none()) || pinned.is_some_and(|e| e.kind == CertKind::Kit) {
             return Err(validation(PLAN_CHANGED));
         }
     }
     let epoch = keys::vault_keys(conn)?
         .ok_or_else(not_set_up)?
         .current_epoch();
-    let added_by_removing = store
-        .iter()
-        .filter(|e| {
-            matches!(e.kind, CertKind::Paired | CertKind::Rejoin)
-                && e.state == TrustState::Trusted
-                && removing.contains(&e.issuer)
-                && !removing.contains(&e.device)
-        })
-        .map(|e| e.device)
-        .collect();
-    let (recipients, excluded) = match mode {
-        RemovalMode::ListOnly => (Vec::new(), Vec::new()),
-        RemovalMode::Rotate => {
-            let r = trust::recipients(conn, &removing)?;
-            (r.included, r.excluded)
-        }
-    };
-    let confirming = recipients
-        .iter()
-        .map(|e| e.device)
-        .filter(|d| *d != me)
-        .collect();
+    let recipients = trust::recipients(conn, &removing)?;
+    let replaces_kit = replaces_kit(conn, recipients.kit.as_ref(), &removing, new_kit)?;
+    let replaced = recipients
+        .kit
+        .as_ref()
+        .filter(|_| replaces_kit != ReplacesKit::No)
+        .map(|k| k.device);
+    let added_by_removing = descendants(&store, &asked, replaced, me);
     let mut plan = Plan {
-        mode,
         epoch,
         removing,
-        recipients,
-        excluded,
+        recipients: recipients.included,
+        excluded: recipients.excluded,
         added_by_removing,
-        confirming,
+        kit: recipients.kit,
+        replaces_kit,
         consent: String::new(),
     };
     plan.consent = consent(&plan);
     Ok(plan)
+}
+
+/// Whether the removal replaces the Kit `kit` (revision §2.7): asked for; the Kit was copied or
+/// saved to a file and its creator is removed; the Kit is in a cloud folder and any device is
+/// removed. A Kit printed, or with nothing done, stays. With no Kit, only when asked (the vault
+/// then gets one by rotation).
+fn replaces_kit(
+    conn: &Connection,
+    kit: Option<&TrustEntry>,
+    removing: &[DeviceId],
+    new_kit: bool,
+) -> Result<ReplacesKit> {
+    if new_kit {
+        return Ok(ReplacesKit::Asked);
+    }
+    let Some(kit) = kit else {
+        return Ok(ReplacesKit::No);
+    };
+    let storage = kit::storage(conn, kit.device)?;
+    let creator_removed = removing.contains(&kit.issuer);
+    Ok(match storage {
+        Some(KitStorage::Copied | KitStorage::File | KitStorage::Cloud) if creator_removed => {
+            ReplacesKit::CreatorRemoved
+        }
+        Some(KitStorage::Cloud) if !removing.is_empty() => ReplacesKit::Cloud,
+        _ => ReplacesKit::No,
+    })
+}
+
+/// Every `trusted` entry other than `me` that descends from `asked` (or from the Kit
+/// `replaced_kit`) through issuer links, at any depth and through entries of any state; the
+/// ticked ones stay listed. A Kit is followed only when it is `replaced_kit`: a Kit that stays is
+/// not a removed issuer.
+fn descendants(
+    store: &[TrustEntry],
+    asked: &[DeviceId],
+    replaced_kit: Option<DeviceId>,
+    me: DeviceId,
+) -> Vec<DeviceId> {
+    let mut gone: BTreeSet<DeviceId> = asked.iter().copied().chain(replaced_kit).collect();
+    let mut out = BTreeSet::new();
+    loop {
+        let mut grew = false;
+        for entry in store {
+            let issued = matches!(
+                entry.kind,
+                CertKind::Paired | CertKind::Rejoin | CertKind::RecoveryKit
+            );
+            if !issued || gone.contains(&entry.device) || !gone.contains(&entry.issuer) {
+                continue;
+            }
+            gone.insert(entry.device);
+            grew = true;
+            if entry.state == TrustState::Trusted && entry.device != me {
+                out.insert(entry.device);
+            }
+        }
+        if !grew {
+            return out.into_iter().collect();
+        }
+    }
 }
 
 /// The preconditions of every removal; this device's ID.
@@ -252,11 +329,7 @@ fn check(conn: &Connection) -> Result<DeviceId> {
 /// Hex SHA-256 over a canonical encoding of what the person confirms.
 pub fn consent(plan: &Plan) -> String {
     let mut hash = Sha256::new();
-    hash.update(b"moony removal consent v1\0");
-    hash.update([match plan.mode {
-        RemovalMode::ListOnly => 1u8,
-        RemovalMode::Rotate => 2u8,
-    }]);
+    hash.update(b"moony removal consent v2\0");
     hash.update(plan.epoch.to_be_bytes());
     hash.update((plan.removing.len() as u64).to_be_bytes());
     for device in &plan.removing {
@@ -267,11 +340,25 @@ pub fn consent(plan: &Plan) -> String {
         hash.update(entry.device.0);
         hash.update(entry.cert.hash());
     }
-    hash.update((plan.confirming.len() as u64).to_be_bytes());
-    for device in &plan.confirming {
-        hash.update(device.0);
+    match &plan.kit {
+        Some(kit) => {
+            hash.update([1u8]);
+            hash.update(kit.cert.hash());
+        }
+        None => hash.update([0u8]),
     }
+    hash.update([plan.replaces_kit.as_u8()]);
     hash.finalize().iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// The Kit part of a pending change: the envelope, and for a new Kit its token, its certificate
+/// and the removal of the Kit it replaces (none for a vault's first Kit). Never printed (the
+/// token reads the envelope).
+struct PendingKit {
+    envelope: Vec<u8>,
+    token: Option<Zeroizing<String>>,
+    cert: Option<Certificate>,
+    replaces: Option<Record>,
 }
 
 /// A key change signed and sealed, not yet committed. Never printed (it holds the new key).
@@ -281,7 +368,9 @@ struct PendingChange {
     key: Zeroizing<[u8; 32]>,
     bundle: Vec<u8>,
     removed: Vec<Record>,
+    /// Every recipient (this device included) and the Kit sealed to: `confirmed` at the commit.
     confirm: Vec<DeviceId>,
+    kit: Option<PendingKit>,
 }
 
 impl fmt::Debug for PendingChange {
@@ -290,6 +379,7 @@ impl fmt::Debug for PendingChange {
             .field("from", &self.from)
             .field("to", &self.to)
             .field("key", &"<redacted>")
+            .field("kit", &self.kit.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -304,18 +394,48 @@ struct PendingIn {
     bundle: String,
     removed: Vec<String>,
     confirm: Vec<String>,
+    #[serde(default)]
+    kit: Option<PendingKitIn>,
 }
 
-const PENDING_VERSION: u32 = 1;
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PendingKitIn {
+    envelope: String,
+    #[serde(default)]
+    token: Option<SecretString>,
+    #[serde(default)]
+    cert: Option<String>,
+    #[serde(default)]
+    replaces: Option<String>,
+}
+
+const PENDING_VERSION: u32 = 2;
+
+fn push_list<T>(json: &mut String, items: &[T], each: impl Fn(&T) -> String) {
+    for (i, item) in items.iter().enumerate() {
+        if i > 0 {
+            json.push(',');
+        }
+        json.push('"');
+        json.push_str(&each(item));
+        json.push('"');
+    }
+}
 
 impl PendingChange {
-    /// `{"v":1,"from":n,"to":n,"key":"<b64url>","bundle":"<b64url>","removed":["<record>"],
-    /// "confirm":["<hex>"]}`, built in one wiped buffer reserved up front.
+    /// `{"v":2,"from":n,"to":n,"key":"<b64url>","bundle":"<b64url>","removed":["<record>"],
+    /// "confirm":["<hex>"],"kit":{"envelope":"<b64url>","token":"<43>"?,"cert":"<b64>"?,
+    /// "replaces":"<record b64>"?}?}`, built in one wiped buffer reserved up front.
     fn to_json(&self) -> Zeroizing<String> {
+        let kit_len = self.kit.as_ref().map_or(0, |k| {
+            k.envelope.len().div_ceil(3) * 4 + 160 + k.cert.as_ref().map_or(0, |_| 400) + 300
+        });
         let mut json = Zeroizing::new(String::with_capacity(
             160 + self.bundle.len().div_ceil(3) * 4
                 + 160 * self.removed.len()
-                + 40 * self.confirm.len(),
+                + 40 * self.confirm.len()
+                + kit_len,
         ));
         json.push_str(&format!(
             "{{\"v\":{PENDING_VERSION},\"from\":{},\"to\":{},\"key\":\"",
@@ -325,24 +445,32 @@ impl PendingChange {
         json.push_str("\",\"bundle\":\"");
         URL_SAFE_NO_PAD.encode_string(&self.bundle, &mut json);
         json.push_str("\",\"removed\":[");
-        for (i, record) in self.removed.iter().enumerate() {
-            if i > 0 {
-                json.push(',');
-            }
-            json.push('"');
-            json.push_str(&record.to_b64());
-            json.push('"');
-        }
+        push_list(&mut json, &self.removed, Record::to_b64);
         json.push_str("],\"confirm\":[");
-        for (i, device) in self.confirm.iter().enumerate() {
-            if i > 0 {
-                json.push(',');
+        push_list(&mut json, &self.confirm, DeviceId::to_hex);
+        json.push(']');
+        if let Some(kit) = &self.kit {
+            json.push_str(",\"kit\":{\"envelope\":\"");
+            URL_SAFE_NO_PAD.encode_string(&kit.envelope, &mut json);
+            json.push('"');
+            if let Some(token) = &kit.token {
+                json.push_str(",\"token\":\"");
+                json.push_str(token);
+                json.push('"');
             }
-            json.push('"');
-            json.push_str(&device.to_hex());
-            json.push('"');
+            if let Some(cert) = &kit.cert {
+                json.push_str(",\"cert\":\"");
+                json.push_str(&cert.to_b64());
+                json.push('"');
+            }
+            if let Some(record) = &kit.replaces {
+                json.push_str(",\"replaces\":\"");
+                json.push_str(&record.to_b64());
+                json.push('"');
+            }
+            json.push('}');
         }
-        json.push_str("]}");
+        json.push('}');
         json
     }
 
@@ -363,6 +491,35 @@ impl PendingChange {
         }
         let mut key = Zeroizing::new([0u8; 32]);
         key.copy_from_slice(&decoded);
+        let kit = raw
+            .kit
+            .map(|kit| -> Result<PendingKit> {
+                let cert = kit
+                    .cert
+                    .map(|c| Certificate::from_b64(&c))
+                    .transpose()
+                    .map_err(|_| corrupt())?;
+                let token = kit.token.map(|t| Zeroizing::new(t.0.to_string()));
+                // A new Kit comes with its token and certificate; a Kit that stays with neither.
+                if token.is_some() != cert.is_some()
+                    || cert.as_ref().is_some_and(|c| c.body.kind != CertKind::Kit)
+                {
+                    return Err(corrupt());
+                }
+                Ok(PendingKit {
+                    envelope: URL_SAFE_NO_PAD
+                        .decode(kit.envelope.as_bytes())
+                        .map_err(|_| corrupt())?,
+                    token,
+                    cert,
+                    replaces: kit
+                        .replaces
+                        .map(|r| Record::from_b64(&r))
+                        .transpose()
+                        .map_err(|_| corrupt())?,
+                })
+            })
+            .transpose()?;
         Ok(PendingChange {
             from: raw.from,
             to: raw.to,
@@ -382,11 +539,17 @@ impl PendingChange {
                 .map(|d| DeviceId::from_hex(d))
                 .collect::<Result<_>>()
                 .map_err(|_| corrupt())?,
+            kit,
         })
     }
 
     fn removed_devices(&self) -> Vec<DeviceId> {
         self.removed.iter().map(|r| r.subject).collect()
+    }
+
+    /// Whether the change makes a new Kit.
+    fn new_kit(&self) -> bool {
+        self.kit.as_ref().is_some_and(|k| k.cert.is_some())
     }
 
     /// The token the new key gives the vault.
@@ -432,15 +595,16 @@ fn wipe_pending(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Carries out the removal the person confirmed (spec §6.4), under `engine::exclusive` (no round
-/// runs). The command checks the password first. For a key change, a vault whose key changed since
-/// this device last looked (`rotation` above `rekey_seen`) is picked up first, so the plan is rebuilt on the newest
-/// key and list; then a plan whose consent differs is refused (`validation.syncRemovalPlanChanged`,
-/// nothing written). `forget_pairing` gives up any pairing in progress (a holder must not hand out
-/// the old key mid-change); it is called once the pending change is stored, before the token
-/// rotates. `data_dir` is the binding file's folder, for a race that turns out to have removed
-/// this device. A lost race answers `validation.syncRotationRaced` with the other device's name,
-/// or `Outcome::AlreadyRemoved` when it removed every device asked for (O12).
+/// Carries out the removal the person confirmed (revision §4.2), under `engine::exclusive` (no
+/// round runs). The command checks the password first. A vault whose key changed since this
+/// device last looked (`rotation` above `rekey_seen`) is picked up first, so the plan is rebuilt
+/// on the newest key and list; then a plan whose consent differs is refused
+/// (`validation.syncRemovalPlanChanged`, nothing written). `forget_pairing` gives up any pairing
+/// in progress (a holder must not hand out the old key mid-change); it is called once the pending
+/// change is stored, before the token rotates. `data_dir` is the binding file's folder, for a race
+/// that turns out to have removed this device. A lost race answers `validation.syncRotationRaced`
+/// with the other device's name, or `Outcome::AlreadyRemoved` when it removed every device asked
+/// for (O12). A new Kit comes back in `Changed` or `Pending`, for the person to see once.
 pub async fn remove<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -457,13 +621,8 @@ pub async fn remove<R: Relay, D: ConnAccess>(
             state::rekey_seen(conn)?,
         ))
     })?;
-    // A key change needs this device's epoch to be the vault's (§6.4 step 1); a list-only
-    // removal makes no relay call.
-    let behind = match request.mode {
-        RemovalMode::ListOnly => false,
-        RemovalMode::Rotate => relay.vault_info(&creds.auth()).await?.rotation > seen,
-    };
-    if behind {
+    // A key change needs this device's epoch to be the vault's (§6.4 step 1).
+    if relay.vault_info(&creds.auth()).await?.rotation > seen {
         match pickup::pick_up(relay, db, Some(data_dir), now).await? {
             Pickup::Nothing | Pickup::Adopted { .. } => {}
             Pickup::RemovedHere { .. } => return Ok(Outcome::RemovedHere),
@@ -472,63 +631,32 @@ pub async fn remove<R: Relay, D: ConnAccess>(
             }
         }
     }
-    let prepared = db.with_conn(|conn| {
-        let plan = plan(conn, request.removing, request.mode)?;
+    let (change, new_kit, creds) = db.with_conn(|conn| {
+        let plan = plan(conn, request.removing, &[], request.new_kit)?;
         if plan.consent != request.consent {
             return Err(validation(PLAN_CHANGED));
         }
-        match plan.mode {
-            RemovalMode::ListOnly => {
-                list_only(conn, &plan, now)?;
-                Ok(Err(plan.removing))
-            }
-            RemovalMode::Rotate => {
-                let creds = keys::credentials(conn)?.ok_or_else(not_set_up)?;
-                Ok(Ok((prepare(conn, &creds, &plan, now)?, creds)))
-            }
-        }
+        let creds = keys::credentials(conn)?.ok_or_else(not_set_up)?;
+        let (change, new_kit) = prepare(conn, &creds, &plan, now)?;
+        Ok((change, new_kit, creds))
     })?;
-    let (change, creds) = match prepared {
-        Err(removed) => return Ok(Outcome::Listed { removed }),
-        Ok(prepared) => prepared,
-    };
     forget_pairing();
     match send(relay, db, &creds, &change, Some(data_dir), false, now).await? {
         Sent::Done(Outcome::Raced { by: Some(name) }) => Err(SyncError::Local(
             AppError::validation_with(ROTATION_RACED, serde_json::json!({ "name": name })),
         )),
         Sent::Done(Outcome::Raced { by: None }) => Err(SyncError::Local(validation(KEY_ROTATED))),
+        Sent::Done(Outcome::Changed { epoch, removed, .. }) => Ok(Outcome::Changed {
+            epoch,
+            removed,
+            kit: new_kit,
+        }),
         Sent::Done(outcome) => Ok(outcome),
         Sent::Pending(error) => {
             log::info!("[SYNC] The key change waits for the sync server: {error}");
-            Ok(Outcome::Pending)
+            Ok(Outcome::Pending { kit: new_kit })
         }
     }
-}
-
-/// List-only (spec §6.4 step 3), in one savepoint: a `removed` record per device at the current
-/// epoch, written into its row where it has none (captured) and applied to its pinned entry with
-/// no cut-off.
-fn list_only(conn: &Connection, plan: &Plan, now: i64) -> Result<()> {
-    let me = check(conn)?;
-    let seed = identity::own_seed(conn)?.ok_or_else(|| validation(REMOVAL_UNSUPPORTED))?;
-    let vault = keys::credentials(conn)?.ok_or_else(not_set_up)?.vault_id.0;
-    in_savepoint(conn, "sync_remove_list_only", || {
-        for device in &plan.removing {
-            let record = Record::sign(
-                RecordType::Removed,
-                vault,
-                *device,
-                me,
-                now,
-                plan.epoch,
-                &seed,
-            )?;
-            write_removal(conn, &record)?;
-            trust::mark_removed(conn, &record, None)?;
-        }
-        Ok(())
-    })
 }
 
 /// Writes `record` into its subject's row (write-once: an earlier record stays) and marks the row
@@ -542,9 +670,15 @@ fn write_removal(conn: &Connection, record: &Record) -> Result<()> {
     Ok(())
 }
 
-/// Spec §6.4 step 4 up to the call: the new key, the removal records, the bundle and the pending
-/// change, stored in one statement.
-fn prepare(conn: &Connection, creds: &Credentials, plan: &Plan, now: i64) -> Result<PendingChange> {
+/// Spec §6.4 step 4 up to the call: the new key, the removal records, the Kit's part (a new Kit
+/// when `plan.replaces_kit`, the removal of the one it replaces, the envelope), the bundle and the
+/// pending change, stored in one statement. The new Kit's seed is returned, never stored.
+fn prepare(
+    conn: &Connection,
+    creds: &Credentials,
+    plan: &Plan,
+    now: i64,
+) -> Result<(PendingChange, Option<NewKit>)> {
     let me = check(conn)?;
     let seed = identity::own_seed(conn)?.ok_or_else(|| validation(REMOVAL_UNSUPPORTED))?;
     let own = trust::entry(conn, me)?.ok_or_else(|| validation(REMOVAL_UNSUPPORTED))?;
@@ -588,7 +722,8 @@ fn prepare(conn: &Connection, creds: &Credentials, plan: &Plan, now: i64) -> Res
         store
             .iter()
             .filter(|e| {
-                matches!(e.state, TrustState::Left | TrustState::Removed)
+                e.kind != CertKind::Kit
+                    && matches!(e.state, TrustState::Left | TrustState::Removed)
                     && e.cut_off_epoch.is_none()
                     && !plan.removing.contains(&e.device)
             })
@@ -600,6 +735,56 @@ fn prepare(conn: &Connection, creds: &Credentials, plan: &Plan, now: i64) -> Res
             }),
     );
     notices.truncate(bundle::MAX_NOTICE_ENTRIES);
+    // The Kit after the change: a new one (with the removal of the one it replaces), or the
+    // current one, or none.
+    let mut new_kit = None;
+    let kit_part = match (plan.replaces_kit, &plan.kit) {
+        (ReplacesKit::No, None) => None,
+        (ReplacesKit::No, Some(current)) => Some(KitPart {
+            cert: current.cert.clone(),
+            replaces: None,
+        }),
+        (_, current) => {
+            let (secret, keys, cert) = kit::create(me, &seed, &vault, now)?;
+            let replaces = current
+                .as_ref()
+                .map(|old| {
+                    Record::sign(RecordType::Removed, vault, old.device, me, now, from, &seed)
+                })
+                .transpose()?;
+            new_kit = Some((
+                NewKit {
+                    secret,
+                    id: keys.id(),
+                    created_at: now,
+                },
+                Zeroizing::new(keys.token().to_string()),
+            ));
+            Some(KitPart { cert, replaces })
+        }
+    };
+    let mut confirm: Vec<DeviceId> = plan.recipients.iter().map(|e| e.device).collect();
+    let pending_kit = match &kit_part {
+        None => None,
+        Some(part) => {
+            confirm.push(part.cert.body.device);
+            let confirmed = kit::confirmed_after(
+                &store,
+                &plan.recipients,
+                &plan.removing,
+                part.replaces.as_ref().map(|r| r.subject),
+                &part.cert,
+            );
+            let next = creds.keys.with_next(Zeroizing::new(*key))?;
+            let envelope = kit::seal(conn, &next, &part.cert, &seed, &own.cert, &confirmed, now)?;
+            Some(PendingKit {
+                envelope,
+                token: new_kit.as_ref().map(|(_, token)| token.clone()),
+                cert: new_kit.as_ref().map(|_| part.cert.clone()),
+                replaces: part.replaces.clone(),
+            })
+        }
+    };
     // Only heads this device verified travel (a provisional one is the server's word).
     let heads = head::verified_epochs(conn)?;
     let older: Vec<OldKey> = creds
@@ -629,6 +814,7 @@ fn prepare(conn: &Connection, creds: &Credentials, plan: &Plan, now: i64) -> Res
             },
             removed: &removed,
             keys: &older,
+            kit: kit_part.as_ref(),
         },
         &mut bundle::os_fill,
     )?;
@@ -638,10 +824,11 @@ fn prepare(conn: &Connection, creds: &Credentials, plan: &Plan, now: i64) -> Res
         key,
         bundle: bytes,
         removed,
-        confirm: plan.confirming.clone(),
+        confirm,
+        kit: pending_kit,
     };
     store_pending(conn, &change)?;
-    Ok(change)
+    Ok((change, new_kit.map(|(kit, _)| kit)))
 }
 
 /// How sending a pending change ended.
@@ -651,9 +838,11 @@ enum Sent {
     Pending(SyncError),
 }
 
-/// The token call (spec §6.4 step 4) and what its answer does (step 5). `background`: a
-/// resolution no person is waiting for (`resolve_pending`), which leaves a notice when the change
-/// the person confirmed does not happen (`rekey::RemovalNotDone`).
+/// The token call (spec §6.4 step 4) and what its answer does (step 5), with the Kit's part
+/// whenever the change has one (always, on a vault with a Kit: the server refuses a rotation
+/// without it). `background`: a resolution no person is waiting for (`resolve_pending`), which
+/// leaves a notice when the change the person confirmed does not happen
+/// (`rekey::RemovalNotDone`).
 ///
 /// A retired token (`403`) is first checked against the bundles on the server: one with this
 /// change's bytes means it landed after all (an answer lost, then a `401` for the new token that
@@ -671,16 +860,34 @@ async fn send<R: Relay, D: ConnAccess>(
     now: i64,
 ) -> SyncResult<Sent> {
     let new_token = change.new_auth(creds).token;
-    match relay
-        .rotate_token(&creds.auth(), &new_token, &change.bundle)
-        .await
-    {
+    let answer = match &change.kit {
+        Some(kit) => {
+            relay
+                .rotate_token_with_kit(
+                    &creds.auth(),
+                    &new_token,
+                    &change.bundle,
+                    KitRotation {
+                        envelope: &kit.envelope,
+                        token: kit.token.as_ref().map(|t| t.as_str()),
+                    },
+                )
+                .await
+        }
+        None => {
+            relay
+                .rotate_token(&creds.auth(), &new_token, &change.bundle)
+                .await
+        }
+    };
+    match answer {
         Ok(rotated) => {
             let epoch = db.with_conn(|conn| commit(conn, change, rotated, now))?;
             log::info!("[SYNC] The sync key changed to epoch {epoch}");
             Ok(Sent::Done(Outcome::Changed {
                 epoch,
                 removed: change.removed_devices(),
+                kit: None,
             }))
         }
         Err(RelayError::TokenReadOnly) => {
@@ -692,6 +899,7 @@ async fn send<R: Relay, D: ConnAccess>(
                 return Ok(Sent::Done(Outcome::Changed {
                     epoch,
                     removed: change.removed_devices(),
+                    kit: None,
                 }));
             }
             log::info!("[SYNC] Another device changed the sync key first");
@@ -731,8 +939,9 @@ async fn send<R: Relay, D: ConnAccess>(
 }
 
 /// Wipes the pending change, and in the background leaves the notice that it was not done: `by`
-/// changed the key first (when known), and whether every device it meant to remove is removed
-/// here anyway. In one hold, so the notice is there whenever the change is gone.
+/// changed the key first (when known), whether every device it meant to remove is removed here
+/// anyway, and whether the new Kit it made never started working. In one hold, so the notice is
+/// there whenever the change is gone.
 fn wipe_not_done(
     conn: &Connection,
     change: &PendingChange,
@@ -755,21 +964,24 @@ fn wipe_not_done(
                 .flatten()
                 .is_some_and(|e| e.state == TrustState::Removed)
         });
-    log::warn!("[SYNC] A confirmed removal or key change was not done");
+    log::warn!("[SYNC] A confirmed removal or new Recovery Kit was not done");
     write_removal_not_done(
         conn,
         &RemovalNotDone {
             by,
             devices,
             already_removed,
+            kit_replaced: change.new_kit(),
         },
     )
 }
 
 /// A `200` (spec §6.4 step 5), in one savepoint: the new key current, its epoch's start, the
 /// removal records written to the rows and applied to the store (cut off at the new epoch, as is
-/// every left or list-removed device that still knew the key), the ticked devices confirmed,
-/// the pending change cleared, `rekey_seen` at this rotation and a snapshot under the new key due.
+/// every left or list-removed device that still knew the key), a replaced Kit removed the same
+/// way and the new one's row written and pinned by this device (R-28), every recipient and the
+/// Kit confirmed, the pending change cleared, `rekey_seen` at this rotation and a snapshot under
+/// the new key due.
 fn commit(conn: &Connection, change: &PendingChange, rotated: Rotated, now: i64) -> Result<u32> {
     let creds = keys::credentials(conn)?.ok_or_else(not_set_up)?;
     let me = state::load(conn)?.ok_or_else(not_set_up)?.device;
@@ -791,13 +1003,18 @@ fn commit(conn: &Connection, change: &PendingChange, rotated: Rotated, now: i64)
         // The first envelope under the new key: the signed head every other device checks the
         // server's word against (`rekey::head`).
         head::queue_signed_head(conn, me, change.from, change.to, rotated)?;
-        for record in &change.removed {
+        let replaced = change.kit.as_ref().and_then(|k| k.replaces.as_ref());
+        for record in change.removed.iter().chain(replaced) {
             write_removal(conn, record)?;
             trust::mark_removed(conn, record, Some(change.to))?;
         }
+        if let Some(cert) = change.kit.as_ref().and_then(|k| k.cert.as_ref()) {
+            kit::write_row(conn, cert, None, now)?;
+            trust::pin_created_kit(conn, cert, now)?;
+        }
         trust::cut_off_all_pending(conn, change.to)?;
-        // Every recipient still trusted here is confirmed (revision §3.1; one that left
-        // meanwhile is passed over).
+        // Every recipient still trusted here, and the Kit, is confirmed (revision §3.1; one that
+        // left meanwhile is passed over).
         trust::mark_confirmed(conn, &change.confirm)?;
         conn.execute(
             "UPDATE sync_state SET rotation_pending = NULL, \
@@ -879,6 +1096,7 @@ pub async fn resolve_pending<R: Relay, D: ConnAccess>(
             Ok(Some(Outcome::Changed {
                 epoch,
                 removed: change.removed_devices(),
+                kit: None,
             }))
         }
         Err(RelayError::Unauthorized) => {
@@ -950,6 +1168,41 @@ mod tests {
             bundle: vec![1, 2, 3, 250],
             removed: vec![record],
             confirm: vec![DeviceId([7; 16])],
+            kit: None,
+        }
+    }
+
+    /// A pending change that makes a new Kit replacing another.
+    fn kit_change() -> PendingChange {
+        let seed = new_sign_seed().expect("seed");
+        let keys =
+            crate::services::sync::identity::KitSecret::from_bytes(Zeroizing::new([0x44; 32]))
+                .derive(&[0x22; 16]);
+        let cert = crate::services::sync::identity::cert::issue_kit(
+            &seed,
+            DeviceId([1; 16]),
+            &keys,
+            1_700_000_000,
+        )
+        .expect("Kit");
+        let replaces = Record::sign(
+            RecordType::Removed,
+            [0x22; 16],
+            DeviceId([9; 16]),
+            DeviceId([1; 16]),
+            1_700_000_000,
+            4,
+            &seed,
+        )
+        .expect("record");
+        PendingChange {
+            kit: Some(PendingKit {
+                envelope: vec![9, 8, 7],
+                token: Some(Zeroizing::new(keys.token().to_string())),
+                cert: Some(cert),
+                replaces: Some(replaces),
+            }),
+            ..change()
         }
     }
 
@@ -965,6 +1218,7 @@ mod tests {
         assert_eq!(back.bundle, change.bundle);
         assert_eq!(back.removed, change.removed);
         assert_eq!(back.confirm, change.confirm);
+        assert!(back.kit.is_none());
         let printed = format!("{change:?}");
         assert!(printed.contains("<redacted>"), "{printed}");
         assert!(!printed.contains("5a5a"), "{printed}");
@@ -975,12 +1229,55 @@ mod tests {
     fn a_pending_change_that_does_not_read_is_refused() {
         let json = change().to_json();
         for broken in [
-            json.replace("\"v\":1", "\"v\":2"),
+            json.replace("\"v\":2", "\"v\":1"),
             json.replace("\"to\":5", "\"to\":6"),
             json.replace("]}", "],\"extra\":1}"),
             json.replace("\"key\":\"", "\"key\":\"AA"),
         ] {
             assert!(PendingChange::from_json(&broken).is_err(), "{broken}");
         }
+    }
+
+    #[test]
+    fn the_kit_part_round_trips_and_its_token_is_never_printed() {
+        let change = kit_change();
+        let token = change
+            .kit
+            .as_ref()
+            .and_then(|k| k.token.as_ref())
+            .expect("token")
+            .to_string();
+        let json = change.to_json();
+
+        let back = PendingChange::from_json(&json).expect("parses");
+
+        let (kit, original) = (
+            back.kit.as_ref().expect("kit"),
+            change.kit.as_ref().expect("kit"),
+        );
+        assert_eq!(kit.envelope, original.envelope);
+        assert_eq!(
+            kit.token.as_deref().map(String::as_str),
+            Some(token.as_str())
+        );
+        assert_eq!(kit.cert, original.cert);
+        assert_eq!(kit.replaces, original.replaces);
+        assert!(back.new_kit());
+        assert!(!format!("{change:?}").contains(&token));
+        // A Kit that stays: the envelope alone.
+        let staying = PendingChange {
+            kit: Some(PendingKit {
+                envelope: vec![1],
+                token: None,
+                cert: None,
+                replaces: None,
+            }),
+            ..self::change()
+        };
+        let back = PendingChange::from_json(&staying.to_json()).expect("parses");
+        assert!(!back.new_kit());
+        // A token without a certificate (or the other way round) is not a Kit part.
+        let broken = json.replacen(",\"token\":\"", ",\"x\":\"", 1);
+        assert!(PendingChange::from_json(&broken).is_err());
     }
 }

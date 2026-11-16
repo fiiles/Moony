@@ -20,7 +20,7 @@ use crate::services::sync::identity::{self, trust};
 use crate::services::sync::rekey::bundle::{self, BundleInput, OldKey, Reason, Recipient};
 use crate::services::sync::rekey::head;
 use crate::services::sync::rekey::pickup::{self, Pickup};
-use crate::services::sync::rekey::rotate::{self, Outcome, RemovalMode};
+use crate::services::sync::rekey::rotate::{self, Outcome};
 use crate::services::sync::rekey::{self, RemovalNotDone};
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::{Rekey, RekeyPage, RelayError};
@@ -112,6 +112,7 @@ fn hand_bundle(
             reason: Reason::Rotate,
             removed: &[],
             keys: &older,
+            kit: None,
         },
         &mut bundle::os_fill,
     )
@@ -137,9 +138,7 @@ fn own_signer(
 #[tokio::test]
 async fn a_head_the_server_raised_for_one_device_is_refused_and_nothing_past_it_applies() {
     let three = three().await;
-    remove(&three, A, &[C], RemovalMode::Rotate)
-        .await
-        .expect("removed");
+    remove(&three, A, &[C]).await.expect("removed");
     let head = true_head(&three);
     forge_from_c(&three, "c-forged").await;
     push_a_unsent(&three).await;
@@ -166,9 +165,7 @@ async fn a_head_the_server_raised_for_one_device_is_refused_and_nothing_past_it_
     assert!(!has_institution(&three.vault.b.lock(), "c-forged"));
 
     // A later key change: the refutation stays and still holds the pull.
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("second change");
+    new_kit(&three, A).await.expect("second change");
     let report = round_of(&three.vault, &three.vault.b).await;
     assert_eq!(report.problem, Some(SyncProblem::KeyChangeUnverified));
     let b = three.vault.b.lock();
@@ -191,9 +188,7 @@ async fn a_device_behind_waits_for_the_signed_head_and_then_goes_on() {
     let three = three().await;
     institution(&three.vault.a.lock(), "a-before");
     round_of(&three.vault, &three.vault.a).await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
 
     let report = round_of(&three.vault, &three.vault.b).await;
 
@@ -231,9 +226,7 @@ async fn a_head_the_server_lowered_seals_nothing_again_and_sends_nothing_twice()
     push(&three.vault.relay, &three.vault.creds, &[b1]).await;
     let b1_at = last_seq(&three);
     write_and_seal(&three.vault, &three.vault.b, "b2");
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     round_of(&three.vault, &three.vault.a).await;
     three
         .vault
@@ -265,9 +258,7 @@ async fn a_head_the_server_lowered_seals_nothing_again_and_sends_nothing_twice()
 #[tokio::test]
 async fn changes_applied_past_a_key_change_the_server_hid_are_reported() {
     let three = three().await;
-    remove(&three, A, &[C], RemovalMode::Rotate)
-        .await
-        .expect("removed");
+    remove(&three, A, &[C]).await.expect("removed");
     let head = true_head(&three);
     round_of(&three.vault, &three.vault.a).await;
     let a_sent = last_seq(&three);
@@ -302,9 +293,7 @@ async fn changes_applied_past_a_key_change_the_server_hid_are_reported() {
 #[tokio::test]
 async fn a_lagging_device_learns_of_the_key_change_before_it_pulls() {
     let three = three().await;
-    remove(&three, A, &[C], RemovalMode::Rotate)
-        .await
-        .expect("removed");
+    remove(&three, A, &[C]).await.expect("removed");
     forge_from_c(&three, "c-forged").await;
     push_a_unsent(&three).await;
 
@@ -342,15 +331,14 @@ async fn a_key_change_whose_key_the_server_does_not_know_is_not_taken() {
     assert_eq!(state::rekey_seen(&b).expect("seen"), 0);
 }
 
-/// Review finding 3: C, removed from the list by A, still holds the token and changes the key
-/// itself before B's store has caught up with the removal; B, whose list already carries the
-/// verified removal, does not take C's key.
+/// Review finding 3: C, whose removal record A wrote with no key change (a dishonest server
+/// holding A's key change back), still holds the token and changes the key itself before B's
+/// store has caught up with the removal; B, whose list already carries the verified removal,
+/// does not take C's key.
 #[tokio::test]
 async fn a_key_change_signed_by_a_device_known_to_be_removed_is_not_taken() {
     let three = three().await;
-    remove(&three, A, &[C], RemovalMode::ListOnly)
-        .await
-        .expect("listed");
+    record_removal(&three.vault.a.lock(), A, C);
     round_of(&three.vault, &three.vault.a).await;
     round_of(&three.vault, &three.vault.b).await;
     assert!(
@@ -395,9 +383,7 @@ async fn a_key_change_signed_by_a_device_known_to_be_removed_is_not_taken() {
 #[tokio::test]
 async fn a_bundle_pager_that_never_ends_or_goes_back_is_refused() {
     let three = three().await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     let real = three
         .vault
         .relay
@@ -484,9 +470,7 @@ async fn a_bundle_passed_over_that_does_not_open_does_not_move_what_was_seen() {
     let (seed, cert) = own_signer(&three.vault.a.lock(), A);
     // To epoch 1 under a key nobody holds; B is at epoch 0 then 1 after the real change.
     let junk = hand_bundle(&three, &seed, &cert, &[A, B], &Zeroizing::new([0x55; 32]));
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     round_of(&three.vault, &three.vault.a).await;
     round_of(&three.vault, &three.vault.b).await;
     assert_eq!(key_epoch(&three.vault.b.lock()), 1);
@@ -523,10 +507,8 @@ async fn a_bundle_passed_over_that_does_not_open_does_not_move_what_was_seen() {
 async fn a_change_that_landed_although_its_token_was_refused_commits_as_this_devices_own() {
     let three = three().await;
     three.vault.relay.lose_next_answer(Route::RotateToken);
-    let outcome = remove(&three, A, &[C], RemovalMode::Rotate)
-        .await
-        .expect("pending");
-    assert_eq!(outcome, Outcome::Pending);
+    let outcome = remove(&three, A, &[C]).await.expect("pending");
+    assert_eq!(outcome, Outcome::Pending { kit: None });
     three
         .vault
         .relay
@@ -540,7 +522,8 @@ async fn a_change_that_landed_although_its_token_was_refused_commits_as_this_dev
         resolved,
         Some(Outcome::Changed {
             epoch: 1,
-            removed: vec![C]
+            removed: vec![C],
+            kit: None
         })
     );
     let a = three.vault.a.lock();
@@ -579,12 +562,8 @@ async fn a_pickup_that_fails_after_a_lost_race_keeps_the_change_until_the_next_r
         .vault
         .relay
         .fail_next(Route::RotateToken, RelayError::Network("offline".into()));
-    remove(&three, A, &[C], RemovalMode::Rotate)
-        .await
-        .expect("pending");
-    remove(&three, B, &[], RemovalMode::Rotate)
-        .await
-        .expect("B changes the key");
+    remove(&three, A, &[C]).await.expect("pending");
+    new_kit(&three, B).await.expect("B changes the key");
     three
         .vault
         .relay
@@ -615,6 +594,7 @@ async fn a_pickup_that_fails_after_a_lost_race_keeps_the_change_until_the_next_r
             by: Some("iPhone".into()),
             devices: vec!["iPad".into()],
             already_removed: false,
+            kit_replaced: false,
         })
     );
 }
@@ -628,12 +608,8 @@ async fn a_removal_a_background_round_finds_not_done_leaves_a_notice() {
         .vault
         .relay
         .fail_next(Route::RotateToken, RelayError::Network("offline".into()));
-    remove(&three, A, &[C], RemovalMode::Rotate)
-        .await
-        .expect("pending");
-    remove(&three, B, &[C], RemovalMode::Rotate)
-        .await
-        .expect("B removes C first");
+    remove(&three, A, &[C]).await.expect("pending");
+    remove(&three, B, &[C]).await.expect("B removes C first");
 
     round_of(&three.vault, &three.vault.a).await;
 
@@ -645,6 +621,7 @@ async fn a_removal_a_background_round_finds_not_done_leaves_a_notice() {
             by: Some("iPhone".into()),
             devices: vec!["iPad".into()],
             already_removed: true,
+            kit_replaced: false,
         })
     );
 }
@@ -671,9 +648,7 @@ fn a_creds(three: &Three) -> Credentials {
 async fn a_caught_up_device_sends_its_unsent_changes_without_the_signed_head() {
     let three = three().await;
     write_and_seal(&three.vault, &three.vault.b, "b-unsent");
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
 
     let report = round_of(&three.vault, &three.vault.b).await;
 
@@ -700,9 +675,7 @@ async fn a_lowered_head_without_the_signed_head_stops_the_pull_and_sends_nothing
     push(&three.vault.relay, &three.vault.creds, &[b1]).await;
     let b1_at = last_seq(&three);
     write_and_seal(&three.vault, &three.vault.b, "b2");
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     three
         .vault
         .relay
@@ -729,9 +702,7 @@ async fn a_lowered_head_without_the_signed_head_stops_the_pull_and_sends_nothing
 #[tokio::test]
 async fn a_restored_snapshot_naming_the_head_verifies_it() {
     let three = three().await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     let head = true_head(&three);
     // A's next round sends its signed head and the snapshot owed under the new key.
     round_of(&three.vault, &three.vault.a).await;
@@ -757,9 +728,7 @@ async fn a_restored_snapshot_without_the_head_moves_the_look_ahead_past_the_prun
     institution(&three.vault.a.lock(), "a-before");
     round_of(&three.vault, &three.vault.a).await;
     round_of(&three.vault, &three.c).await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     let head = true_head(&three);
     // C takes the key provisionally, writes under it and uploads a snapshot naming no head.
     institution(&three.c.lock(), "c-after");
@@ -812,12 +781,8 @@ async fn a_restored_snapshot_without_the_head_moves_the_look_ahead_past_the_prun
 #[tokio::test]
 async fn two_signed_heads_of_back_to_back_key_changes_verify_in_one_round() {
     let three = three().await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("first");
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("second");
+    new_kit(&three, A).await.expect("first");
+    new_kit(&three, A).await.expect("second");
     let unsent: Vec<u32> = unsent_epochs(&three.vault.a.lock())
         .into_iter()
         .map(|(_, epoch)| epoch)
@@ -850,9 +815,7 @@ async fn two_signed_heads_of_back_to_back_key_changes_verify_in_one_round() {
 #[tokio::test]
 async fn a_signed_head_for_something_else_neither_confirms_nor_refutes() {
     let three = three().await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     let head = true_head(&three);
     let creds = a_creds(&three);
     let seed = identity::own_seed(&three.vault.a.lock())
@@ -891,9 +854,7 @@ async fn a_signed_head_for_something_else_neither_confirms_nor_refutes() {
 #[tokio::test]
 async fn a_signed_head_past_the_look_ahead_cap_is_found_in_a_later_round() {
     let three = three().await;
-    remove(&three, A, &[], RemovalMode::Rotate)
-        .await
-        .expect("changed");
+    new_kit(&three, A).await.expect("changed");
     let head = true_head(&three);
     let creds = a_creds(&three);
     let author = DeviceId([0x70; 16]);
@@ -928,12 +889,8 @@ async fn a_crash_between_the_races_adoption_and_the_wipe_resolves_with_the_notic
         .vault
         .relay
         .fail_next(Route::RotateToken, RelayError::Network("offline".into()));
-    remove(&three, A, &[C], RemovalMode::Rotate)
-        .await
-        .expect("pending");
-    remove(&three, B, &[], RemovalMode::Rotate)
-        .await
-        .expect("B changes the key");
+    remove(&three, A, &[C]).await.expect("pending");
+    new_kit(&three, B).await.expect("B changes the key");
     let picked = pickup::pick_up(&three.vault.relay, &three.vault.a, None, NOW)
         .await
         .expect("pickup");
@@ -953,6 +910,7 @@ async fn a_crash_between_the_races_adoption_and_the_wipe_resolves_with_the_notic
             by: None,
             devices: vec!["iPad".into()],
             already_removed: false,
+            kit_replaced: false,
         })
     );
 }

@@ -1096,7 +1096,7 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
 
 **Tasks 9–10 (removing and changing the key here; picking a key change up).**
 
-46. **Re-sealing happens in a round, before its push, for the remover and every other device
+47. **Re-sealing happens in a round, before its push, for the remover and every other device
     alike** (supersedes §6.4's "Then re-seal unsent envelopes" at the commit). An envelope the
     server took before the rotation but whose echo has not come back would, re-sealed first, come
     back later under its old hash and read as a copy of this device (`Verdict::Clone`, a re-join).
@@ -1110,7 +1110,7 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     `last_hash` follows. A second call changes nothing (envelopes under the current epoch before
     the first older one are left alone). An envelope whose header does not read is not "older"
     and goes as it stands.
-47. **`sync_epochs` records the server's head** (coordinator's ruling 1 on Tasks 7–8):
+48. **`sync_epochs` records the server's head** (coordinator's ruling 1 on Tasks 7–8):
     `Rotated::head` on the remover, `Rekey::head` on everyone else, never cross-checked against
     anything signed: the remover cannot know the head before the server answers, and changing
     the bundle bytes would need a new version. It is safe because a wrong head can only stall: the
@@ -1119,14 +1119,14 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     stops the pull at the first new-epoch op (`Invalid`), one too low stops it at an old-epoch op
     above it (`Invalid`, before the chain could read an own envelope as a copy), and re-sealing
     waits for the reported head. A server can stall sync anyway.
-48. **A server that went back after a key change** (coordinator's ruling 2): the page check runs
+49. **A server that went back after a key change** (coordinator's ruling 2): the page check runs
     before any op is judged (`pull::check_page`, head below the cursor → `ServerWentBack`), and
     positions the restore reissues lie past the rotation head under the new epoch, so the epoch
     rule never stops the pull for good (test
     `rekey_pickup::a_server_that_went_back_after_a_key_change_does_not_stop_the_pull_for_good`).
     A restore from before the rotation loses the key change itself; the devices that adopted it
     then meet `401` (`unauthorized`), as for any server that lost a vault's token.
-49. **The pickup** (`rekey::pickup::pick_up(relay, db, data_dir, now) -> Pickup::{Nothing,
+50. **The pickup** (`rekey::pickup::pick_up(relay, db, data_dir, now) -> Pickup::{Nothing,
     Adopted {epoch, by}, RemovedHere {by, at}, NotGiven, Unverified}`) fetches every bundle after
     `rekey_seen`, each page with the credentials as they then stand, and takes them in order:
     - a bundle of a key change this device already holds (`to_epoch` ≤ its epoch, read from the
@@ -1146,7 +1146,7 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
       (`keys::store_key_change`, refused unless the stored epoch is the one before), the older
       epochs' missing heads, the new epoch's head (by the signer), `cut_off_all_pending`,
       `rekey_seen` and the notice.
-50. **The triggers in the round** (`engine::round_steps`): a pull stopped on an op whose header
+51. **The triggers in the round** (`engine::round_steps`): a pull stopped on an op whose header
     names a later epoch (`PullReport::key_hint`), and a push or snapshot upload answered
     `ReadOnlyToken`, run the pickup; adopted, the round runs again with the new key (its pull
     absorbed into the first one's report), at most three pickups a round. With nothing to pick
@@ -1158,7 +1158,7 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     in the engine's start check, which holds the round lock and has no deadline, could pin it).
     The pending change of this device is likewise resolved by the first round, not by the start
     check (§6.4 step 6's "at every engine start" is that round).
-51. **The removed device** (`rekey::removed_here(conn, data_dir, by, at)`): writes the Local
+52. **The removed device** (`rekey::removed_here(conn, data_dir, by, at)`): writes the Local
     `sync.removed_notice` = `{"by": "<name>", "at": n, "unsent": n}` (`unsent` = outbox rows +
     unsent envelopes; `by` the remover's name in this device's list, else its 8 hex characters)
     and turns sync off; a failed turn-off takes the notice back. Inside a round there is no data
@@ -1167,7 +1167,7 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     (`rekey::forget_binding_after_removal`), publishes the status and ends its loop. The notice
     survives turning off; `sync.key_change_notice` = `{"by", "at", "removed": [names]}` (the
     bundle's signed time and the names of its removed devices) is cleared by turning off.
-52. **The removal API** (`rekey::rotate`): `plan(conn, removing, mode, opted_in) -> Plan
+53. **The removal API** (`rekey::rotate`): `plan(conn, removing, mode, opted_in) -> Plan
     {mode, epoch, removing, recipients, excluded, added_by_removing, confirming, consent}` (the
     recipients and exclusions are empty for list-only; `confirming` = the ticked recipients);
     `consent(&Plan)` = hex SHA-256 over a domain string, the mode, the epoch, the removed IDs,
@@ -1178,7 +1178,7 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     `pending(conn)`. `forget_pairing` is a hook (the service cannot reach `PAIRING`): Task 16
     passes `commands::sync_pairing::forget_pairing`; it runs once the pending change is stored,
     before the token call, and never for list-only.
-53. **Preconditions and keys:** sync off → `syncSetupIncomplete`; capture broken or a guarded
+54. **Preconditions and keys:** sync off → `syncSetupIncomplete`; capture broken or a guarded
     profile → `syncChangesPaused`; no own pinned `trusted` entry or no signing key →
     `syncRemovalUnsupported`; a pending change → `syncChangeInProgress`; this device →
     `syncRemoveThisDevice`; a list-only removal of nobody, a device neither listed nor pinned, or
@@ -1186,35 +1186,35 @@ Decisions made while building, in the spirit of the spec; each supersedes the te
     `validation.syncRotationRaced|{"name": "<winner>"}`, `Outcome::AlreadyRemoved` when the
     winner removed every device asked for, and `syncKeyRotated` when no winner could be picked up.
     The five new keys got their texts in all ten locales now (the Rust gate of item 10).
-54. **The epoch check before a key change** is one `vault_info`; behind (`rotation` above
+55. **The epoch check before a key change** is one `vault_info`; behind (`rotation` above
     `rekey_seen`), the change is picked up first and the plan, rebuilt on the new epoch, no longer
     matches its consent (`syncRemovalPlanChanged`). List-only makes no relay call at all. "A round
     runs first" (§6.4 step 1) is the command's: Task 16 runs one before `sync_removal_plan`.
-55. **Records and notices:** a removal record carries the current (from) epoch in both modes. The
+56. **Records and notices:** a removal record carries the current (from) epoch in both modes. The
     bundle body's `removed` carries only the records signed now; devices that left or were
     removed from the list and still know the key get a notice (after the removed devices, at most
     64 notices) and every device cuts them off at adoption (`cut_off_all_pending`).
-56. **The pending change** is `{"v":1,"from":n,"to":n+1,"key":"<b64url>","bundle":"<b64url>",
+57. **The pending change** is `{"v":1,"from":n,"to":n+1,"key":"<b64url>","bundle":"<b64url>",
     "removed":["<record b64>"],"confirm":["<hex>"]}` in `sync_state.rotation_pending`, built in
     one reserved wiped buffer, stored only where none is, parsed into wiped buffers, unknown
     fields refused; `PendingChange` prints `<redacted>`.
-57. **The token call's answers:** a network error, any `Server(_)` status (5xx, 408), a protocol
+58. **The token call's answers:** a network error, any `Server(_)` status (5xx, 408), a protocol
     error, `429` and `507` keep the change pending (`Outcome::Pending`; the person reads "Dokončí
     se, až bude server dostupný"); `403` (race), `409` (`syncTooManyKeyChanges`), `400` (an
     internal error) and every other refusal (`401`, `404`, …, returned as that error) wipe it.
-58. **Resolving:** the new token reading the vault means it landed; its rotation and head are
+59. **Resolving:** the new token reading the vault means it landed; its rotation and head are
     those of the bundle with the stored bytes in `GET /rekey` read with the new token (not listed
     → a protocol error, kept, tried again). `401` sends it again. A pending change whose `from` is
     no longer this device's epoch is dropped. A round with a pending change resolves it before
     anything (its first connection hold reads `pending`), and an unresolved one ends the round
     with the error: no pull, no push.
-59. **The commit** writes each removal record where the row has none (`COALESCE`) and sets
+60. **The commit** writes each removal record where the row has none (`COALESCE`) and sets
     `removed = 1`; confirms only the ticked devices still `trusted` (the server already rotated,
     so a tick cannot fail the commit); `rekey_seen = MAX(rekey_seen, rotation)`;
     `snapshot_epoch_due = to`. A due epoch snapshot forces the next clean round's upload like a
     barrier crossing (`state::snapshot_epoch_owed`); an upload or a newer snapshot on the relay
     (`409`, only the new token can upload one) clears it.
-60. **Problems:** `SyncProblem::{KeyNotGiven, KeyChangeUnverified}` (`keyNotGiven`,
+61. **Problems:** `SyncProblem::{KeyNotGiven, KeyChangeUnverified}` (`keyNotGiven`,
     `keyChangeUnverified`) are added in `models/sync.rs` with their phases (error) and reasons;
     `ServerWentBack` outranks them (`status::went_back`); the lanes treat them like `KeyRotated`
     (downloads only). The wire (`shared/schema.ts`, `generated-types.ts`) is Task 16's, so the

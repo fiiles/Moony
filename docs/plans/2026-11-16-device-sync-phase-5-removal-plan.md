@@ -174,7 +174,7 @@
 - [ ] Implement `RemovalMode {ListOnly, Rotate}`, `plan(conn, removing, mode, now) -> Result<Plan>`, `consent(&Plan) -> String` (hex SHA-256 over a canonical encoding of the fields the spec names), `async fn remove<R, D>(relay, db, consent, mode, removing, now) -> SyncResult<Outcome>` under `engine::exclusive` (password checked by the command, Task 16), `async fn resolve_pending<R, D>(relay, db) -> SyncResult<Option<Outcome>>`. The pending JSON (secret-bearing) is written and read only in `rotate.rs`. Commit everything of a `200` in one savepoint; the re-seal of the remover's own unsent envelopes calls Task 10's `reseal::reseal_unsent` (write a stub in this task that Task 10 fills, or order Task 10's `reseal.rs` part first: implementer's choice, note it in the commit).
 - [ ] Verify: gates. Commit: `feat(sync): remove a device or change the key, with a pending change that always resolves`.
 
-> **Done (spec As built 46–60):** `rotate::{plan, consent, remove, resolve_pending, pending}`; Task 10's pickup was built in the same pass (the race needs it), so the race tests pick the winner up here. Re-sealing is not called at the commit: the round re-seals before its push (As built 46).
+> **Done (spec As built 47–61):** `rotate::{plan, consent, remove, resolve_pending, pending}`; Task 10's pickup was built in the same pass (the race needs it), so the race tests pick the winner up here. Re-sealing is not called at the commit: the round re-seals before its push (As built 47).
 
 ### Task 10 [opus]: Picking up a new key; the removed device (spec §7.1–§7.5)
 
@@ -193,7 +193,7 @@
 - [ ] Implement `reseal::reseal_unsent(conn, creds) -> Result<usize>` (one savepoint; leaves envelopes already under the current epoch alone, so it is idempotent), `pickup::pick_up<R, D>(relay, db, now) -> SyncResult<Pickup>` with `Pickup::{Nothing, Adopted {..}, RemovedHere {..}, NotGiven, Unverified}`, `rekey::removed_here(conn, data_dir, by, at)` (counts unsent, writes the notice key, calls `setup::turn_off`), the hooks in `push.rs` / `pull.rs` / engine start, the problems `KeyNotGiven` and `KeyChangeUnverified` with the precedence of spec §7.5.
 - [ ] Verify: gates. Commit: `feat(sync): devices pick up a new key, re-seal what they had not sent, and a removed device turns sync off`.
 
-> **Done (spec As built 46–51).** The pickup does not run `trust::refresh` after adopting: Task 11's refresh hook (after a merge that touched `sync_devices`, at unlock, after a pickup) should, and handle its `about_me` with `rekey::removed_here` (inside a round pass `None` and set `RoundReport::removed_here`, which ends the loop and removes the binding file).
+> **Done (spec As built 47–52).** The pickup does not run `trust::refresh` after adopting: Task 11's refresh hook (after a merge that touched `sync_devices`, at unlock, after a pickup) should, and handle its `about_me` with `rekey::removed_here` (inside a round pass `None` and set `RoundReport::removed_here`, which ends the loop and removes the binding file).
 
 ### Task 11 [sonnet]: Leaving, list-only removals arriving, records about this device (spec §6.5, §7.4)
 

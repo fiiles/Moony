@@ -437,9 +437,7 @@ mod tests {
                VALUES ('b1', 'r1', 1767225600);",
         )
         .expect("owners");
-        let held = attachment_store::put_bytes(&conn, b"thumb")
-            .expect("blob")
-            .id;
+        attachment_store::put_bytes(&conn, b"thumb").expect("blob");
         conn.execute(
             "INSERT INTO insurance_documents (id, insurance_id, name, blob_id, uploaded_at) \
              VALUES ('d', 'p1', 'Contract', ?1, 1)",

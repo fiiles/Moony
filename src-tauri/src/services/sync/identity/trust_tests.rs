@@ -43,19 +43,23 @@ impl Dev {
     }
     /// Paired by `holder` with the one-time ticket whose seed is `ticket` repeated.
     fn paired_by(self, holder: Dev, ticket: u8) -> Certificate {
+        self.paired_by_at(holder, ticket, NOW, NOW)
+    }
+    /// `paired_by` with the ticket issued at `ticket_at` and the certificate at `cert_at`.
+    fn paired_by_at(self, holder: Dev, ticket: u8, ticket_at: i64, cert_at: i64) -> Certificate {
         let (secret, ticket) = cert::ticket_from_secret(
             TicketSecret::from_bytes(Zeroizing::new([ticket; 32])),
             &holder.seed(),
             VAULT,
             holder.id(),
-            NOW,
+            ticket_at,
         );
         cert::issue_paired(
             &secret,
             &ticket,
             holder.id(),
             &sign_pub(&holder.seed()),
-            &self.fields(NOW),
+            &self.fields(cert_at),
             &self.seed(),
         )
         .expect("paired")
@@ -64,12 +68,15 @@ impl Dev {
         cert::issue_rejoin(&old.seed(), old.id(), &self.fields(at), &self.seed()).expect("rejoin")
     }
     fn left(self) -> Record {
+        self.left_at(NOW)
+    }
+    fn left_at(self, at: i64) -> Record {
         Record::sign(
             RecordType::Left,
             VAULT,
             self.id(),
             self.id(),
-            NOW,
+            at,
             0,
             &self.seed(),
         )
@@ -77,12 +84,15 @@ impl Dev {
     }
     /// `self` removes `subject`.
     fn removes(self, subject: Dev) -> Record {
+        self.removes_at(subject, NOW)
+    }
+    fn removes_at(self, subject: Dev, at: i64) -> Record {
         Record::sign(
             RecordType::Removed,
             VAULT,
             subject.id(),
             self.id(),
-            NOW,
+            at,
             0,
             &self.seed(),
         )
@@ -474,7 +484,8 @@ fn a_removed_record_from_an_unknown_or_removed_signer_is_ignored() {
     set_record(&conn, C, "removal_record", &ME.removes(C));
     trust::refresh(&conn, NOW).unwrap();
     assert_eq!(state_of(&conn, C), Some(TrustState::Removed));
-    set_record(&conn, B, "removal_record", &C.removes(B));
+    // Signed after C's removal (fix round: one signed before it counts).
+    set_record(&conn, B, "removal_record", &C.removes_at(B, NOW + 1));
     trust::refresh(&conn, NOW).unwrap();
     assert_eq!(state_of(&conn, B), Some(TrustState::Trusted));
 }
@@ -542,6 +553,85 @@ fn records_and_removals_arriving_together_are_judged_against_the_store_before_th
 
     assert_eq!(state_of(&conn, B), Some(TrustState::Removed));
     assert_eq!(state_of(&conn, C), Some(TrustState::Removed));
+}
+
+/// Every order of `items`.
+fn permutations<T: Clone>(items: &[T]) -> Vec<Vec<T>> {
+    if items.len() <= 1 {
+        return vec![items.to_vec()];
+    }
+    let mut out = Vec::new();
+    for i in 0..items.len() {
+        let mut rest = items.to_vec();
+        let first = rest.remove(i);
+        for mut tail in permutations(&rest) {
+            tail.insert(0, first.clone());
+            out.push(tail);
+        }
+    }
+    out
+}
+
+/// A store that knows B, C, D and E, each paired by this device.
+fn with_four() -> Connection {
+    let conn = supported();
+    row(&conn, B, Some(&B.paired_by(ME, 0x70)));
+    row(&conn, C, Some(&C.paired_by(ME, 0x71)));
+    row(&conn, D, Some(&D.paired_by(ME, 0x72)));
+    row(&conn, E, Some(&E.paired_by(ME, 0x73)));
+    trust::refresh(&conn, NOW).unwrap();
+    conn
+}
+
+#[test]
+fn records_give_the_same_store_in_one_pass_and_in_every_order_across_passes() {
+    // B removed C before this device removed B; D removed E before it left. Each record was
+    // signed while its signer was in, so each counts however the records arrive.
+    let records: Vec<(Dev, &str, Record)> = vec![
+        (C, "removal_record", B.removes_at(C, NOW + 10)),
+        (B, "removal_record", ME.removes_at(B, NOW + 20)),
+        (E, "removal_record", D.removes_at(E, NOW + 5)),
+        (D, "left_record", D.left_at(NOW + 8)),
+    ];
+
+    let together = with_four();
+    for (dev, column, record) in &records {
+        set_record(&together, *dev, column, record);
+    }
+    trust::refresh(&together, NOW).unwrap();
+    let expected = comparable(&together);
+    assert_eq!(state_of(&together, B), Some(TrustState::Removed));
+    assert_eq!(state_of(&together, C), Some(TrustState::Removed));
+    assert_eq!(state_of(&together, D), Some(TrustState::Left));
+    assert_eq!(state_of(&together, E), Some(TrustState::Removed));
+
+    for order in permutations(&records) {
+        let conn = with_four();
+        for (dev, column, record) in &order {
+            set_record(&conn, *dev, column, record);
+            trust::refresh(&conn, NOW).unwrap();
+        }
+        let names: Vec<String> = order
+            .iter()
+            .map(|(d, c, _)| format!("{}:{c}", d.0))
+            .collect();
+        assert_eq!(comparable(&conn), expected, "order {names:?}");
+    }
+}
+
+#[test]
+fn a_removal_signed_after_its_signer_left_or_was_removed_does_not_count() {
+    let conn = with_four();
+    set_record(&conn, B, "removal_record", &ME.removes_at(B, NOW + 20));
+    set_record(&conn, D, "left_record", &D.left_at(NOW + 8));
+    trust::refresh(&conn, NOW).unwrap();
+
+    set_record(&conn, C, "removal_record", &B.removes_at(C, NOW + 21));
+    set_record(&conn, E, "removal_record", &D.removes_at(E, NOW + 9));
+    trust::refresh(&conn, NOW).unwrap();
+
+    assert_eq!(state_of(&conn, C), Some(TrustState::Trusted));
+    assert_eq!(state_of(&conn, E), Some(TrustState::Trusted));
 }
 
 #[test]

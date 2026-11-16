@@ -18,10 +18,12 @@
 //! An issuer vouches when its entry is pinned with the same signing key and is not `removed`: a
 //! device that left signed what it paired while it was in (its signing key goes with its
 //! `sync_state` row when it leaves), so its earlier pairings stay verifiable. A `removed` record
-//! counts only when its signer is `trusted` here. Within one `refresh` pass every record is judged
-//! against the store as it was before the pass, so the outcome never depends on row order; records
-//! apply before certificates, so a certificate whose issuer is removed in the same pull is not
-//! pinned.
+//! counts when its signer is pinned and either `trusted`, or left or removed by a record whose
+//! time is not before the removal's own (`speaks_at`): what a device signed while it was in counts
+//! whether the news of its leaving arrives before or after. Within one `refresh` pass every record
+//! is judged against the store as it was before the pass, so the outcome never depends on row
+//! order; records apply before certificates, so a certificate whose issuer is removed in the same
+//! pull is not pinned.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
@@ -455,6 +457,24 @@ fn vouches(store: &BTreeMap<DeviceId, TrustEntry>, issuer: DeviceId, sign_pub: &
         .is_some_and(|e| e.state != TrustState::Removed && &e.sign_pub == sign_pub)
 }
 
+/// Whether `signer` speaks for a record it signed at `at`: while it is `trusted`, and after it
+/// left or was removed for what it signed until then (`at` no later than the `state_at` of the
+/// record that changed its state). So a removal counts on every device whether it arrives before
+/// or after the news that its signer left or was removed.
+fn speaks_at(signer: &TrustEntry, at: i64) -> bool {
+    match signer.state {
+        TrustState::Trusted => true,
+        TrustState::Left | TrustState::Removed => signer.state_at.is_some_and(|until| at <= until),
+    }
+}
+
+/// `record`, a removal, verifies by a signer pinned in `store` that `speaks_at` its time.
+fn removal_counts(record: &Record, store: &BTreeMap<DeviceId, TrustEntry>) -> bool {
+    store.get(&record.signer).is_some_and(|signer| {
+        speaks_at(signer, record.at) && record.verify(&signer.sign_pub).is_ok()
+    })
+}
+
 /// The records of every row, judged against `store`: the moves to make and the records naming
 /// this device.
 fn judge_records(
@@ -481,10 +501,7 @@ fn judge_records(
         if let Some(removal) =
             row_record(row.removal.as_deref(), RecordType::Removed, row.id, vault)
         {
-            let verified = store.get(&removal.signer).is_some_and(|signer| {
-                signer.state == TrustState::Trusted && removal.verify(&signer.sign_pub).is_ok()
-            });
-            if verified {
+            if removal_counts(&removal, store) {
                 if row.id == own {
                     about_me.push(removal);
                 } else if store
@@ -790,7 +807,8 @@ pub fn mark_left(conn: &Connection, record: &Record) -> Result<bool> {
 
 /// Moves `record.subject` to `removed`, cut off at `cut_off_epoch` (`None`: it still knows the
 /// current key), or fills the cut-off of an entry already removed without one. The signer must be
-/// pinned and `trusted`. Returns whether anything changed.
+/// pinned and speak for the record's time as `refresh` judges it (`trusted`, or left or removed
+/// after the record's `at`). Returns whether anything changed.
 pub fn mark_removed(
     conn: &Connection,
     record: &Record,
@@ -799,10 +817,10 @@ pub fn mark_removed(
     if record.kind != RecordType::Removed || record.vault_id != vault_id(conn)? {
         return Err(refused("not a removal record of this vault"));
     }
-    let signer = entry(conn, record.signer)?
-        .filter(|s| s.state == TrustState::Trusted)
-        .ok_or_else(|| refused("the removal's signer is not trusted here"))?;
-    record.verify(&signer.sign_pub)?;
+    let store = entry_map(conn)?;
+    if !removal_counts(record, &store) {
+        return Err(refused("the removal's signer is not trusted here"));
+    }
     apply_move(conn, record, cut_off_epoch)
 }
 

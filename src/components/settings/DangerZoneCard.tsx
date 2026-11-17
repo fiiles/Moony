@@ -29,6 +29,7 @@ import { translateApiError } from '@/lib/translate-api-error';
 export function DangerZoneCard() {
   const { t } = useTranslation('settings');
   const { t: tc } = useTranslation('common');
+  const { t: tsync } = useTranslation('deviceSync');
   const { i18n } = useTranslation();
 
   const syncFeature = useDeviceSyncFeature();
@@ -41,13 +42,18 @@ export function DangerZoneCard() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   // Opt-in, off by default: deleting the profile only removes this device
   const [deleteSynced, setDeleteSynced] = useState(false);
+  // Deleting the synced data deletes it for every device: the device password first (O-1)
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const withSynced = syncOn && deleteSynced;
   // Word the user must type before the account can be deleted (DZ-01), in the UI language; any case
   const confirmWord = t('dangerZone.confirmWord');
-  const deleteConfirmed = confirmWordMatches(deleteConfirmText, confirmWord);
+  const deleteConfirmed =
+    confirmWordMatches(deleteConfirmText, confirmWord) && (!withSynced || password !== '');
 
   const deleteAccountMutation = useMutation({
     mutationFn: async () => {
-      await authApi.deleteAccount(syncOn && deleteSynced);
+      await authApi.deleteAccount(withSynced, withSynced ? password : undefined);
     },
     onSuccess: () => {
       // UI preferences belong to the deleted account. A new account on this machine is offered
@@ -57,7 +63,9 @@ export function DangerZoneCard() {
       window.location.reload();
     },
     onError: (error: Error) => {
-      toast.error(t('toast.deletionFailed'), { description: translateApiError(error, tc) });
+      // A wrong password is said under its field and the dialog stays
+      if (withSynced) setPasswordError(translateApiError(error, tc));
+      else toast.error(t('toast.deletionFailed'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -70,10 +78,13 @@ export function DangerZoneCard() {
         <AlertDialog
           open={deleteDialogOpen}
           onOpenChange={(open) => {
+            if (!open && deleteAccountMutation.isPending) return;
             setDeleteDialogOpen(open);
             if (!open) {
               setDeleteConfirmText('');
               setDeleteSynced(false);
+              setPassword('');
+              setPasswordError(null);
             }
           }}
         >
@@ -129,11 +140,37 @@ export function DangerZoneCard() {
                 spellCheck={false}
               />
             </div>
+            {withSynced && (
+              <div className="grid gap-1.5">
+                <Label htmlFor="delete-account-password">{tsync('password.label')}</Label>
+                <Input
+                  id="delete-account-password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setPasswordError(null);
+                  }}
+                  autoComplete="current-password"
+                  aria-invalid={passwordError ? true : undefined}
+                />
+                {passwordError && (
+                  <p className="m-0 text-micro font-500 text-loss" role="alert">
+                    {passwordError}
+                  </p>
+                )}
+              </div>
+            )}
             <AlertDialogFooter>
               <AlertDialogCancel>{tc('buttons.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 disabled={!deleteConfirmed || deleteAccountMutation.isPending}
-                onClick={() => deleteAccountMutation.mutate()}
+                onClick={(event) => {
+                  // The dialog stays while the deletion runs; a wrong password keeps it open
+                  event.preventDefault();
+                  setPasswordError(null);
+                  deleteAccountMutation.mutate();
+                }}
               >
                 {deleteAccountMutation.isPending
                   ? t('dangerZone.deleting')

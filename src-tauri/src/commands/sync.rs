@@ -1642,6 +1642,31 @@ mod tests {
         }
     }
 
+    /// Owner decision O-1 (As built R-113): deleting the profile together with the synced data
+    /// checks the device password, an empty one refused first, before the engine stops or anything
+    /// is sent.
+    #[test]
+    fn deleting_the_profile_with_the_synced_data_checks_the_password_first() {
+        let body = command_body_in(include_str!("auth.rs"), "delete_account");
+        let given = body
+            .find("password_given(&password)?")
+            .expect("`delete_account` must call `password_given(`");
+        let checked = body
+            .find("verify_password(&app, password).await?")
+            .expect("`delete_account` must call `verify_password(`");
+        assert!(given < checked, "an empty password is refused first");
+        for work in [
+            "stop_engine_and_wait(",
+            "delete_vault_with_account(",
+            "say_left(",
+        ] {
+            let at = body
+                .find(work)
+                .unwrap_or_else(|| panic!("`{work}` is called"));
+            assert!(checked < at, "the password is checked before `{work}`");
+        }
+    }
+
     /// Final fix I1: a blocked person on their own server never reads the payment message, on
     /// any change; the Moony cloud keeps it.
     #[test]

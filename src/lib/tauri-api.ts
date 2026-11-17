@@ -257,8 +257,9 @@ export const authApi = {
     recoveryKey: string;
   }) => tauriInvoke<void>('confirm_change_password', { data }),
 
-  deleteAccount: (deleteSyncedData = false) =>
-    tauriInvoke<void>('delete_account', { deleteSyncedData }),
+  /** With `deleteSyncedData`, the device password is checked first (owner decision O-1). */
+  deleteAccount: (deleteSyncedData = false, password?: string) =>
+    tauriInvoke<void>('delete_account', { deleteSyncedData, password: password ?? null }),
 
   setMcpServerEnabled: (enabled: boolean) =>
     tauriInvoke<UserProfile>('set_mcp_server_enabled', { enabled }),

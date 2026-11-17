@@ -676,10 +676,15 @@ pub async fn record_bank_account_balance(
     data: crate::models::bank_accounts::InsertBalanceRecord,
 ) -> Result<BankAccount> {
     data.validate()?;
-    let account = db.with_conn(|conn| bank_service::record_balance(conn, &account_id, &data))?;
-    // The record holds from its day on, and it ends a balance carried on every earlier day (a
-    // statement balance from a CSV import comes this way): every day is derived again
-    portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
+    // The record holds from its day on. It reaches the earlier days only when it changes what
+    // dates an account (it ends a balance carried on every earlier day; a statement balance from
+    // a CSV import comes this way), which the plan reads before the write
+    let (account, job) = db.with_conn(|conn| {
+        let job = history_plan::balance_record_job(conn, &account_id, data.as_of)?;
+        let account = bank_service::record_balance(conn, &account_id, &data)?;
+        Ok((account, job))
+    })?;
+    portfolio::schedule_history_rebuild(&app, &db, &recalc, job.into_iter().collect());
     Ok(account)
 }
 
@@ -691,7 +696,13 @@ pub async fn delete_balance_record(
     recalc: State<'_, HistoryRecalc>,
     record_id: String,
 ) -> Result<BankAccount> {
-    let account = db.with_conn(|conn| bank_service::delete_balance_record(conn, &record_id))?;
-    portfolio::schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
+    // The plan reads what still dates the accounts once the record is gone
+    let (account, job) = db.with_conn(|conn| {
+        let as_of = bank_service::balance_record_day(conn, &record_id)?;
+        let account = bank_service::delete_balance_record(conn, &record_id)?;
+        let job = history_plan::balance_record_job(conn, &account.id, as_of)?;
+        Ok((account, job))
+    })?;
+    portfolio::schedule_history_rebuild(&app, &db, &recalc, job.into_iter().collect());
     Ok(account)
 }

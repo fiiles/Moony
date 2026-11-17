@@ -27,6 +27,7 @@ mod rekey_leave;
 mod rekey_pickup;
 mod rekey_review;
 mod rekey_rotate;
+mod rekey_scenarios;
 mod relay_faults;
 mod repair;
 mod replace_safety;

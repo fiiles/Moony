@@ -1532,3 +1532,68 @@ R-72. **Note for the final review (minor 6):** `delete_account` (`commands/auth.
      (unchanged, as before phase 5) and, with "delete the synced data" off, now also sends a `left`
      record (`say_left`, R-48). Not changed here: the account deletion is the owner's own flow; the final
      review (Task 33) should decide whether it needs the password check `sync_turn_off` has.
+
+**Task 22 (multi-device scenarios).**
+
+R-73. **A join whose credentials a key change overtook is a failed pairing, not a damaged copy.** A
+     joiner that received slot 2 before a removal (plan Task 14's "A removes C while B is pairing D")
+     and finds a snapshot sealed under the new key on the server read `syncSnapshotInvalid` ("the
+     synced copy of your data is damaged"). `join::fetched_snapshot_at` now refuses a sealed stream (`MNY1`)
+     whose header names an epoch above the credentials' newest before opening it (bytes that are no
+     sealed stream stay `syncSnapshotInvalid`)
+     (`SyncError::ReadOnlyToken`, which a re-sync or repair reads as `syncKeyRotated`), and
+     `join_new_device` answers `syncPairingFailed` ("start again on both devices"), or
+     `syncRecoveryKitUnreadable` for a Kit join a key change overtook between its two reads; nothing
+     is replaced. The header's epoch is not authenticated before the open: a server can only cause a
+     refusal, as with any bytes it makes up. A joiner that finds the old snapshot still joins and
+     ends `keyNotGiven` (unchanged). Both paths: `rekey_scenarios::a_pairing_overtaken_…`.
+R-74. **Every receiver of a key change writes the rows its remover's commit writes** (R-56 corrected).
+     A change given up by its maker never commits there, so nobody wrote the new Kit's row or the
+     removal records into the removed devices' rows: R-56's "a Kit shown with `Pending` that then
+     gives up does work" was false (the Kit join's anchor found no row: `syncRecoveryKitUnreadable`),
+     and a later Kit joiner restored the removed devices as active. `pickup::adopt` now writes, in
+     its savepoint and captured, each removal record of the bundle (the replaced Kit's included) into
+     its subject's row where the row holds none, and the bundle's Kit row (`kit::write_row`, which
+     leaves a row already there as it is). The values are the bundle's own, so they agree with the
+     remover's wherever both arrive (write-once columns, `kit_storage` merged by strength). Cost: a
+     receiver usually adopts before it pulls the remover's rows, so each key change queues one more
+     small envelope per receiving device (`rekey_pickup::only_what_never_reached_…` now counts it).
+R-75. **A Kit's envelope sealed by a device that has since left still opens a Kit join** (found by the
+     property test, seed 3 of the wide run). Leaving seals no envelope, so the last envelope stays its
+     sealer's until the next key change; R-28/R-43 refused any `left` signer, which made the Kit
+     useless from the moment its creator (or the last remover) turned sync off until someone changed
+     the key — a person who sells the Mac that made the Kit and then loses the phone could not
+     recover. The joiner now accepts a `left` signer whose `left` record's epoch is at least the
+     envelope's newest epoch: a later envelope under its name could only come from a copy that
+     rotated after it left. A removed signer stays refused (every removal seals a new envelope).
+     `kit_join::an_envelope_signed_by_a_device_that_left_is_unreadable` now covers the later-epoch
+     case; `rekey_scenarios::the_kit_still_works_after_the_device_that_sealed_its_envelope_left` the
+     honest one.
+R-76. **The scenarios** (`engine/tests/rekey_scenarios.rs`, all with real rounds over the fake relay):
+     a device offline with sealed and queued changes over a removal (each applied once, in order);
+     two devices removing each other at once (exactly one wins, the loser is removed); a pairing a
+     removal overtakes (R-73); a vault from before phase 5 syncs and refuses removal; the D3 trap end
+     to end with a real pairing (`announced_payload` + `join_new_device`), both arrival orders of the
+     new device's row and the holder's `left` record; a backdated certificate from a left device's
+     copy (a late vouch: no key unless kept before the change); a chain F→G forged by a removed device
+     in slots a colluding server serves a lagging device (both `IssuerRemoved`, neither gets a key in
+     the lagging device's next change, the up-to-date device never pins them as recipients); a
+     Kit-joined device offline over a new Kit (it picks up, is confirmed, takes the next change); a
+     given-up change's new Kit (R-74). **The property** (`rekey_scenarios/property.rs`): four devices
+     (D paired by B) and a Kit; seeded edits, rounds, offline periods, removals, new Kits, leaves and
+     late vouches (one or two levels deep) from the copies of devices that left; checks after every
+     step that no removed device holds a key of its removal epoch or later, and at the end
+     convergence, every remaining device's chain applied once and in order everywhere (heads equal the
+     author's own last envelope), every edit of a remaining device everywhere, no stored bundle giving
+     a key to a removed device, a device after it left, or any late-vouch chain member, the Kit's
+     envelope holding every key, and a Kit join after all the changes converging. Eight fixed seeds
+     of 40 steps by default (two tests, seconds); `wide` (ignored) runs 64 seeds of 80 steps, or
+     `REKEY_PROPERTY_SEEDS=a..b`.
+R-77. **Observations, not changed.** (a) A device a key change left out cannot be let in later: the
+     pickup walks bundles in order and stops at the first that gives it nothing (`keyNotGiven`), so
+     "Je moje" helps only before the next change; after it, the way in is joining again. Tasks 24/26:
+     the "Zkontrolujte" row should say so, or keep acting on the plan's excluded list at removal
+     time (it does). (b) The forked-slot residual (R4) holds as documented: the lagging device applies
+     the forged rows and reports `keyChangeOverrun`; what limits the damage is the transitive
+     `IssuerRemoved`, which the scenario covers. (c) R-46 (a Kit joiner removed before its row went
+     out) is covered by `kit_join::odebrat_je_…`.

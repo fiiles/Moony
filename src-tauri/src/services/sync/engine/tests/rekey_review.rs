@@ -29,7 +29,13 @@ fn seed_of(conn: &rusqlite::Connection) -> SignSeed {
 
 /// Pins `cert` on `conn` as the trust store would, with `state` and `confirmed` (a store the
 /// rules would not have produced on their own: "something is wrong").
-fn pin_raw(conn: &rusqlite::Connection, cert: &Certificate, state: &str, confirmed: bool, at: i64) {
+pub(super) fn pin_raw(
+    conn: &rusqlite::Connection,
+    cert: &Certificate,
+    state: &str,
+    confirmed: bool,
+    at: i64,
+) {
     conn.execute(
         "INSERT INTO sync_trust (device, cert, kind, issuer, sign_pub, box_pub, ticket_pub, \
            state, pinned_at, confirmed, state_at) \
@@ -52,7 +58,7 @@ fn pin_raw(conn: &rusqlite::Connection, cert: &Certificate, state: &str, confirm
 }
 
 /// A Kit `creator` made (its certificate), not registered anywhere.
-fn stray_kit(three: &Three, creator: DeviceId) -> Certificate {
+pub(super) fn stray_kit(three: &Three, creator: DeviceId) -> Certificate {
     let conn = three.device(creator).lock();
     let (_, _, cert) = kit::create(creator, &seed_of(&conn), &vault_id(three), NOW).expect("Kit");
     cert

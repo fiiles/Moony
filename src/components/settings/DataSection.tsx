@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { Link } from 'wouter';
 import { CheckCircle2, CircleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
@@ -16,7 +17,7 @@ import { formatBytes } from '@/utils/format-bytes';
 import { todayIsoUtc } from '@/utils/period';
 import { cn } from '@/lib/utils';
 import { useDeviceSyncFeature, useDeviceSyncStatus, useSyncDevices } from '@/hooks/use-device-sync';
-import { protectionLine, syncIsOn } from '@/utils/safe-copy';
+import { protectionLine, protectionMode } from '@/utils/safe-copy';
 import { notInBackup } from '@/utils/sync-attachments';
 import type { IntegrityReport } from '@shared/schema';
 
@@ -24,7 +25,10 @@ type Busy = 'backup' | 'restore' | 'export' | 'verify' | null;
 
 /**
  * Settings → "Data a zálohy" (prototype `settings.html` rows): where the data
- * lives, backup / restore, full JSON export and an integrity check
+ * lives, backup / restore, full JSON export and an integrity check. With sync built in, sync is the
+ * first way to look after the data and the backup the second (owner, 2026-11-17): while sync is off
+ * a row offers "Nastavit synchronizaci" above the backup, which says it is the alternative; while
+ * sync is on, the backup is an extra ("Zálohovat nyní" no longer the primary button).
  */
 export function DataSection() {
   const { t } = useTranslation('settings');
@@ -39,8 +43,10 @@ export function DataSection() {
   const { data: syncStatus } = useDeviceSyncStatus();
   const { data: syncDevices } = useSyncDevices();
   const protection = protectionLine(featureOn, syncStatus, syncDevices, Date.now() / 1000);
-  const missing =
-    syncIsOn(featureOn, syncStatus) && syncStatus ? notInBackup(syncStatus.attachments) : 0;
+  const mode = protectionMode(featureOn, syncStatus);
+  const missing = mode === 'synced' && syncStatus ? notInBackup(syncStatus.attachments) : 0;
+  const backupHint =
+    mode === 'offerSync' ? `${t('data.backupInstead')} ${t('data.hint')}` : t('data.hint');
 
   const [busy, setBusy] = useState<Busy>(null);
   const [integrity, setIntegrity] = useState<IntegrityReport | null>(null);
@@ -163,16 +169,24 @@ export function DataSection() {
         </p>
       )}
 
+      {mode === 'offerSync' && (
+        <SettingsRow label={t('sections.sync')} hint={t('data.syncOffer')}>
+          <Button asChild size="sm" data-testid="data-set-up-sync">
+            <Link href="/settings/sync">{tSync('intro.start')}</Link>
+          </Button>
+        </SettingsRow>
+      )}
+
       <SettingsRow
         label={t('data.backupRow')}
         hint={
           missing > 0 ? (
             <>
-              {t('data.hint')}
+              {backupHint}
               <span className="mt-0.5 block">{t('data.notInBackup', { count: missing })}</span>
             </>
           ) : (
-            t('data.hint')
+            backupHint
           )
         }
       >
@@ -189,7 +203,9 @@ export function DataSection() {
             </Button>
           )}
         </RestoreBackup>
+        {/* The primary way only without sync built in; otherwise sync leads and this is the second */}
         <Button
+          variant={mode === 'backup' ? 'default' : 'outline'}
           size="sm"
           onClick={handleBackup}
           loading={busy === 'backup'}

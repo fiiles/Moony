@@ -96,3 +96,18 @@ past days read the same for stocks and crypto.
 ## Left to the builder
 
 Names of the helpers, the wording of the log lines, where the tests sit in the module.
+
+## As built (2026-11-17)
+
+The whole-branch review changed three things; ADR 0033 holds the final rules.
+
+- **Earning the mark.** Not the count above. The mark is stored when the days were re-derived
+  and either no ticker failed or at least one provider request was answered
+  (`BatchOutcome.fetched_tickers`). The count could be fooled while offline: a ticker first bought
+  today and a crypto holding without a symbol are planned but never make a request.
+- **An unearned settle waits six hours** (`history_settle_tried_at`, Local), instead of running
+  again at every unlock. `plan_startup` takes the current time for this.
+- **Today's per-ticker rows** are recorded again after every rebuild batch, before the
+  `recalculation-complete` event: a ticker rebuild writes today's row with yesterday's close, and
+  the daily settle would have shown that as today's value every morning.
+- The completion writes through the session-pinned database handle.

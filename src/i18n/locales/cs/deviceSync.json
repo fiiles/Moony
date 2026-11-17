@@ -414,7 +414,7 @@
     "copyCode": "Zkopírovat kód",
     "copiedCode": "Zkopírováno",
     "codeHint": "Bez fotoaparátu? Zadejte nebo vložte tento kód na druhém zařízení. Můžete ho poslat i zprávou: bez šesti číslic, které potom zadáte tady, nic neprozradí.",
-    "deviceConnected": "{{name}} je připojené",
+    "deviceConnected": "Zařízení {{name}} je připojené",
     "sentLate": "Dokončete připojení na druhém zařízení. Až se připojí, objeví se v seznamu."
   },
   "join": {
@@ -492,7 +492,7 @@
     "openSettings": "Otevřít Nastavení",
     "cameraUnavailable": "Fotoaparát se nepodařilo otevřít.",
     "unknownCode": "Tento QR kód není párovací kód Moony ani záchranná sada.",
-    "kitConfirmTitle": "Připojit se k tomuto synchronizačnímu účtu?",
+    "kitConfirmTitle": "Připojit tento telefon pomocí záchranné sady?",
     "kitConfirmBody": "Data tohoto telefonu budou nahrazena synchronizovanými daty (záloha se uchová).",
     "notAKitCode": "Toto není kód záchranné sady",
     "notAPairingCode": "Toto není párovací kód.",
@@ -570,7 +570,7 @@
   },
   "remove": {
     "title": "Odebrat zařízení {{name}}?",
-    "body": "{{name}} přestane dostávat nová data a nebude moct nic měnit. Co už v něm je, tam zůstane; chrání to heslo do Moony.",
+    "body": "Zařízení {{name}} přestane dostávat nová data a nebude moct nic měnit. Co už v něm je, tam zůstane; chrání to heslo do Moony.",
     "stays": "Synchronizovat dál budou:",
     "thisDevice": "{{name}} (toto zařízení)",
     "drops": "Synchronizovat se přestanou i:",
@@ -594,13 +594,14 @@
     "toast": {
       "removed": "Zařízení {{name}} je odebrané",
       "pending": "Synchronizační server teď není dostupný. Odebrání se dokončí samo, jakmile bude.",
-      "alreadyRemoved": "{{name}} mezitím odebralo zařízení {{by}}.",
-      "alreadyRemovedUnknown": "{{name}} bylo mezitím odebráno.",
+      "alreadyRemoved": "Zařízení {{by}} mezitím odebralo zařízení {{name}}.",
+      "alreadyRemovedUnknown": "Zařízení {{name}} bylo mezitím odebráno.",
       "removedHere": "Toto zařízení mezitím odebralo jiné zařízení. Synchronizace je tady vypnutá."
     },
     "loadError": "Odebrání se nepodařilo připravit. Zkuste to znovu.",
     "retry": "Zkusit znovu",
-    "bodyMany": "{{name}} přestanou dostávat nová data a nebudou moct nic měnit. Co už v nich je, tam zůstane; chrání to heslo do Moony."
+    "bodyMany": "{{name}} přestanou dostávat nová data a nebudou moct nic měnit. Co už v nich je, tam zůstane; chrání to heslo do Moony.",
+    "unreachable": "Synchronizační server není dostupný, takže se nic nezměnilo. Zkuste to znovu, až budete připojeni k internetu."
   },
   "newKit": {
     "title": "Vaše nová záchranná sada",
@@ -663,7 +664,7 @@
     },
     "notDone": {
       "changed": "Odebrání zařízení {{devices}} se nedokončilo: seznam zařízení mezitím změnilo zařízení {{by}}. Zkontrolujte ho a zkuste to znovu.",
-      "alreadyRemoved": "{{devices}} mezitím odebralo zařízení {{by}}.",
+      "alreadyRemoved": "Zařízení {{by}} mezitím odebralo {{devices}}.",
       "refused": "Synchronizační server odebrání odmítl. Zkuste to znovu.",
       "kit": "Nová záchranná sada nezačala platit; vytvořte si ji znovu."
     },
@@ -673,7 +674,7 @@
       "added": "Přibylo zařízení {{name}}, přidané ze zařízení {{by}} {{date}}.",
       "lateVouch": "Přibylo zařízení {{name}}. Přidalo ho zařízení {{by}}, které už se nesynchronizuje. Pokud {{name}} nepoznáváte, odeberte ho.",
       "kitTitle": "Zařízení se připojilo záchrannou sadou",
-      "kit": "{{name}} se připojilo {{date}}. Pokud jste to nebyli vy, má vaši sadu někdo další.",
+      "kit": "Zařízení {{name}} se připojilo {{date}}. Pokud jste to nebyli vy, má vaši sadu někdo další.",
       "mine": "To jsem já",
       "removeAndNew": "Odebrat a vytvořit novou sadu"
     }

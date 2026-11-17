@@ -8,6 +8,7 @@ import {
   planMakesKit,
   pruneAlsoRemove,
   removalAvailable,
+  removalErrorKey,
   removalRequest,
   removalTitleName,
   removalTitleNames,
@@ -160,5 +161,16 @@ describe('removalAvailable', () => {
     );
     expect(removalAvailable(status({ removalSupported: true, removalPending: true }))).toBe(false);
     expect(removalAvailable(status({ removalSupported: true, removalPending: false }))).toBe(true);
+  });
+});
+
+describe('removalErrorKey', () => {
+  it('says nothing changed when the server is unreachable', () => {
+    expect(removalErrorKey('validation.syncRelayUnreachable')).toBe('remove.unreachable');
+  });
+
+  it('leaves every other error to the common message', () => {
+    expect(removalErrorKey('validation.syncPasswordInvalid')).toBeNull();
+    expect(removalErrorKey(undefined)).toBeNull();
   });
 });

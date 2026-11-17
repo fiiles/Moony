@@ -468,7 +468,7 @@
     "openSettings": "Åpne Innstillinger",
     "cameraUnavailable": "Kameraet kunne ikke åpnes.",
     "unknownCode": "Denne QR-koden er verken en koblingskode fra Moony eller et gjenopprettingssett.",
-    "kitConfirmTitle": "Bli med i denne synkroniseringskontoen?",
+    "kitConfirmTitle": "Koble til denne telefonen med gjenopprettingssettet?",
     "kitConfirmBody": "Dataene på denne telefonen erstattes med de synkroniserte dataene (en sikkerhetskopi beholdes).",
     "notAKitCode": "Dette er ikke en kode fra et gjenopprettingssett",
     "notAPairingCode": "Dette er ikke en koblingskode.",
@@ -540,7 +540,7 @@
   },
   "remove": {
     "title": "Fjerne {{name}}?",
-    "body": "{{name}} får ikke lenger nye data og kan ikke endre noe. Det som allerede er på den, blir der, beskyttet av Moony-passordet.",
+    "body": "Enheten {{name}} får ikke lenger nye data og kan ikke endre noe. Det som allerede er på den, blir der, beskyttet av Moony-passordet.",
     "stays": "Disse synkroniserer videre:",
     "thisDevice": "{{name}} (denne enheten)",
     "drops": "Disse slutter også å synkronisere:",
@@ -570,7 +570,8 @@
     },
     "loadError": "Fjerningen kunne ikke forberedes. Prøv igjen.",
     "retry": "Prøv igjen",
-    "bodyMany": "{{name}} får ikke lenger nye data og kan ikke endre noe. Det som allerede er på dem, blir der, beskyttet av Moony-passordet."
+    "bodyMany": "{{name}} får ikke lenger nye data og kan ikke endre noe. Det som allerede er på dem, blir der, beskyttet av Moony-passordet.",
+    "unreachable": "Synkroniseringsserveren kan ikke nås, så ingenting er endret. Prøv igjen når du er koblet til internett."
   },
   "newKit": {
     "title": "Ditt nye gjenopprettingssett",

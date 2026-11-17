@@ -468,7 +468,7 @@
     "openSettings": "Open Settings",
     "cameraUnavailable": "The camera could not be opened.",
     "unknownCode": "This QR code is not a Moony pairing code or Recovery Kit.",
-    "kitConfirmTitle": "Join this sync account?",
+    "kitConfirmTitle": "Connect this phone with the recovery kit?",
     "kitConfirmBody": "This phone's data is replaced by the synced data (a backup is kept).",
     "notAKitCode": "This is not a Recovery Kit code",
     "notAPairingCode": "This is not a pairing code.",
@@ -570,7 +570,8 @@
     },
     "loadError": "The removal couldn't be prepared. Try again.",
     "retry": "Try again",
-    "bodyMany": "{{name}} will stop getting new data and won't be able to change anything. What's already on them stays there, protected by their Moony password."
+    "bodyMany": "{{name}} will stop getting new data and won't be able to change anything. What's already on them stays there, protected by their Moony password.",
+    "unreachable": "The sync server can't be reached, so nothing has changed. Try again once you're connected to the internet."
   },
   "newKit": {
     "title": "Your new recovery kit",

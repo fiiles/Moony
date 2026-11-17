@@ -403,7 +403,7 @@
     "copyCode": "Copia il codice",
     "copiedCode": "Copiato",
     "codeHint": "Niente fotocamera? Digita o incolla questo codice sull'altro dispositivo. Puoi inviarlo in un messaggio: senza le sei cifre che digiterai poi qui, non rivela nulla.",
-    "deviceConnected": "{{name}} è connesso",
+    "deviceConnected": "Il dispositivo {{name}} è connesso",
     "sentLate": "Completa il collegamento sull'altro dispositivo. Quando sarà collegato, apparirà nell'elenco."
   },
   "join": {
@@ -480,7 +480,7 @@
     "openSettings": "Apri Impostazioni",
     "cameraUnavailable": "Impossibile aprire la fotocamera.",
     "unknownCode": "Questo codice QR non è un codice di associazione di Moony né un kit di ripristino.",
-    "kitConfirmTitle": "Collegarti a questo account di sincronizzazione?",
+    "kitConfirmTitle": "Collegare questo telefono con il kit di ripristino?",
     "kitConfirmBody": "I dati di questo telefono vengono sostituiti con quelli sincronizzati (viene conservato un backup).",
     "notAKitCode": "Questo non è un codice del kit di ripristino",
     "notAPairingCode": "Questo non è un codice di associazione.",
@@ -578,15 +578,16 @@
     "confirm": "Rimuovi dispositivo",
     "progress": "Rimozione di {{name}}…",
     "toast": {
-      "removed": "{{name}} rimosso",
+      "removed": "Dispositivo {{name}} rimosso",
       "pending": "Il server di sincronizzazione al momento non è raggiungibile. La rimozione si completerà da sola appena lo sarà.",
       "alreadyRemoved": "{{by}} ha rimosso {{name}} nel frattempo.",
-      "alreadyRemovedUnknown": "{{name}} è stato rimosso nel frattempo.",
+      "alreadyRemovedUnknown": "Il dispositivo {{name}} è stato rimosso nel frattempo.",
       "removedHere": "Un altro dispositivo ha rimosso questo dispositivo nel frattempo. Qui la sincronizzazione è disattivata."
     },
     "loadError": "Impossibile preparare la rimozione. Riprova.",
     "retry": "Riprova",
-    "bodyMany": "{{name}} non riceveranno più dati nuovi e non potranno modificare nulla. Ciò che contengono resta lì, protetto dalla loro password di Moony."
+    "bodyMany": "{{name}} non riceveranno più dati nuovi e non potranno modificare nulla. Ciò che contengono resta lì, protetto dalla loro password di Moony.",
+    "unreachable": "Il server di sincronizzazione non è raggiungibile, quindi non è cambiato nulla. Riprova quando sarai connesso a internet."
   },
   "newKit": {
     "title": "Il tuo nuovo kit di ripristino",
@@ -656,10 +657,10 @@
     "overrun": "Il server di sincronizzazione ha inviato a questo dispositivo modifiche che non avrebbe dovuto inviare dopo la rimozione di un dispositivo il {{date}}, e Moony le ha applicate. Se hai rimosso quel dispositivo perché è stato rubato, controlla le modifiche degli ultimi giorni.",
     "overrunNoDate": "Il server di sincronizzazione ha inviato a questo dispositivo modifiche che non avrebbe dovuto inviare dopo la rimozione di un dispositivo, e Moony le ha applicate. Se hai rimosso quel dispositivo perché è stato rubato, controlla le modifiche degli ultimi giorni.",
     "newDevice": {
-      "added": "{{name}} è stato aggiunto da {{by}} il {{date}}.",
-      "lateVouch": "{{name}} è stato aggiunto. L'ha aggiunto {{by}}, che non sincronizza più. Se non riconosci {{name}}, rimuovilo.",
+      "added": "Il dispositivo {{name}} è stato aggiunto da {{by}} il {{date}}.",
+      "lateVouch": "Il dispositivo {{name}} è stato aggiunto da {{by}}, che non sincronizza più. Se non riconosci {{name}}, rimuovilo.",
       "kitTitle": "Un dispositivo si è unito con il tuo kit di ripristino",
-      "kit": "{{name}} si è unito il {{date}}. Se non sei stato tu, qualcun altro ha il tuo kit.",
+      "kit": "Il dispositivo {{name}} si è unito il {{date}}. Se non sei stato tu, qualcun altro ha il tuo kit.",
       "mine": "Sono stato io",
       "removeAndNew": "Rimuovilo e crea un nuovo kit"
     }

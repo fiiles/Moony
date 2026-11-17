@@ -392,7 +392,7 @@
     "copyCode": "Kopiera kod",
     "copiedCode": "Kopierat",
     "codeHint": "Ingen kamera? Skriv eller klistra in den här koden på den andra enheten. Du kan skicka den i ett meddelande: utan de sex siffrorna du skriver här efteråt avslöjar den ingenting.",
-    "deviceConnected": "{{name}} är ansluten",
+    "deviceConnected": "Enheten {{name}} är ansluten",
     "sentLate": "Slutför anslutningen på den andra enheten. När den är ansluten visas den i listan."
   },
   "join": {
@@ -468,7 +468,7 @@
     "openSettings": "Öppna Inställningar",
     "cameraUnavailable": "Kameran kunde inte öppnas.",
     "unknownCode": "Den här QR-koden är varken en parkopplingskod från Moony eller ett återställningskit.",
-    "kitConfirmTitle": "Ansluta till det här synkroniseringskontot?",
+    "kitConfirmTitle": "Ansluta den här telefonen med återställningskitet?",
     "kitConfirmBody": "Telefonens data ersätts med de synkroniserade uppgifterna (en säkerhetskopia sparas).",
     "notAKitCode": "Det här är ingen kod från ett återställningskit",
     "notAPairingCode": "Det här är ingen parkopplingskod.",
@@ -540,7 +540,7 @@
   },
   "remove": {
     "title": "Ta bort {{name}}?",
-    "body": "{{name}} får inga nya data och kan inte ändra något. Det som redan finns på den blir kvar, skyddat av dess Moony-lösenord.",
+    "body": "Enheten {{name}} får inga nya data och kan inte ändra något. Det som redan finns på den blir kvar, skyddat av dess Moony-lösenord.",
     "stays": "De här fortsätter synkronisera:",
     "thisDevice": "{{name}} (den här enheten)",
     "drops": "De här slutar också synkronisera:",
@@ -570,7 +570,8 @@
     },
     "loadError": "Borttagningen kunde inte förberedas. Försök igen.",
     "retry": "Försök igen",
-    "bodyMany": "{{name}} får inga nya data och kan inte ändra något. Det som redan finns på dem blir kvar, skyddat av deras Moony-lösenord."
+    "bodyMany": "{{name}} får inga nya data och kan inte ändra något. Det som redan finns på dem blir kvar, skyddat av deras Moony-lösenord.",
+    "unreachable": "Synkroniseringsservern går inte att nå, så inget har ändrats. Försök igen när du är ansluten till internet."
   },
   "newKit": {
     "title": "Ditt nya återställningskit",

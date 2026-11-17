@@ -958,7 +958,7 @@ fn settle(
 /// that touched it, at unlock and after a key pickup. Pins paired, re-join, Kit-joined and Kit
 /// certificates whose issuer vouches (a Kit only while no other is `trusted`), applies verified
 /// records, and repeats until nothing new verifies. Every paired or Kit-joined device pinned here
-/// (not this one) gets a new-device notice (`NEW_DEVICES_KEY`, revision §3.3); a re-join says
+/// (not this one, nor one this device added) gets a new-device notice (`NEW_DEVICES_KEY`, revision §3.3); a re-join says
 /// nothing. One savepoint.
 pub fn refresh(conn: &Connection, now: i64) -> Result<RefreshReport> {
     in_savepoint(conn, "sync_trust_refresh", || {
@@ -980,8 +980,9 @@ pub fn refresh(conn: &Connection, now: i64) -> Result<RefreshReport> {
     })
 }
 
-/// Appends a notice for each newly pinned paired or Kit-joined device other than this one,
-/// keeping the newest `MAX_NEW_DEVICES`.
+/// Appends a notice for each newly pinned paired or Kit-joined device other than this one and
+/// not added by this one (the person added it here and needs no notice of it), keeping the newest
+/// `MAX_NEW_DEVICES`.
 fn note_new_devices(conn: &Connection, pinned: &[DeviceId], now: i64) -> Result<()> {
     let own = this_device(conn)?;
     let mut fresh = Vec::new();
@@ -989,7 +990,10 @@ fn note_new_devices(conn: &Connection, pinned: &[DeviceId], now: i64) -> Result<
         let Some(entry) = entry(conn, *device)? else {
             continue;
         };
-        if *device == own || !matches!(entry.kind, CertKind::Paired | CertKind::RecoveryKit) {
+        if *device == own
+            || entry.issuer == own
+            || !matches!(entry.kind, CertKind::Paired | CertKind::RecoveryKit)
+        {
             continue;
         }
         fresh.push(NewDevice {

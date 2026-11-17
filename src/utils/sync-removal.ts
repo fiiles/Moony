@@ -145,6 +145,18 @@ export function planNeedsReload(key: string | undefined): boolean {
   return key === PLAN_CHANGED_KEY || key === ROTATION_RACED_KEY;
 }
 
+/** The sync server could not be reached (`AppError` key). */
+export const RELAY_UNREACHABLE_KEY = 'validation.syncRelayUnreachable';
+
+/**
+ * The removal dialogs' own message for a failed removal or new kit, or `null` for the common one.
+ * An unreachable server fails it before anything changes and nothing retries it by itself, so the
+ * common "synchronizace to zkusí znovu" would promise what does not happen.
+ */
+export function removalErrorKey(key: string | undefined): string | null {
+  return key === RELAY_UNREACHABLE_KEY ? 'remove.unreachable' : null;
+}
+
 /** The outcome without its new recovery kit: what stays in state once the kit left the screen. */
 export function withoutKit(view: OutcomeView): OutcomeView {
   return { ...view, kit: null };

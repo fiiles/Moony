@@ -8,16 +8,16 @@
     "paused": "同步已暂停",
     "error": "同步出错",
     "unreachable": "服务器无法连接",
-    "unreachableLong_other": "已 {{count}} 天未同步",
+    "unreachableLong_other": "已{{count}}天未同步",
     "syncingLong": "同步耗时比平时长",
     "firstUpload": "正在上传第一份副本",
     "removing": "正在完成设备移除…"
   },
   "age": {
     "justNow": "刚刚",
-    "minutes_other": "{{count}} 分钟前",
-    "hours_other": "{{count}} 小时前",
-    "days_other": "{{count}} 天前"
+    "minutes_other": "{{count}}分钟前",
+    "hours_other": "{{count}}小时前",
+    "days_other": "{{count}}天前"
   },
   "popover": {
     "title": "同步",
@@ -29,10 +29,10 @@
       "removed": "同步已关闭：此设备已被移除。",
       "left": "同步已关闭：此设备已断开。",
       "afterKitJoin": "请决定如何处理您之前的设备；在此之前不会从这里发送任何内容。",
-      "removalNotice": "{{by}} 移除了 {{names}}。",
-      "newKit": "{{by}} 创建了新的恢复包。",
+      "removalNotice": "{{by}}移除了{{names}}。",
+      "newKit": "{{by}}创建了新的恢复包。",
       "newDevices": "新设备：{{names}}。",
-      "kitUsed": "恢复包已于 {{at}} 使用。"
+      "kitUsed": "恢复包已于{{at}}使用。"
     }
   },
   "status": {
@@ -62,12 +62,12 @@
       "keyChangeUnverified": "此设备需要重新连接。",
       "keyChangeWaiting": "正在等待进行更改的设备连接。"
     },
-    "lastSynced": "上次同步 {{date}}",
+    "lastSynced": "上次同步{{date}}",
     "neverSynced": "尚未同步",
     "pending": "等待发送：{{number}}",
-    "clockAhead": "此设备（或与之同步的某台设备）的时钟曾经超前，因此在 {{date}} 之前，此设备的更改都会标注该日期。它们仍会同步；在该日期之前，如果在另一台设备上编辑了同一项目，以此设备的版本为准。",
+    "clockAhead": "此设备（或与之同步的某台设备）的时钟曾经超前，因此在{{date}}之前，此设备的更改都会标注该日期。它们仍会同步；在该日期之前，如果在另一台设备上编辑了同一项目，以此设备的版本为准。",
     "subscription": "订阅",
-    "paidUntil": "已付费至 {{date}}",
+    "paidUntil": "已付费至{{date}}",
     "syncNow": "立即同步"
   },
   "server": {
@@ -100,7 +100,7 @@
   },
   "setup": {
     "title": "设置同步",
-    "step": "第 {{current}} 步，共 {{total}} 步",
+    "step": "第{{current}}步，共{{total}}步",
     "cancel": "取消",
     "account": {
       "description": "同步需要一个同步账户。创建一个即可获得它的编号。",
@@ -133,10 +133,10 @@
         "codeLabel": "恢复包代码",
         "codeNote": "可打开您已同步的数据。请保密。",
         "qrLabel": "扫描以在手机上恢复",
-        "created": "创建于 {{date}}",
+        "created": "创建于{{date}}",
         "relayLabel": "同步服务器",
         "relayNote": "使用此恢复包恢复时需要",
-        "createdBy": "创建于 {{date}} · {{name}}"
+        "createdBy": "创建于{{date}} · {{name}}"
       },
       "folderWarning": "请把恢复包保存在纸上或密码管理器中，不要放在会同步到云服务的文件夹里。",
       "syncedFolder": "恢复包已保存，但该文件夹似乎会同步到云服务。请把文件移到不同步的位置，或在恢复包已抄写到纸上后将其删除。",
@@ -172,12 +172,12 @@
       "own": "自己的服务器",
       "codeLabel": "连接码",
       "codeHint": "请向运行您同步服务器的人索取。",
-      "found": "已找到服务器 · 版本 {{version}}",
+      "found": "已找到服务器 · 版本{{version}}",
       "checking": "正在查找服务器…",
       "insecureTitle": "连接未加密 (http)",
       "insecureBody": "您的数据仍然是加密的，但同一网络中的任何人都可能截获同步访问权限，并删除或阻止服务器上已同步的数据。",
       "insecureAck": "我明白，仍然继续",
-      "resume": "已与 {{host}} 开始设置",
+      "resume": "已与{{host}}开始设置",
       "other": "使用其他连接码",
       "scan": "扫描代码"
     },
@@ -191,7 +191,7 @@
   "alert": {
     "lapsed": {
       "title": "同步已暂停——请续订以继续",
-      "deletes": "同步数据将于 {{date}} 删除。",
+      "deletes": "同步数据将于{{date}}删除。",
       "selfHosted": "您的账户在您的同步服务器上已被封锁。请联系运营者解除封锁。",
       "renew": "续订",
       "titleOwnServer": "同步已暂停"
@@ -203,15 +203,15 @@
     },
     "newerSchema": "请更新此设备上的 Moony 以继续同步",
     "gap": {
-      "missing_other": "来自“{{device}}”的 {{count}} 项更改已缺失 {{days}} 天。",
-      "waiting": "来自“{{device}}”的一项更改已等待 {{days}} 天：它所依赖的一项更早的更改始终没有到达。",
+      "missing_other": "来自“{{device}}”的{{count}}项更改已缺失{{days}}天。",
+      "waiting": "来自“{{device}}”的一项更改已等待{{days}}天：它所依赖的一项更早的更改始终没有到达。",
       "skip_other": "跳过缺失的更改",
-      "skipFrom": "如果到 {{date}} 仍未到达，届时即可跳过。"
+      "skipFrom": "如果到{{date}}仍未到达，届时即可跳过。"
     },
     "clockAhead": {
-      "text": "来自“{{device}}”的更改日期为 {{date}}，比现在晚十年以上，因此被暂缓。即使该设备的时钟得到更正，它也会继续被暂缓。",
+      "text": "来自“{{device}}”的更改日期为{{date}}，比现在晚十年以上，因此被暂缓。即使该设备的时钟得到更正，它也会继续被暂缓。",
       "textFar": "来自“{{device}}”的更改日期远在未来（晚十年以上），因此被暂缓。即使该设备的时钟得到更正，它也会继续被暂缓。",
-      "skipFrom": "从 {{date}} 起您可以跳过它。",
+      "skipFrom": "从{{date}}起您可以跳过它。",
       "skip": "跳过此更改"
     }
   },
@@ -224,24 +224,24 @@
     "title": "修复此设备？",
     "description": "Moony 会先备份此设备的数据，发送仍在等待的更改，然后用同步的数据替换此设备的数据。如果不能发送全部更改，则不会替换任何内容。",
     "confirm": "修复",
-    "success": "设备已修复。备份已保存为 {{file}}。"
+    "success": "设备已修复。备份已保存为{{file}}。"
   },
   "resync": {
     "button": "重新同步此设备",
     "title": "重新同步此设备？",
     "description": "此设备的数据将被同步的数据替换。会先保存一份备份。",
     "confirm": "重新同步",
-    "success": "设备已重新同步。备份已保存为 {{file}}。"
+    "success": "设备已重新同步。备份已保存为{{file}}。"
   },
   "skipGap": {
     "title_other": "跳过缺失的更改？",
-    "description_other": "来自“{{device}}”、始终没有到达的 {{count}} 项更改将被跳过。只有当拥有这些更改的设备上传更新的同步数据副本时，它们才会回到此设备；如果没有任何设备拥有它们，它们将会丢失。依赖于它们的更改可能也需要跳过。",
+    "description_other": "来自“{{device}}”、始终没有到达的{{count}}项更改将被跳过。只有当拥有这些更改的设备上传更新的同步数据副本时，它们才会回到此设备；如果没有任何设备拥有它们，它们将会丢失。依赖于它们的更改可能也需要跳过。",
     "descriptionParent": "来自“{{device}}”、无法应用的更改将被跳过。只有当应用过它的设备上传更新的同步数据副本时，其内容才会回到此设备；如果没有这样的设备，它将会丢失。依赖于它的更改可能也需要跳过。",
     "confirm": "跳过",
     "success_other": "已跳过缺失的更改。同步将继续。",
     "arrived": "缺失的更改在此期间已到达，未跳过任何内容。",
     "titleAhead": "跳过日期在未来的更改？",
-    "descriptionAhead": "来自“{{device}}”、日期为 {{date}} 的更改将被跳过，该设备之后的更改将会同步。只有当应用过它的设备上传了更新的同步数据副本时，它才会回到此设备；如果没有设备应用过，它将丢失。",
+    "descriptionAhead": "来自“{{device}}”、日期为{{date}}的更改将被跳过，该设备之后的更改将会同步。只有当应用过它的设备上传了更新的同步数据副本时，它才会回到此设备；如果没有设备应用过，它将丢失。",
     "descriptionAheadFar": "来自“{{device}}”、日期远在未来的更改将被跳过，该设备之后的更改将会同步。只有当应用过它的设备上传了更新的同步数据副本时，它才会回到此设备；如果没有设备应用过，它将丢失。",
     "successAhead": "已跳过该更改。同步继续进行。",
     "appliedAhead": "该更改在此期间已被应用；没有跳过任何内容。"
@@ -254,7 +254,7 @@
     "confirm": "关闭同步",
     "success": "同步已关闭",
     "noCutOff": "其他设备会看到此设备已断开。",
-    "pendingChanges_other": "此处有 {{count}} 项更改尚未发送。关闭同步后将不再发送。"
+    "pendingChanges_other": "此处有{{count}}项更改尚未发送。关闭同步后将不再发送。"
   },
   "delete": {
     "button": "删除服务器上的同步数据",
@@ -308,7 +308,7 @@
       "android": "Android 手机",
       "other": "其他设备"
     },
-    "activeAt": "活跃于 {{when}}",
+    "activeAt": "活跃于{{when}}",
     "details": "详情",
     "hideDetails": "隐藏详情",
     "remove": "移除…",
@@ -323,28 +323,28 @@
       "unverified": "无法验证此设备。下次移除设备时，它将停止同步。如果它是您的，请重新连接：在其上关闭同步并选择“连接”。",
       "copy": "此设备已重新连接，但它之前的副本仍在写入更改。如果您不认识它，请移除。",
       "issuerRemoved": "它是由您已移除的设备添加的，不再获得新数据。如果它是您的，请重新连接。",
-      "lateVouch": "它由 {{by}} 添加，但 {{by}} 已不再同步或无法验证，Moony 无法确认这发生在它断开之前。下次移除设备时，除非您确认，否则它将停止同步。",
+      "lateVouch": "它由{{by}}添加，但{{by}}已不再同步或无法验证，Moony 无法确认这发生在它断开之前。下次移除设备时，除非您确认，否则它将停止同步。",
       "lateVouchNoName": "添加它的设备已不再同步或无法验证，Moony 无法确认这发生在它断开之前。下次移除设备时，除非您确认，否则它将停止同步。"
     },
     "via": {
       "created": "第一台设备",
-      "paired": "添加于 {{date}}",
-      "pairedBy": "{{date}} 由 {{name}} 添加",
-      "recoveryKit": "{{date}} 通过恢复包连接",
-      "rejoined": "{{date}} 重新连接"
+      "paired": "添加于{{date}}",
+      "pairedBy": "{{date}}由{{name}}添加",
+      "recoveryKit": "{{date}}通过恢复包连接",
+      "rejoined": "{{date}}重新连接"
     },
     "formerGroup": "以前的设备（{{count}}）",
     "former": {
       "left": "已断开",
-      "leftOn": "{{date}} 断开",
+      "leftOn": "{{date}}断开",
       "removed": "已移除",
-      "removedOn": "{{date}} 移除",
-      "removedBy": "由 {{by}} 移除",
-      "removedOnBy": "{{date}} 由 {{by}} 移除"
+      "removedOn": "{{date}}移除",
+      "removedBy": "由{{by}}移除",
+      "removedOnBy": "{{date}}由{{by}}移除"
     },
     "underList": "请移除丢失、出售或已清除的设备。它将看不到任何新内容。",
     "unsupported": "此同步由旧版 Moony 设置，因此无法从中移除设备。请删除已同步的数据，重新设置同步，并连接您的其他设备。",
-    "inactive_other": "已 {{count}} 天未活跃",
+    "inactive_other": "已{{count}}天未活跃",
     "sheet": {
       "platform": "类型",
       "activity": "最近活动",
@@ -373,15 +373,15 @@
     "sent": "已发送。请在另一台设备上完成。",
     "waiting": "正在等待另一台设备…",
     "joining": "正在加入…",
-    "joined": "此设备现已同步。它此前的数据已备份在 {{path}}",
+    "joined": "此设备现已同步。它此前的数据已备份在{{path}}",
     "tryAgain": "重试",
     "startAgain": "重新开始",
     "readyToJoin": "同步信息已到达。请先查看将被替换的内容，然后加入。",
-    "validUntil": "此代码有效期至 {{time}}。",
+    "validUntil": "此代码有效期至{{time}}。",
     "copyCode": "复制代码",
     "copiedCode": "已复制",
     "codeHint": "没有摄像头？在另一台设备上输入或粘贴此代码。可以通过消息发送：没有稍后在这里输入的六位数字，它不会泄露任何内容。",
-    "deviceConnected": "{{name}} 已连接",
+    "deviceConnected": "{{name}}已连接",
     "sentLate": "请在另一台设备上完成连接。连接后，它会出现在列表中。"
   },
   "join": {
@@ -390,7 +390,7 @@
     "passwordLabel": "Moony 密码",
     "serverLabel": "同步服务器地址",
     "serverHint": "请输入同步服务器的地址，或粘贴其连接码。",
-    "insecureAtJoin": "您用来加入的同步信息指向 {{host}}，该服务器通过未加密的 http 访问。您的数据仍然是加密的，但同一网络中的任何人都可能截获同步访问权限，并删除或阻止服务器上已同步的数据。",
+    "insecureAtJoin": "您用来加入的同步信息指向{{host}}，该服务器通过未加密的 http 访问。您的数据仍然是加密的，但同一网络中的任何人都可能截获同步访问权限，并删除或阻止服务器上已同步的数据。",
     "kitServer": "同步服务器：{{host}}",
     "pairTitle": "从手机加入",
     "pairHint": "在已开启同步的手机上：设置 → 同步 → 添加设备",
@@ -428,7 +428,7 @@
       "syncing": "正在同步…",
       "waiting": "正在等待来自另一台设备的更改",
       "unreachable": "服务器无法连接",
-      "unreachableLong_other": "已 {{count}} 天未同步",
+      "unreachableLong_other": "已{{count}}天未同步",
       "paused": "已暂停",
       "error": "已停止",
       "syncingLong": "耗时比平时长",
@@ -456,7 +456,7 @@
     "openSettings": "打开设置",
     "cameraUnavailable": "无法打开相机。",
     "unknownCode": "此二维码既不是 Moony 配对码，也不是恢复包。",
-    "kitConfirmTitle": "加入此同步账户？",
+    "kitConfirmTitle": "使用恢复包连接这部手机？",
     "kitConfirmBody": "这部手机的数据将被同步的数据替换（会保留一份备份）。",
     "notAKitCode": "这不是恢复包代码",
     "notAPairingCode": "这不是配对码。",
@@ -504,10 +504,10 @@
   "attachments": {
     "title": "文档和照片",
     "allUploaded": "全部已上传",
-    "waiting_other": "{{count}} 项等待上传 · {{size}}",
+    "waiting_other": "{{count}}项等待上传 · {{size}}",
     "uploading": "正在上传文档和照片",
-    "onOtherDevices_other": "{{count}} 个文档和照片在您的其他设备上",
-    "failedUpload_other": "有 {{count}} 个文档或照片无法上传，仅保存在此设备上。",
+    "onOtherDevices_other": "{{count}}个文档和照片在您的其他设备上",
+    "failedUpload_other": "有{{count}}个文档或照片无法上传，仅保存在此设备上。",
     "downloadEverything": "全部下载到这部手机",
     "downloadEverythingStarted": "Moony 打开期间会持续下载",
     "problem": {
@@ -520,11 +520,11 @@
     "body": "您在 Moony 中输入的所有内容都会同步。语言、外观、菜单、通知、Moony 密码、恢复密钥和备份属于每台设备各自所有。价格和历史记录在每台设备上单独计算。文档和照片也会同步；手机会在您打开时下载。"
   },
   "protection": {
-    "line_other": "同步正在保护您的数据：副本保存在同步服务器上（最近一次完整同步：{{age}}，同步中的设备：{{count}} 台）。想保留某一天的状态时，请创建备份。"
+    "line_other": "同步正在保护您的数据：副本保存在同步服务器上（最近一次完整同步：{{age}}，同步中的设备：{{count}}台）。想保留某一天的状态时，请创建备份。"
   },
   "remove": {
-    "title": "移除 {{name}}？",
-    "body": "{{name}} 将不再获得新数据，也无法更改任何内容。其中已有的数据会留在那里，由其 Moony 密码保护。",
+    "title": "移除{{name}}？",
+    "body": "{{name}}将不再获得新数据，也无法更改任何内容。其中已有的数据会留在那里，由其 Moony 密码保护。",
     "stays": "以下设备将继续同步：",
     "thisDevice": "{{name}}（此设备）",
     "drops": "以下设备也将停止同步：",
@@ -534,27 +534,28 @@
       "lateVouch": "由不再同步的设备添加"
     },
     "keep": "这是我的",
-    "added": "这些设备是您从 {{name}}（或从它们）添加的。请把不认识的也一并移除。",
-    "addedRow": "{{name}} · {{date}} 添加",
-    "inHand": "{{name}} 在您身边吗？只需在其上关闭同步。",
+    "added": "这些设备是您从{{name}}（或从它们）添加的。请把不认识的也一并移除。",
+    "addedRow": "{{name}} · {{date}}添加",
+    "inHand": "{{name}}在您身边吗？只需在其上关闭同步。",
     "kit": {
-      "creatorRemoved": "您的恢复包保存在 {{name}} 上，因此将失效。之后您会立即创建新的恢复包。",
+      "creatorRemoved": "您的恢复包保存在{{name}}上，因此将失效。之后您会立即创建新的恢复包。",
       "cloud": "您的恢复包位于与云同步的文件夹中，因此将失效。之后您会立即创建新的恢复包。",
       "missing": "同步目前没有有效的恢复包，因此之后您会立即创建新的恢复包。",
       "notUpdated": "此次移除不会更新恢复包。"
     },
     "confirm": "移除设备",
-    "progress": "正在移除 {{name}}…",
+    "progress": "正在移除{{name}}…",
     "toast": {
-      "removed": "已移除 {{name}}",
+      "removed": "已移除{{name}}",
       "pending": "同步服务器暂时无法访问。服务器恢复后，移除将自动完成。",
-      "alreadyRemoved": "期间 {{by}} 已移除 {{name}}。",
-      "alreadyRemovedUnknown": "期间 {{name}} 已被移除。",
+      "alreadyRemoved": "期间{{by}}已移除{{name}}。",
+      "alreadyRemovedUnknown": "期间{{name}}已被移除。",
       "removedHere": "期间另一台设备已移除此设备。此处同步已关闭。"
     },
     "loadError": "无法准备移除。请重试。",
     "retry": "重试",
-    "bodyMany": "{{name}} 将不再获得新数据，也无法更改任何内容。其中已有的数据会留在那里，由其 Moony 密码保护。"
+    "bodyMany": "{{name}}将不再获得新数据，也无法更改任何内容。其中已有的数据会留在那里，由其 Moony 密码保护。",
+    "unreachable": "无法连接同步服务器，因此没有任何更改。请在连接互联网后重试。"
   },
   "newKit": {
     "title": "您的新恢复包",
@@ -611,23 +612,23 @@
   },
   "notice": {
     "removal": {
-      "removed": "{{by}} 移除了 {{names}}（{{date}}）。",
-      "newKit": "{{by}} 新建了恢复包（{{date}}）；旧恢复包已失效。",
+      "removed": "{{by}}移除了{{names}}（{{date}}）。",
+      "newKit": "{{by}}新建了恢复包（{{date}}）；旧恢复包已失效。",
       "kitToo": "它还新建了恢复包；旧恢复包已失效。"
     },
     "notDone": {
-      "changed": "移除 {{devices}} 未完成：期间 {{by}} 更改了设备列表。请检查后重试。",
-      "alreadyRemoved": "期间 {{by}} 已移除 {{devices}}。",
+      "changed": "移除{{devices}}未完成：期间{{by}}更改了设备列表。请检查后重试。",
+      "alreadyRemoved": "期间{{by}}已移除{{devices}}。",
       "refused": "同步服务器拒绝了此次移除。请重试。",
       "kit": "新恢复包未能生效；请重新创建。"
     },
-    "overrun": "在 {{date}} 移除设备之后，同步服务器仍向此设备发送了本不该发送的更改，Moony 已应用这些更改。如果你是因为设备被盗而移除它，请检查最近几天的更改。",
+    "overrun": "在{{date}}移除设备之后，同步服务器仍向此设备发送了本不该发送的更改，Moony 已应用这些更改。如果你是因为设备被盗而移除它，请检查最近几天的更改。",
     "overrunNoDate": "在移除设备之后，同步服务器仍向此设备发送了本不该发送的更改，Moony 已应用这些更改。如果你是因为设备被盗而移除它，请检查最近几天的更改。",
     "newDevice": {
-      "added": "{{date}}，{{by}} 添加了 {{name}}。",
-      "lateVouch": "已添加 {{name}}。它由不再同步的 {{by}} 添加。如果你不认识 {{name}}，请将其移除。",
+      "added": "{{date}}，{{by}}添加了{{name}}。",
+      "lateVouch": "已添加{{name}}。它由不再同步的{{by}}添加。如果你不认识{{name}}，请将其移除。",
       "kitTitle": "有设备使用你的恢复包接入",
-      "kit": "{{name}} 于 {{date}} 接入。如果不是你本人，说明有其他人拿到了你的恢复包。",
+      "kit": "{{name}}于{{date}}接入。如果不是你本人，说明有其他人拿到了你的恢复包。",
       "mine": "是我本人",
       "removeAndNew": "移除并新建恢复包"
     }
@@ -636,12 +637,12 @@
     "rejoin": {
       "title": "此设备需要重新连接",
       "body": "它长时间处于离线状态，或者期间谁可以访问数据发生了变化。此设备上的数据没有问题，只是不再同步。",
-      "by": "更改由 {{by}} 进行，此设备不认识它。",
+      "by": "更改由{{by}}进行，此设备不认识它。",
       "button": "重新连接"
     },
     "waiting": {
-      "title": "同步正在等待 {{by}}",
-      "body": "此设备正在等待 {{by}} 的确认，它最后更改了设备列表。这里的数据没有问题。如果你不再使用 {{by}}，请重新连接此设备。"
+      "title": "同步正在等待{{by}}",
+      "body": "此设备正在等待{{by}}的确认，它最后更改了设备列表。这里的数据没有问题。如果你不再使用{{by}}，请重新连接此设备。"
     }
   },
   "rejoin": {
@@ -650,15 +651,15 @@
   },
   "removed": {
     "title": "此设备已从同步中移除",
-    "body": "{{by}} 于 {{date}} 将其移除。你的数据仍保留在这里，只是不再同步。",
+    "body": "{{by}}于{{date}}将其移除。你的数据仍保留在这里，只是不再同步。",
     "titleLeft": "此设备上的同步已关闭",
     "bodyLeft": "此设备已退出同步（可能是通过此档案的另一份副本）。你的数据仍保留在这里。",
-    "unsent_other": "此设备上有 {{count}} 项更改未能进入同步；它们只保留在这里。",
+    "unsent_other": "此设备上有{{count}}项更改未能进入同步；它们只保留在这里。",
     "understood": "知道了"
   },
   "afterKit": {
     "title": "你的数据已恢复",
-    "body": "最新的更改来自 {{date}}。你之前的设备仍在列表中：{{names}}。如果你已经丢失它们，或其中有你之前已移除的设备，请将其移除。在你决定之前，这里不会发送任何内容。",
+    "body": "最新的更改来自{{date}}。你之前的设备仍在列表中：{{names}}。如果你已经丢失它们，或其中有你之前已移除的设备，请将其移除。在你决定之前，这里不会发送任何内容。",
     "bodyNoDate": "你之前的设备仍在列表中：{{names}}。如果你已经丢失它们，或其中有你之前已移除的设备，请将其移除。在你决定之前，这里不会发送任何内容。",
     "remove": "移除它们",
     "keep": "它们都在我手上",

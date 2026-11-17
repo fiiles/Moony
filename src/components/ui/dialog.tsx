@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { useSheetDrag } from '@/hooks/use-sheet-drag';
 import { usePhoneDialogBusy, withPhoneHistory } from '@/components/ui/phone-dialog-history';
@@ -114,6 +115,12 @@ function OpenerProbe({ target }: { target: React.MutableRefObject<HTMLElement | 
   return null;
 }
 
+/** The close button's screen-reader name, in the app's language. */
+function CloseLabel() {
+  const { t } = useTranslation('common');
+  return <span className="sr-only">{t('buttons.close')}</span>;
+}
+
 /**
  * Content padding is 23 × 27 px; DialogHeader/DialogFooter stretch to the edges.
  * A click on a toast (its "Vrátit zpět", for one) is not a click outside the modal: the
@@ -209,7 +216,7 @@ const DialogContent = React.forwardRef<
             !hideCloseButton && (
               <DialogPrimitive.Close className="absolute right-[27px] top-[25px] grid size-7 place-items-center rounded-full bg-well text-ink-3 transition-colors duration-fast hover:bg-well-2 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none">
                 <X className="size-[15px]" />
-                <span className="sr-only">Close</span>
+                <CloseLabel />
               </DialogPrimitive.Close>
             )
           )}

@@ -468,7 +468,7 @@
     "openSettings": "Einstellungen öffnen",
     "cameraUnavailable": "Die Kamera konnte nicht geöffnet werden.",
     "unknownCode": "Dieser QR-Code ist weder ein Kopplungscode von Moony noch ein Wiederherstellungs-Kit.",
-    "kitConfirmTitle": "Diesem Sync-Konto beitreten?",
+    "kitConfirmTitle": "Dieses Telefon mit dem Wiederherstellungs-Kit verbinden?",
     "kitConfirmBody": "Die Daten dieses Telefons werden durch die synchronisierten Daten ersetzt (eine Sicherung bleibt erhalten).",
     "notAKitCode": "Das ist kein Code eines Wiederherstellungs-Kits",
     "notAPairingCode": "Das ist kein Kopplungscode.",
@@ -541,7 +541,7 @@
   "remove": {
     "title": "{{name}} entfernen?",
     "body": "{{name}} erhält keine neuen Daten mehr und kann nichts mehr ändern. Was schon darauf ist, bleibt dort, geschützt durch das Moony-Passwort.",
-    "stays": "Diese synchronisieren weiter:",
+    "stays": "Diese Geräte synchronisieren weiter:",
     "thisDevice": "{{name}} (dieses Gerät)",
     "drops": "Diese werden ebenfalls nicht mehr synchronisiert:",
     "dropReason": {
@@ -570,7 +570,8 @@
     },
     "loadError": "Das Entfernen konnte nicht vorbereitet werden. Versuchen Sie es erneut.",
     "retry": "Erneut versuchen",
-    "bodyMany": "{{name}} erhalten keine neuen Daten mehr und können nichts mehr ändern. Was bereits darauf ist, bleibt dort, geschützt durch das Moony-Passwort."
+    "bodyMany": "{{name}} erhalten keine neuen Daten mehr und können nichts mehr ändern. Was bereits darauf ist, bleibt dort, geschützt durch das Moony-Passwort.",
+    "unreachable": "Der Synchronisierungsserver ist nicht erreichbar, daher wurde nichts geändert. Versuchen Sie es erneut, sobald Sie mit dem Internet verbunden sind."
   },
   "newKit": {
     "title": "Ihr neues Wiederherstellungs-Kit",
@@ -633,7 +634,7 @@
     },
     "notDone": {
       "changed": "Das Entfernen von {{devices}} wurde nicht abgeschlossen: {{by}} hat die Geräteliste inzwischen geändert. Prüfen Sie sie und versuchen Sie es erneut.",
-      "alreadyRemoved": "{{devices}} wurde inzwischen von {{by}} entfernt.",
+      "alreadyRemoved": "{{by}} hat {{devices}} inzwischen entfernt.",
       "refused": "Der Synchronisierungsserver hat das Entfernen abgelehnt. Versuchen Sie es erneut.",
       "kit": "Das neue Wiederherstellungs-Kit ist nicht in Kraft getreten; erstellen Sie es erneut."
     },

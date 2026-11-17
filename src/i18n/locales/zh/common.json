@@ -385,7 +385,7 @@
     "syncCopyFailed": "无法复制代码。请重试，或使用此屏幕上显示的其他方式保存恢复包。",
     "syncRecoveryAccountInvalid": "同步服务器无法识别此恢复包。请检查代码和服务器地址。",
     "syncRecoveryVaultNotFound": "服务器不认识此恢复包：可能已被较新的恢复包取代，或它属于其他同步或其他服务器。请检查代码和服务器地址。",
-    "syncRecoveryKitReplaced": "此恢复包已于 {{at, unixdate}} 被较新的恢复包取代。请使用较新的恢复包。",
+    "syncRecoveryKitReplaced": "此恢复包已于{{at, unixdate}}被较新的恢复包取代。请使用较新的恢复包。",
     "syncRecoveryKitUnreadable": "Moony 无法读取此恢复包：同步服务器上的数据与它不符。未做任何更改。",
     "syncJoinSetupPending": "请先在此设备上完成或取消同步设置。"
   },
@@ -512,7 +512,7 @@
   },
   "sync": {
     "checking": "正在同步…",
-    "syncing": "正在同步 {{current}}/{{total}}…",
+    "syncing": "正在同步{{current}}/{{total}}…",
     "complete": "同步完成",
     "loadingHistorical": "正在加载历史价格…",
     "recalculatingHistory": "正在重新计算历史…"

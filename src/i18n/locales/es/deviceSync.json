@@ -403,7 +403,7 @@
     "copyCode": "Copiar código",
     "copiedCode": "Copiado",
     "codeHint": "¿Sin cámara? Escribe o pega este código en el otro dispositivo. Puedes enviarlo en un mensaje: sin los seis dígitos que escribirás después aquí, no revela nada.",
-    "deviceConnected": "{{name}} está conectado",
+    "deviceConnected": "El dispositivo {{name}} está conectado",
     "sentLate": "Termina la conexión en el otro dispositivo. Cuando se conecte, aparecerá en la lista."
   },
   "join": {
@@ -480,7 +480,7 @@
     "openSettings": "Abrir Ajustes",
     "cameraUnavailable": "No se pudo abrir la cámara.",
     "unknownCode": "Este código QR no es un código de vinculación de Moony ni un kit de recuperación.",
-    "kitConfirmTitle": "¿Unirte a esta cuenta de sincronización?",
+    "kitConfirmTitle": "¿Conectar este teléfono con el kit de recuperación?",
     "kitConfirmBody": "Los datos de este teléfono se sustituyen por los sincronizados (se guarda una copia de seguridad).",
     "notAKitCode": "Esto no es un código del kit de recuperación",
     "notAPairingCode": "Esto no es un código de vinculación.",
@@ -578,7 +578,7 @@
     "confirm": "Quitar dispositivo",
     "progress": "Quitando {{name}}…",
     "toast": {
-      "removed": "{{name}} quitado",
+      "removed": "Se quitó {{name}}",
       "pending": "El servidor de sincronización no está disponible ahora. La eliminación terminará sola en cuanto lo esté.",
       "alreadyRemoved": "{{by}} quitó {{name}} mientras tanto.",
       "alreadyRemovedUnknown": "{{name}} se quitó mientras tanto.",
@@ -586,7 +586,8 @@
     },
     "loadError": "No se pudo preparar la eliminación. Inténtalo de nuevo.",
     "retry": "Reintentar",
-    "bodyMany": "{{name}} dejarán de recibir datos nuevos y no podrán cambiar nada. Lo que ya contienen se queda, protegido por su contraseña de Moony."
+    "bodyMany": "{{name}} dejarán de recibir datos nuevos y no podrán cambiar nada. Lo que ya contienen se queda, protegido por su contraseña de Moony.",
+    "unreachable": "No se puede conectar con el servidor de sincronización, así que no ha cambiado nada. Inténtalo de nuevo cuando tengas conexión a internet."
   },
   "newKit": {
     "title": "Tu nuevo kit de recuperación",

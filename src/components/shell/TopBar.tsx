@@ -9,6 +9,7 @@ import { UpdateStatus } from '@/components/shell/UpdateStatus';
 import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { MilestonesStatus } from '@/components/shell/MilestonesStatus';
 import { useShell } from '@/components/shell/shell-context';
+import { breadcrumbTag } from '@/utils/breadcrumb-tag';
 
 interface Crumb {
   label: string;
@@ -30,7 +31,7 @@ export function TopBar() {
   const { getLocale } = useLanguage();
   const { page } = useShell();
   const syncFeature = useDeviceSyncFeature();
-  const lower = (s: string) => s.toLocaleLowerCase(getLocale());
+  const lower = (s: string) => breadcrumbTag(s, getLocale());
 
   const nav = findNavLocation(location);
   const crumbs: Crumb[] = [];

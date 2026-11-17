@@ -2045,3 +2045,26 @@ R-109. **Smaller review fixes** (final review I-1, M-2, M-5). (a) `shared/genera
      creator or a cloud Kit removed with it), not only when "Vytvořit novou sadu" was asked for. (c) Migration
      041's comment says `kit_storage` keeps the strongest value (R-54), not "last-writer-wins" (comment only);
      ADR 0032 names the As built range up to R-110.
+R-110. **Fixes from the desktop live run, texts** (2026-11-17; with final review M-6). (a) The device that added a device no
+     longer gets its own new-device notice ("Přibylo zařízení X, přidané ze zařízení {toto zařízení}"):
+     `trust::note_new_devices` skips a device whose issuer is this device. Test:
+     `trust_tests::new_device_notices_are_written_for_pairings_and_kit_joins_only`. (b) A device name is no
+     longer the bare subject of a gendered participle or adjective: cs "Zařízení {{name}} je připojené",
+     "Zařízení {{name}} bylo mezitím odebráno", "Zařízení {{name}} se připojilo…", subject-first
+     "Zařízení {{by}} mezitím odebralo…"; the same in pl ("Urządzenie {{name}}…"), it ("Il dispositivo
+     {{name}}…"), es ("El dispositivo {{name}} está conectado", "Se quitó {{name}}"), sv/nb ("Enheten
+     {{name}}…", where a later "den" refers to it); de needs none (its predicates do not agree), but
+     `notice.notDone.alreadyRemoved` no longer says "wurde" of a list. (c) The top bar's descriptor
+     ("Nastavení / synchronizace") is lower-cased except in German, whose nouns keep their capital
+     (`utils/breadcrumb-tag.ts`): "Einstellungen / Synchronisierung"; de `remove.stays` is "Diese Geräte
+     synchronisieren weiter:". (d) ja and zh sync strings have no space between an interpolation and the
+     CJK text around it (`deviceSync` and the `sync` keys of `common` and `settings`). (e) The dialog's close
+     button is named in the app's language (`common:buttons.close`), not "Close". (f) A removal or a new Kit
+     that fails because the sync server cannot be reached (it fails before anything changes, and nothing
+     retries it) says so in its dialog (`remove.unreachable`: "Synchronizační server není dostupný, takže se
+     nic nezměnilo. Zkuste to znovu, až budete připojeni k internetu.") instead of the common "synchronizace to
+     zkusí znovu" (`utils/sync-removal.ts` `removalErrorKey`, desktop dialogs and phone sheets). (g) M-6:
+     `phone.kitConfirmTitle` no longer says "synchronizační účet" in any locale ("Připojit tento telefon
+     pomocí záchranné sady?"); `auth.onboarding.connect.subtitle` was already fixed by R-105 (f). Left as owner
+     questions: spaces inside a pairing code, a server address without `http://`, the hosted-account copy
+     (`validation.syncAccountNotFound`, `setup.account.*`).

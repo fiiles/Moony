@@ -8,12 +8,13 @@ import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
 import {
-  planNeedsReload,
   outcomeView,
+  planNeedsReload,
+  removalErrorKey,
   removalRequest,
   toggleId,
-  withoutKit,
   type OutcomeView,
+  withoutKit,
 } from '@/utils/sync-removal';
 import { NewKitStep } from '@/components/settings/sync/NewKitStep';
 import { submitOnEnter } from '@/components/settings/sync/submit-on-enter';
@@ -109,7 +110,8 @@ export function NewKitDialog({
       else finish(view, false);
     } catch (failure) {
       setStep({ kind: 'plan' });
-      setError(translateApiError(failure as Error, tc));
+      const own = removalErrorKey(failure instanceof ApiError ? failure.key : undefined);
+      setError(own ? t(own) : translateApiError(failure as Error, tc));
       // The plan the person confirmed no longer holds: show the new one and ask again
       if (failure instanceof ApiError && planNeedsReload(failure.key)) void reload();
     }

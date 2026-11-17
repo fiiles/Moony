@@ -1755,25 +1755,29 @@ fn the_confirmed_set_marks_only_matching_certificates() {
 #[test]
 fn new_device_notices_are_written_for_pairings_and_kit_joins_only() {
     let conn = supported();
+    // A device this one added says nothing here: the person added it here (live run, Task B2).
     with_b(&conn);
+    assert!(trust::new_devices(&conn).unwrap().is_empty());
     // A re-join says nothing; a genesis is never pinned.
     row(&conn, C, Some(&C.rejoin_of(B, NOW + 1)));
     row(&conn, D, Some(&D.genesis()));
+    let e = Dev(0x0e);
+    row(&conn, e, Some(&e.paired_by(B, 0x7e)));
     trust::refresh(&conn, NOW + 7).unwrap();
     let notices = trust::new_devices(&conn).unwrap();
     assert_eq!(
         notices,
         vec![trust::NewDevice {
-            device: B.id().to_hex(),
-            by: ME.id().to_hex(),
-            at: NOW,
+            device: e.id().to_hex(),
+            by: B.id().to_hex(),
+            at: NOW + 7,
             via_kit: false,
         }]
     );
     // At most 20, the newest kept.
     for i in 0..25u8 {
         let dev = Dev(0x40 + i);
-        row(&conn, dev, Some(&dev.paired_by(ME, 0x90 + i)));
+        row(&conn, dev, Some(&dev.paired_by(B, 0x90 + i)));
         trust::refresh(&conn, NOW + i64::from(i)).unwrap();
     }
     let notices = trust::new_devices(&conn).unwrap();

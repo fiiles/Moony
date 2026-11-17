@@ -41,8 +41,8 @@
       "removed": "Synchronizacja jest wyłączona: to urządzenie zostało usunięte.",
       "left": "Synchronizacja jest wyłączona: to urządzenie się odłączyło.",
       "afterKitJoin": "Zdecyduj, co zrobić z wcześniejszymi urządzeniami; do tego czasu stąd nic nie jest wysyłane.",
-      "removalNotice": "{{by}} usunęło: {{names}}.",
-      "newKit": "{{by}} utworzyło nowy zestaw odzyskiwania.",
+      "removalNotice": "Urządzenie {{by}} usunęło: {{names}}.",
+      "newKit": "Urządzenie {{by}} utworzyło nowy zestaw odzyskiwania.",
       "newDevices": "Nowe urządzenia: {{names}}.",
       "kitUsed": "Zestaw odzyskiwania został użyty {{at}}."
     }
@@ -414,7 +414,7 @@
     "copyCode": "Kopiuj kod",
     "copiedCode": "Skopiowano",
     "codeHint": "Brak aparatu? Wpisz lub wklej ten kod na drugim urządzeniu. Możesz go wysłać wiadomością: bez sześciu cyfr, które potem wpiszesz tutaj, niczego nie ujawnia.",
-    "deviceConnected": "{{name}} jest połączone",
+    "deviceConnected": "Urządzenie {{name}} jest połączone",
     "sentLate": "Dokończ łączenie na drugim urządzeniu. Gdy się połączy, pojawi się na liście."
   },
   "join": {
@@ -492,7 +492,7 @@
     "openSettings": "Otwórz Ustawienia",
     "cameraUnavailable": "Nie udało się otworzyć aparatu.",
     "unknownCode": "Ten kod QR nie jest kodem parowania Moony ani zestawem odzyskiwania.",
-    "kitConfirmTitle": "Dołączyć do tego konta synchronizacji?",
+    "kitConfirmTitle": "Połączyć ten telefon za pomocą zestawu odzyskiwania?",
     "kitConfirmBody": "Dane tego telefonu zostaną zastąpione danymi zsynchronizowanymi (kopia zapasowa zostanie zachowana).",
     "notAKitCode": "To nie jest kod zestawu odzyskiwania",
     "notAPairingCode": "To nie jest kod parowania.",
@@ -572,7 +572,7 @@
   },
   "remove": {
     "title": "Usunąć {{name}}?",
-    "body": "{{name}} przestanie dostawać nowe dane i nie będzie mogło niczego zmieniać. To, co już na nim jest, tam zostanie, chronione hasłem do Moony.",
+    "body": "Urządzenie {{name}} przestanie dostawać nowe dane i nie będzie mogło niczego zmieniać. To, co już na nim jest, tam zostanie, chronione hasłem do Moony.",
     "stays": "Nadal będą się synchronizować:",
     "thisDevice": "{{name}} (to urządzenie)",
     "drops": "Przestaną się też synchronizować:",
@@ -596,13 +596,14 @@
     "toast": {
       "removed": "Usunięto {{name}}",
       "pending": "Serwer synchronizacji jest teraz niedostępny. Usunięcie zakończy się samo, gdy tylko będzie dostępny.",
-      "alreadyRemoved": "{{by}} usunęło w międzyczasie {{name}}.",
-      "alreadyRemovedUnknown": "{{name}} zostało w międzyczasie usunięte.",
+      "alreadyRemoved": "Urządzenie {{by}} usunęło w międzyczasie urządzenie {{name}}.",
+      "alreadyRemovedUnknown": "Urządzenie {{name}} zostało w międzyczasie usunięte.",
       "removedHere": "Inne urządzenie usunęło w międzyczasie to urządzenie. Synchronizacja jest tu wyłączona."
     },
     "loadError": "Nie udało się przygotować usunięcia. Spróbuj ponownie.",
     "retry": "Spróbuj ponownie",
-    "bodyMany": "{{name}} przestaną dostawać nowe dane i nie będą mogły niczego zmieniać. To, co już na nich jest, tam zostanie, chronione hasłem do Moony."
+    "bodyMany": "{{name}} przestaną dostawać nowe dane i nie będą mogły niczego zmieniać. To, co już na nich jest, tam zostanie, chronione hasłem do Moony.",
+    "unreachable": "Serwer synchronizacji jest niedostępny, więc nic się nie zmieniło. Spróbuj ponownie, gdy będziesz mieć połączenie z internetem."
   },
   "newKit": {
     "title": "Twój nowy zestaw odzyskiwania",
@@ -665,7 +666,7 @@
     },
     "notDone": {
       "changed": "Usuwanie {{devices}} się nie zakończyło: urządzenie {{by}} zmieniło w międzyczasie listę urządzeń. Sprawdź ją i spróbuj ponownie.",
-      "alreadyRemoved": "{{devices}} usunęło w międzyczasie urządzenie {{by}}.",
+      "alreadyRemoved": "Urządzenie {{by}} usunęło w międzyczasie {{devices}}.",
       "refused": "Serwer synchronizacji odrzucił usunięcie. Spróbuj ponownie.",
       "kit": "Nowy zestaw odzyskiwania nie zaczął obowiązywać; utwórz go ponownie."
     },
@@ -675,7 +676,7 @@
       "added": "Przybyło urządzenie {{name}}, dodane z urządzenia {{by}} ({{date}}).",
       "lateVouch": "Przybyło urządzenie {{name}}. Dodało je urządzenie {{by}}, które już się nie synchronizuje. Jeśli nie rozpoznajesz {{name}}, usuń je.",
       "kitTitle": "Urządzenie połączyło się za pomocą Twojego zestawu odzyskiwania",
-      "kit": "{{name}} połączyło się {{date}}. Jeśli to nie Ty, ktoś inny ma Twój zestaw.",
+      "kit": "Urządzenie {{name}} połączyło się {{date}}. Jeśli to nie Ty, ktoś inny ma Twój zestaw.",
       "mine": "To ja",
       "removeAndNew": "Usuń i utwórz nowy zestaw"
     }

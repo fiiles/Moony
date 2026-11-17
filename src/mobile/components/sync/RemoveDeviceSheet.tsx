@@ -8,16 +8,17 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
-  planNeedsReload,
   canKeepDropping,
   dropReasonKey,
   kitLineKey,
   outcomeView,
+  planNeedsReload,
+  removalErrorKey,
   removalRequest,
   removalTitleNames,
   toggleId,
-  withoutKit,
   type OutcomeView,
+  withoutKit,
 } from '@/utils/sync-removal';
 import { Sheet } from '@/mobile/components/Sheet';
 import { AlsoRemoveList } from '@/mobile/components/sync/AlsoRemoveList';
@@ -117,7 +118,8 @@ export function RemoveDeviceSheet({
       else finish(view, removedName);
     } catch (failure) {
       setStep({ kind: 'plan' });
-      setError(translateApiError(failure as Error, tc));
+      const own = removalErrorKey(failure instanceof ApiError ? failure.key : undefined);
+      setError(own ? t(own) : translateApiError(failure as Error, tc));
       // The plan the person confirmed no longer holds: show the new one and ask again
       if (failure instanceof ApiError && planNeedsReload(failure.key)) void reload();
     }

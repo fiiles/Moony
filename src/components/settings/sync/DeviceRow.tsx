@@ -22,6 +22,8 @@ interface DeviceRowProps {
   device: SyncDevice;
   /** Devices can be removed from this sync (`removalSupported`, no key change of ours waiting). */
   removalAvailable: boolean;
+  /** The sync server is out of reach: "Odebrat…" waits, described by the card's line (`useServerGate`). */
+  serverProps?: { 'aria-disabled'?: true; 'aria-describedby'?: string };
   onRename: (device: SyncDevice) => void;
   onRemove: (device: SyncDevice) => void;
   onKeep: (device: SyncDevice) => void;
@@ -36,6 +38,7 @@ interface DeviceRowProps {
 export function DeviceRow({
   device,
   removalAvailable,
+  serverProps,
   onRename,
   onRemove,
   onKeep,
@@ -138,7 +141,13 @@ export function DeviceRow({
             </Button>
           )}
           {device.status === 'check' && removable && (
-            <Button type="button" variant="outline" size="sm" onClick={() => onRemove(device)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onRemove(device)}
+              {...serverProps}
+            >
               {t('devices.remove')}
             </Button>
           )}
@@ -157,7 +166,13 @@ export function DeviceRow({
           {details}
           {removable && (
             <div className="mt-2.5">
-              <Button type="button" variant="outline" size="sm" onClick={() => onRemove(device)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onRemove(device)}
+                {...serverProps}
+              >
                 {t('devices.remove')}
               </Button>
             </div>

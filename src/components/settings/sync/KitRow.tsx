@@ -4,12 +4,14 @@ import { toast } from 'sonner';
 import { TriangleAlert } from 'lucide-react';
 import type { SyncStatus } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { useServerGate } from '@/hooks/use-server-gate';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
 import { kitRowState, kitStorageKey } from '@/utils/sync-kit';
 import { removalAvailable } from '@/utils/sync-removal';
 import { CheckKitDialog } from '@/components/settings/sync/CheckKitDialog';
 import { NewKitDialog } from '@/components/settings/sync/NewKitDialog';
+import { ServerNeededNote } from '@/components/settings/sync/ServerNeededNote';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { WRAP_BUTTON } from '@/components/settings/sync/wrap-button';
@@ -31,6 +33,8 @@ export function KitRow({ status }: { status: SyncStatus }) {
   const kit = status.recoveryKit;
   const state = kitRowState(kit);
   const available = removalAvailable(status);
+  // A new kit is a key change the server takes: it waits while the server is out of reach
+  const server = useServerGate();
 
   const dismissUsed = async () => {
     try {
@@ -87,6 +91,7 @@ export function KitRow({ status }: { status: SyncStatus }) {
               className={WRAP_BUTTON}
               disabled={!available}
               onClick={() => setMaking(true)}
+              {...server.props}
             >
               {state === 'none'
                 ? t('kit.make')
@@ -96,6 +101,7 @@ export function KitRow({ status }: { status: SyncStatus }) {
             </Button>
           </div>
         </div>
+        {server.blocked && <ServerNeededNote id={server.noteId} />}
         {status.kitUsed !== null && (
           <Alert>
             <TriangleAlert />
@@ -110,6 +116,7 @@ export function KitRow({ status }: { status: SyncStatus }) {
                   className={WRAP_BUTTON}
                   disabled={!available}
                   onClick={() => setMaking(true)}
+                  {...server.props}
                 >
                   {t('kit.makeNewKit')}
                 </Button>

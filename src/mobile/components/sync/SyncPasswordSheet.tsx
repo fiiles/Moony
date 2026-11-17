@@ -4,6 +4,7 @@ import { PasswordInput } from '@/components/auth/PasswordInput';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { translateApiError } from '@/lib/translate-api-error';
+import { useServerGate } from '@/hooks/use-server-gate';
 import { Sheet } from '@/mobile/components/Sheet';
 import { field48, fieldMessage } from '@/mobile/pages/first-run/styles';
 
@@ -19,6 +20,8 @@ interface SyncPasswordSheetProps {
   extra?: ReactNode;
   /** Holds the confirm back (the numbers it asks the person to agree to are not in yet). */
   submitDisabled?: boolean;
+  /** Only the sync server can carry it out: while it is out of reach the confirm waits, saying why. */
+  needsServer?: boolean;
   confirmLabel: string;
   /** The confirm button is red for what deletes or replaces data. */
   destructive?: boolean;
@@ -48,6 +51,7 @@ export function SyncPasswordSheet({
   note,
   extra,
   submitDisabled = false,
+  needsServer = false,
   confirmLabel,
   destructive = false,
   onSubmit,
@@ -59,6 +63,8 @@ export function SyncPasswordSheet({
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const server = useServerGate();
+  const waits = needsServer && server.blocked;
 
   // Whatever closes the sheet takes the password and the message with it
   if (!open && (password !== '' || error !== null)) {
@@ -74,7 +80,7 @@ export function SyncPasswordSheet({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (password === '' || busy || submitDisabled) return;
+    if (password === '' || busy || submitDisabled || waits) return;
     setBusy(true);
     setError(null);
     try {
@@ -112,6 +118,7 @@ export function SyncPasswordSheet({
             className={`${BUTTON} flex-1`}
             disabled={password === '' || submitDisabled}
             loading={busy}
+            {...(needsServer ? server.props : {})}
           >
             {confirmLabel}
           </Button>
@@ -144,6 +151,11 @@ export function SyncPasswordSheet({
             </p>
           )}
         </div>
+        {waits && (
+          <p id={server.noteId} className="m-0 text-m-sub text-ink-3">
+            {t('status.needsServer')}
+          </p>
+        )}
       </form>
     </Sheet>
   );

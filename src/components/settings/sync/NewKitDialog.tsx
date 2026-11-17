@@ -17,7 +17,9 @@ import {
   withoutKit,
 } from '@/utils/sync-removal';
 import { NewKitStep } from '@/components/settings/sync/NewKitStep';
+import { ServerNeededNote } from '@/components/settings/sync/ServerNeededNote';
 import { submitOnEnter } from '@/components/settings/sync/submit-on-enter';
+import { useServerGate } from '@/hooks/use-server-gate';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -61,6 +63,8 @@ export function NewKitDialog({
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>({ kind: 'plan' });
   const field = useRef<HTMLInputElement>(null);
+  // The server drops while the dialog is open: it stays, and the confirm waits, saying why
+  const server = useServerGate();
 
   const planning = step.kind === 'plan';
   const planQuery = useRemovalPlan([], alsoRemove, true, planning);
@@ -96,7 +100,7 @@ export function NewKitDialog({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!plan || password === '' || !planning || planQuery.isFetching) return;
+    if (!plan || password === '' || !planning || planQuery.isFetching || server.blocked) return;
     setError(null);
     setStep({ kind: 'working' });
     try {
@@ -218,6 +222,7 @@ export function NewKitDialog({
                 </p>
               )}
             </div>
+            {server.blocked && <ServerNeededNote id={server.noteId} />}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onClose}>
                 {tc('buttons.cancel')}
@@ -226,6 +231,7 @@ export function NewKitDialog({
                 type="submit"
                 className="h-auto min-h-control whitespace-normal py-1.5"
                 disabled={!plan || password === '' || planQuery.isFetching}
+                {...server.props}
               >
                 {missing ? t('kit.make') : t('newKitDialog.confirm')}
               </Button>

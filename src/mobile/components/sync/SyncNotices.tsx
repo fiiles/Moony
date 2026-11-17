@@ -5,6 +5,7 @@ import { Info, TriangleAlert } from 'lucide-react';
 import type { SyncNoticeKind, SyncStatus } from '@shared/schema';
 import { useSyncDevices } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { useServerGate } from '@/hooks/use-server-gate';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
 import { sentences } from '@/utils/sentences';
@@ -48,6 +49,9 @@ export function SyncNotices({ status }: { status: SyncStatus }) {
   const [removing, setRemoving] = useState<Removing | null>(null);
   const [makingKit, setMakingKit] = useState(false);
   const available = removalAvailable(status);
+  // Removing devices and a new kit need the server; "Mám je", "Je moje" and closing do not
+  const server = useServerGate();
+  const waits = server.blocked ? <span className="block">{t('status.needsServer')}</span> : null;
 
   const day = (seconds: number) => date(new Date(seconds * 1000), { dateStyle: 'long' });
   const failed = (error: unknown) =>
@@ -135,7 +139,7 @@ export function SyncNotices({ status }: { status: SyncStatus }) {
                       newKit: false,
                       decidesKitJoin: true,
                     }),
-                  disabled: !available,
+                  disabled: !available || server.blocked,
                 }
               : {
                   label: tc('buttons.continue'),
@@ -152,6 +156,7 @@ export function SyncNotices({ status }: { status: SyncStatus }) {
         <span data-testid="notice-after-kit">
           {status.removalPending ? sentences(locale, [body, t('afterKit.pending')]) : body}
         </span>
+        {devicesLoaded && heldDevices.length > 0 && waits}
       </InlineAlert>
     );
   }
@@ -185,7 +190,7 @@ export function SyncNotices({ status }: { status: SyncStatus }) {
                 {
                   label: t('kit.makeNewKit'),
                   onClick: () => setMakingKit(true),
-                  disabled: !available,
+                  disabled: !available || server.blocked,
                 },
               ]
             : []),
@@ -198,6 +203,7 @@ export function SyncNotices({ status }: { status: SyncStatus }) {
             devices: notDone.devices.join(', '),
           })}
         </span>
+        {notDone.kitReplaced && waits}
       </InlineAlert>
     );
   }
@@ -239,7 +245,7 @@ export function SyncNotices({ status }: { status: SyncStatus }) {
                   newKit: false,
                   decidesKitJoin: false,
                 }),
-              disabled: !available,
+              disabled: !available || server.blocked,
             },
           ]
         : kind === 'kit'
@@ -254,7 +260,7 @@ export function SyncNotices({ status }: { status: SyncStatus }) {
                     newKit: true,
                     decidesKitJoin: false,
                   }),
-                disabled: !available,
+                disabled: !available || server.blocked,
               },
             ]
           : [closeDevice];
@@ -268,6 +274,7 @@ export function SyncNotices({ status }: { status: SyncStatus }) {
         <span data-testid={`notice-new-device-${kind}`}>
           {t(`notice.newDevice.${kind}`, values)}
         </span>
+        {kind !== 'added' && waits}
       </InlineAlert>
     );
   }

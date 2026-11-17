@@ -9,6 +9,7 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
 import { kitRowState, kitStorageKey } from '@/utils/sync-kit';
 import { removalAvailable } from '@/utils/sync-removal';
+import { useServerGate } from '@/hooks/use-server-gate';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { CheckKitSheet } from '@/mobile/components/sync/CheckKitSheet';
@@ -35,6 +36,8 @@ export function KitSection({ status }: { status: SyncStatus }) {
   const kit = status.recoveryKit;
   const state = kitRowState(kit);
   const available = removalAvailable(status);
+  // A new kit is a key change the server takes: it waits while the server is out of reach
+  const server = useServerGate();
 
   const day = (seconds: number) => date(new Date(seconds * 1000), { dateStyle: 'long' });
   const dismissUsed = async () => {
@@ -63,7 +66,15 @@ export function KitSection({ status }: { status: SyncStatus }) {
         <InlineAlert
           icon={TriangleAlert}
           action={[
-            ...(available ? [{ label: t('kit.makeNewKit'), onClick: () => setMaking(true) }] : []),
+            ...(available
+              ? [
+                  {
+                    label: t('kit.makeNewKit'),
+                    onClick: () => setMaking(true),
+                    disabled: server.blocked,
+                  },
+                ]
+              : []),
             {
               label: t('kit.usedKnown'),
               onClick: () => void dismissUsed(),
@@ -96,6 +107,7 @@ export function KitSection({ status }: { status: SyncStatus }) {
           className={BUTTON}
           disabled={!available}
           onClick={() => setMaking(true)}
+          {...server.props}
         >
           {state === 'none'
             ? t('kit.make')
@@ -103,6 +115,11 @@ export function KitSection({ status }: { status: SyncStatus }) {
               ? t('kit.makeNewKit')
               : t('kit.makeNew')}
         </Button>
+        {server.blocked && (
+          <p id={server.noteId} className="mx-0.5 my-0 text-m-sub text-ink-3">
+            {t('status.needsServer')}
+          </p>
+        )}
       </div>
       {/* Mounted only while open: unmounting forgets the typed code and a new kit */}
       {checking && <CheckKitSheet onClose={() => setChecking(false)} />}

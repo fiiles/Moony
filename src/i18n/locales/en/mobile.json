@@ -647,7 +647,7 @@
         "menu": "Dividend options"
       },
       "follow": "Watch",
-      "following": "Watching",
+      "openWatch": "Open in watchlist",
       "followed": "Added to the watchlist",
       "range52": "52-week range",
       "renamed": "Name saved",

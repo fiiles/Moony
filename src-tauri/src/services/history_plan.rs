@@ -6,7 +6,8 @@
 //! nothing, so every rule is unit-tested with a hand-written schema.
 //!
 //! * **Startup (A7).** [`plan_startup`]: the first start of a version rebuilds everything
-//!   once; later starts only fill the days that are missing.
+//!   once; later starts fill the days that are missing and settle the days finished since
+//!   the device's settled-through mark (spec `2026-11-17-settle-finished-days-design.md`).
 //! * **Triggers (A6).** A write to a static class (accounts and balance records, real
 //!   estate, loans, bonds, other assets) queues [`all_days`], `Days(0)`:
 //!   `history_days::plan_rebuild` clamps it to the first fact, and a days-only rebuild is
@@ -78,6 +79,48 @@ pub fn store_rebuild_version(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+const SETTLED_KEY: &str = "history_settled_through";
+
+/// The last UTC day (day start, unix seconds) whose history this device has settled to
+/// closing prices; `None` when nothing is settled or the stored value is unreadable. The key
+/// is Local: it is not in `APP_CONFIG_SYNCED_KEYS`.
+pub fn stored_settled_through(conn: &Connection) -> Result<Option<i64>> {
+    let stored: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [SETTLED_KEY],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(stored.and_then(|value| value.trim().parse::<i64>().ok()))
+}
+
+/// Record that the days through `day` (a UTC day start) are settled.
+pub fn store_settled_through(conn: &Connection, day: i64) -> Result<()> {
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![SETTLED_KEY, day.to_string()],
+    )?;
+    Ok(())
+}
+
+/// Forget the mark, so the next start settles the whole history again (the Seed tables were
+/// replaced by another device's rows).
+pub fn forget_settled_through(conn: &Connection) -> Result<()> {
+    conn.execute("DELETE FROM app_config WHERE key = ?1", [SETTLED_KEY])?;
+    Ok(())
+}
+
+/// Does the finished batch earn the settled-through mark? The days must have been re-derived.
+/// Every ticker failing is how being offline looks, so the mark stays and the next start tries
+/// again. Some tickers failing is a ticker the provider rejects for good (a delisted symbol):
+/// it must not repeat the fetch of every ticker at every unlock, so the mark moves. A batch
+/// without ticker jobs has nothing to fail.
+pub fn settle_earned(outcome: &BatchOutcome, ticker_jobs: usize) -> bool {
+    outcome.days_ok && (ticker_jobs == 0 || outcome.failed_tickers.len() < ticker_jobs)
+}
+
 /// What a start queues.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StartupPlan {
@@ -86,15 +129,28 @@ pub struct StartupPlan {
     pub one_time: bool,
     /// The day the days rebuild starts at, when one is planned.
     pub from_day: Option<i64>,
+    /// Yesterday's day start when the batch settles the days through it and the mark has to
+    /// move there once the batch is done; `None` when the mark is already there.
+    pub settles_through: Option<i64>,
 }
 
 /// Plan what a start has to rebuild (A7). A profile below [`REBUILD_VERSION`] rebuilds
 /// everything once: every stock and crypto ticker from its first transaction, and the days
-/// from the first fact. Otherwise the first missing day `G` in `[first fact, yesterday]`
-/// starts a repair: the tickers held from `G`, and the days from `G`. `today` is today's UTC
-/// day start.
+/// from the first fact. Otherwise the plan starts at the earlier of two days: the first
+/// missing day `G` in `[first fact, yesterday]`, and the settle start, the day after the
+/// settled-through mark (the first fact when there is no mark, never before it). The
+/// settle re-derives the days that were recorded while the app was running, which hold
+/// mid-session prices, from the closing prices. The plan queues the tickers held from the
+/// start day and the days from it. `settles_through` is yesterday while the mark is absent
+/// or older, and the one-time rebuild settles too. `today` is today's UTC day start.
 pub fn plan_startup(conn: &Connection, today: i64) -> Result<StartupPlan> {
     let first_fact = earliest_fact_day(conn)?;
+    let yesterday = today - DAY;
+    let mark = stored_settled_through(conn)?;
+    let settles_through = match mark {
+        Some(mark) if mark >= yesterday => None,
+        _ => Some(yesterday),
+    };
     if stored_rebuild_version(conn)? < REBUILD_VERSION {
         let mut jobs = all_ticker_jobs(conn)?;
         jobs.extend(first_fact.map(Job::Days));
@@ -102,26 +158,40 @@ pub fn plan_startup(conn: &Connection, today: i64) -> Result<StartupPlan> {
             jobs,
             one_time: true,
             from_day: first_fact,
+            settles_through,
         });
     }
 
     let gap = match first_fact {
-        Some(first) => first_missing_day(conn, first, today - DAY)?,
+        Some(first) => first_missing_day(conn, first, yesterday)?,
         None => None,
     };
-    let Some(gap) = gap else {
+    let settle_from = match (settles_through, first_fact) {
+        (Some(_), Some(first)) => {
+            let from = mark.map_or(first, |mark| first.max(mark + DAY));
+            (from <= yesterday).then_some(from)
+        }
+        _ => None,
+    };
+    let start = match (gap, settle_from) {
+        (Some(gap), Some(settle)) => Some(gap.min(settle)),
+        (gap, settle) => gap.or(settle),
+    };
+    let Some(start) = start else {
         return Ok(StartupPlan {
             jobs: Vec::new(),
             one_time: false,
             from_day: None,
+            settles_through,
         });
     };
-    let mut jobs = held_ticker_jobs(conn, gap)?;
-    jobs.push(Job::Days(gap));
+    let mut jobs = held_ticker_jobs(conn, start)?;
+    jobs.push(Job::Days(start));
     Ok(StartupPlan {
         jobs,
         one_time: false,
-        from_day: Some(gap),
+        from_day: Some(start),
+        settles_through,
     })
 }
 
@@ -135,6 +205,7 @@ pub fn plan_everything(conn: &Connection) -> Result<StartupPlan> {
         jobs,
         one_time: false,
         from_day: first_fact,
+        settles_through: None,
     })
 }
 
@@ -543,6 +614,7 @@ mod tests {
         assert_eq!(stored_rebuild_version(&conn).expect("unchanged"), 3);
         assert!(rebuild_version_earned(&outcome(true, &["BTC"])));
         store_rebuild_version(&conn).expect("store");
+        store_settled_through(&conn, d(-1)).expect("mark");
         assert_eq!(
             stored_rebuild_version(&conn).expect("stored"),
             REBUILD_VERSION
@@ -594,6 +666,7 @@ mod tests {
     fn a_rebuilt_profile_with_every_day_present_queues_nothing() {
         let conn = setup_test_db();
         store_rebuild_version(&conn).expect("version");
+        store_settled_through(&conn, d(-1)).expect("mark");
         balance_record(&conn, d(-5));
         for offset in -5..0 {
             history_row(&conn, d(offset));
@@ -607,6 +680,7 @@ mod tests {
     fn the_first_missing_day_starts_the_repair_with_the_tickers_held_from_it() {
         let conn = setup_test_db();
         store_rebuild_version(&conn).expect("version");
+        store_settled_through(&conn, d(-1)).expect("mark");
         balance_record(&conn, d(-10));
         trade(&conn, "investment_transactions", "AAPL", "buy", "2", d(-9)); // held
         trade(&conn, "investment_transactions", "OLD", "buy", "1", d(-9));
@@ -637,6 +711,7 @@ mod tests {
     fn yesterday_is_the_last_day_that_counts_and_today_is_not_a_gap() {
         let conn = setup_test_db();
         store_rebuild_version(&conn).expect("version");
+        store_settled_through(&conn, d(-1)).expect("mark");
         balance_record(&conn, d(-3));
         for offset in [-3, -2] {
             history_row(&conn, d(offset));
@@ -648,11 +723,212 @@ mod tests {
 
         let fresh = setup_test_db();
         store_rebuild_version(&fresh).expect("version");
+        store_settled_through(&fresh, d(-1)).expect("mark");
         balance_record(&fresh, d(0));
         assert!(
             plan_startup(&fresh, d(0)).expect("plan").jobs.is_empty(),
             "a first fact dated today has no past day to fill"
         );
+    }
+
+    /// A profile that ran the current version, with AAPL held from `d(-9)` and a history row
+    /// for every day `-10..=0`.
+    fn complete_profile_with_stock() -> Connection {
+        let conn = setup_test_db();
+        store_rebuild_version(&conn).expect("version");
+        balance_record(&conn, d(-10));
+        trade(&conn, "investment_transactions", "AAPL", "buy", "2", d(-9));
+        for offset in -10..=0 {
+            history_row(&conn, d(offset));
+        }
+        conn
+    }
+
+    #[test]
+    fn the_settled_mark_is_stored_read_back_and_forgotten() {
+        let conn = setup_test_db();
+        assert_eq!(stored_settled_through(&conn).expect("none"), None);
+        store_settled_through(&conn, d(-1)).expect("store");
+        assert_eq!(stored_settled_through(&conn).expect("stored"), Some(d(-1)));
+        store_settled_through(&conn, d(-1)).expect("again");
+        conn.execute(
+            "UPDATE app_config SET value = 'garbage' WHERE key = 'history_settled_through'",
+            [],
+        )
+        .expect("corrupt");
+        assert_eq!(
+            stored_settled_through(&conn).expect("unreadable"),
+            None,
+            "an unreadable mark counts as nothing settled"
+        );
+        store_settled_through(&conn, d(-1)).expect("store");
+        forget_settled_through(&conn).expect("forget");
+        assert_eq!(stored_settled_through(&conn).expect("forgotten"), None);
+    }
+
+    #[test]
+    fn a_day_recorded_live_is_settled_at_the_next_start() {
+        let conn = complete_profile_with_stock();
+        store_settled_through(&conn, d(-2)).expect("mark");
+        let plan = plan_startup(&conn, d(0)).expect("plan");
+        assert!(!plan.one_time);
+        assert_eq!(plan.from_day, Some(d(-1)));
+        assert_eq!(
+            plan.jobs,
+            vec![Job::StockTicker("AAPL".into(), d(-1)), Job::Days(d(-1))]
+        );
+        assert_eq!(plan.settles_through, Some(d(-1)));
+    }
+
+    #[test]
+    fn a_settled_profile_queues_nothing_more_that_day() {
+        let conn = complete_profile_with_stock();
+        store_settled_through(&conn, d(-1)).expect("mark");
+        let plan = plan_startup(&conn, d(0)).expect("plan");
+        assert!(plan.jobs.is_empty());
+        assert_eq!(plan.from_day, None);
+        assert_eq!(plan.settles_through, None);
+    }
+
+    #[test]
+    fn a_profile_without_a_mark_settles_from_the_first_fact() {
+        let conn = setup_test_db();
+        store_rebuild_version(&conn).expect("version");
+        balance_record(&conn, d(-30));
+        trade(&conn, "investment_transactions", "AAPL", "buy", "2", d(-20));
+        for offset in -30..=0 {
+            history_row(&conn, d(offset));
+        }
+        let plan = plan_startup(&conn, d(0)).expect("plan");
+        assert_eq!(plan.from_day, Some(d(-30)));
+        assert_eq!(
+            plan.jobs,
+            vec![Job::StockTicker("AAPL".into(), d(-20)), Job::Days(d(-30))]
+        );
+        assert_eq!(plan.settles_through, Some(d(-1)));
+    }
+
+    #[test]
+    fn the_earlier_of_the_gap_and_the_settle_start_wins() {
+        // the gap is earlier than the settle start
+        let conn = setup_test_db();
+        store_rebuild_version(&conn).expect("version");
+        balance_record(&conn, d(-10));
+        for offset in -10..=0 {
+            if offset != -5 {
+                history_row(&conn, d(offset));
+            }
+        }
+        store_settled_through(&conn, d(-2)).expect("mark");
+        let plan = plan_startup(&conn, d(0)).expect("plan");
+        assert_eq!(plan.from_day, Some(d(-5)));
+        assert_eq!(plan.settles_through, Some(d(-1)));
+
+        // the settle start is earlier than the gap
+        let conn = setup_test_db();
+        store_rebuild_version(&conn).expect("version");
+        balance_record(&conn, d(-10));
+        for offset in -10..=0 {
+            if offset != -3 {
+                history_row(&conn, d(offset));
+            }
+        }
+        store_settled_through(&conn, d(-6)).expect("mark");
+        let plan = plan_startup(&conn, d(0)).expect("plan");
+        assert_eq!(plan.from_day, Some(d(-5)));
+        assert_eq!(plan.settles_through, Some(d(-1)));
+    }
+
+    #[test]
+    fn a_profile_without_past_facts_only_moves_the_mark() {
+        let none = setup_test_db();
+        store_rebuild_version(&none).expect("version");
+        let plan = plan_startup(&none, d(0)).expect("plan");
+        assert!(plan.jobs.is_empty());
+        assert_eq!(plan.settles_through, Some(d(-1)));
+
+        let today_only = setup_test_db();
+        store_rebuild_version(&today_only).expect("version");
+        balance_record(&today_only, d(0));
+        let plan = plan_startup(&today_only, d(0)).expect("plan");
+        assert!(plan.jobs.is_empty());
+        assert_eq!(plan.settles_through, Some(d(-1)));
+    }
+
+    #[test]
+    fn the_one_time_rebuild_settles_too() {
+        let conn = setup_test_db();
+        balance_record(&conn, d(-10));
+        trade(&conn, "investment_transactions", "AAPL", "buy", "2", d(-9));
+        let plan = plan_startup(&conn, d(0)).expect("plan");
+        assert!(plan.one_time);
+        assert_eq!(plan.settles_through, Some(d(-1)));
+
+        store_settled_through(&conn, d(-1)).expect("mark");
+        let plan = plan_startup(&conn, d(0)).expect("plan");
+        assert!(plan.one_time);
+        assert_eq!(plan.settles_through, None);
+    }
+
+    #[test]
+    fn a_mark_at_or_after_yesterday_is_left_alone() {
+        let conn = complete_profile_with_stock();
+        for mark in [d(-1), d(0), d(3)] {
+            store_settled_through(&conn, mark).expect("mark");
+            let plan = plan_startup(&conn, d(0)).expect("plan");
+            assert!(plan.jobs.is_empty(), "mark {mark}");
+            assert_eq!(plan.settles_through, None, "mark {mark}");
+        }
+    }
+
+    #[test]
+    fn the_mark_is_earned_unless_the_days_failed_or_every_ticker_did() {
+        assert!(!settle_earned(&outcome(false, &[]), 2));
+        assert!(settle_earned(&outcome(true, &[]), 0));
+        assert!(settle_earned(&outcome(true, &[]), 3));
+        assert!(settle_earned(&outcome(true, &["A"]), 3));
+        assert!(!settle_earned(&outcome(true, &["A", "B", "C"]), 3));
+        assert!(!settle_earned(&outcome(true, &["A", "B", "C", "D"]), 3));
+        assert!(!settle_earned(&outcome(true, &["A"]), 1));
+    }
+
+    #[test]
+    fn settling_rewrites_the_stocks_of_a_day_recorded_live() {
+        let conn = setup_test_db();
+        store_rebuild_version(&conn).expect("version");
+        trade(&conn, "investment_transactions", "AAPL", "buy", "2", d(-9));
+        balance_record(&conn, d(-9));
+        conn.execute(
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+             VALUES ('s1', 'AAPL', ?1, '2', '100', 'USD')",
+            [d(-1)],
+        )
+        .expect("close");
+        for offset in -9..=0 {
+            history_row(&conn, d(offset));
+        }
+        conn.execute(
+            "UPDATE portfolio_metrics_history
+             SET source = 'live', investments_by_currency = '{\"USD\":999}'
+             WHERE recorded_at = ?1",
+            [d(-1)],
+        )
+        .expect("live row");
+        store_settled_through(&conn, d(-2)).expect("mark");
+
+        let plan = plan_startup(&conn, d(0)).expect("plan");
+        rebuild_days(&conn, plan.from_day.expect("settle"), d(0)).expect("rebuild");
+        let (investments, source): (String, String) = conn
+            .query_row(
+                "SELECT investments_by_currency, source FROM portfolio_metrics_history
+                 WHERE recorded_at = ?1",
+                [d(-1)],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("row");
+        assert!(investments.contains("200"), "closing value: {investments}");
+        assert!(!investments.contains("999"), "{investments}");
+        assert_eq!(source, "live", "the row keeps its source");
     }
 
     #[test]
@@ -667,6 +943,7 @@ mod tests {
             plan.jobs,
             vec![Job::StockTicker("AAPL".into(), d(-20)), Job::Days(d(-30))]
         );
+        assert_eq!(plan.settles_through, None);
     }
 
     #[test]
@@ -715,6 +992,7 @@ mod tests {
         );
         // The startup of the same profile finds nothing missing.
         store_rebuild_version(&conn).expect("version");
+        store_settled_through(&conn, today - DAY).expect("mark");
         assert!(plan_startup(&conn, today).expect("plan").jobs.is_empty());
     }
 

@@ -87,7 +87,6 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
   const toPaste = useRef(false);
   /** The code is typed or pasted (from the start, or from the camera's overlay): no sheet says "scan". */
   const [manual, setManual] = useState(paste);
-  const codeTitle = t(manual ? 'phone.enterCodeTitle' : 'phone.scanTitle');
   const [joinFailure, setJoinFailure] = useState<JoinFailure | null>(null);
   /** The warning at `received` for a plain http server (the pairing names it, the phone typed none). */
   const [insecureAcknowledged, setInsecureAcknowledged] = useState(false);
@@ -485,7 +484,7 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
         onOpenChange={(next) => {
           if (!next) abandonScan();
         }}
-        title={codeTitle}
+        title={t('intro.joinTitle')}
         footer={
           <Button variant="ghost" className={`${BUTTON} flex-1`} onClick={abandonScan}>
             {tc('buttons.cancel')}
@@ -516,7 +515,6 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
           onJoin={() => void runJoin()}
           impactChanged={impactChanged}
           firstRun={firstRun !== undefined}
-          manual={manual}
         />
       )}
     </>

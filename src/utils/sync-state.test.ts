@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { SyncAttachments, SyncPhase, SyncProblem, SyncStatus } from '@shared/schema';
-import { isQuietlyOutOfReach, syncAge, syncState } from './sync-state';
+import {
+  isQuietlyOutOfReach,
+  statusPopoverLines,
+  syncAge,
+  syncProblemState,
+  syncState,
+} from './sync-state';
 import type { SyncAgeKey, SyncStateKind, SyncTone } from './sync-state';
 
 const D = 86_400;
@@ -225,5 +231,130 @@ describe('isQuietlyOutOfReach', () => {
     expect(isQuietlyOutOfReach(status('idle', 'offline', null, null), now)).toBe(true);
     expect(isQuietlyOutOfReach(status('idle', 'offline', now + 5 * D), now)).toBe(true);
     expect(isQuietlyOutOfReach(status('idle', 'lapsed', now + 5 * D), now)).toBe(false);
+  });
+});
+
+describe('the key-change states', () => {
+  const withStatus = (base: SyncStatus, over: Partial<SyncStatus>): SyncStatus => ({
+    ...base,
+    ...over,
+  });
+
+  it('reads a running removal, the first upload and a slow round', () => {
+    const syncing = status('syncing');
+    expect(syncState(withStatus(syncing, { removalPending: true }), now)?.kind).toBe('removing');
+    expect(
+      syncState(withStatus(syncing, { firstUpload: true, syncingSince: now - 600 }), now)?.kind
+    ).toBe('firstUpload');
+    expect(syncState(withStatus(syncing, { syncingSince: now - 61 }), now)).toMatchObject({
+      kind: 'syncingLong',
+      tone: 'neutral',
+      labelKey: 'indicator.syncingLong',
+      rowKey: 'phone.row.syncingLong',
+    });
+    expect(syncState(withStatus(syncing, { syncingSince: now - 60 }), now)?.kind).toBe('syncing');
+    expect(syncState(withStatus(syncing, { syncingSince: null }), now)?.kind).toBe('syncing');
+  });
+
+  it('says the first copy is going up while idle too', () => {
+    expect(syncState(withStatus(status('idle', null, now), { firstUpload: true }), now)?.kind).toBe(
+      'firstUpload'
+    );
+  });
+
+  it('reads keyRotated as ordinary syncing until a confirmation is awaited for a day', () => {
+    expect(syncState(status('error', 'keyRotated', now), now)?.kind).toBe('syncing');
+    const waiting = withStatus(status('error', 'keyRotated', now), {
+      waitingForRemover: { by: 'Mac', since: now - 2 * D },
+    });
+    expect(syncState(waiting, now)?.kind).toBe('error');
+  });
+
+  it('makes the three rejoin problems one state, with the device that changed the key', () => {
+    for (const problem of ['keyNotGiven', 'keyChangeUnverified'] as const) {
+      expect(
+        syncProblemState(withStatus(status('error', problem), { rejoinBy: 'Tablet' }))
+      ).toEqual({
+        kind: 'rejoin',
+        by: 'Tablet',
+        since: null,
+      });
+    }
+    expect(
+      syncProblemState(withStatus(status('error', 'unauthorized'), { rejoinBy: 'Tablet' }))
+    ).toEqual({
+      kind: 'rejoin',
+      by: null,
+      since: null,
+    });
+  });
+
+  it('shows the waiting state beside keyChangeWaiting and keyRotated, and a rejoin wins', () => {
+    const awaited = { by: 'Mac', since: now - 2 * D };
+    for (const problem of ['keyChangeWaiting', 'keyRotated'] as const) {
+      expect(
+        syncProblemState(withStatus(status('waiting', problem), { waitingForRemover: awaited }))
+      ).toEqual({
+        kind: 'waitingForRemover',
+        by: 'Mac',
+        since: now - 2 * D,
+      });
+    }
+    expect(syncProblemState(status('waiting', 'keyChangeWaiting'))).toBeNull();
+    expect(
+      syncProblemState(withStatus(status('error', 'keyNotGiven'), { waitingForRemover: awaited }))
+        ?.kind
+    ).toBe('rejoin');
+    expect(
+      syncProblemState(withStatus(status('waiting', 'gap'), { waitingForRemover: awaited }))
+    ).toBeNull();
+    expect(syncProblemState(undefined)).toBeNull();
+  });
+});
+
+describe('statusPopoverLines', () => {
+  const base = status('idle', null, now);
+
+  it('has no lines without a notice', () => {
+    expect(statusPopoverLines(base)).toEqual([]);
+    expect(statusPopoverLines(undefined)).toEqual([]);
+  });
+
+  it('adds one line per notice, in order', () => {
+    const lines = statusPopoverLines({
+      ...base,
+      afterKitJoin: { names: ['Mac'], newestChangeAt: now },
+      removalNotice: { by: 'Mac', at: now, removed: ['Phone', 'Tablet'], kitReplaced: false },
+      newDevices: [
+        { id: 'a', name: 'Pad', by: 'Mac', at: now, viaKit: false, lateVouch: false },
+        { id: 'b', name: 'Laptop', by: '', at: now, viaKit: true, lateVouch: false },
+      ],
+      kitUsed: now - 100,
+    });
+    expect(lines.map((l) => l.kind)).toEqual([
+      'afterKitJoin',
+      'removalNotice',
+      'newDevices',
+      'kitUsed',
+    ]);
+    expect(lines[1].values).toEqual({ by: 'Mac', names: 'Phone, Tablet' });
+    expect(lines[2].values).toEqual({ names: 'Pad, Laptop' });
+    expect(lines[3]).toMatchObject({ key: 'popover.line.kitUsed', dates: ['at'] });
+  });
+
+  it('says a new kit when the key change removed nobody', () => {
+    const [line] = statusPopoverLines({
+      ...base,
+      removalNotice: { by: 'Mac', at: now, removed: [], kitReplaced: true },
+    });
+    expect(line.key).toBe('popover.line.newKit');
+  });
+
+  it('shows the removed line with sync off, and the left wording for an own leave', () => {
+    const off = { ...status('off'), removedNotice: { by: 'Mac', at: now, unsent: 0, left: false } };
+    expect(statusPopoverLines(off).map((l) => l.key)).toEqual(['popover.line.removed']);
+    expect(
+      statusPopoverLines({ ...off, removedNotice: { ...off.removedNotice, left: true } })[0].key
+    ).toBe('popover.line.left');
   });
 });

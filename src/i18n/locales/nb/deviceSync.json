@@ -9,7 +9,10 @@
     "error": "Synkroniseringsfeil",
     "unreachable": "Serveren er utenfor rekkevidde",
     "unreachableLong_one": "Ikke synkronisert på {{count}} dag",
-    "unreachableLong_other": "Ikke synkronisert på {{count}} dager"
+    "unreachableLong_other": "Ikke synkronisert på {{count}} dager",
+    "syncingLong": "Synkroniseringen tar lengre tid enn vanlig",
+    "firstUpload": "Laster opp første kopi",
+    "removing": "Fullfører fjerning av en enhet…"
   },
   "age": {
     "justNow": "akkurat nå",
@@ -25,7 +28,16 @@
     "pending": "Venter på å sendes",
     "server": "Server",
     "openSettings": "Åpne innstillinger",
-    "settings": "Synkroniseringsinnstillinger"
+    "settings": "Synkroniseringsinnstillinger",
+    "line": {
+      "removed": "Synkroniseringen er av: denne enheten ble fjernet.",
+      "left": "Synkroniseringen er av: denne enheten har koblet seg fra.",
+      "afterKitJoin": "Bestem hva som skjer med de tidligere enhetene dine; til da sendes ingenting herfra.",
+      "removalNotice": "{{by}} fjernet {{names}}.",
+      "newKit": "{{by}} lagde et nytt gjenopprettingssett.",
+      "newDevices": "Nye enheter: {{names}}.",
+      "kitUsed": "Gjenopprettingssettet ble brukt {{at}}."
+    }
   },
   "status": {
     "unreachableNote": "Synkroniseringen fortsetter når serveren er innen rekkevidde igjen.",
@@ -373,7 +385,10 @@
       "unreachableLong_one": "Ikke synkronisert på {{count}} dag",
       "unreachableLong_other": "Ikke synkronisert på {{count}} dager",
       "paused": "På pause",
-      "error": "Stoppet"
+      "error": "Stoppet",
+      "syncingLong": "Tar lengre tid enn vanlig",
+      "firstUpload": "Laster opp første kopi",
+      "removing": "Fjerner en enhet…"
     },
     "rowWithAge": "{{state}} · {{age}}",
     "choice": {

@@ -8,7 +8,10 @@
     "paused": "同步已暂停",
     "error": "同步出错",
     "unreachable": "服务器无法连接",
-    "unreachableLong_other": "已 {{count}} 天未同步"
+    "unreachableLong_other": "已 {{count}} 天未同步",
+    "syncingLong": "同步耗时比平时长",
+    "firstUpload": "正在上传第一份副本",
+    "removing": "正在完成设备移除…"
   },
   "age": {
     "justNow": "刚刚",
@@ -21,7 +24,16 @@
     "pending": "等待发送",
     "server": "服务器",
     "openSettings": "打开设置",
-    "settings": "同步设置"
+    "settings": "同步设置",
+    "line": {
+      "removed": "同步已关闭：此设备已被移除。",
+      "left": "同步已关闭：此设备已断开。",
+      "afterKitJoin": "请决定如何处理您之前的设备；在此之前不会从这里发送任何内容。",
+      "removalNotice": "{{by}} 移除了 {{names}}。",
+      "newKit": "{{by}} 创建了新的恢复包。",
+      "newDevices": "新设备：{{names}}。",
+      "kitUsed": "恢复包已于 {{at}} 使用。"
+    }
   },
   "status": {
     "unreachableNote": "服务器恢复可达后,同步将自动恢复。",
@@ -361,7 +373,10 @@
       "unreachable": "服务器无法连接",
       "unreachableLong_other": "已 {{count}} 天未同步",
       "paused": "已暂停",
-      "error": "已停止"
+      "error": "已停止",
+      "syncingLong": "耗时比平时长",
+      "firstUpload": "正在上传第一份副本",
+      "removing": "正在移除设备…"
     },
     "rowWithAge": "{{state}} · {{age}}",
     "choice": {

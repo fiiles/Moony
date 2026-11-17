@@ -8,7 +8,10 @@
     "paused": "同期を一時停止中",
     "error": "同期エラー",
     "unreachable": "サーバーに接続できません",
-    "unreachableLong_other": "{{count}}日間同期されていません"
+    "unreachableLong_other": "{{count}}日間同期されていません",
+    "syncingLong": "同期にいつもより時間がかかっています",
+    "firstUpload": "最初のコピーをアップロード中",
+    "removing": "デバイスの削除を完了しています…"
   },
   "age": {
     "justNow": "たった今",
@@ -21,7 +24,16 @@
     "pending": "送信待ち",
     "server": "サーバー",
     "openSettings": "設定を開く",
-    "settings": "同期設定"
+    "settings": "同期設定",
+    "line": {
+      "removed": "同期はオフです。このデバイスは削除されました。",
+      "left": "同期はオフです。このデバイスは切断されました。",
+      "afterKitJoin": "以前のデバイスをどうするか決めてください。それまでここからは何も送信されません。",
+      "removalNotice": "{{by}} が {{names}} を削除しました。",
+      "newKit": "{{by}} が新しいリカバリーキットを作成しました。",
+      "newDevices": "新しいデバイス: {{names}}",
+      "kitUsed": "リカバリーキットが {{at}} に使われました。"
+    }
   },
   "status": {
     "unreachableNote": "サーバーに接続できるようになると、同期が再開されます。",
@@ -361,7 +373,10 @@
       "unreachable": "サーバーに接続できません",
       "unreachableLong_other": "{{count}}日間同期されていません",
       "paused": "一時停止中",
-      "error": "停止中"
+      "error": "停止中",
+      "syncingLong": "いつもより時間がかかっています",
+      "firstUpload": "最初のコピーをアップロード中",
+      "removing": "デバイスを削除中…"
     },
     "rowWithAge": "{{state}} · {{age}}",
     "choice": {

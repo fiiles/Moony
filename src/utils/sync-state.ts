@@ -12,11 +12,17 @@ export type SyncStateKind =
   | 'synced'
   | 'uploading'
   | 'syncing'
+  | 'syncingLong'
+  | 'firstUpload'
+  | 'removing'
   | 'unreachable'
   | 'unreachableLong'
   | 'waiting'
   | 'paused'
   | 'error';
+
+/** A round that runs longer than this (seconds) reads "taking longer than usual", with a retry. */
+export const SYNC_SLOW_AFTER_SECS = 60;
 
 export type SyncTone = 'fresh' | 'neutral' | 'stale';
 
@@ -37,6 +43,9 @@ const TONES: Record<SyncStateKind, SyncTone> = {
   synced: 'fresh',
   uploading: 'neutral',
   syncing: 'neutral',
+  syncingLong: 'neutral',
+  firstUpload: 'neutral',
+  removing: 'neutral',
   unreachable: 'neutral',
   unreachableLong: 'stale',
   waiting: 'stale',
@@ -75,6 +84,16 @@ export function isQuietlyOutOfReach(status: SyncStatus, now: number): boolean {
   return days !== null && days < SYNC_STALE_DAYS;
 }
 
+/** What a running round reads as: finishing a removal, the first upload, one that is slow, or plain syncing. */
+function syncingKind(status: SyncStatus, now: number): SyncStateKind {
+  if (status.removalPending) return 'removing';
+  if (status.firstUpload) return 'firstUpload';
+  if (status.syncingSince !== null && now - status.syncingSince > SYNC_SLOW_AFTER_SECS) {
+    return 'syncingLong';
+  }
+  return 'syncing';
+}
+
 /**
  * `now` in unix seconds. `null` while sync is off or being set up (no indicator). Precedence: a
  * round running, then the server out of reach (stale after 7 days) or a problem phase, then
@@ -85,7 +104,13 @@ export function syncState(status: SyncStatus | undefined, now: number): SyncStat
   if (!status || status.phase === 'off' || status.phase === 'settingUp') return null;
   // A running retry round shows as syncing even when the server has long been out of reach; the
   // Rust reminder (`sync_stalled`) stays raised then, so it does not flicker between rounds.
-  if (status.phase === 'syncing') return view('syncing', status);
+  if (status.phase === 'syncing') return view(syncingKind(status, now), status);
+  // The first copy goes up while the rest of the sync is idle: say so instead of "synchronised"
+  if (status.phase === 'idle' && status.firstUpload) return view('firstUpload', status);
+  // A key change another device made, not yet confirmed: the ordinary "syncing", not a problem
+  if (status.problem === 'keyRotated' && status.waitingForRemover === null) {
+    return view('syncing', status);
+  }
   const days = outOfReachDays(status, now);
   if (days !== null) {
     return days >= SYNC_STALE_DAYS
@@ -119,4 +144,108 @@ export function syncAge(from: number, now: number): { key: SyncAgeKey; count: nu
   if (elapsed < 3_600) return { key: 'minutes', count: Math.floor(elapsed / 60) };
   if (elapsed < 86_400) return { key: 'hours', count: Math.floor(elapsed / 3_600) };
   return { key: 'days', count: Math.floor(elapsed / 86_400) };
+}
+
+/** The problems that all mean "this device must connect again" (one state, one button). */
+export const REJOIN_PROBLEMS: readonly SyncProblem[] = [
+  'keyNotGiven',
+  'keyChangeUnverified',
+  'unauthorized',
+];
+
+export type SyncProblemStateKind = 'rejoin' | 'waitingForRemover';
+
+export interface SyncProblemState {
+  kind: SyncProblemStateKind;
+  /** `rejoin`: the device that made the key change, which this device does not know (`rejoinBy`); `waitingForRemover`: the device awaited. */
+  by: string | null;
+  /** `waitingForRemover`: since when (unix seconds). */
+  since: number | null;
+}
+
+/**
+ * The state the status card shows for a key-change problem: `keyNotGiven`, `keyChangeUnverified`
+ * and `unauthorized` are one "connect this device again" state; a confirmation awaited for more
+ * than a day (`waitingForRemover`, beside `keyChangeWaiting` or `keyRotated`) is the waiting state.
+ * `null` for any other problem. A rejoin wins over waiting.
+ */
+export function syncProblemState(status: SyncStatus | undefined): SyncProblemState | null {
+  if (!status || status.phase === 'off' || status.phase === 'settingUp') return null;
+  const problem = status.problem;
+  if (problem !== null && REJOIN_PROBLEMS.includes(problem)) {
+    return { kind: 'rejoin', by: problem === 'unauthorized' ? null : status.rejoinBy, since: null };
+  }
+  if (
+    status.waitingForRemover !== null &&
+    (problem === 'keyChangeWaiting' || problem === 'keyRotated')
+  ) {
+    return {
+      kind: 'waitingForRemover',
+      by: status.waitingForRemover.by,
+      since: status.waitingForRemover.since,
+    };
+  }
+  return null;
+}
+
+export type PopoverLineKind =
+  'removed' | 'afterKitJoin' | 'removalNotice' | 'newDevices' | 'kitUsed';
+
+/** One extra line of the top-bar "Stav dat" popover: its `deviceSync` key, text values and unix-second dates to format. */
+export interface PopoverLine {
+  kind: PopoverLineKind;
+  key: string;
+  values: Record<string, string | number>;
+  /** Names of values that are unix seconds the view formats as dates. */
+  dates: string[];
+}
+
+/**
+ * The lines the popover adds for notices: this device was removed (readable with sync off), the
+ * Kit joiner's decision, another device's key change, new devices and a used recovery kit; one
+ * line each, in that order.
+ */
+export function statusPopoverLines(status: SyncStatus | undefined): PopoverLine[] {
+  if (!status) return [];
+  const lines: PopoverLine[] = [];
+  if (status.removedNotice) {
+    lines.push({
+      kind: 'removed',
+      key: status.removedNotice.left ? 'popover.line.left' : 'popover.line.removed',
+      values: {},
+      dates: [],
+    });
+  }
+  if (status.phase === 'off' || status.phase === 'settingUp') return lines;
+  if (status.afterKitJoin) {
+    lines.push({ kind: 'afterKitJoin', key: 'popover.line.afterKitJoin', values: {}, dates: [] });
+  }
+  const notice = status.removalNotice;
+  if (notice) {
+    const removedNothing = notice.removed.length === 0;
+    lines.push({
+      kind: 'removalNotice',
+      key:
+        removedNothing && notice.kitReplaced ? 'popover.line.newKit' : 'popover.line.removalNotice',
+      values: { by: notice.by, names: notice.removed.join(', ') },
+      dates: [],
+    });
+  }
+  if (status.newDevices.length > 0) {
+    lines.push({
+      kind: 'newDevices',
+      key: 'popover.line.newDevices',
+      values: { names: status.newDevices.map((device) => device.name).join(', ') },
+      dates: [],
+    });
+  }
+  if (status.kitUsed !== null) {
+    lines.push({
+      kind: 'kitUsed',
+      key: 'popover.line.kitUsed',
+      values: { at: status.kitUsed },
+      dates: ['at'],
+    });
+  }
+  return lines;
 }

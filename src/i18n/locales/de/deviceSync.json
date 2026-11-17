@@ -9,7 +9,10 @@
     "error": "Sync-Fehler",
     "unreachable": "Server nicht erreichbar",
     "unreachableLong_one": "Seit {{count}} Tag nicht synchronisiert",
-    "unreachableLong_other": "Seit {{count}} Tagen nicht synchronisiert"
+    "unreachableLong_other": "Seit {{count}} Tagen nicht synchronisiert",
+    "syncingLong": "Die Synchronisierung dauert länger als üblich",
+    "firstUpload": "Erste Kopie wird hochgeladen",
+    "removing": "Entfernen eines Geräts wird abgeschlossen…"
   },
   "age": {
     "justNow": "gerade eben",
@@ -25,7 +28,16 @@
     "pending": "Wartet auf Versand",
     "server": "Server",
     "openSettings": "Einstellungen öffnen",
-    "settings": "Synchronisierungseinstellungen"
+    "settings": "Synchronisierungseinstellungen",
+    "line": {
+      "removed": "Synchronisierung ist aus: Dieses Gerät wurde entfernt.",
+      "left": "Synchronisierung ist aus: Dieses Gerät hat sich abgemeldet.",
+      "afterKitJoin": "Entscheiden Sie über Ihre früheren Geräte; bis dahin wird von hier nichts gesendet.",
+      "removalNotice": "{{by}} hat {{names}} entfernt.",
+      "newKit": "{{by}} hat ein neues Wiederherstellungs-Kit erstellt.",
+      "newDevices": "Neue Geräte: {{names}}.",
+      "kitUsed": "Das Wiederherstellungs-Kit wurde am {{at}} verwendet."
+    }
   },
   "status": {
     "unreachableNote": "Die Synchronisierung läuft weiter, sobald der Server wieder erreichbar ist.",
@@ -373,7 +385,10 @@
       "unreachableLong_one": "Seit {{count}} Tag nicht synchronisiert",
       "unreachableLong_other": "Seit {{count}} Tagen nicht synchronisiert",
       "paused": "Pausiert",
-      "error": "Angehalten"
+      "error": "Angehalten",
+      "syncingLong": "Dauert länger als üblich",
+      "firstUpload": "Erste Kopie wird hochgeladen",
+      "removing": "Gerät wird entfernt…"
     },
     "rowWithAge": "{{state}} · {{age}}",
     "choice": {

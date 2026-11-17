@@ -11,7 +11,10 @@
     "unreachableLong_one": "Brak synchronizacji od {{count}} dnia",
     "unreachableLong_few": "Brak synchronizacji od {{count}} dni",
     "unreachableLong_many": "Brak synchronizacji od {{count}} dni",
-    "unreachableLong_other": "Brak synchronizacji od {{count}} dnia"
+    "unreachableLong_other": "Brak synchronizacji od {{count}} dnia",
+    "syncingLong": "Synchronizacja trwa dłużej niż zwykle",
+    "firstUpload": "Wysyłanie pierwszej kopii",
+    "removing": "Kończenie usuwania urządzenia…"
   },
   "age": {
     "justNow": "przed chwilą",
@@ -33,7 +36,16 @@
     "pending": "Oczekuje na wysłanie",
     "server": "Serwer",
     "openSettings": "Otwórz ustawienia",
-    "settings": "Ustawienia synchronizacji"
+    "settings": "Ustawienia synchronizacji",
+    "line": {
+      "removed": "Synchronizacja jest wyłączona: to urządzenie zostało usunięte.",
+      "left": "Synchronizacja jest wyłączona: to urządzenie się odłączyło.",
+      "afterKitJoin": "Zdecyduj, co zrobić z wcześniejszymi urządzeniami; do tego czasu stąd nic nie jest wysyłane.",
+      "removalNotice": "{{by}} usunęło: {{names}}.",
+      "newKit": "{{by}} utworzyło nowy zestaw odzyskiwania.",
+      "newDevices": "Nowe urządzenia: {{names}}.",
+      "kitUsed": "Zestaw odzyskiwania został użyty {{at}}."
+    }
   },
   "status": {
     "unreachableNote": "Synchronizacja wznowi się, gdy serwer znów będzie w zasięgu.",
@@ -397,7 +409,10 @@
       "unreachableLong_many": "Brak synchronizacji od {{count}} dni",
       "unreachableLong_other": "Brak synchronizacji od {{count}} dnia",
       "paused": "Wstrzymana",
-      "error": "Zatrzymana"
+      "error": "Zatrzymana",
+      "syncingLong": "Trwa dłużej niż zwykle",
+      "firstUpload": "Wysyłanie pierwszej kopii",
+      "removing": "Usuwanie urządzenia…"
     },
     "rowWithAge": "{{state}} · {{age}}",
     "choice": {

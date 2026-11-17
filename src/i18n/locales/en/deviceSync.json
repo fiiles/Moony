@@ -9,7 +9,10 @@
     "error": "Sync error",
     "unreachable": "Server out of reach",
     "unreachableLong_one": "Not synced for {{count}} day",
-    "unreachableLong_other": "Not synced for {{count}} days"
+    "unreachableLong_other": "Not synced for {{count}} days",
+    "syncingLong": "Sync is taking longer than usual",
+    "firstUpload": "Uploading the first copy",
+    "removing": "Finishing removing a device…"
   },
   "age": {
     "justNow": "just now",
@@ -25,7 +28,16 @@
     "pending": "Waiting to be sent",
     "server": "Server",
     "openSettings": "Open settings",
-    "settings": "Sync settings"
+    "settings": "Sync settings",
+    "line": {
+      "removed": "Sync is off: this device was removed.",
+      "left": "Sync is off: this device left.",
+      "afterKitJoin": "Decide about your earlier devices; nothing is sent from here until then.",
+      "removalNotice": "{{by}} removed {{names}}.",
+      "newKit": "{{by}} made a new recovery kit.",
+      "newDevices": "New devices: {{names}}.",
+      "kitUsed": "The recovery kit was used on {{at}}."
+    }
   },
   "status": {
     "unreachableNote": "Sync resumes once the server is in reach.",
@@ -373,7 +385,10 @@
       "unreachableLong_one": "Not synced for {{count}} day",
       "unreachableLong_other": "Not synced for {{count}} days",
       "paused": "Paused",
-      "error": "Stopped"
+      "error": "Stopped",
+      "syncingLong": "Taking longer than usual",
+      "firstUpload": "Uploading the first copy",
+      "removing": "Removing a device…"
     },
     "rowWithAge": "{{state}} · {{age}}",
     "choice": {

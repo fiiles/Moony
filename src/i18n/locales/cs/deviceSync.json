@@ -11,7 +11,10 @@
     "unreachableLong_one": "Nesynchronizováno {{count}} den",
     "unreachableLong_few": "Nesynchronizováno {{count}} dny",
     "unreachableLong_many": "Nesynchronizováno {{count}} dní",
-    "unreachableLong_other": "Nesynchronizováno {{count}} dní"
+    "unreachableLong_other": "Nesynchronizováno {{count}} dní",
+    "syncingLong": "Synchronizace trvá déle než obvykle",
+    "firstUpload": "Nahrávám první kopii",
+    "removing": "Dokončuji odebrání zařízení…"
   },
   "age": {
     "justNow": "právě teď",
@@ -33,7 +36,16 @@
     "pending": "Čeká na odeslání",
     "server": "Server",
     "openSettings": "Otevřít nastavení",
-    "settings": "Nastavení synchronizace"
+    "settings": "Nastavení synchronizace",
+    "line": {
+      "removed": "Synchronizace je vypnutá: toto zařízení bylo odebráno.",
+      "left": "Synchronizace je vypnutá: toto zařízení se odpojilo.",
+      "afterKitJoin": "Rozhodněte o dřívějších zařízeních; do té doby se odsud nic neodesílá.",
+      "removalNotice": "Zařízení {{by}} odebralo {{names}}.",
+      "newKit": "Zařízení {{by}} vytvořilo novou záchrannou sadu.",
+      "newDevices": "Nová zařízení: {{names}}.",
+      "kitUsed": "Záchranná sada byla použita {{at}}."
+    }
   },
   "status": {
     "unreachableNote": "Synchronizace se obnoví, až bude server v dosahu.",
@@ -397,7 +409,10 @@
       "unreachableLong_many": "Nesynchronizováno {{count}} dní",
       "unreachableLong_other": "Nesynchronizováno {{count}} dní",
       "paused": "Pozastaveno",
-      "error": "Zastaveno"
+      "error": "Zastaveno",
+      "syncingLong": "Trvá déle než obvykle",
+      "firstUpload": "Nahrává se první kopie",
+      "removing": "Odebírá se zařízení…"
     },
     "rowWithAge": "{{state}} · {{age}}",
     "choice": {

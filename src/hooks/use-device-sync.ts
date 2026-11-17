@@ -1,8 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { deviceSyncApi } from '@/lib/tauri-api';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { syncIsOn } from '@/utils/safe-copy';
 import { syncStatusRefetchInterval } from '@/utils/device-sync-refetch';
+import { groupDevices } from '@/utils/sync-devices';
+import type { SyncDevice } from '@shared/schema';
 
 /**
  * Whether device sync is built in and enabled, and whether that is still being asked (a screen
@@ -75,20 +77,56 @@ export function useDeviceSyncAccount(
   });
 }
 
-/**
- * The devices of the sync account (this one marked); read while sync is on. Former devices (left
- * or removed, `status: 'former'`, which the backend lists for 30 days) are left out until the
- * device list shows them in its own group (Task 25/26).
- */
-export function useSyncDevices() {
+const DEVICES_KEY = ['device-sync-devices'] as const;
+
+function useSyncDevicesQuery<T>(select: (devices: SyncDevice[]) => T) {
   const enabled = useDeviceSyncFeature();
   const { data: status } = useDeviceSyncStatus();
   const syncOn = syncIsOn(true, status);
   return useQuery({
-    queryKey: ['device-sync-devices'],
+    queryKey: DEVICES_KEY,
     queryFn: () => deviceSyncApi.listDevices(),
-    select: (devices) => devices.filter((device) => device.status !== 'former'),
+    select,
     enabled: enabled && syncOn,
+  });
+}
+
+/**
+ * The devices that are on the sync list now (this one marked): active and "Zkontrolujte". Former
+ * devices (left or removed) are not among them; callers that count or name "other devices" want
+ * this. The device list itself reads `useSyncDeviceGroups`.
+ */
+export function useSyncDevices() {
+  return useSyncDevicesQuery((devices) => devices.filter((device) => device.status !== 'former'));
+}
+
+/** The device list in its three groups: active, "Zkontrolujte" and former (listed for 30 days). */
+export function useSyncDeviceGroups() {
+  return useSyncDevicesQuery((devices) => groupDevices(devices));
+}
+
+/**
+ * What removing `deviceIds` (and the ticked `alsoRemove`) would do. Never cached: the consent in
+ * the answer covers what the person was shown, so the dialog reads it when it opens and again
+ * after a tick, "Je moje" or `validation.syncRemovalPlanChanged`. `newKit` asks for a new kit
+ * with nobody removed (the new-kit dialog).
+ */
+export function useRemovalPlan(
+  deviceIds: readonly string[],
+  alsoRemove: readonly string[],
+  newKit = false,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: ['device-sync-removal-plan', deviceIds, alsoRemove, newKit],
+    queryFn: () => deviceSyncApi.removalPlan([...deviceIds], [...alsoRemove], newKit),
+    enabled,
+    gcTime: 0,
+    staleTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+    // Ticking a box keeps the list on screen while the new plan loads
+    placeholderData: keepPreviousData,
   });
 }
 

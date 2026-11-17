@@ -10,7 +10,10 @@
     "unreachable": "Server non raggiungibile",
     "unreachableLong_one": "Non sincronizzato da {{count}} giorno",
     "unreachableLong_many": "Non sincronizzato da {{count}} giorni",
-    "unreachableLong_other": "Non sincronizzato da {{count}} giorni"
+    "unreachableLong_other": "Non sincronizzato da {{count}} giorni",
+    "syncingLong": "La sincronizzazione richiede più del solito",
+    "firstUpload": "Caricamento della prima copia",
+    "removing": "Completamento della rimozione di un dispositivo…"
   },
   "age": {
     "justNow": "adesso",
@@ -29,7 +32,16 @@
     "pending": "In attesa di invio",
     "server": "Server",
     "openSettings": "Apri impostazioni",
-    "settings": "Impostazioni di sincronizzazione"
+    "settings": "Impostazioni di sincronizzazione",
+    "line": {
+      "removed": "La sincronizzazione è disattivata: questo dispositivo è stato rimosso.",
+      "left": "La sincronizzazione è disattivata: questo dispositivo si è scollegato.",
+      "afterKitJoin": "Decidi cosa fare dei dispositivi precedenti; fino ad allora da qui non viene inviato nulla.",
+      "removalNotice": "{{by}} ha rimosso {{names}}.",
+      "newKit": "{{by}} ha creato un nuovo kit di ripristino.",
+      "newDevices": "Nuovi dispositivi: {{names}}.",
+      "kitUsed": "Il kit di ripristino è stato usato il {{at}}."
+    }
   },
   "status": {
     "unreachableNote": "La sincronizzazione riprenderà quando il server sarà di nuovo raggiungibile.",
@@ -385,7 +397,10 @@
       "unreachableLong_many": "Non sincronizzato da {{count}} giorni",
       "unreachableLong_other": "Non sincronizzato da {{count}} giorni",
       "paused": "In pausa",
-      "error": "Interrotta"
+      "error": "Interrotta",
+      "syncingLong": "Richiede più del solito",
+      "firstUpload": "Caricamento della prima copia",
+      "removing": "Rimozione di un dispositivo…"
     },
     "rowWithAge": "{{state}} · {{age}}",
     "choice": {

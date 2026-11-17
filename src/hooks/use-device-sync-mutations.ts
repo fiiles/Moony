@@ -2,7 +2,13 @@ import { useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deviceSyncApi, portfolioApi } from '@/lib/tauri-api';
 import { refreshAfterRemoteChanges } from '@/lib/device-sync-refresh';
-import type { RecoveryKit, ReplaceConsentView } from '@shared/schema';
+import type {
+  KitCheck,
+  RecoveryKit,
+  RemovalOutcome,
+  ReplaceConsentView,
+  SyncNoticeKind,
+} from '@shared/schema';
 
 type KitJoin = Parameters<typeof deviceSyncApi.joinWithRecoveryKit>[0] & {
   consent: ReplaceConsentView;
@@ -151,7 +157,64 @@ export function useDeviceSyncMutations() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] }),
   });
 
+  // Removing devices. The password travels in a ref that `mutationFn` empties, so it never sits in
+  // the mutation's variables (the pattern of `prepareKitWithPassword`); the outcome holds a new
+  // kit's seed, hence gcTime 0, and the dialog `reset()`s it when the kit leaves the screen. A
+  // removal changes no finance data (rule 7's portfolio keys do not apply): it re-reads the
+  // device list and the status.
+  type RemoveArgs = { deviceIds: string[]; alsoRemove: string[]; newKit: boolean; consent: string };
+  const removePassword = useRef<string | null>(null);
+  const removeDevices = useMutation<RemovalOutcome, Error, RemoveArgs>({
+    mutationFn: async (args) => {
+      const password = removePassword.current;
+      removePassword.current = null;
+      if (password === null) throw new Error('No password to remove devices with');
+      return deviceSyncApi.removeDevices({ password, ...args });
+    },
+    gcTime: 0,
+    onSettled: async () => {
+      await refreshSyncState();
+      await queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] });
+    },
+  });
+  const removeDevicesWithPassword = (password: string, args: RemoveArgs) => {
+    removePassword.current = password;
+    return removeDevices.mutateAsync(args);
+  };
+  // "Je moje": the plan's consent covers the device's verdict, so a plan re-reads after it.
+  const keepDevice = useMutation({
+    mutationFn: deviceSyncApi.keepDevice,
+    onSuccess: async () => {
+      await refreshSyncState();
+      await queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] });
+      await queryClient.invalidateQueries({ queryKey: ['device-sync-removal-plan'] });
+    },
+  });
+  const printRecoveryKit = useMutation({ mutationFn: deviceSyncApi.printRecoveryKit });
+  // The typed code is a variable: gcTime 0 keeps it out of the cache.
+  const checkRecoveryKit = useMutation<KitCheck, Error, string>({
+    mutationFn: deviceSyncApi.checkRecoveryKit,
+    gcTime: 0,
+  });
+  // "Zavřít", "Rozumím", "Vím o tom": the status is re-read (it no longer carries the notice).
+  const dismissNotice = useMutation<void, Error, SyncNoticeKind>({
+    mutationFn: deviceSyncApi.dismissNotice,
+    onSuccess: refreshSyncState,
+  });
+  // "Mám je", or after "Odebrat je": lifts the push hold of a device that joined with the kit.
+  const kitJoinDecided = useMutation({
+    mutationFn: deviceSyncApi.kitJoinDecided,
+    onSuccess: refreshSyncState,
+  });
+
   return {
+    removeDevices,
+    removeDevicesWithPassword,
+    keepDevice,
+    printRecoveryKit,
+    checkRecoveryKit,
+    dismissNotice,
+    kitJoinDecided,
     createAccount,
     connectOwnServer,
     startCheckout,

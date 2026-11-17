@@ -252,6 +252,14 @@
 
 > **For Task 15 (from Tasks 9–10):** `rotate::remove` against the real server is the e2e's remover; `pickup::pick_up` its pickup.
 
+> **As run (Task 23):** the tests are `services/sync/relay_e2e_rekey.rs` (ignored, one at a time). The server is the relay's `feat/recovery-kit` branch (the Kit routes need it): in `Moony-relay-kit` run `npm ci && npm run build`, then
+> ```bash
+> DATA_DIR=$(mktemp -d) PORT=8795 SETUP_CODE=moony-e2e-setup-code node dist/main.js &
+> cd src-tauri && MOONY_RELAY_E2E=http://127.0.0.1:8795 cargo test --lib relay_e2e_rekey -- --ignored --test-threads=1
+> # all e2e suites: cargo test --lib relay_e2e -- --ignored --test-threads=1
+> ```
+> `MOONY_RELAY_E2E_SETUP_CODE` names another setup code. Stop the server afterwards (kill its PID). The failed-Kit-read test uses up the 10-a-minute failure quota of the client address, so run other Kit-reading suites a minute later if one fails with `rate_limited`.
+
 ### Task 16 [sonnet]: Commands, status and the wire contract (spec §9, §11.4) — the one mixed commit
 
 **Files:** new `src-tauri/src/commands/sync_devices.rs`, `commands/mod.rs`, `commands/sync.rs` (flag scan prefix), `lib.rs`, `models/sync.rs`, `bindings.rs`, `services/sync/devices.rs`, `engine/status.rs`, `shared/schema.ts`, `shared/generated-types.ts`, `src/lib/tauri-api.ts`, `src/i18n/locales/*/common.json` (the new `validation.sync…` texts).

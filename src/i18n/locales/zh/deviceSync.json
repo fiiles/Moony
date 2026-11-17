@@ -311,9 +311,10 @@
       "other": "其他设备"
     },
     "activeAt": "活跃于{{when}}",
-    "details": "详情",
-    "hideDetails": "隐藏详情",
     "remove": "移除…",
+    "hide": "从列表中移除",
+    "hideAll": "清空列表",
+    "hideNote": "从列表中移除不会解除封锁：该设备仍然看不到任何新内容。",
     "removing": "正在移除…",
     "inactiveHint": "不再使用了？请移除它。",
     "copyName": "{{name}}（副本）",

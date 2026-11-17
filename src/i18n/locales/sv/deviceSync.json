@@ -321,9 +321,10 @@
       "other": "Annan enhet"
     },
     "activeAt": "aktiv {{when}}",
-    "details": "Detaljer",
-    "hideDetails": "Dölj detaljer",
     "remove": "Ta bort…",
+    "hide": "Ta bort från listan",
+    "hideAll": "Töm listan",
+    "hideNote": "Att ta bort en enhet från listan häver inte blockeringen: den ser fortfarande inget nytt.",
     "removing": "Tas bort…",
     "inactiveHint": "Använder du den inte längre? Ta bort den.",
     "copyName": "{{name}} (kopia)",

@@ -179,7 +179,64 @@ fn record_facts(value: Option<&str>) -> Option<(RecordType, i64, DeviceId)> {
 ///
 /// `last_active_at` of this device is its last successful sync; of another, the newest clock
 /// stamp it wrote (unix seconds).
+///
+/// A former device the person took off the list here (`hide_former_devices`) is left out. Only a
+/// former one: the same ID listed as anything else shows again.
 pub fn list_devices(conn: &Connection, now: i64) -> Result<Vec<SyncDevice>> {
+    let hidden = hidden_devices(conn)?;
+    let mut devices = all_devices(conn, now)?;
+    devices.retain(|d| !(d.status == SyncDeviceStatus::Former && hidden.contains(&d.id)));
+    Ok(devices)
+}
+
+/// The former devices taken off this device's list (hex IDs). A value that does not read hides
+/// nothing.
+fn hidden_devices(conn: &Connection) -> Result<HashSet<String>> {
+    Ok(state::config_text(conn, state::HIDDEN_DEVICES_KEY)?
+        .and_then(|value| serde_json::from_str::<Vec<String>>(&value).ok())
+        .unwrap_or_default()
+        .into_iter()
+        .collect())
+}
+
+/// "Odstranit ze seznamu" / "Odstranit vše": takes former devices off this device's list. Local
+/// only (`state::HIDDEN_DEVICES_KEY`, never synced) and no password: nothing about trust changes.
+/// The `sync_devices` rows and the trust store's `left` / `removed` entries stay as they are, so
+/// whatever such a device sends later is still refused (ADR 0032). A device that is not former now
+/// (or not listed at all) is passed over; the stored set keeps only devices the list would still
+/// show as former, so it never outgrows the 30-day former group. Returns how many came off.
+pub fn hide_former_devices(conn: &Connection, devices: &[DeviceId], now: i64) -> Result<usize> {
+    let former: HashSet<String> = all_devices(conn, now)?
+        .into_iter()
+        .filter(|d| d.status == SyncDeviceStatus::Former)
+        .map(|d| d.id)
+        .collect();
+    let mut hidden = hidden_devices(conn)?;
+    hidden.retain(|id| former.contains(id));
+    let before = hidden.len();
+    hidden.extend(
+        devices
+            .iter()
+            .map(DeviceId::to_hex)
+            .filter(|id| former.contains(id)),
+    );
+    let added = hidden.len() - before;
+    let mut stored: Vec<String> = hidden.into_iter().collect();
+    stored.sort();
+    let value = if stored.is_empty() {
+        None
+    } else {
+        Some(
+            serde_json::to_string(&stored)
+                .map_err(|e| AppError::Internal(format!("sync: the hidden devices: {e}")))?,
+        )
+    };
+    state::set_config_text(conn, state::HIDDEN_DEVICES_KEY, value.as_deref())?;
+    Ok(added)
+}
+
+/// Every device the list could show, hidden former ones included (`list_devices`).
+fn all_devices(conn: &Connection, now: i64) -> Result<Vec<SyncDevice>> {
     let Some(sync) = state::load(conn)? else {
         return Ok(Vec::new());
     };

@@ -20,13 +20,17 @@ export interface DeviceGroups {
   active: SyncDevice[];
   /** "Zkontrolujte": they get no key at the next key change unless kept. */
   check: SyncDevice[];
-  /** "Dřívější zařízení": left or removed; the backend lists them for 30 days only. */
+  /**
+   * "Dřívější zařízení": left or removed; the backend lists them for 30 days only, and not at all
+   * once the person took them off this device's list ("Odstranit ze seznamu").
+   */
   former: SyncDevice[];
 }
 
 /**
- * Splits the list by `status`. Nothing is filtered here: a former device older than 30 days is
- * already absent from the backend's list. This device always leads the active group.
+ * Splits the list by `status`. Nothing is filtered here: a former device older than 30 days, or
+ * one taken off the list, is already absent from the backend's list. This device always leads the
+ * active group.
  */
 export function groupDevices(devices: readonly SyncDevice[] | undefined): DeviceGroups {
   const list = devices ?? [];
@@ -41,6 +45,19 @@ export function groupDevices(devices: readonly SyncDevice[] | undefined): Device
 /** A device the person can remove: another device that is on the list, active or "Zkontrolujte". */
 export function canRemoveDevice(device: SyncDevice): boolean {
   return !device.thisDevice && device.status !== 'former' && !device.removalPending;
+}
+
+/**
+ * "Odstranit ze seznamu" is offered on a former row only: it hides the row on this device and
+ * unblocks nothing.
+ */
+export function canHideDevice(device: SyncDevice): boolean {
+  return device.status === 'former';
+}
+
+/** The IDs "Odstranit vše" takes off the list: every former device shown, in list order. */
+export function formerDeviceIds(devices: readonly SyncDevice[] | undefined): string[] {
+  return (devices ?? []).filter(canHideDevice).map((device) => device.id);
 }
 
 /** "Je moje" is offered on a late-vouch row only; it helps only until the next key change (R-77a). */

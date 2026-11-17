@@ -4,12 +4,13 @@
 use rusqlite::{params, Connection};
 use zeroize::Zeroizing;
 
-use super::devices::{list_devices, FORMER_LISTED_SECS};
+use super::devices::{hide_former_devices, list_devices, FORMER_LISTED_SECS};
 use super::hlc::{pack, DeviceId};
 use super::identity::cert::{self, CertFields, CertKind, Certificate, TicketSecret};
-use super::identity::trust::{self, SeenWhat};
+use super::identity::trust::{self, SeenWhat, TrustState};
 use super::identity::{sign_pub, KitKeys, KitSecret, Record, RecordType, SignSeed};
 use super::keys::VaultId;
+use super::registry::APP_CONFIG_SYNCED_KEYS;
 use super::state;
 use super::test_support::migrated;
 use crate::models::sync::{
@@ -369,4 +370,174 @@ fn an_active_device_unseen_for_thirty_days_says_how_long() {
 #[test]
 fn a_device_row_of_a_vault_with_no_state_row_lists_nothing() {
     assert!(list_devices(&migrated(), NOW).unwrap().is_empty());
+}
+
+/// A profile with B active, D left and E removed by this device (all paired by it).
+fn with_former_devices() -> Connection {
+    let conn = profile(true);
+    row(&conn, B, Some(&B.paired_by(ME, 0x70)));
+    row(&conn, D, Some(&D.paired_by(ME, 0x71)));
+    row(&conn, E, Some(&E.paired_by(ME, 0x72)));
+    set_record(&conn, D, "left_record", &D.left_at(NOW - 5 * DAY));
+    set_record(&conn, E, "removal_record", &ME.removes_at(E, NOW - 2 * DAY));
+    trust::refresh(&conn, NOW).unwrap();
+    conn
+}
+
+fn hidden_value(conn: &Connection) -> Option<String> {
+    state::config_text(conn, state::HIDDEN_DEVICES_KEY).unwrap()
+}
+
+#[test]
+fn a_hidden_former_device_leaves_the_list_and_nothing_else() {
+    let conn = with_former_devices();
+    let e_cert = E.paired_by(ME, 0x72);
+    assert!(trust::speaker(&conn, &B.paired_by(ME, 0x70))
+        .unwrap()
+        .is_some());
+
+    let hidden = hide_former_devices(&conn, &[E.id()], NOW).unwrap();
+
+    assert_eq!(hidden, 1);
+    let list = listed(&conn);
+    assert!(
+        !list.iter().any(|d| d.id == E.id().to_hex()),
+        "off the list"
+    );
+    assert_eq!(
+        of(&list, D).status,
+        SyncDeviceStatus::Former,
+        "D was not asked for"
+    );
+    assert_eq!(of(&list, B).status, SyncDeviceStatus::Active);
+    // The row, its removal record and the trust entry stay: E's later records are still refused.
+    let removal: Option<String> = conn
+        .query_row(
+            "SELECT removal_record FROM sync_devices WHERE id = ?1",
+            [E.id().to_hex()],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert!(removal.is_some(), "the row keeps its removal record");
+    let entry = trust::entry(&conn, E.id()).unwrap().expect("still pinned");
+    assert_eq!(entry.state, TrustState::Removed);
+    assert_eq!(entry.cert, e_cert, "the pinned certificate stays");
+    assert!(
+        trust::speaker(&conn, &e_cert).unwrap().is_none(),
+        "a hidden removed device still may not speak"
+    );
+    let recipients = trust::recipients(&conn, &[]).unwrap();
+    assert!(
+        recipients.included.iter().all(|r| r.device != E.id()),
+        "the next key change still leaves it out"
+    );
+    // A refresh (as every sync round runs) brings nothing back and changes no state.
+    trust::refresh(&conn, NOW + 10).unwrap();
+    assert!(!listed(&conn).iter().any(|d| d.id == E.id().to_hex()));
+    assert_eq!(
+        trust::entry(&conn, E.id()).unwrap().unwrap().state,
+        TrustState::Removed
+    );
+}
+
+#[test]
+fn only_former_devices_can_be_hidden_and_the_key_is_local() {
+    let conn = with_former_devices();
+    let stranger = Dev(0x09);
+
+    // "Odstranit vše" sends the whole group; an active device or an unknown ID is passed over.
+    let hidden = hide_former_devices(
+        &conn,
+        &[D.id(), E.id(), B.id(), ME.id(), stranger.id()],
+        NOW,
+    )
+    .unwrap();
+
+    assert_eq!(hidden, 2);
+    assert_eq!(
+        listed_ids(&listed(&conn)),
+        vec!["Device 1", "Device 2"],
+        "the former group is gone, B and this device stay"
+    );
+    let mut expected = vec![D.id().to_hex(), E.id().to_hex()];
+    expected.sort();
+    assert_eq!(
+        hidden_value(&conn),
+        Some(serde_json::to_string(&expected).unwrap())
+    );
+    // Again: nothing new comes off.
+    assert_eq!(hide_former_devices(&conn, &[D.id()], NOW).unwrap(), 0);
+    // A Local key: outside the allowlist the journal and the snapshot never send it.
+    assert!(!APP_CONFIG_SYNCED_KEYS.contains(&state::HIDDEN_DEVICES_KEY));
+}
+
+#[test]
+fn a_hidden_id_shows_again_when_it_is_not_former() {
+    let conn = with_former_devices();
+    // A stored set naming an active device (written by hand: the service never stores one).
+    state::set_config_text(
+        &conn,
+        state::HIDDEN_DEVICES_KEY,
+        Some(&serde_json::to_string(&[B.id().to_hex()]).unwrap()),
+    )
+    .unwrap();
+    assert_eq!(of(&listed(&conn), B).status, SyncDeviceStatus::Active);
+
+    // The removed device connects again under a new ID: listed as a new device.
+    hide_former_devices(&conn, &[E.id()], NOW).unwrap();
+    row(&conn, C, Some(&C.paired_by(ME, 0x73)));
+    trust::refresh(&conn, NOW + 10).unwrap();
+    let list = listed(&conn);
+    assert_eq!(of(&list, C).status, SyncDeviceStatus::Active);
+    assert!(!list.iter().any(|d| d.id == E.id().to_hex()));
+    // Writing again drops what is no longer former (B) from the stored set.
+    hide_former_devices(&conn, &[], NOW).unwrap();
+    assert_eq!(
+        hidden_value(&conn),
+        Some(serde_json::to_string(&[E.id().to_hex()]).unwrap())
+    );
+}
+
+#[test]
+fn hidden_devices_age_out_of_the_set_with_the_former_group() {
+    let conn = with_former_devices();
+    hide_former_devices(&conn, &[D.id(), E.id()], NOW).unwrap();
+
+    // Past the 30 days the former rows leave the list anyway; the next write forgets them.
+    let later = NOW + FORMER_LISTED_SECS + DAY;
+    hide_former_devices(&conn, &[], later).unwrap();
+
+    assert_eq!(hidden_value(&conn), None);
+    assert!(
+        trust::entry(&conn, D.id()).unwrap().is_some(),
+        "the trust store keeps them"
+    );
+    assert!(trust::entry(&conn, E.id()).unwrap().is_some());
+}
+
+#[test]
+fn turning_sync_off_forgets_the_hidden_devices() {
+    let conn = with_former_devices();
+    hide_former_devices(&conn, &[E.id()], NOW).unwrap();
+    assert!(hidden_value(&conn).is_some());
+
+    state::disable(&conn).unwrap();
+
+    assert_eq!(hidden_value(&conn), None);
+}
+
+#[test]
+fn a_hidden_value_that_does_not_read_hides_nothing() {
+    let conn = with_former_devices();
+    state::set_config_text(&conn, state::HIDDEN_DEVICES_KEY, Some("not json")).unwrap();
+
+    let list = listed(&conn);
+
+    assert_eq!(of(&list, D).status, SyncDeviceStatus::Former);
+    assert_eq!(of(&list, E).status, SyncDeviceStatus::Former);
+    assert_eq!(hide_former_devices(&conn, &[D.id()], NOW).unwrap(), 1);
+    assert_eq!(
+        hidden_value(&conn),
+        Some(serde_json::to_string(&[D.id().to_hex()]).unwrap())
+    );
 }

@@ -364,6 +364,7 @@ async fn run_app() {
             commands::sync_devices::sync_remove_devices,
             commands::sync_devices::sync_check_recovery_kit,
             commands::sync_devices::sync_keep_device,
+            commands::sync_devices::sync_hide_former_devices,
             commands::sync_devices::sync_kit_join_decided,
             commands::sync_devices::sync_dismiss_notice,
             commands::sync_backups::sync_replace_impact,

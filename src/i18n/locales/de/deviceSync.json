@@ -321,9 +321,10 @@
       "other": "Anderes Gerät"
     },
     "activeAt": "aktiv {{when}}",
-    "details": "Details",
-    "hideDetails": "Details ausblenden",
     "remove": "Entfernen…",
+    "hide": "Aus der Liste entfernen",
+    "hideAll": "Liste leeren",
+    "hideNote": "Aus der Liste entfernt bleibt ein Gerät gesperrt: Es sieht weiterhin nichts Neues.",
     "removing": "Wird entfernt…",
     "inactiveHint": "Nutzen Sie es nicht mehr? Entfernen Sie es.",
     "copyName": "{{name}} (Kopie)",

@@ -341,9 +341,10 @@
       "other": "Jiné zařízení"
     },
     "activeAt": "aktivní {{when}}",
-    "details": "Podrobnosti",
-    "hideDetails": "Skrýt podrobnosti",
     "remove": "Odebrat…",
+    "hide": "Odstranit ze seznamu",
+    "hideAll": "Odstranit vše",
+    "hideNote": "Odstraněním ze seznamu se nic neodblokuje: zařízení dál nic nového neuvidí.",
     "removing": "Odebírá se…",
     "inactiveHint": "Už ho nepoužíváte? Odeberte ho.",
     "copyName": "{{name}} (kopie)",

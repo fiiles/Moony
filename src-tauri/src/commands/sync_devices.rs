@@ -1,4 +1,5 @@
-//! Removing devices from sync, keeping one, checking the recovery kit and dismissing notices
+//! Removing devices from sync, keeping one, taking former ones off the list, checking the
+//! recovery kit and dismissing notices
 //! (phase 5 revision §4, §6.5). Thin: the flag, the input, the service in
 //! `services::sync::{rekey::rotate, identity::trust, setup, view}`, its `SyncError` mapped for the
 //! server. A removal is a sync change (`guarded_change`: the engine stops, the removal runs, the
@@ -25,7 +26,7 @@ use crate::services::sync::identity::trust;
 use crate::services::sync::identity::KitSecret;
 use crate::services::sync::rekey::kit::NewKit;
 use crate::services::sync::rekey::rotate::{self, Outcome, Removal, ReplacesKit};
-use crate::services::sync::{join, keys, setup, view};
+use crate::services::sync::{devices, join, keys, setup, view};
 
 /// The plan changed meanwhile, or never made sense: the dialog reloads and asks again.
 const PLAN_CHANGED: &str = rotate::PLAN_CHANGED;
@@ -220,6 +221,24 @@ pub async fn sync_keep_device(
         wake_engine(&app);
     }
     Ok(kept)
+}
+
+/// "Odstranit ze seznamu" / "Odstranit vše": takes former devices off this device's list. No
+/// password and no server: nothing about trust changes (their rows and trust entries stay, so
+/// whatever they send later is still refused), and the list is this device's own. An ID that does
+/// not read or is not a former device now is passed over.
+#[tauri::command]
+pub async fn sync_hide_former_devices(
+    db: State<'_, Database>,
+    device_ids: Vec<String>,
+) -> Result<()> {
+    require_feature()?;
+    let devices: Vec<DeviceId> = device_ids
+        .iter()
+        .filter_map(|id| DeviceId::from_hex(id).ok())
+        .collect();
+    db.with_conn(|conn| devices::hide_former_devices(conn, &devices, now()))?;
+    Ok(())
 }
 
 /// "Mám je" / "Odebrat je" at "Data jsou zpět": lifts the push hold of a device that joined with

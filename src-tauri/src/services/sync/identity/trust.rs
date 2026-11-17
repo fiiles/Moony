@@ -854,8 +854,9 @@ fn pin_candidates(
 
 /// A Kit joiner's replaced Kit (As built R-105): the `removed` record its row holds, when the Kit's
 /// issuer vouches for it here and the record verifies by its signer's row certificate, the signer
-/// pinned here or issued by this very Kit (the device that joined with it and replaced it, pinned
-/// in the next pass through it). Applied with the pin, the record ends the Kit's say at its `at`,
+/// pinned here with that certificate and speaking at the record's `at`, or Kit-joined through this
+/// very Kit with the Kit's own key (the device that joined with it and replaced it, pinned in the
+/// next pass through it; As built R-112). Applied with the pin, the record ends the Kit's say at its `at`,
 /// so it vouches only for what it issued before; it can only take trust away. `None`: the Kit is
 /// not pinned (`SecondKit`).
 fn former_kit_removal(
@@ -875,11 +876,18 @@ fn former_kit_removal(
         .find(|row| row.id == record.signer)
         .and_then(|row| row_cert(row, vault))?;
     record.verify(&signer.body.sign_pub).ok()?;
-    let known = store
+    // Pinned with exactly this certificate and speaking at the record's time (the genuine remover
+    // may be a late vouch here, and the record only takes trust away, so not being left out for
+    // its issuer is not required); or Kit-joined through this very Kit, the one kind whose issuer
+    // key the Kit's own key signed (a re-join certificate names any issuer with any key; security
+    // review F-1).
+    let pinned = store
         .get(&record.signer)
-        .is_some_and(|entry| entry.cert == signer)
-        || signer.body.issuer_device == device;
-    known.then_some(record)
+        .is_some_and(|entry| entry.cert == signer && speaks_at(store, entry, record.at));
+    let joined_with_it = signer.body.kind == CertKind::RecoveryKit
+        && signer.body.issuer_device == device
+        && signer.body.issuer_sign_pub == kit.body.sign_pub;
+    (pinned || joined_with_it).then_some(record)
 }
 
 /// Marks `device` `confirmed`. Returns whether it changed.
@@ -1490,9 +1498,10 @@ pub fn speaker(conn: &Connection, cert: &Certificate) -> Result<Option<TrustEntr
 ///   device that made the person's paper issued it. Its own issuer may be a Kit it replaced since
 ///   (a Kit joiner that made the next Kit, As built R-105);
 /// - a signer left out only because its issuer is `removed` by the signer's own removal record
-///   (`IssuerRemoved`, the issuer not a Kit): that record counted here only while the signer was
-///   not left out (`removal_counts`), so the signer stood as a speaker when it removed its issuer
-///   (the remover whose key change sealed the envelope, the security review's MEDIUM 3).
+///   (`IssuerRemoved`, the issuer not a Kit nor itself left out for its issuer): that record
+///   counted here only while the signer was not left out (`removal_counts`), so the signer stood
+///   as a speaker when it removed its issuer (the remover whose key change sealed the envelope,
+///   the security review's MEDIUM 3; the issuer check, As built R-112, keeps it to log order).
 ///
 /// Anything else left out for its issuer (`IssuerRemoved` by another remover, `LateVouch`,
 /// `IssuerUnknown`) speaks for nothing: the Kit opens and nothing of the set is taken.
@@ -1515,7 +1524,11 @@ pub fn kit_join_speaker(conn: &Connection, signer: &Certificate, kit: DeviceId) 
             && k.issuer == device
             && k.cert.body.issuer_sign_pub == entry.sign_pub
     });
+    // The issuer itself not left out for its own issuer: otherwise the signer stood as no speaker
+    // when it removed it in log order, whatever the joiner's pass order counted (security review
+    // F-3).
     let removed_its_issuer = *reason == ExclusionReason::IssuerRemoved
+        && !store.silenced(&entry.issuer)
         && store.get(&entry.issuer).is_some_and(|issuer| {
             issuer.kind != CertKind::Kit
                 && issuer.state == TrustState::Removed

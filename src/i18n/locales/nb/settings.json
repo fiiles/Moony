@@ -269,8 +269,7 @@
     },
     "kit": {
       "title": "Gjenopprettingssett for synkronisering",
-      "text": "Henter de synkroniserte dataene tilbake når alle enhetene er mistet. Ett for alle enhetene dine.",
-      "show": "Vis"
+      "text": "Henter de synkroniserte dataene tilbake når alle enhetene er mistet. Ett for alle enhetene dine."
     }
   }
 }

@@ -269,8 +269,7 @@
     },
     "kit": {
       "title": "Återställningskit för synkronisering",
-      "text": "Hämtar tillbaka dina synkroniserade data när alla enheter är förlorade. Ett för alla dina enheter.",
-      "show": "Visa"
+      "text": "Hämtar tillbaka dina synkroniserade data när alla enheter är förlorade. Ett för alla dina enheter."
     }
   }
 }

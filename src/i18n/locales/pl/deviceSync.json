@@ -77,8 +77,7 @@
     "clockAhead": "Zegar tego urządzenia (albo urządzenia, z którym się synchronizowało) w pewnym momencie się spieszył, więc jego zmiany mają datę {{date}}, dopóki ten dzień nie nadejdzie. Nadal się synchronizują; jeśli ten sam element zostanie zmieniony na innym urządzeniu, do tej daty wygrywa wersja z tego urządzenia.",
     "subscription": "Subskrypcja",
     "paidUntil": "Opłacone do {{date}}",
-    "syncNow": "Synchronizuj teraz",
-    "showKit": "Pokaż Zestaw odzyskiwania"
+    "syncNow": "Synchronizuj teraz"
   },
   "server": {
     "label": "Serwer synchronizacji",
@@ -132,31 +131,34 @@
     },
     "kit": {
       "description": "Zapisz Zestaw odzyskiwania synchronizacji. To jedyny sposób, by odzyskać zsynchronizowane dane po utracie wszystkich urządzeń.",
-      "savePage": "Zapisz jako stronę…",
-      "saveText": "Zapisz jako tekst…",
       "copyCode": "Kopiuj kod",
       "copied": "Skopiowano",
       "clipboardHint": "Wyczyść schowek po wklejeniu kodu.",
       "saved": "Zestaw zapisany",
       "confirm": "Zapisałem(-am) mój Zestaw odzyskiwania synchronizacji",
-      "differs": "Zestaw odzyskiwania synchronizacji to nie klucz odzyskiwania urządzenia. To dwie różne rzeczy i potrzebujesz obu.",
+      "differs": "To nie jest klucz odzyskiwania tego urządzenia; ten resetuje tylko zapomniane hasło.",
       "saveFirst": "Najpierw zapisz lub skopiuj zestaw.",
       "file": {
         "title": "Zestaw odzyskiwania synchronizacji Moony",
         "intro": "Przechowuj tę stronę w bezpiecznym miejscu, z dala od urządzeń. Kto ją ma, może odczytać Twoje zsynchronizowane dane.",
-        "accountLabel": "Konto synchronizacji",
-        "accountNote": "Wskazuje Twoje konto synchronizacji. Nie otwiera danych.",
         "codeLabel": "Kod zestawu odzyskiwania",
         "codeNote": "Otwiera Twoje zsynchronizowane dane. Zachowaj go w tajemnicy.",
         "qrLabel": "Zeskanuj, aby odzyskać na telefonie",
         "created": "Utworzono {{date}}",
         "relayLabel": "Serwer synchronizacji",
-        "relayNote": "Potrzebny do odzyskania z tego zestawu"
+        "relayNote": "Potrzebny do odzyskania z tego zestawu",
+        "createdBy": "Utworzono {{date}} · {{name}}"
       },
       "folderWarning": "Przechowuj zestaw na papierze lub w menedżerze haseł, a nie w folderze synchronizowanym z usługą w chmurze.",
       "syncedFolder": "Zestaw zapisany, ale ten folder wygląda na synchronizowany z usługą w chmurze. Przenieś plik w miejsce, które się nie synchronizuje, albo usuń go, gdy będziesz mieć zestaw na papierze.",
       "saveRefused": "Ten zestaw jest nieaktualny, więc nie został zapisany. Zamknij go i pokaż zestaw ponownie.",
-      "print": "Drukuj"
+      "print": "Drukuj",
+      "stepTitle": "Zestaw odzyskiwania",
+      "intro": "Jeśli stracisz wszystkie urządzenia naraz, dane przywróci tylko ten zestaw. Wydrukuj go i przechowuj z dala od tego komputera, na przykład z dokumentami albo w menedżerze haseł.",
+      "shownOnce": "Zestaw pokazujemy tylko teraz. Jeśli go zgubisz, utworzysz nowy w Ustawieniach.",
+      "continue": "Mam zestaw, dalej",
+      "keepFirst": "Najpierw wydrukuj, zapisz lub skopiuj zestaw.",
+      "saveFile": "Zapisz jako plik…"
     },
     "device": {
       "description": "Nadaj temu urządzeniu nazwę, aby odróżnić je od innych.",
@@ -188,6 +190,12 @@
       "resume": "Konfiguracja rozpoczęła się z serwerem {{host}}",
       "other": "Użyj innego kodu połączenia",
       "scan": "Zeskanuj kod"
+    },
+    "done": {
+      "title": "Synchronizacja jest włączona",
+      "body": "Wysyłam pierwszą kopię danych. Możesz pracować dalej.",
+      "addDevice": "Dodaj kolejne urządzenie",
+      "later": "Później"
     }
   },
   "alert": {
@@ -419,7 +427,6 @@
     "kitTitle": "Użyj zestawu odzyskiwania",
     "kitHint": "Wpisz kod zestawu odzyskiwania lub tekst kodu QR zestawu.",
     "codeLabel": "Kod zestawu odzyskiwania",
-    "accountLabel": "Numer konta",
     "confirm": "Dołącz i zastąp",
     "choice": {
       "pair": {
@@ -600,5 +607,50 @@
     "done": "Mam zestaw, gotowe",
     "keepFirst": "Najpierw wydrukuj, zapisz lub skopiuj zestaw.",
     "gone": "Zestawu nie ma już na ekranie. Utwórz nowy w Ustawienia → Synchronizacja."
+  },
+  "kit": {
+    "title": "Zestaw odzyskiwania",
+    "created": "Utworzono {{date}} na urządzeniu {{name}}. Obowiązuje, dopóki nie utworzysz nowego.",
+    "createdNoName": "Utworzono {{date}}. Obowiązuje, dopóki nie utworzysz nowego.",
+    "lastUsed": "Ostatnio użyty {{date}}",
+    "keptLine": "Przechowywany: {{where}}",
+    "storage": {
+      "paper": "wydrukowany na papierze",
+      "copied": "skopiowany kod",
+      "file": "zapisany jako plik",
+      "cloud": "zapisany w folderze synchronizowanym z chmurą"
+    },
+    "check": "Sprawdź zestaw",
+    "makeNew": "Utwórz nowy…",
+    "unsaved": "Nie zapisano zestawu odzyskiwania i nie da się go pokazać ponownie.",
+    "makeNewKit": "Utwórz nowy zestaw",
+    "none": "Synchronizacja nie ma zestawu odzyskiwania. Bez niego nie odzyskasz danych, jeśli stracisz wszystkie urządzenia.",
+    "make": "Utwórz zestaw",
+    "used": "Zestaw odzyskiwania został użyty {{date}}, ale żadne urządzenie nie połączyło się z jego pomocą. Jeśli to nie ty, ma go ktoś inny: utwórz nowy.",
+    "usedKnown": "Wiem o tym",
+    "notShown": "Nie udało się pokazać nowego zestawu odzyskiwania. Utwórz go ponownie."
+  },
+  "check": {
+    "title": "Sprawdź zestaw odzyskiwania",
+    "description": "Zeskanuj lub przepisz kod z zestawu. Nic nie jest nigdzie wysyłane.",
+    "label": "Kod zestawu odzyskiwania",
+    "submit": "Sprawdź",
+    "valid": "Ten zestaw jest ważny.",
+    "replaced": "Ten zestaw już nie obowiązuje. Ważny jest ten z {{date}}.",
+    "replacedNoDate": "Ten zestaw już nie obowiązuje.",
+    "otherSync": "Ten zestaw należy do innej synchronizacji.",
+    "unknown": "Moony nie zna tego zestawu; być może nigdy nie został dokończony."
+  },
+  "newKitDialog": {
+    "title": "Utworzyć nowy zestaw odzyskiwania?",
+    "body": "Stary zestaw przestanie obowiązywać. Zrób to, gdy zestaw zginął albo nie wiesz, kto go widział.",
+    "joined": "Te urządzenia połączyły się starym zestawem. Usuń te, których nie rozpoznajesz.",
+    "confirm": "Utwórz nowy zestaw",
+    "progress": "Tworzę nowy zestaw…",
+    "toast": {
+      "done": "Nowy zestaw odzyskiwania jest gotowy",
+      "alreadyRemoved": "Zaznaczone urządzenia usunęło w międzyczasie urządzenie {{by}}.",
+      "alreadyRemovedUnknown": "Zaznaczone urządzenia zostały w międzyczasie usunięte."
+    }
   }
 }

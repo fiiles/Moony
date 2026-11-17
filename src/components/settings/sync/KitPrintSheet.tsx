@@ -10,7 +10,7 @@ import { useRecoveryKitCopy } from '@/components/settings/sync/use-recovery-kit-
  * with the component that mounts it, so the kit leaves the page when it leaves the screen.
  */
 export function KitPrintSheet({ kit }: { kit: RecoveryKit }) {
-  const copy = useRecoveryKitCopy();
+  const copy = useRecoveryKitCopy(kit);
   return createPortal(
     <div className="kit-print-sheet" aria-hidden>
       <h1 style={{ fontSize: 22, margin: '0 0 8px' }}>{copy.title}</h1>

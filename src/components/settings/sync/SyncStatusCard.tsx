@@ -11,6 +11,7 @@ import { hostOf } from '@/utils/sync-setup';
 import { isQuietlyOutOfReach, syncState } from '@/utils/sync-state';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { ChangeServerDialog } from '@/components/settings/sync/ChangeServerDialog';
+import { KitRow } from '@/components/settings/sync/KitRow';
 import { SyncProblemAlert } from '@/components/settings/sync/SyncProblemAlert';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -110,6 +111,7 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
                 </Button>
               </SettingsRow>
             )}
+            <KitRow status={status} />
           </div>
         </div>
       </SettingsCard>

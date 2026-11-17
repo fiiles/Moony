@@ -1772,3 +1772,29 @@ R-90. **Task 24 review fixes** (I1–I3, M1–M4). I1: `sync_keep_device` only m
      while a key change of this device is pending, or with `removeThem` while a device the hold names is
      still trusted and not removed. Wire types did not change (command arguments are not in
      `bindings.rs`), so `generated-types.ts` is unchanged.
+R-91. **Desktop Kit** (Task 27). Setup: the kit step shows the §6.3 intro, the panel (Vytisknout · Uložit jako
+     soubor… · Zkopírovat kód), "Sadu ukážeme jen teď…" and the "not the recovery key" line; the tick-box
+     is gone, "Sadu mám, pokračovat" waits for a print, save or copy (`kitKept`). After `finishSetup` the
+     dialog shows "Synchronizace je zapnutá" (Přidat druhé zařízení opens `AddDeviceDialog` through
+     `SyncSection`, Později closes), or, when the returned status has `recoveryKit == null` (R-62),
+     goes straight to `NewKitDialog missing` ("Vytvořit sadu"). `SyncSection` now renders its dialogs
+     after the cards in one place, so the setup dialog survives the phase turning `on`. `KitRow` (in
+     `SyncStatusCard`): created at/by, where it is kept (`kit.storage.*`), last read, "Ověřit sadu" →
+     `CheckKitDialog` (typed or pasted code, answer valid/replaced/otherSync/unknown, code cleared after
+     each answer and on close, mutation `gcTime 0` + reset), "Vytvořit novou…" → `NewKitDialog`
+     (`useRemovalPlan([], ticks, true)`, `removalRequest(…, newKit=true)`, ticks for the devices that
+     joined with the old kit, then `NewKitStep`; a `done` outcome with `kit: null` toasts
+     `kit.notShown`); `storage == null` shows "neuložená" with "Vytvořit novou sadu", `recoveryKit ==
+     null` "Vytvořit sadu"; `kitUsed` is an alert in the row with "Vytvořit novou sadu" and "Vím o tom"
+     (`dismissNotice('kitUsed')`). Task 29 may move that alert into `NoticeList`. Buttons that carry the
+     new texts wrap (`whitespace-normal`). The printed sheet and the saved page say "Vytvořena {date} ·
+     {device}" from the kit itself (`useRecoveryKitCopy(kit)`), not today's date.
+R-92. **Deviations, Task 27.** (a) One "Uložit jako soubor…" button saves the page (HTML); the text
+     variant has no button on the desktop any more (`saveRecoveryKit('text')` stays in the API; the
+     phone's file export still uses `recoveryKitText`). (b) `showKit.*`, `setup.kit.description`,
+     `setup.kit.confirm`, `setup.kit.saveFirst` and `setup.device.success` stay: the phone's setup sheet
+     (Task 31) and the desktop password question still use them. Dropped: `status.showKit`,
+     `join.accountLabel`, `setup.kit.file.accountLabel/accountNote`, `setup.kit.savePage/saveText`
+     (deviceSync), `keepSafe.kit.show` (settings). (c) `setup.kit.differs` has the §6.3 wording for both
+     desktop and phone. (d) Not verified in the built app: print, the dialogs at 1080 px with de and ja,
+     the done screen after the real phase flip (no Tauri host).

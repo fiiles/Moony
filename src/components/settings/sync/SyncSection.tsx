@@ -4,24 +4,28 @@ import { SyncDangerCard } from '@/components/settings/sync/SyncDangerCard';
 import { SyncDevicesCard } from '@/components/settings/sync/SyncDevicesCard';
 import { SyncStatusCard } from '@/components/settings/sync/SyncStatusCard';
 import { SyncSetupDialog } from '@/components/settings/sync/SyncSetupDialog';
+import { AddDeviceDialog } from '@/components/settings/sync/AddDeviceDialog';
 import { JoinDeviceDialog } from '@/components/settings/sync/join/JoinDeviceDialog';
 import { WhatSyncsLink } from '@/components/settings/sync/WhatSyncsLink';
 import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 
-type Open = 'setup' | 'join' | null;
+type Open = 'setup' | 'join' | 'add' | null;
 
 /**
  * Settings → Sync. While sync is off or half set up: the intro card and its dialogs (setup, and the
  * join with a phone or a Recovery Kit; their open state lives here). Sync on: the status card (with
- * the problem alert), the devices card and the danger card.
+ * the problem alert), the devices card and the danger card. The dialogs sit after the cards in one
+ * place, so a setup that turns sync on keeps its "Synchronizace je zapnutá" screen while the cards
+ * change under it; that screen can open "Přidat druhé zařízení".
  */
 export function SyncSection() {
   const { data: status } = useDeviceSyncStatus();
   const [open, setOpen] = useState<Open>(null);
+  const close = () => setOpen(null);
 
+  let cards = <></>;
   if (status && (status.phase === 'off' || status.phase === 'settingUp')) {
-    const close = () => setOpen(null);
-    return (
+    cards = (
       <>
         <SyncIntroCard
           resuming={status.phase === 'settingUp'}
@@ -29,19 +33,25 @@ export function SyncSection() {
           onJoin={() => setOpen('join')}
         />
         <WhatSyncsLink />
-        {open === 'setup' && <SyncSetupDialog onClose={close} />}
-        {open === 'join' && <JoinDeviceDialog onClose={close} />}
+      </>
+    );
+  } else if (status) {
+    cards = (
+      <>
+        <SyncStatusCard status={status} />
+        <SyncDevicesCard />
+        <SyncDangerCard />
+        <WhatSyncsLink />
       </>
     );
   }
 
-  if (!status) return <></>;
   return (
     <>
-      <SyncStatusCard status={status} />
-      <SyncDevicesCard />
-      <SyncDangerCard />
-      <WhatSyncsLink />
+      {cards}
+      {open === 'setup' && <SyncSetupDialog onClose={close} onAddDevice={() => setOpen('add')} />}
+      {open === 'join' && <JoinDeviceDialog onClose={close} />}
+      {open === 'add' && <AddDeviceDialog onClose={close} />}
     </>
   );
 }

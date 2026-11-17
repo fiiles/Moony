@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Check, Copy, FileText, Download, Printer } from 'lucide-react';
+import { Check, Copy, Download, Printer } from 'lucide-react';
 import type { RecoveryKit } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useRecoveryKitLifetime } from '@/hooks/use-recovery-kit-lifetime';
@@ -9,16 +9,13 @@ import { copyToWebviewClipboard } from '@/utils/recovery-kit-lifetime';
 import { ApiError } from '@/lib/api-error';
 import { deviceSyncApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
-import {
-  recoveryCodeGroups,
-  toBase64,
-  recoveryKitHtml,
-  recoveryKitText,
-} from '@/utils/recovery-kit';
-import type { KitFileKind } from '@shared/schema';
+import { recoveryCodeGroups, toBase64, recoveryKitHtml } from '@/utils/recovery-kit';
 import { Button } from '@/components/ui/button';
 import { KitPrintSheet } from '@/components/settings/sync/KitPrintSheet';
 import { useRecoveryKitCopy } from '@/components/settings/sync/use-recovery-kit-copy';
+
+/** A label that wraps instead of being cut (long German and Polish labels). */
+const WRAP_BUTTON = 'h-auto min-h-control whitespace-normal py-1.5 text-center';
 
 interface RecoveryKitPanelProps {
   kit: RecoveryKit;
@@ -37,7 +34,10 @@ interface RecoveryKitPanelProps {
   onExpired: () => void;
 }
 
-/** The Sync Recovery Kit as shown during setup: QR, code, account, and the ways to keep it. */
+/**
+ * The recovery kit as shown during setup and after a key change: QR, code, and the ways to keep it
+ * (print, save as a file, copy the code; each one counts as kept).
+ */
 export function RecoveryKitPanel({
   kit,
   onKept,
@@ -47,7 +47,7 @@ export function RecoveryKitPanel({
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { copyRecoveryCode, printRecoveryKit } = useDeviceSyncMutations();
-  const kitCopy = useRecoveryKitCopy();
+  const kitCopy = useRecoveryKitCopy(kit);
   const [copied, setCopied] = useState(false);
   const [clipboardHint, setClipboardHint] = useState(false);
   useRecoveryKitLifetime(onExpired, true);
@@ -58,12 +58,9 @@ export function RecoveryKitPanel({
   const passwordRequired = (error: unknown) =>
     error instanceof ApiError && error.key === 'validation.syncPasswordRequired';
 
-  const saveFile = async (kind: KitFileKind) => {
+  const saveFile = async () => {
     try {
-      const outcome = await deviceSyncApi.saveRecoveryKit(
-        kind,
-        kind === 'page' ? recoveryKitHtml(kit, kitCopy) : recoveryKitText(kit, kitCopy)
-      );
+      const outcome = await deviceSyncApi.saveRecoveryKit('page', recoveryKitHtml(kit, kitCopy));
       // The save dialog was closed: nothing was written
       if (!outcome.saved) return;
       if (outcome.syncedFolder) toast.warning(t('setup.kit.syncedFolder'));
@@ -155,23 +152,20 @@ export function RecoveryKitPanel({
         <Button
           type="button"
           variant="outline"
+          className={WRAP_BUTTON}
           onClick={printKit}
           loading={printRecoveryKit.isPending}
         >
           <Printer />
           {t('setup.kit.print')}
         </Button>
-        <Button type="button" variant="outline" onClick={copyCode}>
+        <Button type="button" variant="outline" className={WRAP_BUTTON} onClick={saveFile}>
+          <Download />
+          {t('setup.kit.saveFile')}
+        </Button>
+        <Button type="button" variant="outline" className={WRAP_BUTTON} onClick={copyCode}>
           {copied ? <Check /> : <Copy />}
           {copied ? t('setup.kit.copied') : t('setup.kit.copyCode')}
-        </Button>
-        <Button type="button" variant="outline" onClick={() => saveFile('page')}>
-          <Download />
-          {t('setup.kit.savePage')}
-        </Button>
-        <Button type="button" variant="outline" onClick={() => saveFile('text')}>
-          <FileText />
-          {t('setup.kit.saveText')}
         </Button>
       </div>
       {clipboardHint && (

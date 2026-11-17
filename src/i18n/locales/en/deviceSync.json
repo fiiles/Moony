@@ -69,8 +69,7 @@
     "clockAhead": "This device's clock was ahead at some point (or that of a device it synced with), so its changes are dated {{date}} until then. They still sync; if the same item is edited on another device, this device's version wins until that date.",
     "subscription": "Subscription",
     "paidUntil": "Paid until {{date}}",
-    "syncNow": "Sync now",
-    "showKit": "Show Recovery Kit"
+    "syncNow": "Sync now"
   },
   "server": {
     "label": "Sync server",
@@ -124,31 +123,34 @@
     },
     "kit": {
       "description": "Save your Sync Recovery Kit. It is the only way to get your synced data back if you lose all your devices.",
-      "savePage": "Save as page…",
-      "saveText": "Save as text…",
       "copyCode": "Copy code",
       "copied": "Copied",
       "clipboardHint": "Clear your clipboard after pasting the code.",
       "saved": "Kit saved",
       "confirm": "I saved my Sync Recovery Kit",
-      "differs": "The Sync Recovery Kit is not your device's recovery key. They are different, and you need both.",
+      "differs": "It isn't this device's recovery key; that only resets a forgotten password.",
       "saveFirst": "Save or copy the kit first.",
       "file": {
         "title": "Moony Sync Recovery Kit",
         "intro": "Keep this page somewhere safe, away from your devices. Anyone who has it can read your synced data.",
-        "accountLabel": "Sync account",
-        "accountNote": "Identifies your sync account. It does not open your data.",
         "codeLabel": "Recovery Kit code",
         "codeNote": "Opens your synced data. Keep it secret.",
         "qrLabel": "Scan to restore on a phone",
         "created": "Created {{date}}",
         "relayLabel": "Sync server",
-        "relayNote": "Needed to restore from this kit"
+        "relayNote": "Needed to restore from this kit",
+        "createdBy": "Created {{date}} · {{name}}"
       },
       "folderWarning": "Keep the Kit on paper or in a password manager, not in a folder that syncs to a cloud service.",
       "syncedFolder": "Kit saved, but this folder looks like it syncs to a cloud service. Move the file somewhere that does not sync, or delete it once the Kit is on paper.",
       "saveRefused": "This Kit is out of date, so it was not saved. Close it and show the Kit again.",
-      "print": "Print"
+      "print": "Print",
+      "stepTitle": "Recovery kit",
+      "intro": "If you lose every device at once, only this kit gets your data back. Print it and keep it away from this computer, with your documents or in a password manager.",
+      "shownOnce": "We show the kit only now. If you lose it, make a new one in Settings.",
+      "continue": "I have the kit, continue",
+      "keepFirst": "First print, save or copy the kit.",
+      "saveFile": "Save as file…"
     },
     "device": {
       "description": "Name this device so you can tell it apart from your others.",
@@ -180,6 +182,12 @@
       "resume": "Setup started with {{host}}",
       "other": "Use another connection code",
       "scan": "Scan code"
+    },
+    "done": {
+      "title": "Sync is on",
+      "body": "Uploading the first copy of your data. You can keep working.",
+      "addDevice": "Add another device",
+      "later": "Later"
     }
   },
   "alert": {
@@ -395,7 +403,6 @@
     "kitTitle": "Use a Recovery Kit",
     "kitHint": "Enter the Recovery Kit code, or the text of the kit's QR code.",
     "codeLabel": "Recovery Kit code",
-    "accountLabel": "Account number",
     "confirm": "Join and replace",
     "choice": {
       "pair": {
@@ -566,5 +573,50 @@
     "done": "I have the kit, done",
     "keepFirst": "First print, save or copy the kit.",
     "gone": "The kit is no longer on screen. Make a new one in Settings → Sync."
+  },
+  "kit": {
+    "title": "Recovery kit",
+    "created": "Created on {{date}} on {{name}}. Valid until you make a new one.",
+    "createdNoName": "Created on {{date}}. Valid until you make a new one.",
+    "lastUsed": "Last used {{date}}",
+    "keptLine": "Kept: {{where}}",
+    "storage": {
+      "paper": "printed on paper",
+      "copied": "code copied",
+      "file": "saved as a file",
+      "cloud": "saved in a folder that syncs to the cloud"
+    },
+    "check": "Check kit",
+    "makeNew": "Make a new one…",
+    "unsaved": "You didn't save your recovery kit, and it can't be shown again.",
+    "makeNewKit": "Make a new kit",
+    "none": "Sync has no recovery kit. Without one you can't get your data back if you lose every device.",
+    "make": "Make a kit",
+    "used": "Your recovery kit was used on {{date}}, but no device joined with it. If it wasn't you, someone else has it: make a new one.",
+    "usedKnown": "I know about it",
+    "notShown": "The new recovery kit couldn't be shown. Make it again."
+  },
+  "check": {
+    "title": "Check your recovery kit",
+    "description": "Scan or type the code from the kit. Nothing is sent anywhere.",
+    "label": "Recovery kit code",
+    "submit": "Check",
+    "valid": "This kit is valid.",
+    "replaced": "This kit no longer works. The valid one is from {{date}}.",
+    "replacedNoDate": "This kit no longer works.",
+    "otherSync": "This kit belongs to a different sync.",
+    "unknown": "Moony doesn't know this kit; it may never have been finished."
+  },
+  "newKitDialog": {
+    "title": "Make a new recovery kit?",
+    "body": "The old kit will stop working. Do this if you lost it or aren't sure who has seen it.",
+    "joined": "These devices joined with the old kit. Remove any you don't recognise.",
+    "confirm": "Make a new kit",
+    "progress": "Making a new kit…",
+    "toast": {
+      "done": "The new recovery kit is ready",
+      "alreadyRemoved": "{{by}} removed the devices you ticked in the meantime.",
+      "alreadyRemovedUnknown": "The devices you ticked were removed in the meantime."
+    }
   }
 }

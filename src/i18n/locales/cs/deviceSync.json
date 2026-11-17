@@ -77,8 +77,7 @@
     "clockAhead": "Hodiny tohoto zařízení (nebo zařízení, se kterým se synchronizovalo) byly v jednu chvíli napřed, takže jeho změny nesou datum {{date}}, dokud ten den nenastane. Synchronizují se dál; pokud se stejná položka upraví na jiném zařízení, do toho data vyhraje verze z tohoto zařízení.",
     "subscription": "Předplatné",
     "paidUntil": "Zaplaceno do {{date}}",
-    "syncNow": "Synchronizovat",
-    "showKit": "Zobrazit Záchrannou sadu"
+    "syncNow": "Synchronizovat"
   },
   "server": {
     "label": "Synchronizační server",
@@ -132,31 +131,34 @@
     },
     "kit": {
       "description": "Uložte si Záchrannou sadu synchronizace. Je to jediný způsob, jak získat synchronizovaná data zpět, když přijdete o všechna zařízení.",
-      "savePage": "Uložit jako stránku…",
-      "saveText": "Uložit jako text…",
       "copyCode": "Zkopírovat kód",
       "copied": "Zkopírováno",
       "clipboardHint": "Po vložení kódu vymažte schránku.",
       "saved": "Sada uložena",
       "confirm": "Uložil(a) jsem si Záchrannou sadu synchronizace",
-      "differs": "Záchranná sada synchronizace není obnovovací klíč zařízení. Jsou to dvě různé věci a potřebujete obě.",
+      "differs": "Není to obnovovací klíč tohoto zařízení; ten obnoví jen zapomenuté heslo.",
       "saveFirst": "Nejdřív sadu uložte nebo zkopírujte.",
       "file": {
         "title": "Záchranná sada synchronizace Moony",
         "intro": "Uschovejte tuto stránku na bezpečném místě mimo svá zařízení. Kdo ji má, přečte vaše synchronizovaná data.",
-        "accountLabel": "Synchronizační účet",
-        "accountNote": "Určuje váš synchronizační účet. Data neotevře.",
         "codeLabel": "Kód záchranné sady",
         "codeNote": "Otevře vaše synchronizovaná data. Udržujte ho v tajnosti.",
         "qrLabel": "Naskenujte pro obnovení v telefonu",
         "created": "Vytvořeno {{date}}",
         "relayLabel": "Synchronizační server",
-        "relayNote": "Potřebný k obnově z této sady"
+        "relayNote": "Potřebný k obnově z této sady",
+        "createdBy": "Vytvořena {{date}} · {{name}}"
       },
       "folderWarning": "Sadu uchovávejte na papíře nebo ve správci hesel, ne ve složce, která se synchronizuje s cloudovou službou.",
       "syncedFolder": "Sada je uložena, ale tato složka se zřejmě synchronizuje s cloudovou službou. Přesuňte soubor na místo, které se nesynchronizuje, nebo ho smažte, jakmile budete mít sadu na papíře.",
       "saveRefused": "Tato sada je zastaralá, proto se neuložila. Zavřete ji a zobrazte sadu znovu.",
-      "print": "Vytisknout"
+      "print": "Vytisknout",
+      "stepTitle": "Záchranná sada",
+      "intro": "Kdybyste přišli o všechna zařízení najednou, vrátí vám data jen tato sada. Vytiskněte ji a uložte mimo tento počítač, třeba k dokladům nebo do správce hesel.",
+      "shownOnce": "Sadu ukážeme jen teď. Když ji ztratíte, vytvoříte si v Nastavení novou.",
+      "continue": "Sadu mám, pokračovat",
+      "keepFirst": "Nejdřív sadu vytiskněte, uložte nebo zkopírujte.",
+      "saveFile": "Uložit jako soubor…"
     },
     "device": {
       "description": "Pojmenujte toto zařízení, abyste ho odlišili od ostatních.",
@@ -188,6 +190,12 @@
       "resume": "Nastavení začalo se serverem {{host}}",
       "other": "Použít jiný připojovací kód",
       "scan": "Naskenovat kód"
+    },
+    "done": {
+      "title": "Synchronizace je zapnutá",
+      "body": "Nahrávám první kopii dat. Můžete pracovat dál.",
+      "addDevice": "Přidat druhé zařízení",
+      "later": "Později"
     }
   },
   "alert": {
@@ -419,7 +427,6 @@
     "kitTitle": "Použít záchrannou sadu",
     "kitHint": "Zadejte kód záchranné sady nebo text jejího QR kódu.",
     "codeLabel": "Kód záchranné sady",
-    "accountLabel": "Číslo účtu",
     "confirm": "Připojit a nahradit",
     "choice": {
       "pair": {
@@ -598,5 +605,50 @@
     "done": "Sadu mám, hotovo",
     "keepFirst": "Nejdřív sadu vytiskněte, uložte nebo zkopírujte.",
     "gone": "Sada už na obrazovce není. Novou si vytvoříte v Nastavení → Synchronizace."
+  },
+  "kit": {
+    "title": "Záchranná sada",
+    "created": "Vytvořena {{date}} na zařízení {{name}}. Platí, dokud si nevytvoříte novou.",
+    "createdNoName": "Vytvořena {{date}}. Platí, dokud si nevytvoříte novou.",
+    "lastUsed": "Naposledy použita {{date}}",
+    "keptLine": "Uložena: {{where}}",
+    "storage": {
+      "paper": "vytištěná na papír",
+      "copied": "zkopírovaný kód",
+      "file": "uložená jako soubor",
+      "cloud": "uložená ve složce, která se synchronizuje s cloudem"
+    },
+    "check": "Ověřit sadu",
+    "makeNew": "Vytvořit novou…",
+    "unsaved": "Záchrannou sadu jste si neuložili a znovu ji ukázat nejde.",
+    "makeNewKit": "Vytvořit novou sadu",
+    "none": "Synchronizace nemá záchrannou sadu. Bez ní data nedostanete zpět, když přijdete o všechna zařízení.",
+    "make": "Vytvořit sadu",
+    "used": "Záchranná sada byla použita {{date}}, ale žádné zařízení se jí nepřipojilo. Pokud jste to nebyli vy, má ji někdo další: vytvořte si novou.",
+    "usedKnown": "Vím o tom",
+    "notShown": "Novou záchrannou sadu se nepodařilo ukázat. Vytvořte si ji znovu."
+  },
+  "check": {
+    "title": "Ověřit záchrannou sadu",
+    "description": "Naskenujte nebo opište kód ze sady. Nic se nikam neodesílá.",
+    "label": "Kód záchranné sady",
+    "submit": "Ověřit",
+    "valid": "Tato sada platí.",
+    "replaced": "Tato sada už neplatí. Platná je ta z {{date}}.",
+    "replacedNoDate": "Tato sada už neplatí.",
+    "otherSync": "Tato sada patří k jiné synchronizaci.",
+    "unknown": "Tuto sadu Moony nezná; možná se nikdy nedokončila."
+  },
+  "newKitDialog": {
+    "title": "Vytvořit novou záchrannou sadu?",
+    "body": "Stará sada přestane platit. Udělejte to, když jste ji ztratili nebo si nejste jistí, kdo ji viděl.",
+    "joined": "Tato zařízení se připojila starou sadou. Odeberte ta, která nepoznáváte.",
+    "confirm": "Vytvořit novou sadu",
+    "progress": "Vytvářím novou sadu…",
+    "toast": {
+      "done": "Nová záchranná sada je hotová",
+      "alreadyRemoved": "Zařízení, která jste označili, mezitím odebralo zařízení {{by}}.",
+      "alreadyRemovedUnknown": "Zařízení, která jste označili, už byla mezitím odebrána."
+    }
   }
 }

@@ -94,6 +94,15 @@ describe('ticks', () => {
       consent: 'abc',
     });
   });
+
+  it('asks for a new kit with nobody named when the new-kit dialog says so', () => {
+    expect(removalRequest(plan({ replacesKit: 'asked' }), [], ['d'], true)).toEqual({
+      deviceIds: [],
+      alsoRemove: ['d'],
+      newKit: true,
+      consent: 'abc',
+    });
+  });
 });
 
 describe('removalTitleName', () => {

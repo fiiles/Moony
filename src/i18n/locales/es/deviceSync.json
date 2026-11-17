@@ -73,8 +73,7 @@
     "clockAhead": "El reloj de este dispositivo (o el de un dispositivo con el que se sincronizó) estuvo adelantado en algún momento, así que sus cambios llevan la fecha {{date}} hasta entonces. Se siguen sincronizando; si se edita el mismo elemento en otro dispositivo, gana la versión de este dispositivo hasta esa fecha.",
     "subscription": "Suscripción",
     "paidUntil": "Pagado hasta {{date}}",
-    "syncNow": "Sincronizar ahora",
-    "showKit": "Mostrar el Kit de recuperación"
+    "syncNow": "Sincronizar ahora"
   },
   "server": {
     "label": "Servidor de sincronización",
@@ -128,31 +127,34 @@
     },
     "kit": {
       "description": "Guarda tu Kit de recuperación de sincronización. Es la única forma de recuperar tus datos sincronizados si pierdes todos tus dispositivos.",
-      "savePage": "Guardar como página…",
-      "saveText": "Guardar como texto…",
       "copyCode": "Copiar código",
       "copied": "Copiado",
       "clipboardHint": "Vacía el portapapeles después de pegar el código.",
       "saved": "Kit guardado",
       "confirm": "He guardado mi Kit de recuperación de sincronización",
-      "differs": "El Kit de recuperación de sincronización no es la clave de recuperación del dispositivo. Son distintos y necesitas ambos.",
+      "differs": "No es la clave de recuperación de este dispositivo; esa solo restablece una contraseña olvidada.",
       "saveFirst": "Primero guarda o copia el kit.",
       "file": {
         "title": "Kit de recuperación de sincronización de Moony",
         "intro": "Guarda esta página en un lugar seguro, lejos de tus dispositivos. Quien la tenga puede leer tus datos sincronizados.",
-        "accountLabel": "Cuenta de sincronización",
-        "accountNote": "Identifica tu cuenta de sincronización. No abre tus datos.",
         "codeLabel": "Código del kit de recuperación",
         "codeNote": "Abre tus datos sincronizados. Mantenlo en secreto.",
         "qrLabel": "Escanea para restaurar en un teléfono",
         "created": "Creado el {{date}}",
         "relayLabel": "Servidor de sincronización",
-        "relayNote": "Necesario para restaurar desde este kit"
+        "relayNote": "Necesario para restaurar desde este kit",
+        "createdBy": "Creado el {{date}} · {{name}}"
       },
       "folderWarning": "Guarda el kit en papel o en un gestor de contraseñas, no en una carpeta que se sincronice con un servicio en la nube.",
       "syncedFolder": "Kit guardado, pero esta carpeta parece sincronizarse con un servicio en la nube. Mueve el archivo a un lugar que no se sincronice o bórralo cuando tengas el kit en papel.",
       "saveRefused": "Este kit está desactualizado, así que no se guardó. Ciérralo y vuelve a mostrar el kit.",
-      "print": "Imprimir"
+      "print": "Imprimir",
+      "stepTitle": "Kit de recuperación",
+      "intro": "Si pierdes todos los dispositivos a la vez, solo este kit recupera tus datos. Imprímelo y guárdalo lejos de este ordenador, con tus documentos o en un gestor de contraseñas.",
+      "shownOnce": "Mostramos el kit solo ahora. Si lo pierdes, crea uno nuevo en Ajustes.",
+      "continue": "Tengo el kit, continuar",
+      "keepFirst": "Primero imprime, guarda o copia el kit.",
+      "saveFile": "Guardar como archivo…"
     },
     "device": {
       "description": "Dale un nombre a este dispositivo para distinguirlo de los demás.",
@@ -184,6 +186,12 @@
       "resume": "La configuración empezó con {{host}}",
       "other": "Usar otro código de conexión",
       "scan": "Escanear código"
+    },
+    "done": {
+      "title": "La sincronización está activada",
+      "body": "Subiendo la primera copia de tus datos. Puedes seguir trabajando.",
+      "addDevice": "Añadir otro dispositivo",
+      "later": "Más tarde"
     }
   },
   "alert": {
@@ -407,7 +415,6 @@
     "kitTitle": "Usar un kit de recuperación",
     "kitHint": "Introduce el código del kit de recuperación o el texto de su código QR.",
     "codeLabel": "Código del kit de recuperación",
-    "accountLabel": "Número de cuenta",
     "confirm": "Unirse y reemplazar",
     "choice": {
       "pair": {
@@ -583,5 +590,50 @@
     "done": "Tengo el kit, hecho",
     "keepFirst": "Primero imprime, guarda o copia el kit.",
     "gone": "El kit ya no está en pantalla. Crea uno nuevo en Ajustes → Sincronización."
+  },
+  "kit": {
+    "title": "Kit de recuperación",
+    "created": "Creado el {{date}} en {{name}}. Vale hasta que crees uno nuevo.",
+    "createdNoName": "Creado el {{date}}. Vale hasta que crees uno nuevo.",
+    "lastUsed": "Usado por última vez el {{date}}",
+    "keptLine": "Guardado: {{where}}",
+    "storage": {
+      "paper": "impreso en papel",
+      "copied": "código copiado",
+      "file": "guardado como archivo",
+      "cloud": "guardado en una carpeta que se sincroniza con la nube"
+    },
+    "check": "Comprobar kit",
+    "makeNew": "Crear uno nuevo…",
+    "unsaved": "No guardaste tu kit de recuperación y no se puede volver a mostrar.",
+    "makeNewKit": "Crear un kit nuevo",
+    "none": "La sincronización no tiene kit de recuperación. Sin él no podrás recuperar tus datos si pierdes todos los dispositivos.",
+    "make": "Crear un kit",
+    "used": "Tu kit de recuperación se usó el {{date}}, pero ningún dispositivo se conectó con él. Si no fuiste tú, otra persona lo tiene: crea uno nuevo.",
+    "usedKnown": "Lo sé",
+    "notShown": "No se pudo mostrar el nuevo kit de recuperación. Créalo de nuevo."
+  },
+  "check": {
+    "title": "Comprobar tu kit de recuperación",
+    "description": "Escanea o escribe el código del kit. No se envía nada a ningún sitio.",
+    "label": "Código del kit de recuperación",
+    "submit": "Comprobar",
+    "valid": "Este kit es válido.",
+    "replaced": "Este kit ya no sirve. El válido es del {{date}}.",
+    "replacedNoDate": "Este kit ya no sirve.",
+    "otherSync": "Este kit pertenece a otra sincronización.",
+    "unknown": "Moony no conoce este kit; puede que nunca se terminara."
+  },
+  "newKitDialog": {
+    "title": "¿Crear un nuevo kit de recuperación?",
+    "body": "El kit anterior dejará de valer. Hazlo si lo perdiste o no estás seguro de quién lo ha visto.",
+    "joined": "Estos dispositivos se conectaron con el kit anterior. Elimina los que no reconozcas.",
+    "confirm": "Crear un kit nuevo",
+    "progress": "Creando un kit nuevo…",
+    "toast": {
+      "done": "El nuevo kit de recuperación está listo",
+      "alreadyRemoved": "{{by}} eliminó entretanto los dispositivos que marcaste.",
+      "alreadyRemovedUnknown": "Los dispositivos que marcaste se eliminaron entretanto."
+    }
   }
 }

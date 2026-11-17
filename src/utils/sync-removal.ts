@@ -75,16 +75,20 @@ export function removalTitleName(
   return first?.name ?? null;
 }
 
-/** The arguments of `sync_remove_devices` for a plan that was confirmed (`password` is added by the caller). */
+/**
+ * The arguments of `sync_remove_devices` for a plan that was confirmed (`password` is added by the
+ * caller). `newKit` is the new-kit dialog's: no device asked for, a new recovery kit.
+ */
 export function removalRequest(
   plan: RemovalPlan,
   deviceIds: readonly string[],
-  alsoRemove: readonly string[]
+  alsoRemove: readonly string[],
+  newKit = false
 ) {
   return {
     deviceIds: [...deviceIds],
     alsoRemove: pruneAlsoRemove(alsoRemove, plan),
-    newKit: false,
+    newKit,
     consent: plan.consent,
   };
 }

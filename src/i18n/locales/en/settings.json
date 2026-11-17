@@ -269,8 +269,7 @@
     },
     "kit": {
       "title": "Sync Recovery Kit",
-      "text": "Brings your synced data back when every device is lost. One for all your devices.",
-      "show": "Show"
+      "text": "Brings your synced data back when every device is lost. One for all your devices."
     }
   }
 }

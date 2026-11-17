@@ -69,8 +69,7 @@
     "clockAhead": "Klokken på denne enheten (eller på en enhet den synkroniserte med) gikk for fort på et tidspunkt, så endringene herfra er datert {{date}} frem til da. De synkroniseres fortsatt; hvis det samme elementet redigeres på en annen enhet, vinner versjonen fra denne enheten frem til den datoen.",
     "subscription": "Abonnement",
     "paidUntil": "Betalt til {{date}}",
-    "syncNow": "Synkroniser nå",
-    "showKit": "Vis gjenopprettingssettet"
+    "syncNow": "Synkroniser nå"
   },
   "server": {
     "label": "Synkroniseringsserver",
@@ -124,31 +123,34 @@
     },
     "kit": {
       "description": "Lagre gjenopprettingssettet for synkronisering. Det er den eneste måten å få tilbake de synkroniserte dataene på hvis du mister alle enhetene dine.",
-      "savePage": "Lagre som side…",
-      "saveText": "Lagre som tekst…",
       "copyCode": "Kopier koden",
       "copied": "Kopiert",
       "clipboardHint": "Tøm utklippstavlen etter at du har limt inn koden.",
       "saved": "Settet er lagret",
       "confirm": "Jeg har lagret gjenopprettingssettet for synkronisering",
-      "differs": "Gjenopprettingssettet for synkronisering er ikke enhetens gjenopprettingsnøkkel. De er forskjellige, og du trenger begge.",
+      "differs": "Det er ikke gjenopprettingsnøkkelen til denne enheten; den tilbakestiller bare et glemt passord.",
       "saveFirst": "Lagre eller kopier settet først.",
       "file": {
         "title": "Moony gjenopprettingssett for synkronisering",
         "intro": "Oppbevar denne siden trygt, unna enhetene dine. Alle som har den, kan lese de synkroniserte dataene dine.",
-        "accountLabel": "Synkroniseringskonto",
-        "accountNote": "Identifiserer synkroniseringskontoen din. Den åpner ikke dataene dine.",
         "codeLabel": "Kode fra gjenopprettingssettet",
         "codeNote": "Åpner de synkroniserte dataene dine. Hold den hemmelig.",
         "qrLabel": "Skann for å gjenopprette på en telefon",
         "created": "Opprettet {{date}}",
         "relayLabel": "Synkroniseringsserver",
-        "relayNote": "Trengs for å gjenopprette fra dette settet"
+        "relayNote": "Trengs for å gjenopprette fra dette settet",
+        "createdBy": "Opprettet {{date}} · {{name}}"
       },
       "folderWarning": "Oppbevar settet på papir eller i en passordbehandler, ikke i en mappe som synkroniseres med en skytjeneste.",
       "syncedFolder": "Settet er lagret, men denne mappen ser ut til å synkroniseres med en skytjeneste. Flytt filen til et sted som ikke synkroniseres, eller slett den når du har settet på papir.",
       "saveRefused": "Dette settet er utdatert og ble derfor ikke lagret. Lukk det og vis settet på nytt.",
-      "print": "Skriv ut"
+      "print": "Skriv ut",
+      "stepTitle": "Gjenopprettingssett",
+      "intro": "Hvis du mister alle enhetene på en gang, er det bare dette settet som gir deg dataene tilbake. Skriv det ut og ta vare på det borte fra denne datamaskinen, sammen med dokumentene dine eller i en passordbehandler.",
+      "shownOnce": "Vi viser settet bare nå. Mister du det, lager du et nytt i Innstillinger.",
+      "continue": "Jeg har settet, fortsett",
+      "keepFirst": "Skriv ut, lagre eller kopier settet først.",
+      "saveFile": "Lagre som fil …"
     },
     "device": {
       "description": "Gi enheten et navn, så du kan skille den fra de andre.",
@@ -180,6 +182,12 @@
       "resume": "Oppsettet startet med {{host}}",
       "other": "Bruk en annen tilkoblingskode",
       "scan": "Skann kode"
+    },
+    "done": {
+      "title": "Synkronisering er på",
+      "body": "Laster opp den første kopien av dataene dine. Du kan jobbe videre.",
+      "addDevice": "Legg til en enhet til",
+      "later": "Senere"
     }
   },
   "alert": {
@@ -395,7 +403,6 @@
     "kitTitle": "Bruk et gjenopprettingssett",
     "kitHint": "Skriv inn koden fra gjenopprettingssettet, eller teksten i settets QR-kode.",
     "codeLabel": "Kode fra gjenopprettingssettet",
-    "accountLabel": "Kontonummer",
     "confirm": "Bli med og erstatt",
     "choice": {
       "pair": {
@@ -566,5 +573,50 @@
     "done": "Jeg har settet, ferdig",
     "keepFirst": "Skriv ut, lagre eller kopier settet først.",
     "gone": "Settet er ikke lenger på skjermen. Lag et nytt under Innstillinger → Synkronisering."
+  },
+  "kit": {
+    "title": "Gjenopprettingssett",
+    "created": "Opprettet {{date}} på {{name}}. Gjelder til du lager et nytt.",
+    "createdNoName": "Opprettet {{date}}. Gjelder til du lager et nytt.",
+    "lastUsed": "Sist brukt {{date}}",
+    "keptLine": "Oppbevart: {{where}}",
+    "storage": {
+      "paper": "skrevet ut på papir",
+      "copied": "koden er kopiert",
+      "file": "lagret som fil",
+      "cloud": "lagret i en mappe som synkroniseres med skyen"
+    },
+    "check": "Kontroller settet",
+    "makeNew": "Lag et nytt …",
+    "unsaved": "Du lagret ikke gjenopprettingssettet, og det kan ikke vises igjen.",
+    "makeNewKit": "Lag et nytt sett",
+    "none": "Synkroniseringen har ikke noe gjenopprettingssett. Uten det får du ikke dataene tilbake hvis du mister alle enhetene.",
+    "make": "Lag et sett",
+    "used": "Gjenopprettingssettet ditt ble brukt {{date}}, men ingen enhet koblet seg til med det. Hvis det ikke var deg, har noen andre det: lag et nytt.",
+    "usedKnown": "Jeg vet om det",
+    "notShown": "Det nye gjenopprettingssettet kunne ikke vises. Lag det på nytt."
+  },
+  "check": {
+    "title": "Kontroller gjenopprettingssettet",
+    "description": "Skann eller skriv inn koden fra settet. Ingenting sendes noe sted.",
+    "label": "Kode for gjenopprettingssettet",
+    "submit": "Kontroller",
+    "valid": "Dette settet er gyldig.",
+    "replaced": "Dette settet gjelder ikke lenger. Det gyldige er fra {{date}}.",
+    "replacedNoDate": "Dette settet gjelder ikke lenger.",
+    "otherSync": "Dette settet hører til en annen synkronisering.",
+    "unknown": "Moony kjenner ikke dette settet; kanskje ble det aldri ferdig."
+  },
+  "newKitDialog": {
+    "title": "Lage et nytt gjenopprettingssett?",
+    "body": "Det gamle settet slutter å gjelde. Gjør dette hvis du har mistet det eller ikke er sikker på hvem som har sett det.",
+    "joined": "Disse enhetene koblet seg til med det gamle settet. Fjern dem du ikke kjenner igjen.",
+    "confirm": "Lag et nytt sett",
+    "progress": "Lager et nytt sett …",
+    "toast": {
+      "done": "Det nye gjenopprettingssettet er klart",
+      "alreadyRemoved": "{{by}} har i mellomtiden fjernet enhetene du krysset av.",
+      "alreadyRemovedUnknown": "Enhetene du krysset av, ble fjernet i mellomtiden."
+    }
   }
 }

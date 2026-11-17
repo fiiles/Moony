@@ -8,6 +8,7 @@ import { useDeviceSyncAccount, useDeviceSyncStatus } from '@/hooks/use-device-sy
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useServerChoice } from '@/hooks/use-server-choice';
+import { NewKitDialog } from '@/components/settings/sync/NewKitDialog';
 import { RecoveryKitPanel } from '@/components/settings/sync/RecoveryKitPanel';
 import { InsecureNotice, ServerChoice } from '@/components/settings/sync/ServerChoice';
 import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialog';
@@ -20,12 +21,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Segmented } from '@/components/ui/segmented';
 import { groupAccountNumber } from '@/utils/recovery-kit';
 import { defaultDeviceKey } from '@/utils/sync-devices';
+import { afterSetup } from '@/utils/sync-kit';
 import {
   accountQueryEnabled,
   hostOf,
@@ -37,13 +38,17 @@ import {
 interface SyncSetupDialogProps {
   /** Mounted only while open: closing unmounts it, which also forgets the kit. */
   onClose: () => void;
+  /** "Přidat druhé zařízení" on the done screen: the caller replaces this dialog with the add-device one. */
+  onAddDevice: () => void;
 }
 
 /**
- * First-device setup. On an own server: its connection code, the Sync Recovery Kit, then this
- * device's name. The Moony cloud (not open yet) adds an account and a payment before the kit.
+ * First-device setup. On an own server: its connection code, the recovery kit (print, save or copy
+ * it before "Sadu mám, pokračovat"), then this device's name; then "Synchronizace je zapnutá". When
+ * the sync server already held another kit, the person goes straight to "Vytvořit novou sadu". The
+ * Moony cloud (not open yet) adds an account and a payment before the kit.
  */
-export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
+export function SyncSetupDialog({ onClose, onAddDevice }: SyncSetupDialogProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { data: status } = useDeviceSyncStatus();
@@ -86,7 +91,8 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   /** The kit left the screen (expired, copy window over): the question says so. */
   const [kitAskedAgain, setKitAskedAgain] = useState(false);
   const [kitKept, setKitKept] = useState(false);
-  const [kitConfirmed, setKitConfirmed] = useState(false);
+  /** Sync is on: the done screen, or (the server's own kit beat this setup) the new-kit dialog. */
+  const [finished, setFinished] = useState<'done' | 'newKit' | null>(null);
   const [numberCopied, setNumberCopied] = useState(false);
   const [deviceName, setDeviceName] = useState(() => t(`setup.defaultName.${defaultDeviceKey()}`));
 
@@ -127,7 +133,6 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
     setKitPromptClosed(false);
     setKitAskedAgain(false);
     setKitKept(false);
-    setKitConfirmed(false);
   };
 
   const handleServer = async () => {
@@ -185,9 +190,9 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
 
   const handleFinish = async () => {
     try {
-      await finishSetup.mutateAsync({ deviceName: deviceName.trim() });
-      toast(t('setup.device.success'));
-      onClose();
+      const status = await finishSetup.mutateAsync({ deviceName: deviceName.trim() });
+      // No usable kit after setup (the server held another): make one at once
+      setFinished(afterSetup(status));
     } catch (error) {
       toastError(error);
     }
@@ -252,9 +257,9 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
       break;
     case 'kit':
       primary = {
-        label: t('setup.account.continue'),
+        label: t('setup.kit.continue'),
         onClick: leaveKitStep,
-        disabled: !kitConfirmed,
+        disabled: !kitKept,
       };
       break;
     default:
@@ -264,6 +269,32 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
         loading: finishSetup.isPending,
         disabled: deviceName.trim() === '',
       };
+  }
+
+  if (finished === 'newKit') return <NewKitDialog missing onClose={onClose} />;
+  if (finished === 'done') {
+    return (
+      <Dialog open onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>{t('setup.done.title')}</DialogTitle>
+            <DialogDescription>{t('setup.done.body')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose}>
+              {t('setup.done.later')}
+            </Button>
+            <Button
+              type="button"
+              className="h-auto min-h-control whitespace-normal py-1.5"
+              onClick={onAddDevice}
+            >
+              {t('setup.done.addDevice')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   return (
@@ -283,7 +314,7 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
                     : step === 'pay'
                       ? 'setup.pay.description'
                       : step === 'kit'
-                        ? 'setup.kit.description'
+                        ? 'setup.kit.stepTitle'
                         : 'setup.device.description'
               )}
             </DialogDescription>
@@ -367,25 +398,16 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
             {step === 'kit' &&
               (kit ? (
                 <>
+                  <p className="m-0 text-body text-ink-2">{t('setup.kit.intro')}</p>
                   <RecoveryKitPanel
                     kit={kit}
                     onKept={() => setKitKept(true)}
                     onPasswordRequired={dropKit}
                     onExpired={dropKit}
                   />
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="sync-kit-confirmed"
-                      checked={kitConfirmed}
-                      disabled={!kitKept}
-                      onCheckedChange={(checked) => setKitConfirmed(checked === true)}
-                    />
-                    <Label htmlFor="sync-kit-confirmed" className="text-body font-500">
-                      {t('setup.kit.confirm')}
-                    </Label>
-                  </div>
+                  <p className="m-0 text-micro font-500 text-ink-3">{t('setup.kit.shownOnce')}</p>
                   {!kitKept && (
-                    <p className="m-0 text-micro font-500 text-ink-4">{t('setup.kit.saveFirst')}</p>
+                    <p className="m-0 text-micro font-500 text-ink-4">{t('setup.kit.keepFirst')}</p>
                   )}
                 </>
               ) : (
@@ -418,6 +440,7 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
             </Button>
             <Button
               type="button"
+              className="h-auto min-h-control whitespace-normal py-1.5"
               onClick={primary.onClick}
               disabled={primary.disabled}
               loading={primary.loading}

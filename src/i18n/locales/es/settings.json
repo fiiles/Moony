@@ -273,8 +273,7 @@
     },
     "kit": {
       "title": "Kit de recuperación de sincronización",
-      "text": "Recupera tus datos sincronizados cuando se pierden todos los dispositivos. Uno solo para todos tus dispositivos.",
-      "show": "Mostrar"
+      "text": "Recupera tus datos sincronizados cuando se pierden todos los dispositivos. Uno solo para todos tus dispositivos."
     }
   }
 }

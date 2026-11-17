@@ -153,7 +153,8 @@
       "shownOnce": "Vi visar kitet bara nu. Om du förlorar det skapar du ett nytt i Inställningar.",
       "continue": "Jag har kitet, fortsätt",
       "keepFirst": "Skriv ut, spara eller kopiera kitet först.",
-      "saveFile": "Spara som fil …"
+      "saveFile": "Spara som fil …",
+      "saveShare": "Spara eller dela…"
     },
     "device": {
       "description": "Ge enheten ett namn så att du kan skilja den från de andra.",
@@ -307,7 +308,6 @@
     "description": "De här enheterna har tillgång till dina data.",
     "thisDevice": "Den här enheten",
     "joined": "Ansluten {{date}}",
-    "lastChange": "Senaste ändring synkroniserad {{when}}",
     "noChange": "Inga ändringar har synkroniserats ännu",
     "version": "Moony {{version}}",
     "held": "Ändringar hålls kvar",
@@ -322,8 +322,6 @@
       "android": "Android-telefon",
       "other": "Annan enhet"
     },
-    "quiet_one": "Inga ändringar från den här enheten på {{count}} dag",
-    "quiet_other": "Inga ändringar från den här enheten på {{count}} dagar",
     "activeAt": "aktiv {{when}}",
     "details": "Detaljer",
     "hideDetails": "Dölj detaljer",
@@ -361,7 +359,13 @@
     "underList": "Ta bort en borttappad, såld eller rensad enhet. Den ser inget nytt.",
     "unsupported": "En äldre version av Moony ställde in den här synkroniseringen, så enheter kan inte tas bort från den. Radera de synkroniserade data, ställ in synkroniseringen igen och anslut dina andra enheter.",
     "inactive_one": "Inaktiv i {{count}} dag",
-    "inactive_other": "Inaktiv i {{count}} dagar"
+    "inactive_other": "Inaktiv i {{count}} dagar",
+    "sheet": {
+      "platform": "Typ",
+      "activity": "Senast aktiv",
+      "version": "Version",
+      "joined": "Anslutning"
+    }
   },
   "pairing": {
     "addTitle": "Lägg till en enhet",
@@ -457,8 +461,6 @@
     "typeCode": "Skriv in en kod från återställningskitet",
     "addDevice": "Lägg till en enhet",
     "busy": "Låt Moony vara öppet tills det är klart.",
-    "saveText": "Spara som text",
-    "savePage": "Spara som sida",
     "turnOffBody": "Lokala data på den här telefonen finns kvar. Dina andra enheter fortsätter synkronisera. Du kan ansluta igen senare genom att para ihop med en annan enhet eller skriva in koden från ditt återställningskit; telefonens data ersätts då med de synkroniserade uppgifterna efter en säkerhetskopia.",
     "renewUnavailable": "Förnyelse är inte tillgänglig i telefonappen.",
     "scanTitle": "Skanna en kod",
@@ -508,10 +510,6 @@
       "saveCopy": "Spara en kopia i Filer"
     },
     "onThisDevice": "På den här enheten:"
-  },
-  "limits": {
-    "lostDevice": "En borttappad enhet eller ett borttappat återställningskit kan ännu inte stängas ute från dina synkroniserade data, och den som har ett kan redan nu läsa vad det innehåller. Om något försvinner raderar du de synkroniserade data och ställer in synkroniseringen på nytt med ett nytt kit; dina andra enheter måste då ansluta igen.",
-    "lostTitle": "Tappat en enhet eller återställningskitet?"
   },
   "codes": {
     "pairNotForSetup": "Det här är en parkopplingskod, inte en anslutningskod. Skanna den när du lägger till den här enheten i en synkronisering som redan körs.",

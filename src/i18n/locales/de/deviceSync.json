@@ -153,7 +153,8 @@
       "shownOnce": "Wir zeigen das Kit nur jetzt. Wenn Sie es verlieren, erstellen Sie in den Einstellungen ein neues.",
       "continue": "Ich habe das Kit, weiter",
       "keepFirst": "Drucken, speichern oder kopieren Sie das Kit zuerst.",
-      "saveFile": "Als Datei speichern …"
+      "saveFile": "Als Datei speichern …",
+      "saveShare": "Speichern oder teilen…"
     },
     "device": {
       "description": "Geben Sie diesem Gerät einen Namen, um es von Ihren anderen zu unterscheiden.",
@@ -307,7 +308,6 @@
     "description": "Diese Geräte haben Zugriff auf Ihre Daten.",
     "thisDevice": "Dieses Gerät",
     "joined": "Hinzugefügt am {{date}}",
-    "lastChange": "Letzte Änderung synchronisiert {{when}}",
     "noChange": "Noch keine Änderungen synchronisiert",
     "version": "Moony {{version}}",
     "held": "Änderungen zurückgehalten",
@@ -322,8 +322,6 @@
       "android": "Android-Smartphone",
       "other": "Anderes Gerät"
     },
-    "quiet_one": "Seit {{count}} Tag keine Änderungen von diesem Gerät",
-    "quiet_other": "Seit {{count}} Tagen keine Änderungen von diesem Gerät",
     "activeAt": "aktiv {{when}}",
     "details": "Details",
     "hideDetails": "Details ausblenden",
@@ -361,7 +359,13 @@
     "underList": "Entfernen Sie ein verlorenes, verkauftes oder gelöschtes Gerät. Es sieht nichts Neues mehr.",
     "unsupported": "Eine ältere Version von Moony hat diese Synchronisierung eingerichtet, daher lassen sich Geräte daraus nicht entfernen. Löschen Sie die synchronisierten Daten, richten Sie die Synchronisierung neu ein und verbinden Sie Ihre anderen Geräte.",
     "inactive_one": "{{count}} Tag inaktiv",
-    "inactive_other": "{{count}} Tage inaktiv"
+    "inactive_other": "{{count}} Tage inaktiv",
+    "sheet": {
+      "platform": "Typ",
+      "activity": "Zuletzt aktiv",
+      "version": "Version",
+      "joined": "Verbunden"
+    }
   },
   "pairing": {
     "addTitle": "Gerät hinzufügen",
@@ -457,8 +461,6 @@
     "typeCode": "Code des Wiederherstellungs-Kits eingeben",
     "addDevice": "Gerät hinzufügen",
     "busy": "Lassen Sie Moony geöffnet, bis der Vorgang abgeschlossen ist.",
-    "saveText": "Als Text speichern",
-    "savePage": "Als Seite speichern",
     "turnOffBody": "Die lokalen Daten auf diesem Telefon bleiben erhalten. Ihre anderen Geräte synchronisieren weiter. Sie können später wieder beitreten, indem Sie mit einem anderen Gerät koppeln oder den Code Ihres Wiederherstellungs-Kits eingeben; die Daten dieses Telefons werden dann nach einer Sicherung durch die synchronisierten Daten ersetzt.",
     "renewUnavailable": "Die Verlängerung ist in der Telefon-App nicht verfügbar.",
     "scanTitle": "Code scannen",
@@ -508,10 +510,6 @@
       "saveCopy": "Kopie in Dateien sichern"
     },
     "onThisDevice": "Auf diesem Gerät:"
-  },
-  "limits": {
-    "lostDevice": "Ein verlorenes Gerät oder ein verlorenes Wiederherstellungs-Kit kann noch nicht von Ihren synchronisierten Daten abgetrennt werden, und wer eines besitzt, kann schon jetzt lesen, was es enthält. Falls eines abhandenkommt, löschen Sie die synchronisierten Daten und richten Sie die Synchronisierung mit einem neuen Kit neu ein; Ihre anderen Geräte müssen dann erneut beitreten.",
-    "lostTitle": "Gerät oder Wiederherstellungs-Kit verloren?"
   },
   "codes": {
     "pairNotForSetup": "Das ist ein Kopplungscode, kein Verbindungscode. Scannen Sie ihn, wenn Sie dieses Gerät zu einer bereits laufenden Synchronisierung hinzufügen.",

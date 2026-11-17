@@ -24,7 +24,7 @@ import {
   useDeviceSyncFeatureState,
   useLeftoverSyncProfile,
   useDeviceSyncStatus,
-  useSyncDevices,
+  useSyncDeviceGroups,
 } from '@/hooks/use-device-sync';
 import { syncIsOn } from '@/utils/safe-copy';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
@@ -32,6 +32,7 @@ import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import { consentOf } from '@/utils/replace-impact';
 import { skipGapTexts } from '@/utils/device-sync-problem';
+import { removalAvailable } from '@/utils/sync-removal';
 import { useFormat } from '@/lib/use-format';
 import {
   IMPACT_CHANGED_KEY,
@@ -49,6 +50,8 @@ import { JoinChoiceSheet, type PhoneJoinMethod } from '@/mobile/components/sync/
 import { ReplaceConfirmSheet } from '@/mobile/components/sync/ReplaceConfirmSheet';
 import { RecoveryJoinSheet } from '@/mobile/components/sync/RecoveryJoinSheet';
 import { ChangeServerSheet } from '@/mobile/components/sync/ChangeServerSheet';
+import { DeviceSheet, FormerDevicesSheet } from '@/mobile/components/sync/DeviceSheet';
+import { RemoveDeviceSheet } from '@/mobile/components/sync/RemoveDeviceSheet';
 import { RenameDeviceSheet } from '@/mobile/components/sync/RenameDeviceSheet';
 import { ScanFlow } from '@/mobile/components/sync/ScanFlow';
 import { SetupSheet } from '@/mobile/components/sync/SetupSheet';
@@ -83,8 +86,8 @@ export default function SyncSection() {
   const feature = useDeviceSyncFeatureState();
   const { leftover, pending: leftoverPending, loading: leftoverLoading } = useLeftoverSyncProfile();
   const { data: status } = useDeviceSyncStatus();
-  const { data: devices } = useSyncDevices();
-  const { repairDevice, resyncDevice, turnOff, deleteSyncedData, skipMissingChange } =
+  const { data: groups } = useSyncDeviceGroups();
+  const { repairDevice, resyncDevice, turnOff, deleteSyncedData, skipMissingChange, keepDevice } =
     useDeviceSyncMutations();
   const { t: tc } = useTranslation('common');
   const { date, locale } = useFormat();
@@ -93,8 +96,6 @@ export default function SyncSection() {
     return when ? date(when, { dateStyle: 'long' }) : '';
   };
   const [open, setOpen] = useState<Open>(null);
-  /** The lost-device paragraph is unfolded. */
-  const [lostOpen, setLostOpen] = useState(false);
   /** The "What syncs" sheet is open. */
   const [whatSyncsOpen, setWhatSyncsOpen] = useState(false);
   const [flow, setFlow] = useState<Flow>(null);
@@ -103,6 +104,11 @@ export default function SyncSection() {
   /** The first-device setup sheet is up. */
   const [settingUp, setSettingUp] = useState(false);
   const [renaming, setRenaming] = useState<SyncDevice | null>(null);
+  /** The device whose sheet is open (by ID: the sheet reads the live list), and the folded group's sheet. */
+  const [viewing, setViewing] = useState<string | null>(null);
+  const [formerOpen, setFormerOpen] = useState(false);
+  /** The devices whose removal sheet is open. */
+  const [removing, setRemoving] = useState<string[] | null>(null);
   /** A repair that could not send every change: re-syncing is offered next to it. */
   const [offerResync, setOfferResync] = useState(false);
   /** A replace that kept its backup: the sheet that says where it is (and offers a copy in Files). */
@@ -238,6 +244,17 @@ export default function SyncSection() {
     );
   }
 
+  const viewedDevice =
+    [...(groups?.active ?? []), ...(groups?.check ?? [])].find((d) => d.id === viewing) ?? null;
+  // "Je moje" can find the row gone or no longer trusted: the list is re-read either way
+  const keep = async (device: SyncDevice) => {
+    try {
+      await keepDevice.mutateAsync(device.id);
+    } catch {
+      toast.error(t('devices.check.keepFailed'));
+    }
+  };
+
   const syncOn = syncIsOn(feature.enabled, status);
   const pending = status?.pendingChanges ?? 0;
   const deleteAfterwards = t(
@@ -305,18 +322,20 @@ export default function SyncSection() {
           />
 
           <SectionHead title={t('devices.title')} />
-          <SyncDeviceRows devices={devices ?? []} onRename={setRenaming} />
-          <button
-            type="button"
-            aria-expanded={lostOpen}
-            className="mx-0.5 mb-3.5 mt-0 block cursor-pointer border-0 bg-transparent p-0 text-left text-m-sub text-ink-3 underline"
-            onClick={() => setLostOpen((value) => !value)}
+          <p className="mx-0.5 mb-2.5 mt-0 text-m-sub text-ink-3">{t('devices.description')}</p>
+          <SyncDeviceRows
+            devices={[...(groups?.active ?? []), ...(groups?.check ?? [])]}
+            formerCount={groups?.former.length ?? 0}
+            onRename={setRenaming}
+            onOpen={(device) => setViewing(device.id)}
+            onOpenFormer={() => setFormerOpen(true)}
+          />
+          <p
+            className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3"
+            data-testid={status.removalSupported ? 'sync-limits' : 'sync-unsupported'}
           >
-            {t('limits.lostTitle')}
-          </button>
-          {lostOpen && (
-            <p className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3">{t('limits.lostDevice')}</p>
-          )}
+            {t(status.removalSupported ? 'devices.underList' : 'devices.unsupported')}
+          </p>
           <EntityRows>
             <SettingsRow
               icon={Plus}
@@ -392,6 +411,26 @@ export default function SyncSection() {
           if (!next) setRenaming(null);
         }}
       />
+      <DeviceSheet
+        device={viewedDevice}
+        removalAvailable={removalAvailable(status)}
+        keeping={keepDevice.isPending}
+        onOpenChange={(next) => {
+          if (!next) setViewing(null);
+        }}
+        onKeep={(device) => void keep(device)}
+        onRemove={(device) => {
+          setViewing(null);
+          setRemoving([device.id]);
+        }}
+      />
+      <FormerDevicesSheet
+        devices={groups?.former ?? []}
+        open={formerOpen}
+        onOpenChange={setFormerOpen}
+      />
+      {/* Mounted only while open: unmounting forgets the typed password and a new kit */}
+      {removing && <RemoveDeviceSheet deviceIds={removing} onClose={() => setRemoving(null)} />}
       <SyncBackupSavedSheet saved={saved} onClose={() => setSaved(null)} />
       <ConfirmSheet
         open={confirmingCancel}

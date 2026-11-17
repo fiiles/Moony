@@ -149,7 +149,8 @@
       "shownOnce": "恢复包只在此刻显示。如果丢失，请在设置中新建一个。",
       "continue": "我已保存恢复包，继续",
       "keepFirst": "请先打印、保存或复制恢复包。",
-      "saveFile": "另存为文件…"
+      "saveFile": "另存为文件…",
+      "saveShare": "保存或分享…"
     },
     "device": {
       "description": "给这台设备起个名字，以便与其他设备区分。",
@@ -297,7 +298,6 @@
     "description": "这些设备可以访问您的数据。",
     "thisDevice": "此设备",
     "joined": "加入于 {{date}}",
-    "lastChange": "最近一次更改同步于 {{when}}",
     "noChange": "尚未同步任何更改",
     "version": "Moony {{version}}",
     "held": "更改被暂扣",
@@ -312,7 +312,6 @@
       "android": "Android 手机",
       "other": "其他设备"
     },
-    "quiet_other": "此设备已有 {{count}} 天没有更改",
     "activeAt": "活跃于 {{when}}",
     "details": "详情",
     "hideDetails": "隐藏详情",
@@ -349,7 +348,13 @@
     },
     "underList": "请移除丢失、出售或已清除的设备。它将看不到任何新内容。",
     "unsupported": "此同步由旧版 Moony 设置，因此无法从中移除设备。请删除已同步的数据，重新设置同步，并连接您的其他设备。",
-    "inactive_other": "已 {{count}} 天未活跃"
+    "inactive_other": "已 {{count}} 天未活跃",
+    "sheet": {
+      "platform": "类型",
+      "activity": "最近活动",
+      "version": "版本",
+      "joined": "连接"
+    }
   },
   "pairing": {
     "addTitle": "添加设备",
@@ -444,8 +449,6 @@
     "typeCode": "输入恢复包代码",
     "addDevice": "添加设备",
     "busy": "请保持 Moony 打开，直到完成。",
-    "saveText": "另存为文本",
-    "savePage": "另存为页面",
     "turnOffBody": "这部手机上的本地数据会保留。您的其他设备继续同步。以后您可以通过与另一台设备配对或输入恢复包代码再次加入；这部手机的数据随后会在备份后被同步的数据替换。",
     "renewUnavailable": "手机应用中无法续订。",
     "scanTitle": "扫描代码",
@@ -495,10 +498,6 @@
       "saveCopy": "将副本保存到“文件”"
     },
     "onThisDevice": "此设备上："
-  },
-  "limits": {
-    "lostDevice": "目前还无法让丢失的设备或恢复包与您的同步数据断开，而持有它的人现在就能读取其中的内容。如果有设备或恢复包丢失，请删除同步数据，并使用新的恢复包重新设置同步；您的其他设备随后需要重新加入。",
-    "lostTitle": "丢失了设备或恢复包？"
   },
   "codes": {
     "pairNotForSetup": "这是配对码，不是连接码。将此设备添加到已在运行的同步时，请扫描它。",

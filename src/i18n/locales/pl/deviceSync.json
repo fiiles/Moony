@@ -161,7 +161,8 @@
       "shownOnce": "Zestaw pokazujemy tylko teraz. Jeśli go zgubisz, utworzysz nowy w Ustawieniach.",
       "continue": "Mam zestaw, dalej",
       "keepFirst": "Najpierw wydrukuj, zapisz lub skopiuj zestaw.",
-      "saveFile": "Zapisz jako plik…"
+      "saveFile": "Zapisz jako plik…",
+      "saveShare": "Zapisz lub udostępnij…"
     },
     "device": {
       "description": "Nadaj temu urządzeniu nazwę, aby odróżnić je od innych.",
@@ -327,7 +328,6 @@
     "description": "Te urządzenia mają dostęp do Twoich danych.",
     "thisDevice": "To urządzenie",
     "joined": "Dołączono {{date}}",
-    "lastChange": "Ostatnia zmiana zsynchronizowana {{when}}",
     "noChange": "Nie zsynchronizowano jeszcze żadnych zmian",
     "version": "Moony {{version}}",
     "held": "Zmiany wstrzymane",
@@ -342,10 +342,6 @@
       "android": "Telefon z Androidem",
       "other": "Inne urządzenie"
     },
-    "quiet_one": "Brak zmian z tego urządzenia od {{count}} dnia",
-    "quiet_few": "Brak zmian z tego urządzenia od {{count}} dni",
-    "quiet_many": "Brak zmian z tego urządzenia od {{count}} dni",
-    "quiet_other": "Brak zmian z tego urządzenia od {{count}} dnia",
     "activeAt": "aktywne {{when}}",
     "details": "Szczegóły",
     "hideDetails": "Ukryj szczegóły",
@@ -385,7 +381,13 @@
     "inactive_one": "Nieaktywne {{count}} dzień",
     "inactive_few": "Nieaktywne {{count}} dni",
     "inactive_many": "Nieaktywne {{count}} dni",
-    "inactive_other": "Nieaktywne {{count}} dnia"
+    "inactive_other": "Nieaktywne {{count}} dnia",
+    "sheet": {
+      "platform": "Typ",
+      "activity": "Ostatnia aktywność",
+      "version": "Wersja",
+      "joined": "Połączenie"
+    }
   },
   "pairing": {
     "addTitle": "Dodaj urządzenie",
@@ -483,8 +485,6 @@
     "typeCode": "Wpisz kod zestawu odzyskiwania",
     "addDevice": "Dodaj urządzenie",
     "busy": "Nie zamykaj Moony, dopóki to się nie skończy.",
-    "saveText": "Zapisz jako tekst",
-    "savePage": "Zapisz jako stronę",
     "turnOffBody": "Dane lokalne na tym telefonie zostają. Pozostałe urządzenia nadal się synchronizują. Później możesz dołączyć ponownie, parując z innym urządzeniem lub wpisując kod zestawu odzyskiwania; dane tego telefonu zostaną wtedy po utworzeniu kopii zapasowej zastąpione danymi zsynchronizowanymi.",
     "renewUnavailable": "Odnowienie nie jest dostępne w aplikacji na telefon.",
     "scanTitle": "Skanuj kod",
@@ -534,10 +534,6 @@
       "saveCopy": "Zapisz kopię w Plikach"
     },
     "onThisDevice": "Na tym urządzeniu:"
-  },
-  "limits": {
-    "lostDevice": "Zgubionego urządzenia ani Zestawu odzyskiwania nie można jeszcze odciąć od zsynchronizowanych danych, a kto je ma, może już teraz odczytać to, co zawierają. Jeśli coś zaginie, usuń zsynchronizowane dane i skonfiguruj synchronizację od nowa z nowym Zestawem; pozostałe urządzenia będą musiały wtedy dołączyć ponownie.",
-    "lostTitle": "Zgubiono urządzenie lub Zestaw odzyskiwania?"
   },
   "codes": {
     "pairNotForSetup": "To jest kod parowania, a nie kod połączenia. Zeskanuj go, dodając to urządzenie do już działającej synchronizacji.",

@@ -157,7 +157,8 @@
       "shownOnce": "Mostramos el kit solo ahora. Si lo pierdes, crea uno nuevo en Ajustes.",
       "continue": "Tengo el kit, continuar",
       "keepFirst": "Primero imprime, guarda o copia el kit.",
-      "saveFile": "Guardar como archivo…"
+      "saveFile": "Guardar como archivo…",
+      "saveShare": "Guardar o compartir…"
     },
     "device": {
       "description": "Dale un nombre a este dispositivo para distinguirlo de los demás.",
@@ -317,7 +318,6 @@
     "description": "Estos dispositivos pueden acceder a tus datos.",
     "thisDevice": "Este dispositivo",
     "joined": "Se unió el {{date}}",
-    "lastChange": "Último cambio sincronizado {{when}}",
     "noChange": "Aún no se ha sincronizado ningún cambio",
     "version": "Moony {{version}}",
     "held": "Cambios retenidos",
@@ -332,9 +332,6 @@
       "android": "Teléfono Android",
       "other": "Otro dispositivo"
     },
-    "quiet_one": "Sin cambios de este dispositivo desde hace {{count}} día",
-    "quiet_many": "Sin cambios de este dispositivo desde hace {{count}} días",
-    "quiet_other": "Sin cambios de este dispositivo desde hace {{count}} días",
     "activeAt": "activo {{when}}",
     "details": "Detalles",
     "hideDetails": "Ocultar detalles",
@@ -373,7 +370,13 @@
     "unsupported": "Una versión anterior de Moony configuró esta sincronización, por eso no se pueden quitar dispositivos. Borra los datos sincronizados, configura la sincronización de nuevo y conecta tus otros dispositivos.",
     "inactive_one": "Inactivo {{count}} día",
     "inactive_many": "Inactivo {{count}} días",
-    "inactive_other": "Inactivo {{count}} días"
+    "inactive_other": "Inactivo {{count}} días",
+    "sheet": {
+      "platform": "Tipo",
+      "activity": "Última actividad",
+      "version": "Versión",
+      "joined": "Conexión"
+    }
   },
   "pairing": {
     "addTitle": "Añadir un dispositivo",
@@ -470,8 +473,6 @@
     "typeCode": "Escribir un código del kit de recuperación",
     "addDevice": "Añadir un dispositivo",
     "busy": "Mantén Moony abierto hasta que termine.",
-    "saveText": "Guardar como texto",
-    "savePage": "Guardar como página",
     "turnOffBody": "Los datos locales de este teléfono se conservan. Tus demás dispositivos siguen sincronizando. Más adelante puedes volver a unirte vinculando otro dispositivo o escribiendo el código de tu kit de recuperación; los datos de este teléfono se sustituyen entonces por los sincronizados tras una copia de seguridad.",
     "renewUnavailable": "La renovación no está disponible en la app del teléfono.",
     "scanTitle": "Escanear un código",
@@ -521,10 +522,6 @@
       "saveCopy": "Guardar una copia en Archivos"
     },
     "onThisDevice": "En este dispositivo:"
-  },
-  "limits": {
-    "lostDevice": "Todavía no se puede cortar el acceso a tus datos sincronizados de un dispositivo o un Kit de recuperación perdido, y quien tenga uno ya puede leer lo que contiene. Si alguno desaparece, elimina los datos sincronizados y vuelve a configurar la sincronización con un Kit nuevo; tus otros dispositivos tendrán que unirse de nuevo.",
-    "lostTitle": "¿Has perdido un dispositivo o el Kit de recuperación?"
   },
   "codes": {
     "pairNotForSetup": "Este es un código de emparejamiento, no un código de conexión. Escanéalo al añadir este dispositivo a una sincronización que ya está activa.",

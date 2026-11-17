@@ -1864,3 +1864,26 @@ R-99. **Deviations, Tasks 28–29.** (a) `turnOff.noCutOff` stays as a key (the 
      (e) The Task 28 commit carries no As built entry; this one does. (f) Not verified in the built app: the
      typed join between two real computers, the holder's finish across the real flip, the dialogs at
      1080 px with de and ja, the unlock-time dialog.
+R-100. **Phone device list, device sheet, removal sheet** (Task 30). `SyncDeviceRows` reads the groups
+     (`useSyncDeviceGroups`): active (this device first) then "Zkontrolujte" rows with `RowBadge`s ("Zkontrolujte",
+     "Odebírá se…", `devices.inactive`), "(kopie)" through `deviceLabelKey`; this device's row renames it, another
+     device's row opens `DeviceSheet` (label-value rows: type, last active, Moony version, how it joined; the
+     check reason with `keepNote`; "Je moje" for a late vouch; "Odebrat zařízení" = `remove.confirm`, a danger
+     text button, hidden while `removalAvailable` is false). The sheet is addressed by device ID and reads the
+     live list, so "Je moje" updates it in place. Left or removed devices are one folded row
+     (`devices.formerGroup`) opening `FormerDevicesSheet`. Under the list: `devices.underList`, or
+     `devices.unsupported` when `removalSupported` is false. `RemoveDeviceSheet` mirrors `RemoveDeviceDialog`
+     (plan, "Odebírám…", toast or Kit step; `newKit`, `onRemoved`, several names, `PLAN_CHANGED_KEY` reload,
+     gcTime 0 and the password in a ref through `removeDevicesWithPassword`); "Odebrat také" ticks are 44 pt
+     label rows (`AlsoRemoveList`), the password field is `PasswordField` (the `SyncPasswordSheet` pattern, 16 px
+     floor). The Kit step is `NewKitStep`, a sheet nothing dismisses but "Sadu mám, hotovo" (or "Zavřít" once
+     `KitBody`'s lifetime or a password request ends it).
+R-101. **Deviations, Task 30.** (a) `KitBody` (changed here, not in Task 31, because the removal's Kit step shows
+     it): one "Uložit nebo sdílet…" button (`setup.kit.saveShare`, iOS only) saves the Kit's page through the
+     Files picker, as §6.2 says for the phone; the "as text" button (`phone.saveText`, `phone.savePage`) and the
+     `limits.lostDevice` paragraph are gone. `recoveryKitText` and `SYNC_KIT_TEXT_FILE` stay (tested, unused by
+     the UI). (b) Dropped keys: `devices.quiet*`, `devices.lastChange`, the whole `limits.*`, `phone.saveText`,
+     `phone.savePage`; `quietDays`/`QUIET_AFTER_DAYS` and their test are gone. (c) New keys: `devices.sheet.
+     {platform,activity,version,joined}`, `setup.kit.saveShare`. (d) Not ticking a removed device's descendants
+     by default (the spec is silent; same as the desktop). (e) Not verified on a device: the sheets at 320 pt with
+     the largest text size, dark mode, the kit step on iOS.

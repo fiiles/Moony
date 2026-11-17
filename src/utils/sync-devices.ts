@@ -15,25 +15,6 @@ export function defaultDeviceKey(): 'macos' | 'windows' | 'linux' {
   return 'macos';
 }
 
-/**
- * A device not heard from for more days than this is marked as quiet in the phone's device list.
- * The desktop list reads the backend's `inactiveDays` instead; the phone does so with Task 30,
- * which then removes this.
- */
-export const QUIET_AFTER_DAYS = 30;
-
-const SECONDS_PER_DAY = 86_400;
-
-/**
- * Whole days since a device was last heard from (both unix seconds), when that is more than
- * QUIET_AFTER_DAYS; null otherwise or when unknown.
- */
-export function quietDays(lastActiveAt: number | null, now: number): number | null {
-  if (lastActiveAt === null) return null;
-  const days = Math.floor((now - lastActiveAt) / SECONDS_PER_DAY);
-  return days > QUIET_AFTER_DAYS ? days : null;
-}
-
 /** The device list in its three groups, each in the order the backend gave (this device first among the active). */
 export interface DeviceGroups {
   active: SyncDevice[];

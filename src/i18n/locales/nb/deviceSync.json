@@ -153,7 +153,8 @@
       "shownOnce": "Vi viser settet bare nå. Mister du det, lager du et nytt i Innstillinger.",
       "continue": "Jeg har settet, fortsett",
       "keepFirst": "Skriv ut, lagre eller kopier settet først.",
-      "saveFile": "Lagre som fil …"
+      "saveFile": "Lagre som fil …",
+      "saveShare": "Lagre eller del…"
     },
     "device": {
       "description": "Gi enheten et navn, så du kan skille den fra de andre.",
@@ -307,7 +308,6 @@
     "description": "Disse enhetene har tilgang til dataene dine.",
     "thisDevice": "Denne enheten",
     "joined": "Lagt til {{date}}",
-    "lastChange": "Siste endring synkronisert {{when}}",
     "noChange": "Ingen endringer synkronisert ennå",
     "version": "Moony {{version}}",
     "held": "Endringer holdt tilbake",
@@ -322,8 +322,6 @@
       "android": "Android-telefon",
       "other": "Annen enhet"
     },
-    "quiet_one": "Ingen endringer fra denne enheten på {{count}} dag",
-    "quiet_other": "Ingen endringer fra denne enheten på {{count}} dager",
     "activeAt": "aktiv {{when}}",
     "details": "Detaljer",
     "hideDetails": "Skjul detaljer",
@@ -361,7 +359,13 @@
     "underList": "Fjern en enhet som er tapt, solgt eller slettet. Den ser ingenting nytt.",
     "unsupported": "En eldre versjon av Moony satte opp denne synkroniseringen, så enheter kan ikke fjernes fra den. Slett de synkroniserte dataene, sett opp synkronisering på nytt og koble til de andre enhetene dine.",
     "inactive_one": "Inaktiv i {{count}} dag",
-    "inactive_other": "Inaktiv i {{count}} dager"
+    "inactive_other": "Inaktiv i {{count}} dager",
+    "sheet": {
+      "platform": "Type",
+      "activity": "Sist aktiv",
+      "version": "Versjon",
+      "joined": "Tilkobling"
+    }
   },
   "pairing": {
     "addTitle": "Legg til en enhet",
@@ -457,8 +461,6 @@
     "typeCode": "Skriv inn en kode fra gjenopprettingssettet",
     "addDevice": "Legg til en enhet",
     "busy": "La Moony være åpen til dette er ferdig.",
-    "saveText": "Lagre som tekst",
-    "savePage": "Lagre som side",
     "turnOffBody": "Lokale data på denne telefonen blir værende. De andre enhetene dine synkroniserer videre. Du kan bli med igjen senere ved å koble til en annen enhet eller skrive inn koden fra gjenopprettingssettet ditt; dataene på denne telefonen erstattes da med de synkroniserte dataene etter en sikkerhetskopi.",
     "renewUnavailable": "Fornyelse er ikke tilgjengelig i telefonappen.",
     "scanTitle": "Skann en kode",
@@ -508,10 +510,6 @@
       "saveCopy": "Lagre en kopi i Filer"
     },
     "onThisDevice": "På denne enheten:"
-  },
-  "limits": {
-    "lostDevice": "En mistet enhet eller et mistet gjenopprettingssett kan ikke stenges ute fra de synkroniserte dataene dine ennå, og alle som har ett, kan allerede lese det det inneholder. Hvis noe forsvinner, sletter du de synkroniserte dataene og setter opp synkroniseringen på nytt med et nytt sett; de andre enhetene dine må da koble seg til igjen.",
-    "lostTitle": "Mistet en enhet eller gjenopprettingssettet?"
   },
   "codes": {
     "pairNotForSetup": "Dette er en paringskode, ikke en tilkoblingskode. Skann den når du legger denne enheten til en synkronisering som allerede kjører.",

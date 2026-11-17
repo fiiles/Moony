@@ -153,7 +153,8 @@
       "shownOnce": "We show the kit only now. If you lose it, make a new one in Settings.",
       "continue": "I have the kit, continue",
       "keepFirst": "First print, save or copy the kit.",
-      "saveFile": "Save as file…"
+      "saveFile": "Save as file…",
+      "saveShare": "Save or share…"
     },
     "device": {
       "description": "Name this device so you can tell it apart from your others.",
@@ -307,7 +308,6 @@
     "description": "These devices can access your data.",
     "thisDevice": "This device",
     "joined": "Joined {{date}}",
-    "lastChange": "Last change synced {{when}}",
     "noChange": "No changes synced yet",
     "version": "Moony {{version}}",
     "held": "Changes held",
@@ -322,8 +322,6 @@
       "android": "Android phone",
       "other": "Other device"
     },
-    "quiet_one": "No changes from this device in {{count}} day",
-    "quiet_other": "No changes from this device in {{count}} days",
     "activeAt": "active {{when}}",
     "details": "Details",
     "hideDetails": "Hide details",
@@ -361,7 +359,13 @@
     "underList": "Remove a lost, sold or wiped device. It won't see anything new.",
     "unsupported": "An older version of Moony set up this sync, so devices can't be removed from it. Delete the synced data, set sync up again and connect your other devices.",
     "inactive_one": "Inactive for {{count}} day",
-    "inactive_other": "Inactive for {{count}} days"
+    "inactive_other": "Inactive for {{count}} days",
+    "sheet": {
+      "platform": "Type",
+      "activity": "Last active",
+      "version": "Version",
+      "joined": "Joined"
+    }
   },
   "pairing": {
     "addTitle": "Add a device",
@@ -457,8 +461,6 @@
     "typeCode": "Type a Recovery Kit code",
     "addDevice": "Add a device",
     "busy": "Keep Moony open until it is done.",
-    "saveText": "Save as text",
-    "savePage": "Save as page",
     "turnOffBody": "Local data on this phone stays. Your other devices keep syncing. To join again later, pair with another device or type your Recovery Kit code; this phone's data is then replaced by the synced data after a backup.",
     "renewUnavailable": "Renewing isn't available in the phone app.",
     "scanTitle": "Scan a code",
@@ -508,10 +510,6 @@
       "saveCopy": "Save a copy to Files"
     },
     "onThisDevice": "On this device:"
-  },
-  "limits": {
-    "lostDevice": "A lost device or Recovery Kit can't be cut off from your synced data yet, and anyone who has one can already read what it holds. If one goes missing, delete the synced data and set sync up again with a new Kit; your other devices will then need to join again.",
-    "lostTitle": "Lost a device or the Recovery Kit?"
   },
   "codes": {
     "pairNotForSetup": "This is a pairing code, not a connection code. Scan it when you add this device to sync that is already running.",

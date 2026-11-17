@@ -433,7 +433,9 @@
       "title": "Auf diesem Telefon wurde eine Sicherung gespeichert",
       "where": "Sie finden sie unter Einstellungen → Sicherung und Übertragung. Moony löscht sie nie, nur Sie können das.",
       "filesHint": "Die Daten von Moony sind von den eigenen Sicherungen Ihres Telefons ausgenommen. Speichern Sie eine Kopie in Dateien, wenn Sie diese Sicherung auch außerhalb von Moony erreichen möchten.",
-      "saveCopy": "Kopie in Dateien sichern"
+      "filesHintAndroid": "Die Daten von Moony sind von den eigenen Sicherungen Ihres Telefons ausgenommen. Speichern Sie eine Kopie, wenn Sie diese Sicherung auch außerhalb von Moony erreichen möchten.",
+      "saveCopy": "Kopie in Dateien sichern",
+      "saveCopyAndroid": "Kopie sichern"
     },
     "onThisDevice": "Auf diesem Gerät:"
   },

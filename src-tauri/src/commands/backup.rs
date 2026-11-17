@@ -46,12 +46,61 @@ pub async fn create_backup(
     })
 }
 
-/// Phones only: the app's Documents folder, where the system's Files export looks for the file.
+/// Phones only: where an export waits for the save picker. iOS: the app's Documents folder, where
+/// the Files export looks for the file. Android: `exports` in the app's private cache folder,
+/// created when missing; there the save picker hands back the URI of an empty document and
+/// `write_staged_export` copies the staged file into it (Tauri's Documents on Android is on shared
+/// external storage, no place for a recovery key's plain text).
 #[cfg(mobile)]
-pub(super) fn documents_dir(app: &AppHandle) -> Result<PathBuf> {
+pub(crate) fn staging_dir(app: &AppHandle) -> Result<PathBuf> {
+    #[cfg(target_os = "android")]
+    {
+        let dir = app
+            .path()
+            .app_cache_dir()
+            .map_err(|e| AppError::Internal(format!("Failed to get cache dir: {e}")))?
+            .join("exports");
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| AppError::Internal(format!("Failed to create the exports folder: {e}")))?;
+        Ok(dir)
+    }
+    #[cfg(not(target_os = "android"))]
     app.path()
         .document_dir()
         .map_err(|e| AppError::Internal(format!("Failed to get documents dir: {e}")))
+}
+
+/// Phones only. Android: copy a staged export (`stage_backup_export`, `stage_text_export`,
+/// `stage_data_export`, `stage_sync_backup_export`) into the document the save picker created,
+/// `uri` (a `content://` URI). The caller then finishes or discards the staged file as on iOS.
+/// Refuses any path that is not a staged export, and is refused on iOS, whose picker exports the
+/// staged file itself.
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn write_staged_export(app: AppHandle, path: String, uri: String) -> Result<()> {
+    let path = PathBuf::from(path);
+    let staging = staging_dir(&app)?;
+    if !(backup::is_staged_export_path(&staging, &path)
+        || backup::is_staged_text_export_path(&staging, &path))
+        || !uri.starts_with("content://")
+    {
+        return Err(AppError::Validation(
+            "validation.backupExportInvalid".into(),
+        ));
+    }
+    #[cfg(target_os = "android")]
+    {
+        use moony_keychain::KeychainExt;
+        let app = app.clone();
+        tauri::async_runtime::spawn_blocking(move || app.keychain().copy_to_uri(&path, &uri))
+            .await
+            .map_err(|e| AppError::Internal(format!("The export did not finish: {e}")))?
+            .map_err(|e| AppError::Internal(format!("Failed to write the export: {e}")))
+    }
+    #[cfg(not(target_os = "android"))]
+    Err(AppError::Validation(
+        "validation.backupExportInvalid".into(),
+    ))
 }
 
 /// Phones only: a staged path as the string the webview hands back to the finishing command.
@@ -79,7 +128,7 @@ pub async fn stage_backup_export(
         ));
     }
     let dir = data_dir(&app)?;
-    let dest = documents_dir(&app)?.join(&file_name);
+    let dest = staging_dir(&app)?.join(&file_name);
     if let Err(e) = db.with_conn(|conn| backup::create_backup(conn, &dir, &dest, APP_VERSION)) {
         if let Err(removal) = backup::remove_staged_file(&dest) {
             log::warn!("[BACKUP] Could not remove the partial staged backup: {removal}");
@@ -104,7 +153,7 @@ pub async fn finish_backup_export(
     exported: bool,
 ) -> Result<()> {
     let path = PathBuf::from(path);
-    if !backup::is_staged_export_path(&documents_dir(&app)?, &path) {
+    if !backup::is_staged_export_path(&staging_dir(&app)?, &path) {
         return Err(AppError::Validation(
             "validation.backupExportInvalid".into(),
         ));
@@ -132,7 +181,7 @@ pub async fn stage_text_export(
     file_name: String,
     contents: String,
 ) -> Result<String> {
-    let dest = backup::write_text_export(&documents_dir(&app)?, &file_name, &contents)?;
+    let dest = backup::write_text_export(&staging_dir(&app)?, &file_name, &contents)?;
     // The recovery key's text is plain: keep it out of a device backup while it waits.
     crate::commands::device_backup::exclude_staged_file(&app, &dest).await;
     path_string(&dest)
@@ -144,7 +193,7 @@ pub async fn stage_text_export(
 #[tauri::command]
 pub async fn discard_text_export(app: AppHandle, path: String) -> Result<()> {
     let path = PathBuf::from(path);
-    if !backup::is_staged_text_export_path(&documents_dir(&app)?, &path) {
+    if !backup::is_staged_text_export_path(&staging_dir(&app)?, &path) {
         return Err(AppError::Validation(
             "validation.backupExportInvalid".into(),
         ));
@@ -160,7 +209,7 @@ pub async fn discard_text_export(app: AppHandle, path: String) -> Result<()> {
 #[cfg(mobile)]
 #[tauri::command]
 pub async fn stage_data_export(app: AppHandle, db: State<'_, Database>) -> Result<ExportSummary> {
-    let dest = documents_dir(&app)?.join(backup::DATA_EXPORT_FILE_NAME);
+    let dest = staging_dir(&app)?.join(backup::DATA_EXPORT_FILE_NAME);
     let summary = match db.with_conn(|conn| backup::export_all_data(conn, &dest, APP_VERSION)) {
         Ok(summary) => summary,
         Err(e) => {

@@ -135,7 +135,13 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   @Command
   fun show(invoke: Invoke) {
     val notification = invoke.parseArgs(Notification::class.java)
+    // MOONY PATCH: nothing upstream sets `sourceJson`, which the storage writes and a tap hands
+    // back (with `extra`); keep the call's own JSON there (MOONY-PATCH.md).
+    notification.sourceJson = invoke.getRawArgs()
     val id = manager.schedule(notification)
+    // MOONY PATCH: store a scheduled notification as `batch` does, so `getPending`, `cancel` with
+    // no ids (cancelAll) and the reboot restore receiver know about it (MOONY-PATCH.md).
+    notificationStorage.appendNotifications(listOf(notification))
 
     invoke.resolveObject(id)
   }

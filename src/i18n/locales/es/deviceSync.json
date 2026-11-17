@@ -445,7 +445,9 @@
       "title": "Se guardó una copia de seguridad en este teléfono",
       "where": "Aparece en Ajustes → Copia de seguridad y traslado. Moony nunca la elimina; solo tú puedes hacerlo.",
       "filesHint": "Los datos de Moony no se incluyen en las copias de seguridad propias de tu teléfono. Guarda una copia en Archivos si quieres acceder a esta copia fuera de Moony.",
-      "saveCopy": "Guardar una copia en Archivos"
+      "filesHintAndroid": "Los datos de Moony no se incluyen en las copias de seguridad propias de tu teléfono. Guarda una copia si quieres acceder a esta copia fuera de Moony.",
+      "saveCopy": "Guardar una copia en Archivos",
+      "saveCopyAndroid": "Guardar una copia"
     },
     "onThisDevice": "En este dispositivo:"
   },

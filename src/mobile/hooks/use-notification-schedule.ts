@@ -24,22 +24,19 @@ import { renderTextRef } from '@/mobile/lib/settings-summary';
 import { syncIsOn } from '@/utils/safe-copy';
 
 /**
- * Whether this build schedules notifications: iOS only. A desktop shell (the phone UI opened there
- * for development) would show every "scheduled" notification at once. Android is left out on
- * purpose: its plugin reads the schedule's date as UTC (Jackson with the date pattern and no time
- * zone), while `scheduleDateString` writes local digits, which is what iOS expects, so a
- * notification would fire hours off there. Android needs its own UTC encoding of the date and an
- * Android build to verify it on; that is a follow-up.
+ * Whether this build schedules notifications: the phones. A desktop shell (the phone UI opened
+ * there for development) would show every "scheduled" notification at once. The two plugins read
+ * the schedule's date differently, which `scheduleDateString` takes care of.
  */
 function schedulesOnThisDevice(): boolean {
   const platform: string = import.meta.env.TAURI_ENV_PLATFORM ?? '';
-  return platform === 'ios';
+  return platform === 'ios' || platform.startsWith('android');
 }
 
 /**
- * Hands one notification to the system for `at`, a local wall-clock time. The plugin reads the
- * schedule's date as local digits with a literal `Z` (`scheduleDateString`), which its `Schedule.at`
- * helper cannot express: it takes a `Date`, whose JSON is UTC. The plugin does not wait for the
+ * Hands one notification to the system for `at`, a local wall-clock time. On iOS the plugin reads
+ * the schedule's date as local digits with a literal `Z`, on Android as UTC (`scheduleDateString`
+ * writes either), which its `Schedule.at` helper cannot tell apart. The plugin does not wait for the
  * system (`sendNotification` returns at once), so a refusal such as a time that has passed does not
  * come back here; the plan leaves those out. `path`, the screen a tap opens, rides in `extra`,
  * which the plugin hands back on a tap (on iOS through the vendored patch).
@@ -51,19 +48,27 @@ export function scheduleNotification(item: {
   at: LocalTime;
   path?: string;
 }): void {
+  const platform: string = import.meta.env.TAURI_ENV_PLATFORM ?? '';
   sendNotification({
     id: item.id,
     title: item.title,
     body: item.body,
+    // Android's status bar icon, a drawable of the app (`gen/android/.../ic_stat_moony.xml`); the
+    // plugin's own config cannot name one (its Rust side takes no config). iOS uses the app icon.
+    ...(platform.startsWith('android') ? { icon: 'ic_stat_moony' } : {}),
     ...(item.path ? { extra: { path: item.path } } : {}),
     schedule: {
-      at: { date: scheduleDateString(item.at), repeating: false, allowWhileIdle: false },
+      at: {
+        date: scheduleDateString(item.at, platform),
+        repeating: false,
+        allowWhileIdle: false,
+      },
     } as unknown as Schedule,
   });
 }
 
 /**
- * Cancels every notification the app has scheduled, best effort: iOS only (`schedulesOnThisDevice`)
+ * Cancels every notification the app has scheduled, best effort: phones only (`schedulesOnThisDevice`)
  * and never a failure. The pending notifications carry the milestone titles of the profile that
  * is being deleted or replaced, so they must not outlive it; the restored profile is planned again
  * at its next unlock. A plugin that refuses changes nothing for the caller, which reloads next.

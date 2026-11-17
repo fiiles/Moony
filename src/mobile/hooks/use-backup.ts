@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { save } from '@tauri-apps/plugin-dialog';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
@@ -9,6 +8,7 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { todayIsoUtc } from '@/utils/period';
 import { BACKUP_FILE_FILTER, useRestoreBackup } from '@/mobile/hooks/use-restore-backup';
 import { backupFileName, exportsOnThisDevice, type ExportOutcome } from '@/mobile/lib/export-file';
+import { saveStagedExport } from '@/mobile/lib/picked-files';
 import type { BackupInspection } from '@shared/schema';
 
 /** What the person is waiting for: the archive being written and exported, or a backup being read or restored. */
@@ -67,7 +67,10 @@ export function useBackup(): {
       const staged = await dataApi.stageBackupExport(name);
       let exported = false;
       try {
-        exported = (await save({ defaultPath: name, filters: BACKUP_FILE_FILTER })) !== null;
+        exported = await saveStagedExport(staged, {
+          defaultPath: name,
+          filters: BACKUP_FILE_FILTER,
+        });
       } finally {
         await dataApi.finishBackupExport(staged, exported);
       }

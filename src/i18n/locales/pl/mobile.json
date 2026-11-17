@@ -908,25 +908,31 @@
     "lastOn": "Ostatnia kopia zapasowa {{date}}",
     "never": "Brak kopii zapasowej",
     "what": "Zapisz ją w iCloud Drive lub w innym folderze w aplikacji Pliki. Moony nie ma do niej dostępu.",
+    "whatAndroid": "Zapisz ją na Dysku Google lub w innym wybranym folderze. Moony nie ma do niej dostępu.",
     "notSaved": "Kopia zapasowa nie została zapisana",
     "unavailableHere": "Kopia zapasowa na razie działa tylko na iPhonie.",
     "restoreTitle": "Przywracanie i przenoszenie",
     "restoreLead": "Przywróć kopię zapasową z tego telefonu albo przenieś profil z Moony na komputerze: wybierz plik kopii i po przywróceniu odblokuj hasłem, które obowiązywało w chwili jej utworzenia.",
     "restoreConfirmDescription": "Kopia z {{date}} (Moony {{version}}, załączników: {{attachments}}, {{size}}) zastąpi dane na tym telefonie. Jeśli chcesz zachować obecne dane, najpierw zrób ich kopię zapasową. Po zakończeniu Moony się zablokuje; odblokuj je hasłem używanym w chwili tworzenia kopii.",
     "osBackupNote": "Profil nie jest zapisywany w kopii zapasowej samego telefonu (iCloud ani komputer). Jedyną kopią poza telefonem jest kopia zapasowa Moony, którą zapiszesz samodzielnie.",
+    "osBackupNoteAndroid": "Profil nie jest zapisywany w kopii zapasowej samego telefonu (Google ani komputer). Jedyną kopią poza telefonem jest kopia zapasowa Moony, którą zapiszesz samodzielnie.",
     "exportSummary": "Tabele: {{tables}}, wiersze: {{rows}}.",
     "notHere_one": "{{count}} dokument lub zdjęcie nie jest na tym telefonie ani w tej kopii zapasowej.",
     "notHere_few": "{{count}} dokumenty i zdjęcia nie są na tym telefonie ani w tej kopii zapasowej.",
     "notHere_many": "{{count}} dokumentów i zdjęć nie ma na tym telefonie ani w tej kopii zapasowej.",
     "notHere_other": "{{count}} dokumentów i zdjęć nie ma na tym telefonie ani w tej kopii zapasowej.",
     "syncLead": "Moony zapisuje kopię zapasową, zanim synchronizacja zastąpi dane na tym telefonie. Dane Moony nie trafiają do własnych kopii zapasowych telefonu, więc ta lista i Pliki są jedyną drogą do nich.",
+    "syncLeadAndroid": "Moony zapisuje kopię zapasową, zanim synchronizacja zastąpi dane na tym telefonie. Dane Moony nie trafiają do własnych kopii zapasowych telefonu, więc ta lista i zapisane przez ciebie kopie są jedyną drogą do nich.",
     "syncSaveCopy": "Zapisz kopię w Plikach",
+    "syncSaveCopyAndroid": "Zapisz kopię",
     "syncCopySaved": "Kopia została zapisana w Plikach",
+    "syncCopySavedAndroid": "Kopia została zapisana",
     "syncLeadNoFiles": "Moony zapisuje kopię zapasową, zanim synchronizacja zastąpi dane na tym telefonie. Tutaj możesz je przywrócić lub usunąć.",
     "syncNoCopy": "Zapisanie kopii poza Moony nie jest jeszcze dostępne na tym telefonie. Kopię zapasową można przywrócić z tej listy. Przepadnie, jeśli dane Moony zostaną usunięte z telefonu.",
     "leadSync": "Synchronizacja utrzymuje urządzenia w zgodzie. Kopia zapasowa to jeden zaszyfrowany plik do jednorazowego przeniesienia lub kopia do schowania: baza danych, klucze oraz dokumenty i zdjęcia na tym telefonie. Otworzy ją tylko twoje hasło.",
     "restoreLeadSync": "Przywróć kopię zapasową z tego telefonu albo jednorazowo przenieś profil z Moony na komputerze: wybierz plik kopii, a po przywróceniu odblokuj hasłem, które obowiązywało w chwili jej utworzenia. Urządzenia w zgodzie utrzymuje synchronizacja.",
-    "osBackupNoteSync": "Profil nie jest zapisywany w kopii zapasowej telefonu (iCloud ani komputer). Poza tym telefonem twoje dane, gdy tylko się zsynchronizują, są na serwerze synchronizacji i na innych urządzeniach, a także w każdej kopii Moony, którą zapiszesz sam."
+    "osBackupNoteSync": "Profil nie jest zapisywany w kopii zapasowej telefonu (iCloud ani komputer). Poza tym telefonem twoje dane, gdy tylko się zsynchronizują, są na serwerze synchronizacji i na innych urządzeniach, a także w każdej kopii Moony, którą zapiszesz sam.",
+    "osBackupNoteSyncAndroid": "Profil nie jest zapisywany w kopii zapasowej telefonu (Google ani komputer). Poza tym telefonem twoje dane, gdy tylko się zsynchronizują, są na serwerze synchronizacji i na innych urządzeniach, a także w każdej kopii Moony, którą zapiszesz sam."
   },
   "firstRun": {
     "privacyLead": "Moony przechowuje wszystko w zaszyfrowanej bazie danych na tym telefonie. Bez chmury, bez konta u nas.",
@@ -938,7 +944,9 @@
       "localOnly": {
         "title": "Bez chmury",
         "text": "– nigdzie niczego nie wysyłamy; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive.",
-        "textSync": "– Twoje dane opuszczają ten telefon tylko wtedy, gdy włączysz synchronizację, i wtedy trafiają wyłącznie na wybrany przez Ciebie serwer synchronizacji, szyfrowane end-to-end; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive."
+        "textAndroid": "– nigdzie niczego nie wysyłamy; kopię zapasową zapisujesz sam na Dysku Google lub w wybranym folderze.",
+        "textSync": "– Twoje dane opuszczają ten telefon tylko wtedy, gdy włączysz synchronizację, i wtedy trafiają wyłącznie na wybrany przez Ciebie serwer synchronizacji, szyfrowane end-to-end; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive.",
+        "textSyncAndroid": "– Twoje dane opuszczają ten telefon tylko wtedy, gdy włączysz synchronizację, i wtedy trafiają wyłącznie na wybrany przez Ciebie serwer synchronizacji, szyfrowane end-to-end; kopię zapasową zapisujesz sam na Dysku Google lub w wybranym folderze."
       },
       "marketData": {
         "title": "Dane rynkowe",
@@ -946,7 +954,9 @@
       }
     },
     "recoveryLead": "Jedyna droga do twoich danych, jeśli zapomnisz hasła. Przechowuj go poza tym telefonem – w menedżerze haseł, w aplikacji Pliki lub na papierze.",
+    "recoveryLeadAndroid": "Jedyna droga do twoich danych, jeśli zapomnisz hasła. Przechowuj go poza tym telefonem – w menedżerze haseł, na Dysku Google lub na papierze.",
     "saveToFiles": "Zapisz w Plikach",
+    "saveToFilesAndroid": "Zapisz do pliku",
     "recoveryFileNote": "Ten klucz resetuje twoje hasło do Moony. Działa tylko razem z danymi Moony na tym telefonie lub z ich kopią zapasową, więc zapisz także tę kopię. Nie przekazuj tego pliku nikomu.",
     "areasLead": "Wybierz, co chcesz śledzić w Moony. Możesz to zmienić w dowolnym momencie w Ustawieniach.",
     "firstAccountLead": "Wystarczy nazwa i saldo. Wyciąg zaimportujesz później.",
@@ -958,6 +968,7 @@
     "backupTitle": "Zrób kopię zapasową danych",
     "protectTitle": "Chroń swoje dane",
     "backupLead": "Ten telefon przechowuje jedyną kopię twoich danych, której nie ma w kopii zapasowej telefonu (iCloud ani komputer). Zapisz zaszyfrowaną kopię zapasową w iCloud Drive lub w wybranym folderze; Moony nigdy jej nie widzi.",
+    "backupLeadAndroid": "Ten telefon przechowuje jedyną kopię twoich danych, której nie ma w kopii zapasowej telefonu (Google ani komputer). Zapisz zaszyfrowaną kopię zapasową na Dysku Google lub w wybranym folderze; Moony nigdy jej nie widzi.",
     "syncLead": "Masz serwer synchronizacji?",
     "syncLink": "Skonfiguruj synchronizację",
     "currencyPick": "Waluta główna",

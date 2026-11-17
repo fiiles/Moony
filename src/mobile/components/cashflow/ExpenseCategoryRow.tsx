@@ -13,6 +13,7 @@ import type { LimitMode } from '@/mobile/lib/budget-limit';
 import { expenseRowMoney, limitStatus, type RowLimitAction } from '@/mobile/lib/budget-rows';
 import { CategoryChip } from './CategoryChip';
 import { ProgressBar } from './ProgressBar';
+import { navigateFromMenu } from '@/mobile/lib/menu-navigate';
 
 /** The desktop's words for a limit whose usage cannot be worked out (`ExpensesByCategoryCard`). */
 const UNAVAILABLE_KEY = 'readiness.usageUnavailable';
@@ -228,7 +229,10 @@ export function ExpenseCategoryRow({
               shown: false,
               children: (
                 <>
-                  <RowMenuItem disabled={!canOpen} onSelect={() => href && setLocation(href)}>
+                  <RowMenuItem
+                    disabled={!canOpen}
+                    onSelect={() => href && navigateFromMenu(setLocation, href)}
+                  >
                     <List aria-hidden strokeWidth={1.75} />
                     {tb('actions.showTransactions')}
                   </RowMenuItem>

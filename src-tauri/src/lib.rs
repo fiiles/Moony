@@ -42,14 +42,15 @@ fn spawn_legacy_temp_cleanup(app: tauri::AppHandle) {
 }
 
 /// Phones only: remove what an export that was interrupted (the app killed while the Files picker
-/// was open) left in Documents, a staged backup archive or the recovery key's text, once at
-/// startup and off the main thread. Best effort: a problem is logged and never blocks startup.
+/// was open) left in the staging folder (Documents on iOS, the private `exports` cache folder on
+/// Android), a staged backup archive or the recovery key's text, once at startup and off the main
+/// thread. Best effort: a problem is logged and never blocks startup.
 #[cfg(mobile)]
 fn spawn_staged_export_sweep(app: tauri::AppHandle) {
-    let document_dir = match app.path().document_dir() {
+    let document_dir = match commands::backup::staging_dir(&app) {
         Ok(dir) => dir,
         Err(e) => {
-            log::warn!("[BACKUP] Staged export sweep skipped: no documents dir: {e}");
+            log::warn!("[BACKUP] Staged export sweep skipped: no staging dir: {e}");
             return;
         }
     };
@@ -74,9 +75,17 @@ fn spawn_upload_copy_sweep(app: tauri::AppHandle) {
             return;
         }
     };
+    // Android: also the WebView's camera captures in the app's external Pictures folder
+    #[cfg(target_os = "android")]
+    let pictures_dir = app.path().picture_dir().ok();
     tauri::async_runtime::spawn_blocking(move || {
         let removed = services::upload_copies::sweep(&temp_dir);
         log::info!("[UPLOAD] Upload copy sweep removed {removed} file(s)");
+        #[cfg(target_os = "android")]
+        if let Some(pictures) = pictures_dir {
+            let captures = services::upload_copies::sweep_camera_captures(&pictures);
+            log::info!("[UPLOAD] Camera capture sweep removed {captures} file(s)");
+        }
     });
 }
 
@@ -88,6 +97,40 @@ fn spawn_device_backup_exclusion(app: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
         commands::device_backup::exclude_at_start(&app).await;
     });
+}
+
+/// Android only: hand the JVM and the application context to `rustls-platform-verifier`, which
+/// reqwest's TLS uses to check certificates through Android's own trust manager. Without it the
+/// first HTTPS request panics ("Expect rustls-platform-verifier to be initialized"). Its Kotlin
+/// half is the `org.rustls:rustls-platform-verifier` AAR (`gen/android/app/build.gradle.kts`).
+/// tao has put the JVM and the activity into `ndk-context` by the time `setup` runs; the verifier
+/// keeps one global reference to the application context for the life of the process. A failure is logged:
+/// HTTPS then fails request by request instead of the app not starting.
+#[cfg(target_os = "android")]
+fn init_android_tls_verifier() {
+    let android = ndk_context::android_context();
+    // SAFETY: tao initialised ndk-context with the process' JavaVM and the activity it runs in;
+    // both pointers stay valid while the Rust side runs.
+    let vm = unsafe { jni::JavaVM::from_raw(android.vm().cast()) };
+    let result = vm.attach_current_thread(|env| -> Result<(), jni::errors::Error> {
+        // SAFETY: a live global reference to the activity (`ndk-context`), see above.
+        let activity = unsafe { jni::objects::JObject::from_raw(env, android.context().cast()) };
+        // The verifier keeps its context for the life of the process: the application context,
+        // not the activity, which may be recreated.
+        let context = env
+            .call_method(
+                &activity,
+                jni::jni_str!("getApplicationContext"),
+                jni::jni_sig!("()Landroid/content/Context;"),
+                &[],
+            )?
+            .l()?;
+        rustls_platform_verifier::android::init_with_env(env, context)
+    });
+    match result {
+        Ok(()) => log::info!("[NET] TLS certificate verifier ready"),
+        Err(e) => log::error!("[NET] TLS certificate verifier not initialised: {e}"),
+    }
 }
 
 /// Desktop `main` and the generated iOS / Android entry points all start here. The body runs
@@ -112,6 +155,9 @@ async fn run_app() {
         .plugin(logging::plugin())
         .setup(|app| {
             logging::log_startup_banner();
+            // Before anything can make an HTTPS request (prices, rates, sync)
+            #[cfg(target_os = "android")]
+            init_android_tls_verifier();
             spawn_legacy_temp_cleanup(app.handle().clone());
             #[cfg(mobile)]
             spawn_staged_export_sweep(app.handle().clone());
@@ -248,11 +294,15 @@ async fn run_app() {
             commands::backup::discard_text_export,
             #[cfg(mobile)]
             commands::backup::stage_data_export,
+            #[cfg(mobile)]
+            commands::backup::write_staged_export,
             // Statement files the system opened in Moony (services::received_files)
             #[cfg(mobile)]
             commands::received_files::take_received_files,
             #[cfg(mobile)]
             commands::received_files::discard_received_file,
+            #[cfg(mobile)]
+            commands::received_files::copy_picked_file,
             // System (services::logging)
             commands::system::open_logs_folder,
             // Auth commands

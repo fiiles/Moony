@@ -13,6 +13,7 @@ import { SyncBackupRows } from '@/mobile/components/sync/SyncBackupRows';
 import { RestoreBackupSheet } from '@/mobile/sheets/RestoreBackupSheet';
 import { DataTools } from './DataTools';
 import type { BackupInspection } from '@shared/schema';
+import { phoneCopyKey } from '@/mobile/lib/platform-copy';
 
 /** The card the date sits in (`.m-card`). */
 const CARD = 'mb-3.5 rounded-r4 border border-line bg-paper px-3 shadow-e1';
@@ -104,7 +105,7 @@ export default function BackupSection() {
         {ts('data.backupNow')}
       </Button>
       <p className="mx-0.5 mb-0 mt-3 text-m-sub text-ink-3">
-        {canExport ? t('backup.what') : t('backup.unavailableHere')}
+        {canExport ? t(phoneCopyKey('backup.what')) : t('backup.unavailableHere')}
       </p>
       {missing > 0 && (
         <p className="mx-0.5 mb-0 mt-2 text-m-sub text-ink-3">
@@ -135,7 +136,7 @@ export default function BackupSection() {
       <DataTools />
 
       <p className="mx-0.5 mb-0 mt-6 text-m-caption text-ink-4">
-        {t(syncOn ? 'backup.osBackupNoteSync' : 'backup.osBackupNote')}
+        {t(phoneCopyKey(syncOn ? 'backup.osBackupNoteSync' : 'backup.osBackupNote'))}
       </p>
 
       <RestoreBackupSheet

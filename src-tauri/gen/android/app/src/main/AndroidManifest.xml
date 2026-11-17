@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- The profile stays out of every OS backup, as on iOS (plan R25): Moony's own backup is the
+         only copy that leaves the phone. allowBackup="false" covers Android 11 and older and
+         Google cloud backup; Android 12+ also needs the extraction rules, which exclude the app's
+         data from cloud backup and from device-to-device transfer. -->
+    <application
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.moony"
+        android:usesCleartextTraffic="${usesCleartextTraffic}">
+        <!-- Portrait only, like the iPhone app. adjustResize: the keyboard shrinks the webview so a
+             sheet's footer rides above it. -->
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+            android:launchMode="singleTask"
+            android:label="@string/main_activity_title"
+            android:name=".MainActivity"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Bank statements opened in Moony ("Open with") or shared to it (the share sheet):
+                 tao turns these intents into RunEvent::Opened with content:// URLs, and the
+                 received-files command copies each into the app's inbox folder. The same types as
+                 the iOS CFBundleDocumentTypes: CSV, plain text, XML (CAMT.053), OFX/QFX, QIF,
+                 MT940 (plain text). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="text/csv" />
+                <data android:mimeType="text/comma-separated-values" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/xml" />
+                <data android:mimeType="application/xml" />
+                <data android:mimeType="application/x-ofx" />
+                <data android:mimeType="application/vnd.intu.qfx" />
+                <data android:mimeType="application/qif" />
+                <data android:mimeType="application/x-qif" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/csv" />
+                <data android:mimeType="text/comma-separated-values" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/xml" />
+                <data android:mimeType="application/xml" />
+                <data android:mimeType="application/x-ofx" />
+                <data android:mimeType="application/vnd.intu.qfx" />
+                <data android:mimeType="application/qif" />
+                <data android:mimeType="application/x-qif" />
+            </intent-filter>
+        </activity>
+
+        <provider
+          android:name="androidx.core.content.FileProvider"
+          android:authorities="${applicationId}.fileprovider"
+          android:exported="false"
+          android:grantUriPermissions="true">
+          <meta-data
+            android:name="android.support.FILE_PROVIDER_PATHS"
+            android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

@@ -106,6 +106,22 @@ describe('local time helpers', () => {
       scheduleDateString({ year: 2026, month: 11, day: 2, hour: 9, minute: 5, second: 42 })
     ).toBe('2026-11-02T09:05:42.000Z');
   });
+
+  it('writes the UTC instant of the local time on Android, which reads the text as UTC', () => {
+    const at: LocalTime = { year: 2026, month: 11, day: 2, hour: 9, minute: 5, second: 42 };
+    const text = scheduleDateString(at, 'android');
+    expect(text).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.000Z$/);
+    // Read back as an instant, it is 09:05:42 on 2 November in the local zone, whatever that is
+    const local = new Date(text);
+    expect([
+      local.getFullYear(),
+      local.getMonth() + 1,
+      local.getDate(),
+      local.getHours(),
+      local.getMinutes(),
+      local.getSeconds(),
+    ]).toEqual([2026, 11, 2, 9, 5, 42]);
+  });
 });
 
 describe('buildNotificationPlan: deadlines', () => {

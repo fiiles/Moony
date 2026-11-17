@@ -72,6 +72,34 @@ struct ExcludeFromBackupResponse {
     excluded: bool,
 }
 
+#[cfg(target_os = "android")]
+#[derive(Serialize)]
+struct CopyFromUriPayload<'a> {
+    uri: &'a str,
+    dir: &'a str,
+    #[serde(rename = "maxBytes")]
+    max_bytes: u64,
+}
+
+#[cfg(target_os = "android")]
+#[derive(Deserialize)]
+struct CopyFromUriResponse {
+    path: String,
+}
+
+#[cfg(target_os = "android")]
+#[derive(Serialize)]
+struct CopyToUriPayload<'a> {
+    path: &'a str,
+    uri: &'a str,
+}
+
+#[cfg(target_os = "android")]
+fn utf8(path: &Path) -> Result<&str> {
+    path.to_str()
+        .ok_or_else(|| KeychainError::Failed("the path is not valid UTF-8".to_string()))
+}
+
 impl<R: Runtime> Keychain<R> {
     /// Stores `value_hex` under `key` behind the current biometric enrolment, replacing any
     /// earlier value. Both platforms prompt with `reason` first: iOS evaluates Face ID / Touch ID
@@ -128,6 +156,42 @@ impl<R: Runtime> Keychain<R> {
                 ExcludeFromBackupPayload { path },
             )
             .map(|response| response.excluded)
+            .map_err(Into::into)
+    }
+
+    /// Android only. Copies the document behind a `content://` URI (a picked file, a statement
+    /// shared or opened in Moony) into `dir` under its display name, made safe and unique, and
+    /// answers the copy's path. The copy appears in `dir` only once complete; `max_bytes` refuses
+    /// a larger document (0: no limit). Rust-only, like `store`: the caller decides the folder.
+    #[cfg(target_os = "android")]
+    pub fn copy_from_uri(
+        &self,
+        uri: &str,
+        dir: &Path,
+        max_bytes: u64,
+    ) -> Result<std::path::PathBuf> {
+        let dir = utf8(dir)?;
+        self.0
+            .run_mobile_plugin::<CopyFromUriResponse>(
+                "copyFromUri",
+                CopyFromUriPayload {
+                    uri,
+                    dir,
+                    max_bytes,
+                },
+            )
+            .map(|response| std::path::PathBuf::from(response.path))
+            .map_err(Into::into)
+    }
+
+    /// Android only. Writes the file at `path` into the document behind a `content://` URI (the
+    /// one the save picker created), replacing what it held. Rust-only: the caller checks that
+    /// `path` is a staged export.
+    #[cfg(target_os = "android")]
+    pub fn copy_to_uri(&self, path: &Path, uri: &str) -> Result<()> {
+        let path = utf8(path)?;
+        self.0
+            .run_mobile_plugin("copyToUri", CopyToUriPayload { path, uri })
             .map_err(Into::into)
     }
 

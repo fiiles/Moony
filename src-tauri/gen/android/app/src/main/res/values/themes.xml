@@ -1,0 +1,8 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- The window shows the app's canvas (the canvas token in src/index.css) while the webview loads, so
+         the start has no flash of Material's own background. values-night holds the dark one. -->
+    <style name="Theme.moony" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/moony_canvas</item>
+        <item name="android:colorBackground">@color/moony_canvas</item>
+    </style>
+</resources>

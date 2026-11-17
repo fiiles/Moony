@@ -869,24 +869,30 @@
     "lastOn": "Poslední záloha {{date}}",
     "never": "Zatím žádná záloha",
     "what": "Uložte ji do iCloud Drive nebo jiné složky v Souborech. Moony k ní nemá přístup.",
+    "whatAndroid": "Uložte ji na Google Disk nebo do jiné vybrané složky. Moony k ní nemá přístup.",
     "notSaved": "Záloha nebyla uložena",
     "unavailableHere": "Zálohování zatím funguje jen na iPhonu.",
     "restoreTitle": "Obnovení a přenos",
     "restoreLead": "Obnovte zálohu z tohoto telefonu, nebo přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření.",
     "restoreConfirmDescription": "Záloha z {{date}} (Moony {{version}}, {{attachments}} příloh, {{size}}) nahradí data v tomto telefonu. Chcete-li současná data zachovat, nejdřív je zálohujte. Moony se poté zamkne; odemkněte ho heslem, které platilo v době vytvoření zálohy.",
     "osBackupNote": "Profil se neukládá do zálohy telefonu (iCloud ani počítač). Jedinou kopií mimo telefon je záloha Moony, kterou si sami uložíte.",
+    "osBackupNoteAndroid": "Profil se neukládá do zálohy telefonu (Google ani počítač). Jedinou kopií mimo telefon je záloha Moony, kterou si sami uložíte.",
     "exportSummary": "{{tables}} tabulek, {{rows}} řádků.",
     "notHere_one": "{{count}} dokument nebo fotka není v tomto telefonu ani v této záloze.",
     "notHere_few": "{{count}} dokumenty a fotky nejsou v tomto telefonu ani v této záloze.",
     "notHere_other": "{{count}} dokumentů a fotek není v tomto telefonu ani v této záloze.",
     "syncLead": "Moony uloží zálohu, než synchronizace v tomto telefonu nahradí data. Data Moony se do vlastních záloh telefonu nezahrnují, takže tento seznam a Soubory jsou jediná cesta, jak se k nim dostat.",
+    "syncLeadAndroid": "Moony uloží zálohu, než synchronizace v tomto telefonu nahradí data. Data Moony se do vlastních záloh telefonu nezahrnují, takže tento seznam a kopie, které si uložíte, jsou jediná cesta, jak se k nim dostat.",
     "syncSaveCopy": "Uložit kopii do Souborů",
+    "syncSaveCopyAndroid": "Uložit kopii",
     "syncCopySaved": "Kopie byla uložena do Souborů",
+    "syncCopySavedAndroid": "Kopie byla uložena",
     "syncLeadNoFiles": "Moony uloží zálohu, než synchronizace v tomto telefonu nahradí data. Tady je můžete obnovit nebo smazat.",
     "syncNoCopy": "Uložení kopie mimo Moony zatím na tomto telefonu není k dispozici. Zálohu lze obnovit z tohoto seznamu. Pokud se data Moony z telefonu odstraní, zálohy zmizí.",
     "leadSync": "Synchronizace drží vaše zařízení ve shodě. Záloha je jeden šifrovaný soubor pro jednorázový přenos nebo kopii k uschování: databáze, klíče a dokumenty a fotky v tomto telefonu. Otevře ji jen vaše heslo.",
     "restoreLeadSync": "Obnovte zálohu z tohoto telefonu, nebo jednorázově přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření. Zařízení ve shodě drží synchronizace.",
-    "osBackupNoteSync": "Profil se neukládá do zálohy telefonu (iCloud ani počítač). Mimo telefon jsou vaše data, jakmile se synchronizují, na synchronizačním serveru a na dalších zařízeních a v zálohách Moony, které si sami uložíte."
+    "osBackupNoteSync": "Profil se neukládá do zálohy telefonu (iCloud ani počítač). Mimo telefon jsou vaše data, jakmile se synchronizují, na synchronizačním serveru a na dalších zařízeních a v zálohách Moony, které si sami uložíte.",
+    "osBackupNoteSyncAndroid": "Profil se neukládá do zálohy telefonu (Google ani počítač). Mimo telefon jsou vaše data, jakmile se synchronizují, na synchronizačním serveru a na dalších zařízeních a v zálohách Moony, které si sami uložíte."
   },
   "firstRun": {
     "privacyLead": "Moony ukládá vše do šifrované databáze v tomto telefonu. Žádný cloud, žádný účet u nás.",
@@ -898,7 +904,9 @@
       "localOnly": {
         "title": "Bez cloudu",
         "text": "– data nikam neposíláme; zálohu si uložíte do Souborů nebo iCloud Drive sami.",
-        "textSync": "– data opustí tento telefon, jen když zapnete synchronizaci, a pak jen koncově šifrovaná na synchronizační server, který si zvolíte; zálohu si uložíte do Souborů nebo iCloud Drive sami."
+        "textAndroid": "– data nikam neposíláme; zálohu si uložíte na Google Disk nebo do vybrané složky sami.",
+        "textSync": "– data opustí tento telefon, jen když zapnete synchronizaci, a pak jen koncově šifrovaná na synchronizační server, který si zvolíte; zálohu si uložíte do Souborů nebo iCloud Drive sami.",
+        "textSyncAndroid": "– data opustí tento telefon, jen když zapnete synchronizaci, a pak jen koncově šifrovaná na synchronizační server, který si zvolíte; zálohu si uložíte na Google Disk nebo do vybrané složky sami."
       },
       "marketData": {
         "title": "Tržní data",
@@ -906,7 +914,9 @@
       }
     },
     "recoveryLead": "Jediná cesta k datům, když heslo zapomenete. Uložte ho mimo tento telefon: do správce hesel, do Souborů nebo na papír.",
+    "recoveryLeadAndroid": "Jediná cesta k datům, když heslo zapomenete. Uložte ho mimo tento telefon: do správce hesel, na Google Disk nebo na papír.",
     "saveToFiles": "Uložit do Souborů",
+    "saveToFilesAndroid": "Uložit do souboru",
     "recoveryFileNote": "Tento klíč resetuje vaše heslo do Moony. Funguje jen spolu s daty Moony v tomto telefonu nebo s jejich zálohou, proto si zálohu uložte také. Soubor nikomu nedávejte.",
     "areasLead": "Vyberte, co chcete v Moony sledovat. Změnit to můžete kdykoli v Nastavení.",
     "firstAccountLead": "Stačí název a zůstatek. Výpis naimportujete později.",
@@ -918,6 +928,7 @@
     "backupTitle": "Zálohujte si data",
     "protectTitle": "Ochraňte svá data",
     "backupLead": "Vaše data jsou jen v tomto telefonu a do zálohy telefonu (iCloud ani počítač) se neukládají. Uložte šifrovanou zálohu do iCloud Drive nebo vybrané složky; Moony ji nikdy nevidí.",
+    "backupLeadAndroid": "Vaše data jsou jen v tomto telefonu a do zálohy telefonu (Google ani počítač) se neukládají. Uložte šifrovanou zálohu na Google Disk nebo do vybrané složky; Moony ji nikdy nevidí.",
     "syncLead": "Máte synchronizační server?",
     "syncLink": "Nastavte synchronizaci",
     "currencyPick": "Hlavní měna",

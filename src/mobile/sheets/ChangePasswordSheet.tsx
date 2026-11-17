@@ -43,6 +43,7 @@ import { changedRecoveryKeyFileName, exportsOnThisDevice } from '@/mobile/lib/ex
 import { passwordStrength } from '@/utils/password-strength';
 import { biometryMethodKey, renderTextRef } from '@/mobile/lib/settings-summary';
 import { field48, fieldMessage, primaryButton } from '@/mobile/pages/first-run/styles';
+import { phoneCopyKey } from '@/mobile/lib/platform-copy';
 
 /** The footer's ghost "Zrušit" and its primary, which takes the rest of the row. */
 const FOOTER_GHOST =
@@ -127,7 +128,7 @@ export function ChangePasswordSheet({ open, onOpenChange }: ChangePasswordSheetP
       open={open}
       onOpenChange={change}
       title={onKey ? ts('password.recoveryKeyTitle') : t('settings.password.title')}
-      description={onKey ? t('firstRun.recoveryLead') : ts('password.description')}
+      description={onKey ? t(phoneCopyKey('firstRun.recoveryLead')) : ts('password.description')}
       footer={
         <>
           <Button
@@ -375,7 +376,7 @@ function KeyStep({
           onClick={() => void saveToFiles()}
         >
           <Download aria-hidden />
-          {t('firstRun.saveToFiles')}
+          {t(phoneCopyKey('firstRun.saveToFiles'))}
         </Button>
       )}
 

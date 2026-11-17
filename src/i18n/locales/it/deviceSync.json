@@ -445,7 +445,9 @@
       "title": "Un backup è stato salvato su questo telefono",
       "where": "È elencato in Impostazioni → Backup e trasferimento. Moony non lo elimina mai; solo tu puoi farlo.",
       "filesHint": "I dati di Moony sono esclusi dai backup del tuo telefono. Salva una copia in File se vuoi raggiungere questo backup anche fuori da Moony.",
-      "saveCopy": "Salva una copia in File"
+      "filesHintAndroid": "I dati di Moony sono esclusi dai backup del tuo telefono. Salva una copia se vuoi raggiungere questo backup anche fuori da Moony.",
+      "saveCopy": "Salva una copia in File",
+      "saveCopyAndroid": "Salva una copia"
     },
     "onThisDevice": "Su questo dispositivo:"
   },

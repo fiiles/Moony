@@ -18,6 +18,7 @@ import { usePositionMutations } from '@/mobile/hooks/use-position';
 import { PositionRenameSheet } from '@/mobile/sheets/PositionRenameSheet';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { watchPath } from '@/mobile/shell/routes';
+import { navigateFromMenu } from '@/mobile/lib/menu-navigate';
 
 /**
  * The `···` of a position (spec §8.8): Zapsat dividendu asks the page for its sheet
@@ -90,7 +91,7 @@ export function PositionMenu({
             {ts('detail.menu.editName')}
           </RowMenuItem>
           {following ? (
-            <RowMenuItem onSelect={() => setLocation(watchPath(holding.ticker))}>
+            <RowMenuItem onSelect={() => navigateFromMenu(setLocation, watchPath(holding.ticker))}>
               <Eye strokeWidth={1.75} aria-hidden />
               {t('wealth.position.openWatch')}
             </RowMenuItem>

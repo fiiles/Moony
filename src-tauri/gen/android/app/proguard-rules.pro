@@ -22,3 +22,10 @@
 # rustls-platform-verifier's Kotlin half is called only through JNI (reqwest's TLS on Android):
 # keep it from being stripped as dead code.
 -keep, includedescriptorclasses class org.rustls.platformverifier.** { *; }
+
+# ML Kit (the barcode scanner plugin's QR reader for device pairing) finds its components by
+# reflection: Firebase's ComponentDiscovery instantiates each registrar named in the manifest
+# through its no-argument constructor. R8 full mode (AGP 9) removed those constructors in the
+# release build ("NoSuchMethodException: ...BarcodeRegistrar.<init>" at start), so the scanner
+# would have no barcode component. Keep every registrar with its constructor.
+-keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }

@@ -12,6 +12,7 @@
     "ios:dev": "dotenv -- tauri ios dev \"iPhone 17 Pro\" --config src-tauri/tauri.mobile-dev.conf.json",
     "android:dev": ". scripts/android-env.sh && dotenv -- tauri android dev --config src-tauri/tauri.mobile-dev.conf.json",
     "android:build": ". scripts/android-env.sh && dotenv -- tauri android build",
+    "android:bundle": ". scripts/android-env.sh && dotenv -- tauri android build --aab",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",

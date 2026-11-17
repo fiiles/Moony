@@ -2,6 +2,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- "Vyfotit" (documents, property photos): wry's file chooser starts the camera app with
+         ACTION_IMAGE_CAPTURE only when resolveActivity finds one, and from Android 11 an app sees
+         another app's activities only when it declares the intent here. Without it the button
+         fell back to the photo picker. The CAMERA permission itself comes from the barcode
+         scanner plugin (pairing QR), so the system asks for it before the first photo. -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
     <!-- The profile stays out of every OS backup, as on iOS (plan R25): Moony's own backup is the
          only copy that leaves the phone. allowBackup="false" covers Android 11 and older and
          Google cloud backup; Android 12+ also needs the extraction rules, which exclude the app's

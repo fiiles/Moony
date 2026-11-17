@@ -317,13 +317,9 @@ pub fn list_devices(conn: &Connection, now: i64) -> Result<Vec<SyncDevice>> {
                     Some(at),
                     None,
                 ),
-                (None, None) => (
-                    SyncDeviceStatus::Former,
-                    None,
-                    Some(SyncFormerReason::Removed),
-                    None,
-                    None,
-                ),
+                // A pre-phase-5 removal: no record and no time, so no way to let it age out of
+                // the list. Not listed (review of Task 24, M3).
+                (None, None) => continue,
             }
         } else if supported {
             (
@@ -708,8 +704,7 @@ mod tests {
                 ("MacBook", true, Some(1_750_000_000), false),
                 ("Alfa", false, Some(1_900_000_000), false),
                 ("Zeta", false, Some(1_800_000_000), false),
-                // Removed: listed as a former device for 30 days.
-                ("Removed", false, None, false),
+                // "Removed" has no record and no time: not listed (it could never age out).
             ]
         );
         assert_eq!(list[0].id, DEVICE_HEX);

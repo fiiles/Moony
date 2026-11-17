@@ -325,6 +325,7 @@
     "syncSnapshotInvalid": "同期されたデータのコピーが破損しているため、復元できませんでした。",
     "syncTooManyDevices": "Moonyが同期できるデバイスは最大64台までです。まず、使わなくなったデバイスを削除してください。",
     "syncRemovalPlanChanged": "その間にデバイスの一覧が変わりました。確認してから、もう一度確定してください。",
+    "syncRemovalPending": "デバイスの削除はまだ進行中です。しばらくしてからもう一度お試しください。",
     "syncRotationRaced": "その間に{{name}}がデバイスの一覧を変更しました。確認してから、もう一度お試しください。",
     "syncTooManyKeyChanges": "過去30日間にデバイスの一覧が変更された回数が多すぎます。数日後にもう一度お試しください。",
     "syncRemovalUnsupported": "この同期は以前のバージョンのMoonyで設定されたため、デバイスを削除できません。",

@@ -1639,11 +1639,11 @@ fn a_superseded_issuers_vouch_is_judged_against_its_successors_position() {
 }
 
 #[test]
-fn keep_refuses_this_device_an_unknown_one_or_one_that_is_gone() {
+fn keep_has_nothing_to_keep_for_this_device_an_unknown_one_or_one_that_is_gone() {
     let conn = left_holder();
-    assert!(trust::keep(&conn, ME.id()).is_err());
-    assert!(trust::keep(&conn, Dev(0x33).id()).is_err());
-    assert!(trust::keep(&conn, O.id()).is_err(), "it left");
+    assert!(!trust::keep(&conn, ME.id()).unwrap());
+    assert!(!trust::keep(&conn, Dev(0x33).id()).unwrap());
+    assert!(!trust::keep(&conn, O.id()).unwrap(), "it left");
 }
 
 // ── Bundles, the Kit join's confirmed set, notices ─────────────────────────────────────────

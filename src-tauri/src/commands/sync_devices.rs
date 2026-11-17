@@ -8,10 +8,12 @@
 use tauri::{AppHandle, State};
 use zeroize::Zeroizing;
 
+use rusqlite::Connection;
+
 use super::sync::{
     data_dir, engine_runtime, guarded_change, kit_owner, mapped_for_server, now, open_kit_draft,
     password_given, profile_relay, require_feature, stored_relay_url, verify_password, wake_engine,
-    AppEngine,
+    AppEngine, KitOwner,
 };
 use crate::db::Database;
 use crate::error::{AppError, Result};
@@ -20,9 +22,10 @@ use crate::models::sync::{
 };
 use crate::services::sync::hlc::DeviceId;
 use crate::services::sync::identity::trust;
+use crate::services::sync::identity::KitSecret;
 use crate::services::sync::rekey::kit::NewKit;
 use crate::services::sync::rekey::rotate::{self, Outcome, Removal};
-use crate::services::sync::{join, keys, rekey, setup, view};
+use crate::services::sync::{join, keys, setup, view};
 
 /// The plan changed meanwhile, or never made sense: the dialog reloads and asks again.
 const PLAN_CHANGED: &str = rotate::PLAN_CHANGED;
@@ -44,9 +47,11 @@ fn union(removing: &[DeviceId], also_remove: &[DeviceId]) -> Vec<DeviceId> {
 }
 
 /// What removing `device_ids` (and the ticked `also_remove`, and a new recovery kit when
-/// `new_kit`) would do, with the consent `sync_remove_devices` takes back. The engine is woken
-/// first so the list is as new as it can be; the removal itself catches up before it acts and
-/// refuses a changed plan (`validation.syncRemovalPlanChanged`), so the dialog reloads.
+/// `new_kit`) would do, with the consent `sync_remove_devices` takes back. With `refresh` (the
+/// dialog's first read, once) the engine is woken so the list is as new as it can be; the dialog's
+/// ticks read without waking a round (review of Task 24, M1). The removal itself catches up
+/// before it acts and refuses a changed plan (`validation.syncRemovalPlanChanged`), so the dialog
+/// reloads.
 #[tauri::command]
 pub async fn sync_removal_plan(
     app: AppHandle,
@@ -54,11 +59,14 @@ pub async fn sync_removal_plan(
     device_ids: Vec<String>,
     also_remove: Vec<String>,
     new_kit: bool,
+    refresh: bool,
 ) -> Result<RemovalPlan> {
     require_feature()?;
     let removing = parse_ids(&device_ids)?;
     let also_remove = parse_ids(&also_remove)?;
-    wake_engine(&app);
+    if refresh {
+        wake_engine(&app);
+    }
     db.with_conn(|conn| {
         let at = now();
         let plan = rotate::plan(conn, &removing, &also_remove, new_kit, at)?;
@@ -89,6 +97,12 @@ pub async fn sync_remove_devices(
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
+    let owner = kit_owner(&app, &db)?;
+    if new_kit {
+        // Everything the new kit's view needs is checked before anything is sent: after the
+        // commit the old kit is gone and the new one's seed lives only in memory.
+        db.with_conn(precheck_kit_view)?;
+    }
     let removal = mapped_for_server(stored_relay_url(&db)?, async {
         rotate::remove(
             &relay,
@@ -105,11 +119,13 @@ pub async fn sync_remove_devices(
         .await
     });
     let outcome = guarded_change(&AppEngine { app: &app, db: &db }, removal).await?;
-    outcome_view(&app, &db, outcome)
+    outcome_view(&db, owner, outcome)
 }
 
-/// A removal's outcome on the wire; a new kit is shown through the copy window.
-fn outcome_view(app: &AppHandle, db: &Database, outcome: Outcome) -> Result<RemovalOutcome> {
+/// A removal's outcome on the wire; a new kit is shown through the copy window. Infallible for a
+/// committed removal: a kit that cannot be shown is logged and left out (`kit: None`), and the
+/// status's missing kit leads to "Vytvořit novou sadu".
+fn outcome_view(db: &Database, owner: KitOwner, outcome: Outcome) -> Result<RemovalOutcome> {
     let (kind, by, kit) = match outcome {
         Outcome::Changed { kit, .. } => (RemovalOutcomeKind::Done, None, kit),
         Outcome::Pending { kit } => (RemovalOutcomeKind::Pending, None, kit),
@@ -125,25 +141,49 @@ fn outcome_view(app: &AppHandle, db: &Database, outcome: Outcome) -> Result<Remo
     Ok(RemovalOutcome {
         kind,
         by,
-        kit: show_kit(app, db, kit)?,
+        kit: show_kit(db, owner, kit),
     })
+}
+
+/// The new kit's draft and its view (code and QR) from a stored vault; fails with the same
+/// reasons whatever the seed is.
+fn build_kit_view(conn: &Connection, kit: NewKit) -> Result<(setup::KitDraft, RecoveryKit)> {
+    let vault_id = keys::credentials(conn)?
+        .ok_or_else(|| AppError::Validation("validation.syncSetupIncomplete".into()))?
+        .vault_id;
+    let draft = setup::KitDraft::from_new_kit(vault_id, kit);
+    let shown = setup::kit_view(conn, &draft)?;
+    Ok((draft, shown))
+}
+
+/// Whether a kit's view can be built for this profile at all, tried with a throwaway seed before
+/// a removal that makes a kit sends anything (review of Task 24, I3).
+fn precheck_kit_view(conn: &Connection) -> Result<()> {
+    let probe = NewKit {
+        secret: KitSecret::generate()?,
+        id: DeviceId([0; 16]),
+        created_at: now(),
+    };
+    build_kit_view(conn, probe).map(|_| ())
 }
 
 /// The new kit as the person sees it, once: its draft goes into the process-global copy window
 /// (copy, print and save work on it for ten minutes, `sync_copy_recovery_code` and friends).
-fn show_kit(app: &AppHandle, db: &Database, kit: Option<NewKit>) -> Result<Option<RecoveryKit>> {
-    let Some(kit) = kit else {
-        return Ok(None);
-    };
-    let vault_id = db.with_conn(|conn| {
-        Ok(keys::credentials(conn)?
-            .ok_or_else(|| AppError::Validation("validation.syncSetupIncomplete".into()))?
-            .vault_id)
-    })?;
-    let draft = setup::KitDraft::from_new_kit(vault_id, kit);
-    let shown = db.with_conn(|conn| setup::kit_view(conn, &draft))?;
-    open_kit_draft(kit_owner(app, db)?, draft);
-    Ok(Some(shown))
+/// Never fails: the removal is committed, so a problem is logged and the kit is not shown.
+fn show_kit(db: &Database, owner: KitOwner, kit: Option<NewKit>) -> Option<RecoveryKit> {
+    let kit = kit?;
+    match db.with_conn(|conn| build_kit_view(conn, kit)) {
+        Ok((draft, shown)) => {
+            open_kit_draft(owner, draft);
+            Some(shown)
+        }
+        Err(error) => {
+            log::error!(
+                "[SYNC] The new recovery kit could not be shown after the removal: {error}"
+            );
+            None
+        }
+    }
 }
 
 /// "Ověřit sadu": reads a typed code or a scanned QR and says whether it is this sync's current
@@ -157,8 +197,10 @@ pub async fn sync_check_recovery_kit(db: State<'_, Database>, code: String) -> R
 }
 
 /// "Je moje": keeps a device the list marks "Zkontrolujte" (it gets the next key and speaks
-/// again), without a password; the store is brought up to date at once. `false`: nothing to keep
-/// (this device, or an entry that is not pinned or not trusted).
+/// again), without a password. The next round brings the trust store up to date and owns what a
+/// refresh can end here (a removal of this device): the command only marks and wakes the engine
+/// (review of Task 24, I1). `false`: nothing to keep (already kept, this device, or an entry that
+/// is not pinned, not trusted or gone).
 #[tauri::command]
 pub async fn sync_keep_device(
     app: AppHandle,
@@ -167,19 +209,17 @@ pub async fn sync_keep_device(
 ) -> Result<bool> {
     require_feature()?;
     let device = parse_ids(&[device_id])?[0];
-    let dir = data_dir(&app)?;
-    db.with_conn(|conn| {
-        let kept = trust::keep(conn, device)?;
-        if kept {
-            rekey::refresh_trust(conn, Some(&dir), now())?;
-        }
-        Ok(kept)
-    })
+    let kept = db.with_conn(|conn| trust::keep(conn, device))?;
+    if kept {
+        wake_engine(&app);
+    }
+    Ok(kept)
 }
 
 /// "Mám je" / "Odebrat je" at "Data jsou zpět": lifts the push hold of a device that joined with
 /// the recovery kit, and the next round sends what waited. With `remove_them` the UI has removed
-/// the listed devices first (`sync_remove_devices`) and calls this after it.
+/// the listed devices first (`sync_remove_devices`) and calls this after it; while that removal
+/// is pending or a listed device is still active it is `validation.syncRemovalPending`.
 #[tauri::command]
 pub async fn sync_kit_join_decided(
     app: AppHandle,
@@ -187,22 +227,24 @@ pub async fn sync_kit_join_decided(
     remove_them: bool,
 ) -> Result<()> {
     require_feature()?;
-    db.with_conn(join::lift_kit_join_hold)?;
+    db.with_conn(|conn| join::decide_kit_join(conn, remove_them))?;
     log::info!("[SYNC] The push hold after joining with the recovery kit was lifted (devices removed: {remove_them})");
     wake_engine(&app);
     Ok(())
 }
 
-/// "Zavřít", "Rozumím", "Vím o tom": dismisses one notice of the status.
+/// "Zavřít", "Rozumím", "Vím o tom": dismisses one notice of the status. For `newDevices`,
+/// `devices` are the IDs the person saw: only those entries go (`None`: the whole list).
 #[tauri::command]
 pub async fn sync_dismiss_notice(
     app: AppHandle,
     db: State<'_, Database>,
     kind: SyncNoticeKind,
+    devices: Option<Vec<String>>,
 ) -> Result<()> {
     require_feature()?;
     let runtime = engine_runtime(&app);
-    db.with_conn(|conn| view::dismiss_notice(conn, kind, &runtime, now()))
+    db.with_conn(|conn| view::dismiss_notice(conn, kind, devices.as_deref(), &runtime, now()))
 }
 
 #[cfg(test)]
@@ -220,6 +262,25 @@ mod tests {
             let error = parse_ids(&[bad.to_string()]).expect_err("refused");
             assert!(matches!(error, AppError::Validation(key) if key == PLAN_CHANGED));
         }
+    }
+
+    #[test]
+    fn a_kit_that_cannot_be_shown_is_found_before_a_removal_sends_anything() {
+        let conn = crate::services::sync::test_support::migrated();
+        // No account and no vault yet: the view cannot be built, so the removal must not start.
+        assert!(precheck_kit_view(&conn).is_err());
+        keys::save_account(&conn, "https://sync.example.com", "1234567812345678").unwrap();
+        keys::ensure_vault_secrets(&conn).unwrap();
+        precheck_kit_view(&conn).expect("a vault with an account shows its kit");
+        let kit = NewKit {
+            secret: KitSecret::generate().unwrap(),
+            id: DeviceId([1; 16]),
+            created_at: 5,
+        };
+        let (draft, shown) = build_kit_view(&conn, kit).expect("view");
+        assert_eq!(draft.created_at(), 5);
+        assert_eq!(shown.created_at, 5);
+        assert!(!shown.recovery_code.is_empty());
     }
 
     #[test]

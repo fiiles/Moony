@@ -180,8 +180,10 @@ fn a_vault_from_before_phase_5_lists_every_row_as_active() {
     assert_eq!(of(&list, B).status, SyncDeviceStatus::Active);
     assert_eq!(of(&list, B).joined_via, SyncJoinedVia::Unknown);
     assert_eq!(of(&list, B).check_reason, None);
-    assert_eq!(of(&list, C).status, SyncDeviceStatus::Former);
-    assert_eq!(of(&list, C).former_reason, Some(SyncFormerReason::Removed));
+    assert!(
+        list.iter().all(|d| d.id != C.id().to_hex()),
+        "a removed row with no record and no time would never age out: not listed"
+    );
     assert!(of(&list, ME).this_device);
     assert_eq!(list[0].id, ME.id().to_hex(), "this device first");
 }

@@ -534,10 +534,11 @@ export const deviceSyncApi = {
 
   /**
    * What removing `deviceIds` (and the ticked `alsoRemove`, and a new recovery kit when `newKit`)
-   * would do, with the `consent` `removeDevices` takes back.
+   * would do, with the `consent` `removeDevices` takes back. `refresh` wakes a sync round first so
+   * the list is as new as it can be: the dialog asks for it once, on open, not on every tick.
    */
-  removalPlan: (deviceIds: string[], alsoRemove: string[], newKit: boolean) =>
-    tauriInvoke<RemovalPlan>('sync_removal_plan', { deviceIds, alsoRemove, newKit }),
+  removalPlan: (deviceIds: string[], alsoRemove: string[], newKit: boolean, refresh: boolean) =>
+    tauriInvoke<RemovalPlan>('sync_removal_plan', { deviceIds, alsoRemove, newKit, refresh }),
 
   /**
    * Removes the devices (and makes a new kit when the plan says so) once the device password is
@@ -562,15 +563,27 @@ export const deviceSyncApi = {
   /** "Ověřit sadu": reads a typed code or a scanned QR; no password, nothing is sent anywhere. */
   checkRecoveryKit: (code: string) => tauriInvoke<KitCheck>('sync_check_recovery_kit', { code }),
 
-  /** "Je moje": keeps a "Zkontrolujte" device; helps only until the next key change. `false`: nothing to keep. */
+  /**
+   * "Je moje": keeps a "Zkontrolujte" device; helps only until the next key change. `false`:
+   * nothing to keep (already kept, this device, an entry not pinned or trusted, or one gone),
+   * never an error.
+   */
   keepDevice: (deviceId: string) => tauriInvoke<boolean>('sync_keep_device', { deviceId }),
 
-  /** "Mám je" (`removeThem` false) or after "Odebrat je" (true): lifts the push hold of a kit joiner. */
+  /**
+   * "Mám je" (`removeThem` false) or after "Odebrat je" (true): lifts the push hold of a kit
+   * joiner. `validation.syncRemovalPending` while the removal is still running or a listed device
+   * is still active ("Odebrání ještě probíhá").
+   */
   kitJoinDecided: (removeThem: boolean) =>
     tauriInvoke<void>('sync_kit_join_decided', { removeThem }),
 
-  /** "Zavřít", "Rozumím", "Vím o tom": dismisses one notice of the status. */
-  dismissNotice: (kind: SyncNoticeKind) => tauriInvoke<void>('sync_dismiss_notice', { kind }),
+  /**
+   * "Zavřít", "Rozumím", "Vím o tom": dismisses one notice of the status. For `newDevices`,
+   * `devices` are the IDs the person saw: only those entries go (omitted: the whole list).
+   */
+  dismissNotice: (kind: SyncNoticeKind, devices?: string[]) =>
+    tauriInvoke<void>('sync_dismiss_notice', { kind, devices: devices ?? null }),
 };
 
 // ============================================================================

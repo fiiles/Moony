@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { deviceSyncApi } from '@/lib/tauri-api';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
@@ -117,9 +118,18 @@ export function useRemovalPlan(
   newKit = false,
   enabled = true
 ) {
+  // The first read of a dialog wakes a sync round (`refresh`); ticks and re-reads do not.
+  const firstRead = useRef(true);
+  useEffect(() => {
+    if (!enabled) firstRead.current = true;
+  }, [enabled]);
   return useQuery({
     queryKey: ['device-sync-removal-plan', deviceIds, alsoRemove, newKit],
-    queryFn: () => deviceSyncApi.removalPlan([...deviceIds], [...alsoRemove], newKit),
+    queryFn: () => {
+      const refresh = firstRead.current;
+      firstRead.current = false;
+      return deviceSyncApi.removalPlan([...deviceIds], [...alsoRemove], newKit, refresh);
+    },
     enabled,
     gcTime: 0,
     staleTime: 0,

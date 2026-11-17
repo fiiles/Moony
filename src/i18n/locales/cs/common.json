@@ -325,6 +325,7 @@
     "syncSnapshotInvalid": "Synchronizovaná kopie vašich dat je poškozená a nelze ji obnovit.",
     "syncTooManyDevices": "Moony synchronizuje nejvýš 64 zařízení. Nejdřív odeberte ta, která už nepoužíváte.",
     "syncRemovalPlanChanged": "Seznam zařízení se mezitím změnil. Zkontrolujte ho a potvrďte znovu.",
+    "syncRemovalPending": "Odebrání zařízení ještě probíhá. Zkuste to za chvíli.",
     "syncRotationRaced": "Seznam zařízení mezitím změnilo zařízení {{name}}. Zkontrolujte ho a zkuste to znovu.",
     "syncTooManyKeyChanges": "Za posledních 30 dní se seznam zařízení změnil příliš mnohokrát. Zkuste to znovu za několik dní.",
     "syncRemovalUnsupported": "Tuto synchronizaci nastavila starší verze Moony, proto v ní nejde odebírat zařízení.",

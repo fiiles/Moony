@@ -325,6 +325,7 @@
     "syncSnapshotInvalid": "Den synkroniserade kopian av dina data är skadad och kunde inte återställas.",
     "syncTooManyDevices": "Moony synkroniserar högst 64 enheter. Ta först bort de du inte längre använder.",
     "syncRemovalPlanChanged": "Enhetslistan har ändrats under tiden. Kontrollera den och bekräfta igen.",
+    "syncRemovalPending": "Borttagningen av enheterna pågår fortfarande. Försök igen om en stund.",
     "syncRotationRaced": "{{name}} har ändrat enhetslistan under tiden. Kontrollera den och försök igen.",
     "syncTooManyKeyChanges": "Enhetslistan har ändrats för många gånger de senaste 30 dagarna. Försök igen om några dagar.",
     "syncRemovalUnsupported": "Den här synkroniseringen konfigurerades av en äldre version av Moony, så enheter kan inte tas bort från den.",

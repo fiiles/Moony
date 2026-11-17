@@ -197,8 +197,16 @@ export function useDeviceSyncMutations() {
     gcTime: 0,
   });
   // "Zavřít", "Rozumím", "Vím o tom": the status is re-read (it no longer carries the notice).
-  const dismissNotice = useMutation<void, Error, SyncNoticeKind>({
-    mutationFn: deviceSyncApi.dismissNotice,
+  // A kind alone, or for `newDevices` the kind and the IDs the person saw.
+  const dismissNotice = useMutation<
+    void,
+    Error,
+    SyncNoticeKind | { kind: SyncNoticeKind; devices?: string[] }
+  >({
+    mutationFn: (notice) =>
+      typeof notice === 'string'
+        ? deviceSyncApi.dismissNotice(notice)
+        : deviceSyncApi.dismissNotice(notice.kind, notice.devices),
     onSuccess: refreshSyncState,
   });
   // "Mám je", or after "Odebrat je": lifts the push hold of a device that joined with the kit.

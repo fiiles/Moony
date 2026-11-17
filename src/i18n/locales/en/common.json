@@ -325,6 +325,7 @@
     "syncSnapshotInvalid": "The synced copy of your data is damaged and could not be restored.",
     "syncTooManyDevices": "Moony syncs at most 64 devices. First remove the ones you no longer use.",
     "syncRemovalPlanChanged": "The device list has changed in the meantime. Check it and confirm again.",
+    "syncRemovalPending": "Removing the devices is still in progress. Try again in a moment.",
     "syncRotationRaced": "{{name}} changed the device list in the meantime. Check it and try again.",
     "syncTooManyKeyChanges": "The device list changed too many times in the last 30 days. Try again in a few days.",
     "syncRemovalUnsupported": "This sync was set up by an older version of Moony, so devices can't be removed from it.",

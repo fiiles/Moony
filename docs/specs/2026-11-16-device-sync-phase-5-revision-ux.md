@@ -1753,3 +1753,22 @@ R-89. **Removal dialog.** One `Dialog` (560 px): plan, then "Odebírám {name}�
      the panel's false "cannot be cut off" line (`limits.lostDevice`) is no longer rendered. Not
      verified in the built app: the print dialog, the dialog at 1080 px and the layout of long German
      strings (not run, no Tauri host here).
+R-90. **Task 24 review fixes** (I1–I3, M1–M4). I1: `sync_keep_device` only marks (`trust::keep`) and wakes the
+     engine; the next round's refresh owns everything it can end (removed here). I2: `trust::keep`
+     answers `false` for "nothing to keep" (this device, never pinned, not trusted, gone), no error.
+     I3: a removal that makes a kit checks the kit's view (code, QR, account, vault) with a throwaway seed
+     before `rotate::remove` sends anything (`precheck_kit_view`), the copy-window owner is read first, and
+     the post-commit `show_kit` cannot fail: a problem is logged and the outcome carries `kit: null`, so
+     the Kit row's "neuložená" / "Vytvořit sadu" leads on. M1: `sync_removal_plan(…, refresh)` wakes a
+     round only when `refresh` is true; `useRemovalPlan` sends it on a dialog's first read only (reset
+     when the dialog closes); the round already notes the server's Kit (`note_server_kit` after every
+     round that read the vault info), nothing added. M2: `sync_dismiss_notice(kind, devices)`: for
+     `newDevices` only the listed device IDs go (`trust::dismiss_new_devices`), `null` clears the list
+     (`dismissNotice('newDevices', ids)` in `tauri-api.ts`; the mutation takes a kind or `{kind,
+     devices}`). M3: a failed `trust::recipients` in `view::extras` is logged (the new-device list loses
+     only its "lateVouch" mark); removed rows that were never pinned and carry no record (pre-phase-5
+     removals) are no longer listed (they had no time to age out). M4: `sync_kit_join_decided` goes
+     through `join::decide_kit_join`: `validation.syncRemovalPending` (new locale key, ten locales)
+     while a key change of this device is pending, or with `removeThem` while a device the hold names is
+     still trusted and not removed. Wire types did not change (command arguments are not in
+     `bindings.rs`), so `generated-types.ts` is unchanged.

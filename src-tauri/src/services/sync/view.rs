@@ -136,15 +136,21 @@ pub fn extras(conn: &Connection, runtime: &Runtime, now: i64) -> Result<Extras> 
     let notices = trust::new_devices(conn)?;
     let mut new_devices = Vec::new();
     if !notices.is_empty() {
-        let late: Vec<DeviceId> = trust::recipients(conn, &[])
-            .map(|r| {
-                r.excluded
-                    .into_iter()
-                    .filter(|(_, reason)| *reason == ExclusionReason::LateVouch)
-                    .map(|(device, _)| device)
-                    .collect()
-            })
-            .unwrap_or_default();
+        let late: Vec<DeviceId> = match trust::recipients(conn, &[]) {
+            Ok(r) => r
+                .excluded
+                .into_iter()
+                .filter(|(_, reason)| *reason == ExclusionReason::LateVouch)
+                .map(|(device, _)| device)
+                .collect(),
+            Err(error) => {
+                // The status still shows the list; only the "left out until kept" mark is lost.
+                log::warn!(
+                    "[SYNC] The recipients could not be read for the new-device list: {error}"
+                );
+                Vec::new()
+            }
+        };
         for notice in notices {
             let Ok(device) = DeviceId::from_hex(&notice.device) else {
                 continue;
@@ -219,9 +225,12 @@ pub fn extras(conn: &Connection, runtime: &Runtime, now: i64) -> Result<Extras> 
 
 /// "Zavřít", "Rozumím", "Vím o tom": dismisses a notice. Each is a Local `app_config` key (the
 /// new-device list and the Kit read mark included); `kit_read` is the minute `kitUsed` shows.
+/// `devices` (the IDs of `newDevices` the person saw) limits the new-device dismissal to those
+/// entries; `None` clears the list. Other kinds ignore it.
 pub fn dismiss_notice(
     conn: &Connection,
     kind: SyncNoticeKind,
+    devices: Option<&[String]>,
     runtime: &Runtime,
     now: i64,
 ) -> Result<()> {
@@ -234,7 +243,7 @@ pub fn dismiss_notice(
         SyncNoticeKind::Removed => delete(state::REMOVED_NOTICE_KEY),
         SyncNoticeKind::RemovalNotDone => delete(state::REMOVAL_NOT_DONE_KEY),
         SyncNoticeKind::KeyChangeOverrun => delete(state::KEY_CHANGE_OVERRUN_KEY),
-        SyncNoticeKind::NewDevices => delete(trust::NEW_DEVICES_KEY),
+        SyncNoticeKind::NewDevices => trust::dismiss_new_devices(conn, devices),
         SyncNoticeKind::KitUsed => {
             if let Some(read) = status::kit_used(conn, runtime.kit_last_read, now)? {
                 status::dismiss_kit_used(conn, read)?;
@@ -366,6 +375,7 @@ pub fn kit_check_view(check: setup::KitCheck) -> KitCheck {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::AppError;
     use crate::models::sync::{SyncPhase, SyncProblem};
     use crate::services::sync::engine::status::{status_at, Runtime};
     use crate::services::sync::identity::cert::{self, CertFields, CertKind, TicketSecret};
@@ -481,7 +491,14 @@ mod tests {
         );
         assert!(!shown.removal_supported);
 
-        dismiss_notice(&conn, SyncNoticeKind::Removed, &Runtime::default(), NOW).unwrap();
+        dismiss_notice(
+            &conn,
+            SyncNoticeKind::Removed,
+            None,
+            &Runtime::default(),
+            NOW,
+        )
+        .unwrap();
         assert_eq!(status(&conn, &Runtime::default()).removed_notice, None);
     }
 
@@ -576,7 +593,7 @@ mod tests {
             SyncNoticeKind::RemovalNotDone,
             SyncNoticeKind::KeyChangeOverrun,
         ] {
-            dismiss_notice(&conn, kind, &Runtime::default(), NOW).unwrap();
+            dismiss_notice(&conn, kind, None, &Runtime::default(), NOW).unwrap();
         }
         let shown = status(&conn, &Runtime::default());
         assert_eq!(shown.removal_notice, None);
@@ -652,8 +669,47 @@ mod tests {
             }],
             "a device this store never pinned is no news"
         );
-        dismiss_notice(&conn, SyncNoticeKind::NewDevices, &Runtime::default(), NOW).unwrap();
-        assert!(status(&conn, &Runtime::default()).new_devices.is_empty());
+        // Only what the person saw goes: a device noticed after stays.
+        dismiss_notice(
+            &conn,
+            SyncNoticeKind::NewDevices,
+            Some(&[DeviceId([9; 16]).to_hex()]),
+            &Runtime::default(),
+            NOW,
+        )
+        .unwrap();
+        assert_eq!(status(&conn, &Runtime::default()).new_devices.len(), 1);
+        dismiss_notice(
+            &conn,
+            SyncNoticeKind::NewDevices,
+            Some(&[B.to_hex()]),
+            &Runtime::default(),
+            NOW,
+        )
+        .unwrap();
+        assert!(trust::new_devices(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn dismissing_new_devices_without_ids_clears_the_list() {
+        let conn = enabled();
+        let json = serde_json::json!([
+            {"device": B.to_hex(), "by": ME.to_hex(), "at": NOW - 10, "viaKit": false}
+        ]);
+        conn.execute(
+            "INSERT INTO app_config (key, value) VALUES (?1, ?2)",
+            params![trust::NEW_DEVICES_KEY, json.to_string()],
+        )
+        .unwrap();
+        dismiss_notice(
+            &conn,
+            SyncNoticeKind::NewDevices,
+            None,
+            &Runtime::default(),
+            NOW,
+        )
+        .unwrap();
+        assert!(trust::new_devices(&conn).unwrap().is_empty());
     }
 
     #[test]
@@ -687,7 +743,7 @@ mod tests {
         );
         // A read nobody explains is news; "Vím o tom" quiets it.
         assert_eq!(shown.kit_used, Some(NOW - 10 * DAY));
-        dismiss_notice(&conn, SyncNoticeKind::KitUsed, &runtime, NOW).unwrap();
+        dismiss_notice(&conn, SyncNoticeKind::KitUsed, None, &runtime, NOW).unwrap();
         assert_eq!(status(&conn, &runtime).kit_used, None);
     }
 
@@ -711,6 +767,51 @@ mod tests {
                 newest_change_at: Some(NOW - 5)
             })
         );
+    }
+
+    #[test]
+    fn the_hold_after_a_kit_join_is_lifted_only_when_the_removal_is_done() {
+        let hold = |conn: &Connection| {
+            conn.execute(
+                "INSERT OR REPLACE INTO app_config (key, value) VALUES (?1, ?2)",
+                params![
+                    state::AFTER_KIT_JOIN_KEY,
+                    serde_json::json!({"devices": [B.to_hex()], "newestChangeAt": null})
+                        .to_string()
+                ],
+            )
+            .unwrap();
+        };
+        let held = |conn: &Connection| join::after_kit_join(conn).unwrap().is_some();
+
+        // "Odebrat je" while the device is still active: refused, the hold stays.
+        let conn = enabled();
+        hold(&conn);
+        let error = join::decide_kit_join(&conn, true).expect_err("still active");
+        assert!(matches!(error, AppError::Validation(key) if key == join::REMOVAL_PENDING));
+        assert!(held(&conn));
+        // "Mám je" keeps them: lifted.
+        join::decide_kit_join(&conn, false).unwrap();
+        assert!(!held(&conn));
+
+        // Once the device is gone, "Odebrat je" lifts it.
+        hold(&conn);
+        conn.execute(
+            "UPDATE sync_devices SET removed = 1 WHERE id = ?1",
+            [B.to_hex()],
+        )
+        .unwrap();
+        join::decide_kit_join(&conn, true).unwrap();
+        assert!(!held(&conn));
+
+        // A key change of this device pending: neither answer lifts it.
+        hold(&conn);
+        conn.execute("UPDATE sync_state SET rotation_pending = '{}'", [])
+            .unwrap();
+        for remove_them in [false, true] {
+            assert!(join::decide_kit_join(&conn, remove_them).is_err());
+            assert!(held(&conn));
+        }
     }
 
     #[test]

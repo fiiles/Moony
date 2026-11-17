@@ -47,7 +47,7 @@ use super::in_savepoint;
 use super::keys::{self, Credentials, VaultKeys};
 use super::pairing::PairingIdentity;
 use super::recovery::KitInput;
-use super::rekey::{bundle, envelope, head, pickup};
+use super::rekey::{bundle, envelope, head, pickup, rotate};
 use super::relay::http::{normalize_base_url, validate_base_url};
 use super::relay::{Relay, RelayError, MAX_REKEY_PAGE};
 use super::snapshot::{AttachmentCarry, RestoreReport};
@@ -551,6 +551,42 @@ pub fn lift_kit_join_hold(conn: &Connection) -> Result<()> {
         [state::AFTER_KIT_JOIN_KEY],
     )?;
     Ok(())
+}
+
+/// A removal of this device is still running (`rotate::pending`), or the devices the person said
+/// to remove are still active: the push hold stays and the dialog says so
+/// ("Odebrání ještě probíhá").
+pub const REMOVAL_PENDING: &str = "validation.syncRemovalPending";
+
+/// "Mám je" / "Odebrat je" (`lift_kit_join_hold`), checked: nothing is lifted while a key change
+/// of this device is pending, or, with `remove_them`, while any device the hold names is still
+/// listed active (the UI removes them first; review of Task 24, M4).
+pub fn decide_kit_join(conn: &Connection, remove_them: bool) -> Result<()> {
+    if rotate::pending(conn)? {
+        return Err(AppError::Validation(REMOVAL_PENDING.into()));
+    }
+    if remove_them {
+        if let Some(hold) = after_kit_join(conn)? {
+            let entries = trust::entries(conn)?;
+            for id in &hold.devices {
+                let Ok(device) = DeviceId::from_hex(id) else {
+                    continue;
+                };
+                let trusted = entries
+                    .iter()
+                    .any(|e| e.device == device && e.state == trust::TrustState::Trusted);
+                let removed: bool = conn.query_row(
+                    "SELECT COALESCE((SELECT removed != 0 FROM sync_devices WHERE id = ?1), 1)",
+                    [id],
+                    |r| r.get(0),
+                )?;
+                if trusted && !removed {
+                    return Err(AppError::Validation(REMOVAL_PENDING.into()));
+                }
+            }
+        }
+    }
+    lift_kit_join_hold(conn)
 }
 
 fn unreadable() -> SyncError {

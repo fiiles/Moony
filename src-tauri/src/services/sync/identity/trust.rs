@@ -982,6 +982,33 @@ pub fn new_devices(conn: &Connection) -> Result<Vec<NewDevice>> {
         .unwrap_or_default())
 }
 
+/// "Zavřít" on the new-device list: forgets the notices of `devices` (the device IDs the person
+/// saw), or all of them when `devices` is `None`. A device noticed after the person looked stays
+/// (review of Task 24, M2).
+pub fn dismiss_new_devices(conn: &Connection, devices: Option<&[String]>) -> Result<()> {
+    let Some(devices) = devices else {
+        conn.execute("DELETE FROM app_config WHERE key = ?1", [NEW_DEVICES_KEY])?;
+        return Ok(());
+    };
+    let mut notices = new_devices(conn)?;
+    let before = notices.len();
+    notices.retain(|n| !devices.contains(&n.device));
+    if notices.len() == before {
+        return Ok(());
+    }
+    if notices.is_empty() {
+        conn.execute("DELETE FROM app_config WHERE key = ?1", [NEW_DEVICES_KEY])?;
+        return Ok(());
+    }
+    let json = serde_json::to_string(&notices)
+        .map_err(|e| AppError::Internal(format!("sync: new-device notices: {e}")))?;
+    conn.execute(
+        "UPDATE app_config SET value = ?2 WHERE key = ?1",
+        params![NEW_DEVICES_KEY, json],
+    )?;
+    Ok(())
+}
+
 /// A Recovery Kit joiner's first store (spec §5.4, §13; revision §2.6 step 6): trust on first
 /// use of every row whose certificate verifies, unknown issuers included, then the records as
 /// `refresh` applies them. A genesis certificate is trusted only when it is in `genesis`
@@ -1455,12 +1482,14 @@ pub fn mark_removed(
 
 /// "Je moje" (revision §6.1): the person keeps `device`, a pinned `trusted` device other than
 /// this one, on this device. It is marked `confirmed` here only (no record); the next key change
-/// this device makes names it, which confirms it everywhere. Returns whether it changed.
+/// this device makes names it, which confirms it everywhere. Returns whether it changed: `false`
+/// also when there is nothing to keep (this device, an entry never pinned here, one that is not
+/// trusted, one removed meanwhile; review of Task 24, I2).
 pub fn keep(conn: &Connection, device: DeviceId) -> Result<bool> {
     let own = this_device(conn)?;
     let trusted = entry(conn, device)?.is_some_and(|e| e.state == TrustState::Trusted);
     if device == own || !trusted {
-        return Err(refused("only another trusted device can be kept"));
+        return Ok(false);
     }
     set_confirmed(conn, device)
 }

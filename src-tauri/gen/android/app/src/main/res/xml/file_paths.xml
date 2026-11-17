@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The FileProvider serves one folder: the app's external Pictures folder, where wry's WebView
+     camera capture ("Vyfotit") writes its photo for the camera app (RustWebChromeClient). Nothing
+     else of the app is exposed through it; Moony removes the captures at start and at lock
+     (services/upload_copies.rs). -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-  <external-path name="my_images" path="." />
-  <cache-path name="my_cache_images" path="." />
+  <external-files-path name="camera_captures" path="Pictures/" />
 </paths>

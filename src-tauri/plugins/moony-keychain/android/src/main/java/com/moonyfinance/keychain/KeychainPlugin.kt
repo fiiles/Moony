@@ -1,5 +1,6 @@
-// moony-keychain, Android half. UNVERIFIED ON ANDROID: written without an Android SDK on the
-// build machine; compile and exercise it on a device before relying on it (plan Phase 7).
+// moony-keychain, Android half. Built and run on the emulator since 2026-11-17 (privacy screen,
+// status bar, backup state, the content:// copies); the biometric store and retrieve are not yet
+// exercised with an enrolled fingerprint (docs/plans/2026-11-17-android-app.md).
 //
 // One secret per key: an AndroidKeyStore AES-256-GCM key per entry that needs strong biometry
 // for every use and dies when the biometric enrolment changes, and the ciphertext (IV first) in
@@ -21,6 +22,7 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
@@ -48,6 +50,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.io.OutputStream
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -62,6 +65,10 @@ private const val KEY_ALIAS_PREFIX = "com.moonyfinance.mobile.keychain/"
 private const val STORE_DIR = "moony-keychain"
 private const val GCM_TAG_BITS = 128
 private const val GCM_IV_BYTES = 12
+// Where a copy from a content:// URI is written before it moves into its folder (app cache).
+private const val INCOMING_DIR = "moony-incoming"
+// The longest file name a copy gets, in UTF-8 bytes.
+private const val MAX_NAME_BYTES = 200
 
 // Rejection codes. The Rust side parses them with `KeychainError::from_rejection`.
 private const val CODE_INVALIDATED = "invalidated"
@@ -105,6 +112,8 @@ class CopyFromUriArgs {
     lateinit var uri: String
     // The app-private folder the copy goes into (Rust picks it; the inbox folder).
     lateinit var dir: String
+    // The largest copy accepted, in bytes; 0 for no limit (a picked backup can be large).
+    var maxBytes: Long = 0
 }
 
 @InvokeArg
@@ -124,6 +133,10 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
     override fun load(webView: WebView) {
         super.load(webView)
         activity.runOnUiThread { applyRecentsScreenshotPolicy() }
+        // Before any copy of this process starts: what an earlier one left half-written
+        Thread {
+            File(activity.cacheDir, INCOMING_DIR).listFiles()?.forEach { it.delete() }
+        }.start()
     }
 
     // ---- Commands ----
@@ -277,6 +290,10 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
 
     // ---- Files from and to content:// URIs ----
     //
+    // A copy is written into `INCOMING_DIR` next to the target folder and moved into it only when
+    // complete, so the inbox never holds a half-written file (its startup sweep removes every file
+    // there). What a killed process left in `INCOMING_DIR` is removed when the plugin loads.
+    //
     // Android hands picked, shared and opened files over as content:// URIs that only the
     // ContentResolver reads, and the save picker returns the URI of an empty document. Rust works
     // with paths, so these two copy between a URI and a file inside the app. Rust-only (not in the
@@ -291,22 +308,28 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
             val args = invoke.parseArgs(CopyFromUriArgs::class.java)
             val uri = Uri.parse(args.uri)
             val dir = File(args.dir)
+            val maxBytes = args.maxBytes
             background(invoke) {
-                if (!dir.isDirectory && !dir.mkdirs()) {
+                val incoming = File(activity.cacheDir, INCOMING_DIR)
+                if (!dir.isDirectory && !dir.mkdirs() || !incoming.isDirectory && !incoming.mkdirs()) {
                     throw IOException("Could not create the inbox folder")
                 }
-                val target = uniqueFile(dir, safeFileName(displayName(uri)))
-                val input = activity.contentResolver.openInputStream(uri)
-                    ?: throw IOException("The provider gave no stream")
+                val partial = File.createTempFile("copy", ".part", incoming)
                 try {
+                    val input = activity.contentResolver.openInputStream(uri)
+                        ?: throw IOException("The provider gave no stream")
                     input.use { source ->
-                        FileOutputStream(target).use { sink -> source.copyTo(sink) }
+                        FileOutputStream(partial).use { sink -> copyCapped(source, sink, maxBytes) }
                     }
-                } catch (e: Exception) {
-                    target.delete()
-                    throw e
+                    val target = reserveUniqueFile(dir, safeFileName(displayName(uri)))
+                    if (!partial.renameTo(target)) {
+                        target.delete()
+                        throw IOException("Could not move the copy into the inbox")
+                    }
+                    invoke.resolve(JSObject().apply { put("path", target.absolutePath) })
+                } finally {
+                    partial.delete()
                 }
-                invoke.resolve(JSObject().apply { put("path", target.absolutePath) })
             }
         }
     }
@@ -319,8 +342,18 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
             val source = File(args.path)
             val uri = Uri.parse(args.uri)
             background(invoke) {
-                val output = openForWrite(uri) ?: throw IOException("The provider gave no stream")
-                output.use { sink -> FileInputStream(source).use { it.copyTo(sink) } }
+                try {
+                    val output = openForWrite(uri) ?: throw IOException("The provider gave no stream")
+                    output.use { sink -> FileInputStream(source).use { it.copyTo(sink) } }
+                } catch (e: Throwable) {
+                    // The picker has already created the document: a truncated backup or key must
+                    // not stay where the person would later trust it. Best effort.
+                    try {
+                        DocumentsContract.deleteDocument(activity.contentResolver, uri)
+                    } catch (_: Throwable) {
+                    }
+                    throw e
+                }
                 invoke.resolve()
             }
         }
@@ -347,9 +380,23 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
             null
         } ?: uri.lastPathSegment
 
+    /** Copies `source` into `sink`, failing once more than `maxBytes` (when > 0) came through. */
+    private fun copyCapped(source: InputStream, sink: OutputStream, maxBytes: Long) {
+        val buffer = ByteArray(64 * 1024)
+        var total = 0L
+        while (true) {
+            val read = source.read(buffer)
+            if (read < 0) return
+            total += read
+            if (maxBytes > 0 && total > maxBytes) throw IOException("The file is too large")
+            sink.write(buffer, 0, read)
+        }
+    }
+
     /**
-     * A plain file name: no folders, no hidden-file dot first, at most 120 characters with the
-     * extension kept (the import reads the extension to tell a PDF or a photo from a statement).
+     * A plain file name: no folders, no hidden-file dot first, at most 200 UTF-8 bytes (ext4 allows
+     * 255, and " (n)" may be added) with the extension kept (the import reads the extension to
+     * tell a PDF or a photo from a statement), never cut inside a surrogate pair.
      */
     private fun safeFileName(name: String?): String {
         val base = name
@@ -359,42 +406,49 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
             ?.trimStart('.')
             .orEmpty()
         if (base.isEmpty()) return "statement"
-        if (base.length <= 120) return base
+        if (utf8Length(base) <= MAX_NAME_BYTES) return base
         val dot = base.lastIndexOf('.')
         val ext = if (dot > 0 && base.length - dot <= 10) base.substring(dot) else ""
-        return base.take(120 - ext.length) + ext
+        var stem = base.substring(0, base.length - ext.length)
+        while (stem.isNotEmpty() && utf8Length(stem + ext) > MAX_NAME_BYTES) {
+            stem = stem.dropLast(if (stem.length >= 2 && stem[stem.length - 1].isLowSurrogate()) 2 else 1)
+        }
+        return stem + ext
     }
 
-    /** `name`, or `name (2)`, `name (3)`, ... when an earlier copy still sits in `dir`. */
-    private fun uniqueFile(dir: File, name: String): File {
-        val first = File(dir, name)
-        if (!first.exists()) return first
+    private fun utf8Length(text: String): Int = text.toByteArray(Charsets.UTF_8).size
+
+    /**
+     * Creates and answers `name`, or `name (2)`, `name (3)`, ... when an earlier copy still sits in
+     * `dir`; `createNewFile` claims the name, so two copies at once never get the same one.
+     */
+    private fun reserveUniqueFile(dir: File, name: String): File {
         val dot = name.lastIndexOf('.')
         val stem = if (dot > 0) name.substring(0, dot) else name
         val ext = if (dot > 0) name.substring(dot) else ""
-        var n = 2
+        var n = 1
         while (true) {
-            val candidate = File(dir, "$stem ($n)$ext")
-            if (!candidate.exists()) return candidate
+            val candidate = File(dir, if (n == 1) name else "$stem ($n)$ext")
+            if (candidate.createNewFile()) return candidate
             n += 1
         }
     }
 
-    /** Runs `body` on a fresh thread, rejecting with the exception's class name only. */
+    /**
+     * Runs `body` on a fresh thread, rejecting with the class name only; any `Throwable`, so the
+     * Rust caller blocked on the answer is never left waiting.
+     */
     private fun background(invoke: Invoke, body: () -> Unit) {
         Thread {
             try {
                 body()
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 reject(invoke, CODE_FAILED, "File copy failed: ${e.javaClass.simpleName}")
             }
         }.start()
     }
 
-    /**
-     * Dark status bar icons over the light theme, light icons over the dark one. UNVERIFIED ON
-     * ANDROID, like the rest of this file: exercise it on a device.
-     */
+    /** Dark status bar icons over the light theme, light icons over the dark one. */
     @Command
     fun setStatusBarStyle(invoke: Invoke) {
         guarded(invoke) {

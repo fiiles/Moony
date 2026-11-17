@@ -16,11 +16,16 @@ val tauriProperties = Properties().apply {
 
 // The Kotlin half of rustls-platform-verifier, which reqwest's TLS calls through JNI to check
 // certificates with Android's trust manager (initialised in lib.rs, `init_android_tls_verifier`).
-// The rustls project publishes it as a Maven repository on GitHub; its version must be the one of
-// the `rustls-platform-verifier-android` crate in Cargo.lock, so it is read from there.
+// The rustls project publishes it as a Maven repository on GitHub (branch `maven-archive`); its
+// version must be the one of the `rustls-platform-verifier-android` crate in Cargo.lock, so it is
+// read from there. The repository is pinned to a commit of that branch (content-addressed, so
+// what is downloaded cannot change under the same URL) and may serve only the org.rustls group.
+// When Cargo.lock moves to a version this commit lacks, the build fails: point it at the newer
+// commit (`gh api repos/rustls/rustls-platform-verifier/branches/maven-archive --jq .commit.sha`).
 repositories {
     maven {
-        url = uri("https://github.com/rustls/rustls-platform-verifier/raw/maven-archive/android-release-support/maven/")
+        url = uri("https://raw.githubusercontent.com/rustls/rustls-platform-verifier/1aa691352a5e0c215210dfc9a3c2f2078639dc91/android-release-support/maven/")
+        content { includeGroup("org.rustls") }
     }
 }
 

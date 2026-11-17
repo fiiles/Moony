@@ -16,16 +16,28 @@ use crate::services::received_files::{self, ReceivedFiles};
 /// The event the webview listens to: the queue got new paths, drain it with `take_received_files`.
 pub const RECEIVED_FILES_EVENT: &str = "received-files";
 
-/// The two folders iOS copies a received file into (`received_files::inbox_dirs`).
+/// The two folders a received file's copy lands in (`received_files::inbox_dirs`). iOS: the ones
+/// it copies into itself. Android: both under the app's private cache folder, where Rust has the
+/// `content://` documents copied (`<cache>/Inbox` stays unused): neither Tauri's Documents (shared
+/// external storage there) nor its temp folder (`TMPDIR`, which an older Android may not set).
 fn inbox_dirs(app: &AppHandle) -> Result<[PathBuf; 2]> {
-    let document_dir = app
-        .path()
-        .document_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get documents dir: {e}")))?;
-    let temp_dir = app
-        .path()
-        .temp_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get temp dir: {e}")))?;
+    #[cfg(target_os = "android")]
+    let (document_dir, temp_dir) = {
+        let cache_dir = app
+            .path()
+            .app_cache_dir()
+            .map_err(|e| AppError::Internal(format!("Failed to get cache dir: {e}")))?;
+        (cache_dir.clone(), cache_dir)
+    };
+    #[cfg(not(target_os = "android"))]
+    let (document_dir, temp_dir) = (
+        app.path()
+            .document_dir()
+            .map_err(|e| AppError::Internal(format!("Failed to get documents dir: {e}")))?,
+        app.path()
+            .temp_dir()
+            .map_err(|e| AppError::Internal(format!("Failed to get temp dir: {e}")))?,
+    );
     Ok(received_files::inbox_dirs(
         &document_dir,
         &temp_dir,
@@ -33,7 +45,7 @@ fn inbox_dirs(app: &AppHandle) -> Result<[PathBuf; 2]> {
     ))
 }
 
-/// The inbox folder Android's copies go into: the second of [`inbox_dirs`], `<tmp>/<identifier>-Inbox`
+/// The inbox folder Android's copies go into: the second of [`inbox_dirs`], `<cache>/<identifier>-Inbox`
 /// (the app's private cache on Android), so the discard, the take and the startup sweep treat them
 /// exactly like the iOS picker's copies.
 #[cfg(target_os = "android")]
@@ -42,14 +54,20 @@ fn android_inbox(app: &AppHandle) -> Result<PathBuf> {
     Ok(inbox)
 }
 
-/// Android: copy one `content://` document into the inbox folder (blocking: call it off the main
-/// thread) and answer the copy's path.
+/// The largest statement Moony copies when another app shares or opens one (a statement is a few
+/// hundred kilobytes; a larger file is refused rather than filling the phone). A file the person
+/// picks in Moony's own picker has no limit (a backup with its attachments can be large).
 #[cfg(target_os = "android")]
-fn copy_into_inbox(app: &AppHandle, uri: &str) -> Result<PathBuf> {
+const RECEIVED_FILE_MAX_BYTES: u64 = 25 * 1024 * 1024;
+
+/// Android: copy one `content://` document into the inbox folder (blocking: call it off the main
+/// thread) and answer the copy's path. `max_bytes` 0 is no limit.
+#[cfg(target_os = "android")]
+fn copy_into_inbox(app: &AppHandle, uri: &str, max_bytes: u64) -> Result<PathBuf> {
     use moony_keychain::KeychainExt;
     let inbox = android_inbox(app)?;
     app.keychain()
-        .copy_from_uri(uri, &inbox)
+        .copy_from_uri(uri, &inbox, max_bytes)
         .map_err(|e| AppError::Internal(format!("Failed to copy the received file: {e}")))
 }
 
@@ -57,37 +75,45 @@ fn copy_into_inbox(app: &AppHandle, uri: &str) -> Result<PathBuf> {
 /// Only the count is logged. iOS hands over `file://` copies it already made in an Inbox folder.
 /// Android hands over `content://` URIs, readable only through the ContentResolver and only while
 /// the grant lasts: each is copied into the inbox folder first, off the main thread (the copy
-/// waits for the native side), and the copy is queued like an iOS one.
+/// waits for the native side), and the copy is queued like an iOS one. Any other URL is dropped
+/// there: an explicit intent from another app bypasses the manifest's filters, and a `file://`
+/// path from it could name one of Moony's own files.
 pub fn on_opened(app: &AppHandle, urls: &[Url]) {
-    #[cfg(not(target_os = "android"))]
-    let direct = urls.len();
     #[cfg(target_os = "android")]
-    let direct = {
+    {
         let content: Vec<Url> = urls
             .iter()
             .filter(|url| url.scheme() == "content")
             .cloned()
             .collect();
-        let direct = urls.len() - content.len();
-        if !content.is_empty() {
-            let app = app.clone();
-            tauri::async_runtime::spawn_blocking(move || {
-                let copies: Vec<Url> = content
-                    .iter()
-                    .filter_map(|url| match copy_into_inbox(&app, url.as_str()) {
+        if content.len() < urls.len() {
+            log::warn!(
+                "[IMPORT] {} opened item(s) dropped: not content:// URIs",
+                urls.len() - content.len()
+            );
+        }
+        if content.is_empty() {
+            return;
+        }
+        let app = app.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            let copies: Vec<Url> = content
+                .iter()
+                .filter_map(|url| {
+                    match copy_into_inbox(&app, url.as_str(), RECEIVED_FILE_MAX_BYTES) {
                         Ok(path) => Url::from_file_path(path).ok(),
                         Err(e) => {
                             log::warn!("[IMPORT] {e}");
                             None
                         }
-                    })
-                    .collect();
-                queue_opened(&app, &copies, content.len());
-            });
-        }
-        direct
-    };
-    queue_opened(app, urls, direct);
+                    }
+                })
+                .collect();
+            queue_opened(&app, &copies, content.len());
+        });
+    }
+    #[cfg(not(target_os = "android"))]
+    queue_opened(app, urls, urls.len());
 }
 
 /// Queue the `file://` URLs among `urls` and announce them; `announced` is how many items the
@@ -119,7 +145,7 @@ pub async fn copy_picked_file(app: AppHandle, uri: String) -> Result<String> {
     }
     #[cfg(target_os = "android")]
     {
-        let path = tauri::async_runtime::spawn_blocking(move || copy_into_inbox(&app, &uri))
+        let path = tauri::async_runtime::spawn_blocking(move || copy_into_inbox(&app, &uri, 0))
             .await
             .map_err(|e| AppError::Internal(format!("The copy did not finish: {e}")))??;
         path.into_os_string()

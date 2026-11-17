@@ -85,6 +85,41 @@ fn remove_panel_folder(folder: &Path) -> usize {
     removed
 }
 
+/// What wry names a photo the Android WebView's camera capture (`<input capture>`, "Vyfotit")
+/// takes: `JPEG_<yyyyMMdd_HHmmss>_<random>.jpg`, written as a plain file into the app's external
+/// Pictures folder (`getExternalFilesDir(DIRECTORY_PICTURES)`) and never removed by it.
+const CAMERA_CAPTURE_PREFIX: &str = "JPEG_";
+const CAMERA_CAPTURE_SUFFIX: &str = ".jpg";
+
+/// Android: remove the camera captures wry left in `pictures_dir` (Tauri's `picture_dir()` there),
+/// the regular files directly inside it named `JPEG_….jpg`. Moony's own copy of a photo is stored
+/// encrypted; nothing else of Moony's lives in that folder, and nothing is removed outside it or
+/// followed through a link. Same schedule and logging as [`sweep`]. Returns how many files went.
+pub fn sweep_camera_captures(pictures_dir: &Path) -> usize {
+    let entries = match fs::read_dir(pictures_dir) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return 0,
+        Err(e) => {
+            log::warn!("[UPLOAD] Could not list the pictures folder: {e}");
+            return 0;
+        }
+    };
+    let mut removed = 0;
+    for entry in entries.flatten() {
+        let is_capture = entry.file_name().to_str().is_some_and(|name| {
+            name.starts_with(CAMERA_CAPTURE_PREFIX) && name.ends_with(CAMERA_CAPTURE_SUFFIX)
+        });
+        if !is_capture || !entry.file_type().is_ok_and(|kind| kind.is_file()) {
+            continue;
+        }
+        match fs::remove_file(entry.path()) {
+            Ok(()) => removed += 1,
+            Err(e) => log::warn!("[UPLOAD] Could not remove a camera capture: {e}"),
+        }
+    }
+    removed
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -197,5 +232,41 @@ mod tests {
         assert!(tmp.path().join("WKFileUploadPanel-link").exists());
         assert!(!panel.join("IMG_1.jpeg").exists());
         assert!(fs::symlink_metadata(panel.join("to-db.jpeg")).is_ok());
+    }
+
+    #[test]
+    fn removes_only_the_camera_captures() {
+        let dir = tempfile::tempdir().expect("tmp");
+        let path = dir.path();
+        fs::write(path.join("JPEG_20261117_071500_123.jpg"), b"photo").expect("capture");
+        fs::write(path.join("JPEG_20261117_071501_456.jpg"), b"photo").expect("capture");
+        fs::write(path.join("holiday.jpg"), b"other").expect("other");
+        fs::write(path.join("JPEG_notes.txt"), b"other").expect("other");
+        fs::create_dir(path.join("JPEG_folder.jpg")).expect("folder");
+
+        assert_eq!(sweep_camera_captures(path), 2);
+        assert!(path.join("holiday.jpg").exists());
+        assert!(path.join("JPEG_notes.txt").exists());
+        assert!(path.join("JPEG_folder.jpg").is_dir());
+        assert!(!path.join("JPEG_20261117_071500_123.jpg").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn never_removes_a_link_named_like_a_capture() {
+        let dir = tempfile::tempdir().expect("tmp");
+        let outside = tempfile::tempdir().expect("outside");
+        let target = outside.path().join("keep.jpg");
+        fs::write(&target, b"keep").expect("target");
+        std::os::unix::fs::symlink(&target, dir.path().join("JPEG_link.jpg")).expect("link");
+
+        assert_eq!(sweep_camera_captures(dir.path()), 0);
+        assert!(target.exists());
+    }
+
+    #[test]
+    fn a_missing_pictures_folder_is_an_empty_sweep() {
+        let dir = tempfile::tempdir().expect("tmp");
+        assert_eq!(sweep_camera_captures(&dir.path().join("missing")), 0);
     }
 }

@@ -64,6 +64,12 @@ fn configure(
     for module in QUIET_MODULES {
         builder = builder.level_for(module, LevelFilter::Warn);
     }
+    // tao on Android logs an intent URI it cannot parse in full (`failed to parse URI: …`, e.g.
+    // for every multi-file share), and a provider's URI often carries the shared statement's file
+    // name. Moony's log never names the person's files, so tao stays out of it there.
+    if cfg!(target_os = "android") {
+        builder = builder.level_for("tao", LevelFilter::Off);
+    }
     builder
 }
 

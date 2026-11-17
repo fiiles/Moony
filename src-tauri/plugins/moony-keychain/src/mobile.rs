@@ -77,6 +77,8 @@ struct ExcludeFromBackupResponse {
 struct CopyFromUriPayload<'a> {
     uri: &'a str,
     dir: &'a str,
+    #[serde(rename = "maxBytes")]
+    max_bytes: u64,
 }
 
 #[cfg(target_os = "android")]
@@ -159,14 +161,24 @@ impl<R: Runtime> Keychain<R> {
 
     /// Android only. Copies the document behind a `content://` URI (a picked file, a statement
     /// shared or opened in Moony) into `dir` under its display name, made safe and unique, and
-    /// answers the copy's path. Rust-only, like `store`: the caller decides the folder.
+    /// answers the copy's path. The copy appears in `dir` only once complete; `max_bytes` refuses
+    /// a larger document (0: no limit). Rust-only, like `store`: the caller decides the folder.
     #[cfg(target_os = "android")]
-    pub fn copy_from_uri(&self, uri: &str, dir: &Path) -> Result<std::path::PathBuf> {
+    pub fn copy_from_uri(
+        &self,
+        uri: &str,
+        dir: &Path,
+        max_bytes: u64,
+    ) -> Result<std::path::PathBuf> {
         let dir = utf8(dir)?;
         self.0
             .run_mobile_plugin::<CopyFromUriResponse>(
                 "copyFromUri",
-                CopyFromUriPayload { uri, dir },
+                CopyFromUriPayload {
+                    uri,
+                    dir,
+                    max_bytes,
+                },
             )
             .map(|response| std::path::PathBuf::from(response.path))
             .map_err(Into::into)

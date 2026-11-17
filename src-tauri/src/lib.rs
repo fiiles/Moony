@@ -75,9 +75,17 @@ fn spawn_upload_copy_sweep(app: tauri::AppHandle) {
             return;
         }
     };
+    // Android: also the WebView's camera captures in the app's external Pictures folder
+    #[cfg(target_os = "android")]
+    let pictures_dir = app.path().picture_dir().ok();
     tauri::async_runtime::spawn_blocking(move || {
         let removed = services::upload_copies::sweep(&temp_dir);
         log::info!("[UPLOAD] Upload copy sweep removed {removed} file(s)");
+        #[cfg(target_os = "android")]
+        if let Some(pictures) = pictures_dir {
+            let captures = services::upload_copies::sweep_camera_captures(&pictures);
+            log::info!("[UPLOAD] Camera capture sweep removed {captures} file(s)");
+        }
     });
 }
 
@@ -91,12 +99,12 @@ fn spawn_device_backup_exclusion(app: tauri::AppHandle) {
     });
 }
 
-/// Android only: hand the JVM and the activity's context to `rustls-platform-verifier`, which
+/// Android only: hand the JVM and the application context to `rustls-platform-verifier`, which
 /// reqwest's TLS uses to check certificates through Android's own trust manager. Without it the
 /// first HTTPS request panics ("Expect rustls-platform-verifier to be initialized"). Its Kotlin
 /// half is the `org.rustls:rustls-platform-verifier` AAR (`gen/android/app/build.gradle.kts`).
-/// tao has put the JVM and the context into `ndk-context` by the time `setup` runs. The verifier
-/// keeps one global reference to the context for the life of the process. A failure is logged:
+/// tao has put the JVM and the activity into `ndk-context` by the time `setup` runs; the verifier
+/// keeps one global reference to the application context for the life of the process. A failure is logged:
 /// HTTPS then fails request by request instead of the app not starting.
 #[cfg(target_os = "android")]
 fn init_android_tls_verifier() {
@@ -106,7 +114,17 @@ fn init_android_tls_verifier() {
     let vm = unsafe { jni::JavaVM::from_raw(android.vm().cast()) };
     let result = vm.attach_current_thread(|env| -> Result<(), jni::errors::Error> {
         // SAFETY: a live global reference to the activity (`ndk-context`), see above.
-        let context = unsafe { jni::objects::JObject::from_raw(env, android.context().cast()) };
+        let activity = unsafe { jni::objects::JObject::from_raw(env, android.context().cast()) };
+        // The verifier keeps its context for the life of the process: the application context,
+        // not the activity, which may be recreated.
+        let context = env
+            .call_method(
+                &activity,
+                jni::jni_str!("getApplicationContext"),
+                jni::jni_sig!("()Landroid/content/Context;"),
+                &[],
+            )?
+            .l()?;
         rustls_platform_verifier::android::init_with_env(env, context)
     });
     match result {

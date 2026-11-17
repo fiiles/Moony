@@ -2068,3 +2068,42 @@ R-110. **Fixes from the desktop live run, texts** (2026-11-17; with final review
      pomocí záchranné sady?"); `auth.onboarding.connect.subtitle` was already fixed by R-105 (f). Left as owner
      questions: spaces inside a pairing code, a server address without `http://`, the hosted-account copy
      (`validation.syncAccountNotFound`, `setup.account.*`).
+R-111. **Fixes from the phone live run** (2026-11-17). (a) The iOS build failed: `sync_print_recovery_kit`
+     called `WebviewWindow::print`, which exists only on the desktop; the print dialog is now behind
+     `#[cfg(desktop)]` and the command is refused on a phone (`open_print_dialog`; the phone never offers
+     printing). (b) The biometric offer ("Odemykat Moony obličejem/otiskem?") opened over the removed-device
+     sheet at unlock, as on the desktop before R-105 (c): `enrolmentOfferOpen` waits while
+     `removedNoticePending` (the notice unanswered, or the status still loading). Test:
+     `biometrics.test.ts` "waits while the removed-device notice…". (c) After "Sadu mám, hotovo" the phone's
+     Kit row kept the cached state until the next poll; `KitBody` invalidates the sync status when the kit
+     is copied or saved (the desktop's R-105 (e)). (d) The removed-device sheet showed "Odebralo ho zařízení
+     1. ledna 1970" with no name while it slid away after an answer; it keeps the last notice's text.
+     (e) The phone's new-kit step said "Vytiskněte si tuto…" and "Nejdřív sadu vytiskněte…" although the
+     phone has no print button: `newKit.bodyPhone` (ten locales) and `setup.kit.saveFirst`. (f) A shown
+     password (the eye) autocapitalised and autocorrected on iOS, so the first letter came out upper case:
+     `PasswordInput` sets `autoCapitalize="none"`, `autoCorrect="off"`, `spellCheck={false}`. (g) cs texts:
+     "Odebralo ho zařízení {by} dne {date}" (the name ran into the date), "záchranné sady" in lower case
+     mid-sentence (`phone.choice.scan.lead`, `server.dialogBody`).
+
+As run (Task 33, phone, 2026-11-17). iOS 27.0 simulator "LC-iPhone-SE-3rd-generation" (375 pt; a 320 pt
+iPhone no longer runs iOS 27 and Display Zoom was not reachable, so 320 px was checked in the Browser pane
+driving the simulator's backend through the dev bridge), largest Dynamic Type
+(`accessibility-extra-extra-extra-large`) and dark mode in the simulator's WebKit, cs/en/de/ja at 320 px
+(no horizontal overflow); a fresh app container; a local relay of `feat/recovery-kit`; two isolated desktop
+instances (`.livecheckp1`, `.livecheckp2`, ports 1437–1438). Passed: phone setup as the first device (kit
+step, copy, "Sadu mám, pokračovat", done sheet with the first-upload line, "Přidat druhé zařízení" opens the
+scan flow); the phone as holder of a typed code (wrong digits, attempts 3 → 2, "Zařízení Počítač A je
+připojené"); desktop B paired from desktop A; device sheet; removal of the phone by a desktop and the
+removed sheet at unlock (scrim keeps the notice, RemovedBlock with sync off, "Připojit znovu" → join choice,
+rejoin by typed code with the backup kept, "Dřívější zařízení (2)" sheet); removal of the Kit creator from
+the phone (tick row 44 pt, kit line `creatorRemoved`, wrong password under the field, Kit step); "Vytvořit
+novou sadu" from an unsaved kit; the Kit step cannot be closed by Escape or the scrim; "Uložit nebo sdílet…"
+opens the Files picker and "Sadu mám, hotovo" unlocks, the Kit row then reads "uložená ve složce, která se
+synchronizuje s cloudem" (R-108); "Ověřit sadu" valid, lower case with spaces, replaced, mistyped, of
+another sync; syncingLong "Trvá déle než obvykle" with "Zkusit znovu" (relay paused with SIGSTOP) and back
+to "Aktuální"; a desktop's Kit join seen on the phone as "Zařízení se připojilo záchrannou sadou" with "To
+jsem já"; turn-off sheet text; the relay admin's Kit fields (`kitSince`, `kitLastRead`). Not reproducible
+here: a pending removal (an unreachable server fails it first), late vouch and "Je moje", the inactive
+badge (needs days), `kitUsed`, the `left` variant and the unsent count, a pre-phase-5 vault
+(`devices.unsupported`), the rejoin/waiting cards. Not checkable: the camera scan (no camera), printing from
+the saved page, a real iPhone at 320 pt.

@@ -592,6 +592,7 @@
   "newKit": {
     "title": "Tu nuevo kit de recuperación",
     "body": "El kit anterior ya no vale. Imprime este y guárdalo lejos de este dispositivo. Solo lo mostramos ahora.",
+    "bodyPhone": "El kit anterior ya no vale. Guarda este lejos de este teléfono, con tus documentos o en un gestor de contraseñas. Solo lo mostramos ahora.",
     "pending": "El kit valdrá cuando termine la eliminación.",
     "done": "Tengo el kit, hecho",
     "keepFirst": "Primero imprime, guarda o copia el kit.",

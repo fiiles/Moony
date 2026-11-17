@@ -576,6 +576,7 @@
   "newKit": {
     "title": "Your new recovery kit",
     "body": "The old kit no longer works. Print this one and keep it away from this device. We show it only now.",
+    "bodyPhone": "The old kit no longer works. Save this one away from this phone, with your documents or in a password manager. We show it only now.",
     "pending": "The kit starts working once the removal finishes.",
     "done": "I have the kit, done",
     "keepFirst": "First print, save or copy the kit.",

@@ -868,12 +868,26 @@ pub async fn sync_print_recovery_kit(
 ) -> Result<()> {
     require_feature()?;
     with_kit_draft(&app, &db, |_| Ok(()))?;
-    window
-        .print()
-        .map_err(|e| AppError::Internal(format!("The print dialog did not open: {e}")))?;
+    open_print_dialog(&window)?;
     with_kit_draft(&app, &db, |draft| {
         db.with_conn(|conn| setup::note_kit_storage(conn, draft, KitStorage::Paper))
     })
+}
+
+#[cfg(desktop)]
+fn open_print_dialog(window: &tauri::WebviewWindow) -> Result<()> {
+    window
+        .print()
+        .map_err(|e| AppError::Internal(format!("The print dialog did not open: {e}")))
+}
+
+/// A phone has no print dialog (its "Uložit nebo sdílet…" goes through the Files picker,
+/// `sync_note_recovery_kit_saved`): the command is refused there and records nothing.
+#[cfg(mobile)]
+fn open_print_dialog(_window: &tauri::WebviewWindow) -> Result<()> {
+    Err(AppError::Internal(
+        "A phone has no print dialog for the recovery kit".into(),
+    ))
 }
 
 /// Finishes setup (`setup::finish_setup`) and starts the engine; the status after it.

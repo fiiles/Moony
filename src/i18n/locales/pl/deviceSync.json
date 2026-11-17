@@ -608,6 +608,7 @@
   "newKit": {
     "title": "Twój nowy zestaw odzyskiwania",
     "body": "Stary zestaw przestał obowiązywać. Wydrukuj ten i przechowuj go z dala od tego urządzenia. Pokazujemy go tylko teraz.",
+    "bodyPhone": "Stary zestaw przestał obowiązywać. Zapisz ten z dala od tego telefonu, na przykład z dokumentami albo w menedżerze haseł. Pokazujemy go tylko teraz.",
     "pending": "Zestaw zacznie obowiązywać po zakończeniu usuwania.",
     "done": "Mam zestaw, gotowe",
     "keepFirst": "Najpierw wydrukuj, zapisz lub skopiuj zestaw.",

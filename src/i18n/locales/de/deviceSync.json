@@ -576,6 +576,7 @@
   "newKit": {
     "title": "Ihr neues Wiederherstellungs-Kit",
     "body": "Das alte Kit gilt nicht mehr. Drucken Sie dieses aus und bewahren Sie es getrennt von diesem Gerät auf. Wir zeigen es nur jetzt.",
+    "bodyPhone": "Das alte Kit gilt nicht mehr. Bewahren Sie dieses nicht auf diesem Telefon auf, zum Beispiel bei Ihren Unterlagen oder in einem Passwortmanager. Wir zeigen es nur jetzt.",
     "pending": "Das Kit gilt, sobald das Entfernen abgeschlossen ist.",
     "done": "Ich habe das Kit, fertig",
     "keepFirst": "Drucken, speichern oder kopieren Sie das Kit zuerst.",

@@ -98,7 +98,11 @@ export function RemovedNoticeSheet() {
   const [, navigate] = useLocation();
   const notice = status?.removedNotice ?? null;
   const [closed, setClosed] = useState(false);
-  const text = useRemovedText(notice ?? { by: '', at: 0, unsent: 0, left: false });
+  // The text of the last notice shown: an answer clears the notice while the sheet still slides
+  // away, and its sentences must not turn into a blank name and 1 January 1970 meanwhile.
+  const [shown, setShown] = useState<SyncRemovedNotice | null>(notice);
+  if (notice !== null && notice !== shown) setShown(notice);
+  const text = useRemovedText(notice ?? shown ?? { by: '', at: 0, unsent: 0, left: false });
   const actions = useRemovedActions();
 
   return (

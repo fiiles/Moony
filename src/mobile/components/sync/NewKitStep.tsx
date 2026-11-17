@@ -41,7 +41,7 @@ export function NewKitStep({
       // Nothing closes this sheet but its button: the kit is shown only now
       onOpenChange={() => undefined}
       title={t('newKit.title')}
-      description={gone ? undefined : t('newKit.body')}
+      description={gone ? undefined : t('newKit.bodyPhone')}
       footer={
         gone ? (
           <Button className={`${BUTTON} flex-1`} onClick={onDone}>
@@ -69,7 +69,8 @@ export function NewKitStep({
             onPasswordRequired={onGone}
             onExpired={onGone}
           />
-          {!kept && <p className="m-0 text-m-sub text-ink-4">{t('newKit.keepFirst')}</p>}
+          {/* The phone has no print button: copy, or save or share */}
+          {!kept && <p className="m-0 text-m-sub text-ink-4">{t('setup.kit.saveFirst')}</p>}
         </div>
       )}
     </Sheet>

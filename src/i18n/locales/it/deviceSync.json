@@ -592,6 +592,7 @@
   "newKit": {
     "title": "Il tuo nuovo kit di ripristino",
     "body": "Il vecchio kit non funziona più. Stampa questo e conservalo lontano da questo dispositivo. Lo mostriamo solo ora.",
+    "bodyPhone": "Il vecchio kit non funziona più. Conserva questo lontano da questo telefono, insieme ai tuoi documenti o in un gestore di password. Lo mostriamo solo ora.",
     "pending": "Il kit funzionerà quando la rimozione sarà completata.",
     "done": "Ho il kit, fatto",
     "keepFirst": "Prima stampa, salva o copia il kit.",

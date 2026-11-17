@@ -87,7 +87,7 @@
     "insecure": "Nešifrované spojení (http)",
     "change": "Změnit adresu",
     "dialogTitle": "Změnit adresu serveru",
-    "dialogBody": "Použijte to, když se váš synchronizační server přestěhoval na novou adresu. Musí jít o tentýž server, na kterém jsou vaše synchronizovaná data. Každé zařízení si adresu mění samo, stejný postup tedy zopakujte na ostatních zařízeních. Uložte si znovu Záchrannou sadu: nově obsahuje novou adresu.",
+    "dialogBody": "Použijte to, když se váš synchronizační server přestěhoval na novou adresu. Musí jít o tentýž server, na kterém jsou vaše synchronizovaná data. Každé zařízení si adresu mění samo, stejný postup tedy zopakujte na ostatních zařízeních. Uložte si znovu záchrannou sadu: nově obsahuje novou adresu.",
     "success": "Adresa synchronizačního serveru je změněna",
     "unchanged": "Toto zařízení už tuto adresu používá.",
     "repeatOn": "Totéž udělejte na: {{devices}}",
@@ -475,7 +475,7 @@
     "choice": {
       "scan": {
         "title": "Naskenovat kód z počítače",
-        "lead": "Na počítači: Nastavení → Synchronizace → Přidat zařízení. Naskenovat jde i QR kód Záchranné sady."
+        "lead": "Na počítači: Nastavení → Synchronizace → Přidat zařízení. Naskenovat jde i QR kód záchranné sady."
       }
     },
     "typeCode": "Zadat kód záchranné sady",
@@ -606,6 +606,7 @@
   "newKit": {
     "title": "Vaše nová záchranná sada",
     "body": "Stará sada přestala platit. Vytiskněte si tuto a uložte ji mimo toto zařízení. Ukážeme ji jen teď.",
+    "bodyPhone": "Stará sada přestala platit. Tuto si uložte mimo tento telefon, třeba k dokladům nebo do správce hesel. Ukážeme ji jen teď.",
     "pending": "Sada začne platit, až se odebrání dokončí.",
     "done": "Sadu mám, hotovo",
     "keepFirst": "Nejdřív sadu vytiskněte, uložte nebo zkopírujte.",
@@ -697,7 +698,7 @@
   },
   "removed": {
     "title": "Toto zařízení bylo odebráno ze synchronizace",
-    "body": "Odebralo ho zařízení {{by}} {{date}}. Vaše data tady zůstala, jen se už nesynchronizují.",
+    "body": "Odebralo ho zařízení {{by}} dne {{date}}. Vaše data tady zůstala, jen se už nesynchronizují.",
     "titleLeft": "Synchronizace je na tomto zařízení vypnutá",
     "bodyLeft": "Toto zařízení ze synchronizace odešlo (třeba z jiné kopie profilu). Data tady zůstala.",
     "unsent_one": "{{count}} změna z tohoto zařízení se do synchronizace nedostala; zůstává jen tady.",

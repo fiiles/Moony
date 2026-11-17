@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { useIsFetching, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
+import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { biometricApi } from '@/lib/tauri-api';
 import { Button } from '@/components/ui/button';
 import { BiometryIcon } from '@/mobile/components/BiometryIcon';
@@ -42,7 +43,7 @@ function storage(): Storage | null {
  *
  * It never opens over the import sheet: a statement shared into Moony while it was locked opens
  * first (`sharedPending`, from `ReceivedFileHost`), and the offer follows once that sheet has
- * closed (`enrolmentOfferOpen`). Nor does it rise over a screen that is still loading (audit D2):
+ * closed (`enrolmentOfferOpen`), nor over the removed-device notice. Nor does it rise over a screen that is still loading (audit D2):
  * after the unlock it waits until no query has been fetching for `OFFER_QUIET_MS` (the Overview,
  * or the screen the lock covered, has drawn its data), at most `OFFER_MAX_WAIT_MS`.
  */
@@ -50,6 +51,10 @@ export function EnableBiometricsSheet({ sharedPending = false }: { sharedPending
   const { t } = useTranslation('mobile');
   const { appStatus, unlockMutation, lockMutation } = useAuth();
   const { open: importOpen } = useImportSheet();
+  // The removed-device notice opens once at unlock too (`RemovedNoticeSheet`): the offer waits
+  // until it was answered, and while the status that says so is still loading.
+  const { data: syncStatus, isLoading: syncStatusLoading } = useDeviceSyncStatus();
+  const removedNoticePending = syncStatusLoading || syncStatus?.removedNotice != null;
   const [asked, setAsked] = useState(() => wasEnrolmentAsked(storage()));
 
   // The flag is read when a password unlock is submitted, not only at mount: a clear since then
@@ -112,6 +117,7 @@ export function EnableBiometricsSheet({ sharedPending = false }: { sharedPending
       enabling: enable.isPending,
       importOpen,
       sharedPending,
+      removedNoticePending,
     });
 
   return (

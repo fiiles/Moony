@@ -576,6 +576,7 @@
   "newKit": {
     "title": "Ditt nye gjenopprettingssett",
     "body": "Det gamle settet gjelder ikke lenger. Skriv ut dette og oppbevar det unna denne enheten. Vi viser det bare nå.",
+    "bodyPhone": "Det gamle settet gjelder ikke lenger. Ta vare på dette borte fra denne telefonen, sammen med dokumentene dine eller i en passordbehandler. Vi viser det bare nå.",
     "pending": "Settet begynner å gjelde når fjerningen er ferdig.",
     "done": "Jeg har settet, ferdig",
     "keepFirst": "Skriv ut, lagre eller kopier settet først.",

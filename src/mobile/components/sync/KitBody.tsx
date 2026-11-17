@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Check, Copy, Download } from 'lucide-react';
@@ -28,7 +29,7 @@ const WIDE_BUTTON = `${BUTTON} w-full [&_svg]:size-[18px]`;
  */
 export function KitBody({
   kit,
-  onKept,
+  onKept: kept,
   onPasswordRequired,
   onExpired,
 }: {
@@ -39,6 +40,13 @@ export function KitBody({
 }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
+  const queryClient = useQueryClient();
+  // Keeping the kit writes where it is kept: the Kit row must not show the cached "not saved"
+  // state once the step closes (the desktop's `RecoveryKitPanel` does the same).
+  const onKept = () => {
+    void queryClient.invalidateQueries({ queryKey: ['device-sync-status'] });
+    kept?.();
+  };
   const { copyRecoveryCode, noteRecoveryKitSaved } = useDeviceSyncMutations();
   const { exportText } = useExportTextFile();
   const kitCopy = useRecoveryKitCopy(kit);
@@ -68,7 +76,7 @@ export function KitBody({
         setClipboardHint(true);
       }
       setCopied(true);
-      onKept?.();
+      onKept();
       if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
       copiedTimer.current = window.setTimeout(() => setCopied(false), 2000);
     } catch (error) {
@@ -90,7 +98,7 @@ export function KitBody({
         // Where the picker put it is unknown: it counts as a cloud folder, the strongest
         await noteRecoveryKitSaved.mutateAsync();
         toast(t('setup.kit.saved'));
-        onKept?.();
+        onKept();
       }
     } catch (error) {
       if (error instanceof ApiError && error.key === 'validation.syncPasswordRequired') {

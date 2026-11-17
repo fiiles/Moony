@@ -576,6 +576,7 @@
   "newKit": {
     "title": "Ditt nya återställningskit",
     "body": "Det gamla kitet gäller inte längre. Skriv ut det här och förvara det på avstånd från den här enheten. Vi visar det bara nu.",
+    "bodyPhone": "Det gamla kitet gäller inte längre. Förvara det här utanför den här telefonen, till exempel med dina handlingar eller i en lösenordshanterare. Vi visar det bara nu.",
     "pending": "Kitet börjar gälla när borttagningen är klar.",
     "done": "Jag har kitet, klart",
     "keepFirst": "Skriv ut, spara eller kopiera kitet först.",

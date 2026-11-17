@@ -14,8 +14,10 @@
 //!   local and cheap. The day of the edit is no bound on the days it changes. A day that the
 //!   facts do not cover takes the remainder of a live row (`recorded - derived`), and the
 //!   derived part of that live row moves with every item, so one change can move every earlier
-//!   day. Only the ticker jobs (network) keep the date they are queued with. The helpers here
-//!   only decide whether an edit touches a fact the history reads.
+//!   day. The ticker jobs (network) keep the date they are queued with, and so does a balance
+//!   record on accounts that are all dated on or before it ([`balance_record_job`]: savings carry
+//!   no remainder from that day on, so no earlier day moves). The other helpers here only decide
+//!   whether an edit touches a fact the history reads.
 
 use std::collections::HashSet;
 
@@ -274,10 +276,53 @@ fn held_ticker_jobs(conn: &Connection, from_day: i64) -> Result<Vec<Job>> {
 /// (`history_days::plan_rebuild` clamps `Days(0)` to it). A change to any static item (dating or
 /// undating it, a record, a valuation, a value, a currency, a type, creating or deleting it) can
 /// change every earlier day, because a day the facts do not cover takes the remainder of a live
-/// row, `recorded - derived`, and `derived` moves with every item. A days-only rebuild reads
-/// the facts once and writes locally, so there is nothing to save by narrowing it.
+/// row, `recorded - derived`, and `derived` moves with every item. Only a balance record is
+/// narrowed, where the records show that no earlier day moves ([`balance_record_job`]).
 pub fn all_days() -> Job {
     Job::Days(0)
+}
+
+/// The job a balance record of `as_of` on the account needs, written or deleted: the one write
+/// to a static class that is narrowed, because it is the everyday one (a balance of today or
+/// yesterday) and its reach can be read from the records alone.
+///
+/// The days from `as_of` on, when every account that counts has a record on or before `as_of`
+/// both before and after the write. Savings are then derived from records alone from that day
+/// on, so no live row there holds a savings remainder, before or after; and on the earlier days
+/// neither the records that count nor the live rows they take a remainder from have moved.
+/// Otherwise the write changes what dates an account (its first record, a record before it, the
+/// record another account is still waiting for) and every day is derived again ([`all_days`]).
+/// An account outside the balance is no part of the history: no job.
+///
+/// A record that is written leaves its own account dated on `as_of`, and a deleted one had it
+/// dated, so one reading covers both sides: call this **before** a record is written and
+/// **after** one is deleted, in the same hold of the connection as the write. `as_of` of today
+/// is no past day; the queue drops such a job (today's row is the live snapshot's).
+pub fn balance_record_job(conn: &Connection, account_id: &str, as_of: i64) -> Result<Option<Job>> {
+    let excluded: Option<bool> = conn
+        .query_row(
+            "SELECT exclude_from_balance FROM bank_accounts WHERE id = ?1",
+            [account_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    if excluded == Some(true) {
+        return Ok(None);
+    }
+    let an_account_is_not_dated: bool = conn.query_row(
+        "SELECT EXISTS(
+            SELECT 1 FROM bank_accounts a
+            WHERE a.exclude_from_balance = 0
+              AND NOT EXISTS (SELECT 1 FROM bank_balance_records r
+                              WHERE r.bank_account_id = a.id AND r.as_of <= ?1))",
+        [as_of],
+        |row| row.get(0),
+    )?;
+    Ok(Some(if an_account_is_not_dated {
+        all_days()
+    } else {
+        Job::Days(as_of)
+    }))
 }
 
 /// An edited bank account: leaving or entering the balance, or a currency change, moves the
@@ -1027,6 +1072,314 @@ mod tests {
         // `Days(0)` is clamped to the first fact: the whole history, whatever the edit's day.
         assert_eq!(all_days(), Job::Days(0));
         assert_eq!(all_days().from_day(), 0);
+    }
+
+    // --- balance records ------------------------------------------------------------------
+
+    fn live_row(conn: &Connection, day: i64, savings: &str) {
+        conn.execute(
+            "INSERT INTO portfolio_metrics_history
+                (id, recorded_at, source, savings_by_currency, bonds_by_currency)
+             VALUES (?1, ?2, 'live', ?3, '{\"CZK\":900.0}')",
+            params![format!("live{day}"), day, savings],
+        )
+        .expect("live row");
+    }
+
+    fn write_record(conn: &Connection, account: &str, as_of: i64, amount: &str) {
+        conn.execute(
+            "DELETE FROM bank_balance_records WHERE bank_account_id = ?1 AND as_of = ?2",
+            params![account, as_of],
+        )
+        .expect("replace");
+        conn.execute(
+            "INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of)
+             VALUES (?1, ?2, ?3, 'CZK', ?4)",
+            params![format!("{account}{as_of}"), account, amount, as_of],
+        )
+        .expect("record");
+    }
+
+    /// Accounts `a` (dated from day -30) and `b` (dated from day -20), `x` outside the balance
+    /// and without a record, and a bond without a purchase date (so bonds live on a remainder).
+    /// Live rows on day -25 (`b` is not dated yet: savings on a remainder), day -8 and today;
+    /// every earlier day rebuilt.
+    fn dated_profile() -> Connection {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "INSERT INTO bank_accounts (id, balance) VALUES ('a', '140'), ('b', '50');
+             INSERT INTO bank_accounts (id, balance, exclude_from_balance) VALUES ('x', '7', 1);
+             INSERT INTO bonds (id, coupon_value) VALUES ('bond', '900');",
+        )
+        .expect("items");
+        write_record(&conn, "a", d(-30), "100");
+        write_record(&conn, "a", d(-12), "140");
+        write_record(&conn, "b", d(-20), "50");
+        live_row(&conn, d(-25), "{\"CZK\":400.0}");
+        live_row(&conn, d(-8), "{\"CZK\":190.0}");
+        live_row(&conn, d(0), "{\"CZK\":190.0}");
+        rebuild_days(&conn, 0, d(0)).expect("history");
+        conn
+    }
+
+    /// Every stored day with its classes, oldest first.
+    fn history(conn: &Connection) -> Vec<String> {
+        let mut stmt = conn
+            .prepare(
+                "SELECT recorded_at || ' ' || source || ' ' || savings_by_currency || ' '
+                        || bonds_by_currency || ' ' || investments_by_currency || ' '
+                        || crypto_by_currency || ' ' || real_estate_by_currency || ' '
+                        || real_estate_personal_by_currency || ' ' || loans_by_currency || ' '
+                        || other_assets_by_currency
+                 FROM portfolio_metrics_history ORDER BY recorded_at",
+            )
+            .expect("statement");
+        let rows = stmt
+            .query_map([], |row| row.get::<_, String>(0))
+            .expect("rows")
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .expect("history");
+        rows
+    }
+
+    /// A record written the way the command does it: the job is planned before the write.
+    fn record(
+        account: &'static str,
+        as_of: i64,
+        amount: &'static str,
+    ) -> impl Fn(&Connection) -> Option<Job> {
+        move |conn| {
+            let job = balance_record_job(conn, account, as_of).expect("job");
+            write_record(conn, account, as_of, amount);
+            job
+        }
+    }
+
+    /// A record deleted the way the command does it: the job is planned after the delete.
+    fn delete(account: &'static str, as_of: i64) -> impl Fn(&Connection) -> Option<Job> {
+        move |conn| {
+            conn.execute(
+                "DELETE FROM bank_balance_records WHERE bank_account_id = ?1 AND as_of = ?2",
+                params![account, as_of],
+            )
+            .expect("delete");
+            balance_record_job(conn, account, as_of).expect("job")
+        }
+    }
+
+    /// The job of `write` on the dated profile, after checking what the job is for: the days it
+    /// re-derives leave the same history as re-deriving every day.
+    fn job_that_leaves_the_full_history(write: impl Fn(&Connection) -> Option<Job>) -> Option<Job> {
+        let narrowed = dated_profile();
+        let job = write(&narrowed);
+        if let Some(job) = &job {
+            rebuild_days(&narrowed, job.from_day(), d(0)).expect("narrowed");
+        }
+        let full = dated_profile();
+        write(&full);
+        rebuild_days(&full, 0, d(0)).expect("full");
+        assert_eq!(history(&narrowed), history(&full));
+        job
+    }
+
+    #[test]
+    fn a_record_on_an_account_dated_before_it_re_derives_the_days_from_its_day() {
+        // Every account that counts has a record on or before the day: no earlier day moves.
+        assert_eq!(
+            job_that_leaves_the_full_history(record("a", d(-5), "300")),
+            Some(Job::Days(d(-5)))
+        );
+        assert_eq!(
+            job_that_leaves_the_full_history(record("b", d(-15), "75")),
+            Some(Job::Days(d(-15)))
+        );
+    }
+
+    #[test]
+    fn a_record_replaced_on_its_day_re_derives_the_days_from_that_day() {
+        assert_eq!(
+            job_that_leaves_the_full_history(record("a", d(-12), "999")),
+            Some(Job::Days(d(-12)))
+        );
+    }
+
+    #[test]
+    fn a_record_of_today_has_no_past_day_to_re_derive() {
+        // Today's row is the live snapshot's: the queue drops a job dated today.
+        assert_eq!(
+            job_that_leaves_the_full_history(record("a", d(0), "300")),
+            Some(Job::Days(d(0)))
+        );
+    }
+
+    #[test]
+    fn a_record_while_another_account_is_not_dated_yet_re_derives_every_day() {
+        // `b` has no record on or before day -22: savings are on a remainder around it.
+        assert_eq!(
+            job_that_leaves_the_full_history(record("a", d(-22), "120")),
+            Some(all_days())
+        );
+    }
+
+    #[test]
+    fn a_record_before_the_first_one_of_its_account_re_derives_every_day() {
+        let job = job_that_leaves_the_full_history(record("b", d(-28), "60"));
+        assert_eq!(job, Some(all_days()));
+
+        // The days before the record do move: the live row of day -25 no longer holds a
+        // remainder, so re-deriving from the record's day alone leaves a different history.
+        let from_the_record = dated_profile();
+        record("b", d(-28), "60")(&from_the_record);
+        rebuild_days(&from_the_record, d(-28), d(0)).expect("narrowed");
+        let full = dated_profile();
+        record("b", d(-28), "60")(&full);
+        rebuild_days(&full, 0, d(0)).expect("full");
+        assert_ne!(history(&from_the_record), history(&full));
+    }
+
+    #[test]
+    fn the_first_record_of_an_account_re_derives_every_day() {
+        let job = job_that_leaves_the_full_history(|conn| {
+            conn.execute(
+                "INSERT INTO bank_accounts (id, balance) VALUES ('c', '10')",
+                [],
+            )
+            .expect("account");
+            record("c", d(-3), "10")(conn)
+        });
+        assert_eq!(job, Some(all_days()));
+    }
+
+    #[test]
+    fn a_deleted_record_re_derives_from_its_day_while_an_earlier_one_dates_the_account() {
+        assert_eq!(
+            job_that_leaves_the_full_history(delete("a", d(-12))),
+            Some(Job::Days(d(-12)))
+        );
+    }
+
+    #[test]
+    fn deleting_the_record_that_dates_an_account_re_derives_every_day() {
+        // The only record of `b`, and the first of `a`
+        assert_eq!(
+            job_that_leaves_the_full_history(delete("b", d(-20))),
+            Some(all_days())
+        );
+        assert_eq!(
+            job_that_leaves_the_full_history(delete("a", d(-30))),
+            Some(all_days())
+        );
+    }
+
+    /// Random profiles (accounts dated, undated and outside the balance, live rows anywhere)
+    /// and a random record written or deleted: whatever the job, the days it re-derives leave
+    /// the history that re-deriving every day leaves.
+    #[test]
+    fn any_balance_write_leaves_the_history_of_a_full_rebuild() {
+        use rand::rngs::StdRng;
+        use rand::{RngExt, SeedableRng};
+
+        let mut narrowed_jobs = 0;
+        for seed in 0..400 {
+            let mut rng = StdRng::seed_from_u64(seed);
+            let accounts: Vec<(String, bool)> = (0..rng.random_range(1..=4))
+                .map(|n| (format!("acc{n}"), rng.random_bool(0.2)))
+                .collect();
+            let mut records: Vec<(String, i64, String)> = Vec::new();
+            for (id, _) in &accounts {
+                for _ in 0..rng.random_range(0..=3) {
+                    let day = d(rng.random_range(-40..=-1));
+                    records.push((id.clone(), day, rng.random_range(1..900).to_string()));
+                }
+            }
+            let mut live: Vec<i64> = (0..rng.random_range(0..=4))
+                .map(|_| d(rng.random_range(-40..=-1)))
+                .collect();
+            live.push(d(0));
+            live.sort_unstable();
+            live.dedup();
+            let live: Vec<(i64, String)> = live
+                .into_iter()
+                .map(|day| (day, format!("{{\"CZK\":{}.0}}", rng.random_range(0..2000))))
+                .collect();
+            let target = accounts[rng.random_range(0..accounts.len())].0.clone();
+            let of_target: Vec<i64> = records
+                .iter()
+                .filter(|(id, _, _)| *id == target)
+                .map(|(_, day, _)| *day)
+                .collect();
+            let deleted = (!of_target.is_empty() && rng.random_bool(0.4))
+                .then(|| of_target[rng.random_range(0..of_target.len())]);
+            let written = (
+                d(rng.random_range(-42..=0)),
+                rng.random_range(1..900).to_string(),
+            );
+
+            let profile = || {
+                let conn = setup_test_db();
+                conn.execute(
+                    "INSERT INTO bonds (id, coupon_value) VALUES ('bond', '900')",
+                    [],
+                )
+                .expect("bond");
+                for (id, excluded) in &accounts {
+                    conn.execute(
+                        "INSERT INTO bank_accounts (id, balance, exclude_from_balance)
+                         VALUES (?1, '250', ?2)",
+                        params![id, excluded],
+                    )
+                    .expect("account");
+                }
+                for (id, day, amount) in &records {
+                    write_record(&conn, id, *day, amount);
+                }
+                for (day, savings) in &live {
+                    live_row(&conn, *day, savings);
+                }
+                rebuild_days(&conn, 0, d(0)).expect("history");
+                conn
+            };
+            let write = |conn: &Connection| match deleted {
+                Some(day) => {
+                    conn.execute(
+                        "DELETE FROM bank_balance_records WHERE bank_account_id = ?1 AND as_of = ?2",
+                        params![target, day],
+                    )
+                    .expect("delete");
+                    balance_record_job(conn, &target, day).expect("job")
+                }
+                None => {
+                    let job = balance_record_job(conn, &target, written.0).expect("job");
+                    write_record(conn, &target, written.0, &written.1);
+                    job
+                }
+            };
+
+            let narrowed = profile();
+            let job = write(&narrowed);
+            if let Some(job) = &job {
+                rebuild_days(&narrowed, job.from_day(), d(0)).expect("narrowed");
+            }
+            let full = profile();
+            write(&full);
+            rebuild_days(&full, 0, d(0)).expect("full");
+            assert_eq!(history(&narrowed), history(&full), "seed {seed}: {job:?}");
+            if job != Some(all_days()) {
+                narrowed_jobs += 1;
+            }
+        }
+        assert!(
+            narrowed_jobs > 50,
+            "the profiles must exercise the narrowed job, {narrowed_jobs} did"
+        );
+    }
+
+    #[test]
+    fn a_record_on_an_account_outside_the_balance_is_no_part_of_the_history() {
+        assert_eq!(
+            job_that_leaves_the_full_history(record("x", d(-5), "7")),
+            None
+        );
     }
 
     #[test]

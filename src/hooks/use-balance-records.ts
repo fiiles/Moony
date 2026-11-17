@@ -22,16 +22,33 @@ async function refreshAfterBalanceWrite(queryClient: QueryClient) {
   await queryClient.invalidateQueries({ queryKey: ['milestones'] });
 }
 
+/** The account's own queries: what the dialog that wrote the balance leaves on screen. */
+const ACCOUNT_KEYS = ['bank-accounts', 'bank-account', 'bank-balance-records'] as const;
+
+/**
+ * After a balance write from a dialog: the account's own queries are waited for, so the dialog
+ * closes on the new balance. The whole contract (`refreshAfterBalanceWrite`) then runs without
+ * holding the dialog: it re-reads every money-flow query of the app, records the snapshot and
+ * reloads the history, none of which the dialog shows.
+ */
+async function refreshAccountThenTheRest(queryClient: QueryClient) {
+  await Promise.all(ACCOUNT_KEYS.map((key) => queryClient.invalidateQueries({ queryKey: [key] })));
+  refreshAfterBalanceWrite(queryClient).catch((error) => {
+    console.error('Failed to refresh after a balance write:', error);
+  });
+}
+
 /**
  * Record or delete a dated balance. Both refresh the money-flow queries, record a
- * portfolio snapshot (rule 7) and the milestones (stale balances).
+ * portfolio snapshot (rule 7) and the milestones (stale balances); the mutation is done once the
+ * account's own queries are fresh (`refreshAccountThenTheRest`).
  */
 export function useBalanceRecordMutations(accountId?: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
 
-  const afterWrite = () => refreshAfterBalanceWrite(queryClient);
+  const afterWrite = () => refreshAccountThenTheRest(queryClient);
 
   const recordBalance = useMutation({
     mutationFn: (data: InsertBalanceRecord) => {

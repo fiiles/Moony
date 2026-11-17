@@ -1,8 +1,16 @@
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::Zeroizing;
 
+use std::collections::BTreeMap;
+
+use sha2::Digest;
+
 use super::*;
 use crate::error::AppError;
+use crate::services::sync::hlc::DeviceId;
+use crate::services::sync::identity::cert::{self, CertFields, CertKind, TicketSecret};
+use crate::services::sync::identity::trust::{ExportEntry, TrustExport, TrustState};
+use crate::services::sync::identity::{sign_pub, SignSeed};
 use crate::services::sync::keys::{Credentials, VaultId, VaultKeys};
 use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
 
@@ -76,6 +84,70 @@ fn creds() -> Credentials {
         account: "1234567890123456".into(),
         vault_id: VaultId([0x77; 16]),
         keys,
+    }
+}
+
+/// `creds()` from a holder without an identity, epoch 0's head known.
+fn plain_payload() -> SlotPayload {
+    SlotPayload {
+        creds: creds(),
+        heads: BTreeMap::from([(0, 0)]),
+        identity: None,
+    }
+}
+
+const HOLDER: DeviceId = DeviceId([0x06; 16]);
+const ISSUED: i64 = 1_794_816_000;
+
+fn holder_seed() -> SignSeed {
+    SignSeed::from_bytes(Zeroizing::new([0x61; 32]))
+}
+
+/// The holder's genesis certificate in the vault of `creds()`.
+fn holder_cert() -> cert::Certificate {
+    let fields = CertFields {
+        vault_id: [0x77; 16],
+        device: HOLDER,
+        box_pub: [0x63; 32],
+        issued_at: ISSUED,
+    };
+    cert::issue_self(CertKind::Genesis, &fields, &holder_seed()).unwrap()
+}
+
+/// The holder vouches with the ticket whose seed is `0x62` repeated.
+fn identity() -> PairingIdentity {
+    let (secret, ticket) = cert::ticket_from_secret(
+        TicketSecret::from_bytes(Zeroizing::new([0x62; 32])),
+        &holder_seed(),
+        [0x77; 16],
+        HOLDER,
+        ISSUED,
+    );
+    PairingIdentity {
+        holder: HOLDER,
+        export: TrustExport {
+            entries: vec![ExportEntry {
+                cert: holder_cert().to_b64(),
+                state: TrustState::Trusted,
+                record: None,
+                cut_off_epoch: None,
+                confirmed: false,
+                cert_seen: None,
+                left_seen: None,
+                ticket_seen: None,
+            }],
+        },
+        ticket_secret: secret,
+        ticket,
+    }
+}
+
+/// `creds()` with both heads and the holder's identity.
+fn full_payload() -> SlotPayload {
+    SlotPayload {
+        creds: creds(),
+        heads: BTreeMap::from([(0, 0), (1, 120)]),
+        identity: Some(identity()),
     }
 }
 
@@ -153,10 +225,13 @@ fn the_cancel_marker_is_two_bytes() {
 }
 
 const FROZEN_TEXT: &str =
-    "moony-pair:2:MzMzMzMzMzMzMzMzMzMzMw:e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
+    "moony-pair:3:MzMzMzMzMzMzMzMzMzMzMw:e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
 /// What a version-1 build shows for the same exchange.
 const FROZEN_TEXT_V1: &str =
     "moony-pair:1:MzMzMzMzMzMzMzMzMzMzMw:e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
+/// What a version-2 build (before phase 5) shows for the same exchange.
+const FROZEN_TEXT_V2: &str =
+    "moony-pair:2:MzMzMzMzMzMzMzMzMzMzMw:e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
 
 #[test]
 fn the_code_text_is_frozen() {
@@ -236,9 +311,9 @@ fn a_code_of_a_later_version_says_this_device_needs_an_update() {
     let mailbox = "MzMzMzMzMzMzMzMzMzMzMw";
     let key = "e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
     for input in [
-        format!("moony-pair:3:{mailbox}:{key}"),
+        format!("moony-pair:4:{mailbox}:{key}"),
         "moony-pair:10:".to_string(),
-        "moony-pair:3".to_string(),
+        "moony-pair:4".to_string(),
         "moony-pair:99999999999999999999:x".to_string(),
     ] {
         let err = parse_pairing_code(&input).unwrap_err();
@@ -269,32 +344,32 @@ fn malformed_codes_are_refused_without_echoing_them() {
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:2:{}:{key}", &mailbox[..21]),
+            format!("moony-pair:3:{}:{key}", &mailbox[..21]),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:2:{mailbox}A:{key}"),
+            format!("moony-pair:3:{mailbox}A:{key}"),
             "validation.syncPairingCodeInvalid",
         ),
         // 22 characters whose last character carries non-zero trailing bits: not canonical.
         (
-            format!("moony-pair:2:{}x:{key}", &mailbox[..21]),
+            format!("moony-pair:3:{}x:{key}", &mailbox[..21]),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:2:{mailbox}:{}", &key[..42]),
+            format!("moony-pair:3:{mailbox}:{}", &key[..42]),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:2:{mailbox}:{key}:{evil}:x"),
+            format!("moony-pair:3:{mailbox}:{key}:{evil}:x"),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:2:{mailbox}:{key}:{evil}"),
+            format!("moony-pair:3:{mailbox}:{key}:{evil}"),
             "validation.syncRelayUrlInvalid",
         ),
         (
-            format!("moony-pair:2:{mailbox}:{key}:"),
+            format!("moony-pair:3:{mailbox}:{key}:"),
             "validation.syncPairingCodeInvalid",
         ),
         (code_with_host(400), "validation.syncPairingCodeInvalid"),
@@ -312,14 +387,18 @@ fn malformed_codes_are_refused_without_echoing_them() {
 }
 
 #[test]
-fn a_v1_code_is_refused_with_a_clear_message() {
+fn a_v1_or_v2_code_is_refused_with_a_clear_message() {
     let mut v1_with_relay = FROZEN_TEXT_V1.to_string();
     v1_with_relay.push_str(":aHR0cDovL2V2aWwuZXhhbXBsZQ");
     for input in [
         FROZEN_TEXT_V1,
+        FROZEN_TEXT_V2,
         v1_with_relay.as_str(),
         "moony-pair:1:",
         "moony-pair:1:junk",
+        "moony-pair:2:",
+        "moony-pair:2:junk",
+        "moony-pair:0:junk",
     ] {
         let err = match parse_pairing_code(input) {
             Ok(_) => panic!("accepted {input}"),
@@ -334,7 +413,7 @@ fn a_v1_code_is_refused_with_a_clear_message() {
         assert_eq!(validation_key(err), OTHER_NEEDS_UPDATE, "{input}");
     }
     assert_eq!(OTHER_NEEDS_UPDATE, "validation.syncPairingOtherNeedsUpdate");
-    assert_eq!(QR_PREFIX_V1, "moony-pair:1:");
+    assert_eq!(QR_PREFIX, "moony-pair:3:");
     // The size cap still comes first.
     let over = format!("{FROZEN_TEXT_V1}:{}", "A".repeat(MAX_CODE_BYTES));
     assert_eq!(
@@ -566,10 +645,13 @@ fn a_low_order_public_key_is_refused() {
 #[test]
 fn credentials_round_trip_through_slot_2() {
     let t = shower();
-    let sealed = seal_credentials_with_nonce(&t, &creds(), [0x55; 24]).unwrap();
+    let sealed = seal_payload_with_nonce(&t, &plain_payload(), [0x55; 24]).unwrap();
     assert_eq!(sealed[0], 0x01);
     assert_eq!(&sealed[1..25], &[0x55; 24]);
-    let opened = open_credentials(&scanner(), &sealed).unwrap();
+    let opened = open_payload(&scanner(), &sealed).unwrap();
+    assert!(opened.identity.is_none(), "a holder without an identity");
+    assert_eq!(opened.heads, BTreeMap::from([(0, 0)]));
+    let opened = opened.creds;
     let want = creds();
     assert_eq!(opened.relay_url, "https://sync.home.example.com");
     assert_eq!(opened.account, want.account);
@@ -578,15 +660,14 @@ fn credentials_round_trip_through_slot_2() {
     let got: Vec<_> = opened.keys.epochs().map(|(e, k)| (e, *k)).collect();
     assert_eq!(got, vec![(0, [0xA0; 32]), (1, [0xA1; 32])]);
     // The random-nonce entry point opens too.
-    let sealed = seal_credentials(&t, &creds()).unwrap();
-    assert!(open_credentials(&scanner(), &sealed).is_ok());
+    let sealed = seal_payload(&t, &plain_payload()).unwrap();
+    assert!(open_payload(&scanner(), &sealed).is_ok());
 }
 
 #[test]
 fn slot_2_is_bound_to_this_exchange() {
-    let sealed = seal_credentials(&shower(), &creds()).unwrap();
-    let failed =
-        |t: &Transcript, bytes: &[u8]| validation_key(open_credentials(t, bytes).unwrap_err());
+    let sealed = seal_payload(&shower(), &plain_payload()).unwrap();
+    let failed = |t: &Transcript, bytes: &[u8]| validation_key(open_payload(t, bytes).unwrap_err());
     let other_mailbox = derive(
         &StaticSecret::from(C_SECRET),
         Side::Scanner,
@@ -653,41 +734,45 @@ fn a_hostile_payload_is_refused() {
     let k = "oKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKA"; // 32 x 0xA0
     let good = |relay: &str, account: &str, v: u32, keys: &str, extra: &str| {
         format!(
-            "{{\"v\":{v},\"relayUrl\":\"{relay}\",\"accountNumber\":\"{account}\",\"vaultId\":\"{vid}\",\"keys\":[{keys}]{extra}}}"
+            "{{\"v\":{v},\"relayUrl\":\"{relay}\",\"accountNumber\":\"{account}\",\"vaultId\":\"{vid}\",\"keys\":[{keys}],\"identity\":null{extra}}}"
         )
     };
-    let entry = |e: u32| format!("{{\"epoch\":{e},\"key\":\"{k}\"}}");
+    let entry = |e: u32| format!("{{\"epoch\":{e},\"key\":\"{k}\",\"head\":0}}");
     let ok_keys = entry(0);
     let acct = "1234567890123456";
     let relay = "https://sync.home.example.com";
     // Sanity: the builder's good payload opens.
-    assert!(open_credentials(&t, &seal_json(&t, &good(relay, acct, 1, &ok_keys, ""))).is_ok());
+    assert!(open_payload(&t, &seal_json(&t, &good(relay, acct, 2, &ok_keys, ""))).is_ok());
 
     let addr = "validation.syncRelayUrlInvalid";
     let fail = "validation.syncPairingFailed";
     let many = (0..65).map(entry).collect::<Vec<_>>().join(",");
     let dup = format!("{},{}", entry(3), entry(3));
-    let short = format!("{{\"epoch\":0,\"key\":\"{}\"}}", &k[..42]);
+    let short = format!("{{\"epoch\":0,\"key\":\"{}\",\"head\":0}}", &k[..42]);
     let big = format!(
         "{}{}",
-        good(relay, acct, 1, &ok_keys, ""),
-        " ".repeat(17 * 1024)
+        good(relay, acct, 2, &ok_keys, ""),
+        " ".repeat(49 * 1024)
     );
+    let key_extra = format!("{{\"epoch\":0,\"key\":\"{k}\",\"head\":0,\"x\":1}}");
     let cases: Vec<(String, &str)> = vec![
-        (good("ftp://evil.example", acct, 1, &ok_keys, ""), addr),
-        (good("https://a.b/path", acct, 1, &ok_keys, ""), addr),
-        (good(relay, "123", 1, &ok_keys, ""), fail),
-        (good(relay, acct, 1, &ok_keys, ",\"extra\":1"), fail),
-        (good(relay, acct, 2, &ok_keys, ""), fail),
-        (good(relay, acct, 1, &many, ""), fail),
-        (good(relay, acct, 1, "", ""), fail),
-        (good(relay, acct, 1, &dup, ""), fail),
-        (good(relay, acct, 1, &short, ""), fail),
+        (good("ftp://evil.example", acct, 2, &ok_keys, ""), addr),
+        (good("https://a.b/path", acct, 2, &ok_keys, ""), addr),
+        (good(relay, "123", 2, &ok_keys, ""), fail),
+        (good(relay, acct, 2, &ok_keys, ",\"extra\":1"), fail),
+        // A version-1 payload (before phase 5) and a later one.
+        (good(relay, acct, 1, &ok_keys, ""), fail),
+        (good(relay, acct, 3, &ok_keys, ""), fail),
+        (good(relay, acct, 2, &many, ""), fail),
+        (good(relay, acct, 2, "", ""), fail),
+        (good(relay, acct, 2, &dup, ""), fail),
+        (good(relay, acct, 2, &short, ""), fail),
+        (good(relay, acct, 2, &key_extra, ""), fail),
         (big, fail),
         ("not json".into(), fail),
     ];
     for (json, expected) in cases {
-        let err = open_credentials(&t, &seal_json(&t, &json)).unwrap_err();
+        let err = open_payload(&t, &seal_json(&t, &json)).unwrap_err();
         assert_eq!(
             validation_key(err),
             expected,
@@ -697,10 +782,172 @@ fn a_hostile_payload_is_refused() {
     }
 }
 
+/// Protocol 3's slot 2 (spec §11.2): every key with its head and the holder's identity, sealed
+/// under the frozen transcript with a fixed nonce. The certificate and ticket bytes are frozen by
+/// `identity/tests.rs`; this freezes the payload's layout and the sealed bytes.
+#[test]
+fn slot_2_v2_matches_the_frozen_vector() {
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine;
+    let payload = full_payload();
+    let json = payload_json(&payload).unwrap();
+    let ticket = &payload.identity.as_ref().unwrap().ticket;
+    let expected = format!(
+        "{{\"v\":2,\"relayUrl\":\"https://sync.home.example.com\",\
+         \"accountNumber\":\"1234567890123456\",\"vaultId\":\"{vid}\",\
+         \"keys\":[{{\"epoch\":0,\"key\":\"{k0}\",\"head\":0}},\
+         {{\"epoch\":1,\"key\":\"{k1}\",\"head\":120}}],\
+         \"identity\":{{\"holder\":\"06060606060606060606060606060606\",\
+         \"export\":{{\"entries\":[{{\"cert\":\"{cert}\",\"state\":\"trusted\"}}]}},\
+         \"ticket\":{{\"secret\":\"{secret}\",\"holderSig\":\"{sig}\",\
+         \"issuedAt\":1794816000}}}}}}",
+        vid = VaultId([0x77; 16]).to_b64(),
+        k0 = URL_SAFE_NO_PAD.encode([0xA0; 32]),
+        k1 = URL_SAFE_NO_PAD.encode([0xA1; 32]),
+        cert = holder_cert().to_b64(),
+        secret = URL_SAFE_NO_PAD.encode([0x62; 32]),
+        sig = URL_SAFE_NO_PAD.encode(ticket.holder_sig),
+    );
+    assert_eq!(json.as_str(), expected);
+    assert_eq!(
+        hex(&ticket.holder_sig),
+        "bc1c2fe4fe3f04958418e44a57b257454ab777d34db0ef5422ec4787b166cadaf580190e7076e4c942b207e9d84d28ddb6e13616a525083f2c4ebb6262958e06",
+        "the holder's signature over the ticket"
+    );
+    let sealed = seal_payload_with_nonce(&shower(), &payload, [0x55; 24]).unwrap();
+    assert_eq!(
+        hex(&sha2::Sha256::digest(&sealed)),
+        "7fd1d2279714b1e9909399379bcefcc4e52204eb759dd3daf9a29003806d1eee"
+    );
+    assert_eq!(sealed.len(), 1 + 24 + json.len() + 16);
+}
+
+#[test]
+fn the_holders_identity_and_heads_round_trip_through_slot_2() {
+    let sealed = seal_payload(&shower(), &full_payload()).unwrap();
+    let opened = open_payload(&scanner(), &sealed).unwrap();
+    assert_eq!(opened.heads, BTreeMap::from([(0, 0), (1, 120)]));
+    assert_eq!(opened.creds.keys.current_epoch(), 1);
+    let got = opened.identity.expect("the holder's identity");
+    let want = identity();
+    assert_eq!(got.holder, HOLDER);
+    assert_eq!(got.export, want.export);
+    assert_eq!(got.ticket, want.ticket);
+    assert_eq!(got.ticket_secret.expose(), want.ticket_secret.expose());
+    // The joiner can sign its certificate with what it received.
+    let joiner = SignSeed::from_bytes(Zeroizing::new([0x64; 32]));
+    let fields = CertFields {
+        vault_id: [0x77; 16],
+        device: DeviceId([0x07; 16]),
+        box_pub: [0x65; 32],
+        issued_at: ISSUED,
+    };
+    let paired = cert::issue_paired(
+        &got.ticket_secret,
+        &got.ticket,
+        got.holder,
+        &sign_pub(&holder_seed()),
+        &fields,
+        &joiner,
+    )
+    .expect("a paired certificate");
+    assert_eq!(paired.body.issuer_device, HOLDER);
+}
+
+/// A key the holder knows no head for travels without one; `identity: null` (a holder whose
+/// vault has no certificates) opens.
+#[test]
+fn a_key_without_a_head_and_a_null_identity_open() {
+    let t = shower();
+    let k = "oKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKA";
+    let json = format!(
+        "{{\"v\":2,\"relayUrl\":\"https://sync.home.example.com\",\
+         \"accountNumber\":\"1234567890123456\",\"vaultId\":\"{}\",\
+         \"keys\":[{{\"epoch\":0,\"key\":\"{k}\",\"head\":0}},{{\"epoch\":1,\"key\":\"{k}\"}}],\
+         \"identity\":null}}",
+        VaultId([0x77; 16]).to_b64()
+    );
+    let opened = open_payload(&t, &seal_json(&t, &json)).unwrap();
+    assert_eq!(opened.heads, BTreeMap::from([(0, 0)]));
+    assert!(opened.identity.is_none());
+    // And a holder that seals without a head writes none.
+    let mut payload = full_payload();
+    payload.heads.remove(&1);
+    payload.identity = None;
+    let json = payload_json(&payload).unwrap();
+    assert!(json.contains("{\"epoch\":1,\"key\":\"oaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaE\"}"));
+    assert!(json.ends_with(",\"identity\":null}"));
+}
+
+#[test]
+fn a_hostile_identity_is_refused() {
+    let t = shower();
+    let payload = full_payload();
+    let json = payload_json(&payload).unwrap();
+    let fail = "validation.syncPairingFailed";
+    let swap = |from: &str, to: &str| {
+        assert!(json.contains(from), "{from}");
+        json.replacen(from, to, 1)
+    };
+    let secret = {
+        use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+        use base64::Engine;
+        URL_SAFE_NO_PAD.encode([0x62; 32])
+    };
+    let cases = [
+        swap("\"holder\":\"0606", "\"holder\":\"0A06"),
+        swap(
+            "\"holder\":\"06060606060606060606060606060606\"",
+            "\"holder\":\"060606\"",
+        ),
+        swap("\"holder\":", "\"extra\":1,\"holder\":"),
+        swap("\"secret\":", "\"extra\":1,\"secret\":"),
+        swap("\"entries\":", "\"extra\":1,\"entries\":"),
+        swap(&secret, &secret[..42]),
+        swap("\"holderSig\":\"", "\"holderSig\":\"AAAA"),
+        swap("\"issuedAt\":1794816000", "\"issuedAt\":\"x\""),
+        swap("\"identity\":{", "\"identity\":5,\"x\":{"),
+    ];
+    for json in cases {
+        let err = open_payload(&t, &seal_json(&t, &json)).unwrap_err();
+        assert_eq!(validation_key(err), fail, "{}", &json[json.len() - 200..]);
+    }
+}
+
+#[test]
+fn a_payload_of_up_to_48_kib_opens() {
+    assert_eq!(MAX_PAYLOAD_JSON, 48 * 1024);
+    let t = shower();
+    let json = payload_json(&full_payload()).unwrap();
+    let fill = |n: usize| format!("{}{}", &json[..json.len() - 1], " ".repeat(n)) + "}";
+    let at_cap = fill(MAX_PAYLOAD_JSON - json.len());
+    assert_eq!(at_cap.len(), MAX_PAYLOAD_JSON);
+    assert!(open_payload(&t, &seal_json(&t, &at_cap)).is_ok());
+    let over = fill(MAX_PAYLOAD_JSON - json.len() + 1);
+    assert_eq!(
+        validation_key(open_payload(&t, &seal_json(&t, &over)).unwrap_err()),
+        "validation.syncPairingFailed"
+    );
+}
+
+/// A holder whose store would not fit the slot refuses before anything is sealed.
+#[test]
+fn a_store_too_large_for_slot_2_is_refused_when_sealing() {
+    let mut payload = full_payload();
+    let entry = payload.identity.as_ref().unwrap().export.entries[0].clone();
+    payload.identity.as_mut().unwrap().export.entries = vec![entry; 120];
+    let err = seal_payload(&shower(), &payload).unwrap_err();
+    assert_eq!(validation_key(err), "validation.syncTooManyDevices");
+}
+
 #[test]
 fn secrets_print_redacted() {
     let id = format!("{:?}", MAILBOX);
     assert_eq!(id, "MailboxId(<redacted>)");
+    let payload = format!("{:?} {:?}", full_payload(), identity());
+    assert!(payload.contains("<redacted>"));
+    assert!(!payload.contains("1234567890123456"));
+    assert!(!payload.contains("98, 98"), "the ticket secret");
     let t = format!("{:?} {:?}", shower(), shower());
     assert!(!t.contains(&key(&shower())));
     assert!(!t.contains("482686"));
@@ -761,4 +1008,30 @@ fn the_six_digits_alone_can_be_ground() {
             return;
         }
     }
+}
+
+/// Owner decision O-3 (As built R-114): a pasted or typed pairing code reads with any white space
+/// or zero-width character inside it (a chat app wraps it, a person types it in groups), as a
+/// connection code does.
+#[test]
+fn a_pairing_code_reads_with_white_space_inside() {
+    let split = |at: usize, gap: &str| format!("{}{gap}{}", &FROZEN_TEXT[..at], &FROZEN_TEXT[at..]);
+    for input in [
+        format!("  {FROZEN_TEXT}\n"),
+        split(6, " "),
+        split(20, "\n"),
+        split(30, "\u{00A0}\t"),
+        split(40, "\u{200B}"),
+        format!("\u{FEFF}{}", split(12, "\r\n ")),
+    ] {
+        let parsed = parse_pairing_code(&input).expect("reads");
+        assert_eq!(parsed.mailbox, MAILBOX, "{input:?}");
+        assert_eq!(parsed.shower_public, s_pub(), "{input:?}");
+    }
+    // White space does not count toward the size cap, but a flood of it is still refused.
+    let flood = format!("{FROZEN_TEXT}{}", " ".repeat(4 * MAX_CODE_BYTES));
+    assert_eq!(
+        validation_key(parse_pairing_code(&flood).unwrap_err()),
+        "validation.syncPairingCodeInvalid"
+    );
 }

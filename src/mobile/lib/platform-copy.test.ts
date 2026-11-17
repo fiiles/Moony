@@ -22,6 +22,8 @@ describe('phoneCopyKey', () => {
       'firstRun.points.localOnly.textSyncAndroid'
     );
     expect(phoneCopyKey('replace.saved.saveCopy', 'android')).toBe('replace.saved.saveCopyAndroid');
+    // The Recovery Kit's save button: Android's picker only saves, it does not share
+    expect(phoneCopyKey('setup.kit.saveShare', 'android')).toBe('setup.kit.saveShareAndroid');
   });
 
   it('leaves unlisted keys alone on Android', () => {
@@ -31,7 +33,7 @@ describe('phoneCopyKey', () => {
 
   it('has an English Android variant for every listed key', () => {
     for (const key of ANDROID_COPY_KEYS) {
-      const tree = key.startsWith('replace.') ? deviceSync : mobile;
+      const tree = key.startsWith('replace.') || key.startsWith('setup.kit.') ? deviceSync : mobile;
       expect(typeof lookup(tree, key), key).toBe('string');
       expect(typeof lookup(tree, `${key}Android`), `${key}Android`).toBe('string');
     }

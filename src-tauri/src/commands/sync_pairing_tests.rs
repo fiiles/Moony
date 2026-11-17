@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use super::*;
 use crate::services::sync::error::Transient;
+use crate::services::sync::keys::Credentials;
 use crate::services::sync::relay::fake::{FakeRelay, Route};
 use crate::services::sync::relay::RelayError;
 use crate::services::sync::test_support::migrated;
@@ -171,7 +172,7 @@ fn a_transient_join_failure_keeps_the_received_session() {
 fn the_pairing_code_text_is_shown_with_the_qr() {
     let session = PairingSession::show(Role::Holder, HOME, T0).expect("session");
     let text = pairing_code_text(&session.code());
-    assert!(text.starts_with("moony-pair:2:"));
+    assert!(text.starts_with("moony-pair:3:"));
 
     let view = view_of(&session).expect("view");
     assert_eq!(

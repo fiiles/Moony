@@ -355,6 +355,10 @@ fn the_exact_tables_of_each_class_are_pinned() {
         "sync_own_log",
         "sync_unsent",
         "sync_typed",
+        "sync_trust",
+        "sync_epochs",
+        "sync_trust_seen",
+        "sync_tickets",
     ];
     assert_eq!(names_of(TableClass::Synced), sorted(&synced));
     assert_eq!(names_of(TableClass::Seed), sorted(&seed));
@@ -481,7 +485,16 @@ fn local_recomputed_and_recomputed_or_typed_sets_are_pinned() {
         assert!(t.write_once.is_empty() || t.name == "sync_devices");
         assert!(t.monotonic.is_empty() || t.name == "stock_splits");
     }
-    assert_eq!(spec("sync_devices").unwrap().write_once, &["public_key"]);
+    assert_eq!(
+        spec("sync_devices").unwrap().write_once,
+        &[
+            "public_key",
+            "cert",
+            "left_record",
+            "removal_record",
+            "confirm_record"
+        ]
+    );
     assert_eq!(spec("stock_splits").unwrap().monotonic, &["status"]);
 }
 
@@ -603,4 +616,37 @@ fn key_only_tables_match_the_schema() {
             .all(|c| c.pk_position > 0);
         assert_eq!(is_key_only(t.name), all_key, "{}", t.name);
     }
+}
+
+/// Phase 5: the certificate and the two records sync, and each is written once.
+#[test]
+fn the_device_certificate_and_records_are_synced_write_once() {
+    for column in [
+        "public_key",
+        "cert",
+        "left_record",
+        "removal_record",
+        "confirm_record",
+    ] {
+        assert_eq!(
+            column_class("sync_devices", column),
+            ColumnClass::WriteOnce,
+            "{column}"
+        );
+    }
+    assert_eq!(column_class("sync_devices", "removed"), ColumnClass::Synced);
+    assert!(spec("sync_devices").unwrap().local.is_empty());
+}
+
+/// Revision §7.2: where the Kit is kept syncs, last writer wins, and is not write-once.
+#[test]
+fn the_kits_storage_is_an_ordinary_synced_column() {
+    assert_eq!(
+        column_class("sync_devices", "kit_storage"),
+        ColumnClass::Synced
+    );
+    assert!(!spec("sync_devices")
+        .unwrap()
+        .write_once
+        .contains(&"kit_storage"));
 }

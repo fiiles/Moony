@@ -24,6 +24,11 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
         <Input
           ref={ref}
           type={visible ? 'text' : 'password'}
+          // A shown password is a text field: iOS would capitalise its first letter and
+          // autocorrect it, so the typed password would not be the one meant
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           className={cn(
             'pr-10 tracking-[0.08em] num',
             // Phone: the spacing is for the dots of a typed password, not the placeholder (audit D1)

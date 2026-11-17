@@ -32,6 +32,7 @@ fn info(head: u64, snapshot_seq: Option<u64>) -> VaultInfo {
         paid_until: NOW + 365 * DAY,
         bytes: 0,
         rotation: 0,
+        kit: None,
     }
 }
 

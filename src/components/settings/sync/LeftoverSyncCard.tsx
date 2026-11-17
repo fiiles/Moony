@@ -6,6 +6,8 @@ import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialog';
 import { useLeftoverSyncProfile } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { useFormat } from '@/lib/use-format';
+import { sentences } from '@/utils/sentences';
 
 /**
  * The one sync row of a build without sync: shown only when this profile has sync on (a
@@ -14,6 +16,7 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
  */
 export function LeftoverSyncCard() {
   const { t } = useTranslation('deviceSync');
+  const { locale } = useFormat();
   const { leftover, pending } = useLeftoverSyncProfile();
   const { turnOff } = useDeviceSyncMutations();
   const [open, setOpen] = useState(false);
@@ -32,7 +35,7 @@ export function LeftoverSyncCard() {
       {open && (
         <SyncPasswordDialog
           title={t('turnOff.title')}
-          description={`${t('leftover.description')} ${t('leftover.noServer')}`}
+          description={sentences(locale, [t('leftover.description'), t('leftover.noServer')])}
           note={pending > 0 ? t('turnOff.pendingChanges', { count: pending }) : undefined}
           confirmLabel={t('turnOff.confirm')}
           destructive

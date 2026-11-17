@@ -24,7 +24,7 @@
 mod attachments;
 mod stream;
 
-pub use stream::{read_record, Head, Record};
+pub use stream::{read_record, EpochKey, Head, Record};
 
 use std::collections::{BTreeMap, HashMap};
 use std::io::{Read, Write};
@@ -39,6 +39,7 @@ use super::held_blobs;
 use super::hlc::{Clock, DeviceId, Observation};
 use super::in_savepoint;
 use super::journal::{category_depth, Reader};
+use super::keys;
 use super::merge::{self, MergeCtx, Outcome};
 use super::registry::keys::{fk_depth, schema_number};
 use super::registry::{
@@ -48,7 +49,7 @@ use super::registry::{
 use super::repair;
 use super::state::{self, SyncState};
 use crate::error::{AppError, Result};
-use stream::{encode, invalid, read_all, write_record, Snapshot};
+use stream::{encode, invalid, read_all, write_keys_record, write_record, Snapshot};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DumpStats {
@@ -111,6 +112,9 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
         &encode(&Record::Devices(devs.into_vec()), &mut no_devs),
     )?;
     write_record(out, &encode(&header, &mut no_devs))?;
+    if let Some(keys) = dumped_keys(conn)? {
+        write_keys_record(out, &keys)?;
+    }
     for row in &encoded {
         write_record(out, row)?;
     }
@@ -128,6 +132,100 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
         ),
     )?;
     Ok(stats)
+}
+
+/// Every vault key epoch this device holds with the relay position at which the epoch started
+/// (phase 5 §8.4): epoch 0 starts at 0 whether `sync_epochs` has its row or not, an epoch it
+/// has no row for, or whose head it has not verified yet (`rekey::head`), travels without a
+/// head. `None` when no vault keys are stored (a profile that
+/// is not bound to a vault: only tests dump one).
+fn dumped_keys(conn: &Connection) -> Result<Option<Vec<EpochKey>>> {
+    let Some(held) = keys::vault_keys(conn)? else {
+        return Ok(None);
+    };
+    let mut heads = crate::services::sync::rekey::head::verified_epochs(conn)?;
+    heads.entry(0).or_insert(0);
+    Ok(Some(
+        held.epochs()
+            .map(|(epoch, key)| EpochKey {
+                epoch,
+                key,
+                head: heads.get(&epoch).copied(),
+            })
+            .collect(),
+    ))
+}
+
+/// A snapshot's `Keys` record meets this device's keys (phase 5 §8.4): a key for an epoch this
+/// device holds one for must be the same, an epoch above this device's current one cannot be (the
+/// snapshot was sealed under an epoch this device holds, and names none after it), and a head for
+/// an epoch `sync_epochs` has another head for refuses too: any of these is
+/// `validation.syncSnapshotInvalid`. What is missing is added, keys and heads alike. Nothing is
+/// written before every entry has passed, and the caller's savepoint undoes a failure after.
+fn adopt_keys(conn: &Connection, listed: Option<&[EpochKey]>, now: i64) -> Result<()> {
+    let Some(listed) = listed else {
+        return Ok(());
+    };
+    let Some(mut held) = keys::vault_keys(conn)? else {
+        return Err(invalid());
+    };
+    let known = state::epochs(conn)?;
+    // The heads this device records and the snapshot's together must not decrease with the epoch.
+    let mut all = known.clone();
+    for entry in listed {
+        if let Some(head) = entry.head {
+            all.entry(entry.epoch).or_insert(head);
+        }
+    }
+    if all.values().zip(all.values().skip(1)).any(|(a, b)| b < a) {
+        log::warn!("[SYNC] A snapshot's key epochs do not fit this device's");
+        return Err(invalid());
+    }
+    let mut added = false;
+    for entry in listed {
+        match held.insert_older(entry.epoch, entry.key.clone()) {
+            keys::OlderKey::Added => added = true,
+            keys::OlderKey::Same => {}
+            keys::OlderKey::Differs | keys::OlderKey::Newer => {
+                log::warn!("[SYNC] A snapshot's keys disagree with this device's: it is refused");
+                return Err(invalid());
+            }
+        }
+        if let (Some(head), Some(recorded)) = (entry.head, known.get(&entry.epoch)) {
+            if head != *recorded {
+                log::warn!("[SYNC] A snapshot's key epochs disagree with this device's");
+                return Err(invalid());
+            }
+        }
+    }
+    if added {
+        keys::store_older_keys(conn, &held)?;
+    }
+    for entry in listed {
+        if let Some(head) = entry.head {
+            state::record_epoch(conn, entry.epoch, head, None, now)?;
+        }
+    }
+    Ok(())
+}
+
+/// The heads a restored snapshot names settle the key-change heads this device holds only
+/// provisionally, and the look-ahead for the others starts at the snapshot (`rekey::head`).
+fn settle_heads(conn: &Connection, snapshot: &Snapshot) -> Result<()> {
+    let heads: Vec<(u32, u64)> = snapshot
+        .keys
+        .iter()
+        .flatten()
+        .filter_map(|entry| entry.head.map(|head| (entry.epoch, head)))
+        .collect();
+    crate::services::sync::rekey::head::after_restore(conn, snapshot.seq, &heads)
+}
+
+/// Where this device first saw each restored certificate and `left` record: the snapshot's
+/// position (revision §3.1; the first one wins, so a merge keeps earlier sightings). After the
+/// rows are in: only a value the table now holds is a sighting (revision As built R-27).
+fn note_restored_positions(conn: &Connection, snapshot: &Snapshot) -> Result<()> {
+    crate::services::sync::engine::pull::note_trust_positions(conn, &snapshot.rows, snapshot.seq)
 }
 
 /// What a restore did: the stream's counts, and what it could not do exactly or found suspicious
@@ -204,6 +302,8 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
     let snapshot = read_all(input)?;
     in_savepoint(conn, "sync_snapshot_merge", || {
         let sync = admissible(conn, &snapshot)?;
+        adopt_keys(conn, snapshot.keys.as_deref(), now)?;
+        settle_heads(conn, &snapshot)?;
         let mut report = RestoreReport {
             stats: stats_of(&snapshot),
             ..RestoreReport::default()
@@ -218,6 +318,7 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
                 return Err(invalid());
             }
         }
+        note_restored_positions(conn, &snapshot)?;
         finish(conn, &snapshot, &sync, report.stats.max_hlc, false)?;
         report.warnings.extend(repair::full(conn, now)?.warnings);
         Ok(report)
@@ -227,6 +328,8 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
 /// The body of `restore_replace`, inside the caller's savepoint.
 fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<RestoreReport> {
     let sync = admissible(conn, &snapshot)?;
+    adopt_keys(conn, snapshot.keys.as_deref(), now)?;
+    settle_heads(conn, &snapshot)?;
     let mut report = RestoreReport {
         stats: stats_of(&snapshot),
         ..RestoreReport::default()
@@ -245,6 +348,7 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<Restor
     let mine = attachments::mine(conn)?;
     held_blobs::hold_named(conn, now)?;
     refill(conn, &mut snapshot, &sync, &mut report)?;
+    note_restored_positions(conn, &snapshot)?;
     report.attachments = attachments::carry(conn, mine)?;
     report.warnings.extend(repair::full(conn, now)?.warnings);
     if !installed {

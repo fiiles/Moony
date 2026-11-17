@@ -117,7 +117,7 @@ describe('decodeServerField', () => {
 });
 
 describe('payloadServer', () => {
-  const CODE80 = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789'.repeat(3).slice(0, 80);
+  const CODE95 = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789'.repeat(3).slice(0, 95);
   const key = 'e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM';
 
   it('names the server of a pairing code with a fourth field', () => {
@@ -128,10 +128,10 @@ describe('payloadServer', () => {
   });
 
   it('names the server of a Recovery Kit QR', () => {
-    expect(payloadServer(`moony-recover:1:${ACCOUNT}:${CODE80}:${SERVER_FIELD}`)).toBe(
+    expect(payloadServer(`moony-recover:2:${CODE95}:${SERVER_FIELD}`)).toBe(
       'https://sync.example.org'
     );
-    expect(payloadServer(`moony-recover:1:${ACCOUNT}:${CODE80}`)).toBeNull();
+    expect(payloadServer(`moony-recover:2:${CODE95}`)).toBeNull();
   });
 
   it('names the server of a connection code, and none for a code without one', () => {
@@ -143,17 +143,17 @@ describe('payloadServer', () => {
 
 describe('wrongCodeKey', () => {
   const PAIR = 'moony-pair:2:a:b';
-  const RECOVER = `moony-recover:1:${ACCOUNT}:x`;
-  const CODE80 = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789'.repeat(3).slice(0, 80);
+  const RECOVER = `moony-recover:2:x`;
+  const CODE95 = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789'.repeat(3).slice(0, 95);
   const table: [CodeContext, string, string | null][] = [
     ['setup', PAIR, 'codes.pairNotForSetup'],
     ['setup', RECOVER, 'codes.kitNotForSetup'],
-    ['setup', CODE80, 'codes.kitNotForSetup'],
+    ['setup', CODE95, 'codes.kitNotForSetup'],
     ['setup', CODE, null],
     ['setup', 'https://sync.example.org', null],
     ['server', PAIR, 'codes.notAServerAddress'],
     ['server', RECOVER, 'codes.notAServerAddress'],
-    ['server', CODE80, 'codes.notAServerAddress'],
+    ['server', CODE95, 'codes.notAServerAddress'],
     ['server', CODE, null],
     ['server', 'https://sync.example.org', null],
   ];

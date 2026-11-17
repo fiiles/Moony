@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { sheetHeightClass } from '@/lib/sheet-height';
 import { useSheetDrag } from '@/hooks/use-sheet-drag';
+import { useHoldBack } from '@/mobile/hooks/use-hold-back';
 import { useSheetHistory } from '@/mobile/hooks/use-sheet-history';
+import { sheetCloseVerdict } from '@/mobile/lib/sheet-close';
 import { sheetStack } from '@/mobile/lib/sheet-stack';
 
 interface SheetProps {
@@ -43,6 +45,13 @@ interface SheetProps {
    * Left out, the sheet never asks (pickers, confirmations).
    */
   dirty?: boolean;
+  /**
+   * Only the sheet's own buttons close it now: it is busy (a removal or a password check runs), or
+   * it shows what cannot be shown again (a new Recovery Kit). The scrim, Escape and a drag down do
+   * nothing, and the edge swipe and Android back are held (`useHoldBack`), so back never takes the
+   * sheet's history entry while the sheet stays. Wins over `dirty`.
+   */
+  locked?: boolean;
 }
 
 /** True when a pointer-down outside the sheet started on a toast (its "Vrátit" is not "outside"). */
@@ -57,7 +66,8 @@ function startedOnToast(event: { detail: { originalEvent: Event } }): boolean {
  * and one sentence, a body that scrolls and, for a sheet that acts, a footer on `well` with a
  * hairline above it; a sheet that does not act closes from a text action in its head instead. It
  * covers the tab bar. It closes on a tap on the scrim, on Escape, from its own buttons, on Android back (`useSheetHistory`) and when dragged
- * down (`useSheetDrag`). A `dirty` sheet asks before any of those but its own buttons.
+ * down (`useSheetDrag`). A `dirty` sheet asks before any of those but its own buttons; a `locked` one
+ * ignores them all.
  *
  * Radix Dialog underneath (focus trap, scroll lock, `aria-modal`), portalled into `#root` so that
  * the sheet shares the box that `--m-vh` shortens while the keyboard is up: the footer stays above
@@ -74,15 +84,21 @@ export function Sheet({
   fill = false,
   children,
   dirty,
+  locked,
   dismiss = footer === undefined ? 'done' : undefined,
 }: SheetProps) {
   const { t } = useTranslation('common');
   // "Zahodit změny?" is up, over the sheet
   const [asking, setAsking] = useState(false);
   if (asking && !open) setAsking(false);
-  /** A close the person did not ask for by a button: a dirty sheet asks first and stays (false). */
+  /**
+   * A close the person did not ask for by a button: a locked sheet stays, a dirty one asks first and
+   * stays (false either way, so a back that got through keeps the sheet's history entry).
+   */
   const requestClose = (): boolean => {
-    if (dirty === true) {
+    const verdict = sheetCloseVerdict({ locked, dirty });
+    if (verdict === 'stay') return false;
+    if (verdict === 'ask') {
       setAsking(true);
       return false;
     }
@@ -90,9 +106,11 @@ export function Sheet({
     return true;
   };
   useSheetHistory(open, requestClose);
+  // Android back and the edge swipe do nothing while the sheet is locked
+  useHoldBack(open && locked === true);
   const [content, setContent] = useState<HTMLDivElement | null>(null);
-  // A sheet that stays open after the drag comes back up (`useSheetDrag`)
-  useSheetDrag(content, () => void requestClose());
+  // A sheet that stays open after the drag comes back up (`useSheetDrag`); a locked one never moves
+  useSheetDrag(content, () => void requestClose(), locked !== true);
   // A sheet that another sheet covers hides its handle: one grabber on screen (audit C12)
   const stackId = useId();
   useEffect(() => {

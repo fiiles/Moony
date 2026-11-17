@@ -6,6 +6,7 @@ import { useDeviceSyncEvents } from '@/hooks/use-device-sync-events';
 import { ProtectedRoute } from '@/lib/protected-route';
 import { ReceivedFileHost } from '@/mobile/components/import/ReceivedFileHost';
 import { NotificationTargetHost } from '@/mobile/components/NotificationTargetHost';
+import { RemovedNoticeSheet } from '@/mobile/components/sync/RemovedNotice';
 import { SyncBusyCover } from '@/mobile/components/sync/SyncBusyCover';
 import { ImportSheetProvider } from '@/mobile/hooks/use-import-sheet';
 import { clearUpkeepDismissals } from '@/mobile/hooks/use-upkeep-dismissals';
@@ -209,6 +210,8 @@ export function MobileShell() {
       {appStatus === 'unlocked' && <NotificationScheduler />}
       {/* Likewise: a remote change refreshes the data, which the locked database cannot serve */}
       {appStatus === 'unlocked' && <SyncEvents />}
+      {/* Once per unlock: this device was removed from sync (readable with sync off) */}
+      {appStatus === 'unlocked' && <RemovedNoticeSheet />}
       {/* Over everything while a repair, a re-sync or a join replaces this phone's data */}
       <SyncBusyCover />
       {/* A statement shared into the app opens the import sheet after the unlock, once. It stays

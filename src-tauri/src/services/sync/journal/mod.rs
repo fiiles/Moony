@@ -72,6 +72,8 @@ pub fn build_next(tx: &Transaction<'_>) -> Result<(Option<Built>, Vec<Refused>)>
         seq: sync.next_seq,
         prev: sync.last_hash,
         rows: Vec::new(),
+        rekey_head: None,
+        tickets: Vec::new(),
     };
     let cut = cut::cut(envelope, &queue, |q| {
         let Some(row) = reader.read(&q.table, &q.pk)? else {
@@ -97,8 +99,7 @@ pub fn build_next(tx: &Transaction<'_>) -> Result<(Option<Built>, Vec<Refused>)>
 /// whose clock (`min_hlc` = `max_hlc`) is a fresh tick, so a re-join's watermark stays exact. The
 /// outbox is left alone. The caller seals and records it like any envelope, at most once per
 /// barrier (ruling P5: `state::note_sealed_at_barrier`). Needs capture installed (the clock).
-pub fn build_marker(tx: &Transaction<'_>) -> Result<Built> {
-    let conn: &Connection = tx;
+pub fn build_marker(conn: &Connection) -> Result<Built> {
     let sync = state::load(conn)?
         .ok_or_else(|| AppError::Internal("sync journal: sync is not set up".into()))?;
     let hlc = capture::tick(conn)?;
@@ -110,6 +111,8 @@ pub fn build_marker(tx: &Transaction<'_>) -> Result<Built> {
             seq: sync.next_seq,
             prev: sync.last_hash,
             rows: Vec::new(),
+            rekey_head: None,
+            tickets: Vec::new(),
         },
         min_hlc: hlc,
         max_hlc: hlc,
@@ -118,7 +121,7 @@ pub fn build_marker(tx: &Transaction<'_>) -> Result<Built> {
 
 /// Records the sealed envelope in the same transaction: `sync_own_log` gains `(seq, hash,
 /// min_hlc, max_hlc)`, and the chain moves on (`next_seq = seq + 1`, `last_hash = hash`).
-pub fn record_sealed(tx: &Transaction<'_>, built: &Built, hash: [u8; 32]) -> Result<()> {
+pub fn record_sealed(tx: &Connection, built: &Built, hash: [u8; 32]) -> Result<()> {
     let seq = i64::try_from(built.changeset.seq)
         .map_err(|_| AppError::Internal("sync journal: sequence out of range".into()))?;
     let clock = |hlc: u64| {

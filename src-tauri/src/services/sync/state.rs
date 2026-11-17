@@ -1,6 +1,8 @@
 //! The single `sync_state` row (spec §6.2): whether sync is on, this device's identity and the
 //! engine's bookkeeping, and turning sync on and off on this device.
 
+use std::collections::BTreeMap;
+
 use rusqlite::{params, Connection, OptionalExtension};
 
 use super::capture;
@@ -169,7 +171,73 @@ pub fn enable(conn: &Connection, device: DeviceId) -> Result<()> {
         ensure_row(conn, device)?;
         capture::install(conn, device)?;
         packs::persist_effective(conn)?;
-        note_starting_barrier(conn)
+        note_starting_barrier(conn)?;
+        // The first device of a vault starts at epoch 0, at relay position 0 (phase 5 §6.1).
+        record_epoch(conn, 0, 0, None, 0).map(|_| ())
+    })
+}
+
+/// What `record_epoch` found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EpochRecord {
+    /// A new row.
+    Added,
+    /// The epoch was recorded with this head already.
+    Same,
+    /// The epoch is recorded with another head: nothing changed.
+    Differs,
+}
+
+/// The relay position at which each key epoch started (`sync_epochs`, phase 5 §6.1): epoch 0 at 0,
+/// epoch n+1 at the head the relay answered when the token rotated. An epoch with no row has no
+/// known head.
+pub fn epochs(conn: &Connection) -> Result<BTreeMap<u32, u64>> {
+    let mut stmt = conn.prepare_cached("SELECT epoch, rotation_head FROM sync_epochs")?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?)))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let mut heads = BTreeMap::new();
+    for (epoch, head) in rows {
+        heads.insert(
+            unsigned(epoch, "sync_epochs.epoch")?,
+            unsigned(head, "sync_epochs.rotation_head")?,
+        );
+    }
+    Ok(heads)
+}
+
+/// Records where `epoch` started. A recorded epoch is never changed: the same head is `Same`, another
+/// one `Differs` (the caller decides whether that stops what it is doing). `by` is the device that
+/// made the key change, when known; `now` the time this device adopted it.
+pub fn record_epoch(
+    conn: &Connection,
+    epoch: u32,
+    head: u64,
+    by: Option<DeviceId>,
+    now: i64,
+) -> Result<EpochRecord> {
+    let added = conn.execute(
+        "INSERT INTO sync_epochs (epoch, rotation_head, adopted_at, by_device) \
+         VALUES (?1, ?2, ?3, ?4) ON CONFLICT(epoch) DO NOTHING",
+        params![
+            epoch,
+            signed(head, "rotation_head")?,
+            now,
+            by.map(|d| d.to_hex())
+        ],
+    )?;
+    if added > 0 {
+        return Ok(EpochRecord::Added);
+    }
+    let held: i64 = conn.query_row(
+        "SELECT rotation_head FROM sync_epochs WHERE epoch = ?1",
+        [epoch],
+        |r| r.get(0),
+    )?;
+    Ok(if held == signed(head, "rotation_head")? {
+        EpochRecord::Same
+    } else {
+        EpochRecord::Differs
     })
 }
 
@@ -187,17 +255,35 @@ pub fn note_starting_barrier(conn: &Connection) -> Result<()> {
 }
 
 /// Turns sync off on this device (§11.6, local part): capture goes, and so does every sync row
-/// (the held gaps' Local keys included). Local data stays.
+/// (the held gaps' Local keys, the trust store and the key epochs included; the `sync_state` row
+/// goes whole, with its signing key and any pending key change). Local data stays.
 pub fn disable(conn: &Connection) -> Result<()> {
     in_savepoint(conn, "sync_disable", || {
         capture::uninstall(conn)?;
         conn.execute_batch(
             "DELETE FROM sync_state; DELETE FROM sync_clock; DELETE FROM sync_outbox; \
              DELETE FROM sync_heads; DELETE FROM sync_own_log; DELETE FROM sync_unsent; \
-             DELETE FROM sync_typed; DELETE FROM sync_blobs; DELETE FROM sync_held_blobs;",
+             DELETE FROM sync_typed; DELETE FROM sync_blobs; DELETE FROM sync_held_blobs; \
+             DELETE FROM sync_trust; DELETE FROM sync_epochs; DELETE FROM sync_trust_seen; \
+             DELETE FROM sync_tickets;",
         )?;
         clear_vault_went_back(conn)?;
         clear_skipped_miss(conn)?;
+        for key in [
+            KEY_CHANGE_NOTICE_KEY,
+            UNVERIFIED_EPOCHS_KEY,
+            KEY_CHANGE_OVERRUN_KEY,
+            REMOVAL_NOT_DONE_KEY,
+            KIT_READ_SEEN_KEY,
+            AFTER_KIT_JOIN_KEY,
+            KIT_EPOCH_FLOOR_KEY,
+            super::identity::trust::NEW_DEVICES_KEY,
+        ]
+        .into_iter()
+        .chain(REVIEW_KEYS)
+        {
+            conn.execute("DELETE FROM app_config WHERE key = ?1", [key])?;
+        }
         super::binding::forget_failed_starts(conn)?;
         super::chain::gaps::forget_all(conn)
     })
@@ -400,7 +486,8 @@ pub fn record_snapshot_uploaded(conn: &Connection, seq: u64, max_hlc: u64, at: i
         "UPDATE sync_state SET snapshot_seq = MAX(COALESCE(snapshot_seq, 0), ?1), \
            snapshot_hlc = MAX(snapshot_hlc, ?2), snapshot_uploaded_at = ?3, \
            snapshot_too_large_at = NULL, pulled_bytes = 0, pulled_bytes_base = ?1, \
-           snapshot_barrier = MAX(snapshot_barrier, barrier) WHERE id = 1",
+           snapshot_barrier = MAX(snapshot_barrier, barrier), snapshot_epoch_due = 0 \
+         WHERE id = 1",
         params![
             signed(seq, "snapshot_seq")?,
             signed(max_hlc, "snapshot_hlc")?,
@@ -426,9 +513,205 @@ pub fn snapshot_seq(conn: &Connection) -> Result<Option<u64>> {
 /// (`409 snapshot_outdated`): the forced upload after a crossing is done (`snapshot_barrier`).
 pub fn note_snapshot_barrier(conn: &Connection) -> Result<()> {
     conn.execute(
-        "UPDATE sync_state SET snapshot_barrier = MAX(snapshot_barrier, barrier) WHERE id = 1",
+        "UPDATE sync_state SET snapshot_barrier = MAX(snapshot_barrier, barrier), \
+           snapshot_epoch_due = 0 WHERE id = 1",
         [],
     )?;
+    Ok(())
+}
+
+/// Whether this device changed the key and has not yet uploaded a snapshot under the new one
+/// (`snapshot_epoch_due`, phase 5 §6.4): its next clean round forces an upload, as after a barrier
+/// crossing. An upload clears it (`record_snapshot_uploaded`), and so does a newer snapshot found
+/// on the relay (`note_snapshot_barrier`): the old token cannot upload one, so a newer snapshot is
+/// sealed under the new key or a later one.
+pub fn snapshot_epoch_owed(conn: &Connection) -> Result<bool> {
+    let due: Option<i64> = conn
+        .query_row(
+            "SELECT snapshot_epoch_due FROM sync_state WHERE id = 1 AND enabled = 1",
+            [],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(due.is_some_and(|epoch| epoch > 0))
+}
+
+/// The newest relay rotation whose key change this device has dealt with (`rekey_seen`): adopted,
+/// made itself, or passed over because it already held that key.
+pub fn rekey_seen(conn: &Connection) -> Result<u32> {
+    let seen: Option<i64> = conn
+        .query_row("SELECT rekey_seen FROM sync_state WHERE id = 1", [], |r| {
+            r.get(0)
+        })
+        .optional()?;
+    unsigned(seen.unwrap_or(0), "rekey_seen")
+}
+
+/// Raises `rekey_seen` to `rotation` (never lowers it).
+pub fn note_rekey_seen(conn: &Connection, rotation: u32) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET rekey_seen = MAX(rekey_seen, ?1) WHERE id = 1",
+        [rotation],
+    )?;
+    Ok(())
+}
+
+/// The Local `app_config` key holding the notice of the newest key change another device made
+/// (phase 5 §7.3, `rekey::KeyChangeNotice`): kept until the person dismisses it; turning sync off
+/// clears it.
+pub const KEY_CHANGE_NOTICE_KEY: &str = "sync.key_change_notice";
+/// The Local `app_config` key holding the newest Recovery Kit read the person already knows of
+/// (unix seconds): "Vím o tom" on the `kitUsed` notice (revision §2.8,
+/// `engine::status::kit_used`).
+pub const KIT_READ_SEEN_KEY: &str = "sync.kit_read_seen";
+
+/// The Local `app_config` key holding why sync went off on this device: another device removed
+/// it (phase 5 §7.4, `rekey::RemovedNotice`). Unlike every other sync key it survives turning
+/// sync off; the person's dismissal clears it, and so does a join (As built R-116).
+pub const REMOVED_NOTICE_KEY: &str = "sync.removed_notice";
+
+/// The Local `app_config` key holding the key epochs this device adopted whose head the remover's
+/// signed head has not confirmed yet (`rekey::head`). Cleared with `sync_epochs`.
+pub const UNVERIFIED_EPOCHS_KEY: &str = "sync.epochs_unverified";
+
+/// The Local `app_config` key of a Recovery Kit joiner's push hold (revision §2.6 step 7,
+/// `join::AfterKitJoin`): while it exists, rounds pull and push nothing. Only the person lifts it
+/// (`join::lift_kit_join_hold`); turning sync off and a join's replace clear it.
+pub const AFTER_KIT_JOIN_KEY: &str = "sync.after_kit_join";
+
+/// The Local `app_config` key of a Kit joiner's bound on its newest epoch when the snapshot it
+/// restored was sealed under that epoch without naming its head (revision §2.6 step 5,
+/// `KitEpochFloor`). Cleared with `sync_epochs`.
+pub const KIT_EPOCH_FLOOR_KEY: &str = "sync.kit_epoch_floor";
+
+/// A Kit joiner restored a snapshot at relay position `after` sealed under `epoch`, whose head it
+/// does not know: that epoch began at or before `after`, so an op past `after` sealed under an
+/// older epoch breaks the epoch rule (`engine::pull::epoch_fits_position`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KitEpochFloor {
+    #[serde(rename = "epoch")]
+    pub epoch: u32,
+    #[serde(rename = "after")]
+    pub after: u64,
+}
+
+/// The Kit joiner's epoch bound, if any (a value that does not read is none).
+pub fn kit_epoch_floor(conn: &Connection) -> Result<Option<KitEpochFloor>> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [KIT_EPOCH_FLOOR_KEY],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(value.and_then(|v| serde_json::from_str(&v).ok()))
+}
+
+pub(crate) fn set_kit_epoch_floor(conn: &Connection, floor: KitEpochFloor) -> Result<()> {
+    let json = serde_json::to_string(&floor)
+        .map_err(|e| AppError::Internal(format!("sync: the Kit epoch bound: {e}")))?;
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2) \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![KIT_EPOCH_FLOOR_KEY, json],
+    )?;
+    Ok(())
+}
+
+/// The Local `app_config` key holding the notice that this device applied changes past a key
+/// change the server hid from it (`rekey::KeyChangeOverrun`). Turning sync off clears it.
+pub const KEY_CHANGE_OVERRUN_KEY: &str = "sync.key_change_overrun";
+
+/// The Local `app_config` key holding the notice that a removal the person confirmed was not
+/// done (`rekey::RemovalNotDone`). Turning sync off clears it.
+pub const REMOVAL_NOT_DONE_KEY: &str = "sync.removal_not_done";
+
+/// The Local `app_config` key saying this device's own key change cannot complete here (review of
+/// Task 17, I2): the sync server took it, but the commit failed for good, or its bundle is no
+/// longer listed. The pending change is wiped; every round stops with `keyChangeUnverified`
+/// ("Připojit znovu") until sync is turned off. Value: the unix time it gave up.
+pub const KEY_CHANGE_STUCK_KEY: &str = "sync.key_change_stuck";
+
+/// The Local `app_config` key holding who made the key change this device could not verify
+/// (`{"by": "<name>"}`; revision §6.4, `SyncStatus::rejoin_by`): written when a pickup meets a key
+/// change signed by a device that may not speak here, cleared by the next key change this device
+/// adopts, by turning sync off and by a join's replace.
+pub const KEY_CHANGE_UNVERIFIED_KEY: &str = "sync.key_change_unverified";
+
+/// The Local `app_config` key counting database failures of the commit of a key change the sync
+/// server took (`rekey::rotate`): three in a row give up (`KEY_CHANGE_STUCK_KEY`).
+pub const KEY_CHANGE_COMMIT_FAILURES_KEY: &str = "sync.key_change_commit_failures";
+
+/// The Local `app_config` key holding whether the sync server, when this device last read the
+/// vault's info, held a Recovery Kit for the vault (`"1"` / `"0"`; review of Task 17, M1): a
+/// removal on a device that has none it can seal to then makes a new one (`ReplacesKit::Missing`).
+pub const SERVER_KIT_KEY: &str = "sync.server_kit";
+
+/// The Local `app_config` key saying a trust-store refresh failed and is owed (review of Tasks
+/// 20–21, finding 2): every round starts with one until it succeeds.
+pub const TRUST_REFRESH_OWED_KEY: &str = "sync.trust_refresh_owed";
+
+/// The Local keys every turn-off and every join's replace clear besides those listed before
+/// them (review of Tasks 17–21).
+pub const REVIEW_KEYS: [&str; 6] = [
+    KEY_CHANGE_UNVERIFIED_KEY,
+    KEY_CHANGE_STUCK_KEY,
+    KEY_CHANGE_COMMIT_FAILURES_KEY,
+    SERVER_KIT_KEY,
+    TRUST_REFRESH_OWED_KEY,
+    PASS_WAITS_KEY,
+];
+
+/// The Local `app_config` key of the daily pass's wait for a key pickup (`pass_waits`):
+/// `"<rotation>:<since>"`.
+pub const PASS_WAITS_KEY: &str = "sync.pass_waits";
+
+/// How long the daily pass waits, per rotation the server claims, for its pickup.
+pub const PASS_WAIT_SECS: i64 = 86_400;
+
+/// Whether the daily pass of documents and photos waits now (review of Tasks 20–21, minor 8):
+/// `pending` is the rotation the vault's info claims above `rekey_seen`, if any. The first time a
+/// rotation is claimed the wait starts; it lasts `PASS_WAIT_SECS`, after which the pass runs
+/// although the same rotation is still claimed (the info is the server's word). No claim clears
+/// the wait.
+pub fn pass_waits(conn: &Connection, pending: Option<u32>, now: i64) -> Result<bool> {
+    let Some(rotation) = pending else {
+        set_config_text(conn, PASS_WAITS_KEY, None)?;
+        return Ok(false);
+    };
+    let started = config_text(conn, PASS_WAITS_KEY)?.and_then(|value| {
+        let (claimed, since) = value.split_once(':')?;
+        (claimed.parse::<u32>().ok()? == rotation).then(|| since.parse::<i64>().ok())?
+    });
+    match started {
+        Some(since) => Ok(now - since < PASS_WAIT_SECS),
+        None => {
+            set_config_text(conn, PASS_WAITS_KEY, Some(&format!("{rotation}:{now}")))?;
+            Ok(true)
+        }
+    }
+}
+
+/// The text value of a Local `app_config` key, if any.
+pub fn config_text(conn: &Connection, key: &str) -> Result<Option<String>> {
+    Ok(conn
+        .query_row("SELECT value FROM app_config WHERE key = ?1", [key], |r| {
+            r.get(0)
+        })
+        .optional()?)
+}
+
+/// Sets (`Some`) or clears (`None`) a Local `app_config` key.
+pub fn set_config_text(conn: &Connection, key: &str, value: Option<&str>) -> Result<()> {
+    match value {
+        Some(value) => conn.execute(
+            "INSERT INTO app_config (key, value) VALUES (?1, ?2) \
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?,
+        None => conn.execute("DELETE FROM app_config WHERE key = ?1", [key])?,
+    };
     Ok(())
 }
 
@@ -793,6 +1076,42 @@ mod tests {
 
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_blobs"), 0);
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_held_blobs"), 0);
+    }
+
+    #[test]
+    fn turning_sync_off_forgets_the_trust_store_and_the_epochs() {
+        let conn = migrated();
+        enable(&conn, DEVICE).unwrap();
+        conn.execute_batch(
+            "UPDATE sync_state SET device_sign_key = x'01', rotation_pending = '{}', \
+               rekey_seen = 2, kit_epoch_saved = 1, snapshot_epoch_due = 1; \
+             INSERT INTO sync_trust (device, cert, kind, issuer, sign_pub, box_pub, state, \
+               pinned_at) VALUES ('d', 'c', 1, 'd', x'01', x'02', 'trusted', 1); \
+             INSERT OR IGNORE INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (0, 0, 1); \
+             INSERT INTO sync_trust_seen (device, what, pos) VALUES ('d', 'cert', 4); \
+             INSERT INTO sync_tickets (ticket_pub, issuer, pos) VALUES (x'07', 'd', 3); \
+             INSERT INTO app_config (key, value) VALUES ('sync.new_devices', '[]');",
+        )
+        .unwrap();
+
+        disable(&conn).unwrap();
+
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_trust"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_epochs"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_trust_seen"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_tickets"), 0);
+        assert_eq!(
+            count(
+                &conn,
+                "SELECT COUNT(*) FROM app_config WHERE key = 'sync.new_devices'"
+            ),
+            0
+        );
+        assert_eq!(
+            count(&conn, "SELECT COUNT(*) FROM sync_state"),
+            0,
+            "the row and its new columns go"
+        );
     }
 
     #[test]

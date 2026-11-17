@@ -41,7 +41,8 @@ use super::relay::{
 use super::relay_e2e_admin::{admin, Person};
 use super::server::change_server_address;
 use super::setup::{
-    account_status, connect_own_server, delete_synced_data, finish_setup, recovery_kit,
+    account_status, connect_own_server, delete_synced_data, finish_setup, note_kit_storage,
+    prepare_kit, KitDraft,
 };
 use super::state;
 use super::test_support::{assert_converged, migrated, noise};
@@ -223,6 +224,48 @@ impl Relay for Counting<'_> {
     async fn delete_vault(&self, vault: &VaultAuth) -> RelayResult<()> {
         self.relay.delete_vault(vault).await
     }
+    async fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        self.relay.rotate_token(vault, new_token, bundle).await
+    }
+    async fn rotate_token_with_kit(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+        kit: crate::services::sync::relay::KitRotation<'_>,
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        self.relay
+            .rotate_token_with_kit(vault, new_token, bundle, kit)
+            .await
+    }
+    async fn put_kit(
+        &self,
+        vault: &VaultAuth,
+        kit_token: &str,
+        envelope: &[u8],
+    ) -> RelayResult<bool> {
+        self.relay.put_kit(vault, kit_token, envelope).await
+    }
+    async fn get_kit(
+        &self,
+        vault_id: &str,
+        kit_token: &str,
+    ) -> RelayResult<crate::services::sync::relay::KitRead> {
+        self.relay.get_kit(vault_id, kit_token).await
+    }
+    async fn rekeys(
+        &self,
+        vault: &VaultAuth,
+        after: u32,
+        limit: u32,
+    ) -> RelayResult<crate::services::sync::relay::RekeyPage> {
+        self.relay.rekeys(vault, after, limit).await
+    }
     async fn put_blob(
         &self,
         vault: &VaultAuth,
@@ -326,21 +369,44 @@ async fn device_of_new_person(relay: &HttpRelay, url: &str, name: &str) -> (Devi
         .await
         .expect("status");
     assert!(status.active, "{status:?}");
-    recovery_kit(&device.db.lock()).expect("kit");
     (device, person)
+}
+
+/// The Recovery Kit draft of setup, printed (revision §2.2, §2.7).
+pub(super) fn printed_kit(device: &Device) -> KitDraft {
+    let conn = device.db.lock();
+    let mut draft = prepare_kit(&conn, None, now()).expect("kit");
+    note_kit_storage(
+        &conn,
+        &mut draft,
+        crate::services::sync::rekey::kit::KitStorage::Paper,
+    )
+    .expect("printed");
+    draft
 }
 
 /// A first device with sync on: a person added by the admin, its connection code, its Recovery
 /// Kit, setup finished under `name`. The person comes back with it, for the tests that block or
 /// delete them.
 pub(super) async fn first_device_of(relay: &HttpRelay, url: &str, name: &str) -> (Device, Person) {
+    let (device, person, _) = first_device_with_kit(relay, url, name).await;
+    (device, person)
+}
+
+/// `first_device_of`, with the Recovery Kit its setup registered.
+pub(super) async fn first_device_with_kit(
+    relay: &HttpRelay,
+    url: &str,
+    name: &str,
+) -> (Device, Person, KitDraft) {
     let (device, person) = device_of_new_person(relay, url, name).await;
+    let kit = printed_kit(&device);
     sync_until_allowed(|| {
         finish_setup(
             relay,
             &device.db,
             name,
-            true,
+            &kit,
             device.dir(),
             &NoBinding,
             now(),
@@ -349,7 +415,7 @@ pub(super) async fn first_device_of(relay: &HttpRelay, url: &str, name: &str) ->
     .await
     .expect("finish setup");
     assert!(device.enabled());
-    (device, person)
+    (device, person, kit)
 }
 
 pub(super) async fn first_device(relay: &HttpRelay, url: &str, name: &str) -> Device {
@@ -481,6 +547,7 @@ async fn a_blocked_person_cannot_create_a_vault_until_unblocked() {
     let url = relay_url();
     let relay = relay_at(&url);
     let (device, person) = device_of_new_person(&relay, &url, "Blocked").await;
+    let kit = printed_kit(&device);
     let admin = admin(&url).await;
     admin.block(&person.id).await;
 
@@ -489,7 +556,7 @@ async fn a_blocked_person_cannot_create_a_vault_until_unblocked() {
             &relay,
             &device.db,
             "Laptop",
-            true,
+            &kit,
             device.dir(),
             &NoBinding,
             now(),
@@ -506,7 +573,7 @@ async fn a_blocked_person_cannot_create_a_vault_until_unblocked() {
             &relay,
             &device.db,
             "Laptop",
-            true,
+            &kit,
             device.dir(),
             &NoBinding,
             now(),

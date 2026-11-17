@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Check, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { SyncStatusSection } from '@/components/shell/SyncStatusSection';
+import { SyncRemovedSection, SyncStatusSection } from '@/components/shell/SyncStatusSection';
 import { portfolioApi, priceApi } from '@/lib/tauri-api';
 import { useSyncStatus } from '@/hooks/sync-context';
 import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
@@ -253,6 +253,11 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
               now={now}
               onNavigate={() => setOpen(false)}
             />
+          </div>
+        )}
+        {syncFeature && !syncView && deviceSync?.removedNotice && (
+          <div className="mt-4 border-t border-line-soft pt-3.5">
+            <SyncRemovedSection status={deviceSync} onNavigate={() => setOpen(false)} />
           </div>
         )}
       </PopoverContent>

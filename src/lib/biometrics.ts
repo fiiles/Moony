@@ -78,18 +78,25 @@ export interface EnrolmentOfferState {
   importOpen: boolean;
   /** A statement shared into Moony is on its way to the import sheet (`ReceivedQueue.pending`). */
   sharedPending: boolean;
+  /**
+   * The removed-device notice opens at unlock too (`RemovedNoticeSheet`): unanswered, or the sync
+   * status that says so still loading.
+   */
+  removedNoticePending: boolean;
 }
 
 /**
  * Whether the enrolment sheet is up. The import sheet and the offer never open together: after a
  * password unlock with a shared statement waiting, the import comes first — it is what the person
  * came for — and the offer opens once its sheet has closed. Until the drain the unlock starts has
- * answered, a shared file may be on its way, so the offer waits for that too. Once "Zapnout" runs
+ * answered, a shared file may be on its way, so the offer waits for that too. It also waits while
+ * the removed-device notice is unanswered ("Rozumím" or "Připojit znovu"), so two sheets never
+ * stack at unlock (the desktop's `EnableBiometricsDialog` waits the same way). Once "Zapnout" runs
  * the sheet stays until the answer.
  */
 export function enrolmentOfferOpen(state: EnrolmentOfferState): boolean {
   if (state.enabling) return true;
-  return state.offered && !state.importOpen && !state.sharedPending;
+  return state.offered && !state.importOpen && !state.sharedPending && !state.removedNoticePending;
 }
 
 /**

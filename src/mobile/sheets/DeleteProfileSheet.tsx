@@ -11,6 +11,7 @@ import { authApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { syncIsOn } from '@/utils/safe-copy';
 import { Sheet } from '@/mobile/components/Sheet';
+import { PasswordField } from '@/mobile/components/sync/PasswordField';
 import { cancelAllNotifications } from '@/mobile/hooks/use-notification-schedule';
 
 interface DeleteProfileSheetProps {
@@ -34,13 +35,17 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
   const [typed, setTyped] = useState('');
   // Opt-in, off by default: deleting the profile only removes this phone
   const [deleteSynced, setDeleteSynced] = useState(false);
+  // Deleting the synced data deletes it for every device: the device password first (O-1)
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const withSynced = syncOn && deleteSynced;
   // The word to type before everything is deleted, in the UI language and as the desktop's
   // danger zone asks for it ("SMAZAT"); any case will do (audit B5)
   const word = ts('dangerZone.confirmWord');
-  const confirmed = confirmWordMatches(typed, word);
+  const confirmed = confirmWordMatches(typed, word) && (!withSynced || password !== '');
 
   const remove = useMutation({
-    mutationFn: () => authApi.deleteAccount(syncOn && deleteSynced),
+    mutationFn: () => authApi.deleteAccount(withSynced, withSynced ? password : undefined),
     onSuccess: async () => {
       // The notifications scheduled for the deleted profile must not outlive it (best effort, iOS)
       await cancelAllNotifications();
@@ -54,7 +59,9 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
       window.location.reload();
     },
     onError: (error: Error) => {
-      toast.error(t('settings.delete.failed'), { description: translateApiError(error, tc) });
+      // A wrong password is said under its field and the sheet stays
+      if (withSynced) setPasswordError(translateApiError(error, tc));
+      else toast.error(t('settings.delete.failed'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -64,6 +71,8 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
     if (!next) {
       setTyped('');
       setDeleteSynced(false);
+      setPassword('');
+      setPasswordError(null);
     }
     onOpenChange(next);
   };
@@ -91,7 +100,10 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
             className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
             loading={remove.isPending}
             disabled={!confirmed || remove.isPending}
-            onClick={() => remove.mutate()}
+            onClick={() => {
+              setPasswordError(null);
+              remove.mutate();
+            }}
           >
             {t('settings.delete.confirm')}
           </Button>
@@ -134,6 +146,20 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
         readOnly={remove.isPending}
         className="mt-1.5 h-12 rounded-[10px] text-m-field"
       />
+      {withSynced && (
+        <div className="mt-4">
+          <PasswordField
+            id="delete-profile-password"
+            value={password}
+            onChange={(value) => {
+              setPassword(value);
+              setPasswordError(null);
+            }}
+            error={passwordError}
+            readOnly={remove.isPending}
+          />
+        </div>
+      )}
     </Sheet>
   );
 }

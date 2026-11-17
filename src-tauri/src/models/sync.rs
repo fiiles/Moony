@@ -5,9 +5,10 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 /// Where sync stands on this device.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub enum SyncPhase {
     /// Sync is not on for this profile (or the build does not run it).
+    #[default]
     #[serde(rename = "off")]
     Off,
     /// An account is saved but setup has not finished.
@@ -78,6 +79,20 @@ pub enum SyncProblem {
     /// The vault's token was rotated by another device (`403 token_read_only`).
     #[serde(rename = "keyRotated")]
     KeyRotated,
+    /// The key changed and this device got no new key and no verifiable removal notice (phase 5
+    /// §7.5): paused, never turned off by a server's word alone; the person may turn sync off.
+    #[serde(rename = "keyNotGiven")]
+    KeyNotGiven,
+    /// A key change opened for this device but cannot be verified: signed by a device this one
+    /// does not trust, or contradicting what it holds (phase 5 §7.5). Paused.
+    #[serde(rename = "keyChangeUnverified")]
+    KeyChangeUnverified,
+    /// This device picked up a key change and waits for the device that made it to send the
+    /// signed start of the change (phase 5 As built 63) before it applies older changes past where
+    /// it stood: paused on another device ("Čeká se, až se připojí zařízení, které změnu
+    /// provedlo").
+    #[serde(rename = "keyChangeWaiting")]
+    KeyChangeWaiting,
     /// This device's secure storage could not be reached (the device binding could not be
     /// checked); paused, and tried again at the next trigger.
     #[serde(rename = "secureStorage")]
@@ -155,8 +170,8 @@ pub struct SyncProfileState {
     pub pending_changes: u32,
 }
 
-/// The `sync-status-changed` payload.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+/// The `sync-status-changed` payload. `Default` is sync off with nothing to say.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct SyncStatus {
     #[serde(rename = "phase")]
     pub phase: SyncPhase,
@@ -212,6 +227,210 @@ pub struct SyncStatus {
     /// exists nowhere else (no unsent change, no document or photo left to upload).
     #[serde(rename = "protectsData")]
     pub protects_data: bool,
+    /// Devices can be removed from this sync: this device's own certificate is pinned (a vault
+    /// set up before phase 5 has none, revision §6.1). `false` while sync is off.
+    #[serde(rename = "removalSupported")]
+    pub removal_supported: bool,
+    /// A key change (a removal, a new recovery kit) of this device waits for the sync server
+    /// and finishes by itself: "Dokončuji odebrání zařízení…".
+    #[serde(rename = "removalPending")]
+    pub removal_pending: bool,
+    /// Another device removed devices or made a new recovery kit (Local, until dismissed).
+    #[serde(rename = "removalNotice")]
+    pub removal_notice: Option<SyncRemovalNotice>,
+    /// A removal the person confirmed here that a background resolution found not done.
+    #[serde(rename = "removalNotDone")]
+    pub removal_not_done: Option<SyncRemovalNotDone>,
+    /// This device applied changes the sync server placed past a key change it hid.
+    #[serde(rename = "keyChangeOverrun")]
+    pub key_change_overrun: Option<SyncKeyChangeOverrun>,
+    /// Another device removed this one: sync is off here (readable while sync is off).
+    #[serde(rename = "removedNotice")]
+    pub removed_notice: Option<SyncRemovedNotice>,
+    /// With `keyNotGiven` or `keyChangeUnverified`: the device that made the key change, which
+    /// this device does not know ("Změnu provedlo zařízení {by}, které toto zařízení nezná.").
+    #[serde(rename = "rejoinBy")]
+    pub rejoin_by: Option<String>,
+    /// With `keyRotated` for more than a day: the device whose signed confirmation of the last
+    /// key change has not arrived, and since when.
+    #[serde(rename = "waitingForRemover")]
+    pub waiting_for_remover: Option<SyncWaitingForRemover>,
+    /// Devices pinned outside a join (paired by another device, or joined with the Kit), newest
+    /// last, until dismissed.
+    #[serde(rename = "newDevices")]
+    pub new_devices: Vec<SyncNewDevice>,
+    /// The vault's usable recovery kit as this device sees it; `None`: sync has no kit this
+    /// device can seal to.
+    #[serde(rename = "recoveryKit")]
+    pub recovery_kit: Option<SyncKitInfo>,
+    /// The minute the sync server says the recovery kit was last read (unix seconds), when that is
+    /// news the person has not seen and no device joined with the kit to explain it.
+    #[serde(rename = "kitUsed")]
+    pub kit_used: Option<i64>,
+    /// A device that joined with the recovery kit holds back what it sends until the person
+    /// decides about the devices it found on the list ("Data jsou zpět").
+    #[serde(rename = "afterKitJoin")]
+    pub after_kit_join: Option<SyncAfterKitJoin>,
+    /// While a round runs: when it started (unix seconds), so the UI can say "taking longer than
+    /// usual" after a minute. `None` otherwise.
+    #[serde(rename = "syncingSince")]
+    pub syncing_since: Option<i64>,
+    /// The first snapshot of the data has not been uploaded (or restored) yet.
+    #[serde(rename = "firstUpload")]
+    pub first_upload: bool,
+}
+
+/// Another device's key change (`removalNotice`): who made it, when (its signed time), the
+/// names of the devices it removed, and whether it made a new recovery kit.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncRemovalNotice {
+    #[serde(rename = "by")]
+    pub by: String,
+    #[serde(rename = "at")]
+    pub at: i64,
+    #[serde(rename = "removed")]
+    pub removed: Vec<String>,
+    #[serde(rename = "kitReplaced")]
+    pub kit_replaced: bool,
+}
+
+/// A removal the person confirmed here that did not happen (`removalNotDone`): `by` changed the
+/// device list first (`None`: the sync server refused it), `devices` are the names meant to go,
+/// `alreadyRemoved` that the other change had removed every one of them, `kitReplaced` that the
+/// change was to make a new recovery kit, which then never started working.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncRemovalNotDone {
+    #[serde(rename = "by")]
+    pub by: Option<String>,
+    #[serde(rename = "devices")]
+    pub devices: Vec<String>,
+    #[serde(rename = "alreadyRemoved")]
+    pub already_removed: bool,
+    #[serde(rename = "kitReplaced")]
+    pub kit_replaced: bool,
+}
+
+/// `keyChangeOverrun`: `at` is when this device adopted the key change the server hid (unix
+/// seconds; `None` when this device no longer knows).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncKeyChangeOverrun {
+    #[serde(rename = "at")]
+    pub at: Option<i64>,
+}
+
+/// Why sync is off on this device (`removedNotice`): `by` removed it at `at` (unix seconds,
+/// the record's signed time) and `unsent` changes never left it. `left`: the record was this
+/// device's own `left` record (from another copy of this profile), not another device's removal.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncRemovedNotice {
+    #[serde(rename = "by")]
+    pub by: String,
+    #[serde(rename = "at")]
+    pub at: i64,
+    #[serde(rename = "unsent")]
+    pub unsent: u32,
+    #[serde(rename = "left")]
+    pub left: bool,
+}
+
+/// The device whose signed confirmation of a key change this device still waits for
+/// (`waitingForRemover`), since when (unix seconds).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncWaitingForRemover {
+    #[serde(rename = "by")]
+    pub by: String,
+    #[serde(rename = "since")]
+    pub since: i64,
+}
+
+/// A device that appeared on the list outside a join (`newDevices`): `by` added it (`viaKit`: it
+/// joined with the recovery kit and `by` is empty), `at` is when this device noticed (unix
+/// seconds), `lateVouch` that it is left out of the next key change until kept.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncNewDevice {
+    #[serde(rename = "id")]
+    pub id: String,
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "by")]
+    pub by: String,
+    #[serde(rename = "at")]
+    pub at: i64,
+    #[serde(rename = "viaKit")]
+    pub via_kit: bool,
+    #[serde(rename = "lateVouch")]
+    pub late_vouch: bool,
+}
+
+/// Where the person keeps the recovery kit, as far as Moony saw (the strongest value wins).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum SyncKitStorage {
+    #[serde(rename = "paper")]
+    Paper,
+    #[serde(rename = "copied")]
+    Copied,
+    #[serde(rename = "file")]
+    File,
+    #[serde(rename = "cloud")]
+    Cloud,
+}
+
+/// The vault's recovery kit as the status shows it (`recoveryKit`): when it was made and by which
+/// device (`None`: not on this device's list any more), where it was stored (`None`: the person
+/// did nothing with it: "neuložená"), and when the sync server says it was last read.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncKitInfo {
+    #[serde(rename = "createdAt")]
+    pub created_at: i64,
+    #[serde(rename = "createdBy")]
+    pub created_by: Option<String>,
+    #[serde(rename = "storage")]
+    pub storage: Option<SyncKitStorage>,
+    #[serde(rename = "lastReadAt")]
+    pub last_read_at: Option<i64>,
+}
+
+/// One device the Kit joiner's hold names: its ID (32 lowercase hex characters, as in
+/// `SyncDevice.id`) and its name.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncAfterKitDevice {
+    #[serde(rename = "id")]
+    pub id: String,
+    #[serde(rename = "name")]
+    pub name: String,
+}
+
+/// `afterKitJoin`: the devices that were on the list when this device joined with the recovery
+/// kit, and the newest change among them (unix seconds).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncAfterKitJoin {
+    #[serde(rename = "devices")]
+    pub devices: Vec<SyncAfterKitDevice>,
+    #[serde(rename = "newestChangeAt")]
+    pub newest_change_at: Option<i64>,
+}
+
+/// Which notice `sync_dismiss_notice` dismisses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum SyncNoticeKind {
+    /// `removalNotice`.
+    #[serde(rename = "removal")]
+    Removal,
+    /// `removedNotice`.
+    #[serde(rename = "removed")]
+    Removed,
+    /// `removalNotDone`.
+    #[serde(rename = "removalNotDone")]
+    RemovalNotDone,
+    /// `keyChangeOverrun`.
+    #[serde(rename = "keyChangeOverrun")]
+    KeyChangeOverrun,
+    /// `newDevices`.
+    #[serde(rename = "newDevices")]
+    NewDevices,
+    /// `kitUsed` ("Vím o tom").
+    #[serde(rename = "kitUsed")]
+    KitUsed,
 }
 
 /// The subscription a checkout is for.
@@ -267,22 +486,27 @@ pub enum CheckoutTarget {
     SelfHosted,
 }
 
-/// The Sync Recovery Kit (spec §11.5): what brings the synced data back when every device is
-/// lost. It holds the vault key, so `Debug` prints nothing of it and the secret fields are wiped
-/// when it drops (ruling P16).
+/// The Sync Recovery Kit (revision §2.1, §2.2): what brings the synced data back when every
+/// device is lost. It holds the Kit's seed, so `Debug` prints nothing of it and the secret fields
+/// are wiped when it drops (ruling P16).
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct RecoveryKit {
-    #[serde(rename = "accountNumber")]
-    pub account_number: String,
-    /// The recovery code as 16 groups of five joined by `-`.
+    /// The recovery code (format v2, the account inside) as 19 groups of five joined by `-`.
     #[serde(rename = "recoveryCode")]
     pub recovery_code: String,
-    /// The QR of `moony-recover:1:<account>:<code>[:<base64url relay address>]` as SVG.
+    /// The QR of `moony-recover:2:<code>[:<base64url server address>]` as SVG.
     #[serde(rename = "qrSvg")]
     pub qr_svg: String,
-    /// The relay address, only when it is not the default relay (a self-hosted one).
+    /// The sync server's address, only when it is not the default one (a self-hosted one).
     #[serde(rename = "relayUrl")]
     pub relay_url: Option<String>,
+    /// When the kit was made (unix seconds): its certificate's date.
+    #[serde(rename = "createdAt")]
+    pub created_at: i64,
+    /// The name of the device that made it (this device), `None` while setup has not recorded
+    /// this device's name yet.
+    #[serde(rename = "createdBy")]
+    pub created_by: Option<String>,
 }
 
 impl std::fmt::Debug for RecoveryKit {
@@ -345,6 +569,228 @@ pub struct SyncDevice {
     /// The device's messages are held back (quarantined) here.
     #[serde(rename = "held")]
     pub held: bool,
+    /// Where the device stands (revision §6.5): `active`, `check` ("Zkontrolujte": it gets no
+    /// key at the next change until kept or removed) or `former` (left or removed, listed for
+    /// 30 days).
+    #[serde(rename = "status")]
+    pub status: SyncDeviceStatus,
+    /// With `status = check`: why.
+    #[serde(rename = "checkReason")]
+    pub check_reason: Option<SyncCheckReason>,
+    /// With `status = former`: how it went.
+    #[serde(rename = "formerReason")]
+    pub former_reason: Option<SyncFormerReason>,
+    /// How the device came to the list.
+    #[serde(rename = "joinedVia")]
+    pub joined_via: SyncJoinedVia,
+    /// The name of the device that paired it (`joinedVia = paired`), when this device knows one.
+    #[serde(rename = "addedBy")]
+    pub added_by: Option<String>,
+    /// When a former device left or was removed (unix seconds), when known.
+    #[serde(rename = "stateAt")]
+    pub state_at: Option<i64>,
+    /// The name of the device that removed it (`formerReason = removed`), when known.
+    #[serde(rename = "stateBy")]
+    pub state_by: Option<String>,
+    /// A key change of this device that removes it waits for the sync server ("Odebírá se…").
+    #[serde(rename = "removalPending")]
+    pub removal_pending: bool,
+    /// Whole days since an active other device was last seen, once that is 30 or more.
+    #[serde(rename = "inactiveDays")]
+    pub inactive_days: Option<u32>,
+}
+
+/// `SyncDevice::status`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum SyncDeviceStatus {
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "check")]
+    Check,
+    #[serde(rename = "former")]
+    Former,
+}
+
+/// `SyncDevice::check_reason`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum SyncCheckReason {
+    /// This device could not verify the device (no pinned certificate, or its issuer is unknown).
+    #[serde(rename = "unverified")]
+    Unverified,
+    /// An older ID of a device that connected again, still writing changes: a copy.
+    #[serde(rename = "copy")]
+    Copy,
+    /// A device a removed device added.
+    #[serde(rename = "issuerRemoved")]
+    IssuerRemoved,
+    /// Added by a device that left (or was superseded) with nothing showing it happened in time,
+    /// or by a device left out for that reason.
+    #[serde(rename = "lateVouch")]
+    LateVouch,
+}
+
+/// `SyncDevice::former_reason`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum SyncFormerReason {
+    #[serde(rename = "left")]
+    Left,
+    #[serde(rename = "removed")]
+    Removed,
+}
+
+/// `SyncDevice::joined_via`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum SyncJoinedVia {
+    /// The device that set the sync up.
+    #[serde(rename = "created")]
+    Created,
+    /// Paired by another device.
+    #[serde(rename = "paired")]
+    Paired,
+    /// Joined with the recovery kit.
+    #[serde(rename = "recoveryKit")]
+    RecoveryKit,
+    /// Connected again after turning sync off.
+    #[serde(rename = "rejoined")]
+    Rejoined,
+    /// This device has no certificate for it (a vault from before phase 5, or not verified).
+    #[serde(rename = "unknown")]
+    Unknown,
+}
+
+/// What removing devices would do (`sync_removal_plan`), as the dialog shows it (revision §4.3).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct RemovalPlan {
+    /// The devices that go (those asked for and the ticked ones).
+    #[serde(rename = "removing")]
+    pub removing: Vec<RemovalPlanDevice>,
+    /// The devices that keep syncing (this device included).
+    #[serde(rename = "staying")]
+    pub staying: Vec<RemovalPlanDevice>,
+    /// Devices that drop out of sync with them, each with the reason ("Synchronizovat se přestanou
+    /// i:"); only rows that are active or "Zkontrolujte".
+    #[serde(rename = "droppingOut")]
+    pub dropping_out: Vec<RemovalDroppingOut>,
+    /// Devices a removed device added, at any depth (to tick: "Odebrat také"), the ones asked
+    /// for left out.
+    #[serde(rename = "addedByRemoving")]
+    pub added_by_removing: Vec<RemovalPlanDevice>,
+    /// Whether, and why, the recovery kit is replaced; a new kit then comes with the outcome.
+    #[serde(rename = "replacesKit")]
+    pub replaces_kit: ReplacesKit,
+    /// The change touches no recovery kit at all (none known): "Tímto odebráním se záchranná sada
+    /// neaktualizuje.".
+    #[serde(rename = "kitNotUpdated")]
+    pub kit_not_updated: bool,
+    /// Pass back to `sync_remove_devices`: a hash over what the person was shown.
+    #[serde(rename = "consent")]
+    pub consent: String,
+}
+
+/// A device in a removal plan.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct RemovalPlanDevice {
+    #[serde(rename = "id")]
+    pub id: String,
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "platform")]
+    pub platform: String,
+    #[serde(rename = "joinedAt")]
+    pub joined_at: i64,
+    #[serde(rename = "thisDevice")]
+    pub this_device: bool,
+}
+
+/// A device that drops out of sync with the removed ones, and why.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct RemovalDroppingOut {
+    #[serde(rename = "device")]
+    pub device: RemovalPlanDevice,
+    #[serde(rename = "reason")]
+    pub reason: SyncCheckReason,
+}
+
+/// Whether, and why, a removal replaces the recovery kit (revision §2.7, §4.2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum ReplacesKit {
+    /// The kit stays.
+    #[serde(rename = "no")]
+    No,
+    /// The kit was saved on a device being removed.
+    #[serde(rename = "creatorRemoved")]
+    CreatorRemoved,
+    /// The kit is in a folder that syncs to a cloud, and a device is being removed.
+    #[serde(rename = "cloud")]
+    Cloud,
+    /// The person asked for a new kit.
+    #[serde(rename = "asked")]
+    Asked,
+    /// This device has no kit it can seal to but the sync server holds one: a new one replaces it.
+    #[serde(rename = "missing")]
+    Missing,
+}
+
+/// How `sync_remove_devices` ended (revision §6.5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum RemovalOutcomeKind {
+    /// The key changed.
+    #[serde(rename = "done")]
+    Done,
+    /// The sync server did not answer: the change finishes by itself ("Odebrání se dokončí
+    /// samo"); a new kit starts working then.
+    #[serde(rename = "pending")]
+    Pending,
+    /// Another device removed every device asked for first (`by`).
+    #[serde(rename = "alreadyRemoved")]
+    AlreadyRemoved,
+    /// Another device's change had removed this device: sync is off here (the status carries the
+    /// removed notice).
+    #[serde(rename = "removedHere")]
+    RemovedHere,
+}
+
+/// What a removal did. A new recovery kit (`kit`) comes only here, once.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct RemovalOutcome {
+    #[serde(rename = "kind")]
+    pub kind: RemovalOutcomeKind,
+    /// `alreadyRemoved`: the name of the device that removed them.
+    #[serde(rename = "by")]
+    pub by: Option<String>,
+    /// The new recovery kit to show once, when the change made one (`done` or `pending`).
+    #[serde(rename = "kit")]
+    pub kit: Option<RecoveryKit>,
+}
+
+/// What `sync_check_recovery_kit` found (revision §2.8).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum KitCheckResult {
+    /// The kit is this sync's current one.
+    #[serde(rename = "valid")]
+    Valid,
+    /// A newer kit replaced it.
+    #[serde(rename = "replaced")]
+    Replaced,
+    /// The code belongs to another sync.
+    #[serde(rename = "otherSync")]
+    OtherSync,
+    /// This sync has no such kit.
+    #[serde(rename = "unknown")]
+    Unknown,
+}
+
+/// The answer of "Ověřit sadu".
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct KitCheck {
+    #[serde(rename = "result")]
+    pub result: KitCheckResult,
+    /// `replaced`: when this device learnt of the replacement (unix seconds), if known.
+    #[serde(rename = "replacedAt")]
+    pub replaced_at: Option<i64>,
+    /// `replaced`: when the valid kit was made (unix seconds), if known.
+    #[serde(rename = "currentCreatedAt")]
+    pub current_created_at: Option<i64>,
 }
 
 /// Where a pairing stands on this device (`services::sync::pairing::session::Stage`).

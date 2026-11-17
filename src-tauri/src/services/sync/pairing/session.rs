@@ -23,7 +23,7 @@
 //! - The ephemeral X25519 secret is taken out of its `Option` when it is used and dropped (and
 //!   zeroized) right after. The session key is dropped once slot 2 is sealed or opened.
 //! - Received credentials live until `expires_at + RECEIVED_GRACE_SECS`; any call after that
-//!   wipes them.
+//!   wipes them, and the holder's join ticket (protocol 3) with them.
 //! - No error or `Debug` output carries a secret, a pairing code, a comparison code or the
 //!   mailbox ID.
 //!
@@ -37,9 +37,9 @@ use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::Zeroizing;
 
 use super::{
-    check_roles, derive, is_cancel_marker, open_credentials, parse_pairing_code, parse_slot1,
-    seal_credentials, slot1, typed_code_digits, MailboxId, PairingCode, Role, Side, Transcript,
-    CANCEL_MARKER,
+    check_roles, derive, is_cancel_marker, open_payload, parse_pairing_code, parse_slot1,
+    seal_payload, slot1, typed_code_digits, MailboxId, PairingCode, PairingIdentity, Role, Side,
+    SlotPayload, Transcript, CANCEL_MARKER,
 };
 use crate::error::{AppError, Result};
 use crate::services::sync::error::{SyncError, SyncResult};
@@ -102,7 +102,8 @@ pub enum Stage {
     WaitingForOther,
     /// Holder, after its confirm: slot 2 is written.
     Sent,
-    /// Joiner: slot 2 opened; the credentials are held until `wiped_at`.
+    /// Joiner: slot 2 opened; the credentials (and the holder's identity) are held until
+    /// `wiped_at`.
     Received,
 }
 
@@ -138,7 +139,9 @@ pub struct PairingSession {
     server_needs_update: bool,
     /// Holder: wrong six-digit codes typed so far.
     wrong_codes: u8,
-    received: Option<Credentials>,
+    /// The joiner's opened slot 2: the credentials, the key heads and the holder's identity, its
+    /// join ticket included; wiped together.
+    received: Option<SlotPayload>,
     expires_at: i64,
     /// Set by the first call at or past `wiped_at`; every later call is refused, whatever its
     /// `now`.
@@ -384,7 +387,20 @@ impl PairingSession {
     }
 
     pub fn received(&self) -> Option<&Credentials> {
-        self.received.as_ref()
+        self.received.as_ref().map(|payload| &payload.creds)
+    }
+
+    /// The holder's identity received with the credentials (protocol 3), `None` from a holder
+    /// whose vault has no certificates.
+    pub fn received_identity(&self) -> Option<&PairingIdentity> {
+        self.received
+            .as_ref()
+            .and_then(|payload| payload.identity.as_ref())
+    }
+
+    /// The rotation head of each key epoch the holder knew one for.
+    pub fn received_heads(&self) -> Option<&std::collections::BTreeMap<u32, u64>> {
+        self.received.as_ref().map(|payload| &payload.heads)
     }
 
     /// When every call starts answering `syncPairingExpired`: `expires_at`, or, once the
@@ -561,8 +577,8 @@ impl PairingSession {
             .transcript
             .as_ref()
             .ok_or_else(|| internal("no transcript"))?;
-        let credentials = open_credentials(transcript, &sealed)?;
-        self.received = Some(credentials);
+        let payload = open_payload(transcript, &sealed)?;
+        self.received = Some(payload);
         self.transcript = None;
         self.stage = Stage::Received;
         // Nothing is left to read; a mailbox that stays expires on its own.
@@ -580,10 +596,13 @@ impl PairingSession {
     /// spent); a wrong code is `CODE_MISMATCH` (the session is kept) until the
     /// `MAX_TYPED_ATTEMPTS`th, which ends the pairing with `CODE_MISMATCH_FINAL` and writes the
     /// cancel markers.
-    pub async fn confirm<M: Mailbox>(
+    ///
+    /// `holder` is what the holder seals (its credentials, key heads and identity), read once
+    /// the typed text can be a code; the joiner passes `None`.
+    pub async fn confirm_with<M: Mailbox>(
         &mut self,
         mailbox: &M,
-        holder_creds: Option<&Credentials>,
+        holder: Option<&SlotPayload>,
         typed: Option<&str>,
         now: i64,
     ) -> SyncResult<Stage> {
@@ -606,9 +625,27 @@ impl PairingSession {
             }
             Role::Holder => {
                 self.check_typed(mailbox, typed).await?;
-                self.send(mailbox, holder_creds).await
+                self.send(mailbox, holder).await
             }
         }
+    }
+
+    /// `confirm_with` for a holder without an identity, epoch 0's head 0: the tests' shorthand.
+    #[cfg(test)]
+    pub async fn confirm<M: Mailbox>(
+        &mut self,
+        mailbox: &M,
+        holder_creds: Option<&Credentials>,
+        typed: Option<&str>,
+        now: i64,
+    ) -> SyncResult<Stage> {
+        let payload = holder_creds.map(|creds| SlotPayload {
+            creds: creds.clone(),
+            heads: std::collections::BTreeMap::from([(0, 0)]),
+            identity: None,
+        });
+        self.confirm_with(mailbox, payload.as_ref(), typed, now)
+            .await
     }
 
     /// Holder: whether `typed` is the joiner's code, with a limited number of wrong attempts.
@@ -650,14 +687,14 @@ impl PairingSession {
     async fn send<M: Mailbox>(
         &mut self,
         mailbox: &M,
-        holder_creds: Option<&Credentials>,
+        holder: Option<&SlotPayload>,
     ) -> SyncResult<Stage> {
-        let creds = holder_creds.ok_or_else(|| internal("the holder has no credentials"))?;
+        let payload = holder.ok_or_else(|| internal("the holder has no credentials"))?;
         let transcript = self
             .transcript
             .as_ref()
             .ok_or_else(|| internal("no transcript"))?;
-        let sealed = seal_credentials(transcript, creds)?;
+        let sealed = seal_payload(transcript, payload)?;
         let id = self.mailbox.to_b64();
         match mailbox.put_slot(&id, HOLDER_SLOT, &sealed).await {
             Ok(()) => self.enter_sent(),

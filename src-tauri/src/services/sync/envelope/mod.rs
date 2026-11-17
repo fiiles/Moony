@@ -155,6 +155,20 @@ pub fn open_op(
     inflate_padded(&plain)
 }
 
+/// The epoch an envelope names in its header. Only an envelope that `open_op` opened has an
+/// authenticated one (the epoch is in the AAD); on a stranger's it is a hint.
+pub fn envelope_epoch(envelope: &[u8]) -> Option<u32> {
+    if envelope.len() < 8 || envelope[0..4] != MAGIC {
+        return None;
+    }
+    Some(u32::from_be_bytes([
+        envelope[4],
+        envelope[5],
+        envelope[6],
+        envelope[7],
+    ]))
+}
+
 /// SHA-256 of the whole envelope (the chain hash).
 pub fn envelope_hash(envelope: &[u8]) -> [u8; 32] {
     Sha256::digest(envelope).into()

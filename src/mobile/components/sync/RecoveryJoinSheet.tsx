@@ -44,7 +44,7 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
 
 /**
  * "Type a Recovery Kit code" (sync off): the recovery code, typed or pasted, or the text of the
- * Kit's QR; the account number when a bare code was typed; the device name and password; and, for a
+ * Kit's QR (the account is inside a v2 code); the device name and password; and, for a
  * typed code, the sync server (an address or a connection code, checked; a Kit QR brings its own,
  * which is checked and, for plain http, acknowledged). It reads Recovery Kit codes only (review PF2): a pairing code
  * is "This is not a Recovery Kit code". The join replaces this phone's data after a backup: the sheet
@@ -73,17 +73,15 @@ export function RecoveryJoinSheet({
   const fieldId = useId();
 
   const [code, setCode] = useState('');
-  const [account, setAccount] = useState('');
   const [name, setName] = useState(() =>
     t(`setup.defaultName.${phoneDeviceKey(import.meta.env.TAURI_ENV_PLATFORM ?? '')}`)
   );
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  // Closed: the code, the account and the password go with it (the name and the server stay)
-  if (!open && (code !== '' || account !== '' || password !== '' || error !== null)) {
+  // Closed: the code and the password go with it (the name and the server stay)
+  if (!open && (code !== '' || password !== '' || error !== null)) {
     setCode('');
-    setAccount('');
     setPassword('');
     setError(null);
   }
@@ -94,7 +92,6 @@ export function RecoveryJoinSheet({
   const deviceName = firstRun ? firstRun.deviceName : name.trim();
   const codeProblem = kitCodeProblem(code);
   const kind = scannedCodeKind(code);
-  const needsAccount = kind === 'recoveryCode';
   const qr = kitQrSummary(code);
   const qrServer = qr.ok ? qr.server : null;
   const need = kitServerNeed(kind, qrServer);
@@ -109,8 +106,7 @@ export function RecoveryJoinSheet({
     codeProblem === null &&
     devicePassword !== '' &&
     shownImpact !== undefined &&
-    deviceName !== '' &&
-    (!needsAccount || account.trim() !== '');
+    deviceName !== '';
 
   const change = (next: boolean) => {
     if (!next && busy) return;
@@ -124,7 +120,6 @@ export function RecoveryJoinSheet({
     try {
       const outcome = await joinWithRecoveryKit.mutateAsync({
         code: code.trim(),
-        account: needsAccount ? account.trim() : undefined,
         relayUrl: need === 'typed' ? server.check?.address : undefined,
         deviceName,
         password: devicePassword,
@@ -149,9 +144,10 @@ export function RecoveryJoinSheet({
       // Out of the way of the busy cover while the data is replaced
       open={open && !busy}
       onOpenChange={change}
+      locked={busy}
       title={t('join.kitTitle')}
       description={presentation.showReplaceWarning ? t('join.warning') : undefined}
-      dirty={code !== '' || account !== ''}
+      dirty={code !== ''}
       footer={
         <>
           <Button variant="ghost" className={`${BUTTON} px-[18px]`} onClick={() => change(false)}>
@@ -193,20 +189,6 @@ export function RecoveryJoinSheet({
             </p>
           )}
         </div>
-        {needsAccount && (
-          <div className="space-y-1.5">
-            <Label htmlFor={`${fieldId}-account`}>{t('join.accountLabel')}</Label>
-            <Input
-              id={`${fieldId}-account`}
-              value={account}
-              onChange={(event) => setAccount(event.target.value)}
-              inputMode="numeric"
-              autoComplete="off"
-              enterKeyHint="next"
-              className={field48}
-            />
-          </div>
-        )}
         {/* The first run asked neither (the name on the step, the password a step earlier); a
             failed join says why here, where the password field would be */}
         {!presentation.askPassword && error && (

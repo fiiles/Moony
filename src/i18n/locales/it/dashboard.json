@@ -3,9 +3,13 @@
   "greeting": {
     "morning": "Buongiorno, {{name}}.",
     "day": "Buon pomeriggio, {{name}}.",
-    "evening": "Buonasera, {{name}}."
+    "evening": "Buonasera, {{name}}.",
+    "morningNoName": "Buongiorno.",
+    "dayNoName": "Buon pomeriggio.",
+    "eveningNoName": "Buonasera."
   },
   "welcomeFirst": "Benvenuto, {{name}}.",
+  "welcomeFirstNoName": "Benvenuto.",
   "asOf": "Patrimonio netto al {{date}}",
   "loading": "Caricamento del portafoglio…",
   "hero": {

@@ -275,8 +275,7 @@
     },
     "kit": {
       "title": "Záchranná sada synchronizace",
-      "text": "Vrátí synchronizovaná data, když přijdete o všechna zařízení. Jedna pro všechna zařízení.",
-      "show": "Zobrazit"
+      "text": "Vrátí synchronizovaná data, když přijdete o všechna zařízení. Jedna pro všechna zařízení."
     }
   }
 }

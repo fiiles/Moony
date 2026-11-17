@@ -30,6 +30,17 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::SyncAttachments>();
     types.register::<crate::models::SyncStatus>();
     types.register::<crate::models::SyncProfileState>();
+    types.register::<crate::models::SyncRemovalNotice>();
+    types.register::<crate::models::SyncRemovalNotDone>();
+    types.register::<crate::models::SyncKeyChangeOverrun>();
+    types.register::<crate::models::SyncRemovedNotice>();
+    types.register::<crate::models::SyncWaitingForRemover>();
+    types.register::<crate::models::SyncNewDevice>();
+    types.register::<crate::models::SyncKitStorage>();
+    types.register::<crate::models::SyncKitInfo>();
+    types.register::<crate::models::SyncAfterKitDevice>();
+    types.register::<crate::models::SyncAfterKitJoin>();
+    types.register::<crate::models::SyncNoticeKind>();
 
     // Device sync setup (first device, checkout, Recovery Kit)
     types.register::<crate::models::SyncPlan>();
@@ -40,6 +51,20 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::KitFileKind>();
     types.register::<crate::models::KitSaveOutcome>();
     types.register::<crate::models::SyncDevice>();
+    types.register::<crate::models::SyncDeviceStatus>();
+    types.register::<crate::models::SyncCheckReason>();
+    types.register::<crate::models::SyncFormerReason>();
+    types.register::<crate::models::SyncJoinedVia>();
+
+    // Device sync: removing devices and checking the recovery kit
+    types.register::<crate::models::RemovalPlan>();
+    types.register::<crate::models::RemovalPlanDevice>();
+    types.register::<crate::models::RemovalDroppingOut>();
+    types.register::<crate::models::ReplacesKit>();
+    types.register::<crate::models::RemovalOutcomeKind>();
+    types.register::<crate::models::RemovalOutcome>();
+    types.register::<crate::models::KitCheckResult>();
+    types.register::<crate::models::KitCheck>();
 
     // Device sync pairing (a second device)
     types.register::<crate::models::PairingStage>();

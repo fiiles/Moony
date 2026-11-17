@@ -1,14 +1,18 @@
 //! Per-column merge of a live row (D12): last writer wins by `(hlc, device)`, column groups taken
 //! whole from the newer side, the weak `pending` of `stock_splits.status` (correction 9), and the
-//! write-once `sync_devices.public_key`, where a key stamped with the device's own ID beats one
-//! stamped with any other (audit M6; see `own_key` for what that stamp is worth).
+//! write-once `sync_devices` columns, where a public key, certificate or `left` record stamped
+//! with the device's own ID beats one stamped with any other (audit M6; see `own_key` for what
+//! that stamp is worth), and a certificate or record that holds up on its own beats one that does
+//! not (`identity::write_once_value_valid`).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use super::row::{Columns, RowImage, Table};
 use crate::services::sync::changeset::{RowChange, SqlValue};
 use crate::services::sync::hlc::Clock;
+use crate::services::sync::identity;
 use crate::services::sync::registry::{column_class, group_of, ColumnClass};
+use crate::services::sync::rekey::kit::KitStorage;
 
 /// The value a detection inserts and that a later apply or dismiss always beats.
 const WEAK_STATUS: &str = "pending";
@@ -21,7 +25,9 @@ pub(super) struct Merged {
 }
 
 /// Merges the carried `incoming` columns into the local row `local`, whose column clocks are
-/// `clocks` (a column without one has the row clock `generation`).
+/// `clocks` (a column without one has the row clock `generation`). `vault` is the bound vault's
+/// ID, which a `sync_devices` certificate or record must name (unchecked when `None`).
+#[allow(clippy::too_many_arguments)]
 pub(super) fn merge(
     table: &Table,
     change: &RowChange,
@@ -30,6 +36,7 @@ pub(super) fn merge(
     clocks: &HashMap<String, Clock>,
     generation: Clock,
     pk: &str,
+    vault: Option<&[u8; 16]>,
 ) -> Merged {
     let name = table.spec.name;
     let local_clock = |column: &str| clocks.get(column).copied().unwrap_or(generation);
@@ -44,6 +51,17 @@ pub(super) fn merge(
         }
         let ours = local_clock(column);
         let local_value = local.get(column).unwrap_or(&SqlValue::Null);
+        // Where the Kit is kept only ever grows (review of Task 17, I1): the stronger value wins
+        // whatever the clocks, the clock only between values of equal strength, so a device about
+        // to be removed cannot switch the Kit's replacement off with a newer, weaker value.
+        if is_kit_storage(name, column) {
+            if (storage_rank(value), *clock) > (storage_rank(local_value), ours) {
+                merged
+                    .writes
+                    .insert(column.clone(), (value.clone(), *clock));
+            }
+            continue;
+        }
         let theirs_win = match column_class(name, column) {
             // Weak loses to non-weak whatever the clocks; two weak values are equal.
             ColumnClass::Monotonic => {
@@ -55,8 +73,9 @@ pub(super) fn merge(
                     (false, false) => *clock > ours,
                 }
             }
-            // Non-NULL beats NULL. A device's public key stamped with the device's own ID (the
-            // clock's device is the row's, `own_key`) beats one stamped with any other ID (audit
+            // Non-NULL beats NULL. A device's public key, certificate or `left` record stamped
+            // with the device's own ID (the clock's device is the row's, `own_key`) beats one
+            // stamped with any other ID (audit
             // M6); between two alike the older clock wins (write-once, as `devices.rs` keeps the
             // first key with `COALESCE`). A fixed order on (value, clock), so the outcome does not
             // depend on the order the devices see them in.
@@ -64,6 +83,24 @@ pub(super) fn merge(
                 (SqlValue::Null, SqlValue::Null) => *clock > ours,
                 (SqlValue::Null, _) => true,
                 (_, SqlValue::Null) => false,
+                // A certificate or record that holds up on its own beats one that does not,
+                // whatever the clocks and stamps: an older value that never verifies cannot lock
+                // the column. A `left` record is checked against the row's certificate as this
+                // merge leaves it ("cert" sorts before "left_record", so it is decided already).
+                (kept, offered)
+                    if is_checked(name, column)
+                        && valid(column, pk, kept, vault, &merged.writes, local)
+                            != valid(column, pk, offered, vault, &merged.writes, local) =>
+                {
+                    let theirs_win = valid(column, pk, offered, vault, &merged.writes, local);
+                    let refused = if theirs_win { ours } else { *clock };
+                    merged.warnings.push(format!(
+                        "{name} {pk}: device {} offered a {column} that does not verify; kept \
+                         the one that does",
+                        refused.device.to_b64()
+                    ));
+                    theirs_win
+                }
                 (kept, offered) => {
                     let own = |clock: Clock| own_key(name, column, pk, clock);
                     let theirs_win = match (own(ours), own(*clock)) {
@@ -118,14 +155,66 @@ pub(super) fn merge(
     merged
 }
 
-/// Whether `clock` stamps a device's public key with the device's own ID: the row of
-/// `sync_devices` is keyed by the device's ID in hex, and the clock's device is that ID. Always
-/// `false` for every other column. The stamp is not proof: any holder of the vault key writes
-/// changesets with whatever clock device it likes, so it can forge it. It only stops an honest
-/// device's stale or mistaken write from replacing another device's key; the column must not be
-/// trusted for rekeying until changes are signed per device.
+/// `sync_devices.kit_storage` (revision §2.7): merged by strength, not by clock.
+fn is_kit_storage(table: &str, column: &str) -> bool {
+    table == "sync_devices" && column == "kit_storage"
+}
+
+/// The strength of a `kit_storage` value: NULL and anything unknown 0, then `paper` < `copied` <
+/// `file` < `cloud` (`rekey::kit::KitStorage`'s order).
+fn storage_rank(value: &SqlValue) -> u8 {
+    match value {
+        SqlValue::Text(text) => KitStorage::parse(text).map_or(0, |s| s as u8 + 1),
+        _ => 0,
+    }
+}
+
+/// The write-once columns whose values are checked on their own (`identity::write_once_value_valid`).
+fn is_checked(table: &str, column: &str) -> bool {
+    table == "sync_devices"
+        && matches!(
+            column,
+            "cert" | "left_record" | "removal_record" | "confirm_record"
+        )
+}
+
+/// Whether `value` of the checked column holds up on its own. The row's certificate for a `left`
+/// record is the one this merge writes, else the local one.
+fn valid(
+    column: &str,
+    pk: &str,
+    value: &SqlValue,
+    vault: Option<&[u8; 16]>,
+    writes: &BTreeMap<String, (SqlValue, Clock)>,
+    local: &RowImage,
+) -> bool {
+    let SqlValue::Text(value) = value else {
+        return false;
+    };
+    let row_cert = writes
+        .get("cert")
+        .map(|(v, _)| v)
+        .or_else(|| local.get("cert"))
+        .and_then(|v| match v {
+            SqlValue::Text(text) => Some(text.as_str()),
+            _ => None,
+        });
+    identity::write_once_value_valid(column, pk, value, vault, row_cert)
+}
+
+/// Whether `clock` stamps a device's public key, certificate or `left` record with the device's
+/// own ID: the row of `sync_devices` is keyed by the device's ID in hex, and the clock's device is
+/// that ID; each of the three is written by the device itself. Always `false` for every other
+/// column (`removal_record` and `confirm_record` are signed by another device, so the older
+/// value stays). The stamp is
+/// not proof: any holder of the vault key writes changesets with whatever clock device it likes,
+/// so it can forge it. It only stops an honest device's stale or mistaken write from replacing
+/// another device's value; what decides who gets a new key is the signed certificate, verified
+/// and pinned by the trust store (phase 5), never this column alone.
 fn own_key(table: &str, column: &str, pk: &str, clock: Clock) -> bool {
-    table == "sync_devices" && column == "public_key" && pk == clock.device.to_hex()
+    table == "sync_devices"
+        && matches!(column, "public_key" | "cert" | "left_record")
+        && pk == clock.device.to_hex()
 }
 
 fn is_weak_value(table: &str, column: &str, value: &SqlValue) -> bool {

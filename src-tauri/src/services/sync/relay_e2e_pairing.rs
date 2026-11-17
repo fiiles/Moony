@@ -18,19 +18,18 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::binding::NoBinding;
 use super::devices::list_devices;
-use super::join::{join_new_device, recovery_credentials};
+use super::join::{join_new_device, recovery_credentials, JoinIdentity};
 use super::keys::{self, Credentials};
 use super::pairing::session::{
     keeps_session, PairingSession, Stage, CODE_MISMATCH, CODE_MISMATCH_FINAL,
 };
 use super::pairing::{pairing_code_text, parse_pairing_code, MailboxId, Role};
-use super::recovery::read_recovery_input;
+use super::recovery::read_kit_input;
 use super::relay::http::{normalize_base_url, HttpRelay, DEFAULT_RELAY_URL};
 use super::relay::{Mailbox, RelayError, RelayResult};
 use super::relay_e2e::{
     add_finances, command_key, converged, first_device, now, relay_at, relay_url, Device,
 };
-use super::setup::recovery_kit;
 
 /// The address `device` stored with its account (the holder shows its mailbox there).
 fn stored_relay(device: &Device) -> String {
@@ -50,7 +49,13 @@ fn add_own_rows(device: &Device) {
 
 /// The joiner joins with `creds` on their own relay; then a round on each converges them, and
 /// the holder lists the new device.
-async fn join_and_converge(holder: &Device, joiner: &Device, creds: Credentials, name: &str) {
+async fn join_and_converge(
+    holder: &Device,
+    joiner: &Device,
+    creds: Credentials,
+    name: &str,
+    identity: JoinIdentity,
+) {
     let relay = HttpRelay::new(&creds.relay_url).expect("the received relay address");
     let consent = super::engine::tests::agreed(&joiner.db);
     let backup: PathBuf = join_new_device(
@@ -59,6 +64,7 @@ async fn join_and_converge(holder: &Device, joiner: &Device, creds: Credentials,
         creds,
         name,
         consent,
+        identity,
         joiner.dir(),
         &NoBinding,
         now(),
@@ -68,6 +74,8 @@ async fn join_and_converge(holder: &Device, joiner: &Device, creds: Credentials,
     .backup;
     assert!(backup.exists(), "the join's backup stays");
     assert!(joiner.enabled());
+    // A Kit joiner holds its pushes until the person answers "Data jsou zpět": here "Mám je".
+    super::join::lift_kit_join_hold(&joiner.db.lock()).expect("decided");
     assert_eq!(
         joiner.count("SELECT COUNT(*) FROM bank_accounts WHERE id = 'acc-own'"),
         0,
@@ -81,7 +89,7 @@ async fn join_and_converge(holder: &Device, joiner: &Device, creds: Credentials,
         20,
         "the holder's finances reached the new device"
     );
-    let listed = list_devices(&holder.db.lock()).expect("devices");
+    let listed = list_devices(&holder.db.lock(), 1_800_000_000).expect("devices");
     assert!(
         listed
             .iter()
@@ -340,7 +348,14 @@ async fn a_phone_joins_a_desktop_that_types_its_code() {
         "the joiner burns the mailbox once it has read: {burnt:?}"
     );
 
-    join_and_converge(&a, &b, creds, "B").await;
+    join_and_converge(
+        &a,
+        &b,
+        creds,
+        "B",
+        JoinIdentity::Unvouched(Default::default()),
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -408,41 +423,50 @@ async fn a_desktop_joins_from_a_phone_and_the_phone_types_the_code() {
     assert_eq!(creds.account, held.account);
     assert_eq!(creds.vault_id, held.vault_id);
 
-    join_and_converge(&a, &b, creds, "B").await;
+    join_and_converge(
+        &a,
+        &b,
+        creds,
+        "B",
+        JoinIdentity::Unvouched(Default::default()),
+    )
+    .await;
 }
 
 #[tokio::test]
 #[ignore = "needs a Moony sync server (Plan 1) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8787"]
 async fn a_device_joins_with_the_recovery_kit() {
     let url = relay_url();
-    let (a, b) = holder_and_new_device(&url).await;
-    let kit = recovery_kit(&a.db.lock()).expect("kit");
-
-    // Typed: the grouped code, the account with spaces, the server's address as written.
-    let account = format!(
-        "{} {} {} {}",
-        &kit.account_number[..4],
-        &kit.account_number[4..8],
-        &kit.account_number[8..12],
-        &kit.account_number[12..]
+    let relay = relay_at(&url);
+    let (a, _, kit) = super::relay_e2e::first_device_with_kit(&relay, &url, "A").await;
+    add_finances(&a);
+    a.round(&relay).await;
+    let b = Device::new();
+    add_own_rows(&b);
+    // Typed: the grouped v2 code (the account is in it), the server's address as written.
+    let held = a.credentials();
+    let code = super::recovery::format_recovery_code(
+        &super::recovery::encode_kit_code(&held.vault_id, kit.secret(), &held.account)
+            .expect("code"),
     );
-    let input = read_recovery_input(
-        &kit.recovery_code,
-        Some(&account),
-        Some(&format!("{url}/")),
-        DEFAULT_RELAY_URL,
-    )
-    .expect("kit input");
+    let input =
+        read_kit_input(&code, Some(&format!("{url}/")), DEFAULT_RELAY_URL).expect("kit input");
     let relay = HttpRelay::new(&input.relay_url).expect("relay");
-    let creds = recovery_credentials(&relay, &b.db, input)
+    let (creds, kit_join) = recovery_credentials(&relay, &b.db, input)
         .await
         .expect("kit credentials");
-    let held = a.credentials();
     assert_eq!(creds.relay_url, stored_relay(&a));
     assert_eq!(creds.account, held.account);
     assert_eq!(creds.vault_id, held.vault_id);
 
-    join_and_converge(&a, &b, creds, "B").await;
+    join_and_converge(
+        &a,
+        &b,
+        creds,
+        "B",
+        JoinIdentity::RecoveryKit(Box::new(kit_join)),
+    )
+    .await;
 }
 
 #[tokio::test]

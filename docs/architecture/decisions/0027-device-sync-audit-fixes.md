@@ -5,7 +5,9 @@ Date: 2026-11-12
 ## Status
 
 Accepted. Amends ADR 0024, ADR 0025 and ADR 0026 where named below. Amended by
-[ADR 0029](0029-self-hosted-sync-server-in-the-app.md) (the HTTP rule of L9, the allow list). Records the fixes built on
+[ADR 0029](0029-self-hosted-sync-server-in-the-app.md) (the HTTP rule of L9, the allow list) and
+[ADR 0032](0032-device-sync-device-removal-and-the-recovery-kit.md) (phase 5: H1's removal and key
+change are built; the Recovery Kit of this ADR is replaced by the paper-device Kit). Records the fixes built on
 `fix/device-sync-audit` (plan `docs/plans/2026-11-12-device-sync-audit-fixes.md`) and on two relay
 branches that are not merged into the relay's main: `feat/pairing-ack` and `feat/dev-grant`. Sync is
 still hidden behind the runtime flag. Where the spec or an earlier ADR differs, the code and this

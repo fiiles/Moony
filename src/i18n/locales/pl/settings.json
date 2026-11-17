@@ -277,8 +277,7 @@
     },
     "kit": {
       "title": "Zestaw odzyskiwania synchronizacji",
-      "text": "Przywraca zsynchronizowane dane, gdy stracisz wszystkie urządzenia. Jeden dla wszystkich urządzeń.",
-      "show": "Pokaż"
+      "text": "Przywraca zsynchronizowane dane, gdy stracisz wszystkie urządzenia. Jeden dla wszystkich urządzeń."
     }
   }
 }

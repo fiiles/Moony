@@ -43,7 +43,9 @@ use crate::services::sync::blobs::transfer::{run_downloads, run_uploads};
 use crate::services::sync::capture::guard;
 use crate::services::sync::devices;
 use crate::services::sync::error::{SyncError, Transient};
+use crate::services::sync::identity;
 use crate::services::sync::keys::{self, Credentials};
+use crate::services::sync::rekey;
 use crate::services::sync::relay::Relay;
 use crate::services::sync::state;
 
@@ -542,13 +544,54 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                 return Err(Ended);
             }
         }
+        // The trust store catches up with the device list at unlock (phase 5 plan Task 11): a
+        // merge made while no refresh ran, or by an older build, may have left records and
+        // certificates unapplied. A record that removes this device ends sync before any round.
+        match self
+            .db
+            .with_conn(|conn| rekey::refresh_trust(conn, Some(&dir), unix_now()))
+        {
+            Ok(true) => return self.removed_here().map(|()| false),
+            Ok(false) => {}
+            Err(error) if locked(&error) => return Err(Ended),
+            Err(error) => {
+                log::warn!("[SYNC] The device list could not be checked at unlock");
+                log::debug!("[SYNC] The device list check failed: {error}");
+            }
+        }
         Ok(true)
+    }
+
+    /// Another device removed this one and sync is off here now (`rekey::removed_here`): the
+    /// status says so, and the loop ends.
+    fn removed_here(&mut self) -> Result<(), Ended> {
+        self.shared.update(|r| r.problem = None);
+        self.publish()?;
+        Err(Ended)
     }
 
     /// Writes the binding at start when sync is on and none is written yet (a seal that failed
     /// for a passing reason earlier), so the check does not stay off for good.
+    ///
+    /// In the same connection hold (phase 5 §5.5): a profile whose sync was set up before phase 5
+    /// gets its signing key, and no certificate. A re-join made one already, so only this path
+    /// needs it. A failure is logged; the next start tries again, and sync goes on without it
+    /// (removal stays unavailable there anyway).
     fn write_binding_if_due(&self) -> Result<(), Ended> {
-        match self.db.with_conn(binding::binding_due) {
+        let checked = self.db.with_conn(|conn| {
+            match identity::ensure_seed(conn) {
+                Ok(true) => log::info!(
+                    "[SYNC] This device made its signing key (no certificate: older vault)"
+                ),
+                Ok(false) => {}
+                Err(error) => {
+                    log::warn!("[SYNC] This device's signing key could not be made");
+                    log::debug!("[SYNC] This device's signing key could not be made: {error}");
+                }
+            }
+            binding::binding_due(conn)
+        });
+        match checked {
             Ok(true) => self.write_binding(),
             Ok(false) => Ok(()),
             Err(error) if locked(&error) => Err(Ended),
@@ -640,7 +683,10 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
     }
 
     async fn round(&mut self) -> Result<(), Ended> {
-        self.shared.update(|r| r.running_round = true);
+        self.shared.update(|r| {
+            r.running_round = true;
+            r.round_started_at = Some(unix_now());
+        });
         self.publish()?;
         let mut report = RoundReport::default();
         // A relay that stalls cannot pin the loop: the round is dropped at its deadline (every
@@ -677,6 +723,19 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         if report.data_changed() {
             self.events.data_changed();
         }
+        if report.removed_here {
+            // The round turned sync off (a verified removal, phase 5 §7.4); the binding file
+            // goes as `setup::turn_off` removes it.
+            if let Err(error) = rekey::forget_binding_after_removal(&self.events.data_dir()) {
+                log::warn!("[SYNC] The device binding could not be removed after the removal");
+                log::debug!("[SYNC] The device binding could not be removed: {error}");
+            }
+            self.shared.update(|r| {
+                r.running_round = false;
+                r.round_started_at = None;
+            });
+            return self.removed_here();
+        }
         self.shared.update(|r| r.after_round(&report));
         match result {
             Ok(()) => self.backoff.reset(),
@@ -698,7 +757,10 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         self.next_periodic = after + periodic_gap(after, self.fast_until());
         let pending = self.outbox_count()?;
         self.watch.after_round(pending);
-        self.shared.update(|r| r.running_round = false);
+        self.shared.update(|r| {
+            r.running_round = false;
+            r.round_started_at = None;
+        });
         self.publish()?;
         self.shared.update(|r| r.rounds += 1);
         // What the round merged, queued or left behind is the lanes' now.
@@ -916,6 +978,20 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
         {
             return Ok(false);
         }
+        // Nothing goes up while a Kit joiner's hold stands, a key change of this device is pending
+        // or was given up (As built R-45, R-53; review of Tasks 18–19): the round would push
+        // nothing either.
+        if lane == Lane::Up {
+            match hold(&self.db, uploads_held) {
+                Ok(false) => {}
+                Ok(true) => return Ok(false),
+                Err(error) if locked(&error) => return Err(Ended),
+                Err(error) => {
+                    log::debug!("[SYNC] The upload lane could not read the hold: {error}");
+                    return Ok(false);
+                }
+            }
+        }
         let creds = match hold(&self.db, lane_credentials) {
             Ok(Some(creds)) => creds,
             Ok(None) => return Ok(false),
@@ -950,6 +1026,16 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
     }
 }
 
+/// Whether uploads of documents and photos wait (the lane's own gate, as the round's): a Recovery
+/// Kit joiner's push hold (`join::after_kit_join`), this device's key change pending
+/// (`rotate::pending`: its token may be retired already) or given up (`rotate::stuck`).
+pub(crate) fn uploads_held(conn: &rusqlite::Connection) -> crate::error::Result<bool> {
+    use crate::services::sync::rekey::rotate;
+    Ok(crate::services::sync::join::after_kit_join(conn)?.is_some()
+        || rotate::pending(conn)?
+        || rotate::stuck(conn)?)
+}
+
 /// The credentials a lane transfers with, `None` while the profile does not sync: sync off, no
 /// credentials, capture broken (marked, or a guarded connection: the round runs only the repair's
 /// drain, and a repair replaces the rows), or the vault gone (the round asks nothing until "Sync
@@ -981,7 +1067,13 @@ pub(crate) fn lane_may_run(lane: Lane, problem: Option<SyncProblem>) -> bool {
         Some(SyncProblem::CaptureBroken | SyncProblem::VaultGone | SyncProblem::Unauthorized) => {
             false
         }
-        Some(SyncProblem::Lapsed | SyncProblem::KeyRotated) => lane == Lane::Down,
+        Some(
+            SyncProblem::Lapsed
+            | SyncProblem::KeyRotated
+            | SyncProblem::KeyNotGiven
+            | SyncProblem::KeyChangeUnverified
+            | SyncProblem::KeyChangeWaiting,
+        ) => lane == Lane::Down,
         _ => true,
     }
 }

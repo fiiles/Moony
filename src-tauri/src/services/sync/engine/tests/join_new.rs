@@ -11,12 +11,15 @@ use crate::services::sync::binding::NoBinding;
 use crate::services::sync::devices;
 use crate::services::sync::engine::RoundMode;
 use crate::services::sync::error::{SyncError, SyncResult, Transient};
-use crate::services::sync::join::{join_new_device, recovery_credentials};
+use crate::services::sync::identity::trust;
+use crate::services::sync::identity::{self, CertKind};
+use crate::services::sync::join::{
+    join_new_device, record_joined_epochs, recovery_credentials, JoinIdentity,
+};
+use crate::services::sync::pairing::holder::holder_payload;
 use crate::services::sync::pairing::session::{PairingSession, Stage};
 use crate::services::sync::pairing::{pairing_code_text, Role};
-use crate::services::sync::recovery::{
-    encode_recovery_code, read_recovery_input, recovery_qr_payload, RecoveryInput,
-};
+use crate::services::sync::recovery::{encode_kit_code, read_kit_input, KitInput};
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
 use crate::services::sync::relay::RelayError;
@@ -40,8 +43,9 @@ fn holder_creds(holder: &TestConn) -> Credentials {
 }
 
 /// A pairing over the vault's relay between `holder` and a joiner; `joiner_shows` picks the side
-/// that shows the code. Returns what the joiner received.
-async fn pair(vault: &Vault, holder: &TestConn, joiner_shows: bool) -> Credentials {
+/// that shows the code. The holder seals what the app seals (`holder_payload`: its identity when
+/// its certificate is pinned). Returns what the joiner received, with how it joins.
+async fn pair(vault: &Vault, holder: &TestConn, joiner_shows: bool) -> (Credentials, JoinIdentity) {
     let creds = holder_creds(holder);
     let (mut holder_session, mut joiner_session) = if joiner_shows {
         let joiner = PairingSession::show(Role::Joiner, DEFAULT_RELAY_URL, NOW).expect("show");
@@ -82,9 +86,10 @@ async fn pair(vault: &Vault, holder: &TestConn, joiner_shows: bool) -> Credentia
             .expect("joiner confirms"),
         Stage::WaitingForOther
     );
+    let payload = holder_payload(&holder.lock(), NOW).expect("payload");
     assert_eq!(
         holder_session
-            .confirm(&vault.relay, Some(&creds), Some(&digits), NOW)
+            .confirm_with(&vault.relay, payload.as_ref(), Some(&digits), NOW)
             .await
             .expect("holder confirms"),
         Stage::Sent
@@ -96,15 +101,43 @@ async fn pair(vault: &Vault, holder: &TestConn, joiner_shows: bool) -> Credentia
             .expect("read the credentials"),
         Stage::Received
     );
-    joiner_session.received().expect("the credentials").clone()
+    let heads = joiner_session.received_heads().cloned().unwrap_or_default();
+    let identity = match joiner_session.received_identity() {
+        Some(paired) => JoinIdentity::Paired(paired.duplicate(), heads),
+        None => JoinIdentity::Unvouched(heads),
+    };
+    (
+        joiner_session.received().expect("the credentials").clone(),
+        identity,
+    )
 }
 
+/// A join from a holder that sends no identity (a vault set up before phase 5).
 async fn join_as(
     vault: &Vault,
     device: &TestConn,
     creds: Credentials,
     name: &str,
     dir: &Path,
+) -> SyncResult<std::path::PathBuf> {
+    join_via(
+        vault,
+        device,
+        creds,
+        name,
+        dir,
+        JoinIdentity::Unvouched(Default::default()),
+    )
+    .await
+}
+
+async fn join_via(
+    vault: &Vault,
+    device: &TestConn,
+    creds: Credentials,
+    name: &str,
+    dir: &Path,
+    identity: JoinIdentity,
 ) -> SyncResult<std::path::PathBuf> {
     let consent = agreed(device);
     join_new_device(
@@ -113,6 +146,7 @@ async fn join_as(
         creds,
         name,
         consent,
+        identity,
         dir,
         &NoBinding,
         NOW,
@@ -158,9 +192,11 @@ async fn assert_joined(vault: &Vault, device: &TestConn, zip: &Path, dir: &Path)
     id
 }
 
-fn kit_input(account: &str, vault_id: &VaultId, key: &[u8; 32]) -> RecoveryInput {
-    let code = encode_recovery_code(vault_id, key);
-    read_recovery_input(&code, Some(account), Some(RELAY), DEFAULT_RELAY_URL).expect("input")
+/// A typed v2 Kit code of `account` and `vault_id` (with a Kit no device made).
+fn kit_input(account: &str, vault_id: &VaultId) -> KitInput {
+    let secret = crate::services::sync::identity::KitSecret::generate().expect("seed");
+    let code = encode_kit_code(vault_id, &secret, account).expect("code");
+    read_kit_input(&code, Some(RELAY), DEFAULT_RELAY_URL).expect("input")
 }
 
 #[tokio::test]
@@ -170,8 +206,8 @@ async fn a_new_device_joins_by_pairing_and_converges() {
     let device = newcomer();
     let dir = tempfile::tempdir().expect("dir");
 
-    let received = pair(&vault, &vault.a, false).await;
-    let zip = join_as(&vault, &device, received, "iPhone", dir.path())
+    let (received, identity) = pair(&vault, &vault.a, false).await;
+    let zip = join_via(&vault, &device, received, "iPhone", dir.path(), identity)
         .await
         .expect("join");
 
@@ -191,74 +227,127 @@ async fn a_desktop_joins_from_a_phone_that_holds_the_vault() {
     let device = newcomer();
     let dir = tempfile::tempdir().expect("dir");
 
-    let received = pair(&vault, &vault.a, true).await;
-    let zip = join_as(&vault, &device, received, "MacBook", dir.path())
+    let (received, identity) = pair(&vault, &vault.a, true).await;
+    let zip = join_via(&vault, &device, received, "MacBook", dir.path(), identity)
         .await
         .expect("join");
 
     assert_joined(&vault, &device, &zip, dir.path()).await;
 }
 
+/// Phase 5 §5.3, §5.4 (pairing protocol 3): the holder's store seeds the joiner's, the joiner
+/// signs its paired certificate with the holder's one-time ticket, and the holder verifies it
+/// once the joiner's row arrives.
 #[tokio::test]
-async fn a_recovery_kit_join_finds_the_epoch_and_converges() {
+async fn a_paired_device_is_vouched_for_by_its_holder() {
     let vault = vault().await;
+    let a_cert = with_genesis(&vault.a.lock(), "Mac");
     snapshot_of_a(&vault, "a1").await;
-    let kit = setup::recovery_kit(&vault.a.lock()).expect("kit");
-    assert_eq!(kit.relay_url.as_deref(), Some(RELAY));
-    let scanned = recovery_qr_payload(&kit.account_number, &kit.recovery_code, Some(RELAY));
-    let inputs = [
-        read_recovery_input(&scanned, None, None, DEFAULT_RELAY_URL).expect("scanned"),
-        read_recovery_input(
-            &kit.recovery_code,
-            Some(&kit.account_number),
-            Some(RELAY),
-            DEFAULT_RELAY_URL,
-        )
-        .expect("typed"),
-    ];
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
 
-    for input in inputs {
-        let device = newcomer();
-        let dir = tempfile::tempdir().expect("dir");
-        let creds = recovery_credentials(&vault.relay, &device, input)
-            .await
-            .expect("credentials");
-        assert_eq!(creds.keys.current_epoch(), 0);
-        assert_eq!(creds.relay_url, RELAY);
-        assert_eq!(creds.account, vault.creds.account);
-        assert_eq!(creds.vault_id, vault.creds.vault_id);
-        assert_eq!(*creds.auth().token, *vault.creds.auth().token);
+    let (received, identity) = pair(&vault, &vault.a, true).await;
+    let JoinIdentity::Paired(paired, _) = &identity else {
+        panic!("a holder with a certificate vouches");
+    };
+    let ticket = paired.ticket.ticket_pub;
+    join_via(&vault, &device, received, "iPhone", dir.path(), identity)
+        .await
+        .expect("join");
 
-        let zip = join_as(&vault, &device, creds, "Laptop", dir.path())
-            .await
-            .expect("join");
-        assert_joined(&vault, &device, &zip, dir.path()).await;
+    let joiner = {
+        let conn = device.lock();
+        let me = device_of(&conn);
+        let own = trust::entry(&conn, me).expect("entry").expect("pinned");
+        assert_eq!(own.kind, CertKind::Paired);
+        assert_eq!(own.issuer, A);
+        assert_eq!(own.ticket_pub, Some(ticket));
+        assert_eq!(
+            trust::entry(&conn, A).expect("entry").map(|e| e.cert),
+            Some(a_cert),
+            "the holder's store seeded this one"
+        );
+        assert!(trust::is_supported(&conn).expect("supported"));
+        me
+    };
+
+    for (side, label) in [(&device, "joiner"), (&vault.a, "A")] {
+        let report = round(&vault, side, RoundMode::Normal).await;
+        assert_eq!(report.problem, None, "{label}: {report:?}");
     }
+    // A's pull pinned the joiner by itself (the refresh hook), so a refresh by hand finds nothing.
+    let refreshed = trust::refresh(&vault.a.lock(), NOW).expect("refresh");
+    assert!(refreshed.pinned.is_empty(), "A verified whom it paired");
+    assert_eq!(
+        trust::entry(&vault.a.lock(), joiner)
+            .expect("entry")
+            .map(|e| e.kind),
+        Some(CertKind::Paired)
+    );
 }
 
+/// A holder's identity that does not verify stops the join before anything is replaced.
 #[tokio::test]
-async fn a_code_of_another_vault_is_refused_before_any_backup() {
+async fn a_join_with_an_identity_that_does_not_verify_is_refused() {
+    let vault = vault().await;
+    with_genesis(&vault.a.lock(), "Mac");
+    snapshot_of_a(&vault, "a1").await;
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+    let (received, identity) = pair(&vault, &vault.a, false).await;
+    let JoinIdentity::Paired(mut paired, heads) = identity else {
+        panic!("a holder with a certificate vouches");
+    };
+    paired.ticket.holder_sig[0] ^= 1;
+
+    let error = join_via(
+        &vault,
+        &device,
+        received,
+        "iPhone",
+        dir.path(),
+        JoinIdentity::Paired(paired, heads),
+    )
+    .await
+    .expect_err("refused");
+
+    assert_eq!(
+        validation_key(&error),
+        Some("validation.syncPairingFailed"),
+        "{error:?}"
+    );
+    let conn = device.lock();
+    assert!(has_institution(&conn, "local-only"), "nothing replaced");
+    assert!(trust::entries(&conn).expect("entries").is_empty());
+}
+
+/// Phase 5 §5.5: a holder that sends no identity (a vault set up before phase 5) leaves its
+/// joiner with a signing key and no certificate, so removal stays unavailable there.
+#[tokio::test]
+async fn a_join_from_a_holder_without_an_identity_makes_no_certificate() {
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;
     let device = newcomer();
-    let before = profile(&device.lock());
-    let key = *vault.creds.keys.current();
+    let dir = tempfile::tempdir().expect("dir");
 
-    // A vault the relay does not know, and this vault's ID with a wrong key.
-    for input in [
-        kit_input(&vault.creds.account, &VaultId::random().expect("id"), &key),
-        kit_input(&vault.creds.account, &vault.creds.vault_id, &[0x5a; 32]),
-    ] {
-        let error = recovery_credentials(&vault.relay, &device, input)
-            .await
-            .expect_err("another vault");
-        assert_eq!(
-            validation_key(&error),
-            Some("validation.syncRecoveryVaultNotFound"),
-            "{error:?}"
-        );
-    }
-    assert_eq!(profile(&device.lock()), before);
+    let (received, identity) = pair(&vault, &vault.a, false).await;
+    assert!(matches!(identity, JoinIdentity::Unvouched(_)));
+    join_via(&vault, &device, received, "iPhone", dir.path(), identity)
+        .await
+        .expect("join");
+
+    let conn = device.lock();
+    assert!(identity::own_seed(&conn).expect("seed").is_some());
+    assert!(trust::entries(&conn).expect("entries").is_empty());
+    assert!(!trust::is_supported(&conn).expect("supported"));
+    let row_cert: Option<String> = conn
+        .query_row(
+            "SELECT cert FROM sync_devices WHERE id = ?1",
+            [device_of(&conn).to_hex()],
+            |r| r.get(0),
+        )
+        .expect("own row");
+    assert_eq!(row_cert, None);
 }
 
 #[tokio::test]
@@ -266,11 +355,7 @@ async fn a_kit_with_an_unknown_account_is_refused() {
     let vault = vault().await;
     let device = newcomer();
     let before = vault.relay.calls().len();
-    let input = kit_input(
-        "1111222233334444",
-        &vault.creds.vault_id,
-        vault.creds.keys.current(),
-    );
+    let input = kit_input("1111222233334444", &vault.creds.vault_id);
 
     let error = recovery_credentials(&vault.relay, &device, input)
         .await
@@ -289,41 +374,10 @@ async fn a_kit_with_an_unknown_account_is_refused() {
 }
 
 #[tokio::test]
-async fn a_kit_of_a_rotated_vault_is_refused() {
-    let vault = vault().await;
-    snapshot_of_a(&vault, "a1").await;
-    vault.relay.set_rotation(&vault.creds.vault_id.to_b64(), 1);
-    let device = newcomer();
-    let before = profile(&device.lock());
-    let input = kit_input(
-        &vault.creds.account,
-        &vault.creds.vault_id,
-        vault.creds.keys.current(),
-    );
-
-    let error = recovery_credentials(&vault.relay, &device, input)
-        .await
-        .expect_err("rotated");
-
-    assert_eq!(
-        validation_key(&error),
-        Some("validation.syncRecoveryKitRotated"),
-        "{error:?}"
-    );
-    let c = device.lock();
-    assert_eq!(keys::account(&c).expect("account"), None, "nothing stored");
-    assert_eq!(profile(&c), before);
-}
-
-#[tokio::test]
 async fn a_kit_join_with_sync_on_is_refused_before_any_network_call() {
     let vault = vault().await;
     let before = vault.relay.calls();
-    let input = kit_input(
-        &vault.creds.account,
-        &vault.creds.vault_id,
-        vault.creds.keys.current(),
-    );
+    let input = kit_input(&vault.creds.account, &vault.creds.vault_id);
 
     let error = recovery_credentials(&vault.relay, &vault.a, input)
         .await
@@ -513,4 +567,302 @@ async fn a_device_that_turned_sync_off_joins_again() {
 
     let second = assert_joined(&vault, &device, &zip, again.path()).await;
     assert_ne!(second, first, "a new device ID");
+}
+
+/// Review of Task 5 (M1): once a paired join's replace committed, the join ticket is spent. The
+/// caller gives the received pairing up whatever error followed (`join::pairing_spent`), and a
+/// retry with the same ticket is refused before it signs anything.
+#[tokio::test]
+async fn a_committed_paired_join_spends_its_ticket() {
+    let vault = vault().await;
+    with_genesis(&vault.a.lock(), "Mac");
+    snapshot_of_a(&vault, "a1").await;
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+    let (received, identity) = pair(&vault, &vault.a, true).await;
+    let JoinIdentity::Paired(paired, _) = &identity else {
+        panic!("a holder with a certificate vouches");
+    };
+    let again = JoinIdentity::Paired(paired.duplicate(), Default::default());
+    assert!(
+        !crate::services::sync::join::pairing_spent(&device.lock()).expect("spent"),
+        "nothing committed yet: a failure may keep the pairing"
+    );
+
+    join_via(
+        &vault,
+        &device,
+        received.clone(),
+        "iPhone",
+        dir.path(),
+        identity,
+    )
+    .await
+    .expect("join");
+    let (me, cert) = {
+        let conn = device.lock();
+        let me = device_of(&conn);
+        (
+            me,
+            trust::entry(&conn, me)
+                .expect("entry")
+                .expect("pinned")
+                .cert,
+        )
+    };
+    assert!(crate::services::sync::join::pairing_spent(&device.lock()).expect("spent"));
+
+    let retry = join_via(&vault, &device, received, "iPhone", dir.path(), again).await;
+    assert_eq!(
+        retry.as_ref().err().and_then(validation_key),
+        Some("validation.syncAlreadyEnabled")
+    );
+    let conn = device.lock();
+    assert_eq!(device_of(&conn), me, "no second device ID");
+    assert_eq!(
+        trust::entry(&conn, me).expect("entry").map(|e| e.cert),
+        Some(cert),
+        "no second certificate with the same ticket"
+    );
+}
+
+/// A holder session at Compare with a joiner (the joiner shows), and the joiner's digits.
+async fn holder_at_compare(vault: &Vault) -> (PairingSession, PairingSession, String) {
+    let mut joiner = PairingSession::show(Role::Joiner, DEFAULT_RELAY_URL, NOW).expect("show");
+    let mut holder =
+        PairingSession::scan(Role::Holder, &pairing_code_text(&joiner.code()), NOW).expect("scan");
+    holder.announce(&vault.relay, NOW).await.expect("announce");
+    assert_eq!(
+        joiner.poll(&vault.relay, NOW).await.expect("scan"),
+        Stage::Compare
+    );
+    assert_eq!(
+        holder.poll(&vault.relay, NOW).await.expect("ack"),
+        Stage::Compare
+    );
+    let digits = joiner.comparison_code().expect("digits");
+    (holder, joiner, digits)
+}
+
+fn slot_2(vault: &Vault, session: &PairingSession) -> Option<Vec<u8>> {
+    vault.relay.peek_slot(&session.code().mailbox.to_b64(), 2)
+}
+
+/// Review of Task 5: the holder reads what it seals (with a fresh join ticket) holding off every
+/// round, and seals nothing on a wrong code or a failed slot write.
+#[tokio::test]
+async fn the_holders_confirm_reads_its_payload_holding_off_rounds() {
+    use crate::services::sync::pairing::holder;
+    let vault = vault().await;
+    with_genesis(&vault.a.lock(), "Mac");
+    let (mut session, _joiner, digits) = holder_at_compare(&vault).await;
+
+    // A round holds the profile: the confirm waits for it before it reads anything.
+    let round = vault.a.round_lock().lock().await;
+    let waiting = tokio::time::timeout(
+        std::time::Duration::from_millis(200),
+        holder::confirm(&mut session, &vault.relay, &vault.a, Some(&digits), NOW),
+    )
+    .await;
+    assert!(waiting.is_err(), "the confirm waits for the round");
+    assert_eq!(slot_2(&vault, &session), None);
+    drop(round);
+
+    let stage = holder::confirm(&mut session, &vault.relay, &vault.a, Some(&digits), NOW)
+        .await
+        .expect("confirm");
+    assert_eq!(stage, Stage::Sent);
+    assert!(slot_2(&vault, &session).is_some());
+}
+
+#[tokio::test]
+async fn a_wrong_code_or_a_failed_slot_write_seals_no_ticket() {
+    use crate::services::sync::pairing::holder;
+    let vault = vault().await;
+    with_genesis(&vault.a.lock(), "Mac");
+    let (mut session, _joiner, digits) = holder_at_compare(&vault).await;
+    let wrong = if digits == "000000" {
+        "111111"
+    } else {
+        "000000"
+    };
+
+    let mismatch = holder::confirm(&mut session, &vault.relay, &vault.a, Some(wrong), NOW)
+        .await
+        .expect_err("a wrong code");
+    assert_eq!(
+        validation_key(&mismatch),
+        Some("validation.syncPairingCodeMismatch")
+    );
+    assert_eq!(slot_2(&vault, &session), None, "nothing sealed");
+    assert_eq!(session.stage(), Stage::Compare);
+
+    vault
+        .relay
+        .fail_next(Route::MailboxPut, RelayError::Server(503));
+    let failed = holder::confirm(&mut session, &vault.relay, &vault.a, Some(&digits), NOW)
+        .await
+        .expect_err("the slot write fails");
+    assert!(matches!(failed, SyncError::Transient(_)), "{failed:?}");
+    assert_eq!(slot_2(&vault, &session), None, "nothing sealed");
+
+    // Sync off: nothing to seal, the pairing fails before any relay call.
+    let off = newcomer();
+    let (mut other, _joiner, digits) = holder_at_compare(&vault).await;
+    let refused = holder::confirm(&mut other, &vault.relay, &off, Some(&digits), NOW)
+        .await
+        .expect_err("sync is off");
+    assert_eq!(
+        validation_key(&refused),
+        Some("validation.syncPairingFailed")
+    );
+    assert_eq!(slot_2(&vault, &other), None);
+}
+
+fn epoch_rows(conn: &Connection) -> Vec<(i64, i64)> {
+    let mut stmt = conn
+        .prepare("SELECT epoch, rotation_head FROM sync_epochs ORDER BY epoch")
+        .expect("prepare");
+    stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .expect("query")
+        .map(|r| r.expect("row"))
+        .collect()
+}
+
+/// Phase 5 §6.1: a join writes epoch 0's row (relay position 0) whichever way it joins, and a
+/// pairing's heads for the epochs it holds keys for.
+#[tokio::test]
+async fn a_join_records_epoch_zero_and_the_holders_heads() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+
+    // A pairing joiner takes the heads the holder sent.
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+    let (received, identity) = pair(&vault, &vault.a, true).await;
+    join_via(&vault, &device, received, "iPhone", dir.path(), identity)
+        .await
+        .expect("join");
+    assert_eq!(epoch_rows(&device.lock()), vec![(0, 0)]);
+
+    // A holder that sent no identity records epoch 0 as well (a Kit join: `kit_join`).
+    {
+        let identity = JoinIdentity::Unvouched(Default::default());
+        let device = newcomer();
+        let dir = tempfile::tempdir().expect("dir");
+        join_via(
+            &vault,
+            &device,
+            holder_creds(&vault.a),
+            "Laptop",
+            dir.path(),
+            identity,
+        )
+        .await
+        .expect("join");
+        assert_eq!(epoch_rows(&device.lock()), vec![(0, 0)]);
+    }
+}
+
+/// A joiner that holds epochs 0 and 1 (a pairing after one key change) records the head of
+/// epoch 1 the holder sent; heads of epochs it holds no key for are ignored, and a stale row of
+/// an earlier binding is gone.
+#[tokio::test]
+async fn a_join_after_a_key_change_records_every_epoch_head() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let first = *vault.creds.keys.current();
+    let creds = Credentials {
+        keys: VaultKeys::from_parts(1, BTreeMap::from([(0, first), (1, [9; 32])])).expect("keys"),
+        ..vault.creds.clone()
+    };
+    // The vault changed key on the server.
+    let rotated = vault
+        .relay
+        .rotate_token(&vault.creds.auth(), &creds.token(), &[1])
+        .await
+        .expect("rotate");
+    let heads = BTreeMap::from([(0, 0), (1, rotated.head), (5, 99)]);
+    let device = newcomer();
+    exec(
+        &device.lock(),
+        "INSERT INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (3, 7, 1)",
+    );
+    let dir = tempfile::tempdir().expect("dir");
+
+    join_via(
+        &vault,
+        &device,
+        creds,
+        "iPhone",
+        dir.path(),
+        JoinIdentity::Unvouched(heads),
+    )
+    .await
+    .expect("join");
+
+    let conn = device.lock();
+    assert_eq!(epoch_rows(&conn), vec![(0, 0), (1, rotated.head as i64)]);
+    let held = keys::vault_keys(&conn).expect("keys").expect("bound");
+    assert_eq!(held.current_epoch(), 1);
+}
+
+/// Two authenticated sources that disagree (the holder's heads against the snapshot's `Keys`
+/// record) refuse the join and leave the profile as it was.
+#[tokio::test]
+async fn heads_that_contradict_the_snapshot_refuse_the_join() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    let error = join_via(
+        &vault,
+        &device,
+        holder_creds(&vault.a),
+        "iPhone",
+        dir.path(),
+        JoinIdentity::Unvouched(BTreeMap::from([(0, 5)])),
+    )
+    .await
+    .expect_err("refused");
+
+    assert_eq!(
+        validation_key(&error),
+        Some("validation.syncPairingFailed"),
+        "{error:?}"
+    );
+    let conn = device.lock();
+    assert!(has_institution(&conn, "local-only"), "nothing was replaced");
+    assert!(!state::load(&conn)
+        .expect("state")
+        .is_some_and(|s| s.enabled));
+}
+
+/// The heads of epochs whose keys reached the joiner only through the snapshot's `Keys` record
+/// are recorded too: the keys are read from the profile after the restore, not from the
+/// credentials the join began with (which hold the current epoch alone).
+#[test]
+fn heads_for_keys_that_came_with_the_snapshot_are_recorded() {
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine as _;
+
+    let conn = migrated();
+    state::ensure_row(&conn, B).expect("row");
+    // As after the restore: the older keys are stored next to the current one.
+    let json = (0..=2u8)
+        .map(|n| format!("\"{n}\":\"{}\"", URL_SAFE_NO_PAD.encode([n + 1; 32])))
+        .collect::<Vec<_>>()
+        .join(",");
+    conn.execute(
+        "UPDATE sync_state SET vault_id = 'AAECAwQFBgcICQoLDA0ODw', key_epoch = 2, vault_keys = ?1 \
+         WHERE id = 1",
+        [format!("{{{json}}}")],
+    )
+    .expect("bind");
+    let heads = BTreeMap::from([(1, 50), (2, 80), (7, 99)]);
+
+    record_joined_epochs(&conn, &JoinIdentity::Unvouched(heads), NOW).expect("record");
+
+    assert_eq!(epoch_rows(&conn), vec![(0, 0), (1, 50), (2, 80)]);
 }

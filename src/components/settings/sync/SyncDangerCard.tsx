@@ -5,20 +5,19 @@ import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialog';
-import { ResyncDeviceDialog } from '@/components/settings/sync/SyncRepairDialogs';
 import { TurnOffSyncDialog } from '@/components/settings/sync/TurnOffSyncDialog';
 import { Button } from '@/components/ui/button';
 
-type Open = 'turnOff' | 'delete' | 'resync' | null;
+type Open = 'turnOff' | 'delete' | null;
 
-/** Settings → Sync, sync on: turn it off here, delete what the sync server keeps, re-sync this device. */
+/**
+ * Settings → Sync, sync on: turn it off here, delete what the sync server keeps. "Synchronizovat toto
+ * zařízení znovu" is a repair, not a way out: it sits under the problem it answers (`SyncProblemAlert`).
+ */
 export function SyncDangerCard() {
   const { t } = useTranslation('deviceSync');
   const { deleteSyncedData } = useDeviceSyncMutations();
   const { data: status } = useDeviceSyncStatus();
-  // Re-sync would replace this device's data with the server's older copy: not offered while the
-  // server has gone back (the status text says so)
-  const canResync = status?.problem !== 'serverWentBack';
   const deleteAfterwards = t(
     status?.ownServer ? 'delete.afterwardsOwnServer' : 'delete.afterwards'
   );
@@ -40,16 +39,8 @@ export function SyncDangerCard() {
             {t('delete.button')}
           </Button>
         </SettingsRow>
-        {canResync && (
-          <SettingsRow label={t('resync.button')} hint={t('resync.hint')}>
-            <Button type="button" variant="outline" onClick={() => setOpen('resync')}>
-              {t('resync.button')}
-            </Button>
-          </SettingsRow>
-        )}
       </SettingsCard>
       {open === 'turnOff' && <TurnOffSyncDialog onClose={close} />}
-      {open === 'resync' && canResync && <ResyncDeviceDialog onClose={close} />}
       {open === 'delete' && (
         <SyncPasswordDialog
           title={t('delete.title')}

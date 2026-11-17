@@ -70,6 +70,7 @@ impl From<RelayError> for SyncError {
             | RelayError::VaultExists
             | RelayError::AccountHasVaults
             | RelayError::SnapshotOutdated
+            | RelayError::TooManyRotations
             | RelayError::CheckoutUnavailable
             | RelayError::SelfHosted
             | RelayError::RegistrationClosed
@@ -78,6 +79,8 @@ impl From<RelayError> for SyncError {
             | RelayError::SlotConsumed
             | RelayError::MailboxGone
             | RelayError::BlobNotFound
+            | RelayError::KitExists
+            | RelayError::KitReplaced { .. }
             | RelayError::BadRequest(_)) => SyncError::Refused(refused),
         }
     }

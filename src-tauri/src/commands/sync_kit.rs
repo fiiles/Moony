@@ -2,24 +2,23 @@
 //! opens the native save dialog and writes it owner-only (`services::sync::kit_file`: mode 0600 at
 //! creation on macOS and Linux; on Windows the chosen folder's permissions), so the webview needs
 //! no file system scope for it. Thin: the flag, the copy window of `sync.rs`, the dialog, the
-//! service. Phones save through the Files picker (`stage_text_export`): this command refuses there.
+//! service. Phones save through the Files picker (`stage_text_export`): this command refuses there,
+//! and `sync_note_recovery_kit_saved` records that save instead.
 //!
 //! Every command starts with `require_feature()`. No command logs its arguments; the contents
 //! hold the recovery code and are wiped once written.
-
-use std::time::Instant;
 
 use tauri::{AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
 use zeroize::Zeroizing;
 
-use super::sync::{copy_allowed, data_dir, kit_owner, kit_window, require_feature};
+use super::sync::{data_dir, require_feature, with_kit_draft};
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::sync::{KitFileKind, KitSaveOutcome};
+use crate::services::sync::rekey::kit::KitStorage;
 use crate::services::sync::{kit_file, setup};
 
-const PASSWORD_REQUIRED: &str = "validation.syncPasswordRequired";
 const UNAVAILABLE: &str = "validation.syncUnavailable";
 
 /// Desktop only: on a phone the dialog answers a `content://` or security-scoped URL a plain file
@@ -32,23 +31,22 @@ fn desktop_only(on_a_phone: bool) -> Result<()> {
     }
 }
 
-/// Within the copy window of this profile session (`copy_allowed`), as copying the code;
-/// `validation.syncPasswordRequired` otherwise.
-fn require_copy_window(app: &AppHandle, db: &Database) -> Result<()> {
-    if copy_allowed(kit_window().as_ref(), &kit_owner(app, db)?, Instant::now()) {
-        Ok(())
-    } else {
-        Err(AppError::Validation(PASSWORD_REQUIRED.into()))
-    }
+/// The open Kit draft's code, within the copy window of this profile session, as copying the
+/// code; `validation.syncPasswordRequired` otherwise.
+fn draft_code(app: &AppHandle, db: &Database) -> Result<Zeroizing<String>> {
+    with_kit_draft(app, db, |draft| {
+        db.with_conn(|conn| setup::kit_code(conn, draft))
+    })
 }
 
-/// Saves the Recovery Kit (desktop; `validation.syncUnavailable` on a phone): allowed while
-/// `copy_allowed` allows the copy; Rust opens the native save dialog, writes `contents` (at most
+/// Saves the Recovery Kit (desktop; `validation.syncUnavailable` on a phone): allowed while a
+/// Kit draft is open (`with_kit_draft`, the copy window); Rust opens the native save dialog, writes `contents` (at most
 /// 256 KiB, holding this kit's recovery code; a page with no script or handler) owner-only and
 /// atomically (`kit_file::write_kit_file`: mode 0600 at creation on macOS and Linux, the folder's
 /// permissions on Windows), never into the data folder, wipes it, and says whether the folder
-/// looks cloud-synced. A closed dialog is `saved: false`. The window is checked again after the
-/// dialog: a lock while it was open refuses the write.
+/// looks cloud-synced; the Kit then counts as saved to a file or to a cloud folder
+/// (`KitStorage::File` / `Cloud`, revision §2.7). A closed dialog is `saved: false`. The window
+/// is checked again after the dialog: a lock while it was open refuses the write.
 #[tauri::command]
 pub async fn sync_save_recovery_kit(
     app: AppHandle,
@@ -59,10 +57,9 @@ pub async fn sync_save_recovery_kit(
     let contents = Zeroizing::new(contents);
     require_feature()?;
     desktop_only(cfg!(mobile))?;
-    require_copy_window(&app, &db)?;
-    // The kit wipes its code when dropped.
-    let kit = db.with_conn(setup::recovery_kit)?;
-    kit_file::check_contents(kind, &contents, &kit.recovery_code)?;
+    let code = draft_code(&app, &db)?;
+    kit_file::check_contents(kind, &contents, &code)?;
+    drop(code);
 
     let (file_name, filter, extension) = kit_file::file_type(kind);
     let (chosen_tx, chosen_rx) = tokio::sync::oneshot::channel();
@@ -87,20 +84,50 @@ pub async fn sync_save_recovery_kit(
         .into_path()
         .map_err(|_| AppError::Internal("The save dialog gave no file path".into()))?;
 
-    require_copy_window(&app, &db)?;
+    let code = draft_code(&app, &db)?;
     let dir = data_dir(&app)?;
-    let code = Zeroizing::new(kit.recovery_code.clone());
-    drop(kit);
     let synced_folder = tauri::async_runtime::spawn_blocking(move || {
         kit_file::write_kit_file(&path, &dir, kind, &contents, &code)
     })
     .await
     .map_err(|e| AppError::Internal(format!("Saving the Recovery Kit did not finish: {e}")))??;
     log::info!("[SYNC] Saved the Recovery Kit to a file (synced folder: {synced_folder})");
+    let storage = if synced_folder {
+        KitStorage::Cloud
+    } else {
+        KitStorage::File
+    };
+    with_kit_draft(&app, &db, |draft| {
+        db.with_conn(|conn| setup::note_kit_storage(conn, draft, storage))
+    })?;
     Ok(KitSaveOutcome {
         saved: true,
         synced_folder,
     })
+}
+
+/// Phone only (`validation.syncUnavailable` on the desktop, whose save command knows the folder):
+/// the kit's page went through the Files picker (`stage_text_export`), so the open Kit draft
+/// counts as saved (`setup::note_phone_kit_saved`: a cloud folder, the picker does not say where
+/// it went). Within the copy window (`with_kit_draft`), as copying the code.
+#[tauri::command]
+pub async fn sync_note_recovery_kit_saved(app: AppHandle, db: State<'_, Database>) -> Result<()> {
+    require_feature()?;
+    phone_only(cfg!(mobile))?;
+    with_kit_draft(&app, &db, |draft| {
+        db.with_conn(|conn| setup::note_phone_kit_saved(conn, draft))
+    })?;
+    log::info!("[SYNC] Saved the Recovery Kit through the Files picker");
+    Ok(())
+}
+
+/// The other way round from `desktop_only`.
+fn phone_only(on_a_phone: bool) -> Result<()> {
+    if on_a_phone {
+        Ok(())
+    } else {
+        Err(AppError::Validation(UNAVAILABLE.into()))
+    }
 }
 
 #[cfg(test)]
@@ -112,5 +139,12 @@ mod tests {
         let error = desktop_only(true).expect_err("phone");
         assert!(matches!(&error, AppError::Validation(key) if key == UNAVAILABLE));
         assert!(desktop_only(false).is_ok());
+    }
+
+    #[test]
+    fn the_desktop_is_refused_the_phones_note() {
+        let error = phone_only(false).expect_err("desktop");
+        assert!(matches!(&error, AppError::Validation(key) if key == UNAVAILABLE));
+        assert!(phone_only(true).is_ok());
     }
 }

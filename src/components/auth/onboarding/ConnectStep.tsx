@@ -22,7 +22,7 @@ interface ConnectStepProps {
 
 /**
  * Připojení, the join path's last step (spec 2026-11-14 §5.1): this device's name and the way in
- * (a phone that syncs or the Sync Recovery Kit), then that join's flow as in Settings, without
+ * (a phone that syncs, another computer's pairing code or the recovery kit), then that join's flow as in Settings, without
  * the replace warning, the impact list and the password field (the profile is brand new and the
  * password was typed a step earlier). It has no way back; "Continue without sync" leaves it, but
  * never while a pairing starts or a join runs.
@@ -77,7 +77,18 @@ export function ConnectStep({ password, onJoined, onDecline }: ConnectStepProps)
   );
 
   if (noPassword) return null;
-  const Flow = method === 'pair' ? PairingJoinFlow : RecoveryJoinFlow;
+  const flowProps = {
+    context,
+    deviceName,
+    onJoined: (outcome: ReplaceOutcomeView) => {
+      setJoined(true);
+      onJoined(outcome);
+    },
+    onCancel: () => setScreen('choice'),
+    onBusyChange: setFlowBusy,
+    footer,
+    dismissRef: leaveFlow,
+  };
   return (
     <div className="onboarding-step" data-testid="onboarding-connect">
       <StepHead title={t('onboarding.connect.title')} lead={t('onboarding.connect.subtitle')} />
@@ -112,18 +123,11 @@ export function ConnectStep({ password, onJoined, onDecline }: ConnectStepProps)
               </div>
             </div>
           )}
-          <Flow
-            context={context}
-            deviceName={deviceName}
-            onJoined={(outcome) => {
-              setJoined(true);
-              onJoined(outcome);
-            }}
-            onCancel={() => setScreen('choice')}
-            onBusyChange={setFlowBusy}
-            footer={footer}
-            dismissRef={leaveFlow}
-          />
+          {method === 'kit' ? (
+            <RecoveryJoinFlow {...flowProps} />
+          ) : (
+            <PairingJoinFlow {...flowProps} mode={method === 'code' ? 'type' : 'show'} />
+          )}
         </>
       )}
     </div>

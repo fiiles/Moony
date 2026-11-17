@@ -2,7 +2,7 @@
 //! `sync_state` row (the pauses that outlive a restart) and from the engine's memory of its last
 //! round (`Runtime`).
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 use super::{PullEnd, PullReport, PullStop, RoundReport};
 use crate::error::{AppError, Result};
@@ -15,10 +15,11 @@ use crate::services::sync::blobs::queue;
 use crate::services::sync::capture::{self, guard};
 use crate::services::sync::error::{SyncError, TooLarge, Transient};
 use crate::services::sync::hlc::{now_ms, unpack, FUTURE_WARNING_MS};
+use crate::services::sync::identity::CertKind;
 use crate::services::sync::relay::http::{
     is_default_relay, is_insecure_address, normalize_base_url,
 };
-use crate::services::sync::{devices, keys, snapshot, state};
+use crate::services::sync::{devices, keys, snapshot, state, view};
 
 /// The relay deletes a lapsed vault this long after the subscription ended (spec §11.6).
 pub const DELETE_AFTER_LAPSE: i64 = 90 * 86_400;
@@ -33,6 +34,8 @@ const NEWER_SCHEMA_KEY: &str = "validation.syncSnapshotNewerSchema";
 pub struct Runtime {
     /// A round is running.
     pub running_round: bool,
+    /// When the running round started (unix seconds); `None` between rounds (`syncingSince`).
+    pub round_started_at: Option<i64>,
     /// The problem of the last round (`None` after a clean one).
     pub problem: Option<SyncProblem>,
     /// The subscription's end, as the relay last reported it.
@@ -43,6 +46,9 @@ pub struct Runtime {
     pub rounds: u64,
     /// Why documents and photos do not move (`BlobPolicy::problem`), as the engine last read it.
     pub attachments_problem: Option<SyncAttachmentsProblem>,
+    /// The minute of the Recovery Kit's last read, as the server last reported it (`kitUsed`,
+    /// revision §2.8; `None`: never read, or not reported).
+    pub kit_last_read: Option<i64>,
 }
 
 impl Runtime {
@@ -52,6 +58,7 @@ impl Runtime {
         self.problem = report.problem;
         if let Some(vault) = &report.vault {
             self.paid_until = Some(vault.paid_until);
+            self.kit_last_read = vault.kit.and_then(|kit| kit.last_read);
         }
         if let Some(push) = &report.push {
             self.refused_rows = u32::try_from(push.refused).unwrap_or(u32::MAX);
@@ -66,12 +73,18 @@ impl Runtime {
 /// the phase (`SyncStatus::attachments`, zeros while sync is off), never in it. The last complete
 /// sync and the verdict on it (`milestones::sync_protects`) are `None` and `false` while off.
 pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
+    status_at(conn, runtime, chrono::Utc::now().timestamp())
+}
+
+/// `status` at `now` (unix seconds): what the key-change fields judge their ages against.
+pub fn status_at(conn: &Connection, runtime: &Runtime, now: i64) -> Result<SyncStatus> {
     let address = keys::account(conn)?.map(|(url, _)| url);
     let own_server = address.as_deref().is_some_and(|url| !is_default_relay(url));
     let server_insecure = address
         .as_deref()
         .and_then(|url| normalize_base_url(url).ok())
         .is_some_and(|url| is_insecure_address(&url));
+    let removed_notice = view::removed_notice(conn)?;
     let quiet = |phase| SyncStatus {
         phase,
         problem: None,
@@ -89,6 +102,21 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         attachments: SyncAttachments::default(),
         last_complete_at: None,
         protects_data: false,
+        removal_supported: false,
+        removal_pending: false,
+        removal_notice: None,
+        removal_not_done: None,
+        key_change_overrun: None,
+        // Readable with sync off: it is why sync is off.
+        removed_notice: removed_notice.clone(),
+        rejoin_by: None,
+        waiting_for_remover: None,
+        new_devices: Vec::new(),
+        recovery_kit: None,
+        kit_used: None,
+        after_kit_join: None,
+        syncing_since: None,
+        first_upload: false,
     };
     let Some(sync) = state::load(conn)? else {
         return Ok(quiet(SyncPhase::Off));
@@ -141,6 +169,7 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
             log::warn!("[SYNC] Documents and photos could not be counted for the status: {error}");
         })
         .ok();
+    let extras = view::extras(conn, runtime, now)?;
     let mut shown = SyncStatus {
         phase,
         problem,
@@ -158,12 +187,76 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         attachments: attachments(summary.as_ref(), runtime),
         last_complete_at: marks.last_complete_at,
         protects_data: false,
+        removal_supported: extras.removal_supported,
+        removal_pending: extras.removal_pending,
+        removal_notice: extras.removal_notice,
+        removal_not_done: extras.removal_not_done,
+        key_change_overrun: extras.key_change_overrun,
+        removed_notice,
+        rejoin_by: extras.rejoin_by,
+        waiting_for_remover: extras.waiting_for_remover,
+        new_devices: extras.new_devices,
+        recovery_kit: extras.recovery_kit,
+        kit_used: extras.kit_used,
+        after_kit_join: extras.after_kit_join,
+        syncing_since: extras.syncing_since,
+        first_upload: extras.first_upload,
     };
     // What is left to upload comes from the same pass as the figures; a summary that cannot be
     // read counts as content left, so the verdict is never "protected" on an error.
     let content_left = summary.as_ref().is_none_or(|s| s.content_left);
     shown.protects_data = sync_protects(today_utc_day(), &shown, content_left);
     Ok(shown)
+}
+
+/// A Kit read is news only once it is this old, and a Kit join this close before it explains it.
+pub const KIT_READ_GRACE_SECS: i64 = 3600;
+
+/// `kitUsed` (revision §2.8): the time of the Kit's last read the sync server reports
+/// (`last_read`), when it is newer than what the person already knows of
+/// (`state::KIT_READ_SEEN_KEY`), more than an hour old at `now`, and no device joined with a Kit since an
+/// hour before it, judged by when this device pinned the joiner's certificate (`pinned_at`, its
+/// own clock), never the certificate's own date, which a Kit holder chooses.
+pub fn kit_used(conn: &Connection, last_read: Option<i64>, now: i64) -> Result<Option<i64>> {
+    let Some(read) = last_read else {
+        return Ok(None);
+    };
+    let seen: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [state::KIT_READ_SEEN_KEY],
+            |r| r.get(0),
+        )
+        .optional()?;
+    if seen
+        .and_then(|value| value.parse::<i64>().ok())
+        .is_some_and(|seen| read <= seen)
+    {
+        return Ok(None);
+    }
+    if now.saturating_sub(read) <= KIT_READ_GRACE_SECS {
+        return Ok(None);
+    }
+    let joined: bool = conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sync_trust WHERE kind = ?1 AND pinned_at >= ?2)",
+        rusqlite::params![
+            CertKind::RecoveryKit.as_u8(),
+            read.saturating_sub(KIT_READ_GRACE_SECS)
+        ],
+        |r| r.get(0),
+    )?;
+    Ok((!joined).then_some(read))
+}
+
+/// "Vím o tom": the person knows of the Kit read at `read`; `kit_used` stays quiet until a newer
+/// one.
+pub fn dismiss_kit_used(conn: &Connection, read: i64) -> Result<()> {
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2) \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        rusqlite::params![state::KIT_READ_SEEN_KEY, read.to_string()],
+    )?;
+    Ok(())
 }
 
 /// Where this device's documents and photos stand (`queue::summary`, read from the queue alone),
@@ -196,10 +289,11 @@ pub fn clock_ahead_until(conn: &Connection, now_ms: u64) -> Result<Option<i64>> 
 }
 
 /// `problem`, unless the sync server went back (`state::vault_went_back_at`): then
-/// `ServerWentBack` stands for no problem, a waiting gap or change, a relay error and an invalid
-/// chain (the head below this device's place is one), in every round until a replace or turning
-/// sync off. Problems that say
-/// what to do about something else (a pause, a lapse, a stop) keep their place.
+/// `ServerWentBack` stands for no problem, a waiting gap or change, a relay error, an invalid
+/// chain (the head below this device's place is one) and a key change this device did not get or
+/// cannot verify (phase 5 §7.5: a server that went back may have lost the key change), in every
+/// round until a replace or turning sync off. Problems that say what to do about something else
+/// (a pause, a lapse, a stop) keep their place.
 pub fn went_back(conn: &Connection, problem: Option<SyncProblem>) -> Result<Option<SyncProblem>> {
     let outranked = matches!(
         problem,
@@ -207,6 +301,8 @@ pub fn went_back(conn: &Connection, problem: Option<SyncProblem>) -> Result<Opti
             | Some(SyncProblem::ClockAhead)
             | Some(SyncProblem::InvalidChain)
             | Some(SyncProblem::RelayError)
+            | Some(SyncProblem::KeyNotGiven)
+            | Some(SyncProblem::KeyChangeUnverified)
     );
     if outranked && state::vault_went_back_at(conn)?.is_some() {
         return Ok(Some(SyncProblem::ServerWentBack));
@@ -244,7 +340,8 @@ pub fn phase_of(problem: SyncProblem) -> SyncPhase {
         | P::NewerSchema
         | P::Offline
         | P::RateLimited
-        | P::SecureStorage => SyncPhase::Paused,
+        | P::SecureStorage
+        | P::KeyChangeWaiting => SyncPhase::Paused,
         P::CaptureBroken
         | P::SnapshotTooLarge
         | P::Undecryptable
@@ -255,6 +352,8 @@ pub fn phase_of(problem: SyncProblem) -> SyncPhase {
         | P::ServerWentBack
         | P::Unauthorized
         | P::KeyRotated
+        | P::KeyNotGiven
+        | P::KeyChangeUnverified
         | P::Internal => SyncPhase::Error,
     }
 }
@@ -326,6 +425,8 @@ pub fn problem_of_pull(pull: &PullReport) -> Option<SyncProblem> {
             PullStop::Invalid => P::InvalidChain,
             PullStop::Undecryptable => P::Undecryptable,
             PullStop::NewerSchema => P::NewerSchema,
+            // Waiting for the remover's signed head, on the device that made the change.
+            PullStop::KeyChangeUnconfirmed => P::KeyChangeWaiting,
         }),
     }
 }
@@ -354,6 +455,9 @@ pub fn reason(problem: SyncProblem) -> &'static str {
         P::RateLimited => "sync stopped: rateLimited",
         P::Unauthorized => "sync stopped: unauthorized",
         P::KeyRotated => "sync stopped: keyRotated",
+        P::KeyNotGiven => "sync stopped: keyNotGiven",
+        P::KeyChangeUnverified => "sync stopped: keyChangeUnverified",
+        P::KeyChangeWaiting => "sync paused: keyChangeWaiting",
         P::SecureStorage => "sync stopped: secureStorage",
         P::ServerWentBack => "sync stopped: serverWentBack",
         P::Internal => "sync stopped: internal",
@@ -455,7 +559,7 @@ mod tests {
     #[test]
     fn an_enabled_profile_reports_when_this_device_joined() {
         let conn = enabled_at("https://relay.example.org");
-        devices::record_this_device(&conn, "MacBook", &[0x01; 32], 1_700_000_000).unwrap();
+        devices::record_this_device(&conn, "MacBook", &[0x01; 32], None, 1_700_000_000).unwrap();
         let shown = status(&conn, &Runtime::default()).expect("status");
         assert_eq!(shown.enabled_at, Some(1_700_000_000));
     }

@@ -5,6 +5,7 @@ import type { PairingView } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { PairingExpiryNote } from '@/components/settings/sync/PairingExpiryNote';
 import { usePairingExpired } from '@/hooks/use-pairing-expired';
+import { useHolderFinish } from '@/hooks/use-device-sync';
 import { useTypedCode } from '@/hooks/use-typed-code';
 import { translateApiError } from '@/lib/translate-api-error';
 import { formatComparisonCode, isCompleteCode } from '@/utils/pairing-code';
@@ -56,6 +57,8 @@ interface PairingSheetProps {
   impactChanged: string | null;
   /** The first run's join (a brand-new profile, nothing replaced): "Připojit", not "Připojit a nahradit". */
   firstRun?: boolean;
+  /** The other device's code was typed or pasted, not scanned: the title says so. */
+  manual?: boolean;
 }
 
 /** The sheet's form for the holder's typed digits, so the footer's Confirm submits it. */
@@ -70,7 +73,8 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
  * compare step by role: the holder types the six digits the joining device shows (Confirm, with the
  * attempts left), the joiner shows its digits large with "Type this code on your other device.
  * Continue here once it says the code is right." and Continue. Then waiting, and for the holder
- * "Sent. Finish on the other device." The joiner's join runs as soon as the sync details arrive (the
+ * "Sent. Finish on the other device." until the new device shows on the list ("{name} is connected",
+ * Done; after two minutes a hint, `useHolderFinish`). The joiner's join runs as soon as the sync details arrive (the
  * caller hides this sheet behind the busy cover meanwhile; a failure brings it back with "Try again"
  * or "Start again"). A contested scan (another device answered the code first, review PF4) shows
  * only the warning and Cancel, and no digits. A pairing that ended (a failed poll, an expired code)
@@ -97,10 +101,12 @@ export function PairingSheet({
   onJoin,
   impactChanged,
   firstRun = false,
+  manual = false,
 }: PairingSheetProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const expired = usePairingExpired(view);
+  const finish = useHolderFinish(view);
   const step = pairingSheetStep(view, { failed: pollError !== null, expired });
   const [typed, setTyped] = useTypedCode(confirmError);
   const confirmMessage = confirmError ? translateApiError(confirmError, tc) : null;
@@ -112,7 +118,7 @@ export function PairingSheet({
         : t('pairing.showTitle')
       : view.role === 'holder'
         ? t('pairing.addTitle')
-        : t('phone.scanTitle');
+        : t(manual ? 'phone.enterCodeTitle' : 'phone.scanTitle');
 
   const digits = (
     <div
@@ -167,7 +173,15 @@ export function PairingSheet({
       case 'waitingForOther':
         return <p className="m-0 text-m-lead text-ink-3">{t('pairing.waiting')}</p>;
       case 'sent':
-        return <p className="m-0 text-m-lead text-ink-2">{t('pairing.sent')}</p>;
+        return (
+          <p className="m-0 text-m-lead text-ink-2" role="status" data-testid="pairing-sent">
+            {finish.joined
+              ? t('pairing.deviceConnected', { name: finish.joined })
+              : finish.late
+                ? t('pairing.sentLate')
+                : t('pairing.sent')}
+          </p>
+        );
       case 'received':
         return joinFailure ? (
           <div className="space-y-3">
@@ -240,7 +254,11 @@ export function PairingSheet({
           className={`${BUTTON} px-[18px] ${step === 'received' ? '' : 'flex-1'}`}
           onClick={onClose}
         >
-          {finished ? tc('buttons.close') : tc('buttons.cancel')}
+          {finish.joined
+            ? tc('buttons.done')
+            : finished
+              ? tc('buttons.close')
+              : tc('buttons.cancel')}
         </Button>
         {(step === 'failed' || step === 'expired') && (
           <Button className={`${BUTTON} flex-1`} onClick={onStartAgain}>

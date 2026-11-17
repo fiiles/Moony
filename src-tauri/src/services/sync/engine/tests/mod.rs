@@ -17,9 +17,18 @@ mod gaps;
 mod held_blobs;
 mod join;
 mod join_new;
+mod kit_join;
+mod kit_join_attacks;
 mod lanes;
 mod pull;
 mod push;
+mod rekey_fixture;
+mod rekey_head;
+mod rekey_leave;
+mod rekey_pickup;
+mod rekey_review;
+mod rekey_rotate;
+mod rekey_scenarios;
 mod relay_faults;
 mod repair;
 mod replace_safety;
@@ -30,6 +39,7 @@ mod server;
 mod server_address;
 mod setup;
 mod snapshots;
+mod trust_order;
 mod went_back;
 
 use std::collections::BTreeMap;
@@ -183,6 +193,16 @@ pub fn with_store(device: &TestConn) {
     crate::db::files_schema::migrate(&conn).expect("files schema");
 }
 
+/// Gives `conn`'s device a signing key and a genesis certificate, pinned, and records its row
+/// with it, as setup does since phase 5 (`vault()` makes devices without one, as before).
+pub fn with_genesis(conn: &Connection, name: &str) -> crate::services::sync::identity::Certificate {
+    use crate::services::sync::{devices, identity};
+    let public = keys::ensure_device_keypair(conn).expect("box key");
+    let cert = identity::create_own(conn, identity::Issuer::Genesis, NOW).expect("genesis");
+    devices::record_this_device(conn, name, &public, Some(&cert), NOW).expect("own row");
+    cert
+}
+
 pub fn exec(conn: &Connection, sql: &str) {
     conn.execute_batch(sql).expect(sql);
 }
@@ -285,6 +305,8 @@ pub fn changeset(
         seq,
         prev,
         rows,
+        rekey_head: None,
+        tickets: Vec::new(),
     }
 }
 

@@ -12,9 +12,10 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use uuid::Uuid;
 
 use super::{
-    AccountStatus, BlobBody, BlobPage, BlobSink, CheckoutPlan, Delivery, OutgoingOp, PullPage,
-    PulledOp, PushReceipt, Relay, RelayError, RelayResult, ServerInfo, ServerMode, SnapshotBlob,
-    VaultInfo,
+    AccountStatus, BlobBody, BlobPage, BlobSink, CheckoutPlan, Delivery, KitInfo, KitRead,
+    KitRotation, OutgoingOp, PullPage, PulledOp, PushReceipt, Rekey, RekeyPage, Relay, RelayError,
+    RelayResult, Rotated, ServerInfo, ServerMode, SnapshotBlob, VaultInfo, MAX_KIT_ENVELOPE,
+    MAX_REKEY_BUNDLE, MAX_REKEY_PAGE, MAX_REKEY_PAGE_BYTES,
 };
 use crate::services::sync::keys::VaultAuth;
 
@@ -27,6 +28,16 @@ const MAX_VAULT_OP_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_SNAPSHOT_BYTES: usize = 100 * 1024 * 1024;
 const MAX_VAULTS_PER_ACCOUNT: usize = 5;
 const READ_GRACE_SECONDS: i64 = 30 * 86_400;
+/// How long a retired token reads and a key-change bundle is kept (the server's 30 days).
+const PREVIOUS_TOKEN_SECONDS: i64 = 30 * 86_400;
+/// Bundles a vault keeps (younger than 30 days) before it refuses another rotation.
+const MAX_REKEYS_KEPT: usize = 32;
+/// Replaced Kit tokens a vault remembers (the newest), then a replaced Kit reads `Unauthorized`.
+const MAX_KITS_RETIRED: usize = 256;
+/// Failed Kit reads a vault takes inside `KIT_FAILURE_WINDOW_SECONDS` before more failures are
+/// `RateLimited` (the right Kit token and a replaced one are never counted or refused).
+const MAX_KIT_FAILURES: usize = 30;
+const KIT_FAILURE_WINDOW_SECONDS: i64 = 3600;
 /// How far `set_paid(.., true)` pushes `paid_until`.
 const PAID_FOR_SECONDS: i64 = 365 * 86_400;
 /// The `paid_until` a self-hosted server gives a person (year 9999).
@@ -46,6 +57,10 @@ pub enum Route {
     PutSnapshot,
     GetSnapshot,
     DeleteVault,
+    RotateToken,
+    Rekeys,
+    PutKit,
+    GetKit,
     MailboxPut,
     MailboxTake,
     MailboxBurn,
@@ -79,7 +94,33 @@ struct Vault {
     snapshot: Option<SnapshotBlob>,
     /// The token rotation counter `vault_info` answers (`set_rotation`).
     rotation: u32,
+    /// Tokens rotated away, with when (the fake's clock): read-only for 30 days.
+    prev_tokens: Vec<(String, i64)>,
+    /// Key-change bundles by rotation, oldest first.
+    rekeys: Vec<StoredRekey>,
+    /// The Recovery Kit (`put_kit`, a rotation's `kit`).
+    kit: Option<StoredKit>,
+    /// Replaced Kit tokens with when, oldest first, at most `MAX_KITS_RETIRED`.
+    kits_retired: Vec<(String, i64)>,
+    /// When (the fake's clock) Kit reads with a wrong token failed, inside the last hour.
+    kit_failures: Vec<i64>,
     blobs: blobs::VaultBlobs,
+}
+
+struct StoredKit {
+    token: String,
+    envelope: Vec<u8>,
+    since: i64,
+    updated_at: i64,
+    /// The minute (unix seconds, rounded down) of the last successful read.
+    last_read: Option<i64>,
+}
+
+struct StoredRekey {
+    rotation: u32,
+    head: u64,
+    at: i64,
+    bundle: Vec<u8>,
 }
 
 struct FakeState {
@@ -120,7 +161,19 @@ struct FakeState {
     no_room: bool,
     /// What a blob listing reports as the server's clock (`set_server_now`); `None` = `now()`.
     server_now: Option<Option<i64>>,
+    /// Seconds the fake's clock is ahead of the real one (`advance_clock`): what the 30-day rules
+    /// of a retired token and a key-change bundle are measured on.
+    clock_offset: i64,
+    /// A relay colluding with a removed device: a retired token still writes
+    /// (`set_accept_retired_writes`).
+    accept_retired_writes: bool,
+    /// What `rekeys` answers instead of the stored bundles (`set_rekeys_answer`): a lying relay's
+    /// pages, built from `after`, never checked against the contract.
+    rekeys_answer: Option<RekeysAnswer>,
 }
+
+/// A scripted `rekeys` answer: the page for `after`.
+pub type RekeysAnswer = Arc<dyn Fn(u32) -> RekeyPage + Send + Sync>;
 
 impl Default for FakeState {
     fn default() -> Self {
@@ -148,11 +201,15 @@ impl Default for FakeState {
                 protocol: 2,
                 mode: ServerMode::SelfHosted,
                 blobs: true,
+                kit: true,
             }),
             registration_closed: false,
             blob_quota: blobs::DEFAULT_BLOB_QUOTA,
             no_room: false,
             server_now: None,
+            clock_offset: 0,
+            accept_retired_writes: false,
+            rekeys_answer: None,
         }
     }
 }
@@ -439,6 +496,69 @@ impl FakeRelay {
         }
     }
 
+    /// Moves the fake's clock `seconds` ahead: retired tokens and key-change bundles expire 30 days
+    /// after their rotation on this clock.
+    pub fn advance_clock(&self, seconds: i64) {
+        self.lock().clock_offset += seconds;
+    }
+
+    /// The bundle of rotation `rotation`, as stored (a test reads what the server holds).
+    pub fn stored_rekey(&self, vault_id: &str, rotation: u32) -> Option<Vec<u8>> {
+        let state = self.lock();
+        let now = state.now();
+        state
+            .vaults
+            .get(vault_id)?
+            .rekeys
+            .iter()
+            .find(|r| r.rotation == rotation && r.at + PREVIOUS_TOKEN_SECONDS > now)
+            .map(|r| r.bundle.clone())
+    }
+
+    /// A relay colluding with a removed device: from now on (until switched off) a retired token
+    /// pushes as if it were current. Only rotations still need the current token.
+    pub fn set_accept_retired_writes(&self, accept: bool) {
+        self.lock().accept_retired_writes = accept;
+    }
+
+    /// A lying relay: `rekeys` reports `head` as the vault's head at rotation `rotation`.
+    pub fn set_rekey_head(&self, vault_id: &str, rotation: u32, head: u64) {
+        if let Some(vault) = self.lock().vaults.get_mut(vault_id) {
+            for rekey in vault.rekeys.iter_mut().filter(|r| r.rotation == rotation) {
+                rekey.head = head;
+            }
+        }
+    }
+
+    /// A lying relay: stores `bundle` as the next key change's (the rotation counter moves on,
+    /// the head is the vault's) without rotating the token, so no key the bundle carries has a
+    /// token here.
+    pub fn insert_rekey(&self, vault_id: &str, bundle: &[u8]) {
+        let mut state = self.lock();
+        let now = state.now();
+        if let Some(vault) = state.vaults.get_mut(vault_id) {
+            vault.rotation += 1;
+            vault.rekeys.push(StoredRekey {
+                rotation: vault.rotation,
+                head: vault.head,
+                at: now,
+                bundle: bundle.to_vec(),
+            });
+        }
+    }
+
+    /// A lying relay: `rekeys` answers `answer(after)` (any page, unchecked) until cleared.
+    pub fn set_rekeys_answer(&self, answer: Option<RekeysAnswer>) {
+        self.lock().rekeys_answer = answer;
+    }
+
+    /// Serves an op `drop_op` hid again.
+    pub fn undrop_op(&self, seq: u64) {
+        for vault in self.lock().vaults.values_mut() {
+            vault.dropped.remove(&seq);
+        }
+    }
+
     /// A server restored from an older backup: the vault's head (and the ops past it) go back to
     /// `head`. Never raises a head.
     pub fn roll_back_head(&self, vault_id: &str, head: u64) {
@@ -478,25 +598,41 @@ impl FakeState {
         }
     }
 
+    /// The fake's clock: the real one plus `advance_clock`.
+    fn now(&self) -> i64 {
+        now() + self.clock_offset
+    }
+
     fn paid_until(&self, account: &str) -> i64 {
         self.accounts.get(account).map_or(0, |a| a.paid_until)
     }
 
-    /// `VaultDO.authorize`: the vault exists, the token is its current one, the subscription is
-    /// live (write) or within the read grace (read); `Owner` needs neither.
+    /// `Vaults.verdict`: the vault exists; the token is its current one, or one rotated away less
+    /// than 30 days ago (which may read only); the subscription is live (write) or within the
+    /// read grace (read); `Owner` needs no subscription.
     fn authorize(&self, vault: &VaultAuth, access: Access) -> RelayResult<&Vault> {
         let stored = self
             .vaults
             .get(&vault.vault_id)
             .ok_or(RelayError::VaultNotFound)?;
+        let now = self.now();
         if stored.token != *vault.token {
-            return Err(RelayError::Unauthorized);
+            let previous = stored
+                .prev_tokens
+                .iter()
+                .any(|(token, at)| *token == *vault.token && at + PREVIOUS_TOKEN_SECONDS > now);
+            if !previous {
+                return Err(RelayError::Unauthorized);
+            }
+            if access != Access::Read && !(self.accept_retired_writes && access == Access::Write) {
+                return Err(RelayError::TokenReadOnly);
+            }
         }
         let paid_until = self.paid_until(&stored.account);
         let entitled = match access {
             Access::Owner => true,
-            Access::Write => paid_until > now(),
-            Access::Read => paid_until + READ_GRACE_SECONDS > now(),
+            Access::Write => paid_until > now,
+            Access::Read => paid_until + READ_GRACE_SECONDS > now,
         };
         if entitled {
             Ok(stored)
@@ -624,6 +760,11 @@ impl Relay for FakeRelay {
                     bytes: 0,
                     snapshot: None,
                     rotation: 0,
+                    prev_tokens: Vec::new(),
+                    rekeys: Vec::new(),
+                    kit: None,
+                    kits_retired: Vec::new(),
+                    kit_failures: Vec::new(),
                     blobs: blobs::VaultBlobs::new(),
                 },
             );
@@ -645,6 +786,10 @@ impl Relay for FakeRelay {
                 paid_until: state.paid_until(&stored.account),
                 bytes: stored.bytes,
                 rotation: stored.rotation,
+                kit: stored.kit.as_ref().map(|kit| KitInfo {
+                    since: kit.since,
+                    last_read: kit.last_read,
+                }),
             })
         })();
         async move { result }
@@ -827,6 +972,183 @@ impl Relay for FakeRelay {
         async move { result }
     }
 
+    fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> impl Future<Output = RelayResult<Rotated>> + Send {
+        let result = self.rotate(vault, new_token, bundle, None);
+        async move { result }
+    }
+
+    fn rotate_token_with_kit(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+        kit: KitRotation<'_>,
+    ) -> impl Future<Output = RelayResult<Rotated>> + Send {
+        let result = self.rotate(vault, new_token, bundle, Some(kit));
+        async move { result }
+    }
+
+    fn put_kit(
+        &self,
+        vault: &VaultAuth,
+        kit_token: &str,
+        envelope: &[u8],
+    ) -> impl Future<Output = RelayResult<bool>> + Send {
+        let result = (|| {
+            check_vault(vault)?;
+            if !is_base64url(kit_token, 43) {
+                return Err(RelayError::BadRequest("invalid_kit_token".into()));
+            }
+            check_kit_envelope(envelope)?;
+            let mut state = self.lock();
+            state.enter(Route::PutKit)?;
+            let stored = state.authorize(vault, Access::Owner)?;
+            let now = state.now();
+            if stored
+                .kit
+                .as_ref()
+                .is_some_and(|kit| kit.token == kit_token)
+            {
+                // A retried setup: the envelope is replaced, the Kit stays.
+                let stored = state.vault_mut(&vault.vault_id);
+                if let Some(kit) = stored.kit.as_mut() {
+                    kit.envelope = envelope.to_vec();
+                    kit.updated_at = now;
+                }
+                return Ok(false);
+            }
+            if stored.kit_token_conflicts(kit_token, None) {
+                return Err(RelayError::BadRequest("invalid_kit_token".into()));
+            }
+            if stored.kit.is_some() {
+                return Err(RelayError::KitExists);
+            }
+            state.vault_mut(&vault.vault_id).kit = Some(StoredKit {
+                token: kit_token.to_string(),
+                envelope: envelope.to_vec(),
+                since: now,
+                updated_at: now,
+                last_read: None,
+            });
+            Ok(true)
+        })();
+        async move { result }
+    }
+
+    fn get_kit(
+        &self,
+        vault_id: &str,
+        kit_token: &str,
+    ) -> impl Future<Output = RelayResult<KitRead>> + Send {
+        let result = (|| {
+            if !is_base64url(vault_id, 22) {
+                return Err(RelayError::BadRequest("invalid_vault_id".into()));
+            }
+            if !is_base64url(kit_token, 43) {
+                return Err(RelayError::BadRequest("invalid_kit_token".into()));
+            }
+            let mut state = self.lock();
+            state.enter(Route::GetKit)?;
+            let now = state.now();
+            let stored = state
+                .vaults
+                .get(vault_id)
+                .ok_or(RelayError::VaultNotFound)?;
+            // A replaced Kit token always hears so: never counted, never `RateLimited`.
+            if let Some((_, at)) = stored.kits_retired.iter().find(|(t, _)| t == kit_token) {
+                return Err(RelayError::KitReplaced { replaced_at: *at });
+            }
+            let right = stored
+                .kit
+                .as_ref()
+                .is_some_and(|kit| kit.token == kit_token);
+            if !right {
+                // Failures only: past the limit more failures are `RateLimited`, while the right
+                // token still reads.
+                let stored = state.vault_mut(vault_id);
+                stored
+                    .kit_failures
+                    .retain(|at| at + KIT_FAILURE_WINDOW_SECONDS > now);
+                stored.kit_failures.push(now);
+                return Err(if stored.kit_failures.len() > MAX_KIT_FAILURES {
+                    RelayError::RateLimited
+                } else {
+                    RelayError::Unauthorized
+                });
+            }
+            // The read rule: until 30 days after `paid_until`.
+            if state.paid_until(&stored.account) + READ_GRACE_SECONDS <= now {
+                return Err(RelayError::PaymentRequired);
+            }
+            let kit = state
+                .vault_mut(vault_id)
+                .kit
+                .as_mut()
+                .ok_or(RelayError::Unauthorized)?;
+            kit.last_read = Some(now - now.rem_euclid(60));
+            Ok(KitRead {
+                envelope: kit.envelope.clone(),
+                since: kit.since,
+                updated_at: kit.updated_at,
+            })
+        })();
+        async move { result }
+    }
+
+    fn rekeys(
+        &self,
+        vault: &VaultAuth,
+        after: u32,
+        limit: u32,
+    ) -> impl Future<Output = RelayResult<RekeyPage>> + Send {
+        let result = (|| {
+            check_vault(vault)?;
+            let mut state = self.lock();
+            state.enter(Route::Rekeys)?;
+            if limit == 0 {
+                return Err(RelayError::BadRequest("invalid_limit".into()));
+            }
+            let limit = limit.min(MAX_REKEY_PAGE) as usize;
+            let stored = state.authorize(vault, Access::Read)?;
+            if let Some(answer) = &state.rekeys_answer {
+                return Ok(answer(after));
+            }
+            let now = state.now();
+            let mut live = stored
+                .rekeys
+                .iter()
+                .filter(|r| r.rotation > after && r.at + PREVIOUS_TOKEN_SECONDS > now)
+                .peekable();
+            let mut page = Vec::new();
+            let mut bytes = 0usize;
+            while let Some(next) = live.peek() {
+                if page.len() >= limit
+                    || (!page.is_empty() && bytes + next.bundle.len() > MAX_REKEY_PAGE_BYTES)
+                {
+                    break;
+                }
+                bytes += next.bundle.len();
+                page.push(Rekey {
+                    rotation: next.rotation,
+                    head: next.head,
+                    at: next.at,
+                    bundle: next.bundle.clone(),
+                });
+                live.next();
+            }
+            Ok(RekeyPage {
+                rekeys: page,
+                more: live.peek().is_some(),
+            })
+        })();
+        async move { result }
+    }
+
     fn put_blob(
         &self,
         vault: &VaultAuth,
@@ -877,7 +1199,156 @@ impl Relay for FakeRelay {
     }
 }
 
+fn check_kit_envelope(envelope: &[u8]) -> RelayResult<()> {
+    if envelope.is_empty() {
+        return Err(RelayError::BadRequest("invalid_kit".into()));
+    }
+    if envelope.len() > MAX_KIT_ENVELOPE {
+        return Err(RelayError::BadRequest("kit_too_large".into()));
+    }
+    Ok(())
+}
+
+impl Vault {
+    /// Whether `kit_token` may not become the Kit's: it equals the current vault token or any
+    /// previous one (whatever its age), `new_vault_token` (a rotation's), the current Kit token
+    /// or a replaced one.
+    fn kit_token_conflicts(&self, kit_token: &str, new_vault_token: Option<&str>) -> bool {
+        self.token == kit_token
+            || self.prev_tokens.iter().any(|(token, _)| token == kit_token)
+            || new_vault_token == Some(kit_token)
+            || self.kit.as_ref().is_some_and(|kit| kit.token == kit_token)
+            || self
+                .kits_retired
+                .iter()
+                .any(|(token, _)| token == kit_token)
+    }
+}
+
+impl FakeRelay {
+    /// `rotate_token` and `rotate_token_with_kit`: the checks in the server's order, then the
+    /// vault token, the bundle, the envelope and the Kit token change together.
+    fn rotate(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+        kit: Option<KitRotation<'_>>,
+    ) -> RelayResult<Rotated> {
+        check_vault(vault)?;
+        // The argument checks of `HttpRelay`, before anything is sent.
+        if !is_base64url(new_token, 43) {
+            return Err(RelayError::BadRequest("invalid_token".into()));
+        }
+        if bundle.is_empty() {
+            return Err(RelayError::BadRequest("invalid_rekey".into()));
+        }
+        if bundle.len() > MAX_REKEY_BUNDLE {
+            return Err(RelayError::BadRequest("rekey_too_large".into()));
+        }
+        if let Some(kit) = &kit {
+            check_kit_envelope(kit.envelope)?;
+            if kit.token.is_some_and(|token| !is_base64url(token, 43)) {
+                return Err(RelayError::BadRequest("invalid_kit_token".into()));
+            }
+        }
+        let mut state = self.lock();
+        state.enter(Route::RotateToken)?;
+        // Only the current token rotates (a retired one is `TokenReadOnly`, so of two
+        // concurrent rotations the second fails); no subscription is needed.
+        let stored = state.authorize(vault, Access::Owner)?;
+        let now = state.now();
+        // A token that was ever the vault's (and is still remembered) cannot come back, nor can
+        // a Kit token be the vault's.
+        let known = stored.token == new_token
+            || stored
+                .prev_tokens
+                .iter()
+                .any(|(token, at)| token == new_token && at + PREVIOUS_TOKEN_SECONDS > now)
+            || stored.kit.as_ref().is_some_and(|k| k.token == new_token)
+            || stored
+                .kits_retired
+                .iter()
+                .any(|(token, _)| token == new_token);
+        if known {
+            return Err(RelayError::BadRequest("invalid_token".into()));
+        }
+        if stored.kit.is_some() && kit.is_none() {
+            return Err(RelayError::BadRequest("kit_required".into()));
+        }
+        if let Some(kit) = &kit {
+            match kit.token {
+                // An envelope with no Kit token on a vault without a Kit belongs to no Kit.
+                None if stored.kit.is_none() => {
+                    return Err(RelayError::BadRequest("invalid_kit".into()));
+                }
+                Some(token) if stored.kit_token_conflicts(token, Some(new_token)) => {
+                    return Err(RelayError::BadRequest("invalid_kit_token".into()));
+                }
+                _ => {}
+            }
+        }
+        let kept = stored
+            .rekeys
+            .iter()
+            .filter(|r| r.at + PREVIOUS_TOKEN_SECONDS > now)
+            .count();
+        if kept >= MAX_REKEYS_KEPT {
+            return Err(RelayError::TooManyRotations);
+        }
+        let stored = state.vault_mut(&vault.vault_id);
+        // A token retired over 30 days ago may still be remembered: it is current again.
+        stored.prev_tokens.retain(|(token, _)| token != new_token);
+        let retired = std::mem::replace(&mut stored.token, new_token.to_string());
+        stored.prev_tokens.push((retired, now));
+        stored.rotation += 1;
+        let rotation = stored.rotation;
+        let head = stored.head;
+        stored.rekeys.push(StoredRekey {
+            rotation,
+            head,
+            at: now,
+            bundle: bundle.to_vec(),
+        });
+        if let Some(kit) = kit {
+            match kit.token {
+                Some(token) => {
+                    if let Some(old) = stored.kit.take() {
+                        stored.kits_retired.push((old.token, now));
+                        let excess = stored.kits_retired.len().saturating_sub(MAX_KITS_RETIRED);
+                        stored.kits_retired.drain(..excess);
+                    }
+                    stored.kit = Some(StoredKit {
+                        token: token.to_string(),
+                        envelope: kit.envelope.to_vec(),
+                        since: now,
+                        updated_at: now,
+                        last_read: None,
+                    });
+                }
+                None => {
+                    if let Some(current) = stored.kit.as_mut() {
+                        current.envelope = kit.envelope.to_vec();
+                        current.updated_at = now;
+                    }
+                }
+            }
+        }
+        let lose_answer = state
+            .lose_answers
+            .iter()
+            .position(|r| *r == Route::RotateToken);
+        if let Some(index) = lose_answer {
+            state.lose_answers.remove(index);
+            return Err(RelayError::Server(503));
+        }
+        Ok(Rotated { rotation, head })
+    }
+}
+
 mod blobs;
+#[cfg(test)]
+mod kit_tests;
 mod mailbox;
 #[cfg(test)]
 mod tests;

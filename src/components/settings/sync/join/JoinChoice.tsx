@@ -5,8 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup } from '@/components/ui/radio-group';
 
-/** How this device joins: pairing with a phone that syncs, or with the Sync Recovery Kit. */
-export type JoinMethod = 'pair' | 'kit';
+/**
+ * How this device joins: pairing with a phone that syncs (this computer shows a QR), with another
+ * computer by typing the pairing code it shows, or with the recovery kit.
+ */
+export type JoinMethod = 'pair' | 'code' | 'kit';
 
 interface JoinChoiceProps {
   name: string;
@@ -17,7 +20,7 @@ interface JoinChoiceProps {
 
 /**
  * The first screen of a join (Settings → Sync and the first run's Připojení step): this device's
- * name and the two ways in, as choice cards.
+ * name and the three ways in, as choice cards.
  */
 export function JoinChoice({ name, onName, method, onMethod }: JoinChoiceProps) {
   const { t } = useTranslation('deviceSync');
@@ -45,6 +48,13 @@ export function JoinChoice({ name, onName, method, onMethod }: JoinChoiceProps) 
           selected={method === 'pair'}
           title={t('join.choice.pair.title')}
           description={t('join.choice.pair.lead')}
+        />
+        <ChoiceCard
+          value="code"
+          id="join-method-code"
+          selected={method === 'code'}
+          title={t('join.choice.code.title')}
+          description={t('join.choice.code.lead')}
         />
         <ChoiceCard
           value="kit"

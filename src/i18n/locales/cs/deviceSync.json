@@ -4,14 +4,17 @@
   "indicator": {
     "synced": "Synchronizováno",
     "syncing": "Synchronizuji…",
-    "waiting": "Změna je zadržena",
+    "waiting": "Čeká se na změnu z jiného zařízení",
     "paused": "Synchronizace pozastavena",
     "error": "Chyba synchronizace",
     "unreachable": "Server mimo dosah",
     "unreachableLong_one": "Nesynchronizováno {{count}} den",
     "unreachableLong_few": "Nesynchronizováno {{count}} dny",
     "unreachableLong_many": "Nesynchronizováno {{count}} dní",
-    "unreachableLong_other": "Nesynchronizováno {{count}} dní"
+    "unreachableLong_other": "Nesynchronizováno {{count}} dní",
+    "syncingLong": "Synchronizace trvá déle než obvykle",
+    "firstUpload": "Nahrávám první kopii",
+    "removing": "Dokončuji odebrání zařízení…"
   },
   "age": {
     "justNow": "právě teď",
@@ -33,12 +36,21 @@
     "pending": "Čeká na odeslání",
     "server": "Server",
     "openSettings": "Otevřít nastavení",
-    "settings": "Nastavení synchronizace"
+    "settings": "Nastavení synchronizace",
+    "line": {
+      "removed": "Synchronizace je vypnutá: toto zařízení bylo odebráno.",
+      "left": "Synchronizace je vypnutá: toto zařízení se odpojilo.",
+      "afterKitJoin": "Rozhodněte o dřívějších zařízeních; do té doby se odsud nic neodesílá.",
+      "removalNotice": "Zařízení {{by}} odebralo {{names}}.",
+      "newKit": "Zařízení {{by}} vytvořilo novou záchrannou sadu.",
+      "newDevices": "Nová zařízení: {{names}}.",
+      "kitUsed": "Záchranná sada byla použita {{at}}."
+    }
   },
   "status": {
     "unreachableNote": "Synchronizace se obnoví, až bude server v dosahu.",
     "problem": {
-      "captureBroken": "Sledování změn na tomto zařízení je poškozené, proto se synchronizace zastavila. Lze ho opravit.",
+      "captureBroken": "Synchronizace se na tomto zařízení porouchala. Data jsou v pořádku. Lze ji opravit.",
       "vaultGone": "Synchronizovaná data byla ze synchronizačního serveru smazána.",
       "lapsed": "Předplatné skončilo, synchronizace je pozastavená.",
       "quotaExceeded": "Synchronizovaná data překračují limit úložiště.",
@@ -47,17 +59,20 @@
       "gap": "Změna z jiného zařízení zatím nedorazila. Toto zařízení dál synchronizuje a odesílá své vlastní změny.",
       "clockAhead": "Změna z jiného zařízení má datum víc než deset let dopředu, a proto je zadržená. Zůstane zadržená, i když se hodiny toho zařízení opraví; po 14 dnech ji můžete přeskočit.",
       "undecryptable": "Změny z jiného zařízení se nepodařilo dešifrovat.",
-      "invalidChain": "Změny z jiného zařízení neprošly ověřením a jsou zadržené.",
+      "invalidChain": "Změny z jiného zařízení se nepodařilo ověřit, proto je Moony nepoužila. Data v tomto zařízení jsou v pořádku.",
       "missingParent": "Změnám z jiného zařízení chybí dřívější kroky a jsou zadržené.",
       "quarantined": "Změny z některých zařízení jsou z bezpečnostních důvodů zadržené.",
       "offline": "Synchronizační server není dostupný. Synchronizace se obnoví, jakmile bude zpět.",
       "relayError": "Synchronizační server neodpovídá tak, jak má. Moony to zkouší dál.",
       "rateLimited": "Synchronizační server požádal Moony o zpomalení. Moony to brzy zkusí znovu.",
       "unauthorized": "Synchronizační server toto zařízení nepřijal. Může být potřeba synchronizaci nastavit znovu.",
-      "keyRotated": "Klíč synchronizace byl změněn na jiném zařízení. Nastavte synchronizaci na tomto zařízení znovu.",
+      "keyRotated": "Synchronizuji…",
       "secureStorage": "Moony se nemohla dostat k zabezpečenému úložišti tohoto zařízení, a proto je synchronizace pozastavena. Zkusí to znovu; obvykle pomůže odemknout zařízení nebo restartovat Moony.",
-      "serverWentBack": "Synchronizační server se vrátil do staršího stavu, takže na vašich dalších zařízeních mohou chybět změny. Data na tomto zařízení jsou v pořádku. Moony to zatím neumí opravit sama: pokud chcete zařízení znovu sladit, vypněte synchronizaci, znovu ji nastavte na zařízení s nejúplnějšími daty a připojte k ní ostatní. Funkci „Synchronizovat toto zařízení znovu“ nepoužívejte: nahradila by data tohoto zařízení starší kopií ze synchronizačního serveru. Opětovným nastavením synchronizace vznikne nový synchronizační účet.",
-      "internal": "Synchronizace se zastavila kvůli vnitřní chybě."
+      "serverWentBack": "Synchronizační server se vrátil do staršího stavu, takže na vašich dalších zařízeních mohou chybět změny. Data na tomto zařízení jsou v pořádku. Moony to zatím neumí opravit sama: pokud chcete zařízení znovu sladit, vypněte synchronizaci, znovu ji nastavte na zařízení s nejúplnějšími daty a připojte k ní ostatní.",
+      "internal": "Synchronizace se zastavila kvůli vnitřní chybě.",
+      "keyNotGiven": "Toto zařízení je potřeba připojit znovu.",
+      "keyChangeUnverified": "Toto zařízení je potřeba připojit znovu.",
+      "keyChangeWaiting": "Čeká se, až se připojí zařízení, které změnu provedlo."
     },
     "lastSynced": "Naposledy synchronizováno {{date}}",
     "neverSynced": "Zatím nesynchronizováno",
@@ -65,15 +80,14 @@
     "clockAhead": "Hodiny tohoto zařízení (nebo zařízení, se kterým se synchronizovalo) byly v jednu chvíli napřed, takže jeho změny nesou datum {{date}}, dokud ten den nenastane. Synchronizují se dál; pokud se stejná položka upraví na jiném zařízení, do toho data vyhraje verze z tohoto zařízení.",
     "subscription": "Předplatné",
     "paidUntil": "Zaplaceno do {{date}}",
-    "syncNow": "Synchronizovat",
-    "showKit": "Zobrazit Záchrannou sadu"
+    "syncNow": "Synchronizovat"
   },
   "server": {
     "label": "Synchronizační server",
     "insecure": "Nešifrované spojení (http)",
     "change": "Změnit adresu",
     "dialogTitle": "Změnit adresu serveru",
-    "dialogBody": "Použijte to, když se váš synchronizační server přestěhoval na novou adresu. Musí jít o tentýž server, na kterém jsou vaše synchronizovaná data. Každé zařízení si adresu mění samo, stejný postup tedy zopakujte na ostatních zařízeních. Uložte si znovu Záchrannou sadu: nově obsahuje novou adresu.",
+    "dialogBody": "Použijte to, když se váš synchronizační server přestěhoval na novou adresu. Musí jít o tentýž server, na kterém jsou vaše synchronizovaná data. Každé zařízení si adresu mění samo, stejný postup tedy zopakujte na ostatních zařízeních. Uložte si znovu záchrannou sadu: nově obsahuje novou adresu.",
     "success": "Adresa synchronizačního serveru je změněna",
     "unchanged": "Toto zařízení už tuto adresu používá.",
     "repeatOn": "Totéž udělejte na: {{devices}}",
@@ -87,7 +101,7 @@
     "cancelSetup": "Zrušit nastavení",
     "cancelConfirm": {
       "title": "Zrušit nastavení?",
-      "description": "Toto zařízení zapomene synchronizační účet vytvořený při tomto nastavení a už uhrazená platba se nepřenese. Nastavení synchronizace pak začne od začátku, s novým synchronizačním účtem.",
+      "description": "Toto zařízení zapomene synchronizaci vytvořenou při tomto nastavení a už uhrazená platba se nepřenese. Nastavení synchronizace pak začne od začátku.",
       "keep": "Ponechat nastavení"
     },
     "startTitle": "Začít synchronizovat",
@@ -119,37 +133,41 @@
       "ownServer": "Tento server není Moony cloud, takže se nic neplatí. Nastavte synchronizaci pomocí připojovacího kódu vlastního synchronizačního serveru."
     },
     "kit": {
-      "description": "Uložte si Záchrannou sadu synchronizace. Je to jediný způsob, jak získat synchronizovaná data zpět, když přijdete o všechna zařízení.",
-      "savePage": "Uložit jako stránku…",
-      "saveText": "Uložit jako text…",
       "copyCode": "Zkopírovat kód",
       "copied": "Zkopírováno",
       "clipboardHint": "Po vložení kódu vymažte schránku.",
       "saved": "Sada uložena",
-      "confirm": "Uložil(a) jsem si Záchrannou sadu synchronizace",
-      "differs": "Záchranná sada synchronizace není obnovovací klíč zařízení. Jsou to dvě různé věci a potřebujete obě.",
+      "differs": "Není to obnovovací klíč tohoto zařízení; ten obnoví jen zapomenuté heslo.",
       "saveFirst": "Nejdřív sadu uložte nebo zkopírujte.",
       "file": {
         "title": "Záchranná sada synchronizace Moony",
         "intro": "Uschovejte tuto stránku na bezpečném místě mimo svá zařízení. Kdo ji má, přečte vaše synchronizovaná data.",
-        "accountLabel": "Synchronizační účet",
-        "accountNote": "Určuje váš synchronizační účet. Data neotevře.",
         "codeLabel": "Kód záchranné sady",
         "codeNote": "Otevře vaše synchronizovaná data. Udržujte ho v tajnosti.",
         "qrLabel": "Naskenujte pro obnovení v telefonu",
         "created": "Vytvořeno {{date}}",
         "relayLabel": "Synchronizační server",
-        "relayNote": "Potřebný k obnově z této sady"
+        "relayNote": "Potřebný k obnově z této sady",
+        "createdBy": "Vytvořena {{date}} · {{name}}"
       },
       "folderWarning": "Sadu uchovávejte na papíře nebo ve správci hesel, ne ve složce, která se synchronizuje s cloudovou službou.",
       "syncedFolder": "Sada je uložena, ale tato složka se zřejmě synchronizuje s cloudovou službou. Přesuňte soubor na místo, které se nesynchronizuje, nebo ho smažte, jakmile budete mít sadu na papíře.",
-      "saveRefused": "Tato sada je zastaralá, proto se neuložila. Zavřete ji a zobrazte sadu znovu."
+      "saveRefused": "Tato sada je zastaralá, proto se neuložila. Zavřete ji a zobrazte sadu znovu.",
+      "print": "Vytisknout",
+      "stepTitle": "Záchranná sada",
+      "intro": "Kdybyste přišli o všechna zařízení najednou, vrátí vám data jen tato sada. Vytiskněte ji a uložte mimo tento počítač, třeba k dokladům nebo do správce hesel.",
+      "shownOnce": "Sadu ukážeme jen teď. Když ji ztratíte, vytvoříte si v Nastavení novou.",
+      "continue": "Sadu mám, pokračovat",
+      "keepFirst": "Nejdřív sadu vytiskněte, uložte nebo zkopírujte.",
+      "saveFile": "Uložit jako soubor…",
+      "saveShare": "Uložit nebo sdílet…",
+      "saveShareAndroid": "Uložit jako soubor…",
+      "introPhone": "Kdybyste přišli o všechna zařízení najednou, vrátí vám data jen tato sada. Uložte ji mimo tento telefon, třeba k dokladům nebo do správce hesel. Z uložené stránky ji můžete vytisknout."
     },
     "device": {
       "description": "Pojmenujte toto zařízení, abyste ho odlišili od ostatních.",
       "name": "Název zařízení",
-      "turnOn": "Zapnout synchronizaci",
-      "success": "Synchronizace zapnuta"
+      "turnOn": "Zapnout synchronizaci"
     },
     "defaultName": {
       "macos": "Mac",
@@ -175,6 +193,12 @@
       "resume": "Nastavení začalo se serverem {{host}}",
       "other": "Použít jiný připojovací kód",
       "scan": "Naskenovat kód"
+    },
+    "done": {
+      "title": "Synchronizace je zapnutá",
+      "body": "Nahrávám první kopii dat. Můžete pracovat dál.",
+      "addDevice": "Přidat druhé zařízení",
+      "later": "Později"
     }
   },
   "alert": {
@@ -223,7 +247,6 @@
   },
   "resync": {
     "button": "Synchronizovat toto zařízení znovu",
-    "hint": "Nahradí data tohoto zařízení synchronizovanými daty, předtím uloží zálohu. Použijte to jen tehdy, když se toto zařízení nedokáže synchronizovat jinak.",
     "title": "Synchronizovat toto zařízení znovu?",
     "description": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Nejdřív se uloží záloha.",
     "confirm": "Synchronizovat znovu",
@@ -252,27 +275,27 @@
     "appliedAhead": "Změna se mezitím použila; nic nebylo přeskočeno."
   },
   "turnOff": {
-    "button": "Vypnout synchronizaci na tomto zařízení",
+    "button": "Vypnout synchronizaci tady",
     "hint": "Místní data zůstanou. Ostatní zařízení se synchronizují dál.",
     "title": "Vypnout synchronizaci na tomto zařízení?",
-    "description": "Místní data zůstanou. Ostatní zařízení se synchronizují dál. Později se můžete znovu připojit spárováním s jiným zařízením nebo pomocí záchranné sady; data tohoto zařízení se pak po zálohování nahradí synchronizovanými daty.",
-    "pendingChanges_one": "{{count}} změna na tomto zařízení ještě nebyla odeslána. Už se neodešle.",
-    "pendingChanges_few": "{{count}} změny na tomto zařízení ještě nebyly odeslány. Už se neodešlou.",
-    "pendingChanges_many": "{{count}} změny na tomto zařízení ještě nebylo odesláno. Už se neodešlou.",
-    "pendingChanges_other": "{{count}} změn na tomto zařízení ještě nebylo odesláno. Už se neodešlou.",
+    "description": "Data tady zůstanou. Ostatní zařízení se synchronizují dál a uvidí, že se toto odpojilo. Když se později připojíte znovu, data tohoto zařízení se nahradí synchronizovanými.",
     "confirm": "Vypnout synchronizaci",
     "success": "Synchronizace vypnuta",
-    "noCutOff": "Vypnutím synchronizace tady neodříznete žádné jiné zařízení ani Záchrannou sadu."
+    "noCutOff": "Ostatní zařízení uvidí, že se toto odpojilo.",
+    "pendingChanges_one": "{{count}} změna odsud se ještě neodeslala. Po vypnutí už se neodešle.",
+    "pendingChanges_few": "{{count}} změny odsud se ještě neodeslaly. Po vypnutí už se neodešlou.",
+    "pendingChanges_many": "{{count}} změny odsud se ještě neodeslaly. Po vypnutí už se neodešlou.",
+    "pendingChanges_other": "{{count}} změn odsud se ještě neodeslalo. Po vypnutí už se neodešlou."
   },
   "delete": {
-    "button": "Smazat synchronizovaná data",
+    "button": "Smazat synchronizovaná data na serveru",
     "hint": "Smaže synchronizovaná data ze synchronizačního serveru pro všechna zařízení.",
     "title": "Smazat synchronizovaná data?",
     "description": "Tím se na synchronizačním serveru smažou synchronizovaná data pro všechna zařízení. Místní data na každém zařízení zůstanou.",
     "confirm": "Smazat synchronizovaná data",
     "success": "Synchronizovaná data smazána",
-    "afterwards": "Poté se synchronizace nastavuje od začátku, s novým synchronizačním účtem a novou Záchrannou sadou.",
-    "afterwardsOwnServer": "Poté můžete synchronizaci nastavit znovu se stejným připojovacím kódem a novou Záchrannou sadou."
+    "afterwards": "Poté se synchronizace nastavuje od začátku, s novou záchrannou sadou.",
+    "afterwardsOwnServer": "Poté můžete synchronizaci nastavit znovu se stejným připojovacím kódem a novou záchrannou sadou."
   },
   "danger": {
     "title": "Vypnutí a smazání",
@@ -281,7 +304,7 @@
   "leftover": {
     "text": "Tento profil má zapnutou synchronizaci zařízení z vývojářské verze. Jeho změny se stále zaznamenávají pro synchronizaci.",
     "button": "Vypnout synchronizaci",
-    "noServer": "Synchronizovaná data a synchronizační účet zůstanou na synchronizačním serveru, dokud je nesmažete z verze Moony se synchronizací.",
+    "noServer": "Synchronizovaná data zůstanou na synchronizačním serveru, dokud je nesmažete z verze Moony se synchronizací.",
     "description": "Místní data zůstanou. Ostatní zařízení se synchronizují dál. K pozdějšímu opětovnému připojení je potřeba verze Moony se synchronizací.",
     "phoneDescription": "Místní data v tomto telefonu zůstanou. Ostatní zařízení se synchronizují dál. K pozdějšímu opětovnému připojení je potřeba verze Moony se synchronizací."
   },
@@ -300,10 +323,8 @@
   },
   "devices": {
     "title": "Zařízení",
-    "description": "Zařízení, která se synchronizují s tímto účtem.",
+    "description": "Tato zařízení mají přístup k vašim datům.",
     "thisDevice": "Toto zařízení",
-    "joined": "Připojeno {{date}}",
-    "lastChange": "Poslední změna synchronizována {{when}}",
     "noChange": "Zatím se nesynchronizovaly žádné změny",
     "version": "Moony {{version}}",
     "held": "Změny pozastaveny",
@@ -318,19 +339,61 @@
       "android": "Telefon s Androidem",
       "other": "Jiné zařízení"
     },
-    "quiet_one": "Žádné změny z tohoto zařízení za {{count}} den",
-    "quiet_few": "Žádné změny z tohoto zařízení za {{count}} dny",
-    "quiet_many": "Žádné změny z tohoto zařízení za {{count}} dne",
-    "quiet_other": "Žádné změny z tohoto zařízení za {{count}} dní"
+    "activeAt": "aktivní {{when}}",
+    "details": "Podrobnosti",
+    "hideDetails": "Skrýt podrobnosti",
+    "remove": "Odebrat…",
+    "removing": "Odebírá se…",
+    "inactiveHint": "Už ho nepoužíváte? Odeberte ho.",
+    "copyName": "{{name}} (kopie)",
+    "check": {
+      "badge": "Zkontrolujte",
+      "keep": "Je moje",
+      "keepNote": "Potvrďte ho před příštím odebráním zařízení; potom by se muselo připojit znovu.",
+      "keepFailed": "Zařízení se nepodařilo potvrdit. Seznam jsme načetli znovu.",
+      "unverified": "Tohle zařízení se nepodařilo ověřit. Až příště odeberete nějaké zařízení, přestane se synchronizovat. Pokud je vaše, připojte ho znovu: na něm vypněte synchronizaci a zvolte Připojit.",
+      "copy": "Toto zařízení se znovu připojilo, ale jeho dřívější kopie pořád zapisuje změny. Pokud ji nepoznáváte, odeberte ji.",
+      "issuerRemoved": "Přidalo ho zařízení, které jste odebrali, a nová data už nedostává. Pokud je vaše, připojte ho znovu.",
+      "lateVouch": "Přidalo ho zařízení {{by}}, které se už nesynchronizuje nebo ho Moony nemůže ověřit, a nemůže potvrdit, že to bylo dřív, než se odpojilo. Až příště odeberete nějaké zařízení, přestane se synchronizovat, pokud ho nepotvrdíte.",
+      "lateVouchNoName": "Přidalo ho zařízení, které se už nesynchronizuje nebo ho Moony nemůže ověřit, a nemůže potvrdit, že to bylo dřív, než se odpojilo. Až příště odeberete nějaké zařízení, přestane se synchronizovat, pokud ho nepotvrdíte."
+    },
+    "via": {
+      "created": "První zařízení",
+      "paired": "Přidáno {{date}}",
+      "pairedBy": "Přidáno {{date}} ze zařízení {{name}}",
+      "recoveryKit": "Připojeno záchrannou sadou {{date}}",
+      "rejoined": "Znovu připojeno {{date}}"
+    },
+    "formerGroup": "Dřívější zařízení ({{count}})",
+    "former": {
+      "left": "odpojeno",
+      "leftOn": "odpojeno {{date}}",
+      "removed": "odebráno",
+      "removedOn": "odebráno {{date}}",
+      "removedBy": "odebráno zařízením {{by}}",
+      "removedOnBy": "odebráno {{date}} zařízením {{by}}"
+    },
+    "underList": "Ztracené, prodané nebo vymazané zařízení odeberte. Nic nového už neuvidí.",
+    "unsupported": "Tuto synchronizaci nastavila starší verze Moony, proto v ní nejde odebírat zařízení. Smažte synchronizovaná data, nastavte synchronizaci znovu a připojte ostatní zařízení.",
+    "inactive_one": "Neaktivní {{count}} den",
+    "inactive_few": "Neaktivní {{count}} dny",
+    "inactive_many": "Neaktivní {{count}} dne",
+    "inactive_other": "Neaktivní {{count}} dní",
+    "sheet": {
+      "platform": "Typ",
+      "activity": "Poslední aktivita",
+      "version": "Verze",
+      "joined": "Připojení"
+    }
   },
   "pairing": {
     "addTitle": "Přidat zařízení",
-    "addDescription": "Spárujte další zařízení se svým synchronizačním účtem. Nic neopouští vaše zařízení nešifrované.",
+    "addDescription": "Spárujte další zařízení s touto synchronizací. Nic neopouští vaše zařízení nešifrované.",
     "passwordFirst": "Zadejte heslo do Moony, aby se zobrazil párovací kód.",
     "showCode": "Zobrazit kód",
     "qrAlt": "Párovací kód",
     "preparing": "Připravuje se párování…",
-    "scanHint": "Naskenujte to v Moony na telefonu: Nastavení → Synchronizace → Naskenovat kód",
+    "scanHint": "Naskenujte to v Moony na telefonu: Nastavení → Synchronizace → Připojit toto zařízení → Naskenovat kód z počítače",
     "validFor": "Kód platí 10 minut.",
     "typeTitle": "Zadejte kód",
     "showTitle": "Váš párovací kód",
@@ -349,9 +412,11 @@
     "startAgain": "Začít znovu",
     "readyToJoin": "Údaje k synchronizaci dorazily. Zkontrolujte, co se nahradí, a pak se připojte.",
     "validUntil": "Kód platí do {{time}}.",
-    "copyCode": "Kopírovat kód",
+    "copyCode": "Zkopírovat kód",
     "copiedCode": "Zkopírováno",
-    "codeHint": "Bez fotoaparátu? Tento kód zadejte nebo vložte na druhém zařízení."
+    "codeHint": "Bez fotoaparátu? Zadejte nebo vložte tento kód na druhém zařízení. Můžete ho poslat i zprávou: bez šesti číslic, které potom zadáte tady, nic neprozradí.",
+    "deviceConnected": "Zařízení {{name}} je připojené",
+    "sentLate": "Dokončete připojení na druhém zařízení. Až se připojí, objeví se v seznamu."
   },
   "join": {
     "warning": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Předtím se vedle profilu uloží záloha.",
@@ -366,7 +431,6 @@
     "kitTitle": "Použít záchrannou sadu",
     "kitHint": "Zadejte kód záchranné sady nebo text jejího QR kódu.",
     "codeLabel": "Kód záchranné sady",
-    "accountLabel": "Číslo účtu",
     "confirm": "Připojit a nahradit",
     "choice": {
       "pair": {
@@ -374,12 +438,18 @@
         "lead": "Zobrazí se kód. V telefonu: Nastavení → Synchronizace → Přidat zařízení."
       },
       "kit": {
-        "title": "Mám Záchrannou sadu synchronizace",
-        "lead": "Zadáte kód záchranné sady a adresu serveru. Tak se připojuje i druhý počítač."
+        "title": "Nemám u sebe žádné zařízení",
+        "lead": "Použijete záchrannou sadu: zadáte její kód."
+      },
+      "code": {
+        "title": "Mám jiný počítač se synchronizací",
+        "lead": "Na druhém počítači: Nastavení → Synchronizace → Přidat zařízení. Tady opíšete kód, který ukáže."
       }
     },
     "connect": "Připojit",
-    "firstRunDone": "Toto zařízení se teď synchronizuje"
+    "firstRunDone": "Toto zařízení se teď synchronizuje",
+    "codeTitle": "Připojit z jiného počítače",
+    "codeHint": "Na počítači se zapnutou synchronizací: Nastavení → Synchronizace → Přidat zařízení. Opište nebo vložte kód, který ukáže."
   },
   "phone": {
     "title": "Synchronizace",
@@ -390,45 +460,47 @@
       "off": "Vypnuto",
       "synced": "Aktuální",
       "syncing": "Synchronizuje se…",
-      "waiting": "Změna je zadržena",
+      "waiting": "Čeká se na změnu z jiného zařízení",
       "unreachable": "Server mimo dosah",
       "unreachableLong_one": "Nesynchronizováno {{count}} den",
       "unreachableLong_few": "Nesynchronizováno {{count}} dny",
       "unreachableLong_many": "Nesynchronizováno {{count}} dní",
       "unreachableLong_other": "Nesynchronizováno {{count}} dní",
       "paused": "Pozastaveno",
-      "error": "Zastaveno"
+      "error": "Zastaveno",
+      "syncingLong": "Trvá déle než obvykle",
+      "firstUpload": "Nahrává se první kopie",
+      "removing": "Odebírá se zařízení…"
     },
     "rowWithAge": "{{state}} · {{age}}",
     "choice": {
       "scan": {
         "title": "Naskenovat kód z počítače",
-        "lead": "Na počítači: Nastavení → Synchronizace → Přidat zařízení. Naskenovat jde i QR kód Záchranné sady."
+        "lead": "Na počítači: Nastavení → Synchronizace → Přidat zařízení. Naskenovat jde i QR kód záchranné sady."
       }
     },
     "typeCode": "Zadat kód záchranné sady",
     "addDevice": "Přidat zařízení",
     "busy": "Nechte Moony otevřené, dokud to neskončí.",
-    "saveText": "Uložit jako text",
-    "savePage": "Uložit jako stránku",
     "turnOffBody": "Místní data v tomto telefonu zůstanou. Ostatní zařízení se synchronizují dál. Později se můžete znovu připojit spárováním s jiným zařízením nebo zadáním kódu záchranné sady; data tohoto telefonu se pak po zálohování nahradí synchronizovanými daty.",
     "renewUnavailable": "Obnovení není v aplikaci pro telefon dostupné.",
     "scanTitle": "Naskenovat kód",
     "scanHint": "Namiřte fotoaparát na kód na druhém zařízení (Nastavení → Synchronizace → Přidat zařízení) nebo na QR kód záchranné sady.",
     "addDeviceHint": "Na novém zařízení zvolte v Nastavení → Synchronizace „Připojit toto zařízení“ a pak namiřte fotoaparát na kód, který ukáže.",
     "passwordFirst": "Než naskenujete kód druhého zařízení, zadejte heslo do Moony.",
+    "passwordFirstTyped": "Než vložíte kód druhého zařízení, zadejte heslo do Moony.",
     "connecting": "Připojování…",
     "cameraDenied": "Aby šlo kód naskenovat, povolte v Nastavení přístup k fotoaparátu.",
     "openSettings": "Otevřít Nastavení",
     "cameraUnavailable": "Fotoaparát se nepodařilo otevřít.",
     "unknownCode": "Tento QR kód není párovací kód Moony ani záchranná sada.",
-    "kitConfirmTitle": "Připojit se k tomuto synchronizačnímu účtu?",
+    "kitConfirmTitle": "Připojit tento telefon pomocí záchranné sady?",
     "kitConfirmBody": "Data tohoto telefonu budou nahrazena synchronizovanými daty (záloha se uchová).",
     "notAKitCode": "Toto není kód záchranné sady",
     "notAPairingCode": "Toto není párovací kód.",
     "notAConnectionCode": "Tento QR kód není připojovací kód synchronizačního serveru.",
     "scanConnectionHint": "Namiřte fotoaparát na připojovací kód svého synchronizačního serveru.",
-    "enterCodeTitle": "Zadat kód ručně",
+    "enterCodeTitle": "Vložit kód ručně",
     "enterCodeHint": "Kód najdete na druhém zařízení pod QR kódem.",
     "enterCodeLabel": "Párovací kód"
   },
@@ -462,10 +534,6 @@
       "saveCopyAndroid": "Uložit kopii"
     },
     "onThisDevice": "V tomto zařízení:"
-  },
-  "limits": {
-    "lostTitle": "Ztratili jste zařízení nebo Záchrannou sadu?",
-    "lostDevice": "Ztracené zařízení nebo ztracenou Záchrannou sadu zatím nelze odříznout od synchronizovaných dat a kdo je má, může už teď číst, co obsahují. Pokud se něco ztratí, smažte synchronizovaná data a nastavte synchronizaci znovu s novou sadou; ostatní zařízení se pak musí připojit znovu."
   },
   "codes": {
     "pairNotForSetup": "Toto je párovací kód, ne připojovací kód. Naskenujte ho při přidání tohoto zařízení k již běžící synchronizaci.",
@@ -503,5 +571,153 @@
     "line_few": "Vaše data chrání synchronizace: kopie je na synchronizačním serveru (naposledy: {{age}}, zařízení v synchronizaci: {{count}}). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",
     "line_many": "Vaše data chrání synchronizace: kopie je na synchronizačním serveru (naposledy: {{age}}, zařízení v synchronizaci: {{count}}). Zálohu si udělejte, když chcete uchovat stav k určitému dni.",
     "line_other": "Vaše data chrání synchronizace: kopie je na synchronizačním serveru (naposledy: {{age}}, zařízení v synchronizaci: {{count}}). Zálohu si udělejte, když chcete uchovat stav k určitému dni."
+  },
+  "remove": {
+    "title": "Odebrat zařízení {{name}}?",
+    "body": "Zařízení {{name}} přestane dostávat nová data a nebude moct nic měnit. Co už v něm je, tam zůstane; chrání to heslo do Moony.",
+    "stays": "Synchronizovat dál budou:",
+    "thisDevice": "{{name}} (toto zařízení)",
+    "drops": "Synchronizovat se přestanou i:",
+    "dropReason": {
+      "unverified": "nepodařilo se ověřit",
+      "issuerRemoved": "přidalo ho odebrané zařízení",
+      "lateVouch": "přidalo ho zařízení, které se už nesynchronizuje"
+    },
+    "keep": "Je moje",
+    "added": "Tato zařízení jste přidali ze zařízení {{name}} (nebo z nich). Odeberte i ta, která nepoznáváte.",
+    "addedRow": "{{name}} · přidáno {{date}}",
+    "inHand": "Máte {{name}} u sebe? Stačí na něm synchronizaci vypnout.",
+    "kit": {
+      "creatorRemoved": "Na zařízení {{name}} jste si uložili záchrannou sadu, proto přestane platit. Hned potom si vytvoříte novou.",
+      "cloud": "Záchrannou sadu máte ve složce, která se synchronizuje s cloudem, proto přestane platit. Hned potom si vytvoříte novou.",
+      "missing": "Synchronizace teď nemá platnou záchrannou sadu, proto si hned potom vytvoříte novou.",
+      "notUpdated": "Tímto odebráním se záchranná sada neaktualizuje."
+    },
+    "confirm": "Odebrat zařízení",
+    "progress": "Odebírám {{name}}…",
+    "toast": {
+      "removed": "Zařízení {{name}} je odebrané",
+      "pending": "Synchronizační server teď není dostupný. Odebrání se dokončí samo, jakmile bude.",
+      "alreadyRemoved": "Zařízení {{by}} mezitím odebralo zařízení {{name}}.",
+      "alreadyRemovedUnknown": "Zařízení {{name}} bylo mezitím odebráno.",
+      "removedHere": "Toto zařízení mezitím odebralo jiné zařízení. Synchronizace je tady vypnutá."
+    },
+    "loadError": "Odebrání se nepodařilo připravit. Zkuste to znovu.",
+    "retry": "Zkusit znovu",
+    "bodyMany": "{{name}} přestanou dostávat nová data a nebudou moct nic měnit. Co už v nich je, tam zůstane; chrání to heslo do Moony.",
+    "unreachable": "Synchronizační server není dostupný, takže se nic nezměnilo. Zkuste to znovu, až budete připojeni k internetu."
+  },
+  "newKit": {
+    "title": "Vaše nová záchranná sada",
+    "body": "Stará sada přestala platit. Vytiskněte si tuto a uložte ji mimo toto zařízení. Ukážeme ji jen teď.",
+    "bodyPhone": "Stará sada přestala platit. Tuto si uložte mimo tento telefon, třeba k dokladům nebo do správce hesel. Ukážeme ji jen teď.",
+    "pending": "Sada začne platit, až se odebrání dokončí.",
+    "done": "Sadu mám, hotovo",
+    "keepFirst": "Nejdřív sadu vytiskněte, uložte nebo zkopírujte.",
+    "gone": "Sada už na obrazovce není. Novou si vytvoříte v Nastavení → Synchronizace."
+  },
+  "kit": {
+    "title": "Záchranná sada",
+    "created": "Vytvořena {{date}} na zařízení {{name}}. Platí, dokud si nevytvoříte novou.",
+    "createdNoName": "Vytvořena {{date}}. Platí, dokud si nevytvoříte novou.",
+    "lastUsed": "Naposledy použita {{date}}",
+    "keptLine": "Uložena: {{where}}",
+    "storage": {
+      "paper": "na papíře",
+      "copied": "jako zkopírovaný kód",
+      "file": "jako soubor",
+      "cloud": "ve složce, která se synchronizuje s cloudem"
+    },
+    "check": "Ověřit sadu",
+    "makeNew": "Vytvořit novou…",
+    "unsaved": "Záchrannou sadu jste si neuložili a znovu ji ukázat nejde.",
+    "makeNewKit": "Vytvořit novou sadu",
+    "none": "Synchronizace nemá záchrannou sadu. Bez ní data nedostanete zpět, když přijdete o všechna zařízení.",
+    "make": "Vytvořit sadu",
+    "used": "Záchranná sada byla použita {{date}}, ale žádné zařízení se jí nepřipojilo. Pokud jste to nebyli vy, má ji někdo další: vytvořte si novou.",
+    "usedKnown": "Vím o tom",
+    "notShown": "Novou záchrannou sadu se nepodařilo ukázat. Vytvořte si ji znovu."
+  },
+  "check": {
+    "title": "Ověřit záchrannou sadu",
+    "description": "Naskenujte nebo opište kód ze sady. Nic se nikam neodesílá.",
+    "descriptionPhone": "Opište kód ze sady. Nic se nikam neodesílá.",
+    "label": "Kód záchranné sady",
+    "submit": "Ověřit",
+    "valid": "Tato sada platí.",
+    "replaced": "Tato sada už neplatí. Platná je ta z {{date}}.",
+    "replacedNoDate": "Tato sada už neplatí.",
+    "otherSync": "Tato sada patří k jiné synchronizaci.",
+    "unknown": "Tuto sadu Moony nezná; možná se nikdy nedokončila."
+  },
+  "newKitDialog": {
+    "title": "Vytvořit novou záchrannou sadu?",
+    "body": "Stará sada přestane platit. Udělejte to, když jste ji ztratili nebo si nejste jistí, kdo ji viděl.",
+    "joined": "Tato zařízení se připojila starou sadou. Odeberte ta, která nepoznáváte.",
+    "confirm": "Vytvořit novou sadu",
+    "progress": "Vytvářím novou sadu…",
+    "toast": {
+      "done": "Nová záchranná sada je hotová",
+      "alreadyRemoved": "Zařízení, která jste označili, mezitím odebralo zařízení {{by}}.",
+      "alreadyRemovedUnknown": "Zařízení, která jste označili, už byla mezitím odebrána."
+    }
+  },
+  "notice": {
+    "removal": {
+      "removed": "Zařízení {{by}} odebralo {{names}} ({{date}}).",
+      "newKit": "Zařízení {{by}} vytvořilo novou záchrannou sadu ({{date}}); stará už neplatí.",
+      "kitToo": "Vytvořilo také novou záchrannou sadu; stará už neplatí."
+    },
+    "notDone": {
+      "changed": "Odebrání zařízení {{devices}} se nedokončilo: seznam zařízení mezitím změnilo zařízení {{by}}. Zkontrolujte ho a zkuste to znovu.",
+      "alreadyRemoved": "Zařízení {{by}} mezitím odebralo {{devices}}.",
+      "refused": "Synchronizační server odebrání odmítl. Zkuste to znovu.",
+      "kit": "Nová záchranná sada nezačala platit; vytvořte si ji znovu."
+    },
+    "overrun": "Synchronizační server poslal tomuto zařízení změny, které po odebrání zařízení {{date}} poslat neměl, a Moony je použila. Pokud jste zařízení odebrali kvůli krádeži, zkontrolujte změny z posledních dní.",
+    "overrunNoDate": "Synchronizační server poslal tomuto zařízení změny, které po odebrání zařízení poslat neměl, a Moony je použila. Pokud jste zařízení odebrali kvůli krádeži, zkontrolujte změny z posledních dní.",
+    "newDevice": {
+      "added": "Přibylo zařízení {{name}}, přidané ze zařízení {{by}} {{date}}.",
+      "lateVouch": "Přibylo zařízení {{name}}. Přidalo ho zařízení {{by}}, které už se nesynchronizuje. Pokud {{name}} nepoznáváte, odeberte ho.",
+      "kitTitle": "Zařízení se připojilo záchrannou sadou",
+      "kit": "Zařízení {{name}} se připojilo {{date}}. Pokud jste to nebyli vy, má vaši sadu někdo další.",
+      "mine": "To jsem já",
+      "removeAndNew": "Odebrat a vytvořit novou sadu"
+    }
+  },
+  "problem": {
+    "rejoin": {
+      "title": "Toto zařízení je potřeba připojit znovu",
+      "body": "Bylo dlouho bez spojení, nebo se mezitím změnilo, kdo má k datům přístup. Data v tomto zařízení jsou v pořádku, jen se nesynchronizují.",
+      "by": "Změnu provedlo zařízení {{by}}, které toto zařízení nezná.",
+      "button": "Připojit znovu"
+    },
+    "waiting": {
+      "title": "Synchronizace čeká na zařízení {{by}}",
+      "body": "Toto zařízení čeká na potvrzení od zařízení {{by}}, které naposledy měnilo seznam zařízení. Data tady jsou v pořádku. Pokud {{by}} už nepoužíváte, připojte toto zařízení znovu."
+    }
+  },
+  "rejoin": {
+    "title": "Připojit toto zařízení znovu?",
+    "description": "Synchronizace se na tomto zařízení vypne a data tady zůstanou. Pak se připojíte znovu a data tohoto zařízení se po zálohování nahradí synchronizovanými. Změny, které odsud neodešly, zůstanou v záloze."
+  },
+  "removed": {
+    "title": "Toto zařízení bylo odebráno ze synchronizace",
+    "body": "Odebralo ho zařízení {{by}} dne {{date}}. Vaše data tady zůstala, jen se už nesynchronizují.",
+    "titleLeft": "Synchronizace je na tomto zařízení vypnutá",
+    "bodyLeft": "Toto zařízení ze synchronizace odešlo (třeba z jiné kopie profilu). Data tady zůstala.",
+    "unsent_one": "{{count}} změna z tohoto zařízení se do synchronizace nedostala; zůstává jen tady.",
+    "unsent_few": "{{count}} změny z tohoto zařízení se do synchronizace nedostaly; zůstávají jen tady.",
+    "unsent_many": "{{count}} změny z tohoto zařízení se do synchronizace nedostaly; zůstávají jen tady.",
+    "unsent_other": "{{count}} změn z tohoto zařízení se do synchronizace nedostalo; zůstávají jen tady.",
+    "understood": "Rozumím"
+  },
+  "afterKit": {
+    "title": "Data jsou zpět",
+    "body": "Poslední změna je z {{date}}. V seznamu zůstala vaše dřívější zařízení: {{names}}. Pokud jste o ně přišli, nebo pokud mezi nimi je zařízení, které jste už dřív odebrali, odeberte je. Dokud se nerozhodnete, nic odsud neodešleme.",
+    "bodyNoDate": "V seznamu zůstala vaše dřívější zařízení: {{names}}. Pokud jste o ně přišli, nebo pokud mezi nimi je zařízení, které jste už dřív odebrali, odeberte je. Dokud se nerozhodnete, nic odsud neodešleme.",
+    "remove": "Odebrat je",
+    "keep": "Mám je",
+    "pending": "Odebrání ještě probíhá."
   }
 }

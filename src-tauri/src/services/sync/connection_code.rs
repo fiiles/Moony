@@ -107,7 +107,8 @@ pub fn parse_connection_code(text: &str) -> Result<ConnectionCode> {
 }
 
 /// The server address a person gave: a connection code yields its server (its account is
-/// ignored), anything else is an address. Always normalized; blank, unreadable or unusable is
+/// ignored), anything else is an address, with a scheme added when none was typed
+/// (`with_default_scheme`). Always normalized; blank, unreadable or unusable is
 /// `validation.syncRelayUrlInvalid`.
 pub fn server_address_from_input(input: &str) -> Result<String> {
     if is_connection_code(input) {
@@ -117,7 +118,44 @@ pub fn server_address_from_input(input: &str) -> Result<String> {
     if input.is_empty() {
         return Err(AppError::Validation(SERVER_INVALID.into()));
     }
-    normalize_base_url(input)
+    normalize_base_url(&with_default_scheme(input))
+}
+
+/// A typed address without `scheme://` (owner decision O-4, As built R-115): `http://` for a host
+/// on this machine or the home network (`localhost` and `*.localhost`, `*.local`, `127.0.0.0/8`,
+/// `::1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), where a person's own server sits
+/// without a certificate; `https://` for anything else. An address with a scheme stays as typed.
+fn with_default_scheme(address: &str) -> String {
+    if address.contains("://") {
+        return address.to_string();
+    }
+    // A bare IPv6 address takes brackets so that a port cannot be read into it.
+    if let Ok(ip) = address.parse::<std::net::Ipv6Addr>() {
+        let scheme = if ip.is_loopback() { "http" } else { "https" };
+        return format!("{scheme}://[{address}]");
+    }
+    let authority = address.split('/').next().unwrap_or(address);
+    let host = if let Some(rest) = authority.strip_prefix('[') {
+        rest.split(']').next().unwrap_or(rest)
+    } else {
+        authority
+            .rsplit_once(':')
+            .map_or(authority, |(host, _)| host)
+    };
+    let scheme = if is_local_host(host) { "http" } else { "https" };
+    format!("{scheme}://{address}")
+}
+
+/// Whether `host` (no port, no brackets) is on this machine or the home network.
+fn is_local_host(host: &str) -> bool {
+    let host = host.trim_end_matches('.').to_ascii_lowercase();
+    if let Ok(ip) = host.parse::<std::net::Ipv4Addr>() {
+        return ip.is_loopback() || ip.is_private();
+    }
+    if let Ok(ip) = host.parse::<std::net::Ipv6Addr>() {
+        return ip.is_loopback();
+    }
+    host == "localhost" || host.ends_with(".localhost") || host.ends_with(".local")
 }
 
 /// A code as the server writes it, for the tests.
@@ -291,6 +329,51 @@ mod tests {
             key_of(server_address_from_input("moony-sync2:abc")),
             "validation.syncConnectionCodeNewer"
         );
+    }
+
+    /// Owner decision O-4 (As built R-115): an address typed without a scheme gets `http://` for a
+    /// local host and `https://` for any other; a scheme typed is kept as it is.
+    #[test]
+    fn an_address_without_a_scheme_gets_one_by_its_host() {
+        for (typed, expected) in [
+            ("localhost:8787", "http://localhost:8787"),
+            ("LocalHost", "http://localhost"),
+            ("moony.localhost:8787", "http://moony.localhost:8787"),
+            ("127.0.0.1:8787", "http://127.0.0.1:8787"),
+            ("127.12.0.9", "http://127.12.0.9"),
+            ("::1", "http://[::1]"),
+            ("[::1]:8787", "http://[::1]:8787"),
+            ("10.0.0.5", "http://10.0.0.5"),
+            ("172.16.0.1:80", "http://172.16.0.1"),
+            ("172.31.255.1", "http://172.31.255.1"),
+            ("192.168.1.2:8787", "http://192.168.1.2:8787"),
+            (" nas.local:8787/ ", "http://nas.local:8787"),
+            ("sync.example.org", "https://sync.example.org"),
+            ("Sync.Example.org:8443/", "https://sync.example.org:8443"),
+            ("172.32.0.1", "https://172.32.0.1"),
+            ("172.15.0.1", "https://172.15.0.1"),
+            ("11.0.0.1", "https://11.0.0.1"),
+            ("192.169.1.2", "https://192.169.1.2"),
+            ("local.example.org", "https://local.example.org"),
+            ("localhost.example.org", "https://localhost.example.org"),
+            ("sync.moonyfinance.com", "https://sync.moonyfinance.com"),
+            ("http://sync.example.org", "http://sync.example.org"),
+            ("https://192.168.1.2:8787", "https://192.168.1.2:8787"),
+            ("HTTP://localhost", "http://localhost"),
+        ] {
+            assert_eq!(
+                server_address_from_input(typed).as_deref().ok(),
+                Some(expected),
+                "{typed:?}"
+            );
+        }
+        for refused in ["ftp://sync.example.org", "sync.example.org/path", "a b"] {
+            assert_eq!(
+                key_of(server_address_from_input(refused)),
+                "validation.syncRelayUrlInvalid",
+                "{refused:?}"
+            );
+        }
     }
 
     #[test]

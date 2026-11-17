@@ -12,9 +12,10 @@ export function stripInvisible(text: string): string {
   return text.trim().replace(/[\p{White_Space}\u200B-\u200D\uFEFF]/gu, '');
 }
 
-const RECOVERY_CODE = /^[0-9A-HJKMNP-TV-Z]{80}$/;
+/** The kit code (format v2, the account inside): 95 Crockford characters, shown as 19 groups of five. */
+const RECOVERY_CODE = /^[0-9A-HJKMNP-TV-Z]{95}$/;
 
-/** The same normalisation as `decode_recovery_code` in Rust: separators go, ASCII upper case, I/L to 1, O to 0. */
+/** The same normalisation as `decode_kit_code` in Rust: separators go, ASCII upper case, I/L to 1, O to 0. */
 function normalizeRecoveryCode(text: string): string {
   return text
     .replace(/[\p{White_Space}\-\u2010-\u2015]/gu, '')
@@ -24,17 +25,19 @@ function normalizeRecoveryCode(text: string): string {
 }
 
 /**
- * What a scanned or typed text is: a pairing code, a Sync Recovery Kit QR, a typed recovery code
- * (80 Crockford characters once spaces and dashes go), a connection code of a self-hosted sync
+ * What a scanned or typed text is: a pairing code (white space inside it ignored), a Sync Recovery Kit QR, a typed recovery code
+ * (95 Crockford characters once spaces and dashes go), a connection code of a self-hosted sync
  * server (`moony-sync<n>:`, any version) or something else.
  */
 export function scannedCodeKind(text: string): ScannedCodeKind {
   const trimmed = text.trim();
-  if (trimmed.startsWith('moony-pair:')) return 'pair';
+  // The pairing and connection code parsers remove inner white space and zero-width characters
+  // (owner decision O-3 for the pairing code); the Kit parser just trims, and a recovery code
+  // keeps zero-width characters invalid
+  const compact = stripInvisible(trimmed);
+  if (compact.startsWith('moony-pair:')) return 'pair';
   if (trimmed.startsWith('moony-recover:')) return 'recover';
-  // Only the connection code parser removes inner white space and zero-width characters (the
-  // pairing and Kit parsers just trim, a recovery code keeps zero-width characters invalid)
-  if (CONNECTION_CODE.test(stripInvisible(trimmed))) return 'connection';
+  if (CONNECTION_CODE.test(compact)) return 'connection';
   if (RECOVERY_CODE.test(normalizeRecoveryCode(trimmed))) return 'recoveryCode';
   return 'unknown';
 }
@@ -118,4 +121,19 @@ export function joinFailureAction(
     ? poll.stage === 'received'
     : poll.key === undefined || !PAIRING_ENDED.has(poll.key);
   return { retryable, setupPending: retryable && errorKey === 'validation.syncJoinSetupPending' };
+}
+
+/**
+ * A typed or pasted pairing code (the manual-entry field on the phone and on the desktop) takes a
+ * pairing code only: `null` when it is one, else the `deviceSync` key of what to tell the person.
+ */
+export function pairingCodeProblem(code: string): string | null {
+  switch (scannedCodeKind(code)) {
+    case 'pair':
+      return null;
+    case 'connection':
+      return 'codes.connectionNotHere';
+    default:
+      return 'phone.notAPairingCode';
+  }
 }

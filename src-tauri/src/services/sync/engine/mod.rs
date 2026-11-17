@@ -31,6 +31,9 @@ use crate::services::sync::error::{SyncError, SyncResult, TooLarge};
 use crate::services::sync::held_blobs;
 use crate::services::sync::hlc::DeviceId;
 use crate::services::sync::keys::{self, Credentials};
+use crate::services::sync::rekey::head::{self, HeadCheck};
+use crate::services::sync::rekey::pickup::{self, Pickup};
+use crate::services::sync::rekey::{reseal, rotate};
 use crate::services::sync::relay::{Relay, RelayError, VaultInfo};
 use crate::services::sync::state;
 use push::PushReport;
@@ -98,6 +101,10 @@ pub enum PullStop {
     Undecryptable,
     /// Written by a newer schema than this build knows.
     NewerSchema,
+    /// An op under an older epoch past where this device stood when it adopted a key change whose
+    /// head the remover's signed head has not confirmed yet (`rekey::head`): it waits for it
+    /// (`keyChangeWaiting`, on the device that made the change), nothing past it applied.
+    KeyChangeUnconfirmed,
 }
 
 /// How a pull ended (ruling P1), from `PullReport::end`.
@@ -155,6 +162,20 @@ pub struct PullReport {
     pub unfinished: bool,
     /// The head the first page reported: how far this pull looked (`pull::pull_echo`).
     pub reach: Option<u64>,
+    /// Every op at or below this relay position was dealt with, held or looked at for this
+    /// device's own envelopes (their echo acknowledged): the cursor, then each op the pull
+    /// handled without a stop, and in scan mode each op it scanned. What re-sealing after a key
+    /// change waits for (`rekey::reseal::may_reseal`).
+    pub through: u64,
+    /// The pull stopped on an op whose (unauthenticated) header names this epoch, above this
+    /// device's current one: a hint to pick up a new key (phase 5 §7.1), never proof.
+    pub key_hint: Option<u32>,
+    /// A merged changeset touched the device list: the trust store is brought up to date
+    /// (`rekey::refresh_trust`) before the pull goes on.
+    devices_changed: bool,
+    /// The refresh found a verified record that ends sync on this device (a removal, or a `left`
+    /// record made with its key; phase 5 §7.4): sync is off here now, the pull ended there.
+    pub removed_here: bool,
 }
 
 impl PullReport {
@@ -289,6 +310,9 @@ pub struct RoundReport {
     /// The vault's info, when the round read it.
     pub vault: Option<VaultInfo>,
     pub problem: Option<SyncProblem>,
+    /// Another device removed this one (a verified notice, phase 5 §7.4): the round turned sync
+    /// off here, leaving the binding file to the runtime (`rekey::forget_binding_after_removal`).
+    pub removed_here: bool,
 }
 
 impl RoundReport {
@@ -407,14 +431,24 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         // not have been written): nothing runs against it but the repair's drain.
         let paused = guard::changes_paused(conn);
         queue_local_changes(conn, &policy.blobs, now)?;
+        // A key change of this device owes the vault a snapshot under the new key (phase 5
+        // §6.4), forced like the one after a barrier crossing.
+        let epoch_owed = state::snapshot_epoch_owed(conn)?;
+        let keys_state = KeyState {
+            refresh_owed: crate::services::sync::rekey::refresh_owed(conn)?,
+            stuck: rotate::stuck(conn)?,
+            pending: rotate::pending(conn)?,
+            seen: state::rekey_seen(conn)?,
+            unverified: !head::unverified_epochs(conn)?.is_empty(),
+        };
         Ok(keys::credentials(conn)?
             .zip(state::marks(conn)?)
             .map(|(creds, marks)| {
-                let forced = state::needs_forced_snapshot(&sync, &marks);
-                (creds, marks, forced, paused)
+                let forced = state::needs_forced_snapshot(&sync, &marks) || epoch_owed;
+                (creds, marks, forced, paused, keys_state)
             }))
     })?;
-    let Some((creds, marks, forced, paused)) = ready else {
+    let Some((creds, marks, forced, paused, keys_state)) = ready else {
         return Ok(());
     };
     let mode = if mode == RoundMode::Normal && forced {
@@ -430,8 +464,17 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         report.problem = Some(SyncProblem::VaultGone);
         return Ok(());
     }
+    if keys_state.stuck {
+        // A key change of this device the server took could not complete here (review of
+        // Task 17, I2): nothing syncs until sync is turned off and joined again.
+        report.problem = Some(SyncProblem::KeyChangeUnverified);
+        return Ok(());
+    }
 
-    if let Err(error) = round_steps(relay, db, &creds, policy, mode, now, jitter, report).await {
+    let steps = round_steps(
+        relay, db, &creds, keys_state, policy, mode, now, jitter, report,
+    );
+    if let Err(error) = steps.await {
         let problem = match error {
             SyncError::VaultNotFound => {
                 db.with_conn(|conn| state::set_vault_gone(conn, Some(now)))?;
@@ -451,6 +494,12 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
             error => return Err(error),
         };
         report.problem = Some(problem);
+    }
+    if let Some(info) = report.vault.as_ref() {
+        // Whether the server holds a Recovery Kit: a removal here makes a new one when this
+        // device has none to seal to (`rotate::ReplacesKit::Missing`).
+        let held = info.kit.is_some();
+        db.with_conn(|conn| crate::services::sync::rekey::kit::note_server_kit(conn, held))?;
     }
     if report.problem.is_none() {
         report.problem = report.pull.as_ref().and_then(status::problem_of_pull);
@@ -485,9 +534,221 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
     Ok(())
 }
 
-/// Steps 2–4 of `run_round_into`.
+/// Key changes one round picks up at most (each may walk several bundles).
+const MAX_PICKUPS_PER_ROUND: usize = 3;
+
+/// How one pass of `round_pass` ended.
+enum Pass {
+    Done,
+    /// The pull stopped on an op sealed under a later epoch (phase 5 §7.1).
+    KeyHint,
+}
+
+/// What the round's first connection hold read of the key: a pending change of this device, the
+/// newest rotation dealt with (`rekey_seen`), and whether a head waits for its signature.
+#[derive(Clone, Copy)]
+struct KeyState {
+    /// A trust-store refresh failed and is owed (`rekey::refresh_owed`).
+    refresh_owed: bool,
+    /// A key change of this device was given up (`rotate::stuck`).
+    stuck: bool,
+    pending: bool,
+    seen: u32,
+    unverified: bool,
+}
+
+/// What sent the round to `pickup::pick_up`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Trigger {
+    /// The vault's info, read before the pull: a `rotation` above `rekey_seen`.
+    Info,
+    /// The vault's info read by a pass (its snapshot step): the same, after the pull.
+    AfterPass,
+    /// The pull stopped on an op whose header names a later epoch.
+    KeyHint,
+    /// A push or snapshot upload met the retired token (`ReadOnlyToken`).
+    ReadOnly,
+}
+
+/// Steps 2–4 of `run_round_into`, after this device's own pending key change is resolved
+/// (`rotate::resolve_pending`), with the key pickup (phase 5 §7.1, §7.2). The vault's info, when
+/// the round reads it (the policy wants it, or the mode does; a new engine's first round always
+/// does), is read **before** the pull too, so a `rotation` above `rekey_seen` is picked up before
+/// any op is pulled (the snapshot step reads it again after the push). A pass whose pull met an op
+/// under a later epoch, or whose push (or snapshot upload) met a retired token (`ReadOnlyToken`),
+/// runs `pickup::pick_up` too. A new key adopted runs the pass again with it (the pull goes on
+/// through the rotation point, then what was not sent is sealed again before the push); a key
+/// change that gave this device nothing, or that does not verify, ends the round with
+/// `KeyNotGiven` or `KeyChangeUnverified` (sync paused, never turned off); a verified removal of
+/// this device turns sync off (`RoundReport::removed_here`). A retired token with no key change to
+/// pick up yet stays `KeyRotated`; a later epoch's op with none keeps the pull's own problem.
+/// Before each pass, every head this device adopted provisionally is looked for among the ops
+/// past it (`head::verify_heads`): a signed head that differs ends the round with
+/// `KeyChangeUnverified`; one not found yet lets the pass run, whose pull stops before any older
+/// op it would need (`PullStop::KeyChangeUnconfirmed`).
 #[allow(clippy::too_many_arguments)]
 async fn round_steps<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    keys_state: KeyState,
+    policy: &mut SnapshotPolicy,
+    mode: RoundMode,
+    now: i64,
+    jitter: i64,
+    report: &mut RoundReport,
+) -> SyncResult<()> {
+    let mut creds = creds.clone();
+    let KeyState {
+        refresh_owed,
+        pending,
+        mut seen,
+        unverified,
+        ..
+    } = keys_state;
+    // A trust-store refresh that failed since the last one is owed first (review of Tasks 20–21,
+    // finding 2): a record it would apply came with a merge that is not pulled again.
+    if refresh_owed
+        && db.with_conn(|conn| crate::services::sync::rekey::refresh_trust(conn, None, now))?
+    {
+        report.removed_here = true;
+        return Ok(());
+    }
+    // A key change of this device still pending is resolved before anything else (phase 5
+    // §6.4 step 6); until it is, nothing is pushed (the error ends the round). A change that was
+    // not done leaves its notice there (`rekey::RemovalNotDone`).
+    if pending {
+        match rotate::resolve_pending(relay, db, None, now).await? {
+            Some(rotate::Outcome::RemovedHere) => {
+                report.removed_here = true;
+                return Ok(());
+            }
+            Some(rotate::Outcome::Stuck) => {
+                report.problem = Some(SyncProblem::KeyChangeUnverified);
+                return Ok(());
+            }
+            _ => {}
+        }
+        (creds, seen) = db.with_conn(|conn| {
+            let creds = keys::credentials(conn)?.ok_or_else(|| {
+                AppError::Internal("sync: the credentials went during a key change".into())
+            })?;
+            Ok((creds, state::rekey_seen(conn)?))
+        })?;
+    }
+    // The vault's info, read before the pull when the round reads it at all (its snapshot step
+    // reads it again after the push: the snapshot's sequence is the head then).
+    let mut trigger = None;
+    // The newest rotation this round already looked at: a pass reacts only to a rotation above
+    // it (an info read again with the same counter, or not read again at all, is not news).
+    let mut looked_at = None;
+    if wants_info(policy, mode, now) {
+        let info = relay.vault_info(&creds.auth()).await?;
+        if info.rotation > seen {
+            trigger = Some(Trigger::Info);
+        }
+        looked_at = Some(info.rotation);
+        report.vault = Some(info);
+    }
+    // Heads to check: those waiting from an earlier round, and any a pickup adopts now.
+    let mut check_heads = unverified;
+    let mut pickups = 0;
+    loop {
+        if let Some(cause) = trigger.take() {
+            if pickups == MAX_PICKUPS_PER_ROUND {
+                if matches!(cause, Trigger::KeyHint | Trigger::ReadOnly) {
+                    report.problem = Some(SyncProblem::KeyRotated);
+                }
+                return Ok(());
+            }
+            pickups += 1;
+            match pickup::pick_up(relay, db, None, now).await? {
+                Pickup::Adopted { .. } => {
+                    creds = db.with_conn(keys::credentials)?.ok_or_else(|| {
+                        SyncError::Local(AppError::Internal(
+                            "sync: the credentials went during a key pickup".into(),
+                        ))
+                    })?;
+                    check_heads = true;
+                    // The pickup changed the store (a bundle's recipients and records); the
+                    // rows merged so far may now verify too.
+                    if db.with_conn(|conn| {
+                        crate::services::sync::rekey::refresh_trust(conn, None, now)
+                    })? {
+                        report.removed_here = true;
+                        return Ok(());
+                    }
+                }
+                // Nothing new before the pull: the pass runs as it would have.
+                Pickup::Nothing if cause == Trigger::Info => {}
+                Pickup::Nothing => {
+                    if cause == Trigger::ReadOnly {
+                        report.problem = Some(SyncProblem::KeyRotated);
+                    }
+                    return Ok(());
+                }
+                Pickup::NotGiven => {
+                    report.problem = Some(SyncProblem::KeyNotGiven);
+                    return Ok(());
+                }
+                Pickup::Unverified => {
+                    report.problem = Some(SyncProblem::KeyChangeUnverified);
+                    return Ok(());
+                }
+                Pickup::RemovedHere { .. } => {
+                    report.removed_here = true;
+                    return Ok(());
+                }
+            }
+        }
+        if check_heads {
+            match head::verify_heads(relay, db, &creds, now).await? {
+                HeadCheck::Refuted => {
+                    report.problem = Some(SyncProblem::KeyChangeUnverified);
+                    return Ok(());
+                }
+                HeadCheck::Clear => check_heads = false,
+                HeadCheck::Waiting => {}
+            }
+        }
+        trigger = match round_pass(relay, db, &creds, policy, mode, now, jitter, report).await {
+            // The vault's info: a rotation above `rekey_seen` and above what this round already
+            // looked at is a key change this device has not looked at.
+            Ok(Pass::Done) if report.removed_here => return Ok(()),
+            Ok(Pass::Done) => {
+                let rotation = report.vault.as_ref().map(|info| info.rotation);
+                let rotated = match rotation {
+                    Some(rotation) if looked_at.is_none_or(|seen| rotation > seen) => {
+                        rotation > db.with_conn(state::rekey_seen)?
+                    }
+                    _ => false,
+                };
+                if !rotated {
+                    return Ok(());
+                }
+                looked_at = rotation;
+                Some(Trigger::AfterPass)
+            }
+            Ok(Pass::KeyHint) => Some(Trigger::KeyHint),
+            Err(SyncError::ReadOnlyToken) => Some(Trigger::ReadOnly),
+            Err(error) => return Err(error),
+        };
+    }
+}
+
+/// Whether the round reads the vault's info (step 4): never in `Drain`, always in
+/// `FirstSnapshot`, in `Normal` when the snapshot policy wants it.
+fn wants_info(policy: &SnapshotPolicy, mode: RoundMode, now: i64) -> bool {
+    match mode {
+        RoundMode::Drain => false,
+        RoundMode::FirstSnapshot => true,
+        RoundMode::Normal => policy.wants_info(now),
+    }
+}
+
+/// One pass of steps 2–4 of `run_round_into` (`round_steps`).
+#[allow(clippy::too_many_arguments)]
+async fn round_pass<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     creds: &Credentials,
@@ -496,7 +757,7 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     now: i64,
     jitter: i64,
     report: &mut RoundReport,
-) -> SyncResult<()> {
+) -> SyncResult<Pass> {
     let pulled = match pull::pull_all(relay, db, creds, now).await {
         Err(SyncError::SnapshotRequired) => {
             if !policy.restore_allowed(now) {
@@ -504,7 +765,7 @@ async fn round_steps<R: Relay, D: ConnAccess>(
                     "[SYNC] The relay asked for a snapshot restore again within the back-off"
                 );
                 report.problem = Some(SyncProblem::RelayError);
-                return Ok(());
+                return Ok(Pass::Done);
             }
             let restored = snapshots::restore_after_410(relay, db, creds, now).await;
             // Only a restore that ran, or was refused on the snapshot's own bytes, uses up the
@@ -520,17 +781,32 @@ async fn round_steps<R: Relay, D: ConnAccess>(
             restored?;
             report.restored = true;
             log::info!("[SYNC] Restored the vault's snapshot after the relay pruned this cursor");
+            // The restore merged the device list too.
+            if db.with_conn(|conn| crate::services::sync::rekey::refresh_trust(conn, None, now))? {
+                report.removed_here = true;
+                return Ok(Pass::Done);
+            }
             match pull::pull_all(relay, db, creds, now).await {
                 Err(SyncError::SnapshotRequired) => {
                     log::warn!("[SYNC] The relay asked for a snapshot restore twice in a round");
                     report.problem = Some(SyncProblem::RelayError);
-                    return Ok(());
+                    return Ok(Pass::Done);
                 }
                 other => other?,
             }
         }
         other => other?,
     };
+    if pulled.removed_here {
+        // A verified record ended sync on this device during the pull: nothing more happens
+        // (no held blob is released, no lane woken; review of Tasks 20–21, minor 5).
+        report.removed_here = true;
+        match report.pull.as_mut() {
+            Some(first) => absorb(first, pulled),
+            None => report.pull = Some(pulled),
+        }
+        return Ok(Pass::Done);
+    }
     if pulled.done() && !pulled.behind {
         // Caught up to the server's head: the rows a replace's snapshot lacked have come back by
         // now (ADR 0030). A pull behind the head may not have served them yet.
@@ -571,9 +847,49 @@ async fn round_steps<R: Relay, D: ConnAccess>(
             report.problem = Some(SyncProblem::RelayError);
         }
     }
-    report.pull = Some(pulled);
+    let key_hint = pulled.key_hint.is_some() && pulled.stop == Some(PullStop::Undecryptable);
+    // How far this pass's own pull got when it stopped nowhere (`reseal::may_reseal`).
+    let clean_through = pulled.stop.is_none().then_some(pulled.through);
+    match report.pull.as_mut() {
+        // A pass after a key pickup: its pull goes on from where the first one stopped.
+        Some(first) => absorb(first, pulled),
+        None => report.pull = Some(pulled),
+    }
+    if key_hint {
+        return Ok(Pass::KeyHint);
+    }
     if !may_push {
-        return Ok(());
+        return Ok(Pass::Done);
+    }
+    // A Recovery Kit joiner sends nothing, not even its own row, until the person answers
+    // "Data jsou zpět" (revision §2.6 step 7): its pulls go on.
+    if db
+        .with_conn(crate::services::sync::join::after_kit_join)?
+        .is_some()
+    {
+        log::info!("[SYNC] Nothing is sent until the person decides about the Kit join");
+        return Ok(Pass::Done);
+    }
+    // Nothing sealed under an older key goes out after a key change (phase 5 §7.2): it is sealed
+    // again once the pull has reached the current epoch's start (a start only the server
+    // reported: reached by this pass's pull without a stop), and until then nothing is pushed
+    // (`KeyRotated`, "picking up the new key").
+    let through = report.pull.as_ref().map_or(0, |pull| pull.through);
+    let sendable = db.with_conn(|conn| {
+        if !reseal::holds_older(conn, creds)? {
+            return Ok(true);
+        }
+        if !reseal::may_reseal(conn, creds, through, clean_through)? {
+            return Ok(false);
+        }
+        let resealed = reseal::reseal_unsent(conn, creds)?;
+        log::info!("[SYNC] Sealed {resealed} unsent changes again under the new key");
+        Ok(true)
+    })?;
+    if !sendable {
+        log::info!("[SYNC] Unsent changes wait for the pull to reach the key change");
+        report.problem = Some(SyncProblem::KeyRotated);
+        return Ok(Pass::Done);
     }
     if mode != RoundMode::Drain {
         // Not ordered after the lanes' start (`runtime::Lanes::start`), and harmless: it uploads
@@ -594,7 +910,7 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     if !sent {
         after_push(relay, db, creds, policy, mode, now, jitter, report).await?;
         daily_pass(relay, db, creds, &policy.blobs, mode, now, report).await;
-        return Ok(());
+        return Ok(Pass::Done);
     }
     // The echo (audit M4): what the push sent leaves `sync_unsent` only when this device pulls it
     // back, so the round pulls once more. On an honest relay nothing it sent stays pending, and a
@@ -614,7 +930,7 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         ) => {
             log::info!("[SYNC] The pull after the push failed; the next round pulls the echo");
             log::debug!("[SYNC] The pull after the push failed: {error}");
-            return Ok(());
+            return Ok(Pass::Done);
         }
         Err(error) => return Err(error),
     }
@@ -639,12 +955,12 @@ async fn round_steps<R: Relay, D: ConnAccess>(
             {
                 report.problem = Some(SyncProblem::RelayError);
             }
-            return Ok(());
+            return Ok(Pass::Done);
         }
     }
     after_push(relay, db, creds, policy, mode, now, jitter, report).await?;
     daily_pass(relay, db, creds, &policy.blobs, mode, now, report).await;
-    Ok(())
+    Ok(Pass::Done)
 }
 
 /// The daily pass of documents and photos (`blobs::pass`, ADR 0030), after a `Normal` or
@@ -667,6 +983,31 @@ async fn daily_pass<R: Relay, D: ConnAccess>(
     let Some(pulled) = report.pull.as_ref() else {
         return;
     };
+    // A key change this round has seen the vault announce and not picked up yet (the pickup
+    // follows the pass, `Trigger::AfterPass`): the token in hand is retired, so the pass's
+    // deletes would be refused and its listing would count as a failed pass. It waits for the
+    // next round, with the new token (phase 5 revision Task 21).
+    // The rotation is the server's unauthenticated word, so the wait is bounded (review of Tasks
+    // 20–21, minor 8): at most a day per claimed rotation (`state::pass_waits`), then the pass runs
+    // anyway, and a dishonest server cannot hold it off for ever.
+    if let Some(info) = report.vault.as_ref() {
+        let waits = db.with_conn(|conn| {
+            let seen = state::rekey_seen(conn)?;
+            state::pass_waits(conn, (info.rotation > seen).then_some(info.rotation), now)
+        });
+        match waits {
+            Ok(true) => {
+                log::debug!("[SYNC] The daily pass of documents and photos waits for a key pickup");
+                return;
+            }
+            Ok(false) => {}
+            Err(AppError::Auth(_)) => return,
+            Err(error) => {
+                log::debug!("[SYNC] The daily pass could not read the key epoch: {error}");
+                return;
+            }
+        }
+    }
     match pass::run_if_due(relay, db, creds, blobs, pulled, now).await {
         Ok(_) | Err(AppError::Auth(_)) => {}
         Err(error) => {
@@ -766,7 +1107,7 @@ async fn after_push<R: Relay, D: ConnAccess>(
     jitter: i64,
     report: &mut RoundReport,
 ) -> SyncResult<()> {
-    if mode == RoundMode::Drain || (mode == RoundMode::Normal && !policy.wants_info(now)) {
+    if !wants_info(policy, mode, now) {
         return Ok(());
     }
     let info = relay.vault_info(&creds.auth()).await?;
@@ -822,6 +1163,9 @@ fn absorb(first: &mut PullReport, later: PullReport) {
     first.behind = later.behind;
     first.unfinished = later.unfinished;
     first.reach = later.reach.or(first.reach);
+    first.through = first.through.max(later.through);
+    first.key_hint = later.key_hint;
+    first.removed_here |= later.removed_here;
 }
 
 /// "Sync now" on a paused vault (ruling P9): asks the relay for the vault once and lifts the pause

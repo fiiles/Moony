@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 
 /**
  * Joining with a Sync Recovery Kit: its recovery code (typed, pasted, or the kit QR's text) and,
- * for a typed code, the account number. Replaces this device's data (in Settings and in the first
+ * (the account is inside a v2 code). Replaces this device's data (in Settings and in the first
  * run, after a backup is written); the busy cover shows through the shared mutation key. Mounted
  * only while it runs.
  */
@@ -45,14 +45,12 @@ export function RecoveryJoinFlow({
   useEffect(() => resetJoin, [resetJoin]);
 
   const [code, setCode] = useState('');
-  const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const devicePassword = joinPassword(context, password);
   const [error, setError] = useState<string | null>(null);
 
   const kind = scannedCodeKind(code);
   const codeProblem = kitCodeProblem(code);
-  const needsAccount = kind === 'recoveryCode';
   // A typed code asks for its sync server; a Kit QR brings its own, which is checked (and its
   // plain http acknowledged) before the join sends anything to it
   const qrServer = payloadServer(code);
@@ -71,8 +69,7 @@ export function RecoveryJoinFlow({
     devicePassword !== '' &&
     impact.data !== undefined &&
     !impact.isFetching &&
-    deviceName !== '' &&
-    (!needsAccount || account.trim() !== '');
+    deviceName !== '';
 
   // The caller's way out (Settings: a dismissal; first run: leaving the step): not while the join runs
   useEffect(() => {
@@ -91,7 +88,6 @@ export function RecoveryJoinFlow({
     try {
       const outcome = await joinWithRecoveryKit.mutateAsync({
         code: code.trim(),
-        account: needsAccount ? account.trim() : undefined,
         relayUrl: need === 'typed' ? server.check?.address : undefined,
         deviceName,
         password: devicePassword,
@@ -135,19 +131,6 @@ export function RecoveryJoinFlow({
           </p>
         )}
       </div>
-      {needsAccount && (
-        <div className="grid gap-1.5">
-          <Label htmlFor="join-kit-account">{t('join.accountLabel')}</Label>
-          <Input
-            id="join-kit-account"
-            value={account}
-            onChange={(event) => setAccount(event.target.value)}
-            onKeyDown={submitOnEnter}
-            inputMode="numeric"
-            autoComplete="off"
-          />
-        </div>
-      )}
       <JoinFields
         askPassword={presentation.askPassword}
         password={password}

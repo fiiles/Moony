@@ -2,8 +2,9 @@
 //! on the relay the person chose (ruling SH-2: the default relay or a self-hosted one).
 //!
 //! Setup runs in steps the UI drives: `create_account` (stores the relay address and the account
-//! number), `account_status` and `checkout_url` until the account is paid, `recovery_kit` (makes
-//! the vault's ID and key once and shows them), then `finish_setup` once the person saved the kit.
+//! number), `account_status` and `checkout_url` until the account is paid, `prepare_kit` (makes
+//! the vault's ID and key once and a Recovery Kit draft, revision §2.2, shown by `kit_view`),
+//! then `finish_setup` once the person printed, copied or saved the Kit (`note_kit_storage`).
 //! Every step can be repeated after a restart: what is stored is reused, never made again.
 //!
 //! The relay passed to every function here is the one at the stored address: the caller builds it
@@ -27,6 +28,7 @@ use std::time::Duration;
 
 use reqwest::Url;
 use rusqlite::Connection;
+use zeroize::Zeroizing;
 
 use super::binding::{self, BindingNative};
 use super::capture::guard;
@@ -37,10 +39,18 @@ use super::engine::{self, ConnAccess, RoundMode, RoundReport};
 use super::error::{
     SyncError, SyncResult, TooLarge, Transient, ACCOUNT_BLOCKED, CONNECTION_CODE_REVOKED,
 };
+use super::hlc::DeviceId;
+use super::identity::trust::{self, TrustState};
+use super::identity::{self, Issuer};
+use super::identity::{cert, CertKind, Certificate, KitKeys, KitSecret};
 use super::in_savepoint;
 use super::join::rejoin_if_copy_under_lock;
-use super::keys::{self, Credentials};
-use super::recovery::{encode_recovery_code, format_recovery_code, qr_svg, recovery_qr_payload};
+use super::keys::{self, Credentials, VaultId};
+use super::recovery::{
+    decode_kit_code, encode_kit_code, format_recovery_code, kit_qr_payload, parse_kit_qr_payload,
+    qr_svg,
+};
+use super::rekey::kit::{self as rekey_kit, KitStorage, NewKit};
 use super::relay::http::{is_default_relay, normalize_base_url, validate_base_url};
 use super::relay::{CheckoutPlan, Relay, RelayError};
 use super::server::check_own_server;
@@ -54,9 +64,14 @@ const KIT_NOT_CONFIRMED: &str = "validation.syncRecoveryKitNotConfirmed";
 const SETUP_INCOMPLETE: &str = "validation.syncSetupIncomplete";
 const ALREADY_ENABLED: &str = "validation.syncAlreadyEnabled";
 const RELAY_ERROR: &str = "validation.syncRelayError";
+const SERVER_NEEDS_UPDATE: &str = "validation.syncServerNeedsUpdate";
 
 /// How long Delete Account waits for the relay to delete the vault.
 pub const DELETE_BUDGET: Duration = Duration::from_secs(5);
+
+/// How long a device that is turning sync off, or being deleted, spends telling the other devices
+/// that it left (`leave_best_effort`), waiting for a running round included.
+pub const LEAVE_BUDGET: Duration = Duration::from_secs(5);
 
 fn refused(key: &str) -> SyncError {
     SyncError::Local(AppError::Validation(key.into()))
@@ -186,56 +201,338 @@ pub async fn checkout_url<R: Relay, D: ConnAccess>(
     }
 }
 
-/// The Sync Recovery Kit of the stored account: the vault's ID and key are made the first time
-/// (`keys::ensure_vault_secrets`) and reused after, so every call shows the same code. The relay
-/// address is in it only when it is not the default relay. Without an account,
-/// `validation.syncSetupIncomplete`.
-pub fn recovery_kit(conn: &Connection) -> Result<RecoveryKit> {
-    let (relay_url, account) =
-        keys::account(conn)?.ok_or_else(|| AppError::Validation(SETUP_INCOMPLETE.into()))?;
-    let (vault_id, vault_keys) = keys::ensure_vault_secrets(conn)?;
-    let code = encode_recovery_code(&vault_id, vault_keys.current());
-    let relay_url = (!is_default_relay(&relay_url)).then_some(relay_url);
-    let payload = recovery_qr_payload(&account, &code, relay_url.as_deref());
-    let qr_svg = qr_svg(&payload)?;
-    let grouped = format_recovery_code(&code);
-    Ok(RecoveryKit {
-        account_number: account,
-        recovery_code: grouped.as_str().to_owned(),
-        qr_svg,
-        relay_url,
-    })
+/// The Recovery Kit while a flow shows it (revision §2.2): its seed, never stored, the vault it
+/// is for, when it was made (its certificate's date, so a retried setup signs the same one) and
+/// what the person did with it (`KitStorage`, the strongest kept). The command keeps it in the
+/// profile's process-global draft for at most `KIT_DRAFT_LIFETIME` and wipes it at lock, exit,
+/// profile switch and when the flow ends. `Debug` prints no secret.
+pub struct KitDraft {
+    secret: KitSecret,
+    vault_id: VaultId,
+    created_at: i64,
+    storage: Option<KitStorage>,
 }
 
-/// The kit while setup runs (`sync_prepare_recovery_kit`, after the device password was checked,
-/// audit M11): `recovery_kit`, refused with `validation.syncAlreadyEnabled` once sync is on. After
-/// setup the kit is shown by `sync_show_recovery_kit`, behind the password as well.
-pub fn setup_recovery_kit(conn: &Connection) -> Result<RecoveryKit> {
+impl std::fmt::Debug for KitDraft {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KitDraft")
+            .field("created_at", &self.created_at)
+            .field("storage", &self.storage)
+            .finish_non_exhaustive()
+    }
+}
+
+impl KitDraft {
+    /// A draft of the Kit `secret` of `vault_id`, made at `created_at`.
+    pub fn new(vault_id: VaultId, secret: KitSecret, created_at: i64) -> Self {
+        KitDraft {
+            secret,
+            vault_id,
+            created_at,
+            storage: None,
+        }
+    }
+
+    /// A Kit a key change made (`rekey::rotate::Outcome`), for the person to see once.
+    pub fn from_new_kit(vault_id: VaultId, kit: NewKit) -> Self {
+        KitDraft::new(vault_id, kit.secret, kit.created_at)
+    }
+
+    /// What the seed derives for the vault.
+    pub fn keys(&self) -> KitKeys {
+        self.secret.derive(&self.vault_id.0)
+    }
+
+    pub fn vault_id(&self) -> &VaultId {
+        &self.vault_id
+    }
+
+    pub fn created_at(&self) -> i64 {
+        self.created_at
+    }
+
+    /// Where the person keeps it, as far as this flow saw (`None`: nothing done yet).
+    pub fn storage(&self) -> Option<KitStorage> {
+        self.storage
+    }
+
+    /// The seed (the e2e tests type the Kit's code from it; the app shows it by `kit_view`).
+    #[cfg(test)]
+    pub(crate) fn secret(&self) -> &KitSecret {
+        &self.secret
+    }
+}
+
+/// The Kit draft for setup (`sync_prepare_recovery_kit`, after the device password was checked):
+/// the vault's ID and key are made once (`keys::ensure_vault_secrets`); `draft` is the one still
+/// open, reused while it is this vault's, so a person who reopens the step sees the same Kit;
+/// otherwise a new Kit. Refused with `validation.syncAlreadyEnabled` once sync is on (a Kit after
+/// setup comes from a key change), and `validation.syncSetupIncomplete` without an account.
+pub fn prepare_kit(conn: &Connection, draft: Option<KitDraft>, now: i64) -> Result<KitDraft> {
     if enabled(conn)? {
         return Err(AppError::Validation(ALREADY_ENABLED.into()));
     }
-    recovery_kit(conn)
+    if keys::account(conn)?.is_none() {
+        return Err(AppError::Validation(SETUP_INCOMPLETE.into()));
+    }
+    let (vault_id, _) = keys::ensure_vault_secrets(conn)?;
+    match draft {
+        Some(draft) if draft.vault_id == vault_id => Ok(draft),
+        _ => Ok(KitDraft::new(vault_id, KitSecret::generate()?, now)),
+    }
+}
+
+/// The Kit as the person sees it (revision §2.1, §2.2): the v2 code in 19 groups of five, its QR
+/// and the server address when it is not the default one, with when it was made and by which
+/// device (this one: its name once its row is recorded). The account is inside the code. The
+/// view holds the secret: the caller treats it like the code.
+pub fn kit_view(conn: &Connection, draft: &KitDraft) -> Result<RecoveryKit> {
+    let (relay_url, account) =
+        keys::account(conn)?.ok_or_else(|| AppError::Validation(SETUP_INCOMPLETE.into()))?;
+    let code = encode_kit_code(&draft.vault_id, &draft.secret, &account)?;
+    let relay_url = (!is_default_relay(&relay_url)).then_some(relay_url);
+    let qr_svg = qr_svg(&kit_qr_payload(&code, relay_url.as_deref()))?;
+    let grouped = format_recovery_code(&code);
+    Ok(RecoveryKit {
+        recovery_code: grouped.as_str().to_owned(),
+        qr_svg,
+        relay_url,
+        created_at: draft.created_at,
+        created_by: devices::this_device(conn)?.map(|(name, _)| name),
+    })
+}
+
+/// The Kit's code in groups (`kit_view`'s), for copying it or checking a file against it.
+pub fn kit_code(conn: &Connection, draft: &KitDraft) -> Result<Zeroizing<String>> {
+    let (_, account) =
+        keys::account(conn)?.ok_or_else(|| AppError::Validation(SETUP_INCOMPLETE.into()))?;
+    let code = encode_kit_code(&draft.vault_id, &draft.secret, &account)?;
+    Ok(format_recovery_code(&code))
+}
+
+/// The person printed, copied or saved the Kit (revision §2.7): the draft keeps the strongest
+/// value, and so does the Kit's row when it exists already (a Kit a key change made; a setup's
+/// row is written with the value at `finish_setup`). Captured, so it syncs.
+pub fn note_kit_storage(
+    conn: &Connection,
+    draft: &mut KitDraft,
+    storage: KitStorage,
+) -> Result<()> {
+    draft.storage = draft.storage.max(Some(storage));
+    note_row_storage(conn, draft.keys().id(), storage)
+}
+
+/// The phone saved the Kit's page through the Files picker (final review I-2): where it went is
+/// unknown (iCloud Drive is the picker's first choice), so it counts as a cloud folder, the
+/// strongest: setup can finish, and any removal replaces the Kit (revision §2.7).
+pub fn note_phone_kit_saved(conn: &Connection, draft: &mut KitDraft) -> Result<()> {
+    note_kit_storage(conn, draft, KitStorage::Cloud)
+}
+
+/// What "Ověřit sadu" found (revision §2.8).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KitCheck {
+    /// The Kit is this vault's and `trusted` here.
+    Valid,
+    /// A newer Kit replaced it at `at` (when this device learnt of it, if known); the valid one
+    /// was made at `current_created_at`.
+    Replaced {
+        at: Option<i64>,
+        current_created_at: Option<i64>,
+    },
+    /// The code is of another vault.
+    OtherSync,
+    /// This vault has no such Kit (one whose setup never finished, say).
+    Unknown,
+}
+
+/// "Ověřit sadu" (revision §2.8, owner decision D1): reads a typed code or a scanned QR, with no
+/// password and no network; the seed is wiped before it answers. A code that does not read is
+/// `validation.syncRecoveryCodeInvalid`; with sync off, `validation.syncSetupIncomplete`.
+pub fn check_kit(conn: &Connection, input: &str) -> Result<KitCheck> {
+    let creds =
+        keys::credentials(conn)?.ok_or_else(|| AppError::Validation(SETUP_INCOMPLETE.into()))?;
+    let input = input.trim();
+    let code = if input.starts_with("moony-recover:") {
+        parse_kit_qr_payload(input)?.code
+    } else {
+        decode_kit_code(input)?
+    };
+    if code.vault_id != creds.vault_id {
+        return Ok(KitCheck::OtherSync);
+    }
+    let keys = code.seed.derive(&code.vault_id.0);
+    let (id, sign_pub) = (keys.id(), *keys.sign_pub());
+    drop(keys);
+    drop(code);
+    let entries = trust::entries(conn)?;
+    let found = entries
+        .iter()
+        .find(|e| e.device == id && e.kind == CertKind::Kit && e.sign_pub == sign_pub);
+    Ok(match found.map(|e| e.state) {
+        Some(TrustState::Trusted) => KitCheck::Valid,
+        Some(TrustState::Removed) => KitCheck::Replaced {
+            at: found.and_then(|e| e.state_at),
+            current_created_at: entries
+                .iter()
+                .find(|e| e.kind == CertKind::Kit && e.state == TrustState::Trusted)
+                .map(|e| e.cert.body.issued_at),
+        },
+        _ => KitCheck::Unknown,
+    })
+}
+
+/// How `finish_setup` ended (review of Tasks 18–19, I2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FinishSetup {
+    /// Sync is on and the Kit the person saved is registered: on the server and pinned here.
+    Done,
+    /// Sync is on, but the server holds another Kit of this vault (`409 kit_exists`: an earlier
+    /// try's draft, which expired before its answer came back), so the Kit the person saved is not
+    /// the vault's and none is registered here. The person makes a new one at once ("Vytvořit
+    /// novou sadu", a key change whose Kit token replaces the server's); until then the status
+    /// says there is no Kit (`rekey::kit::current` is `None`).
+    KitNotRegistered,
+}
+
+/// What `register_kit` puts on the sync server: the Kit's token, its certificate and the envelope
+/// sealed to it. Never printed (the token reads the envelope).
+struct KitUpload {
+    token: Zeroizing<String>,
+    cert: Certificate,
+    envelope: Vec<u8>,
+}
+
+/// The setup's Kit, sealed (revision §2.2–§2.4): its kind-5 certificate, issued by this device at
+/// the draft's time (so a retry signs the same bytes), and the envelope of every key this device
+/// holds, its confirmed set this device and the Kit.
+fn seal_setup_kit(conn: &Connection, draft: &KitDraft, now: i64) -> Result<KitUpload> {
+    let me = state::load(conn)?
+        .ok_or_else(|| AppError::Validation(SETUP_INCOMPLETE.into()))?
+        .device;
+    let creds =
+        keys::credentials(conn)?.ok_or_else(|| AppError::Validation(SETUP_INCOMPLETE.into()))?;
+    if creds.vault_id != draft.vault_id {
+        return Err(AppError::Validation(KIT_NOT_CONFIRMED.into()));
+    }
+    let seed = identity::own_seed(conn)?
+        .ok_or_else(|| AppError::Internal("sync setup: no signing key".into()))?;
+    let own = trust::entry(conn, me)?
+        .ok_or_else(|| AppError::Internal("sync setup: this device is not pinned".into()))?;
+    let keys = draft.keys();
+    let cert = cert::issue_kit(&seed, me, &keys, draft.created_at)?;
+    let confirmed = rekey_kit::confirmed_after(
+        &trust::entries(conn)?,
+        std::slice::from_ref(&own),
+        &[],
+        &[],
+        &cert,
+    );
+    let envelope = rekey_kit::seal(conn, &creds.keys, &cert, &seed, &own.cert, &confirmed, now)?;
+    Ok(KitUpload {
+        token: Zeroizing::new(keys.token().to_string()),
+        cert,
+        envelope,
+    })
+}
+
+/// Puts the setup's Kit on the sync server and registers it here (revision §2.2, §2.3), after
+/// sync is on and this device is pinned: `PUT /kit` first (a retried setup with the same draft
+/// replaces the envelope), then, in one savepoint, the Kit's row with where it is kept, its
+/// certificate pinned `trusted` and `confirmed` with this device (the envelope's confirmed set).
+/// The Kit is registered here only once the server holds it, so this device never seals to a Kit
+/// the server does not know; a Kit pinned here already (an earlier try) is not put again. A server that holds another Kit of this vault (`409 kit_exists`: an
+/// earlier try registered a draft that has since expired) is left as it is: nothing is
+/// registered, this device notes that the server holds a Kit (`kit::note_server_kit`, so its next
+/// removal makes a new one), and `FinishSetup::KitNotRegistered` comes back (As built R-37,
+/// R-62).
+async fn register_kit<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    auth: &keys::VaultAuth,
+    draft: &KitDraft,
+    now: i64,
+) -> SyncResult<FinishSetup> {
+    // Registered by an earlier try (the server held it before it was pinned here, and a copy
+    // that re-joined since keeps it): only where it is kept may have grown.
+    let id = draft.keys().id();
+    let registered = db.with_conn(|conn| {
+        let pinned = trust::entry(conn, id)?.is_some();
+        if pinned {
+            if let Some(storage) = draft.storage {
+                note_row_storage(conn, id, storage)?;
+            }
+        }
+        Ok(pinned)
+    })?;
+    if registered {
+        return Ok(FinishSetup::Done);
+    }
+    let upload = db.with_conn(|conn| seal_setup_kit(conn, draft, now))?;
+    match relay.put_kit(auth, &upload.token, &upload.envelope).await {
+        Ok(created) => {
+            if created {
+                log::info!("[SYNC] The Recovery Kit is on the sync server");
+            }
+        }
+        Err(RelayError::KitExists) => {
+            log::warn!("[SYNC] The sync server holds another Recovery Kit of this vault; kept");
+            db.with_conn(|conn| rekey_kit::note_server_kit(conn, true))?;
+            return Ok(FinishSetup::KitNotRegistered);
+        }
+        Err(error) => return Err(error.into()),
+    }
+    let me = upload.cert.body.issuer_device;
+    let storage = draft.storage;
+    db.with_conn(|conn| {
+        in_savepoint(conn, "sync_setup_kit", || {
+            rekey_kit::write_row(conn, &upload.cert, storage, now)?;
+            if let Some(storage) = storage {
+                note_row_storage(conn, upload.cert.body.device, storage)?;
+            }
+            trust::pin_created_kit(conn, &upload.cert, now)?;
+            trust::mark_confirmed(conn, &[me])?;
+            rekey_kit::note_server_kit(conn, true)
+        })
+    })?;
+    Ok(FinishSetup::Done)
+}
+
+/// Writes `storage` into the Kit's row when it is stronger than what the row holds.
+fn note_row_storage(conn: &Connection, kit: DeviceId, storage: KitStorage) -> Result<()> {
+    if rekey_kit::storage(conn, kit)?.is_some_and(|stored| stored >= storage) {
+        return Ok(());
+    }
+    conn.execute(
+        "UPDATE sync_devices SET kit_storage = ?1 WHERE id = ?2",
+        rusqlite::params![storage.as_str(), kit.to_hex()],
+    )?;
+    Ok(())
 }
 
 /// Finishes setup on the first device of a new vault. Resumable: a step that already happened is
 /// not repeated.
 ///
-/// 1. `kit_saved` false is `validation.syncRecoveryKitNotConfirmed` (the UI's confirmation is
-///    trusted: the person ticked it after a save or a copy); then the device name is checked.
+/// 1. A Kit the person did nothing with (`kit.storage()` `None`: not printed, copied or saved) is
+///    `validation.syncRecoveryKitNotConfirmed`; then the device name is checked.
 /// 2. Under the profile's round lock: without the account and the vault's secrets,
 ///    `validation.syncSetupIncomplete`; with sync on and a snapshot already taken,
 ///    `validation.syncAlreadyEnabled`. With sync already on (a resumed setup), the engine start's
 ///    copy check runs first (`runtime::rejoin_if_copy`): a copy re-joins under a new device ID
 ///    before the first round pushes, and a check that cannot be made stops setup with its
-///    error. The stored relay address is checked, and the relay creates the vault (an existing
+///    error. The stored relay address is checked, a server without the Recovery Kit
+///    (`ServerInfo::kit`) is `validation.syncServerNeedsUpdate`, and the relay creates the vault (an existing
 ///    one of this account and token is fine; `Lapsed` and `VaultLimitReached` come back as they
 ///    are and read `validation.syncPaymentRequired` and `validation.syncVaultLimitReached` at the
 ///    command).
 /// 3. In one savepoint: sync is turned on for the device the row holds (`binding::enable`, which
-///    also clears a stale restore marker), the key pair made once, and this device recorded under
-///    `device_name`. The device ID does not change, so a written binding stays valid. Then the
+///    also clears a stale restore marker), the key pair made once, this device's signing key and
+///    genesis certificate made once and pinned (phase 5 §5.3), and this device recorded under
+///    `device_name` with that certificate. The device ID does not change, so a written binding stays valid. Then the
 ///    binding is written when due; a failed seal is logged, and the engine's start tries again
-///    (`binding::binding_due`).
+///    (`binding::binding_due`). Then the Kit goes to the server and is registered here
+///    (`register_kit`; idempotent); a server that holds another Kit of the vault makes the result
+///    `FinishSetup::KitNotRegistered` (setup still finishes).
 /// 4. After the lock, a `FirstSnapshot` round (ruling P4): pulls (nothing yet), pushes the rule
 ///    packs and the device row, pulls them back as own envelopes and uploads the first snapshot at
 ///    `S` = that cursor. A round that pushed nothing fails setup, whether it failed (offline, a
@@ -248,15 +545,16 @@ pub async fn finish_setup<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     device_name: &str,
-    kit_saved: bool,
+    kit: &KitDraft,
     data_dir: &Path,
     native: &dyn BindingNative,
     now: i64,
-) -> SyncResult<()> {
-    if !kit_saved {
+) -> SyncResult<FinishSetup> {
+    if kit.storage().is_none() {
         return Err(refused(KIT_NOT_CONFIRMED));
     }
     devices::validate_device_name(device_name)?;
+    let registered;
     {
         let _no_round = engine::exclusive(db).await;
         let (creds, on) = on_db(db, |conn| {
@@ -280,6 +578,15 @@ pub async fn finish_setup<R: Relay, D: ConnAccess>(
             rejoin_if_copy_under_lock(db, data_dir, native, now)?;
         }
         validate_base_url(&creds.relay_url)?;
+        if &creds.vault_id != kit.vault_id() {
+            return Err(refused(KIT_NOT_CONFIRMED));
+        }
+        // The Kit is every vault's (revision §2.9): a server without it is refused first.
+        match relay.server_info().await {
+            Ok(info) if info.kit => {}
+            Ok(_) | Err(RelayError::BadRequest(_)) => return Err(refused(SERVER_NEEDS_UPDATE)),
+            Err(error) => return Err(error.into()),
+        }
         if relay.create_vault(&creds.account, &creds.auth()).await? {
             log::info!("[SYNC] Created the vault on the relay");
         }
@@ -290,8 +597,10 @@ pub async fn finish_setup<R: Relay, D: ConnAccess>(
             log::info!("[SYNC] Sync is on for this device");
         }
         write_binding_if_due(db, data_dir, native);
+        registered = register_kit(relay, db, &creds.auth(), kit, now).await?;
     }
-    first_round(relay, db, now).await
+    first_round(relay, db, now).await?;
+    Ok(registered)
 }
 
 /// Step 3 of `finish_setup`.
@@ -304,7 +613,10 @@ fn turn_on(conn: &Connection, data_dir: &Path, name: &str, enable: bool, now: i6
             binding::enable(conn, data_dir, device)?;
         }
         let public = keys::ensure_device_keypair(conn)?;
-        devices::record_this_device(conn, name, &public, now)?;
+        // The vault's first device vouches for itself (phase 5 §5.3); a resumed setup keeps the
+        // certificate it signed the first time.
+        let cert = identity::create_own(conn, Issuer::Genesis, now)?;
+        devices::record_this_device(conn, name, &public, Some(&cert), now)?;
         // The relay has just created or confirmed the vault: a pause from a first round that found
         // it gone (`vault_gone_at`) no longer holds, or the retry's round would not run.
         state::set_vault_gone(conn, None)
@@ -375,7 +687,10 @@ fn problem_error(problem: SyncProblem) -> SyncError {
         SyncProblem::VaultGone => SyncError::VaultNotFound,
         SyncProblem::QuotaExceeded => SyncError::TooLarge(TooLarge::Quota),
         SyncProblem::SnapshotTooLarge => SyncError::TooLarge(TooLarge::Snapshot),
-        SyncProblem::KeyRotated => SyncError::ReadOnlyToken,
+        SyncProblem::KeyRotated
+        | SyncProblem::KeyNotGiven
+        | SyncProblem::KeyChangeUnverified
+        | SyncProblem::KeyChangeWaiting => SyncError::ReadOnlyToken,
         SyncProblem::Unauthorized => SyncError::Unauthorized,
         SyncProblem::RateLimited => SyncError::RateLimited,
         SyncProblem::Offline => SyncError::Transient(Transient::Offline),
@@ -410,6 +725,16 @@ fn problem_error(problem: SyncProblem) -> SyncError {
 /// savepoint, so local data is writable again once sync is off; a failure puts back whichever of
 /// them the profile had.
 pub fn turn_off(conn: &Connection, data_dir: &Path) -> Result<()> {
+    turn_off_keeping_binding_file(conn)?;
+    binding::forget_binding(data_dir)?;
+    log::info!("[SYNC] Sync is off on this device; local data stays");
+    Ok(())
+}
+
+/// `turn_off` without removing the binding file and the restore marker: for a caller inside a
+/// round that does not know the data folder (a removed device, phase 5 §7.4), which leaves them to
+/// the engine's runtime (`binding::forget_binding`).
+pub(crate) fn turn_off_keeping_binding_file(conn: &Connection) -> Result<()> {
     let was_guarded = guard::is_imposed(conn);
     let was_read_only: bool = conn.pragma_query_value(None, "query_only", |r| r.get(0))?;
     let off = guard::lift(conn)
@@ -435,8 +760,6 @@ pub fn turn_off(conn: &Connection, data_dir: &Path) -> Result<()> {
     }
     truncate_wal(conn);
     sweep_unfinished_downloads(conn);
-    binding::forget_binding(data_dir)?;
-    log::info!("[SYNC] Sync is off on this device; local data stays");
     Ok(())
 }
 
@@ -529,6 +852,67 @@ pub async fn delete_vault_best_effort<R: Relay, D: ConnAccess>(relay: &R, db: &D
             log::warn!("[SYNC] The relay did not delete the synced data in time");
             false
         }
+    }
+}
+
+/// Signs this device's `left` record and writes it into its own row, which the capture queues
+/// (phase 5 plan Task 11, revision Task 20). `false` when there is nothing to write: sync is
+/// off, the device has no signing key (a vault from before phase 5) or no row, or the row holds
+/// a `left` record already (the column is write-once; a turn-off that failed after the first
+/// leave keeps it).
+pub(crate) fn write_left_record(conn: &Connection, now: i64) -> Result<bool> {
+    let Some(sync) = state::load(conn)?.filter(|sync| sync.enabled) else {
+        return Ok(false);
+    };
+    let (Some(creds), Some(seed)) = (keys::credentials(conn)?, identity::own_seed(conn)?) else {
+        return Ok(false);
+    };
+    let record = identity::Record::sign(
+        identity::RecordType::Left,
+        creds.vault_id.0,
+        sync.device,
+        sync.device,
+        now,
+        creds.keys.current_epoch(),
+        &seed,
+    )?;
+    let written = conn.execute(
+        "UPDATE sync_devices SET left_record = ?1 WHERE id = ?2 AND left_record IS NULL",
+        rusqlite::params![record.to_b64(), sync.device.to_hex()],
+    )?;
+    Ok(written == 1)
+}
+
+/// A device that turns sync off or is deleted says so (phase 5 plan Task 11): under the round
+/// lock it signs a `left` record, writes it into its row and sends it in one push round without
+/// a pull, all within `budget` (waiting for a running round counts). Every failure, and running
+/// out of time, is ignored: the person's turn-off never waits for the server, and a device that
+/// could not say it left is simply cut off at the next key change. Nothing happens when sync is
+/// off (a device another one removed signs nothing: its key went with its sync state). What was
+/// queued before, a pairing's ticket announcement included, goes out first, since the push
+/// sends envelopes in sequence order: a holder's announcement always reaches the server before
+/// its `left` record (revision §3.1).
+pub async fn leave_best_effort<R: Relay, D: ConnAccess>(relay: &R, db: &D, budget: Duration) {
+    let attempt = async {
+        let _no_round = engine::exclusive(db).await;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs() as i64);
+        if !on_db(db, move |conn| write_left_record(conn, now)).await? {
+            return Ok(());
+        }
+        let Some(creds) = on_db(db, keys::credentials).await? else {
+            return Ok(());
+        };
+        engine::push::push_all(relay, db, &creds).await.map(|_| ())
+    };
+    match tokio::time::timeout(budget, attempt).await {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => {
+            log::info!("[SYNC] This device could not tell the others that it left");
+            log::debug!("[SYNC] The leave record was not sent: {error}");
+        }
+        Err(_) => log::info!("[SYNC] The sync server did not take the leave record in time"),
     }
 }
 

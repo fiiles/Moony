@@ -5,13 +5,14 @@ import {
   isCompleteCode,
   joinFailureAction,
   normalizeTypedCode,
+  pairingCodeProblem,
   pairingPollInterval,
   scannedCodeKind,
   type JoinFailurePoll,
 } from './pairing-code';
 
-const CODE80 = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789'.repeat(3).slice(0, 80);
-const GROUPED = CODE80.match(/.{1,5}/g)!.join('-');
+const CODE95 = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789'.repeat(3).slice(0, 95);
+const GROUPED = CODE95.match(/.{1,5}/g)!.join('-');
 
 function view(stage: PairingStage): PairingView {
   return {
@@ -41,10 +42,10 @@ describe('scannedCodeKind', () => {
     expect(scannedCodeKind('moony-sync:abc')).toBe('unknown');
     expect(scannedCodeKind(GROUPED)).toBe('recoveryCode');
     expect(scannedCodeKind(GROUPED.replace(/-/g, ' '))).toBe('recoveryCode');
-    expect(scannedCodeKind(CODE80)).toBe('recoveryCode');
-    expect(scannedCodeKind(CODE80.slice(0, 79))).toBe('unknown');
-    expect(scannedCodeKind(`${CODE80}A`)).toBe('unknown');
-    expect(scannedCodeKind(`U${CODE80.slice(1)}`)).toBe('unknown');
+    expect(scannedCodeKind(CODE95)).toBe('recoveryCode');
+    expect(scannedCodeKind(CODE95.slice(0, 94))).toBe('unknown');
+    expect(scannedCodeKind(`${CODE95}A`)).toBe('unknown');
+    expect(scannedCodeKind(`U${CODE95.slice(1)}`)).toBe('unknown');
     expect(scannedCodeKind('hello')).toBe('unknown');
     expect(scannedCodeKind('')).toBe('unknown');
   });
@@ -63,18 +64,25 @@ describe('scannedCodeKind reads a connection code the way connection_code.rs cle
     expect(scannedCodeKind(`moony-\u200Bsync1:4417938205561273:abc`)).toBe('connection');
   });
 
-  it('keeps the other kinds as they were (their parsers only trim)', () => {
-    expect(scannedCodeKind('\u200Bmoony-pair:2:x')).toBe('unknown');
-    expect(scannedCodeKind('moony-\npair:2:x')).toBe('unknown');
+  it('ignores white space inside a pairing code too (owner decision O-3)', () => {
+    expect(scannedCodeKind('\u200Bmoony-pair:2:x')).toBe('pair');
+    expect(scannedCodeKind('moony-\npair:2:x')).toBe('pair');
+    expect(scannedCodeKind('moony-pair:3:abc def\u00A0ghi')).toBe('pair');
+    expect(pairingCodeProblem(' moony- pair:3:abc ')).toBeNull();
+  });
+
+  it('keeps the Kit QR as it was (its parser only trims)', () => {
+    expect(scannedCodeKind('\u200Bmoony-recover:1:x')).toBe('unknown');
+    expect(scannedCodeKind('moony-\nrecover:1:x')).toBe('unknown');
   });
 });
 
 describe('scannedCodeKind as the Rust decoder reads it', () => {
   it('ignores case, I/L/O look-alikes and every dash the decoder ignores', () => {
-    expect(scannedCodeKind(CODE80.toLowerCase())).toBe('recoveryCode');
-    expect(scannedCodeKind(`I${CODE80.slice(1)}`)).toBe('recoveryCode');
-    expect(scannedCodeKind(`l${CODE80.slice(1)}`)).toBe('recoveryCode');
-    expect(scannedCodeKind(`o${CODE80.slice(1)}`)).toBe('recoveryCode');
+    expect(scannedCodeKind(CODE95.toLowerCase())).toBe('recoveryCode');
+    expect(scannedCodeKind(`I${CODE95.slice(1)}`)).toBe('recoveryCode');
+    expect(scannedCodeKind(`l${CODE95.slice(1)}`)).toBe('recoveryCode');
+    expect(scannedCodeKind(`o${CODE95.slice(1)}`)).toBe('recoveryCode');
     expect(scannedCodeKind(GROUPED.replace(/-/g, '\u2013'))).toBe('recoveryCode');
     expect(scannedCodeKind(GROUPED.replace(/-/g, '\u2010'))).toBe('recoveryCode');
     expect(scannedCodeKind(GROUPED.replace(/-/g, '\u2015'))).toBe('recoveryCode');
@@ -89,10 +97,10 @@ describe('scannedCodeKind as the Rust decoder reads it', () => {
   });
 
   it('rejects NUL, unicode and very long input', () => {
-    expect(scannedCodeKind(`${CODE80}\u0000`)).toBe('unknown');
-    expect(scannedCodeKind(`\u00DF${CODE80.slice(2)}`)).toBe('unknown');
-    expect(scannedCodeKind(`${CODE80.slice(1)}\u0131`)).toBe('unknown');
-    expect(scannedCodeKind(`${CODE80.slice(0, 79)}\uFEFF0`)).toBe('unknown');
+    expect(scannedCodeKind(`${CODE95}\u0000`)).toBe('unknown');
+    expect(scannedCodeKind(`\u00DF${CODE95.slice(2)}`)).toBe('unknown');
+    expect(scannedCodeKind(`${CODE95.slice(1)}\u0131`)).toBe('unknown');
+    expect(scannedCodeKind(`${CODE95.slice(0, 94)}\uFEFF0`)).toBe('unknown');
     expect(scannedCodeKind('A'.repeat(100000))).toBe('unknown');
   });
 });
@@ -173,5 +181,14 @@ describe('joinFailureAction', () => {
     ['poll failed without a key', { ok: false }, SETUP_PENDING, true, true],
   ])('%s', (_label, poll, errorKey, retryable, setupPending) => {
     expect(joinFailureAction(poll, errorKey)).toEqual({ retryable, setupPending });
+  });
+});
+
+describe('pairingCodeProblem', () => {
+  it('accepts a pairing code and names what else was typed', () => {
+    expect(pairingCodeProblem('moony-pair:abc')).toBeNull();
+    expect(pairingCodeProblem('  moony-pair:abc\n')).toBeNull();
+    expect(pairingCodeProblem('moony-sync1:xyz')).toBe('codes.connectionNotHere');
+    expect(pairingCodeProblem('hello')).toBe('phone.notAPairingCode');
   });
 });

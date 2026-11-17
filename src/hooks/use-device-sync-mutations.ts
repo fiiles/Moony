@@ -2,7 +2,13 @@ import { useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deviceSyncApi, portfolioApi } from '@/lib/tauri-api';
 import { refreshAfterRemoteChanges } from '@/lib/device-sync-refresh';
-import type { RecoveryKit, ReplaceConsentView } from '@shared/schema';
+import type {
+  KitCheck,
+  RecoveryKit,
+  RemovalOutcome,
+  ReplaceConsentView,
+  SyncNoticeKind,
+} from '@shared/schema';
 
 type KitJoin = Parameters<typeof deviceSyncApi.joinWithRecoveryKit>[0] & {
   consent: ReplaceConsentView;
@@ -50,12 +56,11 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.startCheckout,
     onSuccess: refreshSyncState,
   });
-  // gcTime 0: the kit holds the vault key, so its result leaves the mutation cache with the screen.
+  // gcTime 0: the kit holds its seed, so its result leaves the mutation cache with the screen.
   // The device password is required every time (audit M11) and TanStack Query keeps a mutation's
-  // variables in its state, so both kit mutations take none: the password travels in a ref that
-  // `mutationFn` empties (the pattern of `unlockWithPassword` in `use-auth.tsx`). The setup and
-  // Show Recovery Kit screens call `prepareKitWithPassword` / `showKitWithPassword`, and `reset()`
-  // the mutation when the kit leaves the screen.
+  // variables in its state, so the kit mutation takes none: the password travels in a ref that
+  // `mutationFn` empties (the pattern of `unlockWithPassword` in `use-auth.tsx`). The setup screens
+  // call `prepareKitWithPassword`, and `reset()` the mutation when the kit leaves the screen.
   const prepareKitPassword = useRef<string | null>(null);
   const prepareRecoveryKit = useMutation<RecoveryKit, Error, void>({
     mutationFn: async () => {
@@ -73,9 +78,9 @@ export function useDeviceSyncMutations() {
   // gcTime 0 below: a password typed for turning off, delete, repair or re-sync is a mutation
   // variable and must not linger.
   const copyRecoveryCode = useMutation({ mutationFn: deviceSyncApi.copyRecoveryCode });
+  const noteRecoveryKitSaved = useMutation({ mutationFn: deviceSyncApi.noteRecoveryKitSaved });
   const finishSetup = useMutation({
-    mutationFn: ({ deviceName, kitSaved }: { deviceName: string; kitSaved: boolean }) =>
-      deviceSyncApi.finishSetup(deviceName, kitSaved),
+    mutationFn: ({ deviceName }: { deviceName: string }) => deviceSyncApi.finishSetup(deviceName),
     onSuccess: refreshLocalData,
   });
   const syncNow = useMutation({
@@ -87,20 +92,6 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.downloadEverything,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-status'] }),
   });
-  const showKitPassword = useRef<string | null>(null);
-  const showRecoveryKit = useMutation<RecoveryKit, Error, void>({
-    mutationFn: async () => {
-      const password = showKitPassword.current;
-      showKitPassword.current = null;
-      if (password === null) throw new Error('No password to show the kit with');
-      return deviceSyncApi.showRecoveryKit(password);
-    },
-    gcTime: 0,
-  });
-  const showKitWithPassword = (password: string) => {
-    showKitPassword.current = password;
-    return showRecoveryKit.mutateAsync();
-  };
   // No password: cancelling a setup that has not finished (with sync on it is required).
   const turnOff = useMutation({
     mutationFn: (password: string | void) =>
@@ -167,18 +158,85 @@ export function useDeviceSyncMutations() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] }),
   });
 
+  // Removing devices. The password travels in a ref that `mutationFn` empties, so it never sits in
+  // the mutation's variables (the pattern of `prepareKitWithPassword`); the outcome holds a new
+  // kit's seed, hence gcTime 0, and the dialog `reset()`s it when the kit leaves the screen. A
+  // removal changes no finance data (rule 7's portfolio keys do not apply): it re-reads the
+  // device list and the status.
+  type RemoveArgs = { deviceIds: string[]; alsoRemove: string[]; newKit: boolean; consent: string };
+  const removePassword = useRef<string | null>(null);
+  const removeDevices = useMutation<RemovalOutcome, Error, RemoveArgs>({
+    mutationFn: async (args) => {
+      const password = removePassword.current;
+      removePassword.current = null;
+      if (password === null) throw new Error('No password to remove devices with');
+      return deviceSyncApi.removeDevices({ password, ...args });
+    },
+    gcTime: 0,
+    onSettled: async () => {
+      await refreshSyncState();
+      await queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] });
+    },
+  });
+  const removeDevicesWithPassword = (password: string, args: RemoveArgs) => {
+    removePassword.current = password;
+    return removeDevices.mutateAsync(args);
+  };
+  // "Je moje": the plan's consent covers the device's verdict, so a plan re-reads after it.
+  const keepDevice = useMutation({
+    mutationFn: deviceSyncApi.keepDevice,
+    onSuccess: async () => {
+      await refreshSyncState();
+      await queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] });
+      await queryClient.invalidateQueries({ queryKey: ['device-sync-removal-plan'] });
+    },
+  });
+  const printRecoveryKit = useMutation({ mutationFn: deviceSyncApi.printRecoveryKit });
+  // The typed code is a variable: gcTime 0 keeps it out of the cache.
+  const checkRecoveryKit = useMutation<KitCheck, Error, string>({
+    mutationFn: deviceSyncApi.checkRecoveryKit,
+    gcTime: 0,
+  });
+  // "Zavřít", "Rozumím", "Vím o tom": the status is re-read (it no longer carries the notice).
+  // A kind alone, or for `newDevices` the kind and the IDs the person saw.
+  const dismissNotice = useMutation<
+    void,
+    Error,
+    SyncNoticeKind | { kind: SyncNoticeKind; devices?: string[] }
+  >({
+    mutationFn: (notice) =>
+      typeof notice === 'string'
+        ? deviceSyncApi.dismissNotice(notice)
+        : deviceSyncApi.dismissNotice(notice.kind, notice.devices),
+    onSuccess: refreshSyncState,
+  });
+  // "Mám je", or after "Odebrat je": lifts the push hold of a device that joined with the kit.
+  const kitJoinDecided = useMutation({
+    mutationFn: deviceSyncApi.kitJoinDecided,
+    onSuccess: async () => {
+      await refreshSyncState();
+      await queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] });
+    },
+  });
+
   return {
+    removeDevices,
+    removeDevicesWithPassword,
+    keepDevice,
+    printRecoveryKit,
+    checkRecoveryKit,
+    dismissNotice,
+    kitJoinDecided,
     createAccount,
     connectOwnServer,
     startCheckout,
     prepareRecoveryKit,
     prepareKitWithPassword,
     copyRecoveryCode,
+    noteRecoveryKitSaved,
     finishSetup,
     syncNow,
     downloadEverything,
-    showRecoveryKit,
-    showKitWithPassword,
     turnOff,
     deleteSyncedData,
     repairDevice,

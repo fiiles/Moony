@@ -43,16 +43,17 @@ use crate::models::sync::{
 use crate::services::sync::connection_code::server_address_from_input;
 use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::impact::IMPACT_CHANGED;
-use crate::services::sync::keys::{self, Credentials};
+use crate::services::sync::keys;
+use crate::services::sync::pairing::holder;
 use crate::services::sync::pairing::session::{keeps_session, PairingSession, Stage};
-use crate::services::sync::pairing::{pairing_code_text, typed_code_digits, MailboxId, Role, Side};
-use crate::services::sync::recovery::{qr_svg, read_recovery_input};
+use crate::services::sync::pairing::{pairing_code_text, MailboxId, Role, Side};
+use crate::services::sync::recovery::{qr_svg, read_kit_input};
 use crate::services::sync::relay::http::{
     default_base_url, display_host, is_default_relay, is_insecure_address, normalize_base_url,
     HttpRelay,
 };
 use crate::services::sync::relay::Mailbox;
-use crate::services::sync::{devices, join, state};
+use crate::services::sync::{devices, join};
 
 const NOT_STARTED: &str = "validation.syncPairingNotStarted";
 const EXPIRED: &str = "validation.syncPairingExpired";
@@ -378,24 +379,6 @@ async fn announced<M: Mailbox>(
     }
 }
 
-/// The holder's credentials when its confirm will seal them (holder, in Compare, not contested),
-/// read with sync on only; `None` for every other confirm.
-fn holder_credentials(session: &PairingSession, db: &Database) -> SyncResult<Option<Credentials>> {
-    if session.role() != Role::Holder || session.stage() != Stage::Compare || session.contested() {
-        return Ok(None);
-    }
-    let creds = db.with_conn(|conn| {
-        if !state::load(conn)?.is_some_and(|sync| sync.enabled) {
-            return Ok(None);
-        }
-        keys::credentials(conn)
-    })?;
-    match creds {
-        Some(creds) => Ok(Some(creds)),
-        None => Err(AppError::Validation(FAILED.into()).into()),
-    }
-}
-
 fn mailbox_of(session: &PairingSession) -> MailboxId {
     session.code().mailbox
 }
@@ -617,29 +600,16 @@ pub async fn sync_pairing_confirm(
     let confirmed = {
         let slot = pairing.live(&owner, now())?;
         let relay = HttpRelay::new(slot.session.relay_url())?;
-        // The vault keys are read only for text that can be a code: the session answers
-        // `CODE_INCOMPLETE` for anything else before it needs them.
-        let creds = if typed_code
-            .as_deref()
-            .is_some_and(|typed| typed_code_digits(typed).is_some())
-        {
-            holder_credentials(&slot.session, &session)
-        } else {
-            Ok(None)
-        };
-        match creds {
-            Ok(creds) => {
-                slot.session
-                    .confirm(
-                        &relay,
-                        creds.as_ref(),
-                        typed_code.as_deref().map(String::as_str),
-                        now(),
-                    )
-                    .await
-            }
-            Err(error) => Err(error),
-        }
+        // The vault keys are read only for text that can be a code, holding off every round;
+        // the join ticket's secret goes as soon as slot 2 is sealed (or not).
+        holder::confirm(
+            &mut slot.session,
+            &relay,
+            &session,
+            typed_code.as_deref().map(String::as_str),
+            now(),
+        )
+        .await
     };
     if let Err(error) = confirmed {
         pairing.end_unless_kept(&error);
@@ -680,11 +650,17 @@ pub async fn sync_pairing_join(
     let dir = data_dir(&app)?;
     let mut pairing = PAIRING.lock().await;
     let slot = pairing.live(&owner, now())?;
-    // The slot keeps its own copy of the credentials for "Try again" (review PF6).
+    // The slot keeps its own copy of the credentials and the holder's identity for "Try again"
+    // (review PF6).
     let (Some(creds), Some(device_name)) =
         (slot.session.received().cloned(), slot.device_name.clone())
     else {
         return Err(AppError::Validation(FAILED.into()));
+    };
+    let heads = slot.session.received_heads().cloned().unwrap_or_default();
+    let identity = match slot.session.received_identity() {
+        Some(paired) => join::JoinIdentity::Paired(paired.duplicate(), heads),
+        None => join::JoinIdentity::Unvouched(heads),
     };
     let relay = HttpRelay::new(&creds.relay_url)?;
     let relay_url = creds.relay_url.clone();
@@ -695,6 +671,7 @@ pub async fn sync_pairing_join(
         creds,
         &device_name,
         consent,
+        identity,
         &dir,
         &native,
         now(),
@@ -711,7 +688,12 @@ pub async fn sync_pairing_join(
             Ok(outcome_view(&outcome))
         }
         Err(error) => {
-            if !after_join_error(&error) {
+            // A join whose replace committed has spent its ticket: no "Try again" with it.
+            let spent = session.with_conn(join::pairing_spent).unwrap_or_else(|e| {
+                log::warn!("[SYNC] Could not tell whether the join replaced the profile: {e}");
+                true
+            });
+            if spent || !after_join_error(&error) {
                 pairing.dispose_current();
             }
             Err(app_error_for(&relay_url, error))
@@ -719,17 +701,16 @@ pub async fn sync_pairing_join(
     }
 }
 
-/// Joins with a Sync Recovery Kit (its QR text or typed code, with the account number and an
+/// Joins with a Recovery Kit (its QR text or typed v2 code, which holds the account, with an
 /// optional sync server for a typed one) once the device password is checked: backup, then join
 /// by replace, as a sync change, within what the person agreed to (`consent`, as
-/// `sync_pairing_join`); the outcome.
+/// `sync_pairing_join`); the outcome. The code carries the account.
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn sync_join_with_recovery_kit(
     app: AppHandle,
     db: State<'_, Database>,
     code: String,
-    account: Option<String>,
     relay_url: Option<String>,
     device_name: String,
     password: String,
@@ -742,12 +723,7 @@ pub async fn sync_join_with_recovery_kit(
     devices::validate_device_name(&device_name)?;
     let verify = verify_password(&app, password.clone());
     begin(password, verify, std::future::ready(Ok(()))).await?;
-    let input = read_recovery_input(
-        &code,
-        account.as_deref(),
-        relay_url.as_deref(),
-        &default_base_url(),
-    )?;
+    let input = read_kit_input(&code, relay_url.as_deref(), &default_base_url())?;
     drop(code);
     let relay = HttpRelay::new(&input.relay_url)?;
     let relay_url = input.relay_url.clone();
@@ -755,13 +731,14 @@ pub async fn sync_join_with_recovery_kit(
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
     let join = async {
-        let creds = join::recovery_credentials(&relay, &session, input).await?;
+        let (creds, kit) = join::recovery_credentials(&relay, &session, input).await?;
         join::join_new_device(
             &relay,
             &session,
             creds,
             &device_name,
             consent,
+            join::JoinIdentity::RecoveryKit(Box::new(kit)),
             &dir,
             &native,
             now(),
@@ -777,7 +754,7 @@ pub async fn sync_join_with_recovery_kit(
 #[tauri::command]
 pub async fn sync_list_devices(db: State<'_, Database>) -> Result<Vec<SyncDevice>> {
     require_feature()?;
-    db.with_conn(devices::list_devices)
+    db.with_conn(|conn| devices::list_devices(conn, now()))
 }
 
 /// Renames this device (1 to 60 characters); the new name syncs to the other devices.

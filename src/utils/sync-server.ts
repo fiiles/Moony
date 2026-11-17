@@ -101,7 +101,7 @@ export function parseConnectionCode(text: string): ConnectionCodeRead {
 }
 
 /**
- * The server a pairing code (fourth field), a Recovery Kit QR (fourth field) or a connection code
+ * The server a pairing code (fourth field), a Recovery Kit QR (third field) or a connection code
  * names, in its normalized spelling; `null` when the text names none or an unusable one.
  */
 export function payloadServer(text: string): string | null {
@@ -112,9 +112,9 @@ export function payloadServer(text: string): string | null {
     const fields = trimmed.slice('moony-pair:'.length).split(':');
     encoded = fields.length === 4 ? fields[3] : undefined;
   } else if (trimmed.startsWith('moony-recover:')) {
-    // moony-recover:<version>:<account>:<code>[:<server>]
+    // moony-recover:2:<code>[:<server>] (format v2: the account is inside the code)
     const fields = trimmed.slice('moony-recover:'.length).split(':');
-    encoded = fields.length === 4 ? fields[3] : undefined;
+    encoded = fields[0] === '2' && fields.length === 3 ? fields[2] : undefined;
   } else {
     const read = parseConnectionCode(text);
     return read.ok ? read.server : null;

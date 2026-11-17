@@ -12,6 +12,12 @@ binding and clipboard of `plugins/moony-keychain`; `src/components/settings/sync
 Builds on ADR 0024 and ADR 0025. Where the spec's text differs, the code and this ADR win.
 Amended by [ADR 0027](0027-device-sync-audit-fixes.md) (2026-11-12): pairing protocol 2 (see the
 marked paragraph under **Bytes**), joins that keep their backup, and the Recovery Kit.
+Amended by [ADR 0032](0032-device-sync-device-removal-and-the-recovery-kit.md) (2026-11-17): a typed or
+pasted pairing code works in release builds on every platform (the six digits typed on the holder
+protect the exchange, see the marked paragraph under **The channel the code relies on**); the Recovery
+Kit is code format v2 (95 characters, the account number inside, one derivation from a seed); a joiner
+now joins with the Kit after any number of key changes; and the holder announces each pairing's ticket
+in its own chain before it can leave.
 
 ## Context
 
@@ -64,6 +70,14 @@ offers "Copy code" and the phone "Paste a pairing code — developer tool" only 
 `feature::dev_tools()`. Release builds pair by an on-screen QR alone. The Recovery Kit's typed and
 pasted fallbacks stay, because the Kit is the secret itself.
 
+*Amended 2026-11-17 (ADR 0032, D4): typed codes everywhere.* A typed or pasted pairing code now works in
+release builds on every platform, and the desktop's join choice offers "I have another computer with
+sync" beside the phone's QR and the Kit; the holder's dialog has "Copy code". This is sound because
+protocol 2 no longer relies on the channel: the joiner shows the six digits only after the shower's
+acknowledgement verified, and the person types them on the holder, which checks them in Rust (three
+attempts), so a code swapped on the way cannot be ground offline against a comparison the person makes
+by eye. The "developer tool" paragraph above describes protocol 1 and is superseded.
+
 **Who shows, who scans, who holds.** The desktop always shows: "Add a device" (sync on) and "Join
 from your phone" (sync off). The phone always scans: with sync off it joins, with sync on it sends.
 Desktop to desktop, phone to phone, or without a second device at hand, the joiner uses the Kit.
@@ -80,6 +94,8 @@ The holder seals slot 2 only after its own person confirmed (`sync_pairing_confi
 credentials then, with sync still on). The joiner reads slot 2 only after its own person confirmed,
 and joins only after that. Nobody polls in Compare. The UI polls every 2 s while it waits (≤ 60
 calls a minute, under the relay's 120 per address).
+
+*Amended 2026-11-17 (ADR 0032): the pairing ticket announcement.* When the holder's person confirms, the holder also queues, in its own chain and in the same exclusive hold that builds slot 2, an envelope with no rows and the changeset field `"tickets": ["<ticket public key>"]` (an older reader skips the field). It leaves through `sync_unsent` in sequence order, so it always reaches the server before a later `left` record of the same device. Receivers record the relay position of each announcement (`sync_tickets`, Local), and the trust store uses it to tell a device the holder paired before it left from a certificate backdated later from a backup of the holder (phase 5 revision §3.1). The pairing export carries the holder's recorded positions, so the joiner judges as its holder does.
 
 **Lost answers and contested scans (PF3, PF4).** A put whose answer was lost (any network failure
 but `connect`, which sent nothing, and every 5xx) makes that slot ambiguous; a later `slot_taken` on
@@ -122,7 +138,12 @@ then (PF7) refuses with sync on before any relay call, asks `account_status`
 (`syncRecoveryAccountInvalid`), opens the vault with the Kit's key as epoch 0 (`vault_info`;
 `syncRecoveryVaultNotFound`) and refuses a vault whose `rotation` is not 0
 (`syncRecoveryKitRotated`, rotation is phase 5); a typed code needs the account number and the
-server defaults to `default_base_url()`.
+server defaults to `default_base_url()`. *Amended 2026-11-17 (ADR 0032):* the Kit is code format v2:
+95 characters (`vault_id ‖ kit_seed ‖ account`, Crockford base32 plus a 35-bit checksum, QR
+`moony-recover:2:<code>[:<server>]`), so there is no separate account field; the Kit reads an
+envelope with every key from the server (`GET /kit`) and joins after any number of key changes
+(`syncRecoveryKitRotated` is gone; a replaced Kit reads `syncRecoveryKitReplaced`); a v1 code reads
+`syncRecoveryCodeInvalid`. The joiner pushes nothing until the person answers "Data jsou zpět".
 
 **Device list.** `sync_list_devices` lists the rows not removed: this device first, then newest
 change first, then by name, with a "Changes held" badge from `sync_heads.quarantined`. "Last change
@@ -178,8 +199,8 @@ behind, to be replaced by a relay flag before release.
   - a typed Kit account is not tied to the vault by the relay (it only drives the payment status);
   - `Credentials.account` is a plain `String`, not zeroized (phase 5 hardening), and the HKDF PRK
     is not zeroized;
-  - old device rows stay until removal; removal and key rotation are phase 5, so a rotated vault
-    cannot be joined with a Kit;
+  - old device rows stay until removal; removal and key rotation are phase 5 (built, ADR 0032), and since then a rotated
+    vault can be joined with a Kit;
   - Android is not built: its binding and clipboard answer `Unsupported`;
   - `cargo audit` reports RUSTSEC-2026-0459 (libsqlite3-sys), which predates this phase; check it at
     the release pre-flight.

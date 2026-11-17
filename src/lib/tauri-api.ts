@@ -177,6 +177,10 @@ import type {
   KitFileKind,
   KitSaveOutcome,
   SyncDevice,
+  RemovalPlan,
+  RemovalOutcome,
+  KitCheck,
+  SyncNoticeKind,
   PairingView,
   ReplaceImpactView,
   ReplaceConsentView,
@@ -253,8 +257,9 @@ export const authApi = {
     recoveryKey: string;
   }) => tauriInvoke<void>('confirm_change_password', { data }),
 
-  deleteAccount: (deleteSyncedData = false) =>
-    tauriInvoke<void>('delete_account', { deleteSyncedData }),
+  /** With `deleteSyncedData`, the device password is checked first (owner decision O-1). */
+  deleteAccount: (deleteSyncedData = false, password?: string) =>
+    tauriInvoke<void>('delete_account', { deleteSyncedData, password: password ?? null }),
 
   setMcpServerEnabled: (enabled: boolean) =>
     tauriInvoke<UserProfile>('set_mcp_server_enabled', { enabled }),
@@ -366,8 +371,9 @@ export const deviceSyncApi = {
 
   /**
    * The kit during setup only, behind the device password every time (an empty one is
-   * `validation.syncPasswordNeeded`); afterwards `showRecoveryKit`. Opens the five-minute window
-   * for `copyRecoveryCode` and `saveRecoveryKit`.
+   * `validation.syncPasswordNeeded`); after setup a new kit comes only with a removal
+   * (`removeDevices`), never again. Opens the ten-minute window for `copyRecoveryCode`,
+   * `printRecoveryKit` and `saveRecoveryKit`.
    */
   prepareRecoveryKit: (password: string) =>
     tauriInvoke<RecoveryKit>('sync_prepare_recovery_kit', { password }),
@@ -375,8 +381,8 @@ export const deviceSyncApi = {
   /**
    * Copies the recovery code natively and clears it after 60 s if unchanged. `false`: not
    * supported here (Linux, Android), so the UI copies itself; any other failure is
-   * `validation.syncCopyFailed`. Only shortly after `prepareRecoveryKit` or `showRecoveryKit`
-   * (`validation.syncPasswordRequired` otherwise).
+   * `validation.syncCopyFailed`. Only within the window of `prepareRecoveryKit` or of a removal
+   * that made a new kit (`validation.syncPasswordRequired` otherwise).
    */
   copyRecoveryCode: () => tauriInvoke<boolean>('sync_copy_recovery_code'),
 
@@ -391,13 +397,28 @@ export const deviceSyncApi = {
   saveRecoveryKit: (kind: KitFileKind, contents: string) =>
     tauriInvoke<KitSaveOutcome>('sync_save_recovery_kit', { kind, contents }),
 
-  finishSetup: (deviceName: string, kitSaved: boolean) =>
-    tauriInvoke<SyncStatus>('sync_finish_setup', { deviceName, kitSaved }),
+  /**
+   * Phone only (`validation.syncUnavailable` on the desktop, which saves with
+   * `saveRecoveryKit`): the kit's page was saved through the Files picker, so the kit counts as
+   * kept in a cloud folder (the picker does not say where it went; a removal then replaces it).
+   * Same window as `copyRecoveryCode`.
+   */
+  noteRecoveryKitSaved: () => tauriInvoke<void>('sync_note_recovery_kit_saved'),
+
+  /**
+   * Opens the print dialog while the kit's print stylesheet shows only the kit sheet (desktop);
+   * the kit then counts as printed. Same window as `copyRecoveryCode`.
+   */
+  printRecoveryKit: () => tauriInvoke<void>('sync_print_recovery_kit'),
+
+  /**
+   * Finishes setup (`validation.syncRecoveryKitNotConfirmed` unless the kit was copied, printed or
+   * saved first). `recoveryKit` of the returned status is `null` when the server already held
+   * another kit: the person makes a new one at once.
+   */
+  finishSetup: (deviceName: string) => tauriInvoke<SyncStatus>('sync_finish_setup', { deviceName }),
 
   syncNow: () => tauriInvoke<void>('sync_now'),
-
-  showRecoveryKit: (password: string) =>
-    tauriInvoke<RecoveryKit>('sync_show_recovery_kit', { password }),
 
   /**
    * Turns sync off on this device. With sync on the device password is required; cancelling a
@@ -496,13 +517,12 @@ export const deviceSyncApi = {
     tauriInvoke<ReplaceOutcomeView>('sync_pairing_join', { consent }),
 
   /**
-   * Joins with a Sync Recovery Kit (its QR text, or the typed code with the account number)
-   * within `consent`; the outcome.
+   * Joins with a Sync Recovery Kit (its QR text, or the typed 19-group code, which holds the
+   * account) within `consent`; the outcome.
    */
   joinWithRecoveryKit: (
     args: {
       code: string;
-      account?: string;
       relayUrl?: string;
       deviceName: string;
       password: string;
@@ -511,7 +531,6 @@ export const deviceSyncApi = {
   ) =>
     tauriInvoke<ReplaceOutcomeView>('sync_join_with_recovery_kit', {
       code: args.code,
-      account: args.account ?? null,
       relayUrl: args.relayUrl ?? null,
       deviceName: args.deviceName,
       password: args.password,
@@ -521,6 +540,59 @@ export const deviceSyncApi = {
   listDevices: () => tauriInvoke<SyncDevice[]>('sync_list_devices'),
 
   renameDevice: (name: string) => tauriInvoke<void>('sync_rename_device', { name }),
+
+  /**
+   * What removing `deviceIds` (and the ticked `alsoRemove`, and a new recovery kit when `newKit`)
+   * would do, with the `consent` `removeDevices` takes back. `refresh` wakes a sync round first so
+   * the list is as new as it can be: the dialog asks for it once, on open, not on every tick.
+   */
+  removalPlan: (deviceIds: string[], alsoRemove: string[], newKit: boolean, refresh: boolean) =>
+    tauriInvoke<RemovalPlan>('sync_removal_plan', { deviceIds, alsoRemove, newKit, refresh }),
+
+  /**
+   * Removes the devices (and makes a new kit when the plan says so) once the device password is
+   * checked, within the plan's `consent`. A new kit comes with the outcome, once; the copy window
+   * opens for it. A plan that changed meanwhile is `validation.syncRemovalPlanChanged`.
+   */
+  removeDevices: (args: {
+    password: string;
+    deviceIds: string[];
+    alsoRemove: string[];
+    newKit: boolean;
+    consent: string;
+  }) =>
+    tauriInvoke<RemovalOutcome>('sync_remove_devices', {
+      password: args.password,
+      deviceIds: args.deviceIds,
+      alsoRemove: args.alsoRemove,
+      newKit: args.newKit,
+      consent: args.consent,
+    }),
+
+  /** "Ověřit sadu": reads a typed code or a scanned QR; no password, nothing is sent anywhere. */
+  checkRecoveryKit: (code: string) => tauriInvoke<KitCheck>('sync_check_recovery_kit', { code }),
+
+  /**
+   * "Je moje": keeps a "Zkontrolujte" device; helps only until the next key change. `false`:
+   * nothing to keep (already kept, this device, an entry not pinned or trusted, or one gone),
+   * never an error.
+   */
+  keepDevice: (deviceId: string) => tauriInvoke<boolean>('sync_keep_device', { deviceId }),
+
+  /**
+   * "Mám je" (`removeThem` false) or after "Odebrat je" (true): lifts the push hold of a kit
+   * joiner. `validation.syncRemovalPending` while the removal is still running or a listed device
+   * is still active ("Odebrání ještě probíhá").
+   */
+  kitJoinDecided: (removeThem: boolean) =>
+    tauriInvoke<void>('sync_kit_join_decided', { removeThem }),
+
+  /**
+   * "Zavřít", "Rozumím", "Vím o tom": dismisses one notice of the status. For `newDevices`,
+   * `devices` are the IDs the person saw: only those entries go (omitted: the whole list).
+   */
+  dismissNotice: (kind: SyncNoticeKind, devices?: string[]) =>
+    tauriInvoke<void>('sync_dismiss_notice', { kind, devices: devices ?? null }),
 };
 
 // ============================================================================

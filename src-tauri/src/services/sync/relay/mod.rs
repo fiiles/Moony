@@ -40,6 +40,7 @@ pub struct AccountStatus {
 }
 
 /// `GET /v1/vaults/:id`. `rotation` is the relay's token rotation counter (0 = never rotated).
+/// `kit`: the vault's Recovery Kit as the server knows it, `None` when the vault has none.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VaultInfo {
     pub head: u64,
@@ -48,6 +49,125 @@ pub struct VaultInfo {
     pub paid_until: i64,
     pub bytes: u64,
     pub rotation: u32,
+    pub kit: Option<KitInfo>,
+}
+
+/// The `kit` of the vault info: when the current Kit token was set (unix seconds on the server's
+/// clock) and the minute of its last successful read (`None` = never read).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct KitInfo {
+    pub since: i64,
+    pub last_read: Option<i64>,
+}
+
+/// `GET /v1/vaults/:id/kit`: the Kit's envelope (opaque bytes, 1 B to 256 KiB), when the current
+/// Kit token was set (`since`) and when the envelope was last replaced (`updated_at`), both in
+/// unix seconds on the server's clock.
+#[derive(Clone, PartialEq, Eq)]
+pub struct KitRead {
+    pub envelope: Vec<u8>,
+    pub since: i64,
+    pub updated_at: i64,
+}
+
+impl std::fmt::Debug for KitRead {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KitRead")
+            .field("envelope", &self.envelope.len())
+            .field("since", &self.since)
+            .field("updated_at", &self.updated_at)
+            .finish()
+    }
+}
+
+/// The Kit part of a rotation (`POST /v1/vaults/:id/token`, `kit`): the new envelope, and a new
+/// Kit token when the Kit is replaced (`None` keeps the Kit token and only replaces the envelope).
+/// Required on a vault that has a Kit (`BadRequest("kit_required")` without it).
+#[derive(Clone, Copy)]
+pub struct KitRotation<'a> {
+    pub envelope: &'a [u8],
+    pub token: Option<&'a str>,
+}
+
+impl std::fmt::Debug for KitRotation<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KitRotation")
+            .field("envelope", &self.envelope.len())
+            .field("replaces_token", &self.token.is_some())
+            .finish()
+    }
+}
+
+/// The largest Kit envelope the server stores (decoded).
+pub const MAX_KIT_ENVELOPE: usize = 256 * 1024;
+
+/// The relay's answer to a token rotation (`POST /v1/vaults/:id/token`): the new rotation number
+/// and the vault's head at the moment of the rotation (the position the new key starts after).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rotated {
+    pub rotation: u32,
+    pub head: u64,
+}
+
+/// One stored key-change bundle (`GET /v1/vaults/:id/rekey`): the rotation it belongs to, the
+/// vault head when it was made, when (unix seconds on the server's clock) and its opaque bytes.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Rekey {
+    pub rotation: u32,
+    pub head: u64,
+    pub at: i64,
+    pub bundle: Vec<u8>,
+}
+
+impl std::fmt::Debug for Rekey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Rekey")
+            .field("rotation", &self.rotation)
+            .field("head", &self.head)
+            .field("at", &self.at)
+            .field("bundle", &self.bundle.len())
+            .finish()
+    }
+}
+
+/// One page of key-change bundles, oldest first; `more` says to ask again after the last rotation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RekeyPage {
+    pub rekeys: Vec<Rekey>,
+    pub more: bool,
+}
+
+/// The largest bundle the server stores (decoded).
+pub const MAX_REKEY_BUNDLE: usize = 256 * 1024;
+/// The most bundles one page may ask for (the server's cap).
+pub const MAX_REKEY_PAGE: u32 = 32;
+/// The most bundle bytes the client accepts in one page (the server cuts a page at 4 MiB).
+pub const MAX_REKEY_PAGE_BYTES: usize = 4 * 1024 * 1024;
+
+/// What every page of bundles must be, whoever answered it (the server is untrusted): at most
+/// `limit` bundles, rotations strictly ascending and above `after`, each bundle non-empty and within
+/// the cap, the page within its byte cap, and no "more" on an empty page (it would never end).
+/// `HttpRelay` checks the answer, the fake the page it built.
+pub(crate) fn check_rekey_page(page: &RekeyPage, after: u32, limit: u32) -> RelayResult<()> {
+    let refused = || Err(RelayError::Protocol("unexpected answer".into()));
+    if (page.more && page.rekeys.is_empty()) || page.rekeys.len() > limit as usize {
+        return refused();
+    }
+    let mut previous = after;
+    let mut bytes = 0usize;
+    for rekey in &page.rekeys {
+        bytes += rekey.bundle.len();
+        if rekey.rotation <= previous
+            || rekey.at < 0
+            || rekey.bundle.is_empty()
+            || rekey.bundle.len() > MAX_REKEY_BUNDLE
+            || bytes > MAX_REKEY_PAGE_BYTES
+        {
+            return refused();
+        }
+        previous = rekey.rotation;
+    }
+    Ok(())
 }
 
 /// What a server says it is (`GET /v1/server`, spec §9.3): `protocol` is the version of this
@@ -63,14 +183,16 @@ pub enum ServerMode {
 }
 
 /// `GET /v1/server`. `version` is 1–32 characters of `[0-9A-Za-z.+-]`. `blobs`: the server's
-/// `features` list names `"blobs"` (the blob routes exist); a server without the list has no
-/// features, and features this app does not know are ignored.
+/// `features` list names `"blobs"` (the blob routes exist); `kit`: it names `"kit"` (the Recovery
+/// Kit routes and the `kit` of a rotation exist). A server without the list has no features, and
+/// features this app does not know are ignored.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerInfo {
     pub version: String,
     pub protocol: u32,
     pub mode: ServerMode,
     pub blobs: bool,
+    pub kit: bool,
 }
 
 /// One blob of a listing (`GET /v1/vaults/:id/blobs`): its ID, its stored (sealed) size and when
@@ -216,6 +338,10 @@ pub enum RelayError {
     Unauthorized,
     #[error("token read-only")]
     TokenReadOnly,
+    /// `409 too_many_rotations`: the vault already holds 32 key-change bundles younger than 30
+    /// days.
+    #[error("too many key changes")]
+    TooManyRotations,
     #[error("vault limit reached")]
     VaultLimitReached,
     #[error("account not found")]
@@ -266,6 +392,14 @@ pub enum RelayError {
     /// `507` (`server_full`): the server's disk is at its free-space floor. By status alone.
     #[error("insufficient storage")]
     InsufficientStorage,
+    /// `409 kit_exists`: the vault has a Kit with another token (a Kit is replaced only by a
+    /// rotation).
+    #[error("kit exists")]
+    KitExists,
+    /// `410 kit_replaced`: the Kit token was replaced by a newer Kit at `replaced_at` (unix
+    /// seconds on the server's clock).
+    #[error("kit replaced")]
+    KitReplaced { replaced_at: i64 },
     #[error("bad request: {0}")]
     BadRequest(String),
     #[error("server error {0}")]
@@ -288,6 +422,9 @@ const BAD_REQUEST_CODES: &[&str] = &[
     "snapshot_ahead_of_head",
     "invalid_token",
     "invalid_rekey",
+    "kit_required",
+    "invalid_kit",
+    "invalid_kit_token",
     "bad_mailbox",
     "bad_slot",
     "invalid_blob_id",
@@ -298,6 +435,9 @@ const BAD_REQUEST_CODES: &[&str] = &[
 struct ErrorBody {
     #[serde(rename = "error")]
     error: String,
+    /// Only a `410 kit_replaced` carries it.
+    #[serde(rename = "replacedAt", default)]
+    replaced_at: Option<i64>,
 }
 
 impl RelayError {
@@ -311,9 +451,19 @@ impl RelayError {
         if let Some(error) = Self::by_status(status) {
             return error;
         }
-        let Ok(ErrorBody { error: code }) = serde_json::from_slice::<ErrorBody>(body) else {
+        let Ok(ErrorBody {
+            error: code,
+            replaced_at,
+        }) = serde_json::from_slice::<ErrorBody>(body)
+        else {
             return RelayError::Protocol("not json".into());
         };
+        if (status, code.as_str()) == (410, "kit_replaced") {
+            return match replaced_at.filter(|at| *at >= 0) {
+                Some(replaced_at) => RelayError::KitReplaced { replaced_at },
+                None => RelayError::Protocol("unexpected answer".into()),
+            };
+        }
         Self::by_code(status, &code)
     }
 
@@ -347,6 +497,7 @@ impl RelayError {
             (401, "unauthorized") => RelayError::Unauthorized,
             (402, "payment_required") => RelayError::PaymentRequired,
             (403, "token_read_only") => RelayError::TokenReadOnly,
+            (409, "too_many_rotations") => RelayError::TooManyRotations,
             (403, "vault_limit_reached") => RelayError::VaultLimitReached,
             (403, "registration_closed") => RelayError::RegistrationClosed,
             (403, "managed_by_operator") => RelayError::BadRequest("managed_by_operator".into()),
@@ -359,6 +510,7 @@ impl RelayError {
             (409, "vault_exists") => RelayError::VaultExists,
             (409, "account_has_vaults") => RelayError::AccountHasVaults,
             (409, "snapshot_outdated") => RelayError::SnapshotOutdated,
+            (409, "kit_exists") => RelayError::KitExists,
             // The vault is still being deleted (a re-created vault always has a new ID, so this
             // is near unreachable): the relay is busy, a passing server error that backs off.
             (409, "vault_deleting") => RelayError::Server(409),
@@ -373,6 +525,7 @@ impl RelayError {
             (413, "snapshot_too_large") => RelayError::SnapshotTooLarge,
             (413, "body_too_large") => RelayError::BadRequest("body_too_large".into()),
             (413, "rekey_too_large") => RelayError::BadRequest("rekey_too_large".into()),
+            (413, "kit_too_large") => RelayError::BadRequest("kit_too_large".into()),
             (413, "blob_too_large") => RelayError::BadRequest("blob_too_large".into()),
             _ => RelayError::Protocol("unknown error code".into()),
         }
@@ -433,6 +586,59 @@ pub trait Relay: Send + Sync {
     ) -> impl Future<Output = RelayResult<SnapshotBlob>> + Send;
     /// `DELETE /v1/vaults/:id`.
     fn delete_vault(&self, vault: &VaultAuth) -> impl Future<Output = RelayResult<()>> + Send;
+    /// `POST /v1/vaults/:id/token {token, rekey}`: the current token hands the vault to
+    /// `new_token` and stores `bundle` (1 B to 256 KiB, opaque to the server). The retired token
+    /// reads for 30 days and writes nothing: a second rotation with it is `TokenReadOnly`
+    /// (the other of two concurrent rotations lost), the 33rd inside 30 days `TooManyRotations`.
+    fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> impl Future<Output = RelayResult<Rotated>> + Send;
+    /// `POST /v1/vaults/:id/token {token, rekey, kit}`: `rotate_token` with the Kit's part, atomic
+    /// with it (a refused rotation leaves the Kit as it was). `kit` is required on a vault that
+    /// has a Kit (`BadRequest("kit_required")`); with a `token` the Kit is replaced (the old Kit
+    /// token then reads `KitReplaced`), and that is also how a vault without a Kit gets one by
+    /// rotation. Errors besides `rotate_token`'s: `BadRequest("invalid_kit" | "invalid_kit_token"
+    /// | "kit_too_large")`.
+    fn rotate_token_with_kit(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+        kit: KitRotation<'_>,
+    ) -> impl Future<Output = RelayResult<Rotated>> + Send;
+    /// `PUT /v1/vaults/:id/kit {token, envelope}` (the current vault token, no subscription):
+    /// sets the Kit up; `true` when it was created (201), `false` when the same Kit token was
+    /// already stored and only the envelope was replaced (200, a retried setup). Another token
+    /// while a Kit exists is `KitExists`; a token that is not 43 base64url characters or equals a
+    /// vault token (or a replaced Kit token) is `BadRequest("invalid_kit_token")`, an empty or
+    /// malformed envelope `BadRequest("invalid_kit")`, one over `MAX_KIT_ENVELOPE`
+    /// `BadRequest("kit_too_large")`.
+    fn put_kit(
+        &self,
+        vault: &VaultAuth,
+        kit_token: &str,
+        envelope: &[u8],
+    ) -> impl Future<Output = RelayResult<bool>> + Send;
+    /// `GET /v1/vaults/:id/kit` with the Kit token as the bearer (never a vault token): the
+    /// envelope. `KitReplaced` for a Kit token a newer Kit replaced, `Unauthorized` for any other
+    /// token or a vault without a Kit, `VaultNotFound`, `PaymentRequired` after the read grace.
+    fn get_kit(
+        &self,
+        vault_id: &str,
+        kit_token: &str,
+    ) -> impl Future<Output = RelayResult<KitRead>> + Send;
+    /// `GET /v1/vaults/:id/rekey?after=&limit=` (current or previous token): the bundles of
+    /// rotations above `after`, oldest first, `limit` 1..=`MAX_REKEY_PAGE`. Bundles older than 30
+    /// days are gone.
+    fn rekeys(
+        &self,
+        vault: &VaultAuth,
+        after: u32,
+        limit: u32,
+    ) -> impl Future<Output = RelayResult<RekeyPage>> + Send;
     /// `PUT /v1/vaults/:id/blobs/:blob`: `body` streamed with `Content-Length: sealed_len`. A
     /// blob the server already holds succeeds without being stored again. A body that is not
     /// `sealed_len` bytes is `BadRequest("length_required")`; one over the blob cap is refused
@@ -555,14 +761,13 @@ mod tests {
             // Routes the relay serves but no phase 2 call reaches.
             (404, "not_found", bad("not_found")),
             (405, "method_not_allowed", bad("method_not_allowed")),
-            // Token rotation (no call of this client sends it: the 400s are bad requests and the
-            // other codes are outside this client's contract) and the pairing mailbox.
+            // Token rotation (`rotate_token`) and the pairing mailbox.
             (400, "invalid_token", bad("invalid_token")),
             (400, "invalid_rekey", bad("invalid_rekey")),
             (400, "bad_mailbox", bad("bad_mailbox")),
             (400, "bad_slot", bad("bad_slot")),
             (413, "rekey_too_large", bad("rekey_too_large")),
-            (409, "too_many_rotations", unknown_code()),
+            (409, "too_many_rotations", E::TooManyRotations),
             (409, "slot_taken", E::SlotTaken),
             (404, "empty", E::SlotEmpty),
             (410, "consumed", E::SlotConsumed),
@@ -716,6 +921,35 @@ mod tests {
                 assert!(!format!("{error:?}").contains(code), "{error:?}");
             }
         }
+    }
+
+    #[test]
+    fn the_kit_answers_map_to_their_variants() {
+        let replaced = br#"{"error":"kit_replaced","replacedAt":1700000000}"#;
+        assert_eq!(
+            E::from_response(410, replaced),
+            E::KitReplaced {
+                replaced_at: 1_700_000_000
+            }
+        );
+        // The time is the server's word, but it must be there and make sense.
+        for body in [
+            &br#"{"error":"kit_replaced"}"#[..],
+            br#"{"error":"kit_replaced","replacedAt":-5}"#,
+            br#"{"error":"kit_replaced","replacedAt":"soon"}"#,
+        ] {
+            assert!(matches!(E::from_response(410, body), E::Protocol(_)));
+        }
+        // Only a 410 is a replaced Kit; a 429 stays a rate limit whatever the body says.
+        assert_eq!(E::from_response(429, replaced), E::RateLimited);
+        assert_eq!(E::from_response(409, &body("kit_exists")), E::KitExists);
+        for code in ["kit_required", "invalid_kit", "invalid_kit_token"] {
+            assert_eq!(E::from_response(400, &body(code)), bad(code));
+        }
+        assert_eq!(
+            E::from_response(413, &body("kit_too_large")),
+            bad("kit_too_large")
+        );
     }
 
     #[test]

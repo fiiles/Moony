@@ -9,6 +9,7 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { cn } from '@/lib/utils';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
+import { sentences } from '@/utils/sentences';
 import {
   aheadGap,
   aheadText,
@@ -16,15 +17,18 @@ import {
   heldDays,
   heldFor,
   heldGapDevice,
+  offersResync,
   problemAction,
   skippableGap,
+  type SyncProblemAction,
 } from '@/utils/device-sync-problem';
 import { secondsToDate } from '@/utils/sync-status';
 import { hostOf } from '@/utils/sync-setup';
 import { offerDownloadEverything, onOtherDevices } from '@/utils/sync-attachments';
-import { isQuietlyOutOfReach, syncState } from '@/utils/sync-state';
+import { isQuietlyOutOfReach, syncProblemState, syncState } from '@/utils/sync-state';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
+import { SyncNotices } from '@/mobile/components/sync/SyncNotices';
 
 /** The card the status lines sit in (`.m-card`). */
 const CARD = 'mb-3.5 rounded-r4 border border-line bg-paper px-3 shadow-e1';
@@ -40,6 +44,8 @@ interface SyncStatusBlockProps {
   onRepair: () => void;
   onResync: () => void;
   onTurnOff: () => void;
+  /** "Připojit znovu" (the rejoin and waiting cards): the password question opens. */
+  onRejoin: () => void;
   /** A change from another device missing for 14 days or more: its skip confirmation opens. */
   onSkipMissing: (gap: HeldGapView) => void;
 }
@@ -56,6 +62,7 @@ export function SyncStatusBlock({
   onRepair,
   onResync,
   onTurnOff,
+  onRejoin,
   onSkipMissing,
 }: SyncStatusBlockProps) {
   const { t } = useTranslation('deviceSync');
@@ -64,8 +71,6 @@ export function SyncStatusBlock({
   const { syncNow, downloadEverything } = useDeviceSyncMutations();
   const attachments = useAttachmentsStatusText(status.attachments);
   const elsewhere = onOtherDevices(status.attachments);
-
-  const running = syncNow.isPending || status.phase === 'syncing';
 
   const run = async () => {
     if (running) return;
@@ -91,6 +96,9 @@ export function SyncStatusBlock({
   const unreachable = isQuietlyOutOfReach(status, now);
   // The same state the top bar shows, in the phone's row wording
   const indicator = syncState(status, now);
+  // A round that takes too long reads "taking longer than usual": the button then tries again
+  const slow = indicator?.kind === 'syncingLong';
+  const running = !slow && (syncNow.isPending || status.phase === 'syncing');
   const stateLabel = indicator ? t(indicator.rowKey, { count: indicator.days }) : '';
   // A note, never a problem: this device's clock stands more than a day ahead (audit M6)
   const clockAheadUntil = secondsToDate(status.clockAheadUntil);
@@ -108,6 +116,7 @@ export function SyncStatusBlock({
           onRepair={onRepair}
           onResync={onResync}
           onTurnOff={onTurnOff}
+          onRejoin={onRejoin}
           onSkipMissing={onSkipMissing}
           onTryAgain={() => void run()}
           tryingAgain={syncNow.isPending}
@@ -117,6 +126,7 @@ export function SyncStatusBlock({
           }}
         />
       )}
+      <SyncNotices status={status} />
       {clockAheadUntil && (
         <InlineAlert icon={Clock} muted>
           {t('status.clockAhead', { date: date(clockAheadUntil, { dateStyle: 'long' }) })}
@@ -126,7 +136,12 @@ export function SyncStatusBlock({
         <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{t('status.unreachableNote')}</p>
       )}
       <div className={CARD}>
-        <KeyValueRow label={t('phone.status')} value={stateLabel} wrap />
+        <KeyValueRow
+          label={t('phone.status')}
+          value={stateLabel}
+          sub={indicator?.kind === 'firstUpload' ? t('setup.done.body') : undefined}
+          wrap
+        />
         <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} wrap />
         <KeyValueRow label={t('phone.pending')} value={status.pendingChanges} wrap />
         <KeyValueRow label={t('attachments.title')} value={attachments.value} wrap />
@@ -163,7 +178,7 @@ export function SyncStatusBlock({
       )}
       <Button className={BUTTON} onClick={() => void run()} loading={running}>
         <RefreshCw />
-        {running ? t('indicator.syncing') : t('status.syncNow')}
+        {running ? t('indicator.syncing') : slow ? t('pairing.tryAgain') : t('status.syncNow')}
       </Button>
     </>
   );
@@ -175,6 +190,7 @@ function ProblemAlert({
   onRepair,
   onResync,
   onTurnOff,
+  onRejoin,
   onSkipMissing,
   onTryAgain,
   tryingAgain,
@@ -185,9 +201,13 @@ function ProblemAlert({
   renderDate: (seconds: number) => string;
 }) {
   const { t } = useTranslation('deviceSync');
+  const { locale } = useFormat();
   const heldGaps = useHeldGaps(status.problem === 'gap' || status.problem === 'clockAhead');
   const problem = status.problem;
   if (!problem) return null;
+  const problemState = syncProblemState(status);
+  // A key change another device made, not yet confirmed: the ordinary "Synchronizuji…", no alert
+  if (problem === 'keyRotated' && !problemState) return null;
   // Out of reach for now: no alert box, the block shows a plain line instead
   if (isQuietlyOutOfReach(status, Math.floor(Date.now() / 1000))) return null;
 
@@ -202,24 +222,37 @@ function ProblemAlert({
   const skipFrom = firstSkippableAt(held, now);
   if (skipFrom !== null && renderDate(skipFrom)) {
     const key = problem === 'clockAhead' ? 'alert.clockAhead.skipFrom' : 'alert.gap.skipFrom';
-    body = `${body} ${t(key, { date: renderDate(skipFrom) })}`;
+    body = sentences(locale, [body, t(key, { date: renderDate(skipFrom) })]);
   }
   let actions: Array<{ label: string; onClick: () => void; disabled?: boolean }> = [];
-  switch (action) {
+  const connectAgain = { label: t('problem.rejoin.button'), onClick: onRejoin };
+  if (problemState?.kind === 'rejoin') {
+    title = t('problem.rejoin.title');
+    body = sentences(locale, [
+      t('problem.rejoin.body'),
+      problemState.by ? t('problem.rejoin.by', { by: problemState.by }) : null,
+    ]);
+    actions = [connectAgain];
+  } else if (problemState?.kind === 'waitingForRemover') {
+    title = t('problem.waiting.title', { by: problemState.by });
+    body = t('problem.waiting.body', { by: problemState.by });
+    actions = [connectAgain];
+  }
+  // The rejoin and waiting states have their own button: the problem's ordinary action is skipped
+  const effectiveAction: SyncProblemAction = problemState ? 'none' : action;
+  switch (effectiveAction) {
     case 'renew':
     case 'askOperator':
       title = status.ownServer ? t('alert.lapsed.titleOwnServer') : t('alert.lapsed.title');
       body =
         action === 'askOperator'
           ? t('alert.lapsed.selfHosted')
-          : [
+          : sentences(locale, [
               t('phone.renewUnavailable'),
               secondsToDate(status.deletesAt) !== null
                 ? t('alert.lapsed.deletes', { date: renderDate(status.deletesAt ?? 0) })
                 : null,
-            ]
-              .filter(Boolean)
-              .join(' ');
+            ]);
       break;
     case 'turnOffOrRetry':
       body = t('alert.vaultGone.text');
@@ -257,10 +290,14 @@ function ProblemAlert({
       }
       break;
     case 'none':
+      // Re-syncing fixes only these problems (and a repair that could not send everything)
+      if (!problemState && offersResync(problem)) {
+        actions = [{ label: t('resync.button'), onClick: onResync }];
+      }
       break;
     default: {
       // A new SyncProblemAction must be placed above: this fails to compile until it is
-      const unhandled: never = action;
+      const unhandled: never = effectiveAction;
       return unhandled;
     }
   }

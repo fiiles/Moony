@@ -575,6 +575,7 @@ async fn vault_info_and_delete_use_the_bearer_token() {
             paid_until: 1_800_000_000,
             bytes: 4096,
             rotation: 0,
+            kit: None,
         }
     );
     let request = server.join().expect("server");
@@ -804,6 +805,7 @@ async fn server_info_reads_the_documented_answer() {
             protocol: 2,
             mode: ServerMode::SelfHosted,
             blobs: false,
+            kit: false,
         }
     );
     let request = server.join().expect("server");
@@ -853,6 +855,7 @@ async fn server_info_refuses_what_is_not_a_moony_server() {
             protocol: 2,
             mode: ServerMode::Cloud,
             blobs: false,
+            kit: false,
         })
     );
     assert_eq!(
@@ -861,4 +864,232 @@ async fn server_info_refuses_what_is_not_a_moony_server() {
             .map(|i| i.mode),
         Ok(ServerMode::Other)
     );
+}
+
+const NEW_TOKEN: &str = "bmV3LXRva2VuLW5ldy10b2tlbi1uZXctdG9rZW4tbmV";
+
+#[tokio::test]
+async fn rotate_token_posts_the_new_token_and_the_padded_base64_bundle() {
+    let (base, server) = serve_once(json_answer("200 OK", r#"{"rotation":3,"head":57}"#));
+    // 5 bytes: base64 needs padding (the server checks `length % 4`).
+    let bundle = [1u8, 2, 3, 4, 5];
+    let rotated = relay(&base)
+        .rotate_token(&vault(), NEW_TOKEN, &bundle)
+        .await
+        .expect("rotate");
+    assert_eq!(
+        rotated,
+        Rotated {
+            rotation: 3,
+            head: 57
+        }
+    );
+    let request = server.join().expect("server");
+    assert_eq!(
+        request.request_line(),
+        format!("POST /v1/vaults/{VAULT_ID}/token HTTP/1.1")
+    );
+    // The current token authorises; the new one is in the body only.
+    assert_eq!(
+        request.header("authorization"),
+        Some(format!("Bearer {TOKEN}"))
+    );
+    let body: serde_json::Value = serde_json::from_slice(&request.body).expect("json");
+    assert_eq!(body["token"], NEW_TOKEN);
+    assert_eq!(body["rekey"], STANDARD.encode(bundle));
+    assert!(body["rekey"].as_str().expect("text").ends_with('='));
+    assert_eq!(body.as_object().expect("object").len(), 2);
+}
+
+#[tokio::test]
+async fn rotate_token_maps_the_servers_answers() {
+    for (status, code, expected) in [
+        (
+            "403 Forbidden",
+            "token_read_only",
+            RelayError::TokenReadOnly,
+        ),
+        ("401 Unauthorized", "unauthorized", RelayError::Unauthorized),
+        (
+            "409 Conflict",
+            "too_many_rotations",
+            RelayError::TooManyRotations,
+        ),
+        (
+            "400 Bad Request",
+            "invalid_rekey",
+            RelayError::BadRequest("invalid_rekey".into()),
+        ),
+        (
+            "400 Bad Request",
+            "invalid_token",
+            RelayError::BadRequest("invalid_token".into()),
+        ),
+        (
+            "413 Payload Too Large",
+            "rekey_too_large",
+            RelayError::BadRequest("rekey_too_large".into()),
+        ),
+        (
+            "404 Not Found",
+            "vault_not_found",
+            RelayError::VaultNotFound,
+        ),
+    ] {
+        let (base, server) = serve_once(json_answer(status, &format!(r#"{{"error":"{code}"}}"#)));
+        let error = relay(&base)
+            .rotate_token(&vault(), NEW_TOKEN, &[1, 2, 3])
+            .await
+            .expect_err(code);
+        assert_eq!(error, expected, "{code}");
+        server.join().expect("server");
+    }
+    // A 5xx or a timeout is ambiguous for the caller: it must stay a passing error.
+    let (base, server) = serve_once(json_answer(
+        "503 Service Unavailable",
+        r#"{"error":"busy"}"#,
+    ));
+    let error = relay(&base)
+        .rotate_token(&vault(), NEW_TOKEN, &[1])
+        .await
+        .expect_err("busy");
+    assert_eq!(error, RelayError::Server(503));
+    server.join().expect("server");
+}
+
+#[tokio::test]
+async fn rotate_token_refuses_bad_arguments_before_sending() {
+    // Nothing listens: a request would be a `Network` error, not the argument error.
+    let relay = relay("http://127.0.0.1:9");
+    for (token, bundle, code) in [
+        ("short", vec![1u8], "invalid_token"),
+        (NEW_TOKEN, vec![], "invalid_rekey"),
+        (
+            NEW_TOKEN,
+            vec![0u8; MAX_REKEY_BUNDLE + 1],
+            "rekey_too_large",
+        ),
+    ] {
+        let error = relay
+            .rotate_token(&vault(), token, &bundle)
+            .await
+            .expect_err(code);
+        assert_eq!(error, RelayError::BadRequest(code.into()), "{code}");
+    }
+    // The bundle at the cap passes the check (and then fails to connect).
+    let error = relay
+        .rotate_token(&vault(), NEW_TOKEN, &vec![0u8; MAX_REKEY_BUNDLE])
+        .await
+        .expect_err("connect");
+    assert!(matches!(error, RelayError::Network(_)), "{error:?}");
+}
+
+fn rekey_json(rotation: u32, head: u64, at: i64, bundle: &[u8]) -> String {
+    format!(
+        r#"{{"rotation":{rotation},"head":{head},"at":{at},"rekey":"{}"}}"#,
+        STANDARD.encode(bundle)
+    )
+}
+
+#[tokio::test]
+async fn rekeys_fetches_a_page_with_after_and_limit() {
+    let body = format!(
+        r#"{{"rekeys":[{},{}],"more":true}}"#,
+        rekey_json(4, 10, 1_700_000_000, b"first bundle"),
+        rekey_json(5, 12, 1_700_000_100, &[7u8; 5]),
+    );
+    let (base, server) = serve_once(json_answer("200 OK", &body));
+    let page = relay(&base).rekeys(&vault(), 3, 8).await.expect("rekeys");
+    assert!(page.more);
+    assert_eq!(page.rekeys.len(), 2);
+    assert_eq!(
+        page.rekeys[0],
+        Rekey {
+            rotation: 4,
+            head: 10,
+            at: 1_700_000_000,
+            bundle: b"first bundle".to_vec()
+        }
+    );
+    assert_eq!(page.rekeys[1].bundle, vec![7u8; 5]);
+    let request = server.join().expect("server");
+    assert_eq!(
+        request.request_line(),
+        format!("GET /v1/vaults/{VAULT_ID}/rekey?after=3&limit=8 HTTP/1.1")
+    );
+    assert_eq!(
+        request.header("authorization"),
+        Some(format!("Bearer {TOKEN}"))
+    );
+}
+
+#[tokio::test]
+async fn rekeys_refuses_pages_that_break_the_contract() {
+    let ask = |body: String| async move {
+        let (base, server) = serve_once(json_answer("200 OK", &body));
+        let result = relay(&base).rekeys(&vault(), 3, 8).await;
+        server.join().expect("server");
+        result
+    };
+    let refused = Err(RelayError::Protocol("unexpected answer".into()));
+    // Not ascending, not above `after`, "more" on an empty page, empty bundle, bad base64.
+    assert_eq!(
+        ask(format!(
+            r#"{{"rekeys":[{},{}],"more":false}}"#,
+            rekey_json(5, 1, 1, b"x"),
+            rekey_json(5, 1, 1, b"y")
+        ))
+        .await,
+        refused
+    );
+    assert_eq!(
+        ask(format!(
+            r#"{{"rekeys":[{}],"more":false}}"#,
+            rekey_json(3, 1, 1, b"x")
+        ))
+        .await,
+        refused
+    );
+    assert_eq!(ask(r#"{"rekeys":[],"more":true}"#.into()).await, refused);
+    assert_eq!(
+        ask(format!(
+            r#"{{"rekeys":[{}],"more":false}}"#,
+            rekey_json(4, 1, 1, b"")
+        ))
+        .await,
+        refused
+    );
+    assert_eq!(
+        ask(r#"{"rekeys":[{"rotation":4,"head":1,"at":1,"rekey":"!!"}],"more":false}"#.into())
+            .await,
+        Err(RelayError::Protocol("bad base64".into()))
+    );
+    // An empty page without "more" is a page.
+    assert_eq!(
+        ask(r#"{"rekeys":[],"more":false}"#.into()).await,
+        Ok(RekeyPage {
+            rekeys: vec![],
+            more: false
+        })
+    );
+}
+
+#[tokio::test]
+async fn rekeys_maps_errors_and_checks_the_limit_locally() {
+    let (base, server) = serve_once(json_answer(
+        "401 Unauthorized",
+        r#"{"error":"unauthorized"}"#,
+    ));
+    let error = relay(&base)
+        .rekeys(&vault(), 0, 8)
+        .await
+        .expect_err("unauthorized");
+    assert_eq!(error, RelayError::Unauthorized);
+    server.join().expect("server");
+
+    let relay = relay("http://127.0.0.1:9");
+    for limit in [0, MAX_REKEY_PAGE + 1] {
+        let error = relay.rekeys(&vault(), 0, limit).await.expect_err("limit");
+        assert_eq!(error, RelayError::BadRequest("invalid_limit".into()));
+    }
 }

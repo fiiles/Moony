@@ -1,9 +1,10 @@
 //! The snapshot record stream (§8, D16): each record is a 4-byte big-endian length followed by
-//! one JSON object whose `"r"` names it — `devs`, `header`, `row`, `seed` or `end`. A row record
+//! one JSON object whose `"r"` names it — `devs`, `header`, `keys`, `row`, `seed` or `end`. A row record
 //! is `{"r":"row", …encode_row(…)}` (the changeset's row codec, R8), and its clocks index the
 //! stream's one `devs` record, which comes first. Phase 2 deflates and encrypts the same bytes.
 //!
-//! Order: `devs`, `header`, every `row`, every `seed`, `end`. A reader takes the whole stream
+//! Order: `devs`, `header`, `keys` (one, optional: a snapshot of a build from before phase 5 has
+//! none), every `row`, every `seed`, `end`. A reader takes the whole stream
 //! (phase 1 holds it in memory) and rejects one without `end`, with counts that differ, or with
 //! anything after `end`, before the caller writes anything.
 
@@ -12,13 +13,16 @@ use std::io::{Read, Write};
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value as Json};
+use zeroize::Zeroizing;
 
 use crate::error::{AppError, Result};
 use crate::services::sync::changeset::{
     decode_row, encode_row, seed_value_from, value_json, DevTable, RowChange, SqlValue,
 };
 use crate::services::sync::hlc::DeviceId;
+use crate::services::sync::keys::SecretString;
 use crate::services::sync::registry::{self, TableClass};
 
 /// The largest record a reader accepts (the relay's 100 MiB request limit).
@@ -33,6 +37,37 @@ pub struct Head {
     /// The author's chain forked on the dumping device (§9.3): restoring keeps it held.
     pub quarantined: bool,
 }
+
+/// One vault key of a snapshot's `Keys` record (phase 5 §8.4): an epoch, its key and the relay
+/// position at which the epoch started, when the dumper knows it. On the wire
+/// `{"epoch":n,"key":"<base64url>","head":h}` (`head` omitted when unknown). The key is wiped when
+/// this is dropped and `Debug` never prints it.
+#[derive(Clone)]
+pub struct EpochKey {
+    pub epoch: u32,
+    pub key: Zeroizing<[u8; 32]>,
+    pub head: Option<u64>,
+}
+
+impl PartialEq for EpochKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.epoch == other.epoch && *self.key == *other.key && self.head == other.head
+    }
+}
+
+impl std::fmt::Debug for EpochKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EpochKey")
+            .field("epoch", &self.epoch)
+            .field("key", &format_args!("<redacted>"))
+            .field("head", &self.head)
+            .finish()
+    }
+}
+
+/// The most epochs a `Keys` record may name (one per key change, 32 in 30 days, over any
+/// realistic life of a vault).
+const MAX_KEYS: usize = 4096;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Record {
@@ -56,6 +91,8 @@ pub enum Record {
         missed_skipped: Option<u64>,
     },
     Devices(Vec<DeviceId>),
+    /// Every vault key epoch the dumping device holds, ascending, with its rotation head.
+    Keys(Vec<EpochKey>),
     /// Live rows and tombstone-only changes alike.
     Row(RowChange),
     Seed {
@@ -78,6 +115,8 @@ pub(super) struct Snapshot {
     pub barrier_seq: Option<u64>,
     pub missed_below_barrier: Option<u64>,
     pub missed_skipped: Option<u64>,
+    /// The dumper's vault keys; `None` in a snapshot from before phase 5.
+    pub keys: Option<Vec<EpochKey>>,
     pub rows: Vec<RowChange>,
     pub seeds: Vec<(String, BTreeMap<String, SqlValue>)>,
 }
@@ -133,6 +172,25 @@ pub(super) fn encode(record: &Record, devs: &mut DevTable) -> Json {
                 }
             }
         }
+        Record::Keys(keys) => {
+            out.insert("r".into(), json!("keys"));
+            let list: Vec<Json> = keys
+                .iter()
+                .map(|k| {
+                    let mut entry = Map::new();
+                    entry.insert("epoch".into(), json!(k.epoch));
+                    entry.insert(
+                        "key".into(),
+                        json!(URL_SAFE_NO_PAD.encode(k.key.as_slice())),
+                    );
+                    if let Some(head) = k.head {
+                        entry.insert("head".into(), json!(head));
+                    }
+                    Json::Object(entry)
+                })
+                .collect();
+            out.insert("keys".into(), Json::Array(list));
+        }
         Record::Row(row) => {
             out.insert("r".into(), json!("row"));
             // `encode_row` always returns an object.
@@ -158,9 +216,55 @@ pub(super) fn encode(record: &Record, devs: &mut DevTable) -> Json {
     Json::Object(out)
 }
 
+/// Writes the `Keys` record (same bytes as `write_record(encode(Record::Keys))`) without a plain
+/// copy of the keys: the base64 text and the serialized record live in wiped buffers sized up
+/// front, so nothing is reallocated and left behind.
+pub(super) fn write_keys_record(out: &mut impl Write, keys: &[EpochKey]) -> Result<()> {
+    #[derive(Serialize)]
+    struct KeyOut<'a> {
+        epoch: u32,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        head: Option<u64>,
+        key: &'a str,
+    }
+    #[derive(Serialize)]
+    struct KeysOut<'a> {
+        keys: Vec<KeyOut<'a>>,
+        r: &'static str,
+    }
+    let texts: Vec<Zeroizing<String>> = keys
+        .iter()
+        .map(|k| {
+            let mut text = Zeroizing::new(String::with_capacity(44));
+            URL_SAFE_NO_PAD.encode_string(k.key.as_slice(), &mut text);
+            text
+        })
+        .collect();
+    let record = KeysOut {
+        keys: keys
+            .iter()
+            .zip(&texts)
+            .map(|(k, text)| KeyOut {
+                epoch: k.epoch,
+                head: k.head,
+                key: text.as_str(),
+            })
+            .collect(),
+        r: "keys",
+    };
+    let mut bytes = Zeroizing::new(Vec::with_capacity(64 + 128 * keys.len()));
+    serde_json::to_writer(&mut *bytes, &record)?;
+    let len = u32::try_from(bytes.len())
+        .map_err(|_| AppError::Internal("sync snapshot: a record exceeds 4 GiB".into()))?;
+    out.write_all(&len.to_be_bytes())?;
+    out.write_all(&bytes)?;
+    Ok(())
+}
+
 /// Writes one length-prefixed record.
 pub(super) fn write_record(out: &mut impl Write, record: &Json) -> Result<()> {
-    let bytes = serde_json::to_vec(record)?;
+    // Wiped after the write: a `Keys` record carries vault keys.
+    let bytes = Zeroizing::new(serde_json::to_vec(record)?);
     let len = u32::try_from(bytes.len())
         .map_err(|_| AppError::Internal("sync snapshot: a record exceeds 4 GiB".into()))?;
     out.write_all(&len.to_be_bytes())?;
@@ -184,13 +288,89 @@ pub fn read_record(input: &mut impl Read, devs: &[DeviceId]) -> Result<Option<Re
     if len > MAX_RECORD {
         return Err(invalid());
     }
-    let mut bytes = Vec::new();
+    let mut bytes = Zeroizing::new(Vec::new());
     input.by_ref().take(len).read_to_end(&mut bytes)?;
     if bytes.len() as u64 != len {
         return Err(invalid());
     }
+    // A `Keys` record is read straight into wiped buffers, never through a `Json` value.
+    if is_keys_record(&bytes) {
+        return decode_keys(&bytes).map(|keys| Some(Record::Keys(keys)));
+    }
     let value: Json = serde_json::from_slice(&bytes).map_err(|_| invalid())?;
     decode(&value, devs).map(Some)
+}
+
+#[derive(Deserialize)]
+struct RecordTag {
+    r: String,
+}
+
+fn is_keys_record(bytes: &[u8]) -> bool {
+    serde_json::from_slice::<RecordTag>(bytes).is_ok_and(|tag| tag.r == "keys")
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct KeysWire {
+    #[serde(rename = "r")]
+    _r: String,
+    #[serde(rename = "keys")]
+    keys: Vec<KeyWire>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct KeyWire {
+    #[serde(rename = "epoch")]
+    epoch: u32,
+    #[serde(rename = "key")]
+    key: SecretString,
+    #[serde(rename = "head", default)]
+    head: Option<u64>,
+}
+
+/// A `Keys` record: epochs strictly ascending (so each once), every key 32 bytes, heads that
+/// are given never decreasing, and epoch 0 with head 0 or none.
+fn decode_keys(bytes: &[u8]) -> Result<Vec<EpochKey>> {
+    // The serde error may quote the value, so it is dropped.
+    let wire: KeysWire = serde_json::from_slice(bytes).map_err(|_| invalid())?;
+    if wire.keys.is_empty() || wire.keys.len() > MAX_KEYS {
+        return Err(invalid());
+    }
+    let mut keys: Vec<EpochKey> = Vec::with_capacity(wire.keys.len());
+    // Relay positions never decrease from one epoch to the next (phase 5 §6.1); epoch 0 starts at 0.
+    let mut floor = 0u64;
+    for entry in wire.keys {
+        if keys.last().is_some_and(|last| entry.epoch <= last.epoch) {
+            return Err(invalid());
+        }
+        if entry.epoch == 0 && entry.head.is_some_and(|head| head != 0) {
+            return Err(invalid());
+        }
+        if let Some(head) = entry.head {
+            if head < floor {
+                return Err(invalid());
+            }
+            floor = head;
+        }
+        let decoded = Zeroizing::new(
+            URL_SAFE_NO_PAD
+                .decode(entry.key.0.as_bytes())
+                .map_err(|_| invalid())?,
+        );
+        if decoded.len() != 32 {
+            return Err(invalid());
+        }
+        let mut key = Zeroizing::new([0u8; 32]);
+        key.copy_from_slice(&decoded);
+        keys.push(EpochKey {
+            epoch: entry.epoch,
+            key,
+            head: entry.head,
+        });
+    }
+    Ok(keys)
 }
 
 fn decode(value: &Json, devs: &[DeviceId]) -> Result<Record> {
@@ -317,8 +497,13 @@ pub(super) fn read_all(input: &mut impl Read) -> Result<Snapshot> {
     };
     let mut rows = Vec::new();
     let mut seeds = Vec::new();
+    let mut keys = None;
     loop {
         match read_record(input, &devs)? {
+            // At most one, right after the header.
+            Some(Record::Keys(list)) if keys.is_none() && rows.is_empty() && seeds.is_empty() => {
+                keys = Some(list);
+            }
             Some(Record::Row(row)) if seeds.is_empty() => rows.push(row),
             Some(Record::Seed { table, row }) => seeds.push((table, row)),
             Some(Record::End {
@@ -339,6 +524,7 @@ pub(super) fn read_all(input: &mut impl Read) -> Result<Snapshot> {
         barrier_seq,
         missed_below_barrier,
         missed_skipped,
+        keys,
         rows,
         seeds,
     })

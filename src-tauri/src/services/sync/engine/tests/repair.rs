@@ -30,7 +30,7 @@ async fn repair_backs_up_drains_and_rejoins_under_a_new_device() {
     round(&vault, &vault.b, RoundMode::Normal).await;
     {
         let b = vault.b.lock();
-        devices::record_this_device(&b, "Phone", &[7; 32], NOW).expect("B's row");
+        devices::record_this_device(&b, "Phone", &[7; 32], None, NOW).expect("B's row");
         institution(&b, "b1");
     }
     break_capture(&vault.b);

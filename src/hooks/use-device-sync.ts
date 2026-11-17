@@ -1,8 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { deviceSyncApi } from '@/lib/tauri-api';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { syncIsOn } from '@/utils/safe-copy';
 import { syncStatusRefetchInterval } from '@/utils/device-sync-refetch';
+import { HOLDER_FINISH_LATE_MS, groupDevices, newlyJoinedDevice } from '@/utils/sync-devices';
+import type { PairingView, SyncDevice } from '@shared/schema';
 
 /**
  * Whether device sync is built in and enabled, and whether that is still being asked (a screen
@@ -53,6 +56,9 @@ export function useDeviceSyncStatus() {
     queryFn: () => deviceSyncApi.getStatus(),
     enabled,
     refetchInterval: (query) => syncStatusRefetchInterval(query.state.data),
+    // A long round's status reads the same at every poll, yet "taking longer than usual" depends
+    // on the time it is read (`syncState`'s `now`): each poll re-renders, not only a changed one.
+    notifyOnChangeProps: ['data', 'error', 'isPending', 'isLoading', 'dataUpdatedAt'],
   });
 }
 
@@ -75,15 +81,63 @@ export function useDeviceSyncAccount(
   });
 }
 
-/** The devices of the sync account (this one marked); read while sync is on. */
-export function useSyncDevices() {
+const DEVICES_KEY = ['device-sync-devices'] as const;
+
+function useSyncDevicesQuery<T>(select: (devices: SyncDevice[]) => T) {
   const enabled = useDeviceSyncFeature();
   const { data: status } = useDeviceSyncStatus();
   const syncOn = syncIsOn(true, status);
   return useQuery({
-    queryKey: ['device-sync-devices'],
+    queryKey: DEVICES_KEY,
     queryFn: () => deviceSyncApi.listDevices(),
+    select,
     enabled: enabled && syncOn,
+  });
+}
+
+/**
+ * The devices that are on the sync list now (this one marked): active and "Zkontrolujte". Former
+ * devices (left or removed) are not among them; callers that count or name "other devices" want
+ * this. The device list itself reads `useSyncDeviceGroups`.
+ */
+export function useSyncDevices() {
+  return useSyncDevicesQuery((devices) => devices.filter((device) => device.status !== 'former'));
+}
+
+/** The device list in its three groups: active, "Zkontrolujte" and former (listed for 30 days). */
+export function useSyncDeviceGroups() {
+  return useSyncDevicesQuery((devices) => groupDevices(devices));
+}
+
+/**
+ * What removing `deviceIds` (and the ticked `alsoRemove`) would do. Never cached: the consent in
+ * the answer covers what the person was shown, so the dialog reads it when it opens and again
+ * after a tick, "Je moje" or `validation.syncRemovalPlanChanged`. `newKit` asks for a new kit
+ * with nobody removed (the new-kit dialog).
+ */
+export function useRemovalPlan(
+  deviceIds: readonly string[],
+  alsoRemove: readonly string[],
+  newKit = false,
+  enabled = true
+) {
+  // The first read of a dialog wakes a sync round (`refresh`); ticks, re-reads and the read after a
+  // failed submit do not. The ref lives as long as the dialog is mounted (they mount only while open).
+  const firstRead = useRef(true);
+  return useQuery({
+    queryKey: ['device-sync-removal-plan', deviceIds, alsoRemove, newKit],
+    queryFn: () => {
+      const refresh = firstRead.current;
+      firstRead.current = false;
+      return deviceSyncApi.removalPlan([...deviceIds], [...alsoRemove], newKit, refresh);
+    },
+    enabled,
+    gcTime: 0,
+    staleTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+    // Ticking a box keeps the list on screen while the new plan loads
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -141,4 +195,61 @@ export function useSyncServerCheck(input: string, enabled: boolean) {
     staleTime: 0,
     gcTime: 0,
   });
+}
+
+/** How often the holder's dialog re-reads the device list after it sent the sync details (ms). */
+const HOLDER_FINISH_POLL_MS = 3000;
+
+/**
+ * The holder's finish (spec §5): while a pairing as the holder runs, the device list is read once
+ * for what was there when it started; after `sent` it is watched (fast poll) for a device row
+ * that was not. `joined` is that device's name once it appears; `late` turns true after two
+ * minutes without it. Both reset with the pairing.
+ */
+export function useHolderFinish(view: PairingView | undefined): {
+  joined: string | null;
+  late: boolean;
+} {
+  const holding = view?.role === 'holder';
+  const sent = holding && view.stage === 'sent';
+  const [before, setBefore] = useState<ReadonlySet<string> | null>(null);
+  const devices = useQuery({
+    queryKey: DEVICES_KEY,
+    queryFn: () => deviceSyncApi.listDevices(),
+    enabled: holding,
+    refetchInterval: sent ? HOLDER_FINISH_POLL_MS : false,
+  });
+  const list = devices.data;
+  const joined = sent && before ? newlyJoinedDevice(before, list) : null;
+
+  // What was on the list before the details were sent: the answer of a fresh read at the start of
+  // the pairing (never the cached list, which may predate a device that joined since). If that
+  // answer comes after `sent`, it is the baseline then. A new pairing starts over.
+  if (!holding && before !== null) setBefore(null);
+  const refetchDevices = devices.refetch;
+  useEffect(() => {
+    if (!holding) return;
+    let cancelled = false;
+    void refetchDevices().then((result) => {
+      if (cancelled || result.isError || !result.data) return;
+      const ids = result.data.map((device) => device.id);
+      setBefore((current) => current ?? new Set(ids));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [holding, refetchDevices]);
+
+  // The `expiresAt` of the pairing whose two minutes ran out (it identifies the pairing)
+  const pairingKey = view?.expiresAt;
+  const [lateFor, setLateFor] = useState<number | null>(null);
+  const waiting = sent && joined === null;
+  useEffect(() => {
+    if (!waiting || pairingKey === undefined) return;
+    const timer = setTimeout(() => setLateFor(pairingKey), HOLDER_FINISH_LATE_MS);
+    return () => clearTimeout(timer);
+  }, [waiting, pairingKey]);
+  const late = waiting && lateFor === pairingKey;
+
+  return { joined: joined?.name ?? null, late };
 }

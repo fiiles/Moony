@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Check, Copy, Download, FileText } from 'lucide-react';
+import { Check, Copy, Download } from 'lucide-react';
 import type { RecoveryKit } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useRecoveryKitCopy } from '@/components/settings/sync/use-recovery-kit-copy';
@@ -10,35 +11,27 @@ import { useRecoveryKitLifetime } from '@/hooks/use-recovery-kit-lifetime';
 import { copyToWebviewClipboard } from '@/utils/recovery-kit-lifetime';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
-import {
-  groupAccountNumber,
-  recoveryCodeGroups,
-  recoveryKitHtml,
-  recoveryKitText,
-  toBase64,
-} from '@/utils/recovery-kit';
+import { recoveryCodeGroups, recoveryKitHtml, toBase64 } from '@/utils/recovery-kit';
 import { useExportTextFile } from '@/mobile/hooks/use-export-text-file';
 import { errorKind } from '@/mobile/lib/error-kind';
-import {
-  SYNC_KIT_PAGE_FILE,
-  SYNC_KIT_TEXT_FILE,
-  exportsOnThisDevice,
-} from '@/mobile/lib/export-file';
+import { SYNC_KIT_PAGE_FILE, exportsOnThisDevice } from '@/mobile/lib/export-file';
+import { phoneCopyKey } from '@/mobile/lib/platform-copy';
 
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
 const WIDE_BUTTON = `${BUTTON} w-full [&_svg]:size-[18px]`;
 
 /**
- * The Sync Recovery Kit as the phone shows it, in Show Recovery Kit and in setup: QR, account,
- * grouped code, and the ways to keep it (copy the code; on iOS save it as text or as a page through
- * the Files picker). `onKept` is called once the code was copied or a file was saved. Copying works
- * only shortly after the kit was shown; `onPasswordRequired` is then called instead of a failure
- * toast. After five minutes, or as soon as the app is hidden, `onExpired` is called: the caller
- * drops the kit (state and mutation result) and asks the password again.
+ * The recovery kit as the phone shows it, in setup and after a key change: QR, grouped code, and the
+ * ways to keep it (copy the code; "Save or share…" hands the kit's page to the iOS Files picker,
+ * "Save as file…" to Android's save picker, from where it can be printed). `onKept` is called once
+ * the code was copied or a file was saved. Copying works only shortly after the kit was shown;
+ * `onPasswordRequired` is then called instead of a failure toast. After five minutes, or as soon as
+ * the app is hidden, `onExpired` is called: the caller drops the kit (state and mutation result) and
+ * asks the password again.
  */
 export function KitBody({
   kit,
-  onKept,
+  onKept: kept,
   onPasswordRequired,
   onExpired,
 }: {
@@ -49,9 +42,16 @@ export function KitBody({
 }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
-  const { copyRecoveryCode } = useDeviceSyncMutations();
+  const queryClient = useQueryClient();
+  // Keeping the kit writes where it is kept: the Kit row must not show the cached "not saved"
+  // state once the step closes (the desktop's `RecoveryKitPanel` does the same).
+  const onKept = () => {
+    void queryClient.invalidateQueries({ queryKey: ['device-sync-status'] });
+    kept?.();
+  };
+  const { copyRecoveryCode, noteRecoveryKitSaved } = useDeviceSyncMutations();
   const { exportText } = useExportTextFile();
-  const kitCopy = useRecoveryKitCopy();
+  const kitCopy = useRecoveryKitCopy(kit);
   // Screen capture cannot be switched off per window on a phone: the lifetime is all there is
   useRecoveryKitLifetime(onExpired, false);
   const [copied, setCopied] = useState(false);
@@ -63,7 +63,7 @@ export function KitBody({
     []
   );
   const [clipboardHint, setClipboardHint] = useState(false);
-  const [saving, setSaving] = useState<'text' | 'page' | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const fail = (error: unknown) =>
     toast.error(tc('status.error'), {
@@ -78,7 +78,7 @@ export function KitBody({
         setClipboardHint(true);
       }
       setCopied(true);
-      onKept?.();
+      onKept();
       if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
       copiedTimer.current = window.setTimeout(() => setCopied(false), 2000);
     } catch (error) {
@@ -91,23 +91,26 @@ export function KitBody({
     }
   };
 
-  const save = async (kind: 'text' | 'page') => {
+  const save = async () => {
     if (saving) return;
-    setSaving(kind);
+    setSaving(true);
     try {
-      const outcome =
-        kind === 'text'
-          ? await exportText(SYNC_KIT_TEXT_FILE, recoveryKitText(kit, kitCopy))
-          : await exportText(SYNC_KIT_PAGE_FILE, recoveryKitHtml(kit, kitCopy));
+      const outcome = await exportText(SYNC_KIT_PAGE_FILE, recoveryKitHtml(kit, kitCopy));
       if (outcome === 'saved') {
+        // Where the picker put it is unknown: it counts as a cloud folder, the strongest
+        await noteRecoveryKitSaved.mutateAsync();
         toast(t('setup.kit.saved'));
-        onKept?.();
+        onKept();
       }
     } catch (error) {
-      console.error('Saving the Sync Recovery Kit failed:', errorKind(error));
+      if (error instanceof ApiError && error.key === 'validation.syncPasswordRequired') {
+        onPasswordRequired();
+        return;
+      }
+      console.error('Saving the recovery kit failed:', errorKind(error));
       fail(error);
     } finally {
-      setSaving(null);
+      setSaving(false);
     }
   };
 
@@ -122,10 +125,6 @@ export function KitBody({
           data-testid="recovery-kit-qr"
         />
         <div className="grid min-w-0 gap-1">
-          <span className="text-m-sub font-semibold text-ink-3">
-            {t('setup.kit.file.accountLabel')}
-          </span>
-          <span className="text-m-row text-ink num">{groupAccountNumber(kit.accountNumber)}</span>
           {kit.relayUrl && (
             <span className="break-all text-m-caption text-ink-3">
               {t('mobile:labelValue', {
@@ -158,30 +157,17 @@ export function KitBody({
           {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
           {copied ? t('setup.kit.copied') : t('setup.kit.copyCode')}
         </Button>
-        {/* The Files picker exports on iOS only: elsewhere no button that only apologises */}
+        {/* The save picker exports on the phones only: elsewhere no button that only apologises */}
         {exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? '') && (
-          <>
-            <Button
-              variant="secondary"
-              className={WIDE_BUTTON}
-              loading={saving === 'text'}
-              disabled={saving !== null}
-              onClick={() => void save('text')}
-            >
-              <FileText aria-hidden />
-              {t('phone.saveText')}
-            </Button>
-            <Button
-              variant="secondary"
-              className={WIDE_BUTTON}
-              loading={saving === 'page'}
-              disabled={saving !== null}
-              onClick={() => void save('page')}
-            >
-              <Download aria-hidden />
-              {t('phone.savePage')}
-            </Button>
-          </>
+          <Button
+            variant="secondary"
+            className={WIDE_BUTTON}
+            loading={saving}
+            onClick={() => void save()}
+          >
+            <Download aria-hidden />
+            {t(phoneCopyKey('setup.kit.saveShare'))}
+          </Button>
         )}
       </div>
       {clipboardHint && (
@@ -191,7 +177,6 @@ export function KitBody({
       )}
       <p className="m-0 text-m-sub text-ink-3">{t('setup.kit.differs')}</p>
       <p className="m-0 text-m-sub text-ink-3">{t('setup.kit.folderWarning')}</p>
-      <p className="m-0 text-m-sub text-ink-3">{t('limits.lostDevice')}</p>
     </div>
   );
 }

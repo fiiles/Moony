@@ -3,9 +3,13 @@
   "greeting": {
     "morning": "Dobré ráno, {{name}}.",
     "day": "Dobrý den, {{name}}.",
-    "evening": "Dobrý večer, {{name}}."
+    "evening": "Dobrý večer, {{name}}.",
+    "morningNoName": "Dobré ráno.",
+    "dayNoName": "Dobrý den.",
+    "eveningNoName": "Dobrý večer."
   },
   "welcomeFirst": "Vítejte, {{name}}.",
+  "welcomeFirstNoName": "Vítejte.",
   "asOf": "Stav majetku k {{date}}",
   "loading": "Načítání vašeho portfolia…",
   "hero": {

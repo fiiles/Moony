@@ -3,9 +3,13 @@
   "greeting": {
     "morning": "Good morning, {{name}}.",
     "day": "Good afternoon, {{name}}.",
-    "evening": "Good evening, {{name}}."
+    "evening": "Good evening, {{name}}.",
+    "morningNoName": "Good morning.",
+    "dayNoName": "Good afternoon.",
+    "eveningNoName": "Good evening."
   },
   "welcomeFirst": "Welcome, {{name}}.",
+  "welcomeFirstNoName": "Welcome.",
   "asOf": "Net worth as of {{date}}",
   "loading": "Loading your portfolio…",
   "hero": {

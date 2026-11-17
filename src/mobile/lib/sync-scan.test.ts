@@ -12,10 +12,10 @@ import {
   setupScanRoute,
 } from './sync-scan';
 
-const CODE80 = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789'.repeat(3).slice(0, 80);
+const CODE95 = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789'.repeat(3).slice(0, 95);
 const PAIR = 'moony-pair:1:abc:def';
 const CONNECTION = 'moony-sync1:4417938205561273:aHR0cHM6Ly9zeW5jLmV4YW1wbGUub3Jn';
-const KIT_QR = `moony-recover:1:1234567812345678:${CODE80}`;
+const KIT_QR = `moony-recover:2:${CODE95}`;
 
 function view(stage: PairingStage, contested = false): PairingView {
   return {
@@ -45,7 +45,7 @@ describe('scanRoute', () => {
   });
 
   it('refuses a bare recovery code (no account in a QR) and anything else', () => {
-    expect(scanRoute(CODE80, 'join')).toBe('unknown');
+    expect(scanRoute(CODE95, 'join')).toBe('unknown');
     expect(scanRoute('https://example.com', 'join')).toBe('unknown');
     expect(scanRoute('', 'add')).toBe('unknown');
   });
@@ -64,9 +64,9 @@ describe('setupScanRoute', () => {
   it('takes a connection code, names a pairing code and a Recovery Kit QR, refuses the rest', () => {
     expect(setupScanRoute(CONNECTION)).toBe('connection');
     expect(setupScanRoute('moony-pair:2:abc:def')).toBe('pair');
-    expect(setupScanRoute('moony-recover:1:1234567812345678:abc')).toBe('recover');
+    expect(setupScanRoute('moony-recover:2:abc')).toBe('recover');
     expect(setupScanRoute('https://x')).toBe('unknown');
-    expect(setupScanRoute(CODE80)).toBe('unknown');
+    expect(setupScanRoute(CODE95)).toBe('unknown');
     expect(setupScanRoute('')).toBe('unknown');
   });
 });
@@ -83,7 +83,7 @@ describe('kitCodeProblem', () => {
 
   it('accepts a Kit QR text, a typed code, and leaves the rest to the backend', () => {
     expect(kitCodeProblem(KIT_QR)).toBeNull();
-    expect(kitCodeProblem(CODE80)).toBeNull();
+    expect(kitCodeProblem(CODE95)).toBeNull();
     expect(kitCodeProblem('')).toBeNull();
     expect(kitCodeProblem('ABCDE-')).toBeNull();
   });
@@ -94,7 +94,7 @@ describe('pairingCodeProblem', () => {
     expect(pairingCodeProblem(PAIR)).toBeNull();
     expect(pairingCodeProblem(`\n${PAIR} `)).toBeNull();
     expect(pairingCodeProblem(KIT_QR)).toBe('phone.notAPairingCode');
-    expect(pairingCodeProblem(CODE80)).toBe('phone.notAPairingCode');
+    expect(pairingCodeProblem(CODE95)).toBe('phone.notAPairingCode');
     expect(pairingCodeProblem('hello')).toBe('phone.notAPairingCode');
   });
 
@@ -144,7 +144,7 @@ describe('hostile scanner text', () => {
     expect(pairingCodeProblem(`x\u0000${PAIR}`)).toBe('phone.notAPairingCode');
     expect(kitCodeProblem(`x\n${PAIR}`)).toBeNull();
     // A recovery code with a NUL in it is not a typed recovery code
-    expect(scanRoute(`${CODE80.slice(0, 40)}\u0000${CODE80.slice(40)}`, 'join')).toBe('unknown');
+    expect(scanRoute(`${CODE95.slice(0, 40)}\u0000${CODE95.slice(40)}`, 'join')).toBe('unknown');
   });
 
   it('routes a known prefix followed by junk by its prefix (the backend refuses the junk)', () => {
@@ -212,10 +212,9 @@ describe('kitQrSummary', () => {
       .replace(/\//g, '_')
       .replace(/=+$/, '');
 
-  it('reads the account, and the default server for a kit without one', () => {
+  it('reads the default server for a kit without one', () => {
     expect(kitQrSummary(`  ${KIT_QR}\n`)).toEqual({
       ok: true,
-      account: '1234 5678 1234 5678',
       server: 'https://sync.moonyfinance.com',
     });
     expect(DEFAULT_SYNC_SERVER).toBe('https://sync.moonyfinance.com');
@@ -224,7 +223,6 @@ describe('kitQrSummary', () => {
   it('reads the server a self-hosted kit names (the Rust test vector)', () => {
     expect(kitQrSummary(`${KIT_QR}:aHR0cHM6Ly9yZWxheS5leGFtcGxlLm9yZw`)).toEqual({
       ok: true,
-      account: '1234 5678 1234 5678',
       server: 'https://relay.example.org',
     });
   });
@@ -239,11 +237,8 @@ describe('kitQrSummary', () => {
   });
 
   it.each([
-    ['another version', `moony-recover:2:1234567812345678:${CODE80}`],
-    ['no code', 'moony-recover:1:1234567812345678'],
-    ['a short account', `moony-recover:1:123456781234567:${CODE80}`],
-    ['a grouped account', `moony-recover:1:1234-5678-1234-5678:${CODE80}`],
-    ['letters in the account', `moony-recover:1:12345678123456a8:${CODE80}`],
+    ['the old version', `moony-recover:1:1234567812345678:${CODE95}`],
+    ['no code', 'moony-recover:2:'],
     ['a fifth field', `${KIT_QR}:aHR0cHM6Ly9yZWxheS5leGFtcGxlLm9yZw:x`],
     ['an empty server', `${KIT_QR}:`],
     ['a padded server', `${KIT_QR}:aHR0cHM6Ly9yZWxheS5leGFtcGxlLm9yZw==`],

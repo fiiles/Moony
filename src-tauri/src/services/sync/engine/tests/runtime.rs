@@ -163,6 +163,8 @@ fn status_phases_follow_the_problem() {
         (P::RateLimited, Paused),
         (P::Unauthorized, Error),
         (P::KeyRotated, Error),
+        (P::KeyNotGiven, Error),
+        (P::KeyChangeUnverified, Error),
         (P::SecureStorage, Paused),
         (P::Internal, Error),
     ];
@@ -239,6 +241,8 @@ async fn the_status_counts_pending_changes_and_held_devices() {
         refused_rows: 2,
         rounds: 0,
         attachments_problem: None,
+        kit_last_read: None,
+        round_started_at: None,
     };
 
     let status = status(&vault.a.lock(), &runtime).expect("status");
@@ -262,6 +266,9 @@ async fn the_status_counts_pending_changes_and_held_devices() {
             attachments: Default::default(),
             last_complete_at: None,
             protects_data: false,
+            // Nothing was uploaded yet, and nothing about key changes is stored.
+            first_upload: true,
+            ..Default::default()
         }
     );
 }
@@ -707,7 +714,11 @@ async fn a_transient_error_ends_the_round_without_retrying() {
 
     assert!(matches!(error, SyncError::Transient(Transient::Offline)));
     assert!(error.backs_off());
-    assert_eq!(calls_since(&vault.relay, from), [Route::Pull]);
+    // A round that reads the vault's info reads it before its pull (phase 5 As built 64).
+    assert_eq!(
+        calls_since(&vault.relay, from),
+        [Route::VaultInfo, Route::Pull]
+    );
 }
 
 #[tokio::test]
@@ -719,7 +730,8 @@ async fn a_vault_gone_during_the_pull_pauses_too() {
     let report = round(&vault, &vault.a).await;
 
     assert_eq!(report.problem, Some(SyncProblem::VaultGone));
-    assert_eq!(calls_since(&vault.relay, from), [Route::Pull]);
+    // The round's first call, the vault's info read before the pull (As built 64), meets it.
+    assert_eq!(calls_since(&vault.relay, from), [Route::VaultInfo]);
     let marks = state::marks(&vault.a.lock()).expect("marks").expect("row");
     assert_eq!(marks.vault_gone_at, Some(NOW));
     assert!(keys::credentials(&vault.a.lock()).expect("keys").is_some());
@@ -728,7 +740,7 @@ async fn a_vault_gone_during_the_pull_pauses_too() {
     assert_eq!(again.problem, Some(SyncProblem::VaultGone));
     assert_eq!(
         calls_since(&vault.relay, from),
-        [Route::Pull],
+        [Route::VaultInfo],
         "a paused vault is not asked"
     );
 }

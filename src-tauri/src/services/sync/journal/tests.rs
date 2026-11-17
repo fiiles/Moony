@@ -719,6 +719,8 @@ fn a_marker_envelope_has_no_rows_and_a_current_clock() {
             seq: 2,
             prev: Some(hash_of(&first[0].changeset)),
             rows: Vec::new(),
+            rekey_head: None,
+            tickets: Vec::new(),
         }
     );
     assert_eq!(marker.min_hlc, marker.max_hlc);

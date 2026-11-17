@@ -112,7 +112,21 @@ pub struct Changeset {
     pub seq: u64,
     pub prev: Option<[u8; 32]>,
     pub rows: Vec<RowChange>,
+    /// A key change's signed head (`rekey::head::HeadRecord`, phase 5 As built 62): the remover's
+    /// first envelope under the new key carries it, with no rows. `"rekey"` in the JSON
+    /// (base64url), left out when `None`; a reader from before phase 5 ignores it.
+    pub rekey_head: Option<Vec<u8>>,
+    /// Join tickets this device announces as their holder (phase 5 revision §3.1): the public
+    /// key of each ticket it sealed into a pairing, so every device can tell that the pairing
+    /// came before this device's later `left` record. `"tickets"` in the JSON (base64url each),
+    /// left out when empty; a reader from before the revision ignores it.
+    pub tickets: Vec<[u8; 32]>,
 }
+
+/// The longest `"rekey"` value a changeset may carry (base64url of a head record, with room).
+const MAX_REKEY_HEAD_B64: usize = 256;
+/// The most tickets one changeset announces.
+const MAX_TICKETS: usize = 16;
 
 /// The `devs` list: devices in first-use order with a reverse index.
 #[derive(Default)]
@@ -332,6 +346,17 @@ pub fn to_json(cs: &Changeset) -> Result<Vec<u8>> {
     let devs: Vec<String> = devs.into_vec().iter().map(DeviceId::to_b64).collect();
     out.insert("devs".into(), json!(devs));
     out.insert("rows".into(), Json::Array(rows));
+    if let Some(head) = &cs.rekey_head {
+        out.insert("rekey".into(), json!(URL_SAFE_NO_PAD.encode(head)));
+    }
+    if !cs.tickets.is_empty() {
+        let tickets: Vec<String> = cs
+            .tickets
+            .iter()
+            .map(|t| URL_SAFE_NO_PAD.encode(t))
+            .collect();
+        out.insert("tickets".into(), json!(tickets));
+    }
     serde_json::to_vec(&Json::Object(out))
         .map_err(|e| AppError::Internal(format!("sync changeset: serializing: {e}")))
 }
@@ -383,6 +408,34 @@ pub fn from_json(bytes: &[u8]) -> Result<Changeset> {
         .iter()
         .map(|r| decode_row(r, &devs))
         .collect::<Result<Vec<_>>>()?;
+    let rekey_head = match o.get("rekey") {
+        None => None,
+        Some(value) => {
+            let text = value.as_str().ok_or_else(invalid)?;
+            if text.len() > MAX_REKEY_HEAD_B64 {
+                return Err(invalid());
+            }
+            Some(URL_SAFE_NO_PAD.decode(text).map_err(|_| invalid())?)
+        }
+    };
+    let tickets = match o.get("tickets") {
+        None => Vec::new(),
+        Some(value) => {
+            let items = value.as_array().ok_or_else(invalid)?;
+            if items.len() > MAX_TICKETS {
+                return Err(invalid());
+            }
+            items
+                .iter()
+                .map(|item| {
+                    let raw = URL_SAFE_NO_PAD
+                        .decode(item.as_str().ok_or_else(invalid)?)
+                        .map_err(|_| invalid())?;
+                    <[u8; 32]>::try_from(raw).map_err(|_| invalid())
+                })
+                .collect::<Result<Vec<_>>>()?
+        }
+    };
     Ok(Changeset {
         schema,
         barrier,
@@ -390,6 +443,8 @@ pub fn from_json(bytes: &[u8]) -> Result<Changeset> {
         seq,
         prev,
         rows,
+        rekey_head,
+        tickets,
     })
 }
 
@@ -492,6 +547,8 @@ mod tests {
                     parents: BTreeMap::new(),
                 },
             ],
+            rekey_head: None,
+            tickets: Vec::new(),
         }
     }
 
@@ -503,6 +560,71 @@ mod tests {
     fn the_spec_example_round_trips() {
         let cs = spec_example();
         assert_eq!(from_json(&to_json(&cs).unwrap()).unwrap(), cs);
+    }
+
+    #[test]
+    fn a_key_change_head_round_trips_and_is_left_out_when_absent() {
+        let mut cs = spec_example();
+        let plain: Json = serde_json::from_slice(&to_json(&cs).unwrap()).unwrap();
+        assert!(plain.get("rekey").is_none());
+        cs.rows.clear();
+        cs.rekey_head = Some(vec![1, 2, 3, 250]);
+        let json = to_json(&cs).unwrap();
+        let v: Json = serde_json::from_slice(&json).unwrap();
+        assert_eq!(v["rekey"], "AQID-g");
+        assert_eq!(from_json(&json).unwrap(), cs);
+        for broken in [
+            json!(7),
+            json!("not base64!"),
+            json!("A".repeat(MAX_REKEY_HEAD_B64 + 1)),
+        ] {
+            let mut v = v.clone();
+            v["rekey"] = broken;
+            assert!(invalid(from_json(&serde_json::to_vec(&v).unwrap())));
+        }
+    }
+
+    /// Phase 5 revision §3.1: a holder's ticket announcement rides in `"tickets"`.
+    #[test]
+    fn ticket_announcements_round_trip_and_are_left_out_when_absent() {
+        let mut cs = spec_example();
+        cs.rows.clear();
+        cs.tickets = vec![[0x11; 32], [0xfe; 32]];
+        let json = to_json(&cs).unwrap();
+        let v: Json = serde_json::from_slice(&json).unwrap();
+        assert_eq!(v["tickets"][0], URL_SAFE_NO_PAD.encode([0x11; 32]));
+        assert_eq!(v["tickets"].as_array().unwrap().len(), 2);
+        assert_eq!(from_json(&json).unwrap(), cs);
+        cs.tickets.clear();
+        let plain: Json = serde_json::from_slice(&to_json(&cs).unwrap()).unwrap();
+        assert!(plain.get("tickets").is_none());
+        let too_many: Vec<String> = (0..=MAX_TICKETS)
+            .map(|_| URL_SAFE_NO_PAD.encode([1u8; 32]))
+            .collect();
+        for broken in [
+            json!("AQID"),
+            json!([7]),
+            json!(["not base64!"]),
+            json!([URL_SAFE_NO_PAD.encode([1u8; 31])]),
+            json!(too_many),
+        ] {
+            let mut v = v.clone();
+            v["tickets"] = broken;
+            assert!(invalid(from_json(&serde_json::to_vec(&v).unwrap())));
+        }
+    }
+
+    /// A reader from before the revision knows no `"tickets"`: the reader skips fields it does
+    /// not know, so such a build applies the announcement as an empty changeset.
+    #[test]
+    fn a_reader_ignores_fields_it_does_not_know() {
+        let mut cs = spec_example();
+        cs.tickets = vec![[0x22; 32]];
+        let mut v: Json = serde_json::from_slice(&to_json(&cs).unwrap()).unwrap();
+        v["tickets2"] = json!(["whatever"]);
+        v["later"] = json!({"x": 1});
+        let read = from_json(&serde_json::to_vec(&v).unwrap()).unwrap();
+        assert_eq!(read, cs);
     }
 
     #[test]

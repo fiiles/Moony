@@ -1150,8 +1150,14 @@ mod tests {
              INSERT INTO sync_own_log (seq, hash, min_hlc, max_hlc) VALUES (1, X'0A0B0C0D0E0F0102', 11, 22);
              INSERT INTO sync_unsent (seq, envelope) VALUES (1, X'FEEDFACE12345678');
              INSERT INTO sync_typed (tbl, pk, col, typed) VALUES ('t', 'pk', 'col', 'TYPED-DISTINCT-VALUE');
-             INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at)
-                 VALUES ('0707070707070707070707070707070b', 'PUBKEY-DISTINCT', 'DEVICE-NAME-DISTINCT', 'mac', '9.9.9', 1);",
+             INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at, cert)
+                 VALUES ('0707070707070707070707070707070b', 'PUBKEY-DISTINCT', 'DEVICE-NAME-DISTINCT', 'mac', '9.9.9', 1, 'CERT-DISTINCT');
+             UPDATE sync_state SET device_sign_key = X'5EED5EED5EED0002', rotation_pending = 'PENDING-SECRET';
+             INSERT INTO sync_trust (device, cert, kind, issuer, sign_pub, box_pub, state, pinned_at)
+                 VALUES ('TRUSTED-DEVICE', 'TRUST-CERT-DISTINCT', 1, 'TRUSTED-DEVICE', X'01', X'02', 'trusted', 1);
+             INSERT INTO sync_epochs (epoch, rotation_head, adopted_at, by_device) VALUES (1, 77, 1, 'EPOCH-BY-DISTINCT');
+             INSERT INTO sync_trust_seen (device, what, pos) VALUES ('SEEN-DEVICE-DISTINCT', 'cert', 1);
+             INSERT INTO sync_tickets (ticket_pub, issuer, pos) VALUES (X'7171', 'TICKET-ISSUER-DISTINCT', 1);",
         )
         .expect("sync rows");
         let sync_tables: i64 = conn
@@ -1161,7 +1167,7 @@ mod tests {
                 |r| r.get(0),
             )
             .expect("count");
-        assert_eq!(sync_tables, 10);
+        assert_eq!(sync_tables, 14);
 
         let dir = tempfile::tempdir().expect("dir");
         let dest = dir.path().join("export.json");
@@ -1184,6 +1190,14 @@ mod tests {
             "PUBKEY-DISTINCT",
             "DEVICE-NAME-DISTINCT",
             "feedface12345678",
+            "CERT-DISTINCT",
+            "5eed5eed5eed0002",
+            "5EED5EED5EED0002",
+            "PENDING-SECRET",
+            "TRUSTED-DEVICE",
+            "EPOCH-BY-DISTINCT",
+            "SEEN-DEVICE-DISTINCT",
+            "TICKET-ISSUER-DISTINCT",
             "sync_state",
         ] {
             assert!(!raw.contains(secret), "export leaks {secret}");

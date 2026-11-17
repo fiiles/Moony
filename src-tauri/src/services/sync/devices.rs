@@ -4,14 +4,19 @@
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use rusqlite::{params, Connection, OptionalExtension};
 
 use super::hlc::{unpack, DeviceId};
+use super::identity::trust::{self, TrustEntry, TrustState};
+use super::identity::{CertKind, Certificate, Record, RecordType};
+use super::rekey::{self, rotate};
 use super::state;
 use crate::error::{AppError, Result};
-use crate::models::SyncDevice;
+use crate::models::{
+    SyncCheckReason, SyncDevice, SyncDeviceStatus, SyncFormerReason, SyncJoinedVia,
+};
 
 const MAX_NAME_CHARS: usize = 60;
 
@@ -50,14 +55,15 @@ pub fn validate_device_name(name: &str) -> Result<()> {
     }
 }
 
-/// Writes this device's row: created with `public_key` and `joined_at = now` the first time,
-/// afterwards the (trimmed) name, platform and app version change, and the public key only fills
-/// an empty column: the merge's write-once rule (NULL may take a value once, a value never
-/// changes).
+/// Writes this device's row: created with `public_key`, its certificate (phase 5; `None` in a
+/// vault without certificates) and `joined_at = now` the first time, afterwards the (trimmed)
+/// name, platform and app version change, and the public key and the certificate only fill an
+/// empty column: the merge's write-once rule (NULL may take a value once, a value never changes).
 pub fn record_this_device(
     conn: &Connection,
     name: &str,
     public_key: &[u8; 32],
+    cert: Option<&Certificate>,
     now: i64,
 ) -> Result<()> {
     validate_device_name(name)?;
@@ -65,18 +71,20 @@ pub fn record_this_device(
         .ok_or_else(|| AppError::Internal("sync: sync is not set up on this device".into()))?
         .device;
     conn.execute(
-        "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6) \
+        "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at, cert) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) \
          ON CONFLICT(id) DO UPDATE SET name = excluded.name, platform = excluded.platform, \
            app_version = excluded.app_version, \
-           public_key = COALESCE(sync_devices.public_key, excluded.public_key)",
+           public_key = COALESCE(sync_devices.public_key, excluded.public_key), \
+           cert = COALESCE(sync_devices.cert, excluded.cert)",
         params![
             device.to_hex(),
             URL_SAFE_NO_PAD.encode(public_key),
             name.trim(),
             platform(),
             env!("CARGO_PKG_VERSION"),
-            now
+            now,
+            cert.map(Certificate::to_b64)
         ],
     )?;
     Ok(())
@@ -127,11 +135,51 @@ pub fn count_devices(conn: &Connection) -> Result<usize> {
     Ok(usize::try_from(n).unwrap_or(0))
 }
 
-/// The devices of this account as Settings lists them: this device first, then the newest change
-/// first (a device without one last), then by name. A device that re-joined or turned sync off
-/// keeps its old row until phase 5's removal. `last_active_at` of this device is its last
-/// successful sync; of another, the newest clock stamp it wrote (unix seconds).
-pub fn list_devices(conn: &Connection) -> Result<Vec<SyncDevice>> {
+/// Rows of the list that left or were removed are listed this long after their state time
+/// (revision §4.1); older ones stay in the database and the trust store.
+pub const FORMER_LISTED_SECS: i64 = 30 * 86_400;
+
+/// An active other device unseen for this many days carries `inactive_days` (the offline limit of
+/// a key change: its bundle expires on the server after 30 days).
+pub const INACTIVE_AFTER_DAYS: i64 = 30;
+
+/// A raw `sync_devices` row as the list reads it.
+struct ListRow {
+    id: String,
+    name: String,
+    platform: String,
+    app_version: String,
+    joined_at: i64,
+    cert: Option<String>,
+    removed: bool,
+    left_record: Option<String>,
+    removal_record: Option<String>,
+}
+
+/// `(at, signer)` of a stored record column, read for display only (a list never trusts it:
+/// the trust store's entries are the verified word).
+fn record_facts(value: Option<&str>) -> Option<(RecordType, i64, DeviceId)> {
+    let record = Record::from_b64(value?).ok()?;
+    Some((record.kind, record.at, record.signer))
+}
+
+/// The devices of this account as Settings lists them (revision §4.1, §6.1, §6.5): every row
+/// but the recovery kit's, each with where it stands. This device first, then active before
+/// "Zkontrolujte" before former, newest change first (a device without one last), then by name.
+///
+/// * **Active**: this device, and every pinned `trusted` device that gets the next key. In a
+///   vault from before phase 5 (no certificate pinned for this device) every row is active with
+///   `joined_via = unknown`.
+/// * **Check**: a row with no pinned certificate, or a `trusted` entry the next key change leaves
+///   out for its issuer (`IssuerRemoved`, `LateVouch`, `IssuerUnknown`), or an older ID of a
+///   device that connected again which still writes changes (a copy). A superseded ID that wrote
+///   nothing since its successor appeared is not listed at all (O11).
+/// * **Former**: a `left` or `removed` entry (or a row marked removed that was never pinned),
+///   listed for `FORMER_LISTED_SECS` after its state time.
+///
+/// `last_active_at` of this device is its last successful sync; of another, the newest clock
+/// stamp it wrote (unix seconds).
+pub fn list_devices(conn: &Connection, now: i64) -> Result<Vec<SyncDevice>> {
     let Some(sync) = state::load(conn)? else {
         return Ok(Vec::new());
     };
@@ -151,32 +199,204 @@ pub fn list_devices(conn: &Connection) -> Result<Vec<SyncDevice>> {
         .map(|device| device.map(|d| hex_of(&d)))
         .collect::<std::result::Result<_, _>>()?;
     let mut stmt = conn.prepare(
-        "SELECT id, name, platform, app_version, joined_at FROM sync_devices WHERE removed = 0",
+        "SELECT id, name, platform, app_version, joined_at, cert, removed, left_record, removal_record FROM sync_devices",
     )?;
-    let mut devices = stmt
+    let rows = stmt
         .query_map([], |r| {
-            let id: String = r.get(0)?;
-            let this_device = id == this;
-            let last_active_at = if this_device {
-                this_active
-            } else {
-                newest.get(&id).map(|h| (unpack(*h as u64).0 / 1000) as i64)
-            };
-            Ok(SyncDevice {
-                held: held.contains(&id),
+            Ok(ListRow {
+                id: r.get(0)?,
                 name: r.get(1)?,
                 platform: r.get(2)?,
                 app_version: r.get(3)?,
                 joined_at: r.get(4)?,
-                last_active_at,
-                this_device,
-                id,
+                cert: r.get(5)?,
+                removed: r.get::<_, i64>(6)? != 0,
+                left_record: r.get(7)?,
+                removal_record: r.get(8)?,
             })
         })?
         .collect::<std::result::Result<Vec<_>, _>>()?;
+
+    let supported = trust::is_supported(conn)?;
+    let entries: BTreeMap<DeviceId, TrustEntry> = trust::entries(conn)?
+        .into_iter()
+        .map(|e| (e.device, e))
+        .collect();
+    // The next key change's view of the store: who it leaves out and why. A vault over the
+    // device cap cannot be judged; its rows then show without a verdict.
+    let excluded: BTreeMap<DeviceId, trust::ExclusionReason> = if supported {
+        match trust::recipients(conn, &[]) {
+            Ok(recipients) => recipients.excluded.into_iter().collect(),
+            Err(error) => {
+                log::debug!("[SYNC] The device list is shown without verdicts: {error}");
+                BTreeMap::new()
+            }
+        }
+    } else {
+        BTreeMap::new()
+    };
+    let superseded: HashSet<DeviceId> = entries
+        .values()
+        .filter(|e| e.kind == CertKind::Rejoin)
+        .map(|e| e.issuer)
+        .collect();
+    let removing: HashSet<DeviceId> = rotate::pending_removals(conn)?.into_iter().collect();
+    // A profile with no vault bound has no certificates to recognise a Kit's row by.
+    let vault = trust::vault_id(conn).ok();
+
+    let mut devices = Vec::new();
+    for row in rows {
+        let Ok(device) = DeviceId::from_hex(&row.id) else {
+            continue;
+        };
+        if row.platform == "recoveryKit"
+            || vault
+                .as_ref()
+                .is_some_and(|vault| trust::is_kit_row(device, row.cert.as_deref(), vault))
+            || entries
+                .get(&device)
+                .is_some_and(|entry| entry.kind == CertKind::Kit)
+        {
+            continue;
+        }
+        let this_device = row.id == this;
+        let entry = entries.get(&device);
+        let (status, check_reason, former_reason, state_at, state_by) = if this_device {
+            (SyncDeviceStatus::Active, None, None, None, None)
+        } else if let Some(entry) = entry {
+            match entry.state {
+                TrustState::Left => (
+                    SyncDeviceStatus::Former,
+                    None,
+                    Some(SyncFormerReason::Left),
+                    entry.state_at,
+                    None,
+                ),
+                TrustState::Removed => (
+                    SyncDeviceStatus::Former,
+                    None,
+                    Some(SyncFormerReason::Removed),
+                    entry.state_at,
+                    entry.state_by,
+                ),
+                TrustState::Trusted => {
+                    let reason = match excluded.get(&device) {
+                        // Wrote nothing since its successor appeared: the successor's details
+                        // say "Znovu připojeno"; not listed.
+                        Some(trust::ExclusionReason::SupersededQuiet) => continue,
+                        Some(trust::ExclusionReason::IssuerRemoved) => {
+                            Some(SyncCheckReason::IssuerRemoved)
+                        }
+                        Some(trust::ExclusionReason::LateVouch) => Some(SyncCheckReason::LateVouch),
+                        Some(_) => Some(SyncCheckReason::Unverified),
+                        None if superseded.contains(&device) => Some(SyncCheckReason::Copy),
+                        None => None,
+                    };
+                    match reason {
+                        Some(reason) => (SyncDeviceStatus::Check, Some(reason), None, None, None),
+                        None => (SyncDeviceStatus::Active, None, None, None, None),
+                    }
+                }
+            }
+        } else if row.removed {
+            // Marked removed, never pinned here: the record's own facts, for display.
+            let removal = record_facts(row.removal_record.as_deref());
+            let left = record_facts(row.left_record.as_deref());
+            match (removal, left) {
+                (Some((_, at, by)), _) => (
+                    SyncDeviceStatus::Former,
+                    None,
+                    Some(SyncFormerReason::Removed),
+                    Some(at),
+                    Some(by),
+                ),
+                (None, Some((_, at, _))) => (
+                    SyncDeviceStatus::Former,
+                    None,
+                    Some(SyncFormerReason::Left),
+                    Some(at),
+                    None,
+                ),
+                // A pre-phase-5 removal: no record and no time, so no way to let it age out of
+                // the list. Not listed (review of Task 24, M3).
+                (None, None) => continue,
+            }
+        } else if supported {
+            (
+                SyncDeviceStatus::Check,
+                Some(SyncCheckReason::Unverified),
+                None,
+                None,
+                None,
+            )
+        } else {
+            (SyncDeviceStatus::Active, None, None, None, None)
+        };
+        if status == SyncDeviceStatus::Former
+            && state_at.is_some_and(|at| now.saturating_sub(at) > FORMER_LISTED_SECS)
+        {
+            continue;
+        }
+        let last_active_at = if this_device {
+            this_active
+        } else {
+            newest
+                .get(&row.id)
+                .map(|h| (unpack(*h as u64).0 / 1000) as i64)
+        };
+        let inactive_days = (status == SyncDeviceStatus::Active && !this_device)
+            .then(|| {
+                let seen = last_active_at.unwrap_or(row.joined_at);
+                now.saturating_sub(seen).max(0) / 86_400
+            })
+            .filter(|days| *days >= INACTIVE_AFTER_DAYS)
+            .and_then(|days| u32::try_from(days).ok());
+        let joined_via = match entry.map(|e| e.kind) {
+            Some(CertKind::Genesis) => SyncJoinedVia::Created,
+            Some(CertKind::Paired) => SyncJoinedVia::Paired,
+            Some(CertKind::RecoveryKit) => SyncJoinedVia::RecoveryKit,
+            Some(CertKind::Rejoin) => SyncJoinedVia::Rejoined,
+            Some(CertKind::Kit) | None => SyncJoinedVia::Unknown,
+        };
+        let added_by = match entry {
+            Some(entry) if entry.kind == CertKind::Paired => {
+                Some(rekey::device_name(conn, entry.issuer)?)
+            }
+            _ => None,
+        };
+        let state_by = match state_by {
+            Some(by) => Some(rekey::device_name(conn, by)?),
+            None => None,
+        };
+        devices.push(SyncDevice {
+            held: held.contains(&row.id),
+            name: row.name,
+            platform: row.platform,
+            app_version: row.app_version,
+            joined_at: row.joined_at,
+            last_active_at,
+            this_device,
+            removal_pending: removing.contains(&device),
+            status,
+            check_reason,
+            former_reason,
+            joined_via,
+            added_by,
+            state_at,
+            state_by,
+            inactive_days,
+            id: row.id,
+        });
+    }
+    let rank = |status: SyncDeviceStatus| match status {
+        SyncDeviceStatus::Active => 0,
+        SyncDeviceStatus::Check => 1,
+        SyncDeviceStatus::Former => 2,
+    };
     devices.sort_by(|a, b| {
         b.this_device
             .cmp(&a.this_device)
+            .then_with(|| rank(a.status).cmp(&rank(b.status)))
             .then_with(|| b.last_active_at.cmp(&a.last_active_at))
             .then_with(|| a.name.cmp(&b.name))
     });
@@ -216,6 +436,7 @@ mod tests {
 
     const DEVICE: DeviceId = DeviceId([7; 16]);
     const DEVICE_HEX: &str = "07070707070707070707070707070707";
+    const NOW: i64 = 1_900_100_000;
 
     fn row(conn: &Connection) -> (String, Option<String>, String, String, String, i64, i64) {
         conn.query_row(
@@ -247,12 +468,49 @@ mod tests {
             .collect()
     }
 
+    /// Phase 5: the certificate takes a value once, like the public key; a later one never
+    /// replaces it, and `None` never clears it.
+    #[test]
+    fn the_certificate_is_written_once() {
+        use crate::services::sync::identity::{cert, CertFields, CertKind, SignSeed};
+        use zeroize::Zeroizing;
+        let issue = |byte: u8| {
+            let fields = CertFields {
+                vault_id: [7; 16],
+                device: DEVICE,
+                box_pub: [1; 32],
+                issued_at: 1,
+            };
+            let seed = SignSeed::from_bytes(Zeroizing::new([byte; 32]));
+            cert::issue_self(CertKind::Genesis, &fields, &seed).unwrap()
+        };
+        let cert_of = |conn: &Connection| -> Option<String> {
+            conn.query_row("SELECT cert FROM sync_devices", [], |r| r.get(0))
+                .unwrap()
+        };
+        let conn = migrated();
+        state::enable(&conn, DEVICE).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 1).unwrap();
+        assert_eq!(cert_of(&conn), None);
+
+        let first = issue(0x31);
+        record_this_device(&conn, "MacBook", &[1; 32], Some(&first), 2).unwrap();
+        assert_eq!(
+            cert_of(&conn),
+            Some(first.to_b64()),
+            "an empty column fills"
+        );
+        record_this_device(&conn, "MacBook", &[1; 32], Some(&issue(0x32)), 3).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 4).unwrap();
+        assert_eq!(cert_of(&conn), Some(first.to_b64()), "never replaced");
+    }
+
     #[test]
     fn count_devices_counts_the_rows_not_removed() {
         let conn = migrated();
         assert_eq!(count_devices(&conn).unwrap(), 0);
         state::enable(&conn, DEVICE).unwrap();
-        record_this_device(&conn, "MacBook", &[0x01; 32], 1_800_000_000).unwrap();
+        record_this_device(&conn, "MacBook", &[0x01; 32], None, 1_800_000_000).unwrap();
         conn.execute(
             "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
              VALUES (?1, NULL, 'iPhone', 'ios', '1.0.0', 1_850_000_000)",
@@ -275,7 +533,7 @@ mod tests {
         state::enable(&conn, DEVICE).unwrap();
         assert_eq!(this_device_joined_at(&conn).unwrap(), None);
 
-        record_this_device(&conn, "MacBook", &[0x01; 32], 1_800_000_000).unwrap();
+        record_this_device(&conn, "MacBook", &[0x01; 32], None, 1_800_000_000).unwrap();
         assert_eq!(this_device_joined_at(&conn).unwrap(), Some(1_800_000_000));
 
         // Another device joined later: this device's own row is still the one read.
@@ -286,7 +544,7 @@ mod tests {
         )
         .unwrap();
         // A second record under another name changes neither the row's age nor which row is read.
-        record_this_device(&conn, "Work Mac", &[0x01; 32], 1_900_000_000).unwrap();
+        record_this_device(&conn, "Work Mac", &[0x01; 32], None, 1_900_000_000).unwrap();
         assert_eq!(this_device_joined_at(&conn).unwrap(), Some(1_800_000_000));
     }
 
@@ -296,7 +554,7 @@ mod tests {
         state::enable(&conn, DEVICE).unwrap();
         assert_eq!(this_device(&conn).unwrap(), None);
 
-        record_this_device(&conn, "  MacBook  ", &[0x01; 32], 1_800_000_000).unwrap();
+        record_this_device(&conn, "  MacBook  ", &[0x01; 32], None, 1_800_000_000).unwrap();
 
         assert_eq!(
             row(&conn),
@@ -316,7 +574,7 @@ mod tests {
         );
         conn.execute_batch("DELETE FROM sync_outbox").unwrap();
 
-        record_this_device(&conn, "Work Mac", &[0x02; 32], 1_900_000_000).unwrap();
+        record_this_device(&conn, "Work Mac", &[0x02; 32], None, 1_900_000_000).unwrap();
 
         let (_, public_key, name, _, _, joined_at, _) = row(&conn);
         assert_eq!(
@@ -342,13 +600,13 @@ mod tests {
 
         conn.execute_batch("UPDATE sync_devices SET public_key = NULL")
             .unwrap();
-        record_this_device(&conn, "Work Mac", &[0x03; 32], 1_950_000_000).unwrap();
+        record_this_device(&conn, "Work Mac", &[0x03; 32], None, 1_950_000_000).unwrap();
         assert_eq!(
             row(&conn).1.as_deref(),
             Some("AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM"),
             "an empty public key takes a value once"
         );
-        record_this_device(&conn, "Work Mac", &[0x02; 32], 1_960_000_000).unwrap();
+        record_this_device(&conn, "Work Mac", &[0x02; 32], None, 1_960_000_000).unwrap();
         assert_eq!(
             row(&conn).1.as_deref(),
             Some("AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM")
@@ -358,7 +616,7 @@ mod tests {
     #[test]
     fn recording_needs_the_sync_row() {
         let conn = migrated();
-        assert!(record_this_device(&conn, "MacBook", &[0x01; 32], 1).is_err());
+        assert!(record_this_device(&conn, "MacBook", &[0x01; 32], None, 1).is_err());
         assert_eq!(this_device(&conn).unwrap(), None);
     }
 
@@ -380,7 +638,7 @@ mod tests {
 
         let conn = migrated();
         state::enable(&conn, DEVICE).unwrap();
-        assert!(record_this_device(&conn, " ", &[0x01; 32], 1).is_err());
+        assert!(record_this_device(&conn, " ", &[0x01; 32], None, 1).is_err());
         assert_eq!(this_device(&conn).unwrap(), None);
     }
 
@@ -412,7 +670,7 @@ mod tests {
     fn the_list_marks_this_device_and_orders_by_last_change() {
         let conn = migrated();
         state::enable(&conn, DEVICE).unwrap();
-        record_this_device(&conn, "MacBook", &[1; 32], 1_700_000_000).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 1_700_000_000).unwrap();
         conn.execute("UPDATE sync_state SET last_success_at = 1_750_000_000", [])
             .unwrap();
         let (b, c, d) = (DeviceId([8; 16]), DeviceId([9; 16]), DeviceId([6; 16]));
@@ -435,7 +693,7 @@ mod tests {
             crate::services::sync::hlc::pack(1_900_000_000_000, 3),
         );
 
-        let list = list_devices(&conn).unwrap();
+        let list = list_devices(&conn, NOW).unwrap();
         let summary: Vec<_> = list
             .iter()
             .map(|d| (d.name.as_str(), d.this_device, d.last_active_at, d.held))
@@ -446,6 +704,7 @@ mod tests {
                 ("MacBook", true, Some(1_750_000_000), false),
                 ("Alfa", false, Some(1_900_000_000), false),
                 ("Zeta", false, Some(1_800_000_000), false),
+                // "Removed" has no record and no time: not listed (it could never age out).
             ]
         );
         assert_eq!(list[0].id, DEVICE_HEX);
@@ -458,7 +717,7 @@ mod tests {
     fn a_held_device_is_flagged() {
         let conn = migrated();
         state::enable(&conn, DEVICE).unwrap();
-        record_this_device(&conn, "MacBook", &[1; 32], 1).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 1).unwrap();
         let b = DeviceId([8; 16]);
         insert_other(&conn, b, "Phone");
         conn.execute(
@@ -466,7 +725,7 @@ mod tests {
             [b.0.to_vec()],
         )
         .unwrap();
-        let held: Vec<_> = list_devices(&conn)
+        let held: Vec<_> = list_devices(&conn, NOW)
             .unwrap()
             .into_iter()
             .map(|d| (d.name, d.held))
@@ -481,12 +740,12 @@ mod tests {
     fn a_device_without_clocks_has_no_last_change() {
         let conn = migrated();
         state::enable(&conn, DEVICE).unwrap();
-        record_this_device(&conn, "MacBook", &[1; 32], 1).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 1).unwrap();
         insert_other(&conn, DeviceId([8; 16]), "Phone");
-        let list = list_devices(&conn).unwrap();
+        let list = list_devices(&conn, NOW).unwrap();
         assert_eq!(list[0].last_active_at, None, "this device never synced");
         assert_eq!(list[1].last_active_at, None);
-        assert!(list_devices(&migrated()).unwrap().is_empty());
+        assert!(list_devices(&migrated(), NOW).unwrap().is_empty());
     }
 
     #[test]
@@ -526,7 +785,7 @@ mod tests {
     fn renaming_this_device_is_captured_and_validated() {
         let conn = migrated();
         state::enable(&conn, DEVICE).unwrap();
-        record_this_device(&conn, "MacBook", &[1; 32], 1).unwrap();
+        record_this_device(&conn, "MacBook", &[1; 32], None, 1).unwrap();
         let b = DeviceId([8; 16]);
         insert_other(&conn, b, "Phone");
         conn.execute_batch("DELETE FROM sync_outbox").unwrap();

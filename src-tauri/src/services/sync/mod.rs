@@ -18,12 +18,15 @@ pub mod connection_code;
 #[cfg(test)]
 mod convergence;
 pub mod devices;
+#[cfg(test)]
+mod devices_tests;
 pub mod engine;
 pub mod envelope;
 pub mod error;
 pub mod feature;
 pub mod held_blobs;
 pub mod hlc;
+pub mod identity;
 pub mod impact;
 pub mod join;
 pub mod journal;
@@ -34,6 +37,7 @@ pub mod natural_id;
 pub mod pairing;
 pub mod recovery;
 pub mod registry;
+pub mod rekey;
 pub mod relay;
 #[cfg(test)]
 mod relay_e2e;
@@ -43,11 +47,14 @@ mod relay_e2e_admin;
 mod relay_e2e_blobs;
 #[cfg(test)]
 mod relay_e2e_pairing;
+#[cfg(test)]
+mod relay_e2e_rekey;
 pub mod repair;
 pub mod server;
 pub mod setup;
 pub mod snapshot;
 pub mod state;
+pub mod view;
 
 #[cfg(test)]
 mod probe;

@@ -9,6 +9,7 @@ import {
   gapSkippable,
   heldDays,
   heldGapDevice,
+  offersResync,
   problemAction,
   skippableGap,
   type SyncProblemAction,
@@ -33,6 +34,9 @@ const TABLE: Record<SyncProblem, [SyncProblemAction, SyncProblemAction]> = {
   rateLimited: ['none', 'none'],
   unauthorized: ['none', 'none'],
   keyRotated: ['none', 'none'],
+  keyNotGiven: ['none', 'none'],
+  keyChangeUnverified: ['none', 'none'],
+  keyChangeWaiting: ['none', 'none'],
   secureStorage: ['none', 'none'],
   serverWentBack: ['none', 'none'],
   internal: ['none', 'none'],
@@ -186,5 +190,30 @@ describe('aheadGap and aheadText', () => {
     expect(skipGapTexts(gap({ kind: 'parent' }), t, dateText).description).toBe(
       'skipGap.descriptionParent {"device":"Work laptop"}'
     );
+  });
+});
+
+describe('offersResync', () => {
+  it('is offered for the problems only a re-sync answers, never for a gap or the server', () => {
+    for (const problem of [
+      'undecryptable',
+      'invalidChain',
+      'missingParent',
+      'quarantined',
+      'internal',
+    ] as const) {
+      expect(offersResync(problem)).toBe(true);
+    }
+    for (const problem of [
+      'gap',
+      'clockAhead',
+      'serverWentBack',
+      'lapsed',
+      'offline',
+      'keyNotGiven',
+      'captureBroken',
+    ] as const) {
+      expect(offersResync(problem)).toBe(false);
+    }
   });
 });

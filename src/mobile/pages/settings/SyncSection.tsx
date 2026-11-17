@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Redirect } from 'wouter';
+import { Redirect, useLocation, useSearch } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
@@ -7,10 +7,8 @@ import {
   Globe,
   Eraser,
   Info,
-  KeyRound,
   Plus,
   Link2,
-  RefreshCw,
   Smartphone,
   Unplug,
   X,
@@ -25,7 +23,7 @@ import {
   useDeviceSyncFeatureState,
   useLeftoverSyncProfile,
   useDeviceSyncStatus,
-  useSyncDevices,
+  useSyncDeviceGroups,
 } from '@/hooks/use-device-sync';
 import { syncIsOn } from '@/utils/safe-copy';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
@@ -33,6 +31,7 @@ import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import { consentOf } from '@/utils/replace-impact';
 import { skipGapTexts } from '@/utils/device-sync-problem';
+import { removalAvailable } from '@/utils/sync-removal';
 import { useFormat } from '@/lib/use-format';
 import {
   IMPACT_CHANGED_KEY,
@@ -47,26 +46,29 @@ import { SectionPage } from '@/mobile/components/SectionPage';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { Sheet } from '@/mobile/components/Sheet';
 import { JoinChoiceSheet, type PhoneJoinMethod } from '@/mobile/components/sync/JoinChoiceSheet';
+import { KitSection } from '@/mobile/components/sync/KitSection';
+import { RemovedBlock } from '@/mobile/components/sync/RemovedNotice';
 import { ReplaceConfirmSheet } from '@/mobile/components/sync/ReplaceConfirmSheet';
 import { RecoveryJoinSheet } from '@/mobile/components/sync/RecoveryJoinSheet';
 import { ChangeServerSheet } from '@/mobile/components/sync/ChangeServerSheet';
+import { DeviceSheet, FormerDevicesSheet } from '@/mobile/components/sync/DeviceSheet';
+import { RemoveDeviceSheet } from '@/mobile/components/sync/RemoveDeviceSheet';
 import { RenameDeviceSheet } from '@/mobile/components/sync/RenameDeviceSheet';
 import { ScanFlow } from '@/mobile/components/sync/ScanFlow';
 import { SetupSheet } from '@/mobile/components/sync/SetupSheet';
 import { SyncDeviceRows } from '@/mobile/components/sync/SyncDeviceRows';
 import { SyncBackupSavedSheet } from '@/mobile/components/sync/SyncBackupSavedSheet';
-import { SyncKitSheet } from '@/mobile/components/sync/SyncKitSheet';
 import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
 import { SyncStatusBlock } from '@/mobile/components/sync/SyncStatusBlock';
 import type { ReplaceSaved } from '@/mobile/lib/replace-saved';
-import type { ScanMode } from '@/mobile/lib/sync-scan';
-import { routes } from '@/mobile/shell/routes';
+import { JOIN_PARAM, type ScanMode } from '@/mobile/lib/sync-scan';
+import { routes, settingsPath } from '@/mobile/shell/routes';
 import { sentences } from '@/mobile/lib/list-text';
 
 /** The key the backend sends when a repair could not send every change and replaced nothing. */
 const DRAIN_INCOMPLETE_KEY = 'validation.syncRepairDrainIncomplete';
 
-type Open = 'kit' | 'kitJoin' | 'server' | 'repair' | 'resync' | 'turnOff' | 'delete' | null;
+type Open = 'kitJoin' | 'server' | 'repair' | 'resync' | 'turnOff' | 'delete' | 'rejoin' | null;
 
 /** A scan under way: joining (sync off) or adding a device (sync on); `paste`: the code is typed or pasted. */
 type Flow = { mode: ScanMode; paste: boolean } | null;
@@ -85,8 +87,8 @@ export default function SyncSection() {
   const feature = useDeviceSyncFeatureState();
   const { leftover, pending: leftoverPending, loading: leftoverLoading } = useLeftoverSyncProfile();
   const { data: status } = useDeviceSyncStatus();
-  const { data: devices } = useSyncDevices();
-  const { repairDevice, resyncDevice, turnOff, deleteSyncedData, skipMissingChange } =
+  const { data: groups } = useSyncDeviceGroups();
+  const { repairDevice, resyncDevice, turnOff, deleteSyncedData, skipMissingChange, keepDevice } =
     useDeviceSyncMutations();
   const { t: tc } = useTranslation('common');
   const { date, locale } = useFormat();
@@ -95,16 +97,32 @@ export default function SyncSection() {
     return when ? date(when, { dateStyle: 'long' }) : '';
   };
   const [open, setOpen] = useState<Open>(null);
-  /** The lost-device paragraph is unfolded. */
-  const [lostOpen, setLostOpen] = useState(false);
   /** The "What syncs" sheet is open. */
   const [whatSyncsOpen, setWhatSyncsOpen] = useState(false);
   const [flow, setFlow] = useState<Flow>(null);
   /** The "Connect this device" choice sheet is open. */
   const [choosing, setChoosing] = useState(false);
+  // "Připojit znovu" from the sheet at unlock arrives with `?join=1`: the choice opens once
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const joinOnArrival = new URLSearchParams(search).has(JOIN_PARAM);
+  const [arrivalHandled, setArrivalHandled] = useState(false);
+  if (joinOnArrival && !arrivalHandled) {
+    setArrivalHandled(true);
+    setChoosing(true);
+  }
+  if (!joinOnArrival && arrivalHandled) setArrivalHandled(false);
+  useEffect(() => {
+    if (joinOnArrival) navigate(settingsPath('sync'), { replace: true });
+  }, [joinOnArrival, navigate]);
   /** The first-device setup sheet is up. */
   const [settingUp, setSettingUp] = useState(false);
   const [renaming, setRenaming] = useState<SyncDevice | null>(null);
+  /** The device whose sheet is open (by ID: the sheet reads the live list), and the folded group's sheet. */
+  const [viewing, setViewing] = useState<string | null>(null);
+  const [formerOpen, setFormerOpen] = useState(false);
+  /** The devices whose removal sheet is open. */
+  const [removing, setRemoving] = useState<{ ids: string[]; names: string[] } | null>(null);
   /** A repair that could not send every change: re-syncing is offered next to it. */
   const [offerResync, setOfferResync] = useState(false);
   /** A replace that kept its backup: the sheet that says where it is (and offers a copy in Files). */
@@ -196,7 +214,13 @@ export default function SyncSection() {
 
   // A wrong password shows under the field and keeps the sheet
   const turnOffNow = async (password: string) => {
-    await turnOff.mutateAsync(password);
+    try {
+      await turnOff.mutateAsync(password);
+    } catch (error) {
+      // The typed password is the mutation's variable: a failure must not leave it behind
+      resetTurnOff();
+      throw error;
+    }
     toast(t('turnOff.success'));
   };
 
@@ -240,6 +264,17 @@ export default function SyncSection() {
     );
   }
 
+  const viewedDevice =
+    [...(groups?.active ?? []), ...(groups?.check ?? [])].find((d) => d.id === viewing) ?? null;
+  // "Je moje" can find the row gone or no longer trusted: the list is re-read either way
+  const keep = async (device: SyncDevice) => {
+    try {
+      await keepDevice.mutateAsync(device.id);
+    } catch {
+      toast.error(t('devices.check.keepFailed'));
+    }
+  };
+
   const syncOn = syncIsOn(feature.enabled, status);
   const pending = status?.pendingChanges ?? 0;
   const deleteAfterwards = t(
@@ -261,6 +296,9 @@ export default function SyncSection() {
     <SectionPage title={t('phone.title')} lead={t('description')}>
       {status && !syncOn && (
         <>
+          {status.removedNotice && (
+            <RemovedBlock notice={status.removedNotice} onRejoin={() => setChoosing(true)} />
+          )}
           <p className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3">
             {sentences(locale, [t('intro.description'), t('intro.privacy')])}
           </p>
@@ -303,22 +341,25 @@ export default function SyncSection() {
             onRepair={() => setOpen('repair')}
             onResync={() => setOpen('resync')}
             onTurnOff={() => setOpen('turnOff')}
+            onRejoin={() => setOpen('rejoin')}
             onSkipMissing={setSkipping}
           />
 
           <SectionHead title={t('devices.title')} />
-          <SyncDeviceRows devices={devices ?? []} onRename={setRenaming} />
-          <button
-            type="button"
-            aria-expanded={lostOpen}
-            className="mx-0.5 mb-3.5 mt-0 block cursor-pointer border-0 bg-transparent p-0 text-left text-m-sub text-ink-3 underline"
-            onClick={() => setLostOpen((value) => !value)}
+          <p className="mx-0.5 mb-2.5 mt-0 text-m-sub text-ink-3">{t('devices.description')}</p>
+          <SyncDeviceRows
+            devices={[...(groups?.active ?? []), ...(groups?.check ?? [])]}
+            formerCount={groups?.former.length ?? 0}
+            onRename={setRenaming}
+            onOpen={(device) => setViewing(device.id)}
+            onOpenFormer={() => setFormerOpen(true)}
+          />
+          <p
+            className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3"
+            data-testid={status.removalSupported ? 'sync-limits' : 'sync-unsupported'}
           >
-            {t('limits.lostTitle')}
-          </button>
-          {lostOpen && (
-            <p className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3">{t('limits.lostDevice')}</p>
-          )}
+            {t(status.removalSupported ? 'devices.underList' : 'devices.unsupported')}
+          </p>
           <EntityRows>
             <SettingsRow
               icon={Plus}
@@ -329,11 +370,6 @@ export default function SyncSection() {
           </EntityRows>
 
           <EntityRows>
-            <SettingsRow
-              icon={KeyRound}
-              title={t('status.showKit')}
-              onClick={() => setOpen('kit')}
-            />
             {status.serverAddress && (
               <SettingsRow
                 icon={Globe}
@@ -343,16 +379,10 @@ export default function SyncSection() {
             )}
           </EntityRows>
 
+          <KitSection status={status} />
+
           <SectionHead title={t('danger.title')} />
           <EntityRows>
-            {status.problem !== 'serverWentBack' && (
-              <SettingsRow
-                icon={RefreshCw}
-                title={t('resync.button')}
-                sub={t('resync.hint')}
-                onClick={() => setOpen('resync')}
-              />
-            )}
             <SettingsRow
               icon={Unplug}
               title={t('turnOff.button')}
@@ -399,6 +429,32 @@ export default function SyncSection() {
           if (!next) setRenaming(null);
         }}
       />
+      <DeviceSheet
+        device={viewedDevice}
+        removalAvailable={removalAvailable(status)}
+        keeping={keepDevice.isPending}
+        onOpenChange={(next) => {
+          if (!next) setViewing(null);
+        }}
+        onKeep={(device) => void keep(device)}
+        onRemove={(device) => {
+          setViewing(null);
+          setRemoving({ ids: [device.id], names: [device.name] });
+        }}
+      />
+      <FormerDevicesSheet
+        devices={groups?.former ?? []}
+        open={formerOpen}
+        onOpenChange={setFormerOpen}
+      />
+      {/* Mounted only while open: unmounting forgets the typed password and a new kit */}
+      {removing && (
+        <RemoveDeviceSheet
+          deviceIds={removing.ids}
+          deviceNames={removing.names}
+          onClose={() => setRemoving(null)}
+        />
+      )}
       <SyncBackupSavedSheet saved={saved} onClose={() => setSaved(null)} />
       <ConfirmSheet
         open={confirmingCancel}
@@ -413,12 +469,19 @@ export default function SyncSection() {
         isPending={turnOff.isPending}
       />
       <JoinChoiceSheet open={choosing} onOpenChange={setChoosing} onPick={joinWith} />
-      <SyncKitSheet open={open === 'kit'} onOpenChange={close} />
       {/* Mounted only while open: unmounting forgets the typed password and the server check */}
       {open === 'server' && <ChangeServerSheet onClose={() => setOpen(null)} />}
       <RecoveryJoinSheet open={open === 'kitJoin'} onOpenChange={close} onReplaced={replaced} />
       {/* Mounted only while a setup runs: unmounting forgets the Recovery Kit */}
-      {settingUp && <SetupSheet onClose={() => setSettingUp(false)} />}
+      {settingUp && (
+        <SetupSheet
+          onClose={() => setSettingUp(false)}
+          onAddDevice={() => {
+            setSettingUp(false);
+            setFlow({ mode: 'add', paste: false });
+          }}
+        />
+      )}
       {/* Mounted only while a scan runs: unmounting cancels the camera and the pairing */}
       {flow && (
         <ScanFlow
@@ -463,6 +526,27 @@ export default function SyncSection() {
         confirmLabel={t('turnOff.confirm')}
         destructive
         onSubmit={turnOffNow}
+      />
+      <SyncPasswordSheet
+        open={open === 'rejoin'}
+        onOpenChange={close}
+        title={t('rejoin.title')}
+        description={t('rejoin.description')}
+        confirmLabel={t('problem.rejoin.button')}
+        closeOnSuccess={false}
+        onSubmit={async (password) => {
+          try {
+            await turnOff.mutateAsync(password);
+          } catch (error) {
+            resetTurnOff();
+            throw error;
+          }
+          // The password was the mutation's variable: it goes before the next sheet opens
+          resetTurnOff();
+          // Sync is off here now (the data stay): the join choice follows
+          setOpen(null);
+          setChoosing(true);
+        }}
       />
       <SyncPasswordSheet
         open={skipping !== null}

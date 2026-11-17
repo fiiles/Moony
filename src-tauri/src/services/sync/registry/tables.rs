@@ -387,7 +387,13 @@ pub(super) static TABLES: &[TableSpec] = &[
     TableSpec {
         name: "sync_devices",
         class: TableClass::Synced,
-        write_once: &["public_key"],
+        write_once: &[
+            "public_key",
+            "cert",
+            "left_record",
+            "removal_record",
+            "confirm_record",
+        ],
         ..BASE
     },
     // Seed: copied into a new device's snapshot, never merged.
@@ -518,6 +524,29 @@ pub(super) static TABLES: &[TableSpec] = &[
     },
     TableSpec {
         name: "sync_typed",
+        class: TableClass::Local,
+        ..BASE
+    },
+    // The pinned store of verified devices and the key epochs' start positions (phase 5).
+    TableSpec {
+        name: "sync_trust",
+        class: TableClass::Local,
+        ..BASE
+    },
+    TableSpec {
+        name: "sync_epochs",
+        class: TableClass::Local,
+        ..BASE
+    },
+    // Where this device first saw a certificate or `left` record, and the join tickets holders
+    // announced (revision §3.1, migration 041).
+    TableSpec {
+        name: "sync_trust_seen",
+        class: TableClass::Local,
+        ..BASE
+    },
+    TableSpec {
+        name: "sync_tickets",
         class: TableClass::Local,
         ..BASE
     },

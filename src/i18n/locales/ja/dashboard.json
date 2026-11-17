@@ -3,9 +3,13 @@
   "greeting": {
     "morning": "おはようございます、{{name}}さん。",
     "day": "こんにちは、{{name}}さん。",
-    "evening": "こんばんは、{{name}}さん。"
+    "evening": "こんばんは、{{name}}さん。",
+    "morningNoName": "おはようございます。",
+    "dayNoName": "こんにちは。",
+    "eveningNoName": "こんばんは。"
   },
   "welcomeFirst": "ようこそ、{{name}}さん。",
+  "welcomeFirstNoName": "ようこそ。",
   "asOf": "{{date}}時点の純資産",
   "loading": "ポートフォリオを読み込んでいます…",
   "hero": {

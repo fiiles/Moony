@@ -122,6 +122,25 @@ export function heldDays(gap: HeldGapView, now: number): number {
 }
 
 /**
+ * The problems whose alert also offers "Synchronizovat toto zařízení znovu" (it replaces this
+ * device's data with the synchronised ones, after a backup): the changes of other devices cannot
+ * be used here and nothing else fixes it. Not the gap (the answer is to wait or skip the change),
+ * not the problems of the server or the subscription, and not the ones with their own card.
+ */
+export function offersResync(problem: SyncProblem): boolean {
+  switch (problem) {
+    case 'undecryptable':
+    case 'invalidChain':
+    case 'missingParent':
+    case 'quarantined':
+    case 'internal':
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
  * Which action the alert shows for a problem; a lapsed account on an own server has no
  * Renew. A gap (a change from another device that has not arrived) offers nothing destructive while
  * it is younger than 14 days: this device keeps syncing and sending its own changes meanwhile. Once
@@ -154,6 +173,9 @@ export function problemAction(
       // set it up again on the device with the most complete data, join the others) and not to
       // re-sync, which would replace this device's data with the server's older copy.
       return 'none';
+    // `keyNotGiven`, `keyChangeUnverified`, `unauthorized` and a long `keyChangeWaiting` are
+    // answered by the rejoin and waiting states (`syncProblemState`), which the alert shows
+    // before it asks for an action.
     case 'quotaExceeded':
     case 'snapshotTooLarge':
     case 'undecryptable':
@@ -165,6 +187,9 @@ export function problemAction(
     case 'rateLimited':
     case 'unauthorized':
     case 'keyRotated':
+    case 'keyNotGiven':
+    case 'keyChangeUnverified':
+    case 'keyChangeWaiting':
     case 'secureStorage':
     case 'internal':
       return 'none';

@@ -16,6 +16,13 @@
 //! with `OTHER_NEEDS_UPDATE`, and a version-1 slot 1 with `syncPairingFailed`. The session key,
 //! the code and slot 2 are byte for byte those of version 1.
 //!
+//! Protocol 3 (device sync phase 5, spec §5.3, §11.2): slot 2 carries payload version 2, which
+//! adds each key's rotation head and the holder's identity (its whole trust store and a one-time
+//! join ticket with which the joiner signs its own certificate), or `null` from a holder whose
+//! vault has no certificates. The QR prefix is `moony-pair:3:`; a version-1 or version-2 code is
+//! `OTHER_NEEDS_UPDATE`. The acknowledgement, the HKDF info, slots 1 and 3, the slot-2 version
+//! byte and its AD are unchanged.
+//!
 //! Secrets hygiene as in phase 2: keys, payloads and decrypted buffers live in `Zeroizing`
 //! buffers, and `Debug` of every secret-bearing type prints `<redacted>`.
 
@@ -34,18 +41,22 @@ use subtle::ConstantTimeEq;
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::Zeroizing;
 
+use super::hlc::DeviceId;
+use super::identity::trust::TrustExport;
+use super::identity::{sign_pub, Ticket, TicketSecret};
 use super::keys::{os_random, Credentials, SecretString, VaultId, VaultKeys};
 use super::relay::http::{is_default_relay, normalize_base_url};
 use crate::error::{AppError, Result};
 
+pub mod holder;
 pub mod session;
 
 #[cfg(test)]
 mod tests;
 
-pub const QR_PREFIX: &str = "moony-pair:2:";
-/// Recognised only to refuse it clearly: the other device runs a build from before protocol 2.
-pub const QR_PREFIX_V1: &str = "moony-pair:1:";
+/// The protocol this app speaks: the version in the QR prefix.
+pub const PROTOCOL: u32 = 3;
+pub const QR_PREFIX: &str = "moony-pair:3:";
 pub const MAX_CODE_BYTES: usize = 512;
 /// Unchanged from protocol 1, so the session key and the code are the frozen ones.
 pub const KDF_INFO: &[u8] = b"moony pair v1";
@@ -63,12 +74,19 @@ pub const ACK_SLOT_LEN: usize = 1 + 32;
 /// prefix-consistent, so bytes 0..40 are those of protocol 1's 40-byte expand.
 pub const OKM_LEN: usize = 72;
 pub const CANCEL_MARKER: [u8; 2] = [SLOT_VERSION, 0x00];
-/// A version-1 pairing code: the other device needs an update before it can pair.
+/// A pairing code of an older protocol (`moony-pair:1:`, `moony-pair:2:`): the other device needs
+/// an update before it can pair.
 pub const OTHER_NEEDS_UPDATE: &str = "validation.syncPairingOtherNeedsUpdate";
-/// A pairing code of a version this app does not know (`moony-pair:3:` and later): this device
+/// A pairing code of a version this app does not know (`moony-pair:4:` and later): this device
 /// needs an update.
 pub const THIS_NEEDS_UPDATE: &str = "validation.syncPairingThisNeedsUpdate";
-pub const MAX_PAYLOAD_JSON: usize = 16 * 1024;
+/// The payload JSON's cap (protocol 3): the holder's trust store travels in it; the relay's slot
+/// takes 64 KiB.
+pub const MAX_PAYLOAD_JSON: usize = 48 * 1024;
+/// The slot-2 payload version of protocol 3.
+pub const PAYLOAD_VERSION: u32 = 2;
+/// A holder whose store does not fit the slot (spec §9.2's limit of devices).
+const TOO_MANY_DEVICES: &str = "validation.syncTooManyDevices";
 pub const MAX_PAYLOAD_KEYS: usize = 64;
 
 const NONCE: usize = 24;
@@ -172,7 +190,7 @@ impl fmt::Debug for PairingCode {
     }
 }
 
-/// `moony-pair:2:<mailbox>:<S public>[:<relay>]`, every field base64url without padding. The
+/// `moony-pair:3:<mailbox>:<S public>[:<relay>]`, every field base64url without padding. The
 /// fourth field is written only for a relay that is not the default. Infallible: the caller
 /// passes the stored, already-normalized relay address (`normalize_base_url`).
 pub fn pairing_code_text(code: &PairingCode) -> String {
@@ -192,31 +210,48 @@ pub fn pairing_code_text(code: &PairingCode) -> String {
     text
 }
 
-/// `moony-pair:<n>:` with `n` a number above the version this app speaks.
-fn is_newer_version(text: &str) -> bool {
-    let version = text
+/// The version of a `moony-pair:<n>:` text other than this app's, as an error: an older one is
+/// `OTHER_NEEDS_UPDATE`, a newer one `THIS_NEEDS_UPDATE`. `None` for this app's version and for
+/// text that names no version.
+fn other_version(text: &str) -> Option<AppError> {
+    let digits = text
         .strip_prefix("moony-pair:")
         .and_then(|rest| rest.split(':').next())
-        .filter(|digits| !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()));
-    version.is_some_and(|digits| {
-        // Longer than any version counter is still "newer", never a parse failure.
-        digits.len() > 9 || digits.parse::<u32>().is_ok_and(|n| n > 2)
-    })
+        .filter(|digits| !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))?;
+    // Longer than any version counter is still "newer", never a parse failure.
+    let version = if digits.len() > 9 {
+        u32::MAX
+    } else {
+        digits.parse::<u32>().ok()?
+    };
+    match version.cmp(&PROTOCOL) {
+        std::cmp::Ordering::Less => Some(AppError::Validation(OTHER_NEEDS_UPDATE.into())),
+        std::cmp::Ordering::Greater => Some(AppError::Validation(THIS_NEEDS_UPDATE.into())),
+        std::cmp::Ordering::Equal => None,
+    }
 }
 
 /// Parses a pairing code. Malformed input is `validation.syncPairingCodeInvalid`; a relay address
-/// the app does not use is `validation.syncRelayUrlInvalid`; a version-1 code (`moony-pair:1:`,
-/// whatever follows) is `OTHER_NEEDS_UPDATE`, a later one (`moony-pair:3:`…) `THIS_NEEDS_UPDATE`. The default relay reads as `None`. No error carries
-/// the input.
+/// the app does not use is `validation.syncRelayUrlInvalid`; a code of an older protocol
+/// (`moony-pair:1:`, `moony-pair:2:`, whatever follows) is `OTHER_NEEDS_UPDATE`, a later one
+/// (`moony-pair:4:`…) `THIS_NEEDS_UPDATE`. The default relay reads as `None`. No error carries
+/// the input. White space and zero-width characters anywhere in it are ignored (a chat app wraps
+/// a pasted code, a person types it in groups; owner decision O-3, As built R-114).
 pub fn parse_pairing_code(text: &str) -> Result<PairingCode> {
+    // A flood of white space is refused before it is walked; what is left must fit the cap.
+    if text.len() > 4 * MAX_CODE_BYTES {
+        return Err(code_invalid());
+    }
+    let text: String = text
+        .chars()
+        .filter(|c| !c.is_whitespace() && !matches!(c, '\u{200B}'..='\u{200D}' | '\u{FEFF}'))
+        .collect();
+    let text = text.as_str();
     if text.len() > MAX_CODE_BYTES {
         return Err(code_invalid());
     }
-    if text.starts_with(QR_PREFIX_V1) {
-        return Err(AppError::Validation(OTHER_NEEDS_UPDATE.into()));
-    }
-    if is_newer_version(text) {
-        return Err(AppError::Validation(THIS_NEEDS_UPDATE.into()));
+    if let Some(error) = other_version(text) {
+        return Err(error);
     }
     let rest = text.strip_prefix(QR_PREFIX).ok_or_else(code_invalid)?;
     let fields: Vec<&str> = rest.split(':').collect();
@@ -454,19 +489,76 @@ pub fn derive(
     })
 }
 
-/// Slot 2: `0x01 ‖ nonce (24) ‖ XChaCha20-Poly1305(session key, AD, payload JSON)`.
-pub fn seal_credentials(t: &Transcript, creds: &Credentials) -> Result<Vec<u8>> {
-    let mut nonce = [0u8; NONCE];
-    os_random(&mut nonce)?;
-    seal_credentials_with_nonce(t, creds, nonce)
+/// The holder vouching for the joiner (protocol 3, spec §5.3): its device ID, its whole trust
+/// store, and a one-time join ticket with its secret, which the joiner signs its certificate
+/// with. The secret is wiped when this is dropped; `Debug` prints `<redacted>`.
+pub struct PairingIdentity {
+    pub holder: DeviceId,
+    pub export: TrustExport,
+    pub ticket_secret: TicketSecret,
+    pub ticket: Ticket,
 }
 
-fn seal_credentials_with_nonce(
+impl PairingIdentity {
+    /// A copy for one join attempt; the session keeps its own for "Try again" (review PF6). Both
+    /// secrets are wiped when dropped.
+    pub fn duplicate(&self) -> Self {
+        PairingIdentity {
+            holder: self.holder,
+            export: self.export.clone(),
+            ticket_secret: TicketSecret::from_bytes(Zeroizing::new(*self.ticket_secret.expose())),
+            ticket: self.ticket.clone(),
+        }
+    }
+}
+
+impl fmt::Debug for PairingIdentity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("PairingIdentity(<redacted>)")
+    }
+}
+
+/// What slot 2 carries (payload version 2): the vault's credentials, the rotation head of each
+/// key epoch the holder knows one for, and the holder's identity (`None` from a holder whose
+/// vault has no certificates, spec §5.5).
+pub struct SlotPayload {
+    pub creds: Credentials,
+    pub heads: BTreeMap<u32, u64>,
+    pub identity: Option<PairingIdentity>,
+}
+
+impl fmt::Debug for SlotPayload {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("SlotPayload(<redacted>)")
+    }
+}
+
+/// Slot 2: `0x01 ‖ nonce (24) ‖ XChaCha20-Poly1305(session key, AD, payload JSON)`.
+pub fn seal_payload(t: &Transcript, payload: &SlotPayload) -> Result<Vec<u8>> {
+    let mut nonce = [0u8; NONCE];
+    os_random(&mut nonce)?;
+    seal_payload_with_nonce(t, payload, nonce)
+}
+
+/// `creds` from a holder without an identity, epoch 0's head 0: the tests' shorthand.
+#[cfg(test)]
+pub fn seal_credentials(t: &Transcript, creds: &Credentials) -> Result<Vec<u8>> {
+    seal_payload(
+        t,
+        &SlotPayload {
+            creds: creds.clone(),
+            heads: BTreeMap::from([(0, 0)]),
+            identity: None,
+        },
+    )
+}
+
+fn seal_payload_with_nonce(
     t: &Transcript,
-    creds: &Credentials,
+    payload: &SlotPayload,
     nonce: [u8; NONCE],
 ) -> Result<Vec<u8>> {
-    let json = payload_json(creds)?;
+    let json = payload_json(payload)?;
     seal_bytes(t, json.as_bytes(), nonce)
 }
 
@@ -487,19 +579,36 @@ fn seal_bytes(t: &Transcript, plain: &[u8], nonce: [u8; NONCE]) -> Result<Vec<u8
     Ok(slot)
 }
 
-/// `{"v":1,"relayUrl":"…","accountNumber":"…","vaultId":"…","keys":[{"epoch":0,"key":"…"}]}`,
-/// keys in ascending epoch, built in one wiped buffer.
-fn payload_json(creds: &Credentials) -> Result<Zeroizing<String>> {
+/// `{"v":2,"relayUrl":"…","accountNumber":"…","vaultId":"…",
+/// "keys":[{"epoch":0,"key":"…","head":0}],"identity":null}`, keys in ascending epoch (a key
+/// whose head the holder does not know has no `head`); with an identity,
+/// `"identity":{"holder":"<hex>","export":{"entries":[…]},"ticket":{"secret":"…",
+/// "holderSig":"…","issuedAt":n}}`. Built in one wiped buffer; the export holds no secret.
+/// A payload over `MAX_PAYLOAD_JSON` is `validation.syncTooManyDevices`: only a large store
+/// makes one.
+fn payload_json(payload: &SlotPayload) -> Result<Zeroizing<String>> {
+    let creds = &payload.creds;
     let relay = normalize_base_url(&creds.relay_url)?;
     if !valid_account(&creds.account) {
         return Err(AppError::Internal(
             "sync pairing: the account number is not 16 digits".into(),
         ));
     }
+    let export = payload
+        .identity
+        .as_ref()
+        .map(|identity| serde_json::to_string(&identity.export))
+        .transpose()
+        .map_err(|_| AppError::Internal("sync pairing: the trust export".into()))?;
     let count = creds.keys.epochs().count();
+    let export_len = export.as_ref().map_or(0, String::len);
     // Reserved up front so the buffer never reallocates and leaves an unwiped copy behind.
-    let mut json = Zeroizing::new(String::with_capacity(128 + relay.len() + 80 * count));
-    json.push_str("{\"v\":1,\"relayUrl\":\"");
+    let mut json = Zeroizing::new(String::with_capacity(
+        512 + relay.len() + 120 * count + export_len,
+    ));
+    json.push_str("{\"v\":");
+    json.push_str(&PAYLOAD_VERSION.to_string());
+    json.push_str(",\"relayUrl\":\"");
     json.push_str(&relay);
     json.push_str("\",\"accountNumber\":\"");
     json.push_str(&creds.account);
@@ -514,9 +623,35 @@ fn payload_json(creds: &Credentials) -> Result<Zeroizing<String>> {
         json.push_str(&epoch.to_string());
         json.push_str(",\"key\":\"");
         URL_SAFE_NO_PAD.encode_string(key.as_slice(), &mut json);
-        json.push_str("\"}");
+        json.push('"');
+        if let Some(head) = payload.heads.get(&epoch) {
+            json.push_str(",\"head\":");
+            json.push_str(&head.to_string());
+        }
+        json.push('}');
     }
-    json.push_str("]}");
+    json.push_str("],\"identity\":");
+    match (&payload.identity, &export) {
+        (Some(identity), Some(export)) => {
+            json.push_str("{\"holder\":\"");
+            json.push_str(&identity.holder.to_hex());
+            json.push_str("\",\"export\":");
+            json.push_str(export);
+            json.push_str(",\"ticket\":{\"secret\":\"");
+            URL_SAFE_NO_PAD.encode_string(identity.ticket_secret.expose(), &mut json);
+            json.push_str("\",\"holderSig\":\"");
+            URL_SAFE_NO_PAD.encode_string(identity.ticket.holder_sig, &mut json);
+            json.push_str("\",\"issuedAt\":");
+            json.push_str(&identity.ticket.issued_at.to_string());
+            json.push_str("}}");
+        }
+        _ => json.push_str("null"),
+    }
+    json.push('}');
+    if json.len() > MAX_PAYLOAD_JSON {
+        log::warn!("[SYNC] This device's trust store does not fit a pairing");
+        return Err(AppError::Validation(TOO_MANY_DEVICES.into()));
+    }
     Ok(json)
 }
 
@@ -535,6 +670,8 @@ struct PayloadIn {
     #[serde(rename = "vaultId")]
     vault_id: SecretString,
     keys: Vec<KeyIn>,
+    #[serde(default)]
+    identity: Option<IdentityIn>,
 }
 
 #[derive(Deserialize)]
@@ -542,6 +679,64 @@ struct PayloadIn {
 struct KeyIn {
     epoch: u32,
     key: SecretString,
+    #[serde(default)]
+    head: Option<u64>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct IdentityIn {
+    holder: String,
+    export: TrustExport,
+    ticket: TicketIn,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TicketIn {
+    secret: SecretString,
+    #[serde(rename = "holderSig")]
+    holder_sig: String,
+    #[serde(rename = "issuedAt")]
+    issued_at: i64,
+}
+
+/// The holder's identity from slot 2: a lowercase 32-hex holder ID, the export as
+/// `TrustExport` reads it (unknown fields refused), a 32-byte ticket secret and a 64-byte
+/// signature. The ticket's public key is the secret's; whether the holder signed it is checked
+/// when the joiner signs its certificate.
+fn identity_of(identity: IdentityIn) -> Result<PairingIdentity> {
+    let holder = DeviceId::from_hex(&identity.holder).map_err(|_| failed())?;
+    if holder.to_hex() != identity.holder {
+        return Err(failed());
+    }
+    let decoded = Zeroizing::new(
+        URL_SAFE_NO_PAD
+            .decode(identity.ticket.secret.0.as_bytes())
+            .map_err(|_| failed())?,
+    );
+    let mut secret = Zeroizing::new([0u8; 32]);
+    if decoded.len() != secret.len() {
+        return Err(failed());
+    }
+    secret.copy_from_slice(&decoded);
+    let ticket_secret = TicketSecret::from_bytes(secret);
+    let holder_sig: [u8; 64] = URL_SAFE_NO_PAD
+        .decode(identity.ticket.holder_sig.as_bytes())
+        .map_err(|_| failed())?
+        .try_into()
+        .map_err(|_| failed())?;
+    let ticket = Ticket {
+        ticket_pub: sign_pub(ticket_secret.as_seed()),
+        issued_at: identity.ticket.issued_at,
+        holder_sig,
+    };
+    Ok(PairingIdentity {
+        holder,
+        export: identity.export,
+        ticket_secret,
+        ticket,
+    })
 }
 
 /// Decoded keys on their way into `VaultKeys`; wiped on every exit (`from_parts` wipes what it
@@ -554,9 +749,10 @@ impl Drop for WipedKeys {
     }
 }
 
-/// Opens slot 2. Any failure to open or to trust the payload is `validation.syncPairingFailed`,
-/// except a relay address the app does not use (`validation.syncRelayUrlInvalid`).
-pub fn open_credentials(t: &Transcript, sealed: &[u8]) -> Result<Credentials> {
+/// Opens slot 2 (payload version 2 only). Any failure to open or to trust the payload is
+/// `validation.syncPairingFailed`, except a relay address the app does not use
+/// (`validation.syncRelayUrlInvalid`).
+pub fn open_payload(t: &Transcript, sealed: &[u8]) -> Result<SlotPayload> {
     // Too short, or longer than any legal slot: refused before the AEAD runs.
     if sealed.len() < 1 + NONCE + TAG
         || sealed.len() > 1 + NONCE + MAX_PAYLOAD_JSON + TAG
@@ -582,8 +778,8 @@ pub fn open_credentials(t: &Transcript, sealed: &[u8]) -> Result<Credentials> {
     }
     let json = std::str::from_utf8(&plain).map_err(|_| failed())?;
     // The serde error may quote the value, so it is dropped.
-    let payload: PayloadIn = serde_json::from_str(json).map_err(|_| failed())?;
-    if payload.v != 1 || !valid_account(&payload.account_number.0) {
+    let mut payload: PayloadIn = serde_json::from_str(json).map_err(|_| failed())?;
+    if payload.v != PAYLOAD_VERSION || !valid_account(&payload.account_number.0) {
         return Err(failed());
     }
     let vault_id = VaultId::from_b64(&payload.vault_id.0).map_err(|_| failed())?;
@@ -594,6 +790,12 @@ pub fn open_credentials(t: &Transcript, sealed: &[u8]) -> Result<Credentials> {
         return Err(failed());
     }
     let relay_url = normalize_base_url(&payload.relay_url)?;
+    let identity = payload.identity.take().map(identity_of).transpose()?;
+    let heads: BTreeMap<u32, u64> = payload
+        .keys
+        .iter()
+        .filter_map(|entry| entry.head.map(|head| (entry.epoch, head)))
+        .collect();
     let mut keys = WipedKeys(BTreeMap::new());
     for entry in &payload.keys {
         let decoded = Zeroizing::new(
@@ -613,10 +815,15 @@ pub fn open_credentials(t: &Transcript, sealed: &[u8]) -> Result<Credentials> {
         }
     }
     let current = *keys.0.keys().next_back().ok_or_else(failed)?;
-    Ok(Credentials {
+    let creds = Credentials {
         relay_url,
         account: payload.account_number.0.to_string(),
         vault_id,
         keys: VaultKeys::from_parts(current, std::mem::take(&mut keys.0))?,
+    };
+    Ok(SlotPayload {
+        creds,
+        heads,
+        identity,
     })
 }

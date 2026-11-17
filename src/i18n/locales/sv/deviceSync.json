@@ -4,12 +4,15 @@
   "indicator": {
     "synced": "Synkroniserad",
     "syncing": "Synkroniserar…",
-    "waiting": "En ändring hålls kvar",
+    "waiting": "Väntar på en ändring från en annan enhet",
     "paused": "Synkroniseringen är pausad",
     "error": "Synkroniseringsfel",
     "unreachable": "Servern är utom räckvidd",
     "unreachableLong_one": "Inte synkroniserad på {{count}} dag",
-    "unreachableLong_other": "Inte synkroniserad på {{count}} dagar"
+    "unreachableLong_other": "Inte synkroniserad på {{count}} dagar",
+    "syncingLong": "Synkroniseringen tar längre tid än vanligt",
+    "firstUpload": "Laddar upp första kopian",
+    "removing": "Slutför borttagning av en enhet…"
   },
   "age": {
     "justNow": "just nu",
@@ -25,12 +28,21 @@
     "pending": "Väntar på att skickas",
     "server": "Server",
     "openSettings": "Öppna inställningar",
-    "settings": "Synkroniseringsinställningar"
+    "settings": "Synkroniseringsinställningar",
+    "line": {
+      "removed": "Synkroniseringen är av: den här enheten har tagits bort.",
+      "left": "Synkroniseringen är av: den här enheten har kopplat från sig.",
+      "afterKitJoin": "Bestäm vad som ska hända med dina tidigare enheter; tills dess skickas inget härifrån.",
+      "removalNotice": "{{by}} tog bort {{names}}.",
+      "newKit": "{{by}} skapade ett nytt återställningskit.",
+      "newDevices": "Nya enheter: {{names}}.",
+      "kitUsed": "Återställningskitet användes {{at}}."
+    }
   },
   "status": {
     "unreachableNote": "Synkroniseringen återupptas när servern är inom räckhåll igen.",
     "problem": {
-      "captureBroken": "Ändringsspårningen på den här enheten är skadad, så synkroniseringen stoppades. Den kan repareras.",
+      "captureBroken": "Synkroniseringen har slutat fungera på den här enheten. Dina data är i ordning. Den kan repareras.",
       "vaultGone": "De synkroniserade uppgifterna raderades från synkroniseringsservern.",
       "lapsed": "Prenumerationen har upphört, så synkroniseringen är pausad.",
       "quotaExceeded": "De synkroniserade uppgifterna överskrider lagringsgränsen.",
@@ -39,17 +51,20 @@
       "gap": "En ändring från en annan enhet har inte kommit fram än. Den här enheten fortsätter att synkronisera och skicka sina egna ändringar.",
       "clockAhead": "En ändring från en annan enhet är daterad mer än tio år framåt i tiden, så den hålls kvar. Den hålls kvar även sedan klockan på den enheten har rättats; efter 14 dagar kan du hoppa över den.",
       "undecryptable": "Ändringar från en annan enhet kunde inte dekrypteras.",
-      "invalidChain": "Ändringar från en annan enhet klarade inte verifieringen och hålls kvar.",
+      "invalidChain": "Ändringar från en annan enhet kunde inte verifieras, så Moony använde dem inte. Data på den här enheten är i ordning.",
       "missingParent": "Ändringar från en annan enhet saknar tidigare steg och hålls kvar.",
       "quarantined": "Ändringar från vissa enheter hålls kvar av säkerhetsskäl.",
       "offline": "Ingen anslutning till synkroniseringsservern. Synkroniseringen fortsätter när den är tillbaka.",
       "relayError": "Synkroniseringsservern svarar inte som förväntat. Moony fortsätter försöka.",
       "rateLimited": "Synkroniseringsservern bad Moony sakta ner. Moony försöker snart igen.",
       "unauthorized": "Synkroniseringsservern godtog inte den här enheten. Du kan behöva ställa in synkroniseringen igen.",
-      "keyRotated": "Synkroniseringsnyckeln ändrades på en annan enhet. Ställ in synkroniseringen igen på den här enheten.",
+      "keyRotated": "Synkroniserar…",
       "secureStorage": "Moony kom inte åt den säkra lagringen på den här enheten, så synkroniseringen är pausad. Moony försöker igen; det brukar hjälpa att låsa upp enheten eller starta om Moony.",
-      "serverWentBack": "Synkroniseringsservern har gått tillbaka till ett äldre tillstånd, så ändringar kan saknas på dina andra enheter. Dina data på den här enheten är intakta. Moony kan inte rätta till detta på egen hand ännu: för att föra ihop enheterna igen, stäng av synkronisering, ställ in den på nytt på enheten med de mest fullständiga uppgifterna och anslut de andra. Synkronisera inte den här enheten igen: det skulle ersätta enhetens data med synkroniseringsserverns äldre kopia. Ställer du in synkroniseringen på nytt skapas ett nytt synkroniseringskonto.",
-      "internal": "Synkroniseringen stoppades på grund av ett internt fel."
+      "serverWentBack": "Synkroniseringsservern har gått tillbaka till ett äldre tillstånd, så ändringar kan saknas på dina andra enheter. Dina data på den här enheten är intakta. Moony kan inte rätta till detta på egen hand ännu: för att föra ihop enheterna igen, stäng av synkronisering, ställ in den på nytt på enheten med de mest fullständiga uppgifterna och anslut de andra.",
+      "internal": "Synkroniseringen stoppades på grund av ett internt fel.",
+      "keyNotGiven": "Den här enheten behöver anslutas igen.",
+      "keyChangeUnverified": "Den här enheten behöver anslutas igen.",
+      "keyChangeWaiting": "Väntar på att enheten som gjorde ändringen ansluter."
     },
     "lastSynced": "Senast synkroniserad {{date}}",
     "neverSynced": "Ännu inte synkroniserad",
@@ -57,8 +72,7 @@
     "clockAhead": "Klockan på den här enheten (eller på en enhet den synkroniserade med) gick före vid något tillfälle, så dess ändringar är daterade {{date}} fram till dess. De synkroniseras fortfarande; om samma post redigeras på en annan enhet vinner den här enhetens version fram till det datumet.",
     "subscription": "Prenumeration",
     "paidUntil": "Betald till {{date}}",
-    "syncNow": "Synkronisera nu",
-    "showKit": "Visa återställningskitet"
+    "syncNow": "Synkronisera nu"
   },
   "server": {
     "label": "Synkroniseringsserver",
@@ -79,7 +93,7 @@
     "cancelSetup": "Avbryt konfigurationen",
     "cancelConfirm": {
       "title": "Avbryta konfigurationen?",
-      "description": "Den här enheten glömmer synkroniseringskontot som skapades för den här konfigurationen, och en betalning som redan gjorts förs inte över. Ställer du in synkroniseringen på nytt börjar det om från början, med ett nytt synkroniseringskonto.",
+      "description": "Den här enheten glömmer synkroniseringen som skapades i den här konfigurationen, och en redan gjord betalning följer inte med. Konfigurationen börjar sedan om från början.",
       "keep": "Behåll konfigurationen"
     },
     "startTitle": "Börja synkronisera",
@@ -111,37 +125,41 @@
       "ownServer": "Den här servern är inte Moony cloud, så det finns inget att betala. Ställ in synkroniseringen med anslutningskoden till din egen synkroniseringsserver i stället."
     },
     "kit": {
-      "description": "Spara ditt återställningskit för synkronisering. Det är det enda sättet att få tillbaka de synkroniserade uppgifterna om du förlorar alla dina enheter.",
-      "savePage": "Spara som sida…",
-      "saveText": "Spara som text…",
       "copyCode": "Kopiera koden",
       "copied": "Kopierat",
       "clipboardHint": "Töm urklipp efter att du klistrat in koden.",
       "saved": "Kitet sparat",
-      "confirm": "Jag har sparat mitt återställningskit för synkronisering",
-      "differs": "Återställningskitet för synkronisering är inte enhetens återställningsnyckel. De är olika och du behöver båda.",
+      "differs": "Det är inte den här enhetens återställningsnyckel; den återställer bara ett glömt lösenord.",
       "saveFirst": "Spara eller kopiera kitet först.",
       "file": {
         "title": "Moony återställningskit för synkronisering",
         "intro": "Förvara den här sidan säkert, borta från dina enheter. Den som har den kan läsa dina synkroniserade uppgifter.",
-        "accountLabel": "Synkroniseringskonto",
-        "accountNote": "Identifierar ditt synkroniseringskonto. Det öppnar inte dina uppgifter.",
         "codeLabel": "Kod från återställningskitet",
         "codeNote": "Öppnar dina synkroniserade uppgifter. Håll den hemlig.",
         "qrLabel": "Skanna för att återställa på en telefon",
         "created": "Skapat {{date}}",
         "relayLabel": "Synkroniseringsserver",
-        "relayNote": "Behövs för att återställa från det här kitet"
+        "relayNote": "Behövs för att återställa från det här kitet",
+        "createdBy": "Skapat {{date}} · {{name}}"
       },
       "folderWarning": "Förvara kitet på papper eller i en lösenordshanterare, inte i en mapp som synkroniseras med en molntjänst.",
       "syncedFolder": "Kitet sparat, men den här mappen verkar synkroniseras med en molntjänst. Flytta filen till en plats som inte synkroniseras, eller radera den när du har kitet på papper.",
-      "saveRefused": "Det här kitet är föråldrat och sparades därför inte. Stäng det och visa kitet igen."
+      "saveRefused": "Det här kitet är föråldrat och sparades därför inte. Stäng det och visa kitet igen.",
+      "print": "Skriv ut",
+      "stepTitle": "Återställningskit",
+      "intro": "Om du förlorar alla enheter på en gång är det bara det här kitet som ger dig tillbaka dina data. Skriv ut det och förvara det utanför den här datorn, till exempel med dina handlingar eller i en lösenordshanterare.",
+      "shownOnce": "Vi visar kitet bara nu. Om du förlorar det skapar du ett nytt i Inställningar.",
+      "continue": "Jag har kitet, fortsätt",
+      "keepFirst": "Skriv ut, spara eller kopiera kitet först.",
+      "saveFile": "Spara som fil …",
+      "saveShare": "Spara eller dela…",
+      "saveShareAndroid": "Spara som fil …",
+      "introPhone": "Om du förlorar alla enheter på en gång är det bara det här kitet som ger dig tillbaka dina data. Förvara det utanför den här telefonen, till exempel med dina handlingar eller i en lösenordshanterare. Du kan skriva ut det från den sparade sidan."
     },
     "device": {
       "description": "Ge enheten ett namn så att du kan skilja den från de andra.",
       "name": "Enhetsnamn",
-      "turnOn": "Slå på synkronisering",
-      "success": "Synkronisering påslagen"
+      "turnOn": "Slå på synkronisering"
     },
     "defaultName": {
       "macos": "Mac",
@@ -167,6 +185,12 @@
       "resume": "Inställningen påbörjades med {{host}}",
       "other": "Använd en annan anslutningskod",
       "scan": "Skanna kod"
+    },
+    "done": {
+      "title": "Synkroniseringen är på",
+      "body": "Den första kopian av dina data laddas upp. Du kan fortsätta arbeta.",
+      "addDevice": "Lägg till en enhet till",
+      "later": "Senare"
     }
   },
   "alert": {
@@ -211,7 +235,6 @@
   },
   "resync": {
     "button": "Synkronisera den här enheten igen",
-    "hint": "Ersätter enhetens data med de synkroniserade uppgifterna, efter att en säkerhetskopia har sparats. Använd det bara om enheten inte kan synkronisera på något annat sätt.",
     "title": "Synkronisera den här enheten igen?",
     "description": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först.",
     "confirm": "Synkronisera igen",
@@ -234,24 +257,24 @@
     "appliedAhead": "Ändringen tillämpades under tiden; inget hoppades över."
   },
   "turnOff": {
-    "button": "Stäng av synkronisering på den här enheten",
+    "button": "Stäng av synkroniseringen här",
     "hint": "Lokala data finns kvar. Andra enheter fortsätter synkronisera.",
     "title": "Stänga av synkroniseringen på den här enheten?",
-    "description": "Lokala data finns kvar. Andra enheter fortsätter synkronisera. Du kan ansluta igen senare genom att para ihop med en annan enhet eller med ditt återställningskit; enhetens data ersätts då med de synkroniserade uppgifterna efter en säkerhetskopia.",
-    "pendingChanges_one": "{{count}} ändring på den här enheten har inte skickats än. Den skickas inte.",
-    "pendingChanges_other": "{{count}} ändringar på den här enheten har inte skickats än. De skickas inte.",
+    "description": "Dina data blir kvar här. Andra enheter fortsätter synkronisera och ser att den här har lämnat. Om du ansluter igen senare ersätts den här enhetens data av de synkroniserade.",
     "confirm": "Stäng av synkronisering",
     "success": "Synkroniseringen är avstängd",
-    "noCutOff": "Att stänga av synkroniseringen här stänger inte ute någon annan enhet eller något annat kit."
+    "noCutOff": "Andra enheter ser att den här har lämnat.",
+    "pendingChanges_one": "{{count}} ändring härifrån har inte skickats än. Efter avstängningen skickas den inte.",
+    "pendingChanges_other": "{{count}} ändringar härifrån har inte skickats än. Efter avstängningen skickas de inte."
   },
   "delete": {
-    "button": "Radera synkroniserade data",
+    "button": "Radera synkroniserade data på servern",
     "hint": "Tar bort de synkroniserade uppgifterna från synkroniseringsservern för alla enheter.",
     "title": "Radera synkroniserade data?",
     "description": "Det här raderar de synkroniserade uppgifterna på synkroniseringsservern för alla enheter. De lokala data på varje enhet finns kvar.",
     "confirm": "Radera synkroniserade data",
     "success": "Synkroniserade data raderade",
-    "afterwards": "Därefter ställs synkroniseringen in från början, med ett nytt synkroniseringskonto och ett nytt återställningskit.",
+    "afterwards": "Efteråt ställs synkroniseringen in från början, med ett nytt återställningskit.",
     "afterwardsOwnServer": "Därefter kan du ställa in synkroniseringen igen med samma anslutningskod och ett nytt återställningskit."
   },
   "danger": {
@@ -261,7 +284,7 @@
   "leftover": {
     "text": "Den här profilen har enhetssynkronisering påslagen från en utvecklingsversion. Dess ändringar registreras fortfarande för synkronisering.",
     "button": "Stäng av synkroniseringen",
-    "noServer": "De synkroniserade uppgifterna och synkroniseringskontot finns kvar på synkroniseringsservern tills de raderas från en version av Moony med synkronisering.",
+    "noServer": "De synkroniserade uppgifterna finns kvar på synkroniseringsservern tills de raderas från en version av Moony med synkronisering.",
     "description": "Lokala data finns kvar. Andra enheter fortsätter synkronisera. För att ansluta igen senare behövs en version av Moony med synkronisering.",
     "phoneDescription": "Lokala data på den här telefonen finns kvar. Dina andra enheter fortsätter synkronisera. För att ansluta igen senare behövs en version av Moony med synkronisering."
   },
@@ -280,10 +303,8 @@
   },
   "devices": {
     "title": "Enheter",
-    "description": "Enheterna som synkroniseras med det här kontot.",
+    "description": "De här enheterna har tillgång till dina data.",
     "thisDevice": "Den här enheten",
-    "joined": "Ansluten {{date}}",
-    "lastChange": "Senaste ändring synkroniserad {{when}}",
     "noChange": "Inga ändringar har synkroniserats ännu",
     "version": "Moony {{version}}",
     "held": "Ändringar hålls kvar",
@@ -298,17 +319,59 @@
       "android": "Android-telefon",
       "other": "Annan enhet"
     },
-    "quiet_one": "Inga ändringar från den här enheten på {{count}} dag",
-    "quiet_other": "Inga ändringar från den här enheten på {{count}} dagar"
+    "activeAt": "aktiv {{when}}",
+    "details": "Detaljer",
+    "hideDetails": "Dölj detaljer",
+    "remove": "Ta bort…",
+    "removing": "Tas bort…",
+    "inactiveHint": "Använder du den inte längre? Ta bort den.",
+    "copyName": "{{name}} (kopia)",
+    "check": {
+      "badge": "Kontrollera",
+      "keep": "Den är min",
+      "keepNote": "Bekräfta den innan du nästa gång tar bort en enhet; efter det skulle den behöva ansluta igen.",
+      "keepFailed": "Det gick inte att bekräfta enheten. Listan lästes in igen.",
+      "unverified": "Den här enheten kunde inte verifieras. Nästa gång du tar bort en enhet slutar den synkronisera. Om den är din, anslut den igen: stäng av synkroniseringen på den och välj Anslut.",
+      "copy": "Den här enheten anslöt igen, men den tidigare kopian skriver fortfarande ändringar. Om du inte känner igen den, ta bort den.",
+      "issuerRemoved": "Den lades till av en enhet som du tog bort och får inte längre nya data. Om den är din, anslut den igen.",
+      "lateVouch": "{{by}} lade till den, men {{by}} synkroniserar inte längre eller kan inte verifieras, och Moony kan inte bekräfta att det skedde innan den kopplade från sig. Nästa gång du tar bort en enhet slutar den synkronisera om du inte bekräftar den.",
+      "lateVouchNoName": "Enheten som lade till den synkroniserar inte längre eller kan inte verifieras, och Moony kan inte bekräfta att det skedde innan den kopplade från sig. Nästa gång du tar bort en enhet slutar den synkronisera om du inte bekräftar den."
+    },
+    "via": {
+      "created": "Första enheten",
+      "paired": "Tillagd {{date}}",
+      "pairedBy": "Tillagd {{date}} från {{name}}",
+      "recoveryKit": "Ansluten med återställningskitet {{date}}",
+      "rejoined": "Ansluten igen {{date}}"
+    },
+    "formerGroup": "Tidigare enheter ({{count}})",
+    "former": {
+      "left": "frånkopplad",
+      "leftOn": "frånkopplad {{date}}",
+      "removed": "borttagen",
+      "removedOn": "borttagen {{date}}",
+      "removedBy": "borttagen av {{by}}",
+      "removedOnBy": "borttagen {{date}} av {{by}}"
+    },
+    "underList": "Ta bort en borttappad, såld eller rensad enhet. Den ser inget nytt.",
+    "unsupported": "En äldre version av Moony ställde in den här synkroniseringen, så enheter kan inte tas bort från den. Radera de synkroniserade data, ställ in synkroniseringen igen och anslut dina andra enheter.",
+    "inactive_one": "Inaktiv i {{count}} dag",
+    "inactive_other": "Inaktiv i {{count}} dagar",
+    "sheet": {
+      "platform": "Typ",
+      "activity": "Senast aktiv",
+      "version": "Version",
+      "joined": "Anslutning"
+    }
   },
   "pairing": {
     "addTitle": "Lägg till en enhet",
-    "addDescription": "Para ihop en annan enhet med ditt synkroniseringskonto. Inget lämnar dina enheter okrypterat.",
+    "addDescription": "Para ihop en annan enhet med den här synkroniseringen. Inget lämnar dina enheter okrypterat.",
     "passwordFirst": "Ange Moony-lösenordet för att visa parkopplingskoden.",
     "showCode": "Visa kod",
     "qrAlt": "Parkopplingskod",
     "preparing": "Förbereder parkopplingen …",
-    "scanHint": "Skanna detta med Moony på telefonen: Inställningar → Synkronisering → Skanna en kod",
+    "scanHint": "Skanna detta med Moony på telefonen: Inställningar → Synkronisering → Anslut den här enheten → Skanna en kod från datorn",
     "validFor": "Koden fungerar i 10 minuter.",
     "typeTitle": "Skriv koden",
     "showTitle": "Din parkopplingskod",
@@ -329,7 +392,9 @@
     "validUntil": "Koden fungerar till kl. {{time}}.",
     "copyCode": "Kopiera kod",
     "copiedCode": "Kopierat",
-    "codeHint": "Ingen kamera? Skriv eller klistra in den här koden på den andra enheten."
+    "codeHint": "Ingen kamera? Skriv eller klistra in den här koden på den andra enheten. Du kan skicka den i ett meddelande: utan de sex siffrorna du skriver här efteråt avslöjar den ingenting.",
+    "deviceConnected": "Enheten {{name}} är ansluten",
+    "sentLate": "Slutför anslutningen på den andra enheten. När den är ansluten visas den i listan."
   },
   "join": {
     "warning": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först bredvid din profil.",
@@ -344,7 +409,6 @@
     "kitTitle": "Använd ett återställningskit",
     "kitHint": "Ange koden från återställningskitet eller texten i kitets QR-kod.",
     "codeLabel": "Kod från återställningskitet",
-    "accountLabel": "Kontonummer",
     "confirm": "Anslut och ersätt",
     "choice": {
       "pair": {
@@ -352,12 +416,18 @@
         "lead": "En kod visas. På telefonen: Inställningar → Synkronisering → Lägg till en enhet."
       },
       "kit": {
-        "title": "Jag har återställningskitet för synkronisering",
-        "lead": "Du anger koden från återställningskitet och serverns adress. Så ansluter även en andra dator."
+        "title": "Jag har ingen enhet till hands",
+        "lead": "Du använder återställningskitet: ange dess kod."
+      },
+      "code": {
+        "title": "Jag har en annan dator som synkroniserar",
+        "lead": "På den andra datorn: Inställningar → Synkronisering → Lägg till en enhet. Här skriver du koden som visas."
       }
     },
     "connect": "Anslut",
-    "firstRunDone": "Den här enheten synkroniseras nu"
+    "firstRunDone": "Den här enheten synkroniseras nu",
+    "codeTitle": "Anslut från en annan dator",
+    "codeHint": "På datorn med synkronisering på: Inställningar → Synkronisering → Lägg till en enhet. Skriv eller klistra in koden som visas."
   },
   "phone": {
     "title": "Synkronisering",
@@ -368,12 +438,15 @@
       "off": "Av",
       "synced": "Uppdaterad",
       "syncing": "Synkroniserar…",
-      "waiting": "En ändring hålls kvar",
+      "waiting": "Väntar på en ändring från en annan enhet",
       "unreachable": "Servern är utom räckvidd",
       "unreachableLong_one": "Inte synkroniserad på {{count}} dag",
       "unreachableLong_other": "Inte synkroniserad på {{count}} dagar",
       "paused": "Pausad",
-      "error": "Stoppad"
+      "error": "Stoppad",
+      "syncingLong": "Tar längre tid än vanligt",
+      "firstUpload": "Laddar upp första kopian",
+      "removing": "Tar bort en enhet…"
     },
     "rowWithAge": "{{state}} · {{age}}",
     "choice": {
@@ -385,20 +458,19 @@
     "typeCode": "Skriv in en kod från återställningskitet",
     "addDevice": "Lägg till en enhet",
     "busy": "Låt Moony vara öppet tills det är klart.",
-    "saveText": "Spara som text",
-    "savePage": "Spara som sida",
     "turnOffBody": "Lokala data på den här telefonen finns kvar. Dina andra enheter fortsätter synkronisera. Du kan ansluta igen senare genom att para ihop med en annan enhet eller skriva in koden från ditt återställningskit; telefonens data ersätts då med de synkroniserade uppgifterna efter en säkerhetskopia.",
     "renewUnavailable": "Förnyelse är inte tillgänglig i telefonappen.",
     "scanTitle": "Skanna en kod",
     "scanHint": "Rikta kameran mot koden på den andra enheten (Inställningar → Synkronisering → Lägg till en enhet) eller mot QR-koden i ditt återställningskit.",
     "addDeviceHint": "Välj ”Anslut den här enheten” under Inställningar → Synkronisering på den nya enheten och rikta sedan kameran mot koden den visar.",
     "passwordFirst": "Ange Moony-lösenordet innan du skannar den andra enhetens kod.",
+    "passwordFirstTyped": "Ange Moony-lösenordet innan du anger den andra enhetens kod.",
     "connecting": "Ansluter…",
     "cameraDenied": "Tillåt kameraåtkomst i Inställningar för att skanna koden.",
     "openSettings": "Öppna Inställningar",
     "cameraUnavailable": "Kameran kunde inte öppnas.",
     "unknownCode": "Den här QR-koden är varken en parkopplingskod från Moony eller ett återställningskit.",
-    "kitConfirmTitle": "Ansluta till det här synkroniseringskontot?",
+    "kitConfirmTitle": "Ansluta den här telefonen med återställningskitet?",
     "kitConfirmBody": "Telefonens data ersätts med de synkroniserade uppgifterna (en säkerhetskopia sparas).",
     "notAKitCode": "Det här är ingen kod från ett återställningskit",
     "notAPairingCode": "Det här är ingen parkopplingskod.",
@@ -439,10 +511,6 @@
     },
     "onThisDevice": "På den här enheten:"
   },
-  "limits": {
-    "lostTitle": "Tappat en enhet eller återställningskitet?",
-    "lostDevice": "En borttappad enhet eller ett borttappat återställningskit kan ännu inte stängas ute från dina synkroniserade data, och den som har ett kan redan nu läsa vad det innehåller. Om något försvinner raderar du de synkroniserade data och ställer in synkroniseringen på nytt med ett nytt kit; dina andra enheter måste då ansluta igen."
-  },
   "codes": {
     "pairNotForSetup": "Det här är en parkopplingskod, inte en anslutningskod. Skanna den när du lägger till den här enheten i en synkronisering som redan körs.",
     "kitNotForSetup": "Det här är en kod från återställningskitet, inte en anslutningskod. Använd den när du ansluter till synkroniserade data som redan finns.",
@@ -473,5 +541,151 @@
   "protection": {
     "line_one": "Synkroniseringen skyddar dina data: en kopia finns på synkroniseringsservern (senaste fullständiga synkronisering: {{age}}, enheter som synkroniseras: {{count}}). Gör en säkerhetskopia när du vill spara hur allt stod en viss dag.",
     "line_other": "Synkroniseringen skyddar dina data: en kopia finns på synkroniseringsservern (senaste fullständiga synkronisering: {{age}}, enheter som synkroniseras: {{count}}). Gör en säkerhetskopia när du vill spara hur allt stod en viss dag."
+  },
+  "remove": {
+    "title": "Ta bort {{name}}?",
+    "body": "Enheten {{name}} får inga nya data och kan inte ändra något. Det som redan finns på den blir kvar, skyddat av dess Moony-lösenord.",
+    "stays": "De här fortsätter synkronisera:",
+    "thisDevice": "{{name}} (den här enheten)",
+    "drops": "De här slutar också synkronisera:",
+    "dropReason": {
+      "unverified": "kunde inte verifieras",
+      "issuerRemoved": "lades till av en enhet du tog bort",
+      "lateVouch": "lades till av en enhet som inte längre synkroniserar"
+    },
+    "keep": "Den är min",
+    "added": "Du lade till de här enheterna från {{name}} (eller från dem). Ta också bort de du inte känner igen.",
+    "addedRow": "{{name}} · tillagd {{date}}",
+    "inHand": "Har du {{name}} till hands? Stäng bara av synkroniseringen på den.",
+    "kit": {
+      "creatorRemoved": "Ditt återställningskit sparades på {{name}}, så det slutar gälla. Direkt efteråt skapar du ett nytt.",
+      "cloud": "Ditt återställningskit ligger i en mapp som synkroniseras med molnet, så det slutar gälla. Direkt efteråt skapar du ett nytt.",
+      "missing": "Synkroniseringen har inget giltigt återställningskit just nu, så du skapar ett nytt direkt efteråt.",
+      "notUpdated": "Den här borttagningen uppdaterar inte återställningskitet."
+    },
+    "confirm": "Ta bort enhet",
+    "progress": "Tar bort {{name}}…",
+    "toast": {
+      "removed": "{{name}} är borttagen",
+      "pending": "Synkroniseringsservern kan inte nås just nu. Borttagningen slutförs av sig själv så fort den kan.",
+      "alreadyRemoved": "{{by}} tog bort {{name}} under tiden.",
+      "alreadyRemovedUnknown": "{{name}} togs bort under tiden.",
+      "removedHere": "En annan enhet tog bort den här enheten under tiden. Synkroniseringen är av här."
+    },
+    "loadError": "Borttagningen kunde inte förberedas. Försök igen.",
+    "retry": "Försök igen",
+    "bodyMany": "{{name}} får inga nya data och kan inte ändra något. Det som redan finns på dem blir kvar, skyddat av deras Moony-lösenord.",
+    "unreachable": "Synkroniseringsservern går inte att nå, så inget har ändrats. Försök igen när du är ansluten till internet."
+  },
+  "newKit": {
+    "title": "Ditt nya återställningskit",
+    "body": "Det gamla kitet gäller inte längre. Skriv ut det här och förvara det på avstånd från den här enheten. Vi visar det bara nu.",
+    "bodyPhone": "Det gamla kitet gäller inte längre. Förvara det här utanför den här telefonen, till exempel med dina handlingar eller i en lösenordshanterare. Vi visar det bara nu.",
+    "pending": "Kitet börjar gälla när borttagningen är klar.",
+    "done": "Jag har kitet, klart",
+    "keepFirst": "Skriv ut, spara eller kopiera kitet först.",
+    "gone": "Kitet visas inte längre på skärmen. Skapa ett nytt under Inställningar → Synkronisering."
+  },
+  "kit": {
+    "title": "Återställningskit",
+    "created": "Skapat {{date}} på {{name}}. Gäller tills du skapar ett nytt.",
+    "createdNoName": "Skapat {{date}}. Gäller tills du skapar ett nytt.",
+    "lastUsed": "Senast använt {{date}}",
+    "keptLine": "Förvaras: {{where}}",
+    "storage": {
+      "paper": "på papper",
+      "copied": "som kopierad kod",
+      "file": "som fil",
+      "cloud": "i en mapp som synkroniseras med molnet"
+    },
+    "check": "Kontrollera kitet",
+    "makeNew": "Skapa ett nytt …",
+    "unsaved": "Du sparade inte återställningskitet och det går inte att visa igen.",
+    "makeNewKit": "Skapa ett nytt kit",
+    "none": "Synkroniseringen har inget återställningskit. Utan det får du inte tillbaka dina data om du förlorar alla enheter.",
+    "make": "Skapa ett kit",
+    "used": "Ditt återställningskit användes {{date}}, men ingen enhet anslöt med det. Om det inte var du har någon annan det: skapa ett nytt.",
+    "usedKnown": "Jag vet om det",
+    "notShown": "Det nya återställningskitet kunde inte visas. Skapa det igen."
+  },
+  "check": {
+    "title": "Kontrollera ditt återställningskit",
+    "description": "Skanna eller skriv in koden från kitet. Inget skickas någonstans.",
+    "descriptionPhone": "Skriv in koden från kitet. Inget skickas någonstans.",
+    "label": "Kod för återställningskitet",
+    "submit": "Kontrollera",
+    "valid": "Det här kitet är giltigt.",
+    "replaced": "Det här kitet gäller inte längre. Det giltiga är från {{date}}.",
+    "replacedNoDate": "Det här kitet gäller inte längre.",
+    "otherSync": "Det här kitet hör till en annan synkronisering.",
+    "unknown": "Moony känner inte till det här kitet; kanske blev det aldrig klart."
+  },
+  "newKitDialog": {
+    "title": "Skapa ett nytt återställningskit?",
+    "body": "Det gamla kitet slutar gälla. Gör det om du har förlorat det eller inte är säker på vem som har sett det.",
+    "joined": "De här enheterna anslöt med det gamla kitet. Ta bort dem du inte känner igen.",
+    "confirm": "Skapa ett nytt kit",
+    "progress": "Skapar ett nytt kit …",
+    "toast": {
+      "done": "Det nya återställningskitet är klart",
+      "alreadyRemoved": "{{by}} har under tiden tagit bort enheterna du valde.",
+      "alreadyRemovedUnknown": "Enheterna du valde har under tiden tagits bort."
+    }
+  },
+  "notice": {
+    "removal": {
+      "removed": "{{by}} tog bort {{names}} ({{date}}).",
+      "newKit": "{{by}} skapade ett nytt återställningskit ({{date}}); det gamla gäller inte längre.",
+      "kitToo": "Den skapade också ett nytt återställningskit; det gamla gäller inte längre."
+    },
+    "notDone": {
+      "changed": "Borttagningen av {{devices}} slutfördes inte: {{by}} ändrade enhetslistan under tiden. Kontrollera den och försök igen.",
+      "alreadyRemoved": "{{by}} tog bort {{devices}} under tiden.",
+      "refused": "Synkroniseringsservern avvisade borttagningen. Försök igen.",
+      "kit": "Det nya återställningskitet trädde inte i kraft; skapa det igen."
+    },
+    "overrun": "Synkroniseringsservern skickade ändringar till den här enheten som den inte borde ha skickat efter att en enhet togs bort den {{date}}, och Moony tillämpade dem. Om du tog bort enheten för att den blev stulen, kontrollera ändringarna från de senaste dagarna.",
+    "overrunNoDate": "Synkroniseringsservern skickade ändringar till den här enheten som den inte borde ha skickat efter att en enhet togs bort, och Moony tillämpade dem. Om du tog bort enheten för att den blev stulen, kontrollera ändringarna från de senaste dagarna.",
+    "newDevice": {
+      "added": "{{name}} lades till från {{by}} den {{date}}.",
+      "lateVouch": "{{name}} lades till. {{by}} lade till den och synkroniserar inte längre. Om du inte känner igen {{name}}, ta bort den.",
+      "kitTitle": "En enhet anslöt med ditt återställningskit",
+      "kit": "{{name}} anslöt den {{date}}. Om det inte var du har någon annan ditt kit.",
+      "mine": "Det var jag",
+      "removeAndNew": "Ta bort den och skapa ett nytt kit"
+    }
+  },
+  "problem": {
+    "rejoin": {
+      "title": "Den här enheten behöver anslutas igen",
+      "body": "Den var offline under lång tid, eller så ändrades det under tiden vem som har åtkomst till data. Data på den här enheten är i ordning, de synkroniseras bara inte.",
+      "by": "Ändringen gjordes av {{by}}, som den här enheten inte känner till.",
+      "button": "Anslut igen"
+    },
+    "waiting": {
+      "title": "Synkroniseringen väntar på {{by}}",
+      "body": "Den här enheten väntar på en bekräftelse från {{by}}, som senast ändrade enhetslistan. Data här är i ordning. Om du inte använder {{by}} längre, anslut den här enheten igen."
+    }
+  },
+  "rejoin": {
+    "title": "Anslut den här enheten igen?",
+    "description": "Synkroniseringen stängs av på den här enheten och dina data blir kvar. Sedan ansluter du igen, och den här enhetens data ersätts av de synkroniserade efter en säkerhetskopia. Ändringar som inte lämnade den här enheten blir kvar i säkerhetskopian."
+  },
+  "removed": {
+    "title": "Den här enheten togs bort från synkroniseringen",
+    "body": "{{by}} tog bort den den {{date}}. Dina data blev kvar här, de synkroniseras bara inte längre.",
+    "titleLeft": "Synkroniseringen är avstängd på den här enheten",
+    "bodyLeft": "Den här enheten lämnade synkroniseringen (kanske från en annan kopia av den här profilen). Dina data blev kvar här.",
+    "unsent_one": "{{count}} ändring från den här enheten kom inte med i synkroniseringen; den blir kvar bara här.",
+    "unsent_other": "{{count}} ändringar från den här enheten kom inte med i synkroniseringen; de blir kvar bara här.",
+    "understood": "Uppfattat"
+  },
+  "afterKit": {
+    "title": "Dina data är tillbaka",
+    "body": "Den senaste ändringen är från {{date}}. Dina tidigare enheter finns kvar i listan: {{names}}. Om du har förlorat dem, eller om någon av dem är en enhet du redan hade tagit bort, ta bort dem. Tills du bestämmer dig skickas inget härifrån.",
+    "bodyNoDate": "Dina tidigare enheter finns kvar i listan: {{names}}. Om du har förlorat dem, eller om någon av dem är en enhet du redan hade tagit bort, ta bort dem. Tills du bestämmer dig skickas inget härifrån.",
+    "remove": "Ta bort dem",
+    "keep": "Jag har dem",
+    "pending": "Borttagningen pågår fortfarande."
   }
 }

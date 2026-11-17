@@ -598,3 +598,22 @@ input[type='date']::-webkit-datetime-edit-year-field {
   @apply pb-2 mb-3 text-h3 text-ink;
   border-bottom-color: var(--line-soft);
 }
+
+/* The recovery kit's print sheet (`KitPrintSheet`): invisible on screen; while printing it is the
+   only thing on the page, so the window's print dialog (`sync_print_recovery_kit`) prints the kit
+   and nothing else of the app. */
+.kit-print-sheet {
+  display: none;
+}
+@media print {
+  body > *:not(.kit-print-sheet) {
+    display: none !important;
+  }
+  .kit-print-sheet {
+    display: block;
+    /* colour-literal-ok: a printout is black on white paper in both themes, whatever the tokens say */
+    color: #000;
+    background: #fff;
+    padding: 24px;
+  }
+}

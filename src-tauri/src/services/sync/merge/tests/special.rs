@@ -3,6 +3,8 @@
 use super::*;
 use crate::services::sync::changeset::max_hlc;
 use crate::services::sync::hlc::{now_ms, pack};
+use crate::services::sync::identity::cert::{self, CertFields, CertKind, Certificate};
+use crate::services::sync::identity::{Record, RecordType, SignSeed};
 
 const SPLIT_DAY: i64 = 1_767_225_600;
 
@@ -470,6 +472,115 @@ fn a_key_stamped_with_the_devices_own_id_beats_any_other() {
     assert_eq!(key_of(&e, A).as_deref(), Some("KA"));
 }
 
+/// `id`'s full `sync_devices` row with key `KA` and `column` = `value`, every column at `at`.
+fn device_row_with(id: DeviceId, column: &str, value: &str, at: Clock) -> RowChange {
+    let mut change = device_change(id, "KA", at);
+    set(&mut change, column, text(value), at);
+    change
+}
+
+fn column_of(conn: &Connection, id: DeviceId, column: &str) -> Option<String> {
+    conn.query_row(
+        &format!("SELECT {column} FROM sync_devices WHERE id = ?1"),
+        [id.to_hex()],
+        |r| r.get(0),
+    )
+    .expect("column")
+}
+
+/// Phase 5: a device's certificate and its `left` record follow the public key's rule.
+#[test]
+fn a_certificate_or_left_record_stamped_with_the_devices_own_id_beats_any_other() {
+    for column in ["cert", "left_record"] {
+        let a = device(A);
+        own_device_row(&a, A, Some("KA"));
+        exec(&a, &format!("UPDATE sync_devices SET {column} = 'OWN'"));
+        let from_a = send(&a);
+        let c = device(C);
+        apply(&c, &from_a);
+        let forged = changeset(B, 1, vec![device_row_with(A, column, "EVIL", clock(1, B))]);
+
+        let report = applied(&c, &forged);
+
+        assert_eq!(column_of(&c, A, column).as_deref(), Some("OWN"), "{column}");
+        assert_eq!(report.warnings.len(), 1, "{column}: {:?}", report.warnings);
+        assert!(
+            !report.warnings[0].contains("OWN") && !report.warnings[0].contains("EVIL"),
+            "the warning never names a value: {:?}",
+            report.warnings
+        );
+        let d = device(D);
+        applied(&d, &forged);
+        assert_eq!(column_of(&d, A, column).as_deref(), Some("EVIL"));
+        apply(&d, &from_a);
+        assert_eq!(column_of(&d, A, column).as_deref(), Some("OWN"), "{column}");
+        assert_converged(&[&a, &c, &d]);
+    }
+}
+
+#[test]
+fn a_later_certificate_for_a_device_that_has_one_is_ignored() {
+    let a = device(A);
+    own_device_row(&a, A, Some("KA"));
+    exec(&a, "UPDATE sync_devices SET cert = 'CERT-1'");
+    let c = device(C);
+    apply(&c, &send(&a));
+    let renewed = changeset(
+        A,
+        2,
+        vec![device_row_with(
+            A,
+            "cert",
+            "CERT-2",
+            clock(pack(now_ms() + 60_000, 0), A),
+        )],
+    );
+
+    let report = applied(&c, &renewed);
+
+    assert_eq!(column_of(&c, A, "cert").as_deref(), Some("CERT-1"));
+    assert_eq!(report.warnings.len(), 1, "{:?}", report.warnings);
+}
+
+/// A removal record is signed by another device, so no stamp is preferred: the older stays, in
+/// both orders.
+#[test]
+fn the_older_removal_record_stays_whoever_stamped_it() {
+    let older = changeset(
+        B,
+        1,
+        vec![device_row_with(
+            A,
+            "removal_record",
+            "BY-B",
+            clock(pack(now_ms() + 60_000, 0), B),
+        )],
+    );
+    let newer_own = changeset(
+        A,
+        1,
+        vec![device_row_with(
+            A,
+            "removal_record",
+            "BY-A",
+            clock(pack(now_ms() + 120_000, 0), A),
+        )],
+    );
+    let c = device(C);
+    applied(&c, &older);
+    applied(&c, &newer_own);
+    let d = device(D);
+    applied(&d, &newer_own);
+    applied(&d, &older);
+
+    for conn in [&c, &d] {
+        assert_eq!(
+            column_of(conn, A, "removal_record").as_deref(),
+            Some("BY-B")
+        );
+    }
+}
+
 /// The residual the rule leaves (audit M6): the clock's device is written by whoever seals the
 /// changeset, so a holder of the vault key can stamp a key with another device's own ID and an
 /// older clock, and it is taken. Nothing may trust the column for rekeying until changes are
@@ -521,4 +632,210 @@ fn a_rejoined_devices_restamped_key_clock_keeps_the_stored_key() {
     assert_eq!(key_of(&c, A).as_deref(), Some("KA"));
     assert_eq!(key_clock(&c, A), stored);
     assert!(report.warnings.is_empty(), "{:?}", report.warnings);
+}
+
+// Fix round (phase 5): a write-once `cert`, `left_record` or `removal_record` that does not
+// verify on its own never locks out one that does, whatever their clocks or stamps.
+
+const VAULT: [u8; 16] = [0x11; 16];
+
+fn bind_vault(conn: &Connection) {
+    conn.execute(
+        "UPDATE sync_state SET vault_id = ?1",
+        [crate::services::sync::keys::VaultId(VAULT).to_b64()],
+    )
+    .expect("vault");
+}
+
+fn seed(byte: u8) -> SignSeed {
+    SignSeed::from_bytes(zeroize::Zeroizing::new([byte; 32]))
+}
+
+/// `device`'s genesis certificate in `vault`, signed with `seed(byte)`.
+fn cert_of(device: DeviceId, vault: [u8; 16], byte: u8) -> Certificate {
+    cert::issue_self(
+        CertKind::Genesis,
+        &CertFields {
+            vault_id: vault,
+            device,
+            box_pub: [byte ^ 0xb0; 32],
+            issued_at: NOW,
+        },
+        &seed(byte),
+    )
+    .expect("cert")
+}
+
+/// A's row with `column` = `value` (and, for a `left` record, A's real certificate) at `at`.
+fn poisonable_row(column: &str, value: &str, at: Clock, with_cert: bool) -> RowChange {
+    // Every column of the row is carried, as the journal sends it.
+    let mut change = device_change(A, "KA", at);
+    for other in [
+        "cert",
+        "left_record",
+        "removal_record",
+        "confirm_record",
+        "kit_storage",
+    ] {
+        set(&mut change, other, SqlValue::Null, at);
+    }
+    set(&mut change, "removed", SqlValue::Integer(0), at);
+    set(&mut change, column, text(value), at);
+    if with_cert {
+        set(
+            &mut change,
+            "cert",
+            text(&cert_of(A, VAULT, 0x0a).to_b64()),
+            at,
+        );
+    }
+    change
+}
+
+#[test]
+fn an_invalid_write_once_value_never_beats_a_valid_one_in_either_order() {
+    let left = Record::sign(RecordType::Left, VAULT, A, A, NOW, 0, &seed(0x0a)).expect("left");
+    let removal =
+        Record::sign(RecordType::Removed, VAULT, A, B, NOW, 0, &seed(0x0b)).expect("removal");
+    let other_vault = cert_of(A, [0x22; 16], 0x0a).to_b64();
+    // A `left` record signed with a key other than the one in the row's certificate.
+    let forged_left = Record::sign(RecordType::Left, VAULT, A, A, NOW, 0, &seed(0x0c))
+        .expect("left")
+        .to_b64();
+    let confirmation =
+        Record::sign(RecordType::Confirmed, VAULT, A, B, NOW, 0, &seed(0x0b)).expect("confirmed");
+    let cases: Vec<(&str, String, String)> = vec![
+        ("confirm_record", confirmation.to_b64(), "EVIL".into()),
+        // A removal record in the confirmation column has the wrong shape for it.
+        ("confirm_record", confirmation.to_b64(), removal.to_b64()),
+        ("cert", cert_of(A, VAULT, 0x0a).to_b64(), "EVIL".into()),
+        ("cert", cert_of(A, VAULT, 0x0a).to_b64(), other_vault),
+        ("left_record", left.to_b64(), "EVIL".into()),
+        ("left_record", left.to_b64(), forged_left),
+        ("removal_record", removal.to_b64(), "EVIL".into()),
+        (
+            "removal_record",
+            removal.to_b64(),
+            Record::sign(RecordType::Removed, [0x22; 16], A, B, NOW, 0, &seed(0x0b))
+                .expect("removal")
+                .to_b64(),
+        ),
+    ];
+    for (column, real, poison) in cases {
+        let with_cert = column == "left_record";
+        // The poison is older and stamped with A's own ID: under the plain write-once rule it
+        // would win for good.
+        let poisoned = changeset(
+            B,
+            1,
+            vec![poisonable_row(column, &poison, clock(1, A), with_cert)],
+        );
+        let genuine = changeset(
+            A,
+            1,
+            vec![poisonable_row(
+                column,
+                &real,
+                clock(pack(now_ms(), 0), A),
+                with_cert,
+            )],
+        );
+        let c = device(C);
+        bind_vault(&c);
+        applied(&c, &poisoned);
+        applied(&c, &genuine);
+        let d = device(D);
+        bind_vault(&d);
+        applied(&d, &genuine);
+        applied(&d, &poisoned);
+
+        for conn in [&c, &d] {
+            assert_eq!(
+                column_of(conn, A, column).as_deref(),
+                Some(real.as_str()),
+                "{column} vs {poison}"
+            );
+        }
+        assert_converged(&[&c, &d]);
+    }
+}
+
+#[test]
+fn between_two_valid_values_the_write_once_rule_stays() {
+    // Two certificates that both verify: the older one stamped with A's own ID stays, as before.
+    let first = cert_of(A, VAULT, 0x0a).to_b64();
+    let second = cert_of(A, VAULT, 0x0d).to_b64();
+    let older = changeset(
+        A,
+        1,
+        vec![poisonable_row("cert", &first, clock(1, A), false)],
+    );
+    let newer = changeset(
+        A,
+        2,
+        vec![poisonable_row(
+            "cert",
+            &second,
+            clock(pack(now_ms(), 0), A),
+            false,
+        )],
+    );
+    let c = device(C);
+    bind_vault(&c);
+    applied(&c, &newer);
+    applied(&c, &older);
+    assert_eq!(column_of(&c, A, "cert").as_deref(), Some(first.as_str()));
+}
+
+/// Review of Task 17, I1: where the Kit is kept only ever grows when it arrives through sync
+/// (`paper` < `copied` < `file` < `cloud`; NULL or an unknown value never lowers it), whatever
+/// the clocks, so a device about to be removed cannot switch the Kit's replacement off by
+/// writing a weaker value with a newer clock.
+#[test]
+fn the_kit_storage_only_grows_through_sync_in_either_order() {
+    let kit = DeviceId([0x6b; 16]);
+    let later = |n: u64, by: DeviceId| clock(pack(now_ms(), 0) + n, by);
+    let honest = changeset(
+        A,
+        1,
+        vec![device_row_with(kit, "kit_storage", "copied", clock(1, A))],
+    );
+    for weaker in [Some("paper"), None, Some("bogus")] {
+        let mut change = device_change(kit, "KA", later(5, B));
+        set(
+            &mut change,
+            "kit_storage",
+            weaker.map_or(SqlValue::Null, text),
+            later(5, B),
+        );
+        let attack = changeset(B, 1, vec![change]);
+        // Honest first, then the weaker value with a newer clock.
+        let c = device(C);
+        applied(&c, &honest);
+        applied(&c, &attack);
+        assert_eq!(
+            column_of(&c, kit, "kit_storage").as_deref(),
+            Some("copied"),
+            "{weaker:?} after"
+        );
+        // The weaker value first, then the honest one with an older clock.
+        let d = device(D);
+        applied(&d, &attack);
+        applied(&d, &honest);
+        assert_eq!(
+            column_of(&d, kit, "kit_storage").as_deref(),
+            Some("copied"),
+            "{weaker:?} before"
+        );
+    }
+    // A stronger value wins whatever its clock.
+    let stronger = changeset(
+        B,
+        2,
+        vec![device_row_with(kit, "kit_storage", "cloud", clock(1, B))],
+    );
+    let e = device(DeviceId([5; 16]));
+    applied(&e, &honest);
+    applied(&e, &stronger);
+    assert_eq!(column_of(&e, kit, "kit_storage").as_deref(), Some("cloud"));
 }

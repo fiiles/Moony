@@ -1,7 +1,8 @@
 import { Fragment, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Check, Copy, FileText, Download } from 'lucide-react';
+import { Check, Copy, Download, Printer } from 'lucide-react';
 import type { RecoveryKit } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useRecoveryKitLifetime } from '@/hooks/use-recovery-kit-lifetime';
@@ -9,16 +10,11 @@ import { copyToWebviewClipboard } from '@/utils/recovery-kit-lifetime';
 import { ApiError } from '@/lib/api-error';
 import { deviceSyncApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
-import {
-  groupAccountNumber,
-  recoveryCodeGroups,
-  toBase64,
-  recoveryKitHtml,
-  recoveryKitText,
-} from '@/utils/recovery-kit';
-import type { KitFileKind } from '@shared/schema';
+import { recoveryCodeGroups, toBase64, recoveryKitHtml } from '@/utils/recovery-kit';
 import { Button } from '@/components/ui/button';
+import { KitPrintSheet } from '@/components/settings/sync/KitPrintSheet';
 import { useRecoveryKitCopy } from '@/components/settings/sync/use-recovery-kit-copy';
+import { WRAP_BUTTON } from '@/components/settings/sync/wrap-button';
 
 interface RecoveryKitPanelProps {
   kit: RecoveryKit;
@@ -37,17 +33,27 @@ interface RecoveryKitPanelProps {
   onExpired: () => void;
 }
 
-/** The Sync Recovery Kit as shown during setup: QR, code, account, and the ways to keep it. */
+/**
+ * The recovery kit as shown during setup and after a key change: QR, code, and the ways to keep it
+ * (print, save as a file, copy the code; each one counts as kept).
+ */
 export function RecoveryKitPanel({
   kit,
-  onKept,
+  onKept: kept,
   onPasswordRequired,
   onExpired,
 }: RecoveryKitPanelProps) {
   const { t } = useTranslation('deviceSync');
+  const queryClient = useQueryClient();
+  // Keeping the kit writes where it is kept: the Kit row must not show the cached "not saved"
+  // state once the step closes.
+  const onKept = () => {
+    void queryClient.invalidateQueries({ queryKey: ['device-sync-status'] });
+    kept();
+  };
   const { t: tc } = useTranslation('common');
-  const { copyRecoveryCode } = useDeviceSyncMutations();
-  const kitCopy = useRecoveryKitCopy();
+  const { copyRecoveryCode, printRecoveryKit } = useDeviceSyncMutations();
+  const kitCopy = useRecoveryKitCopy(kit);
   const [copied, setCopied] = useState(false);
   const [clipboardHint, setClipboardHint] = useState(false);
   useRecoveryKitLifetime(onExpired, true);
@@ -58,12 +64,9 @@ export function RecoveryKitPanel({
   const passwordRequired = (error: unknown) =>
     error instanceof ApiError && error.key === 'validation.syncPasswordRequired';
 
-  const saveFile = async (kind: KitFileKind) => {
+  const saveFile = async () => {
     try {
-      const outcome = await deviceSyncApi.saveRecoveryKit(
-        kind,
-        kind === 'page' ? recoveryKitHtml(kit, kitCopy) : recoveryKitText(kit, kitCopy)
-      );
+      const outcome = await deviceSyncApi.saveRecoveryKit('page', recoveryKitHtml(kit, kitCopy));
       // The save dialog was closed: nothing was written
       if (!outcome.saved) return;
       if (outcome.syncedFolder) toast.warning(t('setup.kit.syncedFolder'));
@@ -77,6 +80,19 @@ export function RecoveryKitPanel({
       // Rust refuses a file that is not this account's current kit (setup restarted meanwhile)
       if (error instanceof ApiError && error.kind === 'internal') {
         toast.error(tc('status.error'), { description: t('setup.kit.saveRefused') });
+        return;
+      }
+      fail(error);
+    }
+  };
+
+  const printKit = async () => {
+    try {
+      await printRecoveryKit.mutateAsync();
+      onKept();
+    } catch (error) {
+      if (passwordRequired(error)) {
+        onPasswordRequired();
         return;
       }
       fail(error);
@@ -113,12 +129,6 @@ export function RecoveryKitPanel({
           data-testid="recovery-kit-qr"
         />
         <div className="min-w-0 grid gap-1">
-          <span className="text-caption font-700 text-ink-2">
-            {t('setup.kit.file.accountLabel')}
-          </span>
-          <span className="num text-body font-600 text-ink">
-            {groupAccountNumber(kit.accountNumber)}
-          </span>
           {kit.relayUrl && (
             <span className="break-all text-micro font-500 text-ink-3">
               {t('setup.kit.file.relayLabel')}: {kit.relayUrl}
@@ -143,18 +153,25 @@ export function RecoveryKitPanel({
           </Fragment>
         ))}
       </div>
+      <KitPrintSheet kit={kit} />
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={copyCode}>
+        <Button
+          type="button"
+          variant="outline"
+          className={WRAP_BUTTON}
+          onClick={printKit}
+          loading={printRecoveryKit.isPending}
+        >
+          <Printer />
+          {t('setup.kit.print')}
+        </Button>
+        <Button type="button" variant="outline" className={WRAP_BUTTON} onClick={saveFile}>
+          <Download />
+          {t('setup.kit.saveFile')}
+        </Button>
+        <Button type="button" variant="outline" className={WRAP_BUTTON} onClick={copyCode}>
           {copied ? <Check /> : <Copy />}
           {copied ? t('setup.kit.copied') : t('setup.kit.copyCode')}
-        </Button>
-        <Button type="button" variant="outline" onClick={() => saveFile('page')}>
-          <Download />
-          {t('setup.kit.savePage')}
-        </Button>
-        <Button type="button" variant="outline" onClick={() => saveFile('text')}>
-          <FileText />
-          {t('setup.kit.saveText')}
         </Button>
       </div>
       {clipboardHint && (
@@ -164,7 +181,6 @@ export function RecoveryKitPanel({
       )}
       <p className="m-0 text-micro font-500 text-ink-3">{t('setup.kit.differs')}</p>
       <p className="m-0 text-micro font-500 text-ink-3">{t('setup.kit.folderWarning')}</p>
-      <p className="m-0 text-micro font-500 text-ink-3">{t('limits.lostDevice')}</p>
     </div>
   );
 }

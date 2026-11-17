@@ -2,13 +2,14 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { SyncDevice } from '@shared/schema';
-import { useSyncDevices } from '@/hooks/use-device-sync';
+import { useDeviceSyncStatus, useSyncDeviceGroups } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
-import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
-import { devicePlatformKey, quietDays } from '@/utils/sync-devices';
-import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
+import { removalAvailable } from '@/utils/sync-removal';
+import { SettingsCard } from '@/components/settings/SettingsCard';
 import { AddDeviceDialog } from '@/components/settings/sync/AddDeviceDialog';
+import { DeviceRow } from '@/components/settings/sync/DeviceRow';
+import { RemoveDeviceDialog } from '@/components/settings/sync/RemoveDeviceDialog';
 import {
   Dialog,
   DialogContent,
@@ -16,34 +17,44 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-/** Settings → Sync, sync on: the devices of the sync account, renaming this one, adding another. */
+/** Settings → Sync, sync on: the devices of the sync account, renaming this one, adding or removing another. */
 export function SyncDevicesCard() {
   const { t } = useTranslation('deviceSync');
-  const { date, dateTime } = useFormat();
-  const { data: devices } = useSyncDevices();
+  const { data: groups } = useSyncDeviceGroups();
+  const { data: status } = useDeviceSyncStatus();
+  const { keepDevice } = useDeviceSyncMutations();
   const [renaming, setRenaming] = useState<SyncDevice | null>(null);
+  const [removing, setRemoving] = useState<SyncDevice | null>(null);
   const [adding, setAdding] = useState(false);
+  const available = removalAvailable(status);
+  const unsupported = status !== undefined && !status.removalSupported;
 
-  const hint = (device: SyncDevice) =>
-    [
-      t(devicePlatformKey(device.platform)),
-      t('devices.joined', {
-        date: date(new Date(device.joinedAt * 1000), { dateStyle: 'medium' }),
-      }),
-      device.lastActiveAt === null
-        ? t('devices.noChange')
-        : t('devices.lastChange', {
-            when: dateTime(device.lastActiveAt, { dateStyle: 'medium', timeStyle: 'short' }),
-          }),
-      t('devices.version', { version: device.appVersion }),
-    ].join(' · ');
-  const now = Math.floor(Date.now() / 1000);
+  // "Je moje" can find the row gone or no longer trusted: the list is re-read either way
+  const keep = async (device: SyncDevice) => {
+    try {
+      await keepDevice.mutateAsync(device.id);
+    } catch {
+      toast.error(t('devices.check.keepFailed'));
+    }
+  };
+
+  const row = (device: SyncDevice) => (
+    <DeviceRow
+      key={device.id}
+      device={device}
+      removalAvailable={available}
+      onRename={setRenaming}
+      onRemove={setRemoving}
+      onKeep={keep}
+      keeping={keepDevice.isPending && keepDevice.variables === device.id}
+    />
+  );
+  const former = groups?.former ?? [];
 
   return (
     <>
@@ -57,50 +68,36 @@ export function SyncDevicesCard() {
         }
       >
         <div>
-          {(devices ?? []).map((device) => {
-            const quiet = quietDays(device.lastActiveAt, now);
-            return (
-              <SettingsRow
-                key={device.id}
-                label={
-                  <span className="inline-flex flex-wrap items-center gap-2">
-                    {device.name}
-                    {device.thisDevice && <Badge variant="dark">{t('devices.thisDevice')}</Badge>}
-                    {device.held && <Badge variant="loss">{t('devices.held')}</Badge>}
-                    {quiet !== null && (
-                      <Badge variant="default">{t('devices.quiet', { count: quiet })}</Badge>
-                    )}
-                  </span>
-                }
-                hint={hint(device)}
-              >
-                {device.thisDevice && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setRenaming(device)}
-                  >
-                    {t('devices.rename')}
-                  </Button>
-                )}
-              </SettingsRow>
-            );
-          })}
+          {(groups?.active ?? []).map(row)}
+          {(groups?.check ?? []).map(row)}
         </div>
-        <Collapsible className="mt-3">
-          <CollapsibleTrigger className="cursor-pointer border-0 bg-transparent p-0 text-micro font-500 text-ink-3 underline">
-            {t('limits.lostTitle')}
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <p className="m-0 mt-2 text-micro font-500 text-ink-3" data-testid="sync-limits">
-              {t('limits.lostDevice')}
-            </p>
-          </CollapsibleContent>
-        </Collapsible>
+        {unsupported ? (
+          <p className="m-0 mt-3 text-micro font-500 text-ink-3" data-testid="sync-unsupported">
+            {t('devices.unsupported')}
+          </p>
+        ) : (
+          <p className="m-0 mt-3 text-micro font-500 text-ink-3" data-testid="sync-limits">
+            {t('devices.underList')}
+          </p>
+        )}
+        {former.length > 0 && (
+          <Collapsible className="mt-3">
+            <CollapsibleTrigger className="cursor-pointer border-0 bg-transparent p-0 text-micro font-500 text-ink-3 underline">
+              {t('devices.formerGroup', { count: former.length })}
+            </CollapsibleTrigger>
+            <CollapsibleContent>{former.map(row)}</CollapsibleContent>
+          </Collapsible>
+        )}
       </SettingsCard>
       {renaming && <RenameDeviceDialog device={renaming} onClose={() => setRenaming(null)} />}
       {adding && <AddDeviceDialog onClose={() => setAdding(false)} />}
+      {removing && (
+        <RemoveDeviceDialog
+          deviceIds={[removing.id]}
+          deviceNames={[removing.name]}
+          onClose={() => setRemoving(null)}
+        />
+      )}
     </>
   );
 }

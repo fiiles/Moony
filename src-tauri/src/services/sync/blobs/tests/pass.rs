@@ -1152,6 +1152,51 @@ impl Relay for Hooked {
     fn delete_vault(&self, vault: &VaultAuth) -> impl Future<Output = RelayResult<()>> + Send {
         self.relay.delete_vault(vault)
     }
+    fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::Rotated>> + Send
+    {
+        self.relay.rotate_token(vault, new_token, bundle)
+    }
+    fn rotate_token_with_kit(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+        kit: crate::services::sync::relay::KitRotation<'_>,
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::Rotated>> + Send
+    {
+        self.relay
+            .rotate_token_with_kit(vault, new_token, bundle, kit)
+    }
+    fn put_kit(
+        &self,
+        vault: &VaultAuth,
+        kit_token: &str,
+        envelope: &[u8],
+    ) -> impl std::future::Future<Output = RelayResult<bool>> + Send {
+        self.relay.put_kit(vault, kit_token, envelope)
+    }
+    fn get_kit(
+        &self,
+        vault_id: &str,
+        kit_token: &str,
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::KitRead>> + Send
+    {
+        self.relay.get_kit(vault_id, kit_token)
+    }
+    fn rekeys(
+        &self,
+        vault: &VaultAuth,
+        after: u32,
+        limit: u32,
+    ) -> impl std::future::Future<Output = RelayResult<crate::services::sync::relay::RekeyPage>> + Send
+    {
+        self.relay.rekeys(vault, after, limit)
+    }
     fn put_blob(
         &self,
         vault: &VaultAuth,

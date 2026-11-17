@@ -1,5 +1,6 @@
 //! Authentication commands
 
+use crate::commands::sync::{password_given, verify_password};
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{InsertUserProfile, UpdateUserProfile, UserProfile};
@@ -9,6 +10,7 @@ use crate::services::session_key::SessionKey;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
+use zeroize::Zeroizing;
 
 // ============================================================================
 // 2-Phase Setup Commands
@@ -341,7 +343,16 @@ pub async fn delete_account(
     db: State<'_, Database>,
     session: State<'_, SessionKey>,
     delete_synced_data: Option<bool>,
+    password: Option<String>,
 ) -> Result<()> {
+    let delete_synced_data = delete_synced_data.unwrap_or(false);
+    if delete_synced_data {
+        // Deleting the synced data deletes it for every device: the device password first, as a
+        // removal asks for it, before anything stops or is sent (owner decision O-1, As built R-113).
+        let password = Zeroizing::new(password.unwrap_or_default());
+        password_given(&password)?;
+        verify_password(&app, password).await?;
+    }
     let db_path = get_db_path(&app)?;
     // The engine stops first, so no round holds the round lock through the vault deletion's
     // budget. Deleting the profile only removes this device: the synced data on the server stays
@@ -351,8 +362,11 @@ pub async fn delete_account(
     crate::commands::sync::forget_kit_window();
     crate::commands::sync_pairing::forget_pairing();
     crate::commands::sync::clear_copied_code(&app);
-    if delete_synced_data.unwrap_or(false) {
+    if delete_synced_data {
         crate::commands::sync::delete_vault_with_account(&db).await;
+    } else {
+        // The vault stays for the other devices, which learn that this one left.
+        crate::commands::sync::say_left(&db).await;
     }
     crate::commands::attachments::wipe_open_copies(&app);
     let deleted = auth::delete_account(&db, &session, &db_path);

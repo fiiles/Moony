@@ -8,20 +8,19 @@ import {
   type RecoveryKitCopy,
 } from './recovery-kit';
 
-const CODE = Array.from({ length: 16 }, (_, i) => `ABCD${i % 10}`).join('-');
+const CODE = Array.from({ length: 19 }, (_, i) => `ABCD${i % 10}`).join('-');
 
 const kit: RecoveryKit = {
-  accountNumber: '1234567890123456',
   recoveryCode: CODE,
   qrSvg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path d="M0 0h1v1z"/></svg>',
   relayUrl: null,
+  createdAt: 1_794_000_000,
+  createdBy: 'MacBook',
 };
 
 const copy: RecoveryKitCopy = {
   title: 'Sync Recovery Kit',
   intro: 'Keep this page safe.',
-  accountLabel: 'Sync account',
-  accountNote: 'Identifies your sync account.',
   codeLabel: 'Recovery code',
   codeNote: 'Opens your synced data.',
   qrLabel: 'Scan to restore',
@@ -32,11 +31,10 @@ const copy: RecoveryKitCopy = {
 };
 
 describe('recoveryKitHtml', () => {
-  it('builds a self-contained page with the code, account and QR', () => {
+  it('builds a self-contained page with the code and QR', () => {
     const html = recoveryKitHtml(kit, copy);
     expect(html.startsWith('<!doctype html>')).toBe(true);
     expect(html.replace(/<[^>]+>/g, '')).toContain(CODE);
-    expect(html).toContain('1234 5678 9012 3456');
     expect(html).toContain('<img src="data:image/svg+xml;base64,');
     expect(html).toContain('@media print');
     expect(html).toContain('@page');
@@ -84,7 +82,7 @@ describe('recoveryKitHtml', () => {
 describe('recoveryCodeGroups', () => {
   it('splits the hyphenated code into its groups of five', () => {
     const groups = recoveryCodeGroups(CODE);
-    expect(groups).toHaveLength(16);
+    expect(groups).toHaveLength(19);
     expect(groups[0]).toBe('ABCD0');
     expect(groups.join('-')).toBe(CODE);
   });
@@ -94,7 +92,6 @@ describe('recoveryKitText', () => {
   it('writes the same facts as plain text', () => {
     const text = recoveryKitText(kit, copy);
     expect(text).toContain('Sync Recovery Kit');
-    expect(text).toContain('Sync account: 1234 5678 9012 3456');
     expect(text).toContain(`Recovery code: ${CODE}`);
     expect(text).toContain('This is not your recovery key.');
     expect(text).toContain('Created 9 November 2026');

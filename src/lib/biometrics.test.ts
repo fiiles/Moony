@@ -94,7 +94,13 @@ describe('shouldOfferEnrolment', () => {
 });
 
 describe('enrolmentOfferOpen', () => {
-  const quiet = { offered: true, enabling: false, importOpen: false, sharedPending: false };
+  const quiet = {
+    offered: true,
+    enabling: false,
+    importOpen: false,
+    sharedPending: false,
+    removedNoticePending: false,
+  };
 
   it('opens the offer when it is due and nothing else is on the way', () => {
     expect(enrolmentOfferOpen(quiet)).toBe(true);
@@ -112,9 +118,21 @@ describe('enrolmentOfferOpen', () => {
     expect(enrolmentOfferOpen(quiet)).toBe(true);
   });
 
+  it('waits while the removed-device notice of this unlock is unanswered (no stacked sheets)', () => {
+    // The status that says so is still loading, or the notice is there: "Rozumím" or "Připojit znovu" first
+    expect(enrolmentOfferOpen({ ...quiet, removedNoticePending: true })).toBe(false);
+    expect(enrolmentOfferOpen(quiet)).toBe(true);
+  });
+
   it('stays up while Zapnout runs, whatever else happens', () => {
     expect(
-      enrolmentOfferOpen({ offered: false, enabling: true, importOpen: true, sharedPending: true })
+      enrolmentOfferOpen({
+        offered: false,
+        enabling: true,
+        importOpen: true,
+        sharedPending: true,
+        removedNoticePending: true,
+      })
     ).toBe(true);
   });
 });

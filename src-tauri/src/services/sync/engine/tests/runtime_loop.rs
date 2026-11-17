@@ -107,6 +107,52 @@ impl Relay for Probe {
     async fn delete_vault(&self, vault: &VaultAuth) -> RelayResult<()> {
         self.around(self.inner.delete_vault(vault)).await
     }
+    async fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        self.around(self.inner.rotate_token(vault, new_token, bundle))
+            .await
+    }
+    async fn rotate_token_with_kit(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+        kit: crate::services::sync::relay::KitRotation<'_>,
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        self.around(
+            self.inner
+                .rotate_token_with_kit(vault, new_token, bundle, kit),
+        )
+        .await
+    }
+    async fn put_kit(
+        &self,
+        vault: &VaultAuth,
+        kit_token: &str,
+        envelope: &[u8],
+    ) -> RelayResult<bool> {
+        self.around(self.inner.put_kit(vault, kit_token, envelope))
+            .await
+    }
+    async fn get_kit(
+        &self,
+        vault_id: &str,
+        kit_token: &str,
+    ) -> RelayResult<crate::services::sync::relay::KitRead> {
+        self.around(self.inner.get_kit(vault_id, kit_token)).await
+    }
+    async fn rekeys(
+        &self,
+        vault: &VaultAuth,
+        after: u32,
+        limit: u32,
+    ) -> RelayResult<crate::services::sync::relay::RekeyPage> {
+        self.around(self.inner.rekeys(vault, after, limit)).await
+    }
     async fn put_blob(
         &self,
         vault: &VaultAuth,
@@ -370,7 +416,7 @@ impl ConnAccess for Counted {
     }
 }
 
-fn start_plain(vault: &Vault, device: &TestConn) -> Running {
+pub(super) fn start_plain(vault: &Vault, device: &TestConn) -> Running {
     start(
         vault,
         device,
@@ -559,7 +605,12 @@ async fn a_restore_marker_rejoins_before_the_first_round() {
             .expect("row")
             .binding_written
     );
-    assert_eq!(calls_since(&vault.relay, from).first(), Some(&Route::Pull));
+    // Nothing before the re-join: the first round's first calls are its vault info (read before
+    // the pull, phase 5 As built 64) and its pull.
+    assert_eq!(
+        calls_since(&vault.relay, from)[..2],
+        [Route::VaultInfo, Route::Pull]
+    );
     assert_eq!(
         op_devices(&vault, 0),
         [new_id],
@@ -800,8 +851,10 @@ async fn back_off_sleeps_instead_of_spinning() {
     assert_eq!(rounds, 6);
     assert_eq!(running.handle.runtime().problem, Some(SyncProblem::Offline));
     assert!(takes_31s <= 2 * 12, "{takes_31s} takes in 31 s");
+    // Each round takes the profile about a dozen times, and the unlock's check of the device
+    // list (`rekey::refresh_trust`) once more.
     assert!(
-        takes <= 6 * 12,
+        takes <= 6 * 12 + 1,
         "{takes} takes over 31 minutes: the loop spun"
     );
 }

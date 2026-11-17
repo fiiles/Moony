@@ -6,7 +6,9 @@ use std::sync::atomic::Ordering;
 use super::*;
 use crate::services::sync::capture;
 use crate::services::sync::devices;
-use crate::services::sync::engine::pull::{pull_all, pull_pages, PULL_PAGE};
+use crate::services::sync::engine::pull::{
+    epoch_fits_position, handle_op, pull_all, pull_pages, OpStep, PULL_PAGE,
+};
 use crate::services::sync::engine::{PullEnd, PullReport, PullStop};
 use crate::services::sync::error::SyncError;
 use crate::services::sync::keys::VaultAuth;
@@ -94,7 +96,7 @@ async fn clone_rejoins_then_rejudges_the_triggering_envelope() {
     let key_before: Vec<u8> = {
         let a = vault.a.lock();
         let public = keys::ensure_device_keypair(&a).expect("key pair");
-        devices::record_this_device(&a, "Filip's Mac", &public, NOW).expect("device row");
+        devices::record_this_device(&a, "Filip's Mac", &public, None, NOW).expect("device row");
         state::set_binding_written(&a, true).expect("binding");
         a.query_row("SELECT device_secret_key FROM sync_state", [], |r| r.get(0))
             .expect("key")
@@ -583,7 +585,7 @@ async fn a_withheld_trailing_envelope_leaves_the_cursor_and_reports_behind() {
 type Mangle = fn(u64, PullPage) -> PullPage;
 
 /// A relay that serves `FakeRelay`'s pull pages through `mangle` (given the `after` of the call).
-/// A pull makes no other call.
+/// A pull makes no other call; a round's vault info is the fake's.
 pub(super) struct Mangled<F> {
     pub(super) inner: FakeRelay,
     pub(super) mangle: F,
@@ -605,8 +607,9 @@ impl<F: Fn(u64, PullPage) -> PullPage + Send + Sync> Relay for Mangled<F> {
     async fn create_vault(&self, _: &str, _: &VaultAuth) -> RelayResult<bool> {
         unreachable!("not a pull call")
     }
-    async fn vault_info(&self, _: &VaultAuth) -> RelayResult<VaultInfo> {
-        unreachable!("not a pull call")
+    async fn vault_info(&self, vault: &VaultAuth) -> RelayResult<VaultInfo> {
+        // A round reads it before its pull (phase 5 As built 64).
+        self.inner.vault_info(vault).await
     }
     async fn push(&self, _: &VaultAuth, _: &[OutgoingOp]) -> RelayResult<PushReceipt> {
         unreachable!("not a pull call")
@@ -622,6 +625,41 @@ impl<F: Fn(u64, PullPage) -> PullPage + Send + Sync> Relay for Mangled<F> {
         unreachable!("not a pull call")
     }
     async fn delete_vault(&self, _: &VaultAuth) -> RelayResult<()> {
+        unreachable!("not a pull call")
+    }
+    async fn rotate_token(
+        &self,
+        _: &VaultAuth,
+        _: &str,
+        _: &[u8],
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        unreachable!("not a pull call")
+    }
+    async fn rotate_token_with_kit(
+        &self,
+        _: &VaultAuth,
+        _: &str,
+        _: &[u8],
+        _: crate::services::sync::relay::KitRotation<'_>,
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        unreachable!("not a pull call")
+    }
+    async fn put_kit(&self, _: &VaultAuth, _: &str, _: &[u8]) -> RelayResult<bool> {
+        unreachable!("not a pull call")
+    }
+    async fn get_kit(
+        &self,
+        _: &str,
+        _: &str,
+    ) -> RelayResult<crate::services::sync::relay::KitRead> {
+        unreachable!("not a pull call")
+    }
+    async fn rekeys(
+        &self,
+        _: &VaultAuth,
+        _: u32,
+        _: u32,
+    ) -> RelayResult<crate::services::sync::relay::RekeyPage> {
         unreachable!("not a pull call")
     }
     async fn put_blob(
@@ -916,4 +954,148 @@ async fn an_envelope_fetched_again_counts_its_bytes_once() {
             "only what the cursor moved past counts"
         );
     }
+}
+
+/// The vault's credentials with a second key epoch (1), as a device that picked up one key change.
+fn credentials_at_epoch_one(vault: &Vault) -> Credentials {
+    let first = *vault.creds.keys.current();
+    Credentials {
+        keys: VaultKeys::from_parts(1, BTreeMap::from([(0, first), (1, [9; 32])])).expect("keys"),
+        ..vault.creds.clone()
+    }
+}
+
+/// `handle_op` for a fresh author's first (empty) envelope sealed under `epoch` and served at
+/// relay position `position`.
+fn handle_at(
+    conn: &Connection,
+    creds: &Credentials,
+    author: u8,
+    epoch: u32,
+    position: u64,
+) -> OpStep {
+    let cs = changeset(DeviceId([author; 16]), 1, None, vec![]);
+    let key = creds.keys.get(epoch).expect("a key for the epoch");
+    let ct = seal_op(epoch, &key, &creds.vault_id.0, &to_json(&cs).expect("json")).expect("seal");
+    let op = PulledOp {
+        seq: position,
+        id: op_id(&ct),
+        ct,
+    };
+    handle_op(conn, creds, &op, NOW, &mut PullReport::default()).expect("handle")
+}
+
+/// Phase 5 §6.1: epoch 1 started at relay position 50.
+#[tokio::test]
+async fn an_op_must_sit_on_its_own_side_of_a_key_change() {
+    let vault = vault().await;
+    let creds = credentials_at_epoch_one(&vault);
+    let a = vault.a.lock();
+    state::record_epoch(&a, 1, 50, None, NOW).expect("epoch 1");
+
+    // Above the key change under the old epoch, and at or below it under the new one: a
+    // misbehaving server only.
+    assert_eq!(
+        handle_at(&a, &creds, 10, 0, 51),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(
+        handle_at(&a, &creds, 11, 1, 50),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(
+        handle_at(&a, &creds, 12, 1, 1),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    // The right sides apply.
+    assert_eq!(handle_at(&a, &creds, 13, 1, 60), OpStep::Advance);
+    assert_eq!(handle_at(&a, &creds, 14, 0, 50), OpStep::Advance);
+    assert_eq!(handle_at(&a, &creds, 15, 0, 3), OpStep::Advance);
+    assert_eq!(handle_at(&a, &creds, 16, 1, 51), OpStep::Advance);
+    // Nothing of the refused ones was applied: their authors have no chain here.
+    assert_eq!(head(&a, DeviceId([10; 16])), None);
+    assert_eq!(head(&a, DeviceId([11; 16])), None);
+}
+
+/// An epoch whose relay position this device never learned is not checked.
+#[tokio::test]
+async fn an_epoch_with_no_known_position_is_not_checked() {
+    let vault = vault().await;
+    let creds = credentials_at_epoch_one(&vault);
+    let a = vault.a.lock();
+    assert!(!state::epochs(&a).expect("epochs").contains_key(&1));
+
+    assert_eq!(handle_at(&a, &creds, 10, 0, 500), OpStep::Advance);
+    assert_eq!(handle_at(&a, &creds, 11, 1, 2), OpStep::Advance);
+}
+
+/// Every key change is judged on its own: with epochs 1 (at 50) and 2 (at 80) known, an op at
+/// 70 belongs to epoch 1 and no other.
+#[tokio::test]
+async fn several_key_changes_each_fix_their_own_range() {
+    let vault = vault().await;
+    let first = *vault.creds.keys.current();
+    let creds = Credentials {
+        keys: VaultKeys::from_parts(2, BTreeMap::from([(0, first), (1, [9; 32]), (2, [8; 32])]))
+            .expect("keys"),
+        ..vault.creds.clone()
+    };
+    let a = vault.a.lock();
+    state::record_epoch(&a, 1, 50, None, NOW).expect("epoch 1");
+    state::record_epoch(&a, 2, 80, None, NOW).expect("epoch 2");
+
+    assert_eq!(handle_at(&a, &creds, 10, 1, 70), OpStep::Advance);
+    assert_eq!(
+        handle_at(&a, &creds, 11, 0, 70),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(
+        handle_at(&a, &creds, 12, 2, 70),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(handle_at(&a, &creds, 13, 2, 81), OpStep::Advance);
+    assert_eq!(
+        handle_at(&a, &creds, 14, 1, 81),
+        OpStep::Stop(PullStop::Invalid)
+    );
+}
+
+/// An op exactly at a key change's head belongs to the epochs before it, with several changes
+/// known as with one.
+#[tokio::test]
+async fn an_op_at_exactly_a_key_changes_head_belongs_to_the_earlier_epoch() {
+    let vault = vault().await;
+    let first = *vault.creds.keys.current();
+    let creds = Credentials {
+        keys: VaultKeys::from_parts(2, BTreeMap::from([(0, first), (1, [9; 32]), (2, [8; 32])]))
+            .expect("keys"),
+        ..vault.creds.clone()
+    };
+    let a = vault.a.lock();
+    state::record_epoch(&a, 1, 50, None, NOW).expect("epoch 1");
+    state::record_epoch(&a, 2, 80, None, NOW).expect("epoch 2");
+
+    assert_eq!(handle_at(&a, &creds, 10, 0, 50), OpStep::Advance);
+    assert_eq!(
+        handle_at(&a, &creds, 11, 1, 50),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(handle_at(&a, &creds, 12, 1, 80), OpStep::Advance);
+    assert_eq!(
+        handle_at(&a, &creds, 13, 2, 80),
+        OpStep::Stop(PullStop::Invalid)
+    );
+    assert_eq!(handle_at(&a, &creds, 14, 2, 81), OpStep::Advance);
+}
+
+/// An envelope whose epoch cannot be read fits no place, with key changes known or not.
+#[tokio::test]
+async fn an_envelope_without_a_readable_epoch_fits_no_position() {
+    let vault = vault().await;
+    let a = vault.a.lock();
+    assert!(!epoch_fits_position(&a, &vault.creds, None, 10).expect("rule"));
+    state::record_epoch(&a, 1, 50, None, NOW).expect("epoch 1");
+    assert!(!epoch_fits_position(&a, &vault.creds, None, 10).expect("rule"));
+    assert!(!epoch_fits_position(&a, &vault.creds, None, 60).expect("rule"));
+    assert!(epoch_fits_position(&a, &vault.creds, Some(1), 60).expect("rule"));
 }

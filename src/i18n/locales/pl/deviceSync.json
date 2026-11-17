@@ -4,14 +4,17 @@
   "indicator": {
     "synced": "Zsynchronizowano",
     "syncing": "Synchronizuję…",
-    "waiting": "Zmiana jest wstrzymana",
+    "waiting": "Oczekiwanie na zmianę z innego urządzenia",
     "paused": "Synchronizacja wstrzymana",
     "error": "Błąd synchronizacji",
     "unreachable": "Serwer poza zasięgiem",
     "unreachableLong_one": "Brak synchronizacji od {{count}} dnia",
     "unreachableLong_few": "Brak synchronizacji od {{count}} dni",
     "unreachableLong_many": "Brak synchronizacji od {{count}} dni",
-    "unreachableLong_other": "Brak synchronizacji od {{count}} dnia"
+    "unreachableLong_other": "Brak synchronizacji od {{count}} dnia",
+    "syncingLong": "Synchronizacja trwa dłużej niż zwykle",
+    "firstUpload": "Wysyłanie pierwszej kopii",
+    "removing": "Kończenie usuwania urządzenia…"
   },
   "age": {
     "justNow": "przed chwilą",
@@ -33,12 +36,21 @@
     "pending": "Oczekuje na wysłanie",
     "server": "Serwer",
     "openSettings": "Otwórz ustawienia",
-    "settings": "Ustawienia synchronizacji"
+    "settings": "Ustawienia synchronizacji",
+    "line": {
+      "removed": "Synchronizacja jest wyłączona: to urządzenie zostało usunięte.",
+      "left": "Synchronizacja jest wyłączona: to urządzenie się odłączyło.",
+      "afterKitJoin": "Zdecyduj, co zrobić z wcześniejszymi urządzeniami; do tego czasu stąd nic nie jest wysyłane.",
+      "removalNotice": "Urządzenie {{by}} usunęło: {{names}}.",
+      "newKit": "Urządzenie {{by}} utworzyło nowy zestaw odzyskiwania.",
+      "newDevices": "Nowe urządzenia: {{names}}.",
+      "kitUsed": "Zestaw odzyskiwania został użyty {{at}}."
+    }
   },
   "status": {
     "unreachableNote": "Synchronizacja wznowi się, gdy serwer znów będzie w zasięgu.",
     "problem": {
-      "captureBroken": "Śledzenie zmian na tym urządzeniu jest uszkodzone, więc synchronizacja się zatrzymała. Można je naprawić.",
+      "captureBroken": "Synchronizacja przestała działać na tym urządzeniu. Twoje dane są w porządku. Można ją naprawić.",
       "vaultGone": "Zsynchronizowane dane zostały usunięte z serwera synchronizacji.",
       "lapsed": "Subskrypcja wygasła, więc synchronizacja jest wstrzymana.",
       "quotaExceeded": "Zsynchronizowane dane przekraczają limit miejsca.",
@@ -47,17 +59,20 @@
       "gap": "Zmiana z innego urządzenia jeszcze nie dotarła. To urządzenie nadal synchronizuje dane i wysyła własne zmiany.",
       "clockAhead": "Zmiana z innego urządzenia ma datę późniejszą o ponad dziesięć lat, więc jest wstrzymana. Pozostanie wstrzymana nawet po poprawieniu zegara tego urządzenia; po 14 dniach możesz ją pominąć.",
       "undecryptable": "Nie udało się odszyfrować zmian z innego urządzenia.",
-      "invalidChain": "Zmiany z innego urządzenia nie przeszły weryfikacji i są wstrzymane.",
+      "invalidChain": "Nie udało się zweryfikować zmian z innego urządzenia, więc Moony ich nie użyła. Dane na tym urządzeniu są w porządku.",
       "missingParent": "Zmianom z innego urządzenia brakuje wcześniejszych kroków i są wstrzymane.",
       "quarantined": "Zmiany z niektórych urządzeń są wstrzymane ze względów bezpieczeństwa.",
       "offline": "Brak połączenia z serwerem synchronizacji. Synchronizacja wznowi się, gdy wróci.",
       "relayError": "Serwer synchronizacji nie odpowiada tak, jak powinien. Moony próbuje dalej.",
       "rateLimited": "Serwer synchronizacji poprosił Moony o zwolnienie tempa. Moony wkrótce spróbuje ponownie.",
       "unauthorized": "Serwer synchronizacji nie przyjął tego urządzenia. Może być potrzebna ponowna konfiguracja synchronizacji.",
-      "keyRotated": "Klucz synchronizacji został zmieniony na innym urządzeniu. Skonfiguruj synchronizację na tym urządzeniu ponownie.",
+      "keyRotated": "Synchronizuję…",
       "secureStorage": "Moony nie mogła uzyskać dostępu do bezpiecznego magazynu tego urządzenia, więc synchronizacja jest wstrzymana. Spróbuje ponownie; zwykle pomaga odblokowanie urządzenia lub ponowne uruchomienie Moony.",
-      "serverWentBack": "Serwer synchronizacji wrócił do starszego stanu, więc na innych urządzeniach może brakować zmian. Dane na tym urządzeniu są nienaruszone. Moony nie potrafi jeszcze sama tego naprawić: aby ponownie połączyć urządzenia, wyłącz synchronizację, skonfiguruj ją od nowa na urządzeniu z najpełniejszymi danymi i dołącz pozostałe. Nie synchronizuj tego urządzenia ponownie: zastąpiłoby to jego dane starszą kopią z serwera synchronizacji. Ponowna konfiguracja synchronizacji tworzy nowe konto synchronizacji.",
-      "internal": "Synchronizacja zatrzymała się z powodu błędu wewnętrznego."
+      "serverWentBack": "Serwer synchronizacji wrócił do starszego stanu, więc na innych urządzeniach może brakować zmian. Dane na tym urządzeniu są nienaruszone. Moony nie potrafi jeszcze sama tego naprawić: aby ponownie połączyć urządzenia, wyłącz synchronizację, skonfiguruj ją od nowa na urządzeniu z najpełniejszymi danymi i dołącz pozostałe.",
+      "internal": "Synchronizacja zatrzymała się z powodu błędu wewnętrznego.",
+      "keyNotGiven": "To urządzenie trzeba połączyć ponownie.",
+      "keyChangeUnverified": "To urządzenie trzeba połączyć ponownie.",
+      "keyChangeWaiting": "Czekam, aż połączy się urządzenie, które wprowadziło zmianę."
     },
     "lastSynced": "Ostatnia synchronizacja: {{date}}",
     "neverSynced": "Jeszcze nie zsynchronizowano",
@@ -65,8 +80,7 @@
     "clockAhead": "Zegar tego urządzenia (albo urządzenia, z którym się synchronizowało) w pewnym momencie się spieszył, więc jego zmiany mają datę {{date}}, dopóki ten dzień nie nadejdzie. Nadal się synchronizują; jeśli ten sam element zostanie zmieniony na innym urządzeniu, do tej daty wygrywa wersja z tego urządzenia.",
     "subscription": "Subskrypcja",
     "paidUntil": "Opłacone do {{date}}",
-    "syncNow": "Synchronizuj teraz",
-    "showKit": "Pokaż Zestaw odzyskiwania"
+    "syncNow": "Synchronizuj teraz"
   },
   "server": {
     "label": "Serwer synchronizacji",
@@ -87,7 +101,7 @@
     "cancelSetup": "Anuluj konfigurację",
     "cancelConfirm": {
       "title": "Anulować konfigurację?",
-      "description": "To urządzenie zapomni konto synchronizacji utworzone podczas tej konfiguracji, a dokonana już płatność nie zostanie przeniesiona. Ponowna konfiguracja synchronizacji zaczyna się od początku, z nowym kontem synchronizacji.",
+      "description": "To urządzenie zapomni synchronizację utworzoną podczas tej konfiguracji, a dokonana już płatność nie zostanie przeniesiona. Konfiguracja zacznie się od początku.",
       "keep": "Zachowaj konfigurację"
     },
     "startTitle": "Zacznij synchronizować",
@@ -119,37 +133,41 @@
       "ownServer": "Ten serwer to nie Moony cloud, więc nie ma nic do zapłacenia. Skonfiguruj synchronizację za pomocą kodu połączenia własnego serwera synchronizacji."
     },
     "kit": {
-      "description": "Zapisz Zestaw odzyskiwania synchronizacji. To jedyny sposób, by odzyskać zsynchronizowane dane po utracie wszystkich urządzeń.",
-      "savePage": "Zapisz jako stronę…",
-      "saveText": "Zapisz jako tekst…",
       "copyCode": "Kopiuj kod",
       "copied": "Skopiowano",
       "clipboardHint": "Wyczyść schowek po wklejeniu kodu.",
       "saved": "Zestaw zapisany",
-      "confirm": "Zapisałem(-am) mój Zestaw odzyskiwania synchronizacji",
-      "differs": "Zestaw odzyskiwania synchronizacji to nie klucz odzyskiwania urządzenia. To dwie różne rzeczy i potrzebujesz obu.",
+      "differs": "To nie jest klucz odzyskiwania tego urządzenia; ten resetuje tylko zapomniane hasło.",
       "saveFirst": "Najpierw zapisz lub skopiuj zestaw.",
       "file": {
         "title": "Zestaw odzyskiwania synchronizacji Moony",
         "intro": "Przechowuj tę stronę w bezpiecznym miejscu, z dala od urządzeń. Kto ją ma, może odczytać Twoje zsynchronizowane dane.",
-        "accountLabel": "Konto synchronizacji",
-        "accountNote": "Wskazuje Twoje konto synchronizacji. Nie otwiera danych.",
         "codeLabel": "Kod zestawu odzyskiwania",
         "codeNote": "Otwiera Twoje zsynchronizowane dane. Zachowaj go w tajemnicy.",
         "qrLabel": "Zeskanuj, aby odzyskać na telefonie",
         "created": "Utworzono {{date}}",
         "relayLabel": "Serwer synchronizacji",
-        "relayNote": "Potrzebny do odzyskania z tego zestawu"
+        "relayNote": "Potrzebny do odzyskania z tego zestawu",
+        "createdBy": "Utworzono {{date}} · {{name}}"
       },
       "folderWarning": "Przechowuj zestaw na papierze lub w menedżerze haseł, a nie w folderze synchronizowanym z usługą w chmurze.",
       "syncedFolder": "Zestaw zapisany, ale ten folder wygląda na synchronizowany z usługą w chmurze. Przenieś plik w miejsce, które się nie synchronizuje, albo usuń go, gdy będziesz mieć zestaw na papierze.",
-      "saveRefused": "Ten zestaw jest nieaktualny, więc nie został zapisany. Zamknij go i pokaż zestaw ponownie."
+      "saveRefused": "Ten zestaw jest nieaktualny, więc nie został zapisany. Zamknij go i pokaż zestaw ponownie.",
+      "print": "Drukuj",
+      "stepTitle": "Zestaw odzyskiwania",
+      "intro": "Jeśli stracisz wszystkie urządzenia naraz, dane przywróci tylko ten zestaw. Wydrukuj go i przechowuj z dala od tego komputera, na przykład z dokumentami albo w menedżerze haseł.",
+      "shownOnce": "Zestaw pokazujemy tylko teraz. Jeśli go zgubisz, utworzysz nowy w Ustawieniach.",
+      "continue": "Mam zestaw, dalej",
+      "keepFirst": "Najpierw wydrukuj, zapisz lub skopiuj zestaw.",
+      "saveFile": "Zapisz jako plik…",
+      "saveShare": "Zapisz lub udostępnij…",
+      "saveShareAndroid": "Zapisz jako plik…",
+      "introPhone": "Jeśli stracisz wszystkie urządzenia naraz, dane przywróci tylko ten zestaw. Zapisz go z dala od tego telefonu, na przykład z dokumentami albo w menedżerze haseł. Możesz go wydrukować z zapisanej strony."
     },
     "device": {
       "description": "Nadaj temu urządzeniu nazwę, aby odróżnić je od innych.",
       "name": "Nazwa urządzenia",
-      "turnOn": "Włącz synchronizację",
-      "success": "Synchronizacja włączona"
+      "turnOn": "Włącz synchronizację"
     },
     "defaultName": {
       "macos": "Mac",
@@ -175,6 +193,12 @@
       "resume": "Konfiguracja rozpoczęła się z serwerem {{host}}",
       "other": "Użyj innego kodu połączenia",
       "scan": "Zeskanuj kod"
+    },
+    "done": {
+      "title": "Synchronizacja jest włączona",
+      "body": "Wysyłam pierwszą kopię danych. Możesz pracować dalej.",
+      "addDevice": "Dodaj kolejne urządzenie",
+      "later": "Później"
     }
   },
   "alert": {
@@ -223,7 +247,6 @@
   },
   "resync": {
     "button": "Zsynchronizuj to urządzenie ponownie",
-    "hint": "Zastępuje dane tego urządzenia danymi zsynchronizowanymi, po zapisaniu kopii zapasowej. Użyj tego tylko wtedy, gdy to urządzenie nie może zsynchronizować się w żaden inny sposób.",
     "title": "Zsynchronizować to urządzenie ponownie?",
     "description": "Dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi. Najpierw zapisywana jest kopia zapasowa.",
     "confirm": "Zsynchronizuj ponownie",
@@ -252,27 +275,27 @@
     "appliedAhead": "Zmiana została w międzyczasie zastosowana; nic nie pominięto."
   },
   "turnOff": {
-    "button": "Wyłącz synchronizację na tym urządzeniu",
+    "button": "Wyłącz synchronizację tutaj",
     "hint": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują.",
     "title": "Wyłączyć synchronizację na tym urządzeniu?",
-    "description": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują. Później możesz dołączyć ponownie, parując z innym urządzeniem lub za pomocą zestawu odzyskiwania; dane tego urządzenia zostaną wtedy po utworzeniu kopii zapasowej zastąpione danymi zsynchronizowanymi.",
-    "pendingChanges_one": "{{count}} zmiana na tym urządzeniu nie została jeszcze wysłana. Nie zostanie już wysłana.",
-    "pendingChanges_few": "{{count}} zmiany na tym urządzeniu nie zostały jeszcze wysłane. Nie zostaną już wysłane.",
-    "pendingChanges_many": "{{count}} zmian na tym urządzeniu nie zostało jeszcze wysłanych. Nie zostaną już wysłane.",
-    "pendingChanges_other": "{{count}} zmiany na tym urządzeniu nie zostało jeszcze wysłane. Nie zostaną już wysłane.",
+    "description": "Twoje dane tu zostaną. Pozostałe urządzenia synchronizują się dalej i zobaczą, że to się odłączyło. Jeśli później połączysz się ponownie, dane tego urządzenia zostaną zastąpione zsynchronizowanymi.",
     "confirm": "Wyłącz synchronizację",
     "success": "Synchronizacja wyłączona",
-    "noCutOff": "Wyłączenie synchronizacji tutaj nie odcina żadnego innego urządzenia ani Zestawu."
+    "noCutOff": "Pozostałe urządzenia zobaczą, że to się odłączyło.",
+    "pendingChanges_one": "{{count}} zmiana stąd nie została jeszcze wysłana. Po wyłączeniu już nie zostanie wysłana.",
+    "pendingChanges_few": "{{count}} zmiany stąd nie zostały jeszcze wysłane. Po wyłączeniu już nie zostaną wysłane.",
+    "pendingChanges_many": "{{count}} zmian stąd nie zostało jeszcze wysłanych. Po wyłączeniu już nie zostaną wysłane.",
+    "pendingChanges_other": "{{count}} zmiany stąd nie zostały jeszcze wysłane. Po wyłączeniu już nie zostaną wysłane."
   },
   "delete": {
-    "button": "Usuń zsynchronizowane dane",
+    "button": "Usuń zsynchronizowane dane na serwerze",
     "hint": "Usuwa zsynchronizowane dane z serwera synchronizacji dla wszystkich urządzeń.",
     "title": "Usunąć zsynchronizowane dane?",
     "description": "To usuwa zsynchronizowane dane z serwera synchronizacji dla wszystkich urządzeń. Dane lokalne na każdym urządzeniu zostają.",
     "confirm": "Usuń zsynchronizowane dane",
     "success": "Zsynchronizowane dane usunięte",
-    "afterwards": "Potem synchronizacja jest konfigurowana od początku, z nowym kontem synchronizacji i nowym Zestawem odzyskiwania.",
-    "afterwardsOwnServer": "Potem możesz skonfigurować synchronizację ponownie z tym samym kodem połączenia i nowym Zestawem odzyskiwania."
+    "afterwards": "Potem synchronizację konfiguruje się od początku, z nowym zestawem odzyskiwania.",
+    "afterwardsOwnServer": "Potem możesz skonfigurować synchronizację ponownie z tym samym kodem połączenia i nowym zestawem odzyskiwania."
   },
   "danger": {
     "title": "Wyłączenie lub usunięcie",
@@ -281,7 +304,7 @@
   "leftover": {
     "text": "W tym profilu synchronizacja urządzeń została włączona z wersji deweloperskiej. Jego zmiany nadal są zapisywane na potrzeby synchronizacji.",
     "button": "Wyłącz synchronizację",
-    "noServer": "Zsynchronizowane dane i konto synchronizacji pozostają na serwerze synchronizacji, dopóki nie zostaną usunięte w wersji Moony z synchronizacją.",
+    "noServer": "Zsynchronizowane dane pozostają na serwerze synchronizacji, dopóki nie zostaną usunięte w wersji Moony z synchronizacją.",
     "description": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują. Aby później dołączyć ponownie, potrzebna jest wersja Moony z synchronizacją.",
     "phoneDescription": "Dane lokalne na tym telefonie zostają. Pozostałe urządzenia nadal się synchronizują. Aby później dołączyć ponownie, potrzebna jest wersja Moony z synchronizacją."
   },
@@ -300,10 +323,8 @@
   },
   "devices": {
     "title": "Urządzenia",
-    "description": "Urządzenia synchronizowane z tym kontem.",
+    "description": "Te urządzenia mają dostęp do Twoich danych.",
     "thisDevice": "To urządzenie",
-    "joined": "Dołączono {{date}}",
-    "lastChange": "Ostatnia zmiana zsynchronizowana {{when}}",
     "noChange": "Nie zsynchronizowano jeszcze żadnych zmian",
     "version": "Moony {{version}}",
     "held": "Zmiany wstrzymane",
@@ -318,19 +339,61 @@
       "android": "Telefon z Androidem",
       "other": "Inne urządzenie"
     },
-    "quiet_one": "Brak zmian z tego urządzenia od {{count}} dnia",
-    "quiet_few": "Brak zmian z tego urządzenia od {{count}} dni",
-    "quiet_many": "Brak zmian z tego urządzenia od {{count}} dni",
-    "quiet_other": "Brak zmian z tego urządzenia od {{count}} dnia"
+    "activeAt": "aktywne {{when}}",
+    "details": "Szczegóły",
+    "hideDetails": "Ukryj szczegóły",
+    "remove": "Usuń…",
+    "removing": "Usuwanie…",
+    "inactiveHint": "Już go nie używasz? Usuń je.",
+    "copyName": "{{name}} (kopia)",
+    "check": {
+      "badge": "Sprawdź",
+      "keep": "To moje",
+      "keepNote": "Potwierdź je, zanim następnym razem usuniesz urządzenie; potem musiałoby połączyć się ponownie.",
+      "keepFailed": "Nie udało się potwierdzić urządzenia. Lista została wczytana ponownie.",
+      "unverified": "Nie udało się zweryfikować tego urządzenia. Przy następnym usunięciu urządzenia przestanie się synchronizować. Jeśli jest Twoje, połącz je ponownie: wyłącz na nim synchronizację i wybierz Połącz.",
+      "copy": "To urządzenie połączyło się ponownie, ale jego wcześniejsza kopia nadal zapisuje zmiany. Jeśli jej nie rozpoznajesz, usuń ją.",
+      "issuerRemoved": "Dodało je urządzenie, które usunąłeś, i nie dostaje już nowych danych. Jeśli jest Twoje, połącz je ponownie.",
+      "lateVouch": "Dodało je urządzenie {{by}}, które już się nie synchronizuje lub nie da się go zweryfikować, a Moony nie może potwierdzić, że stało się to przed jego odłączeniem. Przy następnym usunięciu urządzenia przestanie się synchronizować, jeśli go nie potwierdzisz.",
+      "lateVouchNoName": "Urządzenie, które je dodało, już się nie synchronizuje lub nie da się go zweryfikować, a Moony nie może potwierdzić, że stało się to przed jego odłączeniem. Przy następnym usunięciu urządzenia przestanie się synchronizować, jeśli go nie potwierdzisz."
+    },
+    "via": {
+      "created": "Pierwsze urządzenie",
+      "paired": "Dodano {{date}}",
+      "pairedBy": "Dodano {{date}} z urządzenia {{name}}",
+      "recoveryKit": "Połączono zestawem odzyskiwania {{date}}",
+      "rejoined": "Połączono ponownie {{date}}"
+    },
+    "formerGroup": "Wcześniejsze urządzenia ({{count}})",
+    "former": {
+      "left": "odłączone",
+      "leftOn": "odłączone {{date}}",
+      "removed": "usunięte",
+      "removedOn": "usunięte {{date}}",
+      "removedBy": "usunięte przez {{by}}",
+      "removedOnBy": "usunięte {{date}} przez {{by}}"
+    },
+    "underList": "Usuń zgubione, sprzedane lub wyczyszczone urządzenie. Nie zobaczy już niczego nowego.",
+    "unsupported": "Starsza wersja Moony skonfigurowała tę synchronizację, dlatego nie można z niej usuwać urządzeń. Usuń zsynchronizowane dane, skonfiguruj synchronizację ponownie i połącz pozostałe urządzenia.",
+    "inactive_one": "Nieaktywne {{count}} dzień",
+    "inactive_few": "Nieaktywne {{count}} dni",
+    "inactive_many": "Nieaktywne {{count}} dni",
+    "inactive_other": "Nieaktywne {{count}} dnia",
+    "sheet": {
+      "platform": "Typ",
+      "activity": "Ostatnia aktywność",
+      "version": "Wersja",
+      "joined": "Połączenie"
+    }
   },
   "pairing": {
     "addTitle": "Dodaj urządzenie",
-    "addDescription": "Sparuj kolejne urządzenie ze swoim kontem synchronizacji. Nic nie opuszcza Twoich urządzeń bez szyfrowania.",
+    "addDescription": "Sparuj kolejne urządzenie z tą synchronizacją. Nic nie opuszcza Twoich urządzeń bez szyfrowania.",
     "passwordFirst": "Wpisz hasło do Moony, aby wyświetlić kod parowania.",
     "showCode": "Pokaż kod",
     "qrAlt": "Kod parowania",
     "preparing": "Przygotowywanie parowania…",
-    "scanHint": "Zeskanuj to w Moony na telefonie: Ustawienia → Synchronizacja → Skanuj kod",
+    "scanHint": "Zeskanuj to w Moony na telefonie: Ustawienia → Synchronizacja → Połącz to urządzenie → Zeskanuj kod z komputera",
     "validFor": "Kod działa przez 10 minut.",
     "typeTitle": "Wpisz kod",
     "showTitle": "Twój kod parowania",
@@ -351,7 +414,9 @@
     "validUntil": "Kod działa do {{time}}.",
     "copyCode": "Kopiuj kod",
     "copiedCode": "Skopiowano",
-    "codeHint": "Brak aparatu? Wpisz lub wklej ten kod na drugim urządzeniu."
+    "codeHint": "Brak aparatu? Wpisz lub wklej ten kod na drugim urządzeniu. Możesz go wysłać wiadomością: bez sześciu cyfr, które potem wpiszesz tutaj, niczego nie ujawnia.",
+    "deviceConnected": "Urządzenie {{name}} jest połączone",
+    "sentLate": "Dokończ łączenie na drugim urządzeniu. Gdy się połączy, pojawi się na liście."
   },
   "join": {
     "warning": "Dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi. Najpierw obok profilu zapisywana jest kopia zapasowa.",
@@ -366,7 +431,6 @@
     "kitTitle": "Użyj zestawu odzyskiwania",
     "kitHint": "Wpisz kod zestawu odzyskiwania lub tekst kodu QR zestawu.",
     "codeLabel": "Kod zestawu odzyskiwania",
-    "accountLabel": "Numer konta",
     "confirm": "Dołącz i zastąp",
     "choice": {
       "pair": {
@@ -374,12 +438,18 @@
         "lead": "Pojawi się kod. Na telefonie: Ustawienia → Synchronizacja → Dodaj urządzenie."
       },
       "kit": {
-        "title": "Mam zestaw odzyskiwania synchronizacji",
-        "lead": "Wpisujesz kod zestawu odzyskiwania i adres serwera. Tak dołącza też drugi komputer."
+        "title": "Nie mam przy sobie żadnego urządzenia",
+        "lead": "Używasz zestawu odzyskiwania: wpisujesz jego kod."
+      },
+      "code": {
+        "title": "Mam inny komputer z synchronizacją",
+        "lead": "Na drugim komputerze: Ustawienia → Synchronizacja → Dodaj urządzenie. Tutaj wpiszesz kod, który się pojawi."
       }
     },
     "connect": "Połącz",
-    "firstRunDone": "To urządzenie jest teraz synchronizowane"
+    "firstRunDone": "To urządzenie jest teraz synchronizowane",
+    "codeTitle": "Połącz z innego komputera",
+    "codeHint": "Na komputerze z włączoną synchronizacją: Ustawienia → Synchronizacja → Dodaj urządzenie. Wpisz lub wklej kod, który się pojawi."
   },
   "phone": {
     "title": "Synchronizacja",
@@ -390,14 +460,17 @@
       "off": "Wyłączona",
       "synced": "Aktualna",
       "syncing": "Synchronizowanie…",
-      "waiting": "Zmiana jest wstrzymana",
+      "waiting": "Oczekiwanie na zmianę z innego urządzenia",
       "unreachable": "Serwer poza zasięgiem",
       "unreachableLong_one": "Brak synchronizacji od {{count}} dnia",
       "unreachableLong_few": "Brak synchronizacji od {{count}} dni",
       "unreachableLong_many": "Brak synchronizacji od {{count}} dni",
       "unreachableLong_other": "Brak synchronizacji od {{count}} dnia",
       "paused": "Wstrzymana",
-      "error": "Zatrzymana"
+      "error": "Zatrzymana",
+      "syncingLong": "Trwa dłużej niż zwykle",
+      "firstUpload": "Wysyłanie pierwszej kopii",
+      "removing": "Usuwanie urządzenia…"
     },
     "rowWithAge": "{{state}} · {{age}}",
     "choice": {
@@ -409,20 +482,19 @@
     "typeCode": "Wpisz kod zestawu odzyskiwania",
     "addDevice": "Dodaj urządzenie",
     "busy": "Nie zamykaj Moony, dopóki to się nie skończy.",
-    "saveText": "Zapisz jako tekst",
-    "savePage": "Zapisz jako stronę",
     "turnOffBody": "Dane lokalne na tym telefonie zostają. Pozostałe urządzenia nadal się synchronizują. Później możesz dołączyć ponownie, parując z innym urządzeniem lub wpisując kod zestawu odzyskiwania; dane tego telefonu zostaną wtedy po utworzeniu kopii zapasowej zastąpione danymi zsynchronizowanymi.",
     "renewUnavailable": "Odnowienie nie jest dostępne w aplikacji na telefon.",
     "scanTitle": "Skanuj kod",
     "scanHint": "Skieruj aparat na kod na drugim urządzeniu (Ustawienia → Synchronizacja → Dodaj urządzenie) albo na kod QR z zestawu odzyskiwania.",
     "addDeviceHint": "Na nowym urządzeniu wybierz „Połącz to urządzenie” w Ustawienia → Synchronizacja, a potem skieruj aparat na wyświetlony kod.",
     "passwordFirst": "Zanim zeskanujesz kod drugiego urządzenia, wpisz hasło do Moony.",
+    "passwordFirstTyped": "Zanim wkleisz kod drugiego urządzenia, wpisz hasło do Moony.",
     "connecting": "Łączenie…",
     "cameraDenied": "Zezwól na dostęp do aparatu w Ustawieniach, aby zeskanować kod.",
     "openSettings": "Otwórz Ustawienia",
     "cameraUnavailable": "Nie udało się otworzyć aparatu.",
     "unknownCode": "Ten kod QR nie jest kodem parowania Moony ani zestawem odzyskiwania.",
-    "kitConfirmTitle": "Dołączyć do tego konta synchronizacji?",
+    "kitConfirmTitle": "Połączyć ten telefon za pomocą zestawu odzyskiwania?",
     "kitConfirmBody": "Dane tego telefonu zostaną zastąpione danymi zsynchronizowanymi (kopia zapasowa zostanie zachowana).",
     "notAKitCode": "To nie jest kod zestawu odzyskiwania",
     "notAPairingCode": "To nie jest kod parowania.",
@@ -463,10 +535,6 @@
     },
     "onThisDevice": "Na tym urządzeniu:"
   },
-  "limits": {
-    "lostTitle": "Zgubiono urządzenie lub Zestaw odzyskiwania?",
-    "lostDevice": "Zgubionego urządzenia ani Zestawu odzyskiwania nie można jeszcze odciąć od zsynchronizowanych danych, a kto je ma, może już teraz odczytać to, co zawierają. Jeśli coś zaginie, usuń zsynchronizowane dane i skonfiguruj synchronizację od nowa z nowym Zestawem; pozostałe urządzenia będą musiały wtedy dołączyć ponownie."
-  },
   "codes": {
     "pairNotForSetup": "To jest kod parowania, a nie kod połączenia. Zeskanuj go, dodając to urządzenie do już działającej synchronizacji.",
     "kitNotForSetup": "To jest kod zestawu odzyskiwania, a nie kod połączenia. Użyj go, aby dołączyć do już istniejących zsynchronizowanych danych.",
@@ -505,5 +573,153 @@
     "line_few": "Synchronizacja chroni twoje dane: kopia jest na serwerze synchronizacji (ostatnia pełna synchronizacja: {{age}}, liczba urządzeń w synchronizacji: {{count}}). Utwórz kopię zapasową, gdy chcesz zachować stan z określonego dnia.",
     "line_many": "Synchronizacja chroni twoje dane: kopia jest na serwerze synchronizacji (ostatnia pełna synchronizacja: {{age}}, liczba urządzeń w synchronizacji: {{count}}). Utwórz kopię zapasową, gdy chcesz zachować stan z określonego dnia.",
     "line_other": "Synchronizacja chroni twoje dane: kopia jest na serwerze synchronizacji (ostatnia pełna synchronizacja: {{age}}, liczba urządzeń w synchronizacji: {{count}}). Utwórz kopię zapasową, gdy chcesz zachować stan z określonego dnia."
+  },
+  "remove": {
+    "title": "Usunąć {{name}}?",
+    "body": "Urządzenie {{name}} przestanie dostawać nowe dane i nie będzie mogło niczego zmieniać. To, co już na nim jest, tam zostanie, chronione hasłem do Moony.",
+    "stays": "Nadal będą się synchronizować:",
+    "thisDevice": "{{name}} (to urządzenie)",
+    "drops": "Przestaną się też synchronizować:",
+    "dropReason": {
+      "unverified": "nie udało się zweryfikować",
+      "issuerRemoved": "dodane przez usunięte urządzenie",
+      "lateVouch": "dodane przez urządzenie, które już się nie synchronizuje"
+    },
+    "keep": "To moje",
+    "added": "Te urządzenia dodałeś z urządzenia {{name}} (lub z nich). Usuń też te, których nie rozpoznajesz.",
+    "addedRow": "{{name}} · dodano {{date}}",
+    "inHand": "Masz {{name}} przy sobie? Wystarczy wyłączyć na nim synchronizację.",
+    "kit": {
+      "creatorRemoved": "Zestaw odzyskiwania zapisano na urządzeniu {{name}}, więc przestanie obowiązywać. Zaraz potem utworzysz nowy.",
+      "cloud": "Zestaw odzyskiwania jest w folderze synchronizowanym z chmurą, więc przestanie obowiązywać. Zaraz potem utworzysz nowy.",
+      "missing": "Synchronizacja nie ma teraz ważnego zestawu odzyskiwania, więc zaraz potem utworzysz nowy.",
+      "notUpdated": "To usunięcie nie aktualizuje zestawu odzyskiwania."
+    },
+    "confirm": "Usuń urządzenie",
+    "progress": "Usuwanie {{name}}…",
+    "toast": {
+      "removed": "Usunięto {{name}}",
+      "pending": "Serwer synchronizacji jest teraz niedostępny. Usunięcie zakończy się samo, gdy tylko będzie dostępny.",
+      "alreadyRemoved": "Urządzenie {{by}} usunęło w międzyczasie urządzenie {{name}}.",
+      "alreadyRemovedUnknown": "Urządzenie {{name}} zostało w międzyczasie usunięte.",
+      "removedHere": "Inne urządzenie usunęło w międzyczasie to urządzenie. Synchronizacja jest tu wyłączona."
+    },
+    "loadError": "Nie udało się przygotować usunięcia. Spróbuj ponownie.",
+    "retry": "Spróbuj ponownie",
+    "bodyMany": "{{name}} przestaną dostawać nowe dane i nie będą mogły niczego zmieniać. To, co już na nich jest, tam zostanie, chronione hasłem do Moony.",
+    "unreachable": "Serwer synchronizacji jest niedostępny, więc nic się nie zmieniło. Spróbuj ponownie, gdy będziesz mieć połączenie z internetem."
+  },
+  "newKit": {
+    "title": "Twój nowy zestaw odzyskiwania",
+    "body": "Stary zestaw przestał obowiązywać. Wydrukuj ten i przechowuj go z dala od tego urządzenia. Pokazujemy go tylko teraz.",
+    "bodyPhone": "Stary zestaw przestał obowiązywać. Zapisz ten z dala od tego telefonu, na przykład z dokumentami albo w menedżerze haseł. Pokazujemy go tylko teraz.",
+    "pending": "Zestaw zacznie obowiązywać po zakończeniu usuwania.",
+    "done": "Mam zestaw, gotowe",
+    "keepFirst": "Najpierw wydrukuj, zapisz lub skopiuj zestaw.",
+    "gone": "Zestawu nie ma już na ekranie. Utwórz nowy w Ustawienia → Synchronizacja."
+  },
+  "kit": {
+    "title": "Zestaw odzyskiwania",
+    "created": "Utworzono {{date}} na urządzeniu {{name}}. Obowiązuje, dopóki nie utworzysz nowego.",
+    "createdNoName": "Utworzono {{date}}. Obowiązuje, dopóki nie utworzysz nowego.",
+    "lastUsed": "Ostatnio użyty {{date}}",
+    "keptLine": "Przechowywany: {{where}}",
+    "storage": {
+      "paper": "na papierze",
+      "copied": "jako skopiowany kod",
+      "file": "jako plik",
+      "cloud": "w folderze synchronizowanym z chmurą"
+    },
+    "check": "Sprawdź zestaw",
+    "makeNew": "Utwórz nowy…",
+    "unsaved": "Nie zapisano zestawu odzyskiwania i nie da się go pokazać ponownie.",
+    "makeNewKit": "Utwórz nowy zestaw",
+    "none": "Synchronizacja nie ma zestawu odzyskiwania. Bez niego nie odzyskasz danych, jeśli stracisz wszystkie urządzenia.",
+    "make": "Utwórz zestaw",
+    "used": "Zestaw odzyskiwania został użyty {{date}}, ale żadne urządzenie nie połączyło się z jego pomocą. Jeśli to nie ty, ma go ktoś inny: utwórz nowy.",
+    "usedKnown": "Wiem o tym",
+    "notShown": "Nie udało się pokazać nowego zestawu odzyskiwania. Utwórz go ponownie."
+  },
+  "check": {
+    "title": "Sprawdź zestaw odzyskiwania",
+    "description": "Zeskanuj lub przepisz kod z zestawu. Nic nie jest nigdzie wysyłane.",
+    "descriptionPhone": "Przepisz kod z zestawu. Nic nie jest nigdzie wysyłane.",
+    "label": "Kod zestawu odzyskiwania",
+    "submit": "Sprawdź",
+    "valid": "Ten zestaw jest ważny.",
+    "replaced": "Ten zestaw już nie obowiązuje. Ważny jest ten z {{date}}.",
+    "replacedNoDate": "Ten zestaw już nie obowiązuje.",
+    "otherSync": "Ten zestaw należy do innej synchronizacji.",
+    "unknown": "Moony nie zna tego zestawu; być może nigdy nie został dokończony."
+  },
+  "newKitDialog": {
+    "title": "Utworzyć nowy zestaw odzyskiwania?",
+    "body": "Stary zestaw przestanie obowiązywać. Zrób to, gdy zestaw zginął albo nie wiesz, kto go widział.",
+    "joined": "Te urządzenia połączyły się starym zestawem. Usuń te, których nie rozpoznajesz.",
+    "confirm": "Utwórz nowy zestaw",
+    "progress": "Tworzę nowy zestaw…",
+    "toast": {
+      "done": "Nowy zestaw odzyskiwania jest gotowy",
+      "alreadyRemoved": "Zaznaczone urządzenia usunęło w międzyczasie urządzenie {{by}}.",
+      "alreadyRemovedUnknown": "Zaznaczone urządzenia zostały w międzyczasie usunięte."
+    }
+  },
+  "notice": {
+    "removal": {
+      "removed": "Urządzenie {{by}} usunęło {{names}} ({{date}}).",
+      "newKit": "Urządzenie {{by}} utworzyło nowy zestaw odzyskiwania ({{date}}); stary już nie działa.",
+      "kitToo": "Utworzyło też nowy zestaw odzyskiwania; stary już nie działa."
+    },
+    "notDone": {
+      "changed": "Usuwanie {{devices}} się nie zakończyło: urządzenie {{by}} zmieniło w międzyczasie listę urządzeń. Sprawdź ją i spróbuj ponownie.",
+      "alreadyRemoved": "Urządzenie {{by}} usunęło w międzyczasie {{devices}}.",
+      "refused": "Serwer synchronizacji odrzucił usunięcie. Spróbuj ponownie.",
+      "kit": "Nowy zestaw odzyskiwania nie zaczął obowiązywać; utwórz go ponownie."
+    },
+    "overrun": "Serwer synchronizacji wysłał temu urządzeniu zmiany, których nie powinien był wysyłać po usunięciu urządzenia {{date}}, a Moony je zastosowała. Jeśli urządzenie usunięto z powodu kradzieży, sprawdź zmiany z ostatnich dni.",
+    "overrunNoDate": "Serwer synchronizacji wysłał temu urządzeniu zmiany, których nie powinien był wysyłać po usunięciu urządzenia, a Moony je zastosowała. Jeśli urządzenie usunięto z powodu kradzieży, sprawdź zmiany z ostatnich dni.",
+    "newDevice": {
+      "added": "Przybyło urządzenie {{name}}, dodane z urządzenia {{by}} ({{date}}).",
+      "lateVouch": "Przybyło urządzenie {{name}}. Dodało je urządzenie {{by}}, które już się nie synchronizuje. Jeśli nie rozpoznajesz {{name}}, usuń je.",
+      "kitTitle": "Urządzenie połączyło się za pomocą Twojego zestawu odzyskiwania",
+      "kit": "Urządzenie {{name}} połączyło się {{date}}. Jeśli to nie Ty, ktoś inny ma Twój zestaw.",
+      "mine": "To ja",
+      "removeAndNew": "Usuń i utwórz nowy zestaw"
+    }
+  },
+  "problem": {
+    "rejoin": {
+      "title": "To urządzenie trzeba połączyć ponownie",
+      "body": "Było długo bez połączenia albo w międzyczasie zmieniło się, kto ma dostęp do danych. Dane na tym urządzeniu są w porządku, tylko się nie synchronizują.",
+      "by": "Zmianę wprowadziło urządzenie {{by}}, którego to urządzenie nie zna.",
+      "button": "Połącz ponownie"
+    },
+    "waiting": {
+      "title": "Synchronizacja czeka na urządzenie {{by}}",
+      "body": "To urządzenie czeka na potwierdzenie od urządzenia {{by}}, które ostatnio zmieniało listę urządzeń. Dane tutaj są w porządku. Jeśli już nie używasz {{by}}, połącz to urządzenie ponownie."
+    }
+  },
+  "rejoin": {
+    "title": "Połączyć to urządzenie ponownie?",
+    "description": "Synchronizacja zostanie wyłączona na tym urządzeniu, a Twoje dane tu zostaną. Potem połączysz się ponownie, a dane tego urządzenia zostaną po utworzeniu kopii zapasowej zastąpione zsynchronizowanymi. Zmiany, które nie opuściły tego urządzenia, zostaną w kopii zapasowej."
+  },
+  "removed": {
+    "title": "To urządzenie zostało usunięte z synchronizacji",
+    "body": "Usunęło je urządzenie {{by}} ({{date}}). Twoje dane tu zostały, tylko już się nie synchronizują.",
+    "titleLeft": "Synchronizacja jest wyłączona na tym urządzeniu",
+    "bodyLeft": "To urządzenie opuściło synchronizację (być może z innej kopii tego profilu). Twoje dane tu zostały.",
+    "unsent_one": "{{count}} zmiana z tego urządzenia nie trafiła do synchronizacji; zostaje tylko tutaj.",
+    "unsent_few": "{{count}} zmiany z tego urządzenia nie trafiły do synchronizacji; zostają tylko tutaj.",
+    "unsent_many": "{{count}} zmian z tego urządzenia nie trafiło do synchronizacji; zostaje tylko tutaj.",
+    "unsent_other": "{{count}} zmiany z tego urządzenia nie trafiły do synchronizacji; zostają tylko tutaj.",
+    "understood": "Rozumiem"
+  },
+  "afterKit": {
+    "title": "Twoje dane wróciły",
+    "body": "Najnowsza zmiana jest z {{date}}. Na liście zostały Twoje wcześniejsze urządzenia: {{names}}. Jeśli ich już nie masz albo któreś z nich zostało już wcześniej usunięte, usuń je. Dopóki się nie zdecydujesz, stąd nic nie zostanie wysłane.",
+    "bodyNoDate": "Na liście zostały Twoje wcześniejsze urządzenia: {{names}}. Jeśli ich już nie masz albo któreś z nich zostało już wcześniej usunięte, usuń je. Dopóki się nie zdecydujesz, stąd nic nie zostanie wysłane.",
+    "remove": "Usuń je",
+    "keep": "Mam je",
+    "pending": "Usuwanie jeszcze trwa."
   }
 }

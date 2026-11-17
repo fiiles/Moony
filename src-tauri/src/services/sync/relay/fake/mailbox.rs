@@ -78,7 +78,8 @@ impl FakeRelay {
     }
 
     /// The next call of `route` that succeeds keeps its effect, then answers `Server(503)`: the
-    /// answer was lost on the way back. Only `Route::MailboxPut` has an effect to keep here.
+    /// answer was lost on the way back. Only `Route::MailboxPut` and `Route::RotateToken` have an
+    /// effect to keep here.
     pub fn lose_next_answer(&self, route: Route) {
         self.lock().lose_answers.push(route);
     }

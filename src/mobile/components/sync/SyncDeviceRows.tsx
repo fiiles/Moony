@@ -1,44 +1,55 @@
 import { useTranslation } from 'react-i18next';
-import { Laptop, Smartphone, type LucideIcon } from 'lucide-react';
+import { History } from 'lucide-react';
 import type { SyncDevice } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
-import { devicePlatformKey, quietDays } from '@/utils/sync-devices';
+import { deviceLabelKey, devicePlatformKey, inactiveDays } from '@/utils/sync-devices';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
+import { RowBadge } from '@/mobile/components/RowBadge';
+import { deviceIcon } from '@/mobile/lib/device-icon';
 
 interface SyncDeviceRowsProps {
+  /** Active devices first (this one leading), then the "Zkontrolujte" ones. */
   devices: readonly SyncDevice[];
+  /** The devices of the folded group ("Dřívější zařízení"): one row that opens them. */
+  formerCount: number;
   /** Tapping this device's row opens its rename sheet. */
   onRename: (device: SyncDevice) => void;
+  /** Tapping another device's row opens its device sheet. */
+  onOpen: (device: SyncDevice) => void;
+  onOpenFormer: () => void;
 }
 
-const PHONES: ReadonlySet<string> = new Set(['ios', 'android']);
-
 /**
- * The devices of the sync account (README §13 entity rows): the name, and under it the platform,
- * when the device last changed something and, for this one, "This device" first; a device whose
- * changes are held says so last. Only this device's row does anything (a tap renames it, the
- * chevron says so); the others cannot be changed from here.
+ * The devices of the sync (README §13 entity rows): the name with its badges ("Zkontrolujte",
+ * "Odebírá se…", "Neaktivní {n} dní"), and under it "This device" first, the platform and when the
+ * device was last active. This device's row renames it; another device's row opens its device sheet
+ * (details, "Je moje", "Odebrat zařízení"). Left or removed devices are one folded row. Labels wrap.
  */
-export function SyncDeviceRows({ devices, onRename }: SyncDeviceRowsProps) {
+export function SyncDeviceRows({
+  devices,
+  formerCount,
+  onRename,
+  onOpen,
+  onOpenFormer,
+}: SyncDeviceRowsProps) {
   const { t } = useTranslation('deviceSync');
   const { dateTime } = useFormat();
-  const now = Math.floor(Date.now() / 1000);
 
   return (
     <EntityRows>
       {devices.map((device) => {
-        const Icon: LucideIcon = PHONES.has(device.platform) ? Smartphone : Laptop;
-        const quiet = quietDays(device.lastActiveAt, now);
+        const Icon = deviceIcon(device.platform);
+        const label = deviceLabelKey(device);
+        const inactive = inactiveDays(device);
         const sub = [
           ...(device.thisDevice ? [t('devices.thisDevice')] : []),
           t(devicePlatformKey(device.platform)),
           device.lastActiveAt === null
             ? t('devices.noChange')
-            : t('devices.lastChange', {
+            : t('devices.activeAt', {
                 when: dateTime(device.lastActiveAt, { dateStyle: 'medium', timeStyle: 'short' }),
               }),
           ...(device.held ? [t('devices.held')] : []),
-          ...(quiet !== null ? [t('devices.quiet', { count: quiet })] : []),
         ].join(' · ');
         return (
           <EntityRow
@@ -48,14 +59,38 @@ export function SyncDeviceRows({ devices, onRename }: SyncDeviceRowsProps) {
                 <Icon strokeWidth={1.75} />
               </RowChip>
             }
-            title={device.name}
+            title={
+              <>
+                {label ? t(label, { name: device.name }) : device.name}
+                {device.status === 'check' && (
+                  <RowBadge tone="loss">{t('devices.check.badge')}</RowBadge>
+                )}
+                {device.removalPending && <RowBadge>{t('devices.removing')}</RowBadge>}
+                {inactive !== null && (
+                  <RowBadge>{t('devices.inactive', { count: inactive })}</RowBadge>
+                )}
+              </>
+            }
             sub={sub}
-            onClick={device.thisDevice ? () => onRename(device) : undefined}
-            chevron={device.thisDevice}
+            onClick={device.thisDevice ? () => onRename(device) : () => onOpen(device)}
+            chevron
             wrap
           />
         );
       })}
+      {formerCount > 0 && (
+        <EntityRow
+          chip={
+            <RowChip square>
+              <History strokeWidth={1.75} />
+            </RowChip>
+          }
+          title={t('devices.formerGroup', { count: formerCount })}
+          onClick={onOpenFormer}
+          chevron
+          wrap
+        />
+      )}
     </EntityRows>
   );
 }

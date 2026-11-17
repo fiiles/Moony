@@ -439,6 +439,48 @@ impl Relay for CountingBlobs<'_> {
     async fn delete_vault(&self, vault: &VaultAuth) -> RelayResult<()> {
         self.relay.delete_vault(vault).await
     }
+    async fn rotate_token(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        self.relay.rotate_token(vault, new_token, bundle).await
+    }
+    async fn rotate_token_with_kit(
+        &self,
+        vault: &VaultAuth,
+        new_token: &str,
+        bundle: &[u8],
+        kit: crate::services::sync::relay::KitRotation<'_>,
+    ) -> RelayResult<crate::services::sync::relay::Rotated> {
+        self.relay
+            .rotate_token_with_kit(vault, new_token, bundle, kit)
+            .await
+    }
+    async fn put_kit(
+        &self,
+        vault: &VaultAuth,
+        kit_token: &str,
+        envelope: &[u8],
+    ) -> RelayResult<bool> {
+        self.relay.put_kit(vault, kit_token, envelope).await
+    }
+    async fn get_kit(
+        &self,
+        vault_id: &str,
+        kit_token: &str,
+    ) -> RelayResult<crate::services::sync::relay::KitRead> {
+        self.relay.get_kit(vault_id, kit_token).await
+    }
+    async fn rekeys(
+        &self,
+        vault: &VaultAuth,
+        after: u32,
+        limit: u32,
+    ) -> RelayResult<crate::services::sync::relay::RekeyPage> {
+        self.relay.rekeys(vault, after, limit).await
+    }
     async fn put_blob(
         &self,
         vault: &VaultAuth,

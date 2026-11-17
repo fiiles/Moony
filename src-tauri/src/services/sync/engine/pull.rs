@@ -12,6 +12,8 @@
 //! later envelopes of its author as gaps behind it, until the person skips it (audit M6,
 //! `chain::too_far_ahead`).
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use rusqlite::Connection;
 
 use super::{ConnAccess, PullReport, PullStop};
@@ -19,14 +21,16 @@ use crate::error::{AppError, Result};
 use crate::services::sync::blobs;
 use crate::services::sync::chain::gaps::{self, GapKind};
 use crate::services::sync::chain::{self, EnvelopeMeta, RejoinReport, Verdict};
-use crate::services::sync::changeset::{self, Changeset};
+use crate::services::sync::changeset::{self, Changeset, RowChange, RowKey, SqlValue};
 use crate::services::sync::devices;
-use crate::services::sync::envelope::{envelope_hash, open_op};
+use crate::services::sync::envelope::{envelope_epoch, envelope_hash, open_op, OpenError};
 use crate::services::sync::error::SyncResult;
-use crate::services::sync::hlc::now_ms;
+use crate::services::sync::hlc::{now_ms, DeviceId};
+use crate::services::sync::identity::{self, trust};
 use crate::services::sync::in_savepoint;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::merge::{apply_changeset, Outcome, StopReason};
+use crate::services::sync::rekey::head;
 use crate::services::sync::relay::{PullPage, PulledOp, Relay};
 use crate::services::sync::state;
 
@@ -74,9 +78,37 @@ pub fn handle_op(
         Ok(json) => json,
         Err(error) => {
             log::warn!("[SYNC] Relay op {} does not open: {error}", op.seq);
+            // A later epoch than this device's is a hint to look for a key change (phase 5 §7.1);
+            // the pickup decides, the op itself proves nothing.
+            if let OpenError::UnknownEpoch(epoch) = error {
+                if epoch > creds.keys.current_epoch() {
+                    report.key_hint = Some(epoch);
+                }
+            }
             return Ok(OpStep::Stop(PullStop::Undecryptable));
         }
     };
+    // The epoch is authenticated now. Only a misbehaving server puts an op on the wrong side of a
+    // key change (phase 5 §6.1).
+    let epoch = envelope_epoch(&op.ct);
+    if !epoch_fits_position(conn, creds, epoch, op.seq)? {
+        log::warn!(
+            "[SYNC] Relay op {} is sealed under an epoch that does not fit its place",
+            op.seq
+        );
+        return Ok(OpStep::Stop(PullStop::Invalid));
+    }
+    // An older op past where this device stood at a key change waits for the remover's signed
+    // head: the server's alone could have been moved to let a removed device's ops in.
+    if let Some(epoch) = epoch {
+        if head::awaits_head(conn, epoch, op.seq)? {
+            log::info!(
+                "[SYNC] Relay op {} waits for the signed start of a key change",
+                op.seq
+            );
+            return Ok(OpStep::Stop(PullStop::KeyChangeUnconfirmed));
+        }
+    }
     let Ok(cs) = changeset::from_json(&json) else {
         log::warn!("[SYNC] Relay op {} holds no valid changeset", op.seq);
         return Ok(OpStep::Stop(PullStop::Invalid));
@@ -96,6 +128,75 @@ pub fn handle_op(
         Some(OpStep::Advance) => Ok(OpStep::Rejoined),
         Some(step) => Ok(step),
     }
+}
+
+/// Notes where this device first saw each device's certificate and `left` record (phase 5
+/// revision §3.1, `trust::note_sighting`; the first one wins): every `cert` or `left_record` value
+/// of a `sync_devices` row of `rows` that the row now holds and that verifies, at relay position
+/// `position`. The pull calls it for an applied changeset (with its op's position), a snapshot
+/// restore for its rows (with the snapshot's).
+pub(crate) fn note_trust_positions(
+    conn: &Connection,
+    rows: &[RowChange],
+    position: u64,
+) -> Result<()> {
+    for row in rows.iter().filter(|row| row.table == "sync_devices") {
+        let RowKey::Single(id) = &row.key else {
+            continue;
+        };
+        let Ok(device) = DeviceId::from_hex(id) else {
+            continue;
+        };
+        for (column, what) in [
+            ("cert", trust::SeenWhat::Cert),
+            ("left_record", trust::SeenWhat::Left),
+        ] {
+            if let Some((SqlValue::Text(value), _)) = row.columns.get(column) {
+                trust::note_sighting(conn, device, what, value, position)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// The epoch rule (phase 5 §6.1): for every key change this device knows the relay position of
+/// (`sync_epochs`, epoch k at head h), an op above h is sealed under epoch k or later and an op at
+/// or below h under an earlier one; a Kit joiner's bound (`state::KitEpochFloor`) holds as a head
+/// would for the ops past it. A key epoch this device holds a key for but has no head for is not
+/// checked (a warning is logged once per process, not per op or round).
+pub(super) fn epoch_fits_position(
+    conn: &Connection,
+    creds: &Credentials,
+    epoch: Option<u32>,
+    position: u64,
+) -> Result<bool> {
+    let Some(epoch) = epoch else {
+        return Ok(false);
+    };
+    let heads = state::epochs(conn)?;
+    for (known, head) in &heads {
+        if (position > *head) != (epoch >= *known) {
+            return Ok(false);
+        }
+    }
+    // A Kit joiner's newest epoch began at or before the snapshot it restored (revision §2.6
+    // step 5): nothing past that snapshot is sealed under an older epoch.
+    if let Some(floor) = state::kit_epoch_floor(conn)? {
+        if position > floor.after && epoch < floor.epoch {
+            return Ok(false);
+        }
+    }
+    // One warning per process: every op of every round would meet the same gap.
+    static LOGGED: AtomicBool = AtomicBool::new(false);
+    if creds
+        .keys
+        .epochs()
+        .any(|(known, _)| known > 0 && !heads.contains_key(&known))
+        && !LOGGED.swap(true, Ordering::Relaxed)
+    {
+        log::warn!("[SYNC] A key epoch has no known relay position: it is not checked");
+    }
+    Ok(true)
 }
 
 /// Acts on `verdict` for `cs`; `None` for `Clone`, which the caller answers with a re-join.
@@ -122,7 +223,12 @@ fn act(
         }
         Verdict::Apply => match apply_changeset(conn, cs, meta.hash, now)? {
             Outcome::Applied(_) => {
+                note_trust_positions(conn, &cs.rows, meta.position)?;
+                for ticket in &cs.tickets {
+                    trust::note_ticket(conn, ticket, cs.device, meta.position)?;
+                }
                 report.applied += 1;
+                report.devices_changed |= cs.rows.iter().any(|row| row.table == "sync_devices");
                 OpStep::Advance
             }
             // The merge rolled back: the parent may come in a later envelope (a resent one, or
@@ -296,7 +402,10 @@ async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
             .ok_or_else(|| AppError::Internal("sync pull: sync is not set up".into()))
     })?;
     let auth = creds.auth();
-    let mut report = PullReport::default();
+    let mut report = PullReport {
+        through: after,
+        ..PullReport::default()
+    };
     let mut holding = false;
     // After a `NewerSchema` stop: only this device's own envelopes are looked at.
     let mut scanning = false;
@@ -320,6 +429,7 @@ async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
                     db.with_conn(|conn| acknowledge_if_own(conn, creds, op))?;
                 }
                 after = op.seq;
+                report.through = op.seq;
                 continue;
             }
             let step = db.with_conn(|conn| {
@@ -328,8 +438,19 @@ async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
                     state::set_cursor(conn, op.seq)?;
                     state::add_pulled_bytes(conn, op.ct.len() as u64)?;
                 }
+                // The device list changed: pins, `left` and removal records apply now, and a
+                // record naming this device ends sync here (phase 5 §7.4). The envelope is
+                // dealt with either way; a pull that ends here leaves the rest to nobody.
+                if std::mem::take(&mut report.devices_changed)
+                    && crate::services::sync::rekey::refresh_trust(conn, None, now)?
+                {
+                    report.removed_here = true;
+                }
                 Ok(step)
             })?;
+            if report.removed_here {
+                return Ok(report);
+            }
             match step {
                 OpStep::Stop(PullStop::NewerSchema) => {
                     report.stop = Some(PullStop::NewerSchema);
@@ -346,6 +467,7 @@ async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
                 OpStep::Advance | OpStep::Rejoined => {}
             }
             after = op.seq;
+            report.through = op.seq;
         }
         if scanning {
             if !db.with_conn(waiting_for_echo)? {
@@ -425,10 +547,11 @@ fn check_page(page: &PullPage, after: u64, limit: u32) -> std::result::Result<()
 }
 
 /// Re-join after a clone or rollback (§11.4), in one savepoint: `chain::rejoin` under an ID drawn
-/// above the old one (`chain::rejoin_device_id`), a new device key pair, this device's
-/// `sync_devices` row under the new ID with the old row's name (`"Moony"` when there was none;
-/// the platform is this build's), and the vault binding marked unwritten (Task 12 writes it
-/// again).
+/// above the old one (`chain::rejoin_device_id`), a new device key pair and signing key with a
+/// re-join certificate signed by the old ID's key (phase 5 §5.3; none when the old ID had no
+/// pinned certificate, §5.5), this device's `sync_devices` row under the new ID with the old
+/// row's name (`"Moony"` when there was none; the platform is this build's) and that certificate,
+/// and the vault binding marked unwritten (Task 12 writes it again).
 pub fn rejoin_as_new_device(
     conn: &Connection,
     trigger: Option<&EnvelopeMeta>,
@@ -440,9 +563,12 @@ pub fn rejoin_as_new_device(
             .device;
         let name = devices::device_row(conn, old)?
             .map_or_else(|| DEFAULT_DEVICE_NAME.to_string(), |(name, _)| name);
+        // The old ID's key vouches for the new one (phase 5 §5.3), read before the ID changes.
+        let predecessor = identity::predecessor(conn)?;
         let report = chain::rejoin(conn, chain::rejoin_device_id(old)?, trigger)?;
         let public = keys::new_device_keypair(conn)?;
-        devices::record_this_device(conn, &name, &public, now)?;
+        let cert = identity::successor(conn, predecessor, now)?;
+        devices::record_this_device(conn, &name, &public, cert.as_ref(), now)?;
         state::set_binding_written(conn, false)?;
         Ok(report)
     })

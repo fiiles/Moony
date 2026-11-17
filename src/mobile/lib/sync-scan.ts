@@ -1,7 +1,6 @@
 import type { PairingStage, PairingView } from '@shared/schema';
 import { scannedCodeKind } from '@/utils/pairing-code';
 import { decodeServerField, normalizeAddress } from '@/utils/sync-server';
-import { groupAccountNumber } from '@/utils/recovery-kit';
 
 /**
  * The pure parts of scanning on the phone (Nastavení → Sync): what a scanned or pasted text leads
@@ -54,6 +53,9 @@ export function setupScanRoute(text: string): SetupScanRoute {
 
 export { kitCodeProblem } from '@/utils/sync-setup';
 
+/** The search parameter that opens the join choice on arrival (`?join=1`): "Připojit znovu" from the unlock sheet. */
+export const JOIN_PARAM = 'join';
+
 /**
  * The sync server a Recovery Kit QR without one names: `DEFAULT_RELAY_URL` in
  * `src-tauri/src/services/sync/relay/http.rs`, which `read_recovery_input` joins with.
@@ -61,21 +63,21 @@ export { kitCodeProblem } from '@/utils/sync-setup';
 export const DEFAULT_SYNC_SERVER = 'https://sync.moonyfinance.com';
 
 /**
- * What the phone shows before a scanned Recovery Kit QR joins: the account number in groups of four
- * and the sync server, or why the QR cannot join (a `common` key, the one the backend would answer).
+ * What the phone shows before a scanned Recovery Kit QR joins: the sync server, or why the QR
+ * cannot join (a `common` key, the one the backend would answer). The account is inside the code.
  */
 export type KitQrSummary =
-  | { ok: true; account: string; server: string }
+  | { ok: true; server: string }
   | {
       ok: false;
       problem: 'validation.syncRecoveryCodeInvalid' | 'validation.syncRelayUrlInvalid';
     };
 
-const KIT_QR_PREFIX = 'moony-recover:1:';
+const KIT_QR_PREFIX = 'moony-recover:2:';
 
 /**
- * Reads the account and the sync server of `moony-recover:1:<account>:<code>[:<base64url server>]`
- * (`parse_recovery_qr_payload`) for the confirm sheet. It refuses no more than the backend does: the
+ * Reads the sync server of `moony-recover:2:<code>[:<base64url server>]` (`parse_kit_qr_payload`)
+ * for the confirm sheet. It refuses no more than the backend does: the
  * code itself and the server's details are the backend's to check when the join runs.
  */
 export function kitQrSummary(text: string): KitQrSummary {
@@ -83,30 +85,17 @@ export function kitQrSummary(text: string): KitQrSummary {
   const trimmed = text.trim();
   if (!trimmed.startsWith(KIT_QR_PREFIX)) return invalid;
   const fields = trimmed.slice(KIT_QR_PREFIX.length).split(':');
-  if (fields.length < 2 || fields.length > 3) return invalid;
-  const [account, , encoded] = fields;
-  if (!/^\d{16}$/.test(account)) return invalid;
-  if (encoded === undefined) {
-    return { ok: true, account: groupAccountNumber(account), server: DEFAULT_SYNC_SERVER };
-  }
+  if (fields.length > 2 || fields[0] === '') return invalid;
+  const [, encoded] = fields;
+  if (encoded === undefined) return { ok: true, server: DEFAULT_SYNC_SERVER };
   const address = decodeServerField(encoded);
   if (address === null) return invalid;
   const server = normalizeAddress(address);
   if (server === null) return { ok: false, problem: 'validation.syncRelayUrlInvalid' };
-  return { ok: true, account: groupAccountNumber(account), server };
+  return { ok: true, server };
 }
 
-/** The manual-entry sheet takes a pairing code only (a `deviceSync` key otherwise). */
-export function pairingCodeProblem(code: string): string | null {
-  switch (scannedCodeKind(code)) {
-    case 'pair':
-      return null;
-    case 'connection':
-      return 'codes.connectionNotHere';
-    default:
-      return 'phone.notAPairingCode';
-  }
-}
+export { pairingCodeProblem } from '@/utils/pairing-code';
 
 /** The `setup.defaultName` key of this phone: Android by its build platform, else an iPhone. */
 export function phoneDeviceKey(platform: string): 'ios' | 'android' {

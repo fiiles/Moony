@@ -10,18 +10,18 @@ describe('SETTINGS_SECTIONS', () => {
     expect(SETTINGS_SECTIONS.map((s) => s.id)).toEqual([
       'general',
       'security',
+      'sync',
       'data',
       'integrations',
-      'sync',
       'categorization',
       'account',
     ]);
     expect(SETTINGS_SECTIONS.map((s) => s.path)).toEqual([
       '/settings',
       '/settings/security',
+      '/settings/sync',
       '/settings/data',
       '/settings/integrations',
-      '/settings/sync',
       '/settings/categorization',
       '/settings/account',
     ]);
@@ -59,15 +59,22 @@ describe('resolveSettingsSection', () => {
 });
 
 describe('sync section', () => {
-  it('lists the sync section only when the feature is on', () => {
-    expect(visibleSettingsSections(false).map((s) => s.id)).not.toContain('sync');
-    const on = visibleSettingsSections(true).map((s) => s.id);
-    expect(on).toEqual([
+  it('lists the sync section only when the feature is on, before Data and backups', () => {
+    expect(visibleSettingsSections(false).map((s) => s.id)).toEqual([
       'general',
       'security',
       'data',
       'integrations',
+      'categorization',
+      'account',
+    ]);
+    const on = visibleSettingsSections(true).map((s) => s.id);
+    expect(on).toEqual([
+      'general',
+      'security',
       'sync',
+      'data',
+      'integrations',
       'categorization',
       'account',
     ]);

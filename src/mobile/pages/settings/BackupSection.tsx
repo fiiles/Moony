@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { useDeviceSyncFeature, useDeviceSyncStatus, useSyncDevices } from '@/hooks/use-device-sync';
-import { protectionLine, syncIsOn } from '@/utils/safe-copy';
+import { protectionLine, protectionMode } from '@/utils/safe-copy';
 import { useFormat } from '@/lib/use-format';
 import { notInBackup } from '@/utils/sync-attachments';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
@@ -14,6 +15,7 @@ import { RestoreBackupSheet } from '@/mobile/sheets/RestoreBackupSheet';
 import { DataTools } from './DataTools';
 import type { BackupInspection } from '@shared/schema';
 import { phoneCopyKey } from '@/mobile/lib/platform-copy';
+import { settingsPath } from '@/mobile/shell/routes';
 
 /** The card the date sits in (`.m-card`). */
 const CARD = 'mb-3.5 rounded-r4 border border-line bg-paper px-3 shadow-e1';
@@ -30,6 +32,9 @@ const BUTTON =
  * the password that was in use when it was made. There is no automatic backup: the "backup is due"
  * reminder says when to make one. Restoring asks first, in a sheet that names what the file holds.
  * Making a backup works on iOS only for now: elsewhere the button is off and a sentence says so.
+ * With sync built in, sync is the first way to look after the data and the backup the second
+ * (owner, 2026-11-17): while sync is off the page leads with "Nastavit synchronizaci" and offers
+ * the backup as the alternative; while it is on, the backup is an extra (a secondary button).
  * Restoring (a picked file, read by Rust) is verified on iOS only too: Android's picker returns
  * `content://` URIs that Rust cannot read yet, which is a follow-up.
  */
@@ -45,7 +50,8 @@ export default function BackupSection() {
   // The status exists only with the feature on, and counts nothing while sync is off.
   const { data: syncStatus } = useDeviceSyncStatus();
   const featureOn = useDeviceSyncFeature();
-  const syncOn = syncIsOn(featureOn, syncStatus);
+  const mode = protectionMode(featureOn, syncStatus);
+  const syncOn = mode === 'synced';
   const missing = syncOn && syncStatus ? notInBackup(syncStatus.attachments) : 0;
   const { data: syncDevices } = useSyncDevices();
   const protection = protectionLine(featureOn, syncStatus, syncDevices, Date.now() / 1000);
@@ -79,8 +85,23 @@ export default function BackupSection() {
   return (
     <SectionPage
       title={t('settings.rows.backup')}
-      lead={t(syncOn ? 'backup.leadSync' : 'backup.lead')}
+      lead={t(
+        mode === 'synced'
+          ? 'backup.leadSync'
+          : mode === 'offerSync'
+            ? 'backup.leadOffer'
+            : 'backup.lead'
+      )}
     >
+      {mode === 'offerSync' && (
+        <>
+          <Button asChild className={BUTTON} data-testid="backup-set-up-sync">
+            <Link href={settingsPath('sync')}>{tSync('intro.start')}</Link>
+          </Button>
+          <SectionHead title={t('backup.title')} />
+          <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3">{t('backup.instead')}</p>
+        </>
+      )}
       {protection && (
         <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3">
           {tSync('protection.line', {
@@ -96,7 +117,9 @@ export default function BackupSection() {
           value={lastBackupAt !== null ? fmt.dateTime(lastBackupAt) : t('backup.never')}
         />
       </div>
+      {/* The primary way only without sync built in; otherwise sync leads and this is the second */}
       <Button
+        variant={mode === 'backup' ? 'default' : 'secondary'}
         className={BUTTON}
         loading={busy === 'backup'}
         disabled={busy === 'restore' || !canExport}

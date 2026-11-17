@@ -94,8 +94,8 @@
     "makeBackup": "创建备份",
     "makeBackupHint": "包含全部内容的单个文件，位于“设置”→“数据与备份”。",
     "protectData": "保护您的数据",
-    "protectDataHint": "请在“设置”→“数据与备份”中创建备份，或开启同步。",
-    "setUpSync": "设置同步",
+    "protectDataHint": "请在“设置”→“同步”中开启同步，这样您的其他设备上也会有一份副本。",
+    "backupInstead": "或创建备份",
     "dismiss": "关闭",
     "done": "已完成",
     "optional": "可选"

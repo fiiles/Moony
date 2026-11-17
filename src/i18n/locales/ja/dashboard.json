@@ -94,8 +94,8 @@
     "makeBackup": "バックアップを作成",
     "makeBackupHint": "すべてを1つのファイルに。設定 → データとバックアップから。",
     "protectData": "データを守る",
-    "protectDataHint": "設定 → データとバックアップでバックアップを作成するか、同期をオンにしてください。",
-    "setUpSync": "同期を設定",
+    "protectDataHint": "設定 → 同期で同期をオンにすると、ほかのデバイスにもコピーが置かれます。",
+    "backupInstead": "またはバックアップを作成",
     "dismiss": "閉じる",
     "done": "完了",
     "optional": "任意"

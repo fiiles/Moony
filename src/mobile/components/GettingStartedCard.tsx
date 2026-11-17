@@ -7,7 +7,7 @@ import { onboardingApi } from '@/lib/tauri-api';
 import { cn } from '@/lib/utils';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { exportsOnThisDevice } from '@/mobile/lib/export-file';
-import { offerSyncLink } from '@/utils/getting-started';
+import { offerBackupLink } from '@/utils/getting-started';
 import { phoneGettingStartedItems } from '@/mobile/lib/getting-started';
 import { settingsPath } from '@/mobile/shell/routes';
 import { syncIsOn } from '@/utils/safe-copy';
@@ -36,12 +36,8 @@ export function GettingStartedCard() {
 
   if (!progress || progress.checklistDismissed) return null;
   const sync = { featureOn, syncOn: syncIsOn(featureOn, syncStatus) };
-  const items = phoneGettingStartedItems(
-    progress,
-    user?.menuPreferences,
-    exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? ''),
-    sync
-  );
+  const canBackup = exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? '');
+  const items = phoneGettingStartedItems(progress, user?.menuPreferences, canBackup, sync);
   if (items.every((item) => item.done)) return null;
   const doneCount = items.filter((item) => item.done).length;
 
@@ -109,12 +105,13 @@ export function GettingStartedCard() {
             wrap
             chevron
           />,
-          ...(offerSyncLink(item, sync)
+          // Sync first, the backup as the alternative (where this phone can make one)
+          ...(offerBackupLink(item, sync) && canBackup
             ? [
                 <EntityRow
-                  key={`${item.key}-sync`}
-                  title={t('gettingStarted.setUpSync')}
-                  href={settingsPath('sync')}
+                  key={`${item.key}-backup`}
+                  title={t('gettingStarted.backupInstead')}
+                  href={settingsPath('backup')}
                   from={tm('tabs.overview')}
                   wrap
                   chevron

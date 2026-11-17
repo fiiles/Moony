@@ -169,6 +169,11 @@ export interface NotificationPlanInput {
    * false: the reminder is as before.
    */
   syncOn?: boolean;
+  /**
+   * The sync flag is on and sync is off: the backup reminder offers sync first, then a backup
+   * (owner, 2026-11-17), under its own id. `syncOn` wins. Default false.
+   */
+  offerSync?: boolean;
 }
 
 /**
@@ -184,6 +189,7 @@ export interface NotificationPlanInput {
  */
 export function buildNotificationPlan(input: NotificationPlanInput): PlannedNotification[] {
   const { now, milestones, mutedKinds, prefs, canBackup = true, syncOn = false } = input;
+  const offerSync = !syncOn && input.offerSync === true;
   const items: PlannedNotification[] = [];
 
   if (prefs.deadlines) {
@@ -227,23 +233,20 @@ export function buildNotificationPlan(input: NotificationPlanInput): PlannedNoti
 
   const staleBackup = milestones.find((m) => m.kind === 'backup_stale');
   if (canBackup && prefs.backup && staleBackup && !mutedKinds.includes('backup_stale')) {
+    const never = staleBackup.sinceDay === null;
+    const [variant, title, body] = syncOn
+      ? ['backupSync', 'titleSync', never ? 'neverSync' : 'staleSync']
+      : offerSync
+        ? ['backupOffer', 'titleSync', never ? 'neverOffer' : 'staleOffer']
+        : ['backup', 'title', never ? 'never' : 'stale'];
     items.push({
-      // Its own id with sync on: the signature changes, so a pending reminder with the old text
-      // is cancelled and planned again (and back when sync goes off)
-      id: notificationId('backup', syncOn ? 'backupSync' : 'backup'),
+      // Its own id per wording (sync on, sync offered, backup only): the signature changes, so a
+      // pending reminder with another text is cancelled and planned again
+      id: notificationId('backup', variant),
       kind: 'backup',
       at: tomorrow(now),
-      title: { key: syncOn ? 'notifications.backup.titleSync' : 'notifications.backup.title' },
-      body: {
-        key:
-          staleBackup.sinceDay === null
-            ? syncOn
-              ? 'notifications.backup.neverSync'
-              : 'notifications.backup.never'
-            : syncOn
-              ? 'notifications.backup.staleSync'
-              : 'notifications.backup.stale',
-      },
+      title: { key: `notifications.backup.${title}` },
+      body: { key: `notifications.backup.${body}` },
       path: settingsPath('backup'),
     });
   }

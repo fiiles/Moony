@@ -160,6 +160,7 @@
   "data": {
     "title": "Dane i kopie zapasowe",
     "description": "Gdzie leżą twoje dane i jak zachować ich kopię.",
+    "syncOffer": "Najlepiej chroni dane synchronizacja: kopia szyfrowana end-to-end zostaje na twoim serwerze synchronizacji i pozostałych urządzeniach.",
     "location": "Folder danych",
     "size": "{{size}} na dysku",
     "openFolder": "Otwórz folder",
@@ -186,6 +187,7 @@
     "verifyOk": "Baza danych jest w dobrym stanie",
     "verifyFailed": "Kontrola bazy danych wykryła problemy",
     "hint": "Kopia zapasowa to plik ZIP z zaszyfrowaną bazą danych, zaszyfrowanymi załącznikami i plikami kluczy (salt, key.enc, recovery.enc). Otworzy ją tylko hasło obowiązujące w chwili jej utworzenia albo klucz odzyskiwania — przechowuj ją w bezpiecznym miejscu, np. na dysku zewnętrznym lub we własnej chmurze.",
+    "backupInstead": "Nie chcesz synchronizacji? Zapisz kopię zapasową.",
     "backupRow": "Kopia zapasowa",
     "exportRow": "Eksport",
     "exportHint": "Wszystkie tabele w jednym pliku JSON, bez załączników. Plik nie jest zaszyfrowany — przeczyta go każdy, kto go otworzy.",

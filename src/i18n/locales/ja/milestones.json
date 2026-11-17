@@ -65,6 +65,8 @@
     "backup_never": "バックアップはまだありません",
     "backup_stale_sync": "最後の安全なコピー {{date}} · 同期を再開するか、バックアップを取ってください",
     "backup_never_sync": "安全なコピーはまだありません · 同期を再開するか、バックアップを取ってください",
+    "backup_stale_offer": "最後のバックアップ {{date}} · 同期を設定するか、バックアップを取ってください",
+    "backup_never_offer": "まだバックアップがありません · 同期を設定するか、バックアップを取ってください",
     "balances_stale_other": "{{count}}件の口座が30日以上更新されていません",
     "sync_stalled": "最後の同期 {{date}}",
     "sync_stalled_never": "まだ同期されていません"

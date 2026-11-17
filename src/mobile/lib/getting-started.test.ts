@@ -55,13 +55,23 @@ describe('opensAddAccount', () => {
 });
 
 describe('phoneGettingStartedItems with sync', () => {
-  it('leads "Protect your data" to Záloha a přenos and drops it where backups cannot be made', () => {
+  it('leads "Protect your data" to Synchronizace, and keeps it where backups cannot be made', () => {
     const sync = { featureOn: true, syncOn: false };
     const items = phoneGettingStartedItems(progress, undefined, true, sync);
-    expect(items.find((i) => i.key === 'protectData')?.href).toBe('/settings/backup');
+    expect(items.find((i) => i.key === 'protectData')?.href).toBe('/settings/sync');
     expect(items.some((i) => i.key === 'makeBackup')).toBe(false);
+    // Sync works without backups (Android for now): the item stays, done by sync alone
     const noBackup = phoneGettingStartedItems(progress, undefined, false, sync);
-    expect(noBackup.some((i) => i.key === 'protectData' || i.key === 'makeBackup')).toBe(false);
+    expect(noBackup.find((i) => i.key === 'protectData')?.href).toBe('/settings/sync');
+    expect(noBackup.some((i) => i.key === 'makeBackup')).toBe(false);
+  });
+
+  it('drops "Make a backup" where backups cannot be made, with the flag off', () => {
+    const items = phoneGettingStartedItems(progress, undefined, false, {
+      featureOn: false,
+      syncOn: false,
+    });
+    expect(items.some((i) => i.key === 'makeBackup' || i.key === 'protectData')).toBe(false);
   });
 
   it('ticks "Protect your data" when sync is on', () => {

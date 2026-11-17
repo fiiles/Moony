@@ -94,6 +94,15 @@ describe('firstRunSteps without backups', () => {
     expect(steps.at(-1)).toBe('biometrics');
     expect(nextStep(steps, 'biometrics')).toBeNull();
   });
+
+  it('keeps the last step with the sync flag on: its first way is sync, which needs no backup', () => {
+    const steps = firstRunSteps({ biometryAvailable: true, canBackup: false, syncFeature: true });
+    expect(steps.at(-1)).toBe('backup');
+    // …and still never after a join
+    expect(
+      firstRunSteps({ biometryAvailable: true, canBackup: false, syncFeature: true, path: 'join' })
+    ).not.toContain('backup');
+  });
 });
 
 describe('nextStep and previousStep', () => {

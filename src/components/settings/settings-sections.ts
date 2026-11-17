@@ -16,9 +16,10 @@ export interface SettingsSection {
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: 'general', path: '/settings', labelKey: 'sections.general' },
   { id: 'security', path: '/settings/security', labelKey: 'sections.security' },
+  // Sync before Data and backups: the first way to look after the data (owner, 2026-11-17)
+  { id: 'sync', path: '/settings/sync', labelKey: 'sections.sync' },
   { id: 'data', path: '/settings/data', labelKey: 'sections.data' },
   { id: 'integrations', path: '/settings/integrations', labelKey: 'sections.integrations' },
-  { id: 'sync', path: '/settings/sync', labelKey: 'sections.sync' },
   { id: 'categorization', path: '/settings/categorization', labelKey: 'sections.categorization' },
   { id: 'account', path: '/settings/account', labelKey: 'sections.account' },
 ];

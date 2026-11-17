@@ -31,13 +31,16 @@ const NOT_AFTER_A_JOIN: readonly FirstRunStep[] = ['areas', 'firstAccount', 'bac
 
 /**
  * The steps this phone goes through: "Biometrie" is left out where biometry cannot be used, and
- * "Záloha" where a backup cannot be made (`canBackup` false: Android for now, audit C7). By path
+ * "Záloha" where a backup cannot be made (`canBackup` false: Android for now, audit C7) unless the
+ * sync flag is on (`syncFeature`): then the step leads with "Nastavit synchronizaci", which works
+ * without backups. By path
  * (default `new`): `new` has no Připojení; `join` ends with Připojení and Biometrie; `declined`
  * (Připojení left without sync) has every step.
  */
 export function firstRunSteps(input: {
   biometryAvailable: boolean;
   canBackup?: boolean;
+  syncFeature?: boolean;
   path?: OnboardingPath;
 }): FirstRunStep[] {
   const path = input.path ?? 'new';
@@ -46,7 +49,7 @@ export function firstRunSteps(input: {
       (step !== 'connect' || path !== 'new') &&
       (path !== 'join' || !NOT_AFTER_A_JOIN.includes(step)) &&
       (step !== 'biometrics' || input.biometryAvailable) &&
-      (step !== 'backup' || input.canBackup !== false)
+      (step !== 'backup' || input.canBackup !== false || input.syncFeature === true)
   );
 }
 

@@ -19,9 +19,10 @@ export function opensAddAccount(search: string): boolean {
  * The desktop's "Začínáme" checklist (`gettingStartedItems`: the same items, the same done rules,
  * only the areas the person tracks) with the phone's pages as targets: the statement on Finance
  * (where accounts are added and imported into), an investment on Akcie (else Krypto), a budget on
- * Rozpočty and the backup on Nastavení → Záloha a přenos. Where this device cannot make a backup
- * (`canBackup` false: anything but iOS for now) there is no backup step, as Údržba has no backup
- * row there.
+ * Rozpočty, the backup on Nastavení → Záloha a přenos and, with the sync flag on, "Ochránit data"
+ * on Nastavení → Synchronizace (sync first, the backup second). Where this device cannot make a
+ * backup (`canBackup` false: anything but iOS for now) there is no "Udělat zálohu", as Údržba has no
+ * backup row there; "Ochránit data" stays, since sync alone can do it.
  */
 export function phoneGettingStartedItems(
   progress: Pick<
@@ -33,7 +34,7 @@ export function phoneGettingStartedItems(
   sync?: GettingStartedSync
 ): GettingStartedItem[] {
   return gettingStartedItems(progress, prefs, sync)
-    .filter((item) => canBackup || (item.key !== 'makeBackup' && item.key !== 'protectData'))
+    .filter((item) => canBackup || item.key !== 'makeBackup')
     .map((item) => ({ ...item, href: phoneHref(item.key, item.href) }));
 }
 
@@ -47,7 +48,8 @@ function phoneHref(key: GettingStartedKey, desktopHref: string): string {
     case 'setBudget':
       return routes.budgets;
     case 'makeBackup':
-    case 'protectData':
       return settingsPath('backup');
+    case 'protectData':
+      return settingsPath('sync');
   }
 }

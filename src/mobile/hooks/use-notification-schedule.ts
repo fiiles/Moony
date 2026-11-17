@@ -99,6 +99,8 @@ export function useNotificationSchedule(): void {
   const featureOn = useDeviceSyncFeature();
   const { data: syncStatus } = useDeviceSyncStatus();
   const syncOn = syncIsOn(featureOn, syncStatus);
+  // Flag on, sync off (once its status is read): the backup reminder offers sync first
+  const offerSync = featureOn && syncStatus !== undefined && !syncOn;
   // The signature of what is scheduled: `null` while the schedule is being replaced or incomplete
   const scheduled = useRef<string | null>(null);
 
@@ -113,6 +115,7 @@ export function useNotificationSchedule(): void {
       prefs,
       canBackup: exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? ''),
       syncOn,
+      offerSync,
     });
     // The screens a tap opens, by id: the fallback when a tap reports no `extra` (the unpatched
     // iOS plugin did not). Kept through a lock, when a tap must still find its screen after it.
@@ -161,5 +164,5 @@ export function useNotificationSchedule(): void {
     return () => {
       current = false;
     };
-  }, [appStatus, permission, milestones, mutedKinds, prefs, syncOn, t, i18n.language]);
+  }, [appStatus, permission, milestones, mutedKinds, prefs, syncOn, offerSync, t, i18n.language]);
 }

@@ -23,6 +23,9 @@ export function useMilestoneSubLine(formatMoney?: Formatters['money']) {
   const { data: syncStatus } = useDeviceSyncStatus();
   // With sync on the backup reminder follows the newest safe copy and names both ways out
   const syncOn = syncIsOn(featureOn, syncStatus);
+  // Flag on, sync off (once its status is read): the reminder offers sync first, then a backup
+  const offerSync = featureOn && syncStatus !== undefined && !syncOn;
+  const backupVariant = syncOn ? '_sync' : offerSync ? '_offer' : '';
   const thisYear = new Date(utcDayFloor(Date.now() / 1000) * 1000).getUTCFullYear();
   // Day and month inside the current year, the full date otherwise: "17. 4." for a valuation
   // from this spring, "17. 4. 2024" for one from two years ago.
@@ -61,8 +64,8 @@ export function useMilestoneSubLine(formatMoney?: Formatters['money']) {
         });
       case 'backup_stale':
         return m.sinceDay === null
-          ? t(syncOn ? 'sub.backup_never_sync' : 'sub.backup_never')
-          : t(syncOn ? 'sub.backup_stale_sync' : 'sub.backup_stale', { date: day(m.sinceDay) });
+          ? t(`sub.backup_never${backupVariant}`)
+          : t(`sub.backup_stale${backupVariant}`, { date: day(m.sinceDay) });
       case 'sync_stalled':
         return m.sinceDay === null
           ? t('sub.sync_stalled_never')

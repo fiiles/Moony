@@ -71,6 +71,8 @@
     "backup_never": "Ingen säkerhetskopia ännu",
     "backup_stale_sync": "Senaste säkra kopia {{date}}: återuppta synkroniseringen eller gör en säkerhetskopia",
     "backup_never_sync": "Ingen säker kopia ännu: återuppta synkroniseringen eller gör en säkerhetskopia",
+    "backup_stale_offer": "Senaste säkerhetskopia {{date}}: ställ in synkronisering eller gör en säkerhetskopia",
+    "backup_never_offer": "Ingen säkerhetskopia ännu: ställ in synkronisering eller gör en säkerhetskopia",
     "balances_stale_one": "{{count}} konto inte uppdaterat på över 30 dagar",
     "balances_stale_other": "{{count}} konton inte uppdaterade på över 30 dagar",
     "sync_stalled": "Senast synkroniserad {{date}}",

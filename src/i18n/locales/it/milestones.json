@@ -77,6 +77,8 @@
     "backup_never": "Ancora nessun backup",
     "backup_stale_sync": "Ultima copia sicura {{date}}: riattiva la sincronizzazione o fai un backup",
     "backup_never_sync": "Ancora nessuna copia sicura: riattiva la sincronizzazione o fai un backup",
+    "backup_stale_offer": "Ultimo backup {{date}}: configura la sincronizzazione o fai un backup",
+    "backup_never_offer": "Ancora nessun backup: configura la sincronizzazione o fai un backup",
     "balances_stale_one": "{{count}} conto non aggiornato da oltre 30 giorni",
     "balances_stale_many": "{{count}} conti non aggiornati da oltre 30 giorni",
     "balances_stale_other": "{{count}} conti non aggiornati da oltre 30 giorni",

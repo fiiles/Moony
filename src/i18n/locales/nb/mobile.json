@@ -88,6 +88,7 @@
     "safeCopyStale_other": "{{count}} dager uten sikker kopi",
     "safeCopyNever": "Ingen sikker kopi ennå",
     "bothWaysOut": "Gjenoppta synk eller ta sikkerhetskopi",
+    "syncOrBackUp": "Sett opp synk eller ta sikkerhetskopi",
     "valuationStale": "Verdivurderingen av {{name}} er et år gammel",
     "syncStalled": "Synkroniseringen har stoppet",
     "actions": {
@@ -752,7 +753,7 @@
     "delete": {
       "title": "Slette alle data?",
       "lead": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake.",
-      "leadSynced": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake. De synkroniserte dataene blir liggende på synkroniseringsserveren for de andre enhetene dine. Du kan slette dem under Innstillinger → Synkronisering.",
+      "leadSynced": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. De synkroniserte dataene blir liggende på synkroniseringsserveren for de andre enhetene dine. Du kan slette dem under Innstillinger → Synkronisering.",
       "confirmLabel": "Skriv {{word}} for å bekrefte",
       "confirm": "Slett data",
       "failed": "Slettingen mislyktes",
@@ -810,6 +811,7 @@
   },
   "backup": {
     "lead": "En sikkerhetskopi er én kryptert fil: databasen, nøklene og vedleggene. Bare passordet ditt åpner den.",
+    "title": "Sikkerhetskopi",
     "last": "Siste sikkerhetskopi",
     "lastOn": "Siste sikkerhetskopi {{date}}",
     "never": "Ingen sikkerhetskopi ennå",
@@ -834,6 +836,8 @@
     "syncLeadNoFiles": "Moony lagrer en sikkerhetskopi før synkroniseringen erstatter data på denne telefonen. Her kan du gjenopprette eller slette dem.",
     "syncNoCopy": "Å lagre en kopi utenfor Moony er ikke tilgjengelig på denne telefonen ennå. En sikkerhetskopi kan gjenopprettes fra denne listen. Den går tapt hvis Moonys data fjernes fra telefonen.",
     "leadSync": "Synkroniseringen holder enhetene dine oppdatert. En sikkerhetskopi er én kryptert fil for en engangsflytting eller en kopi å ta vare på: databasen, nøklene og dokumentene og bildene på denne telefonen. Bare passordet ditt åpner den.",
+    "leadOffer": "Synkronisering beskytter dataene dine best: en ende-til-ende-kryptert kopi ligger på synkroniseringsserveren din og de andre enhetene dine.",
+    "instead": "Vil du ikke synkronisere? Lagre en sikkerhetskopi: én kryptert fil med databasen, nøklene og vedleggene. Bare passordet ditt åpner den.",
     "restoreLeadSync": "Gjenopprett en sikkerhetskopi fra denne telefonen, eller flytt en profil én gang fra Moony på datamaskinen: velg sikkerhetskopifilen og lås opp etter gjenopprettingen med passordet som gjaldt da den ble laget. Synkroniseringen holder enhetene oppdatert.",
     "osBackupNoteSync": "Profilen lagres ikke i telefonens egen sikkerhetskopi (iCloud eller en datamaskin). Utenfor denne telefonen ligger dataene dine, så snart de er synkronisert, på synkroniseringsserveren og på de andre enhetene dine, og i alle Moony-sikkerhetskopier du lagrer selv.",
     "osBackupNoteSyncAndroid": "Profilen lagres ikke i telefonens egen sikkerhetskopi (Google eller en datamaskin). Utenfor denne telefonen ligger dataene dine, så snart de er synkronisert, på synkroniseringsserveren og på de andre enhetene dine, og i alle Moony-sikkerhetskopier du lagrer selv."
@@ -867,14 +871,16 @@
     "stepLabel": "{{index}} / {{total}} · {{step}}",
     "steps": {
       "biometrics": "Biometri",
-      "backup": "Sikkerhetskopi"
+      "backup": "Sikkerhetskopi",
+      "protect": "Datasikkerhet"
     },
     "backupTitle": "Ta sikkerhetskopi av dataene dine",
     "protectTitle": "Beskytt dataene dine",
+    "protectLead": "Dataene dine ligger bare på denne telefonen og er ikke med i telefonens egen sikkerhetskopi (iCloud eller en datamaskin). Synkroniseringen holder en ende-til-ende-kryptert kopi på synkroniseringsserveren din og de andre enhetene dine.",
+    "protectLeadAndroid": "Dataene dine ligger bare på denne telefonen og er ikke med i telefonens egen sikkerhetskopi (Google eller en datamaskin). Synkroniseringen holder en ende-til-ende-kryptert kopi på synkroniseringsserveren din og de andre enhetene dine.",
+    "backupInstead": "Har du ingen synkroniseringsserver, eller vil du ikke synkronisere? Når du har lagt inn noe, lagrer du en kryptert sikkerhetskopi under Innstillinger → Sikkerhetskopi og overføring. Oversikt minner deg på det.",
     "backupLead": "Dataene dine ligger bare på denne telefonen og er ikke med i telefonens egen sikkerhetskopi (iCloud eller en datamaskin). Når du har lagt inn noe, lagrer du en kryptert sikkerhetskopi i iCloud Drive eller en mappe du velger, under Innstillinger → Sikkerhetskopi og overføring. Moony ser den aldri, og Oversikt minner deg på det.",
     "backupLeadAndroid": "Dataene dine ligger bare på denne telefonen og er ikke med i telefonens egen sikkerhetskopi (Google eller en datamaskin). Når du har lagt inn noe, lagrer du en kryptert sikkerhetskopi i Google Disk eller en mappe du velger, under Innstillinger → Sikkerhetskopi og overføring. Moony ser den aldri, og Oversikt minner deg på det.",
-    "syncLead": "Har du en synkroniseringsserver? Da har de andre enhetene dine også en kopi.",
-    "syncLink": "Sett opp synkronisering",
     "currencyPick": "Hovedvaluta",
     "countryPick": "Bankland",
     "searchCurrency": "Søk etter valuta"
@@ -914,6 +920,8 @@
       "titleSync": "Beskytt Moony-dataene dine",
       "staleSync": "Den siste sikre kopien er over en måned gammel. Gjenoppta synkroniseringen eller ta sikkerhetskopi.",
       "neverSync": "Du har ingen sikker kopi ennå. Gjenoppta synkroniseringen eller ta sikkerhetskopi.",
+      "staleOffer": "Den siste sikkerhetskopien er over en måned gammel. Sett opp synkronisering eller ta sikkerhetskopi.",
+      "neverOffer": "Du har ingen sikkerhetskopi ennå. Sett opp synkronisering eller ta sikkerhetskopi.",
       "hintSync": "Når verken en sikkerhetskopi eller en fullstendig synkronisering er nyere enn 30 dager."
     },
     "deadline": {
@@ -974,7 +982,7 @@
   },
   "gettingStarted": {
     "makeBackupHint": "Én kryptert fil med alt, under Innstillinger → Sikkerhetskopi og overføring.",
-    "protectDataHint": "Ta en sikkerhetskopi under Innstillinger → Sikkerhetskopi og overføring, eller slå på synkronisering."
+    "protectDataHint": "Slå på synkronisering under Innstillinger → Synkronisering, så ligger en kopi også på de andre enhetene dine."
   },
   "sheet": {
     "discard": {

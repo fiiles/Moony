@@ -17,6 +17,20 @@ export function syncIsOn(featureOn: boolean, status: SyncStatus | undefined): bo
   return featureOn && status !== undefined && PHASE_IS_ON[status.phase];
 }
 
+/**
+ * How the app suggests looking after the data (owner, 2026-11-17: sync first, backups second, for
+ * whoever does not want sync). `backup`: the flag is off, so backups are the only way, as before
+ * sync. `offerSync`: the flag is on and sync is off (or its status is not read yet), so "Nastavit
+ * synchronizaci" leads and a backup is the alternative. `synced`: sync is on, so the data already
+ * live on the sync server and the other devices; a backup is an extra and nothing nags for one.
+ */
+export type ProtectionMode = 'backup' | 'offerSync' | 'synced';
+
+export function protectionMode(featureOn: boolean, status: SyncStatus | undefined): ProtectionMode {
+  if (!featureOn) return 'backup';
+  return syncIsOn(featureOn, status) ? 'synced' : 'offerSync';
+}
+
 export interface ProtectionLine {
   devices: number;
   age: { key: SyncAgeKey; count: number };

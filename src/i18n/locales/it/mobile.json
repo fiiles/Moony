@@ -97,6 +97,7 @@
     "safeCopyStale_other": "{{count}} giorni senza copia sicura",
     "safeCopyNever": "Ancora nessuna copia sicura",
     "bothWaysOut": "Riattiva sincronizzazione o backup",
+    "syncOrBackUp": "Configura sincronizzazione o backup",
     "valuationStale": "La valutazione di {{name}} ha un anno",
     "syncStalled": "La sincronizzazione si è interrotta",
     "actions": {
@@ -792,7 +793,7 @@
     "delete": {
       "title": "Eliminare tutti i dati?",
       "lead": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono. Le copie di backup fuori dal telefono restano. Fai prima un backup: è l'unica via per tornare indietro.",
-      "leadSynced": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono. Le copie di backup fuori dal telefono restano. Fai prima un backup: è l'unica via per tornare indietro. I dati sincronizzati restano sul server di sincronizzazione per gli altri tuoi dispositivi. Puoi eliminarli in Impostazioni → Sincronizzazione.",
+      "leadSynced": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono. Le copie di backup fuori dal telefono restano. I dati sincronizzati restano sul server di sincronizzazione per gli altri tuoi dispositivi. Puoi eliminarli in Impostazioni → Sincronizzazione.",
       "confirmLabel": "Scrivi {{word}} per confermare",
       "confirm": "Elimina i dati",
       "failed": "Eliminazione non riuscita",
@@ -857,6 +858,7 @@
   },
   "backup": {
     "lead": "Un backup è un unico file cifrato: database, chiavi e allegati. Lo apre solo la tua password.",
+    "title": "Backup",
     "last": "Ultimo backup",
     "lastOn": "Ultimo backup {{date}}",
     "never": "Ancora nessun backup",
@@ -882,6 +884,8 @@
     "syncLeadNoFiles": "Moony salva un backup prima che la sincronizzazione sostituisca i dati su questo telefono. Qui puoi ripristinarli o eliminarli.",
     "syncNoCopy": "Salvare una copia fuori da Moony non è ancora disponibile su questo telefono. Un backup si può ripristinare da questo elenco. Va perso se i dati di Moony vengono rimossi dal telefono.",
     "leadSync": "La sincronizzazione tiene allineati i tuoi dispositivi. Un backup è un unico file cifrato per un trasferimento una tantum o una copia da conservare: il database, le chiavi e i documenti e le foto su questo telefono. Lo apre solo la tua password.",
+    "leadOffer": "La sincronizzazione protegge al meglio i tuoi dati: una copia cifrata end-to-end resta sul tuo server di sincronizzazione e sugli altri tuoi dispositivi.",
+    "instead": "Non vuoi sincronizzare? Salva un backup: un unico file cifrato con database, chiavi e allegati. Lo apre solo la tua password.",
     "restoreLeadSync": "Ripristina un backup da questo telefono, oppure trasferisci una volta un profilo da Moony sul computer: scegli il file del backup e, dopo il ripristino, sblocca con la password in uso quando è stato creato. La sincronizzazione tiene allineati i dispositivi.",
     "osBackupNoteSync": "Il profilo non viene salvato nel backup del telefono (iCloud o computer). Fuori da questo telefono, i tuoi dati, una volta sincronizzati, si trovano sul server di sincronizzazione e sugli altri dispositivi, e in ogni backup di Moony che salvi tu.",
     "osBackupNoteSyncAndroid": "Il profilo non viene salvato nel backup del telefono (Google o computer). Fuori da questo telefono, i tuoi dati, una volta sincronizzati, si trovano sul server di sincronizzazione e sugli altri dispositivi, e in ogni backup di Moony che salvi tu."
@@ -915,14 +919,16 @@
     "stepLabel": "{{index}} / {{total}} · {{step}}",
     "steps": {
       "biometrics": "Biometria",
-      "backup": "Backup"
+      "backup": "Backup",
+      "protect": "Sicurezza dei dati"
     },
     "backupTitle": "Fai il backup dei tuoi dati",
     "protectTitle": "Proteggi i tuoi dati",
+    "protectLead": "I tuoi dati sono solo su questo telefono e non finiscono nel suo backup (iCloud o un computer). La sincronizzazione tiene una copia cifrata end-to-end sul tuo server di sincronizzazione e sugli altri tuoi dispositivi.",
+    "protectLeadAndroid": "I tuoi dati sono solo su questo telefono e non finiscono nel suo backup (Google o un computer). La sincronizzazione tiene una copia cifrata end-to-end sul tuo server di sincronizzazione e sugli altri tuoi dispositivi.",
+    "backupInstead": "Non hai un server di sincronizzazione o non vuoi sincronizzare? Quando avrai aggiunto dei dati, salva un backup cifrato in Impostazioni → Backup e trasferimento. La Panoramica te lo ricorderà.",
     "backupLead": "I tuoi dati sono solo su questo telefono e non finiscono nel suo backup (iCloud o un computer). Quando ne avrai aggiunti, salva un backup cifrato su iCloud Drive o in una cartella a tua scelta, in Impostazioni → Backup e trasferimento. Moony non lo vede mai, e la Panoramica te lo ricorderà.",
     "backupLeadAndroid": "I tuoi dati sono solo su questo telefono e non finiscono nel suo backup (Google o un computer). Quando ne avrai aggiunti, salva un backup cifrato su Google Drive o in una cartella a tua scelta, in Impostazioni → Backup e trasferimento. Moony non lo vede mai, e la Panoramica te lo ricorderà.",
-    "syncLead": "Hai un server di sincronizzazione? Così anche gli altri tuoi dispositivi ne tengono una copia.",
-    "syncLink": "Configura la sincronizzazione",
     "currencyPick": "Valuta principale",
     "countryPick": "Paese della banca",
     "searchCurrency": "Cerca valuta"
@@ -962,6 +968,8 @@
       "titleSync": "Proteggi i dati di Moony",
       "staleSync": "L'ultima copia sicura ha più di un mese. Riattiva la sincronizzazione o fai un backup.",
       "neverSync": "Non hai ancora nessuna copia sicura. Riattiva la sincronizzazione o fai un backup.",
+      "staleOffer": "L'ultimo backup ha più di un mese. Configura la sincronizzazione o fai un backup.",
+      "neverOffer": "Non hai ancora nessun backup. Configura la sincronizzazione o fai un backup.",
       "hintSync": "Quando né un backup né una sincronizzazione completa risalgono a meno di 30 giorni fa."
     },
     "deadline": {
@@ -1025,7 +1033,7 @@
   },
   "gettingStarted": {
     "makeBackupHint": "Un file cifrato con tutto, in Impostazioni → Backup e trasferimento.",
-    "protectDataHint": "Fai un backup in Impostazioni → Backup e trasferimento, oppure attiva la sincronizzazione."
+    "protectDataHint": "Attiva la sincronizzazione in Impostazioni → Sincronizzazione: così una copia sarà anche sugli altri tuoi dispositivi."
   },
   "sheet": {
     "discard": {

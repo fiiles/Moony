@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SyncDevice, SyncPhase, SyncStatus } from '@shared/schema';
-import { protectionLine, syncIsOn } from './safe-copy';
+import { protectionLine, protectionMode, syncIsOn } from './safe-copy';
 
 const now = 1_800_000_000;
 
@@ -119,5 +119,24 @@ describe('protectionLine', () => {
   it('shows a complete sync in the future as just now', () => {
     const future = { ...base, lastCompleteAt: now + 3_600 };
     expect(protectionLine(true, future, three, now)?.age).toEqual({ key: 'justNow', count: 0 });
+  });
+});
+
+describe('protectionMode', () => {
+  it('is backup-only with the flag off, whatever the status says', () => {
+    expect(protectionMode(false, undefined)).toBe('backup');
+    expect(protectionMode(false, base)).toBe('backup');
+  });
+
+  it('offers sync first with the flag on and sync off (or not read yet)', () => {
+    expect(protectionMode(true, undefined)).toBe('offerSync');
+    expect(protectionMode(true, { ...base, phase: 'off' })).toBe('offerSync');
+    expect(protectionMode(true, { ...base, phase: 'settingUp' })).toBe('offerSync');
+  });
+
+  it('is synced while sync is on, healthy or not', () => {
+    for (const phase of ['idle', 'syncing', 'waiting', 'paused', 'error'] as const) {
+      expect(protectionMode(true, { ...base, phase })).toBe('synced');
+    }
   });
 });

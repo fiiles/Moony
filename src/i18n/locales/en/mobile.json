@@ -88,6 +88,7 @@
     "safeCopyStale_other": "{{count}} days without a safe copy",
     "safeCopyNever": "No safe copy yet",
     "bothWaysOut": "Resume sync or back up",
+    "syncOrBackUp": "Set up sync or back up",
     "valuationStale": "The valuation of {{name}} is a year old",
     "syncStalled": "Sync has stopped",
     "actions": {
@@ -752,7 +753,7 @@
     "delete": {
       "title": "Delete all data?",
       "lead": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back.",
-      "leadSynced": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back. The synced data stays on the sync server for your other devices. You can delete it in Settings → Sync.",
+      "leadSynced": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. The synced data stays on the sync server for your other devices. You can delete it in Settings → Sync.",
       "confirmLabel": "Type {{word}} to confirm",
       "confirm": "Delete data",
       "failed": "Deletion failed",
@@ -810,6 +811,7 @@
   },
   "backup": {
     "lead": "A backup is one encrypted file: the database, the keys and the attachments. Only your password opens it.",
+    "title": "Backup",
     "last": "Last backup",
     "lastOn": "Last backup {{date}}",
     "never": "No backup yet",
@@ -834,6 +836,8 @@
     "syncLeadNoFiles": "Moony saves a backup before sync replaces data on this phone. You can restore or delete them here.",
     "syncNoCopy": "Saving a copy outside Moony is not available on this phone yet. A backup can be restored from this list. It is lost if Moony's data is removed from the phone.",
     "leadSync": "Sync keeps your devices in step. A backup is one encrypted file for a one-off move or a copy to keep: the database, the keys and the documents and photos on this phone. Only your password opens it.",
+    "leadOffer": "Sync looks after your data best: an end-to-end encrypted copy stays on your sync server and your other devices.",
+    "instead": "Don't want sync? Save a backup: one encrypted file with the database, the keys and the attachments. Only your password opens it.",
     "restoreLeadSync": "Restore a backup from this phone, or move a profile once from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created. Sync keeps your devices in step.",
     "osBackupNoteSync": "The profile is not saved in the phone's own backup (iCloud or a computer). Outside this phone, your data is on the sync server and your other devices once it has synced, and in any Moony backup you save yourself.",
     "osBackupNoteSyncAndroid": "The profile is not saved in the phone's own backup (Google or a computer). Outside this phone, your data is on the sync server and your other devices once it has synced, and in any Moony backup you save yourself."
@@ -867,14 +871,16 @@
     "stepLabel": "{{index}} / {{total}} · {{step}}",
     "steps": {
       "biometrics": "Biometrics",
-      "backup": "Backup"
+      "backup": "Backup",
+      "protect": "Data safety"
     },
     "backupTitle": "Back up your data",
     "protectTitle": "Protect your data",
+    "protectLead": "Your data stays only on this phone and is not in the phone's own backup (iCloud or a computer). Sync keeps an end-to-end encrypted copy on your sync server and your other devices.",
+    "protectLeadAndroid": "Your data stays only on this phone and is not in the phone's own backup (Google or a computer). Sync keeps an end-to-end encrypted copy on your sync server and your other devices.",
+    "backupInstead": "No sync server, or don't want sync? Once you have added some data, save an encrypted backup in Settings → Backup and transfer. The Overview will remind you.",
     "backupLead": "Your data stays only on this phone and is not in the phone's own backup (iCloud or a computer). Once you have added some, save an encrypted backup to iCloud Drive or a folder you choose, in Settings → Backup and transfer. Moony never sees it, and the Overview will remind you.",
     "backupLeadAndroid": "Your data stays only on this phone and is not in the phone's own backup (Google or a computer). Once you have added some, save an encrypted backup to Google Drive or a folder you choose, in Settings → Backup and transfer. Moony never sees it, and the Overview will remind you.",
-    "syncLead": "Have a sync server? Your other devices then keep a copy too.",
-    "syncLink": "Set up sync",
     "currencyPick": "Main currency",
     "countryPick": "Banking country",
     "searchCurrency": "Search currency"
@@ -914,6 +920,8 @@
       "titleSync": "Protect your Moony data",
       "staleSync": "Your last safe copy is over a month old. Resume sync or make a backup.",
       "neverSync": "You have no safe copy yet. Resume sync or make a backup.",
+      "staleOffer": "Your last backup is over a month old. Set up sync or make a backup.",
+      "neverOffer": "You have no backup yet. Set up sync or make a backup.",
       "hintSync": "When neither a backup nor a complete sync is newer than 30 days."
     },
     "deadline": {
@@ -974,7 +982,7 @@
   },
   "gettingStarted": {
     "makeBackupHint": "One encrypted file with everything, in Settings → Backup and transfer.",
-    "protectDataHint": "Make a backup in Settings → Backup and transfer, or turn on sync."
+    "protectDataHint": "Turn on sync in Settings → Sync, so a copy is on your other devices too."
   },
   "sheet": {
     "discard": {

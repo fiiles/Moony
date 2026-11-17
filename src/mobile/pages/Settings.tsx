@@ -196,6 +196,14 @@ export default function Settings() {
       );
 
   const reminderGroups = visibleMilestoneGroups(syncFeature);
+  const backupRow = (
+    <SettingsRow
+      icon={Upload}
+      title={t('settings.rows.backup')}
+      sub={backupSub}
+      href={settingsPath('backup')}
+    />
+  );
   const remindersSub = muted.data
     ? t('settings.rows.remindersSub', {
         on: reminderGroups.filter(
@@ -299,12 +307,9 @@ export default function Settings() {
           sub={securitySub}
           href={settingsPath('security')}
         />
-        <SettingsRow
-          icon={Upload}
-          title={t('settings.rows.backup')}
-          sub={backupSub}
-          href={settingsPath('backup')}
-        />
+        {/* With sync built in it comes first: the first way to look after the data, the backup
+            second (owner, 2026-11-17). Without it (a leftover profile) the backup stays first */}
+        {!syncFeature && backupRow}
         {(syncFeature || syncLeftover) && (
           <SettingsRow
             icon={RefreshCw}
@@ -321,6 +326,7 @@ export default function Settings() {
             href={settingsPath('sync')}
           />
         )}
+        {syncFeature && backupRow}
         <SettingsRow
           icon={Bell}
           title={t('settings.rows.notifications')}

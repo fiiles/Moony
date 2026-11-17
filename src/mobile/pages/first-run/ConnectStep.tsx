@@ -20,8 +20,8 @@ import { field48, fieldLabel, textLink } from './styles';
 /**
  * Připojení, the join path's step after the recovery key (spec 2026-11-14 §5.2): the name this
  * phone joins under and the way in, as in Nastavení → Synchronizace ("Naskenovat kód z počítače",
- * which also takes a Recovery Kit QR, or "Zadat kód záchranné sady", or "Zadat kód ručně" for
- * a pairing code). The choice runs the flows Settings runs (`ScanFlow`, `RecoveryJoinSheet`)
+ * which also takes a Recovery Kit QR, "Vložit kód ručně" for a pairing code, or "Zadat kód
+ * záchranné sady"). The choice runs the flows Settings runs (`ScanFlow`, `RecoveryJoinSheet`)
  * in their first-run mode: the password typed on the account step, no replace warning and no
  * impact list (the profile is brand new).
  *
@@ -123,17 +123,17 @@ export function ConnectStep({ flow }: { flow: FirstRunFlow }) {
                 onClick={() => pick('scan')}
               />
               <SettingsRow
-                icon={Type}
-                title={tSync('phone.typeCode')}
-                disabled={deviceName === ''}
-                onClick={() => pick('kit')}
-              />
-              <SettingsRow
                 icon={ClipboardPaste}
                 title={tSync('phone.enterCodeTitle')}
                 sub={tSync('phone.enterCodeHint')}
                 disabled={deviceName === ''}
                 onClick={() => pick('paste')}
+              />
+              <SettingsRow
+                icon={Type}
+                title={tSync('phone.typeCode')}
+                disabled={deviceName === ''}
+                onClick={() => pick('kit')}
               />
             </EntityRows>
           </>

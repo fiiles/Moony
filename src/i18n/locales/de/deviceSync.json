@@ -97,10 +97,10 @@
       "description": "Dieses Gerät vergisst die in diesem Versuch eingerichtete Synchronisierung, und eine bereits geleistete Zahlung wird nicht übertragen. Die Einrichtung beginnt dann von vorn.",
       "keep": "Einrichtung fortsetzen"
     },
-    "startTitle": "Synchronisierung starten",
-    "startLead": "Dieses Gerät wird das erste. Sie brauchen den Verbindungscode Ihres Synchronisierungsservers.",
+    "startTitle": "Als erstes Gerät einrichten",
+    "startLead": "Nur wenn Sie noch auf keinem Gerät synchronisieren. Sie brauchen den Verbindungscode Ihres Synchronisierungsservers.",
     "joinTitle": "Dieses Gerät verbinden",
-    "joinLead": "Sie synchronisieren bereits auf einem anderen Gerät.",
+    "joinLead": "Sie synchronisieren bereits auf einem anderen Gerät: Wählen Sie dort „Gerät hinzufügen“ und verbinden Sie sich hier mit dessen Code.",
     "joinButton": "Dieses Gerät verbinden"
   },
   "setup": {

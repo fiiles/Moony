@@ -97,10 +97,10 @@
       "description": "Denne enheten glemmer synkroniseringen som ble opprettet i dette oppsettet, og en betaling som allerede er gjort, overføres ikke. Oppsettet starter da på nytt.",
       "keep": "Behold oppsettet"
     },
-    "startTitle": "Begynn å synkronisere",
-    "startLead": "Denne enheten blir den første. Du trenger tilkoblingskoden til synkroniseringsserveren din.",
+    "startTitle": "Konfigurer som første enhet",
+    "startLead": "Bare hvis du ikke synkroniserer på noen enhet ennå. Du trenger tilkoblingskoden til synkroniseringsserveren din.",
     "joinTitle": "Koble til denne enheten",
-    "joinLead": "Du synkroniserer allerede på en annen enhet.",
+    "joinLead": "Du synkroniserer allerede på en annen enhet: velg «Legg til en enhet» der, og koble til her med koden derfra.",
     "joinButton": "Koble til denne enheten"
   },
   "setup": {

@@ -105,10 +105,10 @@
       "description": "To urządzenie zapomni synchronizację utworzoną podczas tej konfiguracji, a dokonana już płatność nie zostanie przeniesiona. Konfiguracja zacznie się od początku.",
       "keep": "Zachowaj konfigurację"
     },
-    "startTitle": "Zacznij synchronizować",
-    "startLead": "To urządzenie będzie pierwsze. Potrzebujesz kodu połączenia swojego serwera synchronizacji.",
+    "startTitle": "Skonfiguruj jako pierwsze urządzenie",
+    "startLead": "Tylko jeśli nie synchronizujesz jeszcze na żadnym urządzeniu. Potrzebujesz kodu połączenia swojego serwera synchronizacji.",
     "joinTitle": "Połącz to urządzenie",
-    "joinLead": "Synchronizujesz już na innym urządzeniu.",
+    "joinLead": "Synchronizujesz już na innym urządzeniu: wybierz tam „Dodaj urządzenie”, a potem połącz się tutaj jego kodem.",
     "joinButton": "Połącz to urządzenie"
   },
   "setup": {

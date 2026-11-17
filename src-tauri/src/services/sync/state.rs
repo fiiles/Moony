@@ -652,15 +652,22 @@ pub const SERVER_KIT_KEY: &str = "sync.server_kit";
 /// 20–21, finding 2): every round starts with one until it succeeds.
 pub const TRUST_REFRESH_OWED_KEY: &str = "sync.trust_refresh_owed";
 
+/// The Local `app_config` key holding the former devices the person took off this device's list
+/// ("Odstranit ze seznamu", `devices::hide_former_devices`): a JSON array of device IDs (hex).
+/// Only the list leaves them out; their rows and trust entries stay, so whatever they send later
+/// is still refused (ADR 0032). Not in `APP_CONFIG_SYNCED_KEYS`: each device keeps its own.
+pub const HIDDEN_DEVICES_KEY: &str = "sync.hidden_devices";
+
 /// The Local keys every turn-off and every join's replace clear besides those listed before
-/// them (review of Tasks 17–21).
-pub const REVIEW_KEYS: [&str; 6] = [
+/// them (review of Tasks 17–21; the hidden former devices since 2026-11-17).
+pub const REVIEW_KEYS: [&str; 7] = [
     KEY_CHANGE_UNVERIFIED_KEY,
     KEY_CHANGE_STUCK_KEY,
     KEY_CHANGE_COMMIT_FAILURES_KEY,
     SERVER_KIT_KEY,
     TRUST_REFRESH_OWED_KEY,
     PASS_WAITS_KEY,
+    HIDDEN_DEVICES_KEY,
 ];
 
 /// The Local `app_config` key of the daily pass's wait for a key pickup (`pass_waits`):

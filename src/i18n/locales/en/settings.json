@@ -158,6 +158,7 @@
   "data": {
     "title": "Data and backups",
     "description": "Where your data lives and how to keep a copy of it.",
+    "syncOffer": "Sync looks after your data best: an end-to-end encrypted copy stays on your sync server and your other devices.",
     "location": "Data folder",
     "size": "{{size}} on disk",
     "openFolder": "Open folder",
@@ -182,6 +183,7 @@
     "verifyOk": "Database is healthy",
     "verifyFailed": "Database check found problems",
     "hint": "A backup is a ZIP file with the encrypted database, the encrypted attachments and the key files (salt, key.enc, recovery.enc). Only the password that was valid when it was made, or your recovery key, opens it — keep it somewhere safe, for example an external drive or your own cloud storage.",
+    "backupInstead": "Don't want sync? Save a backup.",
     "backupRow": "Backup",
     "exportRow": "Export",
     "exportHint": "Every table in one JSON file, without attachments. The file is not encrypted — anyone who opens it can read it.",

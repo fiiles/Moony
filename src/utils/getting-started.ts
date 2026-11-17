@@ -8,7 +8,11 @@ import type { MenuPreferences, OnboardingProgress } from '@shared/schema';
 export type GettingStartedKey =
   'importStatement' | 'addInvestment' | 'setBudget' | 'makeBackup' | 'protectData';
 
-/** With the sync flag on, the last core item is "Ochránit data", done by a backup or by sync on (spec §7.3); without it today's "Udělat zálohu". */
+/**
+ * With the sync flag on, the last core item is "Ochránit data", done by a backup or by sync on
+ * (spec 2026-11-14 §7.3). It leads to Settings → Sync: sync is the first way to look after the
+ * data, a backup the alternative (owner, 2026-11-17). Without the flag it is "Udělat zálohu".
+ */
 export interface GettingStartedSync {
   featureOn: boolean;
   syncOn: boolean;
@@ -66,7 +70,7 @@ export function gettingStartedItems(
       ? {
           key: 'protectData',
           done: progress.lastBackupAt !== null || sync.syncOn,
-          href: '/settings/data',
+          href: '/settings/sync',
           optional: false,
         }
       : {
@@ -80,10 +84,11 @@ export function gettingStartedItems(
 }
 
 /**
- * Whether the checklist item offers a second link, to the sync settings: only "Protect your data"
- * (its own link leads to the backup), while the flag is on, sync is off and the item is not done.
+ * Whether the checklist item offers a second link, to the backup ("Nebo si uložte zálohu"): only
+ * "Protect your data" (its own link leads to sync), while the flag is on, sync is off and the item
+ * is not done.
  */
-export function offerSyncLink(
+export function offerBackupLink(
   item: Pick<GettingStartedItem, 'key' | 'done'>,
   sync: GettingStartedSync
 ): boolean {

@@ -16,6 +16,7 @@ export const ANDROID_COPY_KEYS: ReadonlySet<string> = new Set([
   'firstRun.recoveryLead',
   'firstRun.saveToFiles',
   'firstRun.backupLead',
+  'firstRun.protectLead',
   // deviceSync namespace
   'replace.saved.filesHint',
   'replace.saved.saveCopy',

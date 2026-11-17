@@ -49,7 +49,7 @@ export interface UpkeepRow {
    * rows the phone works out itself have none.
    */
   milestone?: Milestone;
-  /** A second line the row brings itself (the backup row with sync on). */
+  /** A second line the row brings itself (the backup row with the sync flag on). */
   sub?: UpkeepTitle;
 }
 
@@ -86,6 +86,11 @@ export interface UpkeepInput {
    * sync) and both ways out. Default false: the row reads as before.
    */
   syncOn?: boolean;
+  /**
+   * The sync flag is on and sync is off: the backup row's second line offers sync first, then a
+   * backup (owner, 2026-11-17). `syncOn` wins. Default false.
+   */
+  offerSync?: boolean;
 }
 
 /** A closed account no longer asks for anything (as in the backend's milestones). */
@@ -176,7 +181,11 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
               key: syncOn ? 'upkeep.safeCopyStale' : 'upkeep.backupStale',
               params: { count: Math.max(daysBetween(backup.sinceDay, todayDay), 0) },
             },
-      ...(syncOn ? { sub: { key: 'upkeep.bothWaysOut', params: {} } } : {}),
+      ...(syncOn
+        ? { sub: { key: 'upkeep.bothWaysOut', params: {} } }
+        : input.offerSync
+          ? { sub: { key: 'upkeep.syncOrBackUp', params: {} } }
+          : {}),
       milestone: backup,
     });
   }

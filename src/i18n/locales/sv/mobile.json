@@ -88,6 +88,7 @@
     "safeCopyStale_other": "{{count}} dagar utan säker kopia",
     "safeCopyNever": "Ingen säker kopia ännu",
     "bothWaysOut": "Återuppta synk eller säkerhetskopiera",
+    "syncOrBackUp": "Ställ in synk eller säkerhetskopiera",
     "valuationStale": "Värderingen av {{name}} är ett år gammal",
     "syncStalled": "Synkroniseringen har stoppats",
     "actions": {
@@ -810,6 +811,7 @@
   },
   "backup": {
     "lead": "En säkerhetskopia är en krypterad fil: databasen, nycklarna och bilagorna. Bara ditt lösenord öppnar den.",
+    "title": "Säkerhetskopia",
     "last": "Senaste säkerhetskopia",
     "lastOn": "Senaste säkerhetskopia {{date}}",
     "never": "Ingen säkerhetskopia ännu",
@@ -834,6 +836,8 @@
     "syncLeadNoFiles": "Moony sparar en säkerhetskopia innan synkroniseringen ersätter data på den här telefonen. Här kan du återställa eller ta bort dem.",
     "syncNoCopy": "Att spara en kopia utanför Moony går inte än på den här telefonen. En säkerhetskopia kan återställas från den här listan. Den går förlorad om Moonys data tas bort från telefonen.",
     "leadSync": "Synkroniseringen håller dina enheter i takt. En säkerhetskopia är en krypterad fil för en engångsflytt eller en kopia att spara: databasen, nycklarna och dokumenten och fotona på den här telefonen. Bara ditt lösenord öppnar den.",
+    "leadOffer": "Synkronisering skyddar dina data bäst: en end-to-end-krypterad kopia finns på din synkroniseringsserver och dina andra enheter.",
+    "instead": "Vill du inte synkronisera? Spara en säkerhetskopia: en krypterad fil med databasen, nycklarna och bilagorna. Bara ditt lösenord öppnar den.",
     "restoreLeadSync": "Återställ en säkerhetskopia från den här telefonen, eller flytta en profil en gång från Moony på datorn: välj säkerhetskopian och lås upp efter återställningen med lösenordet som gällde när den skapades. Synkroniseringen håller enheterna i takt.",
     "osBackupNoteSync": "Profilen sparas inte i telefonens egen säkerhetskopia (iCloud eller en dator). Utanför den här telefonen finns dina data, så snart de har synkroniserats, på synkroniseringsservern och på dina andra enheter samt i varje Moony-säkerhetskopia som du sparar själv.",
     "osBackupNoteSyncAndroid": "Profilen sparas inte i telefonens egen säkerhetskopia (Google eller en dator). Utanför den här telefonen finns dina data, så snart de har synkroniserats, på synkroniseringsservern och på dina andra enheter samt i varje Moony-säkerhetskopia som du sparar själv."
@@ -867,14 +871,16 @@
     "stepLabel": "{{index}} / {{total}} · {{step}}",
     "steps": {
       "biometrics": "Biometri",
-      "backup": "Säkerhetskopia"
+      "backup": "Säkerhetskopia",
+      "protect": "Datasäkerhet"
     },
     "backupTitle": "Säkerhetskopiera dina data",
     "protectTitle": "Skydda dina data",
+    "protectLead": "Dina data finns bara på den här telefonen och ingår inte i telefonens egen säkerhetskopia (iCloud eller en dator). Synkroniseringen håller en end-to-end-krypterad kopia på din synkroniseringsserver och dina andra enheter.",
+    "protectLeadAndroid": "Dina data finns bara på den här telefonen och ingår inte i telefonens egen säkerhetskopia (Google eller en dator). Synkroniseringen håller en end-to-end-krypterad kopia på din synkroniseringsserver och dina andra enheter.",
+    "backupInstead": "Har du ingen synkroniseringsserver, eller vill du inte synkronisera? När du har lagt till något sparar du en krypterad säkerhetskopia under Inställningar → Säkerhetskopia och överföring. Översikt påminner dig.",
     "backupLead": "Dina data finns bara på den här telefonen och ingår inte i telefonens egen säkerhetskopia (iCloud eller en dator). När du har lagt till något sparar du en krypterad säkerhetskopia i iCloud Drive eller i en mapp du väljer, under Inställningar → Säkerhetskopia och överföring. Moony ser den aldrig, och Översikt påminner dig.",
     "backupLeadAndroid": "Dina data finns bara på den här telefonen och ingår inte i telefonens egen säkerhetskopia (Google eller en dator). När du har lagt till något sparar du en krypterad säkerhetskopia i Google Drive eller i en mapp du väljer, under Inställningar → Säkerhetskopia och överföring. Moony ser den aldrig, och Översikt påminner dig.",
-    "syncLead": "Har du en synkroniseringsserver? Då har dina andra enheter också en kopia.",
-    "syncLink": "Ställ in synkronisering",
     "currencyPick": "Huvudvaluta",
     "countryPick": "Land för bank",
     "searchCurrency": "Sök valuta"
@@ -914,6 +920,8 @@
       "titleSync": "Skydda dina Moony-data",
       "staleSync": "Din senaste säkra kopia är över en månad gammal. Återuppta synkroniseringen eller gör en säkerhetskopia.",
       "neverSync": "Du har ingen säker kopia än. Återuppta synkroniseringen eller gör en säkerhetskopia.",
+      "staleOffer": "Den senaste säkerhetskopian är över en månad gammal. Ställ in synkronisering eller gör en säkerhetskopia.",
+      "neverOffer": "Du har ingen säkerhetskopia än. Ställ in synkronisering eller gör en säkerhetskopia.",
       "hintSync": "När varken en säkerhetskopia eller en fullständig synkronisering är nyare än 30 dagar."
     },
     "deadline": {
@@ -974,7 +982,7 @@
   },
   "gettingStarted": {
     "makeBackupHint": "En krypterad fil med allt, under Inställningar → Säkerhetskopia och överföring.",
-    "protectDataHint": "Gör en säkerhetskopia under Inställningar → Säkerhetskopia och överföring, eller slå på synkronisering."
+    "protectDataHint": "Slå på synkronisering under Inställningar → Synkronisering, så finns en kopia även på dina andra enheter."
   },
   "sheet": {
     "discard": {

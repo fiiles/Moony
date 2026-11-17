@@ -94,8 +94,8 @@
     "makeBackup": "Make a backup",
     "makeBackupHint": "One file with everything, in Settings → Data and backups.",
     "protectData": "Protect your data",
-    "protectDataHint": "Make a backup in Settings → Data and backups, or turn on sync.",
-    "setUpSync": "Set up sync",
+    "protectDataHint": "Turn on sync in Settings → Sync, so a copy is on your other devices too.",
+    "backupInstead": "Or make a backup",
     "dismiss": "Dismiss",
     "done": "Done",
     "optional": "Optional"

@@ -158,6 +158,7 @@
   "data": {
     "title": "Daten und Sicherungen",
     "description": "Wo Ihre Daten liegen und wie Sie eine Kopie davon aufbewahren.",
+    "syncOffer": "Am besten schützt die Synchronisierung Ihre Daten: Eine Ende-zu-Ende-verschlüsselte Kopie liegt auf Ihrem Synchronisierungsserver und Ihren anderen Geräten.",
     "location": "Datenordner",
     "size": "{{size}} auf dem Datenträger",
     "openFolder": "Ordner öffnen",
@@ -182,6 +183,7 @@
     "verifyOk": "Datenbank ist in Ordnung",
     "verifyFailed": "Die Datenbankprüfung hat Probleme gefunden",
     "hint": "Ein Backup ist eine ZIP-Datei mit der verschlüsselten Datenbank, den verschlüsselten Anhängen und den Schlüsseldateien (salt, key.enc, recovery.enc). Öffnen lässt es sich nur mit dem Passwort, das bei der Erstellung galt, oder mit Ihrem Wiederherstellungsschlüssel — bewahren Sie es sicher auf, etwa auf einer externen Festplatte oder in Ihrem eigenen Cloud-Speicher.",
+    "backupInstead": "Keine Synchronisierung gewünscht? Speichern Sie eine Sicherung.",
     "backupRow": "Sicherung",
     "exportRow": "Export",
     "exportHint": "Alle Tabellen in einer JSON-Datei, ohne Anhänge. Die Datei ist nicht verschlüsselt — jeder, der sie öffnet, kann sie lesen.",

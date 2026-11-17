@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MenuPreferences } from '@shared/schema';
-import { gettingStartedItems, offerSyncLink } from './getting-started';
+import { gettingStartedItems, offerBackupLink } from './getting-started';
 
 const nothingDone = {
   hasTransactions: false,
@@ -77,7 +77,7 @@ describe('gettingStartedItems', () => {
     }
   });
 
-  it('asks to protect the data with the flag on', () => {
+  it('asks to protect the data with the flag on, leading to sync first', () => {
     const last = (lastBackupAt: number | null, syncOn: boolean) => {
       const items = gettingStartedItems({ ...nothingDone, lastBackupAt }, prefs(), {
         featureOn: true,
@@ -88,7 +88,7 @@ describe('gettingStartedItems', () => {
     expect(last(null, false)).toEqual({
       key: 'protectData',
       done: false,
-      href: '/settings/data',
+      href: '/settings/sync',
       optional: false,
     });
     expect(last(null, true).done).toBe(true);
@@ -96,15 +96,15 @@ describe('gettingStartedItems', () => {
   });
 });
 
-describe('offerSyncLink', () => {
+describe('offerBackupLink', () => {
   const items = (sync: { featureOn: boolean; syncOn: boolean }) =>
     gettingStartedItems(nothingDone, prefs(), sync);
   const offered = (sync: { featureOn: boolean; syncOn: boolean }) =>
     items(sync)
-      .filter((i) => offerSyncLink(i, sync))
+      .filter((i) => offerBackupLink(i, sync))
       .map((i) => i.key);
 
-  it('offers the link on "Protect your data" while the flag is on and sync is off', () => {
+  it('offers the backup as the alternative on "Protect your data" while the flag is on and sync is off', () => {
     expect(offered({ featureOn: true, syncOn: false })).toEqual(['protectData']);
   });
   it('offers nothing with the flag off, with sync on, or once the item is done', () => {
@@ -112,6 +112,6 @@ describe('offerSyncLink', () => {
     expect(offered({ featureOn: true, syncOn: true })).toEqual([]);
     const sync = { featureOn: true, syncOn: false };
     const done = gettingStartedItems({ ...nothingDone, lastBackupAt: 1 }, prefs(), sync);
-    expect(done.some((i) => offerSyncLink(i, sync))).toBe(false);
+    expect(done.some((i) => offerBackupLink(i, sync))).toBe(false);
   });
 });

@@ -62,6 +62,7 @@ function plan(patch: {
   mutedKinds?: MilestoneKind[];
   prefs?: NotificationPrefs;
   syncOn?: boolean;
+  offerSync?: boolean;
 }): PlannedNotification[] {
   return buildNotificationPlan({
     now: patch.now ?? NOW,
@@ -69,6 +70,7 @@ function plan(patch: {
     mutedKinds: patch.mutedKinds ?? [],
     prefs: patch.prefs ?? DEADLINES_ONLY,
     syncOn: patch.syncOn,
+    offerSync: patch.offerSync,
   });
 }
 
@@ -363,6 +365,28 @@ describe('buildNotificationPlan: backup', () => {
     expect(planSignature(off)).toBe(
       planSignature(plan({ milestones: [stale()], prefs: BACKUP_ONLY }))
     );
+  });
+
+  it('offers sync first in the backup reminder while the flag is on and sync is off', () => {
+    const offer = plan({ milestones: [stale()], prefs: BACKUP_ONLY, offerSync: true });
+    expect(offer[0]).toMatchObject({
+      id: notificationId('backup', 'backupOffer'),
+      title: { key: 'notifications.backup.titleSync' },
+      body: { key: 'notifications.backup.staleOffer' },
+      path: '/settings/backup',
+    });
+    const never = plan({
+      milestones: [stale({ sinceDay: null })],
+      prefs: BACKUP_ONLY,
+      offerSync: true,
+    });
+    expect(never[0].body).toEqual({ key: 'notifications.backup.neverOffer' });
+    // Its own id: a pending reminder with another text is planned again
+    const off = plan({ milestones: [stale()], prefs: BACKUP_ONLY });
+    expect(planSignature(offer)).not.toBe(planSignature(off));
+    // Sync on wins over the offer
+    const on = plan({ milestones: [stale()], prefs: BACKUP_ONLY, syncOn: true, offerSync: true });
+    expect(on[0].body).toEqual({ key: 'notifications.backup.staleSync' });
   });
 
   it('tomorrow crosses month and year ends', () => {

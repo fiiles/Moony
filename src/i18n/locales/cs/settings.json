@@ -159,6 +159,7 @@
   "data": {
     "title": "Data a zálohy",
     "description": "Kde jsou vaše data uložená a jak si uchovat jejich kopii.",
+    "syncOffer": "Data nejlépe ochrání synchronizace: koncově šifrovaná kopie zůstane na vašem synchronizačním serveru a dalších zařízeních.",
     "location": "Složka s daty",
     "size": "{{size}} na disku",
     "openFolder": "Otevřít složku",
@@ -184,6 +185,7 @@
     "verifyOk": "Databáze je v pořádku",
     "verifyFailed": "Kontrola databáze našla problémy",
     "hint": "Záloha je soubor ZIP se šifrovanou databází, šifrovanými přílohami a klíčovými soubory (salt, key.enc, recovery.enc). Otevře ji jen heslo platné v době zálohy nebo obnovovací klíč — uložte ji na bezpečné místo, třeba na externí disk nebo do vlastního cloudového úložiště.",
+    "backupInstead": "Nechcete synchronizaci? Uložte si zálohu.",
     "backupRow": "Záloha",
     "exportRow": "Export",
     "exportHint": "Všechny tabulky v jednom souboru JSON, bez příloh. Soubor není šifrovaný — přečte ho každý, kdo ho otevře.",

@@ -94,8 +94,8 @@
     "makeBackup": "Fai un backup",
     "makeBackupHint": "Un unico file con tutto, in Impostazioni → Dati e backup.",
     "protectData": "Proteggi i tuoi dati",
-    "protectDataHint": "Fai un backup in Impostazioni → Dati e backup, oppure attiva la sincronizzazione.",
-    "setUpSync": "Configura la sincronizzazione",
+    "protectDataHint": "Attiva la sincronizzazione in Impostazioni → Sincronizzazione: così una copia sarà anche sugli altri tuoi dispositivi.",
+    "backupInstead": "Oppure fai un backup",
     "dismiss": "Chiudi",
     "done": "Fatto",
     "optional": "Facoltativo"

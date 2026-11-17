@@ -11,6 +11,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MoonMark } from '@/components/common/MoonMark';
 import { useAuth } from '@/hooks/use-auth';
+import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { StepProgress } from '@/mobile/components/StepProgress';
 import { useFirstRun } from '@/mobile/hooks/use-first-run';
 import { stepIndex, type FirstRunExit, type FirstRunStep } from '@/mobile/lib/first-run';
@@ -28,7 +29,7 @@ interface FirstRunProps {
   language: string;
   /**
    * Called once the last step is done; `Lock.tsx` then leaves for the overview, or for Settings →
-   * Synchronizace (`sync`: "Nastavte synchronizaci" on Záloha).
+   * Synchronizace (`sync`: "Nastavit synchronizaci" on the last step).
    */
   onFinished: (to: FirstRunExit) => void;
 }
@@ -37,6 +38,8 @@ export function FirstRun({ language, onFinished }: FirstRunProps) {
   const { t } = useTranslation('auth');
   const { t: tm } = useTranslation('mobile');
   const { recoveryKey } = useAuth();
+  // With sync built in the last step leads with sync: "Ochrana dat", not "Záloha"
+  const syncFeature = useDeviceSyncFeature();
   const flow = useFirstRun({ language, onFinished });
   const { step } = flow;
   const scroller = useRef<HTMLDivElement>(null);
@@ -54,7 +57,7 @@ export function FirstRun({ language, onFinished }: FirstRunProps) {
     areas: t('onboarding.steps.areas'),
     firstAccount: t('onboarding.steps.firstAccount'),
     biometrics: tm('firstRun.steps.biometrics'),
-    backup: tm('firstRun.steps.backup'),
+    backup: tm(syncFeature ? 'firstRun.steps.protect' : 'firstRun.steps.backup'),
   };
   const { index, total } = stepIndex(flow.steps, step);
 

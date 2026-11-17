@@ -83,6 +83,8 @@
     "backup_never": "Brak kopii zapasowej",
     "backup_stale_sync": "Ostatnia bezpieczna kopia {{date}}: wznów synchronizację albo zrób kopię zapasową",
     "backup_never_sync": "Brak bezpiecznej kopii: wznów synchronizację albo zrób kopię zapasową",
+    "backup_stale_offer": "Ostatnia kopia zapasowa {{date}}: skonfiguruj synchronizację albo zrób kopię zapasową",
+    "backup_never_offer": "Brak kopii zapasowej: skonfiguruj synchronizację albo zrób kopię zapasową",
     "balances_stale_one": "{{count}} konto nie było aktualizowane od ponad 30 dni",
     "balances_stale_few": "{{count}} konta nie były aktualizowane od ponad 30 dni",
     "balances_stale_many": "{{count}} kont nie było aktualizowanych od ponad 30 dni",

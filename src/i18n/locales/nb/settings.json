@@ -158,6 +158,7 @@
   "data": {
     "title": "Data og sikkerhetskopier",
     "description": "Hvor dataene dine ligger og hvordan du tar en kopi av dem.",
+    "syncOffer": "Synkronisering beskytter dataene dine best: en ende-til-ende-kryptert kopi ligger på synkroniseringsserveren din og de andre enhetene dine.",
     "location": "Datamappe",
     "size": "{{size}} på disk",
     "openFolder": "Åpne mappe",
@@ -182,6 +183,7 @@
     "verifyOk": "Databasen er i orden",
     "verifyFailed": "Databasekontrollen fant problemer",
     "hint": "En sikkerhetskopi er en ZIP-fil med den krypterte databasen, de krypterte vedleggene og nøkkelfilene (salt, key.enc, recovery.enc). Bare passordet som gjaldt da den ble laget, eller gjenopprettingsnøkkelen, åpner den — oppbevar den et trygt sted, for eksempel på en ekstern disk eller i din egen skylagring.",
+    "backupInstead": "Vil du ikke synkronisere? Lagre en sikkerhetskopi.",
     "backupRow": "Sikkerhetskopi",
     "exportRow": "Eksport",
     "exportHint": "Alle tabeller i én JSON-fil, uten vedlegg. Filen er ikke kryptert — alle som åpner den, kan lese den.",

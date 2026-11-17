@@ -159,6 +159,7 @@
   "data": {
     "title": "Datos y copias de seguridad",
     "description": "Dónde están tus datos y cómo guardar una copia.",
+    "syncOffer": "La sincronización es la mejor forma de proteger tus datos: una copia cifrada de extremo a extremo queda en tu servidor de sincronización y en tus otros dispositivos.",
     "location": "Carpeta de datos",
     "size": "{{size}} en disco",
     "openFolder": "Abrir carpeta",
@@ -184,6 +185,7 @@
     "verifyOk": "La base de datos está en buen estado",
     "verifyFailed": "La comprobación de la base de datos ha encontrado problemas",
     "hint": "Una copia de seguridad es un archivo ZIP con la base de datos cifrada, los adjuntos cifrados y los archivos de claves (salt, key.enc, recovery.enc). Solo la abre la contraseña vigente cuando se creó o tu clave de recuperación; guárdala en un lugar seguro, por ejemplo un disco externo o tu propio almacenamiento en la nube.",
+    "backupInstead": "¿No quieres sincronizar? Guarda una copia de seguridad.",
     "backupRow": "Copia de seguridad",
     "exportRow": "Exportación",
     "exportHint": "Todas las tablas en un archivo JSON, sin adjuntos. El archivo no está cifrado: cualquiera que lo abra puede leerlo.",

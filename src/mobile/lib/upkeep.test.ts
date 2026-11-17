@@ -304,6 +304,28 @@ describe('buildUpkeepRows', () => {
     });
   });
 
+  describe('backup_stale with the sync flag on and sync off', () => {
+    it('keeps the backup title and offers sync first in the second line', () => {
+      const rows = buildUpkeepRows(
+        input({ offerSync: true, milestones: [milestone('backup_stale', { sinceDay: ago(41) })] })
+      );
+      expect(rows[0].title).toEqual({ key: 'upkeep.backupStale', params: { count: 41 } });
+      expect(rows[0].sub).toEqual({ key: 'upkeep.syncOrBackUp', params: {} });
+      const never = buildUpkeepRows(
+        input({ offerSync: true, milestones: [milestone('backup_stale')] })
+      );
+      expect(never[0].title).toEqual({ key: 'upkeep.backupNever', params: {} });
+      expect(never[0].sub).toEqual({ key: 'upkeep.syncOrBackUp', params: {} });
+    });
+
+    it('lets sync on win over the offer', () => {
+      const rows = buildUpkeepRows(
+        input({ syncOn: true, offerSync: true, milestones: [milestone('backup_stale')] })
+      );
+      expect(rows[0].sub).toEqual({ key: 'upkeep.bothWaysOut', params: {} });
+    });
+  });
+
   describe('valuation_stale', () => {
     it('is one row per property, named', () => {
       const rows = buildUpkeepRows(

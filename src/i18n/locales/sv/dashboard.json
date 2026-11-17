@@ -94,8 +94,8 @@
     "makeBackup": "Gör en säkerhetskopia",
     "makeBackupHint": "En fil med allt, i Inställningar → Data och säkerhetskopior.",
     "protectData": "Skydda dina data",
-    "protectDataHint": "Gör en säkerhetskopia under Inställningar → Data och säkerhetskopior, eller slå på synkronisering.",
-    "setUpSync": "Ställ in synkronisering",
+    "protectDataHint": "Slå på synkronisering under Inställningar → Synkronisering, så finns en kopia även på dina andra enheter.",
+    "backupInstead": "Eller gör en säkerhetskopia",
     "dismiss": "Avfärda",
     "done": "Klart",
     "optional": "Valfritt"

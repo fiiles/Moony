@@ -106,6 +106,7 @@
     "safeCopyStale_other": "{{count}} dnia bez bezpiecznej kopii",
     "safeCopyNever": "Brak bezpiecznej kopii",
     "bothWaysOut": "Wznów synchronizację lub zrób kopię",
+    "syncOrBackUp": "Skonfiguruj synchronizację lub zrób kopię",
     "valuationStale": "Wycena {{name}} ma rok",
     "syncStalled": "Synchronizacja została zatrzymana",
     "actions": {
@@ -904,6 +905,7 @@
   },
   "backup": {
     "lead": "Kopia zapasowa to jeden zaszyfrowany plik: baza danych, klucze i załączniki. Otworzy go tylko twoje hasło.",
+    "title": "Kopia zapasowa",
     "last": "Ostatnia kopia zapasowa",
     "lastOn": "Ostatnia kopia zapasowa {{date}}",
     "never": "Brak kopii zapasowej",
@@ -930,6 +932,8 @@
     "syncLeadNoFiles": "Moony zapisuje kopię zapasową, zanim synchronizacja zastąpi dane na tym telefonie. Tutaj możesz je przywrócić lub usunąć.",
     "syncNoCopy": "Zapisanie kopii poza Moony nie jest jeszcze dostępne na tym telefonie. Kopię zapasową można przywrócić z tej listy. Przepadnie, jeśli dane Moony zostaną usunięte z telefonu.",
     "leadSync": "Synchronizacja utrzymuje urządzenia w zgodzie. Kopia zapasowa to jeden zaszyfrowany plik do jednorazowego przeniesienia lub kopia do schowania: baza danych, klucze oraz dokumenty i zdjęcia na tym telefonie. Otworzy ją tylko twoje hasło.",
+    "leadOffer": "Najlepiej chroni dane synchronizacja: kopia szyfrowana end-to-end zostaje na twoim serwerze synchronizacji i pozostałych urządzeniach.",
+    "instead": "Nie chcesz synchronizacji? Zapisz kopię zapasową: jeden zaszyfrowany plik z bazą danych, kluczami i załącznikami. Otworzy go tylko twoje hasło.",
     "restoreLeadSync": "Przywróć kopię zapasową z tego telefonu albo jednorazowo przenieś profil z Moony na komputerze: wybierz plik kopii, a po przywróceniu odblokuj hasłem, które obowiązywało w chwili jej utworzenia. Urządzenia w zgodzie utrzymuje synchronizacja.",
     "osBackupNoteSync": "Profil nie jest zapisywany w kopii zapasowej telefonu (iCloud ani komputer). Poza tym telefonem twoje dane, gdy tylko się zsynchronizują, są na serwerze synchronizacji i na innych urządzeniach, a także w każdej kopii Moony, którą zapiszesz sam.",
     "osBackupNoteSyncAndroid": "Profil nie jest zapisywany w kopii zapasowej telefonu (Google ani komputer). Poza tym telefonem twoje dane, gdy tylko się zsynchronizują, są na serwerze synchronizacji i na innych urządzeniach, a także w każdej kopii Moony, którą zapiszesz sam."
@@ -963,14 +967,16 @@
     "stepLabel": "{{index}} / {{total}} · {{step}}",
     "steps": {
       "biometrics": "Biometria",
-      "backup": "Kopia zapasowa"
+      "backup": "Kopia zapasowa",
+      "protect": "Ochrona danych"
     },
     "backupTitle": "Zrób kopię zapasową danych",
     "protectTitle": "Chroń swoje dane",
+    "protectLead": "Twoje dane są tylko na tym telefonie i nie trafiają do jego własnej kopii zapasowej (iCloud ani komputer). Synchronizacja przechowuje kopię szyfrowaną end-to-end na twoim serwerze synchronizacji i pozostałych urządzeniach.",
+    "protectLeadAndroid": "Twoje dane są tylko na tym telefonie i nie trafiają do jego własnej kopii zapasowej (Google ani komputer). Synchronizacja przechowuje kopię szyfrowaną end-to-end na twoim serwerze synchronizacji i pozostałych urządzeniach.",
+    "backupInstead": "Nie masz serwera synchronizacji albo nie chcesz synchronizacji? Gdy coś dodasz, zapisz zaszyfrowaną kopię zapasową w Ustawienia → Kopia zapasowa i przenoszenie. Przegląd ci o niej przypomni.",
     "backupLead": "Twoje dane są tylko na tym telefonie i nie trafiają do jego własnej kopii zapasowej (iCloud ani komputer). Gdy coś dodasz, zapisz zaszyfrowaną kopię zapasową na iCloud Drive lub w wybranym folderze, w Ustawienia → Kopia zapasowa i przenoszenie. Moony nigdy jej nie widzi, a Przegląd ci o niej przypomni.",
     "backupLeadAndroid": "Twoje dane są tylko na tym telefonie i nie trafiają do jego własnej kopii zapasowej (Google ani komputer). Gdy coś dodasz, zapisz zaszyfrowaną kopię zapasową na Dysku Google lub w wybranym folderze, w Ustawienia → Kopia zapasowa i przenoszenie. Moony nigdy jej nie widzi, a Przegląd ci o niej przypomni.",
-    "syncLead": "Masz serwer synchronizacji? Wtedy kopię mają też twoje inne urządzenia.",
-    "syncLink": "Skonfiguruj synchronizację",
     "currencyPick": "Waluta główna",
     "countryPick": "Kraj bankowości",
     "searchCurrency": "Szukaj waluty"
@@ -1010,6 +1016,8 @@
       "titleSync": "Chroń dane w Moony",
       "staleSync": "Ostatnia bezpieczna kopia jest starsza niż miesiąc. Wznów synchronizację albo zrób kopię zapasową.",
       "neverSync": "Nie masz jeszcze żadnej bezpiecznej kopii. Wznów synchronizację albo zrób kopię zapasową.",
+      "staleOffer": "Ostatnia kopia jest starsza niż miesiąc. Skonfiguruj synchronizację albo zrób kopię zapasową.",
+      "neverOffer": "Nie masz jeszcze żadnej kopii zapasowej. Skonfiguruj synchronizację albo zrób kopię zapasową.",
       "hintSync": "Gdy ani kopia zapasowa, ani pełna synchronizacja nie jest nowsza niż 30 dni."
     },
     "deadline": {
@@ -1076,7 +1084,7 @@
   },
   "gettingStarted": {
     "makeBackupHint": "Jeden zaszyfrowany plik ze wszystkim, w Ustawienia → Kopia zapasowa i przenoszenie.",
-    "protectDataHint": "Zrób kopię zapasową w Ustawienia → Kopia zapasowa i przenoszenie albo włącz synchronizację."
+    "protectDataHint": "Włącz synchronizację w Ustawienia → Synchronizacja, a kopia danych będzie też na twoich pozostałych urządzeniach."
   },
   "sheet": {
     "discard": {

@@ -7,6 +7,7 @@ import type { CurrencyCode } from '@shared/currencies';
 import type { setupSchema } from '@shared/schema';
 import { rememberGreetingName, rememberGreetingNameFromProfile, useAuth } from '@/hooks/use-auth';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
+import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { authApi, biometricApi, categorizationApi, onboardingApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { profileNameSchema } from '@/utils/form-schemas';
@@ -131,11 +132,13 @@ export function useFirstRun({
   // that cannot be read (the desktop shell, a browser tab) is no biometry: the six-step list.
   const biometry = useQuery({ queryKey: BIOMETRIC_STATUS_KEY, queryFn: biometricApi.status });
   const biometryAvailable = biometry.data?.available ?? false;
-  // Where a backup cannot be made (not iOS yet) the run ends without the "Záloha" step (audit C7)
+  // Where a backup cannot be made (not iOS yet) the run ends without the "Záloha" step (audit C7),
+  // unless sync is built in: the step then leads with sync, which needs no backup
   const canBackup = exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? '');
+  const syncFeature = useDeviceSyncFeature();
   const steps = useMemo(
-    () => firstRunSteps({ biometryAvailable, canBackup, path }),
-    [biometryAvailable, canBackup, path]
+    () => firstRunSteps({ biometryAvailable, canBackup, syncFeature, path }),
+    [biometryAvailable, canBackup, syncFeature, path]
   );
 
   // The keys are prepared: the recovery key is shown

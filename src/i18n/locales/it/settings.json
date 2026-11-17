@@ -159,6 +159,7 @@
   "data": {
     "title": "Dati e backup",
     "description": "Dove si trovano i tuoi dati e come conservarne una copia.",
+    "syncOffer": "La sincronizzazione protegge al meglio i tuoi dati: una copia cifrata end-to-end resta sul tuo server di sincronizzazione e sugli altri tuoi dispositivi.",
     "location": "Cartella dati",
     "size": "{{size}} su disco",
     "openFolder": "Apri cartella",
@@ -184,6 +185,7 @@
     "verifyOk": "Il database è integro",
     "verifyFailed": "La verifica del database ha rilevato problemi",
     "hint": "Un backup è un file ZIP con il database cifrato, gli allegati cifrati e i file delle chiavi (salt, key.enc, recovery.enc). Si apre solo con la password valida al momento della creazione o con la chiave di recupero: conservalo in un posto sicuro, ad esempio un disco esterno o il tuo spazio cloud.",
+    "backupInstead": "Non vuoi sincronizzare? Salva un backup.",
     "backupRow": "Backup",
     "exportRow": "Esportazione",
     "exportHint": "Tutte le tabelle in un unico file JSON, senza allegati. Il file non è cifrato: chiunque lo apra può leggerlo.",

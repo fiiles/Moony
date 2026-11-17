@@ -88,6 +88,7 @@
     "safeCopyStale_other": "{{count}} Tage ohne sichere Kopie",
     "safeCopyNever": "Noch keine sichere Kopie",
     "bothWaysOut": "Sync fortsetzen oder sichern",
+    "syncOrBackUp": "Sync einrichten oder sichern",
     "valuationStale": "Die Bewertung von {{name}} ist ein Jahr alt",
     "syncStalled": "Die Synchronisierung wurde angehalten",
     "actions": {
@@ -810,6 +811,7 @@
   },
   "backup": {
     "lead": "Eine Sicherung ist eine verschlüsselte Datei: Datenbank, Schlüssel und Anhänge. Nur Ihr Passwort öffnet sie.",
+    "title": "Sicherung",
     "last": "Letzte Sicherung",
     "lastOn": "Letzte Sicherung {{date}}",
     "never": "Noch keine Sicherung",
@@ -834,6 +836,8 @@
     "syncLeadNoFiles": "Moony legt eine Sicherung an, bevor die Synchronisierung Daten auf diesem Telefon ersetzt. Hier können Sie sie wiederherstellen oder löschen.",
     "syncNoCopy": "Eine Kopie außerhalb von Moony zu speichern ist auf diesem Telefon noch nicht möglich. Eine Sicherung lässt sich aus dieser Liste wiederherstellen. Sie geht verloren, wenn die Daten von Moony vom Telefon entfernt werden.",
     "leadSync": "Die Synchronisierung hält Ihre Geräte auf demselben Stand. Eine Sicherung ist eine verschlüsselte Datei für einen einmaligen Umzug oder eine Kopie zum Aufbewahren: die Datenbank, die Schlüssel sowie die Dokumente und Fotos auf diesem Telefon. Nur Ihr Passwort öffnet sie.",
+    "leadOffer": "Am besten schützt die Synchronisierung Ihre Daten: Eine Ende-zu-Ende-verschlüsselte Kopie liegt auf Ihrem Synchronisierungsserver und Ihren anderen Geräten.",
+    "instead": "Keine Synchronisierung gewünscht? Speichern Sie eine Sicherung: eine verschlüsselte Datei mit Datenbank, Schlüsseln und Anhängen. Nur Ihr Passwort öffnet sie.",
     "restoreLeadSync": "Stellen Sie eine Sicherung von diesem Telefon wieder her oder übertragen Sie ein Profil einmalig aus Moony auf dem Computer: Wählen Sie die Sicherungsdatei und entsperren Sie nach der Wiederherstellung mit dem Passwort, das bei ihrer Erstellung galt. Die Geräte hält die Synchronisierung auf demselben Stand.",
     "osBackupNoteSync": "Das Profil wird nicht in der eigenen Sicherung des Telefons gespeichert (iCloud oder Computer). Außerhalb dieses Telefons liegen Ihre Daten, sobald sie synchronisiert sind, auf dem Synchronisierungsserver und auf Ihren anderen Geräten sowie in jeder Moony-Sicherung, die Sie selbst speichern.",
     "osBackupNoteSyncAndroid": "Das Profil wird nicht in der eigenen Sicherung des Telefons gespeichert (Google oder Computer). Außerhalb dieses Telefons liegen Ihre Daten, sobald sie synchronisiert sind, auf dem Synchronisierungsserver und auf Ihren anderen Geräten sowie in jeder Moony-Sicherung, die Sie selbst speichern."
@@ -867,14 +871,16 @@
     "stepLabel": "{{index}} / {{total}} · {{step}}",
     "steps": {
       "biometrics": "Biometrie",
-      "backup": "Sicherung"
+      "backup": "Sicherung",
+      "protect": "Datensicherheit"
     },
     "backupTitle": "Sichern Sie Ihre Daten",
     "protectTitle": "Schützen Sie Ihre Daten",
+    "protectLead": "Ihre Daten liegen nur auf diesem Telefon und sind nicht in seiner eigenen Sicherung (iCloud oder ein Computer). Die Synchronisierung hält eine Ende-zu-Ende-verschlüsselte Kopie auf Ihrem Synchronisierungsserver und Ihren anderen Geräten.",
+    "protectLeadAndroid": "Ihre Daten liegen nur auf diesem Telefon und sind nicht in seiner eigenen Sicherung (Google oder ein Computer). Die Synchronisierung hält eine Ende-zu-Ende-verschlüsselte Kopie auf Ihrem Synchronisierungsserver und Ihren anderen Geräten.",
+    "backupInstead": "Kein Synchronisierungsserver oder keine Synchronisierung gewünscht? Sobald Sie Daten erfasst haben, speichern Sie unter Einstellungen → Sicherung und Übertragung eine verschlüsselte Sicherung. Die Übersicht erinnert Sie daran.",
     "backupLead": "Ihre Daten liegen nur auf diesem Telefon und sind nicht in seiner eigenen Sicherung (iCloud oder ein Computer). Sobald Sie welche erfasst haben, speichern Sie unter Einstellungen → Sicherung und Übertragung eine verschlüsselte Sicherung in iCloud Drive oder einem Ordner Ihrer Wahl. Moony sieht sie nie, und die Übersicht erinnert Sie daran.",
     "backupLeadAndroid": "Ihre Daten liegen nur auf diesem Telefon und sind nicht in seiner eigenen Sicherung (Google oder ein Computer). Sobald Sie welche erfasst haben, speichern Sie unter Einstellungen → Sicherung und Übertragung eine verschlüsselte Sicherung in Google Drive oder einem Ordner Ihrer Wahl. Moony sieht sie nie, und die Übersicht erinnert Sie daran.",
-    "syncLead": "Haben Sie einen Synchronisierungsserver? Dann haben auch Ihre anderen Geräte eine Kopie.",
-    "syncLink": "Synchronisierung einrichten",
     "currencyPick": "Hauptwährung",
     "countryPick": "Land der Bank",
     "searchCurrency": "Währung suchen"
@@ -914,6 +920,8 @@
       "titleSync": "Moony-Daten schützen",
       "staleSync": "Ihre letzte sichere Kopie ist älter als ein Monat. Setzen Sie die Synchronisierung fort oder erstellen Sie eine Sicherung.",
       "neverSync": "Sie haben noch keine sichere Kopie. Setzen Sie die Synchronisierung fort oder erstellen Sie eine Sicherung.",
+      "staleOffer": "Die letzte Sicherung ist älter als ein Monat. Richten Sie die Synchronisierung ein oder erstellen Sie eine Sicherung.",
+      "neverOffer": "Sie haben noch keine Sicherung. Richten Sie die Synchronisierung ein oder erstellen Sie eine Sicherung.",
       "hintSync": "Wenn weder eine Sicherung noch eine vollständige Synchronisierung neuer als 30 Tage ist."
     },
     "deadline": {
@@ -974,7 +982,7 @@
   },
   "gettingStarted": {
     "makeBackupHint": "Eine verschlüsselte Datei mit allem, unter Einstellungen → Sicherung und Übertragung.",
-    "protectDataHint": "Erstellen Sie eine Sicherung unter Einstellungen → Sicherung und Übertragung oder schalten Sie die Synchronisierung ein."
+    "protectDataHint": "Schalten Sie die Synchronisierung unter Einstellungen → Synchronisierung ein, dann liegt eine Kopie auch auf Ihren anderen Geräten."
   },
   "sheet": {
     "discard": {

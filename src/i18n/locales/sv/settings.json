@@ -158,6 +158,7 @@
   "data": {
     "title": "Data och säkerhetskopior",
     "description": "Var dina data finns och hur du behåller en kopia av dem.",
+    "syncOffer": "Synkronisering skyddar dina data bäst: en end-to-end-krypterad kopia finns på din synkroniseringsserver och dina andra enheter.",
     "location": "Datamapp",
     "size": "{{size}} på disken",
     "openFolder": "Öppna mappen",
@@ -182,6 +183,7 @@
     "verifyOk": "Databasen är hel",
     "verifyFailed": "Databaskontrollen hittade problem",
     "hint": "En säkerhetskopia är en ZIP-fil med den krypterade databasen, de krypterade bilagorna och nyckelfilerna (salt, key.enc, recovery.enc). Bara lösenordet som gällde när den skapades, eller din återställningsnyckel, öppnar den — förvara den säkert, till exempel på en extern disk eller i din egen molnlagring.",
+    "backupInstead": "Vill du inte synkronisera? Spara en säkerhetskopia.",
     "backupRow": "Säkerhetskopia",
     "exportRow": "Export",
     "exportHint": "Alla tabeller i en JSON-fil, utan bilagor. Filen är inte krypterad — alla som öppnar den kan läsa den.",

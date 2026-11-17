@@ -43,6 +43,8 @@ export function useUpkeep(): Upkeep {
   const featureOn = useDeviceSyncFeature();
   const { data: syncStatus } = useDeviceSyncStatus();
   const syncOn = syncIsOn(featureOn, syncStatus);
+  // Flag on, sync off (once its status is read): the backup reminder offers sync first
+  const offerSync = featureOn && syncStatus !== undefined && !syncOn;
 
   const ready = !milestonesPending && !accountsLoading && !queue.isPending && !importsPending;
 
@@ -61,6 +63,7 @@ export function useUpkeep(): Upkeep {
         canBackup: exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? ''),
         attachmentsProblem: syncOn && syncStatus ? shownProblem(syncStatus.attachments) : null,
         syncOn,
+        offerSync,
       }).filter((row) => !isDismissed(row, dismissals, todayDay))
     : [];
 

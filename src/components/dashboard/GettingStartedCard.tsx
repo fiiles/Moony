@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 import { syncIsOn } from '@/utils/safe-copy';
 import {
   gettingStartedItems,
-  offerSyncLink,
+  offerBackupLink,
   type GettingStartedKey,
 } from '@/utils/getting-started';
 
@@ -134,12 +134,12 @@ export function GettingStartedCard({ className }: { className?: string }) {
                   </span>
                 </span>
               </Link>
-              {offerSyncLink(item, sync) && (
+              {offerBackupLink(item, sync) && (
                 <Link
-                  href="/settings/sync"
+                  href="/settings/data"
                   className="-mt-1.5 mb-3 ml-[30px] block w-fit text-micro font-500 text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
                 >
-                  {t('gettingStarted.setUpSync')}
+                  {t('gettingStarted.backupInstead')}
                 </Link>
               )}
             </li>

@@ -8,7 +8,7 @@ Accepted. Records phase 5 of device sync as built on `feat/sync-device-removal`:
 `docs/specs/2026-11-16-device-sync-phase-5-removal-design.md` ("the phase-5 spec") and its revision
 `docs/specs/2026-11-16-device-sync-phase-5-revision-ux.md` ("the revision"), whose decisions D1–D4
 the owner took on 2026-11-16. Where they differ, the revision wins, and its "As built (revision)"
-list (R-1 to R-111) supersedes the text above it; the phase-5 spec's own "As built" items 1–69 stay
+list (R-1 to R-117) supersedes the text above it; the phase-5 spec's own "As built" items 1–69 stay
 true except where the revision says otherwise. Builds on [ADR 0024](0024-device-sync-capture-clocks-merge.md),
 [ADR 0025](0025-device-sync-relay-client.md), [ADR 0026](0026-device-sync-pairing.md),
 [ADR 0027](0027-device-sync-audit-fixes.md), [ADR 0029](0029-self-hosted-sync-server-in-the-app.md)
@@ -68,8 +68,11 @@ the Kit's own row (it must be named by the envelope's confirmed set, R-60), sign
 certificate with the Kit's key, and trust on first use only what the Kit's own issuer chain names.
 The envelope's confirmed set (and any genesis it names) is taken only when its signer speaks on that
 store: pinned with that certificate, `trusted`, not superseded, not left out for its issuer, the Kit's
-creator and a remover of its own issuer aside (`trust::kit_join_speaker`, R-106); any other pinned signer
-opens the Kit but vouches for nothing (generalising R-78). The newest epoch is never left unchecked (a recorded head, the snapshot's own
+creator and a remover of its own issuer (that issuer not itself left out, R-112) aside
+(`trust::kit_join_speaker`, R-106); any other pinned signer opens the Kit but vouches for nothing
+(generalising R-78). A replaced Kit is pinned on the joiner `removed` by its row's removal record only
+when that record's signer is pinned with its certificate and speaks at the record's time, or joined
+with that very Kit (R-105, tightened by R-112). The newest epoch is never left unchecked (a recorded head, the snapshot's own
 epoch as a floor, or an unverified-epoch entry that holds old-epoch ops until the signer's signed
 head record verifies). Then the **push hold**: the joiner pulls but pushes nothing until the person
 answers "Data jsou zpět" (R-45).
@@ -196,7 +199,13 @@ R1–R5 and the copied-Kit trade on 2026-11-16.
   device that left (before the next key change it still holds the vault key) can upload a snapshot
   without that device's `left` record; a device that later joins or catches up from it sees the leaver
   as `trusted`. Log positions cannot catch an omission; it is snapshot integrity, which phase 5 does not
-  authenticate. The next key change closes it for devices that take part.
+  authenticate. The next key change closes it for devices that take part. On a Kit joiner it reaches
+  further (security review of the Kit join, F-2, As built R-112): the anchored Kit's creator speaks
+  there even when it is left out for its issuer (R-105's chains need it, a Kit joiner that made the
+  next Kit), so a backup of a Kit-making device whose `left` record is omitted from the snapshot can
+  confirm devices of its choosing through the Kit's envelope; "Mám je" at the push hold would keep
+  them. Accepted (owner decision 2026-11-17); the test
+  `accepted_residual_an_omitted_left_record_lets_the_kits_creator_confirm` pins it.
 - **"Je moje" only helps before the next key change (R-77a).** A device a key change left out cannot be
   let in later: the pickup stops at the first bundle that gives it nothing, so after the next change the
   way in is joining again. The "Zkontrolujte" row says so ("Potvrďte ho před příštím odebráním zařízení;
@@ -208,5 +217,10 @@ R1–R5 and the copied-Kit trade on 2026-11-16.
   envelope signer that left, is superseded, is a late vouch or whose issuer another device removed
   still opens a Kit join, but its confirmed set vouches for nothing (R-75, R-78, R-106), so such a
   device and what only it confirmed show "Zkontrolujte" on the joiner; "Je moje" keeps a late vouch or
-  an unknown issuer, never a device whose issuer was removed (R-107); printing from the built app is unverified until Task 33 (the primary button may become
+  an unknown issuer, never a device whose issuer was removed (R-107). That makes envelope substitution
+  stickier: a current-key holder that re-seals the envelope with a key that opens it but does not speak
+  (a device that left, say) confirms nothing, and honest devices whose issuer was removed (Kit joiners
+  of a replaced Kit, devices kept through a removal) are "Zkontrolujte" on the joiner and cannot be
+  kept: the joiner's first key change cuts them off and they join again. A denial of service only,
+  needing the current key (R-112); printing from the built app is unverified until Task 33 (the primary button may become
   "Uložit jako soubor…").

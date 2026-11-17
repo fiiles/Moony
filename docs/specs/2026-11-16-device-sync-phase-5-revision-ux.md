@@ -2085,6 +2085,72 @@ R-111. **Fixes from the phone live run** (2026-11-17). (a) The iOS build failed:
      "Odebralo ho zařízení {by} dne {date}" (the name ran into the date), "záchranné sady" in lower case
      mid-sentence (`phone.choice.scan.lead`, `server.dialogBody`).
 
+R-112. **Security review of the Kit join** (2026-11-17; R-105, R-106, R-107). (a) F-1: a replaced Kit's removal
+     record (`trust::former_kit_removal`) counted when its signer was any pinned entry, at any time, or any
+     row whose certificate merely named the Kit as issuer (a re-join certificate carries any issuer ID with
+     any issuer key), so a vault-key holder could forge a Kit of a device that left and choose when it stops
+     speaking. It now counts only from a signer pinned with exactly that certificate that `speaks_at` the
+     record's time (not "not left out": the genuine remover may be a late vouch on the joiner, and the
+     record only takes trust away), or from a Kit-joined certificate (kind 3) of that very Kit whose issuer
+     key is the Kit's own; otherwise the forged Kit is `SecondKit`. No trust was gained before (the Kit was
+     pinned `removed`, its subtree left out); this keeps the code to its doc. Tests (the reviewer's probe
+     inverted, failing first): `kit_join_attacks::a_former_kits_removal_by_a_row_only_claiming_the_kit_is_ignored`,
+     `a_former_kits_removal_signed_after_its_signer_left_is_ignored`. (b) F-3: the remover exception of
+     `kit_join_speaker` also needs the signer's issuer not left out for its own issuer, so it follows log
+     order, not the joiner's pass order (a remover as deep as the signer could remove the issuer's issuer in
+     the same pass). Test: `a_remover_whose_issuer_was_already_left_out_vouches_for_nothing` (failing first);
+     MEDIUM 3 (`a_signer_whose_issuer_another_device_removed_vouches_for_nothing` and R-105's chains) still
+     pass. (c) F-2, accepted residual (owner): the Kit's creator speaks on a joiner even when left out for its
+     issuer (R-105 needs it), so a backup of a Kit-making device whose `left` record a snapshot omits can
+     confirm devices through the envelope; ADR 0032 lists it beside the snapshot-omission residual. Tests
+     pinning today's behaviour: `accepted_residual_an_omitted_left_record_lets_the_kits_creator_confirm`
+     and its control `an_omitted_left_record_of_a_non_creator_confirms_nothing`. (d) Availability, next to
+     R-107: an envelope re-sealed with a key that opens it but does not speak confirms nothing, and honest
+     devices whose issuer was removed cannot be kept on the joiner, so they join again after its first key
+     change (a denial of service needing the current key; ADR 0032).
+R-113. **Deleting the profile with the synced data asks for the password** (owner decision O-1; R-72, final
+     review M-7). `delete_account` with `deleteSyncedData` refuses an empty password, then checks the device
+     password (`verify_password`) before the engine stops or anything is sent; without it nothing changes.
+     The desktop's danger-zone dialog and the phone's "Smazat všechna data?" sheet show the password field
+     (`deviceSync:password.label`) once "Smazat i synchronizovaná data ze serveru" is ticked, and a wrong
+     password is said under the field while the dialog or sheet stays. Deleting only this device's profile
+     still takes the typed word alone. Test: `commands::sync::tests::
+     deleting_the_profile_with_the_synced_data_checks_the_password_first`. "Smazat synchronizovaná data na
+     serveru" in Settings → Sync (`sync_delete_synced_data`) already asked for it.
+R-114. **A pairing code reads with white space inside it** (owner decision O-3). `parse_pairing_code` drops every
+     white space and zero-width character (as `connection_code::cleaned` does) before the size cap; a text over
+     four times the cap is refused unread. `scannedCodeKind` recognises such a code as `pair`. The typed
+     six digits keep their attempt limit. Tests: `pairing::tests::a_pairing_code_reads_with_white_space_inside`,
+     `pairing-code.test.ts`.
+R-115. **A server address without a scheme** (owner decision O-4). `server_address_from_input` (setup's server
+     check, the server change, a pairing or Kit join's server, desktop and phone alike) adds `http://` for a
+     local host (`localhost`, `*.localhost`, `*.local`, `127.0.0.0/8`, `::1`, `10.0.0.0/8`, `172.16.0.0/12`,
+     `192.168.0.0/16`) and `https://` for anything else; a typed scheme is kept. Plain http still asks to be
+     acknowledged. Test: `connection_code::tests::an_address_without_a_scheme_gets_one_by_its_host`.
+R-116. **The removed notice after a join** (phone live run). Root cause: `sync.removed_notice` was cleared only by
+     its dismissal; a join never cleared it, and the unlock sheet (and the desktop's dialog) shows it whatever
+     the sync state. "Připojit znovu" dismisses before it opens the join (desktop and phone alike), but every
+     other way into a join (the phone's "Vložit kód ručně" and "Připojit toto zařízení" rows right under the
+     notice, the desktop's intro card, a notice closed by the scrim first) left it, so the next unlock said
+     the device was removed although it was syncing again. A join's replace (`join::replace_profile`, a
+     pairing or Kit join) now deletes it with the other per-vault keys. Test:
+     `engine::tests::join::a_join_clears_the_removed_notice` (failing first).
+R-117. **Texts from the phone live run** (ten locales). (a) The Kit row's storage reads after "Uložena:" without
+     repeating it: "na papíře", "jako zkopírovaný kód", "jako soubor", "ve složce, která se synchronizuje s
+     cloudem" (`kit.storage.*`; ja's label is "保管方法："). (b) Typing or pasting a pairing code is a path of its
+     own, not a scan: `phone.enterCodeTitle` is "Vložit kód ručně"; the flow started from it (or from the
+     camera's "Vložit kód ručně") titles its sheets with it and asks for the password with
+     `phone.passwordFirstTyped` ("Než vložíte kód druhého zařízení, …"); `ScanFlow` tracks `manual`. (c) The
+     desktop's add-device hint names the phone's real path: "… Nastavení → Synchronizace → Připojit toto
+     zařízení → Naskenovat kód z počítače" (`pairing.scanHint`, built from each locale's own row titles; a
+     phone with sync on cannot answer an add-device code). (d) The phone's "Ověřit sadu" has no camera:
+     `check.descriptionPhone` ("Opište kód ze sady. …"); the desktop keeps "Naskenujte nebo opište". (e) ja
+     uses the full-width "：" in every `deviceSync` string (`remove.stays`, `remove.drops`, `replace.lines.*`,
+     `pairing.attemptsLeft`, …). (f) A profile without a name is greeted "Dobré ráno." instead of "Dobré
+     ráno, ." (`utils/greeting.ts`, `greeting.*NoName` and `welcomeFirstNoName`; test `greeting.test.ts`).
+     (g) Owner decision O-2: a removed device's descendants stay unticked by default in "Odebrat také" (no
+     change).
+
 As run (Task 33, phone, 2026-11-17). iOS 27.0 simulator "LC-iPhone-SE-3rd-generation" (375 pt; a 320 pt
 iPhone no longer runs iOS 27 and Display Zoom was not reachable, so 320 px was checked in the Browser pane
 driving the simulator's backend through the dev bridge), largest Dynamic Type

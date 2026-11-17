@@ -577,3 +577,119 @@ fn the_wiper_rechecks_the_clock_at_least_every_30_seconds() {
     assert_eq!(wiper_wait(wiped_at, wiped_at), None);
     assert_eq!(wiper_wait(wiped_at + 3_600, wiped_at), None);
 }
+
+/// A holder showing its code and a joiner that scanned it, both at `Compare`: the holder's slot of
+/// `owner`, and the six digits the joiner shows.
+async fn holder_slot_at_compare(relay: &FakeRelay, owner: &KitOwner) -> (PairingSlot, String) {
+    let mut holder = PairingSession::show(Role::Holder, HOME, T0).expect("shower");
+    let text = pairing_code_text(&holder.code());
+    let mut joiner = PairingSession::scan(Role::Joiner, &text, T0).expect("scanner");
+    joiner.announce(relay, T0).await.expect("announce");
+    holder.poll(relay, T0).await.expect("acknowledge");
+    joiner.poll(relay, T0).await.expect("verify");
+    assert_eq!(holder.stage(), Stage::Compare);
+    let digits = joiner.comparison_code().expect("digits");
+    let slot = PairingSlot {
+        owner: owner.clone(),
+        session: holder,
+        device_name: None,
+    };
+    (slot, digits)
+}
+
+/// One typed code through the slot, as `sync_pairing_confirm` does it: a confirm, and an error
+/// that does not keep the session ends the pairing.
+async fn type_code(
+    pairings: &Pairings,
+    owner: &KitOwner,
+    relay: &FakeRelay,
+    typed: &str,
+) -> String {
+    let mut pairing = pairings.lock().await;
+    let slot = pairing.live(owner, T0 + 5).expect("live");
+    let error = slot
+        .session
+        .confirm(relay, None, Some(typed), T0 + 5)
+        .await
+        .expect_err("a wrong code");
+    pairing.end_unless_kept(&error);
+    match error {
+        SyncError::Local(AppError::Validation(key)) => key,
+        other => panic!("not a key: {other:?}"),
+    }
+}
+
+// Owner's report 2026-11-17: "Začít znovu" after three wrong codes showed the code field with one
+// attempt left. The backend gives the pairing up at the third wrong code and a new start has all
+// its attempts; the stale screen was the UI's (`dropQuery` in `use-device-pairing.ts`).
+#[tokio::test]
+async fn after_the_third_wrong_code_the_pairing_is_gone_and_a_new_one_has_all_its_attempts() {
+    use crate::services::sync::pairing::session::{
+        CODE_MISMATCH, CODE_MISMATCH_FINAL, MAX_TYPED_ATTEMPTS,
+    };
+    let (pairings, disposed) = counted_pairings!(FINAL_MISMATCH);
+    let a = owner("/profiles/a/moony.db", 1);
+    let relay = FakeRelay::new();
+    let (slot, digits) = holder_slot_at_compare(&relay, &a).await;
+    *pairings.lock().await = Some(slot);
+    let wrong = format!(
+        "{:06}",
+        (digits.parse::<u32>().expect("six digits") + 1) % 1_000_000
+    );
+
+    for left in [2, 1] {
+        assert_eq!(
+            type_code(&pairings, &a, &relay, &wrong).await,
+            CODE_MISMATCH
+        );
+        let view = current_view(&*pairings.lock().await).expect("still there");
+        assert_eq!(view.attempts_left, Some(left));
+    }
+    assert_eq!(
+        type_code(&pairings, &a, &relay, &wrong).await,
+        CODE_MISMATCH_FINAL
+    );
+    assert_eq!(disposed.load(Ordering::SeqCst), 1, "the third ends it");
+    // The screen's poll after the final mismatch finds nothing: the pairing ended.
+    assert_eq!(
+        key_of(pairings.lock().await.live(&a, T0 + 6).map(|_| ())),
+        NOT_STARTED
+    );
+    // "Začít znovu" cancels (nothing left to give up), then starts a fresh pairing.
+    pairings.lock().await.dispose_current();
+    assert_eq!(
+        disposed.load(Ordering::SeqCst),
+        1,
+        "nothing is given up twice"
+    );
+    let fresh_relay = FakeRelay::new();
+    let (fresh, fresh_digits) = holder_slot_at_compare(&fresh_relay, &a).await;
+    {
+        let mut pairing = pairings.lock().await;
+        let view = pairing
+            .install(&a, Some(a.clone()), fresh.session, None)
+            .expect("installed");
+        assert_eq!(view.stage, PairingStage::Compare);
+        assert_eq!(view.attempts_left, Some(MAX_TYPED_ATTEMPTS));
+    }
+    // And the right digits pair: the first attempt is not spent by the old pairing.
+    let mut pairing = pairings.lock().await;
+    let slot = pairing.live(&a, T0 + 7).expect("live");
+    let creds = Credentials {
+        relay_url: HOME.into(),
+        account: "1234567890123456".into(),
+        vault_id: crate::services::sync::keys::VaultId([0x77; 16]),
+        keys: crate::services::sync::keys::VaultKeys::from_parts(
+            0,
+            std::collections::BTreeMap::from([(0, [0xA0; 32])]),
+        )
+        .expect("keys"),
+    };
+    assert_eq!(
+        slot.session
+            .confirm(&fresh_relay, Some(&creds), Some(&fresh_digits), T0 + 7)
+            .await
+            .expect("sent"),
+        Stage::Sent
+    );
+}

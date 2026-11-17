@@ -370,7 +370,7 @@
     "showCode": "Code anzeigen",
     "qrAlt": "Kopplungscode",
     "preparing": "Kopplung wird vorbereitet …",
-    "scanHint": "Scannen Sie dies mit Moony auf Ihrem Smartphone: Einstellungen → Synchronisierung → Code scannen",
+    "scanHint": "Scannen Sie dies mit Moony auf Ihrem Smartphone: Einstellungen → Synchronisierung → Dieses Gerät verbinden → Code vom Computer scannen",
     "validFor": "Der Code gilt 10 Minuten.",
     "typeTitle": "Code eingeben",
     "showTitle": "Ihr Kopplungscode",
@@ -463,6 +463,7 @@
     "scanHint": "Richten Sie die Kamera auf den Code auf Ihrem anderen Gerät (Einstellungen → Synchronisierung → Gerät hinzufügen) oder auf den QR-Code Ihres Wiederherstellungs-Kits.",
     "addDeviceHint": "Wählen Sie auf dem neuen Gerät unter Einstellungen → Synchronisierung „Dieses Gerät verbinden“ und richten Sie dann die Kamera auf den angezeigten Code.",
     "passwordFirst": "Geben Sie Ihr Moony-Passwort ein, bevor Sie den Code des anderen Geräts scannen.",
+    "passwordFirstTyped": "Geben Sie Ihr Moony-Passwort ein, bevor Sie den Code des anderen Geräts eingeben.",
     "connecting": "Verbindung wird hergestellt…",
     "cameraDenied": "Erlauben Sie in den Einstellungen den Zugriff auf die Kamera, um den Code zu scannen.",
     "openSettings": "Einstellungen öffnen",
@@ -589,10 +590,10 @@
     "lastUsed": "Zuletzt verwendet am {{date}}",
     "keptLine": "Aufbewahrt: {{where}}",
     "storage": {
-      "paper": "auf Papier gedruckt",
-      "copied": "Code kopiert",
-      "file": "als Datei gespeichert",
-      "cloud": "in einem Ordner gespeichert, der mit der Cloud synchronisiert wird"
+      "paper": "auf Papier",
+      "copied": "als kopierter Code",
+      "file": "als Datei",
+      "cloud": "in einem Ordner, der mit der Cloud synchronisiert wird"
     },
     "check": "Kit prüfen",
     "makeNew": "Neues erstellen …",
@@ -607,6 +608,7 @@
   "check": {
     "title": "Wiederherstellungs-Kit prüfen",
     "description": "Scannen oder tippen Sie den Code vom Kit ab. Es wird nichts gesendet.",
+    "descriptionPhone": "Tippen Sie den Code vom Kit ab. Es wird nichts gesendet.",
     "label": "Code des Wiederherstellungs-Kits",
     "submit": "Prüfen",
     "valid": "Dieses Kit ist gültig.",

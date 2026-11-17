@@ -359,7 +359,7 @@
     "showCode": "显示代码",
     "qrAlt": "配对码",
     "preparing": "正在准备配对…",
-    "scanHint": "请用手机上的 Moony 扫描：设置 → 同步 → 扫描代码",
+    "scanHint": "请用手机上的 Moony 扫描：设置 → 同步 → 连接此设备 → 扫描电脑上的代码",
     "validFor": "此代码在 10 分钟内有效。",
     "typeTitle": "输入代码",
     "showTitle": "您的配对码",
@@ -451,6 +451,7 @@
     "scanHint": "请将相机对准另一台设备上的代码（设置 → 同步 → 添加设备），或对准恢复包的二维码。",
     "addDeviceHint": "在新设备上，于 设置 → 同步 中选择“连接此设备”，然后将相机对准它显示的代码。",
     "passwordFirst": "扫描另一台设备的代码前，请先输入 Moony 密码。",
+    "passwordFirstTyped": "输入另一台设备的代码前，请先输入 Moony 密码。",
     "connecting": "正在连接…",
     "cameraDenied": "请在设置中允许访问相机，以便扫描代码。",
     "openSettings": "打开设置",
@@ -573,10 +574,10 @@
     "lastUsed": "上次使用：{{date}}",
     "keptLine": "保存方式：{{where}}",
     "storage": {
-      "paper": "已打印在纸上",
-      "copied": "已复制代码",
-      "file": "已另存为文件",
-      "cloud": "已存入与云同步的文件夹"
+      "paper": "打印在纸上",
+      "copied": "复制的代码",
+      "file": "文件",
+      "cloud": "与云同步的文件夹"
     },
     "check": "验证恢复包",
     "makeNew": "新建…",
@@ -591,6 +592,7 @@
   "check": {
     "title": "验证恢复包",
     "description": "扫描或输入恢复包上的代码。不会向任何地方发送内容。",
+    "descriptionPhone": "输入恢复包上的代码。不会向任何地方发送内容。",
     "label": "恢复包代码",
     "submit": "验证",
     "valid": "此恢复包有效。",

@@ -3,9 +3,13 @@
   "greeting": {
     "morning": "God morgen, {{name}}.",
     "day": "God dag, {{name}}.",
-    "evening": "God kveld, {{name}}."
+    "evening": "God kveld, {{name}}.",
+    "morningNoName": "God morgen.",
+    "dayNoName": "God dag.",
+    "eveningNoName": "God kveld."
   },
   "welcomeFirst": "Velkommen, {{name}}.",
+  "welcomeFirstNoName": "Velkommen.",
   "asOf": "Nettoformue per {{date}}",
   "loading": "Laster porteføljen din…",
   "hero": {

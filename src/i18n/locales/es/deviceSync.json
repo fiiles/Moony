@@ -381,7 +381,7 @@
     "showCode": "Mostrar código",
     "qrAlt": "Código de vinculación",
     "preparing": "Preparando la vinculación…",
-    "scanHint": "Escanea esto con Moony en tu teléfono: Ajustes → Sincronización → Escanear un código",
+    "scanHint": "Escanea esto con Moony en tu teléfono: Ajustes → Sincronización → Conectar este dispositivo → Escanear un código del ordenador",
     "validFor": "El código funciona durante 10 minutos.",
     "typeTitle": "Escribe el código",
     "showTitle": "Tu código de vinculación",
@@ -475,6 +475,7 @@
     "scanHint": "Apunta la cámara al código de tu otro dispositivo (Ajustes → Sincronización → Añadir un dispositivo) o al código QR de tu kit de recuperación.",
     "addDeviceHint": "En el dispositivo nuevo, elige «Conectar este dispositivo» en Ajustes → Sincronización y apunta la cámara al código que muestre.",
     "passwordFirst": "Introduce la contraseña de Moony antes de escanear el código del otro dispositivo.",
+    "passwordFirstTyped": "Introduce la contraseña de Moony antes de introducir el código del otro dispositivo.",
     "connecting": "Conectando…",
     "cameraDenied": "Permite el acceso a la cámara en Ajustes para escanear el código.",
     "openSettings": "Abrir Ajustes",
@@ -605,10 +606,10 @@
     "lastUsed": "Usado por última vez el {{date}}",
     "keptLine": "Guardado: {{where}}",
     "storage": {
-      "paper": "impreso en papel",
-      "copied": "código copiado",
-      "file": "guardado como archivo",
-      "cloud": "guardado en una carpeta que se sincroniza con la nube"
+      "paper": "en papel",
+      "copied": "como código copiado",
+      "file": "como archivo",
+      "cloud": "en una carpeta que se sincroniza con la nube"
     },
     "check": "Comprobar kit",
     "makeNew": "Crear uno nuevo…",
@@ -623,6 +624,7 @@
   "check": {
     "title": "Comprobar tu kit de recuperación",
     "description": "Escanea o escribe el código del kit. No se envía nada a ningún sitio.",
+    "descriptionPhone": "Escribe el código del kit. No se envía nada a ningún sitio.",
     "label": "Código del kit de recuperación",
     "submit": "Comprobar",
     "valid": "Este kit es válido.",

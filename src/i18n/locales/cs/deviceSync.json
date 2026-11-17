@@ -392,7 +392,7 @@
     "showCode": "Zobrazit kód",
     "qrAlt": "Párovací kód",
     "preparing": "Připravuje se párování…",
-    "scanHint": "Naskenujte to v Moony na telefonu: Nastavení → Synchronizace → Naskenovat kód",
+    "scanHint": "Naskenujte to v Moony na telefonu: Nastavení → Synchronizace → Připojit toto zařízení → Naskenovat kód z počítače",
     "validFor": "Kód platí 10 minut.",
     "typeTitle": "Zadejte kód",
     "showTitle": "Váš párovací kód",
@@ -487,6 +487,7 @@
     "scanHint": "Namiřte fotoaparát na kód na druhém zařízení (Nastavení → Synchronizace → Přidat zařízení) nebo na QR kód záchranné sady.",
     "addDeviceHint": "Na novém zařízení zvolte v Nastavení → Synchronizace „Připojit toto zařízení“ a pak namiřte fotoaparát na kód, který ukáže.",
     "passwordFirst": "Než naskenujete kód druhého zařízení, zadejte heslo do Moony.",
+    "passwordFirstTyped": "Než vložíte kód druhého zařízení, zadejte heslo do Moony.",
     "connecting": "Připojování…",
     "cameraDenied": "Aby šlo kód naskenovat, povolte v Nastavení přístup k fotoaparátu.",
     "openSettings": "Otevřít Nastavení",
@@ -498,7 +499,7 @@
     "notAPairingCode": "Toto není párovací kód.",
     "notAConnectionCode": "Tento QR kód není připojovací kód synchronizačního serveru.",
     "scanConnectionHint": "Namiřte fotoaparát na připojovací kód svého synchronizačního serveru.",
-    "enterCodeTitle": "Zadat kód ručně",
+    "enterCodeTitle": "Vložit kód ručně",
     "enterCodeHint": "Kód najdete na druhém zařízení pod QR kódem.",
     "enterCodeLabel": "Párovací kód"
   },
@@ -619,10 +620,10 @@
     "lastUsed": "Naposledy použita {{date}}",
     "keptLine": "Uložena: {{where}}",
     "storage": {
-      "paper": "vytištěná na papír",
-      "copied": "zkopírovaný kód",
-      "file": "uložená jako soubor",
-      "cloud": "uložená ve složce, která se synchronizuje s cloudem"
+      "paper": "na papíře",
+      "copied": "jako zkopírovaný kód",
+      "file": "jako soubor",
+      "cloud": "ve složce, která se synchronizuje s cloudem"
     },
     "check": "Ověřit sadu",
     "makeNew": "Vytvořit novou…",
@@ -637,6 +638,7 @@
   "check": {
     "title": "Ověřit záchrannou sadu",
     "description": "Naskenujte nebo opište kód ze sady. Nic se nikam neodesílá.",
+    "descriptionPhone": "Opište kód ze sady. Nic se nikam neodesílá.",
     "label": "Kód záchranné sady",
     "submit": "Ověřit",
     "valid": "Tato sada platí.",

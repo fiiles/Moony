@@ -370,7 +370,7 @@
     "showCode": "Show code",
     "qrAlt": "Pairing code",
     "preparing": "Preparing the pairing…",
-    "scanHint": "Scan this with Moony on your phone: Settings → Sync → Scan a code",
+    "scanHint": "Scan this with Moony on your phone: Settings → Sync → Connect this device → Scan a code from the computer",
     "validFor": "The code works for 10 minutes.",
     "typeTitle": "Type the code",
     "showTitle": "Your pairing code",
@@ -463,6 +463,7 @@
     "scanHint": "Point the camera at the code on your other device (Settings → Sync → Add a device) or at the QR code of your Recovery Kit.",
     "addDeviceHint": "On the new device, choose “Connect this device” in Settings → Sync, then point the camera at the code it shows.",
     "passwordFirst": "Enter your Moony password before you scan the other device's code.",
+    "passwordFirstTyped": "Enter your Moony password before you enter the other device's code.",
     "connecting": "Connecting…",
     "cameraDenied": "Allow camera access in Settings to scan the code.",
     "openSettings": "Open Settings",
@@ -589,10 +590,10 @@
     "lastUsed": "Last used {{date}}",
     "keptLine": "Kept: {{where}}",
     "storage": {
-      "paper": "printed on paper",
-      "copied": "code copied",
-      "file": "saved as a file",
-      "cloud": "saved in a folder that syncs to the cloud"
+      "paper": "on paper",
+      "copied": "as a copied code",
+      "file": "as a file",
+      "cloud": "in a folder that syncs to the cloud"
     },
     "check": "Check kit",
     "makeNew": "Make a new one…",
@@ -607,6 +608,7 @@
   "check": {
     "title": "Check your recovery kit",
     "description": "Scan or type the code from the kit. Nothing is sent anywhere.",
+    "descriptionPhone": "Type the code from the kit. Nothing is sent anywhere.",
     "label": "Recovery kit code",
     "submit": "Check",
     "valid": "This kit is valid.",

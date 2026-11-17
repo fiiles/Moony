@@ -370,7 +370,7 @@
     "showCode": "Visa kod",
     "qrAlt": "Parkopplingskod",
     "preparing": "Förbereder parkopplingen …",
-    "scanHint": "Skanna detta med Moony på telefonen: Inställningar → Synkronisering → Skanna en kod",
+    "scanHint": "Skanna detta med Moony på telefonen: Inställningar → Synkronisering → Anslut den här enheten → Skanna en kod från datorn",
     "validFor": "Koden fungerar i 10 minuter.",
     "typeTitle": "Skriv koden",
     "showTitle": "Din parkopplingskod",
@@ -463,6 +463,7 @@
     "scanHint": "Rikta kameran mot koden på den andra enheten (Inställningar → Synkronisering → Lägg till en enhet) eller mot QR-koden i ditt återställningskit.",
     "addDeviceHint": "Välj ”Anslut den här enheten” under Inställningar → Synkronisering på den nya enheten och rikta sedan kameran mot koden den visar.",
     "passwordFirst": "Ange Moony-lösenordet innan du skannar den andra enhetens kod.",
+    "passwordFirstTyped": "Ange Moony-lösenordet innan du anger den andra enhetens kod.",
     "connecting": "Ansluter…",
     "cameraDenied": "Tillåt kameraåtkomst i Inställningar för att skanna koden.",
     "openSettings": "Öppna Inställningar",
@@ -589,10 +590,10 @@
     "lastUsed": "Senast använt {{date}}",
     "keptLine": "Förvaras: {{where}}",
     "storage": {
-      "paper": "utskrivet på papper",
-      "copied": "koden kopierad",
-      "file": "sparat som fil",
-      "cloud": "sparat i en mapp som synkroniseras med molnet"
+      "paper": "på papper",
+      "copied": "som kopierad kod",
+      "file": "som fil",
+      "cloud": "i en mapp som synkroniseras med molnet"
     },
     "check": "Kontrollera kitet",
     "makeNew": "Skapa ett nytt …",
@@ -607,6 +608,7 @@
   "check": {
     "title": "Kontrollera ditt återställningskit",
     "description": "Skanna eller skriv in koden från kitet. Inget skickas någonstans.",
+    "descriptionPhone": "Skriv in koden från kitet. Inget skickas någonstans.",
     "label": "Kod för återställningskitet",
     "submit": "Kontrollera",
     "valid": "Det här kitet är giltigt.",

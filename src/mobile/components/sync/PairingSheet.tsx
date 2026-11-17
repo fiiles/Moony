@@ -57,6 +57,8 @@ interface PairingSheetProps {
   impactChanged: string | null;
   /** The first run's join (a brand-new profile, nothing replaced): "Připojit", not "Připojit a nahradit". */
   firstRun?: boolean;
+  /** The other device's code was typed or pasted, not scanned: the title says so. */
+  manual?: boolean;
 }
 
 /** The sheet's form for the holder's typed digits, so the footer's Confirm submits it. */
@@ -99,6 +101,7 @@ export function PairingSheet({
   onJoin,
   impactChanged,
   firstRun = false,
+  manual = false,
 }: PairingSheetProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
@@ -115,7 +118,7 @@ export function PairingSheet({
         : t('pairing.showTitle')
       : view.role === 'holder'
         ? t('pairing.addTitle')
-        : t('phone.scanTitle');
+        : t(manual ? 'phone.enterCodeTitle' : 'phone.scanTitle');
 
   const digits = (
     <div

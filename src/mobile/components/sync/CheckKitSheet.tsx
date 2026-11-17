@@ -76,7 +76,8 @@ export function CheckKitSheet({ onClose }: { onClose: () => void }) {
         if (!open) onClose();
       }}
       title={t('check.title')}
-      description={t('check.description')}
+      // The phone has no camera here: the code is typed or pasted (As built R-103 b)
+      description={t('check.descriptionPhone')}
       footer={
         <>
           <Button variant="ghost" className={`${BUTTON} px-[18px]`} onClick={onClose}>

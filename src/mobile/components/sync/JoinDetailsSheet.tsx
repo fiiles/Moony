@@ -23,6 +23,8 @@ interface JoinDetailsSheetProps {
   /** What went wrong after the camera (a wrong password, a refused code), shown under the password. */
   error: string | null;
   onSubmit: (details: ScanDetails) => void;
+  /** The code is typed or pasted, not scanned: the sheet says nothing of scanning. */
+  manual?: boolean;
 }
 
 /** A password field never feeds the keyboard's corrections or predictions. */
@@ -44,6 +46,7 @@ export function JoinDetailsSheet({
   mode,
   error,
   onSubmit,
+  manual = false,
 }: JoinDetailsSheetProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
@@ -70,8 +73,12 @@ export function JoinDetailsSheet({
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      title={joining ? t('phone.scanTitle') : t('pairing.addTitle')}
-      description={joining ? t('join.warning') : t('phone.passwordFirst')}
+      title={
+        joining ? t(manual ? 'phone.enterCodeTitle' : 'phone.scanTitle') : t('pairing.addTitle')
+      }
+      description={
+        joining ? t('join.warning') : t(manual ? 'phone.passwordFirstTyped' : 'phone.passwordFirst')
+      }
       footer={
         <>
           <Button

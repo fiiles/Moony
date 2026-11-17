@@ -381,7 +381,7 @@
     "showCode": "Mostra il codice",
     "qrAlt": "Codice di associazione",
     "preparing": "Preparazione dell'associazione…",
-    "scanHint": "Inquadralo con Moony sul telefono: Impostazioni → Sincronizzazione → Scansiona un codice",
+    "scanHint": "Inquadralo con Moony sul telefono: Impostazioni → Sincronizzazione → Collega questo dispositivo → Scansiona un codice dal computer",
     "validFor": "Il codice è valido per 10 minuti.",
     "typeTitle": "Digita il codice",
     "showTitle": "Il tuo codice di associazione",
@@ -475,6 +475,7 @@
     "scanHint": "Inquadra con la fotocamera il codice sull'altro dispositivo (Impostazioni → Sincronizzazione → Aggiungi un dispositivo) o il codice QR del tuo kit di ripristino.",
     "addDeviceHint": "Sul nuovo dispositivo scegli «Collega questo dispositivo» in Impostazioni → Sincronizzazione, poi inquadra il codice che mostra.",
     "passwordFirst": "Inserisci la password di Moony prima di scansionare il codice dell'altro dispositivo.",
+    "passwordFirstTyped": "Inserisci la password di Moony prima di inserire il codice dell'altro dispositivo.",
     "connecting": "Connessione…",
     "cameraDenied": "Consenti l'accesso alla fotocamera in Impostazioni per scansionare il codice.",
     "openSettings": "Apri Impostazioni",
@@ -605,10 +606,10 @@
     "lastUsed": "Usato l'ultima volta il {{date}}",
     "keptLine": "Conservato: {{where}}",
     "storage": {
-      "paper": "stampato su carta",
-      "copied": "codice copiato",
-      "file": "salvato come file",
-      "cloud": "salvato in una cartella sincronizzata con il cloud"
+      "paper": "su carta",
+      "copied": "come codice copiato",
+      "file": "come file",
+      "cloud": "in una cartella sincronizzata con il cloud"
     },
     "check": "Verifica il kit",
     "makeNew": "Creane uno nuovo…",
@@ -623,6 +624,7 @@
   "check": {
     "title": "Verifica il tuo kit di ripristino",
     "description": "Scansiona o digita il codice del kit. Non viene inviato nulla.",
+    "descriptionPhone": "Digita il codice del kit. Non viene inviato nulla.",
     "label": "Codice del kit di ripristino",
     "submit": "Verifica",
     "valid": "Questo kit è valido.",

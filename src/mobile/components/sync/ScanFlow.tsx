@@ -85,6 +85,9 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
   const [kitShown, setKitShown] = useState<{ server: string } | null>(null);
   /** The overlay's "Paste a pairing code": the scan is cancelled to make way for the sheet. */
   const toPaste = useRef(false);
+  /** The code is typed or pasted (from the start, or from the camera's overlay): no sheet says "scan". */
+  const [manual, setManual] = useState(paste);
+  const codeTitle = t(manual ? 'phone.enterCodeTitle' : 'phone.scanTitle');
   const [joinFailure, setJoinFailure] = useState<JoinFailure | null>(null);
   /** The warning at `received` for a plain http server (the pairing names it, the phone typed none). */
   const [insecureAcknowledged, setInsecureAcknowledged] = useState(false);
@@ -267,6 +270,7 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
 
   const scanNow = async () => {
     toPaste.current = false;
+    setManual(false);
     setStep('scanning');
     try {
       const outcome = await scanQrCode();
@@ -362,6 +366,7 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
           mode={mode}
           error={detailsError}
           onSubmit={submitDetails}
+          manual={manual}
         />
       )}
       {step === 'scanning' && (
@@ -369,6 +374,7 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
           hint={mode === 'add' ? t('phone.addDeviceHint') : t('phone.scanHint')}
           onEnterCode={() => {
             toPaste.current = true;
+            setManual(true);
             void cancelQrScan();
           }}
         />
@@ -479,7 +485,7 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
         onOpenChange={(next) => {
           if (!next) abandonScan();
         }}
-        title={t('phone.scanTitle')}
+        title={codeTitle}
         footer={
           <Button variant="ghost" className={`${BUTTON} flex-1`} onClick={abandonScan}>
             {tc('buttons.cancel')}
@@ -510,6 +516,7 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
           onJoin={() => void runJoin()}
           impactChanged={impactChanged}
           firstRun={firstRun !== undefined}
+          manual={manual}
         />
       )}
     </>

@@ -392,7 +392,7 @@
     "showCode": "Pokaż kod",
     "qrAlt": "Kod parowania",
     "preparing": "Przygotowywanie parowania…",
-    "scanHint": "Zeskanuj to w Moony na telefonie: Ustawienia → Synchronizacja → Skanuj kod",
+    "scanHint": "Zeskanuj to w Moony na telefonie: Ustawienia → Synchronizacja → Połącz to urządzenie → Zeskanuj kod z komputera",
     "validFor": "Kod działa przez 10 minut.",
     "typeTitle": "Wpisz kod",
     "showTitle": "Twój kod parowania",
@@ -487,6 +487,7 @@
     "scanHint": "Skieruj aparat na kod na drugim urządzeniu (Ustawienia → Synchronizacja → Dodaj urządzenie) albo na kod QR z zestawu odzyskiwania.",
     "addDeviceHint": "Na nowym urządzeniu wybierz „Połącz to urządzenie” w Ustawienia → Synchronizacja, a potem skieruj aparat na wyświetlony kod.",
     "passwordFirst": "Zanim zeskanujesz kod drugiego urządzenia, wpisz hasło do Moony.",
+    "passwordFirstTyped": "Zanim wkleisz kod drugiego urządzenia, wpisz hasło do Moony.",
     "connecting": "Łączenie…",
     "cameraDenied": "Zezwól na dostęp do aparatu w Ustawieniach, aby zeskanować kod.",
     "openSettings": "Otwórz Ustawienia",
@@ -621,10 +622,10 @@
     "lastUsed": "Ostatnio użyty {{date}}",
     "keptLine": "Przechowywany: {{where}}",
     "storage": {
-      "paper": "wydrukowany na papierze",
-      "copied": "skopiowany kod",
-      "file": "zapisany jako plik",
-      "cloud": "zapisany w folderze synchronizowanym z chmurą"
+      "paper": "na papierze",
+      "copied": "jako skopiowany kod",
+      "file": "jako plik",
+      "cloud": "w folderze synchronizowanym z chmurą"
     },
     "check": "Sprawdź zestaw",
     "makeNew": "Utwórz nowy…",
@@ -639,6 +640,7 @@
   "check": {
     "title": "Sprawdź zestaw odzyskiwania",
     "description": "Zeskanuj lub przepisz kod z zestawu. Nic nie jest nigdzie wysyłane.",
+    "descriptionPhone": "Przepisz kod z zestawu. Nic nie jest nigdzie wysyłane.",
     "label": "Kod zestawu odzyskiwania",
     "submit": "Sprawdź",
     "valid": "Ten zestaw jest ważny.",

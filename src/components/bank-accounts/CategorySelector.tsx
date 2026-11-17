@@ -684,7 +684,7 @@ function CategoryCommandList({
                         ? t('categorization.retargetRule')
                         : t('categorization.rememberForFuture')}
                     </span>
-                    <small className="block font-400">
+                    <small className="block font-450">
                       {governingRule ? t('categorization.retargetRuleScope') : scopeLabel}
                     </small>
                   </Label>

@@ -35,6 +35,7 @@ export function RepairDeviceDialog({
   const impact = useReplaceImpact();
   return (
     <SyncPasswordDialog
+      needsServer
       title={t('repair.title')}
       description={t('repair.description')}
       extra={
@@ -79,6 +80,7 @@ export function ResyncDeviceDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => resetResync, [resetResync]);
   return (
     <SyncPasswordDialog
+      needsServer
       title={t('resync.title')}
       description={t('resync.description')}
       extra={

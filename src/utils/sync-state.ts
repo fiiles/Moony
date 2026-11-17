@@ -5,7 +5,11 @@ import { uploadsKeepUnsynced } from '@/utils/sync-attachments';
 /** Whole UTC days without a success after which the person is asked to look (Rust: `SYNC_STALE_DAYS`). */
 export const SYNC_STALE_DAYS = 7;
 
-/** The engine retries these by itself: the server is out of reach for now (Rust: `TRANSIENT_PROBLEMS`). */
+/**
+ * The engine retries these by itself: the server is out of reach for now (Rust: `TRANSIENT_PROBLEMS`).
+ * Every surface shows it as a problem from the first failed round (`unreachable`, red), and what
+ * needs the server waits (`serverOutOfReach`).
+ */
 export const TRANSIENT_PROBLEMS: readonly SyncProblem[] = ['offline', 'relayError', 'rateLimited'];
 
 export type SyncStateKind =
@@ -46,7 +50,8 @@ const TONES: Record<SyncStateKind, SyncTone> = {
   syncingLong: 'neutral',
   firstUpload: 'neutral',
   removing: 'neutral',
-  unreachable: 'neutral',
+  // A problem from the first failed round (owner, 2026-11-17): red and named on every surface
+  unreachable: 'stale',
   unreachableLong: 'stale',
   waiting: 'stale',
   paused: 'stale',
@@ -76,12 +81,24 @@ function outOfReachDays(status: SyncStatus, now: number): number | null {
 }
 
 /**
- * The server is merely out of reach (under 7 days): Settings shows a plain line instead of an alert,
- * also while a retry round runs. `now` in unix seconds.
+ * The server is out of reach under 7 days: the status line itself says so (red) with the line that
+ * sync resumes on its own, and no alert box comes with it (that waits for `unreachableLong`, with
+ * the problem's text). Also while a retry round runs. `now` in unix seconds.
  */
-export function isQuietlyOutOfReach(status: SyncStatus, now: number): boolean {
+export function isRecentlyOutOfReach(status: SyncStatus, now: number): boolean {
   const days = outOfReachDays(status, now);
   return days !== null && days < SYNC_STALE_DAYS;
+}
+
+/**
+ * The sync server is out of reach (a transient problem, whatever the phase and however long):
+ * actions that only the server can carry out (adding or removing a device, a new recovery kit,
+ * deleting the synced data, a repair or re-sync, a checkout, downloading everything) wait, each
+ * with the line that says why. `false` while sync is off or being set up.
+ */
+export function serverOutOfReach(status: SyncStatus | undefined): boolean {
+  if (!status || status.phase === 'off' || status.phase === 'settingUp') return false;
+  return status.problem !== null && TRANSIENT_PROBLEMS.includes(status.problem);
 }
 
 /** What a running round reads as: finishing a removal, the first upload, one that is slow, or plain syncing. */
@@ -95,27 +112,26 @@ function syncingKind(status: SyncStatus, now: number): SyncStateKind {
 }
 
 /**
- * `now` in unix seconds. `null` while sync is off or being set up (no indicator). Precedence: a
- * round running, then the server out of reach (stale after 7 days) or a problem phase, then
- * uploading (idle while documents and photos wait), then synchronised. An attachments problem never
- * changes the label (`shownProblem` adds its own line elsewhere).
+ * `now` in unix seconds. `null` while sync is off or being set up (no indicator). Precedence: the
+ * server out of reach (stale from the first failed round, `unreachableLong` after 7 days; a retry
+ * round keeps it, so the label never flickers back to "syncing"), then a round running, then a
+ * problem phase, then uploading (idle while documents and photos wait), then synchronised. An
+ * attachments problem never changes the label (`shownProblem` adds its own line elsewhere).
  */
 export function syncState(status: SyncStatus | undefined, now: number): SyncStateView | null {
   if (!status || status.phase === 'off' || status.phase === 'settingUp') return null;
-  // A running retry round shows as syncing even when the server has long been out of reach; the
-  // Rust reminder (`sync_stalled`) stays raised then, so it does not flicker between rounds.
+  const days = outOfReachDays(status, now);
+  if (days !== null) {
+    return days >= SYNC_STALE_DAYS
+      ? view('unreachableLong', status, days)
+      : view('unreachable', status);
+  }
   if (status.phase === 'syncing') return view(syncingKind(status, now), status);
   // The first copy goes up while the rest of the sync is idle: say so instead of "synchronised"
   if (status.phase === 'idle' && status.firstUpload) return view('firstUpload', status);
   // A key change another device made, not yet confirmed: the ordinary "syncing", not a problem
   if (status.problem === 'keyRotated' && status.waitingForRemover === null) {
     return view('syncing', status);
-  }
-  const days = outOfReachDays(status, now);
-  if (days !== null) {
-    return days >= SYNC_STALE_DAYS
-      ? view('unreachableLong', status, days)
-      : view('unreachable', status);
   }
   switch (status.phase) {
     case 'idle':

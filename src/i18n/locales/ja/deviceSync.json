@@ -37,6 +37,7 @@
   },
   "status": {
     "unreachableNote": "サーバーに接続できるようになると、同期が再開されます。",
+    "needsServer": "サーバーに接続できません。接続が回復してから、もう一度お試しください。",
     "problem": {
       "captureBroken": "このデバイスで同期が壊れました。データは無事です。修復できます。",
       "vaultGone": "同期したデータは同期サーバーから削除されました。",
@@ -506,9 +507,7 @@
     "notAServerAddress": "同期サーバーのアドレスではありません。同期サーバーのアドレスを入力するか、その接続コードを貼り付けてください。"
   },
   "attachments": {
-    "title": "書類と写真",
-    "allUploaded": "すべてアップロード済み",
-    "waiting_other": "{{count}}件がアップロード待ち · {{size}}",
+    "waiting_other": "{{count}}件の書類と写真がアップロード待ち · {{size}}",
     "uploading": "書類と写真をアップロード中",
     "onOtherDevices_other": "{{count}}件の書類と写真が他のデバイスにあります",
     "failedUpload_other": "{{count}}件の書類または写真をアップロードできず、このデバイスにだけあります。",

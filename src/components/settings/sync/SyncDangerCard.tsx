@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { useServerGate } from '@/hooks/use-server-gate';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialog';
 import { TurnOffSyncDialog } from '@/components/settings/sync/TurnOffSyncDialog';
@@ -24,6 +25,8 @@ export function SyncDangerCard() {
   const resetDelete = deleteSyncedData.reset;
   useEffect(() => resetDelete, [resetDelete]);
   const [open, setOpen] = useState<Open>(null);
+  // Deleting what the server keeps needs the server; turning sync off here does not
+  const server = useServerGate();
   const close = () => setOpen(null);
 
   return (
@@ -34,8 +37,25 @@ export function SyncDangerCard() {
             {t('turnOff.button')}
           </Button>
         </SettingsRow>
-        <SettingsRow label={t('delete.button')} hint={t('delete.hint')}>
-          <Button type="button" variant="danger" onClick={() => setOpen('delete')}>
+        <SettingsRow
+          label={t('delete.button')}
+          hint={
+            <>
+              {t('delete.hint')}
+              {server.blocked && (
+                <span id={server.noteId} className="block" data-testid="server-needed">
+                  {t('status.needsServer')}
+                </span>
+              )}
+            </>
+          }
+        >
+          <Button
+            type="button"
+            variant="danger"
+            onClick={() => setOpen('delete')}
+            {...server.props}
+          >
             {t('delete.button')}
           </Button>
         </SettingsRow>
@@ -43,6 +63,7 @@ export function SyncDangerCard() {
       {open === 'turnOff' && <TurnOffSyncDialog onClose={close} />}
       {open === 'delete' && (
         <SyncPasswordDialog
+          needsServer
           title={t('delete.title')}
           description={`${t('delete.description')} ${deleteAfterwards}`}
           confirmLabel={t('delete.confirm')}

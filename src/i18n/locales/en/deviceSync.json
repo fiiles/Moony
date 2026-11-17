@@ -41,6 +41,7 @@
   },
   "status": {
     "unreachableNote": "Sync resumes once the server is in reach.",
+    "needsServer": "The server is out of reach. Try again once you're connected.",
     "problem": {
       "captureBroken": "Sync broke on this device. Your data are fine. It can be repaired.",
       "vaultGone": "The synced data was deleted from the sync server.",
@@ -518,10 +519,8 @@
     "notAServerAddress": "This is not a sync server address. Type the address of your sync server, or paste its connection code."
   },
   "attachments": {
-    "title": "Documents and photos",
-    "allUploaded": "All uploaded",
-    "waiting_one": "{{count}} waiting to upload · {{size}}",
-    "waiting_other": "{{count}} waiting to upload · {{size}}",
+    "waiting_one": "{{count}} document or photo waiting to upload · {{size}}",
+    "waiting_other": "{{count}} documents and photos waiting to upload · {{size}}",
     "uploading": "Uploading documents and photos",
     "onOtherDevices_one": "{{count}} document or photo is on your other devices",
     "onOtherDevices_other": "{{count}} documents and photos are on your other devices",

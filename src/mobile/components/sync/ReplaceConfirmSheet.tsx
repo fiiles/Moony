@@ -35,6 +35,7 @@ export function ReplaceConfirmSheet({
   const shown = impact.isFetching ? undefined : impact.data;
   return (
     <SyncPasswordSheet
+      needsServer
       open={open}
       onOpenChange={onOpenChange}
       title={title}

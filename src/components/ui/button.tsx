@@ -9,10 +9,12 @@ import { cn } from '@/lib/utils';
  * that names the outcome. One primary per page. `danger` is text-only, `dangerOutline` the same
  * action as a bordered secondary button in a page head; the solid
  * `destructive` belongs inside confirm dialogs only. Loading spins the icon and
- * keeps the label.
+ * keeps the label. A button that waits for something (`aria-disabled`, e.g. the sync server out of
+ * reach) looks disabled and ignores clicks and Enter, but stays in the tab order so its reason
+ * (`aria-describedby`) can be reached.
  */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-[7px] whitespace-nowrap rounded-r2 border text-caption font-650 transition-[background,box-shadow,color,border-color] duration-fast focus-visible:outline-none focus-visible:border-focus focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-[7px] whitespace-nowrap rounded-r2 border text-caption font-650 transition-[background,box-shadow,color,border-color] duration-fast focus-visible:outline-none focus-visible:border-focus focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-45 aria-disabled:pointer-events-none aria-disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -60,8 +62,13 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading = false, disabled, ...props }, ref) => {
+  (
+    { className, variant, size, asChild = false, loading = false, disabled, onClick, ...props },
+    ref
+  ) => {
     const Comp = asChild ? Slot : 'button';
+    // Focusable but inert: a click (or Enter, or a form's implicit submit) does nothing
+    const inert = props['aria-disabled'] === true || props['aria-disabled'] === 'true';
     return (
       <Comp
         className={cn(
@@ -71,6 +78,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         aria-busy={loading || undefined}
         disabled={disabled}
+        onClick={
+          inert ? (event: React.MouseEvent<HTMLButtonElement>) => event.preventDefault() : onClick
+        }
         {...props}
       />
     );

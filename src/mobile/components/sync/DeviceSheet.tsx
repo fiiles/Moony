@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useServerGate } from '@/hooks/use-server-gate';
 import { Button } from '@/components/ui/button';
 import type { SyncDevice } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
@@ -58,6 +59,8 @@ export function DeviceSheet({
   const viaKey = shown ? joinedViaKey(shown) : null;
   const inactive = shown ? inactiveDays(shown) : null;
   const removable = shown !== null && removalAvailable && canRemoveDevice(shown);
+  // Removing needs the server; the details and "Je moje" do not
+  const server = useServerGate();
   const day = (seconds: number) => date(new Date(seconds * 1000), { dateStyle: 'medium' });
 
   return (
@@ -124,9 +127,15 @@ export function DeviceSheet({
                 variant="ghost"
                 className={`${BUTTON} font-semibold text-loss hover:text-loss`}
                 onClick={() => onRemove(shown)}
+                {...server.props}
               >
                 {t('remove.confirm')}
               </Button>
+            )}
+            {removable && server.blocked && (
+              <p id={server.noteId} className="mx-0.5 my-0 text-center text-m-sub text-ink-3">
+                {t('status.needsServer')}
+              </p>
             )}
           </div>
         </div>

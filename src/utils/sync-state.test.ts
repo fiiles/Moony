@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { SyncAttachments, SyncPhase, SyncProblem, SyncStatus } from '@shared/schema';
 import {
-  isQuietlyOutOfReach,
+  isRecentlyOutOfReach,
+  serverOutOfReach,
   statusPopoverLines,
   syncAge,
   syncProblemState,
@@ -72,15 +73,19 @@ describe('syncState', () => {
       [status('settingUp'), null, null],
       [status('idle', null, now - 240), 'synced', 'fresh'],
       [status('syncing'), 'syncing', 'neutral'],
-      // Differs from Rust on purpose: the reminder stays `Some` for this input, the bar shows the round.
-      [status('syncing', 'offline', now - 30 * D), 'syncing', 'neutral'],
+      // A retry round keeps the out-of-reach state: no flicker back to "syncing" between rounds
+      [status('syncing', 'offline', now - 30 * D), 'unreachableLong', 'stale'],
+      [status('syncing', 'offline', now - D), 'unreachable', 'stale'],
+      [status('syncing', 'relayError', now - D), 'unreachable', 'stale'],
       [status('syncing', null, now - 30 * D), 'syncing', 'neutral'],
       [status('idle', null, now - 30 * D), 'synced', 'fresh'],
       [status('waiting', null, now - 30 * D), 'waiting', 'stale'],
-      [status('paused', 'offline', now - 6 * D), 'unreachable', 'neutral'],
+      // Out of reach is a problem from the first failed round (owner, 2026-11-17)
+      [status('paused', 'offline', now - 6 * D), 'unreachable', 'stale'],
+      [status('idle', 'offline', now - 60), 'unreachable', 'stale'],
       [status('paused', 'offline', now - 7 * D), 'unreachableLong', 'stale'],
-      [status('error', 'relayError', now - D), 'unreachable', 'neutral'],
-      [status('paused', 'rateLimited', now - D), 'unreachable', 'neutral'],
+      [status('error', 'relayError', now - D), 'unreachable', 'stale'],
+      [status('paused', 'rateLimited', now - D), 'unreachable', 'stale'],
       [status('waiting', 'gap', now), 'waiting', 'stale'],
       [status('waiting', 'clockAhead', now), 'waiting', 'stale'],
       [status('paused', 'lapsed', now), 'paused', 'stale'],
@@ -209,28 +214,54 @@ describe('syncAge', () => {
   });
 });
 
-describe('isQuietlyOutOfReach', () => {
+describe('isRecentlyOutOfReach', () => {
   const two = now - 2 * D;
-  it('is quiet for a transient problem under 7 days, whatever the phase', () => {
-    expect(isQuietlyOutOfReach(status('syncing', 'offline', two), now)).toBe(true);
-    expect(isQuietlyOutOfReach(status('idle', 'offline', two), now)).toBe(true);
-    expect(isQuietlyOutOfReach(status('paused', 'offline', two), now)).toBe(true);
-    expect(isQuietlyOutOfReach(status('syncing', 'relayError', two), now)).toBe(true);
-    expect(isQuietlyOutOfReach(status('idle', 'rateLimited', two), now)).toBe(true);
+  it('holds for a transient problem under 7 days, whatever the phase', () => {
+    expect(isRecentlyOutOfReach(status('syncing', 'offline', two), now)).toBe(true);
+    expect(isRecentlyOutOfReach(status('idle', 'offline', two), now)).toBe(true);
+    expect(isRecentlyOutOfReach(status('paused', 'offline', two), now)).toBe(true);
+    expect(isRecentlyOutOfReach(status('syncing', 'relayError', two), now)).toBe(true);
+    expect(isRecentlyOutOfReach(status('idle', 'rateLimited', two), now)).toBe(true);
   });
-  it('is not quiet after 7 days, even while a round runs', () => {
-    expect(isQuietlyOutOfReach(status('syncing', 'offline', now - 8 * D), now)).toBe(false);
+  it('does not hold after 7 days, even while a round runs', () => {
+    expect(isRecentlyOutOfReach(status('syncing', 'offline', now - 8 * D), now)).toBe(false);
   });
-  it('is not quiet for other problems or none', () => {
-    expect(isQuietlyOutOfReach(status('paused', 'lapsed', two), now)).toBe(false);
-    expect(isQuietlyOutOfReach(status('waiting', 'gap', now - 30 * D), now)).toBe(false);
-    expect(isQuietlyOutOfReach(status('idle', null, two), now)).toBe(false);
+  it('does not hold for other problems or none', () => {
+    expect(isRecentlyOutOfReach(status('paused', 'lapsed', two), now)).toBe(false);
+    expect(isRecentlyOutOfReach(status('waiting', 'gap', now - 30 * D), now)).toBe(false);
+    expect(isRecentlyOutOfReach(status('idle', null, two), now)).toBe(false);
   });
   it('counts from enabledAt without a success, and never a negative day count', () => {
-    expect(isQuietlyOutOfReach(status('idle', 'offline', null, now - 9 * D), now)).toBe(false);
-    expect(isQuietlyOutOfReach(status('idle', 'offline', null, null), now)).toBe(true);
-    expect(isQuietlyOutOfReach(status('idle', 'offline', now + 5 * D), now)).toBe(true);
-    expect(isQuietlyOutOfReach(status('idle', 'lapsed', now + 5 * D), now)).toBe(false);
+    expect(isRecentlyOutOfReach(status('idle', 'offline', null, now - 9 * D), now)).toBe(false);
+    expect(isRecentlyOutOfReach(status('idle', 'offline', null, null), now)).toBe(true);
+    expect(isRecentlyOutOfReach(status('idle', 'offline', now + 5 * D), now)).toBe(true);
+    expect(isRecentlyOutOfReach(status('idle', 'lapsed', now + 5 * D), now)).toBe(false);
+  });
+});
+
+describe('serverOutOfReach', () => {
+  it('holds for a transient problem in any phase sync is on, however long', () => {
+    for (const phase of ['idle', 'syncing', 'waiting', 'paused', 'error'] as SyncPhase[]) {
+      expect(serverOutOfReach(status(phase, 'offline', now - D)), phase).toBe(true);
+    }
+    expect(serverOutOfReach(status('paused', 'relayError', now - 30 * D))).toBe(true);
+    expect(serverOutOfReach(status('idle', 'rateLimited', null))).toBe(true);
+  });
+  it('does not hold without a problem, for any other problem, or while sync is off or set up', () => {
+    expect(serverOutOfReach(undefined)).toBe(false);
+    expect(serverOutOfReach(status('idle', null, now))).toBe(false);
+    expect(serverOutOfReach(status('syncing', null, now - 30 * D))).toBe(false);
+    for (const problem of [
+      'lapsed',
+      'gap',
+      'captureBroken',
+      'keyRotated',
+      'unauthorized',
+    ] as SyncProblem[]) {
+      expect(serverOutOfReach(status('paused', problem, now)), problem).toBe(false);
+    }
+    expect(serverOutOfReach(status('off', 'offline', now))).toBe(false);
+    expect(serverOutOfReach(status('settingUp', 'offline', now))).toBe(false);
   });
 });
 
@@ -254,6 +285,22 @@ describe('the key-change states', () => {
     });
     expect(syncState(withStatus(syncing, { syncingSince: now - 60 }), now)?.kind).toBe('syncing');
     expect(syncState(withStatus(syncing, { syncingSince: null }), now)?.kind).toBe('syncing');
+  });
+
+  it('lets the server out of reach win over a removal, the first upload and a slow round', () => {
+    const offline = status('syncing', 'offline', now - D);
+    for (const over of [
+      { removalPending: true },
+      { firstUpload: true },
+      { syncingSince: now - 600 },
+    ]) {
+      expect(syncState(withStatus(offline, over), now)?.kind, JSON.stringify(over)).toBe(
+        'unreachable'
+      );
+    }
+    expect(
+      syncState(withStatus(status('idle', 'offline', now - D), { firstUpload: true }), now)?.kind
+    ).toBe('unreachable');
   });
 
   it('says the first copy is going up while idle too', () => {

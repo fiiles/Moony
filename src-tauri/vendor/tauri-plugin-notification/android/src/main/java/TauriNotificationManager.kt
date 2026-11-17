@@ -26,6 +26,7 @@ import androidx.core.app.RemoteInput
 import app.tauri.Logger
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.PluginManager
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.json.JSONException
 import org.json.JSONObject
@@ -500,7 +501,13 @@ class TimedNotificationPublisher : BroadcastReceiver() {
     if (id == Int.MIN_VALUE) {
       Logger.error(Logger.tags("Notification"), "No valid id supplied", null)
     }
-    val storage = NotificationStorage(context, ObjectMapper())
+    // MOONY PATCH: the plugin's own mapper ignores unknown properties; a plain one threw on
+    // `extra` (a JSObject with Moony's `path`) and the receiver crashed at every boot, so nothing
+    // was rescheduled (MOONY-PATCH.md).
+    val storage = NotificationStorage(
+      context,
+      ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+    )
 
     val savedNotification = storage.getSavedNotification(id.toString())
     if (savedNotification != null) {
@@ -562,7 +569,13 @@ class LocalNotificationRestoreReceiver : BroadcastReceiver() {
       )
       if (um == null || !um.isUserUnlocked) return
     }
-    val storage = NotificationStorage(context, ObjectMapper())
+    // MOONY PATCH: the plugin's own mapper ignores unknown properties; a plain one threw on
+    // `extra` (a JSObject with Moony's `path`) and the receiver crashed at every boot, so nothing
+    // was rescheduled (MOONY-PATCH.md).
+    val storage = NotificationStorage(
+      context,
+      ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+    )
     val ids = storage.getSavedNotificationIds()
     val notifications = mutableListOf<Notification>()
     val updatedNotifications = mutableListOf<Notification>()

@@ -122,13 +122,36 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
     onIntent(intent)
   }
 
+  // MOONY PATCH: a tap that starts the app arrives in `load`, before the page has registered its
+  // `actionPerformed` listener, and `trigger` drops an event nobody listens to. The tap waits here
+  // until the first listener registers (MOONY-PATCH.md).
+  private var pendingAction: JSObject? = null
+
   fun onIntent(intent: Intent) {
     if (Intent.ACTION_MAIN != intent.action) {
       return
     }
     val dataJson = manager.handleNotificationActionPerformed(intent, notificationStorage)
     if (dataJson != null) {
-      trigger("actionPerformed", dataJson)
+      // MOONY PATCH: the activity keeps its intent; a later `load` (a page reload) must not report
+      // the same tap again.
+      intent.removeExtra(NOTIFICATION_INTENT_KEY)
+      if (hasListener("actionPerformed")) {
+        trigger("actionPerformed", dataJson)
+      } else {
+        pendingAction = dataJson
+      }
+    }
+  }
+
+  @Command
+  override fun registerListener(invoke: Invoke) {
+    super.registerListener(invoke)
+    // MOONY PATCH: hand a tap that came before any listener to the first one.
+    val waiting = pendingAction
+    if (waiting != null && hasListener("actionPerformed")) {
+      pendingAction = null
+      trigger("actionPerformed", waiting)
     }
   }
 

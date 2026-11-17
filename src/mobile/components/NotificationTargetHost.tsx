@@ -21,8 +21,8 @@ const hearsTaps = () => {
  * (leaving the screen would drop a sheet's input without its "Zahodit změny?"). While locked
  * it waits: the lock page takes it after a successful unlock (`leaveLock`), so nothing opens
  * behind the lock. Where the listener cannot be registered (a desktop shell, a plugin without the
- * event) the app opens as it would without the tap; a tap that starts the app from cold is not
- * reported by the plugin at all.
+ * event) the app opens as it would without the tap. A tap that starts the app from cold is
+ * reported on Android (the vendored plugin holds it until this listener registers), not on iOS.
  */
 export function NotificationTargetHost() {
   const { appStatus, user } = useAuth();

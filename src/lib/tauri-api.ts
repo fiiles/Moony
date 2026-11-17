@@ -6,6 +6,7 @@
  */
 
 import { invoke, type InvokeArgs, type InvokeOptions } from '@tauri-apps/api/core';
+import type { Options as NotificationOptions } from '@tauri-apps/plugin-notification';
 import i18n from '@/i18n';
 import { toApiError } from '@/lib/api-error';
 import type { ResolvedTheme } from '@/utils/theme';
@@ -317,6 +318,18 @@ export const keychainApi = {
    */
   setStatusBarStyle: (theme: ResolvedTheme) =>
     tauriInvoke<void>('plugin:moony-keychain|set_status_bar_style', { theme }),
+};
+
+/**
+ * The notification plugin's `notify`, awaited. The plugin's own `sendNotification` goes through the
+ * page's `Notification` shim, which returns before the plugin has the notification: a refusal (a
+ * time that has passed) never comes back, and a check of what is pending right after can run
+ * before the plugin stored the last ones (on Android `show` arrived seconds later after unlock).
+ * Only the phones schedule (`use-notification-schedule.ts`).
+ */
+export const notificationsApi = {
+  schedule: (options: NotificationOptions) =>
+    tauriInvoke<void>('plugin:notification|notify', { options }),
 };
 
 // ============================================================================

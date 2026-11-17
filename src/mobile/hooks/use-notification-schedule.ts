@@ -1,10 +1,5 @@
 import { useEffect, useRef } from 'react';
-import {
-  cancelAll,
-  pending,
-  sendNotification,
-  type Schedule,
-} from '@tauri-apps/plugin-notification';
+import { cancelAll, pending, type Schedule } from '@tauri-apps/plugin-notification';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
 import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
@@ -18,6 +13,7 @@ import {
   scheduleDateString,
   type LocalTime,
 } from '@/mobile/lib/notification-plan';
+import { notificationsApi } from '@/lib/tauri-api';
 import { exportsOnThisDevice } from '@/mobile/lib/export-file';
 import { notificationPaths } from '@/mobile/lib/notification-target';
 import { renderTextRef } from '@/mobile/lib/settings-summary';
@@ -36,10 +32,10 @@ function schedulesOnThisDevice(): boolean {
 /**
  * Hands one notification to the system for `at`, a local wall-clock time. On iOS the plugin reads
  * the schedule's date as local digits with a literal `Z`, on Android as UTC (`scheduleDateString`
- * writes either), which its `Schedule.at` helper cannot tell apart. The plugin does not wait for the
- * system (`sendNotification` returns at once), so a refusal such as a time that has passed does not
- * come back here; the plan leaves those out. `path`, the screen a tap opens, rides in `extra`,
- * which the plugin hands back on a tap (on iOS through the vendored patch).
+ * writes either), which its `Schedule.at` helper cannot tell apart. Resolves once the plugin holds
+ * the notification and rejects when it refuses one (a time that has passed, say; the plan leaves
+ * those out). `path`, the screen a tap opens, rides in `extra`, which the plugin hands back on a
+ * tap (on iOS through the vendored patch).
  */
 export function scheduleNotification(item: {
   id: number;
@@ -47,9 +43,9 @@ export function scheduleNotification(item: {
   body: string;
   at: LocalTime;
   path?: string;
-}): void {
+}): Promise<void> {
   const platform: string = import.meta.env.TAURI_ENV_PLATFORM ?? '';
-  sendNotification({
+  return notificationsApi.schedule({
     id: item.id,
     title: item.title,
     body: item.body,
@@ -132,21 +128,31 @@ export function useNotificationSchedule(): void {
         await cancelAll();
         // The inputs changed meanwhile: the run that replaced this one plans from scratch
         if (!current) return;
+        let refused = 0;
         for (const item of plan) {
-          scheduleNotification({
-            id: item.id,
-            title: renderTextRef(t, item.title),
-            body: renderTextRef(t, item.body),
-            at: item.at,
-            path: item.path,
-          });
+          if (!current) return;
+          try {
+            await scheduleNotification({
+              id: item.id,
+              title: renderTextRef(t, item.title),
+              body: renderTextRef(t, item.body),
+              at: item.at,
+              path: item.path,
+            });
+          } catch {
+            // A refusal (a time that has passed, say) leaves the rest of the plan standing
+            refused += 1;
+          }
         }
+        if (!current) return;
         scheduled.current = signature;
-        // The plugin does not report a refusal (a time that has passed, say), so count what the
-        // system actually holds: a shortfall is the only trace such a refusal leaves.
+        // Each call has resolved once the plugin held its notification, so the count is the
+        // system's own: a shortfall the refusals do not explain is worth a trace.
         const held = (await pending()).length;
-        if (held !== plan.length) {
-          console.warn(`[notifications] ${plan.length} planned, ${held} pending`);
+        if (refused > 0 || held !== plan.length) {
+          console.warn(
+            `[notifications] ${plan.length} planned, ${refused} refused, ${held} pending`
+          );
         }
       } catch (error) {
         console.warn('[notifications] scheduling or checking the schedule failed', error);

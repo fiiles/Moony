@@ -5,7 +5,7 @@ This directory is an exact copy of the crates.io release `tauri-plugin-notificat
 `[patch.crates-io]` in `src-tauri/Cargo.toml`. Its licenses (`LICENSE_APACHE-2.0`, `LICENSE_MIT`,
 `LICENSE.spdx`) apply unchanged.
 
-Two changes. The first is in `ios/Sources/NotificationHandler.swift`:
+Changes on both platforms. iOS, in `ios/Sources/NotificationHandler.swift`:
 
 - `toActiveNotification` no longer force-unwraps `notificationsMap[request.identifier]`. The map
   only holds the notifications scheduled by the running process, so a notification scheduled by an
@@ -15,8 +15,9 @@ Two changes. The first is in `ios/Sources/NotificationHandler.swift`:
   the plugin stores it when scheduling), so a tap reports the payload across app runs. Moony puts
   the target screen there (`extra.path`, `src/mobile/lib/notification-target.ts`).
 
-The second is in `android/src/main/java/NotificationPlugin.kt` (2026-11-17, found on the first
-Android build):
+Android (2026-11-17, found on the first Android build and its emulator checks), in
+`android/src/main/java/` (`NotificationPlugin.kt`, `NotificationStorage.kt`,
+`TauriNotificationManager.kt`):
 
 - `show` now stores a scheduled notification in the plugin's storage, as `batch` always did.
   Without it, a notification scheduled with `show` (Moony schedules one at a time) was invisible
@@ -26,9 +27,22 @@ Android build):
 - `show` also fills `sourceJson` with the call's own JSON (`invoke.getRawArgs()`). Nothing upstream
   sets it, so the storage held the string "null" (and `getPending` failed reading it) and a tap
   reported no `extra`. `batch` is left as it is: Moony does not use it.
+- A tap that starts the app (cold start) reaches `onIntent` from `load`, before the page has
+  registered its `actionPerformed` listener, and `trigger` drops events without listeners. The tap
+  now waits in `pendingAction` and goes to the first listener (`registerListener` is overridden).
+  The notification extra is removed from the activity's intent once handled, so a page reload
+  does not report the same tap again.
+- `LocalNotificationRestoreReceiver` (after a reboot or an update) read the storage with a plain
+  `ObjectMapper`, which threw on `extra` (a `JSObject` holding Moony's `path`): the receiver
+  crashed at every boot and nothing was rescheduled. It now ignores unknown properties, as the
+  plugin's own mapper does. `NotificationStorage` skips a stored notification it cannot read
+  (it caught only `JSONException`, not Jackson's exceptions) and keeps the stored JSON as the
+  notification's `sourceJson`, so a rescheduled notification is stored again with its JSON (not
+  "null") and its tap still reports `extra`.
 
 When upgrading the plugin: check whether upstream has fixed the force unwrap, returns `extra`
-on iOS and stores `show`'s notifications on Android; if so, drop this directory and the patch
+on iOS, and on Android stores `show`'s notifications, keeps a cold-start tap and restores
+after a reboot without crashing; if so, drop this directory and the patch
 entry. Otherwise copy the new release here and apply the same changes.
 
 After the first iOS build with this directory: check `git status` here. The plugin's `build.rs`

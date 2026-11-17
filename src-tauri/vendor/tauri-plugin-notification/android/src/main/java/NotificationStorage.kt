@@ -7,7 +7,6 @@ package app.tauri.notification
 import android.content.Context
 import android.content.SharedPreferences
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.json.JSONException
 import java.lang.Exception
 
 // Key for private preferences
@@ -45,6 +44,8 @@ class NotificationStorage(private val context: Context, private val jsonMapper: 
         val notificationString = all[key] as String?
         try {
           val notification = jsonMapper.readValue(notificationString, Notification::class.java)
+          // MOONY PATCH: keep the stored JSON as the notification's own (MOONY-PATCH.md)
+          notification.sourceJson = notificationString
           notifications.add(notification)
         } catch (_: Exception) { }
       }
@@ -61,9 +62,15 @@ class NotificationStorage(private val context: Context, private val jsonMapper: 
       return null
     } ?: return null
 
+    // MOONY PATCH: a stored notification that cannot be read is skipped, not thrown (Jackson's own
+    // exceptions are not JSONExceptions; the boot receiver crashed on them), and the stored JSON
+    // stays the notification's own: rescheduling writes `sourceJson` back to the storage and into
+    // the tap's intent, where it carries `extra` (MOONY-PATCH.md).
     return try {
-      jsonMapper.readValue(notificationString, Notification::class.java)
-    } catch (ex: JSONException) {
+      jsonMapper.readValue(notificationString, Notification::class.java).also {
+        it.sourceJson = notificationString
+      }
+    } catch (ex: Exception) {
       null
     }
   }

@@ -65,18 +65,16 @@ export default function NotificationsSection() {
       : t(PERMISSION_VALUE[state]);
 
   const sendTest = () => {
-    try {
-      const when = new Date(Date.now() + TEST_DELAY_SECONDS * 1000);
-      scheduleNotification({
-        id: notificationId('upkeep', 'test'),
-        title: t('notifications.test.title'),
-        body: t('notifications.test.body'),
-        at: { ...localTimeOf(when), second: when.getSeconds() },
-      });
-      toast(t('notifications.test.sent'));
-    } catch (error) {
-      console.warn('[notifications] the test notification failed', error);
-    }
+    const when = new Date(Date.now() + TEST_DELAY_SECONDS * 1000);
+    scheduleNotification({
+      id: notificationId('upkeep', 'test'),
+      title: t('notifications.test.title'),
+      body: t('notifications.test.body'),
+      at: { ...localTimeOf(when), second: when.getSeconds() },
+    }).then(
+      () => toast(t('notifications.test.sent')),
+      (error: unknown) => console.warn('[notifications] the test notification failed', error)
+    );
   };
 
   return (

@@ -611,6 +611,7 @@ input[type='date']::-webkit-datetime-edit-year-field {
   }
   .kit-print-sheet {
     display: block;
+    /* colour-literal-ok: a printout is black on white paper in both themes, whatever the tokens say */
     color: #000;
     background: #fff;
     padding: 24px;

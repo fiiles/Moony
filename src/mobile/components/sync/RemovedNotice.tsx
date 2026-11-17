@@ -9,6 +9,7 @@ import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
+import { sentences } from '@/utils/sentences';
 import { removedNoticeKeys } from '@/utils/sync-notices';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -60,6 +61,7 @@ export function RemovedBlock({
   onRejoin: () => void;
 }) {
   const { t } = useTranslation('deviceSync');
+  const { locale } = useFormat();
   const text = useRemovedText(notice);
   const actions = useRemovedActions();
   return (
@@ -79,9 +81,7 @@ export function RemovedBlock({
         },
       ]}
     >
-      <span data-testid="removed-notice-card">
-        {[text.body, text.unsent].filter(Boolean).join(' ')}
-      </span>
+      <span data-testid="removed-notice-card">{sentences(locale, [text.body, text.unsent])}</span>
     </InlineAlert>
   );
 }

@@ -7,11 +7,4 @@ export function listText(locale: string, items: readonly string[]): string {
   return new Intl.ListFormat(locale, { type: 'conjunction', style: 'narrow' }).format(items);
 }
 
-/**
- * Whole sentences run on as the language writes them: after a space, or straight after the
- * full stop in Japanese and Chinese, whose "。" carries the space itself (B9).
- */
-export function sentences(locale: string, parts: readonly string[]): string {
-  const tight = /^(ja|zh)\b/i.test(locale);
-  return parts.filter(Boolean).join(tight ? '' : ' ');
-}
+export { sentences } from '@/utils/sentences';

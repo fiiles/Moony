@@ -92,7 +92,11 @@ export function SyncDevicesCard() {
       {renaming && <RenameDeviceDialog device={renaming} onClose={() => setRenaming(null)} />}
       {adding && <AddDeviceDialog onClose={() => setAdding(false)} />}
       {removing && (
-        <RemoveDeviceDialog deviceIds={[removing.id]} onClose={() => setRemoving(null)} />
+        <RemoveDeviceDialog
+          deviceIds={[removing.id]}
+          deviceNames={[removing.name]}
+          onClose={() => setRemoving(null)}
+        />
       )}
     </>
   );

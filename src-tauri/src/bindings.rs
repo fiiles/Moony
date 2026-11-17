@@ -38,6 +38,7 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::SyncNewDevice>();
     types.register::<crate::models::SyncKitStorage>();
     types.register::<crate::models::SyncKitInfo>();
+    types.register::<crate::models::SyncAfterKitDevice>();
     types.register::<crate::models::SyncAfterKitJoin>();
     types.register::<crate::models::SyncNoticeKind>();
 

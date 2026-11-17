@@ -1,4 +1,5 @@
 import type {
+  SyncAfterKitDevice,
   SyncDevice,
   SyncNewDevice,
   SyncRemovalNotDone,
@@ -46,16 +47,17 @@ export function newDeviceKind(device: Pick<SyncNewDevice, 'viaKit' | 'lateVouch'
 }
 
 /**
- * The devices a Kit joiner's hold names (`afterKitJoin.names`) that are still on the list: other
- * devices that are not former, matched by name. Removing them lifts the hold.
+ * The devices a Kit joiner's hold names (`afterKitJoin.devices`) that are still on the list: other
+ * devices that are not former, matched by ID (two devices may share a name). Removing them lifts
+ * the hold.
  */
 export function afterKitJoinDevices(
-  names: readonly string[],
+  held: readonly SyncAfterKitDevice[],
   devices: readonly SyncDevice[] | undefined
 ): SyncDevice[] {
-  const wanted = new Set(names);
+  const wanted = new Set(held.map((device) => device.id));
   return (devices ?? []).filter(
-    (device) => !device.thisDevice && device.status !== 'former' && wanted.has(device.name)
+    (device) => !device.thisDevice && device.status !== 'former' && wanted.has(device.id)
   );
 }
 

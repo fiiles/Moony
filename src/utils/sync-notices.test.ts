@@ -61,11 +61,21 @@ describe('afterKitJoinDevices', () => {
       row('d', 'Mac', { thisDevice: true }),
       row('e', 'Other'),
     ];
-    expect(afterKitJoinDevices(['Mac', 'iPhone', 'iPad'], devices).map((d) => d.id)).toEqual([
-      'a',
-      'b',
+    const held = [
+      { id: 'a', name: 'Mac' },
+      { id: 'b', name: 'iPhone' },
+      { id: 'c', name: 'iPad' },
+      { id: 'd', name: 'Mac' },
+    ];
+    expect(afterKitJoinDevices(held, devices).map((d) => d.id)).toEqual(['a', 'b']);
+    expect(afterKitJoinDevices(held, undefined)).toEqual([]);
+  });
+
+  it('matches by ID: another device with the same name is not the held one', () => {
+    const devices = [row('a', 'Mac'), row('x', 'Mac')];
+    expect(afterKitJoinDevices([{ id: 'x', name: 'Mac' }], devices).map((d) => d.id)).toEqual([
+      'x',
     ]);
-    expect(afterKitJoinDevices(['Mac'], undefined)).toEqual([]);
   });
 });
 

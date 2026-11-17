@@ -8,10 +8,11 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
-  PLAN_CHANGED_KEY,
+  planNeedsReload,
   outcomeView,
   removalRequest,
   toggleId,
+  withoutKit,
   type OutcomeView,
 } from '@/utils/sync-removal';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -23,7 +24,9 @@ import { PasswordField } from '@/mobile/components/sync/PasswordField';
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
 
 type Step =
-  { kind: 'plan' } | { kind: 'working' } | { kind: 'kit'; kit: RecoveryKit; view: OutcomeView };
+  | { kind: 'plan' }
+  | { kind: 'working' }
+  | { kind: 'kit'; kit: RecoveryKit | null; view: OutcomeView };
 
 /**
  * "Vytvořit novou sadu" on the phone, the counterpart of the desktop's `NewKitDialog`: a key change
@@ -58,6 +61,14 @@ export function NewKitSheet({
   const resetRemove = removeDevices.reset;
   useEffect(() => resetRemove, [resetRemove]);
 
+  // The kit expired or the password is asked for again: it leaves the step and the mutation result.
+  const kitGone = () => {
+    resetRemove();
+    setStep((current) =>
+      current.kind === 'kit' ? { ...current, kit: null, view: withoutKit(current.view) } : current
+    );
+  };
+
   const finish = (view: OutcomeView, kitShown: boolean) => {
     if (view.toast === 'removed') {
       toast(kitShown ? t('newKitDialog.toast.done') : t('kit.notShown'));
@@ -91,7 +102,7 @@ export function NewKitSheet({
       setStep({ kind: 'plan' });
       setError(translateApiError(failure as Error, tc));
       // The plan the person confirmed no longer holds: show the new one and ask again
-      if (failure instanceof ApiError && failure.key === PLAN_CHANGED_KEY) void reload();
+      if (failure instanceof ApiError && planNeedsReload(failure.key)) void reload();
     }
   };
 
@@ -100,6 +111,7 @@ export function NewKitSheet({
       <NewKitStep
         kit={step.kit}
         pending={step.view.kitPending}
+        onGone={kitGone}
         onDone={() => finish(step.view, true)}
       />
     );

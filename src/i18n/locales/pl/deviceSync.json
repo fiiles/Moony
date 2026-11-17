@@ -294,7 +294,7 @@
     "confirm": "Usuń zsynchronizowane dane",
     "success": "Zsynchronizowane dane usunięte",
     "afterwards": "Potem synchronizację konfiguruje się od początku, z nowym zestawem odzyskiwania.",
-    "afterwardsOwnServer": "Potem możesz skonfigurować synchronizację ponownie z tym samym kodem połączenia i nowym Zestawem odzyskiwania."
+    "afterwardsOwnServer": "Potem możesz skonfigurować synchronizację ponownie z tym samym kodem połączenia i nowym zestawem odzyskiwania."
   },
   "danger": {
     "title": "Wyłączenie lub usunięcie",
@@ -303,7 +303,7 @@
   "leftover": {
     "text": "W tym profilu synchronizacja urządzeń została włączona z wersji deweloperskiej. Jego zmiany nadal są zapisywane na potrzeby synchronizacji.",
     "button": "Wyłącz synchronizację",
-    "noServer": "Zsynchronizowane dane i konto synchronizacji pozostają na serwerze synchronizacji, dopóki nie zostaną usunięte w wersji Moony z synchronizacją.",
+    "noServer": "Zsynchronizowane dane pozostają na serwerze synchronizacji, dopóki nie zostaną usunięte w wersji Moony z synchronizacją.",
     "description": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują. Aby później dołączyć ponownie, potrzebna jest wersja Moony z synchronizacją.",
     "phoneDescription": "Dane lokalne na tym telefonie zostają. Pozostałe urządzenia nadal się synchronizują. Aby później dołączyć ponownie, potrzebna jest wersja Moony z synchronizacją."
   },
@@ -324,7 +324,6 @@
     "title": "Urządzenia",
     "description": "Te urządzenia mają dostęp do Twoich danych.",
     "thisDevice": "To urządzenie",
-    "joined": "Dołączono {{date}}",
     "noChange": "Nie zsynchronizowano jeszcze żadnych zmian",
     "version": "Moony {{version}}",
     "held": "Zmiany wstrzymane",

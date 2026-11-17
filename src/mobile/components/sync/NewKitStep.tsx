@@ -18,17 +18,21 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
 export function NewKitStep({
   kit,
   pending,
+  onGone,
   onDone,
 }: {
-  kit: RecoveryKit;
+  /** `null` once the kit left the screen (`onGone`): the caller dropped it from its state. */
+  kit: RecoveryKit | null;
   /** The removal has not finished (the sync server was out of reach): the kit starts working once it does. */
   pending: boolean;
+  /** The kit expired or the backend asks for the password again: the caller drops it (state and mutation result). */
+  onGone: () => void;
   onDone: () => void;
 }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const [kept, setKept] = useState(false);
-  const [gone, setGone] = useState(false);
+  const gone = kit === null;
 
   return (
     <Sheet
@@ -50,7 +54,7 @@ export function NewKitStep({
         )
       }
     >
-      {gone ? (
+      {gone || kit === null ? (
         <p role="status" className="m-0 text-m-lead text-ink-2">
           {t('newKit.gone')}
         </p>
@@ -62,8 +66,8 @@ export function NewKitStep({
           <KitBody
             kit={kit}
             onKept={() => setKept(true)}
-            onPasswordRequired={() => setGone(true)}
-            onExpired={() => setGone(true)}
+            onPasswordRequired={onGone}
+            onExpired={onGone}
           />
           {!kept && <p className="m-0 text-m-sub text-ink-4">{t('newKit.keepFirst')}</p>}
         </div>

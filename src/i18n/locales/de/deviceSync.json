@@ -283,7 +283,7 @@
   "leftover": {
     "text": "In diesem Profil wurde die Geräte-Synchronisierung über eine Entwicklungsversion eingeschaltet. Seine Änderungen werden weiterhin für die Synchronisierung aufgezeichnet.",
     "button": "Synchronisierung ausschalten",
-    "noServer": "Die synchronisierten Daten und das Sync-Konto bleiben auf dem Synchronisierungsserver, bis Sie sie in einer Version von Moony mit Synchronisierung löschen.",
+    "noServer": "Die synchronisierten Daten bleiben auf dem Synchronisierungsserver, bis Sie sie in einer Version von Moony mit Synchronisierung löschen.",
     "description": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter. Um später wieder beizutreten, brauchen Sie eine Version von Moony mit Synchronisierung.",
     "phoneDescription": "Die lokalen Daten auf diesem Telefon bleiben erhalten. Ihre anderen Geräte synchronisieren weiter. Um später wieder beizutreten, brauchen Sie eine Version von Moony mit Synchronisierung."
   },
@@ -304,7 +304,6 @@
     "title": "Geräte",
     "description": "Diese Geräte haben Zugriff auf Ihre Daten.",
     "thisDevice": "Dieses Gerät",
-    "joined": "Hinzugefügt am {{date}}",
     "noChange": "Noch keine Änderungen synchronisiert",
     "version": "Moony {{version}}",
     "held": "Änderungen zurückgehalten",

@@ -69,6 +69,7 @@ describe('kitLineKey', () => {
 describe('dropping out', () => {
   it('keys the reasons and offers "Je moje" for a late vouch only', () => {
     expect(dropReasonKey('issuerRemoved')).toBe('remove.dropReason.issuerRemoved');
+    expect(dropReasonKey('copy')).toBe('remove.dropReason.unverified');
     expect(canKeepDropping('lateVouch')).toBe(true);
     expect(canKeepDropping('unverified')).toBe(false);
     expect(canKeepDropping('issuerRemoved')).toBe(false);

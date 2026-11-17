@@ -323,7 +323,7 @@ describe('statusPopoverLines', () => {
   it('adds one line per notice, in order', () => {
     const lines = statusPopoverLines({
       ...base,
-      afterKitJoin: { names: ['Mac'], newestChangeAt: now },
+      afterKitJoin: { devices: [{ id: 'a', name: 'Mac' }], newestChangeAt: now },
       removalNotice: { by: 'Mac', at: now, removed: ['Phone', 'Tablet'], kitReplaced: false },
       newDevices: [
         { id: 'a', name: 'Pad', by: 'Mac', at: now, viaKit: false, lateVouch: false },

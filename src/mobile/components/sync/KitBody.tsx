@@ -41,7 +41,7 @@ export function KitBody({
   const { t: tc } = useTranslation('common');
   const { copyRecoveryCode } = useDeviceSyncMutations();
   const { exportText } = useExportTextFile();
-  const kitCopy = useRecoveryKitCopy();
+  const kitCopy = useRecoveryKitCopy(kit);
   // Screen capture cannot be switched off per window on a phone: the lifetime is all there is
   useRecoveryKitLifetime(onExpired, false);
   const [copied, setCopied] = useState(false);

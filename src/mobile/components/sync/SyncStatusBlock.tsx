@@ -9,6 +9,7 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { cn } from '@/lib/utils';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
+import { sentences } from '@/utils/sentences';
 import {
   aheadGap,
   aheadText,
@@ -200,6 +201,7 @@ function ProblemAlert({
   renderDate: (seconds: number) => string;
 }) {
   const { t } = useTranslation('deviceSync');
+  const { locale } = useFormat();
   const heldGaps = useHeldGaps(status.problem === 'gap' || status.problem === 'clockAhead');
   const problem = status.problem;
   if (!problem) return null;
@@ -220,15 +222,16 @@ function ProblemAlert({
   const skipFrom = firstSkippableAt(held, now);
   if (skipFrom !== null && renderDate(skipFrom)) {
     const key = problem === 'clockAhead' ? 'alert.clockAhead.skipFrom' : 'alert.gap.skipFrom';
-    body = `${body} ${t(key, { date: renderDate(skipFrom) })}`;
+    body = sentences(locale, [body, t(key, { date: renderDate(skipFrom) })]);
   }
   let actions: Array<{ label: string; onClick: () => void; disabled?: boolean }> = [];
   const connectAgain = { label: t('problem.rejoin.button'), onClick: onRejoin };
   if (problemState?.kind === 'rejoin') {
     title = t('problem.rejoin.title');
-    body = problemState.by
-      ? `${t('problem.rejoin.body')} ${t('problem.rejoin.by', { by: problemState.by })}`
-      : t('problem.rejoin.body');
+    body = sentences(locale, [
+      t('problem.rejoin.body'),
+      problemState.by ? t('problem.rejoin.by', { by: problemState.by }) : null,
+    ]);
     actions = [connectAgain];
   } else if (problemState?.kind === 'waitingForRemover') {
     title = t('problem.waiting.title', { by: problemState.by });
@@ -244,14 +247,12 @@ function ProblemAlert({
       body =
         action === 'askOperator'
           ? t('alert.lapsed.selfHosted')
-          : [
+          : sentences(locale, [
               t('phone.renewUnavailable'),
               secondsToDate(status.deletesAt) !== null
                 ? t('alert.lapsed.deletes', { date: renderDate(status.deletesAt ?? 0) })
                 : null,
-            ]
-              .filter(Boolean)
-              .join(' ');
+            ]);
       break;
     case 'turnOffOrRetry':
       body = t('alert.vaultGone.text');

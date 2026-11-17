@@ -13,16 +13,20 @@ import {
   removalNoticeText,
   removalNotDoneText,
 } from '@/utils/sync-notices';
+import { sentences } from '@/utils/sentences';
 import { removalAvailable } from '@/utils/sync-removal';
 import { NewKitDialog } from '@/components/settings/sync/NewKitDialog';
 import { RemoveDeviceDialog } from '@/components/settings/sync/RemoveDeviceDialog';
 import { WRAP_BUTTON } from '@/components/settings/sync/wrap-button';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 /** A removal the list opened: the devices, whether it also makes a new recovery kit, and what follows it. */
 interface Removing {
   ids: string[];
+  /** Their names, for the dialog's title before its plan loads. */
+  names: string[];
   newKit: boolean;
   /** "Data jsou zpět": the hold is lifted once the devices are gone. */
   decidesKitJoin: boolean;
@@ -39,9 +43,11 @@ interface Removing {
 export function NoticeList({ status }: { status: SyncStatus }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
-  const { date } = useFormat();
+  const { date, locale } = useFormat();
   const { dismissNotice, keepDevice, kitJoinDecided } = useDeviceSyncMutations();
   const { data: devices } = useSyncDevices();
+  // The notice being dismissed (its key), so only its own button waits and a double tap is ignored
+  const [dismissing, setDismissing] = useState<string | null>(null);
   const [removing, setRemoving] = useState<Removing | null>(null);
   const [makingKit, setMakingKit] = useState(false);
   const available = removalAvailable(status);
@@ -50,20 +56,34 @@ export function NoticeList({ status }: { status: SyncStatus }) {
   const failed = (error: unknown) =>
     toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
 
-  const dismiss = async (kind: SyncNoticeKind, ids?: string[]) => {
+  /** Dismisses a notice; `true` when it is gone. */
+  const dismiss = async (key: string, kind: SyncNoticeKind, ids?: string[]): Promise<boolean> => {
+    if (dismissing === key) return false;
+    setDismissing(key);
     try {
       await dismissNotice.mutateAsync(ids ? { kind, devices: ids } : kind);
+      return true;
     } catch (error) {
       failed(error);
+      return false;
+    } finally {
+      setDismissing(null);
     }
   };
   const keep = async (id: string) => {
+    let kept: boolean;
     try {
-      await keepDevice.mutateAsync(id);
-      await dismissNotice.mutateAsync({ kind: 'newDevices', devices: [id] });
+      kept = await keepDevice.mutateAsync(id);
     } catch {
       toast.error(t('devices.check.keepFailed'));
+      return;
     }
+    // Nothing was kept (the row is gone or no longer in question): the list was reloaded, no success
+    if (!kept) {
+      toast(t('devices.check.keepFailed'));
+      return;
+    }
+    await dismiss(`new-${id}`, 'newDevices', [id]);
   };
   // "Mám je" (`false`), or the devices are gone (`true`); a removal still running refuses with its own text
   const decideKitJoin = async (removeThem: boolean) => {
@@ -80,15 +100,17 @@ export function NoticeList({ status }: { status: SyncStatus }) {
       size="sm"
       variant="outline"
       className={WRAP_BUTTON}
-      loading={dismissNotice.isPending}
-      onClick={() => void dismiss(kind)}
+      loading={dismissing === kind}
+      onClick={() => void dismiss(kind, kind)}
     >
       {tc('buttons.close')}
     </Button>
   );
 
   const afterKit = status.afterKitJoin;
-  const heldDevices = afterKit ? afterKitJoinDevices(afterKit.names, devices) : [];
+  const heldDevices = afterKit ? afterKitJoinDevices(afterKit.devices, devices) : [];
+  // What the held devices are is known only once the device list is: no choice before that
+  const devicesLoaded = devices !== undefined;
   const removal = status.removalNotice;
   const notDone = status.removalNotDone;
   const overrun = status.keyChangeOverrun;
@@ -96,7 +118,7 @@ export function NoticeList({ status }: { status: SyncStatus }) {
   const boxes: ReactNode[] = [];
 
   if (afterKit) {
-    const names = afterKit.names.join(', ');
+    const names = afterKit.devices.map((device) => device.name).join(', ');
     boxes.push(
       <NoticeBox
         key="afterKit"
@@ -104,7 +126,9 @@ export function NoticeList({ status }: { status: SyncStatus }) {
         title={t('afterKit.title')}
         actions={
           <>
-            {heldDevices.length > 0 ? (
+            {!devicesLoaded ? (
+              <Skeleton className="h-8 w-28" />
+            ) : heldDevices.length > 0 ? (
               <Button
                 type="button"
                 size="sm"
@@ -113,6 +137,7 @@ export function NoticeList({ status }: { status: SyncStatus }) {
                 onClick={() =>
                   setRemoving({
                     ids: heldDevices.map((device) => device.id),
+                    names: heldDevices.map((device) => device.name),
                     newKit: false,
                     decidesKitJoin: true,
                   })
@@ -159,12 +184,14 @@ export function NoticeList({ status }: { status: SyncStatus }) {
     const text = removalNoticeText(removal);
     boxes.push(
       <NoticeBox key="removal" testId="notice-removal" actions={close('removal')}>
-        {t(text.key, {
-          by: removal.by,
-          names: removal.removed.join(', '),
-          date: day(removal.at),
-        })}
-        {text.kitToo && ` ${t('notice.removal.kitToo')}`}
+        {sentences(locale, [
+          t(text.key, {
+            by: removal.by,
+            names: removal.removed.join(', '),
+            date: day(removal.at),
+          }),
+          text.kitToo ? t('notice.removal.kitToo') : null,
+        ])}
       </NoticeBox>
     );
   }
@@ -218,8 +245,8 @@ export function NoticeList({ status }: { status: SyncStatus }) {
         size="sm"
         variant="outline"
         className={WRAP_BUTTON}
-        loading={dismissNotice.isPending}
-        onClick={() => void dismiss('newDevices', [device.id])}
+        loading={dismissing === `new-${device.id}`}
+        onClick={() => void dismiss(`new-${device.id}`, 'newDevices', [device.id])}
       >
         {kind === 'kit' ? t('notice.newDevice.mine') : tc('buttons.close')}
       </Button>
@@ -249,7 +276,12 @@ export function NoticeList({ status }: { status: SyncStatus }) {
                 className={WRAP_BUTTON}
                 disabled={!available}
                 onClick={() =>
-                  setRemoving({ ids: [device.id], newKit: false, decidesKitJoin: false })
+                  setRemoving({
+                    ids: [device.id],
+                    names: [device.name],
+                    newKit: false,
+                    decidesKitJoin: false,
+                  })
                 }
               >
                 {t('devices.remove')}
@@ -264,7 +296,12 @@ export function NoticeList({ status }: { status: SyncStatus }) {
                 className={WRAP_BUTTON}
                 disabled={!available}
                 onClick={() =>
-                  setRemoving({ ids: [device.id], newKit: true, decidesKitJoin: false })
+                  setRemoving({
+                    ids: [device.id],
+                    names: [device.name],
+                    newKit: true,
+                    decidesKitJoin: false,
+                  })
                 }
               >
                 {t('notice.newDevice.removeAndNew')}
@@ -286,6 +323,7 @@ export function NoticeList({ status }: { status: SyncStatus }) {
       {removing && (
         <RemoveDeviceDialog
           deviceIds={removing.ids}
+          deviceNames={removing.names}
           newKit={removing.newKit}
           onRemoved={removing.decidesKitJoin ? () => void decideKitJoin(true) : undefined}
           onClose={() => setRemoving(null)}

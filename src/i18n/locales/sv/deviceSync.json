@@ -283,7 +283,7 @@
   "leftover": {
     "text": "Den här profilen har enhetssynkronisering påslagen från en utvecklingsversion. Dess ändringar registreras fortfarande för synkronisering.",
     "button": "Stäng av synkroniseringen",
-    "noServer": "De synkroniserade uppgifterna och synkroniseringskontot finns kvar på synkroniseringsservern tills de raderas från en version av Moony med synkronisering.",
+    "noServer": "De synkroniserade uppgifterna finns kvar på synkroniseringsservern tills de raderas från en version av Moony med synkronisering.",
     "description": "Lokala data finns kvar. Andra enheter fortsätter synkronisera. För att ansluta igen senare behövs en version av Moony med synkronisering.",
     "phoneDescription": "Lokala data på den här telefonen finns kvar. Dina andra enheter fortsätter synkronisera. För att ansluta igen senare behövs en version av Moony med synkronisering."
   },
@@ -304,7 +304,6 @@
     "title": "Enheter",
     "description": "De här enheterna har tillgång till dina data.",
     "thisDevice": "Den här enheten",
-    "joined": "Ansluten {{date}}",
     "noChange": "Inga ändringar har synkroniserats ännu",
     "version": "Moony {{version}}",
     "held": "Ändringar hålls kvar",

@@ -19,6 +19,7 @@ import {
   type SyncProblemAction,
   skippableGap,
 } from '@/utils/device-sync-problem';
+import { sentences } from '@/utils/sentences';
 import { secondsToDate } from '@/utils/sync-status';
 import { isQuietlyOutOfReach, syncProblemState } from '@/utils/sync-state';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -34,7 +35,11 @@ import { SkipMissingChangeDialog } from '@/components/settings/sync/SkipMissingC
 
 type Open = 'renew' | 'repair' | 'resync' | 'turnOff' | 'rejoin' | null;
 
-/** The problem that paused or stopped sync, next to its cause, with the action that answers it. */
+/**
+ * The problem that paused or stopped sync, next to its cause, with the action that answers it. The
+ * dialogs its buttons open live here, outside the box: the problem may clear while one is open
+ * (a round succeeded meanwhile) and the dialog must not vanish under the person.
+ */
 export function SyncProblemAlert({
   status,
   onRejoin,
@@ -43,17 +48,44 @@ export function SyncProblemAlert({
   /** "Připojit znovu" turned sync off on this device: the join choice follows. */
   onRejoin: () => void;
 }) {
-  const { t } = useTranslation('deviceSync');
-  const { t: tc } = useTranslation('common');
-  const { date } = useFormat();
-  const { syncNow } = useDeviceSyncMutations();
   const [open, setOpen] = useState<Open>(null);
   /** A repair that could not send every change: re-syncing is offered next to it. */
   const [offerResync, setOfferResync] = useState(false);
   /** The held change whose skip confirmation is open, as it was when the confirmation opened. */
   const [skipping, setSkipping] = useState<HeldGapView | null>(null);
-  const heldGaps = useHeldGaps(status.problem === 'gap' || status.problem === 'clockAhead');
   const close = () => setOpen(null);
+
+  return (
+    <>
+      <ProblemBox status={status} offerResync={offerResync} onOpen={setOpen} onSkip={setSkipping} />
+      {open === 'renew' && <SyncRenewDialog onClose={close} />}
+      {open === 'repair' && (
+        <RepairDeviceDialog onClose={close} onDrainIncomplete={() => setOfferResync(true)} />
+      )}
+      {open === 'resync' && <ResyncDeviceDialog onClose={close} />}
+      {open === 'turnOff' && <TurnOffSyncDialog onClose={close} />}
+      {open === 'rejoin' && <RejoinDialog onTurnedOff={onRejoin} onClose={close} />}
+      {skipping && <SkipMissingChangeDialog gap={skipping} onClose={() => setSkipping(null)} />}
+    </>
+  );
+}
+
+function ProblemBox({
+  status,
+  offerResync,
+  onOpen,
+  onSkip,
+}: {
+  status: SyncStatus;
+  offerResync: boolean;
+  onOpen: (open: Open) => void;
+  onSkip: (gap: HeldGapView) => void;
+}) {
+  const { t } = useTranslation('deviceSync');
+  const { t: tc } = useTranslation('common');
+  const { date, locale } = useFormat();
+  const { syncNow } = useDeviceSyncMutations();
+  const heldGaps = useHeldGaps(status.problem === 'gap' || status.problem === 'clockAhead');
   const problem = status.problem;
   if (!problem) return null;
   const problemState = syncProblemState(status);
@@ -86,19 +118,20 @@ export function SyncProblemAlert({
   const skipFrom = firstSkippableAt(held, now);
   if (skipFrom !== null && dateText(skipFrom)) {
     const key = problem === 'clockAhead' ? 'alert.clockAhead.skipFrom' : 'alert.gap.skipFrom';
-    body = `${body} ${t(key, { date: dateText(skipFrom) })}`;
+    body = sentences(locale, [body, t(key, { date: dateText(skipFrom) })]);
   }
   let actions: React.ReactNode = null;
   const connectAgain = (
-    <Button type="button" size="sm" onClick={() => setOpen('rejoin')}>
+    <Button type="button" size="sm" onClick={() => onOpen('rejoin')}>
       {t('problem.rejoin.button')}
     </Button>
   );
   if (problemState?.kind === 'rejoin') {
     title = t('problem.rejoin.title');
-    body = problemState.by
-      ? `${t('problem.rejoin.body')} ${t('problem.rejoin.by', { by: problemState.by })}`
-      : t('problem.rejoin.body');
+    body = sentences(locale, [
+      t('problem.rejoin.body'),
+      problemState.by ? t('problem.rejoin.by', { by: problemState.by }) : null,
+    ]);
     actions = connectAgain;
   } else if (problemState?.kind === 'waitingForRemover') {
     title = t('problem.waiting.title', { by: problemState.by });
@@ -119,7 +152,7 @@ export function SyncProblemAlert({
             : null;
       if (action === 'renew') {
         actions = (
-          <Button type="button" size="sm" onClick={() => setOpen('renew')}>
+          <Button type="button" size="sm" onClick={() => onOpen('renew')}>
             {t('alert.lapsed.renew')}
           </Button>
         );
@@ -129,7 +162,7 @@ export function SyncProblemAlert({
       body = t('alert.vaultGone.text');
       actions = (
         <>
-          <Button type="button" size="sm" onClick={() => setOpen('turnOff')}>
+          <Button type="button" size="sm" onClick={() => onOpen('turnOff')}>
             {t('alert.vaultGone.turnOff')}
           </Button>
           <Button
@@ -147,11 +180,11 @@ export function SyncProblemAlert({
     case 'repair':
       actions = (
         <>
-          <Button type="button" size="sm" onClick={() => setOpen('repair')}>
+          <Button type="button" size="sm" onClick={() => onOpen('repair')}>
             {t('repair.button')}
           </Button>
           {offerResync && (
-            <Button type="button" size="sm" variant="outline" onClick={() => setOpen('resync')}>
+            <Button type="button" size="sm" variant="outline" onClick={() => onOpen('resync')}>
               {t('resync.button')}
             </Button>
           )}
@@ -166,7 +199,7 @@ export function SyncProblemAlert({
       if (skippable?.kind === 'ahead') {
         body = aheadText(skippable, t, dateText);
         actions = (
-          <Button type="button" size="sm" onClick={() => setSkipping(skippable)}>
+          <Button type="button" size="sm" onClick={() => onSkip(skippable)}>
             {t('alert.clockAhead.skip')}
           </Button>
         );
@@ -178,7 +211,7 @@ export function SyncProblemAlert({
             ? t('alert.gap.waiting', { device, days })
             : t('alert.gap.missing', { device, days, count: skippable.missingChanges });
         actions = (
-          <Button type="button" size="sm" onClick={() => setSkipping(skippable)}>
+          <Button type="button" size="sm" onClick={() => onSkip(skippable)}>
             {t('alert.gap.skip', { count: skippable.missingChanges })}
           </Button>
         );
@@ -187,7 +220,7 @@ export function SyncProblemAlert({
     case 'none':
       if (offersResync(problem)) {
         actions = (
-          <Button type="button" size="sm" variant="outline" onClick={() => setOpen('resync')}>
+          <Button type="button" size="sm" variant="outline" onClick={() => onOpen('resync')}>
             {t('resync.button')}
           </Button>
         );
@@ -201,21 +234,11 @@ export function SyncProblemAlert({
   }
 
   return (
-    <>
-      <Alert variant={status.phase === 'error' ? 'destructive' : 'default'}>
-        <AlertTriangle />
-        {title && <AlertTitle>{title}</AlertTitle>}
-        {body && <AlertDescription>{body}</AlertDescription>}
-        {actions && <AlertActions className="flex-wrap">{actions}</AlertActions>}
-      </Alert>
-      {open === 'renew' && <SyncRenewDialog onClose={close} />}
-      {open === 'repair' && (
-        <RepairDeviceDialog onClose={close} onDrainIncomplete={() => setOfferResync(true)} />
-      )}
-      {open === 'resync' && <ResyncDeviceDialog onClose={close} />}
-      {open === 'turnOff' && <TurnOffSyncDialog onClose={close} />}
-      {open === 'rejoin' && <RejoinDialog onTurnedOff={onRejoin} onClose={close} />}
-      {skipping && <SkipMissingChangeDialog gap={skipping} onClose={() => setSkipping(null)} />}
-    </>
+    <Alert variant={status.phase === 'error' ? 'destructive' : 'default'}>
+      <AlertTriangle />
+      {title && <AlertTitle>{title}</AlertTitle>}
+      {body && <AlertDescription>{body}</AlertDescription>}
+      {actions && <AlertActions className="flex-wrap">{actions}</AlertActions>}
+    </Alert>
   );
 }

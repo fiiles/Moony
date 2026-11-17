@@ -118,11 +118,9 @@ export function useRemovalPlan(
   newKit = false,
   enabled = true
 ) {
-  // The first read of a dialog wakes a sync round (`refresh`); ticks and re-reads do not.
+  // The first read of a dialog wakes a sync round (`refresh`); ticks, re-reads and the read after a
+  // failed submit do not. The ref lives as long as the dialog is mounted (they mount only while open).
   const firstRead = useRef(true);
-  useEffect(() => {
-    if (!enabled) firstRead.current = true;
-  }, [enabled]);
   return useQuery({
     queryKey: ['device-sync-removal-plan', deviceIds, alsoRemove, newKit],
     queryFn: () => {
@@ -221,11 +219,23 @@ export function useHolderFinish(view: PairingView | undefined): {
   const list = devices.data;
   const joined = sent && before ? newlyJoinedDevice(before, list) : null;
 
-  // What was on the list before the details were sent; a new pairing starts over
+  // What was on the list before the details were sent: the answer of a fresh read at the start of
+  // the pairing (never the cached list, which may predate a device that joined since). If that
+  // answer comes after `sent`, it is the baseline then. A new pairing starts over.
   if (!holding && before !== null) setBefore(null);
-  else if (holding && before === null && list && !sent) {
-    setBefore(new Set(list.map((device) => device.id)));
-  }
+  const refetchDevices = devices.refetch;
+  useEffect(() => {
+    if (!holding) return;
+    let cancelled = false;
+    void refetchDevices().then((result) => {
+      if (cancelled || result.isError || !result.data) return;
+      const ids = result.data.map((device) => device.id);
+      setBefore((current) => current ?? new Set(ids));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [holding, refetchDevices]);
 
   // The `expiresAt` of the pairing whose two minutes ran out (it identifies the pairing)
   const pairingKey = view?.expiresAt;

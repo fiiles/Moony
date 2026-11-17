@@ -13,19 +13,22 @@ import { RecoveryKitPanel } from '@/components/settings/sync/RecoveryKitPanel';
 export function NewKitStep({
   kit,
   pending,
+  onGone,
   onDone,
 }: {
-  kit: RecoveryKit;
+  /** `null` once the kit left the screen (`onGone`): the caller dropped it from its state. */
+  kit: RecoveryKit | null;
   /** The removal has not finished (the sync server was out of reach): the kit starts working once it does. */
   pending: boolean;
+  /** The kit expired or the backend asks for the password again: the caller drops it (state and mutation result). */
+  onGone: () => void;
   onDone: () => void;
 }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const [kept, setKept] = useState(false);
-  const [gone, setGone] = useState(false);
 
-  if (gone) {
+  if (kit === null) {
     return (
       <div className="grid gap-4">
         <p className="m-0 text-body text-ink-2" role="status">
@@ -50,8 +53,8 @@ export function NewKitStep({
       <RecoveryKitPanel
         kit={kit}
         onKept={() => setKept(true)}
-        onPasswordRequired={() => setGone(true)}
-        onExpired={() => setGone(true)}
+        onPasswordRequired={onGone}
+        onExpired={onGone}
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="m-0 min-w-0 flex-1 text-micro font-500 text-ink-3">

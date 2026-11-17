@@ -15,10 +15,10 @@ use super::rekey::{self, head};
 use super::{devices, join, state};
 use crate::error::Result;
 use crate::models::sync::{
-    KitCheck, KitCheckResult, RemovalDroppingOut, RemovalPlan, RemovalPlanDevice, SyncAfterKitJoin,
-    SyncCheckReason, SyncKeyChangeOverrun, SyncKitInfo, SyncKitStorage, SyncNewDevice,
-    SyncNoticeKind, SyncRemovalNotDone, SyncRemovalNotice, SyncRemovedNotice,
-    SyncWaitingForRemover,
+    KitCheck, KitCheckResult, RemovalDroppingOut, RemovalPlan, RemovalPlanDevice,
+    SyncAfterKitDevice, SyncAfterKitJoin, SyncCheckReason, SyncKeyChangeOverrun, SyncKitInfo,
+    SyncKitStorage, SyncNewDevice, SyncNoticeKind, SyncRemovalNotDone, SyncRemovalNotice,
+    SyncRemovedNotice, SyncWaitingForRemover,
 };
 use crate::models::ReplacesKit as ReplacesKitView;
 use crate::services::sync::setup;
@@ -188,14 +188,17 @@ pub fn extras(conn: &Connection, runtime: &Runtime, now: i64) -> Result<Extras> 
     };
     let after_kit_join = match join::after_kit_join(conn)? {
         Some(hold) => {
-            let mut names = Vec::new();
+            let mut devices = Vec::new();
             for hex in &hold.devices {
                 if let Some(name) = name_of_hex(conn, hex)? {
-                    names.push(name);
+                    devices.push(SyncAfterKitDevice {
+                        id: hex.clone(),
+                        name,
+                    });
                 }
             }
             Some(SyncAfterKitJoin {
-                names,
+                devices,
                 newest_change_at: hold.newest_change_at,
             })
         }
@@ -763,7 +766,10 @@ mod tests {
         assert_eq!(
             status(&conn, &Runtime::default()).after_kit_join,
             Some(SyncAfterKitJoin {
-                names: vec!["iPhone".into()],
+                devices: vec![SyncAfterKitDevice {
+                    id: B.to_hex(),
+                    name: "iPhone".into()
+                }],
                 newest_change_at: Some(NOW - 5)
             })
         );

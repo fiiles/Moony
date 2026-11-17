@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import type { SyncDevice } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
+import { sentences } from '@/utils/sentences';
 import {
   canKeepDevice,
   canRemoveDevice,
@@ -50,7 +51,7 @@ export function DeviceSheet({
   onRemove,
 }: DeviceSheetProps) {
   const { t } = useTranslation('deviceSync');
-  const { date, dateTime } = useFormat();
+  const { date, dateTime, locale } = useFormat();
   const shown = device;
   const label = shown ? deviceLabelKey(shown) : null;
   const reasonKey = shown ? checkReasonKey(shown) : null;
@@ -69,8 +70,10 @@ export function DeviceSheet({
         <div>
           {reasonKey && (
             <p className="mx-0.5 mb-3.5 mt-0 text-m-lead text-ink-2">
-              {t(reasonKey, { by: shown.addedBy ?? '' })}
-              {canKeepDevice(shown) && ` ${t('devices.check.keepNote')}`}
+              {sentences(locale, [
+                t(reasonKey, { by: shown.addedBy ?? '' }),
+                canKeepDevice(shown) ? t('devices.check.keepNote') : null,
+              ])}
             </p>
           )}
           <div className={CARD}>

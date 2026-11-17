@@ -25,7 +25,13 @@ export function TurnOffSyncDialog({ onClose }: { onClose: () => void }) {
       confirmLabel={t('turnOff.confirm')}
       destructive
       onSubmit={async (password) => {
-        await turnOff.mutateAsync(password);
+        try {
+          await turnOff.mutateAsync(password);
+        } catch (error) {
+          // The typed password is the mutation's variable: a failure must not leave it behind
+          resetTurnOff();
+          throw error;
+        }
         toast(t('turnOff.success'));
       }}
       onClose={onClose}

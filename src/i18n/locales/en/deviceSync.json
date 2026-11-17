@@ -274,7 +274,7 @@
     "confirm": "Delete synced data",
     "success": "Synced data deleted",
     "afterwards": "Afterwards sync is set up from the start, with a new recovery kit.",
-    "afterwardsOwnServer": "Afterwards you can set sync up again with the same connection code and a new Recovery Kit."
+    "afterwardsOwnServer": "Afterwards you can set sync up again with the same connection code and a new recovery kit."
   },
   "danger": {
     "title": "Turn off or delete",
@@ -283,7 +283,7 @@
   "leftover": {
     "text": "This profile has device sync turned on from a development build. Its changes are still recorded for sync.",
     "button": "Turn sync off",
-    "noServer": "The synced data and the sync account stay on the sync server until they are deleted from a version of Moony that has sync.",
+    "noServer": "The synced data stay on the sync server until they are deleted from a version of Moony that has sync.",
     "description": "Local data stays. Other devices keep syncing. Joining again later needs a version of Moony that has sync.",
     "phoneDescription": "Local data on this phone stays. Your other devices keep syncing. Joining again later needs a version of Moony that has sync."
   },
@@ -304,7 +304,6 @@
     "title": "Devices",
     "description": "These devices can access your data.",
     "thisDevice": "This device",
-    "joined": "Joined {{date}}",
     "noChange": "No changes synced yet",
     "version": "Moony {{version}}",
     "held": "Changes held",

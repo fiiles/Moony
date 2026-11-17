@@ -1918,3 +1918,31 @@ R-103. **Deviations, Task 31.** (a) "Připojit znovu" in the unlock sheet dismis
      `setup.kit.file.account*` were already gone. (f) Not verified on a device: every new sheet at 320 pt with
      the largest text size, dark mode, the kit step and "Uložit nebo sdílet…" on iOS, the unlock sheet across a
      real removal, the rejoin flow, de and ja wrapping.
+R-104. **Review fixes of the phase 5 UI (desktop and phone).** (a) The new kit leaves state when it expires:
+     both `NewKitStep`s take `kit: RecoveryKit | null` and `onGone`; the removal dialog/sheet and the new-kit
+     dialog/sheet answer with `removeDevices.reset()` and a kit step whose kit and `view.kit` are `null`
+     (`withoutKit`), so neither the step nor the mutation result keeps the seed until "Zavřít". The setup flows
+     already did this through `dropKit`. (b) **Wire change:** `afterKitJoin` is `{devices: [{id, name}],
+     newestChangeAt}` (`SyncAfterKitDevice`; `names` is gone, nothing else read it); `afterKitJoinDevices`
+     matches by ID, and "Data jsou zpět" shows a skeleton (desktop) or a disabled "Odebrat je" (phone) until
+     the device list has loaded, so "Pokračovat" is never offered on an empty list. (c) `SyncProblemAlert`
+     keeps its dialogs outside the box (`ProblemBox`), so a problem that clears does not unmount an open
+     rejoin, repair, re-sync, turn-off or skip dialog. (d) A failed removal also reloads the plan on
+     `validation.syncRotationRaced` (`planNeedsReload`); `kitJoinDecided` also invalidates the device list;
+     the phone's saved kit page says "· {device}" (`useRecoveryKitCopy(kit)`); `dropReasonKey('copy')` reads
+     as `unverified` (the backend never sends it, so there is no `dropReason.copy` text); the removal
+     dialog/sheet takes `deviceNames` for its title until the plan names them; `useRemovalPlan` asks for
+     `refresh` only on a dialog's first read (not again after a failed submit); `useHolderFinish` takes its
+     baseline from a fresh read at the start of the pairing (and from the first answer even when it comes after
+     `sent`), never from a cached list. (e) Notices: dismissal is pending per notice (its key) and a second tap
+     is ignored; "Je moje" that returns `false` shows a quiet "list reloaded" toast and does not dismiss, and a
+     failed dismissal after a successful keep no longer reads "keepFailed". (f) Two sentences join through
+     `utils/sentences.ts` (`sentences(locale, …)`, moved from the phone's `list-text`), so ja and zh get no
+     ASCII space: problem alerts, notice boxes, device rows and sheets, the removed notice, the leftover card.
+     (g) Dead key `devices.joined` dropped; `leftover.noServer` no longer says "sync account" in any locale;
+     "recovery kit" is lower case in `delete.afterwardsOwnServer` (en, cs, es, it, pl). The print sheet's
+     `#000`/`#fff` carry a `colour-literal-ok` comment. A failed turn-off or rejoin (phone and desktop) resets
+     the mutation, so the typed password does not linger in its variables. Printing counts as kept when the
+     print dialog opens (R-91, kept on purpose). Not verified live: the skeleton and the disabled phone button
+     while the list loads, the baseline of `useHolderFinish` on a slow list, a problem clearing under an open
+     dialog.

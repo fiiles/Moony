@@ -284,7 +284,7 @@
     "confirm": "Eliminar los datos sincronizados",
     "success": "Datos sincronizados eliminados",
     "afterwards": "Después la sincronización se configura desde cero, con un kit de recuperación nuevo.",
-    "afterwardsOwnServer": "Después puedes volver a configurar la sincronización con el mismo código de conexión y un Kit de recuperación nuevo."
+    "afterwardsOwnServer": "Después puedes volver a configurar la sincronización con el mismo código de conexión y un kit de recuperación nuevo."
   },
   "danger": {
     "title": "Desactivar o eliminar",
@@ -293,7 +293,7 @@
   "leftover": {
     "text": "Este perfil tiene la sincronización entre dispositivos activada desde una versión de desarrollo. Sus cambios se siguen registrando para la sincronización.",
     "button": "Desactivar la sincronización",
-    "noServer": "Los datos sincronizados y la cuenta de sincronización permanecen en el servidor de sincronización hasta que los elimines desde una versión de Moony con sincronización.",
+    "noServer": "Los datos sincronizados permanecen en el servidor de sincronización hasta que los elimines desde una versión de Moony con sincronización.",
     "description": "Los datos locales se conservan. Los demás dispositivos siguen sincronizando. Para volver a unirte más adelante necesitas una versión de Moony con sincronización.",
     "phoneDescription": "Los datos locales de este teléfono se conservan. Tus demás dispositivos siguen sincronizando. Para volver a unirte más adelante necesitas una versión de Moony con sincronización."
   },
@@ -314,7 +314,6 @@
     "title": "Dispositivos",
     "description": "Estos dispositivos pueden acceder a tus datos.",
     "thisDevice": "Este dispositivo",
-    "joined": "Se unió el {{date}}",
     "noChange": "Aún no se ha sincronizado ningún cambio",
     "version": "Moony {{version}}",
     "held": "Cambios retenidos",

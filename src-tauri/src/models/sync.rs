@@ -390,12 +390,22 @@ pub struct SyncKitInfo {
     pub last_read_at: Option<i64>,
 }
 
+/// One device the Kit joiner's hold names: its ID (32 lowercase hex characters, as in
+/// `SyncDevice.id`) and its name.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncAfterKitDevice {
+    #[serde(rename = "id")]
+    pub id: String,
+    #[serde(rename = "name")]
+    pub name: String,
+}
+
 /// `afterKitJoin`: the devices that were on the list when this device joined with the recovery
-/// kit (their names), and the newest change among them (unix seconds).
+/// kit, and the newest change among them (unix seconds).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct SyncAfterKitJoin {
-    #[serde(rename = "names")]
-    pub names: Vec<String>,
+    #[serde(rename = "devices")]
+    pub devices: Vec<SyncAfterKitDevice>,
     #[serde(rename = "newestChangeAt")]
     pub newest_change_at: Option<i64>,
 }

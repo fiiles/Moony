@@ -294,7 +294,7 @@
     "confirm": "Smazat synchronizovaná data",
     "success": "Synchronizovaná data smazána",
     "afterwards": "Poté se synchronizace nastavuje od začátku, s novou záchrannou sadou.",
-    "afterwardsOwnServer": "Poté můžete synchronizaci nastavit znovu se stejným připojovacím kódem a novou Záchrannou sadou."
+    "afterwardsOwnServer": "Poté můžete synchronizaci nastavit znovu se stejným připojovacím kódem a novou záchrannou sadou."
   },
   "danger": {
     "title": "Vypnutí a smazání",
@@ -303,7 +303,7 @@
   "leftover": {
     "text": "Tento profil má zapnutou synchronizaci zařízení z vývojářské verze. Jeho změny se stále zaznamenávají pro synchronizaci.",
     "button": "Vypnout synchronizaci",
-    "noServer": "Synchronizovaná data a synchronizační účet zůstanou na synchronizačním serveru, dokud je nesmažete z verze Moony se synchronizací.",
+    "noServer": "Synchronizovaná data zůstanou na synchronizačním serveru, dokud je nesmažete z verze Moony se synchronizací.",
     "description": "Místní data zůstanou. Ostatní zařízení se synchronizují dál. K pozdějšímu opětovnému připojení je potřeba verze Moony se synchronizací.",
     "phoneDescription": "Místní data v tomto telefonu zůstanou. Ostatní zařízení se synchronizují dál. K pozdějšímu opětovnému připojení je potřeba verze Moony se synchronizací."
   },
@@ -324,7 +324,6 @@
     "title": "Zařízení",
     "description": "Tato zařízení mají přístup k vašim datům.",
     "thisDevice": "Toto zařízení",
-    "joined": "Připojeno {{date}}",
     "noChange": "Zatím se nesynchronizovaly žádné změny",
     "version": "Moony {{version}}",
     "held": "Změny pozastaveny",

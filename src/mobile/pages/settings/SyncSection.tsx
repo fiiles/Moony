@@ -122,7 +122,7 @@ export default function SyncSection() {
   const [viewing, setViewing] = useState<string | null>(null);
   const [formerOpen, setFormerOpen] = useState(false);
   /** The devices whose removal sheet is open. */
-  const [removing, setRemoving] = useState<string[] | null>(null);
+  const [removing, setRemoving] = useState<{ ids: string[]; names: string[] } | null>(null);
   /** A repair that could not send every change: re-syncing is offered next to it. */
   const [offerResync, setOfferResync] = useState(false);
   /** A replace that kept its backup: the sheet that says where it is (and offers a copy in Files). */
@@ -214,7 +214,13 @@ export default function SyncSection() {
 
   // A wrong password shows under the field and keeps the sheet
   const turnOffNow = async (password: string) => {
-    await turnOff.mutateAsync(password);
+    try {
+      await turnOff.mutateAsync(password);
+    } catch (error) {
+      // The typed password is the mutation's variable: a failure must not leave it behind
+      resetTurnOff();
+      throw error;
+    }
     toast(t('turnOff.success'));
   };
 
@@ -433,7 +439,7 @@ export default function SyncSection() {
         onKeep={(device) => void keep(device)}
         onRemove={(device) => {
           setViewing(null);
-          setRemoving([device.id]);
+          setRemoving({ ids: [device.id], names: [device.name] });
         }}
       />
       <FormerDevicesSheet
@@ -442,7 +448,13 @@ export default function SyncSection() {
         onOpenChange={setFormerOpen}
       />
       {/* Mounted only while open: unmounting forgets the typed password and a new kit */}
-      {removing && <RemoveDeviceSheet deviceIds={removing} onClose={() => setRemoving(null)} />}
+      {removing && (
+        <RemoveDeviceSheet
+          deviceIds={removing.ids}
+          deviceNames={removing.names}
+          onClose={() => setRemoving(null)}
+        />
+      )}
       <SyncBackupSavedSheet saved={saved} onClose={() => setSaved(null)} />
       <ConfirmSheet
         open={confirmingCancel}
@@ -523,7 +535,12 @@ export default function SyncSection() {
         confirmLabel={t('problem.rejoin.button')}
         closeOnSuccess={false}
         onSubmit={async (password) => {
-          await turnOff.mutateAsync(password);
+          try {
+            await turnOff.mutateAsync(password);
+          } catch (error) {
+            resetTurnOff();
+            throw error;
+          }
           // The password was the mutation's variable: it goes before the next sheet opens
           resetTurnOff();
           // Sync is off here now (the data stay): the join choice follows

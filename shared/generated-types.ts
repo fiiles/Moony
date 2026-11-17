@@ -8,756 +8,1091 @@
 /**
  * How the account named in the file relates to the selected account.
  */
-export type AccountMatch = "selected" | "other" | "none" | "unknown"
+export type AccountMatch = 'selected' | 'other' | 'none' | 'unknown';
 
 /**
  * Bank account types
  */
-export type AccountType = "checking" | "savings" | "credit_card" | "investment"
+export type AccountType = 'checking' | 'savings' | 'credit_card' | 'investment';
 
 /**
  * One stored logo: the upper-case ticker and the normalized PNG as
  * `data:image/png;base64,…`. Tickers without a logo are not listed.
  */
-export type AssetLogo = { ticker: string; dataUrl: string }
+export type AssetLogo = { ticker: string; dataUrl: string };
 
 /**
  * One dated estimate of an asset's value.
  */
-export type AssetValuation = { id: string; 
-/**
- * `real_estate.id` or `other_assets.id`, depending on the table.
- */
-assetId: string; 
-/**
- * Market price of the whole property, or price per unit of an other asset (money TEXT).
- */
-value: string; currency: string; 
-/**
- * UTC day the estimate applies to (ADR 0008).
- */
-valuedAt: number; note: string | null; createdAt: number }
+export type AssetValuation = {
+  id: string;
+  /**
+   * `real_estate.id` or `other_assets.id`, depending on the table.
+   */
+  assetId: string;
+  /**
+   * Market price of the whole property, or price per unit of an other asset (money TEXT).
+   */
+  value: string;
+  currency: string;
+  /**
+   * UTC day the estimate applies to (ADR 0008).
+   */
+  valuedAt: number;
+  note: string | null;
+  createdAt: number;
+};
 
 /**
  * Where an attachment's content is, with device sync (ADR 0030). A row without a blob (a plain
  * file from before 0.13) and a profile whose store is unavailable report `Here`.
  */
-export type AttachmentContent = 
-/**
- * Held on this device, and known to the sync server or not syncing.
- */
-"here" | 
-/**
- * Held on this device; the sync server has not confirmed it yet.
- */
-"waitingUpload" | 
-/**
- * On another device or the sync server, not fetched here (yet).
- */
-"notHere" | 
-/**
- * Being fetched now.
- */
-"downloading" | 
-/**
- * The sync server does not have it (not uploaded yet from the other device).
- */
-"notOnServer" | 
-/**
- * Fetching it failed in a way a plain retry does not fix (it could not be opened, or its ID
- * is not valid).
- */
-"failed" | 
-/**
- * Neither here nor on its way: the content is lost on this device.
- */
-"missing"
+export type AttachmentContent =
+  /**
+   * Held on this device, and known to the sync server or not syncing.
+   */
+  | 'here'
+  /**
+   * Held on this device; the sync server has not confirmed it yet.
+   */
+  | 'waitingUpload'
+  /**
+   * On another device or the sync server, not fetched here (yet).
+   */
+  | 'notHere'
+  /**
+   * Being fetched now.
+   */
+  | 'downloading'
+  /**
+   * The sync server does not have it (not uploaded yet from the other device).
+   */
+  | 'notOnServer'
+  /**
+   * Fetching it failed in a way a plain retry does not fix (it could not be opened, or its ID
+   * is not valid).
+   */
+  | 'failed'
+  /**
+   * Neither here nor on its way: the content is lost on this device.
+   */
+  | 'missing';
 
 /**
  * Which attachment table a row id belongs to.
  */
-export type AttachmentKind = "photo" | "real-estate-document" | "insurance-document"
+export type AttachmentKind = 'photo' | 'real-estate-document' | 'insurance-document';
 
 /**
  * What the Data settings page shows about attachments: the encrypted store, the conversion of
  * plain files from earlier versions, and plain originals the app will not delete (ADR 0017).
  */
-export type AttachmentStatus = { 
-/**
- * `attachments.db` is attached and usable.
- */
-storeAvailable: boolean; 
-/**
- * Attachments stored encrypted.
- */
-stored: number; 
-/**
- * Attachments still in plain files that are waiting for the conversion.
- */
-legacyPending: number; 
-/**
- * Attachments whose plain file is missing on disk.
- */
-missing: number; 
-/**
- * Attachments the last conversion run could not convert (retried at the next unlock).
- */
-failed: number; 
-/**
- * A conversion run is in progress.
- */
-converting: boolean; 
-/**
- * Items of the current or last run converted so far.
- */
-done: number; 
-/**
- * Items of the current or last run.
- */
-total: number; 
-/**
- * Plain originals the app found and does not delete: files and old data folders.
- */
-leftovers: string[] }
+export type AttachmentStatus = {
+  /**
+   * `attachments.db` is attached and usable.
+   */
+  storeAvailable: boolean;
+  /**
+   * Attachments stored encrypted.
+   */
+  stored: number;
+  /**
+   * Attachments still in plain files that are waiting for the conversion.
+   */
+  legacyPending: number;
+  /**
+   * Attachments whose plain file is missing on disk.
+   */
+  missing: number;
+  /**
+   * Attachments the last conversion run could not convert (retried at the next unlock).
+   */
+  failed: number;
+  /**
+   * A conversion run is in progress.
+   */
+  converting: boolean;
+  /**
+   * Items of the current or last run converted so far.
+   */
+  done: number;
+  /**
+   * Items of the current or last run.
+   */
+  total: number;
+  /**
+   * Plain originals the app found and does not delete: files and old data folders.
+   */
+  leftovers: string[];
+};
 
 /**
  * One file inside a backup archive.
  */
-export type BackupFileEntry = { path: string; bytes: number }
+export type BackupFileEntry = { path: string; bytes: number };
 
 /**
  * What the UI shows before asking the user to confirm a restore.
  */
-export type BackupInspection = { manifest: BackupManifest; archivePath: string; archiveBytes: number; attachmentCount: number; 
-/**
- * The archive's database was migrated by a newer Moony than this build.
- */
-newerThanApp: boolean }
+export type BackupInspection = {
+  manifest: BackupManifest;
+  archivePath: string;
+  archiveBytes: number;
+  attachmentCount: number;
+  /**
+   * The archive's database was migrated by a newer Moony than this build.
+   */
+  newerThanApp: boolean;
+};
 
 /**
  * `manifest.json` written into every backup archive.
  */
-export type BackupManifest = { format: number; appVersion: string; createdAt: number; 
-/**
- * Names of the migrations applied to the database inside the archive.
- */
-migrations: string[]; files: BackupFileEntry[]; 
-/**
- * Attachment rows in the archive (format 2: the encrypted store cannot be counted without
- * the key). Absent in format 1 manifests.
- */
-attachmentCount?: number | null }
+export type BackupManifest = {
+  format: number;
+  appVersion: string;
+  createdAt: number;
+  /**
+   * Names of the migrations applied to the database inside the archive.
+   */
+  migrations: string[];
+  files: BackupFileEntry[];
+  /**
+   * Attachment rows in the archive (format 2: the encrypted store cannot be counted without
+   * the key). Absent in format 1 manifests.
+   */
+  attachmentCount?: number | null;
+};
 
 /**
  * Whether the declared balances agree with the entries.
  */
-export type BalanceCheck = "ok" | "mismatch" | "unavailable"
+export type BalanceCheck = 'ok' | 'mismatch' | 'unavailable';
 
 /**
  * Bank account entity
  */
-export type BankAccount = { id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; balanceAsOf: number | null; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
-/**
- * UTC day the promotional interest rate ends; None when unknown or not promotional.
- */
-interestRateValidUntil: number | null; 
-/**
- * Left out of net worth, totals and charts when true (still listed and editable).
- */
-excludeFromBalance: boolean; createdAt: number; updatedAt: number }
+export type BankAccount = {
+  id: string;
+  name: string;
+  accountType: string;
+  iban: string | null;
+  bban: string | null;
+  currency: string;
+  balance: string;
+  balanceAsOf: number | null;
+  institutionId: string | null;
+  externalAccountId: string | null;
+  dataSource: string;
+  lastSyncedAt: number | null;
+  interestRate: string | null;
+  hasZoneDesignation: boolean;
+  terminationDate: number | null;
+  /**
+   * UTC day the promotional interest rate ends; None when unknown or not promotional.
+   */
+  interestRateValidUntil: number | null;
+  /**
+   * Left out of net worth, totals and charts when true (still listed and editable).
+   */
+  excludeFromBalance: boolean;
+  createdAt: number;
+  updatedAt: number;
+};
 
 /**
  * Bank account with institution data (enriched)
  */
-export type BankAccountWithInstitution = ({ id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; balanceAsOf: number | null; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
-/**
- * UTC day the promotional interest rate ends; None when unknown or not promotional.
- */
-interestRateValidUntil: number | null; 
-/**
- * Left out of net worth, totals and charts when true (still listed and editable).
- */
-excludeFromBalance: boolean; createdAt: number; updatedAt: number }) & { institution: Institution | null; effectiveInterestRate: number | null; projectedEarnings: number | null }
+export type BankAccountWithInstitution = {
+  id: string;
+  name: string;
+  accountType: string;
+  iban: string | null;
+  bban: string | null;
+  currency: string;
+  balance: string;
+  balanceAsOf: number | null;
+  institutionId: string | null;
+  externalAccountId: string | null;
+  dataSource: string;
+  lastSyncedAt: number | null;
+  interestRate: string | null;
+  hasZoneDesignation: boolean;
+  terminationDate: number | null;
+  /**
+   * UTC day the promotional interest rate ends; None when unknown or not promotional.
+   */
+  interestRateValidUntil: number | null;
+  /**
+   * Left out of net worth, totals and charts when true (still listed and editable).
+   */
+  excludeFromBalance: boolean;
+  createdAt: number;
+  updatedAt: number;
+} & {
+  institution: Institution | null;
+  effectiveInterestRate: number | null;
+  projectedEarnings: number | null;
+};
 
 /**
  * A dated balance of a bank account (migration 013). The newest record is mirrored
  * into `bank_accounts.balance` / `balance_as_of`.
  */
-export type BankBalanceRecord = { id: string; bankAccountId: string; 
-/**
- * Balance in the account currency (canonical decimal string).
- */
-amount: string; currency: string; 
-/**
- * UTC day start (unix seconds).
- */
-asOf: number; 
-/**
- * `manual` (entered by hand) or `statement` (confirmed from a CSV import).
- */
-source: string; sourceBatchId: string | null; recordedAt: number }
+export type BankBalanceRecord = {
+  id: string;
+  bankAccountId: string;
+  /**
+   * Balance in the account currency (canonical decimal string).
+   */
+  amount: string;
+  currency: string;
+  /**
+   * UTC day start (unix seconds).
+   */
+  asOf: number;
+  /**
+   * `manual` (entered by hand) or `statement` (confirmed from a CSV import).
+   */
+  source: string;
+  sourceBatchId: string | null;
+  recordedAt: number;
+};
 
 /**
  * Bank transaction entity
  */
-export type BankTransaction = { id: string; bankAccountId: string; transactionId: string | null; type: string; amount: string; currency: string; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode?: string | null; counterpartyCountry?: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; merchantCategoryCode: string | null; remittanceInfo: string | null; 
-/**
- * Category suggested by an MCP client, pending user confirmation
- */
-suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; dataSource: string; createdAt: number; importBatchId: string | null; importFileName: string | null; importLine: number | null; rowBalance: string | null; spendingPlanId: string | null }
+export type BankTransaction = {
+  id: string;
+  bankAccountId: string;
+  transactionId: string | null;
+  type: string;
+  amount: string;
+  currency: string;
+  description: string | null;
+  counterpartyName: string | null;
+  counterpartyIban: string | null;
+  counterpartyBankCode?: string | null;
+  counterpartyCountry?: string | null;
+  bookingDate: number;
+  valueDate: number | null;
+  categoryId: string | null;
+  merchantCategoryCode: string | null;
+  remittanceInfo: string | null;
+  /**
+   * Category suggested by an MCP client, pending user confirmation
+   */
+  suggestedCategoryId: string | null;
+  flowKind: FlowKind | null;
+  status: string;
+  dataSource: string;
+  createdAt: number;
+  importBatchId: string | null;
+  importFileName: string | null;
+  importLine: number | null;
+  rowBalance: string | null;
+  spendingPlanId: string | null;
+};
 
 /**
  * The `biometric_unlock_status` answer, readable while the database is still locked.
  */
-export type BiometricStatus = { 
-/**
- * Biometry-protected storage can be used right now (biometry enrolled, passcode set).
- */
-available: boolean; 
-/**
- * The person switched biometric unlock on for this profile on this phone.
- */
-enrolled: boolean; biometryType: BiometryType; 
-/**
- * Why biometrics are not available, as an i18n key (`mobile:biometrics.unavailable`);
- * `None` while they are.
- */
-reason: string | null; 
-/**
- * This platform has biometric unlock at all. `false` where the keychain plugin is not built
- * in (Linux), so the UI hides the setting instead of showing one that can never work.
- */
-supported: boolean }
+export type BiometricStatus = {
+  /**
+   * Biometry-protected storage can be used right now (biometry enrolled, passcode set).
+   */
+  available: boolean;
+  /**
+   * The person switched biometric unlock on for this profile on this phone.
+   */
+  enrolled: boolean;
+  biometryType: BiometryType;
+  /**
+   * Why biometrics are not available, as an i18n key (`mobile:biometrics.unavailable`);
+   * `None` while they are.
+   */
+  reason: string | null;
+  /**
+   * This platform has biometric unlock at all. `false` where the keychain plugin is not built
+   * in (Linux), so the UI hides the setting instead of showing one that can never work.
+   */
+  supported: boolean;
+};
 
 /**
  * Which biometry the phone offers, for the unlock button's icon and wording. Mirrors the
  * keychain plugin's `BiometryType` (the app depends on the plugin on phones only).
  */
-export type BiometryType = "faceId" | 
-/**
- * Touch ID on iOS; a fingerprint-only device on Android.
- */
-"touchId" | 
-/**
- * Any other biometry (Optic ID, or an Android device with several sensors).
- */
-"biometric" | 
-/**
- * Windows Hello on the desktop (face, fingerprint or PIN, whichever the person set up).
- */
-"windowsHello" | "none"
+export type BiometryType =
+  | 'faceId'
+  /**
+   * Touch ID on iOS; a fingerprint-only device on Android.
+   */
+  | 'touchId'
+  /**
+   * Any other biometry (Optic ID, or an Android device with several sensors).
+   */
+  | 'biometric'
+  /**
+   * Windows Hello on the desktop (face, fingerprint or PIN, whichever the person set up).
+   */
+  | 'windowsHello'
+  | 'none';
 
 /**
  * Bond holding
  */
-export type Bond = { id: string; name: string; isin: string | null; couponValue: string; quantity: string; currency: string; interestRate: string; maturityDate: number | null; 
-/**
- * The UTC day the bond was bought (midnight, unix seconds); `None` while unknown. History
- * counts a dated bond from this day on, an undated one on every day.
- */
-purchaseDate: number | null; createdAt: number; updatedAt: number }
+export type Bond = {
+  id: string;
+  name: string;
+  isin: string | null;
+  couponValue: string;
+  quantity: string;
+  currency: string;
+  interestRate: string;
+  maturityDate: number | null;
+  /**
+   * The UTC day the bond was bought (midnight, unix seconds); `None` while unknown. History
+   * counts a dated bond from this day on, an undated one on every day.
+   */
+  purchaseDate: number | null;
+  createdAt: number;
+  updatedAt: number;
+};
 
 /**
  * Budget goal entity - defines spending limits per category per timeframe
  */
-export type BudgetGoal = { id: string; categoryId: string; timeframe: string; amount: string; currency: string; createdAt: number; updatedAt: number; 
-/**
- * First month of the version whose `amount` is shown: the version in
- * effect now, or the first scheduled one for a goal that starts later.
- * `None` only for a legacy goal without versions.
- */
-effectiveMonth: number | null; 
-/**
- * Every limit version, oldest first (`amount: null` = no limit from
- * that month). Lets the editor prefill the version in effect for the
- * month being edited and show scheduled changes.
- */
-versions: BudgetGoalVersion[] }
+export type BudgetGoal = {
+  id: string;
+  categoryId: string;
+  timeframe: string;
+  amount: string;
+  currency: string;
+  createdAt: number;
+  updatedAt: number;
+  /**
+   * First month of the version whose `amount` is shown: the version in
+   * effect now, or the first scheduled one for a goal that starts later.
+   * `None` only for a legacy goal without versions.
+   */
+  effectiveMonth: number | null;
+  /**
+   * Every limit version, oldest first (`amount: null` = no limit from
+   * that month). Lets the editor prefill the version in effect for the
+   * month being edited and show scheduled changes.
+   */
+  versions: BudgetGoalVersion[];
+};
 
 /**
  * Exact stored interval selected for cancellation (across any number of goals).
  */
-export type BudgetGoalInterval = { categoryId: string; timeframe: string; effectiveMonth: number }
+export type BudgetGoalInterval = { categoryId: string; timeframe: string; effectiveMonth: number };
 
 /**
  * One limit version of a budget goal, effective from a calendar month.
  */
-export type BudgetGoalVersion = { effectiveMonth: number; amount: string | null; currency: string }
+export type BudgetGoalVersion = { effectiveMonth: number; amount: string | null; currency: string };
 
 /**
  * Full budgeting report for a period
  */
-export type BudgetingReport = { bankCashMovement: string; quality: ReportQuality; nonconsumptionFlows: CashflowGroup[]; periodStart: number; periodEnd: number; timeframe: string; totalIncome: string; totalExpenses: string; netBalance: string; incomeCategories: CategorySpendingSummary[]; expenseCategories: CategorySpendingSummary[]; uncategorizedIncome: string; uncategorizedExpenses: string; uncategorizedTransactionCount: number; 
-/**
- * Included booked expense rows without a category, including unavailable FX.
- */
-uncategorizedExpenseTransactionCount: number; reportCurrency: string }
+export type BudgetingReport = {
+  bankCashMovement: string;
+  quality: ReportQuality;
+  nonconsumptionFlows: CashflowGroup[];
+  periodStart: number;
+  periodEnd: number;
+  timeframe: string;
+  totalIncome: string;
+  totalExpenses: string;
+  netBalance: string;
+  incomeCategories: CategorySpendingSummary[];
+  expenseCategories: CategorySpendingSummary[];
+  uncategorizedIncome: string;
+  uncategorizedExpenses: string;
+  uncategorizedTransactionCount: number;
+  /**
+   * Included booked expense rows without a category, including unavailable FX.
+   */
+  uncategorizedExpenseTransactionCount: number;
+  reportCurrency: string;
+};
 
 /**
  * Calculated default rates from actual portfolio data (percent)
  */
-export type CalculatedDefaults = { savingsRate: number; bondsRate: number }
+export type CalculatedDefaults = { savingsRate: number; bondsRate: number };
 
 /**
  * Actual cashflow for one calendar period, with a twelve-month chart window.
  */
-export type CashflowActuals = { reportCurrency: string; periodStart: number; periodEnd: number; quality: ReportQuality; months: CashflowMonth[]; totalIncome: string; totalExpenses: string; netBalance: string; bankCashMovement: string; averageIncome: string | null; averageExpenses: string | null; averageCompletedMonths: number[]; expenseCategories: CashflowGroup[]; incomeCategories: CashflowGroup[]; transfers: CashflowGroup[]; accountCount: number; transactionCount: number }
+export type CashflowActuals = {
+  reportCurrency: string;
+  periodStart: number;
+  periodEnd: number;
+  quality: ReportQuality;
+  months: CashflowMonth[];
+  totalIncome: string;
+  totalExpenses: string;
+  netBalance: string;
+  bankCashMovement: string;
+  averageIncome: string | null;
+  averageExpenses: string | null;
+  averageCompletedMonths: number[];
+  expenseCategories: CashflowGroup[];
+  incomeCategories: CashflowGroup[];
+  transfers: CashflowGroup[];
+  accountCount: number;
+  transactionCount: number;
+};
 
 /**
  * A category with its items
  */
-export type CashflowCategory = { key: string; name: string; 
-/**
- * Sum of the included items only.
- */
-total: string; items: CashflowReportItem[]; isUserEditable: boolean; 
-/**
- * False when the whole category is out of the plan (`category:<key>`).
- */
-included: boolean }
+export type CashflowCategory = {
+  key: string;
+  name: string;
+  /**
+   * Sum of the included items only.
+   */
+  total: string;
+  items: CashflowReportItem[];
+  isUserEditable: boolean;
+  /**
+   * False when the whole category is out of the plan (`category:<key>`).
+   */
+  included: boolean;
+};
 
 /**
  * One row of a breakdown: the period's rows of one flow role in one category.
  */
-export type CashflowGroup = { key: string; name: string; flowKind: FlowKind; amount: string; count: number }
+export type CashflowGroup = {
+  key: string;
+  name: string;
+  flowKind: FlowKind;
+  amount: string;
+  count: number;
+};
 
 /**
  * User-defined cashflow item (income or expense)
  */
-export type CashflowItem = { id: string; name: string; amount: string; currency: string; frequency: string; itemType: string; replacementSourceId: string | null; category: string; createdAt: number; updatedAt: number }
+export type CashflowItem = {
+  id: string;
+  name: string;
+  amount: string;
+  currency: string;
+  frequency: string;
+  itemType: string;
+  replacementSourceId: string | null;
+  category: string;
+  createdAt: number;
+  updatedAt: number;
+};
 
 /**
  * Income and expenses of one calendar month (UTC).
  */
-export type CashflowMonth = { month: number; income: string; expenses: string }
+export type CashflowMonth = { month: number; income: string; expenses: string };
 
 /**
  * Native components of a composite automatic property-cost source.
  */
-export type CashflowOriginalComponent = { amount: string; currency: string; frequency: string }
+export type CashflowOriginalComponent = { amount: string; currency: string; frequency: string };
 
 /**
  * Complete cashflow report with Personal and Investments sections
  */
-export type CashflowReport = { reportCurrency: string; quality: ReportQuality; ratesAsOf: number | null; automaticSources: CashflowReportItem[]; asOf: number; estimate: boolean; viewType: string; personal: CashflowSection; investments: CashflowSection; totalIncome: string; totalExpenses: string; netCashflow: string }
+export type CashflowReport = {
+  reportCurrency: string;
+  quality: ReportQuality;
+  ratesAsOf: number | null;
+  automaticSources: CashflowReportItem[];
+  asOf: number;
+  estimate: boolean;
+  viewType: string;
+  personal: CashflowSection;
+  investments: CashflowSection;
+  totalIncome: string;
+  totalExpenses: string;
+  netCashflow: string;
+};
 
 /**
  * Individual item in a cashflow category
  */
-export type CashflowReportItem = { originalComponents: CashflowOriginalComponent[]; convertedComponentCount: number; fxQuality: FxQuality; category: string; itemType: string; sourceId: string | null; replacementSourceId: string | null; id: string; name: string; amount: string; originalAmount: string; originalCurrency: string; originalFrequency: string; isUserDefined: boolean; 
-/**
- * False when this row or its whole category is out of the plan; `amount` is still filled.
- */
-included: boolean; 
-/**
- * False when the row's own key is stored, whatever its category says.
- */
-selfIncluded: boolean }
+export type CashflowReportItem = {
+  originalComponents: CashflowOriginalComponent[];
+  convertedComponentCount: number;
+  fxQuality: FxQuality;
+  category: string;
+  itemType: string;
+  sourceId: string | null;
+  replacementSourceId: string | null;
+  id: string;
+  name: string;
+  amount: string;
+  originalAmount: string;
+  originalCurrency: string;
+  originalFrequency: string;
+  isUserDefined: boolean;
+  /**
+   * False when this row or its whole category is out of the plan; `amount` is still filled.
+   */
+  included: boolean;
+  /**
+   * False when the row's own key is stored, whatever its category says.
+   */
+  selfIncluded: boolean;
+};
 
 /**
  * A cashflow section (Personal or Investments)
  */
-export type CashflowSection = { income: CashflowCategory[]; expenses: CashflowCategory[]; totalIncome: string; totalExpenses: string; netCashflow: string }
+export type CashflowSection = {
+  income: CashflowCategory[];
+  expenses: CashflowCategory[];
+  totalIncome: string;
+  totalExpenses: string;
+  netCashflow: string;
+};
 
 /**
  * The automation rate (TS `CategorizationOverview`).
  */
-export type CategorizationOverview = { total: number; categorized: number; bySource: SourceCount[] }
+export type CategorizationOverview = {
+  total: number;
+  categorized: number;
+  bySource: SourceCount[];
+};
 
 /**
  * Booked payments without a category, newest first.
  */
-export type CategorizeQueue = { 
-/**
- * The newest payments, capped; `total` counts all of them.
- */
-rows: CategorizeQueueRow[]; 
-/**
- * Every payment waiting in the queue (not snoozed), listed or not.
- */
-total: number; 
-/**
- * Uncategorized payments held back from the queue by a snooze that is still running.
- */
-snoozed: number }
+export type CategorizeQueue = {
+  /**
+   * The newest payments, capped; `total` counts all of them.
+   */
+  rows: CategorizeQueueRow[];
+  /**
+   * Every payment waiting in the queue (not snoozed), listed or not.
+   */
+  total: number;
+  /**
+   * Uncategorized payments held back from the queue by a snooze that is still running.
+   */
+  snoozed: number;
+};
 
 /**
  * One payment of the queue and the category suggested for it, if any.
  */
-export type CategorizeQueueRow = { transaction: BankTransaction; suggestion: CategorySuggestion | null }
+export type CategorizeQueueRow = {
+  transaction: BankTransaction;
+  suggestion: CategorySuggestion | null;
+};
 
 /**
  * One current-category bucket of the payments a rewritten rule covers.
  */
-export type CategoryCount = { 
-/**
- * `None` = the payments without a category.
- */
-categoryId: string | null; count: number }
+export type CategoryCount = {
+  /**
+   * `None` = the payments without a category.
+   */
+  categoryId: string | null;
+  count: number;
+};
 
 /**
  * Category spending summary for a period
  */
-export type CategorySpendingSummary = { budgetCurrency: string | null; budgetSpent: string | null; budgetLimitNative: string | null; budgetLimitFxQuality: FxQuality | null; budgetLimit: string | null; categoryId: string; categoryName: string; categoryIcon: string | null; categoryColor: string | null; totalAmount: string; transactionCount: number; budgetGoal: BudgetGoal | null; budgetPercentage: number | null }
+export type CategorySpendingSummary = {
+  budgetCurrency: string | null;
+  budgetSpent: string | null;
+  budgetLimitNative: string | null;
+  budgetLimitFxQuality: FxQuality | null;
+  budgetLimit: string | null;
+  categoryId: string;
+  categoryName: string;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  totalAmount: string;
+  transactionCount: number;
+  budgetGoal: BudgetGoal | null;
+  budgetPercentage: number | null;
+};
 
 /**
  * A category the app would give a payment, and where the idea comes from.
  */
-export type CategorySuggestion = { categoryId: string; source: SuggestionSource }
+export type CategorySuggestion = { categoryId: string; source: SuggestionSource };
 
 /**
  * How many rows reference a category — what a delete would have to move.
  */
-export type CategoryUsage = { categoryId: string; transactions: number; rules: number; learnedPayees: number; budgetGoals: number }
+export type CategoryUsage = {
+  categoryId: string;
+  transactions: number;
+  rules: number;
+  learnedPayees: number;
+  budgetGoals: number;
+};
 
 /**
  * A payment a bulk recategorization changed, with what it held before (for undo).
  */
-export type ChangedRow = { id: string; previousCategoryId: string | null; previousSource: string | null }
+export type ChangedRow = {
+  id: string;
+  previousCategoryId: string | null;
+  previousSource: string | null;
+};
 
 /**
  * Where paying for the account happens.
  */
-export type CheckoutTarget = 
-/**
- * The payment page to open in the browser (https, on polar.sh).
- */
-{ kind: "open"; url: string } | 
-/**
- * An own sync server takes no payments: its operator adds people in the server's admin
- * interface and the account is active as long as the person is not blocked. Only the Moony
- * cloud checkout (not reachable yet) answers `Open`.
- */
-{ kind: "selfHosted" }
+export type CheckoutTarget =
+  /**
+   * The payment page to open in the browser (https, on polar.sh).
+   */
+  | { kind: 'open'; url: string }
+  /**
+   * An own sync server takes no payments: its operator adds people in the server's admin
+   * interface and the account is active as long as the person is not blocked. Only the Moony
+   * cloud checkout (not reachable yet) answers `Open`.
+   */
+  | { kind: 'selfHosted' };
 
 /**
  * What a converted response could not (or only approximately) convert.
  */
-export type ConversionQuality = { missingCurrencies: string[]; missingCount: number; estimated: boolean }
+export type ConversionQuality = {
+  missingCurrencies: string[];
+  missingCount: number;
+  estimated: boolean;
+};
 
 /**
  * Crypto investment holding
  */
-export type CryptoInvestment = { id: string; ticker: string; 
-/**
- * Yahoo Finance symbol of the coin's USD pair (`BTC-USD`, `SUI20947-USD`); `null` until resolved.
- */
-yahooSymbol: string | null; name: string; quantity: string; averagePrice: string }
+export type CryptoInvestment = {
+  id: string;
+  ticker: string;
+  /**
+   * Yahoo Finance symbol of the coin's USD pair (`BTC-USD`, `SUI20947-USD`); `null` until resolved.
+   */
+  yahooSymbol: string | null;
+  name: string;
+  quantity: string;
+  averagePrice: string;
+};
 
 /**
  * Every crypto position in `currency`, with what could not be converted.
  */
-export type CryptoPositions = { currency: string; fxQuality: ConversionQuality; items: EnrichedCryptoInvestment[]; totals: PositionTotals }
+export type CryptoPositions = {
+  currency: string;
+  fxQuality: ConversionQuality;
+  items: EnrichedCryptoInvestment[];
+  totals: PositionTotals;
+};
 
 /**
  * One coin offered by the search: the Yahoo USD pair, its display ticker and a name.
  */
-export type CryptoSearchResult = { symbol: string; ticker: string; name: string }
+export type CryptoSearchResult = { symbol: string; ticker: string; name: string };
 
 /**
  * Crypto transaction (buy/sell)
  */
-export type CryptoTransaction = { id: string; investmentId: string; type: string; ticker: string; name: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number; createdAt: number }
+export type CryptoTransaction = {
+  id: string;
+  investmentId: string;
+  type: string;
+  ticker: string;
+  name: string;
+  quantity: string;
+  pricePerUnit: string;
+  currency: string;
+  transactionDate: number;
+  createdAt: number;
+};
 
 /**
  * One row's category chosen in the preview (TS `CsvCategoryOverride`).
  */
-export type CsvCategoryOverride = { 
-/**
- * 1-based. File line for CSV, entry ordinal for statement formats.
- */
-line: number; categoryId: string }
+export type CsvCategoryOverride = {
+  /**
+   * 1-based. File line for CSV, entry ordinal for statement formats.
+   */
+  line: number;
+  categoryId: string;
+};
 
 /**
  * Inclusive range of booking dates (unix seconds, midnight UTC).
  */
-export type CsvDateRange = { from: number; to: number }
+export type CsvDateRange = { from: number; to: number };
 
-export type CsvImportBatch = { id: string; bankAccountId: string; fileName: string; importedCount: number; linkedCount: number; duplicateCount: number; errorCount: number; promotedCount: number; importedAt: number; dateRange: CsvDateRange | null }
+export type CsvImportBatch = {
+  id: string;
+  bankAccountId: string;
+  fileName: string;
+  importedCount: number;
+  linkedCount: number;
+  duplicateCount: number;
+  errorCount: number;
+  promotedCount: number;
+  importedAt: number;
+  dateRange: CsvDateRange | null;
+};
 
 /**
  * Configuration of one CSV import or preview (TS `CsvImportConfigInput`).
- * 
+ *
  * Column names are the file's header cells; a name that differs only in case,
  * diacritics or punctuation still resolves (see `columns::find_column`), so a
  * preset's spelling can be passed through unchanged.
  */
-export type CsvImportConfig = { 
-/**
- * One character; empty = auto-detect.
- */
-delimiter: string; 
-/**
- * Data rows to skip *after* the header row.
- */
-skipRows?: number; 
-/**
- * 0-based line of the header row; `None` = auto-detect.
- */
-headerRow?: number | null; dateColumn: string; 
-/**
- * chrono format (`%d.%m.%Y`). Parsed strictly: a row that does not match
- * is an error, never re-read as another order. Empty or `auto` detects the
- * format from the date column.
- */
-dateFormat: string; 
-/**
- * Single signed amount column. Optional when a debit/credit pair is given.
- */
-amountColumn?: string | null; 
-/**
- * Debit/credit pair (`amount = credit − debit`). Used when `amountColumn`
- * is not set; both must be set.
- */
-debitColumn?: string | null; creditColumn?: string | null; 
-/**
- * Running balance after each row; stored as provenance and statement anchor.
- */
-balanceColumn?: string | null; 
-/**
- * Bank-side transaction id; feeds the id rule of the duplicate check.
- */
-transactionIdColumn?: string | null; descriptionColumns?: string[] | null; counterpartyColumn?: string | null; counterpartyIbanColumn?: string | null; counterpartyCountryColumn?: string | null; counterpartyBankCodeColumn?: string | null; currencyColumn?: string | null; 
-/**
- * `","` or `"."`; `None`, empty or `auto` detects it from the amount
- * column(s).
- */
-decimalSeparator?: string | null; rowFilter?: CsvRowFilter | null; 
-/**
- * Skip possible composite duplicates (default). `false` imports them and
- * reports them in `duplicates`; certain bank IDs are always skipped.
- */
-skipDuplicates?: boolean; 
-/**
- * Row `line`s (file line for CSV, entry ordinal for statement formats) of possible
- * composite duplicates to import anyway.
- */
-importAnywayLines?: number[]; 
-/**
- * Force a text encoding (`Windows-1250`); `None` = detect.
- */
-encoding?: string | null; 
-/**
- * Categories the user picked in the preview for rows the rules left
- * uncategorized (or wanted differently), by row `line` (file line for CSV, entry
- * ordinal for statement formats). Applied on import before the rules run, so they
- * win; a missing category is ignored.
- */
-categoryOverrides?: CsvCategoryOverride[]; previewOffset?: number; previewLimit?: number }
+export type CsvImportConfig = {
+  /**
+   * One character; empty = auto-detect.
+   */
+  delimiter: string;
+  /**
+   * Data rows to skip *after* the header row.
+   */
+  skipRows?: number;
+  /**
+   * 0-based line of the header row; `None` = auto-detect.
+   */
+  headerRow?: number | null;
+  dateColumn: string;
+  /**
+   * chrono format (`%d.%m.%Y`). Parsed strictly: a row that does not match
+   * is an error, never re-read as another order. Empty or `auto` detects the
+   * format from the date column.
+   */
+  dateFormat: string;
+  /**
+   * Single signed amount column. Optional when a debit/credit pair is given.
+   */
+  amountColumn?: string | null;
+  /**
+   * Debit/credit pair (`amount = credit − debit`). Used when `amountColumn`
+   * is not set; both must be set.
+   */
+  debitColumn?: string | null;
+  creditColumn?: string | null;
+  /**
+   * Running balance after each row; stored as provenance and statement anchor.
+   */
+  balanceColumn?: string | null;
+  /**
+   * Bank-side transaction id; feeds the id rule of the duplicate check.
+   */
+  transactionIdColumn?: string | null;
+  descriptionColumns?: string[] | null;
+  counterpartyColumn?: string | null;
+  counterpartyIbanColumn?: string | null;
+  counterpartyCountryColumn?: string | null;
+  counterpartyBankCodeColumn?: string | null;
+  currencyColumn?: string | null;
+  /**
+   * `","` or `"."`; `None`, empty or `auto` detects it from the amount
+   * column(s).
+   */
+  decimalSeparator?: string | null;
+  rowFilter?: CsvRowFilter | null;
+  /**
+   * Skip possible composite duplicates (default). `false` imports them and
+   * reports them in `duplicates`; certain bank IDs are always skipped.
+   */
+  skipDuplicates?: boolean;
+  /**
+   * Row `line`s (file line for CSV, entry ordinal for statement formats) of possible
+   * composite duplicates to import anyway.
+   */
+  importAnywayLines?: number[];
+  /**
+   * Force a text encoding (`Windows-1250`); `None` = detect.
+   */
+  encoding?: string | null;
+  /**
+   * Categories the user picked in the preview for rows the rules left
+   * uncategorized (or wanted differently), by row `line` (file line for CSV, entry
+   * ordinal for statement formats). Applied on import before the rules run, so they
+   * win; a missing category is ignored.
+   */
+  categoryOverrides?: CsvCategoryOverride[];
+  previewOffset?: number;
+  previewLimit?: number;
+};
 
 /**
  * Dry run of an import (TS `CsvImportPreview`).
  */
-export type CsvImportPreview = { 
-/**
- * Requested bounded page in file order; counts cover the full file.
- */
-rows: CsvPreviewRow[]; totalRows: number; okCount: number; errorCount: number; duplicateCount: number; 
-/**
- * Zero-amount and filtered rows.
- */
-skippedCount: number; 
-/**
- * Booking dates of the rows an import with this config would write.
- */
-dateRange: CsvDateRange | null; 
-/**
- * Rows that would be written with a category (rules or overrides).
- */
-categorizedCount: number; forcedDuplicateCount: number; promotedCount: number; 
-/**
- * Set when new rows fall inside the period of an earlier import (D12).
- */
-overlap: ImportOverlap | null; offset: number; limit: number }
+export type CsvImportPreview = {
+  /**
+   * Requested bounded page in file order; counts cover the full file.
+   */
+  rows: CsvPreviewRow[];
+  totalRows: number;
+  okCount: number;
+  errorCount: number;
+  duplicateCount: number;
+  /**
+   * Zero-amount and filtered rows.
+   */
+  skippedCount: number;
+  /**
+   * Booking dates of the rows an import with this config would write.
+   */
+  dateRange: CsvDateRange | null;
+  /**
+   * Rows that would be written with a category (rules or overrides).
+   */
+  categorizedCount: number;
+  forcedDuplicateCount: number;
+  promotedCount: number;
+  /**
+   * Set when new rows fall inside the period of an earlier import (D12).
+   */
+  overlap: ImportOverlap | null;
+  offset: number;
+  limit: number;
+};
 
 /**
  * Result of an import (TS `CsvImportResult`).
- * 
+ *
  * Every row of the file ends up in exactly one bucket:
  * `importedCount + promotedCount + skippedDuplicates.len() + errorCount + skippedZero +
  * skippedFiltered` = data rows (blank lines are not rows).
  */
-export type CsvImportResult = { 
-/**
- * Rows written (includes duplicates that were imported anyway).
- */
-importedCount: number; promotedCount: number; statementBalance: StatementBalance | null; 
-/**
- * Duplicate hits that were imported anyway — `duplicates.len()`.
- */
-duplicateCount: number; errorCount: number; errors: CsvRowMessage[]; 
-/**
- * Duplicates that were imported anyway (`importAnywayLines` or
- * `skipDuplicates: false`).
- */
-duplicates: CsvRowMessage[]; 
-/**
- * Duplicates that were skipped.
- */
-skippedDuplicates: CsvRowMessage[]; skippedZero: number; 
-/**
- * Rows dropped by the row filter.
- */
-skippedFiltered: number; 
-/**
- * Booking dates of inserted or promoted rows; `None` without a write.
- */
-dateRange: CsvDateRange | null; 
-/**
- * Imported rows the rules could not categorize.
- */
-uncategorizedCount: number; 
-/**
- * Balance after the chronologically last statement row, as a signed
- * decimal string; `None` without a balance column.
- */
-lastBalance: string | null; 
-/**
- * Rule-pack id (lowercase ISO country) the counterparty IBANs point to
- * when that pack is not enabled yet.
- */
-suggestedRulePack: string | null }
+export type CsvImportResult = {
+  /**
+   * Rows written (includes duplicates that were imported anyway).
+   */
+  importedCount: number;
+  promotedCount: number;
+  statementBalance: StatementBalance | null;
+  /**
+   * Duplicate hits that were imported anyway — `duplicates.len()`.
+   */
+  duplicateCount: number;
+  errorCount: number;
+  errors: CsvRowMessage[];
+  /**
+   * Duplicates that were imported anyway (`importAnywayLines` or
+   * `skipDuplicates: false`).
+   */
+  duplicates: CsvRowMessage[];
+  /**
+   * Duplicates that were skipped.
+   */
+  skippedDuplicates: CsvRowMessage[];
+  skippedZero: number;
+  /**
+   * Rows dropped by the row filter.
+   */
+  skippedFiltered: number;
+  /**
+   * Booking dates of inserted or promoted rows; `None` without a write.
+   */
+  dateRange: CsvDateRange | null;
+  /**
+   * Imported rows the rules could not categorize.
+   */
+  uncategorizedCount: number;
+  /**
+   * Balance after the chronologically last statement row, as a signed
+   * decimal string; `None` without a balance column.
+   */
+  lastBalance: string | null;
+  /**
+   * Rule-pack id (lowercase ISO country) the counterparty IBANs point to
+   * when that pack is not enabled yet.
+   */
+  suggestedRulePack: string | null;
+};
 
 /**
  * One bank's CSV format (wire type — TS `CsvPreset`). `schemaVersion: 1`.
- * 
+ *
  * Exactly one of `amountColumn` or the `debitColumn` + `creditColumn` pair is
  * set. Optional text fields are `null` on the wire when absent.
  */
-export type CsvPreset = { schemaVersion: number; 
-/**
- * Stable kebab-case id, also the file name (`revolut` → `revolut.json`).
- */
-id: string; bankName: string; 
-/**
- * ISO 3166-1 alpha-2 country of the bank (the UI groups/sorts by it).
- */
-country: string; 
-/**
- * Row id in the `institutions` table, when the bank is seeded there
- * (lets the dialog preselect the preset from the account's institution).
- */
-institutionId?: string | null; 
-/**
- * Header cells that must all be present for auto-detection.
- */
-matchHeaders: string[]; 
-/**
- * One character: `,` `;` or a tab (`"\t"`).
- */
-delimiter: string; 
-/**
- * Encoding label (`UTF-8`, `Windows-1250`, …). Only consulted when the
- * file is not valid UTF-8 — see `decode_csv_content_for_country`.
- */
-encoding: string; dateColumn: string; 
-/**
- * chrono format of the date column (`%d.%m.%Y`, `%Y-%m-%d %H:%M:%S`).
- */
-dateFormat: string; amountColumn?: string | null; debitColumn?: string | null; creditColumn?: string | null; 
-/**
- * Joined with " | " in this order into the transaction description.
- */
-descriptionColumns: string[]; counterpartyColumn?: string | null; counterpartyIbanColumn?: string | null; counterpartyCountryColumn?: string | null; counterpartyBankCodeColumn?: string | null; currencyColumn?: string | null; balanceColumn?: string | null; 
-/**
- * A column that is unique per transaction at the bank (Fio "ID operace");
- * feeds the bank-side-id duplicate rule.
- */
-transactionIdColumn?: string | null; rowFilter?: CsvRowFilter | null; exportHelpUrl?: string | null; 
-/**
- * File name in `src-tauri/tests/fixtures/csv/` that this
- * preset must import without errors (checked by `all_presets_are_valid`).
- */
-sampleFixture?: string | null; 
-/**
- * How to get this bank's statement file on a phone (the phone app's import sheet shows it).
- * Every bank whose phone export path is documented carries one; the generic layouts do not,
- * nor does Moneta until a device check (no CSV export was found).
- */
-mobileExport?: MobileExportGuide | null }
+export type CsvPreset = {
+  schemaVersion: number;
+  /**
+   * Stable kebab-case id, also the file name (`revolut` → `revolut.json`).
+   */
+  id: string;
+  bankName: string;
+  /**
+   * ISO 3166-1 alpha-2 country of the bank (the UI groups/sorts by it).
+   */
+  country: string;
+  /**
+   * Row id in the `institutions` table, when the bank is seeded there
+   * (lets the dialog preselect the preset from the account's institution).
+   */
+  institutionId?: string | null;
+  /**
+   * Header cells that must all be present for auto-detection.
+   */
+  matchHeaders: string[];
+  /**
+   * One character: `,` `;` or a tab (`"\t"`).
+   */
+  delimiter: string;
+  /**
+   * Encoding label (`UTF-8`, `Windows-1250`, …). Only consulted when the
+   * file is not valid UTF-8 — see `decode_csv_content_for_country`.
+   */
+  encoding: string;
+  dateColumn: string;
+  /**
+   * chrono format of the date column (`%d.%m.%Y`, `%Y-%m-%d %H:%M:%S`).
+   */
+  dateFormat: string;
+  amountColumn?: string | null;
+  debitColumn?: string | null;
+  creditColumn?: string | null;
+  /**
+   * Joined with " | " in this order into the transaction description.
+   */
+  descriptionColumns: string[];
+  counterpartyColumn?: string | null;
+  counterpartyIbanColumn?: string | null;
+  counterpartyCountryColumn?: string | null;
+  counterpartyBankCodeColumn?: string | null;
+  currencyColumn?: string | null;
+  balanceColumn?: string | null;
+  /**
+   * A column that is unique per transaction at the bank (Fio "ID operace");
+   * feeds the bank-side-id duplicate rule.
+   */
+  transactionIdColumn?: string | null;
+  rowFilter?: CsvRowFilter | null;
+  exportHelpUrl?: string | null;
+  /**
+   * File name in `src-tauri/tests/fixtures/csv/` that this
+   * preset must import without errors (checked by `all_presets_are_valid`).
+   */
+  sampleFixture?: string | null;
+  /**
+   * How to get this bank's statement file on a phone (the phone app's import sheet shows it).
+   * Every bank whose phone export path is documented carries one; the generic layouts do not,
+   * nor does Moneta until a device check (no CSV export was found).
+   */
+  mobileExport?: MobileExportGuide | null;
+};
 
 /**
  * What `parse_csv_file` learned about a file (TS `CsvPreviewResult`).
  */
-export type CsvPreviewResult = { headers: string[]; 
-/**
- * First five data rows.
- */
-sampleRows: string[][]; totalRows: number; delimiter: string; 
-/**
- * Role → (header, confidence 0–1). Roles: `date`, `valueDate`, `amount`,
- * `debit`, `credit`, `balance`, `currency`, `description`,
- * `counterparty`, `counterparty_iban` (legacy snake_case key),
- * `transactionId`. A detected preset's columns come first, at 1.0.
- */
-suggestedMappings: Partial<{ [key in string]: [string, number] }>; 
-/**
- * 0-based line of the header row.
- */
-headerRow: number; detectedPresetId: string | null; 
-/**
- * chrono format of the date column (date part only).
- */
-dateFormat: string; 
-/**
- * `true` when day/month order cannot be told from the samples (all values
- * ≤ 12 in both positions) and `dateFormat` is a guess the user should
- * confirm.
- */
-dateFormatAmbiguous: boolean; 
-/**
- * `","` or `"."`.
- */
-decimalSeparator: string; 
-/**
- * Encoding the file was decoded with.
- */
-encoding: string; 
-/**
- * All description columns to pre-select: the preset's, else the single
- * suggested `description`.
- */
-suggestedDescriptionColumns: string[]; 
-/**
- * The detected preset's row filter, resolved to the file's header name.
- */
-suggestedRowFilter: CsvRowFilter | null }
+export type CsvPreviewResult = {
+  headers: string[];
+  /**
+   * First five data rows.
+   */
+  sampleRows: string[][];
+  totalRows: number;
+  delimiter: string;
+  /**
+   * Role → (header, confidence 0–1). Roles: `date`, `valueDate`, `amount`,
+   * `debit`, `credit`, `balance`, `currency`, `description`,
+   * `counterparty`, `counterparty_iban` (legacy snake_case key),
+   * `transactionId`. A detected preset's columns come first, at 1.0.
+   */
+  suggestedMappings: Partial<{ [key in string]: [string, number] }>;
+  /**
+   * 0-based line of the header row.
+   */
+  headerRow: number;
+  detectedPresetId: string | null;
+  /**
+   * chrono format of the date column (date part only).
+   */
+  dateFormat: string;
+  /**
+   * `true` when day/month order cannot be told from the samples (all values
+   * ≤ 12 in both positions) and `dateFormat` is a guess the user should
+   * confirm.
+   */
+  dateFormatAmbiguous: boolean;
+  /**
+   * `","` or `"."`.
+   */
+  decimalSeparator: string;
+  /**
+   * Encoding the file was decoded with.
+   */
+  encoding: string;
+  /**
+   * All description columns to pre-select: the preset's, else the single
+   * suggested `description`.
+   */
+  suggestedDescriptionColumns: string[];
+  /**
+   * The detected preset's row filter, resolved to the file's header name.
+   */
+  suggestedRowFilter: CsvRowFilter | null;
+};
 
 /**
  * One row of the preview table.
  */
-export type CsvPreviewRow = { counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; transactionId: string | null; rowBalance: string | null; canImportAnyway: boolean; line: number; bookingDate: number | null; 
-/**
- * Signed decimal string (`-250.5`), `None` when the amount is unreadable.
- */
-amount: string | null; currency: string | null; description: string | null; counterparty: string | null; status: CsvRowStatus; message: CsvRowMessage | null; 
-/**
- * Category the import would write: the user's override for this line, else
- * what the deterministic rules resolve; `None` = stays uncategorized.
- */
-categoryId: string | null; 
-/**
- * `manual` for an override, else the rule layer (`rule`, `exact_match`,
- * `own_account`).
- */
-categorySource: string | null; 
-/**
- * The category the file itself names for the row (QIF `L` line); `None`
- * for formats without one.
- */
-sourceCategory: string | null }
+export type CsvPreviewRow = {
+  counterpartyIban: string | null;
+  counterpartyBankCode: string | null;
+  counterpartyCountry: string | null;
+  transactionId: string | null;
+  rowBalance: string | null;
+  canImportAnyway: boolean;
+  line: number;
+  bookingDate: number | null;
+  /**
+   * Signed decimal string (`-250.5`), `None` when the amount is unreadable.
+   */
+  amount: string | null;
+  currency: string | null;
+  description: string | null;
+  counterparty: string | null;
+  status: CsvRowStatus;
+  message: CsvRowMessage | null;
+  /**
+   * Category the import would write: the user's override for this line, else
+   * what the deterministic rules resolve; `None` = stays uncategorized.
+   */
+  categoryId: string | null;
+  /**
+   * `manual` for an override, else the rule layer (`rule`, `exact_match`,
+   * `own_account`).
+   */
+  categorySource: string | null;
+  /**
+   * The category the file itself names for the row (QIF `L` line); `None`
+   * for formats without one.
+   */
+  sourceCategory: string | null;
+};
 
 /**
  * Keep only rows whose `column` equals `equals` (case- and whitespace-
  * insensitive). Revolut: `State == COMPLETED` drops PENDING/REVERTED rows.
  */
-export type CsvRowFilter = { column: string; equals: string }
+export type CsvRowFilter = { column: string; equals: string };
 
 /**
  * A per-row problem or note. Never carries English prose: `key` is an i18n
  * key and `detail` the raw value it is about (the unparseable date, the
  * filtered state, …).
- * 
+ *
  * Keys (namespace in front of the dot):
  * - `csvImport.*` — `bank_accounts` namespace: `rowCannotParse`,
  * `dateUnparseable`, `amountUnparseable`, `zeroAmount`, `filteredOut`,
@@ -768,736 +1103,1031 @@ export type CsvRowFilter = { column: string; equals: string }
  * code (the cell goes in `detail`), plus `validation.dateRequired` /
  * `validation.amountRequired` for empty cells.
  */
-export type CsvRowMessage = { 
-/**
- * 1-based. File line for CSV (the line where the row starts, the header line counts),
- * entry ordinal for statement formats.
- */
-line: number; key: string; detail: string | null }
+export type CsvRowMessage = {
+  /**
+   * 1-based. File line for CSV (the line where the row starts, the header line counts),
+   * entry ordinal for statement formats.
+   */
+  line: number;
+  key: string;
+  detail: string | null;
+};
 
-export type CsvRowStatus = "promoted" | 
-/**
- * Will be imported.
- */
-"ok" | 
-/**
- * Cannot be imported (see `message`).
- */
-"error" | 
-/**
- * Stored occurrence or certain bank ID; only possible composites allow overrides.
- */
-"duplicate" | 
-/**
- * Dropped on purpose: zero amount or row filter.
- */
-"skipped"
+export type CsvRowStatus =
+  | 'promoted'
+  /**
+   * Will be imported.
+   */
+  | 'ok'
+  /**
+   * Cannot be imported (see `message`).
+   */
+  | 'error'
+  /**
+   * Stored occurrence or certain bank ID; only possible composites allow overrides.
+   */
+  | 'duplicate'
+  /**
+   * Dropped on purpose: zero amount or row filter.
+   */
+  | 'skipped';
 
 /**
  * Where the price currency of a trade comes from.
  */
-export type CurrencyMode = 
-/**
- * A column of the file (`currencyColumn`).
- */
-"column" | 
-/**
- * One currency for the whole file (`fixedCurrency`).
- */
-"fixed" | 
-/**
- * The currency of the instrument's listing (XTB exports carry none).
- */
-"instrument"
+export type CurrencyMode =
+  /**
+   * A column of the file (`currencyColumn`).
+   */
+  | 'column'
+  /**
+   * One currency for the whole file (`fixedCurrency`).
+   */
+  | 'fixed'
+  /**
+   * The currency of the instrument's listing (XTB exports carry none).
+   */
+  | 'instrument';
 
 /**
  * Where the data lives on this machine.
  */
-export type DataLocation = { dataDir: string; dbPath: string; totalBytes: number }
+export type DataLocation = { dataDir: string; dbPath: string; totalBytes: number };
 
 /**
  * Data source for accounts and transactions
  */
-export type DataSource = "manual" | 
-/**
- * Imported from a file (CSV or a statement format).
- */
-"csv_import" | "api_sync"
+export type DataSource =
+  | 'manual'
+  /**
+   * Imported from a file (CSV or a statement format).
+   */
+  | 'csv_import'
+  | 'api_sync';
 
 /**
  * The order of the day, month and year parts of a QIF date.
  */
-export type DateOrder = "dmy" | "mdy" | "ymd"
+export type DateOrder = 'dmy' | 'mdy' | 'ymd';
 
 /**
  * One dated fact that can explain a step of the net-worth line: a purchase, a revaluation, a new
  * loan, a manual balance, a day of trades. Read by the dashboard to say what stands behind a big
  * jump; it carries no value of its own.
  */
-export type DatedFact = { 
-/**
- * UTC day the fact is dated.
- */
-day: number; 
-/**
- * `buy` (a purchase, or a day of purchases), `sell`, `start` (a loan), `balance` (a balance
- * record), `extraPayment`, `valuation` or `firstValuation` (the first estimate of a property).
- */
-kind: string; 
-/**
- * The history class it moves: `savings`, `investments`, `crypto`, `bonds`, `realEstate`,
- * `loans` or `otherAssets`.
- */
-class: string; 
-/**
- * The account, property, loan, bond or asset; for a day of trades up to three tickers or asset
- * names, comma separated.
- */
-name: string; 
-/**
- * The amount as entered, in `currency` (decimal TEXT). `None` for a day of trades, whose
- * legs are not summed, and for an amount that was not entered.
- */
-amount: string | null; currency: string | null; 
-/**
- * For a manual loan balance: what the loan's ledger held the day before, in `currency`.
- * `None` for every other fact and for a loan that had not started yet.
- */
-previousAmount: string | null; 
-/**
- * Distinct tickers or assets traded that day; `None` for every other fact.
- */
-count: number | null }
+export type DatedFact = {
+  /**
+   * UTC day the fact is dated.
+   */
+  day: number;
+  /**
+   * `buy` (a purchase, or a day of purchases), `sell`, `start` (a loan), `balance` (a balance
+   * record), `extraPayment`, `valuation` or `firstValuation` (the first estimate of a property).
+   */
+  kind: string;
+  /**
+   * The history class it moves: `savings`, `investments`, `crypto`, `bonds`, `realEstate`,
+   * `loans` or `otherAssets`.
+   */
+  class: string;
+  /**
+   * The account, property, loan, bond or asset; for a day of trades up to three tickers or asset
+   * names, comma separated.
+   */
+  name: string;
+  /**
+   * The amount as entered, in `currency` (decimal TEXT). `None` for a day of trades, whose
+   * legs are not summed, and for an amount that was not entered.
+   */
+  amount: string | null;
+  currency: string | null;
+  /**
+   * For a manual loan balance: what the loan's ledger held the day before, in `currency`.
+   * `None` for every other fact and for a loan that had not started yet.
+   */
+  previousAmount: string | null;
+  /**
+   * Distinct tickers or assets traded that day; `None` for every other fact.
+   */
+  count: number | null;
+};
 
 /**
  * A closing balance the source declares (CAMT `CLBD`, MT940 `:62F:`, OFX
  * `LEDGERBAL`), in the statement's own currency. `asOf` is the calendar day as
  * written in the file, stored as UTC midnight.
  */
-export type DeclaredBalance = { amount: string; currency: string; asOf: number }
+export type DeclaredBalance = { amount: string; currency: string; asOf: number };
 
 /**
  * How the direction of a trade is read.
  */
-export type DirectionMode = 
-/**
- * From `typeColumn` through `typeValues`.
- */
-"typeColumn" | 
-/**
- * From the sign of the quantity (Degiro, IBKR): negative is a sell.
- */
-"quantitySign"
+export type DirectionMode =
+  /**
+   * From `typeColumn` through `typeValues`.
+   */
+  | 'typeColumn'
+  /**
+   * From the sign of the quantity (Degiro, IBKR): negative is a sell.
+   */
+  | 'quantitySign';
 
 /**
  * User dividend override
  */
-export type DividendOverride = { id: string; ticker: string; yearlyDividendSum: string; currency: string; updatedAt: number }
+export type DividendOverride = {
+  id: string;
+  ticker: string;
+  yearlyDividendSum: string;
+  currency: string;
+  updatedAt: number;
+};
 
-export type EffectiveTransactionFlow = { id: string; effectiveFlowKind: FlowKind; flowSource: FlowSource }
+export type EffectiveTransactionFlow = {
+  id: string;
+  effectiveFlowKind: FlowKind;
+  flowSource: FlowSource;
+};
 
 /**
  * A crypto position: its native facts plus its figures in the response's report currency.
  * Converted amounts are decimal TEXT at the report currency's minor unit and `null` when they
  * cannot be converted (the currency is then in the response's `fxQuality`).
  */
-export type EnrichedCryptoInvestment = { id: string; ticker: string; 
-/**
- * Yahoo Finance symbol of the coin's USD pair; `null` while the holding is unresolved.
- */
-yahooSymbol: string | null; name: string; quantity: string; 
-/**
- * Native weighted average cost (currency `averagePriceCurrency`).
- */
-averagePrice: string; 
-/**
- * Currency of the average price (native currency from first transaction)
- */
-averagePriceCurrency: string; 
-/**
- * Current price in its own currency, "0" when unpriced (see `price`).
- */
-originalPrice: string; 
-/**
- * Currency of the current market price (e.g., USD, EUR)
- */
-currency: string; fetchedAt: number | null; 
-/**
- * Whether the price is manually overridden
- */
-isManualPrice: boolean; 
-/**
- * Current price in its own currency; `null` when unpriced.
- */
-price: string | null; priceCurrency: string | null; value: string | null; costBasis: string | null; unrealizedGain: string | null; unrealizedGainPercent: number | null; realizedGain: string | null }
+export type EnrichedCryptoInvestment = {
+  id: string;
+  ticker: string;
+  /**
+   * Yahoo Finance symbol of the coin's USD pair; `null` while the holding is unresolved.
+   */
+  yahooSymbol: string | null;
+  name: string;
+  quantity: string;
+  /**
+   * Native weighted average cost (currency `averagePriceCurrency`).
+   */
+  averagePrice: string;
+  /**
+   * Currency of the average price (native currency from first transaction)
+   */
+  averagePriceCurrency: string;
+  /**
+   * Current price in its own currency, "0" when unpriced (see `price`).
+   */
+  originalPrice: string;
+  /**
+   * Currency of the current market price (e.g., USD, EUR)
+   */
+  currency: string;
+  fetchedAt: number | null;
+  /**
+   * Whether the price is manually overridden
+   */
+  isManualPrice: boolean;
+  /**
+   * Current price in its own currency; `null` when unpriced.
+   */
+  price: string | null;
+  priceCurrency: string | null;
+  value: string | null;
+  costBasis: string | null;
+  unrealizedGain: string | null;
+  unrealizedGainPercent: number | null;
+  realizedGain: string | null;
+};
 
 /**
  * A stock position: its native facts plus its figures in the response's report currency.
  * Converted amounts are decimal TEXT at the report currency's minor unit and `null` when they
  * cannot be converted (the currency is then in the response's `fxQuality`).
  */
-export type EnrichedStockInvestment = { id: string; ticker: string; companyName: string; quantity: string; 
-/**
- * Native weighted average cost (currency `averagePriceCurrency`).
- */
-averagePrice: string; 
-/**
- * Currency of the average price (determined by first transaction)
- */
-averagePriceCurrency: string; 
-/**
- * Current price in its own currency, "0" when unpriced (see `price`).
- */
-originalPrice: string; 
-/**
- * Currency of the current price (e.g., USD, EUR)
- */
-currency: string; fetchedAt: number | null; isManualPrice: boolean; 
-/**
- * Yearly dividend per share in `dividendCurrency`, 0 without dividend data.
- */
-originalDividendYield: number; 
-/**
- * Currency of the dividend per share; `null` without dividend data.
- */
-dividendCurrency: string | null; isManualDividend: boolean; 
-/**
- * Current price in its own currency; `null` when unpriced.
- */
-price: string | null; priceCurrency: string | null; value: string | null; costBasis: string | null; unrealizedGain: string | null; unrealizedGainPercent: number | null; 
-/**
- * Sell proceeds minus the released cost, plus `dividendsReceived`.
- */
-realizedGain: string | null; 
-/**
- * Gross dividends received up to today, each at its ex-date's rate (part of
- * `realizedGain`); `null` when payouts exist but none could be converted.
- */
-dividendsReceived: string | null; 
-/**
- * Yearly dividend per share in `dividendCurrency`; `null` without dividend data.
- */
-dividendPerShare: string | null; 
-/**
- * Yearly dividend of the whole position in the report currency.
- */
-yearlyDividend: string | null }
+export type EnrichedStockInvestment = {
+  id: string;
+  ticker: string;
+  companyName: string;
+  quantity: string;
+  /**
+   * Native weighted average cost (currency `averagePriceCurrency`).
+   */
+  averagePrice: string;
+  /**
+   * Currency of the average price (determined by first transaction)
+   */
+  averagePriceCurrency: string;
+  /**
+   * Current price in its own currency, "0" when unpriced (see `price`).
+   */
+  originalPrice: string;
+  /**
+   * Currency of the current price (e.g., USD, EUR)
+   */
+  currency: string;
+  fetchedAt: number | null;
+  isManualPrice: boolean;
+  /**
+   * Yearly dividend per share in `dividendCurrency`, 0 without dividend data.
+   */
+  originalDividendYield: number;
+  /**
+   * Currency of the dividend per share; `null` without dividend data.
+   */
+  dividendCurrency: string | null;
+  isManualDividend: boolean;
+  /**
+   * Current price in its own currency; `null` when unpriced.
+   */
+  price: string | null;
+  priceCurrency: string | null;
+  value: string | null;
+  costBasis: string | null;
+  unrealizedGain: string | null;
+  unrealizedGainPercent: number | null;
+  /**
+   * Sell proceeds minus the released cost, plus `dividendsReceived`.
+   */
+  realizedGain: string | null;
+  /**
+   * Gross dividends received up to today, each at its ex-date's rate (part of
+   * `realizedGain`); `null` when payouts exist but none could be converted.
+   */
+  dividendsReceived: string | null;
+  /**
+   * Yearly dividend per share in `dividendCurrency`; `null` without dividend data.
+   */
+  dividendPerShare: string | null;
+  /**
+   * Yearly dividend of the whole position in the report currency.
+   */
+  yearlyDividend: string | null;
+};
 
 /**
  * Where a bank hands out its statement file on a phone: in its own app, or in its internet
  * banking opened in the phone's browser (wire type — TS `ExportRoute`).
  */
-export type ExportRoute = "app" | "web"
+export type ExportRoute = 'app' | 'web';
 
 /**
  * Summary of a full JSON export.
  */
-export type ExportSummary = { path: string; tableCount: number; rowCount: number }
+export type ExportSummary = { path: string; tableCount: number; rowCount: number };
 
 /**
  * Financial meaning, separate from native credit/debit direction: what counts as
  * income, what counts as spending, and what only moves money between own pots.
  */
-export type FlowKind = "income" | "expense" | "transfer"
+export type FlowKind = 'income' | 'expense' | 'transfer';
 
-export type FlowSource = "explicit" | "ownAccount" | "category" | "direction"
+export type FlowSource = 'explicit' | 'ownAccount' | 'category' | 'direction';
 
 /**
  * Quotes stored for one UTC day (`day` is the UTC-midnight unix timestamp).
  */
-export type FxDayQuotes = { day: number; units: Partial<{ [key in string]: number }> }
+export type FxDayQuotes = { day: number; units: Partial<{ [key in string]: number }> };
 
 /**
  * Stored daily quotes with the reference they are quoted against: each day's `units` are
  * units of a currency per 1 unit of `reference`.
  */
-export type FxHistoryQuotes = { reference: string; 
-/**
- * Oldest first.
- */
-days: FxDayQuotes[] }
+export type FxHistoryQuotes = {
+  reference: string;
+  /**
+   * Oldest first.
+   */
+  days: FxDayQuotes[];
+};
 
-export type FxQuality = "estimated" | "historical" | "missing"
+export type FxQuality = 'estimated' | 'historical' | 'missing';
 
 /**
  * The current quotes: units of each currency per 1 unit of `reference`.
  */
-export type FxSnapshot = { reference: string; 
-/**
- * Includes derived codes and the reference itself (1.0).
- */
-units: Partial<{ [key in string]: number }>; 
-/**
- * Unix seconds of the last fetch; 0 when no rates are loaded.
- */
-revision: number }
+export type FxSnapshot = {
+  reference: string;
+  /**
+   * Includes derived codes and the reference itself (1.0).
+   */
+  units: Partial<{ [key in string]: number }>;
+  /**
+   * Unix seconds of the last fetch; 0 when no rates are loaded.
+   */
+  revision: number;
+};
 
 /**
  * The custom rule that decides a transaction's category today.
  */
-export type GoverningRule = { id: string; name: string; categoryId: string }
+export type GoverningRule = { id: string; name: string; categoryId: string };
 
 /**
  * What a held change waits for (`HeldGapView::kind`).
  */
-export type HeldGapKind = 
-/**
- * An earlier change of the device never arrived; skipping applies the ones after it.
- */
-"missing" | 
-/**
- * The device's change refers to something no change brought; skipping skips that change.
- */
-"parent" | 
-/**
- * The device's change is dated more than ten years ahead (audit M6); skipping skips that
- * change, and the device's later changes then apply.
- */
-"ahead"
+export type HeldGapKind =
+  /**
+   * An earlier change of the device never arrived; skipping applies the ones after it.
+   */
+  | 'missing'
+  /**
+   * The device's change refers to something no change brought; skipping skips that change.
+   */
+  | 'parent'
+  /**
+   * The device's change is dated more than ten years ahead (audit M6); skipping skips that
+   * change, and the device's later changes then apply.
+   */
+  | 'ahead';
 
 /**
  * A change from another device that this device holds because something it needs has not arrived
  * (audit M3) or because it is dated more than ten years ahead (audit M6): Settings offers to skip
  * it once `skippableAt` has passed.
  */
-export type HeldGapView = { 
-/**
- * The author's device ID, 32 lowercase hex characters (`sync_skip_missing_change` takes it).
- */
-deviceId: string; 
-/**
- * The author's name from the device list; `None` for a device that has no row there.
- */
-deviceName: string | null; kind: HeldGapKind; 
-/**
- * How many changes a skip gives up: the device's changes that never arrived (`missing`), or
- * 1 (`parent` and `ahead`, the held change itself).
- */
-missingChanges: number; 
-/**
- * When this device first held it (unix seconds).
- */
-since: number; 
-/**
- * From when it may be skipped (unix seconds): `since` plus 14 days.
- */
-skippableAt: number; 
-/**
- * The date an `ahead` change carries (unix seconds, its newest clock); `None` for the other
- * kinds and for a date past year 9999.
- */
-datedAt: number | null }
+export type HeldGapView = {
+  /**
+   * The author's device ID, 32 lowercase hex characters (`sync_skip_missing_change` takes it).
+   */
+  deviceId: string;
+  /**
+   * The author's name from the device list; `None` for a device that has no row there.
+   */
+  deviceName: string | null;
+  kind: HeldGapKind;
+  /**
+   * How many changes a skip gives up: the device's changes that never arrived (`missing`), or
+   * 1 (`parent` and `ahead`, the held change itself).
+   */
+  missingChanges: number;
+  /**
+   * When this device first held it (unix seconds).
+   */
+  since: number;
+  /**
+   * From when it may be skipped (unix seconds): `since` plus 14 days.
+   */
+  skippableAt: number;
+  /**
+   * The date an `ahead` change carries (unix seconds, its newest clock); `None` for the other
+   * kinds and for a date past year 9999.
+   */
+  datedAt: number | null;
+};
 
 /**
  * Payload of the `history-recalculation` event.
  */
-export type HistoryRecalcEvent = { ticker: string; status: RecalcStatus }
+export type HistoryRecalcEvent = { ticker: string; status: RecalcStatus };
 
 /**
  * Rows that would be written inside the period of an earlier import of the
  * account (TS `ImportOverlap`). Payments imported earlier in another format
  * carry other bank ids, so the duplicate check may not recognize them (D12).
  */
-export type ImportOverlap = { 
-/**
- * New rows dated inside an earlier batch's period, its last day excluded.
- */
-newRowsInCoveredRange: number; 
-/**
- * The earlier batches that contain such rows, newest first, at most three.
- */
-batches: ImportOverlapBatch[] }
+export type ImportOverlap = {
+  /**
+   * New rows dated inside an earlier batch's period, its last day excluded.
+   */
+  newRowsInCoveredRange: number;
+  /**
+   * The earlier batches that contain such rows, newest first, at most three.
+   */
+  batches: ImportOverlapBatch[];
+};
 
 /**
  * An earlier import of the same account whose period contains new rows of this
  * file (TS `ImportOverlapBatch`).
  */
-export type ImportOverlapBatch = { fileName: string; dateRange: CsvDateRange }
+export type ImportOverlapBatch = { fileName: string; dateRange: CsvDateRange };
 
 /**
  * The roles `infer_csv_columns` assigned to the columns of a CSV no preset describes, from
  * their content (mobile spec §8.6 rung 3; TS `InferredColumns`). Every column is named by the
  * file's own header; `null` = not recognized.
  */
-export type InferredColumns = { date: InferredField | null; 
-/**
- * chrono format of `date`, date part only; `null` without a date column.
- */
-dateFormat: string | null; 
-/**
- * Day/month order cannot be told from the values; `dateFormat` is the European guess.
- */
-dateAmbiguous: boolean; 
-/**
- * A single signed amount column; `null` when the file has a debit/credit pair instead.
- */
-amount: InferredField | null; debit: InferredField | null; credit: InferredField | null; 
-/**
- * A running balance that agrees with the amounts; it is what `signCheck` rests on.
- */
-balance: InferredField | null; signCheck: SignCheck; currency: InferredField | null; 
-/**
- * IBANs or Czech domestic account numbers of the other party.
- */
-counterpartyIban: InferredField | null; counterparty: InferredField | null; transactionId: InferredField | null; 
-/**
- * Up to three free-text columns, longest first.
- */
-description: string[]; 
-/**
- * `","` or `"."`.
- */
-decimalSeparator: string }
+export type InferredColumns = {
+  date: InferredField | null;
+  /**
+   * chrono format of `date`, date part only; `null` without a date column.
+   */
+  dateFormat: string | null;
+  /**
+   * Day/month order cannot be told from the values; `dateFormat` is the European guess.
+   */
+  dateAmbiguous: boolean;
+  /**
+   * A single signed amount column; `null` when the file has a debit/credit pair instead.
+   */
+  amount: InferredField | null;
+  debit: InferredField | null;
+  credit: InferredField | null;
+  /**
+   * A running balance that agrees with the amounts; it is what `signCheck` rests on.
+   */
+  balance: InferredField | null;
+  signCheck: SignCheck;
+  currency: InferredField | null;
+  /**
+   * IBANs or Czech domestic account numbers of the other party.
+   */
+  counterpartyIban: InferredField | null;
+  counterparty: InferredField | null;
+  transactionId: InferredField | null;
+  /**
+   * Up to three free-text columns, longest first.
+   */
+  description: string[];
+  /**
+   * `","` or `"."`.
+   */
+  decimalSeparator: string;
+};
 
 /**
  * One column the content inference assigned to a role (TS `InferredField`).
  */
-export type InferredField = { 
-/**
- * The file's own header of the column.
- */
-column: string; 
-/**
- * 0–1: the share of the column's cells that matched the role, 0.1 lower when no header
- * synonym agreed and only the content decided.
- */
-confidence: number }
+export type InferredField = {
+  /**
+   * The file's own header of the column.
+   */
+  column: string;
+  /**
+   * 0–1: the share of the column's cells that matched the role, 0.1 lower when no header
+   * synonym agreed and only the content decided.
+   */
+  confidence: number;
+};
 
 /**
  * Data for recording a valuation.
  */
-export type InsertAssetValuation = { assetId: string; value: string; currency: string | null; valuedAt: number; note: string | null }
+export type InsertAssetValuation = {
+  assetId: string;
+  value: string;
+  currency: string | null;
+  valuedAt: number;
+  note: string | null;
+};
 
 /**
  * Input of `record_bank_account_balance`: one dated balance. `source` is derived:
  * `statement` when a batch id is given, else `manual`.
  */
-export type InsertBalanceRecord = { amount: string; currency: string; asOf: number; 
-/**
- * Required (true) only while the account has no dated record and its undated
- * balance is not 0: the first dated record replaces that number.
- */
-confirmUnknownAsOf?: boolean; sourceBatchId?: string | null }
+export type InsertBalanceRecord = {
+  amount: string;
+  currency: string;
+  asOf: number;
+  /**
+   * Required (true) only while the account has no dated record and its undated
+   * balance is not 0: the first dated record replaces that number.
+   */
+  confirmUnknownAsOf?: boolean;
+  sourceBatchId?: string | null;
+};
 
 /**
  * Data for creating/updating a bank account
  */
-export type InsertBankAccount = { name: string; accountType: string | null; iban: string | null; bban: string | null; currency: string | null; balance: string | null; 
-/**
- * UTC day of the opening balance (create only; with it the create writes the first balance record). The update command ignores it.
- */
-balanceAsOf?: number | null; institutionId: string | null; interestRate: string | null; hasZoneDesignation: boolean | null; terminationDate: number | null; 
-/**
- * Overwritten on update like `terminationDate`: the form always sends the stored value.
- */
-interestRateValidUntil?: number | null; 
-/**
- * `None` keeps the stored value on update and means "included" on create.
- */
-excludeFromBalance?: boolean | null }
+export type InsertBankAccount = {
+  name: string;
+  accountType: string | null;
+  iban: string | null;
+  bban: string | null;
+  currency: string | null;
+  balance: string | null;
+  /**
+   * UTC day of the opening balance (create only; with it the create writes the first balance record). The update command ignores it.
+   */
+  balanceAsOf?: number | null;
+  institutionId: string | null;
+  interestRate: string | null;
+  hasZoneDesignation: boolean | null;
+  terminationDate: number | null;
+  /**
+   * Overwritten on update like `terminationDate`: the form always sends the stored value.
+   */
+  interestRateValidUntil?: number | null;
+  /**
+   * `None` keeps the stored value on update and means "included" on create.
+   */
+  excludeFromBalance?: boolean | null;
+};
 
 /**
  * Data for creating/updating a transaction
  */
-export type InsertBankTransaction = { bankAccountId: string; transactionId: string | null; type: string; flowKind?: FlowKind | null; amount: string; currency: string | null; description: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode?: string | null; counterpartyCountry?: string | null; bookingDate: number; valueDate: number | null; categoryId: string | null; status: string | null }
+export type InsertBankTransaction = {
+  bankAccountId: string;
+  transactionId: string | null;
+  type: string;
+  flowKind?: FlowKind | null;
+  amount: string;
+  currency: string | null;
+  description: string | null;
+  counterpartyName: string | null;
+  counterpartyIban: string | null;
+  counterpartyBankCode?: string | null;
+  counterpartyCountry?: string | null;
+  bookingDate: number;
+  valueDate: number | null;
+  categoryId: string | null;
+  status: string | null;
+};
 
 /**
  * Data for creating/updating bond
  */
-export type InsertBond = { name: string; isin: string | null; couponValue: string; quantity: string | null; currency: string | null; interestRate: string | null; 
-/**
- * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
- */
-maturityDate: number | null; 
-/**
- * The day the bond was bought, as Unix seconds (UTC day, stored at UTC midnight; years
- * 0001-9999, not after today). Optional: without it the bond is counted across the whole
- * history; with it, from that day on.
- */
-purchaseDate: number | null }
+export type InsertBond = {
+  name: string;
+  isin: string | null;
+  couponValue: string;
+  quantity: string | null;
+  currency: string | null;
+  interestRate: string | null;
+  /**
+   * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
+   */
+  maturityDate: number | null;
+  /**
+   * The day the bond was bought, as Unix seconds (UTC day, stored at UTC midnight; years
+   * 0001-9999, not after today). Optional: without it the bond is counted across the whole
+   * history; with it, from that day on.
+   */
+  purchaseDate: number | null;
+};
 
 /**
  * Data for creating/updating a budget goal
  */
-export type InsertBudgetGoal = { categoryId: string; timeframe: string; amount: string; currency: string | null; effectiveMonth: number | null; 
-/**
- * Last month of the limit (inclusive); afterwards the limit that applied
- * before the save returns. None keeps the limit open-ended.
- */
-effectiveUntil?: number | null }
+export type InsertBudgetGoal = {
+  categoryId: string;
+  timeframe: string;
+  amount: string;
+  currency: string | null;
+  effectiveMonth: number | null;
+  /**
+   * Last month of the limit (inclusive); afterwards the limit that applied
+   * before the save returns. None keeps the limit open-ended.
+   */
+  effectiveUntil?: number | null;
+};
 
 /**
  * Data for creating/updating cashflow item
  */
-export type InsertCashflowItem = { name: string; amount: string; currency: string | null; frequency: string; itemType: string; replacementSourceId: string | null; category: string }
+export type InsertCashflowItem = {
+  name: string;
+  amount: string;
+  currency: string | null;
+  frequency: string;
+  itemType: string;
+  replacementSourceId: string | null;
+  category: string;
+};
 
 /**
  * Data for creating crypto investment. Quantity and average price are not
  * accepted: they derive from the transaction record (pass an initial
  * transaction on create).
  */
-export type InsertCryptoInvestment = { ticker: string; 
-/**
- * Optional Yahoo Finance USD pair picked in the search; resolved later when absent.
- */
-yahooSymbol?: string | null; name: string }
+export type InsertCryptoInvestment = {
+  ticker: string;
+  /**
+   * Optional Yahoo Finance USD pair picked in the search; resolved later when absent.
+   */
+  yahooSymbol?: string | null;
+  name: string;
+};
 
 /**
  * Data for creating crypto transaction
  */
-export type InsertCryptoTransaction = { investmentId: string | null; type: string; ticker: string; name: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number }
+export type InsertCryptoTransaction = {
+  investmentId: string | null;
+  type: string;
+  ticker: string;
+  name: string;
+  quantity: string;
+  pricePerUnit: string;
+  currency: string;
+  transactionDate: number;
+};
 
 /**
  * Data for creating/updating insurance policy
  */
-export type InsertInsurancePolicy = { type: string; provider: string; policyName: string; policyNumber: string | null; startDate: number; endDate: number | null; paymentFrequency: string; oneTimePayment: string | null; oneTimePaymentCurrency: string | null; regularPayment: string | null; regularPaymentCurrency: string | null; limits: InsuranceLimit[] | null; notes: string | null; status: string | null }
+export type InsertInsurancePolicy = {
+  type: string;
+  provider: string;
+  policyName: string;
+  policyNumber: string | null;
+  startDate: number;
+  endDate: number | null;
+  paymentFrequency: string;
+  oneTimePayment: string | null;
+  oneTimePaymentCurrency: string | null;
+  regularPayment: string | null;
+  regularPaymentCurrency: string | null;
+  limits: InsuranceLimit[] | null;
+  notes: string | null;
+  status: string | null;
+};
 
 /**
  * Data for creating transaction
  */
-export type InsertInvestmentTransaction = { investmentId: string | null; type: string; ticker: string; companyName: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number; 
-/**
- * Optional trading fee in `currency`; empty text means none.
- */
-fee?: string | null }
+export type InsertInvestmentTransaction = {
+  investmentId: string | null;
+  type: string;
+  ticker: string;
+  companyName: string;
+  quantity: string;
+  pricePerUnit: string;
+  currency: string;
+  transactionDate: number;
+  /**
+   * Optional trading fee in `currency`; empty text means none.
+   */
+  fee?: string | null;
+};
 
 /**
  * What `save_learned_csv_format` takes (TS `InsertLearnedCsvFormat`); `validate()` is in
  * `csv_import::learned` beside the rules it applies.
  */
-export type InsertLearnedCsvFormat = { name: string; headers: string[]; delimiter: string; encoding: string; headerRow: number; mapping: LearnedCsvMapping; accountId: string | null }
+export type InsertLearnedCsvFormat = {
+  name: string;
+  headers: string[];
+  delimiter: string;
+  encoding: string;
+  headerRow: number;
+  mapping: LearnedCsvMapping;
+  accountId: string | null;
+};
 
 /**
  * Data for creating/updating loan
  */
-export type InsertLoan = { name: string; principal: string; currency: string | null; interestRate: string | null; 
-/**
- * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
- */
-interestRateValidityDate: number | null; monthlyPayment: string | null; 
-/**
- * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
- */
-startDate: number | null; 
-/**
- * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
- */
-endDate: number | null; 
-/**
- * Manual balance as of `balance_anchor_date`; must come with it. It becomes a
- * manual balance record that holds exactly until the user changes it (nothing
- * is amortized after it). Both absent: the balance is estimated from the
- * payments, and on an update every manual balance record of the loan is deleted.
- */
-balanceAnchorAmount: string | null; 
-/**
- * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
- */
-balanceAnchorDate: number | null }
+export type InsertLoan = {
+  name: string;
+  principal: string;
+  currency: string | null;
+  interestRate: string | null;
+  /**
+   * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
+   */
+  interestRateValidityDate: number | null;
+  monthlyPayment: string | null;
+  /**
+   * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
+   */
+  startDate: number | null;
+  /**
+   * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
+   */
+  endDate: number | null;
+  /**
+   * Manual balance as of `balance_anchor_date`; must come with it. It becomes a
+   * manual balance record that holds exactly until the user changes it (nothing
+   * is amortized after it). Both absent: the balance is estimated from the
+   * payments, and on an update every manual balance record of the loan is deleted.
+   */
+  balanceAnchorAmount: string | null;
+  /**
+   * Calendar date as Unix seconds, years 0001-9999; stored at UTC midnight.
+   */
+  balanceAnchorDate: number | null;
+};
 
 /**
  * Data for recording a loan event.
  */
-export type InsertLoanEvent = { loanId: string; kind: string; eventDay: number; amount: string | null; rate: string | null; monthlyPayment: string | null; note: string | null }
+export type InsertLoanEvent = {
+  loanId: string;
+  kind: string;
+  eventDay: number;
+  amount: string | null;
+  rate: string | null;
+  monthlyPayment: string | null;
+  note: string | null;
+};
 
 /**
  * Data for creating/updating other asset
  */
-export type InsertOtherAsset = { name: string; quantity: string | null; marketPrice: string | null; currency: string | null; averagePurchasePrice: string | null; yieldType: string | null; yieldValue: string | null }
+export type InsertOtherAsset = {
+  name: string;
+  quantity: string | null;
+  marketPrice: string | null;
+  currency: string | null;
+  averagePurchasePrice: string | null;
+  yieldType: string | null;
+  yieldValue: string | null;
+};
 
 /**
  * Data for creating transaction
  */
-export type InsertOtherAssetTransaction = { assetId: string | null; type: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number }
+export type InsertOtherAssetTransaction = {
+  assetId: string | null;
+  type: string;
+  quantity: string;
+  pricePerUnit: string;
+  currency: string;
+  transactionDate: number;
+};
 
 /**
  * Data for creating/updating real estate
  */
-export type InsertRealEstate = { name: string; address: string; type: string; purchasePrice: string | null; purchasePriceCurrency: string | null; 
-/**
- * Unix seconds of the day the property was bought, never after today.
- * Stored as the UTC midnight of that day; absent clears a stored date
- * (an update replaces the whole record).
- */
-purchaseDate: number | null; marketPrice: string | null; marketPriceCurrency: string | null; 
-/**
- * Unix seconds of the day the market price applies to, never after today.
- * Dates the first valuation when a property is created (absent means
- * today); an update ignores it, since a later estimate is a revaluation.
- */
-marketPriceDate: number | null; monthlyRent: string | null; monthlyRentCurrency: string | null; recurringCosts: RecurringCost[] | null; photos: string[] | null; notes: string | null }
+export type InsertRealEstate = {
+  name: string;
+  address: string;
+  type: string;
+  purchasePrice: string | null;
+  purchasePriceCurrency: string | null;
+  /**
+   * Unix seconds of the day the property was bought, never after today.
+   * Stored as the UTC midnight of that day; absent clears a stored date
+   * (an update replaces the whole record).
+   */
+  purchaseDate: number | null;
+  marketPrice: string | null;
+  marketPriceCurrency: string | null;
+  /**
+   * Unix seconds of the day the market price applies to, never after today.
+   * Dates the first valuation when a property is created (absent means
+   * today); an update ignores it, since a later estimate is a revaluation.
+   */
+  marketPriceDate: number | null;
+  monthlyRent: string | null;
+  monthlyRentCurrency: string | null;
+  recurringCosts: RecurringCost[] | null;
+  photos: string[] | null;
+  notes: string | null;
+};
 
 /**
  * Explicit opt-in: one own account, movement direction and reliable account/payee identity.
  */
-export type InsertScopedLearning = { bankAccountId: string; isCredit: boolean; payee: string | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; categoryId: string }
+export type InsertScopedLearning = {
+  bankAccountId: string;
+  isCredit: boolean;
+  payee: string | null;
+  counterpartyIban: string | null;
+  counterpartyBankCode: string | null;
+  counterpartyCountry: string | null;
+  categoryId: string;
+};
 
-export type InsertSpendingPlan = { name: string; year: number; amount: string; currency: string; icon: string; color: string; note: string | null }
+export type InsertSpendingPlan = {
+  name: string;
+  year: number;
+  amount: string;
+  currency: string;
+  icon: string;
+  color: string;
+  note: string | null;
+};
 
 /**
  * A dividend to enter by hand, or the new values of one (the position comes from the command).
  */
-export type InsertStockDividend = { 
-/**
- * Any moment of the ex-date; stored as its UTC midnight.
- */
-exDate: number; 
-/**
- * The payout's gross total (before withholding tax).
- */
-grossAmount: string; 
-/**
- * ISO code; `GBX`/`GBp` amounts are pence and are stored in GBP.
- */
-currency: string; note?: string | null }
+export type InsertStockDividend = {
+  /**
+   * Any moment of the ex-date; stored as its UTC midnight.
+   */
+  exDate: number;
+  /**
+   * The payout's gross total (before withholding tax).
+   */
+  grossAmount: string;
+  /**
+   * ISO code; `GBX`/`GBp` amounts are pence and are stored in GBP.
+   */
+  currency: string;
+  note?: string | null;
+};
 
 /**
  * Data for creating stock investment. Quantity and average price are not
  * accepted: they derive from the transaction record (pass an initial
  * transaction on create).
  */
-export type InsertStockInvestment = { ticker: string; companyName: string }
+export type InsertStockInvestment = { ticker: string; companyName: string };
 
 /**
  * A split the user records by hand (D11). The caller trims and uppercases `ticker`.
  */
-export type InsertStockSplit = { ticker: string; effectiveDay: number; numerator: string; denominator: string }
+export type InsertStockSplit = {
+  ticker: string;
+  effectiveDay: number;
+  numerator: string;
+  denominator: string;
+};
 
 /**
  * Data for creating a stock tag
  */
-export type InsertStockTag = { name: string; color: string | null; groupId: string | null }
+export type InsertStockTag = { name: string; color: string | null; groupId: string | null };
 
 /**
  * Data for creating a stock tag group
  */
-export type InsertStockTagGroup = { name: string; description: string | null }
+export type InsertStockTagGroup = { name: string; description: string | null };
 
 /**
  * Data for creating a category
  */
-export type InsertTransactionCategory = { kind?: FlowKind | null; name: string; icon: string | null; color: string | null; parentId: string | null; sortOrder: number | null }
+export type InsertTransactionCategory = {
+  kind?: FlowKind | null;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  parentId: string | null;
+  sortOrder: number | null;
+};
 
 /**
  * Data for creating/updating user profile
  */
-export type InsertUserProfile = { name: string; surname: string; email: string; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null }
+export type InsertUserProfile = {
+  name: string;
+  surname: string;
+  email: string;
+  menuPreferences: MenuPreferences | null;
+  currency: string | null;
+  language: string | null;
+  excludePersonalRealEstate: boolean | null;
+};
 
 /**
  * Insert payload for following a stock
  */
-export type InsertWatchedStock = { ticker: string }
+export type InsertWatchedStock = { ticker: string };
 
 /**
  * Financial institution (bank)
  */
-export type Institution = { id: string; name: string; bic: string | null; country: string | null; logoUrl: string | null; createdAt: number }
+export type Institution = {
+  id: string;
+  name: string;
+  bic: string | null;
+  country: string | null;
+  logoUrl: string | null;
+  createdAt: number;
+};
 
 /**
  * Insurance document (attached contracts, certificates, etc.)
  */
-export type InsuranceDocument = { id: string; insuranceId: string; name: string; description: string | null; 
-/**
- * Stored MIME type, or the one the legacy file's extension implies.
- */
-mimeType: string; 
-/**
- * Lowercased extension of the original file name, for the file tile.
- */
-extension: string | null; fileType: string; fileSize: number | null; uploadedAt: number; 
-/**
- * Where the content is, with device sync (ADR 0030).
- */
-content: AttachmentContent }
+export type InsuranceDocument = {
+  id: string;
+  insuranceId: string;
+  name: string;
+  description: string | null;
+  /**
+   * Stored MIME type, or the one the legacy file's extension implies.
+   */
+  mimeType: string;
+  /**
+   * Lowercased extension of the original file name, for the file tile.
+   */
+  extension: string | null;
+  fileType: string;
+  fileSize: number | null;
+  uploadedAt: number;
+  /**
+   * Where the content is, with device sync (ADR 0030).
+   */
+  content: AttachmentContent;
+};
 
 /**
  * Insurance limit
  */
-export type InsuranceLimit = { title: string; amount: number; currency: string }
+export type InsuranceLimit = { title: string; amount: number; currency: string };
 
 /**
  * Insurance policy
  */
-export type InsurancePolicy = { id: string; type: string; provider: string; policyName: string; policyNumber: string | null; startDate: number; endDate: number | null; paymentFrequency: string; oneTimePayment: string | null; oneTimePaymentCurrency: string | null; regularPayment: string; regularPaymentCurrency: string; limits: InsuranceLimit[]; notes: string | null; status: string; createdAt: number; updatedAt: number }
+export type InsurancePolicy = {
+  id: string;
+  type: string;
+  provider: string;
+  policyName: string;
+  policyNumber: string | null;
+  startDate: number;
+  endDate: number | null;
+  paymentFrequency: string;
+  oneTimePayment: string | null;
+  oneTimePaymentCurrency: string | null;
+  regularPayment: string;
+  regularPaymentCurrency: string;
+  limits: InsuranceLimit[];
+  notes: string | null;
+  status: string;
+  createdAt: number;
+  updatedAt: number;
+};
 
 /**
  * Result of `PRAGMA quick_check` (+ `cipher_integrity_check`).
  */
-export type IntegrityReport = { ok: boolean; messages: string[] }
+export type IntegrityReport = { ok: boolean; messages: string[] };
 
 /**
  * Investment transaction (buy/sell)
  */
-export type InvestmentTransaction = { id: string; investmentId: string; type: string; ticker: string; companyName: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number; createdAt: number; 
-/**
- * Trading fee in the transaction's currency; `None` when none was recorded.
- */
-fee: string | null }
+export type InvestmentTransaction = {
+  id: string;
+  investmentId: string;
+  type: string;
+  ticker: string;
+  companyName: string;
+  quantity: string;
+  pricePerUnit: string;
+  currency: string;
+  transactionDate: number;
+  createdAt: number;
+  /**
+   * Trading fee in the transaction's currency; `None` when none was recorded.
+   */
+  fee: string | null;
+};
 
 /**
  * A stock position with its transactions and tags (one IPC call for the detail page).
  */
-export type InvestmentWithDetails = { currency: string; fxQuality: ConversionQuality; investment: EnrichedStockInvestment; transactions: InvestmentTransaction[]; tags: StockTag[] }
+export type InvestmentWithDetails = {
+  currency: string;
+  fxQuality: ConversionQuality;
+  investment: EnrichedStockInvestment;
+  transactions: InvestmentTransaction[];
+  tags: StockTag[];
+};
 
 /**
  * The answer of "Ověřit sadu".
  */
-export type KitCheck = { result: KitCheckResult; 
-/**
- * `replaced`: when this device learnt of the replacement (unix seconds), if known.
- */
-replacedAt: number | null; 
-/**
- * `replaced`: when the valid kit was made (unix seconds), if known.
- */
-currentCreatedAt: number | null }
+export type KitCheck = {
+  result: KitCheckResult;
+  /**
+   * `replaced`: when this device learnt of the replacement (unix seconds), if known.
+   */
+  replacedAt: number | null;
+  /**
+   * `replaced`: when the valid kit was made (unix seconds), if known.
+   */
+  currentCreatedAt: number | null;
+};
 
 /**
  * What `sync_check_recovery_kit` found (revision §2.8).
  */
-export type KitCheckResult = 
-/**
- * The kit is this sync's current one.
- */
-"valid" | 
-/**
- * A newer kit replaced it.
- */
-"replaced" | 
-/**
- * The code belongs to another sync.
- */
-"otherSync" | 
-/**
- * This sync has no such kit.
- */
-"unknown"
+export type KitCheckResult =
+  /**
+   * The kit is this sync's current one.
+   */
+  | 'valid'
+  /**
+   * A newer kit replaced it.
+   */
+  | 'replaced'
+  /**
+   * The code belongs to another sync.
+   */
+  | 'otherSync'
+  /**
+   * This sync has no such kit.
+   */
+  | 'unknown';
 
 /**
  * Which file of the Recovery Kit the desktop saves (`sync_save_recovery_kit`).
  */
-export type KitFileKind = 
-/**
- * The self-contained page (`.html`), to print or keep.
- */
-"page" | 
-/**
- * The same facts as plain text (`.txt`).
- */
-"text"
+export type KitFileKind =
+  /**
+   * The self-contained page (`.html`), to print or keep.
+   */
+  | 'page'
+  /**
+   * The same facts as plain text (`.txt`).
+   */
+  | 'text';
 
 /**
  * What became of a Recovery Kit save.
  */
-export type KitSaveOutcome = { 
-/**
- * `false`: the person closed the save dialog; nothing was written.
- */
-saved: boolean; 
-/**
- * The chosen folder looks synced to a cloud service (iCloud Drive, OneDrive, Dropbox, …).
- */
-syncedFolder: boolean }
+export type KitSaveOutcome = {
+  /**
+   * `false`: the person closed the save dialog; nothing was written.
+   */
+  saved: boolean;
+  /**
+   * The chosen folder looks synced to a cloud service (iCloud Drive, OneDrive, Dropbox, …).
+   */
+  syncedFolder: boolean;
+};
 
 /**
  * A CSV layout the person confirmed once, recognised next month (mobile spec §8.6 rung 4; TS
@@ -1506,36 +2136,42 @@ syncedFolder: boolean }
  * from. Encoding and header row are what the file had when it was saved, not part of the key.
  * Also the stored `app_config` shape: a new non-`Option` field needs `#[serde(default)]`.
  */
-export type LearnedCsvFormat = { 
-/**
- * `learned:<uuid>`.
- */
-id: string; name: string; signature: string; headers: string[]; 
-/**
- * One character: `,` `;` or a tab.
- */
-delimiter: string; encoding: string; 
-/**
- * 0-based line of the header row.
- */
-headerRow: number; mapping: LearnedCsvMapping; 
-/**
- * The account the layout was learned for, offered again on reuse.
- */
-accountId: string | null; 
-/**
- * Unix seconds.
- */
-createdAt: number; 
-/**
- * Unix seconds of the last successful import with this format.
- */
-lastUsedAt: number; 
-/**
- * The shipped preset whose headers this layout now matches, filled on every read (a preset
- * always wins over a learned format) and stored as `null`.
- */
-shadowedByPresetId: string | null }
+export type LearnedCsvFormat = {
+  /**
+   * `learned:<uuid>`.
+   */
+  id: string;
+  name: string;
+  signature: string;
+  headers: string[];
+  /**
+   * One character: `,` `;` or a tab.
+   */
+  delimiter: string;
+  encoding: string;
+  /**
+   * 0-based line of the header row.
+   */
+  headerRow: number;
+  mapping: LearnedCsvMapping;
+  /**
+   * The account the layout was learned for, offered again on reuse.
+   */
+  accountId: string | null;
+  /**
+   * Unix seconds.
+   */
+  createdAt: number;
+  /**
+   * Unix seconds of the last successful import with this format.
+   */
+  lastUsedAt: number;
+  /**
+   * The shipped preset whose headers this layout now matches, filled on every read (a preset
+   * always wins over a learned format) and stored as `null`.
+   */
+  shadowedByPresetId: string | null;
+};
 
 /**
  * How a learned format reads the columns of its file (TS `LearnedCsvMapping`): the parts of
@@ -1543,481 +2179,640 @@ shadowedByPresetId: string | null }
  * belongs to one file (skipped rows, overrides, the duplicate decision) is kept.
  * Also the stored `app_config` shape: a new non-`Option` field needs `#[serde(default)]`.
  */
-export type LearnedCsvMapping = { dateColumn: string; 
-/**
- * chrono format, or `"auto"` to detect it from the column.
- */
-dateFormat: string; amountColumn: string | null; debitColumn: string | null; creditColumn: string | null; balanceColumn: string | null; transactionIdColumn: string | null; descriptionColumns: string[]; counterpartyColumn: string | null; counterpartyIbanColumn: string | null; counterpartyBankCodeColumn: string | null; counterpartyCountryColumn: string | null; currencyColumn: string | null; 
-/**
- * `"auto"`, `","` or `"."`.
- */
-decimalSeparator: string }
+export type LearnedCsvMapping = {
+  dateColumn: string;
+  /**
+   * chrono format, or `"auto"` to detect it from the column.
+   */
+  dateFormat: string;
+  amountColumn: string | null;
+  debitColumn: string | null;
+  creditColumn: string | null;
+  balanceColumn: string | null;
+  transactionIdColumn: string | null;
+  descriptionColumns: string[];
+  counterpartyColumn: string | null;
+  counterpartyIbanColumn: string | null;
+  counterpartyBankCodeColumn: string | null;
+  counterpartyCountryColumn: string | null;
+  currencyColumn: string | null;
+  /**
+   * `"auto"`, `","` or `"."`.
+   */
+  decimalSeparator: string;
+};
 
-export type LearnedPayeeEntry = { id: string; ruleType: string; normalizedPayee: string | null; originalPayee: string | null; counterpartyIban: string | null; categoryId: string; bankAccountId: string | null; isCredit: boolean | null; createdAt: number; updatedAt: number }
+export type LearnedPayeeEntry = {
+  id: string;
+  ruleType: string;
+  normalizedPayee: string | null;
+  originalPayee: string | null;
+  counterpartyIban: string | null;
+  categoryId: string;
+  bankAccountId: string | null;
+  isCredit: boolean | null;
+  createdAt: number;
+  updatedAt: number;
+};
 
 /**
  * Loan
  */
-export type Loan = { id: string; name: string; principal: string; currency: string; interestRate: string; interestRateValidityDate: number | null; monthlyPayment: string; startDate: number; endDate: number | null; 
-/**
- * Read-only mirror of the newest manual balance record (a `balance_check`
- * event): its amount, `None` without one. Written only by the manual-record
- * service, never by the loan form directly.
- */
-balanceAnchorAmount: string | null; 
-/**
- * UTC day of the newest manual balance record (see `balance_anchor_amount`).
- */
-balanceAnchorDate: number | null; 
-/**
- * Read-only: balance as of today's UTC day from the loan ledger, in the
- * loan's own currency with 2 decimals (computed on every read, never stored).
- */
-outstandingBalance: string; 
-/**
- * Read-only: `estimated` (amortized from the payments) or `manual` (a manual
- * balance record holds today's balance). Computed with `outstanding_balance`.
- */
-balanceMode: string; 
-/**
- * Read-only: the loan's events, oldest first (day, then creation time), so
- * the client can walk the ledger of every loan on the list page.
- */
-events: LoanEvent[]; createdAt: number; updatedAt: number }
+export type Loan = {
+  id: string;
+  name: string;
+  principal: string;
+  currency: string;
+  interestRate: string;
+  interestRateValidityDate: number | null;
+  monthlyPayment: string;
+  startDate: number;
+  endDate: number | null;
+  /**
+   * Read-only mirror of the newest manual balance record (a `balance_check`
+   * event): its amount, `None` without one. Written only by the manual-record
+   * service, never by the loan form directly.
+   */
+  balanceAnchorAmount: string | null;
+  /**
+   * UTC day of the newest manual balance record (see `balance_anchor_amount`).
+   */
+  balanceAnchorDate: number | null;
+  /**
+   * Read-only: balance as of today's UTC day from the loan ledger, in the
+   * loan's own currency with 2 decimals (computed on every read, never stored).
+   */
+  outstandingBalance: string;
+  /**
+   * Read-only: `estimated` (amortized from the payments) or `manual` (a manual
+   * balance record holds today's balance). Computed with `outstanding_balance`.
+   */
+  balanceMode: string;
+  /**
+   * Read-only: the loan's events, oldest first (day, then creation time), so
+   * the client can walk the ledger of every loan on the list page.
+   */
+  events: LoanEvent[];
+  createdAt: number;
+  updatedAt: number;
+};
 
 /**
  * One event in a loan's life. Money and rates are TEXT like everywhere else.
  */
-export type LoanEvent = { id: string; loanId: string; 
-/**
- * `extra_payment` | `rate_change` | `balance_check`.
- */
-kind: string; 
-/**
- * UTC day of the event (ADR 0008).
- */
-eventDay: number; 
-/**
- * Extra payment amount, or the manual balance of a `balance_check` record.
- */
-amount: string | null; 
-/**
- * New annual rate in percent (`rate_change`).
- */
-rate: string | null; 
-/**
- * New regular payment (`rate_change`, or an `extra_payment` the bank used to lower it).
- */
-monthlyPayment: string | null; 
-/**
- * Annual rate in force before a `rate_change`; `None` on rows written before
- * migration 019 and on other kinds.
- */
-previousRate: string | null; 
-/**
- * Regular payment in force before an event that sets a new one (`rate_change`,
- * `extra_payment` with a new payment); `None` on legacy rows and other kinds.
- */
-previousMonthlyPayment: string | null; note: string | null; createdAt: number }
+export type LoanEvent = {
+  id: string;
+  loanId: string;
+  /**
+   * `extra_payment` | `rate_change` | `balance_check`.
+   */
+  kind: string;
+  /**
+   * UTC day of the event (ADR 0008).
+   */
+  eventDay: number;
+  /**
+   * Extra payment amount, or the manual balance of a `balance_check` record.
+   */
+  amount: string | null;
+  /**
+   * New annual rate in percent (`rate_change`).
+   */
+  rate: string | null;
+  /**
+   * New regular payment (`rate_change`, or an `extra_payment` the bank used to lower it).
+   */
+  monthlyPayment: string | null;
+  /**
+   * Annual rate in force before a `rate_change`; `None` on rows written before
+   * migration 019 and on other kinds.
+   */
+  previousRate: string | null;
+  /**
+   * Regular payment in force before an event that sets a new one (`rate_change`,
+   * `extra_payment` with a new payment); `None` on legacy rows and other kinds.
+   */
+  previousMonthlyPayment: string | null;
+  note: string | null;
+  createdAt: number;
+};
 
 /**
  * Repayment schedule and totals of one loan as of today (loan detail page).
  */
-export type LoanSchedule = { loanId: string; 
-/**
- * Valuation day (today, UTC).
- */
-asOfDay: number; 
-/**
- * Amount and day the amortization starts from.
- */
-anchorAmount: string; anchorDay: number; 
-/**
- * True when the anchor is the user's manual balance, false for
- * principal at the start date.
- */
-anchorIsManual: boolean; outstandingBalance: string; 
-/**
- * Anchor amount minus the balance as of `asOfDay` (negative when it grew).
- */
-principalRepaid: string; 
-/**
- * Interest included in the payments between the anchor and `asOfDay`.
- */
-interestPaid: string; paymentsMade: number; 
-/**
- * Payments left until the balance is 0; None when the schedule does not
- * reach 0 (no payment, payment below interest, ends at `end_date`).
- */
-paymentsRemaining: number | null; payoffDay: number | null; rows: LoanScheduleRow[]; 
-/**
- * Codes the UI translates: `noPayment`, `paymentBelowInterest`,
- * `balanceAtEndDate`, `scheduleTruncated`.
- */
-warnings: string[] }
+export type LoanSchedule = {
+  loanId: string;
+  /**
+   * Valuation day (today, UTC).
+   */
+  asOfDay: number;
+  /**
+   * Amount and day the amortization starts from.
+   */
+  anchorAmount: string;
+  anchorDay: number;
+  /**
+   * True when the anchor is the user's manual balance, false for
+   * principal at the start date.
+   */
+  anchorIsManual: boolean;
+  outstandingBalance: string;
+  /**
+   * Anchor amount minus the balance as of `asOfDay` (negative when it grew).
+   */
+  principalRepaid: string;
+  /**
+   * Interest included in the payments between the anchor and `asOfDay`.
+   */
+  interestPaid: string;
+  paymentsMade: number;
+  /**
+   * Payments left until the balance is 0; None when the schedule does not
+   * reach 0 (no payment, payment below interest, ends at `end_date`).
+   */
+  paymentsRemaining: number | null;
+  payoffDay: number | null;
+  rows: LoanScheduleRow[];
+  /**
+   * Codes the UI translates: `noPayment`, `paymentBelowInterest`,
+   * `balanceAtEndDate`, `scheduleTruncated`.
+   */
+  warnings: string[];
+};
 
 /**
  * One payment of a loan's repayment schedule (money as TEXT, 2 decimals).
  */
-export type LoanScheduleRow = { 
-/**
- * UTC day the payment falls due.
- */
-dueDay: number; payment: string; interest: string; 
-/**
- * Negative when the payment does not cover the interest.
- */
-principalPart: string; balanceAfter: string }
+export type LoanScheduleRow = {
+  /**
+   * UTC day the payment falls due.
+   */
+  dueDay: number;
+  payment: string;
+  interest: string;
+  /**
+   * Negative when the payment does not cover the interest.
+   */
+  principalPart: string;
+  balanceAfter: string;
+};
 
-export type McpServerStatus = { running: boolean; port: number; url: string; tokenSet: boolean; lastError: string | null }
+export type McpServerStatus = {
+  running: boolean;
+  port: number;
+  url: string;
+  tokenSet: boolean;
+  lastError: string | null;
+};
 
 /**
  * Menu preferences for sidebar visibility
  */
-export type MenuPreferences = { loans: boolean; insurance: boolean; investments: boolean; bonds: boolean; realEstate: boolean; crypto?: boolean; otherAssets?: boolean }
+export type MenuPreferences = {
+  loans: boolean;
+  insurance: boolean;
+  investments: boolean;
+  bonds: boolean;
+  realEstate: boolean;
+  crypto?: boolean;
+  otherAssets?: boolean;
+};
 
 /**
  * One occurrence of something the user should act on or know about.
  */
-export type Milestone = { 
-/**
- * Stable occurrence key; the done / snoozed state is stored under it.
- */
-key: string; 
-/**
- * `insurance_anniversary`, `insurance_end`, `insurance_payment`, `loan_fixation_end`,
- * `loan_fixation_expired`, `loan_payoff`, `loan_balance_check`, `bond_maturity`,
- * `bond_coupon`, `account_termination`, `savings_rate_end`, `balances_stale`,
- * `backup_stale`, `valuation_stale`, `watch_target`, `stock_split`, `sync_stalled`.
- */
-kind: string; 
-/**
- * `now` (in the reminder window) or `soon` (within 90 days).
- */
-stage: string; 
-/**
- * `action` (something to do) or `info` (nothing to do).
- */
-tone: string; 
-/**
- * Policy, loan, bond, account or property id; the ticker for targets; the stock
- * investment id for splits.
- */
-sourceId: string | null; 
-/**
- * Entity name; empty for the backup and balances items.
- */
-title: string; 
-/**
- * UTC day of the event.
- */
-dueDay: number | null; 
-/**
- * Last day to act when it differs from the event (insurance notice deadline); the
- * ex-date of a stock split.
- */
-actionDay: number | null; 
-/**
- * Day of the last backup, balance update, valuation or balance check.
- */
-sinceDay: number | null; 
-/**
- * Payment, coupon, returned principal or target price (TEXT money).
- */
-amount: string | null; currency: string | null; 
-/**
- * Current price of a crossed target.
- */
-referenceAmount: string | null; 
-/**
- * `below` / `above` for targets; `<numerator>:<denominator>` for a stock split.
- */
-direction: string | null; 
-/**
- * Number of stale accounts; transactions dated before a stock split.
- */
-count: number | null }
+export type Milestone = {
+  /**
+   * Stable occurrence key; the done / snoozed state is stored under it.
+   */
+  key: string;
+  /**
+   * `insurance_anniversary`, `insurance_end`, `insurance_payment`, `loan_fixation_end`,
+   * `loan_fixation_expired`, `loan_payoff`, `loan_balance_check`, `bond_maturity`,
+   * `bond_coupon`, `account_termination`, `savings_rate_end`, `balances_stale`,
+   * `backup_stale`, `valuation_stale`, `watch_target`, `stock_split`, `sync_stalled`.
+   */
+  kind: string;
+  /**
+   * `now` (in the reminder window) or `soon` (within 90 days).
+   */
+  stage: string;
+  /**
+   * `action` (something to do) or `info` (nothing to do).
+   */
+  tone: string;
+  /**
+   * Policy, loan, bond, account or property id; the ticker for targets; the stock
+   * investment id for splits.
+   */
+  sourceId: string | null;
+  /**
+   * Entity name; empty for the backup and balances items.
+   */
+  title: string;
+  /**
+   * UTC day of the event.
+   */
+  dueDay: number | null;
+  /**
+   * Last day to act when it differs from the event (insurance notice deadline); the
+   * ex-date of a stock split.
+   */
+  actionDay: number | null;
+  /**
+   * Day of the last backup, balance update, valuation or balance check.
+   */
+  sinceDay: number | null;
+  /**
+   * Payment, coupon, returned principal or target price (TEXT money).
+   */
+  amount: string | null;
+  currency: string | null;
+  /**
+   * Current price of a crossed target.
+   */
+  referenceAmount: string | null;
+  /**
+   * `below` / `above` for targets; `<numerator>:<denominator>` for a stock split.
+   */
+  direction: string | null;
+  /**
+   * Number of stale accounts; transactions dated before a stock split.
+   */
+  count: number | null;
+};
 
 /**
  * How to get this bank's statement file onto a phone (spec §8.6, rung 2; wire type — TS
  * `MobileExportGuide`). Data, like the rest of the preset: the guide ships in the preset file and
  * is shown, never executed. `steps` is locale → two to four short imperative steps.
  */
-export type MobileExportGuide = { route: ExportRoute; 
-/**
- * What the person picks in the bank ("CSV"; Revolut's personal statement offers "Excel (CSV)").
- */
-format: string; 
-/**
- * Locale code (`en`, `cs`, …) → the steps; every locale the app ships is present.
- */
-steps: Partial<{ [key in string]: string[] }>; 
-/**
- * A bare URL scheme (`fio`, never `fio://`) that opens the bank's own app. No bank documents
- * one today; it stays `None` until one does.
- */
-appUrlScheme?: string | null; 
-/**
- * The bank's internet-banking entry (`https://…`); required for a `web` route.
- */
-webUrl?: string | null }
+export type MobileExportGuide = {
+  route: ExportRoute;
+  /**
+   * What the person picks in the bank ("CSV"; Revolut's personal statement offers "Excel (CSV)").
+   */
+  format: string;
+  /**
+   * Locale code (`en`, `cs`, …) → the steps; every locale the app ships is present.
+   */
+  steps: Partial<{ [key in string]: string[] }>;
+  /**
+   * A bare URL scheme (`fio`, never `fio://`) that opens the bank's own app. No bank documents
+   * one today; it stays `None` until one does.
+   */
+  appUrlScheme?: string | null;
+  /**
+   * The bank's internet-banking entry (`https://…`); required for a `web` route.
+   */
+  webUrl?: string | null;
+};
 
 /**
  * Done-state of the dashboard "Getting started" checklist plus the
  * onboarding flags stored in `app_config`.
  */
-export type OnboardingProgress = { hasAccount: boolean; hasTransactions: boolean; hasInvestment: boolean; hasBudget: boolean; lastBackupAt: number | null; checklistDismissed: boolean; completedAt: number | null }
+export type OnboardingProgress = {
+  hasAccount: boolean;
+  hasTransactions: boolean;
+  hasInvestment: boolean;
+  hasBudget: boolean;
+  lastBackupAt: number | null;
+  checklistDismissed: boolean;
+  completedAt: number | null;
+};
 
 /**
  * Other asset (commodities, collectibles, etc.)
  */
-export type OtherAsset = { id: string; name: string; quantity: string; 
-/**
- * Today's price per unit: the newest valuation, else the stored market price.
- */
-marketPrice: string; 
-/**
- * The currency of `market_price`: the newest valuation's, else the asset's own.
- */
-marketPriceCurrency: string; 
-/**
- * The asset's own currency: the purchase average's (and the fallback price's).
- */
-currency: string; averagePurchasePrice: string; yieldType: string; yieldValue: string | null; createdAt: number; updatedAt: number }
+export type OtherAsset = {
+  id: string;
+  name: string;
+  quantity: string;
+  /**
+   * Today's price per unit: the newest valuation, else the stored market price.
+   */
+  marketPrice: string;
+  /**
+   * The currency of `market_price`: the newest valuation's, else the asset's own.
+   */
+  marketPriceCurrency: string;
+  /**
+   * The asset's own currency: the purchase average's (and the fallback price's).
+   */
+  currency: string;
+  averagePurchasePrice: string;
+  yieldType: string;
+  yieldValue: string | null;
+  createdAt: number;
+  updatedAt: number;
+};
 
 /**
  * Transaction for other asset
  */
-export type OtherAssetTransaction = { id: string; assetId: string; type: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number; createdAt: number }
+export type OtherAssetTransaction = {
+  id: string;
+  assetId: string;
+  type: string;
+  quantity: string;
+  pricePerUnit: string;
+  currency: string;
+  transactionDate: number;
+  createdAt: number;
+};
 
 /**
  * One pack rule, with its disabled flag from app_config
  */
-export type PackRuleInfo = { id: string; name: string; ruleType: string; pattern: string; categoryId: string; priority: number; disabled: boolean }
+export type PackRuleInfo = {
+  id: string;
+  name: string;
+  ruleType: string;
+  pattern: string;
+  categoryId: string;
+  priority: number;
+  disabled: boolean;
+};
 
 /**
  * Whether this device holds the synced data (sync on) or joins it (sync off).
  */
-export type PairingRole = "holder" | "joiner"
+export type PairingRole = 'holder' | 'joiner';
 
 /**
  * Where a pairing stands on this device (`services::sync::pairing::session::Stage`).
  */
-export type PairingStage = 
-/**
- * Scanner: its answer is not written yet; polling retries it.
- */
-"announcing" | 
-/**
- * Shower: the QR code is on screen, waiting for the other device to scan it.
- */
-"waitingForScan" | 
-/**
- * Both: the other device is answered (scanner: slot 1 written, the shower's acknowledgement
- * awaited; shower: the acknowledgement is being stored); nothing is shown yet.
- */
-"connecting" | 
-/**
- * The joiner shows its six digits; the holder asks its person to type them.
- */
-"compare" | 
-/**
- * Joiner, after its confirm: waiting for the other device to send the sync details.
- */
-"waitingForOther" | 
-/**
- * Holder, after its confirm: the sync details are sent.
- */
-"sent" | 
-/**
- * Joiner: the sync details arrived; joining can start.
- */
-"received"
+export type PairingStage =
+  /**
+   * Scanner: its answer is not written yet; polling retries it.
+   */
+  | 'announcing'
+  /**
+   * Shower: the QR code is on screen, waiting for the other device to scan it.
+   */
+  | 'waitingForScan'
+  /**
+   * Both: the other device is answered (scanner: slot 1 written, the shower's acknowledgement
+   * awaited; shower: the acknowledgement is being stored); nothing is shown yet.
+   */
+  | 'connecting'
+  /**
+   * The joiner shows its six digits; the holder asks its person to type them.
+   */
+  | 'compare'
+  /**
+   * Joiner, after its confirm: waiting for the other device to send the sync details.
+   */
+  | 'waitingForOther'
+  /**
+   * Holder, after its confirm: the sync details are sent.
+   */
+  | 'sent'
+  /**
+   * Joiner: the sync details arrived; joining can start.
+   */
+  | 'received';
 
 /**
  * A pairing as the UI shows it. Nothing secret: the QR code and the comparison code only
  * protect the exchange while they are on screens the person is looking at; the sync details
  * themselves never leave Rust.
  */
-export type PairingView = { stage: PairingStage; role: PairingRole; 
-/**
- * The pairing code as an SVG QR code, while this device shows it (`waitingForScan`).
- */
-qrSvg: string | null; 
-/**
- * The same code as text, to copy and type on a device that cannot scan.
- */
-pairingCode: string | null; 
-/**
- * The six digits the joiner shows, from `compare` on; never set on the holder, whose person
- * types them.
- */
-comparisonCode: string | null; 
-/**
- * Scanner: another device answered this code first; this device's digits differ from the
- * other device's, and only cancelling is offered.
- */
-contested: boolean; 
-/**
- * When the pairing ends on this device (unix seconds).
- */
-expiresAt: number; 
-/**
- * The sync server of this pairing as `host[:port]`, only when it is not the default one, so
- * the person sees which server a self-hosted pairing goes through.
- */
-serverHost: string | null; 
-/**
- * Joiner, at `received`: `host[:port]` of the server the received sync details name, so the
- * person sees where the account will be used before joining.
- */
-joinServer: string | null; 
-/**
- * Whether that server is reached over plain http beyond this device (`is_insecure_address`).
- */
-joinServerInsecure: boolean; 
-/**
- * Holder, in `compare`: wrong codes the person may still type before the pairing ends.
- */
-attemptsLeft: number | null }
+export type PairingView = {
+  stage: PairingStage;
+  role: PairingRole;
+  /**
+   * The pairing code as an SVG QR code, while this device shows it (`waitingForScan`).
+   */
+  qrSvg: string | null;
+  /**
+   * The same code as text, to copy and type on a device that cannot scan.
+   */
+  pairingCode: string | null;
+  /**
+   * The six digits the joiner shows, from `compare` on; never set on the holder, whose person
+   * types them.
+   */
+  comparisonCode: string | null;
+  /**
+   * Scanner: another device answered this code first; this device's digits differ from the
+   * other device's, and only cancelling is offered.
+   */
+  contested: boolean;
+  /**
+   * When the pairing ends on this device (unix seconds).
+   */
+  expiresAt: number;
+  /**
+   * The sync server of this pairing as `host[:port]`, only when it is not the default one, so
+   * the person sees which server a self-hosted pairing goes through.
+   */
+  serverHost: string | null;
+  /**
+   * Joiner, at `received`: `host[:port]` of the server the received sync details name, so the
+   * person sees where the account will be used before joining.
+   */
+  joinServer: string | null;
+  /**
+   * Whether that server is reached over plain http beyond this device (`is_insecure_address`).
+   */
+  joinServerInsecure: boolean;
+  /**
+   * Holder, in `compare`: wrong codes the person may still type before the pairing ends.
+   */
+  attemptsLeft: number | null;
+};
 
 /**
  * The chart data of one requested series, on the dates of the report.
  */
-export type PerformanceSeries = { key: string; 
-/**
- * Cumulative time-weighted return of the series' own positions in percent per date
- * (first 0).
- */
-twr: number[]; 
-/**
- * Percentage points of the whole-portfolio return the series brought, cumulative per date;
- * `null` for a series computed in another currency.
- */
-contribution: number[] | null; 
-/**
- * Money the series' positions gained over the whole period in the report currency (the
- * value change without buys and sells), decimal TEXT; `null` for a series computed in
- * another currency.
- */
-gain: string | null }
+export type PerformanceSeries = {
+  key: string;
+  /**
+   * Cumulative time-weighted return of the series' own positions in percent per date
+   * (first 0).
+   */
+  twr: number[];
+  /**
+   * Percentage points of the whole-portfolio return the series brought, cumulative per date;
+   * `null` for a series computed in another currency.
+   */
+  contribution: number[] | null;
+  /**
+   * Money the series' positions gained over the whole period in the report currency (the
+   * value change without buys and sells), decimal TEXT; `null` for a series computed in
+   * another currency.
+   */
+  gain: string | null;
+};
 
 /**
  * One line of the performance chart: a set of positions.
  */
-export type PerformanceSeriesSpec = { 
-/**
- * Caller-chosen identifier, echoed in the response; unique within a request.
- */
-key: string; 
-/**
- * The positions of the series. Ids of positions outside the period are ignored.
- */
-investmentIds: string[]; 
-/**
- * Compute this series in another currency (the native return of a currency group); it then
- * has no contribution.
- */
-currency: string | null }
+export type PerformanceSeriesSpec = {
+  /**
+   * Caller-chosen identifier, echoed in the response; unique within a request.
+   */
+  key: string;
+  /**
+   * The positions of the series. Ids of positions outside the period are ignored.
+   */
+  investmentIds: string[];
+  /**
+   * Compute this series in another currency (the native return of a currency group); it then
+   * has no contribution.
+   */
+  currency: string | null;
+};
 
 /**
  * Filters for payments that could be tagged to a plan (any account).
  */
-export type PlanCandidateFilters = { planId: string; dateFrom: number | null; dateTo: number | null; accountId: string | null; onlyUnassigned: boolean; 
-/**
- * Matched against counterparty, description and category name, ignoring case and diacritics.
- */
-query: string | null; 
-/**
- * Categories whose shown (translated) name matches `query`: their payments match it too.
- */
-categoryIds: string[] | null; limit: number | null }
+export type PlanCandidateFilters = {
+  planId: string;
+  dateFrom: number | null;
+  dateTo: number | null;
+  accountId: string | null;
+  onlyUnassigned: boolean;
+  /**
+   * Matched against counterparty, description and category name, ignoring case and diacritics.
+   */
+  query: string | null;
+  /**
+   * Categories whose shown (translated) name matches `query`: their payments match it too.
+   */
+  categoryIds: string[] | null;
+  limit: number | null;
+};
 
-export type PlanCandidatesResult = { transactions: BankTransaction[]; truncated: boolean }
+export type PlanCandidatesResult = { transactions: BankTransaction[]; truncated: boolean };
 
 /**
  * One recorded day of the portfolio history in the response currency (converted at that
  * day's rates). Amounts are decimal TEXT, `null` when nothing in the class converted.
  */
-export type PortfolioHistoryPoint = { recordedAt: number; 
-/**
- * `"live"` (recorded by the running app) or `"backfill"` (reconstructed; the static
- * classes of such a day are carried from the nearest live row).
- */
-source: string; isStale: boolean; totalSavings: string | null; totalLoansPrincipal: string | null; totalInvestments: string | null; totalCrypto: string | null; totalBonds: string | null; totalRealEstatePersonal: string | null; totalRealEstateInvestment: string | null; totalOtherAssets: string | null; 
-/**
- * Every converted asset class (personal real estate included) minus the loans.
- */
-netWorth: string | null }
+export type PortfolioHistoryPoint = {
+  recordedAt: number;
+  /**
+   * `"live"` (recorded by the running app) or `"backfill"` (reconstructed; the static
+   * classes of such a day are carried from the nearest live row).
+   */
+  source: string;
+  isStale: boolean;
+  totalSavings: string | null;
+  totalLoansPrincipal: string | null;
+  totalInvestments: string | null;
+  totalCrypto: string | null;
+  totalBonds: string | null;
+  totalRealEstatePersonal: string | null;
+  totalRealEstateInvestment: string | null;
+  totalOtherAssets: string | null;
+  /**
+   * Every converted asset class (personal real estate included) minus the loans.
+   */
+  netWorth: string | null;
+};
 
 /**
  * The portfolio history in `currency`, oldest day first.
  */
-export type PortfolioHistoryResponse = { currency: string; fxQuality: ConversionQuality; points: PortfolioHistoryPoint[] }
+export type PortfolioHistoryResponse = {
+  currency: string;
+  fxQuality: ConversionQuality;
+  points: PortfolioHistoryPoint[];
+};
 
 /**
  * Current net worth in `currency`. Class totals are decimal TEXT, `null` when nothing in the
  * class could be converted; the totals sum what converted and `fxQuality` names the rest.
  * The `*ByCurrency` maps stay native (amounts in their own currencies).
  */
-export type PortfolioMetrics = { currency: string; fxQuality: ConversionQuality; totalSavings: string | null; totalInvestments: string | null; totalCrypto: string | null; totalBonds: string | null; 
-/**
- * Always reported, also when personal real estate is excluded from the totals.
- */
-totalRealEstatePersonal: string | null; totalRealEstateInvestment: string | null; 
-/**
- * The real estate counted in `totalAssets` (personal left out when excluded).
- */
-totalRealEstate: string | null; totalOtherAssets: string | null; 
-/**
- * `null` when the loans hold amounts but none of them could be converted.
- */
-totalLiabilities: string | null; 
-/**
- * `null` when the asset classes hold amounts but none of them could be converted.
- */
-totalAssets: string | null; 
-/**
- * `null` unless both `totalAssets` and `totalLiabilities` are known.
- */
-netWorth: string | null; savingsByCurrency: Partial<{ [key in string]: number }>; investmentsByCurrency: Partial<{ [key in string]: number }>; cryptoByCurrency: Partial<{ [key in string]: number }>; bondsByCurrency: Partial<{ [key in string]: number }>; 
-/**
- * Personal properties left out when excluded, like `totalRealEstate`.
- */
-realEstateByCurrency: Partial<{ [key in string]: number }>; loansByCurrency: Partial<{ [key in string]: number }>; otherAssetsByCurrency: Partial<{ [key in string]: number }> }
+export type PortfolioMetrics = {
+  currency: string;
+  fxQuality: ConversionQuality;
+  totalSavings: string | null;
+  totalInvestments: string | null;
+  totalCrypto: string | null;
+  totalBonds: string | null;
+  /**
+   * Always reported, also when personal real estate is excluded from the totals.
+   */
+  totalRealEstatePersonal: string | null;
+  totalRealEstateInvestment: string | null;
+  /**
+   * The real estate counted in `totalAssets` (personal left out when excluded).
+   */
+  totalRealEstate: string | null;
+  totalOtherAssets: string | null;
+  /**
+   * `null` when the loans hold amounts but none of them could be converted.
+   */
+  totalLiabilities: string | null;
+  /**
+   * `null` when the asset classes hold amounts but none of them could be converted.
+   */
+  totalAssets: string | null;
+  /**
+   * `null` unless both `totalAssets` and `totalLiabilities` are known.
+   */
+  netWorth: string | null;
+  savingsByCurrency: Partial<{ [key in string]: number }>;
+  investmentsByCurrency: Partial<{ [key in string]: number }>;
+  cryptoByCurrency: Partial<{ [key in string]: number }>;
+  bondsByCurrency: Partial<{ [key in string]: number }>;
+  /**
+   * Personal properties left out when excluded, like `totalRealEstate`.
+   */
+  realEstateByCurrency: Partial<{ [key in string]: number }>;
+  loansByCurrency: Partial<{ [key in string]: number }>;
+  otherAssetsByCurrency: Partial<{ [key in string]: number }>;
+};
 
 /**
  * Full portfolio projection response, valued in `currency`. What could not be converted
  * (a holding or a contribution in a currency without a quote) is left out and named in
  * `fxQuality`.
  */
-export type PortfolioProjection = { currency: string; fxQuality: ConversionQuality; horizonYears: number; viewType: string; timeline: ProjectionTimelinePoint[]; projectedNetWorth: string; totalContributions: string; totalGrowth: string; calculatedDefaults: CalculatedDefaults }
+export type PortfolioProjection = {
+  currency: string;
+  fxQuality: ConversionQuality;
+  horizonYears: number;
+  viewType: string;
+  timeline: ProjectionTimelinePoint[];
+  projectedNetWorth: string;
+  totalContributions: string;
+  totalGrowth: string;
+  calculatedDefaults: CalculatedDefaults;
+};
 
 /**
  * One position of the period over the whole period.
  */
-export type PositionPerformance = { investmentId: string; 
-/**
- * Time-weighted return of the position over the period, in percent.
- */
-twr: number; 
-/**
- * Percentage points of the whole-portfolio return the position brought.
- */
-contribution: number; 
-/**
- * Value on the first date, decimal TEXT; `null` when it cannot be converted.
- */
-startValue: string | null; 
-/**
- * Value on the last date, decimal TEXT; `null` when it cannot be converted.
- */
-endValue: string | null; 
-/**
- * Money the position gained over the period (the value change without buys and sells),
- * decimal TEXT.
- */
-gain: string }
+export type PositionPerformance = {
+  investmentId: string;
+  /**
+   * Time-weighted return of the position over the period, in percent.
+   */
+  twr: number;
+  /**
+   * Percentage points of the whole-portfolio return the position brought.
+   */
+  contribution: number;
+  /**
+   * Value on the first date, decimal TEXT; `null` when it cannot be converted.
+   */
+  startValue: string | null;
+  /**
+   * Value on the last date, decimal TEXT; `null` when it cannot be converted.
+   */
+  endValue: string | null;
+  /**
+   * Money the position gained over the period (the value change without buys and sells),
+   * decimal TEXT.
+   */
+  gain: string;
+};
 
 /**
  * Sums in the report currency over every known amount: `value`, `costBasis` and
@@ -2026,1876 +2821,2328 @@ gain: string }
  * value is known. A total is `null` when positions hold amounts for it but none of them
  * could be converted.
  */
-export type PositionTotals = { value: string | null; costBasis: string | null; unrealizedGain: string | null; 
-/**
- * `unrealizedGain` in percent of the cost of the same positions; 0 without a cost.
- */
-unrealizedGainPercent: number; realizedGain: string | null; yearlyDividend: string | null }
+export type PositionTotals = {
+  value: string | null;
+  costBasis: string | null;
+  unrealizedGain: string | null;
+  /**
+   * `unrealizedGain` in percent of the cost of the same positions; 0 without a cost.
+   */
+  unrealizedGainPercent: number;
+  realizedGain: string | null;
+  yearlyDividend: string | null;
+};
 
 /**
  * Status of prices and exchange rates freshness
  */
-export type PriceStatus = { 
-/**
- * Are any stock prices considered stale (older than 24 hours)?
- */
-stocksStale: boolean; 
-/**
- * Are any crypto prices considered stale (older than 24 hours, the same rule as stocks)?
- */
-cryptoStale: boolean; 
-/**
- * Are exchange rates considered stale (older than 48 hours)?
- */
-exchangeRatesStale: boolean; 
-/**
- * Age of oldest stock price in hours (None if no stocks)
- */
-oldestStockPriceAgeHours: number | null; 
-/**
- * Age of oldest crypto price in hours (None if no crypto)
- */
-oldestCryptoPriceAgeHours: number | null; 
-/**
- * Age of exchange rates in hours (None if never fetched)
- */
-exchangeRatesAgeHours: number | null; 
-/**
- * Number of stocks without any price data
- */
-stocksMissingPrice: number; 
-/**
- * Number of cryptos without any price data
- */
-cryptoMissingPrice: number; 
-/**
- * Currencies that enter converted totals (open positions, transactions, entities,
- * budgets, the profile currency) without a current quote; amounts in them are excluded
- * from those totals, never valued 1:1. Watch-only and closed-position quotes do not count
- */
-missingCurrencies: string[]; 
-/**
- * Held currencies whose newest stored exchange rate is more than 14 days old;
- * their values use that old rate
- */
-staleCurrencies: string[] }
+export type PriceStatus = {
+  /**
+   * Are any stock prices considered stale (older than 24 hours)?
+   */
+  stocksStale: boolean;
+  /**
+   * Are any crypto prices considered stale (older than 24 hours, the same rule as stocks)?
+   */
+  cryptoStale: boolean;
+  /**
+   * Are exchange rates considered stale (older than 48 hours)?
+   */
+  exchangeRatesStale: boolean;
+  /**
+   * Age of oldest stock price in hours (None if no stocks)
+   */
+  oldestStockPriceAgeHours: number | null;
+  /**
+   * Age of oldest crypto price in hours (None if no crypto)
+   */
+  oldestCryptoPriceAgeHours: number | null;
+  /**
+   * Age of exchange rates in hours (None if never fetched)
+   */
+  exchangeRatesAgeHours: number | null;
+  /**
+   * Number of stocks without any price data
+   */
+  stocksMissingPrice: number;
+  /**
+   * Number of cryptos without any price data
+   */
+  cryptoMissingPrice: number;
+  /**
+   * Currencies that enter converted totals (open positions, transactions, entities,
+   * budgets, the profile currency) without a current quote; amounts in them are excluded
+   * from those totals, never valued 1:1. Watch-only and closed-position quotes do not count
+   */
+  missingCurrencies: string[];
+  /**
+   * Held currencies whose newest stored exchange rate is more than 14 days old;
+   * their values use that old rate
+   */
+  staleCurrencies: string[];
+};
 
 /**
  * Projection settings for a specific asset type
  */
-export type ProjectionSettings = { id: string; assetType: string; 
-/**
- * Yearly growth in percent as text. An explicit `"0"` is honoured as 0 %.
- * An empty string means "not set": savings and bonds then use the weighted
- * rate calculated from the user's own accounts / bonds, the other classes
- * their built-in default.
- */
-yearlyGrowthRate: string; 
-/**
- * Monthly contribution as text, in `contribution_currency` (the currency the user typed;
- * converted into the report currency when a projection is calculated).
- */
-monthlyContribution: string; contributionCurrency: string; enabled: boolean; createdAt?: number; updatedAt?: number }
+export type ProjectionSettings = {
+  id: string;
+  assetType: string;
+  /**
+   * Yearly growth in percent as text. An explicit `"0"` is honoured as 0 %.
+   * An empty string means "not set": savings and bonds then use the weighted
+   * rate calculated from the user's own accounts / bonds, the other classes
+   * their built-in default.
+   */
+  yearlyGrowthRate: string;
+  /**
+   * Monthly contribution as text, in `contribution_currency` (the currency the user typed;
+   * converted into the report currency when a projection is calculated).
+   */
+  monthlyContribution: string;
+  contributionCurrency: string;
+  enabled: boolean;
+  createdAt?: number;
+  updatedAt?: number;
+};
 
 /**
  * A single point in the projection timeline; amounts are decimal text in the report
  * currency, rounded at its minor unit.
  */
-export type ProjectionTimelinePoint = { date: number; totalAssets: string; totalLiabilities: string; netWorth: string; savings: string; investments: string; crypto: string; bonds: string; realEstate: string; otherAssets: string; loans: string }
+export type ProjectionTimelinePoint = {
+  date: number;
+  totalAssets: string;
+  totalLiabilities: string;
+  netWorth: string;
+  savings: string;
+  investments: string;
+  crypto: string;
+  bonds: string;
+  realEstate: string;
+  otherAssets: string;
+  loans: string;
+};
 
 /**
  * Real estate property
  */
-export type RealEstate = { id: string; name: string; address: string; type: string; purchasePrice: string; purchasePriceCurrency: string; 
-/**
- * UTC day the property was bought (ADR 0008); `None` while unknown.
- */
-purchaseDate: number | null; marketPrice: string; marketPriceCurrency: string; monthlyRent: string | null; monthlyRentCurrency: string | null; recurringCosts: RecurringCost[]; photos: string[]; notes: string | null; createdAt: number; updatedAt: number }
+export type RealEstate = {
+  id: string;
+  name: string;
+  address: string;
+  type: string;
+  purchasePrice: string;
+  purchasePriceCurrency: string;
+  /**
+   * UTC day the property was bought (ADR 0008); `None` while unknown.
+   */
+  purchaseDate: number | null;
+  marketPrice: string;
+  marketPriceCurrency: string;
+  monthlyRent: string | null;
+  monthlyRentCurrency: string | null;
+  recurringCosts: RecurringCost[];
+  photos: string[];
+  notes: string | null;
+  createdAt: number;
+  updatedAt: number;
+};
 
 /**
  * Real estate document (attached contracts, deeds, etc.)
  */
-export type RealEstateDocument = { id: string; realEstateId: string; name: string; description: string | null; 
-/**
- * Stored MIME type, or the one the legacy file's extension implies.
- */
-mimeType: string; 
-/**
- * Lowercased extension of the original file name, for the file tile.
- */
-extension: string | null; fileType: string; fileSize: number | null; uploadedAt: number; 
-/**
- * Where the content is, with device sync (ADR 0030).
- */
-content: AttachmentContent }
+export type RealEstateDocument = {
+  id: string;
+  realEstateId: string;
+  name: string;
+  description: string | null;
+  /**
+   * Stored MIME type, or the one the legacy file's extension implies.
+   */
+  mimeType: string;
+  /**
+   * Lowercased extension of the original file name, for the file tile.
+   */
+  extension: string | null;
+  fileType: string;
+  fileSize: number | null;
+  uploadedAt: number;
+  /**
+   * Where the content is, with device sync (ADR 0030).
+   */
+  content: AttachmentContent;
+};
 
 /**
  * One-time cost for real estate
  */
-export type RealEstateOneTimeCost = { id: string; realEstateId: string; name: string; description: string | null; amount: string; currency: string; date: number; createdAt: number }
+export type RealEstateOneTimeCost = {
+  id: string;
+  realEstateId: string;
+  name: string;
+  description: string | null;
+  amount: string;
+  currency: string;
+  date: number;
+  createdAt: number;
+};
 
 /**
  * Individual photo within a batch. The webview loads its bytes through the `moony-file` scheme by
  * id; storage paths never reach it.
  */
-export type RealEstatePhoto = { id: string; batchId: string; createdAt: number; 
-/**
- * Where the photo's content is, with device sync (ADR 0030).
- */
-content: AttachmentContent; 
-/**
- * Where the thumbnail's content is.
- */
-thumbContent: AttachmentContent }
+export type RealEstatePhoto = {
+  id: string;
+  batchId: string;
+  createdAt: number;
+  /**
+   * Where the photo's content is, with device sync (ADR 0030).
+   */
+  content: AttachmentContent;
+  /**
+   * Where the thumbnail's content is.
+   */
+  thumbContent: AttachmentContent;
+};
 
 /**
  * Photo batch (groups photos by date and description)
  */
-export type RealEstatePhotoBatch = { id: string; realEstateId: string; photoDate: number; description: string | null; photos: RealEstatePhoto[]; createdAt: number }
+export type RealEstatePhotoBatch = {
+  id: string;
+  realEstateId: string;
+  photoDate: number;
+  description: string | null;
+  photos: RealEstatePhoto[];
+  createdAt: number;
+};
 
 /**
  * Where a ticker's rebuild stands.
  */
-export type RecalcStatus = "running" | "done" | "failed"
+export type RecalcStatus = 'running' | 'done' | 'failed';
 
 /**
  * What rewriting the rule behind a transaction would cover (spec 2026-10-10).
  */
-export type RecategorizationPreview = { 
-/**
- * `ownAccount` | `custom` | `learned` | `pack` | `none` — the layer that decides today.
- */
-governing: string; 
-/**
- * Set when `governing` is `custom`.
- */
-rule: GoverningRule | null; 
-/**
- * False when neither a payee key nor an account identity exists (nothing to remember).
- */
-learnable: boolean; 
-/**
- * Other payments the rewritten rule matches, the edited row excluded.
- */
-matches: number; byCategory: CategoryCount[] }
+export type RecategorizationPreview = {
+  /**
+   * `ownAccount` | `custom` | `learned` | `pack` | `none` — the layer that decides today.
+   */
+  governing: string;
+  /**
+   * Set when `governing` is `custom`.
+   */
+  rule: GoverningRule | null;
+  /**
+   * False when neither a payee key nor an account identity exists (nothing to remember).
+   */
+  learnable: boolean;
+  /**
+   * Other payments the rewritten rule matches, the edited row excluded.
+   */
+  matches: number;
+  byCategory: CategoryCount[];
+};
 
 /**
  * The Sync Recovery Kit (revision §2.1, §2.2): what brings the synced data back when every
  * device is lost. It holds the Kit's seed, so `Debug` prints nothing of it and the secret fields
  * are wiped when it drops (ruling P16).
  */
-export type RecoveryKit = { 
-/**
- * The recovery code (format v2, the account inside) as 19 groups of five joined by `-`.
- */
-recoveryCode: string; 
-/**
- * The QR of `moony-recover:2:<code>[:<base64url server address>]` as SVG.
- */
-qrSvg: string; 
-/**
- * The sync server's address, only when it is not the default one (a self-hosted one).
- */
-relayUrl: string | null; 
-/**
- * When the kit was made (unix seconds): its certificate's date.
- */
-createdAt: number; 
-/**
- * The name of the device that made it (this device), `None` while setup has not recorded
- * this device's name yet.
- */
-createdBy: string | null }
+export type RecoveryKit = {
+  /**
+   * The recovery code (format v2, the account inside) as 19 groups of five joined by `-`.
+   */
+  recoveryCode: string;
+  /**
+   * The QR of `moony-recover:2:<code>[:<base64url server address>]` as SVG.
+   */
+  qrSvg: string;
+  /**
+   * The sync server's address, only when it is not the default one (a self-hosted one).
+   */
+  relayUrl: string | null;
+  /**
+   * When the kit was made (unix seconds): its certificate's date.
+   */
+  createdAt: number;
+  /**
+   * The name of the device that made it (this device), `None` while setup has not recorded
+   * this device's name yet.
+   */
+  createdBy: string | null;
+};
 
 /**
  * Recurring cost for real estate
  */
-export type RecurringCost = { name: string; amount: number; frequency: string; currency: string | null }
+export type RecurringCost = {
+  name: string;
+  amount: number;
+  frequency: string;
+  currency: string | null;
+};
 
 /**
  * A device that drops out of sync with the removed ones, and why.
  */
-export type RemovalDroppingOut = { device: RemovalPlanDevice; reason: SyncCheckReason }
+export type RemovalDroppingOut = { device: RemovalPlanDevice; reason: SyncCheckReason };
 
 /**
  * What a removal did. A new recovery kit (`kit`) comes only here, once.
  */
-export type RemovalOutcome = { kind: RemovalOutcomeKind; 
-/**
- * `alreadyRemoved`: the name of the device that removed them.
- */
-by: string | null; 
-/**
- * The new recovery kit to show once, when the change made one (`done` or `pending`).
- */
-kit: RecoveryKit | null }
+export type RemovalOutcome = {
+  kind: RemovalOutcomeKind;
+  /**
+   * `alreadyRemoved`: the name of the device that removed them.
+   */
+  by: string | null;
+  /**
+   * The new recovery kit to show once, when the change made one (`done` or `pending`).
+   */
+  kit: RecoveryKit | null;
+};
 
 /**
  * How `sync_remove_devices` ended (revision §6.5).
  */
-export type RemovalOutcomeKind = 
-/**
- * The key changed.
- */
-"done" | 
-/**
- * The sync server did not answer: the change finishes by itself ("Odebrání se dokončí
- * samo"); a new kit starts working then.
- */
-"pending" | 
-/**
- * Another device removed every device asked for first (`by`).
- */
-"alreadyRemoved" | 
-/**
- * Another device's change had removed this device: sync is off here (the status carries the
- * removed notice).
- */
-"removedHere"
+export type RemovalOutcomeKind =
+  /**
+   * The key changed.
+   */
+  | 'done'
+  /**
+   * The sync server did not answer: the change finishes by itself ("Odebrání se dokončí
+   * samo"); a new kit starts working then.
+   */
+  | 'pending'
+  /**
+   * Another device removed every device asked for first (`by`).
+   */
+  | 'alreadyRemoved'
+  /**
+   * Another device's change had removed this device: sync is off here (the status carries the
+   * removed notice).
+   */
+  | 'removedHere';
 
 /**
  * What removing devices would do (`sync_removal_plan`), as the dialog shows it (revision §4.3).
  */
-export type RemovalPlan = { 
-/**
- * The devices that go (those asked for and the ticked ones).
- */
-removing: RemovalPlanDevice[]; 
-/**
- * The devices that keep syncing (this device included).
- */
-staying: RemovalPlanDevice[]; 
-/**
- * Devices that drop out of sync with them, each with the reason ("Synchronizovat se přestanou
- * i:"); only rows that are active or "Zkontrolujte".
- */
-droppingOut: RemovalDroppingOut[]; 
-/**
- * Devices a removed device added, at any depth (to tick: "Odebrat také"), the ones asked
- * for left out.
- */
-addedByRemoving: RemovalPlanDevice[]; 
-/**
- * Whether, and why, the recovery kit is replaced; a new kit then comes with the outcome.
- */
-replacesKit: ReplacesKit; 
-/**
- * The change touches no recovery kit at all (none known): "Tímto odebráním se záchranná sada
- * neaktualizuje.".
- */
-kitNotUpdated: boolean; 
-/**
- * Pass back to `sync_remove_devices`: a hash over what the person was shown.
- */
-consent: string }
+export type RemovalPlan = {
+  /**
+   * The devices that go (those asked for and the ticked ones).
+   */
+  removing: RemovalPlanDevice[];
+  /**
+   * The devices that keep syncing (this device included).
+   */
+  staying: RemovalPlanDevice[];
+  /**
+   * Devices that drop out of sync with them, each with the reason ("Synchronizovat se přestanou
+   * i:"); only rows that are active or "Zkontrolujte".
+   */
+  droppingOut: RemovalDroppingOut[];
+  /**
+   * Devices a removed device added, at any depth (to tick: "Odebrat také"), the ones asked
+   * for left out.
+   */
+  addedByRemoving: RemovalPlanDevice[];
+  /**
+   * Whether, and why, the recovery kit is replaced; a new kit then comes with the outcome.
+   */
+  replacesKit: ReplacesKit;
+  /**
+   * The change touches no recovery kit at all (none known): "Tímto odebráním se záchranná sada
+   * neaktualizuje.".
+   */
+  kitNotUpdated: boolean;
+  /**
+   * Pass back to `sync_remove_devices`: a hash over what the person was shown.
+   */
+  consent: string;
+};
 
 /**
  * A device in a removal plan.
  */
-export type RemovalPlanDevice = { id: string; name: string; platform: string; joinedAt: number; thisDevice: boolean }
+export type RemovalPlanDevice = {
+  id: string;
+  name: string;
+  platform: string;
+  joinedAt: number;
+  thisDevice: boolean;
+};
 
 /**
  * What the person agreed to in a replace's confirmation: the watermark of the impact it showed,
  * and the documents and photos it showed.
  */
-export type ReplaceConsentView = { 
-/**
- * `ReplaceImpactView::changes_through`, as the confirmation received it (decimal string).
- */
-changesThrough: string; 
-/**
- * Documents plus photos the confirmation showed.
- */
-attachments: number }
+export type ReplaceConsentView = {
+  /**
+   * `ReplaceImpactView::changes_through`, as the confirmation received it (decimal string).
+   */
+  changesThrough: string;
+  /**
+   * Documents plus photos the confirmation showed.
+   */
+  attachments: number;
+};
 
 /**
  * What a replace (a join, a repair, a re-sync) puts at stake on this device, for the confirmation
  * that asks for it (`services::sync::impact::ReplaceImpact`).
  */
-export type ReplaceImpactView = { 
-/**
- * Changed items not sealed yet (`sync_outbox` rows).
- */
-pendingItems: number; 
-/**
- * Sealed batches the sync server has not confirmed (`sync_unsent` rows).
- */
-pendingBatches: number; 
-/**
- * Documents of properties and insurance policies.
- */
-documents: number; 
-/**
- * Photos of properties.
- */
-photos: number; 
-/**
- * Accounts and assets (bonds and insurance policies included).
- */
-accounts: number; 
-/**
- * Bank transactions.
- */
-transactions: number; 
-/**
- * The newest clock this device knows, as a decimal string (it exceeds 2^53): the watermark a
- * confirmation sends back in its consent.
- */
-changesThrough: string }
+export type ReplaceImpactView = {
+  /**
+   * Changed items not sealed yet (`sync_outbox` rows).
+   */
+  pendingItems: number;
+  /**
+   * Sealed batches the sync server has not confirmed (`sync_unsent` rows).
+   */
+  pendingBatches: number;
+  /**
+   * Documents of properties and insurance policies.
+   */
+  documents: number;
+  /**
+   * Photos of properties.
+   */
+  photos: number;
+  /**
+   * Accounts and assets (bonds and insurance policies included).
+   */
+  accounts: number;
+  /**
+   * Bank transactions.
+   */
+  transactions: number;
+  /**
+   * The newest clock this device knows, as a decimal string (it exceeds 2^53): the watermark a
+   * confirmation sends back in its consent.
+   */
+  changesThrough: string;
+};
 
 /**
  * What a join, repair or re-sync did: its backup and what stayed only in it.
  */
-export type ReplaceOutcomeView = { 
-/**
- * The backup made before the replace (listed in Restore).
- */
-backupPath: string; 
-/**
- * This device's documents and photos re-attached to items the synced data also has.
- */
-attachmentsKept: number; 
-/**
- * This device's documents and photos found only in the backup now.
- */
-attachmentsInBackupOnly: number; 
-/**
- * Changed items that reached no sync server and are only in the backup.
- */
-unsentItemsInBackupOnly: number; 
-/**
- * Sealed batches that reached no sync server and are only in the backup.
- */
-unsentBatchesInBackupOnly: number; 
-/**
- * The backup is kept: never removed by the app, only by the person.
- */
-kept: boolean }
+export type ReplaceOutcomeView = {
+  /**
+   * The backup made before the replace (listed in Restore).
+   */
+  backupPath: string;
+  /**
+   * This device's documents and photos re-attached to items the synced data also has.
+   */
+  attachmentsKept: number;
+  /**
+   * This device's documents and photos found only in the backup now.
+   */
+  attachmentsInBackupOnly: number;
+  /**
+   * Changed items that reached no sync server and are only in the backup.
+   */
+  unsentItemsInBackupOnly: number;
+  /**
+   * Sealed batches that reached no sync server and are only in the backup.
+   */
+  unsentBatchesInBackupOnly: number;
+  /**
+   * The backup is kept: never removed by the app, only by the person.
+   */
+  kept: boolean;
+};
 
 /**
  * Whether, and why, a removal replaces the recovery kit (revision §2.7, §4.2).
  */
-export type ReplacesKit = 
-/**
- * The kit stays.
- */
-"no" | 
-/**
- * The kit was saved on a device being removed.
- */
-"creatorRemoved" | 
-/**
- * The kit is in a folder that syncs to a cloud, and a device is being removed.
- */
-"cloud" | 
-/**
- * The person asked for a new kit.
- */
-"asked" | 
-/**
- * This device has no kit it can seal to but the sync server holds one: a new one replaces it.
- */
-"missing"
+export type ReplacesKit =
+  /**
+   * The kit stays.
+   */
+  | 'no'
+  /**
+   * The kit was saved on a device being removed.
+   */
+  | 'creatorRemoved'
+  /**
+   * The kit is in a folder that syncs to a cloud, and a device is being removed.
+   */
+  | 'cloud'
+  /**
+   * The person asked for a new kit.
+   */
+  | 'asked'
+  /**
+   * This device has no kit it can seal to but the sync server holds one: a new one replaces it.
+   */
+  | 'missing';
 
-export type ReportQuality = { missingFxCount: number; missingFxCurrencies: string[]; estimatedFxCount: number; observedCompletedMonths: number[]; partialMonthCount: number; unobservedMonthCount: number; 
-/**
- * Stored rows whose amount is not a finite number (legacy data); they
- * are excluded from the numeric totals.
- */
-invalidAmountCount: number }
+export type ReportQuality = {
+  missingFxCount: number;
+  missingFxCurrencies: string[];
+  estimatedFxCount: number;
+  observedCompletedMonths: number[];
+  partialMonthCount: number;
+  unobservedMonthCount: number;
+  /**
+   * Stored rows whose amount is not a finite number (legacy data); they
+   * are excluded from the numeric totals.
+   */
+  invalidAmountCount: number;
+};
 
-export type ReportTransaction = { reportCurrency: string; id: string; bookingDate: number; amount: string; currency: string; description: string | null; remittanceInfo: string | null; counterpartyName: string | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; categoryId: string | null; bankAccountId: string; bankAccountName: string; txType: string; effectiveFlowKind: FlowKind; flowSource: FlowSource; signedAmount: string | null; fxQuality: FxQuality }
+export type ReportTransaction = {
+  reportCurrency: string;
+  id: string;
+  bookingDate: number;
+  amount: string;
+  currency: string;
+  description: string | null;
+  remittanceInfo: string | null;
+  counterpartyName: string | null;
+  counterpartyIban: string | null;
+  counterpartyBankCode: string | null;
+  counterpartyCountry: string | null;
+  categoryId: string | null;
+  bankAccountId: string;
+  bankAccountName: string;
+  txType: string;
+  effectiveFlowKind: FlowKind;
+  flowSource: FlowSource;
+  signedAmount: string | null;
+  fxQuality: FxQuality;
+};
 
 /**
  * How often one rule matched in the period (TS `RuleHitCount`).
  */
-export type RuleHitCount = { 
-/**
- * Custom rule id, pack rule id, or the learned payee's id.
- */
-ruleId: string; hits: number; 
-/**
- * Booking day of the newest matching transaction.
- */
-lastHit: number | null }
+export type RuleHitCount = {
+  /**
+   * Custom rule id, pack rule id, or the learned payee's id.
+   */
+  ruleId: string;
+  hits: number;
+  /**
+   * Booking day of the newest matching transaction.
+   */
+  lastHit: number | null;
+};
 
 /**
  * What a draft rule would match today (TS `RuleMatchPreview`).
  */
-export type RuleMatchPreview = { matches: number; 
-/**
- * Matching transactions that have no category today.
- */
-uncategorized: number; 
-/**
- * The newest matches, at most five.
- */
-samples: RuleMatchSample[] }
+export type RuleMatchPreview = {
+  matches: number;
+  /**
+   * Matching transactions that have no category today.
+   */
+  uncategorized: number;
+  /**
+   * The newest matches, at most five.
+   */
+  samples: RuleMatchSample[];
+};
 
 /**
  * One transaction a draft rule matches (TS `RuleMatchSample`).
  */
-export type RuleMatchSample = { bookingDate: number; description: string | null; counterparty: string | null; 
-/**
- * Signed decimal string (debits negative).
- */
-amount: string; currency: string; categoryId: string | null }
+export type RuleMatchSample = {
+  bookingDate: number;
+  description: string | null;
+  counterparty: string | null;
+  /**
+   * Signed decimal string (debits negative).
+   */
+  amount: string;
+  currency: string;
+  categoryId: string | null;
+};
 
 /**
  * One shipped rule pack, with its enabled flag from app_config
  */
-export type RulePackInfo = { packId: string; country: string; version: number; ruleCount: number; enabled: boolean }
+export type RulePackInfo = {
+  packId: string;
+  country: string;
+  version: number;
+  ruleCount: number;
+  enabled: boolean;
+};
 
 /**
  * A custom mapping remembered for files with the same headers (TS `SavedStockImportFormat`).
  */
-export type SavedStockImportFormat = { id: string; name: string; 
-/**
- * `header_signature` of the file it was saved from.
- */
-headerSignature: string; config: StockImportConfig; createdAt: number }
+export type SavedStockImportFormat = {
+  id: string;
+  name: string;
+  /**
+   * `header_signature` of the file it was saved from.
+   */
+  headerSignature: string;
+  config: StockImportConfig;
+  createdAt: number;
+};
 
 /**
  * Interest rate zone (tier) of a bank account
  */
-export type SavingsAccountZone = { id: string; savingsAccountId: string; fromAmount: string; toAmount: string | null; interestRate: string; createdAt: number }
+export type SavingsAccountZone = {
+  id: string;
+  savingsAccountId: string;
+  fromAmount: string;
+  toAmount: string | null;
+  interestRate: string;
+  createdAt: number;
+};
 
 /**
  * Count a planning row in or leave it out (`cashflow_plan_exclusions`).
  */
-export type SetCashflowPlanInclusion = { 
-/**
- * `category:<categoryKey>`, an automatic source id, or `item:<manual item id>`.
- */
-key: string; included: boolean }
+export type SetCashflowPlanInclusion = {
+  /**
+   * `category:<categoryKey>`, an automatic source id, or `item:<manual item id>`.
+   */
+  key: string;
+  included: boolean;
+};
 
 /**
  * What a running balance says about the amounts' signs (TS `SignCheck`).
  */
-export type SignCheck = 
-/**
- * The balance moves by the amount: expenses are negative, as Moony expects.
- */
-"verified" | 
-/**
- * The balance moves by minus the amount: the file prints expenses positive.
- */
-"inverted" | 
-/**
- * No balance column agrees with the amounts; the signs are taken as printed.
- */
-"unchecked"
+export type SignCheck =
+  /**
+   * The balance moves by the amount: expenses are negative, as Moony expects.
+   */
+  | 'verified'
+  /**
+   * The balance moves by minus the amount: the file prints expenses positive.
+   */
+  | 'inverted'
+  /**
+   * No balance column agrees with the amounts; the signs are taken as printed.
+   */
+  | 'unchecked';
 
 /**
  * Hold uncategorized payments back from the queue for a number of days.
  */
-export type SnoozeCategorization = { transactionIds: string[]; days: number }
+export type SnoozeCategorization = { transactionIds: string[]; days: number };
 
 /**
  * How many entries of a statement carry one source category (QIF `L` line).
  */
-export type SourceCategoryCount = { name: string; count: number }
+export type SourceCategoryCount = { name: string; count: number };
 
 /**
  * The category the user chose for one source category of a statement (QIF
  * `L` lines): rows carrying `source` are written with `categoryId`.
  */
-export type SourceCategoryMapping = { source: string; categoryId: string }
+export type SourceCategoryMapping = { source: string; categoryId: string };
 
-export type SourceCount = { 
-/**
- * `rule`, `exact_match`, `own_account`, `mcp`, `manual` (a category without a recorded source).
- */
-source: string; count: number }
+export type SourceCount = {
+  /**
+   * `rule`, `exact_match`, `own_account`, `mcp`, `manual` (a category without a recorded source).
+   */
+  source: string;
+  count: number;
+};
 
-export type SpendingPlan = { id: string; name: string; year: number; 
-/**
- * Planned amount in `currency` (TEXT money).
- */
-amount: string; currency: string; icon: string; color: string; note: string | null; 
-/**
- * Unix epoch the plan was closed; `None` while open.
- */
-closedAt: number | null; createdAt: number }
+export type SpendingPlan = {
+  id: string;
+  name: string;
+  year: number;
+  /**
+   * Planned amount in `currency` (TEXT money).
+   */
+  amount: string;
+  currency: string;
+  icon: string;
+  color: string;
+  note: string | null;
+  /**
+   * Unix epoch the plan was closed; `None` while open.
+   */
+  closedAt: number | null;
+  createdAt: number;
+};
 
 /**
  * Tag a payment with a plan, or clear its tag (`plan_id: None`).
  */
-export type SpendingPlanAssignment = { transactionId: string; planId: string | null }
+export type SpendingPlanAssignment = { transactionId: string; planId: string | null };
 
-export type SpendingPlanCategory = { categoryId: string | null; spent: string; count: number }
+export type SpendingPlanCategory = { categoryId: string | null; spent: string; count: number };
 
 /**
  * One month x category bucket; the frontend sums cells for filtered views.
  */
-export type SpendingPlanCell = { month: string; categoryId: string | null; spent: string; count: number }
+export type SpendingPlanCell = {
+  month: string;
+  categoryId: string | null;
+  spent: string;
+  count: number;
+};
 
-export type SpendingPlanDetail = { summary: SpendingPlanSummary; months: SpendingPlanMonth[]; categories: SpendingPlanCategory[]; cells: SpendingPlanCell[]; accountCount: number }
+export type SpendingPlanDetail = {
+  summary: SpendingPlanSummary;
+  months: SpendingPlanMonth[];
+  categories: SpendingPlanCategory[];
+  cells: SpendingPlanCell[];
+  accountCount: number;
+};
 
-export type SpendingPlanMonth = { 
-/**
- * `YYYY-MM` of the booking day (UTC).
- */
-month: string; spent: string }
+export type SpendingPlanMonth = {
+  /**
+   * `YYYY-MM` of the booking day (UTC).
+   */
+  month: string;
+  spent: string;
+};
 
 /**
  * One plan's spent converted into the overview's report currency.
  */
-export type SpendingPlanSpent = { planId: string; 
-/**
- * Booked debits minus credits in the report currency; `None` when it cannot be converted.
- */
-spent: string | null }
+export type SpendingPlanSpent = {
+  planId: string;
+  /**
+   * Booked debits minus credits in the report currency; `None` when it cannot be converted.
+   */
+  spent: string | null;
+};
 
 /**
  * A plan with what has been spent on it, in the plan's currency.
  */
-export type SpendingPlanSummary = { plan: SpendingPlan; 
-/**
- * Booked debits minus credits in the plan currency; `None` when there are booked payments
- * and none could be converted, `"0.00"`-style when there are none.
- */
-spent: string | null; 
-/**
- * Tagged payments, pending ones included.
- */
-paymentCount: number; lastPaymentDate: number | null; fxQuality: ConversionQuality }
+export type SpendingPlanSummary = {
+  plan: SpendingPlan;
+  /**
+   * Booked debits minus credits in the plan currency; `None` when there are booked payments
+   * and none could be converted, `"0.00"`-style when there are none.
+   */
+  spent: string | null;
+  /**
+   * Tagged payments, pending ones included.
+   */
+  paymentCount: number;
+  lastPaymentDate: number | null;
+  fxQuality: ConversionQuality;
+};
 
 /**
  * Sums over the plans of one year, in the report currency.
  */
-export type SpendingPlanTotals = { planned: string | null; spent: string | null; remainingActive: string | null }
+export type SpendingPlanTotals = {
+  planned: string | null;
+  spent: string | null;
+  remainingActive: string | null;
+};
 
-export type SpendingPlansOverview = { year: number; 
-/**
- * Currency of `totals`.
- */
-currency: string; fxQuality: ConversionQuality; plans: SpendingPlanSummary[]; totals: SpendingPlanTotals; 
-/**
- * Each plan's spent in `currency`, largest first (`None` last). A plan that cannot be
- * converted has `None`; the miss is counted in `fx_quality`.
- */
-planSpent: SpendingPlanSpent[]; 
-/**
- * Years that have at least one plan, ascending.
- */
-yearsWithPlans: number[] }
+export type SpendingPlansOverview = {
+  year: number;
+  /**
+   * Currency of `totals`.
+   */
+  currency: string;
+  fxQuality: ConversionQuality;
+  plans: SpendingPlanSummary[];
+  totals: SpendingPlanTotals;
+  /**
+   * Each plan's spent in `currency`, largest first (`None` last). A plan that cannot be
+   * converted has `None`; the miss is counted in `fx_quality`.
+   */
+  planSpent: SpendingPlanSpent[];
+  /**
+   * Years that have at least one plan, ascending.
+   */
+  yearsWithPlans: number[];
+};
 
 /**
  * Balance after a particular statement row, in that row's native currency.
  */
-export type StatementBalance = { amount: string; currency: string; asOf: number; line: number; batchId: string }
+export type StatementBalance = {
+  amount: string;
+  currency: string;
+  asOf: number;
+  line: number;
+  batchId: string;
+};
 
 /**
  * The statement formats Moony reads (wire value in the lowercase rename).
  */
-export type StatementFormat = "camt053" | "mt940" | "ofx" | "qif"
+export type StatementFormat = 'camt053' | 'mt940' | 'ofx' | 'qif';
 
 /**
  * Options of one statement preview or import (TS `StatementImportOptionsInput`).
  */
-export type StatementImportOptions = { statementIndex: number; 
-/**
- * QIF only: how to read the dates; `None` = the detected order.
- */
-dateOrder?: DateOrder | null; 
-/**
- * Skip possible composite duplicates (default); certain bank IDs always skip.
- */
-skipDuplicates?: boolean; 
-/**
- * Entry ordinals of possible composite duplicates to import anyway.
- */
-importAnywayLines?: number[]; 
-/**
- * Categories picked in the preview, by entry ordinal.
- */
-categoryOverrides?: CsvCategoryOverride[]; 
-/**
- * Categories chosen for the source categories of the file.
- */
-sourceCategoryMap?: SourceCategoryMapping[]; previewOffset?: number; previewLimit?: number }
+export type StatementImportOptions = {
+  statementIndex: number;
+  /**
+   * QIF only: how to read the dates; `None` = the detected order.
+   */
+  dateOrder?: DateOrder | null;
+  /**
+   * Skip possible composite duplicates (default); certain bank IDs always skip.
+   */
+  skipDuplicates?: boolean;
+  /**
+   * Entry ordinals of possible composite duplicates to import anyway.
+   */
+  importAnywayLines?: number[];
+  /**
+   * Categories picked in the preview, by entry ordinal.
+   */
+  categoryOverrides?: CsvCategoryOverride[];
+  /**
+   * Categories chosen for the source categories of the file.
+   */
+  sourceCategoryMap?: SourceCategoryMapping[];
+  previewOffset?: number;
+  previewLimit?: number;
+};
 
 /**
  * What `inspect_statement_file` learned about a statement file.
  */
-export type StatementInspection = { format: StatementFormat; 
-/**
- * Encoding the file was decoded with.
- */
-encoding: string; statements: StatementSummary[]; 
-/**
- * The first statement of the selected account, else the first.
- */
-defaultStatementIndex: number; 
-/**
- * `true` when a QIF file's date order cannot be told from its dates.
- */
-dateOrderAmbiguous: boolean; detectedDateOrder: DateOrder | null; warnings: StatementWarning[] }
+export type StatementInspection = {
+  format: StatementFormat;
+  /**
+   * Encoding the file was decoded with.
+   */
+  encoding: string;
+  statements: StatementSummary[];
+  /**
+   * The first statement of the selected account, else the first.
+   */
+  defaultStatementIndex: number;
+  /**
+   * `true` when a QIF file's date order cannot be told from its dates.
+   */
+  dateOrderAmbiguous: boolean;
+  detectedDateOrder: DateOrder | null;
+  warnings: StatementWarning[];
+};
 
 /**
  * What the dialog shows about one statement of a file.
  */
-export type StatementSummary = { 
-/**
- * Position among the file's merged statements; the `statementIndex` of the options.
- */
-index: number; accountIdentifier: string | null; accountName: string | null; currency: string | null; period: CsvDateRange | null; openingBalance: DeclaredBalance | null; closingBalance: DeclaredBalance | null; 
-/**
- * Entries that would be imported (those without a skip reason).
- */
-entryCount: number; 
-/**
- * Entries shown but never imported (not booked, corrections, …).
- */
-skippedCount: number; balanceCheck: BalanceCheck; 
-/**
- * Declared minus computed, in the statement's currency; set on a mismatch.
- */
-balanceDifference: string | null; accountMatch: AccountMatch; matchedAccountId: string | null; 
-/**
- * Source categories of the importable entries, most frequent first.
- */
-sourceCategories: SourceCategoryCount[] }
+export type StatementSummary = {
+  /**
+   * Position among the file's merged statements; the `statementIndex` of the options.
+   */
+  index: number;
+  accountIdentifier: string | null;
+  accountName: string | null;
+  currency: string | null;
+  period: CsvDateRange | null;
+  openingBalance: DeclaredBalance | null;
+  closingBalance: DeclaredBalance | null;
+  /**
+   * Entries that would be imported (those without a skip reason).
+   */
+  entryCount: number;
+  /**
+   * Entries shown but never imported (not booked, corrections, …).
+   */
+  skippedCount: number;
+  balanceCheck: BalanceCheck;
+  /**
+   * Declared minus computed, in the statement's currency; set on a mismatch.
+   */
+  balanceDifference: string | null;
+  accountMatch: AccountMatch;
+  matchedAccountId: string | null;
+  /**
+   * Source categories of the importable entries, most frequent first.
+   */
+  sourceCategories: SourceCategoryCount[];
+};
 
 /**
  * A note about a file that does not stop the import. `key` is a
  * `statementImport.*` i18n key (`bank_accounts` namespace), `detail` the raw value
  * it is about.
  */
-export type StatementWarning = { key: string; detail: string | null }
+export type StatementWarning = { key: string; detail: string | null };
 
 /**
  * Daily returns of a market index (or any Yahoo ticker) over the period, for the comparison
  * line of the performance chart (`get_stock_benchmark`).
  */
-export type StockBenchmark = { 
-/**
- * The validated ticker the prices were fetched for.
- */
-ticker: string; 
-/**
- * The report currency the returns are computed in.
- */
-currency: string; fxQuality: ConversionQuality; 
-/**
- * Days as `YYYY-MM-DD`, one per calendar day (the last close carries over non-trading
- * days); empty when the ticker has no prices.
- */
-dates: string[]; 
-/**
- * Cumulative return of the index in percent per date, the first date being 0.
- */
-twr: number[] }
+export type StockBenchmark = {
+  /**
+   * The validated ticker the prices were fetched for.
+   */
+  ticker: string;
+  /**
+   * The report currency the returns are computed in.
+   */
+  currency: string;
+  fxQuality: ConversionQuality;
+  /**
+   * Days as `YYYY-MM-DD`, one per calendar day (the last close carries over non-trading
+   * days); empty when the ticker has no prices.
+   */
+  dates: string[];
+  /**
+   * Cumulative return of the index in percent per date, the first date being 0.
+   */
+  twr: number[];
+};
 
 /**
  * A column suggested for a role (TS `StockColumnSuggestion`). Roles: `date`,
  * `type`, `symbol`, `isin`, `name`, `quantity`, `price`, `currency`,
  * `externalId`, `fee`.
  */
-export type StockColumnSuggestion = { role: string; column: number; 
-/**
- * 0.0–1.0 (1.0 when a source's adapter set it).
- */
-confidence: number }
+export type StockColumnSuggestion = {
+  role: string;
+  column: number;
+  /**
+   * 0.0–1.0 (1.0 when a source's adapter set it).
+   */
+  confidence: number;
+};
 
 /**
  * Distinct values of one column, for the type-value table (TS `StockColumnValues`).
  * Only columns with at most 30 distinct non-empty values are listed.
  */
-export type StockColumnValues = { column: number; values: StockTypeValueStat[] }
+export type StockColumnValues = { column: number; values: StockTypeValueStat[] };
 
 /**
  * Company metadata stored for one ticker. Every field except `ticker` is `None` when nothing
  * is stored (no `stock_data` row yet, or Yahoo has no data for the instrument).
  */
-export type StockCompanyInfo = { ticker: string; sector: string | null; industry: string | null; peRatio: string | null; forwardPe: string | null; 
-/**
- * Whole number in the listing currency.
- */
-marketCap: string | null; beta: string | null; fiftyTwoWeekHigh: string | null; fiftyTwoWeekLow: string | null; 
-/**
- * Annual dividend per share in the listing currency.
- */
-dividendRate: string | null; 
-/**
- * Raw Yahoo fraction ("0.033100" = 3.31 %); multiply by 100 for display.
- */
-dividendYield: string | null; 
-/**
- * Yahoo instrument class ("EQUITY", "ETF", …).
- */
-quoteType: string | null; 
-/**
- * Currency of the prices and figures above (the listing currency).
- */
-currency: string | null; 
-/**
- * When the metadata was last fetched (unix seconds); `None` when it never was.
- */
-metadataFetchedAt: number | null }
+export type StockCompanyInfo = {
+  ticker: string;
+  sector: string | null;
+  industry: string | null;
+  peRatio: string | null;
+  forwardPe: string | null;
+  /**
+   * Whole number in the listing currency.
+   */
+  marketCap: string | null;
+  beta: string | null;
+  fiftyTwoWeekHigh: string | null;
+  fiftyTwoWeekLow: string | null;
+  /**
+   * Annual dividend per share in the listing currency.
+   */
+  dividendRate: string | null;
+  /**
+   * Raw Yahoo fraction ("0.033100" = 3.31 %); multiply by 100 for display.
+   */
+  dividendYield: string | null;
+  /**
+   * Yahoo instrument class ("EQUITY", "ETF", …).
+   */
+  quoteType: string | null;
+  /**
+   * Currency of the prices and figures above (the listing currency).
+   */
+  currency: string | null;
+  /**
+   * When the metadata was last fetched (unix seconds); `None` when it never was.
+   */
+  metadataFetchedAt: number | null;
+};
 
 /**
  * Options of an inspection (TS `StockCsvInspectOptions`).
  */
-export type StockCsvInspectOptions = { 
-/**
- * Use this source instead of detecting one.
- */
-source?: string | null; headerRow?: number | null; skipRows?: number | null; encoding?: string | null; delimiter?: string | null }
+export type StockCsvInspectOptions = {
+  /**
+   * Use this source instead of detecting one.
+   */
+  source?: string | null;
+  headerRow?: number | null;
+  skipRows?: number | null;
+  encoding?: string | null;
+  delimiter?: string | null;
+};
 
 /**
  * What a file looks like and how it would be read (TS `StockCsvInspection`).
  */
-export type StockCsvInspection = { fileName: string; encoding: string; delimiter: string; headerRow: number; 
-/**
- * Header cells as in the file (a blank cell stays empty; the UI labels it
- * by position).
- */
-headers: string[]; 
-/**
- * The first data rows (at most 8), each padded to `headers.len()`.
- */
-sampleRows: string[][]; 
-/**
- * Data rows after the header (and skipped rows).
- */
-rowCount: number; 
-/**
- * Built-in source or saved format the headers belong to.
- */
-detectedSource: string | null; 
-/**
- * Ready configuration: the detected source's, or a complete suggestion
- * from the headers; `None` when a required column is still unknown.
- */
-config: StockImportConfig | null; suggestions: StockColumnSuggestion[]; columnValues: StockColumnValues[]; 
-/**
- * Detected format of the date column, when one is known.
- */
-dateFormat: string | null; 
-/**
- * Every sampled date reads both day-first and month-first.
- */
-dateFormatAmbiguous: boolean; decimalSeparator: string; 
-/**
- * The file has a fee/commission column that the mapping does not import.
- */
-hasFeeColumn: boolean }
+export type StockCsvInspection = {
+  fileName: string;
+  encoding: string;
+  delimiter: string;
+  headerRow: number;
+  /**
+   * Header cells as in the file (a blank cell stays empty; the UI labels it
+   * by position).
+   */
+  headers: string[];
+  /**
+   * The first data rows (at most 8), each padded to `headers.len()`.
+   */
+  sampleRows: string[][];
+  /**
+   * Data rows after the header (and skipped rows).
+   */
+  rowCount: number;
+  /**
+   * Built-in source or saved format the headers belong to.
+   */
+  detectedSource: string | null;
+  /**
+   * Ready configuration: the detected source's, or a complete suggestion
+   * from the headers; `None` when a required column is still unknown.
+   */
+  config: StockImportConfig | null;
+  suggestions: StockColumnSuggestion[];
+  columnValues: StockColumnValues[];
+  /**
+   * Detected format of the date column, when one is known.
+   */
+  dateFormat: string | null;
+  /**
+   * Every sampled date reads both day-first and month-first.
+   */
+  dateFormatAmbiguous: boolean;
+  decimalSeparator: string;
+  /**
+   * The file has a fee/commission column that the mapping does not import.
+   */
+  hasFeeColumn: boolean;
+};
 
 /**
  * One dividend of a position.
  */
-export type StockDividend = { 
-/**
- * The record's id for a manual dividend; `yahoo:<ticker>:<exDate>` for a Yahoo one.
- */
-id: string; investmentId: string; source: StockDividendSource; 
-/**
- * UTC midnight of the ex-date.
- */
-exDate: number; 
-/**
- * Yahoo only: the gross payout per share.
- */
-amountPerShare: string | null; 
-/**
- * Yahoo only: the shares held at the end of the day before the ex-date.
- */
-shares: string | null; 
-/**
- * The payout's gross total in `currency`.
- */
-grossAmount: string; currency: string; note: string | null; 
-/**
- * A manual dividend of a ticker Yahoo has dividends for: shown, but left out of every sum
- * (Yahoo's payouts count instead).
- */
-superseded: boolean }
+export type StockDividend = {
+  /**
+   * The record's id for a manual dividend; `yahoo:<ticker>:<exDate>` for a Yahoo one.
+   */
+  id: string;
+  investmentId: string;
+  source: StockDividendSource;
+  /**
+   * UTC midnight of the ex-date.
+   */
+  exDate: number;
+  /**
+   * Yahoo only: the gross payout per share.
+   */
+  amountPerShare: string | null;
+  /**
+   * Yahoo only: the shares held at the end of the day before the ex-date.
+   */
+  shares: string | null;
+  /**
+   * The payout's gross total in `currency`.
+   */
+  grossAmount: string;
+  currency: string;
+  note: string | null;
+  /**
+   * A manual dividend of a ticker Yahoo has dividends for: shown, but left out of every sum
+   * (Yahoo's payouts count instead).
+   */
+  superseded: boolean;
+};
 
 /**
  * A position's dividends, newest first, with their sum in the report currency.
  */
-export type StockDividendList = { 
-/**
- * The report currency of the total.
- */
-currency: string; fxQuality: ConversionQuality; items: StockDividend[]; 
-/**
- * Every counted payout converted at its ex-date's rate; `null` when payouts exist but none
- * could be converted, "0" without payouts.
- */
-totalGross: string | null; 
-/**
- * Yahoo Finance has dividends for the ticker: they count, and none can be entered by hand.
- */
-fromYahoo: boolean }
+export type StockDividendList = {
+  /**
+   * The report currency of the total.
+   */
+  currency: string;
+  fxQuality: ConversionQuality;
+  items: StockDividend[];
+  /**
+   * Every counted payout converted at its ex-date's rate; `null` when payouts exist but none
+   * could be converted, "0" without payouts.
+   */
+  totalGross: string | null;
+  /**
+   * Yahoo Finance has dividends for the ticker: they count, and none can be entered by hand.
+   */
+  fromYahoo: boolean;
+};
 
 /**
  * Where a dividend comes from.
  */
-export type StockDividendSource = 
-/**
- * Yahoo Finance's payout per share × the shares held the day before the ex-date.
- */
-"yahoo" | 
-/**
- * Entered by the user.
- */
-"manual"
+export type StockDividendSource =
+  /**
+   * Yahoo Finance's payout per share × the shares held the day before the ex-date.
+   */
+  | 'yahoo'
+  /**
+   * Entered by the user.
+   */
+  | 'manual';
 
 /**
  * One recorded import (TS `StockImportBatch`).
  */
-export type StockImportBatch = { id: string; fileName: string; source: string; tradeCount: number; 
-/**
- * Transactions of the batch still present (edits keep them, deletes do not).
- */
-remainingCount: number; createdAt: number }
+export type StockImportBatch = {
+  id: string;
+  fileName: string;
+  source: string;
+  tradeCount: number;
+  /**
+   * Transactions of the batch still present (edits keep them, deletes do not).
+   */
+  remainingCount: number;
+  createdAt: number;
+};
 
 /**
  * Configuration of one preview or import (TS `StockImportConfig`).
  */
-export type StockImportConfig = { 
-/**
- * `xtb`, `trading212`, `degiro`, `ibkr`, `moony`, `custom` or `format:<id>`.
- */
-source: string; 
-/**
- * One character: `,`, `;` or a tab.
- */
-delimiter: string; 
-/**
- * Text encoding name as `inspect` reports it (`UTF-8`, `windows-1250`, …).
- */
-encoding: string; 
-/**
- * 0-based line of the header row.
- */
-headerRow: number; 
-/**
- * Data rows to skip after the header row.
- */
-skipRows?: number; dateColumn: number; 
-/**
- * chrono format of the date part (`%d.%m.%Y`, `%Y%m%d`); text after the
- * date (a time) is ignored. Parsed strictly: a row that does not match is
- * an error, never re-read in another order.
- */
-dateFormat: string; symbolColumn?: number | null; isinColumn?: number | null; nameColumn?: number | null; quantityColumn: number; priceColumn: number; currencyMode: CurrencyMode; currencyColumn?: number | null; fixedCurrency?: string | null; directionMode: DirectionMode; typeColumn?: number | null; 
-/**
- * Meaning of each type value; a value not listed is skipped.
- */
-typeValues?: StockTypeValueMapping[]; 
-/**
- * `","` or `"."`.
- */
-decimalSeparator: string; 
-/**
- * The broker's own transaction id (duplicate rule 1).
- */
-externalIdColumn?: number | null; 
-/**
- * The trading fee of the trade (any sign; stored as a positive amount). Absent in saved
- * formats from before fees were imported.
- */
-feeColumn?: number | null; 
-/**
- * The currency of the fee; without it the fee is in the trade's currency.
- */
-feeCurrencyColumn?: number | null; transforms?: StockImportTransforms; instrumentOverrides?: StockInstrumentOverride[]; 
-/**
- * 1-based file lines of duplicate rows to import anyway.
- */
-importAnywayLines?: number[] }
+export type StockImportConfig = {
+  /**
+   * `xtb`, `trading212`, `degiro`, `ibkr`, `moony`, `custom` or `format:<id>`.
+   */
+  source: string;
+  /**
+   * One character: `,`, `;` or a tab.
+   */
+  delimiter: string;
+  /**
+   * Text encoding name as `inspect` reports it (`UTF-8`, `windows-1250`, …).
+   */
+  encoding: string;
+  /**
+   * 0-based line of the header row.
+   */
+  headerRow: number;
+  /**
+   * Data rows to skip after the header row.
+   */
+  skipRows?: number;
+  dateColumn: number;
+  /**
+   * chrono format of the date part (`%d.%m.%Y`, `%Y%m%d`); text after the
+   * date (a time) is ignored. Parsed strictly: a row that does not match is
+   * an error, never re-read in another order.
+   */
+  dateFormat: string;
+  symbolColumn?: number | null;
+  isinColumn?: number | null;
+  nameColumn?: number | null;
+  quantityColumn: number;
+  priceColumn: number;
+  currencyMode: CurrencyMode;
+  currencyColumn?: number | null;
+  fixedCurrency?: string | null;
+  directionMode: DirectionMode;
+  typeColumn?: number | null;
+  /**
+   * Meaning of each type value; a value not listed is skipped.
+   */
+  typeValues?: StockTypeValueMapping[];
+  /**
+   * `","` or `"."`.
+   */
+  decimalSeparator: string;
+  /**
+   * The broker's own transaction id (duplicate rule 1).
+   */
+  externalIdColumn?: number | null;
+  /**
+   * The trading fee of the trade (any sign; stored as a positive amount). Absent in saved
+   * formats from before fees were imported.
+   */
+  feeColumn?: number | null;
+  /**
+   * The currency of the fee; without it the fee is in the trade's currency.
+   */
+  feeCurrencyColumn?: number | null;
+  transforms?: StockImportTransforms;
+  instrumentOverrides?: StockInstrumentOverride[];
+  /**
+   * 1-based file lines of duplicate rows to import anyway.
+   */
+  importAnywayLines?: number[];
+};
 
 /**
  * Row counts of a preview, over the whole file (TS `StockImportCounts`).
  */
-export type StockImportCounts = { total: number; willImport: number; duplicates: number; skipped: number; errors: number; 
-/**
- * Rows that will be imported converted to post-split units (D13).
- */
-converted: number }
+export type StockImportCounts = {
+  total: number;
+  willImport: number;
+  duplicates: number;
+  skipped: number;
+  errors: number;
+  /**
+   * Rows that will be imported converted to post-split units (D13).
+   */
+  converted: number;
+};
 
 /**
  * One security of the file (TS `StockImportInstrument`).
  */
-export type StockImportInstrument = { 
-/**
- * `isin:<ISIN>` when the file has an ISIN, otherwise `symbol:<SYMBOL>`.
- */
-key: string; 
-/**
- * Symbol as read from the file (after the source's transforms).
- */
-symbol: string | null; isin: string | null; name: string | null; 
-/**
- * Currency of its trades (file or override); `None` while unknown.
- */
-currency: string | null; tradeCount: number; 
-/**
- * Ticker the trades will be stored under (override, else file symbol).
- */
-ticker: string | null; status: StockInstrumentStatus; 
-/**
- * Currency of the existing position when it differs (its trades are errors).
- */
-positionCurrency: string | null }
+export type StockImportInstrument = {
+  /**
+   * `isin:<ISIN>` when the file has an ISIN, otherwise `symbol:<SYMBOL>`.
+   */
+  key: string;
+  /**
+   * Symbol as read from the file (after the source's transforms).
+   */
+  symbol: string | null;
+  isin: string | null;
+  name: string | null;
+  /**
+   * Currency of its trades (file or override); `None` while unknown.
+   */
+  currency: string | null;
+  tradeCount: number;
+  /**
+   * Ticker the trades will be stored under (override, else file symbol).
+   */
+  ticker: string | null;
+  status: StockInstrumentStatus;
+  /**
+   * Currency of the existing position when it differs (its trades are errors).
+   */
+  positionCurrency: string | null;
+};
 
 /**
  * Dry run of an import (TS `StockImportPreview`).
  */
-export type StockImportPreview = { instruments: StockImportInstrument[]; 
-/**
- * The first `PREVIEW_ROWS` rows in file order.
- */
-rows: StockPreviewRow[]; counts: StockImportCounts; 
-/**
- * Trade days of the rows that will be imported.
- */
-dateRange: CsvDateRange | null; hasFeeColumn: boolean }
+export type StockImportPreview = {
+  instruments: StockImportInstrument[];
+  /**
+   * The first `PREVIEW_ROWS` rows in file order.
+   */
+  rows: StockPreviewRow[];
+  counts: StockImportCounts;
+  /**
+   * Trade days of the rows that will be imported.
+   */
+  dateRange: CsvDateRange | null;
+  hasFeeColumn: boolean;
+};
 
 /**
  * Outcome of an import (TS `StockImportResult`).
  */
-export type StockImportResult = { 
-/**
- * `None` when nothing was imported (no batch is recorded).
- */
-batchId: string | null; imported: number; duplicates: number; skipped: number; errors: number; 
-/**
- * Imported rows converted to post-split units (D13).
- */
-converted: number; 
-/**
- * Tickers of positions the import created.
- */
-newPositions: string[]; 
-/**
- * Tickers of existing positions that received trades.
- */
-updatedPositions: string[]; 
-/**
- * Duplicate, skip and error messages in file order.
- */
-messages: StockRowMessage[]; 
-/**
- * Earliest imported trade day (history rebuild start).
- */
-earliestDay: number | null }
+export type StockImportResult = {
+  /**
+   * `None` when nothing was imported (no batch is recorded).
+   */
+  batchId: string | null;
+  imported: number;
+  duplicates: number;
+  skipped: number;
+  errors: number;
+  /**
+   * Imported rows converted to post-split units (D13).
+   */
+  converted: number;
+  /**
+   * Tickers of positions the import created.
+   */
+  newPositions: string[];
+  /**
+   * Tickers of existing positions that received trades.
+   */
+  updatedPositions: string[];
+  /**
+   * Duplicate, skip and error messages in file order.
+   */
+  messages: StockRowMessage[];
+  /**
+   * Earliest imported trade day (history rebuild start).
+   */
+  earliestDay: number | null;
+};
 
 /**
  * Transforms a plain column mapping cannot express. Adapters set them; saved
  * formats keep them (TS `StockImportTransforms`).
  */
-export type StockImportTransforms = { 
-/**
- * XTB: quantity and price are read from the comment held in the quantity
- * and price columns ("OPEN BUY 34/42.5658 @ 11.7480": 34 at 11.748).
- */
-xtbComment?: boolean; 
-/**
- * XTB: symbols carry XTB suffixes (`.US`, `.UK`, `.DE`, …) that are
- * mapped to Yahoo Finance symbols (`AAPL`, `VUSA.L`, `SPYL.DE`).
- */
-xtbSymbols?: boolean; 
-/**
- * IBKR: a row is skipped unless this column holds one of
- * `assetClassAllowed` (e.g. `STK`).
- */
-assetClassColumn?: number | null; assetClassAllowed?: string[]; 
-/**
- * Degiro: the broker's id is the order's, shared by its fills. A row then
- * repeats a stored trade by id only with the same quantity and price, and
- * the rows of one file are never compared by id.
- */
-brokerIdPerOrder?: boolean }
+export type StockImportTransforms = {
+  /**
+   * XTB: quantity and price are read from the comment held in the quantity
+   * and price columns ("OPEN BUY 34/42.5658 @ 11.7480": 34 at 11.748).
+   */
+  xtbComment?: boolean;
+  /**
+   * XTB: symbols carry XTB suffixes (`.US`, `.UK`, `.DE`, …) that are
+   * mapped to Yahoo Finance symbols (`AAPL`, `VUSA.L`, `SPYL.DE`).
+   */
+  xtbSymbols?: boolean;
+  /**
+   * IBKR: a row is skipped unless this column holds one of
+   * `assetClassAllowed` (e.g. `STK`).
+   */
+  assetClassColumn?: number | null;
+  assetClassAllowed?: string[];
+  /**
+   * Degiro: the broker's id is the order's, shared by its fills. A row then
+   * repeats a stored trade by id only with the same quantity and price, and
+   * the rows of one file are never compared by id.
+   */
+  brokerIdPerOrder?: boolean;
+};
 
 /**
  * Outcome of undoing a batch (TS `StockImportUndoResult`).
  */
-export type StockImportUndoResult = { removed: number; 
-/**
- * Positions deleted because no transaction was left.
- */
-removedPositions: string[]; 
-/**
- * Every ticker the batch touched (history rebuild).
- */
-tickers: string[]; earliestDay: number | null }
+export type StockImportUndoResult = {
+  removed: number;
+  /**
+   * Positions deleted because no transaction was left.
+   */
+  removedPositions: string[];
+  /**
+   * Every ticker the batch touched (history rebuild).
+   */
+  tickers: string[];
+  earliestDay: number | null;
+};
 
 /**
  * A Yahoo Finance listing (TS `StockInstrumentCandidate`).
  */
-export type StockInstrumentCandidate = { symbol: string; name: string; exchange: string; 
-/**
- * Currency of the listing. For the listing the lookup chose (`best`) it is what Yahoo
- * reports for its quote, so a London ETF in dollars reads `USD`; every other candidate, and
- * a `best` whose quote could not be looked up, carries the guess from the symbol's exchange
- * suffix. `GBX` stands for pence: the quote, and so the prices of a file that follows it,
- * are a hundredth of `GBP`.
- */
-currency: string }
+export type StockInstrumentCandidate = {
+  symbol: string;
+  name: string;
+  exchange: string;
+  /**
+   * Currency of the listing. For the listing the lookup chose (`best`) it is what Yahoo
+   * reports for its quote, so a London ETF in dollars reads `USD`; every other candidate, and
+   * a `best` whose quote could not be looked up, carries the guess from the symbol's exchange
+   * suffix. `GBX` stands for pence: the quote, and so the prices of a file that follows it,
+   * are a hundredth of `GBP`.
+   */
+  currency: string;
+};
 
 /**
  * The user's choice for one instrument in the preview (TS `StockInstrumentOverride`).
  */
-export type StockInstrumentOverride = { 
-/**
- * `StockImportInstrument.key`.
- */
-key: string; 
-/**
- * Yahoo Finance symbol the trades are stored under.
- */
-ticker?: string | null; name?: string | null; 
-/**
- * ISO 4217 code, or `GBX` when the file's prices are in pence (they are stored as pounds).
- * It is the currency of the trades that name none (`CurrencyMode::Instrument`; needed when
- * the instrument could not be resolved); a currency the file states, in a column or for the
- * whole file, is never overridden.
- */
-currency?: string | null; 
-/**
- * Exclude every trade of this instrument.
- */
-skip?: boolean; 
-/**
- * Splits of the ticker inside the file's trade range (D13). Absent in configs and saved
- * formats from before splits were known.
- */
-splits?: StockSplitOverride[] }
+export type StockInstrumentOverride = {
+  /**
+   * `StockImportInstrument.key`.
+   */
+  key: string;
+  /**
+   * Yahoo Finance symbol the trades are stored under.
+   */
+  ticker?: string | null;
+  name?: string | null;
+  /**
+   * ISO 4217 code, or `GBX` when the file's prices are in pence (they are stored as pounds).
+   * It is the currency of the trades that name none (`CurrencyMode::Instrument`; needed when
+   * the instrument could not be resolved); a currency the file states, in a column or for the
+   * whole file, is never overridden.
+   */
+  currency?: string | null;
+  /**
+   * Exclude every trade of this instrument.
+   */
+  skip?: boolean;
+  /**
+   * Splits of the ticker inside the file's trade range (D13). Absent in configs and saved
+   * formats from before splits were known.
+   */
+  splits?: StockSplitOverride[];
+};
 
 /**
  * What to look up on Yahoo Finance for one instrument (TS `StockInstrumentQuery`).
  */
-export type StockInstrumentQuery = { key: string; symbol: string | null; isin: string | null; name: string | null; 
-/**
- * Currency of the trades; prefers a listing in it.
- */
-currency: string | null }
+export type StockInstrumentQuery = {
+  key: string;
+  symbol: string | null;
+  isin: string | null;
+  name: string | null;
+  /**
+   * Currency of the trades; prefers a listing in it.
+   */
+  currency: string | null;
+};
 
 /**
  * Result of looking up one instrument (TS `StockInstrumentResolution`).
  */
-export type StockInstrumentResolution = { key: string; candidates: StockInstrumentCandidate[]; 
-/**
- * The exact symbol, else the listing in the trade currency, else the first.
- */
-best: StockInstrumentCandidate | null; 
-/**
- * The lookup failed (offline, rate limit): unverified, not unknown.
- */
-lookupFailed: boolean }
+export type StockInstrumentResolution = {
+  key: string;
+  candidates: StockInstrumentCandidate[];
+  /**
+   * The exact symbol, else the listing in the trade currency, else the first.
+   */
+  best: StockInstrumentCandidate | null;
+  /**
+   * The lookup failed (offline, rate limit): unverified, not unknown.
+   */
+  lookupFailed: boolean;
+};
 
-export type StockInstrumentStatus = 
-/**
- * The ticker is an existing Moony position.
- */
-"existing" | 
-/**
- * A new position will be created under `ticker`.
- */
-"new" | 
-/**
- * Only an ISIN is known and no symbol was chosen yet.
- */
-"missingSymbol" | 
-/**
- * Excluded by the user.
- */
-"skipped"
+export type StockInstrumentStatus =
+  /**
+   * The ticker is an existing Moony position.
+   */
+  | 'existing'
+  /**
+   * A new position will be created under `ticker`.
+   */
+  | 'new'
+  /**
+   * Only an ISIN is known and no symbol was chosen yet.
+   */
+  | 'missingSymbol'
+  /**
+   * Excluded by the user.
+   */
+  | 'skipped';
 
 /**
  * Stock investment holding
  */
-export type StockInvestment = { id: string; ticker: string; companyName: string; quantity: string; averagePrice: string; 
-/**
- * Currency of the average price (determined by first transaction)
- */
-averagePriceCurrency: string }
+export type StockInvestment = {
+  id: string;
+  ticker: string;
+  companyName: string;
+  quantity: string;
+  averagePrice: string;
+  /**
+   * Currency of the average price (determined by first transaction)
+   */
+  averagePriceCurrency: string;
+};
 
 /**
  * A stock position with its tags, in the response's report currency (converted amounts are
  * decimal TEXT, `null` when they cannot be converted).
  */
-export type StockInvestmentWithTags = { id: string; ticker: string; companyName: string; quantity: string; 
-/**
- * Native weighted average cost (currency `averagePriceCurrency`).
- */
-averagePrice: string; averagePriceCurrency: string; 
-/**
- * Current price in its own currency; `null` when unpriced.
- */
-price: string | null; priceCurrency: string | null; value: string | null; costBasis: string | null; unrealizedGain: string | null; unrealizedGainPercent: number | null; yearlyDividend: string | null; 
-/**
- * Sector from the cached quote data; `None` for ETFs and unknown.
- */
-sector: string | null; tags: StockTag[] }
+export type StockInvestmentWithTags = {
+  id: string;
+  ticker: string;
+  companyName: string;
+  quantity: string;
+  /**
+   * Native weighted average cost (currency `averagePriceCurrency`).
+   */
+  averagePrice: string;
+  averagePriceCurrency: string;
+  /**
+   * Current price in its own currency; `null` when unpriced.
+   */
+  price: string | null;
+  priceCurrency: string | null;
+  value: string | null;
+  costBasis: string | null;
+  unrealizedGain: string | null;
+  unrealizedGainPercent: number | null;
+  yearlyDividend: string | null;
+  /**
+   * Sector from the cached quote data; `None` for ETFs and unknown.
+   */
+  sector: string | null;
+  tags: StockTag[];
+};
 
 /**
  * Detail for any ticker — works for un-followed tickers too (followed=false,
  * notes empty, target None). All stock_data fields are None when the cache
  * has no row yet (e.g. offline right after a search).
  */
-export type StockMonitorDetail = { ticker: string; followed: boolean; targetPrice: string | null; 
-/**
- * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
- */
-targetDirection: string | null; notes: string; shortName: string | null; longName: string | null; currency: string | null; currentPrice: string | null; previousClose: string | null; fiftyTwoWeekLow: string | null; fiftyTwoWeekHigh: string | null; marketCap: string | null; peRatio: string | null; 
-/**
- * Raw Yahoo fraction (0.0044 = 0.44 %); multiply by 100 for display.
- */
-trailingDividendYield: string | null; exchange: string | null; priceFetchedAt: number | null; heldInvestmentId: string | null; isHeld: boolean; 
-/**
- * When the stock was added to the watchlist (unix seconds); None when not followed.
- */
-followedAt: number | null }
+export type StockMonitorDetail = {
+  ticker: string;
+  followed: boolean;
+  targetPrice: string | null;
+  /**
+   * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+   */
+  targetDirection: string | null;
+  notes: string;
+  shortName: string | null;
+  longName: string | null;
+  currency: string | null;
+  currentPrice: string | null;
+  previousClose: string | null;
+  fiftyTwoWeekLow: string | null;
+  fiftyTwoWeekHigh: string | null;
+  marketCap: string | null;
+  peRatio: string | null;
+  /**
+   * Raw Yahoo fraction (0.0044 = 0.44 %); multiply by 100 for display.
+   */
+  trailingDividendYield: string | null;
+  exchange: string | null;
+  priceFetchedAt: number | null;
+  heldInvestmentId: string | null;
+  isHeld: boolean;
+  /**
+   * When the stock was added to the watchlist (unix seconds); None when not followed.
+   */
+  followedAt: number | null;
+};
 
 /**
  * Performance of the stock positions of the period in `currency`: the whole portfolio, the
  * requested series and every position, all on the same `dates`.
  */
-export type StockPerformance = { 
-/**
- * The report currency.
- */
-currency: string; fxQuality: ConversionQuality; 
-/**
- * Emitted days as `YYYY-MM-DD`, at most 400 plus the last day (every n-th day on long
- * ranges).
- */
-dates: string[]; 
-/**
- * Cumulative time-weighted return of the whole portfolio in percent per date (first 0).
- */
-portfolio: number[]; 
-/**
- * Portfolio value per date (decimal TEXT); `null` when no position converts that day.
- */
-values: (string | null)[]; 
-/**
- * Net deposits (buys minus sells) cumulated since the first date, decimal TEXT.
- */
-netFlows: string[]; 
-/**
- * Gross dividends (ex-dates) cumulated since the first date, decimal TEXT; they are return
- * that left the portfolio, so `netFlows` does not contain them.
- */
-dividends: string[]; 
-/**
- * Money-weighted return (IRR) from the first date to each date as a period rate, in percent;
- * null when the portfolio value is unknown on that date or the IRR has no solution.
- */
-mwr: (number | null)[]; 
-/**
- * The same IRR as an annual rate, in percent; null when it lies outside the bracket
- * (a period of up to a year may annualise far beyond it), or when `mwr` is null.
- */
-mwrAnnual: (number | null)[]; series: PerformanceSeries[]; 
-/**
- * Every position of the period: held at the end of any day of the range or traded in it,
- * including positions sold since.
- */
-positions: PositionPerformance[]; 
-/**
- * Tickers of the period's positions without any market price, valued at their own trade
- * prices instead (sorted, unique).
- */
-unpricedTickers: string[]; 
-/**
- * Tickers of the period's positions whose dividends may be incomplete: the Yahoo fetch has
- * not covered the range yet (sorted, unique).
- */
-dividendGapTickers: string[]; 
-/**
- * Tickers of the period's positions with a trade in the range whose price is more than
- * 50 % away from that day's close, compared in the close's currency: a wrong legacy price
- * or currency books a false gain or loss on the trade day (sorted, unique).
- */
-suspectTradeTickers: string[] }
+export type StockPerformance = {
+  /**
+   * The report currency.
+   */
+  currency: string;
+  fxQuality: ConversionQuality;
+  /**
+   * Emitted days as `YYYY-MM-DD`, at most 400 plus the last day (every n-th day on long
+   * ranges).
+   */
+  dates: string[];
+  /**
+   * Cumulative time-weighted return of the whole portfolio in percent per date (first 0).
+   */
+  portfolio: number[];
+  /**
+   * Portfolio value per date (decimal TEXT); `null` when no position converts that day.
+   */
+  values: (string | null)[];
+  /**
+   * Net deposits (buys minus sells) cumulated since the first date, decimal TEXT.
+   */
+  netFlows: string[];
+  /**
+   * Gross dividends (ex-dates) cumulated since the first date, decimal TEXT; they are return
+   * that left the portfolio, so `netFlows` does not contain them.
+   */
+  dividends: string[];
+  /**
+   * Money-weighted return (IRR) from the first date to each date as a period rate, in percent;
+   * null when the portfolio value is unknown on that date or the IRR has no solution.
+   */
+  mwr: (number | null)[];
+  /**
+   * The same IRR as an annual rate, in percent; null when it lies outside the bracket
+   * (a period of up to a year may annualise far beyond it), or when `mwr` is null.
+   */
+  mwrAnnual: (number | null)[];
+  series: PerformanceSeries[];
+  /**
+   * Every position of the period: held at the end of any day of the range or traded in it,
+   * including positions sold since.
+   */
+  positions: PositionPerformance[];
+  /**
+   * Tickers of the period's positions without any market price, valued at their own trade
+   * prices instead (sorted, unique).
+   */
+  unpricedTickers: string[];
+  /**
+   * Tickers of the period's positions whose dividends may be incomplete: the Yahoo fetch has
+   * not covered the range yet (sorted, unique).
+   */
+  dividendGapTickers: string[];
+  /**
+   * Tickers of the period's positions with a trade in the range whose price is more than
+   * 50 % away from that day's close, compared in the close's currency: a wrong legacy price
+   * or currency books a false gain or loss on the trade day (sorted, unique).
+   */
+  suspectTradeTickers: string[];
+};
 
 /**
  * Request of the performance report: the period, the currency and the series to chart.
  */
-export type StockPerformanceRequest = { 
-/**
- * First day (unix seconds, UTC midnight); clamped to the first recorded day.
- */
-fromTs: number; 
-/**
- * Last day (unix seconds, UTC midnight); clamped to the last recorded day.
- */
-toTs: number; 
-/**
- * The currency values, flows and returns are converted to, each at its own day.
- */
-reportCurrency: string; series: PerformanceSeriesSpec[] }
+export type StockPerformanceRequest = {
+  /**
+   * First day (unix seconds, UTC midnight); clamped to the first recorded day.
+   */
+  fromTs: number;
+  /**
+   * Last day (unix seconds, UTC midnight); clamped to the last recorded day.
+   */
+  toTs: number;
+  /**
+   * The currency values, flows and returns are converted to, each at its own day.
+   */
+  reportCurrency: string;
+  series: PerformanceSeriesSpec[];
+};
 
 /**
  * One stock position in `currency`; `fxQuality` covers this position only.
  */
-export type StockPosition = { currency: string; fxQuality: ConversionQuality; investment: EnrichedStockInvestment }
+export type StockPosition = {
+  currency: string;
+  fxQuality: ConversionQuality;
+  investment: EnrichedStockInvestment;
+};
 
 /**
  * Every stock position in `currency`, with what could not be converted.
  */
-export type StockPositions = { currency: string; fxQuality: ConversionQuality; items: EnrichedStockInvestment[]; totals: PositionTotals }
+export type StockPositions = {
+  currency: string;
+  fxQuality: ConversionQuality;
+  items: EnrichedStockInvestment[];
+  totals: PositionTotals;
+};
 
 /**
  * One row of the preview table (TS `StockPreviewRow`).
  */
-export type StockPreviewRow = { line: number; 
-/**
- * UTC day (unix seconds), when the date parsed.
- */
-day: number | null; direction: TradeDirection | null; instrumentKey: string | null; 
-/**
- * Ticker the trade would be stored under.
- */
-ticker: string | null; 
-/**
- * Decimal text, as it would be stored.
- */
-quantity: string | null; price: string | null; currency: string | null; status: StockRowStatus; message: StockRowMessage | null }
+export type StockPreviewRow = {
+  line: number;
+  /**
+   * UTC day (unix seconds), when the date parsed.
+   */
+  day: number | null;
+  direction: TradeDirection | null;
+  instrumentKey: string | null;
+  /**
+   * Ticker the trade would be stored under.
+   */
+  ticker: string | null;
+  /**
+   * Decimal text, as it would be stored.
+   */
+  quantity: string | null;
+  price: string | null;
+  currency: string | null;
+  status: StockRowStatus;
+  message: StockRowMessage | null;
+};
 
 /**
  * User price override
  */
-export type StockPriceOverride = { id: string; ticker: string; price: string; currency: string; updatedAt: number }
+export type StockPriceOverride = {
+  id: string;
+  ticker: string;
+  price: string;
+  currency: string;
+  updatedAt: number;
+};
 
 /**
  * Chart data point (transient, never persisted — f64 like HistoricalPrice)
  */
-export type StockPricePoint = { timestamp: number; price: number; currency: string }
+export type StockPricePoint = { timestamp: number; price: number; currency: string };
 
 /**
  * A per-row note or problem. Never English prose: `key` is an i18n key
  * (`importWizard.row.*` in the `stocks` namespace, `validation.*` in
  * `common`) and `detail` the raw value it is about.
  */
-export type StockRowMessage = { 
-/**
- * 1-based file line of the row.
- */
-line: number; key: string; detail: string | null }
+export type StockRowMessage = {
+  /**
+   * 1-based file line of the row.
+   */
+  line: number;
+  key: string;
+  detail: string | null;
+};
 
-export type StockRowStatus = 
-/**
- * Will be imported.
- */
-"new" | 
-/**
- * Matches an existing transaction; skipped unless imported anyway.
- */
-"duplicate" | 
-/**
- * Not a trade, or excluded on purpose (see `message`).
- */
-"skipped" | 
-/**
- * Cannot be imported (see `message`).
- */
-"error"
+export type StockRowStatus =
+  /**
+   * Will be imported.
+   */
+  | 'new'
+  /**
+   * Matches an existing transaction; skipped unless imported anyway.
+   */
+  | 'duplicate'
+  /**
+   * Not a trade, or excluded on purpose (see `message`).
+   */
+  | 'skipped'
+  /**
+   * Cannot be imported (see `message`).
+   */
+  | 'error';
 
 /**
  * One `stock_splits` row plus what is derived on read: the number of transactions dated
  * before the split (D6) and, for a pending split, the D7 verdict.
  */
-export type StockSplit = { id: string; ticker: string; 
-/**
- * UTC midnight of the ex-date.
- */
-effectiveDay: number; 
-/**
- * Integer as text, e.g. `"4"`.
- */
-numerator: string; 
-/**
- * Integer as text, e.g. `"1"`.
- */
-denominator: string; source: StockSplitSource; status: StockSplitStatus; detectedAt: number; resolvedAt: number | null; 
-/**
- * Transactions rewritten by the last apply.
- */
-appliedCount: number | null; 
-/**
- * Transactions of the ticker dated before `effective_day`, now.
- */
-preSplitCount: number; 
-/**
- * D7 from `stock_value_history`; `unknown` unless pending.
- */
-verdict: StockSplitVerdict }
+export type StockSplit = {
+  id: string;
+  ticker: string;
+  /**
+   * UTC midnight of the ex-date.
+   */
+  effectiveDay: number;
+  /**
+   * Integer as text, e.g. `"4"`.
+   */
+  numerator: string;
+  /**
+   * Integer as text, e.g. `"1"`.
+   */
+  denominator: string;
+  source: StockSplitSource;
+  status: StockSplitStatus;
+  detectedAt: number;
+  resolvedAt: number | null;
+  /**
+   * Transactions rewritten by the last apply.
+   */
+  appliedCount: number | null;
+  /**
+   * Transactions of the ticker dated before `effective_day`, now.
+   */
+  preSplitCount: number;
+  /**
+   * D7 from `stock_value_history`; `unknown` unless pending.
+   */
+  verdict: StockSplitVerdict;
+};
 
 /**
  * What the import does with the file's trades dated before a split (TS `StockSplitAction`).
  * The ticker's stored rows are a separate decision: `StockSplitOverride::apply_stored`.
  */
-export type StockSplitAction = 
-/**
- * The file is in pre-split units: its trades dated before the split are converted to
- * today's units (`quantity × n/d`, `price × d/n`) (spec D13).
- */
-"convert" | 
-/**
- * The file is already in today's units: nothing is converted.
- */
-"keep"
+export type StockSplitAction =
+  /**
+   * The file is in pre-split units: its trades dated before the split are converted to
+   * today's units (`quantity × n/d`, `price × d/n`) (spec D13).
+   */
+  | 'convert'
+  /**
+   * The file is already in today's units: nothing is converted.
+   */
+  | 'keep';
 
 /**
  * What an apply or revert did: the split as it is now, how many transactions were
  * rewritten, and the ticker's first transaction day (where the history rebuild starts).
  */
-export type StockSplitApplyResult = { split: StockSplit; rewritten: number; earliestDay: number | null }
+export type StockSplitApplyResult = {
+  split: StockSplit;
+  rewritten: number;
+  earliestDay: number | null;
+};
 
 /**
  * The split check of one instrument of the file (TS `StockSplitCheck`, D12).
  */
-export type StockSplitCheck = { 
-/**
- * `StockImportInstrument.key`.
- */
-key: string; ticker: string; 
-/**
- * `false` when the history could not be fetched (offline, unknown symbol); `splits` is
- * then empty.
- */
-checked: boolean; 
-/**
- * Oldest first.
- */
-splits: StockSplitCheckSplit[] }
+export type StockSplitCheck = {
+  /**
+   * `StockImportInstrument.key`.
+   */
+  key: string;
+  ticker: string;
+  /**
+   * `false` when the history could not be fetched (offline, unknown symbol); `splits` is
+   * then empty.
+   */
+  checked: boolean;
+  /**
+   * Oldest first.
+   */
+  splits: StockSplitCheckSplit[];
+};
 
 /**
  * A split Yahoo reports after an instrument's first trade (TS `StockSplitCheckSplit`, D12).
  */
-export type StockSplitCheckSplit = { 
-/**
- * UTC midnight of the ex-date.
- */
-effectiveDay: number; 
-/**
- * Integer as text, e.g. `"10"` of a 10:1 split.
- */
-numerator: string; 
-/**
- * Integer as text, e.g. `"1"` of a 10:1 split.
- */
-denominator: string; 
-/**
- * D7 over `trades`.
- */
-verdict: StockSplitVerdict; 
-/**
- * The will-import trades dated before the split, in file order.
- */
-trades: StockSplitCheckTrade[]; 
-/**
- * Status of the `stock_splits` row of `(ticker, effectiveDay)`, if any.
- */
-storedStatus: StockSplitStatus | null; 
-/**
- * Stored transactions of the ticker dated before the split (the D14 line).
- */
-storedPreSplitCount: number; 
-/**
- * D7 over those stored transactions, as the position page judges them (against
- * `stock_value_history`, cumulative over the ticker's pending splits); `unknown` unless the
- * split is pending or unknown to Moony and such rows exist.
- */
-storedVerdict: StockSplitVerdict }
+export type StockSplitCheckSplit = {
+  /**
+   * UTC midnight of the ex-date.
+   */
+  effectiveDay: number;
+  /**
+   * Integer as text, e.g. `"10"` of a 10:1 split.
+   */
+  numerator: string;
+  /**
+   * Integer as text, e.g. `"1"` of a 10:1 split.
+   */
+  denominator: string;
+  /**
+   * D7 over `trades`.
+   */
+  verdict: StockSplitVerdict;
+  /**
+   * The will-import trades dated before the split, in file order.
+   */
+  trades: StockSplitCheckTrade[];
+  /**
+   * Status of the `stock_splits` row of `(ticker, effectiveDay)`, if any.
+   */
+  storedStatus: StockSplitStatus | null;
+  /**
+   * Stored transactions of the ticker dated before the split (the D14 line).
+   */
+  storedPreSplitCount: number;
+  /**
+   * D7 over those stored transactions, as the position page judges them (against
+   * `stock_value_history`, cumulative over the ticker's pending splits); `unknown` unless the
+   * split is pending or unknown to Moony and such rows exist.
+   */
+  storedVerdict: StockSplitVerdict;
+};
 
 /**
  * One file trade dated before a split, with its D7 verdict (TS `StockSplitCheckTrade`).
  */
-export type StockSplitCheckTrade = { 
-/**
- * 1-based line of the file.
- */
-line: number; verdict: StockSplitVerdict }
+export type StockSplitCheckTrade = {
+  /**
+   * 1-based line of the file.
+   */
+  line: number;
+  verdict: StockSplitVerdict;
+};
 
 /**
  * A split of an instrument's ticker and what the import does about it (TS
  * `StockSplitOverride`, spec D13). The wizard fills it from `check_stock_splits`.
  */
-export type StockSplitOverride = { 
-/**
- * UTC midnight of the ex-date; trades dated before it are pre-split.
- */
-effectiveDay: number; 
-/**
- * Integer as text, e.g. `"10"` of a 10:1 split.
- */
-numerator: string; 
-/**
- * Integer as text, e.g. `"1"` of a 10:1 split.
- */
-denominator: string; 
-/**
- * What happens to the file's trades dated before the split.
- */
-action: StockSplitAction; 
-/**
- * Also apply the split to the ticker's stored transactions before the import, when Moony
- * holds it as `pending` or has no row for it (D14); independent of `action`. Absent in
- * configs from before the stored rows had a choice of their own.
- */
-applyStored?: boolean }
+export type StockSplitOverride = {
+  /**
+   * UTC midnight of the ex-date; trades dated before it are pre-split.
+   */
+  effectiveDay: number;
+  /**
+   * Integer as text, e.g. `"10"` of a 10:1 split.
+   */
+  numerator: string;
+  /**
+   * Integer as text, e.g. `"1"` of a 10:1 split.
+   */
+  denominator: string;
+  /**
+   * What happens to the file's trades dated before the split.
+   */
+  action: StockSplitAction;
+  /**
+   * Also apply the split to the ticker's stored transactions before the import, when Moony
+   * holds it as `pending` or has no row for it (D14); independent of `action`. Absent in
+   * configs from before the stored rows had a choice of their own.
+   */
+  applyStored?: boolean;
+};
 
 /**
  * Where a split record came from.
  */
-export type StockSplitSource = "yahoo" | "manual" | "import"
+export type StockSplitSource = 'yahoo' | 'manual' | 'import';
 
 /**
  * Where a split stands: detected and waiting, applied to the stored rows, or dismissed.
  */
-export type StockSplitStatus = "pending" | "applied" | "dismissed"
+export type StockSplitStatus = 'pending' | 'applied' | 'dismissed';
 
 /**
  * Whether a transaction's price is already expressed in post-split terms (D7).
  */
-export type StockSplitVerdict = "adjusted" | "unadjusted" | "unknown"
+export type StockSplitVerdict = 'adjusted' | 'unadjusted' | 'unknown';
 
 /**
  * Stock tag for categorizing investments (e.g., Growth, Value, Dividend)
  */
-export type StockTag = { id: string; name: string; color: string | null; groupId: string | null; createdAt: number }
+export type StockTag = {
+  id: string;
+  name: string;
+  color: string | null;
+  groupId: string | null;
+  createdAt: number;
+};
 
 /**
  * Stock tag group for organizing related tags
  */
-export type StockTagGroup = { id: string; name: string; description: string | null; createdAt: number }
+export type StockTagGroup = {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: number;
+};
 
 /**
  * One value of the type column and what it means (TS `StockTypeValueMapping`).
  */
-export type StockTypeValueMapping = { 
-/**
- * The trimmed cell text as it appears in the file.
- */
-value: string; action: TypeValueAction }
+export type StockTypeValueMapping = {
+  /**
+   * The trimmed cell text as it appears in the file.
+   */
+  value: string;
+  action: TypeValueAction;
+};
 
 /**
  * A distinct value of a low-cardinality column (TS `StockTypeValueStat`).
  */
-export type StockTypeValueStat = { value: string; count: number; 
-/**
- * 1-based file line of the first row with this value.
- */
-firstLine: number; 
-/**
- * Meaning suggested from keywords in several languages.
- */
-suggested: TypeValueAction }
+export type StockTypeValueStat = {
+  value: string;
+  count: number;
+  /**
+   * 1-based file line of the first row with this value.
+   */
+  firstLine: number;
+  /**
+   * Meaning suggested from keywords in several languages.
+   */
+  suggested: TypeValueAction;
+};
 
 /**
  * Every stock position with its tags in `currency`.
  */
-export type StocksAnalysis = { currency: string; fxQuality: ConversionQuality; items: StockInvestmentWithTags[] }
+export type StocksAnalysis = {
+  currency: string;
+  fxQuality: ConversionQuality;
+  items: StockInvestmentWithTags[];
+};
 
 /**
  * Where a suggested category comes from (the pill's sub-label on the phone).
  */
-export type SuggestionSource = 
-/**
- * An AI client suggested it through the local API and waits for the user.
- */
-"mcp" | 
-/**
- * A payee the user categorized before.
- */
-"learned" | 
-/**
- * A custom rule, or a transfer between the user's own accounts.
- */
-"rule" | 
-/**
- * A rule of an enabled locale pack.
- */
-"pack"
+export type SuggestionSource =
+  /**
+   * An AI client suggested it through the local API and waits for the user.
+   */
+  | 'mcp'
+  /**
+   * A payee the user categorized before.
+   */
+  | 'learned'
+  /**
+   * A custom rule, or a transfer between the user's own accounts.
+   */
+  | 'rule'
+  /**
+   * A rule of an enabled locale pack.
+   */
+  | 'pack';
 
 /**
  * The sync account as setup shows it: its 16-digit number and whether the relay counts it as
  * paid.
  */
-export type SyncAccount = { accountNumber: string; active: boolean; 
+export type SyncAccount = {
+  accountNumber: string;
+  active: boolean;
+  /**
+   * The subscription's end (unix seconds); `None` while the account has never been paid.
+   */
+  paidUntil: number | null;
+};
+
 /**
- * The subscription's end (unix seconds); `None` while the account has never been paid.
+ * One device the Kit joiner's hold names: its ID (32 lowercase hex characters, as in
+ * `SyncDevice.id`) and its name.
  */
-paidUntil: number | null }
+export type SyncAfterKitDevice = { id: string; name: string };
 
 /**
  * `afterKitJoin`: the devices that were on the list when this device joined with the recovery
- * kit (their names), and the newest change among them (unix seconds).
+ * kit, and the newest change among them (unix seconds).
  */
-export type SyncAfterKitJoin = { names: string[]; newestChangeAt: number | null }
+export type SyncAfterKitJoin = { devices: SyncAfterKitDevice[]; newestChangeAt: number | null };
 
 /**
  * Where this device's documents and photos stand with sync (attachments design §5.6), counted by
  * attachment row (a photo once): beside the ordinary phase, never part of it. Zeros while sync is
  * off.
  */
-export type SyncAttachments = { 
-/**
- * Rows whose content is held here and not yet confirmed by the sync server, and can still
- * upload: while any waits, this device is not synchronised.
- */
-waitingUpload: number; 
-/**
- * The plaintext bytes of the content waiting to upload.
- */
-waitingUploadBytes: number; 
-/**
- * Rows whose content is on another device or the sync server, not fetched here yet.
- */
-notHere: number; 
-/**
- * Rows whose content the sync server does not have yet (not uploaded from the other device).
- */
-notOnServer: number; 
-/**
- * Rows whose content could not be fetched, or cannot upload by itself: failed items, which
- * never keep this device "not synchronised".
- */
-failed: number; 
-/**
- * Rows with any content not complete on this device, whatever the reason (the three counts
- * above leave out of each other what they hold): the backup does not have these.
- */
-notOnDevice: number; 
-/**
- * Rows among `failed` whose content is held here and cannot upload by itself (refused by the
- * sync server, a conflict with what it holds, an invalid ID): on this device only until tried
- * again. An upload backing off (no room, the network) is in `waiting_upload` instead.
- */
-failedUpload: number; 
-/**
- * Why documents and photos do not move, while ordinary sync goes on.
- */
-problem: SyncAttachmentsProblem | null }
+export type SyncAttachments = {
+  /**
+   * Rows whose content is held here and not yet confirmed by the sync server, and can still
+   * upload: while any waits, this device is not synchronised.
+   */
+  waitingUpload: number;
+  /**
+   * The plaintext bytes of the content waiting to upload.
+   */
+  waitingUploadBytes: number;
+  /**
+   * Rows whose content is on another device or the sync server, not fetched here yet.
+   */
+  notHere: number;
+  /**
+   * Rows whose content the sync server does not have yet (not uploaded from the other device).
+   */
+  notOnServer: number;
+  /**
+   * Rows whose content could not be fetched, or cannot upload by itself: failed items, which
+   * never keep this device "not synchronised".
+   */
+  failed: number;
+  /**
+   * Rows with any content not complete on this device, whatever the reason (the three counts
+   * above leave out of each other what they hold): the backup does not have these.
+   */
+  notOnDevice: number;
+  /**
+   * Rows among `failed` whose content is held here and cannot upload by itself (refused by the
+   * sync server, a conflict with what it holds, an invalid ID): on this device only until tried
+   * again. An upload backing off (no room, the network) is in `waiting_upload` instead.
+   */
+  failedUpload: number;
+  /**
+   * Why documents and photos do not move, while ordinary sync goes on.
+   */
+  problem: SyncAttachmentsProblem | null;
+};
 
 /**
  * Why documents and photos do not move while ordinary sync goes on (ADR 0030): uploads of their
  * content wait, everything else syncs.
  */
-export type SyncAttachmentsProblem = 
-/**
- * The sync server has no room for more content (the vault's quota, or its disk at the
- * free-space floor): uploads wait; downloads go on.
- */
-"noRoom" | 
-/**
- * The sync server does not have the blob routes (no `blobs` feature): nothing moves until it
- * is updated.
- */
-"serverNeedsUpdate"
+export type SyncAttachmentsProblem =
+  /**
+   * The sync server has no room for more content (the vault's quota, or its disk at the
+   * free-space floor): uploads wait; downloads go on.
+   */
+  | 'noRoom'
+  /**
+   * The sync server does not have the blob routes (no `blobs` feature): nothing moves until it
+   * is updated.
+   */
+  | 'serverNeedsUpdate';
 
 /**
  * A backup a join, repair or re-sync made, as Restore lists it.
  */
-export type SyncBackupEntry = { path: string; 
-/**
- * When it was made (unix seconds).
- */
-createdAt: number; bytes: number; 
-/**
- * It holds something found nowhere else: the app never removes it, only the person does.
- */
-kept: boolean }
+export type SyncBackupEntry = {
+  path: string;
+  /**
+   * When it was made (unix seconds).
+   */
+  createdAt: number;
+  bytes: number;
+  /**
+   * It holds something found nowhere else: the app never removes it, only the person does.
+   */
+  kept: boolean;
+};
 
 /**
  * `SyncDevice::check_reason`.
  */
-export type SyncCheckReason = 
-/**
- * This device could not verify the device (no pinned certificate, or its issuer is unknown).
- */
-"unverified" | 
-/**
- * An older ID of a device that connected again, still writing changes: a copy.
- */
-"copy" | 
-/**
- * A device a removed device added.
- */
-"issuerRemoved" | 
-/**
- * Added by a device that left (or was superseded) with nothing showing it happened in time,
- * or by a device left out for that reason.
- */
-"lateVouch"
+export type SyncCheckReason =
+  /**
+   * This device could not verify the device (no pinned certificate, or its issuer is unknown).
+   */
+  | 'unverified'
+  /**
+   * An older ID of a device that connected again, still writing changes: a copy.
+   */
+  | 'copy'
+  /**
+   * A device a removed device added.
+   */
+  | 'issuerRemoved'
+  /**
+   * Added by a device that left (or was superseded) with nothing showing it happened in time,
+   * or by a device left out for that reason.
+   */
+  | 'lateVouch';
 
 /**
  * One device of the sync account as Settings lists it.
  */
-export type SyncDevice = { 
-/**
- * The device ID, 32 lowercase hex characters.
- */
-id: string; name: string; 
-/**
- * `macos`, `windows`, `linux`, `ios` or `android`.
- */
-platform: string; appVersion: string; joinedAt: number; 
-/**
- * The last successful sync of this device, or the newest change another device wrote
- * (unix seconds); `None` before either.
- */
-lastActiveAt: number | null; thisDevice: boolean; 
-/**
- * The device's messages are held back (quarantined) here.
- */
-held: boolean; 
-/**
- * Where the device stands (revision §6.5): `active`, `check` ("Zkontrolujte": it gets no
- * key at the next change until kept or removed) or `former` (left or removed, listed for
- * 30 days).
- */
-status: SyncDeviceStatus; 
-/**
- * With `status = check`: why.
- */
-checkReason: SyncCheckReason | null; 
-/**
- * With `status = former`: how it went.
- */
-formerReason: SyncFormerReason | null; 
-/**
- * How the device came to the list.
- */
-joinedVia: SyncJoinedVia; 
-/**
- * The name of the device that paired it (`joinedVia = paired`), when this device knows one.
- */
-addedBy: string | null; 
-/**
- * When a former device left or was removed (unix seconds), when known.
- */
-stateAt: number | null; 
-/**
- * The name of the device that removed it (`formerReason = removed`), when known.
- */
-stateBy: string | null; 
-/**
- * A key change of this device that removes it waits for the sync server ("Odebírá se…").
- */
-removalPending: boolean; 
-/**
- * Whole days since an active other device was last seen, once that is 30 or more.
- */
-inactiveDays: number | null }
+export type SyncDevice = {
+  /**
+   * The device ID, 32 lowercase hex characters.
+   */
+  id: string;
+  name: string;
+  /**
+   * `macos`, `windows`, `linux`, `ios` or `android`.
+   */
+  platform: string;
+  appVersion: string;
+  joinedAt: number;
+  /**
+   * The last successful sync of this device, or the newest change another device wrote
+   * (unix seconds); `None` before either.
+   */
+  lastActiveAt: number | null;
+  thisDevice: boolean;
+  /**
+   * The device's messages are held back (quarantined) here.
+   */
+  held: boolean;
+  /**
+   * Where the device stands (revision §6.5): `active`, `check` ("Zkontrolujte": it gets no
+   * key at the next change until kept or removed) or `former` (left or removed, listed for
+   * 30 days).
+   */
+  status: SyncDeviceStatus;
+  /**
+   * With `status = check`: why.
+   */
+  checkReason: SyncCheckReason | null;
+  /**
+   * With `status = former`: how it went.
+   */
+  formerReason: SyncFormerReason | null;
+  /**
+   * How the device came to the list.
+   */
+  joinedVia: SyncJoinedVia;
+  /**
+   * The name of the device that paired it (`joinedVia = paired`), when this device knows one.
+   */
+  addedBy: string | null;
+  /**
+   * When a former device left or was removed (unix seconds), when known.
+   */
+  stateAt: number | null;
+  /**
+   * The name of the device that removed it (`formerReason = removed`), when known.
+   */
+  stateBy: string | null;
+  /**
+   * A key change of this device that removes it waits for the sync server ("Odebírá se…").
+   */
+  removalPending: boolean;
+  /**
+   * Whole days since an active other device was last seen, once that is 30 or more.
+   */
+  inactiveDays: number | null;
+};
 
 /**
  * `SyncDevice::status`.
  */
-export type SyncDeviceStatus = "active" | "check" | "former"
+export type SyncDeviceStatus = 'active' | 'check' | 'former';
 
 /**
  * `SyncDevice::former_reason`.
  */
-export type SyncFormerReason = "left" | "removed"
+export type SyncFormerReason = 'left' | 'removed';
 
 /**
  * `SyncDevice::joined_via`.
  */
-export type SyncJoinedVia = 
-/**
- * The device that set the sync up.
- */
-"created" | 
-/**
- * Paired by another device.
- */
-"paired" | 
-/**
- * Joined with the recovery kit.
- */
-"recoveryKit" | 
-/**
- * Connected again after turning sync off.
- */
-"rejoined" | 
-/**
- * This device has no certificate for it (a vault from before phase 5, or not verified).
- */
-"unknown"
+export type SyncJoinedVia =
+  /**
+   * The device that set the sync up.
+   */
+  | 'created'
+  /**
+   * Paired by another device.
+   */
+  | 'paired'
+  /**
+   * Joined with the recovery kit.
+   */
+  | 'recoveryKit'
+  /**
+   * Connected again after turning sync off.
+   */
+  | 'rejoined'
+  /**
+   * This device has no certificate for it (a vault from before phase 5, or not verified).
+   */
+  | 'unknown';
 
 /**
  * `keyChangeOverrun`: `at` is when this device adopted the key change the server hid (unix
  * seconds; `None` when this device no longer knows).
  */
-export type SyncKeyChangeOverrun = { at: number | null }
+export type SyncKeyChangeOverrun = { at: number | null };
 
 /**
  * The vault's recovery kit as the status shows it (`recoveryKit`): when it was made and by which
  * device (`None`: not on this device's list any more), where it was stored (`None`: the person
  * did nothing with it: "neuložená"), and when the sync server says it was last read.
  */
-export type SyncKitInfo = { createdAt: number; createdBy: string | null; storage: SyncKitStorage | null; lastReadAt: number | null }
+export type SyncKitInfo = {
+  createdAt: number;
+  createdBy: string | null;
+  storage: SyncKitStorage | null;
+  lastReadAt: number | null;
+};
 
 /**
  * Where the person keeps the recovery kit, as far as Moony saw (the strongest value wins).
  */
-export type SyncKitStorage = "paper" | "copied" | "file" | "cloud"
+export type SyncKitStorage = 'paper' | 'copied' | 'file' | 'cloud';
 
 /**
  * A device that appeared on the list outside a join (`newDevices`): `by` added it (`viaKit`: it
  * joined with the recovery kit and `by` is empty), `at` is when this device noticed (unix
  * seconds), `lateVouch` that it is left out of the next key change until kept.
  */
-export type SyncNewDevice = { id: string; name: string; by: string; at: number; viaKit: boolean; lateVouch: boolean }
+export type SyncNewDevice = {
+  id: string;
+  name: string;
+  by: string;
+  at: number;
+  viaKit: boolean;
+  lateVouch: boolean;
+};
 
 /**
  * Which notice `sync_dismiss_notice` dismisses.
  */
-export type SyncNoticeKind = 
-/**
- * `removalNotice`.
- */
-"removal" | 
-/**
- * `removedNotice`.
- */
-"removed" | 
-/**
- * `removalNotDone`.
- */
-"removalNotDone" | 
-/**
- * `keyChangeOverrun`.
- */
-"keyChangeOverrun" | 
-/**
- * `newDevices`.
- */
-"newDevices" | 
-/**
- * `kitUsed` ("Vím o tom").
- */
-"kitUsed"
+export type SyncNoticeKind =
+  /**
+   * `removalNotice`.
+   */
+  | 'removal'
+  /**
+   * `removedNotice`.
+   */
+  | 'removed'
+  /**
+   * `removalNotDone`.
+   */
+  | 'removalNotDone'
+  /**
+   * `keyChangeOverrun`.
+   */
+  | 'keyChangeOverrun'
+  /**
+   * `newDevices`.
+   */
+  | 'newDevices'
+  /**
+   * `kitUsed` ("Vím o tom").
+   */
+  | 'kitUsed';
 
 /**
  * Where sync stands on this device.
  */
-export type SyncPhase = 
-/**
- * Sync is not on for this profile (or the build does not run it).
- */
-"off" | 
-/**
- * An account is saved but setup has not finished.
- */
-"settingUp" | "idle" | 
-/**
- * A round is running.
- */
-"syncing" | 
-/**
- * Syncing goes on, but a change from another device has not arrived (a gap in its chain, or
- * a parent it references): the change waits, this device keeps pulling and pushing.
- */
-"waiting" | 
-/**
- * Waiting on something outside this device: the vault, the subscription, the quota, an app
- * update, the network or the relay's rate limit.
- */
-"paused" | 
-/**
- * Stopped on something that needs a look.
- */
-"error"
+export type SyncPhase =
+  /**
+   * Sync is not on for this profile (or the build does not run it).
+   */
+  | 'off'
+  /**
+   * An account is saved but setup has not finished.
+   */
+  | 'settingUp'
+  | 'idle'
+  /**
+   * A round is running.
+   */
+  | 'syncing'
+  /**
+   * Syncing goes on, but a change from another device has not arrived (a gap in its chain, or
+   * a parent it references): the change waits, this device keeps pulling and pushing.
+   */
+  | 'waiting'
+  /**
+   * Waiting on something outside this device: the vault, the subscription, the quota, an app
+   * update, the network or the relay's rate limit.
+   */
+  | 'paused'
+  /**
+   * Stopped on something that needs a look.
+   */
+  | 'error';
 
 /**
  * The subscription a checkout is for.
  */
-export type SyncPlan = "monthly" | "yearly"
+export type SyncPlan = 'monthly' | 'yearly';
 
 /**
  * Why sync is paused or stopped.
  */
-export type SyncProblem = 
-/**
- * Change capture could not be installed at unlock; the profile does not sync until repaired.
- */
-"captureBroken" | 
-/**
- * The relay no longer knows the vault (`404`); paused until "Sync now" finds it again.
- */
-"vaultGone" | 
-/**
- * The subscription ended (`402`): pulls go on while the relay allows, pushes wait.
- */
-"lapsed" | "quotaExceeded" | "snapshotTooLarge" | 
-/**
- * Another device writes with a newer app version.
- */
-"newerSchema" | 
-/**
- * The relay withholds an envelope.
- */
-"gap" | 
-/**
- * A change from another device is dated more than ten years past this device's time: it is
- * held (skippable after 14 days, `HeldGapKind::Ahead`), and this device keeps syncing
- * meanwhile (audit M6).
- */
-"clockAhead" | "undecryptable" | "invalidChain" | "missingParent" | 
-/**
- * A device's envelopes are held after its chain forked.
- */
-"quarantined" | "offline" | "relayError" | "rateLimited" | "unauthorized" | 
-/**
- * The vault's token was rotated by another device (`403 token_read_only`).
- */
-"keyRotated" | 
-/**
- * The key changed and this device got no new key and no verifiable removal notice (phase 5
- * §7.5): paused, never turned off by a server's word alone; the person may turn sync off.
- */
-"keyNotGiven" | 
-/**
- * A key change opened for this device but cannot be verified: signed by a device this one
- * does not trust, or contradicting what it holds (phase 5 §7.5). Paused.
- */
-"keyChangeUnverified" | 
-/**
- * This device picked up a key change and waits for the device that made it to send the
- * signed start of the change (phase 5 As built 63) before it applies older changes past where
- * it stood: paused on another device ("Čeká se, až se připojí zařízení, které změnu
- * provedlo").
- */
-"keyChangeWaiting" | 
-/**
- * This device's secure storage could not be reached (the device binding could not be
- * checked); paused, and tried again at the next trigger.
- */
-"secureStorage" | 
-/**
- * The sync server went back to an older state (its head below this device's place, e.g.
- * restored from an older backup); changes may be missing on other devices. Sticky until a
- * replace or turning sync off; syncing goes on.
- */
-"serverWentBack" | "internal"
+export type SyncProblem =
+  /**
+   * Change capture could not be installed at unlock; the profile does not sync until repaired.
+   */
+  | 'captureBroken'
+  /**
+   * The relay no longer knows the vault (`404`); paused until "Sync now" finds it again.
+   */
+  | 'vaultGone'
+  /**
+   * The subscription ended (`402`): pulls go on while the relay allows, pushes wait.
+   */
+  | 'lapsed'
+  | 'quotaExceeded'
+  | 'snapshotTooLarge'
+  /**
+   * Another device writes with a newer app version.
+   */
+  | 'newerSchema'
+  /**
+   * The relay withholds an envelope.
+   */
+  | 'gap'
+  /**
+   * A change from another device is dated more than ten years past this device's time: it is
+   * held (skippable after 14 days, `HeldGapKind::Ahead`), and this device keeps syncing
+   * meanwhile (audit M6).
+   */
+  | 'clockAhead'
+  | 'undecryptable'
+  | 'invalidChain'
+  | 'missingParent'
+  /**
+   * A device's envelopes are held after its chain forked.
+   */
+  | 'quarantined'
+  | 'offline'
+  | 'relayError'
+  | 'rateLimited'
+  | 'unauthorized'
+  /**
+   * The vault's token was rotated by another device (`403 token_read_only`).
+   */
+  | 'keyRotated'
+  /**
+   * The key changed and this device got no new key and no verifiable removal notice (phase 5
+   * §7.5): paused, never turned off by a server's word alone; the person may turn sync off.
+   */
+  | 'keyNotGiven'
+  /**
+   * A key change opened for this device but cannot be verified: signed by a device this one
+   * does not trust, or contradicting what it holds (phase 5 §7.5). Paused.
+   */
+  | 'keyChangeUnverified'
+  /**
+   * This device picked up a key change and waits for the device that made it to send the
+   * signed start of the change (phase 5 As built 63) before it applies older changes past where
+   * it stood: paused on another device ("Čeká se, až se připojí zařízení, které změnu
+   * provedlo").
+   */
+  | 'keyChangeWaiting'
+  /**
+   * This device's secure storage could not be reached (the device binding could not be
+   * checked); paused, and tried again at the next trigger.
+   */
+  | 'secureStorage'
+  /**
+   * The sync server went back to an older state (its head below this device's place, e.g.
+   * restored from an older backup); changes may be missing on other devices. Sticky until a
+   * replace or turning sync off; syncing goes on.
+   */
+  | 'serverWentBack'
+  | 'internal';
 
 /**
  * What a build without the sync flag can still say about the open profile (`sync_profile_state`).
  */
-export type SyncProfileState = { 
-/**
- * This profile has sync turned on (a development build did it); its changes are recorded.
- */
-enabled: boolean; 
-/**
- * This build runs sync (the flag).
- */
-featureOn: boolean; 
-/**
- * Changes recorded but never sent (turning sync off means they will not be sent).
- */
-pendingChanges: number }
+export type SyncProfileState = {
+  /**
+   * This profile has sync turned on (a development build did it); its changes are recorded.
+   */
+  enabled: boolean;
+  /**
+   * This build runs sync (the flag).
+   */
+  featureOn: boolean;
+  /**
+   * Changes recorded but never sent (turning sync off means they will not be sent).
+   */
+  pendingChanges: number;
+};
 
 /**
  * A removal the person confirmed here that did not happen (`removalNotDone`): `by` changed the
@@ -3903,284 +5150,372 @@ pendingChanges: number }
  * `alreadyRemoved` that the other change had removed every one of them, `kitReplaced` that the
  * change was to make a new recovery kit, which then never started working.
  */
-export type SyncRemovalNotDone = { by: string | null; devices: string[]; alreadyRemoved: boolean; kitReplaced: boolean }
+export type SyncRemovalNotDone = {
+  by: string | null;
+  devices: string[];
+  alreadyRemoved: boolean;
+  kitReplaced: boolean;
+};
 
 /**
  * Another device's key change (`removalNotice`): who made it, when (its signed time), the
  * names of the devices it removed, and whether it made a new recovery kit.
  */
-export type SyncRemovalNotice = { by: string; at: number; removed: string[]; kitReplaced: boolean }
+export type SyncRemovalNotice = { by: string; at: number; removed: string[]; kitReplaced: boolean };
 
 /**
  * Why sync is off on this device (`removedNotice`): `by` removed it at `at` (unix seconds,
  * the record's signed time) and `unsent` changes never left it. `left`: the record was this
  * device's own `left` record (from another copy of this profile), not another device's removal.
  */
-export type SyncRemovedNotice = { by: string; at: number; unsent: number; left: boolean }
+export type SyncRemovedNotice = { by: string; at: number; unsent: number; left: boolean };
 
 /**
  * A sync server that passed the check (`GET /v1/server`, spec §9.3): the address in its stored
  * spelling, how to show it, its version, and whether it is plain http beyond this computer.
  */
-export type SyncServerCheck = { address: string; host: string; version: string; insecure: boolean }
+export type SyncServerCheck = { address: string; host: string; version: string; insecure: boolean };
 
 /**
  * The `sync-status-changed` payload. `Default` is sync off with nothing to say.
  */
-export type SyncStatus = { phase: SyncPhase; problem: SyncProblem | null; 
-/**
- * When a round last finished without a problem (unix seconds).
- */
-lastSuccessAt: number | null; 
-/**
- * Changed rows waiting in the outbox plus sealed envelopes waiting for the relay.
- */
-pendingChanges: number; 
-/**
- * Devices whose envelopes are held (quarantined).
- */
-heldDevices: number; 
-/**
- * Rows too large to send, from the last push.
- */
-refusedRows: number; 
-/**
- * The subscription's end, as the relay last reported it (unix seconds).
- */
-paidUntil: number | null; 
-/**
- * When the relay deletes the vault after a lapse: 90 days after `paidUntil`.
- */
-deletesAt: number | null; 
-/**
- * While this device's clock (its hybrid logical clock) is more than a day past its wall
- * clock: the date its changes are stamped with until then (unix seconds). A note, never a
- * problem: sync goes on, and until that date this device's edits win over edits made
- * elsewhere before it. `None` otherwise, and for a date past year 9999 (audit M6).
- */
-clockAheadUntil: number | null; 
-/**
- * The stored server is not the Moony cloud: a person's own sync server.
- */
-ownServer: boolean; 
-/**
- * The stored server's address, in every phase that has one.
- */
-serverAddress: string | null; 
-/**
- * The stored address is plain http to a host other than this computer.
- */
-serverInsecure: boolean; 
-/**
- * When sync was turned on on this device: `joinedAt` of its own device row (unix seconds);
- * `None` while off or before the row exists.
- */
-enabledAt: number | null; 
-/**
- * This device's documents and photos: content waiting to move, and their own problem.
- */
-attachments: SyncAttachments; 
-/**
- * When a round last succeeded with nothing left to send here: no change, no document or photo
- * waiting to upload or unable to (unix seconds; spec 2026-11-14 §7.2). `None` while off or
- * before the first.
- */
-lastCompleteAt: number | null; 
-/**
- * Sync keeps this device's data safe now (spec §7.3, `milestones::sync_protects`): on, nothing
- * needs the person, a complete sync less than 7 whole UTC days old, and nothing held here that
- * exists nowhere else (no unsent change, no document or photo left to upload).
- */
-protectsData: boolean; 
-/**
- * Devices can be removed from this sync: this device's own certificate is pinned (a vault
- * set up before phase 5 has none, revision §6.1). `false` while sync is off.
- */
-removalSupported: boolean; 
-/**
- * A key change (a removal, a new recovery kit) of this device waits for the sync server
- * and finishes by itself: "Dokončuji odebrání zařízení…".
- */
-removalPending: boolean; 
-/**
- * Another device removed devices or made a new recovery kit (Local, until dismissed).
- */
-removalNotice: SyncRemovalNotice | null; 
-/**
- * A removal the person confirmed here that a background resolution found not done.
- */
-removalNotDone: SyncRemovalNotDone | null; 
-/**
- * This device applied changes the sync server placed past a key change it hid.
- */
-keyChangeOverrun: SyncKeyChangeOverrun | null; 
-/**
- * Another device removed this one: sync is off here (readable while sync is off).
- */
-removedNotice: SyncRemovedNotice | null; 
-/**
- * With `keyNotGiven` or `keyChangeUnverified`: the device that made the key change, which
- * this device does not know ("Změnu provedlo zařízení {by}, které toto zařízení nezná.").
- */
-rejoinBy: string | null; 
-/**
- * With `keyRotated` for more than a day: the device whose signed confirmation of the last
- * key change has not arrived, and since when.
- */
-waitingForRemover: SyncWaitingForRemover | null; 
-/**
- * Devices pinned outside a join (paired by another device, or joined with the Kit), newest
- * last, until dismissed.
- */
-newDevices: SyncNewDevice[]; 
-/**
- * The vault's usable recovery kit as this device sees it; `None`: sync has no kit this
- * device can seal to.
- */
-recoveryKit: SyncKitInfo | null; 
-/**
- * The minute the sync server says the recovery kit was last read (unix seconds), when that is
- * news the person has not seen and no device joined with the kit to explain it.
- */
-kitUsed: number | null; 
-/**
- * A device that joined with the recovery kit holds back what it sends until the person
- * decides about the devices it found on the list ("Data jsou zpět").
- */
-afterKitJoin: SyncAfterKitJoin | null; 
-/**
- * While a round runs: when it started (unix seconds), so the UI can say "taking longer than
- * usual" after a minute. `None` otherwise.
- */
-syncingSince: number | null; 
-/**
- * The first snapshot of the data has not been uploaded (or restored) yet.
- */
-firstUpload: boolean }
+export type SyncStatus = {
+  phase: SyncPhase;
+  problem: SyncProblem | null;
+  /**
+   * When a round last finished without a problem (unix seconds).
+   */
+  lastSuccessAt: number | null;
+  /**
+   * Changed rows waiting in the outbox plus sealed envelopes waiting for the relay.
+   */
+  pendingChanges: number;
+  /**
+   * Devices whose envelopes are held (quarantined).
+   */
+  heldDevices: number;
+  /**
+   * Rows too large to send, from the last push.
+   */
+  refusedRows: number;
+  /**
+   * The subscription's end, as the relay last reported it (unix seconds).
+   */
+  paidUntil: number | null;
+  /**
+   * When the relay deletes the vault after a lapse: 90 days after `paidUntil`.
+   */
+  deletesAt: number | null;
+  /**
+   * While this device's clock (its hybrid logical clock) is more than a day past its wall
+   * clock: the date its changes are stamped with until then (unix seconds). A note, never a
+   * problem: sync goes on, and until that date this device's edits win over edits made
+   * elsewhere before it. `None` otherwise, and for a date past year 9999 (audit M6).
+   */
+  clockAheadUntil: number | null;
+  /**
+   * The stored server is not the Moony cloud: a person's own sync server.
+   */
+  ownServer: boolean;
+  /**
+   * The stored server's address, in every phase that has one.
+   */
+  serverAddress: string | null;
+  /**
+   * The stored address is plain http to a host other than this computer.
+   */
+  serverInsecure: boolean;
+  /**
+   * When sync was turned on on this device: `joinedAt` of its own device row (unix seconds);
+   * `None` while off or before the row exists.
+   */
+  enabledAt: number | null;
+  /**
+   * This device's documents and photos: content waiting to move, and their own problem.
+   */
+  attachments: SyncAttachments;
+  /**
+   * When a round last succeeded with nothing left to send here: no change, no document or photo
+   * waiting to upload or unable to (unix seconds; spec 2026-11-14 §7.2). `None` while off or
+   * before the first.
+   */
+  lastCompleteAt: number | null;
+  /**
+   * Sync keeps this device's data safe now (spec §7.3, `milestones::sync_protects`): on, nothing
+   * needs the person, a complete sync less than 7 whole UTC days old, and nothing held here that
+   * exists nowhere else (no unsent change, no document or photo left to upload).
+   */
+  protectsData: boolean;
+  /**
+   * Devices can be removed from this sync: this device's own certificate is pinned (a vault
+   * set up before phase 5 has none, revision §6.1). `false` while sync is off.
+   */
+  removalSupported: boolean;
+  /**
+   * A key change (a removal, a new recovery kit) of this device waits for the sync server
+   * and finishes by itself: "Dokončuji odebrání zařízení…".
+   */
+  removalPending: boolean;
+  /**
+   * Another device removed devices or made a new recovery kit (Local, until dismissed).
+   */
+  removalNotice: SyncRemovalNotice | null;
+  /**
+   * A removal the person confirmed here that a background resolution found not done.
+   */
+  removalNotDone: SyncRemovalNotDone | null;
+  /**
+   * This device applied changes the sync server placed past a key change it hid.
+   */
+  keyChangeOverrun: SyncKeyChangeOverrun | null;
+  /**
+   * Another device removed this one: sync is off here (readable while sync is off).
+   */
+  removedNotice: SyncRemovedNotice | null;
+  /**
+   * With `keyNotGiven` or `keyChangeUnverified`: the device that made the key change, which
+   * this device does not know ("Změnu provedlo zařízení {by}, které toto zařízení nezná.").
+   */
+  rejoinBy: string | null;
+  /**
+   * With `keyRotated` for more than a day: the device whose signed confirmation of the last
+   * key change has not arrived, and since when.
+   */
+  waitingForRemover: SyncWaitingForRemover | null;
+  /**
+   * Devices pinned outside a join (paired by another device, or joined with the Kit), newest
+   * last, until dismissed.
+   */
+  newDevices: SyncNewDevice[];
+  /**
+   * The vault's usable recovery kit as this device sees it; `None`: sync has no kit this
+   * device can seal to.
+   */
+  recoveryKit: SyncKitInfo | null;
+  /**
+   * The minute the sync server says the recovery kit was last read (unix seconds), when that is
+   * news the person has not seen and no device joined with the kit to explain it.
+   */
+  kitUsed: number | null;
+  /**
+   * A device that joined with the recovery kit holds back what it sends until the person
+   * decides about the devices it found on the list ("Data jsou zpět").
+   */
+  afterKitJoin: SyncAfterKitJoin | null;
+  /**
+   * While a round runs: when it started (unix seconds), so the UI can say "taking longer than
+   * usual" after a minute. `None` otherwise.
+   */
+  syncingSince: number | null;
+  /**
+   * The first snapshot of the data has not been uploaded (or restored) yet.
+   */
+  firstUpload: boolean;
+};
 
 /**
  * The device whose signed confirmation of a key change this device still waits for
  * (`waitingForRemover`), since when (unix seconds).
  */
-export type SyncWaitingForRemover = { by: string; since: number }
+export type SyncWaitingForRemover = { by: string; since: number };
 
 /**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;
  * `value` is `quantity × price` converted at that day's rate (common-day rule), `null` when it
  * cannot be converted.
  */
-export type TickerValueHistory = { ticker: string; recordedAt: number; quantity: string; price: string; currency: string; value: string | null; 
-/**
- * The position's cost basis as of that day in the report currency (every buy converted at
- * its own day, sells release cost at the running average); `null` when unknown.
- */
-costBasis: string | null; isStale: boolean }
+export type TickerValueHistory = {
+  ticker: string;
+  recordedAt: number;
+  quantity: string;
+  price: string;
+  currency: string;
+  value: string | null;
+  /**
+   * The position's cost basis as of that day in the report currency (every buy converted at
+   * its own day, sells release cost at the running average); `null` when unknown.
+   */
+  costBasis: string | null;
+  isStale: boolean;
+};
 
 /**
  * A ticker's value history in a report currency, oldest day first.
  */
-export type TickerValueHistoryReport = { 
-/**
- * The report currency of every `value`.
- */
-currency: string; fxQuality: ConversionQuality; points: TickerValueHistory[] }
+export type TickerValueHistoryReport = {
+  /**
+   * The report currency of every `value`.
+   */
+  currency: string;
+  fxQuality: ConversionQuality;
+  points: TickerValueHistory[];
+};
 
-export type TradeDirection = "buy" | "sell"
+export type TradeDirection = 'buy' | 'sell';
 
 /**
  * Transaction category
  */
-export type TransactionCategory = { kind: FlowKind; id: string; name: string; icon: string | null; color: string | null; parentId: string | null; sortOrder: number; isSystem: boolean; createdAt: number }
+export type TransactionCategory = {
+  kind: FlowKind;
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  parentId: string | null;
+  sortOrder: number;
+  isSystem: boolean;
+  createdAt: number;
+};
 
 /**
  * Filters for querying transactions
  */
-export type TransactionFilters = { sortBy: string | null; ascending: boolean | null; dateFrom: number | null; dateTo: number | null; categoryId: string | null; txType: string | null; search: string | null; limit: number | null; offset: number | null }
+export type TransactionFilters = {
+  sortBy: string | null;
+  ascending: boolean | null;
+  dateFrom: number | null;
+  dateTo: number | null;
+  categoryId: string | null;
+  txType: string | null;
+  search: string | null;
+  limit: number | null;
+  offset: number | null;
+};
 
 /**
  * Result of transaction query with pagination
  */
-export type TransactionQueryResult = { transactions: BankTransaction[]; total: number }
+export type TransactionQueryResult = { transactions: BankTransaction[]; total: number };
 
 /**
  * Transaction status
  */
-export type TransactionStatus = "booked" | "pending"
+export type TransactionStatus = 'booked' | 'pending';
 
 /**
  * Transaction type
  */
-export type TransactionType = "credit" | "debit"
+export type TransactionType = 'credit' | 'debit';
 
 /**
  * What a value of the type column means.
  */
-export type TypeValueAction = "buy" | "sell" | 
-/**
- * Not a trade (deposit, dividend, fee, …): the row is skipped.
- */
-"skip"
+export type TypeValueAction =
+  | 'buy'
+  | 'sell'
+  /**
+   * Not a trade (deposit, dividend, fee, …): the row is skipped.
+   */
+  | 'skip';
 
 /**
  * Data for editing a category's definition. A field that is absent (`None`)
  * is left unchanged, so an edit dialog can send only what the user touched.
  */
-export type UpdateTransactionCategory = { kind?: FlowKind | null; name: string | null; icon: string | null; color: string | null }
+export type UpdateTransactionCategory = {
+  kind?: FlowKind | null;
+  name: string | null;
+  icon: string | null;
+  color: string | null;
+};
 
 /**
  * Data for updating user profile (partial updates)
  */
-export type UpdateUserProfile = { name: string | null; surname: string | null; email: string | null; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null; mcpServerEnabled: boolean | null; 
-/**
- * `Some("")` clears the country; otherwise two ASCII letters (stored upper case).
- */
-country: string | null; 
-/**
- * `0` turns the anniversary reminder off; 1..=365 sets the notice period.
- */
-insuranceNoticeDays: number | null; 
-/**
- * `system`, `light` or `dark`; anything else is refused.
- */
-theme: string | null }
+export type UpdateUserProfile = {
+  name: string | null;
+  surname: string | null;
+  email: string | null;
+  menuPreferences: MenuPreferences | null;
+  currency: string | null;
+  language: string | null;
+  excludePersonalRealEstate: boolean | null;
+  mcpServerEnabled: boolean | null;
+  /**
+   * `Some("")` clears the country; otherwise two ASCII letters (stored upper case).
+   */
+  country: string | null;
+  /**
+   * `0` turns the anniversary reminder off; 1..=365 sets the notice period.
+   */
+  insuranceNoticeDays: number | null;
+  /**
+   * `system`, `light` or `dark`; anything else is refused.
+   */
+  theme: string | null;
+};
 
 /**
  * User profile stored in database
  */
-export type UserProfile = { id: number; name: string; surname: string; email: string; menuPreferences: MenuPreferences; currency: string; language: string; excludePersonalRealEstate: boolean; mcpServerEnabled?: boolean; 
-/**
- * ISO 3166-1 alpha-2 country of the profile (`CZ`), None until set.
- */
-country: string | null; 
-/**
- * The cancellation notice of insurance policies in days that the milestones use: the stored
- * value, else 50; None when it is 0 (no anniversary reminder).
- */
-insuranceNoticeDays: number | null; 
-/**
- * Colour theme: `system` (follow the OS), `light` or `dark`.
- */
-theme: string; createdAt: number }
+export type UserProfile = {
+  id: number;
+  name: string;
+  surname: string;
+  email: string;
+  menuPreferences: MenuPreferences;
+  currency: string;
+  language: string;
+  excludePersonalRealEstate: boolean;
+  mcpServerEnabled?: boolean;
+  /**
+   * ISO 3166-1 alpha-2 country of the profile (`CZ`), None until set.
+   */
+  country: string | null;
+  /**
+   * The cancellation notice of insurance policies in days that the milestones use: the stored
+   * value, else 50; None when it is 0 (no anniversary reminder).
+   */
+  insuranceNoticeDays: number | null;
+  /**
+   * Colour theme: `system` (follow the OS), `light` or `dark`.
+   */
+  theme: string;
+  createdAt: number;
+};
 
 /**
  * A followed stock (row in watched_stocks)
  */
-export type WatchedStock = { id: string; ticker: string; targetPrice: string | null; 
-/**
- * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
- */
-targetDirection: string | null; notes: string; createdAt: number; updatedAt: number }
+export type WatchedStock = {
+  id: string;
+  ticker: string;
+  targetPrice: string | null;
+  /**
+   * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+   */
+  targetDirection: string | null;
+  notes: string;
+  createdAt: number;
+  updatedAt: number;
+};
 
 /**
  * Overview-table row: watchlist entry enriched from the stock_data cache
  */
-export type WatchedStockRow = { id: string; ticker: string; targetPrice: string | null; 
-/**
- * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
- */
-targetDirection: string | null; notes: string; shortName: string | null; longName: string | null; currency: string | null; currentPrice: string | null; previousClose: string | null; fiftyTwoWeekLow: string | null; fiftyTwoWeekHigh: string | null; exchange: string | null; priceFetchedAt: number | null; heldInvestmentId: string | null; isHeld: boolean; 
-/**
- * When the stock was added to the watchlist (unix seconds).
- */
-followedAt: number }
-
+export type WatchedStockRow = {
+  id: string;
+  ticker: string;
+  targetPrice: string | null;
+  /**
+   * `below` (waiting for a dip) or `above` (waiting for a rise); None without a target.
+   */
+  targetDirection: string | null;
+  notes: string;
+  shortName: string | null;
+  longName: string | null;
+  currency: string | null;
+  currentPrice: string | null;
+  previousClose: string | null;
+  fiftyTwoWeekLow: string | null;
+  fiftyTwoWeekHigh: string | null;
+  exchange: string | null;
+  priceFetchedAt: number | null;
+  heldInvestmentId: string | null;
+  isHeld: boolean;
+  /**
+   * When the stock was added to the watchlist (unix seconds).
+   */
+  followedAt: number;
+};

@@ -8,7 +8,7 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
-  PLAN_CHANGED_KEY,
+  planNeedsReload,
   canKeepDropping,
   dropReasonKey,
   kitLineKey,
@@ -16,6 +16,7 @@ import {
   removalRequest,
   removalTitleNames,
   toggleId,
+  withoutKit,
   type OutcomeView,
 } from '@/utils/sync-removal';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -29,7 +30,7 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
 type Step =
   | { kind: 'plan' }
   | { kind: 'working'; name: string }
-  | { kind: 'kit'; kit: RecoveryKit; view: OutcomeView; name: string };
+  | { kind: 'kit'; kit: RecoveryKit | null; view: OutcomeView; name: string };
 
 /**
  * "Odebrat zařízení" on the phone, the counterpart of the desktop's `RemoveDeviceDialog`: one sheet
@@ -41,11 +42,14 @@ type Step =
  */
 export function RemoveDeviceSheet({
   deviceIds,
+  deviceNames,
   newKit = false,
   onRemoved,
   onClose,
 }: {
   deviceIds: string[];
+  /** Their names, for the title until the plan names them (it loads after the dialog opens). */
+  deviceNames?: string[];
   /** Also makes a new recovery kit (a device that joined with the kit: "Odebrat a vytvořit novou sadu"). */
   newKit?: boolean;
   /** Runs once the devices are gone (done, or already removed by another device), before the sheet closes. */
@@ -64,13 +68,21 @@ export function RemoveDeviceSheet({
   const planning = step.kind === 'plan';
   const planQuery = useRemovalPlan(deviceIds, alsoRemove, newKit, planning);
   const plan = planQuery.data;
-  const name = removalTitleNames(plan, deviceIds) ?? '';
+  const name = removalTitleNames(plan, deviceIds) ?? deviceNames?.join(', ') ?? '';
   const several = deviceIds.length > 1;
   const reload = planQuery.refetch;
 
   // The new kit's seed (the mutation's result) and the password leave with the sheet.
   const resetRemove = removeDevices.reset;
   useEffect(() => resetRemove, [resetRemove]);
+
+  // The kit expired or the password is asked for again: it leaves the step and the mutation result.
+  const kitGone = () => {
+    resetRemove();
+    setStep((current) =>
+      current.kind === 'kit' ? { ...current, kit: null, view: withoutKit(current.view) } : current
+    );
+  };
 
   const finish = (view: OutcomeView, removedName: string) => {
     const by = view.by ?? '';
@@ -107,7 +119,7 @@ export function RemoveDeviceSheet({
       setStep({ kind: 'plan' });
       setError(translateApiError(failure as Error, tc));
       // The plan the person confirmed no longer holds: show the new one and ask again
-      if (failure instanceof ApiError && failure.key === PLAN_CHANGED_KEY) void reload();
+      if (failure instanceof ApiError && planNeedsReload(failure.key)) void reload();
     }
   };
 
@@ -126,6 +138,7 @@ export function RemoveDeviceSheet({
       <NewKitStep
         kit={step.kit}
         pending={step.view.kitPending}
+        onGone={kitGone}
         onDone={() => finish(step.view, step.name)}
       />
     );

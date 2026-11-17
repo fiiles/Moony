@@ -231,20 +231,21 @@ export interface SyncKitInfo {
   lastReadAt: number | null;
 }
 
-/** The devices that were on the list when this device joined with the kit (names), and the newest change among them (unix seconds). */
+/** One device the Kit joiner's hold names (`id` as in `SyncDevice.id`). */
+export interface SyncAfterKitDevice {
+  id: string;
+  name: string;
+}
+
+/** The devices that were on the list when this device joined with the kit, and the newest change among them (unix seconds). */
 export interface SyncAfterKitJoin {
-  names: string[];
+  devices: SyncAfterKitDevice[];
   newestChangeAt: number | null;
 }
 
 /** Which notice `sync_dismiss_notice` dismisses. */
 export type SyncNoticeKind =
-  | 'removal'
-  | 'removed'
-  | 'removalNotDone'
-  | 'keyChangeOverrun'
-  | 'newDevices'
-  | 'kitUsed';
+  'removal' | 'removed' | 'removalNotDone' | 'keyChangeOverrun' | 'newDevices' | 'kitUsed';
 
 /**
  * Why documents and photos do not move while ordinary sync goes on (ADR 0030): `noRoom` (the

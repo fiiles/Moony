@@ -38,9 +38,13 @@ export function planMakesKit(plan: Pick<RemovalPlan, 'replacesKit'>): boolean {
   return plan.replacesKit !== 'no';
 }
 
-/** The short reason a device drops out of sync with the removal (`deviceSync` key). */
+/**
+ * The short reason a device drops out of sync with the removal (`deviceSync` key). A copy of a
+ * device is never listed as dropping out (the backend does not send `copy` here); it would read
+ * as unverified, which is what it is.
+ */
 export function dropReasonKey(reason: SyncCheckReason): string {
-  return `remove.dropReason.${reason}`;
+  return `remove.dropReason.${reason === 'copy' ? 'unverified' : reason}`;
 }
 
 /** "Je moje" inline in the list of devices that drop out: only a late vouch can be kept. */
@@ -132,3 +136,16 @@ export function outcomeView(outcome: RemovalOutcome): OutcomeView {
 
 /** The backend's answer when the plan the person confirmed no longer holds: reload it and ask again. */
 export const PLAN_CHANGED_KEY = 'validation.syncRemovalPlanChanged';
+
+/** The backend's answer when another device changed the list meanwhile: the plan is read again too. */
+export const ROTATION_RACED_KEY = 'validation.syncRotationRaced';
+
+/** Whether a failed removal leaves the confirmed plan stale, so the dialog reloads it. */
+export function planNeedsReload(key: string | undefined): boolean {
+  return key === PLAN_CHANGED_KEY || key === ROTATION_RACED_KEY;
+}
+
+/** The outcome without its new recovery kit: what stays in state once the kit left the screen. */
+export function withoutKit(view: OutcomeView): OutcomeView {
+  return { ...view, kit: null };
+}

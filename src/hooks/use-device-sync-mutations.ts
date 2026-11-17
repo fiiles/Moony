@@ -212,7 +212,10 @@ export function useDeviceSyncMutations() {
   // "Mám je", or after "Odebrat je": lifts the push hold of a device that joined with the kit.
   const kitJoinDecided = useMutation({
     mutationFn: deviceSyncApi.kitJoinDecided,
-    onSuccess: refreshSyncState,
+    onSuccess: async () => {
+      await refreshSyncState();
+      await queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] });
+    },
   });
 
   return {

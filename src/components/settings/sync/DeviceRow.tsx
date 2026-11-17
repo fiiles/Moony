@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import type { SyncDevice } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
+import { sentences } from '@/utils/sentences';
 import {
   canKeepDevice,
   canRemoveDevice,
@@ -41,7 +42,7 @@ export function DeviceRow({
   keeping,
 }: DeviceRowProps) {
   const { t } = useTranslation('deviceSync');
-  const { date, dateTime } = useFormat();
+  const { date, dateTime, locale } = useFormat();
   const [open, setOpen] = useState(false);
 
   const day = (seconds: number) => date(new Date(seconds * 1000), { dateStyle: 'medium' });
@@ -112,8 +113,10 @@ export function DeviceRow({
           </small>
           {reasonKey && (
             <p className="m-0 mt-1.5 text-caption text-ink-2">
-              {t(reasonKey, { by: device.addedBy ?? '' })}
-              {canKeepDevice(device) && ` ${t('devices.check.keepNote')}`}
+              {sentences(locale, [
+                t(reasonKey, { by: device.addedBy ?? '' }),
+                canKeepDevice(device) ? t('devices.check.keepNote') : null,
+              ])}
             </p>
           )}
         </div>

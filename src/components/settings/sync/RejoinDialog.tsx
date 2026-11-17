@@ -27,7 +27,12 @@ export function RejoinDialog({
       confirmLabel={t('problem.rejoin.button')}
       closeOnSuccess={false}
       onSubmit={async (password) => {
-        await turnOff.mutateAsync(password);
+        try {
+          await turnOff.mutateAsync(password);
+        } catch (error) {
+          resetTurnOff();
+          throw error;
+        }
         onTurnedOff();
       }}
       onClose={onClose}

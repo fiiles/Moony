@@ -125,12 +125,10 @@
       "ownServer": "This server is not the Moony cloud, so there is nothing to pay. Set sync up with the connection code of your own sync server instead."
     },
     "kit": {
-      "description": "Save your Sync Recovery Kit. It is the only way to get your synced data back if you lose all your devices.",
       "copyCode": "Copy code",
       "copied": "Copied",
       "clipboardHint": "Clear your clipboard after pasting the code.",
       "saved": "Kit saved",
-      "confirm": "I saved my Sync Recovery Kit",
       "differs": "It isn't this device's recovery key; that only resets a forgotten password.",
       "saveFirst": "Save or copy the kit first.",
       "file": {
@@ -154,13 +152,13 @@
       "continue": "I have the kit, continue",
       "keepFirst": "First print, save or copy the kit.",
       "saveFile": "Save as file…",
-      "saveShare": "Save or share…"
+      "saveShare": "Save or share…",
+      "introPhone": "If you lose every device at once, only this kit gets your data back. Save it away from this phone, with your documents or in a password manager. You can print it from the saved page."
     },
     "device": {
       "description": "Name this device so you can tell it apart from your others.",
       "name": "Device name",
-      "turnOn": "Turn on sync",
-      "success": "Sync turned on"
+      "turnOn": "Turn on sync"
     },
     "defaultName": {
       "macos": "Mac",
@@ -236,7 +234,6 @@
   },
   "resync": {
     "button": "Re-sync this device",
-    "hint": "Replaces this device's data with the synced data, after saving a backup. Use it only if this device cannot sync any other way.",
     "title": "Re-sync this device?",
     "description": "This device's data is replaced with the synced data. A backup is saved first.",
     "confirm": "Re-sync",
@@ -441,7 +438,7 @@
       "off": "Off",
       "synced": "Up to date",
       "syncing": "Syncing…",
-      "waiting": "A change is held",
+      "waiting": "Waiting for a change from another device",
       "unreachable": "Server out of reach",
       "unreachableLong_one": "Not synced for {{count}} day",
       "unreachableLong_other": "Not synced for {{count}} days",

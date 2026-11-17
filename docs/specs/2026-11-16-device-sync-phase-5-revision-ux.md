@@ -1887,3 +1887,34 @@ R-101. **Deviations, Task 30.** (a) `KitBody` (changed here, not in Task 31, bec
      {platform,activity,version,joined}`, `setup.kit.saveShare`. (d) Not ticking a removed device's descendants
      by default (the spec is silent; same as the desktop). (e) Not verified on a device: the sheets at 320 pt with
      the largest text size, dark mode, the kit step on iOS.
+R-102. **Phone Kit and notices** (Task 31). `KitSection` (after the server rows): when the kit was made and where
+     it is kept, "Naposledy použita", "Ověřit sadu" (`CheckKitSheet`, typed or pasted code, no password) and
+     "Vytvořit sadu / novou sadu / novou…" (`NewKitSheet`, `missing` when `recoveryKit` is null, disabled while
+     `removalAvailable` is false); the `kitUsed` alert with "Vytvořit novou sadu" · "Vím o tom" sits above it.
+     Setup: the kit step shows `setup.kit.introPhone`, `KitBody`, `setup.kit.shownOnce`; the tick box is gone and
+     "Sadu mám, pokračovat" unlocks once the kit was copied or saved; after `finishSetup`, `afterSetup(status)`
+     opens the done sheet ("Synchronizace je zapnutá", "Přidat druhé zařízení" → the scan flow, "Později") or
+     `NewKitSheet missing`. `SyncNotices` (the `NoticeList` equivalent, `InlineAlert`s with 44 pt text actions) is
+     rendered by `SyncStatusBlock` under the problem alert: "Data jsou zpět" (`RemoveDeviceSheet` with
+     `onRemoved` → `kitJoinDecided(true)`, "Mám je"), removal, removal not done, overrun, one box per new device
+     (late vouch "Je moje" · "Odebrat…", Kit join "To jsem já" · "Odebrat a vytvořit novou sadu"). The problem
+     card has the rejoin state (`problem.rejoin.*`, `rejoinBy`) and the waiting state (`problem.waiting.*`), both
+     with "Připojit znovu" = password sheet (`rejoin.*`) → `turnOff` → the join choice; plain `keyRotated` shows
+     no alert; `syncingLong` turns "Synchronizovat" into "Zkusit znovu"; `firstUpload` adds `setup.done.body` under
+     the status. `RemovedBlock` (sync off, above the intro) and `RemovedNoticeSheet` (mounted in `MobileShell`
+     while unlocked, once per unlock; Esc/scrim keeps the notice) carry `removed.*` and `left`.
+R-103. **Deviations, Task 31.** (a) "Připojit znovu" in the unlock sheet dismisses the notice and navigates to
+     Nastavení → Sync with `?join=1` (`JOIN_PARAM`), where the page opens the join choice once and clears the
+     parameter; the shell cannot host the join sheets. (b) "Ověřit sadu" on the phone has no camera: the code is
+     typed or pasted (the QR's text works too); `scanQrCode` would need the check sheet to step aside as the
+     setup sheet does. (c) "Synchronizovat toto zařízení znovu" left the danger section (as on the desktop,
+     R-98): the problem card offers it for `offersResync` problems and after a repair that could not send
+     everything. (d) New key `setup.kit.introPhone` (the desktop intro says "tento počítač" and "Vytiskněte");
+     the phone's "save first" hint stays `setup.kit.saveFirst`; `phone.row.waiting` now has the text of
+     `indicator.waiting`; `turnOff.noCutOff` is kept as the second sentence of the phone's turn-off sheet
+     (its new text is not "cannot be cut off"). (e) Dropped keys: `resync.hint`, `setup.kit.description`,
+     `setup.kit.confirm`, `setup.device.success`; `showKit.*` and `join.choice.*` stay (the desktop setup and join
+     choice read them); `status.showKit`, `keepSafe.kit.show`, `join.accountLabel` and
+     `setup.kit.file.account*` were already gone. (f) Not verified on a device: every new sheet at 320 pt with
+     the largest text size, dark mode, the kit step and "Uložit nebo sdílet…" on iOS, the unlock sheet across a
+     real removal, the rejoin flow, de and ja wrapping.

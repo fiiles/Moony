@@ -125,12 +125,10 @@
       "ownServer": "Denne serveren er ikke Moony cloud, så det er ingenting å betale. Sett opp synkroniseringen med tilkoblingskoden til din egen synkroniseringsserver i stedet."
     },
     "kit": {
-      "description": "Lagre gjenopprettingssettet for synkronisering. Det er den eneste måten å få tilbake de synkroniserte dataene på hvis du mister alle enhetene dine.",
       "copyCode": "Kopier koden",
       "copied": "Kopiert",
       "clipboardHint": "Tøm utklippstavlen etter at du har limt inn koden.",
       "saved": "Settet er lagret",
-      "confirm": "Jeg har lagret gjenopprettingssettet for synkronisering",
       "differs": "Det er ikke gjenopprettingsnøkkelen til denne enheten; den tilbakestiller bare et glemt passord.",
       "saveFirst": "Lagre eller kopier settet først.",
       "file": {
@@ -154,13 +152,13 @@
       "continue": "Jeg har settet, fortsett",
       "keepFirst": "Skriv ut, lagre eller kopier settet først.",
       "saveFile": "Lagre som fil …",
-      "saveShare": "Lagre eller del…"
+      "saveShare": "Lagre eller del…",
+      "introPhone": "Hvis du mister alle enhetene på en gang, er det bare dette settet som gir deg dataene tilbake. Ta vare på det borte fra denne telefonen, sammen med dokumentene dine eller i en passordbehandler. Du kan skrive det ut fra den lagrede siden."
     },
     "device": {
       "description": "Gi enheten et navn, så du kan skille den fra de andre.",
       "name": "Enhetsnavn",
-      "turnOn": "Slå på synkronisering",
-      "success": "Synkronisering er slått på"
+      "turnOn": "Slå på synkronisering"
     },
     "defaultName": {
       "macos": "Mac",
@@ -236,7 +234,6 @@
   },
   "resync": {
     "button": "Synkroniser denne enheten på nytt",
-    "hint": "Erstatter dataene på denne enheten med de synkroniserte dataene etter at en sikkerhetskopi er lagret. Bruk dette bare hvis enheten ikke kan synkronisere på noen annen måte.",
     "title": "Synkronisere denne enheten på nytt?",
     "description": "Dataene på denne enheten erstattes med de synkroniserte dataene. En sikkerhetskopi lagres først.",
     "confirm": "Synkroniser på nytt",
@@ -441,7 +438,7 @@
       "off": "Av",
       "synced": "Oppdatert",
       "syncing": "Synkroniserer…",
-      "waiting": "Endring holdes tilbake",
+      "waiting": "Venter på en endring fra en annen enhet",
       "unreachable": "Serveren er utenfor rekkevidde",
       "unreachableLong_one": "Ikke synkronisert på {{count}} dag",
       "unreachableLong_other": "Ikke synkronisert på {{count}} dager",

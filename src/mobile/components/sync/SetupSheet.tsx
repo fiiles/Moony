@@ -3,17 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { RecoveryKit } from '@shared/schema';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useDeviceSyncAccount, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useServerChoice } from '@/hooks/use-server-choice';
 import { translateApiError } from '@/lib/translate-api-error';
+import { afterSetup } from '@/utils/sync-kit';
 import { accountQueryEnabled, hostOf, setupSteps, type SetupStep } from '@/utils/sync-setup';
 import { Sheet } from '@/mobile/components/Sheet';
 import { StepProgress } from '@/mobile/components/StepProgress';
 import { KitBody } from '@/mobile/components/sync/KitBody';
+import { NewKitSheet } from '@/mobile/components/sync/NewKitSheet';
 import { ScanOverlay } from '@/mobile/components/sync/ScanOverlay';
 import { InsecureBlock, ServerChoiceBlock } from '@/mobile/components/sync/ServerChoiceBlock';
 import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
@@ -30,6 +31,8 @@ const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px
 interface SetupSheetProps {
   /** Mounted only while a setup runs: closing unmounts it, which also forgets the kit. */
   onClose: () => void;
+  /** "Přidat druhé zařízení" on the done screen: the caller replaces this sheet with the scan flow. */
+  onAddDevice: () => void;
 }
 
 /**
@@ -40,7 +43,7 @@ interface SetupSheetProps {
  * unlocks after one of them), then this device's name. A setup that was started and closed is
  * resumed with the stored server; one on plain http asks for the acknowledgement again.
  */
-export function SetupSheet({ onClose }: SetupSheetProps) {
+export function SetupSheet({ onClose, onAddDevice }: SetupSheetProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const fieldId = useId();
@@ -69,7 +72,8 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
   /** The kit left the screen (expired, copy window over): the question says so. */
   const [kitAskedAgain, setKitAskedAgain] = useState(false);
   const [kitKept, setKitKept] = useState(false);
-  const [kitConfirmed, setKitConfirmed] = useState(false);
+  /** Sync is on: the done screen, or (the server's own kit beat this setup) the new-kit sheet. */
+  const [finished, setFinished] = useState<'done' | 'newKit' | null>(null);
   const [deviceName, setDeviceName] = useState(() =>
     t(`setup.defaultName.${phoneDeviceKey(import.meta.env.TAURI_ENV_PLATFORM ?? '')}`)
   );
@@ -108,7 +112,6 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
     setKitPromptClosed(false);
     setKitAskedAgain(false);
     setKitKept(false);
-    setKitConfirmed(false);
   };
 
   const handleServer = async () => {
@@ -167,9 +170,9 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
 
   const handleFinish = async () => {
     try {
-      await finishSetup.mutateAsync({ deviceName: deviceName.trim() });
-      toast(t('setup.device.success'));
-      onClose();
+      const next = await finishSetup.mutateAsync({ deviceName: deviceName.trim() });
+      // No usable kit after setup (the server held another): make one at once
+      setFinished(afterSetup(next));
     } catch (error) {
       toastError(error);
     }
@@ -186,9 +189,9 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
   switch (step) {
     case 'kit':
       primary = {
-        label: t('setup.account.continue'),
+        label: t('setup.kit.continue'),
         onClick: leaveKitStep,
-        disabled: !kitConfirmed,
+        disabled: !kitKept,
       };
       break;
     case 'device':
@@ -213,8 +216,34 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
     step === 'server'
       ? t('setup.server.title')
       : step === 'kit'
-        ? t('setup.kit.description')
+        ? t('setup.kit.stepTitle')
         : t('setup.device.description');
+
+  if (finished === 'newKit') return <NewKitSheet missing onClose={onClose} />;
+  if (finished === 'done') {
+    return (
+      <Sheet
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+        title={t('setup.done.title')}
+        description={t('setup.done.body')}
+        footer={
+          <>
+            <Button variant="ghost" className={`${BUTTON} px-[18px]`} onClick={onClose}>
+              {t('setup.done.later')}
+            </Button>
+            <Button className={`${BUTTON} flex-1`} onClick={onAddDevice}>
+              {t('setup.done.addDevice')}
+            </Button>
+          </>
+        }
+      >
+        {null}
+      </Sheet>
+    );
+  }
 
   return (
     <>
@@ -292,23 +321,14 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
           {step === 'kit' &&
             (kit ? (
               <>
+                <p className="m-0 text-m-lead text-ink-2">{t('setup.kit.introPhone')}</p>
                 <KitBody
                   kit={kit}
                   onKept={() => setKitKept(true)}
                   onPasswordRequired={dropKit}
                   onExpired={dropKit}
                 />
-                <div className="flex min-h-11 items-center gap-3">
-                  <Checkbox
-                    id={`${fieldId}-confirmed`}
-                    checked={kitConfirmed}
-                    disabled={!kitKept}
-                    onCheckedChange={(checked) => setKitConfirmed(checked === true)}
-                  />
-                  <Label htmlFor={`${fieldId}-confirmed`} className="text-m-row">
-                    {t('setup.kit.confirm')}
-                  </Label>
-                </div>
+                <p className="m-0 text-m-sub text-ink-3">{t('setup.kit.shownOnce')}</p>
                 {!kitKept && (
                   <p className="m-0 text-m-sub text-ink-4">{t('setup.kit.saveFirst')}</p>
                 )}

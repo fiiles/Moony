@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Redirect } from 'wouter';
+import { Redirect, useLocation, useSearch } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
@@ -9,7 +9,6 @@ import {
   Info,
   Plus,
   Link2,
-  RefreshCw,
   Smartphone,
   Unplug,
   X,
@@ -47,6 +46,8 @@ import { SectionPage } from '@/mobile/components/SectionPage';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { Sheet } from '@/mobile/components/Sheet';
 import { JoinChoiceSheet, type PhoneJoinMethod } from '@/mobile/components/sync/JoinChoiceSheet';
+import { KitSection } from '@/mobile/components/sync/KitSection';
+import { RemovedBlock } from '@/mobile/components/sync/RemovedNotice';
 import { ReplaceConfirmSheet } from '@/mobile/components/sync/ReplaceConfirmSheet';
 import { RecoveryJoinSheet } from '@/mobile/components/sync/RecoveryJoinSheet';
 import { ChangeServerSheet } from '@/mobile/components/sync/ChangeServerSheet';
@@ -60,14 +61,14 @@ import { SyncBackupSavedSheet } from '@/mobile/components/sync/SyncBackupSavedSh
 import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
 import { SyncStatusBlock } from '@/mobile/components/sync/SyncStatusBlock';
 import type { ReplaceSaved } from '@/mobile/lib/replace-saved';
-import type { ScanMode } from '@/mobile/lib/sync-scan';
-import { routes } from '@/mobile/shell/routes';
+import { JOIN_PARAM, type ScanMode } from '@/mobile/lib/sync-scan';
+import { routes, settingsPath } from '@/mobile/shell/routes';
 import { sentences } from '@/mobile/lib/list-text';
 
 /** The key the backend sends when a repair could not send every change and replaced nothing. */
 const DRAIN_INCOMPLETE_KEY = 'validation.syncRepairDrainIncomplete';
 
-type Open = 'kitJoin' | 'server' | 'repair' | 'resync' | 'turnOff' | 'delete' | null;
+type Open = 'kitJoin' | 'server' | 'repair' | 'resync' | 'turnOff' | 'delete' | 'rejoin' | null;
 
 /** A scan under way: joining (sync off) or adding a device (sync on); `paste`: the code is typed or pasted. */
 type Flow = { mode: ScanMode; paste: boolean } | null;
@@ -101,6 +102,19 @@ export default function SyncSection() {
   const [flow, setFlow] = useState<Flow>(null);
   /** The "Connect this device" choice sheet is open. */
   const [choosing, setChoosing] = useState(false);
+  // "Připojit znovu" from the sheet at unlock arrives with `?join=1`: the choice opens once
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const joinOnArrival = new URLSearchParams(search).has(JOIN_PARAM);
+  const [arrivalHandled, setArrivalHandled] = useState(false);
+  if (joinOnArrival && !arrivalHandled) {
+    setArrivalHandled(true);
+    setChoosing(true);
+  }
+  if (!joinOnArrival && arrivalHandled) setArrivalHandled(false);
+  useEffect(() => {
+    if (joinOnArrival) navigate(settingsPath('sync'), { replace: true });
+  }, [joinOnArrival, navigate]);
   /** The first-device setup sheet is up. */
   const [settingUp, setSettingUp] = useState(false);
   const [renaming, setRenaming] = useState<SyncDevice | null>(null);
@@ -276,6 +290,9 @@ export default function SyncSection() {
     <SectionPage title={t('phone.title')} lead={t('description')}>
       {status && !syncOn && (
         <>
+          {status.removedNotice && (
+            <RemovedBlock notice={status.removedNotice} onRejoin={() => setChoosing(true)} />
+          )}
           <p className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3">
             {sentences(locale, [t('intro.description'), t('intro.privacy')])}
           </p>
@@ -318,6 +335,7 @@ export default function SyncSection() {
             onRepair={() => setOpen('repair')}
             onResync={() => setOpen('resync')}
             onTurnOff={() => setOpen('turnOff')}
+            onRejoin={() => setOpen('rejoin')}
             onSkipMissing={setSkipping}
           />
 
@@ -355,16 +373,10 @@ export default function SyncSection() {
             )}
           </EntityRows>
 
+          <KitSection status={status} />
+
           <SectionHead title={t('danger.title')} />
           <EntityRows>
-            {status.problem !== 'serverWentBack' && (
-              <SettingsRow
-                icon={RefreshCw}
-                title={t('resync.button')}
-                sub={t('resync.hint')}
-                onClick={() => setOpen('resync')}
-              />
-            )}
             <SettingsRow
               icon={Unplug}
               title={t('turnOff.button')}
@@ -449,7 +461,15 @@ export default function SyncSection() {
       {open === 'server' && <ChangeServerSheet onClose={() => setOpen(null)} />}
       <RecoveryJoinSheet open={open === 'kitJoin'} onOpenChange={close} onReplaced={replaced} />
       {/* Mounted only while a setup runs: unmounting forgets the Recovery Kit */}
-      {settingUp && <SetupSheet onClose={() => setSettingUp(false)} />}
+      {settingUp && (
+        <SetupSheet
+          onClose={() => setSettingUp(false)}
+          onAddDevice={() => {
+            setSettingUp(false);
+            setFlow({ mode: 'add', paste: false });
+          }}
+        />
+      )}
       {/* Mounted only while a scan runs: unmounting cancels the camera and the pairing */}
       {flow && (
         <ScanFlow
@@ -494,6 +514,22 @@ export default function SyncSection() {
         confirmLabel={t('turnOff.confirm')}
         destructive
         onSubmit={turnOffNow}
+      />
+      <SyncPasswordSheet
+        open={open === 'rejoin'}
+        onOpenChange={close}
+        title={t('rejoin.title')}
+        description={t('rejoin.description')}
+        confirmLabel={t('problem.rejoin.button')}
+        closeOnSuccess={false}
+        onSubmit={async (password) => {
+          await turnOff.mutateAsync(password);
+          // The password was the mutation's variable: it goes before the next sheet opens
+          resetTurnOff();
+          // Sync is off here now (the data stay): the join choice follows
+          setOpen(null);
+          setChoosing(true);
+        }}
       />
       <SyncPasswordSheet
         open={skipping !== null}

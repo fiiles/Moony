@@ -125,12 +125,10 @@
       "ownServer": "Den här servern är inte Moony cloud, så det finns inget att betala. Ställ in synkroniseringen med anslutningskoden till din egen synkroniseringsserver i stället."
     },
     "kit": {
-      "description": "Spara ditt återställningskit för synkronisering. Det är det enda sättet att få tillbaka de synkroniserade uppgifterna om du förlorar alla dina enheter.",
       "copyCode": "Kopiera koden",
       "copied": "Kopierat",
       "clipboardHint": "Töm urklipp efter att du klistrat in koden.",
       "saved": "Kitet sparat",
-      "confirm": "Jag har sparat mitt återställningskit för synkronisering",
       "differs": "Det är inte den här enhetens återställningsnyckel; den återställer bara ett glömt lösenord.",
       "saveFirst": "Spara eller kopiera kitet först.",
       "file": {
@@ -154,13 +152,13 @@
       "continue": "Jag har kitet, fortsätt",
       "keepFirst": "Skriv ut, spara eller kopiera kitet först.",
       "saveFile": "Spara som fil …",
-      "saveShare": "Spara eller dela…"
+      "saveShare": "Spara eller dela…",
+      "introPhone": "Om du förlorar alla enheter på en gång är det bara det här kitet som ger dig tillbaka dina data. Förvara det utanför den här telefonen, till exempel med dina handlingar eller i en lösenordshanterare. Du kan skriva ut det från den sparade sidan."
     },
     "device": {
       "description": "Ge enheten ett namn så att du kan skilja den från de andra.",
       "name": "Enhetsnamn",
-      "turnOn": "Slå på synkronisering",
-      "success": "Synkronisering påslagen"
+      "turnOn": "Slå på synkronisering"
     },
     "defaultName": {
       "macos": "Mac",
@@ -236,7 +234,6 @@
   },
   "resync": {
     "button": "Synkronisera den här enheten igen",
-    "hint": "Ersätter enhetens data med de synkroniserade uppgifterna, efter att en säkerhetskopia har sparats. Använd det bara om enheten inte kan synkronisera på något annat sätt.",
     "title": "Synkronisera den här enheten igen?",
     "description": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först.",
     "confirm": "Synkronisera igen",
@@ -441,7 +438,7 @@
       "off": "Av",
       "synced": "Uppdaterad",
       "syncing": "Synkroniserar…",
-      "waiting": "En ändring hålls kvar",
+      "waiting": "Väntar på en ändring från en annan enhet",
       "unreachable": "Servern är utom räckvidd",
       "unreachableLong_one": "Inte synkroniserad på {{count}} dag",
       "unreachableLong_other": "Inte synkroniserad på {{count}} dagar",

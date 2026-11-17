@@ -129,12 +129,10 @@
       "ownServer": "Questo server non è Moony cloud, quindi non c'è nulla da pagare. Configura la sincronizzazione con il codice di connessione del tuo server di sincronizzazione."
     },
     "kit": {
-      "description": "Salva il tuo Kit di ripristino della sincronizzazione. È l'unico modo per riavere i dati sincronizzati se perdi tutti i dispositivi.",
       "copyCode": "Copia il codice",
       "copied": "Copiato",
       "clipboardHint": "Svuota gli appunti dopo aver incollato il codice.",
       "saved": "Kit salvato",
-      "confirm": "Ho salvato il mio Kit di ripristino della sincronizzazione",
       "differs": "Non è la chiave di recupero di questo dispositivo; quella reimposta solo una password dimenticata.",
       "saveFirst": "Salva o copia prima il kit.",
       "file": {
@@ -158,13 +156,13 @@
       "continue": "Ho il kit, continua",
       "keepFirst": "Prima stampa, salva o copia il kit.",
       "saveFile": "Salva come file…",
-      "saveShare": "Salva o condividi…"
+      "saveShare": "Salva o condividi…",
+      "introPhone": "Se perdi tutti i dispositivi in una volta, solo questo kit riporta indietro i tuoi dati. Conservalo lontano da questo telefono, insieme ai tuoi documenti o in un gestore di password. Puoi stamparlo dalla pagina salvata."
     },
     "device": {
       "description": "Dai un nome a questo dispositivo per distinguerlo dagli altri.",
       "name": "Nome del dispositivo",
-      "turnOn": "Attiva la sincronizzazione",
-      "success": "Sincronizzazione attivata"
+      "turnOn": "Attiva la sincronizzazione"
     },
     "defaultName": {
       "macos": "Mac",
@@ -242,7 +240,6 @@
   },
   "resync": {
     "button": "Risincronizza questo dispositivo",
-    "hint": "Sostituisce i dati di questo dispositivo con quelli sincronizzati, dopo aver salvato un backup. Usalo solo se questo dispositivo non riesce a sincronizzarsi in nessun altro modo.",
     "title": "Risincronizzare questo dispositivo?",
     "description": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup.",
     "confirm": "Risincronizza",
@@ -452,7 +449,7 @@
       "off": "Disattivata",
       "synced": "Aggiornata",
       "syncing": "Sincronizzazione…",
-      "waiting": "Modifica trattenuta",
+      "waiting": "In attesa di una modifica da un altro dispositivo",
       "unreachable": "Server non raggiungibile",
       "unreachableLong_one": "Non sincronizzato da {{count}} giorno",
       "unreachableLong_many": "Non sincronizzato da {{count}} giorni",

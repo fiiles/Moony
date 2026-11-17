@@ -129,12 +129,10 @@
       "ownServer": "Este servidor no es Moony cloud, así que no hay nada que pagar. Configura la sincronización con el código de conexión de tu propio servidor de sincronización."
     },
     "kit": {
-      "description": "Guarda tu Kit de recuperación de sincronización. Es la única forma de recuperar tus datos sincronizados si pierdes todos tus dispositivos.",
       "copyCode": "Copiar código",
       "copied": "Copiado",
       "clipboardHint": "Vacía el portapapeles después de pegar el código.",
       "saved": "Kit guardado",
-      "confirm": "He guardado mi Kit de recuperación de sincronización",
       "differs": "No es la clave de recuperación de este dispositivo; esa solo restablece una contraseña olvidada.",
       "saveFirst": "Primero guarda o copia el kit.",
       "file": {
@@ -158,13 +156,13 @@
       "continue": "Tengo el kit, continuar",
       "keepFirst": "Primero imprime, guarda o copia el kit.",
       "saveFile": "Guardar como archivo…",
-      "saveShare": "Guardar o compartir…"
+      "saveShare": "Guardar o compartir…",
+      "introPhone": "Si pierdes todos los dispositivos a la vez, solo este kit recupera tus datos. Guárdalo lejos de este teléfono, con tus documentos o en un gestor de contraseñas. Puedes imprimirlo desde la página guardada."
     },
     "device": {
       "description": "Dale un nombre a este dispositivo para distinguirlo de los demás.",
       "name": "Nombre del dispositivo",
-      "turnOn": "Activar la sincronización",
-      "success": "Sincronización activada"
+      "turnOn": "Activar la sincronización"
     },
     "defaultName": {
       "macos": "Mac",
@@ -242,7 +240,6 @@
   },
   "resync": {
     "button": "Volver a sincronizar este dispositivo",
-    "hint": "Sustituye los datos de este dispositivo por los sincronizados, después de guardar una copia de seguridad. Úsalo solo si este dispositivo no puede sincronizarse de ninguna otra forma.",
     "title": "¿Volver a sincronizar este dispositivo?",
     "description": "Los datos de este dispositivo se sustituyen por los sincronizados. Antes se guarda una copia de seguridad.",
     "confirm": "Volver a sincronizar",
@@ -452,7 +449,7 @@
       "off": "Desactivada",
       "synced": "Al día",
       "syncing": "Sincronizando…",
-      "waiting": "Cambio retenido",
+      "waiting": "Esperando un cambio de otro dispositivo",
       "unreachable": "Servidor fuera de alcance",
       "unreachableLong_one": "Sin sincronizar desde hace {{count}} día",
       "unreachableLong_many": "Sin sincronizar desde hace {{count}} días",

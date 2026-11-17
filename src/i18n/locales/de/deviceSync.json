@@ -125,12 +125,10 @@
       "ownServer": "Dieser Server ist nicht Moony cloud, daher gibt es nichts zu bezahlen. Richten Sie die Synchronisierung stattdessen mit dem Verbindungscode Ihres eigenen Synchronisierungsservers ein."
     },
     "kit": {
-      "description": "Speichern Sie Ihr Sync-Wiederherstellungs-Kit. Nur damit bekommen Sie Ihre synchronisierten Daten zurück, wenn Sie alle Geräte verlieren.",
       "copyCode": "Code kopieren",
       "copied": "Kopiert",
       "clipboardHint": "Leeren Sie die Zwischenablage, nachdem Sie den Code eingefügt haben.",
       "saved": "Kit gespeichert",
-      "confirm": "Ich habe mein Sync-Wiederherstellungs-Kit gespeichert",
       "differs": "Es ist nicht der Wiederherstellungsschlüssel dieses Geräts; der setzt nur ein vergessenes Passwort zurück.",
       "saveFirst": "Speichern oder kopieren Sie zuerst das Kit.",
       "file": {
@@ -154,13 +152,13 @@
       "continue": "Ich habe das Kit, weiter",
       "keepFirst": "Drucken, speichern oder kopieren Sie das Kit zuerst.",
       "saveFile": "Als Datei speichern …",
-      "saveShare": "Speichern oder teilen…"
+      "saveShare": "Speichern oder teilen…",
+      "introPhone": "Wenn Sie alle Geräte auf einmal verlieren, bringt nur dieses Kit Ihre Daten zurück. Bewahren Sie es nicht auf diesem Telefon auf, zum Beispiel bei Ihren Unterlagen oder in einem Passwortmanager. Von der gespeicherten Seite können Sie es ausdrucken."
     },
     "device": {
       "description": "Geben Sie diesem Gerät einen Namen, um es von Ihren anderen zu unterscheiden.",
       "name": "Gerätename",
-      "turnOn": "Synchronisierung einschalten",
-      "success": "Synchronisierung eingeschaltet"
+      "turnOn": "Synchronisierung einschalten"
     },
     "defaultName": {
       "macos": "Mac",
@@ -236,7 +234,6 @@
   },
   "resync": {
     "button": "Dieses Gerät neu synchronisieren",
-    "hint": "Ersetzt die Daten dieses Geräts durch die synchronisierten Daten, nachdem eine Sicherung gespeichert wurde. Nutzen Sie dies nur, wenn sich dieses Gerät auf keine andere Weise synchronisieren lässt.",
     "title": "Dieses Gerät neu synchronisieren?",
     "description": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird eine Sicherung gespeichert.",
     "confirm": "Neu synchronisieren",
@@ -441,7 +438,7 @@
       "off": "Aus",
       "synced": "Aktuell",
       "syncing": "Synchronisiert…",
-      "waiting": "Änderung zurückgehalten",
+      "waiting": "Warten auf eine Änderung von einem anderen Gerät",
       "unreachable": "Server nicht erreichbar",
       "unreachableLong_one": "Seit {{count}} Tag nicht synchronisiert",
       "unreachableLong_other": "Seit {{count}} Tagen nicht synchronisiert",

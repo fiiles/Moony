@@ -133,12 +133,10 @@
       "ownServer": "Tento server není Moony cloud, takže se nic neplatí. Nastavte synchronizaci pomocí připojovacího kódu vlastního synchronizačního serveru."
     },
     "kit": {
-      "description": "Uložte si Záchrannou sadu synchronizace. Je to jediný způsob, jak získat synchronizovaná data zpět, když přijdete o všechna zařízení.",
       "copyCode": "Zkopírovat kód",
       "copied": "Zkopírováno",
       "clipboardHint": "Po vložení kódu vymažte schránku.",
       "saved": "Sada uložena",
-      "confirm": "Uložil(a) jsem si Záchrannou sadu synchronizace",
       "differs": "Není to obnovovací klíč tohoto zařízení; ten obnoví jen zapomenuté heslo.",
       "saveFirst": "Nejdřív sadu uložte nebo zkopírujte.",
       "file": {
@@ -162,13 +160,13 @@
       "continue": "Sadu mám, pokračovat",
       "keepFirst": "Nejdřív sadu vytiskněte, uložte nebo zkopírujte.",
       "saveFile": "Uložit jako soubor…",
-      "saveShare": "Uložit nebo sdílet…"
+      "saveShare": "Uložit nebo sdílet…",
+      "introPhone": "Kdybyste přišli o všechna zařízení najednou, vrátí vám data jen tato sada. Uložte ji mimo tento telefon, třeba k dokladům nebo do správce hesel. Z uložené stránky ji můžete vytisknout."
     },
     "device": {
       "description": "Pojmenujte toto zařízení, abyste ho odlišili od ostatních.",
       "name": "Název zařízení",
-      "turnOn": "Zapnout synchronizaci",
-      "success": "Synchronizace zapnuta"
+      "turnOn": "Zapnout synchronizaci"
     },
     "defaultName": {
       "macos": "Mac",
@@ -248,7 +246,6 @@
   },
   "resync": {
     "button": "Synchronizovat toto zařízení znovu",
-    "hint": "Nahradí data tohoto zařízení synchronizovanými daty, předtím uloží zálohu. Použijte to jen tehdy, když se toto zařízení nedokáže synchronizovat jinak.",
     "title": "Synchronizovat toto zařízení znovu?",
     "description": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Nejdřív se uloží záloha.",
     "confirm": "Synchronizovat znovu",
@@ -463,7 +460,7 @@
       "off": "Vypnuto",
       "synced": "Aktuální",
       "syncing": "Synchronizuje se…",
-      "waiting": "Změna je zadržena",
+      "waiting": "Čeká se na změnu z jiného zařízení",
       "unreachable": "Server mimo dosah",
       "unreachableLong_one": "Nesynchronizováno {{count}} den",
       "unreachableLong_few": "Nesynchronizováno {{count}} dny",

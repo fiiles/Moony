@@ -70,7 +70,9 @@ pub(super) fn printed_kit(conn: &Connection) -> KitDraft {
 
 async fn finish(relay: &FakeRelay, device: &TestConn, dir: &Path) -> SyncResult<()> {
     let kit = printed_kit(&device.lock());
-    finish_setup(relay, device, "Laptop", &kit, dir, &XorNative, NOW).await
+    finish_setup(relay, device, "Laptop", &kit, dir, &XorNative, NOW)
+        .await
+        .map(|_| ())
 }
 
 /// The Kit as setup shows it, of a new draft.
@@ -1237,20 +1239,139 @@ async fn the_kit_seed_is_never_stored() {
         .await
         .expect("setup");
 
-    let seed = *KitSecret::from_bytes(Zeroizing::new([kit.vault_id().0[0] ^ 0x5a; 32])).expose();
+    let secret = KitSecret::from_bytes(Zeroizing::new([kit.vault_id().0[0] ^ 0x5a; 32]));
+    let seed = *secret.expose();
     let keys = kit.keys();
-    let secrets = [
-        hex::encode(seed),
-        base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, seed),
-        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, seed),
+    let (relay_url, account) = keys::account(&device.lock())
+        .expect("account")
+        .expect("stored");
+    let code = crate::services::sync::recovery::encode_kit_code(kit.vault_id(), &secret, &account)
+        .expect("code");
+    let grouped = crate::services::sync::recovery::format_recovery_code(&code);
+    let qr = crate::services::sync::recovery::kit_qr_payload(&code, Some(&relay_url));
+    let box_secret = keys.box_secret().to_bytes();
+    let b64 = |bytes: &[u8]| {
+        [
+            hex::encode(bytes),
+            base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, bytes),
+            base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes),
+        ]
+    };
+    // Review of Tasks 18–19, I3: the code (grouped and not), the QR payload and the box secret too.
+    let mut secrets: Vec<String> = b64(&seed).into_iter().chain(b64(&box_secret)).collect();
+    secrets.extend([
         keys.token().to_string(),
         hex::encode(keys.sign_seed().expose()),
-    ];
+        code.to_string(),
+        grouped.to_string(),
+        qr.to_string(),
+    ]);
     for value in every_value(&device.lock()) {
         for secret in &secrets {
             assert!(!value.contains(secret.as_str()), "a Kit secret is stored");
         }
     }
+    // Nor in any file of the data folder (the binding, a key file, anything new).
+    let mut files = vec![dir.path().to_path_buf()];
+    let mut scanned = 0;
+    while let Some(path) = files.pop() {
+        if path.is_dir() {
+            for entry in std::fs::read_dir(&path).expect("dir") {
+                files.push(entry.expect("entry").path());
+            }
+            continue;
+        }
+        let bytes = std::fs::read(&path).expect("file");
+        scanned += 1;
+        let text = String::from_utf8_lossy(&bytes);
+        for raw in [&seed[..], &box_secret[..], keys.sign_seed().expose()] {
+            assert!(!bytes.windows(32).any(|w| w == raw), "{path:?}");
+        }
+        for secret in &secrets {
+            assert!(!text.contains(secret.as_str()), "{path:?}");
+        }
+    }
+    assert!(scanned > 0, "the binding file at least");
+}
+
+/// Review of Tasks 18–19, I2: the server holds another Kit of the vault (an earlier try's draft,
+/// registered before its answer was lost): setup finishes but says the Kit is not registered;
+/// there is no usable Kit, and a new Kit (a key change) replaces the server's.
+#[tokio::test]
+async fn a_kit_the_server_already_holds_ends_setup_without_a_kit() {
+    use crate::services::sync::rekey::{kit, rotate};
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    ready_for_the_kit(&relay, &device).await;
+    let creds = keys::credentials(&device.lock())
+        .expect("creds")
+        .expect("bound");
+    relay
+        .create_vault(&creds.account, &creds.auth())
+        .await
+        .expect("vault");
+    let earlier = KitSecret::generate()
+        .expect("seed")
+        .derive(&creds.vault_id.0);
+    relay
+        .put_kit(&creds.auth(), earlier.token(), b"an earlier try's envelope")
+        .await
+        .expect("earlier Kit");
+    let kit = printed_kit(&device.lock());
+
+    let finished = finish_setup(&relay, &device, "Laptop", &kit, dir.path(), &XorNative, NOW)
+        .await
+        .expect("setup");
+
+    assert_eq!(
+        finished,
+        crate::services::sync::setup::FinishSetup::KitNotRegistered
+    );
+    {
+        let conn = device.lock();
+        assert!(enabled(&conn));
+        assert!(trust::entry(&conn, kit.keys().id())
+            .expect("entry")
+            .is_none());
+        assert!(
+            kit::current(&conn).expect("current").is_none(),
+            "no usable Kit"
+        );
+        assert!(kit::server_has_kit(&conn).expect("noted"));
+    }
+    let consent = rotate::plan(&device.lock(), &[], &[], true, NOW)
+        .expect("plan")
+        .consent;
+    let outcome = rotate::remove(
+        &relay,
+        &device,
+        rotate::Removal {
+            removing: &[],
+            new_kit: true,
+            consent: &consent,
+        },
+        dir.path(),
+        &|| {},
+        NOW,
+    )
+    .await
+    .expect("a new Kit");
+    let rotate::Outcome::Changed { kit: Some(new), .. } = outcome else {
+        panic!("{outcome:?}");
+    };
+    let new_keys = new.secret.derive(&creds.vault_id.0);
+    assert!(relay
+        .get_kit(&creds.vault_id.to_b64(), new_keys.token())
+        .await
+        .is_ok());
+    assert!(matches!(
+        relay
+            .get_kit(&creds.vault_id.to_b64(), earlier.token())
+            .await,
+        Err(RelayError::KitReplaced { .. })
+    ));
+    assert!(kit::current(&device.lock()).expect("current").is_some());
 }
 
 /// Revision §2.2, §2.3: `finish_setup` puts the Kit on the server and writes and pins its row; a

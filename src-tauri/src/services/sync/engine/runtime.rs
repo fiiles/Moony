@@ -969,6 +969,20 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
         {
             return Ok(false);
         }
+        // Nothing goes up while a Kit joiner's hold stands, a key change of this device is pending
+        // or was given up (As built R-45, R-53; review of Tasks 18–19): the round would push
+        // nothing either.
+        if lane == Lane::Up {
+            match hold(&self.db, uploads_held) {
+                Ok(false) => {}
+                Ok(true) => return Ok(false),
+                Err(error) if locked(&error) => return Err(Ended),
+                Err(error) => {
+                    log::debug!("[SYNC] The upload lane could not read the hold: {error}");
+                    return Ok(false);
+                }
+            }
+        }
         let creds = match hold(&self.db, lane_credentials) {
             Ok(Some(creds)) => creds,
             Ok(None) => return Ok(false),
@@ -1001,6 +1015,16 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
         }
         Ok(report.uploaded + report.stored > 0)
     }
+}
+
+/// Whether uploads of documents and photos wait (the lane's own gate, as the round's): a Recovery
+/// Kit joiner's push hold (`join::after_kit_join`), this device's key change pending
+/// (`rotate::pending`: its token may be retired already) or given up (`rotate::stuck`).
+pub(crate) fn uploads_held(conn: &rusqlite::Connection) -> crate::error::Result<bool> {
+    use crate::services::sync::rekey::rotate;
+    Ok(crate::services::sync::join::after_kit_join(conn)?.is_some()
+        || rotate::pending(conn)?
+        || rotate::stuck(conn)?)
 }
 
 /// The credentials a lane transfers with, `None` while the profile does not sync: sync off, no

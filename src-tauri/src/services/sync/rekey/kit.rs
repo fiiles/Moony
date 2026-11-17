@@ -15,9 +15,10 @@ use super::envelope::{self, Confirmed, EnvelopeInput};
 use super::head;
 use crate::error::{AppError, Result};
 use crate::services::sync::hlc::DeviceId;
-use crate::services::sync::identity::trust::{TrustEntry, TrustState};
+use crate::services::sync::identity::trust::{self, TrustEntry, TrustState};
 use crate::services::sync::identity::{cert, Certificate, KitKeys, KitSecret, SignSeed};
 use crate::services::sync::keys::VaultKeys;
+use crate::services::sync::state;
 
 /// The `platform` of the Kit's row (revision §2.3). Never what tells a Kit's row: its kind-5
 /// certificate does (`trust::is_kit_row`, As built R-26).
@@ -141,13 +142,13 @@ pub fn write_row(
 
 /// The confirmed set a Kit envelope carries (revision §2.4): what this device's store will hold
 /// `confirmed` once the key change commits. Every `trusted` entry confirmed now, minus the
-/// devices removed and the Kit replaced, plus every recipient and the Kit sealed to; each with
+/// devices removed and the Kits replaced, plus every recipient and the Kit sealed to; each with
 /// its certificate's hash, by device.
 pub fn confirmed_after(
     store: &[TrustEntry],
     recipients: &[TrustEntry],
     removing: &[DeviceId],
-    replaced_kit: Option<DeviceId>,
+    replaced_kits: &[DeviceId],
     kit: &Certificate,
 ) -> Vec<Confirmed> {
     let mut set: BTreeMap<DeviceId, [u8; 32]> = store
@@ -156,7 +157,7 @@ pub fn confirmed_after(
             e.state == TrustState::Trusted
                 && e.confirmed
                 && !removing.contains(&e.device)
-                && Some(e.device) != replaced_kit
+                && !replaced_kits.contains(&e.device)
         })
         .map(|e| (e.device, e.cert.hash()))
         .collect();
@@ -167,6 +168,49 @@ pub fn confirmed_after(
     set.into_iter()
         .map(|(device, cert_hash)| Confirmed { device, cert_hash })
         .collect()
+}
+
+/// Notes whether the sync server holds a Recovery Kit for the vault, from vault info this device
+/// just read (`state::SERVER_KIT_KEY`).
+pub fn note_server_kit(conn: &Connection, held: bool) -> Result<()> {
+    state::set_config_text(
+        conn,
+        state::SERVER_KIT_KEY,
+        Some(if held { "1" } else { "0" }),
+    )
+}
+
+/// Whether the sync server held a Recovery Kit when this device last read the vault's info
+/// (`false` when it never read it).
+pub fn server_has_kit(conn: &Connection) -> Result<bool> {
+    Ok(state::config_text(conn, state::SERVER_KIT_KEY)?.as_deref() == Some("1"))
+}
+
+/// The vault's Recovery Kit as this device can use it (the status's `recoveryKit`, revision §6.3;
+/// review of Tasks 17–19): the Kit a new key is sealed to (`trust::sealing_kit_entry`), when it
+/// was made and by which device, and where it is kept (`None`: "neuložená", the person did
+/// nothing with it, or the device that showed it has not synced yet). `None` overall: sync on and
+/// **no usable Kit** ("Synchronizace nemá záchrannou sadu…"; also after a setup whose Kit the
+/// server refused, `setup::FinishSetup::KitNotRegistered`), and the next removal makes one.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CurrentKit {
+    pub id: DeviceId,
+    pub created_at: i64,
+    pub created_by: DeviceId,
+    pub storage: Option<KitStorage>,
+}
+
+/// The vault's usable Kit here, if any (`CurrentKit`).
+pub fn current(conn: &Connection) -> Result<Option<CurrentKit>> {
+    let Some(kit) = trust::sealing_kit_entry(conn)? else {
+        return Ok(None);
+    };
+    Ok(Some(CurrentKit {
+        id: kit.device,
+        created_at: kit.cert.body.issued_at,
+        created_by: kit.issuer,
+        storage: storage(conn, kit.device)?,
+    }))
 }
 
 /// Seals the envelope for the Kit `kit` (its certificate names the vault, its ID and its box

@@ -278,7 +278,10 @@ pub fn disable(conn: &Connection) -> Result<()> {
             AFTER_KIT_JOIN_KEY,
             KIT_EPOCH_FLOOR_KEY,
             super::identity::trust::NEW_DEVICES_KEY,
-        ] {
+        ]
+        .into_iter()
+        .chain(REVIEW_KEYS)
+        {
             conn.execute("DELETE FROM app_config WHERE key = ?1", [key])?;
         }
         super::binding::forget_failed_starts(conn)?;
@@ -623,6 +626,56 @@ pub const KEY_CHANGE_OVERRUN_KEY: &str = "sync.key_change_overrun";
 /// The Local `app_config` key holding the notice that a removal the person confirmed was not
 /// done (`rekey::RemovalNotDone`). Turning sync off clears it.
 pub const REMOVAL_NOT_DONE_KEY: &str = "sync.removal_not_done";
+
+/// The Local `app_config` key saying this device's own key change cannot complete here (review of
+/// Task 17, I2): the sync server took it, but the commit failed for good, or its bundle is no
+/// longer listed. The pending change is wiped; every round stops with `keyChangeUnverified`
+/// ("Připojit znovu") until sync is turned off. Value: the unix time it gave up.
+pub const KEY_CHANGE_STUCK_KEY: &str = "sync.key_change_stuck";
+
+/// The Local `app_config` key counting database failures of the commit of a key change the sync
+/// server took (`rekey::rotate`): three in a row give up (`KEY_CHANGE_STUCK_KEY`).
+pub const KEY_CHANGE_COMMIT_FAILURES_KEY: &str = "sync.key_change_commit_failures";
+
+/// The Local `app_config` key holding whether the sync server, when this device last read the
+/// vault's info, held a Recovery Kit for the vault (`"1"` / `"0"`; review of Task 17, M1): a
+/// removal on a device that has none it can seal to then makes a new one (`ReplacesKit::Missing`).
+pub const SERVER_KIT_KEY: &str = "sync.server_kit";
+
+/// The Local `app_config` key saying a trust-store refresh failed and is owed (review of Tasks
+/// 20–21, finding 2): every round starts with one until it succeeds.
+pub const TRUST_REFRESH_OWED_KEY: &str = "sync.trust_refresh_owed";
+
+/// The Local keys every turn-off and every join's replace clear besides those listed before
+/// them (review of Tasks 17–21).
+pub const REVIEW_KEYS: [&str; 4] = [
+    KEY_CHANGE_STUCK_KEY,
+    KEY_CHANGE_COMMIT_FAILURES_KEY,
+    SERVER_KIT_KEY,
+    TRUST_REFRESH_OWED_KEY,
+];
+
+/// The text value of a Local `app_config` key, if any.
+pub fn config_text(conn: &Connection, key: &str) -> Result<Option<String>> {
+    Ok(conn
+        .query_row("SELECT value FROM app_config WHERE key = ?1", [key], |r| {
+            r.get(0)
+        })
+        .optional()?)
+}
+
+/// Sets (`Some`) or clears (`None`) a Local `app_config` key.
+pub fn set_config_text(conn: &Connection, key: &str, value: Option<&str>) -> Result<()> {
+    match value {
+        Some(value) => conn.execute(
+            "INSERT INTO app_config (key, value) VALUES (?1, ?2) \
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?,
+        None => conn.execute("DELETE FROM app_config WHERE key = ?1", [key])?,
+    };
+    Ok(())
+}
 
 /// Whether this device crossed a barrier and has not yet uploaded (or restored, or found newer
 /// on the relay) a snapshot at it: its next clean round forces an upload (ruling T8-2), which

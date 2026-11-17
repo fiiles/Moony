@@ -68,7 +68,7 @@ async fn the_plan_lists_who_gets_the_key_and_its_consent_follows_what_is_confirm
     let three = three().await;
     let a = three.vault.a.lock();
 
-    let plan = rotate::plan(&a, &[C], &[], false).expect("plan");
+    let plan = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
 
     let recipients: Vec<DeviceId> = plan.recipients.iter().map(|e| e.device).collect();
     assert_eq!(recipients, vec![A, B]);
@@ -77,12 +77,14 @@ async fn the_plan_lists_who_gets_the_key_and_its_consent_follows_what_is_confirm
     assert_eq!(plan.epoch, 0);
     assert_eq!(plan.kit, None);
     assert_eq!(plan.replaces_kit, ReplacesKit::No);
-    let with_kit = rotate::plan(&a, &[C], &[], true).expect("plan");
-    let other_set = rotate::plan(&a, &[B, C], &[], false).expect("plan");
-    let nobody = rotate::plan(&a, &[], &[], true).expect("plan");
+    let with_kit = rotate::plan(&a, &[C], &[], true, NOW).expect("plan");
+    let other_set = rotate::plan(&a, &[B, C], &[], false, NOW).expect("plan");
+    let nobody = rotate::plan(&a, &[], &[], true, NOW).expect("plan");
     assert_eq!(with_kit.replaces_kit, ReplacesKit::Asked);
     assert_eq!(
-        rotate::plan(&a, &[B], &[C], false).expect("plan").consent,
+        rotate::plan(&a, &[B], &[C], false, NOW)
+            .expect("plan")
+            .consent,
         other_set.consent,
         "a ticked device is removed like one asked for"
     );
@@ -98,7 +100,9 @@ async fn the_plan_lists_who_gets_the_key_and_its_consent_follows_what_is_confirm
         }
     }
     assert_eq!(
-        rotate::plan(&a, &[C], &[], false).expect("plan").consent,
+        rotate::plan(&a, &[C], &[], false, NOW)
+            .expect("plan")
+            .consent,
         plan.consent,
         "the same plan, the same consent"
     );
@@ -115,7 +119,7 @@ async fn the_plan_lists_who_gets_the_key_and_its_consent_follows_what_is_confirm
 #[tokio::test]
 async fn a_stale_consent_is_refused_and_nothing_is_written() {
     let three = three().await;
-    let stale = rotate::plan(&three.vault.a.lock(), &[C], &[], false)
+    let stale = rotate::plan(&three.vault.a.lock(), &[C], &[], false, NOW)
         .expect("plan")
         .consent;
 
@@ -150,24 +154,24 @@ async fn removal_refuses_an_older_vault_this_device_and_a_paused_profile() {
     // A vault set up before phase 5: no certificates.
     let old = vault().await;
     assert_eq!(
-        rotate::plan(&old.a.lock(), &[B], &[], false).map_err(|e| e.to_string()),
+        rotate::plan(&old.a.lock(), &[B], &[], false, NOW).map_err(|e| e.to_string()),
         Err(AppError::Validation(rotate::REMOVAL_UNSUPPORTED.into()).to_string())
     );
 
     let three = three().await;
     let a = three.vault.a.lock();
     assert_eq!(
-        rotate::plan(&a, &[A], &[], false).map_err(|e| e.to_string()),
+        rotate::plan(&a, &[A], &[], false, NOW).map_err(|e| e.to_string()),
         Err(AppError::Validation(rotate::REMOVE_THIS_DEVICE.into()).to_string())
     );
     // Nobody removed is no key change, unless it makes a new Kit (D2: no "change the key").
     assert_eq!(
-        rotate::plan(&a, &[], &[], false).map_err(|e| e.to_string()),
+        rotate::plan(&a, &[], &[], false, NOW).map_err(|e| e.to_string()),
         Err(AppError::Validation(rotate::PLAN_CHANGED.into()).to_string())
     );
     state::mark_capture_broken(&a, NOW).expect("broken");
     assert_eq!(
-        rotate::plan(&a, &[C], &[], false).map_err(|e| e.to_string()),
+        rotate::plan(&a, &[C], &[], false, NOW).map_err(|e| e.to_string()),
         Err(AppError::Validation("validation.syncChangesPaused".into()).to_string())
     );
 }
@@ -179,7 +183,7 @@ async fn a_key_change_commits_everything_and_seals_the_key_to_the_others_only() 
     record_removal(&three.vault.a.lock(), A, B);
     let forgot = AtomicBool::new(false);
     let relay = &three.vault.relay;
-    let consent = rotate::plan(&three.vault.a.lock(), &[C], &[], false)
+    let consent = rotate::plan(&three.vault.a.lock(), &[C], &[], false, NOW)
         .expect("plan")
         .consent;
 
@@ -333,7 +337,7 @@ async fn a_retired_token_at_the_call_wipes_the_pending_change() {
 async fn a_race_lost_at_the_call_names_the_winner_or_says_it_already_removed() {
     for b_removes_c in [false, true] {
         let three = three().await;
-        let consent = rotate::plan(&three.vault.a.lock(), &[C], &[], false)
+        let consent = rotate::plan(&three.vault.a.lock(), &[C], &[], false, NOW)
             .expect("plan")
             .consent;
         let relay = &three.vault.relay;
@@ -341,7 +345,7 @@ async fn a_race_lost_at_the_call_names_the_winner_or_says_it_already_removed() {
         let b_removing: &[DeviceId] = if b_removes_c { &[C] } else { &[] };
         // Removing nobody, B makes a new Kit.
         let b_new_kit = b_removing.is_empty();
-        let b_consent = rotate::plan(&three.vault.b.lock(), b_removing, &[], b_new_kit)
+        let b_consent = rotate::plan(&three.vault.b.lock(), b_removing, &[], b_new_kit, NOW)
             .expect("plan")
             .consent;
         let b_done = std::sync::Mutex::new(None);
@@ -628,7 +632,7 @@ async fn the_plan_replaces_the_kit_as_the_table_says() {
     ];
     for (storage, removing, expected) in cases {
         set_kit_storage(&a, kit, storage);
-        let plan = rotate::plan(&a, &[removing], &[], false).expect("plan");
+        let plan = rotate::plan(&a, &[removing], &[], false, NOW).expect("plan");
         assert_eq!(
             plan.replaces_kit, expected,
             "{storage:?}, removing {removing:?}"
@@ -641,12 +645,14 @@ async fn the_plan_replaces_the_kit_as_the_table_says() {
     }
     set_kit_storage(&a, kit, Some(Paper));
     assert_eq!(
-        rotate::plan(&a, &[], &[], true).expect("plan").replaces_kit,
+        rotate::plan(&a, &[], &[], true, NOW)
+            .expect("plan")
+            .replaces_kit,
         ReplacesKit::Asked
     );
     // The Kit is no device to remove.
     assert_eq!(
-        rotate::plan(&a, &[kit], &[], false).map_err(|e| e.to_string()),
+        rotate::plan(&a, &[kit], &[], false, NOW).map_err(|e| e.to_string()),
         Err(AppError::Validation(rotate::PLAN_CHANGED.into()).to_string())
     );
 }
@@ -654,15 +660,15 @@ async fn the_plan_replaces_the_kit_as_the_table_says() {
 #[tokio::test]
 async fn the_consent_changes_with_the_kit() {
     let three = three().await;
-    let without = rotate::plan(&three.vault.a.lock(), &[C], &[], false)
+    let without = rotate::plan(&three.vault.a.lock(), &[C], &[], false, NOW)
         .expect("plan")
         .consent;
     let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
     let a = three.vault.a.lock();
 
-    let with = rotate::plan(&a, &[C], &[], false).expect("plan");
+    let with = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
     set_kit_storage(&a, kit_keys(&three, &secret).id(), Some(KitStorage::Cloud));
-    let replacing = rotate::plan(&a, &[C], &[], false).expect("plan");
+    let replacing = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
 
     assert_ne!(with.consent, without, "a Kit appeared");
     assert_eq!(replacing.replaces_kit, ReplacesKit::Cloud);
@@ -761,12 +767,12 @@ async fn added_by_removing_lists_grandchildren_and_kit_joiners_only_with_a_new_k
         );
     }
 
-    let removing_b = rotate::plan(&a, &[B], &[], false).expect("plan");
-    let ticked = rotate::plan(&a, &[B], &[D], false).expect("plan");
-    let kept_kit = rotate::plan(&a, &[C], &[], false).expect("plan");
-    let new_kit = rotate::plan(&a, &[], &[], true).expect("plan");
+    let removing_b = rotate::plan(&a, &[B], &[], false, NOW).expect("plan");
+    let ticked = rotate::plan(&a, &[B], &[D], false, NOW).expect("plan");
+    let kept_kit = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
+    let new_kit = rotate::plan(&a, &[], &[], true, NOW).expect("plan");
     set_kit_storage(&a, kit.id(), Some(KitStorage::Cloud));
-    let cloud = rotate::plan(&a, &[C], &[], false).expect("plan");
+    let cloud = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
 
     assert_eq!(removing_b.added_by_removing, vec![D, E], "a grandchild too");
     assert_eq!(
@@ -899,7 +905,7 @@ async fn the_commit_writes_the_kit_rows_and_confirms_recipients_and_kit() {
     let old = with_kit(&three, A, Some(KitStorage::Copied)).await;
     let old_id = kit_keys(&three, &old).id();
     assert_eq!(
-        rotate::plan(&three.vault.b.lock(), &[A], &[], false)
+        rotate::plan(&three.vault.b.lock(), &[A], &[], false, NOW)
             .expect("plan")
             .replaces_kit,
         ReplacesKit::CreatorRemoved

@@ -167,7 +167,7 @@ pub async fn remove_in(
     removing: &[DeviceId],
     new_kit: bool,
 ) -> crate::services::sync::error::SyncResult<Outcome> {
-    let consent = rotate::plan(&device.lock(), removing, &[], new_kit)
+    let consent = rotate::plan(&device.lock(), removing, &[], new_kit, NOW)
         .expect("plan")
         .consent;
     rotate::remove(
@@ -201,7 +201,7 @@ pub async fn with_kit(three: &Three, creator: DeviceId, storage: Option<KitStora
         kit::write_row(&conn, &cert, storage, NOW).expect("row");
         trust::pin_created_kit(&conn, &cert, NOW).expect("pinned");
         let store = trust::entries(&conn).expect("entries");
-        let confirmed = kit::confirmed_after(&store, std::slice::from_ref(&own), &[], None, &cert);
+        let confirmed = kit::confirmed_after(&store, std::slice::from_ref(&own), &[], &[], &cert);
         let envelope = kit::seal(&conn, &creds.keys, &cert, &seed, &own.cert, &confirmed, NOW)
             .expect("envelope");
         (secret, envelope, keys.token().to_string())

@@ -79,6 +79,11 @@ pub enum ReplacesKit {
     Cloud,
     /// The person asked for a new Kit ("Vytvořit novou sadu").
     Asked,
+    /// This device has no Kit it can seal to, but the sync server holds one for the vault (or a
+    /// Kit is `trusted` here that cannot be sealed to: silenced for its creator, or one of two):
+    /// the change makes a new Kit, which replaces the server's (review of Task 17, M1; a setup
+    /// whose Kit the server refused, `setup::FinishSetup::KitNotRegistered`, ends here too).
+    Missing,
 }
 
 impl ReplacesKit {
@@ -88,6 +93,7 @@ impl ReplacesKit {
             ReplacesKit::CreatorRemoved => 1,
             ReplacesKit::Cloud => 2,
             ReplacesKit::Asked => 3,
+            ReplacesKit::Missing => 4,
         }
     }
 }
@@ -111,6 +117,14 @@ pub struct Plan {
     /// The vault's Kit as it stands (sealed to when it stays, removed when it is replaced).
     pub kit: Option<TrustEntry>,
     pub replaces_kit: ReplacesKit,
+    /// Other `trusted` Kits a change that makes a new Kit removes too (silenced for their
+    /// creator, or a second one), so the new Kit is the only one (review of Task 17, I2); empty
+    /// when the Kit stays.
+    pub retired_kits: Vec<DeviceId>,
+    /// The change carries no Kit part at all (no Kit here, none on the server as far as this
+    /// device knows, none asked for): "Tímto odebráním se záchranná sada neaktualizuje" (R-31,
+    /// review of Task 17, M1).
+    pub kit_not_updated: bool,
     /// Hex SHA-256 over the epoch, the removed devices, each recipient with its certificate's
     /// hash, the current Kit's certificate hash and `replaces_kit`.
     pub consent: String,
@@ -137,6 +151,10 @@ pub enum Outcome {
     Raced { by: Option<String> },
     /// Another device changed the key first and removed this one: sync is off here.
     RemovedHere,
+    /// The sync server took this device's change but it cannot complete here (its commit failed
+    /// for good, or its bundle is no longer listed): the change is wiped and sync stays paused
+    /// with `keyChangeUnverified` until it is turned off and joined again (review of Task 17, I2).
+    Stuck,
 }
 
 /// The person's request: the devices removed (the ones asked for and the ticked ones), whether a
@@ -196,8 +214,19 @@ pub fn plan(
     removing: &[DeviceId],
     also_remove: &[DeviceId],
     new_kit: bool,
+    now: i64,
 ) -> Result<Plan> {
     let me = check(conn)?;
+    // Who gets the new key is read from a store brought up to date first (review of Tasks 20–21,
+    // finding 2): a `left` or removal record merged while a refresh failed must not leave its
+    // device a recipient. A refresh that fails refuses the plan. A record naming this device is
+    // the next round's (`rekey::refresh_trust`); the plan goes on, and the sync server refuses a
+    // removed device's change anyway.
+    let refreshed = trust::refresh(conn, now)?;
+    if !refreshed.about_me.is_empty() {
+        log::warn!("[SYNC] A record names this device; the next round acts on it");
+    }
+    state::set_config_text(conn, state::TRUST_REFRESH_OWED_KEY, None)?;
     let asked = sorted(removing);
     let removing = sorted(&[removing, also_remove].concat());
     if removing.contains(&me) {
@@ -222,13 +251,21 @@ pub fn plan(
         .ok_or_else(not_set_up)?
         .current_epoch();
     let recipients = trust::recipients(conn, &removing)?;
-    let replaces_kit = replaces_kit(conn, recipients.kit.as_ref(), &removing, new_kit)?;
+    let others = trust::other_trusted_kits(conn, recipients.kit.as_ref().map(|k| k.device))?;
+    let missing = kit::server_has_kit(conn)? || !others.is_empty();
+    let replaces_kit = replaces_kit(conn, recipients.kit.as_ref(), &removing, new_kit, missing)?;
     let replaced = recipients
         .kit
         .as_ref()
         .filter(|_| replaces_kit != ReplacesKit::No)
         .map(|k| k.device);
+    let retired_kits = if replaces_kit == ReplacesKit::No {
+        Vec::new()
+    } else {
+        others
+    };
     let added_by_removing = descendants(&store, &asked, replaced, me);
+    let kit_not_updated = recipients.kit.is_none() && replaces_kit == ReplacesKit::No;
     let mut plan = Plan {
         epoch,
         removing,
@@ -237,6 +274,8 @@ pub fn plan(
         added_by_removing,
         kit: recipients.kit,
         replaces_kit,
+        retired_kits,
+        kit_not_updated,
         consent: String::new(),
     };
     plan.consent = consent(&plan);
@@ -245,19 +284,25 @@ pub fn plan(
 
 /// Whether the removal replaces the Kit `kit` (revision §2.7): asked for; the Kit was copied or
 /// saved to a file and its creator is removed; the Kit is in a cloud folder and any device is
-/// removed. A Kit printed, or with nothing done, stays. With no Kit, only when asked (the vault
-/// then gets one by rotation).
+/// removed. A Kit printed, or with nothing done, stays. With no Kit this device can seal to, a new
+/// one when asked, or when the server holds one or another Kit is `trusted` here (`missing`:
+/// `ReplacesKit::Missing`, else the server refuses the change, `kit_required`); otherwise none.
 fn replaces_kit(
     conn: &Connection,
     kit: Option<&TrustEntry>,
     removing: &[DeviceId],
     new_kit: bool,
+    missing: bool,
 ) -> Result<ReplacesKit> {
     if new_kit {
         return Ok(ReplacesKit::Asked);
     }
     let Some(kit) = kit else {
-        return Ok(ReplacesKit::No);
+        return Ok(if missing {
+            ReplacesKit::Missing
+        } else {
+            ReplacesKit::No
+        });
     };
     let storage = kit::storage(conn, kit.device)?;
     let creator_removed = removing.contains(&kit.issuer);
@@ -323,13 +368,16 @@ fn check(conn: &Connection) -> Result<DeviceId> {
     if pending(conn)? {
         return Err(validation(IN_PROGRESS));
     }
+    if stuck(conn)? {
+        return Err(validation(KEY_ROTATED));
+    }
     Ok(sync.device)
 }
 
 /// Hex SHA-256 over a canonical encoding of what the person confirms.
 pub fn consent(plan: &Plan) -> String {
     let mut hash = Sha256::new();
-    hash.update(b"moony removal consent v2\0");
+    hash.update(b"moony removal consent v3\0");
     hash.update(plan.epoch.to_be_bytes());
     hash.update((plan.removing.len() as u64).to_be_bytes());
     for device in &plan.removing {
@@ -348,6 +396,10 @@ pub fn consent(plan: &Plan) -> String {
         None => hash.update([0u8]),
     }
     hash.update([plan.replaces_kit.as_u8()]);
+    hash.update((plan.retired_kits.len() as u64).to_be_bytes());
+    for kit in &plan.retired_kits {
+        hash.update(kit.0);
+    }
     hash.finalize().iter().map(|b| format!("{b:02x}")).collect()
 }
 
@@ -359,6 +411,9 @@ struct PendingKit {
     token: Option<Zeroizing<String>>,
     cert: Option<Certificate>,
     replaces: Option<Record>,
+    /// The removals of every other `trusted` Kit (`Plan::retired_kits`), which travel in the
+    /// bundle's `removed` list.
+    retired: Vec<Record>,
 }
 
 /// A key change signed and sealed, not yet committed. Never printed (it holds the new key).
@@ -408,6 +463,8 @@ struct PendingKitIn {
     cert: Option<String>,
     #[serde(default)]
     replaces: Option<String>,
+    #[serde(default)]
+    retired: Vec<String>,
 }
 
 const PENDING_VERSION: u32 = 2;
@@ -429,7 +486,11 @@ impl PendingChange {
     /// "replaces":"<record b64>"?}?}`, built in one wiped buffer reserved up front.
     fn to_json(&self) -> Zeroizing<String> {
         let kit_len = self.kit.as_ref().map_or(0, |k| {
-            k.envelope.len().div_ceil(3) * 4 + 160 + k.cert.as_ref().map_or(0, |_| 400) + 300
+            k.envelope.len().div_ceil(3) * 4
+                + 160
+                + k.cert.as_ref().map_or(0, |_| 400)
+                + 300
+                + 160 * k.retired.len()
         });
         let mut json = Zeroizing::new(String::with_capacity(
             160 + self.bundle.len().div_ceil(3) * 4
@@ -468,6 +529,11 @@ impl PendingChange {
                 json.push_str(&record.to_b64());
                 json.push('"');
             }
+            if !kit.retired.is_empty() {
+                json.push_str(",\"retired\":[");
+                push_list(&mut json, &kit.retired, Record::to_b64);
+                json.push(']');
+            }
             json.push('}');
         }
         json.push('}');
@@ -503,6 +569,7 @@ impl PendingChange {
                 // A new Kit comes with its token and certificate; a Kit that stays with neither.
                 if token.is_some() != cert.is_some()
                     || cert.as_ref().is_some_and(|c| c.body.kind != CertKind::Kit)
+                    || (cert.is_none() && !kit.retired.is_empty())
                 {
                     return Err(corrupt());
                 }
@@ -516,6 +583,12 @@ impl PendingChange {
                         .replaces
                         .map(|r| Record::from_b64(&r))
                         .transpose()
+                        .map_err(|_| corrupt())?,
+                    retired: kit
+                        .retired
+                        .iter()
+                        .map(|r| Record::from_b64(r))
+                        .collect::<Result<_>>()
                         .map_err(|_| corrupt())?,
                 })
             })
@@ -622,7 +695,9 @@ pub async fn remove<R: Relay, D: ConnAccess>(
         ))
     })?;
     // A key change needs this device's epoch to be the vault's (§6.4 step 1).
-    if relay.vault_info(&creds.auth()).await?.rotation > seen {
+    let info = relay.vault_info(&creds.auth()).await?;
+    db.with_conn(|conn| kit::note_server_kit(conn, info.kit.is_some()))?;
+    if info.rotation > seen {
         match pickup::pick_up(relay, db, Some(data_dir), now).await? {
             Pickup::Nothing | Pickup::Adopted { .. } => {}
             Pickup::RemovedHere { .. } => return Ok(Outcome::RemovedHere),
@@ -632,7 +707,7 @@ pub async fn remove<R: Relay, D: ConnAccess>(
         }
     }
     let (change, new_kit, creds) = db.with_conn(|conn| {
-        let plan = plan(conn, request.removing, &[], request.new_kit)?;
+        let plan = plan(conn, request.removing, &[], request.new_kit, now)?;
         if plan.consent != request.consent {
             return Err(validation(PLAN_CHANGED));
         }
@@ -646,6 +721,9 @@ pub async fn remove<R: Relay, D: ConnAccess>(
             AppError::validation_with(ROTATION_RACED, serde_json::json!({ "name": name })),
         )),
         Sent::Done(Outcome::Raced { by: None }) => Err(SyncError::Local(validation(KEY_ROTATED))),
+        Sent::Done(Outcome::Stuck) => Err(SyncError::Local(AppError::Internal(
+            "sync: the sync server took the key change, but it could not complete here".into(),
+        ))),
         Sent::Done(Outcome::Changed { epoch, removed, .. }) => Ok(Outcome::Changed {
             epoch,
             removed,
@@ -735,9 +813,10 @@ fn prepare(
             }),
     );
     notices.truncate(bundle::MAX_NOTICE_ENTRIES);
-    // The Kit after the change: a new one (with the removal of the one it replaces), or the
-    // current one, or none.
+    // The Kit after the change: a new one (with the removal of the one it replaces and of every
+    // other `trusted` Kit), or the current one, or none.
     let mut new_kit = None;
+    let mut retired: Vec<Record> = Vec::new();
     let kit_part = match (plan.replaces_kit, &plan.kit) {
         (ReplacesKit::No, None) => None,
         (ReplacesKit::No, Some(current)) => Some(KitPart {
@@ -752,6 +831,11 @@ fn prepare(
                     Record::sign(RecordType::Removed, vault, old.device, me, now, from, &seed)
                 })
                 .transpose()?;
+            retired = plan
+                .retired_kits
+                .iter()
+                .map(|old| Record::sign(RecordType::Removed, vault, *old, me, now, from, &seed))
+                .collect::<Result<Vec<_>>>()?;
             new_kit = Some((
                 NewKit {
                     secret,
@@ -768,11 +852,17 @@ fn prepare(
         None => None,
         Some(part) => {
             confirm.push(part.cert.body.device);
+            let replaced: Vec<DeviceId> = part
+                .replaces
+                .iter()
+                .chain(&retired)
+                .map(|r| r.subject)
+                .collect();
             let confirmed = kit::confirmed_after(
                 &store,
                 &plan.recipients,
                 &plan.removing,
-                part.replaces.as_ref().map(|r| r.subject),
+                &replaced,
                 &part.cert,
             );
             let next = creds.keys.with_next(Zeroizing::new(*key))?;
@@ -782,6 +872,7 @@ fn prepare(
                 token: new_kit.as_ref().map(|(_, token)| token.clone()),
                 cert: new_kit.as_ref().map(|_| part.cert.clone()),
                 replaces: part.replaces.clone(),
+                retired: retired.clone(),
             })
         }
     };
@@ -796,6 +887,8 @@ fn prepare(
             head: heads.get(&epoch).copied().or((epoch == 0).then_some(0)),
         })
         .collect();
+    // The other Kits' removals travel with the device removals; receivers apply them alike.
+    let bundle_removed: Vec<Record> = removed.iter().chain(&retired).cloned().collect();
     let bytes = bundle::build(
         &BundleInput {
             vault_id: vault,
@@ -812,7 +905,7 @@ fn prepare(
             } else {
                 Reason::Remove
             },
-            removed: &removed,
+            removed: &bundle_removed,
             keys: &older,
             kit: kit_part.as_ref(),
         },
@@ -882,7 +975,9 @@ async fn send<R: Relay, D: ConnAccess>(
     };
     match answer {
         Ok(rotated) => {
-            let epoch = db.with_conn(|conn| commit(conn, change, rotated, now))?;
+            let Some(epoch) = commit_taken(db, change, rotated, now)? else {
+                return Ok(Sent::Done(Outcome::Stuck));
+            };
             log::info!("[SYNC] The sync key changed to epoch {epoch}");
             Ok(Sent::Done(Outcome::Changed {
                 epoch,
@@ -894,7 +989,9 @@ async fn send<R: Relay, D: ConnAccess>(
             // The listing is the server's word, trusted as the `200`'s rotation and head are.
             let seen = db.with_conn(state::rekey_seen)?;
             if let Some(rotated) = own_rotation(relay, &creds.auth(), seen, &change.bundle).await? {
-                let epoch = db.with_conn(|conn| commit(conn, change, rotated, now))?;
+                let Some(epoch) = commit_taken(db, change, rotated, now)? else {
+                    return Ok(Sent::Done(Outcome::Stuck));
+                };
                 log::info!("[SYNC] A key change of this device had landed: the key is at {epoch}");
                 return Ok(Sent::Done(Outcome::Changed {
                     epoch,
@@ -1004,7 +1101,8 @@ fn commit(conn: &Connection, change: &PendingChange, rotated: Rotated, now: i64)
         // server's word against (`rekey::head`).
         head::queue_signed_head(conn, me, change.from, change.to, rotated)?;
         let replaced = change.kit.as_ref().and_then(|k| k.replaces.as_ref());
-        for record in change.removed.iter().chain(replaced) {
+        let retired = change.kit.iter().flat_map(|k| &k.retired);
+        for record in change.removed.iter().chain(replaced).chain(retired) {
             write_removal(conn, record)?;
             trust::mark_removed(conn, record, Some(change.to))?;
         }
@@ -1023,6 +1121,77 @@ fn commit(conn: &Connection, change: &PendingChange, rotated: Rotated, now: i64)
         )?;
         Ok(change.to)
     })
+}
+
+/// Database failures in a row of the commit of a change the sync server took before it is given
+/// up (`give_up`).
+const MAX_COMMIT_FAILURES: i64 = 3;
+
+/// Commits a change the sync server took (`commit`). A locked profile keeps it pending; a database
+/// failure too, up to `MAX_COMMIT_FAILURES` in a row; any other failure is for good (a refusal of
+/// the trust store, an epoch that does not follow): the change is given up (`give_up`) and
+/// `Ok(None)` returned, so a round never retries it for ever (review of Task 17, I2).
+fn commit_taken<D: ConnAccess>(
+    db: &D,
+    change: &PendingChange,
+    rotated: Rotated,
+    now: i64,
+) -> SyncResult<Option<u32>> {
+    match db.with_conn(|conn| commit(conn, change, rotated, now)) {
+        Ok(epoch) => {
+            db.with_conn(|conn| {
+                state::set_config_text(conn, state::KEY_CHANGE_COMMIT_FAILURES_KEY, None)
+            })?;
+            Ok(Some(epoch))
+        }
+        Err(error @ AppError::Auth(_)) => Err(error.into()),
+        Err(error @ AppError::Database(_)) => {
+            let failures = db.with_conn(|conn| {
+                let failures = state::config_text(conn, state::KEY_CHANGE_COMMIT_FAILURES_KEY)?
+                    .and_then(|v| v.parse::<i64>().ok())
+                    .unwrap_or(0)
+                    + 1;
+                state::set_config_text(
+                    conn,
+                    state::KEY_CHANGE_COMMIT_FAILURES_KEY,
+                    Some(&failures.to_string()),
+                )?;
+                Ok(failures)
+            })?;
+            if failures < MAX_COMMIT_FAILURES {
+                log::warn!("[SYNC] A key change the sync server took did not commit; tried again");
+                return Err(error.into());
+            }
+            log::warn!("[SYNC] A key change the sync server took keeps failing to commit");
+            log::debug!("[SYNC] The key change's commit failed: {error}");
+            db.with_conn(|conn| give_up(conn, now))?;
+            Ok(None)
+        }
+        Err(error) => {
+            log::warn!("[SYNC] A key change the sync server took cannot be committed here");
+            log::debug!("[SYNC] The key change's commit failed: {error}");
+            db.with_conn(|conn| give_up(conn, now))?;
+            Ok(None)
+        }
+    }
+}
+
+/// A key change the sync server took that cannot complete here: the pending change (the new key,
+/// a new Kit's token) is wiped, and `state::KEY_CHANGE_STUCK_KEY` makes every round stop with
+/// `keyChangeUnverified` ("Toto zařízení je potřeba připojit znovu": turn sync off, join again).
+/// The other devices pick the change up as usual. One savepoint.
+fn give_up(conn: &Connection, now: i64) -> Result<()> {
+    in_savepoint(conn, "sync_key_change_given_up", || {
+        wipe_pending(conn)?;
+        state::set_config_text(conn, state::KEY_CHANGE_COMMIT_FAILURES_KEY, None)?;
+        state::set_config_text(conn, state::KEY_CHANGE_STUCK_KEY, Some(&now.to_string()))
+    })
+}
+
+/// Whether this device gave up a key change of its own (`give_up`): until sync is turned off,
+/// nothing syncs here.
+pub fn stuck(conn: &Connection) -> Result<bool> {
+    Ok(state::config_text(conn, state::KEY_CHANGE_STUCK_KEY)?.is_some())
 }
 
 /// A lost race (`403 token_read_only`, spec §10.1): this device picks the other change up and
@@ -1084,14 +1253,16 @@ pub async fn resolve_pending<R: Relay, D: ConnAccess>(
     let new_auth = change.new_auth(&creds);
     match relay.vault_info(&new_auth).await {
         Ok(_) => {
-            let rotated = own_rotation(relay, &new_auth, seen, &change.bundle)
-                .await?
-                .ok_or_else(|| {
-                    SyncError::from(RelayError::Protocol(
-                        "the new token reads the vault but its key change is not listed".into(),
-                    ))
-                })?;
-            let epoch = db.with_conn(|conn| commit(conn, &change, rotated, now))?;
+            // The new token reads the vault, so the server took the change; a bundle no longer
+            // listed (they go after 30 days) cannot be committed with its head: given up.
+            let Some(rotated) = own_rotation(relay, &new_auth, seen, &change.bundle).await? else {
+                log::warn!("[SYNC] A key change the sync server took is no longer listed");
+                db.with_conn(|conn| give_up(conn, now))?;
+                return Ok(Some(Outcome::Stuck));
+            };
+            let Some(epoch) = commit_taken(db, &change, rotated, now)? else {
+                return Ok(Some(Outcome::Stuck));
+            };
             log::info!("[SYNC] A pending key change had landed: the key is at epoch {epoch}");
             Ok(Some(Outcome::Changed {
                 epoch,
@@ -1200,7 +1371,8 @@ mod tests {
                 envelope: vec![9, 8, 7],
                 token: Some(Zeroizing::new(keys.token().to_string())),
                 cert: Some(cert),
-                replaces: Some(replaces),
+                replaces: Some(replaces.clone()),
+                retired: vec![replaces],
             }),
             ..change()
         }
@@ -1262,6 +1434,7 @@ mod tests {
         );
         assert_eq!(kit.cert, original.cert);
         assert_eq!(kit.replaces, original.replaces);
+        assert_eq!(kit.retired, original.retired);
         assert!(back.new_kit());
         assert!(!format!("{change:?}").contains(&token));
         // A Kit that stays: the envelope alone.
@@ -1271,6 +1444,7 @@ mod tests {
                 token: None,
                 cert: None,
                 replaces: None,
+                retired: Vec::new(),
             }),
             ..self::change()
         };

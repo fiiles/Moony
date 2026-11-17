@@ -363,6 +363,8 @@ pub(super) fn sync_on(db: &Database) -> Result<bool> {
 
 /// The status of the open profile, with the running engine's memory of its rounds.
 pub(crate) fn current_status(app: &AppHandle, db: &Database) -> Result<SyncStatus> {
+    // Every status poll also wipes a Kit draft whose window ran out (review of Tasks 18–19, M1).
+    expire_kit_draft(Instant::now());
     let runtime = app
         .state::<SyncEngineState>()
         .0
@@ -513,6 +515,7 @@ pub(super) fn with_kit_draft<T>(
     work: impl FnOnce(&mut setup::KitDraft) -> Result<T>,
 ) -> Result<T> {
     if !copy_allowed(kit_window().as_ref(), &kit_owner(app, db)?, Instant::now()) {
+        expire_kit_draft(Instant::now());
         return Err(AppError::Validation(PASSWORD_REQUIRED.into()));
     }
     let mut slot = kit_draft_slot();
@@ -520,6 +523,20 @@ pub(super) fn with_kit_draft<T>(
         .as_mut()
         .ok_or_else(|| AppError::Validation(PASSWORD_REQUIRED.into()))?;
     work(draft)
+}
+
+/// Wipes the Kit draft (its seed) and closes the window once `KIT_COPY_WINDOW` has run out, or
+/// when no window is open: the seed never outlives its ten minutes in memory (review of Tasks
+/// 18–19, M1). Called lazily by `with_kit_draft` and by every status poll.
+pub(super) fn expire_kit_draft(now: Instant) {
+    if window_ran_out(kit_window().as_ref(), now) {
+        forget_kit_window();
+    }
+}
+
+/// Whether the Kit draft must go: no window is open, or it ran out (`expire_kit_draft`).
+fn window_ran_out(window: Option<&KitWindow>, now: Instant) -> bool {
+    window.is_none_or(|window| now.saturating_duration_since(window.opened) > KIT_COPY_WINDOW)
 }
 
 /// Closes the copy window and wipes the Kit draft (lock, restore, account deletion, sync off,
@@ -878,7 +895,13 @@ pub async fn sync_finish_setup(
     // A person blocked between the steps of an own server never reads "subscription" copy.
     let finish = mapped_for_setup(stored_relay_url(&db)?, finish);
     match guarded_change(&AppEngine { app: &app, db: &db }, finish).await {
-        Ok(()) => forget_kit_window(),
+        Ok(setup::FinishSetup::Done) => forget_kit_window(),
+        Ok(setup::FinishSetup::KitNotRegistered) => {
+            // Sync is on without a Kit (the server holds an earlier try's): the status says so
+            // (no `recoveryKit`) and the person makes a new one (Tasks 24, 27).
+            log::warn!("[SYNC] Setup finished, but the Recovery Kit is not the vault's");
+            forget_kit_window();
+        }
         Err(error) => {
             // A retry finishes with the same Kit while the window is open.
             let mut slot = kit_draft_slot();
@@ -1351,6 +1374,24 @@ mod tests {
             Some(&shown(now)),
             &a,
             edge + Duration::from_secs(1)
+        ));
+    }
+
+    /// Review of Tasks 18–19, M1: the draft's seed goes once the window ran out, not only at the
+    /// flow's end or a lock.
+    #[test]
+    fn an_expired_window_wipes_the_kit_draft() {
+        // The pure rule (the slots are process globals other tests touch in parallel).
+        let now = Instant::now();
+        let window = KitWindow {
+            owner: owner("/profiles/a/moony.db", 3),
+            opened: now,
+        };
+        assert!(window_ran_out(None, now), "no window: nothing to keep");
+        assert!(!window_ran_out(Some(&window), now + KIT_COPY_WINDOW));
+        assert!(window_ran_out(
+            Some(&window),
+            now + KIT_COPY_WINDOW + Duration::from_secs(1)
         ));
     }
 

@@ -1017,13 +1017,18 @@ pub fn tofu_from_rows(
 
 /// A Kit joiner's anchor (revision §2.6 step 6), inside the join's savepoint after the restore:
 /// the restored row of the Kit `kit` must hold a kind-5 certificate that verifies, names that row
-/// and carries `sign_pub` (the key the person's Kit derives), and no removal record on it may
-/// verify (by its signer's row certificate). The Kit is pinned `trusted` and `confirmed`: it came
-/// from the paper. Anything else is refused and nothing is pinned.
+/// and carries `sign_pub` (the key the person's Kit derives), **the Kit-signed envelope's
+/// confirmed set (`confirmed`) must name that very certificate** (review of Tasks 18–19, I1:
+/// `sign_pub` is public, so a vault-key holder could write a row whose certificate carries it but
+/// is issued by a device of its own; only the envelope, sealed to the Kit by the device that made
+/// the last key change, binds the certificate), and no removal record on it may verify (by its
+/// signer's row certificate). The Kit is pinned `trusted` and `confirmed`: it came from the paper.
+/// Anything else is refused and nothing is pinned.
 pub fn pin_kit_anchor(
     conn: &Connection,
     kit: DeviceId,
     sign_pub: &[u8; 32],
+    confirmed: &[(DeviceId, [u8; 32])],
     now: i64,
 ) -> Result<Certificate> {
     let vault = vault_id(conn)?;
@@ -1035,6 +1040,14 @@ pub fn pin_kit_anchor(
     let cert = row_cert(row, &vault)
         .filter(|cert| cert.body.kind == CertKind::Kit && &cert.body.sign_pub == sign_pub)
         .ok_or_else(|| refused("the Kit's row holds no certificate of this Kit"))?;
+    if !confirmed
+        .iter()
+        .any(|(device, hash)| *device == kit && *hash == cert.hash())
+    {
+        return Err(refused(
+            "the Kit's envelope does not name the certificate of the Kit's row",
+        ));
+    }
     if let Some(record) = row
         .removal
         .as_deref()
@@ -1337,6 +1350,18 @@ pub fn import_bundle(
             let new = !store.contains(&kit.cert.body.device);
             if new && store.trusted_kit_other_than(kit.cert.body.device) {
                 return Err(refused("a key change names a second Kit"));
+            }
+            // A Kit pinned here for the first time must be its creator's (review of Task 17, M3):
+            // the creator is pinned here with the signing key the certificate names, and is the
+            // bundle's signer or `trusted`. Otherwise a signer could name a Kit "made by" another
+            // device and steer whose removal replaces it (`rotate::ReplacesKit::CreatorRemoved`).
+            let creator = kit.cert.body.issuer_device;
+            let made_by_creator = store.get(&creator).is_some_and(|issuer| {
+                issuer.sign_pub == kit.cert.body.issuer_sign_pub
+                    && (creator == signer_cert.body.device || issuer.state == TrustState::Trusted)
+            });
+            if new && !made_by_creator {
+                return Err(refused("a key change names a Kit its creator did not make"));
             }
             pin_endorsed(conn, kit.cert, now)?;
         }
@@ -1801,6 +1826,24 @@ fn sealing_kit(store: &Store) -> Option<TrustEntry> {
             None
         }
     }
+}
+
+/// The Kit a new key is sealed to here, if any (`sealing_kit`): `None` when this device has no
+/// usable Kit (none `trusted`, the only one silenced for its creator, or more than one).
+pub fn sealing_kit_entry(conn: &Connection) -> Result<Option<TrustEntry>> {
+    Ok(sealing_kit(&Store::load(conn)?))
+}
+
+/// Every `trusted` Kit entry here except `except` (review of Task 17, I2): the Kits a key change
+/// that makes a new Kit removes besides the one it replaces, so the new one is the only one.
+pub fn other_trusted_kits(conn: &Connection, except: Option<DeviceId>) -> Result<Vec<DeviceId>> {
+    Ok(entries(conn)?
+        .into_iter()
+        .filter(|e| {
+            e.kind == CertKind::Kit && e.state == TrustState::Trusted && Some(e.device) != except
+        })
+        .map(|e| e.device)
+        .collect())
 }
 
 /// Who would receive a new key if `removing` were removed now (revision §3.1): every pinned

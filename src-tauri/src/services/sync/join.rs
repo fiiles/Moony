@@ -66,6 +66,7 @@ const KIT_REPLACED: &str = "validation.syncRecoveryKitReplaced";
 const KIT_UNREADABLE: &str = "validation.syncRecoveryKitUnreadable";
 const CODE_INVALID: &str = "validation.syncRecoveryCodeInvalid";
 const PAIRING_FAILED: &str = "validation.syncPairingFailed";
+const SERVER_NEEDS_UPDATE: &str = "validation.syncServerNeedsUpdate";
 
 /// Drain rounds a repair runs at most; it also stops after two rounds in a row that neither shrank
 /// `pending_items + pending_batches` nor moved the pull cursor on.
@@ -556,7 +557,8 @@ fn kit_read_refused(error: RelayError) -> SyncError {
 /// 1. Sync on → `validation.syncAlreadyEnabled`, before any relay call.
 /// 2. The server must know the account in the code (`AccountNotFound` →
 ///    `validation.syncRecoveryAccountInvalid`).
-/// 3. `GET /kit` with the Kit's token (`kit_read_refused` reads its refusals).
+/// 3. A server whose `/v1/server` lacks the `kit` feature → `validation.syncServerNeedsUpdate`;
+///    then `GET /kit` with the Kit's token (`kit_read_refused` reads its refusals).
 /// 4. The envelope opens with the Kit's keys and its signature verifies with the certificate it
 ///    bundles (`rekey::envelope::open`); any failure is `validation.syncRecoveryKitUnreadable`.
 ///    Whether its signer may speak is the store's question, at the join (step 6).
@@ -582,6 +584,11 @@ pub async fn recovery_credentials<R: Relay, D: ConnAccess>(
             return Err(AppError::Validation(KIT_ACCOUNT_INVALID.into()).into());
         }
         Err(error) => return Err(error.into()),
+    }
+    // A server without Recovery Kits says so, not "the server doesn't know this kit" (review of
+    // Tasks 18–19, M4). Its info failing is left to the Kit read.
+    if relay.server_info().await.is_ok_and(|info| !info.kit) {
+        return Err(AppError::Validation(SERVER_NEEDS_UPDATE.into()).into());
     }
     let kit = code.seed.derive(&code.vault_id.0);
     let read = relay
@@ -649,7 +656,13 @@ async fn newest_bundle_head<R: Relay>(
     let auth = creds.auth();
     let mut after = 0;
     for _ in 0..pickup::MAX_BUNDLES_PER_WALK {
-        let page = relay.rekeys(&auth, after, MAX_REKEY_PAGE).await?;
+        // The envelope's newest key reads the vault (`vault_info` said so a moment ago): a refusal
+        // now is no "key changed" (review of Tasks 18–19, M4), the Kit does not hold up.
+        let page = match relay.rekeys(&auth, after, MAX_REKEY_PAGE).await {
+            Ok(page) => page,
+            Err(RelayError::Unauthorized | RelayError::TokenReadOnly) => return Err(unreadable()),
+            Err(error) => return Err(error.into()),
+        };
         for rekey in &page.rekeys {
             if rekey.rotation <= after {
                 return Err(
@@ -716,7 +729,10 @@ fn replace_profile(
                         state::AFTER_KIT_JOIN_KEY,
                         state::KIT_EPOCH_FLOOR_KEY,
                         trust::NEW_DEVICES_KEY,
-                    ] {
+                    ]
+                    .into_iter()
+                    .chain(state::REVIEW_KEYS)
+                    {
                         conn.execute("DELETE FROM app_config WHERE key = ?1", [key])?;
                     }
                     None
@@ -735,8 +751,14 @@ fn replace_profile(
                 }
                 NewIdentity::Join(JoinIdentity::RecoveryKit(join)) => {
                     // The Kit's row anchors the store (revision §2.6 step 6); its key signs.
-                    trust::pin_kit_anchor(conn, join.kit.id(), join.kit.sign_pub(), now)
-                        .map_err(|error| kit_refused("its row", error))?;
+                    trust::pin_kit_anchor(
+                        conn,
+                        join.kit.id(),
+                        join.kit.sign_pub(),
+                        &join.confirmed,
+                        now,
+                    )
+                    .map_err(|error| kit_refused("its row", error))?;
                     Some(identity::create_own(
                         conn,
                         Issuer::Kit { kit: &join.kit },

@@ -435,6 +435,7 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         // §6.4), forced like the one after a barrier crossing.
         let epoch_owed = state::snapshot_epoch_owed(conn)?;
         let keys_state = KeyState {
+            stuck: rotate::stuck(conn)?,
             pending: rotate::pending(conn)?,
             seen: state::rekey_seen(conn)?,
             unverified: !head::unverified_epochs(conn)?.is_empty(),
@@ -462,6 +463,12 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         report.problem = Some(SyncProblem::VaultGone);
         return Ok(());
     }
+    if keys_state.stuck {
+        // A key change of this device the server took could not complete here (review of
+        // Task 17, I2): nothing syncs until sync is turned off and joined again.
+        report.problem = Some(SyncProblem::KeyChangeUnverified);
+        return Ok(());
+    }
 
     let steps = round_steps(
         relay, db, &creds, keys_state, policy, mode, now, jitter, report,
@@ -486,6 +493,12 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
             error => return Err(error),
         };
         report.problem = Some(problem);
+    }
+    if let Some(info) = report.vault.as_ref() {
+        // Whether the server holds a Recovery Kit: a removal here makes a new one when this
+        // device has none to seal to (`rotate::ReplacesKit::Missing`).
+        let held = info.kit.is_some();
+        db.with_conn(|conn| crate::services::sync::rekey::kit::note_server_kit(conn, held))?;
     }
     if report.problem.is_none() {
         report.problem = report.pull.as_ref().and_then(status::problem_of_pull);
@@ -534,6 +547,8 @@ enum Pass {
 /// newest rotation dealt with (`rekey_seen`), and whether a head waits for its signature.
 #[derive(Clone, Copy)]
 struct KeyState {
+    /// A key change of this device was given up (`rotate::stuck`).
+    stuck: bool,
     pending: bool,
     seen: u32,
     unverified: bool,
@@ -585,16 +600,22 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         pending,
         mut seen,
         unverified,
+        ..
     } = keys_state;
     // A key change of this device still pending is resolved before anything else (phase 5
     // §6.4 step 6); until it is, nothing is pushed (the error ends the round). A change that was
     // not done leaves its notice there (`rekey::RemovalNotDone`).
     if pending {
-        if let Some(rotate::Outcome::RemovedHere) =
-            rotate::resolve_pending(relay, db, None, now).await?
-        {
-            report.removed_here = true;
-            return Ok(());
+        match rotate::resolve_pending(relay, db, None, now).await? {
+            Some(rotate::Outcome::RemovedHere) => {
+                report.removed_here = true;
+                return Ok(());
+            }
+            Some(rotate::Outcome::Stuck) => {
+                report.problem = Some(SyncProblem::KeyChangeUnverified);
+                return Ok(());
+            }
+            _ => {}
         }
         (creds, seen) = db.with_conn(|conn| {
             let creds = keys::credentials(conn)?.ok_or_else(|| {

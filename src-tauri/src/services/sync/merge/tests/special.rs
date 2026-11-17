@@ -786,3 +786,56 @@ fn between_two_valid_values_the_write_once_rule_stays() {
     applied(&c, &older);
     assert_eq!(column_of(&c, A, "cert").as_deref(), Some(first.as_str()));
 }
+
+/// Review of Task 17, I1: where the Kit is kept only ever grows when it arrives through sync
+/// (`paper` < `copied` < `file` < `cloud`; NULL or an unknown value never lowers it), whatever
+/// the clocks, so a device about to be removed cannot switch the Kit's replacement off by
+/// writing a weaker value with a newer clock.
+#[test]
+fn the_kit_storage_only_grows_through_sync_in_either_order() {
+    let kit = DeviceId([0x6b; 16]);
+    let later = |n: u64, by: DeviceId| clock(pack(now_ms(), 0) + n, by);
+    let honest = changeset(
+        A,
+        1,
+        vec![device_row_with(kit, "kit_storage", "copied", clock(1, A))],
+    );
+    for weaker in [Some("paper"), None, Some("bogus")] {
+        let mut change = device_change(kit, "KA", later(5, B));
+        set(
+            &mut change,
+            "kit_storage",
+            weaker.map_or(SqlValue::Null, text),
+            later(5, B),
+        );
+        let attack = changeset(B, 1, vec![change]);
+        // Honest first, then the weaker value with a newer clock.
+        let c = device(C);
+        applied(&c, &honest);
+        applied(&c, &attack);
+        assert_eq!(
+            column_of(&c, kit, "kit_storage").as_deref(),
+            Some("copied"),
+            "{weaker:?} after"
+        );
+        // The weaker value first, then the honest one with an older clock.
+        let d = device(D);
+        applied(&d, &attack);
+        applied(&d, &honest);
+        assert_eq!(
+            column_of(&d, kit, "kit_storage").as_deref(),
+            Some("copied"),
+            "{weaker:?} before"
+        );
+    }
+    // A stronger value wins whatever its clock.
+    let stronger = changeset(
+        B,
+        2,
+        vec![device_row_with(kit, "kit_storage", "cloud", clock(1, B))],
+    );
+    let e = device(DeviceId([5; 16]));
+    applied(&e, &honest);
+    applied(&e, &stronger);
+    assert_eq!(column_of(&e, kit, "kit_storage").as_deref(), Some("cloud"));
+}

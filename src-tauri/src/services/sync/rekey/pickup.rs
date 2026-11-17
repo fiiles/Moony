@@ -361,6 +361,26 @@ fn check(
     })))
 }
 
+/// Whether `device` is a Recovery Kit here: a Kit entry, or a row whose certificate is a Kit's
+/// (`trust::is_kit_row`).
+fn is_kit(conn: &Connection, device: DeviceId) -> Result<bool> {
+    if let Some(entry) = trust::entry(conn, device)? {
+        return Ok(entry.kind == crate::services::sync::identity::CertKind::Kit);
+    }
+    let cert: Option<Option<String>> = conn
+        .query_row(
+            "SELECT cert FROM sync_devices WHERE id = ?1",
+            [device.to_hex()],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(trust::is_kit_row(
+        device,
+        cert.flatten().as_deref(),
+        &trust::vault_id(conn)?,
+    ))
+}
+
 /// The adoption of a bundle `check` passed and whose token the server knows, in one savepoint.
 fn adopt(conn: &Connection, prepared: Prepared, rekey: &Rekey, now: i64) -> Result<Step> {
     let Prepared {
@@ -375,6 +395,11 @@ fn adopt(conn: &Connection, prepared: Prepared, rekey: &Rekey, now: i64) -> Resu
     let me = sync.device;
     let recipients: Vec<_> = body.recipients.iter().map(|(_, c)| c.clone()).collect();
     let removed: Vec<Record> = body.removed.iter().map(|(_, r)| r.clone()).collect();
+    if body.kit.is_none() && trust::sealing_kit_entry(conn)?.is_some() {
+        // Only a speaking signer can sign this (review of Task 17, M2): a vault with a Kit here and
+        // a key change that names none. Taken as it is; the Kit here stays the one sealed to.
+        log::warn!("[SYNC] A key change names no Recovery Kit although this device has one");
+    }
     in_savepoint(conn, "sync_pickup", || {
         let about_me = match trust::import_bundle(
             conn,
@@ -427,18 +452,24 @@ fn adopt(conn: &Connection, prepared: Prepared, rekey: &Rekey, now: i64) -> Resu
         }
         trust::cut_off_all_pending(conn, header.to_epoch)?;
         state::note_rekey_seen(conn, rekey.rotation)?;
-        let removed_names = body
-            .removed
-            .iter()
-            .map(|(device, _)| device_name(conn, *device))
-            .collect::<Result<Vec<_>>>()?;
+        // A removed Kit (one a new Kit retires besides the one it replaces, review of Task 17,
+        // I2) is no device to name: it says that the Kit was replaced.
+        let mut removed_names = Vec::new();
+        let mut kit_replaced = body.kit.as_ref().is_some_and(|k| k.replaces.is_some());
+        for (device, _) in &body.removed {
+            if is_kit(conn, *device)? {
+                kit_replaced = true;
+            } else {
+                removed_names.push(device_name(conn, *device)?);
+            }
+        }
         write_key_change_notice(
             conn,
             &KeyChangeNotice {
                 by: device_name(conn, by)?,
                 at: body.at,
                 removed: removed_names,
-                kit_replaced: body.kit.as_ref().is_some_and(|k| k.replaces.is_some()),
+                kit_replaced,
             },
         )?;
         Ok(Step::Adopted {

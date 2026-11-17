@@ -12,6 +12,7 @@ use crate::services::sync::changeset::{RowChange, SqlValue};
 use crate::services::sync::hlc::Clock;
 use crate::services::sync::identity;
 use crate::services::sync::registry::{column_class, group_of, ColumnClass};
+use crate::services::sync::rekey::kit::KitStorage;
 
 /// The value a detection inserts and that a later apply or dismiss always beats.
 const WEAK_STATUS: &str = "pending";
@@ -50,6 +51,17 @@ pub(super) fn merge(
         }
         let ours = local_clock(column);
         let local_value = local.get(column).unwrap_or(&SqlValue::Null);
+        // Where the Kit is kept only ever grows (review of Task 17, I1): the stronger value wins
+        // whatever the clocks, the clock only between values of equal strength, so a device about
+        // to be removed cannot switch the Kit's replacement off with a newer, weaker value.
+        if is_kit_storage(name, column) {
+            if (storage_rank(value), *clock) > (storage_rank(local_value), ours) {
+                merged
+                    .writes
+                    .insert(column.clone(), (value.clone(), *clock));
+            }
+            continue;
+        }
         let theirs_win = match column_class(name, column) {
             // Weak loses to non-weak whatever the clocks; two weak values are equal.
             ColumnClass::Monotonic => {
@@ -141,6 +153,20 @@ pub(super) fn merge(
         }
     }
     merged
+}
+
+/// `sync_devices.kit_storage` (revision §2.7): merged by strength, not by clock.
+fn is_kit_storage(table: &str, column: &str) -> bool {
+    table == "sync_devices" && column == "kit_storage"
+}
+
+/// The strength of a `kit_storage` value: NULL and anything unknown 0, then `paper` < `copied` <
+/// `file` < `cloud` (`rekey::kit::KitStorage`'s order).
+fn storage_rank(value: &SqlValue) -> u8 {
+    match value {
+        SqlValue::Text(text) => KitStorage::parse(text).map_or(0, |s| s as u8 + 1),
+        _ => 0,
+    }
 }
 
 /// The write-once columns whose values are checked on their own (`identity::write_once_value_valid`).

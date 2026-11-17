@@ -374,6 +374,19 @@ pub fn check_kit(conn: &Connection, input: &str) -> Result<KitCheck> {
     })
 }
 
+/// How `finish_setup` ended (review of Tasks 18–19, I2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FinishSetup {
+    /// Sync is on and the Kit the person saved is registered: on the server and pinned here.
+    Done,
+    /// Sync is on, but the server holds another Kit of this vault (`409 kit_exists`: an earlier
+    /// try's draft, which expired before its answer came back), so the Kit the person saved is not
+    /// the vault's and none is registered here. The person makes a new one at once ("Vytvořit
+    /// novou sadu", a key change whose Kit token replaces the server's); until then the status
+    /// says there is no Kit (`rekey::kit::current` is `None`).
+    KitNotRegistered,
+}
+
 /// What `register_kit` puts on the sync server: the Kit's token, its certificate and the envelope
 /// sealed to it. Never printed (the token reads the envelope).
 struct KitUpload {
@@ -404,7 +417,7 @@ fn seal_setup_kit(conn: &Connection, draft: &KitDraft, now: i64) -> Result<KitUp
         &trust::entries(conn)?,
         std::slice::from_ref(&own),
         &[],
-        None,
+        &[],
         &cert,
     );
     let envelope = rekey_kit::seal(conn, &creds.keys, &cert, &seed, &own.cert, &confirmed, now)?;
@@ -422,14 +435,16 @@ fn seal_setup_kit(conn: &Connection, draft: &KitDraft, now: i64) -> Result<KitUp
 /// The Kit is registered here only once the server holds it, so this device never seals to a Kit
 /// the server does not know; a Kit pinned here already (an earlier try) is not put again. A server that holds another Kit of this vault (`409 kit_exists`: an
 /// earlier try registered a draft that has since expired) is left as it is: nothing is
-/// registered, and the person makes a new Kit later (As built R-37).
+/// registered, this device notes that the server holds a Kit (`kit::note_server_kit`, so its next
+/// removal makes a new one), and `FinishSetup::KitNotRegistered` comes back (As built R-37,
+/// R-62).
 async fn register_kit<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     auth: &keys::VaultAuth,
     draft: &KitDraft,
     now: i64,
-) -> SyncResult<()> {
+) -> SyncResult<FinishSetup> {
     // Registered by an earlier try (the server held it before it was pinned here, and a copy
     // that re-joined since keeps it): only where it is kept may have grown.
     let id = draft.keys().id();
@@ -443,7 +458,7 @@ async fn register_kit<R: Relay, D: ConnAccess>(
         Ok(pinned)
     })?;
     if registered {
-        return Ok(());
+        return Ok(FinishSetup::Done);
     }
     let upload = db.with_conn(|conn| seal_setup_kit(conn, draft, now))?;
     match relay.put_kit(auth, &upload.token, &upload.envelope).await {
@@ -454,7 +469,8 @@ async fn register_kit<R: Relay, D: ConnAccess>(
         }
         Err(RelayError::KitExists) => {
             log::warn!("[SYNC] The sync server holds another Recovery Kit of this vault; kept");
-            return Ok(());
+            db.with_conn(|conn| rekey_kit::note_server_kit(conn, true))?;
+            return Ok(FinishSetup::KitNotRegistered);
         }
         Err(error) => return Err(error.into()),
     }
@@ -467,10 +483,11 @@ async fn register_kit<R: Relay, D: ConnAccess>(
                 note_row_storage(conn, upload.cert.body.device, storage)?;
             }
             trust::pin_created_kit(conn, &upload.cert, now)?;
-            trust::mark_confirmed(conn, &[me])
+            trust::mark_confirmed(conn, &[me])?;
+            rekey_kit::note_server_kit(conn, true)
         })
     })?;
-    Ok(())
+    Ok(FinishSetup::Done)
 }
 
 /// Writes `storage` into the Kit's row when it is stronger than what the row holds.
@@ -506,7 +523,8 @@ fn note_row_storage(conn: &Connection, kit: DeviceId, storage: KitStorage) -> Re
 ///    `device_name` with that certificate. The device ID does not change, so a written binding stays valid. Then the
 ///    binding is written when due; a failed seal is logged, and the engine's start tries again
 ///    (`binding::binding_due`). Then the Kit goes to the server and is registered here
-///    (`register_kit`; idempotent).
+///    (`register_kit`; idempotent); a server that holds another Kit of the vault makes the result
+///    `FinishSetup::KitNotRegistered` (setup still finishes).
 /// 4. After the lock, a `FirstSnapshot` round (ruling P4): pulls (nothing yet), pushes the rule
 ///    packs and the device row, pulls them back as own envelopes and uploads the first snapshot at
 ///    `S` = that cursor. A round that pushed nothing fails setup, whether it failed (offline, a
@@ -523,11 +541,12 @@ pub async fn finish_setup<R: Relay, D: ConnAccess>(
     data_dir: &Path,
     native: &dyn BindingNative,
     now: i64,
-) -> SyncResult<()> {
+) -> SyncResult<FinishSetup> {
     if kit.storage().is_none() {
         return Err(refused(KIT_NOT_CONFIRMED));
     }
     devices::validate_device_name(device_name)?;
+    let registered;
     {
         let _no_round = engine::exclusive(db).await;
         let (creds, on) = on_db(db, |conn| {
@@ -570,9 +589,10 @@ pub async fn finish_setup<R: Relay, D: ConnAccess>(
             log::info!("[SYNC] Sync is on for this device");
         }
         write_binding_if_due(db, data_dir, native);
-        register_kit(relay, db, &creds.auth(), kit, now).await?;
+        registered = register_kit(relay, db, &creds.auth(), kit, now).await?;
     }
-    first_round(relay, db, now).await
+    first_round(relay, db, now).await?;
+    Ok(registered)
 }
 
 /// Step 3 of `finish_setup`.

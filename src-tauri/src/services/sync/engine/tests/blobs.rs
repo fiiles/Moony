@@ -1367,11 +1367,10 @@ mod key_change {
             rotation,
             kit: None,
         };
-        let report = |rotation| {
-            let mut report = RoundReport::default();
-            report.pull = Some(Default::default());
-            report.vault = Some(info(rotation));
-            report
+        let report = |rotation| RoundReport {
+            pull: Some(Default::default()),
+            vault: Some(info(rotation)),
+            ..Default::default()
         };
         let listings = || {
             relay

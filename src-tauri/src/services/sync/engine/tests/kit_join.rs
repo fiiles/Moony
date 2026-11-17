@@ -401,7 +401,12 @@ fn envelope_signed_by(
         .expect("entry")
         .expect("pinned")
         .cert;
-    kit::seal(&a, &creds.keys, &kit_cert, signer, signer_cert, &[], NOW).expect("envelope")
+    // The Kit itself is named, so the anchor holds and the signer check is what is tested.
+    let named = [crate::services::sync::rekey::envelope::Confirmed {
+        device: kit_cert.body.device,
+        cert_hash: kit_cert.hash(),
+    }];
+    kit::seal(&a, &creds.keys, &kit_cert, signer, signer_cert, &named, NOW).expect("envelope")
 }
 
 /// Revision §2.6 steps 4 and 6: a tampered envelope, a Kit with no row or whose row says it was
@@ -682,4 +687,186 @@ async fn odebrat_je_makes_a_key_change_that_leaves_the_listed_device_out() {
         "{report:?}"
     );
     assert_eq!(key_epoch(&three.c.lock()), 0);
+}
+
+/// Review of Tasks 18–19, I1 (the genesis gap): a vault-key holder who also has the Kit's seed
+/// writes the Kit's row with a certificate of the Kit's key issued by a device of its own, plus
+/// that device's genesis, and uploads a snapshot of it. The envelope (sealed by the honest remover)
+/// names the genuine certificate, so the joiner refuses the forged anchor and trusts nothing of it.
+#[tokio::test]
+async fn a_forged_kit_row_with_a_forged_genesis_is_refused() {
+    const D: DeviceId = DeviceId([0xd0; 16]);
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    {
+        let b = three.vault.b.lock();
+        let vault = three.vault.creds.vault_id.0;
+        let d_seed = identity::new_sign_seed().expect("seed");
+        let genesis = cert::issue_self(
+            CertKind::Genesis,
+            &cert::CertFields {
+                vault_id: vault,
+                device: D,
+                box_pub: [0xd0; 32],
+                issued_at: NOW,
+            },
+            &d_seed,
+        )
+        .expect("genesis");
+        let forged = cert::issue_kit(&d_seed, D, &kit_keys(&three, &secret), NOW).expect("Kit");
+        b.execute(
+            "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at, cert) \
+             VALUES (?1, 'k', 'Rogue', 'macos', '1', ?2, ?3)",
+            rusqlite::params![D.to_hex(), NOW, genesis.to_b64()],
+        )
+        .expect("rogue row");
+        b.execute(
+            "UPDATE sync_devices SET cert = ?1 WHERE id = ?2",
+            rusqlite::params![forged.to_b64(), forged.body.device.to_hex()],
+        )
+        .expect("forged Kit row");
+    }
+    snapshot_by(&three, &three.vault.b).await;
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    let error = kit_join(&three, &device, dir.path(), &secret)
+        .await
+        .expect_err("refused");
+
+    assert_eq!(
+        key_of(&error).as_deref(),
+        Some("validation.syncRecoveryKitUnreadable"),
+        "{error:?}"
+    );
+    untouched(&device);
+}
+
+/// Review of Tasks 18–19, I3: an envelope signed by a device that has `left` in the restored store
+/// is unreadable, as one by a removed signer is.
+#[tokio::test]
+async fn an_envelope_signed_by_a_device_that_left_is_unreadable() {
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    let (b_seed, b_cert) = {
+        let b = three.vault.b.lock();
+        (
+            identity::own_seed(&b).expect("seed").expect("seed"),
+            trust::entry(&b, B).expect("entry").expect("pinned").cert,
+        )
+    };
+    let envelope = envelope_signed_by(&three, &secret, &b_seed, &b_cert);
+    replace_envelope(&three, &secret, &envelope).await;
+    assert!(
+        crate::services::sync::setup::write_left_record(&three.vault.b.lock(), NOW).expect("left")
+    );
+    round_of(&three.vault, &three.vault.b).await;
+    round_of(&three.vault, &three.vault.a).await;
+    snapshot_by(&three, &three.vault.a).await;
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    let error = kit_join(&three, &device, dir.path(), &secret)
+        .await
+        .expect_err("refused");
+
+    assert_eq!(
+        key_of(&error).as_deref(),
+        Some("validation.syncRecoveryKitUnreadable"),
+        "{error:?}"
+    );
+    untouched(&device);
+}
+
+/// Review of Tasks 18–19, I3: a server that replays an older envelope (from before a key change)
+/// beside the current snapshot gives the joiner no key that opens it: refused, nothing replaced.
+#[tokio::test]
+async fn a_stale_envelope_with_a_current_snapshot_is_refused() {
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    let stale = three
+        .vault
+        .relay
+        .get_kit(
+            &three.vault.creds.vault_id.to_b64(),
+            kit_keys(&three, &secret).token(),
+        )
+        .await
+        .expect("read")
+        .envelope;
+    remove(&three, A, &[C]).await.expect("removed");
+    round_of(&three.vault, &three.vault.a).await;
+    snapshot_by(&three, &three.vault.a).await;
+    replace_envelope(&three, &secret, &stale).await;
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    assert!(kit_join(&three, &device, dir.path(), &secret)
+        .await
+        .is_err());
+
+    untouched(&device);
+}
+
+/// Review of Tasks 18–19, I3, and owner residual R1: the current envelope beside a stale snapshot
+/// (from before a removal whose record never reached it): the removed device C looks active in
+/// what was restored, and nothing in the join can tell (the envelope's confirmed set cannot
+/// distinguish "removed" from "paired after the envelope"). What protects the person is the
+/// hold: C is listed in "Data jsou zpět", nothing is sent while it stands, and "Odebrat je"
+/// leaves C out before the first change goes anywhere.
+#[tokio::test]
+async fn a_stale_snapshot_lists_the_removed_device_under_the_hold() {
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    snapshot_by(&three, &three.vault.a).await;
+    // A removes C, and its rows (the removal record, its next snapshot) never reach the server.
+    three.vault.relay.set_swallow_pushes(true);
+    remove(&three, A, &[C]).await.expect("removed");
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    kit_join(&three, &device, dir.path(), &secret)
+        .await
+        .expect("join");
+
+    let conn = device.lock();
+    let hold = join::after_kit_join(&conn).expect("hold").expect("held");
+    assert!(hold.devices.contains(&C.to_hex()), "{hold:?}");
+    let confirmed = trust::entry(&conn, C)
+        .expect("entry")
+        .is_some_and(|e| e.confirmed);
+    assert!(!confirmed, "the envelope never confirms C");
+    assert!(crate::services::sync::engine::runtime::uploads_held(&conn).expect("held"));
+}
+
+/// Review of Tasks 18–19, I3: while the hold stands no snapshot, no document and no daily pass
+/// goes out, even in a round that would force a snapshot; once lifted, uploads may run.
+#[tokio::test]
+async fn the_hold_stops_snapshots_uploads_and_the_daily_pass() {
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    snapshot_by(&three, &three.vault.a).await;
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+    kit_join(&three, &device, dir.path(), &secret)
+        .await
+        .expect("join");
+    assert!(crate::services::sync::engine::runtime::uploads_held(&device.lock()).expect("held"));
+    let calls = three.vault.relay.calls().len();
+
+    let report = round_mode(&three, &device, RoundMode::FirstSnapshot).await;
+
+    assert!(!report.snapshot_uploaded, "{report:?}");
+    let since = three.vault.relay.calls()[calls..].to_vec();
+    for route in [
+        Route::Push,
+        Route::PutSnapshot,
+        Route::PutBlob,
+        Route::ListBlobs,
+        Route::DeleteBlob,
+    ] {
+        assert!(!since.contains(&route), "{route:?}: {since:?}");
+    }
+    join::lift_kit_join_hold(&device.lock()).expect("Mám je");
+    assert!(!crate::services::sync::engine::runtime::uploads_held(&device.lock()).expect("held"));
 }

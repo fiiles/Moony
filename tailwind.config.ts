@@ -139,14 +139,21 @@ export default {
         // Every field: never under 16 px, or iOS zooms the page into it on focus.
         "m-field": ["var(--m-fs-field)", { lineHeight: "1.3", fontWeight: "var(--m-fw-body)" }],
       },
+      // Numeric weights (`font-600`, …): the design system names weights by number (README §3,
+      // "11/600"), and Tailwind's defaults are named only (`font-semibold`), so every number the
+      // markup uses needs its own entry here or the class silently does nothing
+      // (src/font-weights.test.ts fails on an unlisted one).
       fontWeight: {
         450: "450",
         480: "480",
+        500: "500",
         550: "550",
         570: "570",
         580: "580",
+        600: "600",
         620: "620",
         650: "650",
+        700: "700",
         750: "750",
       },
       spacing: {

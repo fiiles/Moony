@@ -13,9 +13,7 @@ import { recoveryCodeGroups, toBase64, recoveryKitHtml } from '@/utils/recovery-
 import { Button } from '@/components/ui/button';
 import { KitPrintSheet } from '@/components/settings/sync/KitPrintSheet';
 import { useRecoveryKitCopy } from '@/components/settings/sync/use-recovery-kit-copy';
-
-/** A label that wraps instead of being cut (long German and Polish labels). */
-const WRAP_BUTTON = 'h-auto min-h-control whitespace-normal py-1.5 text-center';
+import { WRAP_BUTTON } from '@/components/settings/sync/wrap-button';
 
 interface RecoveryKitPanelProps {
   kit: RecoveryKit;

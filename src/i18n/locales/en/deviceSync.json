@@ -4,7 +4,7 @@
   "indicator": {
     "synced": "Synced",
     "syncing": "Syncing…",
-    "waiting": "A change is held",
+    "waiting": "Waiting for a change from another device",
     "paused": "Sync paused",
     "error": "Sync error",
     "unreachable": "Server out of reach",
@@ -42,7 +42,7 @@
   "status": {
     "unreachableNote": "Sync resumes once the server is in reach.",
     "problem": {
-      "captureBroken": "This device's change tracking is damaged, so syncing stopped. It can be repaired.",
+      "captureBroken": "Sync broke on this device. Your data are fine. It can be repaired.",
       "vaultGone": "The synced data was deleted from the sync server.",
       "lapsed": "The subscription has ended, so syncing is paused.",
       "quotaExceeded": "The synced data is over the storage limit.",
@@ -51,17 +51,20 @@
       "gap": "A change from another device hasn't arrived yet. This device keeps syncing and sending its own changes.",
       "clockAhead": "A change from another device is dated more than ten years ahead, so it is held. It stays held even after that device's clock is corrected; you can skip it after 14 days.",
       "undecryptable": "Changes from another device could not be decrypted.",
-      "invalidChain": "Changes from another device failed verification and are held.",
+      "invalidChain": "Changes from another device couldn't be verified, so Moony didn't use them. The data on this device are fine.",
       "missingParent": "Changes from another device are missing earlier steps and are held.",
       "quarantined": "Changes from some devices are held for safety.",
       "offline": "No connection to the sync server. Syncing resumes when it is back.",
       "relayError": "The sync server is not answering as expected. Moony keeps trying.",
       "rateLimited": "The sync server asked Moony to slow down. Moony will try again soon.",
       "unauthorized": "The sync server did not accept this device. Setting up sync again may be needed.",
-      "keyRotated": "The sync key was changed on another device. Set up sync on this device again.",
+      "keyRotated": "Syncing…",
       "secureStorage": "Moony could not reach this device's secure storage, so syncing is paused. It will try again; unlocking the device or restarting Moony usually helps.",
-      "serverWentBack": "The sync server went back to an older state, so changes may be missing on your other devices. Your data on this device is intact. Moony cannot repair this on its own yet: to bring your devices back together, turn sync off, set it up again on the device with the most complete data, and join the others. Don't re-sync: it would replace this device's data with the sync server's older copy. Setting sync up again creates a new sync account.",
-      "internal": "Syncing stopped because of an internal error."
+      "serverWentBack": "The sync server went back to an older state, so changes may be missing on your other devices. Your data on this device is intact. Moony cannot repair this on its own yet: to bring your devices back together, turn sync off, set it up again on the device with the most complete data, and join the others.",
+      "internal": "Syncing stopped because of an internal error.",
+      "keyNotGiven": "This device needs to connect again.",
+      "keyChangeUnverified": "This device needs to connect again.",
+      "keyChangeWaiting": "Waiting for the device that made the change to connect."
     },
     "lastSynced": "Last synced {{date}}",
     "neverSynced": "Not synced yet",
@@ -90,7 +93,7 @@
     "cancelSetup": "Cancel setup",
     "cancelConfirm": {
       "title": "Cancel the setup?",
-      "description": "This device forgets the sync account created for this setup, and a payment already made for it is not carried over. Setting up sync again starts from the start, with a new sync account.",
+      "description": "This device will forget the sync created in this setup, and a payment already made won't carry over. Setting up sync will then start from the beginning.",
       "keep": "Keep setup"
     },
     "startTitle": "Start syncing",
@@ -255,24 +258,24 @@
     "appliedAhead": "The change was applied in the meantime; nothing was skipped."
   },
   "turnOff": {
-    "button": "Turn off sync on this device",
+    "button": "Turn off sync here",
     "hint": "Local data stays. Other devices keep syncing.",
     "title": "Turn off sync on this device?",
-    "description": "Local data stays. Other devices keep syncing. You can join again later by pairing with another device or with your Recovery Kit; this device's data is then replaced by the synced data after a backup.",
-    "pendingChanges_one": "{{count}} change on this device has not been sent yet. It will not be sent.",
-    "pendingChanges_other": "{{count}} changes on this device have not been sent yet. They will not be sent.",
+    "description": "Your data stays here. Other devices keep syncing and will see that this one left. If you join again later, this device's data is replaced by the synced data.",
     "confirm": "Turn off sync",
     "success": "Sync turned off",
-    "noCutOff": "Turning sync off here doesn't cut off any other device or Kit."
+    "noCutOff": "Other devices will see that this one left.",
+    "pendingChanges_one": "{{count}} change from here hasn't been sent yet. It won't be sent after you turn sync off.",
+    "pendingChanges_other": "{{count}} changes from here haven't been sent yet. They won't be sent after you turn sync off."
   },
   "delete": {
-    "button": "Delete synced data",
+    "button": "Delete synced data on the server",
     "hint": "Removes the synced data from the sync server for every device.",
     "title": "Delete synced data?",
     "description": "This deletes the synced data on the sync server for every device. The local data on every device stays.",
     "confirm": "Delete synced data",
     "success": "Synced data deleted",
-    "afterwards": "Afterwards sync is set up from the start, with a new sync account and a new Recovery Kit.",
+    "afterwards": "Afterwards sync is set up from the start, with a new recovery kit.",
     "afterwardsOwnServer": "Afterwards you can set sync up again with the same connection code and a new Recovery Kit."
   },
   "danger": {
@@ -572,7 +575,8 @@
       "removedHere": "Another device removed this device in the meantime. Sync is off here."
     },
     "loadError": "The removal couldn't be prepared. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "bodyMany": "{{name}} will stop getting new data and won't be able to change anything. What's already on them stays there, protected by their Moony password."
   },
   "newKit": {
     "title": "Your new recovery kit",
@@ -626,5 +630,61 @@
       "alreadyRemoved": "{{by}} removed the devices you ticked in the meantime.",
       "alreadyRemovedUnknown": "The devices you ticked were removed in the meantime."
     }
+  },
+  "notice": {
+    "removal": {
+      "removed": "{{by}} removed {{names}} ({{date}}).",
+      "newKit": "{{by}} made a new recovery kit ({{date}}); the old one no longer works.",
+      "kitToo": "It also made a new recovery kit; the old one no longer works."
+    },
+    "notDone": {
+      "changed": "Removing {{devices}} didn't finish: {{by}} changed the device list in the meantime. Check it and try again.",
+      "alreadyRemoved": "{{by}} removed {{devices}} in the meantime.",
+      "refused": "The sync server refused the removal. Try again.",
+      "kit": "The new recovery kit didn't start working; make it again."
+    },
+    "overrun": "The sync server sent this device changes it shouldn't have after a device was removed on {{date}}, and Moony applied them. If you removed that device because it was stolen, check the changes of the last few days.",
+    "overrunNoDate": "The sync server sent this device changes it shouldn't have after a device was removed, and Moony applied them. If you removed that device because it was stolen, check the changes of the last few days.",
+    "newDevice": {
+      "added": "{{name}} was added from {{by}} on {{date}}.",
+      "lateVouch": "{{name}} was added. {{by}} added it and no longer syncs. If you don't recognise {{name}}, remove it.",
+      "kitTitle": "A device joined with your recovery kit",
+      "kit": "{{name}} joined on {{date}}. If it wasn't you, someone else has your kit.",
+      "mine": "That was me",
+      "removeAndNew": "Remove it and make a new kit"
+    }
+  },
+  "problem": {
+    "rejoin": {
+      "title": "This device needs to connect again",
+      "body": "It was offline for a long time, or who can access the data changed meanwhile. The data on this device are fine; they just don't sync.",
+      "by": "{{by}}, which this device doesn't know, made the change.",
+      "button": "Connect again"
+    },
+    "waiting": {
+      "title": "Sync is waiting for {{by}}",
+      "body": "This device is waiting for a confirmation from {{by}}, which last changed the device list. The data here are fine. If you no longer use {{by}}, connect this device again."
+    }
+  },
+  "rejoin": {
+    "title": "Connect this device again?",
+    "description": "Sync will be turned off on this device and your data stays here. Then you connect again, and this device's data is replaced by the synced data after a backup. Changes that didn't leave this device stay in the backup."
+  },
+  "removed": {
+    "title": "This device was removed from sync",
+    "body": "{{by}} removed it on {{date}}. Your data stayed here; they just don't sync any more.",
+    "titleLeft": "Sync is off on this device",
+    "bodyLeft": "This device left sync (perhaps from another copy of this profile). Your data stayed here.",
+    "unsent_one": "{{count}} change from this device didn't make it into sync; it stays only here.",
+    "unsent_other": "{{count}} changes from this device didn't make it into sync; they stay only here.",
+    "understood": "Got it"
+  },
+  "afterKit": {
+    "title": "Your data are back",
+    "body": "The newest change is from {{date}}. Your earlier devices are still on the list: {{names}}. If you lost them, or if one of them is a device you had already removed, remove them. Until you decide, nothing is sent from here.",
+    "bodyNoDate": "Your earlier devices are still on the list: {{names}}. If you lost them, or if one of them is a device you had already removed, remove them. Until you decide, nothing is sent from here.",
+    "remove": "Remove them",
+    "keep": "I have them",
+    "pending": "The removal is still in progress."
   }
 }

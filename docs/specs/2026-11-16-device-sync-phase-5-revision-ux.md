@@ -1798,3 +1798,69 @@ R-92. **Deviations, Task 27.** (a) One "Uložit jako soubor…" button saves the
      (deviceSync), `keepSafe.kit.show` (settings). (c) `setup.kit.differs` has the §6.3 wording for both
      desktop and phone. (d) Not verified in the built app: print, the dialogs at 1080 px with de and ja,
      the done screen after the real phase flip (no Tauri host).
+
+**Tasks 28–29 (desktop pairing code, notices and status).**
+
+R-93. **Desktop typed pairing code** (Task 28, dbf0fb39). `JoinMethod` is `pair | code | kit`; `JoinChoice` has the
+     third card ("Mám jiný počítač se synchronizací") between the phone and the kit ("Nemám u sebe žádné
+     zařízení"). `PairingJoinFlow` takes `mode: 'show' | 'type'`: `type` shows a pairing-code field (a
+     textarea, not `TypedCodeField`: that is the six digits the holder types) plus the password in Settings, no
+     server field (the holder's server comes with the code), and answers with `pairingScan(code, {password,
+     deviceName})`, the phone joiner's path; the digits and the join are the existing steps. The code is
+     checked with `pairingCodeProblem`, moved from `mobile/lib/sync-scan.ts` to `utils/pairing-code.ts`
+     (re-exported there). No backend change. Both `JoinDeviceDialog` and the first run's `ConnectStep` offer it.
+     `pairing.codeHint` (the text code under the holder's QR) now says the code can be sent in a message
+     (the six digits protect it); the holder's "Zkopírovat kód" already existed (cs text reworded).
+     `validation.syncPairingCodeInvalid` no longer says "scan" (ten locales).
+R-94. **The holder finishes visibly** (Task 28). `useHolderFinish(view)` (in `use-device-sync.ts`): while a
+     pairing as the holder runs it reads the device list once for the baseline, after `sent` it polls the
+     list every 3 s for a device not in the baseline (`newlyJoinedDevice`, not this one, not former) and
+     reports `joined` (its name) or `late` (two minutes without it). `PairingSteps` (`finish` prop) says
+     "{name} je připojené" / "Dokončete připojení na druhém zařízení…" (`pairing.deviceConnected`,
+     `pairing.sentLate`) and the dialog's and the phone sheet's closing button reads "Hotovo" once joined.
+     Frontend only; not seen live (no Tauri host).
+R-95. **Notices** (Task 29). New `NoticeList.tsx` in the status card (after the problem alert): "Data jsou
+     zpět" (`afterKitJoin`; "Odebrat je" opens `RemoveDeviceDialog` for the named devices still on the list
+     and, once they are gone, calls `sync_kit_join_decided(true)`; with none left the button reads
+     "Pokračovat"; "Mám je" is `false`; a failure, among it `validation.syncRemovalPending` "Odebrání ještě
+     probíhá", is a toast; while a removal of this device is pending the card says so and the button waits),
+     `removalNotice` (the "also made a new kit" sentence is appended when devices were removed too),
+     `removalNotDone` (kit variant adds "Vytvořit novou sadu"), `keyChangeOverrun` (with and without a date)
+     and one box per `newDevices` entry, dismissed with `{kind: 'newDevices', devices: [id]}` so a device
+     that arrives meanwhile stays. A Kit join gets the strong box (title, "To jsem já", "Odebrat a vytvořit
+     novou sadu" = `RemoveDeviceDialog` with the new `newKit` prop), a late vouch "Je moje" (keeps, then
+     dismisses) · "Odebrat…". `RemoveDeviceDialog` also gained `onRemoved` and names several devices
+     (`removalTitleNames`, `remove.bodyMany`). Pure helpers in `utils/sync-notices.ts`. `kitUsed` stays in
+     `KitRow`.
+R-96. **Status states** (Task 29). `SyncProblemAlert` shows the rejoin state (title, body, "{by}, which this
+     device doesn't know…" from `rejoinBy`, "Připojit znovu") and the waiting state (`waitingForRemover`) from
+     `syncProblemState`; plain `keyRotated` (no waiting) shows no alert, only "Synchronizuji…".
+     "Připojit znovu" = `RejoinDialog` (password → `turnOff` → `SyncSection` opens the join dialog; the
+     dialog says unsent changes stay in the backup). `syncingLong` turns the "Synchronizovat" button of the
+     status card and the popover into "Zkusit znovu" (not loading, it calls `sync_now`); `firstUpload` adds
+     "Nahrávám první kopii dat. Můžete pracovat dál." (`setup.done.body`) to both. The popover lists
+     `statusPopoverLines` (dates formatted by the view) and, with sync off, `SyncRemovedSection` shows the
+     removed line. Reworded in ten locales: `status.problem.keyNotGiven|keyChangeUnverified|keyChangeWaiting`
+     (new), `keyRotated` (now the ordinary "Synchronizuji…", the old "klíč synchronizace" text is gone),
+     `captureBroken`, `invalidChain`, `serverWentBack` (no "synchronizační účet", no mention of the
+     re-sync button), `indicator.waiting` ("Čeká se na změnu z jiného zařízení").
+R-97. **Removed device** (Task 29). `RemovedNotice.tsx`: `RemovedNoticeDialog` (mounted in `AppShell`, readable
+     with sync off) shows once per unlock; closing it with Esc keeps the notice (Settings card and popover line),
+     "Rozumím" dismisses (`removed`), "Připojit znovu" dismisses and opens the join choice. `left: true` has
+     its own title and the R-68 sentence; `removedNotice.unsent` adds the plural line. In Settings with sync
+     off the same text is a `RemovedNoticeCard` above the intro.
+R-98. **Turn-off, danger card** (Task 29). The turn-off dialog uses the §4.6 description (the others see it
+     left) and the "{n} změny odsud se ještě neodeslaly" count; the danger card keeps "Vypnout synchronizaci
+     tady" and "Smazat synchronizovaná data na serveru". "Synchronizovat toto zařízení znovu" left the
+     danger card: `SyncProblemAlert` offers it as a second button for `offersResync` problems
+     (`undecryptable`, `invalidChain`, `missingParent`, `quarantined`, `internal`; never the gap, the server
+     problems or the rejoin state) and after a repair that could not send everything (as before).
+R-99. **Deviations, Tasks 28–29.** (a) `turnOff.noCutOff` stays as a key (the phone's turn-off sheet still
+     reads it, Task 30) with a new text ("Ostatní zařízení uvidí, že se toto odpojilo."); the desktop does
+     not render it. (b) `limits.lostDevice`/`limits.lostTitle` (still with "odříznout") and `resync.hint`
+     stay for the phone until Task 30. (c) "Synchronizační účet" wording remains in the setup flow's account
+     step (`setup.account.*`) and `common` `syncVaultLimitReached`/`syncAccountNotFound`: not part of
+     these tasks. (d) The kit-join box's "To jsem já" only dismisses; nothing is recorded about the join.
+     (e) The Task 28 commit carries no As built entry; this one does. (f) Not verified in the built app: the
+     typed join between two real computers, the holder's finish across the real flip, the dialogs at
+     1080 px with de and ja, the unlock-time dialog.

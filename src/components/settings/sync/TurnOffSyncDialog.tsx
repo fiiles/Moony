@@ -7,7 +7,8 @@ import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialo
 
 /**
  * Turning sync off on this device (password needed): local data stays, the other devices keep
- * syncing. Changes not sent yet are counted, since they will not be sent.
+ * syncing and see that this one left (a signed leave record). Changes not sent yet are counted,
+ * since they will not be sent.
  */
 export function TurnOffSyncDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation('deviceSync');
@@ -19,7 +20,7 @@ export function TurnOffSyncDialog({ onClose }: { onClose: () => void }) {
   return (
     <SyncPasswordDialog
       title={t('turnOff.title')}
-      description={`${t('turnOff.description')} ${t('turnOff.noCutOff')}`}
+      description={t('turnOff.description')}
       note={pending > 0 ? t('turnOff.pendingChanges', { count: pending }) : undefined}
       confirmLabel={t('turnOff.confirm')}
       destructive

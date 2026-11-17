@@ -4,7 +4,7 @@
   "indicator": {
     "synced": "Synkronisert",
     "syncing": "Synkroniserer…",
-    "waiting": "Endring holdes tilbake",
+    "waiting": "Venter på en endring fra en annen enhet",
     "paused": "Synkronisering satt på pause",
     "error": "Synkroniseringsfeil",
     "unreachable": "Serveren er utenfor rekkevidde",
@@ -42,7 +42,7 @@
   "status": {
     "unreachableNote": "Synkroniseringen fortsetter når serveren er innen rekkevidde igjen.",
     "problem": {
-      "captureBroken": "Endringssporingen på denne enheten er skadet, så synkroniseringen stoppet. Den kan repareres.",
+      "captureBroken": "Synkroniseringen har sluttet å fungere på denne enheten. Dataene dine er i orden. Den kan repareres.",
       "vaultGone": "De synkroniserte dataene ble slettet fra synkroniseringsserveren.",
       "lapsed": "Abonnementet er utløpt, så synkroniseringen er satt på pause.",
       "quotaExceeded": "De synkroniserte dataene overskrider lagringsgrensen.",
@@ -51,17 +51,20 @@
       "gap": "En endring fra en annen enhet har ikke kommet ennå. Denne enheten fortsetter å synkronisere og sende sine egne endringer.",
       "clockAhead": "En endring fra en annen enhet er datert mer enn ti år frem i tid, så den holdes tilbake. Den holdes tilbake også etter at klokken på den enheten er rettet; etter 14 dager kan du hoppe over den.",
       "undecryptable": "Endringer fra en annen enhet kunne ikke dekrypteres.",
-      "invalidChain": "Endringer fra en annen enhet besto ikke verifiseringen og holdes tilbake.",
+      "invalidChain": "Endringer fra en annen enhet kunne ikke bekreftes, så Moony brukte dem ikke. Dataene på denne enheten er i orden.",
       "missingParent": "Endringer fra en annen enhet mangler tidligere trinn og holdes tilbake.",
       "quarantined": "Endringer fra noen enheter holdes tilbake av sikkerhetshensyn.",
       "offline": "Ingen forbindelse til synkroniseringsserveren. Synkroniseringen fortsetter når den er tilbake.",
       "relayError": "Synkroniseringsserveren svarer ikke som forventet. Moony fortsetter å prøve.",
       "rateLimited": "Synkroniseringsserveren ba Moony om å senke farten. Moony prøver igjen snart.",
       "unauthorized": "Synkroniseringsserveren godtok ikke denne enheten. Du må kanskje sette opp synkronisering på nytt.",
-      "keyRotated": "Synkroniseringsnøkkelen ble endret på en annen enhet. Sett opp synkronisering på nytt på denne enheten.",
+      "keyRotated": "Synkroniserer…",
       "secureStorage": "Moony kom ikke til den sikre lagringen på denne enheten, så synkroniseringen er satt på pause. Moony prøver igjen; det hjelper som regel å låse opp enheten eller starte Moony på nytt.",
-      "serverWentBack": "Synkroniseringsserveren har gått tilbake til en eldre tilstand, så endringer kan mangle på de andre enhetene dine. Dataene dine på denne enheten er intakte. Moony kan ikke rette opp dette selv ennå: for å samle enhetene igjen, slå av synkronisering, sett den opp på nytt på enheten med de mest fullstendige dataene, og koble til de andre. Ikke synkroniser denne enheten på nytt: det ville erstatte dataene på enheten med den eldre kopien på synkroniseringsserveren. Når du setter opp synkronisering på nytt, opprettes en ny synkroniseringskonto.",
-      "internal": "Synkroniseringen stoppet på grunn av en intern feil."
+      "serverWentBack": "Synkroniseringsserveren har gått tilbake til en eldre tilstand, så endringer kan mangle på de andre enhetene dine. Dataene dine på denne enheten er intakte. Moony kan ikke rette opp dette selv ennå: for å samle enhetene igjen, slå av synkronisering, sett den opp på nytt på enheten med de mest fullstendige dataene, og koble til de andre.",
+      "internal": "Synkroniseringen stoppet på grunn av en intern feil.",
+      "keyNotGiven": "Denne enheten må kobles til på nytt.",
+      "keyChangeUnverified": "Denne enheten må kobles til på nytt.",
+      "keyChangeWaiting": "Venter på at enheten som gjorde endringen kobler seg til."
     },
     "lastSynced": "Sist synkronisert {{date}}",
     "neverSynced": "Ikke synkronisert ennå",
@@ -90,7 +93,7 @@
     "cancelSetup": "Avbryt oppsettet",
     "cancelConfirm": {
       "title": "Avbryte oppsettet?",
-      "description": "Denne enheten glemmer synkroniseringskontoen som ble opprettet for dette oppsettet, og en betaling som allerede er gjort, blir ikke overført. Hvis du setter opp synkronisering på nytt, starter det fra begynnelsen, med en ny synkroniseringskonto.",
+      "description": "Denne enheten glemmer synkroniseringen som ble opprettet i dette oppsettet, og en betaling som allerede er gjort, overføres ikke. Oppsettet starter da på nytt.",
       "keep": "Behold oppsettet"
     },
     "startTitle": "Begynn å synkronisere",
@@ -255,24 +258,24 @@
     "appliedAhead": "Endringen ble tatt i bruk i mellomtiden; ingenting ble hoppet over."
   },
   "turnOff": {
-    "button": "Slå av synkronisering på denne enheten",
+    "button": "Slå av synkronisering her",
     "hint": "Lokale data blir værende. Andre enheter synkroniserer videre.",
     "title": "Slå av synkronisering på denne enheten?",
-    "description": "Lokale data blir værende. Andre enheter synkroniserer videre. Du kan bli med igjen senere ved å koble til en annen enhet eller med gjenopprettingssettet ditt; dataene på denne enheten erstattes da med de synkroniserte dataene etter en sikkerhetskopi.",
-    "pendingChanges_one": "{{count}} endring på denne enheten er ikke sendt ennå. Den blir ikke sendt.",
-    "pendingChanges_other": "{{count}} endringer på denne enheten er ikke sendt ennå. De blir ikke sendt.",
+    "description": "Dataene dine blir her. De andre enhetene synkroniserer videre og ser at denne har koblet seg fra. Hvis du kobler til igjen senere, erstattes dataene på denne enheten av de synkroniserte dataene.",
     "confirm": "Slå av synkronisering",
     "success": "Synkronisering slått av",
-    "noCutOff": "Å slå av synkroniseringen her stenger ikke ute noen andre enheter eller sett."
+    "noCutOff": "De andre enhetene ser at denne har koblet seg fra.",
+    "pendingChanges_one": "{{count}} endring herfra er ikke sendt ennå. Etter at du slår av synkroniseringen, blir den ikke sendt.",
+    "pendingChanges_other": "{{count}} endringer herfra er ikke sendt ennå. Etter at du slår av synkroniseringen, blir de ikke sendt."
   },
   "delete": {
-    "button": "Slett synkroniserte data",
+    "button": "Slett synkroniserte data på serveren",
     "hint": "Fjerner de synkroniserte dataene fra synkroniseringsserveren for alle enheter.",
     "title": "Slette synkroniserte data?",
     "description": "Dette sletter de synkroniserte dataene på synkroniseringsserveren for alle enheter. De lokale dataene på hver enhet blir værende.",
     "confirm": "Slett synkroniserte data",
     "success": "Synkroniserte data slettet",
-    "afterwards": "Etterpå settes synkroniseringen opp fra start, med en ny synkroniseringskonto og et nytt gjenopprettingssett.",
+    "afterwards": "Etterpå settes synkroniseringen opp på nytt, med et nytt gjenopprettingssett.",
     "afterwardsOwnServer": "Etterpå kan du sette opp synkroniseringen på nytt med den samme tilkoblingskoden og et nytt gjenopprettingssett."
   },
   "danger": {
@@ -572,7 +575,8 @@
       "removedHere": "En annen enhet fjernet denne enheten i mellomtiden. Synkroniseringen er av her."
     },
     "loadError": "Fjerningen kunne ikke forberedes. Prøv igjen.",
-    "retry": "Prøv igjen"
+    "retry": "Prøv igjen",
+    "bodyMany": "{{name}} får ikke lenger nye data og kan ikke endre noe. Det som allerede er på dem, blir der, beskyttet av Moony-passordet."
   },
   "newKit": {
     "title": "Ditt nye gjenopprettingssett",
@@ -626,5 +630,61 @@
       "alreadyRemoved": "{{by}} har i mellomtiden fjernet enhetene du krysset av.",
       "alreadyRemovedUnknown": "Enhetene du krysset av, ble fjernet i mellomtiden."
     }
+  },
+  "notice": {
+    "removal": {
+      "removed": "{{by}} fjernet {{names}} ({{date}}).",
+      "newKit": "{{by}} laget et nytt gjenopprettingssett ({{date}}); det gamle gjelder ikke lenger.",
+      "kitToo": "Den laget også et nytt gjenopprettingssett; det gamle gjelder ikke lenger."
+    },
+    "notDone": {
+      "changed": "Fjerningen av {{devices}} ble ikke fullført: {{by}} endret enhetslisten i mellomtiden. Sjekk den og prøv igjen.",
+      "alreadyRemoved": "{{by}} fjernet {{devices}} i mellomtiden.",
+      "refused": "Synkroniseringsserveren avviste fjerningen. Prøv igjen.",
+      "kit": "Det nye gjenopprettingssettet trådte ikke i kraft; lag det på nytt."
+    },
+    "overrun": "Synkroniseringsserveren sendte denne enheten endringer den ikke skulle ha sendt etter at en enhet ble fjernet {{date}}, og Moony tok dem i bruk. Hvis du fjernet enheten fordi den ble stjålet, bør du sjekke endringene fra de siste dagene.",
+    "overrunNoDate": "Synkroniseringsserveren sendte denne enheten endringer den ikke skulle ha sendt etter at en enhet ble fjernet, og Moony tok dem i bruk. Hvis du fjernet enheten fordi den ble stjålet, bør du sjekke endringene fra de siste dagene.",
+    "newDevice": {
+      "added": "{{name}} ble lagt til fra {{by}} {{date}}.",
+      "lateVouch": "{{name}} ble lagt til. {{by}} la den til og synkroniserer ikke lenger. Hvis du ikke kjenner igjen {{name}}, fjern den.",
+      "kitTitle": "En enhet koblet seg til med gjenopprettingssettet ditt",
+      "kit": "{{name}} koblet seg til {{date}}. Hvis det ikke var deg, har noen andre settet ditt.",
+      "mine": "Det var meg",
+      "removeAndNew": "Fjern den og lag et nytt sett"
+    }
+  },
+  "problem": {
+    "rejoin": {
+      "title": "Denne enheten må kobles til på nytt",
+      "body": "Den var lenge uten forbindelse, eller det har i mellomtiden endret seg hvem som har tilgang til dataene. Dataene på denne enheten er i orden, de synkroniseres bare ikke.",
+      "by": "Endringen ble gjort av {{by}}, som denne enheten ikke kjenner.",
+      "button": "Koble til igjen"
+    },
+    "waiting": {
+      "title": "Synkroniseringen venter på {{by}}",
+      "body": "Denne enheten venter på en bekreftelse fra {{by}}, som sist endret enhetslisten. Dataene her er i orden. Hvis du ikke bruker {{by}} lenger, kobler du denne enheten til på nytt."
+    }
+  },
+  "rejoin": {
+    "title": "Koble denne enheten til på nytt?",
+    "description": "Synkroniseringen slås av på denne enheten, og dataene dine blir her. Deretter kobler du til på nytt, og dataene på denne enheten erstattes av de synkroniserte dataene etter en sikkerhetskopi. Endringer som ikke forlot denne enheten, blir værende i sikkerhetskopien."
+  },
+  "removed": {
+    "title": "Denne enheten ble fjernet fra synkroniseringen",
+    "body": "{{by}} fjernet den {{date}}. Dataene dine ble værende her, de synkroniseres bare ikke lenger.",
+    "titleLeft": "Synkroniseringen er av på denne enheten",
+    "bodyLeft": "Denne enheten forlot synkroniseringen (kanskje fra en annen kopi av denne profilen). Dataene dine ble værende her.",
+    "unsent_one": "{{count}} endring fra denne enheten kom ikke med i synkroniseringen; den blir bare her.",
+    "unsent_other": "{{count}} endringer fra denne enheten kom ikke med i synkroniseringen; de blir bare her.",
+    "understood": "Forstått"
+  },
+  "afterKit": {
+    "title": "Dataene dine er tilbake",
+    "body": "Den nyeste endringen er fra {{date}}. De tidligere enhetene dine står fortsatt i listen: {{names}}. Hvis du har mistet dem, eller hvis en av dem er en enhet du allerede hadde fjernet, fjern dem. Til du bestemmer deg, sendes ingenting herfra.",
+    "bodyNoDate": "De tidligere enhetene dine står fortsatt i listen: {{names}}. Hvis du har mistet dem, eller hvis en av dem er en enhet du allerede hadde fjernet, fjern dem. Til du bestemmer deg, sendes ingenting herfra.",
+    "remove": "Fjern dem",
+    "keep": "Jeg har dem",
+    "pending": "Fjerningen pågår fortsatt."
   }
 }

@@ -10,6 +10,7 @@ import {
   removalAvailable,
   removalRequest,
   removalTitleName,
+  removalTitleNames,
   toggleId,
 } from './sync-removal';
 
@@ -111,6 +112,15 @@ describe('removalTitleName', () => {
       removalTitleName(plan({ removing: [dev('d', 'Tablet'), dev('b', 'Phone')] }), ['b'])
     ).toBe('Phone');
     expect(removalTitleName(undefined, ['b'])).toBeNull();
+  });
+});
+
+describe('removalTitleNames', () => {
+  it('joins the names of every device asked for', () => {
+    const p = plan({ removing: [dev('d', 'Tablet'), dev('b', 'Phone'), dev('c', 'Mac')] });
+    expect(removalTitleNames(p, ['b', 'c'])).toBe('Phone, Mac');
+    expect(removalTitleNames(p, ['x'])).toBeNull();
+    expect(removalTitleNames(undefined, ['b'])).toBeNull();
   });
 });
 

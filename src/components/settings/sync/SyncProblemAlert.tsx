@@ -14,11 +14,13 @@ import {
   heldDays,
   heldFor,
   heldGapDevice,
+  offersResync,
   problemAction,
+  type SyncProblemAction,
   skippableGap,
 } from '@/utils/device-sync-problem';
 import { secondsToDate } from '@/utils/sync-status';
-import { isQuietlyOutOfReach } from '@/utils/sync-state';
+import { isQuietlyOutOfReach, syncProblemState } from '@/utils/sync-state';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { SyncRenewDialog } from '@/components/settings/sync/SyncRenewDialog';
@@ -26,13 +28,21 @@ import {
   RepairDeviceDialog,
   ResyncDeviceDialog,
 } from '@/components/settings/sync/SyncRepairDialogs';
+import { RejoinDialog } from '@/components/settings/sync/RejoinDialog';
 import { TurnOffSyncDialog } from '@/components/settings/sync/TurnOffSyncDialog';
 import { SkipMissingChangeDialog } from '@/components/settings/sync/SkipMissingChangeDialog';
 
-type Open = 'renew' | 'repair' | 'resync' | 'turnOff' | null;
+type Open = 'renew' | 'repair' | 'resync' | 'turnOff' | 'rejoin' | null;
 
 /** The problem that paused or stopped sync, next to its cause, with the action that answers it. */
-export function SyncProblemAlert({ status }: { status: SyncStatus }) {
+export function SyncProblemAlert({
+  status,
+  onRejoin,
+}: {
+  status: SyncStatus;
+  /** "Připojit znovu" turned sync off on this device: the join choice follows. */
+  onRejoin: () => void;
+}) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { date } = useFormat();
@@ -46,6 +56,9 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
   const close = () => setOpen(null);
   const problem = status.problem;
   if (!problem) return null;
+  const problemState = syncProblemState(status);
+  // A key change another device made, not yet confirmed: the ordinary "Synchronizuji…", no alert
+  if (problem === 'keyRotated' && !problemState) return null;
   // Out of reach for now: the engine retries, so no alert box (the status card shows a plain line)
   if (isQuietlyOutOfReach(status, Math.floor(Date.now() / 1000))) return null;
 
@@ -76,7 +89,25 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
     body = `${body} ${t(key, { date: dateText(skipFrom) })}`;
   }
   let actions: React.ReactNode = null;
-  switch (action) {
+  const connectAgain = (
+    <Button type="button" size="sm" onClick={() => setOpen('rejoin')}>
+      {t('problem.rejoin.button')}
+    </Button>
+  );
+  if (problemState?.kind === 'rejoin') {
+    title = t('problem.rejoin.title');
+    body = problemState.by
+      ? `${t('problem.rejoin.body')} ${t('problem.rejoin.by', { by: problemState.by })}`
+      : t('problem.rejoin.body');
+    actions = connectAgain;
+  } else if (problemState?.kind === 'waitingForRemover') {
+    title = t('problem.waiting.title', { by: problemState.by });
+    body = t('problem.waiting.body', { by: problemState.by });
+    actions = connectAgain;
+  }
+  // The rejoin and waiting states have their own button: the problem's ordinary action is skipped
+  const effectiveAction: SyncProblemAction = problemState ? 'none' : action;
+  switch (effectiveAction) {
     case 'renew':
     case 'askOperator':
       title = status.ownServer ? t('alert.lapsed.titleOwnServer') : t('alert.lapsed.title');
@@ -154,10 +185,17 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
       }
       break;
     case 'none':
+      if (offersResync(problem)) {
+        actions = (
+          <Button type="button" size="sm" variant="outline" onClick={() => setOpen('resync')}>
+            {t('resync.button')}
+          </Button>
+        );
+      }
       break;
     default: {
       // A new SyncProblemAction must be placed above: this fails to compile until it is
-      const unhandled: never = action;
+      const unhandled: never = effectiveAction;
       return unhandled;
     }
   }
@@ -168,7 +206,7 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
         <AlertTriangle />
         {title && <AlertTitle>{title}</AlertTitle>}
         {body && <AlertDescription>{body}</AlertDescription>}
-        {actions && <AlertActions>{actions}</AlertActions>}
+        {actions && <AlertActions className="flex-wrap">{actions}</AlertActions>}
       </Alert>
       {open === 'renew' && <SyncRenewDialog onClose={close} />}
       {open === 'repair' && (
@@ -176,6 +214,7 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
       )}
       {open === 'resync' && <ResyncDeviceDialog onClose={close} />}
       {open === 'turnOff' && <TurnOffSyncDialog onClose={close} />}
+      {open === 'rejoin' && <RejoinDialog onTurnedOff={onRejoin} onClose={close} />}
       {skipping && <SkipMissingChangeDialog gap={skipping} onClose={() => setSkipping(null)} />}
     </>
   );

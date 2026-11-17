@@ -4,7 +4,7 @@
   "indicator": {
     "synced": "Zsynchronizowano",
     "syncing": "Synchronizuję…",
-    "waiting": "Zmiana jest wstrzymana",
+    "waiting": "Oczekiwanie na zmianę z innego urządzenia",
     "paused": "Synchronizacja wstrzymana",
     "error": "Błąd synchronizacji",
     "unreachable": "Serwer poza zasięgiem",
@@ -50,7 +50,7 @@
   "status": {
     "unreachableNote": "Synchronizacja wznowi się, gdy serwer znów będzie w zasięgu.",
     "problem": {
-      "captureBroken": "Śledzenie zmian na tym urządzeniu jest uszkodzone, więc synchronizacja się zatrzymała. Można je naprawić.",
+      "captureBroken": "Synchronizacja przestała działać na tym urządzeniu. Twoje dane są w porządku. Można ją naprawić.",
       "vaultGone": "Zsynchronizowane dane zostały usunięte z serwera synchronizacji.",
       "lapsed": "Subskrypcja wygasła, więc synchronizacja jest wstrzymana.",
       "quotaExceeded": "Zsynchronizowane dane przekraczają limit miejsca.",
@@ -59,17 +59,20 @@
       "gap": "Zmiana z innego urządzenia jeszcze nie dotarła. To urządzenie nadal synchronizuje dane i wysyła własne zmiany.",
       "clockAhead": "Zmiana z innego urządzenia ma datę późniejszą o ponad dziesięć lat, więc jest wstrzymana. Pozostanie wstrzymana nawet po poprawieniu zegara tego urządzenia; po 14 dniach możesz ją pominąć.",
       "undecryptable": "Nie udało się odszyfrować zmian z innego urządzenia.",
-      "invalidChain": "Zmiany z innego urządzenia nie przeszły weryfikacji i są wstrzymane.",
+      "invalidChain": "Nie udało się zweryfikować zmian z innego urządzenia, więc Moony ich nie użyła. Dane na tym urządzeniu są w porządku.",
       "missingParent": "Zmianom z innego urządzenia brakuje wcześniejszych kroków i są wstrzymane.",
       "quarantined": "Zmiany z niektórych urządzeń są wstrzymane ze względów bezpieczeństwa.",
       "offline": "Brak połączenia z serwerem synchronizacji. Synchronizacja wznowi się, gdy wróci.",
       "relayError": "Serwer synchronizacji nie odpowiada tak, jak powinien. Moony próbuje dalej.",
       "rateLimited": "Serwer synchronizacji poprosił Moony o zwolnienie tempa. Moony wkrótce spróbuje ponownie.",
       "unauthorized": "Serwer synchronizacji nie przyjął tego urządzenia. Może być potrzebna ponowna konfiguracja synchronizacji.",
-      "keyRotated": "Klucz synchronizacji został zmieniony na innym urządzeniu. Skonfiguruj synchronizację na tym urządzeniu ponownie.",
+      "keyRotated": "Synchronizuję…",
       "secureStorage": "Moony nie mogła uzyskać dostępu do bezpiecznego magazynu tego urządzenia, więc synchronizacja jest wstrzymana. Spróbuje ponownie; zwykle pomaga odblokowanie urządzenia lub ponowne uruchomienie Moony.",
-      "serverWentBack": "Serwer synchronizacji wrócił do starszego stanu, więc na innych urządzeniach może brakować zmian. Dane na tym urządzeniu są nienaruszone. Moony nie potrafi jeszcze sama tego naprawić: aby ponownie połączyć urządzenia, wyłącz synchronizację, skonfiguruj ją od nowa na urządzeniu z najpełniejszymi danymi i dołącz pozostałe. Nie synchronizuj tego urządzenia ponownie: zastąpiłoby to jego dane starszą kopią z serwera synchronizacji. Ponowna konfiguracja synchronizacji tworzy nowe konto synchronizacji.",
-      "internal": "Synchronizacja zatrzymała się z powodu błędu wewnętrznego."
+      "serverWentBack": "Serwer synchronizacji wrócił do starszego stanu, więc na innych urządzeniach może brakować zmian. Dane na tym urządzeniu są nienaruszone. Moony nie potrafi jeszcze sama tego naprawić: aby ponownie połączyć urządzenia, wyłącz synchronizację, skonfiguruj ją od nowa na urządzeniu z najpełniejszymi danymi i dołącz pozostałe.",
+      "internal": "Synchronizacja zatrzymała się z powodu błędu wewnętrznego.",
+      "keyNotGiven": "To urządzenie trzeba połączyć ponownie.",
+      "keyChangeUnverified": "To urządzenie trzeba połączyć ponownie.",
+      "keyChangeWaiting": "Czekam, aż połączy się urządzenie, które wprowadziło zmianę."
     },
     "lastSynced": "Ostatnia synchronizacja: {{date}}",
     "neverSynced": "Jeszcze nie zsynchronizowano",
@@ -98,7 +101,7 @@
     "cancelSetup": "Anuluj konfigurację",
     "cancelConfirm": {
       "title": "Anulować konfigurację?",
-      "description": "To urządzenie zapomni konto synchronizacji utworzone podczas tej konfiguracji, a dokonana już płatność nie zostanie przeniesiona. Ponowna konfiguracja synchronizacji zaczyna się od początku, z nowym kontem synchronizacji.",
+      "description": "To urządzenie zapomni synchronizację utworzoną podczas tej konfiguracji, a dokonana już płatność nie zostanie przeniesiona. Konfiguracja zacznie się od początku.",
       "keep": "Zachowaj konfigurację"
     },
     "startTitle": "Zacznij synchronizować",
@@ -273,26 +276,26 @@
     "appliedAhead": "Zmiana została w międzyczasie zastosowana; nic nie pominięto."
   },
   "turnOff": {
-    "button": "Wyłącz synchronizację na tym urządzeniu",
+    "button": "Wyłącz synchronizację tutaj",
     "hint": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują.",
     "title": "Wyłączyć synchronizację na tym urządzeniu?",
-    "description": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują. Później możesz dołączyć ponownie, parując z innym urządzeniem lub za pomocą zestawu odzyskiwania; dane tego urządzenia zostaną wtedy po utworzeniu kopii zapasowej zastąpione danymi zsynchronizowanymi.",
-    "pendingChanges_one": "{{count}} zmiana na tym urządzeniu nie została jeszcze wysłana. Nie zostanie już wysłana.",
-    "pendingChanges_few": "{{count}} zmiany na tym urządzeniu nie zostały jeszcze wysłane. Nie zostaną już wysłane.",
-    "pendingChanges_many": "{{count}} zmian na tym urządzeniu nie zostało jeszcze wysłanych. Nie zostaną już wysłane.",
-    "pendingChanges_other": "{{count}} zmiany na tym urządzeniu nie zostało jeszcze wysłane. Nie zostaną już wysłane.",
+    "description": "Twoje dane tu zostaną. Pozostałe urządzenia synchronizują się dalej i zobaczą, że to się odłączyło. Jeśli później połączysz się ponownie, dane tego urządzenia zostaną zastąpione zsynchronizowanymi.",
     "confirm": "Wyłącz synchronizację",
     "success": "Synchronizacja wyłączona",
-    "noCutOff": "Wyłączenie synchronizacji tutaj nie odcina żadnego innego urządzenia ani Zestawu."
+    "noCutOff": "Pozostałe urządzenia zobaczą, że to się odłączyło.",
+    "pendingChanges_one": "{{count}} zmiana stąd nie została jeszcze wysłana. Po wyłączeniu już nie zostanie wysłana.",
+    "pendingChanges_few": "{{count}} zmiany stąd nie zostały jeszcze wysłane. Po wyłączeniu już nie zostaną wysłane.",
+    "pendingChanges_many": "{{count}} zmian stąd nie zostało jeszcze wysłanych. Po wyłączeniu już nie zostaną wysłane.",
+    "pendingChanges_other": "{{count}} zmiany stąd nie zostały jeszcze wysłane. Po wyłączeniu już nie zostaną wysłane."
   },
   "delete": {
-    "button": "Usuń zsynchronizowane dane",
+    "button": "Usuń zsynchronizowane dane na serwerze",
     "hint": "Usuwa zsynchronizowane dane z serwera synchronizacji dla wszystkich urządzeń.",
     "title": "Usunąć zsynchronizowane dane?",
     "description": "To usuwa zsynchronizowane dane z serwera synchronizacji dla wszystkich urządzeń. Dane lokalne na każdym urządzeniu zostają.",
     "confirm": "Usuń zsynchronizowane dane",
     "success": "Zsynchronizowane dane usunięte",
-    "afterwards": "Potem synchronizacja jest konfigurowana od początku, z nowym kontem synchronizacji i nowym Zestawem odzyskiwania.",
+    "afterwards": "Potem synchronizację konfiguruje się od początku, z nowym zestawem odzyskiwania.",
     "afterwardsOwnServer": "Potem możesz skonfigurować synchronizację ponownie z tym samym kodem połączenia i nowym Zestawem odzyskiwania."
   },
   "danger": {
@@ -606,7 +609,8 @@
       "removedHere": "Inne urządzenie usunęło w międzyczasie to urządzenie. Synchronizacja jest tu wyłączona."
     },
     "loadError": "Nie udało się przygotować usunięcia. Spróbuj ponownie.",
-    "retry": "Spróbuj ponownie"
+    "retry": "Spróbuj ponownie",
+    "bodyMany": "{{name}} przestaną dostawać nowe dane i nie będą mogły niczego zmieniać. To, co już na nich jest, tam zostanie, chronione hasłem do Moony."
   },
   "newKit": {
     "title": "Twój nowy zestaw odzyskiwania",
@@ -660,5 +664,63 @@
       "alreadyRemoved": "Zaznaczone urządzenia usunęło w międzyczasie urządzenie {{by}}.",
       "alreadyRemovedUnknown": "Zaznaczone urządzenia zostały w międzyczasie usunięte."
     }
+  },
+  "notice": {
+    "removal": {
+      "removed": "Urządzenie {{by}} usunęło {{names}} ({{date}}).",
+      "newKit": "Urządzenie {{by}} utworzyło nowy zestaw odzyskiwania ({{date}}); stary już nie działa.",
+      "kitToo": "Utworzyło też nowy zestaw odzyskiwania; stary już nie działa."
+    },
+    "notDone": {
+      "changed": "Usuwanie {{devices}} się nie zakończyło: urządzenie {{by}} zmieniło w międzyczasie listę urządzeń. Sprawdź ją i spróbuj ponownie.",
+      "alreadyRemoved": "{{devices}} usunęło w międzyczasie urządzenie {{by}}.",
+      "refused": "Serwer synchronizacji odrzucił usunięcie. Spróbuj ponownie.",
+      "kit": "Nowy zestaw odzyskiwania nie zaczął obowiązywać; utwórz go ponownie."
+    },
+    "overrun": "Serwer synchronizacji wysłał temu urządzeniu zmiany, których nie powinien był wysyłać po usunięciu urządzenia {{date}}, a Moony je zastosowała. Jeśli urządzenie usunięto z powodu kradzieży, sprawdź zmiany z ostatnich dni.",
+    "overrunNoDate": "Serwer synchronizacji wysłał temu urządzeniu zmiany, których nie powinien był wysyłać po usunięciu urządzenia, a Moony je zastosowała. Jeśli urządzenie usunięto z powodu kradzieży, sprawdź zmiany z ostatnich dni.",
+    "newDevice": {
+      "added": "Przybyło urządzenie {{name}}, dodane z urządzenia {{by}} ({{date}}).",
+      "lateVouch": "Przybyło urządzenie {{name}}. Dodało je urządzenie {{by}}, które już się nie synchronizuje. Jeśli nie rozpoznajesz {{name}}, usuń je.",
+      "kitTitle": "Urządzenie połączyło się za pomocą Twojego zestawu odzyskiwania",
+      "kit": "{{name}} połączyło się {{date}}. Jeśli to nie Ty, ktoś inny ma Twój zestaw.",
+      "mine": "To ja",
+      "removeAndNew": "Usuń i utwórz nowy zestaw"
+    }
+  },
+  "problem": {
+    "rejoin": {
+      "title": "To urządzenie trzeba połączyć ponownie",
+      "body": "Było długo bez połączenia albo w międzyczasie zmieniło się, kto ma dostęp do danych. Dane na tym urządzeniu są w porządku, tylko się nie synchronizują.",
+      "by": "Zmianę wprowadziło urządzenie {{by}}, którego to urządzenie nie zna.",
+      "button": "Połącz ponownie"
+    },
+    "waiting": {
+      "title": "Synchronizacja czeka na urządzenie {{by}}",
+      "body": "To urządzenie czeka na potwierdzenie od urządzenia {{by}}, które ostatnio zmieniało listę urządzeń. Dane tutaj są w porządku. Jeśli już nie używasz {{by}}, połącz to urządzenie ponownie."
+    }
+  },
+  "rejoin": {
+    "title": "Połączyć to urządzenie ponownie?",
+    "description": "Synchronizacja zostanie wyłączona na tym urządzeniu, a Twoje dane tu zostaną. Potem połączysz się ponownie, a dane tego urządzenia zostaną po utworzeniu kopii zapasowej zastąpione zsynchronizowanymi. Zmiany, które nie opuściły tego urządzenia, zostaną w kopii zapasowej."
+  },
+  "removed": {
+    "title": "To urządzenie zostało usunięte z synchronizacji",
+    "body": "Usunęło je urządzenie {{by}} ({{date}}). Twoje dane tu zostały, tylko już się nie synchronizują.",
+    "titleLeft": "Synchronizacja jest wyłączona na tym urządzeniu",
+    "bodyLeft": "To urządzenie opuściło synchronizację (być może z innej kopii tego profilu). Twoje dane tu zostały.",
+    "unsent_one": "{{count}} zmiana z tego urządzenia nie trafiła do synchronizacji; zostaje tylko tutaj.",
+    "unsent_few": "{{count}} zmiany z tego urządzenia nie trafiły do synchronizacji; zostają tylko tutaj.",
+    "unsent_many": "{{count}} zmian z tego urządzenia nie trafiło do synchronizacji; zostaje tylko tutaj.",
+    "unsent_other": "{{count}} zmiany z tego urządzenia nie trafiły do synchronizacji; zostają tylko tutaj.",
+    "understood": "Rozumiem"
+  },
+  "afterKit": {
+    "title": "Twoje dane wróciły",
+    "body": "Najnowsza zmiana jest z {{date}}. Na liście zostały Twoje wcześniejsze urządzenia: {{names}}. Jeśli ich już nie masz albo któreś z nich zostało już wcześniej usunięte, usuń je. Dopóki się nie zdecydujesz, stąd nic nie zostanie wysłane.",
+    "bodyNoDate": "Na liście zostały Twoje wcześniejsze urządzenia: {{names}}. Jeśli ich już nie masz albo któreś z nich zostało już wcześniej usunięte, usuń je. Dopóki się nie zdecydujesz, stąd nic nie zostanie wysłane.",
+    "remove": "Usuń je",
+    "keep": "Mam je",
+    "pending": "Usuwanie jeszcze trwa."
   }
 }

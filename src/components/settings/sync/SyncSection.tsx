@@ -6,6 +6,7 @@ import { SyncStatusCard } from '@/components/settings/sync/SyncStatusCard';
 import { SyncSetupDialog } from '@/components/settings/sync/SyncSetupDialog';
 import { AddDeviceDialog } from '@/components/settings/sync/AddDeviceDialog';
 import { JoinDeviceDialog } from '@/components/settings/sync/join/JoinDeviceDialog';
+import { RemovedNoticeCard } from '@/components/settings/sync/RemovedNotice';
 import { WhatSyncsLink } from '@/components/settings/sync/WhatSyncsLink';
 import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 
@@ -27,6 +28,9 @@ export function SyncSection() {
   if (status && (status.phase === 'off' || status.phase === 'settingUp')) {
     cards = (
       <>
+        {status.removedNotice && (
+          <RemovedNoticeCard notice={status.removedNotice} onRejoin={() => setOpen('join')} />
+        )}
         <SyncIntroCard
           resuming={status.phase === 'settingUp'}
           onStart={() => setOpen('setup')}
@@ -38,7 +42,7 @@ export function SyncSection() {
   } else if (status) {
     cards = (
       <>
-        <SyncStatusCard status={status} />
+        <SyncStatusCard status={status} onRejoin={() => setOpen('join')} />
         <SyncDevicesCard />
         <SyncDangerCard />
         <WhatSyncsLink />

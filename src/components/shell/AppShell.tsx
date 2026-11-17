@@ -3,6 +3,7 @@ import { AppSidebar } from '@/components/shell/AppSidebar';
 import { TopBar } from '@/components/shell/TopBar';
 import { ShellProvider } from '@/components/shell/ShellProvider';
 import { useDeviceSyncEvents } from '@/hooks/use-device-sync-events';
+import { RemovedNoticeDialog } from '@/components/settings/sync/RemovedNotice';
 import { SyncBusyModal } from '@/components/settings/sync/SyncBusyModal';
 import { PageTransition } from '@/components/shell/PageTransition';
 
@@ -16,6 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <ShellProvider>
       <SyncBusyModal />
+      <RemovedNoticeDialog />
       <div className="grid min-h-screen grid-cols-[var(--sidebar-w)_minmax(0,1fr)]">
         <AppSidebar />
         <main className="min-w-0">

@@ -7,7 +7,13 @@ import { useAttachmentsStatusText } from '@/hooks/use-attachments-status-text';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import { hostOf } from '@/utils/sync-setup';
-import { syncAge, type SyncStateView } from '@/utils/sync-state';
+import { useFormat } from '@/lib/use-format';
+import {
+  statusPopoverLines,
+  syncAge,
+  syncProblemState,
+  type SyncStateView,
+} from '@/utils/sync-state';
 import type { SyncStatus } from '@shared/schema';
 
 /**
@@ -30,11 +36,16 @@ export function SyncStatusSection({
   const { t: tc } = useTranslation('common');
   const { syncNow } = useDeviceSyncMutations();
   const attachments = useAttachmentsStatusText(status.attachments);
+  const { date } = useFormat();
 
   const label = t(indicator.labelKey, { count: indicator.days });
   const age = indicator.ageFrom === null ? null : syncAge(indicator.ageFrom, now);
   const stale = indicator.tone === 'stale';
-  const running = syncNow.isPending || status.phase === 'syncing';
+  // A round that takes too long reads "taking longer than usual": the button then tries again
+  const slow = indicator.kind === 'syncingLong';
+  const running = !slow && (syncNow.isPending || status.phase === 'syncing');
+  const problemState = syncProblemState(status);
+  const lines = statusPopoverLines(status);
 
   const handleSyncNow = async () => {
     if (running) return;
@@ -52,8 +63,34 @@ export function SyncStatusSection({
         {age ? `${label} · ${t(`age.${age.key}`, { count: age.count })}` : label}
       </p>
       {stale && status.problem && (
-        <p className="mt-1 text-caption text-ink-3">{t(`status.problem.${status.problem}`)}</p>
+        <p className="mt-1 text-caption text-ink-3">
+          {problemState?.kind === 'waitingForRemover'
+            ? t('problem.waiting.title', { by: problemState.by })
+            : problemState?.kind === 'rejoin'
+              ? t('problem.rejoin.title')
+              : t(`status.problem.${status.problem}`)}
+        </p>
       )}
+      {indicator.kind === 'firstUpload' && (
+        <p className="mt-1 text-caption text-ink-3">{t('setup.done.body')}</p>
+      )}
+      {lines.map((line) => (
+        <p
+          key={line.kind}
+          className="mt-1 text-caption text-ink-3"
+          data-testid={`popover-line-${line.kind}`}
+        >
+          {t(line.key, {
+            ...line.values,
+            ...Object.fromEntries(
+              line.dates.map((name) => [
+                name,
+                date(new Date(Number(line.values[name]) * 1000), { dateStyle: 'long' }),
+              ])
+            ),
+          })}
+        </p>
+      ))}
       {attachments.problem && <p className="mt-1 text-caption text-ink-3">{attachments.problem}</p>}
       {attachments.failedUpload && (
         <p className="mt-1 text-caption text-ink-3">{attachments.failedUpload}</p>
@@ -91,7 +128,11 @@ export function SyncStatusSection({
           <>
             <Button variant="outline" size="sm" onClick={handleSyncNow} loading={running}>
               <RefreshCw />
-              {running ? t('indicator.syncing') : t('status.syncNow')}
+              {running
+                ? t('indicator.syncing')
+                : slow
+                  ? t('pairing.tryAgain')
+                  : t('status.syncNow')}
             </Button>
             <Link
               href="/settings/sync"
@@ -102,6 +143,44 @@ export function SyncStatusSection({
             </Link>
           </>
         )}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The Synchronizace section of the popover while sync is off but this device was removed (or left):
+ * the one line that says so, until "Rozumím" in Settings, with the way to Settings.
+ */
+export function SyncRemovedSection({
+  status,
+  onNavigate,
+}: {
+  status: SyncStatus;
+  onNavigate: () => void;
+}) {
+  const { t } = useTranslation('deviceSync');
+  const lines = statusPopoverLines(status);
+  if (lines.length === 0) return null;
+  return (
+    <section>
+      <div className="text-eyebrow uppercase text-ink-4">{t('popover.title')}</div>
+      {lines.map((line) => (
+        <p
+          key={line.kind}
+          className="mt-1 text-caption text-ink-3"
+          data-testid={`popover-line-${line.kind}`}
+        >
+          {t(line.key, line.values)}
+        </p>
+      ))}
+      <div className="mt-2.5">
+        <Button asChild variant="outline" size="sm">
+          <Link href="/settings/sync" onClick={onNavigate}>
+            <Settings />
+            {t('popover.openSettings')}
+          </Link>
+        </Button>
       </div>
     </section>
   );

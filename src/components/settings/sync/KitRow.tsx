@@ -12,9 +12,7 @@ import { CheckKitDialog } from '@/components/settings/sync/CheckKitDialog';
 import { NewKitDialog } from '@/components/settings/sync/NewKitDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-
-/** Labels wrap instead of being cut (long German and Polish buttons). */
-const WRAP_BUTTON = 'h-auto min-h-control whitespace-normal py-1.5 text-center';
+import { WRAP_BUTTON } from '@/components/settings/sync/wrap-button';
 
 /**
  * The recovery kit in Settings → Sync (spec §6.3): when it was made and where it is kept, when the

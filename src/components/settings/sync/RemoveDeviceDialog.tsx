@@ -14,7 +14,7 @@ import {
   kitLineKey,
   outcomeView,
   removalRequest,
-  removalTitleName,
+  removalTitleNames,
   toggleId,
   type OutcomeView,
 } from '@/utils/sync-removal';
@@ -46,9 +46,15 @@ type Step =
  */
 export function RemoveDeviceDialog({
   deviceIds,
+  newKit = false,
+  onRemoved,
   onClose,
 }: {
   deviceIds: string[];
+  /** Also makes a new recovery kit (a device that joined with the kit: "Odebrat a vytvořit novou sadu"). */
+  newKit?: boolean;
+  /** Runs once the devices are gone (done, or already removed by another device), before the dialog closes. */
+  onRemoved?: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation('deviceSync');
@@ -62,9 +68,10 @@ export function RemoveDeviceDialog({
   const field = useRef<HTMLInputElement>(null);
 
   const planning = step.kind === 'plan';
-  const planQuery = useRemovalPlan(deviceIds, alsoRemove, false, planning);
+  const planQuery = useRemovalPlan(deviceIds, alsoRemove, newKit, planning);
   const plan = planQuery.data;
-  const name = removalTitleName(plan, deviceIds) ?? '';
+  const name = removalTitleNames(plan, deviceIds) ?? '';
+  const several = deviceIds.length > 1;
   const reload = planQuery.refetch;
 
   // The new kit's seed and the password live in the mutation (and a ref) only while the dialog is
@@ -85,6 +92,7 @@ export function RemoveDeviceDialog({
           : t('remove.toast.alreadyRemoved', { name: removedName, by })
       );
     } else toast(t('remove.toast.removedHere'));
+    if (view.toast === 'removed' || view.toast === 'alreadyRemoved') onRemoved?.();
     resetRemove();
     onClose();
   };
@@ -98,7 +106,7 @@ export function RemoveDeviceDialog({
     try {
       const outcome = await removeDevicesWithPassword(
         password,
-        removalRequest(plan, deviceIds, alsoRemove)
+        removalRequest(plan, deviceIds, alsoRemove, newKit)
       );
       setPassword('');
       const view = outcomeView(outcome);
@@ -150,14 +158,18 @@ export function RemoveDeviceDialog({
         {working && (
           <div className="grid gap-2 py-2" role="status" aria-live="polite">
             <DialogTitle>{t('remove.progress', { name: step.name })}</DialogTitle>
-            <DialogDescription>{t('remove.body', { name: step.name })}</DialogDescription>
+            <DialogDescription>
+              {t(several ? 'remove.bodyMany' : 'remove.body', { name: step.name })}
+            </DialogDescription>
           </div>
         )}
         {planning && (
           <form onSubmit={submit} className="grid gap-4">
             <DialogHeader>
               <DialogTitle>{t('remove.title', { name })}</DialogTitle>
-              <DialogDescription>{t('remove.body', { name })}</DialogDescription>
+              <DialogDescription>
+                {t(several ? 'remove.bodyMany' : 'remove.body', { name })}
+              </DialogDescription>
             </DialogHeader>
 
             {planQuery.isError && !plan && (

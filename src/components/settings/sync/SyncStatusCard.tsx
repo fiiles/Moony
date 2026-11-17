@@ -12,20 +12,27 @@ import { isQuietlyOutOfReach, syncState } from '@/utils/sync-state';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { ChangeServerDialog } from '@/components/settings/sync/ChangeServerDialog';
 import { KitRow } from '@/components/settings/sync/KitRow';
+import { NoticeList } from '@/components/settings/sync/NoticeList';
 import { SyncProblemAlert } from '@/components/settings/sync/SyncProblemAlert';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Clock, RefreshCw } from 'lucide-react';
 
 /** Settings → Sync, sync on: where sync stands, what is waiting, and the two everyday actions. */
-export function SyncStatusCard({ status }: { status: SyncStatus }) {
+export function SyncStatusCard({
+  status,
+  onRejoin,
+}: {
+  status: SyncStatus;
+  /** The password question of "Připojit znovu" turned sync off: the join choice opens. */
+  onRejoin: () => void;
+}) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { dateTime, date } = useFormat();
   const { syncNow } = useDeviceSyncMutations();
   const [serverOpen, setServerOpen] = useState(false);
 
-  const running = syncNow.isPending || status.phase === 'syncing';
   const attachments = useAttachmentsStatusText(status.attachments);
 
   const handleSyncNow = async () => {
@@ -42,6 +49,9 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
   // The same label the top bar shows, so the surfaces never contradict each other
   const indicator = syncState(status, now);
   const stateLabel = indicator ? t(indicator.labelKey, { count: indicator.days }) : '';
+  // A round that takes too long reads "taking longer than usual": the button then tries again
+  const slow = indicator?.kind === 'syncingLong';
+  const running = !slow && (syncNow.isPending || status.phase === 'syncing');
   const paidUntil = secondsToDate(status.paidUntil);
   // A note, never a problem: this device's clock stands more than a day ahead (audit M6)
   const clockAheadUntil = secondsToDate(status.clockAheadUntil);
@@ -56,7 +66,8 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
     <>
       <SettingsCard title={t('title')} description={t('description')}>
         <div className="grid gap-3">
-          <SyncProblemAlert status={status} />
+          <SyncProblemAlert status={status} onRejoin={onRejoin} />
+          <NoticeList status={status} />
           {clockAheadUntil && (
             <Alert>
               <Clock />
@@ -71,11 +82,22 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
           <div>
             <SettingsRow
               label={stateLabel}
-              hint={`${lastSynced} · ${t('status.pending', { number: status.pendingChanges })}`}
+              hint={
+                <>
+                  {`${lastSynced} · ${t('status.pending', { number: status.pendingChanges })}`}
+                  {indicator?.kind === 'firstUpload' && (
+                    <span className="block">{t('setup.done.body')}</span>
+                  )}
+                </>
+              }
             >
               <Button type="button" onClick={handleSyncNow} loading={running}>
                 <RefreshCw />
-                {running ? t('indicator.syncing') : t('status.syncNow')}
+                {running
+                  ? t('indicator.syncing')
+                  : slow
+                    ? t('pairing.tryAgain')
+                    : t('status.syncNow')}
               </Button>
             </SettingsRow>
             <SettingsRow

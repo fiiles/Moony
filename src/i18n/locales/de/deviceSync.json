@@ -4,7 +4,7 @@
   "indicator": {
     "synced": "Synchronisiert",
     "syncing": "Synchronisiere…",
-    "waiting": "Änderung zurückgehalten",
+    "waiting": "Warten auf eine Änderung von einem anderen Gerät",
     "paused": "Sync pausiert",
     "error": "Sync-Fehler",
     "unreachable": "Server nicht erreichbar",
@@ -42,7 +42,7 @@
   "status": {
     "unreachableNote": "Die Synchronisierung läuft weiter, sobald der Server wieder erreichbar ist.",
     "problem": {
-      "captureBroken": "Die Änderungsverfolgung dieses Geräts ist beschädigt, daher wurde die Synchronisierung gestoppt. Sie lässt sich reparieren.",
+      "captureBroken": "Die Synchronisierung ist auf diesem Gerät ausgefallen. Ihre Daten sind in Ordnung. Sie lässt sich reparieren.",
       "vaultGone": "Die synchronisierten Daten wurden vom Synchronisierungsserver gelöscht.",
       "lapsed": "Das Abonnement ist abgelaufen, die Synchronisierung ist pausiert.",
       "quotaExceeded": "Die synchronisierten Daten überschreiten das Speicherlimit.",
@@ -51,17 +51,20 @@
       "gap": "Eine Änderung von einem anderen Gerät ist noch nicht eingetroffen. Dieses Gerät synchronisiert weiter und sendet seine eigenen Änderungen.",
       "clockAhead": "Eine Änderung von einem anderen Gerät ist mehr als zehn Jahre im Voraus datiert und wird deshalb zurückgehalten. Sie bleibt zurückgehalten, auch wenn die Uhr dieses Geräts korrigiert wird; nach 14 Tagen können Sie sie überspringen.",
       "undecryptable": "Änderungen eines anderen Geräts konnten nicht entschlüsselt werden.",
-      "invalidChain": "Änderungen eines anderen Geräts haben die Prüfung nicht bestanden und werden zurückgehalten.",
+      "invalidChain": "Änderungen von einem anderen Gerät konnten nicht überprüft werden, deshalb hat Moony sie nicht verwendet. Die Daten auf diesem Gerät sind in Ordnung.",
       "missingParent": "Änderungen eines anderen Geräts haben fehlende frühere Schritte und werden zurückgehalten.",
       "quarantined": "Änderungen einiger Geräte werden aus Sicherheitsgründen zurückgehalten.",
       "offline": "Keine Verbindung zum Synchronisierungsserver. Die Synchronisierung läuft weiter, sobald er wieder erreichbar ist.",
       "relayError": "Der Synchronisierungsserver antwortet nicht wie erwartet. Moony versucht es weiter.",
       "rateLimited": "Der Synchronisierungsserver hat Moony gebeten, langsamer zu sein. Moony versucht es bald erneut.",
       "unauthorized": "Der Synchronisierungsserver hat dieses Gerät nicht akzeptiert. Die Synchronisierung muss eventuell neu eingerichtet werden.",
-      "keyRotated": "Der Synchronisierungsschlüssel wurde auf einem anderen Gerät geändert. Richten Sie die Synchronisierung auf diesem Gerät neu ein.",
+      "keyRotated": "Synchronisiere…",
       "secureStorage": "Moony konnte nicht auf den sicheren Speicher dieses Geräts zugreifen, daher ist die Synchronisierung pausiert. Moony versucht es erneut; meist hilft es, das Gerät zu entsperren oder Moony neu zu starten.",
-      "serverWentBack": "Der Synchronisierungsserver ist auf einen älteren Stand zurückgefallen, daher können auf Ihren anderen Geräten Änderungen fehlen. Ihre Daten auf diesem Gerät sind unversehrt. Moony kann das noch nicht selbst beheben: Um Ihre Geräte wieder zusammenzuführen, schalten Sie die Synchronisierung aus, richten Sie sie auf dem Gerät mit den vollständigsten Daten neu ein und verbinden Sie die anderen Geräte. Synchronisieren Sie dieses Gerät nicht neu: Das würde die Daten dieses Geräts durch die ältere Kopie des Synchronisierungsservers ersetzen. Wenn Sie die Synchronisierung neu einrichten, entsteht ein neues Sync-Konto.",
-      "internal": "Die Synchronisierung wurde wegen eines internen Fehlers gestoppt."
+      "serverWentBack": "Der Synchronisierungsserver ist auf einen älteren Stand zurückgefallen, daher können auf Ihren anderen Geräten Änderungen fehlen. Ihre Daten auf diesem Gerät sind unversehrt. Moony kann das noch nicht selbst beheben: Um Ihre Geräte wieder zusammenzuführen, schalten Sie die Synchronisierung aus, richten Sie sie auf dem Gerät mit den vollständigsten Daten neu ein und verbinden Sie die anderen Geräte.",
+      "internal": "Die Synchronisierung wurde wegen eines internen Fehlers gestoppt.",
+      "keyNotGiven": "Dieses Gerät muss erneut verbunden werden.",
+      "keyChangeUnverified": "Dieses Gerät muss erneut verbunden werden.",
+      "keyChangeWaiting": "Es wird gewartet, bis sich das Gerät verbindet, das die Änderung vorgenommen hat."
     },
     "lastSynced": "Zuletzt synchronisiert {{date}}",
     "neverSynced": "Noch nicht synchronisiert",
@@ -90,7 +93,7 @@
     "cancelSetup": "Einrichtung abbrechen",
     "cancelConfirm": {
       "title": "Einrichtung abbrechen?",
-      "description": "Dieses Gerät vergisst das Sync-Konto, das für diese Einrichtung angelegt wurde, und eine bereits geleistete Zahlung wird nicht übernommen. Danach beginnt die Einrichtung der Synchronisierung von vorn, mit einem neuen Sync-Konto.",
+      "description": "Dieses Gerät vergisst die in diesem Versuch eingerichtete Synchronisierung, und eine bereits geleistete Zahlung wird nicht übertragen. Die Einrichtung beginnt dann von vorn.",
       "keep": "Einrichtung fortsetzen"
     },
     "startTitle": "Synchronisierung starten",
@@ -255,24 +258,24 @@
     "appliedAhead": "Die Änderung wurde inzwischen angewendet; nichts wurde übersprungen."
   },
   "turnOff": {
-    "button": "Synchronisierung auf diesem Gerät ausschalten",
+    "button": "Synchronisierung hier ausschalten",
     "hint": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter.",
     "title": "Synchronisierung auf diesem Gerät ausschalten?",
-    "description": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter. Sie können später wieder beitreten, indem Sie mit einem anderen Gerät oder mit Ihrem Wiederherstellungs-Kit koppeln; die Daten dieses Geräts werden dann nach einer Sicherung durch die synchronisierten Daten ersetzt.",
-    "pendingChanges_one": "{{count}} Änderung auf diesem Gerät wurde noch nicht gesendet. Sie wird nicht mehr gesendet.",
-    "pendingChanges_other": "{{count}} Änderungen auf diesem Gerät wurden noch nicht gesendet. Sie werden nicht mehr gesendet.",
+    "description": "Ihre Daten bleiben hier. Andere Geräte synchronisieren weiter und sehen, dass dieses sich abgemeldet hat. Wenn Sie später wieder beitreten, werden die Daten dieses Geräts durch die synchronisierten ersetzt.",
     "confirm": "Synchronisierung ausschalten",
     "success": "Synchronisierung ausgeschaltet",
-    "noCutOff": "Das Ausschalten der Synchronisierung hier trennt kein anderes Gerät und kein Kit ab."
+    "noCutOff": "Andere Geräte sehen, dass sich dieses abgemeldet hat.",
+    "pendingChanges_one": "{{count}} Änderung von hier wurde noch nicht gesendet. Nach dem Ausschalten wird sie nicht mehr gesendet.",
+    "pendingChanges_other": "{{count}} Änderungen von hier wurden noch nicht gesendet. Nach dem Ausschalten werden sie nicht mehr gesendet."
   },
   "delete": {
-    "button": "Synchronisierte Daten löschen",
+    "button": "Synchronisierte Daten auf dem Server löschen",
     "hint": "Entfernt die synchronisierten Daten vom Synchronisierungsserver für alle Geräte.",
     "title": "Synchronisierte Daten löschen?",
     "description": "Dadurch werden die synchronisierten Daten auf dem Synchronisierungsserver für alle Geräte gelöscht. Die lokalen Daten auf jedem Gerät bleiben erhalten.",
     "confirm": "Synchronisierte Daten löschen",
     "success": "Synchronisierte Daten gelöscht",
-    "afterwards": "Danach wird die Synchronisierung von Grund auf neu eingerichtet, mit einem neuen Sync-Konto und einem neuen Wiederherstellungs-Kit.",
+    "afterwards": "Danach wird die Synchronisierung von Grund auf neu eingerichtet, mit einem neuen Wiederherstellungs-Kit.",
     "afterwardsOwnServer": "Danach können Sie die Synchronisierung mit demselben Verbindungscode und einem neuen Wiederherstellungs-Kit erneut einrichten."
   },
   "danger": {
@@ -572,7 +575,8 @@
       "removedHere": "Ein anderes Gerät hat dieses Gerät inzwischen entfernt. Die Synchronisierung ist hier aus."
     },
     "loadError": "Das Entfernen konnte nicht vorbereitet werden. Versuchen Sie es erneut.",
-    "retry": "Erneut versuchen"
+    "retry": "Erneut versuchen",
+    "bodyMany": "{{name}} erhalten keine neuen Daten mehr und können nichts mehr ändern. Was bereits darauf ist, bleibt dort, geschützt durch das Moony-Passwort."
   },
   "newKit": {
     "title": "Ihr neues Wiederherstellungs-Kit",
@@ -626,5 +630,61 @@
       "alreadyRemoved": "{{by}} hat die von Ihnen markierten Geräte inzwischen entfernt.",
       "alreadyRemovedUnknown": "Die von Ihnen markierten Geräte wurden inzwischen entfernt."
     }
+  },
+  "notice": {
+    "removal": {
+      "removed": "{{by}} hat {{names}} entfernt ({{date}}).",
+      "newKit": "{{by}} hat ein neues Wiederherstellungs-Kit erstellt ({{date}}); das alte gilt nicht mehr.",
+      "kitToo": "Es hat auch ein neues Wiederherstellungs-Kit erstellt; das alte gilt nicht mehr."
+    },
+    "notDone": {
+      "changed": "Das Entfernen von {{devices}} wurde nicht abgeschlossen: {{by}} hat die Geräteliste inzwischen geändert. Prüfen Sie sie und versuchen Sie es erneut.",
+      "alreadyRemoved": "{{devices}} wurde inzwischen von {{by}} entfernt.",
+      "refused": "Der Synchronisierungsserver hat das Entfernen abgelehnt. Versuchen Sie es erneut.",
+      "kit": "Das neue Wiederherstellungs-Kit ist nicht in Kraft getreten; erstellen Sie es erneut."
+    },
+    "overrun": "Der Synchronisierungsserver hat diesem Gerät Änderungen geschickt, die er nach dem Entfernen eines Geräts am {{date}} nicht mehr hätte schicken dürfen, und Moony hat sie übernommen. Wenn Sie das Gerät entfernt haben, weil es gestohlen wurde, prüfen Sie die Änderungen der letzten Tage.",
+    "overrunNoDate": "Der Synchronisierungsserver hat diesem Gerät Änderungen geschickt, die er nach dem Entfernen eines Geräts nicht mehr hätte schicken dürfen, und Moony hat sie übernommen. Wenn Sie das Gerät entfernt haben, weil es gestohlen wurde, prüfen Sie die Änderungen der letzten Tage.",
+    "newDevice": {
+      "added": "{{name}} wurde am {{date}} von {{by}} hinzugefügt.",
+      "lateVouch": "{{name}} wurde hinzugefügt. {{by}} hat es hinzugefügt und synchronisiert nicht mehr. Wenn Sie {{name}} nicht kennen, entfernen Sie es.",
+      "kitTitle": "Ein Gerät ist mit Ihrem Wiederherstellungs-Kit beigetreten",
+      "kit": "{{name}} ist am {{date}} beigetreten. Wenn Sie das nicht waren, hat jemand anderes Ihr Kit.",
+      "mine": "Das war ich",
+      "removeAndNew": "Entfernen und neues Kit erstellen"
+    }
+  },
+  "problem": {
+    "rejoin": {
+      "title": "Dieses Gerät muss erneut verbunden werden",
+      "body": "Es war lange ohne Verbindung, oder es hat sich inzwischen geändert, wer auf die Daten zugreifen darf. Die Daten auf diesem Gerät sind in Ordnung, sie werden nur nicht synchronisiert.",
+      "by": "Die Änderung hat {{by}} vorgenommen, das dieses Gerät nicht kennt.",
+      "button": "Erneut verbinden"
+    },
+    "waiting": {
+      "title": "Die Synchronisierung wartet auf {{by}}",
+      "body": "Dieses Gerät wartet auf eine Bestätigung von {{by}}, das zuletzt die Geräteliste geändert hat. Die Daten hier sind in Ordnung. Wenn Sie {{by}} nicht mehr verwenden, verbinden Sie dieses Gerät erneut."
+    }
+  },
+  "rejoin": {
+    "title": "Dieses Gerät erneut verbinden?",
+    "description": "Die Synchronisierung wird auf diesem Gerät ausgeschaltet, Ihre Daten bleiben hier. Danach verbinden Sie sich erneut, und die Daten dieses Geräts werden nach einer Sicherung durch die synchronisierten Daten ersetzt. Änderungen, die dieses Gerät nicht verlassen haben, bleiben in der Sicherung."
+  },
+  "removed": {
+    "title": "Dieses Gerät wurde aus der Synchronisierung entfernt",
+    "body": "{{by}} hat es am {{date}} entfernt. Ihre Daten sind hier geblieben, sie werden nur nicht mehr synchronisiert.",
+    "titleLeft": "Die Synchronisierung ist auf diesem Gerät aus",
+    "bodyLeft": "Dieses Gerät hat die Synchronisierung verlassen (vielleicht von einer anderen Kopie dieses Profils aus). Ihre Daten sind hier geblieben.",
+    "unsent_one": "{{count}} Änderung von diesem Gerät ist nicht in die Synchronisierung gelangt; sie bleibt nur hier.",
+    "unsent_other": "{{count}} Änderungen von diesem Gerät sind nicht in die Synchronisierung gelangt; sie bleiben nur hier.",
+    "understood": "Verstanden"
+  },
+  "afterKit": {
+    "title": "Ihre Daten sind zurück",
+    "body": "Die neueste Änderung stammt vom {{date}}. Ihre früheren Geräte stehen noch in der Liste: {{names}}. Wenn Sie sie verloren haben oder eines davon ein Gerät ist, das Sie schon einmal entfernt hatten, entfernen Sie sie. Bis Sie sich entscheiden, wird von hier nichts gesendet.",
+    "bodyNoDate": "Ihre früheren Geräte stehen noch in der Liste: {{names}}. Wenn Sie sie verloren haben oder eines davon ein Gerät ist, das Sie schon einmal entfernt hatten, entfernen Sie sie. Bis Sie sich entscheiden, wird von hier nichts gesendet.",
+    "remove": "Entfernen",
+    "keep": "Ich habe sie",
+    "pending": "Das Entfernen läuft noch."
   }
 }

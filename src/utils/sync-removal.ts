@@ -75,6 +75,17 @@ export function removalTitleName(
   return first?.name ?? null;
 }
 
+/** The names of every device asked for, as the plan names them, joined for the title of a removal of several. */
+export function removalTitleNames(
+  plan: RemovalPlan | undefined,
+  deviceIds: readonly string[]
+): string | null {
+  const names = (plan?.removing ?? [])
+    .filter((device) => deviceIds.includes(device.id))
+    .map((device) => device.name);
+  return names.length > 0 ? names.join(', ') : null;
+}
+
 /**
  * The arguments of `sync_remove_devices` for a plan that was confirmed (`password` is added by the
  * caller). `newKit` is the new-kit dialog's: no device asked for, a new recovery kit.

@@ -7,6 +7,7 @@ import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useServerGate } from '@/hooks/use-server-gate';
 import { translateApiError } from '@/lib/translate-api-error';
 import { removalAvailable } from '@/utils/sync-removal';
+import { formerDeviceIds } from '@/utils/sync-devices';
 import { SettingsCard } from '@/components/settings/SettingsCard';
 import { AddDeviceDialog } from '@/components/settings/sync/AddDeviceDialog';
 import { DeviceRow } from '@/components/settings/sync/DeviceRow';
@@ -29,13 +30,15 @@ export function SyncDevicesCard() {
   const { t } = useTranslation('deviceSync');
   const { data: groups } = useSyncDeviceGroups();
   const { data: status } = useDeviceSyncStatus();
-  const { keepDevice } = useDeviceSyncMutations();
+  const { t: tc } = useTranslation('common');
+  const { keepDevice, hideFormerDevices } = useDeviceSyncMutations();
   const [renaming, setRenaming] = useState<SyncDevice | null>(null);
   const [removing, setRemoving] = useState<SyncDevice | null>(null);
   const [adding, setAdding] = useState(false);
   const available = removalAvailable(status);
   const unsupported = status !== undefined && !status.removalSupported;
-  // Adding and removing a device need the server; renaming this one, "Je moje" and the details do not
+  // Adding and removing a device need the server; renaming this one, "Je moje" and taking a former
+  // device off the list do not
   const server = useServerGate();
 
   // "Je moje" can find the row gone or no longer trusted: the list is re-read either way
@@ -47,6 +50,18 @@ export function SyncDevicesCard() {
     }
   };
 
+  // Off this device's list only: the device stays blocked. `null` hides every former device.
+  const [hidingId, setHidingId] = useState<string | null>(null);
+  const hide = async (ids: string[], one: string | null) => {
+    setHidingId(one);
+    try {
+      await hideFormerDevices.mutateAsync(ids);
+    } catch (error) {
+      toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
+    }
+  };
+  const hidingOne = (device: SyncDevice) => hideFormerDevices.isPending && hidingId === device.id;
+
   const row = (device: SyncDevice) => (
     <DeviceRow
       key={device.id}
@@ -57,6 +72,8 @@ export function SyncDevicesCard() {
       onRemove={setRemoving}
       onKeep={keep}
       keeping={keepDevice.isPending && keepDevice.variables === device.id}
+      onHide={(d) => void hide([d.id], d.id)}
+      hiding={hidingOne(device)}
     />
   );
   const former = groups?.former ?? [];
@@ -91,7 +108,23 @@ export function SyncDevicesCard() {
             <CollapsibleTrigger className="cursor-pointer border-0 bg-transparent p-0 text-micro font-500 text-ink-3 underline">
               {t('devices.formerGroup', { count: former.length })}
             </CollapsibleTrigger>
-            <CollapsibleContent>{former.map(row)}</CollapsibleContent>
+            <CollapsibleContent>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+                <p className="m-0 min-w-0 flex-1 basis-[280px] text-caption text-ink-3">
+                  {t('devices.hideNote')}
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  loading={hideFormerDevices.isPending && hidingId === null}
+                  onClick={() => void hide(formerDeviceIds(former), null)}
+                >
+                  {t('devices.hideAll')}
+                </Button>
+              </div>
+              {former.map(row)}
+            </CollapsibleContent>
           </Collapsible>
         )}
       </SettingsCard>

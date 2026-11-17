@@ -191,6 +191,11 @@ export function useDeviceSyncMutations() {
       await queryClient.invalidateQueries({ queryKey: ['device-sync-removal-plan'] });
     },
   });
+  // Local only: the list changes, nothing else does
+  const hideFormerDevices = useMutation({
+    mutationFn: deviceSyncApi.hideFormerDevices,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-devices'] }),
+  });
   const printRecoveryKit = useMutation({ mutationFn: deviceSyncApi.printRecoveryKit });
   // The typed code is a variable: gcTime 0 keeps it out of the cache.
   const checkRecoveryKit = useMutation<KitCheck, Error, string>({
@@ -223,6 +228,7 @@ export function useDeviceSyncMutations() {
     removeDevices,
     removeDevicesWithPassword,
     keepDevice,
+    hideFormerDevices,
     printRecoveryKit,
     checkRecoveryKit,
     dismissNotice,

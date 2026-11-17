@@ -1,10 +1,9 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown } from 'lucide-react';
 import type { SyncDevice } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { sentences } from '@/utils/sentences';
 import {
+  canHideDevice,
   canKeepDevice,
   canRemoveDevice,
   checkReasonKey,
@@ -16,7 +15,6 @@ import {
 } from '@/utils/sync-devices';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface DeviceRowProps {
   device: SyncDevice;
@@ -28,12 +26,17 @@ interface DeviceRowProps {
   onRemove: (device: SyncDevice) => void;
   onKeep: (device: SyncDevice) => void;
   keeping: boolean;
+  /** "Odstranit ze seznamu" of a former row. */
+  onHide: (device: SyncDevice) => void;
+  hiding: boolean;
 }
 
 /**
- * One device of the list (design system: a settings row). Active rows open for their details and
- * "Odebrat…"; a "Zkontrolujte" row says why in the open and carries its actions; a former row is a
- * line with no action. Labels wrap, never truncate.
+ * One device of the list (design system: a settings row): the name with its badges, under it the
+ * platform, last activity and app version, then how it joined; the actions sit at the right edge
+ * ("Přejmenovat" for this device, "Je moje" and "Odebrat…" where they apply, "Odstranit ze
+ * seznamu" on a former row). A "Zkontrolujte" row says why in the open. Labels wrap, never
+ * truncate: the actions drop under the text when the row is narrow.
  */
 export function DeviceRow({
   device,
@@ -43,16 +46,17 @@ export function DeviceRow({
   onRemove,
   onKeep,
   keeping,
+  onHide,
+  hiding,
 }: DeviceRowProps) {
   const { t } = useTranslation('deviceSync');
   const { date, dateTime, locale } = useFormat();
-  const [open, setOpen] = useState(false);
 
   const day = (seconds: number) => date(new Date(seconds * 1000), { dateStyle: 'medium' });
   const label = deviceLabelKey(device);
   const inactive = inactiveDays(device);
   const reasonKey = checkReasonKey(device);
-  const viaKey = joinedViaKey(device);
+  const viaKey = device.status === 'former' ? null : joinedViaKey(device);
   const removable = removalAvailable && canRemoveDevice(device);
 
   const line =
@@ -73,112 +77,86 @@ export function DeviceRow({
               }),
           t('devices.version', { version: device.appVersion }),
         ];
-
-  const details = (
-    <dl className="m-0 mt-2 grid gap-1 text-caption text-ink-3">
-      {viaKey && (
-        <dd className="m-0">
-          {t(viaKey, {
-            date: day(device.joinedAt),
-            name: device.addedBy ?? '',
-          })}
-        </dd>
-      )}
-      {inactive !== null && <dd className="m-0">{t('devices.inactiveHint')}</dd>}
-    </dl>
-  );
+  const joined = [
+    viaKey ? t(viaKey, { date: day(device.joinedAt), name: device.addedBy ?? '' }) : null,
+    inactive !== null ? t('devices.inactiveHint') : null,
+  ].filter((part): part is string => part !== null);
 
   return (
-    <Collapsible
-      open={open}
-      onOpenChange={setOpen}
-      className="border-b border-line-soft py-3 last:border-b-0"
+    <div
+      className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 border-b border-line-soft py-3 last:border-b-0"
       data-testid="sync-device-row"
     >
-      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-        <div className="min-w-0 flex-1 basis-[220px]">
-          <b className="block break-words text-body font-600 text-ink">
-            <span className="inline-flex flex-wrap items-center gap-2">
-              {label ? t(label, { name: device.name }) : device.name}
-              {device.thisDevice && <Badge variant="dark">{t('devices.thisDevice')}</Badge>}
-              {device.status === 'check' && (
-                <Badge variant="loss">{t('devices.check.badge')}</Badge>
-              )}
-              {device.removalPending && <Badge variant="default">{t('devices.removing')}</Badge>}
-              {device.held && <Badge variant="loss">{t('devices.held')}</Badge>}
-              {inactive !== null && (
-                <Badge variant="default">{t('devices.inactive', { count: inactive })}</Badge>
-              )}
-            </span>
-          </b>
+      <div className="min-w-0 flex-1 basis-[280px]">
+        <b className="block break-words text-body font-600 text-ink">
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {label ? t(label, { name: device.name }) : device.name}
+            {device.thisDevice && <Badge variant="dark">{t('devices.thisDevice')}</Badge>}
+            {device.status === 'check' && <Badge variant="loss">{t('devices.check.badge')}</Badge>}
+            {device.removalPending && <Badge variant="default">{t('devices.removing')}</Badge>}
+            {device.held && <Badge variant="loss">{t('devices.held')}</Badge>}
+            {inactive !== null && (
+              <Badge variant="default">{t('devices.inactive', { count: inactive })}</Badge>
+            )}
+          </span>
+        </b>
+        <small className="mt-0.5 block break-words text-caption text-ink-4">
+          {line.join(' · ')}
+        </small>
+        {joined.length > 0 && (
           <small className="mt-0.5 block break-words text-caption text-ink-4">
-            {line.join(' · ')}
+            {joined.join(' · ')}
           </small>
-          {reasonKey && (
-            <p className="m-0 mt-1.5 text-caption text-ink-2">
-              {sentences(locale, [
-                t(reasonKey, { by: device.addedBy ?? '' }),
-                canKeepDevice(device) ? t('devices.check.keepNote') : null,
-              ])}
-            </p>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {device.thisDevice && (
-            <Button type="button" variant="outline" size="sm" onClick={() => onRename(device)}>
-              {t('devices.rename')}
-            </Button>
-          )}
-          {device.status === 'check' && canKeepDevice(device) && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              loading={keeping}
-              onClick={() => onKeep(device)}
-            >
-              {t('devices.check.keep')}
-            </Button>
-          )}
-          {device.status === 'check' && removable && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onRemove(device)}
-              {...serverProps}
-            >
-              {t('devices.remove')}
-            </Button>
-          )}
-          {device.status === 'active' && !device.thisDevice && (
-            <CollapsibleTrigger asChild>
-              <Button type="button" variant="ghost" size="sm" aria-expanded={open}>
-                {open ? t('devices.hideDetails') : t('devices.details')}
-                <ChevronDown className={open ? 'rotate-180' : undefined} />
-              </Button>
-            </CollapsibleTrigger>
-          )}
-        </div>
+        )}
+        {reasonKey && (
+          <p className="m-0 mt-1.5 text-caption text-ink-2">
+            {sentences(locale, [
+              t(reasonKey, { by: device.addedBy ?? '' }),
+              canKeepDevice(device) ? t('devices.check.keepNote') : null,
+            ])}
+          </p>
+        )}
       </div>
-      {device.status === 'active' && !device.thisDevice && (
-        <CollapsibleContent>
-          {details}
-          {removable && (
-            <div className="mt-2.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onRemove(device)}
-                {...serverProps}
-              >
-                {t('devices.remove')}
-              </Button>
-            </div>
-          )}
-        </CollapsibleContent>
-      )}
-    </Collapsible>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {device.thisDevice && (
+          <Button type="button" variant="outline" size="sm" onClick={() => onRename(device)}>
+            {t('devices.rename')}
+          </Button>
+        )}
+        {canKeepDevice(device) && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            loading={keeping}
+            onClick={() => onKeep(device)}
+          >
+            {t('devices.check.keep')}
+          </Button>
+        )}
+        {removable && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onRemove(device)}
+            {...serverProps}
+          >
+            {t('devices.remove')}
+          </Button>
+        )}
+        {canHideDevice(device) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            loading={hiding}
+            onClick={() => onHide(device)}
+          >
+            {t('devices.hide')}
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }

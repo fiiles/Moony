@@ -331,9 +331,10 @@
       "other": "Altro dispositivo"
     },
     "activeAt": "attivo {{when}}",
-    "details": "Dettagli",
-    "hideDetails": "Nascondi dettagli",
     "remove": "Rimuovi…",
+    "hide": "Togli dall'elenco",
+    "hideAll": "Togli tutti",
+    "hideNote": "Togliere un dispositivo dall'elenco non lo sblocca: continuerà a non vedere nulla di nuovo.",
     "removing": "Rimozione in corso…",
     "inactiveHint": "Non lo usi più? Rimuovilo.",
     "copyName": "{{name}} (copia)",

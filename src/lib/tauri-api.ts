@@ -580,6 +580,14 @@ export const deviceSyncApi = {
   keepDevice: (deviceId: string) => tauriInvoke<boolean>('sync_keep_device', { deviceId }),
 
   /**
+   * "Odstranit ze seznamu" / "Odstranit vše": takes former devices off this device's list. Local
+   * only, no password, no server; the devices stay blocked (their trust entries stay). IDs that are
+   * not former devices now are passed over.
+   */
+  hideFormerDevices: (deviceIds: string[]) =>
+    tauriInvoke<void>('sync_hide_former_devices', { deviceIds }),
+
+  /**
    * "Mám je" (`removeThem` false) or after "Odebrat je" (true): lifts the push hold of a kit
    * joiner. `validation.syncRemovalPending` while the removal is still running or a listed device
    * is still active ("Odebrání ještě probíhá").

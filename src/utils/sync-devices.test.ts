@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { SyncDevice } from '@shared/schema';
 import {
+  canHideDevice,
   canKeepDevice,
   canRemoveDevice,
   checkReasonKey,
   devicePlatformKey,
   deviceLabelKey,
+  formerDeviceIds,
   formerLineKey,
   groupDevices,
   inactiveDays,
@@ -114,6 +116,27 @@ describe('what can be done with a row', () => {
     expect(canRemoveDevice(row('a', { thisDevice: true }))).toBe(false);
     expect(canRemoveDevice(row('a', { status: 'former', formerReason: 'left' }))).toBe(false);
     expect(canRemoveDevice(row('a', { removalPending: true }))).toBe(false);
+  });
+
+  it('takes only a former row off the list', () => {
+    expect(canHideDevice(row('a', { status: 'former', formerReason: 'left' }))).toBe(true);
+    expect(canHideDevice(row('a', { status: 'former', formerReason: 'removed' }))).toBe(true);
+    expect(canHideDevice(row('a'))).toBe(false);
+    expect(canHideDevice(row('a', { thisDevice: true }))).toBe(false);
+    expect(canHideDevice(row('a', { status: 'check', checkReason: 'copy' }))).toBe(false);
+  });
+
+  it('"Odstranit vše" takes every former device, in list order, and nothing else', () => {
+    expect(
+      formerDeviceIds([
+        row('a'),
+        row('b', { status: 'former', formerReason: 'removed' }),
+        row('c', { status: 'check', checkReason: 'unverified' }),
+        row('d', { status: 'former', formerReason: 'left' }),
+      ])
+    ).toEqual(['b'.repeat(32), 'd'.repeat(32)]);
+    expect(formerDeviceIds([row('a')])).toEqual([]);
+    expect(formerDeviceIds(undefined)).toEqual([]);
   });
 
   it('keeps only a late-vouch row', () => {

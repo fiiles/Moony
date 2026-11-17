@@ -109,7 +109,7 @@ export function ChangeServerDialog({ onClose }: { onClose: () => void }) {
             <DialogTitle>{t('server.dialogTitle')}</DialogTitle>
             <DialogDescription>{t('server.dialogBody')}</DialogDescription>
           </DialogHeader>
-          <ServerChoice state={server} id="change-server" showCloud={false} />
+          <ServerChoice state={server} id="change-server" showCloud />
           {unchanged && (
             <p className="m-0 text-micro font-500 text-ink-3" role="status">
               {t('server.unchanged')}

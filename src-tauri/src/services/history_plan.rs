@@ -81,7 +81,14 @@ pub fn store_rebuild_version(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// `app_config` key of the settled-through mark.
 const SETTLED_KEY: &str = "history_settled_through";
+/// `app_config` key of the time (unix seconds) a settle was last tried and not earned.
+/// Local, like the mark.
+const SETTLE_TRIED_KEY: &str = "history_settle_tried_at";
+
+/// How long an unearned settle waits before the next start tries it again.
+pub const SETTLE_RETRY_GAP: i64 = 6 * 3600;
 
 /// The last UTC day (day start, unix seconds) whose history this device has settled to
 /// closing prices; `None` when nothing is settled or the stored value is unreadable. The key
@@ -97,30 +104,60 @@ pub fn stored_settled_through(conn: &Connection) -> Result<Option<i64>> {
     Ok(stored.and_then(|value| value.trim().parse::<i64>().ok()))
 }
 
-/// Record that the days through `day` (a UTC day start) are settled.
+/// The time (unix seconds) a settle was last tried without earning the mark; `None` when there
+/// is none or the stored value is unreadable. The key is Local.
+pub fn stored_settle_tried_at(conn: &Connection) -> Result<Option<i64>> {
+    let stored: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [SETTLE_TRIED_KEY],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(stored.and_then(|value| value.trim().parse::<i64>().ok()))
+}
+
+/// Record that a settle was tried at `now` (unix seconds) and did not earn the mark: the
+/// next start waits [`SETTLE_RETRY_GAP`] before it tries again.
+pub fn store_settle_tried_at(conn: &Connection, now: i64) -> Result<()> {
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![SETTLE_TRIED_KEY, now.to_string()],
+    )?;
+    Ok(())
+}
+
+/// Record that the days through `day` (a UTC day start) are settled. An earned mark ends the
+/// retry wait.
 pub fn store_settled_through(conn: &Connection, day: i64) -> Result<()> {
     conn.execute(
         "INSERT INTO app_config (key, value) VALUES (?1, ?2)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         params![SETTLED_KEY, day.to_string()],
     )?;
+    conn.execute("DELETE FROM app_config WHERE key = ?1", [SETTLE_TRIED_KEY])?;
     Ok(())
 }
 
-/// Forget the mark, so the next start settles the whole history again (the Seed tables were
-/// replaced by another device's rows).
+/// Forget the mark and the retry wait, so the next start settles the whole history again (the
+/// Seed tables were replaced by another device's rows).
 pub fn forget_settled_through(conn: &Connection) -> Result<()> {
-    conn.execute("DELETE FROM app_config WHERE key = ?1", [SETTLED_KEY])?;
+    conn.execute(
+        "DELETE FROM app_config WHERE key IN (?1, ?2)",
+        [SETTLED_KEY, SETTLE_TRIED_KEY],
+    )?;
     Ok(())
 }
 
-/// Does the finished batch earn the settled-through mark? The days must have been re-derived.
-/// Every ticker failing is how being offline looks, so the mark stays and the next start tries
-/// again. Some tickers failing is a ticker the provider rejects for good (a delisted symbol):
-/// it must not repeat the fetch of every ticker at every unlock, so the mark moves. A batch
-/// without ticker jobs has nothing to fail.
-pub fn settle_earned(outcome: &BatchOutcome, ticker_jobs: usize) -> bool {
-    outcome.days_ok && (ticker_jobs == 0 || outcome.failed_tickers.len() < ticker_jobs)
+/// Does the finished batch earn the settled-through mark? The days must have been re-derived,
+/// and then either no ticker failed (everything that needed a request got one) or at least one
+/// request was answered: a failure next to an answered request means the provider was
+/// reachable and rejects that ticker (a delisted symbol), which must not hold the mark.
+/// Failures with no answered request is how being offline looks: the mark stays and a later
+/// start tries again (after [`SETTLE_RETRY_GAP`]).
+pub fn settle_earned(outcome: &BatchOutcome) -> bool {
+    outcome.days_ok && (outcome.failed_tickers.is_empty() || outcome.fetched_tickers > 0)
 }
 
 /// What a start queues.
@@ -144,13 +181,21 @@ pub struct StartupPlan {
 /// settle re-derives the days that were recorded while the app was running, which hold
 /// mid-session prices, from the closing prices. The plan queues the tickers held from the
 /// start day and the days from it. `settles_through` is yesterday while the mark is absent
-/// or older, and the one-time rebuild settles too. `today` is today's UTC day start.
-pub fn plan_startup(conn: &Connection, today: i64) -> Result<StartupPlan> {
+/// or older, and the one-time rebuild settles too. `now` is the current unix time; today is
+/// its UTC day start. A settle that was tried less than [`SETTLE_RETRY_GAP`] ago without
+/// earning the mark is not started again (`settles_through` is `None`, and the settle start
+/// does not count); the gap repair and the one-time jobs are unaffected. A tried time after
+/// `now` (the clock moved back) holds nothing.
+pub fn plan_startup(conn: &Connection, now: i64) -> Result<StartupPlan> {
     let first_fact = earliest_fact_day(conn)?;
+    let today = now.div_euclid(DAY) * DAY;
     let yesterday = today - DAY;
     let mark = stored_settled_through(conn)?;
+    let waiting =
+        stored_settle_tried_at(conn)?.is_some_and(|t| t <= now && now - t < SETTLE_RETRY_GAP);
     let settles_through = match mark {
         Some(mark) if mark >= yesterday => None,
+        _ if waiting => None,
         _ => Some(yesterday),
     };
     if stored_rebuild_version(conn)? < REBUILD_VERSION {
@@ -812,6 +857,79 @@ mod tests {
     }
 
     #[test]
+    fn storing_the_mark_clears_the_tried_time_and_forgetting_clears_both() {
+        let conn = setup_test_db();
+        assert_eq!(stored_settle_tried_at(&conn).expect("none"), None);
+        store_settle_tried_at(&conn, d(0) + 5).expect("tried");
+        assert_eq!(
+            stored_settle_tried_at(&conn).expect("tried"),
+            Some(d(0) + 5)
+        );
+        store_settled_through(&conn, d(-1)).expect("mark");
+        assert_eq!(
+            stored_settle_tried_at(&conn).expect("cleared"),
+            None,
+            "an earned mark ends the retry wait"
+        );
+
+        store_settle_tried_at(&conn, d(0) + 5).expect("tried");
+        forget_settled_through(&conn).expect("forget");
+        assert_eq!(stored_settled_through(&conn).expect("mark"), None);
+        assert_eq!(stored_settle_tried_at(&conn).expect("tried"), None);
+    }
+
+    #[test]
+    fn an_unearned_settle_waits_for_the_retry_gap() {
+        let conn = complete_profile_with_stock();
+        store_settled_through(&conn, d(-2)).expect("mark");
+        store_settle_tried_at(&conn, d(0) + 3600).expect("tried");
+
+        let plan = plan_startup(&conn, d(0) + 2 * 3600).expect("plan");
+        assert!(plan.jobs.is_empty(), "{:?}", plan.jobs);
+        assert_eq!(plan.from_day, None);
+        assert_eq!(plan.settles_through, None);
+
+        let plan = plan_startup(&conn, d(0) + 3600 + SETTLE_RETRY_GAP).expect("plan");
+        assert_eq!(plan.from_day, Some(d(-1)));
+        assert_eq!(plan.settles_through, Some(d(-1)));
+
+        // the clock moved back: a tried time in the future does not hold the settle
+        store_settle_tried_at(&conn, d(0) + 9 * 3600).expect("tried");
+        let plan = plan_startup(&conn, d(0) + 3600).expect("plan");
+        assert_eq!(plan.from_day, Some(d(-1)));
+        assert_eq!(plan.settles_through, Some(d(-1)));
+    }
+
+    #[test]
+    fn the_retry_gap_holds_the_one_time_settle_too() {
+        let conn = setup_test_db();
+        balance_record(&conn, d(-10));
+        store_settle_tried_at(&conn, d(0) + 3600).expect("tried");
+        let plan = plan_startup(&conn, d(0) + 2 * 3600).expect("plan");
+        assert!(plan.one_time, "the version flag still needs its rebuild");
+        assert_eq!(plan.from_day, Some(d(-10)));
+        assert_eq!(plan.settles_through, None);
+    }
+
+    #[test]
+    fn a_start_inside_the_retry_gap_still_repairs_a_gap() {
+        let conn = setup_test_db();
+        store_rebuild_version(&conn).expect("version");
+        balance_record(&conn, d(-10));
+        for offset in -10..=0 {
+            if offset != -5 {
+                history_row(&conn, d(offset));
+            }
+        }
+        store_settled_through(&conn, d(-2)).expect("mark");
+        let now = d(0) + 5 * 3600;
+        store_settle_tried_at(&conn, now - 3600).expect("tried");
+        let plan = plan_startup(&conn, now).expect("plan");
+        assert_eq!(plan.from_day, Some(d(-5)));
+        assert_eq!(plan.settles_through, None);
+    }
+
+    #[test]
     fn a_day_recorded_live_is_settled_at_the_next_start() {
         let conn = complete_profile_with_stock();
         store_settled_through(&conn, d(-2)).expect("mark");
@@ -890,6 +1008,7 @@ mod tests {
         store_rebuild_version(&none).expect("version");
         let plan = plan_startup(&none, d(0)).expect("plan");
         assert!(plan.jobs.is_empty());
+        assert_eq!(plan.from_day, None);
         assert_eq!(plan.settles_through, Some(d(-1)));
 
         let today_only = setup_test_db();
@@ -897,6 +1016,7 @@ mod tests {
         balance_record(&today_only, d(0));
         let plan = plan_startup(&today_only, d(0)).expect("plan");
         assert!(plan.jobs.is_empty());
+        assert_eq!(plan.from_day, None);
         assert_eq!(plan.settles_through, Some(d(-1)));
     }
 
@@ -922,19 +1042,28 @@ mod tests {
             store_settled_through(&conn, mark).expect("mark");
             let plan = plan_startup(&conn, d(0)).expect("plan");
             assert!(plan.jobs.is_empty(), "mark {mark}");
+            assert_eq!(plan.from_day, None, "mark {mark}");
             assert_eq!(plan.settles_through, None, "mark {mark}");
         }
     }
 
     #[test]
-    fn the_mark_is_earned_unless_the_days_failed_or_every_ticker_did() {
-        assert!(!settle_earned(&outcome(false, &[]), 2));
-        assert!(settle_earned(&outcome(true, &[]), 0));
-        assert!(settle_earned(&outcome(true, &[]), 3));
-        assert!(settle_earned(&outcome(true, &["A"]), 3));
-        assert!(!settle_earned(&outcome(true, &["A", "B", "C"]), 3));
-        assert!(!settle_earned(&outcome(true, &["A", "B", "C", "D"]), 3));
-        assert!(!settle_earned(&outcome(true, &["A"]), 1));
+    fn the_mark_is_earned_unless_the_days_failed_or_failures_show_no_answered_request() {
+        // (days_ok, failed, fetched)
+        let table: [(bool, &[&str], usize, bool); 5] = [
+            (false, &[], 0, false),
+            (true, &[], 0, true),
+            (true, &[], 3, true),
+            (true, &["A"], 2, true),
+            (true, &["A", "B"], 0, false),
+        ];
+        for (days_ok, failed, fetched, earned) in table {
+            assert_eq!(
+                settle_earned(&outcome_fetched(days_ok, failed, fetched)),
+                earned,
+                "days_ok {days_ok}, failed {failed:?}, fetched {fetched}"
+            );
+        }
     }
 
     #[test]
@@ -971,8 +1100,13 @@ mod tests {
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .expect("row");
-        assert!(investments.contains("200"), "closing value: {investments}");
-        assert!(!investments.contains("999"), "{investments}");
+        let by_currency: serde_json::Value =
+            serde_json::from_str(&investments).expect("investments json");
+        assert_eq!(
+            by_currency["USD"].as_f64(),
+            Some(200.0),
+            "closing value: {investments}"
+        );
         assert_eq!(source, "live", "the row keeps its source");
     }
 
@@ -1747,9 +1881,14 @@ mod tests {
     }
 
     fn outcome(days_ok: bool, failed: &[&str]) -> BatchOutcome {
+        outcome_fetched(days_ok, failed, 0)
+    }
+
+    fn outcome_fetched(days_ok: bool, failed: &[&str], fetched: usize) -> BatchOutcome {
         BatchOutcome {
             days_ok,
             failed_tickers: failed.iter().map(|t| t.to_string()).collect(),
+            fetched_tickers: fetched,
         }
     }
 

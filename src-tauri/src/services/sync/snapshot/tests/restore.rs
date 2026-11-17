@@ -113,6 +113,7 @@ fn a_replace_forgets_the_settled_mark() {
     exec(
         &b,
         "INSERT INTO app_config (key, value) VALUES ('history_settled_through', '1700000000'); \
+         INSERT INTO app_config (key, value) VALUES ('history_settle_tried_at', '1700000100'); \
          INSERT INTO app_config (key, value) VALUES ('history_rebuild_version', '4');",
     );
     restore_replace(&b, &mut &bytes[..], NOW).expect("replace");
@@ -124,6 +125,14 @@ fn a_replace_forgets_the_settled_mark() {
         ),
         0,
         "the other device's rows have finished days this device has not settled"
+    );
+    assert_eq!(
+        count(
+            &b,
+            "SELECT COUNT(*) FROM app_config WHERE key = 'history_settle_tried_at'"
+        ),
+        0,
+        "a retry wait belongs to the forgotten mark"
     );
     assert_eq!(
         value(

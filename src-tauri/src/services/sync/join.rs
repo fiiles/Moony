@@ -786,7 +786,11 @@ fn replace_profile(
                         "DELETE FROM sync_trust; DELETE FROM sync_epochs; \
                          DELETE FROM sync_trust_seen; DELETE FROM sync_tickets;",
                     )?;
+                    // The removed notice says why sync went off here; joining again answers
+                    // it (As built R-116: a join begun elsewhere than "Připojit znovu" left it,
+                    // and the unlock sheet then said "removed" with sync on).
                     for key in [
+                        state::REMOVED_NOTICE_KEY,
                         state::UNVERIFIED_EPOCHS_KEY,
                         state::KIT_READ_SEEN_KEY,
                         state::AFTER_KIT_JOIN_KEY,

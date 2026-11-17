@@ -567,7 +567,7 @@ pub const KIT_READ_SEEN_KEY: &str = "sync.kit_read_seen";
 
 /// The Local `app_config` key holding why sync went off on this device: another device removed
 /// it (phase 5 §7.4, `rekey::RemovedNotice`). Unlike every other sync key it survives turning
-/// sync off; only the person's dismissal clears it.
+/// sync off; the person's dismissal clears it, and so does a join (As built R-116).
 pub const REMOVED_NOTICE_KEY: &str = "sync.removed_notice";
 
 /// The Local `app_config` key holding the key epochs this device adopted whose head the remover's

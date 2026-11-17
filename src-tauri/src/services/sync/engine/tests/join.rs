@@ -192,6 +192,40 @@ async fn a_joined_device_matches_the_vault_and_starts_after_the_snapshot() {
     assert_converged(&[&*vault.a.lock(), &*joiner.lock()]);
 }
 
+/// Phone live run, 2026-11-17 (As built R-116): a device another one removed keeps the removed
+/// notice until it is dismissed. Joining again answers it: a join that did not go through
+/// "Připojit znovu" (which dismisses first) left the notice, and the unlock sheet then said the
+/// device was removed while sync was on again.
+#[tokio::test]
+async fn a_join_clears_the_removed_notice() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let joiner = TestConn::new(migrated());
+    joiner
+        .lock()
+        .execute(
+            "INSERT INTO app_config (key, value) VALUES (?1, ?2)",
+            rusqlite::params![
+                state::REMOVED_NOTICE_KEY,
+                r#"{"by":"Mac","at":1,"unsent":0,"left":false}"#
+            ],
+        )
+        .expect("notice");
+    assert!(crate::services::sync::rekey::removed_notice(&joiner.lock())
+        .expect("notice")
+        .is_some());
+    let dir = tempfile::tempdir().expect("dir");
+
+    join(&vault, &joiner, dir.path(), &NoBinding)
+        .await
+        .expect("join");
+
+    assert_eq!(
+        crate::services::sync::rekey::removed_notice(&joiner.lock()).expect("notice"),
+        None
+    );
+}
+
 #[tokio::test]
 async fn the_joiner_records_itself_with_a_public_key_and_pushes_it() {
     let vault = vault().await;

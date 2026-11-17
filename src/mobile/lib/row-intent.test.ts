@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { intentState, readIntent, withoutIntent } from './row-intent';
+import { intentState, readIntent, withIntent, withoutIntent } from './row-intent';
 
 describe('intentState', () => {
   it('carries the intent beside the back label', () => {
@@ -34,5 +34,18 @@ describe('withoutIntent', () => {
   it('leaves a state without an object as it is', () => {
     expect(withoutIntent(null)).toBeNull();
     expect(withoutIntent(undefined)).toBeUndefined();
+  });
+});
+
+describe('withIntent', () => {
+  it('adds the intent and keeps every other key of the entry', () => {
+    const state = withIntent({ moonyBack: 'Přehled', moonySheet: '2' }, 'join');
+    expect(readIntent(state)).toBe('join');
+    expect(withoutIntent(state)).toEqual({ moonyBack: 'Přehled', moonySheet: '2' });
+  });
+
+  it('starts from nothing when the entry has no state object', () => {
+    expect(withIntent(null, 'join')).toEqual(intentState(undefined, 'join'));
+    expect(withIntent('x', 'join')).toEqual(intentState(undefined, 'join'));
   });
 });

@@ -53,9 +53,6 @@ export function setupScanRoute(text: string): SetupScanRoute {
 
 export { kitCodeProblem } from '@/utils/sync-setup';
 
-/** The search parameter that opens the join choice on arrival (`?join=1`): "Připojit znovu" from the unlock sheet. */
-export const JOIN_PARAM = 'join';
-
 /**
  * The sync server a Recovery Kit QR without one names: `DEFAULT_RELAY_URL` in
  * `src-tauri/src/services/sync/relay/http.rs`, which `read_recovery_input` joins with.

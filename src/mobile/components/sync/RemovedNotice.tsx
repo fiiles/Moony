@@ -13,8 +13,8 @@ import { sentences } from '@/utils/sentences';
 import { removedNoticeKeys } from '@/utils/sync-notices';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { Sheet } from '@/mobile/components/Sheet';
-import { JOIN_PARAM } from '@/mobile/lib/sync-scan';
-import { settingsPath } from '@/mobile/shell/routes';
+import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
+import { joinChoiceNavigation } from '@/mobile/lib/join-choice';
 
 /** The 48 pt buttons of a sheet's footer. */
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
@@ -98,6 +98,8 @@ export function RemovedNoticeSheet() {
   const [, navigate] = useLocation();
   const notice = status?.removedNotice ?? null;
   const [closed, setClosed] = useState(false);
+  // An answered notice is gone: a later removal in the same unlock is told again
+  if (status !== undefined && notice === null && closed) setClosed(false);
   // The text of the last notice shown: an answer clears the notice while the sheet still slides
   // away, and its sentences must not turn into a blank name and 1 January 1970 meanwhile.
   const [shown, setShown] = useState<SyncRemovedNotice | null>(notice);
@@ -127,7 +129,19 @@ export function RemovedNoticeSheet() {
             className={`${BUTTON} flex-1`}
             disabled={actions.pending}
             onClick={() =>
-              void actions.run(() => navigate(`${settingsPath('sync')}?${JOIN_PARAM}=1`))
+              void actions.run(() =>
+                // The sheet's own history entry goes first: a push before it would race its pop
+                leaveAfterSheet(
+                  () => setClosed(true),
+                  () => {
+                    const next = joinChoiceNavigation(
+                      window.location.pathname,
+                      window.history.state
+                    );
+                    navigate(next.to, { replace: next.replace, state: next.state });
+                  }
+                )
+              )
             }
           >
             {t('problem.rejoin.button')}

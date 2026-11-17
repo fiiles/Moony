@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::{AppError, Result};
 use crate::services::sync::engine::status;
 use crate::services::sync::hlc::DeviceId;
-use crate::services::sync::identity::trust;
+use crate::services::sync::identity::{trust, RecordType};
 use crate::services::sync::{binding, devices, setup, state};
 
 /// What another device's key change tells the person (phase 5 §7.3), kept in the Local
@@ -45,7 +45,10 @@ pub struct KeyChangeNotice {
 
 /// Why sync went off on this device (phase 5 §7.4), kept in the Local `app_config` key
 /// `state::REMOVED_NOTICE_KEY`, which outlives turning sync off: who removed it, when (the
-/// removal record's signed time) and how many changes never left this device.
+/// removal record's signed time) and how many changes never left this device. `left`: the record
+/// was this device's own `left` record (signed with its own key: a turn-off that failed after its
+/// leave, or another copy of this profile that left), not another device's removal (review of
+/// Tasks 20–21, finding 1); `by` is then this device's own name.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RemovedNotice {
@@ -55,6 +58,8 @@ pub struct RemovedNotice {
     pub at: i64,
     #[serde(rename = "unsent")]
     pub unsent: u32,
+    #[serde(rename = "left", default)]
+    pub left: bool,
 }
 
 /// This device had applied changes past where a key change started before it learnt of the key
@@ -165,10 +170,23 @@ pub fn removed_here(
     by: DeviceId,
     at: i64,
 ) -> Result<()> {
+    sync_ended_here(conn, data_dir, by, at, false)
+}
+
+/// `removed_here`, with `left` when the record was this device's own `left` record
+/// (`RemovedNotice::left`).
+fn sync_ended_here(
+    conn: &Connection,
+    data_dir: Option<&Path>,
+    by: DeviceId,
+    at: i64,
+    left: bool,
+) -> Result<()> {
     let notice = RemovedNotice {
         by: device_name(conn, by)?,
         at,
         unsent: status::unsent_changes(conn)?,
+        left,
     };
     write_config(conn, state::REMOVED_NOTICE_KEY, &notice)?;
     let off = match data_dir {
@@ -192,27 +210,45 @@ pub fn removed_here(
 /// change's removal notice does (`removed_here`, with `data_dir` as there). `true` then.
 ///
 /// Called after every merge that touched the device list (a pulled change, a restored snapshot),
-/// after a key pickup and at unlock: nothing else pins a paired device, applies a `left` record
-/// or notices that this device was removed. A refresh that fails is logged and treated as
-/// "nothing new": the store only ever gains a pin or a state here, so a store that is behind
-/// leaves devices out of the next key change rather than letting one in.
+/// after a key pickup, at unlock, and at the start of every round while one is owed: nothing else
+/// pins a paired device, applies a `left` record or notices that this device was removed. A
+/// refresh that fails (or whose turn-off fails) is logged and **owed** (review of Tasks 20–21,
+/// finding 2: the merge that brought the record has moved the cursor on, so nothing would bring
+/// it back): the Local `state::TRUST_REFRESH_OWED_KEY` makes every round start with one until one
+/// succeeds (`refresh_owed`), and a key change refreshes before it reads its recipients
+/// (`rotate::plan`). The failed refresh itself counts as nothing new; a turn-off that fails is the
+/// error.
 pub(crate) fn refresh_trust(conn: &Connection, data_dir: Option<&Path>, now: i64) -> Result<bool> {
     let report = match trust::refresh(conn, now) {
         Ok(report) => report,
         Err(error @ AppError::Auth(_)) => return Err(error),
         Err(error) => {
-            log::warn!("[SYNC] The trust store could not be brought up to date");
+            log::warn!("[SYNC] The trust store could not be brought up to date; tried again later");
             log::debug!("[SYNC] The trust store refresh failed: {error}");
+            state::set_config_text(conn, state::TRUST_REFRESH_OWED_KEY, Some("1"))?;
             return Ok(false);
         }
     };
-    match report.about_me.first() {
-        Some(record) => {
-            removed_here(conn, data_dir, record.signer, record.at)?;
-            Ok(true)
+    let Some(record) = report.about_me.first() else {
+        state::set_config_text(conn, state::TRUST_REFRESH_OWED_KEY, None)?;
+        return Ok(false);
+    };
+    // Only this device's own key signs a `left` record of it (its own, or a copy's).
+    let left = record.kind == RecordType::Left;
+    match sync_ended_here(conn, data_dir, record.signer, record.at, left) {
+        Ok(()) => Ok(true),
+        Err(error) => {
+            if !matches!(error, AppError::Auth(_)) {
+                state::set_config_text(conn, state::TRUST_REFRESH_OWED_KEY, Some("1"))?;
+            }
+            Err(error)
         }
-        None => Ok(false),
     }
+}
+
+/// Whether a trust-store refresh is owed (`refresh_trust` failed since the last one that ran).
+pub(crate) fn refresh_owed(conn: &Connection) -> Result<bool> {
+    Ok(state::config_text(conn, state::TRUST_REFRESH_OWED_KEY)?.is_some())
 }
 
 /// The engine's runtime after a round that turned sync off because this device was removed: the

@@ -988,15 +988,22 @@ fn turn_off_allowed(sync_is_on: bool, password_checked: bool) -> Result<()> {
 }
 
 /// `sync_turn_off`'s work once no other sync change runs: `turn_off_allowed` again on the profile
-/// as it is now (a setup may have finished since the first check), then
-/// `setup::turn_off_between_rounds`.
+/// as it is now (a setup may have finished since the first check), then, with sync on and the
+/// password checked, `leave` (the `left` record, `say_left`), and right after it
+/// `setup::turn_off_between_rounds`. The leave comes only once the recheck passed (review of Tasks
+/// 20–21, finding 1): a refused turn-off signs nothing, so it never leaves a `left` record behind
+/// that would end sync here later.
 async fn turn_off_rechecked<D: ConnAccess>(
     db: &D,
     data_dir: &Path,
     password_checked: bool,
+    leave: impl Future<Output = ()>,
 ) -> SyncResult<()> {
     let on = db.with_conn(state::on_or_unreadable)?;
     turn_off_allowed(on, password_checked)?;
+    if on && password_checked {
+        leave.await;
+    }
     setup::turn_off_between_rounds(db, data_dir).await
 }
 
@@ -1026,14 +1033,12 @@ pub async fn sync_turn_off(
     if forgets_pairing_on_turn_off(was_on) {
         super::sync_pairing::forget_pairing();
     }
-    guarded_change(&AppEngine { app: &app, db: &db }, async {
-        // Turning sync off with sync on says so to the other devices first (best effort, a few
-        // seconds at most); a setup that never finished has nobody to tell.
-        if was_on && checked {
-            say_left(&db).await;
-        }
-        turn_off_rechecked(&session, &dir, checked).await
-    })
+    // Turning sync off with sync on says so to the other devices first (best effort, a few
+    // seconds at most), once the recheck passed; a setup that never finished has nobody to tell.
+    guarded_change(
+        &AppEngine { app: &app, db: &db },
+        turn_off_rechecked(&session, &dir, checked, say_left(&db)),
+    )
     .await
 }
 
@@ -1193,14 +1198,14 @@ mod tests {
         );
         state::enable(&db.lock(), DeviceId::random()).expect("the setup finished meanwhile");
 
-        let refused = turn_off_rechecked(&db, dir.path(), false).await;
+        let refused = turn_off_rechecked(&db, dir.path(), false, no_leave()).await;
         assert_eq!(
             validation_key(refused.map_err(app_error)),
             "validation.syncPasswordNeeded"
         );
         assert!(sync_is_on(&db), "nothing was turned off");
 
-        turn_off_rechecked(&db, dir.path(), true)
+        turn_off_rechecked(&db, dir.path(), true, async {})
             .await
             .expect("turned off with the password checked");
         assert!(!sync_is_on(&db));
@@ -1220,17 +1225,22 @@ mod tests {
         let dir = tempfile::tempdir().expect("dir");
 
         assert!(profile_state(&db.lock()).expect("profile state").enabled);
-        let refused = turn_off_rechecked(&db, dir.path(), false).await;
+        let refused = turn_off_rechecked(&db, dir.path(), false, no_leave()).await;
         assert_eq!(
             validation_key(refused.map_err(app_error)),
             "validation.syncPasswordNeeded"
         );
 
-        turn_off_rechecked(&db, dir.path(), true)
+        turn_off_rechecked(&db, dir.path(), true, async {})
             .await
             .expect("turned off with the password checked");
         assert!(!sync_is_on(&db));
         assert!(!profile_state(&db.lock()).expect("profile state").enabled);
+    }
+
+    /// A leave that must not happen (the turn-off is refused).
+    async fn no_leave() {
+        panic!("a refused turn-off signs no left record");
     }
 
     #[test]

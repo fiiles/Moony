@@ -1410,5 +1410,27 @@ mod key_change {
         )
         .await;
         assert!(listings() > before, "with nothing to pick up it runs");
+
+        // A server that keeps claiming a rotation nobody picks up holds the pass off one day at
+        // most (review of Tasks 20–21, minor 8).
+        let much_later = later + 5 * 86_400;
+        let (policy, claimed) = (BlobPolicy::default(), report(7));
+        let pass_at = |at| {
+            daily_pass(
+                relay,
+                device,
+                &creds,
+                &policy,
+                RoundMode::Normal,
+                at,
+                &claimed,
+            )
+        };
+        let before = listings();
+        pass_at(much_later).await;
+        pass_at(much_later + 3_600).await;
+        assert_eq!(listings(), before, "within the day it waits");
+        pass_at(much_later + 86_400).await;
+        assert!(listings() > before, "after a day it runs anyway");
     }
 }

@@ -143,6 +143,7 @@ async fn the_others_pick_the_key_up_and_the_removed_device_turns_off() {
             by: "Mac".into(),
             at: NOW,
             unsent: 1,
+            left: false,
         })
     );
     assert_eq!(

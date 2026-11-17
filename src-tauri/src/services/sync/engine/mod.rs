@@ -435,6 +435,7 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         // §6.4), forced like the one after a barrier crossing.
         let epoch_owed = state::snapshot_epoch_owed(conn)?;
         let keys_state = KeyState {
+            refresh_owed: crate::services::sync::rekey::refresh_owed(conn)?,
             stuck: rotate::stuck(conn)?,
             pending: rotate::pending(conn)?,
             seen: state::rekey_seen(conn)?,
@@ -547,6 +548,8 @@ enum Pass {
 /// newest rotation dealt with (`rekey_seen`), and whether a head waits for its signature.
 #[derive(Clone, Copy)]
 struct KeyState {
+    /// A trust-store refresh failed and is owed (`rekey::refresh_owed`).
+    refresh_owed: bool,
     /// A key change of this device was given up (`rotate::stuck`).
     stuck: bool,
     pending: bool,
@@ -597,11 +600,20 @@ async fn round_steps<R: Relay, D: ConnAccess>(
 ) -> SyncResult<()> {
     let mut creds = creds.clone();
     let KeyState {
+        refresh_owed,
         pending,
         mut seen,
         unverified,
         ..
     } = keys_state;
+    // A trust-store refresh that failed since the last one is owed first (review of Tasks 20–21,
+    // finding 2): a record it would apply came with a merge that is not pulled again.
+    if refresh_owed
+        && db.with_conn(|conn| crate::services::sync::rekey::refresh_trust(conn, None, now))?
+    {
+        report.removed_here = true;
+        return Ok(());
+    }
     // A key change of this device still pending is resolved before anything else (phase 5
     // §6.4 step 6); until it is, nothing is pushed (the error ends the round). A change that was
     // not done leaves its notice there (`rekey::RemovalNotDone`).
@@ -785,6 +797,16 @@ async fn round_pass<R: Relay, D: ConnAccess>(
         }
         other => other?,
     };
+    if pulled.removed_here {
+        // A verified record ended sync on this device during the pull: nothing more happens
+        // (no held blob is released, no lane woken; review of Tasks 20–21, minor 5).
+        report.removed_here = true;
+        match report.pull.as_mut() {
+            Some(first) => absorb(first, pulled),
+            None => report.pull = Some(pulled),
+        }
+        return Ok(Pass::Done);
+    }
     if pulled.done() && !pulled.behind {
         // Caught up to the server's head: the rows a replace's snapshot lacked have come back by
         // now (ADR 0030). A pull behind the head may not have served them yet.
@@ -824,15 +846,6 @@ async fn round_pass<R: Relay, D: ConnAccess>(
         if !pulled.holds_something() {
             report.problem = Some(SyncProblem::RelayError);
         }
-    }
-    if pulled.removed_here {
-        // A verified record ended sync on this device during the pull: nothing more happens.
-        report.removed_here = true;
-        match report.pull.as_mut() {
-            Some(first) => absorb(first, pulled),
-            None => report.pull = Some(pulled),
-        }
-        return Ok(Pass::Done);
     }
     let key_hint = pulled.key_hint.is_some() && pulled.stop == Some(PullStop::Undecryptable);
     // How far this pass's own pull got when it stopped nowhere (`reseal::may_reseal`).
@@ -974,13 +987,20 @@ async fn daily_pass<R: Relay, D: ConnAccess>(
     // follows the pass, `Trigger::AfterPass`): the token in hand is retired, so the pass's
     // deletes would be refused and its listing would count as a failed pass. It waits for the
     // next round, with the new token (phase 5 revision Task 21).
+    // The rotation is the server's unauthenticated word, so the wait is bounded (review of Tasks
+    // 20–21, minor 8): at most a day per claimed rotation (`state::pass_waits`), then the pass runs
+    // anyway, and a dishonest server cannot hold it off for ever.
     if let Some(info) = report.vault.as_ref() {
-        match db.with_conn(state::rekey_seen) {
-            Ok(seen) if info.rotation > seen => {
-                log::info!("[SYNC] The daily pass of documents and photos waits for a key pickup");
+        let waits = db.with_conn(|conn| {
+            let seen = state::rekey_seen(conn)?;
+            state::pass_waits(conn, (info.rotation > seen).then_some(info.rotation), now)
+        });
+        match waits {
+            Ok(true) => {
+                log::debug!("[SYNC] The daily pass of documents and photos waits for a key pickup");
                 return;
             }
-            Ok(_) => {}
+            Ok(false) => {}
             Err(AppError::Auth(_)) => return,
             Err(error) => {
                 log::debug!("[SYNC] The daily pass could not read the key epoch: {error}");

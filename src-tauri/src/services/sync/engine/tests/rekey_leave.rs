@@ -9,10 +9,10 @@ use std::time::Duration;
 use super::rekey_fixture::*;
 use super::runtime_loop::{until, Sealing};
 use super::*;
-use crate::services::sync::binding::NoBinding;
 use crate::services::sync::identity::trust::{self, TrustState};
 use crate::services::sync::identity::{self, sign_pub, Record, RecordType};
 use crate::services::sync::keys::VaultAuth;
+use crate::services::sync::rekey::rotate;
 use crate::services::sync::rekey::{self, RemovedNotice};
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::{
@@ -166,6 +166,7 @@ async fn a_removal_record_arriving_through_sync_turns_sync_off() {
                 by: "Mac".into(),
                 at: NOW,
                 unsent: 1,
+                left: false,
             })
         );
     }
@@ -212,9 +213,13 @@ async fn a_left_record_for_this_device_it_did_not_sign_turns_sync_off() {
 
     assert!(report.removed_here, "{report:?}");
     assert!(!sync_on(&three.c.lock()));
-    assert!(rekey::removed_notice(&three.c.lock())
+    let notice = rekey::removed_notice(&three.c.lock())
         .expect("notice")
-        .is_some());
+        .expect("written");
+    // Its own `left` record: the notice says so, by this device's own name (review of Tasks
+    // 20–21, finding 1), never "removed by".
+    assert!(notice.left, "{notice:?}");
+    assert_eq!(notice.by, "iPad");
 }
 
 /// A record that does not verify (a removal by a device that is not trusted here, say) changes
@@ -291,7 +296,6 @@ async fn the_store_catches_up_at_unlock_and_a_removal_ends_sync_there() {
     assert!(rekey::removed_notice(&three.c.lock())
         .expect("notice")
         .is_some());
-    let _ = NoBinding;
 }
 
 /// The sync server, except that a push takes 30 s to answer.
@@ -409,4 +413,142 @@ impl Relay for SlowPush {
     async fn delete_blob(&self, vault: &VaultAuth, blob: uuid::Uuid) -> RelayResult<()> {
         self.0.delete_blob(vault, blob).await
     }
+}
+
+/// Review of Tasks 20–21, finding 1: a `left` record this device signed is in its own row (a
+/// turn-off that failed after the leave): at the next unlock the store's refresh ends sync with
+/// the notice that this device left, not that some device removed it.
+#[tokio::test]
+async fn an_own_left_record_ends_sync_at_unlock_with_the_left_notice() {
+    let three = three().await;
+    let dir = tempfile::tempdir().expect("dir");
+    assert!(setup::write_left_record(&three.c.lock(), NOW).expect("left"));
+
+    let ended = rekey::refresh_trust(&three.c.lock(), Some(dir.path()), NOW).expect("refresh");
+
+    assert!(ended);
+    let c = three.c.lock();
+    assert!(!sync_on(&c));
+    let notice = rekey::removed_notice(&c).expect("notice").expect("written");
+    assert!(notice.left, "{notice:?}");
+    assert_eq!(notice.by, "iPad");
+}
+
+/// Review of Tasks 20–21, finding 3: a `left` record naming this device that its key did not sign
+/// (a stranger's) changes nothing here.
+#[tokio::test]
+async fn a_left_record_of_this_device_signed_by_a_stranger_changes_nothing() {
+    let three = three().await;
+    let stranger = identity::new_sign_seed().expect("seed");
+    let record = Record::sign(
+        RecordType::Left,
+        three.vault.creds.vault_id.0,
+        C,
+        C,
+        NOW,
+        0,
+        &stranger,
+    )
+    .expect("left");
+    three
+        .vault
+        .a
+        .lock()
+        .execute(
+            "UPDATE sync_devices SET left_record = ?1 WHERE id = ?2",
+            rusqlite::params![record.to_b64(), C.to_hex()],
+        )
+        .expect("row");
+    round_of(&three.vault, &three.vault.a).await;
+
+    let report = round_of(&three.vault, &three.c).await;
+
+    assert!(!report.removed_here, "{report:?}");
+    assert_eq!(report.problem, None, "{report:?}");
+    let c = three.c.lock();
+    assert!(sync_on(&c));
+    assert!(rekey::removed_notice(&c).expect("notice").is_none());
+    assert_eq!(state_of(&c, C), Some(TrustState::Trusted));
+}
+
+/// Review of Tasks 20–21, finding 2: a refresh that fails after a merge brought a `left` record is
+/// owed: the plan of a key change refuses until one runs, and the next round runs it first, so the
+/// device that left is never a recipient.
+#[tokio::test]
+async fn a_failed_refresh_is_owed_until_one_runs() {
+    let three = three().await;
+    assert!(setup::write_left_record(&three.vault.b.lock(), NOW).expect("left"));
+    round_of(&three.vault, &three.vault.b).await;
+    // A store row that does not read makes every refresh on A fail.
+    let broken = "INSERT INTO sync_trust (device, cert, kind, issuer, sign_pub, box_pub, state, \
+                    pinned_at) VALUES ('ee', 'not a certificate', 2, 'ee', x'00', x'00', \
+                    'trusted', 0)";
+    three
+        .vault
+        .a
+        .lock()
+        .execute(broken, [])
+        .expect("broken row");
+
+    round_of(&three.vault, &three.vault.a).await;
+
+    {
+        let a = three.vault.a.lock();
+        assert!(left_record(&a, B).is_some(), "the record merged");
+        assert!(rekey::refresh_owed(&a).expect("owed"));
+        assert!(
+            rotate::plan(&a, &[C], &[], false, NOW).is_err(),
+            "no plan on a stale store"
+        );
+        a.execute("DELETE FROM sync_trust WHERE device = 'ee'", [])
+            .expect("repaired");
+    }
+    let calls = three.vault.relay.calls().len();
+    round_of(&three.vault, &three.vault.a).await;
+    let a = three.vault.a.lock();
+    assert!(three.vault.relay.calls().len() > calls);
+    assert!(!rekey::refresh_owed(&a).expect("owed"));
+    assert_eq!(state_of(&a, B), Some(TrustState::Left));
+    let plan = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
+    assert!(plan.recipients.iter().all(|e| e.device != B));
+}
+
+/// Review of Tasks 20–21, confirm item: this device's own entry is pinned once, by
+/// `identity::create_own` (`trust::seed_own`: setup, every join, a re-join), with its own signing
+/// key; another certificate in its own row later is only a conflict (`OtherCertificate`) and the
+/// pinned one stays.
+#[tokio::test]
+async fn another_certificate_in_this_devices_own_row_stays_a_conflict() {
+    let three = three().await;
+    let a = three.vault.a.lock();
+    let pinned = trust::entry(&a, A).expect("entry").expect("pinned");
+    let other = identity::cert::issue_self(
+        identity::CertKind::Genesis,
+        &identity::cert::CertFields {
+            vault_id: three.vault.creds.vault_id.0,
+            device: A,
+            box_pub: [0x0a; 32],
+            issued_at: NOW,
+        },
+        &identity::new_sign_seed().expect("seed"),
+    )
+    .expect("cert");
+    a.execute(
+        "UPDATE sync_devices SET cert = ?1 WHERE id = ?2",
+        rusqlite::params![other.to_b64(), A.to_hex()],
+    )
+    .expect("row");
+
+    let report = trust::refresh(&a, NOW).expect("refresh");
+
+    assert!(report
+        .conflicts
+        .iter()
+        .any(|c| c.device == A && c.kind == trust::ConflictKind::OtherCertificate));
+    let after = trust::entry(&a, A).expect("entry").expect("pinned");
+    assert_eq!(after.cert, pinned.cert);
+    assert_eq!(
+        after.sign_pub,
+        sign_pub(&identity::own_seed(&a).expect("seed").expect("seed"))
+    );
 }

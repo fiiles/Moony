@@ -648,12 +648,43 @@ pub const TRUST_REFRESH_OWED_KEY: &str = "sync.trust_refresh_owed";
 
 /// The Local keys every turn-off and every join's replace clear besides those listed before
 /// them (review of Tasks 17–21).
-pub const REVIEW_KEYS: [&str; 4] = [
+pub const REVIEW_KEYS: [&str; 5] = [
     KEY_CHANGE_STUCK_KEY,
     KEY_CHANGE_COMMIT_FAILURES_KEY,
     SERVER_KIT_KEY,
     TRUST_REFRESH_OWED_KEY,
+    PASS_WAITS_KEY,
 ];
+
+/// The Local `app_config` key of the daily pass's wait for a key pickup (`pass_waits`):
+/// `"<rotation>:<since>"`.
+pub const PASS_WAITS_KEY: &str = "sync.pass_waits";
+
+/// How long the daily pass waits, per rotation the server claims, for its pickup.
+pub const PASS_WAIT_SECS: i64 = 86_400;
+
+/// Whether the daily pass of documents and photos waits now (review of Tasks 20–21, minor 8):
+/// `pending` is the rotation the vault's info claims above `rekey_seen`, if any. The first time a
+/// rotation is claimed the wait starts; it lasts `PASS_WAIT_SECS`, after which the pass runs
+/// although the same rotation is still claimed (the info is the server's word). No claim clears
+/// the wait.
+pub fn pass_waits(conn: &Connection, pending: Option<u32>, now: i64) -> Result<bool> {
+    let Some(rotation) = pending else {
+        set_config_text(conn, PASS_WAITS_KEY, None)?;
+        return Ok(false);
+    };
+    let started = config_text(conn, PASS_WAITS_KEY)?.and_then(|value| {
+        let (claimed, since) = value.split_once(':')?;
+        (claimed.parse::<u32>().ok()? == rotation).then(|| since.parse::<i64>().ok())?
+    });
+    match started {
+        Some(since) => Ok(now - since < PASS_WAIT_SECS),
+        None => {
+            set_config_text(conn, PASS_WAITS_KEY, Some(&format!("{rotation}:{now}")))?;
+            Ok(true)
+        }
+    }
+}
 
 /// The text value of a Local `app_config` key, if any.
 pub fn config_text(conn: &Connection, key: &str) -> Result<Option<String>> {

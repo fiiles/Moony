@@ -1359,7 +1359,8 @@ R-49. **The refresh hook** is `rekey::refresh_trust(conn, data_dir, now) -> bool
      `round_pass`; (3) after a key pickup adopted a key (`round_steps`); (4) at the end of the engine's
      `start()` (unlock), with the data folder (the binding file goes with the turn-off). A `left` record
      another holder of this device's key made turns sync off the same way; the notice's `by` is then this
-     device's own name (the record's signer).
+     device's own name (the record's signer), and its `left` flag says so (R-68). *Corrected by R-69:* a
+     refresh that fails is not simply "nothing new"; it is owed and run again at every round's start.
 R-50. **Not done:** `sync_pairing`'s joiner and the Kit join call `trust::refresh` by hand as before (their
      savepoints are not rounds). The notice of a removal that arrives by record has `unsent` counting the
      outbox and unsent envelopes at that moment, as a removal notice does.
@@ -1488,3 +1489,46 @@ R-67. **Notes only (Tasks 18–19 review).** M2: printing counts as `paper` once
      accepted, the join notice is still shown. M6: a forged removal record on the Kit's row in a snapshot
      makes a Kit join refuse (DoS only; whoever can write it can replace the Kit anyway). M7: the push
      hold is written only when other devices are active — part of R1.
+
+**Fixes from the review of Tasks 20–21.**
+
+R-68. **The leave comes after the recheck; an own `left` record says so** (finding 1). `sync_turn_off`
+     called `say_left` before `turn_off_rechecked`, so a turn-off refused at the recheck (a setup that
+     finished meanwhile) or failing after it left a signed `left` record in the own row, and the next
+     unlock's refresh ended sync with "removed by <this device's name>". `turn_off_rechecked(db, dir,
+     password_checked, leave)` now runs `leave` only once `turn_off_allowed` passed on the profile as it
+     is, right before `setup::turn_off_between_rounds`. A turn-off that still fails after the leave (a
+     database error) ends sync at the next refresh; `RemovedNotice` then carries `left: true` (Local
+     JSON `"left"`, default `false`), set by `rekey::refresh_trust` whenever the record naming this
+     device is a `left` record (only this device's key signs one). **Texts for Task 29/31** (the UI task
+     adds them in ten locales; Task 24 exposes `removedNotice.left`): "Synchronizace je na tomto
+     zařízení vypnutá: toto zařízení ze synchronizace odešlo (třeba z jiné kopie profilu). Data tady
+     zůstala." / "Sync is off on this device: it left sync (perhaps from another copy of this profile).
+     Your data stayed here."
+R-69. **A failed refresh is owed** (finding 2). The pull takes `devices_changed` before the refresh and its
+     cursor moves on, so a refresh that failed was not tried again until the next device-list change or
+     unlock, and a `left` or removal record merged meanwhile left its device `trusted`, a recipient of the
+     next key change. `rekey::refresh_trust` now writes the Local `sync.trust_refresh_owed` when the
+     refresh fails, or when the turn-off it starts fails (a locked profile excepted), and clears it after
+     one that runs; `engine::round_steps` runs an owed refresh first, before resolving a pending key
+     change. `rotate::plan` (and so `remove`, which re-plans before `prepare` seals the bundle and the
+     Kit envelope) runs `trust::refresh` itself before it reads the recipients, and a refresh that fails
+     refuses the plan (`plan` takes `now` for it; a record naming this device found there is left to the
+     next round). Setup's envelope needs none (nothing to refresh before the first round). This part of
+     the fix landed with the Tasks 17–19 commit, which changed `plan`'s signature.
+R-70. **Tests** (finding 3 and the "confirm" item): a `left` record naming this device signed by a
+     stranger's key changes nothing (sync stays on, no notice, the entry `trusted`); this device's own
+     entry is pinned once, by `identity::create_own` → `trust::seed_own` (setup's genesis, a paired or Kit
+     joiner, a re-join successor), with its own signing key, and another certificate in its own row is
+     only `ConflictKind::OtherCertificate` with the pinned one kept (`rekey_leave.rs`).
+R-71. **Smaller points.** Minor 5: `round_pass` ends on `PullReport::removed_here` before it releases held
+     blobs or wakes the download lane. Minor 8: the daily pass's wait for a pickup trusted the server's
+     unauthenticated `rotation`, so a dishonest server could hold it off for ever; `state::pass_waits`
+     (Local `sync.pass_waits = "<rotation>:<since>"`) bounds it to `PASS_WAIT_SECS` (a day) per claimed
+     rotation, after which the pass runs; the log line is `debug`. Minor 9: the unused `NoBinding` import
+     of `rekey_leave.rs` is gone. Also: a clippy finding in `engine/tests/blobs.rs` (Task 21's test,
+     `--all-targets`) is fixed.
+R-72. **Note for the final review (minor 6):** `delete_account` (`commands/auth.rs`) checks no password
+     (unchanged, as before phase 5) and, with "delete the synced data" off, now also sends a `left`
+     record (`say_left`, R-48). Not changed here: the account deletion is the owner's own flow; the final
+     review (Task 33) should decide whether it needs the password check `sync_turn_off` has.

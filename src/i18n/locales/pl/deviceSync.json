@@ -543,12 +543,10 @@
     "notAServerAddress": "To nie jest adres serwera synchronizacji. Wpisz adres swojego serwera synchronizacji lub wklej jego kod połączenia."
   },
   "attachments": {
-    "title": "Dokumenty i zdjęcia",
-    "allUploaded": "Wszystko przesłane",
-    "waiting_one": "{{count}} czeka na przesłanie · {{size}}",
-    "waiting_few": "{{count}} czekają na przesłanie · {{size}}",
-    "waiting_many": "{{count}} czeka na przesłanie · {{size}}",
-    "waiting_other": "{{count}} czeka na przesłanie · {{size}}",
+    "waiting_one": "{{count}} dokument lub zdjęcie czeka na przesłanie · {{size}}",
+    "waiting_few": "{{count}} dokumenty i zdjęcia czekają na przesłanie · {{size}}",
+    "waiting_many": "{{count}} dokumentów i zdjęć czeka na przesłanie · {{size}}",
+    "waiting_other": "{{count}} dokumentów i zdjęć czeka na przesłanie · {{size}}",
     "uploading": "Przesyłanie dokumentów i zdjęć",
     "onOtherDevices_one": "{{count}} dokument lub zdjęcie jest na Twoich innych urządzeniach",
     "onOtherDevices_few": "{{count}} dokumenty i zdjęcia są na Twoich innych urządzeniach",

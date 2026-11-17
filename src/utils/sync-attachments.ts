@@ -11,27 +11,18 @@ export function shownProblem(a: SyncAttachments): SyncAttachmentsProblem | null 
   return a.problem;
 }
 
-/** What the value of the "Documents and photos" row says. */
-export type AttachmentsLine =
-  | { kind: 'allUploaded' }
-  | { kind: 'waiting'; count: number; bytes: number }
-  /** A problem is shown and nothing waits: the row has no value, the problem line stands alone. */
-  | { kind: 'none' };
-
 /**
- * What waits, with its size; else all uploaded, but never while a problem is shown or an upload is stuck (then nothing).
+ * What waits to upload, with its size; `null` when nothing does. Documents and photos are data like
+ * any other: there is no row of their own, and with nothing to say no line is shown (the one sync
+ * status covers them). The line stands beside a problem or a stuck upload.
  */
-export function attachmentsLine(a: SyncAttachments): AttachmentsLine {
-  if (a.waitingUpload > 0) {
-    return { kind: 'waiting', count: a.waitingUpload, bytes: a.waitingUploadBytes };
-  }
-  return shownProblem(a) || a.failedUpload > 0 ? { kind: 'none' } : { kind: 'allUploaded' };
+export function waitingUploadLine(a: SyncAttachments): { count: number; bytes: number } | null {
+  return a.waitingUpload > 0 ? { count: a.waitingUpload, bytes: a.waitingUploadBytes } : null;
 }
 
 /**
  * How many documents and photos have an upload that cannot go by itself (refused, conflict,
- * invalid ID), `null` when none. Shown under the row's value, in addition to it; while it is set
- * the value never reads "All uploaded".
+ * invalid ID), `null` when none. Its own line under the sync status, beside what waits.
  */
 export function failedUploadLine(a: SyncAttachments): number | null {
   return a.failedUpload > 0 ? a.failedUpload : null;

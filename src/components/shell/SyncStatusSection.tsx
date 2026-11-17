@@ -100,19 +100,19 @@ export function SyncStatusSection({
           })}
         </p>
       ))}
-      {attachments.problem && <p className="mt-1 text-caption text-ink-3">{attachments.problem}</p>}
+      {/* Documents and photos are data like any other: a line only when there is something to say */}
+      {attachments.waiting && <p className="mt-1 text-caption text-ink-3">{attachments.waiting}</p>}
       {attachments.failedUpload && (
         <p className="mt-1 text-caption text-ink-3">{attachments.failedUpload}</p>
+      )}
+      {attachments.problem && (
+        <p className="mt-1 text-caption font-650 text-loss">{attachments.problem}</p>
       )}
 
       <div className="mt-1 divide-y divide-line-soft text-table">
         <div className="flex items-center justify-between gap-4 py-2">
           <span className="text-ink-3">{t('popover.pending')}</span>
           <span className="font-600 text-ink">{status.pendingChanges}</span>
-        </div>
-        <div className="flex items-center justify-between gap-4 py-2">
-          <span className="text-ink-3">{t('attachments.title')}</span>
-          <span className="text-right font-600 text-ink">{attachments.value}</span>
         </div>
         {status.serverAddress && (
           <div className="flex items-center justify-between gap-4 py-2">

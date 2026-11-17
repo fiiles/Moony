@@ -507,9 +507,7 @@
     "notAServerAddress": "这不是同步服务器地址。请输入您的同步服务器地址，或粘贴其连接码。"
   },
   "attachments": {
-    "title": "文档和照片",
-    "allUploaded": "全部已上传",
-    "waiting_other": "{{count}}项等待上传 · {{size}}",
+    "waiting_other": "{{count}}个文档和照片等待上传 · {{size}}",
     "uploading": "正在上传文档和照片",
     "onOtherDevices_other": "{{count}}个文档和照片在您的其他设备上",
     "failedUpload_other": "有{{count}}个文档或照片无法上传，仅保存在此设备上。",

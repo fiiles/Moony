@@ -234,7 +234,10 @@ Analýza akcií and Sledování akcií (one toggle per `menuPreferences` flag).
   everything to the phone) waits: the button stays readable at 45 % and keyboard-focusable
   (`aria-disabled`, `useServerGate`), the phone row is dimmed and opens nothing, and one `ink-3` line
   says why ("Server není dostupný. Zkuste to, až bude spojení."); an open dialog or sheet stays, its
-  confirm waiting with the same line.
+  confirm waiting with the same line. Documents and photos are data like any other: no row of their own
+  in the popover or Settings → Sync, only a line under the sync status when some wait to upload (with
+  their size), failed to upload, or have a problem (that one red, 600/650); the phone keeps "N dokumentů
+  a fotek je na vašich dalších zařízeních" with "Stáhnout vše do tohoto telefonu".
 - Deadlines (`shell/MilestonesStatus.tsx`): a calendar icon (never a status dot), shown only when a deadline
   (notice deadline, contract or fixed-rate end, maturity, account or promotional-rate end) is at most 14
   days away. One is named ("Spořicí účet · za 10 dní", title truncated at 240 px), more are counted

@@ -519,10 +519,8 @@
     "notAServerAddress": "Det här är inte adressen till en synkroniseringsserver. Ange adressen till din synkroniseringsserver eller klistra in dess anslutningskod."
   },
   "attachments": {
-    "title": "Dokument och foton",
-    "allUploaded": "Allt är uppladdat",
-    "waiting_one": "{{count}} väntar på uppladdning · {{size}}",
-    "waiting_other": "{{count}} väntar på uppladdning · {{size}}",
+    "waiting_one": "{{count}} dokument eller foto väntar på uppladdning · {{size}}",
+    "waiting_other": "{{count}} dokument och foton väntar på uppladdning · {{size}}",
     "uploading": "Laddar upp dokument och foton",
     "onOtherDevices_one": "{{count}} dokument eller foto finns på dina andra enheter",
     "onOtherDevices_other": "{{count}} dokument och foton finns på dina andra enheter",

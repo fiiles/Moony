@@ -165,7 +165,6 @@ export function SyncStatusBlock({
         />
         <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} wrap />
         <KeyValueRow label={t('phone.pending')} value={status.pendingChanges} wrap />
-        <KeyValueRow label={t('attachments.title')} value={attachments.value} wrap />
         {status.serverAddress && (
           <KeyValueRow
             label={t('server.label')}
@@ -175,12 +174,17 @@ export function SyncStatusBlock({
           />
         )}
       </div>
-      {attachments.problem && (
-        <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{attachments.problem}</p>
+      {/* Documents and photos are data like any other: lines only when there is something to say */}
+      {attachments.waiting && (
+        <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{attachments.waiting}</p>
       )}
       {attachments.failedUpload && (
         <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{attachments.failedUpload}</p>
       )}
+      {attachments.problem && (
+        <p className="m-0 mb-3 px-1 text-m-sub font-600 text-loss">{attachments.problem}</p>
+      )}
+      {/* Phones fetch files on demand: what the other devices hold, and the way to fetch it all */}
       {elsewhere > 0 && (
         <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">
           {t('attachments.onOtherDevices', { count: elsewhere })}

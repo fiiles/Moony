@@ -519,10 +519,8 @@
     "notAServerAddress": "Dette er ikke adressen til en synkroniseringsserver. Skriv inn adressen til synkroniseringsserveren din, eller lim inn tilkoblingskoden."
   },
   "attachments": {
-    "title": "Dokumenter og bilder",
-    "allUploaded": "Alt er lastet opp",
-    "waiting_one": "{{count}} venter på å lastes opp · {{size}}",
-    "waiting_other": "{{count}} venter på å lastes opp · {{size}}",
+    "waiting_one": "{{count}} dokument eller bilde venter på å lastes opp · {{size}}",
+    "waiting_other": "{{count}} dokumenter og bilder venter på å lastes opp · {{size}}",
     "uploading": "Laster opp dokumenter og bilder",
     "onOtherDevices_one": "{{count}} dokument eller bilde er på de andre enhetene dine",
     "onOtherDevices_other": "{{count}} dokumenter og bilder er på de andre enhetene dine",

@@ -531,11 +531,9 @@
     "notAServerAddress": "Questo non è l'indirizzo di un server di sincronizzazione. Digita l'indirizzo del tuo server di sincronizzazione o incolla il suo codice di connessione."
   },
   "attachments": {
-    "title": "Documenti e foto",
-    "allUploaded": "Tutto caricato",
-    "waiting_one": "{{count}} in attesa di caricamento · {{size}}",
-    "waiting_many": "{{count}} in attesa di caricamento · {{size}}",
-    "waiting_other": "{{count}} in attesa di caricamento · {{size}}",
+    "waiting_one": "{{count}} documento o foto in attesa di caricamento · {{size}}",
+    "waiting_many": "{{count}} documenti e foto in attesa di caricamento · {{size}}",
+    "waiting_other": "{{count}} documenti e foto in attesa di caricamento · {{size}}",
     "uploading": "Caricamento di documenti e foto",
     "onOtherDevices_one": "{{count}} documento o foto è sui tuoi altri dispositivi",
     "onOtherDevices_many": "{{count}} documenti e foto sono sui tuoi altri dispositivi",

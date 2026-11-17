@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { SyncAttachments, SyncPhase, SyncStatus } from '@shared/schema';
 import {
-  attachmentsLine,
   failedUploadLine,
   notInBackup,
   offerDownloadEverything,
   onOtherDevices,
   shownProblem,
   uploadsKeepUnsynced,
+  waitingUploadLine,
   withoutDanglingSize,
 } from './sync-attachments';
 
@@ -41,43 +41,30 @@ describe('shownProblem', () => {
   });
 });
 
-describe('attachmentsLine', () => {
-  it('reads all uploaded on zeros, whatever is missing here', () => {
-    expect(attachmentsLine(zeros)).toEqual({ kind: 'allUploaded' });
-    expect(attachmentsLine(attachments({ notHere: 5, notOnServer: 2, failed: 1 }))).toEqual({
-      kind: 'allUploaded',
-    });
+describe('waitingUploadLine', () => {
+  it('says nothing when nothing waits, whatever is missing here or wrong', () => {
+    expect(waitingUploadLine(zeros)).toBeNull();
+    expect(waitingUploadLine(attachments({ notHere: 5, notOnServer: 2, failed: 1 }))).toBeNull();
+    expect(waitingUploadLine(attachments({ problem: 'serverNeedsUpdate' }))).toBeNull();
+    expect(waitingUploadLine(attachments({ problem: 'noRoom' }))).toBeNull();
+    expect(waitingUploadLine(attachments({ failed: 1, failedUpload: 1 }))).toBeNull();
   });
 
-  it('counts what waits with its size, also beside a problem', () => {
-    const waiting = { kind: 'waiting', count: 3, bytes: 12_000_000 };
-    expect(
-      attachmentsLine(attachments({ waitingUpload: 3, waitingUploadBytes: 12_000_000 }))
-    ).toEqual(waiting);
-    expect(
-      attachmentsLine(
-        attachments({ waitingUpload: 3, waitingUploadBytes: 12_000_000, problem: 'noRoom' })
-      )
-    ).toEqual(waiting);
-    expect(
-      attachmentsLine(
-        attachments({
-          waitingUpload: 3,
-          waitingUploadBytes: 12_000_000,
-          problem: 'serverNeedsUpdate',
-        })
-      )
-    ).toEqual(waiting);
-  });
-
-  it('never says all uploaded while a problem is shown', () => {
-    expect(attachmentsLine(attachments({ problem: 'serverNeedsUpdate' }))).toEqual({
-      kind: 'none',
-    });
-  });
-
-  it('treats noRoom with nothing waiting as no problem', () => {
-    expect(attachmentsLine(attachments({ problem: 'noRoom' }))).toEqual({ kind: 'allUploaded' });
+  it('counts what waits with its size, also beside a problem or a stuck upload', () => {
+    const waiting = { count: 3, bytes: 12_000_000 };
+    for (const over of [
+      {},
+      { problem: 'noRoom' as const },
+      { problem: 'serverNeedsUpdate' as const },
+      { failed: 1, failedUpload: 1 },
+    ]) {
+      expect(
+        waitingUploadLine(
+          attachments({ waitingUpload: 3, waitingUploadBytes: 12_000_000, ...over })
+        ),
+        JSON.stringify(over)
+      ).toEqual(waiting);
+    }
   });
 });
 
@@ -163,15 +150,5 @@ describe('failedUploadLine', () => {
     expect(failedUploadLine(zeros)).toBeNull();
     expect(failedUploadLine(attachments({ failed: 3 }))).toBeNull();
     expect(failedUploadLine(attachments({ failed: 3, failedUpload: 2 }))).toBe(2);
-  });
-  it('never lets the row read all uploaded while one is stuck', () => {
-    expect(attachmentsLine(attachments({ failed: 1, failedUpload: 1 }))).toEqual({ kind: 'none' });
-  });
-  it('keeps the waiting text as the value beside a stuck upload', () => {
-    expect(
-      attachmentsLine(
-        attachments({ waitingUpload: 2, waitingUploadBytes: 500, failed: 1, failedUpload: 1 })
-      )
-    ).toEqual({ kind: 'waiting', count: 2, bytes: 500 });
   });
 });

@@ -96,6 +96,17 @@ export function SyncStatusCard({
                     <span className="block">{t('setup.done.body')}</span>
                   )}
                   {resumesNote && <span className="block">{t('status.unreachableNote')}</span>}
+                  {/* Documents and photos are data like any other: a line only when there is
+                      something to say */}
+                  {attachments.waiting && <span className="block">{attachments.waiting}</span>}
+                  {attachments.failedUpload && (
+                    <span className="block">{attachments.failedUpload}</span>
+                  )}
+                  {attachments.problem && (
+                    <span className="block font-600 text-loss" data-testid="attachments-problem">
+                      {attachments.problem}
+                    </span>
+                  )}
                 </>
               }
             >
@@ -108,18 +119,6 @@ export function SyncStatusCard({
                     : t('status.syncNow')}
               </Button>
             </SettingsRow>
-            <SettingsRow
-              label={t('attachments.title')}
-              hint={
-                <>
-                  {attachments.value}
-                  {attachments.problem && <span className="block">{attachments.problem}</span>}
-                  {attachments.failedUpload && (
-                    <span className="block">{attachments.failedUpload}</span>
-                  )}
-                </>
-              }
-            />
             {!status.ownServer && paidUntil && (
               <SettingsRow
                 label={t('status.subscription')}

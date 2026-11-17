@@ -1563,7 +1563,7 @@ mod tests {
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 44);
+        assert_eq!(found.len(), 45);
         for (name, first_three) in &commands {
             // The flag itself, a read-only question, and the way out of an enabled profile.
             if [

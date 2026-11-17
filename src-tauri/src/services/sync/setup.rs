@@ -322,6 +322,13 @@ pub fn note_kit_storage(
     note_row_storage(conn, draft.keys().id(), storage)
 }
 
+/// The phone saved the Kit's page through the Files picker (final review I-2): where it went is
+/// unknown (iCloud Drive is the picker's first choice), so it counts as a cloud folder, the
+/// strongest: setup can finish, and any removal replaces the Kit (revision §2.7).
+pub fn note_phone_kit_saved(conn: &Connection, draft: &mut KitDraft) -> Result<()> {
+    note_kit_storage(conn, draft, KitStorage::Cloud)
+}
+
 /// What "Ověřit sadu" found (revision §2.8).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KitCheck {

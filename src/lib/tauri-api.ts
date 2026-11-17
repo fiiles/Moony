@@ -397,6 +397,14 @@ export const deviceSyncApi = {
     tauriInvoke<KitSaveOutcome>('sync_save_recovery_kit', { kind, contents }),
 
   /**
+   * Phone only (`validation.syncUnavailable` on the desktop, which saves with
+   * `saveRecoveryKit`): the kit's page was saved through the Files picker, so the kit counts as
+   * kept in a cloud folder (the picker does not say where it went; a removal then replaces it).
+   * Same window as `copyRecoveryCode`.
+   */
+  noteRecoveryKitSaved: () => tauriInvoke<void>('sync_note_recovery_kit_saved'),
+
+  /**
    * Opens the print dialog while the kit's print stylesheet shows only the kit sheet (desktop);
    * the kit then counts as printed. Same window as `copyRecoveryCode`.
    */

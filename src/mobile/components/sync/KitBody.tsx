@@ -39,7 +39,7 @@ export function KitBody({
 }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
-  const { copyRecoveryCode } = useDeviceSyncMutations();
+  const { copyRecoveryCode, noteRecoveryKitSaved } = useDeviceSyncMutations();
   const { exportText } = useExportTextFile();
   const kitCopy = useRecoveryKitCopy(kit);
   // Screen capture cannot be switched off per window on a phone: the lifetime is all there is
@@ -87,10 +87,16 @@ export function KitBody({
     try {
       const outcome = await exportText(SYNC_KIT_PAGE_FILE, recoveryKitHtml(kit, kitCopy));
       if (outcome === 'saved') {
+        // Where the picker put it is unknown: it counts as a cloud folder, the strongest
+        await noteRecoveryKitSaved.mutateAsync();
         toast(t('setup.kit.saved'));
         onKept?.();
       }
     } catch (error) {
+      if (error instanceof ApiError && error.key === 'validation.syncPasswordRequired') {
+        onPasswordRequired();
+        return;
+      }
       console.error('Saving the recovery kit failed:', errorKind(error));
       fail(error);
     } finally {

@@ -291,6 +291,7 @@ async fn run_app() {
             commands::sync::sync_prepare_recovery_kit,
             commands::sync::sync_copy_recovery_code,
             commands::sync_kit::sync_save_recovery_kit,
+            commands::sync_kit::sync_note_recovery_kit_saved,
             commands::sync::sync_finish_setup,
             commands::sync::sync_now,
             commands::sync::sync_print_recovery_kit,

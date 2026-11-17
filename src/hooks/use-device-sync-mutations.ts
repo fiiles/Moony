@@ -78,6 +78,7 @@ export function useDeviceSyncMutations() {
   // gcTime 0 below: a password typed for turning off, delete, repair or re-sync is a mutation
   // variable and must not linger.
   const copyRecoveryCode = useMutation({ mutationFn: deviceSyncApi.copyRecoveryCode });
+  const noteRecoveryKitSaved = useMutation({ mutationFn: deviceSyncApi.noteRecoveryKitSaved });
   const finishSetup = useMutation({
     mutationFn: ({ deviceName }: { deviceName: string }) => deviceSyncApi.finishSetup(deviceName),
     onSuccess: refreshLocalData,
@@ -232,6 +233,7 @@ export function useDeviceSyncMutations() {
     prepareRecoveryKit,
     prepareKitWithPassword,
     copyRecoveryCode,
+    noteRecoveryKitSaved,
     finishSetup,
     syncNow,
     downloadEverything,

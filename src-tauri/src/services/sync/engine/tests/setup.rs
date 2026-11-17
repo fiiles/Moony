@@ -29,8 +29,8 @@ use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
 use crate::services::sync::relay::RelayError;
 use crate::services::sync::setup::{
     account_status, checkout_url, connect_own_server, create_account, delete_synced_data,
-    delete_vault_best_effort, finish_setup, kit_view, note_kit_storage, prepare_kit,
-    turn_off_between_rounds, KitDraft,
+    delete_vault_best_effort, finish_setup, kit_view, note_kit_storage, note_phone_kit_saved,
+    prepare_kit, turn_off_between_rounds, KitDraft,
 };
 use crate::services::sync::snapshot::{read_record, Record};
 
@@ -1499,6 +1499,56 @@ async fn a_server_without_the_kit_refuses_setup() {
     assert_eq!(key_of(refused), "validation.syncServerNeedsUpdate");
     assert!(!relay.calls().contains(&Route::CreateVault));
     assert!(!enabled(&device.lock()));
+}
+
+/// Final review I-2: a phone setup whose only keeping was "Uložit nebo sdílet…" finishes, and the
+/// Kit's row says `cloud` (the picker does not say where the file went), so any removal replaces
+/// it. Without the note, setup is refused as before.
+#[tokio::test]
+async fn a_phone_save_alone_finishes_setup_as_a_cloud_kit() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    ready_for_the_kit(&relay, &device).await;
+    let vault_id = keys::credentials(&device.lock())
+        .expect("creds")
+        .expect("bound")
+        .vault_id;
+    let mut draft = KitDraft::new(
+        vault_id,
+        KitSecret::from_bytes(Zeroizing::new([9; 32])),
+        NOW,
+    );
+    let refused = finish_setup(
+        &relay,
+        &device,
+        "iPhone",
+        &draft,
+        dir.path(),
+        &XorNative,
+        NOW,
+    )
+    .await;
+    assert_eq!(key_of(refused), "validation.syncRecoveryKitNotConfirmed");
+
+    note_phone_kit_saved(&device.lock(), &mut draft).expect("saved");
+    finish_setup(
+        &relay,
+        &device,
+        "iPhone",
+        &draft,
+        dir.path(),
+        &XorNative,
+        NOW,
+    )
+    .await
+    .expect("setup");
+
+    assert_eq!(draft.storage(), Some(KitStorage::Cloud));
+    assert_eq!(
+        crate::services::sync::rekey::kit::storage(&device.lock(), draft.keys().id()).expect("row"),
+        Some(KitStorage::Cloud)
+    );
 }
 
 /// Revision §2.7: where the Kit is kept only gets stronger (`cloud` > `file` > `copied` >

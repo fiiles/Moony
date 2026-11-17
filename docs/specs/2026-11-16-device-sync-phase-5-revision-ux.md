@@ -2031,3 +2031,10 @@ R-107. **"Je moje" no longer keeps a device whose issuer was removed** (final re
      a_device_a_removed_device_added_is_marked_check_and_cannot_be_kept` and `rekey_pickup::
      a_key_change_by_a_device_left_out_for_its_issuer_is_not_taken_until_it_is_kept` (its removed-issuer
      case now stays `keyChangeUnverified`) changed with it.
+R-108. **Saving the Kit on the phone counts** (final review I-2). "Uložit nebo sdílet…" on the phone
+     (`KitBody`, setup and the new Kit after a removal) hands the Kit's page to the Files picker, and nothing
+     recorded it: a phone setup kept only that way was refused (`syncRecoveryKitNotConfirmed`), and a Kit saved
+     there (likely iCloud Drive) kept `kit_storage` NULL, so no removal replaced it. A saved page now calls
+     `sync_note_recovery_kit_saved` (phone only, within the copy window, `with_kit_draft`), which records
+     `cloud` (`setup::note_phone_kit_saved`): the picker does not say where the file went, so the strongest,
+     most cautious value. Test: `setup::a_phone_save_alone_finishes_setup_as_a_cloud_kit`.

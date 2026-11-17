@@ -97,9 +97,10 @@ Not verified (needs the owner or a real device):
 - Biometric enrolment and unlock with a fingerprint (the emulator's fingerprint setup starts with
   a consent screen that is the owner's to accept), invalidation after a new fingerprint.
 - Notifications after a reboot (restore receiver), a tap on a notification opening its screen.
-- Camera and photo picking for documents and property photos in the Android WebView, and whether
-  the WebView leaves plaintext copies of picked files (the iOS `WKFileUploadPanel` sweep has no
-  Android counterpart yet).
+- Camera and photo picking for documents and property photos in the Android WebView. wry's
+  camera capture writes a plain `JPEG_….jpg` into the app's external Pictures folder through the
+  FileProvider; those are now swept at start and at lock (`sweep_camera_captures`), but the flow
+  itself was not run on the emulator.
 - A real device: performance of a release build, edge-to-edge on devices with cutouts, OEM skins.
 
 Known quirks and follow-ups:
@@ -116,3 +117,18 @@ Known quirks and follow-ups:
 - Release: signing (upload key with the owner), `versionCode` from `tauri.properties`, Play Console
   listing, an AAB build (`--aab`), and the release workflow (desktop only today).
 - tauri-build's `{:?}` path quoting is worth an upstream issue (the `settings.gradle` workaround).
+
+## Whole-branch review (opus, 2026-11-17) and what changed
+
+All ten findings were addressed: copies from `content://` land in the inbox only when complete
+(`moony-incoming` + rename), a failed export deletes the half-written document, the Android inbox
+sits under the app's private cache (not `TMPDIR`), only `content://` URLs are queued from intents
+and a shared file is capped at 25 MB, tao's log is off on Android (it logged intent URIs), the TLS
+verifier holds the application context, the rustls Maven repository is pinned to a commit and the
+`org.rustls` group, the FileProvider exposes only the camera captures' folder, file names are capped
+by UTF-8 bytes and claimed atomically, and menus hold a history entry on Android only, with menu
+items that navigate waiting until it is gone (`navigateFromMenu`). Checked on the emulator after
+the fixes: Cashflow › Budgets verwalten and one back press returns to Cashflow.
+
+Outside this branch: `cargo audit` flags RUSTSEC-2026-0459 (`libsqlite3-sys` 0.38.2, published
+2026-10-30, fix in >= 0.39), already on main; it needs the rusqlite bump that brings 0.39.

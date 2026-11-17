@@ -204,7 +204,7 @@ R1–R5 and the copied-Kit trade on 2026-11-16.
   there even when it is left out for its issuer (R-105's chains need it, a Kit joiner that made the
   next Kit), so a backup of a Kit-making device whose `left` record is omitted from the snapshot can
   confirm devices of its choosing through the Kit's envelope; "Mám je" at the push hold would keep
-  them. Accepted (owner decision 2026-11-17); the test
+  them. Accepted by the lead on 2026-11-17 and reported to the owner (not yet confirmed by him); the test
   `accepted_residual_an_omitted_left_record_lets_the_kits_creator_confirm` pins it.
 - **"Je moje" only helps before the next key change (R-77a).** A device a key change left out cannot be
   let in later: the pickup stops at the first bundle that gives it nothing, so after the next change the

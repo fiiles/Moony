@@ -14,6 +14,21 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// Release signing with the upload key (Play App Signing re-signs for the store). Read from the
+// MOONY_ANDROID_* environment variables (CI, .github/workflows/android-bundle.yml) or from
+// gen/android/keystore.properties (local, git-ignored): storeFile, storePassword, keyAlias,
+// keyPassword. Without them a release build is unsigned and Play refuses it
+// (docs/playbooks/release.md, "Android: upload key and Play bundle").
+val keystoreProperties = Properties().apply {
+    val propFile = rootProject.file("keystore.properties")
+    if (propFile.exists()) {
+        propFile.inputStream().use { load(it) }
+    }
+}
+fun signingValue(property: String, variable: String): String? =
+    System.getenv(variable)?.takeIf { it.isNotEmpty() } ?: keystoreProperties.getProperty(property)
+val releaseStoreFile = signingValue("storeFile", "MOONY_ANDROID_KEYSTORE_PATH")
+
 // The Kotlin half of rustls-platform-verifier, which reqwest's TLS calls through JNI to check
 // certificates with Android's trust manager (initialised in lib.rs, `init_android_tls_verifier`).
 // The rustls project publishes it as a Maven repository on GitHub (branch `maven-archive`); its
@@ -47,6 +62,16 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile)
+                storePassword = signingValue("storePassword", "MOONY_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "MOONY_ANDROID_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "MOONY_ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
@@ -61,6 +86,7 @@ android {
             }
         }
         getByName("release") {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             optimization {
                enable = true
             }

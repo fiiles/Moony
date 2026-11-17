@@ -96,12 +96,10 @@ Not verified (needs the owner or a real device):
 
 - Biometric enrolment and unlock with a fingerprint (the emulator's fingerprint setup starts with
   a consent screen that is the owner's to accept), invalidation after a new fingerprint.
-- Notifications after a reboot (restore receiver), a tap on a notification opening its screen.
-- Camera and photo picking for documents and property photos in the Android WebView. wry's
-  camera capture writes a plain `JPEG_….jpg` into the app's external Pictures folder through the
-  FileProvider; those are now swept at start and at lock (`sweep_camera_captures`), but the flow
-  itself was not run on the emulator.
 - A real device: performance of a release build, edge-to-edge on devices with cutouts, OEM skins.
+
+(Notification taps, the reboot restore and the camera were checked later the same day; see
+"Second pass" below.)
 
 Known quirks and follow-ups:
 
@@ -109,13 +107,16 @@ Known quirks and follow-ups:
   of the killed one); starting from the launcher, or a few seconds later, works. Not seen otherwise.
 - The emulator's software renderer (`-gpu auto` falling back) leaves stale tiles in the WebView;
   run it with `-gpu host`.
-- `[notifications] N planned, 0 pending` can be logged on Android: `sendNotification` is not
-  awaited, so the check may run before the plugin stored the plan. Harmless; the check could wait.
 - A backup picked for restore and then cancelled stays in the inbox folder until the next start's
   sweep (iOS behaves the same).
-- App shortcuts (iOS `UIApplicationShortcutItems`) have no Android `shortcuts.xml` yet.
-- Release: signing (upload key with the owner), `versionCode` from `tauri.properties`, Play Console
-  listing, an AAB build (`--aab`), and the release workflow (desktop only today).
+- App shortcuts (spec §6: Zaznamenat zůstatek · Importovat výpis · Přidat transakci) exist on
+  neither platform; the navigation-resilience spec lists them as a non-goal for the native phase.
+  An Android-only `shortcuts.xml` would need deep-link handling the shell does not have yet.
+- Release: signing config, `npm run android:bundle` and a manual `Android bundle` workflow are in
+  place (second pass); the upload key, the secrets and the Play Console listing are the owner's.
+- Android 18 will drop the implicit URI grant wry's camera intent relies on (logged as an error
+  with a stack trace by the platform today, no effect yet). Fix upstream in wry's generated
+  `RustWebChromeClient` (an explicit `FLAG_GRANT_WRITE_URI_PERMISSION` + `ClipData`).
 - tauri-build's `{:?}` path quoting is worth an upstream issue (the `settings.gradle` workaround).
 
 ## Whole-branch review (opus, 2026-11-17) and what changed
@@ -132,3 +133,40 @@ the fixes: Cashflow › Budgets verwalten and one back press returns to Cashflow
 
 Outside this branch: `cargo audit` flags RUSTSEC-2026-0459 (`libsqlite3-sys` 0.38.2, published
 2026-10-30, fix in >= 0.39), already on main; it needs the rusqlite bump that brings 0.39.
+
+## Second pass (2026-11-17, afternoon): the checks left from the first session
+
+Run on the emulator with the demo profile, after main had moved on (sync phase 5 merged in).
+
+- **Notification taps.** With the app in the background a tap opens its screen. A tap that
+  started the app from cold was dropped: the plugin reported it from `load`, before the page had
+  registered its listener, and `trigger` drops events nobody listens to. The vendored plugin now
+  holds the tap until the first `actionPerformed` listener registers; after the unlock the screen
+  opens (`/agenda`, `/cashflow` checked). Tapping the system's group summary (two notifications
+  or more) opens the app without a target, as Android intends.
+- **Reboot.** The plugin's boot receiver crashed at every boot: it read the store with a plain
+  Jackson mapper that threw on `extra` (Moony's `path`), so no notification came back after a
+  restart. Patched (MOONY-PATCH.md): the receiver ignores unknown properties, the store skips
+  what it cannot read and keeps the stored JSON as `sourceJson`. Checked: after `adb reboot` all
+  three alarms were back (a missed one 15 s after boot, as upstream intends), the notifications
+  fired, and a tap on a restored one opened `/cashflow`, warm and from cold.
+- **"0 pending".** `sendNotification` returns before the plugin has the notification; on Android
+  `show` reached Kotlin up to ~10 s after the unlock. Scheduling now awaits
+  `plugin:notification|notify` through `notificationsApi.schedule` (`tauri-api.ts`), counts
+  refusals, and the count is the system's own (checked: cancel → show → getPending, no warning).
+- **Camera.** "Vyfotit" opened the photo picker: wry starts `ACTION_IMAGE_CAPTURE` only when
+  `resolveActivity` finds a camera app, which from Android 11 needs a `<queries>` entry. Added.
+  Checked: the CAMERA prompt (the permission is declared by the barcode scanner plugin), the
+  camera app, the photo in "Dokument hinzufügen", the encrypted document and its viewer, and the
+  capture swept at the next start ("Camera capture sweep removed 1 file(s)").
+- **Release build.** Signing from `keystore.properties` or `MOONY_ANDROID_*`, `npm run
+  android:bundle`, `.github/workflows/android-bundle.yml` (manual, artifact only), playbook
+  section "Android: upload key and Play bundle". The first release build ever (arm64, R8 full
+  mode, signed with the emulator's debug key so it installed over the demo profile) unlocked,
+  drew every tab and refreshed prices over HTTPS (rustls-platform-verifier survived R8). R8 had
+  removed the constructors of ML Kit's component registrars (the barcode scanner's QR reader,
+  `NoSuchMethodException … BarcodeRegistrar.<init>` at start); `proguard-rules.pro` now keeps
+  every `ComponentRegistrar`, and the warnings are gone. The pairing scanner itself was not
+  opened in a release build. A signed arm64 AAB built and verified (`jarsigner`) at the path the
+  workflow uploads.
+

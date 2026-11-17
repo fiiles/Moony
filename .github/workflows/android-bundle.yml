@@ -1,0 +1,76 @@
+# Builds the signed Android App Bundle (AAB) for Google Play, by hand only. The bundle is kept as
+# a workflow artifact; it is not attached to a GitHub release (whether a signed APK is published
+# there is an owner decision, docs/specs/2026-10-16-mobile-app-design.md §5). Signing uses the
+# upload key from these repository secrets (docs/playbooks/release.md, "Android: upload key and
+# Play bundle"):
+#   ANDROID_KEYSTORE_BASE64   the upload keystore (.jks), base64-encoded
+#   ANDROID_KEYSTORE_PASSWORD the keystore's password
+#   ANDROID_KEY_ALIAS         the upload key's alias
+#   ANDROID_KEY_PASSWORD      the upload key's password
+name: Android bundle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    name: Android App Bundle (Play)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The keystore goes to the runner's temp folder, outside the checkout, and is read by
+      # app/build.gradle.kts through the MOONY_ANDROID_* variables.
+      - name: Write the upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not set; the bundle would be unsigned."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+
+      # The runner's own variables (not in the `env` context): JDK 21 for Gradle 9, the newest NDK.
+      - name: Build the bundle
+        env:
+          MOONY_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          MOONY_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          MOONY_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64" NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          export MOONY_ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/upload.jks"
+          npm run android:bundle -- --ci
+
+      - name: Remove the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
+
+      - name: Upload the bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: moony-android-aab
+          path: src-tauri/gen/android/app/build/outputs/bundle/universalRelease/*.aab
+          if-no-files-found: error
+          retention-days: 14

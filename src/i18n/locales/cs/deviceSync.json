@@ -386,7 +386,7 @@
   },
   "pairing": {
     "addTitle": "Přidat zařízení",
-    "addDescription": "Spárujte další zařízení se svým synchronizačním účtem. Nic neopouští vaše zařízení nešifrované.",
+    "addDescription": "Spárujte další zařízení s touto synchronizací. Nic neopouští vaše zařízení nešifrované.",
     "passwordFirst": "Zadejte heslo do Moony, aby se zobrazil párovací kód.",
     "showCode": "Zobrazit kód",
     "qrAlt": "Párovací kód",
@@ -410,9 +410,11 @@
     "startAgain": "Začít znovu",
     "readyToJoin": "Údaje k synchronizaci dorazily. Zkontrolujte, co se nahradí, a pak se připojte.",
     "validUntil": "Kód platí do {{time}}.",
-    "copyCode": "Kopírovat kód",
+    "copyCode": "Zkopírovat kód",
     "copiedCode": "Zkopírováno",
-    "codeHint": "Bez fotoaparátu? Tento kód zadejte nebo vložte na druhém zařízení."
+    "codeHint": "Bez fotoaparátu? Zadejte nebo vložte tento kód na druhém zařízení. Můžete ho poslat i zprávou: bez šesti číslic, které potom zadáte tady, nic neprozradí.",
+    "deviceConnected": "{{name}} je připojené",
+    "sentLate": "Dokončete připojení na druhém zařízení. Až se připojí, objeví se v seznamu."
   },
   "join": {
     "warning": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Předtím se vedle profilu uloží záloha.",
@@ -434,12 +436,18 @@
         "lead": "Zobrazí se kód. V telefonu: Nastavení → Synchronizace → Přidat zařízení."
       },
       "kit": {
-        "title": "Mám Záchrannou sadu synchronizace",
-        "lead": "Zadáte kód záchranné sady a adresu serveru. Tak se připojuje i druhý počítač."
+        "title": "Nemám u sebe žádné zařízení",
+        "lead": "Použijete záchrannou sadu: zadáte její kód."
+      },
+      "code": {
+        "title": "Mám jiný počítač se synchronizací",
+        "lead": "Na druhém počítači: Nastavení → Synchronizace → Přidat zařízení. Tady opíšete kód, který ukáže."
       }
     },
     "connect": "Připojit",
-    "firstRunDone": "Toto zařízení se teď synchronizuje"
+    "firstRunDone": "Toto zařízení se teď synchronizuje",
+    "codeTitle": "Připojit z jiného počítače",
+    "codeHint": "Na počítači se zapnutou synchronizací: Nastavení → Synchronizace → Přidat zařízení. Opište nebo vložte kód, který ukáže."
   },
   "phone": {
     "title": "Synchronizace",

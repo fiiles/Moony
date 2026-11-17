@@ -361,7 +361,7 @@
     "syncDevOnly": "Toto je nástroj pro vývojáře, dostupný jen ve vývojových sestaveních.",
     "syncChangeInProgress": "Na tomto zařízení už probíhá jiná změna synchronizace. Počkejte, až skončí.",
     "syncPasswordRequired": "Pro zkopírování nebo uložení kódu záchranné sady znovu zadejte heslo.",
-    "syncPairingCodeInvalid": "Párovací kód není platný. Naskenujte kód zobrazený na druhém zařízení.",
+    "syncPairingCodeInvalid": "Párovací kód není platný. Zkontrolujte kód zobrazený na druhém zařízení.",
     "syncPairingOtherNeedsUpdate": "Druhé zařízení potřebuje aktualizovat Moony, než se s tímto spáruje.",
     "syncPairingThisNeedsUpdate": "Tento párovací kód pochází z novější verze Moony. Aktualizujte Moony na tomto zařízení a zkuste to znovu.",
     "syncPairingFailed": "Párování se nepovedlo. Začněte znovu na obou zařízeních.",

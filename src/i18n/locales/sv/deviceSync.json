@@ -362,7 +362,7 @@
   },
   "pairing": {
     "addTitle": "Lägg till en enhet",
-    "addDescription": "Para ihop en annan enhet med ditt synkroniseringskonto. Inget lämnar dina enheter okrypterat.",
+    "addDescription": "Para ihop en annan enhet med den här synkroniseringen. Inget lämnar dina enheter okrypterat.",
     "passwordFirst": "Ange Moony-lösenordet för att visa parkopplingskoden.",
     "showCode": "Visa kod",
     "qrAlt": "Parkopplingskod",
@@ -388,7 +388,9 @@
     "validUntil": "Koden fungerar till kl. {{time}}.",
     "copyCode": "Kopiera kod",
     "copiedCode": "Kopierat",
-    "codeHint": "Ingen kamera? Skriv eller klistra in den här koden på den andra enheten."
+    "codeHint": "Ingen kamera? Skriv eller klistra in den här koden på den andra enheten. Du kan skicka den i ett meddelande: utan de sex siffrorna du skriver här efteråt avslöjar den ingenting.",
+    "deviceConnected": "{{name}} är ansluten",
+    "sentLate": "Slutför anslutningen på den andra enheten. När den är ansluten visas den i listan."
   },
   "join": {
     "warning": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först bredvid din profil.",
@@ -410,12 +412,18 @@
         "lead": "En kod visas. På telefonen: Inställningar → Synkronisering → Lägg till en enhet."
       },
       "kit": {
-        "title": "Jag har återställningskitet för synkronisering",
-        "lead": "Du anger koden från återställningskitet och serverns adress. Så ansluter även en andra dator."
+        "title": "Jag har ingen enhet till hands",
+        "lead": "Du använder återställningskitet: ange dess kod."
+      },
+      "code": {
+        "title": "Jag har en annan dator som synkroniserar",
+        "lead": "På den andra datorn: Inställningar → Synkronisering → Lägg till en enhet. Här skriver du koden som visas."
       }
     },
     "connect": "Anslut",
-    "firstRunDone": "Den här enheten synkroniseras nu"
+    "firstRunDone": "Den här enheten synkroniseras nu",
+    "codeTitle": "Anslut från en annan dator",
+    "codeHint": "På datorn med synkronisering på: Inställningar → Synkronisering → Lägg till en enhet. Skriv eller klistra in koden som visas."
   },
   "phone": {
     "title": "Synkronisering",

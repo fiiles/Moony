@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useDevicePairing } from '@/hooks/use-device-pairing';
+import { useHolderFinish } from '@/hooks/use-device-sync';
 import { PairingSteps } from '@/components/settings/sync/PairingSteps';
 import { SyncPasswordDialog } from '@/components/settings/sync/SyncPasswordDialog';
 import {
@@ -20,6 +21,7 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { view, error, isError, start, confirm, confirmError, cancel } = useDevicePairing();
+  const finish = useHolderFinish(view);
 
   const close = async () => {
     try {
@@ -88,6 +90,7 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
           confirmError={confirmError}
           onConfirm={handleConfirm}
           confirming={confirm.isPending}
+          finish={finish}
         />
         <DialogFooter>
           {isError && (
@@ -97,10 +100,14 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
           )}
           <Button
             type="button"
-            variant={finished ? 'outline' : 'ghost'}
+            variant={finish.joined ? 'default' : finished ? 'outline' : 'ghost'}
             onClick={() => void close()}
           >
-            {closing ? tc('buttons.close') : tc('buttons.cancel')}
+            {finish.joined
+              ? tc('buttons.done')
+              : closing
+                ? tc('buttons.close')
+                : tc('buttons.cancel')}
           </Button>
         </DialogFooter>
       </DialogContent>

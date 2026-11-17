@@ -362,7 +362,7 @@
   },
   "pairing": {
     "addTitle": "Legg til en enhet",
-    "addDescription": "Koble en annen enhet til synkroniseringskontoen din. Ingenting forlater enhetene dine ukryptert.",
+    "addDescription": "Koble en annen enhet til denne synkroniseringen. Ingenting forlater enhetene dine ukryptert.",
     "passwordFirst": "Skriv inn Moony-passordet for å vise koblingskoden.",
     "showCode": "Vis kode",
     "qrAlt": "Koblingskode",
@@ -388,7 +388,9 @@
     "validUntil": "Koden fungerer til kl. {{time}}.",
     "copyCode": "Kopier kode",
     "copiedCode": "Kopiert",
-    "codeHint": "Ingen kamera? Skriv inn eller lim inn denne koden på den andre enheten."
+    "codeHint": "Ikke kamera? Skriv inn eller lim inn denne koden på den andre enheten. Du kan sende den i en melding: uten de seks sifrene du skriver inn her etterpå, avslører den ingenting.",
+    "deviceConnected": "{{name}} er koblet til",
+    "sentLate": "Fullfør tilkoblingen på den andre enheten. Når den er koblet til, vises den i listen."
   },
   "join": {
     "warning": "Dataene på denne enheten erstattes med de synkroniserte dataene. En sikkerhetskopi lagres først ved siden av profilen din.",
@@ -410,12 +412,18 @@
         "lead": "En kode vises. På telefonen: Innstillinger → Synkronisering → Legg til en enhet."
       },
       "kit": {
-        "title": "Jeg har gjenopprettingssettet for synkronisering",
-        "lead": "Du skriver inn koden fra gjenopprettingssettet og serveradressen. Slik kobles også en datamaskin nummer to til."
+        "title": "Jeg har ingen enhet for hånden",
+        "lead": "Du bruker gjenopprettingssettet: skriv inn koden."
+      },
+      "code": {
+        "title": "Jeg har en annen datamaskin som synkroniserer",
+        "lead": "På den andre datamaskinen: Innstillinger → Synkronisering → Legg til en enhet. Her skriver du inn koden som vises."
       }
     },
     "connect": "Koble til",
-    "firstRunDone": "Denne enheten synkroniserer nå"
+    "firstRunDone": "Denne enheten synkroniserer nå",
+    "codeTitle": "Koble til fra en annen datamaskin",
+    "codeHint": "På datamaskinen med synkronisering på: Innstillinger → Synkronisering → Legg til en enhet. Skriv inn eller lim inn koden som vises."
   },
   "phone": {
     "title": "Synkronisering",

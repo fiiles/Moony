@@ -386,7 +386,7 @@
   },
   "pairing": {
     "addTitle": "Dodaj urządzenie",
-    "addDescription": "Sparuj kolejne urządzenie ze swoim kontem synchronizacji. Nic nie opuszcza Twoich urządzeń bez szyfrowania.",
+    "addDescription": "Sparuj kolejne urządzenie z tą synchronizacją. Nic nie opuszcza Twoich urządzeń bez szyfrowania.",
     "passwordFirst": "Wpisz hasło do Moony, aby wyświetlić kod parowania.",
     "showCode": "Pokaż kod",
     "qrAlt": "Kod parowania",
@@ -412,7 +412,9 @@
     "validUntil": "Kod działa do {{time}}.",
     "copyCode": "Kopiuj kod",
     "copiedCode": "Skopiowano",
-    "codeHint": "Brak aparatu? Wpisz lub wklej ten kod na drugim urządzeniu."
+    "codeHint": "Brak aparatu? Wpisz lub wklej ten kod na drugim urządzeniu. Możesz go wysłać wiadomością: bez sześciu cyfr, które potem wpiszesz tutaj, niczego nie ujawnia.",
+    "deviceConnected": "{{name}} jest połączone",
+    "sentLate": "Dokończ łączenie na drugim urządzeniu. Gdy się połączy, pojawi się na liście."
   },
   "join": {
     "warning": "Dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi. Najpierw obok profilu zapisywana jest kopia zapasowa.",
@@ -434,12 +436,18 @@
         "lead": "Pojawi się kod. Na telefonie: Ustawienia → Synchronizacja → Dodaj urządzenie."
       },
       "kit": {
-        "title": "Mam zestaw odzyskiwania synchronizacji",
-        "lead": "Wpisujesz kod zestawu odzyskiwania i adres serwera. Tak dołącza też drugi komputer."
+        "title": "Nie mam przy sobie żadnego urządzenia",
+        "lead": "Używasz zestawu odzyskiwania: wpisujesz jego kod."
+      },
+      "code": {
+        "title": "Mam inny komputer z synchronizacją",
+        "lead": "Na drugim komputerze: Ustawienia → Synchronizacja → Dodaj urządzenie. Tutaj wpiszesz kod, który się pojawi."
       }
     },
     "connect": "Połącz",
-    "firstRunDone": "To urządzenie jest teraz synchronizowane"
+    "firstRunDone": "To urządzenie jest teraz synchronizowane",
+    "codeTitle": "Połącz z innego komputera",
+    "codeHint": "Na komputerze z włączoną synchronizacją: Ustawienia → Synchronizacja → Dodaj urządzenie. Wpisz lub wklej kod, który się pojawi."
   },
   "phone": {
     "title": "Synchronizacja",

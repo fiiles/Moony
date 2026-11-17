@@ -374,7 +374,7 @@
   },
   "pairing": {
     "addTitle": "Aggiungi un dispositivo",
-    "addDescription": "Associa un altro dispositivo al tuo account di sincronizzazione. Niente lascia i tuoi dispositivi senza cifratura.",
+    "addDescription": "Associa un altro dispositivo a questa sincronizzazione. Nulla lascia i tuoi dispositivi senza cifratura.",
     "passwordFirst": "Inserisci la password di Moony per mostrare il codice di associazione.",
     "showCode": "Mostra il codice",
     "qrAlt": "Codice di associazione",
@@ -400,7 +400,9 @@
     "validUntil": "Il codice è valido fino alle {{time}}.",
     "copyCode": "Copia il codice",
     "copiedCode": "Copiato",
-    "codeHint": "Niente fotocamera? Scrivi o incolla questo codice sull'altro dispositivo."
+    "codeHint": "Niente fotocamera? Digita o incolla questo codice sull'altro dispositivo. Puoi inviarlo in un messaggio: senza le sei cifre che digiterai poi qui, non rivela nulla.",
+    "deviceConnected": "{{name}} è connesso",
+    "sentLate": "Completa il collegamento sull'altro dispositivo. Quando sarà collegato, apparirà nell'elenco."
   },
   "join": {
     "warning": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup accanto al tuo profilo.",
@@ -422,12 +424,18 @@
         "lead": "Comparirà un codice. Sul telefono: Impostazioni → Sincronizzazione → Aggiungi un dispositivo."
       },
       "kit": {
-        "title": "Ho il kit di ripristino della sincronizzazione",
-        "lead": "Inserisci il codice del kit di ripristino e l'indirizzo del server. Così si collega anche un secondo computer."
+        "title": "Non ho nessun dispositivo con me",
+        "lead": "Usi il tuo kit di ripristino: inserisci il suo codice."
+      },
+      "code": {
+        "title": "Ho un altro computer che sincronizza",
+        "lead": "Sull'altro computer: Impostazioni → Sincronizzazione → Aggiungi un dispositivo. Qui digiti il codice mostrato."
       }
     },
     "connect": "Collega",
-    "firstRunDone": "Questo dispositivo ora si sincronizza"
+    "firstRunDone": "Questo dispositivo ora si sincronizza",
+    "codeTitle": "Collega da un altro computer",
+    "codeHint": "Sul computer con la sincronizzazione attiva: Impostazioni → Sincronizzazione → Aggiungi un dispositivo. Digita o incolla il codice mostrato."
   },
   "phone": {
     "title": "Sincronizzazione",

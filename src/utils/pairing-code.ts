@@ -120,3 +120,18 @@ export function joinFailureAction(
     : poll.key === undefined || !PAIRING_ENDED.has(poll.key);
   return { retryable, setupPending: retryable && errorKey === 'validation.syncJoinSetupPending' };
 }
+
+/**
+ * A typed or pasted pairing code (the manual-entry field on the phone and on the desktop) takes a
+ * pairing code only: `null` when it is one, else the `deviceSync` key of what to tell the person.
+ */
+export function pairingCodeProblem(code: string): string | null {
+  switch (scannedCodeKind(code)) {
+    case 'pair':
+      return null;
+    case 'connection':
+      return 'codes.connectionNotHere';
+    default:
+      return 'phone.notAPairingCode';
+  }
+}

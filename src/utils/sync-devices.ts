@@ -129,3 +129,22 @@ export function otherDeviceNames(devices: readonly SyncDevice[] | undefined): st
     .map((device) => device.name.trim())
     .filter((name) => name !== '');
 }
+
+/**
+ * The device that joined while a pairing ran: the first device on the list that is not this one,
+ * is not a former one and was not on the list (`before`, device IDs) when the pairing started.
+ * `null` while there is none.
+ */
+export function newlyJoinedDevice(
+  before: ReadonlySet<string>,
+  devices: readonly SyncDevice[] | undefined
+): SyncDevice | null {
+  return (
+    (devices ?? []).find(
+      (device) => !device.thisDevice && device.status !== 'former' && !before.has(device.id)
+    ) ?? null
+  );
+}
+
+/** After this long without the new device on the list the holder's dialog says what to do (ms). */
+export const HOLDER_FINISH_LATE_MS = 120_000;

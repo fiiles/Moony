@@ -19,11 +19,18 @@ import { Button } from '@/components/ui/button';
 
 const SETTINGS: JoinContext = { kind: 'settings' };
 
+/** The dialog title of each way in (`deviceSync` keys). */
+const JOIN_TITLES = {
+  pair: 'join.pairTitle',
+  code: 'join.codeTitle',
+  kit: 'join.kitTitle',
+} as const satisfies Record<JoinMethod, string>;
+
 const inFooter = (actions: ReactNode) => <DialogFooter>{actions}</DialogFooter>;
 
 /**
- * Settings → Sync, "Connect this device": the device name and the way in (a phone that syncs or
- * the Sync Recovery Kit), then that join's flow. Here the profile may hold data, so the flows ask
+ * Settings → Sync, "Connect this device": the device name and the way in (a phone that syncs,
+ * another computer's pairing code or the recovery kit), then that join's flow. Here the profile may hold data, so the flows ask
  * for the device password and show the replace warning and what is at stake. Mounted only while
  * open; it cannot be dismissed while a pairing starts or a join runs.
  */
@@ -62,7 +69,12 @@ export function JoinDeviceDialog({ onClose }: { onClose: () => void }) {
     footer: inFooter,
     dismissRef: dismissFlow,
   };
-  const hint = method === 'kit' ? t('join.kitHint') : pairingShown ? null : t('join.pairHint');
+  const hint =
+    method === 'kit'
+      ? t('join.kitHint')
+      : pairingShown
+        ? null
+        : t(method === 'code' ? 'join.codeHint' : 'join.pairHint');
   // A screen without a description says so, or Radix warns about a missing one
   const noDescription = screen === 'flow' && hint === null;
   return (
@@ -90,15 +102,17 @@ export function JoinDeviceDialog({ onClose }: { onClose: () => void }) {
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>
-                {method === 'pair' ? t('join.pairTitle') : t('join.kitTitle')}
-              </DialogTitle>
+              <DialogTitle>{t(JOIN_TITLES[method])}</DialogTitle>
               {hint !== null && <DialogDescription>{hint}</DialogDescription>}
             </DialogHeader>
-            {method === 'pair' ? (
-              <PairingJoinFlow {...flowProps} onPairingShown={setPairingShown} />
-            ) : (
+            {method === 'kit' ? (
               <RecoveryJoinFlow {...flowProps} />
+            ) : (
+              <PairingJoinFlow
+                {...flowProps}
+                mode={method === 'code' ? 'type' : 'show'}
+                onPairingShown={setPairingShown}
+              />
             )}
           </>
         )}

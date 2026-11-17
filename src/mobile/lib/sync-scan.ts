@@ -92,17 +92,7 @@ export function kitQrSummary(text: string): KitQrSummary {
   return { ok: true, server };
 }
 
-/** The manual-entry sheet takes a pairing code only (a `deviceSync` key otherwise). */
-export function pairingCodeProblem(code: string): string | null {
-  switch (scannedCodeKind(code)) {
-    case 'pair':
-      return null;
-    case 'connection':
-      return 'codes.connectionNotHere';
-    default:
-      return 'phone.notAPairingCode';
-  }
-}
+export { pairingCodeProblem } from '@/utils/pairing-code';
 
 /** The `setup.defaultName` key of this phone: Android by its build platform, else an iPhone. */
 export function phoneDeviceKey(platform: string): 'ios' | 'android' {

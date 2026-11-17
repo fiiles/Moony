@@ -361,7 +361,7 @@
     "syncDevOnly": "Dette er et utviklerverktøy, kun tilgjengelig i utviklingsversjoner.",
     "syncChangeInProgress": "En annen endring av synkroniseringen pågår allerede på denne enheten. Vent til den er ferdig.",
     "syncPasswordRequired": "Skriv inn passordet ditt på nytt for å kopiere eller lagre koden fra gjenopprettingssettet.",
-    "syncPairingCodeInvalid": "Paringskoden er ugyldig. Skann koden som vises på den andre enheten.",
+    "syncPairingCodeInvalid": "Paringskoden er ugyldig. Sjekk koden som vises på den andre enheten.",
     "syncPairingOtherNeedsUpdate": "Den andre enheten må oppdatere Moony før den kan pares med denne.",
     "syncPairingThisNeedsUpdate": "Denne koblingskoden kommer fra en nyere versjon av Moony. Oppdater Moony på denne enheten og prøv igjen.",
     "syncPairingFailed": "Paringen fungerte ikke. Start på nytt på begge enhetene.",

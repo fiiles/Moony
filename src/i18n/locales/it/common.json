@@ -361,7 +361,7 @@
     "syncDevOnly": "Questo è uno strumento per sviluppatori, disponibile solo nelle build di sviluppo.",
     "syncChangeInProgress": "Su questo dispositivo è già in corso un'altra modifica della sincronizzazione. Attendi che finisca.",
     "syncPasswordRequired": "Inserisci di nuovo la password per copiare o salvare il codice del kit di ripristino.",
-    "syncPairingCodeInvalid": "Il codice di abbinamento non è valido. Scansiona il codice mostrato sull'altro dispositivo.",
+    "syncPairingCodeInvalid": "Il codice di abbinamento non è valido. Controlla il codice mostrato sull'altro dispositivo.",
     "syncPairingOtherNeedsUpdate": "L'altro dispositivo deve aggiornare Moony prima di potersi abbinare a questo.",
     "syncPairingThisNeedsUpdate": "Questo codice di associazione proviene da una versione più recente di Moony. Aggiorna Moony su questo dispositivo e riprova.",
     "syncPairingFailed": "L'abbinamento non è riuscito. Ricomincia su entrambi i dispositivi.",

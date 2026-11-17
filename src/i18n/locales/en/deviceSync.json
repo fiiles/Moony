@@ -362,7 +362,7 @@
   },
   "pairing": {
     "addTitle": "Add a device",
-    "addDescription": "Pair another device with your sync account. Nothing leaves your devices unencrypted.",
+    "addDescription": "Pair another device with this sync. Nothing leaves your devices unencrypted.",
     "passwordFirst": "Enter your Moony password to show the pairing code.",
     "showCode": "Show code",
     "qrAlt": "Pairing code",
@@ -388,7 +388,9 @@
     "validUntil": "The code is valid until {{time}}.",
     "copyCode": "Copy code",
     "copiedCode": "Copied",
-    "codeHint": "No camera? Type or paste this code on the other device."
+    "codeHint": "No camera? Type or paste this code on the other device. You can send it in a message: without the six digits you type here next, it gives nothing away.",
+    "deviceConnected": "{{name}} is connected",
+    "sentLate": "Finish connecting on the other device. Once it is connected, it will appear in the list."
   },
   "join": {
     "warning": "This device's data is replaced by the synced data. A backup is saved next to your profile first.",
@@ -410,12 +412,18 @@
         "lead": "A code appears. On the phone: Settings → Sync → Add a device."
       },
       "kit": {
-        "title": "I have the Sync Recovery Kit",
-        "lead": "You enter the Recovery Kit code and the server address. This is also how a second computer joins."
+        "title": "I have no device with me",
+        "lead": "You use your recovery kit: type its code."
+      },
+      "code": {
+        "title": "I have another computer that syncs",
+        "lead": "On the other computer: Settings → Sync → Add a device. Here you type the code it shows."
       }
     },
     "connect": "Connect",
-    "firstRunDone": "This device is syncing now"
+    "firstRunDone": "This device is syncing now",
+    "codeTitle": "Connect from another computer",
+    "codeHint": "On the computer that syncs: Settings → Sync → Add a device. Type or paste the code it shows."
   },
   "phone": {
     "title": "Sync",

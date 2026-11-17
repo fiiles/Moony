@@ -24,6 +24,8 @@ interface PairingStepsProps {
   confirming: boolean;
   /** `received`: false while the join waits for the person's confirmation (default: running). */
   joining?: boolean;
+  /** The holder's finish after `sent` (`useHolderFinish`): the device that appeared, or the late hint. */
+  finish?: { joined: string | null; late: boolean };
 }
 
 /**
@@ -41,6 +43,7 @@ export function PairingSteps({
   onConfirm,
   confirming,
   joining = true,
+  finish,
 }: PairingStepsProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
@@ -169,7 +172,15 @@ export function PairingSteps({
       case 'waitingForOther':
         return <p className="m-0 text-body text-ink-3">{t('pairing.waiting')}</p>;
       case 'sent':
-        return <p className="m-0 text-body text-ink-2">{t('pairing.sent')}</p>;
+        return (
+          <p className="m-0 text-body text-ink-2" role="status" data-testid="pairing-sent">
+            {finish?.joined
+              ? t('pairing.deviceConnected', { name: finish.joined })
+              : finish?.late
+                ? t('pairing.sentLate')
+                : t('pairing.sent')}
+          </p>
+        );
       case 'received':
         return (
           <p className="m-0 text-body text-ink-3">

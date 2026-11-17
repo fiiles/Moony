@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { deviceSyncApi } from '@/lib/tauri-api';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { syncIsOn } from '@/utils/safe-copy';
 import { syncStatusRefetchInterval } from '@/utils/device-sync-refetch';
-import { groupDevices } from '@/utils/sync-devices';
-import type { SyncDevice } from '@shared/schema';
+import { HOLDER_FINISH_LATE_MS, groupDevices, newlyJoinedDevice } from '@/utils/sync-devices';
+import type { PairingView, SyncDevice } from '@shared/schema';
 
 /**
  * Whether device sync is built in and enabled, and whether that is still being asked (a screen
@@ -194,4 +194,49 @@ export function useSyncServerCheck(input: string, enabled: boolean) {
     staleTime: 0,
     gcTime: 0,
   });
+}
+
+/** How often the holder's dialog re-reads the device list after it sent the sync details (ms). */
+const HOLDER_FINISH_POLL_MS = 3000;
+
+/**
+ * The holder's finish (spec §5): while a pairing as the holder runs, the device list is read once
+ * for what was there when it started; after `sent` it is watched (fast poll) for a device row
+ * that was not. `joined` is that device's name once it appears; `late` turns true after two
+ * minutes without it. Both reset with the pairing.
+ */
+export function useHolderFinish(view: PairingView | undefined): {
+  joined: string | null;
+  late: boolean;
+} {
+  const holding = view?.role === 'holder';
+  const sent = holding && view.stage === 'sent';
+  const [before, setBefore] = useState<ReadonlySet<string> | null>(null);
+  const devices = useQuery({
+    queryKey: DEVICES_KEY,
+    queryFn: () => deviceSyncApi.listDevices(),
+    enabled: holding,
+    refetchInterval: sent ? HOLDER_FINISH_POLL_MS : false,
+  });
+  const list = devices.data;
+  const joined = sent && before ? newlyJoinedDevice(before, list) : null;
+
+  // What was on the list before the details were sent; a new pairing starts over
+  if (!holding && before !== null) setBefore(null);
+  else if (holding && before === null && list && !sent) {
+    setBefore(new Set(list.map((device) => device.id)));
+  }
+
+  // The `expiresAt` of the pairing whose two minutes ran out (it identifies the pairing)
+  const pairingKey = view?.expiresAt;
+  const [lateFor, setLateFor] = useState<number | null>(null);
+  const waiting = sent && joined === null;
+  useEffect(() => {
+    if (!waiting || pairingKey === undefined) return;
+    const timer = setTimeout(() => setLateFor(pairingKey), HOLDER_FINISH_LATE_MS);
+    return () => clearTimeout(timer);
+  }, [waiting, pairingKey]);
+  const late = waiting && lateFor === pairingKey;
+
+  return { joined: joined?.name ?? null, late };
 }

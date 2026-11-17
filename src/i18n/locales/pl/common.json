@@ -361,7 +361,7 @@
     "syncDevOnly": "To narzędzie dla programistów, dostępne tylko w wersjach deweloperskich.",
     "syncChangeInProgress": "Na tym urządzeniu trwa już inna zmiana synchronizacji. Poczekaj, aż się zakończy.",
     "syncPasswordRequired": "Wpisz ponownie hasło, aby skopiować lub zapisać kod zestawu odzyskiwania.",
-    "syncPairingCodeInvalid": "Kod parowania jest nieprawidłowy. Zeskanuj kod wyświetlony na drugim urządzeniu.",
+    "syncPairingCodeInvalid": "Kod parowania jest nieprawidłowy. Sprawdź kod wyświetlony na drugim urządzeniu.",
     "syncPairingOtherNeedsUpdate": "Drugie urządzenie wymaga aktualizacji Moony, zanim będzie można sparować je z tym.",
     "syncPairingThisNeedsUpdate": "Ten kod parowania pochodzi z nowszej wersji Moony. Zaktualizuj Moony na tym urządzeniu i spróbuj ponownie.",
     "syncPairingFailed": "Parowanie się nie powiodło. Zacznij od nowa na obu urządzeniach.",

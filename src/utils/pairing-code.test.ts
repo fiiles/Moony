@@ -5,6 +5,7 @@ import {
   isCompleteCode,
   joinFailureAction,
   normalizeTypedCode,
+  pairingCodeProblem,
   pairingPollInterval,
   scannedCodeKind,
   type JoinFailurePoll,
@@ -173,5 +174,14 @@ describe('joinFailureAction', () => {
     ['poll failed without a key', { ok: false }, SETUP_PENDING, true, true],
   ])('%s', (_label, poll, errorKey, retryable, setupPending) => {
     expect(joinFailureAction(poll, errorKey)).toEqual({ retryable, setupPending });
+  });
+});
+
+describe('pairingCodeProblem', () => {
+  it('accepts a pairing code and names what else was typed', () => {
+    expect(pairingCodeProblem('moony-pair:abc')).toBeNull();
+    expect(pairingCodeProblem('  moony-pair:abc\n')).toBeNull();
+    expect(pairingCodeProblem('moony-sync1:xyz')).toBe('codes.connectionNotHere');
+    expect(pairingCodeProblem('hello')).toBe('phone.notAPairingCode');
   });
 });

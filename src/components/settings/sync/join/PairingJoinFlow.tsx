@@ -11,7 +11,7 @@ import { useServerChoice } from '@/hooks/use-server-choice';
 import { consentOf } from '@/utils/replace-impact';
 import { translateApiError } from '@/lib/translate-api-error';
 import { joinPassword, joinPresentation, type JoinContext } from '@/utils/join-context';
-import type { JoinFailureAction } from '@/utils/pairing-code';
+import { pairingCodeProblem, type JoinFailureAction } from '@/utils/pairing-code';
 import { needsJoinAcknowledgement } from '@/utils/sync-setup';
 import { JoinFields, JoinWarning } from '@/components/settings/sync/JoinFields';
 import { PairingExpiryNote } from '@/components/settings/sync/PairingExpiryNote';
@@ -21,6 +21,7 @@ import { IMPACT_CHANGED_KEY } from '@/components/settings/sync/replace-outcome';
 import { JoinImpactNotice } from '@/components/settings/sync/join/JoinImpactNotice';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 /** What both join flows take, in Settings (`JoinDeviceDialog`) and in the first run. */
 export interface JoinFlowProps {
@@ -49,13 +50,19 @@ export interface JoinFlowProps {
 
 /** Only the pairing flow: whether a pairing exists yet (its QR and later steps are on screen). */
 export interface PairingJoinFlowProps extends JoinFlowProps {
+  /**
+   * `show` (default): this computer shows a QR and a text code and a phone scans it. `type`: the
+   * person types or pastes the code another computer shows (its "Přidat zařízení"); this computer
+   * then shows the six digits for the holder to type, as the phone joiner does.
+   */
+  mode?: 'show' | 'type';
   /** Settings drops the dialog's description once the QR shows its own hint. */
   onPairingShown?: (shown: boolean) => void;
 }
 
 /**
- * Joining from another device's QR (the joiner): the address (and in Settings the password)
- * first, then the QR, the six digits to compare and, once the sync details arrive, the join
+ * Joining from another device's QR or typed code (the joiner): the address (`show`) or the code
+ * (`type`), and in Settings the password, first, then the QR (`show`), the six digits to compare and, once the sync details arrive, the join
  * itself (the busy cover shows through the shared mutation key). Mounted only while it runs;
  * leaving gives the pairing up.
  */
@@ -68,12 +75,15 @@ export function PairingJoinFlow({
   dismissRef,
   onBusyChange,
   onPairingShown,
+  mode = 'show',
 }: PairingJoinFlowProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const presentation = joinPresentation(context);
   const pairing = useDevicePairing();
-  const { error, isError, start, confirm, confirmError, cancel, join, afterFailedJoin } = pairing;
+  const { error, isError, start, scan, confirm, confirmError, cancel, join, afterFailedJoin } =
+    pairing;
+  const typing = mode === 'type';
   const { turnOff } = useDeviceSyncMutations();
   // A successful join clears the pairing before the flow is left: keep showing its last step.
   const lastView = useRef(pairing.view);
@@ -94,6 +104,9 @@ export function PairingJoinFlow({
   const [joinAcknowledged, setJoinAcknowledged] = useState(false);
   const [impactChanged, setImpactChanged] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  /** `type` mode: the pairing code the person typed or pasted, and what is wrong with it. */
+  const [code, setCode] = useState('');
+  const [codeProblem, setCodeProblem] = useState<string | null>(null);
   /**
    * A failed join: its text, whether the backend kept the pairing (so the same join can run again)
    * and whether a half-finished setup blocks it ("Cancel setup").
@@ -113,7 +126,8 @@ export function PairingJoinFlow({
 
   // The caller's way out (Settings: a dismissal; first run: leaving the step): not while the pairing
   // starts (the password is on its way) or the join runs (a cancelled setup goes on to join)
-  const busy = view ? join.isPending || turnOff.isPending : start.isPending;
+  const starting = start.isPending || scan.isPending;
+  const busy = view ? join.isPending || turnOff.isPending : starting;
   useEffect(() => onBusyChange?.(busy), [onBusyChange, busy]);
   useEffect(() => {
     if (!dismissRef) return;
@@ -126,8 +140,25 @@ export function PairingJoinFlow({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (devicePassword === '' || deviceName === '' || !server.ready || start.isPending) return;
+    if (devicePassword === '' || deviceName === '' || starting) return;
     setFormError(null);
+    if (typing) {
+      const problem = pairingCodeProblem(code);
+      if (code.trim() === '' || problem) {
+        setCodeProblem(problem ?? 'phone.notAPairingCode');
+        return;
+      }
+      try {
+        await scan.mutateAsync({ code: code.trim(), password: devicePassword, deviceName });
+        setCode('');
+        setPassword('');
+      } catch (failure) {
+        scan.reset();
+        setFormError(translateApiError(failure as Error, tc));
+      }
+      return;
+    }
+    if (!server.ready) return;
     try {
       await start.mutateAsync({
         password: devicePassword,
@@ -200,6 +231,32 @@ export function PairingJoinFlow({
     return (
       <form onSubmit={submit} className="grid gap-4">
         {presentation.showReplaceWarning && <JoinWarning />}
+        {typing && (
+          <div className="grid gap-1.5">
+            <Label htmlFor="join-pairing-code">{t('phone.enterCodeLabel')}</Label>
+            <textarea
+              id="join-pairing-code"
+              value={code}
+              rows={3}
+              onChange={(event) => {
+                setCode(event.target.value);
+                setCodeProblem(null);
+                setFormError(null);
+              }}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-invalid={codeProblem ? true : undefined}
+              data-testid="join-pairing-code"
+              className="m-0 block w-full resize-none rounded-r2 border border-line-strong bg-paper px-3 py-2 font-mono text-micro text-ink transition-[border-color,box-shadow] duration-fast focus:border-focus focus:shadow-focus focus-visible:outline-none aria-[invalid=true]:border-loss"
+            />
+            {codeProblem && (
+              <p className="m-0 text-micro font-500 text-loss" role="alert">
+                {t(codeProblem)}
+              </p>
+            )}
+          </div>
+        )}
         <JoinFields
           askPassword={presentation.askPassword}
           password={password}
@@ -208,25 +265,24 @@ export function PairingJoinFlow({
             setFormError(null);
           }}
           server={server}
-          serverMode="field"
+          serverMode={typing ? 'hidden' : 'field'}
           error={formError}
         />
         {footer(
           <>
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={start.isPending}
-              onClick={() => void close()}
-            >
+            <Button type="button" variant="ghost" disabled={starting} onClick={() => void close()}>
               {tc(presentation.cancelKey)}
             </Button>
             <Button
               type="submit"
-              loading={start.isPending}
-              disabled={devicePassword === '' || deviceName === '' || !server.ready}
+              loading={starting}
+              disabled={
+                devicePassword === '' ||
+                deviceName === '' ||
+                (typing ? code.trim() === '' : !server.ready)
+              }
             >
-              {t('join.pairTitle')}
+              {typing ? tc('buttons.continue') : t('join.pairTitle')}
             </Button>
           </>
         )}

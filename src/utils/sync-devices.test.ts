@@ -11,6 +11,7 @@ import {
   groupDevices,
   inactiveDays,
   joinedViaKey,
+  newlyJoinedDevice,
   otherDeviceNames,
   quietDays,
 } from './sync-devices';
@@ -208,5 +209,41 @@ describe('formerLineKey', () => {
     expect(former('removed', 1, null)).toBe('devices.former.removedOn');
     expect(former('removed', null, 'Mac')).toBe('devices.former.removedBy');
     expect(former('removed', null, null)).toBe('devices.former.removed');
+  });
+});
+
+describe('newlyJoinedDevice', () => {
+  const row = (id: string, over: Partial<SyncDevice> = {}): SyncDevice => ({
+    id,
+    name: `Device ${id}`,
+    platform: 'macos',
+    appVersion: '1.0.0',
+    joinedAt: 0,
+    lastActiveAt: null,
+    thisDevice: false,
+    held: false,
+    status: 'active',
+    checkReason: null,
+    formerReason: null,
+    joinedVia: 'paired',
+    addedBy: null,
+    stateAt: null,
+    stateBy: null,
+    removalPending: false,
+    inactiveDays: null,
+    ...over,
+  });
+
+  it('is the first device that was not on the list before', () => {
+    const before = new Set(['a', 'b']);
+    expect(newlyJoinedDevice(before, [row('a'), row('b'), row('c')])?.id).toBe('c');
+  });
+
+  it('is null while the list is unchanged, unknown, or only grew by this device or a former one', () => {
+    const before = new Set(['a']);
+    expect(newlyJoinedDevice(before, [row('a')])).toBeNull();
+    expect(newlyJoinedDevice(before, undefined)).toBeNull();
+    expect(newlyJoinedDevice(before, [row('a'), row('me', { thisDevice: true })])).toBeNull();
+    expect(newlyJoinedDevice(before, [row('a'), row('x', { status: 'former' })])).toBeNull();
   });
 });

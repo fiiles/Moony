@@ -362,7 +362,7 @@
   },
   "pairing": {
     "addTitle": "Gerät hinzufügen",
-    "addDescription": "Koppeln Sie ein weiteres Gerät mit Ihrem Sync-Konto. Nichts verlässt Ihre Geräte unverschlüsselt.",
+    "addDescription": "Koppeln Sie ein weiteres Gerät mit dieser Synchronisierung. Nichts verlässt Ihre Geräte unverschlüsselt.",
     "passwordFirst": "Geben Sie Ihr Moony-Passwort ein, um den Kopplungscode anzuzeigen.",
     "showCode": "Code anzeigen",
     "qrAlt": "Kopplungscode",
@@ -388,7 +388,9 @@
     "validUntil": "Der Code gilt bis {{time}}.",
     "copyCode": "Code kopieren",
     "copiedCode": "Kopiert",
-    "codeHint": "Keine Kamera? Geben Sie diesen Code auf dem anderen Gerät ein oder fügen Sie ihn ein."
+    "codeHint": "Keine Kamera? Geben Sie diesen Code auf dem anderen Gerät ein oder fügen Sie ihn ein. Sie können ihn auch per Nachricht senden: Ohne die sechs Ziffern, die Sie danach hier eingeben, verrät er nichts.",
+    "deviceConnected": "{{name}} ist verbunden",
+    "sentLate": "Schließen Sie die Verbindung auf dem anderen Gerät ab. Sobald es verbunden ist, erscheint es in der Liste."
   },
   "join": {
     "warning": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird neben Ihrem Profil eine Sicherung gespeichert.",
@@ -410,12 +412,18 @@
         "lead": "Ein Code erscheint. Auf dem Smartphone: Einstellungen → Synchronisierung → Gerät hinzufügen."
       },
       "kit": {
-        "title": "Ich habe das Sync-Wiederherstellungs-Kit",
-        "lead": "Sie geben den Code des Wiederherstellungs-Kits und die Serveradresse ein. So tritt auch ein zweiter Computer bei."
+        "title": "Ich habe kein Gerät dabei",
+        "lead": "Sie verwenden Ihr Wiederherstellungs-Kit: Geben Sie dessen Code ein."
+      },
+      "code": {
+        "title": "Ich habe einen anderen Computer, der synchronisiert",
+        "lead": "Auf dem anderen Computer: Einstellungen → Synchronisierung → Gerät hinzufügen. Hier geben Sie den angezeigten Code ein."
       }
     },
     "connect": "Verbinden",
-    "firstRunDone": "Dieses Gerät synchronisiert jetzt"
+    "firstRunDone": "Dieses Gerät synchronisiert jetzt",
+    "codeTitle": "Von einem anderen Computer verbinden",
+    "codeHint": "Auf dem Computer mit aktiver Synchronisierung: Einstellungen → Synchronisierung → Gerät hinzufügen. Geben Sie den angezeigten Code ein oder fügen Sie ihn ein."
   },
   "phone": {
     "title": "Synchronisierung",

@@ -56,6 +56,9 @@ export function useDeviceSyncStatus() {
     queryFn: () => deviceSyncApi.getStatus(),
     enabled,
     refetchInterval: (query) => syncStatusRefetchInterval(query.state.data),
+    // A long round's status reads the same at every poll, yet "taking longer than usual" depends
+    // on the time it is read (`syncState`'s `now`): each poll re-renders, not only a changed one.
+    notifyOnChangeProps: ['data', 'error', 'isPending', 'isLoading', 'dataUpdatedAt'],
   });
 }
 

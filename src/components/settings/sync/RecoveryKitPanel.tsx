@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Check, Copy, Download, Printer } from 'lucide-react';
@@ -38,11 +39,18 @@ interface RecoveryKitPanelProps {
  */
 export function RecoveryKitPanel({
   kit,
-  onKept,
+  onKept: kept,
   onPasswordRequired,
   onExpired,
 }: RecoveryKitPanelProps) {
   const { t } = useTranslation('deviceSync');
+  const queryClient = useQueryClient();
+  // Keeping the kit writes where it is kept: the Kit row must not show the cached "not saved"
+  // state once the step closes.
+  const onKept = () => {
+    void queryClient.invalidateQueries({ queryKey: ['device-sync-status'] });
+    kept();
+  };
   const { t: tc } = useTranslation('common');
   const { copyRecoveryCode, printRecoveryKit } = useDeviceSyncMutations();
   const kitCopy = useRecoveryKitCopy(kit);

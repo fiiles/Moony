@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SyncDevice } from '@shared/schema';
 import {
   afterKitJoinDevices,
+  afterKitJoinNames,
   newDeviceKind,
   removalNoticeText,
   removalNotDoneText,
@@ -91,5 +92,23 @@ describe('removedNoticeKeys', () => {
       bodyKey: 'removed.bodyLeft',
       showUnsent: true,
     });
+  });
+});
+
+describe('afterKitJoinNames', () => {
+  const held = [
+    { id: 'a', name: 'Mac' },
+    { id: 'b', name: 'iPhone' },
+  ];
+  const row = (id: string, name: string) =>
+    ({ id, name, thisDevice: false, status: 'active' }) as SyncDevice;
+
+  it('names only the held devices still on the list once it has loaded', () => {
+    expect(afterKitJoinNames(held, [row('a', 'Mac')])).toBe('Mac');
+  });
+
+  it('names every held device while the list loads or when none is left on it', () => {
+    expect(afterKitJoinNames(held, null)).toBe('Mac, iPhone');
+    expect(afterKitJoinNames(held, [])).toBe('Mac, iPhone');
   });
 });

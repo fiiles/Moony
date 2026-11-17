@@ -1946,3 +1946,42 @@ R-104. **Review fixes of the phase 5 UI (desktop and phone).** (a) The new kit l
      print dialog opens (R-91, kept on purpose). Not verified live: the skeleton and the disabled phone button
      while the list loads, the baseline of `useHolderFinish` on a slow list, a problem clearing under an open
      dialog.
+
+R-105. **Fixes from the Task 33 desktop live run.** (a) **A Kit made by a Kit joiner opened nowhere.** A Kit
+     joiner's first store (`trust::tofu_from_rows`) refused every Kit but the anchor as `SecondKit`, so a device
+     a replaced Kit had issued was never pinned: when that device was the envelope's signer (a Kit joiner that
+     removed the others, or made a new Kit), the next Kit join answered `syncRecoveryKitUnreadable` ("data na
+     synchronizačním serveru k ní nesedí"); otherwise the device was silently left out of the joiner's next key
+     change. Now, once the anchor is pinned, `pin_candidates(former_kits)` pins a replaced Kit too, **removed at
+     once** by the `removed` record its row holds (`former_kit_removal`: the Kit's issuer vouches for it here, the
+     record verifies by its signer's row certificate, the signer pinned here or issued by this very Kit), so it
+     vouches only for what it issued before it was replaced, and what it vouches for is left out with it unless
+     the envelope's confirmed set names it. A replaced Kit without such a record stays out (`SecondKit`), as
+     before; its creator being left out for its issuer does not keep it out (the joiner's confirmed set applies
+     only after the store is built). Tests: `kit_join::a_kit_made_by_a_kit_joiner_lets_the_next_device_join`,
+     `a_device_an_older_kit_issued_is_kept_by_the_next_kit_joiner`,
+     `a_kit_chain_through_a_removed_first_device_still_joins`. (b) **"Synchronizace trvá déle než obvykle" never
+     appeared:** a stuck round's status reads the same at every poll, so React Query kept the reference and
+     nothing re-rendered past the 60 s mark; `useDeviceSyncStatus` now notifies on `dataUpdatedAt` too (polls
+     run only while syncing). (c) The biometric offer stacked under the removed-device dialog at unlock (two
+     modal dialogs); `EnableBiometricsDialog` now waits while `removedNotice` is unanswered or the status loads.
+     (d) "Data jsou zpět" named a device removed since the join (the stored names of a stale snapshot);
+     `afterKitJoinNames` names only the held devices still on the list once it has loaded. (e) After "Sadu mám,
+     hotovo" the Kit row flashed "Záchrannou sadu jste si neuložili" until the next status read;
+     `RecoveryKitPanel` invalidates the status when the kit is kept. (f) `auth.onboarding.connect.subtitle`
+     said "synchronizační účet" (forbidden by the glossary) in every locale; now "přijdou ze synchronizace".
+
+As run (Task 33, desktop, 2026-11-17). Three debug instances (`.livecheck1`–`.livecheck4`, ports 1421–1424)
+against a local relay of `feat/recovery-kit`; cs, de, ja, en; 1080 px; dark and light. Passed: typed join
+(wrong code, connection code pasted, outer spaces, wrong six digits then right with a space, "{name} je
+připojené" · "Hotovo", the 2-minute hint); setup done screen across the phase flip; removal without and with
+the Kit step (Kit line `creatorRemoved`), wrong password under the field, Escape does not close the Kit step,
+the step drops the kit when the window is hidden; "Ověřit sadu" old, unsaved-replaced, current (lower case,
+spaces) and mistyped; Kit row kept/unsaved/"Naposledy použita"; Kit join after two removals with the replaced
+kit refused ("nahradila novější"), skeleton then "Odebrat je" (removal + Kit step) and "Mám je"; Kit-join box
+"Odebrat a vytvořit novou sadu"; removed dialog at unlock (Escape keeps the card, "Rozumím", "Připojit znovu" →
+join choice); popover removed line with sync off; newDevices dismissal with another notice present; syncingLong
+"Zkusit znovu" (relay paused with SIGSTOP); the relay admin's Kit line. Not reproducible here: the `left`
+variant, the unsent count, a pending removal (an unreachable server fails the removal before anything changes:
+`vault_info` first), late vouch, rejoin/waiting cards, a problem clearing under an open dialog, `kitUsed`, a Kit
+of another sync. Not checkable: print and save dialogs (native), Windows/Linux.

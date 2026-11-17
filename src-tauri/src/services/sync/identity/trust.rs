@@ -771,13 +771,17 @@ fn push_conflict(report: &mut RefreshReport, device: DeviceId, kind: ConflictKin
 /// ticket at most once. A Kit only as the vault's first (R-24): while no Kit was ever pinned here,
 /// the only one `accept` allows in the pass, and its creator not left out for its issuer; any
 /// other is `SecondKit` (a replacement Kit comes in only by the key change that names it,
-/// `import_bundle`). Returns whether anything was pinned.
+/// `import_bundle`). With `former_kits` (a Kit joiner's first store, As built R-105) a replaced
+/// Kit is pinned too, `removed` at once by the removal record its row holds (`former_kit_removal`):
+/// the joiner has no key change to learn the replaced Kits from, and a device a replaced Kit issued
+/// before it was replaced is vouched for only through it. Returns whether anything was pinned.
 fn pin_candidates(
     conn: &Connection,
     rows: &[DeviceRow],
     vault: &[u8; 16],
     now: i64,
     report: &mut RefreshReport,
+    former_kits: bool,
     accept: impl Fn(&Certificate, &Seen<'_>) -> Verdict,
 ) -> Result<bool> {
     let store = Store::load(conn)?;
@@ -814,12 +818,21 @@ fn pin_candidates(
     let mut tickets: HashSet<[u8; 32]> = HashSet::new();
     let mut pinned_any = false;
     for (id, cert) in accepted {
+        let second_kit = cert.body.kind == CertKind::Kit && (store.has_kit() || kits > 1);
+        let former = if former_kits && second_kit {
+            former_kit_removal(&store, rows, vault, &cert)
+        } else {
+            None
+        };
         if cert.body.kind == CertKind::Kit {
-            if store.has_kit() || kits > 1 {
+            if second_kit && former.is_none() {
                 push_conflict(report, id, ConflictKind::SecondKit);
                 continue;
             }
-            if store.silenced(&cert.body.issuer_device) {
+            // A replaced Kit is pinned removed: what it vouches for is left out with it unless
+            // confirmed, so its creator being left out for its issuer (as a device whose own
+            // issuer was removed is, until the envelope's confirmed set applies) keeps nothing safe.
+            if former.is_none() && store.silenced(&cert.body.issuer_device) {
                 continue;
             }
         }
@@ -830,10 +843,43 @@ fn pin_candidates(
             }
         }
         pin(conn, &cert, now)?;
+        if let Some(record) = &former {
+            apply_move(conn, record, None)?;
+        }
         report.pinned.push(id);
         pinned_any = true;
     }
     Ok(pinned_any)
+}
+
+/// A Kit joiner's replaced Kit (As built R-105): the `removed` record its row holds, when the Kit's
+/// issuer vouches for it here and the record verifies by its signer's row certificate, the signer
+/// pinned here or issued by this very Kit (the device that joined with it and replaced it, pinned
+/// in the next pass through it). Applied with the pin, the record ends the Kit's say at its `at`,
+/// so it vouches only for what it issued before; it can only take trust away. `None`: the Kit is
+/// not pinned (`SecondKit`).
+fn former_kit_removal(
+    store: &Store,
+    rows: &[DeviceRow],
+    vault: &[u8; 16],
+    kit: &Certificate,
+) -> Option<Record> {
+    let device = kit.body.device;
+    if !vouch(store, kit) {
+        return None;
+    }
+    let row = rows.iter().find(|row| row.id == device)?;
+    let record = row_record(row.removal.as_deref(), RecordType::Removed, device, vault)?;
+    let signer = rows
+        .iter()
+        .find(|row| row.id == record.signer)
+        .and_then(|row| row_cert(row, vault))?;
+    record.verify(&signer.body.sign_pub).ok()?;
+    let known = store
+        .get(&record.signer)
+        .is_some_and(|entry| entry.cert == signer)
+        || signer.body.issuer_device == device;
+    known.then_some(record)
 }
 
 /// Marks `device` `confirmed`. Returns whether it changed.
@@ -873,6 +919,7 @@ fn settle(
     conn: &Connection,
     now: i64,
     report: &mut RefreshReport,
+    former_kits: bool,
     accept: impl Fn(&Certificate, &Seen<'_>) -> Verdict,
 ) -> Result<()> {
     let own = this_device(conn)?;
@@ -900,7 +947,7 @@ fn settle(
                 changed = true;
             }
         }
-        changed |= pin_candidates(conn, &rows, &vault, now, report, &accept)?;
+        changed |= pin_candidates(conn, &rows, &vault, now, report, former_kits, &accept)?;
         if !changed {
             return Ok(());
         }
@@ -916,13 +963,15 @@ fn settle(
 pub fn refresh(conn: &Connection, now: i64) -> Result<RefreshReport> {
     in_savepoint(conn, "sync_trust_refresh", || {
         let mut report = RefreshReport::default();
-        settle(conn, now, &mut report, |cert, seen| match cert.body.kind {
-            CertKind::Genesis => Verdict::Wait,
-            CertKind::Paired | CertKind::Rejoin | CertKind::RecoveryKit | CertKind::Kit => {
-                if vouch(seen.store, cert) {
-                    Verdict::Pin
-                } else {
-                    Verdict::Wait
+        settle(conn, now, &mut report, false, |cert, seen| {
+            match cert.body.kind {
+                CertKind::Genesis => Verdict::Wait,
+                CertKind::Paired | CertKind::Rejoin | CertKind::RecoveryKit | CertKind::Kit => {
+                    if vouch(seen.store, cert) {
+                        Verdict::Pin
+                    } else {
+                        Verdict::Wait
+                    }
                 }
             }
         })?;
@@ -1015,8 +1064,12 @@ pub fn dismiss_new_devices(conn: &Connection, devices: Option<&[String]>) -> Res
 /// (`kit_join_genesis`: the anchored Kit's chain or the envelope's confirmed set, As built R-28);
 /// any other never vouches here. A certificate whose issuer is pinned or has a row still waiting
 /// is judged as `refresh` judges it (it waits for its issuer); one whose issuer has no verifiable
-/// row is trusted on first use (and left out for it, `IssuerUnknown`, until confirmed). At most
-/// one Kit is pinned, as in `refresh`. Writes no new-device notice.
+/// row is trusted on first use (and left out for it, `IssuerUnknown`, until confirmed). Once a
+/// Kit is anchored (`pin_kit_anchor`), the Kits it replaced are pinned too, so that what they
+/// issued before they were replaced (a device that joined with an older Kit, the envelope's
+/// signer among them) is vouched for; each is pinned `removed` by its row's verified removal
+/// record (As built R-105). Without an anchor at most one Kit is pinned, as in `refresh`. Writes
+/// no new-device notice.
 pub fn tofu_from_rows(
     conn: &Connection,
     now: i64,
@@ -1024,17 +1077,23 @@ pub fn tofu_from_rows(
 ) -> Result<RefreshReport> {
     in_savepoint(conn, "sync_trust_tofu", || {
         let mut report = RefreshReport::default();
-        settle(conn, now, &mut report, |cert, seen| match cert.body.kind {
-            CertKind::Genesis if genesis.contains(&cert.body.device) => Verdict::Pin,
-            CertKind::Genesis => Verdict::Wait,
-            CertKind::Paired | CertKind::Rejoin | CertKind::RecoveryKit | CertKind::Kit => {
-                let issuer = cert.body.issuer_device;
-                if vouch(seen.store, cert) {
-                    Verdict::Pin
-                } else if seen.store.contains(&issuer) || seen.waiting.contains(&issuer) {
-                    Verdict::Wait
-                } else {
-                    Verdict::Pin
+        let anchored = Store::load(conn)?
+            .entries
+            .values()
+            .any(|e| e.kind == CertKind::Kit && e.state == TrustState::Trusted && e.confirmed);
+        settle(conn, now, &mut report, anchored, |cert, seen| {
+            match cert.body.kind {
+                CertKind::Genesis if genesis.contains(&cert.body.device) => Verdict::Pin,
+                CertKind::Genesis => Verdict::Wait,
+                CertKind::Paired | CertKind::Rejoin | CertKind::RecoveryKit | CertKind::Kit => {
+                    let issuer = cert.body.issuer_device;
+                    if vouch(seen.store, cert) {
+                        Verdict::Pin
+                    } else if seen.store.contains(&issuer) || seen.waiting.contains(&issuer) {
+                        Verdict::Wait
+                    } else {
+                        Verdict::Pin
+                    }
                 }
             }
         })?;

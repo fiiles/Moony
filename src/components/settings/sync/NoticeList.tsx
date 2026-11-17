@@ -9,6 +9,7 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
 import {
   afterKitJoinDevices,
+  afterKitJoinNames,
   newDeviceKind,
   removalNoticeText,
   removalNotDoneText,
@@ -118,7 +119,7 @@ export function NoticeList({ status }: { status: SyncStatus }) {
   const boxes: ReactNode[] = [];
 
   if (afterKit) {
-    const names = afterKit.devices.map((device) => device.name).join(', ');
+    const names = afterKitJoinNames(afterKit.devices, devicesLoaded ? heldDevices : null);
     boxes.push(
       <NoticeBox
         key="afterKit"

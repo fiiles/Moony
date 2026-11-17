@@ -61,6 +61,19 @@ export function afterKitJoinDevices(
   );
 }
 
+/**
+ * The names "Data jsou zpět" lists: the held devices still on the list (`afterKitJoinDevices`,
+ * `null` while it loads) once it has loaded, so a device removed since the join is not named;
+ * every held device before that, or when none is left on it.
+ */
+export function afterKitJoinNames(
+  held: readonly SyncAfterKitDevice[],
+  onList: readonly SyncDevice[] | null
+): string {
+  const named = onList && onList.length > 0 ? onList : held;
+  return named.map((device) => device.name).join(', ');
+}
+
 /** What the removed-device notice says: its title and body keys, and whether the unsent count follows. */
 export function removedNoticeKeys(notice: Pick<SyncRemovedNotice, 'left' | 'unsent'>): {
   titleKey: 'removed.title' | 'removed.titleLeft';

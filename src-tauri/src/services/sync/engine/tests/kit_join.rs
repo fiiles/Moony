@@ -965,3 +965,139 @@ async fn the_hold_stops_snapshots_uploads_and_the_daily_pass() {
     join::lift_kit_join_hold(&device.lock()).expect("Mám je");
     assert!(!crate::services::sync::engine::runtime::uploads_held(&device.lock()).expect("held"));
 }
+
+/// Task 33 live check: a Kit joiner removes the devices the restored list showed ("Odebrat je")
+/// and so makes the next Kit; a new profile then joins with that Kit. The envelope's signer is the
+/// first joiner, whose certificate the replaced Kit issued: the second joiner must pin it (and the
+/// replaced Kit that vouches for it) from the restored rows, or the Kit is unreadable.
+#[tokio::test]
+async fn a_kit_made_by_a_kit_joiner_lets_the_next_device_join() {
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    snapshot_by(&three, &three.vault.a).await;
+    let first = newcomer();
+    let first_dir = tempfile::tempdir().expect("dir");
+    kit_join(&three, &first, first_dir.path(), &secret)
+        .await
+        .expect("the first Kit join");
+    let first_id = me(&first.lock());
+    let outcome = remove_in(&three.vault, &first, first_dir.path(), &[A, B, C], true)
+        .await
+        .expect("removed");
+    join::lift_kit_join_hold(&first.lock()).expect("decided");
+    let next = new_secret(outcome);
+    snapshot_by(&three, &first).await;
+    let second = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    kit_join(&three, &second, dir.path(), &next)
+        .await
+        .expect("the second Kit join");
+
+    let conn = second.lock();
+    assert!(sync_on(&conn));
+    let signer = trust::entry(&conn, first_id)
+        .expect("entry")
+        .expect("the signer is pinned");
+    assert_eq!(signer.state, TrustState::Trusted);
+    let kit = trust::entry(&conn, kit_keys(&three, &next).id())
+        .expect("entry")
+        .expect("anchored");
+    assert_eq!(kit.state, TrustState::Trusted);
+    // The replaced Kit vouches for the first joiner only through its past: it is pinned removed.
+    let replaced = trust::entry(&conn, kit_keys(&three, &secret).id())
+        .expect("entry")
+        .expect("the replaced Kit is pinned");
+    assert_eq!(replaced.state, TrustState::Removed);
+    assert_eq!(replaced.state_by, Some(first_id));
+}
+
+/// Task 33, the same gap off the chain: a device that joined with a Kit since replaced still syncs;
+/// a new profile joining with the replacing Kit pins it (its issuer, the replaced Kit, vouches for
+/// what it issued before it was replaced) and seals the next key to it.
+#[tokio::test]
+async fn a_device_an_older_kit_issued_is_kept_by_the_next_kit_joiner() {
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    snapshot_by(&three, &three.vault.a).await;
+    let first = newcomer();
+    let first_dir = tempfile::tempdir().expect("dir");
+    kit_join(&three, &first, first_dir.path(), &secret)
+        .await
+        .expect("the first Kit join");
+    let first_id = me(&first.lock());
+    join::lift_kit_join_hold(&first.lock()).expect("Mám je");
+    round_mode(&three, &first, RoundMode::Normal).await;
+    round_of(&three.vault, &three.vault.a).await;
+    trust::refresh(&three.vault.a.lock(), NOW).expect("refresh");
+    let next = new_secret(new_kit(&three, A).await.expect("a new Kit"));
+    round_of(&three.vault, &three.vault.a).await;
+    snapshot_by(&three, &three.vault.a).await;
+    let second = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    kit_join(&three, &second, dir.path(), &next)
+        .await
+        .expect("the second Kit join");
+
+    let conn = second.lock();
+    let entry = trust::entry(&conn, first_id)
+        .expect("entry")
+        .expect("the first joiner is pinned");
+    assert_eq!(entry.state, TrustState::Trusted);
+    let recipients = trust::recipients(&conn, &[]).expect("recipients");
+    assert!(
+        recipients.included.iter().any(|e| e.device == first_id),
+        "{:?}",
+        recipients.excluded
+    );
+}
+
+/// Task 33's live run: B removes A (the first device, the first Kit's creator) with a new Kit; a
+/// new profile joins with that Kit and removes B and C with the next one; another profile joins
+/// with it. B, the replaced Kit's creator, is left out for its removed issuer while the store is
+/// built (its confirmation comes with the envelope), which must not keep the replaced Kit out.
+#[tokio::test]
+async fn a_kit_chain_through_a_removed_first_device_still_joins() {
+    let three = three().await;
+    with_kit(&three, A, Some(KitStorage::Paper)).await;
+    let outcome = remove_in(&three.vault, &three.vault.b, three.dir.path(), &[A], true)
+        .await
+        .expect("B removes A");
+    let second_kit = new_secret(outcome);
+    settle_remaining(&three).await;
+    snapshot_by(&three, &three.vault.b).await;
+    let first = newcomer();
+    let first_dir = tempfile::tempdir().expect("dir");
+    kit_join(&three, &first, first_dir.path(), &second_kit)
+        .await
+        .expect("the first Kit join");
+    let first_id = me(&first.lock());
+    let outcome = remove_in(&three.vault, &first, first_dir.path(), &[B, C], true)
+        .await
+        .expect("removed");
+    join::lift_kit_join_hold(&first.lock()).expect("decided");
+    let third_kit = new_secret(outcome);
+    snapshot_by(&three, &first).await;
+    let second = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    kit_join(&three, &second, dir.path(), &third_kit)
+        .await
+        .expect("the second Kit join");
+
+    let conn = second.lock();
+    let signer = trust::entry(&conn, first_id)
+        .expect("entry")
+        .expect("the signer is pinned");
+    assert_eq!(signer.state, TrustState::Trusted);
+}
+
+/// B and C sync after A was removed.
+async fn settle_remaining(three: &Three) {
+    for _ in 0..2 {
+        for device in [&three.vault.b, &three.c] {
+            round_of(&three.vault, device).await;
+        }
+    }
+}

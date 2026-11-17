@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
 import { useBiometricStatus } from '@/hooks/use-biometric-status';
+import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDesktopBiometricEnrolment } from '@/hooks/use-desktop-biometric-enrolment';
 import { useUpdater } from '@/hooks/use-updater';
 import { markEnrolmentAsked, shouldOfferEnrolment, wasEnrolmentAsked } from '@/lib/biometrics';
@@ -33,12 +34,17 @@ function storage(): Storage | null {
  * nothing on the desktop clears it again except deleting the account: after that, Nastavení →
  * Zabezpečení is the only way to turn it on.
  *
- * Mounted in the unlocked shell (`AppLayout`), next to the update dialog, which it gives way to.
+ * Mounted in the unlocked shell (`AppLayout`), next to the update dialog and the removed-device
+ * notice, which it gives way to.
  */
 export function EnableBiometricsDialog() {
   const { t } = useTranslation('auth');
   const { appStatus, unlockMutation, lockMutation } = useAuth();
   const { promptOpen: updatePromptOpen } = useUpdater();
+  // The removed-device notice opens once at unlock too (`RemovedNoticeDialog`): the offer waits
+  // until it was answered, and while the status that says so is still loading.
+  const { data: syncStatus, isLoading: syncStatusLoading } = useDeviceSyncStatus();
+  const removedNoticePending = syncStatusLoading || syncStatus?.removedNotice != null;
   // The local flag answers at once after a close; the stored one also covers the Settings switch,
   // which marks the offer as made from another component.
   const [closed, setClosed] = useState(false);
@@ -60,10 +66,12 @@ export function EnableBiometricsDialog() {
   };
 
   // Stays up while "Zapnout" runs, then the answer closes it. It gives way to the update dialog
-  // (the automatic check runs right after an unlock) and comes back once that one has closed.
+  // (the automatic check runs right after an unlock) and comes back once that one has closed; it
+  // also waits while the removed-device notice is unanswered ("Rozumím" or "Připojit znovu").
   const open =
     passwordUnlocked &&
-    (enable.isPending || (shouldOfferEnrolment(status, asked) && !updatePromptOpen));
+    (enable.isPending ||
+      (shouldOfferEnrolment(status, asked) && !updatePromptOpen && !removedNoticePending));
 
   return (
     <Dialog

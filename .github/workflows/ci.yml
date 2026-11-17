@@ -138,6 +138,45 @@ jobs:
         working-directory: src-tauri
         run: cargo check --target aarch64-apple-ios-sim --lib
 
+  # The Android app as a whole: the Rust library for arm64 (SQLCipher with its vendored OpenSSL),
+  # the Kotlin plugins (moony-keychain, the vendored notification plugin), the manifest and the
+  # Gradle project, assembled into a debug APK. The runner's preinstalled SDK and newest NDK are
+  # used; scripts/android-env.sh points the cc crate at the NDK's llvm-ranlib.
+  android-build:
+    name: Android Debug Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The runner's own variables (not in the `env` context): JDK 21 for Gradle 9, the newest NDK.
+      - name: Build the debug APK (arm64)
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64" NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          npm run android:build -- --debug --apk --target aarch64 --ci
+
   # The Windows-only code (`cfg(target_os = "windows")`: the moony-keychain Windows Hello backend)
   # is invisible to the Linux job. Debug builds take the frontend from `devUrl`, so like the Linux
   # job this one needs no `dist`; SQLCipher needs OpenSSL, installed as in release.yml.

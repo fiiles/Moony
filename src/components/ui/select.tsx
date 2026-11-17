@@ -3,13 +3,19 @@ import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { isMobileShell } from '@/lib/platform';
+import { withPhoneHistory } from '@/components/ui/phone-dialog-history';
 
 /**
  * Select (design system §6, `.select` + `.menu`): the trigger is an input-shaped
  * field with the chevron inside on the right; the list is an E4 menu with
  * 12/550 items.
  */
-const Select = SelectPrimitive.Root;
+// On the phone the open select list owns a history entry, like a sheet or a dialog: Android back closes
+// it instead of leaving the screen under it (`withPhoneHistory`).
+const Select = isMobileShell(import.meta.env)
+  ? withPhoneHistory(SelectPrimitive.Root)
+  : SelectPrimitive.Root;
 
 const SelectGroup = SelectPrimitive.Group;
 

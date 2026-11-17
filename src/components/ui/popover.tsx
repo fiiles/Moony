@@ -2,9 +2,15 @@ import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 
 import { cn } from '@/lib/utils';
+import { isMobileShell } from '@/lib/platform';
+import { withPhoneHistory } from '@/components/ui/phone-dialog-history';
 
 /** Popover: E4 surface like the menu, 16 px padding. */
-const Popover = PopoverPrimitive.Root;
+// On the phone the open popover owns a history entry, like a sheet or a dialog: Android back closes
+// it instead of leaving the screen under it (`withPhoneHistory`).
+const Popover = isMobileShell(import.meta.env)
+  ? withPhoneHistory(PopoverPrimitive.Root)
+  : PopoverPrimitive.Root;
 
 const PopoverTrigger = PopoverPrimitive.Trigger;
 

@@ -345,7 +345,6 @@
       "removedBy": "由{{by}}移除",
       "removedOnBy": "{{date}}由{{by}}移除"
     },
-    "underList": "请移除丢失、出售或已清除的设备。它将看不到任何新内容。",
     "unsupported": "此同步由旧版 Moony 设置，因此无法从中移除设备。请删除已同步的数据，重新设置同步，并连接您的其他设备。",
     "inactive_other": "已{{count}}天未活跃",
     "sheet": {

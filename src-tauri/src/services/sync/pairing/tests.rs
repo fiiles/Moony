@@ -1009,3 +1009,29 @@ fn the_six_digits_alone_can_be_ground() {
         }
     }
 }
+
+/// Owner decision O-3 (As built R-114): a pasted or typed pairing code reads with any white space
+/// or zero-width character inside it (a chat app wraps it, a person types it in groups), as a
+/// connection code does.
+#[test]
+fn a_pairing_code_reads_with_white_space_inside() {
+    let split = |at: usize, gap: &str| format!("{}{gap}{}", &FROZEN_TEXT[..at], &FROZEN_TEXT[at..]);
+    for input in [
+        format!("  {FROZEN_TEXT}\n"),
+        split(6, " "),
+        split(20, "\n"),
+        split(30, "\u{00A0}\t"),
+        split(40, "\u{200B}"),
+        format!("\u{FEFF}{}", split(12, "\r\n ")),
+    ] {
+        let parsed = parse_pairing_code(&input).expect("reads");
+        assert_eq!(parsed.mailbox, MAILBOX, "{input:?}");
+        assert_eq!(parsed.shower_public, s_pub(), "{input:?}");
+    }
+    // White space does not count toward the size cap, but a flood of it is still refused.
+    let flood = format!("{FROZEN_TEXT}{}", " ".repeat(4 * MAX_CODE_BYTES));
+    assert_eq!(
+        validation_key(parse_pairing_code(&flood).unwrap_err()),
+        "validation.syncPairingCodeInvalid"
+    );
+}

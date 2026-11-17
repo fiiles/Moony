@@ -235,8 +235,18 @@ fn other_version(text: &str) -> Option<AppError> {
 /// the app does not use is `validation.syncRelayUrlInvalid`; a code of an older protocol
 /// (`moony-pair:1:`, `moony-pair:2:`, whatever follows) is `OTHER_NEEDS_UPDATE`, a later one
 /// (`moony-pair:4:`…) `THIS_NEEDS_UPDATE`. The default relay reads as `None`. No error carries
-/// the input.
+/// the input. White space and zero-width characters anywhere in it are ignored (a chat app wraps
+/// a pasted code, a person types it in groups; owner decision O-3, As built R-114).
 pub fn parse_pairing_code(text: &str) -> Result<PairingCode> {
+    // A flood of white space is refused before it is walked; what is left must fit the cap.
+    if text.len() > 4 * MAX_CODE_BYTES {
+        return Err(code_invalid());
+    }
+    let text: String = text
+        .chars()
+        .filter(|c| !c.is_whitespace() && !matches!(c, '\u{200B}'..='\u{200D}' | '\u{FEFF}'))
+        .collect();
+    let text = text.as_str();
     if text.len() > MAX_CODE_BYTES {
         return Err(code_invalid());
     }

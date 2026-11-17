@@ -25,17 +25,19 @@ function normalizeRecoveryCode(text: string): string {
 }
 
 /**
- * What a scanned or typed text is: a pairing code, a Sync Recovery Kit QR, a typed recovery code
+ * What a scanned or typed text is: a pairing code (white space inside it ignored), a Sync Recovery Kit QR, a typed recovery code
  * (95 Crockford characters once spaces and dashes go), a connection code of a self-hosted sync
  * server (`moony-sync<n>:`, any version) or something else.
  */
 export function scannedCodeKind(text: string): ScannedCodeKind {
   const trimmed = text.trim();
-  if (trimmed.startsWith('moony-pair:')) return 'pair';
+  // The pairing and connection code parsers remove inner white space and zero-width characters
+  // (owner decision O-3 for the pairing code); the Kit parser just trims, and a recovery code
+  // keeps zero-width characters invalid
+  const compact = stripInvisible(trimmed);
+  if (compact.startsWith('moony-pair:')) return 'pair';
   if (trimmed.startsWith('moony-recover:')) return 'recover';
-  // Only the connection code parser removes inner white space and zero-width characters (the
-  // pairing and Kit parsers just trim, a recovery code keeps zero-width characters invalid)
-  if (CONNECTION_CODE.test(stripInvisible(trimmed))) return 'connection';
+  if (CONNECTION_CODE.test(compact)) return 'connection';
   if (RECOVERY_CODE.test(normalizeRecoveryCode(trimmed))) return 'recoveryCode';
   return 'unknown';
 }

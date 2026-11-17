@@ -64,9 +64,16 @@ describe('scannedCodeKind reads a connection code the way connection_code.rs cle
     expect(scannedCodeKind(`moony-\u200Bsync1:4417938205561273:abc`)).toBe('connection');
   });
 
-  it('keeps the other kinds as they were (their parsers only trim)', () => {
-    expect(scannedCodeKind('\u200Bmoony-pair:2:x')).toBe('unknown');
-    expect(scannedCodeKind('moony-\npair:2:x')).toBe('unknown');
+  it('ignores white space inside a pairing code too (owner decision O-3)', () => {
+    expect(scannedCodeKind('\u200Bmoony-pair:2:x')).toBe('pair');
+    expect(scannedCodeKind('moony-\npair:2:x')).toBe('pair');
+    expect(scannedCodeKind('moony-pair:3:abc def\u00A0ghi')).toBe('pair');
+    expect(pairingCodeProblem(' moony- pair:3:abc ')).toBeNull();
+  });
+
+  it('keeps the Kit QR as it was (its parser only trims)', () => {
+    expect(scannedCodeKind('\u200Bmoony-recover:1:x')).toBe('unknown');
+    expect(scannedCodeKind('moony-\nrecover:1:x')).toBe('unknown');
   });
 });
 

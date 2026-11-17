@@ -191,9 +191,11 @@ async fn only_what_never_reached_the_server_is_sealed_again_and_the_chain_holds(
     let report = round_of(&three.vault, &three.vault.b).await;
 
     assert_eq!(report.problem, None, "{report:?}");
+    // b2 sealed again, and the key change's rows B writes as every receiver does (the new Kit's
+    // row, As built R-74); b1 is not sent twice.
     assert_eq!(
         three.vault.relay.ops().len(),
-        ops_before + 1,
+        ops_before + 2,
         "only b2 was sent again"
     );
     assert!(unsent_epochs(&three.vault.b.lock()).is_empty());

@@ -197,6 +197,27 @@ pub async fn pick_up<R: Relay, D: ConnAccess>(
     }
 }
 
+/// What the remover's commit writes into the device list (the removal records, the new Kit's
+/// row), written here too where it is missing (As built R-74): a remover that gives its change up
+/// (R-56) never commits, and without these rows a later join restores the removed devices as
+/// active and finds no row of the new Kit. Captured, so they sync; the values are the bundle's
+/// own, so they agree with the remover's wherever both arrive (write-once columns; a row already
+/// there is left as it is).
+fn write_change_rows(conn: &Connection, body: &BundleBody, now: i64) -> Result<()> {
+    let replaced = body.kit.as_ref().and_then(|kit| kit.replaces.as_ref());
+    for record in body.removed.iter().map(|(_, r)| r).chain(replaced) {
+        conn.execute(
+            "UPDATE sync_devices SET removal_record = ?1, removed = 1 \
+             WHERE id = ?2 AND removal_record IS NULL",
+            rusqlite::params![record.to_b64(), record.subject.to_hex()],
+        )?;
+    }
+    if let Some(kit) = &body.kit {
+        super::kit::write_row(conn, &kit.cert, None, now)?;
+    }
+    Ok(())
+}
+
 /// One bundle, under the connection lock.
 fn take(conn: &Connection, rekey: &Rekey) -> Result<Step> {
     let creds = keys::credentials(conn)?
@@ -451,6 +472,7 @@ fn adopt(conn: &Connection, prepared: Prepared, rekey: &Rekey, now: i64) -> Resu
             EpochRecord::Same => {}
         }
         trust::cut_off_all_pending(conn, header.to_epoch)?;
+        write_change_rows(conn, &body, now)?;
         state::note_rekey_seen(conn, rekey.rotation)?;
         // A removed Kit (one a new Kit retires besides the one it replaces, review of Task 17,
         // I2) is no device to name: it says that the Kit was replaced.

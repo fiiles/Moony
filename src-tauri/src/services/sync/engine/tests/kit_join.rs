@@ -28,7 +28,7 @@ use crate::services::sync::relay::{Relay, RelayError};
 const DAY: i64 = 86_400;
 
 /// A profile of its own that has never synced, with a row only it holds.
-fn newcomer() -> TestConn {
+pub(super) fn newcomer() -> TestConn {
     let conn = TestConn::new(migrated());
     institution(&conn.lock(), "local-only");
     conn
@@ -43,7 +43,7 @@ fn key_of(error: &SyncError) -> Option<String> {
     }
 }
 
-async fn round_mode(three: &Three, device: &TestConn, mode: RoundMode) -> RoundReport {
+pub(super) async fn round_mode(three: &Three, device: &TestConn, mode: RoundMode) -> RoundReport {
     run_round(
         &three.vault.relay,
         device,
@@ -57,13 +57,16 @@ async fn round_mode(three: &Three, device: &TestConn, mode: RoundMode) -> RoundR
 }
 
 /// `device` uploads a snapshot of what it holds now.
-async fn snapshot_by(three: &Three, device: &TestConn) {
+pub(super) async fn snapshot_by(three: &Three, device: &TestConn) {
     let report = round_mode(three, device, RoundMode::FirstSnapshot).await;
     assert!(report.snapshot_uploaded, "{report:?}");
 }
 
 /// What a person types from the Kit `secret`: its v2 code, grouped, and the server's address.
-fn typed(three: &Three, secret: &KitSecret) -> crate::services::sync::recovery::KitInput {
+pub(super) fn typed(
+    three: &Three,
+    secret: &KitSecret,
+) -> crate::services::sync::recovery::KitInput {
     let creds = &three.vault.creds;
     let code = encode_kit_code(&creds.vault_id, secret, &creds.account).expect("code");
     read_kit_input(
@@ -75,7 +78,7 @@ fn typed(three: &Three, secret: &KitSecret) -> crate::services::sync::recovery::
 }
 
 /// A new profile joins with the Kit `secret`.
-async fn kit_join(
+pub(super) async fn kit_join(
     three: &Three,
     device: &TestConn,
     dir: &Path,
@@ -98,7 +101,7 @@ async fn kit_join(
     .map(|_| ())
 }
 
-fn me(conn: &rusqlite::Connection) -> DeviceId {
+pub(super) fn me(conn: &rusqlite::Connection) -> DeviceId {
     state::load(conn).expect("state").expect("row").device
 }
 
@@ -109,7 +112,7 @@ fn untouched(device: &TestConn) {
 }
 
 /// The new Kit a key change made.
-fn new_secret(outcome: Outcome) -> KitSecret {
+pub(super) fn new_secret(outcome: Outcome) -> KitSecret {
     match outcome {
         Outcome::Changed { kit: Some(kit), .. } => kit.secret,
         other => panic!("no new Kit: {other:?}"),
@@ -742,8 +745,9 @@ async fn a_forged_kit_row_with_a_forged_genesis_is_refused() {
     untouched(&device);
 }
 
-/// Review of Tasks 18–19, I3: an envelope signed by a device that has `left` in the restored store
-/// is unreadable, as one by a removed signer is.
+/// Review of Tasks 18–19, I3, narrowed by As built R-75: an envelope signed by a device that has
+/// `left` in the restored store is unreadable when it holds a key of an epoch after the one the
+/// device left at (only a copy that rotated after it left could have sealed it).
 #[tokio::test]
 async fn an_envelope_signed_by_a_device_that_left_is_unreadable() {
     let three = three().await;
@@ -755,13 +759,16 @@ async fn an_envelope_signed_by_a_device_that_left_is_unreadable() {
             trust::entry(&b, B).expect("entry").expect("pinned").cert,
         )
     };
-    let envelope = envelope_signed_by(&three, &secret, &b_seed, &b_cert);
-    replace_envelope(&three, &secret, &envelope).await;
     assert!(
         crate::services::sync::setup::write_left_record(&three.vault.b.lock(), NOW).expect("left")
     );
     round_of(&three.vault, &three.vault.b).await;
     round_of(&three.vault, &three.vault.a).await;
+    remove(&three, A, &[C]).await.expect("removed");
+    round_of(&three.vault, &three.vault.a).await;
+    // Epoch 1's keys, signed with the key of B, which left at epoch 0.
+    let envelope = envelope_signed_by(&three, &secret, &b_seed, &b_cert);
+    replace_envelope(&three, &secret, &envelope).await;
     snapshot_by(&three, &three.vault.a).await;
     let device = newcomer();
     let dir = tempfile::tempdir().expect("dir");

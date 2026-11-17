@@ -169,6 +169,14 @@ async fn fetched_snapshot_at<R: Relay>(
             .get(4..8)
             .map_or(0, |b| u32::from_be_bytes([b[0], b[1], b[2], b[3]])),
     };
+    let sealed_stream = blob.bytes.get(..4) == Some(&crate::services::sync::envelope::MAGIC[..]);
+    if sealed_stream && at.epoch > creds.keys.current_epoch() {
+        // A key change these credentials do not hold came after them (a pairing a removal
+        // overtook): the snapshot is not damaged, this device was never given its key. Bytes
+        // that are no sealed stream at all stay `syncSnapshotInvalid`.
+        log::warn!("[SYNC] The vault's snapshot is sealed under a key these credentials lack");
+        return Err(SyncError::ReadOnlyToken);
+    }
     let opener = creds.clone();
     let plain = off_thread(move || open_sealed(&opener, &blob)).await?;
     Ok((plain, at))
@@ -396,7 +404,18 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
     validate_base_url(&creds.relay_url)?;
     let _no_round = engine::exclusive(db).await;
     db.with_conn(|conn| may_join(conn, &creds))?;
-    let (plain, at) = fetched_snapshot_at(relay, &creds).await?;
+    let (plain, at) = match fetched_snapshot_at(relay, &creds).await {
+        // The credentials are a key change behind (As built R-73): pair again, or, for a Kit
+        // whose envelope a key change overtook between the two reads, try the Kit again.
+        Err(SyncError::ReadOnlyToken) => {
+            let key = match identity {
+                JoinIdentity::RecoveryKit(_) => KIT_UNREADABLE,
+                _ => PAIRING_FAILED,
+            };
+            return Err(AppError::Validation(key.into()).into());
+        }
+        fetched => fetched?,
+    };
     if let JoinIdentity::RecoveryKit(join) = &mut identity {
         join.snapshot = Some(at);
     }
@@ -851,9 +870,10 @@ fn kit_refused(what: &str, error: AppError) -> AppError {
 ///
 /// - the store: trust on first use of what was restored, a genesis only when the Kit's chain or
 ///   the envelope's confirmed set names it (As built R-28); then the envelope's signer must be
-///   pinned with the certificate the envelope bundles and be neither removed nor left here (its
-///   own `at` is the signer's claim and is not consulted, R-28), and only then is the confirmed
-///   set applied;
+///   pinned with the certificate the envelope bundles, not removed, and not left before the
+///   envelope's newest epoch (its `left` record's epoch is at least the envelope's, As built R-75;
+///   the envelope's own `at` is the signer's claim and is not consulted, R-28), and only then is
+///   the confirmed set applied;
 /// - the newest epoch E is never left unchecked: its head is known when the snapshot's `Keys`
 ///   record named it; a snapshot sealed under E bounds older ops past it
 ///   (`state::KitEpochFloor`); an older snapshot leaves E provisional (`head::note_unverified`,
@@ -868,12 +888,27 @@ fn kit_join_store(conn: &Connection, join: &KitJoin, now: i64) -> Result<()> {
     let genesis = trust::kit_join_genesis(conn, join.kit.id(), &join.confirmed)?;
     trust::tofu_from_rows(conn, now, &genesis)?;
     let signer = join.signer.body.device;
-    let speaks = trust::entry(conn, signer)?
-        .is_some_and(|e| e.cert == join.signer && e.state == trust::TrustState::Trusted);
+    let speaks = trust::entry(conn, signer)?.is_some_and(|e| {
+        e.cert == join.signer
+            && match e.state {
+                trust::TrustState::Trusted => true,
+                // Leaving seals no envelope, so the last one a device sealed stays the Kit's
+                // until the next key change (As built R-75). Only an envelope of an epoch the
+                // signer held when it left is its own: a later one could come only from a copy
+                // that rotated the key after it left.
+                trust::TrustState::Left => e
+                    .state_record
+                    .as_ref()
+                    .is_some_and(|r| r.signer == signer && r.epoch >= join.newest_epoch),
+                _ => false,
+            }
+    });
     if !speaks {
         return Err(kit_refused(
             "its envelope's signer",
-            AppError::Internal("not pinned with that certificate, or removed or left".into()),
+            AppError::Internal(
+                "not pinned with that certificate, removed, or left before the envelope".into(),
+            ),
         ));
     }
     trust::apply_confirmed_set(conn, &join.confirmed)?;

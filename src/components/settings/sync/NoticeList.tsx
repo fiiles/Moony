@@ -18,6 +18,8 @@ import { sentences } from '@/utils/sentences';
 import { removalAvailable } from '@/utils/sync-removal';
 import { NewKitDialog } from '@/components/settings/sync/NewKitDialog';
 import { RemoveDeviceDialog } from '@/components/settings/sync/RemoveDeviceDialog';
+import { ServerNeededNote } from '@/components/settings/sync/ServerNeededNote';
+import { useServerGate } from '@/hooks/use-server-gate';
 import { WRAP_BUTTON } from '@/components/settings/sync/wrap-button';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -52,6 +54,15 @@ export function NoticeList({ status }: { status: SyncStatus }) {
   const [removing, setRemoving] = useState<Removing | null>(null);
   const [makingKit, setMakingKit] = useState(false);
   const available = removalAvailable(status);
+  // Removing devices and a new kit need the server; "Mám je", "Je moje" and closing a notice do not.
+  // Each box with such a button says why it waits, under its own text (IDs stay unique per box).
+  const server = useServerGate();
+  const serverProps = (box: string) =>
+    server.blocked
+      ? { 'aria-disabled': true as const, 'aria-describedby': `${server.noteId}-${box}` }
+      : {};
+  const serverNote = (box: string) =>
+    server.blocked ? <ServerNeededNote id={`${server.noteId}-${box}`} className="mt-1" /> : null;
 
   const day = (seconds: number) => date(new Date(seconds * 1000), { dateStyle: 'long' });
   const failed = (error: unknown) =>
@@ -135,6 +146,7 @@ export function NoticeList({ status }: { status: SyncStatus }) {
                 size="sm"
                 className={WRAP_BUTTON}
                 disabled={!available}
+                {...serverProps('afterKit')}
                 onClick={() =>
                   setRemoving({
                     ids: heldDevices.map((device) => device.id),
@@ -177,6 +189,7 @@ export function NoticeList({ status }: { status: SyncStatus }) {
             : t('afterKit.body', { date: day(afterKit.newestChangeAt), names })}
         </p>
         {status.removalPending && <p className="m-0 mt-1 font-600">{t('afterKit.pending')}</p>}
+        {devicesLoaded && heldDevices.length > 0 && serverNote('afterKit')}
       </NoticeBox>
     );
   }
@@ -210,6 +223,7 @@ export function NoticeList({ status }: { status: SyncStatus }) {
                 size="sm"
                 className={WRAP_BUTTON}
                 disabled={!available}
+                {...serverProps('notDone')}
                 onClick={() => setMakingKit(true)}
               >
                 {t('kit.makeNewKit')}
@@ -223,6 +237,7 @@ export function NoticeList({ status }: { status: SyncStatus }) {
           by: notDone.by ?? '',
           devices: notDone.devices.join(', '),
         })}
+        {notDone.kitReplaced && serverNote('notDone')}
       </NoticeBox>
     );
   }
@@ -276,6 +291,7 @@ export function NoticeList({ status }: { status: SyncStatus }) {
                 variant="outline"
                 className={WRAP_BUTTON}
                 disabled={!available}
+                {...serverProps(`new-${device.id}`)}
                 onClick={() =>
                   setRemoving({
                     ids: [device.id],
@@ -296,6 +312,7 @@ export function NoticeList({ status }: { status: SyncStatus }) {
                 size="sm"
                 className={WRAP_BUTTON}
                 disabled={!available}
+                {...serverProps(`new-${device.id}`)}
                 onClick={() =>
                   setRemoving({
                     ids: [device.id],
@@ -314,6 +331,7 @@ export function NoticeList({ status }: { status: SyncStatus }) {
         }
       >
         {t(`notice.newDevice.${kind}`, values)}
+        {kind !== 'added' && serverNote(`new-${device.id}`)}
       </NoticeBox>
     );
   }

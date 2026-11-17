@@ -35,6 +35,7 @@ export function AddDeviceDialog({ onClose }: { onClose: () => void }) {
   if (!view) {
     return (
       <SyncPasswordDialog
+        needsServer
         title={t('pairing.addTitle')}
         description={t('pairing.passwordFirst')}
         confirmLabel={t('pairing.showCode')}

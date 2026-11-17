@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { AlertTriangle, Clock, Download, RefreshCw } from 'lucide-react';
@@ -25,7 +26,12 @@ import {
 import { secondsToDate } from '@/utils/sync-status';
 import { hostOf } from '@/utils/sync-setup';
 import { offerDownloadEverything, onOtherDevices } from '@/utils/sync-attachments';
-import { isQuietlyOutOfReach, syncProblemState, syncState } from '@/utils/sync-state';
+import {
+  isRecentlyOutOfReach,
+  serverOutOfReach,
+  syncProblemState,
+  syncState,
+} from '@/utils/sync-state';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { SyncNotices } from '@/mobile/components/sync/SyncNotices';
@@ -71,6 +77,7 @@ export function SyncStatusBlock({
   const { syncNow, downloadEverything } = useDeviceSyncMutations();
   const attachments = useAttachmentsStatusText(status.attachments);
   const elsewhere = onOtherDevices(status.attachments);
+  const needsServerId = useId();
 
   const run = async () => {
     if (running) return;
@@ -83,7 +90,7 @@ export function SyncStatusBlock({
 
   // The phone's button: this shell only runs on a phone (the desktop fetches everything by itself)
   const download = async () => {
-    if (downloadEverything.isPending) return;
+    if (downloadEverything.isPending || outOfReach) return;
     try {
       await downloadEverything.mutateAsync();
       toast.success(t('attachments.downloadEverythingStarted'));
@@ -93,7 +100,10 @@ export function SyncStatusBlock({
   };
 
   const now = Math.floor(Date.now() / 1000);
-  const unreachable = isQuietlyOutOfReach(status, now);
+  // The server out of reach is a problem from the first failed round: the state reads red and bold,
+  // under 7 days with the line that sync resumes on its own; what needs the server waits
+  const outOfReach = serverOutOfReach(status);
+  const resumesNote = isRecentlyOutOfReach(status, now);
   // The same state the top bar shows, in the phone's row wording
   const indicator = syncState(status, now);
   // A round that takes too long reads "taking longer than usual": the button then tries again
@@ -132,19 +142,29 @@ export function SyncStatusBlock({
           {t('status.clockAhead', { date: date(clockAheadUntil, { dateStyle: 'long' }) })}
         </InlineAlert>
       )}
-      {unreachable && (
-        <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{t('status.unreachableNote')}</p>
-      )}
       <div className={CARD}>
         <KeyValueRow
           label={t('phone.status')}
-          value={stateLabel}
-          sub={indicator?.kind === 'firstUpload' ? t('setup.done.body') : undefined}
+          value={
+            outOfReach ? (
+              <span className="font-semibold text-loss" data-testid="sync-state-out-of-reach">
+                {stateLabel}
+              </span>
+            ) : (
+              stateLabel
+            )
+          }
+          sub={
+            indicator?.kind === 'firstUpload'
+              ? t('setup.done.body')
+              : resumesNote
+                ? t('status.unreachableNote')
+                : undefined
+          }
           wrap
         />
         <KeyValueRow label={t('phone.lastSynced')} value={lastSynced} wrap />
         <KeyValueRow label={t('phone.pending')} value={status.pendingChanges} wrap />
-        <KeyValueRow label={t('attachments.title')} value={attachments.value} wrap />
         {status.serverAddress && (
           <KeyValueRow
             label={t('server.label')}
@@ -154,31 +174,49 @@ export function SyncStatusBlock({
           />
         )}
       </div>
-      {attachments.problem && (
-        <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{attachments.problem}</p>
+      {/* Documents and photos are data like any other: lines only when there is something to say */}
+      {attachments.waiting && (
+        <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{attachments.waiting}</p>
       )}
       {attachments.failedUpload && (
         <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{attachments.failedUpload}</p>
       )}
+      {attachments.problem && (
+        <p className="m-0 mb-3 px-1 text-m-sub font-semibold text-loss">{attachments.problem}</p>
+      )}
+      {/* Phones fetch files on demand: what the other devices hold, and the way to fetch it all */}
       {elsewhere > 0 && (
         <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">
           {t('attachments.onOtherDevices', { count: elsewhere })}
         </p>
       )}
       {offerDownloadEverything(status.attachments) && (
-        <Button
-          variant="secondary"
-          className={cn(BUTTON, 'mb-3')}
-          onClick={() => void download()}
-          loading={downloadEverything.isPending}
-        >
-          <Download />
-          {t('attachments.downloadEverything')}
-        </Button>
+        <>
+          <Button
+            variant="secondary"
+            className={cn(BUTTON, 'mb-3')}
+            onClick={() => void download()}
+            loading={downloadEverything.isPending}
+            aria-disabled={outOfReach || undefined}
+            aria-describedby={outOfReach ? needsServerId : undefined}
+          >
+            <Download />
+            {t('attachments.downloadEverything')}
+          </Button>
+          {outOfReach && (
+            <p id={needsServerId} className="m-0 mb-3 px-1 text-m-sub text-ink-3">
+              {t('status.needsServer')}
+            </p>
+          )}
+        </>
       )}
       <Button className={BUTTON} onClick={() => void run()} loading={running}>
         <RefreshCw />
-        {running ? t('indicator.syncing') : slow ? t('pairing.tryAgain') : t('status.syncNow')}
+        {running
+          ? t('indicator.syncing')
+          : slow || outOfReach
+            ? t('pairing.tryAgain')
+            : t('status.syncNow')}
       </Button>
     </>
   );
@@ -208,8 +246,9 @@ function ProblemAlert({
   const problemState = syncProblemState(status);
   // A key change another device made, not yet confirmed: the ordinary "Synchronizuji…", no alert
   if (problem === 'keyRotated' && !problemState) return null;
-  // Out of reach for now: no alert box, the block shows a plain line instead
-  if (isQuietlyOutOfReach(status, Math.floor(Date.now() / 1000))) return null;
+  // Out of reach under 7 days: the engine retries; the status row says so in red with the line that
+  // sync resumes, so no alert box repeats it
+  if (isRecentlyOutOfReach(status, Math.floor(Date.now() / 1000))) return null;
 
   const now = Math.floor(Date.now() / 1000);
   const held = heldFor(problem, heldGaps.data);

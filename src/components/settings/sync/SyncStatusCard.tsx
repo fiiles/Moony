@@ -8,7 +8,7 @@ import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
 import { secondsToDate } from '@/utils/sync-status';
 import { hostOf } from '@/utils/sync-setup';
-import { isQuietlyOutOfReach, syncState } from '@/utils/sync-state';
+import { isRecentlyOutOfReach, serverOutOfReach, syncState } from '@/utils/sync-state';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { ChangeServerDialog } from '@/components/settings/sync/ChangeServerDialog';
 import { KitRow } from '@/components/settings/sync/KitRow';
@@ -45,10 +45,20 @@ export function SyncStatusCard({
   };
 
   const now = Math.floor(Date.now() / 1000);
-  const unreachable = isQuietlyOutOfReach(status, now);
+  // The server out of reach is a problem from the first failed round: the label in red, and under
+  // 7 days the line that sync resumes on its own (the alert box comes after 7 days)
+  const outOfReach = serverOutOfReach(status);
+  const resumesNote = isRecentlyOutOfReach(status, now);
   // The same label the top bar shows, so the surfaces never contradict each other
   const indicator = syncState(status, now);
-  const stateLabel = indicator ? t(indicator.labelKey, { count: indicator.days }) : '';
+  const stateText = indicator ? t(indicator.labelKey, { count: indicator.days }) : '';
+  const stateLabel = outOfReach ? (
+    <span className="font-650 text-loss" data-testid="sync-state-out-of-reach">
+      {stateText}
+    </span>
+  ) : (
+    stateText
+  );
   // A round that takes too long reads "taking longer than usual": the button then tries again
   const slow = indicator?.kind === 'syncingLong';
   const running = !slow && (syncNow.isPending || status.phase === 'syncing');
@@ -76,9 +86,6 @@ export function SyncStatusCard({
               </AlertDescription>
             </Alert>
           )}
-          {unreachable && (
-            <p className="m-0 text-caption text-ink-3">{t('status.unreachableNote')}</p>
-          )}
           <div>
             <SettingsRow
               label={stateLabel}
@@ -88,6 +95,18 @@ export function SyncStatusCard({
                   {indicator?.kind === 'firstUpload' && (
                     <span className="block">{t('setup.done.body')}</span>
                   )}
+                  {resumesNote && <span className="block">{t('status.unreachableNote')}</span>}
+                  {/* Documents and photos are data like any other: a line only when there is
+                      something to say */}
+                  {attachments.waiting && <span className="block">{attachments.waiting}</span>}
+                  {attachments.failedUpload && (
+                    <span className="block">{attachments.failedUpload}</span>
+                  )}
+                  {attachments.problem && (
+                    <span className="block font-650 text-loss" data-testid="attachments-problem">
+                      {attachments.problem}
+                    </span>
+                  )}
                 </>
               }
             >
@@ -95,23 +114,11 @@ export function SyncStatusCard({
                 <RefreshCw />
                 {running
                   ? t('indicator.syncing')
-                  : slow
+                  : slow || outOfReach
                     ? t('pairing.tryAgain')
                     : t('status.syncNow')}
               </Button>
             </SettingsRow>
-            <SettingsRow
-              label={t('attachments.title')}
-              hint={
-                <>
-                  {attachments.value}
-                  {attachments.problem && <span className="block">{attachments.problem}</span>}
-                  {attachments.failedUpload && (
-                    <span className="block">{attachments.failedUpload}</span>
-                  )}
-                </>
-              }
-            />
             {!status.ownServer && paidUntil && (
               <SettingsRow
                 label={t('status.subscription')}

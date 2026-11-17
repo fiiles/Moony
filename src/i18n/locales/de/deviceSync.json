@@ -41,6 +41,7 @@
   },
   "status": {
     "unreachableNote": "Die Synchronisierung läuft weiter, sobald der Server wieder erreichbar ist.",
+    "needsServer": "Der Server ist nicht erreichbar. Versuchen Sie es, sobald wieder eine Verbindung besteht.",
     "problem": {
       "captureBroken": "Die Synchronisierung ist auf diesem Gerät ausgefallen. Ihre Daten sind in Ordnung. Sie lässt sich reparieren.",
       "vaultGone": "Die synchronisierten Daten wurden vom Synchronisierungsserver gelöscht.",
@@ -518,10 +519,8 @@
     "notAServerAddress": "Das ist keine Adresse eines Synchronisierungsservers. Geben Sie die Adresse Ihres Synchronisierungsservers ein oder fügen Sie seinen Verbindungscode ein."
   },
   "attachments": {
-    "title": "Dokumente und Fotos",
-    "allUploaded": "Alles hochgeladen",
-    "waiting_one": "{{count}} wartet auf das Hochladen · {{size}}",
-    "waiting_other": "{{count}} warten auf das Hochladen · {{size}}",
+    "waiting_one": "{{count}} Dokument oder Foto wartet auf das Hochladen · {{size}}",
+    "waiting_other": "{{count}} Dokumente und Fotos warten auf das Hochladen · {{size}}",
     "uploading": "Dokumente und Fotos werden hochgeladen",
     "onOtherDevices_one": "{{count}} Dokument oder Foto ist auf Ihren anderen Geräten",
     "onOtherDevices_other": "{{count}} Dokumente und Fotos sind auf Ihren anderen Geräten",

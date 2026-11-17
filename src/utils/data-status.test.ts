@@ -39,6 +39,21 @@ describe('dataStatus', () => {
     });
   });
 
+  it('names a server out of reach as a problem from the first failed round, on every page', () => {
+    const outOfReach = sync('unreachable', 'stale');
+    expect(dataStatus({ ...calm, sync: outOfReach })).toEqual({
+      tone: 'stale',
+      label: { kind: 'sync', sync: outOfReach },
+    });
+    expect(
+      dataStatus({ ...calm, sync: outOfReach, page: { text: 'Příští platba 1. 12.' } })
+    ).toEqual({ tone: 'stale', label: { kind: 'sync', sync: outOfReach } });
+    expect(dataStatus({ ...calm, pricesStale: true, sync: outOfReach }).label).toEqual({
+      kind: 'problems',
+      count: 2,
+    });
+  });
+
   it('counts two problems', () => {
     expect(dataStatus({ ...calm, pricesStale: true, sync: sync('error', 'stale') })).toEqual({
       tone: 'stale',

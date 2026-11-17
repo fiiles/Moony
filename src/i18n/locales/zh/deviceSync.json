@@ -37,6 +37,7 @@
   },
   "status": {
     "unreachableNote": "服务器恢复可达后,同步将自动恢复。",
+    "needsServer": "无法连接服务器。请在连接恢复后重试。",
     "problem": {
       "captureBroken": "此设备上的同步出现故障。你的数据没有问题。可以修复。",
       "vaultGone": "已同步的数据已从同步服务器中删除。",
@@ -506,9 +507,7 @@
     "notAServerAddress": "这不是同步服务器地址。请输入您的同步服务器地址，或粘贴其连接码。"
   },
   "attachments": {
-    "title": "文档和照片",
-    "allUploaded": "全部已上传",
-    "waiting_other": "{{count}}项等待上传 · {{size}}",
+    "waiting_other": "{{count}}个文档和照片等待上传 · {{size}}",
     "uploading": "正在上传文档和照片",
     "onOtherDevices_other": "{{count}}个文档和照片在您的其他设备上",
     "failedUpload_other": "有{{count}}个文档或照片无法上传，仅保存在此设备上。",

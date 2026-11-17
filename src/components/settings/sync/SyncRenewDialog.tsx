@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import type { SyncPlan } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { useServerGate } from '@/hooks/use-server-gate';
+import { ServerNeededNote } from '@/components/settings/sync/ServerNeededNote';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
   Dialog,
@@ -26,8 +28,11 @@ export function SyncRenewDialog({ onClose }: { onClose: () => void }) {
   const { startCheckout } = useDeviceSyncMutations();
   const [plan, setPlan] = useState<SyncPlan>('monthly');
   const [selfHosted, setSelfHosted] = useState(false);
+  // The payment page comes from the server: it waits while the server is out of reach
+  const server = useServerGate();
 
   const run = async () => {
+    if (server.blocked) return;
     try {
       const target = await startCheckout.mutateAsync(plan);
       if (target.kind === 'open') {
@@ -63,6 +68,7 @@ export function SyncRenewDialog({ onClose }: { onClose: () => void }) {
             ]}
           />
         )}
+        {!selfHosted && server.blocked && <ServerNeededNote id={server.noteId} />}
         <DialogFooter>
           <Button
             type="button"
@@ -73,7 +79,7 @@ export function SyncRenewDialog({ onClose }: { onClose: () => void }) {
             {selfHosted ? tc('buttons.close') : t('setup.cancel')}
           </Button>
           {!selfHosted && (
-            <Button type="button" onClick={run} loading={startCheckout.isPending}>
+            <Button type="button" onClick={run} loading={startCheckout.isPending} {...server.props}>
               {t('setup.pay.continue')}
             </Button>
           )}

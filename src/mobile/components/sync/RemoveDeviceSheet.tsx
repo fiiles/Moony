@@ -24,6 +24,7 @@ import { Sheet } from '@/mobile/components/Sheet';
 import { AlsoRemoveList } from '@/mobile/components/sync/AlsoRemoveList';
 import { NewKitStep } from '@/mobile/components/sync/NewKitStep';
 import { PasswordField } from '@/mobile/components/sync/PasswordField';
+import { useServerGate } from '@/hooks/use-server-gate';
 
 /** The 48 pt buttons of a sheet's footer. */
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
@@ -67,6 +68,8 @@ export function RemoveDeviceSheet({
   const [step, setStep] = useState<Step>({ kind: 'plan' });
 
   const planning = step.kind === 'plan';
+  // The server drops while the sheet is open: it stays, and the confirm waits, saying why
+  const server = useServerGate();
   const planQuery = useRemovalPlan(deviceIds, alsoRemove, newKit, planning);
   const plan = planQuery.data;
   const name = removalTitleNames(plan, deviceIds) ?? deviceNames?.join(', ') ?? '';
@@ -103,7 +106,7 @@ export function RemoveDeviceSheet({
 
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
-    if (!plan || password === '' || !planning || planQuery.isFetching) return;
+    if (!plan || password === '' || !planning || planQuery.isFetching || server.blocked) return;
     const removedName = name;
     setError(null);
     setStep({ kind: 'working', name: removedName });
@@ -180,6 +183,7 @@ export function RemoveDeviceSheet({
             className={`${BUTTON} flex-1`}
             disabled={!plan || password === '' || planQuery.isFetching}
             loading={working}
+            {...server.props}
           >
             {t('remove.confirm')}
           </Button>
@@ -277,6 +281,11 @@ export function RemoveDeviceSheet({
           error={error}
           readOnly={working}
         />
+        {server.blocked && (
+          <p id={server.noteId} className="m-0 text-m-sub text-ink-3">
+            {t('status.needsServer')}
+          </p>
+        )}
       </form>
     </Sheet>
   );

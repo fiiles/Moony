@@ -32,6 +32,7 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { consentOf } from '@/utils/replace-impact';
 import { skipGapTexts } from '@/utils/device-sync-problem';
 import { removalAvailable } from '@/utils/sync-removal';
+import { useServerGate } from '@/hooks/use-server-gate';
 import { useFormat } from '@/lib/use-format';
 import {
   IMPACT_CHANGED_KEY,
@@ -97,6 +98,8 @@ export default function SyncSection() {
     return when ? date(when, { dateStyle: 'long' }) : '';
   };
   const [open, setOpen] = useState<Open>(null);
+  // Adding a device and deleting the synced data need the server: their rows wait, saying why
+  const server = useServerGate();
   /** The "What syncs" sheet is open. */
   const [whatSyncsOpen, setWhatSyncsOpen] = useState(false);
   const [flow, setFlow] = useState<Flow>(null);
@@ -284,10 +287,14 @@ export default function SyncSection() {
     if (method === 'kit') setOpen('kitJoin');
     else setFlow({ mode: 'join', paste: method === 'paste' });
   };
+  // With sync on the code adds a device (the server takes the pairing); with sync off it joins
+  const addWaits = syncOn && server.blocked;
   const enterCodeRow = (
     <SettingsRow
       icon={ClipboardPaste}
       title={t('phone.enterCodeTitle')}
+      sub={addWaits ? t('status.needsServer') : undefined}
+      disabled={addWaits}
       onClick={() => setFlow({ mode: syncOn ? 'add' : 'join', paste: true })}
     />
   );
@@ -364,6 +371,8 @@ export default function SyncSection() {
             <SettingsRow
               icon={Plus}
               title={t('phone.addDevice')}
+              sub={addWaits ? t('status.needsServer') : undefined}
+              disabled={addWaits}
               onClick={() => setFlow({ mode: 'add', paste: false })}
             />
             {enterCodeRow}
@@ -393,7 +402,8 @@ export default function SyncSection() {
               icon={Eraser}
               danger
               title={t('delete.button')}
-              sub={t('delete.hint')}
+              sub={server.blocked ? t('status.needsServer') : t('delete.hint')}
+              disabled={server.blocked}
               onClick={() => setOpen('delete')}
             />
           </EntityRows>
@@ -565,6 +575,7 @@ export default function SyncSection() {
         onSubmit={skipNow}
       />
       <SyncPasswordSheet
+        needsServer
         open={open === 'delete'}
         onOpenChange={close}
         title={t('delete.title')}

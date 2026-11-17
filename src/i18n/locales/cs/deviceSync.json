@@ -49,6 +49,7 @@
   },
   "status": {
     "unreachableNote": "Synchronizace se obnoví, až bude server v dosahu.",
+    "needsServer": "Server není dostupný. Zkuste to, až bude spojení.",
     "problem": {
       "captureBroken": "Synchronizace se na tomto zařízení porouchala. Data jsou v pořádku. Lze ji opravit.",
       "vaultGone": "Synchronizovaná data byla ze synchronizačního serveru smazána.",
@@ -542,11 +543,9 @@
     "notAServerAddress": "Toto není adresa synchronizačního serveru. Zadejte adresu svého synchronizačního serveru nebo vložte jeho připojovací kód."
   },
   "attachments": {
-    "title": "Dokumenty a fotky",
-    "allUploaded": "Vše nahráno",
-    "waiting_one": "{{count}} čeká na nahrání · {{size}}",
-    "waiting_few": "{{count}} čekají na nahrání · {{size}}",
-    "waiting_other": "{{count}} čeká na nahrání · {{size}}",
+    "waiting_one": "{{count}} dokument nebo fotka čeká na nahrání · {{size}}",
+    "waiting_few": "{{count}} dokumenty a fotky čekají na nahrání · {{size}}",
+    "waiting_other": "{{count}} dokumentů a fotek čeká na nahrání · {{size}}",
     "uploading": "Nahrávám dokumenty a fotky",
     "onOtherDevices_one": "{{count}} dokument nebo fotka je na vašich dalších zařízeních",
     "onOtherDevices_few": "{{count}} dokumenty a fotky jsou na vašich dalších zařízeních",

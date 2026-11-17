@@ -12,7 +12,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ServerNeededNote } from '@/components/settings/sync/ServerNeededNote';
 import { submitOnEnter } from '@/components/settings/sync/submit-on-enter';
+import { useServerGate } from '@/hooks/use-server-gate';
 import { translateApiError } from '@/lib/translate-api-error';
 
 interface SyncPasswordDialogProps {
@@ -24,6 +26,8 @@ interface SyncPasswordDialogProps {
   extra?: ReactNode;
   /** Holds the confirm back (the numbers it asks the person to agree to are not in yet). */
   submitDisabled?: boolean;
+  /** Only the sync server can carry it out: while it is out of reach the confirm waits, saying why. */
+  needsServer?: boolean;
   confirmLabel: string;
   /** The confirm button is red for actions that delete or replace data. */
   destructive?: boolean;
@@ -42,6 +46,7 @@ export function SyncPasswordDialog({
   note,
   extra,
   submitDisabled = false,
+  needsServer = false,
   confirmLabel,
   destructive = false,
   closeOnSuccess = true,
@@ -54,10 +59,12 @@ export function SyncPasswordDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const field = useRef<HTMLInputElement>(null);
+  const server = useServerGate();
+  const waits = needsServer && server.blocked;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (password === '' || busy || submitDisabled) return;
+    if (password === '' || busy || submitDisabled || waits) return;
     setBusy(true);
     setError(null);
     try {
@@ -110,6 +117,7 @@ export function SyncPasswordDialog({
               </p>
             )}
           </div>
+          {waits && <ServerNeededNote id={server.noteId} />}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>{tc('buttons.cancel')}</AlertDialogCancel>
             <Button
@@ -117,6 +125,7 @@ export function SyncPasswordDialog({
               variant={destructive ? 'destructive' : 'default'}
               disabled={password === '' || submitDisabled}
               loading={busy}
+              {...(needsServer ? server.props : {})}
             >
               {confirmLabel}
             </Button>

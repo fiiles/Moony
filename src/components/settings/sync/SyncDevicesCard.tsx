@@ -4,12 +4,14 @@ import { toast } from 'sonner';
 import type { SyncDevice } from '@shared/schema';
 import { useDeviceSyncStatus, useSyncDeviceGroups } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { useServerGate } from '@/hooks/use-server-gate';
 import { translateApiError } from '@/lib/translate-api-error';
 import { removalAvailable } from '@/utils/sync-removal';
 import { SettingsCard } from '@/components/settings/SettingsCard';
 import { AddDeviceDialog } from '@/components/settings/sync/AddDeviceDialog';
 import { DeviceRow } from '@/components/settings/sync/DeviceRow';
 import { RemoveDeviceDialog } from '@/components/settings/sync/RemoveDeviceDialog';
+import { ServerNeededNote } from '@/components/settings/sync/ServerNeededNote';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +35,8 @@ export function SyncDevicesCard() {
   const [adding, setAdding] = useState(false);
   const available = removalAvailable(status);
   const unsupported = status !== undefined && !status.removalSupported;
+  // Adding and removing a device need the server; renaming this one, "Je moje" and the details do not
+  const server = useServerGate();
 
   // "Je moje" can find the row gone or no longer trusted: the list is re-read either way
   const keep = async (device: SyncDevice) => {
@@ -48,6 +52,7 @@ export function SyncDevicesCard() {
       key={device.id}
       device={device}
       removalAvailable={available}
+      serverProps={server.props}
       onRename={setRenaming}
       onRemove={setRemoving}
       onKeep={keep}
@@ -62,7 +67,7 @@ export function SyncDevicesCard() {
         title={t('devices.title')}
         description={t('devices.description')}
         action={
-          <Button type="button" onClick={() => setAdding(true)}>
+          <Button type="button" onClick={() => setAdding(true)} {...server.props}>
             {t('devices.add')}
           </Button>
         }
@@ -71,6 +76,7 @@ export function SyncDevicesCard() {
           {(groups?.active ?? []).map(row)}
           {(groups?.check ?? []).map(row)}
         </div>
+        {server.blocked && <ServerNeededNote id={server.noteId} className="mt-3" />}
         {unsupported ? (
           <p className="m-0 mt-3 text-micro font-500 text-ink-3" data-testid="sync-unsupported">
             {t('devices.unsupported')}

@@ -352,12 +352,11 @@ export default function SyncSection() {
             onOpen={(device) => setViewing(device.id)}
             onOpenFormer={() => setFormerOpen(true)}
           />
-          <p
-            className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3"
-            data-testid={status.removalSupported ? 'sync-limits' : 'sync-unsupported'}
-          >
-            {t(status.removalSupported ? 'devices.underList' : 'devices.unsupported')}
-          </p>
+          {!status.removalSupported && (
+            <p className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3" data-testid="sync-unsupported">
+              {t('devices.unsupported')}
+            </p>
+          )}
           <EntityRows>
             <SettingsRow
               icon={Plus}

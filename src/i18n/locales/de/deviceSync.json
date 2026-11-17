@@ -355,7 +355,6 @@
       "removedBy": "von {{by}} entfernt",
       "removedOnBy": "am {{date}} von {{by}} entfernt"
     },
-    "underList": "Entfernen Sie ein verlorenes, verkauftes oder gelöschtes Gerät. Es sieht nichts Neues mehr.",
     "unsupported": "Eine ältere Version von Moony hat diese Synchronisierung eingerichtet, daher lassen sich Geräte daraus nicht entfernen. Löschen Sie die synchronisierten Daten, richten Sie die Synchronisierung neu ein und verbinden Sie Ihre anderen Geräte.",
     "inactive_one": "{{count}} Tag inaktiv",
     "inactive_other": "{{count}} Tage inaktiv",

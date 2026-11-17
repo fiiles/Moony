@@ -355,7 +355,6 @@
       "removedBy": "fjernet av {{by}}",
       "removedOnBy": "fjernet {{date}} av {{by}}"
     },
-    "underList": "Fjern en enhet som er tapt, solgt eller slettet. Den ser ingenting nytt.",
     "unsupported": "En eldre versjon av Moony satte opp denne synkroniseringen, så enheter kan ikke fjernes fra den. Slett de synkroniserte dataene, sett opp synkronisering på nytt og koble til de andre enhetene dine.",
     "inactive_one": "Inaktiv i {{count}} dag",
     "inactive_other": "Inaktiv i {{count}} dager",

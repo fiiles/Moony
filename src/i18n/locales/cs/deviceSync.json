@@ -375,7 +375,6 @@
       "removedBy": "odebráno zařízením {{by}}",
       "removedOnBy": "odebráno {{date}} zařízením {{by}}"
     },
-    "underList": "Ztracené, prodané nebo vymazané zařízení odeberte. Nic nového už neuvidí.",
     "unsupported": "Tuto synchronizaci nastavila starší verze Moony, proto v ní nejde odebírat zařízení. Smažte synchronizovaná data, nastavte synchronizaci znovu a připojte ostatní zařízení.",
     "inactive_one": "Neaktivní {{count}} den",
     "inactive_few": "Neaktivní {{count}} dny",

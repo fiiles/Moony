@@ -355,7 +355,6 @@
       "removedBy": "borttagen av {{by}}",
       "removedOnBy": "borttagen {{date}} av {{by}}"
     },
-    "underList": "Ta bort en borttappad, såld eller rensad enhet. Den ser inget nytt.",
     "unsupported": "En äldre version av Moony ställde in den här synkroniseringen, så enheter kan inte tas bort från den. Radera de synkroniserade data, ställ in synkroniseringen igen och anslut dina andra enheter.",
     "inactive_one": "Inaktiv i {{count}} dag",
     "inactive_other": "Inaktiv i {{count}} dagar",

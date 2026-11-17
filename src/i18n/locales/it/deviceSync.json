@@ -365,7 +365,6 @@
       "removedBy": "rimosso da {{by}}",
       "removedOnBy": "rimosso il {{date}} da {{by}}"
     },
-    "underList": "Rimuovi un dispositivo perso, venduto o cancellato. Non vedrà più nulla di nuovo.",
     "unsupported": "Una versione precedente di Moony ha configurato questa sincronizzazione, quindi non si possono rimuovere dispositivi. Elimina i dati sincronizzati, configura di nuovo la sincronizzazione e collega gli altri dispositivi.",
     "inactive_one": "Inattivo da {{count}} giorno",
     "inactive_many": "Inattivo da {{count}} giorni",

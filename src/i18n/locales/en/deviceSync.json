@@ -355,7 +355,6 @@
       "removedBy": "removed by {{by}}",
       "removedOnBy": "removed on {{date}} by {{by}}"
     },
-    "underList": "Remove a lost, sold or wiped device. It won't see anything new.",
     "unsupported": "An older version of Moony set up this sync, so devices can't be removed from it. Delete the synced data, set sync up again and connect your other devices.",
     "inactive_one": "Inactive for {{count}} day",
     "inactive_other": "Inactive for {{count}} days",

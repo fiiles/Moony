@@ -94,13 +94,9 @@ export function SyncDevicesCard() {
           {(groups?.check ?? []).map(row)}
         </div>
         {server.blocked && <ServerNeededNote id={server.noteId} className="mt-3" />}
-        {unsupported ? (
+        {unsupported && (
           <p className="m-0 mt-3 text-micro font-500 text-ink-3" data-testid="sync-unsupported">
             {t('devices.unsupported')}
-          </p>
-        ) : (
-          <p className="m-0 mt-3 text-micro font-500 text-ink-3" data-testid="sync-limits">
-            {t('devices.underList')}
           </p>
         )}
         {former.length > 0 && (

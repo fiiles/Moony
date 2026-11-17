@@ -375,7 +375,6 @@
       "removedBy": "usunięte przez {{by}}",
       "removedOnBy": "usunięte {{date}} przez {{by}}"
     },
-    "underList": "Usuń zgubione, sprzedane lub wyczyszczone urządzenie. Nie zobaczy już niczego nowego.",
     "unsupported": "Starsza wersja Moony skonfigurowała tę synchronizację, dlatego nie można z niej usuwać urządzeń. Usuń zsynchronizowane dane, skonfiguruj synchronizację ponownie i połącz pozostałe urządzenia.",
     "inactive_one": "Nieaktywne {{count}} dzień",
     "inactive_few": "Nieaktywne {{count}} dni",

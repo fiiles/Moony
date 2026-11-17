@@ -642,10 +642,10 @@ mod tests {
 
     #[test]
     fn a_disabled_row_installs_no_capture_and_queues_nothing() {
-        let conn = migrated();
+        let mut conn = migrated();
         save_account(&conn, RELAY, ACCOUNT).unwrap();
 
-        on_open(&conn);
+        on_open(&mut conn);
 
         assert!(!capture::is_installed(&conn).unwrap());
         assert_eq!(

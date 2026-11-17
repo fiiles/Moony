@@ -152,10 +152,10 @@ pub(super) fn repair_backups(dir: &Path) -> Vec<String> {
 /// Makes `device` a capture-broken profile as an unlock leaves it: capture not installed on the
 /// connection, `capture_broken_at` set, and the guard imposed (as `sync::on_open` does).
 pub(super) fn break_capture(device: &TestConn) {
-    let conn = device.lock();
+    let mut conn = device.lock();
     capture::uninstall(&conn).expect("uninstall");
     state::mark_capture_broken(&conn, NOW - 60).expect("mark");
-    capture::guard::impose(&conn).expect("guard");
+    capture::guard::impose(&mut conn).expect("guard");
 }
 
 #[tokio::test]

@@ -80,7 +80,7 @@ pub fn install(conn: &Connection, device: DeviceId) -> Result<()> {
 /// `install`; when it fails, the guard (`guard::impose`, or read-only when that fails too:
 /// `sync::guard_or_close`) and the install's error. For a profile whose capture must not lapse:
 /// an enabled profile either captures every change or refuses changes to synced data (ADR 0027).
-pub fn install_or_guard(conn: &Connection, device: DeviceId) -> Result<()> {
+pub fn install_or_guard(conn: &mut Connection, device: DeviceId) -> Result<()> {
     let installed = install(conn, device);
     if let Err(error) = &installed {
         log::warn!("[SYNC] Change capture did not install; the guard goes on: {error}");

@@ -740,13 +740,13 @@ async fn a_guarded_profile_never_syncs_even_without_its_mark() {
     for read_only in [false, true] {
         let vault = super::vault().await;
         {
-            let a = vault.a.lock();
+            let mut a = vault.a.lock();
             institution(&a, "queued");
             capture::uninstall(&a).expect("uninstall");
             if read_only {
                 exec(&a, "PRAGMA query_only = 1");
             } else {
-                capture::guard::impose(&a).expect("guard");
+                capture::guard::impose(&mut a).expect("guard");
             }
             let marks = state::marks(&a).expect("marks").expect("row");
             assert_eq!(marks.capture_broken_at, None, "no mark");

@@ -522,8 +522,8 @@ mod tests {
     /// this holding instead of failing for all of them.
     #[test]
     fn a_symbol_that_cannot_be_stored_skips_the_holding() {
-        let conn = holding_db(None);
-        crate::services::sync::capture::guard::impose(&conn).expect("guard");
+        let mut conn = holding_db(None);
+        crate::services::sync::capture::guard::impose(&mut conn).expect("guard");
 
         let stored = store_resolved(&conn, "h1", "ARB11841-USD");
 

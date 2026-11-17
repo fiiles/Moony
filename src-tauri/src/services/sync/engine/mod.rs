@@ -40,7 +40,15 @@ use snapshots::{SnapshotPolicy, Upload, MAX_SNAPSHOT_BYTES};
 /// holds it across a network call. `Database` locks its session mutex; a locked profile answers
 /// `AppError::Auth`, which ends the round.
 pub trait ConnAccess: Clone + Send + Sync + 'static {
-    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T>;
+    /// The connection, mutably: what the sync guard needs to set or clear its authorizer
+    /// (rusqlite's `Connection::authorizer` takes `&mut self`).
+    fn with_conn_mut<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T>) -> Result<T>;
+
+    /// The connection, for everything else. Defaults to `with_conn_mut`, so an implementation
+    /// that counts or logs its holds does so in one place.
+    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+        self.with_conn_mut(|conn| f(conn))
+    }
 
     /// The profile's round lock: one round at a time per profile, whoever runs it (the engine's
     /// loop, setup, the repair), so two `push_all` never interleave. An async lock, never the
@@ -73,6 +81,10 @@ pub trait ConnAccess: Clone + Send + Sync + 'static {
 }
 
 impl ConnAccess for crate::db::Database {
+    fn with_conn_mut<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T>) -> Result<T> {
+        crate::db::Database::with_conn_mut(self, f)
+    }
+
     fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
         crate::db::Database::with_conn(self, f)
     }

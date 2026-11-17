@@ -98,7 +98,7 @@ fn a_revived_seed_of_a_new_migration_still_goes() {
 
 #[test]
 fn an_ordinary_row_revived_while_capture_was_off_survives_the_unlock() {
-    let conn = enabled();
+    let mut conn = enabled();
     exec(
         &conn,
         "INSERT INTO institutions (id, name) VALUES ('i1', 'Bank'); \
@@ -111,7 +111,7 @@ fn an_ordinary_row_revived_while_capture_was_off_survives_the_unlock() {
     );
     exec(&conn, "DELETE FROM sync_outbox");
 
-    crate::services::sync::on_open(&conn);
+    crate::services::sync::on_open(&mut conn);
     assert!(capture::is_installed(&conn).unwrap());
     assert_eq!(
         count(&conn, "SELECT COUNT(*) FROM institutions WHERE id = 'i1'"),
@@ -121,27 +121,27 @@ fn an_ordinary_row_revived_while_capture_was_off_survives_the_unlock() {
 
 #[test]
 fn the_sweep_waits_while_capture_is_marked_broken() {
-    let conn = enabled();
+    let mut conn = enabled();
     revive_a_seed(&conn);
     exec(&conn, "UPDATE sync_state SET schema_seen = 1");
     state::mark_capture_broken(&conn, 1_767_225_600).unwrap();
 
-    crate::services::sync::on_open(&conn);
+    crate::services::sync::on_open(&mut conn);
     assert_eq!(count(&conn, SEED), 1);
     assert_eq!(state::load(&conn).unwrap().expect("row").schema_seen, 1);
 }
 
 #[test]
 fn a_later_clean_unlock_sweeps_what_was_skipped() {
-    let conn = enabled();
+    let mut conn = enabled();
     revive_a_seed(&conn);
     exec(&conn, "UPDATE sync_state SET schema_seen = 1");
     state::mark_capture_broken(&conn, 1_767_225_600).unwrap();
-    crate::services::sync::on_open(&conn);
+    crate::services::sync::on_open(&mut conn);
     assert_eq!(count(&conn, SEED), 1);
 
     exec(&conn, "UPDATE sync_state SET capture_broken_at = NULL");
-    crate::services::sync::on_open(&conn);
+    crate::services::sync::on_open(&mut conn);
     assert_eq!(count(&conn, SEED), 0);
     assert_eq!(
         state::load(&conn).unwrap().expect("row").schema_seen,

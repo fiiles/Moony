@@ -71,6 +71,15 @@ pub(super) async fn on_db<D: ConnAccess, T: Send + 'static>(
     off_thread(move || db.with_conn(work)).await
 }
 
+/// `on_db` with the connection mutably (`turn_off` lifts the guard's authorizer).
+async fn on_db_mut<D: ConnAccess, T: Send + 'static>(
+    db: &D,
+    work: impl FnOnce(&mut Connection) -> Result<T> + Send + 'static,
+) -> SyncResult<T> {
+    let db = db.clone();
+    off_thread(move || db.with_conn_mut(work)).await
+}
+
 fn enabled(conn: &Connection) -> Result<bool> {
     Ok(state::load(conn)?.is_some_and(|sync| sync.enabled))
 }
@@ -409,7 +418,7 @@ fn problem_error(problem: SyncProblem) -> SyncError {
 /// guard (`capture::guard`) and a read-only session (`query_only`) are lifted before the
 /// savepoint, so local data is writable again once sync is off; a failure puts back whichever of
 /// them the profile had.
-pub fn turn_off(conn: &Connection, data_dir: &Path) -> Result<()> {
+pub fn turn_off(conn: &mut Connection, data_dir: &Path) -> Result<()> {
     let was_guarded = guard::is_imposed(conn);
     let was_read_only: bool = conn.pragma_query_value(None, "query_only", |r| r.get(0))?;
     let off = guard::lift(conn)
@@ -485,7 +494,7 @@ fn truncate_wal(conn: &Connection) {
 pub async fn turn_off_between_rounds<D: ConnAccess>(db: &D, data_dir: &Path) -> SyncResult<()> {
     let _no_round = engine::exclusive(db).await;
     let dir = data_dir.to_path_buf();
-    on_db(db, move |conn| turn_off(conn, &dir)).await
+    on_db_mut(db, move |conn| turn_off(conn, &dir)).await
 }
 
 /// "Delete synced data" (spec §11.6; the command asks for the device password first): under the
@@ -503,7 +512,7 @@ pub async fn delete_synced_data<R: Relay, D: ConnAccess>(
         log::info!("[SYNC] Deleted the synced data on the relay");
     }
     let dir: PathBuf = data_dir.to_path_buf();
-    on_db(db, move |conn| turn_off(conn, &dir)).await
+    on_db_mut(db, move |conn| turn_off(conn, &dir)).await
 }
 
 /// Delete Account's attempt to delete the vault too (spec §11.6), within `DELETE_BUDGET`
@@ -626,13 +635,13 @@ mod tests {
     fn turning_sync_off_leaves_no_key_bytes_in_a_plain_database_file() {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("moony.db");
-        let conn = profile_with_marked_keys(&path, false);
+        let mut conn = profile_with_marked_keys(&path, false);
         assert!(
             contains(&read_or_empty(&path), MARKER),
             "the key is on disk before"
         );
 
-        turn_off(&conn, dir.path()).expect("turn off");
+        turn_off(&mut conn, dir.path()).expect("turn off");
 
         assert!(state::load(&conn).expect("state").is_none());
         assert!(keys::account(&conn).expect("account").is_none());
@@ -644,13 +653,13 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("moony.db");
         let wal = dir.path().join("moony.db-wal");
-        let conn = profile_with_marked_keys(&path, true);
+        let mut conn = profile_with_marked_keys(&path, true);
         assert!(
             contains(&read_or_empty(&path), MARKER) || contains(&read_or_empty(&wal), MARKER),
             "the key is on disk before"
         );
 
-        turn_off(&conn, dir.path()).expect("turn off");
+        turn_off(&mut conn, dir.path()).expect("turn off");
 
         assert!(!contains(&read_or_empty(&path), MARKER), "database file");
         assert!(!contains(&read_or_empty(&wal), MARKER), "write-ahead log");
@@ -670,7 +679,7 @@ mod tests {
     #[test]
     fn turning_sync_off_removes_unfinished_downloads_and_keeps_content() {
         let dir = tempfile::tempdir().expect("tempdir");
-        let conn = crate::services::sync::test_support::migrated();
+        let mut conn = crate::services::sync::test_support::migrated();
         conn.execute("ATTACH DATABASE ':memory:' AS files", [])
             .expect("attach");
         crate::db::files_schema::migrate(&conn).expect("files schema");
@@ -682,7 +691,7 @@ mod tests {
             .expect("left over");
         assert_eq!(incomplete_blobs(&conn), 1);
 
-        turn_off(&conn, dir.path()).expect("turn off");
+        turn_off(&mut conn, dir.path()).expect("turn off");
 
         assert_eq!(incomplete_blobs(&conn), 0);
         assert_eq!(
@@ -696,10 +705,10 @@ mod tests {
     #[test]
     fn turning_sync_off_without_the_store_still_turns_off() {
         let dir = tempfile::tempdir().expect("tempdir");
-        let conn = crate::services::sync::test_support::migrated();
+        let mut conn = crate::services::sync::test_support::migrated();
         state::enable(&conn, crate::services::sync::hlc::DeviceId([7; 16])).expect("enable");
 
-        turn_off(&conn, dir.path()).expect("turn off");
+        turn_off(&mut conn, dir.path()).expect("turn off");
 
         assert!(!state::on_or_unreadable(&conn).expect("state"));
     }

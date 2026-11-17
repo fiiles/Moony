@@ -169,6 +169,9 @@ device and an offline edit on another end differently depending on the order the
 - **The engine never holds the session mutex across a network call.** Each step takes the
   connection for one read or write (`ConnAccess::with_conn`) and releases it before the relay is
   asked; what must span the network (one round per profile) uses the async round lock.
+  `ConnAccess::with_conn_mut` is the same hold with `&mut Connection`, for the few paths that set
+  or clear the capture guard's authorizer (rusqlite's `Connection::authorizer` takes `&mut self`
+  since 0.41): `sync::on_open`, `guard::impose` / `lift`, `turn_off`, the join's replace.
 - **Sync errors travel as `SyncError` until the command boundary**, so the engine can act on the
   class (back off, pause, show a problem); `commands/sync.rs` turns them into `AppError` keys.
 

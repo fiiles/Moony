@@ -73,7 +73,7 @@ pub const CAPTURE_BROKEN_REASON: &str = "change capture could not be installed";
 /// re-sync or turn-off, and after a successful one (capture). Turning sync off removes all three.
 /// So a repair or re-sync, which replaces the synced data, never discards an edit nobody
 /// recorded.
-pub fn on_open(conn: &Connection) {
+pub fn on_open(conn: &mut Connection) {
     on_open_with(conn, feature::enabled());
 }
 
@@ -82,7 +82,7 @@ pub fn on_open(conn: &Connection) {
 /// (audit M12, ADR 0027). Returning early instead would let such a build edit the synced tables
 /// with no trigger, and those edits would be lost to the other devices. No round, no network: the
 /// engine never starts without the flag.
-pub(crate) fn on_open_with(conn: &Connection, feature_on: bool) {
+pub(crate) fn on_open_with(conn: &mut Connection, feature_on: bool) {
     if !feature_on && state::load(conn).ok().flatten().is_some_and(|s| s.enabled) {
         log::info!(
             "[SYNC] This build does not run sync; the enabled profile's changes are still recorded"
@@ -108,7 +108,7 @@ pub(crate) fn on_open_with(conn: &Connection, feature_on: bool) {
 /// The last resort of `on_open` (and of any failure that leaves an enabled profile without
 /// capture): `impose`, else `PRAGMA query_only = 1` (logged at warn), so no change goes
 /// unrecorded.
-fn guard_or_close(conn: &Connection, impose: impl FnOnce(&Connection) -> Result<()>) {
+fn guard_or_close(conn: &mut Connection, impose: impl FnOnce(&mut Connection) -> Result<()>) {
     if let Err(error) = impose(conn) {
         log::warn!("[SYNC] The sync guard could not be imposed; the profile is read-only: {error}");
         if let Err(pragma) = conn.execute_batch("PRAGMA query_only = 1") {
@@ -123,7 +123,7 @@ fn now() -> i64 {
         .map_or(0, |d| d.as_secs() as i64)
 }
 
-fn open_capture(conn: &Connection) -> Result<()> {
+fn open_capture(conn: &mut Connection) -> Result<()> {
     let Some(sync) = state::load(conn)? else {
         return Ok(());
     };
@@ -236,12 +236,12 @@ mod tests {
     /// Audit M12: a build without the flag still records an enabled profile's edits.
     #[test]
     fn a_build_without_sync_still_captures_an_enabled_profile() {
-        let conn = test_support::migrated();
+        let mut conn = test_support::migrated();
         state::enable(&conn, hlc::DeviceId([5; 16])).expect("enable");
         capture::uninstall(&conn).expect("uninstall");
         assert!(!capture::is_installed(&conn).unwrap());
 
-        on_open_with(&conn, false);
+        on_open_with(&mut conn, false);
 
         assert!(
             capture::is_installed(&conn).unwrap(),
@@ -253,9 +253,9 @@ mod tests {
 
     #[test]
     fn a_build_without_sync_installs_nothing_on_a_profile_without_sync() {
-        let conn = test_support::migrated();
+        let mut conn = test_support::migrated();
 
-        on_open_with(&conn, false);
+        on_open_with(&mut conn, false);
 
         assert!(!capture::is_installed(&conn).unwrap());
         institution(&conn, "i1").expect("an edit");
@@ -264,12 +264,12 @@ mod tests {
 
     #[test]
     fn a_build_without_sync_guards_an_enabled_profile_whose_capture_fails() {
-        let conn = test_support::migrated();
+        let mut conn = test_support::migrated();
         state::enable(&conn, hlc::DeviceId([5; 16])).expect("enable");
         capture::uninstall(&conn).expect("uninstall");
         conn.execute_batch("DROP TABLE sync_clock").expect("break");
 
-        on_open_with(&conn, false);
+        on_open_with(&mut conn, false);
 
         assert!(capture::guard::is_imposed(&conn) || capture::guard::is_read_only(&conn));
         assert!(institution(&conn, "i1").is_err(), "the insert is refused");

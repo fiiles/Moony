@@ -147,7 +147,8 @@
       },
       "folderWarning": "Förvara kitet på papper eller i en lösenordshanterare, inte i en mapp som synkroniseras med en molntjänst.",
       "syncedFolder": "Kitet sparat, men den här mappen verkar synkroniseras med en molntjänst. Flytta filen till en plats som inte synkroniseras, eller radera den när du har kitet på papper.",
-      "saveRefused": "Det här kitet är föråldrat och sparades därför inte. Stäng det och visa kitet igen."
+      "saveRefused": "Det här kitet är föråldrat och sparades därför inte. Stäng det och visa kitet igen.",
+      "print": "Skriv ut"
     },
     "device": {
       "description": "Ge enheten ett namn så att du kan skilja den från de andra.",
@@ -292,7 +293,7 @@
   },
   "devices": {
     "title": "Enheter",
-    "description": "Enheterna som synkroniseras med det här kontot.",
+    "description": "De här enheterna har tillgång till dina data.",
     "thisDevice": "Den här enheten",
     "joined": "Ansluten {{date}}",
     "lastChange": "Senaste ändring synkroniserad {{when}}",
@@ -311,7 +312,45 @@
       "other": "Annan enhet"
     },
     "quiet_one": "Inga ändringar från den här enheten på {{count}} dag",
-    "quiet_other": "Inga ändringar från den här enheten på {{count}} dagar"
+    "quiet_other": "Inga ändringar från den här enheten på {{count}} dagar",
+    "activeAt": "aktiv {{when}}",
+    "details": "Detaljer",
+    "hideDetails": "Dölj detaljer",
+    "remove": "Ta bort…",
+    "removing": "Tas bort…",
+    "inactiveHint": "Använder du den inte längre? Ta bort den.",
+    "copyName": "{{name}} (kopia)",
+    "check": {
+      "badge": "Kontrollera",
+      "keep": "Den är min",
+      "keepNote": "Bekräfta den innan du nästa gång tar bort en enhet; efter det skulle den behöva ansluta igen.",
+      "keepFailed": "Det gick inte att bekräfta enheten. Listan lästes in igen.",
+      "unverified": "Den här enheten kunde inte verifieras. Nästa gång du tar bort en enhet slutar den synkronisera. Om den är din, anslut den igen: stäng av synkroniseringen på den och välj Anslut.",
+      "copy": "Den här enheten anslöt igen, men den tidigare kopian skriver fortfarande ändringar. Om du inte känner igen den, ta bort den.",
+      "issuerRemoved": "Den lades till av en enhet som du tog bort och får inte längre nya data. Om den är din, anslut den igen.",
+      "lateVouch": "{{by}} lade till den, men {{by}} synkroniserar inte längre eller kan inte verifieras, och Moony kan inte bekräfta att det skedde innan den kopplade från sig. Nästa gång du tar bort en enhet slutar den synkronisera om du inte bekräftar den.",
+      "lateVouchNoName": "Enheten som lade till den synkroniserar inte längre eller kan inte verifieras, och Moony kan inte bekräfta att det skedde innan den kopplade från sig. Nästa gång du tar bort en enhet slutar den synkronisera om du inte bekräftar den."
+    },
+    "via": {
+      "created": "Första enheten",
+      "paired": "Tillagd {{date}}",
+      "pairedBy": "Tillagd {{date}} från {{name}}",
+      "recoveryKit": "Ansluten med återställningskitet {{date}}",
+      "rejoined": "Ansluten igen {{date}}"
+    },
+    "formerGroup": "Tidigare enheter ({{count}})",
+    "former": {
+      "left": "frånkopplad",
+      "leftOn": "frånkopplad {{date}}",
+      "removed": "borttagen",
+      "removedOn": "borttagen {{date}}",
+      "removedBy": "borttagen av {{by}}",
+      "removedOnBy": "borttagen {{date}} av {{by}}"
+    },
+    "underList": "Ta bort en borttappad, såld eller rensad enhet. Den ser inget nytt.",
+    "unsupported": "En äldre version av Moony ställde in den här synkroniseringen, så enheter kan inte tas bort från den. Radera de synkroniserade data, ställ in synkroniseringen igen och anslut dina andra enheter.",
+    "inactive_one": "Inaktiv i {{count}} dag",
+    "inactive_other": "Inaktiv i {{count}} dagar"
   },
   "pairing": {
     "addTitle": "Lägg till en enhet",
@@ -453,8 +492,8 @@
     "onThisDevice": "På den här enheten:"
   },
   "limits": {
-    "lostTitle": "Tappat en enhet eller återställningskitet?",
-    "lostDevice": "En borttappad enhet eller ett borttappat återställningskit kan ännu inte stängas ute från dina synkroniserade data, och den som har ett kan redan nu läsa vad det innehåller. Om något försvinner raderar du de synkroniserade data och ställer in synkroniseringen på nytt med ett nytt kit; dina andra enheter måste då ansluta igen."
+    "lostDevice": "En borttappad enhet eller ett borttappat återställningskit kan ännu inte stängas ute från dina synkroniserade data, och den som har ett kan redan nu läsa vad det innehåller. Om något försvinner raderar du de synkroniserade data och ställer in synkroniseringen på nytt med ett nytt kit; dina andra enheter måste då ansluta igen.",
+    "lostTitle": "Tappat en enhet eller återställningskitet?"
   },
   "codes": {
     "pairNotForSetup": "Det här är en parkopplingskod, inte en anslutningskod. Skanna den när du lägger till den här enheten i en synkronisering som redan körs.",
@@ -486,5 +525,46 @@
   "protection": {
     "line_one": "Synkroniseringen skyddar dina data: en kopia finns på synkroniseringsservern (senaste fullständiga synkronisering: {{age}}, enheter som synkroniseras: {{count}}). Gör en säkerhetskopia när du vill spara hur allt stod en viss dag.",
     "line_other": "Synkroniseringen skyddar dina data: en kopia finns på synkroniseringsservern (senaste fullständiga synkronisering: {{age}}, enheter som synkroniseras: {{count}}). Gör en säkerhetskopia när du vill spara hur allt stod en viss dag."
+  },
+  "remove": {
+    "title": "Ta bort {{name}}?",
+    "body": "{{name}} får inga nya data och kan inte ändra något. Det som redan finns på den blir kvar, skyddat av dess Moony-lösenord.",
+    "stays": "De här fortsätter synkronisera:",
+    "thisDevice": "{{name}} (den här enheten)",
+    "drops": "De här slutar också synkronisera:",
+    "dropReason": {
+      "unverified": "kunde inte verifieras",
+      "issuerRemoved": "lades till av en enhet du tog bort",
+      "lateVouch": "lades till av en enhet som inte längre synkroniserar"
+    },
+    "keep": "Den är min",
+    "added": "Du lade till de här enheterna från {{name}} (eller från dem). Ta också bort de du inte känner igen.",
+    "addedRow": "{{name}} · tillagd {{date}}",
+    "inHand": "Har du {{name}} till hands? Stäng bara av synkroniseringen på den.",
+    "kit": {
+      "creatorRemoved": "Ditt återställningskit sparades på {{name}}, så det slutar gälla. Direkt efteråt skapar du ett nytt.",
+      "cloud": "Ditt återställningskit ligger i en mapp som synkroniseras med molnet, så det slutar gälla. Direkt efteråt skapar du ett nytt.",
+      "missing": "Synkroniseringen har inget giltigt återställningskit just nu, så du skapar ett nytt direkt efteråt.",
+      "notUpdated": "Den här borttagningen uppdaterar inte återställningskitet."
+    },
+    "confirm": "Ta bort enhet",
+    "progress": "Tar bort {{name}}…",
+    "toast": {
+      "removed": "{{name}} är borttagen",
+      "pending": "Synkroniseringsservern kan inte nås just nu. Borttagningen slutförs av sig själv så fort den kan.",
+      "alreadyRemoved": "{{by}} tog bort {{name}} under tiden.",
+      "alreadyRemovedUnknown": "{{name}} togs bort under tiden.",
+      "removedHere": "En annan enhet tog bort den här enheten under tiden. Synkroniseringen är av här."
+    },
+    "loadError": "Borttagningen kunde inte förberedas. Försök igen.",
+    "retry": "Försök igen"
+  },
+  "newKit": {
+    "title": "Ditt nya återställningskit",
+    "body": "Det gamla kitet gäller inte längre. Skriv ut det här och förvara det på avstånd från den här enheten. Vi visar det bara nu.",
+    "pending": "Kitet börjar gälla när borttagningen är klar.",
+    "done": "Jag har kitet, klart",
+    "keepFirst": "Skriv ut, spara eller kopiera kitet först.",
+    "gone": "Kitet visas inte längre på skärmen. Skapa ett nytt under Inställningar → Synkronisering."
   }
 }

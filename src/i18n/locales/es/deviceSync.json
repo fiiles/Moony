@@ -151,7 +151,8 @@
       },
       "folderWarning": "Guarda el kit en papel o en un gestor de contraseñas, no en una carpeta que se sincronice con un servicio en la nube.",
       "syncedFolder": "Kit guardado, pero esta carpeta parece sincronizarse con un servicio en la nube. Mueve el archivo a un lugar que no se sincronice o bórralo cuando tengas el kit en papel.",
-      "saveRefused": "Este kit está desactualizado, así que no se guardó. Ciérralo y vuelve a mostrar el kit."
+      "saveRefused": "Este kit está desactualizado, así que no se guardó. Ciérralo y vuelve a mostrar el kit.",
+      "print": "Imprimir"
     },
     "device": {
       "description": "Dale un nombre a este dispositivo para distinguirlo de los demás.",
@@ -302,7 +303,7 @@
   },
   "devices": {
     "title": "Dispositivos",
-    "description": "Los dispositivos que se sincronizan con esta cuenta.",
+    "description": "Estos dispositivos pueden acceder a tus datos.",
     "thisDevice": "Este dispositivo",
     "joined": "Se unió el {{date}}",
     "lastChange": "Último cambio sincronizado {{when}}",
@@ -322,7 +323,46 @@
     },
     "quiet_one": "Sin cambios de este dispositivo desde hace {{count}} día",
     "quiet_many": "Sin cambios de este dispositivo desde hace {{count}} días",
-    "quiet_other": "Sin cambios de este dispositivo desde hace {{count}} días"
+    "quiet_other": "Sin cambios de este dispositivo desde hace {{count}} días",
+    "activeAt": "activo {{when}}",
+    "details": "Detalles",
+    "hideDetails": "Ocultar detalles",
+    "remove": "Quitar…",
+    "removing": "Quitando…",
+    "inactiveHint": "¿Ya no lo usas? Quítalo.",
+    "copyName": "{{name}} (copia)",
+    "check": {
+      "badge": "Revisar",
+      "keep": "Es mío",
+      "keepNote": "Confírmalo antes de quitar otro dispositivo; después tendría que volver a conectarse.",
+      "keepFailed": "No se pudo confirmar el dispositivo. Se recargó la lista.",
+      "unverified": "No se pudo verificar este dispositivo. La próxima vez que quites un dispositivo, dejará de sincronizarse. Si es tuyo, conéctalo de nuevo: desactiva la sincronización en él y elige Conectar.",
+      "copy": "Este dispositivo se conectó de nuevo, pero su copia anterior sigue escribiendo cambios. Si no la reconoces, quítala.",
+      "issuerRemoved": "Lo añadió un dispositivo que quitaste y ya no recibe datos nuevos. Si es tuyo, conéctalo de nuevo.",
+      "lateVouch": "Lo añadió {{by}}, que ya no sincroniza o no se puede verificar, y Moony no puede confirmar que fuera antes de que se desconectara. La próxima vez que quites un dispositivo, dejará de sincronizarse si no lo confirmas.",
+      "lateVouchNoName": "El dispositivo que lo añadió ya no sincroniza o no se puede verificar, y Moony no puede confirmar que fuera antes de que se desconectara. La próxima vez que quites un dispositivo, dejará de sincronizarse si no lo confirmas."
+    },
+    "via": {
+      "created": "Primer dispositivo",
+      "paired": "Añadido el {{date}}",
+      "pairedBy": "Añadido el {{date}} desde {{name}}",
+      "recoveryKit": "Conectado con el kit de recuperación el {{date}}",
+      "rejoined": "Reconectado el {{date}}"
+    },
+    "formerGroup": "Dispositivos anteriores ({{count}})",
+    "former": {
+      "left": "desconectado",
+      "leftOn": "desconectado el {{date}}",
+      "removed": "quitado",
+      "removedOn": "quitado el {{date}}",
+      "removedBy": "quitado por {{by}}",
+      "removedOnBy": "quitado el {{date}} por {{by}}"
+    },
+    "underList": "Quita un dispositivo perdido, vendido o borrado. No verá nada nuevo.",
+    "unsupported": "Una versión anterior de Moony configuró esta sincronización, por eso no se pueden quitar dispositivos. Borra los datos sincronizados, configura la sincronización de nuevo y conecta tus otros dispositivos.",
+    "inactive_one": "Inactivo {{count}} día",
+    "inactive_many": "Inactivo {{count}} días",
+    "inactive_other": "Inactivo {{count}} días"
   },
   "pairing": {
     "addTitle": "Añadir un dispositivo",
@@ -465,8 +505,8 @@
     "onThisDevice": "En este dispositivo:"
   },
   "limits": {
-    "lostTitle": "¿Has perdido un dispositivo o el Kit de recuperación?",
-    "lostDevice": "Todavía no se puede cortar el acceso a tus datos sincronizados de un dispositivo o un Kit de recuperación perdido, y quien tenga uno ya puede leer lo que contiene. Si alguno desaparece, elimina los datos sincronizados y vuelve a configurar la sincronización con un Kit nuevo; tus otros dispositivos tendrán que unirse de nuevo."
+    "lostDevice": "Todavía no se puede cortar el acceso a tus datos sincronizados de un dispositivo o un Kit de recuperación perdido, y quien tenga uno ya puede leer lo que contiene. Si alguno desaparece, elimina los datos sincronizados y vuelve a configurar la sincronización con un Kit nuevo; tus otros dispositivos tendrán que unirse de nuevo.",
+    "lostTitle": "¿Has perdido un dispositivo o el Kit de recuperación?"
   },
   "codes": {
     "pairNotForSetup": "Este es un código de emparejamiento, no un código de conexión. Escanéalo al añadir este dispositivo a una sincronización que ya está activa.",
@@ -502,5 +542,46 @@
     "line_one": "La sincronización protege tus datos: hay una copia en el servidor de sincronización (última sincronización completa: {{age}}, dispositivos sincronizados: {{count}}). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto.",
     "line_many": "La sincronización protege tus datos: hay una copia en el servidor de sincronización (última sincronización completa: {{age}}, dispositivos sincronizados: {{count}}). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto.",
     "line_other": "La sincronización protege tus datos: hay una copia en el servidor de sincronización (última sincronización completa: {{age}}, dispositivos sincronizados: {{count}}). Haz una copia de seguridad cuando quieras conservar cómo estaban las cosas un día concreto."
+  },
+  "remove": {
+    "title": "¿Quitar {{name}}?",
+    "body": "{{name}} dejará de recibir datos nuevos y no podrá cambiar nada. Lo que ya contiene se queda, protegido por su contraseña de Moony.",
+    "stays": "Seguirán sincronizando:",
+    "thisDevice": "{{name}} (este dispositivo)",
+    "drops": "También dejarán de sincronizar:",
+    "dropReason": {
+      "unverified": "no se pudo verificar",
+      "issuerRemoved": "añadido por un dispositivo que quitaste",
+      "lateVouch": "añadido por un dispositivo que ya no sincroniza"
+    },
+    "keep": "Es mío",
+    "added": "Añadiste estos dispositivos desde {{name}} (o desde ellos). Quita también los que no reconozcas.",
+    "addedRow": "{{name}} · añadido el {{date}}",
+    "inHand": "¿Tienes {{name}} a mano? Basta con desactivar la sincronización en él.",
+    "kit": {
+      "creatorRemoved": "Tu kit de recuperación se guardó en {{name}}, por eso dejará de valer. Justo después crearás uno nuevo.",
+      "cloud": "Tu kit de recuperación está en una carpeta que se sincroniza con la nube, por eso dejará de valer. Justo después crearás uno nuevo.",
+      "missing": "La sincronización no tiene ahora un kit de recuperación válido, así que justo después crearás uno nuevo.",
+      "notUpdated": "Esta eliminación no actualiza el kit de recuperación."
+    },
+    "confirm": "Quitar dispositivo",
+    "progress": "Quitando {{name}}…",
+    "toast": {
+      "removed": "{{name}} quitado",
+      "pending": "El servidor de sincronización no está disponible ahora. La eliminación terminará sola en cuanto lo esté.",
+      "alreadyRemoved": "{{by}} quitó {{name}} mientras tanto.",
+      "alreadyRemovedUnknown": "{{name}} se quitó mientras tanto.",
+      "removedHere": "Otro dispositivo quitó este dispositivo mientras tanto. La sincronización está desactivada aquí."
+    },
+    "loadError": "No se pudo preparar la eliminación. Inténtalo de nuevo.",
+    "retry": "Reintentar"
+  },
+  "newKit": {
+    "title": "Tu nuevo kit de recuperación",
+    "body": "El kit anterior ya no vale. Imprime este y guárdalo lejos de este dispositivo. Solo lo mostramos ahora.",
+    "pending": "El kit valdrá cuando termine la eliminación.",
+    "done": "Tengo el kit, hecho",
+    "keepFirst": "Primero imprime, guarda o copia el kit.",
+    "gone": "El kit ya no está en pantalla. Crea uno nuevo en Ajustes → Sincronización."
   }
 }

@@ -1713,3 +1713,43 @@ R-85. **Frontend adapted, minimally** (the UI tasks redo it): `tauri-api.ts` gai
      `keyChangeUnverified` or `keyChangeWaiting` (Task 29); `deviceSync.json` keeps now-unused keys
      (`showKit.*`, `status.showKit`, `join.accountLabel`, `setup.kit.file.account*`,
      `keepSafe.kit.show`): the UI tasks drop them.
+
+**Tasks 25–26 (hooks, helpers, desktop device list and removal dialog).**
+
+R-86. **Hooks and helpers** (Task 25). `useSyncDevices()` still returns the devices on the list now
+     (active and "Zkontrolujte", no former ones): every caller that counts or names "other devices"
+     wants that. The list itself reads `useSyncDeviceGroups()` (`groupDevices`). `useRemovalPlan(ids,
+     alsoRemove, newKit, enabled)` is never cached (`gcTime 0`, `keepPreviousData` so ticking keeps the
+     list on screen). `removeDevices` takes the password through a ref `mutationFn` empties (variables
+     hold only ids and the consent), `gcTime 0`, and the dialog `reset()`s it on leaving. Also added:
+     `keepDevice`, `printRecoveryKit`, `checkRecoveryKit`, `dismissNotice`, `kitJoinDecided`.
+     `quietDays`/`QUIET_AFTER_DAYS` stay for the phone's list until Task 30 reads `inactiveDays`.
+R-87. **`syncState` kinds** `syncingLong` (round older than 60 s, tone neutral so the popover keeps its
+     sync-now button; Task 29 labels the button "Zkusit znovu"), `firstUpload` (also while idle) and
+     `removing` (`removalPending` in a running round), keys `indicator.*` and `phone.row.*` in ten
+     locales. `keyRotated` without `waitingForRemover` reads as plain `syncing`. `syncProblemState`
+     gives the one rejoin state (`keyNotGiven`, `keyChangeUnverified`, `unauthorized`; `by` = `rejoinBy`
+     except for `unauthorized`) and the waiting state; **Task 29 still has to show them**, and
+     `problemAction` still answers `none` for these problems. `statusPopoverLines` gives the popover's
+     lines (`popover.line.*`, texts added; dates are formatted by the view through `dates`).
+R-88. **Device list** (Task 26). Active other devices open for their details and "Odebrat…"; a
+     "Zkontrolujte" row shows its reason at once with "Je moje" (late vouch only) and "Odebrat…", plus the
+     R-77a caveat ("Potvrďte ho před příštím odebráním zařízení; potom by se muselo připojit znovu.").
+     Own sentences: `devices.check.lateVouch` is worded to fit an adder that is itself "Zkontrolujte"
+     ("nebo ho Moony nemůže ověřit"), and `lateVouchNoName` when `addedBy` is unknown. A failing
+     `keepDevice` (the Rust side may still answer an internal error for a row no longer trusted) is a
+     toast `devices.check.keepFailed`; the list re-reads either way. The "Ztratili jste zařízení…"
+     collapsible is gone from the desktop (`limits.lostTitle` stays for the phone until Task 30). The
+     pre-phase-5 note (`devices.unsupported`) replaces the line under the list when
+     `removalSupported` is false.
+R-89. **Removal dialog.** One `Dialog` (560 px): plan, then "Odebírám {name}…", then a toast or the Kit
+     step. "Odebrat také" ticks start unticked (spec §4.3). `droppingOut` rows carry "Je moje" for a late
+     vouch (reloads the plan). Outcomes: `done`/`pending` with a kit open the Kit step (`NewKitStep`:
+     panel, "Sadu mám, hotovo" after copy, print or save; Esc and outside clicks are off there), `done`
+     without a kit toasts, `alreadyRemoved` and `removedHere` toast their sentences
+     (`remove.toast.*`). `syncRemovalPlanChanged` shows its text under the password and reloads the plan.
+     **Task 27 note:** `RecoveryKitPanel` gained "Vytisknout" (`sync_print_recovery_kit`) and mounts a
+     `KitPrintSheet` (portal in `body`, `.kit-print-sheet` in `index.css`, print media shows only it);
+     the panel's false "cannot be cut off" line (`limits.lostDevice`) is no longer rendered. Not
+     verified in the built app: the print dialog, the dialog at 1080 px and the layout of long German
+     strings (not run, no Tauri host here).

@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Check, Copy, FileText, Download } from 'lucide-react';
+import { Check, Copy, FileText, Download, Printer } from 'lucide-react';
 import type { RecoveryKit } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useRecoveryKitLifetime } from '@/hooks/use-recovery-kit-lifetime';
@@ -17,6 +17,7 @@ import {
 } from '@/utils/recovery-kit';
 import type { KitFileKind } from '@shared/schema';
 import { Button } from '@/components/ui/button';
+import { KitPrintSheet } from '@/components/settings/sync/KitPrintSheet';
 import { useRecoveryKitCopy } from '@/components/settings/sync/use-recovery-kit-copy';
 
 interface RecoveryKitPanelProps {
@@ -45,7 +46,7 @@ export function RecoveryKitPanel({
 }: RecoveryKitPanelProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
-  const { copyRecoveryCode } = useDeviceSyncMutations();
+  const { copyRecoveryCode, printRecoveryKit } = useDeviceSyncMutations();
   const kitCopy = useRecoveryKitCopy();
   const [copied, setCopied] = useState(false);
   const [clipboardHint, setClipboardHint] = useState(false);
@@ -76,6 +77,19 @@ export function RecoveryKitPanel({
       // Rust refuses a file that is not this account's current kit (setup restarted meanwhile)
       if (error instanceof ApiError && error.kind === 'internal') {
         toast.error(tc('status.error'), { description: t('setup.kit.saveRefused') });
+        return;
+      }
+      fail(error);
+    }
+  };
+
+  const printKit = async () => {
+    try {
+      await printRecoveryKit.mutateAsync();
+      onKept();
+    } catch (error) {
+      if (passwordRequired(error)) {
+        onPasswordRequired();
         return;
       }
       fail(error);
@@ -136,7 +150,17 @@ export function RecoveryKitPanel({
           </Fragment>
         ))}
       </div>
+      <KitPrintSheet kit={kit} />
       <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={printKit}
+          loading={printRecoveryKit.isPending}
+        >
+          <Printer />
+          {t('setup.kit.print')}
+        </Button>
         <Button type="button" variant="outline" onClick={copyCode}>
           {copied ? <Check /> : <Copy />}
           {copied ? t('setup.kit.copied') : t('setup.kit.copyCode')}
@@ -157,7 +181,6 @@ export function RecoveryKitPanel({
       )}
       <p className="m-0 text-micro font-500 text-ink-3">{t('setup.kit.differs')}</p>
       <p className="m-0 text-micro font-500 text-ink-3">{t('setup.kit.folderWarning')}</p>
-      <p className="m-0 text-micro font-500 text-ink-3">{t('limits.lostDevice')}</p>
     </div>
   );
 }

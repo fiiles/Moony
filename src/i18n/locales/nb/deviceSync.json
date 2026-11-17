@@ -147,7 +147,8 @@
       },
       "folderWarning": "Oppbevar settet på papir eller i en passordbehandler, ikke i en mappe som synkroniseres med en skytjeneste.",
       "syncedFolder": "Settet er lagret, men denne mappen ser ut til å synkroniseres med en skytjeneste. Flytt filen til et sted som ikke synkroniseres, eller slett den når du har settet på papir.",
-      "saveRefused": "Dette settet er utdatert og ble derfor ikke lagret. Lukk det og vis settet på nytt."
+      "saveRefused": "Dette settet er utdatert og ble derfor ikke lagret. Lukk det og vis settet på nytt.",
+      "print": "Skriv ut"
     },
     "device": {
       "description": "Gi enheten et navn, så du kan skille den fra de andre.",
@@ -292,7 +293,7 @@
   },
   "devices": {
     "title": "Enheter",
-    "description": "Enhetene som synkroniserer med denne kontoen.",
+    "description": "Disse enhetene har tilgang til dataene dine.",
     "thisDevice": "Denne enheten",
     "joined": "Lagt til {{date}}",
     "lastChange": "Siste endring synkronisert {{when}}",
@@ -311,7 +312,45 @@
       "other": "Annen enhet"
     },
     "quiet_one": "Ingen endringer fra denne enheten på {{count}} dag",
-    "quiet_other": "Ingen endringer fra denne enheten på {{count}} dager"
+    "quiet_other": "Ingen endringer fra denne enheten på {{count}} dager",
+    "activeAt": "aktiv {{when}}",
+    "details": "Detaljer",
+    "hideDetails": "Skjul detaljer",
+    "remove": "Fjern…",
+    "removing": "Fjernes…",
+    "inactiveHint": "Bruker du den ikke lenger? Fjern den.",
+    "copyName": "{{name}} (kopi)",
+    "check": {
+      "badge": "Sjekk dette",
+      "keep": "Den er min",
+      "keepNote": "Bekreft den før du neste gang fjerner en enhet; etter det måtte den koble til på nytt.",
+      "keepFailed": "Kunne ikke bekrefte enheten. Listen ble lastet på nytt.",
+      "unverified": "Denne enheten kunne ikke verifiseres. Neste gang du fjerner en enhet, slutter den å synkronisere. Hvis den er din, koble den til på nytt: slå av synkronisering på den og velg Koble til.",
+      "copy": "Denne enheten koblet til på nytt, men den tidligere kopien skriver fortsatt endringer. Hvis du ikke kjenner den igjen, fjern den.",
+      "issuerRemoved": "Den ble lagt til av en enhet du fjernet og får ikke lenger nye data. Hvis den er din, koble den til på nytt.",
+      "lateVouch": "{{by}} la den til, men {{by}} synkroniserer ikke lenger eller kan ikke verifiseres, og Moony kan ikke bekrefte at det skjedde før den koblet seg fra. Neste gang du fjerner en enhet, slutter den å synkronisere hvis du ikke bekrefter den.",
+      "lateVouchNoName": "Enheten som la den til, synkroniserer ikke lenger eller kan ikke verifiseres, og Moony kan ikke bekrefte at det skjedde før den koblet seg fra. Neste gang du fjerner en enhet, slutter den å synkronisere hvis du ikke bekrefter den."
+    },
+    "via": {
+      "created": "Første enhet",
+      "paired": "Lagt til {{date}}",
+      "pairedBy": "Lagt til {{date}} fra {{name}}",
+      "recoveryKit": "Koblet til med gjenopprettingssettet {{date}}",
+      "rejoined": "Koblet til på nytt {{date}}"
+    },
+    "formerGroup": "Tidligere enheter ({{count}})",
+    "former": {
+      "left": "koblet fra",
+      "leftOn": "koblet fra {{date}}",
+      "removed": "fjernet",
+      "removedOn": "fjernet {{date}}",
+      "removedBy": "fjernet av {{by}}",
+      "removedOnBy": "fjernet {{date}} av {{by}}"
+    },
+    "underList": "Fjern en enhet som er tapt, solgt eller slettet. Den ser ingenting nytt.",
+    "unsupported": "En eldre versjon av Moony satte opp denne synkroniseringen, så enheter kan ikke fjernes fra den. Slett de synkroniserte dataene, sett opp synkronisering på nytt og koble til de andre enhetene dine.",
+    "inactive_one": "Inaktiv i {{count}} dag",
+    "inactive_other": "Inaktiv i {{count}} dager"
   },
   "pairing": {
     "addTitle": "Legg til en enhet",
@@ -453,8 +492,8 @@
     "onThisDevice": "På denne enheten:"
   },
   "limits": {
-    "lostTitle": "Mistet en enhet eller gjenopprettingssettet?",
-    "lostDevice": "En mistet enhet eller et mistet gjenopprettingssett kan ikke stenges ute fra de synkroniserte dataene dine ennå, og alle som har ett, kan allerede lese det det inneholder. Hvis noe forsvinner, sletter du de synkroniserte dataene og setter opp synkroniseringen på nytt med et nytt sett; de andre enhetene dine må da koble seg til igjen."
+    "lostDevice": "En mistet enhet eller et mistet gjenopprettingssett kan ikke stenges ute fra de synkroniserte dataene dine ennå, og alle som har ett, kan allerede lese det det inneholder. Hvis noe forsvinner, sletter du de synkroniserte dataene og setter opp synkroniseringen på nytt med et nytt sett; de andre enhetene dine må da koble seg til igjen.",
+    "lostTitle": "Mistet en enhet eller gjenopprettingssettet?"
   },
   "codes": {
     "pairNotForSetup": "Dette er en paringskode, ikke en tilkoblingskode. Skann den når du legger denne enheten til en synkronisering som allerede kjører.",
@@ -486,5 +525,46 @@
   "protection": {
     "line_one": "Synkroniseringen beskytter dataene dine: en kopi ligger på synkroniseringsserveren (siste fullstendige synkronisering: {{age}}, enheter som synkroniseres: {{count}}). Ta en sikkerhetskopi når du vil bevare hvordan ting sto på en bestemt dag.",
     "line_other": "Synkroniseringen beskytter dataene dine: en kopi ligger på synkroniseringsserveren (siste fullstendige synkronisering: {{age}}, enheter som synkroniseres: {{count}}). Ta en sikkerhetskopi når du vil bevare hvordan ting sto på en bestemt dag."
+  },
+  "remove": {
+    "title": "Fjerne {{name}}?",
+    "body": "{{name}} får ikke lenger nye data og kan ikke endre noe. Det som allerede er på den, blir der, beskyttet av Moony-passordet.",
+    "stays": "Disse synkroniserer videre:",
+    "thisDevice": "{{name}} (denne enheten)",
+    "drops": "Disse slutter også å synkronisere:",
+    "dropReason": {
+      "unverified": "kunne ikke verifiseres",
+      "issuerRemoved": "lagt til av en enhet du fjernet",
+      "lateVouch": "lagt til av en enhet som ikke lenger synkroniserer"
+    },
+    "keep": "Den er min",
+    "added": "Du la til disse enhetene fra {{name}} (eller fra dem). Fjern også de du ikke kjenner igjen.",
+    "addedRow": "{{name}} · lagt til {{date}}",
+    "inHand": "Har du {{name}} for hånden? Slå bare av synkronisering på den.",
+    "kit": {
+      "creatorRemoved": "Gjenopprettingssettet ditt ble lagret på {{name}}, så det slutter å gjelde. Rett etterpå lager du et nytt.",
+      "cloud": "Gjenopprettingssettet ditt ligger i en mappe som synkroniseres med skyen, så det slutter å gjelde. Rett etterpå lager du et nytt.",
+      "missing": "Synkroniseringen har ikke noe gyldig gjenopprettingssett nå, så du lager et nytt rett etterpå.",
+      "notUpdated": "Denne fjerningen oppdaterer ikke gjenopprettingssettet."
+    },
+    "confirm": "Fjern enhet",
+    "progress": "Fjerner {{name}}…",
+    "toast": {
+      "removed": "{{name}} er fjernet",
+      "pending": "Synkroniseringsserveren er ikke tilgjengelig akkurat nå. Fjerningen fullføres av seg selv så snart den er det.",
+      "alreadyRemoved": "{{by}} fjernet {{name}} i mellomtiden.",
+      "alreadyRemovedUnknown": "{{name}} ble fjernet i mellomtiden.",
+      "removedHere": "En annen enhet fjernet denne enheten i mellomtiden. Synkroniseringen er av her."
+    },
+    "loadError": "Fjerningen kunne ikke forberedes. Prøv igjen.",
+    "retry": "Prøv igjen"
+  },
+  "newKit": {
+    "title": "Ditt nye gjenopprettingssett",
+    "body": "Det gamle settet gjelder ikke lenger. Skriv ut dette og oppbevar det unna denne enheten. Vi viser det bare nå.",
+    "pending": "Settet begynner å gjelde når fjerningen er ferdig.",
+    "done": "Jeg har settet, ferdig",
+    "keepFirst": "Skriv ut, lagre eller kopier settet først.",
+    "gone": "Settet er ikke lenger på skjermen. Lag et nytt under Innstillinger → Synkronisering."
   }
 }

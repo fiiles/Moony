@@ -147,7 +147,8 @@
       },
       "folderWarning": "Keep the Kit on paper or in a password manager, not in a folder that syncs to a cloud service.",
       "syncedFolder": "Kit saved, but this folder looks like it syncs to a cloud service. Move the file somewhere that does not sync, or delete it once the Kit is on paper.",
-      "saveRefused": "This Kit is out of date, so it was not saved. Close it and show the Kit again."
+      "saveRefused": "This Kit is out of date, so it was not saved. Close it and show the Kit again.",
+      "print": "Print"
     },
     "device": {
       "description": "Name this device so you can tell it apart from your others.",
@@ -292,7 +293,7 @@
   },
   "devices": {
     "title": "Devices",
-    "description": "The devices that sync with this account.",
+    "description": "These devices can access your data.",
     "thisDevice": "This device",
     "joined": "Joined {{date}}",
     "lastChange": "Last change synced {{when}}",
@@ -311,7 +312,45 @@
       "other": "Other device"
     },
     "quiet_one": "No changes from this device in {{count}} day",
-    "quiet_other": "No changes from this device in {{count}} days"
+    "quiet_other": "No changes from this device in {{count}} days",
+    "activeAt": "active {{when}}",
+    "details": "Details",
+    "hideDetails": "Hide details",
+    "remove": "Remove…",
+    "removing": "Removing…",
+    "inactiveHint": "Not using it any more? Remove it.",
+    "copyName": "{{name}} (copy)",
+    "check": {
+      "badge": "Check this",
+      "keep": "It's mine",
+      "keepNote": "Confirm it before the next time you remove a device; after that it would have to connect again.",
+      "keepFailed": "Couldn't confirm the device. The list was reloaded.",
+      "unverified": "This device couldn't be verified. The next time you remove a device, it will stop syncing. If it's yours, connect it again: turn sync off on it and choose Connect.",
+      "copy": "This device connected again, but its earlier copy still writes changes. If you don't recognise it, remove it.",
+      "issuerRemoved": "It was added by a device you removed and no longer gets new data. If it's yours, connect it again.",
+      "lateVouch": "{{by}} added it, but {{by}} no longer syncs or can't be verified, and Moony can't confirm this happened before it left. The next time you remove a device, it will stop syncing unless you keep it.",
+      "lateVouchNoName": "The device that added it no longer syncs or can't be verified, and Moony can't confirm this happened before it left. The next time you remove a device, it will stop syncing unless you keep it."
+    },
+    "via": {
+      "created": "First device",
+      "paired": "Added on {{date}}",
+      "pairedBy": "Added on {{date}} from {{name}}",
+      "recoveryKit": "Joined with the recovery kit on {{date}}",
+      "rejoined": "Reconnected on {{date}}"
+    },
+    "formerGroup": "Former devices ({{count}})",
+    "former": {
+      "left": "left",
+      "leftOn": "left on {{date}}",
+      "removed": "removed",
+      "removedOn": "removed on {{date}}",
+      "removedBy": "removed by {{by}}",
+      "removedOnBy": "removed on {{date}} by {{by}}"
+    },
+    "underList": "Remove a lost, sold or wiped device. It won't see anything new.",
+    "unsupported": "An older version of Moony set up this sync, so devices can't be removed from it. Delete the synced data, set sync up again and connect your other devices.",
+    "inactive_one": "Inactive for {{count}} day",
+    "inactive_other": "Inactive for {{count}} days"
   },
   "pairing": {
     "addTitle": "Add a device",
@@ -453,8 +492,8 @@
     "onThisDevice": "On this device:"
   },
   "limits": {
-    "lostTitle": "Lost a device or the Recovery Kit?",
-    "lostDevice": "A lost device or Recovery Kit can't be cut off from your synced data yet, and anyone who has one can already read what it holds. If one goes missing, delete the synced data and set sync up again with a new Kit; your other devices will then need to join again."
+    "lostDevice": "A lost device or Recovery Kit can't be cut off from your synced data yet, and anyone who has one can already read what it holds. If one goes missing, delete the synced data and set sync up again with a new Kit; your other devices will then need to join again.",
+    "lostTitle": "Lost a device or the Recovery Kit?"
   },
   "codes": {
     "pairNotForSetup": "This is a pairing code, not a connection code. Scan it when you add this device to sync that is already running.",
@@ -486,5 +525,46 @@
   "protection": {
     "line_one": "Sync protects your data: a copy is on the sync server (last complete sync: {{age}}, devices in sync: {{count}}). Make a backup when you want to keep how things stood on a given day.",
     "line_other": "Sync protects your data: a copy is on the sync server (last complete sync: {{age}}, devices in sync: {{count}}). Make a backup when you want to keep how things stood on a given day."
+  },
+  "remove": {
+    "title": "Remove {{name}}?",
+    "body": "{{name}} will stop getting new data and won't be able to change anything. What's already on it stays there, protected by its Moony password.",
+    "stays": "These will keep syncing:",
+    "thisDevice": "{{name}} (this device)",
+    "drops": "These will also stop syncing:",
+    "dropReason": {
+      "unverified": "couldn't be verified",
+      "issuerRemoved": "added by a device you removed",
+      "lateVouch": "added by a device that no longer syncs"
+    },
+    "keep": "It's mine",
+    "added": "You added these from {{name}} (or from them). Remove any you don't recognise too.",
+    "addedRow": "{{name}} · added {{date}}",
+    "inHand": "Have {{name}} with you? Just turn sync off on it.",
+    "kit": {
+      "creatorRemoved": "Your recovery kit was saved on {{name}}, so it will stop working. You'll make a new one right after.",
+      "cloud": "Your recovery kit is in a folder that syncs to the cloud, so it will stop working. You'll make a new one right after.",
+      "missing": "Sync has no valid recovery kit right now, so you'll make a new one right after.",
+      "notUpdated": "This removal doesn't update the recovery kit."
+    },
+    "confirm": "Remove device",
+    "progress": "Removing {{name}}…",
+    "toast": {
+      "removed": "{{name}} removed",
+      "pending": "The sync server isn't reachable right now. The removal will finish by itself once it is.",
+      "alreadyRemoved": "{{by}} removed {{name}} in the meantime.",
+      "alreadyRemovedUnknown": "{{name}} was removed in the meantime.",
+      "removedHere": "Another device removed this device in the meantime. Sync is off here."
+    },
+    "loadError": "The removal couldn't be prepared. Try again.",
+    "retry": "Try again"
+  },
+  "newKit": {
+    "title": "Your new recovery kit",
+    "body": "The old kit no longer works. Print this one and keep it away from this device. We show it only now.",
+    "pending": "The kit starts working once the removal finishes.",
+    "done": "I have the kit, done",
+    "keepFirst": "First print, save or copy the kit.",
+    "gone": "The kit is no longer on screen. Make a new one in Settings → Sync."
   }
 }

@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
+import { translateApiError } from '@/lib/translate-api-error';
 import { useServerGate } from '@/hooks/use-server-gate';
 import { Button } from '@/components/ui/button';
 import type { SyncDevice } from '@shared/schema';
@@ -10,6 +14,7 @@ import {
   checkReasonKey,
   deviceLabelKey,
   devicePlatformKey,
+  formerDeviceIds,
   formerLineKey,
   inactiveDays,
   joinedViaKey,
@@ -146,7 +151,9 @@ export function DeviceSheet({
 
 /**
  * "Dřívější zařízení ({n})": the devices that left or were removed (listed for 30 days), one row
- * each with when and by whom; nothing can be done with them.
+ * each with when and by whom. A row opens the device's own sheet with "Odstranit ze seznamu";
+ * "Odstranit vše" under the list takes the whole group off this device's list. Neither unblocks
+ * anything. The sheet closes once the group is empty.
  */
 export function FormerDevicesSheet({
   devices,
@@ -158,38 +165,98 @@ export function FormerDevicesSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslation('deviceSync');
+  const { t: tc } = useTranslation('common');
   const { date } = useFormat();
+  const { hideFormerDevices } = useDeviceSyncMutations();
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  // `null` while "Odstranit vše" runs
+  const [hidingId, setHidingId] = useState<string | null>(null);
+  const viewing = devices.find((device) => device.id === viewingId) ?? null;
   const day = (seconds: number) => date(new Date(seconds * 1000), { dateStyle: 'medium' });
+  const subOf = (device: SyncDevice) =>
+    [
+      t(devicePlatformKey(device.platform)),
+      t(formerLineKey(device), {
+        date: device.stateAt === null ? '' : day(device.stateAt),
+        by: device.stateBy ?? '',
+      }),
+    ].join(' · ');
+
+  // Nothing left to show: the group's row is gone from the list, so the sheet goes too
+  const empty = devices.length === 0;
+  useEffect(() => {
+    if (open && empty) onOpenChange(false);
+  }, [open, empty, onOpenChange]);
+
+  const hide = async (ids: string[], one: string | null) => {
+    setHidingId(one);
+    try {
+      await hideFormerDevices.mutateAsync(ids);
+      if (one !== null) setViewingId(null);
+    } catch (error) {
+      toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
+    }
+  };
+
   return (
-    <Sheet
-      open={open}
-      onOpenChange={onOpenChange}
-      title={t('devices.formerGroup', { count: devices.length })}
-    >
-      <EntityRows>
-        {devices.map((device) => {
-          const Icon = deviceIcon(device.platform);
-          return (
-            <EntityRow
-              key={device.id}
-              chip={
-                <RowChip square>
-                  <Icon strokeWidth={1.75} />
-                </RowChip>
-              }
-              title={device.name}
-              sub={[
-                t(devicePlatformKey(device.platform)),
-                t(formerLineKey(device), {
-                  date: device.stateAt === null ? '' : day(device.stateAt),
-                  by: device.stateBy ?? '',
-                }),
-              ].join(' · ')}
-              wrap
-            />
-          );
-        })}
-      </EntityRows>
-    </Sheet>
+    <>
+      <Sheet
+        open={open}
+        onOpenChange={onOpenChange}
+        title={t('devices.formerGroup', { count: devices.length })}
+      >
+        <EntityRows>
+          {devices.map((device) => {
+            const Icon = deviceIcon(device.platform);
+            return (
+              <EntityRow
+                key={device.id}
+                chip={
+                  <RowChip square>
+                    <Icon strokeWidth={1.75} />
+                  </RowChip>
+                }
+                title={device.name}
+                sub={subOf(device)}
+                onClick={() => setViewingId(device.id)}
+                chevron
+                wrap
+              />
+            );
+          })}
+        </EntityRows>
+        <p className="mx-0.5 mb-2 mt-3.5 text-m-sub text-ink-3">{t('devices.hideNote')}</p>
+        <Button
+          variant="ghost"
+          className={BUTTON}
+          loading={hideFormerDevices.isPending && hidingId === null}
+          onClick={() => void hide(formerDeviceIds(devices), null)}
+        >
+          {t('devices.hideAll')}
+        </Button>
+      </Sheet>
+      <Sheet
+        open={open && viewing !== null}
+        onOpenChange={(next) => {
+          if (!next) setViewingId(null);
+        }}
+        title={viewing?.name ?? ''}
+        description={viewing ? subOf(viewing) : undefined}
+      >
+        {viewing && (
+          <div className="grid gap-1">
+            <p className="mx-0.5 mb-2.5 mt-0 text-m-sub text-ink-3">{t('devices.hideNote')}</p>
+            <Button
+              variant="secondary"
+              className={BUTTON}
+              loading={hideFormerDevices.isPending && hidingId === viewing.id}
+              onClick={() => void hide([viewing.id], viewing.id)}
+            >
+              {t('devices.hide')}
+            </Button>
+          </div>
+        )}
+      </Sheet>
+    </>
   );
 }

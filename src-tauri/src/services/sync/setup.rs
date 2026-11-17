@@ -283,9 +283,9 @@ pub fn prepare_kit(conn: &Connection, draft: Option<KitDraft>, now: i64) -> Resu
 }
 
 /// The Kit as the person sees it (revision §2.1, §2.2): the v2 code in 19 groups of five, its QR
-/// and the server address when it is not the default one. The account is inside the code (the
-/// wire's `accountNumber` still carries it until the wire task drops it). The view holds the
-/// secret: the caller treats it like the code.
+/// and the server address when it is not the default one, with when it was made and by which
+/// device (this one: its name once its row is recorded). The account is inside the code. The
+/// view holds the secret: the caller treats it like the code.
 pub fn kit_view(conn: &Connection, draft: &KitDraft) -> Result<RecoveryKit> {
     let (relay_url, account) =
         keys::account(conn)?.ok_or_else(|| AppError::Validation(SETUP_INCOMPLETE.into()))?;
@@ -294,10 +294,11 @@ pub fn kit_view(conn: &Connection, draft: &KitDraft) -> Result<RecoveryKit> {
     let qr_svg = qr_svg(&kit_qr_payload(&code, relay_url.as_deref()))?;
     let grouped = format_recovery_code(&code);
     Ok(RecoveryKit {
-        account_number: account,
         recovery_code: grouped.as_str().to_owned(),
         qr_svg,
         relay_url,
+        created_at: draft.created_at,
+        created_by: devices::this_device(conn)?.map(|(name, _)| name),
     })
 }
 

@@ -45,6 +45,15 @@ describe('otherDeviceNames', () => {
     lastActiveAt: null,
     thisDevice,
     held: false,
+    status: 'active',
+    checkReason: null,
+    formerReason: null,
+    joinedVia: 'unknown',
+    addedBy: null,
+    stateAt: null,
+    stateBy: null,
+    removalPending: false,
+    inactiveDays: null,
   });
 
   it('lists the other devices by name', () => {

@@ -371,6 +371,14 @@ async fn a_key_change_signed_by_an_unknown_device_is_not_taken() {
     assert!(sync_on(&b));
     assert_eq!(key_epoch(&b), 0);
     assert_eq!(state::rekey_seen(&b).expect("seen"), 0);
+    // The status says who made the change this device does not know (R-35: its ID, no row).
+    let shown = crate::services::sync::engine::status::status_at(
+        &b,
+        &crate::services::sync::engine::status::Runtime::default(),
+        NOW,
+    )
+    .expect("status");
+    assert_eq!(shown.rejoin_by.as_deref(), Some("09090909"));
 }
 
 /// A key change signed by a device this one trusts but leaves out for its issuer (revision §3.1;
@@ -444,10 +452,24 @@ async fn a_key_change_by_a_device_left_out_for_its_issuer_is_not_taken_until_it_
                 .confirmed
         );
 
+        // The status names the device whose change is not taken (its row's name).
+        assert_eq!(
+            state::config_text(&three.vault.b.lock(), state::KEY_CHANGE_UNVERIFIED_KEY)
+                .expect("key")
+                .as_deref(),
+            Some(r#"{"by":"iPad"}"#)
+        );
+
         assert!(trust::keep(&three.vault.b.lock(), C).expect("kept"));
         let report = round_of(&three.vault, &three.vault.b).await;
         assert_eq!(report.problem, None, "removed: {removed}: {report:?}");
         assert_eq!(key_epoch(&three.vault.b.lock()), 1);
+        assert_eq!(
+            state::config_text(&three.vault.b.lock(), state::KEY_CHANGE_UNVERIFIED_KEY)
+                .expect("key"),
+            None,
+            "the change taken clears who it could not be verified from"
+        );
     }
 }
 

@@ -32,6 +32,20 @@ const base: SyncStatus = {
   },
   lastCompleteAt: now - 240,
   protectsData: true,
+  removalSupported: false,
+  removalPending: false,
+  removalNotice: null,
+  removalNotDone: null,
+  keyChangeOverrun: null,
+  removedNotice: null,
+  rejoinBy: null,
+  waitingForRemover: null,
+  newDevices: [],
+  recoveryKit: null,
+  kitUsed: null,
+  afterKitJoin: null,
+  syncingSince: null,
+  firstUpload: false,
 };
 
 const statusIn = (phase: SyncPhase): SyncStatus => ({ ...base, phase });
@@ -45,6 +59,15 @@ const device = (id: string): SyncDevice => ({
   lastActiveAt: null,
   thisDevice: false,
   held: false,
+  status: 'active',
+  checkReason: null,
+  formerReason: null,
+  joinedVia: 'unknown',
+  addedBy: null,
+  stateAt: null,
+  stateBy: null,
+  removalPending: false,
+  inactiveDays: null,
 });
 const three = [device('a'), device('b'), device('c')];
 

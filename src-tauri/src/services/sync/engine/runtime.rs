@@ -683,7 +683,10 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
     }
 
     async fn round(&mut self) -> Result<(), Ended> {
-        self.shared.update(|r| r.running_round = true);
+        self.shared.update(|r| {
+            r.running_round = true;
+            r.round_started_at = Some(unix_now());
+        });
         self.publish()?;
         let mut report = RoundReport::default();
         // A relay that stalls cannot pin the loop: the round is dropped at its deadline (every
@@ -727,7 +730,10 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                 log::warn!("[SYNC] The device binding could not be removed after the removal");
                 log::debug!("[SYNC] The device binding could not be removed: {error}");
             }
-            self.shared.update(|r| r.running_round = false);
+            self.shared.update(|r| {
+                r.running_round = false;
+                r.round_started_at = None;
+            });
             return self.removed_here();
         }
         self.shared.update(|r| r.after_round(&report));
@@ -751,7 +757,10 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         self.next_periodic = after + periodic_gap(after, self.fast_until());
         let pending = self.outbox_count()?;
         self.watch.after_round(pending);
-        self.shared.update(|r| r.running_round = false);
+        self.shared.update(|r| {
+            r.running_round = false;
+            r.round_started_at = None;
+        });
         self.publish()?;
         self.shared.update(|r| r.rounds += 1);
         // What the round merged, queued or left behind is the lanes' now.

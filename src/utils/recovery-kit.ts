@@ -4,8 +4,6 @@ import type { RecoveryKit } from '@shared/schema';
 export interface RecoveryKitCopy {
   title: string;
   intro: string;
-  accountLabel: string;
-  accountNote: string;
   codeLabel: string;
   codeNote: string;
   qrLabel: string;
@@ -89,7 +87,6 @@ export function recoveryKitHtml(kit: RecoveryKit, copy: RecoveryKitCopy): string
 <main>
 <h1>${e(copy.title)}</h1>
 <p>${e(copy.intro)}</p>
-<section><h2>${e(copy.accountLabel)}</h2><div class="value">${e(groupAccountNumber(kit.accountNumber))}</div><p class="note">${e(copy.accountNote)}</p></section>
 <section><h2>${e(copy.codeLabel)}</h2><div class="value code">${codeHtml}</div><p class="note">${e(copy.codeNote)}</p></section>
 ${relay}
 <section class="qr"><img src="data:image/svg+xml;base64,${toBase64(kit.qrSvg)}" alt="${e(copy.qrLabel)}"><p class="note">${e(copy.qrLabel)}</p></section>
@@ -107,9 +104,6 @@ export function recoveryKitText(kit: RecoveryKit, copy: RecoveryKitCopy): string
     copy.title,
     '',
     copy.intro,
-    '',
-    `${copy.accountLabel}: ${groupAccountNumber(kit.accountNumber)}`,
-    copy.accountNote,
     '',
     `${copy.codeLabel}: ${kit.recoveryCode}`,
     copy.codeNote,

@@ -11,7 +11,6 @@ import { hostOf } from '@/utils/sync-setup';
 import { isQuietlyOutOfReach, syncState } from '@/utils/sync-state';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { ChangeServerDialog } from '@/components/settings/sync/ChangeServerDialog';
-import { ShowRecoveryKitFlow } from '@/components/settings/sync/ShowRecoveryKitFlow';
 import { SyncProblemAlert } from '@/components/settings/sync/SyncProblemAlert';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,6 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
   const { t: tc } = useTranslation('common');
   const { dateTime, date } = useFormat();
   const { syncNow } = useDeviceSyncMutations();
-  const [kitOpen, setKitOpen] = useState(false);
   const [serverOpen, setServerOpen] = useState(false);
 
   const running = syncNow.isPending || status.phase === 'syncing';
@@ -112,15 +110,9 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
                 </Button>
               </SettingsRow>
             )}
-            <SettingsRow label={t('showKit.title')}>
-              <Button type="button" variant="outline" onClick={() => setKitOpen(true)}>
-                {t('status.showKit')}
-              </Button>
-            </SettingsRow>
           </div>
         </div>
       </SettingsCard>
-      {kitOpen && <ShowRecoveryKitFlow onClose={() => setKitOpen(false)} />}
       {serverOpen && <ChangeServerDialog onClose={() => setServerOpen(false)} />}
     </>
   );

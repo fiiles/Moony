@@ -301,6 +301,7 @@ mod tests {
             attachments: Default::default(),
             last_complete_at: None,
             protects_data: false,
+            ..Default::default()
         }
     }
 

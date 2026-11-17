@@ -704,15 +704,13 @@ pub async fn sync_pairing_join(
 /// Joins with a Recovery Kit (its QR text or typed v2 code, which holds the account, with an
 /// optional sync server for a typed one) once the device password is checked: backup, then join
 /// by replace, as a sync change, within what the person agreed to (`consent`, as
-/// `sync_pairing_join`); the outcome. `account` is no longer read (the v2 code carries it); the
-/// wire drops it with the next contract change.
+/// `sync_pairing_join`); the outcome. The code carries the account.
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn sync_join_with_recovery_kit(
     app: AppHandle,
     db: State<'_, Database>,
     code: String,
-    account: Option<String>,
     relay_url: Option<String>,
     device_name: String,
     password: String,
@@ -725,7 +723,6 @@ pub async fn sync_join_with_recovery_kit(
     devices::validate_device_name(&device_name)?;
     let verify = verify_password(&app, password.clone());
     begin(password, verify, std::future::ready(Ok(()))).await?;
-    drop(account);
     let input = read_kit_input(&code, relay_url.as_deref(), &default_base_url())?;
     drop(code);
     let relay = HttpRelay::new(&input.relay_url)?;
@@ -757,7 +754,7 @@ pub async fn sync_join_with_recovery_kit(
 #[tauri::command]
 pub async fn sync_list_devices(db: State<'_, Database>) -> Result<Vec<SyncDevice>> {
     require_feature()?;
-    db.with_conn(devices::list_devices)
+    db.with_conn(|conn| devices::list_devices(conn, now()))
 }
 
 /// Renames this device (1 to 60 characters); the new name syncs to the other devices.

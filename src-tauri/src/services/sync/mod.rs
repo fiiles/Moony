@@ -18,6 +18,8 @@ pub mod connection_code;
 #[cfg(test)]
 mod convergence;
 pub mod devices;
+#[cfg(test)]
+mod devices_tests;
 pub mod engine;
 pub mod envelope;
 pub mod error;
@@ -52,6 +54,7 @@ pub mod server;
 pub mod setup;
 pub mod snapshot;
 pub mod state;
+pub mod view;
 
 #[cfg(test)]
 mod probe;

@@ -168,7 +168,7 @@ async fn first_device_setup_creates_the_vault_pushes_and_uploads_a_snapshot() {
     assert!(paid.paid_until.is_some_and(|until| until > NOW));
 
     let kit = view_of(&device.lock());
-    assert_eq!(kit.account_number, account.account_number);
+    assert!(kit.created_at > 0, "the Kit says when it was made");
     assert_eq!(kit.relay_url.as_deref(), Some(RELAY));
 
     finish(&relay, &device, dir.path()).await.expect("setup");
@@ -364,7 +364,10 @@ async fn the_setup_kit_is_refused_once_sync_is_on() {
     let again = prepare_kit(&device.lock(), Some(draft), NOW + 60).expect("again");
     let during = kit_view(&device.lock(), &again).expect("kit");
     assert_eq!(during.recovery_code, kit.recovery_code);
-    assert_eq!(during.account_number, account.account_number);
+    assert_eq!(
+        during.created_at, kit.created_at,
+        "the same draft, the same date"
+    );
     let other = prepare_kit(&device.lock(), None, NOW).expect("new");
     assert_ne!(
         kit_view(&device.lock(), &other).expect("kit").recovery_code,
@@ -709,10 +712,10 @@ async fn a_kit_carries_a_custom_relay_and_not_the_default_one() {
     let code = crate::services::sync::recovery::decode_kit_code(&kit.recovery_code).expect("v2");
     let (vault_id, _) = keys::ensure_vault_secrets(&default.lock()).expect("secrets");
     assert!(code.vault_id == vault_id);
-    assert_eq!(
-        code.account, kit.account_number,
-        "the account is in the code"
-    );
+    let (_, account) = keys::account(&default.lock())
+        .expect("account")
+        .expect("stored");
+    assert_eq!(code.account, account, "the account is in the code");
 }
 
 #[tokio::test]

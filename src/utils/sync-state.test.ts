@@ -41,6 +41,20 @@ function status(
     },
     lastCompleteAt: null,
     protectsData: false,
+    removalSupported: false,
+    removalPending: false,
+    removalNotice: null,
+    removalNotDone: null,
+    keyChangeOverrun: null,
+    removedNotice: null,
+    rejoinBy: null,
+    waitingForRemover: null,
+    newDevices: [],
+    recoveryKit: null,
+    kitUsed: null,
+    afterKitJoin: null,
+    syncingSince: null,
+    firstUpload: false,
   };
 }
 

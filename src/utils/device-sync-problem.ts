@@ -154,6 +154,8 @@ export function problemAction(
       // set it up again on the device with the most complete data, join the others) and not to
       // re-sync, which would replace this device's data with the server's older copy.
       return 'none';
+    // `keyNotGiven`, `keyChangeUnverified` and `keyChangeWaiting` get their rejoin and waiting
+    // states from the notices task (Task 29); until then they offer nothing.
     case 'quotaExceeded':
     case 'snapshotTooLarge':
     case 'undecryptable':
@@ -165,6 +167,9 @@ export function problemAction(
     case 'rateLimited':
     case 'unauthorized':
     case 'keyRotated':
+    case 'keyNotGiven':
+    case 'keyChangeUnverified':
+    case 'keyChangeWaiting':
     case 'secureStorage':
     case 'internal':
       return 'none';

@@ -75,7 +75,11 @@ export function useDeviceSyncAccount(
   });
 }
 
-/** The devices of the sync account (this one marked); read while sync is on. */
+/**
+ * The devices of the sync account (this one marked); read while sync is on. Former devices (left
+ * or removed, `status: 'former'`, which the backend lists for 30 days) are left out until the
+ * device list shows them in its own group (Task 25/26).
+ */
 export function useSyncDevices() {
   const enabled = useDeviceSyncFeature();
   const { data: status } = useDeviceSyncStatus();
@@ -83,6 +87,7 @@ export function useSyncDevices() {
   return useQuery({
     queryKey: ['device-sync-devices'],
     queryFn: () => deviceSyncApi.listDevices(),
+    select: (devices) => devices.filter((device) => device.status !== 'former'),
     enabled: enabled && syncOn,
   });
 }

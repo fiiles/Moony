@@ -81,8 +81,8 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
   const kitText = useRef<string | null>(null);
   /** Why the scanned QR is no code for this flow (the `notMoony` sheet's sentence). */
   const [refusal, setRefusal] = useState<'unknownCode' | 'connection'>('unknownCode');
-  /** What the confirm sheet shows of that QR: the account number and the sync server. */
-  const [kitShown, setKitShown] = useState<{ account: string; server: string } | null>(null);
+  /** What the confirm sheet shows of that QR: the sync server. */
+  const [kitShown, setKitShown] = useState<{ server: string } | null>(null);
   /** The overlay's "Paste a pairing code": the scan is cancelled to make way for the sheet. */
   const toPaste = useRef(false);
   const [joinFailure, setJoinFailure] = useState<JoinFailure | null>(null);
@@ -204,7 +204,7 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
         }
         return;
       case 'kitJoin': {
-        // A QR is read at a glance: say which account and server it joins before the data goes
+        // A QR is read at a glance: say which server it joins before the data goes
         const summary = kitQrSummary(text);
         if (!summary.ok && firstRun) {
           toast.error(tc(summary.problem));
@@ -218,7 +218,7 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
           return;
         }
         kitText.current = text.trim();
-        setKitShown({ account: summary.account, server: summary.server });
+        setKitShown({ server: summary.server });
         setStep('kitConfirm');
         return;
       }
@@ -446,12 +446,6 @@ export function ScanFlow({ mode, paste, onDone, onReplaced, firstRun }: ScanFlow
       >
         {kitShown && (
           <dl className="m-0 mb-3 grid gap-3">
-            <div>
-              <dt className="text-m-caption text-ink-3">{t('join.accountLabel')}</dt>
-              <dd className="m-0 text-m-row text-ink num" data-testid="kit-confirm-account">
-                {kitShown.account}
-              </dd>
-            </div>
             <div>
               <dt className="text-m-caption text-ink-3">{t('join.serverLabel')}</dt>
               <dd className="m-0 break-all text-m-row text-ink" data-testid="kit-confirm-server">

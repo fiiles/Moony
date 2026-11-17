@@ -365,15 +365,19 @@ pub(super) fn sync_on(db: &Database) -> Result<bool> {
 pub(crate) fn current_status(app: &AppHandle, db: &Database) -> Result<SyncStatus> {
     // Every status poll also wipes a Kit draft whose window ran out (review of Tasks 18–19, M1).
     expire_kit_draft(Instant::now());
-    let runtime = app
-        .state::<SyncEngineState>()
+    let runtime = engine_runtime(app);
+    db.with_conn(|conn| status::status(conn, &runtime))
+}
+
+/// The running engine's memory of its rounds (the default while no engine runs).
+pub(super) fn engine_runtime(app: &AppHandle) -> status::Runtime {
+    app.state::<SyncEngineState>()
         .0
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .as_ref()
         .map(EngineHandle::runtime)
-        .unwrap_or_default();
-    db.with_conn(|conn| status::status(conn, &runtime))
+        .unwrap_or_default()
 }
 
 /// Stopping and starting the engine around a sync change (the app's engine, or a test's).
@@ -1491,7 +1495,8 @@ mod tests {
     }
 
     /// The sync commands (name → body up to its third statement), read from the sources of this
-    /// file, `sync_pairing.rs`, `sync_backups.rs`, `sync_kit.rs`, `sync_gaps.rs` and `sync_attachments.rs`.
+    /// file, `sync_pairing.rs`, `sync_backups.rs`, `sync_kit.rs`, `sync_gaps.rs`, `sync_attachments.rs` and
+    /// `sync_devices.rs`.
     fn commands_and_their_first_statements() -> Vec<(String, String)> {
         [
             include_str!("sync.rs"),
@@ -1500,6 +1505,7 @@ mod tests {
             include_str!("sync_kit.rs"),
             include_str!("sync_gaps.rs"),
             include_str!("sync_attachments.rs"),
+            include_str!("sync_devices.rs"),
         ]
         .into_iter()
         .flat_map(commands_of)
@@ -1552,11 +1558,12 @@ mod tests {
                     .or_else(|| line.strip_prefix("commands::sync_kit::"))
                     .or_else(|| line.strip_prefix("commands::sync_gaps::"))
                     .or_else(|| line.strip_prefix("commands::sync_attachments::"))
+                    .or_else(|| line.strip_prefix("commands::sync_devices::"))
             })
             .map(|name| name.trim_end_matches(','))
             .collect();
         assert_eq!(found, registered);
-        assert_eq!(found.len(), 38);
+        assert_eq!(found.len(), 44);
         for (name, first_three) in &commands {
             // The flag itself, a read-only question, and the way out of an enabled profile.
             if [
@@ -1603,6 +1610,7 @@ mod tests {
             (include_str!("sync.rs"), "sync_delete_synced_data"),
             (include_str!("sync.rs"), "sync_change_server_address"),
             (include_str!("sync_gaps.rs"), "sync_skip_missing_change"),
+            (include_str!("sync_devices.rs"), "sync_remove_devices"),
         ] {
             let body = command_body_in(source, name);
             let given = body
@@ -1659,6 +1667,7 @@ mod tests {
                 include_str!("sync_pairing.rs"),
                 "sync_join_with_recovery_kit",
             ),
+            (include_str!("sync_devices.rs"), "sync_remove_devices"),
         ] {
             let body = command_body_in(source, name);
             let mapped = body

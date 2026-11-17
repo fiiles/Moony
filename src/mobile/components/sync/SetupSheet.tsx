@@ -167,7 +167,7 @@ export function SetupSheet({ onClose }: SetupSheetProps) {
 
   const handleFinish = async () => {
     try {
-      await finishSetup.mutateAsync({ deviceName: deviceName.trim(), kitSaved: kitKept });
+      await finishSetup.mutateAsync({ deviceName: deviceName.trim() });
       toast(t('setup.device.success'));
       onClose();
     } catch (error) {

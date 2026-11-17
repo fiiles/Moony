@@ -11,7 +11,6 @@ import { copyToWebviewClipboard } from '@/utils/recovery-kit-lifetime';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
-  groupAccountNumber,
   recoveryCodeGroups,
   recoveryKitHtml,
   recoveryKitText,
@@ -122,10 +121,6 @@ export function KitBody({
           data-testid="recovery-kit-qr"
         />
         <div className="grid min-w-0 gap-1">
-          <span className="text-m-sub font-semibold text-ink-3">
-            {t('setup.kit.file.accountLabel')}
-          </span>
-          <span className="text-m-row text-ink num">{groupAccountNumber(kit.accountNumber)}</span>
           {kit.relayUrl && (
             <span className="break-all text-m-caption text-ink-3">
               {t('mobile:labelValue', {

@@ -1057,3 +1057,70 @@ async fn a_new_kit_that_never_started_working_leaves_a_notice() {
     assert!(notice.kit_replaced, "{notice:?}");
     assert_eq!(notice.by.as_deref(), Some("iPhone"));
 }
+
+// ---------------------------------------------------------------------------------------------
+// What the wire shows (revision §6.5, Task 24): the plan with names, the list and the status after
+// a removal, as `sync_removal_plan`, `sync_list_devices` and `get_sync_status` answer them.
+
+#[tokio::test]
+async fn the_plan_the_list_and_the_status_speak_in_names_across_a_removal() {
+    use crate::models::sync::{
+        ReplacesKit as ReplacesKitView, SyncDeviceStatus, SyncFormerReason, SyncJoinedVia,
+        SyncRemovalNotice,
+    };
+    use crate::services::sync::devices::list_devices;
+    use crate::services::sync::engine::status::{status_at, Runtime};
+    use crate::services::sync::view;
+
+    let three = three().await;
+    {
+        let a = three.vault.a.lock();
+        let plan = rotate::plan(&a, &[C], &[], true, NOW).expect("plan");
+        let shown = view::plan_view(&a, &plan, NOW).expect("view");
+        let names = |devices: &[crate::models::sync::RemovalPlanDevice]| -> Vec<String> {
+            devices.iter().map(|d| d.name.clone()).collect()
+        };
+        assert_eq!(names(&shown.removing), vec!["iPad"]);
+        assert_eq!(names(&shown.staying), vec!["Mac", "iPhone"]);
+        assert!(shown.staying[0].this_device);
+        assert!(shown.dropping_out.is_empty());
+        assert_eq!(shown.replaces_kit, ReplacesKitView::Asked);
+        assert_eq!(shown.consent, plan.consent);
+
+        let list = list_devices(&a, NOW).expect("list");
+        assert_eq!(list.len(), 3);
+        assert!(list.iter().all(|d| d.status == SyncDeviceStatus::Active));
+        let phone = list.iter().find(|d| d.name == "iPhone").expect("phone");
+        assert_eq!(phone.joined_via, SyncJoinedVia::Paired);
+        assert_eq!(phone.added_by.as_deref(), Some("Mac"));
+        assert!(
+            !status_at(&a, &Runtime::default(), NOW)
+                .expect("status")
+                .removal_pending
+        );
+    }
+
+    remove(&three, A, &[C]).await.expect("removal");
+    settle(&three).await;
+
+    // The remover lists the removed device as a former one, removed by it.
+    let list = list_devices(&three.vault.a.lock(), NOW).expect("list");
+    let ipad = list.iter().find(|d| d.name == "iPad").expect("iPad");
+    assert_eq!(ipad.status, SyncDeviceStatus::Former);
+    assert_eq!(ipad.former_reason, Some(SyncFormerReason::Removed));
+    assert_eq!(ipad.state_by.as_deref(), Some("Mac"));
+    // The other device that stayed learns who removed whom, and says so.
+    let b = three.vault.b.lock();
+    let status = status_at(&b, &Runtime::default(), NOW).expect("status");
+    assert_eq!(
+        status.removal_notice.as_ref().map(|n| (&n.by, &n.removed)),
+        Some((&"Mac".to_string(), &vec!["iPad".to_string()]))
+    );
+    let _: Option<SyncRemovalNotice> = status.removal_notice;
+    assert!(status.removal_supported);
+    let list = list_devices(&b, NOW).expect("list");
+    assert_eq!(
+        list.iter().find(|d| d.name == "iPad").map(|d| d.status),
+        Some(SyncDeviceStatus::Former)
+    );
+}

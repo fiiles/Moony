@@ -21,7 +21,6 @@ import {
 } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY, biometricCopy } from '@/lib/biometrics';
 import { biometryMethodKey, lockAfterOption, renderTextRef } from '@/mobile/lib/settings-summary';
-import { SyncKitSheet } from '@/mobile/components/sync/SyncKitSheet';
 import { ChangePasswordSheet } from '@/mobile/sheets/ChangePasswordSheet';
 
 const KEEP_SAFE_ICONS = { password: KeyRound, recoveryKey: FileKey, kit: LifeBuoy } as const;
@@ -43,7 +42,6 @@ export default function SecuritySection() {
   const { enable, disable } = useBiometricEnrolment();
   const [lockMinutes, setLockMinutes] = useState(() => readBackgroundLockMinutes(deviceStorage()));
   const [passwordOpen, setPasswordOpen] = useState(false);
-  const [kitOpen, setKitOpen] = useState(false);
   const featureOn = useDeviceSyncFeature();
   const { data: syncStatus } = useDeviceSyncStatus();
   const keepSafe = keepSafeItems(featureOn, syncIsOn(featureOn, syncStatus));
@@ -119,11 +117,9 @@ export default function SecuritySection() {
                 item={item}
                 title={ts(`keepSafe.${item}.title`)}
                 sub={ts(`keepSafe.${item}.text`)}
-                onShow={() => setKitOpen(true)}
               />
             ))}
           </EntityRows>
-          {keepSafe.includes('kit') && <SyncKitSheet open={kitOpen} onOpenChange={setKitOpen} />}
         </>
       )}
       <ChangePasswordSheet open={passwordOpen} onOpenChange={setPasswordOpen} />
@@ -132,25 +128,14 @@ export default function SecuritySection() {
 }
 
 /**
- * One row of "Co si uschovat". The Kit row opens its sheet (which asks for the device password
- * first); the other two only say what the secret is for, so they carry no chevron and no press
- * state (`EntityRow` without `onClick`).
+ * One row of "Co si uschovat": each only says what the secret is for, so they carry no chevron
+ * and no press state (`EntityRow` without `onClick`). The Kit can no longer be shown again
+ * (revision §2.2); its row waits for the Kit row of Settings → Sync (Task 31).
  */
-function KeepSafeRow({
-  item,
-  title,
-  sub,
-  onShow,
-}: {
-  item: KeepSafeItem;
-  title: string;
-  sub: string;
-  onShow: () => void;
-}) {
+function KeepSafeRow({ item, title, sub }: { item: KeepSafeItem; title: string; sub: string }) {
   const Icon = KEEP_SAFE_ICONS[item];
   // The sub-line is the explanation itself, so it wraps instead of ending with an ellipsis
   const text = <span className="block whitespace-normal">{sub}</span>;
-  if (item === 'kit') return <SettingsRow icon={Icon} title={title} sub={text} onClick={onShow} />;
   return (
     <EntityRow
       chip={

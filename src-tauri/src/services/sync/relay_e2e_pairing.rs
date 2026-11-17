@@ -89,7 +89,7 @@ async fn join_and_converge(
         20,
         "the holder's finances reached the new device"
     );
-    let listed = list_devices(&holder.db.lock()).expect("devices");
+    let listed = list_devices(&holder.db.lock(), 1_800_000_000).expect("devices");
     assert!(
         listed
             .iter()

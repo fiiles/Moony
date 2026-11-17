@@ -50,12 +50,11 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.startCheckout,
     onSuccess: refreshSyncState,
   });
-  // gcTime 0: the kit holds the vault key, so its result leaves the mutation cache with the screen.
+  // gcTime 0: the kit holds its seed, so its result leaves the mutation cache with the screen.
   // The device password is required every time (audit M11) and TanStack Query keeps a mutation's
-  // variables in its state, so both kit mutations take none: the password travels in a ref that
-  // `mutationFn` empties (the pattern of `unlockWithPassword` in `use-auth.tsx`). The setup and
-  // Show Recovery Kit screens call `prepareKitWithPassword` / `showKitWithPassword`, and `reset()`
-  // the mutation when the kit leaves the screen.
+  // variables in its state, so the kit mutation takes none: the password travels in a ref that
+  // `mutationFn` empties (the pattern of `unlockWithPassword` in `use-auth.tsx`). The setup screens
+  // call `prepareKitWithPassword`, and `reset()` the mutation when the kit leaves the screen.
   const prepareKitPassword = useRef<string | null>(null);
   const prepareRecoveryKit = useMutation<RecoveryKit, Error, void>({
     mutationFn: async () => {
@@ -74,8 +73,7 @@ export function useDeviceSyncMutations() {
   // variable and must not linger.
   const copyRecoveryCode = useMutation({ mutationFn: deviceSyncApi.copyRecoveryCode });
   const finishSetup = useMutation({
-    mutationFn: ({ deviceName, kitSaved }: { deviceName: string; kitSaved: boolean }) =>
-      deviceSyncApi.finishSetup(deviceName, kitSaved),
+    mutationFn: ({ deviceName }: { deviceName: string }) => deviceSyncApi.finishSetup(deviceName),
     onSuccess: refreshLocalData,
   });
   const syncNow = useMutation({
@@ -87,20 +85,6 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.downloadEverything,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-sync-status'] }),
   });
-  const showKitPassword = useRef<string | null>(null);
-  const showRecoveryKit = useMutation<RecoveryKit, Error, void>({
-    mutationFn: async () => {
-      const password = showKitPassword.current;
-      showKitPassword.current = null;
-      if (password === null) throw new Error('No password to show the kit with');
-      return deviceSyncApi.showRecoveryKit(password);
-    },
-    gcTime: 0,
-  });
-  const showKitWithPassword = (password: string) => {
-    showKitPassword.current = password;
-    return showRecoveryKit.mutateAsync();
-  };
   // No password: cancelling a setup that has not finished (with sync on it is required).
   const turnOff = useMutation({
     mutationFn: (password: string | void) =>
@@ -177,8 +161,6 @@ export function useDeviceSyncMutations() {
     finishSetup,
     syncNow,
     downloadEverything,
-    showRecoveryKit,
-    showKitWithPassword,
     turnOff,
     deleteSyncedData,
     repairDevice,

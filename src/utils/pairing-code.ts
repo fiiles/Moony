@@ -12,9 +12,10 @@ export function stripInvisible(text: string): string {
   return text.trim().replace(/[\p{White_Space}\u200B-\u200D\uFEFF]/gu, '');
 }
 
-const RECOVERY_CODE = /^[0-9A-HJKMNP-TV-Z]{80}$/;
+/** The kit code (format v2, the account inside): 95 Crockford characters, shown as 19 groups of five. */
+const RECOVERY_CODE = /^[0-9A-HJKMNP-TV-Z]{95}$/;
 
-/** The same normalisation as `decode_recovery_code` in Rust: separators go, ASCII upper case, I/L to 1, O to 0. */
+/** The same normalisation as `decode_kit_code` in Rust: separators go, ASCII upper case, I/L to 1, O to 0. */
 function normalizeRecoveryCode(text: string): string {
   return text
     .replace(/[\p{White_Space}\-\u2010-\u2015]/gu, '')
@@ -25,7 +26,7 @@ function normalizeRecoveryCode(text: string): string {
 
 /**
  * What a scanned or typed text is: a pairing code, a Sync Recovery Kit QR, a typed recovery code
- * (80 Crockford characters once spaces and dashes go), a connection code of a self-hosted sync
+ * (95 Crockford characters once spaces and dashes go), a connection code of a self-hosted sync
  * server (`moony-sync<n>:`, any version) or something else.
  */
 export function scannedCodeKind(text: string): ScannedCodeKind {

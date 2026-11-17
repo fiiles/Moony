@@ -10,7 +10,6 @@ import { ApiError } from '@/lib/api-error';
 import { deviceSyncApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
-  groupAccountNumber,
   recoveryCodeGroups,
   toBase64,
   recoveryKitHtml,
@@ -113,12 +112,6 @@ export function RecoveryKitPanel({
           data-testid="recovery-kit-qr"
         />
         <div className="min-w-0 grid gap-1">
-          <span className="text-caption font-700 text-ink-2">
-            {t('setup.kit.file.accountLabel')}
-          </span>
-          <span className="num text-body font-600 text-ink">
-            {groupAccountNumber(kit.accountNumber)}
-          </span>
           {kit.relayUrl && (
             <span className="break-all text-micro font-500 text-ink-3">
               {t('setup.kit.file.relayLabel')}: {kit.relayUrl}

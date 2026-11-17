@@ -325,6 +325,7 @@ fn check(
             "[SYNC] A key change is signed by device {}, which may not speak here",
             &by.to_hex()[..8]
         );
+        note_unverified_signer(conn, by)?;
         return Ok(Step::Unverified);
     };
     if known_gone(conn, by)? {
@@ -332,6 +333,7 @@ fn check(
             "[SYNC] A key change is signed by device {}, which this device knows was removed",
             &by.to_hex()[..8]
         );
+        note_unverified_signer(conn, by)?;
         return Ok(Step::Unverified);
     }
     let Ok(Verified {
@@ -341,6 +343,7 @@ fn check(
     }) = unverified.verify(&pinned.sign_pub)
     else {
         log::warn!("[SYNC] A key change's signature does not verify");
+        note_unverified_signer(conn, by)?;
         return Ok(Step::Unverified);
     };
     // What the bundle says of older epochs must agree with what this device holds.
@@ -380,6 +383,15 @@ fn check(
         new_heads,
         by,
     })))
+}
+
+/// A key change this device cannot verify names its signer: the status says who made it
+/// ("Změnu provedlo zařízení {by}, které toto zařízení nezná", `SyncStatus::rejoin_by`), by the
+/// name the device list has for it or the first 8 hex characters of its ID (R-35). Local; the
+/// next key change adopted clears it (`adopt`).
+fn note_unverified_signer(conn: &Connection, by: DeviceId) -> Result<()> {
+    let value = serde_json::json!({ "by": super::device_name(conn, by)? }).to_string();
+    state::set_config_text(conn, state::KEY_CHANGE_UNVERIFIED_KEY, Some(&value))
 }
 
 /// Whether `device` is a Recovery Kit here: a Kit entry, or a row whose certificate is a Kit's
@@ -451,6 +463,7 @@ fn adopt(conn: &Connection, prepared: Prepared, rekey: &Rekey, now: i64) -> Resu
             });
         }
         keys::store_key_change(conn, &next)?;
+        state::set_config_text(conn, state::KEY_CHANGE_UNVERIFIED_KEY, None)?;
         for (epoch, head) in &new_heads {
             state::record_epoch(conn, *epoch, *head, None, now)?;
         }

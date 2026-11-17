@@ -633,6 +633,12 @@ pub const REMOVAL_NOT_DONE_KEY: &str = "sync.removal_not_done";
 /// ("Připojit znovu") until sync is turned off. Value: the unix time it gave up.
 pub const KEY_CHANGE_STUCK_KEY: &str = "sync.key_change_stuck";
 
+/// The Local `app_config` key holding who made the key change this device could not verify
+/// (`{"by": "<name>"}`; revision §6.4, `SyncStatus::rejoin_by`): written when a pickup meets a key
+/// change signed by a device that may not speak here, cleared by the next key change this device
+/// adopts, by turning sync off and by a join's replace.
+pub const KEY_CHANGE_UNVERIFIED_KEY: &str = "sync.key_change_unverified";
+
 /// The Local `app_config` key counting database failures of the commit of a key change the sync
 /// server took (`rekey::rotate`): three in a row give up (`KEY_CHANGE_STUCK_KEY`).
 pub const KEY_CHANGE_COMMIT_FAILURES_KEY: &str = "sync.key_change_commit_failures";
@@ -648,7 +654,8 @@ pub const TRUST_REFRESH_OWED_KEY: &str = "sync.trust_refresh_owed";
 
 /// The Local keys every turn-off and every join's replace clear besides those listed before
 /// them (review of Tasks 17–21).
-pub const REVIEW_KEYS: [&str; 5] = [
+pub const REVIEW_KEYS: [&str; 6] = [
+    KEY_CHANGE_UNVERIFIED_KEY,
     KEY_CHANGE_STUCK_KEY,
     KEY_CHANGE_COMMIT_FAILURES_KEY,
     SERVER_KIT_KEY,

@@ -633,6 +633,7 @@ mod tests {
             attachments: Default::default(),
             last_complete_at: None,
             protects_data: false,
+            ..Default::default()
         };
         let count = |sync: Option<&SyncStatus>| {
             list_milestones(&conn, today, sync)
@@ -676,6 +677,7 @@ mod tests {
             attachments: Default::default(),
             last_complete_at: Some(last_complete),
             protects_data: false,
+            ..Default::default()
         };
         let healthy = status(SyncPhase::Idle, None, today);
         let stalled = status(

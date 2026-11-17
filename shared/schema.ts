@@ -81,6 +81,12 @@ export type SyncProblem =
   | 'rateLimited'
   | 'unauthorized'
   | 'keyRotated'
+  /** The key changed and this device got no new key (nothing it can verify says it was removed). */
+  | 'keyNotGiven'
+  /** A key change could not be verified: signed by a device this one does not trust. */
+  | 'keyChangeUnverified'
+  /** This device waits for the device that changed the key to send the signed start of the change. */
+  | 'keyChangeWaiting'
   | 'secureStorage'
   | 'serverWentBack'
   | 'internal';
@@ -128,7 +134,117 @@ export interface SyncStatus {
   lastCompleteAt: number | null;
   /** Sync keeps this device's data safe now: on, nothing needs the person, a complete sync less than 7 whole UTC days old, and nothing held here that exists nowhere else (Rust `sync_protects`). */
   protectsData: boolean;
+  /** Devices can be removed from this sync (this device's certificate is pinned; `false` for a vault from before phase 5 and while sync is off). */
+  removalSupported: boolean;
+  /** A key change of this device (a removal, a new recovery kit) waits for the sync server and finishes by itself. */
+  removalPending: boolean;
+  /** Another device removed devices or made a new recovery kit; until dismissed. */
+  removalNotice: SyncRemovalNotice | null;
+  /** A removal confirmed here that a background resolution found not done. */
+  removalNotDone: SyncRemovalNotDone | null;
+  /** This device applied changes the sync server placed past a key change it hid. */
+  keyChangeOverrun: SyncKeyChangeOverrun | null;
+  /** Another device removed this one: sync is off here. Readable while sync is off. */
+  removedNotice: SyncRemovedNotice | null;
+  /** With `keyNotGiven` or `keyChangeUnverified`: the device that made the key change, which this device does not know. */
+  rejoinBy: string | null;
+  /** The device whose signed confirmation of the last key change has not come for more than a day. */
+  waitingForRemover: SyncWaitingForRemover | null;
+  /** Devices that appeared on the list outside a join, newest last; until dismissed. */
+  newDevices: SyncNewDevice[];
+  /** The vault's usable recovery kit; `null`: this device has none it can seal to. */
+  recoveryKit: SyncKitInfo | null;
+  /** The minute (unix seconds) the recovery kit was last read, when that is news nobody explains. */
+  kitUsed: number | null;
+  /** This device joined with the recovery kit and sends nothing until the person decides ("Data jsou zpět"). */
+  afterKitJoin: SyncAfterKitJoin | null;
+  /** While a round runs: when it started (unix seconds); `null` otherwise. */
+  syncingSince: number | null;
+  /** The first snapshot of the data has not been uploaded or restored yet. */
+  firstUpload: boolean;
 }
+
+/** Another device's key change: who made it, when, the names it removed, and whether it made a new recovery kit. */
+export interface SyncRemovalNotice {
+  by: string;
+  /** Unix seconds (the key change's signed time). */
+  at: number;
+  removed: string[];
+  kitReplaced: boolean;
+}
+
+/**
+ * A removal the person confirmed here that did not happen: `by` changed the device list first
+ * (`null`: the sync server refused it), `devices` are the names meant to go, `alreadyRemoved`
+ * that the other change had removed every one of them, `kitReplaced` that the change was to make
+ * a new recovery kit, which then never started working.
+ */
+export interface SyncRemovalNotDone {
+  by: string | null;
+  devices: string[];
+  alreadyRemoved: boolean;
+  kitReplaced: boolean;
+}
+
+/** `at`: when this device adopted the key change the server hid (unix seconds), if it knows. */
+export interface SyncKeyChangeOverrun {
+  at: number | null;
+}
+
+/** Why sync is off on this device: `by` removed it at `at`; `unsent` changes never left it; `left`: the record was this device's own `left` record (another copy of this profile). */
+export interface SyncRemovedNotice {
+  by: string;
+  /** Unix seconds (the removal record's signed time). */
+  at: number;
+  unsent: number;
+  left: boolean;
+}
+
+/** The device whose signed confirmation of a key change is awaited, and since when (unix seconds). */
+export interface SyncWaitingForRemover {
+  by: string;
+  since: number;
+}
+
+/** A device that appeared on the list outside a join; `by` is empty when it joined with the recovery kit; `lateVouch`: left out of the next key change until kept. */
+export interface SyncNewDevice {
+  id: string;
+  name: string;
+  by: string;
+  /** Unix seconds, on this device's clock. */
+  at: number;
+  viaKit: boolean;
+  lateVouch: boolean;
+}
+
+/** Where the recovery kit was kept, as far as Moony saw (the strongest value wins). */
+export type SyncKitStorage = 'paper' | 'copied' | 'file' | 'cloud';
+
+/** The vault's recovery kit as the status shows it; `storage` `null`: the person did nothing with it ("neuložená"). */
+export interface SyncKitInfo {
+  /** Unix seconds. */
+  createdAt: number;
+  /** The creating device's name; `null` when it is no longer on the list. */
+  createdBy: string | null;
+  storage: SyncKitStorage | null;
+  /** The minute the sync server says it was last read (unix seconds). */
+  lastReadAt: number | null;
+}
+
+/** The devices that were on the list when this device joined with the kit (names), and the newest change among them (unix seconds). */
+export interface SyncAfterKitJoin {
+  names: string[];
+  newestChangeAt: number | null;
+}
+
+/** Which notice `sync_dismiss_notice` dismisses. */
+export type SyncNoticeKind =
+  | 'removal'
+  | 'removed'
+  | 'removalNotDone'
+  | 'keyChangeOverrun'
+  | 'newDevices'
+  | 'kitUsed';
 
 /**
  * Why documents and photos do not move while ordinary sync goes on (ADR 0030): `noRoom` (the
@@ -202,15 +318,18 @@ export interface SyncAccount {
  */
 export type CheckoutTarget = { kind: 'open'; url: string } | { kind: 'selfHosted' };
 
-/** The Sync Recovery Kit. Holds the vault key: never log it or keep it longer than shown. */
+/** The Sync Recovery Kit. Holds the kit's seed: never log it or keep it longer than shown. */
 export interface RecoveryKit {
-  accountNumber: string;
-  /** The recovery code as 16 groups of five joined by `-`. */
+  /** The recovery code (format v2, the account inside) as 19 groups of five joined by `-`. */
   recoveryCode: string;
   /** The QR of the kit as SVG. */
   qrSvg: string;
-  /** The relay address, only when it is not the default relay (a self-hosted one). */
+  /** The sync server's address, only when it is not the default one (a self-hosted one). */
   relayUrl: string | null;
+  /** Unix seconds: when the kit was made. */
+  createdAt: number;
+  /** The name of the device that made it (this device); `null` while setup has not recorded it yet. */
+  createdBy: string | null;
 }
 
 /** Which file of the Recovery Kit the desktop saves: the page (`.html`) or the text (`.txt`). */
@@ -238,6 +357,98 @@ export interface SyncDevice {
   thisDevice: boolean;
   /** The device's messages are held back (quarantined) here. */
   held: boolean;
+  /** `active`; `check` ("Zkontrolujte": it gets no key at the next change until kept or removed); `former` (left or removed, listed for 30 days). */
+  status: SyncDeviceStatus;
+  /** With `status = check`: why. */
+  checkReason: SyncCheckReason | null;
+  /** With `status = former`: how it went. */
+  formerReason: SyncFormerReason | null;
+  /** How the device came to the list. */
+  joinedVia: SyncJoinedVia;
+  /** The name of the device that paired it (`joinedVia = paired`), when this device knows one. */
+  addedBy: string | null;
+  /** When a former device left or was removed (unix seconds), when known. */
+  stateAt: number | null;
+  /** The name of the device that removed it, when known. */
+  stateBy: string | null;
+  /** A key change of this device that removes it waits for the sync server ("Odebírá se…"). */
+  removalPending: boolean;
+  /** Whole days since an active other device was last seen, once that is 30 or more. */
+  inactiveDays: number | null;
+}
+
+export type SyncDeviceStatus = 'active' | 'check' | 'former';
+
+/**
+ * Why a device is marked "Zkontrolujte": `unverified` (no pinned certificate, or an unknown
+ * issuer), `copy` (an older ID of a device that connected again, still writing), `issuerRemoved`
+ * (added by a device that was removed), `lateVouch` (added by a device that left, or by one left
+ * out for that, with nothing showing it happened in time).
+ */
+export type SyncCheckReason = 'unverified' | 'copy' | 'issuerRemoved' | 'lateVouch';
+
+export type SyncFormerReason = 'left' | 'removed';
+
+/** `unknown`: this device has no certificate for it (a vault from before phase 5, or not verified). */
+export type SyncJoinedVia = 'created' | 'paired' | 'recoveryKit' | 'rejoined' | 'unknown';
+
+/** What removing devices would do (`sync_removal_plan`). */
+export interface RemovalPlan {
+  /** The devices that go (those asked for and the ticked ones). */
+  removing: RemovalPlanDevice[];
+  /** The devices that keep syncing, this device included. */
+  staying: RemovalPlanDevice[];
+  /** Devices that drop out of sync with them, with the reason (only rows that are active or "Zkontrolujte"). */
+  droppingOut: RemovalDroppingOut[];
+  /** Devices a removed device added, at any depth (to tick: "Odebrat také"); the ones asked for left out. */
+  addedByRemoving: RemovalPlanDevice[];
+  /** Whether, and why, the recovery kit is replaced; a new kit then comes with the outcome. */
+  replacesKit: ReplacesKit;
+  /** The change touches no recovery kit at all ("Tímto odebráním se záchranná sada neaktualizuje."). */
+  kitNotUpdated: boolean;
+  /** Pass back to `sync_remove_devices`: a hash over what the person was shown. */
+  consent: string;
+}
+
+export interface RemovalPlanDevice {
+  id: string;
+  name: string;
+  platform: string;
+  joinedAt: number;
+  thisDevice: boolean;
+}
+
+export interface RemovalDroppingOut {
+  device: RemovalPlanDevice;
+  reason: SyncCheckReason;
+}
+
+/**
+ * `no`: the kit stays; `creatorRemoved`: it was saved on a device being removed; `cloud`: it is in
+ * a folder that syncs to a cloud; `asked`: the person asked for a new one; `missing`: this device
+ * has no kit it can seal to but the server holds one, so a new one replaces it.
+ */
+export type ReplacesKit = 'no' | 'creatorRemoved' | 'cloud' | 'asked' | 'missing';
+
+/** `done`; `pending` (the sync server did not answer, it finishes by itself); `alreadyRemoved` (another device did, `by`); `removedHere` (another device's change had removed this one: sync is off here). */
+export type RemovalOutcomeKind = 'done' | 'pending' | 'alreadyRemoved' | 'removedHere';
+
+/** What a removal did. A new recovery kit comes only here, once. */
+export interface RemovalOutcome {
+  kind: RemovalOutcomeKind;
+  by: string | null;
+  kit: RecoveryKit | null;
+}
+
+export type KitCheckResult = 'valid' | 'replaced' | 'otherSync' | 'unknown';
+
+/** The answer of "Ověřit sadu". */
+export interface KitCheck {
+  result: KitCheckResult;
+  /** `replaced`: when this device learnt of the replacement (unix seconds), if known. */
+  replacedAt: number | null;
+  /** `replaced`: when the valid kit was made (unix seconds), if known. */
+  currentCreatedAt: number | null;
 }
 
 /** Where a pairing stands on this device. */

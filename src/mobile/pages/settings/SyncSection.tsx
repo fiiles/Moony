@@ -7,7 +7,6 @@ import {
   Globe,
   Eraser,
   Info,
-  KeyRound,
   Plus,
   Link2,
   RefreshCw,
@@ -55,7 +54,6 @@ import { ScanFlow } from '@/mobile/components/sync/ScanFlow';
 import { SetupSheet } from '@/mobile/components/sync/SetupSheet';
 import { SyncDeviceRows } from '@/mobile/components/sync/SyncDeviceRows';
 import { SyncBackupSavedSheet } from '@/mobile/components/sync/SyncBackupSavedSheet';
-import { SyncKitSheet } from '@/mobile/components/sync/SyncKitSheet';
 import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
 import { SyncStatusBlock } from '@/mobile/components/sync/SyncStatusBlock';
 import type { ReplaceSaved } from '@/mobile/lib/replace-saved';
@@ -66,7 +64,7 @@ import { sentences } from '@/mobile/lib/list-text';
 /** The key the backend sends when a repair could not send every change and replaced nothing. */
 const DRAIN_INCOMPLETE_KEY = 'validation.syncRepairDrainIncomplete';
 
-type Open = 'kit' | 'kitJoin' | 'server' | 'repair' | 'resync' | 'turnOff' | 'delete' | null;
+type Open = 'kitJoin' | 'server' | 'repair' | 'resync' | 'turnOff' | 'delete' | null;
 
 /** A scan under way: joining (sync off) or adding a device (sync on); `paste`: the code is typed or pasted. */
 type Flow = { mode: ScanMode; paste: boolean } | null;
@@ -329,11 +327,6 @@ export default function SyncSection() {
           </EntityRows>
 
           <EntityRows>
-            <SettingsRow
-              icon={KeyRound}
-              title={t('status.showKit')}
-              onClick={() => setOpen('kit')}
-            />
             {status.serverAddress && (
               <SettingsRow
                 icon={Globe}
@@ -413,7 +406,6 @@ export default function SyncSection() {
         isPending={turnOff.isPending}
       />
       <JoinChoiceSheet open={choosing} onOpenChange={setChoosing} onPick={joinWith} />
-      <SyncKitSheet open={open === 'kit'} onOpenChange={close} />
       {/* Mounted only while open: unmounting forgets the typed password and the server check */}
       {open === 'server' && <ChangeServerSheet onClose={() => setOpen(null)} />}
       <RecoveryJoinSheet open={open === 'kitJoin'} onOpenChange={close} onReplaced={replaced} />

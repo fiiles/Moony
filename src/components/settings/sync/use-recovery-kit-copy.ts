@@ -11,8 +11,6 @@ export function useRecoveryKitCopy(): RecoveryKitCopy {
     () => ({
       title: t('setup.kit.file.title'),
       intro: t('setup.kit.file.intro'),
-      accountLabel: t('setup.kit.file.accountLabel'),
-      accountNote: t('setup.kit.file.accountNote'),
       codeLabel: t('setup.kit.file.codeLabel'),
       codeNote: t('setup.kit.file.codeNote'),
       qrLabel: t('setup.kit.file.qrLabel'),

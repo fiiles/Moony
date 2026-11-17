@@ -242,6 +242,7 @@ async fn the_status_counts_pending_changes_and_held_devices() {
         rounds: 0,
         attachments_problem: None,
         kit_last_read: None,
+        round_started_at: None,
     };
 
     let status = status(&vault.a.lock(), &runtime).expect("status");
@@ -265,6 +266,9 @@ async fn the_status_counts_pending_changes_and_held_devices() {
             attachments: Default::default(),
             last_complete_at: None,
             protects_data: false,
+            // Nothing was uploaded yet, and nothing about key changes is stored.
+            first_upload: true,
+            ..Default::default()
         }
     );
 }

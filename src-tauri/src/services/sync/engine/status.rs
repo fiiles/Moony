@@ -19,7 +19,7 @@ use crate::services::sync::identity::CertKind;
 use crate::services::sync::relay::http::{
     is_default_relay, is_insecure_address, normalize_base_url,
 };
-use crate::services::sync::{devices, keys, snapshot, state};
+use crate::services::sync::{devices, keys, snapshot, state, view};
 
 /// The relay deletes a lapsed vault this long after the subscription ended (spec §11.6).
 pub const DELETE_AFTER_LAPSE: i64 = 90 * 86_400;
@@ -34,6 +34,8 @@ const NEWER_SCHEMA_KEY: &str = "validation.syncSnapshotNewerSchema";
 pub struct Runtime {
     /// A round is running.
     pub running_round: bool,
+    /// When the running round started (unix seconds); `None` between rounds (`syncingSince`).
+    pub round_started_at: Option<i64>,
     /// The problem of the last round (`None` after a clean one).
     pub problem: Option<SyncProblem>,
     /// The subscription's end, as the relay last reported it.
@@ -71,12 +73,18 @@ impl Runtime {
 /// the phase (`SyncStatus::attachments`, zeros while sync is off), never in it. The last complete
 /// sync and the verdict on it (`milestones::sync_protects`) are `None` and `false` while off.
 pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
+    status_at(conn, runtime, chrono::Utc::now().timestamp())
+}
+
+/// `status` at `now` (unix seconds): what the key-change fields judge their ages against.
+pub fn status_at(conn: &Connection, runtime: &Runtime, now: i64) -> Result<SyncStatus> {
     let address = keys::account(conn)?.map(|(url, _)| url);
     let own_server = address.as_deref().is_some_and(|url| !is_default_relay(url));
     let server_insecure = address
         .as_deref()
         .and_then(|url| normalize_base_url(url).ok())
         .is_some_and(|url| is_insecure_address(&url));
+    let removed_notice = view::removed_notice(conn)?;
     let quiet = |phase| SyncStatus {
         phase,
         problem: None,
@@ -94,6 +102,21 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         attachments: SyncAttachments::default(),
         last_complete_at: None,
         protects_data: false,
+        removal_supported: false,
+        removal_pending: false,
+        removal_notice: None,
+        removal_not_done: None,
+        key_change_overrun: None,
+        // Readable with sync off: it is why sync is off.
+        removed_notice: removed_notice.clone(),
+        rejoin_by: None,
+        waiting_for_remover: None,
+        new_devices: Vec::new(),
+        recovery_kit: None,
+        kit_used: None,
+        after_kit_join: None,
+        syncing_since: None,
+        first_upload: false,
     };
     let Some(sync) = state::load(conn)? else {
         return Ok(quiet(SyncPhase::Off));
@@ -146,6 +169,7 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
             log::warn!("[SYNC] Documents and photos could not be counted for the status: {error}");
         })
         .ok();
+    let extras = view::extras(conn, runtime, now)?;
     let mut shown = SyncStatus {
         phase,
         problem,
@@ -163,6 +187,20 @@ pub fn status(conn: &Connection, runtime: &Runtime) -> Result<SyncStatus> {
         attachments: attachments(summary.as_ref(), runtime),
         last_complete_at: marks.last_complete_at,
         protects_data: false,
+        removal_supported: extras.removal_supported,
+        removal_pending: extras.removal_pending,
+        removal_notice: extras.removal_notice,
+        removal_not_done: extras.removal_not_done,
+        key_change_overrun: extras.key_change_overrun,
+        removed_notice,
+        rejoin_by: extras.rejoin_by,
+        waiting_for_remover: extras.waiting_for_remover,
+        new_devices: extras.new_devices,
+        recovery_kit: extras.recovery_kit,
+        kit_used: extras.kit_used,
+        after_kit_join: extras.after_kit_join,
+        syncing_since: extras.syncing_since,
+        first_upload: extras.first_upload,
     };
     // What is left to upload comes from the same pass as the figures; a summary that cannot be
     // read counts as content left, so the verdict is never "protected" on an error.

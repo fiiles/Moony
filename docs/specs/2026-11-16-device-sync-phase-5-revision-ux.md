@@ -1613,3 +1613,103 @@ R-78. **A left signer's confirmed set vouches for nothing** (review of R-75). A 
      Test: `kit_join::a_left_signers_confirmed_set_vouches_for_nothing`. Also (R-73's sentinel):
      `fetched_snapshot_at` answers a private `KeyAhead` instead of reusing `SyncError::ReadOnlyToken`;
      `fetched_snapshot` (repair, re-sync) still reads it as `syncKeyRotated`.
+
+**Task 24 (commands, status and the wire, §6.5).**
+
+R-79. **Status fields** (`engine::status::status_at`, the stores read by `services::sync::view`).
+     Named as §6.5 has them, not as the plan's notes did: `removalPending` (= `rotate::pending`),
+     `removalNotice` (= `rekey::key_change_notice`: `{by, at, removed, kitReplaced}`), `removalNotDone`
+     (`{by, devices, alreadyRemoved, kitReplaced}`), `keyChangeOverrun` (`{at}`: the time this device
+     adopted the epoch the server hid, from `sync_epochs.adopted_at`, the notice itself has none),
+     `removedNotice` (`{by, at, unsent, left}`, **filled with sync off too**: it is why sync is off),
+     `rejoinBy`, `waitingForRemover`, `newDevices`, `recoveryKit`, `kitUsed`, `afterKitJoin`,
+     `syncingSince`, `firstUpload`, `removalSupported` (`trust::is_supported`, false while off). The
+     notices are wire types of `models/sync.rs`, not the `rekey` structs (no `deny_unknown_fields`
+     coupling). `waitingForRemover = {by, since}` is the **oldest non-refuted unverified epoch adopted
+     more than a day ago**, whatever the problem is: the UI shows it beside `keyChangeWaiting` (the
+     pull's own stop) or `keyRotated`; a refuted one is `keyChangeUnverified` and not waiting.
+     `newDevices` resolves names (this device's list, else 8 hex), leaves out devices no longer
+     `trusted` here, gives `by = ""` for a Kit joiner, and flags `lateVouch` only for the `LateVouch`
+     exclusion. `recoveryKit = {createdAt, createdBy (null when the creator is not on the list),
+     storage (null = "neuložená"), lastReadAt}` from `kit::current`; `null` = no usable Kit.
+     `afterKitJoin.names` are the held devices' names. `syncingSince` is
+     `Runtime::round_started_at` while a round runs. `firstUpload` = no snapshot uploaded **or
+     restored** here yet (`snapshot_seq` and `snapshot_uploaded_at` both empty). `kitUsed` is
+     `status::kit_used` against `Runtime::kit_last_read`.
+R-80. **The device list** (`devices::list_devices(conn, now)`; `sync_list_devices` passes the wall
+     clock): every row but the Kit's (`is_kit_row`, platform, entry kind 5; without a bound vault only
+     the platform test), each as `active | check | former`: **this device** always active; a pinned
+     entry by its state (`Left` / `Removed` → former with `stateAt`, `stateBy`); a `Trusted` entry by
+     `trust::recipients(&[])`'s exclusion: `IssuerRemoved` → check/`issuerRemoved`, `LateVouch` →
+     check/`lateVouch`, **`IssuerUnknown` → check/`unverified`** (the "{by} no longer syncs" text would
+     be wrong for it), `SupersededQuiet` → not listed (O11), a superseded ID that still writes →
+     check/**`copy`** (the UI appends the localised "(kopie)", the name is the row's own); a row with
+     no entry → check/`unverified` in a phase-5 vault, active/`unknown` in an older one (all rows);
+     a row marked removed and never pinned → former, with the facts of its record read **unverified,
+     for display only**. A `LateVouch` **descendant** (R-6) also reads `lateVouch`, its `addedBy` then
+     naming a device that is itself "Zkontrolujte": Task 26's text may soften "no longer syncs" there.
+     Former rows are listed for 30 days after their state time (`FORMER_LISTED_SECS`; unknown time:
+     listed); `inactiveDays` is set for an active **other** device unseen for **30 or more** days
+     (`INACTIVE_AFTER_DAYS`, my choice: the offline limit of a key change; the spec gives no number),
+     counted from `joined_at` when it never wrote. `joinedVia` from the entry's kind; `addedBy` only for
+     paired devices. Order: this device, then active, check, former; newest change first. A vault over
+     64 devices lists without verdicts instead of failing.
+R-81. **Commands** (`commands/sync_devices.rs`, all flag-first, scanned by
+     `every_sync_command_checks_the_flag_first`, now 44): `sync_removal_plan(deviceIds, alsoRemove,
+     newKit)`; `sync_remove_devices(password, deviceIds, alsoRemove, newKit, consent)` (empty password
+     refused, then checked, then `guarded_change`: the engine stops, `rotate::remove` runs, the
+     engine **starts again and its first round sends the records and the re-sealed changes**, so the
+     command runs no round of its own); `sync_check_recovery_kit(code)`; `sync_keep_device(deviceId) ->
+     bool` (`trust::keep`, then `rekey::refresh_trust` with the data folder; no password);
+     `sync_kit_join_decided(removeThem)` (lifts the hold, wakes the engine; the argument is only
+     logged: the UI has removed them before it calls); `sync_dismiss_notice(kind)` with the enum
+     `SyncNoticeKind` (`removal | removed | removalNotDone | keyChangeOverrun | newDevices | kitUsed`),
+     no answer (the UI refetches the status). **Deviations from the notes:** (a) **`sync_removal_plan`
+     does not run a round first**: a round run inside a command would bypass the runtime's own
+     binding-file and removed-here handling, so the command wakes the engine and builds the plan on
+     what the list holds; `remove` catches up (`vault_info` → pickup) and re-plans, and a changed plan
+     is `syncRemovalPlanChanged`, which the dialog already handles. (b) `RemovalOutcomeKind` has a
+     fourth value **`removedHere`** (a pickup inside `remove` found this device removed; the status
+     carries `removedNotice`). `Raced` and `Stuck` never reach the wire: they are errors
+     (`syncRotationRaced`, an internal one: the status then shows the rejoin state). (c) The new Kit of
+     `done` or `pending` is put into the process-global copy window (`open_kit_draft`, ten minutes)
+     so copy, print and save work on it; for `pending` the storage the person notes lives only in the
+     draft, because the Kit's row is written at the commit (a background commit writes `NULL`:
+     "neuložená" although it was saved; accepted, the Kit row's "Vytvořit novou sadu" is the way out).
+R-82. **`RemovalPlan` wire:** `{removing, staying, droppingOut: {device, reason}[], addedByRemoving,
+     replacesKit, kitNotUpdated, consent}` with `RemovalPlanDevice {id, name, platform, joinedAt,
+     thisDevice}` (a device the list has no row for is left out of the lists). `replacesKit` is
+     `'no' | 'creatorRemoved' | 'cloud' | 'asked' | 'missing'` (R-57's `missing` added to §6.5's four)
+     and `kitNotUpdated` is R-57's flag. `droppingOut` holds only excluded devices the **list shows as
+     active or check** (so a left or removed one never shows as "will also stop syncing"), reasons
+     `issuerRemoved | lateVouch | unverified` (`IssuerUnknown`, `Unverified`, `NoKey` → `unverified`).
+     `SyncCheckReason` is the type of both. `RecoveryKit` is `{recoveryCode (19 groups), qrSvg,
+     relayUrl, createdAt, createdBy}`; `createdBy` is **null in setup** until the device row is
+     recorded (the UI shows the typed device name there).
+R-83. **R-35 built:** the Local `sync.key_change_unverified = {"by": name}` (`state::
+     KEY_CHANGE_UNVERIFIED_KEY`, cleared by turning sync off, a join's replace and the next key change
+     adopted) is written by `pickup::check` whenever the signer may not speak, was removed, or its
+     signature fails; the name is the list's, else 8 hex of its ID. `rejoinBy` reads it.
+R-84. **Locales:** the validation keys the wire needs were mostly there already (R-42, R-64:
+     `syncRecoveryKitReplaced`, `syncRecoveryKitUnreadable`, `syncRecoveryVaultNotFound`,
+     `syncRemovalPlanChanged`); Task 24 rewords `syncRotationRaced`, `syncTooManyKeyChanges` and
+     `syncTooManyDevices` in all ten locales per §6.2 and §4.4 (no "klíč" any more). **The texts of
+     the status's notices, problems, the device list and the Kit rows are not added here**: per the
+     plan's convention each UI task (25–31) adds its own, with the component that shows it.
+R-85. **Frontend adapted, minimally** (the UI tasks redo it): `tauri-api.ts` gains `removalPlan`,
+     `removeDevices`, `checkRecoveryKit`, `keepDevice`, `kitJoinDecided`, `dismissNotice`,
+     `printRecoveryKit`; loses `showRecoveryKit`; `finishSetup(deviceName)` and `joinWithRecoveryKit`
+     lose `kitSaved` and `account`. The two "show the Kit again" flows (`ShowRecoveryKitFlow.tsx`,
+     `SyncKitSheet.tsx`) and the buttons that opened them (Keep-safe card, sync status card, phone
+     sync and security sections) are **deleted**; the Keep-safe rows keep their text. The Kit join
+     forms lose the account field; the kit page and file lose the account line; `RecoveryKit` has no
+     `accountNumber`. `scannedCodeKind` reads a 95-character code, `payloadServer` and
+     `kitQrSummary` read `moony-recover:2:<code>[:<server>]` (the phone's QR confirmation no longer
+     shows an account). `useSyncDevices` leaves former devices out (`select`) until the list shows
+     them. `problemAction` maps the three new problems to `none`. **Still wrong until their tasks:**
+     the setup flows tick "Uložil(a) jsem si…" and finish (R-38: finish refuses with
+     `syncRecoveryKitNotConfirmed` unless the code was copied, printed or saved first: Tasks 27, 31);
+     `status.rotationPending`-style fields are unused; no text exists yet for `keyNotGiven`,
+     `keyChangeUnverified` or `keyChangeWaiting` (Task 29); `deviceSync.json` keeps now-unused keys
+     (`showKit.*`, `status.showKit`, `join.accountLabel`, `setup.kit.file.account*`,
+     `keepSafe.kit.show`): the UI tasks drop them.

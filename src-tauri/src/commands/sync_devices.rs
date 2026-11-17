@@ -24,7 +24,7 @@ use crate::services::sync::hlc::DeviceId;
 use crate::services::sync::identity::trust;
 use crate::services::sync::identity::KitSecret;
 use crate::services::sync::rekey::kit::NewKit;
-use crate::services::sync::rekey::rotate::{self, Outcome, Removal};
+use crate::services::sync::rekey::rotate::{self, Outcome, Removal, ReplacesKit};
 use crate::services::sync::{join, keys, setup, view};
 
 /// The plan changed meanwhile, or never made sense: the dialog reloads and asks again.
@@ -98,9 +98,15 @@ pub async fn sync_remove_devices(
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     let owner = kit_owner(&app, &db)?;
-    if new_kit {
-        // Everything the new kit's view needs is checked before anything is sent: after the
-        // commit the old kit is gone and the new one's seed lives only in memory.
+    // Everything the new kit's view needs is checked before anything is sent: after the commit
+    // the old kit is gone and the new one's seed lives only in memory. Any removal that makes a
+    // kit, asked for or not (its creator or a cloud kit removed with it; final review M-2); a plan
+    // that does not build is left to the removal, which refuses it the same way.
+    let makes_kit = new_kit
+        || db
+            .with_conn(|conn| rotate::plan(conn, &removing, &[], false, now()))
+            .is_ok_and(|plan| plan.replaces_kit != ReplacesKit::No);
+    if makes_kit {
         db.with_conn(precheck_kit_view)?;
     }
     let removal = mapped_for_server(stored_relay_url(&db)?, async {

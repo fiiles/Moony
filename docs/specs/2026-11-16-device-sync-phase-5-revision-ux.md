@@ -2038,3 +2038,10 @@ R-108. **Saving the Kit on the phone counts** (final review I-2). "Uložit nebo 
      `sync_note_recovery_kit_saved` (phone only, within the copy window, `with_kit_draft`), which records
      `cloud` (`setup::note_phone_kit_saved`): the picker does not say where the file went, so the strongest,
      most cautious value. Test: `setup::a_phone_save_alone_finishes_setup_as_a_cloud_kit`.
+R-109. **Smaller review fixes** (final review I-1, M-2, M-5). (a) `shared/generated-types.ts` is the
+     generator's output again (a Prettier pass had reformatted it and CI's drift check failed);
+     `.prettierignore` lists it. (b) `sync_remove_devices` checks that a new Kit's view can be built
+     (`precheck_kit_view`) for any removal whose plan replaces the Kit (`replaces_kit` other than `No`: its
+     creator or a cloud Kit removed with it), not only when "Vytvořit novou sadu" was asked for. (c) Migration
+     041's comment says `kit_storage` keeps the strongest value (R-54), not "last-writer-wins" (comment only);
+     ADR 0032 names the As built range up to R-110.

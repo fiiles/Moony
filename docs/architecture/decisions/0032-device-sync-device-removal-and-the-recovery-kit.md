@@ -8,7 +8,7 @@ Accepted. Records phase 5 of device sync as built on `feat/sync-device-removal`:
 `docs/specs/2026-11-16-device-sync-phase-5-removal-design.md` ("the phase-5 spec") and its revision
 `docs/specs/2026-11-16-device-sync-phase-5-revision-ux.md` ("the revision"), whose decisions D1–D4
 the owner took on 2026-11-16. Where they differ, the revision wins, and its "As built (revision)"
-list (R-1 to R-103) supersedes the text above it; the phase-5 spec's own "As built" items 1–69 stay
+list (R-1 to R-110) supersedes the text above it; the phase-5 spec's own "As built" items 1–69 stay
 true except where the revision says otherwise. Builds on [ADR 0024](0024-device-sync-capture-clocks-merge.md),
 [ADR 0025](0025-device-sync-relay-client.md), [ADR 0026](0026-device-sync-pairing.md),
 [ADR 0027](0027-device-sync-audit-fixes.md), [ADR 0029](0029-self-hosted-sync-server-in-the-app.md)

@@ -3594,10 +3594,11 @@ INSERT INTO sync_epochs (epoch, rotation_head, adopted_at)
 "#;
 
 /// 041: the Recovery Kit as a paper device and automatic confirmation (spec
-/// 2026-11-16-device-sync-phase-5-revision-ux §7.2). `sync_devices.kit_storage` (Synced,
-/// last-writer-wins, only on the Kit's row): where the Kit was saved (`paper`, `copied`, `file`,
-/// `cloud`), NULL while it was not. `sync_trust_seen` (Local): the relay position at which this
-/// device first saw a device's certificate or `left` record (the first one wins).
+/// 2026-11-16-device-sync-phase-5-revision-ux §7.2). `sync_devices.kit_storage` (Synced, the
+/// strongest value wins, As built R-54, only on the Kit's row): where the Kit was saved (`paper`,
+/// `copied`, `file`, `cloud`), NULL while it was not. `sync_trust_seen` (Local): the relay
+/// position at which this device first saw a device's certificate or `left` record (the first one
+/// wins).
 /// `sync_tickets` (Local): the join tickets holders announced, with the announcing device and the
 /// relay position. `sync_trust.kit_unconfirmed` and `sync_state.kit_epoch_saved` stay unused.
 pub(crate) const MIGRATION_041: &str = r#"

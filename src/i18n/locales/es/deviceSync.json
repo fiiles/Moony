@@ -157,6 +157,7 @@
       "keepFirst": "Primero imprime, guarda o copia el kit.",
       "saveFile": "Guardar como archivo…",
       "saveShare": "Guardar o compartir…",
+      "saveShareAndroid": "Guardar como archivo…",
       "introPhone": "Si pierdes todos los dispositivos a la vez, solo este kit recupera tus datos. Guárdalo lejos de este teléfono, con tus documentos o en un gestor de contraseñas. Puedes imprimirlo desde la página guardada."
     },
     "device": {

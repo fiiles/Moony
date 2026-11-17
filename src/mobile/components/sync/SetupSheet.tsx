@@ -250,6 +250,7 @@ export function SetupSheet({ onClose, onAddDevice }: SetupSheetProps) {
       <Sheet
         open={!scanning}
         full
+        locked={busy}
         onOpenChange={(open) => {
           if (!open && !busy) onClose();
         }}

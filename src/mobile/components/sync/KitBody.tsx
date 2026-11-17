@@ -15,17 +15,19 @@ import { recoveryCodeGroups, recoveryKitHtml, toBase64 } from '@/utils/recovery-
 import { useExportTextFile } from '@/mobile/hooks/use-export-text-file';
 import { errorKind } from '@/mobile/lib/error-kind';
 import { SYNC_KIT_PAGE_FILE, exportsOnThisDevice } from '@/mobile/lib/export-file';
+import { phoneCopyKey } from '@/mobile/lib/platform-copy';
 
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
 const WIDE_BUTTON = `${BUTTON} w-full [&_svg]:size-[18px]`;
 
 /**
  * The recovery kit as the phone shows it, in setup and after a key change: QR, grouped code, and the
- * ways to keep it (copy the code; on iOS "Save or share…" hands the kit's page to the Files picker,
- * from where it can be printed). `onKept` is called once the code was copied or a file was saved. Copying works
- * only shortly after the kit was shown; `onPasswordRequired` is then called instead of a failure
- * toast. After five minutes, or as soon as the app is hidden, `onExpired` is called: the caller
- * drops the kit (state and mutation result) and asks the password again.
+ * ways to keep it (copy the code; "Save or share…" hands the kit's page to the iOS Files picker,
+ * "Save as file…" to Android's save picker, from where it can be printed). `onKept` is called once
+ * the code was copied or a file was saved. Copying works only shortly after the kit was shown;
+ * `onPasswordRequired` is then called instead of a failure toast. After five minutes, or as soon as
+ * the app is hidden, `onExpired` is called: the caller drops the kit (state and mutation result) and
+ * asks the password again.
  */
 export function KitBody({
   kit,
@@ -155,7 +157,7 @@ export function KitBody({
           {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
           {copied ? t('setup.kit.copied') : t('setup.kit.copyCode')}
         </Button>
-        {/* The Files picker exports on iOS only: elsewhere no button that only apologises */}
+        {/* The save picker exports on the phones only: elsewhere no button that only apologises */}
         {exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? '') && (
           <Button
             variant="secondary"
@@ -164,7 +166,7 @@ export function KitBody({
             onClick={() => void save()}
           >
             <Download aria-hidden />
-            {t('setup.kit.saveShare')}
+            {t(phoneCopyKey('setup.kit.saveShare'))}
           </Button>
         )}
       </div>

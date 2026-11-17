@@ -126,6 +126,8 @@ export function NewKitSheet({
     <Sheet
       open
       full
+      // While it works, only the result closes it (not the scrim, a drag or Android back)
+      locked={!planning}
       onOpenChange={(open) => {
         if (!open && planning) onClose();
       }}

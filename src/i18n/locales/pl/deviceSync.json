@@ -161,6 +161,7 @@
       "keepFirst": "Najpierw wydrukuj, zapisz lub skopiuj zestaw.",
       "saveFile": "Zapisz jako plik…",
       "saveShare": "Zapisz lub udostępnij…",
+      "saveShareAndroid": "Zapisz jako plik…",
       "introPhone": "Jeśli stracisz wszystkie urządzenia naraz, dane przywróci tylko ten zestaw. Zapisz go z dala od tego telefonu, na przykład z dokumentami albo w menedżerze haseł. Możesz go wydrukować z zapisanej strony."
     },
     "device": {

@@ -32,6 +32,7 @@ export function SyncBackupSavedSheet({ saved, onClose }: SyncBackupSavedSheetPro
   return (
     <Sheet
       open={saved !== null}
+      locked={busy}
       onOpenChange={(next) => {
         if (!next && !busy) onClose();
       }}

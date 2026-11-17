@@ -38,7 +38,8 @@ export function NewKitStep({
     <Sheet
       open
       full
-      // Nothing closes this sheet but its button: the kit is shown only now
+      // Nothing closes this sheet but its button, not even Android back: the kit is shown only now
+      locked
       onOpenChange={() => undefined}
       title={t('newKit.title')}
       description={gone ? undefined : t('newKit.bodyPhone')}
@@ -69,7 +70,7 @@ export function NewKitStep({
             onPasswordRequired={onGone}
             onExpired={onGone}
           />
-          {/* The phone has no print button: copy, or save or share */}
+          {/* The phone has no print button: copy, or save it */}
           {!kept && <p className="m-0 text-m-sub text-ink-4">{t('setup.kit.saveFirst')}</p>}
         </div>
       )}

@@ -92,6 +92,7 @@ export function SyncPasswordSheet({
     <Sheet
       open={open}
       onOpenChange={change}
+      locked={busy}
       title={title}
       description={description}
       footer={

@@ -153,6 +153,7 @@
       "keepFirst": "First print, save or copy the kit.",
       "saveFile": "Save as file…",
       "saveShare": "Save or share…",
+      "saveShareAndroid": "Save as file…",
       "introPhone": "If you lose every device at once, only this kit gets your data back. Save it away from this phone, with your documents or in a password manager. You can print it from the saved page."
     },
     "device": {

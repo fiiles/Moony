@@ -55,6 +55,7 @@ export function RenameDeviceSheet({ device, onOpenChange }: RenameDeviceSheetPro
     <Sheet
       open={device !== null}
       onOpenChange={change}
+      locked={pending}
       title={t('devices.renameTitle')}
       dirty={device !== null && trimmed !== device.name}
       footer={

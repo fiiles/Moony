@@ -144,6 +144,7 @@ export function RecoveryJoinSheet({
       // Out of the way of the busy cover while the data is replaced
       open={open && !busy}
       onOpenChange={change}
+      locked={busy}
       title={t('join.kitTitle')}
       description={presentation.showReplaceWarning ? t('join.warning') : undefined}
       dirty={code !== ''}

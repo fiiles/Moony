@@ -19,6 +19,7 @@ export const ANDROID_COPY_KEYS: ReadonlySet<string> = new Set([
   // deviceSync namespace
   'replace.saved.filesHint',
   'replace.saved.saveCopy',
+  'setup.kit.saveShare',
 ]);
 
 export function phoneCopyKey(

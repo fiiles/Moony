@@ -153,6 +153,7 @@
       "keepFirst": "Skriv ut, lagre eller kopier settet først.",
       "saveFile": "Lagre som fil …",
       "saveShare": "Lagre eller del…",
+      "saveShareAndroid": "Lagre som fil …",
       "introPhone": "Hvis du mister alle enhetene på en gang, er det bare dette settet som gir deg dataene tilbake. Ta vare på det borte fra denne telefonen, sammen med dokumentene dine eller i en passordbehandler. Du kan skrive det ut fra den lagrede siden."
     },
     "device": {

@@ -2150,6 +2150,22 @@ R-117. **Texts from the phone live run** (ten locales). (a) The Kit row's storag
      ráno, ." (`utils/greeting.ts`, `greeting.*NoName` and `welcomeFirstNoName`; test `greeting.test.ts`).
      (g) Owner decision O-2: a removed device's descendants stay unticked by default in "Odebrat také" (no
      change).
+R-118. **The phone's phase-5 sheets on Android** (after main's Android app merged in). (a) Android back now
+     respects the same rule as the scrim, a drag and Escape. The phone `Sheet` has `locked`: the scrim,
+     Escape and a drag do nothing, the edge swipe and Android back are held (`useHoldBack`), and a back that
+     got through anyway is refused, so the sheet keeps its history entry (`sheetCloseVerdict`, locked wins
+     over dirty). Before, a sheet that ignored `onOpenChange(false)` still lost its entry to back, and the
+     next back left the screen with the sheet, and the kit shown only once, under it. Locked: the new kit
+     step ("Sadu mám, hotovo") always; "Vytvořit novou sadu" and "Odebrat zařízení" while they work; setup,
+     the Kit join, the sync password, renaming and "Uložit kopii" while busy. The removed notice still
+     closes on back as on the scrim, and the notice stays. (b) The kit's save button reads "Uložit jako
+     soubor…" on Android (`setup.kit.saveShareAndroid` through `phoneCopyKey`; Android's picker saves, it
+     does not share); iOS keeps "Uložit nebo sdílet…". The save goes through main's Android path (staged in
+     the cache, copied into the picked `content://` document by `write_staged_export`) and still records the
+     storage `cloud`. (c) No other change was needed: `sync_note_recovery_kit_saved` and the print command
+     are gated by `cfg(mobile)` / `cfg(desktop)`, which take Android in; the native code copy answers
+     `Unsupported` on Android, so the webview copies and shows the clipboard hint. Tests:
+     `sheet-close.test.ts`, `platform-copy.test.ts` (failing first). Not run on an Android device yet.
 
 As run (Task 33, phone, 2026-11-17). iOS 27.0 simulator "LC-iPhone-SE-3rd-generation" (375 pt; a 320 pt
 iPhone no longer runs iOS 27 and Display Zoom was not reachable, so 320 px was checked in the Browser pane

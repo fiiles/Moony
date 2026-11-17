@@ -153,6 +153,7 @@
       "keepFirst": "Skriv ut, spara eller kopiera kitet först.",
       "saveFile": "Spara som fil …",
       "saveShare": "Spara eller dela…",
+      "saveShareAndroid": "Spara som fil …",
       "introPhone": "Om du förlorar alla enheter på en gång är det bara det här kitet som ger dig tillbaka dina data. Förvara det utanför den här telefonen, till exempel med dina handlingar eller i en lösenordshanterare. Du kan skriva ut det från den sparade sidan."
     },
     "device": {

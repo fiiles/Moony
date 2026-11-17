@@ -14,6 +14,23 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// The Kotlin half of rustls-platform-verifier, which reqwest's TLS calls through JNI to check
+// certificates with Android's trust manager (initialised in lib.rs, `init_android_tls_verifier`).
+// The rustls project publishes it as a Maven repository on GitHub; its version must be the one of
+// the `rustls-platform-verifier-android` crate in Cargo.lock, so it is read from there.
+repositories {
+    maven {
+        url = uri("https://github.com/rustls/rustls-platform-verifier/raw/maven-archive/android-release-support/maven/")
+    }
+}
+
+val rustlsPlatformVerifierVersion: String = file("../../../Cargo.lock").readLines().let { lines ->
+    val crate = lines.indexOfFirst { it.trim() == "name = \"rustls-platform-verifier-android\"" }
+    check(crate >= 0) { "rustls-platform-verifier-android not found in Cargo.lock" }
+    lines.drop(crate + 1).first { it.trimStart().startsWith("version = ") }
+        .substringAfter('"').substringBefore('"')
+}
+
 android {
     compileSdk = 37
     namespace = "com.moonyfinance.mobile"
@@ -75,6 +92,7 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.10.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
+    implementation("org.rustls:rustls-platform-verifier:$rustlsPlatformVerifierVersion")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.4")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.0")

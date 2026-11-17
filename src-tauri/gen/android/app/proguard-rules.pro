@@ -19,3 +19,6 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# rustls-platform-verifier's Kotlin half is called only through JNI (reqwest's TLS on Android):
+# keep it from being stripped as dead code.
+-keep, includedescriptorclasses class org.rustls.platformverifier.** { *; }

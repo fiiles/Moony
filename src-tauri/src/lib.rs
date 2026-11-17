@@ -91,6 +91,30 @@ fn spawn_device_backup_exclusion(app: tauri::AppHandle) {
     });
 }
 
+/// Android only: hand the JVM and the activity's context to `rustls-platform-verifier`, which
+/// reqwest's TLS uses to check certificates through Android's own trust manager. Without it the
+/// first HTTPS request panics ("Expect rustls-platform-verifier to be initialized"). Its Kotlin
+/// half is the `org.rustls:rustls-platform-verifier` AAR (`gen/android/app/build.gradle.kts`).
+/// tao has put the JVM and the context into `ndk-context` by the time `setup` runs. The verifier
+/// keeps one global reference to the context for the life of the process. A failure is logged:
+/// HTTPS then fails request by request instead of the app not starting.
+#[cfg(target_os = "android")]
+fn init_android_tls_verifier() {
+    let android = ndk_context::android_context();
+    // SAFETY: tao initialised ndk-context with the process' JavaVM and the activity it runs in;
+    // both pointers stay valid while the Rust side runs.
+    let vm = unsafe { jni::JavaVM::from_raw(android.vm().cast()) };
+    let result = vm.attach_current_thread(|env| -> Result<(), jni::errors::Error> {
+        // SAFETY: a live global reference to the activity (`ndk-context`), see above.
+        let context = unsafe { jni::objects::JObject::from_raw(env, android.context().cast()) };
+        rustls_platform_verifier::android::init_with_env(env, context)
+    });
+    match result {
+        Ok(()) => log::info!("[NET] TLS certificate verifier ready"),
+        Err(e) => log::error!("[NET] TLS certificate verifier not initialised: {e}"),
+    }
+}
+
 /// Desktop `main` and the generated iOS / Android entry points all start here. The body runs
 /// inside Tauri's own tokio runtime (`async_runtime::block_on`), the same multi-thread runtime
 /// the commands and `tokio::spawn` calls use, so nothing changes for the desktop; a
@@ -113,6 +137,9 @@ async fn run_app() {
         .plugin(logging::plugin())
         .setup(|app| {
             logging::log_startup_banner();
+            // Before anything can make an HTTPS request (prices, rates, sync)
+            #[cfg(target_os = "android")]
+            init_android_tls_verifier();
             spawn_legacy_temp_cleanup(app.handle().clone());
             #[cfg(mobile)]
             spawn_staged_export_sweep(app.handle().clone());

@@ -226,14 +226,17 @@ export function FormerDevicesSheet({
           })}
         </EntityRows>
         <p className="mx-0.5 mb-2 mt-3.5 text-m-sub text-ink-3">{t('devices.hideNote')}</p>
-        <Button
-          variant="ghost"
-          className={BUTTON}
-          loading={hideFormerDevices.isPending && hidingId === null}
-          onClick={() => void hide(formerDeviceIds(devices), null)}
-        >
-          {t('devices.hideAll')}
-        </Button>
+        {/* One former device has its own button in its sheet: "all" only for several */}
+        {devices.length > 1 && (
+          <Button
+            variant="ghost"
+            className={BUTTON}
+            loading={hideFormerDevices.isPending && hidingId === null}
+            onClick={() => void hide(formerDeviceIds(devices), null)}
+          >
+            {t('devices.hideAll')}
+          </Button>
+        )}
       </Sheet>
       <Sheet
         open={open && viewing !== null}

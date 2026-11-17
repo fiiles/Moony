@@ -113,15 +113,18 @@ export function SyncDevicesCard() {
                 <p className="m-0 min-w-0 flex-1 basis-[280px] text-caption text-ink-3">
                   {t('devices.hideNote')}
                 </p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  loading={hideFormerDevices.isPending && hidingId === null}
-                  onClick={() => void hide(formerDeviceIds(former), null)}
-                >
-                  {t('devices.hideAll')}
-                </Button>
+                {/* One former device has its own button in its row: "all" only for several */}
+                {former.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    loading={hideFormerDevices.isPending && hidingId === null}
+                    onClick={() => void hide(formerDeviceIds(former), null)}
+                  >
+                    {t('devices.hideAll')}
+                  </Button>
+                )}
               </div>
               {former.map(row)}
             </CollapsibleContent>

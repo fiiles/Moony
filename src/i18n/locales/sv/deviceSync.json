@@ -504,7 +504,9 @@
       "title": "En säkerhetskopia sparades på den här telefonen",
       "where": "Den finns under Inställningar → Säkerhetskopia och överföring. Moony tar aldrig bort den; bara du kan göra det.",
       "filesHint": "Moonys data lämnas utanför telefonens egna säkerhetskopior. Spara en kopia i Filer om du vill nå den här säkerhetskopian utanför Moony.",
-      "saveCopy": "Spara en kopia i Filer"
+      "filesHintAndroid": "Moonys data lämnas utanför telefonens egna säkerhetskopior. Spara en kopia om du vill nå den här säkerhetskopian utanför Moony.",
+      "saveCopy": "Spara en kopia i Filer",
+      "saveCopyAndroid": "Spara en kopia"
     },
     "onThisDevice": "På den här enheten:"
   },

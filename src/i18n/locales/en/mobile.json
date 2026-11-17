@@ -647,7 +647,7 @@
         "menu": "Dividend options"
       },
       "follow": "Watch",
-      "following": "Watching",
+      "openWatch": "Open in watchlist",
       "followed": "Added to the watchlist",
       "range52": "52-week range",
       "renamed": "Name saved",
@@ -814,23 +814,29 @@
     "lastOn": "Last backup {{date}}",
     "never": "No backup yet",
     "what": "Save it to iCloud Drive or another folder in Files. Moony has no access to it.",
+    "whatAndroid": "Save it to Google Drive or another folder you choose. Moony has no access to it.",
     "notSaved": "Backup not saved",
     "unavailableHere": "Backups work on iPhone only for now.",
     "restoreTitle": "Restore and transfer",
     "restoreLead": "Restore a backup from this phone, or transfer a profile from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created.",
     "restoreConfirmDescription": "The backup from {{date}} (Moony {{version}}, {{attachments}} attachments, {{size}}) replaces the data on this phone. Back up first if you want to keep the current data. Moony then locks; unlock it with the password that was in use when the backup was made.",
     "osBackupNote": "The profile is not saved in the phone's own backup (iCloud or a computer). The Moony backup you save yourself is the only copy outside this phone.",
+    "osBackupNoteAndroid": "The profile is not saved in the phone's own backup (Google or a computer). The Moony backup you save yourself is the only copy outside this phone.",
     "exportSummary": "{{tables}} tables, {{rows}} rows.",
     "notHere_one": "{{count}} document or photo is not on this phone and is not in this backup.",
     "notHere_other": "{{count}} documents and photos are not on this phone and are not in this backup.",
     "syncLead": "Moony saves a backup before sync replaces data on this phone. Moony's data is left out of your phone's own backups, so this list and Files are the only way to reach them.",
+    "syncLeadAndroid": "Moony saves a backup before sync replaces data on this phone. Moony's data is left out of your phone's own backups, so this list and the copies you save are the only way to reach them.",
     "syncSaveCopy": "Save a copy to Files",
+    "syncSaveCopyAndroid": "Save a copy",
     "syncCopySaved": "A copy was saved to Files",
+    "syncCopySavedAndroid": "A copy was saved",
     "syncLeadNoFiles": "Moony saves a backup before sync replaces data on this phone. You can restore or delete them here.",
     "syncNoCopy": "Saving a copy outside Moony is not available on this phone yet. A backup can be restored from this list. It is lost if Moony's data is removed from the phone.",
     "leadSync": "Sync keeps your devices in step. A backup is one encrypted file for a one-off move or a copy to keep: the database, the keys and the documents and photos on this phone. Only your password opens it.",
     "restoreLeadSync": "Restore a backup from this phone, or move a profile once from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created. Sync keeps your devices in step.",
-    "osBackupNoteSync": "The profile is not saved in the phone's own backup (iCloud or a computer). Outside this phone, your data is on the sync server and your other devices once it has synced, and in any Moony backup you save yourself."
+    "osBackupNoteSync": "The profile is not saved in the phone's own backup (iCloud or a computer). Outside this phone, your data is on the sync server and your other devices once it has synced, and in any Moony backup you save yourself.",
+    "osBackupNoteSyncAndroid": "The profile is not saved in the phone's own backup (Google or a computer). Outside this phone, your data is on the sync server and your other devices once it has synced, and in any Moony backup you save yourself."
   },
   "firstRun": {
     "privacyLead": "Moony stores everything in an encrypted database on this phone. No cloud, no account with us.",
@@ -842,7 +848,9 @@
       "localOnly": {
         "title": "No cloud",
         "text": "– we send nothing anywhere; you save the backup to Files or iCloud Drive yourself.",
-        "textSync": "– your data leaves this phone only if you turn on sync, and then end-to-end encrypted to a sync server you choose; you save the backup to Files or iCloud Drive yourself."
+        "textAndroid": "– we send nothing anywhere; you save the backup to Google Drive or a folder you choose yourself.",
+        "textSync": "– your data leaves this phone only if you turn on sync, and then end-to-end encrypted to a sync server you choose; you save the backup to Files or iCloud Drive yourself.",
+        "textSyncAndroid": "– your data leaves this phone only if you turn on sync, and then end-to-end encrypted to a sync server you choose; you save the backup to Google Drive or a folder you choose yourself."
       },
       "marketData": {
         "title": "Market data",
@@ -850,7 +858,9 @@
       }
     },
     "recoveryLead": "The only way to your data if you forget the password. Store it outside this phone: in a password manager, in Files, or on paper.",
+    "recoveryLeadAndroid": "The only way to your data if you forget the password. Store it outside this phone: in a password manager, in Google Drive, or on paper.",
     "saveToFiles": "Save to Files",
+    "saveToFilesAndroid": "Save to a file",
     "recoveryFileNote": "This key resets your Moony password. It works only together with the Moony data on this phone or a backup of it, so keep that backup too. Do not give this file to anyone.",
     "areasLead": "Choose what you want to track in Moony. You can change this anytime in Settings.",
     "firstAccountLead": "A name and a balance are enough. You can import a statement later.",
@@ -862,6 +872,7 @@
     "backupTitle": "Back up your data",
     "protectTitle": "Protect your data",
     "backupLead": "This phone holds the only copy of your data, and it is not in the phone's own backup (iCloud or a computer). Save an encrypted backup to iCloud Drive or a folder you choose; Moony never sees it.",
+    "backupLeadAndroid": "This phone holds the only copy of your data, and it is not in the phone's own backup (Google or a computer). Save an encrypted backup to Google Drive or a folder you choose; Moony never sees it.",
     "syncLead": "Have a sync server?",
     "syncLink": "Set up sync",
     "currencyPick": "Main currency",

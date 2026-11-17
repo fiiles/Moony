@@ -609,7 +609,7 @@
         "menu": "股息菜单"
       },
       "follow": "关注",
-      "following": "已关注",
+      "openWatch": "在关注列表中打开",
       "followed": "已添加到自选列表",
       "range52": "52 周区间",
       "renamed": "名称已保存",
@@ -767,22 +767,28 @@
     "lastOn": "上次备份 {{date}}",
     "never": "尚无备份",
     "what": "请保存到 iCloud Drive 或“文件”App 中的其他文件夹。Moony 无法访问该文件。",
+    "whatAndroid": "请保存到 Google 云端硬盘或您选择的其他文件夹。Moony 无法访问该文件。",
     "notSaved": "备份未保存",
     "unavailableHere": "备份功能目前仅支持 iPhone。",
     "restoreTitle": "恢复与迁移",
     "restoreLead": "恢复这部手机上的备份，或从电脑上的 Moony 迁移个人资料：选择备份文件，恢复后请使用创建备份时的密码解锁。",
     "restoreConfirmDescription": "创建于 {{date}} 的备份（Moony {{version}}，{{attachments}} 个附件，{{size}}）将替换这部手机上的数据。如需保留当前数据，请先备份。之后 Moony 会锁定；请使用创建该备份时的密码解锁。",
     "osBackupNote": "个人资料不会保存到手机自身的备份中（iCloud 或电脑）。您自己保存的 Moony 备份是手机之外的唯一副本。",
+    "osBackupNoteAndroid": "个人资料不会保存到手机自身的备份中（Google 或电脑）。您自己保存的 Moony 备份是手机之外的唯一副本。",
     "exportSummary": "{{tables}} 个表，{{rows}} 行。",
     "notHere_other": "{{count}} 个文档和照片不在这部手机上，也不在此备份中。",
     "syncLead": "在同步替换此手机上的数据之前，Moony 会先保存一份备份。Moony 的数据不包含在手机自身的备份中，因此这份列表和“文件”是访问它们的唯一途径。",
+    "syncLeadAndroid": "在同步替换此手机上的数据之前，Moony 会先保存一份备份。Moony 的数据不包含在手机自身的备份中，因此这份列表和您保存的副本是访问它们的唯一途径。",
     "syncSaveCopy": "将副本保存到“文件”",
+    "syncSaveCopyAndroid": "保存副本",
     "syncCopySaved": "副本已保存到“文件”",
+    "syncCopySavedAndroid": "副本已保存",
     "syncLeadNoFiles": "在同步替换此手机上的数据之前，Moony 会先保存一份备份。您可以在此恢复或删除它们。",
     "syncNoCopy": "目前此手机尚不支持将副本保存到 Moony 之外。可以从此列表恢复备份。如果 Moony 的数据从手机中删除，备份也会丢失。",
     "leadSync": "同步让您的设备保持一致。备份是一个加密文件，用于一次性迁移或保存副本：包含数据库、密钥以及这部手机上的文档和照片。只有您的密码能打开它。",
     "restoreLeadSync": "从这部手机恢复备份，或从电脑上的 Moony 一次性迁移配置文件：选择备份文件，恢复后用创建时使用的密码解锁。设备之间由同步保持一致。",
-    "osBackupNoteSync": "配置文件不会保存到手机自带的备份中（iCloud 或电脑）。在这部手机之外，已同步的数据存放在同步服务器和您的其他设备上，以及您自己保存的 Moony 备份中。"
+    "osBackupNoteSync": "配置文件不会保存到手机自带的备份中（iCloud 或电脑）。在这部手机之外，已同步的数据存放在同步服务器和您的其他设备上，以及您自己保存的 Moony 备份中。",
+    "osBackupNoteSyncAndroid": "配置文件不会保存到手机自带的备份中（Google 或电脑）。在这部手机之外，已同步的数据存放在同步服务器和您的其他设备上，以及您自己保存的 Moony 备份中。"
   },
   "firstRun": {
     "privacyLead": "Moony 将所有内容存放在这部手机上的加密数据库中。没有云端，也无需在我们这里注册账户。",
@@ -794,7 +800,9 @@
       "localOnly": {
         "title": "没有云端",
         "text": "——我们不会向任何地方发送数据；备份需要您自己保存到“文件”App 或 iCloud Drive。",
-        "textSync": "——只有在您开启同步时，数据才会离开这部手机，并且只会以端到端加密的方式发送到您选择的同步服务器；备份需要您自己保存到“文件”App 或 iCloud Drive。"
+        "textAndroid": "——我们不会向任何地方发送数据；备份需要您自己保存到 Google 云端硬盘或您选择的文件夹。",
+        "textSync": "——只有在您开启同步时，数据才会离开这部手机，并且只会以端到端加密的方式发送到您选择的同步服务器；备份需要您自己保存到“文件”App 或 iCloud Drive。",
+        "textSyncAndroid": "——只有在您开启同步时，数据才会离开这部手机，并且只会以端到端加密的方式发送到您选择的同步服务器；备份需要您自己保存到Google 云端硬盘或您选择的文件夹。"
       },
       "marketData": {
         "title": "市场数据",
@@ -802,7 +810,9 @@
       }
     },
     "recoveryLead": "忘记密码时，这是找回数据的唯一途径。请将其保存在这部手机之外——密码管理器、“文件”App，或写在纸上。",
+    "recoveryLeadAndroid": "忘记密码时，这是找回数据的唯一途径。请将其保存在这部手机之外——密码管理器、Google 云端硬盘，或写在纸上。",
     "saveToFiles": "存储到“文件”",
+    "saveToFilesAndroid": "保存到文件",
     "recoveryFileNote": "此密钥用于重置您的 Moony 密码。它必须与这部手机上的 Moony 数据或其备份配合使用，因此请同时保存备份。请不要把此文件交给任何人。",
     "areasLead": "选择您想在 Moony 中管理的内容。您可以随时在设置中更改。",
     "firstAccountLead": "只需名称和余额即可。账单可以稍后再导入。",
@@ -814,6 +824,7 @@
     "backupTitle": "备份您的数据",
     "protectTitle": "保护您的数据",
     "backupLead": "这部手机上保存着您数据的唯一副本，它不在手机自身的备份（iCloud 或电脑）中。请将加密备份保存到 iCloud Drive 或您选择的文件夹；Moony 永远看不到它。",
+    "backupLeadAndroid": "这部手机上保存着您数据的唯一副本，它不在手机自身的备份（Google 或电脑）中。请将加密备份保存到 Google 云端硬盘或您选择的文件夹；Moony 永远看不到它。",
     "syncLead": "您有同步服务器吗？",
     "syncLink": "设置同步",
     "currencyPick": "主货币",

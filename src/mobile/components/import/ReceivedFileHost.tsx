@@ -8,8 +8,11 @@ import { useReturnWalkActive } from '@/mobile/hooks/use-sheet-history';
 import { errorKind } from '@/mobile/lib/error-kind';
 import { createReceivedQueue, createSerialDrain } from '@/mobile/lib/received-queue';
 
-/** Only the iOS shell registers the received-files commands (`#[cfg(mobile)]` in Rust). */
-const receivesFiles = () => import.meta.env.TAURI_ENV_PLATFORM === 'ios';
+/** Only the phone shells register the received-files commands (`#[cfg(mobile)]` in Rust). */
+const receivesFiles = () => {
+  const platform: string = import.meta.env.TAURI_ENV_PLATFORM ?? '';
+  return platform === 'ios' || platform.startsWith('android');
+};
 
 /**
  * Opens a statement the system handed to Moony (the share sheet, "Open in Moony", spec §8.6) in

@@ -685,7 +685,7 @@
         "menu": "Menu del dividendo"
       },
       "follow": "Segui",
-      "following": "Seguita",
+      "openWatch": "Apri tra le seguite",
       "followed": "Aggiunta alla lista di osservazione",
       "range52": "Intervallo 52 settimane",
       "renamed": "Nome salvato",
@@ -861,24 +861,30 @@
     "lastOn": "Ultimo backup {{date}}",
     "never": "Ancora nessun backup",
     "what": "Salvalo su iCloud Drive o in un'altra cartella nell'app File. Moony non vi ha accesso.",
+    "whatAndroid": "Salvalo su Google Drive o in un'altra cartella a tua scelta. Moony non vi ha accesso.",
     "notSaved": "Backup non salvato",
     "unavailableHere": "Per ora il backup funziona solo su iPhone.",
     "restoreTitle": "Ripristino e trasferimento",
     "restoreLead": "Ripristina un backup di questo telefono oppure trasferisci un profilo da Moony sul computer: scegli il file del backup e, dopo il ripristino, sblocca con la password in uso quando è stato creato.",
     "restoreConfirmDescription": "Il backup del {{date}} (Moony {{version}}, {{attachments}} allegati, {{size}}) sostituisce i dati su questo telefono. Se vuoi conservare i dati attuali, fai prima un backup. In seguito Moony si bloccherà; sbloccalo con la password in uso quando il backup è stato creato.",
     "osBackupNote": "Il profilo non viene salvato nel backup del telefono (iCloud o computer). Il backup di Moony che salvi tu è l'unica copia fuori dal telefono.",
+    "osBackupNoteAndroid": "Il profilo non viene salvato nel backup del telefono (Google o computer). Il backup di Moony che salvi tu è l'unica copia fuori dal telefono.",
     "exportSummary": "{{tables}} tabelle, {{rows}} righe.",
     "notHere_one": "{{count}} documento o foto non è su questo telefono né in questo backup.",
     "notHere_many": "{{count}} documenti e foto non sono su questo telefono né in questo backup.",
     "notHere_other": "{{count}} documenti e foto non sono su questo telefono né in questo backup.",
     "syncLead": "Moony salva un backup prima che la sincronizzazione sostituisca i dati su questo telefono. I dati di Moony sono esclusi dai backup del tuo telefono, quindi questo elenco e File sono l'unico modo per raggiungerli.",
+    "syncLeadAndroid": "Moony salva un backup prima che la sincronizzazione sostituisca i dati su questo telefono. I dati di Moony sono esclusi dai backup del tuo telefono, quindi questo elenco e le copie che salvi sono l'unico modo per raggiungerli.",
     "syncSaveCopy": "Salva una copia in File",
+    "syncSaveCopyAndroid": "Salva una copia",
     "syncCopySaved": "Una copia è stata salvata in File",
+    "syncCopySavedAndroid": "Una copia è stata salvata",
     "syncLeadNoFiles": "Moony salva un backup prima che la sincronizzazione sostituisca i dati su questo telefono. Qui puoi ripristinarli o eliminarli.",
     "syncNoCopy": "Salvare una copia fuori da Moony non è ancora disponibile su questo telefono. Un backup si può ripristinare da questo elenco. Va perso se i dati di Moony vengono rimossi dal telefono.",
     "leadSync": "La sincronizzazione tiene allineati i tuoi dispositivi. Un backup è un unico file cifrato per un trasferimento una tantum o una copia da conservare: il database, le chiavi e i documenti e le foto su questo telefono. Lo apre solo la tua password.",
     "restoreLeadSync": "Ripristina un backup da questo telefono, oppure trasferisci una volta un profilo da Moony sul computer: scegli il file del backup e, dopo il ripristino, sblocca con la password in uso quando è stato creato. La sincronizzazione tiene allineati i dispositivi.",
-    "osBackupNoteSync": "Il profilo non viene salvato nel backup del telefono (iCloud o computer). Fuori da questo telefono, i tuoi dati, una volta sincronizzati, si trovano sul server di sincronizzazione e sugli altri dispositivi, e in ogni backup di Moony che salvi tu."
+    "osBackupNoteSync": "Il profilo non viene salvato nel backup del telefono (iCloud o computer). Fuori da questo telefono, i tuoi dati, una volta sincronizzati, si trovano sul server di sincronizzazione e sugli altri dispositivi, e in ogni backup di Moony che salvi tu.",
+    "osBackupNoteSyncAndroid": "Il profilo non viene salvato nel backup del telefono (Google o computer). Fuori da questo telefono, i tuoi dati, una volta sincronizzati, si trovano sul server di sincronizzazione e sugli altri dispositivi, e in ogni backup di Moony che salvi tu."
   },
   "firstRun": {
     "privacyLead": "Moony conserva tutto in un database cifrato su questo telefono. Nessun cloud, nessun account presso di noi.",
@@ -890,7 +896,9 @@
       "localOnly": {
         "title": "Nessun cloud",
         "text": "– non inviamo nulla altrove; il backup lo salvi tu in File o su iCloud Drive.",
-        "textSync": "– i tuoi dati lasciano questo telefono solo se attivi la sincronizzazione, e allora solo cifrati end-to-end verso un server di sincronizzazione che scegli tu; il backup lo salvi tu in File o su iCloud Drive."
+        "textAndroid": "– non inviamo nulla altrove; il backup lo salvi tu su Google Drive o in una cartella a tua scelta.",
+        "textSync": "– i tuoi dati lasciano questo telefono solo se attivi la sincronizzazione, e allora solo cifrati end-to-end verso un server di sincronizzazione che scegli tu; il backup lo salvi tu in File o su iCloud Drive.",
+        "textSyncAndroid": "– i tuoi dati lasciano questo telefono solo se attivi la sincronizzazione, e allora solo cifrati end-to-end verso un server di sincronizzazione che scegli tu; il backup lo salvi tu su Google Drive o in una cartella a tua scelta."
       },
       "marketData": {
         "title": "Dati di mercato",
@@ -898,7 +906,9 @@
       }
     },
     "recoveryLead": "È l'unico modo per accedere ai tuoi dati se dimentichi la password. Conservala fuori da questo telefono: in un gestore di password, in File o su carta.",
+    "recoveryLeadAndroid": "È l'unico modo per accedere ai tuoi dati se dimentichi la password. Conservala fuori da questo telefono: in un gestore di password, su Google Drive o su carta.",
     "saveToFiles": "Salva in File",
+    "saveToFilesAndroid": "Salva in un file",
     "recoveryFileNote": "Questa chiave reimposta la tua password di Moony. Funziona solo insieme ai dati di Moony su questo telefono o a un loro backup, quindi conserva anche quel backup. Non dare questo file a nessuno.",
     "areasLead": "Scegli cosa vuoi seguire in Moony. Puoi modificarlo in qualsiasi momento in Impostazioni.",
     "firstAccountLead": "Bastano un nome e un saldo. L'estratto conto lo importerai più tardi.",
@@ -910,6 +920,7 @@
     "backupTitle": "Fai il backup dei tuoi dati",
     "protectTitle": "Proteggi i tuoi dati",
     "backupLead": "Questo telefono conserva l'unica copia dei tuoi dati, che non è nel backup del telefono (iCloud o computer). Salva un backup cifrato su iCloud Drive o in una cartella a tua scelta; Moony non lo vede mai.",
+    "backupLeadAndroid": "Questo telefono conserva l'unica copia dei tuoi dati, che non è nel backup del telefono (Google o computer). Salva un backup cifrato su Google Drive o in una cartella a tua scelta; Moony non lo vede mai.",
     "syncLead": "Hai un server di sincronizzazione?",
     "syncLink": "Configura la sincronizzazione",
     "currencyPick": "Valuta principale",

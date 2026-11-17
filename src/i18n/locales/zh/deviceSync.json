@@ -492,7 +492,9 @@
       "title": "此手机上已保存一份备份",
       "where": "它列在 设置 → 备份与迁移 中。Moony 不会删除它，只有您可以。",
       "filesHint": "Moony 的数据不包含在手机自身的备份中。若想在 Moony 之外访问此备份，请将副本保存到“文件”。",
-      "saveCopy": "将副本保存到“文件”"
+      "filesHintAndroid": "Moony 的数据不包含在手机自身的备份中。若想在 Moony 之外访问此备份，请保存一份副本。",
+      "saveCopy": "将副本保存到“文件”",
+      "saveCopyAndroid": "保存副本"
     },
     "onThisDevice": "此设备上："
   },

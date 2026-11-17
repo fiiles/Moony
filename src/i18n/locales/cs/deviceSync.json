@@ -528,7 +528,9 @@
       "title": "V tomto telefonu byla uložena záloha",
       "where": "Najdete ji v Nastavení → Záloha a přenos. Moony ji nikdy nesmaže, jen vy.",
       "filesHint": "Data Moony se do vlastních záloh telefonu nezahrnují. Uložte kopii do Souborů, chcete-li se k záloze dostat mimo Moony.",
-      "saveCopy": "Uložit kopii do Souborů"
+      "filesHintAndroid": "Data Moony se do vlastních záloh telefonu nezahrnují. Uložte kopii, chcete-li se k záloze dostat mimo Moony.",
+      "saveCopy": "Uložit kopii do Souborů",
+      "saveCopyAndroid": "Uložit kopii"
     },
     "onThisDevice": "V tomto zařízení:"
   },

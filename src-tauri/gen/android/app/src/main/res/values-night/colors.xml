@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The canvas token of the dark theme (src/index.css) -->
+    <color name="moony_canvas">#1A1917</color>
+</resources>

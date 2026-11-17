@@ -33,7 +33,7 @@ import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { bankAccountsApi, learnedFormatsApi, receivedFilesApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { utcDayFloor } from '@/utils/chart-axis';
-import { dialogPathToFsPath } from '@/mobile/lib/export-file';
+import { pickedFilePath } from '@/mobile/lib/picked-files';
 import { guideForAccount, guidesList } from '@/mobile/lib/export-guide';
 import { useRecognition } from '@/mobile/hooks/use-recognition';
 import {
@@ -69,8 +69,15 @@ export interface Unreadable {
 const PRESETS_KEY = ['csv-presets'] as const;
 const ACCOUNTS_KEY = ['bank-accounts'] as const;
 
-/** The copies iOS makes of a shared or picked file are plaintext in the app's Inbox: only there. */
-const discardsCopies = () => import.meta.env.TAURI_ENV_PLATFORM === 'ios';
+/**
+ * The copies of a shared or picked file are plaintext in the app's inbox folder: iOS makes them,
+ * and on Android Rust does (from the `content://` URI). Elsewhere (the phone UI on a desktop dev
+ * shell) a path is the person's own file and is never deleted.
+ */
+const discardsCopies = () => {
+  const platform: string = import.meta.env.TAURI_ENV_PLATFORM ?? '';
+  return platform === 'ios' || platform.startsWith('android');
+};
 
 /** Deletes a received copy, best effort: a refusal means the path was not one (a desktop dev path). */
 function discardPath(copy: string) {
@@ -432,9 +439,10 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     try {
       const selected = await openFileDialog({ multiple: false, directory: false });
       if (!selected) return;
-      const picked = dialogPathToFsPath(selected);
-      // The sheet went away while the picker was up (a lock, Android back): iOS has copied the
-      // file into the app's Inbox, so nothing else will ever discard it
+      const picked = await pickedFilePath(selected);
+      // The sheet went away while the picker was up (a lock, Android back): the file was copied
+      // into the app's inbox folder (by iOS, or by Rust on Android), so nothing else will ever
+      // discard it
       if (!stillWanted()) return discardPath(picked);
       await read(picked);
     } catch (error) {

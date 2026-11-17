@@ -80,11 +80,24 @@ const pad = (value: number, width = 2) => String(value).padStart(width, '0');
 
 /**
  * The text the notification plugin takes as the date of a schedule: "2026-11-02T09:00:00.000Z".
- * The digits are the local wall-clock time and the `Z` is only a letter. That is how the plugin
- * reads it (iOS parses it with a formatter that has no time zone), so a `Date`, whose JSON is UTC,
- * would fire hours off.
+ * The plugin reads it differently per platform (`TAURI_ENV_PLATFORM`):
+ *
+ * - iOS parses it with a formatter that has no time zone, so the digits are the local wall-clock
+ *   time and the `Z` is only a letter (a `Date`'s JSON, which is UTC, would fire hours off).
+ * - Android parses it with Jackson and that pattern, which reads it as UTC: there the text is the
+ *   UTC instant of the local wall-clock time, a `Date`'s JSON.
  */
-export function scheduleDateString(at: LocalTime): string {
+export function scheduleDateString(at: LocalTime, platform = 'ios'): string {
+  if (platform.startsWith('android')) {
+    return new Date(
+      at.year,
+      at.month - 1,
+      at.day,
+      at.hour,
+      at.minute,
+      at.second ?? 0
+    ).toISOString();
+  }
   return `${pad(at.year, 4)}-${pad(at.month)}-${pad(at.day)}T${pad(at.hour)}:${pad(at.minute)}:${pad(at.second ?? 0)}.000Z`;
 }
 

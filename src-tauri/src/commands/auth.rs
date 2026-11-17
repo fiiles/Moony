@@ -273,6 +273,15 @@ pub async fn logout(
         }
         Err(e) => log::warn!("[UPLOAD] Upload copy sweep at lock skipped: no temp dir: {e}"),
     }
+    // Android: the WebView's camera captures, plain JPEGs in the app's external Pictures folder.
+    #[cfg(target_os = "android")]
+    match app.path().picture_dir() {
+        Ok(pictures) => {
+            let removed = crate::services::upload_copies::sweep_camera_captures(&pictures);
+            log::info!("[UPLOAD] Camera capture sweep at lock removed {removed} file(s)");
+        }
+        Err(e) => log::warn!("[UPLOAD] Camera capture sweep at lock skipped: {e}"),
+    }
     Ok(())
 }
 

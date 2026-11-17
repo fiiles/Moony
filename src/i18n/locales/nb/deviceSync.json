@@ -504,7 +504,9 @@
       "title": "En sikkerhetskopi ble lagret på denne telefonen",
       "where": "Den står under Innstillinger → Sikkerhetskopi og overføring. Moony sletter den aldri; bare du kan det.",
       "filesHint": "Moonys data holdes utenfor telefonens egne sikkerhetskopier. Lagre en kopi i Filer hvis du vil nå denne sikkerhetskopien utenfor Moony.",
-      "saveCopy": "Lagre en kopi i Filer"
+      "filesHintAndroid": "Moonys data holdes utenfor telefonens egne sikkerhetskopier. Lagre en kopi hvis du vil nå denne sikkerhetskopien utenfor Moony.",
+      "saveCopy": "Lagre en kopi i Filer",
+      "saveCopyAndroid": "Lagre en kopi"
     },
     "onThisDevice": "På denne enheten:"
   },

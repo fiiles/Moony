@@ -4,6 +4,7 @@ import { Sheet } from '@/mobile/components/Sheet';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { useSyncBackupExport } from '@/mobile/hooks/use-sync-backup-export';
 import { outcomeSentences, type ReplaceSaved } from '@/mobile/lib/replace-saved';
+import { phoneCopyKey } from '@/mobile/lib/platform-copy';
 
 /** The 48 pt buttons of a sheet's footer. */
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
@@ -52,7 +53,7 @@ export function SyncBackupSavedSheet({ saved, onClose }: SyncBackupSavedSheetPro
               loading={busy}
               onClick={() => void exportCopy(shown.outcome.backupPath)}
             >
-              {t('replace.saved.saveCopy')}
+              {t(phoneCopyKey('replace.saved.saveCopy'))}
             </Button>
           )}
         </>
@@ -67,7 +68,7 @@ export function SyncBackupSavedSheet({ saved, onClose }: SyncBackupSavedSheetPro
           ))}
           <p className="m-0">{t('replace.saved.where')}</p>
           <p className="m-0 text-ink-3">
-            {canExport ? t('replace.saved.filesHint') : tm('backup.syncNoCopy')}
+            {canExport ? t(phoneCopyKey('replace.saved.filesHint')) : tm('backup.syncNoCopy')}
           </p>
         </div>
       )}

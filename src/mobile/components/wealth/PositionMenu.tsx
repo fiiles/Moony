@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'wouter';
 import { Coins, Ellipsis, Eye, Pencil, Receipt, RefreshCw, Split, Tag, Trash2 } from 'lucide-react';
 import { useWatchedStocks } from '@/hooks/use-stock-monitor';
 import type { StockRow } from '@/utils/positions';
@@ -16,12 +17,15 @@ import { ManualPriceModal } from '@/components/stocks/ManualPriceModal';
 import { usePositionMutations } from '@/mobile/hooks/use-position';
 import { PositionRenameSheet } from '@/mobile/sheets/PositionRenameSheet';
 import { NavIconButton } from '@/mobile/shell/NavBar';
+import { watchPath } from '@/mobile/shell/routes';
+import { navigateFromMenu } from '@/mobile/lib/menu-navigate';
 
 /**
  * The `···` of a position (spec §8.8): Zapsat dividendu asks the page for its sheet
  * (`onAddDividend`), Zapsat split for the splits dialog (`onSplits`), Upravit cenu and Odhad
  * dividendy open the desktop's dialogs, Upravit název a sheet, Sledovat adds the ticker to the
- * watched ones (it says "Sledováno" and waits when it already is), Smazat pozici asks the page to confirm and delete (`onDelete`). The delete is the
+ * watched ones (once it is, the item opens its watch detail: "Otevřít ve sledovaných"), Smazat
+ * pozici asks the page to confirm and delete (`onDelete`). The delete is the
  * page's, not this menu's: the menu goes away as soon as the position drops out of what the page
  * reads, taking its callbacks with it. The other items are wired here with their dialogs, so the
  * page only places the button.
@@ -50,6 +54,7 @@ export function PositionMenu({
   const [priceOpen, setPriceOpen] = useState(false);
   const [dividendOpen, setDividendOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
+  const [, setLocation] = useLocation();
 
   const following = watched.some(
     (row) => row.ticker.toUpperCase() === holding.ticker.toUpperCase()
@@ -85,10 +90,17 @@ export function PositionMenu({
             <Tag strokeWidth={1.75} aria-hidden />
             {ts('detail.menu.editName')}
           </RowMenuItem>
-          <RowMenuItem disabled={following || follow.isPending} onSelect={() => follow.mutate()}>
-            <Eye strokeWidth={1.75} aria-hidden />
-            {following ? t('wealth.position.following') : t('wealth.position.follow')}
-          </RowMenuItem>
+          {following ? (
+            <RowMenuItem onSelect={() => navigateFromMenu(setLocation, watchPath(holding.ticker))}>
+              <Eye strokeWidth={1.75} aria-hidden />
+              {t('wealth.position.openWatch')}
+            </RowMenuItem>
+          ) : (
+            <RowMenuItem disabled={follow.isPending} onSelect={() => follow.mutate()}>
+              <Eye strokeWidth={1.75} aria-hidden />
+              {t('wealth.position.follow')}
+            </RowMenuItem>
+          )}
           <RowMenuItem onSelect={onSplits}>
             <Split strokeWidth={1.75} aria-hidden />
             {ts('detail.menu.recordSplit')}

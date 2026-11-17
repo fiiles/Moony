@@ -14,6 +14,7 @@ import { Sheet } from '@/mobile/components/Sheet';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { useSyncBackupExport } from '@/mobile/hooks/use-sync-backup-export';
 import type { SyncBackupEntry } from '@shared/schema';
+import { phoneCopyKey } from '@/mobile/lib/platform-copy';
 
 /** The 48 pt buttons of a row's actions and of a sheet's footer. */
 const BUTTON = 'h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] text-m-row';
@@ -78,7 +79,7 @@ export function SyncBackupRows({ onRestore, disabled, restoring }: SyncBackupRow
     <>
       <SectionHead title={ts('data.syncBackups.title')} />
       <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3">
-        {canExport ? t('backup.syncLead') : t('backup.syncLeadNoFiles')}
+        {canExport ? t(phoneCopyKey('backup.syncLead')) : t('backup.syncLeadNoFiles')}
       </p>
       {!canExport && (
         <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3" data-testid="sync-backups-no-copy">
@@ -110,7 +111,7 @@ export function SyncBackupRows({ onRestore, disabled, restoring }: SyncBackupRow
                   disabled={busy}
                   onClick={() => void exportCopy(backup.path)}
                 >
-                  {t('backup.syncSaveCopy')}
+                  {t(phoneCopyKey('backup.syncSaveCopy'))}
                 </Button>
               )}
               <div className="flex gap-2">

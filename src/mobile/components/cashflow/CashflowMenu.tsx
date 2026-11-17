@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { NavIconButton } from '@/mobile/shell/NavBar';
+import { navigateFromMenu } from '@/mobile/lib/menu-navigate';
 
 interface CashflowMenuProps {
   /** "Účty (3)": the accounts the report covers, already worded. */
@@ -50,7 +51,7 @@ export function CashflowMenu({
           <Landmark strokeWidth={1.75} aria-hidden />
           {accountsLabel}
         </RowMenuItem>
-        <RowMenuItem onSelect={() => setLocation(budgetsHref)}>
+        <RowMenuItem onSelect={() => navigateFromMenu(setLocation, budgetsHref)}>
           <PiggyBank strokeWidth={1.75} aria-hidden />
           {tb('manage.title')}
         </RowMenuItem>

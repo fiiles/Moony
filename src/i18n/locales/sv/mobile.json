@@ -647,7 +647,7 @@
         "menu": "Utdelningsmeny"
       },
       "follow": "Bevaka",
-      "following": "Bevakas",
+      "openWatch": "Öppna i bevakningslistan",
       "followed": "Tillagd i bevakningslistan",
       "range52": "52-veckorsintervall",
       "renamed": "Namn sparat",
@@ -814,23 +814,29 @@
     "lastOn": "Senaste säkerhetskopia {{date}}",
     "never": "Ingen säkerhetskopia ännu",
     "what": "Spara den i iCloud Drive eller en annan mapp i Filer. Moony har ingen åtkomst till den.",
+    "whatAndroid": "Spara den i Google Drive eller en annan mapp du väljer. Moony har ingen åtkomst till den.",
     "notSaved": "Säkerhetskopian sparades inte",
     "unavailableHere": "Säkerhetskopiering fungerar tills vidare bara på iPhone.",
     "restoreTitle": "Återställning och överföring",
     "restoreLead": "Återställ en säkerhetskopia från den här telefonen eller överför en profil från Moony på datorn: välj säkerhetskopians fil och lås upp efter återställningen med det lösenord som gällde när den skapades.",
     "restoreConfirmDescription": "Säkerhetskopian från {{date}} (Moony {{version}}, {{attachments}} bilagor, {{size}}) ersätter data på den här telefonen. Säkerhetskopiera först om du vill behålla dina nuvarande data. Moony låses därefter; lås upp med det lösenord som gällde när säkerhetskopian skapades.",
     "osBackupNote": "Profilen sparas inte i telefonens egen säkerhetskopia (iCloud eller dator). Moony-säkerhetskopian som du själv sparar är den enda kopian utanför telefonen.",
+    "osBackupNoteAndroid": "Profilen sparas inte i telefonens egen säkerhetskopia (Google eller dator). Moony-säkerhetskopian som du själv sparar är den enda kopian utanför telefonen.",
     "exportSummary": "{{tables}} tabeller, {{rows}} rader.",
     "notHere_one": "{{count}} dokument eller foto finns inte på den här telefonen och inte i den här säkerhetskopian.",
     "notHere_other": "{{count}} dokument och foton finns inte på den här telefonen och inte i den här säkerhetskopian.",
     "syncLead": "Moony sparar en säkerhetskopia innan synkroniseringen ersätter data på den här telefonen. Moonys data lämnas utanför telefonens egna säkerhetskopior, så den här listan och Filer är den enda vägen dit.",
+    "syncLeadAndroid": "Moony sparar en säkerhetskopia innan synkroniseringen ersätter data på den här telefonen. Moonys data lämnas utanför telefonens egna säkerhetskopior, så den här listan och kopiorna du sparar är den enda vägen dit.",
     "syncSaveCopy": "Spara en kopia i Filer",
+    "syncSaveCopyAndroid": "Spara en kopia",
     "syncCopySaved": "En kopia sparades i Filer",
+    "syncCopySavedAndroid": "En kopia sparades",
     "syncLeadNoFiles": "Moony sparar en säkerhetskopia innan synkroniseringen ersätter data på den här telefonen. Här kan du återställa eller ta bort dem.",
     "syncNoCopy": "Att spara en kopia utanför Moony går inte än på den här telefonen. En säkerhetskopia kan återställas från den här listan. Den går förlorad om Moonys data tas bort från telefonen.",
     "leadSync": "Synkroniseringen håller dina enheter i takt. En säkerhetskopia är en krypterad fil för en engångsflytt eller en kopia att spara: databasen, nycklarna och dokumenten och fotona på den här telefonen. Bara ditt lösenord öppnar den.",
     "restoreLeadSync": "Återställ en säkerhetskopia från den här telefonen, eller flytta en profil en gång från Moony på datorn: välj säkerhetskopian och lås upp efter återställningen med lösenordet som gällde när den skapades. Synkroniseringen håller enheterna i takt.",
-    "osBackupNoteSync": "Profilen sparas inte i telefonens egen säkerhetskopia (iCloud eller en dator). Utanför den här telefonen finns dina data, så snart de har synkroniserats, på synkroniseringsservern och på dina andra enheter samt i varje Moony-säkerhetskopia som du sparar själv."
+    "osBackupNoteSync": "Profilen sparas inte i telefonens egen säkerhetskopia (iCloud eller en dator). Utanför den här telefonen finns dina data, så snart de har synkroniserats, på synkroniseringsservern och på dina andra enheter samt i varje Moony-säkerhetskopia som du sparar själv.",
+    "osBackupNoteSyncAndroid": "Profilen sparas inte i telefonens egen säkerhetskopia (Google eller en dator). Utanför den här telefonen finns dina data, så snart de har synkroniserats, på synkroniseringsservern och på dina andra enheter samt i varje Moony-säkerhetskopia som du sparar själv."
   },
   "firstRun": {
     "privacyLead": "Moony lagrar allt i en krypterad databas på den här telefonen. Inget moln, inget konto hos oss.",
@@ -842,7 +848,9 @@
       "localOnly": {
         "title": "Inget moln",
         "text": "– vi skickar ingenting någonstans; du sparar säkerhetskopian själv i Filer eller iCloud Drive.",
-        "textSync": "– dina data lämnar den här telefonen bara om du slår på synkronisering, och då bara end-to-end-krypterade till en synkroniseringsserver som du väljer; du sparar säkerhetskopian själv i Filer eller iCloud Drive."
+        "textAndroid": "– vi skickar ingenting någonstans; du sparar säkerhetskopian själv i Google Drive eller i en mapp du väljer.",
+        "textSync": "– dina data lämnar den här telefonen bara om du slår på synkronisering, och då bara end-to-end-krypterade till en synkroniseringsserver som du väljer; du sparar säkerhetskopian själv i Filer eller iCloud Drive.",
+        "textSyncAndroid": "– dina data lämnar den här telefonen bara om du slår på synkronisering, och då bara end-to-end-krypterade till en synkroniseringsserver som du väljer; du sparar säkerhetskopian själv i Google Drive eller i en mapp du väljer."
       },
       "marketData": {
         "title": "Marknadsdata",
@@ -850,7 +858,9 @@
       }
     },
     "recoveryLead": "Den enda vägen till dina data om du glömmer lösenordet. Förvara den utanför den här telefonen – i en lösenordshanterare, i Filer eller på papper.",
+    "recoveryLeadAndroid": "Den enda vägen till dina data om du glömmer lösenordet. Förvara den utanför den här telefonen – i en lösenordshanterare, i Google Drive eller på papper.",
     "saveToFiles": "Spara i Filer",
+    "saveToFilesAndroid": "Spara i en fil",
     "recoveryFileNote": "Den här nyckeln återställer ditt Moony-lösenord. Den fungerar bara tillsammans med Moony-data på den här telefonen eller en säkerhetskopia av dem, så spara även den säkerhetskopian. Ge inte filen till någon.",
     "areasLead": "Välj vad du vill följa i Moony. Du kan ändra detta när som helst i Inställningar.",
     "firstAccountLead": "Ett namn och ett saldo räcker. Kontoutdraget kan du importera senare.",
@@ -862,6 +872,7 @@
     "backupTitle": "Säkerhetskopiera dina data",
     "protectTitle": "Skydda dina data",
     "backupLead": "Den här telefonen har den enda kopian av dina data, och den finns inte med i telefonens egen säkerhetskopia (iCloud eller dator). Spara en krypterad säkerhetskopia i iCloud Drive eller i en mapp du väljer; Moony ser den aldrig.",
+    "backupLeadAndroid": "Den här telefonen har den enda kopian av dina data, och den finns inte med i telefonens egen säkerhetskopia (Google eller dator). Spara en krypterad säkerhetskopia i Google Drive eller i en mapp du väljer; Moony ser den aldrig.",
     "syncLead": "Har du en synkroniseringsserver?",
     "syncLink": "Ställ in synkronisering",
     "currencyPick": "Huvudvaluta",

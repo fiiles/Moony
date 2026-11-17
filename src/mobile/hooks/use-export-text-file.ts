@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
-import { save } from '@tauri-apps/plugin-dialog';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { dataApi } from '@/lib/tauri-api';
 import { exportsOnThisDevice, type ExportOutcome } from '@/mobile/lib/export-file';
+import { saveStagedExport } from '@/mobile/lib/picked-files';
 
 /**
  * Hands a text to the system's Files picker (the recovery key's `.txt`, a class page's or the
@@ -31,9 +31,7 @@ export function useExportTextFile(): {
       let staged: string | null = null;
       try {
         staged = await dataApi.stageTextExport(fileName, contents);
-        // `null` is a cancelled picker
-        const target = await save({ defaultPath: fileName });
-        return target === null ? 'cancelled' : 'saved';
+        return (await saveStagedExport(staged, { defaultPath: fileName })) ? 'saved' : 'cancelled';
       } finally {
         // A stage that failed has nothing to discard: Rust leaves no partial file
         if (staged !== null) await dataApi.discardTextExport(staged);

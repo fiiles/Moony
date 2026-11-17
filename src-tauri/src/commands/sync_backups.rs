@@ -186,7 +186,7 @@ pub async fn stage_sync_backup_export(
     require_feature()?;
     db.current_session()?;
     let dir = data_dir(&app)?;
-    let documents = super::backup::documents_dir(&app)?;
+    let documents = super::backup::staging_dir(&app)?;
     let dest = tauri::async_runtime::spawn_blocking(move || {
         stage_copy(&dir, &documents, Path::new(&path))
     })

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The status bar icon of Moony's notifications: the logo's disc with its inner disc cut out,
+     as a white silhouette (Android tints it). Each notification names it (`icon` in
+     src/mobile/hooks/use-notification-schedule.ts). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M12,2A10,10 0,1 1,12 22A10,10 0,1 1,12 2Z M11.7,5.9A4.5,4.5 0,1 0,11.7 14.9A4.5,4.5 0,1 0,11.7 5.9Z" />
+</vector>

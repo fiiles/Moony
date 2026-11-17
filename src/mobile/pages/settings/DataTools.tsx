@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { save } from '@tauri-apps/plugin-dialog';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { CheckCircle2, CircleAlert } from 'lucide-react';
@@ -12,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { ATTACHMENT_STATUS_KEY, attachmentStatusLines } from '@/utils/attachment-status';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { DATA_EXPORT_FILE, exportsOnThisDevice } from '@/mobile/lib/export-file';
+import { saveStagedExport } from '@/mobile/lib/picked-files';
 
 /** The 48 pt buttons of the page (`BackupSection`'s). */
 const BUTTON =
@@ -58,9 +58,9 @@ export function DataTools() {
     try {
       const summary = await dataApi.stageDataExport();
       staged = summary.path;
-      // `null` is a cancelled picker: nothing to say
-      const target = await save({ defaultPath: DATA_EXPORT_FILE });
-      if (target !== null) saved = { tables: summary.tableCount, rows: summary.rowCount };
+      // A cancelled picker: nothing to say
+      if (await saveStagedExport(staged, { defaultPath: DATA_EXPORT_FILE }))
+        saved = { tables: summary.tableCount, rows: summary.rowCount };
     } catch (error) {
       showError(error);
     }

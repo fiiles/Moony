@@ -6,6 +6,7 @@ import type { FirstRunFlow } from '@/mobile/hooks/use-first-run';
 import { useBackup } from '@/mobile/hooks/use-backup';
 import { StepHead } from './StepHead';
 import { caption, primaryButton, textLink } from './styles';
+import { phoneCopyKey } from '@/mobile/lib/platform-copy';
 
 /**
  * Záloha, the last step: the phone holds the only copy of the data, so the first encrypted backup
@@ -36,7 +37,7 @@ export function BackupStep({ flow }: { flow: FirstRunFlow }) {
       {/* With sync built in the step also offers sync, so it is "protect", not only "back up" */}
       <StepHead
         title={syncFeature ? t('firstRun.protectTitle') : t('firstRun.backupTitle')}
-        lead={t('firstRun.backupLead')}
+        lead={t(phoneCopyKey('firstRun.backupLead'))}
       />
       <Button
         className={primaryButton}

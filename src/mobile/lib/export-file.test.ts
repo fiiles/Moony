@@ -74,9 +74,11 @@ describe('restoreBackupPlan', () => {
 });
 
 describe('exportsOnThisDevice', () => {
-  it('is true on iOS only: Android creates an empty document, it never copies the staged file', () => {
-    expect(exportsOnThisDevice('ios')).toBe(true);
-    for (const other of ['android', 'androideabi', 'darwin', 'windows', 'linux', '']) {
+  it('is true on the phones: iOS exports the staged file, Android copies it into the picked document', () => {
+    for (const phone of ['ios', 'android']) {
+      expect(exportsOnThisDevice(phone), phone).toBe(true);
+    }
+    for (const other of ['darwin', 'macos', 'windows', 'linux', '']) {
       expect(exportsOnThisDevice(other), other).toBe(false);
     }
   });

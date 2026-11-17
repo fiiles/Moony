@@ -685,7 +685,7 @@
         "menu": "Menú del dividendo"
       },
       "follow": "Seguir",
-      "following": "Siguiendo",
+      "openWatch": "Abrir en seguimiento",
       "followed": "Añadida a la lista de seguimiento",
       "range52": "Rango de 52 semanas",
       "renamed": "Nombre guardado",
@@ -861,24 +861,30 @@
     "lastOn": "Última copia de seguridad {{date}}",
     "never": "Aún no hay copia de seguridad",
     "what": "Guárdala en iCloud Drive o en otra carpeta de la app Archivos. Moony no tiene acceso a ella.",
+    "whatAndroid": "Guárdala en Google Drive o en otra carpeta que elijas. Moony no tiene acceso a ella.",
     "notSaved": "Copia de seguridad no guardada",
     "unavailableHere": "Las copias de seguridad por ahora solo funcionan en iPhone.",
     "restoreTitle": "Restauración y traslado",
     "restoreLead": "Restaura una copia de seguridad de este teléfono o traslada un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó.",
     "restoreConfirmDescription": "La copia del {{date}} (Moony {{version}}, {{attachments}} adjuntos, {{size}}) sustituye los datos de este teléfono. Haz antes una copia si quieres conservar los datos actuales. Después Moony se bloqueará; desbloquéalo con la contraseña que se usaba cuando se creó la copia.",
     "osBackupNote": "El perfil no se guarda en la copia de seguridad del propio teléfono (iCloud u ordenador). La copia de seguridad de Moony que guardes tú es la única copia fuera del teléfono.",
+    "osBackupNoteAndroid": "El perfil no se guarda en la copia de seguridad del propio teléfono (Google u ordenador). La copia de seguridad de Moony que guardes tú es la única copia fuera del teléfono.",
     "exportSummary": "{{tables}} tablas, {{rows}} filas.",
     "notHere_one": "{{count}} documento o foto no está en este teléfono ni en esta copia de seguridad.",
     "notHere_many": "{{count}} documentos y fotos no están en este teléfono ni en esta copia de seguridad.",
     "notHere_other": "{{count}} documentos y fotos no están en este teléfono ni en esta copia de seguridad.",
     "syncLead": "Moony guarda una copia de seguridad antes de que la sincronización reemplace datos en este teléfono. Los datos de Moony no se incluyen en las copias de seguridad propias de tu teléfono, así que esta lista y Archivos son la única forma de acceder a ellas.",
+    "syncLeadAndroid": "Moony guarda una copia de seguridad antes de que la sincronización reemplace datos en este teléfono. Los datos de Moony no se incluyen en las copias de seguridad propias de tu teléfono, así que esta lista y las copias que guardes son la única forma de acceder a ellas.",
     "syncSaveCopy": "Guardar una copia en Archivos",
+    "syncSaveCopyAndroid": "Guardar una copia",
     "syncCopySaved": "Se guardó una copia en Archivos",
+    "syncCopySavedAndroid": "Se guardó una copia",
     "syncLeadNoFiles": "Moony guarda una copia de seguridad antes de que la sincronización reemplace datos en este teléfono. Aquí puedes restaurarlas o eliminarlas.",
     "syncNoCopy": "Guardar una copia fuera de Moony todavía no está disponible en este teléfono. Puedes restaurar una copia de seguridad desde esta lista. Se pierde si los datos de Moony se eliminan del teléfono.",
     "leadSync": "La sincronización mantiene tus dispositivos al día. Una copia de seguridad es un archivo cifrado para un traslado puntual o una copia que guardar: la base de datos, las claves y los documentos y fotos de este teléfono. Solo tu contraseña la abre.",
     "restoreLeadSync": "Restaura una copia de seguridad de este teléfono, o traslada una vez un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó. La sincronización mantiene tus dispositivos al día.",
-    "osBackupNoteSync": "El perfil no se guarda en la copia de seguridad del propio teléfono (iCloud u ordenador). Fuera de este teléfono, tus datos, una vez sincronizados, están en el servidor de sincronización y en tus otros dispositivos, y en cualquier copia de seguridad de Moony que guardes tú."
+    "osBackupNoteSync": "El perfil no se guarda en la copia de seguridad del propio teléfono (iCloud u ordenador). Fuera de este teléfono, tus datos, una vez sincronizados, están en el servidor de sincronización y en tus otros dispositivos, y en cualquier copia de seguridad de Moony que guardes tú.",
+    "osBackupNoteSyncAndroid": "El perfil no se guarda en la copia de seguridad del propio teléfono (Google u ordenador). Fuera de este teléfono, tus datos, una vez sincronizados, están en el servidor de sincronización y en tus otros dispositivos, y en cualquier copia de seguridad de Moony que guardes tú."
   },
   "firstRun": {
     "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",
@@ -890,7 +896,9 @@
       "localOnly": {
         "title": "Sin nube",
         "text": "– no enviamos nada a ninguna parte; la copia de seguridad la guardas tú en Archivos o iCloud Drive.",
-        "textSync": "– tus datos salen de este teléfono solo si activas la sincronización, y entonces solo cifrados de extremo a extremo hacia un servidor de sincronización que eliges tú; la copia de seguridad la guardas tú en Archivos o iCloud Drive."
+        "textAndroid": "– no enviamos nada a ninguna parte; la copia de seguridad la guardas tú en Google Drive o en una carpeta que elijas.",
+        "textSync": "– tus datos salen de este teléfono solo si activas la sincronización, y entonces solo cifrados de extremo a extremo hacia un servidor de sincronización que eliges tú; la copia de seguridad la guardas tú en Archivos o iCloud Drive.",
+        "textSyncAndroid": "– tus datos salen de este teléfono solo si activas la sincronización, y entonces solo cifrados de extremo a extremo hacia un servidor de sincronización que eliges tú; la copia de seguridad la guardas tú en Google Drive o en una carpeta que elijas."
       },
       "marketData": {
         "title": "Datos de mercado",
@@ -898,7 +906,9 @@
       }
     },
     "recoveryLead": "Es la única vía para acceder a tus datos si olvidas la contraseña. Guárdala fuera de este teléfono: en un gestor de contraseñas, en Archivos o en papel.",
+    "recoveryLeadAndroid": "Es la única vía para acceder a tus datos si olvidas la contraseña. Guárdala fuera de este teléfono: en un gestor de contraseñas, en Google Drive o en papel.",
     "saveToFiles": "Guardar en Archivos",
+    "saveToFilesAndroid": "Guardar en un archivo",
     "recoveryFileNote": "Esta clave restablece tu contraseña de Moony. Solo funciona junto con los datos de Moony de este teléfono o con una copia de seguridad de ellos, así que guarda también esa copia. No entregues este archivo a nadie.",
     "areasLead": "Elige qué quieres seguir en Moony. Puedes cambiarlo cuando quieras en Ajustes.",
     "firstAccountLead": "Basta con un nombre y un saldo. El extracto lo importarás más adelante.",
@@ -910,6 +920,7 @@
     "backupTitle": "Haz una copia de seguridad de tus datos",
     "protectTitle": "Protege tus datos",
     "backupLead": "Este teléfono guarda la única copia de tus datos, y no está en la copia de seguridad del propio teléfono (iCloud u ordenador). Guarda una copia de seguridad cifrada en iCloud Drive o en una carpeta que elijas; Moony nunca la ve.",
+    "backupLeadAndroid": "Este teléfono guarda la única copia de tus datos, y no está en la copia de seguridad del propio teléfono (Google u ordenador). Guarda una copia de seguridad cifrada en Google Drive o en una carpeta que elijas; Moony nunca la ve.",
     "syncLead": "¿Tienes un servidor de sincronización?",
     "syncLink": "Configurar la sincronización",
     "currencyPick": "Moneda principal",

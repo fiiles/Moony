@@ -7,7 +7,8 @@
  * So the file is put into Documents first, exported, and removed again whatever the person chose.
  * Rust does the staging and the removing (`stage_backup_export` / `finish_backup_export` for a
  * backup, `stage_text_export` / `discard_text_export` for the recovery key's text): the webview has
- * no fs commands. Only iOS exports this way (`exportsOnThisDevice`).
+ * no fs commands. Android stages the same way (in a private cache folder) and Rust copies the
+ * staged file into the document its save picker created (`saveStagedExport` in `picked-files.ts`).
  */
 
 /** The JSON of all data (Záloha a přenos → Export), the name Rust stages it under (`DATA_EXPORT_FILE_NAME`). */
@@ -40,15 +41,13 @@ export function changedRecoveryKeyFileName(date: Date): string {
 export type ExportOutcome = 'saved' | 'cancelled';
 
 /**
- * Whether exporting through the Files picker works on this platform (`TAURI_ENV_PLATFORM`): iOS
- * only. On Android the picker creates an empty document and returns its URI, nothing copies the
- * staged file into it, so an "export" would be an empty file recorded as a backup. Android needs
- * its own way to write the file to the chosen URI; until then it does not export. Restoring reads
- * a picked file through Rust and is verified on iOS only: on Android `open()` returns `content://`
- * URIs, which `inspect_backup` cannot read, so restore there is a follow-up.
+ * Whether exporting through the system's save picker works on this platform
+ * (`TAURI_ENV_PLATFORM`): the phones. iOS exports the staged file itself; on Android the picker
+ * creates an empty document and Rust copies the staged file into it (`write_staged_export`).
+ * Elsewhere (the phone UI in a desktop dev shell) nothing is staged.
  */
 export function exportsOnThisDevice(platform: string): boolean {
-  return platform === 'ios';
+  return platform === 'ios' || platform === 'android';
 }
 
 /** The backup archive's file name, `moony-backup-2026-10-17.zip` (the Rust command accepts only this form). */
@@ -60,7 +59,7 @@ export function backupFileName(isoDate: string): string {
  * The path a dialog result stands for. On iOS the dialog plugin hands over `file://` URLs
  * (percent-encoded), which this turns into the path they name: Rust needs the path, so the helper is
  * load-bearing there. Anything else is returned as it came, so a plain path with a `%` in it stays
- * intact. That includes Android's `content://` URIs, which Rust cannot read yet (a follow-up).
+ * intact. Android's `content://` URIs never come here: `pickedFilePath` has Rust copy them.
  */
 export function dialogPathToFsPath(value: string): string {
   if (!value.startsWith('file://')) return value;

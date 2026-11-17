@@ -33,18 +33,105 @@ fn inbox_dirs(app: &AppHandle) -> Result<[PathBuf; 2]> {
     ))
 }
 
+/// The inbox folder Android's copies go into: the second of [`inbox_dirs`], `<tmp>/<identifier>-Inbox`
+/// (the app's private cache on Android), so the discard, the take and the startup sweep treat them
+/// exactly like the iOS picker's copies.
+#[cfg(target_os = "android")]
+fn android_inbox(app: &AppHandle) -> Result<PathBuf> {
+    let [_, inbox] = inbox_dirs(app)?;
+    Ok(inbox)
+}
+
+/// Android: copy one `content://` document into the inbox folder (blocking: call it off the main
+/// thread) and answer the copy's path.
+#[cfg(target_os = "android")]
+fn copy_into_inbox(app: &AppHandle, uri: &str) -> Result<PathBuf> {
+    use moony_keychain::KeychainExt;
+    let inbox = android_inbox(app)?;
+    app.keychain()
+        .copy_from_uri(uri, &inbox)
+        .map_err(|e| AppError::Internal(format!("Failed to copy the received file: {e}")))
+}
+
 /// `RunEvent::Opened`: queue the opened files and tell the webview when there is something new.
-/// Only the count is logged.
+/// Only the count is logged. iOS hands over `file://` copies it already made in an Inbox folder.
+/// Android hands over `content://` URIs, readable only through the ContentResolver and only while
+/// the grant lasts: each is copied into the inbox folder first, off the main thread (the copy
+/// waits for the native side), and the copy is queued like an iOS one.
 pub fn on_opened(app: &AppHandle, urls: &[Url]) {
+    #[cfg(not(target_os = "android"))]
+    let direct = urls.len();
+    #[cfg(target_os = "android")]
+    let direct = {
+        let content: Vec<Url> = urls
+            .iter()
+            .filter(|url| url.scheme() == "content")
+            .cloned()
+            .collect();
+        let direct = urls.len() - content.len();
+        if !content.is_empty() {
+            let app = app.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                let copies: Vec<Url> = content
+                    .iter()
+                    .filter_map(|url| match copy_into_inbox(&app, url.as_str()) {
+                        Ok(path) => Url::from_file_path(path).ok(),
+                        Err(e) => {
+                            log::warn!("[IMPORT] {e}");
+                            None
+                        }
+                    })
+                    .collect();
+                queue_opened(&app, &copies, content.len());
+            });
+        }
+        direct
+    };
+    queue_opened(app, urls, direct);
+}
+
+/// Queue the `file://` URLs among `urls` and announce them; `announced` is how many items the
+/// system opened, for the log.
+fn queue_opened(app: &AppHandle, urls: &[Url], announced: usize) {
     let added = app.state::<ReceivedFiles>().push_urls(urls);
-    log::info!(
-        "[IMPORT] The system opened {} item(s) in Moony, {added} queued",
-        urls.len()
-    );
+    if announced == 0 {
+        return;
+    }
+    log::info!("[IMPORT] The system opened {announced} item(s) in Moony, {added} queued");
     if added > 0 {
         if let Err(e) = app.emit(RECEIVED_FILES_EVENT, ()) {
             log::warn!("[IMPORT] Could not announce the received files: {e}");
         }
+    }
+}
+
+/// Phones only. Android: copy a file the person picked in the system's file picker (a
+/// `content://` URI from the dialog plugin's `open()`) into the inbox folder and answer the
+/// copy's path, which the import and the restore then read like the path iOS's picker gives, and
+/// discard (`discard_received_file`) or leave to the startup sweep. Refused for anything but a
+/// `content://` URI, and on iOS, whose picker already hands over a copy.
+#[tauri::command]
+pub async fn copy_picked_file(app: AppHandle, uri: String) -> Result<String> {
+    if !uri.starts_with("content://") {
+        return Err(AppError::Validation(
+            "validation.receivedFileOutside".into(),
+        ));
+    }
+    #[cfg(target_os = "android")]
+    {
+        let path = tauri::async_runtime::spawn_blocking(move || copy_into_inbox(&app, &uri))
+            .await
+            .map_err(|e| AppError::Internal(format!("The copy did not finish: {e}")))??;
+        path.into_os_string()
+            .into_string()
+            .map_err(|_| AppError::Internal("The copy's path is not valid UTF-8".into()))
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err(AppError::Validation(
+            "validation.receivedFileOutside".into(),
+        ))
     }
 }
 

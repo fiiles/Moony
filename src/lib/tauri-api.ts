@@ -1266,6 +1266,10 @@ export const dataApi = {
   // Phones only too: the JSON of all data staged as `Documents/moony-export.json`; the summary's
   // `path` goes back to `discardTextExport`.
   stageDataExport: () => tauriInvoke<ExportSummary>('stage_data_export'),
+  // Android only (refused on iOS, whose picker exports the staged file itself): copy a staged
+  // export into the `content://` document the save picker created. Through `saveStagedExport`.
+  writeStagedExport: (path: string, uri: string) =>
+    tauriInvoke<void>('write_staged_export', { path, uri }),
   inspectBackup: (path: string) => tauriInvoke<BackupInspection>('inspect_backup', { path }),
   restoreBackup: (path: string) => tauriInvoke<void>('restore_backup', { path }),
   exportAllData: (destPath: string) => tauriInvoke<ExportSummary>('export_all_data', { destPath }),
@@ -1279,14 +1283,18 @@ export const dataApi = {
 /** Emitted (no payload) when files were queued for `receivedFilesApi.take()`. Phones only. */
 export const RECEIVED_FILES_EVENT = 'received-files';
 
-// Both calls exist on phones only (registered under `#[cfg(mobile)]`). iOS copies a statement that
+// These calls exist on phones only (registered under `#[cfg(mobile)]`). iOS copies a statement that
 // was shared or opened into Moony into the app's Inbox folders and the copy stays there as
-// plaintext: `take` drains the paths the system opened (oldest first, empty when there are none)
+// plaintext; Android hands over `content://` URIs, which Rust copies into the same kind of inbox
+// folder: `take` drains the paths the system opened (oldest first, empty when there are none)
 // and `discard` deletes one copy once it is imported or abandoned. A path outside the Inbox
 // folders is refused (`validation.receivedFileOutside`); a copy that is already gone is fine.
+// `copyPicked` (Android only) copies a file picked in the open picker into the inbox folder and
+// answers the copy's path; through `pickedFilePath`.
 export const receivedFilesApi = {
   take: () => tauriInvoke<string[]>('take_received_files'),
   discard: (path: string) => tauriInvoke<void>('discard_received_file', { path }),
+  copyPicked: (uri: string) => tauriInvoke<string>('copy_picked_file', { uri }),
 };
 
 // ============================================================================

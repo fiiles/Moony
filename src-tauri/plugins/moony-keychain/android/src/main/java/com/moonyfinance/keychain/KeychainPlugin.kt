@@ -15,10 +15,13 @@
 package com.moonyfinance.keychain
 
 import android.app.Activity
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
+import android.provider.OpenableColumns
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
@@ -42,7 +45,10 @@ import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import org.json.JSONObject
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.IOException
+import java.io.OutputStream
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -91,6 +97,22 @@ class PrivacyScreenArgs {
 class StatusBarStyleArgs {
     // The app's resolved theme: "light" or "dark".
     lateinit var theme: String
+}
+
+@InvokeArg
+class CopyFromUriArgs {
+    // A content:// URI the system handed over (a picked file, a shared or opened statement).
+    lateinit var uri: String
+    // The app-private folder the copy goes into (Rust picks it; the inbox folder).
+    lateinit var dir: String
+}
+
+@InvokeArg
+class CopyToUriArgs {
+    // A staged export inside the app (Rust checked it is one).
+    lateinit var path: String
+    // The content:// URI of the document the person created in the save picker.
+    lateinit var uri: String
 }
 
 @TauriPlugin
@@ -238,17 +260,135 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     /**
-     * Keeping the app data out of device backups is a no-op here for now: on Android it is not a
-     * per-folder flag but `android:allowBackup="false"` (or `<full-backup-content>` and
-     * `<data-extraction-rules>`) in the app manifest, which does not exist until `tauri android
-     * init` (plan Phase 7). Answers `excluded: false`, so the Rust side logs that nothing is
-     * excluded instead of claiming it. (The keystore blobs already live in `noBackupFilesDir`.)
+     * On Android keeping the app data out of device backups is not a per-folder flag but the app
+     * manifest: `android:allowBackup="false"` plus `fullBackupContent` and `dataExtractionRules`
+     * that exclude every domain (gen/android). Nothing to set per path, so this answers whether the
+     * manifest turned backup off: `excluded: false` only if a build ever drops that attribute, and
+     * the Rust side then logs it instead of claiming the exclusion.
      */
     @Command
     fun excludeFromBackup(invoke: Invoke) {
         guarded(invoke) {
-            invoke.resolve(JSObject().apply { put("excluded", false) })
+            val backupAllowed =
+                (activity.applicationInfo.flags and ApplicationInfo.FLAG_ALLOW_BACKUP) != 0
+            invoke.resolve(JSObject().apply { put("excluded", !backupAllowed) })
         }
+    }
+
+    // ---- Files from and to content:// URIs ----
+    //
+    // Android hands picked, shared and opened files over as content:// URIs that only the
+    // ContentResolver reads, and the save picker returns the URI of an empty document. Rust works
+    // with paths, so these two copy between a URI and a file inside the app. Rust-only (not in the
+    // plugin's ACL): Rust decides which folder a copy lands in and which staged file may leave.
+    // The copies run off the UI thread (a backup archive can be large). Neither logs the URI or
+    // the name: they name the person's bank files.
+
+    /** Copies the document at `uri` into `dir` under its display name; answers the new path. */
+    @Command
+    fun copyFromUri(invoke: Invoke) {
+        guarded(invoke) {
+            val args = invoke.parseArgs(CopyFromUriArgs::class.java)
+            val uri = Uri.parse(args.uri)
+            val dir = File(args.dir)
+            background(invoke) {
+                if (!dir.isDirectory && !dir.mkdirs()) {
+                    throw IOException("Could not create the inbox folder")
+                }
+                val target = uniqueFile(dir, safeFileName(displayName(uri)))
+                val input = activity.contentResolver.openInputStream(uri)
+                    ?: throw IOException("The provider gave no stream")
+                try {
+                    input.use { source ->
+                        FileOutputStream(target).use { sink -> source.copyTo(sink) }
+                    }
+                } catch (e: Exception) {
+                    target.delete()
+                    throw e
+                }
+                invoke.resolve(JSObject().apply { put("path", target.absolutePath) })
+            }
+        }
+    }
+
+    /** Writes the file at `path` into the document at `uri`, replacing what it held. */
+    @Command
+    fun copyToUri(invoke: Invoke) {
+        guarded(invoke) {
+            val args = invoke.parseArgs(CopyToUriArgs::class.java)
+            val source = File(args.path)
+            val uri = Uri.parse(args.uri)
+            background(invoke) {
+                val output = openForWrite(uri) ?: throw IOException("The provider gave no stream")
+                output.use { sink -> FileInputStream(source).use { it.copyTo(sink) } }
+                invoke.resolve()
+            }
+        }
+    }
+
+    /** "wt" truncates; a provider without it (some cloud ones) gets "w" on a fresh document. */
+    private fun openForWrite(uri: Uri): OutputStream? =
+        try {
+            activity.contentResolver.openOutputStream(uri, "wt")
+        } catch (e: IllegalArgumentException) {
+            activity.contentResolver.openOutputStream(uri, "w")
+        } catch (e: UnsupportedOperationException) {
+            activity.contentResolver.openOutputStream(uri, "w")
+        }
+
+    private fun displayName(uri: Uri): String? =
+        try {
+            activity.contentResolver
+                .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                }
+        } catch (e: Exception) {
+            null
+        } ?: uri.lastPathSegment
+
+    /**
+     * A plain file name: no folders, no hidden-file dot first, at most 120 characters with the
+     * extension kept (the import reads the extension to tell a PDF or a photo from a statement).
+     */
+    private fun safeFileName(name: String?): String {
+        val base = name
+            ?.substringAfterLast('/')
+            ?.replace(Regex("[\\u0000-\\u001f\\\\:*?\"<>|]"), "_")
+            ?.trim()
+            ?.trimStart('.')
+            .orEmpty()
+        if (base.isEmpty()) return "statement"
+        if (base.length <= 120) return base
+        val dot = base.lastIndexOf('.')
+        val ext = if (dot > 0 && base.length - dot <= 10) base.substring(dot) else ""
+        return base.take(120 - ext.length) + ext
+    }
+
+    /** `name`, or `name (2)`, `name (3)`, ... when an earlier copy still sits in `dir`. */
+    private fun uniqueFile(dir: File, name: String): File {
+        val first = File(dir, name)
+        if (!first.exists()) return first
+        val dot = name.lastIndexOf('.')
+        val stem = if (dot > 0) name.substring(0, dot) else name
+        val ext = if (dot > 0) name.substring(dot) else ""
+        var n = 2
+        while (true) {
+            val candidate = File(dir, "$stem ($n)$ext")
+            if (!candidate.exists()) return candidate
+            n += 1
+        }
+    }
+
+    /** Runs `body` on a fresh thread, rejecting with the exception's class name only. */
+    private fun background(invoke: Invoke, body: () -> Unit) {
+        Thread {
+            try {
+                body()
+            } catch (e: Exception) {
+                reject(invoke, CODE_FAILED, "File copy failed: ${e.javaClass.simpleName}")
+            }
+        }.start()
     }
 
     /**

@@ -42,14 +42,15 @@ fn spawn_legacy_temp_cleanup(app: tauri::AppHandle) {
 }
 
 /// Phones only: remove what an export that was interrupted (the app killed while the Files picker
-/// was open) left in Documents, a staged backup archive or the recovery key's text, once at
-/// startup and off the main thread. Best effort: a problem is logged and never blocks startup.
+/// was open) left in the staging folder (Documents on iOS, the private `exports` cache folder on
+/// Android), a staged backup archive or the recovery key's text, once at startup and off the main
+/// thread. Best effort: a problem is logged and never blocks startup.
 #[cfg(mobile)]
 fn spawn_staged_export_sweep(app: tauri::AppHandle) {
-    let document_dir = match app.path().document_dir() {
+    let document_dir = match commands::backup::staging_dir(&app) {
         Ok(dir) => dir,
         Err(e) => {
-            log::warn!("[BACKUP] Staged export sweep skipped: no documents dir: {e}");
+            log::warn!("[BACKUP] Staged export sweep skipped: no staging dir: {e}");
             return;
         }
     };
@@ -248,11 +249,15 @@ async fn run_app() {
             commands::backup::discard_text_export,
             #[cfg(mobile)]
             commands::backup::stage_data_export,
+            #[cfg(mobile)]
+            commands::backup::write_staged_export,
             // Statement files the system opened in Moony (services::received_files)
             #[cfg(mobile)]
             commands::received_files::take_received_files,
             #[cfg(mobile)]
             commands::received_files::discard_received_file,
+            #[cfg(mobile)]
+            commands::received_files::copy_picked_file,
             // System (services::logging)
             commands::system::open_logs_folder,
             // Auth commands

@@ -9,7 +9,8 @@ import { deviceStorage } from '@/utils/device-storage';
 import { cancelAllNotifications } from '@/mobile/hooks/use-notification-schedule';
 import { clearUpkeepDismissals } from '@/mobile/hooks/use-upkeep-dismissals';
 import { BIOMETRIC_STATUS_KEY, clearEnrolmentAsked } from '@/lib/biometrics';
-import { dialogPathToFsPath, restoreBackupPlan } from '@/mobile/lib/export-file';
+import { restoreBackupPlan } from '@/mobile/lib/export-file';
+import { pickedFilePath } from '@/mobile/lib/picked-files';
 import type { BackupInspection } from '@shared/schema';
 
 /** The backups the picker offers: the archive Moony makes on the phone and on the computer. */
@@ -60,7 +61,7 @@ export function useRestoreBackup(): {
       });
       if (!selected) return null;
       setRestoring(true);
-      return await dataApi.inspectBackup(dialogPathToFsPath(selected));
+      return await dataApi.inspectBackup(await pickedFilePath(selected));
     } catch (error) {
       showError(error);
       return null;

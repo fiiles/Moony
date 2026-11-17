@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { save } from '@tauri-apps/plugin-dialog';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { dataApi, deviceSyncApi } from '@/lib/tauri-api';
@@ -7,6 +6,7 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { backupFileName as fileNameOf } from '@/utils/sync-status';
 import { BACKUP_FILE_FILTER } from '@/mobile/hooks/use-restore-backup';
 import { exportsOnThisDevice, type ExportOutcome } from '@/mobile/lib/export-file';
+import { saveStagedExport } from '@/mobile/lib/picked-files';
 
 /**
  * "Save a copy to Files" for a sync backup (audit H4: the app's data folder is kept out of the
@@ -37,8 +37,10 @@ export function useSyncBackupExport(): {
         const staged = await deviceSyncApi.stageSyncBackupExport(path);
         let exported = false;
         try {
-          exported =
-            (await save({ defaultPath: fileNameOf(staged), filters: BACKUP_FILE_FILTER })) !== null;
+          exported = await saveStagedExport(staged, {
+            defaultPath: fileNameOf(staged),
+            filters: BACKUP_FILE_FILTER,
+          });
         } finally {
           // The copy is saved (or not) either way: a failed removal is not the person's problem, and
           // the startup sweep removes a staged copy that is left

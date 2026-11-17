@@ -97,10 +97,10 @@
       "description": "Den här enheten glömmer synkroniseringen som skapades i den här konfigurationen, och en redan gjord betalning följer inte med. Konfigurationen börjar sedan om från början.",
       "keep": "Behåll konfigurationen"
     },
-    "startTitle": "Börja synkronisera",
-    "startLead": "Den här enheten blir den första. Du behöver anslutningskoden till din synkroniseringsserver.",
+    "startTitle": "Konfigurera som första enhet",
+    "startLead": "Bara om du inte synkroniserar på någon enhet än. Du behöver anslutningskoden till din synkroniseringsserver.",
     "joinTitle": "Anslut den här enheten",
-    "joinLead": "Du synkroniserar redan på en annan enhet.",
+    "joinLead": "Du synkroniserar redan på en annan enhet: välj ”Lägg till en enhet” där och anslut sedan här med dess kod.",
     "joinButton": "Anslut den här enheten"
   },
   "setup": {

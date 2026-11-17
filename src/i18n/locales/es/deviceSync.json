@@ -101,10 +101,10 @@
       "description": "Este dispositivo olvidará la sincronización creada en esta configuración y un pago ya realizado no se traslada. La configuración empezará de nuevo.",
       "keep": "Mantener la configuración"
     },
-    "startTitle": "Empezar a sincronizar",
-    "startLead": "Este dispositivo será el primero. Necesitas el código de conexión de tu servidor de sincronización.",
+    "startTitle": "Configurar como primer dispositivo",
+    "startLead": "Solo si todavía no sincronizas en ningún dispositivo. Necesitas el código de conexión de tu servidor de sincronización.",
     "joinTitle": "Conectar este dispositivo",
-    "joinLead": "Ya sincronizas en otro dispositivo.",
+    "joinLead": "Ya sincronizas en otro dispositivo: elige «Añadir un dispositivo» allí y conéctate aquí con su código.",
     "joinButton": "Conectar este dispositivo"
   },
   "setup": {

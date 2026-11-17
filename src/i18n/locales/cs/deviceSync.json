@@ -105,10 +105,10 @@
       "description": "Toto zařízení zapomene synchronizaci vytvořenou při tomto nastavení a už uhrazená platba se nepřenese. Nastavení synchronizace pak začne od začátku.",
       "keep": "Ponechat nastavení"
     },
-    "startTitle": "Začít synchronizovat",
-    "startLead": "Toto zařízení bude první. Potřebujete připojovací kód svého synchronizačního serveru.",
+    "startTitle": "Nastavit jako první zařízení",
+    "startLead": "Jen když synchronizaci zatím nemáte na žádném zařízení. Potřebujete připojovací kód svého synchronizačního serveru.",
     "joinTitle": "Připojit toto zařízení",
-    "joinLead": "Synchronizaci už máte na jiném zařízení.",
+    "joinLead": "Synchronizaci už máte na jiném zařízení: tam zvolte „Přidat zařízení“ a pak se tady připojte jeho kódem.",
     "joinButton": "Připojit toto zařízení"
   },
   "setup": {

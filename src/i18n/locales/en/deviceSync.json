@@ -97,10 +97,10 @@
       "description": "This device will forget the sync created in this setup, and a payment already made won't carry over. Setting up sync will then start from the beginning.",
       "keep": "Keep setup"
     },
-    "startTitle": "Start syncing",
-    "startLead": "This device will be the first. You need your sync server's connection code.",
+    "startTitle": "Set up as the first device",
+    "startLead": "Only if you don't sync on any device yet. You need your sync server's connection code.",
     "joinTitle": "Connect this device",
-    "joinLead": "You already sync on another device.",
+    "joinLead": "You already sync on another device: choose “Add a device” there, then connect here with its code.",
     "joinButton": "Connect this device"
   },
   "setup": {

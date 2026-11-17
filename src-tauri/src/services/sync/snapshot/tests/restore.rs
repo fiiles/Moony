@@ -105,6 +105,45 @@ fn replace_discards_the_joining_profiles_own_rows_and_seeds() {
 }
 
 #[test]
+fn a_replace_forgets_the_settled_mark() {
+    let a = device(A);
+    let (bytes, _) = snapshot(&a, 1);
+
+    let b = device(B);
+    exec(
+        &b,
+        "INSERT INTO app_config (key, value) VALUES ('history_settled_through', '1700000000'); \
+         INSERT INTO app_config (key, value) VALUES ('history_settle_tried_at', '1700000100'); \
+         INSERT INTO app_config (key, value) VALUES ('history_rebuild_version', '4');",
+    );
+    restore_replace(&b, &mut &bytes[..], NOW).expect("replace");
+
+    assert_eq!(
+        count(
+            &b,
+            "SELECT COUNT(*) FROM app_config WHERE key = 'history_settled_through'"
+        ),
+        0,
+        "the other device's rows have finished days this device has not settled"
+    );
+    assert_eq!(
+        count(
+            &b,
+            "SELECT COUNT(*) FROM app_config WHERE key = 'history_settle_tried_at'"
+        ),
+        0,
+        "a retry wait belongs to the forgotten mark"
+    );
+    assert_eq!(
+        value(
+            &b,
+            "SELECT value FROM app_config WHERE key = 'history_rebuild_version'"
+        ),
+        Some("4".to_string())
+    );
+}
+
+#[test]
 fn joining_queues_nothing_and_installs_capture_after_the_restore() {
     let a = migrated();
     exec(

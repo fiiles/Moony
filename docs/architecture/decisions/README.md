@@ -40,6 +40,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0030](0030-device-sync-documents-and-photos.md) | Device sync: documents and photos | 2026-11-15 | Accepted; builds on 0017 and 0024; replaces the replace carry of 0027 (H3) |
 | [0031](0031-financial-modeling-prep-logo-fallback.md) | Asset logos: Financial Modeling Prep when Yahoo has none | 2026-11-15 | Accepted; supersedes the Yahoo-only rule of 0028 |
 | [0032](0032-device-sync-device-removal-and-the-recovery-kit.md) | Device sync: removing a device, and the Recovery Kit as a paper device | 2026-11-17 | Accepted; builds on 0024–0027, 0029 and 0030; amends 0025, 0026 and 0027 |
+| [0033](0033-finished-days-settle-to-closing-prices.md) | Finished days settle to closing prices | 2026-11-17 | Accepted; adds a rule to 0016, narrows a known cost of 0024 |
 
 ## Rules
 
@@ -47,7 +48,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
   different. To change a decision, write a **new ADR** with the next number
   that links back to the one it supersedes. The only edit ever made to an old
   ADR is flipping its `## Status` to `Superseded by [NNNN](NNNN-....md)`.
-- Numbering is sequential and zero-padded; the next free number is `0032`.
+- Numbering is sequential and zero-padded; the next free number is `0034`.
 - Filename: `NNNN-short-kebab-title.md`. Add every new ADR to the index table
   above.
 - Keep each ADR to one page or less.

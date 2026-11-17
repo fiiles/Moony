@@ -28,8 +28,9 @@
 //!   ticker's first transaction queues the ticker again from that day ([`Job::StockTicker`]),
 //!   so the closes before the window are split-adjusted too (spec D18).
 //! * **Completion.** A caller that needs to know how the batch ended (the one-time rebuild
-//!   stores its version flag then) passes a [`Completion`] and gets a [`BatchOutcome`]: whether
-//!   the portfolio days were re-derived, and which tickers failed. A ticker the provider keeps
+//!   stores its version flag then, and the startup completion also the settled-through mark)
+//!   passes a [`Completion`] and gets a [`BatchOutcome`]: whether the portfolio days were
+//!   re-derived, which tickers failed, and how many answered a provider request. A ticker the provider keeps
 //!   rejecting is reported `failed` and logged but does not fail the batch; the caller decides
 //!   what a failure costs (the one-time rebuild only needs the days, see
 //!   `history_plan::rebuild_version_earned`). Such a batch fetches quotes strictly: a provider
@@ -111,6 +112,11 @@ pub struct BatchOutcome {
     /// Tickers whose quotes could not be rebuilt: logged and reported as `failed`, retried
     /// by a later write or the startup gap fill.
     pub failed_tickers: Vec<String>,
+    /// How many of the batch's queued ticker jobs (stock and crypto, not the unseeded
+    /// backfill) returned `Ok` after a provider request was made and answered. In a batch
+    /// without a completion the fetch is not strict, so a failed request can read as
+    /// answered; the count is meant for strict batches.
+    pub fetched_tickers: usize,
 }
 
 impl BatchOutcome {
@@ -119,6 +125,7 @@ impl BatchOutcome {
         Self {
             days_ok: true,
             failed_tickers: Vec::new(),
+            fetched_tickers: 0,
         }
     }
 
@@ -431,15 +438,19 @@ async fn run_batch(
     }
 
     let mut failed: BTreeSet<String> = BTreeSet::new();
+    let mut fetched_tickers = 0usize;
     // Full rebuilds asked for by a new split (spec D18): queued for the next batch.
     let mut follow_ups: Vec<Job> = Vec::new();
     for (ticker, from) in &batch.stocks {
         match rebuild_stock_ticker_with_policy(db, ticker, *from, until, price_rule, strict).await {
-            Ok(stats) => follow_ups.extend(
-                stats
-                    .full_rebuild_from
-                    .map(|first| Job::StockTicker(ticker.clone(), first)),
-            ),
+            Ok(stats) => {
+                fetched_tickers += usize::from(stats.fetched);
+                follow_ups.extend(
+                    stats
+                        .full_rebuild_from
+                        .map(|first| Job::StockTicker(ticker.clone(), first)),
+                );
+            }
             Err(e) => {
                 log::warn!("[RECALC] Rebuilding a stock ticker's history failed: {e}");
                 failed.insert(ticker.clone());
@@ -459,11 +470,13 @@ async fn run_batch(
     );
 
     for (ticker, from) in &batch.crypto {
-        if let Err(e) =
-            rebuild_crypto_ticker_with_policy(db, ticker, *from, until, price_rule, strict).await
+        match rebuild_crypto_ticker_with_policy(db, ticker, *from, until, price_rule, strict).await
         {
-            log::warn!("[RECALC] Rebuilding a crypto ticker's history failed: {e}");
-            failed.insert(ticker.clone());
+            Ok(stats) => fetched_tickers += usize::from(stats.fetched),
+            Err(e) => {
+                log::warn!("[RECALC] Rebuilding a crypto ticker's history failed: {e}");
+                failed.insert(ticker.clone());
+            }
         }
     }
     rebuild_unseeded_tickers(
@@ -502,6 +515,7 @@ async fn run_batch(
     BatchOutcome {
         days_ok: days.is_ok(),
         failed_tickers: failed.into_iter().collect(),
+        fetched_tickers,
     }
 }
 
@@ -590,6 +604,7 @@ pub async fn rebuild_days_async(
         upserted: 0,
         deleted,
         full_rebuild_from: None,
+        fetched: false,
     };
     for (chunk_start, chunk_end) in plan.chunks() {
         let chunk = db.with_conn(|conn| rebuild_chunk(conn, &mut plan, chunk_start, chunk_end))?;
@@ -798,6 +813,9 @@ async fn rebuild_stock_ticker_with_policy(
         })
     })?;
     let mut stats = apply_plan_in_chunks(db, AssetKind::Stock, ticker, &plan).await?;
+    // The `?` above returned when the request failed: reaching here with a request made means
+    // the provider answered.
+    stats.fetched = first_day.is_some();
     stats.full_rebuild_from = needs_full_rebuild(new_splits, from_day, first_day);
     Ok(stats)
 }
@@ -925,7 +943,9 @@ async fn rebuild_crypto_ticker_with_policy(
             },
         )
     })?;
-    apply_plan_in_chunks(db, AssetKind::Crypto, ticker, &plan).await
+    let mut stats = apply_plan_in_chunks(db, AssetKind::Crypto, ticker, &plan).await?;
+    stats.fetched = has_transactions;
+    Ok(stats)
 }
 
 /// The day a rebuild starts when the holding's symbol was resolved during it: the earlier of the
@@ -1228,6 +1248,7 @@ mod tests {
         let failed_ticker = BatchOutcome {
             days_ok: true,
             failed_tickers: vec!["AAPL".to_string()],
+            ..Default::default()
         };
         for completion in completions {
             completion(&failed_ticker);

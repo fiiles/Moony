@@ -415,6 +415,17 @@ pub fn schedule_history_rebuild(
     schedule_history_rebuild_then(app, db, recalc, jobs, None);
 }
 
+/// Records today's per-ticker values again after a rebuild batch. Every ticker rebuild plans
+/// through today and writes today's row with the newest daily bar it fetched, which is
+/// yesterday's close; the live row of the last price refresh is the right value for today. It
+/// runs before the batch-complete event, so the refetch that event triggers reads the live
+/// values. A failure is logged, never propagated: the batch itself has finished.
+fn restore_todays_ticker_values(db: &Database) {
+    if let Err(e) = record_todays_ticker_values(db) {
+        log::warn!("[RECALC] Could not restore today's ticker values after a rebuild: {e}");
+    }
+}
+
 /// [`schedule_history_rebuild`] with a [`Completion`] that learns whether the batch carrying
 /// the jobs finished without an error (it runs at once when no job is historical).
 pub fn schedule_history_rebuild_then(
@@ -425,11 +436,14 @@ pub fn schedule_history_rebuild_then(
     completion: Option<Completion>,
 ) {
     let handle = app.clone();
+    // Pinned to the open session: a batch that outlives a lock must not write into the next one.
+    let notifier_db = db.current_session().unwrap_or_else(|_| db.clone());
     let notify: history_recalc::Notifier = std::sync::Arc::new(move |notice| match notice {
         Notice::Status(event) => {
             handle.emit(history_recalc::EVENT_STATUS, event).ok();
         }
         Notice::BatchComplete => {
+            restore_todays_ticker_values(&notifier_db);
             handle.emit(history_recalc::EVENT_COMPLETE, ()).ok();
         }
     });
@@ -468,31 +482,65 @@ fn queued_result(plan: &history_plan::StartupPlan, today: i64, what: &str) -> Ba
 /// days rebuild is retried at the next start. Tickers the provider could not serve are
 /// logged here (the queue reported them `failed`) and are retried by a later write or the
 /// startup gap fill; they do not keep the whole rebuild running at every start.
-fn store_version_when_done(db: Database) -> Completion {
+fn store_version(db: &Database, outcome: &history_recalc::BatchOutcome) {
+    if !history_plan::rebuild_version_earned(outcome) {
+        log::warn!("[RECALC] The one-time history rebuild did not re-derive the days; it runs again at the next start");
+        return;
+    }
+    if !outcome.failed_tickers.is_empty() {
+        log::warn!(
+            "[RECALC] The one-time history rebuild is done, but {} ticker(s) could not be rebuilt and are retried by later writes",
+            outcome.failed_tickers.len()
+        );
+    }
+    match db.with_conn(history_plan::store_rebuild_version) {
+        Ok(()) => log::info!(
+            "[RECALC] History rebuilt from dated facts (version {})",
+            history_plan::REBUILD_VERSION
+        ),
+        Err(e) => log::warn!("[RECALC] Could not store the history rebuild version: {e}"),
+    }
+}
+
+/// Stores the settled-through mark when the batch earned it (`history_plan::settle_earned`).
+/// Not earned stores the time of this try (`now`), so the next start waits
+/// `history_plan::SETTLE_RETRY_GAP` before it tries again.
+fn store_settled_mark(db: &Database, outcome: &history_recalc::BatchOutcome, day: i64, now: i64) {
+    if !history_plan::settle_earned(outcome) {
+        log::warn!("[RECALC] The finished days were not settled to closing prices; a later start tries again");
+        if let Err(e) = db.with_conn(|conn| history_plan::store_settle_tried_at(conn, now)) {
+            log::warn!("[RECALC] Could not store the settle retry time: {e}");
+        }
+        return;
+    }
+    match db.with_conn(|conn| history_plan::store_settled_through(conn, day)) {
+        Ok(()) => log::info!("[RECALC] Finished days settled to closing prices through {day}"),
+        Err(e) => log::warn!("[RECALC] Could not store the settled-through mark: {e}"),
+    }
+}
+
+/// The completion of a start's batch: stores the rebuild version (`one_time`) and the
+/// settled-through mark (`settles_through`) once the batch finished; `now` is the time the
+/// start was planned at.
+fn store_marks_when_done(
+    db: Database,
+    one_time: bool,
+    settles_through: Option<i64>,
+    now: i64,
+) -> Completion {
     Box::new(move |outcome| {
-        if !history_plan::rebuild_version_earned(outcome) {
-            log::warn!("[RECALC] The one-time history rebuild did not re-derive the days; it runs again at the next start");
-            return;
+        if one_time {
+            store_version(&db, outcome);
         }
-        if !outcome.failed_tickers.is_empty() {
-            log::warn!(
-                "[RECALC] The one-time history rebuild is done, but {} ticker(s) could not be rebuilt and are retried by later writes",
-                outcome.failed_tickers.len()
-            );
-        }
-        match db.with_conn(history_plan::store_rebuild_version) {
-            Ok(()) => log::info!(
-                "[RECALC] History rebuilt from dated facts (version {})",
-                history_plan::REBUILD_VERSION
-            ),
-            Err(e) => log::warn!("[RECALC] Could not store the history rebuild version: {e}"),
+        if let Some(day) = settles_through {
+            store_settled_mark(&db, outcome, day, now);
         }
     })
 }
 
 /// Plan and queue what a start needs, then return at once (A7): the first start of a version
-/// rebuilds the whole history once, later starts fill the days that are missing. Called by
-/// `SyncProvider` after unlock.
+/// rebuilds the whole history once, later starts fill the days that are missing and settle the
+/// finished days to closing prices (ADR 0033). Called by `SyncProvider` after unlock.
 #[tauri::command]
 pub async fn start_snapshot_backfill(
     app: AppHandle,
@@ -500,19 +548,28 @@ pub async fn start_snapshot_backfill(
     recalc: State<'_, HistoryRecalc>,
 ) -> Result<BackfillResult> {
     let today = today_utc_day();
-    let plan = db.with_conn(|conn| history_plan::plan_startup(conn, today))?;
-    let result = queued_result(
-        &plan,
-        today,
-        if plan.one_time {
-            "the one-time rebuild of the whole history"
-        } else {
-            "a repair of the missing days"
-        },
-    );
-    let completion = plan
-        .one_time
-        .then(|| store_version_when_done(db.inner().clone()));
+    let now = chrono::Utc::now().timestamp();
+    let plan = db.with_conn(|conn| history_plan::plan_startup(conn, now))?;
+    let label = if plan.one_time {
+        "the one-time rebuild of the whole history"
+    } else if plan.settles_through.is_some() {
+        "the settling of the finished days"
+    } else {
+        "a repair of the missing days"
+    };
+    let result = queued_result(&plan, today, label);
+    let completion = if plan.one_time || plan.settles_through.is_some() {
+        // Pinned to the open session: after a lock, a restore or a profile switch the
+        // completion's writes fail (and are logged) instead of reaching another database.
+        Some(store_marks_when_done(
+            db.current_session()?,
+            plan.one_time,
+            plan.settles_through,
+            now,
+        ))
+    } else {
+        None
+    };
     log::info!("[BACKFILL] {}", result.message);
     schedule_history_rebuild_then(&app, &db, &recalc, plan.jobs, completion);
     Ok(result)

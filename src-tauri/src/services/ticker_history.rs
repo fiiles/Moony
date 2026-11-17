@@ -70,6 +70,9 @@ pub struct RebuildStats {
     /// ticker's first transaction day (spec D18): the day the full rebuild that refreshes the
     /// pre-split closes has to start from. The caller queues or runs it.
     pub full_rebuild_from: Option<i64>,
+    /// A provider request for this ticker's quotes was made and answered; `false` when the
+    /// rebuild needed no request (no transactions, a crypto holding without a symbol).
+    pub fetched: bool,
 }
 
 fn floor_day(ts: i64) -> i64 {

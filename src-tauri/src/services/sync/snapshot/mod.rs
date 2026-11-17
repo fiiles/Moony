@@ -366,6 +366,9 @@ fn refill(
     report: &mut RestoreReport,
 ) -> Result<()> {
     capture::with_mode(conn, Mode::Repair, || clear(conn))?;
+    // The Seed tables now hold another device's rows, whose finished days this device has not
+    // settled: the next start settles again. A Local key, so the capture triggers ignore it.
+    crate::services::history_plan::forget_settled_through(conn)?;
     if let Some(i) = snapshot
         .rows
         .iter()

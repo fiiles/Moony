@@ -3,16 +3,16 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { isMobileShell } from '@/lib/platform';
+import { menusHoldHistory } from '@/lib/platform';
 import { withPhoneHistory } from '@/components/ui/phone-dialog-history';
 
 /**
  * Menu (design system §6, `.menu`): E4 surface, 190 px minimum, 12/550 items
  * with 14 px icons in ink-3, red-brown `danger` items, hairline separators.
  */
-// On the phone the open menu owns a history entry, like a sheet or a dialog: Android back closes
-// it instead of leaving the screen under it (`withPhoneHistory`).
-const DropdownMenu = isMobileShell(import.meta.env)
+// On Android the open menu owns a history entry, like a sheet or a dialog, so the back button
+// closes it instead of leaving the screen under it (`withPhoneHistory`, `menusHoldHistory`).
+const DropdownMenu = menusHoldHistory(import.meta.env)
   ? withPhoneHistory(DropdownMenuPrimitive.Root)
   : DropdownMenuPrimitive.Root;
 

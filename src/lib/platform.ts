@@ -18,3 +18,12 @@ export function isMobileShell(env: ShellEnv): boolean {
   const platform = env.TAURI_ENV_PLATFORM ?? '';
   return platform === 'ios' || platform.startsWith('android');
 }
+
+/**
+ * Whether a menu, popover or select list owns a history entry while open (`withPhoneHistory`), so
+ * that Android's back button closes it: the Android phone shell only. iOS has no back button, and
+ * an entry there would only shift the history the app's own back walks count on.
+ */
+export function menusHoldHistory(env: ShellEnv): boolean {
+  return isMobileShell(env) && (env.TAURI_ENV_PLATFORM ?? '').startsWith('android');
+}

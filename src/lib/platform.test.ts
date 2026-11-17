@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isMobileShell } from './platform';
+import { isMobileShell, menusHoldHistory } from './platform';
 
 describe('isMobileShell', () => {
   it('is true on the iOS and Android builds', () => {
@@ -26,5 +26,19 @@ describe('isMobileShell', () => {
   it('ignores an unknown VITE_MOONY_SHELL value', () => {
     expect(isMobileShell({ TAURI_ENV_PLATFORM: 'ios', VITE_MOONY_SHELL: 'tablet' })).toBe(true);
     expect(isMobileShell({ TAURI_ENV_PLATFORM: 'darwin', VITE_MOONY_SHELL: '' })).toBe(false);
+  });
+});
+
+describe('menusHoldHistory', () => {
+  it('is true in the Android phone shell only', () => {
+    expect(menusHoldHistory({ TAURI_ENV_PLATFORM: 'android' })).toBe(true);
+    expect(menusHoldHistory({ TAURI_ENV_PLATFORM: 'androideabi' })).toBe(true);
+    expect(menusHoldHistory({ TAURI_ENV_PLATFORM: 'ios' })).toBe(false);
+    expect(menusHoldHistory({ TAURI_ENV_PLATFORM: 'darwin', VITE_MOONY_SHELL: 'mobile' })).toBe(
+      false
+    );
+    expect(menusHoldHistory({ TAURI_ENV_PLATFORM: 'android', VITE_MOONY_SHELL: 'desktop' })).toBe(
+      false
+    );
   });
 });

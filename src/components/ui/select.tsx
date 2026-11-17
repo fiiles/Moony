@@ -3,7 +3,7 @@ import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { isMobileShell } from '@/lib/platform';
+import { menusHoldHistory } from '@/lib/platform';
 import { withPhoneHistory } from '@/components/ui/phone-dialog-history';
 
 /**
@@ -11,9 +11,9 @@ import { withPhoneHistory } from '@/components/ui/phone-dialog-history';
  * field with the chevron inside on the right; the list is an E4 menu with
  * 12/550 items.
  */
-// On the phone the open select list owns a history entry, like a sheet or a dialog: Android back closes
-// it instead of leaving the screen under it (`withPhoneHistory`).
-const Select = isMobileShell(import.meta.env)
+// On Android the open select list owns a history entry, like a sheet or a dialog, so the back button
+// closes it instead of leaving the screen under it (`withPhoneHistory`, `menusHoldHistory`).
+const Select = menusHoldHistory(import.meta.env)
   ? withPhoneHistory(SelectPrimitive.Root)
   : SelectPrimitive.Root;
 

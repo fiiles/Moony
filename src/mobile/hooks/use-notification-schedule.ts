@@ -48,14 +48,18 @@ export function scheduleNotification(item: {
   at: LocalTime;
   path?: string;
 }): void {
+  const platform: string = import.meta.env.TAURI_ENV_PLATFORM ?? '';
   sendNotification({
     id: item.id,
     title: item.title,
     body: item.body,
+    // Android's status bar icon, a drawable of the app (`gen/android/.../ic_stat_moony.xml`); the
+    // plugin's own config cannot name one (its Rust side takes no config). iOS uses the app icon.
+    ...(platform.startsWith('android') ? { icon: 'ic_stat_moony' } : {}),
     ...(item.path ? { extra: { path: item.path } } : {}),
     schedule: {
       at: {
-        date: scheduleDateString(item.at, import.meta.env.TAURI_ENV_PLATFORM ?? ''),
+        date: scheduleDateString(item.at, platform),
         repeating: false,
         allowWhileIdle: false,
       },

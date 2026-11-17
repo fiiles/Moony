@@ -251,15 +251,21 @@ fetched with device tokens and expire after 30 days, which is what the Kit must 
    leaves it out of the new key before the person's first change goes anywhere.
 
 **What a Kit joiner trusts:** the Kit (derived from the paper), on first use every certificate in the
-restored data that verifies (phase-5 §5.4 TOFU), and the envelope's confirmed set as far as its signer is
-one of those. **The envelope's signer check is only TOFU-strength against a holder of the current vault
+restored data that verifies (phase-5 §5.4 TOFU) with a genesis only from the Kit's own issuer chain, and
+the envelope's confirmed set (with any genesis it names) **only when its signer speaks on that store**
+(As built R-106): pinned with the certificate the envelope bundles, `trusted`, not superseded and not left
+out for its issuer (`trust::kit_join_speaker`). Two signers left out for their issuer still speak: the
+Kit's creator (the Kit's certificate, which carries the Kit's own proof of possession, names it as
+issuer), and a signer whose issuer is `removed` by the signer's own removal record (that record counted
+only while the signer was a speaker). Any other signer opens the Kit but vouches for nothing: **a signer
+that has `left`** (As built R-78: a left device's `left` record epoch is self-asserted and a backup of that
+device holds the signing key and the vault key), a superseded ID, a late vouch, a device whose issuer
+another device removed or whose issuer is unknown. A signer not pinned at all, or `removed`, makes the Kit
+unreadable. **The envelope's signer check is only TOFU-strength against a holder of the current vault
 key** (it can write rows and a snapshot, so a signer "pinned in the restored store" is whatever that
 snapshot says); **the root of trust of a Kit join is the Kit-signed envelope's confirmed set**, which
-binds the Kit's own certificate (step 6) and the genesis certificates the joiner trusts (As built R-43),
-**and the push hold** (step 7). **A signer that has `left` vouches for nothing** (As built R-78): the
-Kit still opens, but its confirmed set is ignored (genesis only from the Kit's own issuer chain,
-nothing confirmed), because a left device's `left` record epoch is self-asserted and a backup of that
-device holds the signing key and the vault key. Freshness it cannot check (R1); the push hold is the answer.
+binds the Kit's own certificate (step 6), **and the push hold** (step 7). Freshness it cannot check (R1);
+the push hold is the answer.
 
 **The review's note on phase-5 §8.3 step 3** (an old Kit marked valid while an old snapshot is still on
 the server): resolved by construction. Nothing is probed against snapshots; the server answers a
@@ -1610,6 +1616,9 @@ R-78. **A left signer's confirmed set vouches for nothing** (review of R-75). A 
      genesis certificates on first use from the Kit's own issuer chain first, and widens them with the
      confirmed set, and applies the set, only when the signer is not `Left`; for a `Left` signer the Kit
      still opens (R-75's liveness) but nothing it names is taken. A `Removed` signer stays refused.
+     **Generalised by R-106:** not only a `Left` signer, any signer that does not speak on the restored
+     store (superseded, late vouch, issuer unknown or removed by another device) opens the Kit and
+     vouches for nothing, and the genesis is widened only after that check.
      Test: `kit_join::a_left_signers_confirmed_set_vouches_for_nothing`. Also (R-73's sentinel):
      `fetched_snapshot_at` answers a private `KeyAhead` instead of reusing `SyncError::ReadOnlyToken`;
      `fetched_snapshot` (repair, re-sync) still reads it as `syncKeyRotated`.
@@ -1985,3 +1994,40 @@ join choice); popover removed line with sync off; newDevices dismissal with anot
 variant, the unsent count, a pending removal (an unreachable server fails the removal before anything changes:
 `vault_info` first), late vouch, rejoin/waiting cards, a problem clearing under an open dialog, `kitUsed`, a Kit
 of another sync. Not checkable: print and save dialogs (native), Windows/Linux.
+
+**Final review of phase 5 (2026-11-17).**
+
+R-106. **A Kit join could be made to trust a planted device** (final review I-3). R-78 stopped only a
+     `Left` signer: a holder of the current vault key (a backup of a device that left, a superseded copy)
+     could write a genesis row X of its own and re-seal the Kit's envelope signed by X with a confirmed set
+     naming the Kit and X; `kit_join_store` widened the genesis from the set before checking the signer, so X
+     was pinned trusted and then confirmed. The same with an older ID's key after its re-join, or a late
+     vouch the joiner leaves out (the signer check looked at the state only). Now `join::kit_join_store`
+     builds the store with the Kit's own chain as the only genesis, refuses a signer not pinned with that
+     certificate or `removed` (as before), and applies the confirmed set, widening the genesis first, only
+     when `trust::kit_join_speaker` says the signer speaks: `trusted`, not superseded, not left out for its
+     issuer. Two exceptions keep honest chains whole, each resting on a fact a vault-key holder cannot make
+     up: **the Kit's creator** (the anchored Kit's certificate names it as issuer with its pinned key; only
+     the device that made the paper could have issued a certificate carrying the Kit's proof of
+     possession), which keeps R-105's chains (a Kit joiner that replaced its own Kit and made the next one);
+     and **a remover of its own issuer** (left out as `IssuerRemoved` only because its issuer is `removed`
+     by the signer's own record, the issuer not a Kit): `removal_counts` counted that record only while the
+     signer was not left out, which keeps the security review's MEDIUM 3 (B removes A, which paired B and C;
+     B's envelope keeps C). **Accepted cost:** an honest envelope signed by a device that is a late vouch on
+     the joiner (R-23, equal positions), a superseded ID, or a device whose issuer another device removed
+     confirms nothing: those devices show "Zkontrolujte" and a late vouch or an unknown issuer can be kept.
+     A replaced Kit vouches only for what it issued before its removal record (`vouch` against the Kit's
+     `state_at`; a device dated before it is left out, `IssuerRemoved`, and does not speak). Tests:
+     `kit_join_attacks::a_planted_genesis_signer_is_refused`, `a_superseded_signer_vouches_for_nothing`,
+     `a_late_vouch_signer_vouches_for_nothing`, `a_replaced_kits_device_issued_after_its_removal_is_refused`,
+     `a_replaced_kits_backdated_device_vouches_for_nothing`,
+     `a_signer_whose_issuer_another_device_removed_vouches_for_nothing`; R-105's three and MEDIUM 3's
+     (`kit_join::the_confirmed_set_keeps_a_device_whose_issuer_was_removed`) still pass.
+R-107. **"Je moje" no longer keeps a device whose issuer was removed** (final review M-1). `trust::keep`
+     confirmed any `trusted` entry, `IssuerRemoved` included, without a password. It now answers `false`
+     for one left out as `IssuerRemoved` (whose issuer was removed, or is left out for that): only a late
+     vouch (`LateVouch`) or an unknown issuer (`IssuerUnknown`) is the person's to keep, as the UI offers.
+     Tests: `trust_tests::keep_refuses_a_device_left_out_for_its_removed_issuer`; `devices_tests::
+     a_device_a_removed_device_added_is_marked_check_and_cannot_be_kept` and `rekey_pickup::
+     a_key_change_by_a_device_left_out_for_its_issuer_is_not_taken_until_it_is_kept` (its removed-issuer
+     case now stays `keyChangeUnverified`) changed with it.

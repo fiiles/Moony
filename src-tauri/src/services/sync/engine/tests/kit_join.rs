@@ -34,7 +34,7 @@ pub(super) fn newcomer() -> TestConn {
     conn
 }
 
-fn key_of(error: &SyncError) -> Option<String> {
+pub(super) fn key_of(error: &SyncError) -> Option<String> {
     match error {
         SyncError::Local(AppError::Validation(detail)) => {
             Some(detail.split('|').next().unwrap_or_default().to_string())
@@ -105,7 +105,7 @@ pub(super) fn me(conn: &rusqlite::Connection) -> DeviceId {
     state::load(conn).expect("state").expect("row").device
 }
 
-fn untouched(device: &TestConn) {
+pub(super) fn untouched(device: &TestConn) {
     let conn = device.lock();
     assert!(has_institution(&conn, "local-only"), "nothing replaced");
     assert!(!sync_on(&conn));
@@ -1000,6 +1000,8 @@ async fn a_kit_made_by_a_kit_joiner_lets_the_next_device_join() {
         .expect("entry")
         .expect("the signer is pinned");
     assert_eq!(signer.state, TrustState::Trusted);
+    // The signer made the Kit, so it speaks though its issuer was replaced (As built R-106).
+    assert!(signer.confirmed, "{signer:?}");
     let kit = trust::entry(&conn, kit_keys(&three, &next).id())
         .expect("entry")
         .expect("anchored");

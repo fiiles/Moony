@@ -18,6 +18,7 @@ mod held_blobs;
 mod join;
 mod join_new;
 mod kit_join;
+mod kit_join_attacks;
 mod lanes;
 mod pull;
 mod push;

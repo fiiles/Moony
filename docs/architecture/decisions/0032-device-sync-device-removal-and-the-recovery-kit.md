@@ -65,8 +65,11 @@ that names it or by the device that makes it (R-24, R-58).
 Joining with the Kit after any number of key changes (`join::recovery_credentials`): decode,
 `GET /kit` with the derived token, open the envelope, take every key, restore the snapshot, anchor
 the Kit's own row (it must be named by the envelope's confirmed set, R-60), sign the joiner's
-certificate with the Kit's key, and trust on first use only what the Kit's own issuer chain or the
-confirmed set names. The newest epoch is never left unchecked (a recorded head, the snapshot's own
+certificate with the Kit's key, and trust on first use only what the Kit's own issuer chain names.
+The envelope's confirmed set (and any genesis it names) is taken only when its signer speaks on that
+store: pinned with that certificate, `trusted`, not superseded, not left out for its issuer, the Kit's
+creator and a remover of its own issuer aside (`trust::kit_join_speaker`, R-106); any other pinned signer
+opens the Kit but vouches for nothing (generalising R-78). The newest epoch is never left unchecked (a recorded head, the snapshot's own
 epoch as a floor, or an unverified-epoch entry that holds old-epoch ops until the signer's signed
 head record verifies). Then the **push hold**: the joiner pulls but pushes nothing until the person
 answers "Data jsou zpět" (R-45).
@@ -202,6 +205,8 @@ R1–R5 and the copied-Kit trade on 2026-11-16.
   restored snapshot, a genuine device paired by one that has since left is "Zkontrolujte" until a key
   change names it or the person keeps it (R-23); a Kit joiner removes a device before the joiner's own
   row went out, so that device reads `keyChangeUnverified` rather than "removed" (R-46); a Kit's
-  envelope signer that left still opens a Kit join, but its confirmed set vouches for nothing (R-75,
-  R-78); printing from the built app is unverified until Task 33 (the primary button may become
+  envelope signer that left, is superseded, is a late vouch or whose issuer another device removed
+  still opens a Kit join, but its confirmed set vouches for nothing (R-75, R-78, R-106), so such a
+  device and what only it confirmed show "Zkontrolujte" on the joiner; "Je moje" keeps a late vouch or
+  an unknown issuer, never a device whose issuer was removed (R-107); printing from the built app is unverified until Task 33 (the primary button may become
   "Uložit jako soubor…").

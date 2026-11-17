@@ -258,7 +258,7 @@ fn a_former_device_is_listed_for_thirty_days() {
 }
 
 #[test]
-fn a_device_a_removed_device_added_is_marked_check_and_kept_by_the_person() {
+fn a_device_a_removed_device_added_is_marked_check_and_cannot_be_kept() {
     let conn = profile(true);
     row(&conn, B, Some(&B.paired_by(ME, 0x70)));
     row(&conn, C, Some(&C.paired_by(B, 0x71)));
@@ -275,9 +275,10 @@ fn a_device_a_removed_device_added_is_marked_check_and_kept_by_the_person() {
     assert_eq!(c.check_reason, Some(SyncCheckReason::IssuerRemoved));
     assert_eq!(c.added_by.as_deref(), Some("Device 2"));
 
-    assert!(trust::keep(&conn, C.id()).unwrap());
+    // Only a late vouch is the person's to keep (final review M-1).
+    assert!(!trust::keep(&conn, C.id()).unwrap());
     let list = list_devices(&conn, NOW + 200).unwrap();
-    assert_eq!(of(&list, C).status, SyncDeviceStatus::Active);
+    assert_eq!(of(&list, C).status, SyncDeviceStatus::Check);
 }
 
 #[test]

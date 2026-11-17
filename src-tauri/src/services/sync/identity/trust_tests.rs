@@ -1466,6 +1466,17 @@ fn a_confirmed_entry_stops_the_chain() {
     assert!(reasons(&conn).contains(&(B.id(), ExclusionReason::IssuerRemoved)));
 }
 
+/// Final review M-1: "Je moje" is for a late vouch or an unknown issuer; a device whose issuer was
+/// removed (or is left out for that) is not kept, whatever the UI sends.
+#[test]
+fn keep_refuses_a_device_left_out_for_its_removed_issuer() {
+    let conn = removal_chain();
+    for dev in [B, C, D] {
+        assert!(!trust::keep(&conn, dev.id()).unwrap(), "{:?}", dev.id());
+    }
+    assert_eq!(included(&conn), vec![ME.id()]);
+}
+
 #[test]
 fn a_chain_through_a_device_that_left_still_drops() {
     let conn = removal_chain();

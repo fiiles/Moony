@@ -912,14 +912,15 @@ fn kit_refused(what: &str, error: AppError) -> AppError {
 /// Steps 5–7 of a Kit join (revision §2.6), in the replace's savepoint once this device's row is
 /// recorded and the Kit anchored:
 ///
-/// - the store: trust on first use of what was restored, a genesis only when the Kit's chain or
-///   the envelope's confirmed set names it (As built R-28); then the envelope's signer must be
-///   pinned with the certificate the envelope bundles, not removed, and not left before the
-///   envelope's newest epoch (its `left` record's epoch is at least the envelope's, As built R-75;
-///   the envelope's own `at` is the signer's claim and is not consulted, R-28), and only then is
-///   the confirmed set applied, unless the signer has left: a left signer's confirmed set is
-///   ignored (genesis only from the Kit's own chain, nothing confirmed; As built R-78, for the
-///   epoch comparison is self-asserted);
+/// - the store: trust on first use of what was restored, a genesis only when the Kit's chain
+///   names it (As built R-28); then the envelope's signer must be pinned with the certificate the
+///   envelope bundles, not removed, and not left before the envelope's newest epoch (its `left`
+///   record's epoch is at least the envelope's, As built R-75; the envelope's own `at` is the
+///   signer's claim and is not consulted, R-28), or the Kit is unreadable; and only when the
+///   signer speaks on that store (`trust::kit_join_speaker`: `trusted`, not superseded, not left
+///   out for its issuer unless it is the Kit's creator; As built R-106, generalising R-78) is the
+///   confirmed set applied and any genesis it names trusted; otherwise the Kit opens and nothing
+///   of the set is taken;
 /// - the newest epoch E is never left unchecked: its head is known when the snapshot's `Keys`
 ///   record named it; a snapshot sealed under E bounds older ops past it
 ///   (`state::KitEpochFloor`); an older snapshot leaves E provisional (`head::note_unverified`,
@@ -932,22 +933,11 @@ fn kit_join_store(conn: &Connection, join: &KitJoin, now: i64) -> Result<()> {
         .ok_or_else(|| AppError::Internal("sync join: no sync state after the replace".into()))?
         .device;
     let signer = join.signer.body.device;
-    // First what the Kit's own issuer chain vouches for; the envelope's confirmed set widens the
-    // genesis certificates trusted only when its signer has not left (below).
+    // Only what the Kit's own issuer chain vouches for: the envelope's confirmed set is the
+    // signer's word, and is taken (its genesis certificates too) only from a signer that speaks
+    // on this store (below).
     let anchored = trust::kit_join_genesis(conn, join.kit.id(), &[])?;
     trust::tofu_from_rows(conn, now, &anchored)?;
-    // A signer that has left vouches for nothing new (As built R-78): its left record's epoch is
-    // its own claim (a copy of the device, which holds its signing key and the vault key, can
-    // write any), so the comparison with the envelope's epoch protects nothing. The Kit still
-    // opens, which is all R-75 is for; what it names is not taken.
-    let signer_left = trust::entry(conn, signer)?
-        .is_some_and(|e| e.cert == join.signer && e.state == trust::TrustState::Left);
-    if !signer_left {
-        let genesis = trust::kit_join_genesis(conn, join.kit.id(), &join.confirmed)?;
-        if genesis != anchored {
-            trust::tofu_from_rows(conn, now, &genesis)?;
-        }
-    }
     let speaks = trust::entry(conn, signer)?.is_some_and(|e| {
         e.cert == join.signer
             && match e.state {
@@ -971,8 +961,19 @@ fn kit_join_store(conn: &Connection, join: &KitJoin, now: i64) -> Result<()> {
             ),
         ));
     }
-    if !signer_left {
+    // The confirmed set, and any genesis it names, only from a signer that speaks here (final
+    // review I-3, As built R-106, generalising R-78): `trusted`, not superseded and not left out
+    // for its issuer, the Kit's creator aside (`trust::kit_join_speaker`). A vault-key holder can
+    // seal an envelope with any key it holds: a genesis of its own, a superseded or left copy, a
+    // late vouch; none of them makes the joiner trust what it names. The Kit still opens.
+    if trust::kit_join_speaker(conn, &join.signer, join.kit.id())? {
+        let genesis = trust::kit_join_genesis(conn, join.kit.id(), &join.confirmed)?;
+        if genesis != anchored {
+            trust::tofu_from_rows(conn, now, &genesis)?;
+        }
         trust::apply_confirmed_set(conn, &join.confirmed)?;
+    } else {
+        log::warn!("[SYNC] The Recovery Kit's envelope signer does not speak here; its confirmed set is not taken");
     }
     let newest = join.newest_epoch;
     if !state::epochs(conn)?.contains_key(&newest) {

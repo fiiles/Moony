@@ -384,7 +384,8 @@ async fn a_key_change_signed_by_an_unknown_device_is_not_taken() {
 /// A key change signed by a device this one trusts but leaves out for its issuer (revision §3.1;
 /// review of Tasks 13–15, finding 1): C was paired by A; here A left before C's certificate was
 /// seen (a late vouch), or A was removed (its issuer removed). C's key change is not taken
-/// (`keyChangeUnverified`) until the person keeps C ("Je moje").
+/// (`keyChangeUnverified`) until the person keeps C ("Je moje"), which only a late vouch can be
+/// (final review M-1): a device whose issuer was removed is never kept.
 #[tokio::test]
 async fn a_key_change_by_a_device_left_out_for_its_issuer_is_not_taken_until_it_is_kept() {
     for removed in [false, true] {
@@ -460,6 +461,13 @@ async fn a_key_change_by_a_device_left_out_for_its_issuer_is_not_taken_until_it_
             Some(r#"{"by":"iPad"}"#)
         );
 
+        if removed {
+            assert!(!trust::keep(&three.vault.b.lock(), C).expect("not kept"));
+            let report = round_of(&three.vault, &three.vault.b).await;
+            assert_eq!(report.problem, Some(SyncProblem::KeyChangeUnverified));
+            assert_eq!(key_epoch(&three.vault.b.lock()), 0);
+            continue;
+        }
         assert!(trust::keep(&three.vault.b.lock(), C).expect("kept"));
         let report = round_of(&three.vault, &three.vault.b).await;
         assert_eq!(report.problem, None, "removed: {removed}: {report:?}");

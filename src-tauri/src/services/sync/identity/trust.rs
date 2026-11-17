@@ -1475,6 +1475,51 @@ pub fn speaker(conn: &Connection, cert: &Certificate) -> Result<Option<TrustEntr
     Ok(store.entries.remove(&cert.body.device))
 }
 
+/// Whether a Kit joiner takes the confirmed set of an envelope `signer` sealed (final review I-3,
+/// As built R-106), judged on the store its restored rows gave with only the Kit's own chain as
+/// genesis: `speaker` (pinned with exactly `signer`, `trusted`, not left out for its issuer) and
+/// not superseded (a superseded ID lives on only as a copy). Two signers left out for their issuer
+/// still speak, each for a fact a vault-key holder cannot make up:
+///
+/// - the anchored `kit`'s creator (the Kit's certificate names it as issuer with its pinned
+///   signing key): the Kit's certificate carries the Kit's own proof of possession, so only the
+///   device that made the person's paper issued it. Its own issuer may be a Kit it replaced since
+///   (a Kit joiner that made the next Kit, As built R-105);
+/// - a signer left out only because its issuer is `removed` by the signer's own removal record
+///   (`IssuerRemoved`, the issuer not a Kit): that record counted here only while the signer was
+///   not left out (`removal_counts`), so the signer stood as a speaker when it removed its issuer
+///   (the remover whose key change sealed the envelope, the security review's MEDIUM 3).
+///
+/// Anything else left out for its issuer (`IssuerRemoved` by another remover, `LateVouch`,
+/// `IssuerUnknown`) speaks for nothing: the Kit opens and nothing of the set is taken.
+pub fn kit_join_speaker(conn: &Connection, signer: &Certificate, kit: DeviceId) -> Result<bool> {
+    let store = Store::load(conn)?;
+    let device = signer.body.device;
+    let Some(entry) = store.get(&device) else {
+        return Ok(false);
+    };
+    if &entry.cert != signer || entry.state != TrustState::Trusted || store.superseded(&device) {
+        return Ok(false);
+    }
+    let Some(reason) = store.excluded.get(&device) else {
+        return Ok(true);
+    };
+    let creator = store.get(&kit).is_some_and(|k| {
+        k.kind == CertKind::Kit
+            && k.state == TrustState::Trusted
+            && k.confirmed
+            && k.issuer == device
+            && k.cert.body.issuer_sign_pub == entry.sign_pub
+    });
+    let removed_its_issuer = *reason == ExclusionReason::IssuerRemoved
+        && store.get(&entry.issuer).is_some_and(|issuer| {
+            issuer.kind != CertKind::Kit
+                && issuer.state == TrustState::Removed
+                && issuer.state_by == Some(device)
+        });
+    Ok(creator || removed_its_issuer)
+}
+
 /// A certificate a verified key change endorses: pinned where this device has none (unless its
 /// join ticket is already used) and `confirmed`; a different pinned one stays and is not
 /// confirmed.
@@ -1543,11 +1588,17 @@ pub fn mark_removed(
 /// this one, on this device. It is marked `confirmed` here only (no record); the next key change
 /// this device makes names it, which confirms it everywhere. Returns whether it changed: `false`
 /// also when there is nothing to keep (this device, an entry never pinned here, one that is not
-/// trusted, one removed meanwhile; review of Task 24, I2).
+/// trusted, one removed meanwhile; review of Task 24, I2), and for one left out because its issuer
+/// was removed (`IssuerRemoved`, final review M-1): only a late vouch (`LateVouch`) or an unknown
+/// issuer (`IssuerUnknown`) is the person's to keep.
 pub fn keep(conn: &Connection, device: DeviceId) -> Result<bool> {
     let own = this_device(conn)?;
-    let trusted = entry(conn, device)?.is_some_and(|e| e.state == TrustState::Trusted);
-    if device == own || !trusted {
+    let store = Store::load(conn)?;
+    let trusted = store
+        .get(&device)
+        .is_some_and(|e| e.state == TrustState::Trusted);
+    let issuer_removed = store.excluded.get(&device) == Some(&ExclusionReason::IssuerRemoved);
+    if device == own || !trusted || issuer_removed {
         return Ok(false);
     }
     set_confirmed(conn, device)

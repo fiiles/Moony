@@ -785,6 +785,94 @@ async fn an_envelope_signed_by_a_device_that_left_is_unreadable() {
     untouched(&device);
 }
 
+/// A copy of a device that left (a backup holds its signing key and, since leaving does not rotate
+/// the key, the vault's current key) re-seals the Kit's envelope with a confirmed set that names a
+/// genesis it made itself. The epoch comparison of As built R-75 is self-asserted, so what protects
+/// the joiner is that a left signer vouches for nothing: the Kit still opens (R-75's liveness), but
+/// the planted device is neither trusted nor confirmed on the joiner.
+#[tokio::test]
+async fn a_left_signers_confirmed_set_vouches_for_nothing() {
+    const D: DeviceId = DeviceId([0xd0; 16]);
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    let (b_seed, b_cert) = {
+        let b = three.vault.b.lock();
+        (
+            identity::own_seed(&b).expect("seed").expect("seed"),
+            trust::entry(&b, B).expect("entry").expect("pinned").cert,
+        )
+    };
+    assert!(
+        crate::services::sync::setup::write_left_record(&three.vault.b.lock(), NOW).expect("left")
+    );
+    round_of(&three.vault, &three.vault.b).await;
+    round_of(&three.vault, &three.vault.a).await;
+    // The planted device: a genesis of its own in a row of the restored data.
+    let planted = {
+        let vault = three.vault.creds.vault_id.0;
+        let d_seed = identity::new_sign_seed().expect("seed");
+        let genesis = cert::issue_self(
+            CertKind::Genesis,
+            &cert::CertFields {
+                vault_id: vault,
+                device: D,
+                box_pub: [0xd0; 32],
+                issued_at: NOW,
+            },
+            &d_seed,
+        )
+        .expect("genesis");
+        three
+            .vault
+            .a
+            .lock()
+            .execute(
+                "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at, cert)                  VALUES (?1, 'k', 'Rogue', 'macos', '1', ?2, ?3)",
+                rusqlite::params![D.to_hex(), NOW, genesis.to_b64()],
+            )
+            .expect("rogue row");
+        genesis
+    };
+    // Epoch 0's keys, signed by the copy of B, naming the Kit and the planted genesis.
+    let envelope = {
+        let a = three.vault.a.lock();
+        let creds = keys::credentials(&a).expect("creds").expect("bound");
+        let kit_cert = trust::entry(&a, kit_keys(&three, &secret).id())
+            .expect("entry")
+            .expect("pinned")
+            .cert;
+        let named = [
+            crate::services::sync::rekey::envelope::Confirmed {
+                device: kit_cert.body.device,
+                cert_hash: kit_cert.hash(),
+            },
+            crate::services::sync::rekey::envelope::Confirmed {
+                device: D,
+                cert_hash: planted.hash(),
+            },
+        ];
+        kit::seal(&a, &creds.keys, &kit_cert, &b_seed, &b_cert, &named, NOW).expect("envelope")
+    };
+    replace_envelope(&three, &secret, &envelope).await;
+    round_of(&three.vault, &three.vault.a).await;
+    snapshot_by(&three, &three.vault.a).await;
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    kit_join(&three, &device, dir.path(), &secret)
+        .await
+        .expect("the Kit still opens");
+
+    let conn = device.lock();
+    let planted_entry = trust::entry(&conn, D).expect("entry");
+    assert!(
+        planted_entry
+            .as_ref()
+            .is_none_or(|e| e.state != TrustState::Trusted && !e.confirmed),
+        "the planted device is not trusted: {planted_entry:?}"
+    );
+}
+
 /// Review of Tasks 18–19, I3: a server that replays an older envelope (from before a key change)
 /// beside the current snapshot gives the joiner no key that opens it: refused, nothing replaced.
 #[tokio::test]

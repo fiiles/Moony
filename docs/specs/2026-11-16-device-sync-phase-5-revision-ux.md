@@ -256,7 +256,10 @@ one of those. **The envelope's signer check is only TOFU-strength against a hold
 key** (it can write rows and a snapshot, so a signer "pinned in the restored store" is whatever that
 snapshot says); **the root of trust of a Kit join is the Kit-signed envelope's confirmed set**, which
 binds the Kit's own certificate (step 6) and the genesis certificates the joiner trusts (As built R-43),
-**and the push hold** (step 7). Freshness it cannot check (R1); the push hold is the answer.
+**and the push hold** (step 7). **A signer that has `left` vouches for nothing** (As built R-78): the
+Kit still opens, but its confirmed set is ignored (genesis only from the Kit's own issuer chain,
+nothing confirmed), because a left device's `left` record epoch is self-asserted and a backup of that
+device holds the signing key and the vault key. Freshness it cannot check (R1); the push hold is the answer.
 
 **The review's note on phase-5 §8.3 step 3** (an old Kit marked valid while an old snapshot is still on
 the server): resolved by construction. Nothing is probed against snapshots; the server answers a
@@ -1568,7 +1571,8 @@ R-75. **A Kit's envelope sealed by a device that has since left still opens a Ki
      rotated after it left. A removed signer stays refused (every removal seals a new envelope).
      `kit_join::an_envelope_signed_by_a_device_that_left_is_unreadable` now covers the later-epoch
      case; `rekey_scenarios::the_kit_still_works_after_the_device_that_sealed_its_envelope_left` the
-     honest one.
+     honest one. **Corrected by R-78: the epoch comparison protects nothing** (both epochs are
+     self-asserted); it is kept only as a plausibility check.
 R-76. **The scenarios** (`engine/tests/rekey_scenarios.rs`, all with real rounds over the fake relay):
      a device offline with sealed and queued changes over a removal (each applied once, in order);
      two devices removing each other at once (exactly one wins, the loser is removed); a pairing a
@@ -1597,3 +1601,15 @@ R-77. **Observations, not changed.** (a) A device a key change left out cannot b
      the forged rows and reports `keyChangeOverrun`; what limits the damage is the transitive
      `IssuerRemoved`, which the scenario covers. (c) R-46 (a Kit joiner removed before its row went
      out) is covered by `kit_join::odebrat_je_…`.
+R-78. **A left signer's confirmed set vouches for nothing** (review of R-75). A copy of a device that
+     left (a backup holds its signing key and, since leaving does not rotate, the current vault key)
+     could re-seal the Kit's envelope by token rotation with a confirmed set naming a genesis it made
+     itself, and `kit_join_genesis` took any genesis the set named, so a Kit joiner trusted and
+     confirmed the attacker's device; R-75's epoch comparison does not stop it (the `left` record's
+     epoch and the envelope's are both the signer's own claim). `join::kit_join_store` now trusts
+     genesis certificates on first use from the Kit's own issuer chain first, and widens them with the
+     confirmed set, and applies the set, only when the signer is not `Left`; for a `Left` signer the Kit
+     still opens (R-75's liveness) but nothing it names is taken. A `Removed` signer stays refused.
+     Test: `kit_join::a_left_signers_confirmed_set_vouches_for_nothing`. Also (R-73's sentinel):
+     `fetched_snapshot_at` answers a private `KeyAhead` instead of reusing `SyncError::ReadOnlyToken`;
+     `fetched_snapshot` (repair, re-sync) still reads it as `syncKeyRotated`.

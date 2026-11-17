@@ -62,7 +62,7 @@ const ALREADY_ENABLED: &str = "validation.syncAlreadyEnabled";
 const SETUP_PENDING: &str = "validation.syncJoinSetupPending";
 const KIT_ACCOUNT_INVALID: &str = "validation.syncRecoveryAccountInvalid";
 const KIT_VAULT_NOT_FOUND: &str = "validation.syncRecoveryVaultNotFound";
-const KIT_REPLACED: &str = "validation.syncRecoveryKitReplaced";
+pub(crate) const KIT_REPLACED: &str = "validation.syncRecoveryKitReplaced";
 const KIT_UNREADABLE: &str = "validation.syncRecoveryKitUnreadable";
 const CODE_INVALID: &str = "validation.syncRecoveryCodeInvalid";
 const PAIRING_FAILED: &str = "validation.syncPairingFailed";
@@ -146,15 +146,23 @@ async fn fetched_snapshot<R: Relay>(
     relay: &R,
     creds: &Credentials,
 ) -> SyncResult<Zeroizing<Vec<u8>>> {
-    Ok(fetched_snapshot_at(relay, creds).await?.0)
+    match fetched_snapshot_at(relay, creds).await? {
+        Ok((plain, _)) => Ok(plain),
+        // Read as a key change these credentials lack (`syncKeyRotated`).
+        Err(KeyAhead) => Err(SyncError::ReadOnlyToken),
+    }
 }
+
+/// The snapshot is sealed under a key epoch the credentials do not hold (As built R-73): a private
+/// answer of `fetched_snapshot_at`, not an error of the sync client.
+struct KeyAhead;
 
 /// `fetched_snapshot`, with where the snapshot was taken and the epoch it is sealed under (read
 /// from the sealed stream's header, which the open authenticated with that epoch's key).
 async fn fetched_snapshot_at<R: Relay>(
     relay: &R,
     creds: &Credentials,
-) -> SyncResult<(Zeroizing<Vec<u8>>, SnapshotAt)> {
+) -> SyncResult<std::result::Result<(Zeroizing<Vec<u8>>, SnapshotAt), KeyAhead>> {
     let blob = match relay.get_snapshot(&creds.auth()).await {
         Ok(blob) => blob,
         Err(RelayError::NoSnapshot) => {
@@ -175,11 +183,11 @@ async fn fetched_snapshot_at<R: Relay>(
         // overtook): the snapshot is not damaged, this device was never given its key. Bytes
         // that are no sealed stream at all stay `syncSnapshotInvalid`.
         log::warn!("[SYNC] The vault's snapshot is sealed under a key these credentials lack");
-        return Err(SyncError::ReadOnlyToken);
+        return Ok(Err(KeyAhead));
     }
     let opener = creds.clone();
     let plain = off_thread(move || open_sealed(&opener, &blob)).await?;
-    Ok((plain, at))
+    Ok(Ok((plain, at)))
 }
 
 /// After the replace committed: the binding is written for the new device ID; a failure is logged
@@ -404,17 +412,17 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
     validate_base_url(&creds.relay_url)?;
     let _no_round = engine::exclusive(db).await;
     db.with_conn(|conn| may_join(conn, &creds))?;
-    let (plain, at) = match fetched_snapshot_at(relay, &creds).await {
+    let (plain, at) = match fetched_snapshot_at(relay, &creds).await? {
         // The credentials are a key change behind (As built R-73): pair again, or, for a Kit
         // whose envelope a key change overtook between the two reads, try the Kit again.
-        Err(SyncError::ReadOnlyToken) => {
+        Err(KeyAhead) => {
             let key = match identity {
                 JoinIdentity::RecoveryKit(_) => KIT_UNREADABLE,
                 _ => PAIRING_FAILED,
             };
             return Err(AppError::Validation(key.into()).into());
         }
-        fetched => fetched?,
+        Ok(fetched) => fetched,
     };
     if let JoinIdentity::RecoveryKit(join) = &mut identity {
         join.snapshot = Some(at);
@@ -873,7 +881,9 @@ fn kit_refused(what: &str, error: AppError) -> AppError {
 ///   pinned with the certificate the envelope bundles, not removed, and not left before the
 ///   envelope's newest epoch (its `left` record's epoch is at least the envelope's, As built R-75;
 ///   the envelope's own `at` is the signer's claim and is not consulted, R-28), and only then is
-///   the confirmed set applied;
+///   the confirmed set applied, unless the signer has left: a left signer's confirmed set is
+///   ignored (genesis only from the Kit's own chain, nothing confirmed; As built R-78, for the
+///   epoch comparison is self-asserted);
 /// - the newest epoch E is never left unchecked: its head is known when the snapshot's `Keys`
 ///   record named it; a snapshot sealed under E bounds older ops past it
 ///   (`state::KitEpochFloor`); an older snapshot leaves E provisional (`head::note_unverified`,
@@ -885,17 +895,31 @@ fn kit_join_store(conn: &Connection, join: &KitJoin, now: i64) -> Result<()> {
     let me = state::load(conn)?
         .ok_or_else(|| AppError::Internal("sync join: no sync state after the replace".into()))?
         .device;
-    let genesis = trust::kit_join_genesis(conn, join.kit.id(), &join.confirmed)?;
-    trust::tofu_from_rows(conn, now, &genesis)?;
     let signer = join.signer.body.device;
+    // First what the Kit's own issuer chain vouches for; the envelope's confirmed set widens the
+    // genesis certificates trusted only when its signer has not left (below).
+    let anchored = trust::kit_join_genesis(conn, join.kit.id(), &[])?;
+    trust::tofu_from_rows(conn, now, &anchored)?;
+    // A signer that has left vouches for nothing new (As built R-78): its left record's epoch is
+    // its own claim (a copy of the device, which holds its signing key and the vault key, can
+    // write any), so the comparison with the envelope's epoch protects nothing. The Kit still
+    // opens, which is all R-75 is for; what it names is not taken.
+    let signer_left = trust::entry(conn, signer)?
+        .is_some_and(|e| e.cert == join.signer && e.state == trust::TrustState::Left);
+    if !signer_left {
+        let genesis = trust::kit_join_genesis(conn, join.kit.id(), &join.confirmed)?;
+        if genesis != anchored {
+            trust::tofu_from_rows(conn, now, &genesis)?;
+        }
+    }
     let speaks = trust::entry(conn, signer)?.is_some_and(|e| {
         e.cert == join.signer
             && match e.state {
                 trust::TrustState::Trusted => true,
                 // Leaving seals no envelope, so the last one a device sealed stays the Kit's
-                // until the next key change (As built R-75). Only an envelope of an epoch the
-                // signer held when it left is its own: a later one could come only from a copy
-                // that rotated the key after it left.
+                // until the next key change (As built R-75), and the Kit must keep working then.
+                // The epoch of its `left` record is the signer's own claim and is not trusted
+                // for anything (R-78): the envelope opens, and its confirmed set is ignored.
                 trust::TrustState::Left => e
                     .state_record
                     .as_ref()
@@ -911,7 +935,9 @@ fn kit_join_store(conn: &Connection, join: &KitJoin, now: i64) -> Result<()> {
             ),
         ));
     }
-    trust::apply_confirmed_set(conn, &join.confirmed)?;
+    if !signer_left {
+        trust::apply_confirmed_set(conn, &join.confirmed)?;
+    }
     let newest = join.newest_epoch;
     if !state::epochs(conn)?.contains_key(&newest) {
         let at = join.snapshot.ok_or_else(|| {

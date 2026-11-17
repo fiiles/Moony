@@ -4,6 +4,7 @@ import type { PairingView, ReplaceConsentView } from '@shared/schema';
 import { ApiError } from '@/lib/api-error';
 import { deviceSyncApi, portfolioApi } from '@/lib/tauri-api';
 import { refreshAfterRemoteChanges } from '@/lib/device-sync-refresh';
+import { dropQuery } from '@/lib/drop-query';
 import {
   CODE_MISMATCH_KEY,
   joinFailureAction,
@@ -143,16 +144,20 @@ export function useDevicePairing() {
     return joinFailureAction(poll, failure instanceof ApiError ? failure.key : undefined);
   };
 
+  // The view, the ended state and the last confirm's answer go together once the backend gave the
+  // pairing up, so the screen goes from the ended pairing straight to a fresh start (the password
+  // step) and never shows the old view's code field. `dropQuery`, not `removeQueries`: the
+  // mounted query would keep showing the old view.
   const cancel = async () => {
     start.reset();
     scan.reset();
     confirm.reset();
-    setConfirmFailure(null);
-    setEnded(null);
     try {
       await deviceSyncApi.pairingCancel();
     } finally {
-      queryClient.removeQueries({ queryKey: PAIRING_KEY });
+      dropQuery(queryClient, PAIRING_KEY);
+      setConfirmFailure(null);
+      setEnded(null);
     }
   };
 

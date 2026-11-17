@@ -699,6 +699,17 @@ pub fn list_balance_records(
     Ok(rows)
 }
 
+/// The day a balance record is dated (what a delete needs to know before the record is gone).
+pub fn balance_record_day(conn: &rusqlite::Connection, record_id: &str) -> Result<i64> {
+    conn.query_row(
+        "SELECT as_of FROM bank_balance_records WHERE id = ?1",
+        [record_id],
+        |r| r.get(0),
+    )
+    .optional()?
+    .ok_or_else(|| AppError::NotFound(format!("Balance record not found: {record_id}")))
+}
+
 /// Delete one record and re-mirror the newest remaining one into the columns.
 pub fn delete_balance_record(conn: &rusqlite::Connection, record_id: &str) -> Result<BankAccount> {
     let tx = conn.unchecked_transaction()?;
@@ -1473,6 +1484,18 @@ mod tests {
         let a = delete_balance_record(&conn, &last).unwrap();
         assert_eq!((a.balance.as_str(), a.balance_as_of), ("0", None));
         assert!(delete_balance_record(&conn, "missing").is_err());
+    }
+
+    #[test]
+    fn balance_record_day_is_the_day_the_record_is_dated() {
+        let conn = setup_test_db();
+        record_balance(&conn, "acc-1", &record("100", D2)).unwrap();
+        let id = list_balance_records(&conn, "acc-1").unwrap()[0].id.clone();
+        assert_eq!(balance_record_day(&conn, &id).unwrap(), D2);
+        assert!(matches!(
+            balance_record_day(&conn, "missing"),
+            Err(AppError::NotFound(_))
+        ));
     }
 
     #[test]

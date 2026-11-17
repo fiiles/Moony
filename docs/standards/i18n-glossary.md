@@ -83,12 +83,25 @@ Brokers / IBKR, Revolut, Degiro, Fio, Air Bank, …), keyboard keys.
 | Password | Passwort | Contraseña | Password | Passord | Hasło | Lösenord | パスワード | 密码 |
 | Recovery key (cs obnovovací klíč; one per device, resets that device's password) | Wiederherstellungsschlüssel | Clave de recuperación | Chiave di recupero | Gjenopprettingsnøkkel | Klucz odzyskiwania | Återställningsnyckel | 復旧キー | 恢复密钥 |
 | Moony password (cs heslo do Moony; unlocks one device; never "device password" / "heslo zařízení", it reads like the computer's own) | Moony-Passwort | Contraseña de Moony | Password di Moony | Moony-passord | Hasło do Moony | Moony-lösenord | Moony のパスワード | Moony 密码 |
-| Sync Recovery Kit (cs Záchranná sada synchronizace; one for all devices) | Sync-Wiederherstellungs-Kit | Kit de recuperación de sincronización | Kit di ripristino della sincronizzazione | Gjenopprettingssett for synkronisering | Zestaw odzyskiwania synchronizacji | Återställningskit för synkronisering | 同期リカバリーキット | 同步恢复包 |
-| Recovery Kit code (cs kód záchranné sady; never "recovery code" / "obnovovací kód") | Code des Wiederherstellungs-Kits | Código del kit de recuperación | Codice del kit di ripristino | Kode fra gjenopprettingssettet | Kod zestawu odzyskiwania | Kod från återställningskitet | リカバリーキットのコード | 恢复包代码 |
+| Recovery kit (cs záchranná sada, lower case in running text; one paper kit for all devices; the UI does not say "Sync Recovery Kit" or "synchronizace" after it) | Sync-Wiederherstellungs-Kit | Kit de recuperación de sincronización | Kit di ripristino della sincronizzazione | Gjenopprettingssett for synkronisering | Zestaw odzyskiwania synchronizacji | Återställningskit för synkronisering | 同期リカバリーキット | 同步恢复包 |
+| Recovery kit code (cs kód záchranné sady; never "recovery code" / "obnovovací kód") | Code des Wiederherstellungs-Kits | Código del kit de recuperación | Codice del kit di ripristino | Kode fra gjenopprettingssettet | Kod zestawu odzyskiwania | Kod från återställningskitet | リカバリーキットのコード | 恢复包代码 |
+| Remove device (cs odebrat zařízení; the one removal, it always makes the removed device stop getting data; never "revoke", "cut off" or "odříznout") | Gerät entfernen | Quitar dispositivo | Rimuovi dispositivo | Fjern enhet | Usuń urządzenie | Ta bort enhet | デバイスを削除 | 移除设备 |
+| Former devices (cs dřívější zařízení; the folded group of devices that left or were removed) | Frühere Geräte | Dispositivos anteriores | Dispositivi precedenti | Tidligere enheter | Wcześniejsze urządzenia | Tidigare enheter | 以前のデバイス | 以前的设备 |
+| Connect again (cs připojit znovu; turn sync off on the device and join again, local data stay) | Erneut verbinden | Volver a conectar | Ricollega | Koble til igjen | Połącz ponownie | Anslut igen | 再接続 | 重新连接 |
+| Check this (cs zkontrolujte; the badge on a device Moony could not verify; a request, not an accusation) | Prüfen | Revisar | Controlla | Sjekk dette | Sprawdź | Kontrollera | 要確認 | 请检查 |
+| Check kit (cs ověřit sadu; checks a kit's code without sending anything) | Kit prüfen | Comprobar kit | Verifica il kit | Kontroller settet | Sprawdź zestaw | Kontrollera kitet | キットを確認 | 验证恢复包 |
 | Connection code (cs připojovací kód; from the sync server's admin) | Verbindungscode | Código de conexión | Codice di connessione | Tilkoblingskode | Kod połączenia | Anslutningskod | 接続コード | 连接码 |
 | Backup | Sicherung | Copia de seguridad | Backup | Sikkerhetskopi | Kopia zapasowa | Säkerhetskopia | バックアップ | 备份 |
 | Import / export | Import / Export | Importar / exportar | Importa / esporta | Import / eksport | Import / eksport | Import / export | インポート / エクスポート | 导入 / 导出 |
 | Settings | Einstellungen | Ajustes | Impostazioni | Innstillinger | Ustawienia | Inställningar | 設定 | 设置 |
+
+## Forbidden in sync copy
+
+These words describe how sync works inside and never appear in a user-facing string (phase 5 revision §6.4; the cs forms are checked by a grep in the final review, the others follow their meaning):
+
+- cs: klíč synchronizace, výměna klíče, odříznout, synchronizační účet, číslo účtu (for a sync server the person runs themselves). Say what happens instead: "přestane dostávat nová data", "vytvoříte novou sadu".
+- en: sync key, key rotation / rotate the key, cut off, sync account, account number.
+- Every locale: the same ideas (key change, key rotation, cutting a device off, an account number) stay out of the interface; the eight other locales render the terms in the table above.
 
 ## Phone tab labels
 

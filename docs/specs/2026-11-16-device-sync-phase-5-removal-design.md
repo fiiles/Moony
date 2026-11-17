@@ -801,6 +801,8 @@ its own `DATA_DIR`:
 
 Decisions made while building, in the spirit of the spec; each supersedes the text above it.
 
+**Superseded in part by the revision.** The owner's decisions D1–D4 of 2026-11-16 (the Recovery Kit as a paper device, removal that always changes the key, automatic confirmation of vouched-for devices, a typed pairing code on the desktop) changed this design before the flag was turned on: see `2026-11-16-device-sync-phase-5-revision-ux.md`, its §1.3 (which items below are superseded or withdrawn: 14, 27, 29, 33, 34, 43, 45, 50, 53, 54, 56, 57, 60) and its "As built (revision)" list R-1 to R-103. Where the two differ, the revision wins; ADR 0032 records the result and the residuals the owner accepted. The items below stay true except where the revision says otherwise.
+
 **Tasks 1–3 (identities, migration 040, trust store).**
 
 1. **Record shapes are checked at decode.** A `left` record must name its subject as signer; a

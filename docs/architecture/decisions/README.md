@@ -32,13 +32,14 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0022](0022-stock-dividends-in-their-own-table.md) | Stock dividends: Yahoo events and manual payouts in their own tables | 2026-10-30 | Accepted |
 | [0023](0023-stock-performance-follows-gips.md) | Stock performance follows GIPS: daily time-weighted return and IRR | 2026-11-05 | Accepted |
 | [0024](0024-device-sync-capture-clocks-merge.md) | Device sync: trigger capture, hybrid clocks and a per-column merge | 2026-11-07 | Accepted; amended by 0027 |
-| [0025](0025-device-sync-relay-client.md) | Device sync: the relay client, the device binding and the Recovery Kit | 2026-11-09 | Accepted; builds on 0024; amended by 0027 and 0029 |
-| [0026](0026-device-sync-pairing.md) | Device sync: pairing a second device, joining it and the phone | 2026-11-10 | Accepted; builds on 0024 and 0025; amended by 0027 (protocol 2) |
-| [0027](0027-device-sync-audit-fixes.md) | Device sync: what the security audit found and what was done about it | 2026-11-12 | Accepted; amends 0024, 0025 and 0026; amended by 0029 and 0030 |
+| [0025](0025-device-sync-relay-client.md) | Device sync: the relay client, the device binding and the Recovery Kit | 2026-11-09 | Accepted; builds on 0024; amended by 0027, 0029 and 0032 (Kit v2) |
+| [0026](0026-device-sync-pairing.md) | Device sync: pairing a second device, joining it and the phone | 2026-11-10 | Accepted; builds on 0024 and 0025; amended by 0027 (protocol 2) and 0032 (typed codes, Kit v2) |
+| [0027](0027-device-sync-audit-fixes.md) | Device sync: what the security audit found and what was done about it | 2026-11-12 | Accepted; amends 0024, 0025 and 0026; amended by 0029, 0030 and 0032 (H1: removal) |
 | [0028](0028-asset-logos.md) | Asset logos: only from a party that already knows the ticker, or bundled | 2026-11-14 | Accepted; the Yahoo-only rule is superseded by 0031 |
 | [0029](0029-self-hosted-sync-server-in-the-app.md) | Device sync: own sync servers in the app | 2026-11-14 | Accepted; amends 0025 and 0027 |
 | [0030](0030-device-sync-documents-and-photos.md) | Device sync: documents and photos | 2026-11-15 | Accepted; builds on 0017 and 0024; replaces the replace carry of 0027 (H3) |
 | [0031](0031-financial-modeling-prep-logo-fallback.md) | Asset logos: Financial Modeling Prep when Yahoo has none | 2026-11-15 | Accepted; supersedes the Yahoo-only rule of 0028 |
+| [0032](0032-device-sync-device-removal-and-the-recovery-kit.md) | Device sync: removing a device, and the Recovery Kit as a paper device | 2026-11-17 | Accepted; builds on 0024–0027, 0029 and 0030; amends 0025, 0026 and 0027 |
 
 ## Rules
 

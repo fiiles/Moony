@@ -13,7 +13,9 @@ this ADR win. Amended by [ADR 0027](0027-device-sync-audit-fixes.md) (2026-11-12
 gap instead of stopping, envelopes stay until they come back, back-offs, replaces and their
 backups, the binding fails closed, the Recovery Kit and the runtime flag. Amended by
 [ADR 0029](0029-self-hosted-sync-server-in-the-app.md) (2026-11-14): the HTTP rule, and own sync
-servers set up from a connection code instead of an allow list.
+servers set up from a connection code instead of an allow list. Amended by
+[ADR 0032](0032-device-sync-device-removal-and-the-recovery-kit.md) (2026-11-17): the Recovery Kit is a
+paper device with its own key and a 95-character code, and survives key changes.
 
 ## Context
 

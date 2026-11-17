@@ -103,7 +103,7 @@ export function SyncStatusCard({
                     <span className="block">{attachments.failedUpload}</span>
                   )}
                   {attachments.problem && (
-                    <span className="block font-600 text-loss" data-testid="attachments-problem">
+                    <span className="block font-650 text-loss" data-testid="attachments-problem">
                       {attachments.problem}
                     </span>
                   )}

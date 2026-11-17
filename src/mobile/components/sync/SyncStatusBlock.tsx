@@ -147,7 +147,7 @@ export function SyncStatusBlock({
           label={t('phone.status')}
           value={
             outOfReach ? (
-              <span className="font-600 text-loss" data-testid="sync-state-out-of-reach">
+              <span className="font-semibold text-loss" data-testid="sync-state-out-of-reach">
                 {stateLabel}
               </span>
             ) : (
@@ -182,7 +182,7 @@ export function SyncStatusBlock({
         <p className="m-0 mb-3 px-1 text-m-sub text-ink-3">{attachments.failedUpload}</p>
       )}
       {attachments.problem && (
-        <p className="m-0 mb-3 px-1 text-m-sub font-600 text-loss">{attachments.problem}</p>
+        <p className="m-0 mb-3 px-1 text-m-sub font-semibold text-loss">{attachments.problem}</p>
       )}
       {/* Phones fetch files on demand: what the other devices hold, and the way to fetch it all */}
       {elsewhere > 0 && (

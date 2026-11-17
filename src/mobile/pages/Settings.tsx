@@ -311,7 +311,7 @@ export default function Settings() {
             title={tsync('phone.title')}
             sub={
               !syncFeature ? undefined : syncOutOfReach && syncSub ? (
-                <span className="font-600 text-loss" data-testid="sync-row-out-of-reach">
+                <span className="font-semibold text-loss" data-testid="sync-row-out-of-reach">
                   {syncSub}
                 </span>
               ) : (

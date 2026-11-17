@@ -9,6 +9,7 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { hostOf } from '@/utils/sync-setup';
 import { useFormat } from '@/lib/use-format';
 import {
+  serverOutOfReach,
   statusPopoverLines,
   syncAge,
   syncProblemState,
@@ -18,8 +19,9 @@ import type { SyncStatus } from '@shared/schema';
 
 /**
  * The Synchronizace section of the top-bar "Stav dat" popover: where sync stands, what is waiting,
- * the server, and its own action under it (Synchronizovat, or Otevřít nastavení once it needs the
- * person). Rendered only while sync is on.
+ * the server, and its own action under it (Synchronizovat, Zkusit znovu while the server is out of
+ * reach, or Otevřít nastavení once it needs the person). A problem reads red and bold. Rendered
+ * only while sync is on.
  */
 export function SyncStatusSection({
   status,
@@ -41,6 +43,10 @@ export function SyncStatusSection({
   const label = t(indicator.labelKey, { count: indicator.days });
   const age = indicator.ageFrom === null ? null : syncAge(indicator.ageFrom, now);
   const stale = indicator.tone === 'stale';
+  // The server out of reach is a problem the engine retries by itself: the person can only try
+  // again, so the button stays instead of "Otevřít nastavení"
+  const outOfReach = serverOutOfReach(status);
+  const needsPerson = stale && !outOfReach;
   // A round that takes too long reads "taking longer than usual": the button then tries again
   const slow = indicator.kind === 'syncingLong';
   const running = !slow && (syncNow.isPending || status.phase === 'syncing');
@@ -59,7 +65,10 @@ export function SyncStatusSection({
   return (
     <section>
       <div className="text-eyebrow uppercase text-ink-4">{t('popover.title')}</div>
-      <p className={stale ? 'mt-1 text-caption text-loss' : 'mt-1 text-caption text-ink-3'}>
+      <p
+        className={stale ? 'mt-1 text-caption font-650 text-loss' : 'mt-1 text-caption text-ink-3'}
+        data-testid="popover-sync-state"
+      >
         {age ? `${label} · ${t(`age.${age.key}`, { count: age.count })}` : label}
       </p>
       {stale && status.problem && (
@@ -117,7 +126,7 @@ export function SyncStatusSection({
       </div>
 
       <div className="mt-2.5 flex items-center justify-between gap-4">
-        {stale ? (
+        {needsPerson ? (
           <Button asChild variant="outline" size="sm">
             <Link href="/settings/sync" onClick={onNavigate}>
               <Settings />
@@ -130,7 +139,7 @@ export function SyncStatusSection({
               <RefreshCw />
               {running
                 ? t('indicator.syncing')
-                : slow
+                : slow || outOfReach
                   ? t('pairing.tryAgain')
                   : t('status.syncNow')}
             </Button>

@@ -41,6 +41,7 @@
   },
   "status": {
     "unreachableNote": "Synkroniseringen återupptas när servern är inom räckhåll igen.",
+    "needsServer": "Servern går inte att nå. Försök igen när du har anslutning.",
     "problem": {
       "captureBroken": "Synkroniseringen har slutat fungera på den här enheten. Dina data är i ordning. Den kan repareras.",
       "vaultGone": "De synkroniserade uppgifterna raderades från synkroniseringsservern.",

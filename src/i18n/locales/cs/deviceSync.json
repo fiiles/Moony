@@ -49,6 +49,7 @@
   },
   "status": {
     "unreachableNote": "Synchronizace se obnoví, až bude server v dosahu.",
+    "needsServer": "Server není dostupný. Zkuste to, až bude spojení.",
     "problem": {
       "captureBroken": "Synchronizace se na tomto zařízení porouchala. Data jsou v pořádku. Lze ji opravit.",
       "vaultGone": "Synchronizovaná data byla ze synchronizačního serveru smazána.",

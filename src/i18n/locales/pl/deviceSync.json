@@ -49,6 +49,7 @@
   },
   "status": {
     "unreachableNote": "Synchronizacja wznowi się, gdy serwer znów będzie w zasięgu.",
+    "needsServer": "Serwer jest niedostępny. Spróbuj ponownie, gdy wróci połączenie.",
     "problem": {
       "captureBroken": "Synchronizacja przestała działać na tym urządzeniu. Twoje dane są w porządku. Można ją naprawić.",
       "vaultGone": "Zsynchronizowane dane zostały usunięte z serwera synchronizacji.",

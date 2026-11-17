@@ -41,6 +41,7 @@
   },
   "status": {
     "unreachableNote": "Sync resumes once the server is in reach.",
+    "needsServer": "The server is out of reach. Try again once you're connected.",
     "problem": {
       "captureBroken": "Sync broke on this device. Your data are fine. It can be repaired.",
       "vaultGone": "The synced data was deleted from the sync server.",

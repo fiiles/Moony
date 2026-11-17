@@ -220,13 +220,21 @@ Analýza akcií and Sledování akcií (one toggle per `menuPreferences` flag).
   something stands before it), then **Stav dat** at the right edge.
 - **Stav dat** (`shell/DataStatus.tsx`, rule in `utils/data-status.ts`): the one dot + text indicator for
   prices, sync and history; there is no separate sync or recalculation indicator. A problem (stale prices,
-  sync stale) is `status--stale` and named, two are counted ("2 problémy s daty"), on every page; then a
-  page's own status (`useShellPage`); then work in progress, neutral (historical prices, history
-  recalculation, a sync round, server out of reach under 7 days); then `status--fresh` "Data aktuální".
+  sync stale, the sync server out of reach from the first failed round, "Server mimo dosah", also while a
+  retry round runs) is `status--stale` and named, two are counted ("2 problémy s daty"), on every page;
+  then a page's own status (`useShellPage`); then work in progress, neutral (historical prices, history
+  recalculation, a sync round); then `status--fresh` "Data aktuální".
   The popover has a section per source (eyebrow Ceny a kurzy, then Synchronizace while sync is on, above
   a `line-soft` rule), each with its own small outline button with an icon directly under its rows:
-  Aktualizovat ceny; Synchronizovat with the "Nastavení synchronizace →" link, or Otevřít nastavení
-  once sync needs the person.
+  Aktualizovat ceny; Synchronizovat with the "Nastavení synchronizace →" link (Zkusit znovu while the
+  server is out of reach), or Otevřít nastavení once sync needs the person. A sync problem's line is
+  `loss`, 11 / 650. The server out of reach reads the same red and bold in Settings → Sync (desktop card
+  label, phone status row and the phone's Nastavení row), and what only the server can do (add or remove
+  a device, a new recovery kit, deleting the synced data, repair, re-sync, renewal, downloading
+  everything to the phone) waits: the button stays readable at 45 % and keyboard-focusable
+  (`aria-disabled`, `useServerGate`), the phone row is dimmed and opens nothing, and one `ink-3` line
+  says why ("Server není dostupný. Zkuste to, až bude spojení."); an open dialog or sheet stays, its
+  confirm waiting with the same line.
 - Deadlines (`shell/MilestonesStatus.tsx`): a calendar icon (never a status dot), shown only when a deadline
   (notice deadline, contract or fixed-rate end, maturity, account or promotional-rate end) is at most 14
   days away. One is named ("Spořicí účet · za 10 dní", title truncated at 240 px), more are counted
@@ -240,7 +248,7 @@ Each entry names the CSS class in `moony.css` and the React component that imple
 
 | Component | Class | React component | Rules |
 |---|---|---|---|
-| Button | `.btn`, `--primary`, `--ghost`, `--danger`, `--destructive`, `--sm`, `--icon` | `ui/button.tsx` (`cva` variants) | 36 px (32 small), radius 8, 11/650 label as a verb. One primary per page. Exception (owner decision 2026-10-10): the bank account detail head has two, Zaznamenat zůstatek and Importovat výpis. Danger is text-only; danger-outline is the same red action as a bordered secondary button in a page head (Přestat sledovat, Smazat plán) with the danger hover (`loss-soft` fill, red text); destructive solid only inside confirm dialogs. Loading spins the icon, keeps the label. |
+| Button | `.btn`, `--primary`, `--ghost`, `--danger`, `--destructive`, `--sm`, `--icon` | `ui/button.tsx` (`cva` variants) | 36 px (32 small), radius 8, 11/650 label as a verb. One primary per page. Exception (owner decision 2026-10-10): the bank account detail head has two, Zaznamenat zůstatek and Importovat výpis. Danger is text-only; danger-outline is the same red action as a bordered secondary button in a page head (Přestat sledovat, Smazat plán) with the danger hover (`loss-soft` fill, red text); destructive solid only inside confirm dialogs. Loading spins the icon, keeps the label. Disabled is 45 % opacity; a button that waits for something outside the app (`aria-disabled`, the sync server out of reach) looks the same but stays in the tab order, ignores clicks and Enter, and is described by the line that says why. |
 | Segmented control | `.seg`, `.seg__btn.is-active`, `--lg` | `ui/segmented.tsx` for period and 2–4-value filters; `ui/tabs.tsx` for page tabs | Paper pill with shadow on a `well-2` track. An option may carry a divider (`divider`: a 1 px `line-strong` rule, 14 px tall, before it) that separates kinds of choices, as in Rozdělit podle on Stocks analysis: Nerozdělovat, the tag groups the user made, then the automatic ones. |
 | Field | `.field`, `.field__label`, `.field__hint`, `.field__error` | `ui/form.tsx` + `label.tsx` | Label above, 11/700; optional marker inline; hint only when useful; error replaces hint, red with icon, says what to do. |
 | Input, select, textarea | `.input`, `.select` in `.select-wrap`, `.textarea`, `.input-wrap` with `.unit` | `ui/input.tsx`, `select.tsx`, `textarea.tsx` | 39 px, radius 8, unit inside right. Focus: `focus-border` + `focus-ring`. Invalid: `loss` border. |

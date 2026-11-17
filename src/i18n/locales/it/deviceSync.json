@@ -45,6 +45,7 @@
   },
   "status": {
     "unreachableNote": "La sincronizzazione riprenderà quando il server sarà di nuovo raggiungibile.",
+    "needsServer": "Il server non è raggiungibile. Riprova quando la connessione sarà tornata.",
     "problem": {
       "captureBroken": "La sincronizzazione si è guastata su questo dispositivo. I tuoi dati sono a posto. Si può riparare.",
       "vaultGone": "I dati sincronizzati sono stati eliminati dal server di sincronizzazione.",

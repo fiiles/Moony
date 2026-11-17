@@ -46,7 +46,7 @@ import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { clearQuietLock, requestQuietLock } from '@/mobile/lib/quiet-lock';
 import { areasFromPreferences } from '@/mobile/lib/tracked-areas';
-import { syncAge, syncState } from '@/utils/sync-state';
+import { serverOutOfReach, syncAge, syncState } from '@/utils/sync-state';
 import {
   categorizationSummary,
   renderTextRef,
@@ -168,6 +168,8 @@ export default function Settings() {
   const syncNow = Math.floor(Date.now() / 1000);
   const syncView = syncState(syncStatus.data, syncNow);
   let syncSub: string | undefined;
+  // The server out of reach is a problem from the first failed round: the row's state reads red, bold
+  const syncOutOfReach = serverOutOfReach(syncStatus.data);
   if (!syncStatus.isPending) {
     if (!syncView) {
       syncSub = tsync('phone.row.off');
@@ -307,7 +309,15 @@ export default function Settings() {
           <SettingsRow
             icon={RefreshCw}
             title={tsync('phone.title')}
-            sub={syncFeature ? syncSub : undefined}
+            sub={
+              !syncFeature ? undefined : syncOutOfReach && syncSub ? (
+                <span className="font-600 text-loss" data-testid="sync-row-out-of-reach">
+                  {syncSub}
+                </span>
+              ) : (
+                syncSub
+              )
+            }
             href={settingsPath('sync')}
           />
         )}

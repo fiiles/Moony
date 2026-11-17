@@ -37,6 +37,7 @@
   },
   "status": {
     "unreachableNote": "服务器恢复可达后,同步将自动恢复。",
+    "needsServer": "无法连接服务器。请在连接恢复后重试。",
     "problem": {
       "captureBroken": "此设备上的同步出现故障。你的数据没有问题。可以修复。",
       "vaultGone": "已同步的数据已从同步服务器中删除。",

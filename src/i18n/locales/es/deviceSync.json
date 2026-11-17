@@ -45,6 +45,7 @@
   },
   "status": {
     "unreachableNote": "La sincronización se reanudará cuando el servidor vuelva a estar al alcance.",
+    "needsServer": "El servidor no está disponible. Inténtalo cuando vuelvas a tener conexión.",
     "problem": {
       "captureBroken": "La sincronización ha fallado en este dispositivo. Tus datos están bien. Se puede reparar.",
       "vaultGone": "Los datos sincronizados se eliminaron del servidor de sincronización.",

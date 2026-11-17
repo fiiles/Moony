@@ -21,7 +21,7 @@ import {
 } from '@/utils/device-sync-problem';
 import { sentences } from '@/utils/sentences';
 import { secondsToDate } from '@/utils/sync-status';
-import { isQuietlyOutOfReach, syncProblemState } from '@/utils/sync-state';
+import { isRecentlyOutOfReach, syncProblemState } from '@/utils/sync-state';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { SyncRenewDialog } from '@/components/settings/sync/SyncRenewDialog';
@@ -91,8 +91,9 @@ function ProblemBox({
   const problemState = syncProblemState(status);
   // A key change another device made, not yet confirmed: the ordinary "Synchronizuji…", no alert
   if (problem === 'keyRotated' && !problemState) return null;
-  // Out of reach for now: the engine retries, so no alert box (the status card shows a plain line)
-  if (isQuietlyOutOfReach(status, Math.floor(Date.now() / 1000))) return null;
+  // Out of reach under 7 days: the engine retries; the status card's own label says so in red, with
+  // the line that sync resumes, so no alert box repeats it
+  if (isRecentlyOutOfReach(status, Math.floor(Date.now() / 1000))) return null;
 
   const tryAgain = async () => {
     try {

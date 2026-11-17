@@ -115,7 +115,7 @@ export function ChangeServerSheet({ onClose }: { onClose: () => void }) {
         </>
       }
     >
-      <ServerChoiceBlock state={server} showCloud={false} />
+      <ServerChoiceBlock state={server} showCloud />
       {unchanged && (
         <p className="m-0 mt-2 text-m-sub text-ink-3" role="status">
           {t('server.unchanged')}

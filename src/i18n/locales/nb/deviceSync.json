@@ -323,7 +323,7 @@
     "activeAt": "aktiv {{when}}",
     "remove": "Fjern…",
     "hide": "Fjern fra listen",
-    "hideAll": "Fjern alle",
+    "hideAll": "Tøm listen",
     "hideNote": "Å fjerne en enhet fra listen opphever ikke blokkeringen: den ser fortsatt ikke noe nytt.",
     "removing": "Fjernes…",
     "inactiveHint": "Bruker du den ikke lenger? Fjern den.",

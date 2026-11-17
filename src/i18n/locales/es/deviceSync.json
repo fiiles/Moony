@@ -333,7 +333,7 @@
     "activeAt": "activo {{when}}",
     "remove": "Quitar…",
     "hide": "Quitar de la lista",
-    "hideAll": "Quitar todos",
+    "hideAll": "Vaciar la lista",
     "hideNote": "Quitar un dispositivo de la lista no lo desbloquea: seguirá sin ver nada nuevo.",
     "removing": "Quitando…",
     "inactiveHint": "¿Ya no lo usas? Quítalo.",

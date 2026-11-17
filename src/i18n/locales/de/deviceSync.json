@@ -323,7 +323,7 @@
     "activeAt": "aktiv {{when}}",
     "remove": "Entfernen…",
     "hide": "Aus der Liste entfernen",
-    "hideAll": "Alle entfernen",
+    "hideAll": "Liste leeren",
     "hideNote": "Aus der Liste entfernt bleibt ein Gerät gesperrt: Es sieht weiterhin nichts Neues.",
     "removing": "Wird entfernt…",
     "inactiveHint": "Nutzen Sie es nicht mehr? Entfernen Sie es.",

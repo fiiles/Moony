@@ -323,7 +323,7 @@
     "activeAt": "active {{when}}",
     "remove": "Remove…",
     "hide": "Remove from list",
-    "hideAll": "Remove all",
+    "hideAll": "Clear list",
     "hideNote": "Removing a device from the list doesn't unblock it: it still won't see anything new.",
     "removing": "Removing…",
     "inactiveHint": "Not using it any more? Remove it.",

@@ -343,7 +343,7 @@
     "activeAt": "aktywne {{when}}",
     "remove": "Usuń…",
     "hide": "Usuń z listy",
-    "hideAll": "Usuń wszystkie",
+    "hideAll": "Wyczyść listę",
     "hideNote": "Usunięcie urządzenia z listy go nie odblokowuje: nadal nie zobaczy niczego nowego.",
     "removing": "Usuwanie…",
     "inactiveHint": "Już go nie używasz? Usuń je.",

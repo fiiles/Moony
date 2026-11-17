@@ -313,7 +313,7 @@
     "activeAt": "活跃于{{when}}",
     "remove": "移除…",
     "hide": "从列表中移除",
-    "hideAll": "全部移除",
+    "hideAll": "清空列表",
     "hideNote": "从列表中移除不会解除封锁：该设备仍然看不到任何新内容。",
     "removing": "正在移除…",
     "inactiveHint": "不再使用了？请移除它。",

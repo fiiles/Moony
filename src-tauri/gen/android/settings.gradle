@@ -1,0 +1,17 @@
+include ':app'
+
+// tauri.settings.gradle is written by tauri-build at every Rust build. It quotes each plugin path
+// with Rust's `{:?}`, which escapes combining characters as `\u{301}`, so a checkout under a
+// folder such as "Programování" yields Groovy that does not compile. The file is therefore read as
+// text, the Rust escapes are turned back into characters, and the fixed copy (in the ignored build
+// folder) is applied. A path without such characters passes through unchanged.
+def tauriSettings = file('tauri.settings.gradle')
+def fixedSettings = file('build/tauri.settings.unescaped.gradle')
+fixedSettings.parentFile.mkdirs()
+fixedSettings.setText(
+    tauriSettings.getText('UTF-8').replaceAll(/\\u\{([0-9a-fA-F]{1,6})\}/) { all, hex ->
+        new String(Character.toChars(Integer.parseInt(hex, 16)))
+    },
+    'UTF-8'
+)
+apply from: fixedSettings

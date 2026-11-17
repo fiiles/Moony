@@ -132,6 +132,12 @@ tauri-plugin-haptics = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-barcode-scanner = "=2.5.3"  # Sync pairing: scanning the pairing and Recovery Kit QR codes
 
+# Android: SQLCipher needs a crypto provider. Apple platforms use CommonCrypto; Android has no
+# system OpenSSL to link against, so libsqlite3-sys builds and statically links its own (rusqlite's
+# `bundled-sqlcipher` plus this feature, which only applies to Android builds under resolver 2).
+[target.'cfg(target_os = "android")'.dependencies]
+libsqlite3-sys = { version = "0.38", features = ["bundled-sqlcipher-vendored-openssl"] }
+
 [dev-dependencies]
 tempfile = "3"
 # `tauri::test::mock_app` lets the logging tests build the real logger without a window

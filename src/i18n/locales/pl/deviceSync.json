@@ -457,7 +457,9 @@
       "title": "Na tym telefonie zapisano kopię zapasową",
       "where": "Znajdziesz ją w Ustawienia → Kopia zapasowa i przenoszenie. Moony nigdy jej nie usuwa; możesz to zrobić tylko ty.",
       "filesHint": "Dane Moony nie trafiają do własnych kopii zapasowych telefonu. Zapisz kopię w Plikach, jeśli chcesz mieć dostęp do tej kopii poza Moony.",
-      "saveCopy": "Zapisz kopię w Plikach"
+      "filesHintAndroid": "Dane Moony nie trafiają do własnych kopii zapasowych telefonu. Zapisz kopię, jeśli chcesz mieć dostęp do tej kopii poza Moony.",
+      "saveCopy": "Zapisz kopię w Plikach",
+      "saveCopyAndroid": "Zapisz kopię"
     },
     "onThisDevice": "Na tym urządzeniu:"
   },

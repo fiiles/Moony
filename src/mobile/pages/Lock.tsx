@@ -75,6 +75,7 @@ import { RestoreBackupSheet } from '@/mobile/sheets/RestoreBackupSheet';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes, settingsPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { phoneCopyKey } from '@/mobile/lib/platform-copy';
 
 type Panel = 'unlock' | 'recover';
 
@@ -659,7 +660,7 @@ function NewKeyScreen({ recoveryKey, onDone }: { recoveryKey: string; onDone: ()
             onClick={() => void saveToFiles()}
           >
             <Download aria-hidden />
-            {tm('firstRun.saveToFiles')}
+            {tm(phoneCopyKey('firstRun.saveToFiles'))}
           </Button>
         )}
         {/* The whole row is the label, 44 pt tall at least, so one line of text is still easy to hit. */}

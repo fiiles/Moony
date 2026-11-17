@@ -15,6 +15,7 @@ import { CurrencyPickerSheet } from '@/mobile/sheets/CurrencyPickerSheet';
 import { RestoreBackupSheet } from '@/mobile/sheets/RestoreBackupSheet';
 import { StepHead } from './StepHead';
 import { caption, primaryButton, textLink } from './styles';
+import { phoneCopyKey } from '@/mobile/lib/platform-copy';
 
 const PRIVACY_POINTS = ['encryption', 'localOnly', 'marketData'] as const;
 
@@ -57,9 +58,11 @@ export function PrivacyStep({ flow }: { flow: FirstRunFlow }) {
             <span>
               <b className="font-650 text-ink">{tm(`firstRun.points.${key}.title`)}</b>{' '}
               {tm(
-                key === 'localOnly' && syncFeature
-                  ? 'firstRun.points.localOnly.textSync'
-                  : `firstRun.points.${key}.text`
+                phoneCopyKey(
+                  key === 'localOnly' && syncFeature
+                    ? 'firstRun.points.localOnly.textSync'
+                    : `firstRun.points.${key}.text`
+                )
               )}
             </span>
           </div>

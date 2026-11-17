@@ -19,6 +19,7 @@ import { useExportTextFile } from '@/mobile/hooks/use-export-text-file';
 import { RECOVERY_KEY_FILE, exportsOnThisDevice } from '@/mobile/lib/export-file';
 import { StepHead } from './StepHead';
 import { caption, field48, primaryButton, textLink } from './styles';
+import { phoneCopyKey } from '@/mobile/lib/platform-copy';
 
 /**
  * Klíč: the recovery key as the dark box with "Zkopírovat" and, on iOS, "Uložit do Souborů" (the
@@ -65,7 +66,10 @@ export function RecoveryStep({ flow, recoveryKey }: { flow: FirstRunFlow; recove
 
   return (
     <div data-testid="first-run-recovery">
-      <StepHead title={t('onboarding.recovery.title')} lead={tm('firstRun.recoveryLead')} />
+      <StepHead
+        title={t('onboarding.recovery.title')}
+        lead={tm(phoneCopyKey('firstRun.recoveryLead'))}
+      />
 
       <RecoveryKeyBox recoveryKey={recoveryKey} touch />
       {/* Where the Files picker does not export (not iOS) the key is copied; no button that only apologises */}
@@ -79,7 +83,7 @@ export function RecoveryStep({ flow, recoveryKey }: { flow: FirstRunFlow; recove
           onClick={() => void saveToFiles()}
         >
           <Download aria-hidden />
-          {tm('firstRun.saveToFiles')}
+          {tm(phoneCopyKey('firstRun.saveToFiles'))}
         </Button>
       )}
 

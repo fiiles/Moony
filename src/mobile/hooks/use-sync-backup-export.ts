@@ -7,6 +7,7 @@ import { backupFileName as fileNameOf } from '@/utils/sync-status';
 import { BACKUP_FILE_FILTER } from '@/mobile/hooks/use-restore-backup';
 import { exportsOnThisDevice, type ExportOutcome } from '@/mobile/lib/export-file';
 import { saveStagedExport } from '@/mobile/lib/picked-files';
+import { phoneCopyKey } from '@/mobile/lib/platform-copy';
 
 /**
  * "Save a copy to Files" for a sync backup (audit H4: the app's data folder is kept out of the
@@ -48,7 +49,7 @@ export function useSyncBackupExport(): {
             console.debug('Could not remove the staged sync backup copy', failure);
           });
         }
-        toast(exported ? tm('backup.syncCopySaved') : tm('backup.notSaved'));
+        toast(exported ? tm(phoneCopyKey('backup.syncCopySaved')) : tm('backup.notSaved'));
         return exported ? 'saved' : 'cancelled';
       } catch (error) {
         toast.error(tc('status.error'), {

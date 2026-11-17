@@ -110,6 +110,39 @@ describe('createSheetHistory', () => {
     expect(depth()).toBe(0);
   });
 
+  it('leaves no entry behind when a sheet closes as the next one opens in the same commit', async () => {
+    // The rejoin password sheet hands over to the join choice: one closes, the next opens, and
+    // the closed sheet's step is scheduled before the new sheet pushes its entry
+    const { sheets, depth, settle } = setup();
+    const releasePassword = sheets.open(() => {});
+    releasePassword();
+    const releaseChoice = sheets.open(() => {});
+    await tick();
+    settle();
+    expect(depth()).toBe(2);
+    releaseChoice(); // "Zrušit" on the choice
+    await tick();
+    settle();
+    expect(depth()).toBe(0);
+    expect(sheets.size()).toBe(0);
+  });
+
+  it('takes both entries on back over a sheet that replaced another', async () => {
+    const { sheets, depth, back, settle } = setup();
+    const closed: string[] = [];
+    const releasePassword = sheets.open(() => void closed.push('password'));
+    releasePassword();
+    const releaseChoice = sheets.open(() => void closed.push('choice'));
+    await tick();
+    back();
+    expect(closed).toEqual(['choice']);
+    releaseChoice();
+    await tick();
+    settle();
+    expect(depth()).toBe(0);
+    expect(sheets.size()).toBe(0);
+  });
+
   it('does not touch the history when the app has moved on while the sheet was open', async () => {
     const { sheets, depth, navigate, settle } = setup();
     const release = sheets.open(() => {});

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Redirect, useLocation, useSearch } from 'wouter';
+import { Redirect } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
@@ -49,6 +49,7 @@ import { Sheet } from '@/mobile/components/Sheet';
 import { JoinChoiceSheet, type PhoneJoinMethod } from '@/mobile/components/sync/JoinChoiceSheet';
 import { KitSection } from '@/mobile/components/sync/KitSection';
 import { RemovedBlock } from '@/mobile/components/sync/RemovedNotice';
+import { useRowIntent } from '@/mobile/hooks/use-row-intent';
 import { ReplaceConfirmSheet } from '@/mobile/components/sync/ReplaceConfirmSheet';
 import { RecoveryJoinSheet } from '@/mobile/components/sync/RecoveryJoinSheet';
 import { ChangeServerSheet } from '@/mobile/components/sync/ChangeServerSheet';
@@ -62,8 +63,8 @@ import { SyncBackupSavedSheet } from '@/mobile/components/sync/SyncBackupSavedSh
 import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
 import { SyncStatusBlock } from '@/mobile/components/sync/SyncStatusBlock';
 import type { ReplaceSaved } from '@/mobile/lib/replace-saved';
-import { JOIN_PARAM, type ScanMode } from '@/mobile/lib/sync-scan';
-import { routes, settingsPath } from '@/mobile/shell/routes';
+import type { ScanMode } from '@/mobile/lib/sync-scan';
+import { routes } from '@/mobile/shell/routes';
 import { sentences } from '@/mobile/lib/list-text';
 
 /** The key the backend sends when a repair could not send every change and replaced nothing. */
@@ -105,19 +106,9 @@ export default function SyncSection() {
   const [flow, setFlow] = useState<Flow>(null);
   /** The "Connect this device" choice sheet is open. */
   const [choosing, setChoosing] = useState(false);
-  // "Připojit znovu" from the sheet at unlock arrives with `?join=1`: the choice opens once
-  const search = useSearch();
-  const [, navigate] = useLocation();
-  const joinOnArrival = new URLSearchParams(search).has(JOIN_PARAM);
-  const [arrivalHandled, setArrivalHandled] = useState(false);
-  if (joinOnArrival && !arrivalHandled) {
-    setArrivalHandled(true);
-    setChoosing(true);
-  }
-  if (!joinOnArrival && arrivalHandled) setArrivalHandled(false);
-  useEffect(() => {
-    if (joinOnArrival) navigate(settingsPath('sync'), { replace: true });
-  }, [joinOnArrival, navigate]);
+  // "Připojit znovu" from the sheet at unlock puts the `join` intent on this page's entry
+  // (`joinChoiceNavigation`): it is dropped from the entry before the choice's sheet takes its own
+  useRowIntent({ join: () => setChoosing(true) }, true);
   /** The first-device setup sheet is up. */
   const [settingUp, setSettingUp] = useState(false);
   const [renaming, setRenaming] = useState<SyncDevice | null>(null);

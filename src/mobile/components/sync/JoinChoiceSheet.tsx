@@ -15,8 +15,8 @@ interface JoinChoiceSheetProps {
 
 /**
  * "Connect this device" on the phone: scan a code from the computer (a Recovery Kit QR is taken
- * too), type a Recovery Kit code or enter a pairing code manually. Picking closes
- * the sheet and hands the way to the page, which opens the flow that does the joining.
+ * too), enter a pairing code manually or type a Recovery Kit code, in the desktop's order. Picking
+ * closes the sheet and hands the way to the page, which opens the flow that does the joining.
  */
 export function JoinChoiceSheet({ open, onOpenChange, onPick }: JoinChoiceSheetProps) {
   const { t } = useTranslation('deviceSync');
@@ -47,13 +47,13 @@ export function JoinChoiceSheet({ open, onOpenChange, onPick }: JoinChoiceSheetP
           sub={t('phone.choice.scan.lead')}
           onClick={() => pick('scan')}
         />
-        <SettingsRow icon={Type} title={t('phone.typeCode')} onClick={() => pick('kit')} />
         <SettingsRow
           icon={ClipboardPaste}
           title={t('phone.enterCodeTitle')}
           sub={t('phone.enterCodeHint')}
           onClick={() => pick('paste')}
         />
+        <SettingsRow icon={Type} title={t('phone.typeCode')} onClick={() => pick('kit')} />
       </EntityRows>
     </Sheet>
   );

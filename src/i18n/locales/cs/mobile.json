@@ -794,7 +794,7 @@
     "delete": {
       "title": "Smazat všechna data?",
       "lead": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — je to jediná cesta zpět.",
-      "leadSynced": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — je to jediná cesta zpět. Synchronizovaná data zůstanou na synchronizačním serveru pro vaše ostatní zařízení. Smazat je můžete v Nastavení → Synchronizace.",
+      "leadSynced": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Synchronizovaná data zůstanou na synchronizačním serveru pro vaše ostatní zařízení. Smazat je můžete v Nastavení → Synchronizace.",
       "confirmLabel": "Pro potvrzení napište {{word}}",
       "confirm": "Smazat data",
       "failed": "Smazání selhalo",

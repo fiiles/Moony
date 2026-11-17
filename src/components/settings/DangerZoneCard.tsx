@@ -106,8 +106,13 @@ export function DangerZoneCard() {
                     <span>{t('dangerZone.syncKept')}</span>
                   </>
                 )}
-                {sentenceGap}
-                <span>{t('dangerZone.backupFirst')}</span>
+                {/* "The only way back" is not so while the synced data stay for the other devices */}
+                {!(syncOn && !deleteSynced) && (
+                  <>
+                    {sentenceGap}
+                    <span>{t('dangerZone.backupFirst')}</span>
+                  </>
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             {syncOn && (

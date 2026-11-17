@@ -753,7 +753,7 @@
     "delete": {
       "title": "Radera alla data?",
       "lead": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — det är den enda vägen tillbaka.",
-      "leadSynced": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — det är den enda vägen tillbaka. De synkroniserade data finns kvar på synkroniseringsservern för dina andra enheter. Du kan radera dem under Inställningar → Synkronisering.",
+      "leadSynced": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. De synkroniserade data finns kvar på synkroniseringsservern för dina andra enheter. Du kan radera dem under Inställningar → Synkronisering.",
       "confirmLabel": "Skriv {{word}} för att bekräfta",
       "confirm": "Radera data",
       "failed": "Raderingen misslyckades",

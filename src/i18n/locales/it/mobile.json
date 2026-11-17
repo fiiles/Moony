@@ -793,7 +793,7 @@
     "delete": {
       "title": "Eliminare tutti i dati?",
       "lead": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono. Le copie di backup fuori dal telefono restano. Fai prima un backup: è l'unica via per tornare indietro.",
-      "leadSynced": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono. Le copie di backup fuori dal telefono restano. Fai prima un backup: è l'unica via per tornare indietro. I dati sincronizzati restano sul server di sincronizzazione per gli altri tuoi dispositivi. Puoi eliminarli in Impostazioni → Sincronizzazione.",
+      "leadSynced": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono. Le copie di backup fuori dal telefono restano. I dati sincronizzati restano sul server di sincronizzazione per gli altri tuoi dispositivi. Puoi eliminarli in Impostazioni → Sincronizzazione.",
       "confirmLabel": "Scrivi {{word}} per confermare",
       "confirm": "Elimina i dati",
       "failed": "Eliminazione non riuscita",

@@ -753,7 +753,7 @@
     "delete": {
       "title": "Slette alle data?",
       "lead": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake.",
-      "leadSynced": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake. De synkroniserte dataene blir liggende på synkroniseringsserveren for de andre enhetene dine. Du kan slette dem under Innstillinger → Synkronisering.",
+      "leadSynced": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. De synkroniserte dataene blir liggende på synkroniseringsserveren for de andre enhetene dine. Du kan slette dem under Innstillinger → Synkronisering.",
       "confirmLabel": "Skriv {{word}} for å bekrefte",
       "confirm": "Slett data",
       "failed": "Slettingen mislyktes",

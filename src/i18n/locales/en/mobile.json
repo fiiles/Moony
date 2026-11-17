@@ -753,7 +753,7 @@
     "delete": {
       "title": "Delete all data?",
       "lead": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back.",
-      "leadSynced": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back. The synced data stays on the sync server for your other devices. You can delete it in Settings → Sync.",
+      "leadSynced": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. The synced data stays on the sync server for your other devices. You can delete it in Settings → Sync.",
       "confirmLabel": "Type {{word}} to confirm",
       "confirm": "Delete data",
       "failed": "Deletion failed",

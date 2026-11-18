@@ -8,10 +8,6 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Added
 
-- **Logos for stocks and coins.** Stocks, ETFs and followed stocks show their company's logo, from
-  Yahoo Finance or, where Yahoo has none (most European stocks and ETFs, and many US companies),
-  from Financial Modeling Prep, which then learns those tickers (see PRIVACY.md). Logos are kept in
-  the encrypted database and never synced; coin icons ship with the app.
 - **Spending plans on the phone.** The Cashflow tab shows a card with what is left in this year's
   plans and which ones run over, and opens the list of plans for any year. Each plan has a detail
   with what is left, spend per month, spend per category and its payments. From a payment's
@@ -19,6 +15,47 @@ All notable changes to Moony are documented in this file. The format follows
   delete plans, and take over last year's open plans into an empty year. Tagging several payments
   at once, adding payments from other accounts to a plan and choosing which plans to take over
   stay on the desktop.
+
+## [1.4.0] - 2026-11-19
+
+### Added
+
+- **Logos for stocks and coins.** Stocks, ETFs and followed stocks show their company's logo, from
+  Yahoo Finance or, where Yahoo has none (most European stocks and ETFs, and many US companies),
+  from Financial Modeling Prep, which then learns those tickers (see PRIVACY.md). Logos are kept in
+  the encrypted database and left out of the full export; coin icons ship with the app.
+- **One data status indicator in the top bar.** Prices, exchange rates and the recalculation of
+  your history share one indicator. Click it to see each source, when it was last updated and
+  what is wrong; with more than one problem it shows their count.
+- **Stock Monitor charts on trading time.** The 1D and 5D charts of a followed stock run over
+  trading hours only, without flat lines across the hours the exchange is closed.
+
+### Changed
+
+- **Finished days settle to closing prices.** At the first start of a day, after you unlock,
+  Moony re-values the stocks and crypto of the days that have ended at their daily closing prices
+  from Yahoo Finance. The first start after this update does it once for your whole history, with
+  one request per ticker you hold or held, so past values (yesterday's most often) can shift
+  slightly.
+- **Deadlines in the top bar are counted** ("4 deadlines · first in 4 days"), and one that is
+  due within a week shows how far away it is.
+- **Recording or deleting a balance is faster**: it recalculates only the days it moves.
+- **Crypto prices count as out of date after 24 hours**, the same rule as stocks (it was 12).
+- **Stock splits apply and revert exactly.** Each trade, manual price and watched stock records
+  which splits it already includes, so applying or reverting a split never adjusts a figure twice.
+- **Deleted records are overwritten** in the database file instead of staying in its free space.
+- The word you type to confirm deleting your profile is in the app's language, and capital
+  letters do not matter. A message confirms a changed main currency.
+- The lock screen greets you without the paragraph under the greeting.
+
+### Fixed
+
+- A bond bought inside its coupon year pays a coupon for the days you held it, not for the whole
+  year, in "What's ahead" and in the bonds ladder.
+- No two ticks of a chart axis print the same label, and a value axis is as wide as its widest
+  label.
+- Semi-bold and bold text is shown in the weight it was designed with; in many places it was
+  shown lighter.
 
 ## [1.3.0] - 2026-11-06
 
@@ -826,7 +863,8 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/fiiles/Moony/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/fiiles/Moony/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/fiiles/Moony/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fiiles/Moony/compare/v1.0.0...v1.1.0

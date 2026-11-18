@@ -23,13 +23,18 @@ Moony is a desktop app for macOS, Windows and Linux. You import bank statements 
    that can break; a second source would keep prices available.
 7. **In-app documentation.** Today the README is the user documentation.
 
+## In development
+
+Work that is under way in this repository and is not part of a release yet. Neither item has a date.
+
+- **A phone app.** Moony on a phone that works on its own, with its own encrypted data and no desktop app needed.
+- **Sync between your own devices**, encrypted on the device so that whatever carries the data cannot read it. The code is in the repository and switched off in the released builds until it has been tested on real devices.
+
 ## Longer term
 
 Bigger pieces of work that the maintainer wants to do eventually. None has a date or a finished design, and the order is open.
 
-- **A standalone mobile app.** Moony on a phone that works on its own, with its own encrypted data and no desktop app needed.
 - **A bank-data connection.** Fetching balances and transactions automatically through a bank-data API service, as an alternative to importing statements.
-- **A sync service** that keeps several of your own devices up to date.
 
 Anything that sends data over the internet would be optional and off until you turn it on, and [PRIVACY.md](./PRIVACY.md) will say exactly what it sends, and to whom, before the release that adds it.
 

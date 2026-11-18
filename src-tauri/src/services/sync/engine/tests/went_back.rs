@@ -222,7 +222,7 @@ async fn turning_sync_off_clears_the_mark() {
     went_back(&vault).await;
     let dir = tempfile::tempdir().expect("dir");
 
-    setup::turn_off(&vault.b.lock(), dir.path()).expect("turn off");
+    setup::turn_off(&mut vault.b.lock(), dir.path()).expect("turn off");
 
     assert_eq!(went_back_at(&vault.b), None);
 }

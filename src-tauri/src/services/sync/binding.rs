@@ -715,7 +715,7 @@ mod tests {
     }
 
     /// The guard with its triggers failed: the authorizer refuses every write to `app_config`.
-    fn close_app_config(conn: &Connection) {
+    fn close_app_config(conn: &mut Connection) {
         conn.authorizer(Some(|ctx: rusqlite::hooks::AuthContext<'_>| {
             crate::services::sync::capture::guard::decide(&ctx.action, ctx.database_name, true)
         }))
@@ -732,18 +732,18 @@ mod tests {
     /// of a healthy profile.
     #[test]
     fn a_check_with_nothing_to_count_writes_nothing() {
-        let conn = synced();
+        let mut conn = synced();
         let dir = tempfile::tempdir().expect("dir");
-        close_app_config(&conn);
+        close_app_config(&mut conn);
 
         assert_eq!(
             startup_check(&conn, dir.path(), &FakeNative { machine: 7 }).expect("not written"),
             StartupCheck::Fine
         );
 
-        let conn = synced();
+        let mut conn = synced();
         write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
-        close_app_config(&conn);
+        close_app_config(&mut conn);
         assert_eq!(
             counted(&conn, dir.path(), &FakeNative { machine: 7 }).expect("matches"),
             StartupCheck::Fine

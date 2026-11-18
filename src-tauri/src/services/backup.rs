@@ -705,7 +705,7 @@ pub fn export_all_data(conn: &Connection, dest: &Path, app_version: &str) -> Res
     let mut row_count = 0u64;
     for table in &tables {
         let mut stmt = conn.prepare(&format!("SELECT * FROM \"{table}\""))?;
-        let columns: Vec<String> = stmt.column_names().iter().map(|c| c.to_string()).collect();
+        let columns: Vec<String> = stmt.column_names().map(str::to_string).collect();
         let rows = stmt.query_map([], |row| {
             let mut obj = serde_json::Map::new();
             for (i, column) in columns.iter().enumerate() {

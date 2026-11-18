@@ -398,9 +398,9 @@ impl Counted {
 }
 
 impl ConnAccess for Counted {
-    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+    fn with_conn_mut<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T>) -> Result<T> {
         self.takes.fetch_add(1, Ordering::SeqCst);
-        self.inner.with_conn(f)
+        self.inner.with_conn_mut(f)
     }
     fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {
         self.inner.try_with_conn(f)

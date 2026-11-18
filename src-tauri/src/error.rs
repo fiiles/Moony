@@ -151,8 +151,8 @@ mod tests {
     fn the_guard_reads_as_changes_paused() {
         use crate::services::sync::capture::guard::{self, CHANGES_PAUSED};
         let paused = |e: rusqlite::Error| matches!(AppError::from(e), AppError::Validation(key) if key == CHANGES_PAUSED);
-        let conn = crate::services::sync::test_support::migrated();
-        guard::impose(&conn).expect("impose");
+        let mut conn = crate::services::sync::test_support::migrated();
+        guard::impose(&mut conn).expect("impose");
 
         let denied = conn
             .execute(

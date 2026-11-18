@@ -178,7 +178,7 @@ pub async fn pick_up<R: Relay, D: ConnAccess>(
                     result = Pickup::Adopted { epoch, by };
                 }
                 Step::Removed { by, at } => {
-                    db.with_conn(|conn| removed_here(conn, data_dir, by, at))?;
+                    db.with_conn_mut(|conn| removed_here(conn, data_dir, by, at))?;
                     return Ok(Pickup::RemovedHere { by, at });
                 }
                 Step::NotGiven => {

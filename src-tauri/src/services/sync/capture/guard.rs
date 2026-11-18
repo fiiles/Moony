@@ -59,7 +59,7 @@ const TRIGGERS: [&str; 3] = [
 /// (BEFORE INSERT/UPDATE/DELETE ON main.app_config, RAISE(ABORT, GUARD_RAISE) when the old or new
 /// key is one of `APP_CONFIG_SYNCED_KEYS`). When the triggers cannot be created the authorizer
 /// refuses every write to `app_config` instead. Imposing again replaces the guard.
-pub fn impose(conn: &Connection) -> Result<()> {
+pub fn impose(conn: &mut Connection) -> Result<()> {
     outside_transaction(conn, "imposed")?;
     // Closed until the triggers exist: a statement prepared meanwhile never slips through.
     let whole_app_config = Arc::new(AtomicBool::new(true));
@@ -89,7 +89,7 @@ pub fn impose(conn: &Connection) -> Result<()> {
 /// Outside any transaction only. Removes the marker function, the authorizer and the triggers; a
 /// no-op when none is imposed. A failure part way leaves the guard stricter, never looser: the
 /// marker goes first, the triggers last.
-pub fn lift(conn: &Connection) -> Result<()> {
+pub fn lift(conn: &mut Connection) -> Result<()> {
     outside_transaction(conn, "lifted")?;
     conn.remove_function(MARKER, 0)?;
     conn.authorizer(None::<fn(AuthContext<'_>) -> Authorization>)?;
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn the_guard_refuses_synced_data_and_allows_local_data() {
-        let conn = migrated();
+        let mut conn = migrated();
         allowed(
             &conn,
             "INSERT INTO institutions (id, name) VALUES ('i1', 'Bank'); \
@@ -269,7 +269,7 @@ mod tests {
         );
         state::ensure_row(&conn, DEVICE).expect("sync row");
 
-        impose(&conn).expect("impose");
+        impose(&mut conn).expect("impose");
 
         assert!(is_imposed(&conn));
         refused(
@@ -393,8 +393,8 @@ mod tests {
 
     #[test]
     fn the_guard_survives_a_rolled_back_savepoint() {
-        let conn = migrated();
-        impose(&conn).expect("impose");
+        let mut conn = migrated();
+        impose(&mut conn).expect("impose");
 
         allowed(&conn, "SAVEPOINT s; ROLLBACK TO s; RELEASE s");
 
@@ -404,16 +404,16 @@ mod tests {
 
     #[test]
     fn impose_and_lift_refuse_inside_a_transaction() {
-        let conn = migrated();
+        let mut conn = migrated();
         allowed(&conn, "BEGIN");
-        assert!(matches!(impose(&conn), Err(AppError::Internal(_))));
+        assert!(matches!(impose(&mut conn), Err(AppError::Internal(_))));
         assert!(!is_imposed(&conn));
         insert_institution(&conn, "i1").expect("still allowed");
         allowed(&conn, "COMMIT");
 
-        impose(&conn).expect("impose");
+        impose(&mut conn).expect("impose");
         allowed(&conn, "BEGIN");
-        assert!(matches!(lift(&conn), Err(AppError::Internal(_))));
+        assert!(matches!(lift(&mut conn), Err(AppError::Internal(_))));
         assert!(is_imposed(&conn));
         institution_refused(&conn, "i2");
         allowed(&conn, "ROLLBACK");
@@ -422,14 +422,14 @@ mod tests {
 
     #[test]
     fn a_statement_cached_before_the_guard_is_refused_after_it() {
-        let conn = migrated();
+        let mut conn = migrated();
         let sql = "INSERT INTO institutions (id, name) VALUES (?1, 'Bank')";
         conn.prepare_cached(sql)
             .expect("prepare")
             .execute(["i1"])
             .expect("before the guard");
 
-        impose(&conn).expect("impose");
+        impose(&mut conn).expect("impose");
 
         let error: AppError = conn
             .prepare_cached(sql)
@@ -451,11 +451,11 @@ mod tests {
 
     #[test]
     fn lifting_the_guard_lets_writes_through() {
-        let conn = migrated();
-        lift(&conn).expect("a no-op without a guard");
-        impose(&conn).expect("impose");
+        let mut conn = migrated();
+        lift(&mut conn).expect("a no-op without a guard");
+        impose(&mut conn).expect("impose");
 
-        lift(&conn).expect("lift");
+        lift(&mut conn).expect("lift");
 
         assert!(!is_imposed(&conn));
         insert_institution(&conn, "i1").expect("allowed again");
@@ -474,11 +474,11 @@ mod tests {
 
     #[test]
     fn a_guarded_profile_can_still_be_backed_up() {
-        let conn = migrated();
+        let mut conn = migrated();
         let dir = tempfile::tempdir().expect("dir");
         crate::db::files_schema::attach(&conn, &dir.path().join("attachments.db")).expect("store");
         insert_institution(&conn, "i1").expect("row");
-        impose(&conn).expect("impose");
+        impose(&mut conn).expect("impose");
 
         for schema in ["main", "files"] {
             let out = dir.path().join(format!("{schema}-copy.db"));
@@ -499,11 +499,11 @@ mod tests {
 
     #[test]
     fn install_or_guard_imposes_the_guard_when_install_fails() {
-        let conn = migrated();
+        let mut conn = migrated();
         state::ensure_row(&conn, DEVICE).expect("row");
         allowed(&conn, "ALTER TABLE sync_clock RENAME TO gone");
 
-        assert!(install_or_guard(&conn, DEVICE).is_err());
+        assert!(install_or_guard(&mut conn, DEVICE).is_err());
 
         institution_refused(&conn, "i1");
         assert!(!capture::is_installed(&conn).expect("installed"));
@@ -512,9 +512,9 @@ mod tests {
 
     #[test]
     fn when_the_guard_cannot_be_imposed_the_profile_opens_read_only() {
-        let conn = migrated();
+        let mut conn = migrated();
 
-        guard_or_close(&conn, |_| Err(AppError::Internal("no guard".into())));
+        guard_or_close(&mut conn, |_| Err(AppError::Internal("no guard".into())));
 
         let query_only: i64 = conn
             .query_row("PRAGMA query_only", [], |r| r.get(0))
@@ -535,12 +535,12 @@ mod tests {
 
     #[test]
     fn a_failed_capture_install_at_unlock_closes_the_synced_tables() {
-        let conn = migrated();
+        let mut conn = migrated();
         state::ensure_row(&conn, DEVICE).expect("row");
         // As `state::tests::a_failed_capture_install_marks_the_profile_capture_broken` breaks it.
         allowed(&conn, "DROP TABLE sync_clock");
 
-        on_open(&conn);
+        on_open(&mut conn);
 
         let marks = state::marks(&conn).expect("marks").expect("row");
         assert!(marks.capture_broken_at.is_some());
@@ -551,14 +551,14 @@ mod tests {
     /// A guarded profile, two device rows; `turn_off_between_rounds` is the command's path.
     #[tokio::test]
     async fn turning_sync_off_works_on_a_guarded_profile_with_device_rows() {
-        let conn = enabled();
+        let mut conn = enabled();
         allowed(
             &conn,
             "INSERT INTO sync_devices (id, name, platform, app_version, joined_at) VALUES \
                ('d1', 'Mac', 'macos', '1.0.0', 1), ('d2', 'Phone', 'ios', '1.0.0', 2);",
         );
         capture::uninstall(&conn).expect("uninstall");
-        impose(&conn).expect("impose");
+        impose(&mut conn).expect("impose");
         let device = TestConn::new(conn);
         let dir = tempfile::tempdir().expect("dir");
 
@@ -604,14 +604,14 @@ mod tests {
     /// A failed turn-off puts the guard back on a profile that had it.
     #[tokio::test]
     async fn a_failed_turn_off_keeps_the_guard() {
-        let conn = enabled();
+        let mut conn = enabled();
         capture::uninstall(&conn).expect("uninstall");
         allowed(
             &conn,
             "CREATE TRIGGER fail_turn_off BEFORE DELETE ON sync_state \
              BEGIN SELECT RAISE(ABORT, 'injected'); END;",
         );
-        impose(&conn).expect("impose");
+        impose(&mut conn).expect("impose");
         let device = TestConn::new(conn);
         let dir = tempfile::tempdir().expect("dir");
 
@@ -644,8 +644,8 @@ mod tests {
         };
         assert_eq!(decide(&in_store, None, false), Authorization::Allow);
 
-        let conn = migrated();
-        impose(&conn).expect("impose");
+        let mut conn = migrated();
+        impose(&mut conn).expect("impose");
         refused(&conn, "ALTER TABLE institutions ADD COLUMN extra TEXT");
         refused(&conn, "ALTER TABLE institutions RENAME TO banks");
         allowed(&conn, "ALTER TABLE sync_clock RENAME TO sync_clock_old");
@@ -653,11 +653,11 @@ mod tests {
 
     #[test]
     fn changes_paused_covers_the_guard_and_read_only() {
-        let conn = migrated();
+        let mut conn = migrated();
         assert!(!changes_paused(&conn));
-        impose(&conn).expect("impose");
+        impose(&mut conn).expect("impose");
         assert!(changes_paused(&conn));
-        lift(&conn).expect("lift");
+        lift(&mut conn).expect("lift");
         allowed(&conn, "PRAGMA query_only = 1");
         assert!(is_read_only(&conn));
         assert!(changes_paused(&conn));
@@ -667,7 +667,7 @@ mod tests {
     /// profile's: it opens guarded.
     #[test]
     fn an_unreadable_sync_row_opens_guarded() {
-        let conn = migrated();
+        let mut conn = migrated();
         state::ensure_row(&conn, DEVICE).expect("row");
         allowed(
             &conn,
@@ -675,7 +675,7 @@ mod tests {
         );
         assert!(state::load(&conn).is_err(), "the row does not load");
 
-        on_open(&conn);
+        on_open(&mut conn);
 
         assert!(is_imposed(&conn));
         institution_refused(&conn, "i1");
@@ -683,9 +683,9 @@ mod tests {
 
     #[test]
     fn a_profile_without_a_sync_row_opens_unguarded() {
-        let conn = migrated();
+        let mut conn = migrated();
 
-        on_open(&conn);
+        on_open(&mut conn);
 
         assert!(!changes_paused(&conn));
         insert_institution(&conn, "i1").expect("writable");

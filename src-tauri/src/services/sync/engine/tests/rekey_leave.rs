@@ -424,7 +424,7 @@ async fn an_own_left_record_ends_sync_at_unlock_with_the_left_notice() {
     let dir = tempfile::tempdir().expect("dir");
     assert!(setup::write_left_record(&three.c.lock(), NOW).expect("left"));
 
-    let ended = rekey::refresh_trust(&three.c.lock(), Some(dir.path()), NOW).expect("refresh");
+    let ended = rekey::refresh_trust(&mut three.c.lock(), Some(dir.path()), NOW).expect("refresh");
 
     assert!(ended);
     let c = three.c.lock();

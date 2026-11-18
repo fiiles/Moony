@@ -102,11 +102,11 @@ impl TestConn {
 }
 
 impl ConnAccess for TestConn {
-    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+    fn with_conn_mut<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T>) -> Result<T> {
         if self.locked.load(Ordering::SeqCst) {
             return Err(AppError::Auth("Database is locked".into()));
         }
-        f(&self.lock())
+        f(&mut self.lock())
     }
 
     fn round_lock(&self) -> &tokio::sync::Mutex<()> {

@@ -165,7 +165,7 @@ pub fn removed_notice(conn: &Connection) -> Result<Option<RemovedNotice>> {
 /// (`forget_binding_after_removal`). The notice is written first, so it is there whenever sync is
 /// off because of this; a turn-off that fails takes it back.
 pub fn removed_here(
-    conn: &Connection,
+    conn: &mut Connection,
     data_dir: Option<&Path>,
     by: DeviceId,
     at: i64,
@@ -176,7 +176,7 @@ pub fn removed_here(
 /// `removed_here`, with `left` when the record was this device's own `left` record
 /// (`RemovedNotice::left`).
 fn sync_ended_here(
-    conn: &Connection,
+    conn: &mut Connection,
     data_dir: Option<&Path>,
     by: DeviceId,
     at: i64,
@@ -218,7 +218,11 @@ fn sync_ended_here(
 /// succeeds (`refresh_owed`), and a key change refreshes before it reads its recipients
 /// (`rotate::plan`). The failed refresh itself counts as nothing new; a turn-off that fails is the
 /// error.
-pub(crate) fn refresh_trust(conn: &Connection, data_dir: Option<&Path>, now: i64) -> Result<bool> {
+pub(crate) fn refresh_trust(
+    conn: &mut Connection,
+    data_dir: Option<&Path>,
+    now: i64,
+) -> Result<bool> {
     let report = match trust::refresh(conn, now) {
         Ok(report) => report,
         Err(error @ AppError::Auth(_)) => return Err(error),

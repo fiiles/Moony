@@ -132,7 +132,7 @@ pub(crate) async fn join_by_replace<R: Relay, D: ConnAccess>(
     let (joiner, dir, name) = (db.clone(), data_dir.to_path_buf(), device_name.to_string());
     let who = NewIdentity::Join(JoinIdentity::Unvouched(EpochHeads::new()));
     let report = off_thread(move || {
-        joiner.with_conn(|conn| replace_profile(conn, &dir, &creds, &name, &plain, &who, now))
+        joiner.with_conn_mut(|conn| replace_profile(conn, &dir, &creds, &name, &plain, &who, now))
     })
     .await?;
     write_binding_after_replace(db, data_dir, native);
@@ -252,7 +252,7 @@ struct HoldInput {
 /// only in the backup (`pending_items`, and the `sync_unsent` rows its push did not hand to the
 /// relay); the verified backup is written (a repair's was made before its drain); the backup is
 /// marked Kept (a crash from here on never leaves it prunable); then `replace_profile`.
-fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
+fn replace_hold(conn: &mut Connection, input: &HoldInput) -> Hold {
     let mut backup = match &input.backup {
         HoldBackup::Write => None,
         HoldBackup::Made(path) => Some(path.clone()),
@@ -317,7 +317,7 @@ fn replace_hold(conn: &Connection, input: &HoldInput) -> Hold {
 /// `replace_hold` off the runtime.
 async fn held<D: ConnAccess>(db: &D, input: HoldInput) -> SyncResult<Hold> {
     let holder = db.clone();
-    off_thread(move || holder.with_conn(|conn| Ok(replace_hold(conn, &input)))).await
+    off_thread(move || holder.with_conn_mut(|conn| Ok(replace_hold(conn, &input)))).await
 }
 
 /// The mark a backup settles to after its replace, with whether it is Kept: Kept for a repair and
@@ -758,7 +758,7 @@ async fn newest_bundle_head<R: Relay>(
 /// back and reinstalls the capture (or the guard) that ran before. Only after the commit is a
 /// leftover restore marker cleared.
 fn replace_profile(
-    conn: &Connection,
+    conn: &mut Connection,
     data_dir: &Path,
     creds: &Credentials,
     device_name: &str,
@@ -1159,7 +1159,7 @@ async fn repair_after_backup<R: Relay, D: ConnAccess>(
     }
     // Capture records every change again, so the guard goes before the drain (whose merge writes
     // synced tables); from here on a failure leaves capture installed.
-    db.with_conn(guard::lift)?;
+    db.with_conn_mut(guard::lift)?;
     let mut rounds = 0;
     loop {
         if !drained(relay, db, &mut rounds, now).await? {

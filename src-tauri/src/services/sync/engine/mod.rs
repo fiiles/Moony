@@ -43,7 +43,15 @@ use snapshots::{SnapshotPolicy, Upload, MAX_SNAPSHOT_BYTES};
 /// holds it across a network call. `Database` locks its session mutex; a locked profile answers
 /// `AppError::Auth`, which ends the round.
 pub trait ConnAccess: Clone + Send + Sync + 'static {
-    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T>;
+    /// The connection, mutably: what the sync guard needs to set or clear its authorizer
+    /// (rusqlite's `Connection::authorizer` takes `&mut self`).
+    fn with_conn_mut<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T>) -> Result<T>;
+
+    /// The connection, for everything else. Defaults to `with_conn_mut`, so an implementation
+    /// that counts or logs its holds does so in one place.
+    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+        self.with_conn_mut(|conn| f(conn))
+    }
 
     /// The profile's round lock: one round at a time per profile, whoever runs it (the engine's
     /// loop, setup, the repair), so two `push_all` never interleave. An async lock, never the
@@ -76,6 +84,10 @@ pub trait ConnAccess: Clone + Send + Sync + 'static {
 }
 
 impl ConnAccess for crate::db::Database {
+    fn with_conn_mut<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T>) -> Result<T> {
+        crate::db::Database::with_conn_mut(self, f)
+    }
+
     fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
         crate::db::Database::with_conn(self, f)
     }
@@ -609,7 +621,7 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     // A trust-store refresh that failed since the last one is owed first (review of Tasks 20–21,
     // finding 2): a record it would apply came with a merge that is not pulled again.
     if refresh_owed
-        && db.with_conn(|conn| crate::services::sync::rekey::refresh_trust(conn, None, now))?
+        && db.with_conn_mut(|conn| crate::services::sync::rekey::refresh_trust(conn, None, now))?
     {
         report.removed_here = true;
         return Ok(());
@@ -672,7 +684,7 @@ async fn round_steps<R: Relay, D: ConnAccess>(
                     check_heads = true;
                     // The pickup changed the store (a bundle's recipients and records); the
                     // rows merged so far may now verify too.
-                    if db.with_conn(|conn| {
+                    if db.with_conn_mut(|conn| {
                         crate::services::sync::rekey::refresh_trust(conn, None, now)
                     })? {
                         report.removed_here = true;
@@ -782,7 +794,9 @@ async fn round_pass<R: Relay, D: ConnAccess>(
             report.restored = true;
             log::info!("[SYNC] Restored the vault's snapshot after the relay pruned this cursor");
             // The restore merged the device list too.
-            if db.with_conn(|conn| crate::services::sync::rekey::refresh_trust(conn, None, now))? {
+            if db.with_conn_mut(|conn| {
+                crate::services::sync::rekey::refresh_trust(conn, None, now)
+            })? {
                 report.removed_here = true;
                 return Ok(Pass::Done);
             }

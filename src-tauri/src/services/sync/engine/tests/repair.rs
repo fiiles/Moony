@@ -759,8 +759,8 @@ async fn a_read_only_profile_is_told_to_turn_sync_off_before_any_backup() {
     break_capture(&vault.b);
     {
         // The guard could not be imposed: `guard_or_close` made the session read-only.
-        let b = vault.b.lock();
-        guard::lift(&b).expect("lift");
+        let mut b = vault.b.lock();
+        guard::lift(&mut b).expect("lift");
         exec(&b, "PRAGMA query_only = 1");
     }
     let from = vault.relay.calls().len();

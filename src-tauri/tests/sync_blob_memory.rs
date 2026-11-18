@@ -85,8 +85,8 @@ static ALLOCATOR: Counting = Counting;
 struct Db(Arc<Mutex<Connection>>);
 
 impl ConnAccess for Db {
-    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
-        f(&self.0.lock().expect("connection"))
+    fn with_conn_mut<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T>) -> Result<T> {
+        f(&mut self.0.lock().expect("connection"))
     }
 
     fn try_with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Option<Result<T>> {

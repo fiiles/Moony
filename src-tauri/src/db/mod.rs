@@ -61,7 +61,7 @@ impl Database {
     ///
     /// The key should be in format: 'hexstring' (with quotes, as expected by SQLCipher)
     pub fn open_with_key(&self, path: PathBuf, hex_key: &str) -> Result<()> {
-        let conn = Connection::open(&path)?;
+        let mut conn = Connection::open(&path)?;
 
         // Set SQLCipher encryption key using hex format
         // SQLCipher expects: PRAGMA key = "x'hexstring'"
@@ -93,7 +93,7 @@ impl Database {
 
         // Device sync: capture triggers for a sync-enabled profile, installed before the
         // self-heals below so what they write is captured too. One SELECT otherwise; never fails.
-        crate::services::sync::on_open(&conn);
+        crate::services::sync::on_open(&mut conn);
 
         // Load exchange rates from database for offline use
         if let Err(e) = crate::services::currency::load_rates_from_db(&conn) {
@@ -669,13 +669,13 @@ mod tests {
     #[test]
     fn a_profile_with_paused_changes_skips_the_self_heals() {
         use crate::services::sync::capture::guard;
-        let conn = Connection::open_in_memory().expect("db");
+        let mut conn = Connection::open_in_memory().expect("db");
         run_migrations(&conn).expect("migrations");
         assert!(self_heal(&conn), "an ordinary profile heals");
 
-        guard::impose(&conn).expect("guard");
+        guard::impose(&mut conn).expect("guard");
         assert!(!self_heal(&conn));
-        guard::lift(&conn).expect("lift");
+        guard::lift(&mut conn).expect("lift");
         conn.execute_batch("PRAGMA query_only = 1")
             .expect("read-only");
         assert!(!self_heal(&conn));

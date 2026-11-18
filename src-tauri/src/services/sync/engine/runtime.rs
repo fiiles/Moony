@@ -549,7 +549,7 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         // certificates unapplied. A record that removes this device ends sync before any round.
         match self
             .db
-            .with_conn(|conn| rekey::refresh_trust(conn, Some(&dir), unix_now()))
+            .with_conn_mut(|conn| rekey::refresh_trust(conn, Some(&dir), unix_now()))
         {
             Ok(true) => return self.removed_here().map(|()| false),
             Ok(false) => {}

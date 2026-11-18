@@ -556,7 +556,7 @@ async fn a_device_that_turned_sync_off_joins_again() {
         .expect("join");
     let first = assert_joined(&vault, &device, &zip, dir.path()).await;
 
-    setup::turn_off(&device.lock(), dir.path()).expect("turn off");
+    setup::turn_off(&mut device.lock(), dir.path()).expect("turn off");
     assert!(state::load(&device.lock()).expect("state").is_none());
     let again = tempfile::tempdir().expect("dir");
     institution(&device.lock(), "local-only");

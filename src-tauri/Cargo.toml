@@ -41,7 +41,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # Database with SQLCipher encryption
-rusqlite = { version = "0.40", features = ["bundled-sqlcipher", "blob", "functions", "hooks"] }
+rusqlite = { version = "0.42", features = ["bundled-sqlcipher", "blob", "functions", "hooks"] }
 
 # Async runtime
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net", "sync"] }
@@ -137,7 +137,7 @@ tauri-plugin-barcode-scanner = "=2.5.3"  # Sync pairing: scanning the pairing an
 # system OpenSSL to link against, so libsqlite3-sys builds and statically links its own (rusqlite's
 # `bundled-sqlcipher` plus this feature, which only applies to Android builds under resolver 2).
 [target.'cfg(target_os = "android")'.dependencies]
-libsqlite3-sys = { version = "0.38", features = ["bundled-sqlcipher-vendored-openssl"] }
+libsqlite3-sys = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl"] }
 # reqwest's TLS checks certificates with rustls-platform-verifier, which on Android must be given
 # the JVM and the app context once at startup (`init_android_tls_verifier` in lib.rs). Same
 # major versions as reqwest pulls in, so the types match.

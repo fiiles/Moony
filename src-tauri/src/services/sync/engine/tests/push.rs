@@ -103,8 +103,8 @@ impl Holds {
 }
 
 impl ConnAccess for Holds {
-    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
-        self.inner.with_conn(|conn| {
+    fn with_conn_mut<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T>) -> Result<T> {
+        self.inner.with_conn_mut(|conn| {
             let started = Instant::now();
             let out = f(conn);
             let took = started.elapsed();

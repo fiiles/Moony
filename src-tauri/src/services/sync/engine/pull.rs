@@ -432,7 +432,7 @@ async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
                 report.through = op.seq;
                 continue;
             }
-            let step = db.with_conn(|conn| {
+            let step = db.with_conn_mut(|conn| {
                 let step = handle_op(conn, creds, op, now, &mut report)?;
                 if !holding && matches!(step, OpStep::Advance | OpStep::Rejoined) {
                     state::set_cursor(conn, op.seq)?;

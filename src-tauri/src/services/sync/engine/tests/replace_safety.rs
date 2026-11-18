@@ -75,8 +75,8 @@ fn device_id(conn: &Connection) -> Option<Vec<u8>> {
 }
 
 impl ConnAccess for HoldLog {
-    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
-        self.inner.with_conn(|conn| {
+    fn with_conn_mut<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T>) -> Result<T> {
+        self.inner.with_conn_mut(|conn| {
             let names = repair_backups(&self.dir);
             let device = device_id(conn);
             let result = f(conn);

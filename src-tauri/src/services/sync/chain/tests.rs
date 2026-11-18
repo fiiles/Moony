@@ -487,12 +487,12 @@ fn the_first_envelope_at_or_above_the_barrier_is_the_marker() {
 
 #[test]
 fn crossing_a_barrier_forgets_the_old_marker() {
-    let conn = migrated();
+    let mut conn = migrated();
     state::enable(&conn, ME).unwrap();
     conn.execute_batch("UPDATE sync_state SET schema_seen = 24, barrier = 19, barrier_seq = 12")
         .unwrap();
 
-    crate::services::sync::on_open(&conn);
+    crate::services::sync::on_open(&mut conn);
 
     let sync = state::load(&conn).unwrap().expect("row");
     assert_eq!(sync.barrier, 25);
@@ -504,7 +504,7 @@ fn crossing_a_barrier_forgets_the_old_marker() {
 
 #[test]
 fn barrier_requeue_ships_parents_before_children() {
-    let conn = migrated();
+    let mut conn = migrated();
     state::enable(&conn, ME).unwrap();
     let created = account_then_transaction(&conn);
     conn.execute(
@@ -513,7 +513,7 @@ fn barrier_requeue_ships_parents_before_children() {
     )
     .unwrap();
 
-    crate::services::sync::on_open(&conn);
+    crate::services::sync::on_open(&mut conn);
 
     assert_child_queued_first(&conn);
     assert_parent_first(&conn, &sealed_rows(&conn));
@@ -548,7 +548,7 @@ fn a_malformed_chain_link_is_invalid() {
 
 #[test]
 fn crossing_a_barrier_requeues_own_rows_newer_than_the_snapshot() {
-    let conn = migrated();
+    let mut conn = migrated();
     state::enable(&conn, ME).unwrap();
     conn.execute_batch("DELETE FROM sync_outbox; DELETE FROM sync_clock;")
         .unwrap();
@@ -556,7 +556,7 @@ fn crossing_a_barrier_requeues_own_rows_newer_than_the_snapshot() {
     conn.execute_batch("UPDATE sync_state SET snapshot_hlc = 260, schema_seen = 24, barrier = 19")
         .unwrap();
 
-    crate::services::sync::on_open(&conn);
+    crate::services::sync::on_open(&mut conn);
 
     assert_eq!(
         outbox(&conn),
@@ -576,7 +576,7 @@ fn crossing_a_barrier_requeues_own_rows_newer_than_the_snapshot() {
 
 #[test]
 fn an_open_that_crosses_no_barrier_queues_nothing() {
-    let conn = migrated();
+    let mut conn = migrated();
     state::enable(&conn, ME).unwrap();
     conn.execute_batch("DELETE FROM sync_outbox; DELETE FROM sync_clock;")
         .unwrap();
@@ -584,7 +584,7 @@ fn an_open_that_crosses_no_barrier_queues_nothing() {
     conn.execute_batch("UPDATE sync_state SET snapshot_hlc = 0, schema_seen = 25, barrier = 25")
         .unwrap();
 
-    crate::services::sync::on_open(&conn);
+    crate::services::sync::on_open(&mut conn);
 
     assert!(outbox(&conn).is_empty());
     assert_eq!(state::load(&conn).unwrap().expect("row").schema_seen, 41);

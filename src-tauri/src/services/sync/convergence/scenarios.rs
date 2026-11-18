@@ -626,7 +626,7 @@ fn barrier_requeue_resends_rows_pushed_below_the_barrier() {
     }
 
     // B is migrated and opened again: no capture until the open installs it.
-    let b = &vault.devices[1].conn;
+    let b = &mut vault.devices[1].conn;
     capture::uninstall(b).expect("close");
     sync::on_open(b);
     assert!(capture::is_installed(b).expect("installed"));
@@ -665,10 +665,10 @@ fn copy_of(vault: &Vault, d: usize, name: &str) -> std::path::PathBuf {
 /// The copy at `path` opened as the app opens a migrated profile: foreign keys on, no
 /// migrations, then `sync::on_open` (which installs capture).
 fn open_copy(path: &Path) -> Connection {
-    let conn = Connection::open(path).expect("open the copy");
+    let mut conn = Connection::open(path).expect("open the copy");
     conn.execute_batch("PRAGMA foreign_keys = ON;")
         .expect("foreign keys");
-    sync::on_open(&conn);
+    sync::on_open(&mut conn);
     assert!(capture::is_installed(&conn).expect("installed"));
     conn
 }
@@ -787,7 +787,7 @@ fn migration_seed_revival_is_deleted_again() {
     vault.sync_all(&mut rng());
     assert_eq!(count(&vault.devices[1].conn, seeded), 0);
 
-    let b = &vault.devices[1].conn;
+    let b = &mut vault.devices[1].conn;
     capture::uninstall(b).expect("close");
     let seed_sql = crate::db::migration_sql("010_income_categories").expect("migration 010");
     b.execute_batch(seed_sql).expect("re-run the seed");

@@ -1123,7 +1123,7 @@ mod tests {
 
     #[test]
     fn disable_removes_triggers_and_every_sync_row() {
-        let conn = migrated();
+        let mut conn = migrated();
         enable(&conn, DEVICE).unwrap();
         conn.execute_batch(
             "INSERT INTO institutions (id, name) VALUES ('i1', 'Bank'); \
@@ -1165,7 +1165,7 @@ mod tests {
             2,
             "local data stays"
         );
-        crate::services::sync::on_open(&conn);
+        crate::services::sync::on_open(&mut conn);
         assert!(!capture::is_installed(&conn).unwrap());
     }
 
@@ -1379,11 +1379,11 @@ mod tests {
 
     #[test]
     fn a_failed_capture_install_marks_the_profile_capture_broken() {
-        let conn = migrated();
+        let mut conn = migrated();
         ensure_row(&conn, DEVICE).unwrap();
         // Installing reads sync_clock (a missing sync_outbox would not fail: triggers resolve it lazily).
         conn.execute_batch("DROP TABLE sync_clock").unwrap();
-        crate::services::sync::on_open(&conn);
+        crate::services::sync::on_open(&mut conn);
         let m = marks(&conn).unwrap().unwrap();
         assert!(m.capture_broken_at.is_some_and(|at| at > 1_700_000_000));
         assert_eq!(

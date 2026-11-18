@@ -89,7 +89,7 @@ impl Store {
 }
 
 impl ConnAccess for Store {
-    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+    fn with_conn_mut<T>(&self, f: impl FnOnce(&mut Connection) -> Result<T>) -> Result<T> {
         if self.locked.load(Ordering::SeqCst) {
             return Err(AppError::Auth("Database is locked".into()));
         }
@@ -97,11 +97,11 @@ impl ConnAccess for Store {
         self.most_open.fetch_max(now, Ordering::SeqCst);
         self.holds.fetch_add(1, Ordering::SeqCst);
         let hook = self.before_hold.lock().expect("hook").take();
-        let conn = self.lock();
+        let mut conn = self.lock();
         if let Some(hook) = hook {
             hook(&conn);
         }
-        let out = f(&conn);
+        let out = f(&mut conn);
         drop(conn);
         self.open.fetch_sub(1, Ordering::SeqCst);
         out

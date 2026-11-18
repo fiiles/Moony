@@ -118,8 +118,8 @@ fn row(tbl: &str, pk: &str) -> (String, String) {
 
 #[test]
 fn a_profile_without_sync_has_no_triggers_and_no_journal() {
-    let conn = migrated();
-    crate::services::sync::on_open(&conn);
+    let mut conn = migrated();
+    crate::services::sync::on_open(&mut conn);
     let account = crate::models::bank_accounts::InsertBankAccount {
         name: "Current".into(),
         account_type: None,

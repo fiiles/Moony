@@ -57,6 +57,13 @@ All notable changes to Moony are documented in this file. The format follows
 - Semi-bold and bold text is shown in the weight it was designed with; in many places it was
   shown lighter.
 
+### Security
+
+- **A newer database engine.** Moony moves to SQLCipher 4.20.0 (SQLite 3.54.1), which fixes
+  [CVE-2026-119375](https://nvd.nist.gov/vuln/detail/CVE-2026-119375): a database opened together
+  with a crafted write-ahead-log file could return stray memory of the app. The format of your
+  database does not change.
+
 ## [1.3.0] - 2026-11-06
 
 ### Added

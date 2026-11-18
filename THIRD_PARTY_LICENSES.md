@@ -20,7 +20,7 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 | Ecosystem | Packages |
 | --- | ---: |
 | npm | 231 |
-| Rust | 673 |
+| Rust | 678 |
 
 ### npm — packages per licence
 
@@ -42,12 +42,12 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 | Licence | Packages |
 | --- | ---: |
 | MIT OR Apache-2.0 | 326 |
-| MIT | 157 |
-| Apache-2.0 OR MIT | 70 |
+| MIT | 158 |
+| Apache-2.0 OR MIT | 72 |
 | Unicode-3.0 | 18 |
 | Zlib OR Apache-2.0 OR MIT | 18 |
 | Unlicense OR MIT | 14 |
-| BSD-3-Clause | 10 |
+| BSD-3-Clause | 11 |
 | MIT OR Apache-2.0 OR Zlib | 6 |
 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 5 |
 | MPL-2.0 | 5 |
@@ -77,6 +77,7 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 | ISC AND (Apache-2.0 OR ISC) | 1 |
 | ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) | 1 |
 | MIT AND BSD-3-Clause | 1 |
+| MIT AND BSD-3-Clause AND blessing AND WTFPL | 1 |
 | MIT OR Apache-2.0 OR BSD-1-Clause | 1 |
 
 ## Needs review
@@ -92,6 +93,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
   - `dtoa-short` 0.3.5: MPL-2.0 (needs MPL-2.0)
   - `option-ext` 0.2.0: MPL-2.0 (needs MPL-2.0)
   - `selectors` 0.38.0: MPL-2.0 (needs MPL-2.0)
+  - `sqlcipher-src` 420.0.0+sqlcipher-4.20.0-sqlite-3.54.1-libtomcrypt-1.18.2: MIT AND BSD-3-Clause AND blessing AND WTFPL (needs blessing)
 
 ## npm packages
 
@@ -467,6 +469,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | dtoa-short | 0.3.5 | MPL-2.0 |
 | dunce | 1.0.5 | CC0-1.0 OR MIT-0 OR Apache-2.0 |
 | dyn-clone | 1.0.20 | MIT OR Apache-2.0 |
+| ed25519 | 3.0.0 | Apache-2.0 OR MIT |
+| ed25519-dalek | 3.0.0 | BSD-3-Clause |
 | either | 1.19.0 | MIT OR Apache-2.0 |
 | embed_plist | 1.2.2 | MIT OR Apache-2.0 |
 | embed-resource | 3.0.12 | MIT |
@@ -537,7 +541,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | h2 | 0.4.20 | MIT |
 | half | 2.7.1 | MIT OR Apache-2.0 |
 | hashbrown | 0.12.3 | MIT OR Apache-2.0 |
-| hashbrown | 0.16.1 | MIT OR Apache-2.0 |
 | hashbrown | 0.17.1 | MIT OR Apache-2.0 |
 | hashlink | 0.12.2 | MIT OR Apache-2.0 |
 | heck | 0.4.1 | MIT OR Apache-2.0 |
@@ -611,7 +614,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | libloading | 0.7.4 | ISC |
 | libm | 0.2.16 | MIT |
 | libredox | 0.1.25 | MIT |
-| libsqlite3-sys | 0.38.2 | MIT |
+| libsqlite3-sys | 0.40.0 | MIT |
 | linux-raw-sys | 0.12.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | litemap | 0.8.3 | Unicode-3.0 |
 | litrs | 1.0.1 | MIT OR Apache-2.0 |
@@ -673,6 +676,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | once_cell | 1.21.4 | MIT OR Apache-2.0 |
 | open | 5.4.5 | MIT |
 | openssl-probe | 0.2.2 | MIT OR Apache-2.0 |
+| openssl-src | 300.6.1+3.6.3 | MIT OR Apache-2.0 |
+| openssl-sys | 0.9.118 | MIT |
 | option-ext | 0.2.0 | MPL-2.0 |
 | ordered-stream | 0.2.0 | MIT OR Apache-2.0 |
 | osakit | 0.3.1 | MIT OR Apache-2.0 |
@@ -754,8 +759,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | ring | 0.17.14 | Apache-2.0 AND ISC |
 | rmcp | 3.9.0 | Apache-2.0 |
 | rmcp-macros | 3.9.0 | Apache-2.0 |
-| rsqlite-vfs | 0.1.1 | MIT |
-| rusqlite | 0.40.2 | MIT |
+| rsqlite-vfs | 0.2.0 | MIT |
+| rusqlite | 0.42.0 | MIT |
 | rustc_version | 0.4.1 | MIT OR Apache-2.0 |
 | rustc-hash | 2.1.3 | Apache-2.0 OR MIT |
 | rustix | 1.1.6 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
@@ -803,6 +808,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | sha2 | 0.11.1 | MIT OR Apache-2.0 |
 | shlex | 2.0.1 | MIT OR Apache-2.0 |
 | signal-hook-registry | 1.4.8 | MIT OR Apache-2.0 |
+| signature | 3.0.0 | Apache-2.0 OR MIT |
 | simd_cesu8 | 1.2.0 | Apache-2.0 OR MIT |
 | simd_helpers | 0.1.0 | MIT |
 | simd-adler32 | 0.3.10 | MIT |
@@ -818,7 +824,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | specta-macros | 2.0.0-rc.18 | MIT |
 | specta-serde | 0.0.9 | MIT |
 | specta-typescript | 0.0.9 | MIT |
-| sqlite-wasm-rs | 0.5.5 | MIT |
+| sqlcipher-src | 420.0.0+sqlcipher-4.20.0-sqlite-3.54.1-libtomcrypt-1.18.2 | MIT AND BSD-3-Clause AND blessing AND WTFPL |
+| sqlite-wasm-rs | 0.6.3 | MIT |
 | sse-stream | 0.2.6 | MIT OR Apache-2.0 |
 | stable_deref_trait | 1.2.1 | MIT OR Apache-2.0 |
 | static_vcruntime | 3.0.0 | MIT OR Apache-2.0 OR Zlib |

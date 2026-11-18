@@ -42,4 +42,8 @@ ignore = [
   "RUSTSEC-2026-0370", # zvariant
   "RUSTSEC-2026-0371", # zbus_names
   "RUSTSEC-2026-0372", # zvariant_derive
+  # chrono: listed as unmaintained on 2026-11-17, with no patched version and no known exploit.
+  # Moony uses it directly for dates across the backend, and rmcp and schemars pull it in too.
+  # Moving to jiff or time is a piece of work of its own; delete this line when it is done.
+  "RUSTSEC-2026-0543", # chrono
 ]

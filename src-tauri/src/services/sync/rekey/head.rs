@@ -1,4 +1,5 @@
-//! The signed head of a key change (phase 5 As built 62–65).
+//! The signed head of a key change (phase 5 As built 62–65; spec 2026-11-20-sync-audit-2-fixes
+//! §2.3 steps 2–5 for the remover, at the end of this comment).
 //!
 //! The relay position at which an epoch starts (`sync_epochs`) is what the epoch rule (§6.1)
 //! checks every op against, and the server reports it. A server colluding with a removed device
@@ -23,6 +24,21 @@
 //! `keyChangeUnverified` in every round, nothing past the cursor applied). Not found yet (the
 //! remover has not pushed it) keeps waiting; the look-ahead goes on from where it stopped.
 //!
+//! The remover signs what it found, not the server's word (spec 2026-11-20-sync-audit-2-fixes
+//! §2.3). Its commit (`rotate::commit`) makes the new key current and records the head as **not
+//! verified** (`note_unverified`, signer = this device, `after` = the base: its cursor when it
+//! sent the change), and queues nothing. `verify_own` then reads the range above the base up to
+//! the head with the new token (`range::read_range`: nothing applied, nothing opened) and, in one
+//! savepoint, stores the notes, queues the version-2 record with the base, the number of ops found
+//! and their digest as the first envelope under the new key, and removes the entry: the head
+//! counts as verified from that moment. It runs inside the removal call, in the resolution of a
+//! pending change and at the start of every round while the entry exists; a read that cannot
+//! finish (a refusal, a network error, `410`, more pages than one pull reads) leaves the entry
+//! and the next round starts again from the base. While it exists the device sends nothing
+//! (`engine::round_pass`, `reseal::may_reseal`, `snapshots::ready_to_dump`) and starts no other
+//! change (`rotate::check`). `verify_heads` and `after_restore` leave own entries alone: only
+//! `verify_own` settles them.
+//!
 //! A device that had already applied ops past the verified head (the server hid the key change
 //! from it) learns it here and keeps a notice (`rekey::KeyChangeOverrun`); nothing is undone.
 
@@ -31,17 +47,18 @@ use std::collections::BTreeMap;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
-use super::range;
+use super::range::{self, RangeRead};
 use super::{read_config, write_config, KeyChangeOverrun};
 use crate::error::{AppError, Result};
 use crate::services::sync::changeset;
-use crate::services::sync::engine::pull::PULL_PAGE;
+use crate::services::sync::engine::pull::{MAX_PULL_PAGES, PULL_PAGE};
 use crate::services::sync::engine::push::seal_into_unsent;
 use crate::services::sync::engine::ConnAccess;
 use crate::services::sync::envelope::{envelope_epoch, open_op};
 use crate::services::sync::error::SyncResult;
 use crate::services::sync::hlc::DeviceId;
 use crate::services::sync::identity::{self, trust, verify_sig, SignSeed};
+use crate::services::sync::in_savepoint;
 use crate::services::sync::journal::build_marker;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::relay::{PulledOp, Relay, RelayError, Rotated};
@@ -251,6 +268,20 @@ pub(crate) fn note_unverified(
     store(conn, &epochs)
 }
 
+/// Whether this device holds a head it signs itself that is not verified yet (its own key
+/// change, committed provisionally, whose range it has not read: `verify_own`).
+pub fn own_unverified(conn: &Connection) -> Result<bool> {
+    let Some(me) = state::load(conn)?.map(|sync| sync.device.to_hex()) else {
+        return Ok(false);
+    };
+    Ok(unverified_epochs(conn)?.iter().any(|e| e.by == me))
+}
+
+/// Whether any head, this device's own or another's, is not verified yet.
+pub fn any_unverified(conn: &Connection) -> Result<bool> {
+    Ok(!unverified_epochs(conn)?.is_empty())
+}
+
 /// `sync_epochs` without the heads not verified yet: what this device vouches for (re-sealing,
 /// what a holder hands a joiner, a snapshot's `Keys` record, a bundle's older keys).
 pub fn verified_epochs(conn: &Connection) -> Result<BTreeMap<u32, u64>> {
@@ -270,15 +301,18 @@ pub(crate) fn awaits_head(conn: &Connection, epoch: u32, position: u64) -> Resul
         .any(|e| epoch < e.epoch && position > e.after))
 }
 
-/// The remover's commit (in its savepoint, the new key already current): its next envelope,
-/// with no rows, carries the signed head of the change, sealed under the new key into
-/// `sync_unsent` (so it goes out with the next push, a crash or not).
+/// The remover's signature (`verify_own`, in its savepoint): its next envelope, with no rows,
+/// carries the signed head of the change, sealed under the new key into `sync_unsent` (so it goes
+/// out with the next push, a crash or not). The record binds the range `(base, head]` as `notes`
+/// found it: their number and digest.
 pub(crate) fn queue_signed_head(
     conn: &Connection,
     me: DeviceId,
     from: u32,
     to: u32,
     rotated: Rotated,
+    base: u64,
+    notes: &[range::RangeNote],
 ) -> Result<()> {
     let creds = keys::credentials(conn)?
         .ok_or_else(|| AppError::Internal("sync: the key change has no credentials".into()))?;
@@ -289,8 +323,9 @@ pub(crate) fn queue_signed_head(
     }
     let seed = identity::own_seed(conn)?
         .ok_or_else(|| AppError::Internal("sync: no signing key for the signed head".into()))?;
-    // Placeholder: an empty range at the head; a later task (the remover's range read) replaces it.
-    let digest = range::range_digest(&creds.vault_id.0, to, rotated.head, rotated.head, &[])?;
+    let count = u32::try_from(notes.len())
+        .map_err(|_| AppError::Internal("sync: the range of a key change is too long".into()))?;
+    let digest = range::range_digest(&creds.vault_id.0, to, base, rotated.head, notes)?;
     let record = HeadRecord::sign(
         creds.vault_id.0,
         me,
@@ -298,8 +333,8 @@ pub(crate) fn queue_signed_head(
         to,
         rotated.rotation,
         rotated.head,
-        rotated.head,
-        0,
+        base,
+        count,
         digest,
         &seed,
     );
@@ -309,6 +344,106 @@ pub(crate) fn queue_signed_head(
     let sync =
         state::load(conn)?.ok_or_else(|| AppError::Internal("sync: sync is not set up".into()))?;
     state::note_sealed_at_barrier(conn, sync.barrier)
+}
+
+/// What `verify_own` found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OwnHead {
+    /// No head of this device's own is waiting.
+    None,
+    /// The range was read and the head is signed and queued (verified from now on).
+    Signed,
+    /// The range could not be read to its end (or the server's head is below this device's
+    /// cursor): the head stays unverified, and the next call starts again from the base.
+    Waiting,
+}
+
+/// Settles this device's own unverified heads (module doc): for each, reads the range with the
+/// new token, then, in one savepoint, stores the notes, queues the signed record and removes the
+/// entry. A read that cannot finish, whatever the reason (the relay refused, the network, `410`,
+/// more pages than a pull reads), is `Waiting`: nothing is kept of a partial read, and the round's
+/// pull meets the same error and names it. A local failure is the error. Under the round lock or
+/// `engine::exclusive`.
+pub async fn verify_own<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    _now: i64,
+) -> SyncResult<OwnHead> {
+    let loaded = db.with_conn(|conn| {
+        let Some(me) = state::load(conn)?.map(|sync| sync.device) else {
+            return Ok(None);
+        };
+        let mine: Vec<UnverifiedEpoch> = unverified_epochs(conn)?
+            .into_iter()
+            .filter(|e| e.by == me.to_hex())
+            .collect();
+        if mine.is_empty() {
+            return Ok(None);
+        }
+        let creds = keys::credentials(conn)?.ok_or_else(|| {
+            AppError::Internal("sync: the credentials went during a key change".into())
+        })?;
+        Ok(Some((me, mine, creds)))
+    })?;
+    let Some((me, mine, creds)) = loaded else {
+        return Ok(OwnHead::None);
+    };
+    for entry in mine {
+        let (Some(head), Some(rotation)) = (entry.head, entry.rotation) else {
+            log::warn!("[SYNC] This device's own key change has no head recorded");
+            return Ok(OwnHead::Waiting);
+        };
+        if head < entry.after {
+            log::warn!(
+                "[SYNC] The sync server's head for this device's key change is below its place"
+            );
+            return Ok(OwnHead::Waiting);
+        }
+        let notes = match range::read_range(relay, &creds.auth(), entry.after, head, MAX_PULL_PAGES)
+            .await
+        {
+            Ok(RangeRead::Complete(notes)) => notes,
+            Ok(RangeRead::More { scanned }) => {
+                log::info!(
+                    "[SYNC] The range of this device's key change is longer than one read ({scanned})"
+                );
+                return Ok(OwnHead::Waiting);
+            }
+            Err(error) => {
+                log::info!("[SYNC] The range of this device's key change was not read: {error}");
+                return Ok(OwnHead::Waiting);
+            }
+        };
+        db.with_conn(|conn| {
+            in_savepoint(conn, "sync_sign_own_head", || {
+                let mut epochs = unverified_epochs(conn)?;
+                let before = epochs.len();
+                epochs.retain(|e| !(e.epoch == entry.epoch && e.by == entry.by));
+                if epochs.len() == before {
+                    // Settled meanwhile: nothing to sign twice.
+                    return Ok(());
+                }
+                range::store_notes(conn, entry.epoch, entry.after, &notes)?;
+                queue_signed_head(
+                    conn,
+                    me,
+                    entry.epoch.saturating_sub(1),
+                    entry.epoch,
+                    Rotated { rotation, head },
+                    entry.after,
+                    &notes,
+                )?;
+                store(conn, &epochs)?;
+                log::info!(
+                    "[SYNC] This device signed the start of key epoch {} with {} changes below it",
+                    entry.epoch,
+                    notes.len()
+                );
+                Ok(())
+            })
+        })?;
+    }
+    Ok(OwnHead::Signed)
 }
 
 /// What `verify_heads` found.
@@ -336,7 +471,13 @@ pub async fn verify_heads<R: Relay, D: ConnAccess>(
     if pending.iter().any(|e| e.refuted) {
         return Ok(HeadCheck::Refuted);
     }
+    let me = db.with_conn(|conn| Ok(state::load(conn)?.map(|sync| sync.device.to_hex())))?;
     for entry in pending {
+        // This device's own head has no signed record to look for yet: only `verify_own`
+        // settles it.
+        if me.as_deref() == Some(entry.by.as_str()) {
+            continue;
+        }
         match look_ahead(relay, db, creds, &entry).await? {
             Found::Record(record) => {
                 let verified = db.with_conn(|conn| settle(conn, &entry, &record, now))?;
@@ -467,8 +608,14 @@ pub(crate) fn after_restore(conn: &Connection, seq: u64, heads: &[(u32, u64)]) -
     if epochs.is_empty() {
         return Ok(());
     }
+    let me = state::load(conn)?.map(|sync| sync.device.to_hex());
     let mut left = Vec::new();
     for mut entry in epochs {
+        // Only `verify_own` settles this device's own head: it has to sign it.
+        if me.as_deref() == Some(entry.by.as_str()) {
+            left.push(entry);
+            continue;
+        }
         let named = heads
             .iter()
             .find(|(epoch, head)| *epoch == entry.epoch && entry.head.is_none_or(|h| h == *head));

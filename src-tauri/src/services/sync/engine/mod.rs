@@ -453,6 +453,7 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
             pending: rotate::pending(conn)?,
             seen: state::rekey_seen(conn)?,
             unverified: !head::unverified_epochs(conn)?.is_empty(),
+            own_unverified: head::own_unverified(conn)?,
         };
         Ok(keys::credentials(conn)?
             .zip(state::marks(conn)?)
@@ -568,6 +569,8 @@ struct KeyState {
     pending: bool,
     seen: u32,
     unverified: bool,
+    /// One of the unverified heads is this device's own (`head::own_unverified`).
+    own_unverified: bool,
 }
 
 /// What sent the round to `pickup::pick_up`.
@@ -618,6 +621,7 @@ async fn round_steps<R: Relay, D: ConnAccess>(
         pending,
         mut seen,
         unverified,
+        own_unverified,
         ..
     } = keys_state;
     // A trust-store refresh that failed since the last one is owed first (review of Tasks 20–21,
@@ -631,6 +635,9 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     // A key change of this device still pending is resolved before anything else (phase 5
     // §6.4 step 6); until it is, nothing is pushed (the error ends the round). A change that was
     // not done leaves its notice there (`rekey::RemovalNotDone`).
+    // The resolution of a change that landed also reads its range and signs its head
+    // (`head::verify_own`), so the round does not try that a second time.
+    let mut tried_own_head = false;
     if pending {
         match rotate::resolve_pending(relay, db, None, now).await? {
             Some(rotate::Outcome::RemovedHere) => {
@@ -641,6 +648,7 @@ async fn round_steps<R: Relay, D: ConnAccess>(
                 report.problem = Some(SyncProblem::KeyChangeUnverified);
                 return Ok(());
             }
+            Some(rotate::Outcome::Changed { .. }) => tried_own_head = true,
             _ => {}
         }
         (creds, seen) = db.with_conn(|conn| {
@@ -650,6 +658,19 @@ async fn round_steps<R: Relay, D: ConnAccess>(
             Ok((creds, state::rekey_seen(conn)?))
         })?;
     }
+    // A head this device signs itself that is not verified yet (the removal committed, its range
+    // not read) is finished before the pull; until it is, `round_pass` sends nothing (spec
+    // 2026-11-20-sync-audit-2-fixes-design §2.3 steps 3–5).
+    if !tried_own_head && own_unverified {
+        head::verify_own(relay, db, now).await?;
+    }
+    // Still unsigned after the tries: `round_pass` sends nothing. Read again only when one of the
+    // tries could have changed it, so the common round takes the profile no more often than before.
+    let own_waiting = if tried_own_head || own_unverified {
+        db.with_conn(head::own_unverified)?
+    } else {
+        false
+    };
     // The vault's info, read before the pull when the round reads it at all (its snapshot step
     // reads it again after the push: the snapshot's sequence is the head then).
     let mut trigger = None;
@@ -732,7 +753,19 @@ async fn round_steps<R: Relay, D: ConnAccess>(
                 Err(error) => return Err(error),
             }
         }
-        trigger = match round_pass(relay, db, &creds, policy, mode, now, jitter, report).await {
+        trigger = match round_pass(
+            relay,
+            db,
+            &creds,
+            policy,
+            mode,
+            now,
+            jitter,
+            own_waiting,
+            report,
+        )
+        .await
+        {
             // The vault's info: a rotation above `rekey_seen` and above what this round already
             // looked at is a key change this device has not looked at.
             Ok(Pass::Done) if report.removed_here => return Ok(()),
@@ -767,7 +800,8 @@ fn wants_info(policy: &SnapshotPolicy, mode: RoundMode, now: i64) -> bool {
     }
 }
 
-/// One pass of steps 2–4 of `run_round_into` (`round_steps`).
+/// One pass of steps 2–4 of `run_round_into` (`round_steps`). `own_waiting`: this device's own
+/// key-change head is still not signed (`head::verify_own`): the pass pulls and sends nothing.
 #[allow(clippy::too_many_arguments)]
 async fn round_pass<R: Relay, D: ConnAccess>(
     relay: &R,
@@ -777,6 +811,7 @@ async fn round_pass<R: Relay, D: ConnAccess>(
     mode: RoundMode,
     now: i64,
     jitter: i64,
+    own_waiting: bool,
     report: &mut RoundReport,
 ) -> SyncResult<Pass> {
     let pulled = match pull::pull_all(relay, db, creds, now).await {
@@ -882,6 +917,14 @@ async fn round_pass<R: Relay, D: ConnAccess>(
         return Ok(Pass::KeyHint);
     }
     if !may_push {
+        return Ok(Pass::Done);
+    }
+    // This device's own head is still not signed (`head::verify_own` could not read its range):
+    // nothing is sent, sealed again or uploaded until it is (§2.3 step 5). The next round tries
+    // again.
+    if own_waiting {
+        log::info!("[SYNC] Nothing is sent until this device has signed its own key change");
+        report.problem = Some(SyncProblem::KeyChangeWaiting);
         return Ok(Pass::Done);
     }
     // A Recovery Kit joiner sends nothing, not even its own row, until the person answers

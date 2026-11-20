@@ -62,6 +62,9 @@ pub const ROTATION_RACED: &str = "validation.syncRotationRaced";
 pub const TOO_MANY_KEY_CHANGES: &str = "validation.syncTooManyKeyChanges";
 pub const REMOVAL_UNSUPPORTED: &str = "validation.syncRemovalUnsupported";
 pub const REMOVE_THIS_DEVICE: &str = "validation.syncRemoveThisDevice";
+/// The server no longer keeps what lies between this device's place and its end: a normal round
+/// restores first (spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 1). The text comes later.
+pub const REMOVAL_NEEDS_SYNC: &str = "validation.syncRemovalNeedsSync";
 const CHANGES_PAUSED: &str = "validation.syncChangesPaused";
 const NOT_SET_UP: &str = "validation.syncSetupIncomplete";
 const IN_PROGRESS: &str = "validation.syncChangeInProgress";
@@ -365,7 +368,7 @@ fn check(conn: &Connection) -> Result<DeviceId> {
     if identity::own_seed(conn)?.is_none() {
         return Err(validation(REMOVAL_UNSUPPORTED));
     }
-    if pending(conn)? {
+    if pending(conn)? || head::own_unverified(conn)? {
         return Err(validation(IN_PROGRESS));
     }
     if stuck(conn)? {
@@ -420,6 +423,12 @@ struct PendingKit {
 struct PendingChange {
     from: u32,
     to: u32,
+    /// This device's cursor when the change was first sent: where the range its signed head binds
+    /// starts (spec §2.3 step 2). Kept here so a lost answer commits with the same base.
+    base: u64,
+    /// Read from a version-2 value (written before the base existed): the change is not resolved,
+    /// it is wiped with the notice that the removal was not done.
+    legacy: bool,
     key: Zeroizing<[u8; 32]>,
     bundle: Vec<u8>,
     removed: Vec<Record>,
@@ -445,6 +454,8 @@ struct PendingIn {
     v: u32,
     from: u32,
     to: u32,
+    #[serde(default)]
+    base: Option<u64>,
     key: SecretString,
     bundle: String,
     removed: Vec<String>,
@@ -467,7 +478,9 @@ struct PendingKitIn {
     retired: Vec<String>,
 }
 
-const PENDING_VERSION: u32 = 2;
+const PENDING_VERSION: u32 = 3;
+/// The version before the base: still read, so it can be wiped with its notice.
+const LEGACY_PENDING_VERSION: u32 = 2;
 
 fn push_list<T>(json: &mut String, items: &[T], each: impl Fn(&T) -> String) {
     for (i, item) in items.iter().enumerate() {
@@ -481,7 +494,7 @@ fn push_list<T>(json: &mut String, items: &[T], each: impl Fn(&T) -> String) {
 }
 
 impl PendingChange {
-    /// `{"v":2,"from":n,"to":n,"key":"<b64url>","bundle":"<b64url>","removed":["<record>"],
+    /// `{"v":3,"from":n,"to":n,"base":n,"key":"<b64url>","bundle":"<b64url>","removed":["<record>"],
     /// "confirm":["<hex>"],"kit":{"envelope":"<b64url>","token":"<43>"?,"cert":"<b64>"?,
     /// "replaces":"<record b64>"?}?}`, built in one wiped buffer reserved up front.
     fn to_json(&self) -> Zeroizing<String> {
@@ -493,14 +506,14 @@ impl PendingChange {
                 + 160 * k.retired.len()
         });
         let mut json = Zeroizing::new(String::with_capacity(
-            160 + self.bundle.len().div_ceil(3) * 4
+            180 + self.bundle.len().div_ceil(3) * 4
                 + 160 * self.removed.len()
                 + 40 * self.confirm.len()
                 + kit_len,
         ));
         json.push_str(&format!(
-            "{{\"v\":{PENDING_VERSION},\"from\":{},\"to\":{},\"key\":\"",
-            self.from, self.to
+            "{{\"v\":{PENDING_VERSION},\"from\":{},\"to\":{},\"base\":{},\"key\":\"",
+            self.from, self.to, self.base
         ));
         URL_SAFE_NO_PAD.encode_string(self.key.as_slice(), &mut json);
         json.push_str("\",\"bundle\":\"");
@@ -544,7 +557,10 @@ impl PendingChange {
         let corrupt = || AppError::Internal("sync_state.rotation_pending is not valid".into());
         // The serde error may quote the value, so it is dropped.
         let raw: PendingIn = serde_json::from_str(json).map_err(|_| corrupt())?;
-        if raw.v != PENDING_VERSION || raw.from.checked_add(1) != Some(raw.to) {
+        let legacy = raw.v == LEGACY_PENDING_VERSION && raw.base.is_none();
+        if !(legacy || raw.v == PENDING_VERSION && raw.base.is_some())
+            || raw.from.checked_add(1) != Some(raw.to)
+        {
             return Err(corrupt());
         }
         let decoded = Zeroizing::new(
@@ -596,6 +612,8 @@ impl PendingChange {
         Ok(PendingChange {
             from: raw.from,
             to: raw.to,
+            base: raw.base.unwrap_or(0),
+            legacy,
             key,
             bundle: URL_SAFE_NO_PAD
                 .decode(raw.bundle.as_bytes())
@@ -706,6 +724,14 @@ pub async fn remove<R: Relay, D: ConnAccess>(
             }
         }
     }
+    // The only new precondition (spec §2.3 step 1): what lies between this device's cursor and
+    // the end of the log must still be on the server, so the range can be read. Not the cursor's
+    // distance from the head, nor the vault's newest snapshot: the device being removed could
+    // keep either moving.
+    let cursor = db.with_conn(|conn| Ok(state::load(conn)?.map_or(0, |sync| sync.cursor)))?;
+    if info.floor > cursor {
+        return Err(SyncError::Local(validation(REMOVAL_NEEDS_SYNC)));
+    }
     let (change, new_kit, creds) = db.with_conn(|conn| {
         let plan = plan(conn, request.removing, &[], request.new_kit, now)?;
         if plan.consent != request.consent {
@@ -758,6 +784,7 @@ fn prepare(
     now: i64,
 ) -> Result<(PendingChange, Option<NewKit>)> {
     let me = check(conn)?;
+    let base = state::load(conn)?.ok_or_else(not_set_up)?.cursor;
     let seed = identity::own_seed(conn)?.ok_or_else(|| validation(REMOVAL_UNSUPPORTED))?;
     let own = trust::entry(conn, me)?.ok_or_else(|| validation(REMOVAL_UNSUPPORTED))?;
     let from = creds.keys.current_epoch();
@@ -914,6 +941,8 @@ fn prepare(
     let change = PendingChange {
         from,
         to,
+        base,
+        legacy: false,
         key,
         bundle: bytes,
         removed,
@@ -978,6 +1007,7 @@ async fn send<R: Relay, D: ConnAccess>(
             let Some(epoch) = commit_taken(db, change, rotated, now)? else {
                 return Ok(Sent::Done(Outcome::Stuck));
             };
+            finish_own_head(relay, db, now).await;
             log::info!("[SYNC] The sync key changed to epoch {epoch}");
             Ok(Sent::Done(Outcome::Changed {
                 epoch,
@@ -992,6 +1022,7 @@ async fn send<R: Relay, D: ConnAccess>(
                 let Some(epoch) = commit_taken(db, change, rotated, now)? else {
                     return Ok(Sent::Done(Outcome::Stuck));
                 };
+                finish_own_head(relay, db, now).await;
                 log::info!("[SYNC] A key change of this device had landed: the key is at {epoch}");
                 return Ok(Sent::Done(Outcome::Changed {
                     epoch,
@@ -1078,7 +1109,7 @@ fn wipe_not_done(
 /// every left or list-removed device that still knew the key), a replaced Kit removed the same
 /// way and the new one's row written and pinned by this device (R-28), every recipient and the
 /// Kit confirmed, the pending change cleared, `rekey_seen` at this rotation and a snapshot under
-/// the new key due.
+/// the new key due. The signed head is not queued here: `finish_own_head` does it.
 fn commit(conn: &Connection, change: &PendingChange, rotated: Rotated, now: i64) -> Result<u32> {
     let creds = keys::credentials(conn)?.ok_or_else(not_set_up)?;
     let me = state::load(conn)?.ok_or_else(not_set_up)?.device;
@@ -1097,9 +1128,17 @@ fn commit(conn: &Connection, change: &PendingChange, rotated: Rotated, now: i64)
                 "sync: the new epoch is recorded with another start".into(),
             ));
         }
-        // The first envelope under the new key: the signed head every other device checks the
-        // server's word against (`rekey::head`).
-        head::queue_signed_head(conn, me, change.from, change.to, rotated)?;
+        // The head is the server's word until this device has read the range below it and signed
+        // what it found (`head::verify_own`, §2.3 step 2): recorded as not verified, the base
+        // being the cursor of the first send.
+        head::note_unverified(
+            conn,
+            change.to,
+            Some(rotated.head),
+            Some(rotated.rotation),
+            me,
+            change.base,
+        )?;
         let replaced = change.kit.as_ref().and_then(|k| k.replaces.as_ref());
         let retired = change.kit.iter().flat_map(|k| &k.retired);
         for record in change.removed.iter().chain(replaced).chain(retired) {
@@ -1121,6 +1160,21 @@ fn commit(conn: &Connection, change: &PendingChange, rotated: Rotated, now: i64)
         )?;
         Ok(change.to)
     })
+}
+
+/// Right after a commit: reads the range and signs the head (`head::verify_own`). Whatever keeps
+/// it from finishing (the server, the profile) is no failure of a change that is committed: the
+/// head stays unverified, the device holds still, and every round tries again.
+async fn finish_own_head<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) {
+    match head::verify_own(relay, db, now).await {
+        Ok(head::OwnHead::Waiting) => {
+            log::info!("[SYNC] The removal is finishing: the head is signed in a later round");
+        }
+        Ok(_) => {}
+        Err(error) => {
+            log::warn!("[SYNC] The head of the key change could not be signed yet: {error}");
+        }
+    }
 }
 
 /// Database failures in a row of the commit of a change the sync server took before it is given
@@ -1237,6 +1291,12 @@ pub async fn resolve_pending<R: Relay, D: ConnAccess>(
         let Some(change) = load_pending(conn)? else {
             return Ok(None);
         };
+        if change.legacy {
+            // Stored before the base existed: it cannot be committed with a range.
+            log::warn!("[SYNC] A pending key change of an older format is dropped");
+            wipe_not_done(conn, &change, true, None)?;
+            return Ok(None);
+        }
         let creds = keys::credentials(conn)?.ok_or_else(not_set_up)?;
         if creds.keys.current_epoch() != change.from {
             // The key moved on without it (a commit clears it in the same savepoint): another
@@ -1263,6 +1323,7 @@ pub async fn resolve_pending<R: Relay, D: ConnAccess>(
             let Some(epoch) = commit_taken(db, &change, rotated, now)? else {
                 return Ok(Some(Outcome::Stuck));
             };
+            finish_own_head(relay, db, now).await;
             log::info!("[SYNC] A pending key change had landed: the key is at epoch {epoch}");
             Ok(Some(Outcome::Changed {
                 epoch,
@@ -1335,6 +1396,8 @@ mod tests {
         PendingChange {
             from: 4,
             to: 5,
+            base: 77,
+            legacy: false,
             key: Zeroizing::new([0x5a; 32]),
             bundle: vec![1, 2, 3, 250],
             removed: vec![record],
@@ -1385,7 +1448,13 @@ mod tests {
 
         let back = PendingChange::from_json(&json).expect("parses");
 
-        assert_eq!((back.from, back.to), (4, 5));
+        assert_eq!((back.from, back.to, back.base), (4, 5, 77));
+        assert!(!back.legacy);
+        assert!(
+            json.contains("\"v\":3,\"from\":4,\"to\":5,\"base\":77,"),
+            "{}",
+            json.as_str()
+        );
         assert_eq!(*back.key, [0x5a; 32]);
         assert_eq!(back.bundle, change.bundle);
         assert_eq!(back.removed, change.removed);
@@ -1401,13 +1470,31 @@ mod tests {
     fn a_pending_change_that_does_not_read_is_refused() {
         let json = change().to_json();
         for broken in [
-            json.replace("\"v\":2", "\"v\":1"),
+            json.replace("\"v\":3", "\"v\":1"),
+            json.replace("\"v\":3", "\"v\":4"),
+            // version 3 without its base, version 2 with one
+            json.replace(",\"base\":77", ""),
+            json.replace("\"v\":3", "\"v\":2"),
             json.replace("\"to\":5", "\"to\":6"),
             json.replace("]}", "],\"extra\":1}"),
             json.replace("\"key\":\"", "\"key\":\"AA"),
         ] {
             assert!(PendingChange::from_json(&broken).is_err(), "{broken}");
         }
+    }
+
+    #[test]
+    fn a_version_2_pending_change_reads_as_legacy_with_no_base() {
+        let json = change()
+            .to_json()
+            .replace("\"v\":3", "\"v\":2")
+            .replace(",\"base\":77", "");
+
+        let back = PendingChange::from_json(&json).expect("a version 2 value is still read");
+
+        assert!(back.legacy);
+        assert_eq!((back.from, back.to), (4, 5));
+        assert_eq!(back.removed_devices(), change().removed_devices());
     }
 
     #[test]

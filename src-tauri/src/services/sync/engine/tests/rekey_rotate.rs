@@ -514,6 +514,118 @@ async fn a_change_whose_answer_was_lost_commits_without_a_second_call() {
     assert_eq!(state::rekey_seen(&a).expect("seen"), 1);
 }
 
+/// Spec 2026-11-20 §2.3 step 2: the base of the range is the cursor the remover had when it sent
+/// the change, kept in the pending change. A resolution after a lost answer commits with that base
+/// even if the cursor moved on, and its range starts there.
+#[tokio::test]
+async fn a_lost_answer_commits_with_the_stored_base() {
+    let three = three().await;
+    let base = cursor(&three.vault.a.lock());
+    institution(&three.vault.b.lock(), "b-while-away");
+    round_of(&three.vault, &three.vault.b).await;
+    let head = three.vault.relay.ops().last().map_or(0, |op| op.seq);
+    assert!(head > base);
+    three.vault.relay.lose_next_answer(Route::RotateToken);
+
+    let outcome = remove(&three, A, &[C]).await.expect("pending");
+    assert_eq!(outcome, Outcome::Pending { kit: None });
+    // The cursor moves on before the resolution (anything that pulls does it).
+    state::set_cursor(&three.vault.a.lock(), head).expect("cursor");
+
+    let resolved = rotate::resolve_pending(&three.vault.relay, &three.vault.a, None, NOW)
+        .await
+        .expect("resolved");
+
+    assert!(
+        matches!(resolved, Some(Outcome::Changed { epoch: 1, .. })),
+        "{resolved:?}"
+    );
+    let a = three.vault.a.lock();
+    assert!(!rotation_pending(&a));
+    assert_eq!(
+        crate::services::sync::rekey::range::base_of(&a, 1).expect("base"),
+        Some(base),
+        "the range starts at the cursor of the first send"
+    );
+    let noted: Vec<u64> = a
+        .prepare("SELECT pos FROM sync_range_notes WHERE epoch = 1 ORDER BY pos")
+        .expect("notes")
+        .query_map([], |r| r.get::<_, i64>(0).map(|p| p as u64))
+        .expect("rows")
+        .map(|p| p.expect("pos"))
+        .collect();
+    let expected: Vec<u64> = three
+        .vault
+        .relay
+        .ops()
+        .iter()
+        .map(|op| op.seq)
+        .filter(|seq| *seq > base && *seq <= head)
+        .collect();
+    assert_eq!(noted, expected);
+    assert!(
+        !head::own_unverified(&a).expect("own"),
+        "signed in the resolution"
+    );
+}
+
+/// §2.3 step 1: one new precondition, and only that one. A cursor below what the server still
+/// keeps (its floor) means the ops between are gone: the removal is refused and nothing is
+/// written. A vault snapshot above the cursor is no reason to refuse (the device being removed
+/// could keep moving it).
+#[tokio::test]
+async fn a_removal_is_refused_only_when_the_cursor_is_below_the_floor() {
+    let three = three().await;
+    let base = cursor(&three.vault.a.lock());
+    for id in ["b-1", "b-2", "b-3"] {
+        institution(&three.vault.b.lock(), id);
+        round_of(&three.vault, &three.vault.b).await;
+    }
+    let end = three.vault.relay.ops().last().map_or(0, |op| op.seq);
+    assert!(end > base + 2);
+    three
+        .vault
+        .relay
+        .put_snapshot(&three.vault.creds.auth(), end, vec![7; 64])
+        .await
+        .expect("a snapshot above A's cursor");
+
+    // The floor still at 0: the snapshot alone does not stop the removal.
+    let outcome = remove(&three, A, &[C]).await.expect("not refused");
+    assert!(
+        matches!(outcome, Outcome::Changed { epoch: 1, .. }),
+        "{outcome:?}"
+    );
+
+    let three = self::three().await;
+    let base = cursor(&three.vault.a.lock());
+    for id in ["b-1", "b-2", "b-3"] {
+        institution(&three.vault.b.lock(), id);
+        round_of(&three.vault, &three.vault.b).await;
+    }
+    let end = three.vault.relay.ops().last().map_or(0, |op| op.seq);
+    three
+        .vault
+        .relay
+        .put_snapshot(&three.vault.creds.auth(), end, vec![7; 64])
+        .await
+        .expect("a snapshot");
+    three.vault.relay.prune_to(end);
+    assert!(base < end);
+
+    let error = remove(&three, A, &[C]).await.expect_err("refused");
+
+    assert_eq!(
+        validation_key(&error).as_deref(),
+        Some(rotate::REMOVAL_NEEDS_SYNC)
+    );
+    let a = three.vault.a.lock();
+    assert!(!rotation_pending(&a));
+    assert_eq!(key_epoch(&a), 0);
+    assert_eq!(rotations(&three), 0, "nothing was sent");
+    assert_eq!(removal_record(&a, C).0, None);
+}
+
 /// §10.4 and §10.1: the call never landed and another device changed the key meanwhile: the
 /// resolution sends it again, meets the retired token and picks the other change up.
 #[tokio::test]

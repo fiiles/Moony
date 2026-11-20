@@ -44,7 +44,8 @@ pub fn holds_older(conn: &Connection, creds: &Credentials) -> Result<bool> {
 /// position was looked at in this round; `clean_through`: how far the pull of this pass got when
 /// it stopped nowhere (`None` when it stopped). The current epoch's start must be known:
 ///
-/// - **verified** (`head::verified_epochs`: the remover's own, or one its signed head confirmed):
+/// - **verified** (`head::verified_epochs`: the remover's own once it signed it, or one its signed
+///   head confirmed; never while the remover's own head is unverified):
 ///   the round's pulls got there (`through`);
 /// - **only the server's** (not refuted): this pass's pull got there **and stopped nowhere**.
 ///   Every op up to the head was then dealt with, so every own envelope the server holds up to it
@@ -60,6 +61,11 @@ pub fn may_reseal(
     through: u64,
     clean_through: Option<u64>,
 ) -> Result<bool> {
+    // The remover's own head, until it has read its range and signed it, is no head to re-seal
+    // against: nothing is sealed again (spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 5).
+    if super::head::own_unverified(conn)? {
+        return Ok(false);
+    }
     let current = creds.keys.current_epoch();
     if let Some(head) = super::head::verified_epochs(conn)?.get(&current) {
         return Ok(through >= *head);

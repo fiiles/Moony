@@ -6,7 +6,12 @@ use rusqlite::{params, Connection, OptionalExtension};
 use sha2::{Digest, Sha256};
 
 use crate::error::{AppError, Result};
+use crate::services::sync::engine::pull::{check_page, PULL_PAGE};
+use crate::services::sync::envelope::envelope_hash;
+use crate::services::sync::error::SyncResult;
 use crate::services::sync::in_savepoint;
+use crate::services::sync::keys::VaultAuth;
+use crate::services::sync::relay::{Relay, RelayError};
 
 const RANGE_DOMAIN: &[u8] = b"moony rekey range v1";
 
@@ -135,6 +140,102 @@ pub fn forget(conn: &Connection, epoch: u32) -> Result<()> {
     })
 }
 
+/// What `verdict` finds for an op of an older key at a position of a key change's range.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RangeVerdict {
+    /// No range this device has stored covers the position: nothing to compare with.
+    NotInARange,
+    /// Every stored range that covers the position noted exactly this op.
+    Matches,
+    /// A stored range covers the position and noted no op there, or another one.
+    Wrong,
+}
+
+/// Rule 6 of the key-change design (spec 2026-11-20-sync-audit-2-fixes-design §2.3): an op sealed
+/// under `epoch_of_op` at relay position `pos`, whose envelope hash is `hash`, is checked against
+/// every key change above that epoch whose range this device stored (`range_base` set) and that
+/// covers the position (`range_base < pos <= head`): the note for that position must exist and
+/// be this hash, in each of them. An epoch whose range this device has not stored (its base is
+/// NULL: the head is not verified here yet, or the device was past it) is skipped.
+pub fn range_verdict(
+    conn: &Connection,
+    epoch_of_op: u32,
+    pos: u64,
+    hash: &[u8; 32],
+) -> Result<RangeVerdict> {
+    let at = signed(pos, "op position")?;
+    let ranges: Vec<(u32, i64, i64)> = conn
+        .prepare_cached(
+            "SELECT epoch, range_base, rotation_head FROM sync_epochs \
+             WHERE epoch > ?1 AND range_base IS NOT NULL ORDER BY epoch",
+        )?
+        .query_map([epoch_of_op], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+        .collect::<rusqlite::Result<_>>()?;
+    let mut verdict = RangeVerdict::NotInARange;
+    for (epoch, base, head) in ranges {
+        if at <= base || at > head {
+            continue;
+        }
+        match noted(conn, epoch, pos)? {
+            Some(found) if &found == hash => verdict = RangeVerdict::Matches,
+            _ => return Ok(RangeVerdict::Wrong),
+        }
+    }
+    Ok(verdict)
+}
+
+/// How `read_range` ended.
+#[derive(Debug, PartialEq, Eq)]
+pub enum RangeRead {
+    /// The server has nothing more in the range: every op found in it, ascending.
+    Complete(Vec<RangeNote>),
+    /// The page limit came first (`scanned`: how far the read got). Nothing is kept: the caller
+    /// starts again from the base.
+    More { scanned: u64 },
+}
+
+/// Reads the range `(base, head]` of the server's log with `auth`, applying nothing and opening
+/// nothing: each op found is noted by position and envelope hash. It ends at a page that says
+/// there is no more, at the first position above `head`, or after `max_pages` pages of
+/// `PULL_PAGE`. A position with nothing in it is simply not noted: the reader never waits for one
+/// to fill. A page outside the pull contract is `RelayError::Protocol`; `410` and every other
+/// refusal come back as their `SyncError`. An empty range (`head <= base`) reads nothing.
+pub async fn read_range<R: Relay>(
+    relay: &R,
+    auth: &VaultAuth,
+    base: u64,
+    head: u64,
+    max_pages: usize,
+) -> SyncResult<RangeRead> {
+    let mut notes = Vec::new();
+    let mut after = base;
+    for _ in 0..max_pages {
+        if after >= head {
+            return Ok(RangeRead::Complete(notes));
+        }
+        let page = relay.pull(auth, after, PULL_PAGE).await?;
+        check_page(&page, after, PULL_PAGE)
+            .map_err(|reason| RelayError::Protocol(reason.to_string()))?;
+        for op in &page.ops {
+            if op.seq > head {
+                return Ok(RangeRead::Complete(notes));
+            }
+            notes.push(RangeNote {
+                pos: op.seq,
+                hash: envelope_hash(&op.ct),
+            });
+            after = op.seq;
+        }
+        if !page.more {
+            return Ok(RangeRead::Complete(notes));
+        }
+    }
+    if after >= head {
+        return Ok(RangeRead::Complete(notes));
+    }
+    Ok(RangeRead::More { scanned: after })
+}
+
 /// The frozen digest of the two-note range of the tests (vault `[0x22; 16]`, epoch 4, base 10,
 /// head 13, notes at 11 `[0xaa; 32]` and 13 `[0xbb; 32]`); `head`'s frozen record reuses it.
 #[cfg(test)]
@@ -232,6 +333,87 @@ mod tests {
         assert_eq!(base_of(&conn, 0).expect("base"), Some(0));
         assert_eq!(noted(&conn, 0, 13).expect("note"), Some([0xbb; 32]));
         forget(&conn, 9).expect("an unknown epoch is nothing to forget");
+    }
+
+    fn note_at(pos: u64, byte: u8) -> RangeNote {
+        RangeNote {
+            pos,
+            hash: [byte; 32],
+        }
+    }
+
+    #[test]
+    fn a_verdict_compares_an_older_op_with_every_stored_range_that_covers_it() {
+        let conn = with_epochs();
+        // Epoch 1's range is not stored on this device: nothing to compare with.
+        assert_eq!(
+            range_verdict(&conn, 0, 5, &[1; 32]).expect("verdict"),
+            RangeVerdict::NotInARange
+        );
+        store_notes(&conn, 1, 3, &[note_at(5, 1), note_at(8, 2)]).expect("range 1");
+        let verdict = |epoch: u32, pos: u64, byte: u8| {
+            range_verdict(&conn, epoch, pos, &[byte; 32]).expect("verdict")
+        };
+        assert_eq!(verdict(0, 5, 1), RangeVerdict::Matches);
+        assert_eq!(verdict(0, 5, 9), RangeVerdict::Wrong, "another op there");
+        assert_eq!(
+            verdict(0, 6, 1),
+            RangeVerdict::Wrong,
+            "nothing was noted there"
+        );
+        assert_eq!(verdict(0, 3, 1), RangeVerdict::NotInARange, "at the base");
+        assert_eq!(
+            verdict(0, 10, 1),
+            RangeVerdict::Wrong,
+            "at the head, no note"
+        );
+        assert_eq!(
+            verdict(0, 11, 1),
+            RangeVerdict::NotInARange,
+            "above the head"
+        );
+        assert_eq!(
+            verdict(1, 5, 9),
+            RangeVerdict::NotInARange,
+            "not older than the change"
+        );
+
+        // A second change whose range overlaps: an op must match in both.
+        state::record_epoch(&conn, 2, 20, None, 3).expect("epoch 2");
+        store_notes(&conn, 2, 7, &[note_at(8, 2), note_at(15, 3)]).expect("range 2");
+        assert_eq!(verdict(0, 8, 2), RangeVerdict::Matches);
+        assert_eq!(verdict(0, 8, 1), RangeVerdict::Wrong);
+        assert_eq!(
+            verdict(0, 5, 1),
+            RangeVerdict::Matches,
+            "range 2 starts above it"
+        );
+        assert_eq!(
+            verdict(1, 15, 3),
+            RangeVerdict::Matches,
+            "only range 2 covers it"
+        );
+        assert_eq!(
+            verdict(0, 9, 1),
+            RangeVerdict::Wrong,
+            "range 1 noted nothing at 9"
+        );
+        assert_eq!(verdict(2, 8, 1), RangeVerdict::NotInARange);
+    }
+
+    #[test]
+    fn a_range_that_was_forgotten_judges_nothing() {
+        let conn = with_epochs();
+        store_notes(&conn, 1, 3, &[note_at(5, 1)]).expect("range");
+        assert_eq!(
+            range_verdict(&conn, 0, 6, &[1; 32]).expect("verdict"),
+            RangeVerdict::Wrong
+        );
+        forget(&conn, 1).expect("forget");
+        assert_eq!(
+            range_verdict(&conn, 0, 6, &[1; 32]).expect("verdict"),
+            RangeVerdict::NotInARange
+        );
     }
 
     fn notes() -> Vec<RangeNote> {

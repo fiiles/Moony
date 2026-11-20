@@ -10,7 +10,10 @@
 //! device's own envelopes and acknowledges them (their echo, audit M4), applying nothing. A
 //! changeset dated more than ten years past this device's time is held the same way, with the
 //! later envelopes of its author as gaps behind it, until the person skips it (audit M6,
-//! `chain::too_far_ahead`).
+//! `chain::too_far_ahead`). An op sealed under an older key at a position inside a key change's
+//! stored range (`rekey::range`) is applied only if it is the op that was noted there when the
+//! head was signed (rule 6 of the sync-audit-2 design): any other op, and any op at a position
+//! nothing was noted for, ends the pull as `Invalid`.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -31,6 +34,7 @@ use crate::services::sync::in_savepoint;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::merge::{apply_changeset, Outcome, StopReason};
 use crate::services::sync::rekey::head;
+use crate::services::sync::rekey::range::{self, RangeVerdict};
 use crate::services::sync::relay::{PullPage, PulledOp, Relay};
 use crate::services::sync::state;
 
@@ -107,6 +111,17 @@ pub fn handle_op(
                 op.seq
             );
             return Ok(OpStep::Stop(PullStop::KeyChangeUnconfirmed));
+        }
+        // Rule 6: an older op at a position of a stored key-change range is applied only if it is
+        // the very op that was signed there. Any other op, and any op at a position nothing was
+        // noted for, ends the pull.
+        if range::range_verdict(conn, epoch, op.seq, &envelope_hash(&op.ct))? == RangeVerdict::Wrong
+        {
+            log::warn!(
+                "[SYNC] Relay op {} is not the one signed at its place in a key change",
+                op.seq
+            );
+            return Ok(OpStep::Stop(PullStop::Invalid));
         }
     }
     let Ok(cs) = changeset::from_json(&json) else {
@@ -526,7 +541,11 @@ fn acknowledge_if_own(conn: &Connection, creds: &Credentials, op: &PulledOp) -> 
 /// every sequence above `after` and strictly increasing, the head at or above the last sequence
 /// and never below `after` (an empty page included: the relay's head never goes back), and no
 /// empty page that says there is more (it would be fetched again forever).
-fn check_page(page: &PullPage, after: u64, limit: u32) -> std::result::Result<(), &'static str> {
+pub(crate) fn check_page(
+    page: &PullPage,
+    after: u64,
+    limit: u32,
+) -> std::result::Result<(), &'static str> {
     if page.ops.len() > limit as usize {
         return Err("more envelopes than the limit");
     }

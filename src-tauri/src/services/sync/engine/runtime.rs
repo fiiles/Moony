@@ -68,6 +68,9 @@ pub const FAST_WINDOW: Duration = Duration::from_secs(300);
 pub const ROUND_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 /// The loop never sleeps less than this, whatever its deadlines say.
 const MIN_SLEEP: Duration = Duration::from_millis(5);
+/// The least time between two requests of a round by the lanes for a retired token: a server that
+/// keeps answering `403 token_read_only` to a lane cannot make the engine run rounds back to back.
+const KEY_ASK_GAP: Duration = Duration::from_secs(60);
 /// A transfer lane looks at its queue at least this often when nothing wakes it.
 pub const LANE_IDLE: Duration = Duration::from_secs(60);
 /// A lane run takes no new blob after this long, so the app hears what moved while a long queue
@@ -365,6 +368,7 @@ pub fn spawn_with<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
         db: db.clone(),
         events: events.clone(),
         shared: shared.clone(),
+        key_asked_at: Mutex::new(None),
     };
     let flag = RunningFlag(shared.clone());
     let engine = Engine {
@@ -861,6 +865,8 @@ struct Lanes<R, D, E> {
     db: D,
     events: Arc<E>,
     shared: Arc<Shared>,
+    /// When a lane last asked for a round because a transfer met a retired token.
+    key_asked_at: Mutex<Option<Instant>>,
 }
 
 impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
@@ -902,6 +908,38 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
             _ = both => {}
             _ = events => {}
         }
+    }
+
+    /// A transfer met a token a key change retired: asks the loop for a round (the flag
+    /// `EngineHandle::wake` sets for an automatic trigger), whose pull meets the same `403` and
+    /// picks the key up. Asked once per run, not per blob, and not while the round's own problem is
+    /// already a key change (`keyRotated`, `keyNotGiven`, ...: the round knows, and a pickup that
+    /// gave nothing is not asked for again by every wake of the lanes), and at most once per
+    /// `KEY_ASK_GAP`: the rate is bounded by that gap, whatever the server answers.
+    fn ask_for_key_pickup(&self) {
+        if matches!(
+            self.shared.runtime().problem,
+            Some(
+                SyncProblem::KeyRotated
+                    | SyncProblem::KeyNotGiven
+                    | SyncProblem::KeyChangeUnverified
+                    | SyncProblem::KeyChangeWaiting
+            )
+        ) {
+            return;
+        }
+        {
+            let mut asked = self
+                .key_asked_at
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if asked.is_some_and(|at| at.elapsed() < KEY_ASK_GAP) {
+                return;
+            }
+            *asked = Some(Instant::now());
+        }
+        self.shared.requested.store(true, Ordering::SeqCst);
+        self.shared.wake.notify_one();
     }
 
     /// Once per engine, before either lane transfers: the incomplete blobs earlier transfers left
@@ -1021,6 +1059,9 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
         };
         if report.changed || policy.problem() != problem {
             self.shared.blobs.note_changed();
+        }
+        if report.retired_token {
+            self.ask_for_key_pickup();
         }
         Ok(report.uploaded + report.stored > 0)
     }

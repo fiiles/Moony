@@ -102,6 +102,8 @@ pub struct PassReport {
     pub requeued: usize,
     pub skipped: Option<Skip>,
     pub complete: bool,
+    /// The pass met a retired token (`token_read_only`): a key change waits to be picked up.
+    pub retired_token: bool,
 }
 
 /// The pass's bounds; tests shrink them through `run_with`, which exists only in tests (the
@@ -456,6 +458,7 @@ async fn attempt<R: Relay, D: ConnAccess>(
             // lost.
             Answer::Failed(error) => {
                 log_stop(&error);
+                report.retired_token = matches!(error, RelayError::TokenReadOnly);
                 return Ok(report);
             }
         };
@@ -521,6 +524,7 @@ async fn attempt<R: Relay, D: ConnAccess>(
                 }
                 Answer::Failed(error) => {
                     log_stop(&error);
+                    report.retired_token = matches!(error, RelayError::TokenReadOnly);
                     return Ok(report);
                 }
             }

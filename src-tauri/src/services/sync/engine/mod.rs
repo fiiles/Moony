@@ -578,7 +578,8 @@ enum Trigger {
     AfterPass,
     /// The pull stopped on an op whose header names a later epoch.
     KeyHint,
-    /// A push or snapshot upload met the retired token (`ReadOnlyToken`).
+    /// A push, a snapshot upload or a read (the pull, the look-ahead) met the retired token
+    /// (`ReadOnlyToken`).
     ReadOnly,
 }
 
@@ -714,13 +715,20 @@ async fn round_steps<R: Relay, D: ConnAccess>(
             }
         }
         if check_heads {
-            match head::verify_heads(relay, db, &creds, now).await? {
-                HeadCheck::Refuted => {
+            match head::verify_heads(relay, db, &creds, now).await {
+                Ok(HeadCheck::Refuted) => {
                     report.problem = Some(SyncProblem::KeyChangeUnverified);
                     return Ok(());
                 }
-                HeadCheck::Clear => check_heads = false,
-                HeadCheck::Waiting => {}
+                Ok(HeadCheck::Clear) => check_heads = false,
+                Ok(HeadCheck::Waiting) => {}
+                // The look-ahead reads ops: a retired token is refused there like in the pull,
+                // and means the same, a key change to pick up (protocol 3).
+                Err(SyncError::ReadOnlyToken) => {
+                    trigger = Some(Trigger::ReadOnly);
+                    continue;
+                }
+                Err(error) => return Err(error),
             }
         }
         trigger = match round_pass(relay, db, &creds, policy, mode, now, jitter, report).await {
@@ -923,7 +931,7 @@ async fn round_pass<R: Relay, D: ConnAccess>(
     report.push = Some(pushed);
     if !sent {
         after_push(relay, db, creds, policy, mode, now, jitter, report).await?;
-        daily_pass(relay, db, creds, &policy.blobs, mode, now, report).await;
+        daily_pass(relay, db, creds, &policy.blobs, mode, now, report).await?;
         return Ok(Pass::Done);
     }
     // The echo (audit M4): what the push sent leaves `sync_unsent` only when this device pulls it
@@ -973,13 +981,14 @@ async fn round_pass<R: Relay, D: ConnAccess>(
         }
     }
     after_push(relay, db, creds, policy, mode, now, jitter, report).await?;
-    daily_pass(relay, db, creds, &policy.blobs, mode, now, report).await;
+    daily_pass(relay, db, creds, &policy.blobs, mode, now, report).await?;
     Ok(Pass::Done)
 }
 
 /// The daily pass of documents and photos (`blobs::pass`, ADR 0030), after a `Normal` or
 /// `FirstSnapshot` round's last step went through: once a day, a caught-up device deletes the
-/// server's unreferenced blobs and puts back what the server lost. Nothing it meets fails or
+/// server's unreferenced blobs and puts back what the server lost. A retired token (`403`) is
+/// returned as `ReadOnlyToken`, so the round picks the key up; nothing else it meets fails or
 /// changes the round: it ends within `pass::PASS_BUDGET`, a sync server error ends it (logged
 /// there), a local error is logged here, and a locked profile ends the round at its next step.
 async fn daily_pass<R: Relay, D: ConnAccess>(
@@ -990,12 +999,12 @@ async fn daily_pass<R: Relay, D: ConnAccess>(
     mode: RoundMode,
     now: i64,
     report: &RoundReport,
-) {
+) -> SyncResult<()> {
     if !matches!(mode, RoundMode::Normal | RoundMode::FirstSnapshot) {
-        return;
+        return Ok(());
     }
     let Some(pulled) = report.pull.as_ref() else {
-        return;
+        return Ok(());
     };
     // A key change this round has seen the vault announce and not picked up yet (the pickup
     // follows the pass, `Trigger::AfterPass`): the token in hand is retired, so the pass's
@@ -1012,21 +1021,24 @@ async fn daily_pass<R: Relay, D: ConnAccess>(
         match waits {
             Ok(true) => {
                 log::debug!("[SYNC] The daily pass of documents and photos waits for a key pickup");
-                return;
+                return Ok(());
             }
             Ok(false) => {}
-            Err(AppError::Auth(_)) => return,
+            Err(AppError::Auth(_)) => return Ok(()),
             Err(error) => {
                 log::debug!("[SYNC] The daily pass could not read the key epoch: {error}");
-                return;
+                return Ok(());
             }
         }
     }
     match pass::run_if_due(relay, db, creds, blobs, pulled, now).await {
-        Ok(_) | Err(AppError::Auth(_)) => {}
+        // A retired token: the round picks the key up (`Trigger::ReadOnly`), as for a push.
+        Ok(pass) if pass.retired_token => Err(SyncError::ReadOnlyToken),
+        Ok(_) | Err(AppError::Auth(_)) => Ok(()),
         Err(error) => {
             log::warn!("[SYNC] The daily pass of documents and photos failed on this device");
             log::debug!("[SYNC] The daily pass of documents and photos failed: {error}");
+            Ok(())
         }
     }
 }

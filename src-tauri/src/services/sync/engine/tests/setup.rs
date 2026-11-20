@@ -1488,7 +1488,7 @@ async fn a_server_without_the_kit_refuses_setup() {
     ready_for_the_kit(&relay, &device).await;
     relay.set_server_info(Some(crate::services::sync::relay::ServerInfo {
         version: "1.0.0".into(),
-        protocol: 2,
+        protocol: 3,
         mode: crate::services::sync::relay::ServerMode::SelfHosted,
         blobs: true,
         kit: false,
@@ -1499,6 +1499,28 @@ async fn a_server_without_the_kit_refuses_setup() {
     assert_eq!(key_of(refused), "validation.syncServerNeedsUpdate");
     assert!(!relay.calls().contains(&Route::CreateVault));
     assert!(!enabled(&device.lock()));
+}
+
+/// Protocol 3 is the oldest the app sets up against: a server of protocol 2 (its retired tokens
+/// still read) is refused before anything is created there.
+#[tokio::test]
+async fn a_server_of_protocol_2_is_refused_at_setup() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let person = relay.add_person();
+    relay.set_server_info(Some(crate::services::sync::relay::ServerInfo {
+        version: "1.0.0".into(),
+        protocol: 2,
+        mode: crate::services::sync::relay::ServerMode::SelfHosted,
+        blobs: true,
+        kit: true,
+    }));
+
+    let refused = connect_own_server(&relay, &device, &code_for(&person)).await;
+
+    assert_eq!(command_key(refused), "validation.syncServerNeedsUpdate");
+    assert_eq!(relay.calls(), [Route::ServerInfo], "no account call");
+    assert_eq!(keys::account(&device.lock()).expect("account"), None);
 }
 
 /// Final review I-2: a phone setup whose only keeping was "Uložit nebo sdílet…" finishes, and the

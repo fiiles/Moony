@@ -234,7 +234,7 @@ fn server_asks(relay: &FakeRelay) -> usize {
 fn server_with_blobs(blobs: bool) -> ServerInfo {
     ServerInfo {
         version: "1.0.0".into(),
-        protocol: 2,
+        protocol: 3,
         mode: ServerMode::SelfHosted,
         blobs,
         kit: true,
@@ -509,7 +509,7 @@ async fn a_server_without_blobs_transfers_nothing() {
     let vault = devices().await;
     vault.relay.set_server_info(Some(ServerInfo {
         version: "1.0.0".into(),
-        protocol: 2,
+        protocol: 3,
         mode: ServerMode::SelfHosted,
         blobs: false,
         kit: true,
@@ -544,7 +544,7 @@ async fn a_server_without_blobs_transfers_nothing() {
     // The server was updated; once its answer is asked again, content moves.
     vault.relay.set_server_info(Some(ServerInfo {
         version: "1.1.0".into(),
-        protocol: 2,
+        protocol: 3,
         mode: ServerMode::SelfHosted,
         blobs: true,
         kit: true,
@@ -1257,7 +1257,7 @@ fn every_blob_answer_has_its_transfer_class() {
         ),
         (E::PaymentRequired, Outcome::Blocked),
         (E::Unauthorized, Outcome::Blocked),
-        (E::TokenReadOnly, Outcome::Blocked),
+        (E::TokenReadOnly, Outcome::Retired),
         (E::VaultNotFound, Outcome::Blocked),
     ];
     for (error, expected) in table {

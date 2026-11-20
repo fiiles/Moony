@@ -1169,14 +1169,13 @@ mod key_change {
         .expect("uploads");
 
         assert_eq!(report.uploaded, 0);
-        let puts = three
-            .vault
-            .relay
-            .calls()
-            .iter()
-            .filter(|route| **route == Route::PutBlob)
-            .count();
-        assert_eq!(puts, 1, "the run stopped at the refusal");
+        // The retired token is refused at the first call, a read (the `HEAD` before the body, protocol
+        // 3), and the run stops there: no body was sent.
+        let calls = three.vault.relay.calls();
+        let count = |wanted: Route| calls.iter().filter(|route| **route == wanted).count();
+        assert_eq!(count(Route::PutBlob), 0, "no body was sent");
+        assert_eq!(count(Route::HeadBlob), 1, "the run stopped at the refusal");
+        assert!(report.retired_token);
         for id in [&blob, &second] {
             assert_eq!(
                 entry(&three.vault.a, id),
@@ -1261,7 +1260,9 @@ mod key_change {
 
         // C, still at epoch 0, cannot open it yet.
         let report = downloads(&three.vault.relay, &three.c, later).await;
-        assert_eq!((report.stored, report.failed), (0, 1), "{report:?}");
+        // Its token was retired by the key change (protocol 3): refused, not "cannot open".
+        assert_eq!((report.stored, report.failed), (0, 0), "{report:?}");
+        assert!(report.retired_token, "{report:?}");
         assert!(!held_here(&three.c, &blob));
 
         round_at(&three.vault.relay, &three.c, RoundMode::Normal, later).await;
@@ -1392,7 +1393,8 @@ mod key_change {
             later,
             &report(1),
         )
-        .await;
+        .await
+        .expect("the pass");
         assert_eq!(
             listings(),
             before,
@@ -1408,7 +1410,8 @@ mod key_change {
             later,
             &report(0),
         )
-        .await;
+        .await
+        .expect("the pass");
         assert!(listings() > before, "with nothing to pick up it runs");
 
         // A server that keeps claiming a rotation nobody picks up holds the pass off one day at
@@ -1427,10 +1430,10 @@ mod key_change {
             )
         };
         let before = listings();
-        pass_at(much_later).await;
-        pass_at(much_later + 3_600).await;
+        pass_at(much_later).await.expect("pass");
+        pass_at(much_later + 3_600).await.expect("pass");
         assert_eq!(listings(), before, "within the day it waits");
-        pass_at(much_later + 86_400).await;
+        pass_at(much_later + 86_400).await.expect("pass");
         assert!(listings() > before, "after a day it runs anyway");
     }
 }

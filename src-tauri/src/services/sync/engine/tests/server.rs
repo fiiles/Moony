@@ -71,13 +71,18 @@ async fn what_is_not_an_own_moony_server_is_refused_before_any_account_call() {
             "validation.syncServerNeedsUpdate",
         ),
         (
+            "protocol 2",
+            Box::new(move |f| f.set_server_info(info(2, ServerMode::SelfHosted))),
+            "validation.syncServerNeedsUpdate",
+        ),
+        (
             "the cloud",
-            Box::new(move |f| f.set_server_info(info(2, ServerMode::Cloud))),
+            Box::new(move |f| f.set_server_info(info(3, ServerMode::Cloud))),
             "validation.syncServerNotOwn",
         ),
         (
             "another mode",
-            Box::new(move |f| f.set_server_info(info(2, ServerMode::Other))),
+            Box::new(move |f| f.set_server_info(info(3, ServerMode::Other))),
             "validation.syncServerNotOwn",
         ),
         (

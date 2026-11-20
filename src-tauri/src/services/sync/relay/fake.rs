@@ -204,7 +204,7 @@ impl Default for FakeState {
             without_slot_3: false,
             server_info: Some(ServerInfo {
                 version: "1.0.0".into(),
-                protocol: 2,
+                protocol: 3,
                 mode: ServerMode::SelfHosted,
                 blobs: true,
                 kit: true,
@@ -223,6 +223,8 @@ impl Default for FakeState {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Access {
+    /// The vault's info and the key changes: all a retired token may still ask (protocol 3).
+    Lookup,
     Read,
     Write,
     Owner,
@@ -308,7 +310,7 @@ impl FakeRelay {
     }
 
     /// What `server_info` answers from now on; `None` is an old relay that does not know the
-    /// route (`BadRequest("not_found")`). Default: protocol 2, self-hosted, version 1.0.0, with
+    /// route (`BadRequest("not_found")`). Default: protocol 3, self-hosted, version 1.0.0, with
     /// blobs.
     pub fn set_server_info(&self, info: Option<ServerInfo>) {
         self.lock().server_info = info;
@@ -523,7 +525,9 @@ impl FakeRelay {
     }
 
     /// A relay colluding with a removed device: from now on (until switched off) a retired token
-    /// pushes as if it were current. Only rotations still need the current token.
+    /// pushes and reads (the pull, the snapshot, the blobs) as if it were current. The vault's
+    /// info and the key changes need no help (a retired token looks them up anyway); only
+    /// rotations still need the current token.
     pub fn set_accept_retired_writes(&self, accept: bool) {
         self.lock().accept_retired_writes = accept;
     }
@@ -624,7 +628,7 @@ impl FakeState {
     }
 
     /// `Vaults.verdict`: the vault exists; the token is its current one, or one rotated away less
-    /// than 30 days ago (which may read only); the subscription is live (write) or within the
+    /// than 30 days ago (which may only look up: the vault's info and the key changes); the subscription is live (write) or within the
     /// read grace (read); `Owner` needs no subscription.
     fn authorize(&self, vault: &VaultAuth, access: Access) -> RelayResult<&Vault> {
         let stored = self
@@ -640,7 +644,11 @@ impl FakeState {
             if !previous {
                 return Err(RelayError::Unauthorized);
             }
-            if access != Access::Read && !(self.accept_retired_writes && access == Access::Write) {
+            // A colluding relay (`set_accept_retired_writes`) also serves the removed device's
+            // reads; an honest one lets a retired token only look up.
+            let colluding =
+                self.accept_retired_writes && matches!(access, Access::Write | Access::Read);
+            if access != Access::Lookup && !colluding {
                 return Err(RelayError::TokenReadOnly);
             }
         }
@@ -648,7 +656,7 @@ impl FakeState {
         let entitled = match access {
             Access::Owner => true,
             Access::Write => paid_until > now,
-            Access::Read => paid_until + READ_GRACE_SECONDS > now,
+            Access::Lookup | Access::Read => paid_until + READ_GRACE_SECONDS > now,
         };
         if entitled {
             Ok(stored)
@@ -795,7 +803,7 @@ impl Relay for FakeRelay {
             check_vault(vault)?;
             let mut state = self.lock();
             state.enter(Route::VaultInfo)?;
-            let stored = state.authorize(vault, Access::Read)?;
+            let stored = state.authorize(vault, Access::Lookup)?;
             Ok(VaultInfo {
                 head: stored.head,
                 floor: stored.floor,
@@ -1147,7 +1155,7 @@ impl Relay for FakeRelay {
                 return Err(RelayError::BadRequest("invalid_limit".into()));
             }
             let limit = limit.min(MAX_REKEY_PAGE) as usize;
-            let stored = state.authorize(vault, Access::Read)?;
+            let stored = state.authorize(vault, Access::Lookup)?;
             if let Some(answer) = &state.rekeys_answer {
                 return Ok(answer(after));
             }

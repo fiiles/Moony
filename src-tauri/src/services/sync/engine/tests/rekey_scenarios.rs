@@ -355,9 +355,9 @@ async fn two_devices_removing_each_other_at_once_leave_exactly_one() {
 
 /// Plan Task 14: A removes C while B is pairing D: D received the credentials B sealed before the
 /// change. Joining from the snapshot of before the change goes through and the change gave D
-/// nothing (`keyNotGiven`); once a snapshot under the new key is on the server, the join itself
-/// is refused as a failed pairing, with nothing replaced (As built R-73). Either way D pairs
-/// again and syncs.
+/// nothing; the join itself is refused as a failed pairing, with nothing replaced, both when
+/// the snapshot is already under the new key (As built R-73) and when it is the old one (D's token
+/// was retired, protocol 3). Either way D pairs again and syncs.
 #[tokio::test]
 async fn a_pairing_overtaken_by_a_removal_ends_key_not_given_and_pairs_again() {
     for newer_snapshot in [false, true] {
@@ -376,28 +376,20 @@ async fn a_pairing_overtaken_by_a_removal_ends_key_not_given_and_pairs_again() {
 
         let joined = join_into(&three.vault, &d, payload, dir.path()).await;
 
-        let first = if newer_snapshot {
-            let error = joined.expect_err("refused");
-            assert_eq!(
-                validation_key(&error.to_app_error()).as_deref(),
-                Some("validation.syncPairingFailed"),
-                "{error:?}"
-            );
+        // Both snapshots are refused: the newer one is sealed under a key D was not given, and
+        // with the older one D's token was retired by the change (protocol 3: a retired token
+        // reads no snapshot). Nothing is replaced either way.
+        let error = joined.expect_err("refused");
+        assert_eq!(
+            validation_key(&error.to_app_error()).as_deref(),
+            Some("validation.syncPairingFailed"),
+            "newer_snapshot={newer_snapshot}: {error:?}"
+        );
+        {
             let conn = d.lock();
             assert!(!sync_on(&conn) && has_institution(&conn, "local-only"));
-            None
-        } else {
-            joined.expect("the join itself goes through");
-            let report = round_mode(&three, &d, RoundMode::Normal).await;
-            assert_eq!(report.problem, Some(SyncProblem::KeyNotGiven), "{report:?}");
-            assert_eq!(key_epoch(&d.lock()), 0);
-            let first = me(&d.lock());
-            // "Připojit znovu": sync off on D first.
-            setup::turn_off_between_rounds(&d, dir.path())
-                .await
-                .expect("off");
-            Some(first)
-        };
+        }
+        let first: Option<DeviceId> = None;
 
         round_of(&three.vault, &three.vault.a).await;
         round_of(&three.vault, &three.vault.b).await;

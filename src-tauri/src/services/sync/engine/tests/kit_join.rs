@@ -1103,3 +1103,42 @@ async fn settle_remaining(three: &Three) {
         }
     }
 }
+
+/// Protocol 3: a Kit joiner that read its keys just before a key change reads the snapshot with a
+/// token that was retired meanwhile. The server refuses it (`403`), which ends the join the way a
+/// snapshot sealed under a key the joiner lacks does (As built R-73): nothing is replaced, and
+/// the person reads the Kit again.
+#[tokio::test]
+async fn a_join_overtaken_by_a_key_change_says_try_again() {
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    snapshot_by(&three, &three.vault.a).await;
+    let (creds, join) =
+        recovery_credentials(&three.vault.relay, &newcomer(), typed(&three, &secret))
+            .await
+            .expect("the keys are read");
+    remove(&three, A, &[C]).await.expect("removed");
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    let error = join_new_device(
+        &three.vault.relay,
+        &device,
+        creds,
+        "Laptop",
+        agreed(&device),
+        JoinIdentity::RecoveryKit(Box::new(join)),
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect_err("refused");
+
+    assert_eq!(
+        key_of(&error).as_deref(),
+        Some("validation.syncRecoveryKitUnreadable"),
+        "{error:?}"
+    );
+    untouched(&device);
+}

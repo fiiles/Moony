@@ -153,7 +153,8 @@ async fn fetched_snapshot<R: Relay>(
     }
 }
 
-/// The snapshot is sealed under a key epoch the credentials do not hold (As built R-73): a private
+/// The snapshot is sealed under a key epoch the credentials do not hold (As built R-73), or the
+/// credentials' token was retired by a key change: a private
 /// answer of `fetched_snapshot_at`, not an error of the sync client.
 struct KeyAhead;
 
@@ -167,6 +168,13 @@ async fn fetched_snapshot_at<R: Relay>(
         Ok(blob) => blob,
         Err(RelayError::NoSnapshot) => {
             return Err(AppError::Validation(NO_SNAPSHOT.into()).into());
+        }
+        // The token was retired by a key change since the credentials were made (protocol 3: a
+        // retired token reads no snapshot): the same situation as a snapshot sealed under a key
+        // these credentials lack.
+        Err(RelayError::TokenReadOnly) => {
+            log::warn!("[SYNC] The vault's key changed while this device was joining");
+            return Ok(Err(KeyAhead));
         }
         Err(error) => return Err(error.into()),
     };

@@ -12,7 +12,7 @@ use super::state;
 use crate::models::sync::SyncServerCheck;
 
 /// The oldest server protocol this app works with (the contract of spec §5).
-pub const MIN_PROTOCOL: u32 = 2;
+pub const MIN_PROTOCOL: u32 = 3;
 
 /// Asks `relay` (the server at `address`) what it is. `RateLimited` stays itself (the person may
 /// try again); any other failure to answer reads as "no sync server here"; an old protocol

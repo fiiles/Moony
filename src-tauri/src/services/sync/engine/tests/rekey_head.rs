@@ -931,3 +931,51 @@ async fn a_rotation_with_nothing_to_pick_up_is_looked_at_once_a_round() {
         .count();
     assert_eq!(walks, 1);
 }
+
+/// Protocol 3: a retired token reads no ops, so a device that waits for a signed head and is
+/// overtaken by a second key change meets the `403` in its look-ahead, before its pull and
+/// without a read of the vault's info. That is a key change to pick up, not the end of the round
+/// as `keyRotated`.
+#[tokio::test]
+async fn a_device_with_an_unverified_head_picks_up_a_second_key_change_from_its_look_ahead() {
+    let three = three().await;
+    institution(&three.vault.a.lock(), "a-before");
+    round_of(&three.vault, &three.vault.a).await;
+    new_kit(&three, A).await.expect("first");
+    let report = round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(
+        report.problem,
+        Some(SyncProblem::KeyChangeWaiting),
+        "{report:?}"
+    );
+    assert_eq!(key_epoch(&three.vault.b.lock()), 1);
+    new_kit(&three, A).await.expect("second");
+    let from = three.vault.relay.calls().len();
+
+    // A `Drain` round reads no vault info: only the look-ahead can tell B of the second change.
+    let report = run_round(
+        &three.vault.relay,
+        &three.vault.b,
+        &mut SnapshotPolicy::default(),
+        RoundMode::Drain,
+        NOW,
+        0,
+    )
+    .await
+    .expect("round");
+
+    let calls = &three.vault.relay.calls()[from..];
+    assert_eq!(
+        calls.first(),
+        Some(&Route::Pull),
+        "the round starts at the look-ahead, with no read of the vault's info: {calls:?}"
+    );
+    let walk = calls.iter().position(|r| *r == Route::Rekeys);
+    let info = calls.iter().position(|r| *r == Route::VaultInfo);
+    assert!(
+        walk.is_some_and(|walk| info.is_none_or(|info| walk < info)),
+        "the pickup follows the look-ahead's refusal: {calls:?}"
+    );
+    assert_ne!(report.problem, Some(SyncProblem::KeyRotated), "{report:?}");
+    assert_eq!(key_epoch(&three.vault.b.lock()), 2, "{report:?}");
+}

@@ -858,7 +858,10 @@ enum Restore {
 /// cursor could claim a change this device never saw. Until a replace clears the mark, no
 /// snapshot leaves this device, the forced one included (its round keeps asking for the vault's
 /// info). Nor does one leave while any key-change head is not verified yet
-/// (`head::any_unverified`, spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 5).
+/// (`head::any_unverified`, spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 5). Nor does one
+/// while the device holds a key-change overrun (R19, `state::overrun_tainted`): it may hold what
+/// the removed device wrote, and a snapshot sealed under the new key would carry that on; only a
+/// replace of the profile lifts it, not dismissing the notice.
 fn ready_to_dump(conn: &Connection) -> Result<bool> {
     let pending: i64 = conn.query_row(
         "SELECT (SELECT COUNT(*) FROM sync_outbox) + (SELECT COUNT(*) FROM sync_unsent)",
@@ -868,7 +871,8 @@ fn ready_to_dump(conn: &Connection) -> Result<bool> {
     Ok(pending == 0
         && chain::may_upload_snapshot(&loaded(conn)?)
         && state::vault_went_back_at(conn)?.is_none()
-        && !crate::services::sync::rekey::head::any_unverified(conn)?)
+        && !crate::services::sync::rekey::head::any_unverified(conn)?
+        && !state::overrun_tainted(conn)?)
 }
 
 /// What a snapshot that does not fit its position (rule 10) comes to for a caller.

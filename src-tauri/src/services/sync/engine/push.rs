@@ -23,7 +23,7 @@ use rusqlite::Connection;
 use super::ConnAccess;
 use crate::error::{AppError, Result};
 use crate::services::sync::changeset::to_json;
-use crate::services::sync::envelope::{envelope_hash, op_id, seal_op};
+use crate::services::sync::envelope::{envelope_epoch, envelope_hash, op_id, seal_op};
 use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::journal::{build_marker, build_next, record_sealed, Built, Refused};
 use crate::services::sync::keys::Credentials;
@@ -277,6 +277,7 @@ pub async fn push_all<R: Relay, D: ConnAccess>(
     // (table, pk) of each refused row, logged once.
     let mut refused: BTreeSet<(String, String)> = BTreeSet::new();
     let mut after = None;
+    let mut older_key_held = false;
     report.resent_through = db.with_conn(|conn| {
         let max: Option<i64> =
             conn.query_row("SELECT MAX(seq) FROM sync_unsent", [], |r| r.get(0))?;
@@ -294,7 +295,22 @@ pub async fn push_all<R: Relay, D: ConnAccess>(
                 );
             }
         }
-        let batch = db.with_conn(|conn| next_push_batch(conn, after))?;
+        let mut batch = db.with_conn(|conn| next_push_batch(conn, after))?;
+        // R20: nothing sealed under an epoch below the current key's goes out, whoever calls
+        // (the round, the leave, the re-sync's pre-push): above a key change's head it would end
+        // every other device's pull. It waits in `sync_unsent` for the re-seal, and so does
+        // everything behind it, so the sender's chain stays in order.
+        let current = creds.keys.current_epoch();
+        if let Some(cut) = batch
+            .iter()
+            .position(|(_, op)| envelope_epoch(&op.ct).is_some_and(|epoch| epoch < current))
+        {
+            batch.truncate(cut);
+            if !older_key_held {
+                older_key_held = true;
+                log::info!("[SYNC] Envelopes sealed under an older key wait for the re-seal");
+            }
+        }
         if batch.is_empty() {
             break;
         }

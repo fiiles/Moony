@@ -20,8 +20,10 @@ use super::rekey_audit2::{
 };
 use super::rekey_fixture::*;
 use super::*;
+use crate::models::sync::SyncNoticeKind;
 use crate::services::sync::binding::NoBinding;
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
+use crate::services::sync::engine::status::Runtime;
 use crate::services::sync::engine::{run_round, RoundMode, RoundReport};
 use crate::services::sync::envelope::envelope_epoch;
 use crate::services::sync::error::SyncResult;
@@ -31,6 +33,7 @@ use crate::services::sync::rekey::pickup;
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::{Relay, RelayError};
 use crate::services::sync::setup;
+use crate::services::sync::view;
 
 async fn round_result(three: &Three, id: DeviceId) -> SyncResult<RoundReport> {
     run_round(
@@ -69,7 +72,7 @@ async fn newest_snapshot_epoch(three: &Three) -> Option<u32> {
 /// must hold: the vault recovers on an honest server, i.e. the devices that stayed go past the op
 /// and the snapshot under the new key that rule 10's waits depend on gets uploaded.
 #[tokio::test]
-#[ignore = "audit-2 reading B: one old-key op above the head stored once ends every pull for good, so no new-key snapshot is ever uploaded"]
+#[ignore = "audit-2 reading B1: open, the owner decides (ruling R22)"]
 async fn an_old_key_op_above_the_head_stored_once_does_not_wedge_the_vault_for_good() {
     let three = three().await;
     let end = last_seq(&three);
@@ -101,23 +104,15 @@ async fn an_old_key_op_above_the_head_stored_once_does_not_wedge_the_vault_for_g
     );
 }
 
-/// B2. The server hides the key change from B and serves C's write past the head; B applies it. B
-/// then learns of the key change, verifies the head and notes the overrun (`keyChangeOverrun`;
-/// "nothing is undone"). Every verified device owes the new-key snapshot, and B is the one that
-/// uploads it: it dumps its profile, C's row included. What must hold: a device that knows it
-/// applied what the removed device wrote does not seal that into the vault's snapshot, so A, which
-/// never applied it, does not get it when it restores that snapshot.
-#[tokio::test]
-#[ignore = "audit-2 reading B: a device that applied the removed device's write uploads it in the new-key snapshot"]
-async fn a_device_that_applied_the_removed_devices_write_does_not_upload_it_in_the_new_key_snapshot(
-) {
-    let three = three().await;
-    remove(&three, A, &[C]).await.expect("removed");
-    let head = true_head(&three);
+/// B2's set-up: A removes C, the server hides the key change from B and serves C's write past the
+/// head, B applies it, then the server is honest again. Returns the head of the new epoch.
+async fn b_applies_the_forged_write(three: &Three) -> u64 {
+    remove(three, A, &[C]).await.expect("removed");
+    let head = true_head(three);
     // A's signed head goes out by hand (a round of A would also upload the new-key snapshot, and
     // nobody else would owe it; the server can as easily make A's upload fail).
-    push_a_record(&three).await;
-    let a_sent = last_seq(&three);
+    push_a_record(three).await;
+    let a_sent = last_seq(three);
     // Hidden from B: no rotation in the info, nothing of A's under the new key.
     for seq in head + 1..=a_sent {
         three.vault.relay.drop_op(seq);
@@ -133,7 +128,7 @@ async fn a_device_that_applied_the_removed_devices_write_does_not_upload_it_in_t
     round_of(&three.vault, &three.vault.b).await;
     assert!(has_institution(&three.vault.b.lock(), "c-forged"));
 
-    // The server is honest again; B learns the truth and verifies.
+    // The server is honest again.
     for seq in head + 1..=a_sent {
         three.vault.relay.undrop_op(seq);
     }
@@ -143,6 +138,21 @@ async fn a_device_that_applied_the_removed_devices_write_does_not_upload_it_in_t
         .set_rotation(&three.vault.creds.vault_id.to_b64(), 1);
     three.vault.relay.set_accept_retired_writes(false);
     three.vault.relay.set_accept_retired_reads(false);
+    head
+}
+
+/// B2. The server hides the key change from B and serves C's write past the head; B applies it. B
+/// then learns of the key change, verifies the head and notes the overrun (`keyChangeOverrun`;
+/// "nothing is undone"). Every verified device owes the new-key snapshot, and B is the one that
+/// uploads it: it dumps its profile, C's row included. What must hold: a device that knows it
+/// applied what the removed device wrote does not seal that into the vault's snapshot, so A, which
+/// never applied it, does not get it when it restores that snapshot. (As built, per ruling R19:
+/// B uploads no snapshot at all.)
+#[tokio::test]
+async fn a_device_that_applied_the_removed_devices_write_does_not_upload_it_in_the_new_key_snapshot(
+) {
+    let three = three().await;
+    let head = b_applies_the_forged_write(&three).await;
     let mut uploaded = false;
     let mut seen = Vec::new();
     for _ in 0..3 {
@@ -167,13 +177,10 @@ async fn a_device_that_applied_the_removed_devices_write_does_not_upload_it_in_t
             rekey::key_change_overrun(&b).expect("overrun").is_some(),
             "B noted the overrun: {seen:?}"
         );
+        // Ruling R19: B holds an overrun, so it uploads no snapshot and owes none.
         assert!(
-            uploaded,
-            "B uploaded the snapshot every verified device owes: rounds {seen:?}, owed {:?}, \
-             unverified {:?}, unsent {}",
-            state::snapshot_epoch_owed(&b),
-            crate::services::sync::rekey::head::unverified_epochs(&b),
-            count(&b, "SELECT COUNT(*) FROM sync_unsent")
+            !uploaded && !state::snapshot_epoch_owed(&b).expect("owed"),
+            "B uploaded or still owes the snapshot: rounds {seen:?}"
         );
     }
 
@@ -228,7 +235,6 @@ async fn a_forged_old_key_snapshot_at_the_end_of_the_log_is_replaced_by_the_new_
 /// head, where every device stops on it as `Invalid` (B1). What must hold: nothing sealed under
 /// an older key goes out above a key change's head.
 #[tokio::test]
-#[ignore = "audit-2 reading B: the leave pushes old-key envelopes above the head with the new token"]
 async fn leaving_right_after_adopting_a_key_change_sends_no_old_key_op_above_the_head() {
     let three = three().await;
     write_and_seal(&three.vault, &three.vault.b, "b-unsent");
@@ -261,5 +267,175 @@ async fn leaving_right_after_adopting_a_key_change_sends_no_old_key_op_above_the
     assert!(
         old_above_head.is_empty(),
         "old-key ops above the head {head}: {old_above_head:?}; A's next round: {a_after:?}"
+    );
+}
+
+/// R19: the mark behind the overrun is not the notice. Dismissing the notice does not lift it (the
+/// device still uploads nothing and owes nothing); a re-sync from a clean snapshot does, and the
+/// device then uploads again.
+#[tokio::test]
+async fn only_a_replace_lifts_the_overrun_mark_not_dismissing_the_notice() {
+    let three = three().await;
+    b_applies_the_forged_write(&three).await;
+    for _ in 0..3 {
+        let report = round_result(&three, B).await.expect("round");
+        assert!(
+            !report.snapshot_uploaded,
+            "a tainted device uploads nothing"
+        );
+    }
+    {
+        let b = three.vault.b.lock();
+        assert!(rekey::key_change_overrun(&b).expect("notice").is_some());
+        assert!(state::overrun_tainted(&b).expect("mark"));
+    }
+
+    // Dismissing the notice is not enough.
+    view::dismiss_notice(
+        &three.vault.b.lock(),
+        SyncNoticeKind::KeyChangeOverrun,
+        None,
+        &Runtime::default(),
+        NOW,
+    )
+    .expect("dismissed");
+    {
+        let b = three.vault.b.lock();
+        assert!(rekey::key_change_overrun(&b).expect("notice").is_none());
+        assert!(state::overrun_tainted(&b).expect("mark"), "the mark stays");
+        b.execute("UPDATE sync_state SET snapshot_epoch_due = 1", [])
+            .expect("force a duty");
+        assert!(!state::snapshot_epoch_owed(&b).expect("owed"));
+    }
+    let report = round_result(&three, B).await.expect("round");
+    assert!(
+        !report.snapshot_uploaded,
+        "still nothing after the dismissal"
+    );
+
+    // The vault gets a clean snapshot under the new key (A's profile never applied C's write;
+    // A itself cannot upload while C's old-key op sits above the head, B1); B re-syncs from it.
+    let at = last_seq(&three);
+    let sealed = {
+        let a = three.vault.a.lock();
+        let creds = keys::credentials(&a).expect("creds").expect("bound");
+        a.execute_batch("DELETE FROM sync_unsent; DELETE FROM sync_outbox;")
+            .expect("unsent");
+        let mut plain = Vec::new();
+        crate::services::sync::snapshot::dump(&a, at, &mut plain).expect("dump");
+        let mut deflate = flate2::write::DeflateEncoder::new(
+            crate::services::sync::envelope::stream::StreamSealer::new(
+                1,
+                creds.keys.current(),
+                &creds.vault_id.0,
+                &crate::services::sync::envelope::stream::snapshot_object_id(at),
+            ),
+            flate2::Compression::default(),
+        );
+        std::io::Write::write_all(&mut deflate, &plain).expect("deflate");
+        let sealed = deflate.finish().expect("deflate").finish().expect("seal");
+        (creds, sealed)
+    };
+    three
+        .vault
+        .relay
+        .put_snapshot(&sealed.0.auth(), at, sealed.1)
+        .await
+        .expect("the vault takes it");
+    let consent = agreed(&three.vault.b);
+    setup_resync(&three, consent).await;
+    {
+        let b = three.vault.b.lock();
+        assert!(
+            !state::overrun_tainted(&b).expect("mark"),
+            "a replace lifts the mark"
+        );
+        assert!(
+            !has_institution(&b, "c-forged"),
+            "and the profile is the clean snapshot's"
+        );
+        b.execute("UPDATE sync_state SET snapshot_epoch_due = 1", [])
+            .expect("force a duty");
+        assert!(
+            state::snapshot_epoch_owed(&b).expect("owed"),
+            "the duty counts again"
+        );
+    }
+}
+
+async fn setup_resync(three: &Three, consent: crate::services::sync::impact::ReplaceConsent) {
+    crate::services::sync::join::resync_by_replace(
+        &three.vault.relay,
+        &three.vault.b,
+        consent,
+        three.dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect("re-sync");
+}
+
+/// R20: `push_all` itself sends nothing sealed under an epoch below the current key's, and nothing
+/// behind such an envelope; after the re-seal everything goes, in order.
+#[tokio::test]
+async fn push_all_holds_an_older_key_envelope_and_what_is_behind_it_until_the_reseal() {
+    let three = three().await;
+    write_and_seal(&three.vault, &three.vault.b, "b-unsent");
+    remove(&three, A, &[C]).await.expect("removed");
+    round_of(&three.vault, &three.vault.a).await;
+    pickup::pick_up(&three.vault.relay, &three.vault.b, None, NOW)
+        .await
+        .expect("pickup");
+    let creds = keys::credentials(&three.vault.b.lock())
+        .expect("creds")
+        .expect("bound");
+    assert_eq!(creds.keys.current_epoch(), 1);
+    // A newer change, sealed under the new key, queued behind the old-key one.
+    institution(&three.vault.b.lock(), "b-newer");
+    let before = last_seq(&three);
+
+    let report =
+        crate::services::sync::engine::push::push_all(&three.vault.relay, &three.vault.b, &creds)
+            .await
+            .expect("push_all");
+
+    assert_eq!(
+        report.pushed, 0,
+        "nothing goes: the head of the queue is old-key"
+    );
+    assert_eq!(last_seq(&three), before, "the server got nothing");
+    let waiting: Vec<Option<u32>> = {
+        let b = three.vault.b.lock();
+        let mut stmt = b
+            .prepare("SELECT envelope FROM sync_unsent ORDER BY seq")
+            .expect("prepare");
+        stmt.query_map([], |r| r.get::<_, Vec<u8>>(0))
+            .expect("rows")
+            .map(|e| envelope_epoch(&e.expect("row")))
+            .collect()
+    };
+    assert_eq!(
+        waiting.first(),
+        Some(&Some(0)),
+        "the old-key envelope is still first"
+    );
+
+    // The re-seal (a round does it once the pull has reached the head); then everything goes.
+    for _ in 0..3 {
+        round_of(&three.vault, &three.vault.b).await;
+    }
+    let after: Vec<Option<u32>> = three
+        .vault
+        .relay
+        .ops()
+        .iter()
+        .filter(|op| op.seq > before)
+        .map(|op| envelope_epoch(&op.ct))
+        .collect();
+    assert!(!after.is_empty(), "the queue went out after the re-seal");
+    assert!(
+        after.iter().all(|e| *e == Some(1)),
+        "all under the new key: {after:?}"
     );
 }

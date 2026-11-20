@@ -292,6 +292,7 @@ pub fn disable(conn: &Connection) -> Result<()> {
         )?;
         clear_vault_went_back(conn)?;
         clear_skipped_miss(conn)?;
+        clear_overrun_taint(conn)?;
         for key in [
             KEY_CHANGE_NOTICE_KEY,
             UNVERIFIED_EPOCHS_KEY,
@@ -571,6 +572,10 @@ pub fn note_snapshot_barrier(conn: &Connection) -> Result<()> {
 /// on the relay (`note_snapshot_barrier`): the old token cannot upload one, so a newer snapshot is
 /// sealed under the new key or a later one.
 pub fn snapshot_epoch_owed(conn: &Connection) -> Result<bool> {
+    // R19: a device holding a key-change overrun owes no snapshot (`overrun_tainted`).
+    if overrun_tainted(conn)? {
+        return Ok(false);
+    }
     let due: Option<i64> = conn
         .query_row(
             "SELECT snapshot_epoch_due FROM sync_state WHERE id = 1 AND enabled = 1",
@@ -587,6 +592,10 @@ pub fn snapshot_epoch_owed(conn: &Connection) -> Result<bool> {
 /// (`MAX`), unless a snapshot this device uploaded or restored already lies above that head. The
 /// vault's own snapshot is looked at with the next info (`clear_snapshot_owed_if_covered`).
 pub fn owe_snapshot(conn: &Connection, epoch: u32) -> Result<()> {
+    // R19: a device holding a key-change overrun never counts as owing the snapshot.
+    if overrun_tainted(conn)? {
+        return Ok(());
+    }
     let Some(head) = epochs(conn)?.get(&epoch).copied() else {
         return Ok(());
     };
@@ -719,6 +728,41 @@ pub(crate) fn set_kit_epoch_floor(conn: &Connection, floor: KitEpochFloor) -> Re
 /// The Local `app_config` key holding the notice that this device applied changes past a key
 /// change the server hid from it (`rekey::KeyChangeOverrun`). Turning sync off clears it.
 pub const KEY_CHANGE_OVERRUN_KEY: &str = "sync.key_change_overrun";
+
+/// The Local `app_config` key of the persistent mark behind a key-change overrun (R19): this device
+/// applied changes past a key change the server hid from it, so its profile may hold what the
+/// removed device wrote. Unlike the notice (`KEY_CHANGE_OVERRUN_KEY`) the person's dismissal does
+/// not clear it; only a replace of the profile (`reset_engine_marks`) and turning sync off do.
+const OVERRUN_TAINT_KEY: &str = "sync.overrun_taint";
+
+/// This device holds a key-change overrun (written with the notice, `rekey::write_key_change_overrun`).
+pub(crate) fn note_overrun_taint(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, '1') ON CONFLICT(key) DO NOTHING",
+        [OVERRUN_TAINT_KEY],
+    )?;
+    Ok(())
+}
+
+/// Whether this device holds a key-change overrun that no replace of the profile lifted yet. While
+/// it does, it uploads no snapshot (`engine::snapshots::ready_to_dump`) and does not count as
+/// owing the one under the new key (`owe_snapshot`), so what the removed device wrote cannot
+/// travel on in the vault's newest snapshot.
+pub fn overrun_tainted(conn: &Connection) -> Result<bool> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [OVERRUN_TAINT_KEY],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(value.is_some())
+}
+
+fn clear_overrun_taint(conn: &Connection) -> Result<()> {
+    conn.execute("DELETE FROM app_config WHERE key = ?1", [OVERRUN_TAINT_KEY])?;
+    Ok(())
+}
 
 /// The Local `app_config` key holding the notice that a removal the person confirmed was not
 /// done (`rekey::RemovalNotDone`). Turning sync off clears it.
@@ -996,6 +1040,7 @@ fn config_int(conn: &Connection, key: &str) -> Result<Option<i64>> {
 /// from the server's state, and inherits the snapshot's miss, if any, afterwards).
 pub fn reset_engine_marks(conn: &Connection) -> Result<()> {
     clear_vault_went_back(conn)?;
+    clear_overrun_taint(conn)?;
     super::chain::gaps::forget_all(conn)?;
     clear_skipped_miss(conn)?;
     conn.execute(

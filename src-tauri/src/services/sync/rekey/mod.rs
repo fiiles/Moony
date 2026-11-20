@@ -140,6 +140,8 @@ pub fn key_change_overrun(conn: &Connection) -> Result<Option<KeyChangeOverrun>>
 }
 
 pub(crate) fn write_key_change_overrun(conn: &Connection, notice: &KeyChangeOverrun) -> Result<()> {
+    // The notice can be dismissed; the mark behind it (R19) cannot.
+    state::note_overrun_taint(conn)?;
     write_config(conn, state::KEY_CHANGE_OVERRUN_KEY, notice)
 }
 

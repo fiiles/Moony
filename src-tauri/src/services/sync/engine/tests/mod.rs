@@ -22,6 +22,7 @@ mod kit_join_attacks;
 mod lanes;
 mod pull;
 mod push;
+mod rekey_audit2;
 mod rekey_fixture;
 mod rekey_head;
 mod rekey_leave;

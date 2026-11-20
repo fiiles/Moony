@@ -55,6 +55,10 @@ mod tests;
 #[path = "session_audit_tests.rs"]
 mod audit_tests;
 
+#[cfg(test)]
+#[path = "session_audit2_tests.rs"]
+mod audit2_tests;
+
 /// How long a pairing lives on this device (the relay's mailbox lives as long from its first
 /// write).
 pub const PAIRING_LIFETIME_SECS: i64 = 600;

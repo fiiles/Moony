@@ -105,6 +105,9 @@ struct Vault {
     /// When (the fake's clock) Kit reads with a wrong token failed, inside the last hour.
     kit_failures: Vec<i64>,
     blobs: blobs::VaultBlobs,
+    /// Positions a lying relay kept free below a rotation head it raised
+    /// (`lift_next_rotation_head`): the next free one and the last.
+    gap: Option<(u64, u64)>,
 }
 
 struct StoredKit {
@@ -170,6 +173,9 @@ struct FakeState {
     /// What `rekeys` answers instead of the stored bundles (`set_rekeys_answer`): a lying relay's
     /// pages, built from `after`, never checked against the contract.
     rekeys_answer: Option<RekeysAnswer>,
+    /// A relay colluding with a removed device: how far above the vault's real head the next
+    /// rotation reports (and records) its head (`lift_next_rotation_head`).
+    rotation_head_lift: u64,
 }
 
 /// A scripted `rekeys` answer: the page for `after`.
@@ -210,6 +216,7 @@ impl Default for FakeState {
             clock_offset: 0,
             accept_retired_writes: false,
             rekeys_answer: None,
+            rotation_head_lift: 0,
         }
     }
 }
@@ -521,6 +528,15 @@ impl FakeRelay {
         self.lock().accept_retired_writes = accept;
     }
 
+    /// A relay colluding with a removed device (audit 2026-11-20, R2-H1): the next rotation
+    /// answers, and records with its bundle, a head `by` above the vault's real one, and the
+    /// vault's head moves there, so every later write of the current token lands above it. The
+    /// positions in between stay free: with `set_accept_retired_writes`, a retired token's
+    /// writes fill them in order.
+    pub fn lift_next_rotation_head(&self, by: u64) {
+        self.lock().rotation_head_lift = by;
+    }
+
     /// A lying relay: `rekeys` reports `head` as the vault's head at rotation `rotation`.
     pub fn set_rekey_head(&self, vault_id: &str, rotation: u32, head: u64) {
         if let Some(vault) = self.lock().vaults.get_mut(vault_id) {
@@ -766,6 +782,7 @@ impl Relay for FakeRelay {
                     kits_retired: Vec::new(),
                     kit_failures: Vec::new(),
                     blobs: blobs::VaultBlobs::new(),
+                    gap: None,
                 },
             );
             Ok(true)
@@ -840,18 +857,34 @@ impl Relay for FakeRelay {
                 });
             }
             let stored = state.vault_mut(&vault.vault_id);
+            // A colluding relay places a retired token's writes below the head it raised.
+            let retired = stored.token != *vault.token;
             let mut accepted = 0u32;
             for op in ops {
                 if stored.ops.iter().any(|known| known.id == op.id) {
                     continue;
                 }
-                stored.head += 1;
+                let free = stored.gap.filter(|(next, last)| retired && next <= last);
+                let seq = match free {
+                    Some((next, last)) => {
+                        stored.gap = Some((next + 1, last));
+                        next
+                    }
+                    None => {
+                        stored.head += 1;
+                        stored.head
+                    }
+                };
                 stored.bytes += op.ct.len() as u64;
-                stored.ops.push(PulledOp {
-                    seq: stored.head,
-                    id: op.id.clone(),
-                    ct: op.ct.clone(),
-                });
+                let at = stored.ops.partition_point(|known| known.seq < seq);
+                stored.ops.insert(
+                    at,
+                    PulledOp {
+                        seq,
+                        id: op.id.clone(),
+                        ct: op.ct.clone(),
+                    },
+                );
                 accepted += 1;
             }
             if lose_answer {
@@ -1296,7 +1329,12 @@ impl FakeRelay {
         if kept >= MAX_REKEYS_KEPT {
             return Err(RelayError::TooManyRotations);
         }
+        let lift = std::mem::take(&mut state.rotation_head_lift);
         let stored = state.vault_mut(&vault.vault_id);
+        if lift > 0 {
+            stored.gap = Some((stored.head + 1, stored.head + lift));
+            stored.head += lift;
+        }
         // A token retired over 30 days ago may still be remembered: it is current again.
         stored.prev_tokens.retain(|(token, _)| token != new_token);
         let retired = std::mem::replace(&mut stored.token, new_token.to_string());

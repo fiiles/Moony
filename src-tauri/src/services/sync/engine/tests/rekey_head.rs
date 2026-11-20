@@ -730,6 +730,10 @@ async fn a_restored_snapshot_without_the_head_moves_the_look_ahead_past_the_prun
     institution(&three.vault.a.lock(), "a-before");
     round_of(&three.vault, &three.vault.a).await;
     round_of(&three.vault, &three.c).await;
+    // A change of C's that A has not pulled: the range of the key change is not empty, so B has
+    // to read it (an empty range needs nothing from the server and settles at once).
+    institution(&three.c.lock(), "c-pre");
+    round_of(&three.vault, &three.c).await;
     new_kit(&three, A).await.expect("changed");
     let head = true_head(&three);
     // C takes the key provisionally, writes under it and uploads a snapshot naming no head.
@@ -980,4 +984,158 @@ async fn a_device_with_an_unverified_head_picks_up_a_second_key_change_from_its_
     );
     assert_ne!(report.problem, Some(SyncProblem::KeyRotated), "{report:?}");
     assert_eq!(key_epoch(&three.vault.b.lock()), 2, "{report:?}");
+}
+
+/// The old snapshot of a vault and a removal after it: C writes after the snapshot, A removes C
+/// and sends its signed head but owes no snapshot of its own, so the newest one stays the old-key
+/// snapshot below the head. Returns where that snapshot lies.
+async fn removal_above_an_old_snapshot(three: &Three) -> u64 {
+    let place = super::join::snapshot_of_a(&three.vault, "a-first").await;
+    institution(&three.c.lock(), "c-before");
+    round_of(&three.vault, &three.c).await;
+    remove(three, A, &[C]).await.expect("removed");
+    exec(
+        &three.vault.a.lock(),
+        "UPDATE sync_state SET snapshot_epoch_due = 0",
+    );
+    round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(three.vault.relay.snapshot_seq(), Some(place));
+    place
+}
+
+/// §2.3 step 6 and 7 after a replace: B, which had checked the range and applied it, re-syncs from
+/// the old snapshot below the head. Its notes and the entry's verdict are gone (a fresh unverified
+/// entry waits at the snapshot's place, the signer being the one `sync_epochs` knows), the range's
+/// older-key ops wait, and the next round reads the range again and applies it. A re-sync gives
+/// the device another ID.
+#[tokio::test]
+async fn a_resync_after_a_key_change_reads_the_range_again_and_applies_it() {
+    use crate::services::sync::join::resync_by_replace;
+    use crate::services::sync::rekey::range;
+
+    let three = three().await;
+    let place = removal_above_an_old_snapshot(&three).await;
+    let report = round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(report.problem, None, "{report:?}");
+    let before = {
+        let b = three.vault.b.lock();
+        assert!(has_institution(&b, "c-before"));
+        assert!(entry(&b, 1).is_none());
+        assert!(range::base_of(&b, 1).expect("base").is_some());
+        super::join::device_of(&b)
+    };
+
+    resync_by_replace(
+        &three.vault.relay,
+        &three.vault.b,
+        agreed(&three.vault.b),
+        three.dir.path(),
+        &crate::services::sync::binding::NoBinding,
+        NOW,
+    )
+    .await
+    .expect("re-synced");
+
+    {
+        let b = three.vault.b.lock();
+        assert_ne!(super::join::device_of(&b), before, "another device ID");
+        assert_eq!(cursor(&b), place);
+        assert!(!has_institution(&b, "c-before"), "the snapshot predates it");
+        assert_eq!(
+            range::base_of(&b, 1).expect("base"),
+            None,
+            "the range is forgotten"
+        );
+        let waiting = entry(&b, 1).expect("checked again");
+        assert_eq!(
+            (
+                waiting.after,
+                waiting.by.as_str(),
+                waiting.own_pending,
+                waiting.refuted
+            ),
+            (place, A.to_hex().as_str(), false, false)
+        );
+    }
+    let mut problems = Vec::new();
+    for _ in 0..2 {
+        problems.push(round_of(&three.vault, &three.vault.b).await.problem);
+    }
+
+    let b = three.vault.b.lock();
+    assert!(entry(&b, 1).is_none(), "verified again: {problems:?}");
+    assert_eq!(
+        range::base_of(&b, 1).expect("base"),
+        range::base_of(&three.vault.a.lock(), 1).expect("A's base")
+    );
+    assert!(
+        has_institution(&b, "c-before"),
+        "applied again: {problems:?}"
+    );
+}
+
+/// Ruling R9: the remover re-syncs below its own head. The replace gives it another ID, and what
+/// waits is not "committed, not signed yet": it finds the record it sent itself in the log, under
+/// its former ID, like any other device's, and signs nothing a second time.
+#[tokio::test]
+async fn a_removers_resync_settles_its_epoch_by_finding_the_record_it_sent() {
+    use crate::services::sync::join::resync_by_replace;
+    use crate::services::sync::rekey::range;
+
+    let three = three().await;
+    let place = removal_above_an_old_snapshot(&three).await;
+    let records = |three: &Three| {
+        three
+            .vault
+            .relay
+            .ops()
+            .iter()
+            .filter(|op| {
+                let a = three.vault.a.lock();
+                let creds = keys::credentials(&a).expect("creds").expect("bound");
+                crate::services::sync::envelope::open_op(
+                    |e| creds.keys.get(e),
+                    &creds.vault_id.0,
+                    &op.ct,
+                )
+                .ok()
+                .and_then(|json| crate::services::sync::changeset::from_json(&json).ok())
+                .is_some_and(|cs| cs.rekey_head.is_some())
+            })
+            .count()
+    };
+    assert_eq!(records(&three), 1);
+    let before = super::join::device_of(&three.vault.a.lock());
+
+    resync_by_replace(
+        &three.vault.relay,
+        &three.vault.a,
+        agreed(&three.vault.a),
+        three.dir.path(),
+        &crate::services::sync::binding::NoBinding,
+        NOW,
+    )
+    .await
+    .expect("re-synced");
+
+    {
+        let a = three.vault.a.lock();
+        assert_ne!(super::join::device_of(&a), before, "another device ID");
+        assert!(!head::own_unverified(&a).expect("own"));
+        let waiting = entry(&a, 1).expect("checked again");
+        assert_eq!(
+            (waiting.after, waiting.by.as_str(), waiting.own_pending),
+            (place, A.to_hex().as_str(), false)
+        );
+    }
+    for _ in 0..3 {
+        round_of(&three.vault, &three.vault.a).await;
+    }
+
+    let a = three.vault.a.lock();
+    assert!(entry(&a, 1).is_none());
+    assert!(range::base_of(&a, 1).expect("base").is_some());
+    assert!(has_institution(&a, "c-before"));
+    drop(a);
+    assert_eq!(records(&three), 1, "no second record was signed");
 }

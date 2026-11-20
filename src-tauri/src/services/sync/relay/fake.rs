@@ -108,6 +108,15 @@ struct Vault {
     /// Positions a lying relay kept free below a rotation head it raised
     /// (`lift_next_rotation_head`): the next free one and the last.
     gap: Option<(u64, u64)>,
+    /// Ops a lying relay serves instead of (or besides) what it holds (`serve_instead`).
+    served_instead: Vec<ServedInstead>,
+}
+
+/// One lie of `serve_instead`: `ct` at `seq`, to every token or to `only_token`.
+struct ServedInstead {
+    seq: u64,
+    ct: Vec<u8>,
+    only_token: Option<String>,
 }
 
 struct StoredKit {
@@ -549,6 +558,32 @@ impl FakeRelay {
         self.lock().rotation_head_lift = by;
     }
 
+    /// A lying relay (spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 7): from now on pulls
+    /// serve `ct` at position `seq`, instead of the op the relay holds there or at a position it
+    /// holds nothing at. For every token, or only for `to_token_only` (the token string a device
+    /// reads with). Off by default; the log itself, and what `ops` and the pushes see, is not
+    /// changed. Several calls for different positions add up; one for the same position and token
+    /// scope replaces the earlier.
+    pub fn serve_instead(
+        &self,
+        vault_id: &str,
+        seq: u64,
+        ct: Vec<u8>,
+        to_token_only: Option<&str>,
+    ) {
+        if let Some(vault) = self.lock().vaults.get_mut(vault_id) {
+            let only_token = to_token_only.map(str::to_string);
+            vault
+                .served_instead
+                .retain(|lie| !(lie.seq == seq && lie.only_token == only_token));
+            vault.served_instead.push(ServedInstead {
+                seq,
+                ct,
+                only_token,
+            });
+        }
+    }
+
     /// A lying relay: `rekeys` reports `head` as the vault's head at rotation `rotation`.
     pub fn set_rekey_head(&self, vault_id: &str, rotation: u32, head: u64) {
         if let Some(vault) = self.lock().vaults.get_mut(vault_id) {
@@ -801,6 +836,7 @@ impl Relay for FakeRelay {
                     kit_failures: Vec::new(),
                     blobs: blobs::VaultBlobs::new(),
                     gap: None,
+                    served_instead: Vec::new(),
                 },
             );
             Ok(true)
@@ -936,14 +972,30 @@ impl Relay for FakeRelay {
             }
             // The page is cut like the relay's (limit, then ~4 MiB of ciphertext, always at
             // least one op) but counts only the ops the relay still serves: a dropped op leaves
-            // a gap in the sequence numbers, never an empty page with `more` set.
-            let mut page = Vec::new();
-            let mut bytes = 0usize;
-            let mut served = stored
+            // a gap in the sequence numbers, never an empty page with `more` set. A lie of
+            // `serve_instead` takes the place of the op at its position, or fills a free one.
+            let lies: Vec<PulledOp> = stored
+                .served_instead
+                .iter()
+                .filter(|lie| lie.seq > after)
+                .filter(|lie| lie.only_token.as_deref().is_none_or(|t| t == *vault.token))
+                .map(|lie| PulledOp {
+                    seq: lie.seq,
+                    id: crate::services::sync::envelope::op_id(&lie.ct),
+                    ct: lie.ct.clone(),
+                })
+                .collect();
+            let mut merged: Vec<&PulledOp> = stored
                 .ops
                 .iter()
                 .filter(|op| op.seq > after && !stored.dropped.contains(&op.seq))
-                .peekable();
+                .filter(|op| !lies.iter().any(|lie| lie.seq == op.seq))
+                .chain(lies.iter())
+                .collect();
+            merged.sort_by_key(|op| op.seq);
+            let mut page = Vec::new();
+            let mut bytes = 0usize;
+            let mut served = merged.into_iter().peekable();
             while let Some(op) = served.peek() {
                 if page.len() >= limit || (!page.is_empty() && bytes + op.ct.len() > MAX_PULL_BYTES)
                 {

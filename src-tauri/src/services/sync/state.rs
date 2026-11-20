@@ -241,6 +241,29 @@ pub fn record_epoch(
     })
 }
 
+/// The device that made the key change starting `epoch`, when `sync_epochs` knows it (`None` for
+/// an epoch recorded from a pairing holder's heads or a snapshot's key list, which carry none).
+pub fn epoch_signer(conn: &Connection, epoch: u32) -> Result<Option<DeviceId>> {
+    let by: Option<Option<String>> = conn
+        .query_row(
+            "SELECT by_device FROM sync_epochs WHERE epoch = ?1",
+            [epoch],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(by.flatten().and_then(|hex| DeviceId::from_hex(&hex).ok()))
+}
+
+/// Records `by` as the maker of the key change starting `epoch`, where none is recorded yet (a
+/// recorded one is never changed).
+pub fn set_epoch_signer(conn: &Connection, epoch: u32, by: DeviceId) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_epochs SET by_device = ?2 WHERE epoch = ?1 AND by_device IS NULL",
+        params![epoch, by.to_hex()],
+    )?;
+    Ok(())
+}
+
 /// A device that starts syncing at its barrier (turned on, or joined from a snapshot) has nothing
 /// to mark for it: its barrier counts as marked (`marker_barrier`), so the push seals no empty
 /// marker, and as snapshotted (`snapshot_barrier`), so no forced upload follows. Only a device

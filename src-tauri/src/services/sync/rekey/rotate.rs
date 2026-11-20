@@ -1131,11 +1131,11 @@ fn commit(conn: &Connection, change: &PendingChange, rotated: Rotated, now: i64)
         // The head is the server's word until this device has read the range below it and signed
         // what it found (`head::verify_own`, §2.3 step 2): recorded as not verified, the base
         // being the cursor of the first send.
-        head::note_unverified(
+        head::note_own_unverified(
             conn,
             change.to,
-            Some(rotated.head),
-            Some(rotated.rotation),
+            rotated.head,
+            rotated.rotation,
             me,
             change.base,
         )?;

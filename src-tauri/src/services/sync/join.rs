@@ -853,6 +853,13 @@ fn replace_profile(
             if let NewIdentity::Join(JoinIdentity::RecoveryKit(join)) = who {
                 kit_join_store(conn, join, now)?;
             }
+            if let NewIdentity::Join(_) = who {
+                // Heads a holder handed over, or a snapshot's key list recorded, that lie above
+                // the snapshot's position: this device has not checked what lies below them
+                // (spec §2.3 step 8), so each gets an entry that finds the signed record first.
+                let place = crate::services::sync::engine::seen::place(conn)?.unwrap_or(0);
+                head::require_ranges(conn, place, false)?;
+            }
             Ok(report)
         })
     });

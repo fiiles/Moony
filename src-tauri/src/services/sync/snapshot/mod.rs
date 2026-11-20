@@ -488,6 +488,11 @@ fn finish(
     // above), a merge raises it, so the three sources of `engine::seen::place` agree.
     if replacing {
         state::reset_restored_seq(conn, snapshot.seq)?;
+        // Every key change whose head lies above the new place is checked again: the range
+        // stored for it goes, and a fresh unverified entry waits for the signed record (spec
+        // 2026-11-20-sync-audit-2-fixes-design §2.3 step 6). The notes of handled ops went with
+        // the replace's wipe (`clear`).
+        crate::services::sync::rekey::head::require_ranges(conn, snapshot.seq, true)?;
     } else {
         state::set_restored_seq(conn, snapshot.seq)?;
     }

@@ -39,6 +39,33 @@
 //! change (`rotate::check`). `verify_heads` and `after_restore` leave own entries alone: only
 //! `verify_own` settles them.
 //!
+//! Every other device takes a head as verified only when it has checked what lies between the
+//! remover's base and the head against what the remover signed (spec §2.3 steps 7 and 8). Once
+//! `look_ahead` finds the signed record, `settle` compares the head, the rotation and the epochs as
+//! before; a device whose place is already at or past the head has nothing to check; any other
+//! reads the range `(record.base, record.head]` itself with its own token (`range::read_range`,
+//! the base of the **signed record**, never the server's), and takes the head only if the number
+//! of ops and their digest are the signed ones: then, in one savepoint, the notes and the base go
+//! into the store (`range::store_notes`, the footing of rule 6 in the pull) and the entry goes. A
+//! different count or digest refutes the head (`keyChangeUnverified`) and nothing of the range is
+//! applied; a read that cannot finish (the relay, more pages than a pull reads, `410`) keeps the
+//! entry and the round waits; with `410` a snapshot under the new key that names the head settles
+//! it as before (`after_restore`, only when the snapshot lies at or past the head).
+//!
+//! A device that holds a head from somewhere else than a bundle it picked up (a pairing holder's
+//! heads, a snapshot's key list, an earlier epoch before a replace) and whose place is below it
+//! gets an entry for that epoch too (`require_ranges`): no rotation, the head from `sync_epochs`,
+//! `after` and `scanned` at its place. Its signer is `sync_epochs.by_device` when recorded, else
+//! the maker of the server's bundle for that epoch whose signature verifies under a certificate
+//! pinned here (`signer_from_bundle`; it adopts nothing, this device holds the keys); with
+//! neither, the entry waits. After a replace every epoch whose head lies above the snapshot's
+//! position starts again this way (`snapshot::finish`).
+//!
+//! An entry this device committed itself and has not signed (`own_pending`, set only by
+//! `rotate::commit`) is settled only by `verify_own`; one made by `require_ranges` for an epoch
+//! this device signed before a replace (the replace gives it another ID) is settled like any
+//! other device's, by finding the record in the log.
+//!
 //! A device that had already applied ops past the verified head (the server hid the key change
 //! from it) learns it here and keeps a notice (`rekey::KeyChangeOverrun`); nothing is undone.
 
@@ -47,21 +74,22 @@ use std::collections::BTreeMap;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
+use super::bundle;
 use super::range::{self, RangeRead};
 use super::{read_config, write_config, KeyChangeOverrun};
 use crate::error::{AppError, Result};
 use crate::services::sync::changeset;
 use crate::services::sync::engine::pull::{MAX_PULL_PAGES, PULL_PAGE};
 use crate::services::sync::engine::push::seal_into_unsent;
-use crate::services::sync::engine::ConnAccess;
+use crate::services::sync::engine::{seen, ConnAccess};
 use crate::services::sync::envelope::{envelope_epoch, open_op};
-use crate::services::sync::error::SyncResult;
+use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::hlc::DeviceId;
 use crate::services::sync::identity::{self, trust, verify_sig, SignSeed};
 use crate::services::sync::in_savepoint;
 use crate::services::sync::journal::build_marker;
 use crate::services::sync::keys::{self, Credentials};
-use crate::services::sync::relay::{PulledOp, Relay, RelayError, Rotated};
+use crate::services::sync::relay::{PulledOp, Relay, RelayError, Rotated, MAX_REKEY_PAGE};
 use crate::services::sync::state;
 
 const HEAD_DOMAIN: &[u8; 19] = b"moony rekey head v2";
@@ -210,7 +238,8 @@ pub struct UnverifiedEpoch {
     /// The rotation of that bundle, when there was one.
     #[serde(rename = "rotation")]
     pub rotation: Option<u32>,
-    /// The bundle's signer (hex), whose signed head confirms it.
+    /// The bundle's signer (hex), whose signed head confirms it; empty while this device does
+    /// not know it (an epoch it holds a head for without a bundle: `require_ranges`).
     #[serde(rename = "by")]
     pub by: String,
     /// This device's cursor when it adopted the key: what it had pulled before the key change.
@@ -222,6 +251,12 @@ pub struct UnverifiedEpoch {
     /// The signed head was found and differs: `keyChangeUnverified` for good.
     #[serde(rename = "refuted", default)]
     pub refuted: bool,
+    /// This device's own key change, committed and not signed yet: only `rotate::commit` sets
+    /// it, only `verify_own` settles it. `by == me` says nothing of the kind: a replace gives
+    /// this device another ID, and an entry for an epoch it signed before is settled like any
+    /// other device's.
+    #[serde(rename = "own", default)]
+    pub own_pending: bool,
 }
 
 /// The epochs whose head is not verified yet (empty when none or when the value does not read).
@@ -253,16 +288,50 @@ pub(crate) fn note_unverified(
     by: DeviceId,
     after: u64,
 ) -> Result<()> {
+    note(conn, epoch, head, rotation, by.to_hex(), after, false)
+}
+
+/// `rotate::commit`: this device's own key change is committed and its head not signed yet
+/// (`verify_own`), `after` being the base.
+pub(crate) fn note_own_unverified(
+    conn: &Connection,
+    epoch: u32,
+    head: u64,
+    rotation: u32,
+    me: DeviceId,
+    base: u64,
+) -> Result<()> {
+    note(
+        conn,
+        epoch,
+        Some(head),
+        Some(rotation),
+        me.to_hex(),
+        base,
+        true,
+    )
+}
+
+fn note(
+    conn: &Connection,
+    epoch: u32,
+    head: Option<u64>,
+    rotation: Option<u32>,
+    by: String,
+    after: u64,
+    own_pending: bool,
+) -> Result<()> {
     let mut epochs = unverified_epochs(conn)?;
     epochs.retain(|e| e.epoch != epoch);
     epochs.push(UnverifiedEpoch {
         epoch,
         head,
         rotation,
-        by: by.to_hex(),
+        by,
         after,
         scanned: head.unwrap_or(after),
         refuted: false,
+        own_pending,
     });
     epochs.sort_by_key(|e| e.epoch);
     store(conn, &epochs)
@@ -271,10 +340,7 @@ pub(crate) fn note_unverified(
 /// Whether this device holds a head it signs itself that is not verified yet (its own key
 /// change, committed provisionally, whose range it has not read: `verify_own`).
 pub fn own_unverified(conn: &Connection) -> Result<bool> {
-    let Some(me) = state::load(conn)?.map(|sync| sync.device.to_hex()) else {
-        return Ok(false);
-    };
-    Ok(unverified_epochs(conn)?.iter().any(|e| e.by == me))
+    Ok(unverified_epochs(conn)?.iter().any(|e| e.own_pending))
 }
 
 /// Whether any head, this device's own or another's, is not verified yet.
@@ -374,7 +440,7 @@ pub async fn verify_own<R: Relay, D: ConnAccess>(relay: &R, db: &D) -> SyncResul
         };
         let mine: Vec<UnverifiedEpoch> = unverified_epochs(conn)?
             .into_iter()
-            .filter(|e| e.by == me.to_hex())
+            .filter(|e| e.own_pending)
             .collect();
         if mine.is_empty() {
             return Ok(None);
@@ -417,7 +483,7 @@ pub async fn verify_own<R: Relay, D: ConnAccess>(relay: &R, db: &D) -> SyncResul
             in_savepoint(conn, "sync_sign_own_head", || {
                 let mut epochs = unverified_epochs(conn)?;
                 let before = epochs.len();
-                epochs.retain(|e| !(e.epoch == entry.epoch && e.by == entry.by));
+                epochs.retain(|e| !(e.epoch == entry.epoch && e.own_pending));
                 if epochs.len() == before {
                     // Settled meanwhile: nothing to sign twice.
                     return Ok(());
@@ -470,20 +536,17 @@ pub async fn verify_heads<R: Relay, D: ConnAccess>(
     if pending.iter().any(|e| e.refuted) {
         return Ok(HeadCheck::Refuted);
     }
-    let me = db.with_conn(|conn| Ok(state::load(conn)?.map(|sync| sync.device.to_hex())))?;
     for entry in pending {
         // This device's own head has no signed record to look for yet: only `verify_own`
         // settles it.
-        if me.as_deref() == Some(entry.by.as_str()) {
+        if entry.own_pending {
             continue;
         }
         match look_ahead(relay, db, creds, &entry).await? {
-            Found::Record(record) => {
-                let verified = db.with_conn(|conn| settle(conn, &entry, &record, now))?;
-                if !verified {
-                    return Ok(HeadCheck::Refuted);
-                }
-            }
+            Found::Record(record) => match settle(relay, db, creds, &entry, &record, now).await? {
+                Settled::Verified | Settled::Waiting => {}
+                Settled::Refuted => return Ok(HeadCheck::Refuted),
+            },
             Found::NotYet(scanned) => db.with_conn(|conn| {
                 let mut epochs = unverified_epochs(conn)?;
                 for e in epochs.iter_mut().filter(|e| e.epoch == entry.epoch) {
@@ -514,10 +577,11 @@ async fn look_ahead<R: Relay, D: ConnAccess>(
     creds: &Credentials,
     entry: &UnverifiedEpoch,
 ) -> SyncResult<Found> {
-    let mut after = entry
-        .head
-        .map_or(entry.scanned, |head| entry.scanned.max(head));
-    let Ok(by) = DeviceId::from_hex(&entry.by) else {
+    // `scanned` is where the last look-ahead stopped: the bundle's head for an entry made by the
+    // pickup, this device's place for one made by `require_ranges` (the record may sit below the
+    // head a lying server reported, so it is looked for from the place, never below the floor).
+    let mut after = entry.scanned;
+    let Some(by) = signer_of(relay, db, creds, entry).await? else {
         return Ok(Found::NotYet(after));
     };
     let Some(signer_pub) = db
@@ -531,13 +595,13 @@ async fn look_ahead<R: Relay, D: ConnAccess>(
         let page = match relay.pull(&auth, after, LOOKAHEAD_PAGE).await {
             Ok(page) => page,
             Err(RelayError::SnapshotRequired) => {
-                // Pruned below a snapshot: go on from this device's place, past the floor once
-                // its own pull has restored (`after_restore` moves `scanned` there too).
-                let cursor =
-                    db.with_conn(|conn| Ok(state::load(conn)?.map_or(0, |sync| sync.cursor)))?;
+                // Pruned below a snapshot: go on from the server's floor (and never below this
+                // device's place), where the next read is allowed.
+                let floor = relay.vault_info(&auth).await?.floor;
+                let place = db.with_conn(|conn| Ok(seen::place(conn)?.unwrap_or(0)))?;
                 log::info!("[SYNC] The ops after a key change were pruned: looking past them");
-                after = after.max(cursor);
-                break;
+                after = after.max(floor).max(place);
+                continue;
             }
             Err(error) => return Err(error.into()),
         };
@@ -563,6 +627,90 @@ async fn look_ahead<R: Relay, D: ConnAccess>(
         }
     }
     Ok(Found::NotYet(after))
+}
+
+/// Who signs the record of `entry` (ruling R8): the entry's signer when it has one (the bundle's
+/// maker, or what `sync_epochs` recorded); else the maker of the server's bundle for that epoch
+/// that verifies under a certificate pinned here, recorded for next time; else nobody yet and
+/// the entry waits (the server lists a bundle for 30 days only).
+async fn signer_of<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    entry: &UnverifiedEpoch,
+) -> SyncResult<Option<DeviceId>> {
+    if let Ok(by) = DeviceId::from_hex(&entry.by) {
+        return Ok(Some(by));
+    }
+    if let Some(by) = db.with_conn(|conn| state::epoch_signer(conn, entry.epoch))? {
+        return Ok(Some(by));
+    }
+    let Some(by) = signer_from_bundle(relay, db, creds, entry.epoch).await? else {
+        return Ok(None);
+    };
+    db.with_conn(|conn| {
+        state::set_epoch_signer(conn, entry.epoch, by)?;
+        let mut epochs = unverified_epochs(conn)?;
+        for e in epochs
+            .iter_mut()
+            .filter(|e| e.epoch == entry.epoch && e.by.is_empty())
+        {
+            e.by = by.to_hex();
+        }
+        store(conn, &epochs)
+    })?;
+    Ok(Some(by))
+}
+
+/// The maker of the bundle the server lists for `epoch`: the bundle opens with the key this device
+/// holds for that epoch and its signature verifies with the key of the certificate it names, which
+/// this store has pinned for that device (as the pickup checks a bundle). Nothing is adopted from
+/// it: this device holds every key it carries.
+async fn signer_from_bundle<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    epoch: u32,
+) -> SyncResult<Option<DeviceId>> {
+    let Some(key) = creds.keys.get(epoch) else {
+        return Ok(None);
+    };
+    let (mut after, mut walked) = (0u32, 0usize);
+    loop {
+        let page = relay
+            .rekeys(&creds.auth(), after, MAX_REKEY_PAGE)
+            .await
+            .map_err(SyncError::from)?;
+        for rekey in &page.rekeys {
+            walked += 1;
+            if walked > super::pickup::MAX_BUNDLES_PER_WALK || rekey.rotation <= after {
+                return Ok(None);
+            }
+            after = rekey.rotation;
+            let Ok(header) = bundle::peek(&rekey.bundle, &creds.vault_id.0) else {
+                continue;
+            };
+            if header.to_epoch != epoch {
+                continue;
+            }
+            let Ok(opened) = bundle::open_body_with_key(&rekey.bundle, &creds.vault_id.0, &key)
+            else {
+                continue;
+            };
+            let cert = opened.signer().clone();
+            let pinned = db
+                .with_conn(|conn| trust::entry(conn, cert.body.device))?
+                .filter(|e| e.cert == cert);
+            if let Some(pinned) = pinned {
+                if opened.verify(&pinned.sign_pub).is_ok() {
+                    return Ok(Some(cert.body.device));
+                }
+            }
+        }
+        if !page.more || page.rekeys.is_empty() {
+            return Ok(None);
+        }
+    }
 }
 
 /// The signed head an op carries, if it is sealed under `epoch` or later, opens with a key this
@@ -599,26 +747,26 @@ fn note_verified(conn: &Connection, entry: &UnverifiedEpoch, head: u64) -> Resul
 }
 
 /// After a snapshot restore at relay position `seq` (in its savepoint): a provisional head the
-/// snapshot's `Keys` record names alike is verified (only a holder of that epoch's key can name it
-/// there, since the record carries the key, and a dumper names only heads it verified); the
-/// look-ahead of every other one starts at `seq`, below which the server pruned the ops.
+/// snapshot's `Keys` record names alike is verified when the snapshot lies at or past it (only a
+/// holder of that epoch's key can name it there, since the record carries the key, a dumper names
+/// only heads it verified, and a device at or past the head has no range to check); the look-ahead
+/// of every other one starts at `seq`, below which the server pruned the ops.
 pub(crate) fn after_restore(conn: &Connection, seq: u64, heads: &[(u32, u64)]) -> Result<()> {
     let epochs = unverified_epochs(conn)?;
     if epochs.is_empty() {
         return Ok(());
     }
-    let me = state::load(conn)?.map(|sync| sync.device.to_hex());
     let mut left = Vec::new();
     for mut entry in epochs {
         // Only `verify_own` settles this device's own head: it has to sign it.
-        if me.as_deref() == Some(entry.by.as_str()) {
+        if entry.own_pending {
             left.push(entry);
             continue;
         }
         let named = heads
             .iter()
             .find(|(epoch, head)| *epoch == entry.epoch && entry.head.is_none_or(|h| h == *head));
-        if let Some((_, head)) = named.filter(|_| !entry.refuted) {
+        if let Some((_, head)) = named.filter(|(_, head)| !entry.refuted && seq >= *head) {
             note_verified(conn, &entry, *head)?;
             continue;
         }
@@ -628,40 +776,217 @@ pub(crate) fn after_restore(conn: &Connection, seq: u64, heads: &[(u32, u64)]) -
     store(conn, &left)
 }
 
-/// A signed head found for `entry`: it matches (the entry goes) or not (the entry is refuted).
-/// An entry with no server head (a Kit joiner's, revision §2.6 step 5) takes the record's head
-/// and rotation, recorded in `sync_epochs` (a different head there refutes). Whether it matched.
-fn settle(
-    conn: &Connection,
-    entry: &UnverifiedEpoch,
-    record: &HeadRecord,
-    now: i64,
-) -> Result<bool> {
-    let mut epochs = unverified_epochs(conn)?;
+/// What `settle` made of a signed record.
+enum Settled {
+    Verified,
+    Refuted,
+    /// The range could not be read to its end: the entry stays.
+    Waiting,
+}
+
+/// What a found record asks of this device.
+enum Plan {
+    Refute,
+    /// This device's place is at or past the head: nothing to read.
+    PastHead,
+    /// Read the range `(record.base, record.head]` and compare it.
+    ReadRange,
+}
+
+/// The numbers of `record` against `entry` and this device's place (no network).
+fn plan_of(conn: &Connection, entry: &UnverifiedEpoch, record: &HeadRecord) -> Result<Plan> {
     let mut matches = record.from_epoch.checked_add(1) == Some(record.to_epoch)
+        && record.base <= record.head
         && entry.head.is_none_or(|head| head == record.head)
         && entry
             .rotation
             .is_none_or(|rotation| rotation == record.rotation);
     if matches && entry.head.is_none() {
-        let recorded =
-            state::record_epoch(conn, entry.epoch, record.head, Some(record.signer), now)?;
-        matches = recorded != state::EpochRecord::Differs;
+        // A Kit joiner takes the record's head; one recorded here differently refutes it.
+        matches = state::epochs(conn)?
+            .get(&entry.epoch)
+            .is_none_or(|held| *held == record.head);
     }
-    if matches {
-        epochs.retain(|e| e.epoch != entry.epoch);
-        note_verified(conn, entry, record.head)?;
+    if !matches {
+        return Ok(Plan::Refute);
+    }
+    let place = seen::place(conn)?.unwrap_or(0);
+    Ok(if place >= record.head {
+        Plan::PastHead
     } else {
+        Plan::ReadRange
+    })
+}
+
+/// A signed head found for `entry` (module doc): its numbers match and the range, read by this
+/// device from the signed base, has the signed count and digest (the entry goes, with the notes
+/// stored), or not (the entry is refuted and nothing of the range is applied). A device whose
+/// place is at or past the head reads nothing. The read is a network call, made outside any
+/// connection hold; notes, base and the entry's removal go in one savepoint only after count and
+/// digest matched.
+async fn settle<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    entry: &UnverifiedEpoch,
+    record: &HeadRecord,
+    now: i64,
+) -> SyncResult<Settled> {
+    let refuted = || {
         log::warn!(
             "[SYNC] The sync server reported another start for key epoch {} than its signer",
             entry.epoch
         );
-        for e in epochs.iter_mut().filter(|e| e.epoch == entry.epoch) {
-            e.refuted = true;
+        db.with_conn(|conn| mark_refuted(conn, entry.epoch))
+            .map(|()| Settled::Refuted)
+            .map_err(SyncError::from)
+    };
+    let notes = match db.with_conn(|conn| plan_of(conn, entry, record))? {
+        Plan::Refute => return refuted(),
+        Plan::PastHead => None,
+        Plan::ReadRange => {
+            let read = range::read_range(
+                relay,
+                &creds.auth(),
+                record.base,
+                record.head,
+                MAX_PULL_PAGES,
+            )
+            .await;
+            match read {
+                Ok(RangeRead::Complete(notes)) => {
+                    let fits = u32::try_from(notes.len()).is_ok_and(|n| n == record.count)
+                        && range::range_digest(
+                            &creds.vault_id.0,
+                            record.to_epoch,
+                            record.base,
+                            record.head,
+                            &notes,
+                        )
+                        .is_ok_and(|digest| digest == record.digest);
+                    if !fits {
+                        log::warn!(
+                            "[SYNC] The changes below the start of key epoch {} are not the ones its signer saw",
+                            entry.epoch
+                        );
+                        return refuted();
+                    }
+                    Some(notes)
+                }
+                Ok(RangeRead::More { scanned }) => {
+                    log::info!(
+                        "[SYNC] The range of key epoch {} is longer than one read ({scanned})",
+                        entry.epoch
+                    );
+                    return Ok(Settled::Waiting);
+                }
+                // The server pruned above the base: a snapshot under the new key that names the
+                // head settles it (`after_restore`).
+                Err(SyncError::SnapshotRequired) => {
+                    log::info!("[SYNC] The range of key epoch {} was pruned", entry.epoch);
+                    return Ok(Settled::Waiting);
+                }
+                Err(error) => return Err(error),
+            }
         }
+    };
+    let verified = db.with_conn(|conn| commit(conn, entry, record, notes.as_deref(), now))?;
+    Ok(if verified {
+        Settled::Verified
+    } else {
+        Settled::Refuted
+    })
+}
+
+/// Marks `epoch`'s entry refuted: `keyChangeUnverified` for good.
+fn mark_refuted(conn: &Connection, epoch: u32) -> Result<()> {
+    let mut epochs = unverified_epochs(conn)?;
+    for e in epochs.iter_mut().filter(|e| e.epoch == epoch) {
+        e.refuted = true;
     }
-    store(conn, &epochs)?;
-    Ok(matches)
+    store(conn, &epochs)
+}
+
+/// The head of `entry` is verified (`notes`: the range this device read, `None` when it was at or
+/// past the head): in one savepoint the epoch's start is recorded (a Kit joiner's has none yet),
+/// the notes and base stored, the signer recorded and the entry removed. `false` when the record's
+/// head contradicts one recorded meanwhile: the entry is refuted then.
+fn commit(
+    conn: &Connection,
+    entry: &UnverifiedEpoch,
+    record: &HeadRecord,
+    notes: Option<&[range::RangeNote]>,
+    now: i64,
+) -> Result<bool> {
+    in_savepoint(conn, "sync_settle_head", || {
+        let mut epochs = unverified_epochs(conn)?;
+        let waiting = |e: &UnverifiedEpoch| e.epoch == entry.epoch && !e.own_pending;
+        if !epochs.iter().any(waiting) {
+            // Settled meanwhile.
+            return Ok(true);
+        }
+        let recorded =
+            state::record_epoch(conn, entry.epoch, record.head, Some(record.signer), now)?;
+        if recorded == state::EpochRecord::Differs {
+            mark_refuted(conn, entry.epoch)?;
+            return Ok(false);
+        }
+        state::set_epoch_signer(conn, entry.epoch, record.signer)?;
+        if let Some(notes) = notes {
+            range::store_notes(conn, entry.epoch, record.base, notes)?;
+        }
+        epochs.retain(|e| !waiting(e));
+        store(conn, &epochs)?;
+        note_verified(conn, entry, record.head)?;
+        Ok(true)
+    })
+}
+
+/// A device that holds a head for an epoch without a range stored for it and whose `place` is
+/// below that head has not checked what lies between (spec §2.3 step 8): an entry for the epoch,
+/// no rotation, the head from `sync_epochs`, `after` and `scanned` at the place. Epochs that
+/// already have an entry are left alone (a refuted one always; with `replaced`, a waiting one
+/// starts again at the new place and its range is forgotten with it). `replaced`: the profile was
+/// replaced, so for every epoch whose head lies above the place the range stored before goes
+/// (`range::forget`) and the check starts again (rule 6, spec §2.3 step 6).
+pub(crate) fn require_ranges(conn: &Connection, place: u64, replaced: bool) -> Result<()> {
+    let mut epochs = unverified_epochs(conn)?;
+    let mut changed = false;
+    for (epoch, head) in state::epochs(conn)? {
+        if epoch == 0 || head <= place {
+            continue;
+        }
+        let existing = epochs.iter().find(|e| e.epoch == epoch);
+        if existing.is_some_and(|e| e.refuted || e.own_pending) {
+            continue;
+        }
+        if existing.is_some() && !replaced {
+            continue;
+        }
+        if !replaced && range::base_of(conn, epoch)?.is_some() {
+            continue;
+        }
+        range::forget(conn, epoch)?;
+        epochs.retain(|e| e.epoch != epoch);
+        epochs.push(UnverifiedEpoch {
+            epoch,
+            head: Some(head),
+            rotation: None,
+            by: state::epoch_signer(conn, epoch)?
+                .map(|by| by.to_hex())
+                .unwrap_or_default(),
+            after: place,
+            scanned: place,
+            refuted: false,
+            own_pending: false,
+        });
+        changed = true;
+    }
+    if changed {
+        epochs.sort_by_key(|e| e.epoch);
+        store(conn, &epochs)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

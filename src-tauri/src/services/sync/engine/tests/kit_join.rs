@@ -288,6 +288,58 @@ async fn a_snapshot_older_than_the_newest_epoch_waits_for_the_removers_signed_he
     );
 }
 
+/// §2.3 step 8: a Kit joiner with a snapshot older than the newest epoch has no head and no
+/// bundle (after 31 days); it finds the signed record of the envelope's signer first, then reads
+/// the range from the signed base, and applies what lies in it only after the digest matched.
+#[tokio::test]
+async fn a_kit_joiner_finds_the_record_first() {
+    use crate::services::sync::rekey::range;
+
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    snapshot_by(&three, &three.vault.a).await;
+    let place = cursor(&three.vault.a.lock());
+    institution(&three.vault.b.lock(), "b-in-the-range");
+    round_of(&three.vault, &three.vault.b).await;
+    remove(&three, A, &[C]).await.expect("removed");
+    three.vault.relay.advance_clock(31 * DAY);
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+    kit_join(&three, &device, dir.path(), &secret)
+        .await
+        .expect("join");
+    {
+        let conn = device.lock();
+        assert_eq!(cursor(&conn), place);
+        let waiting = head::unverified_epochs(&conn).expect("unverified");
+        assert_eq!((waiting[0].epoch, waiting[0].head), (1, None));
+        assert_eq!(range::base_of(&conn, 1).expect("base"), None);
+    }
+
+    let held = round_mode(&three, &device, RoundMode::Normal).await;
+    assert_eq!(
+        held.problem,
+        Some(SyncProblem::KeyChangeWaiting),
+        "{held:?}"
+    );
+    assert!(!has_institution(&device.lock(), "b-in-the-range"));
+    round_of(&three.vault, &three.vault.a).await;
+    let report = round_mode(&three, &device, RoundMode::Normal).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    let conn = device.lock();
+    assert!(head::unverified_epochs(&conn)
+        .expect("unverified")
+        .is_empty());
+    assert_eq!(range::base_of(&conn, 1).expect("base"), Some(place));
+    let count_of = |c: &rusqlite::Connection| {
+        count(c, "SELECT COUNT(*) FROM sync_range_notes WHERE epoch = 1")
+    };
+    assert!(count_of(&conn) >= 1);
+    assert_eq!(count_of(&conn), count_of(&three.vault.a.lock()));
+    assert!(has_institution(&conn, "b-in-the-range"));
+}
+
 /// Revision §2.6 step 5 (iii), within 30 days: the server's head waits for the signer's; a
 /// signed head that says otherwise refutes it (`keyChangeUnverified`), and nothing past is
 /// applied.

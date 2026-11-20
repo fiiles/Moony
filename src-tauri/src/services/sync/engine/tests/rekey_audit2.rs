@@ -7,7 +7,7 @@
 //!
 //! `…_is_not_applied_by_the_remover` is the finding as a test of what must hold on the remover (spec
 //! `docs/specs/2026-11-20-sync-audit-2-fixes-design.md` §2.3 steps 1–6); the same test for another
-//! device that was up to date is ignored until the check on every device exists (step 7). The
+//! device that was up to date now runs too (step 7 is built: every device checks the range). The
 //! control next to them shows the same write refused when the server reports the true head. The
 //! R2-H3 test is the same harm through a snapshot, found while that spec was reviewed. The rest
 //! are the remover's own behaviour: it signs what it found, and holds still until it has.
@@ -27,7 +27,7 @@ use crate::services::sync::changeset;
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
 use crate::services::sync::engine::{run_round, RoundMode};
 use crate::services::sync::envelope::stream::{snapshot_object_id, StreamSealer};
-use crate::services::sync::envelope::{envelope_hash, open_op};
+use crate::services::sync::envelope::{envelope_hash, open_op, vault_token};
 use crate::services::sync::error::SyncError;
 use crate::services::sync::keys;
 use crate::services::sync::rekey::head::{self, HeadRecord};
@@ -222,12 +222,13 @@ async fn a_removed_devices_write_below_a_head_the_server_raised_is_not_applied_b
     );
 }
 
-/// R2-H1, the half of a device that was up to date at the removal. It needs the check every
-/// device makes on the head (step 7), which is not built yet. (Today B applies nothing either,
-/// but for another reason: A stops at the op without a note and never sends its signed head, so B
-/// waits for it for good.)
+/// R2-H1, the half of a device that was up to date at the removal. B applies nothing, but at the
+/// time of Task 4 not for the reason that matters: A stops at the op without a note and never sends
+/// its signed head, so B waits for it for good. The test that shows B's own check is
+/// `other_contents_for_another_device_refute_the_head` (the server shows the removed device's op
+/// to B only, A signs an empty range and does send its record, and B must refute it); this one
+/// stays as the finding itself, with the real log.
 #[tokio::test]
-#[ignore = "R2-H1: B's half, un-ignored in Task 5"]
 async fn a_removed_devices_write_below_a_head_the_server_raised_is_not_applied_by_a_device_that_was_up_to_date(
 ) {
     let three = three().await;
@@ -246,6 +247,266 @@ async fn a_removed_devices_write_below_a_head_the_server_raised_is_not_applied_b
         "up to date at the removal, yet applied the removed device's later write \
          (problems: A {of_a:?}, B {of_b:?})"
     );
+}
+
+fn vault_b64(three: &Three) -> String {
+    three.vault.creds.vault_id.to_b64()
+}
+
+/// The token A reads with now (the vault's current one, after a key change).
+fn new_token(three: &Three) -> String {
+    let creds = keys::credentials(&three.vault.a.lock())
+        .expect("creds")
+        .expect("bound");
+    vault_token(creds.keys.current(), &creds.vault_id.0)
+}
+
+/// Pushes what A holds unsent (its signed head, sealed under the new key) with its new token,
+/// without a round.
+async fn push_a_record(three: &Three) {
+    let (creds, envelopes) = {
+        let a = three.vault.a.lock();
+        (
+            keys::credentials(&a).expect("creds").expect("bound"),
+            unsent_envelopes(&a),
+        )
+    };
+    assert!(!envelopes.is_empty(), "A holds its signed head");
+    push(&three.vault.relay, &creds, &envelopes).await;
+}
+
+/// Puts the cursor of `id` back to `to`, as a device whose cursor was held back has it.
+fn rewind(three: &Three, id: DeviceId, to: u64) {
+    exec(
+        &three.device(id).lock(),
+        &format!("UPDATE sync_state SET cursor = {to}"),
+    );
+}
+
+/// §2.3 step 7, the honest case: B was behind the removal (its place lies below the head). It
+/// reads the range from the signed base itself, finds the number and the digest A signed, keeps
+/// the very notes A has and only then applies what lies in the range.
+#[tokio::test]
+async fn a_device_checks_the_range_before_it_takes_the_head() {
+    let three = three().await;
+    let base = cursor(&three.vault.a.lock());
+    for id in ["c-1", "c-2"] {
+        institution(&three.c.lock(), id);
+        round_of(&three.vault, &three.c).await;
+    }
+    let head = last_seq(&three);
+    assert!(head >= base + 2);
+    assert_eq!(cursor(&three.vault.b.lock()), base, "B is behind");
+    remove(&three, A, &[C]).await.expect("removed");
+    let report = round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(report.problem, None, "{report:?}");
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    let b = three.vault.b.lock();
+    assert!(unverified_of(&b, 1).is_none(), "the head is taken");
+    assert_eq!(range::base_of(&b, 1).expect("base"), Some(base));
+    let notes = range_notes(&b, 1);
+    assert_eq!(notes, ops_between(&three, base, head));
+    assert_eq!(notes, range_notes(&three.vault.a.lock(), 1), "A's notes");
+    assert!(has_institution(&b, "c-1") && has_institution(&b, "c-2"));
+}
+
+/// §2.3 step 7, the lie: the removed device's op is shown to B alone, at a free position of a
+/// range the server lifted. A found nothing there and signed "empty" (and does send its record);
+/// B reads the range itself, finds one op more and refutes the head: `keyChangeUnverified`, no note
+/// kept, nothing of the range applied.
+#[tokio::test]
+async fn other_contents_for_another_device_refute_the_head() {
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    three.vault.relay.lift_next_rotation_head(8);
+    remove(&three, A, &[C]).await.expect("removed");
+    let record = queued_head(&three, A).expect("A signed its head");
+    assert_eq!((record.base, record.head, record.count), (end, end + 8, 0));
+    push_a_record(&three).await;
+    let forged = write_and_seal(&three.vault, &three.c, "c-for-b");
+    three.vault.relay.serve_instead(
+        &vault_b64(&three),
+        end + 1,
+        forged,
+        Some(&new_token(&three)),
+    );
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(
+        report.problem,
+        Some(SyncProblem::KeyChangeUnverified),
+        "{report:?}"
+    );
+    let b = three.vault.b.lock();
+    assert!(!has_institution(&b, "c-for-b"), "nothing of the range");
+    assert!(range_notes(&b, 1).is_empty());
+    assert_eq!(range::base_of(&b, 1).expect("base"), None);
+    assert!(unverified_of(&b, 1).is_some_and(|e| e.refuted));
+    assert!(cursor(&b) <= end);
+}
+
+/// Rule 6 after the check: both devices hold the notes; the server then serves another op at a
+/// noted position to a device that reads it again (its cursor held back). The pull stops there as
+/// `Invalid` and applies nothing of it.
+#[tokio::test]
+async fn an_op_replaced_in_the_range_after_verification_stops_the_pull() {
+    let three = three().await;
+    let base = cursor(&three.vault.a.lock());
+    institution(&three.c.lock(), "c-1");
+    round_of(&three.vault, &three.c).await;
+    remove(&three, A, &[C]).await.expect("removed");
+    for id in [A, B] {
+        let report = round_of(&three.vault, three.device(id)).await;
+        assert_eq!(report.problem, None, "{id:?}: {report:?}");
+    }
+    let (noted_at, _) = range_notes(&three.vault.b.lock(), 1)
+        .into_iter()
+        .next()
+        .expect("a note");
+    assert_eq!(
+        range_notes(&three.vault.a.lock(), 1),
+        range_notes(&three.vault.b.lock(), 1)
+    );
+    let forged = write_and_seal(&three.vault, &three.c, "c-replaces");
+    three
+        .vault
+        .relay
+        .serve_instead(&vault_b64(&three), noted_at, forged, None);
+
+    for id in [A, B] {
+        rewind(&three, id, base);
+        let report = round_of(&three.vault, three.device(id)).await;
+        assert_eq!(
+            report.problem,
+            Some(SyncProblem::InvalidChain),
+            "{id:?}: {report:?}"
+        );
+        assert!(
+            !has_institution(&three.device(id).lock(), "c-replaces"),
+            "{id:?}"
+        );
+    }
+}
+
+/// Rule 6, the other way: an op at a position of the range where nothing was noted (the server
+/// kept it free, then filled it) ends the pull on the remover and on a device that checked the
+/// empty range.
+#[tokio::test]
+async fn an_op_at_an_unnoted_position_of_the_range_stops_the_pull() {
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    three.vault.relay.lift_next_rotation_head(3);
+    remove(&three, A, &[C]).await.expect("removed");
+    for id in [A, B] {
+        let report = round_of(&three.vault, three.device(id)).await;
+        assert_eq!(report.problem, None, "{id:?}: {report:?}");
+        assert!(range_notes(&three.device(id).lock(), 1).is_empty());
+    }
+    let forged = write_and_seal(&three.vault, &three.c, "c-late");
+    three
+        .vault
+        .relay
+        .serve_instead(&vault_b64(&three), end + 1, forged, None);
+
+    for id in [A, B] {
+        rewind(&three, id, end);
+        let report = round_of(&three.vault, three.device(id)).await;
+        assert_eq!(
+            report.problem,
+            Some(SyncProblem::InvalidChain),
+            "{id:?}: {report:?}"
+        );
+        assert!(
+            !has_institution(&three.device(id).lock(), "c-late"),
+            "{id:?}"
+        );
+    }
+}
+
+/// A device whose place is at the head when the record is found has nothing to check: no read of
+/// the range, no notes, no base. It goes on with what comes above the head.
+#[tokio::test]
+async fn a_device_already_past_the_head_checks_nothing_and_goes_on() {
+    let three = three().await;
+    assert_everyone_is_up_to_date(&three);
+    remove(&three, A, &[C]).await.expect("removed");
+    round_of(&three.vault, &three.vault.a).await;
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    {
+        let b = three.vault.b.lock();
+        assert!(unverified_of(&b, 1).is_none(), "the head is taken");
+        assert_eq!(range::base_of(&b, 1).expect("base"), None);
+        assert!(range_notes(&b, 1).is_empty());
+    }
+    institution(&three.vault.a.lock(), "a-after");
+    round_of(&three.vault, &three.vault.a).await;
+    let report = round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(report.problem, None, "{report:?}");
+    assert!(has_institution(&three.vault.b.lock(), "a-after"));
+}
+
+/// A device that has applied part of the range reads it from the signed base again, not from its
+/// own place: its notes cover the positions below its place too.
+#[tokio::test]
+async fn a_device_between_base_and_head_reads_from_the_base_again() {
+    let three = three().await;
+    let base = cursor(&three.vault.a.lock());
+    institution(&three.vault.b.lock(), "b-1");
+    round_of(&three.vault, &three.vault.b).await;
+    for id in ["c-1", "c-2"] {
+        institution(&three.c.lock(), id);
+        round_of(&three.vault, &three.c).await;
+    }
+    let head = last_seq(&three);
+    let place = cursor(&three.vault.b.lock());
+    assert!(place > base && place < head, "{base} < {place} < {head}");
+    remove(&three, A, &[C]).await.expect("removed");
+    round_of(&three.vault, &three.vault.a).await;
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    let b = three.vault.b.lock();
+    assert_eq!(range::base_of(&b, 1).expect("base"), Some(base));
+    let notes = range_notes(&b, 1);
+    assert_eq!(notes, ops_between(&three, base, head));
+    assert!(
+        notes.iter().any(|(pos, _)| *pos <= place),
+        "below its place"
+    );
+    assert!(has_institution(&b, "c-1") && has_institution(&b, "c-2"));
+}
+
+/// The server pruned the range (a snapshot under the new key lies above it): B cannot read it, and
+/// the snapshot, which names the head, settles it as before. No notes are kept.
+#[tokio::test]
+async fn a_pruned_range_is_settled_by_a_new_key_snapshot() {
+    let three = three().await;
+    institution(&three.c.lock(), "c-1");
+    round_of(&three.vault, &three.c).await;
+    remove(&three, A, &[C]).await.expect("removed");
+    let head = signed_head(&three);
+    round_of(&three.vault, &three.vault.a).await;
+    let seq = three.vault.relay.snapshot_seq().expect("A's snapshot");
+    assert!(seq > head, "{seq} {head}");
+    three.vault.relay.prune_to(seq);
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    assert!(report.restored, "{report:?}");
+    let b = three.vault.b.lock();
+    assert!(unverified_of(&b, 1).is_none(), "settled by the snapshot");
+    assert_eq!(range::base_of(&b, 1).expect("base"), None);
+    assert!(range_notes(&b, 1).is_empty());
+    assert!(has_institution(&b, "c-1"), "A's snapshot has it");
 }
 
 /// An honest server: the head is verified and signed inside the removal call. Nothing waits: no

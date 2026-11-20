@@ -18,6 +18,8 @@ protect the exchange, see the marked paragraph under **The channel the code reli
 Kit is code format v2 (95 characters, the account number inside, one derivation from a seed); a joiner
 now joins with the Kit after any number of key changes; and the holder announces each pairing's ticket
 in its own chain before it can leave.
+Amended by [ADR 0034](0034-device-sync-second-audit-fixes.md) (2026-11-20): pairing protocol 4; the sentence that a code sent through a messenger
+is safe holds from protocol 4 on, not before.
 
 ## Context
 

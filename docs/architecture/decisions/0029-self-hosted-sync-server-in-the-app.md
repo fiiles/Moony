@@ -4,7 +4,8 @@ Date: 2026-11-14
 
 ## Status
 
-Accepted. Amends [ADR 0025](0025-device-sync-relay-client.md) (the HTTP rule and the setup path)
+Accepted. Amended by [ADR 0034](0034-device-sync-second-audit-fixes.md) (a holder of the token on plain `http` can also disable the Recovery
+Kit). Amends [ADR 0025](0025-device-sync-relay-client.md) (the HTTP rule and the setup path)
 and [ADR 0027](0027-device-sync-audit-fixes.md) (L9, and the `ALLOWED_ACCOUNTS` step of the manual
 recovery). Records the app side of `docs/specs/2026-11-14-self-hosted-sync-server-design.md` as
 built on `feat/self-hosted-sync` (plan `docs/plans/2026-11-14-self-hosted-sync-server-plan-2-app.md`).

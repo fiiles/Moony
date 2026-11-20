@@ -4,7 +4,8 @@ Date: 2026-11-17
 
 ## Status
 
-Accepted. Records phase 5 of device sync as built on `feat/sync-device-removal`: the base spec
+Accepted. Amended by [ADR 0034](0034-device-sync-second-audit-fixes.md) (the signed head binds the range below it; a new threat row; R1, R4 and
+O-2 restated; a retired token reads less). Records phase 5 of device sync as built on `feat/sync-device-removal`: the base spec
 `docs/specs/2026-11-16-device-sync-phase-5-removal-design.md` ("the phase-5 spec") and its revision
 `docs/specs/2026-11-16-device-sync-phase-5-revision-ux.md` ("the revision"), whose decisions D1–D4
 the owner took on 2026-11-16. Where they differ, the revision wins, and its "As built (revision)"

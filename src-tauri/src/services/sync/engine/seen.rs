@@ -3,8 +3,9 @@
 //! `sync_seen_ops` (Local). A held op can sit above the cursor, so the cursor alone does not say
 //! where the device stands; `place` does.
 //!
-//! Storage only: the rules that use these notes come in later tasks, so nothing calls them yet.
-#![allow(dead_code)]
+//! The pull notes an op it handled without moving the cursor past it and refuses a different op
+//! at a noted position; the cursor, a snapshot merge, a replace, a re-join under a new ID and a
+//! server that went back drop notes.
 
 use rusqlite::{params, Connection, OptionalExtension};
 

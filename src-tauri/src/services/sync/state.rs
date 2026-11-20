@@ -445,6 +445,8 @@ pub fn set_cursor(conn: &Connection, cursor: u64) -> Result<()> {
         "UPDATE sync_state SET cursor = MAX(cursor, ?1) WHERE id = 1",
         [signed(cursor, "cursor")?],
     )?;
+    // The cursor covers the ops handled at or below it: their notes go (rule 9a).
+    super::engine::seen::forget_through(conn, cursor)?;
     Ok(())
 }
 
@@ -831,6 +833,9 @@ const VAULT_WENT_BACK_KEY: &str = "sync.vault_went_back_at";
 /// completed replace (`reset_engine_marks`) and turning sync off (`disable`) do. While it is set,
 /// the status shows `SyncProblem::ServerWentBack` and every re-sync keeps its backup.
 pub fn note_vault_went_back(conn: &Connection, at: i64) -> Result<()> {
+    // A restored server hands positions out again, honestly: what this device noted at them
+    // (rule 9a) says nothing about the new log.
+    super::engine::seen::forget_all(conn)?;
     conn.execute(
         "INSERT INTO app_config (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO NOTHING",
         rusqlite::params![VAULT_WENT_BACK_KEY, at.to_string()],

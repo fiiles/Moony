@@ -226,3 +226,61 @@ async fn turning_sync_off_clears_the_mark() {
 
     assert_eq!(went_back_at(&vault.b), None);
 }
+
+/// Rule 9a and the server that went back: a restored backup hands out positions again, honestly
+/// and with other ops. The notes of what this device had handled go with the mark, so the pull
+/// that follows is not read as a replaced position; the message stays the server's own.
+#[tokio::test]
+async fn a_server_that_went_back_clears_the_notes_and_keeps_its_own_message() {
+    let vault = vault().await;
+    let b0 = write_and_seal(&vault, &vault.b, "b0");
+    let b1 = write_and_seal(&vault, &vault.b, "b1");
+    let b2 = write_and_seal(&vault, &vault.b, "b2");
+    push(&vault.relay, &vault.creds, &[b0, b1, b2]).await;
+    vault.relay.drop_op(2);
+    round(&vault, &vault.a).await;
+    {
+        let a = vault.a.lock();
+        assert_eq!(cursor(&a), 1, "A holds its cursor before the withheld op");
+        assert_eq!(
+            count(&a, "SELECT COUNT(*) FROM sync_seen_ops"),
+            1,
+            "b2 at 3 is noted"
+        );
+    }
+
+    // The server is restored from a backup older than A's cursor; the log then fills again.
+    vault
+        .relay
+        .roll_back_head(&vault.creds.vault_id.to_b64(), 0);
+    let first = round(&vault, &vault.a).await;
+    assert_eq!(first.problem, Some(SyncProblem::ServerWentBack));
+    assert_eq!(
+        count(&vault.a.lock(), "SELECT COUNT(*) FROM sync_seen_ops"),
+        0,
+        "the notes went with the mark"
+    );
+    let c1 = forge(&vault.creds, &changeset(C, 1, None, vec![]));
+    let c2 = forge(
+        &vault.creds,
+        &changeset(C, 2, Some(envelope_hash(&c1)), vec![]),
+    );
+    let c3 = forge(
+        &vault.creds,
+        &changeset(C, 3, Some(envelope_hash(&c2)), vec![]),
+    );
+    push(&vault.relay, &vault.creds, &[c1, c2, c3]).await;
+
+    let second = round(&vault, &vault.a).await;
+
+    assert_eq!(
+        second.problem,
+        Some(SyncProblem::ServerWentBack),
+        "{second:?}"
+    );
+    assert_ne!(
+        second.pull.as_ref().and_then(|pull| pull.stop.clone()),
+        Some(crate::services::sync::engine::PullStop::Invalid),
+        "a reused position is not a replaced one: {second:?}"
+    );
+}

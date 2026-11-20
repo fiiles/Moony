@@ -486,6 +486,10 @@ fn finish(
     )?;
     // The device's place: a replace sets it to the snapshot's position (the cursor is set to it
     // above), a merge raises it, so the three sources of `engine::seen::place` agree.
+    if !replacing {
+        // The cursor now covers every op handled at or below the snapshot's position.
+        crate::services::sync::engine::seen::forget_through(conn, snapshot.seq)?;
+    }
     if replacing {
         state::reset_restored_seq(conn, snapshot.seq)?;
         // Every key change whose head lies above the new place is checked again: the range

@@ -1030,3 +1030,130 @@ async fn a_removed_devices_snapshot_above_the_head_is_merged_by_an_up_to_date_de
         report.problem
     );
 }
+
+/// Rule 9a (spec §2.3), the hole the third review read from the code: a device that holds its
+/// cursor behind a gap has handled the positions above it, yet it would read them again at the
+/// next pull and take whatever the server serves there. After a key change the server serves the
+/// removed device's next old-key op at such a position, below the base (so rule 6 has no note for
+/// it), where nothing is missing (so rule 9 has nothing to stop on): B must not apply it.
+///
+/// The position is held by a gap that heals before the key change (the server serves the missing
+/// op again), so at the pull that matters every position is served and none is skipped.
+#[tokio::test]
+async fn a_position_already_handled_cannot_be_refilled_behind_a_held_cursor() {
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    // A writes two ops; the server withholds the first, so B holds the second as a gap and its
+    // cursor stays before the missing position.
+    let a1 = write_and_seal(&three.vault, &three.vault.a, "a1");
+    let a2 = write_and_seal(&three.vault, &three.vault.a, "a2");
+    push(&three.vault.relay, &three.vault.creds, &[a1, a2]).await;
+    three.vault.relay.drop_op(end + 1);
+    round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(
+        cursor(&three.vault.b.lock()),
+        end,
+        "B holds its cursor before the missing position"
+    );
+
+    // The server serves the position again; A (whose own op never was a gap to it) removes C.
+    three.vault.relay.undrop_op(end + 1);
+    round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(cursor(&three.vault.a.lock()), end + 2, "A is up to date");
+    remove(&three, A, &[C]).await.expect("removed");
+    // A's next round sends its signed head, so that B can verify the key change when it picks it up.
+    let sent = round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(sent.problem, None, "{sent:?}");
+    // C seals its next op under the old key; the server serves it where A's second op was.
+    let refill = write_and_seal(&three.vault, &three.c, "c-refills");
+    three
+        .vault
+        .relay
+        .serve_instead(&vault_b64(&three), end + 2, refill, None);
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert!(
+        !has_institution(&three.vault.b.lock(), "c-refills"),
+        "B applied the removed device's op at a position it had already handled: {report:?}"
+    );
+    assert_eq!(
+        report.problem,
+        Some(SyncProblem::InvalidChain),
+        "{report:?}"
+    );
+}
+
+/// A device with a key change whose head lies above its cursor and a range base of `base` (the
+/// notes of `notes`), and B's two ops of which the relay withholds the first: position 1 is
+/// skipped, position 2 is served.
+async fn skipped_first_position(
+    base: Option<u64>,
+    notes: &[RangeNote],
+) -> (Vault, crate::services::sync::engine::PullReport) {
+    let vault = vault().await;
+    super::gap_skip::b1_withheld(&vault).await;
+    if let Some(base) = base {
+        let a = vault.a.lock();
+        state::record_epoch(&a, 1, 10, None, NOW).expect("epoch");
+        range::store_notes(&a, 1, base, notes).expect("range");
+    }
+    let report =
+        crate::services::sync::engine::pull::pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+            .await
+            .expect("pull");
+    (vault, report)
+}
+
+/// Rule 9 (spec §2.3): below the base of a key change an honest server skips no position, so a
+/// skipped one ends the pull instead of waiting like a gap.
+#[tokio::test]
+async fn a_skipped_position_below_the_base_stops_the_pull() {
+    let (vault, report) = skipped_first_position(Some(5), &[]).await;
+
+    assert_eq!(
+        report.stop,
+        Some(crate::services::sync::engine::PullStop::Invalid),
+        "{report:?}"
+    );
+    let a = vault.a.lock();
+    assert_eq!(cursor(&a), 0);
+    assert!(!has_institution(&a, "b2"));
+}
+
+/// The same skipped position with no key change whose head is above the cursor is a gap as ever.
+#[tokio::test]
+async fn a_skipped_position_with_no_key_change_pending_does_not() {
+    let (vault, report) = skipped_first_position(None, &[]).await;
+
+    assert_eq!(report.stop, None, "{report:?}");
+    assert_eq!(
+        report.end(),
+        crate::services::sync::engine::PullEnd::Waiting
+    );
+    assert_eq!(cursor(&vault.a.lock()), 0);
+}
+
+/// Inside a range (above the base, up to the head) a missing position is rule 6's business, not
+/// rule 9's: the op that was signed there is held like any gap.
+#[tokio::test]
+async fn a_skipped_position_inside_the_range_is_left_to_rule_6() {
+    let vault = vault().await;
+    super::gap_skip::b1_withheld(&vault).await;
+    let hash = {
+        let ops = vault.relay.ops();
+        envelope_hash(&ops.iter().find(|op| op.seq == 2).expect("op 2").ct)
+    };
+    {
+        let a = vault.a.lock();
+        state::record_epoch(&a, 1, 10, None, NOW).expect("epoch");
+        range::store_notes(&a, 1, 0, &[RangeNote { pos: 2, hash }]).expect("range");
+    }
+
+    let report =
+        crate::services::sync::engine::pull::pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+            .await
+            .expect("pull");
+
+    assert_eq!(report.stop, None, "{report:?}");
+}

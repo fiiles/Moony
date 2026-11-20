@@ -13,7 +13,11 @@
 //! `chain::too_far_ahead`). An op sealed under an older key at a position inside a key change's
 //! stored range (`rekey::range`) is applied only if it is the op that was noted there when the
 //! head was signed (rule 6 of the sync-audit-2 design): any other op, and any op at a position
-//! nothing was noted for, ends the pull as `Invalid`.
+//! nothing was noted for, ends the pull as `Invalid`. Two rules keep the server from rewriting what
+//! this device has already read: an op at a position this device handled (held, applied or passed
+//! over) above its cursor must be the very op noted there (`seen`, rule 9a), and below the base of
+//! a key change this device holds no position is skipped (`range::must_follow_directly`, rule 9);
+//! both end the pull as `Invalid`, neither applies to the scan after a newer-schema stop.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -37,6 +41,8 @@ use crate::services::sync::rekey::head;
 use crate::services::sync::rekey::range::{self, RangeVerdict};
 use crate::services::sync::relay::{PullPage, PulledOp, Relay};
 use crate::services::sync::state;
+
+use super::seen;
 
 /// Envelopes per pull page.
 pub const PULL_PAGE: u32 = 500;
@@ -447,11 +453,34 @@ async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
                 report.through = op.seq;
                 continue;
             }
+            let previous = after;
             let step = db.with_conn_mut(|conn| {
+                // Rule 9 (sync-audit-2 design §2.3): below the base of a key change this device
+                // holds, an honest server skips no position.
+                if op.seq != previous + 1 && range::must_follow_directly(conn, op.seq)? {
+                    log::warn!(
+                        "[SYNC] The relay skipped a position below a key change's base before {}",
+                        op.seq
+                    );
+                    return Ok(OpStep::Stop(PullStop::Invalid));
+                }
+                // Rule 9a: what this device has handled at a position cannot be replaced by
+                // another op there, whatever the cursor says.
+                let hash = envelope_hash(&op.ct);
+                if seen::noted(conn, op.seq)?.is_some_and(|noted| noted != hash) {
+                    log::warn!(
+                        "[SYNC] Relay op {} is not the one this device handled at that position",
+                        op.seq
+                    );
+                    return Ok(OpStep::Stop(PullStop::Invalid));
+                }
                 let step = handle_op(conn, creds, op, now, &mut report)?;
                 if !holding && matches!(step, OpStep::Advance | OpStep::Rejoined) {
                     state::set_cursor(conn, op.seq)?;
                     state::add_pulled_bytes(conn, op.ct.len() as u64)?;
+                } else if !matches!(step, OpStep::Stop(_)) {
+                    // Handled, with the cursor left before it: noted in the same transaction.
+                    seen::note(conn, op.seq, &hash)?;
                 }
                 // The device list changed: pins, `left` and removal records apply now, and a
                 // record naming this device ends sync here (phase 5 §7.4). The envelope is
@@ -585,6 +614,8 @@ pub fn rejoin_as_new_device(
         // The old ID's key vouches for the new one (phase 5 §5.3), read before the ID changes.
         let predecessor = identity::predecessor(conn)?;
         let report = chain::rejoin(conn, chain::rejoin_device_id(old)?, trigger)?;
+        // A new ID starts its own notes (rule 9a).
+        seen::forget_all(conn)?;
         let public = keys::new_device_keypair(conn)?;
         let cert = identity::successor(conn, predecessor, now)?;
         devices::record_this_device(conn, &name, &public, cert.as_ref(), now)?;

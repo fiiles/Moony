@@ -184,6 +184,20 @@ pub fn range_verdict(
     Ok(verdict)
 }
 
+/// Rule 9 of the key-change design (spec 2026-11-20-sync-audit-2-fixes-design §2.3): whether an op
+/// at relay position `pos` must follow the position before it directly. It must when a key change
+/// this device holds has its head at or above `pos` and `pos` is at or below that change's base
+/// or the base is not stored (this device has not verified the range): an honest server assigns
+/// positions densely, and below the base nothing else (rule 6) checks what the server serves.
+pub fn must_follow_directly(conn: &Connection, pos: u64) -> Result<bool> {
+    Ok(conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sync_epochs WHERE rotation_head >= ?1 \
+           AND (range_base IS NULL OR ?1 <= range_base))",
+        [signed(pos, "op position")?],
+        |r| r.get(0),
+    )?)
+}
+
 /// How `read_range` ended.
 #[derive(Debug, PartialEq, Eq)]
 pub enum RangeRead {

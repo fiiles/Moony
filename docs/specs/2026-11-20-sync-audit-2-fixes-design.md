@@ -248,9 +248,10 @@ of a key change is one sealed under an epoch below the one that change starts.
    written in the same transaction as the handling it records, and a position above the cursor
    that has no note (a crash came between) is noted when it is next read. The notes go as the
    cursor passes them, and all of them go when the profile is replaced, when the device re-joins
-   under a new ID, and when the server is found to have gone back (a restored backup reuses
-   positions honestly; that case keeps its own message). This rule does not depend on a key
-   change.
+   under a new ID, and when sync is turned off. They stay when the server is found to have gone
+   back: that verdict rests on a number the server sends unauthenticated, and one lie would wipe
+   them. A device in that state is told to re-sync, and the replace clears them; the state keeps
+   its own message. This rule does not depend on a key change.
 
 **Snapshots (R2-H3)**
 
@@ -887,6 +888,10 @@ honest re-read holds different bytes. What it changed is where honest devices co
 - "Place" now counts restored snapshots; rule 9a says when notes are written and when they go.
 - Two waiting states and one weakness that exists today (a quarantined author holds every cursor)
   are named in §2.4 and §9 instead of being left for the builder to discover.
+
+2026-11-20, the build's review of Task 6: rule 9a first cleared the notes when the server was found
+to have gone back. That verdict rests on an unauthenticated head, so one lying page would have
+wiped the notes and reopened the hole rule 9a closes. The notes now stay; the replace clears them.
 
 Four readings each found something. D1 is the part of this work that needs the most care: plan 2
 starts with the failing tests of §2.6 and ends with one more adversarial reading of the code, and

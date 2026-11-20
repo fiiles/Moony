@@ -1084,6 +1084,63 @@ async fn a_position_already_handled_cannot_be_refilled_behind_a_held_cursor() {
     );
 }
 
+/// Rule 9a and the lie that would wipe the notes: the went-back verdict rests on a head the server
+/// sends unauthenticated. One page with a low head must not make B forget what it handled; the
+/// removed device's old-key op served afterwards at the handled position is still refused.
+#[tokio::test]
+async fn a_lying_low_head_does_not_let_a_handled_position_be_refilled() {
+    use super::pull::Mangled;
+    use crate::services::sync::relay::PullPage;
+
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    let a1 = write_and_seal(&three.vault, &three.vault.a, "a1");
+    let a2 = write_and_seal(&three.vault, &three.vault.a, "a2");
+    push(&three.vault.relay, &three.vault.creds, &[a1, a2]).await;
+    three.vault.relay.drop_op(end + 1);
+    round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(cursor(&three.vault.b.lock()), end);
+
+    // One page whose head is below B's cursor.
+    let lying = Mangled {
+        inner: three.vault.relay.clone(),
+        mangle: |_, mut page: PullPage| {
+            page.head = 0;
+            page
+        },
+    };
+    let lied = crate::services::sync::engine::pull::pull_all(
+        &lying,
+        &three.vault.b,
+        &three.vault.creds,
+        NOW,
+    )
+    .await
+    .expect("pull");
+    assert_eq!(
+        lied.stop,
+        Some(crate::services::sync::engine::PullStop::Invalid)
+    );
+
+    three.vault.relay.undrop_op(end + 1);
+    round_of(&three.vault, &three.vault.a).await;
+    remove(&three, A, &[C]).await.expect("removed");
+    let sent = round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(sent.problem, None, "{sent:?}");
+    let refill = write_and_seal(&three.vault, &three.c, "c-refills");
+    three
+        .vault
+        .relay
+        .serve_instead(&vault_b64(&three), end + 2, refill, None);
+
+    let report = round_of(&three.vault, &three.vault.b).await;
+
+    assert!(
+        !has_institution(&three.vault.b.lock(), "c-refills"),
+        "one lying head made B forget a handled position: {report:?}"
+    );
+}
+
 /// A device with a key change whose head lies above its cursor and a range base of `base` (the
 /// notes of `notes`), and B's two ops of which the relay withholds the first: position 1 is
 /// skipped, position 2 is served.
@@ -1132,6 +1189,43 @@ async fn a_skipped_position_with_no_key_change_pending_does_not() {
         crate::services::sync::engine::PullEnd::Waiting
     );
     assert_eq!(cursor(&vault.a.lock()), 0);
+}
+
+/// Rule 9 holds as well while the base of the key change is not known (the range is not verified
+/// here yet), for every position up to its head.
+#[tokio::test]
+async fn a_skipped_position_stops_the_pull_when_the_base_is_not_known() {
+    let vault = vault().await;
+    super::gap_skip::b1_withheld(&vault).await;
+    state::record_epoch(&vault.a.lock(), 1, 10, None, NOW).expect("epoch");
+    assert_eq!(range::base_of(&vault.a.lock(), 1).expect("base"), None);
+
+    let report =
+        crate::services::sync::engine::pull::pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+            .await
+            .expect("pull");
+
+    assert_eq!(
+        report.stop,
+        Some(crate::services::sync::engine::PullStop::Invalid),
+        "{report:?}"
+    );
+}
+
+/// A key change whose head lies below the skipped position says nothing about it (head 0: the
+/// ops are epoch 0 and above it, as the epoch rule wants).
+#[tokio::test]
+async fn a_skipped_position_above_the_only_key_changes_head_does_not_stop_the_pull() {
+    let vault = vault().await;
+    super::gap_skip::b1_withheld(&vault).await;
+    state::record_epoch(&vault.a.lock(), 0, 0, None, NOW).expect("epoch");
+
+    let report =
+        crate::services::sync::engine::pull::pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+            .await
+            .expect("pull");
+
+    assert_eq!(report.stop, None, "{report:?}");
 }
 
 /// Inside a range (above the base, up to the head) a missing position is rule 6's business, not

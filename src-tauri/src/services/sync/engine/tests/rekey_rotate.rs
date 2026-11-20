@@ -1236,3 +1236,60 @@ async fn the_plan_the_list_and_the_status_speak_in_names_across_a_removal() {
         Some(SyncDeviceStatus::Former)
     );
 }
+
+const DAY: i64 = 24 * 60 * 60;
+
+/// `D` paired by `C` is pinned on `A`, with its `pinned_at` set by hand to `pinned_at`.
+async fn a_with_d_pinned_at(pinned_at: i64) -> (Three, DeviceId) {
+    const D: DeviceId = DeviceId([0xd1; 16]);
+    let three = three().await;
+    let vault = three.vault.creds.vault_id.0;
+    let c_seed = identity::own_seed(&three.c.lock())
+        .expect("seed")
+        .expect("seed");
+    {
+        let a = three.vault.a.lock();
+        row_on(&a, &paired_by(vault, C, &c_seed, D, &seed_of(0xd1)));
+        for _ in 0..3 {
+            trust::refresh(&a, NOW).expect("refresh");
+        }
+        a.execute(
+            "UPDATE sync_trust SET pinned_at = ?1 WHERE device = ?2",
+            rusqlite::params![pinned_at, D.to_hex()],
+        )
+        .expect("pinned_at");
+    }
+    (three, D)
+}
+
+/// Spec §5.1, owner decision D3: "added" is when this device first verified the device.
+#[tokio::test]
+async fn a_device_added_within_30_days_by_the_removed_one_is_recent() {
+    let (three, d) = a_with_d_pinned_at(NOW - 29 * DAY).await;
+    let plan = rotate::plan(&three.vault.a.lock(), &[C], &[], false, NOW).expect("plan");
+    assert_eq!(plan.added_by_removing, vec![d]);
+    assert_eq!(plan.recently_added, vec![d]);
+}
+
+#[tokio::test]
+async fn a_device_added_earlier_is_listed_but_not_recent() {
+    let (three, d) = a_with_d_pinned_at(NOW - 31 * DAY).await;
+    let plan = rotate::plan(&three.vault.a.lock(), &[C], &[], false, NOW).expect("plan");
+    assert_eq!(plan.added_by_removing, vec![d]);
+    assert_eq!(plan.recently_added, Vec::<DeviceId>::new());
+}
+
+#[tokio::test]
+async fn exactly_30_days_is_recent() {
+    let (three, d) = a_with_d_pinned_at(NOW - rotate::RECENT_ADDED_SECS).await;
+    let plan = rotate::plan(&three.vault.a.lock(), &[C], &[], false, NOW).expect("plan");
+    assert_eq!(plan.recently_added, vec![d]);
+}
+
+#[tokio::test]
+async fn a_ticked_recent_device_stays_recent_in_the_reloaded_plan() {
+    let (three, d) = a_with_d_pinned_at(NOW - 29 * DAY).await;
+    let plan = rotate::plan(&three.vault.a.lock(), &[C], &[d], false, NOW).expect("plan");
+    assert_eq!(plan.added_by_removing, vec![d]);
+    assert_eq!(plan.recently_added, vec![d]);
+}

@@ -57,6 +57,9 @@ use crate::services::sync::keys::{self, Credentials, SecretString, VaultAuth};
 use crate::services::sync::relay::{KitRotation, Relay, RelayError, Rotated, MAX_REKEY_PAGE};
 use crate::services::sync::state::{self, EpochRecord};
 
+/// How long after this device first verified a device it counts as recently added (30 days,
+/// inclusive), spec §5.1, owner decision D3.
+pub const RECENT_ADDED_SECS: i64 = 30 * 24 * 60 * 60;
 pub const PLAN_CHANGED: &str = "validation.syncRemovalPlanChanged";
 pub const ROTATION_RACED: &str = "validation.syncRotationRaced";
 pub const TOO_MANY_KEY_CHANGES: &str = "validation.syncTooManyKeyChanges";
@@ -117,6 +120,10 @@ pub struct Plan {
     /// path runs through a Kit being replaced; not the devices asked for, nor this one. The
     /// person may tick them too ("Odebrat také"), which makes another plan.
     pub added_by_removing: Vec<DeviceId>,
+    /// The members of `added_by_removing` that this device first verified (`pinned_at`, its own
+    /// clock, never the certificate's date) within `RECENT_ADDED_SECS`, ascending; the dialog
+    /// starts with these ticked. Not part of the consent: it covers the devices removed.
+    pub recently_added: Vec<DeviceId>,
     /// The vault's Kit as it stands (sealed to when it stays, removed when it is replaced).
     pub kit: Option<TrustEntry>,
     pub replaces_kit: ReplacesKit,
@@ -268,6 +275,16 @@ pub fn plan(
         others
     };
     let added_by_removing = descendants(&store, &asked, replaced, me);
+    let recently_added = added_by_removing
+        .iter()
+        .copied()
+        .filter(|device| {
+            store
+                .iter()
+                .find(|e| e.device == *device)
+                .is_some_and(|e| e.pinned_at >= now - RECENT_ADDED_SECS)
+        })
+        .collect();
     let kit_not_updated = recipients.kit.is_none() && replaces_kit == ReplacesKit::No;
     let mut plan = Plan {
         epoch,
@@ -275,6 +292,7 @@ pub fn plan(
         recipients: recipients.included,
         excluded: recipients.excluded,
         added_by_removing,
+        recently_added,
         kit: recipients.kit,
         replaces_kit,
         retired_kits,

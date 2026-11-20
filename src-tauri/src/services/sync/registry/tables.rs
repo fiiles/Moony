@@ -550,4 +550,16 @@ pub(super) static TABLES: &[TableSpec] = &[
         class: TableClass::Local,
         ..BASE
     },
+    // The ops of a key change's range and the ops handled above the cursor, noted by position
+    // (migration 042).
+    TableSpec {
+        name: "sync_range_notes",
+        class: TableClass::Local,
+        ..BASE
+    },
+    TableSpec {
+        name: "sync_seen_ops",
+        class: TableClass::Local,
+        ..BASE
+    },
 ];

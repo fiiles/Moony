@@ -7,6 +7,7 @@
 pub mod pull;
 pub mod push;
 pub mod runtime;
+pub(crate) mod seen;
 pub mod snapshots;
 pub mod status;
 

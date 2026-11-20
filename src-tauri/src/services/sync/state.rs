@@ -425,6 +425,16 @@ pub fn set_cursor(conn: &Connection, cursor: u64) -> Result<()> {
     Ok(())
 }
 
+/// Notes the position of the snapshot just restored (`sync_state.restored_seq`, part of the
+/// device's place, `engine::seen::place`). Never lowers it.
+pub fn set_restored_seq(conn: &Connection, seq: u64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET restored_seq = MAX(COALESCE(restored_seq, 0), ?1) WHERE id = 1",
+        [signed(seq, "restored_seq")?],
+    )?;
+    Ok(())
+}
+
 pub fn add_pulled_bytes(conn: &Connection, bytes: u64) -> Result<()> {
     conn.execute(
         "UPDATE sync_state SET pulled_bytes = pulled_bytes + ?1 WHERE id = 1",

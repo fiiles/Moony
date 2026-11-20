@@ -359,6 +359,8 @@ fn the_exact_tables_of_each_class_are_pinned() {
         "sync_epochs",
         "sync_trust_seen",
         "sync_tickets",
+        "sync_range_notes",
+        "sync_seen_ops",
     ];
     assert_eq!(names_of(TableClass::Synced), sorted(&synced));
     assert_eq!(names_of(TableClass::Seed), sorted(&seed));

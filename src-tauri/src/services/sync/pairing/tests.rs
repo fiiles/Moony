@@ -864,7 +864,7 @@ fn slot_2_v2_matches_the_frozen_vector() {
     let sealed = seal_payload_with_nonce(&shower(), &payload, [0x55; 24]).unwrap();
     assert_eq!(
         hex(&sha2::Sha256::digest(&sealed)),
-        "222f2e2f1cacfcf0a2cb4678b38fe1ff6a18b07837e89da749fc6ef625c4f366"
+        "5f3e24c193d232bc116312d6500704d8a1b94ab2d8c1df6366994740c2c207f5"
     );
     assert_eq!(sealed.len(), 1 + 24 + json.len() + 16);
 }

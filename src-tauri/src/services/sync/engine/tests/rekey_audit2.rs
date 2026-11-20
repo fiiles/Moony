@@ -1929,3 +1929,240 @@ async fn a_skipped_position_inside_the_range_is_left_to_rule_6() {
 
     assert_eq!(report.stop, None, "{report:?}");
 }
+
+// ---------------------------------------------------------------------------------------------
+// The adversarial reading, reader A (the remover, the other devices, the pull).
+// ---------------------------------------------------------------------------------------------
+
+/// Reading A, finding A-1 (the place shortcut, question 5). A device whose *place* counts the
+/// highest position it holds a note for treats a held op above the head as "I have already handled
+/// everything up to there": `plan_of` answers `PastHead`, it reads no range, stores no notes and no
+/// base, and rule 6 then has nothing to compare with. But a held op above the head says nothing of
+/// the positions below it: a server that skips the whole lifted range for B while B reads the new
+/// key's ops (rule 9 only looks at the position it is shown, and above the head it asks nothing)
+/// can have B hold one of them (A's second new-key op, whose predecessor, the signed record, is not
+/// served yet), let B "verify" the head without a check, and then serve the range, filled after A
+/// signed "empty", from B's held cursor: the removed device's later write is applied.
+#[tokio::test]
+#[ignore = "audit-2 reading A: a held op above the head makes the place past the head, so the range is never checked"]
+async fn a_held_new_key_op_above_the_head_does_not_excuse_a_device_from_checking_the_range() {
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    three.vault.relay.lift_next_rotation_head(8);
+    remove(&three, A, &[C]).await.expect("removed");
+    let record = queued_head(&three, A).expect("A signed its head");
+    assert_eq!((record.base, record.head, record.count), (end, end + 8, 0));
+    push_a_record(&three).await;
+    // A goes on writing under the new key: its second new-key envelope follows the record.
+    institution(&three.vault.a.lock(), "a-after");
+    let sent = round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(sent.problem, None, "{sent:?}");
+    assert_eq!(
+        last_seq(&three),
+        end + 10,
+        "the record at end+9, a-after at end+10"
+    );
+
+    // B's first round: the server withholds the record (and the range is free). B takes the key,
+    // looks ahead, finds no record, and holds a-after as a gap (its predecessor is missing).
+    three.vault.relay.drop_op(end + 9);
+    let report = round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(
+        key_epoch(&three.vault.b.lock()),
+        1,
+        "B took the new key: {report:?}"
+    );
+    assert_eq!(
+        cursor(&three.vault.b.lock()),
+        end,
+        "the cursor stays before the held op"
+    );
+
+    // The removed device writes, and the server stores it in a position of the lifted range.
+    let at = write_from_removed_c(&three, "c-after-removal").await;
+    assert!(at > end && at <= end + 8, "inside the range: {at}");
+
+    // B's next round: the record is served again (a copy at a new position, past where B's
+    // look-ahead has read), B finds it, and then reads from its held cursor.
+    three.vault.relay.undrop_op(end + 9);
+    three.vault.relay.replay_op(end + 9);
+    let mut problems = Vec::new();
+    for _ in 0..3 {
+        problems.push(round_of(&three.vault, &three.vault.b).await.problem);
+    }
+
+    let b = three.vault.b.lock();
+    assert!(
+        !has_institution(&b, "c-after-removal"),
+        "B applied the removed device's write inside a range A signed as empty \
+         (unverified: {:?}, base: {:?}, problems: {problems:?})",
+        unverified_of(&b, 1),
+        range::base_of(&b, 1).expect("base")
+    );
+}
+
+/// Reading A, finding A-2 (question 1 and 9). The remover queues its signed head in `sync_unsent`
+/// inside the removal call; it goes out with the next round's push, after that round's pull. If
+/// that pull meets an envelope of the remover's own ID that it did not seal (the removed device,
+/// still a member, pushed one before the rotation: it holds the vault key and every ID), the
+/// verdict is `Clone`, and `rejoin_as_new_device` deletes `sync_unsent`, the signed head with it.
+/// The new ID does not sign the old one's change and the old one never speaks again: no other
+/// device ever verifies the key change. An honest server, no lie, one push by the removed device.
+#[tokio::test]
+#[ignore = "audit-2 reading A: a Clone verdict at the remover's first pull deletes its queued signed head for good"]
+async fn an_envelope_claiming_the_removers_id_does_not_cost_it_its_queued_head() {
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    // C, still a member, seals under the vault key an envelope that claims A's ID and a sequence
+    // number A never used (a forgery needs nothing but the key).
+    let claim = {
+        let cs = super::changeset(A, 50, Some([7; 32]), Vec::new());
+        forge_json(&three.vault.creds, &changeset::to_json(&cs).expect("json"))
+    };
+    push(&three.vault.relay, &three.vault.creds, &[claim]).await;
+    assert_eq!(last_seq(&three), end + 1);
+
+    remove(&three, A, &[C]).await.expect("removed");
+    let record = queued_head(&three, A).expect("A queued its signed head inside the call");
+    assert_eq!((record.base, record.head, record.count), (end, end + 1, 1));
+
+    let (of_a, of_b) = stayers_sync_by_device(&three).await;
+
+    assert_ne!(
+        state::load(&three.vault.a.lock())
+            .expect("state")
+            .expect("row")
+            .device,
+        A,
+        "the mechanism: A re-joined under a new ID at its first pull"
+    );
+    let b = three.vault.b.lock();
+    assert!(
+        unverified_of(&b, 1).is_none(),
+        "B never saw A's signed head: the remover re-joined at its first pull and its queue went \
+         (A: {of_a:?}, B: {of_b:?})"
+    );
+}
+
+/// Reading A, finding A-3 (question 1). Rule 9a keeps a handled position from being refilled by
+/// noting what was handled there; the notes go "when the device re-joins under a new ID". But a
+/// re-join is something the removed device can cause on any device that has not read its envelope
+/// yet: it seals, under the vault key it holds, an envelope that claims that device's ID (`Clone`).
+/// A wrote a1 and a2 (positions end+1, end+2, below A's base). C, still a member, pushes a claim on
+/// B's ID (end+3) and A removes C: the claim lies in A's signed range, so nobody has a reason to
+/// refuse it. B has not pulled yet. The server serves B one more op of C's at end+1 instead of a1:
+/// B applies it, holds a2 behind the missing a1 (noted, cursor at end+1), reaches the claim, judges
+/// it `Clone`, re-joins, and `seen::forget_all` drops the note of end+2. The server then serves C's
+/// next old-key write at end+2, at A's base, below the range: B applies it, which is what rule 9a
+/// exists to prevent (the same pull without the claim stops at the position, `Invalid`).
+#[tokio::test]
+#[ignore = "audit-2 reading A: a Clone verdict (a claim on B's ID by a member) wipes rule 9a's notes, and a handled position can be refilled again"]
+async fn a_rejoin_caused_by_a_claim_on_the_devices_id_does_not_wipe_the_handled_positions() {
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    let a1 = write_and_seal(&three.vault, &three.vault.a, "a1");
+    let a2 = write_and_seal(&three.vault, &three.vault.a, "a2");
+    push(&three.vault.relay, &three.vault.creds, &[a1, a2]).await;
+    round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(cursor(&three.vault.a.lock()), end + 2);
+
+    // C claims B's ID before it is removed; the honest server takes it, above A's cursor.
+    let claim = {
+        let cs = super::changeset(B, 99, Some([7; 32]), Vec::new());
+        forge_json(&three.vault.creds, &changeset::to_json(&cs).expect("json"))
+    };
+    push(&three.vault.relay, &three.vault.creds, &[claim]).await;
+    // C is removed (A's cursor, and so the base, is end+2); A signs its head and sends it.
+    remove(&three, A, &[C]).await.expect("removed");
+    // (A holds the claim on B's ID as a gap, which says nothing here; its record goes out.)
+    let sent = round_of(&three.vault, &three.vault.a).await;
+    assert!(sent.push.as_ref().is_some_and(|p| p.pushed > 0), "{sent:?}");
+
+    // B has not pulled since. At end+1 the server serves it another op of C's instead of a1.
+    let vault = vault_b64(&three);
+    let filler = write_and_seal(&three.vault, &three.c, "c-filler");
+    three
+        .vault
+        .relay
+        .serve_instead(&vault, end + 1, filler, None);
+    // (B's push after the re-join would be followed by an echo pull, in which a lying server
+    // serves the replacement at once; the test keeps the push from going through so that the
+    // order of the two pulls is the test's.)
+    three
+        .vault
+        .relay
+        .set_failing(Route::Push, Some(RelayError::Network("offline".into())));
+    round_ignoring_errors(&three, B).await;
+    three.vault.relay.set_failing(Route::Push, None);
+    assert_ne!(
+        state::load(&three.vault.b.lock())
+            .expect("state")
+            .expect("row")
+            .device,
+        B,
+        "B re-joined under a new ID at the claim"
+    );
+    assert_eq!(
+        cursor(&three.vault.b.lock()),
+        end + 1,
+        "a2 is held behind the missing a1"
+    );
+    assert!(!has_institution(&three.vault.b.lock(), "a2"));
+
+    // The server now serves C's next write, sealed under the old key, where a2 was handled.
+    let replacement = write_and_seal(&three.vault, &three.c, "c-replaces");
+    three
+        .vault
+        .relay
+        .serve_instead(&vault, end + 2, replacement, None);
+
+    let mut problems = Vec::new();
+    for _ in 0..3 {
+        problems.push(round_of(&three.vault, &three.vault.b).await.problem);
+    }
+
+    assert!(
+        !has_institution(&three.vault.b.lock(), "c-replaces"),
+        "B applied the removed device's write at a position it had handled: {problems:?}"
+    );
+}
+
+/// Reading A, finding A-4 (question 2, 3 and the R17 clause). The look-ahead for a key change's
+/// signed record goes on from `scanned`, the last position it was shown, and stores it whatever
+/// lay below. A server that withholds the record once (the removed device's accomplice for one
+/// round, or only a flaky proxy) while it serves a later op leaves `scanned` above the record; the
+/// honest server that serves the record again at its own position is never asked for it: the head
+/// of an honest vault on an honest server stays unverified on that device for good, and with it
+/// every pairing, snapshot, removal and Kit of that device.
+#[tokio::test]
+#[ignore = "audit-2 reading A: the look-ahead steps over a withheld record for good, an honest server never gets asked for it again"]
+async fn a_record_withheld_once_is_found_when_the_server_serves_it_again() {
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    remove(&three, A, &[C]).await.expect("removed");
+    push_a_record(&three).await;
+    institution(&three.vault.a.lock(), "a-after");
+    let sent = round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(sent.problem, None, "{sent:?}");
+    assert_eq!(
+        last_seq(&three),
+        end + 2,
+        "the record at end+1, a-after at end+2"
+    );
+
+    // One round of B in which the server withholds the record and serves what came after it.
+    three.vault.relay.drop_op(end + 1);
+    round_of(&three.vault, &three.vault.b).await;
+    three.vault.relay.undrop_op(end + 1);
+
+    let mut problems = Vec::new();
+    for _ in 0..4 {
+        problems.push(round_of(&three.vault, &three.vault.b).await.problem);
+    }
+
+    assert!(
+        unverified_of(&three.vault.b.lock(), 1).is_none(),
+        "B never finds A's signed head again (scanned: {:?}, problems: {problems:?})",
+        unverified_of(&three.vault.b.lock(), 1).map(|e| e.scanned)
+    );
+}

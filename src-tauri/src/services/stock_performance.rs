@@ -951,18 +951,15 @@ fn stock_performance_at(
         cumulative += flow;
         net_flows.push(cumulative);
     }
-    let mut cumulative_dividends = Vec::with_capacity(days.len());
-    let mut paid = 0.0;
-    for k in 0..days.len() {
-        paid += universe
-            .iter()
-            .filter_map(|&p| daily.dividend[k][p])
-            .sum::<f64>();
-        cumulative_dividends.push(paid);
-    }
     let daily_dividends: Vec<f64> = (0..days.len())
         .map(|k| universe.iter().filter_map(|&p| daily.dividend[k][p]).sum())
         .collect();
+    let mut cumulative_dividends = Vec::with_capacity(days.len());
+    let mut paid = 0.0;
+    for dividend in &daily_dividends {
+        paid += dividend;
+        cumulative_dividends.push(paid);
+    }
     let (mwr, mwr_annual): (Vec<_>, Vec<_>) = indices
         .iter()
         .map(|&k| money_weighted_at(&days, &values, &flows, &daily_dividends, k))
@@ -2108,8 +2105,8 @@ mod tests {
         assert_eq!(report.net_flows[19], "-350.00");
         // worth nothing while nothing was held, whatever the stale row says
         assert_eq!(report.values[8], Some("1000.00".to_string()));
-        for i in 9..19 {
-            assert_eq!(report.values[i], Some("0.00".to_string()), "day {}", i + 1);
+        for (i, value) in report.values[9..19].iter().enumerate() {
+            assert_eq!(*value, Some("0.00".to_string()), "day {}", i + 10);
         }
         assert_eq!(last(&report.values), &Some("650.00".to_string()));
         // the position's own figures agree
@@ -2178,13 +2175,13 @@ mod tests {
         assert_eq!(report.dates.len(), 11);
         // valued at its first known price from the buy on, not unknown until day 5
         assert_eq!(report.values[0], Some("100.00".to_string()));
-        for k in 1..=10 {
-            assert_eq!(report.values[k], Some("1100.00".to_string()), "day {k}");
+        for (k, value) in report.values[1..=10].iter().enumerate() {
+            assert_eq!(*value, Some("1100.00".to_string()), "day {}", k + 1);
         }
         // the buy is a deposit on its own day
         assert_eq!(report.net_flows[0], "0.00");
-        for k in 1..=10 {
-            assert_eq!(report.net_flows[k], "1000.00", "day {k}");
+        for (k, flow) in report.net_flows[1..=10].iter().enumerate() {
+            assert_eq!(flow, "1000.00", "day {}", k + 1);
         }
         // no price moved: no return of any kind, and the change of value is the deposit
         for k in 0..=10 {
@@ -2238,11 +2235,11 @@ mod tests {
 
         // B's buy is a deposit of 4 * 50 on its own day, and nothing else is
         assert_eq!(report.dates.len(), 11);
-        for k in 0..3 {
-            assert_eq!(report.net_flows[k], "0.00", "day {k}");
+        for (k, flow) in report.net_flows[..3].iter().enumerate() {
+            assert_eq!(flow, "0.00", "day {k}");
         }
-        for k in 3..=10 {
-            assert_eq!(report.net_flows[k], "200.00", "day {k}");
+        for (k, flow) in report.net_flows[3..=10].iter().enumerate() {
+            assert_eq!(flow, "200.00", "day {}", k + 3);
         }
         // B is worth its first price from the buy on, so its own return is flat ...
         for twr in &report.series[1].twr {

@@ -156,6 +156,14 @@ fn seal_json(t: &Transcript, json: &str) -> Vec<u8> {
     super::seal_bytes(t, json.as_bytes(), [0x55; 24]).unwrap()
 }
 
+/// Protocol 4's frozen transcript of S_SECRET, C_SECRET and MAILBOX (KDF info `"moony pair v2"`).
+const FROZEN_KEY: &str = "9f6a0f10a32ee07a98dd6265cd8c5d3a8b9c047df58613fedbb261c10141632c";
+const FROZEN_CODE: u32 = 62532;
+const FROZEN_ACK_KEY: &str = "ee56d61386cc345997b4bcbaab8a11834643be74df27b5bd8c436c5832918fdf";
+/// The same exchange with M_SECRET answering in place of the scanner.
+const FROZEN_KEY_M: &str = "755357eac5a189524a930327c7700ac7b23b8212724ee19d1948a075634e2550";
+const FROZEN_CODE_M: u32 = 163133;
+
 #[test]
 fn the_transcript_matches_the_frozen_vector() {
     assert_eq!(
@@ -166,11 +174,11 @@ fn the_transcript_matches_the_frozen_vector() {
         c_pub(),
         hex32("0faa684ed28867b97f4a6a2dee5df8ce974e76b7018e3f22a1c4cf2678570f20")
     );
-    let expected = "01b8d60583d5b13dc2ac3426e3bb2550bc24e241f7fea9f2787597d0c03d527b";
     for t in [shower(), scanner()] {
-        assert_eq!(key(&t), expected);
-        assert_eq!(t.code(), 482686);
-        assert_eq!(t.code_text(), "482686");
+        assert_eq!(key(&t), FROZEN_KEY);
+        assert_eq!(t.code(), FROZEN_CODE);
+        assert_eq!(t.code_text(), format!("{FROZEN_CODE:06}"));
+        assert_eq!(hex(t.ack_key().as_slice()), FROZEN_ACK_KEY);
         let mut ad = vec![0x01];
         ad.extend_from_slice(b"holder->joiner");
         ad.extend_from_slice(&[0x33; 16]);
@@ -195,11 +203,8 @@ fn a_substituted_scanner_key_shows_another_code() {
         &MAILBOX,
     )
     .unwrap();
-    assert_eq!(t.code(), 763075);
-    assert_eq!(
-        key(&t),
-        "0efa12d5cc75e952aa8a22e2676ec387480c9f8124a440153a79019911756f36"
-    );
+    assert_eq!(t.code(), FROZEN_CODE_M);
+    assert_eq!(key(&t), FROZEN_KEY_M);
     assert_ne!(key(&t), key(&scanner()));
 }
 
@@ -224,26 +229,48 @@ fn the_cancel_marker_is_two_bytes() {
     assert_eq!(CANCEL_MARKER, [1, 0]);
 }
 
+const FROZEN_COMMITMENT: &str = "24b4022a7fb1d63049b50725187304bc162d615197e952c07fe9741f7cf0e47f";
 const FROZEN_TEXT: &str =
-    "moony-pair:3:MzMzMzMzMzMzMzMzMzMzMw:e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
+    "moony-pair:4:MzMzMzMzMzMzMzMzMzMzMw:JLQCKn-x1jBJtQclGHMEvBYtYVGX6VLAf-l0H3zw5H8";
 /// What a version-1 build shows for the same exchange.
 const FROZEN_TEXT_V1: &str =
     "moony-pair:1:MzMzMzMzMzMzMzMzMzMzMw:e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
 /// What a version-2 build (before phase 5) shows for the same exchange.
 const FROZEN_TEXT_V2: &str =
     "moony-pair:2:MzMzMzMzMzMzMzMzMzMzMw:e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
+/// What a version-3 build shows: the shower's key itself in the code.
+const FROZEN_TEXT_V3: &str =
+    "moony-pair:3:MzMzMzMzMzMzMzMzMzMzMw:e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
 
 #[test]
-fn the_code_text_is_frozen() {
+fn the_commitment_matches_the_frozen_vector() {
+    assert_eq!(hex(&commitment(&MAILBOX, &s_pub())), FROZEN_COMMITMENT);
+    // Another mailbox or another key gives another commitment.
+    assert_ne!(
+        commitment(&MailboxId([0x34; 16]), &s_pub()),
+        commitment(&MAILBOX, &s_pub())
+    );
+    assert_ne!(
+        commitment(&MAILBOX, &c_pub()),
+        commitment(&MAILBOX, &s_pub())
+    );
+    assert_eq!(COMMIT_DOMAIN, b"moony pair commit v1");
+}
+
+#[test]
+fn the_code_text_carries_the_commitment_and_never_the_key() {
     let code = PairingCode {
         mailbox: MAILBOX,
-        shower_public: s_pub(),
+        commitment: commitment(&MAILBOX, &s_pub()),
         relay_url: None,
     };
-    assert_eq!(pairing_code_text(&code), FROZEN_TEXT);
-    let parsed = parse_pairing_code(FROZEN_TEXT).unwrap();
+    let text = pairing_code_text(&code);
+    assert_eq!(text, FROZEN_TEXT);
+    assert!(text.starts_with("moony-pair:4:"));
+    assert!(!text.contains(&URL_SAFE_NO_PAD.encode(s_pub())));
+    let parsed = parse_pairing_code(&text).unwrap();
     assert_eq!(parsed.mailbox, MAILBOX);
-    assert_eq!(parsed.shower_public, s_pub());
+    assert_eq!(parsed.commitment, code.commitment);
     assert_eq!(parsed.relay_url, None);
 }
 
@@ -253,7 +280,7 @@ fn a_code_names_a_sync_server_that_is_not_the_default() {
     use base64::Engine;
     let with = |url: &str| PairingCode {
         mailbox: MAILBOX,
-        shower_public: s_pub(),
+        commitment: commitment(&MAILBOX, &s_pub()),
         relay_url: Some(url.into()),
     };
     let text = pairing_code_text(&with("https://sync.home.example.com"));
@@ -311,9 +338,9 @@ fn a_code_of_a_later_version_says_this_device_needs_an_update() {
     let mailbox = "MzMzMzMzMzMzMzMzMzMzMw";
     let key = "e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM";
     for input in [
-        format!("moony-pair:4:{mailbox}:{key}"),
+        format!("moony-pair:5:{mailbox}:{key}"),
         "moony-pair:10:".to_string(),
-        "moony-pair:4".to_string(),
+        "moony-pair:5".to_string(),
         "moony-pair:99999999999999999999:x".to_string(),
     ] {
         let err = parse_pairing_code(&input).unwrap_err();
@@ -344,32 +371,32 @@ fn malformed_codes_are_refused_without_echoing_them() {
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:3:{}:{key}", &mailbox[..21]),
+            format!("moony-pair:4:{}:{key}", &mailbox[..21]),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:3:{mailbox}A:{key}"),
+            format!("moony-pair:4:{mailbox}A:{key}"),
             "validation.syncPairingCodeInvalid",
         ),
         // 22 characters whose last character carries non-zero trailing bits: not canonical.
         (
-            format!("moony-pair:3:{}x:{key}", &mailbox[..21]),
+            format!("moony-pair:4:{}x:{key}", &mailbox[..21]),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:3:{mailbox}:{}", &key[..42]),
+            format!("moony-pair:4:{mailbox}:{}", &key[..42]),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:3:{mailbox}:{key}:{evil}:x"),
+            format!("moony-pair:4:{mailbox}:{key}:{evil}:x"),
             "validation.syncPairingCodeInvalid",
         ),
         (
-            format!("moony-pair:3:{mailbox}:{key}:{evil}"),
+            format!("moony-pair:4:{mailbox}:{key}:{evil}"),
             "validation.syncRelayUrlInvalid",
         ),
         (
-            format!("moony-pair:3:{mailbox}:{key}:"),
+            format!("moony-pair:4:{mailbox}:{key}:"),
             "validation.syncPairingCodeInvalid",
         ),
         (code_with_host(400), "validation.syncPairingCodeInvalid"),
@@ -387,17 +414,20 @@ fn malformed_codes_are_refused_without_echoing_them() {
 }
 
 #[test]
-fn a_v1_or_v2_code_is_refused_with_a_clear_message() {
+fn a_v1_v2_or_v3_code_is_refused_with_a_clear_message() {
     let mut v1_with_relay = FROZEN_TEXT_V1.to_string();
     v1_with_relay.push_str(":aHR0cDovL2V2aWwuZXhhbXBsZQ");
     for input in [
         FROZEN_TEXT_V1,
         FROZEN_TEXT_V2,
+        FROZEN_TEXT_V3,
         v1_with_relay.as_str(),
         "moony-pair:1:",
         "moony-pair:1:junk",
         "moony-pair:2:",
         "moony-pair:2:junk",
+        "moony-pair:3:",
+        "moony-pair:3:junk",
         "moony-pair:0:junk",
     ] {
         let err = match parse_pairing_code(input) {
@@ -413,7 +443,8 @@ fn a_v1_or_v2_code_is_refused_with_a_clear_message() {
         assert_eq!(validation_key(err), OTHER_NEEDS_UPDATE, "{input}");
     }
     assert_eq!(OTHER_NEEDS_UPDATE, "validation.syncPairingOtherNeedsUpdate");
-    assert_eq!(QR_PREFIX, "moony-pair:3:");
+    assert_eq!(QR_PREFIX, "moony-pair:4:");
+    assert_eq!(PROTOCOL, 4);
     // The size cap still comes first.
     let over = format!("{FROZEN_TEXT_V1}:{}", "A".repeat(MAX_CODE_BYTES));
     assert_eq!(
@@ -423,15 +454,18 @@ fn a_v1_or_v2_code_is_refused_with_a_clear_message() {
 }
 
 #[test]
-fn a_v1_slot1_is_refused_by_a_v2_shower() {
-    let mut v1 = vec![0x01, 0x02];
-    v1.extend_from_slice(&c_pub());
-    assert_eq!(v1.len(), SLOT1_LEN);
-    assert_eq!(
-        validation_key(parse_slot1(&v1).unwrap_err()),
-        "validation.syncPairingFailed"
-    );
-    assert_eq!(SLOT1_VERSION, 0x02);
+fn a_v3_slot1_is_refused() {
+    // Versions 1 (protocol 1) and 2 (protocols 2 and 3) are refused as well.
+    for version in [0x01, 0x02] {
+        let mut old = vec![version, 0x02];
+        old.extend_from_slice(&c_pub());
+        assert_eq!(old.len(), SLOT1_LEN);
+        assert_eq!(
+            validation_key(parse_slot1(&old).unwrap_err()),
+            "validation.syncPairingFailed"
+        );
+    }
+    assert_eq!(SLOT1_VERSION, 0x03);
     // Slot 2, slot 3 and the cancel marker keep version 1.
     assert_eq!(SLOT_VERSION, 0x01);
 }
@@ -440,46 +474,63 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-fn ack_slot(tag_hex: &str) -> Vec<u8> {
-    let mut slot = vec![0x01];
-    slot.extend_from_slice(&unhex(tag_hex));
-    slot
+const TAG_S_C: &str = "6f69ab37a02b8f223ca5591fe65ea20257233206d9ca7b2b4ed86d571a9d1e41";
+const TAG_S_M: &str = "9cb1feeb960519dabbfe6e2400a98ee70f7a8e75469d2a0bbdb1a79e04a07c5a";
+
+fn tag_of(hex_text: &str) -> [u8; 32] {
+    hex32(hex_text)
 }
 
-const ACK_S_C: &str = "b473ae20bc53682f690b9ab3c17a0696027843f17d0988e72df937e5d0a8bced";
-const ACK_S_M: &str = "261a64208961cfca3bcbbb003c1c61a1fc75de1d4ba8b71dec0d9298966dace2";
-
 #[test]
-fn the_ack_matches_the_frozen_vector() {
+fn the_reveal_matches_the_frozen_vector() {
     assert_eq!(ACK_DIRECTION, b"shower->scanner");
     assert_eq!(ACK_DIRECTION.len(), 15);
-    assert_eq!(ACK_SLOT_LEN, 33);
+    assert_eq!(REVEAL_VERSION, 0x02);
+    assert_eq!(REVEAL_SLOT_LEN, 65);
     assert_eq!(OKM_LEN, 72);
     for t in [shower(), scanner()] {
-        assert_eq!(
-            hex(t.ack_key().as_slice()),
-            "f2131f574e31de0d056d117dab2d59525121e925e2ab79436137e5f3987ae644"
-        );
-        let ack = t.ack();
-        assert_eq!(ack.len(), ACK_SLOT_LEN);
-        assert_eq!(ack.to_vec(), ack_slot(ACK_S_C));
-        // The session key and the code stay the frozen version-1 ones.
-        assert_eq!(
-            key(&t),
-            "01b8d60583d5b13dc2ac3426e3bb2550bc24e241f7fea9f2787597d0c03d527b"
-        );
-        assert_eq!(t.code(), 482686);
+        let slot = t.reveal();
+        let mut expected = vec![REVEAL_VERSION];
+        expected.extend_from_slice(&s_pub());
+        expected.extend_from_slice(&tag_of(TAG_S_C));
+        assert_eq!(slot.to_vec(), expected);
+        assert!(scanner().verify_tag(&tag_of(TAG_S_C)));
     }
-    assert!(scanner().verify_ack(&shower().ack()));
 }
 
 #[test]
-fn an_ack_for_a_substituted_key_does_not_verify() {
-    let m_pub = public(M_SECRET);
-    assert_eq!(
-        m_pub,
-        hex32("ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b")
+fn the_reveal_opens_only_against_its_own_commitment() {
+    let c = commitment(&MAILBOX, &s_pub());
+    let slot = shower().reveal();
+    assert_eq!(slot.len(), REVEAL_SLOT_LEN);
+    let (key, tag) = open_reveal(&slot, &MAILBOX, &c).expect("opens");
+    assert_eq!(key, s_pub());
+    assert!(scanner().verify_tag(&tag));
+    assert!(open_reveal(&slot, &MAILBOX, &commitment(&MAILBOX, &c_pub())).is_none());
+    assert!(open_reveal(&slot, &MailboxId([0x34; 16]), &c).is_none());
+    assert!(
+        open_reveal(&slot[..33], &MAILBOX, &c).is_none(),
+        "a protocol-3 slot 3"
     );
+    assert!(open_reveal(&CANCEL_MARKER, &MAILBOX, &c).is_none());
+    assert!(open_reveal(&[], &MAILBOX, &c).is_none());
+    let mut other_version = slot;
+    other_version[0] = 0x01;
+    assert!(open_reveal(&other_version, &MAILBOX, &c).is_none());
+    let mut long = slot.to_vec();
+    long.push(0);
+    assert!(open_reveal(&long, &MAILBOX, &c).is_none());
+    // A flipped bit in the key breaks the commitment; one in the tag is for `verify_tag`.
+    for bit in 8..8 + 256 {
+        let mut bad = slot;
+        bad[bit / 8] ^= 1 << (bit % 8);
+        assert!(open_reveal(&bad, &MAILBOX, &c).is_none(), "bit {bit}");
+    }
+}
+
+#[test]
+fn a_tag_for_a_substituted_key_does_not_verify() {
+    let m_pub = public(M_SECRET);
     let fooled = derive(
         &StaticSecret::from(S_SECRET),
         Side::Shower,
@@ -487,14 +538,15 @@ fn an_ack_for_a_substituted_key_does_not_verify() {
         &MAILBOX,
     )
     .unwrap();
-    let forged = fooled.ack();
-    assert_eq!(forged.to_vec(), ack_slot(ACK_S_M));
-    assert!(!scanner().verify_ack(&forged));
-    assert!(scanner().verify_ack(&shower().ack()));
+    let (_, forged) = open_reveal(&fooled.reveal(), &MAILBOX, &commitment(&MAILBOX, &s_pub()))
+        .expect("the same shower key");
+    assert_eq!(forged, tag_of(TAG_S_M));
+    assert!(!scanner().verify_tag(&forged));
+    assert!(scanner().verify_tag(&tag_of(TAG_S_C)));
 }
 
 #[test]
-fn an_ack_for_the_same_keys_under_another_mailbox_does_not_verify() {
+fn a_tag_for_the_same_keys_under_another_mailbox_does_not_verify() {
     let other = MailboxId([0x34; 16]);
     let elsewhere = derive(
         &StaticSecret::from(S_SECRET),
@@ -503,77 +555,70 @@ fn an_ack_for_the_same_keys_under_another_mailbox_does_not_verify() {
         &other,
     )
     .unwrap();
-    assert!(!scanner().verify_ack(&elsewhere.ack()));
+    let (_, tag) =
+        open_reveal(&elsewhere.reveal(), &other, &commitment(&other, &s_pub())).expect("opens");
+    assert!(!scanner().verify_tag(&tag));
 }
 
 #[test]
-fn a_tampered_or_short_ack_is_refused() {
+fn a_tampered_tag_is_refused() {
     let c = scanner();
-    let good = shower().ack();
-    assert!(c.verify_ack(&good));
-    for bit in 0..ACK_SLOT_LEN * 8 {
+    let good = tag_of(TAG_S_C);
+    assert!(c.verify_tag(&good));
+    for bit in 0..256 {
         let mut bad = good;
         bad[bit / 8] ^= 1 << (bit % 8);
-        assert!(!c.verify_ack(&bad), "bit {bit}");
+        assert!(!c.verify_tag(&bad), "bit {bit}");
     }
-    assert!(!c.verify_ack(&good[..32]));
-    let mut long = good.to_vec();
-    long.push(0);
-    assert!(!c.verify_ack(&long));
-    let mut v2 = good;
-    v2[0] = 0x02;
-    assert!(!c.verify_ack(&v2));
-    assert!(!c.verify_ack(&CANCEL_MARKER));
-    assert!(!c.verify_ack(&[]));
 }
 
 #[test]
 fn the_typed_code_is_checked_exactly() {
     let t = shower();
-    assert_eq!(t.code_text(), "482686");
+    assert_eq!(t.code_text(), format!("{FROZEN_CODE:06}"));
     // Full-width digits (U+FF10–U+FF19) count as their ASCII digit.
     for typed in [
-        "482686",
-        "482 686",
-        "482-686",
-        "４８２６８６",
-        "４８２ ６８６",
-        "48２6８6",
+        "062532",
+        "062 532",
+        "062-532",
+        "０６２５３２",
+        "０６２ ５３２",
+        "06２5３2",
     ] {
         assert!(t.code_matches(typed), "{typed:?}");
         assert!(typed_code_digits(typed).is_some(), "{typed:?}");
     }
     for typed in [
-        "482687",
-        "48268",
-        "4826860",
-        "48268a",
-        " 482686",
+        "062533",
+        "06253",
+        "0625320",
+        "06253a",
+        " 062532",
         "",
-        "482686 ",
-        "48 2686",
-        "482  686",
-        "482_686",
-        "482--686",
-        "482 -686",
-        "４８２６８７",
-        "４８２　６８６",
+        "062532 ",
+        "06 2532",
+        "062  532",
+        "062_532",
+        "062--532",
+        "062 -532",
+        "０６２５３３",
+        "０６２　５３２",
         "٤٨٢٦٨٦",
     ] {
         assert!(!t.code_matches(typed), "{typed:?}");
     }
     // Only input of another shape is not six digits; a wrong six-digit code is.
     for typed in [
-        "48268",
-        "482686 ",
-        "48 2686",
-        "482_686",
-        "４８２　６８６",
+        "06253",
+        "062532 ",
+        "06 2532",
+        "062_532",
+        "０６２　５３２",
         "",
     ] {
         assert!(typed_code_digits(typed).is_none(), "{typed:?}");
     }
-    assert!(typed_code_digits("482687").is_some());
+    assert!(typed_code_digits("062533").is_some());
     let seven = Transcript {
         code: 7,
         ..shower()
@@ -582,7 +627,7 @@ fn the_typed_code_is_checked_exactly() {
     assert!(seven.code_matches("000007"));
     assert!(seven.code_matches("000 007"));
     assert!(!seven.code_matches("7"));
-    assert!(!seven.code_matches("482686"));
+    assert!(!seven.code_matches("062532"));
 }
 
 #[test]
@@ -600,7 +645,7 @@ fn mailbox_ids_are_canonical_base64url() {
 fn slot_1_layout_and_roles() {
     let slot = slot1(Role::Joiner, &c_pub());
     assert_eq!(slot.len(), SLOT1_LEN);
-    assert_eq!(&slot[..2], &[0x02, 0x02]);
+    assert_eq!(&slot[..2], &[0x03, 0x02]);
     assert_eq!(&slot[2..], &c_pub());
     assert_eq!(parse_slot1(&slot).unwrap(), (Role::Joiner, c_pub()));
     let failed = |bytes: &[u8]| validation_key(parse_slot1(bytes).unwrap_err());
@@ -608,9 +653,9 @@ fn slot_1_layout_and_roles() {
     let mut long = slot.to_vec();
     long.push(0);
     assert_eq!(failed(&long), "validation.syncPairingFailed");
-    let mut v3 = slot;
-    v3[0] = 3;
-    assert_eq!(failed(&v3), "validation.syncPairingFailed");
+    let mut v2 = slot;
+    v2[0] = 2;
+    assert_eq!(failed(&v2), "validation.syncPairingFailed");
     let mut r3 = slot;
     r3[1] = 3;
     assert_eq!(failed(&r3), "validation.syncPairingFailed");
@@ -817,7 +862,7 @@ fn slot_2_v2_matches_the_frozen_vector() {
     let sealed = seal_payload_with_nonce(&shower(), &payload, [0x55; 24]).unwrap();
     assert_eq!(
         hex(&sha2::Sha256::digest(&sealed)),
-        "7fd1d2279714b1e9909399379bcefcc4e52204eb759dd3daf9a29003806d1eee"
+        "222f2e2f1cacfcf0a2cb4678b38fe1ff6a18b07837e89da749fc6ef625c4f366"
     );
     assert_eq!(sealed.len(), 1 + 24 + json.len() + 16);
 }
@@ -950,10 +995,10 @@ fn secrets_print_redacted() {
     assert!(!payload.contains("98, 98"), "the ticket secret");
     let t = format!("{:?} {:?}", shower(), shower());
     assert!(!t.contains(&key(&shower())));
-    assert!(!t.contains("482686"));
+    assert!(!t.contains(&format!("{FROZEN_CODE:06}")));
     assert!(!t.contains("33"));
     assert!(!t.contains(&hex(shower().ack_key().as_slice())));
-    assert!(!t.contains(ACK_S_C));
+    assert!(!t.contains(TAG_S_C));
 }
 
 #[test]
@@ -968,11 +1013,13 @@ fn secrets_are_wiped_on_drop() {
 }
 
 // Audit M2, after Task 13 of the audit-fix plan: this stays true. Six digits can always be ground
-// (about 10^6 X25519 keys); nothing in the code itself stops it. The defence is the ordering of
-// the acknowledgement (slot 3): the scanner shows its digits only after the shower proved it
-// derived its transcript from the scanner's own key, so by the time the digits are on a screen a
-// key ground to match them is useless (`session_audit_tests::
-// a_scanner_shows_no_digits_before_a_valid_ack`).
+// (about 10^6 X25519 keys); nothing in the digits themselves stops it. The defences are the order
+// of the messages: the scanner shows its digits only after the shower proved it derived its
+// transcript from the scanner's own key (`session_audit_tests::
+// a_scanner_shows_no_digits_before_a_valid_ack`), and, from protocol 4, the code commits to the
+// shower's key, which is revealed only after the scanner's key was read, so there is no key left
+// to grind (`session_audit2_tests::
+// a_pairing_code_rewritten_on_its_way_gives_nothing_to_whoever_rewrote_it`).
 #[test]
 #[ignore = "grinds about 10^6 X25519 keys"]
 fn the_six_digits_alone_can_be_ground() {
@@ -988,7 +1035,9 @@ fn the_six_digits_alone_can_be_ground() {
     let started = std::time::Instant::now();
     let mut seed = [0u8; 32];
     for i in 1u64.. {
-        seed[..8].copy_from_slice(&i.to_le_bytes());
+        // Bytes 8..16: X25519 clamps bits of the first byte, so a counter there would try each
+        // key eight times.
+        seed[8..16].copy_from_slice(&i.to_le_bytes());
         let m = StaticSecret::from(seed);
         let Ok(t) = derive(&m, Side::Scanner, &s_pub, &MAILBOX) else {
             continue;
@@ -1026,7 +1075,7 @@ fn a_pairing_code_reads_with_white_space_inside() {
     ] {
         let parsed = parse_pairing_code(&input).expect("reads");
         assert_eq!(parsed.mailbox, MAILBOX, "{input:?}");
-        assert_eq!(parsed.shower_public, s_pub(), "{input:?}");
+        assert_eq!(parsed.commitment, hex32(FROZEN_COMMITMENT), "{input:?}");
     }
     // White space does not count toward the size cap, but a flood of it is still refused.
     let flood = format!("{FROZEN_TEXT}{}", " ".repeat(4 * MAX_CODE_BYTES));

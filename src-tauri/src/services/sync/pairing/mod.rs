@@ -4,9 +4,9 @@
 //! slot 1 (the scanner's reply) and slot 2 (the holder's sealed credentials). Everything here is
 //! pure: no relay, no database, no clock. The session state machine builds on it.
 //!
-//! The vectors in `tests.rs` are the contract with every other device. The comparison code only
-//! protects the exchange when S's public key reaches C over a channel the attacker cannot modify
-//! (a QR on a screen the person is looking at).
+//! The vectors in `tests.rs` are the contract with every other device. The six digits are 20 bits:
+//! from protocol 4 on they protect the exchange whether the code reaches C on a screen or in a
+//! message someone can rewrite, because S's key is not in the code (see "Protocol 4").
 //!
 //! Protocol 2 (audit M1, M2): the shower proves with an acknowledgement (slot 3, an HMAC under a
 //! key from the same HKDF output) that it derived its transcript from the scanner's own key, so a
@@ -23,6 +23,17 @@
 //! `OTHER_NEEDS_UPDATE`. The acknowledgement, the HKDF info, slots 1 and 3, the slot-2 version
 //! byte and its AD are unchanged.
 //!
+//! Protocol 4 (sync audit 2, R2-H2, design §3): the code carries `commitment = SHA-256(domain ‖
+//! mailbox ‖ S public)` instead of S's key, and S reveals the key in slot 3 (with the
+//! acknowledgement tag) only after it read C's key from slot 1. C checks the revealed key against
+//! the commitment before it derives anything, so a third party that rewrote the code must fix its
+//! own key in the rewritten code before the joiner answers, and must answer the holder before the
+//! holder's key is revealed: it never knows both sets of digits while it can still choose a key
+//! (the same structure as Bluetooth's numeric comparison). The HKDF info is `"moony pair v2"`,
+//! slot 1 has version `0x03`, slot 3 is `REVEAL_VERSION ‖ S public ‖ tag` (65 bytes); the six
+//! digits, slot 2, its payload version and its AD are unchanged. A code of version 1 to 3 is
+//! `OTHER_NEEDS_UPDATE`, one of version 5 or later `THIS_NEEDS_UPDATE`.
+//!
 //! Secrets hygiene as in phase 2: keys, payloads and decrypted buffers live in `Zeroizing`
 //! buffers, and `Debug` of every secret-bearing type prints `<redacted>`.
 
@@ -36,7 +47,7 @@ use chacha20poly1305::XChaCha20Poly1305;
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
-use sha2::Sha256;
+use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::Zeroizing;
@@ -55,29 +66,33 @@ pub mod session;
 mod tests;
 
 /// The protocol this app speaks: the version in the QR prefix.
-pub const PROTOCOL: u32 = 3;
-pub const QR_PREFIX: &str = "moony-pair:3:";
+pub const PROTOCOL: u32 = 4;
+pub const QR_PREFIX: &str = "moony-pair:4:";
 pub const MAX_CODE_BYTES: usize = 512;
-/// Unchanged from protocol 1, so the session key and the code are the frozen ones.
-pub const KDF_INFO: &[u8] = b"moony pair v1";
-/// Slot 2, slot 3 and the cancel marker; the slot-2 AD keeps it, so slot 2 is unchanged.
+/// The HKDF info label of protocol 4 (protocols 1 to 3 used `"moony pair v1"`).
+pub const KDF_INFO: &[u8] = b"moony pair v2";
+/// Slot 2 and the cancel marker; the slot-2 AD keeps it, so slot 2 is laid out as before.
 pub const SLOT_VERSION: u8 = 0x01;
-/// Slot 1 only: `0x02 ‖ role ‖ C public`. A version-1 slot 1 is refused.
-pub const SLOT1_VERSION: u8 = 0x02;
+/// Slot 1 only: `0x03 ‖ role ‖ C public`. A slot 1 of an earlier protocol is refused.
+pub const SLOT1_VERSION: u8 = 0x03;
+/// The domain of the commitment in the pairing code.
+pub const COMMIT_DOMAIN: &[u8] = b"moony pair commit v1";
+/// Slot 3 only: `0x02 ‖ S public ‖ tag`. The 33-byte acknowledgement of protocol 3 (version
+/// `0x01`) is refused.
+pub const REVEAL_VERSION: u8 = 0x02;
+pub const REVEAL_SLOT_LEN: usize = 1 + 32 + 32;
 pub const SLOT1_LEN: usize = 34;
 pub const SLOT2_DIRECTION: &[u8] = b"holder->joiner";
-/// The acknowledgement's direction label (slot 3).
+/// The acknowledgement tag's direction label (slot 3).
 pub const ACK_DIRECTION: &[u8] = b"shower->scanner";
-/// Slot 3: `SLOT_VERSION ‖ 32-byte HMAC-SHA256 tag`.
-pub const ACK_SLOT_LEN: usize = 1 + 32;
 /// HKDF output: session key (0..32), code (32..40), ack key (40..72). HKDF-Expand is
 /// prefix-consistent, so bytes 0..40 are those of protocol 1's 40-byte expand.
 pub const OKM_LEN: usize = 72;
 pub const CANCEL_MARKER: [u8; 2] = [SLOT_VERSION, 0x00];
-/// A pairing code of an older protocol (`moony-pair:1:`, `moony-pair:2:`): the other device needs
-/// an update before it can pair.
+/// A pairing code of an older protocol (`moony-pair:1:` to `moony-pair:3:`): the other device
+/// needs an update before it can pair.
 pub const OTHER_NEEDS_UPDATE: &str = "validation.syncPairingOtherNeedsUpdate";
-/// A pairing code of a version this app does not know (`moony-pair:4:` and later): this device
+/// A pairing code of a version this app does not know (`moony-pair:5:` and later): this device
 /// needs an update.
 pub const THIS_NEEDS_UPDATE: &str = "validation.syncPairingThisNeedsUpdate";
 /// The payload JSON's cap (protocol 3): the holder's trust store travels in it; the relay's slot
@@ -176,11 +191,11 @@ impl fmt::Debug for MailboxId {
     }
 }
 
-/// What the QR code carries: the mailbox, the shower's public key and, for a sync server that is
-/// not the default, its address.
+/// What the QR code carries: the mailbox, a commitment to the shower's public key (the key itself
+/// is revealed in slot 3) and, for a sync server that is not the default, its address.
 pub struct PairingCode {
     pub mailbox: MailboxId,
-    pub shower_public: [u8; 32],
+    pub commitment: [u8; 32],
     pub relay_url: Option<String>,
 }
 
@@ -190,14 +205,23 @@ impl fmt::Debug for PairingCode {
     }
 }
 
-/// `moony-pair:3:<mailbox>:<S public>[:<relay>]`, every field base64url without padding. The
+/// `SHA-256(COMMIT_DOMAIN ‖ mailbox ‖ S public)`: what the pairing code carries in place of S's key.
+pub fn commitment(mailbox: &MailboxId, shower_public: &[u8; 32]) -> [u8; 32] {
+    let mut hash = Sha256::new();
+    hash.update(COMMIT_DOMAIN);
+    hash.update(mailbox.0);
+    hash.update(shower_public);
+    hash.finalize().into()
+}
+
+/// `moony-pair:4:<mailbox>:<commitment>[:<relay>]`, every field base64url without padding. The
 /// fourth field is written only for a relay that is not the default. Infallible: the caller
 /// passes the stored, already-normalized relay address (`normalize_base_url`).
 pub fn pairing_code_text(code: &PairingCode) -> String {
     let mut text = format!(
         "{QR_PREFIX}{}:{}",
         code.mailbox.to_b64(),
-        URL_SAFE_NO_PAD.encode(code.shower_public)
+        URL_SAFE_NO_PAD.encode(code.commitment)
     );
     if let Some(url) = code.relay_url.as_deref().filter(|u| !is_default_relay(u)) {
         debug_assert!(
@@ -233,8 +257,8 @@ fn other_version(text: &str) -> Option<AppError> {
 
 /// Parses a pairing code. Malformed input is `validation.syncPairingCodeInvalid`; a relay address
 /// the app does not use is `validation.syncRelayUrlInvalid`; a code of an older protocol
-/// (`moony-pair:1:`, `moony-pair:2:`, whatever follows) is `OTHER_NEEDS_UPDATE`, a later one
-/// (`moony-pair:4:`…) `THIS_NEEDS_UPDATE`. The default relay reads as `None`. No error carries
+/// (`moony-pair:1:` to `moony-pair:3:`, whatever follows) is `OTHER_NEEDS_UPDATE`, a later one
+/// (`moony-pair:5:`…) `THIS_NEEDS_UPDATE`. The default relay reads as `None`. No error carries
 /// the input. White space and zero-width characters anywhere in it are ignored (a chat app wraps
 /// a pasted code, a person types it in groups; owner decision O-3, As built R-114).
 pub fn parse_pairing_code(text: &str) -> Result<PairingCode> {
@@ -259,12 +283,12 @@ pub fn parse_pairing_code(text: &str) -> Result<PairingCode> {
         return Err(code_invalid());
     }
     let mailbox = MailboxId::from_b64(fields[0])?;
-    let shower_public: [u8; 32] = URL_SAFE_NO_PAD
+    let commitment: [u8; 32] = URL_SAFE_NO_PAD
         .decode(fields[1].as_bytes())
         .map_err(|_| code_invalid())?
         .try_into()
         .map_err(|_| code_invalid())?;
-    if URL_SAFE_NO_PAD.encode(shower_public) != fields[1] {
+    if URL_SAFE_NO_PAD.encode(commitment) != fields[1] {
         return Err(code_invalid());
     }
     let relay_url = match fields.get(2) {
@@ -282,12 +306,12 @@ pub fn parse_pairing_code(text: &str) -> Result<PairingCode> {
     };
     Ok(PairingCode {
         mailbox,
-        shower_public,
+        commitment,
         relay_url,
     })
 }
 
-/// Slot 1, the scanner's reply: `0x02 ‖ role ‖ C public`.
+/// Slot 1, the scanner's reply: `0x03 ‖ role ‖ C public`.
 pub fn slot1(role: Role, scanner_public: &[u8; 32]) -> [u8; SLOT1_LEN] {
     let mut slot = [0u8; SLOT1_LEN];
     slot[0] = SLOT1_VERSION;
@@ -345,10 +369,9 @@ impl Transcript {
         format!("{:06}", self.code)
     }
 
-    /// Slot 3, the shower's acknowledgement:
-    /// `SLOT_VERSION ‖ HMAC-SHA256(ack key, ACK_DIRECTION ‖ mailbox ‖ S public ‖ C public)`.
-    /// Only a shower that derived its transcript from the scanner's own key can produce it.
-    pub fn ack(&self) -> [u8; ACK_SLOT_LEN] {
+    /// `HMAC-SHA256(ack key, ACK_DIRECTION ‖ mailbox ‖ S public ‖ C public)`. Only a shower that
+    /// derived its transcript from the scanner's own key can produce it.
+    fn tag(&self) -> [u8; 32] {
         // HMAC takes a key of any length, so `new_from_slice` cannot fail; the `hmac` crate's
         // internal pads are not zeroized (a crate limit, as with HKDF's PRK).
         let mut mac = <Hmac<Sha256>>::new_from_slice(&self.ack_key[..])
@@ -356,20 +379,22 @@ impl Transcript {
         mac.update(ACK_DIRECTION);
         // The AD's tail is exactly `mailbox ‖ S public ‖ C public`.
         mac.update(&self.ad[1 + SLOT2_DIRECTION.len()..]);
-        let tag = mac.finalize().into_bytes();
-        let mut slot = [0u8; ACK_SLOT_LEN];
-        slot[0] = SLOT_VERSION;
-        slot[1..].copy_from_slice(&tag);
+        mac.finalize().into_bytes().into()
+    }
+
+    /// Slot 3, the shower's reveal: `REVEAL_VERSION ‖ S public ‖ tag`. The key is bytes 31..63 of
+    /// the AD; the tag is the acknowledgement of protocols 2 and 3.
+    pub fn reveal(&self) -> [u8; REVEAL_SLOT_LEN] {
+        let mut slot = [0u8; REVEAL_SLOT_LEN];
+        slot[0] = REVEAL_VERSION;
+        slot[1..33].copy_from_slice(&self.ad[31..63]);
+        slot[33..].copy_from_slice(&self.tag());
         slot
     }
 
-    /// Whether `slot3` is this exchange's acknowledgement, compared in constant time. Any other
-    /// length or version, and the cancel marker, is false.
-    pub fn verify_ack(&self, slot3: &[u8]) -> bool {
-        if slot3.len() != ACK_SLOT_LEN {
-            return false;
-        }
-        bool::from(self.ack()[..].ct_eq(slot3))
+    /// Whether `tag` is this exchange's acknowledgement tag, compared in constant time.
+    pub fn verify_tag(&self, tag: &[u8; 32]) -> bool {
+        bool::from(self.tag()[..].ct_eq(&tag[..]))
     }
 
     /// Whether the person typed this exchange's code (`typed_code_digits`), compared with
@@ -437,10 +462,9 @@ impl fmt::Debug for Transcript {
 }
 
 /// X25519 between `own` and `peer_public`, then
-/// `HKDF-SHA256(salt = mailbox, ikm = shared, info = "moony pair v1" ‖ S public ‖ C public)` of
+/// `HKDF-SHA256(salt = mailbox, ikm = shared, info = "moony pair v2" ‖ S public ‖ C public)` of
 /// `OKM_LEN` (72) bytes: 0..32 are the session key, 32..40 (big-endian, mod 10^6) the code and
-/// 40..72 the acknowledgement key. HKDF-Expand is prefix-consistent, so the session key and the
-/// code are protocol 1's. `own`'s public key takes the place `side` names and the peer's the
+/// 40..72 the acknowledgement key. `own`'s public key takes the place `side` names and the peer's the
 /// other. A low-order peer key (a non-contributory exchange) is refused.
 ///
 /// The `hkdf` crate's PRK is not zeroized (a crate limit); the OKM and the shared secret are.
@@ -487,6 +511,27 @@ pub fn derive(
         ack_key,
         ad,
     })
+}
+
+/// Opens slot 3 of protocol 4: `Some((S public, tag))` only for exactly `REVEAL_SLOT_LEN` bytes
+/// with `REVEAL_VERSION` whose key matches `commitment` (the one in the code the scanner read) for
+/// this mailbox, compared in constant time. The cancel marker, a 33-byte slot 3 of protocol 3 and
+/// anything else is `None`. Nothing is derived here: the caller derives with the returned key and
+/// checks the tag with `Transcript::verify_tag`.
+pub fn open_reveal(
+    slot3: &[u8],
+    mailbox: &MailboxId,
+    commitment_in_code: &[u8; 32],
+) -> Option<([u8; 32], [u8; 32])> {
+    if slot3.len() != REVEAL_SLOT_LEN || slot3[0] != REVEAL_VERSION {
+        return None;
+    }
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&slot3[1..33]);
+    let mut tag = [0u8; 32];
+    tag.copy_from_slice(&slot3[33..]);
+    let matches = commitment(mailbox, &key)[..].ct_eq(&commitment_in_code[..]);
+    bool::from(matches).then_some((key, tag))
 }
 
 /// The holder vouching for the joiner (protocol 3, spec §5.3): its device ID, its whole trust

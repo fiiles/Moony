@@ -36,7 +36,9 @@ use super::devices;
 use super::engine::pull::DEFAULT_DEVICE_NAME;
 use super::engine::push;
 use super::engine::runtime::{rejoin_if_copy, CopyCheck};
-use super::engine::snapshots::{off_thread, open_sealed, SnapshotPolicy};
+use super::engine::snapshots::{
+    off_thread, open_sealed, snapshot_admissible, Admissible, SnapshotPolicy,
+};
 use super::engine::{self, ConnAccess, PullEnd, PullReport, RoundMode};
 use super::error::{SyncError, SyncResult};
 use super::hlc::DeviceId;
@@ -58,6 +60,7 @@ use crate::models::sync::SyncProblem;
 pub use super::backups::{PREFIX as REPAIR_BACKUP_PREFIX, SUFFIX as REPAIR_BACKUP_SUFFIX};
 
 const NO_SNAPSHOT: &str = "validation.syncVaultHasNoSnapshot";
+const INVALID_SNAPSHOT: &str = "validation.syncSnapshotInvalid";
 const ALREADY_ENABLED: &str = "validation.syncAlreadyEnabled";
 const SETUP_PENDING: &str = "validation.syncJoinSetupPending";
 const KIT_ACCOUNT_INVALID: &str = "validation.syncRecoveryAccountInvalid";
@@ -128,11 +131,12 @@ pub(crate) async fn join_by_replace<R: Relay, D: ConnAccess>(
     devices::validate_device_name(device_name)?;
     validate_base_url(&creds.relay_url)?;
     let _no_round = engine::exclusive(db).await;
-    let plain = fetched_snapshot(relay, &creds).await?;
+    let (plain, at) = fetched_snapshot(relay, &creds).await?;
     let (joiner, dir, name) = (db.clone(), data_dir.to_path_buf(), device_name.to_string());
     let who = NewIdentity::Join(JoinIdentity::Unvouched(EpochHeads::new()));
     let report = off_thread(move || {
-        joiner.with_conn_mut(|conn| replace_profile(conn, &dir, &creds, &name, &plain, &who, now))
+        joiner
+            .with_conn_mut(|conn| replace_profile(conn, &dir, &creds, &name, &plain, at, &who, now))
     })
     .await?;
     write_binding_after_replace(db, data_dir, native);
@@ -141,13 +145,13 @@ pub(crate) async fn join_by_replace<R: Relay, D: ConnAccess>(
 
 /// The vault's newest snapshot (none → `validation.syncVaultHasNoSnapshot`), opened with
 /// `open_sealed` (size-capped, authenticated under its sequence) off the runtime, without the
-/// connection lock.
+/// connection lock, and where it was taken and the epoch it is sealed under.
 async fn fetched_snapshot<R: Relay>(
     relay: &R,
     creds: &Credentials,
-) -> SyncResult<Zeroizing<Vec<u8>>> {
+) -> SyncResult<(Zeroizing<Vec<u8>>, SnapshotAt)> {
     match fetched_snapshot_at(relay, creds).await? {
-        Ok((plain, _)) => Ok(plain),
+        Ok(fetched) => Ok(fetched),
         // Read as a key change these credentials lack (`syncKeyRotated`).
         Err(KeyAhead) => Err(SyncError::ReadOnlyToken),
     }
@@ -245,6 +249,8 @@ struct HoldInput {
     creds: Credentials,
     device_name: String,
     plain: Zeroizing<Vec<u8>>,
+    /// Where the snapshot was taken and the epoch it is sealed under (rule 10).
+    sealed: SnapshotAt,
     /// Who this device is after the replace.
     identity: NewIdentity,
     now: i64,
@@ -305,6 +311,7 @@ fn replace_hold(conn: &mut Connection, input: &HoldInput) -> Hold {
             &input.creds,
             &input.device_name,
             &input.plain,
+            input.sealed,
             &input.identity,
             input.now,
         )?;
@@ -445,6 +452,7 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
             creds,
             device_name: device_name.to_string(),
             plain,
+            sealed: at,
             identity: NewIdentity::Join(identity),
             now,
             acknowledged: Vec::new(),
@@ -765,12 +773,14 @@ async fn newest_bundle_head<R: Relay>(
 /// had before. Any failure rolls all of it
 /// back and reinstalls the capture (or the guard) that ran before. Only after the commit is a
 /// leftover restore marker cleared.
+#[allow(clippy::too_many_arguments)]
 fn replace_profile(
     conn: &mut Connection,
     data_dir: &Path,
     creds: &Credentials,
     device_name: &str,
     plain: &[u8],
+    sealed: SnapshotAt,
     who: &NewIdentity,
     now: i64,
 ) -> Result<RestoreReport> {
@@ -859,6 +869,14 @@ fn replace_profile(
                 // (spec §2.3 step 8), so each gets an entry that finds the signed record first.
                 let place = crate::services::sync::engine::seen::place(conn)?.unwrap_or(0);
                 head::require_ranges(conn, place, false)?;
+            }
+            // Rule 10, a replace (nothing to be behind): a snapshot sealed under an older key
+            // than the newest held is taken at or below the head of the key change that ended
+            // that key, and refused above it. The heads are in `sync_epochs` by now (a holder's,
+            // a Kit's, the snapshot's own).
+            if snapshot_admissible(conn, sealed.epoch, sealed.seq, true)? != Admissible::Yes {
+                log::warn!("[SYNC] The snapshot lies above the key change that ended its key");
+                return Err(AppError::Validation(INVALID_SNAPSHOT.into()));
             }
             Ok(report)
         })
@@ -1185,7 +1203,7 @@ async fn repair_after_backup<R: Relay, D: ConnAccess>(
             return Err(AppError::Validation(DRAIN_INCOMPLETE.into()).into());
         }
         let _no_round = engine::exclusive(db).await;
-        let plain = fetched_snapshot(relay, creds).await?;
+        let (plain, sealed) = fetched_snapshot(relay, creds).await?;
         let hold = held(
             db,
             HoldInput {
@@ -1196,6 +1214,7 @@ async fn repair_after_backup<R: Relay, D: ConnAccess>(
                 creds: creds.clone(),
                 device_name: name.to_string(),
                 plain,
+                sealed,
                 identity: NewIdentity::Successor,
                 now,
                 acknowledged: Vec::new(),
@@ -1259,7 +1278,7 @@ pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
             Vec::new()
         }
     };
-    let plain = fetched_snapshot(relay, &creds).await?;
+    let (plain, sealed) = fetched_snapshot(relay, &creds).await?;
     let hold = held(
         db,
         HoldInput {
@@ -1270,6 +1289,7 @@ pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
             creds,
             device_name: name,
             plain,
+            sealed,
             identity: NewIdentity::Successor,
             now,
             acknowledged,

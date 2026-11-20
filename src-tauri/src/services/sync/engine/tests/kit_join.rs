@@ -351,9 +351,18 @@ async fn a_server_head_the_signers_record_contradicts_is_refuted() {
     institution(&three.vault.b.lock(), "b-before-the-change");
     round_of(&three.vault, &three.vault.b).await;
     remove(&three, A, &[C]).await.expect("removed");
-    // The server reports another head with the bundle than the one A signs.
+    // The server reports another head with the bundle than the one A signs: the snapshot's own
+    // position, below A's (B wrote after the snapshot) and below A's record, so the look-ahead
+    // finds it. (Not below the snapshot: a joiner refuses an old-key snapshot above the head it is
+    // told, rule 10, which would end the join before the signer's record could refute it.)
+    let lie = three.vault.relay.snapshot_seq().expect("A's snapshot");
+    let signed = *state::epochs(&three.vault.a.lock())
+        .expect("epochs")
+        .get(&1)
+        .expect("A's head");
+    assert!(lie < signed, "the lie differs from the signed head");
     let vault_id = three.vault.creds.vault_id.to_b64();
-    three.vault.relay.set_rekey_head(&vault_id, 1, 1);
+    three.vault.relay.set_rekey_head(&vault_id, 1, lie);
     let device = newcomer();
     let dir = tempfile::tempdir().expect("dir");
     kit_join(&three, &device, dir.path(), &secret)
@@ -361,7 +370,7 @@ async fn a_server_head_the_signers_record_contradicts_is_refuted() {
         .expect("join");
     assert_eq!(
         head::unverified_epochs(&device.lock()).expect("unverified")[0].head,
-        Some(1)
+        Some(lie)
     );
     round_of(&three.vault, &three.vault.a).await;
 
@@ -1193,4 +1202,51 @@ async fn a_join_overtaken_by_a_key_change_says_try_again() {
         "{error:?}"
     );
     untouched(&device);
+}
+
+/// Rule 10, a joining device (spec §2.3): a snapshot sealed under an older key than the Kit's
+/// newest is taken at or below the head of the key change that ended that key (the head is checked
+/// afterwards), and refused above it. A removes C after its own snapshot and goes silent; the
+/// Kit's joiner takes that snapshot, with the server still naming the head; then the vault's newest
+/// snapshot is an old-key one above the head, and the next joiner refuses it and replaces nothing.
+#[tokio::test]
+async fn a_kit_join_takes_an_old_key_snapshot_up_to_the_head() {
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    institution(&three.vault.a.lock(), "a-in-the-old-snapshot");
+    snapshot_by(&three, &three.vault.a).await;
+    let dumped = three.vault.relay.snapshot_seq().expect("snapshot");
+    remove(&three, A, &[C]).await.expect("removed");
+    let first = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    kit_join(&three, &first, dir.path(), &secret)
+        .await
+        .expect("join");
+
+    {
+        let conn = first.lock();
+        assert!(has_institution(&conn, "a-in-the-old-snapshot"));
+        assert_eq!(key_epoch(&conn), 1);
+        let head = *state::epochs(&conn).expect("epochs").get(&1).expect("head");
+        assert!(dumped <= head, "the snapshot lies at or below the head");
+    }
+
+    // The same vault, now holding an old-key snapshot above the head.
+    super::rekey_audit2::push_a_record(&three).await;
+    let above = super::rekey_audit2::last_seq(&three);
+    let sealed = super::rekey_audit2::forged_old_key_snapshot(&three, above);
+    super::rekey_audit2::server_takes_snapshot(&three, above, sealed).await;
+    let second = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    let refused = kit_join(&three, &second, dir.path(), &secret).await;
+
+    let error = refused.expect_err("refused");
+    assert_eq!(
+        key_of(&error).as_deref(),
+        Some("validation.syncSnapshotInvalid"),
+        "{error:?}"
+    );
+    untouched(&second);
 }

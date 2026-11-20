@@ -505,6 +505,9 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
             SyncError::TooLarge(TooLarge::Snapshot) => SyncProblem::SnapshotTooLarge,
             SyncError::ReadOnlyToken => SyncProblem::KeyRotated,
             SyncError::Unauthorized => SyncProblem::Unauthorized,
+            // A restore that waits for a snapshot under the new key (rule 10): the existing
+            // waiting problem; the next round tries again.
+            SyncError::SnapshotWaiting => SyncProblem::KeyChangeWaiting,
             error => return Err(error),
         };
         report.problem = Some(problem);
@@ -1186,11 +1189,16 @@ async fn after_push<R: Relay, D: ConnAccess>(
     }
     let info = relay.vault_info(&creds.auth()).await?;
     report.vault = Some(info.clone());
-    if snapshots::heal_missed(relay, db, creds, policy, &info, now)
-        .await?
-        .is_some()
-    {
-        report.restored = true;
+    // Someone uploaded the snapshot under the new key this device owed (rule 10).
+    db.with_conn(|conn| state::clear_snapshot_owed_if_covered(conn, info.snapshot_seq))?;
+    match snapshots::heal_missed(relay, db, creds, policy, &info, now).await {
+        Ok(Some(_)) => report.restored = true,
+        Ok(None) => {}
+        // The heal is optional: a snapshot under an older key than its position allows waits for
+        // one under the new key, which this device says and goes on (the upload below may be
+        // that one).
+        Err(SyncError::SnapshotWaiting) => report.problem = Some(SyncProblem::KeyChangeWaiting),
+        Err(error) => return Err(error),
     }
     if !report.pull.as_ref().is_some_and(PullReport::may_snapshot) {
         return Ok(());

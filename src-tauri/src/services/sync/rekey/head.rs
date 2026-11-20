@@ -499,6 +499,7 @@ pub async fn verify_own<R: Relay, D: ConnAccess>(relay: &R, db: &D) -> SyncResul
                     &notes,
                 )?;
                 store(conn, &epochs)?;
+                state::owe_snapshot(conn, entry.epoch)?;
                 log::info!(
                     "[SYNC] This device signed the start of key epoch {} with {} changes below it",
                     entry.epoch,
@@ -945,6 +946,9 @@ fn commit(
         epochs.retain(|e| !waiting(e));
         store(conn, &epochs)?;
         note_verified(conn, entry, record.head)?;
+        // Every device that verified a key change owes the vault a snapshot under the new key
+        // when the vault has none above its head (rule 10).
+        state::owe_snapshot(conn, entry.epoch)?;
         Ok(true)
     })
 }

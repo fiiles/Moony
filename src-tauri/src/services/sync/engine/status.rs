@@ -375,6 +375,8 @@ pub fn problem_of(error: &SyncError) -> SyncProblem {
         SyncError::Lapsed => P::Lapsed,
         SyncError::Unauthorized => P::Unauthorized,
         SyncError::ReadOnlyToken => P::KeyRotated,
+        // A restore that cannot run until a snapshot under the new key exists (rule 10).
+        SyncError::SnapshotWaiting => P::KeyChangeWaiting,
         SyncError::TooLarge(TooLarge::Quota) => P::QuotaExceeded,
         SyncError::TooLarge(TooLarge::Snapshot) => P::SnapshotTooLarge,
         SyncError::Local(AppError::Validation(key)) if key == NEWER_SCHEMA_KEY => P::NewerSchema,

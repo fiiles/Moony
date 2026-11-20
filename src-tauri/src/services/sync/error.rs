@@ -10,6 +10,11 @@ use crate::error::AppError;
 pub enum SyncError {
     #[error("snapshot required")]
     SnapshotRequired,
+    /// The vault's newest snapshot is sealed under an older key than its position allows this
+    /// device to take (spec 2026-11-20-sync-audit-2-fixes-design §2.3 rule 10), and no snapshot
+    /// under the new key exists yet: the restore waits, the round says so and tries again.
+    #[error("snapshot waiting for one under the new key")]
+    SnapshotWaiting,
     #[error("vault not found")]
     VaultNotFound,
     #[error("payment required")]
@@ -103,9 +108,10 @@ impl SyncError {
         let key = match self {
             SyncError::Local(error) => return same_app_error(error),
             SyncError::Transient(Transient::Offline) => "validation.syncRelayUnreachable",
-            SyncError::Transient(Transient::Relay) | SyncError::SnapshotRequired => {
-                "validation.syncRelayError"
-            }
+            // `SnapshotWaiting` is turned into `KeyChangeWaiting` by the round, never shown here.
+            SyncError::Transient(Transient::Relay)
+            | SyncError::SnapshotRequired
+            | SyncError::SnapshotWaiting => "validation.syncRelayError",
             SyncError::RateLimited => "validation.syncRateLimited",
             SyncError::Lapsed => "validation.syncPaymentRequired",
             SyncError::VaultNotFound => "validation.syncVaultNotFound",

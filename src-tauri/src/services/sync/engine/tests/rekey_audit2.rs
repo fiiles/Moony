@@ -24,7 +24,7 @@ use super::rekey_fixture::*;
 use super::*;
 use crate::models::sync::SyncProblem;
 use crate::services::sync::changeset;
-use crate::services::sync::engine::snapshots::SnapshotPolicy;
+use crate::services::sync::engine::snapshots::{heal_missed, SnapshotPolicy};
 use crate::services::sync::engine::{run_round, RoundMode};
 use crate::services::sync::envelope::stream::{snapshot_object_id, StreamSealer};
 use crate::services::sync::envelope::{envelope_hash, open_op, vault_token};
@@ -36,7 +36,7 @@ use crate::services::sync::rekey::rotate::{self, Outcome};
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::RelayError;
 
-fn last_seq(three: &Three) -> u64 {
+pub(super) fn last_seq(three: &Three) -> u64 {
     three.vault.relay.ops().last().map_or(0, |op| op.seq)
 }
 
@@ -249,6 +249,72 @@ async fn a_removed_devices_write_below_a_head_the_server_raised_is_not_applied_b
     );
 }
 
+/// C, removed, writes a row and seals a snapshot of its profile under the old key (epoch 0), claiming
+/// relay position `at`. (A dump refuses while anything waits to be sent, so the row is sealed into
+/// C's next envelope first and that envelope dropped; it is never sent.)
+pub(super) fn forged_old_key_snapshot(three: &Three, at: u64) -> Vec<u8> {
+    write_and_seal(&three.vault, &three.c, "c-in-snapshot");
+    let c = three.c.lock();
+    exec(&c, "DELETE FROM sync_unsent");
+    let mut plain = Vec::new();
+    snapshot::dump(&c, at, &mut plain).expect("dump");
+    let old = &three.vault.creds;
+    assert_eq!(old.keys.current_epoch(), 0);
+    let mut deflate = DeflateEncoder::new(
+        StreamSealer::new(
+            0,
+            old.keys.current(),
+            &old.vault_id.0,
+            &snapshot_object_id(at),
+        ),
+        Compression::default(),
+    );
+    deflate.write_all(&plain).expect("deflate");
+    deflate.finish().expect("deflate").finish().expect("seal")
+}
+
+/// The server takes `sealed` as the vault's snapshot at `at` (a relay that works with the removed
+/// device accepts the retired token's upload).
+pub(super) async fn server_takes_snapshot(three: &Three, at: u64, sealed: Vec<u8>) {
+    three.vault.relay.set_accept_retired_writes(true);
+    three
+        .vault
+        .relay
+        .put_snapshot(&three.vault.creds.auth(), at, sealed)
+        .await
+        .expect("the server takes it");
+}
+
+/// A round of `id` that may fail: the result as it is.
+async fn round_result(
+    three: &Three,
+    id: DeviceId,
+) -> crate::services::sync::error::SyncResult<crate::services::sync::engine::RoundReport> {
+    run_round(
+        &three.vault.relay,
+        three.device(id),
+        &mut SnapshotPolicy::default(),
+        RoundMode::Normal,
+        NOW,
+        0,
+    )
+    .await
+}
+
+/// `conn` is put back to where a device behind by `to` would stand: its cursor, the notes of
+/// handled positions and the position of the last restore. What it has already verified stays.
+fn lag_behind(conn: &Connection, to: u64) {
+    exec(
+        conn,
+        &format!("UPDATE sync_state SET cursor = {to}, restored_seq = NULL"),
+    );
+    exec(conn, "DELETE FROM sync_seen_ops");
+}
+
+fn invalid_key(result: &crate::services::sync::error::SyncResult<impl std::fmt::Debug>) -> bool {
+    matches!(result, Err(error) if super::kit_join::key_of(error).as_deref() == Some("validation.syncSnapshotInvalid"))
+}
+
 fn vault_b64(three: &Three) -> String {
     three.vault.creds.vault_id.to_b64()
 }
@@ -263,7 +329,7 @@ fn new_token(three: &Three) -> String {
 
 /// Pushes what A holds unsent (its signed head, sealed under the new key) with its new token,
 /// without a round.
-async fn push_a_record(three: &Three) {
+pub(super) async fn push_a_record(three: &Three) {
     let (creds, envelopes) = {
         let a = three.vault.a.lock();
         (
@@ -968,8 +1034,7 @@ async fn a_removed_devices_write_above_the_true_head_is_refused() {
 /// change; a server working with it stores it and answers the next pull of an up-to-date device
 /// with "restore the snapshot". What must hold: nothing of C's reaches B. Today B merges it.
 #[tokio::test]
-#[ignore = "R2-H3 (found with audit 2026-11-20): fails until a restore checks the key epoch"]
-async fn a_removed_devices_snapshot_above_the_head_is_merged_by_an_up_to_date_device() {
+async fn a_removed_devices_snapshot_above_the_head_is_refused_by_an_up_to_date_device() {
     let three = three().await;
     assert_everyone_is_up_to_date(&three);
     remove(&three, A, &[C]).await.expect("removed");
@@ -985,28 +1050,7 @@ async fn a_removed_devices_snapshot_above_the_head_is_merged_by_an_up_to_date_de
 
     // C writes a row after its removal and seals a snapshot of its profile under the old key,
     // claiming the log's end.
-    // (A dump refuses while anything waits to be sent, so the row is sealed into C's next
-    // envelope first and that envelope dropped; it is never sent.)
-    write_and_seal(&three.vault, &three.c, "c-in-snapshot");
-    let sealed = {
-        let c = three.c.lock();
-        exec(&c, "DELETE FROM sync_unsent");
-        let mut plain = Vec::new();
-        snapshot::dump(&c, end, &mut plain).expect("dump");
-        let old = &three.vault.creds;
-        assert_eq!(old.keys.current_epoch(), 0);
-        let mut deflate = DeflateEncoder::new(
-            StreamSealer::new(
-                0,
-                old.keys.current(),
-                &old.vault_id.0,
-                &snapshot_object_id(end),
-            ),
-            Compression::default(),
-        );
-        deflate.write_all(&plain).expect("deflate");
-        deflate.finish().expect("deflate").finish().expect("seal")
-    };
+    let sealed = forged_old_key_snapshot(&three, end);
     three.vault.relay.set_accept_retired_writes(true);
     three
         .vault
@@ -1020,15 +1064,301 @@ async fn a_removed_devices_snapshot_above_the_head_is_merged_by_an_up_to_date_de
         .relay
         .fail_next(Route::Pull, RelayError::SnapshotRequired);
 
-    let report = round_of(&three.vault, &three.vault.b).await;
+    // The round stops on the refused snapshot (`syncSnapshotInvalid`): no report, nothing merged.
+    let outcome = run_round(
+        &three.vault.relay,
+        &three.vault.b,
+        &mut SnapshotPolicy::default(),
+        RoundMode::Normal,
+        NOW,
+        0,
+    )
+    .await;
+
+    let restored = outcome.as_ref().is_ok_and(|report| report.restored);
+    assert!(
+        !has_institution(&three.vault.b.lock(), "c-in-snapshot") && !restored,
+        "B, up to date and on the new key, merged a snapshot the removed device sealed under the \
+         old key above the key change (restored: {restored}, outcome: {outcome:?})"
+    );
+    assert!(
+        matches!(&outcome, Err(error) if super::kit_join::key_of(error).as_deref() == Some("validation.syncSnapshotInvalid")),
+        "{outcome:?}"
+    );
+}
+
+/// Rule 10, the honest case (spec §2.3): an old-key snapshot at or below the base of the key
+/// change that ended its key, offered to a device that is behind it, is taken. B stayed behind,
+/// A dumped before the removal, the server pruned up to the dump: B verifies the head, finds the
+/// range above the dump and restores.
+#[tokio::test]
+async fn an_old_key_snapshot_below_the_base_catches_a_lagging_device_up() {
+    let three = three().await;
+    let behind = assert_everyone_is_up_to_date(&three);
+    institution(&three.vault.a.lock(), "a-in-the-old-snapshot");
+    super::kit_join::snapshot_by(&three, &three.vault.a).await;
+    let dumped = three.vault.relay.snapshot_seq().expect("A's snapshot");
+    assert!(dumped > behind);
+    remove(&three, A, &[C]).await.expect("removed");
+    // A's signed head goes out by hand: a round of A would also upload its new-key snapshot,
+    // and the vault's newest one would no longer be the old-key one.
+    push_a_record(&three).await;
+    three.vault.relay.prune_to(dumped);
+    assert_eq!(key_epoch(&three.vault.b.lock()), 0);
+
+    let mut last = None;
+    for _ in 0..3 {
+        last = Some(round_result(&three, B).await);
+    }
+
+    let b = three.vault.b.lock();
+    assert_eq!(key_epoch(&b), 1);
+    assert_eq!(
+        range::base_of(&b, 1).expect("base"),
+        Some(dumped),
+        "B read the range"
+    );
+    assert!(
+        has_institution(&b, "a-in-the-old-snapshot"),
+        "B restored the old-key snapshot at the base: {last:?}"
+    );
+}
+
+/// Rule 10: an old-key snapshot above the base and at or below the head may be honest (another
+/// device was ahead of the remover), so a device that is behind it does not take it and does not
+/// call it invalid: it waits for one under the new key and says so (`keyChangeWaiting`).
+#[tokio::test]
+async fn an_old_key_snapshot_between_base_and_head_waits_for_a_new_one() {
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    three.vault.relay.lift_next_rotation_head(8);
+    remove(&three, A, &[C]).await.expect("removed");
+    push_a_record(&three).await;
+    // B reads the range and verifies the head (its base is `end`), then falls behind again.
+    round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(
+        range::base_of(&three.vault.b.lock(), 1).expect("base"),
+        Some(end)
+    );
+    lag_behind(&three.vault.b.lock(), end);
+    let between = end + 3;
+    server_takes_snapshot(&three, between, forged_old_key_snapshot(&three, between)).await;
+    three
+        .vault
+        .relay
+        .fail_next(Route::Pull, RelayError::SnapshotRequired);
+
+    let waiting = round_result(&three, B).await;
 
     assert!(
         !has_institution(&three.vault.b.lock(), "c-in-snapshot"),
-        "B, up to date and on the new key, merged a snapshot the removed device sealed under the \
-         old key above the key change (restored: {}, problem: {:?})",
-        report.restored,
-        report.problem
+        "nothing of the snapshot: {waiting:?}"
     );
+    assert_eq!(
+        waiting.as_ref().map(|report| report.problem).ok(),
+        Some(Some(SyncProblem::KeyChangeWaiting)),
+        "{waiting:?}"
+    );
+    assert!(
+        !invalid_key(&waiting),
+        "waiting is not syncSnapshotInvalid: {waiting:?}"
+    );
+}
+
+/// Rule 10, the lifted head (§1.1 with §1.3): base == end, head == end + 8, and a forged old-key
+/// snapshot at end + 3, inside the range the server kept free. A device that has gone past it (its
+/// place is the signed head's op) is offered it by a `410` and refuses it: it is at or below the
+/// device's place.
+#[tokio::test]
+async fn an_old_key_snapshot_offered_to_a_device_past_it_is_refused() {
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    three.vault.relay.lift_next_rotation_head(8);
+    remove(&three, A, &[C]).await.expect("removed");
+    // The server holds the forged snapshot before anyone uploads one under the new key (A's round
+    // would: it owes one), so it is the vault's newest.
+    push_a_record(&three).await;
+    let forged = end + 3;
+    server_takes_snapshot(&three, forged, forged_old_key_snapshot(&three, forged)).await;
+    let verified = round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(verified.problem, None, "{verified:?}");
+    let place = cursor(&three.vault.b.lock());
+    assert!(place > end + 8, "B is past the lifted head: {place}");
+    assert_eq!(
+        range::base_of(&three.vault.b.lock(), 1).expect("base"),
+        Some(end)
+    );
+    three
+        .vault
+        .relay
+        .fail_next(Route::Pull, RelayError::SnapshotRequired);
+
+    let refused = round_result(&three, B).await;
+
+    assert!(invalid_key(&refused), "{refused:?}");
+    assert!(!has_institution(&three.vault.b.lock(), "c-in-snapshot"));
+}
+
+/// The heal of a missed change: a snapshot under the new key heals even when its position is below
+/// the device's place (it was never a restore to catch up).
+#[tokio::test]
+async fn a_heal_with_a_new_key_snapshot_below_the_place_still_works() {
+    let three = three().await;
+    assert_everyone_is_up_to_date(&three);
+    remove(&three, A, &[C]).await.expect("removed");
+    let problems = stayers_sync(&three).await;
+    assert!(problems.iter().all(Option::is_none), "{problems:?}");
+    let dumped = three
+        .vault
+        .relay
+        .snapshot_seq()
+        .expect("a snapshot under the new key");
+    let b_creds = keys::credentials(&three.vault.b.lock())
+        .expect("creds")
+        .expect("bound");
+    assert!(dumped <= cursor(&three.vault.b.lock()), "below B's place");
+    exec(
+        &three.vault.b.lock(),
+        &format!("UPDATE sync_state SET missed_below_barrier = {dumped}"),
+    );
+    let info = three
+        .vault
+        .relay
+        .vault_info(&b_creds.auth())
+        .await
+        .expect("info");
+
+    let healed = heal_missed(
+        &three.vault.relay,
+        &three.vault.b,
+        &b_creds,
+        &mut SnapshotPolicy::default(),
+        &info,
+        NOW,
+    )
+    .await
+    .expect("heal");
+
+    assert!(
+        healed.is_some(),
+        "restored from a snapshot under the key B holds"
+    );
+    assert_eq!(
+        state::load(&three.vault.b.lock())
+            .expect("state")
+            .expect("row")
+            .missed_below_barrier,
+        None
+    );
+}
+
+/// The heal with an old-key snapshot below the device's place: never merged, and not refused as
+/// invalid either: it waits (`SnapshotWaiting`), and is not fetched again until the vault has a
+/// newer snapshot.
+#[tokio::test]
+async fn a_heal_with_an_old_key_snapshot_waits() {
+    let three = three().await;
+    assert_everyone_is_up_to_date(&three);
+    remove(&three, A, &[C]).await.expect("removed");
+    let problems = stayers_sync(&three).await;
+    assert!(problems.iter().all(Option::is_none), "{problems:?}");
+    let end = last_seq(&three);
+    // The vault's newest snapshot is C's, under the old key, at B's place.
+    let sealed = forged_old_key_snapshot(&three, end);
+    server_takes_snapshot(&three, end, sealed).await;
+    let b_creds = keys::credentials(&three.vault.b.lock())
+        .expect("creds")
+        .expect("bound");
+    exec(
+        &three.vault.b.lock(),
+        &format!("UPDATE sync_state SET missed_below_barrier = {end}"),
+    );
+    let info = three
+        .vault
+        .relay
+        .vault_info(&b_creds.auth())
+        .await
+        .expect("info");
+    let mut policy = SnapshotPolicy::default();
+
+    let waited = heal_missed(
+        &three.vault.relay,
+        &three.vault.b,
+        &b_creds,
+        &mut policy,
+        &info,
+        NOW,
+    )
+    .await;
+
+    assert!(
+        matches!(waited, Err(SyncError::SnapshotWaiting)),
+        "{waited:?}"
+    );
+    assert!(!has_institution(&three.vault.b.lock(), "c-in-snapshot"));
+    assert_eq!(policy.examined_seq, Some(end), "not fetched again");
+    assert_eq!(
+        state::load(&three.vault.b.lock())
+            .expect("state")
+            .expect("row")
+            .missed_below_barrier,
+        Some(end),
+        "the miss stays"
+    );
+}
+
+/// Rule 10, "so that an honest refusal ends": every device that verified a key change owes the
+/// vault a snapshot under the new key, not only the remover. A removes C and sends its signed head
+/// (and never syncs again); B verifies it and uploads the snapshot.
+#[tokio::test]
+async fn every_verified_device_owes_the_new_key_snapshot() {
+    let three = three().await;
+    assert_everyone_is_up_to_date(&three);
+    remove(&three, A, &[C]).await.expect("removed");
+    // A's one last send: its signed head. (A's own forced snapshot would also cover it, so A
+    // sends the record by hand and takes no round.)
+    push_a_record(&three).await;
+    let head = signed_head(&three);
+    let before = three.vault.relay.snapshot_seq();
+
+    let mut uploaded = false;
+    for _ in 0..3 {
+        uploaded |= round_of(&three.vault, &three.vault.b)
+            .await
+            .snapshot_uploaded;
+    }
+
+    assert!(uploaded, "B uploaded the snapshot A owes");
+    let at = three.vault.relay.snapshot_seq().expect("a snapshot");
+    assert!(
+        at > head && Some(at) != before,
+        "above the key change: {at} > {head}"
+    );
+    let b = three.vault.b.lock();
+    assert!(
+        !state::snapshot_epoch_owed(&b).expect("owed"),
+        "B owes nothing any more"
+    );
+}
+
+/// Nothing changes for a vault whose key never changed: every snapshot is under the newest key.
+#[tokio::test]
+async fn a_vault_that_never_changed_its_key_restores_as_before() {
+    let three = three().await;
+    institution(&three.vault.a.lock(), "a-before-the-snapshot");
+    super::kit_join::snapshot_by(&three, &three.vault.a).await;
+    let dumped = three.vault.relay.snapshot_seq().expect("snapshot");
+    three.vault.relay.prune_to(dumped);
+    lag_behind(&three.vault.b.lock(), 0);
+    assert_eq!(key_epoch(&three.vault.b.lock()), 0);
+
+    let restored = round_result(&three, B).await.expect("round");
+
+    assert!(restored.restored, "{restored:?}");
+    assert!(has_institution(
+        &three.vault.b.lock(),
+        "a-before-the-snapshot"
+    ));
 }
 
 /// Rule 9a (spec §2.3), the hole the third review read from the code: a device that holds its

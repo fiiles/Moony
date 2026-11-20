@@ -581,6 +581,57 @@ pub fn snapshot_epoch_owed(conn: &Connection) -> Result<bool> {
     Ok(due.is_some_and(|epoch| epoch > 0))
 }
 
+/// This device holds a verified head for key epoch `epoch` (rule 10, "so that an honest refusal
+/// ends"): the vault owes a snapshot under the new key, and every device that verified the key
+/// change owes it, not only the remover. Sets `snapshot_epoch_due` to the newest such epoch
+/// (`MAX`), unless a snapshot this device uploaded or restored already lies above that head. The
+/// vault's own snapshot is looked at with the next info (`clear_snapshot_owed_if_covered`).
+pub fn owe_snapshot(conn: &Connection, epoch: u32) -> Result<()> {
+    let Some(head) = epochs(conn)?.get(&epoch).copied() else {
+        return Ok(());
+    };
+    if snapshot_seq(conn)?.is_some_and(|own| own > head) {
+        return Ok(());
+    }
+    conn.execute(
+        "UPDATE sync_state SET snapshot_epoch_due = MAX(snapshot_epoch_due, ?1) WHERE id = 1",
+        [epoch],
+    )?;
+    Ok(())
+}
+
+/// The vault's info says its newest snapshot is at `vault_snapshot`: when that lies above the head
+/// of the epoch this device owes a snapshot for (`owe_snapshot`), someone uploaded it and nothing
+/// is owed any more.
+pub fn clear_snapshot_owed_if_covered(
+    conn: &Connection,
+    vault_snapshot: Option<u64>,
+) -> Result<()> {
+    let due: Option<i64> = conn
+        .query_row(
+            "SELECT snapshot_epoch_due FROM sync_state WHERE id = 1",
+            [],
+            |r| r.get(0),
+        )
+        .optional()?;
+    let Some(epoch) = due.filter(|epoch| *epoch > 0) else {
+        return Ok(());
+    };
+    let Some(head) = u32::try_from(epoch)
+        .ok()
+        .and_then(|epoch| epochs(conn).ok()?.get(&epoch).copied())
+    else {
+        return Ok(());
+    };
+    if vault_snapshot.is_some_and(|seq| seq > head) {
+        conn.execute(
+            "UPDATE sync_state SET snapshot_epoch_due = 0 WHERE id = 1",
+            [],
+        )?;
+    }
+    Ok(())
+}
+
 /// The newest relay rotation whose key change this device has dealt with (`rekey_seen`): adopted,
 /// made itself, or passed over because it already held that key.
 pub fn rekey_seen(conn: &Connection) -> Result<u32> {

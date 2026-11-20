@@ -191,26 +191,43 @@ pub enum Admissible {
     No,
 }
 
+/// Who takes a snapshot (`snapshot_admissible`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Taker {
+    /// A device that catches up from behind (the restore after `410`, the heal): it has a place.
+    CatchingUp,
+    /// A device that already holds the vault's heads and replaces its profile with the snapshot
+    /// (repair, re-sync): the snapshot becomes its place, so there is no place to test, but it has
+    /// the heads and, when it verified them from behind, a base.
+    Replacing,
+    /// A device joining the vault (pairing, the Recovery Kit, the copy re-join): no place, and
+    /// its heads come from the holder or the Kit, if any.
+    Joining,
+}
+
 /// Rule 10 (spec 2026-11-20-sync-audit-2-fixes-design §2.3): a snapshot must fit the key of its
 /// position. One sealed under the newest key this device holds is restored as always. One sealed
 /// under an older key `e` is judged against the key change that ended it, the one that starts the
 /// lowest epoch above `e` this device holds a head for (head `H`, base `B` of its range):
 ///
-/// - `joining` (pairing, the Recovery Kit, a re-sync or repair: the profile is replaced, there
-///   is no place to be behind): `Yes` when `seq <= H` (the head is checked afterwards), `No`
-///   above it; with no head known yet, `Yes` (the check that follows settles it);
-/// - otherwise (a device catching up from behind): `No` when `seq` is at or below this device's
-///   place (a `410` the server made up, or the heal of a change the device is past) or above
-///   `H`; `Yes` when `seq <= B`; `Wait` when `B` is not known yet or `B < seq <= H` (an honest
-///   snapshot can sit above the base when another device was ahead of the remover).
+/// - `Joining`: `Yes` when `seq <= H` (the head is checked afterwards), `No` above it; with no
+///   head known, `Yes` (the check that follows settles it; a joiner's data is not bound by this
+///   design, R1/R2-M2. This is also the case of `join_by_replace`, which wipes the heads);
+/// - `Replacing`: `Yes` when `seq <= B`; `Wait` when `B` is not known (a device that verified at
+///   or past the head stored none) or `B < seq <= H`; `No` above `H`. No place test: the replace
+///   sets the place;
+/// - `CatchingUp`: `No` when `seq` is at or below this device's place (a `410` the server made
+///   up, or the heal of a change the device is past) or above `H`; `Yes` when `seq <= B`; `Wait`
+///   when `B` is not known yet or `B < seq <= H` (an honest snapshot can sit above the base when
+///   another device was ahead of the remover).
 ///
-/// A device that verified a head while at or past it has no base: for it every old-key snapshot
-/// is `No` by the place test alone.
+/// A catching-up device that verified a head while at or past it has no base: for it every
+/// old-key snapshot is `No` by the place test alone.
 pub fn snapshot_admissible(
     conn: &Connection,
     sealed_epoch: u32,
     seq: u64,
-    joining: bool,
+    taker: Taker,
 ) -> Result<Admissible> {
     let newest = crate::services::sync::keys::vault_keys(conn)?
         .ok_or_else(not_set_up)?
@@ -223,15 +240,17 @@ pub fn snapshot_admissible(
         .range(sealed_epoch.saturating_add(1)..)
         .next()
         .map(|(epoch, head)| (*epoch, *head));
-    if joining {
+    if taker == Taker::Joining {
         return Ok(match ending {
             Some((_, head)) if seq > head => Admissible::No,
             _ => Admissible::Yes,
         });
     }
-    let place = super::seen::place(conn)?.unwrap_or(0);
-    if seq <= place {
-        return Ok(Admissible::No);
+    if taker == Taker::CatchingUp {
+        let place = super::seen::place(conn)?.unwrap_or(0);
+        if seq <= place {
+            return Ok(Admissible::No);
+        }
     }
     let Some((epoch, head)) = ending else {
         return Ok(Admissible::Wait);
@@ -355,6 +374,9 @@ pub struct SnapshotPolicy {
     pub examined_seq: Option<u64>,
     /// When a restore after `410` last went ahead (`note_restore`).
     pub restored_at: Option<i64>,
+    /// The vault's snapshot a restore after `410` found waiting for one under the new key (rule
+    /// 10): its position and seal epoch (`restore_after_410_tracked`).
+    pub waiting_snapshot: Option<(u64, u32)>,
     /// The run of consecutive unfinished pulls (`note_pull`).
     unfinished_pulls: u32,
     /// What the round's upload step shares with the transfer lanes of the same engine (ADR 0030):
@@ -451,6 +473,58 @@ pub async fn restore_after_410<R: Relay, D: ConnAccess>(
     creds: &Credentials,
     now: i64,
 ) -> SyncResult<RestoreReport> {
+    match restore_inner(relay, db, creds, now).await? {
+        Restored::Done(report) => Ok(report),
+        Restored::Waiting { .. } => Err(SyncError::SnapshotWaiting),
+    }
+}
+
+/// `restore_after_410` for the round: a snapshot that waits (rule 10) is remembered in `policy`
+/// (its position and seal epoch), and while the vault's newest snapshot is still that one and the
+/// rule still says wait (or no), it is not downloaded again; the answer is asked of the stored
+/// epoch and this device's state alone.
+pub async fn restore_after_410_tracked<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    policy: &mut SnapshotPolicy,
+    now: i64,
+) -> SyncResult<RestoreReport> {
+    if let Some((seq, epoch)) = policy.waiting_snapshot {
+        let info = relay.vault_info(&creds.auth()).await?;
+        let still = info.snapshot_seq == Some(seq)
+            && db.with_conn(|conn| {
+                Ok(snapshot_admissible(conn, epoch, seq, Taker::CatchingUp)? != Admissible::Yes)
+            })?;
+        if still {
+            log::info!("[SYNC] The vault's snapshot still waits for one under the new key");
+            return Err(SyncError::SnapshotWaiting);
+        }
+        policy.waiting_snapshot = None;
+    }
+    match restore_inner(relay, db, creds, now).await? {
+        Restored::Done(report) => {
+            policy.waiting_snapshot = None;
+            Ok(report)
+        }
+        Restored::Waiting { seq, epoch } => {
+            policy.waiting_snapshot = Some((seq, epoch));
+            Err(SyncError::SnapshotWaiting)
+        }
+    }
+}
+
+enum Restored {
+    Done(RestoreReport),
+    Waiting { seq: u64, epoch: u32 },
+}
+
+async fn restore_inner<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    now: i64,
+) -> SyncResult<Restored> {
     let blob = relay.get_snapshot(&creds.auth()).await?;
     let seq = blob.seq;
     let (plain, epoch) = open_off_thread(creds, blob).await?;
@@ -460,9 +534,9 @@ pub async fn restore_after_410<R: Relay, D: ConnAccess>(
     })
     .await?
     {
-        Restore::Done(report) => Ok(report),
+        Restore::Done(report) => Ok(Restored::Done(report)),
         Restore::Stopped(key) => Err(stopped(key)),
-        Restore::Waiting => Err(SyncError::SnapshotWaiting),
+        Restore::Waiting { .. } => Ok(Restored::Waiting { seq, epoch }),
     }
 }
 
@@ -535,7 +609,7 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
                 match restore_fitting(conn, &plain, epoch, seq, now, Refusal::Waits)? {
                     Restore::Done(report) => Heal::Restored(report),
                     Restore::Stopped(key) => Heal::Stopped(key),
-                    Restore::Waiting => Heal::Waiting,
+                    Restore::Waiting { settled } => Heal::Waiting { settled },
                 },
             )
         })
@@ -557,9 +631,13 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
             policy.examined_seq = Some(seq);
             Err(stopped(key))
         }
-        Heal::Waiting => {
+        Heal::Waiting { settled } => {
             log::info!("[SYNC] The vault's newest snapshot is sealed under an older key: waiting");
-            policy.examined_seq = Some(seq);
+            // Only a snapshot that can never fit is not looked at again; one that waits for more
+            // to be known (a base) may fit a round later.
+            if settled {
+                policy.examined_seq = Some(seq);
+            }
             Err(SyncError::SnapshotWaiting)
         }
     }
@@ -735,8 +813,11 @@ enum Dumped {
 
 enum Heal {
     NotHealing,
-    /// The snapshot heals but does not fit the key of its position (rule 10).
-    Waiting,
+    /// The snapshot heals but does not fit the key of its position (rule 10); `settled` as for
+    /// `Restore::Waiting`.
+    Waiting {
+        settled: bool,
+    },
     Restored(RestoreReport),
     /// The restore stopped with this validation key (`restore_or_note`).
     Stopped(String),
@@ -745,8 +826,11 @@ enum Heal {
 /// What `restore_or_note` did.
 enum Restore {
     Done(RestoreReport),
-    /// Rule 10: the snapshot may fit later; nothing was written.
-    Waiting,
+    /// Rule 10: nothing was written. `settled`: the answer cannot change for this snapshot
+    /// (`No`); otherwise (`Wait`) it can, once more is known.
+    Waiting {
+        settled: bool,
+    },
     /// Stopped on the snapshot: the `validation.*` key the restore answered.
     Stopped(String),
 }
@@ -790,11 +874,11 @@ fn restore_fitting(
     now: i64,
     refusal: Refusal,
 ) -> Result<Restore> {
-    match snapshot_admissible(conn, epoch, seq, false)? {
+    match snapshot_admissible(conn, epoch, seq, Taker::CatchingUp)? {
         Admissible::Yes => restore_or_note(conn, plain, now),
-        Admissible::Wait => Ok(Restore::Waiting),
+        Admissible::Wait => Ok(Restore::Waiting { settled: false }),
         Admissible::No => match refusal {
-            Refusal::Waits => Ok(Restore::Waiting),
+            Refusal::Waits => Ok(Restore::Waiting { settled: true }),
             Refusal::Invalid => {
                 log::warn!("[SYNC] The vault's snapshot does not fit the key of its position");
                 state::record_error(conn, RESTORE_STOPPED)?;

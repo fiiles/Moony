@@ -37,7 +37,7 @@ use super::engine::pull::DEFAULT_DEVICE_NAME;
 use super::engine::push;
 use super::engine::runtime::{rejoin_if_copy, CopyCheck};
 use super::engine::snapshots::{
-    off_thread, open_sealed, snapshot_admissible, Admissible, SnapshotPolicy,
+    off_thread, open_sealed, snapshot_admissible, Admissible, SnapshotPolicy, Taker,
 };
 use super::engine::{self, ConnAccess, PullEnd, PullReport, RoundMode};
 use super::error::{SyncError, SyncResult};
@@ -61,6 +61,7 @@ pub use super::backups::{PREFIX as REPAIR_BACKUP_PREFIX, SUFFIX as REPAIR_BACKUP
 
 const NO_SNAPSHOT: &str = "validation.syncVaultHasNoSnapshot";
 const INVALID_SNAPSHOT: &str = "validation.syncSnapshotInvalid";
+const WAITING_SNAPSHOT: &str = "validation.syncSnapshotWaiting";
 const ALREADY_ENABLED: &str = "validation.syncAlreadyEnabled";
 const SETUP_PENDING: &str = "validation.syncJoinSetupPending";
 const KIT_ACCOUNT_INVALID: &str = "validation.syncRecoveryAccountInvalid";
@@ -824,6 +825,13 @@ fn replace_profile(
                     None
                 }
             };
+            // Rule 10 for a device that already holds the heads (repair, re-sync): judged before
+            // the replace, which forgets the ranges it verified (`require_ranges`), against the
+            // base it stored; only a snapshot at or below it is taken, and one above the head is
+            // refused. No place to test: the replace sets it.
+            if let NewIdentity::Successor = who {
+                fit_the_key(conn, sealed, Taker::Replacing)?;
+            }
             keys::save_credentials(conn, creds)?;
             state::reset_chain(conn)?;
             state::reset_engine_marks(conn)?;
@@ -870,13 +878,10 @@ fn replace_profile(
                 let place = crate::services::sync::engine::seen::place(conn)?.unwrap_or(0);
                 head::require_ranges(conn, place, false)?;
             }
-            // Rule 10, a replace (nothing to be behind): a snapshot sealed under an older key
-            // than the newest held is taken at or below the head of the key change that ended
-            // that key, and refused above it. The heads are in `sync_epochs` by now (a holder's,
-            // a Kit's, the snapshot's own).
-            if snapshot_admissible(conn, sealed.epoch, sealed.seq, true)? != Admissible::Yes {
-                log::warn!("[SYNC] The snapshot lies above the key change that ended its key");
-                return Err(AppError::Validation(INVALID_SNAPSHOT.into()));
+            // Rule 10 for a joiner: heads from the holder or the Kit are in `sync_epochs` by now,
+            // and a snapshot sealed under an older key is taken at or below the head.
+            if let NewIdentity::Join(_) = who {
+                fit_the_key(conn, sealed, Taker::Joining)?;
             }
             Ok(report)
         })
@@ -902,6 +907,22 @@ fn replace_profile(
         log::warn!("[SYNC] Could not clear the restore marker after the join: {e}");
     }
     Ok(joined)
+}
+
+/// Rule 10 (`snapshot_admissible`) for a replace: `Wait` is `validation.syncSnapshotWaiting`, `No`
+/// is `validation.syncSnapshotInvalid`; either rolls the replace back.
+fn fit_the_key(conn: &Connection, sealed: SnapshotAt, taker: Taker) -> Result<()> {
+    match snapshot_admissible(conn, sealed.epoch, sealed.seq, taker)? {
+        Admissible::Yes => Ok(()),
+        Admissible::Wait => {
+            log::warn!("[SYNC] The snapshot waits for one under the new key");
+            Err(AppError::Validation(WAITING_SNAPSHOT.into()))
+        }
+        Admissible::No => {
+            log::warn!("[SYNC] The snapshot lies above the key change that ended its key");
+            Err(AppError::Validation(INVALID_SNAPSHOT.into()))
+        }
+    }
 }
 
 /// A joiner's key epochs (phase 5 §6.1): the heads its holder sent for the epochs it holds keys

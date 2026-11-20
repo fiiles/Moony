@@ -1361,6 +1361,291 @@ async fn a_vault_that_never_changed_its_key_restores_as_before() {
     ));
 }
 
+/// The vault of the lifted-head set-up (base `end`, head `end + 8`) in which B is up to date and
+/// has verified the change (its base is `end`); the server holds a forged old-key snapshot at
+/// `at` (a position, or `None` for end + 3). Returns `end`.
+async fn lifted_head_with_forged_snapshot(three: &Three, at: Option<u64>) -> u64 {
+    let end = assert_everyone_is_up_to_date(three);
+    three.vault.relay.lift_next_rotation_head(8);
+    remove(three, A, &[C]).await.expect("removed");
+    push_a_record(three).await;
+    let forged = at.unwrap_or(end + 3);
+    server_takes_snapshot(three, forged, forged_old_key_snapshot(three, forged)).await;
+    let verified = round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(verified.problem, None, "{verified:?}");
+    assert_eq!(
+        range::base_of(&three.vault.b.lock(), 1).expect("base"),
+        Some(end)
+    );
+    end
+}
+
+fn waiting_key(result: &crate::services::sync::error::SyncResult<impl std::fmt::Debug>) -> bool {
+    matches!(result, Err(error) if super::kit_join::key_of(error).as_deref() == Some("validation.syncSnapshotWaiting"))
+}
+
+/// R2-H3 through the re-sync (review of Task 7, I1): a device that holds the heads does not take an
+/// old-key snapshot above the base of the key change that ended its key when the person re-syncs
+/// it. B is up to date and verified; the vault's newest snapshot is C's, forged inside the range the
+/// server kept free. B is not replaced and C's rows do not reach it; it is told to wait for one
+/// under the new key.
+#[tokio::test]
+async fn a_resync_does_not_take_an_old_key_snapshot_above_the_base() {
+    use crate::services::sync::binding::NoBinding;
+    use crate::services::sync::join::resync_by_replace;
+
+    let three = three().await;
+    lifted_head_with_forged_snapshot(&three, None).await;
+    let dir = tempfile::tempdir().expect("dir");
+
+    let result = resync_by_replace(
+        &three.vault.relay,
+        &three.vault.b,
+        agreed(&three.vault.b),
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await;
+
+    assert!(
+        !has_institution(&three.vault.b.lock(), "c-in-snapshot"),
+        "{result:?}"
+    );
+    assert!(waiting_key(&result), "{result:?}");
+}
+
+/// The same through the repair of a device whose change capture broke.
+#[tokio::test]
+async fn a_repair_does_not_take_an_old_key_snapshot_above_the_base() {
+    use crate::services::sync::binding::NoBinding;
+    use crate::services::sync::join::repair_capture;
+
+    let three = three().await;
+    lifted_head_with_forged_snapshot(&three, None).await;
+    super::join::break_capture(&three.vault.b);
+    let dir = tempfile::tempdir().expect("dir");
+
+    let result = repair_capture(
+        &three.vault.relay,
+        &three.vault.b,
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await;
+
+    assert!(
+        !has_institution(&three.vault.b.lock(), "c-in-snapshot"),
+        "{result:?}"
+    );
+    assert!(waiting_key(&result), "{result:?}");
+}
+
+/// Above the head a re-sync is refused outright (`syncSnapshotInvalid`).
+#[tokio::test]
+async fn a_resync_refuses_an_old_key_snapshot_above_the_head() {
+    use crate::services::sync::binding::NoBinding;
+    use crate::services::sync::join::resync_by_replace;
+
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    three.vault.relay.lift_next_rotation_head(8);
+    remove(&three, A, &[C]).await.expect("removed");
+    push_a_record(&three).await;
+    let above = last_seq(&three);
+    assert!(above > end + 8);
+    server_takes_snapshot(&three, above, forged_old_key_snapshot(&three, above)).await;
+    round_of(&three.vault, &three.vault.b).await;
+    let dir = tempfile::tempdir().expect("dir");
+
+    let result = resync_by_replace(
+        &three.vault.relay,
+        &three.vault.b,
+        agreed(&three.vault.b),
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await;
+
+    assert!(invalid_key(&result), "{result:?}");
+    assert!(!has_institution(&three.vault.b.lock(), "c-in-snapshot"));
+}
+
+/// The honest case: the only snapshot predates the removal (at or below the base), and a re-sync of
+/// a device that verified the change takes it.
+#[tokio::test]
+async fn a_resync_takes_an_old_key_snapshot_at_or_below_the_base() {
+    use crate::services::sync::binding::NoBinding;
+    use crate::services::sync::join::resync_by_replace;
+
+    let three = three().await;
+    assert_everyone_is_up_to_date(&three);
+    institution(&three.vault.a.lock(), "a-in-the-old-snapshot");
+    super::kit_join::snapshot_by(&three, &three.vault.a).await;
+    let dumped = three.vault.relay.snapshot_seq().expect("snapshot");
+    remove(&three, A, &[C]).await.expect("removed");
+    push_a_record(&three).await;
+    round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(
+        range::base_of(&three.vault.b.lock(), 1).expect("base"),
+        Some(dumped)
+    );
+    let dir = tempfile::tempdir().expect("dir");
+
+    resync_by_replace(
+        &three.vault.relay,
+        &three.vault.b,
+        agreed(&three.vault.b),
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect("resync");
+
+    assert!(has_institution(
+        &three.vault.b.lock(),
+        "a-in-the-old-snapshot"
+    ));
+}
+
+/// Review of Task 7, M2: a restore that waits is not downloaded again while the vault's newest
+/// snapshot is the same one and the answer is still "wait".
+#[tokio::test]
+async fn a_waiting_restore_does_not_download_the_same_snapshot_every_round() {
+    let three = three().await;
+    let end = lifted_head_with_forged_snapshot(&three, None).await;
+    lag_behind(&three.vault.b.lock(), end);
+    let mut policy = SnapshotPolicy::default();
+    let downloads = |three: &Three| {
+        three
+            .vault
+            .relay
+            .calls()
+            .iter()
+            .filter(|route| matches!(route, Route::GetSnapshot))
+            .count()
+    };
+    for round in 1..=3 {
+        three
+            .vault
+            .relay
+            .fail_next(Route::Pull, RelayError::SnapshotRequired);
+        let report = run_round(
+            &three.vault.relay,
+            &three.vault.b,
+            &mut policy,
+            RoundMode::Normal,
+            NOW,
+            0,
+        )
+        .await
+        .expect("round");
+        assert_eq!(
+            report.problem,
+            Some(SyncProblem::KeyChangeWaiting),
+            "round {round}"
+        );
+        assert_eq!(downloads(&three), 1, "round {round}: downloaded once");
+    }
+}
+
+/// Review of Task 7, M3: a heal that waits because the snapshot may fit later is not marked
+/// examined for good (only a snapshot that never fits is).
+#[tokio::test]
+async fn a_heal_that_waits_for_more_to_be_known_is_not_marked_examined() {
+    let three = three().await;
+    let end = lifted_head_with_forged_snapshot(&three, None).await;
+    lag_behind(&three.vault.b.lock(), end);
+    let b_creds = keys::credentials(&three.vault.b.lock())
+        .expect("creds")
+        .expect("bound");
+    exec(
+        &three.vault.b.lock(),
+        &format!("UPDATE sync_state SET missed_below_barrier = {}", end + 3),
+    );
+    let info = three
+        .vault
+        .relay
+        .vault_info(&b_creds.auth())
+        .await
+        .expect("info");
+    let mut policy = SnapshotPolicy::default();
+
+    let waited = heal_missed(
+        &three.vault.relay,
+        &three.vault.b,
+        &b_creds,
+        &mut policy,
+        &info,
+        NOW,
+    )
+    .await;
+
+    assert!(
+        matches!(waited, Err(SyncError::SnapshotWaiting)),
+        "{waited:?}"
+    );
+    assert_eq!(policy.examined_seq, None);
+}
+
+/// Review of Task 7, M8: above the head a catching-up device that is *behind* the snapshot is
+/// refused by the head rule, not by the place rule.
+#[tokio::test]
+async fn an_old_key_snapshot_above_the_head_is_refused_by_a_device_behind_it() {
+    let three = three().await;
+    let end = assert_everyone_is_up_to_date(&three);
+    three.vault.relay.lift_next_rotation_head(8);
+    remove(&three, A, &[C]).await.expect("removed");
+    push_a_record(&three).await;
+    let above = last_seq(&three);
+    assert!(above > end + 8);
+    server_takes_snapshot(&three, above, forged_old_key_snapshot(&three, above)).await;
+    round_of(&three.vault, &three.vault.b).await;
+    lag_behind(&three.vault.b.lock(), end);
+    three
+        .vault
+        .relay
+        .fail_next(Route::Pull, RelayError::SnapshotRequired);
+
+    let refused = round_result(&three, B).await;
+
+    assert!(invalid_key(&refused), "{refused:?}");
+    assert!(!has_institution(&three.vault.b.lock(), "c-in-snapshot"));
+}
+
+/// Review of Task 7, M8: with two key changes a snapshot sealed under epoch 0 is judged against
+/// the first change's head and base, not the second's.
+#[tokio::test]
+async fn rule_10_uses_the_first_key_change_when_there_are_two() {
+    use crate::services::sync::engine::snapshots::{snapshot_admissible, Admissible, Taker};
+
+    let three = three().await;
+    remove(&three, A, &[C]).await.expect("removed");
+    stayers_sync(&three).await;
+    new_kit(&three, A).await.expect("a second key change");
+    stayers_sync(&three).await;
+    let conn = three.vault.a.lock();
+    assert_eq!(key_epoch(&conn), 2);
+    let heads = state::epochs(&conn).expect("epochs");
+    let (head1, head2) = (heads[&1], heads[&2]);
+    let base1 = range::base_of(&conn, 1)
+        .expect("base")
+        .expect("A read the range");
+    assert!(head1 < head2 && base1 >= 1, "{base1} {head1} {head2}");
+    lag_behind(&conn, 0);
+    let judged = |seq| snapshot_admissible(&conn, 0, seq, Taker::CatchingUp).expect("judged");
+
+    assert_eq!(judged(base1), Admissible::Yes, "at the first change's base");
+    assert_eq!(
+        judged(head1 + 1),
+        Admissible::No,
+        "above the first change's head, though below the second's"
+    );
+}
+
 /// Rule 9a (spec §2.3), the hole the third review read from the code: a device that holds its
 /// cursor behind a gap has handled the positions above it, yet it would read them again at the
 /// next pull and take whatever the server serves there. After a key change the server serves the

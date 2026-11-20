@@ -323,6 +323,7 @@
     "syncSnapshotBelowBarrier": "Synchronizovaná kopie vašich dat vznikla před poslední aktualizací Moony a nelze ji použít. Zařízení s nejnovější verzí musí nahrát novou.",
     "syncSnapshotClockAhead": "Synchronizovaná kopie vašich dat má datum víc než deset let dopředu, a proto nebyla použita. Zařízení se správným datem a časem musí nahrát novou.",
     "syncSnapshotInvalid": "Synchronizovaná kopie vašich dat je poškozená a nelze ji obnovit.",
+    "syncSnapshotWaiting": "Server zatím nemá kopii dat, ze které by šlo toto zařízení bezpečně obnovit. Nahraje ji některé z vašich dalších zařízení při příští synchronizaci; pak to zkuste znovu.",
     "syncTooManyDevices": "Moony synchronizuje nejvýš 64 zařízení. Nejdřív odeberte ta, která už nepoužíváte.",
     "syncRemovalPlanChanged": "Seznam zařízení se mezitím změnil. Zkontrolujte ho a potvrďte znovu.",
     "syncRemovalPending": "Odebrání zařízení ještě probíhá. Zkuste to za chvíli.",

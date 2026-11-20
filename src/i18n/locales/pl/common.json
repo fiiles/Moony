@@ -323,6 +323,7 @@
     "syncSnapshotBelowBarrier": "Zsynchronizowana kopia twoich danych powstała przed ostatnią aktualizacją Moony i nie można jej użyć. Urządzenie z najnowszą wersją musi przesłać nową.",
     "syncSnapshotClockAhead": "Zsynchronizowana kopia twoich danych ma datę późniejszą o ponad dziesięć lat, więc nie została użyta. Urządzenie z poprawną datą i godziną musi przesłać nową.",
     "syncSnapshotInvalid": "Zsynchronizowana kopia twoich danych jest uszkodzona i nie udało się jej przywrócić.",
+    "syncSnapshotWaiting": "Serwer synchronizacji nie ma jeszcze kopii twoich danych, z której to urządzenie mogłoby bezpiecznie przywrócić dane. Jedno z twoich pozostałych urządzeń prześle ją przy następnej synchronizacji; spróbuj ponownie po tym.",
     "syncTooManyDevices": "Moony synchronizuje najwyżej 64 urządzenia. Najpierw usuń te, których już nie używasz.",
     "syncRemovalPlanChanged": "Lista urządzeń w międzyczasie się zmieniła. Sprawdź ją i potwierdź ponownie.",
     "syncRemovalPending": "Usuwanie urządzeń jeszcze trwa. Spróbuj ponownie za chwilę.",

@@ -830,7 +830,8 @@ async fn round_pass<R: Relay, D: ConnAccess>(
                 report.problem = Some(SyncProblem::RelayError);
                 return Ok(Pass::Done);
             }
-            let restored = snapshots::restore_after_410(relay, db, creds, now).await;
+            let restored =
+                snapshots::restore_after_410_tracked(relay, db, creds, policy, now).await;
             // Only a restore that ran, or was refused on the snapshot's own bytes, uses up the
             // back-off window; a transient failure leaves the next round free to try again.
             if matches!(
@@ -1197,7 +1198,9 @@ async fn after_push<R: Relay, D: ConnAccess>(
         // The heal is optional: a snapshot under an older key than its position allows waits for
         // one under the new key, which this device says and goes on (the upload below may be
         // that one).
-        Err(SyncError::SnapshotWaiting) => report.problem = Some(SyncProblem::KeyChangeWaiting),
+        Err(SyncError::SnapshotWaiting) => {
+            report.problem.get_or_insert(SyncProblem::KeyChangeWaiting);
+        }
         Err(error) => return Err(error),
     }
     if !report.pull.as_ref().is_some_and(PullReport::may_snapshot) {

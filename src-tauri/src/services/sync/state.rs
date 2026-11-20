@@ -619,10 +619,11 @@ pub fn clear_snapshot_owed_if_covered(
     };
     let Some(head) = u32::try_from(epoch)
         .ok()
-        .and_then(|epoch| epochs(conn).ok()?.get(&epoch).copied())
+        .and_then(|epoch| epochs(conn).map(|all| all.get(&epoch).copied()).transpose())
     else {
         return Ok(());
     };
+    let head = head?;
     if vault_snapshot.is_some_and(|seq| seq > head) {
         conn.execute(
             "UPDATE sync_state SET snapshot_epoch_due = 0 WHERE id = 1",

@@ -1238,10 +1238,10 @@ async fn a_retired_token_reads_only_the_vault_info_and_the_key_changes() {
         relay.get_snapshot(&new_auth()).await.expect("snapshot").seq,
         1
     );
-    // A colluding relay serves a retired token's reads too.
-    relay.set_accept_retired_writes(true);
+    // A relay that hides a key change serves a retired token's reads too (its own knob).
+    relay.set_accept_retired_reads(true);
     assert_eq!(relay.pull(&auth(), 0, 10).await.expect("pull").ops.len(), 2);
-    relay.set_accept_retired_writes(false);
+    relay.set_accept_retired_reads(false);
 
     // Writes: push, snapshot put, blob put and delete, vault delete, a second rotation.
     let read_only = Err(RelayError::TokenReadOnly);

@@ -210,6 +210,24 @@ struct Shared {
 }
 
 impl Shared {
+    fn new(blobs: BlobPolicy) -> Self {
+        Self {
+            wake: Notify::new(),
+            stop: AtomicBool::new(false),
+            running: AtomicBool::new(true),
+            lanes_running: AtomicBool::new(true),
+            requested: AtomicBool::new(false),
+            sync_now: AtomicBool::new(false),
+            runtime: Mutex::new(Runtime::default()),
+            blobs,
+            started: AtomicBool::new(false),
+            backing_off: AtomicBool::new(false),
+            status_dirty: AtomicBool::new(false),
+            fast_until: Mutex::new(None),
+            fast_baseline: Mutex::new(None),
+        }
+    }
+
     fn runtime(&self) -> Runtime {
         self.runtime
             .lock()
@@ -345,21 +363,7 @@ pub fn spawn_with<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
     events: E,
     blobs: BlobPolicy,
 ) -> EngineHandle {
-    let shared = Arc::new(Shared {
-        wake: Notify::new(),
-        stop: AtomicBool::new(false),
-        running: AtomicBool::new(true),
-        lanes_running: AtomicBool::new(true),
-        requested: AtomicBool::new(false),
-        sync_now: AtomicBool::new(false),
-        runtime: Mutex::new(Runtime::default()),
-        blobs: blobs.clone(),
-        started: AtomicBool::new(false),
-        backing_off: AtomicBool::new(false),
-        status_dirty: AtomicBool::new(false),
-        fast_until: Mutex::new(None),
-        fast_baseline: Mutex::new(None),
-    });
+    let shared = Arc::new(Shared::new(blobs.clone()));
     let (relay, events) = (Arc::new(relay), Arc::new(events));
     let mut policy = SnapshotPolicy::default();
     policy.blobs = blobs;
@@ -917,29 +921,7 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
     /// gave nothing is not asked for again by every wake of the lanes), and at most once per
     /// `KEY_ASK_GAP`: the rate is bounded by that gap, whatever the server answers.
     fn ask_for_key_pickup(&self) {
-        if matches!(
-            self.shared.runtime().problem,
-            Some(
-                SyncProblem::KeyRotated
-                    | SyncProblem::KeyNotGiven
-                    | SyncProblem::KeyChangeUnverified
-                    | SyncProblem::KeyChangeWaiting
-            )
-        ) {
-            return;
-        }
-        {
-            let mut asked = self
-                .key_asked_at
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if asked.is_some_and(|at| at.elapsed() < KEY_ASK_GAP) {
-                return;
-            }
-            *asked = Some(Instant::now());
-        }
-        self.shared.requested.store(true, Ordering::SeqCst);
-        self.shared.wake.notify_one();
+        ask_for_round(&self.shared, &self.key_asked_at);
     }
 
     /// Once per engine, before either lane transfers: the incomplete blobs earlier transfers left
@@ -1064,6 +1046,67 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
             self.ask_for_key_pickup();
         }
         Ok(report.uploaded + report.stored > 0)
+    }
+}
+
+/// The request behind `Lanes::ask_for_key_pickup`: sets the flag an automatic trigger sets and
+/// wakes the loop, unless the round's problem is already a key change or the last ask was less
+/// than `KEY_ASK_GAP` ago (`asked_at`).
+fn ask_for_round(shared: &Shared, asked_at: &Mutex<Option<Instant>>) {
+    if matches!(
+        shared.runtime().problem,
+        Some(
+            SyncProblem::KeyRotated
+                | SyncProblem::KeyNotGiven
+                | SyncProblem::KeyChangeUnverified
+                | SyncProblem::KeyChangeWaiting
+        )
+    ) {
+        return;
+    }
+    {
+        let mut asked = asked_at
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if asked.is_some_and(|at| at.elapsed() < KEY_ASK_GAP) {
+            return;
+        }
+        *asked = Some(Instant::now());
+    }
+    shared.requested.store(true, Ordering::SeqCst);
+    shared.wake.notify_one();
+}
+
+#[cfg(test)]
+mod key_ask_tests {
+    use super::*;
+
+    /// The lanes' request for a round after a retired token is rate-bound: once, then not again
+    /// within `KEY_ASK_GAP`, never while the round's problem is already a key change, and again
+    /// after the gap.
+    #[tokio::test(start_paused = true)]
+    async fn the_lanes_ask_for_a_round_once_per_gap_and_not_during_a_key_problem() {
+        let shared = Shared::new(BlobPolicy::default());
+        let asked_at = Mutex::new(None);
+        let taken = || shared.requested.swap(false, Ordering::SeqCst);
+
+        ask_for_round(&shared, &asked_at);
+        assert!(taken(), "the first ask sets the flag");
+
+        ask_for_round(&shared, &asked_at);
+        assert!(!taken(), "a second ask inside the gap does not");
+        tokio::time::advance(KEY_ASK_GAP - Duration::from_secs(1)).await;
+        ask_for_round(&shared, &asked_at);
+        assert!(!taken(), "still inside the gap");
+
+        tokio::time::advance(Duration::from_secs(2)).await;
+        shared.update(|r| r.problem = Some(SyncProblem::KeyNotGiven));
+        ask_for_round(&shared, &asked_at);
+        assert!(!taken(), "not while the problem is a key problem");
+
+        shared.update(|r| r.problem = None);
+        ask_for_round(&shared, &asked_at);
+        assert!(taken(), "after the gap, with no key problem, it asks again");
     }
 }
 

@@ -354,21 +354,24 @@ async fn two_devices_removing_each_other_at_once_leave_exactly_one() {
 }
 
 /// Plan Task 14: A removes C while B is pairing D: D received the credentials B sealed before the
-/// change. Joining from the snapshot of before the change goes through and the change gave D
-/// nothing; the join itself is refused as a failed pairing, with nothing replaced, both when
-/// the snapshot is already under the new key (As built R-73) and when it is the old one (D's token
-/// was retired, protocol 3). Either way D pairs again and syncs.
+/// change, so its token is retired by the time it joins. Two ways the join is refused, each as a
+/// failed pairing with nothing replaced, after which D pairs again and syncs:
+/// - an honest protocol-3 server answers `403` to D's snapshot read (D's token was retired);
+/// - a server that hides the key change and serves the retired token's reads (its own knob)
+///   hands D a snapshot already sealed under the new key, which D was not given (As built R-73,
+///   `KeyAhead` by epoch).
 #[tokio::test]
-async fn a_pairing_overtaken_by_a_removal_ends_key_not_given_and_pairs_again() {
-    for newer_snapshot in [false, true] {
+async fn a_pairing_overtaken_by_a_removal_is_refused_and_pairs_again() {
+    for server_serves_retired_reads in [false, true] {
         let three = three().await;
         snapshot_by(&three, &three.vault.b).await;
         let payload = holder::announced_payload(&three.vault.b.lock(), NOW)
             .expect("payload")
             .expect("sync is on");
         remove(&three, A, &[C]).await.expect("removed");
-        if newer_snapshot {
+        if server_serves_retired_reads {
             snapshot_by(&three, &three.vault.a).await;
+            three.vault.relay.set_accept_retired_reads(true);
         }
         let dir = tempfile::tempdir().expect("dir");
         let d = TestConn::new(migrated());
@@ -383,13 +386,17 @@ async fn a_pairing_overtaken_by_a_removal_ends_key_not_given_and_pairs_again() {
         assert_eq!(
             validation_key(&error.to_app_error()).as_deref(),
             Some("validation.syncPairingFailed"),
-            "newer_snapshot={newer_snapshot}: {error:?}"
+            "serves retired reads={server_serves_retired_reads}: {error:?}"
         );
         {
             let conn = d.lock();
             assert!(!sync_on(&conn) && has_institution(&conn, "local-only"));
+            assert!(
+                state::load(&conn).expect("state").is_none(),
+                "the refused join left D no device identity of its own"
+            );
         }
-        let first: Option<DeviceId> = None;
+        three.vault.relay.set_accept_retired_reads(false);
 
         round_of(&three.vault, &three.vault.a).await;
         round_of(&three.vault, &three.vault.b).await;
@@ -405,7 +412,6 @@ async fn a_pairing_overtaken_by_a_removal_ends_key_not_given_and_pairs_again() {
         }
         let (a, b, d) = (three.vault.a.lock(), three.vault.b.lock(), d.lock());
         let again = me(&d);
-        assert_ne!(Some(again), first);
         assert_eq!(key_epoch(&d), 1);
         let entry = trust::entry(&a, again).expect("entry").expect("A pins D");
         assert_eq!((entry.state, entry.issuer), (TrustState::Trusted, B));
@@ -587,6 +593,8 @@ async fn a_chain_a_removed_device_forges_in_a_forked_slot_stays_out() {
     }
     three.vault.relay.set_rotation(&vault_b64(&three.vault), 0);
     three.vault.relay.set_accept_retired_writes(true);
+    // The server hides the key change from lagging B: it serves B's old-token reads.
+    three.vault.relay.set_accept_retired_reads(true);
     let (f_secret, f_pub) = box_key(0x46);
     let (g_secret, g_pub) = box_key(0x47);
     let f_seed = SignSeed::from_bytes(Zeroizing::new([0x46; 32]));
@@ -614,6 +622,7 @@ async fn a_chain_a_removed_device_forges_in_a_forked_slot_stays_out() {
     }
     three.vault.relay.set_rotation(&vault_b64(&three.vault), 1);
     three.vault.relay.set_accept_retired_writes(false);
+    three.vault.relay.set_accept_retired_reads(false);
     round_of(&three.vault, &three.vault.b).await;
 
     {

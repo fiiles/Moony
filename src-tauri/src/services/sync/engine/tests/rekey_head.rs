@@ -69,6 +69,8 @@ async fn push_a_unsent(three: &Three) {
 /// it.
 async fn forge_from_c(three: &Three, id: &str) {
     three.vault.relay.set_accept_retired_writes(true);
+    // The server also hides the key change from a lagging device: it serves it old-token reads.
+    three.vault.relay.set_accept_retired_reads(true);
     let forged = write_and_seal(&three.vault, &three.c, id);
     push(&three.vault.relay, &three.vault.creds, &[forged]).await;
 }

@@ -168,8 +168,9 @@ struct FakeState {
     /// of a retired token and a key-change bundle are measured on.
     clock_offset: i64,
     /// A relay colluding with a removed device: a retired token still writes
-    /// (`set_accept_retired_writes`).
+    /// (`set_accept_retired_writes`) and reads (`set_accept_retired_reads`).
     accept_retired_writes: bool,
+    accept_retired_reads: bool,
     /// What `rekeys` answers instead of the stored bundles (`set_rekeys_answer`): a lying relay's
     /// pages, built from `after`, never checked against the contract.
     rekeys_answer: Option<RekeysAnswer>,
@@ -215,6 +216,7 @@ impl Default for FakeState {
             server_now: None,
             clock_offset: 0,
             accept_retired_writes: false,
+            accept_retired_reads: false,
             rekeys_answer: None,
             rotation_head_lift: 0,
         }
@@ -525,11 +527,17 @@ impl FakeRelay {
     }
 
     /// A relay colluding with a removed device: from now on (until switched off) a retired token
-    /// pushes and reads (the pull, the snapshot, the blobs) as if it were current. The vault's
-    /// info and the key changes need no help (a retired token looks them up anyway); only
-    /// rotations still need the current token.
+    /// pushes (and uploads snapshots) as if it were current. Only rotations still need the
+    /// current token.
     pub fn set_accept_retired_writes(&self, accept: bool) {
         self.lock().accept_retired_writes = accept;
+    }
+
+    /// A relay that also serves a retired token's reads (pull, snapshot, blobs), which an honest
+    /// protocol-3 server refuses (`token_read_only`): for a server that hides a key change from a
+    /// lagging device. The vault's info and the key changes need no help.
+    pub fn set_accept_retired_reads(&self, accept: bool) {
+        self.lock().accept_retired_reads = accept;
     }
 
     /// A relay colluding with a removed device (audit 2026-11-20, R2-H1): the next rotation
@@ -628,8 +636,9 @@ impl FakeState {
     }
 
     /// `Vaults.verdict`: the vault exists; the token is its current one, or one rotated away less
-    /// than 30 days ago (which may only look up: the vault's info and the key changes); the subscription is live (write) or within the
-    /// read grace (read); `Owner` needs no subscription.
+    /// than 30 days ago (which may only look up the vault's info and the key changes, unless the
+    /// relay colludes: `set_accept_retired_writes`, `set_accept_retired_reads`); the subscription
+    /// is live (write) or within the read grace (read, lookup); `Owner` needs no subscription.
     fn authorize(&self, vault: &VaultAuth, access: Access) -> RelayResult<&Vault> {
         let stored = self
             .vaults
@@ -644,10 +653,11 @@ impl FakeState {
             if !previous {
                 return Err(RelayError::Unauthorized);
             }
-            // A colluding relay (`set_accept_retired_writes`) also serves the removed device's
-            // reads; an honest one lets a retired token only look up.
-            let colluding =
-                self.accept_retired_writes && matches!(access, Access::Write | Access::Read);
+            let colluding = match access {
+                Access::Write => self.accept_retired_writes,
+                Access::Read => self.accept_retired_reads,
+                Access::Lookup | Access::Owner => false,
+            };
             if access != Access::Lookup && !colluding {
                 return Err(RelayError::TokenReadOnly);
             }

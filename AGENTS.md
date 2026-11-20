@@ -68,6 +68,8 @@ cd src-tauri && cargo test         # Rust tests
 - Tiered process per `docs/standards/workflow.md`: feature → spec + plan; small fix → TDD + verify.
 - Specs go in `docs/specs/`, plans in `docs/plans/`.
 - Gates: fast pre-commit / heavy pre-push / authoritative CI.
+- A git worktree whose branch is merged into `main` is removed right away, builds included,
+  to save disk space → `docs/standards/workflow.md` section 6.
 
 ## Testing policy
 

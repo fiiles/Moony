@@ -17,7 +17,7 @@
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use moony_keychain::{KeychainError, KeychainExt};
@@ -695,8 +695,8 @@ pub(crate) async fn say_left(app: &AppHandle, db: &Database) {
         log::warn!("[SYNC] This device did not say that it left: no profile folder");
         return;
     };
-    let native = KeychainBinding { app: app.clone() };
-    setup::leave_best_effort(&relay, &session, &dir, &native, setup::LEAVE_BUDGET).await;
+    let native = Arc::new(KeychainBinding { app: app.clone() });
+    setup::leave_best_effort(&relay, &session, &dir, native, setup::LEAVE_BUDGET).await;
 }
 
 // ============================================================================

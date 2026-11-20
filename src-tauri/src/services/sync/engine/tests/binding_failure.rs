@@ -269,7 +269,7 @@ impl BindingNative for OtherMachine {
 /// Turning sync off asks the copy check before the device says it left (D10, first audit M10): a
 /// profile whose binding answers `native` signs and sends nothing, and the original device keeps
 /// syncing as before.
-async fn nothing_is_said_when_the_check_answers(native: &dyn BindingNative) {
+async fn nothing_is_said_when_the_check_answers(native: Arc<dyn BindingNative>) {
     let three = three().await;
     binding::write_binding(&three.vault.a.lock(), three.dir.path(), &Sealing).expect("binding");
     let ops = three.vault.relay.ops().len();
@@ -316,10 +316,10 @@ async fn nothing_is_said_when_the_check_answers(native: &dyn BindingNative) {
 
 #[tokio::test]
 async fn a_copy_whose_binding_cannot_be_checked_does_not_say_left() {
-    nothing_is_said_when_the_check_answers(&AlwaysFailing).await;
+    nothing_is_said_when_the_check_answers(Arc::new(AlwaysFailing)).await;
 }
 
 #[tokio::test]
 async fn a_copy_whose_binding_says_not_this_device_does_not_say_left() {
-    nothing_is_said_when_the_check_answers(&OtherMachine).await;
+    nothing_is_said_when_the_check_answers(Arc::new(OtherMachine)).await;
 }

@@ -24,6 +24,7 @@
 //! rounds (`engine::exclusive`) while they change what a round works on.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 use reqwest::Url;
@@ -907,7 +908,7 @@ pub async fn leave_best_effort<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     data_dir: &Path,
-    native: &dyn BindingNative,
+    native: Arc<dyn BindingNative>,
     budget: Duration,
 ) {
     let attempt = async {
@@ -915,7 +916,13 @@ pub async fn leave_best_effort<R: Relay, D: ConnAccess>(
         // D10 (first audit M10): the copy check the engine's start runs, before anything is signed.
         // A copy of a profile (or one that cannot be checked) must not say the original left.
         // The failed-starts count is the app start's: this path never touches it.
-        let check = db.with_conn(|conn| binding::check_without_counting(conn, data_dir, native));
+        // Off the runtime like every other database access here: the native open can be slow, and
+        // awaiting it keeps the budget's timeout in force.
+        let dir = data_dir.to_path_buf();
+        let check = on_db(db, move |conn| {
+            binding::check_without_counting(conn, &dir, native.as_ref())
+        })
+        .await;
         if !matches!(check, Ok(binding::StartupCheck::Fine)) {
             log::info!("[SYNC] This device did not say that it left: the profile is not confirmed as this device's own");
             return Ok(());

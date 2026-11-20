@@ -205,7 +205,12 @@ fn check_binding(
             Ok(StartupCheck::Rejoin(RejoinReason::BindingMismatch))
         }
         Err(BindingFailure::Failed(reason)) => {
-            log::warn!("[SYNC] The device binding could not be checked at this start: {reason}");
+            // Turning sync off (no counting) logs its own line: one line for that path.
+            if counting.is_some() {
+                log::warn!(
+                    "[SYNC] The device binding could not be checked at this start: {reason}"
+                );
+            }
             if count_failure {
                 let failed = failed_starts(conn)?.saturating_add(1);
                 if failed >= FAILED_STARTS_BEFORE_REJOIN {

@@ -52,7 +52,7 @@ async fn a_device_that_leaves_signs_and_sends_its_left_record() {
         &three.vault.relay,
         &three.vault.a,
         three.dir.path(),
-        &NoBinding,
+        Arc::new(NoBinding),
         setup::LEAVE_BUDGET,
     )
     .await;
@@ -84,7 +84,7 @@ async fn leaving_twice_keeps_the_first_record() {
         &three.vault.relay,
         &three.vault.a,
         three.dir.path(),
-        &NoBinding,
+        Arc::new(NoBinding),
         setup::LEAVE_BUDGET,
     )
     .await;
@@ -94,7 +94,7 @@ async fn leaving_twice_keeps_the_first_record() {
         &three.vault.relay,
         &three.vault.a,
         three.dir.path(),
-        &NoBinding,
+        Arc::new(NoBinding),
         setup::LEAVE_BUDGET,
     )
     .await;
@@ -114,7 +114,7 @@ async fn a_slow_server_never_holds_the_leave_past_its_budget() {
         &relay,
         &three.vault.a,
         three.dir.path(),
-        &NoBinding,
+        Arc::new(NoBinding),
         setup::LEAVE_BUDGET,
     )
     .await;
@@ -142,7 +142,7 @@ async fn a_failed_leave_is_ignored_and_a_profile_without_sync_sends_nothing() {
         &three.vault.relay,
         &three.vault.a,
         three.dir.path(),
-        &NoBinding,
+        Arc::new(NoBinding),
         setup::LEAVE_BUDGET,
     )
     .await;
@@ -160,7 +160,7 @@ async fn a_failed_leave_is_ignored_and_a_profile_without_sync_sends_nothing() {
         &three.vault.relay,
         &three.vault.b,
         three.dir.path(),
-        &NoBinding,
+        Arc::new(NoBinding),
         setup::LEAVE_BUDGET,
     )
     .await;
@@ -181,7 +181,7 @@ async fn a_removed_device_does_not_leave() {
         &three.vault.relay,
         &three.c,
         three.dir.path(),
-        &NoBinding,
+        Arc::new(NoBinding),
         setup::LEAVE_BUDGET,
     )
     .await;

@@ -132,7 +132,7 @@ async fn the_announcement_goes_out_before_the_holders_later_left_record() {
         &three.vault.relay,
         &three.vault.a,
         three.dir.path(),
-        &NoBinding,
+        Arc::new(NoBinding),
         setup::LEAVE_BUDGET,
     )
     .await;

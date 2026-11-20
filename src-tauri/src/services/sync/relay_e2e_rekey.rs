@@ -575,7 +575,14 @@ async fn a_kit_sealed_by_a_device_that_left_still_joins() {
     settle(&relay, &[&a, &b]).await;
 
     // A, the Kit's creator and its envelope's signer, leaves.
-    leave_best_effort(&relay, &a.db, a.dir(), &NoBinding, LEAVE_BUDGET).await;
+    leave_best_effort(
+        &relay,
+        &a.db,
+        a.dir(),
+        std::sync::Arc::new(NoBinding),
+        LEAVE_BUDGET,
+    )
+    .await;
     turn_off_between_rounds(&a.db, a.dir()).await.expect("off");
     assert!(!a.enabled());
     b.round(&relay).await;

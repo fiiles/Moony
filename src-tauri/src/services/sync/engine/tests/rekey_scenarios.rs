@@ -239,7 +239,14 @@ async fn join_named(
 
 /// A device that turns sync off as the app does: its `left` record goes out, then sync is off.
 async fn turn_off_and_leave(vault: &Vault, device: &TestConn, dir: &Path) {
-    setup::leave_best_effort(&vault.relay, device, dir, &NoBinding, setup::LEAVE_BUDGET).await;
+    setup::leave_best_effort(
+        &vault.relay,
+        device,
+        dir,
+        Arc::new(NoBinding),
+        setup::LEAVE_BUDGET,
+    )
+    .await;
     setup::turn_off_between_rounds(device, dir)
         .await
         .expect("turned off");

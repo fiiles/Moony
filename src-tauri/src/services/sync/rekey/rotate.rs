@@ -15,19 +15,43 @@
 //! server error, a rate limit) keeps it. The only key change that removes no device makes a new
 //! Kit ("Vytvořit novou sadu").
 //!
+//! A removal has two preconditions besides the person's consent. No key change may be pending, and
+//! no head may be unverified, this device's own or another's (`check`:
+//! `validation.syncChangeInProgress`; the same refusal covers a new Kit; one given up is
+//! `validation.syncKeyRotated`). And the range between
+//! this device's cursor and the server's head must be one it can read to its end (spec
+//! 2026-11-20-sync-audit-2-fixes-design §2.3 step 1, `range_is_readable`): the server's floor is
+//! not above the cursor, and its head is not more than `REMOVAL_MAX_BEHIND` above it, else the
+//! removal is refused before anything is written (`validation.syncRemovalNeedsSync`; a normal
+//! round restores first). A longer range could never be read, so nobody would verify the head,
+//! and the device being removed could make it that long by pushing while the remover does not
+//! pull. The head is the server's and unauthenticated: a lie can only refuse. The vault's newest
+//! snapshot is no precondition: the device being removed could keep moving it.
+//!
+//! The pending change records the base, this device's cursor when it was first sent (version 3 of
+//! the stored value): the range its signed head binds starts there, and a lost answer commits with
+//! the same base. A stored version-2 value, written before the base existed, is not resolved: it
+//! is wiped with the notice that the removal was not done.
+//!
 //! A pending change is resolved at every engine start and at the start of every round, before
 //! anything else and with no person needed (the consent was given): the new token reads the vault
 //! → the change landed, commit it with the head of its bundle; the new token is unknown (`401`) →
 //! it did not land, send it again (its Kit part unchanged); a retired token then (`403`) → its own
 //! bundle on the server means it landed after all (commit), else another device changed the key
 //! first. A change a resolution ends without it happening leaves a notice
-//! (`rekey::RemovalNotDone`). The commit queues the signed head of the change (`rekey::head`). No
-//! round pushes while a change is pending. The pending JSON holds the new key and the new Kit's
-//! token (never its seed): it is written and read only here, in wiped buffers, and never logged.
+//! (`rekey::RemovalNotDone`).
+//!
+//! The commit is provisional about the head: it makes the new key current and records the head as
+//! not verified (`head::note_own_unverified`) and queues nothing. Straight after it,
+//! `finish_own_head` reads the range and signs what it found (`head::verify_own`); when that
+//! cannot finish the device holds still, and every round tries again. While the change is pending,
+//! or its head is unsigned, no round pushes, seals again or uploads a snapshot. The pending JSON
+//! holds the new key and the new Kit's token (never its seed): it is written and read only here,
+//! in wiped buffers, and never logged.
 //!
 //! What the remover had not sent is sealed again under the new key by its next round
-//! (`reseal`), once its pull has passed the rotation point; a crash after the commit leaves that
-//! to the first round.
+//! (`reseal`), once its pull has passed the rotation point and its own head is signed; a crash
+//! after the commit leaves that to the first round.
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -66,12 +90,13 @@ pub const ROTATION_RACED: &str = "validation.syncRotationRaced";
 pub const TOO_MANY_KEY_CHANGES: &str = "validation.syncTooManyKeyChanges";
 pub const REMOVAL_UNSUPPORTED: &str = "validation.syncRemovalUnsupported";
 pub const REMOVE_THIS_DEVICE: &str = "validation.syncRemoveThisDevice";
-/// The server no longer keeps what lies between this device's place and its end: a normal round
-/// restores first (spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 1). The text comes later.
+/// The range between this device's cursor and the server's head cannot be read to its end (the
+/// server no longer keeps it, or it is too long): a normal round catches up or restores first
+/// (spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 1).
 pub const REMOVAL_NEEDS_SYNC: &str = "validation.syncRemovalNeedsSync";
-/// How far the server's head may lie above this device's cursor for a removal (R21): half of what
-/// one read of the range returns (`MAX_PULL_PAGES` pages of `PULL_PAGE`). A longer range could
-/// never be read to its end, so nobody would verify the head.
+/// How far the server's head may lie above this device's cursor for a removal: half of what one
+/// read of the range returns (`MAX_PULL_PAGES` pages of `PULL_PAGE`). A longer range could never
+/// be read to its end, so nobody would verify the head.
 pub const REMOVAL_MAX_BEHIND: u64 = (MAX_PULL_PAGES as u64 * PULL_PAGE as u64) / 2;
 const CHANGES_PAUSED: &str = "validation.syncChangesPaused";
 const NOT_SET_UP: &str = "validation.syncSetupIncomplete";
@@ -220,10 +245,10 @@ pub(crate) fn pending_removals(conn: &Connection) -> Result<Vec<DeviceId>> {
 /// The plan for removing `removing` and the ticked `also_remove`, and for a new Kit when
 /// `new_kit` (revision §4.2). Refuses: sync off (`syncSetupIncomplete`); capture broken
 /// (`syncChangesPaused`); a vault set up before phase 5 or this device no longer trusted
-/// (`syncRemovalUnsupported`); a key change pending (`syncChangeInProgress`); removing this
-/// device (`syncRemoveThisDevice`: that is turning sync off); nobody removed and no new Kit, a
-/// device the list does not know, or a Kit (`syncRemovalPlanChanged`); more than 64 recipients
-/// (`syncTooManyDevices`).
+/// (`syncRemovalUnsupported`); a key change pending or a head not verified yet
+/// (`syncChangeInProgress`); removing this device (`syncRemoveThisDevice`: that is turning sync
+/// off); nobody removed and no new Kit, a device the list does not know, or a Kit
+/// (`syncRemovalPlanChanged`); more than 64 recipients (`syncTooManyDevices`).
 pub fn plan(
     conn: &Connection,
     removing: &[DeviceId],
@@ -519,9 +544,10 @@ fn push_list<T>(json: &mut String, items: &[T], each: impl Fn(&T) -> String) {
 }
 
 impl PendingChange {
-    /// `{"v":3,"from":n,"to":n,"base":n,"key":"<b64url>","bundle":"<b64url>","removed":["<record>"],
-    /// "confirm":["<hex>"],"kit":{"envelope":"<b64url>","token":"<43>"?,"cert":"<b64>"?,
-    /// "replaces":"<record b64>"?}?}`, built in one wiped buffer reserved up front.
+    /// `{"v":3,"from":n,"to":n,"base":n,"key":"<b64url>","bundle":"<b64url>",
+    /// "removed":["<record>"],"confirm":["<hex>"],"kit":{"envelope":"<b64url>","token":"<43>"?,
+    /// "cert":"<b64>"?,"replaces":"<record b64>"?,"retired":["<record b64>"]?}?}`, built in one
+    /// wiped buffer reserved up front.
     fn to_json(&self) -> Zeroizing<String> {
         let kit_len = self.kit.as_ref().map_or(0, |k| {
             k.envelope.len().div_ceil(3) * 4
@@ -721,13 +747,16 @@ fn range_is_readable(floor: u64, head: u64, cursor: u64) -> bool {
 /// Carries out the removal the person confirmed (revision §4.2), under `engine::exclusive` (no
 /// round runs). The command checks the password first. A vault whose key changed since this
 /// device last looked (`rotation` above `rekey_seen`) is picked up first, so the plan is rebuilt
-/// on the newest key and list; then a plan whose consent differs is refused
-/// (`validation.syncRemovalPlanChanged`, nothing written). `forget_pairing` gives up any pairing
-/// in progress (a holder must not hand out the old key mid-change); it is called once the pending
-/// change is stored, before the token rotates. `data_dir` is the binding file's folder, for a race
-/// that turns out to have removed this device. A lost race answers `validation.syncRotationRaced`
-/// with the other device's name, or `Outcome::AlreadyRemoved` when it removed every device asked
-/// for (O12). A new Kit comes back in `Changed` or `Pending`, for the person to see once.
+/// on the newest key and list; then a range this device cannot read to its end is refused
+/// (`validation.syncRemovalNeedsSync`), and a plan whose consent differs is refused
+/// (`validation.syncRemovalPlanChanged`), both with nothing written. `forget_pairing` gives up any
+/// pairing in progress (a holder must not hand out the old key mid-change); it is called once the
+/// pending change is stored, before the token rotates. `data_dir` is the binding file's folder,
+/// for a race that turns out to have removed this device. A lost race answers
+/// `validation.syncRotationRaced` with the other device's name, or `Outcome::AlreadyRemoved` when
+/// it removed every device asked for (O12). A new Kit comes back in `Changed` or `Pending`, for
+/// the person to see once. `Changed` is answered once the range is read and the head signed, or
+/// with the head still unsigned when that read could not finish (`finish_own_head`).
 pub async fn remove<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -757,7 +786,7 @@ pub async fn remove<R: Relay, D: ConnAccess>(
         }
     }
     // Spec §2.3 step 1: what lies between this device's cursor and the end of the log must still
-    // be on the server and short enough to read in one go (R21), so the range can be signed.
+    // be on the server and short enough to read in one go, so the range can be signed.
     // Not the vault's newest snapshot: the device being removed could keep it moving.
     let cursor = db.with_conn(|conn| Ok(state::load(conn)?.map_or(0, |sync| sync.cursor)))?;
     if !range_is_readable(info.floor, info.head, cursor) {

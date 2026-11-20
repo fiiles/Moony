@@ -1,8 +1,31 @@
 //! The sync engine (spec §9.4): the steps of a sync round against the relay. Every step reads or
 //! writes the profile under the connection lock and releases it before any network call
 //! (`ConnAccess`). `pull` brings other devices' envelopes in; `push` seals and sends this device's;
-//! `snapshots` uploads this device's snapshot and restores the vault's. `run_round` puts them in
-//! order; `runtime` runs rounds on their triggers with a back-off and tells the app (`status`).
+//! `seen` notes the ops a device handled above its cursor, so the server cannot replace them (spec
+//! 2026-11-20-sync-audit-2-fixes-design §2.3, rule 9a); `snapshots` uploads this device's snapshot
+//! and restores the vault's. `run_round` puts them in order; `runtime` runs rounds on their
+//! triggers with a back-off and tells the app (`status`).
+//!
+//! A round, with the key-change steps (`run_round_into`, `round_steps`, `round_pass`):
+//!
+//! 1. A key change of this device that is pending is resolved (`rotate::resolve_pending`); then an
+//!    own head that is committed and not signed is finished (`head::verify_own`: the range is
+//!    read and the head signed).
+//! 2. The vault's info, when the round reads it, and the pickup of a key change it announces
+//!    (`pickup::pick_up`); then the look-ahead for every provisional head, which settles the ones
+//!    whose signed record it finds (`head::verify_heads`).
+//! 3. The pull (`pull::pull_all`). A `410` restores the vault's snapshot by merge when it fits the
+//!    key of its position (`snapshots::snapshot_admissible`, rule 10) and pulls again.
+//! 4. Gates before anything leaves: while the device's own head is unsigned nothing is sent
+//!    (`keyChangeWaiting`); a Recovery Kit joiner waits for the person; envelopes sealed under an
+//!    older key are sealed again once the pull has reached the key change (`reseal`), and until
+//!    then nothing is pushed.
+//! 5. The push, and the echo pull that brings what it sent back.
+//! 6. The vault's info again: a snapshot under the new key that this device owed and the vault now
+//!    holds clears the debt, a below-barrier miss is healed, and a snapshot is uploaded when due
+//!    and allowed (`snapshots::ready_to_dump`: not while any head is unverified, nor after a
+//!    key-change overrun).
+//! 7. The daily pass of documents and photos.
 
 pub mod pull;
 pub mod push;
@@ -115,8 +138,9 @@ pub enum PullStop {
     /// Written by a newer schema than this build knows.
     NewerSchema,
     /// An op under an older epoch past where this device stood when it adopted a key change whose
-    /// head the remover's signed head has not confirmed yet (`rekey::head`): it waits for it
-    /// (`keyChangeWaiting`, on the device that made the change), nothing past it applied.
+    /// head this device has not verified yet (`rekey::head`: the remover's signed record found,
+    /// and the range below the head read and found as signed): the pull waits for it
+    /// (`keyChangeWaiting`), nothing past it applied.
     KeyChangeUnconfirmed,
 }
 
@@ -444,8 +468,9 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
         // not have been written): nothing runs against it but the repair's drain.
         let paused = guard::changes_paused(conn);
         queue_local_changes(conn, &policy.blobs, now)?;
-        // A key change of this device owes the vault a snapshot under the new key (phase 5
-        // §6.4), forced like the one after a barrier crossing.
+        // A device that verified a key change owes the vault a snapshot under the new key (spec
+        // 2026-11-20-sync-audit-2-fixes-design §2.3 rule 10), forced like the one after a barrier
+        // crossing.
         let epoch_owed = state::snapshot_epoch_owed(conn)?;
         let keys_state = KeyState {
             refresh_owed: crate::services::sync::rekey::refresh_owed(conn)?,
@@ -603,9 +628,11 @@ enum Trigger {
 /// this device turns sync off (`RoundReport::removed_here`). A retired token with no key change to
 /// pick up yet stays `KeyRotated`; a later epoch's op with none keeps the pull's own problem.
 /// Before each pass, every head this device adopted provisionally is looked for among the ops
-/// past it (`head::verify_heads`): a signed head that differs ends the round with
-/// `KeyChangeUnverified`; one not found yet lets the pass run, whose pull stops before any older
-/// op it would need (`PullStop::KeyChangeUnconfirmed`).
+/// past it (`head::verify_heads`): a signed head that differs, or a range below it that is not
+/// the one the signer saw, ends the round with `KeyChangeUnverified`; one not found yet lets the
+/// pass run, whose pull stops before any older op it would need (`PullStop::KeyChangeUnconfirmed`).
+/// This device's own head, committed and not signed, is finished first (`head::verify_own`); when
+/// that cannot finish the pass pulls but sends nothing (`own_waiting`).
 #[allow(clippy::too_many_arguments)]
 async fn round_steps<R: Relay, D: ConnAccess>(
     relay: &R,

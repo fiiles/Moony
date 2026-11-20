@@ -16,10 +16,10 @@
 //!   this device holds, and the server knows the token of the new key (`vault_info` with it, so a
 //!   signer this device still trusts cannot hand it a key nobody rotated to). Then, in one
 //!   savepoint, the bundle's certificates, its Kit and its removals (the Kit it replaces among
-//!   them) go into the trust store (`trust::import_bundle`), the new key becomes the current one, `sync_epochs` records where
-//!   the epoch starts (the server's head, provisional until the remover's signed head confirms it:
-//!   `rekey::head`), devices that left or were removed from the list are cut off, `rekey_seen`
-//!   moves on and the person's notice is written.
+//!   them) go into the trust store (`trust::import_bundle`), the new key becomes the current one,
+//!   `sync_epochs` records where the epoch starts (the server's head, provisional until this
+//!   device has checked it: `rekey::head`), devices that left or were removed from the list are
+//!   cut off, `rekey_seen` moves on and the person's notice is written.
 //! - **Removed here:** the entry this device opens is a removal notice whose record verifies
 //!   against this device's store, or the adopted bundle carries a counted removal of this device:
 //!   sync turns off here (`rekey::removed_here`), local data stays.
@@ -35,9 +35,13 @@
 //! rotation number that would hide the real ones) moves nothing and is `keyChangeUnverified`.
 //!
 //! **The head is the server's, then the signer's.** The head the server reports with the bundle
-//! (`Rekey::head`) is recorded but only provisionally (`head::note_unverified`): until the
-//! remover's signed head confirms it, no op under an older epoch past where this device stood is
-//! applied, and nothing is sealed again under the new key (`rekey::head` module doc).
+//! (`Rekey::head`) is recorded but only provisionally (`head::note_unverified`, with the bundle's
+//! signer and where this device's cursor stood). It is verified when the signed record of that
+//! signer names the same head and rotation and this device has read the range below the head
+//! itself and found the signed count and digest (rule 7, `head::settle`), or when a snapshot under
+//! the new key names the head and lies at or past it. Until then no op under an older epoch past
+//! where this device stood is applied, nothing is sealed again under the new key, and the device
+//! hands no key on (`rekey::head` module doc).
 
 use std::path::Path;
 
@@ -281,7 +285,8 @@ fn notice(conn: &Connection, record: &Record, me: DeviceId) -> Result<Step> {
 
 /// Whether this device already knows `device` was removed or left: a record in its list row
 /// that counts here (the store may not have caught up with it yet), or this device's own pending
-/// key change removing it.
+/// key change removing it. The pickup refuses a bundle signed by such a device, and
+/// `head::signer_from_bundle` does not take it for the signer of a key change.
 pub(super) fn known_gone(conn: &Connection, device: DeviceId) -> Result<bool> {
     let row: Option<(Option<String>, Option<String>)> = conn
         .query_row(

@@ -1,73 +1,110 @@
-//! The signed head of a key change (phase 5 As built 62–65; spec 2026-11-20-sync-audit-2-fixes
-//! §2.3 steps 2–5 for the remover, at the end of this comment).
+//! The signed head of a key change (spec 2026-11-20-sync-audit-2-fixes-design §2.3, steps 2 to 8).
 //!
 //! The relay position at which an epoch starts (`sync_epochs`) is what the epoch rule (§6.1)
 //! checks every op against, and the server reports it. A server colluding with a removed device
 //! (which keeps the old key) could take that device's pushes after the rotation and tell another
-//! device a head above them: the old-key ops would then fit. So the head is signed: the remover
-//! seals (`verify_own`, once it has read the range below the head; see the end of this comment)
-//! its first envelope under the new key with no rows and a `HeadRecord` {vault, from, to,
-//! rotation, head, base, count, digest} signed by its device key (`queue_signed_head`); it travels through `sync_unsent` like any envelope, so a crash cannot lose it, and only a
-//! device holding the remover's signing key can make one.
+//! device a head above them: the old-key ops would then fit. So the head is signed, and the
+//! signature binds what lies below it as well as the number. A `HeadRecord` (version 2) carries
+//! the head, the base the remover's range starts at, the number of ops in the range `(base, head]`
+//! and a digest over their positions and envelope hashes (`range::range_digest`). It travels in
+//! the remover's first envelope under the new key, through `sync_unsent` like any envelope, so a
+//! crash cannot lose it; only a device holding the signer's signing key can make one. A device
+//! takes a head as verified only after it has read the range itself and found the signed count and
+//! digest.
 //!
-//! Every other device takes the head the server reports with the bundle as **provisional**
-//! (`note_unverified`: an entry of the Local `app_config` key `state::UNVERIFIED_EPOCHS_KEY`, with
-//! where this device's cursor stood when it adopted the key). Until the head is verified, the pull
-//! stops before any op sealed under an older epoch at a position past that cursor
-//! (`awaits_head`, `PullStop::KeyChangeUnconfirmed`, shown as `keyChangeWaiting`), and what was
-//! not sent is sealed again under the new key only after a pull that reached the head without a
-//! stop (`reseal::may_reseal`); only verified heads are handed on (`verified_epochs`). A restored
-//! snapshot naming the same head verifies it (`after_restore`). Each round looks
-//! ahead past the provisional head with ordinary pull reads, applying nothing (`verify_heads`):
-//! the signed head of the bundle's signer, opened with a key this device holds, either matches
-//! (the entry goes, the epoch is verified) or not (the entry is marked `refuted` and stays:
-//! `keyChangeUnverified` in every round, nothing past the cursor applied). Not found yet (the
-//! remover has not pushed it) keeps waiting; the look-ahead goes on from where it stopped.
+//! **The remover signs what it found, not the server's word.** `rotate::commit` makes the new key
+//! current and records the head as not verified (`note_own_unverified`: signer this device,
+//! `own_pending`, `after` the base, which is the cursor the change was first sent from; the
+//! pending change keeps it so a lost answer commits with the same one) and queues nothing.
+//! `verify_own` then reads the range above the base up to the head with the new token
+//! (`range::read_range`: nothing applied, nothing opened, a position with nothing in it simply not
+//! noted, and no waiting for one to fill, which would let the server fill it with the removed
+//! device's writes). In one savepoint it stores the notes and the base (`range::store_notes`),
+//! queues the record with the base, the number of ops found and their digest, removes the entry
+//! and records that the vault is owed a snapshot under the new key (`state::owe_snapshot`): the
+//! head counts as verified from that moment, not when the record comes back. The record is sealed
+//! under the current key, which is a later one when another key change was adopted while the head
+//! was unsigned; a record is searched for in envelopes sealed under its epoch or later.
+//! `verify_own` runs inside the removal call, in the resolution of a pending change and at the
+//! start of every round while the entry exists. A read that cannot finish (a refusal, the network,
+//! `410`, more pages than one pull reads) leaves the entry, nothing of it is kept, and the next
+//! round starts again from the base. `verify_heads` and `after_restore` leave own entries alone:
+//! only `verify_own` settles them.
 //!
-//! The remover signs what it found, not the server's word (spec 2026-11-20-sync-audit-2-fixes
-//! §2.3). Its commit (`rotate::commit`) makes the new key current and records the head as **not
-//! verified** (`note_unverified`, signer = this device, `after` = the base: its cursor when it
-//! sent the change), and queues nothing. `verify_own` then reads the range above the base up to
-//! the head with the new token (`range::read_range`: nothing applied, nothing opened) and, in one
-//! savepoint, stores the notes, queues the version-2 record with the base, the number of ops found
-//! and their digest as the first envelope under the new key, and removes the entry: the head
-//! counts as verified from that moment. It runs inside the removal call, in the resolution of a
-//! pending change and at the start of every round while the entry exists; a read that cannot
-//! finish (a refusal, a network error, `410`, more pages than one pull reads) leaves the entry
-//! and the next round starts again from the base. While it exists the device sends nothing
-//! (`engine::round_pass`, `reseal::may_reseal`, `snapshots::ready_to_dump`) and starts no other
-//! change (`rotate::check`). `verify_heads` and `after_restore` leave own entries alone: only
-//! `verify_own` settles them.
+//! **While a head is not verified the device hands nothing on.** With its own head unsigned a
+//! device holds still: `engine::round_pass` pulls but sends nothing (`keyChangeWaiting`), nothing
+//! is sealed again (`reseal::may_reseal`), the attachment upload lane waits, and repair and
+//! re-sync are refused (`join.rs`), since a new device ID would leave the other devices waiting
+//! for a record signed by the old one. With any head unverified, the device's own or another's, it
+//! uploads no snapshot (`snapshots::ready_to_dump`), shows no pairing code and seals no key as the
+//! holder (`pairing::holder`), and starts no removal or new Kit (`rotate::check`), and what it
+//! vouches for leaves the provisional heads out (`verified_epochs`: what a holder hands a joiner,
+//! a snapshot's key list, a bundle's older keys). The pull stops before any op sealed under an
+//! older epoch past the cursor the device had when it adopted the key (`awaits_head`,
+//! `PullStop::KeyChangeUnconfirmed`, shown as `keyChangeWaiting`).
 //!
-//! Every other device takes a head as verified only when it has checked what lies between the
-//! remover's base and the head against what the remover signed (spec §2.3 steps 7 and 8). Once
-//! `look_ahead` finds the signed record, `settle` compares the head, the rotation and the epochs as
-//! before; a device whose watermark (the cursor or the last restored snapshot, `seen::watermark`: below it every position was handled) is already at or past the head has nothing to check; any other
-//! reads the range `(record.base, record.head]` itself with its own token (`range::read_range`,
-//! the base of the **signed record**, never the server's), and takes the head only if the number
-//! of ops and their digest are the signed ones: then, in one savepoint, the notes and the base go
-//! into the store (`range::store_notes`, the footing of rule 6 in the pull) and the entry goes. A
-//! different count or digest refutes the head (`keyChangeUnverified`) and nothing of the range is
-//! applied; a read that cannot finish (the relay, more pages than a pull reads, `410`) keeps the
-//! entry and the round waits; with `410` a snapshot under the new key that names the head settles
-//! it as before (`after_restore`, only when the snapshot lies at or past the head).
+//! **Every other device checks the range before it takes the head.** The head the server reports
+//! with the bundle is recorded as provisional (`note_unverified`: an entry of the Local
+//! `app_config` key `state::UNVERIFIED_EPOCHS_KEY`, with where this device's cursor stood when it
+//! adopted the key). Each round looks ahead past it with ordinary pull reads, applying nothing
+//! (`verify_heads`), for the signed record of the bundle's signer; a refuted entry is reported
+//! before any other is looked at. Once `look_ahead` finds the record, `settle` compares it with
+//! the entry: the numbers must agree (the epoch follows, the base is not above the head, the head
+//! and the rotation are the bundle's), else the head is refuted (`keyChangeUnverified`, in every
+//! round, nothing past the cursor applied). Then:
 //!
-//! A device that holds a head from somewhere else than a bundle it picked up (a pairing holder's
-//! heads, a snapshot's key list, an earlier epoch before a replace) and whose watermark is below it
-//! gets an entry for that epoch too (`require_ranges`): no rotation, the head from `sync_epochs`,
-//! `after` and `scanned` at its watermark. Its signer is `sync_epochs.by_device` when recorded, else
-//! the maker of the server's bundle for that epoch whose signature verifies under a certificate
-//! pinned here (`signer_from_bundle`; it adopts nothing, this device holds the keys); with
-//! neither, the entry waits. After a replace every epoch whose head lies above the snapshot's
-//! position starts again this way (`snapshot::finish`).
+//! - a device whose watermark (`seen::watermark`: the cursor or the last restored snapshot, below
+//!   which it has handled every position) is at or past the head has nothing to check; it makes no
+//!   notes, and never needs any unless a replace puts it back below the head;
+//! - any other reads the range `(record.base, record.head]` with its own token, from the base of
+//!   the signed record and never the server's, and takes the head only if the number of ops and
+//!   their digest are the signed ones. In one savepoint the notes and the base then go into the
+//!   store (`range::store_notes`, the footing of rule 6 in the pull) and the entry goes. A
+//!   different count or digest refutes the head and nothing of the range is applied. A read that
+//!   cannot finish (the relay, more pages than a pull reads, `410`) keeps the entry and the round
+//!   waits; with `410` a snapshot under the new key that names the head and lies at or past it
+//!   settles it (`after_restore`).
 //!
-//! An entry this device committed itself and has not signed (`own_pending`, set only by
-//! `rotate::commit`) is settled only by `verify_own`; one made by `require_ranges` for an epoch
-//! this device signed before a replace (the replace gives it another ID) is settled like any
-//! other device's, by finding the record in the log.
+//! The watermark decides "nothing to read", not the place of rule 9a (`seen::place`), which also
+//! counts a held op above the cursor: such an op says nothing of the positions between the cursor
+//! and itself, and a device that skipped the check for them would apply what the server put there.
+//!
+//! **Where an entry's signer comes from.** The bundle's maker for an entry made by the pickup; for
+//! one made without a bundle (below) `sync_epochs.by_device` when recorded, else the maker of the
+//! server's bundle for that epoch (`signer_from_bundle`): it opens with the key this device holds
+//! for the epoch, its signature verifies under a certificate pinned here for a device that may
+//! speak and is not known to be gone, and nothing is adopted from it. The signer is recorded for
+//! next time. With none the entry waits; the server lists a bundle for 30 days only.
+//!
+//! **Heads held without a bundle.** A device that holds a head from somewhere else than a bundle it
+//! picked up (a pairing holder's heads, a snapshot's key list, an earlier epoch before a replace)
+//! and whose watermark is below it gets an entry for that epoch too (`require_ranges`: no
+//! rotation, the head from `sync_epochs`, `after` and `scanned` at the watermark), which finds the
+//! signed record and settles like any other. It runs after a join and after a merge restore (only
+//! for epochs with neither an entry nor a stored range) and after a replace (`snapshot::finish`:
+//! for every epoch whose head lies above the snapshot's position the stored range goes and the
+//! check starts again). The look-ahead starts at `scanned`: the bundle's head for a pickup entry,
+//! the watermark for the other kind, and it advances over an unbroken run of positions only, so
+//! that one withheld page cannot hide the record for good; a `410` makes it jump to the server's
+//! floor, never below the watermark.
+//!
+//! **A re-join under a new device ID** (`pull::rejoin_as_new_device`) leaves the checks as they
+//! are with two changes. An entry this device made itself and has not signed is released
+//! (`release_own_pending`): the new identity never signs a change the old one made, so the entry
+//! waits for the original's record like any other device's. Signed head records still waiting in
+//! `sync_unsent` are queued again as marker envelopes of the new ID (`unsent_records`,
+//! `requeue_records`); the record's own signature, the old ID's, is what the others check, never
+//! the envelope's author. If the original is gone for good nobody signs that change and every
+//! device keeps waiting for it (spec §2.3 step 5); no exit is built.
+//!
+//! An entry made by `rotate::commit` (`own_pending`) is settled only by `verify_own`; one made by
+//! `require_ranges` for an epoch this device signed before a replace (the replace gives it another
+//! ID) is settled like any other device's, by finding the record in the log.
 //!
 //! A device that had already applied ops past the verified head (the server hid the key change
 //! from it) learns it here and keeps a notice (`rekey::KeyChangeOverrun`); nothing is undone.
+//! Every device that verifies a head owes the vault a snapshot under the new key (rule 10,
+//! `state::owe_snapshot`), unless it holds that overrun.
 
 use std::collections::BTreeMap;
 
@@ -224,8 +261,9 @@ impl HeadRecord {
     }
 }
 
-/// An epoch this device adopted from another device's key change whose head the remover's
-/// signed head has not confirmed yet.
+/// An epoch whose head this device has not verified yet: one adopted from another device's key
+/// change, one this device committed itself and has not signed (`own_pending`), or one held
+/// without a bundle (`require_ranges`).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UnverifiedEpoch {
@@ -242,7 +280,9 @@ pub struct UnverifiedEpoch {
     /// not know it (an epoch it holds a head for without a bundle: `require_ranges`).
     #[serde(rename = "by")]
     pub by: String,
-    /// This device's cursor when it adopted the key: what it had pulled before the key change.
+    /// Where this device stood: its cursor when it adopted the key (what it had pulled before the
+    /// key change), the base of the range for its own change, its watermark for an entry made by
+    /// `require_ranges`. An op under an older epoch is waited for only above it (`awaits_head`).
     #[serde(rename = "after")]
     pub after: u64,
     /// How far the look-ahead has read.
@@ -382,8 +422,8 @@ pub(crate) fn release_own_pending(conn: &Connection) -> Result<()> {
 }
 
 /// Every signed head record waiting in `sync_unsent`, by ascending epoch (a re-join under a new
-/// ID collects them before `chain::rejoin` empties the queue; audit-2 reading A, A-2). The
-/// record's signature is the signer's, not the envelope author's.
+/// ID collects them before `chain::rejoin` empties the queue). The record's signature is the
+/// signer's, not the envelope author's.
 pub(crate) fn unsent_records(conn: &Connection) -> Result<Vec<Vec<u8>>> {
     let Some(creds) = keys::credentials(conn)? else {
         return Ok(Vec::new());
@@ -452,9 +492,9 @@ pub(crate) fn awaits_head(conn: &Connection, epoch: u32, position: u64) -> Resul
 }
 
 /// The remover's signature (`verify_own`, in its savepoint): its next envelope, with no rows,
-/// carries the signed head of the change, sealed under the new key into `sync_unsent` (so it goes
-/// out with the next push, a crash or not). The record binds the range `(base, head]` as `notes`
-/// found it: their number and digest.
+/// carries the signed head of the change, sealed into `sync_unsent` under the current key (the
+/// new one, or a later one adopted meanwhile) so it goes out with the next push, a crash or not.
+/// The record binds the range `(base, head]` as `notes` found it: their number and digest.
 pub(crate) fn queue_signed_head(
     conn: &Connection,
     me: DeviceId,
@@ -607,10 +647,13 @@ pub enum HeadCheck {
     Refuted,
 }
 
-/// The look-ahead (module doc): for each provisional head, reads ops past it (from where the
-/// last look-ahead stopped, at most `MAX_LOOKAHEAD_PAGES` pages), applying nothing, until it
-/// finds the signed head of the bundle's signer. A relay failure is returned as its `SyncError`
-/// (the round's pull would meet it too), except `410` (the ops were pruned), which only waits.
+/// The look-ahead (module doc): for each provisional head of another device's change, reads ops
+/// past it (from where the last look-ahead stopped, at most `MAX_LOOKAHEAD_PAGES` pages),
+/// applying nothing, until it finds the signed head of the entry's signer, and then settles it
+/// (`settle`). An entry already refuted is reported before any other is looked at. This device's
+/// own entry is skipped: only `verify_own` settles it. A relay failure is returned as its
+/// `SyncError` (the round's pull would meet it too), except `410` (the ops were pruned), which
+/// only waits.
 pub async fn verify_heads<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -666,9 +709,9 @@ async fn look_ahead<R: Relay, D: ConnAccess>(
     // pickup, this device's watermark for one made by `require_ranges` (the record may sit below
     // the head a lying server reported, so it is looked for from there, never below the floor).
     let mut after = entry.scanned;
-    // What the look-ahead remembers advances only over an unbroken run of positions (A-4): a
-    // server that withholds one op, the signed record perhaps, must not make the next rounds start
-    // above it. Positions up to the entry's head may have holes (the server lifts the head for a
+    // What the look-ahead remembers advances only over an unbroken run of positions: a server
+    // that withholds one op, the signed record perhaps, must not make the next rounds start above
+    // it. Positions up to the entry's head may have holes (the server lifts the head for a
     // removal and nothing sits in the free range), and no record lies there.
     let mut stored = entry.scanned;
     let free_to = entry.head.unwrap_or(entry.scanned);
@@ -729,10 +772,12 @@ async fn look_ahead<R: Relay, D: ConnAccess>(
     Ok(Found::NotYet(stored))
 }
 
-/// Who signs the record of `entry` (ruling R8): the entry's signer when it has one (the bundle's
-/// maker, or what `sync_epochs` recorded); else the maker of the server's bundle for that epoch
-/// that verifies under a certificate pinned here, recorded for next time; else nobody yet and
-/// the entry waits (the server lists a bundle for 30 days only).
+/// Who signs the record of `entry`: the entry's signer when it has one (the bundle's maker, or
+/// what `sync_epochs` recorded); else the maker of the server's bundle for that epoch that
+/// verifies under a certificate pinned here, recorded for next time; else nobody yet and the
+/// entry waits (the server lists a bundle for 30 days only). Never "any pinned device": a device
+/// that was a member at that epoch and was removed later could pose as the signer to a joiner if
+/// a dishonest server listed its bundle, which spec §4.2 accepts for a join.
 async fn signer_of<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -765,8 +810,7 @@ async fn signer_of<R: Relay, D: ConnAccess>(
 /// The maker of the bundle the server lists for `epoch`: the bundle opens with the key this device
 /// holds for that epoch and its signature verifies with the key of the certificate it names, which
 /// this store has pinned for a device that speaks and is not known to be gone (as the pickup
-/// checks a bundle). Nothing is adopted from
-/// it: this device holds every key it carries.
+/// checks a bundle). Nothing is adopted from it: this device holds every key it carries.
 async fn signer_from_bundle<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -918,7 +962,7 @@ fn plan_of(conn: &Connection, entry: &UnverifiedEpoch, record: &HeadRecord) -> R
         return Ok(Plan::Refute);
     }
     // The watermark, not the place: a held op above the head says nothing of the positions
-    // between the cursor and it (audit-2 reading A, A-1).
+    // between the cursor and it.
     let mark = seen::watermark(conn)?.unwrap_or(0);
     Ok(if mark >= record.head {
         Plan::PastHead
@@ -1056,12 +1100,14 @@ fn commit(
 
 /// A device that holds a head for an epoch without a range stored for it and whose watermark
 /// (`mark`, `seen::watermark`) is below that head has not checked what lies between (spec §2.3
-/// step 8): an entry for the epoch, no rotation, the head from `sync_epochs`, `after` and
-/// `scanned` at the watermark. Epochs that
-/// already have an entry are left alone (a refuted one always; with `replaced`, a waiting one
-/// starts again at the new place and its range is forgotten with it). `replaced`: the profile was
-/// replaced, so for every epoch whose head lies above the watermark the range stored before goes
-/// (`range::forget`) and the check starts again (rule 6, spec §2.3 step 6).
+/// step 8): it gets an entry for the epoch (no rotation, the head from `sync_epochs`, `after` and
+/// `scanned` at the watermark) that finds the signed record and settles like any other.
+///
+/// An epoch whose entry is refuted or is this device's own is left alone. With `replaced` false
+/// (a join, a merge restore) so is one that has an entry or a stored range. With `replaced` true
+/// (the profile was replaced, spec §2.3 step 6) every epoch whose head lies above `mark` starts
+/// again: the range stored before goes (`range::forget`), and a waiting entry is made anew at the
+/// new place.
 pub(crate) fn require_ranges(conn: &Connection, mark: u64, replaced: bool) -> Result<()> {
     let mut epochs = unverified_epochs(conn)?;
     let mut changed = false;

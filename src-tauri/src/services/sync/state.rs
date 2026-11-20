@@ -452,7 +452,7 @@ pub fn set_cursor(conn: &Connection, cursor: u64) -> Result<()> {
 }
 
 /// Notes the position of a snapshot just restored by a merge (`sync_state.restored_seq`, part of
-/// the device's place, `engine::seen::place`). Raises it, never lowers it.
+/// the device's place and of its watermark, `engine::seen`). Raises it, never lowers it.
 pub fn set_restored_seq(conn: &Connection, seq: u64) -> Result<()> {
     conn.execute(
         "UPDATE sync_state SET restored_seq = MAX(COALESCE(restored_seq, 0), ?1) WHERE id = 1",
@@ -556,7 +556,9 @@ pub fn snapshot_seq(conn: &Connection) -> Result<Option<u64>> {
 }
 
 /// The vault already holds a newer snapshot than the one this device offered at its barrier
-/// (`409 snapshot_outdated`): the forced upload after a crossing is done (`snapshot_barrier`).
+/// (`409 snapshot_outdated`): the forced upload after a crossing is done (`snapshot_barrier`), and
+/// so is the debt of a snapshot under the new key (`snapshot_epoch_due`), since the vault holds
+/// one at least as new as this device's own.
 pub fn note_snapshot_barrier(conn: &Connection) -> Result<()> {
     conn.execute(
         "UPDATE sync_state SET snapshot_barrier = MAX(snapshot_barrier, barrier), \
@@ -566,13 +568,16 @@ pub fn note_snapshot_barrier(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Whether this device changed the key and has not yet uploaded a snapshot under the new one
-/// (`snapshot_epoch_due`, phase 5 §6.4): its next clean round forces an upload, as after a barrier
-/// crossing. An upload clears it (`record_snapshot_uploaded`), and so does a newer snapshot found
-/// on the relay (`note_snapshot_barrier`): the old token cannot upload one, so a newer snapshot is
-/// sealed under the new key or a later one.
+/// Whether this device owes the vault a snapshot under the new key (`snapshot_epoch_due`, rule 10
+/// of spec 2026-11-20-sync-audit-2-fixes-design §2.3): every device that verified a key change
+/// owes one, not only the remover, until the vault holds a snapshot above that change's head. Its
+/// next clean round forces an upload, as after a barrier crossing. An upload clears it
+/// (`record_snapshot_uploaded`); so does the vault's info showing a snapshot above the head
+/// (`clear_snapshot_owed_if_covered`: the old token cannot upload one, so such a snapshot is
+/// sealed under the new key or a later one) and a `409` on the forced upload
+/// (`note_snapshot_barrier`). A device holding a key-change overrun owes none (`overrun_tainted`).
 pub fn snapshot_epoch_owed(conn: &Connection) -> Result<bool> {
-    // R19: a device holding a key-change overrun owes no snapshot (`overrun_tainted`).
+    // A device holding a key-change overrun owes no snapshot (`overrun_tainted`).
     if overrun_tainted(conn)? {
         return Ok(false);
     }
@@ -592,7 +597,7 @@ pub fn snapshot_epoch_owed(conn: &Connection) -> Result<bool> {
 /// (`MAX`), unless a snapshot this device uploaded or restored already lies above that head. The
 /// vault's own snapshot is looked at with the next info (`clear_snapshot_owed_if_covered`).
 pub fn owe_snapshot(conn: &Connection, epoch: u32) -> Result<()> {
-    // R19: a device holding a key-change overrun never counts as owing the snapshot.
+    // A device holding a key-change overrun never counts as owing the snapshot.
     if overrun_tainted(conn)? {
         return Ok(());
     }
@@ -676,8 +681,9 @@ pub const KIT_READ_SEEN_KEY: &str = "sync.kit_read_seen";
 /// sync off; the person's dismissal clears it, and so does a join (As built R-116).
 pub const REMOVED_NOTICE_KEY: &str = "sync.removed_notice";
 
-/// The Local `app_config` key holding the key epochs this device adopted whose head the remover's
-/// signed head has not confirmed yet (`rekey::head`). Cleared with `sync_epochs`.
+/// The Local `app_config` key holding the key epochs whose head this device has not verified yet:
+/// adopted from another device's change, its own change not signed yet, or held without a bundle
+/// (`rekey::head`). Cleared with `sync_epochs`.
 pub const UNVERIFIED_EPOCHS_KEY: &str = "sync.epochs_unverified";
 
 /// The Local `app_config` key of a Recovery Kit joiner's push hold (revision §2.6 step 7,
@@ -729,7 +735,7 @@ pub(crate) fn set_kit_epoch_floor(conn: &Connection, floor: KitEpochFloor) -> Re
 /// change the server hid from it (`rekey::KeyChangeOverrun`). Turning sync off clears it.
 pub const KEY_CHANGE_OVERRUN_KEY: &str = "sync.key_change_overrun";
 
-/// The Local `app_config` key of the persistent mark behind a key-change overrun (R19): this device
+/// The Local `app_config` key of the persistent mark behind a key-change overrun: this device
 /// applied changes past a key change the server hid from it, so its profile may hold what the
 /// removed device wrote. Unlike the notice (`KEY_CHANGE_OVERRUN_KEY`) the person's dismissal does
 /// not clear it; only a replace of the profile (`reset_engine_marks`) and turning sync off do.

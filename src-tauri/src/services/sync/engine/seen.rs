@@ -1,12 +1,31 @@
 //! Notes of the ops this device has handled above its stored cursor (spec
 //! 2026-11-20-sync-audit-2-fixes-design §2.3, rule 9a): the envelope hash by relay position, in
-//! `sync_seen_ops` (Local). A held op can sit above the cursor, so the cursor alone does not say
-//! where the device stands; `place` does.
+//! `sync_seen_ops` (Local). An op that is held (a gap in its author's chain, a quarantined
+//! author, a date too far ahead) leaves the cursor before it while later ops are handled, so
+//! those positions are read again in every pull, and nothing else ties a position to what was
+//! found there the first time. The rule does not depend on a key change.
 //!
-//! The pull notes an op it handled without moving the cursor past it and refuses a different op
-//! at a noted position; the cursor, a snapshot merge, a replace, turning sync off and a server
-//! that went back drop notes. A re-join under a new ID does not: the notes are hashes by
-//! position, and neither the cursor nor the held positions change with the device ID.
+//! Two positions say where a device stands. The watermark (`watermark`) is the position below
+//! which it has handled every position: the higher of its stored cursor and the last snapshot it
+//! restored. The place (`place`) is the highest of the watermark and any noted position: where the
+//! device has been. A held op above the cursor raises the place and not the watermark, because it
+//! says nothing of the positions between. The place judges a snapshot (`snapshot_admissible`,
+//! rule 10); any check that skips a range because the device is past it uses the watermark (the
+//! head's check, rule 7).
+//!
+//! The pull notes an op it handled without moving the cursor past it, in the same transaction as
+//! the handling, and refuses a different op at a noted position (`PullStop::Invalid`). A position
+//! above the cursor that has no note (a crash came between) is noted when it is next read.
+//!
+//! Notes go as the cursor passes them (`forget_through`, from `state::set_cursor`), as a merge
+//! restore covers them (through the snapshot's position), all of them when the profile is replaced
+//! and when sync is turned off. Two things leave them alone on purpose. A re-join under a new ID:
+//! the notes are hashes by position, neither the cursor nor the held positions change with the
+//! device ID, and a member can make a device re-join by claiming its ID, so wiping them there
+//! would let a handled position be refilled. A server found to have gone back
+//! (`state::note_vault_went_back`): that verdict rests on a number the server sends
+//! unauthenticated, and one lie would wipe them. A device in that state is told to re-sync, and
+//! the replace clears the notes; the state keeps its own message.
 
 use rusqlite::{params, Connection, OptionalExtension};
 

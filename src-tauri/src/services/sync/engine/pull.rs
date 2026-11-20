@@ -10,14 +10,37 @@
 //! device's own envelopes and acknowledges them (their echo, audit M4), applying nothing. A
 //! changeset dated more than ten years past this device's time is held the same way, with the
 //! later envelopes of its author as gaps behind it, until the person skips it (audit M6,
-//! `chain::too_far_ahead`). An op sealed under an older key at a position inside a key change's
-//! stored range (`rekey::range`) is applied only if it is the op that was noted there when the
-//! head was signed (rule 6 of the sync-audit-2 design): any other op, and any op at a position
-//! nothing was noted for, ends the pull as `Invalid`. Two rules keep the server from rewriting what
-//! this device has already read: an op at a position this device handled (held, applied or passed
-//! over) above its cursor must be the very op noted there (`seen`, rule 9a), and below the base of
-//! a key change this device holds no position is skipped (`range::must_follow_directly`, rule 9);
-//! both end the pull as `Invalid`, neither applies to the scan after a newer-schema stop.
+//! `chain::too_far_ahead`).
+//!
+//! Three rules keep the server from rewriting what a key change signed or what this device has
+//! already read (spec 2026-11-20-sync-audit-2-fixes-design §2.3). Each ends the pull as `Invalid`
+//! with the cursor before the op, and none applies to the scan after a newer-schema stop, which
+//! applies nothing and jumps by design.
+//!
+//! - **Rule 6, older-key ops in a signed range.** An op sealed under an older key is judged
+//!   against the stored range of every key change above its epoch (`range::range_verdict`). At a
+//!   position of a range it must be the op noted there when the head was signed: any other op,
+//!   and any op at a position nothing was noted for, is refused. An op under the newest key, and a
+//!   range this device has not stored (its head is unverified, or the device was past it), are
+//!   not judged here; while a head is unverified the pull stops before any older-key op past where
+//!   the device stood when it adopted the key (`PullStop::KeyChangeUnconfirmed`, `head`).
+//! - **Rule 9, no skipped position below the base.** Below the base of a key change this device
+//!   holds, and up to its head while the base is not stored yet, each op must directly follow the
+//!   one before it, the first one the cursor plus one (`range::must_follow_directly`). Inside the
+//!   range a missing position is no error: rule 6 decides there. Below the base nothing else is
+//!   signed (residual R4, spec §2.4).
+//! - **Rule 9a, what a device handled cannot be replaced.** An op at a position this device
+//!   handled (held, applied or passed over) above its cursor must be the very op noted there
+//!   (`seen`). The note is written in the same transaction as the handling, and a position above
+//!   the cursor with no note (a crash came between) is noted when it is next read. Notes go as the
+//!   cursor passes them, with a replace and with turning sync off; neither a server found to have
+//!   gone back nor a re-join under a new ID clears them (`seen` says why).
+//!
+//! An op that shows this profile was copied or rolled back makes the device re-join under a new ID
+//! (`rejoin_as_new_device`): the signed head records still waiting to be sent are queued again
+//! under the new ID, an own head not signed yet is released to wait for the original's record
+//! (`rekey::head`), and the notes of rule 9a stay. `check_page`, the relay contract for a page, is
+//! also what `rekey::range::read_range` holds a range read to.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 

@@ -224,8 +224,8 @@ of a key change is one sealed under an epoch below the one that change starts.
    older-key ops of that range wait, exactly as they wait for a signed head today.
 7. *How the other devices get the notes.* A device takes the head as verified when, as today, the
    remover's signed record names the same head as the server, **and** the device has read the range
-   itself (from the base, again if its own place is already past it), noted positions and hashes,
-   and found the same number and digest. A different digest is a refuted head: today's
+   itself (from the base the signed record names, not from its own place), noted positions and
+   hashes, and found the same number and digest. A different digest is a refuted head: today's
    `keyChangeUnverified`. A device whose watermark was already at or past the head has nothing to
    check at that moment (it makes its notes if it is ever put back below the head, see rule 6).
    The watermark is the higher of its cursor and the last snapshot it restored: the position below
@@ -236,9 +236,9 @@ of a key change is one sealed under an epoch below the one that change starts.
    restoring a snapshot under the new key that names it. A device that has to find the signed
    record starts reading at the server's floor, not at zero.
 8. *A device that got the head some other way* (from the device that paired it, from a snapshot's
-   key list, from the Kit's envelope) and whose place is below that head finds the signed record in
-   the log first, as a Kit joiner without a bundle does today, and then does step 7. Until then
-   older-key ops above its place wait.
+   key list, from the Kit's envelope) and whose watermark is below that head finds the signed
+   record in the log first, as a Kit joiner without a bundle does today, and then does step 7.
+   Until then older-key ops above its watermark wait.
 9. *Below the base, no skipped position.* A device that is behind the base still reads older-key
    ops there unchecked (that is residual R4). There, each op must directly follow the one before it,
    the first one being the stored cursor plus one; a skipped position ends the pull as `Invalid`.
@@ -258,10 +258,10 @@ of a key change is one sealed under an epoch below the one that change starts.
    cursor passes them, and all of them go when the profile is replaced and when sync is turned off.
    A re-join under a new ID keeps them: they are hashes by position, the cursor and the held
    positions do not change with the ID, and a member can make a device re-join by claiming its ID,
-   so wiping them there would let a handled position be refilled. They stay when the server is found to have gone
-   back: that verdict rests on a number the server sends unauthenticated, and one lie would wipe
-   them. A device in that state is told to re-sync, and the replace clears them; the state keeps
-   its own message. This rule does not depend on a key change.
+   so wiping them there would let a handled position be refilled. They stay when the server is
+   found to have gone back: that verdict rests on a number the server sends unauthenticated, and
+   one lie would wipe them. A device in that state is told to re-sync, and the replace clears
+   them; the state keeps its own message. This rule does not depend on a key change.
 
 **Snapshots (R2-H3)**
 

@@ -1,6 +1,28 @@
-//! The digest of a range of the server's log that a key change's signed head binds (version 2
-//! of `head::HeadRecord`): every op above `base` up to and including `head`, as the remover
-//! read it, noted by position and envelope hash.
+//! The range of a key change and the two rules of the pull that read it (spec
+//! 2026-11-20-sync-audit-2-fixes-design §2.3, rules 6 and 9).
+//!
+//! A key change's signed head (version 2 of `head::HeadRecord`) binds a range of the server's log:
+//! every op above `base` up to and including `head`, as the remover read it, noted by position and
+//! envelope hash. `range_digest` is the digest the record carries and `read_range` reads a range
+//! without applying or opening anything.
+//!
+//! A device that has verified a head keeps the range as notes: `sync_range_notes` (epoch,
+//! position, hash) and, on that epoch's `sync_epochs` row, the base and the number of notes.
+//! `store_notes` writes the two together and `forget` drops them together, so notes and base are
+//! one unit. The remover stores them when it signs (`head::verify_own`), every other device when
+//! it has read the range itself and found the signed count and digest (`head::settle`). A device
+//! that was at or past the head makes none: its base stays empty, and rule 6 skips that range.
+//! The notes go when a replace puts the device behind the head again (`head::require_ranges`
+//! forgets the range and checks anew), when sync is turned off and when the device joins a vault.
+//! They stay when the cursor passes the head: nothing consults them above it (a lower place
+//! arises only through a replace), so what they cost is storage.
+//!
+//! Rule 6 (`range_verdict`) is the one the pull applies to an op sealed under an older key: it
+//! must be the op that was signed at its position. Rule 9 (`must_follow_directly`) keeps the
+//! server from skipping a position where nothing is signed: below the base, or up to the head while
+//! the base is not known yet. What lies below the base is not bound by anything else (residual R4,
+//! spec §2.4); rule 9 and the notes of handled positions (`engine::seen`, rule 9a) only keep the
+//! server from replacing ops this device has not seen yet.
 
 use rusqlite::{params, Connection, OptionalExtension};
 use sha2::{Digest, Sha256};
@@ -155,8 +177,11 @@ pub enum RangeVerdict {
 /// under `epoch_of_op` at relay position `pos`, whose envelope hash is `hash`, is checked against
 /// every key change above that epoch whose range this device stored (`range_base` set) and that
 /// covers the position (`range_base < pos <= head`): the note for that position must exist and
-/// be this hash, in each of them. An epoch whose range this device has not stored (its base is
-/// NULL: the head is not verified here yet, or the device was past it) is skipped.
+/// be this hash, in each of them, so where two ranges overlap an op must match in both. An op
+/// sealed under the newest epoch has no later key change to be checked against. An epoch whose
+/// range this device has not stored (its base is NULL: the head is not verified here yet, or the
+/// device was at or past it) is skipped; while a head is unverified the pull waits for it instead
+/// (`head::awaits_head`).
 pub fn range_verdict(
     conn: &Connection,
     epoch_of_op: u32,
@@ -187,8 +212,9 @@ pub fn range_verdict(
 /// Rule 9 of the key-change design (spec 2026-11-20-sync-audit-2-fixes-design §2.3): whether an op
 /// at relay position `pos` must follow the position before it directly. It must when a key change
 /// this device holds has its head at or above `pos` and `pos` is at or below that change's base
-/// or the base is not stored (this device has not verified the range): an honest server assigns
-/// positions densely, and below the base nothing else (rule 6) checks what the server serves.
+/// or the base is not stored (this device has not verified the range, or was at or past the head):
+/// an honest server assigns positions densely, and below the base nothing else (rule 6) checks
+/// what the server serves. Inside the range a missing position is no error: rule 6 decides there.
 pub fn must_follow_directly(conn: &Connection, pos: u64) -> Result<bool> {
     Ok(conn.query_row(
         "SELECT EXISTS (SELECT 1 FROM sync_epochs WHERE rotation_head >= ?1 \

@@ -380,3 +380,48 @@ fn the_dumped_keys_record_is_written_without_a_plain_copy_of_the_keys() {
     write_keys_record(&mut direct, &listed).expect("write");
     assert_eq!(direct, expected);
 }
+
+/// Spec §2.3 step 8 on the merge path: a head the snapshot's key list adds, above the position
+/// the merge leaves this device at, has no range checked here, so it gets an entry that finds the
+/// signed record first.
+#[test]
+fn a_merge_whose_key_list_names_a_head_above_its_position_waits_for_the_record() {
+    use crate::services::sync::rekey::head;
+
+    let bytes = stream_with_keys(vec![entry(0, 0x10, Some(0)), entry(1, 0x11, Some(50))]);
+    let b = device(B);
+    bind(&b, &[(1, 0x11)]);
+
+    restore_merge(&b, &mut &bytes[..], NOW).expect("merge");
+
+    assert_eq!(epoch_rows(&b), vec![(0, 0), (1, 50)]);
+    let waiting = head::unverified_epochs(&b).expect("unverified");
+    assert_eq!(waiting.len(), 1, "{waiting:?}");
+    assert_eq!(
+        (waiting[0].epoch, waiting[0].head, waiting[0].after),
+        (1, Some(50), 3)
+    );
+    assert!(waiting[0].by.is_empty() && !waiting[0].own_pending);
+}
+
+/// A head the snapshot names verifies a provisional one only when the snapshot lies at or past it:
+/// below it, the entry stays (the range below the head is still to be checked).
+#[test]
+fn a_head_a_snapshot_names_is_not_verified_by_a_snapshot_below_it() {
+    use crate::services::sync::rekey::head;
+
+    let b = device(B);
+    bind(&b, &[(2, 0x12)]);
+    state::record_epoch(&b, 1, 50, Some(A), NOW).expect("epoch");
+    head::note_unverified(&b, 1, Some(50), Some(1), A, 0).expect("entry");
+
+    let (below, _) = snapshot(&dumper(), 3);
+    restore_merge(&b, &mut &below[..], NOW).expect("merge below the head");
+    let waiting = head::unverified_epochs(&b).expect("unverified");
+    assert_eq!(waiting.len(), 1, "{waiting:?}");
+    assert!(waiting[0].scanned >= 3);
+
+    let (past, _) = snapshot(&dumper(), 60);
+    restore_merge(&b, &mut &past[..], NOW).expect("merge past the head");
+    assert!(head::unverified_epochs(&b).expect("unverified").is_empty());
+}

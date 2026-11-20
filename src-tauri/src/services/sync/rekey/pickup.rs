@@ -282,7 +282,7 @@ fn notice(conn: &Connection, record: &Record, me: DeviceId) -> Result<Step> {
 /// Whether this device already knows `device` was removed or left: a record in its list row
 /// that counts here (the store may not have caught up with it yet), or this device's own pending
 /// key change removing it.
-fn known_gone(conn: &Connection, device: DeviceId) -> Result<bool> {
+pub(super) fn known_gone(conn: &Connection, device: DeviceId) -> Result<bool> {
     let row: Option<(Option<String>, Option<String>)> = conn
         .query_row(
             "SELECT removal_record, left_record FROM sync_devices WHERE id = ?1",

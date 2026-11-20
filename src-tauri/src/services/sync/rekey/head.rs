@@ -664,7 +664,8 @@ async fn signer_of<R: Relay, D: ConnAccess>(
 
 /// The maker of the bundle the server lists for `epoch`: the bundle opens with the key this device
 /// holds for that epoch and its signature verifies with the key of the certificate it names, which
-/// this store has pinned for that device (as the pickup checks a bundle). Nothing is adopted from
+/// this store has pinned for a device that speaks and is not known to be gone (as the pickup
+/// checks a bundle). Nothing is adopted from
 /// it: this device holds every key it carries.
 async fn signer_from_bundle<R: Relay, D: ConnAccess>(
     relay: &R,
@@ -698,12 +699,18 @@ async fn signer_from_bundle<R: Relay, D: ConnAccess>(
                 continue;
             };
             let cert = opened.signer().clone();
-            let pinned = db
-                .with_conn(|conn| trust::entry(conn, cert.body.device))?
-                .filter(|e| e.cert == cert);
+            // As the pickup checks a bundle's signer: pinned with this certificate, trusted and
+            // not left out for its issuer (`trust::speaker`), and not known here to be gone.
+            let by = cert.body.device;
+            let pinned = db.with_conn(|conn| {
+                if super::pickup::known_gone(conn, by)? {
+                    return Ok(None);
+                }
+                trust::speaker(conn, &cert)
+            })?;
             if let Some(pinned) = pinned {
                 if opened.verify(&pinned.sign_pub).is_ok() {
-                    return Ok(Some(cert.body.device));
+                    return Ok(Some(by));
                 }
             }
         }

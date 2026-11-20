@@ -730,8 +730,8 @@ async fn a_restored_snapshot_without_the_head_moves_the_look_ahead_past_the_prun
     institution(&three.vault.a.lock(), "a-before");
     round_of(&three.vault, &three.vault.a).await;
     round_of(&three.vault, &three.c).await;
-    // A change of C's that A has not pulled: the range of the key change is not empty, so B has
-    // to read it (an empty range needs nothing from the server and settles at once).
+    // A change of C's that A has not pulled: the range of the key change is not empty (an empty
+    // range needs no read and settles at once, which this test is not about).
     institution(&three.c.lock(), "c-pre");
     round_of(&three.vault, &three.c).await;
     new_kit(&three, A).await.expect("changed");
@@ -1138,4 +1138,72 @@ async fn a_removers_resync_settles_its_epoch_by_finding_the_record_it_sent() {
     assert!(has_institution(&a, "c-before"));
     drop(a);
     assert_eq!(records(&three), 1, "no second record was signed");
+}
+
+/// R8: nobody told a device paired after a removal who made the key change, so it asks the
+/// server's bundle for that epoch, and believes its maker only as the pickup would: a pinned
+/// device that speaks and is not known to be gone. Here the only bundle the server lists is signed
+/// by C, who is removed in the joiner's store: nothing is believed and the entry keeps waiting,
+/// although A's signed record is on the server.
+#[tokio::test]
+async fn a_bundle_signed_by_a_removed_device_does_not_name_the_signer() {
+    use crate::services::sync::binding::NoBinding;
+    use crate::services::sync::join::{join_new_device, JoinIdentity};
+    use crate::services::sync::pairing::holder;
+
+    let three = three().await;
+    let place = super::join::snapshot_of_a(&three.vault, "a-first").await;
+    institution(&three.c.lock(), "c-before");
+    round_of(&three.vault, &three.c).await;
+    remove(&three, A, &[C]).await.expect("removed");
+    let key = Zeroizing::new(*a_creds(&three).keys.get(1).expect("epoch 1"));
+    let (seed, cert) = own_signer(&three.c.lock(), C);
+    let bytes = hand_bundle(&three, &seed, &cert, &[A], &key);
+    let page = RekeyPage {
+        rekeys: vec![Rekey {
+            rotation: 1,
+            head: true_head(&three),
+            at: NOW,
+            bundle: bytes,
+        }],
+        more: false,
+    };
+    three
+        .vault
+        .relay
+        .set_rekeys_answer(Some(Arc::new(move |_| page.clone())));
+    let payload = holder::announced_payload(&three.vault.a.lock(), NOW)
+        .expect("payload")
+        .expect("sync is on");
+    let crate::services::sync::pairing::SlotPayload {
+        creds,
+        heads,
+        identity,
+    } = payload;
+    let joiner = TestConn::new(migrated());
+    join_new_device(
+        &three.vault.relay,
+        &joiner,
+        creds,
+        "Tablet",
+        agreed(&joiner),
+        JoinIdentity::Paired(identity.expect("identity"), heads),
+        three.dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect("joined");
+    assert_eq!(cursor(&joiner.lock()), place);
+    round_of(&three.vault, &three.vault.a).await;
+
+    for _ in 0..2 {
+        round_of(&three.vault, &joiner).await;
+    }
+
+    let conn = joiner.lock();
+    let waiting = entry(&conn, 1).expect("still unchecked");
+    assert!(waiting.by.is_empty() && !waiting.refuted, "{waiting:?}");
+    assert_eq!(state::epoch_signer(&conn, 1).expect("signer"), None);
+    assert!(!has_institution(&conn, "c-before"), "nothing of the range");
 }

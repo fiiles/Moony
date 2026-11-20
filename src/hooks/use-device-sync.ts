@@ -55,6 +55,11 @@ export function useDeviceSyncStatus() {
     queryKey: ['device-sync-status'],
     queryFn: () => deviceSyncApi.getStatus(),
     enabled,
+    // The backend sends a status only after a round (or a change it is told about): a local
+    // change made while offline or backing off sends none, so the cached "pending" count would
+    // stay at its old value. The command reads the count from the database, so every screen that
+    // shows the status reads it afresh when it appears.
+    refetchOnMount: 'always',
     refetchInterval: (query) => syncStatusRefetchInterval(query.state.data),
     // A long round's status reads the same at every poll, yet "taking longer than usual" depends
     // on the time it is read (`syncState`'s `now`): each poll re-renders, not only a changed one.

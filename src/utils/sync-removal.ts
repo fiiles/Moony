@@ -70,6 +70,15 @@ export function pruneAlsoRemove(
   return alsoRemove.filter((id) => offered.has(id));
 }
 
+/**
+ * The ticks a dialog starts with: the devices the plan lists as added by the removed ones that this
+ * device first verified within the last 30 days. The dialog applies them once, when it opens.
+ */
+export function defaultAlsoRemove(plan: RemovalPlan): string[] {
+  const offered = new Set(plan.addedByRemoving.map((device) => device.id));
+  return plan.tickedByDefault.filter((id) => offered.has(id));
+}
+
 /** The name the dialog's title uses: the first device asked for, as the plan names it. */
 export function removalTitleName(
   plan: RemovalPlan | undefined,

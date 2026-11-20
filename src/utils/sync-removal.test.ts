@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { RecoveryKit, RemovalPlan, RemovalPlanDevice, SyncStatus } from '@shared/schema';
 import {
   canKeepDropping,
+  defaultAlsoRemove,
   dropReasonKey,
   kitLineKey,
   outcomeView,
@@ -21,6 +22,8 @@ const dev = (id: string, name = id): RemovalPlanDevice => ({
   platform: 'macos',
   joinedAt: 1,
   thisDevice: false,
+  addedAt: null,
+  addedBy: null,
 });
 
 function plan(over: Partial<RemovalPlan> = {}): RemovalPlan {
@@ -29,6 +32,7 @@ function plan(over: Partial<RemovalPlan> = {}): RemovalPlan {
     staying: [dev('a', 'Mac')],
     droppingOut: [],
     addedByRemoving: [dev('d'), dev('e')],
+    tickedByDefault: [],
     replacesKit: 'no',
     kitNotUpdated: false,
     consent: 'abc',
@@ -172,5 +176,19 @@ describe('removalErrorKey', () => {
   it('leaves every other error to the common message', () => {
     expect(removalErrorKey('validation.syncPasswordInvalid')).toBeNull();
     expect(removalErrorKey(undefined)).toBeNull();
+  });
+});
+
+describe('defaultAlsoRemove', () => {
+  it('returns the recent devices the plan lists', () => {
+    expect(defaultAlsoRemove(plan({ tickedByDefault: ['e', 'd'] }))).toEqual(['e', 'd']);
+  });
+
+  it('ignores an ID the plan does not list', () => {
+    expect(defaultAlsoRemove(plan({ tickedByDefault: ['d', 'zzz'] }))).toEqual(['d']);
+  });
+
+  it('is empty when nothing is recent', () => {
+    expect(defaultAlsoRemove(plan())).toEqual([]);
   });
 });

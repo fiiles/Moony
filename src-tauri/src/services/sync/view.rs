@@ -268,12 +268,25 @@ fn plan_device(
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )
         .optional()?;
-    Ok(row.map(|(name, platform, joined_at)| RemovalPlanDevice {
+    let Some((name, platform, joined_at)) = row else {
+        return Ok(None);
+    };
+    // "Added" is when this device first verified it, never the certificate's date.
+    let entry = trust::entry(conn, device)?;
+    let added_by = match &entry {
+        Some(entry) if entry.kind == CertKind::Paired => {
+            devices::device_row(conn, entry.issuer)?.map(|(name, _)| name)
+        }
+        _ => None,
+    };
+    Ok(Some(RemovalPlanDevice {
         id: device.to_hex(),
         name,
         platform,
         joined_at,
         this_device: device == this,
+        added_at: entry.map(|e| e.pinned_at),
+        added_by,
     }))
 }
 
@@ -335,11 +348,19 @@ pub fn plan_view(conn: &Connection, plan: &Plan, now: i64) -> Result<RemovalPlan
     for device in &plan.added_by_removing {
         added.extend(plan_device(conn, *device, this)?);
     }
+    // Only devices the dialog lists can start ticked.
+    let ticked_by_default = plan
+        .recently_added
+        .iter()
+        .map(DeviceId::to_hex)
+        .filter(|id| added.iter().any(|d| d.id == *id))
+        .collect();
     Ok(RemovalPlan {
         removing,
         staying,
         dropping_out,
         added_by_removing: added,
+        ticked_by_default,
         replaces_kit: replaces_kit_view(plan.replaces_kit),
         kit_not_updated: plan.kit_not_updated,
         consent: plan.consent.clone(),

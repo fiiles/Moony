@@ -538,7 +538,9 @@
     },
     "keep": "这是我的",
     "added": "这些设备是您从{{name}}（或从它们）添加的。请把不认识的也一并移除。",
-    "addedRow": "{{name}} · {{date}}添加",
+    "addedRow": "{{date}}从{{name}}添加",
+    "addedRowNoIssuer": "{{date}}添加",
+    "recentNote": "最近30天内添加的设备已预先勾选。如果您认识其中某台并想保留，请取消勾选。",
     "inHand": "{{name}}在您身边吗？只需在其上关闭同步。",
     "kit": {
       "creatorRemoved": "您的恢复包保存在{{name}}上，因此将失效。之后您会立即创建新的恢复包。",

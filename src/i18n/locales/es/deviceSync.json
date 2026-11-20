@@ -570,7 +570,9 @@
     },
     "keep": "Es mío",
     "added": "Añadiste estos dispositivos desde {{name}} (o desde ellos). Quita también los que no reconozcas.",
-    "addedRow": "{{name}} · añadido el {{date}}",
+    "addedRow": "Añadido el {{date}} desde {{name}}",
+    "addedRowNoIssuer": "Añadido el {{date}}",
+    "recentNote": "Los dispositivos añadidos en los últimos 30 días vienen marcados de antemano. Si conoces alguno y quieres conservarlo, desmárcalo.",
     "inHand": "¿Tienes {{name}} a mano? Basta con desactivar la sincronización en él.",
     "kit": {
       "creatorRemoved": "Tu kit de recuperación se guardó en {{name}}, por eso dejará de valer. Justo después crearás uno nuevo.",

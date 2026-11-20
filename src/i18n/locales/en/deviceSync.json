@@ -554,7 +554,9 @@
     },
     "keep": "It's mine",
     "added": "You added these from {{name}} (or from them). Remove any you don't recognise too.",
-    "addedRow": "{{name}} · added {{date}}",
+    "addedRow": "Added on {{date}} from {{name}}",
+    "addedRowNoIssuer": "Added on {{date}}",
+    "recentNote": "Devices added in the last 30 days are ticked in advance. If you know one of them and want to keep it, untick it.",
     "inHand": "Have {{name}} with you? Just turn sync off on it.",
     "kit": {
       "creatorRemoved": "Your recovery kit was saved on {{name}}, so it will stop working. You'll make a new one right after.",

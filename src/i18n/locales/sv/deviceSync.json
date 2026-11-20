@@ -554,7 +554,9 @@
     },
     "keep": "Den är min",
     "added": "Du lade till de här enheterna från {{name}} (eller från dem). Ta också bort de du inte känner igen.",
-    "addedRow": "{{name}} · tillagd {{date}}",
+    "addedRow": "Tillagd {{date}} från {{name}}",
+    "addedRowNoIssuer": "Tillagd {{date}}",
+    "recentNote": "Enheter som lagts till de senaste 30 dagarna är förkryssade. Om du känner igen någon av dem och vill behålla den, ta bort krysset.",
     "inHand": "Har du {{name}} till hands? Stäng bara av synkroniseringen på den.",
     "kit": {
       "creatorRemoved": "Ditt återställningskit sparades på {{name}}, så det slutar gälla. Direkt efteråt skapar du ett nytt.",

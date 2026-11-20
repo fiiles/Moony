@@ -403,6 +403,8 @@ export interface RemovalPlan {
   droppingOut: RemovalDroppingOut[];
   /** Devices a removed device added, at any depth (to tick: "Odebrat také"); the ones asked for left out. */
   addedByRemoving: RemovalPlanDevice[];
+  /** The IDs of the devices in `addedByRemoving` this device first verified within the last 30 days: the dialog starts with them ticked. */
+  tickedByDefault: string[];
   /** Whether, and why, the recovery kit is replaced; a new kit then comes with the outcome. */
   replacesKit: ReplacesKit;
   /** The change touches no recovery kit at all ("Tímto odebráním se záchranná sada neaktualizuje."). */
@@ -417,6 +419,10 @@ export interface RemovalPlanDevice {
   platform: string;
   joinedAt: number;
   thisDevice: boolean;
+  /** When this device first verified it (unix seconds); `null` with no trust entry. */
+  addedAt: number | null;
+  /** The name of the device that added it; `null` when it joined another way or that device's row is gone. */
+  addedBy: string | null;
 }
 
 export interface RemovalDroppingOut {

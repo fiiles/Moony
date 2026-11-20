@@ -554,7 +554,9 @@
     },
     "keep": "Es ist meins",
     "added": "Diese Geräte haben Sie von {{name}} (oder von ihnen) aus hinzugefügt. Entfernen Sie auch die, die Sie nicht kennen.",
-    "addedRow": "{{name}} · hinzugefügt am {{date}}",
+    "addedRow": "Hinzugefügt am {{date}} von {{name}}",
+    "addedRowNoIssuer": "Hinzugefügt am {{date}}",
+    "recentNote": "Geräte, die in den letzten 30 Tagen hinzugefügt wurden, sind vorab angekreuzt. Wenn Sie eines davon kennen und behalten möchten, entfernen Sie das Häkchen.",
     "inHand": "Haben Sie {{name}} bei sich? Schalten Sie darauf einfach die Synchronisierung aus.",
     "kit": {
       "creatorRemoved": "Ihr Wiederherstellungs-Kit wurde auf {{name}} gespeichert und verliert deshalb seine Gültigkeit. Gleich danach erstellen Sie ein neues.",

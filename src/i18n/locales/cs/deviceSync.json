@@ -584,7 +584,9 @@
     },
     "keep": "Je moje",
     "added": "Tato zařízení jste přidali ze zařízení {{name}} (nebo z nich). Odeberte i ta, která nepoznáváte.",
-    "addedRow": "{{name}} · přidáno {{date}}",
+    "addedRow": "Přidáno {{date}} ze zařízení {{name}}",
+    "addedRowNoIssuer": "Přidáno {{date}}",
+    "recentNote": "Zařízení přidaná v posledních 30 dnech jsou zaškrtnutá předem. Pokud některé z nich znáte a chcete si ho nechat, zaškrtnutí zrušte.",
     "inHand": "Máte {{name}} u sebe? Stačí na něm synchronizaci vypnout.",
     "kit": {
       "creatorRemoved": "Na zařízení {{name}} jste si uložili záchrannou sadu, proto přestane platit. Hned potom si vytvoříte novou.",

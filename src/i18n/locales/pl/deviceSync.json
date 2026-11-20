@@ -586,7 +586,9 @@
     },
     "keep": "To moje",
     "added": "Te urządzenia dodałeś z urządzenia {{name}} (lub z nich). Usuń też te, których nie rozpoznajesz.",
-    "addedRow": "{{name}} · dodano {{date}}",
+    "addedRow": "Dodano {{date}} z urządzenia {{name}}",
+    "addedRowNoIssuer": "Dodano {{date}}",
+    "recentNote": "Urządzenia dodane w ciągu ostatnich 30 dni są zaznaczone z góry. Jeśli któreś znasz i chcesz je zachować, odznacz je.",
     "inHand": "Masz {{name}} przy sobie? Wystarczy wyłączyć na nim synchronizację.",
     "kit": {
       "creatorRemoved": "Zestaw odzyskiwania zapisano na urządzeniu {{name}}, więc przestanie obowiązywać. Zaraz potem utworzysz nowy.",

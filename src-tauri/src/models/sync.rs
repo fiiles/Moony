@@ -675,6 +675,10 @@ pub struct RemovalPlan {
     /// for left out.
     #[serde(rename = "addedByRemoving")]
     pub added_by_removing: Vec<RemovalPlanDevice>,
+    /// The hex IDs of the members of `added_by_removing` this device first verified within the
+    /// last 30 days: the dialog starts with them ticked.
+    #[serde(rename = "tickedByDefault")]
+    pub ticked_by_default: Vec<String>,
     /// Whether, and why, the recovery kit is replaced; a new kit then comes with the outcome.
     #[serde(rename = "replacesKit")]
     pub replaces_kit: ReplacesKit,
@@ -700,6 +704,13 @@ pub struct RemovalPlanDevice {
     pub joined_at: i64,
     #[serde(rename = "thisDevice")]
     pub this_device: bool,
+    /// When this device first verified it (`pinned_at`, its own clock); `None` with no trust entry.
+    #[serde(rename = "addedAt")]
+    pub added_at: Option<i64>,
+    /// The name of the device that added it (a pairing's issuer); `None` for any other way of
+    /// joining or when that device's row is gone.
+    #[serde(rename = "addedBy")]
+    pub added_by: Option<String>,
 }
 
 /// A device that drops out of sync with the removed ones, and why.

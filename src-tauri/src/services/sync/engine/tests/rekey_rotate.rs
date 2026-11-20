@@ -1293,3 +1293,56 @@ async fn a_ticked_recent_device_stays_recent_in_the_reloaded_plan() {
     assert_eq!(plan.added_by_removing, vec![d]);
     assert_eq!(plan.recently_added, vec![d]);
 }
+
+/// The wire view of a plan carries when and from where each added device came, and which of them
+/// start ticked.
+#[tokio::test]
+async fn the_plan_view_carries_added_at_added_by_and_the_ticked_by_default() {
+    use crate::services::sync::view;
+    let (three, d) = a_with_d_pinned_at(NOW - 29 * DAY).await;
+    let a = three.vault.a.lock();
+    let plan = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
+    let shown = view::plan_view(&a, &plan, NOW).expect("view");
+
+    assert_eq!(shown.ticked_by_default, vec![d.to_hex()]);
+    let row = shown
+        .added_by_removing
+        .iter()
+        .find(|x| x.id == d.to_hex())
+        .expect("listed");
+    assert_eq!(row.added_at, Some(NOW - 29 * DAY));
+    assert_eq!(row.added_by.as_deref(), Some("iPad"));
+}
+
+#[tokio::test]
+async fn a_device_added_earlier_is_listed_without_a_default_tick() {
+    use crate::services::sync::view;
+    let (three, d) = a_with_d_pinned_at(NOW - 31 * DAY).await;
+    let a = three.vault.a.lock();
+    let plan = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
+    let shown = view::plan_view(&a, &plan, NOW).expect("view");
+
+    assert!(shown.ticked_by_default.is_empty());
+    assert_eq!(shown.added_by_removing.len(), 1);
+    assert_eq!(shown.added_by_removing[0].id, d.to_hex());
+}
+
+/// The issuer's row is gone: the device is still listed, with no name to say who added it.
+#[tokio::test]
+async fn a_missing_issuer_row_gives_no_added_by() {
+    use crate::services::sync::view;
+    let (three, d) = a_with_d_pinned_at(NOW - DAY).await;
+    let a = three.vault.a.lock();
+    a.execute("DELETE FROM sync_devices WHERE id = ?1", [C.to_hex()])
+        .expect("row gone");
+    let plan = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
+    let shown = view::plan_view(&a, &plan, NOW).expect("view");
+
+    let row = shown
+        .added_by_removing
+        .iter()
+        .find(|x| x.id == d.to_hex())
+        .expect("listed");
+    assert_eq!(row.added_by, None);
+    assert_eq!(row.added_at, Some(NOW - DAY));
+}

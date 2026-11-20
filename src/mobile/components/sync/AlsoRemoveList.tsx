@@ -1,7 +1,6 @@
-import { useTranslation } from 'react-i18next';
 import type { RemovalPlanDevice } from '@shared/schema';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useFormat } from '@/lib/use-format';
+import { AddedLine } from '@/components/settings/sync/AddedLine';
 
 /**
  * "Odebrat také": the devices the removed ones added (or that joined with the old kit), one 44 pt
@@ -18,8 +17,6 @@ export function AlsoRemoveList({
   ticked: readonly string[];
   onToggle: (id: string) => void;
 }) {
-  const { t } = useTranslation('deviceSync');
-  const { date } = useFormat();
   return (
     <ul className="m-0 list-none p-0">
       {devices.map((device) => (
@@ -34,10 +31,8 @@ export function AlsoRemoveList({
               onCheckedChange={() => onToggle(device.id)}
             />
             <span className="min-w-0 break-words">
-              {t('remove.addedRow', {
-                name: device.name,
-                date: date(new Date(device.joinedAt * 1000), { dateStyle: 'medium' }),
-              })}
+              <span className="block">{device.name}</span>
+              <AddedLine device={device} className="block text-m-sub text-ink-3" />
             </span>
           </label>
         </li>

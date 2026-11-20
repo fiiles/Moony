@@ -554,7 +554,9 @@
     },
     "keep": "Den er min",
     "added": "Du la til disse enhetene fra {{name}} (eller fra dem). Fjern også de du ikke kjenner igjen.",
-    "addedRow": "{{name}} · lagt til {{date}}",
+    "addedRow": "Lagt til {{date}} fra {{name}}",
+    "addedRowNoIssuer": "Lagt til {{date}}",
+    "recentNote": "Enheter som er lagt til de siste 30 dagene, er avkrysset på forhånd. Hvis du kjenner igjen en av dem og vil beholde den, fjerner du avkrysningen.",
     "inHand": "Har du {{name}} for hånden? Slå bare av synkronisering på den.",
     "kit": {
       "creatorRemoved": "Gjenopprettingssettet ditt ble lagret på {{name}}, så det slutter å gjelde. Rett etterpå lager du et nytt.",

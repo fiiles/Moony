@@ -570,7 +570,9 @@
     },
     "keep": "È mio",
     "added": "Hai aggiunto questi dispositivi da {{name}} (o da loro). Rimuovi anche quelli che non riconosci.",
-    "addedRow": "{{name}} · aggiunto il {{date}}",
+    "addedRow": "Aggiunto il {{date}} da {{name}}",
+    "addedRowNoIssuer": "Aggiunto il {{date}}",
+    "recentNote": "I dispositivi aggiunti negli ultimi 30 giorni sono selezionati in anticipo. Se ne conosci uno e vuoi tenerlo, deselezionalo.",
     "inHand": "Hai {{name}} a portata di mano? Basta disattivare la sincronizzazione su di esso.",
     "kit": {
       "creatorRemoved": "Il tuo kit di ripristino è stato salvato su {{name}}, quindi smetterà di funzionare. Subito dopo ne creerai uno nuovo.",

@@ -825,9 +825,9 @@ async fn a_signed_head_for_something_else_neither_confirms_nor_refutes() {
         .expect("A's key");
     let vault = creds.vault_id.0;
     let records = [
-        head::HeadRecord::sign(vault, A, 0, 5, 1, head, &seed),
-        head::HeadRecord::sign([0x99; 16], A, 0, 1, 1, head, &seed),
-        head::HeadRecord::sign(vault, C, 0, 1, 1, head + 7, &seed),
+        head::HeadRecord::sign(vault, A, 0, 5, 1, head, head, 0, [0; 32], &seed),
+        head::HeadRecord::sign([0x99; 16], A, 0, 1, 1, head, head, 0, [0; 32], &seed),
+        head::HeadRecord::sign(vault, C, 0, 1, 1, head + 7, head + 7, 0, [0; 32], &seed),
     ];
     let forged: Vec<Vec<u8>> = records
         .iter()

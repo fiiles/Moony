@@ -31,6 +31,7 @@ use std::collections::BTreeMap;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
+use super::range;
 use super::{read_config, write_config, KeyChangeOverrun};
 use crate::error::{AppError, Result};
 use crate::services::sync::changeset;
@@ -46,8 +47,8 @@ use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::relay::{PulledOp, Relay, RelayError, Rotated};
 use crate::services::sync::state;
 
-const HEAD_DOMAIN: &[u8; 19] = b"moony rekey head v1";
-const SIGNED_LEN: usize = 19 + 16 + 16 + 4 + 4 + 4 + 8;
+const HEAD_DOMAIN: &[u8; 19] = b"moony rekey head v2";
+const SIGNED_LEN: usize = 19 + 16 + 16 + 4 + 4 + 4 + 8 + 8 + 4 + 32;
 const HEAD_LEN: usize = SIGNED_LEN + 64;
 
 /// Pages of ops one look-ahead reads at most per epoch and round (it goes on from there next
@@ -57,8 +58,10 @@ pub const MAX_LOOKAHEAD_PAGES: usize = 4;
 /// Ops per look-ahead page: a pull page, a few in tests (so a test reaches the page cap).
 const LOOKAHEAD_PAGE: u32 = if cfg!(test) { 4 } else { PULL_PAGE };
 
-/// `"moony rekey head v1" ‖ vault_id (16) ‖ signer (16) ‖ from_epoch (u32) ‖ to_epoch (u32) ‖
-/// rotation (u32) ‖ head (u64) ‖ sig (64)`, `sig` Ed25519 by the signer over every byte before it.
+/// `"moony rekey head v2" ‖ vault_id (16) ‖ signer (16) ‖ from_epoch (u32) ‖ to_epoch (u32) ‖
+/// rotation (u32) ‖ head (u64) ‖ base (u64) ‖ count (u32) ‖ digest (32) ‖ sig (64)`, `sig`
+/// Ed25519 by the signer over every byte before it. `base`, `count` and `digest` bind the range
+/// of the server's log above `base` up to `head` (see `range::range_digest`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HeadRecord {
     pub vault_id: [u8; 16],
@@ -67,6 +70,9 @@ pub struct HeadRecord {
     pub to_epoch: u32,
     pub rotation: u32,
     pub head: u64,
+    pub base: u64,
+    pub count: u32,
+    pub digest: [u8; 32],
     pub sig: [u8; 64],
 }
 
@@ -83,6 +89,9 @@ impl HeadRecord {
         to_epoch: u32,
         rotation: u32,
         head: u64,
+        base: u64,
+        count: u32,
+        digest: [u8; 32],
         key: &SignSeed,
     ) -> Self {
         let mut record = HeadRecord {
@@ -92,6 +101,9 @@ impl HeadRecord {
             to_epoch,
             rotation,
             head,
+            base,
+            count,
+            digest,
             sig: [0; 64],
         };
         record.sig = key.sign(&record.signed_bytes());
@@ -107,6 +119,9 @@ impl HeadRecord {
         out.extend_from_slice(&self.to_epoch.to_be_bytes());
         out.extend_from_slice(&self.rotation.to_be_bytes());
         out.extend_from_slice(&self.head.to_be_bytes());
+        out.extend_from_slice(&self.base.to_be_bytes());
+        out.extend_from_slice(&self.count.to_be_bytes());
+        out.extend_from_slice(&self.digest);
         out
     }
 
@@ -137,6 +152,11 @@ impl HeadRecord {
         let rotation = u32_of(take(4));
         let mut head = [0u8; 8];
         head.copy_from_slice(take(8));
+        let mut base = [0u8; 8];
+        base.copy_from_slice(take(8));
+        let count = u32_of(take(4));
+        let mut digest = [0u8; 32];
+        digest.copy_from_slice(take(32));
         let mut sig = [0u8; 64];
         sig.copy_from_slice(take(64));
         Ok(HeadRecord {
@@ -146,6 +166,9 @@ impl HeadRecord {
             to_epoch,
             rotation,
             head: u64::from_be_bytes(head),
+            base: u64::from_be_bytes(base),
+            count,
+            digest,
             sig,
         })
     }
@@ -266,6 +289,8 @@ pub(crate) fn queue_signed_head(
     }
     let seed = identity::own_seed(conn)?
         .ok_or_else(|| AppError::Internal("sync: no signing key for the signed head".into()))?;
+    // Placeholder: an empty range at the head; a later task (the remover's range read) replaces it.
+    let digest = range::range_digest(&creds.vault_id.0, to, rotated.head, rotated.head, &[])?;
     let record = HeadRecord::sign(
         creds.vault_id.0,
         me,
@@ -273,6 +298,9 @@ pub(crate) fn queue_signed_head(
         to,
         rotated.rotation,
         rotated.head,
+        rotated.head,
+        0,
+        digest,
         &seed,
     );
     let mut built = build_marker(conn)?;
@@ -495,26 +523,76 @@ mod tests {
     use super::*;
     use crate::services::sync::identity::{new_sign_seed, sign_pub};
 
+    fn sample(seed: &SignSeed) -> HeadRecord {
+        HeadRecord::sign(
+            [0x22; 16],
+            DeviceId([1; 16]),
+            3,
+            4,
+            9,
+            1234,
+            1200,
+            2,
+            [0x5c; 32],
+            seed,
+        )
+    }
+
     #[test]
-    fn a_signed_head_round_trips_and_a_changed_byte_does_not_verify() {
+    fn a_signed_head_v2_round_trips_and_a_changed_byte_does_not_verify() {
         let seed = new_sign_seed().expect("seed");
-        let record = HeadRecord::sign([0x22; 16], DeviceId([1; 16]), 3, 4, 9, 1234, &seed);
+        let record = sample(&seed);
         let bytes = record.encode();
         assert_eq!(bytes.len(), HEAD_LEN);
+        assert_eq!(&bytes[..19], b"moony rekey head v2");
+        assert_eq!(
+            bytes[..19]
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>(),
+            "6d6f6f6e792072656b65792068656164207632"
+        );
         let back = HeadRecord::decode(&bytes).expect("decodes");
         assert_eq!(back, record);
         back.verify(&sign_pub(&seed)).expect("verifies");
-        for at in [20, 40, 60, 70, SIGNED_LEN - 1, HEAD_LEN - 1] {
+        // inside the older fields, the new ones (base, count, digest) and the last signed byte
+        for at in [
+            20,
+            40,
+            60,
+            70,
+            83,
+            92,
+            100,
+            120,
+            SIGNED_LEN - 1,
+            HEAD_LEN - 1,
+        ] {
             let mut changed = bytes.clone();
             changed[at] ^= 1;
             let decoded = HeadRecord::decode(&changed).expect("decodes");
             assert!(decoded.verify(&sign_pub(&seed)).is_err(), "byte {at}");
         }
         assert!(HeadRecord::decode(&bytes[1..]).is_err());
+        let mut longer = bytes.clone();
+        longer.push(0);
+        assert!(HeadRecord::decode(&longer).is_err());
         let mut other_domain = bytes.clone();
         other_domain[0] ^= 1;
         assert!(HeadRecord::decode(&other_domain).is_err());
         let other = new_sign_seed().expect("seed");
         assert!(back.verify(&sign_pub(&other)).is_err());
+    }
+
+    #[test]
+    fn a_version_1_record_does_not_decode() {
+        let seed = new_sign_seed().expect("seed");
+        let mut bytes = sample(&seed).encode();
+        bytes[18] = b'1';
+        assert!(HeadRecord::decode(&bytes).is_err());
+        // a real version-1 record: shorter, other domain
+        let mut v1 = b"moony rekey head v1".to_vec();
+        v1.extend_from_slice(&[0u8; 16 + 16 + 4 + 4 + 4 + 8 + 64]);
+        assert!(HeadRecord::decode(&v1).is_err());
     }
 }

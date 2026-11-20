@@ -11,6 +11,7 @@ pub mod envelope;
 pub mod head;
 pub mod kit;
 pub mod pickup;
+pub mod range;
 pub mod reseal;
 pub mod rotate;
 

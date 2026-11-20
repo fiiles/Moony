@@ -135,6 +135,12 @@ pub fn forget(conn: &Connection, epoch: u32) -> Result<()> {
     })
 }
 
+/// The frozen digest of the two-note range of the tests (vault `[0x22; 16]`, epoch 4, base 10,
+/// head 13, notes at 11 `[0xaa; 32]` and 13 `[0xbb; 32]`); `head`'s frozen record reuses it.
+#[cfg(test)]
+pub(super) const FROZEN_TWO_NOTE_DIGEST: &str =
+    "0c4975dbc30e2f9866ff89c16bdd9d42330faf65f2e5e009a7b2ddd98b08e870";
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,10 +255,7 @@ mod tests {
     fn the_range_digest_matches_the_frozen_vector() {
         let two = range_digest(&VAULT, 4, 10, 13, &notes()).expect("digest");
         let empty = range_digest(&VAULT, 4, 13, 13, &[]).expect("digest");
-        assert_eq!(
-            hex(&two),
-            "0c4975dbc30e2f9866ff89c16bdd9d42330faf65f2e5e009a7b2ddd98b08e870"
-        );
+        assert_eq!(hex(&two), FROZEN_TWO_NOTE_DIGEST);
         assert_eq!(
             hex(&empty),
             "eb3fb1176f17d5054b36bc1a56ec7cc143283c12f9295db531502e5fa38e8a11"
@@ -289,6 +292,18 @@ mod tests {
         assert!(
             range_digest(&VAULT, 4, 10, 12, &notes()).is_err(),
             "above the head"
+        );
+        assert!(
+            range_digest(&VAULT, 4, 14, 13, &[]).is_err(),
+            "inverted, empty"
+        );
+        assert!(
+            range_digest(&VAULT, 4, 14, 13, &notes()).is_err(),
+            "inverted, with notes"
+        );
+        assert!(
+            range_digest(&VAULT, 4, 13, 13, &[]).is_ok(),
+            "empty at the head"
         );
     }
 }

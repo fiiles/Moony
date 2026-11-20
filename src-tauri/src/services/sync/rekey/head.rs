@@ -522,12 +522,24 @@ fn settle(
 mod tests {
     use super::*;
     use crate::services::sync::identity::{new_sign_seed, sign_pub};
+    use range::RangeNote;
 
-    const TWO_NOTE_DIGEST: [u8; 32] = [
-        0x0c, 0x49, 0x75, 0xdb, 0xc3, 0x0e, 0x2f, 0x98, 0x66, 0xff, 0x89, 0xc1, 0x6b, 0xdd, 0x9d,
-        0x42, 0x33, 0x0f, 0xaf, 0x65, 0xf2, 0xe5, 0xe0, 0x09, 0xa7, 0xb2, 0xdd, 0x98, 0x2b, 0x08,
-        0xe8, 0x70,
-    ];
+    /// The real digest of the two-note range, tied to the frozen constant of `range.rs`.
+    fn two_note_digest() -> [u8; 32] {
+        let notes = [
+            RangeNote {
+                pos: 11,
+                hash: [0xaa; 32],
+            },
+            RangeNote {
+                pos: 13,
+                hash: [0xbb; 32],
+            },
+        ];
+        let digest = range::range_digest(&[0x22; 16], 4, 10, 13, &notes).expect("digest");
+        assert_eq!(hex(&digest), range::FROZEN_TWO_NOTE_DIGEST);
+        digest
+    }
 
     fn sample(seed: &SignSeed) -> HeadRecord {
         HeadRecord::sign(
@@ -539,7 +551,7 @@ mod tests {
             13,
             10,
             2,
-            TWO_NOTE_DIGEST,
+            two_note_digest(),
             seed,
         )
     }
@@ -554,13 +566,14 @@ mod tests {
         let record = sample(&seed);
         let signed = record.signed_bytes();
         assert_eq!(signed.len(), SIGNED_LEN);
+        assert_eq!(signed[83..115], two_note_digest());
         assert_eq!(
             hex(&signed),
-            "6d6f6f6e792072656b657920686561642076322222222222222222222222222222222201010101010101010101010101010101000000030000000400000009000000000000000d000000000000000a000000020c4975dbc30e2f9866ff89c16bdd9d42330faf65f2e5e009a7b2dd982b08e870"
+            "6d6f6f6e792072656b657920686561642076322222222222222222222222222222222201010101010101010101010101010101000000030000000400000009000000000000000d000000000000000a000000020c4975dbc30e2f9866ff89c16bdd9d42330faf65f2e5e009a7b2ddd98b08e870"
         );
         assert_eq!(
             hex(&record.encode()),
-            "6d6f6f6e792072656b657920686561642076322222222222222222222222222222222201010101010101010101010101010101000000030000000400000009000000000000000d000000000000000a000000020c4975dbc30e2f9866ff89c16bdd9d42330faf65f2e5e009a7b2dd982b08e870f2cb088deb346f7ac6bd0e918992f1b610603eb67765cbde5af349681e9d63de1e1194b810241794e54e95bc864bb14926464dac44f4f3bc05b03436a9c1a303"
+            "6d6f6f6e792072656b657920686561642076322222222222222222222222222222222201010101010101010101010101010101000000030000000400000009000000000000000d000000000000000a000000020c4975dbc30e2f9866ff89c16bdd9d42330faf65f2e5e009a7b2ddd98b08e870ac8071ec7de095282ab9578ff132bfeed6dc43fb646fb8fd8492bdcb32dde5ababe67e57dc0abb264debd694dedb58253a9e63210661ea155883288e43233a00"
         );
     }
 

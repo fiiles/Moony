@@ -1,6 +1,10 @@
 # Device sync: fixes for the second security audit (2026-11-20) — design
 
-Date: 2026-11-20. Status: **waiting for the owner**. Nothing here is built. The only code on the
+Date: 2026-11-20. Status: **approved by the owner on 2026-11-20**: every recommendation of §0 and
+§8 as written (D1 to D10; for D3 and D4 option 3 each; for D7 accept and document, `kit-history`
+left for later). After the approval a fourth reading of §2.3 changed details of D1 (which honest
+situations must not get stuck); no decision changed, and §11 lists every change. Nothing here is
+built. The only code on the
 branch `spec/sync-audit-2-fixes` is test code: tests that reproduce the two High findings and a
 third one found while this design was reviewed, and a switch in the test server they need (§1). Sync stays behind `feature::RELEASED = false`; everything
 the owner approves here lands before the flag is turned on and before the sync server's repository
@@ -18,6 +22,9 @@ Finding IDs are the audit's: `R2-` removal, key change, pairing, Recovery Kit; `
 number in the server's log. "Head" is the position at which a key change happened.
 
 ## 0. What the owner decides
+
+The owner approved the recommendation of every row on 2026-11-20. The table stays as it was put to
+him.
 
 Each row is one decision. §8 repeats them with what "no" means. The recommendation is mine; where
 a row is the owner's earlier ruling rather than a defect, it says so.
@@ -155,8 +162,9 @@ removed device's token writes nothing.
 
 ### 2.3 The design (recommended). App only.
 
-Words. A device's **place** is the highest position it has handled (applied, held back or passed
-over), which can be above its stored cursor when an op is held. The **base** is the remover's
+Words. A device's **place** is the highest of: its stored cursor, the highest position it has
+handled (applied, held back or passed over; that can be above the cursor when an op is held), and
+the position of the last snapshot it restored. A device that is joining has no place yet. The **base** is the remover's
 stored cursor when it sends the rotation (kept in the pending change, so the lost-answer path has
 it); with a held op that is lower than its place, and the range then covers more, which is fine.
 The **range** is every position above the base up to and including the head. An **older-key op**
@@ -166,13 +174,14 @@ of a key change is one sealed under an epoch below the one that change starts.
 
 1. *The call is unchanged.* `POST /token` and its answer `{rotation, head}` stay as they are.
    Before the call the remover checks, from the vault info it already reads, that its cursor is not
-   below what the server still keeps nor below the vault's newest snapshot; if it is, the removal is
-   refused with `validation.syncRemovalNeedsSync` (a normal round catches up first). The second
-   half keeps an honest snapshot from landing inside the range, where rule 10 would refuse it.
+   below what the server still keeps (its floor); if it is, the removal is refused with
+   `validation.syncRemovalNeedsSync` (a normal round restores first). Nothing else is a
+   precondition: in particular not the position of the vault's newest snapshot, which the device
+   being removed could keep moving.
 2. *The commit is provisional.* On `200` (and on the lost-answer path that finds its own bundle in
    the server's list) the remover makes the new key current and writes the removal as today, in the
    same savepoint records the head as **not verified** with its base, and does not queue the signed
-   head.
+   head (today's commit queues it at once; that call moves to step 4).
 3. *It reads the range.* With the new token it reads every op of the range, applying nothing and
    opening nothing: it only notes each position and the hash of the envelope found there, in a local
    table. The read ends when a page says there is no more, or serves a position above the head. It
@@ -189,8 +198,9 @@ of a key change is one sealed under an epoch below the one that change starts.
    from the server. On an honest server steps 2 to 4 happen inside the removal call.
 5. *Until then the remover holds still.* While its own head is not verified it pushes nothing,
    seals nothing again, uploads no snapshot, hands no keys to a joining device, and starts no other
-   removal or Kit; it applies no older-key op above its base. It shows the state of §2.5 and tries
-   again every round. The other devices wait for the signed head as they do today (R5).
+   removal or Kit; it applies no older-key op above its base. On an honest server this state lasts
+   no longer than the removal call; it is visible only when step 3 could not finish, and then the
+   device shows the state of §2.5 and tries again every round. The other devices wait for the signed head as they do today (R5).
 
    The last part holds for every device, not only the remover: **while a device holds a head it
    has not verified, it hands no keys on** (no pairing as the holder, no snapshot upload, no
@@ -204,22 +214,28 @@ of a key change is one sealed under an epoch below the one that change starts.
    meets an op sealed under an older key at a position in the range, its hash must equal the one
    noted for that position. Any other op there, and any op at a position of the range that has no
    note, ends the pull as `Invalid`. Notes are kept per key change and position for as long as the
-   device could read the range again (a repair or re-sync moves the cursor back), and where two
-   ranges overlap an op must match in both.
+   device could read the range again, and where two ranges overlap an op must match in both. After
+   a replace of the profile (a repair, a re-sync, a join) the device's place is the snapshot's
+   position: for every key change whose head is above it, step 7 runs again, and until it has, the
+   older-key ops of that range wait, exactly as they wait for a signed head today.
 7. *How the other devices get the notes.* A device takes the head as verified when, as today, the
    remover's signed record names the same head as the server, **and** the device has read the range
    itself (from the base, again if its own place is already past it), noted positions and hashes,
    and found the same number and digest. A different digest is a refuted head: today's
    `keyChangeUnverified`. A device whose place was already at or past the head has nothing to
-   check. A device that can no longer read the range (the server pruned it) settles the head as
-   today, by restoring a snapshot under the new key that names it.
+   check at that moment (it makes its notes if it is ever put back below the head, see rule 6). A
+   device that can no longer read the range (the server pruned it) settles the head as today, by
+   restoring a snapshot under the new key that names it. A device that has to find the signed
+   record starts reading at the server's floor, not at zero.
 8. *A device that got the head some other way* (from the device that paired it, from a snapshot's
    key list, from the Kit's envelope) and whose place is below that head finds the signed record in
    the log first, as a Kit joiner without a bundle does today, and then does step 7. Until then
    older-key ops above its place wait.
 9. *Below the base, no skipped position.* A device that is behind the base still reads older-key
    ops there unchecked (that is residual R4). There, each op must directly follow the one before it,
-   starting from where the pull started; a skipped position ends the pull as `Invalid`. An honest
+   the first one being the stored cursor plus one; a skipped position ends the pull as `Invalid`.
+   While the base is not known yet, the rule holds up to the head. Inside the range a missing
+   position is not an error; rule 6 decides there. An honest
    server never skips. The rule is not applied in the scan that follows a newer-schema stop, which
    jumps by design.
 9a. *What a device has handled cannot be replaced.* When an op is held (a gap in its author's
@@ -228,22 +244,34 @@ of a key change is one sealed under an epoch below the one that change starts.
    position to what was found there the first time, and an op of an author's next sequence number
    at such a position is applied: the removed device's later write, under the old key, below the
    head. So a device notes the hash of every op it handles above its stored cursor, and an op read
-   again at a noted position must have the same hash, else the pull ends as `Invalid`. The notes go
-   as the cursor passes them. This rule does not depend on a key change.
+   again at a noted position must have the same hash, else the pull ends as `Invalid`. A note is
+   written in the same transaction as the handling it records, and a position above the cursor
+   that has no note (a crash came between) is noted when it is next read. The notes go as the
+   cursor passes them, and all of them go when the profile is replaced, when the device re-joins
+   under a new ID, and when the server is found to have gone back (a restored backup reuses
+   positions honestly; that case keeps its own message). This rule does not depend on a key
+   change.
 
 **Snapshots (R2-H3)**
 
 10. *A snapshot must fit the key of its position.* A snapshot sealed under the newest key a
     device holds is restored as today. One sealed under an **older** key is restored only by a
-    device that is catching up from behind: its position must be above the device's own place and
-    at or below the base of the key change that ended that key. Everything else is refused with the
-    existing `syncSnapshotInvalid`: an old-key snapshot above the base, and an old-key snapshot
-    offered to a device that is already past it (by a `410` the server made up, or by the heal of a
-    missed change). An honest refusal ends by itself, because the remover uploads a snapshot under
-    the new key right after every key change. The seal epoch is read from the stream the open
-    authenticated, as the Kit join already does. A device that does not know the base yet (its head
-    is not verified, or it is joining) finds the signed record first; reading the log needs only the
-    keys, not a restored profile.
+    device that is catching up from behind: its position must be above the device's place and at or
+    below the base of the key change that ended that key. Everything else is refused: an old-key
+    snapshot above the base, and an old-key snapshot offered to a device that is already past it
+    (by a `410` the server made up, or by the heal of a missed change). The seal epoch is read from
+    the stream the open authenticated, as the Kit join already does; a device that does not know
+    the base yet finds the signed record first, which needs only the keys.
+    - **A joining device** (pairing or the Recovery Kit) has no place and keeps today's rule: an
+      older-key snapshot at or below the head is taken, with the head checked afterwards. What a
+      join restores is not bound by anything in this design (R1, R2-M2, §4.2), and the Kit must keep
+      working when no device is left to upload a newer snapshot.
+    - **So that an honest refusal ends:** every device that has verified a key change and sees, in
+      the vault's info, that the newest snapshot is not above that head owes the vault a snapshot
+      under the new key and uploads it as soon as it may (today only the remover owes one). An
+      honest old-key snapshot can sit above the base when another device was ahead of the remover;
+      until a new-key one exists, a device that needs a restore waits and says so
+      (`syncSnapshotInvalid` is the wrong message for it: the existing "waiting" state is used).
 
 **The record and the digest, so that two builders build the same thing**
 
@@ -284,6 +312,15 @@ What stays, said plainly:
   the op variant to replacing genuine ops the device has not seen, which breaks their author's
   chain and shows; rule 9a closes the variant that needed no lag at all. §9 says what would close
   the rest.
+- **A replace puts a device behind again.** After a repair, a re-sync or a join the device reads
+  from its snapshot's position; what lies between that and the base is unbound for it like for any
+  device that was behind.
+- **Two states this design can leave a vault waiting in, both needing a server that misbehaves or
+  a rare race, both with a way out the app names** (turn sync off on the device and connect it
+  again, or the Recovery Kit): the remover cannot read its range because the server pruned above
+  its base after step 1; and no device can upload a snapshot because every cursor is held behind an
+  author whose envelopes are quarantined. The second exists today and is not caused by this
+  design, but it matters more with rule 10; §9 lists it.
 - **A device that has not been told of the key change is not protected by it.** A server that
   hides the rotation from a device keeps feeding it older-key ops, the removed device's later ones
   included. The device says so when it learns the truth (`keyChangeOverrun`), and nothing is
@@ -765,6 +802,11 @@ For each: what I recommend, and what follows from "no".
   name and helps R2-M2). Both are formats between devices and independent of the server. Snapshots
   need the same thought: they are authenticated by a key only. I recommend designing this before
   sync is switched on for everyone (§7.3 item 7).
+- **A held author holds every cursor for good.** A device that forks its own chain is quarantined
+  and nothing lifts that, so no device's pull ends clean and none uploads a snapshot. A removed
+  device can do it before its removal. It is today's behaviour and outside the audit, but the
+  natural fix belongs next to D1: envelopes of a device whose removal is verified no longer hold
+  the cursor. It needs its own small design (what is passed over, what the person sees).
 - **A short pairing code** with a password-authenticated exchange (§3.2 D).
 - **The Low findings** of the three reports. Two are worth doing with this work because they are
   one line each: R2-L1 ("Je moje" asks for the password, like removal does) and S2-L3 (the admin's
@@ -830,8 +872,23 @@ refused, and no honest op was lost. It added:
   as verified, where the base is stored, what exactly is hashed, holes in the range, how long the
   notes live. They are stated in §2.3 now.
 
-Rule 9a and the last wording of rule 10 were written after that reading and have not been read by
-anyone else. The plan should start with one more adversarial reading of §2.3 and with the tests of
-§2.6, failing ones first. Three readings each found something; that is a reason to expect a fourth
-would, and to treat D1 as the part of this document that needs the most care in building.
+A fourth reading, after the owner's approval, again found no way past the protection: a forged
+old-key snapshot was refused on every path, rule 9a closed the attack it was written for, and no
+honest re-read holds different bytes. What it changed is where honest devices could have got stuck:
+
+- A precondition added after the third reading (the remover must be past the vault's newest
+  snapshot) would have let the device being removed block its removal by uploading snapshots. It is
+  gone; step 1 checks the floor only.
+- Rule 10 could have refused honest restores for good: the Kit joiner (now exempt, like any join),
+  and everyone while only the remover owed the new-key snapshot (now every verified device owes
+  it).
+- A device that was past the head at the key change makes no notes; after a re-sync it would have
+  met the range without them. Step 7 now runs again after a replace.
+- "Place" now counts restored snapshots; rule 9a says when notes are written and when they go.
+- Two waiting states and one weakness that exists today (a quarantined author holds every cursor)
+  are named in §2.4 and §9 instead of being left for the builder to discover.
+
+Four readings each found something. D1 is the part of this work that needs the most care: plan 2
+starts with the failing tests of §2.6 and ends with one more adversarial reading of the code, and
+its liveness cases are tests, not prose.
 

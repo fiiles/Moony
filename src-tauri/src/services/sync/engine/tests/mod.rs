@@ -28,6 +28,7 @@ mod rekey_gate;
 mod rekey_head;
 mod rekey_leave;
 mod rekey_pickup;
+mod rekey_reading_b;
 mod rekey_review;
 mod rekey_rotate;
 mod rekey_scenarios;

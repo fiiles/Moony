@@ -174,10 +174,14 @@ of a key change is one sealed under an epoch below the one that change starts.
 
 1. *The call is unchanged.* `POST /token` and its answer `{rotation, head}` stay as they are.
    Before the call the remover checks, from the vault info it already reads, that its cursor is not
-   below what the server still keeps (its floor); if it is, the removal is refused with
-   `validation.syncRemovalNeedsSync` (a normal round restores first). Nothing else is a
-   precondition: in particular not the position of the vault's newest snapshot, which the device
-   being removed could keep moving.
+   below what the server still keeps (its floor), or that the server's head is not more than half
+   of one read of the range (`REMOVAL_MAX_BEHIND`, 50,000 positions) above its cursor; if it is,
+   the removal is refused with `validation.syncRemovalNeedsSync` (a normal round restores first).
+   A longer range could never be read to its end, so nobody would verify the head, and the device
+   being removed could make it that long by pushing while the remover does not pull. The head is
+   the server's, unauthenticated: a lie can only refuse. Nothing else is a precondition: in
+   particular not the position of the vault's newest snapshot, which the device being removed could
+   keep moving.
 2. *The commit is provisional.* On `200` (and on the lost-answer path that finds its own bundle in
    the server's list) the remover makes the new key current and writes the removal as today, in the
    same savepoint records the head as **not verified** with its base, and does not queue the signed
@@ -222,8 +226,12 @@ of a key change is one sealed under an epoch below the one that change starts.
    remover's signed record names the same head as the server, **and** the device has read the range
    itself (from the base, again if its own place is already past it), noted positions and hashes,
    and found the same number and digest. A different digest is a refuted head: today's
-   `keyChangeUnverified`. A device whose place was already at or past the head has nothing to
-   check at that moment (it makes its notes if it is ever put back below the head, see rule 6). A
+   `keyChangeUnverified`. A device whose watermark was already at or past the head has nothing to
+   check at that moment (it makes its notes if it is ever put back below the head, see rule 6).
+   The watermark is the higher of its cursor and the last snapshot it restored: the position below
+   which it has handled every position. It is not the place of rule 9a, which counts a held op
+   above the cursor; such an op says nothing of the positions between the cursor and it, and a
+   device that skipped the check for it would apply what the server put there. A
    device that can no longer read the range (the server pruned it) settles the head as today, by
    restoring a snapshot under the new key that names it. A device that has to find the signed
    record starts reading at the server's floor, not at zero.
@@ -247,8 +255,10 @@ of a key change is one sealed under an epoch below the one that change starts.
    again at a noted position must have the same hash, else the pull ends as `Invalid`. A note is
    written in the same transaction as the handling it records, and a position above the cursor
    that has no note (a crash came between) is noted when it is next read. The notes go as the
-   cursor passes them, and all of them go when the profile is replaced, when the device re-joins
-   under a new ID, and when sync is turned off. They stay when the server is found to have gone
+   cursor passes them, and all of them go when the profile is replaced and when sync is turned off.
+   A re-join under a new ID keeps them: they are hashes by position, the cursor and the held
+   positions do not change with the ID, and a member can make a device re-join by claiming its ID,
+   so wiping them there would let a handled position be refilled. They stay when the server is found to have gone
    back: that verdict rests on a number the server sends unauthenticated, and one lie would wipe
    them. A device in that state is told to re-sync, and the replace clears them; the state keeps
    its own message. This rule does not depend on a key change.
@@ -897,3 +907,17 @@ Four readings each found something. D1 is the part of this work that needs the m
 starts with the failing tests of §2.6 and ends with one more adversarial reading of the code, and
 its liveness cases are tests, not prose.
 
+2026-11-20, the build's adversarial reading changed five things:
+
+- R23 (rule 7): "nothing to read" is decided from the watermark, not the place. A held op above
+  the head made the place pass the head, so the range was never checked, and the removed device's
+  write in it was applied.
+- R24 (§2.3 step 4): a re-join under a new ID queues the unsent signed head records again as
+  markers of the new ID. A member's forged claim on the remover's ID made it re-join at its first
+  pull, which emptied the queue, and no other device could verify the head.
+- R25 (rule 9a): a re-join keeps the notes. The same forged claim made a device re-join and
+  forget what it had handled.
+- R26 (§2.3 step 7): the look-ahead for the signed record advances over an unbroken run of
+  positions above the head only, so a record withheld once is asked for again.
+- R21 (step 1): the remover is also refused when the server's head is more than half a read
+  above its cursor; a range longer than one read could never be signed or verified.

@@ -46,6 +46,7 @@ use super::pickup::{self, Pickup};
 use super::{device_name, head, write_removal_not_done, RemovalNotDone};
 use crate::error::{AppError, Result};
 use crate::services::sync::capture::guard;
+use crate::services::sync::engine::pull::{MAX_PULL_PAGES, PULL_PAGE};
 use crate::services::sync::engine::{self, ConnAccess};
 use crate::services::sync::envelope::vault_token;
 use crate::services::sync::error::{SyncError, SyncResult};
@@ -68,6 +69,10 @@ pub const REMOVE_THIS_DEVICE: &str = "validation.syncRemoveThisDevice";
 /// The server no longer keeps what lies between this device's place and its end: a normal round
 /// restores first (spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 1). The text comes later.
 pub const REMOVAL_NEEDS_SYNC: &str = "validation.syncRemovalNeedsSync";
+/// How far the server's head may lie above this device's cursor for a removal (R21): half of what
+/// one read of the range returns (`MAX_PULL_PAGES` pages of `PULL_PAGE`). A longer range could
+/// never be read to its end, so nobody would verify the head.
+pub const REMOVAL_MAX_BEHIND: u64 = (MAX_PULL_PAGES as u64 * PULL_PAGE as u64) / 2;
 const CHANGES_PAUSED: &str = "validation.syncChangesPaused";
 const NOT_SET_UP: &str = "validation.syncSetupIncomplete";
 const IN_PROGRESS: &str = "validation.syncChangeInProgress";
@@ -706,6 +711,13 @@ fn wipe_pending(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Whether the range from `cursor` to the server's head can be read by this device: the floor is
+/// not above the cursor, and the head is not more than `REMOVAL_MAX_BEHIND` above it. The head is
+/// the server's, unauthenticated: a lie can only refuse the removal.
+fn range_is_readable(floor: u64, head: u64, cursor: u64) -> bool {
+    floor <= cursor && head.saturating_sub(cursor) <= REMOVAL_MAX_BEHIND
+}
+
 /// Carries out the removal the person confirmed (revision §4.2), under `engine::exclusive` (no
 /// round runs). The command checks the password first. A vault whose key changed since this
 /// device last looked (`rotation` above `rekey_seen`) is picked up first, so the plan is rebuilt
@@ -744,12 +756,11 @@ pub async fn remove<R: Relay, D: ConnAccess>(
             }
         }
     }
-    // The only new precondition (spec §2.3 step 1): what lies between this device's cursor and
-    // the end of the log must still be on the server, so the range can be read. Not the cursor's
-    // distance from the head, nor the vault's newest snapshot: the device being removed could
-    // keep either moving.
+    // Spec §2.3 step 1: what lies between this device's cursor and the end of the log must still
+    // be on the server and short enough to read in one go (R21), so the range can be signed.
+    // Not the vault's newest snapshot: the device being removed could keep it moving.
     let cursor = db.with_conn(|conn| Ok(state::load(conn)?.map_or(0, |sync| sync.cursor)))?;
-    if info.floor > cursor {
+    if !range_is_readable(info.floor, info.head, cursor) {
         return Err(SyncError::Local(validation(REMOVAL_NEEDS_SYNC)));
     }
     let (change, new_kit, creds) = db.with_conn(|conn| {
@@ -1400,6 +1411,19 @@ async fn own_rotation<R: Relay>(
 mod tests {
     use super::*;
     use crate::services::sync::identity::new_sign_seed;
+
+    #[test]
+    fn a_range_longer_than_half_a_read_is_not_readable() {
+        assert!(range_is_readable(0, 100, 100));
+        assert!(range_is_readable(5, 5 + REMOVAL_MAX_BEHIND, 5));
+        assert!(!range_is_readable(5, 6 + REMOVAL_MAX_BEHIND, 5));
+        assert!(!range_is_readable(6, 10, 5), "the floor above the cursor");
+        assert!(
+            range_is_readable(0, 3, 9),
+            "a head below the cursor refuses nothing here"
+        );
+        assert!(REMOVAL_MAX_BEHIND < MAX_PULL_PAGES as u64 * PULL_PAGE as u64);
+    }
 
     fn change() -> PendingChange {
         let seed = new_sign_seed().expect("seed");

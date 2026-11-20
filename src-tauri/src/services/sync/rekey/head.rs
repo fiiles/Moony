@@ -42,7 +42,7 @@
 //! Every other device takes a head as verified only when it has checked what lies between the
 //! remover's base and the head against what the remover signed (spec §2.3 steps 7 and 8). Once
 //! `look_ahead` finds the signed record, `settle` compares the head, the rotation and the epochs as
-//! before; a device whose place is already at or past the head has nothing to check; any other
+//! before; a device whose watermark (the cursor or the last restored snapshot, `seen::watermark`: below it every position was handled) is already at or past the head has nothing to check; any other
 //! reads the range `(record.base, record.head]` itself with its own token (`range::read_range`,
 //! the base of the **signed record**, never the server's), and takes the head only if the number
 //! of ops and their digest are the signed ones: then, in one savepoint, the notes and the base go
@@ -53,9 +53,9 @@
 //! it as before (`after_restore`, only when the snapshot lies at or past the head).
 //!
 //! A device that holds a head from somewhere else than a bundle it picked up (a pairing holder's
-//! heads, a snapshot's key list, an earlier epoch before a replace) and whose place is below it
+//! heads, a snapshot's key list, an earlier epoch before a replace) and whose watermark is below it
 //! gets an entry for that epoch too (`require_ranges`): no rotation, the head from `sync_epochs`,
-//! `after` and `scanned` at its place. Its signer is `sync_epochs.by_device` when recorded, else
+//! `after` and `scanned` at its watermark. Its signer is `sync_epochs.by_device` when recorded, else
 //! the maker of the server's bundle for that epoch whose signature verifies under a certificate
 //! pinned here (`signer_from_bundle`; it adopts nothing, this device holds the keys); with
 //! neither, the entry waits. After a replace every epoch whose head lies above the snapshot's
@@ -364,6 +364,49 @@ pub(crate) fn release_own_pending(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Every signed head record waiting in `sync_unsent`, by ascending epoch (a re-join under a new
+/// ID collects them before `chain::rejoin` empties the queue; audit-2 reading A, A-2). The
+/// record's signature is the signer's, not the envelope author's.
+pub(crate) fn unsent_records(conn: &Connection) -> Result<Vec<Vec<u8>>> {
+    let Some(creds) = keys::credentials(conn)? else {
+        return Ok(Vec::new());
+    };
+    let rows: Vec<Vec<u8>> = conn
+        .prepare("SELECT envelope FROM sync_unsent ORDER BY seq")?
+        .query_map([], |r| r.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    let mut records = Vec::new();
+    for envelope in rows {
+        let json = open_op(|epoch| creds.keys.get(epoch), &creds.vault_id.0, &envelope)
+            .map_err(|_| AppError::Internal("sync: an unsent envelope does not open".into()))?;
+        if let Some(bytes) = changeset::from_json(&json)?.rekey_head {
+            let epoch = HeadRecord::decode(&bytes)?.to_epoch;
+            records.push((epoch, bytes));
+        }
+    }
+    records.sort_by_key(|(epoch, _)| *epoch);
+    Ok(records.into_iter().map(|(_, bytes)| bytes).collect())
+}
+
+/// Queues each of `records` again as the marker envelope of this device's current ID, under the
+/// current key, with the record's bytes as they were (the look-ahead checks the record's signer
+/// and signature, never the envelope's author).
+pub(crate) fn requeue_records(conn: &Connection, records: &[Vec<u8>]) -> Result<()> {
+    if records.is_empty() {
+        return Ok(());
+    }
+    let creds = keys::credentials(conn)?
+        .ok_or_else(|| AppError::Internal("sync: the signed head has no credentials".into()))?;
+    for record in records {
+        let mut built = build_marker(conn)?;
+        built.changeset.rekey_head = Some(record.clone());
+        seal_into_unsent(conn, &creds, &built)?;
+    }
+    let sync =
+        state::load(conn)?.ok_or_else(|| AppError::Internal("sync: sync is not set up".into()))?;
+    state::note_sealed_at_barrier(conn, sync.barrier)
+}
+
 /// `sync_epochs` without the heads not verified yet: what this device vouches for (re-sealing,
 /// what a holder hands a joiner, a snapshot's `Keys` record, a bundle's older keys).
 pub fn verified_epochs(conn: &Connection) -> Result<BTreeMap<u32, u64>> {
@@ -595,17 +638,24 @@ async fn look_ahead<R: Relay, D: ConnAccess>(
     entry: &UnverifiedEpoch,
 ) -> SyncResult<Found> {
     // `scanned` is where the last look-ahead stopped: the bundle's head for an entry made by the
-    // pickup, this device's place for one made by `require_ranges` (the record may sit below the
-    // head a lying server reported, so it is looked for from the place, never below the floor).
+    // pickup, this device's watermark for one made by `require_ranges` (the record may sit below
+    // the head a lying server reported, so it is looked for from there, never below the floor).
     let mut after = entry.scanned;
+    // What the look-ahead remembers advances only over an unbroken run of positions (A-4): a
+    // server that withholds one op, the signed record perhaps, must not make the next rounds start
+    // above it. Positions up to the entry's head may have holes (the server lifts the head for a
+    // removal and nothing sits in the free range), and no record lies there.
+    let mut stored = entry.scanned;
+    let free_to = entry.head.unwrap_or(entry.scanned);
+    let mut broken = false;
     let Some(by) = signer_of(relay, db, creds, entry).await? else {
-        return Ok(Found::NotYet(after));
+        return Ok(Found::NotYet(stored));
     };
     let Some(signer_pub) = db
         .with_conn(|conn| trust::entry(conn, by))?
         .map(|e| e.sign_pub)
     else {
-        return Ok(Found::NotYet(after));
+        return Ok(Found::NotYet(stored));
     };
     let auth = creds.auth();
     for _ in 0..MAX_LOOKAHEAD_PAGES {
@@ -615,9 +665,12 @@ async fn look_ahead<R: Relay, D: ConnAccess>(
                 // Pruned below a snapshot: go on from the server's floor (and never below this
                 // device's place), where the next read is allowed.
                 let floor = relay.vault_info(&auth).await?.floor;
-                let place = db.with_conn(|conn| Ok(seen::place(conn)?.unwrap_or(0)))?;
+                let mark = db.with_conn(|conn| Ok(seen::watermark(conn)?.unwrap_or(0)))?;
                 log::info!("[SYNC] The ops after a key change were pruned: looking past them");
-                after = after.max(floor).max(place);
+                after = after.max(floor).max(mark);
+                if !broken {
+                    stored = stored.max(after);
+                }
                 continue;
             }
             Err(error) => return Err(error.into()),
@@ -629,6 +682,11 @@ async fn look_ahead<R: Relay, D: ConnAccess>(
                 break;
             }
             after = op.seq;
+            if !broken && (op.seq <= free_to || op.seq == stored.max(free_to) + 1) {
+                stored = op.seq;
+            } else {
+                broken = true;
+            }
             if let Some(record) = signed_head_in(creds, op, entry.epoch) {
                 if record.signer == by
                     && record.vault_id == creds.vault_id.0
@@ -643,7 +701,7 @@ async fn look_ahead<R: Relay, D: ConnAccess>(
             break;
         }
     }
-    Ok(Found::NotYet(after))
+    Ok(Found::NotYet(stored))
 }
 
 /// Who signs the record of `entry` (ruling R8): the entry's signer when it has one (the bundle's
@@ -811,13 +869,13 @@ enum Settled {
 /// What a found record asks of this device.
 enum Plan {
     Refute,
-    /// This device's place is at or past the head: nothing to read.
+    /// This device's watermark is at or past the head: nothing to read.
     PastHead,
     /// Read the range `(record.base, record.head]` and compare it.
     ReadRange,
 }
 
-/// The numbers of `record` against `entry` and this device's place (no network).
+/// The numbers of `record` against `entry` and this device's watermark (no network).
 fn plan_of(conn: &Connection, entry: &UnverifiedEpoch, record: &HeadRecord) -> Result<Plan> {
     let mut matches = record.from_epoch.checked_add(1) == Some(record.to_epoch)
         && record.base <= record.head
@@ -834,8 +892,10 @@ fn plan_of(conn: &Connection, entry: &UnverifiedEpoch, record: &HeadRecord) -> R
     if !matches {
         return Ok(Plan::Refute);
     }
-    let place = seen::place(conn)?.unwrap_or(0);
-    Ok(if place >= record.head {
+    // The watermark, not the place: a held op above the head says nothing of the positions
+    // between the cursor and it (audit-2 reading A, A-1).
+    let mark = seen::watermark(conn)?.unwrap_or(0);
+    Ok(if mark >= record.head {
         Plan::PastHead
     } else {
         Plan::ReadRange
@@ -845,7 +905,7 @@ fn plan_of(conn: &Connection, entry: &UnverifiedEpoch, record: &HeadRecord) -> R
 /// A signed head found for `entry` (module doc): its numbers match and the range, read by this
 /// device from the signed base, has the signed count and digest (the entry goes, with the notes
 /// stored), or not (the entry is refuted and nothing of the range is applied). A device whose
-/// place is at or past the head reads nothing. The read is a network call, made outside any
+/// watermark is at or past the head reads nothing. The read is a network call, made outside any
 /// connection hold; notes, base and the entry's removal go in one savepoint only after count and
 /// digest matched.
 async fn settle<R: Relay, D: ConnAccess>(
@@ -969,18 +1029,19 @@ fn commit(
     })
 }
 
-/// A device that holds a head for an epoch without a range stored for it and whose `place` is
-/// below that head has not checked what lies between (spec §2.3 step 8): an entry for the epoch,
-/// no rotation, the head from `sync_epochs`, `after` and `scanned` at the place. Epochs that
+/// A device that holds a head for an epoch without a range stored for it and whose watermark
+/// (`mark`, `seen::watermark`) is below that head has not checked what lies between (spec §2.3
+/// step 8): an entry for the epoch, no rotation, the head from `sync_epochs`, `after` and
+/// `scanned` at the watermark. Epochs that
 /// already have an entry are left alone (a refuted one always; with `replaced`, a waiting one
 /// starts again at the new place and its range is forgotten with it). `replaced`: the profile was
-/// replaced, so for every epoch whose head lies above the place the range stored before goes
+/// replaced, so for every epoch whose head lies above the watermark the range stored before goes
 /// (`range::forget`) and the check starts again (rule 6, spec §2.3 step 6).
-pub(crate) fn require_ranges(conn: &Connection, place: u64, replaced: bool) -> Result<()> {
+pub(crate) fn require_ranges(conn: &Connection, mark: u64, replaced: bool) -> Result<()> {
     let mut epochs = unverified_epochs(conn)?;
     let mut changed = false;
     for (epoch, head) in state::epochs(conn)? {
-        if epoch == 0 || head <= place {
+        if epoch == 0 || head <= mark {
             continue;
         }
         let existing = epochs.iter().find(|e| e.epoch == epoch);
@@ -1002,8 +1063,8 @@ pub(crate) fn require_ranges(conn: &Connection, place: u64, replaced: bool) -> R
             by: state::epoch_signer(conn, epoch)?
                 .map(|by| by.to_hex())
                 .unwrap_or_default(),
-            after: place,
-            scanned: place,
+            after: mark,
+            scanned: mark,
             refuted: false,
             own_pending: false,
         });

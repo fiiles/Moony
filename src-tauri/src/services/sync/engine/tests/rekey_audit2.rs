@@ -1944,7 +1944,6 @@ async fn a_skipped_position_inside_the_range_is_left_to_rule_6() {
 /// served yet), let B "verify" the head without a check, and then serve the range, filled after A
 /// signed "empty", from B's held cursor: the removed device's later write is applied.
 #[tokio::test]
-#[ignore = "audit-2 reading A: a held op above the head makes the place past the head, so the range is never checked"]
 async fn a_held_new_key_op_above_the_head_does_not_excuse_a_device_from_checking_the_range() {
     let three = three().await;
     let end = assert_everyone_is_up_to_date(&three);
@@ -2009,7 +2008,6 @@ async fn a_held_new_key_op_above_the_head_does_not_excuse_a_device_from_checking
 /// The new ID does not sign the old one's change and the old one never speaks again: no other
 /// device ever verifies the key change. An honest server, no lie, one push by the removed device.
 #[tokio::test]
-#[ignore = "audit-2 reading A: a Clone verdict at the remover's first pull deletes its queued signed head for good"]
 async fn an_envelope_claiming_the_removers_id_does_not_cost_it_its_queued_head() {
     let three = three().await;
     let end = assert_everyone_is_up_to_date(&three);
@@ -2056,7 +2054,6 @@ async fn an_envelope_claiming_the_removers_id_does_not_cost_it_its_queued_head()
 /// next old-key write at end+2, at A's base, below the range: B applies it, which is what rule 9a
 /// exists to prevent (the same pull without the claim stops at the position, `Invalid`).
 #[tokio::test]
-#[ignore = "audit-2 reading A: a Clone verdict (a claim on B's ID by a member) wipes rule 9a's notes, and a handled position can be refilled again"]
 async fn a_rejoin_caused_by_a_claim_on_the_devices_id_does_not_wipe_the_handled_positions() {
     let three = three().await;
     let end = assert_everyone_is_up_to_date(&three);
@@ -2135,7 +2132,6 @@ async fn a_rejoin_caused_by_a_claim_on_the_devices_id_does_not_wipe_the_handled_
 /// of an honest vault on an honest server stays unverified on that device for good, and with it
 /// every pairing, snapshot, removal and Kit of that device.
 #[tokio::test]
-#[ignore = "audit-2 reading A: the look-ahead steps over a withheld record for good, an honest server never gets asked for it again"]
 async fn a_record_withheld_once_is_found_when_the_server_serves_it_again() {
     let three = three().await;
     let end = assert_everyone_is_up_to_date(&three);

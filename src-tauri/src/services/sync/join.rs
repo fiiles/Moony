@@ -879,8 +879,8 @@ fn replace_profile(
                 // Heads a holder handed over, or a snapshot's key list recorded, that lie above
                 // the snapshot's position: this device has not checked what lies below them
                 // (spec §2.3 step 8), so each gets an entry that finds the signed record first.
-                let place = crate::services::sync::engine::seen::place(conn)?.unwrap_or(0);
-                head::require_ranges(conn, place, false)?;
+                let mark = crate::services::sync::engine::seen::watermark(conn)?.unwrap_or(0);
+                head::require_ranges(conn, mark, false)?;
             }
             // Rule 10 for a joiner: heads from the holder or the Kit are in `sync_epochs` by now,
             // and a snapshot sealed under an older key is taken at or below the head.

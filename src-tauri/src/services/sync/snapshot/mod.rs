@@ -322,8 +322,8 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
         finish(conn, &snapshot, &sync, report.stats.max_hlc, false)?;
         // Heads the snapshot's key list recorded that lie above this device's place have no
         // range checked here (spec §2.3 step 8).
-        let place = crate::services::sync::engine::seen::place(conn)?.unwrap_or(0);
-        crate::services::sync::rekey::head::require_ranges(conn, place, false)?;
+        let mark = crate::services::sync::engine::seen::watermark(conn)?.unwrap_or(0);
+        crate::services::sync::rekey::head::require_ranges(conn, mark, false)?;
         report.warnings.extend(repair::full(conn, now)?.warnings);
         Ok(report)
     })

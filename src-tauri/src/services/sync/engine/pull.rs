@@ -599,7 +599,8 @@ pub(crate) fn check_page(
 /// re-join certificate signed by the old ID's key (phase 5 §5.3; none when the old ID had no
 /// pinned certificate, §5.5), this device's `sync_devices` row under the new ID with the old
 /// row's name (`"Moony"` when there was none; the platform is this build's) and that certificate,
-/// and the vault binding marked unwritten (Task 12 writes it again).
+/// and the vault binding marked unwritten (Task 12 writes it again). Signed head records waiting
+/// in `sync_unsent` are queued again under the new ID, and the notes of rule 9a are kept.
 pub fn rejoin_as_new_device(
     conn: &Connection,
     trigger: Option<&EnvelopeMeta>,
@@ -613,11 +614,15 @@ pub fn rejoin_as_new_device(
             .map_or_else(|| DEFAULT_DEVICE_NAME.to_string(), |(name, _)| name);
         // The old ID's key vouches for the new one (phase 5 §5.3), read before the ID changes.
         let predecessor = identity::predecessor(conn)?;
+        // A signed head the old ID queued and has not pushed stays the old ID's record: it goes
+        // out again below as a marker of the new ID (the re-join empties `sync_unsent`).
+        let records = head::unsent_records(conn)?;
         let report = chain::rejoin(conn, chain::rejoin_device_id(old)?, trigger)?;
+        head::requeue_records(conn, &records)?;
         // An own head not signed yet stays the old ID's to sign: this device now waits for it.
         head::release_own_pending(conn)?;
-        // A new ID starts its own notes (rule 9a).
-        seen::forget_all(conn)?;
+        // The notes of handled positions stay (rule 9a): they are hashes by position, and the
+        // cursor and the held positions do not change with the ID.
         let public = keys::new_device_keypair(conn)?;
         let cert = identity::successor(conn, predecessor, now)?;
         devices::record_this_device(conn, &name, &public, cert.as_ref(), now)?;

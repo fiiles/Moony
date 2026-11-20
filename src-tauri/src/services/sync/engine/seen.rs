@@ -4,8 +4,9 @@
 //! where the device stands; `place` does.
 //!
 //! The pull notes an op it handled without moving the cursor past it and refuses a different op
-//! at a noted position; the cursor, a snapshot merge, a replace, a re-join under a new ID and a
-//! server that went back drop notes.
+//! at a noted position; the cursor, a snapshot merge, a replace, turning sync off and a server
+//! that went back drop notes. A re-join under a new ID does not: the notes are hashes by
+//! position, and neither the cursor nor the held positions change with the device ID.
 
 use rusqlite::{params, Connection, OptionalExtension};
 
@@ -47,7 +48,9 @@ pub fn forget_through(conn: &Connection, cursor: u64) -> Result<()> {
     Ok(())
 }
 
-/// Drops every note.
+/// Drops every note. Tests only: the replace and turning sync off clear the table with their own
+/// statements, and a re-join under a new ID keeps it.
+#[cfg(test)]
 pub fn forget_all(conn: &Connection) -> Result<()> {
     conn.execute("DELETE FROM sync_seen_ops", [])?;
     Ok(())
@@ -76,6 +79,28 @@ pub fn place(conn: &Connection) -> Result<Option<u64>> {
     u64::try_from(place)
         .map(Some)
         .map_err(|_| AppError::Internal(format!("sync: the place is out of range: {place}")))
+}
+
+/// The watermark: the position below which this device has handled EVERY position, the higher of
+/// its stored cursor and the position of the last snapshot it restored. Unlike `place` it does
+/// not count a held op above the cursor, which says nothing of the positions between the two; a
+/// check that skips a range because the device is "past" it (spec §2.3 rule 7) must use this one.
+/// `None` while sync is not set up.
+pub fn watermark(conn: &Connection) -> Result<Option<u64>> {
+    let row: Option<(i64, Option<i64>)> = conn
+        .query_row(
+            "SELECT cursor, restored_seq FROM sync_state WHERE id = 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?;
+    let Some((cursor, restored)) = row else {
+        return Ok(None);
+    };
+    let mark = restored.map_or(cursor, |r| r.max(cursor));
+    u64::try_from(mark)
+        .map(Some)
+        .map_err(|_| AppError::Internal(format!("sync: the watermark is out of range: {mark}")))
 }
 
 #[cfg(test)]
@@ -135,6 +160,22 @@ mod tests {
         forget_all(&conn).expect("forget");
         state::set_cursor(&conn, 40).expect("cursor");
         assert_eq!(place(&conn).expect("place"), Some(40));
+    }
+
+    #[test]
+    fn the_watermark_ignores_a_held_op_above_the_cursor() {
+        let conn = set_up();
+        state::set_cursor(&conn, 10).expect("cursor");
+        note(&conn, 14, &[1; 32]).expect("a held op above");
+        assert_eq!(place(&conn).expect("place"), Some(14));
+        assert_eq!(watermark(&conn).expect("mark"), Some(10));
+        state::set_restored_seq(&conn, 30).expect("restored");
+        assert_eq!(
+            watermark(&conn).expect("mark"),
+            Some(30),
+            "a restored snapshot"
+        );
+        assert_eq!(watermark(&migrated()).expect("mark"), None, "no sync row");
     }
 
     #[test]

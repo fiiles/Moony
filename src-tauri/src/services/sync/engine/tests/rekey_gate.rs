@@ -466,3 +466,78 @@ async fn round_ignoring(three: &Three, id: DeviceId) {
     )
     .await;
 }
+
+fn snapshot_puts(three: &Three) -> usize {
+    three
+        .vault
+        .relay
+        .calls()
+        .iter()
+        .filter(|route| **route == Route::PutSnapshot)
+        .count()
+}
+
+/// Final review 2, I2: a stored list of unverified heads that does not read keeps every gate
+/// closed (an error), it is never "nothing unverified".
+#[tokio::test]
+async fn an_unreadable_list_of_unverified_heads_keeps_every_gate_closed() {
+    let three = three().await;
+    institution(&three.vault.a.lock(), "a-before");
+    round_of(&three.vault, &three.vault.a).await;
+    new_kit(&three, A).await.expect("changed");
+    round_of(&three.vault, &three.vault.b).await;
+    round_of(&three.vault, &three.vault.a).await;
+    {
+        let b = three.vault.b.lock();
+        assert!(
+            head::any_unverified(&b).expect("any"),
+            "B waits for A's head"
+        );
+        assert!(!has_institution(&b, "a-before"));
+        exec(
+            &b,
+            &format!(
+                "UPDATE app_config SET value = 'not json' WHERE key = '{}'",
+                state::UNVERIFIED_EPOCHS_KEY
+            ),
+        );
+        let message = head::unverified_epochs(&b)
+            .expect_err("does not read")
+            .to_string();
+        assert!(!message.contains("not json"), "no contents: {message}");
+        assert!(matches!(
+            head::unverified_epochs(&b),
+            Err(AppError::Internal(_))
+        ));
+        assert!(head::any_unverified(&b).is_err());
+        assert!(head::own_unverified(&b).is_err());
+        assert!(head::verified_epochs(&b).is_err());
+        assert!(head::awaits_head(&b, 0, 1).is_err());
+        assert!(
+            holder::announced_payload(&b, NOW).is_err(),
+            "pairing refused"
+        );
+        assert!(holder::refuse_while_unverified(&b).is_err());
+    }
+    let puts = snapshot_puts(&three);
+
+    let result = run_round(
+        &three.vault.relay,
+        &three.vault.b,
+        &mut SnapshotPolicy::default(),
+        RoundMode::FirstSnapshot,
+        NOW,
+        0,
+    )
+    .await;
+
+    assert!(
+        result.is_err(),
+        "the round ends with a local error: {result:?}"
+    );
+    assert_eq!(snapshot_puts(&three), puts, "no snapshot went up");
+    assert!(
+        !has_institution(&three.vault.b.lock(), "a-before"),
+        "an older-key op above the cursor is not applied"
+    );
+}

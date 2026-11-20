@@ -323,3 +323,35 @@ async fn a_copy_whose_binding_cannot_be_checked_does_not_say_left() {
 async fn a_copy_whose_binding_says_not_this_device_does_not_say_left() {
     nothing_is_said_when_the_check_answers(Arc::new(OtherMachine)).await;
 }
+
+/// The positive control of the two tests above: with a binding written and a check that opens it,
+/// turning sync off signs and sends the `left` record (final review 1, M1).
+#[tokio::test]
+async fn a_device_whose_binding_checks_out_says_left() {
+    let three = three().await;
+    binding::write_binding(&three.vault.a.lock(), three.dir.path(), &Sealing).expect("binding");
+    let ops = three.vault.relay.ops().len();
+
+    setup::leave_best_effort(
+        &three.vault.relay,
+        &three.vault.a,
+        three.dir.path(),
+        Arc::new(Sealing),
+        setup::LEAVE_BUDGET,
+    )
+    .await;
+
+    let left: Option<String> = three
+        .vault
+        .a
+        .lock()
+        .query_row(
+            "SELECT left_record FROM sync_devices WHERE id = ?1",
+            [A.to_hex()],
+            |r| r.get(0),
+        )
+        .expect("the row");
+    assert!(left.is_some(), "the left record was signed");
+    assert!(three.vault.relay.ops().len() > ops, "and sent");
+    assert_eq!(failed_starts(&three.vault.a.lock()), None);
+}

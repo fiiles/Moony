@@ -741,7 +741,7 @@ async fn registration_is_closed_and_a_deleted_persons_code_is_refused() {
     let info = until_allowed(|| relay.server_info(), |e| *e == RelayError::RateLimited)
         .await
         .expect("server info");
-    assert_eq!(info.protocol, 2);
+    assert_eq!(info.protocol, 3);
     assert_eq!(info.mode, ServerMode::SelfHosted);
     assert!(!info.version.is_empty());
     assert_eq!(

@@ -583,6 +583,11 @@ pub(crate) fn check_page(
         if op.seq <= last {
             return Err("a sequence is not above the one before");
         }
+        // Positions are stored as SQLite integers (the cursor, the notes of rule 9a): one the
+        // store cannot hold is outside the contract and would fail every round on it.
+        if i64::try_from(op.seq).is_err() {
+            return Err("a sequence is beyond the range positions are kept in");
+        }
         last = op.seq;
     }
     if page.head < last {

@@ -1,6 +1,6 @@
 //! End to end, phase 5: key changes (removals, new Recovery Kits) and the Kit routes against a
 //! real Moony sync server built from the `feat/recovery-kit` branch (Moony-relay-kit, server
-//! protocol 2 with the `kit` feature). Every test is ignored; run them one at a time with the
+//! protocol 3 with the `kit` feature). Every test is ignored; run them one at a time with the
 //! other `relay_e2e` suites (see `relay_e2e` for the recipe), or alone:
 //!
 //! ```text
@@ -229,8 +229,8 @@ fn kit_error_key(error: crate::services::sync::error::SyncError) -> String {
 
 const FILLER_ENVELOPE: &[u8] = b"an envelope the server stores as opaque bytes";
 
-/// The old token keeps what the rotation promises (pull, rekey fetch, vault read) and loses the
-/// rest; the new token takes over. The bundle and the Kit's envelope are opaque to the server.
+/// The old token keeps what the rotation promises (the rekey fetch and the vault read) and loses
+/// the rest, pull, snapshot and blob list included (protocol 3); the new token takes over. The bundle and the Kit's envelope are opaque to the server.
 #[tokio::test]
 #[ignore = "needs a Moony sync server (Moony-relay-kit) with SETUP_CODE: MOONY_RELAY_E2E=http://127.0.0.1:8795"]
 async fn the_old_token_is_read_only_after_a_rotation() {
@@ -259,7 +259,21 @@ async fn the_old_token_is_read_only_after_a_rotation() {
     let info = relay.vault_info(&old.auth()).await.expect("vault read");
     assert_eq!(info.rotation, 1);
     assert!(info.kit.is_some(), "the vault still has its Kit");
-    relay.pull(&old.auth(), 0, 100).await.expect("pull");
+    assert_eq!(
+        relay.pull(&old.auth(), 0, 100).await.err(),
+        Some(RelayError::TokenReadOnly),
+        "pull"
+    );
+    assert_eq!(
+        relay.get_snapshot(&old.auth()).await.err(),
+        Some(RelayError::TokenReadOnly),
+        "snapshot read"
+    );
+    assert_eq!(
+        relay.list_blobs(&old.auth(), None, 10).await.err(),
+        Some(RelayError::TokenReadOnly),
+        "blob list"
+    );
     let page = relay.rekeys(&old.auth(), 0, 8).await.expect("rekey fetch");
     assert_eq!(page.rekeys.len(), 1);
     assert_eq!(page.rekeys[0].rotation, 1);
@@ -320,7 +334,7 @@ async fn the_old_token_is_read_only_after_a_rotation() {
         .await;
     assert_eq!(late_kit, Err(RelayError::TokenReadOnly));
 
-    // The new token owns the vault: it pushes, and the old token still reads it.
+    // The new token owns the vault: it pushes and reads; the old token reads nothing of it.
     let pushed = relay
         .push(
             &new.auth(),
@@ -332,7 +346,7 @@ async fn the_old_token_is_read_only_after_a_rotation() {
         .await
         .expect("push on the new token");
     assert_eq!(pushed.accepted, 1);
-    let seen = relay.pull(&old.auth(), 0, 100).await.expect("pull again");
+    let seen = relay.pull(&new.auth(), 0, 100).await.expect("pull again");
     assert!(seen.ops.iter().any(|op| op.id == "op-new"));
     relay.delete_vault(&new.auth()).await.expect("vault delete");
 }

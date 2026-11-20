@@ -323,7 +323,7 @@
     "syncSnapshotBelowBarrier": "Die synchronisierte Kopie Ihrer Daten stammt von vor dem letzten Moony-Update und kann nicht verwendet werden. Ein Gerät mit der neuesten Version muss eine neue hochladen.",
     "syncSnapshotClockAhead": "Die synchronisierte Kopie Ihrer Daten ist mehr als zehn Jahre im Voraus datiert und wurde deshalb nicht verwendet. Ein Gerät mit korrektem Datum und korrekter Uhrzeit muss eine neue hochladen.",
     "syncSnapshotInvalid": "Die synchronisierte Kopie Ihrer Daten ist beschädigt und konnte nicht wiederhergestellt werden.",
-    "syncSnapshotWaiting": "Der Sync-Server hat noch keine Kopie Ihrer Daten, aus der dieses Gerät sicher wiederhergestellt werden kann. Eines Ihrer anderen Geräte lädt sie bei seiner nächsten Synchronisierung hoch; versuchen Sie es danach erneut.",
+    "syncSnapshotWaiting": "Der Synchronisierungsserver hat noch keine Kopie Ihrer Daten, aus der dieses Gerät sicher wiederhergestellt werden kann. Eines Ihrer anderen Geräte lädt sie bei seiner nächsten Synchronisierung hoch; versuchen Sie es danach erneut.",
     "syncTooManyDevices": "Moony synchronisiert höchstens 64 Geräte. Entfernen Sie zuerst die, die Sie nicht mehr verwenden.",
     "syncRemovalPlanChanged": "Die Geräteliste hat sich inzwischen geändert. Prüfen Sie sie und bestätigen Sie erneut.",
     "syncRemovalPending": "Das Entfernen der Geräte läuft noch. Versuchen Sie es gleich noch einmal.",

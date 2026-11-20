@@ -71,12 +71,12 @@
 
 use std::collections::BTreeMap;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
 use super::bundle;
 use super::range::{self, RangeRead};
-use super::{read_config, write_config, KeyChangeOverrun};
+use super::{write_config, KeyChangeOverrun};
 use crate::error::{AppError, Result};
 use crate::services::sync::changeset;
 use crate::services::sync::engine::pull::{MAX_PULL_PAGES, PULL_PAGE};
@@ -259,9 +259,26 @@ pub struct UnverifiedEpoch {
     pub own_pending: bool,
 }
 
-/// The epochs whose head is not verified yet (empty when none or when the value does not read).
+/// The epochs whose head is not verified yet: empty when there is no row. A row that exists and
+/// does not read is an error, never "nothing unverified": every key-change gate reads this, and
+/// a value that cannot be read must keep them closed (audit-2 final review, I2).
 pub fn unverified_epochs(conn: &Connection) -> Result<Vec<UnverifiedEpoch>> {
-    Ok(read_config(conn, state::UNVERIFIED_EPOCHS_KEY)?.unwrap_or_default())
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [state::UNVERIFIED_EPOCHS_KEY],
+            |r| r.get(0),
+        )
+        .optional()?;
+    match value {
+        None => Ok(Vec::new()),
+        Some(value) => serde_json::from_str(&value).map_err(|e| {
+            AppError::Internal(format!(
+                "sync: the list of unverified key-change heads does not read ({:?})",
+                e.classify()
+            ))
+        }),
+    }
 }
 
 fn store(conn: &Connection, epochs: &[UnverifiedEpoch]) -> Result<()> {
@@ -374,13 +391,21 @@ pub(crate) fn unsent_records(conn: &Connection) -> Result<Vec<Vec<u8>>> {
     let rows: Vec<Vec<u8>> = conn
         .prepare("SELECT envelope FROM sync_unsent ORDER BY seq")?
         .query_map([], |r| r.get(0))?
-        .collect::<rusqlite::Result<_>>()?;
+        .collect::<rusqlite::Result<_>>()
+        .map_err(|_| AppError::Internal("sync: the unsent envelopes do not read".into()))?;
     let mut records = Vec::new();
     for envelope in rows {
         let json = open_op(|epoch| creds.keys.get(epoch), &creds.vault_id.0, &envelope)
             .map_err(|_| AppError::Internal("sync: an unsent envelope does not open".into()))?;
-        if let Some(bytes) = changeset::from_json(&json)?.rekey_head {
-            let epoch = HeadRecord::decode(&bytes)?.to_epoch;
+        let changes = changeset::from_json(&json).map_err(|_| {
+            AppError::Internal("sync: an unsent envelope does not hold a change set".into())
+        })?;
+        if let Some(bytes) = changes.rekey_head {
+            let epoch = HeadRecord::decode(&bytes)
+                .map_err(|_| {
+                    AppError::Internal("sync: an unsent head record does not decode".into())
+                })?
+                .to_epoch;
             records.push((epoch, bytes));
         }
     }

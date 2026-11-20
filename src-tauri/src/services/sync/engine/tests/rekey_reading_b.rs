@@ -190,7 +190,15 @@ async fn a_device_that_applied_the_removed_devices_write_does_not_upload_it_in_t
         .vault
         .relay
         .fail_next(Route::Pull, RelayError::SnapshotRequired);
+    let snapshot_before = three.vault.relay.snapshot_seq();
     let _ = round_result(&three, A).await;
+    // Meaningful only if nothing carrying the write went up in the meantime: the vault's newest
+    // snapshot is the one it had (B uploaded none).
+    assert_eq!(
+        three.vault.relay.snapshot_seq(),
+        snapshot_before,
+        "B's overrun left the vault's snapshot alone"
+    );
 
     assert!(
         !has_institution(&three.vault.a.lock(), "c-forged"),
@@ -379,7 +387,7 @@ async fn setup_resync(three: &Three, consent: crate::services::sync::impact::Rep
 /// R20: `push_all` itself sends nothing sealed under an epoch below the current key's, and nothing
 /// behind such an envelope; after the re-seal everything goes, in order.
 #[tokio::test]
-async fn push_all_holds_an_older_key_envelope_and_what_is_behind_it_until_the_reseal() {
+async fn push_all_holds_an_older_key_envelope_at_the_head_until_the_reseal() {
     let three = three().await;
     write_and_seal(&three.vault, &three.vault.b, "b-unsent");
     remove(&three, A, &[C]).await.expect("removed");
@@ -438,4 +446,135 @@ async fn push_all_holds_an_older_key_envelope_and_what_is_behind_it_until_the_re
         after.iter().all(|e| *e == Some(1)),
         "all under the new key: {after:?}"
     );
+}
+
+/// The ops of device `id` on the relay, in relay order, checked for a whole chain: sequences count
+/// up by one and each `prev` is the hash of the envelope before it.
+fn assert_chain_whole(
+    three: &Three,
+    creds: &crate::services::sync::keys::Credentials,
+    id: DeviceId,
+) {
+    let mut last: Option<(u64, [u8; 32])> = None;
+    for op in three.vault.relay.ops() {
+        let json = crate::services::sync::envelope::open_op(
+            |e| creds.keys.get(e),
+            &creds.vault_id.0,
+            &op.ct,
+        )
+        .expect("opens");
+        let cs = crate::services::sync::changeset::from_json(&json).expect("changeset");
+        if cs.device != id {
+            continue;
+        }
+        if let Some((seq, hash)) = last {
+            assert_eq!(cs.seq, seq + 1, "B's sequences are gapless");
+            assert_eq!(
+                cs.prev,
+                Some(hash),
+                "B's chain is unbroken at seq {}",
+                cs.seq
+            );
+        }
+        last = Some((
+            cs.seq,
+            crate::services::sync::envelope::envelope_hash(&op.ct),
+        ));
+    }
+}
+
+/// Seals B's next outbox row into `sync_unsent` under `with`'s current key, as the head and
+/// pairing paths do.
+fn seal_next_under(three: &Three, with: &crate::services::sync::keys::Credentials, id: &str) {
+    let b = three.vault.b.lock();
+    institution(&b, id);
+    let tx = b.unchecked_transaction().expect("tx");
+    let (built, _) = crate::services::sync::journal::build_next(&tx).expect("build");
+    crate::services::sync::engine::push::seal_into_unsent(&tx, with, &built.expect("a row"))
+        .expect("sealed");
+    tx.commit().expect("commit");
+}
+
+/// R20, second clause: with `[new, old, new]` waiting, `push_all` sends only what is before the
+/// first older-key envelope and nothing behind it; after the re-seal the rest goes in order and
+/// B's chain on the relay is whole.
+#[tokio::test]
+async fn push_all_sends_only_the_prefix_before_an_older_key_envelope() {
+    let three = three().await;
+    remove(&three, A, &[C]).await.expect("removed");
+    round_of(&three.vault, &three.vault.a).await;
+    pickup::pick_up(&three.vault.relay, &three.vault.b, None, NOW)
+        .await
+        .expect("pickup");
+    let new = keys::credentials(&three.vault.b.lock())
+        .expect("creds")
+        .expect("bound");
+    assert_eq!(new.keys.current_epoch(), 1);
+    let old = &three.vault.creds;
+    seal_next_under(&three, &new, "b-1");
+    seal_next_under(&three, old, "b-2");
+    seal_next_under(&three, &new, "b-3");
+    let first = {
+        let b = three.vault.b.lock();
+        b.query_row("SELECT MIN(seq) FROM sync_unsent", [], |r| {
+            r.get::<_, i64>(0)
+        })
+        .expect("first")
+    };
+    let before = last_seq(&three);
+
+    let report =
+        crate::services::sync::engine::push::push_all(&three.vault.relay, &three.vault.b, &new)
+            .await
+            .expect("push_all");
+
+    assert_eq!(
+        report.pushed, 1,
+        "only the envelope before the old-key one goes"
+    );
+    let sent: Vec<_> = three
+        .vault
+        .relay
+        .ops()
+        .into_iter()
+        .filter(|op| op.seq > before)
+        .collect();
+    assert_eq!(sent.len(), 1, "the relay got one op");
+    assert_eq!(envelope_epoch(&sent[0].ct), Some(1));
+    let json =
+        crate::services::sync::envelope::open_op(|e| new.keys.get(e), &new.vault_id.0, &sent[0].ct)
+            .expect("opens");
+    assert_eq!(
+        crate::services::sync::changeset::from_json(&json)
+            .expect("changeset")
+            .seq as i64,
+        first,
+        "it is the first one"
+    );
+    assert_eq!(
+        count(&three.vault.b.lock(), "SELECT COUNT(*) FROM sync_unsent"),
+        3,
+        "the queue is intact"
+    );
+
+    for _ in 0..3 {
+        round_of(&three.vault, &three.vault.b).await;
+    }
+    let after: Vec<Option<u32>> = three
+        .vault
+        .relay
+        .ops()
+        .iter()
+        .filter(|op| op.seq > before)
+        .map(|op| envelope_epoch(&op.ct))
+        .collect();
+    assert!(
+        after.len() >= 3,
+        "the rest went after the re-seal: {after:?}"
+    );
+    assert!(
+        after.iter().all(|e| *e == Some(1)),
+        "all under the new key: {after:?}"
+    );
+    assert_chain_whole(&three, &new, B);
 }

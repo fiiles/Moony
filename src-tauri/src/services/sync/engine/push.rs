@@ -299,7 +299,9 @@ pub async fn push_all<R: Relay, D: ConnAccess>(
         // R20: nothing sealed under an epoch below the current key's goes out, whoever calls
         // (the round, the leave, the re-sync's pre-push): above a key change's head it would end
         // every other device's pull. It waits in `sync_unsent` for the re-seal, and so does
-        // everything behind it, so the sender's chain stays in order.
+        // everything behind it, so the sender's chain stays in order. (It also holds back an
+        // older-key envelope the server already took whose echo this device has not pulled yet:
+        // a harmless resend that waits, and a leave then stays unannounced until a pull.)
         let current = creds.keys.current_epoch();
         if let Some(cut) = batch
             .iter()

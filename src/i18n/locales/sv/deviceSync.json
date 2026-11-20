@@ -393,7 +393,7 @@
     "validUntil": "Koden fungerar till kl. {{time}}.",
     "copyCode": "Kopiera kod",
     "copiedCode": "Kopierat",
-    "codeHint": "Ingen kamera? Skriv eller klistra in den här koden på den andra enheten. Du kan skicka den i ett meddelande: utan de sex siffrorna du skriver här efteråt avslöjar den ingenting.",
+    "codeHint": "Ingen kamera? Skriv eller klistra in den här koden på den andra enheten. Du kan skicka den i ett meddelande. De sex siffrorna du skriver här efteråt bekräftar att ingen har ändrat den på vägen.",
     "deviceConnected": "Enheten {{name}} är ansluten",
     "sentLate": "Slutför anslutningen på den andra enheten. När den är ansluten visas den i listan."
   },

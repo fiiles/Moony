@@ -1,4 +1,4 @@
-//! What a holder seals into slot 2 (protocol 3, phase 5 spec §5.3, §11.2), read from its profile:
+//! What a holder seals into slot 2 (protocol 4, phase 5 spec §5.3, §11.2), read from its profile:
 //! the vault's credentials, the rotation head of each key epoch it knows one for, and, when its
 //! own certificate is pinned, its identity: its whole trust store and a fresh one-time join
 //! ticket. A vault without certificates (§5.5) sends `identity: null`. The ticket's secret lives

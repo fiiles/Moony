@@ -404,7 +404,7 @@
     "validUntil": "Il codice è valido fino alle {{time}}.",
     "copyCode": "Copia il codice",
     "copiedCode": "Copiato",
-    "codeHint": "Niente fotocamera? Digita o incolla questo codice sull'altro dispositivo. Puoi inviarlo in un messaggio: senza le sei cifre che digiterai poi qui, non rivela nulla.",
+    "codeHint": "Niente fotocamera? Digita o incolla questo codice sull'altro dispositivo. Puoi inviarlo in un messaggio. Le sei cifre che digiterai poi qui confermano che nessuno lo ha modificato lungo il percorso.",
     "deviceConnected": "Il dispositivo {{name}} è connesso",
     "sentLate": "Completa il collegamento sull'altro dispositivo. Quando sarà collegato, apparirà nell'elenco."
   },

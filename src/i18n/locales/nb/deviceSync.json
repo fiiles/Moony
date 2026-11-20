@@ -393,7 +393,7 @@
     "validUntil": "Koden fungerer til kl. {{time}}.",
     "copyCode": "Kopier kode",
     "copiedCode": "Kopiert",
-    "codeHint": "Ikke kamera? Skriv inn eller lim inn denne koden på den andre enheten. Du kan sende den i en melding: uten de seks sifrene du skriver inn her etterpå, avslører den ingenting.",
+    "codeHint": "Ikke kamera? Skriv inn eller lim inn denne koden på den andre enheten. Du kan sende den i en melding. De seks sifrene du skriver inn her etterpå, bekrefter at ingen har endret den underveis.",
     "deviceConnected": "{{name}} er koblet til",
     "sentLate": "Fullfør tilkoblingen på den andre enheten. Når den er koblet til, vises den i listen."
   },

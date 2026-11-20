@@ -415,7 +415,7 @@
     "validUntil": "Kod działa do {{time}}.",
     "copyCode": "Kopiuj kod",
     "copiedCode": "Skopiowano",
-    "codeHint": "Brak aparatu? Wpisz lub wklej ten kod na drugim urządzeniu. Możesz go wysłać wiadomością: bez sześciu cyfr, które potem wpiszesz tutaj, niczego nie ujawnia.",
+    "codeHint": "Brak aparatu? Wpisz lub wklej ten kod na drugim urządzeniu. Możesz go wysłać wiadomością. Sześć cyfr, które potem wpiszesz tutaj, potwierdza, że nikt nie zmienił go po drodze.",
     "deviceConnected": "Urządzenie {{name}} jest połączone",
     "sentLate": "Dokończ łączenie na drugim urządzeniu. Gdy się połączy, pojawi się na liście."
   },

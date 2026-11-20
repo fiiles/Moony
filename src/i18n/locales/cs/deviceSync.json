@@ -415,7 +415,7 @@
     "validUntil": "Kód platí do {{time}}.",
     "copyCode": "Zkopírovat kód",
     "copiedCode": "Zkopírováno",
-    "codeHint": "Bez fotoaparátu? Zadejte nebo vložte tento kód na druhém zařízení. Můžete ho poslat i zprávou: bez šesti číslic, které potom zadáte tady, nic neprozradí.",
+    "codeHint": "Bez fotoaparátu? Zadejte nebo vložte tento kód na druhém zařízení. Můžete ho poslat i zprávou. Šest číslic, které potom zadáte tady, potvrdí, že ho cestou nikdo nezměnil.",
     "deviceConnected": "Zařízení {{name}} je připojené",
     "sentLate": "Dokončete připojení na druhém zařízení. Až se připojí, objeví se v seznamu."
   },

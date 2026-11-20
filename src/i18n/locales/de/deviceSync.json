@@ -393,7 +393,7 @@
     "validUntil": "Der Code gilt bis {{time}}.",
     "copyCode": "Code kopieren",
     "copiedCode": "Kopiert",
-    "codeHint": "Keine Kamera? Geben Sie diesen Code auf dem anderen Gerät ein oder fügen Sie ihn ein. Sie können ihn auch per Nachricht senden: Ohne die sechs Ziffern, die Sie danach hier eingeben, verrät er nichts.",
+    "codeHint": "Keine Kamera? Geben Sie diesen Code auf dem anderen Gerät ein oder fügen Sie ihn ein. Sie können ihn auch per Nachricht senden. Die sechs Ziffern, die Sie danach hier eingeben, bestätigen, dass ihn unterwegs niemand verändert hat.",
     "deviceConnected": "{{name}} ist verbunden",
     "sentLate": "Schließen Sie die Verbindung auf dem anderen Gerät ab. Sobald es verbunden ist, erscheint es in der Liste."
   },

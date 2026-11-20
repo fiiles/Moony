@@ -459,7 +459,7 @@ async fn a_repeated_scan_of_the_same_code_keeps_its_session() {
     let first = scan_under_lock(&pairings, &a, || Some(a.clone()), scan(), &relay, None, T0)
         .await
         .expect("first scan");
-    // Answered, waiting for the shower's acknowledgement: nothing to show yet.
+    // Answered, waiting for the shower's reveal: nothing to show yet.
     assert_eq!(first.stage, PairingStage::Connecting);
     assert!(!first.contested);
 
@@ -487,7 +487,7 @@ async fn a_repeated_scan_of_the_same_code_keeps_its_session() {
     .expect("another code");
     assert_eq!(
         replaced.comparison_code, None,
-        "no digits before the acknowledgement"
+        "no digits before the reveal"
     );
     assert_eq!(put_count(&relay), 2, "the other code's slot 1 is written");
     assert_eq!(disposed.load(Ordering::SeqCst), 1);

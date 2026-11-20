@@ -404,7 +404,7 @@
     "validUntil": "El código funciona hasta las {{time}}.",
     "copyCode": "Copiar código",
     "copiedCode": "Copiado",
-    "codeHint": "¿Sin cámara? Escribe o pega este código en el otro dispositivo. Puedes enviarlo en un mensaje: sin los seis dígitos que escribirás después aquí, no revela nada.",
+    "codeHint": "¿Sin cámara? Escribe o pega este código en el otro dispositivo. Puedes enviarlo en un mensaje. Los seis dígitos que escribirás después aquí confirman que nadie lo cambió por el camino.",
     "deviceConnected": "El dispositivo {{name}} está conectado",
     "sentLate": "Termina la conexión en el otro dispositivo. Cuando se conecte, aparecerá en la lista."
   },

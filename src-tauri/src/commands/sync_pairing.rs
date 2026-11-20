@@ -322,8 +322,8 @@ fn stage_of(stage: Stage) -> PairingStage {
     match stage {
         Stage::Announcing => PairingStage::Announcing,
         Stage::WaitingForScan => PairingStage::WaitingForScan,
-        // Answered, but the digits wait for the acknowledgement (protocol 2): the scanner reads
-        // slot 3, the shower stores it.
+        // Answered, but the digits wait for the shower's reveal (protocol 4): the scanner reads
+        // slot 3, the shower writes it.
         Stage::AwaitingAck | Stage::Acknowledging => PairingStage::Connecting,
         Stage::Compare => PairingStage::Compare,
         Stage::WaitingForOther => PairingStage::WaitingForOther,
@@ -383,7 +383,7 @@ fn mailbox_of(session: &PairingSession) -> MailboxId {
     session.code().mailbox
 }
 
-/// Whether two sessions answer the same pairing code (the same mailbox, shower key and server).
+/// Whether two sessions answer the same pairing code (the same mailbox, commitment and server).
 fn same_code(a: &PairingSession, b: &PairingSession) -> bool {
     pairing_code_text(&a.code()) == pairing_code_text(&b.code())
 }

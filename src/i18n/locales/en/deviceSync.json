@@ -393,7 +393,7 @@
     "validUntil": "The code is valid until {{time}}.",
     "copyCode": "Copy code",
     "copiedCode": "Copied",
-    "codeHint": "No camera? Type or paste this code on the other device. You can send it in a message: without the six digits you type here next, it gives nothing away.",
+    "codeHint": "No camera? Type or paste this code on the other device. You can send it in a message. The six digits you type here next confirm that nobody changed it on the way.",
     "deviceConnected": "{{name}} is connected",
     "sentLate": "Finish connecting on the other device. Once it is connected, it will appear in the list."
   },

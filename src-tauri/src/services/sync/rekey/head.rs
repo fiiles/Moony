@@ -5,9 +5,9 @@
 //! checks every op against, and the server reports it. A server colluding with a removed device
 //! (which keeps the old key) could take that device's pushes after the rotation and tell another
 //! device a head above them: the old-key ops would then fit. So the head is signed: the remover
-//! seals, in the savepoint of its commit, its first envelope under the new key with no rows and
-//! a `HeadRecord` {vault, from, to, rotation, head} signed by its device key (`queue_signed_head`);
-//! it travels through `sync_unsent` like any envelope, so a crash cannot lose it, and only a
+//! seals (`verify_own`, once it has read the range below the head; see the end of this comment)
+//! its first envelope under the new key with no rows and a `HeadRecord` {vault, from, to,
+//! rotation, head, base, count, digest} signed by its device key (`queue_signed_head`); it travels through `sync_unsent` like any envelope, so a crash cannot lose it, and only a
 //! device holding the remover's signing key can make one.
 //!
 //! Every other device takes the head the server reports with the bundle as **provisional**
@@ -316,9 +316,12 @@ pub(crate) fn queue_signed_head(
 ) -> Result<()> {
     let creds = keys::credentials(conn)?
         .ok_or_else(|| AppError::Internal("sync: the key change has no credentials".into()))?;
-    if creds.keys.current_epoch() != to {
+    // Sealed under the current key: a later key change adopted while the head was unsigned makes
+    // that a key above `to`, which `signed_head_in` accepts (an envelope of the record's epoch or
+    // later). A current key below `to` cannot be.
+    if creds.keys.current_epoch() < to {
         return Err(AppError::Internal(
-            "sync: the signed head is sealed under another key".into(),
+            "sync: the signed head is sealed under an older key".into(),
         ));
     }
     let seed = identity::own_seed(conn)?
@@ -364,11 +367,7 @@ pub enum OwnHead {
 /// more pages than a pull reads), is `Waiting`: nothing is kept of a partial read, and the round's
 /// pull meets the same error and names it. A local failure is the error. Under the round lock or
 /// `engine::exclusive`.
-pub async fn verify_own<R: Relay, D: ConnAccess>(
-    relay: &R,
-    db: &D,
-    _now: i64,
-) -> SyncResult<OwnHead> {
+pub async fn verify_own<R: Relay, D: ConnAccess>(relay: &R, db: &D) -> SyncResult<OwnHead> {
     let loaded = db.with_conn(|conn| {
         let Some(me) = state::load(conn)?.map(|sync| sync.device) else {
             return Ok(None);

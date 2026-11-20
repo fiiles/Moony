@@ -330,8 +330,8 @@ async fn a_remover_that_was_behind_notes_every_op_between_its_cursor_and_the_hea
     }
 }
 
-/// An op of the range replaced after it was noted (by an old-key one, or by another one under the
-/// same key) is not applied: `Invalid`, with the cursor where it was.
+/// An op of the removed device offered at a position where another op was noted is not applied:
+/// `Invalid`, and the cursor stays where it was.
 #[tokio::test]
 async fn an_op_that_is_not_the_one_noted_at_its_position_stops_the_pull() {
     let three = three().await;
@@ -353,6 +353,7 @@ async fn an_op_that_is_not_the_one_noted_at_its_position_stops_the_pull() {
         id: crate::services::sync::envelope::op_id(&forged),
         ct: forged,
     };
+    let cursor_before = cursor(&three.vault.a.lock());
     let creds = keys::credentials(&three.vault.a.lock())
         .expect("creds")
         .expect("bound");
@@ -365,6 +366,7 @@ async fn an_op_that_is_not_the_one_noted_at_its_position_stops_the_pull() {
         super::super::pull::OpStep::Stop(crate::services::sync::engine::PullStop::Invalid)
     );
     assert!(!has_institution(&three.vault.a.lock(), "c-replaces"));
+    assert_eq!(cursor(&three.vault.a.lock()), cursor_before);
 }
 
 /// `read_range`: the ops of `(base, head]` as position and hash, none above the head, no call for
@@ -429,10 +431,12 @@ async fn read_range_notes_what_the_server_holds_up_to_the_head_and_no_further() 
     );
 }
 
-/// While its own head is not signed the remover sends nothing, seals nothing again, uploads no
-/// snapshot, and starts no other removal. Here the server answers no pull at all.
+/// While its own head is not signed the remover starts no other removal or Kit and its blob
+/// lane is held. Here the server answers no pull at all, so its rounds stop at the pull: this
+/// test does not show the gate in the round (the next one does), only that nothing goes out and
+/// that the state is held.
 #[tokio::test]
-async fn while_its_own_head_is_unverified_the_remover_sends_nothing() {
+async fn a_remover_whose_pulls_all_fail_sends_nothing_and_starts_nothing_new() {
     let three = three().await;
     // B has written what A has not pulled: A's range is not empty, so there is something to read.
     institution(&three.vault.b.lock(), "b-ahead");
@@ -458,6 +462,10 @@ async fn while_its_own_head_is_unverified_the_remover_sends_nothing() {
         assert_eq!(waiting.head, Some(end));
         assert_eq!(waiting.after, base, "the base");
         assert!(head::own_unverified(&a).expect("own"));
+        assert!(
+            crate::services::sync::engine::runtime::uploads_held(&a).expect("held"),
+            "the blob lane waits too"
+        );
         assert!(unsent_envelopes(&a).is_empty(), "no signed head yet");
         institution(&a, "a-while-unverified");
     }
@@ -517,16 +525,68 @@ async fn the_remover_holds_still_in_a_round_that_pulls_but_could_not_read_its_ra
     assert!(!calls.contains(&Route::PutSnapshot), "{calls:?}");
     assert_eq!(report.problem, Some(SyncProblem::KeyChangeWaiting));
     assert!(head::own_unverified(&three.vault.a.lock()).expect("own"));
+    assert!(
+        crate::services::sync::engine::runtime::uploads_held(&three.vault.a.lock()).expect("held"),
+        "the blob lane is held while the round is"
+    );
 
     let report = round_of(&three.vault, &three.vault.a).await;
 
     assert_eq!(report.problem, None, "{report:?}");
     let a = three.vault.a.lock();
     assert!(!head::own_unverified(&a).expect("own"));
+    assert!(!crate::services::sync::engine::runtime::uploads_held(&a).expect("held"));
     drop(a);
     assert!(
         three.vault.relay.ops().len() > before,
         "the signed head and the row went out"
+    );
+}
+
+/// Review of Task 4, finding 1: another device changes the key while the remover's head is
+/// still unsigned (its range read kept failing). The remover picks the second change up, and its
+/// next read works: it signs its head (sealed under the current key, which is above the record's
+/// epoch), the record is found and its head verified by an up to date device, and none of the
+/// remover's rounds fails on the way.
+#[tokio::test]
+async fn a_second_key_change_before_the_signature_does_not_wedge_the_remover() {
+    let three = three().await;
+    institution(&three.vault.b.lock(), "b-ahead");
+    round_of(&three.vault, &three.vault.b).await;
+    three
+        .vault
+        .relay
+        .set_failing(Route::Pull, Some(RelayError::Network("offline".into())));
+    remove(&three, A, &[C]).await.expect("the key changed");
+    assert!(head::own_unverified(&three.vault.a.lock()).expect("own"));
+    three.vault.relay.set_failing(Route::Pull, None);
+    // B picks A's change up (A's head is not signed yet), then changes the key itself.
+    round_of(&three.vault, &three.vault.b).await;
+    new_kit(&three, B).await.expect("B changes the key");
+    assert_eq!(key_epoch(&three.vault.b.lock()), 2);
+
+    let mut problems = Vec::new();
+    for _ in 0..4 {
+        problems.push(round_of(&three.vault, &three.vault.a).await.problem);
+        problems.push(round_of(&three.vault, &three.vault.b).await.problem);
+    }
+
+    let a = three.vault.a.lock();
+    assert_eq!(
+        key_epoch(&a),
+        2,
+        "A picked the second change up: {problems:?}"
+    );
+    assert!(
+        !head::own_unverified(&a).expect("own"),
+        "A signed its head: {problems:?}"
+    );
+    assert!(!range_notes(&a, 1).is_empty(), "with the range it read");
+    drop(a);
+    let b = three.vault.b.lock();
+    assert!(
+        unverified_of(&b, 1).is_none(),
+        "B found A's record and verified the head: {problems:?}"
     );
 }
 

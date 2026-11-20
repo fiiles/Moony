@@ -1007,7 +1007,7 @@ async fn send<R: Relay, D: ConnAccess>(
             let Some(epoch) = commit_taken(db, change, rotated, now)? else {
                 return Ok(Sent::Done(Outcome::Stuck));
             };
-            finish_own_head(relay, db, now).await;
+            finish_own_head(relay, db).await;
             log::info!("[SYNC] The sync key changed to epoch {epoch}");
             Ok(Sent::Done(Outcome::Changed {
                 epoch,
@@ -1022,7 +1022,7 @@ async fn send<R: Relay, D: ConnAccess>(
                 let Some(epoch) = commit_taken(db, change, rotated, now)? else {
                     return Ok(Sent::Done(Outcome::Stuck));
                 };
-                finish_own_head(relay, db, now).await;
+                finish_own_head(relay, db).await;
                 log::info!("[SYNC] A key change of this device had landed: the key is at {epoch}");
                 return Ok(Sent::Done(Outcome::Changed {
                     epoch,
@@ -1165,8 +1165,8 @@ fn commit(conn: &Connection, change: &PendingChange, rotated: Rotated, now: i64)
 /// Right after a commit: reads the range and signs the head (`head::verify_own`). Whatever keeps
 /// it from finishing (the server, the profile) is no failure of a change that is committed: the
 /// head stays unverified, the device holds still, and every round tries again.
-async fn finish_own_head<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) {
-    match head::verify_own(relay, db, now).await {
+async fn finish_own_head<R: Relay, D: ConnAccess>(relay: &R, db: &D) {
+    match head::verify_own(relay, db).await {
         Ok(head::OwnHead::Waiting) => {
             log::info!("[SYNC] The removal is finishing: the head is signed in a later round");
         }
@@ -1323,7 +1323,7 @@ pub async fn resolve_pending<R: Relay, D: ConnAccess>(
             let Some(epoch) = commit_taken(db, &change, rotated, now)? else {
                 return Ok(Some(Outcome::Stuck));
             };
-            finish_own_head(relay, db, now).await;
+            finish_own_head(relay, db).await;
             log::info!("[SYNC] A pending key change had landed: the key is at epoch {epoch}");
             Ok(Some(Outcome::Changed {
                 epoch,

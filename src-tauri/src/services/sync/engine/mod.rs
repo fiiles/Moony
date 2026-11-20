@@ -662,7 +662,11 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     // not read) is finished before the pull; until it is, `round_pass` sends nothing (spec
     // 2026-11-20-sync-audit-2-fixes-design §2.3 steps 3–5).
     if !tried_own_head && own_unverified {
-        head::verify_own(relay, db, now).await?;
+        // A local failure here must not end the round (the pull and the gate still run): the
+        // head stays unsigned and the next round tries again.
+        if let Err(error) = head::verify_own(relay, db).await {
+            log::warn!("[SYNC] This device could not sign its own key change yet: {error}");
+        }
     }
     // Still unsigned after the tries: `round_pass` sends nothing. Read again only when one of the
     // tries could have changed it, so the common round takes the profile no more often than before.

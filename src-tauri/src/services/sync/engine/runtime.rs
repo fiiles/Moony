@@ -1112,12 +1112,14 @@ mod key_ask_tests {
 
 /// Whether uploads of documents and photos wait (the lane's own gate, as the round's): a Recovery
 /// Kit joiner's push hold (`join::after_kit_join`), this device's key change pending
-/// (`rotate::pending`: its token may be retired already) or given up (`rotate::stuck`).
+/// (`rotate::pending`: its token may be retired already) or given up (`rotate::stuck`), or its own
+/// head not signed yet (`head::own_unverified`: the round sends nothing meanwhile).
 pub(crate) fn uploads_held(conn: &rusqlite::Connection) -> crate::error::Result<bool> {
     use crate::services::sync::rekey::rotate;
     Ok(crate::services::sync::join::after_kit_join(conn)?.is_some()
         || rotate::pending(conn)?
-        || rotate::stuck(conn)?)
+        || rotate::stuck(conn)?
+        || crate::services::sync::rekey::head::own_unverified(conn)?)
 }
 
 /// The credentials a lane transfers with, `None` while the profile does not sync: sync off, no

@@ -172,7 +172,7 @@ fn a_transient_join_failure_keeps_the_received_session() {
 fn the_pairing_code_text_is_shown_with_the_qr() {
     let session = PairingSession::show(Role::Holder, HOME, T0).expect("session");
     let text = pairing_code_text(&session.code());
-    assert!(text.starts_with("moony-pair:3:"));
+    assert!(text.starts_with("moony-pair:4:"));
 
     let view = view_of(&session).expect("view");
     assert_eq!(

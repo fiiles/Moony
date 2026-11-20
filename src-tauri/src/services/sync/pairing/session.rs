@@ -1,27 +1,33 @@
-//! The pairing session (phase 3, spec §20, ADR 0026; protocol 2 after audit M1, M2, L8): the
-//! state machine that runs the bytes of `pairing` over the relay's three-slot mailbox. The shower
-//! (S) puts a QR code on its screen; the scanner (C) reads it, writes slot 1 (its role and public
-//! key) and derives the transcript. The shower reads slot 1, derives the same transcript and
-//! writes its acknowledgement into slot 3; the scanner reads slot 3 and goes on only if it
-//! verifies. Then the joiner shows its six digits, the holder's person types them, and the holder
-//! seals the credentials into slot 2 for the joiner to open.
+//! The pairing session (phase 3, spec §20, ADR 0026; protocol 2 after audit M1, M2, L8; protocol 4
+//! after sync audit 2, R2-H2): the state machine that runs the bytes of `pairing` over the relay's
+//! three-slot mailbox. The shower (S) puts a QR code on its screen, which carries a commitment to
+//! its public key and not the key; the scanner (C) reads it and writes slot 1 (its role and public
+//! key), deriving nothing yet. The shower reads slot 1, derives the transcript and writes slot 3,
+//! its reveal (its public key and the acknowledgement tag); the scanner checks the key against the
+//! commitment, derives, and goes on only if the tag verifies. Then the joiner shows its six
+//! digits, the holder's person types them, and the holder seals the credentials into slot 2 for
+//! the joiner to open.
 //!
 //! The security rules this file keeps:
-//! - Only the joiner ever shows digits, and a scanner shows them only after the acknowledgement
+//! - The shower's public key is on no wire before slot 1 was read, and the scanner derives nothing
+//!   and shows nothing before the shower's revealed key matched the commitment in the code it
+//!   read: whoever rewrote the code cannot know both sets of digits while it can still choose a
+//!   key (R2-H2). Only the joiner ever shows digits, and a scanner shows them only after the tag
 //!   verified: a relay that withheld the scanner's key cannot grind a matching one, because the
 //!   digits are not on a screen before the shower proved it used the scanner's own key (M2).
 //! - The holder seals slot 2 only after its person typed the joiner's digits (`code_matches`);
 //!   `MAX_TYPED_ATTEMPTS` wrong codes end the pairing (M1). Typed text that is not six digits
 //!   spends no attempt: it can never match.
-//! - Any other bytes in slot 3, someone else's slot 3, or an acknowledgement read by someone else
+//! - Any other bytes in slot 3 (a reveal that does not match the commitment, a low-order key, a
+//!   protocol-3 acknowledgement), someone else's slot 3, or a reveal read by someone else
 //!   ends the pairing as interfered, with cancel markers (L8).
 //! - The joiner reads slot 2 only after its own confirm. A scanner whose slot 1 was taken by
 //!   someone else (contested) shows no digits, never reads slot 3, can never confirm, and writes
 //!   cancel markers into slots 2 and 3 (best effort, and only where the impostor has not written
 //!   first), so a shower that has not acknowledged yet ends as interfered and a holder-shower
 //!   fails its slot-2 write.
-//! - The ephemeral X25519 secret is taken out of its `Option` when it is used and dropped (and
-//!   zeroized) right after. The session key is dropped once slot 2 is sealed or opened.
+//! - The ephemeral X25519 secret is taken out of its `Option` when it is used (the shower's read of
+//!   slot 1, the scanner's check of the reveal) and dropped (and zeroized) right after. The session key is dropped once slot 2 is sealed or opened.
 //! - Received credentials live until `expires_at + RECEIVED_GRACE_SECS`; any call after that
 //!   wipes them, and the holder's join ticket (protocol 3) with them.
 //! - No error or `Debug` output carries a secret, a pairing code, a comparison code or the
@@ -37,9 +43,9 @@ use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::Zeroizing;
 
 use super::{
-    check_roles, derive, is_cancel_marker, open_payload, parse_pairing_code, parse_slot1,
-    seal_payload, slot1, typed_code_digits, MailboxId, PairingCode, PairingIdentity, Role, Side,
-    SlotPayload, Transcript, CANCEL_MARKER,
+    check_roles, commitment, derive, is_cancel_marker, open_payload, open_reveal,
+    parse_pairing_code, parse_slot1, seal_payload, slot1, typed_code_digits, MailboxId,
+    PairingCode, PairingIdentity, Role, Side, SlotPayload, Transcript, CANCEL_MARKER,
 };
 use crate::error::{AppError, Result};
 use crate::services::sync::error::{SyncError, SyncResult};
@@ -67,7 +73,7 @@ pub const PAIRING_LIFETIME_SECS: i64 = 600;
 pub const RECEIVED_GRACE_SECS: i64 = 300;
 /// The most `abandon` (and an interfered pairing) spends on its cancel markers and the delete.
 pub const ABANDON_BUDGET: Duration = Duration::from_secs(3);
-/// Slot 3: the shower's acknowledgement (`Transcript::ack`).
+/// Slot 3: the shower's reveal (`Transcript::reveal`).
 pub const ACK_SLOT: u8 = 3;
 /// Wrong six-digit codes the holder's person may type before the pairing ends.
 pub const MAX_TYPED_ATTEMPTS: u8 = 3;
@@ -83,8 +89,8 @@ pub const CODE_MISMATCH: &str = "validation.syncPairingCodeMismatch";
 pub const CODE_MISMATCH_FINAL: &str = "validation.syncPairingCodeMismatchFinal";
 /// Nothing typed, or not six digits: it can never match, so it spends no attempt.
 pub const CODE_INCOMPLETE: &str = "validation.syncPairingCodeIncomplete";
-/// Slot 3 held something that is not this exchange's acknowledgement, or was written or read by
-/// someone else.
+/// Slot 3 held something that is not this exchange's reveal, or was written or read by someone
+/// else.
 pub const INTERFERED: &str = "validation.syncPairingInterfered";
 /// The sync server answered `bad_slot` for slot 3: it predates protocol 2.
 pub const SERVER_NEEDS_UPDATE: &str = "validation.syncServerNeedsUpdate";
@@ -95,10 +101,10 @@ pub enum Stage {
     Announcing,
     /// Shower: waiting for a scanner's slot 1.
     WaitingForScan,
-    /// Scanner: slot 1 written, waiting for the shower's acknowledgement in slot 3. A contested
-    /// scanner stays here.
+    /// Scanner: slot 1 written, waiting for the shower's reveal in slot 3. A contested scanner
+    /// stays here.
     AwaitingAck,
-    /// Shower: slot 1 read, its acknowledgement not stored yet.
+    /// Shower: slot 1 read, its reveal not stored yet.
     Acknowledging,
     /// Both: the joiner shows its digits, the holder waits for its person to type them.
     Compare,
@@ -119,12 +125,16 @@ pub struct PairingSession {
     /// Taken out at derive.
     secret: Option<StaticSecret>,
     own_public: [u8; 32],
-    /// The scanner knows it from the code; the shower from slot 1.
+    /// The commitment to the shower's key: the shower's own, or the scanner's as read from the
+    /// code.
+    commitment: [u8; 32],
+    /// The shower learns the scanner's key from slot 1; the scanner learns the shower's from the
+    /// reveal (slot 3), after it matched `commitment`.
     peer_public: Option<[u8; 32]>,
-    /// From derive (the scanner's announce, the shower's read of slot 1) until slot 2 is sealed
-    /// (holder) or opened (joiner).
+    /// From derive (the shower's read of slot 1, the scanner's check of the reveal) until slot 2
+    /// is sealed (holder) or opened (joiner).
     transcript: Option<Transcript>,
-    /// The joiner's comparison code, set on entering Compare (after the acknowledgement), and
+    /// The joiner's comparison code, set on entering Compare (after the reveal), and
     /// kept after the transcript is dropped. Never set on the holder.
     comparison: Option<u32>,
     stage: Stage,
@@ -135,7 +145,7 @@ pub struct PairingSession {
     /// Slots 1 / 2 / 3 this side is known to have written.
     written: [bool; 3],
     /// Scanner: a take of slot 3 whose answer was lost, so the relay may have consumed the
-    /// acknowledgement for us; a later "read by someone else" is then our own read.
+    /// reveal for us; a later "read by someone else" is then our own read.
     ambiguous_ack_take: bool,
     /// The sync server answered `bad_slot` for slot 3. The other device meets the same answer on
     /// its own call, so this side leaves the mailbox alone: a burn here could reach the other
@@ -251,14 +261,9 @@ impl PairingSession {
         ))
     }
 
-    /// A low-order shower key in the code is refused here, before anything is written.
+    /// The scanner keeps the code's commitment; the shower's key reaches it in slot 3, and a
+    /// low-order one is refused there.
     fn scanner_of(role: Role, code: PairingCode, now: i64, secret: StaticSecret) -> Result<Self> {
-        if !secret
-            .diffie_hellman(&PublicKey::from(code.shower_public))
-            .was_contributory()
-        {
-            return Err(AppError::Validation("validation.syncPairingFailed".into()));
-        }
         let relay_url = code
             .relay_url
             .unwrap_or_else(|| DEFAULT_RELAY_URL.to_string());
@@ -268,7 +273,7 @@ impl PairingSession {
             code.mailbox,
             relay_url,
             secret,
-            Some(code.shower_public),
+            Some(code.commitment),
             now,
         ))
     }
@@ -279,7 +284,7 @@ impl PairingSession {
         mailbox: MailboxId,
         relay_url: String,
         secret: StaticSecret,
-        peer_public: Option<[u8; 32]>,
+        code_commitment: Option<[u8; 32]>,
         now: i64,
     ) -> Self {
         let own_public = PublicKey::from(&secret).to_bytes();
@@ -290,7 +295,8 @@ impl PairingSession {
             relay_url,
             secret: Some(secret),
             own_public,
-            peer_public,
+            commitment: code_commitment.unwrap_or_else(|| commitment(&mailbox, &own_public)),
+            peer_public: None,
             transcript: None,
             comparison: None,
             stage: match side {
@@ -340,15 +346,12 @@ impl PairingSession {
         self.transcript.is_some()
     }
 
-    /// The pairing code of this session: the one the shower shows, or the one the scanner read.
+    /// The pairing code of this session: the one the shower shows, or the one the scanner read
+    /// (the commitment carries no key).
     pub fn code(&self) -> PairingCode {
-        let shower_public = match self.side {
-            Side::Shower => self.own_public,
-            Side::Scanner => self.peer_public.unwrap_or(self.own_public),
-        };
         PairingCode {
             mailbox: self.mailbox,
-            shower_public,
+            commitment: self.commitment,
             relay_url: Some(self.relay_url.clone()).filter(|url| !is_default_relay(url)),
         }
     }
@@ -374,8 +377,8 @@ impl PairingSession {
     }
 
     /// The joiner's six digits from Compare on; always `None` on the holder and on a contested
-    /// scanner. A scanner derives its transcript at its announce, but its digits stay hidden
-    /// until the shower's acknowledgement verified.
+    /// scanner. A scanner derives nothing before the shower's reveal matched the code's
+    /// commitment, and its digits stay hidden until the tag verified.
     pub fn comparison_code(&self) -> Option<String> {
         self.comparison.map(|code| format!("{code:06}"))
     }
@@ -416,8 +419,8 @@ impl PairingSession {
         }
     }
 
-    /// Scanner, in Announcing: writes slot 1 and derives the transcript → AwaitingAck (no digits
-    /// yet). Any other stage is returned untouched.
+    /// Scanner, in Announcing: writes slot 1 → AwaitingAck (nothing derived, no digits yet). Any
+    /// other stage is returned untouched.
     pub async fn announce<M: Mailbox>(&mut self, mailbox: &M, now: i64) -> SyncResult<Stage> {
         self.check_alive(now)?;
         if self.stage != Stage::Announcing {
@@ -428,7 +431,7 @@ impl PairingSession {
         match mailbox.put_slot(&id, SCANNER_SLOT, &record).await {
             Ok(()) => self.enter_awaiting_ack(),
             // Our own earlier write, whose answer was lost. If it was not ours after all, the
-            // shower acknowledges someone else's key and the acknowledgement does not verify.
+            // shower reveals its key for someone else's and the tag does not verify.
             Err(RelayError::SlotTaken) if self.ambiguous_put[0] => self.enter_awaiting_ack(),
             Err(RelayError::SlotTaken) => self.contest(mailbox, &id).await,
             Err(error) => {
@@ -470,7 +473,7 @@ impl PairingSession {
     }
 
     /// One step of waiting: the scanner retries its announce or reads slot 3, the shower reads
-    /// slot 1 or retries its acknowledgement, the confirmed joiner reads slot 2. Every other
+    /// slot 1 or retries its reveal, the confirmed joiner reads slot 2. Every other
     /// stage, and a contested scanner, is returned untouched and sends nothing.
     pub async fn poll<M: Mailbox>(&mut self, mailbox: &M, now: i64) -> SyncResult<Stage> {
         self.check_alive(now)?;
@@ -485,7 +488,7 @@ impl PairingSession {
         }
     }
 
-    /// Shower: slot 1 → derive → Acknowledging, then the acknowledgement in the same call.
+    /// Shower: slot 1 → derive → Acknowledging, then the reveal in the same call.
     async fn read_scan<M: Mailbox>(&mut self, mailbox: &M) -> SyncResult<Stage> {
         let id = self.mailbox.to_b64();
         let bytes = match mailbox.take_slot(&id, SCANNER_SLOT).await {
@@ -504,17 +507,17 @@ impl PairingSession {
         self.acknowledge(mailbox).await
     }
 
-    /// Shower: puts the acknowledgement into slot 3 → Compare. A slot taken after our own lost
+    /// Shower: puts the reveal into slot 3 → Compare. A slot taken after our own lost
     /// answer is ours; taken otherwise, someone else wrote it (interfered).
     async fn acknowledge<M: Mailbox>(&mut self, mailbox: &M) -> SyncResult<Stage> {
         let id = self.mailbox.to_b64();
-        let ack = self
+        let reveal = self
             .transcript
             .as_ref()
             .ok_or_else(|| internal("no transcript"))?
-            .ack();
+            .reveal();
         let ours = self.ambiguous_put[slot_index(ACK_SLOT)];
-        match mailbox.put_slot(&id, ACK_SLOT, &ack).await {
+        match mailbox.put_slot(&id, ACK_SLOT, &reveal).await {
             Ok(()) => self.enter_compare(),
             // Stored, and maybe read by the scanner meanwhile.
             Err(RelayError::SlotTaken | RelayError::SlotConsumed) if ours => self.enter_compare(),
@@ -531,9 +534,10 @@ impl PairingSession {
         }
     }
 
-    /// Scanner: reads slot 3. Nothing yet stays; the cancel marker is "cancelled"; this
-    /// exchange's acknowledgement → Compare (the joiner's digits appear now); anything else, or
-    /// a slot someone else read, is interfered.
+    /// Scanner: reads slot 3. Nothing yet stays; the cancel marker is "cancelled"; a reveal whose
+    /// key matches the code's commitment, derives (a low-order key ends the pairing as
+    /// interfered) and carries this exchange's tag → Compare (the joiner's digits appear now);
+    /// anything else, or a slot someone else read, is interfered.
     async fn read_ack<M: Mailbox>(&mut self, mailbox: &M) -> SyncResult<Stage> {
         let id = self.mailbox.to_b64();
         let bytes = match mailbox.take_slot(&id, ACK_SLOT).await {
@@ -556,11 +560,19 @@ impl PairingSession {
         if is_cancel_marker(&bytes) {
             return Err(cancelled());
         }
+        let Some((shower_public, tag)) = open_reveal(&bytes, &self.mailbox, &self.commitment)
+        else {
+            return Err(self.interfere(mailbox, &id).await);
+        };
+        self.peer_public = Some(shower_public);
+        if self.derive_transcript().is_err() {
+            return Err(self.interfere(mailbox, &id).await);
+        }
         let verified = self
             .transcript
             .as_ref()
             .ok_or_else(|| internal("no transcript"))?
-            .verify_ack(&bytes);
+            .verify_tag(&tag);
         if !verified {
             return Err(self.interfere(mailbox, &id).await);
         }
@@ -734,7 +746,7 @@ impl PairingSession {
         self.wipe();
     }
 
-    /// Someone else wrote or read slot 3, or it held another exchange's acknowledgement: the
+    /// Someone else wrote or read slot 3, or it held something that is not this exchange's reveal: the
     /// cancel markers (within `ABANDON_BUDGET`, best effort), the secrets wiped, and the error
     /// that ends the pairing.
     async fn interfere<M: Mailbox>(&mut self, mailbox: &M, id: &str) -> SyncError {
@@ -791,15 +803,14 @@ impl PairingSession {
         Ok(())
     }
 
-    /// Scanner: slot 1 is ours → derive → AwaitingAck.
+    /// Scanner: slot 1 is ours → AwaitingAck. Nothing is derived before the reveal.
     fn enter_awaiting_ack(&mut self) -> SyncResult<Stage> {
         self.written[slot_index(SCANNER_SLOT)] = true;
-        self.derive_transcript()?;
         self.stage = Stage::AwaitingAck;
         Ok(self.stage)
     }
 
-    /// The acknowledgement is stored (shower) or verified (scanner) → Compare; a joiner's digits
+    /// The reveal is stored (shower) or verified (scanner) → Compare; a joiner's digits
     /// become readable here and only here.
     fn enter_compare(&mut self) -> SyncResult<Stage> {
         if self.side == Side::Shower {

@@ -1,7 +1,8 @@
 //! Audit findings M1, M2, L7 and L8 against the pairing session. Task 13 of the audit-fix plan
 //! (protocol 2: the shower's acknowledgement in slot 3, the holder types the joiner's digits)
 //! turned each proof of concept into a test of the fixed behaviour, except L7, an accepted
-//! residual (ADR 0027).
+//! residual (ADR 0027). From protocol 4 the shower's slot 3 is its reveal (its key and the
+//! acknowledgement tag); the tests keep their meaning in that form.
 
 use std::future::Future;
 
@@ -11,7 +12,9 @@ use super::tests::{
     assert_same_creds, creds, id, key_of, pair, public, to_compare, HOME, M_SECRET, S_SECRET, T0,
 };
 use super::*;
-use crate::services::sync::pairing::{derive, seal_credentials, slot1, CANCEL_MARKER};
+use crate::services::sync::pairing::{
+    derive, seal_credentials, slot1, CANCEL_MARKER, REVEAL_SLOT_LEN, REVEAL_VERSION,
+};
 use crate::services::sync::relay::fake::{FakeRelay, Route};
 use crate::services::sync::relay::{RelayError, RelayResult};
 
@@ -133,8 +136,11 @@ async fn the_scanners_code_is_not_readable_before_the_ack() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
     assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
-    assert!(c.has_transcript(), "the scanner derived at its announce");
-    assert!(!c.has_secret());
+    assert!(
+        !c.has_transcript(),
+        "the scanner derives nothing at its announce"
+    );
+    assert!(c.has_secret());
     assert_eq!(c.comparison_code(), None);
     // Polling before the shower acknowledged reads nothing and shows nothing.
     assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::AwaitingAck);
@@ -317,7 +323,7 @@ async fn someone_elses_slot_3_ends_the_shower_as_interfered() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Joiner, Role::Holder);
     assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
-    relay.write_slot_raw(&id(&s), 3, vec![0x01; 33]);
+    relay.write_slot_raw(&id(&s), 3, vec![REVEAL_VERSION; REVEAL_SLOT_LEN]);
 
     let error = s.poll(&relay, T0).await.unwrap_err();
     assert_eq!(key_of(&error), INTERFERED);
@@ -326,7 +332,7 @@ async fn someone_elses_slot_3_ends_the_shower_as_interfered() {
     assert_eq!(s.comparison_code(), None);
     assert_eq!(relay.peek_slot(&id(&s), 2), Some(CANCEL_MARKER.to_vec()));
 
-    // The scanner reads the forged acknowledgement and ends too.
+    // The scanner reads the forged reveal and ends too.
     let error = c.poll(&relay, T0).await.unwrap_err();
     assert_eq!(key_of(&error), INTERFERED);
     assert_eq!(c.comparison_code(), None);
@@ -526,17 +532,4 @@ async fn a_kept_holder_session_still_works_after_a_wrong_code() {
         Stage::Sent
     );
     assert_eq!(s.attempts_left(), 2);
-}
-
-#[tokio::test]
-async fn a_low_order_shower_key_in_the_code_is_refused_before_anything_is_written() {
-    use crate::services::sync::pairing::pairing_code_text;
-    let (s, _c) = pair(Role::Holder, Role::Joiner);
-    let mut code = s.code();
-    code.shower_public = [0u8; 32];
-    let text = pairing_code_text(&code);
-    match PairingSession::scan(Role::Joiner, &text, T0) {
-        Err(AppError::Validation(key)) => assert_eq!(key, "validation.syncPairingFailed"),
-        _ => panic!("a low-order key must be refused"),
-    }
 }

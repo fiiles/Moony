@@ -6,7 +6,7 @@ use super::*;
 use crate::error::AppError;
 use crate::services::sync::error::Transient;
 use crate::services::sync::keys::{VaultId, VaultKeys};
-use crate::services::sync::pairing::{pairing_code_text, slot1, CANCEL_MARKER};
+use crate::services::sync::pairing::{pairing_code_text, slot1, CANCEL_MARKER, REVEAL_VERSION};
 use crate::services::sync::relay::fake::{FakeRelay, Route};
 use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
 use crate::services::sync::relay::{RelayError, RelayResult};
@@ -71,8 +71,7 @@ pub(super) fn pair(shower: Role, scanner: Role) -> (PairingSession, PairingSessi
     (s, c)
 }
 
-/// Drives both to Compare: C announces, S reads slot 1 and acknowledges, C reads the
-/// acknowledgement. The joiner's digits, which the holder's person types (the holder shows none).
+/// Drives both to Compare: C announces, S reads slot 1 and reveals its key, C reads the reveal. The joiner's digits, which the holder's person types (the holder shows none).
 pub(super) async fn to_compare(
     relay: &FakeRelay,
     s: &mut PairingSession,
@@ -393,10 +392,15 @@ async fn the_secret_is_gone_after_derive() {
     assert!(s.has_secret());
     assert!(c.has_secret());
     assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
-    assert!(!c.has_secret());
+    assert!(
+        c.has_secret(),
+        "the scanner derives at the reveal, not at its announce"
+    );
     assert!(s.has_secret());
     assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
     assert!(!s.has_secret());
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(!c.has_secret());
 }
 
 #[tokio::test]
@@ -789,4 +793,153 @@ async fn a_received_joiner_prints_nothing_secret() {
         assert!(!printed.contains(&secret), "{printed}");
     }
     assert!(printed.contains("Received"), "{printed}");
+}
+
+// Protocol 4 (sync audit 2, R2-H2).
+
+fn hex_of(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn contains(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack
+        .windows(needle.len())
+        .any(|window| window == needle)
+}
+
+#[tokio::test]
+async fn a_scanner_derives_nothing_before_the_reveal() {
+    let relay = FakeRelay::new();
+    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
+    assert!(!c.has_transcript());
+    assert!(c.has_secret());
+    assert_eq!(c.comparison_code(), None);
+    // Waiting for the shower changes nothing.
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::AwaitingAck);
+    assert!(!c.has_transcript());
+    assert!(c.has_secret());
+    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(!c.has_transcript(), "the reveal is stored but not read yet");
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(c.has_transcript());
+    assert!(!c.has_secret());
+}
+
+#[tokio::test]
+async fn a_reveal_that_does_not_match_the_code_is_interference() {
+    let relay = FakeRelay::new();
+    let (s, mut c) = pair(Role::Holder, Role::Joiner);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
+    // Another shower's reveal, valid for its own key and the scanner's.
+    let other = derive(
+        &StaticSecret::from(M_SECRET),
+        Side::Shower,
+        &public(C_SECRET),
+        &s.mailbox,
+    )
+    .unwrap();
+    relay.write_slot_raw(&id(&s), 3, other.reveal().to_vec());
+
+    let error = c.poll(&relay, T0).await.unwrap_err();
+    assert_eq!(key_of(&error), INTERFERED);
+    assert!(!keeps_session(&error));
+    assert_eq!(c.comparison_code(), None);
+    assert!(!c.has_transcript());
+    assert!(!c.has_secret());
+    assert_eq!(relay.peek_slot(&id(&s), 2), Some(CANCEL_MARKER.to_vec()));
+}
+
+#[tokio::test]
+async fn a_low_order_revealed_key_ends_the_pairing() {
+    let relay = FakeRelay::new();
+    let s = PairingSession::show_with_secret(Role::Holder, HOME, T0, StaticSecret::from(S_SECRET))
+        .unwrap();
+    // A code that commits to the all-zero key, which the "shower" then reveals.
+    let zero = [0u8; 32];
+    let text = pairing_code_text(&PairingCode {
+        mailbox: s.mailbox,
+        commitment: commitment(&s.mailbox, &zero),
+        relay_url: Some(HOME.to_string()),
+    });
+    let mut c =
+        PairingSession::scan_with_secret(Role::Joiner, &text, T0, StaticSecret::from(C_SECRET))
+            .unwrap();
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
+    let mut reveal = vec![REVEAL_VERSION];
+    reveal.extend_from_slice(&zero);
+    reveal.extend_from_slice(&[0x07; 32]);
+    relay.write_slot_raw(&id(&s), 3, reveal);
+
+    let error = c.poll(&relay, T0).await.unwrap_err();
+    assert_eq!(key_of(&error), INTERFERED);
+    assert!(!keeps_session(&error));
+    assert_eq!(c.comparison_code(), None);
+    assert!(!c.has_transcript());
+    assert!(!c.has_secret());
+}
+
+#[tokio::test]
+async fn a_protocol_3_acknowledgement_is_interference() {
+    let relay = FakeRelay::new();
+    let (s, mut c) = pair(Role::Holder, Role::Joiner);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
+    let mut ack = vec![0x01];
+    ack.extend_from_slice(&[0x07; 32]);
+    assert_eq!(ack.len(), 33);
+    relay.write_slot_raw(&id(&s), 3, ack);
+
+    let error = c.poll(&relay, T0).await.unwrap_err();
+    assert_eq!(key_of(&error), INTERFERED);
+    assert_eq!(c.comparison_code(), None);
+    assert!(!c.has_transcript());
+}
+
+#[tokio::test]
+async fn the_showers_key_is_nowhere_before_slot_1_was_read() {
+    use base64::Engine;
+    let b64 = |b: &[u8]| base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b);
+    let relay = FakeRelay::new();
+    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
+    let key = public(S_SECRET);
+    let nowhere = |text: &str| !text.contains(&b64(&key)) && !text.contains(&hex_of(&key));
+
+    assert!(nowhere(&pairing_code_text(&s.code())));
+    assert!(nowhere(&pairing_code_text(&c.code())));
+    assert!(nowhere(&format!("{s:?} {c:?}")));
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
+    for slot in 1..=3 {
+        let bytes = relay.peek_slot(&id(&s), slot).unwrap_or_default();
+        assert!(!contains(&bytes, &key), "slot {slot}");
+    }
+    assert!(nowhere(&format!("{s:?} {c:?}")));
+
+    // Once the shower read slot 1, slot 3 carries it (the one place it is revealed).
+    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    let slot3 = relay.peek_slot(&id(&s), 3).expect("the reveal");
+    assert!(contains(&slot3, &key));
+    assert!(nowhere(&format!("{s:?} {c:?}")));
+}
+
+#[tokio::test]
+async fn a_lost_reveal_answer_is_retried_with_the_same_bytes() {
+    let relay = FakeRelay::new();
+    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
+    relay.lose_next_answer(Route::MailboxPut);
+    let error = s.poll(&relay, T0).await.unwrap_err();
+    assert!(keeps_session(&error));
+    assert_eq!(s.stage(), Stage::Acknowledging);
+    let stored = relay.peek_slot(&id(&s), 3).expect("the relay stored it");
+
+    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    let reveal = s
+        .transcript
+        .as_ref()
+        .expect("the holder's transcript")
+        .reveal();
+    assert_eq!(stored, reveal.to_vec());
+    assert_eq!(relay.peek_slot(&id(&s), 3), Some(reveal.to_vec()));
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(c.comparison_code().is_some());
 }

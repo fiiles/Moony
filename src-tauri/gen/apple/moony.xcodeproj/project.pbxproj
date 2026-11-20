@@ -18,6 +18,7 @@
 		9E9C9E0C9BE67B975363945B /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 448C68AF2B372974484BF1EB /* UIKit.framework */; };
 		B8A1863422E8A5935ECB993E /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B50D1909F5893A0373FD9EDA /* MetalKit.framework */; };
 		BC8513C11A212BEA3DC78237 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D03518D6A52A96BD3661C639 /* WebKit.framework */; };
+		E0968B0B5A714CC46660F74C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4A8754279055AD7AB8D31627 /* PrivacyInfo.xcprivacy */; };
 		EC2928B35877F0319CD233BF /* assets in Resources */ = {isa = PBXBuildFile; fileRef = C17B3A54BE288ACF8BE5B9D2 /* assets */; };
 		FC2F33081B9EA761D3573B7D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2397AC30BD18F6F642CB0086 /* LaunchScreen.storyboard */; };
 /* End PBXBuildFile section */
@@ -84,6 +85,7 @@
 		46CCE71715517DACE5F2B9EB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		46FA8DF4B953CE51CA98610A /* degiro.rs */ = {isa = PBXFileReference; path = degiro.rs; sourceTree = "<group>"; };
 		472D4B9557D131EF5189B25A /* xtb.rs */ = {isa = PBXFileReference; path = xtb.rs; sourceTree = "<group>"; };
+		4A8754279055AD7AB8D31627 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		4AE8B4718A7AB6F44A3ECFFE /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		4B58D5455D605E50B3D3C73C /* accounts.rs */ = {isa = PBXFileReference; path = accounts.rs; sourceTree = "<group>"; };
 		4BD99E47C243CB5CF2AE5C6B /* real_estate.rs */ = {isa = PBXFileReference; path = real_estate.rs; sourceTree = "<group>"; };
@@ -667,6 +669,7 @@
 			children = (
 				46CCE71715517DACE5F2B9EB /* Info.plist */,
 				8661893D05A692779D167CA4 /* moony_iOS.entitlements */,
+				4A8754279055AD7AB8D31627 /* PrivacyInfo.xcprivacy */,
 			);
 			path = moony_iOS;
 			sourceTree = "<group>";
@@ -772,6 +775,7 @@
 				84F3A15CCC582A1F454CFD71 /* Assets.xcassets in Resources */,
 				5BA9D6F7EACEBECEA6EC773C /* InfoPlist.strings in Resources */,
 				FC2F33081B9EA761D3573B7D /* LaunchScreen.storyboard in Resources */,
+				E0968B0B5A714CC46660F74C /* PrivacyInfo.xcprivacy in Resources */,
 				EC2928B35877F0319CD233BF /* assets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

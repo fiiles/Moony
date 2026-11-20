@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The app's privacy manifest (App Store Connect refuses an upload without one). The app is a single
+  executable: the Rust core, SQLCipher and every Swift plugin are linked into it statically, so this
+  one file covers them all. How each entry was derived, and how to re-check it against a built
+  binary, is in docs/playbooks/release-ios.md ("Privacy manifest").
+
+  No tracking, no tracking domains, no collected data: Moony has no server and no telemetry.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<!-- stat / fstat / lstat / fstatat / getattrlist from the Rust standard library, SQLCipher and the
+		     async runtime on the app's own files (C617.1), and the modification date of a file the person
+		     picked in the document picker, read by the dialog plugin (3B52.1). -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+				<string>3B52.1</string>
+			</array>
+		</dict>
+		<!-- statfs / fstatfs inside SQLCipher's SQLite (it reads the file system's flags when it opens
+		     a database file). The reason is the one SQLCipher's own privacy manifest declares for this
+		     code; nothing read this way is shown, stored or sent anywhere. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>E174.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

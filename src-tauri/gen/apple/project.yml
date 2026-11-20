@@ -40,6 +40,8 @@ targets:
       # via LIBRARY_SEARCH_PATHS, never bundled as resources.
       - path: Externals
         excludes: ["**/*.a"]
+      # Info.plist, the entitlements and PrivacyInfo.xcprivacy (the app's privacy manifest, which
+      # xcodegen puts into the Resources phase; App Store Connect refuses a build without it).
       - path: moony_iOS
       - path: assets
         buildPhase: resources
@@ -61,7 +63,10 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         CFBundleShortVersionString: 1.4.0
-        CFBundleVersion: "1.4.0"
+        # The build number, not the version: "1" in every local build (tauri.ios.conf.json,
+        # bundle.iOS.bundleVersion); scripts/ios-store-build.sh gives each App Store Connect upload
+        # its own rising number. See docs/playbooks/release-ios.md.
+        CFBundleVersion: "1"
     entitlements:
       path: moony_iOS/moony_iOS.entitlements
     scheme:

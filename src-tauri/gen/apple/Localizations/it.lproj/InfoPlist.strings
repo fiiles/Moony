@@ -2,7 +2,7 @@
 "NSFaceIDUsageDescription" = "Moony sblocca i tuoi dati con Face ID.";
 
 /* Camera permission prompt */
-"NSCameraUsageDescription" = "Moony fotografa documenti e il tuo immobile e scansiona i codici che associano i dispositivi per la sincronizzazione e il codice QR del tuo kit di ripristino; le foto vengono salvate cifrate su questo telefono.";
+"NSCameraUsageDescription" = "Moony fotografa documenti e il tuo immobile; le foto vengono salvate cifrate su questo telefono.";
 
-/* Local network permission prompt (a sync server on the home network) */
+/* Local network permission prompt (a sync server on the home network; only with device sync) */
 "NSLocalNetworkUsageDescription" = "Moony si connette a un server di sincronizzazione sulla tua rete domestica, se ne usi uno.";

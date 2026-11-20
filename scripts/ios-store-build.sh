@@ -104,12 +104,14 @@ expect() {
 expect CFBundleIdentifier "$identifier"
 expect CFBundleShortVersionString "$version"
 expect CFBundleVersion "$build_number"
+expect UIDeviceFamily:0 1
+[ -z "$(read_plist UIDeviceFamily:1)" ] || fail "the package is not iPhone-only (UIDeviceFamily has a second entry)"
 [ -f "$app/PrivacyInfo.xcprivacy" ] || fail "PrivacyInfo.xcprivacy is missing from the package"
 plutil -lint "$app/PrivacyInfo.xcprivacy" >/dev/null || fail "PrivacyInfo.xcprivacy in the package is not a valid property list"
 
 echo
 echo "ios-store-build: $ipa"
-echo "  Moony $version ($build_number), $identifier, privacy manifest present"
+echo "  Moony $version ($build_number), $identifier, iPhone only, privacy manifest present"
 if $dry_run; then
   echo "  Unsigned dry run: this package cannot be uploaded."
 else

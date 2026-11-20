@@ -864,7 +864,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.moonyfinance.mobile;
 				PRODUCT_NAME = "Moony";
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				VALID_ARCHS = arm64;
 			};
 			name = debug;
@@ -1014,7 +1014,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.moonyfinance.mobile;
 				PRODUCT_NAME = "Moony";
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				VALID_ARCHS = arm64;
 			};
 			name = release;

@@ -58,7 +58,7 @@ npm run ios:bundle -- --dry-run    # unsigned .ipa: checks the package without a
 
 The script runs `tauri ios build --export-method app-store-connect` with the build number, then
 unpacks the `.ipa` (`src-tauri/gen/apple/build/arm64/Moony.ipa`) and fails unless the package has
-the right bundle ID, version and build number and contains `PrivacyInfo.xcprivacy`.
+the right bundle ID, version and build number, is iPhone-only and contains `PrivacyInfo.xcprivacy`.
 It ends by putting `Info.plist` and `project.pbxproj` back as they were: the Tauri CLI writes the
 version, the build number and the signing team into both at every build.
 
@@ -138,6 +138,11 @@ The categories, their APIs and the reason codes are in Apple's documentation of
 `NSPrivacyAccessedAPIType`. A debug build also shows the strings of the last line: they come from
 the unused selector tables of the `objc2` bindings and are gone from a release build.
 
+### iPhone only
+
+`TARGETED_DEVICE_FAMILY` is `1` in `project.yml` and the generated project, and there are no iPad
+orientations. The phone shell is laid out for an iPhone in portrait.
+
 ### Scene life cycle
 
 The Info.plist has no `UIApplicationSceneManifest`. Built with Xcode 27.1 (SDK 27.1), the app
@@ -162,7 +167,7 @@ the app first reaches a local address, which only sync does.
 | `scripts/ios-store-build.sh` | The store build and its package checks (`npm run ios:bundle`) |
 | `src-tauri/tauri.ios.conf.json` | Bundle ID and the local build number |
 | `src-tauri/Info.ios.plist` | Permission texts and document types, merged into the generated Info.plist |
-| `src-tauri/gen/apple/project.yml` | The xcodegen project: orientations, resources |
+| `src-tauri/gen/apple/project.yml` | The xcodegen project: device family, orientations, resources |
 | `src-tauri/gen/apple/moony_iOS/PrivacyInfo.xcprivacy` | Privacy manifest |
 | `src-tauri/gen/apple/ExportOptions.plist` | Export options of a device install (`debugging`) |
 | `src-tauri/gen/apple/Localizations/` | The permission texts in the ten app languages |

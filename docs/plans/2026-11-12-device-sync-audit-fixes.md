@@ -1618,7 +1618,7 @@ typed confirm.
   current macOS clipboard history (M11); the iPhone's Files copy of a sync backup (H4); content
   protection on macOS and Windows (Task 23); pairing with the phone's camera and the typed code on
   the owner's iPhone (controller step, owner's go-ahead); the home server
-  `sync.home.example.com` redeployed with slot 3 before pairing works against it (owner); and
+  redeployed with slot 3 before pairing works against it (owner); and
   on that server, that `.dev.vars` has no `DEV_GRANT=1` or that it runs with `SELF_HOSTED=1` (owner;
   Task 25's Host check alone does not protect it).
 - [ ] **Step 5: Commit** `test(sync): audit fixes end to end through wrangler dev`.

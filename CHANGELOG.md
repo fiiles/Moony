@@ -16,7 +16,7 @@ All notable changes to Moony are documented in this file. The format follows
   at once, adding payments from other accounts to a plan and choosing which plans to take over
   stay on the desktop.
 
-## [1.4.0] - 2026-11-19
+## [1.4.0] - 2026-11-20
 
 ### Added
 

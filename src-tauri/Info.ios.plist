@@ -13,10 +13,10 @@
 	     back when the flag flips. -->
 	<key>NSCameraUsageDescription</key>
 	<string>Moony photographs documents and your property; photos are stored encrypted on this phone.</string>
-	<!-- Device sync with a self-hosted server on the home network (sync.home.example.com
-	     resolves to a LAN address there): iOS local-network privacy blocks unicast to local
-	     addresses without this text. iOS shows it only when the app first reaches a local address,
-	     which only sync does: a build without sync never raises the prompt. -->
+	<!-- Device sync with a self-hosted server on the home network (a server name that resolves
+	     to a LAN address there): iOS local-network privacy blocks unicast to local addresses
+	     without this text. iOS shows it only when the app first reaches a local address, which
+	     only sync does: a build without sync never raises the prompt. -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Moony connects to a sync server on your home network when you use one.</string>
 	<!-- Bank statements shared or opened into the phone app (share sheet, "Open in"). The document

@@ -682,8 +682,10 @@ fn a_low_order_public_key_is_refused() {
     one[0] = 1;
     let order_8 = hex32("e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800");
     for peer in [[0u8; 32], one, order_8] {
-        let err = derive(&StaticSecret::from(S_SECRET), Side::Shower, &peer, &MAILBOX).unwrap_err();
-        assert_eq!(validation_key(err), "validation.syncPairingFailed");
+        for (secret, side) in [(S_SECRET, Side::Shower), (C_SECRET, Side::Scanner)] {
+            let err = derive(&StaticSecret::from(secret), side, &peer, &MAILBOX).unwrap_err();
+            assert_eq!(validation_key(err), "validation.syncPairingFailed");
+        }
     }
 }
 

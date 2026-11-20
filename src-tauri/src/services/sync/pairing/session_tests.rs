@@ -71,7 +71,8 @@ pub(super) fn pair(shower: Role, scanner: Role) -> (PairingSession, PairingSessi
     (s, c)
 }
 
-/// Drives both to Compare: C announces, S reads slot 1 and reveals its key, C reads the reveal. The joiner's digits, which the holder's person types (the holder shows none).
+/// Drives both to Compare: C announces, S reads slot 1 and reveals its key, C reads the reveal.
+/// Returns the joiner's digits, which the holder's person types (the holder shows none).
 pub(super) async fn to_compare(
     relay: &FakeRelay,
     s: &mut PairingSession,
@@ -850,6 +851,27 @@ async fn a_reveal_that_does_not_match_the_code_is_interference() {
     assert_eq!(relay.peek_slot(&id(&s), 2), Some(CANCEL_MARKER.to_vec()));
 }
 
+/// The acknowledgement tag an attacker computes when the shared secret is 32 zero bytes (a
+/// low-order peer key): HKDF and HMAC exactly as `derive` and `Transcript::tag` build them.
+fn tag_for_zero_shared_secret(mailbox: &MailboxId, s_pub: &[u8; 32], c_pub: &[u8; 32]) -> [u8; 32] {
+    use crate::services::sync::pairing::{ACK_DIRECTION, KDF_INFO, OKM_LEN};
+    use chacha20poly1305::aead::KeyInit;
+    use hmac::{Hmac, Mac};
+    let mut info = KDF_INFO.to_vec();
+    info.extend_from_slice(s_pub);
+    info.extend_from_slice(c_pub);
+    let mut okm = [0u8; OKM_LEN];
+    hkdf::Hkdf::<sha2::Sha256>::new(Some(&mailbox.0), &[0u8; 32])
+        .expand(&info, &mut okm)
+        .unwrap();
+    let mut mac = <Hmac<sha2::Sha256>>::new_from_slice(&okm[40..]).unwrap();
+    mac.update(ACK_DIRECTION);
+    mac.update(&mailbox.0);
+    mac.update(s_pub);
+    mac.update(c_pub);
+    mac.finalize().into_bytes().into()
+}
+
 #[tokio::test]
 async fn a_low_order_revealed_key_ends_the_pairing() {
     let relay = FakeRelay::new();
@@ -866,17 +888,29 @@ async fn a_low_order_revealed_key_ends_the_pairing() {
         PairingSession::scan_with_secret(Role::Joiner, &text, T0, StaticSecret::from(C_SECRET))
             .unwrap();
     assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::AwaitingAck);
+    // With a zero shared secret anyone can compute the tag, so this reveal carries the right one:
+    // only `derive`'s refusal of the low-order key can reject it, not the tag check.
+    let tag = tag_for_zero_shared_secret(&s.mailbox, &zero, &public(C_SECRET));
     let mut reveal = vec![REVEAL_VERSION];
     reveal.extend_from_slice(&zero);
-    reveal.extend_from_slice(&[0x07; 32]);
+    reveal.extend_from_slice(&tag);
     relay.write_slot_raw(&id(&s), 3, reveal);
-
     let error = c.poll(&relay, T0).await.unwrap_err();
     assert_eq!(key_of(&error), INTERFERED);
     assert!(!keeps_session(&error));
     assert_eq!(c.comparison_code(), None);
     assert!(!c.has_transcript());
     assert!(!c.has_secret());
+    assert!(
+        derive(
+            &StaticSecret::from(C_SECRET),
+            Side::Scanner,
+            &zero,
+            &s.mailbox
+        )
+        .is_err(),
+        "derive refuses the low-order key"
+    );
 }
 
 #[tokio::test]

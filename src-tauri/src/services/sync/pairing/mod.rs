@@ -464,8 +464,8 @@ impl fmt::Debug for Transcript {
 /// X25519 between `own` and `peer_public`, then
 /// `HKDF-SHA256(salt = mailbox, ikm = shared, info = "moony pair v2" ‖ S public ‖ C public)` of
 /// `OKM_LEN` (72) bytes: 0..32 are the session key, 32..40 (big-endian, mod 10^6) the code and
-/// 40..72 the acknowledgement key. `own`'s public key takes the place `side` names and the peer's the
-/// other. A low-order peer key (a non-contributory exchange) is refused.
+/// 40..72 the acknowledgement key. `own`'s public key takes the place `side` names and the
+/// peer's the other. A low-order peer key (a non-contributory exchange) is refused.
 ///
 /// The `hkdf` crate's PRK is not zeroized (a crate limit); the OKM and the shared secret are.
 pub fn derive(

@@ -26,8 +26,9 @@
 //!   cancel markers into slots 2 and 3 (best effort, and only where the impostor has not written
 //!   first), so a shower that has not acknowledged yet ends as interfered and a holder-shower
 //!   fails its slot-2 write.
-//! - The ephemeral X25519 secret is taken out of its `Option` when it is used (the shower's read of
-//!   slot 1, the scanner's check of the reveal) and dropped (and zeroized) right after. The session key is dropped once slot 2 is sealed or opened.
+//! - The ephemeral X25519 secret is taken out of its `Option` when it is used (the shower's read
+//!   of slot 1, the scanner's check of the reveal) and dropped (and zeroized) right after. The
+//!   session key is dropped once slot 2 is sealed or opened.
 //! - Received credentials live until `expires_at + RECEIVED_GRACE_SECS`; any call after that
 //!   wipes them, and the holder's join ticket (protocol 3) with them.
 //! - No error or `Debug` output carries a secret, a pairing code, a comparison code or the
@@ -746,9 +747,9 @@ impl PairingSession {
         self.wipe();
     }
 
-    /// Someone else wrote or read slot 3, or it held something that is not this exchange's reveal: the
-    /// cancel markers (within `ABANDON_BUDGET`, best effort), the secrets wiped, and the error
-    /// that ends the pairing.
+    /// Someone else wrote or read slot 3, or it held something that is not this exchange's
+    /// reveal: the cancel markers (within `ABANDON_BUDGET`, best effort), the secrets wiped, and
+    /// the error that ends the pairing.
     async fn interfere<M: Mailbox>(&mut self, mailbox: &M, id: &str) -> SyncError {
         self.close(mailbox, id).await;
         interfered()

@@ -386,7 +386,9 @@ fn check(conn: &Connection) -> Result<DeviceId> {
     if identity::own_seed(conn)?.is_none() {
         return Err(validation(REMOVAL_UNSUPPORTED));
     }
-    if pending(conn)? || head::own_unverified(conn)? {
+    // A head not verified yet, this device's own or another's: no removal, no new Kit (spec
+    // 2026-11-20-sync-audit-2-fixes-design §2.3 step 5).
+    if pending(conn)? || head::any_unverified(conn)? {
         return Err(validation(IN_PROGRESS));
     }
     if stuck(conn)? {

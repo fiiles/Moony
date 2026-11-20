@@ -31,6 +31,7 @@ pub const WAITING_AFTER_SECS: i64 = 86_400;
 pub struct Extras {
     pub removal_supported: bool,
     pub removal_pending: bool,
+    pub own_change_finishing: bool,
     pub removal_notice: Option<SyncRemovalNotice>,
     pub removal_not_done: Option<SyncRemovalNotDone>,
     pub key_change_overrun: Option<SyncKeyChangeOverrun>,
@@ -116,7 +117,9 @@ pub fn extras(conn: &Connection, runtime: &Runtime, now: i64) -> Result<Extras> 
     // `keyChangeUnverified`).
     let mut waiting: Option<(i64, String)> = None;
     for epoch in head::unverified_epochs(conn)? {
-        if epoch.refuted {
+        // This device's own head is not waited for by anyone it could name: it waits for the
+        // sync server (`ownChangeFinishing`), never "for the remover".
+        if epoch.refuted || epoch.own_pending {
             continue;
         }
         let Some(since) = adopted_at(conn, epoch.epoch)? else {
@@ -207,6 +210,7 @@ pub fn extras(conn: &Connection, runtime: &Runtime, now: i64) -> Result<Extras> 
     Ok(Extras {
         removal_supported: trust::is_supported(conn)?,
         removal_pending: rotate::pending(conn)?,
+        own_change_finishing: head::own_unverified(conn)?,
         removal_notice,
         removal_not_done,
         key_change_overrun,

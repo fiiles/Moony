@@ -61,7 +61,8 @@
       "internal": "由于内部错误，同步已停止。",
       "keyNotGiven": "此设备需要重新连接。",
       "keyChangeUnverified": "此设备需要重新连接。",
-      "keyChangeWaiting": "正在等待进行更改的设备连接。"
+      "keyChangeWaiting": "正在等待进行更改的设备连接。",
+      "keyChangeWaitingOwn": "移除即将完成。同步服务器尚未发来移除之前的全部更改。Moony 会继续重试；此设备上的数据没有问题。"
     },
     "lastSynced": "上次同步{{date}}",
     "neverSynced": "尚未同步",

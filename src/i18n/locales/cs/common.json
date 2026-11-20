@@ -327,6 +327,7 @@
     "syncTooManyDevices": "Moony synchronizuje nejvýš 64 zařízení. Nejdřív odeberte ta, která už nepoužíváte.",
     "syncRemovalPlanChanged": "Seznam zařízení se mezitím změnil. Zkontrolujte ho a potvrďte znovu.",
     "syncRemovalPending": "Odebrání zařízení ještě probíhá. Zkuste to za chvíli.",
+    "syncRemovalNeedsSync": "Než zařízení odeberete, musí se dokončit synchronizace. Zkuste to za chvíli znovu.",
     "syncRotationRaced": "Seznam zařízení mezitím změnilo zařízení {{name}}. Zkontrolujte ho a zkuste to znovu.",
     "syncTooManyKeyChanges": "Za posledních 30 dní se seznam zařízení změnil příliš mnohokrát. Zkuste to znovu za několik dní.",
     "syncRemovalUnsupported": "Tuto synchronizaci nastavila starší verze Moony, proto v ní nejde odebírat zařízení.",
@@ -388,7 +389,8 @@
     "syncRecoveryVaultNotFound": "Tuto sadu server nezná: buď ji mezitím nahradila novější, nebo patří k jiné synchronizaci či jinému serveru. Zkontrolujte kód a adresu serveru.",
     "syncRecoveryKitReplaced": "Tuto záchrannou sadu dne {{at, unixdate}} nahradila novější. Použijte tu novější.",
     "syncRecoveryKitUnreadable": "Záchrannou sadu se nepodařilo přečíst: data na synchronizačním serveru k ní nesedí. Nic se nezměnilo.",
-    "syncJoinSetupPending": "Nejprve na tomto zařízení dokončete nebo zrušte nastavení synchronizace."
+    "syncJoinSetupPending": "Nejprve na tomto zařízení dokončete nebo zrušte nastavení synchronizace.",
+    "syncJoinOvertaken": "Při připojování se změnil seznam zařízení. Zkuste to znovu."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

@@ -65,7 +65,8 @@
       "internal": "Synkroniseringen stoppades på grund av ett internt fel.",
       "keyNotGiven": "Den här enheten behöver anslutas igen.",
       "keyChangeUnverified": "Den här enheten behöver anslutas igen.",
-      "keyChangeWaiting": "Väntar på att enheten som gjorde ändringen ansluter."
+      "keyChangeWaiting": "Väntar på att enheten som gjorde ändringen ansluter.",
+      "keyChangeWaitingOwn": "Borttagningen håller på att slutföras. Synkroniseringsservern har ännu inte skickat alla ändringar från före borttagningen. Moony fortsätter försöka; data på den här enheten är i ordning."
     },
     "lastSynced": "Senast synkroniserad {{date}}",
     "neverSynced": "Ännu inte synkroniserad",

@@ -61,7 +61,8 @@
       "internal": "内部エラーのため同期が停止しました。",
       "keyNotGiven": "このデバイスは再接続が必要です。",
       "keyChangeUnverified": "このデバイスは再接続が必要です。",
-      "keyChangeWaiting": "変更を行ったデバイスが接続するのを待っています。"
+      "keyChangeWaiting": "変更を行ったデバイスが接続するのを待っています。",
+      "keyChangeWaitingOwn": "削除を完了しています。同期サーバーから、削除前の変更がまだすべては届いていません。Moony は再試行を続けます。このデバイスのデータは無事です。"
     },
     "lastSynced": "最終同期 {{date}}",
     "neverSynced": "まだ同期していません",

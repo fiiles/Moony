@@ -65,7 +65,8 @@
       "internal": "Syncing stopped because of an internal error.",
       "keyNotGiven": "This device needs to connect again.",
       "keyChangeUnverified": "This device needs to connect again.",
-      "keyChangeWaiting": "Waiting for the device that made the change to connect."
+      "keyChangeWaiting": "Waiting for the device that made the change to connect.",
+      "keyChangeWaitingOwn": "The removal is finishing. The sync server has not yet sent every change from before the removal. Moony keeps trying; the data on this device are fine."
     },
     "lastSynced": "Last synced {{date}}",
     "neverSynced": "Not synced yet",

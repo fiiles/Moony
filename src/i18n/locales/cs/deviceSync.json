@@ -73,7 +73,8 @@
       "internal": "Synchronizace se zastavila kvůli vnitřní chybě.",
       "keyNotGiven": "Toto zařízení je potřeba připojit znovu.",
       "keyChangeUnverified": "Toto zařízení je potřeba připojit znovu.",
-      "keyChangeWaiting": "Čeká se, až se připojí zařízení, které změnu provedlo."
+      "keyChangeWaiting": "Čeká se, až se připojí zařízení, které změnu provedlo.",
+      "keyChangeWaitingOwn": "Odebrání se dokončuje. Synchronizační server zatím neposlal všechny změny z doby před odebráním. Moony to zkouší dál; data na tomto zařízení jsou v pořádku."
     },
     "lastSynced": "Naposledy synchronizováno {{date}}",
     "neverSynced": "Zatím nesynchronizováno",

@@ -20,6 +20,7 @@ import {
   heldGapDevice,
   offersResync,
   problemAction,
+  problemTextKey,
   skippableGap,
   type SyncProblemAction,
 } from '@/utils/device-sync-problem';
@@ -257,7 +258,7 @@ function ProblemAlert({
   const action = problemAction(problem, status.ownServer, skippable);
   const ahead = problem === 'clockAhead' ? aheadGap(held) : null;
   let title: string | undefined;
-  let body = ahead ? aheadText(ahead, t, renderDate) : t(`status.problem.${problem}`);
+  let body = ahead ? aheadText(ahead, t, renderDate) : t(problemTextKey(problem, status));
   const skipFrom = firstSkippableAt(held, now);
   if (skipFrom !== null && renderDate(skipFrom)) {
     const key = problem === 'clockAhead' ? 'alert.clockAhead.skipFrom' : 'alert.gap.skipFrom';

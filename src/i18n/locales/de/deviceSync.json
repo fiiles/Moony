@@ -65,7 +65,8 @@
       "internal": "Die Synchronisierung wurde wegen eines internen Fehlers gestoppt.",
       "keyNotGiven": "Dieses Gerät muss erneut verbunden werden.",
       "keyChangeUnverified": "Dieses Gerät muss erneut verbunden werden.",
-      "keyChangeWaiting": "Es wird gewartet, bis sich das Gerät verbindet, das die Änderung vorgenommen hat."
+      "keyChangeWaiting": "Es wird gewartet, bis sich das Gerät verbindet, das die Änderung vorgenommen hat.",
+      "keyChangeWaitingOwn": "Das Entfernen wird abgeschlossen. Der Synchronisierungsserver hat noch nicht alle Änderungen aus der Zeit vor dem Entfernen gesendet. Moony versucht es weiter; die Daten auf diesem Gerät sind in Ordnung."
     },
     "lastSynced": "Zuletzt synchronisiert {{date}}",
     "neverSynced": "Noch nicht synchronisiert",

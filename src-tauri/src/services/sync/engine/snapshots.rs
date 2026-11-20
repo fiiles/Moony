@@ -857,8 +857,8 @@ enum Restore {
 /// may have renumbered another device's change below this device's cursor, so a snapshot at the
 /// cursor could claim a change this device never saw. Until a replace clears the mark, no
 /// snapshot leaves this device, the forced one included (its round keeps asking for the vault's
-/// info). Nor does one leave while this device's own key-change head is not signed yet
-/// (`head::own_unverified`, spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 5).
+/// info). Nor does one leave while any key-change head is not verified yet
+/// (`head::any_unverified`, spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 5).
 fn ready_to_dump(conn: &Connection) -> Result<bool> {
     let pending: i64 = conn.query_row(
         "SELECT (SELECT COUNT(*) FROM sync_outbox) + (SELECT COUNT(*) FROM sync_unsent)",
@@ -868,7 +868,7 @@ fn ready_to_dump(conn: &Connection) -> Result<bool> {
     Ok(pending == 0
         && chain::may_upload_snapshot(&loaded(conn)?)
         && state::vault_went_back_at(conn)?.is_none()
-        && !crate::services::sync::rekey::head::own_unverified(conn)?)
+        && !crate::services::sync::rekey::head::any_unverified(conn)?)
 }
 
 /// What a snapshot that does not fit its position (rule 10) comes to for a caller.

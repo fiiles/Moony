@@ -208,7 +208,8 @@ async fn a_snapshot_under_the_newest_epoch_without_its_head_bounds_older_ops() {
     assert!(!head::unverified_epochs(&three.vault.b.lock())
         .expect("unverified")
         .is_empty());
-    snapshot_by(&three, &three.vault.b).await;
+    // B uploads no snapshot in this state any more; one made by hand stands for a build that did.
+    super::rekey_gate::ungated_snapshot_by(&three, &three.vault.b).await;
     // C, removed but holding epoch 0's key, gets an op in past the snapshot (a server that takes
     // a retired token's writes).
     three.vault.relay.set_accept_retired_writes(true);

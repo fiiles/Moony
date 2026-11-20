@@ -34,6 +34,7 @@ const base: SyncStatus = {
   protectsData: true,
   removalSupported: false,
   removalPending: false,
+  ownChangeFinishing: false,
   removalNotice: null,
   removalNotDone: null,
   keyChangeOverrun: null,

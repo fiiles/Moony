@@ -73,7 +73,8 @@
       "internal": "Synchronizacja zatrzymała się z powodu błędu wewnętrznego.",
       "keyNotGiven": "To urządzenie trzeba połączyć ponownie.",
       "keyChangeUnverified": "To urządzenie trzeba połączyć ponownie.",
-      "keyChangeWaiting": "Czekam, aż połączy się urządzenie, które wprowadziło zmianę."
+      "keyChangeWaiting": "Czekam, aż połączy się urządzenie, które wprowadziło zmianę.",
+      "keyChangeWaitingOwn": "Usuwanie jest kończone. Serwer synchronizacji nie wysłał jeszcze wszystkich zmian sprzed usunięcia. Moony próbuje dalej; dane na tym urządzeniu są w porządku."
     },
     "lastSynced": "Ostatnia synchronizacja: {{date}}",
     "neverSynced": "Jeszcze nie zsynchronizowano",

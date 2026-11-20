@@ -686,8 +686,16 @@ async fn a_pickup_pins_the_bundles_kit_and_the_next_change_seals_to_it() {
         assert!(notice.removed.is_empty());
     }
 
-    // B removes C next: the envelope is the new Kit's (R-28 regression: before the bundle's Kit
+    // A's signed head reaches B (a device with an unverified head starts no change of its own),
+    // then B removes C: the envelope is the new Kit's (R-28 regression: before the bundle's Kit
     // reached `import_bundle`, nothing pinned the replacement here).
+    for _ in 0..2 {
+        round_of(&three.vault, &three.vault.a).await;
+        round_of(&three.vault, &three.vault.b).await;
+    }
+    assert!(
+        !crate::services::sync::rekey::head::any_unverified(&three.vault.b.lock()).expect("any")
+    );
     remove(&three, B, &[C]).await.expect("removed");
 
     let keys = kit_keys(&three, &new.secret);

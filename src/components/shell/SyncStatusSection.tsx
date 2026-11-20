@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAttachmentsStatusText } from '@/hooks/use-attachments-status-text';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
+import { problemTextKey } from '@/utils/device-sync-problem';
 import { hostOf } from '@/utils/sync-setup';
 import { useFormat } from '@/lib/use-format';
 import {
@@ -77,7 +78,7 @@ export function SyncStatusSection({
             ? t('problem.waiting.title', { by: problemState.by })
             : problemState?.kind === 'rejoin'
               ? t('problem.rejoin.title')
-              : t(`status.problem.${status.problem}`)}
+              : t(problemTextKey(status.problem, status))}
         </p>
       )}
       {indicator.kind === 'firstUpload' && (

@@ -327,6 +327,7 @@
     "syncTooManyDevices": "Moony synkroniserar högst 64 enheter. Ta först bort de du inte längre använder.",
     "syncRemovalPlanChanged": "Enhetslistan har ändrats under tiden. Kontrollera den och bekräfta igen.",
     "syncRemovalPending": "Borttagningen av enheterna pågår fortfarande. Försök igen om en stund.",
+    "syncRemovalNeedsSync": "Synkroniseringen måste bli klar innan en enhet kan tas bort. Försök igen om en stund.",
     "syncRotationRaced": "{{name}} har ändrat enhetslistan under tiden. Kontrollera den och försök igen.",
     "syncTooManyKeyChanges": "Enhetslistan har ändrats för många gånger de senaste 30 dagarna. Försök igen om några dagar.",
     "syncRemovalUnsupported": "Den här synkroniseringen konfigurerades av en äldre version av Moony, så enheter kan inte tas bort från den.",
@@ -388,7 +389,8 @@
     "syncRecoveryVaultNotFound": "Servern känner inte till det här återställningskitet: antingen har ett nyare ersatt det, eller så hör det till en annan synkronisering eller server. Kontrollera koden och serverns adress.",
     "syncRecoveryKitReplaced": "Ett nyare återställningskit ersatte det här {{at, unixdate}}. Använd det nyare kitet.",
     "syncRecoveryKitUnreadable": "Moony kunde inte läsa det här återställningskitet: data på synkroniseringsservern stämmer inte med det. Inget har ändrats.",
-    "syncJoinSetupPending": "Slutför eller avbryt konfigurationen av synkroniseringen på den här enheten först."
+    "syncJoinSetupPending": "Slutför eller avbryt konfigurationen av synkroniseringen på den här enheten först.",
+    "syncJoinOvertaken": "Enhetslistan ändrades medan du anslöt. Försök igen."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

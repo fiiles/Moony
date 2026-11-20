@@ -887,10 +887,39 @@ async fn a_second_key_change_before_the_signature_does_not_wedge_the_remover() {
     remove(&three, A, &[C]).await.expect("the key changed");
     assert!(head::own_unverified(&three.vault.a.lock()).expect("own"));
     three.vault.relay.set_failing(Route::Pull, None);
-    // B picks A's change up (A's head is not signed yet), then changes the key itself.
+    // B picks A's change up (A's head is not signed yet). An honest B then refuses to change the
+    // key itself (task 8: a device with an unverified head starts no change); a B that does not
+    // hold that gate (an older build) is made by taking its note of A's head away for the call
+    // and putting it back, so that it still has to verify the head afterwards.
     round_of(&three.vault, &three.vault.b).await;
+    let waiting = {
+        let b = three.vault.b.lock();
+        let waiting = unverified_of(&b, 1).expect("B waits for A's head");
+        let error = rotate::plan(&b, &[], &[], true, NOW).expect_err("refused");
+        assert!(
+            error.to_string().contains("syncChangeInProgress"),
+            "{error}"
+        );
+        exec(
+            &b,
+            &format!(
+                "DELETE FROM app_config WHERE key = '{}'",
+                state::UNVERIFIED_EPOCHS_KEY
+            ),
+        );
+        waiting
+    };
     new_kit(&three, B).await.expect("B changes the key");
     assert_eq!(key_epoch(&three.vault.b.lock()), 2);
+    head::note_unverified(
+        &three.vault.b.lock(),
+        waiting.epoch,
+        waiting.head,
+        waiting.rotation,
+        DeviceId::from_hex(&waiting.by).expect("device"),
+        waiting.after,
+    )
+    .expect("B waits for A's head again");
 
     let mut problems = Vec::new();
     for _ in 0..4 {

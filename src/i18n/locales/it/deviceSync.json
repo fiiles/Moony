@@ -69,7 +69,8 @@
       "internal": "La sincronizzazione si è fermata per un errore interno.",
       "keyNotGiven": "Questo dispositivo va ricollegato.",
       "keyChangeUnverified": "Questo dispositivo va ricollegato.",
-      "keyChangeWaiting": "In attesa che si colleghi il dispositivo che ha fatto la modifica."
+      "keyChangeWaiting": "In attesa che si colleghi il dispositivo che ha fatto la modifica.",
+      "keyChangeWaitingOwn": "La rimozione si sta completando. Il server di sincronizzazione non ha ancora inviato tutte le modifiche precedenti alla rimozione. Moony continua a riprovare; i dati su questo dispositivo sono a posto."
     },
     "lastSynced": "Ultima sincronizzazione: {{date}}",
     "neverSynced": "Non ancora sincronizzato",

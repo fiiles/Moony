@@ -24,6 +24,7 @@ mod pull;
 mod push;
 mod rekey_audit2;
 mod rekey_fixture;
+mod rekey_gate;
 mod rekey_head;
 mod rekey_leave;
 mod rekey_pickup;

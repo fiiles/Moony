@@ -327,6 +327,7 @@
     "syncTooManyDevices": "Moony sincroniza 64 dispositivos como máximo. Primero quita los que ya no uses.",
     "syncRemovalPlanChanged": "La lista de dispositivos ha cambiado mientras tanto. Revísala y vuelve a confirmar.",
     "syncRemovalPending": "La eliminación de los dispositivos aún está en curso. Inténtelo de nuevo en un momento.",
+    "syncRemovalNeedsSync": "La sincronización tiene que terminar antes de poder quitar un dispositivo. Inténtelo de nuevo en un momento.",
     "syncRotationRaced": "{{name}} ha cambiado la lista de dispositivos mientras tanto. Revísala y vuelve a intentarlo.",
     "syncTooManyKeyChanges": "La lista de dispositivos ha cambiado demasiadas veces en los últimos 30 días. Inténtalo de nuevo dentro de unos días.",
     "syncRemovalUnsupported": "Esta sincronización se configuró con una versión anterior de Moony, por eso no se pueden quitar dispositivos de ella.",
@@ -388,7 +389,8 @@
     "syncRecoveryVaultNotFound": "El servidor no conoce este kit de recuperación: puede que lo haya sustituido uno más reciente o que pertenezca a otra sincronización u otro servidor. Comprueba el código y la dirección del servidor.",
     "syncRecoveryKitReplaced": "Un kit de recuperación más reciente sustituyó a este el {{at, unixdate}}. Usa el kit más reciente.",
     "syncRecoveryKitUnreadable": "Moony no ha podido leer este kit de recuperación: los datos del servidor de sincronización no coinciden con él. No se ha cambiado nada.",
-    "syncJoinSetupPending": "Primero termina o cancela la configuración de la sincronización en este dispositivo."
+    "syncJoinSetupPending": "Primero termina o cancela la configuración de la sincronización en este dispositivo.",
+    "syncJoinOvertaken": "La lista de dispositivos cambió mientras te conectabas. Inténtalo de nuevo."
   },
   "auth": {
     "wrongPassword": "La contraseña introducida es incorrecta. Inténtalo de nuevo.",

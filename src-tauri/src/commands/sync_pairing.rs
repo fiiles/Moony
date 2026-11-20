@@ -253,6 +253,15 @@ async fn begin<T>(
     then.await.map_err(app_error)
 }
 
+/// A holder with a key-change head it has not verified (`holder::refuse_while_unverified`) shows
+/// no code and scans none: `validation.syncChangeInProgress`, before the password is asked.
+fn holder_may_hand_keys_on(session: &Database, role: Role) -> Result<()> {
+    match role {
+        Role::Holder => session.with_conn(holder::refuse_while_unverified),
+        Role::Joiner => Ok(()),
+    }
+}
+
 /// The slot a command may use: kept while it belongs to `owner`'s profile session and `now` is
 /// before its `wiped_at`; otherwise it is handed back to be abandoned.
 fn slot_for(
@@ -499,6 +508,7 @@ pub async fn sync_pairing_start(
     require_feature()?;
     let session = db.current_session()?;
     let role = Role::of(sync_on(&session)?);
+    holder_may_hand_keys_on(&session, role)?;
     let device_name = joiner_name(role, device_name)?;
     let relay_url = session.with_conn(|conn| shower_relay(conn, role, relay_url.as_deref()))?;
     let owner = kit_owner(&app, &db)?;
@@ -526,6 +536,7 @@ pub async fn sync_pairing_scan(
     require_feature()?;
     let session = db.current_session()?;
     let role = Role::of(sync_on(&session)?);
+    holder_may_hand_keys_on(&session, role)?;
     let device_name = joiner_name(role, device_name)?;
     let owner = kit_owner(&app, &db)?;
     let verify = verify_password(&app, password.clone());

@@ -741,16 +741,8 @@ async fn a_restored_snapshot_without_the_head_moves_the_look_ahead_past_the_prun
     let report = round_of(&three.vault, &three.c).await;
     assert_eq!(report.problem, None, "{report:?}");
     assert!(entry(&three.c.lock(), 1).is_some());
-    run_round(
-        &three.vault.relay,
-        &three.c,
-        &mut SnapshotPolicy::default(),
-        RoundMode::FirstSnapshot,
-        NOW,
-        0,
-    )
-    .await
-    .expect("C's snapshot");
+    // (C uploads none in this state any more; one made by hand stands for a build that did.)
+    super::rekey_gate::ungated_snapshot_by(&three, &three.c).await;
     let seq = three.vault.relay.snapshot_seq().expect("snapshot");
     assert!(seq > head, "{seq} {head}");
     // A sends its signed head above C's snapshot, and owes no snapshot of its own here (it would

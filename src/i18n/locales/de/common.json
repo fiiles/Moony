@@ -327,6 +327,7 @@
     "syncTooManyDevices": "Moony synchronisiert höchstens 64 Geräte. Entfernen Sie zuerst die, die Sie nicht mehr verwenden.",
     "syncRemovalPlanChanged": "Die Geräteliste hat sich inzwischen geändert. Prüfen Sie sie und bestätigen Sie erneut.",
     "syncRemovalPending": "Das Entfernen der Geräte läuft noch. Versuchen Sie es gleich noch einmal.",
+    "syncRemovalNeedsSync": "Die Synchronisierung muss abgeschlossen sein, bevor ein Gerät entfernt werden kann. Versuchen Sie es gleich noch einmal.",
     "syncRotationRaced": "{{name}} hat die Geräteliste inzwischen geändert. Prüfen Sie sie und versuchen Sie es erneut.",
     "syncTooManyKeyChanges": "Die Geräteliste wurde in den letzten 30 Tagen zu oft geändert. Versuchen Sie es in einigen Tagen erneut.",
     "syncRemovalUnsupported": "Diese Synchronisierung wurde mit einer älteren Version von Moony eingerichtet, daher lassen sich keine Geräte daraus entfernen.",
@@ -388,7 +389,8 @@
     "syncRecoveryVaultNotFound": "Der Server kennt dieses Wiederherstellungs-Kit nicht: Entweder hat es inzwischen ein neueres ersetzt, oder es gehört zu einer anderen Synchronisierung oder einem anderen Server. Prüfen Sie den Code und die Serveradresse.",
     "syncRecoveryKitReplaced": "Dieses Wiederherstellungs-Kit wurde am {{at, unixdate}} durch ein neueres ersetzt. Verwenden Sie das neuere Kit.",
     "syncRecoveryKitUnreadable": "Moony konnte dieses Wiederherstellungs-Kit nicht lesen: Die Daten auf dem Sync-Server passen nicht dazu. Es wurde nichts geändert.",
-    "syncJoinSetupPending": "Schließen Sie zuerst die Einrichtung der Synchronisierung auf diesem Gerät ab oder brechen Sie sie ab."
+    "syncJoinSetupPending": "Schließen Sie zuerst die Einrichtung der Synchronisierung auf diesem Gerät ab oder brechen Sie sie ab.",
+    "syncJoinOvertaken": "Die Geräteliste hat sich beim Verbinden geändert. Versuchen Sie es noch einmal."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

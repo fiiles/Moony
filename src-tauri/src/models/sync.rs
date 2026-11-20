@@ -235,6 +235,11 @@ pub struct SyncStatus {
     /// and finishes by itself: "Dokončuji odebrání zařízení…".
     #[serde(rename = "removalPending")]
     pub removal_pending: bool,
+    /// With `keyChangeWaiting`: the head not verified yet is this device's own (a removal or a
+    /// new recovery kit it made, not signed until it has read the changes before it): "Odebrání
+    /// se dokončuje."
+    #[serde(rename = "ownChangeFinishing")]
+    pub own_change_finishing: bool,
     /// Another device removed devices or made a new recovery kit (Local, until dismissed).
     #[serde(rename = "removalNotice")]
     pub removal_notice: Option<SyncRemovalNotice>,

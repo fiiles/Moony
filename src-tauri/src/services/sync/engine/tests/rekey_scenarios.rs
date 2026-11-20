@@ -392,7 +392,7 @@ async fn a_pairing_overtaken_by_a_removal_is_refused_and_pairs_again() {
         let error = joined.expect_err("refused");
         assert_eq!(
             validation_key(&error.to_app_error()).as_deref(),
-            Some("validation.syncPairingFailed"),
+            Some("validation.syncJoinOvertaken"),
             "serves retired reads={server_serves_retired_reads}: {error:?}"
         );
         {
@@ -778,7 +778,19 @@ async fn a_given_up_key_change_reaches_the_others_with_its_new_kit() {
         assert!(replaced.is_some(), "{id:?}");
         assert!(devices::device_row(&conn, new.id).expect("rows").is_some());
     }
-    snapshot_by(&three, &three.vault.b).await;
+    // B holds A's head, which A never signs: an honest B uploads no snapshot and starts no change
+    // (task 8). The rest of the test is about the given-up change's Kit, so a B without that gate
+    // (an older build) is made by hand: its snapshot, then its note of A's head put aside.
+    {
+        let b = three.vault.b.lock();
+        let waiting = rotate::plan(&b, &[C], &[], false, NOW).expect_err("refused");
+        assert!(
+            waiting.to_string().contains("syncChangeInProgress"),
+            "{waiting}"
+        );
+    }
+    super::rekey_gate::ungated_snapshot_by(&three, &three.vault.b).await;
+    super::rekey_gate::set_unverified_aside(&three.vault.b.lock());
     let joiner = newcomer();
     let dir = tempfile::tempdir().expect("dir");
     kit_join(&three, &joiner, dir.path(), &new.secret)

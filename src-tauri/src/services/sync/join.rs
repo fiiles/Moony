@@ -70,6 +70,8 @@ pub(crate) const KIT_REPLACED: &str = "validation.syncRecoveryKitReplaced";
 const KIT_UNREADABLE: &str = "validation.syncRecoveryKitUnreadable";
 const CODE_INVALID: &str = "validation.syncRecoveryCodeInvalid";
 const PAIRING_FAILED: &str = "validation.syncPairingFailed";
+const JOIN_OVERTAKEN: &str = "validation.syncJoinOvertaken";
+const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
 const SERVER_NEEDS_UPDATE: &str = "validation.syncServerNeedsUpdate";
 
 /// Drain rounds a repair runs at most; it also stops after two rounds in a row that neither shrank
@@ -275,6 +277,8 @@ fn replace_hold(conn: &mut Connection, input: &HoldInput) -> Hold {
     let replaced = (|| {
         if input.kind == ReplaceKind::Join {
             may_join(conn, &input.creds)?;
+        } else {
+            refuse_unsigned_head(conn)?;
         }
         impact::check_consent_after_push(conn, input.kind, &input.consent, &input.acknowledged)?;
         let (unsent_items, unsent_batches, resync_keeps) = if input.kind == ReplaceKind::Resync {
@@ -434,7 +438,7 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
         Err(KeyAhead) => {
             let key = match identity {
                 JoinIdentity::RecoveryKit(_) => KIT_UNREADABLE,
-                _ => PAIRING_FAILED,
+                _ => JOIN_OVERTAKEN,
             };
             return Err(AppError::Validation(key.into()).into());
         }
@@ -1167,6 +1171,7 @@ pub async fn repair_capture<R: Relay, D: ConnAccess>(
     now: i64,
 ) -> SyncResult<ReplaceOutcome> {
     refuse_read_only(db)?;
+    db.with_conn(refuse_unsigned_head)?;
     rejoin_if_copy_between_rounds(db, data_dir, native, now).await?;
     let (creds, name) = stored_identity(db)?;
     let mut backup = backed_up(db, data_dir, now).await?;
@@ -1280,6 +1285,7 @@ pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
     refuse_read_only(db)?;
     let (creds, name) = stored_identity(db)?;
     let _no_round = engine::exclusive(db).await;
+    db.with_conn(refuse_unsigned_head)?;
     rejoin_if_copy_under_lock(db, data_dir, native, now)?;
     let acknowledged = match push::push_all(relay, db, &creds).await {
         Ok(report) => {
@@ -1362,10 +1368,24 @@ pub(super) fn rejoin_if_copy_under_lock<D: ConnAccess>(
 /// 0027) can write nothing, a backup included, and capture needs temp writes to install: the
 /// repair and the re-sync answer `validation.syncCaptureStillBroken` (turning sync off is the way
 /// on) before they try anything.
+///
+/// Both also answer `validation.syncChangeInProgress` while this device's own key change is not
+/// signed yet (`refuse_unsigned_head`).
 fn refuse_read_only<D: ConnAccess>(db: &D) -> SyncResult<()> {
     if db.with_conn(|conn| Ok(guard::is_read_only(conn)))? {
         log::warn!("[SYNC] The profile is read-only: change capture cannot be repaired");
         return Err(AppError::Validation(guard::CAPTURE_STILL_BROKEN.into()).into());
+    }
+    Ok(())
+}
+
+/// A repair and a re-sync give this device a new ID: while its own key change is committed and
+/// not signed yet (`head::own_unverified`), the other devices wait for a record signed by the old
+/// one, so nothing is replaced (ruling R11): `validation.syncChangeInProgress`.
+fn refuse_unsigned_head(conn: &Connection) -> Result<()> {
+    if crate::services::sync::rekey::head::own_unverified(conn)? {
+        log::warn!("[SYNC] Nothing is replaced while this device's own key change is not signed");
+        return Err(AppError::Validation(CHANGE_IN_PROGRESS.into()));
     }
     Ok(())
 }

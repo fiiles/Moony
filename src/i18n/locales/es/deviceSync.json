@@ -69,7 +69,8 @@
       "internal": "La sincronización se detuvo por un error interno.",
       "keyNotGiven": "Hay que volver a conectar este dispositivo.",
       "keyChangeUnverified": "Hay que volver a conectar este dispositivo.",
-      "keyChangeWaiting": "Esperando a que se conecte el dispositivo que hizo el cambio."
+      "keyChangeWaiting": "Esperando a que se conecte el dispositivo que hizo el cambio.",
+      "keyChangeWaitingOwn": "La eliminación se está completando. El servidor de sincronización aún no ha enviado todos los cambios de antes de la eliminación. Moony sigue intentándolo; los datos de este dispositivo están bien."
     },
     "lastSynced": "Última sincronización: {{date}}",
     "neverSynced": "Aún sin sincronizar",

@@ -4023,6 +4023,12 @@ removalSupported: boolean;
  */
 removalPending: boolean; 
 /**
+ * With `keyChangeWaiting`: the head not verified yet is this device's own (a removal or a
+ * new recovery kit it made, not signed until it has read the changes before it): "Odebrání
+ * se dokončuje."
+ */
+ownChangeFinishing: boolean; 
+/**
  * Another device removed devices or made a new recovery kit (Local, until dismissed).
  */
 removalNotice: SyncRemovalNotice | null; 

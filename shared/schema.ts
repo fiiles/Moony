@@ -138,6 +138,8 @@ export interface SyncStatus {
   removalSupported: boolean;
   /** A key change of this device (a removal, a new recovery kit) waits for the sync server and finishes by itself. */
   removalPending: boolean;
+  /** With `keyChangeWaiting`: the head not verified yet is this device's own (a removal or new recovery kit it made, not signed until it has read the changes before it). */
+  ownChangeFinishing: boolean;
   /** Another device removed devices or made a new recovery kit; until dismissed. */
   removalNotice: SyncRemovalNotice | null;
   /** A removal confirmed here that a background resolution found not done. */

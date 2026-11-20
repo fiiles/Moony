@@ -327,6 +327,7 @@
     "syncTooManyDevices": "Moony synchronizuje najwyżej 64 urządzenia. Najpierw usuń te, których już nie używasz.",
     "syncRemovalPlanChanged": "Lista urządzeń w międzyczasie się zmieniła. Sprawdź ją i potwierdź ponownie.",
     "syncRemovalPending": "Usuwanie urządzeń jeszcze trwa. Spróbuj ponownie za chwilę.",
+    "syncRemovalNeedsSync": "Synchronizacja musi się zakończyć, zanim będzie można usunąć urządzenie. Spróbuj ponownie za chwilę.",
     "syncRotationRaced": "W międzyczasie urządzenie {{name}} zmieniło listę urządzeń. Sprawdź ją i spróbuj ponownie.",
     "syncTooManyKeyChanges": "Lista urządzeń zmieniała się zbyt wiele razy w ciągu ostatnich 30 dni. Spróbuj ponownie za kilka dni.",
     "syncRemovalUnsupported": "Tę synchronizację skonfigurowała starsza wersja Moony, dlatego nie można z niej usuwać urządzeń.",
@@ -388,7 +389,8 @@
     "syncRecoveryVaultNotFound": "Serwer nie zna tego zestawu odzyskiwania: albo zastąpił go nowszy, albo należy do innej synchronizacji lub innego serwera. Sprawdź kod i adres serwera.",
     "syncRecoveryKitReplaced": "Ten zestaw odzyskiwania został zastąpiony nowszym {{at, unixdate}}. Użyj nowszego zestawu.",
     "syncRecoveryKitUnreadable": "Moony nie może odczytać tego zestawu odzyskiwania: dane na serwerze synchronizacji do niego nie pasują. Nic nie zostało zmienione.",
-    "syncJoinSetupPending": "Najpierw dokończ lub anuluj konfigurację synchronizacji na tym urządzeniu."
+    "syncJoinSetupPending": "Najpierw dokończ lub anuluj konfigurację synchronizacji na tym urządzeniu.",
+    "syncJoinOvertaken": "Lista urządzeń zmieniła się podczas łączenia. Spróbuj ponownie."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

@@ -16,6 +16,7 @@ import {
   heldGapDevice,
   offersResync,
   problemAction,
+  problemTextKey,
   type SyncProblemAction,
   skippableGap,
 } from '@/utils/device-sync-problem';
@@ -115,7 +116,7 @@ function ProblemBox({
   const deletesAt = secondsToDate(status.deletesAt);
   const ahead = problem === 'clockAhead' ? aheadGap(held) : null;
   let title: string | null = null;
-  let body: string | null = ahead ? aheadText(ahead, t, dateText) : t(`status.problem.${problem}`);
+  let body: string | null = ahead ? aheadText(ahead, t, dateText) : t(problemTextKey(problem, status));
   const skipFrom = firstSkippableAt(held, now);
   if (skipFrom !== null && dateText(skipFrom)) {
     const key = problem === 'clockAhead' ? 'alert.clockAhead.skipFrom' : 'alert.gap.skipFrom';

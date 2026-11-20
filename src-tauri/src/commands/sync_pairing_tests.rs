@@ -693,3 +693,30 @@ async fn after_the_third_wrong_code_the_pairing_is_gone_and_a_new_one_has_all_it
         Stage::Sent
     );
 }
+
+/// Review of Task 8, M1: the gate in front of `sync_pairing_start` and `sync_pairing_scan`. A
+/// holder with a head it has not verified shows no code and scans none; a joiner is not asked.
+#[test]
+fn a_holder_with_an_unverified_head_is_refused_before_a_code_is_shown() {
+    use crate::services::sync::hlc::DeviceId;
+    use crate::services::sync::rekey::head;
+    use crate::services::sync::state;
+    let dir = tempfile::tempdir().expect("tempdir");
+    let key = crate::services::crypto::master_key_to_hex(&[9; 32]);
+    let db = Database::new();
+    db.create_with_key(dir.path().join("moony.db"), &key)
+        .expect("create");
+    db.with_conn(|conn| state::enable(conn, DeviceId([7; 16])))
+        .expect("sync on");
+
+    holder_may_hand_keys_on(&db, Role::Holder).expect("nothing waits");
+
+    db.with_conn(|conn| head::note_unverified(conn, 1, Some(5), Some(1), DeviceId([8; 16]), 0))
+        .expect("a head waits");
+
+    assert_eq!(
+        key_of(holder_may_hand_keys_on(&db, Role::Holder)),
+        CHANGE_IN_PROGRESS
+    );
+    holder_may_hand_keys_on(&db, Role::Joiner).expect("a joiner hands nothing on");
+}

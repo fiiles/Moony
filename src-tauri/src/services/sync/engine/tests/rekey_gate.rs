@@ -259,6 +259,16 @@ async fn a_remover_with_an_unsigned_head_cannot_repair() {
     let a = three.vault.a.lock();
     assert_eq!(state::load(&a).expect("state").expect("row").device, device);
     assert!(head::own_unverified(&a).expect("own"), "nothing replaced");
+    assert!(
+        std::fs::read_dir(three.dir.path())
+            .expect("dir")
+            .all(|entry| !entry
+                .expect("entry")
+                .file_name()
+                .to_string_lossy()
+                .starts_with("sync-repair")),
+        "no backup was written"
+    );
 }
 
 #[tokio::test]
@@ -378,4 +388,81 @@ async fn a_server_head_below_the_stored_base_shows_the_finishing_status_and_name
     let b = shown(&three, B, &runtime, two_days);
     assert!(!b.own_change_finishing);
     assert!(b.waiting_for_remover.is_some(), "{b:?}");
+}
+
+/// Review of Task 8, I2 (ruling R18): a re-join under a new ID (a copy found at the engine start,
+/// or a clone found by a pull: both run `pull::rejoin_as_new_device`) must not leave the own head
+/// "own": the new identity would sign a change the old identity made, and every other device
+/// looks for that record under the old ID.
+#[tokio::test]
+async fn a_rejoin_under_a_new_id_does_not_sign_the_old_identitys_change() {
+    let three = unsigned_remover().await;
+    // The original, as it goes on elsewhere: a copy of A's profile with its head still unsigned.
+    let file = three.dir.path().join("original.db");
+    three
+        .vault
+        .a
+        .lock()
+        .execute("VACUUM INTO ?1", [file.to_string_lossy().to_string()])
+        .expect("copy");
+    let old_id = state::load(&three.vault.a.lock())
+        .expect("state")
+        .expect("row")
+        .device;
+    let original = {
+        let conn = Connection::open(&file).expect("open");
+        conn.execute_batch("PRAGMA foreign_keys = ON;").expect("fk");
+        // The clock function a copy of the file lacks, as at every open.
+        crate::services::sync::capture::install(&conn, old_id).expect("capture");
+        TestConn::new(conn)
+    };
+    let queued = unsent(&three.vault.a.lock());
+
+    crate::services::sync::engine::pull::rejoin_as_new_device(&three.vault.a.lock(), None, NOW)
+        .expect("re-join");
+
+    {
+        let a = three.vault.a.lock();
+        let new_id = state::load(&a).expect("state").expect("row").device;
+        assert_ne!(new_id, old_id);
+        assert!(!head::own_unverified(&a).expect("own"), "no longer its own");
+        assert!(head::any_unverified(&a).expect("any"), "still waiting");
+        let waiting = head::unverified_epochs(&a).expect("heads");
+        assert_eq!(waiting[0].by, old_id.to_hex(), "the old ID signs it");
+        assert_eq!(unsent(&a), queued, "nothing signed at the re-join");
+    }
+    for _ in 0..3 {
+        round_ignoring(&three, A).await;
+    }
+    {
+        let a = three.vault.a.lock();
+        assert!(head::any_unverified(&a).expect("any"), "nobody signed it");
+        assert!(!head::own_unverified(&a).expect("own"));
+    }
+
+    // The original's record reaches the server; the re-joined copy verifies the head from it.
+    round_of(&three.vault, &original).await;
+    assert!(
+        !head::own_unverified(&original.lock()).expect("own"),
+        "the original signed its change"
+    );
+    for _ in 0..4 {
+        round_ignoring(&three, A).await;
+    }
+    assert!(
+        !head::any_unverified(&three.vault.a.lock()).expect("any"),
+        "verified from the original's record"
+    );
+}
+
+async fn round_ignoring(three: &Three, id: DeviceId) {
+    let _ = run_round(
+        &three.vault.relay,
+        three.device(id),
+        &mut SnapshotPolicy::default(),
+        RoundMode::Normal,
+        NOW,
+        0,
+    )
+    .await;
 }

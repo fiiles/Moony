@@ -348,6 +348,22 @@ pub fn any_unverified(conn: &Connection) -> Result<bool> {
     Ok(!unverified_epochs(conn)?.is_empty())
 }
 
+/// A re-join under a new device ID (`pull::rejoin_as_new_device`, in its savepoint): this device's
+/// own unsigned head stays noted as signed by the OLD ID (`by`, which `note_own_unverified` set),
+/// but is no longer "own": the new identity never signs a change the old one made. From then on
+/// it waits for the original's signed record like any other device's head (`after` and `scanned`
+/// stay: the record lies above the head, which is where the look-ahead reads from).
+pub(crate) fn release_own_pending(conn: &Connection) -> Result<()> {
+    let mut epochs = unverified_epochs(conn)?;
+    if epochs.iter().any(|e| e.own_pending) {
+        for entry in epochs.iter_mut() {
+            entry.own_pending = false;
+        }
+        store(conn, &epochs)?;
+    }
+    Ok(())
+}
+
 /// `sync_epochs` without the heads not verified yet: what this device vouches for (re-sealing,
 /// what a holder hands a joiner, a snapshot's `Keys` record, a bundle's older keys).
 pub fn verified_epochs(conn: &Connection) -> Result<BTreeMap<u32, u64>> {

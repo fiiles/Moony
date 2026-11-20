@@ -614,6 +614,8 @@ pub fn rejoin_as_new_device(
         // The old ID's key vouches for the new one (phase 5 §5.3), read before the ID changes.
         let predecessor = identity::predecessor(conn)?;
         let report = chain::rejoin(conn, chain::rejoin_device_id(old)?, trigger)?;
+        // An own head not signed yet stays the old ID's to sign: this device now waits for it.
+        head::release_own_pending(conn)?;
         // A new ID starts its own notes (rule 9a).
         seen::forget_all(conn)?;
         let public = keys::new_device_keypair(conn)?;

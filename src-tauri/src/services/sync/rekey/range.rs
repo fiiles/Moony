@@ -53,7 +53,7 @@ pub fn range_digest(
     Ok(hasher.finalize().into())
 }
 
-fn signed(value: u64, what: &str) -> Result<i64> {
+pub(crate) fn signed(value: u64, what: &str) -> Result<i64> {
     i64::try_from(value)
         .map_err(|_| AppError::Internal(format!("sync: {what} is out of range: {value}")))
 }

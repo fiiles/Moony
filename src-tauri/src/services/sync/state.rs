@@ -265,7 +265,7 @@ pub fn disable(conn: &Connection) -> Result<()> {
              DELETE FROM sync_heads; DELETE FROM sync_own_log; DELETE FROM sync_unsent; \
              DELETE FROM sync_typed; DELETE FROM sync_blobs; DELETE FROM sync_held_blobs; \
              DELETE FROM sync_trust; DELETE FROM sync_epochs; DELETE FROM sync_trust_seen; \
-             DELETE FROM sync_tickets;",
+             DELETE FROM sync_tickets; DELETE FROM sync_range_notes; DELETE FROM sync_seen_ops;",
         )?;
         clear_vault_went_back(conn)?;
         clear_skipped_miss(conn)?;
@@ -425,11 +425,21 @@ pub fn set_cursor(conn: &Connection, cursor: u64) -> Result<()> {
     Ok(())
 }
 
-/// Notes the position of the snapshot just restored (`sync_state.restored_seq`, part of the
-/// device's place, `engine::seen::place`). Never lowers it.
+/// Notes the position of a snapshot just restored by a merge (`sync_state.restored_seq`, part of
+/// the device's place, `engine::seen::place`). Raises it, never lowers it.
 pub fn set_restored_seq(conn: &Connection, seq: u64) -> Result<()> {
     conn.execute(
         "UPDATE sync_state SET restored_seq = MAX(COALESCE(restored_seq, 0), ?1) WHERE id = 1",
+        [signed(seq, "restored_seq")?],
+    )?;
+    Ok(())
+}
+
+/// A replace puts the device at the snapshot's position, whatever it was before: sets
+/// `restored_seq` to exactly `seq` (it can lower it).
+pub fn reset_restored_seq(conn: &Connection, seq: u64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET restored_seq = ?1 WHERE id = 1",
         [signed(seq, "restored_seq")?],
     )?;
     Ok(())
@@ -1107,6 +1117,8 @@ mod tests {
              INSERT OR IGNORE INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (0, 0, 1); \
              INSERT INTO sync_trust_seen (device, what, pos) VALUES ('d', 'cert', 4); \
              INSERT INTO sync_tickets (ticket_pub, issuer, pos) VALUES (x'07', 'd', 3); \
+             INSERT INTO sync_range_notes (epoch, pos, hash) VALUES (0, 5, x'aa'); \
+             INSERT INTO sync_seen_ops (pos, hash) VALUES (9, x'bb'); \
              INSERT INTO app_config (key, value) VALUES ('sync.new_devices', '[]');",
         )
         .unwrap();
@@ -1117,6 +1129,8 @@ mod tests {
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_epochs"), 0);
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_trust_seen"), 0);
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_tickets"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_range_notes"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_seen_ops"), 0);
         assert_eq!(
             count(
                 &conn,

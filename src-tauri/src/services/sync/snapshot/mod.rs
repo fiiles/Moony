@@ -484,6 +484,13 @@ fn finish(
         sql,
         params![sql_int(snapshot.seq)?, sql_int(max_hlc)?, snapshot.barrier],
     )?;
+    // The device's place: a replace sets it to the snapshot's position (the cursor is set to it
+    // above), a merge raises it, so the three sources of `engine::seen::place` agree.
+    if replacing {
+        state::reset_restored_seq(conn, snapshot.seq)?;
+    } else {
+        state::set_restored_seq(conn, snapshot.seq)?;
+    }
     // The marker is a place in relay order, the same on every device, but only for the barrier
     // it marks. Replacing adopts it (or none); merging keeps a marker already found here.
     let marker = snapshot
@@ -560,7 +567,7 @@ fn clear(conn: &Connection) -> Result<()> {
     }
     conn.execute_batch(
         "DELETE FROM sync_clock; DELETE FROM sync_outbox; DELETE FROM sync_heads; \
-         DELETE FROM sync_typed; DELETE FROM sync_blobs;",
+         DELETE FROM sync_typed; DELETE FROM sync_blobs; DELETE FROM sync_seen_ops;",
     )?;
     Ok(())
 }

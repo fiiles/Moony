@@ -792,7 +792,8 @@ fn replace_profile(
                 NewIdentity::Join(_) => {
                     conn.execute_batch(
                         "DELETE FROM sync_trust; DELETE FROM sync_epochs; \
-                         DELETE FROM sync_trust_seen; DELETE FROM sync_tickets;",
+                         DELETE FROM sync_trust_seen; DELETE FROM sync_tickets; \
+                         DELETE FROM sync_range_notes; DELETE FROM sync_seen_ops;",
                     )?;
                     // The removed notice says why sync went off here; joining again answers
                     // it (As built R-116: a join begun elsewhere than "Připojit znovu" left it,

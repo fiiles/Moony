@@ -9,11 +9,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::error::{AppError, Result};
-
-fn signed(value: u64, what: &str) -> Result<i64> {
-    i64::try_from(value)
-        .map_err(|_| AppError::Internal(format!("sync: {what} is out of range: {value}")))
-}
+use crate::services::sync::rekey::range::signed;
 
 /// Notes the hash of the op handled at `pos`; a position noted again keeps the newest hash.
 pub fn note(conn: &Connection, pos: u64, hash: &[u8; 32]) -> Result<()> {
@@ -72,11 +68,10 @@ pub fn place(conn: &Connection) -> Result<Option<u64>> {
     };
     let highest: Option<i64> =
         conn.query_row("SELECT MAX(pos) FROM sync_seen_ops", [], |r| r.get(0))?;
-    let place = [Some(cursor), restored, highest]
+    let place = [restored, highest]
         .into_iter()
         .flatten()
-        .max()
-        .unwrap_or(cursor);
+        .fold(cursor, i64::max);
     u64::try_from(place)
         .map(Some)
         .map_err(|_| AppError::Internal(format!("sync: the place is out of range: {place}")))
@@ -130,7 +125,7 @@ mod tests {
         note(&conn, 12, &[1; 32]).expect("note");
         assert_eq!(place(&conn).expect("place"), Some(14), "a held op above");
         state::set_restored_seq(&conn, 30).expect("restored");
-        state::set_restored_seq(&conn, 20).expect("never lowered");
+        state::set_restored_seq(&conn, 20).expect("a merge never lowers it");
         assert_eq!(
             place(&conn).expect("place"),
             Some(30),
@@ -139,6 +134,21 @@ mod tests {
         forget_all(&conn).expect("forget");
         state::set_cursor(&conn, 40).expect("cursor");
         assert_eq!(place(&conn).expect("place"), Some(40));
+    }
+
+    #[test]
+    fn a_replace_sets_the_place_to_the_snapshots_position_even_when_that_is_lower() {
+        let conn = set_up();
+        state::set_cursor(&conn, 50).expect("cursor");
+        state::set_restored_seq(&conn, 60).expect("restored");
+        note(&conn, 70, &[1; 32]).expect("note");
+        assert_eq!(place(&conn).expect("place"), Some(70));
+        // What a replace at 25 leaves: the notes wiped, the cursor and the restored position set.
+        forget_all(&conn).expect("wipe");
+        conn.execute("UPDATE sync_state SET cursor = 25", [])
+            .expect("cursor");
+        state::reset_restored_seq(&conn, 25).expect("reset");
+        assert_eq!(place(&conn).expect("place"), Some(25));
     }
 
     #[test]

@@ -546,6 +546,31 @@ async fn a_join_whose_snapshot_download_fails_changes_nothing() {
 }
 
 #[tokio::test]
+async fn a_join_leaves_none_of_the_notes_of_a_vault_before() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let device = newcomer();
+    device
+        .lock()
+        .execute_batch(
+            "INSERT INTO sync_range_notes (epoch, pos, hash) VALUES (0, 5, x'aa'); \
+             INSERT INTO sync_seen_ops (pos, hash) VALUES (900, x'bb');",
+        )
+        .expect("old notes");
+    let dir = tempfile::tempdir().expect("dir");
+    join_as(&vault, &device, vault.creds.clone(), "Laptop", dir.path())
+        .await
+        .expect("join");
+    let conn = device.lock();
+    assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_range_notes"), 0);
+    assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_seen_ops"), 0);
+    assert!(
+        crate::services::sync::engine::seen::place(&conn).expect("place") < Some(900),
+        "no place left over from the old notes"
+    );
+}
+
+#[tokio::test]
 async fn a_device_that_turned_sync_off_joins_again() {
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;

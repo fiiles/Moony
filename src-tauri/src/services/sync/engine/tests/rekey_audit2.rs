@@ -1552,10 +1552,11 @@ async fn a_waiting_restore_does_not_download_the_same_snapshot_every_round() {
     }
 }
 
-/// Review of Task 7, M3: a heal that waits because the snapshot may fit later is not marked
-/// examined for good (only a snapshot that never fits is).
+/// Review of Task 7, M3 and round 2: a heal that waits for more to be known is not marked examined
+/// for good, and is not downloaded again every round either: one download while nothing changes;
+/// when the base becomes known and the snapshot fits, it is looked at again and restored.
 #[tokio::test]
-async fn a_heal_that_waits_for_more_to_be_known_is_not_marked_examined() {
+async fn a_heal_that_waits_is_asked_again_without_a_download_until_it_can_fit() {
     let three = three().await;
     let end = lifted_head_with_forged_snapshot(&three, None).await;
     lag_behind(&three.vault.b.lock(), end);
@@ -1573,8 +1574,43 @@ async fn a_heal_that_waits_for_more_to_be_known_is_not_marked_examined() {
         .await
         .expect("info");
     let mut policy = SnapshotPolicy::default();
+    let downloads = |three: &Three| {
+        three
+            .vault
+            .relay
+            .calls()
+            .iter()
+            .filter(|route| matches!(route, Route::GetSnapshot))
+            .count()
+    };
 
-    let waited = heal_missed(
+    for _ in 0..3 {
+        let waited = heal_missed(
+            &three.vault.relay,
+            &three.vault.b,
+            &b_creds,
+            &mut policy,
+            &info,
+            NOW,
+        )
+        .await;
+        assert!(
+            matches!(waited, Err(SyncError::SnapshotWaiting)),
+            "{waited:?}"
+        );
+    }
+    assert_eq!(policy.examined_seq, None, "not examined for good");
+    assert_eq!(downloads(&three), 1, "downloaded once");
+
+    // The base is now known and covers the snapshot: it fits.
+    exec(
+        &three.vault.b.lock(),
+        &format!(
+            "UPDATE sync_epochs SET range_base = {} WHERE epoch = 1",
+            end + 3
+        ),
+    );
+    let healed = heal_missed(
         &three.vault.relay,
         &three.vault.b,
         &b_creds,
@@ -1584,11 +1620,9 @@ async fn a_heal_that_waits_for_more_to_be_known_is_not_marked_examined() {
     )
     .await;
 
-    assert!(
-        matches!(waited, Err(SyncError::SnapshotWaiting)),
-        "{waited:?}"
-    );
-    assert_eq!(policy.examined_seq, None);
+    assert!(matches!(healed, Ok(Some(_))), "{healed:?}");
+    assert_eq!(downloads(&three), 2, "looked at again");
+    assert_eq!(policy.waiting_snapshot, None);
 }
 
 /// Review of Task 7, M8: above the head a catching-up device that is *behind* the snapshot is

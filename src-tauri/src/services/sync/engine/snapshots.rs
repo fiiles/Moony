@@ -375,7 +375,9 @@ pub struct SnapshotPolicy {
     /// When a restore after `410` last went ahead (`note_restore`).
     pub restored_at: Option<i64>,
     /// The vault's snapshot a restore after `410` found waiting for one under the new key (rule
-    /// 10): its position and seal epoch (`restore_after_410_tracked`).
+    /// 10): its position and seal epoch (`restore_after_410_tracked`, `heal_missed`). The vault's
+    /// info carries no epoch, so a different snapshot at the same position (a server that
+    /// replaced it) is not told apart: the stored epoch stays what the first download read.
     pub waiting_snapshot: Option<(u64, u32)>,
     /// The run of consecutive unfinished pulls (`note_pull`).
     unfinished_pulls: u32,
@@ -576,6 +578,17 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
     if newest < missed || policy.examined_seq == Some(newest) || own == Some(newest) {
         return Ok(None);
     }
+    // A snapshot already found waiting (rule 10) is not downloaded again while it is still the
+    // vault's newest and the rule still does not say yes for its stored seal epoch.
+    if let Some((waiting, epoch)) = policy.waiting_snapshot.filter(|(seq, _)| *seq == newest) {
+        let fits = db.with_conn(|conn| {
+            Ok(snapshot_admissible(conn, epoch, waiting, Taker::CatchingUp)? == Admissible::Yes)
+        })?;
+        if !fits {
+            return Err(SyncError::SnapshotWaiting);
+        }
+        policy.waiting_snapshot = None;
+    }
     let blob = relay.get_snapshot(&creds.auth()).await?;
     let seq = blob.seq;
     let (plain, epoch) = match open_off_thread(creds, blob).await {
@@ -617,6 +630,7 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
     .await?;
     match outcome {
         Heal::Restored(report) => {
+            policy.waiting_snapshot = None;
             log::info!(
                 "[SYNC] A snapshot restored what this device missed (below its barrier or skipped)"
             );
@@ -638,6 +652,9 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
             if settled {
                 policy.examined_seq = Some(seq);
             }
+            // Remembered with its seal epoch, as the restore after `410` does: asked again
+            // without a download until the answer can have changed.
+            policy.waiting_snapshot = Some((seq, epoch));
             Err(SyncError::SnapshotWaiting)
         }
     }

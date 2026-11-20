@@ -29,6 +29,9 @@ pub fn range_digest(
 ) -> Result<[u8; 32]> {
     let bad = || AppError::Internal("sync: the range of a key change is not valid".into());
     let count = u32::try_from(notes.len()).map_err(|_| bad())?;
+    if base > head {
+        return Err(bad());
+    }
     let mut previous = base;
     for note in notes {
         if note.pos <= previous || note.pos > head {

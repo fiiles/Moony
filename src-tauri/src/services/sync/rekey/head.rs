@@ -523,6 +523,12 @@ mod tests {
     use super::*;
     use crate::services::sync::identity::{new_sign_seed, sign_pub};
 
+    const TWO_NOTE_DIGEST: [u8; 32] = [
+        0x0c, 0x49, 0x75, 0xdb, 0xc3, 0x0e, 0x2f, 0x98, 0x66, 0xff, 0x89, 0xc1, 0x6b, 0xdd, 0x9d,
+        0x42, 0x33, 0x0f, 0xaf, 0x65, 0xf2, 0xe5, 0xe0, 0x09, 0xa7, 0xb2, 0xdd, 0x98, 0x2b, 0x08,
+        0xe8, 0x70,
+    ];
+
     fn sample(seed: &SignSeed) -> HeadRecord {
         HeadRecord::sign(
             [0x22; 16],
@@ -530,12 +536,32 @@ mod tests {
             3,
             4,
             9,
-            1234,
-            1200,
+            13,
+            10,
             2,
-            [0x5c; 32],
+            TWO_NOTE_DIGEST,
             seed,
         )
+    }
+
+    fn hex(bytes: &[u8]) -> String {
+        bytes.iter().map(|b| format!("{b:02x}")).collect()
+    }
+
+    #[test]
+    fn the_signed_head_is_frozen_byte_for_byte() {
+        let seed = SignSeed::from_bytes(zeroize::Zeroizing::new([0x77; 32]));
+        let record = sample(&seed);
+        let signed = record.signed_bytes();
+        assert_eq!(signed.len(), SIGNED_LEN);
+        assert_eq!(
+            hex(&signed),
+            "6d6f6f6e792072656b657920686561642076322222222222222222222222222222222201010101010101010101010101010101000000030000000400000009000000000000000d000000000000000a000000020c4975dbc30e2f9866ff89c16bdd9d42330faf65f2e5e009a7b2dd982b08e870"
+        );
+        assert_eq!(
+            hex(&record.encode()),
+            "6d6f6f6e792072656b657920686561642076322222222222222222222222222222222201010101010101010101010101010101000000030000000400000009000000000000000d000000000000000a000000020c4975dbc30e2f9866ff89c16bdd9d42330faf65f2e5e009a7b2dd982b08e870f2cb088deb346f7ac6bd0e918992f1b610603eb67765cbde5af349681e9d63de1e1194b810241794e54e95bc864bb14926464dac44f4f3bc05b03436a9c1a303"
+        );
     }
 
     #[test]
@@ -544,42 +570,24 @@ mod tests {
         let record = sample(&seed);
         let bytes = record.encode();
         assert_eq!(bytes.len(), HEAD_LEN);
-        assert_eq!(&bytes[..19], b"moony rekey head v2");
-        assert_eq!(
-            bytes[..19]
-                .iter()
-                .map(|b| format!("{b:02x}"))
-                .collect::<String>(),
-            "6d6f6f6e792072656b65792068656164207632"
-        );
         let back = HeadRecord::decode(&bytes).expect("decodes");
         assert_eq!(back, record);
         back.verify(&sign_pub(&seed)).expect("verifies");
-        // inside the older fields, the new ones (base, count, digest) and the last signed byte
-        for at in [
-            20,
-            40,
-            60,
-            70,
-            83,
-            92,
-            100,
-            120,
-            SIGNED_LEN - 1,
-            HEAD_LEN - 1,
-        ] {
+        // every signed byte (the domain ones do not even decode) and every signature byte
+        for at in 0..HEAD_LEN {
             let mut changed = bytes.clone();
             changed[at] ^= 1;
-            let decoded = HeadRecord::decode(&changed).expect("decodes");
-            assert!(decoded.verify(&sign_pub(&seed)).is_err(), "byte {at}");
+            match HeadRecord::decode(&changed) {
+                Err(_) => assert!(at < HEAD_DOMAIN.len(), "byte {at} must decode"),
+                Ok(decoded) => {
+                    assert!(decoded.verify(&sign_pub(&seed)).is_err(), "byte {at}")
+                }
+            }
         }
         assert!(HeadRecord::decode(&bytes[1..]).is_err());
         let mut longer = bytes.clone();
         longer.push(0);
         assert!(HeadRecord::decode(&longer).is_err());
-        let mut other_domain = bytes.clone();
-        other_domain[0] ^= 1;
-        assert!(HeadRecord::decode(&other_domain).is_err());
         let other = new_sign_seed().expect("seed");
         assert!(back.verify(&sign_pub(&other)).is_err());
     }

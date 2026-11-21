@@ -432,11 +432,20 @@ async fn a_removed_device_opens_nothing_and_the_others_carry_on() {
     assert_eq!(b.credentials().keys.current_epoch(), 1);
     assert!(removed_row(&b, c_id), "B holds C's removal");
 
-    // C's old token still pulls, but everything after the change is sealed under a key it lacks.
+    // C's old token pulls nothing any more (protocol 3), and what follows the change is sealed
+    // under a key C lacks.
     let held = c.credentials();
     assert_eq!(held.keys.current_epoch(), 0);
     assert!(held.keys.get(1).is_none());
-    let page = relay.pull(&held.auth(), 0, 1000).await.expect("C pulls");
+    assert_eq!(
+        relay.pull(&held.auth(), 0, 1000).await.err(),
+        Some(RelayError::TokenReadOnly),
+        "C's old token reads no ops"
+    );
+    let page = relay
+        .pull(&a.credentials().auth(), 0, 1000)
+        .await
+        .expect("A pulls");
     let after: Vec<u32> = page
         .ops
         .iter()

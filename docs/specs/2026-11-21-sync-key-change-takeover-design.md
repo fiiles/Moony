@@ -1,6 +1,6 @@
 # Device sync: finishing a key change its maker never finished — design
 
-Date: 2026-11-21. Status: **waiting for the owner**. Nothing here is built. It follows
+Date: 2026-11-21. Status: **approved by the owner on 2026-11-21**, every recommendation of §0 and §7 as written (T1 to T5). Nothing here is built. It follows
 `2026-11-20-sync-audit-2-fixes-design.md` ("the audit-2 design") and ADR 0034, whose first open
 item it answers. Sync stays behind `feature::RELEASED = false`; this lands before the flag is
 turned on. A reader who was asked to plan the build from this document alone raised nine
@@ -273,8 +273,12 @@ from signing (it cannot read its range) would keep a takeover of its own from si
 - en: `If this takes more than a day, finish the change from another device in Settings → Sync.`
 
 Where no device can take over (§2.5), the exit stays what it is today: turn sync off and set it
-up again from the device with the best data. No new flow is built for it here; the help text of
-the sync settings names it.
+up again from the device with the best data. No new flow is built for it here; the waiting notice
+names it on a device that cannot finish the change itself (after the 24 hours, where
+`syncTakeoverNotHere` would be the answer):
+
+- cs: `Když změnu nemůže dokončit žádné zařízení, vypněte synchronizaci na všech zařízeních a zapněte ji znovu ze zařízení, které má nejúplnější data.`
+- en: `If no device can finish the change, turn sync off on every device and turn it on again from the device with the most complete data.`
 
 ## 5. Tests
 

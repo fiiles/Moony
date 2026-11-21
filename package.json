@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "tauri": "dotenv -- tauri",
     "ios:dev": "dotenv -- tauri ios dev \"iPhone 17 Pro\" --config src-tauri/tauri.mobile-dev.conf.json",
+    "ios:bundle": "scripts/ios-store-build.sh",
     "android:dev": ". scripts/android-env.sh && dotenv -- tauri android dev --config src-tauri/tauri.mobile-dev.conf.json",
     "android:build": ". scripts/android-env.sh && dotenv -- tauri android build",
     "android:bundle": ". scripts/android-env.sh && dotenv -- tauri android build --aab",

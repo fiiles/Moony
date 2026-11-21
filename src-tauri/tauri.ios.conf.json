@@ -1,3 +1,8 @@
 {
-  "identifier": "com.moonyfinance.mobile"
+  "identifier": "com.moonyfinance.mobile",
+  "bundle": {
+    "iOS": {
+      "bundleVersion": "1"
+    }
+  }
 }

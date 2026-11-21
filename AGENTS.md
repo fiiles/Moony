@@ -58,7 +58,7 @@ cd src-tauri && cargo test         # Rust tests
 | `docs/architecture/database.md` | Schema and migrations |
 | `docs/architecture/decisions/` | ADRs (index in `README.md`) |
 | `docs/standards/` | Per-layer rules: rust-backend, typescript-frontend, type-contract, testing, i18n, workflow |
-| `docs/playbooks/` | Step-by-step checklists: command, migration, domain, page, release |
+| `docs/playbooks/` | Step-by-step checklists: command, migration, domain, page, release, iPhone store build |
 | `docs/DEPRECATED.md` | **Check before copying any pattern** |
 | `docs/design-system/` | UI design reference: tokens, component contract, style guide |
 | `docs/specs/` + `docs/plans/` | Frozen snapshots of past designs — never current truth |

@@ -40,6 +40,8 @@ targets:
       # via LIBRARY_SEARCH_PATHS, never bundled as resources.
       - path: Externals
         excludes: ["**/*.a"]
+      # Info.plist, the entitlements and PrivacyInfo.xcprivacy (the app's privacy manifest, which
+      # xcodegen puts into the Resources phase; App Store Connect refuses a build without it).
       - path: moony_iOS
       - path: assets
         buildPhase: resources
@@ -51,17 +53,16 @@ targets:
         LSRequiresIPhoneOS: true
         UILaunchStoryboardName: LaunchScreen
         UIRequiredDeviceCapabilities: [arm64, metal]
-        # iPhone: portrait only — the phone shell lays out for the top and bottom safe areas, not
-        # for landscape's side notch areas. The iPad keeps every orientation (multitasking).
+        # Portrait only — the phone shell lays out for the top and bottom safe areas, not for
+        # landscape's side notch areas. The app is an iPhone app (TARGETED_DEVICE_FAMILY below), so
+        # there are no iPad orientations.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        UISupportedInterfaceOrientations~ipad:
-          - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationPortraitUpsideDown
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
         CFBundleShortVersionString: 1.4.0
-        CFBundleVersion: "1.4.0"
+        # The build number, not the version: "1" in every local build (tauri.ios.conf.json,
+        # bundle.iOS.bundleVersion); scripts/ios-store-build.sh gives each App Store Connect upload
+        # its own rising number. See docs/playbooks/release-ios.md.
+        CFBundleVersion: "1"
     entitlements:
       path: moony_iOS/moony_iOS.entitlements
     scheme:
@@ -70,6 +71,8 @@ targets:
         RUST_LOG: info
     settings:
       base:
+        # iPhone only ("1"; "1,2" would add the iPad, with its own layout and App Store screenshots)
+        TARGETED_DEVICE_FAMILY: "1"
         ENABLE_BITCODE: false
         ARCHS: [arm64]
         VALID_ARCHS: arm64 

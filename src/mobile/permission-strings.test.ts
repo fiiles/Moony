@@ -65,9 +65,35 @@ describe('InfoPlist.strings (the permission prompts)', () => {
     for (const key of KEYS) {
       expect(en.get(key), key).toBe(plistString(plist, key));
     }
-    // The camera also scans the QR code that pairs devices for sync, and the Recovery Kit's QR
-    expect(en.get('NSCameraUsageDescription')).toContain('scans the codes that pair devices');
-    expect(en.get('NSCameraUsageDescription')).toContain('the QR code of your Recovery Kit');
+  });
+
+  // With device sync the camera also scans the QR code that pairs devices and the Recovery Kit's.
+  // The prompt must describe the build in front of the person (an App Store reviewer reads it), so
+  // it names the scanning only once sync is released. When this fails after RELEASED flipped: put
+  // the scanning clause back into Info.ios.plist, the generated Info.plist and the ten
+  // InfoPlist.strings (the texts are in the tag v1.4.0).
+  it('the camera text names QR scanning only once device sync is released', () => {
+    const feature = read(new URL('../../src-tauri/src/services/sync/feature.rs', import.meta.url));
+    const flag = feature.match(/^pub const RELEASED: bool = (true|false);$/m);
+    expect(flag, 'RELEASED in services/sync/feature.rs').not.toBeNull();
+    const released = flag![1] === 'true';
+    const en = new Map(parseStrings(stringsOf('en'))).get('NSCameraUsageDescription');
+    expect(en).toContain('photographs documents and your property');
+    expect(en?.includes('scans the codes that pair devices'), 'en names pairing').toBe(released);
+    expect(en?.includes('the QR code of your Recovery Kit'), 'en names the kit').toBe(released);
+    for (const region of REGIONS) {
+      const camera = new Map(parseStrings(stringsOf(region))).get('NSCameraUsageDescription');
+      // Every language's scanning clause names the QR code (二维码 in Chinese)
+      expect(/QR|二维码/.test(camera ?? ''), `${region} names QR scanning`).toBe(released);
+    }
+  });
+
+  it('the generated Info.plist carries the same three texts as Info.ios.plist', () => {
+    const source = read(new URL('../../src-tauri/Info.ios.plist', import.meta.url));
+    const generated = read(new URL('moony_iOS/Info.plist', APPLE));
+    for (const key of KEYS) {
+      expect(plistString(generated, key), key).toBe(plistString(source, key));
+    }
   });
 
   it('keeps Face ID untranslated in every language', () => {

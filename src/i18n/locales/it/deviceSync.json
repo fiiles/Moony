@@ -682,7 +682,7 @@
     },
     "waiting": {
       "title": "La sincronizzazione attende {{by}}",
-      "body": "Questo dispositivo attende la conferma di {{by}}, che ha modificato per ultimo l'elenco dei dispositivi. I dati qui sono a posto. Se non usi più {{by}}, ricollega questo dispositivo."
+      "body": "{{by}} non ha completato una modifica dell'elenco dei dispositivi. Apri Moony su quel dispositivo. Se non lo hai più, disattiva la sincronizzazione su tutti i dispositivi e riattivala dal dispositivo con i dati più completi."
     }
   },
   "rejoin": {

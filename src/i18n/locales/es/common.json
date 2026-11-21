@@ -362,6 +362,7 @@
     "syncUnavailable": "La sincronización no está disponible en esta versión de Moony.",
     "syncDevOnly": "Es una herramienta para desarrolladores, disponible solo en compilaciones de desarrollo.",
     "syncChangeInProgress": "Ya hay otro cambio de sincronización en curso en este dispositivo. Espera a que termine.",
+    "syncWaitingForDevice": "La sincronización espera a que otro dispositivo termine un cambio de la lista de dispositivos. Abre Moony en ese dispositivo y vuelve a intentarlo.",
     "syncPasswordRequired": "Vuelve a introducir tu contraseña para copiar o guardar el código del kit de recuperación.",
     "syncPairingCodeInvalid": "El código de emparejamiento no es válido. Revisa el código que muestra el otro dispositivo.",
     "syncPairingOtherNeedsUpdate": "El otro dispositivo necesita actualizar Moony antes de poder emparejarse con este.",

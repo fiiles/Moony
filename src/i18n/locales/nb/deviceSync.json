@@ -666,7 +666,7 @@
     },
     "waiting": {
       "title": "Synkroniseringen venter på {{by}}",
-      "body": "Denne enheten venter på en bekreftelse fra {{by}}, som sist endret enhetslisten. Dataene her er i orden. Hvis du ikke bruker {{by}} lenger, kobler du denne enheten til på nytt."
+      "body": "{{by}} fullførte ikke en endring av enhetslisten. Åpne Moony på den. Hvis du ikke har den lenger, slår du av synkroniseringen på alle enheter og slår den på igjen fra enheten med de mest fullstendige dataene."
     }
   },
   "rejoin": {

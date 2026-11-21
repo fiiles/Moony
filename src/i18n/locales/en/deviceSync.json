@@ -666,7 +666,7 @@
     },
     "waiting": {
       "title": "Sync is waiting for {{by}}",
-      "body": "This device is waiting for a confirmation from {{by}}, which last changed the device list. The data here are fine. If you no longer use {{by}}, connect this device again."
+      "body": "{{by}} did not finish a change of the device list. Open Moony on it. If you no longer have it, turn sync off on every device and turn it on again from the device with the most complete data."
     }
   },
   "rejoin": {

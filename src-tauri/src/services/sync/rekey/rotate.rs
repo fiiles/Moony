@@ -17,7 +17,8 @@
 //!
 //! A removal has two preconditions besides the person's consent. No key change may be pending, and
 //! no head may be unverified, this device's own or another's (`check`:
-//! `validation.syncChangeInProgress`; the same refusal covers a new Kit; one given up is
+//! `validation.syncChangeInProgress` for a change of this device, `validation.syncWaitingForDevice`
+//! for another device's head; the same refusals cover a new Kit; one given up is
 //! `validation.syncKeyRotated`). And the range between
 //! this device's cursor and the server's head must be one it can read to its end (spec
 //! 2026-11-20-sync-audit-2-fixes-design §2.3 step 1, `range_is_readable`): the server's floor is
@@ -101,6 +102,9 @@ pub const REMOVAL_MAX_BEHIND: u64 = (MAX_PULL_PAGES as u64 * PULL_PAGE as u64) /
 const CHANGES_PAUSED: &str = "validation.syncChangesPaused";
 const NOT_SET_UP: &str = "validation.syncSetupIncomplete";
 const IN_PROGRESS: &str = "validation.syncChangeInProgress";
+/// Another device's key change is not confirmed yet: waiting here does not end it, the other
+/// device has to be opened.
+const WAITING_FOR_DEVICE: &str = "validation.syncWaitingForDevice";
 const KEY_ROTATED: &str = "validation.syncKeyRotated";
 
 /// Whether, and why, a removal replaces the Recovery Kit (revision §2.7, §4.2; the wire's
@@ -245,8 +249,8 @@ pub(crate) fn pending_removals(conn: &Connection) -> Result<Vec<DeviceId>> {
 /// The plan for removing `removing` and the ticked `also_remove`, and for a new Kit when
 /// `new_kit` (revision §4.2). Refuses: sync off (`syncSetupIncomplete`); capture broken
 /// (`syncChangesPaused`); a vault set up before phase 5 or this device no longer trusted
-/// (`syncRemovalUnsupported`); a key change pending or a head not verified yet
-/// (`syncChangeInProgress`); removing this device (`syncRemoveThisDevice`: that is turning sync
+/// (`syncRemovalUnsupported`); a key change pending or this device's own head not verified yet
+/// (`syncChangeInProgress`), another device's head not verified yet (`syncWaitingForDevice`); removing this device (`syncRemoveThisDevice`: that is turning sync
 /// off); nobody removed and no new Kit, a device the list does not know, or a Kit
 /// (`syncRemovalPlanChanged`); more than 64 recipients (`syncTooManyDevices`).
 pub fn plan(
@@ -417,9 +421,13 @@ fn check(conn: &Connection) -> Result<DeviceId> {
         return Err(validation(REMOVAL_UNSUPPORTED));
     }
     // A head not verified yet, this device's own or another's: no removal, no new Kit (spec
-    // 2026-11-20-sync-audit-2-fixes-design §2.3 step 5).
-    if pending(conn)? || head::any_unverified(conn)? {
+    // 2026-11-20-sync-audit-2-fixes-design §2.3 step 5). This device's own change is a change in
+    // progress here; another device's head waits for that device.
+    if pending(conn)? || head::own_unverified(conn)? {
         return Err(validation(IN_PROGRESS));
+    }
+    if head::any_unverified(conn)? {
+        return Err(validation(WAITING_FOR_DEVICE));
     }
     if stuck(conn)? {
         return Err(validation(KEY_ROTATED));

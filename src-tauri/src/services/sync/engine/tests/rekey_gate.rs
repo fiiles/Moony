@@ -21,6 +21,17 @@ use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::RelayError;
 
 const IN_PROGRESS: &str = "validation.syncChangeInProgress";
+const WAITING: &str = "validation.syncWaitingForDevice";
+
+/// What a device refuses with: its own unsigned head is a change in progress, another device's
+/// head is waiting for that device.
+fn refusal_of(id: DeviceId) -> &'static str {
+    if id == A {
+        IN_PROGRESS
+    } else {
+        WAITING
+    }
+}
 
 fn key_of(error: &AppError) -> Option<&str> {
     match error {
@@ -123,9 +134,9 @@ async fn a_device_with_an_unverified_head_pairs_nobody() {
         let conn = three.device(id).lock();
         let before = unsent(&conn);
         let held = holder::announced_payload(&conn, NOW).expect_err("refused");
-        assert_eq!(key_of(&held), Some(IN_PROGRESS), "{id:?}");
+        assert_eq!(key_of(&held), Some(refusal_of(id)), "{id:?}");
         let held = holder::holder_payload(&conn, NOW).expect_err("refused");
-        assert_eq!(key_of(&held), Some(IN_PROGRESS), "{id:?}");
+        assert_eq!(key_of(&held), Some(refusal_of(id)), "{id:?}");
         assert_eq!(unsent(&conn), before, "{id:?}: no ticket was announced");
         assert_eq!(
             holder::refuse_while_unverified(&conn)
@@ -185,7 +196,7 @@ async fn a_device_with_an_unverified_head_starts_no_removal() {
         for (removing, new_kit) in [(vec![A, B], false), (vec![], true)] {
             let removing: Vec<_> = removing.into_iter().filter(|d| *d != id).collect();
             let error = rotate::plan(&conn, &removing, &[], new_kit, NOW).expect_err("refused");
-            assert_eq!(key_of(&error), Some(IN_PROGRESS), "{id:?}: {error}");
+            assert_eq!(key_of(&error), Some(refusal_of(id)), "{id:?}: {error}");
         }
     }
     // The call itself answers the same, before anything is sent (the consent is never read).
@@ -205,17 +216,30 @@ async fn a_device_with_an_unverified_head_starts_no_removal() {
         )
         .await
         .expect_err("refused");
-        assert_eq!(
-            sync_key_of(&error).as_deref(),
-            Some(IN_PROGRESS),
-            "{error:?}"
-        );
+        assert_eq!(sync_key_of(&error).as_deref(), Some(WAITING), "{error:?}");
     }
     assert_eq!(three.vault.relay.ops().len(), before);
     assert_eq!(key_epoch(&three.vault.b.lock()), 1, "no second change");
 
     verified(&three).await;
     rotate::plan(&three.vault.b.lock(), &[A], &[], false, NOW).expect("a plan again");
+}
+
+/// A key change of this device that is committed in the store and not finished (pending) is a
+/// change in progress: the removal and the new Kit are refused as such, not as a wait for another
+/// device.
+#[tokio::test]
+async fn a_device_with_its_own_change_pending_is_refused_as_a_change_in_progress() {
+    let three = three().await;
+    exec(
+        &three.vault.a.lock(),
+        "UPDATE sync_state SET rotation_pending = 'x' WHERE id = 1",
+    );
+    let conn = three.vault.a.lock();
+    for (removing, new_kit) in [(vec![C], false), (vec![], true)] {
+        let error = rotate::plan(&conn, &removing, &[], new_kit, NOW).expect_err("refused");
+        assert_eq!(key_of(&error), Some(IN_PROGRESS), "{error}");
+    }
 }
 
 /// A device that waits for another's head still pushes its ordinary changes (only the remover

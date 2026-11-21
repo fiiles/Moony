@@ -362,6 +362,7 @@
     "syncUnavailable": "Synkronisering är inte tillgänglig i den här versionen av Moony.",
     "syncDevOnly": "Det här är ett utvecklarverktyg som bara finns i utvecklingsversioner.",
     "syncChangeInProgress": "En annan ändring av synkroniseringen pågår redan på den här enheten. Vänta tills den är klar.",
+    "syncWaitingForDevice": "Synkroniseringen väntar på att en annan enhet ska slutföra en ändring av enhetslistan. Öppna Moony på den enheten och försök sedan igen.",
     "syncPasswordRequired": "Ange ditt lösenord igen för att kopiera eller spara koden från återställningskitet.",
     "syncPairingCodeInvalid": "Parkopplingskoden är ogiltig. Kontrollera koden som visas på den andra enheten.",
     "syncPairingOtherNeedsUpdate": "Den andra enheten behöver uppdatera Moony innan den kan parkopplas med den här.",

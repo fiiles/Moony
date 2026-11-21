@@ -298,12 +298,12 @@ async fn a_lost_race_picks_the_other_change_up_and_commits_nothing_of_its_own() 
     // B changes the key first, removing nobody; A's removal of C then meets a retired token.
     new_kit(&three, B).await.expect("B changes the key");
     // A's plan was made before it knew of B's change: after the pickup A holds B's head, which is
-    // not verified yet, so the call is refused as a change in progress (task 8; before it, as a
-    // changed plan) and commits nothing.
+    // not verified yet, so the call is refused as waiting for another device (task 8; before it, as
+    // a changed plan) and commits nothing.
     let error = remove(&three, A, &[C]).await.expect_err("raced");
     assert_eq!(
         validation_key(&error).as_deref(),
-        Some("validation.syncChangeInProgress")
+        Some("validation.syncWaitingForDevice")
     );
     {
         let a = three.vault.a.lock();

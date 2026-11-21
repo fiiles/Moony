@@ -785,7 +785,7 @@ async fn a_given_up_key_change_reaches_the_others_with_its_new_kit() {
         let b = three.vault.b.lock();
         let waiting = rotate::plan(&b, &[C], &[], false, NOW).expect_err("refused");
         assert!(
-            waiting.to_string().contains("syncChangeInProgress"),
+            waiting.to_string().contains("syncWaitingForDevice"),
             "{waiting}"
         );
     }

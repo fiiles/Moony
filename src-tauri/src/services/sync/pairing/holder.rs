@@ -28,13 +28,19 @@ use crate::services::sync::state;
 
 const FAILED: &str = "validation.syncPairingFailed";
 const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
+const WAITING_FOR_DEVICE: &str = "validation.syncWaitingForDevice";
 
 /// A device that holds a key-change head it has not verified (its own, or another's) hands no
 /// keys on (spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 5): `validation.syncChangeInProgress`
-/// while `head::any_unverified`. Read before a holder shows a code, scans one, or seals anything.
+/// while its own head is unverified (`head::own_unverified`), `validation.syncWaitingForDevice`
+/// while another device's is. Read before a holder shows a code, scans one, or seals anything.
 pub fn refuse_while_unverified(conn: &Connection) -> Result<()> {
-    if crate::services::sync::rekey::head::any_unverified(conn)? {
+    use crate::services::sync::rekey::head;
+    if head::own_unverified(conn)? {
         return Err(AppError::Validation(CHANGE_IN_PROGRESS.into()));
+    }
+    if head::any_unverified(conn)? {
+        return Err(AppError::Validation(WAITING_FOR_DEVICE.into()));
     }
     Ok(())
 }
@@ -85,7 +91,8 @@ pub fn announced_payload(conn: &Connection, now: i64) -> Result<Option<SlotPaylo
 }
 
 /// The holder's slot-2 payload, `None` while sync is off or the vault's secrets are missing;
-/// `validation.syncChangeInProgress` while a head is not verified (`refuse_while_unverified`).
+/// `validation.syncChangeInProgress` or `validation.syncWaitingForDevice` while a head is not
+/// verified (`refuse_while_unverified`).
 pub fn holder_payload(conn: &Connection, now: i64) -> Result<Option<SlotPayload>> {
     let Some(sync) = state::load(conn)?.filter(|sync| sync.enabled) else {
         return Ok(None);

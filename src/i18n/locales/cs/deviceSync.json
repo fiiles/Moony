@@ -696,7 +696,7 @@
     },
     "waiting": {
       "title": "Synchronizace čeká na zařízení {{by}}",
-      "body": "Toto zařízení čeká na potvrzení od zařízení {{by}}, které naposledy měnilo seznam zařízení. Data tady jsou v pořádku. Pokud {{by}} už nepoužíváte, připojte toto zařízení znovu."
+      "body": "Zařízení {{by}} nedokončilo změnu seznamu zařízení. Otevřete na něm Moony. Pokud ho už nemáte, vypněte synchronizaci na všech zařízeních a zapněte ji znovu ze zařízení, které má nejúplnější data."
     }
   },
   "rejoin": {

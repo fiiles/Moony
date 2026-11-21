@@ -897,7 +897,7 @@ async fn a_second_key_change_before_the_signature_does_not_wedge_the_remover() {
         let waiting = unverified_of(&b, 1).expect("B waits for A's head");
         let error = rotate::plan(&b, &[], &[], true, NOW).expect_err("refused");
         assert!(
-            error.to_string().contains("syncChangeInProgress"),
+            error.to_string().contains("syncWaitingForDevice"),
             "{error}"
         );
         exec(

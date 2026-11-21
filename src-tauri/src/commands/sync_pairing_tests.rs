@@ -149,6 +149,7 @@ fn a_transient_join_failure_keeps_the_received_session() {
         SyncError::Transient(Transient::Relay),
         SyncError::RateLimited,
         validation("validation.syncChangeInProgress"),
+        validation("validation.syncWaitingForDevice"),
         // The person can cancel the pending setup and try again within the grace period.
         validation("validation.syncJoinSetupPending"),
         // Nothing was replaced: the confirmation reads the new numbers and asks again.
@@ -716,7 +717,17 @@ fn a_holder_with_an_unverified_head_is_refused_before_a_code_is_shown() {
 
     assert_eq!(
         key_of(holder_may_hand_keys_on(&db, Role::Holder)),
-        CHANGE_IN_PROGRESS
+        WAITING_FOR_DEVICE,
+        "another device's head"
     );
     holder_may_hand_keys_on(&db, Role::Joiner).expect("a joiner hands nothing on");
+
+    // This device's own unsigned change is a change in progress on this device.
+    db.with_conn(|conn| head::note_own_unverified(conn, 2, 9, 2, DeviceId([7; 16]), 5))
+        .expect("an own head waits");
+    assert_eq!(
+        key_of(holder_may_hand_keys_on(&db, Role::Holder)),
+        CHANGE_IN_PROGRESS,
+        "its own head"
+    );
 }

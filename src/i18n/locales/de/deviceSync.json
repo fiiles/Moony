@@ -666,7 +666,7 @@
     },
     "waiting": {
       "title": "Die Synchronisierung wartet auf {{by}}",
-      "body": "Dieses Gerät wartet auf eine Bestätigung von {{by}}, das zuletzt die Geräteliste geändert hat. Die Daten hier sind in Ordnung. Wenn Sie {{by}} nicht mehr verwenden, verbinden Sie dieses Gerät erneut."
+      "body": "{{by}} hat eine Änderung der Geräteliste nicht abgeschlossen. Öffnen Sie Moony darauf. Wenn Sie es nicht mehr haben, schalten Sie die Synchronisierung auf allen Geräten aus und von dem Gerät mit den vollständigsten Daten wieder ein."
     }
   },
   "rejoin": {

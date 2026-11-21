@@ -61,6 +61,7 @@ const PASSWORD_NEEDED: &str = "validation.syncPasswordNeeded";
 const FAILED: &str = "validation.syncPairingFailed";
 const SETUP_INCOMPLETE: &str = "validation.syncSetupIncomplete";
 const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
+const WAITING_FOR_DEVICE: &str = "validation.syncWaitingForDevice";
 const JOIN_SETUP_PENDING: &str = "validation.syncJoinSetupPending";
 
 /// The longest the wiper sleeps before it reads the wall clock again (a machine that slept does
@@ -254,7 +255,8 @@ async fn begin<T>(
 }
 
 /// A holder with a key-change head it has not verified (`holder::refuse_while_unverified`) shows
-/// no code and scans none: `validation.syncChangeInProgress`, before the password is asked.
+/// no code and scans none: `validation.syncChangeInProgress` (its own) or
+/// `validation.syncWaitingForDevice` (another's), before the password is asked.
 fn holder_may_hand_keys_on(session: &Database, role: Role) -> Result<()> {
     match role {
         Role::Holder => session.with_conn(holder::refuse_while_unverified),
@@ -285,7 +287,10 @@ fn after_join_error(error: &SyncError) -> bool {
         || matches!(
             error,
             SyncError::Local(AppError::Validation(key))
-                if key == CHANGE_IN_PROGRESS || key == JOIN_SETUP_PENDING || key == IMPACT_CHANGED
+                if key == CHANGE_IN_PROGRESS
+                    || key == WAITING_FOR_DEVICE
+                    || key == JOIN_SETUP_PENDING
+                    || key == IMPACT_CHANGED
         )
 }
 

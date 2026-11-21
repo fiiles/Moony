@@ -1,5 +1,7 @@
 # Finishing an unfinished key change (takeover) Implementation Plan
 
+> **Parked on 2026-11-21.** The owner stopped this plan after five of nine tasks (branch `feat/sync-takeover`); nothing of it is on this branch. See the status line of the spec.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A key change whose maker never signs its head no longer freezes the vault: every device takes a first look at the stretch of a key change, and after 24 hours a person can let another device take the change over with a new, signed key change.

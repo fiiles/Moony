@@ -1,6 +1,6 @@
 # Device sync: finishing a key change its maker never finished — design
 
-Date: 2026-11-21. Status: **approved by the owner on 2026-11-21**, every recommendation of §0 and §7 as written (T1 to T5). Nothing here is built. It follows
+Date: 2026-11-21. Status: **parked by the owner on 2026-11-21**. It was approved (T1 to T5), then changed to a silent, automatic takeover, and then stopped before it was finished: the case it answers needs the removing device to vanish for good within seconds of a removal, and that did not justify the build. This file is the first approved text; the later text and the unfinished code are on branch `feat/sync-takeover` and are not part of this branch. What was done here instead: the waiting panel no longer offers a way out that cannot work, and one refusal says what is true. It follows
 `2026-11-20-sync-audit-2-fixes-design.md` ("the audit-2 design") and ADR 0034, whose first open
 item it answers. Sync stays behind `feature::RELEASED = false`; this lands before the flag is
 turned on. A reader who was asked to plan the build from this document alone raised nine

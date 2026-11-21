@@ -317,11 +317,11 @@ fn sealed(creds: &Credentials, blob: &Uuid, plain: &[u8]) -> Vec<u8> {
         blob,
     );
     let mut out = sealer.header().to_vec();
-    let mut chunks = plain.chunks_exact(CHUNK);
-    for chunk in &mut chunks {
+    let (chunks, remainder) = plain.as_chunks::<CHUNK>();
+    for chunk in chunks {
         out.extend(sealer.seal_chunk(chunk, false).expect("seal"));
     }
-    out.extend(sealer.seal_chunk(chunks.remainder(), true).expect("seal"));
+    out.extend(sealer.seal_chunk(remainder, true).expect("seal"));
     assert_eq!(out.len() as u64, sealed_len(plain.len() as u64));
     out
 }

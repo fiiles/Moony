@@ -137,7 +137,7 @@ Inside it:
 | `salt`, `key.enc`, `recovery.enc` | Key material. Useless without your password or recovery key — and your data is unreadable without them |
 | `moony.master-key.bin`, `biometric-unlock` | The device-bound copy of the key, only while Touch ID or Windows Hello unlock is on (it opens only with Touch ID or Windows Hello, which also accepts its PIN, on this computer), and a one-word on/off marker, which exists once you switched the unlock on and also after a restore from backup (then it says off) |
 | `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/`, `attachments-converted/` | Only after an update from 0.12 or earlier, until the conversion described above is done (**not encrypted**) |
-| `moony.db.bak-<timestamp>`, `attachments.db.bak-<timestamp>` | Copies of a database that Moony makes just before applying a database migration after an update (a few of the newest copies are kept). Encrypted like the databases |
+| `moony.db.bak-<timestamp>`, `attachments.db.bak-<timestamp>` | Copies of a database that Moony makes just before applying a database migration after an update (one copy is kept once the update went through, up to three while it fails). Encrypted like the databases |
 | `pre-restore-<timestamp>/` | The data you had before a restore from backup, kept so a restore can never destroy anything |
 
 **Settings → Data and backups** shows the exact path on your machine and has an "Open folder"

@@ -176,7 +176,16 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
     : [];
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        // The bar stays mounted, so the sync status (pending changes) is read afresh on opening
+        if (next && syncFeature) {
+          void queryClient.invalidateQueries({ queryKey: ['device-sync-status'] });
+        }
+      }}
+    >
       <PopoverTrigger asChild>
         <button
           type="button"

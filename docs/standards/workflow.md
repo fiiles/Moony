@@ -45,6 +45,8 @@ A task is done when all of the following hold:
 3. **All ten locales updated** for any user-facing string (`docs/standards/i18n.md`).
 4. **Docs updated** if behavior changed: README for features,
    `docs/architecture/database.md` for tables, an ADR for architectural decisions.
+5. **Worktree removed** if the work ran in its own git worktree and its branch is now
+   merged into `main` (section 6).
 
 ## 5. Doc freshness rules
 
@@ -56,3 +58,29 @@ A task is done when all of the following hold:
   writing a new ADR that links back.
 - **Never state file sizes or line numbers in living docs** — they rot immediately.
   Name files by role instead ("the budgeting service", not "budgeting.rs, 686 lines").
+
+## 6. Worktrees and disk space
+
+A worktree with Rust builds takes tens of gigabytes, so it lives only as long as its
+branch is unmerged.
+
+- **Merged means removed.** As soon as a worktree's branch is merged into `main`, remove
+  the worktree in the same session, without asking. The merge is not finished until the
+  worktree is gone.
+- **Check before removing**, in this order:
+  1. `git merge-base --is-ancestor <branch> main` succeeds (the whole branch is in `main`).
+  2. `git -C <worktree> status --porcelain` prints nothing (no uncommitted or untracked
+     work).
+  3. No process runs from the worktree (a dev server, `cargo`, a test binary).
+- **Remove it with git**, from the parent folder and with a relative path:
+  `git worktree remove ../Moony-tauri-<topic>`. This deletes the folder with its
+  `src-tauri/target`, `node_modules` and `dist`. For a worktree that built the iOS app,
+  delete its `~/Library/Developer/Xcode/DerivedData/moony-*` folder as well.
+- **Never force.** If a check fails (unmerged commits, uncommitted files, a running
+  process, another session at work in it), leave the worktree alone and report it. Never
+  use `git worktree remove --force` or `rm -rf` on a worktree with unmerged work.
+- **Sweep at the start of work.** Before creating a new worktree, run `git worktree list`
+  and remove every worktree that passes the three checks, whoever created it. Judge a
+  worktree by its branch, never by its folder name.
+- The main checkout is not a worktree to remove; its build folder is cleaned only when the
+  owner asks.

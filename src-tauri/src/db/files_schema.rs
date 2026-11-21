@@ -48,10 +48,15 @@ pub fn attach(conn: &Connection, path: &Path) -> Result<()> {
     conn.execute("ATTACH DATABASE ?1 AS files", [path_str])?;
     let prepared = (|| {
         let pending = pending_versions(conn)?;
-        if pending && existed && current_version(conn)? > 0 {
+        let copied = pending && existed && current_version(conn)? > 0;
+        if copied {
             crate::db::backup_database_file(path)?;
         }
-        migrate(conn)
+        migrate(conn)?;
+        if copied {
+            crate::db::keep_only_newest_backup(path);
+        }
+        Ok(())
     })();
     if let Err(e) = prepared {
         let _ = conn.execute("DETACH DATABASE files", []);

@@ -415,7 +415,8 @@ connection as the schema `files` without a `KEY` clause, so it is encrypted with
 
 Next to `moony.db` the app may create: `moony.db.bak-<unix ts>` and
 `attachments.db.bak-<unix ts>` — copies taken before the first pending migration
-of that database runs (newest three kept, see `db/mod.rs`; a brand-new database
+of that database runs (only the newest is kept once its migrations went through, the
+newest three while they fail, see `db/mod.rs`; a brand-new database
 has nothing to copy); `attachments-converted/` — plain originals of earlier
 versions that the conversion has encrypted, deleted at the next unlock once the
 store checks out; the legacy folders `real_estate_photos/`,

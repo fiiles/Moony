@@ -217,9 +217,9 @@ wrong or out of date; check anything that matters against your bank and broker s
 ## Status and compatibility
 
 Moony 1.0 is the first stable release. Your database is upgraded in place by append-only
-migrations, and Moony first copies it next to itself (`moony.db.bak-<time>`, the newest three are
-kept). That is a safeguard, not a guarantee: keep your own backup, because an older version
-refuses a database that a newer one has migrated. If you come from 0.10.0 or older, read
+migrations, and Moony first copies it next to itself (`moony.db.bak-<time>`; once the update went
+through, only that newest copy is kept). That is a safeguard, not a guarantee: keep your own
+backup, because an older version refuses a database that a newer one has migrated. If you come from 0.10.0 or older, read
 [Where your data lives](./PRIVACY.md#where-your-data-lives) first: the data folder was renamed in
 0.11.0. The MCP tool names and result shapes have changed only by additions and documented fixes
 since 0.10.0; if a later release changes them incompatibly, [CHANGELOG.md](./CHANGELOG.md) says

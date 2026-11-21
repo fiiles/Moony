@@ -307,12 +307,16 @@ fn require_session(expected: Option<u64>, current: u64) -> Result<()> {
     Ok(())
 }
 
-/// How many pre-migration copies to keep next to the database.
-const MIGRATION_BACKUPS_TO_KEEP: usize = 3;
+/// How many pre-migration copies stay next to a database once its migrations went through.
+const MIGRATION_BACKUPS_TO_KEEP: usize = 1;
+
+/// How many stay while a migration fails. Every start that finds a pending migration takes a new
+/// copy, so the copy from before the update has to outlive a few retries.
+const MIGRATION_BACKUPS_WHILE_FAILING: usize = 3;
 
 /// Copy `db_path` to `<name>.bak-<unix-ts>` before the first pending migration
-/// runs, keep the newest few copies, then migrate. Returns the migration error
-/// (with the backup location) if any step of the chain fails.
+/// runs, then migrate. Once the chain went through only that copy stays; if a
+/// step fails, the earlier copies stay too and the error names the new one.
 fn run_migrations_with_backup(conn: &Connection, db_path: &std::path::Path) -> Result<()> {
     let backup = if migrations::has_pending_migrations(conn)? {
         Some(backup_database_file(db_path)?)
@@ -320,7 +324,12 @@ fn run_migrations_with_backup(conn: &Connection, db_path: &std::path::Path) -> R
         None
     };
     match migrations::run_migrations(conn) {
-        Ok(()) => Ok(()),
+        Ok(()) => {
+            if backup.is_some() {
+                keep_newest_backups(db_path, MIGRATION_BACKUPS_TO_KEEP);
+            }
+            Ok(())
+        }
         Err(e) => match backup {
             Some(path) => Err(AppError::Database(format!(
                 "{e}. A copy of the database taken before migrating is at {}",
@@ -332,7 +341,9 @@ fn run_migrations_with_backup(conn: &Connection, db_path: &std::path::Path) -> R
 }
 
 /// Copy the database file (and its WAL/journal side files, if any) to
-/// `<file>.bak-<unix-ts>` in the same directory and prune older copies.
+/// `<file>.bak-<unix-ts>` in the same directory. Older copies are pruned only to
+/// `MIGRATION_BACKUPS_WHILE_FAILING` here: the caller prunes to one with
+/// `keep_newest_backups` once its migrations went through.
 pub fn backup_database_file(db_path: &std::path::Path) -> Result<PathBuf> {
     let file_name = db_path
         .file_name()
@@ -361,7 +372,19 @@ pub fn backup_database_file(db_path: &std::path::Path) -> Result<PathBuf> {
         backup_path.display()
     );
 
-    // Prune: keep the newest MIGRATION_BACKUPS_TO_KEEP copies.
+    keep_newest_backups(db_path, MIGRATION_BACKUPS_WHILE_FAILING);
+    Ok(backup_path)
+}
+
+/// Delete all but the newest `keep` copies of `db_path` (`<file>.bak-<unix-ts>`, with their side
+/// files). Best effort: a copy that cannot be deleted stays.
+fn keep_newest_backups(db_path: &std::path::Path, keep: usize) {
+    let (Some(file_name), Some(dir)) = (
+        db_path.file_name().and_then(|n| n.to_str()),
+        db_path.parent(),
+    ) else {
+        return;
+    };
     let prefix = format!("{file_name}.bak-");
     if let Ok(entries) = std::fs::read_dir(dir) {
         let mut backups: Vec<PathBuf> = entries
@@ -379,7 +402,7 @@ pub fn backup_database_file(db_path: &std::path::Path) -> Result<PathBuf> {
             })
             .collect();
         backups.sort();
-        while backups.len() > MIGRATION_BACKUPS_TO_KEEP {
+        while backups.len() > keep {
             let old = backups.remove(0);
             let _ = std::fs::remove_file(&old);
             for suffix in ["-wal", "-shm", "-journal"] {
@@ -387,8 +410,11 @@ pub fn backup_database_file(db_path: &std::path::Path) -> Result<PathBuf> {
             }
         }
     }
+}
 
-    Ok(backup_path)
+/// `keep_newest_backups` for a database whose migrations went through.
+pub fn keep_only_newest_backup(db_path: &std::path::Path) {
+    keep_newest_backups(db_path, MIGRATION_BACKUPS_TO_KEEP);
 }
 
 impl Default for Database {
@@ -480,7 +506,7 @@ mod tests {
             .filter_map(|e| e.ok())
             .filter(|e| e.file_name().to_string_lossy().starts_with("moony.db.bak-"))
             .collect();
-        assert_eq!(remaining.len(), MIGRATION_BACKUPS_TO_KEEP);
+        assert_eq!(remaining.len(), MIGRATION_BACKUPS_WHILE_FAILING);
         assert!(!made[0].exists(), "oldest copies are pruned");
         assert!(backup.exists(), "the fresh copy is kept");
     }
@@ -519,6 +545,55 @@ mod tests {
             }),
             "the chain ran"
         );
+    }
+
+    /// Earlier copies next to the database, as updates before this one left them.
+    fn earlier_copies(dir: &std::path::Path, count: usize) -> Vec<PathBuf> {
+        (0..count)
+            .map(|i| {
+                let p = dir.join(format!("moony.db.bak-{}", 1_000 + i));
+                std::fs::write(&p, b"old").expect("earlier copy");
+                p
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_migration_that_went_through_leaves_only_its_own_copy() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("moony.db");
+        let conn = Connection::open(&path).expect("open");
+        conn.execute_batch(MIGRATIONS_TABLE).expect("bookkeeping");
+        let earlier = earlier_copies(dir.path(), 3);
+
+        run_migrations_with_backup(&conn, &path).expect("migrate");
+
+        assert_eq!(backup_copies(dir.path()), 1, "one copy stays");
+        assert!(
+            earlier.iter().all(|p| !p.exists()),
+            "the copy that stays is this update's"
+        );
+    }
+
+    #[test]
+    fn a_migration_that_failed_keeps_the_earlier_copies() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("moony.db");
+        let conn = Connection::open(&path).expect("open");
+        // A table a later migration creates: the chain stops there, after the copy was taken.
+        conn.execute_batch(MIGRATIONS_TABLE).expect("bookkeeping");
+        conn.execute_batch("CREATE TABLE sync_devices (x)")
+            .expect("a table in the way");
+        let earlier = earlier_copies(dir.path(), 2);
+
+        run_migrations_with_backup(&conn, &path).expect_err("the chain fails");
+
+        assert_eq!(
+            backup_copies(dir.path()),
+            3,
+            "this run's copy and both before it"
+        );
+        assert!(earlier.iter().all(|p| p.exists()));
     }
 
     #[test]

@@ -149,8 +149,8 @@ fn seed_1044_a_3_to_1_apply_and_revert_round_trip_and_converge() {
         merged, newer,
         "applied at {applied:?}, dismissed at {dismissed:?}"
     );
-    for d in 0..vault.devices.len() {
-        assert_eq!(status(&vault.devices[d].conn, &split), newer, "device {d}");
+    for (d, device) in vault.devices.iter().enumerate() {
+        assert_eq!(status(&device.conn, &split), newer, "device {d}");
     }
     let expected = if merged == "applied" {
         pair("21", "348.12166667")

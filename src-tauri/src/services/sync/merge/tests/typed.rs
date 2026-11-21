@@ -159,12 +159,14 @@ fn repro_b_a_relayed_balance_arrives_before_the_record_tombstone() {
     assert_converged(&[&a, &b, &c]);
 }
 
-/// The account and its records predate sync (no clocks, no entries).
+/// The account and its records predate sync (no clocks, no entries). Every device gets the same
+/// row, so its timestamps are given: the defaults read the clock, and two devices set up across a
+/// second boundary would differ in a column no op carries.
 fn pre_sync_account(conn: &Connection) {
     capture::with_mode(conn, Mode::Repair, || {
         conn.execute_batch(
-            "INSERT INTO bank_accounts (id, name, currency, balance, balance_as_of) \
-               VALUES ('acc', 'Main', 'CZK', '3000.00', 1767312000); \
+            "INSERT INTO bank_accounts (id, name, currency, balance, balance_as_of, created_at, \
+               updated_at) VALUES ('acc', 'Main', 'CZK', '3000.00', 1767312000, 100, 100); \
              INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of, \
                recorded_at) VALUES \
                ('r1', 'acc', '3000.00', 'CZK', 1767312000, 100), \

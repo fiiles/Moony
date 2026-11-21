@@ -29,7 +29,7 @@ impl BindingNative for FlakyOpening {
     fn open(&self, blob: &[u8]) -> std::result::Result<Zeroizing<[u8; 32]>, BindingFailure> {
         let failed = self
             .failures
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| n.checked_sub(1))
+            .try_update(Ordering::SeqCst, Ordering::SeqCst, |n| n.checked_sub(1))
             .is_ok();
         if failed {
             return Err(BindingFailure::Failed("the secure storage is busy".into()));

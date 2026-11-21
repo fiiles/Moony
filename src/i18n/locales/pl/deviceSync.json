@@ -73,7 +73,8 @@
       "internal": "Synchronizacja zatrzymała się z powodu błędu wewnętrznego.",
       "keyNotGiven": "To urządzenie trzeba połączyć ponownie.",
       "keyChangeUnverified": "To urządzenie trzeba połączyć ponownie.",
-      "keyChangeWaiting": "Czekam, aż połączy się urządzenie, które wprowadziło zmianę."
+      "keyChangeWaiting": "Czekam, aż połączy się urządzenie, które wprowadziło zmianę.",
+      "keyChangeWaitingOwn": "Usuwanie jest kończone. Serwer synchronizacji nie wysłał jeszcze wszystkich zmian sprzed usunięcia. Moony próbuje dalej; dane na tym urządzeniu są w porządku."
     },
     "lastSynced": "Ostatnia synchronizacja: {{date}}",
     "neverSynced": "Jeszcze nie zsynchronizowano",
@@ -189,7 +190,7 @@
       "found": "Znaleziono serwer · wersja {{version}}",
       "checking": "Szukam serwera…",
       "insecureTitle": "Połączenie nie jest szyfrowane (http)",
-      "insecureBody": "Twoje dane pozostają zaszyfrowane, ale każdy w tej samej sieci może przechwycić dostęp do synchronizacji i usunąć lub zablokować zsynchronizowane dane na serwerze.",
+      "insecureBody": "Twoje dane pozostają zaszyfrowane, ale każdy w tej samej sieci może przechwycić dostęp do synchronizacji, usunąć lub zablokować zsynchronizowane dane na serwerze, a także uczynić zestaw odzyskiwania bezużytecznym.",
       "insecureAck": "Rozumiem, kontynuuj mimo to",
       "resume": "Konfiguracja rozpoczęła się z serwerem {{host}}",
       "other": "Użyj innego kodu połączenia",
@@ -415,7 +416,7 @@
     "validUntil": "Kod działa do {{time}}.",
     "copyCode": "Kopiuj kod",
     "copiedCode": "Skopiowano",
-    "codeHint": "Brak aparatu? Wpisz lub wklej ten kod na drugim urządzeniu. Możesz go wysłać wiadomością: bez sześciu cyfr, które potem wpiszesz tutaj, niczego nie ujawnia.",
+    "codeHint": "Brak aparatu? Wpisz lub wklej ten kod na drugim urządzeniu. Możesz go wysłać wiadomością. Sześć cyfr, które potem wpiszesz tutaj, potwierdza, że nikt nie zmienił go po drodze.",
     "deviceConnected": "Urządzenie {{name}} jest połączone",
     "sentLate": "Dokończ łączenie na drugim urządzeniu. Gdy się połączy, pojawi się na liście."
   },
@@ -425,7 +426,7 @@
     "passwordLabel": "Hasło do Moony",
     "serverLabel": "Adres serwera synchronizacji",
     "serverHint": "Wpisz adres swojego serwera synchronizacji albo wklej jego kod połączenia.",
-    "insecureAtJoin": "Dane synchronizacji, z którymi dołączasz, wskazują na {{host}}, z którym łączysz się przez zwykłe http. Twoje dane pozostają zaszyfrowane, ale każdy w tej samej sieci może przechwycić dostęp do synchronizacji i usunąć lub zablokować zsynchronizowane dane na serwerze.",
+    "insecureAtJoin": "Dane synchronizacji, z którymi dołączasz, wskazują na {{host}}, z którym łączysz się przez zwykłe http. Twoje dane pozostają zaszyfrowane, ale każdy w tej samej sieci może przechwycić dostęp do synchronizacji, usunąć lub zablokować zsynchronizowane dane na serwerze, a także uczynić zestaw odzyskiwania bezużytecznym.",
     "kitServer": "Serwer synchronizacji: {{host}}",
     "pairTitle": "Dołącz z telefonu",
     "pairHint": "Na telefonie z włączoną synchronizacją: Ustawienia → Synchronizacja → Dodaj urządzenie",
@@ -586,7 +587,9 @@
     },
     "keep": "To moje",
     "added": "Te urządzenia dodałeś z urządzenia {{name}} (lub z nich). Usuń też te, których nie rozpoznajesz.",
-    "addedRow": "{{name}} · dodano {{date}}",
+    "addedRow": "Dodano {{date}} z urządzenia {{name}}",
+    "addedRowNoIssuer": "Dodano {{date}}",
+    "recentNote": "Urządzenia dodane w ciągu ostatnich 30 dni są zaznaczone z góry. Jeśli któreś znasz i chcesz je zachować, odznacz je.",
     "inHand": "Masz {{name}} przy sobie? Wystarczy wyłączyć na nim synchronizację.",
     "kit": {
       "creatorRemoved": "Zestaw odzyskiwania zapisano na urządzeniu {{name}}, więc przestanie obowiązywać. Zaraz potem utworzysz nowy.",
@@ -695,7 +698,7 @@
     },
     "waiting": {
       "title": "Synchronizacja czeka na urządzenie {{by}}",
-      "body": "To urządzenie czeka na potwierdzenie od urządzenia {{by}}, które ostatnio zmieniało listę urządzeń. Dane tutaj są w porządku. Jeśli już nie używasz {{by}}, połącz to urządzenie ponownie."
+      "body": "Urządzenie {{by}} nie dokończyło zmiany listy urządzeń. Otwórz na nim Moony. Jeśli już go nie masz, wyłącz synchronizację na wszystkich urządzeniach i włącz ją ponownie z urządzenia, które ma najpełniejsze dane."
     }
   },
   "rejoin": {

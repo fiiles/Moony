@@ -9,6 +9,7 @@ use std::time::Duration;
 use super::rekey_fixture::*;
 use super::runtime_loop::{until, Sealing};
 use super::*;
+use crate::services::sync::binding::NoBinding;
 use crate::services::sync::identity::trust::{self, TrustState};
 use crate::services::sync::identity::{self, sign_pub, Record, RecordType};
 use crate::services::sync::keys::VaultAuth;
@@ -47,7 +48,14 @@ async fn a_device_that_leaves_signs_and_sends_its_left_record() {
     };
     let pushed_before = three.vault.relay.ops().len();
 
-    setup::leave_best_effort(&three.vault.relay, &three.vault.a, setup::LEAVE_BUDGET).await;
+    setup::leave_best_effort(
+        &three.vault.relay,
+        &three.vault.a,
+        three.dir.path(),
+        Arc::new(NoBinding),
+        setup::LEAVE_BUDGET,
+    )
+    .await;
 
     let record = left_record(&three.vault.a.lock(), A).expect("the row holds a left record");
     assert_eq!(record.kind, RecordType::Left);
@@ -72,10 +80,24 @@ async fn a_device_that_leaves_signs_and_sends_its_left_record() {
 #[tokio::test]
 async fn leaving_twice_keeps_the_first_record() {
     let three = three().await;
-    setup::leave_best_effort(&three.vault.relay, &three.vault.a, setup::LEAVE_BUDGET).await;
+    setup::leave_best_effort(
+        &three.vault.relay,
+        &three.vault.a,
+        three.dir.path(),
+        Arc::new(NoBinding),
+        setup::LEAVE_BUDGET,
+    )
+    .await;
     let first = left_record(&three.vault.a.lock(), A).expect("record");
 
-    setup::leave_best_effort(&three.vault.relay, &three.vault.a, setup::LEAVE_BUDGET).await;
+    setup::leave_best_effort(
+        &three.vault.relay,
+        &three.vault.a,
+        three.dir.path(),
+        Arc::new(NoBinding),
+        setup::LEAVE_BUDGET,
+    )
+    .await;
 
     assert_eq!(left_record(&three.vault.a.lock(), A), Some(first));
 }
@@ -88,7 +110,14 @@ async fn a_slow_server_never_holds_the_leave_past_its_budget() {
     let relay = SlowPush(three.vault.relay.clone());
     let started = tokio::time::Instant::now();
 
-    setup::leave_best_effort(&relay, &three.vault.a, setup::LEAVE_BUDGET).await;
+    setup::leave_best_effort(
+        &relay,
+        &three.vault.a,
+        three.dir.path(),
+        Arc::new(NoBinding),
+        setup::LEAVE_BUDGET,
+    )
+    .await;
 
     let spent = started.elapsed();
     assert!(
@@ -109,7 +138,14 @@ async fn a_failed_leave_is_ignored_and_a_profile_without_sync_sends_nothing() {
         Route::Push,
         Some(crate::services::sync::relay::RelayError::Server(503)),
     );
-    setup::leave_best_effort(&three.vault.relay, &three.vault.a, setup::LEAVE_BUDGET).await;
+    setup::leave_best_effort(
+        &three.vault.relay,
+        &three.vault.a,
+        three.dir.path(),
+        Arc::new(NoBinding),
+        setup::LEAVE_BUDGET,
+    )
+    .await;
     assert!(
         left_record(&three.vault.a.lock(), A).is_some(),
         "written; the push failed"
@@ -120,7 +156,14 @@ async fn a_failed_leave_is_ignored_and_a_profile_without_sync_sends_nothing() {
         .await
         .expect("off");
     let calls = three.vault.relay.calls().len();
-    setup::leave_best_effort(&three.vault.relay, &three.vault.b, setup::LEAVE_BUDGET).await;
+    setup::leave_best_effort(
+        &three.vault.relay,
+        &three.vault.b,
+        three.dir.path(),
+        Arc::new(NoBinding),
+        setup::LEAVE_BUDGET,
+    )
+    .await;
     assert_eq!(three.vault.relay.calls().len(), calls, "nothing is asked");
 }
 
@@ -134,7 +177,14 @@ async fn a_removed_device_does_not_leave() {
     assert!(report.removed_here, "{report:?}");
     let calls = three.vault.relay.calls().len();
 
-    setup::leave_best_effort(&three.vault.relay, &three.c, setup::LEAVE_BUDGET).await;
+    setup::leave_best_effort(
+        &three.vault.relay,
+        &three.c,
+        three.dir.path(),
+        Arc::new(NoBinding),
+        setup::LEAVE_BUDGET,
+    )
+    .await;
 
     assert_eq!(three.vault.relay.calls().len(), calls);
     assert_eq!(

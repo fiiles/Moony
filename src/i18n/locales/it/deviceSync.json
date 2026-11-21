@@ -69,7 +69,8 @@
       "internal": "La sincronizzazione si è fermata per un errore interno.",
       "keyNotGiven": "Questo dispositivo va ricollegato.",
       "keyChangeUnverified": "Questo dispositivo va ricollegato.",
-      "keyChangeWaiting": "In attesa che si colleghi il dispositivo che ha fatto la modifica."
+      "keyChangeWaiting": "In attesa che si colleghi il dispositivo che ha fatto la modifica.",
+      "keyChangeWaitingOwn": "La rimozione si sta completando. Il server di sincronizzazione non ha ancora inviato tutte le modifiche precedenti alla rimozione. Moony continua a riprovare; i dati su questo dispositivo sono a posto."
     },
     "lastSynced": "Ultima sincronizzazione: {{date}}",
     "neverSynced": "Non ancora sincronizzato",
@@ -185,7 +186,7 @@
       "found": "Server trovato · versione {{version}}",
       "checking": "Ricerca del server…",
       "insecureTitle": "La connessione non è crittografata (http)",
-      "insecureBody": "I tuoi dati restano crittografati, ma chiunque sia sulla stessa rete può intercettare l'accesso alla sincronizzazione ed eliminare o bloccare i dati sincronizzati sul server.",
+      "insecureBody": "I tuoi dati restano crittografati, ma chiunque sia sulla stessa rete può intercettare l'accesso alla sincronizzazione, eliminare o bloccare i dati sincronizzati sul server e rendere inutilizzabile anche il kit di ripristino.",
       "insecureAck": "Ho capito, continua comunque",
       "resume": "Configurazione avviata con {{host}}",
       "other": "Usa un altro codice di connessione",
@@ -404,7 +405,7 @@
     "validUntil": "Il codice è valido fino alle {{time}}.",
     "copyCode": "Copia il codice",
     "copiedCode": "Copiato",
-    "codeHint": "Niente fotocamera? Digita o incolla questo codice sull'altro dispositivo. Puoi inviarlo in un messaggio: senza le sei cifre che digiterai poi qui, non rivela nulla.",
+    "codeHint": "Niente fotocamera? Digita o incolla questo codice sull'altro dispositivo. Puoi inviarlo in un messaggio. Le sei cifre che digiterai poi qui confermano che nessuno lo ha modificato lungo il percorso.",
     "deviceConnected": "Il dispositivo {{name}} è connesso",
     "sentLate": "Completa il collegamento sull'altro dispositivo. Quando sarà collegato, apparirà nell'elenco."
   },
@@ -414,7 +415,7 @@
     "passwordLabel": "Password di Moony",
     "serverLabel": "Indirizzo del server di sincronizzazione",
     "serverHint": "Scrivi l'indirizzo del tuo server di sincronizzazione o incolla il suo codice di connessione.",
-    "insecureAtJoin": "I dati di sincronizzazione con cui ti unisci puntano a {{host}}, raggiunto tramite semplice http. I tuoi dati restano crittografati, ma chiunque sia sulla stessa rete può intercettare l'accesso alla sincronizzazione ed eliminare o bloccare i dati sincronizzati sul server.",
+    "insecureAtJoin": "I dati di sincronizzazione con cui ti unisci puntano a {{host}}, raggiunto tramite semplice http. I tuoi dati restano crittografati, ma chiunque sia sulla stessa rete può intercettare l'accesso alla sincronizzazione, eliminare o bloccare i dati sincronizzati sul server e rendere inutilizzabile anche il kit di ripristino.",
     "kitServer": "Server di sincronizzazione: {{host}}",
     "pairTitle": "Collegati dal telefono",
     "pairHint": "Sul telefono con la sincronizzazione attiva: Impostazioni → Sincronizzazione → Aggiungi un dispositivo",
@@ -570,7 +571,9 @@
     },
     "keep": "È mio",
     "added": "Hai aggiunto questi dispositivi da {{name}} (o da loro). Rimuovi anche quelli che non riconosci.",
-    "addedRow": "{{name}} · aggiunto il {{date}}",
+    "addedRow": "Aggiunto il {{date}} da {{name}}",
+    "addedRowNoIssuer": "Aggiunto il {{date}}",
+    "recentNote": "I dispositivi aggiunti negli ultimi 30 giorni sono selezionati in anticipo. Se ne conosci uno e vuoi tenerlo, deselezionalo.",
     "inHand": "Hai {{name}} a portata di mano? Basta disattivare la sincronizzazione su di esso.",
     "kit": {
       "creatorRemoved": "Il tuo kit di ripristino è stato salvato su {{name}}, quindi smetterà di funzionare. Subito dopo ne creerai uno nuovo.",
@@ -679,7 +682,7 @@
     },
     "waiting": {
       "title": "La sincronizzazione attende {{by}}",
-      "body": "Questo dispositivo attende la conferma di {{by}}, che ha modificato per ultimo l'elenco dei dispositivi. I dati qui sono a posto. Se non usi più {{by}}, ricollega questo dispositivo."
+      "body": "{{by}} non ha completato una modifica dell'elenco dei dispositivi. Apri Moony su quel dispositivo. Se non lo hai più, disattiva la sincronizzazione su tutti i dispositivi e riattivala dal dispositivo con i dati più completi."
     }
   },
   "rejoin": {

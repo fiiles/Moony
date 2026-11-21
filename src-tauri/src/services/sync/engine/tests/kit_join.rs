@@ -208,7 +208,8 @@ async fn a_snapshot_under_the_newest_epoch_without_its_head_bounds_older_ops() {
     assert!(!head::unverified_epochs(&three.vault.b.lock())
         .expect("unverified")
         .is_empty());
-    snapshot_by(&three, &three.vault.b).await;
+    // B uploads no snapshot in this state any more; one made by hand stands for a build that did.
+    super::rekey_gate::ungated_snapshot_by(&three, &three.vault.b).await;
     // C, removed but holding epoch 0's key, gets an op in past the snapshot (a server that takes
     // a retired token's writes).
     three.vault.relay.set_accept_retired_writes(true);
@@ -288,6 +289,58 @@ async fn a_snapshot_older_than_the_newest_epoch_waits_for_the_removers_signed_he
     );
 }
 
+/// §2.3 step 8: a Kit joiner with a snapshot older than the newest epoch has no head and no
+/// bundle (after 31 days); it finds the signed record of the envelope's signer first, then reads
+/// the range from the signed base, and applies what lies in it only after the digest matched.
+#[tokio::test]
+async fn a_kit_joiner_finds_the_record_first() {
+    use crate::services::sync::rekey::range;
+
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    snapshot_by(&three, &three.vault.a).await;
+    let place = cursor(&three.vault.a.lock());
+    institution(&three.vault.b.lock(), "b-in-the-range");
+    round_of(&three.vault, &three.vault.b).await;
+    remove(&three, A, &[C]).await.expect("removed");
+    three.vault.relay.advance_clock(31 * DAY);
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+    kit_join(&three, &device, dir.path(), &secret)
+        .await
+        .expect("join");
+    {
+        let conn = device.lock();
+        assert_eq!(cursor(&conn), place);
+        let waiting = head::unverified_epochs(&conn).expect("unverified");
+        assert_eq!((waiting[0].epoch, waiting[0].head), (1, None));
+        assert_eq!(range::base_of(&conn, 1).expect("base"), None);
+    }
+
+    let held = round_mode(&three, &device, RoundMode::Normal).await;
+    assert_eq!(
+        held.problem,
+        Some(SyncProblem::KeyChangeWaiting),
+        "{held:?}"
+    );
+    assert!(!has_institution(&device.lock(), "b-in-the-range"));
+    round_of(&three.vault, &three.vault.a).await;
+    let report = round_mode(&three, &device, RoundMode::Normal).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    let conn = device.lock();
+    assert!(head::unverified_epochs(&conn)
+        .expect("unverified")
+        .is_empty());
+    assert_eq!(range::base_of(&conn, 1).expect("base"), Some(place));
+    let count_of = |c: &rusqlite::Connection| {
+        count(c, "SELECT COUNT(*) FROM sync_range_notes WHERE epoch = 1")
+    };
+    assert!(count_of(&conn) >= 1);
+    assert_eq!(count_of(&conn), count_of(&three.vault.a.lock()));
+    assert!(has_institution(&conn, "b-in-the-range"));
+}
+
 /// Revision §2.6 step 5 (iii), within 30 days: the server's head waits for the signer's; a
 /// signed head that says otherwise refutes it (`keyChangeUnverified`), and nothing past is
 /// applied.
@@ -299,9 +352,18 @@ async fn a_server_head_the_signers_record_contradicts_is_refuted() {
     institution(&three.vault.b.lock(), "b-before-the-change");
     round_of(&three.vault, &three.vault.b).await;
     remove(&three, A, &[C]).await.expect("removed");
-    // The server reports another head with the bundle than the one A signs.
+    // The server reports another head with the bundle than the one A signs: the snapshot's own
+    // position, below A's (B wrote after the snapshot) and below A's record, so the look-ahead
+    // finds it. (Not below the snapshot: a joiner refuses an old-key snapshot above the head it is
+    // told, rule 10, which would end the join before the signer's record could refute it.)
+    let lie = three.vault.relay.snapshot_seq().expect("A's snapshot");
+    let signed = *state::epochs(&three.vault.a.lock())
+        .expect("epochs")
+        .get(&1)
+        .expect("A's head");
+    assert!(lie < signed, "the lie differs from the signed head");
     let vault_id = three.vault.creds.vault_id.to_b64();
-    three.vault.relay.set_rekey_head(&vault_id, 1, 1);
+    three.vault.relay.set_rekey_head(&vault_id, 1, lie);
     let device = newcomer();
     let dir = tempfile::tempdir().expect("dir");
     kit_join(&three, &device, dir.path(), &secret)
@@ -309,7 +371,7 @@ async fn a_server_head_the_signers_record_contradicts_is_refuted() {
         .expect("join");
     assert_eq!(
         head::unverified_epochs(&device.lock()).expect("unverified")[0].head,
-        Some(1)
+        Some(lie)
     );
     round_of(&three.vault, &three.vault.a).await;
 
@@ -1102,4 +1164,90 @@ async fn settle_remaining(three: &Three) {
             round_of(&three.vault, device).await;
         }
     }
+}
+
+/// Protocol 3: a Kit joiner that read its keys just before a key change reads the snapshot with a
+/// token that was retired meanwhile. The server refuses it (`403`), which ends the join the way a
+/// snapshot sealed under a key the joiner lacks does (As built R-73): nothing is replaced, and
+/// the person reads the Kit again.
+#[tokio::test]
+async fn a_join_overtaken_by_a_key_change_says_try_again() {
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    snapshot_by(&three, &three.vault.a).await;
+    let (creds, join) =
+        recovery_credentials(&three.vault.relay, &newcomer(), typed(&three, &secret))
+            .await
+            .expect("the keys are read");
+    remove(&three, A, &[C]).await.expect("removed");
+    let device = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    let error = join_new_device(
+        &three.vault.relay,
+        &device,
+        creds,
+        "Laptop",
+        agreed(&device),
+        JoinIdentity::RecoveryKit(Box::new(join)),
+        dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect_err("refused");
+
+    assert_eq!(
+        key_of(&error).as_deref(),
+        Some("validation.syncRecoveryKitUnreadable"),
+        "{error:?}"
+    );
+    untouched(&device);
+}
+
+/// Rule 10, a joining device (spec §2.3): a snapshot sealed under an older key than the Kit's
+/// newest is taken at or below the head of the key change that ended that key (the head is checked
+/// afterwards), and refused above it. A removes C after its own snapshot and goes silent; the
+/// Kit's joiner takes that snapshot, with the server still naming the head; then the vault's newest
+/// snapshot is an old-key one above the head, and the next joiner refuses it and replaces nothing.
+#[tokio::test]
+async fn a_kit_join_takes_an_old_key_snapshot_up_to_the_head() {
+    let three = three().await;
+    let secret = with_kit(&three, A, Some(KitStorage::Paper)).await;
+    institution(&three.vault.a.lock(), "a-in-the-old-snapshot");
+    snapshot_by(&three, &three.vault.a).await;
+    let dumped = three.vault.relay.snapshot_seq().expect("snapshot");
+    remove(&three, A, &[C]).await.expect("removed");
+    let first = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    kit_join(&three, &first, dir.path(), &secret)
+        .await
+        .expect("join");
+
+    {
+        let conn = first.lock();
+        assert!(has_institution(&conn, "a-in-the-old-snapshot"));
+        assert_eq!(key_epoch(&conn), 1);
+        let head = *state::epochs(&conn).expect("epochs").get(&1).expect("head");
+        assert!(dumped <= head, "the snapshot lies at or below the head");
+    }
+
+    // The same vault, now holding an old-key snapshot above the head.
+    super::rekey_audit2::push_a_record(&three).await;
+    let above = super::rekey_audit2::last_seq(&three);
+    let sealed = super::rekey_audit2::forged_old_key_snapshot(&three, above);
+    super::rekey_audit2::server_takes_snapshot(&three, above, sealed).await;
+    let second = newcomer();
+    let dir = tempfile::tempdir().expect("dir");
+
+    let refused = kit_join(&three, &second, dir.path(), &secret).await;
+
+    let error = refused.expect_err("refused");
+    assert_eq!(
+        key_of(&error).as_deref(),
+        Some("validation.syncSnapshotInvalid"),
+        "{error:?}"
+    );
+    untouched(&second);
 }

@@ -291,6 +291,7 @@ pub const MIGRATION_CLASSES: &[(&str, MigrationClass)] = &[
     ("039_sync_last_complete", A),
     ("040_sync_device_removal", A),
     ("041_sync_recovery_kit", A),
+    ("042_sync_range_notes", A),
 ];
 
 pub fn schema_number() -> u32 {
@@ -680,8 +681,8 @@ mod tests {
     }
 
     #[test]
-    fn schema_number_is_41_and_the_newest_barrier_is_025() {
-        assert_eq!(schema_number(), 41);
+    fn schema_number_is_42_and_the_newest_barrier_is_025() {
+        assert_eq!(schema_number(), 42);
         assert_eq!(barrier_number(), 25);
     }
 }

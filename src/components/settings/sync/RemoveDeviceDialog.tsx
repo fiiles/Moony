@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { RecoveryKit, RemovalPlanDevice } from '@shared/schema';
 import { useRemovalPlan } from '@/hooks/use-device-sync';
+import { useDefaultAlsoRemove } from '@/hooks/use-default-also-remove';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
-import { useFormat } from '@/lib/use-format';
 import {
   canKeepDropping,
   dropReasonKey,
@@ -20,6 +20,7 @@ import {
   type OutcomeView,
   withoutKit,
 } from '@/utils/sync-removal';
+import { AddedLine } from '@/components/settings/sync/AddedLine';
 import { NewKitStep } from '@/components/settings/sync/NewKitStep';
 import { ServerNeededNote } from '@/components/settings/sync/ServerNeededNote';
 import { submitOnEnter } from '@/components/settings/sync/submit-on-enter';
@@ -66,7 +67,6 @@ export function RemoveDeviceDialog({
 }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
-  const { date } = useFormat();
   const { removeDevices, removeDevicesWithPassword, keepDevice } = useDeviceSyncMutations();
   const [alsoRemove, setAlsoRemove] = useState<string[]>([]);
   const [password, setPassword] = useState('');
@@ -79,6 +79,7 @@ export function RemoveDeviceDialog({
   const planning = step.kind === 'plan';
   const planQuery = useRemovalPlan(deviceIds, alsoRemove, newKit, planning);
   const plan = planQuery.data;
+  useDefaultAlsoRemove(plan, setAlsoRemove);
   const name = removalTitleNames(plan, deviceIds) ?? deviceNames?.join(', ') ?? '';
   const several = deviceIds.length > 1;
   const reload = planQuery.refetch;
@@ -251,6 +252,9 @@ export function RemoveDeviceDialog({
                 {plan.addedByRemoving.length > 0 && (
                   <section className="grid gap-1.5">
                     <p className="m-0">{t('remove.added', { name })}</p>
+                    {plan.tickedByDefault.length > 0 && (
+                      <p className="m-0 text-micro font-500 text-ink-3">{t('remove.recentNote')}</p>
+                    )}
                     <ul className="m-0 grid list-none gap-1.5 p-0">
                       {plan.addedByRemoving.map((device) => (
                         <li key={device.id} className="flex items-start gap-2">
@@ -264,10 +268,11 @@ export function RemoveDeviceDialog({
                             htmlFor={`remove-also-${device.id}`}
                             className="min-w-0 break-words font-500"
                           >
-                            {t('remove.addedRow', {
-                              name: device.name,
-                              date: date(new Date(device.joinedAt * 1000), { dateStyle: 'medium' }),
-                            })}
+                            <span className="block">{device.name}</span>
+                            <AddedLine
+                              device={device}
+                              className="block text-micro font-500 text-ink-3"
+                            />
                           </Label>
                         </li>
                       ))}

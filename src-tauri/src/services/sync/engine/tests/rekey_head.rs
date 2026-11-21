@@ -69,6 +69,8 @@ async fn push_a_unsent(three: &Three) {
 /// it.
 async fn forge_from_c(three: &Three, id: &str) {
     three.vault.relay.set_accept_retired_writes(true);
+    // The server also hides the key change from a lagging device: it serves it old-token reads.
+    three.vault.relay.set_accept_retired_reads(true);
     let forged = write_and_seal(&three.vault, &three.c, id);
     push(&three.vault.relay, &three.vault.creds, &[forged]).await;
 }
@@ -728,6 +730,10 @@ async fn a_restored_snapshot_without_the_head_moves_the_look_ahead_past_the_prun
     institution(&three.vault.a.lock(), "a-before");
     round_of(&three.vault, &three.vault.a).await;
     round_of(&three.vault, &three.c).await;
+    // A change of C's that A has not pulled: the range of the key change is not empty (an empty
+    // range needs no read and settles at once, which this test is not about).
+    institution(&three.c.lock(), "c-pre");
+    round_of(&three.vault, &three.c).await;
     new_kit(&three, A).await.expect("changed");
     let head = true_head(&three);
     // C takes the key provisionally, writes under it and uploads a snapshot naming no head.
@@ -735,16 +741,8 @@ async fn a_restored_snapshot_without_the_head_moves_the_look_ahead_past_the_prun
     let report = round_of(&three.vault, &three.c).await;
     assert_eq!(report.problem, None, "{report:?}");
     assert!(entry(&three.c.lock(), 1).is_some());
-    run_round(
-        &three.vault.relay,
-        &three.c,
-        &mut SnapshotPolicy::default(),
-        RoundMode::FirstSnapshot,
-        NOW,
-        0,
-    )
-    .await
-    .expect("C's snapshot");
+    // (C uploads none in this state any more; one made by hand stands for a build that did.)
+    super::rekey_gate::ungated_snapshot_by(&three, &three.c).await;
     let seq = three.vault.relay.snapshot_seq().expect("snapshot");
     assert!(seq > head, "{seq} {head}");
     // A sends its signed head above C's snapshot, and owes no snapshot of its own here (it would
@@ -823,9 +821,9 @@ async fn a_signed_head_for_something_else_neither_confirms_nor_refutes() {
         .expect("A's key");
     let vault = creds.vault_id.0;
     let records = [
-        head::HeadRecord::sign(vault, A, 0, 5, 1, head, &seed),
-        head::HeadRecord::sign([0x99; 16], A, 0, 1, 1, head, &seed),
-        head::HeadRecord::sign(vault, C, 0, 1, 1, head + 7, &seed),
+        head::HeadRecord::sign(vault, A, 0, 5, 1, head, head, 0, [0; 32], &seed),
+        head::HeadRecord::sign([0x99; 16], A, 0, 1, 1, head, head, 0, [0; 32], &seed),
+        head::HeadRecord::sign(vault, C, 0, 1, 1, head + 7, head + 7, 0, [0; 32], &seed),
     ];
     let forged: Vec<Vec<u8>> = records
         .iter()
@@ -930,4 +928,274 @@ async fn a_rotation_with_nothing_to_pick_up_is_looked_at_once_a_round() {
         .filter(|route| **route == Route::Rekeys)
         .count();
     assert_eq!(walks, 1);
+}
+
+/// Protocol 3: a retired token reads no ops, so a device that waits for a signed head and is
+/// overtaken by a second key change meets the `403` in its look-ahead, before its pull and
+/// without a read of the vault's info. That is a key change to pick up, not the end of the round
+/// as `keyRotated`.
+#[tokio::test]
+async fn a_device_with_an_unverified_head_picks_up_a_second_key_change_from_its_look_ahead() {
+    let three = three().await;
+    institution(&three.vault.a.lock(), "a-before");
+    round_of(&three.vault, &three.vault.a).await;
+    new_kit(&three, A).await.expect("first");
+    let report = round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(
+        report.problem,
+        Some(SyncProblem::KeyChangeWaiting),
+        "{report:?}"
+    );
+    assert_eq!(key_epoch(&three.vault.b.lock()), 1);
+    new_kit(&three, A).await.expect("second");
+    let from = three.vault.relay.calls().len();
+
+    // A `Drain` round reads no vault info: only the look-ahead can tell B of the second change.
+    let report = run_round(
+        &three.vault.relay,
+        &three.vault.b,
+        &mut SnapshotPolicy::default(),
+        RoundMode::Drain,
+        NOW,
+        0,
+    )
+    .await
+    .expect("round");
+
+    let calls = &three.vault.relay.calls()[from..];
+    assert_eq!(
+        calls.first(),
+        Some(&Route::Pull),
+        "the round starts at the look-ahead, with no read of the vault's info: {calls:?}"
+    );
+    let walk = calls.iter().position(|r| *r == Route::Rekeys);
+    let info = calls.iter().position(|r| *r == Route::VaultInfo);
+    assert!(
+        walk.is_some_and(|walk| info.is_none_or(|info| walk < info)),
+        "the pickup follows the look-ahead's refusal: {calls:?}"
+    );
+    assert_ne!(report.problem, Some(SyncProblem::KeyRotated), "{report:?}");
+    assert_eq!(key_epoch(&three.vault.b.lock()), 2, "{report:?}");
+}
+
+/// The old snapshot of a vault and a removal after it: C writes after the snapshot, A removes C
+/// and sends its signed head but owes no snapshot of its own, so the newest one stays the old-key
+/// snapshot below the head. Returns where that snapshot lies.
+async fn removal_above_an_old_snapshot(three: &Three) -> u64 {
+    let place = super::join::snapshot_of_a(&three.vault, "a-first").await;
+    institution(&three.c.lock(), "c-before");
+    round_of(&three.vault, &three.c).await;
+    remove(three, A, &[C]).await.expect("removed");
+    exec(
+        &three.vault.a.lock(),
+        "UPDATE sync_state SET snapshot_epoch_due = 0",
+    );
+    round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(three.vault.relay.snapshot_seq(), Some(place));
+    place
+}
+
+/// §2.3 step 6 and 7 after a replace: B, which had checked the range and applied it, re-syncs from
+/// the old snapshot below the head. Its notes and the entry's verdict are gone (a fresh unverified
+/// entry waits at the snapshot's place, the signer being the one `sync_epochs` knows), the range's
+/// older-key ops wait, and the next round reads the range again and applies it. A re-sync gives
+/// the device another ID.
+#[tokio::test]
+async fn a_resync_after_a_key_change_reads_the_range_again_and_applies_it() {
+    use crate::services::sync::join::resync_by_replace;
+    use crate::services::sync::rekey::range;
+
+    let three = three().await;
+    let place = removal_above_an_old_snapshot(&three).await;
+    let report = round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(report.problem, None, "{report:?}");
+    let before = {
+        let b = three.vault.b.lock();
+        assert!(has_institution(&b, "c-before"));
+        assert!(entry(&b, 1).is_none());
+        assert!(range::base_of(&b, 1).expect("base").is_some());
+        super::join::device_of(&b)
+    };
+
+    resync_by_replace(
+        &three.vault.relay,
+        &three.vault.b,
+        agreed(&three.vault.b),
+        three.dir.path(),
+        &crate::services::sync::binding::NoBinding,
+        NOW,
+    )
+    .await
+    .expect("re-synced");
+
+    {
+        let b = three.vault.b.lock();
+        assert_ne!(super::join::device_of(&b), before, "another device ID");
+        assert_eq!(cursor(&b), place);
+        assert!(!has_institution(&b, "c-before"), "the snapshot predates it");
+        assert_eq!(
+            range::base_of(&b, 1).expect("base"),
+            None,
+            "the range is forgotten"
+        );
+        let waiting = entry(&b, 1).expect("checked again");
+        assert_eq!(
+            (
+                waiting.after,
+                waiting.by.as_str(),
+                waiting.own_pending,
+                waiting.refuted
+            ),
+            (place, A.to_hex().as_str(), false, false)
+        );
+    }
+    let mut problems = Vec::new();
+    for _ in 0..2 {
+        problems.push(round_of(&three.vault, &three.vault.b).await.problem);
+    }
+
+    let b = three.vault.b.lock();
+    assert!(entry(&b, 1).is_none(), "verified again: {problems:?}");
+    assert_eq!(
+        range::base_of(&b, 1).expect("base"),
+        range::base_of(&three.vault.a.lock(), 1).expect("A's base")
+    );
+    assert!(
+        has_institution(&b, "c-before"),
+        "applied again: {problems:?}"
+    );
+}
+
+/// Ruling R9: the remover re-syncs below its own head. The replace gives it another ID, and what
+/// waits is not "committed, not signed yet": it finds the record it sent itself in the log, under
+/// its former ID, like any other device's, and signs nothing a second time.
+#[tokio::test]
+async fn a_removers_resync_settles_its_epoch_by_finding_the_record_it_sent() {
+    use crate::services::sync::join::resync_by_replace;
+    use crate::services::sync::rekey::range;
+
+    let three = three().await;
+    let place = removal_above_an_old_snapshot(&three).await;
+    let records = |three: &Three| {
+        three
+            .vault
+            .relay
+            .ops()
+            .iter()
+            .filter(|op| {
+                let a = three.vault.a.lock();
+                let creds = keys::credentials(&a).expect("creds").expect("bound");
+                crate::services::sync::envelope::open_op(
+                    |e| creds.keys.get(e),
+                    &creds.vault_id.0,
+                    &op.ct,
+                )
+                .ok()
+                .and_then(|json| crate::services::sync::changeset::from_json(&json).ok())
+                .is_some_and(|cs| cs.rekey_head.is_some())
+            })
+            .count()
+    };
+    assert_eq!(records(&three), 1);
+    let before = super::join::device_of(&three.vault.a.lock());
+
+    resync_by_replace(
+        &three.vault.relay,
+        &three.vault.a,
+        agreed(&three.vault.a),
+        three.dir.path(),
+        &crate::services::sync::binding::NoBinding,
+        NOW,
+    )
+    .await
+    .expect("re-synced");
+
+    {
+        let a = three.vault.a.lock();
+        assert_ne!(super::join::device_of(&a), before, "another device ID");
+        assert!(!head::own_unverified(&a).expect("own"));
+        let waiting = entry(&a, 1).expect("checked again");
+        assert_eq!(
+            (waiting.after, waiting.by.as_str(), waiting.own_pending),
+            (place, A.to_hex().as_str(), false)
+        );
+    }
+    for _ in 0..3 {
+        round_of(&three.vault, &three.vault.a).await;
+    }
+
+    let a = three.vault.a.lock();
+    assert!(entry(&a, 1).is_none());
+    assert!(range::base_of(&a, 1).expect("base").is_some());
+    assert!(has_institution(&a, "c-before"));
+    drop(a);
+    assert_eq!(records(&three), 1, "no second record was signed");
+}
+
+/// R8: nobody told a device paired after a removal who made the key change, so it asks the
+/// server's bundle for that epoch, and believes its maker only as the pickup would: a pinned
+/// device that speaks and is not known to be gone. Here the only bundle the server lists is signed
+/// by C, who is removed in the joiner's store: nothing is believed and the entry keeps waiting,
+/// although A's signed record is on the server.
+#[tokio::test]
+async fn a_bundle_signed_by_a_removed_device_does_not_name_the_signer() {
+    use crate::services::sync::binding::NoBinding;
+    use crate::services::sync::join::{join_new_device, JoinIdentity};
+    use crate::services::sync::pairing::holder;
+
+    let three = three().await;
+    let place = super::join::snapshot_of_a(&three.vault, "a-first").await;
+    institution(&three.c.lock(), "c-before");
+    round_of(&three.vault, &three.c).await;
+    remove(&three, A, &[C]).await.expect("removed");
+    let key = Zeroizing::new(*a_creds(&three).keys.get(1).expect("epoch 1"));
+    let (seed, cert) = own_signer(&three.c.lock(), C);
+    let bytes = hand_bundle(&three, &seed, &cert, &[A], &key);
+    let page = RekeyPage {
+        rekeys: vec![Rekey {
+            rotation: 1,
+            head: true_head(&three),
+            at: NOW,
+            bundle: bytes,
+        }],
+        more: false,
+    };
+    three
+        .vault
+        .relay
+        .set_rekeys_answer(Some(Arc::new(move |_| page.clone())));
+    let payload = holder::announced_payload(&three.vault.a.lock(), NOW)
+        .expect("payload")
+        .expect("sync is on");
+    let crate::services::sync::pairing::SlotPayload {
+        creds,
+        heads,
+        identity,
+    } = payload;
+    let joiner = TestConn::new(migrated());
+    join_new_device(
+        &three.vault.relay,
+        &joiner,
+        creds,
+        "Tablet",
+        agreed(&joiner),
+        JoinIdentity::Paired(identity.expect("identity"), heads),
+        three.dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect("joined");
+    assert_eq!(cursor(&joiner.lock()), place);
+    round_of(&three.vault, &three.vault.a).await;
+
+    for _ in 0..2 {
+        round_of(&three.vault, &joiner).await;
+    }
+
+    let conn = joiner.lock();
+    let waiting = entry(&conn, 1).expect("still unchecked");
+    assert!(waiting.by.is_empty() && !waiting.refuted, "{waiting:?}");
+    assert_eq!(state::epoch_signer(&conn, 1).expect("signer"), None);
+    assert!(!has_institution(&conn, "c-before"), "nothing of the range");
 }

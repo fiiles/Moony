@@ -105,6 +105,18 @@ struct Vault {
     /// When (the fake's clock) Kit reads with a wrong token failed, inside the last hour.
     kit_failures: Vec<i64>,
     blobs: blobs::VaultBlobs,
+    /// Positions a lying relay kept free below a rotation head it raised
+    /// (`lift_next_rotation_head`): the next free one and the last.
+    gap: Option<(u64, u64)>,
+    /// Ops a lying relay serves instead of (or besides) what it holds (`serve_instead`).
+    served_instead: Vec<ServedInstead>,
+}
+
+/// One lie of `serve_instead`: `ct` at `seq`, to every token or to `only_token`.
+struct ServedInstead {
+    seq: u64,
+    ct: Vec<u8>,
+    only_token: Option<String>,
 }
 
 struct StoredKit {
@@ -165,11 +177,15 @@ struct FakeState {
     /// of a retired token and a key-change bundle are measured on.
     clock_offset: i64,
     /// A relay colluding with a removed device: a retired token still writes
-    /// (`set_accept_retired_writes`).
+    /// (`set_accept_retired_writes`) and reads (`set_accept_retired_reads`).
     accept_retired_writes: bool,
+    accept_retired_reads: bool,
     /// What `rekeys` answers instead of the stored bundles (`set_rekeys_answer`): a lying relay's
     /// pages, built from `after`, never checked against the contract.
     rekeys_answer: Option<RekeysAnswer>,
+    /// A relay colluding with a removed device: how far above the vault's real head the next
+    /// rotation reports (and records) its head (`lift_next_rotation_head`).
+    rotation_head_lift: u64,
 }
 
 /// A scripted `rekeys` answer: the page for `after`.
@@ -198,7 +214,7 @@ impl Default for FakeState {
             without_slot_3: false,
             server_info: Some(ServerInfo {
                 version: "1.0.0".into(),
-                protocol: 2,
+                protocol: 3,
                 mode: ServerMode::SelfHosted,
                 blobs: true,
                 kit: true,
@@ -209,13 +225,17 @@ impl Default for FakeState {
             server_now: None,
             clock_offset: 0,
             accept_retired_writes: false,
+            accept_retired_reads: false,
             rekeys_answer: None,
+            rotation_head_lift: 0,
         }
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Access {
+    /// The vault's info and the key changes: all a retired token may still ask (protocol 3).
+    Lookup,
     Read,
     Write,
     Owner,
@@ -301,7 +321,7 @@ impl FakeRelay {
     }
 
     /// What `server_info` answers from now on; `None` is an old relay that does not know the
-    /// route (`BadRequest("not_found")`). Default: protocol 2, self-hosted, version 1.0.0, with
+    /// route (`BadRequest("not_found")`). Default: protocol 3, self-hosted, version 1.0.0, with
     /// blobs.
     pub fn set_server_info(&self, info: Option<ServerInfo>) {
         self.lock().server_info = info;
@@ -516,9 +536,52 @@ impl FakeRelay {
     }
 
     /// A relay colluding with a removed device: from now on (until switched off) a retired token
-    /// pushes as if it were current. Only rotations still need the current token.
+    /// pushes (and uploads snapshots) as if it were current. Only rotations still need the
+    /// current token.
     pub fn set_accept_retired_writes(&self, accept: bool) {
         self.lock().accept_retired_writes = accept;
+    }
+
+    /// A relay that also serves a retired token's reads (pull, snapshot, blobs), which an honest
+    /// protocol-3 server refuses (`token_read_only`): for a server that hides a key change from a
+    /// lagging device. The vault's info and the key changes need no help.
+    pub fn set_accept_retired_reads(&self, accept: bool) {
+        self.lock().accept_retired_reads = accept;
+    }
+
+    /// A relay colluding with a removed device (audit 2026-11-20, R2-H1): the next rotation
+    /// answers, and records with its bundle, a head `by` above the vault's real one, and the
+    /// vault's head moves there, so every later write of the current token lands above it. The
+    /// positions in between stay free: with `set_accept_retired_writes`, a retired token's
+    /// writes fill them in order.
+    pub fn lift_next_rotation_head(&self, by: u64) {
+        self.lock().rotation_head_lift = by;
+    }
+
+    /// A lying relay (spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 7): from now on pulls
+    /// serve `ct` at position `seq`, instead of the op the relay holds there or at a position it
+    /// holds nothing at. For every token, or only for `to_token_only` (the token string a device
+    /// reads with). Off by default; the log itself, and what `ops` and the pushes see, is not
+    /// changed. Several calls for different positions add up; one for the same position and token
+    /// scope replaces the earlier.
+    pub fn serve_instead(
+        &self,
+        vault_id: &str,
+        seq: u64,
+        ct: Vec<u8>,
+        to_token_only: Option<&str>,
+    ) {
+        if let Some(vault) = self.lock().vaults.get_mut(vault_id) {
+            let only_token = to_token_only.map(str::to_string);
+            vault
+                .served_instead
+                .retain(|lie| !(lie.seq == seq && lie.only_token == only_token));
+            vault.served_instead.push(ServedInstead {
+                seq,
+                ct,
+                only_token,
+            });
+        }
     }
 
     /// A lying relay: `rekeys` reports `head` as the vault's head at rotation `rotation`.
@@ -608,8 +671,9 @@ impl FakeState {
     }
 
     /// `Vaults.verdict`: the vault exists; the token is its current one, or one rotated away less
-    /// than 30 days ago (which may read only); the subscription is live (write) or within the
-    /// read grace (read); `Owner` needs no subscription.
+    /// than 30 days ago (which may only look up the vault's info and the key changes, unless the
+    /// relay colludes: `set_accept_retired_writes`, `set_accept_retired_reads`); the subscription
+    /// is live (write) or within the read grace (read, lookup); `Owner` needs no subscription.
     fn authorize(&self, vault: &VaultAuth, access: Access) -> RelayResult<&Vault> {
         let stored = self
             .vaults
@@ -624,7 +688,12 @@ impl FakeState {
             if !previous {
                 return Err(RelayError::Unauthorized);
             }
-            if access != Access::Read && !(self.accept_retired_writes && access == Access::Write) {
+            let colluding = match access {
+                Access::Write => self.accept_retired_writes,
+                Access::Read => self.accept_retired_reads,
+                Access::Lookup | Access::Owner => false,
+            };
+            if access != Access::Lookup && !colluding {
                 return Err(RelayError::TokenReadOnly);
             }
         }
@@ -632,7 +701,7 @@ impl FakeState {
         let entitled = match access {
             Access::Owner => true,
             Access::Write => paid_until > now,
-            Access::Read => paid_until + READ_GRACE_SECONDS > now,
+            Access::Lookup | Access::Read => paid_until + READ_GRACE_SECONDS > now,
         };
         if entitled {
             Ok(stored)
@@ -766,6 +835,8 @@ impl Relay for FakeRelay {
                     kits_retired: Vec::new(),
                     kit_failures: Vec::new(),
                     blobs: blobs::VaultBlobs::new(),
+                    gap: None,
+                    served_instead: Vec::new(),
                 },
             );
             Ok(true)
@@ -778,7 +849,7 @@ impl Relay for FakeRelay {
             check_vault(vault)?;
             let mut state = self.lock();
             state.enter(Route::VaultInfo)?;
-            let stored = state.authorize(vault, Access::Read)?;
+            let stored = state.authorize(vault, Access::Lookup)?;
             Ok(VaultInfo {
                 head: stored.head,
                 floor: stored.floor,
@@ -840,18 +911,34 @@ impl Relay for FakeRelay {
                 });
             }
             let stored = state.vault_mut(&vault.vault_id);
+            // A colluding relay places a retired token's writes below the head it raised.
+            let retired = stored.token != *vault.token;
             let mut accepted = 0u32;
             for op in ops {
                 if stored.ops.iter().any(|known| known.id == op.id) {
                     continue;
                 }
-                stored.head += 1;
+                let free = stored.gap.filter(|(next, last)| retired && next <= last);
+                let seq = match free {
+                    Some((next, last)) => {
+                        stored.gap = Some((next + 1, last));
+                        next
+                    }
+                    None => {
+                        stored.head += 1;
+                        stored.head
+                    }
+                };
                 stored.bytes += op.ct.len() as u64;
-                stored.ops.push(PulledOp {
-                    seq: stored.head,
-                    id: op.id.clone(),
-                    ct: op.ct.clone(),
-                });
+                let at = stored.ops.partition_point(|known| known.seq < seq);
+                stored.ops.insert(
+                    at,
+                    PulledOp {
+                        seq,
+                        id: op.id.clone(),
+                        ct: op.ct.clone(),
+                    },
+                );
                 accepted += 1;
             }
             if lose_answer {
@@ -885,14 +972,30 @@ impl Relay for FakeRelay {
             }
             // The page is cut like the relay's (limit, then ~4 MiB of ciphertext, always at
             // least one op) but counts only the ops the relay still serves: a dropped op leaves
-            // a gap in the sequence numbers, never an empty page with `more` set.
-            let mut page = Vec::new();
-            let mut bytes = 0usize;
-            let mut served = stored
+            // a gap in the sequence numbers, never an empty page with `more` set. A lie of
+            // `serve_instead` takes the place of the op at its position, or fills a free one.
+            let lies: Vec<PulledOp> = stored
+                .served_instead
+                .iter()
+                .filter(|lie| lie.seq > after)
+                .filter(|lie| lie.only_token.as_deref().is_none_or(|t| t == *vault.token))
+                .map(|lie| PulledOp {
+                    seq: lie.seq,
+                    id: crate::services::sync::envelope::op_id(&lie.ct),
+                    ct: lie.ct.clone(),
+                })
+                .collect();
+            let mut merged: Vec<&PulledOp> = stored
                 .ops
                 .iter()
                 .filter(|op| op.seq > after && !stored.dropped.contains(&op.seq))
-                .peekable();
+                .filter(|op| !lies.iter().any(|lie| lie.seq == op.seq))
+                .chain(lies.iter())
+                .collect();
+            merged.sort_by_key(|op| op.seq);
+            let mut page = Vec::new();
+            let mut bytes = 0usize;
+            let mut served = merged.into_iter().peekable();
             while let Some(op) = served.peek() {
                 if page.len() >= limit || (!page.is_empty() && bytes + op.ct.len() > MAX_PULL_BYTES)
                 {
@@ -1114,7 +1217,7 @@ impl Relay for FakeRelay {
                 return Err(RelayError::BadRequest("invalid_limit".into()));
             }
             let limit = limit.min(MAX_REKEY_PAGE) as usize;
-            let stored = state.authorize(vault, Access::Read)?;
+            let stored = state.authorize(vault, Access::Lookup)?;
             if let Some(answer) = &state.rekeys_answer {
                 return Ok(answer(after));
             }
@@ -1296,7 +1399,12 @@ impl FakeRelay {
         if kept >= MAX_REKEYS_KEPT {
             return Err(RelayError::TooManyRotations);
         }
+        let lift = std::mem::take(&mut state.rotation_head_lift);
         let stored = state.vault_mut(&vault.vault_id);
+        if lift > 0 {
+            stored.gap = Some((stored.head + 1, stored.head + lift));
+            stored.head += lift;
+        }
         // A token retired over 30 days ago may still be remembered: it is current again.
         stored.prev_tokens.retain(|(token, _)| token != new_token);
         let retired = std::mem::replace(&mut stored.token, new_token.to_string());

@@ -541,7 +541,7 @@ async fn the_server_says_whether_it_has_the_kit() {
     assert!(relay.server_info().await.expect("info").kit);
     relay.set_server_info(Some(ServerInfo {
         version: "1.0.0".into(),
-        protocol: 2,
+        protocol: 3,
         mode: ServerMode::SelfHosted,
         blobs: true,
         kit: false,

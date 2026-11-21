@@ -65,7 +65,8 @@
       "internal": "Die Synchronisierung wurde wegen eines internen Fehlers gestoppt.",
       "keyNotGiven": "Dieses Gerät muss erneut verbunden werden.",
       "keyChangeUnverified": "Dieses Gerät muss erneut verbunden werden.",
-      "keyChangeWaiting": "Es wird gewartet, bis sich das Gerät verbindet, das die Änderung vorgenommen hat."
+      "keyChangeWaiting": "Es wird gewartet, bis sich das Gerät verbindet, das die Änderung vorgenommen hat.",
+      "keyChangeWaitingOwn": "Das Entfernen wird abgeschlossen. Der Synchronisierungsserver hat noch nicht alle Änderungen aus der Zeit vor dem Entfernen gesendet. Moony versucht es weiter; die Daten auf diesem Gerät sind in Ordnung."
     },
     "lastSynced": "Zuletzt synchronisiert {{date}}",
     "neverSynced": "Noch nicht synchronisiert",
@@ -181,7 +182,7 @@
       "found": "Server gefunden · Version {{version}}",
       "checking": "Server wird gesucht…",
       "insecureTitle": "Die Verbindung ist nicht verschlüsselt (http)",
-      "insecureBody": "Ihre Daten bleiben verschlüsselt, aber jeder im selben Netzwerk kann den Zugang zur Synchronisierung abgreifen und die synchronisierten Daten auf dem Server löschen oder sperren.",
+      "insecureBody": "Ihre Daten bleiben verschlüsselt, aber jeder im selben Netzwerk kann den Zugang zur Synchronisierung abgreifen, die synchronisierten Daten auf dem Server löschen oder sperren und auch das Wiederherstellungs-Kit unbrauchbar machen.",
       "insecureAck": "Ich verstehe, trotzdem fortfahren",
       "resume": "Einrichtung mit {{host}} begonnen",
       "other": "Anderen Verbindungscode verwenden",
@@ -393,7 +394,7 @@
     "validUntil": "Der Code gilt bis {{time}}.",
     "copyCode": "Code kopieren",
     "copiedCode": "Kopiert",
-    "codeHint": "Keine Kamera? Geben Sie diesen Code auf dem anderen Gerät ein oder fügen Sie ihn ein. Sie können ihn auch per Nachricht senden: Ohne die sechs Ziffern, die Sie danach hier eingeben, verrät er nichts.",
+    "codeHint": "Keine Kamera? Geben Sie diesen Code auf dem anderen Gerät ein oder fügen Sie ihn ein. Sie können ihn auch per Nachricht senden. Die sechs Ziffern, die Sie danach hier eingeben, bestätigen, dass ihn unterwegs niemand verändert hat.",
     "deviceConnected": "{{name}} ist verbunden",
     "sentLate": "Schließen Sie die Verbindung auf dem anderen Gerät ab. Sobald es verbunden ist, erscheint es in der Liste."
   },
@@ -403,7 +404,7 @@
     "passwordLabel": "Moony-Passwort",
     "serverLabel": "Adresse des Synchronisierungsservers",
     "serverHint": "Geben Sie die Adresse Ihres Synchronisierungsservers ein oder fügen Sie seinen Verbindungscode ein.",
-    "insecureAtJoin": "Die Synchronisierungsdaten, mit denen Sie beitreten, verweisen auf {{host}}, das über einfaches http erreicht wird. Ihre Daten bleiben verschlüsselt, aber jeder im selben Netzwerk kann den Zugang zur Synchronisierung abgreifen und die synchronisierten Daten auf dem Server löschen oder sperren.",
+    "insecureAtJoin": "Die Synchronisierungsdaten, mit denen Sie beitreten, verweisen auf {{host}}, das über einfaches http erreicht wird. Ihre Daten bleiben verschlüsselt, aber jeder im selben Netzwerk kann den Zugang zur Synchronisierung abgreifen, die synchronisierten Daten auf dem Server löschen oder sperren und auch das Wiederherstellungs-Kit unbrauchbar machen.",
     "kitServer": "Synchronisierungsserver: {{host}}",
     "pairTitle": "Vom Smartphone beitreten",
     "pairHint": "Auf dem Smartphone mit eingeschalteter Synchronisierung: Einstellungen → Synchronisierung → Gerät hinzufügen",
@@ -554,7 +555,9 @@
     },
     "keep": "Es ist meins",
     "added": "Diese Geräte haben Sie von {{name}} (oder von ihnen) aus hinzugefügt. Entfernen Sie auch die, die Sie nicht kennen.",
-    "addedRow": "{{name}} · hinzugefügt am {{date}}",
+    "addedRow": "Hinzugefügt am {{date}} von {{name}}",
+    "addedRowNoIssuer": "Hinzugefügt am {{date}}",
+    "recentNote": "Geräte, die in den letzten 30 Tagen hinzugefügt wurden, sind vorab angekreuzt. Wenn Sie eines davon kennen und behalten möchten, entfernen Sie das Häkchen.",
     "inHand": "Haben Sie {{name}} bei sich? Schalten Sie darauf einfach die Synchronisierung aus.",
     "kit": {
       "creatorRemoved": "Ihr Wiederherstellungs-Kit wurde auf {{name}} gespeichert und verliert deshalb seine Gültigkeit. Gleich danach erstellen Sie ein neues.",
@@ -663,7 +666,7 @@
     },
     "waiting": {
       "title": "Die Synchronisierung wartet auf {{by}}",
-      "body": "Dieses Gerät wartet auf eine Bestätigung von {{by}}, das zuletzt die Geräteliste geändert hat. Die Daten hier sind in Ordnung. Wenn Sie {{by}} nicht mehr verwenden, verbinden Sie dieses Gerät erneut."
+      "body": "{{by}} hat eine Änderung der Geräteliste nicht abgeschlossen. Öffnen Sie Moony darauf. Wenn Sie es nicht mehr haben, schalten Sie die Synchronisierung auf allen Geräten aus und von dem Gerät mit den vollständigsten Daten wieder ein."
     }
   },
   "rejoin": {

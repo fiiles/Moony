@@ -1099,3 +1099,25 @@ async fn an_envelope_without_a_readable_epoch_fits_no_position() {
     assert!(!epoch_fits_position(&a, &vault.creds, None, 60).expect("rule"));
     assert!(epoch_fits_position(&a, &vault.creds, Some(1), 60).expect("rule"));
 }
+
+/// Final review 2, M5: a position the store cannot keep (above `i64::MAX`) is outside the relay's
+/// contract, so the page is refused instead of failing every round on it.
+#[test]
+fn a_page_with_a_position_beyond_the_store_is_outside_the_contract() {
+    use crate::services::sync::engine::pull::check_page;
+    use crate::services::sync::relay::{PullPage, PulledOp};
+
+    let op = |seq: u64| PulledOp {
+        seq,
+        id: "x".into(),
+        ct: Vec::new(),
+    };
+    let limit = i64::MAX as u64;
+    let page = |ops: Vec<PulledOp>, head: u64| PullPage {
+        ops,
+        head,
+        more: false,
+    };
+    assert!(check_page(&page(vec![op(limit)], limit), 5, 10).is_ok());
+    assert!(check_page(&page(vec![op(limit + 1)], limit + 1), 5, 10).is_err());
+}

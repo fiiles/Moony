@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import type { RecoveryKit, RemovalPlanDevice } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useRemovalPlan } from '@/hooks/use-device-sync';
+import { useDefaultAlsoRemove } from '@/hooks/use-default-also-remove';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -72,6 +73,7 @@ export function RemoveDeviceSheet({
   const server = useServerGate();
   const planQuery = useRemovalPlan(deviceIds, alsoRemove, newKit, planning);
   const plan = planQuery.data;
+  useDefaultAlsoRemove(plan, setAlsoRemove);
   const name = removalTitleNames(plan, deviceIds) ?? deviceNames?.join(', ') ?? '';
   const several = deviceIds.length > 1;
   const reload = planQuery.refetch;
@@ -257,6 +259,9 @@ export function RemoveDeviceSheet({
             {plan.addedByRemoving.length > 0 && (
               <section className="space-y-1">
                 <p className="m-0">{t('remove.added', { name })}</p>
+                {plan.tickedByDefault.length > 0 && (
+                  <p className="m-0 text-m-sub text-ink-3">{t('remove.recentNote')}</p>
+                )}
                 <AlsoRemoveList
                   idPrefix={`${fieldId}-also`}
                   devices={plan.addedByRemoving}

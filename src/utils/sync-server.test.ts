@@ -127,6 +127,13 @@ describe('payloadServer', () => {
     expect(payloadServer(`moony-pair:2:MzMzMzMzMzMzMzMzMzMzMw:${key}`)).toBeNull();
   });
 
+  it('names the server of a protocol 4 pairing code the same way', () => {
+    expect(payloadServer(`moony-pair:4:MzMzMzMzMzMzMzMzMzMzMw:${key}:${SERVER_FIELD}`)).toBe(
+      'https://sync.example.org'
+    );
+    expect(payloadServer(`moony-pair:4:MzMzMzMzMzMzMzMzMzMzMw:${key}`)).toBeNull();
+  });
+
   it('names the server of a Recovery Kit QR', () => {
     expect(payloadServer(`moony-recover:2:${CODE95}:${SERVER_FIELD}`)).toBe(
       'https://sync.example.org'

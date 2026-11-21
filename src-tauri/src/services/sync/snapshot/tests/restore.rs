@@ -105,6 +105,57 @@ fn replace_discards_the_joining_profiles_own_rows_and_seeds() {
 }
 
 #[test]
+fn a_replace_puts_the_place_at_the_snapshots_position() {
+    let a = device(A);
+    let (bytes, _) = snapshot(&a, 9);
+
+    let b = device(B);
+    exec(
+        &b,
+        "UPDATE sync_state SET cursor = 50, restored_seq = 60; \
+         INSERT INTO sync_seen_ops (pos, hash) VALUES (70, x'bb'); \
+         INSERT INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (1, 4, 1); \
+         INSERT INTO sync_range_notes (epoch, pos, hash) VALUES (1, 5, x'aa');",
+    );
+    assert_eq!(
+        crate::services::sync::engine::seen::place(&b).expect("place"),
+        Some(70)
+    );
+    restore_replace(&b, &mut &bytes[..], NOW).expect("replace");
+
+    assert_eq!(count(&b, "SELECT COUNT(*) FROM sync_seen_ops"), 0);
+    assert_eq!(count(&b, "SELECT cursor FROM sync_state"), 9);
+    assert_eq!(count(&b, "SELECT restored_seq FROM sync_state"), 9);
+    assert_eq!(
+        crate::services::sync::engine::seen::place(&b).expect("place"),
+        Some(9),
+        "the snapshot's position, whatever the device had before"
+    );
+    // A replace that keeps the identity keeps the notes of the epochs the device still holds:
+    // which of them step 7 must run again for is decided against the new place, later.
+    assert_eq!(count(&b, "SELECT COUNT(*) FROM sync_range_notes"), 1);
+}
+
+#[test]
+fn a_merge_restore_raises_the_restored_position_and_clears_no_notes() {
+    let a = device(A);
+    let (bytes, _) = snapshot(&a, 9);
+
+    let b = device(B);
+    exec(
+        &b,
+        "UPDATE sync_state SET restored_seq = 60; \
+         INSERT INTO sync_seen_ops (pos, hash) VALUES (70, x'bb');",
+    );
+    restore_merge(&b, &mut &bytes[..], NOW).expect("merge");
+    assert_eq!(count(&b, "SELECT restored_seq FROM sync_state"), 60);
+    assert_eq!(count(&b, "SELECT COUNT(*) FROM sync_seen_ops"), 1);
+    exec(&b, "UPDATE sync_state SET restored_seq = 2");
+    restore_merge(&b, &mut &bytes[..], NOW).expect("merge");
+    assert_eq!(count(&b, "SELECT restored_seq FROM sync_state"), 9);
+}
+
+#[test]
 fn a_replace_forgets_the_settled_mark() {
     let a = device(A);
     let (bytes, _) = snapshot(&a, 1);

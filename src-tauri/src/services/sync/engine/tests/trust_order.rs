@@ -8,6 +8,7 @@ use rusqlite::Connection;
 
 use super::rekey_fixture::{round_of, three};
 use super::*;
+use crate::services::sync::binding::NoBinding;
 use crate::services::sync::changeset::from_json;
 use crate::services::sync::engine::pull::note_trust_positions;
 use crate::services::sync::envelope::open_op;
@@ -127,7 +128,14 @@ async fn the_announcement_goes_out_before_the_holders_later_left_record() {
 
     // A leaves as turning sync off does: the announcement queued at the confirm is ahead of the
     // `left` record in the one push (`setup::leave_best_effort`).
-    setup::leave_best_effort(&three.vault.relay, &three.vault.a, setup::LEAVE_BUDGET).await;
+    setup::leave_best_effort(
+        &three.vault.relay,
+        &three.vault.a,
+        three.dir.path(),
+        Arc::new(NoBinding),
+        setup::LEAVE_BUDGET,
+    )
+    .await;
     let report = round_of(&three.vault, &three.vault.b).await;
     assert_eq!(
         report.problem, None,

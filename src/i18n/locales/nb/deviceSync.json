@@ -65,7 +65,8 @@
       "internal": "Synkroniseringen stoppet på grunn av en intern feil.",
       "keyNotGiven": "Denne enheten må kobles til på nytt.",
       "keyChangeUnverified": "Denne enheten må kobles til på nytt.",
-      "keyChangeWaiting": "Venter på at enheten som gjorde endringen kobler seg til."
+      "keyChangeWaiting": "Venter på at enheten som gjorde endringen kobler seg til.",
+      "keyChangeWaitingOwn": "Fjerningen er i ferd med å fullføres. Synkroniseringsserveren har ikke sendt alle endringene fra før fjerningen ennå. Moony fortsetter å prøve; dataene på denne enheten er i orden."
     },
     "lastSynced": "Sist synkronisert {{date}}",
     "neverSynced": "Ikke synkronisert ennå",
@@ -181,7 +182,7 @@
       "found": "Server funnet · versjon {{version}}",
       "checking": "Leter etter serveren…",
       "insecureTitle": "Tilkoblingen er ikke kryptert (http)",
-      "insecureBody": "Dataene dine forblir krypterte, men alle på samme nettverk kan fange opp tilgangen til synkroniseringen og slette eller blokkere de synkroniserte dataene på serveren.",
+      "insecureBody": "Dataene dine forblir krypterte, men alle på samme nettverk kan fange opp tilgangen til synkroniseringen, slette eller blokkere de synkroniserte dataene på serveren og gjøre gjenopprettingssettet ubrukelig også.",
       "insecureAck": "Jeg forstår, fortsett likevel",
       "resume": "Oppsettet startet med {{host}}",
       "other": "Bruk en annen tilkoblingskode",
@@ -393,7 +394,7 @@
     "validUntil": "Koden fungerer til kl. {{time}}.",
     "copyCode": "Kopier kode",
     "copiedCode": "Kopiert",
-    "codeHint": "Ikke kamera? Skriv inn eller lim inn denne koden på den andre enheten. Du kan sende den i en melding: uten de seks sifrene du skriver inn her etterpå, avslører den ingenting.",
+    "codeHint": "Ikke kamera? Skriv inn eller lim inn denne koden på den andre enheten. Du kan sende den i en melding. De seks sifrene du skriver inn her etterpå, bekrefter at ingen har endret den underveis.",
     "deviceConnected": "{{name}} er koblet til",
     "sentLate": "Fullfør tilkoblingen på den andre enheten. Når den er koblet til, vises den i listen."
   },
@@ -403,7 +404,7 @@
     "passwordLabel": "Moony-passord",
     "serverLabel": "Adresse til synkroniseringsserveren",
     "serverHint": "Skriv adressen til synkroniseringsserveren din, eller lim inn tilkoblingskoden.",
-    "insecureAtJoin": "Synkroniseringsdetaljene du blir med på, peker til {{host}}, som nås over vanlig http. Dataene dine forblir krypterte, men alle på samme nettverk kan fange opp tilgangen til synkroniseringen og slette eller blokkere de synkroniserte dataene på serveren.",
+    "insecureAtJoin": "Synkroniseringsdetaljene du blir med på, peker til {{host}}, som nås over vanlig http. Dataene dine forblir krypterte, men alle på samme nettverk kan fange opp tilgangen til synkroniseringen, slette eller blokkere de synkroniserte dataene på serveren og gjøre gjenopprettingssettet ubrukelig også.",
     "kitServer": "Synkroniseringsserver: {{host}}",
     "pairTitle": "Bli med fra telefonen",
     "pairHint": "På telefonen med synkronisering på: Innstillinger → Synkronisering → Legg til en enhet",
@@ -554,7 +555,9 @@
     },
     "keep": "Den er min",
     "added": "Du la til disse enhetene fra {{name}} (eller fra dem). Fjern også de du ikke kjenner igjen.",
-    "addedRow": "{{name}} · lagt til {{date}}",
+    "addedRow": "Lagt til {{date}} fra {{name}}",
+    "addedRowNoIssuer": "Lagt til {{date}}",
+    "recentNote": "Enheter som er lagt til de siste 30 dagene, er avkrysset på forhånd. Hvis du kjenner igjen en av dem og vil beholde den, fjerner du avkrysningen.",
     "inHand": "Har du {{name}} for hånden? Slå bare av synkronisering på den.",
     "kit": {
       "creatorRemoved": "Gjenopprettingssettet ditt ble lagret på {{name}}, så det slutter å gjelde. Rett etterpå lager du et nytt.",
@@ -663,7 +666,7 @@
     },
     "waiting": {
       "title": "Synkroniseringen venter på {{by}}",
-      "body": "Denne enheten venter på en bekreftelse fra {{by}}, som sist endret enhetslisten. Dataene her er i orden. Hvis du ikke bruker {{by}} lenger, kobler du denne enheten til på nytt."
+      "body": "{{by}} fullførte ikke en endring av enhetslisten. Åpne Moony på den. Hvis du ikke har den lenger, slår du av synkroniseringen på alle enheter og slår den på igjen fra enheten med de mest fullstendige dataene."
     }
   },
   "rejoin": {

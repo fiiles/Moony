@@ -2276,6 +2276,11 @@ droppingOut: RemovalDroppingOut[];
  */
 addedByRemoving: RemovalPlanDevice[]; 
 /**
+ * The hex IDs of the members of `added_by_removing` this device first verified within the
+ * last 30 days: the dialog starts with them ticked.
+ */
+tickedByDefault: string[]; 
+/**
  * Whether, and why, the recovery kit is replaced; a new kit then comes with the outcome.
  */
 replacesKit: ReplacesKit; 
@@ -2292,7 +2297,16 @@ consent: string }
 /**
  * A device in a removal plan.
  */
-export type RemovalPlanDevice = { id: string; name: string; platform: string; joinedAt: number; thisDevice: boolean }
+export type RemovalPlanDevice = { id: string; name: string; platform: string; joinedAt: number; thisDevice: boolean; 
+/**
+ * When this device first verified it (`pinned_at`, its own clock); `None` with no trust entry.
+ */
+addedAt: number | null; 
+/**
+ * The name of the device that added it (a pairing's issuer); `None` for any other way of
+ * joining or when that device's row is gone.
+ */
+addedBy: string | null }
 
 /**
  * What the person agreed to in a replace's confirmation: the watermark of the impact it showed,
@@ -4008,6 +4022,12 @@ removalSupported: boolean;
  * and finishes by itself: "Dokončuji odebrání zařízení…".
  */
 removalPending: boolean; 
+/**
+ * With `keyChangeWaiting`: the head not verified yet is this device's own (a removal or a
+ * new recovery kit it made, not signed until it has read the changes before it): "Odebrání
+ * se dokončuje."
+ */
+ownChangeFinishing: boolean; 
 /**
  * Another device removed devices or made a new recovery kit (Local, until dismissed).
  */

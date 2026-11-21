@@ -323,9 +323,11 @@
     "syncSnapshotBelowBarrier": "The synced copy of your data was made before the latest Moony update and cannot be used. A device with the latest version needs to upload a new one.",
     "syncSnapshotClockAhead": "The synced copy of your data is dated more than ten years ahead, so it was not used. A device with the correct date and time needs to upload a new one.",
     "syncSnapshotInvalid": "The synced copy of your data is damaged and could not be restored.",
+    "syncSnapshotWaiting": "The sync server does not yet hold a copy of your data that this device can safely restore from. One of your other devices uploads it at its next sync; try again after that.",
     "syncTooManyDevices": "Moony syncs at most 64 devices. First remove the ones you no longer use.",
     "syncRemovalPlanChanged": "The device list has changed in the meantime. Check it and confirm again.",
     "syncRemovalPending": "Removing the devices is still in progress. Try again in a moment.",
+    "syncRemovalNeedsSync": "Sync has to finish before a device can be removed. Try again in a moment.",
     "syncRotationRaced": "{{name}} changed the device list in the meantime. Check it and try again.",
     "syncTooManyKeyChanges": "The device list changed too many times in the last 30 days. Try again in a few days.",
     "syncRemovalUnsupported": "This sync was set up by an older version of Moony, so devices can't be removed from it.",
@@ -360,6 +362,7 @@
     "syncUnavailable": "Sync is not available in this version of Moony.",
     "syncDevOnly": "This is a developer tool, available only in development builds.",
     "syncChangeInProgress": "Another sync change is in progress on this device. Wait until it finishes.",
+    "syncWaitingForDevice": "Sync is waiting for another device to finish a change of the device list. Open Moony on that device, then try again.",
     "syncPasswordRequired": "Enter your password again to copy or save the Recovery Kit code.",
     "syncPairingCodeInvalid": "The pairing code is not valid. Check the code shown on the other device.",
     "syncPairingOtherNeedsUpdate": "The other device needs a Moony update before it can pair with this one.",
@@ -387,7 +390,8 @@
     "syncRecoveryVaultNotFound": "The server doesn't know this kit: a newer kit may have replaced it, or it belongs to another sync or server. Check the code and the server address.",
     "syncRecoveryKitReplaced": "A newer recovery kit replaced this one on {{at, unixdate}}. Use the newer kit.",
     "syncRecoveryKitUnreadable": "Moony couldn't read this recovery kit: the data on the sync server don't match it. Nothing was changed.",
-    "syncJoinSetupPending": "Finish or cancel the sync setup on this device first."
+    "syncJoinSetupPending": "Finish or cancel the sync setup on this device first.",
+    "syncJoinOvertaken": "The device list changed while you were connecting. Try again."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

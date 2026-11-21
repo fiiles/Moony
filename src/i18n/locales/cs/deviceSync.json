@@ -73,7 +73,8 @@
       "internal": "Synchronizace se zastavila kvůli vnitřní chybě.",
       "keyNotGiven": "Toto zařízení je potřeba připojit znovu.",
       "keyChangeUnverified": "Toto zařízení je potřeba připojit znovu.",
-      "keyChangeWaiting": "Čeká se, až se připojí zařízení, které změnu provedlo."
+      "keyChangeWaiting": "Čeká se, až se připojí zařízení, které změnu provedlo.",
+      "keyChangeWaitingOwn": "Odebrání se dokončuje. Synchronizační server zatím neposlal všechny změny z doby před odebráním. Moony to zkouší dál; data na tomto zařízení jsou v pořádku."
     },
     "lastSynced": "Naposledy synchronizováno {{date}}",
     "neverSynced": "Zatím nesynchronizováno",
@@ -189,7 +190,7 @@
       "found": "Server nalezen · verze {{version}}",
       "checking": "Hledám server…",
       "insecureTitle": "Spojení není šifrované (http)",
-      "insecureBody": "Data zůstávají šifrovaná, ale kdokoli ve stejné síti může zachytit přístup k synchronizaci a synchronizovaná data na serveru smazat nebo zablokovat.",
+      "insecureBody": "Data zůstávají šifrovaná, ale kdokoli ve stejné síti může zachytit přístup k synchronizaci, synchronizovaná data na serveru smazat nebo zablokovat a vyřadit i záchrannou sadu.",
       "insecureAck": "Rozumím, přesto pokračovat",
       "resume": "Nastavení začalo se serverem {{host}}",
       "other": "Použít jiný připojovací kód",
@@ -415,7 +416,7 @@
     "validUntil": "Kód platí do {{time}}.",
     "copyCode": "Zkopírovat kód",
     "copiedCode": "Zkopírováno",
-    "codeHint": "Bez fotoaparátu? Zadejte nebo vložte tento kód na druhém zařízení. Můžete ho poslat i zprávou: bez šesti číslic, které potom zadáte tady, nic neprozradí.",
+    "codeHint": "Bez fotoaparátu? Zadejte nebo vložte tento kód na druhém zařízení. Můžete ho poslat i zprávou. Šest číslic, které potom zadáte tady, potvrdí, že ho cestou nikdo nezměnil.",
     "deviceConnected": "Zařízení {{name}} je připojené",
     "sentLate": "Dokončete připojení na druhém zařízení. Až se připojí, objeví se v seznamu."
   },
@@ -425,7 +426,7 @@
     "passwordLabel": "Heslo do Moony",
     "serverLabel": "Adresa synchronizačního serveru",
     "serverHint": "Napište adresu svého synchronizačního serveru nebo vložte jeho připojovací kód.",
-    "insecureAtJoin": "Synchronizační údaje, se kterými se připojujete, ukazují na server {{host}}, ke kterému se přistupuje přes prosté http. Data zůstávají šifrovaná, ale kdokoli ve stejné síti může zachytit přístup k synchronizaci a synchronizovaná data na serveru smazat nebo zablokovat.",
+    "insecureAtJoin": "Synchronizační údaje, se kterými se připojujete, ukazují na server {{host}}, ke kterému se přistupuje přes prosté http. Data zůstávají šifrovaná, ale kdokoli ve stejné síti může zachytit přístup k synchronizaci, synchronizovaná data na serveru smazat nebo zablokovat a vyřadit i záchrannou sadu.",
     "kitServer": "Synchronizační server: {{host}}",
     "pairTitle": "Připojit z telefonu",
     "pairHint": "Na telefonu se zapnutou synchronizací: Nastavení → Synchronizace → Přidat zařízení",
@@ -584,7 +585,9 @@
     },
     "keep": "Je moje",
     "added": "Tato zařízení jste přidali ze zařízení {{name}} (nebo z nich). Odeberte i ta, která nepoznáváte.",
-    "addedRow": "{{name}} · přidáno {{date}}",
+    "addedRow": "Přidáno {{date}} ze zařízení {{name}}",
+    "addedRowNoIssuer": "Přidáno {{date}}",
+    "recentNote": "Zařízení přidaná v posledních 30 dnech jsou zaškrtnutá předem. Pokud některé z nich znáte a chcete si ho nechat, zaškrtnutí zrušte.",
     "inHand": "Máte {{name}} u sebe? Stačí na něm synchronizaci vypnout.",
     "kit": {
       "creatorRemoved": "Na zařízení {{name}} jste si uložili záchrannou sadu, proto přestane platit. Hned potom si vytvoříte novou.",
@@ -693,7 +696,7 @@
     },
     "waiting": {
       "title": "Synchronizace čeká na zařízení {{by}}",
-      "body": "Toto zařízení čeká na potvrzení od zařízení {{by}}, které naposledy měnilo seznam zařízení. Data tady jsou v pořádku. Pokud {{by}} už nepoužíváte, připojte toto zařízení znovu."
+      "body": "Zařízení {{by}} nedokončilo změnu seznamu zařízení. Otevřete na něm Moony. Pokud ho už nemáte, vypněte synchronizaci na všech zařízeních a zapněte ji znovu ze zařízení, které má nejúplnější data."
     }
   },
   "rejoin": {

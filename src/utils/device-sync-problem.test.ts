@@ -11,6 +11,7 @@ import {
   heldGapDevice,
   offersResync,
   problemAction,
+  problemTextKey,
   skippableGap,
   type SyncProblemAction,
 } from './device-sync-problem';
@@ -215,5 +216,17 @@ describe('offersResync', () => {
     ] as const) {
       expect(offersResync(problem)).toBe(false);
     }
+  });
+});
+
+describe('problemTextKey', () => {
+  it('gives a key change this device made itself its own text, and only that', () => {
+    expect(problemTextKey('keyChangeWaiting', { ownChangeFinishing: true })).toBe(
+      'status.problem.keyChangeWaitingOwn'
+    );
+    expect(problemTextKey('keyChangeWaiting', { ownChangeFinishing: false })).toBe(
+      'status.problem.keyChangeWaiting'
+    );
+    expect(problemTextKey('offline', { ownChangeFinishing: true })).toBe('status.problem.offline');
   });
 });

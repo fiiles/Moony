@@ -17,7 +17,7 @@
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use moony_keychain::{KeychainError, KeychainExt};
@@ -677,7 +677,7 @@ pub(crate) async fn delete_vault_with_account(db: &Database) {
 /// and for Delete Account without the "delete the synced data" box (the vault stays for the other
 /// devices); the engine has stopped, so no round holds the round lock. Never blocks and never
 /// fails the change: every failure is logged there.
-pub(crate) async fn say_left(db: &Database) {
+pub(crate) async fn say_left(app: &AppHandle, db: &Database) {
     if !feature::enabled() {
         return;
     }
@@ -691,7 +691,12 @@ pub(crate) async fn say_left(db: &Database) {
         log::warn!("[SYNC] This device did not say that it left: no valid sync server address");
         return;
     };
-    setup::leave_best_effort(&relay, &session, setup::LEAVE_BUDGET).await;
+    let Ok(dir) = data_dir(app) else {
+        log::warn!("[SYNC] This device did not say that it left: no profile folder");
+        return;
+    };
+    let native = Arc::new(KeychainBinding { app: app.clone() });
+    setup::leave_best_effort(&relay, &session, &dir, native, setup::LEAVE_BUDGET).await;
 }
 
 // ============================================================================
@@ -1055,7 +1060,7 @@ pub async fn sync_turn_off(
     // seconds at most), once the recheck passed; a setup that never finished has nobody to tell.
     guarded_change(
         &AppEngine { app: &app, db: &db },
-        turn_off_rechecked(&session, &dir, checked, say_left(&db)),
+        turn_off_rechecked(&session, &dir, checked, say_left(&app, &db)),
     )
     .await
 }

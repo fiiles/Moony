@@ -868,7 +868,7 @@ CREATE TABLE sync_devices (id TEXT PRIMARY KEY, public_key TEXT, name TEXT NOT N
 
 == table sync_epochs ==
 CREATE TABLE sync_epochs (epoch INTEGER PRIMARY KEY, rotation_head INTEGER NOT NULL,
-    adopted_at INTEGER NOT NULL, by_device TEXT)
+    adopted_at INTEGER NOT NULL, by_device TEXT, range_base INTEGER, range_count INTEGER)
 
 == table sync_heads ==
 CREATE TABLE sync_heads (device BLOB PRIMARY KEY, seq INTEGER NOT NULL, hash BLOB NOT NULL,
@@ -888,6 +888,13 @@ CREATE TABLE sync_outbox (tbl TEXT NOT NULL, pk TEXT NOT NULL, queued_at INTEGER
 CREATE TABLE sync_own_log (seq INTEGER PRIMARY KEY, hash BLOB NOT NULL, min_hlc INTEGER NOT NULL,
     max_hlc INTEGER NOT NULL)
 
+== table sync_range_notes ==
+CREATE TABLE sync_range_notes (epoch INTEGER NOT NULL, pos INTEGER NOT NULL,
+    hash BLOB NOT NULL, PRIMARY KEY (epoch, pos))
+
+== table sync_seen_ops ==
+CREATE TABLE sync_seen_ops (pos INTEGER PRIMARY KEY, hash BLOB NOT NULL)
+
 == table sync_state ==
 CREATE TABLE sync_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -899,7 +906,7 @@ CREATE TABLE sync_state (
     snapshot_hlc INTEGER NOT NULL DEFAULT 0,
     barrier INTEGER NOT NULL DEFAULT 0, schema_seen INTEGER NOT NULL DEFAULT 0,
     last_error TEXT, last_error_at INTEGER, last_success_at INTEGER
-, barrier_seq INTEGER, marker_barrier INTEGER NOT NULL DEFAULT 0, capture_broken_at INTEGER, vault_gone_at INTEGER, pulled_bytes INTEGER NOT NULL DEFAULT 0, pulled_bytes_base INTEGER NOT NULL DEFAULT 0, snapshot_uploaded_at INTEGER, binding_written INTEGER NOT NULL DEFAULT 0 CHECK (binding_written IN (0, 1)), missed_below_barrier INTEGER, snapshot_too_large_at INTEGER, snapshot_barrier INTEGER NOT NULL DEFAULT 0, last_complete_at INTEGER, device_sign_key BLOB, rotation_pending TEXT, rekey_seen INTEGER NOT NULL DEFAULT 0, kit_epoch_saved INTEGER, snapshot_epoch_due INTEGER NOT NULL DEFAULT 0)
+, barrier_seq INTEGER, marker_barrier INTEGER NOT NULL DEFAULT 0, capture_broken_at INTEGER, vault_gone_at INTEGER, pulled_bytes INTEGER NOT NULL DEFAULT 0, pulled_bytes_base INTEGER NOT NULL DEFAULT 0, snapshot_uploaded_at INTEGER, binding_written INTEGER NOT NULL DEFAULT 0 CHECK (binding_written IN (0, 1)), missed_below_barrier INTEGER, snapshot_too_large_at INTEGER, snapshot_barrier INTEGER NOT NULL DEFAULT 0, last_complete_at INTEGER, device_sign_key BLOB, rotation_pending TEXT, rekey_seen INTEGER NOT NULL DEFAULT 0, kit_epoch_saved INTEGER, snapshot_epoch_due INTEGER NOT NULL DEFAULT 0, restored_seq INTEGER)
 
 == table sync_tickets ==
 CREATE TABLE sync_tickets (ticket_pub BLOB PRIMARY KEY, issuer TEXT NOT NULL,

@@ -1,4 +1,4 @@
-//! What a holder seals into slot 2 (protocol 3, phase 5 spec §5.3, §11.2), read from its profile:
+//! What a holder seals into slot 2 (protocol 4, phase 5 spec §5.3, §11.2), read from its profile:
 //! the vault's credentials, the rotation head of each key epoch it knows one for, and, when its
 //! own certificate is pinned, its identity: its whole trust store and a fresh one-time join
 //! ticket. A vault without certificates (§5.5) sends `identity: null`. The ticket's secret lives
@@ -27,6 +27,23 @@ use crate::services::sync::relay::Mailbox;
 use crate::services::sync::state;
 
 const FAILED: &str = "validation.syncPairingFailed";
+const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
+const WAITING_FOR_DEVICE: &str = "validation.syncWaitingForDevice";
+
+/// A device that holds a key-change head it has not verified (its own, or another's) hands no
+/// keys on (spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 5): `validation.syncChangeInProgress`
+/// while its own head is unverified (`head::own_unverified`), `validation.syncWaitingForDevice`
+/// while another device's is. Read before a holder shows a code, scans one, or seals anything.
+pub fn refuse_while_unverified(conn: &Connection) -> Result<()> {
+    use crate::services::sync::rekey::head;
+    if head::own_unverified(conn)? {
+        return Err(AppError::Validation(CHANGE_IN_PROGRESS.into()));
+    }
+    if head::any_unverified(conn)? {
+        return Err(AppError::Validation(WAITING_FOR_DEVICE.into()));
+    }
+    Ok(())
+}
 
 /// The person confirmed on this device (`PairingSession::confirm_with`). For a holder at Compare,
 /// not contested, with typed text that can be a code, the slot-2 payload is read first holding
@@ -73,11 +90,15 @@ pub fn announced_payload(conn: &Connection, now: i64) -> Result<Option<SlotPaylo
     Ok(payload)
 }
 
-/// The holder's slot-2 payload, `None` while sync is off or the vault's secrets are missing.
+/// The holder's slot-2 payload, `None` while sync is off or the vault's secrets are missing;
+/// `validation.syncChangeInProgress` or `validation.syncWaitingForDevice` while a head is not
+/// verified (`refuse_while_unverified`).
 pub fn holder_payload(conn: &Connection, now: i64) -> Result<Option<SlotPayload>> {
     let Some(sync) = state::load(conn)?.filter(|sync| sync.enabled) else {
         return Ok(None);
     };
+    // Before the ticket is issued, the identity exported or anything sealed.
+    refuse_while_unverified(conn)?;
     let Some(creds) = keys::credentials(conn)? else {
         return Ok(None);
     };

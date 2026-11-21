@@ -550,7 +550,7 @@ async fn the_blob_calls_round_trip_and_refuse_a_bad_id() {
         .await
         .expect("server info");
     assert!(info.blobs, "{info:?}");
-    assert_eq!(info.protocol, 2);
+    assert_eq!(info.protocol, 3);
 
     let a = first_device(&relay, &url, "Blobs").await;
     let creds = a.credentials();

@@ -297,11 +297,13 @@ async fn a_lost_race_picks_the_other_change_up_and_commits_nothing_of_its_own() 
     let three = three().await;
     // B changes the key first, removing nobody; A's removal of C then meets a retired token.
     new_kit(&three, B).await.expect("B changes the key");
-    // A's plan was made before it knew of B's change: refused as changed after the pickup.
+    // A's plan was made before it knew of B's change: after the pickup A holds B's head, which is
+    // not verified yet, so the call is refused as waiting for another device (task 8; before it, as
+    // a changed plan) and commits nothing.
     let error = remove(&three, A, &[C]).await.expect_err("raced");
     assert_eq!(
         validation_key(&error).as_deref(),
-        Some(rotate::PLAN_CHANGED)
+        Some("validation.syncWaitingForDevice")
     );
     {
         let a = three.vault.a.lock();
@@ -512,6 +514,118 @@ async fn a_change_whose_answer_was_lost_commits_without_a_second_call() {
     let head = three.vault.relay.ops().last().map_or(0, |op| op.seq);
     assert_eq!(state::epochs(&a).expect("epochs").get(&1), Some(&head));
     assert_eq!(state::rekey_seen(&a).expect("seen"), 1);
+}
+
+/// Spec 2026-11-20 §2.3 step 2: the base of the range is the cursor the remover had when it sent
+/// the change, kept in the pending change. A resolution after a lost answer commits with that base
+/// even if the cursor moved on, and its range starts there.
+#[tokio::test]
+async fn a_lost_answer_commits_with_the_stored_base() {
+    let three = three().await;
+    let base = cursor(&three.vault.a.lock());
+    institution(&three.vault.b.lock(), "b-while-away");
+    round_of(&three.vault, &three.vault.b).await;
+    let head = three.vault.relay.ops().last().map_or(0, |op| op.seq);
+    assert!(head > base);
+    three.vault.relay.lose_next_answer(Route::RotateToken);
+
+    let outcome = remove(&three, A, &[C]).await.expect("pending");
+    assert_eq!(outcome, Outcome::Pending { kit: None });
+    // The cursor moves on before the resolution (anything that pulls does it).
+    state::set_cursor(&three.vault.a.lock(), head).expect("cursor");
+
+    let resolved = rotate::resolve_pending(&three.vault.relay, &three.vault.a, None, NOW)
+        .await
+        .expect("resolved");
+
+    assert!(
+        matches!(resolved, Some(Outcome::Changed { epoch: 1, .. })),
+        "{resolved:?}"
+    );
+    let a = three.vault.a.lock();
+    assert!(!rotation_pending(&a));
+    assert_eq!(
+        crate::services::sync::rekey::range::base_of(&a, 1).expect("base"),
+        Some(base),
+        "the range starts at the cursor of the first send"
+    );
+    let noted: Vec<u64> = a
+        .prepare("SELECT pos FROM sync_range_notes WHERE epoch = 1 ORDER BY pos")
+        .expect("notes")
+        .query_map([], |r| r.get::<_, i64>(0).map(|p| p as u64))
+        .expect("rows")
+        .map(|p| p.expect("pos"))
+        .collect();
+    let expected: Vec<u64> = three
+        .vault
+        .relay
+        .ops()
+        .iter()
+        .map(|op| op.seq)
+        .filter(|seq| *seq > base && *seq <= head)
+        .collect();
+    assert_eq!(noted, expected);
+    assert!(
+        !head::own_unverified(&a).expect("own"),
+        "signed in the resolution"
+    );
+}
+
+/// §2.3 step 1: one new precondition, and only that one. A cursor below what the server still
+/// keeps (its floor) means the ops between are gone: the removal is refused and nothing is
+/// written. A vault snapshot above the cursor is no reason to refuse (the device being removed
+/// could keep moving it).
+#[tokio::test]
+async fn a_removal_is_refused_only_when_the_cursor_is_below_the_floor() {
+    let three = three().await;
+    let base = cursor(&three.vault.a.lock());
+    for id in ["b-1", "b-2", "b-3"] {
+        institution(&three.vault.b.lock(), id);
+        round_of(&three.vault, &three.vault.b).await;
+    }
+    let end = three.vault.relay.ops().last().map_or(0, |op| op.seq);
+    assert!(end > base + 2);
+    three
+        .vault
+        .relay
+        .put_snapshot(&three.vault.creds.auth(), end, vec![7; 64])
+        .await
+        .expect("a snapshot above A's cursor");
+
+    // The floor still at 0: the snapshot alone does not stop the removal.
+    let outcome = remove(&three, A, &[C]).await.expect("not refused");
+    assert!(
+        matches!(outcome, Outcome::Changed { epoch: 1, .. }),
+        "{outcome:?}"
+    );
+
+    let three = self::three().await;
+    let base = cursor(&three.vault.a.lock());
+    for id in ["b-1", "b-2", "b-3"] {
+        institution(&three.vault.b.lock(), id);
+        round_of(&three.vault, &three.vault.b).await;
+    }
+    let end = three.vault.relay.ops().last().map_or(0, |op| op.seq);
+    three
+        .vault
+        .relay
+        .put_snapshot(&three.vault.creds.auth(), end, vec![7; 64])
+        .await
+        .expect("a snapshot");
+    three.vault.relay.prune_to(end);
+    assert!(base < end);
+
+    let error = remove(&three, A, &[C]).await.expect_err("refused");
+
+    assert_eq!(
+        validation_key(&error).as_deref(),
+        Some(rotate::REMOVAL_NEEDS_SYNC)
+    );
+    let a = three.vault.a.lock();
+    assert!(!rotation_pending(&a));
+    assert_eq!(key_epoch(&a), 0);
+    assert_eq!(rotations(&three), 0, "nothing was sent");
+    assert_eq!(removal_record(&a, C).0, None);
 }
 
 /// §10.4 and §10.1: the call never landed and another device changed the key meanwhile: the
@@ -1123,4 +1237,114 @@ async fn the_plan_the_list_and_the_status_speak_in_names_across_a_removal() {
         list.iter().find(|d| d.name == "iPad").map(|d| d.status),
         Some(SyncDeviceStatus::Former)
     );
+}
+
+const DAY: i64 = 24 * 60 * 60;
+
+/// `D` paired by `C` is pinned on `A`, with its `pinned_at` set by hand to `pinned_at`.
+async fn a_with_d_pinned_at(pinned_at: i64) -> (Three, DeviceId) {
+    const D: DeviceId = DeviceId([0xd1; 16]);
+    let three = three().await;
+    let vault = three.vault.creds.vault_id.0;
+    let c_seed = identity::own_seed(&three.c.lock())
+        .expect("seed")
+        .expect("seed");
+    {
+        let a = three.vault.a.lock();
+        row_on(&a, &paired_by(vault, C, &c_seed, D, &seed_of(0xd1)));
+        for _ in 0..3 {
+            trust::refresh(&a, NOW).expect("refresh");
+        }
+        a.execute(
+            "UPDATE sync_trust SET pinned_at = ?1 WHERE device = ?2",
+            rusqlite::params![pinned_at, D.to_hex()],
+        )
+        .expect("pinned_at");
+    }
+    (three, D)
+}
+
+/// Spec §5.1, owner decision D3: "added" is when this device first verified the device.
+#[tokio::test]
+async fn a_device_added_within_30_days_by_the_removed_one_is_recent() {
+    let (three, d) = a_with_d_pinned_at(NOW - 29 * DAY).await;
+    let plan = rotate::plan(&three.vault.a.lock(), &[C], &[], false, NOW).expect("plan");
+    assert_eq!(plan.added_by_removing, vec![d]);
+    assert_eq!(plan.recently_added, vec![d]);
+}
+
+#[tokio::test]
+async fn a_device_added_earlier_is_listed_but_not_recent() {
+    let (three, d) = a_with_d_pinned_at(NOW - 31 * DAY).await;
+    let plan = rotate::plan(&three.vault.a.lock(), &[C], &[], false, NOW).expect("plan");
+    assert_eq!(plan.added_by_removing, vec![d]);
+    assert_eq!(plan.recently_added, Vec::<DeviceId>::new());
+}
+
+#[tokio::test]
+async fn exactly_30_days_is_recent() {
+    let (three, d) = a_with_d_pinned_at(NOW - rotate::RECENT_ADDED_SECS).await;
+    let plan = rotate::plan(&three.vault.a.lock(), &[C], &[], false, NOW).expect("plan");
+    assert_eq!(plan.recently_added, vec![d]);
+}
+
+#[tokio::test]
+async fn a_ticked_recent_device_stays_recent_in_the_reloaded_plan() {
+    let (three, d) = a_with_d_pinned_at(NOW - 29 * DAY).await;
+    let plan = rotate::plan(&three.vault.a.lock(), &[C], &[d], false, NOW).expect("plan");
+    assert_eq!(plan.added_by_removing, vec![d]);
+    assert_eq!(plan.recently_added, vec![d]);
+}
+
+/// The wire view of a plan carries when and from where each added device came, and which of them
+/// start ticked.
+#[tokio::test]
+async fn the_plan_view_carries_added_at_added_by_and_the_ticked_by_default() {
+    use crate::services::sync::view;
+    let (three, d) = a_with_d_pinned_at(NOW - 29 * DAY).await;
+    let a = three.vault.a.lock();
+    let plan = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
+    let shown = view::plan_view(&a, &plan, NOW).expect("view");
+
+    assert_eq!(shown.ticked_by_default, vec![d.to_hex()]);
+    let row = shown
+        .added_by_removing
+        .iter()
+        .find(|x| x.id == d.to_hex())
+        .expect("listed");
+    assert_eq!(row.added_at, Some(NOW - 29 * DAY));
+    assert_eq!(row.added_by.as_deref(), Some("iPad"));
+}
+
+#[tokio::test]
+async fn a_device_added_earlier_is_listed_without_a_default_tick() {
+    use crate::services::sync::view;
+    let (three, d) = a_with_d_pinned_at(NOW - 31 * DAY).await;
+    let a = three.vault.a.lock();
+    let plan = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
+    let shown = view::plan_view(&a, &plan, NOW).expect("view");
+
+    assert!(shown.ticked_by_default.is_empty());
+    assert_eq!(shown.added_by_removing.len(), 1);
+    assert_eq!(shown.added_by_removing[0].id, d.to_hex());
+}
+
+/// The issuer's row is gone: the device is still listed, with no name to say who added it.
+#[tokio::test]
+async fn a_missing_issuer_row_gives_no_added_by() {
+    use crate::services::sync::view;
+    let (three, d) = a_with_d_pinned_at(NOW - DAY).await;
+    let a = three.vault.a.lock();
+    a.execute("DELETE FROM sync_devices WHERE id = ?1", [C.to_hex()])
+        .expect("row gone");
+    let plan = rotate::plan(&a, &[C], &[], false, NOW).expect("plan");
+    let shown = view::plan_view(&a, &plan, NOW).expect("view");
+
+    let row = shown
+        .added_by_removing
+        .iter()
+        .find(|x| x.id == d.to_hex())
+        .expect("listed");
+    assert_eq!(row.added_by, None);
+    assert_eq!(row.added_at, Some(NOW - DAY));
 }

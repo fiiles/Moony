@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use zeroize::Zeroizing;
 
+use super::rekey_fixture::{round_of, sync_on, three};
 use super::runtime::{calls_since, device_of};
 use super::runtime_loop::{rounds, start, start_in, until, Sealing};
 use super::*;
@@ -16,6 +17,7 @@ use crate::services::sync::engine::pull::rejoin_as_new_device;
 use crate::services::sync::engine::runtime::Trigger;
 use crate::services::sync::identity::trust::{self, TrustState};
 use crate::services::sync::identity::{self, CertKind};
+use crate::services::sync::setup;
 
 /// `Sealing`, but the first `failures` opens fail as a passing native error would.
 struct FlakyOpening {
@@ -250,4 +252,106 @@ async fn at_unlock_a_vault_without_certificates_gets_a_signing_key_only() {
     assert!(identity::own_seed(&conn).expect("seed").is_some());
     assert!(trust::entries(&conn).expect("entries").is_empty());
     assert!(!trust::is_supported(&conn).expect("supported"));
+}
+
+/// `Sealing`, but every open says the binding was sealed on another machine.
+struct OtherMachine;
+
+impl BindingNative for OtherMachine {
+    fn seal(&self, secret: &[u8; 32]) -> std::result::Result<Vec<u8>, BindingFailure> {
+        Sealing.seal(secret)
+    }
+    fn open(&self, _blob: &[u8]) -> std::result::Result<Zeroizing<[u8; 32]>, BindingFailure> {
+        Err(BindingFailure::NotThisDevice)
+    }
+}
+
+/// Turning sync off asks the copy check before the device says it left (D10, first audit M10): a
+/// profile whose binding answers `native` signs and sends nothing, and the original device keeps
+/// syncing as before.
+async fn nothing_is_said_when_the_check_answers(native: Arc<dyn BindingNative>) {
+    let three = three().await;
+    binding::write_binding(&three.vault.a.lock(), three.dir.path(), &Sealing).expect("binding");
+    let ops = three.vault.relay.ops().len();
+
+    setup::leave_best_effort(
+        &three.vault.relay,
+        &three.vault.a,
+        three.dir.path(),
+        native,
+        setup::LEAVE_BUDGET,
+    )
+    .await;
+
+    let left: Option<String> = three
+        .vault
+        .a
+        .lock()
+        .query_row(
+            "SELECT left_record FROM sync_devices WHERE id = ?1",
+            [A.to_hex()],
+            |r| r.get(0),
+        )
+        .expect("the row");
+    assert_eq!(left, None, "no left record was signed");
+    assert_eq!(three.vault.relay.ops().len(), ops, "nothing was sent");
+    assert_eq!(
+        failed_starts(&three.vault.a.lock()),
+        None,
+        "the failed-starts count is not touched"
+    );
+    let report = round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(report.problem, None, "{report:?}");
+    assert_eq!(
+        trust::entry(&three.vault.b.lock(), A)
+            .expect("entry")
+            .map(|e| e.state),
+        Some(TrustState::Trusted),
+        "the others still see A as a member"
+    );
+    let report = round_of(&three.vault, &three.vault.a).await;
+    assert_eq!(report.problem, None, "{report:?}");
+    assert!(sync_on(&three.vault.a.lock()), "the original keeps syncing");
+}
+
+#[tokio::test]
+async fn a_copy_whose_binding_cannot_be_checked_does_not_say_left() {
+    nothing_is_said_when_the_check_answers(Arc::new(AlwaysFailing)).await;
+}
+
+#[tokio::test]
+async fn a_copy_whose_binding_says_not_this_device_does_not_say_left() {
+    nothing_is_said_when_the_check_answers(Arc::new(OtherMachine)).await;
+}
+
+/// The positive control of the two tests above: with a binding written and a check that opens it,
+/// turning sync off signs and sends the `left` record (final review 1, M1).
+#[tokio::test]
+async fn a_device_whose_binding_checks_out_says_left() {
+    let three = three().await;
+    binding::write_binding(&three.vault.a.lock(), three.dir.path(), &Sealing).expect("binding");
+    let ops = three.vault.relay.ops().len();
+
+    setup::leave_best_effort(
+        &three.vault.relay,
+        &three.vault.a,
+        three.dir.path(),
+        Arc::new(Sealing),
+        setup::LEAVE_BUDGET,
+    )
+    .await;
+
+    let left: Option<String> = three
+        .vault
+        .a
+        .lock()
+        .query_row(
+            "SELECT left_record FROM sync_devices WHERE id = ?1",
+            [A.to_hex()],
+            |r| r.get(0),
+        )
+        .expect("the row");
+    assert!(left.is_some(), "the left record was signed");
+    assert!(three.vault.relay.ops().len() > ops, "and sent");
+    assert_eq!(failed_starts(&three.vault.a.lock()), None);
 }

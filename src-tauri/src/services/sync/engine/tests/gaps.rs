@@ -2,6 +2,7 @@
 //! arrived, holds the cursor before it while everything after it is still handled and this device
 //! keeps pushing (`PullEnd::Waiting`, the `Gap` problem).
 
+use super::gap_skip::b1_withheld;
 use super::join::{break_capture, device_of, snapshot_of_a, validation_key};
 use super::repair::relay_has_institution;
 use super::runtime::{routes, write_and_seal};
@@ -10,6 +11,7 @@ use crate::models::sync::{SyncPhase, SyncProblem};
 use crate::services::sync::binding::NoBinding;
 use crate::services::sync::changeset::SqlValue;
 use crate::services::sync::engine::pull::pull_all;
+use crate::services::sync::engine::seen;
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
 use crate::services::sync::engine::status::{status, Runtime};
 use crate::services::sync::engine::{run_round, PullEnd, PullReport, RoundMode, RoundReport};
@@ -386,4 +388,97 @@ async fn a_repair_with_a_gap_and_a_quarantine_does_not_finish() {
     );
     assert!(relay_has_institution(&vault, "b-local"), "the drain pushed");
     assert_eq!(device_of(&vault.b.lock()), B, "nothing replaced");
+}
+
+/// The hash of the envelope the relay holds at `seq`.
+fn hash_at(vault: &Vault, seq: u64) -> [u8; 32] {
+    let ops = vault.relay.ops();
+    let op = ops.iter().find(|op| op.seq == seq).expect("an op there");
+    crate::services::sync::envelope::envelope_hash(&op.ct)
+}
+
+fn noted_count(conn: &Connection) -> i64 {
+    count(conn, "SELECT COUNT(*) FROM sync_seen_ops")
+}
+
+/// Rule 9a: an op the pull meets again at a position this device already handled (held) is the
+/// same one, passed over as before; nothing about it ends the pull.
+#[tokio::test]
+async fn the_same_op_read_again_is_passed_over_as_today() {
+    let vault = vault().await;
+    b1_withheld(&vault).await;
+
+    for pull_no in 1..=3 {
+        let report = pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+            .await
+            .expect("pull");
+        assert_eq!(report.end(), PullEnd::Waiting, "pull {pull_no}: {report:?}");
+        assert_eq!(report.stop, None, "pull {pull_no}");
+    }
+    vault.relay.undrop_op(1);
+    let healed = pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("pull");
+
+    assert_eq!(healed.end(), PullEnd::Done, "{healed:?}");
+    let a = vault.a.lock();
+    assert!(has_institution(&a, "b1") && has_institution(&a, "b2"));
+    assert_eq!(cursor(&a), 2);
+}
+
+/// Rule 9a: a held op is noted by its position and envelope hash while the cursor stays before
+/// it, and the note goes once the cursor has passed the position.
+#[tokio::test]
+async fn notes_go_as_the_cursor_passes_them() {
+    let vault = vault().await;
+    b1_withheld(&vault).await;
+
+    pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("pull");
+    {
+        let a = vault.a.lock();
+        assert_eq!(cursor(&a), 0);
+        assert_eq!(
+            seen::noted(&a, 2).expect("noted"),
+            Some(hash_at(&vault, 2)),
+            "the held op at 2 is noted"
+        );
+        assert_eq!(
+            seen::noted(&a, 1).expect("noted"),
+            None,
+            "nothing was served at 1"
+        );
+        assert_eq!(noted_count(&a), 1);
+    }
+    vault.relay.undrop_op(1);
+    pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("pull");
+
+    let a = vault.a.lock();
+    assert_eq!(cursor(&a), 2);
+    assert_eq!(noted_count(&a), 0, "the cursor covers the notes");
+}
+
+/// A position above the cursor that has no note (the op was handled by a build that wrote none)
+/// is noted when it is read next.
+#[tokio::test]
+async fn a_crash_before_the_note_is_made_up_at_the_next_read() {
+    let vault = vault().await;
+    b1_withheld(&vault).await;
+    pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("pull");
+    exec(&vault.a.lock(), "DELETE FROM sync_seen_ops");
+
+    let report = pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("pull");
+
+    assert_eq!(report.stop, None);
+    assert_eq!(
+        seen::noted(&vault.a.lock(), 2).expect("noted"),
+        Some(hash_at(&vault, 2))
+    );
 }

@@ -321,7 +321,8 @@ async fn the_pass_deletes_only_unreferenced_blobs_older_than_seven_days() {
             deleted: 1,
             requeued: 0,
             skipped: None,
-            complete: true
+            complete: true,
+            retired_token: false
         }
     );
     assert_eq!(on_server(&vault), sorted(vec![referenced, six_days]));

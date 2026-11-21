@@ -61,6 +61,7 @@ const PASSWORD_NEEDED: &str = "validation.syncPasswordNeeded";
 const FAILED: &str = "validation.syncPairingFailed";
 const SETUP_INCOMPLETE: &str = "validation.syncSetupIncomplete";
 const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
+const WAITING_FOR_DEVICE: &str = "validation.syncWaitingForDevice";
 const JOIN_SETUP_PENDING: &str = "validation.syncJoinSetupPending";
 
 /// The longest the wiper sleeps before it reads the wall clock again (a machine that slept does
@@ -253,6 +254,16 @@ async fn begin<T>(
     then.await.map_err(app_error)
 }
 
+/// A holder with a key-change head it has not verified (`holder::refuse_while_unverified`) shows
+/// no code and scans none: `validation.syncChangeInProgress` (its own) or
+/// `validation.syncWaitingForDevice` (another's), before the password is asked.
+fn holder_may_hand_keys_on(session: &Database, role: Role) -> Result<()> {
+    match role {
+        Role::Holder => session.with_conn(holder::refuse_while_unverified),
+        Role::Joiner => Ok(()),
+    }
+}
+
 /// The slot a command may use: kept while it belongs to `owner`'s profile session and `now` is
 /// before its `wiped_at`; otherwise it is handed back to be abandoned.
 fn slot_for(
@@ -276,7 +287,10 @@ fn after_join_error(error: &SyncError) -> bool {
         || matches!(
             error,
             SyncError::Local(AppError::Validation(key))
-                if key == CHANGE_IN_PROGRESS || key == JOIN_SETUP_PENDING || key == IMPACT_CHANGED
+                if key == CHANGE_IN_PROGRESS
+                    || key == WAITING_FOR_DEVICE
+                    || key == JOIN_SETUP_PENDING
+                    || key == IMPACT_CHANGED
         )
 }
 
@@ -322,8 +336,8 @@ fn stage_of(stage: Stage) -> PairingStage {
     match stage {
         Stage::Announcing => PairingStage::Announcing,
         Stage::WaitingForScan => PairingStage::WaitingForScan,
-        // Answered, but the digits wait for the acknowledgement (protocol 2): the scanner reads
-        // slot 3, the shower stores it.
+        // Answered, but the digits wait for the shower's reveal (protocol 4): the scanner reads
+        // slot 3, the shower writes it.
         Stage::AwaitingAck | Stage::Acknowledging => PairingStage::Connecting,
         Stage::Compare => PairingStage::Compare,
         Stage::WaitingForOther => PairingStage::WaitingForOther,
@@ -383,7 +397,7 @@ fn mailbox_of(session: &PairingSession) -> MailboxId {
     session.code().mailbox
 }
 
-/// Whether two sessions answer the same pairing code (the same mailbox, shower key and server).
+/// Whether two sessions answer the same pairing code (the same mailbox, commitment and server).
 fn same_code(a: &PairingSession, b: &PairingSession) -> bool {
     pairing_code_text(&a.code()) == pairing_code_text(&b.code())
 }
@@ -499,6 +513,7 @@ pub async fn sync_pairing_start(
     require_feature()?;
     let session = db.current_session()?;
     let role = Role::of(sync_on(&session)?);
+    holder_may_hand_keys_on(&session, role)?;
     let device_name = joiner_name(role, device_name)?;
     let relay_url = session.with_conn(|conn| shower_relay(conn, role, relay_url.as_deref()))?;
     let owner = kit_owner(&app, &db)?;
@@ -526,6 +541,7 @@ pub async fn sync_pairing_scan(
     require_feature()?;
     let session = db.current_session()?;
     let role = Role::of(sync_on(&session)?);
+    holder_may_hand_keys_on(&session, role)?;
     let device_name = joiner_name(role, device_name)?;
     let owner = kit_owner(&app, &db)?;
     let verify = verify_password(&app, password.clone());

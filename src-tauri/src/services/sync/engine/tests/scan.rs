@@ -153,3 +153,38 @@ async fn a_withheld_echo_behind_a_newer_schema_stop_stays_newer_schema() {
         assert_eq!(unsent(&vault.a.lock()), 1, "{round}");
     }
 }
+
+/// Rules 9 and 9a do not look at the scan after a newer-schema stop: its ops are not handled, so
+/// they are neither checked for a skipped position nor noted. With a key change pending (head
+/// above the cursor, no range stored: rule 9 holds for every position up to it), the scan still
+/// reaches this device's own envelope behind a position the relay never serves.
+#[tokio::test]
+async fn the_scan_after_a_newer_schema_stop_is_exempt() {
+    let vault = vault().await;
+    state::record_epoch(&vault.a.lock(), 1, 10, None, NOW).expect("a key change above the cursor");
+    let c1 = newer_c1(&vault);
+    let b1 = write_and_seal(&vault, &vault.b, "b1");
+    let b2 = write_and_seal(&vault, &vault.b, "b2");
+    let a1 = write_and_seal(&vault, &vault.a, "a1");
+    push(&vault.relay, &vault.creds, &[c1, b1, b2, a1]).await;
+    vault.relay.drop_op(3);
+    assert_eq!(unsent(&vault.a.lock()), 1);
+
+    let report = pull_all(&vault.relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("pull");
+
+    assert_eq!(report.stop, Some(PullStop::NewerSchema), "{report:?}");
+    let a = vault.a.lock();
+    assert_eq!(
+        unsent(&a),
+        0,
+        "the own envelope behind the skipped position was acknowledged"
+    );
+    assert_eq!(cursor(&a), 0);
+    assert_eq!(
+        count(&a, "SELECT COUNT(*) FROM sync_seen_ops"),
+        0,
+        "the scan notes nothing"
+    );
+}

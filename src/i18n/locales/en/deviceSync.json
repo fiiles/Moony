@@ -65,7 +65,8 @@
       "internal": "Syncing stopped because of an internal error.",
       "keyNotGiven": "This device needs to connect again.",
       "keyChangeUnverified": "This device needs to connect again.",
-      "keyChangeWaiting": "Waiting for the device that made the change to connect."
+      "keyChangeWaiting": "Waiting for the device that made the change to connect.",
+      "keyChangeWaitingOwn": "The removal is finishing. The sync server has not yet sent every change from before the removal. Moony keeps trying; the data on this device are fine."
     },
     "lastSynced": "Last synced {{date}}",
     "neverSynced": "Not synced yet",
@@ -181,7 +182,7 @@
       "found": "Server found · version {{version}}",
       "checking": "Looking for the server…",
       "insecureTitle": "The connection is not encrypted (http)",
-      "insecureBody": "Your data stays encrypted, but anyone on the same network can capture the access to sync and delete or block the synced data on the server.",
+      "insecureBody": "Your data stays encrypted, but anyone on the same network can capture the access to sync, delete or block the synced data on the server, and make the recovery kit useless too.",
       "insecureAck": "I understand, continue anyway",
       "resume": "Setup started with {{host}}",
       "other": "Use another connection code",
@@ -393,7 +394,7 @@
     "validUntil": "The code is valid until {{time}}.",
     "copyCode": "Copy code",
     "copiedCode": "Copied",
-    "codeHint": "No camera? Type or paste this code on the other device. You can send it in a message: without the six digits you type here next, it gives nothing away.",
+    "codeHint": "No camera? Type or paste this code on the other device. You can send it in a message. The six digits you type here next confirm that nobody changed it on the way.",
     "deviceConnected": "{{name}} is connected",
     "sentLate": "Finish connecting on the other device. Once it is connected, it will appear in the list."
   },
@@ -403,7 +404,7 @@
     "passwordLabel": "Moony password",
     "serverLabel": "Sync server address",
     "serverHint": "Type the address of your sync server, or paste its connection code.",
-    "insecureAtJoin": "The sync details you are joining with point to {{host}}, which is reached over plain http. Your data stays encrypted, but anyone on the same network can capture the access to sync and delete or block the synced data on the server.",
+    "insecureAtJoin": "The sync details you are joining with point to {{host}}, which is reached over plain http. Your data stays encrypted, but anyone on the same network can capture the access to sync, delete or block the synced data on the server, and make the recovery kit useless too.",
     "kitServer": "Sync server: {{host}}",
     "pairTitle": "Join from your phone",
     "pairHint": "On the phone with sync on: Settings → Sync → Add a device",
@@ -554,7 +555,9 @@
     },
     "keep": "It's mine",
     "added": "You added these from {{name}} (or from them). Remove any you don't recognise too.",
-    "addedRow": "{{name}} · added {{date}}",
+    "addedRow": "Added on {{date}} from {{name}}",
+    "addedRowNoIssuer": "Added on {{date}}",
+    "recentNote": "Devices added in the last 30 days are ticked in advance. If you know one of them and want to keep it, untick it.",
     "inHand": "Have {{name}} with you? Just turn sync off on it.",
     "kit": {
       "creatorRemoved": "Your recovery kit was saved on {{name}}, so it will stop working. You'll make a new one right after.",
@@ -663,7 +666,7 @@
     },
     "waiting": {
       "title": "Sync is waiting for {{by}}",
-      "body": "This device is waiting for a confirmation from {{by}}, which last changed the device list. The data here are fine. If you no longer use {{by}}, connect this device again."
+      "body": "{{by}} did not finish a change of the device list. Open Moony on it. If you no longer have it, turn sync off on every device and turn it on again from the device with the most complete data."
     }
   },
   "rejoin": {

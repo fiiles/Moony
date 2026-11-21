@@ -16,6 +16,7 @@ import {
   heldGapDevice,
   offersResync,
   problemAction,
+  problemTextKey,
   type SyncProblemAction,
   skippableGap,
 } from '@/utils/device-sync-problem';
@@ -115,7 +116,7 @@ function ProblemBox({
   const deletesAt = secondsToDate(status.deletesAt);
   const ahead = problem === 'clockAhead' ? aheadGap(held) : null;
   let title: string | null = null;
-  let body: string | null = ahead ? aheadText(ahead, t, dateText) : t(`status.problem.${problem}`);
+  let body: string | null = ahead ? aheadText(ahead, t, dateText) : t(problemTextKey(problem, status));
   const skipFrom = firstSkippableAt(held, now);
   if (skipFrom !== null && dateText(skipFrom)) {
     const key = problem === 'clockAhead' ? 'alert.clockAhead.skipFrom' : 'alert.gap.skipFrom';
@@ -137,9 +138,9 @@ function ProblemBox({
   } else if (problemState?.kind === 'waitingForRemover') {
     title = t('problem.waiting.title', { by: problemState.by });
     body = t('problem.waiting.body', { by: problemState.by });
-    actions = connectAgain;
+    // No action: a rejoin cannot work while the removing device has not confirmed the change
   }
-  // The rejoin and waiting states have their own button: the problem's ordinary action is skipped
+  // The rejoin and waiting states have their own (or no) button: the problem's ordinary action is skipped
   const effectiveAction: SyncProblemAction = problemState ? 'none' : action;
   switch (effectiveAction) {
     case 'renew':

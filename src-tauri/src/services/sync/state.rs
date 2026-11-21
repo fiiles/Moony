@@ -241,6 +241,29 @@ pub fn record_epoch(
     })
 }
 
+/// The device that made the key change starting `epoch`, when `sync_epochs` knows it (`None` for
+/// an epoch recorded from a pairing holder's heads or a snapshot's key list, which carry none).
+pub fn epoch_signer(conn: &Connection, epoch: u32) -> Result<Option<DeviceId>> {
+    let by: Option<Option<String>> = conn
+        .query_row(
+            "SELECT by_device FROM sync_epochs WHERE epoch = ?1",
+            [epoch],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(by.flatten().and_then(|hex| DeviceId::from_hex(&hex).ok()))
+}
+
+/// Records `by` as the maker of the key change starting `epoch`, where none is recorded yet (a
+/// recorded one is never changed).
+pub fn set_epoch_signer(conn: &Connection, epoch: u32, by: DeviceId) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_epochs SET by_device = ?2 WHERE epoch = ?1 AND by_device IS NULL",
+        params![epoch, by.to_hex()],
+    )?;
+    Ok(())
+}
+
 /// A device that starts syncing at its barrier (turned on, or joined from a snapshot) has nothing
 /// to mark for it: its barrier counts as marked (`marker_barrier`), so the push seals no empty
 /// marker, and as snapshotted (`snapshot_barrier`), so no forced upload follows. Only a device
@@ -265,10 +288,11 @@ pub fn disable(conn: &Connection) -> Result<()> {
              DELETE FROM sync_heads; DELETE FROM sync_own_log; DELETE FROM sync_unsent; \
              DELETE FROM sync_typed; DELETE FROM sync_blobs; DELETE FROM sync_held_blobs; \
              DELETE FROM sync_trust; DELETE FROM sync_epochs; DELETE FROM sync_trust_seen; \
-             DELETE FROM sync_tickets;",
+             DELETE FROM sync_tickets; DELETE FROM sync_range_notes; DELETE FROM sync_seen_ops;",
         )?;
         clear_vault_went_back(conn)?;
         clear_skipped_miss(conn)?;
+        clear_overrun_taint(conn)?;
         for key in [
             KEY_CHANGE_NOTICE_KEY,
             UNVERIFIED_EPOCHS_KEY,
@@ -422,6 +446,28 @@ pub fn set_cursor(conn: &Connection, cursor: u64) -> Result<()> {
         "UPDATE sync_state SET cursor = MAX(cursor, ?1) WHERE id = 1",
         [signed(cursor, "cursor")?],
     )?;
+    // The cursor covers the ops handled at or below it: their notes go (rule 9a).
+    super::engine::seen::forget_through(conn, cursor)?;
+    Ok(())
+}
+
+/// Notes the position of a snapshot just restored by a merge (`sync_state.restored_seq`, part of
+/// the device's place and of its watermark, `engine::seen`). Raises it, never lowers it.
+pub fn set_restored_seq(conn: &Connection, seq: u64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET restored_seq = MAX(COALESCE(restored_seq, 0), ?1) WHERE id = 1",
+        [signed(seq, "restored_seq")?],
+    )?;
+    Ok(())
+}
+
+/// A replace puts the device at the snapshot's position, whatever it was before: sets
+/// `restored_seq` to exactly `seq` (it can lower it).
+pub fn reset_restored_seq(conn: &Connection, seq: u64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET restored_seq = ?1 WHERE id = 1",
+        [signed(seq, "restored_seq")?],
+    )?;
     Ok(())
 }
 
@@ -510,7 +556,9 @@ pub fn snapshot_seq(conn: &Connection) -> Result<Option<u64>> {
 }
 
 /// The vault already holds a newer snapshot than the one this device offered at its barrier
-/// (`409 snapshot_outdated`): the forced upload after a crossing is done (`snapshot_barrier`).
+/// (`409 snapshot_outdated`): the forced upload after a crossing is done (`snapshot_barrier`), and
+/// so is the debt of a snapshot under the new key (`snapshot_epoch_due`), since the vault holds
+/// one at least as new as this device's own.
 pub fn note_snapshot_barrier(conn: &Connection) -> Result<()> {
     conn.execute(
         "UPDATE sync_state SET snapshot_barrier = MAX(snapshot_barrier, barrier), \
@@ -520,12 +568,19 @@ pub fn note_snapshot_barrier(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Whether this device changed the key and has not yet uploaded a snapshot under the new one
-/// (`snapshot_epoch_due`, phase 5 §6.4): its next clean round forces an upload, as after a barrier
-/// crossing. An upload clears it (`record_snapshot_uploaded`), and so does a newer snapshot found
-/// on the relay (`note_snapshot_barrier`): the old token cannot upload one, so a newer snapshot is
-/// sealed under the new key or a later one.
+/// Whether this device owes the vault a snapshot under the new key (`snapshot_epoch_due`, rule 10
+/// of spec 2026-11-20-sync-audit-2-fixes-design §2.3): every device that verified a key change
+/// owes one, not only the remover, until the vault holds a snapshot above that change's head. Its
+/// next clean round forces an upload, as after a barrier crossing. An upload clears it
+/// (`record_snapshot_uploaded`); so does the vault's info showing a snapshot above the head
+/// (`clear_snapshot_owed_if_covered`: the old token cannot upload one, so such a snapshot is
+/// sealed under the new key or a later one) and a `409` on the forced upload
+/// (`note_snapshot_barrier`). A device holding a key-change overrun owes none (`overrun_tainted`).
 pub fn snapshot_epoch_owed(conn: &Connection) -> Result<bool> {
+    // A device holding a key-change overrun owes no snapshot (`overrun_tainted`).
+    if overrun_tainted(conn)? {
+        return Ok(false);
+    }
     let due: Option<i64> = conn
         .query_row(
             "SELECT snapshot_epoch_due FROM sync_state WHERE id = 1 AND enabled = 1",
@@ -534,6 +589,62 @@ pub fn snapshot_epoch_owed(conn: &Connection) -> Result<bool> {
         )
         .optional()?;
     Ok(due.is_some_and(|epoch| epoch > 0))
+}
+
+/// This device holds a verified head for key epoch `epoch` (rule 10, "so that an honest refusal
+/// ends"): the vault owes a snapshot under the new key, and every device that verified the key
+/// change owes it, not only the remover. Sets `snapshot_epoch_due` to the newest such epoch
+/// (`MAX`), unless a snapshot this device uploaded or restored already lies above that head. The
+/// vault's own snapshot is looked at with the next info (`clear_snapshot_owed_if_covered`).
+pub fn owe_snapshot(conn: &Connection, epoch: u32) -> Result<()> {
+    // A device holding a key-change overrun never counts as owing the snapshot.
+    if overrun_tainted(conn)? {
+        return Ok(());
+    }
+    let Some(head) = epochs(conn)?.get(&epoch).copied() else {
+        return Ok(());
+    };
+    if snapshot_seq(conn)?.is_some_and(|own| own > head) {
+        return Ok(());
+    }
+    conn.execute(
+        "UPDATE sync_state SET snapshot_epoch_due = MAX(snapshot_epoch_due, ?1) WHERE id = 1",
+        [epoch],
+    )?;
+    Ok(())
+}
+
+/// The vault's info says its newest snapshot is at `vault_snapshot`: when that lies above the head
+/// of the epoch this device owes a snapshot for (`owe_snapshot`), someone uploaded it and nothing
+/// is owed any more.
+pub fn clear_snapshot_owed_if_covered(
+    conn: &Connection,
+    vault_snapshot: Option<u64>,
+) -> Result<()> {
+    let due: Option<i64> = conn
+        .query_row(
+            "SELECT snapshot_epoch_due FROM sync_state WHERE id = 1",
+            [],
+            |r| r.get(0),
+        )
+        .optional()?;
+    let Some(epoch) = due.filter(|epoch| *epoch > 0) else {
+        return Ok(());
+    };
+    let Some(head) = u32::try_from(epoch)
+        .ok()
+        .and_then(|epoch| epochs(conn).map(|all| all.get(&epoch).copied()).transpose())
+    else {
+        return Ok(());
+    };
+    let head = head?;
+    if vault_snapshot.is_some_and(|seq| seq > head) {
+        conn.execute(
+            "UPDATE sync_state SET snapshot_epoch_due = 0 WHERE id = 1",
+            [],
+        )?;
+    }
+    Ok(())
 }
 
 /// The newest relay rotation whose key change this device has dealt with (`rekey_seen`): adopted,
@@ -570,8 +681,9 @@ pub const KIT_READ_SEEN_KEY: &str = "sync.kit_read_seen";
 /// sync off; the person's dismissal clears it, and so does a join (As built R-116).
 pub const REMOVED_NOTICE_KEY: &str = "sync.removed_notice";
 
-/// The Local `app_config` key holding the key epochs this device adopted whose head the remover's
-/// signed head has not confirmed yet (`rekey::head`). Cleared with `sync_epochs`.
+/// The Local `app_config` key holding the key epochs whose head this device has not verified yet:
+/// adopted from another device's change, its own change not signed yet, or held without a bundle
+/// (`rekey::head`). Cleared with `sync_epochs`.
 pub const UNVERIFIED_EPOCHS_KEY: &str = "sync.epochs_unverified";
 
 /// The Local `app_config` key of a Recovery Kit joiner's push hold (revision §2.6 step 7,
@@ -622,6 +734,41 @@ pub(crate) fn set_kit_epoch_floor(conn: &Connection, floor: KitEpochFloor) -> Re
 /// The Local `app_config` key holding the notice that this device applied changes past a key
 /// change the server hid from it (`rekey::KeyChangeOverrun`). Turning sync off clears it.
 pub const KEY_CHANGE_OVERRUN_KEY: &str = "sync.key_change_overrun";
+
+/// The Local `app_config` key of the persistent mark behind a key-change overrun: this device
+/// applied changes past a key change the server hid from it, so its profile may hold what the
+/// removed device wrote. Unlike the notice (`KEY_CHANGE_OVERRUN_KEY`) the person's dismissal does
+/// not clear it; only a replace of the profile (`reset_engine_marks`) and turning sync off do.
+const OVERRUN_TAINT_KEY: &str = "sync.overrun_taint";
+
+/// This device holds a key-change overrun (written with the notice, `rekey::write_key_change_overrun`).
+pub(crate) fn note_overrun_taint(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, '1') ON CONFLICT(key) DO NOTHING",
+        [OVERRUN_TAINT_KEY],
+    )?;
+    Ok(())
+}
+
+/// Whether this device holds a key-change overrun that no replace of the profile lifted yet. While
+/// it does, it uploads no snapshot (`engine::snapshots::ready_to_dump`) and does not count as
+/// owing the one under the new key (`owe_snapshot`), so what the removed device wrote cannot
+/// travel on in the vault's newest snapshot.
+pub fn overrun_tainted(conn: &Connection) -> Result<bool> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_config WHERE key = ?1",
+            [OVERRUN_TAINT_KEY],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(value.is_some())
+}
+
+fn clear_overrun_taint(conn: &Connection) -> Result<()> {
+    conn.execute("DELETE FROM app_config WHERE key = ?1", [OVERRUN_TAINT_KEY])?;
+    Ok(())
+}
 
 /// The Local `app_config` key holding the notice that a removal the person confirmed was not
 /// done (`rekey::RemovalNotDone`). Turning sync off clears it.
@@ -788,6 +935,8 @@ const VAULT_WENT_BACK_KEY: &str = "sync.vault_went_back_at";
 /// completed replace (`reset_engine_marks`) and turning sync off (`disable`) do. While it is set,
 /// the status shows `SyncProblem::ServerWentBack` and every re-sync keeps its backup.
 pub fn note_vault_went_back(conn: &Connection, at: i64) -> Result<()> {
+    // The notes of rule 9a stay: this verdict rests on a head the server sends unauthenticated,
+    // so one lie would wipe them. A replace (or turning sync off) clears them.
     conn.execute(
         "INSERT INTO app_config (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO NOTHING",
         rusqlite::params![VAULT_WENT_BACK_KEY, at.to_string()],
@@ -897,6 +1046,7 @@ fn config_int(conn: &Connection, key: &str) -> Result<Option<i64>> {
 /// from the server's state, and inherits the snapshot's miss, if any, afterwards).
 pub fn reset_engine_marks(conn: &Connection) -> Result<()> {
     clear_vault_went_back(conn)?;
+    clear_overrun_taint(conn)?;
     super::chain::gaps::forget_all(conn)?;
     clear_skipped_miss(conn)?;
     conn.execute(
@@ -1097,6 +1247,8 @@ mod tests {
              INSERT OR IGNORE INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (0, 0, 1); \
              INSERT INTO sync_trust_seen (device, what, pos) VALUES ('d', 'cert', 4); \
              INSERT INTO sync_tickets (ticket_pub, issuer, pos) VALUES (x'07', 'd', 3); \
+             INSERT INTO sync_range_notes (epoch, pos, hash) VALUES (0, 5, x'aa'); \
+             INSERT INTO sync_seen_ops (pos, hash) VALUES (9, x'bb'); \
              INSERT INTO app_config (key, value) VALUES ('sync.new_devices', '[]');",
         )
         .unwrap();
@@ -1107,6 +1259,8 @@ mod tests {
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_epochs"), 0);
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_trust_seen"), 0);
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_tickets"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_range_notes"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_seen_ops"), 0);
         assert_eq!(
             count(
                 &conn,

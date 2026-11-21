@@ -1157,7 +1157,9 @@ mod tests {
                  VALUES ('TRUSTED-DEVICE', 'TRUST-CERT-DISTINCT', 1, 'TRUSTED-DEVICE', X'01', X'02', 'trusted', 1);
              INSERT INTO sync_epochs (epoch, rotation_head, adopted_at, by_device) VALUES (1, 77, 1, 'EPOCH-BY-DISTINCT');
              INSERT INTO sync_trust_seen (device, what, pos) VALUES ('SEEN-DEVICE-DISTINCT', 'cert', 1);
-             INSERT INTO sync_tickets (ticket_pub, issuer, pos) VALUES (X'7171', 'TICKET-ISSUER-DISTINCT', 1);",
+             INSERT INTO sync_tickets (ticket_pub, issuer, pos) VALUES (X'7171', 'TICKET-ISSUER-DISTINCT', 1);
+             INSERT INTO sync_range_notes (epoch, pos, hash) VALUES (1, 41, X'A1B2C3D4E5F60718');
+             INSERT INTO sync_seen_ops (pos, hash) VALUES (42, X'B2C3D4E5F6071829');",
         )
         .expect("sync rows");
         let sync_tables: i64 = conn
@@ -1167,7 +1169,7 @@ mod tests {
                 |r| r.get(0),
             )
             .expect("count");
-        assert_eq!(sync_tables, 14);
+        assert_eq!(sync_tables, 16);
 
         let dir = tempfile::tempdir().expect("dir");
         let dest = dir.path().join("export.json");
@@ -1198,6 +1200,10 @@ mod tests {
             "EPOCH-BY-DISTINCT",
             "SEEN-DEVICE-DISTINCT",
             "TICKET-ISSUER-DISTINCT",
+            "a1b2c3d4e5f60718",
+            "A1B2C3D4E5F60718",
+            "b2c3d4e5f6071829",
+            "B2C3D4E5F6071829",
             "sync_state",
         ] {
             assert!(!raw.contains(secret), "export leaks {secret}");

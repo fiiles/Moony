@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Condvar;
 use std::time::Duration;
 
+use super::rekey_fixture::{key_epoch, new_kit, three};
 use super::runtime::calls_since;
 use super::runtime_loop::{rounds, start_with, until};
 use super::*;
@@ -47,8 +48,14 @@ async fn devices() -> Vault {
     let vault = vault().await;
     with_store(&vault.a);
     with_store(&vault.b);
+    add_rows(&vault.a);
+    vault
+}
+
+/// Policy `p1` and property `r1` (with a photo batch) on `device`.
+fn add_rows(device: &TestConn) {
     exec(
-        &vault.a.lock(),
+        &device.lock(),
         "INSERT INTO insurance_policies \
            (id, type, provider, policy_name, policy_number, start_date, payment_frequency) \
          VALUES ('p1', 'life', 'Insurer', 'Life', '123', 1767225600, 'monthly'); \
@@ -56,7 +63,6 @@ async fn devices() -> Vault {
          INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date) \
          VALUES ('batch-1', 'r1', 1767225600);",
     );
-    vault
 }
 
 /// `len` bytes of a pattern that never repeats a 64 KiB chunk.
@@ -1160,4 +1166,38 @@ async fn a_panic_in_the_lanes_is_reported() {
     let panicked = reporting_panic(async { panic!("a lane broke") }).await;
     assert_eq!(panicked.as_deref(), Some("a lane broke"));
     assert_eq!(reporting_panic(async {}).await, None);
+}
+
+/// Protocol 3: a lane that meets the retired token asks the engine for a round, which picks the
+/// new key up, and the transfer then completes with the new token. A phone opens a photo after
+/// another device changed the key: nothing calls a round here.
+#[tokio::test]
+async fn a_blob_download_with_a_retired_token_leads_to_a_pickup() {
+    let three = three().await;
+    let vault = &three.vault;
+    with_store(&vault.a);
+    with_store(&vault.b);
+    add_rows(&vault.a);
+    let (full, thumb) = photo(&vault.a, "ph1");
+    rounds_on_both(vault).await;
+    let running = start_with(vault.relay.clone(), vault.b.clone(), phone());
+    until("the thumbnail arrived", || stored(&vault.b, &thumb)).await;
+    rounds(&running, 1).await;
+    assert_eq!(key_epoch(&vault.b.lock()), 0);
+    let rounds_before = running.handle.runtime().rounds;
+
+    new_kit(&three, A)
+        .await
+        .expect("another device changes the key");
+    queue::want_row(&vault.b.lock(), AttachmentKind::Photo, "ph1").expect("opened");
+    running.handle.wake_transfers();
+
+    until("the key was picked up and the photo arrived", || {
+        key_epoch(&vault.b.lock()) == 1 && stored(&vault.b, &full)
+    })
+    .await;
+    assert!(
+        running.handle.runtime().rounds > rounds_before,
+        "a round ran by itself"
+    );
 }

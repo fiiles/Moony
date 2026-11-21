@@ -323,9 +323,11 @@
     "syncSnapshotBelowBarrier": "Den synkroniserte kopien av dataene dine er eldre enn siste Moony-oppdatering og kan ikke brukes. En enhet med nyeste versjon må laste opp en ny.",
     "syncSnapshotClockAhead": "Den synkroniserte kopien av dataene dine er datert mer enn ti år frem i tid, så den ble ikke brukt. En enhet med riktig dato og klokkeslett må laste opp en ny.",
     "syncSnapshotInvalid": "Den synkroniserte kopien av dataene dine er skadet og kunne ikke gjenopprettes.",
+    "syncSnapshotWaiting": "Synkroniseringsserveren har ennå ingen kopi av dataene dine som denne enheten trygt kan gjenopprette fra. En av de andre enhetene dine laster den opp ved neste synkronisering; prøv igjen etter det.",
     "syncTooManyDevices": "Moony synkroniserer høyst 64 enheter. Fjern først de du ikke lenger bruker.",
     "syncRemovalPlanChanged": "Enhetslisten er endret i mellomtiden. Sjekk den og bekreft på nytt.",
     "syncRemovalPending": "Fjerningen av enhetene pågår fortsatt. Prøv igjen om et øyeblikk.",
+    "syncRemovalNeedsSync": "Synkroniseringen må bli ferdig før en enhet kan fjernes. Prøv igjen om et øyeblikk.",
     "syncRotationRaced": "{{name}} har endret enhetslisten i mellomtiden. Sjekk den og prøv igjen.",
     "syncTooManyKeyChanges": "Enhetslisten er endret for mange ganger de siste 30 dagene. Prøv igjen om noen dager.",
     "syncRemovalUnsupported": "Denne synkroniseringen ble satt opp av en eldre versjon av Moony, så enheter kan ikke fjernes fra den.",
@@ -360,6 +362,7 @@
     "syncUnavailable": "Synkronisering er ikke tilgjengelig i denne versjonen av Moony.",
     "syncDevOnly": "Dette er et utviklerverktøy, kun tilgjengelig i utviklingsversjoner.",
     "syncChangeInProgress": "En annen endring av synkroniseringen pågår allerede på denne enheten. Vent til den er ferdig.",
+    "syncWaitingForDevice": "Synkroniseringen venter på at en annen enhet skal fullføre en endring av enhetslisten. Åpne Moony på den enheten og prøv igjen.",
     "syncPasswordRequired": "Skriv inn passordet ditt på nytt for å kopiere eller lagre koden fra gjenopprettingssettet.",
     "syncPairingCodeInvalid": "Paringskoden er ugyldig. Sjekk koden som vises på den andre enheten.",
     "syncPairingOtherNeedsUpdate": "Den andre enheten må oppdatere Moony før den kan pares med denne.",
@@ -387,7 +390,8 @@
     "syncRecoveryVaultNotFound": "Serveren kjenner ikke dette gjenopprettingssettet: Enten har et nyere erstattet det, eller så hører det til en annen synkronisering eller server. Sjekk koden og serveradressen.",
     "syncRecoveryKitReplaced": "Et nyere gjenopprettingssett erstattet dette {{at, unixdate}}. Bruk det nyere settet.",
     "syncRecoveryKitUnreadable": "Moony kunne ikke lese dette gjenopprettingssettet: Dataene på synkroniseringsserveren stemmer ikke med det. Ingenting ble endret.",
-    "syncJoinSetupPending": "Fullfør eller avbryt oppsettet av synkronisering på denne enheten først."
+    "syncJoinSetupPending": "Fullfør eller avbryt oppsettet av synkronisering på denne enheten først.",
+    "syncJoinOvertaken": "Enhetslisten endret seg mens du koblet til. Prøv igjen."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

@@ -106,6 +106,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("039_sync_last_complete", MIGRATION_039),
         ("040_sync_device_removal", MIGRATION_040),
         ("041_sync_recovery_kit", MIGRATION_041),
+        ("042_sync_range_notes", MIGRATION_042),
     ]
 }
 
@@ -3407,11 +3408,11 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_41_migrations() {
-        assert_eq!(known_migration_names().len(), 41);
+    fn the_chain_now_has_42_migrations() {
+        assert_eq!(known_migration_names().len(), 42);
         assert_eq!(
             known_migration_names().last(),
-            Some(&"041_sync_recovery_kit")
+            Some(&"042_sync_range_notes")
         );
     }
 }
@@ -3593,6 +3594,84 @@ INSERT INTO sync_epochs (epoch, rotation_head, adopted_at)
     SELECT key_epoch, 0, strftime('%s','now') FROM sync_state WHERE key_epoch IS NOT NULL;
 "#;
 
+/// 042: local notes for a key change's range and for handled positions (spec
+/// 2026-11-20-sync-audit-2-fixes-design §2.3, rules 6 and 9a); all Local. `sync_range_notes`: per
+/// key epoch, the envelope hash of every op of the range its key change binds, by relay position.
+/// `sync_epochs.range_base` / `range_count`: the base and the number of notes of that range, NULL
+/// while none was stored. `sync_seen_ops`: the hashes of ops this device handled above its stored
+/// cursor, by position. `sync_state.restored_seq`: the position of the last snapshot restored
+/// here (part of the device's place), NULL while none.
+pub(crate) const MIGRATION_042: &str = r#"
+CREATE TABLE sync_range_notes (epoch INTEGER NOT NULL, pos INTEGER NOT NULL,
+    hash BLOB NOT NULL, PRIMARY KEY (epoch, pos));
+CREATE TABLE sync_seen_ops (pos INTEGER PRIMARY KEY, hash BLOB NOT NULL);
+ALTER TABLE sync_epochs ADD COLUMN range_base INTEGER;
+ALTER TABLE sync_epochs ADD COLUMN range_count INTEGER;
+ALTER TABLE sync_state ADD COLUMN restored_seq INTEGER;
+"#;
+
+#[cfg(test)]
+mod migration_042 {
+    use super::*;
+
+    fn before_042(conn: &Connection) {
+        let all = all_migrations();
+        let before: Vec<_> = all
+            .iter()
+            .copied()
+            .filter(|(name, _)| *name < "042_sync_range_notes")
+            .collect();
+        run_chain(conn, &before).expect("chain to 041");
+    }
+
+    fn count(conn: &Connection, table: &str) -> i64 {
+        conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+            .expect("count")
+    }
+
+    #[test]
+    fn the_note_tables_exist_empty_and_the_new_columns_start_null() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        before_042(&conn);
+        conn.execute_batch(
+            "INSERT INTO sync_epochs (epoch, rotation_head, adopted_at) VALUES (0, 0, 1)",
+        )
+        .expect("epoch row");
+        run_chain(&conn, &all_migrations()).expect("042");
+        assert_eq!(count(&conn, "sync_range_notes"), 0);
+        assert_eq!(count(&conn, "sync_seen_ops"), 0);
+        let (base, notes): (Option<i64>, Option<i64>) = conn
+            .query_row("SELECT range_base, range_count FROM sync_epochs", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
+            .expect("epoch columns");
+        assert_eq!((base, notes), (None, None));
+    }
+
+    #[test]
+    fn the_notes_are_keyed_by_position() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()).expect("full chain");
+        let range = |epoch: i64, pos: i64| {
+            conn.execute(
+                "INSERT INTO sync_range_notes (epoch, pos, hash) VALUES (?1, ?2, x'aa')",
+                rusqlite::params![epoch, pos],
+            )
+        };
+        range(1, 5).expect("note");
+        range(2, 5).expect("same position, another epoch");
+        assert!(range(1, 5).is_err(), "one note per epoch and position");
+        let seen = |pos: i64| {
+            conn.execute(
+                "INSERT INTO sync_seen_ops (pos, hash) VALUES (?1, x'bb')",
+                [pos],
+            )
+        };
+        seen(7).expect("seen");
+        assert!(seen(7).is_err(), "one note per position");
+    }
+}
+
 /// 041: the Recovery Kit as a paper device and automatic confirmation (spec
 /// 2026-11-16-device-sync-phase-5-revision-ux §7.2). `sync_devices.kit_storage` (Synced, the
 /// strongest value wins, As built R-54, only on the Kit's row): where the Kit was saved (`paper`,
@@ -3760,7 +3839,14 @@ mod migration_040 {
         );
         assert_eq!(
             columns(&conn, "sync_epochs"),
-            ["epoch", "rotation_head", "adopted_at", "by_device"]
+            [
+                "epoch",
+                "rotation_head",
+                "adopted_at",
+                "by_device",
+                "range_base",
+                "range_count"
+            ]
         );
         let insert = |device: &str, state: &str, ticket: Option<&[u8]>| {
             conn.execute(

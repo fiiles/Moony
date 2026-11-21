@@ -31,6 +31,7 @@ pub const WAITING_AFTER_SECS: i64 = 86_400;
 pub struct Extras {
     pub removal_supported: bool,
     pub removal_pending: bool,
+    pub own_change_finishing: bool,
     pub removal_notice: Option<SyncRemovalNotice>,
     pub removal_not_done: Option<SyncRemovalNotDone>,
     pub key_change_overrun: Option<SyncKeyChangeOverrun>,
@@ -116,7 +117,9 @@ pub fn extras(conn: &Connection, runtime: &Runtime, now: i64) -> Result<Extras> 
     // `keyChangeUnverified`).
     let mut waiting: Option<(i64, String)> = None;
     for epoch in head::unverified_epochs(conn)? {
-        if epoch.refuted {
+        // This device's own head is not waited for by anyone it could name: it waits for the
+        // sync server (`ownChangeFinishing`), never "for the remover".
+        if epoch.refuted || epoch.own_pending {
             continue;
         }
         let Some(since) = adopted_at(conn, epoch.epoch)? else {
@@ -207,6 +210,7 @@ pub fn extras(conn: &Connection, runtime: &Runtime, now: i64) -> Result<Extras> 
     Ok(Extras {
         removal_supported: trust::is_supported(conn)?,
         removal_pending: rotate::pending(conn)?,
+        own_change_finishing: head::own_unverified(conn)?,
         removal_notice,
         removal_not_done,
         key_change_overrun,
@@ -268,12 +272,25 @@ fn plan_device(
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )
         .optional()?;
-    Ok(row.map(|(name, platform, joined_at)| RemovalPlanDevice {
+    let Some((name, platform, joined_at)) = row else {
+        return Ok(None);
+    };
+    // "Added" is when this device first verified it, never the certificate's date.
+    let entry = trust::entry(conn, device)?;
+    let added_by = match &entry {
+        Some(entry) if entry.kind == CertKind::Paired => {
+            devices::device_row(conn, entry.issuer)?.map(|(name, _)| name)
+        }
+        _ => None,
+    };
+    Ok(Some(RemovalPlanDevice {
         id: device.to_hex(),
         name,
         platform,
         joined_at,
         this_device: device == this,
+        added_at: entry.map(|e| e.pinned_at),
+        added_by,
     }))
 }
 
@@ -335,11 +352,19 @@ pub fn plan_view(conn: &Connection, plan: &Plan, now: i64) -> Result<RemovalPlan
     for device in &plan.added_by_removing {
         added.extend(plan_device(conn, *device, this)?);
     }
+    // Only devices the dialog lists can start ticked.
+    let ticked_by_default = plan
+        .recently_added
+        .iter()
+        .map(DeviceId::to_hex)
+        .filter(|id| added.iter().any(|d| d.id == *id))
+        .collect();
     Ok(RemovalPlan {
         removing,
         staying,
         dropping_out,
         added_by_removing: added,
+        ticked_by_default,
         replaces_kit: replaces_kit_view(plan.replaces_kit),
         kit_not_updated: plan.kit_not_updated,
         consent: plan.consent.clone(),

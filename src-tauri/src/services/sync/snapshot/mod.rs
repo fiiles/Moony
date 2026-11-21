@@ -320,6 +320,10 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
         }
         note_restored_positions(conn, &snapshot)?;
         finish(conn, &snapshot, &sync, report.stats.max_hlc, false)?;
+        // Heads the snapshot's key list recorded that lie above this device's place have no
+        // range checked here (spec §2.3 step 8).
+        let mark = crate::services::sync::engine::seen::watermark(conn)?.unwrap_or(0);
+        crate::services::sync::rekey::head::require_ranges(conn, mark, false)?;
         report.warnings.extend(repair::full(conn, now)?.warnings);
         Ok(report)
     })
@@ -484,6 +488,22 @@ fn finish(
         sql,
         params![sql_int(snapshot.seq)?, sql_int(max_hlc)?, snapshot.barrier],
     )?;
+    // The device's place: a replace sets it to the snapshot's position (the cursor is set to it
+    // above), a merge raises it, so the three sources of `engine::seen::place` agree.
+    if !replacing {
+        // The cursor now covers every op handled at or below the snapshot's position.
+        crate::services::sync::engine::seen::forget_through(conn, snapshot.seq)?;
+    }
+    if replacing {
+        state::reset_restored_seq(conn, snapshot.seq)?;
+        // Every key change whose head lies above the new place is checked again: the range
+        // stored for it goes, and a fresh unverified entry waits for the signed record (spec
+        // 2026-11-20-sync-audit-2-fixes-design §2.3 step 6). The notes of handled ops went with
+        // the replace's wipe (`clear`).
+        crate::services::sync::rekey::head::require_ranges(conn, snapshot.seq, true)?;
+    } else {
+        state::set_restored_seq(conn, snapshot.seq)?;
+    }
     // The marker is a place in relay order, the same on every device, but only for the barrier
     // it marks. Replacing adopts it (or none); merging keeps a marker already found here.
     let marker = snapshot
@@ -560,7 +580,7 @@ fn clear(conn: &Connection) -> Result<()> {
     }
     conn.execute_batch(
         "DELETE FROM sync_clock; DELETE FROM sync_outbox; DELETE FROM sync_heads; \
-         DELETE FROM sync_typed; DELETE FROM sync_blobs;",
+         DELETE FROM sync_typed; DELETE FROM sync_blobs; DELETE FROM sync_seen_ops;",
     )?;
     Ok(())
 }

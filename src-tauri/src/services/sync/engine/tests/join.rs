@@ -850,3 +850,83 @@ async fn a_join_keeps_the_relay_address_of_its_credentials() {
     );
     assert!(state::load(&fresh.lock()).expect("state").is_none());
 }
+
+/// Rule 10, a paired device (spec §2.3): the holder's heads give the head of the key change that
+/// ended the key of the vault's snapshot. A snapshot at or below it is taken, one above it is
+/// refused and replaces nothing. A uploads its snapshot, removes C and goes silent; B, the holder,
+/// picks the new key up and pairs D.
+#[tokio::test]
+async fn a_paired_join_takes_an_old_key_snapshot_up_to_the_head() {
+    use super::rekey_fixture::{key_epoch, remove, round_of, sync_on, three};
+    use crate::services::sync::join::{join_new_device, JoinIdentity};
+    use crate::services::sync::pairing::holder;
+
+    async fn pair_d(
+        three: &super::rekey_fixture::Three,
+        d: &TestConn,
+        dir: &Path,
+    ) -> SyncResult<()> {
+        let payload = holder::announced_payload(&three.vault.b.lock(), NOW)
+            .expect("payload")
+            .expect("sync is on");
+        let crate::services::sync::pairing::SlotPayload {
+            creds,
+            heads,
+            identity,
+        } = payload;
+        join_new_device(
+            &three.vault.relay,
+            d,
+            creds,
+            "Tablet",
+            agreed(d),
+            JoinIdentity::Paired(identity.expect("identity"), heads),
+            dir,
+            &NoBinding,
+            NOW,
+        )
+        .await
+        .map(|_| ())
+    }
+
+    let three = three().await;
+    institution(&three.vault.a.lock(), "a-in-the-old-snapshot");
+    super::kit_join::snapshot_by(&three, &three.vault.a).await;
+    remove(&three, A, &[C]).await.expect("removed");
+    super::rekey_audit2::push_a_record(&three).await;
+    round_of(&three.vault, &three.vault.b).await;
+    assert_eq!(
+        key_epoch(&three.vault.b.lock()),
+        1,
+        "the holder has the new key"
+    );
+    let first = TestConn::new(crate::services::sync::test_support::migrated());
+    let dir = tempfile::tempdir().expect("dir");
+
+    pair_d(&three, &first, dir.path()).await.expect("joined");
+
+    {
+        let conn = first.lock();
+        assert!(has_institution(&conn, "a-in-the-old-snapshot"));
+        assert_eq!(key_epoch(&conn), 1);
+    }
+
+    // An old-key snapshot above the head is refused, and the profile stays as it was.
+    let above = super::rekey_audit2::last_seq(&three);
+    let sealed = super::rekey_audit2::forged_old_key_snapshot(&three, above);
+    super::rekey_audit2::server_takes_snapshot(&three, above, sealed).await;
+    let second = TestConn::new(crate::services::sync::test_support::migrated());
+    institution(&second.lock(), "local-only");
+    let dir = tempfile::tempdir().expect("dir");
+
+    let refused = pair_d(&three, &second, dir.path()).await;
+
+    let error = refused.expect_err("refused");
+    assert_eq!(
+        validation_key(&error),
+        Some("validation.syncSnapshotInvalid"),
+        "{error:?}"
+    );
+    let conn = second.lock();
+    assert!(has_institution(&conn, "local-only") && !sync_on(&conn));
+}

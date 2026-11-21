@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { RecoveryKit } from '@shared/schema';
 import { useRemovalPlan } from '@/hooks/use-device-sync';
+import { useDefaultAlsoRemove } from '@/hooks/use-default-also-remove';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
-import { useFormat } from '@/lib/use-format';
 import {
   outcomeView,
   planNeedsReload,
@@ -16,6 +16,7 @@ import {
   type OutcomeView,
   withoutKit,
 } from '@/utils/sync-removal';
+import { AddedLine } from '@/components/settings/sync/AddedLine';
 import { NewKitStep } from '@/components/settings/sync/NewKitStep';
 import { ServerNeededNote } from '@/components/settings/sync/ServerNeededNote';
 import { submitOnEnter } from '@/components/settings/sync/submit-on-enter';
@@ -56,7 +57,6 @@ export function NewKitDialog({
 }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
-  const { date } = useFormat();
   const { removeDevices, removeDevicesWithPassword } = useDeviceSyncMutations();
   const [alsoRemove, setAlsoRemove] = useState<string[]>([]);
   const [password, setPassword] = useState('');
@@ -69,6 +69,7 @@ export function NewKitDialog({
   const planning = step.kind === 'plan';
   const planQuery = useRemovalPlan([], alsoRemove, true, planning);
   const plan = planQuery.data;
+  useDefaultAlsoRemove(plan, setAlsoRemove);
   const reload = planQuery.refetch;
 
   // Leaving clears the new kit's seed (the mutation's result) and the password.
@@ -177,6 +178,9 @@ export function NewKitDialog({
             {plan && plan.addedByRemoving.length > 0 && (
               <section className="grid gap-1.5 text-body text-ink-2">
                 <p className="m-0">{t('newKitDialog.joined')}</p>
+                {plan.tickedByDefault.length > 0 && (
+                  <p className="m-0 text-micro font-500 text-ink-3">{t('remove.recentNote')}</p>
+                )}
                 <ul className="m-0 grid list-none gap-1.5 p-0">
                   {plan.addedByRemoving.map((device) => (
                     <li key={device.id} className="flex items-start gap-2">
@@ -190,10 +194,11 @@ export function NewKitDialog({
                         htmlFor={`new-kit-also-${device.id}`}
                         className="min-w-0 break-words font-500"
                       >
-                        {t('remove.addedRow', {
-                          name: device.name,
-                          date: date(new Date(device.joinedAt * 1000), { dateStyle: 'medium' }),
-                        })}
+                        <span className="block">{device.name}</span>
+                        <AddedLine
+                          device={device}
+                          className="block text-micro font-500 text-ink-3"
+                        />
                       </Label>
                     </li>
                   ))}

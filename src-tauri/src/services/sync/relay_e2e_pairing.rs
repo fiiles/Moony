@@ -174,7 +174,7 @@ async fn the_mailbox_has_three_slots() {
     let relay = relay_at(&url);
     let id = MailboxId::random().expect("id").to_b64();
 
-    relay.put_slot(&id, 3, b"ack").await.expect("put 3");
+    relay.put_slot(&id, 3, b"three").await.expect("put 3");
     let rewrite = relay.put_slot(&id, 3, b"again").await;
     assert!(
         matches!(rewrite, Err(RelayError::SlotTaken)),
@@ -182,7 +182,7 @@ async fn the_mailbox_has_three_slots() {
     );
     assert_eq!(
         relay.take_slot(&id, 3).await.expect("take 3"),
-        Some(b"ack".to_vec())
+        Some(b"three".to_vec())
     );
     let again = relay.take_slot(&id, 3).await;
     assert!(
@@ -221,7 +221,7 @@ async fn three_wrong_codes_end_the_pairing_and_nothing_is_sealed() {
     let mut scanner = PairingSession::scan(Role::Joiner, &text, now()).expect("scan");
     scanner.announce(&relay, now()).await.expect("announce");
     shower.poll(&relay, now()).await.expect("poll");
-    scanner.poll(&relay, now()).await.expect("read the ack");
+    scanner.poll(&relay, now()).await.expect("read the reveal");
     let right = scanner.comparison_code().expect("the joiner's digits");
     scanner
         .confirm(&relay, None, None, now())
@@ -303,11 +303,14 @@ async fn a_phone_joins_a_desktop_that_types_its_code() {
     assert_eq!(
         shower.poll(&a_relay, now()).await.expect("poll"),
         Stage::Compare,
-        "A acknowledged B's key in slot 3"
+        "A revealed its key in slot 3"
     );
     assert_eq!(shower.comparison_code(), None, "the holder shows no digits");
     assert_eq!(
-        scanner.poll(&b_relay, now()).await.expect("read the ack"),
+        scanner
+            .poll(&b_relay, now())
+            .await
+            .expect("read the reveal"),
         Stage::Compare
     );
     let digits = scanner.comparison_code().expect("code on B");
@@ -389,7 +392,10 @@ async fn a_desktop_joins_from_a_phone_and_the_phone_types_the_code() {
         Stage::Compare
     );
     assert_eq!(
-        scanner.poll(&a_relay, now()).await.expect("read the ack"),
+        scanner
+            .poll(&a_relay, now())
+            .await
+            .expect("read the reveal"),
         Stage::Compare
     );
     assert_eq!(
@@ -495,7 +501,7 @@ async fn a_mismatch_burns_the_mailbox_and_sends_nothing() {
         attacker
             .poll(&relay, now())
             .await
-            .expect("attacker reads the ack"),
+            .expect("attacker reads the reveal"),
         Stage::Compare
     );
     let attackers = attacker.comparison_code().expect("the attacker's digits");
@@ -569,7 +575,7 @@ async fn a_holder_confirming_an_attackers_code_seals_nothing() {
     attacker
         .poll(&relay, now())
         .await
-        .expect("attacker reads the ack");
+        .expect("attacker reads the reveal");
     let attackers = attacker.comparison_code().expect("the attacker's digits");
 
     // The contested phone closes slot 2 with a cancel marker before anyone confirms.
@@ -662,7 +668,7 @@ async fn a_lost_slot_1_answer_is_taken_as_ours() {
         Stage::Compare
     );
     assert_eq!(
-        scanner.poll(&relay, now()).await.expect("read the ack"),
+        scanner.poll(&relay, now()).await.expect("read the reveal"),
         Stage::Compare
     );
     let digits = scanner.comparison_code().expect("the joiner's digits");

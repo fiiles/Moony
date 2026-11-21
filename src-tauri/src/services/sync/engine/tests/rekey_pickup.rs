@@ -17,6 +17,7 @@ use crate::services::sync::identity::KitSecret;
 use crate::services::sync::identity::{self, CertKind};
 use crate::services::sync::rekey::bundle::{self, BundleInput, OldKey, Reason, Recipient};
 use crate::services::sync::rekey::envelope;
+use crate::services::sync::rekey::head;
 use crate::services::sync::rekey::kit::KitStorage;
 use crate::services::sync::rekey::pickup::{self, Pickup};
 use crate::services::sync::rekey::rotate::Outcome;
@@ -685,8 +686,16 @@ async fn a_pickup_pins_the_bundles_kit_and_the_next_change_seals_to_it() {
         assert!(notice.removed.is_empty());
     }
 
-    // B removes C next: the envelope is the new Kit's (R-28 regression: before the bundle's Kit
+    // A's signed head reaches B (a device with an unverified head starts no change of its own),
+    // then B removes C: the envelope is the new Kit's (R-28 regression: before the bundle's Kit
     // reached `import_bundle`, nothing pinned the replacement here).
+    for _ in 0..2 {
+        round_of(&three.vault, &three.vault.a).await;
+        round_of(&three.vault, &three.vault.b).await;
+    }
+    assert!(
+        !crate::services::sync::rekey::head::any_unverified(&three.vault.b.lock()).expect("any")
+    );
     remove(&three, B, &[C]).await.expect("removed");
 
     let keys = kit_keys(&three, &new.secret);
@@ -786,4 +795,110 @@ async fn a_bundle_naming_a_second_kit_is_not_taken() {
     assert!(trust::entry(&b, part.cert.body.device)
         .expect("entry")
         .is_none());
+}
+
+/// §2.3 step 8: a device paired right after a removal gets the key change's head from its holder,
+/// restores a snapshot from before the removal, and so stands below that head with no range
+/// checked. It waits for the signed record of the maker of the server's bundle (nothing says who
+/// that was), finds it, reads the range from the signed base and only then applies what lies in it.
+#[tokio::test]
+async fn a_device_paired_right_after_a_removal_finds_the_record_first() {
+    use crate::services::sync::binding::NoBinding;
+    use crate::services::sync::join::{join_new_device, JoinIdentity};
+    use crate::services::sync::pairing::holder;
+    use crate::services::sync::rekey::range;
+
+    let three = three().await;
+    let place = super::join::snapshot_of_a(&three.vault, "a-first").await;
+    institution(&three.c.lock(), "c-before");
+    round_of(&three.vault, &three.c).await;
+    remove(&three, A, &[C]).await.expect("removed");
+    let head = *state::epochs(&three.vault.a.lock())
+        .expect("epochs")
+        .get(&1)
+        .expect("A's head");
+    assert!(head > place);
+    // The holder is A, whose snapshot is the one from before the removal: it owes none yet.
+    let payload = holder::announced_payload(&three.vault.a.lock(), NOW)
+        .expect("payload")
+        .expect("sync is on");
+    assert_eq!(
+        payload.heads.get(&1),
+        Some(&head),
+        "the holder hands the head over"
+    );
+    let joiner = TestConn::new(migrated());
+    let crate::services::sync::pairing::SlotPayload {
+        creds,
+        heads,
+        identity,
+    } = payload;
+    join_new_device(
+        &three.vault.relay,
+        &joiner,
+        creds,
+        "Tablet",
+        agreed(&joiner),
+        JoinIdentity::Paired(identity.expect("identity"), heads),
+        three.dir.path(),
+        &NoBinding,
+        NOW,
+    )
+    .await
+    .expect("joined");
+    {
+        let conn = joiner.lock();
+        assert_eq!(cursor(&conn), place, "from the snapshot before the removal");
+        let entry = head::unverified_epochs(&conn)
+            .expect("unverified")
+            .into_iter()
+            .find(|e| e.epoch == 1)
+            .expect("the head is not checked yet");
+        assert_eq!(
+            (entry.head, entry.after, entry.own_pending, entry.refuted),
+            (Some(head), place, false, false)
+        );
+        assert!(entry.by.is_empty(), "nobody told it who signs");
+        assert_eq!(range::base_of(&conn, 1).expect("base"), None);
+    }
+
+    // A's record is not on the server yet: the joiner waits and applies nothing of the range.
+    let report = round_of(&three.vault, &joiner).await;
+    assert_eq!(
+        report.problem,
+        Some(SyncProblem::KeyChangeWaiting),
+        "{report:?}"
+    );
+    assert!(!has_institution(&joiner.lock(), "c-before"));
+
+    round_of(&three.vault, &three.vault.a).await;
+    let report = round_of(&three.vault, &joiner).await;
+
+    assert_eq!(report.problem, None, "{report:?}");
+    let conn = joiner.lock();
+    assert!(head::unverified_epochs(&conn)
+        .expect("unverified")
+        .is_empty());
+    assert_eq!(range::base_of(&conn, 1).expect("base"), Some(place));
+    let notes: Vec<(i64, Vec<u8>)> = conn
+        .prepare("SELECT pos, hash FROM sync_range_notes WHERE epoch = 1 ORDER BY pos")
+        .expect("notes")
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .expect("rows")
+        .map(|row| row.expect("row"))
+        .collect();
+    let a_notes: Vec<(i64, Vec<u8>)> = three
+        .vault
+        .a
+        .lock()
+        .prepare("SELECT pos, hash FROM sync_range_notes WHERE epoch = 1 ORDER BY pos")
+        .expect("notes")
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .expect("rows")
+        .map(|row| row.expect("row"))
+        .collect();
+    assert!(!notes.is_empty());
+    assert_eq!(notes, a_notes, "the notes A signed");
+    assert!(has_institution(&conn, "c-before"));
+    assert_eq!(state::epoch_signer(&conn, 1).expect("signer"), Some(A));
 }

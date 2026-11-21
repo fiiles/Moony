@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import type { RecoveryKit } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useRemovalPlan } from '@/hooks/use-device-sync';
+import { useDefaultAlsoRemove } from '@/hooks/use-default-also-remove';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -59,6 +60,7 @@ export function NewKitSheet({
   const server = useServerGate();
   const planQuery = useRemovalPlan([], alsoRemove, true, planning);
   const plan = planQuery.data;
+  useDefaultAlsoRemove(plan, setAlsoRemove);
   const reload = planQuery.refetch;
 
   // Leaving clears the new kit's seed (the mutation's result) and the password.
@@ -185,6 +187,9 @@ export function NewKitSheet({
         {plan && plan.addedByRemoving.length > 0 && (
           <section className="space-y-1 text-m-lead text-ink-2">
             <p className="m-0">{t('newKitDialog.joined')}</p>
+            {plan.tickedByDefault.length > 0 && (
+              <p className="m-0 text-m-sub text-ink-3">{t('remove.recentNote')}</p>
+            )}
             <AlsoRemoveList
               idPrefix={`${fieldId}-also`}
               devices={plan.addedByRemoving}

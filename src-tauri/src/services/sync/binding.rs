@@ -134,6 +134,35 @@ pub fn startup_check_counted(
     native: &dyn BindingNative,
     count_failure: bool,
 ) -> Result<StartupCheck> {
+    check_binding(conn, data_dir, native, Some(count_failure))
+}
+
+/// The same check as the engine's start, without touching the failed-starts count in either
+/// direction (turning sync off asks it before saying the device left; D10, first audit M10).
+pub fn check_without_counting(
+    conn: &Connection,
+    data_dir: &Path,
+    native: &dyn BindingNative,
+) -> Result<StartupCheck> {
+    check_binding(conn, data_dir, native, None)
+}
+
+/// The check behind both: `counting` is `None` to leave the failed-starts count alone, else
+/// whether a native `Failed` counts.
+fn check_binding(
+    conn: &Connection,
+    data_dir: &Path,
+    native: &dyn BindingNative,
+    counting: Option<bool>,
+) -> Result<StartupCheck> {
+    let count_failure = counting.unwrap_or(false);
+    let reset = |conn: &Connection| {
+        if counting.is_some() {
+            set_failed_starts(conn, 0)
+        } else {
+            Ok(())
+        }
+    };
     let sync = state::load(conn)?.filter(|s| s.enabled);
     let Some(sync) = sync else {
         if let Err(e) = clear_rejoin_marker(data_dir) {
@@ -146,20 +175,20 @@ pub fn startup_check_counted(
     }
     let written = state::marks(conn)?.is_some_and(|m| m.binding_written);
     if !written {
-        set_failed_starts(conn, 0)?;
+        reset(conn)?;
         return Ok(StartupCheck::Fine);
     }
     let blob = match fs::read(data_dir.join(BINDING_FILE)) {
         Ok(blob) => blob,
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            set_failed_starts(conn, 0)?;
+            reset(conn)?;
             return Ok(StartupCheck::Rejoin(RejoinReason::BindingMismatch));
         }
         Err(e) => return Err(e.into()),
     };
     let answer = native.open(&blob);
     if !matches!(answer, Err(BindingFailure::Failed(_))) {
-        set_failed_starts(conn, 0)?;
+        reset(conn)?;
     }
     match answer {
         Ok(opened) => {
@@ -176,7 +205,12 @@ pub fn startup_check_counted(
             Ok(StartupCheck::Rejoin(RejoinReason::BindingMismatch))
         }
         Err(BindingFailure::Failed(reason)) => {
-            log::warn!("[SYNC] The device binding could not be checked at this start: {reason}");
+            // Turning sync off (no counting) logs its own line: one line for that path.
+            if counting.is_some() {
+                log::warn!(
+                    "[SYNC] The device binding could not be checked at this start: {reason}"
+                );
+            }
             if count_failure {
                 let failed = failed_starts(conn)?.saturating_add(1);
                 if failed >= FAILED_STARTS_BEFORE_REJOIN {

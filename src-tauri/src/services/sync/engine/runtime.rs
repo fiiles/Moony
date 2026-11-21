@@ -68,6 +68,9 @@ pub const FAST_WINDOW: Duration = Duration::from_secs(300);
 pub const ROUND_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 /// The loop never sleeps less than this, whatever its deadlines say.
 const MIN_SLEEP: Duration = Duration::from_millis(5);
+/// The least time between two requests of a round by the lanes for a retired token: a server that
+/// keeps answering `403 token_read_only` to a lane cannot make the engine run rounds back to back.
+const KEY_ASK_GAP: Duration = Duration::from_secs(60);
 /// A transfer lane looks at its queue at least this often when nothing wakes it.
 pub const LANE_IDLE: Duration = Duration::from_secs(60);
 /// A lane run takes no new blob after this long, so the app hears what moved while a long queue
@@ -207,6 +210,24 @@ struct Shared {
 }
 
 impl Shared {
+    fn new(blobs: BlobPolicy) -> Self {
+        Self {
+            wake: Notify::new(),
+            stop: AtomicBool::new(false),
+            running: AtomicBool::new(true),
+            lanes_running: AtomicBool::new(true),
+            requested: AtomicBool::new(false),
+            sync_now: AtomicBool::new(false),
+            runtime: Mutex::new(Runtime::default()),
+            blobs,
+            started: AtomicBool::new(false),
+            backing_off: AtomicBool::new(false),
+            status_dirty: AtomicBool::new(false),
+            fast_until: Mutex::new(None),
+            fast_baseline: Mutex::new(None),
+        }
+    }
+
     fn runtime(&self) -> Runtime {
         self.runtime
             .lock()
@@ -342,21 +363,7 @@ pub fn spawn_with<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
     events: E,
     blobs: BlobPolicy,
 ) -> EngineHandle {
-    let shared = Arc::new(Shared {
-        wake: Notify::new(),
-        stop: AtomicBool::new(false),
-        running: AtomicBool::new(true),
-        lanes_running: AtomicBool::new(true),
-        requested: AtomicBool::new(false),
-        sync_now: AtomicBool::new(false),
-        runtime: Mutex::new(Runtime::default()),
-        blobs: blobs.clone(),
-        started: AtomicBool::new(false),
-        backing_off: AtomicBool::new(false),
-        status_dirty: AtomicBool::new(false),
-        fast_until: Mutex::new(None),
-        fast_baseline: Mutex::new(None),
-    });
+    let shared = Arc::new(Shared::new(blobs.clone()));
     let (relay, events) = (Arc::new(relay), Arc::new(events));
     let mut policy = SnapshotPolicy::default();
     policy.blobs = blobs;
@@ -365,6 +372,7 @@ pub fn spawn_with<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
         db: db.clone(),
         events: events.clone(),
         shared: shared.clone(),
+        key_asked_at: Mutex::new(None),
     };
     let flag = RunningFlag(shared.clone());
     let engine = Engine {
@@ -861,6 +869,8 @@ struct Lanes<R, D, E> {
     db: D,
     events: Arc<E>,
     shared: Arc<Shared>,
+    /// When a lane last asked for a round because a transfer met a retired token.
+    key_asked_at: Mutex<Option<Instant>>,
 }
 
 impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
@@ -902,6 +912,16 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
             _ = both => {}
             _ = events => {}
         }
+    }
+
+    /// A transfer met a token a key change retired: asks the loop for a round (the flag
+    /// `EngineHandle::wake` sets for an automatic trigger), whose pull meets the same `403` and
+    /// picks the key up. Asked once per run, not per blob, and not while the round's own problem is
+    /// already a key change (`keyRotated`, `keyNotGiven`, ...: the round knows, and a pickup that
+    /// gave nothing is not asked for again by every wake of the lanes), and at most once per
+    /// `KEY_ASK_GAP`: the rate is bounded by that gap, whatever the server answers.
+    fn ask_for_key_pickup(&self) {
+        ask_for_round(&self.shared, &self.key_asked_at);
     }
 
     /// Once per engine, before either lane transfers: the incomplete blobs earlier transfers left
@@ -1022,18 +1042,84 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Lanes<R, D, E> {
         if report.changed || policy.problem() != problem {
             self.shared.blobs.note_changed();
         }
+        if report.retired_token {
+            self.ask_for_key_pickup();
+        }
         Ok(report.uploaded + report.stored > 0)
+    }
+}
+
+/// The request behind `Lanes::ask_for_key_pickup`: sets the flag an automatic trigger sets and
+/// wakes the loop, unless the round's problem is already a key change or the last ask was less
+/// than `KEY_ASK_GAP` ago (`asked_at`).
+fn ask_for_round(shared: &Shared, asked_at: &Mutex<Option<Instant>>) {
+    if matches!(
+        shared.runtime().problem,
+        Some(
+            SyncProblem::KeyRotated
+                | SyncProblem::KeyNotGiven
+                | SyncProblem::KeyChangeUnverified
+                | SyncProblem::KeyChangeWaiting
+        )
+    ) {
+        return;
+    }
+    {
+        let mut asked = asked_at
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if asked.is_some_and(|at| at.elapsed() < KEY_ASK_GAP) {
+            return;
+        }
+        *asked = Some(Instant::now());
+    }
+    shared.requested.store(true, Ordering::SeqCst);
+    shared.wake.notify_one();
+}
+
+#[cfg(test)]
+mod key_ask_tests {
+    use super::*;
+
+    /// The lanes' request for a round after a retired token is rate-bound: once, then not again
+    /// within `KEY_ASK_GAP`, never while the round's problem is already a key change, and again
+    /// after the gap.
+    #[tokio::test(start_paused = true)]
+    async fn the_lanes_ask_for_a_round_once_per_gap_and_not_during_a_key_problem() {
+        let shared = Shared::new(BlobPolicy::default());
+        let asked_at = Mutex::new(None);
+        let taken = || shared.requested.swap(false, Ordering::SeqCst);
+
+        ask_for_round(&shared, &asked_at);
+        assert!(taken(), "the first ask sets the flag");
+
+        ask_for_round(&shared, &asked_at);
+        assert!(!taken(), "a second ask inside the gap does not");
+        tokio::time::advance(KEY_ASK_GAP - Duration::from_secs(1)).await;
+        ask_for_round(&shared, &asked_at);
+        assert!(!taken(), "still inside the gap");
+
+        tokio::time::advance(Duration::from_secs(2)).await;
+        shared.update(|r| r.problem = Some(SyncProblem::KeyNotGiven));
+        ask_for_round(&shared, &asked_at);
+        assert!(!taken(), "not while the problem is a key problem");
+
+        shared.update(|r| r.problem = None);
+        ask_for_round(&shared, &asked_at);
+        assert!(taken(), "after the gap, with no key problem, it asks again");
     }
 }
 
 /// Whether uploads of documents and photos wait (the lane's own gate, as the round's): a Recovery
 /// Kit joiner's push hold (`join::after_kit_join`), this device's key change pending
-/// (`rotate::pending`: its token may be retired already) or given up (`rotate::stuck`).
+/// (`rotate::pending`: its token may be retired already) or given up (`rotate::stuck`), or its own
+/// head not signed yet (`head::own_unverified`: the round sends nothing meanwhile).
 pub(crate) fn uploads_held(conn: &rusqlite::Connection) -> crate::error::Result<bool> {
     use crate::services::sync::rekey::rotate;
     Ok(crate::services::sync::join::after_kit_join(conn)?.is_some()
         || rotate::pending(conn)?
-        || rotate::stuck(conn)?)
+        || rotate::stuck(conn)?
+        || crate::services::sync::rekey::head::own_unverified(conn)?)
 }
 
 /// The credentials a lane transfers with, `None` while the profile does not sync: sync off, no

@@ -1,4 +1,4 @@
-import type { HeldGapKind, HeldGapView, SyncProblem } from '@shared/schema';
+import type { HeldGapKind, HeldGapView, SyncProblem, SyncStatus } from '@shared/schema';
 
 /** The action the problem alert offers. */
 export type SyncProblemAction =
@@ -8,6 +8,19 @@ const DAY_SECONDS = 86_400;
 
 /** A translation function, as `useTranslation('deviceSync').t` gives it. */
 type Translate = (key: string, options?: Record<string, unknown>) => string;
+
+/**
+ * The `deviceSync` key of the status text for `problem`: a key change this device made itself
+ * that is still finishing (`ownChangeFinishing`) has its own text under `keyChangeWaiting`.
+ */
+export function problemTextKey(
+  problem: SyncProblem,
+  status: Pick<SyncStatus, 'ownChangeFinishing'>
+): string {
+  return problem === 'keyChangeWaiting' && status.ownChangeFinishing
+    ? 'status.problem.keyChangeWaitingOwn'
+    : `status.problem.${problem}`;
+}
 
 /**
  * The held changes an alert for `problem` is about: a gap's are the missing changes and those

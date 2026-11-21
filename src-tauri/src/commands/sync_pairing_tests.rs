@@ -149,6 +149,7 @@ fn a_transient_join_failure_keeps_the_received_session() {
         SyncError::Transient(Transient::Relay),
         SyncError::RateLimited,
         validation("validation.syncChangeInProgress"),
+        validation("validation.syncWaitingForDevice"),
         // The person can cancel the pending setup and try again within the grace period.
         validation("validation.syncJoinSetupPending"),
         // Nothing was replaced: the confirmation reads the new numbers and asks again.
@@ -172,7 +173,7 @@ fn a_transient_join_failure_keeps_the_received_session() {
 fn the_pairing_code_text_is_shown_with_the_qr() {
     let session = PairingSession::show(Role::Holder, HOME, T0).expect("session");
     let text = pairing_code_text(&session.code());
-    assert!(text.starts_with("moony-pair:3:"));
+    assert!(text.starts_with("moony-pair:4:"));
 
     let view = view_of(&session).expect("view");
     assert_eq!(
@@ -459,7 +460,7 @@ async fn a_repeated_scan_of_the_same_code_keeps_its_session() {
     let first = scan_under_lock(&pairings, &a, || Some(a.clone()), scan(), &relay, None, T0)
         .await
         .expect("first scan");
-    // Answered, waiting for the shower's acknowledgement: nothing to show yet.
+    // Answered, waiting for the shower's reveal: nothing to show yet.
     assert_eq!(first.stage, PairingStage::Connecting);
     assert!(!first.contested);
 
@@ -487,7 +488,7 @@ async fn a_repeated_scan_of_the_same_code_keeps_its_session() {
     .expect("another code");
     assert_eq!(
         replaced.comparison_code, None,
-        "no digits before the acknowledgement"
+        "no digits before the reveal"
     );
     assert_eq!(put_count(&relay), 2, "the other code's slot 1 is written");
     assert_eq!(disposed.load(Ordering::SeqCst), 1);
@@ -691,5 +692,42 @@ async fn after_the_third_wrong_code_the_pairing_is_gone_and_a_new_one_has_all_it
             .await
             .expect("sent"),
         Stage::Sent
+    );
+}
+
+/// Review of Task 8, M1: the gate in front of `sync_pairing_start` and `sync_pairing_scan`. A
+/// holder with a head it has not verified shows no code and scans none; a joiner is not asked.
+#[test]
+fn a_holder_with_an_unverified_head_is_refused_before_a_code_is_shown() {
+    use crate::services::sync::hlc::DeviceId;
+    use crate::services::sync::rekey::head;
+    use crate::services::sync::state;
+    let dir = tempfile::tempdir().expect("tempdir");
+    let key = crate::services::crypto::master_key_to_hex(&[9; 32]);
+    let db = Database::new();
+    db.create_with_key(dir.path().join("moony.db"), &key)
+        .expect("create");
+    db.with_conn(|conn| state::enable(conn, DeviceId([7; 16])))
+        .expect("sync on");
+
+    holder_may_hand_keys_on(&db, Role::Holder).expect("nothing waits");
+
+    db.with_conn(|conn| head::note_unverified(conn, 1, Some(5), Some(1), DeviceId([8; 16]), 0))
+        .expect("a head waits");
+
+    assert_eq!(
+        key_of(holder_may_hand_keys_on(&db, Role::Holder)),
+        WAITING_FOR_DEVICE,
+        "another device's head"
+    );
+    holder_may_hand_keys_on(&db, Role::Joiner).expect("a joiner hands nothing on");
+
+    // This device's own unsigned change is a change in progress on this device.
+    db.with_conn(|conn| head::note_own_unverified(conn, 2, 9, 2, DeviceId([7; 16]), 5))
+        .expect("an own head waits");
+    assert_eq!(
+        key_of(holder_may_hand_keys_on(&db, Role::Holder)),
+        CHANGE_IN_PROGRESS,
+        "its own head"
     );
 }

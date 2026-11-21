@@ -11,6 +11,36 @@
 //! changeset dated more than ten years past this device's time is held the same way, with the
 //! later envelopes of its author as gaps behind it, until the person skips it (audit M6,
 //! `chain::too_far_ahead`).
+//!
+//! Three rules keep the server from rewriting what a key change signed or what this device has
+//! already read (spec 2026-11-20-sync-audit-2-fixes-design §2.3). Each ends the pull as `Invalid`
+//! with the cursor before the op, and none applies to the scan after a newer-schema stop, which
+//! applies nothing and jumps by design.
+//!
+//! - **Rule 6, older-key ops in a signed range.** An op sealed under an older key is judged
+//!   against the stored range of every key change above its epoch (`range::range_verdict`). At a
+//!   position of a range it must be the op noted there when the head was signed: any other op,
+//!   and any op at a position nothing was noted for, is refused. An op under the newest key, and a
+//!   range this device has not stored (its head is unverified, or the device was past it), are
+//!   not judged here; while a head is unverified the pull stops before any older-key op past where
+//!   the device stood when it adopted the key (`PullStop::KeyChangeUnconfirmed`, `head`).
+//! - **Rule 9, no skipped position below the base.** Below the base of a key change this device
+//!   holds, and up to its head while the base is not stored yet, each op must directly follow the
+//!   one before it, the first one the cursor plus one (`range::must_follow_directly`). Inside the
+//!   range a missing position is no error: rule 6 decides there. Below the base nothing else is
+//!   signed (residual R4, spec §2.4).
+//! - **Rule 9a, what a device handled cannot be replaced.** An op at a position this device
+//!   handled (held, applied or passed over) above its cursor must be the very op noted there
+//!   (`seen`). The note is written in the same transaction as the handling, and a position above
+//!   the cursor with no note (a crash came between) is noted when it is next read. Notes go as the
+//!   cursor passes them, with a replace and with turning sync off; neither a server found to have
+//!   gone back nor a re-join under a new ID clears them (`seen` says why).
+//!
+//! An op that shows this profile was copied or rolled back makes the device re-join under a new ID
+//! (`rejoin_as_new_device`): the signed head records still waiting to be sent are queued again
+//! under the new ID, an own head not signed yet is released to wait for the original's record
+//! (`rekey::head`), and the notes of rule 9a stay. `check_page`, the relay contract for a page, is
+//! also what `rekey::range::read_range` holds a range read to.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -31,8 +61,11 @@ use crate::services::sync::in_savepoint;
 use crate::services::sync::keys::{self, Credentials};
 use crate::services::sync::merge::{apply_changeset, Outcome, StopReason};
 use crate::services::sync::rekey::head;
+use crate::services::sync::rekey::range::{self, RangeVerdict};
 use crate::services::sync::relay::{PullPage, PulledOp, Relay};
 use crate::services::sync::state;
+
+use super::seen;
 
 /// Envelopes per pull page.
 pub const PULL_PAGE: u32 = 500;
@@ -107,6 +140,17 @@ pub fn handle_op(
                 op.seq
             );
             return Ok(OpStep::Stop(PullStop::KeyChangeUnconfirmed));
+        }
+        // Rule 6: an older op at a position of a stored key-change range is applied only if it is
+        // the very op that was signed there. Any other op, and any op at a position nothing was
+        // noted for, ends the pull.
+        if range::range_verdict(conn, epoch, op.seq, &envelope_hash(&op.ct))? == RangeVerdict::Wrong
+        {
+            log::warn!(
+                "[SYNC] Relay op {} is not the one signed at its place in a key change",
+                op.seq
+            );
+            return Ok(OpStep::Stop(PullStop::Invalid));
         }
     }
     let Ok(cs) = changeset::from_json(&json) else {
@@ -432,11 +476,34 @@ async fn pull_pages_from_cursor<R: Relay, D: ConnAccess>(
                 report.through = op.seq;
                 continue;
             }
+            let previous = after;
             let step = db.with_conn_mut(|conn| {
+                // Rule 9 (sync-audit-2 design §2.3): below the base of a key change this device
+                // holds, an honest server skips no position.
+                if op.seq != previous + 1 && range::must_follow_directly(conn, op.seq)? {
+                    log::warn!(
+                        "[SYNC] The relay skipped a position below a key change's base before {}",
+                        op.seq
+                    );
+                    return Ok(OpStep::Stop(PullStop::Invalid));
+                }
+                // Rule 9a: what this device has handled at a position cannot be replaced by
+                // another op there, whatever the cursor says.
+                let hash = envelope_hash(&op.ct);
+                if seen::noted(conn, op.seq)?.is_some_and(|noted| noted != hash) {
+                    log::warn!(
+                        "[SYNC] Relay op {} is not the one this device handled at that position",
+                        op.seq
+                    );
+                    return Ok(OpStep::Stop(PullStop::Invalid));
+                }
                 let step = handle_op(conn, creds, op, now, &mut report)?;
                 if !holding && matches!(step, OpStep::Advance | OpStep::Rejoined) {
                     state::set_cursor(conn, op.seq)?;
                     state::add_pulled_bytes(conn, op.ct.len() as u64)?;
+                } else if !matches!(step, OpStep::Stop(_)) {
+                    // Handled, with the cursor left before it: noted in the same transaction.
+                    seen::note(conn, op.seq, &hash)?;
                 }
                 // The device list changed: pins, `left` and removal records apply now, and a
                 // record naming this device ends sync here (phase 5 §7.4). The envelope is
@@ -526,7 +593,11 @@ fn acknowledge_if_own(conn: &Connection, creds: &Credentials, op: &PulledOp) -> 
 /// every sequence above `after` and strictly increasing, the head at or above the last sequence
 /// and never below `after` (an empty page included: the relay's head never goes back), and no
 /// empty page that says there is more (it would be fetched again forever).
-fn check_page(page: &PullPage, after: u64, limit: u32) -> std::result::Result<(), &'static str> {
+pub(crate) fn check_page(
+    page: &PullPage,
+    after: u64,
+    limit: u32,
+) -> std::result::Result<(), &'static str> {
     if page.ops.len() > limit as usize {
         return Err("more envelopes than the limit");
     }
@@ -534,6 +605,11 @@ fn check_page(page: &PullPage, after: u64, limit: u32) -> std::result::Result<()
     for op in &page.ops {
         if op.seq <= last {
             return Err("a sequence is not above the one before");
+        }
+        // Positions are stored as SQLite integers (the cursor, the notes of rule 9a): one the
+        // store cannot hold is outside the contract and would fail every round on it.
+        if i64::try_from(op.seq).is_err() {
+            return Err("a sequence is beyond the range positions are kept in");
         }
         last = op.seq;
     }
@@ -551,7 +627,8 @@ fn check_page(page: &PullPage, after: u64, limit: u32) -> std::result::Result<()
 /// re-join certificate signed by the old ID's key (phase 5 §5.3; none when the old ID had no
 /// pinned certificate, §5.5), this device's `sync_devices` row under the new ID with the old
 /// row's name (`"Moony"` when there was none; the platform is this build's) and that certificate,
-/// and the vault binding marked unwritten (Task 12 writes it again).
+/// and the vault binding marked unwritten (Task 12 writes it again). Signed head records waiting
+/// in `sync_unsent` are queued again under the new ID, and the notes of rule 9a are kept.
 pub fn rejoin_as_new_device(
     conn: &Connection,
     trigger: Option<&EnvelopeMeta>,
@@ -565,7 +642,15 @@ pub fn rejoin_as_new_device(
             .map_or_else(|| DEFAULT_DEVICE_NAME.to_string(), |(name, _)| name);
         // The old ID's key vouches for the new one (phase 5 §5.3), read before the ID changes.
         let predecessor = identity::predecessor(conn)?;
+        // A signed head the old ID queued and has not pushed stays the old ID's record: it goes
+        // out again below as a marker of the new ID (the re-join empties `sync_unsent`).
+        let records = head::unsent_records(conn)?;
         let report = chain::rejoin(conn, chain::rejoin_device_id(old)?, trigger)?;
+        head::requeue_records(conn, &records)?;
+        // An own head not signed yet stays the old ID's to sign: this device now waits for it.
+        head::release_own_pending(conn)?;
+        // The notes of handled positions stay (rule 9a): they are hashes by position, and the
+        // cursor and the held positions do not change with the ID.
         let public = keys::new_device_keypair(conn)?;
         let cert = identity::successor(conn, predecessor, now)?;
         devices::record_this_device(conn, &name, &public, cert.as_ref(), now)?;

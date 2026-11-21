@@ -36,7 +36,9 @@ use super::devices;
 use super::engine::pull::DEFAULT_DEVICE_NAME;
 use super::engine::push;
 use super::engine::runtime::{rejoin_if_copy, CopyCheck};
-use super::engine::snapshots::{off_thread, open_sealed, SnapshotPolicy};
+use super::engine::snapshots::{
+    off_thread, open_sealed, snapshot_admissible, Admissible, SnapshotPolicy, Taker,
+};
 use super::engine::{self, ConnAccess, PullEnd, PullReport, RoundMode};
 use super::error::{SyncError, SyncResult};
 use super::hlc::DeviceId;
@@ -58,6 +60,8 @@ use crate::models::sync::SyncProblem;
 pub use super::backups::{PREFIX as REPAIR_BACKUP_PREFIX, SUFFIX as REPAIR_BACKUP_SUFFIX};
 
 const NO_SNAPSHOT: &str = "validation.syncVaultHasNoSnapshot";
+const INVALID_SNAPSHOT: &str = "validation.syncSnapshotInvalid";
+const WAITING_SNAPSHOT: &str = "validation.syncSnapshotWaiting";
 const ALREADY_ENABLED: &str = "validation.syncAlreadyEnabled";
 const SETUP_PENDING: &str = "validation.syncJoinSetupPending";
 const KIT_ACCOUNT_INVALID: &str = "validation.syncRecoveryAccountInvalid";
@@ -66,6 +70,8 @@ pub(crate) const KIT_REPLACED: &str = "validation.syncRecoveryKitReplaced";
 const KIT_UNREADABLE: &str = "validation.syncRecoveryKitUnreadable";
 const CODE_INVALID: &str = "validation.syncRecoveryCodeInvalid";
 const PAIRING_FAILED: &str = "validation.syncPairingFailed";
+const JOIN_OVERTAKEN: &str = "validation.syncJoinOvertaken";
+const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
 const SERVER_NEEDS_UPDATE: &str = "validation.syncServerNeedsUpdate";
 
 /// Drain rounds a repair runs at most; it also stops after two rounds in a row that neither shrank
@@ -128,11 +134,12 @@ pub(crate) async fn join_by_replace<R: Relay, D: ConnAccess>(
     devices::validate_device_name(device_name)?;
     validate_base_url(&creds.relay_url)?;
     let _no_round = engine::exclusive(db).await;
-    let plain = fetched_snapshot(relay, &creds).await?;
+    let (plain, at) = fetched_snapshot(relay, &creds).await?;
     let (joiner, dir, name) = (db.clone(), data_dir.to_path_buf(), device_name.to_string());
     let who = NewIdentity::Join(JoinIdentity::Unvouched(EpochHeads::new()));
     let report = off_thread(move || {
-        joiner.with_conn_mut(|conn| replace_profile(conn, &dir, &creds, &name, &plain, &who, now))
+        joiner
+            .with_conn_mut(|conn| replace_profile(conn, &dir, &creds, &name, &plain, at, &who, now))
     })
     .await?;
     write_binding_after_replace(db, data_dir, native);
@@ -141,20 +148,21 @@ pub(crate) async fn join_by_replace<R: Relay, D: ConnAccess>(
 
 /// The vault's newest snapshot (none → `validation.syncVaultHasNoSnapshot`), opened with
 /// `open_sealed` (size-capped, authenticated under its sequence) off the runtime, without the
-/// connection lock.
+/// connection lock, and where it was taken and the epoch it is sealed under.
 async fn fetched_snapshot<R: Relay>(
     relay: &R,
     creds: &Credentials,
-) -> SyncResult<Zeroizing<Vec<u8>>> {
+) -> SyncResult<(Zeroizing<Vec<u8>>, SnapshotAt)> {
     match fetched_snapshot_at(relay, creds).await? {
-        Ok((plain, _)) => Ok(plain),
+        Ok(fetched) => Ok(fetched),
         // Read as a key change these credentials lack (`syncKeyRotated`).
         Err(KeyAhead) => Err(SyncError::ReadOnlyToken),
     }
 }
 
-/// The snapshot is sealed under a key epoch the credentials do not hold (As built R-73): a private
-/// answer of `fetched_snapshot_at`, not an error of the sync client.
+/// The snapshot is sealed under a key epoch the credentials do not hold (As built R-73), or the
+/// credentials' token was retired by a key change: a private answer of `fetched_snapshot_at`,
+/// not an error of the sync client.
 struct KeyAhead;
 
 /// `fetched_snapshot`, with where the snapshot was taken and the epoch it is sealed under (read
@@ -167,6 +175,13 @@ async fn fetched_snapshot_at<R: Relay>(
         Ok(blob) => blob,
         Err(RelayError::NoSnapshot) => {
             return Err(AppError::Validation(NO_SNAPSHOT.into()).into());
+        }
+        // The token was retired by a key change since the credentials were made (protocol 3: a
+        // retired token reads no snapshot): the same situation as a snapshot sealed under a key
+        // these credentials lack.
+        Err(RelayError::TokenReadOnly) => {
+            log::warn!("[SYNC] The snapshot was refused: these credentials' token was retired by a key change");
+            return Ok(Err(KeyAhead));
         }
         Err(error) => return Err(error.into()),
     };
@@ -237,6 +252,8 @@ struct HoldInput {
     creds: Credentials,
     device_name: String,
     plain: Zeroizing<Vec<u8>>,
+    /// Where the snapshot was taken and the epoch it is sealed under (rule 10).
+    sealed: SnapshotAt,
     /// Who this device is after the replace.
     identity: NewIdentity,
     now: i64,
@@ -260,6 +277,8 @@ fn replace_hold(conn: &mut Connection, input: &HoldInput) -> Hold {
     let replaced = (|| {
         if input.kind == ReplaceKind::Join {
             may_join(conn, &input.creds)?;
+        } else {
+            refuse_unsigned_head(conn)?;
         }
         impact::check_consent_after_push(conn, input.kind, &input.consent, &input.acknowledged)?;
         let (unsent_items, unsent_batches, resync_keeps) = if input.kind == ReplaceKind::Resync {
@@ -297,6 +316,7 @@ fn replace_hold(conn: &mut Connection, input: &HoldInput) -> Hold {
             &input.creds,
             &input.device_name,
             &input.plain,
+            input.sealed,
             &input.identity,
             input.now,
         )?;
@@ -418,7 +438,7 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
         Err(KeyAhead) => {
             let key = match identity {
                 JoinIdentity::RecoveryKit(_) => KIT_UNREADABLE,
-                _ => PAIRING_FAILED,
+                _ => JOIN_OVERTAKEN,
             };
             return Err(AppError::Validation(key.into()).into());
         }
@@ -437,6 +457,7 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
             creds,
             device_name: device_name.to_string(),
             plain,
+            sealed: at,
             identity: NewIdentity::Join(identity),
             now,
             acknowledged: Vec::new(),
@@ -757,12 +778,14 @@ async fn newest_bundle_head<R: Relay>(
 /// had before. Any failure rolls all of it
 /// back and reinstalls the capture (or the guard) that ran before. Only after the commit is a
 /// leftover restore marker cleared.
+#[allow(clippy::too_many_arguments)]
 fn replace_profile(
     conn: &mut Connection,
     data_dir: &Path,
     creds: &Credentials,
     device_name: &str,
     plain: &[u8],
+    sealed: SnapshotAt,
     who: &NewIdentity,
     now: i64,
 ) -> Result<RestoreReport> {
@@ -784,7 +807,8 @@ fn replace_profile(
                 NewIdentity::Join(_) => {
                     conn.execute_batch(
                         "DELETE FROM sync_trust; DELETE FROM sync_epochs; \
-                         DELETE FROM sync_trust_seen; DELETE FROM sync_tickets;",
+                         DELETE FROM sync_trust_seen; DELETE FROM sync_tickets; \
+                         DELETE FROM sync_range_notes; DELETE FROM sync_seen_ops;",
                     )?;
                     // The removed notice says why sync went off here; joining again answers
                     // it (As built R-116: a join begun elsewhere than "Připojit znovu" left it,
@@ -805,6 +829,13 @@ fn replace_profile(
                     None
                 }
             };
+            // Rule 10 for a device that already holds the heads (repair, re-sync): judged before
+            // the replace, which forgets the ranges it verified (`require_ranges`), against the
+            // base it stored; only a snapshot at or below it is taken, and one above the head is
+            // refused. No place to test: the replace sets it.
+            if let NewIdentity::Successor = who {
+                fit_the_key(conn, sealed, Taker::Replacing)?;
+            }
             keys::save_credentials(conn, creds)?;
             state::reset_chain(conn)?;
             state::reset_engine_marks(conn)?;
@@ -844,6 +875,18 @@ fn replace_profile(
             if let NewIdentity::Join(JoinIdentity::RecoveryKit(join)) = who {
                 kit_join_store(conn, join, now)?;
             }
+            if let NewIdentity::Join(_) = who {
+                // Heads a holder handed over, or a snapshot's key list recorded, that lie above
+                // the snapshot's position: this device has not checked what lies below them
+                // (spec §2.3 step 8), so each gets an entry that finds the signed record first.
+                let mark = crate::services::sync::engine::seen::watermark(conn)?.unwrap_or(0);
+                head::require_ranges(conn, mark, false)?;
+            }
+            // Rule 10 for a joiner: heads from the holder or the Kit are in `sync_epochs` by now,
+            // and a snapshot sealed under an older key is taken at or below the head.
+            if let NewIdentity::Join(_) = who {
+                fit_the_key(conn, sealed, Taker::Joining)?;
+            }
             Ok(report)
         })
     });
@@ -868,6 +911,22 @@ fn replace_profile(
         log::warn!("[SYNC] Could not clear the restore marker after the join: {e}");
     }
     Ok(joined)
+}
+
+/// Rule 10 (`snapshot_admissible`) for a replace: `Wait` is `validation.syncSnapshotWaiting`, `No`
+/// is `validation.syncSnapshotInvalid`; either rolls the replace back.
+fn fit_the_key(conn: &Connection, sealed: SnapshotAt, taker: Taker) -> Result<()> {
+    match snapshot_admissible(conn, sealed.epoch, sealed.seq, taker)? {
+        Admissible::Yes => Ok(()),
+        Admissible::Wait => {
+            log::warn!("[SYNC] The snapshot waits for one under the new key");
+            Err(AppError::Validation(WAITING_SNAPSHOT.into()))
+        }
+        Admissible::No => {
+            log::warn!("[SYNC] The snapshot lies above the key change that ended its key");
+            Err(AppError::Validation(INVALID_SNAPSHOT.into()))
+        }
+    }
 }
 
 /// A joiner's key epochs (phase 5 §6.1): the heads its holder sent for the epochs it holds keys
@@ -1112,6 +1171,7 @@ pub async fn repair_capture<R: Relay, D: ConnAccess>(
     now: i64,
 ) -> SyncResult<ReplaceOutcome> {
     refuse_read_only(db)?;
+    db.with_conn(refuse_unsigned_head)?;
     rejoin_if_copy_between_rounds(db, data_dir, native, now).await?;
     let (creds, name) = stored_identity(db)?;
     let mut backup = backed_up(db, data_dir, now).await?;
@@ -1169,7 +1229,7 @@ async fn repair_after_backup<R: Relay, D: ConnAccess>(
             return Err(AppError::Validation(DRAIN_INCOMPLETE.into()).into());
         }
         let _no_round = engine::exclusive(db).await;
-        let plain = fetched_snapshot(relay, creds).await?;
+        let (plain, sealed) = fetched_snapshot(relay, creds).await?;
         let hold = held(
             db,
             HoldInput {
@@ -1180,6 +1240,7 @@ async fn repair_after_backup<R: Relay, D: ConnAccess>(
                 creds: creds.clone(),
                 device_name: name.to_string(),
                 plain,
+                sealed,
                 identity: NewIdentity::Successor,
                 now,
                 acknowledged: Vec::new(),
@@ -1224,6 +1285,7 @@ pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
     refuse_read_only(db)?;
     let (creds, name) = stored_identity(db)?;
     let _no_round = engine::exclusive(db).await;
+    db.with_conn(refuse_unsigned_head)?;
     rejoin_if_copy_under_lock(db, data_dir, native, now)?;
     let acknowledged = match push::push_all(relay, db, &creds).await {
         Ok(report) => {
@@ -1243,7 +1305,7 @@ pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
             Vec::new()
         }
     };
-    let plain = fetched_snapshot(relay, &creds).await?;
+    let (plain, sealed) = fetched_snapshot(relay, &creds).await?;
     let hold = held(
         db,
         HoldInput {
@@ -1254,6 +1316,7 @@ pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
             creds,
             device_name: name,
             plain,
+            sealed,
             identity: NewIdentity::Successor,
             now,
             acknowledged,
@@ -1305,10 +1368,24 @@ pub(super) fn rejoin_if_copy_under_lock<D: ConnAccess>(
 /// 0027) can write nothing, a backup included, and capture needs temp writes to install: the
 /// repair and the re-sync answer `validation.syncCaptureStillBroken` (turning sync off is the way
 /// on) before they try anything.
+///
+/// Both also answer `validation.syncChangeInProgress` while this device's own key change is not
+/// signed yet (`refuse_unsigned_head`).
 fn refuse_read_only<D: ConnAccess>(db: &D) -> SyncResult<()> {
     if db.with_conn(|conn| Ok(guard::is_read_only(conn)))? {
         log::warn!("[SYNC] The profile is read-only: change capture cannot be repaired");
         return Err(AppError::Validation(guard::CAPTURE_STILL_BROKEN.into()).into());
+    }
+    Ok(())
+}
+
+/// A repair and a re-sync give this device a new ID: while its own key change is committed and
+/// not signed yet (`head::own_unverified`), the other devices wait for a record signed by the old
+/// one, so nothing is replaced (ruling R11): `validation.syncChangeInProgress`.
+fn refuse_unsigned_head(conn: &Connection) -> Result<()> {
+    if crate::services::sync::rekey::head::own_unverified(conn)? {
+        log::warn!("[SYNC] Nothing is replaced while this device's own key change is not signed");
+        return Err(AppError::Validation(CHANGE_IN_PROGRESS.into()));
     }
     Ok(())
 }

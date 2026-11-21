@@ -24,6 +24,7 @@
 //! rounds (`engine::exclusive`) while they change what a round works on.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 use reqwest::Url;
@@ -900,10 +901,32 @@ pub(crate) fn write_left_record(conn: &Connection, now: i64) -> Result<bool> {
 /// off (a device another one removed signs nothing: its key went with its sync state). What was
 /// queued before, a pairing's ticket announcement included, goes out first, since the push
 /// sends envelopes in sequence order: a holder's announcement always reaches the server before
-/// its `left` record (revision §3.1).
-pub async fn leave_best_effort<R: Relay, D: ConnAccess>(relay: &R, db: &D, budget: Duration) {
+/// its `left` record (revision §3.1). Only a profile whose binding checks out as this device's
+/// own says it left (`binding::check_without_counting`): a copy, or a binding that cannot be
+/// checked, sends nothing.
+pub async fn leave_best_effort<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    data_dir: &Path,
+    native: Arc<dyn BindingNative>,
+    budget: Duration,
+) {
     let attempt = async {
         let _no_round = engine::exclusive(db).await;
+        // D10 (first audit M10): the copy check the engine's start runs, before anything is signed.
+        // A copy of a profile (or one that cannot be checked) must not say the original left.
+        // The failed-starts count is the app start's: this path never touches it.
+        // Off the runtime like every other database access here: the native open can be slow, and
+        // awaiting it keeps the budget's timeout in force.
+        let dir = data_dir.to_path_buf();
+        let check = on_db(db, move |conn| {
+            binding::check_without_counting(conn, &dir, native.as_ref())
+        })
+        .await;
+        if !matches!(check, Ok(binding::StartupCheck::Fine)) {
+            log::info!("[SYNC] This device did not say that it left: the profile is not confirmed as this device's own");
+            return Ok(());
+        }
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_secs() as i64);

@@ -677,7 +677,7 @@ async fn a_lost_put_answer_is_stored_anyway() {
 async fn server_info_defaults_to_an_own_server_and_can_look_like_an_old_relay() {
     let relay = FakeRelay::new();
     let info = relay.server_info().await.expect("info");
-    assert_eq!(info.protocol, 2);
+    assert_eq!(info.protocol, 3);
     assert_eq!(info.mode, ServerMode::SelfHosted);
     relay.set_server_info(None);
     assert_eq!(
@@ -1193,27 +1193,20 @@ async fn a_rotation_answers_its_number_and_the_head_and_counts_in_vault_info() {
 }
 
 #[tokio::test]
-async fn the_old_token_reads_everything_and_writes_nothing() {
+async fn a_retired_token_reads_only_the_vault_info_and_the_key_changes() {
     let (relay, _, blob) = rotated_vault().await;
-    // Reads: pull, vault info, snapshot, rekey bundles, blob get/head/list.
-    assert_eq!(relay.pull(&auth(), 0, 10).await.expect("pull").ops.len(), 2);
+    // What it may look up (protocol 3): the vault's info and the key changes.
     assert_eq!(relay.vault_info(&auth()).await.expect("info").rotation, 1);
-    assert_eq!(relay.get_snapshot(&auth()).await.expect("snapshot").seq, 1);
     let page = relay.rekeys(&auth(), 0, 8).await.expect("rekeys");
     assert_eq!(page.rekeys.len(), 1);
-    assert!(relay
-        .head_blob(&auth(), blob)
-        .await
-        .expect("head")
-        .is_some());
+    // Every other read is refused: pull, snapshot, blob get/head/list.
+    let read_only = Err(RelayError::TokenReadOnly);
+    assert_eq!(relay.pull(&auth(), 0, 10).await.map(|_| ()), read_only);
+    assert_eq!(relay.get_snapshot(&auth()).await.map(|_| ()), read_only);
+    assert_eq!(relay.head_blob(&auth(), blob).await.map(|_| ()), read_only);
     assert_eq!(
-        relay
-            .list_blobs(&auth(), None, 10)
-            .await
-            .expect("list")
-            .blobs
-            .len(),
-        1
+        relay.list_blobs(&auth(), None, 10).await.map(|_| ()),
+        read_only
     );
     struct Count(u64);
     impl BlobSink for Count {
@@ -1227,10 +1220,28 @@ async fn the_old_token_reads_everything_and_writes_nothing() {
     }
     let mut sink = Count(0);
     assert_eq!(
-        relay.get_blob(&auth(), blob, &mut sink).await.expect("get"),
-        Delivery::Complete
+        relay.get_blob(&auth(), blob, &mut sink).await.map(|_| ()),
+        read_only
     );
-    assert!(sink.0 > 0);
+    assert_eq!(sink.0, 0);
+    // The current token still reads all of it.
+    assert_eq!(
+        relay
+            .pull(&new_auth(), 0, 10)
+            .await
+            .expect("pull")
+            .ops
+            .len(),
+        2
+    );
+    assert_eq!(
+        relay.get_snapshot(&new_auth()).await.expect("snapshot").seq,
+        1
+    );
+    // A relay that hides a key change serves a retired token's reads too (its own knob).
+    relay.set_accept_retired_reads(true);
+    assert_eq!(relay.pull(&auth(), 0, 10).await.expect("pull").ops.len(), 2);
+    relay.set_accept_retired_reads(false);
 
     // Writes: push, snapshot put, blob put and delete, vault delete, a second rotation.
     let read_only = Err(RelayError::TokenReadOnly);

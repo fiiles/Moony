@@ -50,6 +50,7 @@ function status(
     protectsData: false,
     removalSupported: false,
     removalPending: false,
+    ownChangeFinishing: false,
     removalNotice: null,
     removalNotDone: null,
     keyChangeOverrun: null,

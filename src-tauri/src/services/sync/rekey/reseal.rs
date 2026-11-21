@@ -12,6 +12,17 @@
 //! numbers and rows; only the bytes, and so the op ID and the chain hash, change. Nothing is lost
 //! or applied twice: every device applies an author's envelopes by sequence, and none of these
 //! sequences reached anyone.
+//!
+//! Nothing older reaches the server in the meantime: `push_all` itself never sends an envelope
+//! sealed under an epoch below the current key's, whoever calls it (the round, the leave, the
+//! re-sync), and neither does anything queued behind one, so the sender's chain stays in order;
+//! such envelopes wait in `sync_unsent` for the re-seal. And while this device's own key-change
+//! head is unsigned (`head::own_unverified`) nothing is sealed again at all: the device holds
+//! still until it has read its range and signed it (spec
+//! 2026-11-20-sync-audit-2-fixes-design §2.3 step 5). A head record queued by that signature is
+//! sealed under the current key; one still waiting when a later key change is adopted is sealed
+//! again like any envelope, and a record is searched for in envelopes sealed under its epoch or
+//! later.
 
 use rusqlite::{params, Connection};
 
@@ -42,24 +53,36 @@ pub fn holds_older(conn: &Connection, creds: &Credentials) -> Result<bool> {
 
 /// Whether the round's pulls let this device re-seal. `through`: every op up to that relay
 /// position was looked at in this round; `clean_through`: how far the pull of this pass got when
-/// it stopped nowhere (`None` when it stopped). The current epoch's start must be known:
+/// it stopped nowhere (`None` when it stopped). Never while this device's own head is unsigned.
+/// Otherwise the current epoch's start must be known:
 ///
-/// - **verified** (`head::verified_epochs`: the remover's own, or one its signed head confirmed):
-///   the round's pulls got there (`through`);
-/// - **only the server's** (not refuted): this pass's pull got there **and stopped nowhere**.
-///   Every op up to the head was then dealt with, so every own envelope the server holds up to it
-///   came back and left `sync_unsent`. A head lowered below an own envelope the server took
-///   cannot pass this: that envelope sits above the lowered head under the old epoch, where the
-///   epoch rule stops the pull (`Invalid`); a head raised above new-key ops stops it the same way,
-///   and a removed device's old-key ops above where this device stood stop it too
-///   (`KeyChangeUnconfirmed`). So nothing is sent twice, and a caught-up device does not wait
-///   for the remover's signed head to send what it has.
+/// - **verified** (`head::verified_epochs`: the remover's own once it signed it, or one its signed
+///   head confirmed): the round's pulls got there (`through`). The head and the range below it
+///   are what their signer saw: a device that checked the range holds a note for every op the
+///   signer found there, and the pull ends on an older-key op at a position of the range that is
+///   not the noted one (rule 6) or has no note. So an own envelope the server took before the
+///   rotation sits at a noted position at or below the head, the pull that reached the head
+///   has met it, and its echo has removed it from `sync_unsent`;
+/// - **only the server's** (not refuted; the range is not checked here yet, so no note exists):
+///   this pass's pull got there **and stopped nowhere**. Every op up to the head was then dealt
+///   with, so every own envelope the server holds up to it came back and left `sync_unsent`. A
+///   head lowered below an own envelope the server took cannot pass this: that envelope sits
+///   above the lowered head under the old epoch, where the epoch rule stops the pull (`Invalid`);
+///   a head raised above new-key ops stops it the same way, and a removed device's old-key ops
+///   above where this device stood stop it too (`KeyChangeUnconfirmed`). So nothing is sent
+///   twice, and a caught-up device does not wait for the remover's signed record to send what it
+///   has.
 pub fn may_reseal(
     conn: &Connection,
     creds: &Credentials,
     through: u64,
     clean_through: Option<u64>,
 ) -> Result<bool> {
+    // The remover's own head, until it has read its range and signed it, is no head to re-seal
+    // against: nothing is sealed again (spec 2026-11-20-sync-audit-2-fixes-design §2.3 step 5).
+    if super::head::own_unverified(conn)? {
+        return Ok(false);
+    }
     let current = creds.keys.current_epoch();
     if let Some(head) = super::head::verified_epochs(conn)?.get(&current) {
         return Ok(through >= *head);

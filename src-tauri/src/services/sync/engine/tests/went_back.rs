@@ -226,3 +226,87 @@ async fn turning_sync_off_clears_the_mark() {
 
     assert_eq!(went_back_at(&vault.b), None);
 }
+
+/// Rule 9a and the server that went back: the verdict rests on a head the server sends
+/// unauthenticated, so the notes of what this device handled stay (one lie must not wipe them).
+/// A restored backup that reuses a noted position with another op therefore stops the pull there,
+/// nothing of it is applied and the status keeps the server's own message; a re-sync (replace)
+/// clears the notes and the device goes on.
+#[tokio::test]
+async fn a_server_that_went_back_keeps_the_notes_and_its_own_message() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a0").await;
+    round(&vault, &vault.b).await;
+    assert_eq!(cursor(&vault.b.lock()), 1);
+    let a1 = write_and_seal(&vault, &vault.a, "a1");
+    let a2 = write_and_seal(&vault, &vault.a, "a2");
+    push(&vault.relay, &vault.creds, &[a1, a2]).await;
+    vault.relay.drop_op(2);
+    round(&vault, &vault.b).await;
+    {
+        let b = vault.b.lock();
+        assert_eq!(cursor(&b), 1, "B holds its cursor before the withheld op");
+        assert_eq!(
+            count(&b, "SELECT COUNT(*) FROM sync_seen_ops"),
+            1,
+            "a2 at 3 is noted"
+        );
+    }
+
+    // The server is restored from a backup older than B's cursor; the log then fills again.
+    vault
+        .relay
+        .roll_back_head(&vault.creds.vault_id.to_b64(), 0);
+    let first = round(&vault, &vault.b).await;
+    assert_eq!(first.problem, Some(SyncProblem::ServerWentBack));
+    assert_eq!(
+        count(&vault.b.lock(), "SELECT COUNT(*) FROM sync_seen_ops"),
+        1,
+        "the notes stay with the mark"
+    );
+    let c1 = forge(&vault.creds, &changeset(C, 1, None, vec![]));
+    let c2 = forge(
+        &vault.creds,
+        &changeset(C, 2, Some(envelope_hash(&c1)), vec![]),
+    );
+    let c3 = forge(
+        &vault.creds,
+        &changeset(C, 3, Some(envelope_hash(&c2)), vec![]),
+    );
+    push(&vault.relay, &vault.creds, &[c1, c2, c3]).await;
+
+    let second = round(&vault, &vault.b).await;
+
+    assert_eq!(
+        second.pull.as_ref().and_then(|pull| pull.stop.clone()),
+        Some(crate::services::sync::engine::PullStop::Invalid),
+        "the pull stops at the reused position: {second:?}"
+    );
+    assert_eq!(
+        second.problem,
+        Some(SyncProblem::ServerWentBack),
+        "{second:?}"
+    );
+    {
+        let b = vault.b.lock();
+        assert!(head(&b, C).is_none(), "nothing of the refilled log applied");
+        assert_eq!(cursor(&b), 1);
+    }
+
+    let consent = agreed(&vault.b);
+    let dir = tempfile::tempdir().expect("dir");
+    resync_by_replace(&vault.relay, &vault.b, consent, dir.path(), &NoBinding, NOW)
+        .await
+        .expect("resync");
+    {
+        let b = vault.b.lock();
+        assert_eq!(count(&b, "SELECT COUNT(*) FROM sync_seen_ops"), 0);
+        assert_eq!(state::vault_went_back_at(&b).expect("mark"), None);
+    }
+    let third = round(&vault, &vault.b).await;
+    assert_ne!(
+        third.pull.as_ref().and_then(|pull| pull.stop.clone()),
+        Some(crate::services::sync::engine::PullStop::Invalid),
+        "{third:?}"
+    );
+}

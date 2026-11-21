@@ -67,6 +67,10 @@ pub enum Outcome {
     /// The server refuses this vault (payment, token, vault gone): the round shows why; nothing is
     /// recorded and the run stops.
     Blocked,
+    /// `Blocked` by a token a key change retired (`token_read_only`): the same for the queue, and
+    /// the run reports it (`TransferReport::retired_token`) so the engine asks for a round, which
+    /// picks the new key up.
+    Retired,
     /// The profile is locked: nothing more can be read or recorded.
     Locked,
     /// Another download of the same blob is running here: nothing recorded; the run goes on with
@@ -83,6 +87,8 @@ pub struct TransferReport {
     pub stored: usize,
     pub failed: usize,
     pub changed: bool,
+    /// A transfer met a retired token (`Outcome::Retired`): a key change is waiting to be picked up.
+    pub retired_token: bool,
 }
 
 impl TransferReport {
@@ -92,6 +98,10 @@ impl TransferReport {
             Outcome::Done | Outcome::Confirmed => self.stored += 1,
             Outcome::Failed(_) => self.failed += 1,
             Outcome::Gone | Outcome::Found => {}
+            Outcome::Retired => {
+                self.retired_token = true;
+                return;
+            }
             Outcome::Blocked | Outcome::Locked | Outcome::Busy => return,
         }
         self.changed = true;
@@ -131,10 +141,10 @@ pub(super) fn classify(error: &RelayError) -> Outcome {
         RelayError::Protocol(reason) if reason == "body too large" => {
             Outcome::Failed(TransferError::Refused)
         }
-        RelayError::PaymentRequired
-        | RelayError::Unauthorized
-        | RelayError::TokenReadOnly
-        | RelayError::VaultNotFound => Outcome::Blocked,
+        RelayError::TokenReadOnly => Outcome::Retired,
+        RelayError::PaymentRequired | RelayError::Unauthorized | RelayError::VaultNotFound => {
+            Outcome::Blocked
+        }
         _ => Outcome::Failed(TransferError::Server),
     }
 }
@@ -150,7 +160,7 @@ fn record<D: ConnAccess>(db: &D, blob_id: &str, outcome: Outcome, now: i64) -> O
         Outcome::Gone => queue::note_gone(conn, blob_id),
         Outcome::Found => queue::note_found(conn, blob_id, now).map(|_| ()),
         Outcome::Failed(error) => queue::note_failed(conn, blob_id, error, now),
-        Outcome::Blocked | Outcome::Locked | Outcome::Busy => {
+        Outcome::Blocked | Outcome::Retired | Outcome::Locked | Outcome::Busy => {
             queue::set_active(conn, blob_id, false)
         }
     });
@@ -504,6 +514,7 @@ fn stops(outcome: Outcome) -> bool {
         outcome,
         Outcome::Failed(TransferError::Network | TransferError::Server | TransferError::NoRoom)
             | Outcome::Blocked
+            | Outcome::Retired
             | Outcome::Locked
     )
 }

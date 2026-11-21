@@ -138,6 +138,8 @@ export interface SyncStatus {
   removalSupported: boolean;
   /** A key change of this device (a removal, a new recovery kit) waits for the sync server and finishes by itself. */
   removalPending: boolean;
+  /** With `keyChangeWaiting`: the head not verified yet is this device's own (a removal or new recovery kit it made, not signed until it has read the changes before it). */
+  ownChangeFinishing: boolean;
   /** Another device removed devices or made a new recovery kit; until dismissed. */
   removalNotice: SyncRemovalNotice | null;
   /** A removal confirmed here that a background resolution found not done. */
@@ -403,6 +405,8 @@ export interface RemovalPlan {
   droppingOut: RemovalDroppingOut[];
   /** Devices a removed device added, at any depth (to tick: "Odebrat také"); the ones asked for left out. */
   addedByRemoving: RemovalPlanDevice[];
+  /** The IDs of the devices in `addedByRemoving` this device first verified within the last 30 days: the dialog starts with them ticked. */
+  tickedByDefault: string[];
   /** Whether, and why, the recovery kit is replaced; a new kit then comes with the outcome. */
   replacesKit: ReplacesKit;
   /** The change touches no recovery kit at all ("Tímto odebráním se záchranná sada neaktualizuje."). */
@@ -417,6 +421,10 @@ export interface RemovalPlanDevice {
   platform: string;
   joinedAt: number;
   thisDevice: boolean;
+  /** When this device first verified it (unix seconds); `null` with no trust entry. */
+  addedAt: number | null;
+  /** The name of the device that added it; `null` when it joined another way or that device's row is gone. */
+  addedBy: string | null;
 }
 
 export interface RemovalDroppingOut {

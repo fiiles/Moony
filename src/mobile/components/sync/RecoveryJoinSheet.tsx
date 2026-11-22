@@ -234,7 +234,7 @@ export function RecoveryJoinSheet({
             </div>
           </>
         )}
-        {need === 'typed' && <ServerChoiceBlock state={server} showCloud />}
+        {need === 'typed' && <ServerChoiceBlock state={server} />}
         {need === 'qr' && <ServerCheckBlock state={server} />}
       </form>
     </Sheet>

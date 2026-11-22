@@ -309,7 +309,7 @@ export function SetupSheet({ onClose, onAddDevice }: SetupSheetProps) {
                   )}
                 </div>
               ) : (
-                <ServerChoiceBlock state={choice} showCloud onScan={() => void scanCode()} />
+                <ServerChoiceBlock state={choice} onScan={() => void scanCode()} />
               )}
               {connectError && (
                 <p role="alert" className="m-0 text-m-sub text-loss">

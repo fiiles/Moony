@@ -15,7 +15,8 @@ Sync was built in phases 1–5 behind `RELEASED = false`: only debug builds ran 
 several things: deploying the Moony cloud with payments, the privacy policy and README text, dry
 runs on copies of real profiles, and turning the flag on. The owner's decision (2026-11-22) is to
 release sync now, in desktop and phone release builds alike, for own servers only. The Moony cloud
-stays a choice in the setup that cannot be picked ("Coming soon"), as it already was.
+stays a choice in the desktop setup that cannot be picked ("Coming soon"), as it already was; the
+phone hides it.
 
 ## Decision
 
@@ -23,8 +24,10 @@ stays a choice in the setup that cannot be picked ("Coming soon"), as it already
   top bar's sync status. A release build still never reads `MOONY_DEV_SYNC` or `MOONY_RELAY_URL`,
   and the developer tools of sync (the measurements) stay debug-only (`feature::dev_tools`).
   `MOONY_DEV_SYNC=0` no longer turns sync off in a debug build.
-- **Own servers only.** The cloud card stays disabled on the desktop (`ServerChoice`) and the phone
-  (`ServerChoiceBlock`); `DEFAULT_RELAY_URL` stays the cloud's address and is reached by nothing
+- **Own servers only.** The cloud card stays disabled on the desktop (`ServerChoice`). The phone
+  (`ServerChoiceBlock`) does not show it at all: App Review rejects a choice that cannot be used
+  (guideline 2.1), so its sheets pass no `showCloud` until the cloud runs (owner's call, the same
+  day). `DEFAULT_RELAY_URL` stays the cloud's address and is reached by nothing
   a person can set up.
 - **The texts follow.** The camera permission text names the scanning of pairing codes and the
   Recovery Kit's QR code again in all ten languages (`permission-strings.test.ts` ties it to the

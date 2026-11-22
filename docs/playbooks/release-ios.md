@@ -8,8 +8,8 @@ The store build is made by hand on a Mac with `scripts/ios-store-build.sh`. Noth
 itself, and CI builds no iOS package (it only type-checks the crate for the simulator).
 
 A store build is a release build, so it carries what `services/sync/feature.rs` says: since
-2026-11-22 `RELEASED` is `true`, so it has device sync (own servers; the Moony cloud is a choice
-that cannot be picked yet).
+2026-11-22 `RELEASED` is `true`, so it has device sync for own servers. The phone does not show
+the Moony cloud until it runs: App Review rejects a choice that cannot be used (guideline 2.1).
 
 ## One-time setup (the owner)
 

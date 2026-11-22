@@ -503,7 +503,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | foreign-types | 0.5.0 | MIT OR Apache-2.0 |
 | foreign-types-macros | 0.2.4 | MIT OR Apache-2.0 |
 | foreign-types-shared | 0.3.1 | MIT OR Apache-2.0 |
-| form_urlencoded | 1.2.2 | MIT OR Apache-2.0 |
+| form_urlencoded | 1.2.3 | MIT OR Apache-2.0 |
 | fs_extra | 1.3.0 | MIT |
 | futures | 0.3.34 | MIT OR Apache-2.0 |
 | futures-channel | 0.3.34 | MIT OR Apache-2.0 |
@@ -908,7 +908,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | unicode-segmentation | 1.13.3 | MIT OR Apache-2.0 |
 | universal-hash | 0.6.1 | MIT OR Apache-2.0 |
 | untrusted | 0.9.0 | ISC |
-| url | 2.5.8 | MIT OR Apache-2.0 |
+| url | 2.5.9 | MIT OR Apache-2.0 |
 | urlencoding | 2.1.3 | MIT |
 | urlpattern | 0.6.0 | MIT |
 | utf_types | 1.0.0 | Apache-2.0 OR MIT |

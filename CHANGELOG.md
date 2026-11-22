@@ -6,13 +6,17 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-11-22
+
 ### Added
 
 - **Sync between your own devices.** Settings → Sync sets it up with the connection code of a
   sync server you run yourself (or someone you trust runs). Changes, photos and documents are
   encrypted on your device before they leave it, so the server cannot read them; a Recovery Kit
-  lets you get back in if you lose every device. On the desktop the Moony cloud is shown but cannot be
-  chosen yet; the phone does not show it until it runs. What the server can still see is in PRIVACY.md.
+  lets you get back in if you lose every device. The server is
+  [moony-sync](https://github.com/fiiles/moony-sync), open source, version 1.0.0 or newer. On the
+  desktop the Moony cloud is shown but cannot be chosen yet; the phone does not show it until it
+  runs. What the server can still see is in PRIVACY.md.
 - **Spending plans on the phone.** The Cashflow tab shows a card with what is left in this year's
   plans and which ones run over, and opens the list of plans for any year. Each plan has a detail
   with what is left, spend per month, spend per category and its payments. From a payment's
@@ -27,6 +31,19 @@ All notable changes to Moony are documented in this file. The format follows
   next to itself before an update changes it (`moony.db.bak-…` in the data folder). Once the
   update has gone through, only that newest copy stays and the older ones are deleted. While an
   update fails, up to three stay, so the copy from before it survives a few restarts.
+
+### Fixed
+
+- **A photo taken with the phone shows upright.** The app turns it the way the camera says
+  (its EXIF orientation) before saving it, so a photo taken holding the phone upright no longer
+  lies on its side or upside down. Photos saved before stay as they are; add them again.
+- **A password-protected PDF opens on the phone.** The phone asks for the PDF's password instead
+  of failing to show it, and a document can be saved to the Files app.
+- A document's description shows on the phone.
+
+### Security
+
+- `url` 2.5.9 (RUSTSEC-2026-0592: a stack overflow on nested `blob:` URLs).
 
 ## [1.4.0] - 2026-11-20
 
@@ -62,9 +79,6 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Fixed
 
-- **A photo taken with the phone shows upright.** The app turns it the way the camera says
-  (its EXIF orientation) before saving it, so a photo taken holding the phone upright no longer
-  lies on its side or upside down. Photos saved before stay as they are; add them again.
 - A bond bought inside its coupon year pays a coupon for the days you held it, not for the whole
   year, in "What's ahead" and in the bonds ladder.
 - No two ticks of a chart axis print the same label, and a value axis is as wide as its widest
@@ -885,7 +899,8 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/fiiles/Moony/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/fiiles/Moony/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/fiiles/Moony/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/fiiles/Moony/compare/v1.1.0...v1.2.0

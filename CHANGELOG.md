@@ -57,6 +57,9 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Fixed
 
+- **A photo taken with the phone shows upright.** The app turns it the way the camera says
+  (its EXIF orientation) before saving it, so a photo taken holding the phone upright no longer
+  lies on its side or upside down. Photos saved before stay as they are; add them again.
 - A bond bought inside its coupon year pays a coupon for the days you held it, not for the whole
   year, in "What's ahead" and in the bonds ladder.
 - No two ticks of a chart axis print the same label, and a value axis is as wide as its widest

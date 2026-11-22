@@ -936,6 +936,17 @@ export const attachmentsApi = {
   export: (kind: AttachmentKind, id: string, destPath: string) =>
     tauriInvoke<void>('export_attachment', { kind, id, destPath }),
 
+  /**
+   * Phones only: stage a decrypted copy of a document under its own name for the save picker
+   * ("Uložit do Souborů"); resolves to its path, which goes back to `discardExport` whatever the
+   * person chose (`useSaveDocument`).
+   */
+  stageExport: (kind: AttachmentKind, id: string) =>
+    tauriInvoke<string>('stage_attachment_export', { kind, id }),
+
+  /** Phones only: remove the copy `stageExport` staged. */
+  discardExport: (path: string) => tauriInvoke<void>('discard_attachment_export', { path }),
+
   /** Save every photo of a batch into a folder the user chose; resolves to how many. */
   exportPhotoBatch: (batchId: string, destDir: string) =>
     tauriInvoke<number>('export_photo_batch', { batchId, destDir }),

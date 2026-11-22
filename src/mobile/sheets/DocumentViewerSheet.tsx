@@ -6,12 +6,14 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type FormEvent,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ZoomIn, ZoomOut } from 'lucide-react';
+import { Download, LockKeyhole, ZoomIn, ZoomOut } from 'lucide-react';
 import type { AttachmentContent } from '@shared/schema';
+import { PasswordInput } from '@/components/auth/PasswordInput';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -20,10 +22,13 @@ import { FetchingNotice, UnavailableNotice } from '@/mobile/components/documents
 import { FOOTER_GHOST_WIDE } from '@/mobile/components/import/styles';
 import type { DocumentKind } from '@/mobile/components/documents/document-kind';
 import { useAttachmentFetch } from '@/mobile/hooks/use-attachment-fetch';
+import { useSaveDocument } from '@/mobile/hooks/use-save-document';
 import type { FetchPlan } from '@/mobile/lib/attachment-fetch';
 import { isDoubleTap, scrollAfterZoom, type TapPoint } from '@/mobile/lib/documents';
+import { field48, fieldMessage } from '@/mobile/pages/first-run/styles';
 import { attachmentUrl } from '@/utils/attachment-url';
 import { viewerKind } from '@/utils/attachment-viewer';
+import type { PdfFailure } from '@/utils/pdf-failure';
 
 // pdf.js and its worker load only when a PDF is opened
 const PdfPages = lazy(() => import('@/components/attachments/PdfPages'));
@@ -55,6 +60,14 @@ interface DocumentViewerSheetProps {
 // `fetching`: the content is not on the phone yet; nothing is mounted that would load it
 type Status = 'loading' | 'ready' | 'failed' | 'fetching';
 
+/** Why a PDF waits for its opening password: none typed yet, or the typed one did not open it. */
+type Lock = Exclude<PdfFailure, 'failed'>;
+
+/** The save action's label: the iOS picker saves to the Files app, Android's to the device. */
+function saveLabelKey(platform: string): 'documents.saveToFiles' | 'documents.saveToDevice' {
+  return platform.startsWith('android') ? 'documents.saveToDevice' : 'documents.saveToFiles';
+}
+
 /** The zoom step: the content is this many times the box's width. */
 const ZOOM = 2;
 
@@ -63,8 +76,11 @@ const TAP_SLOP = 10;
 
 /**
  * The encrypted viewer (spec §8.8 "the encrypted viewer", README §13 "Document viewer"): the name as
- * the title, the document in a full sheet, a zoom button and Zavřít. An image shows contained, a PDF
- * page by page (`PdfPages`, the desktop's), anything else says it opens on the computer. A double
+ * the title, the document in a full sheet, a zoom button, "Uložit do Souborů" and Hotovo. An image
+ * shows contained, a PDF page by page (`PdfPages`, the desktop's), anything else says the phone
+ * cannot show it. A PDF locked with an opening password (insurers send them so) asks for the
+ * password in the sheet; it lives in this sheet's state only and is forgotten with the document. A
+ * double
  * tap — or the zoom button, for anyone who cannot double-tap — toggles 1× and 2× (the content twice
  * the box's width, the box scrolling both ways, a new document opening at 1×). A pinch over the
  * document does nothing: the viewport is no longer locked to scale 1 (README §13 "Dynamic Type"),
@@ -73,9 +89,11 @@ const TAP_SLOP = 10;
  * so it is the one scroller at every text size — `PdfPages` judges which pages are in view against
  * its parent, which is this box. The bytes come decrypted through the `moony-file` scheme only
  * while the app is unlocked and nothing is written to disk: the picture and the pages cannot be
- * selected, dragged or long-pressed into the system's Copy / Share / Save menu. There is no "open
- * elsewhere" and no "save a copy" here: both end in a desktop-only command (`open_with_system`, a
- * save dialog).
+ * selected, dragged or long-pressed into the system's Copy / Share / Save menu. The one way out is
+ * "Uložit do Souborů" (`useSaveDocument`): a copy Rust stages only for the system's save picker and
+ * removes right after, for a document whose content is on the phone — it is also what a file the
+ * phone cannot show, or a preview that failed, offers instead. There is no "open elsewhere": that
+ * is a desktop-only command (`open_with_system`).
  */
 export function DocumentViewerSheet({
   open,
@@ -90,14 +108,20 @@ export function DocumentViewerSheet({
   const [status, setStatus] = useState<Status>('loading');
   const [zoomed, setZoomed] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
+  // A protected PDF's opening password, as typed; never stored anywhere else
+  const [password, setPassword] = useState<string | undefined>(undefined);
+  const [lock, setLock] = useState<Lock | null>(null);
+  const { save, isPending: saving } = useSaveDocument();
   const box = useRef<HTMLDivElement>(null);
   // Where the box is to be scrolled once the zoomed content is laid out
   const scrollTarget = useRef<{ left: number; top: number } | null>(null);
 
-  // A new document, and every opening, starts at 1× and loads
+  // A new document, and every opening, starts at 1×, without a password, and loads
   const restart = () => {
     setStatus('loading');
     setZoomed(false);
+    setPassword(undefined);
+    setLock(null);
   };
   if (doc !== null && doc !== shown) {
     // A refreshed row of the same document updates it without loading again
@@ -117,13 +141,12 @@ export function DocumentViewerSheet({
   }
 
   const view = shown ? viewerKind(shown.mimeType) : 'external';
-  // A file the phone cannot show has nothing to download for: it says so whatever the content is
+  // A file the phone cannot show is still fetched: "Uložit do Souborů" needs its content here
   const { plan, retrying, tryAgain } = useAttachmentFetch({
     open,
     kind,
     id: shown?.id,
     content: shown?.content,
-    skip: view === 'external',
   });
   // The status follows the plan: a spinner while the content comes, a fresh load once it is here
   const planned: Status =
@@ -135,7 +158,16 @@ export function DocumentViewerSheet({
   if (planned !== status) setStatus(planned);
   // Stable: `PdfPages` starts over whenever one of them changes
   const markReady = useCallback(() => setStatus('ready'), []);
-  const markFailed = useCallback(() => setStatus('failed'), []);
+  const markFailed = useCallback((failure: PdfFailure = 'failed') => {
+    setLock(failure === 'failed' ? null : failure);
+    setStatus('failed');
+  }, []);
+  // The typed password opens the document again: the pages mount anew with it
+  const unlock = (typed: string) => {
+    setPassword(typed);
+    setLock(null);
+    setStatus('loading');
+  };
 
   /** 1× ↔ 2×, keeping `at` (a point of the screen; the box's middle without one) where it is. */
   const toggleZoom = (at?: { x: number; y: number }) => {
@@ -172,6 +204,21 @@ export function DocumentViewerSheet({
   // A document the phone cannot show (`external`) or one that failed is a line of text: it gets a
   // normal-height sheet and no zoom, not a tall one that is nearly empty
   const showsDocument = view !== 'external' && status !== 'failed' && plan.stage !== 'unavailable';
+  // Saving needs the content on the phone; content on its way or unavailable has nothing to save
+  const canSave = shown !== null && plan.stage === 'show' && status !== 'fetching';
+  const saveButton = canSave ? (
+    <Button
+      type="button"
+      variant="secondary"
+      className={FOOTER_GHOST_WIDE}
+      disabled={saving}
+      aria-busy={saving}
+      onClick={() => shown && void save(kind, shown.id)}
+    >
+      <Download strokeWidth={1.75} aria-hidden />
+      {t(saveLabelKey(import.meta.env.TAURI_ENV_PLATFORM ?? ''))}
+    </Button>
+  ) : null;
   return (
     <Sheet
       open={open}
@@ -182,22 +229,28 @@ export function DocumentViewerSheet({
       description={sub}
       dismiss="done"
       footer={
-        // "Hotovo" is in the head (C7); the footer keeps the viewer's one tool within thumb reach
-        showsDocument ? (
-          <Button
-            type="button"
-            variant="secondary"
-            className={FOOTER_GHOST_WIDE}
-            disabled={status !== 'ready'}
-            onClick={() => toggleZoom()}
-          >
-            {zoomed ? (
-              <ZoomOut strokeWidth={1.75} aria-hidden />
-            ) : (
-              <ZoomIn strokeWidth={1.75} aria-hidden />
+        // "Hotovo" is in the head (C7); the footer keeps the viewer's tools within thumb reach:
+        // the zoom while the document shows, "Uložit do Souborů" whenever its content is here
+        showsDocument || saveButton ? (
+          <>
+            {showsDocument && (
+              <Button
+                type="button"
+                variant="secondary"
+                className={FOOTER_GHOST_WIDE}
+                disabled={status !== 'ready'}
+                onClick={() => toggleZoom()}
+              >
+                {zoomed ? (
+                  <ZoomOut strokeWidth={1.75} aria-hidden />
+                ) : (
+                  <ZoomIn strokeWidth={1.75} aria-hidden />
+                )}
+                {zoomed ? t('documents.zoomOut') : t('documents.zoomIn')}
+              </Button>
             )}
-            {zoomed ? t('documents.zoomOut') : t('documents.zoomIn')}
-          </Button>
+            {saveButton}
+          </>
         ) : undefined
       }
     >
@@ -212,6 +265,9 @@ export function DocumentViewerSheet({
           onTryAgain={tryAgain}
           status={status}
           zoomed={zoomed}
+          password={password}
+          lock={lock}
+          onUnlock={unlock}
           boxRef={box}
           onReady={markReady}
           onFailed={markFailed}
@@ -231,9 +287,12 @@ interface ViewerBodyProps {
   onTryAgain: () => void;
   status: Status;
   zoomed: boolean;
+  password: string | undefined;
+  lock: Lock | null;
+  onUnlock: (password: string) => void;
   boxRef: RefObject<HTMLDivElement | null>;
   onReady: () => void;
-  onFailed: () => void;
+  onFailed: (failure?: PdfFailure) => void;
   onDoubleTap: (at: { x: number; y: number }) => void;
 }
 
@@ -246,6 +305,9 @@ function ViewerBody({
   onTryAgain,
   status,
   zoomed,
+  password,
+  lock,
+  onUnlock,
   boxRef,
   onReady,
   onFailed,
@@ -256,13 +318,6 @@ function ViewerBody({
   const lastTap = useRef<TapPoint | null>(null);
   const pressedAt = useRef<{ x: number; y: number } | null>(null);
 
-  if (view === 'external') {
-    return (
-      <p className="m-0 px-1 py-6 text-center text-m-body text-ink-3">
-        {t('documents.openOnComputer')}
-      </p>
-    );
-  }
   if (plan.stage === 'unavailable') {
     return (
       <div className="px-1 py-6">
@@ -282,6 +337,16 @@ function ViewerBody({
         <FetchingNotice />
       </div>
     );
+  }
+  if (view === 'external') {
+    return (
+      <p className="m-0 px-1 py-6 text-center text-m-body text-ink-3">
+        {t('documents.cannotShow')}
+      </p>
+    );
+  }
+  if (status === 'failed' && lock) {
+    return <PasswordPrompt wrong={lock === 'wrongPassword'} onUnlock={onUnlock} />;
   }
   if (status === 'failed') {
     return (
@@ -348,7 +413,8 @@ function ViewerBody({
             alt={doc.name}
             draggable={false}
             onLoad={onReady}
-            onError={onFailed}
+            // An image has no password: its failure is a broken preview (not the event as a reason)
+            onError={() => onFailed()}
             // At 1× contained in the box (its height is definite: it fills the sheet), at 2× twice its width
             className={cn(
               'pointer-events-none mx-auto block select-none rounded-r2 object-contain [-webkit-touch-callout:none]',
@@ -362,6 +428,7 @@ function ViewerBody({
             <PdfPages
               key={zoomed ? 'zoomed' : 'fit'}
               url={url}
+              password={password}
               onReady={onReady}
               onError={onFailed}
             />
@@ -369,5 +436,57 @@ function ViewerBody({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * A PDF locked with an opening password: the sheet asks for it (insurers and banks send their
+ * documents so, often locked with the client's birth number). The typed password goes to pdf.js
+ * through the sheet's state and nowhere else; a wrong one is said under the field.
+ */
+function PasswordPrompt({ wrong, onUnlock }: { wrong: boolean; onUnlock: (p: string) => void }) {
+  const { t } = useTranslation('mobile');
+  const [typed, setTyped] = useState('');
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (typed !== '') onUnlock(typed);
+  };
+  return (
+    <form onSubmit={submit} noValidate className="space-y-3 px-1 py-4">
+      <div className="flex items-start gap-3">
+        <LockKeyhole
+          className="mt-0.5 size-5 flex-none text-ink-3"
+          strokeWidth={1.75}
+          aria-hidden
+        />
+        <div>
+          <p className="m-0 text-m-lead font-semibold text-ink">{t('documents.passwordTitle')}</p>
+          <p className="m-0 mt-1 text-m-sub text-ink-3">{t('documents.passwordHint')}</p>
+        </div>
+      </div>
+      <label className="block space-y-1.5">
+        <span className="text-m-sub font-medium text-ink-2">{t('documents.passwordLabel')}</span>
+        <PasswordInput
+          touch
+          autoComplete="off"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="go"
+          className={field48}
+          value={typed}
+          aria-invalid={wrong || undefined}
+          onChange={(event) => setTyped(event.target.value)}
+        />
+      </label>
+      {wrong && (
+        <p role="alert" className={cn(fieldMessage, 'm-0 text-loss')}>
+          {t('documents.passwordWrong')}
+        </p>
+      )}
+      <Button type="submit" className={cn(FOOTER_GHOST_WIDE, 'w-full')} disabled={typed === ''}>
+        {t('documents.passwordOpen')}
+      </Button>
+    </form>
   );
 }

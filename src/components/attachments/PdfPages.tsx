@@ -7,6 +7,10 @@
  * Every page gets a placeholder with its aspect ratio; only pages near the visible part of the
  * viewer's scroll area are drawn, and a page far out of view gives its canvas back, so a long
  * contract never holds hundreds of full-resolution canvases at once.
+ *
+ * A document locked with an opening password fails with `needsPassword` (`pdfFailure`); the viewer
+ * asks for it and mounts the pages again with `password`, which only ever lives in that viewer's
+ * state and goes to pdf.js, never anywhere else.
  */
 import { useEffect, useRef } from 'react';
 import {
@@ -16,6 +20,7 @@ import {
   type PDFDocumentProxy,
 } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { pdfFailure, type PdfFailure } from '@/utils/pdf-failure';
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -27,11 +32,13 @@ const RENDER_MARGIN = '100% 0px';
 
 interface PdfPagesProps {
   url: string;
+  /** The opening password of a protected document, once the person has typed it. */
+  password?: string;
   onReady: () => void;
-  onError: () => void;
+  onError: (failure: PdfFailure) => void;
 }
 
-export default function PdfPages({ url, onReady, onError }: PdfPagesProps) {
+export default function PdfPages({ url, password, onReady, onError }: PdfPagesProps) {
   const container = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,8 +54,10 @@ export default function PdfPages({ url, onReady, onError }: PdfPagesProps) {
 
     const fail = (error: unknown) => {
       if (cancelled) return;
-      console.error('PDF preview failed', error);
-      onError();
+      const failure = pdfFailure(error);
+      // A password question is not an error; nothing about the document is logged either way
+      if (failure === 'failed') console.error('PDF preview failed', error);
+      onError(failure);
     };
 
     const release = (slot: HTMLElement) => {
@@ -96,6 +105,7 @@ export default function PdfPages({ url, onReady, onError }: PdfPagesProps) {
         const data = new Uint8Array(await response.arrayBuffer());
         task = getDocument({
           data,
+          password,
           wasmUrl: `${ASSETS}wasm/`,
           standardFontDataUrl: `${ASSETS}standard_fonts/`,
           cMapUrl: `${ASSETS}cmaps/`,
@@ -149,7 +159,7 @@ export default function PdfPages({ url, onReady, onError }: PdfPagesProps) {
       host.replaceChildren();
       void task?.destroy();
     };
-  }, [url, onReady, onError]);
+  }, [url, password, onReady, onError]);
 
   return <div ref={container} className="flex flex-col gap-3" data-testid="pdf-pages" />;
 }

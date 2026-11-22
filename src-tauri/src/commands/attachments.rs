@@ -41,6 +41,40 @@ pub async fn export_attachment(
     db.with_conn(|conn| attachments::export(conn, &dir, kind, &id, &PathBuf::from(&dest_path)))
 }
 
+/// Phones only. Stage a decrypted copy of a document under its own name for the save picker
+/// ("Uložit do Souborů"; Android's document picker) and answer its path for
+/// `discard_attachment_export`, which the viewer calls whatever the person chose. Kept out of a
+/// device backup while it waits; the startup sweep removes a copy an interrupted export left. The
+/// name and the path are never logged.
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn stage_attachment_export(
+    app: AppHandle,
+    db: State<'_, Database>,
+    kind: AttachmentKind,
+    id: String,
+) -> Result<String> {
+    let data = data_dir(&app)?;
+    let staging = crate::commands::backup::staging_dir(&app)?;
+    let dest = db.with_conn(|conn| {
+        crate::services::attachment_export::stage(conn, &data, &staging, kind, &id)
+    })?;
+    crate::commands::device_backup::exclude_staged_file(&app, &dest).await;
+    crate::commands::backup::path_string(&dest)
+}
+
+/// Phones only. Remove the copy `stage_attachment_export` staged (one already gone is fine);
+/// refuses any other path.
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn discard_attachment_export(app: AppHandle, path: String) -> Result<()> {
+    crate::services::attachment_export::discard(
+        &data_dir(&app)?,
+        &crate::commands::backup::staging_dir(&app)?,
+        Path::new(&path),
+    )
+}
+
 /// Save every photo of a batch into `dest_dir` (chosen in a folder dialog); returns how many.
 #[tauri::command]
 pub async fn export_photo_batch(
@@ -75,11 +109,21 @@ pub(crate) fn open_elsewhere(
     document_files::open_with_system(&path)
 }
 
-/// Delete the decrypted copies opened in other apps.
+/// Delete the decrypted copies opened in other apps, and on a phone the document copy staged for
+/// the save picker (`stage_attachment_export`), on every lock, exit and restore.
 pub fn wipe_open_copies(app: &AppHandle) {
     match app.path().app_cache_dir() {
         Ok(cache) => attachments::wipe_open_copies(&cache),
         Err(e) => log::warn!("[ATTACHMENTS] Temporary copies not wiped: {e}"),
+    }
+    #[cfg(mobile)]
+    match (data_dir(app), crate::commands::backup::staging_dir(app)) {
+        (Ok(data), Ok(staging)) => {
+            if let Err(e) = crate::services::attachment_export::sweep(&data, &staging) {
+                log::warn!("[ATTACHMENTS] Staged document not removed: {e}");
+            }
+        }
+        (Err(e), _) | (_, Err(e)) => log::warn!("[ATTACHMENTS] Staged document not removed: {e}"),
     }
 }
 

@@ -72,6 +72,15 @@ export function dialogPathToFsPath(value: string): string {
   }
 }
 
+/**
+ * The file name of a path Rust staged an export under: the name the save picker saves it as (iOS
+ * exports `Documents/<defaultPath's name>`, so a document copy, staged under its own name by
+ * `stage_attachment_export`, keeps it). Both phones' paths use `/`.
+ */
+export function stagedFileName(path: string): string {
+  return path.slice(path.lastIndexOf('/') + 1);
+}
+
 /** One step of a restore, in the order it is done. */
 export type RestoreStep = 'disable-biometrics' | 'clear-asked' | 'restore' | 'reload';
 

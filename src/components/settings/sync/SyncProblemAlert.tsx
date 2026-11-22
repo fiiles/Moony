@@ -116,7 +116,9 @@ function ProblemBox({
   const deletesAt = secondsToDate(status.deletesAt);
   const ahead = problem === 'clockAhead' ? aheadGap(held) : null;
   let title: string | null = null;
-  let body: string | null = ahead ? aheadText(ahead, t, dateText) : t(problemTextKey(problem, status));
+  let body: string | null = ahead
+    ? aheadText(ahead, t, dateText)
+    : t(problemTextKey(problem, status));
   const skipFrom = firstSkippableAt(held, now);
   if (skipFrom !== null && dateText(skipFrom)) {
     const key = problem === 'clockAhead' ? 'alert.clockAhead.skipFrom' : 'alert.gap.skipFrom';

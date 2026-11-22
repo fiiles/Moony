@@ -15,7 +15,8 @@ use crate::models::{AttachmentKind, RealEstatePhoto, RealEstatePhotoBatch};
 use crate::services::attachment_store;
 use crate::services::attachments::{ContentLookup, Variant};
 use image::imageops::FilterType;
-use image::{DynamicImage, ImageFormat};
+use image::metadata::Orientation;
+use image::{DynamicImage, ImageDecoder, ImageFormat};
 use rusqlite::{Connection, OptionalExtension};
 use std::borrow::Cow;
 use std::io::Cursor;
@@ -83,9 +84,23 @@ pub fn batch_property(conn: &Connection, batch_id: &str) -> Result<String> {
 }
 
 /// Decode an uploaded image and encode the photo and its thumbnail as JPEG, in memory.
+///
+/// A phone camera stores the sensor's pixels and an EXIF Orientation tag saying how to turn them
+/// upright. The JPEGs written here carry no EXIF, so the turn is applied to the pixels first, or a
+/// photo taken holding the phone upright would show lying on its side.
 pub fn prepare_photo(bytes: &[u8]) -> Result<PreparedPhoto> {
-    let img = image::load_from_memory(bytes)
-        .map_err(|e| AppError::Internal(format!("Failed to read the uploaded image: {}", e)))?;
+    let read_error = |e: image::ImageError| {
+        AppError::Internal(format!("Failed to read the uploaded image: {}", e))
+    };
+    let mut decoder = image::ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .map_err(|e| AppError::Internal(format!("Failed to read the uploaded image: {}", e)))?
+        .into_decoder()
+        .map_err(read_error)?;
+    // A missing or unreadable tag means the pixels are already upright
+    let orientation = decoder.orientation().unwrap_or(Orientation::NoTransforms);
+    let mut img = DynamicImage::from_decoder(decoder).map_err(read_error)?;
+    img.apply_orientation(orientation);
     let full = if img.width() > MAX_EDGE || img.height() > MAX_EDGE {
         img.resize(MAX_EDGE, MAX_EDGE, FilterType::Lanczos3)
     } else {
@@ -426,6 +441,74 @@ mod tests {
         let prepared = prepare_photo(&png(800, 600)).expect("prepared");
         let full = image::load_from_memory(&prepared.full).expect("full");
         assert_eq!((full.width(), full.height()), (800, 600));
+    }
+
+    /// A 40 × 20 JPEG, left half red and right half blue, as a phone camera stores a photo: the
+    /// sensor's pixels plus an EXIF Orientation tag that says how to turn them upright.
+    fn camera_jpeg(orientation: u16) -> Vec<u8> {
+        let img = image::RgbImage::from_fn(40, 20, |x, _| {
+            if x < 20 {
+                image::Rgb([255, 0, 0])
+            } else {
+                image::Rgb([0, 0, 255])
+            }
+        });
+        let mut jpeg = Cursor::new(Vec::new());
+        DynamicImage::ImageRgb8(img)
+            .write_to(&mut jpeg, ImageFormat::Jpeg)
+            .expect("encode jpeg");
+        let jpeg = jpeg.into_inner();
+        // APP1 "Exif": big-endian TIFF header, one IFD entry 0x0112 (Orientation), SHORT, 1 value
+        let mut exif = b"Exif\0\0MM\0\x2A\0\0\0\x08\0\x01\x01\x12\0\x03\0\0\0\x01".to_vec();
+        exif.extend_from_slice(&orientation.to_be_bytes());
+        exif.extend_from_slice(&[0, 0, 0, 0, 0, 0]);
+        let mut out = jpeg[..2].to_vec();
+        out.extend_from_slice(&[0xFF, 0xE1]);
+        out.extend_from_slice(&u16::try_from(exif.len() + 2).expect("len").to_be_bytes());
+        out.extend_from_slice(&exif);
+        out.extend_from_slice(&jpeg[2..]);
+        out
+    }
+
+    fn is_red(px: &image::Rgb<u8>) -> bool {
+        px[0] > 200 && px[2] < 60
+    }
+
+    fn is_blue(px: &image::Rgb<u8>) -> bool {
+        px[2] > 200 && px[0] < 60
+    }
+
+    #[test]
+    fn a_camera_photo_is_turned_upright_by_its_exif_orientation() {
+        // 6: the camera was turned clockwise, so the picture turns 90° clockwise: left goes to top
+        let prepared = prepare_photo(&camera_jpeg(6)).expect("prepared");
+        for bytes in [&prepared.full, &prepared.thumb] {
+            let img = image::load_from_memory(bytes).expect("decode").to_rgb8();
+            let (w, h) = img.dimensions();
+            assert_eq!(h, 2 * w, "portrait, as the photo was taken");
+            assert!(
+                is_red(img.get_pixel(w / 2, h / 8)),
+                "top is the red left half"
+            );
+            assert!(
+                is_blue(img.get_pixel(w / 2, h * 7 / 8)),
+                "bottom is the blue right half"
+            );
+        }
+
+        // 8: turned the other way, so the left half ends at the bottom
+        let prepared = prepare_photo(&camera_jpeg(8)).expect("prepared");
+        let img = image::load_from_memory(&prepared.full)
+            .expect("decode")
+            .to_rgb8();
+        assert_eq!(img.dimensions(), (20, 40));
+        assert!(is_blue(img.get_pixel(10, 5)));
+        assert!(is_red(img.get_pixel(10, 35)));
+
+        // 1: already upright, stays as it is
+        let prepared = prepare_photo(&camera_jpeg(1)).expect("prepared");
+        let img = image::load_from_memory(&prepared.full).expect("decode");
+        assert_eq!((img.width(), img.height()), (40, 20));
     }
 
     #[test]

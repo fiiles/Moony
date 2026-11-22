@@ -1,7 +1,7 @@
 # Privacy
 
 Moony is a local-first app: **there is no account and no cloud.** Your financial records stay
-on your computer, in an encrypted database. The app talks to the internet only for the few
+on your computer or phone, in an encrypted database. The app talks to the internet only for the few
 things listed below, and none of them involves your amounts, balances, names or documents in a
 form anyone else can read (an AI client that you connect yourself is the exception, see below).
 Device sync is optional and off until you set it up; it goes through a sync server that you or
@@ -105,7 +105,8 @@ trust, and regenerate the token when you stop using one.
 Sync keeps your own devices in step through a sync server: one you run yourself (the server
 software is open source, [fiiles/moony-sync](https://github.com/fiiles/moony-sync)) or one run by
 someone you trust, who adds you and gives you a connection code. The Moony cloud, a server run by
-the project, is shown in the setup but does not exist yet and cannot be chosen.
+the project, does not exist yet: the desktop setup shows it as a choice that cannot be picked,
+and the phone app does not show it.
 
 - **What is encrypted before it leaves the device:** every change, every snapshot, every photo and
   document, your device names and the Recovery Kit. The keys stay on your devices (and in the
@@ -130,7 +131,8 @@ the project, is shown in the setup but does not exist yet and cannot be chosen.
   sets no cookies; the only cookie is the Yahoo Finance session cookie described above, which the
   price library keeps in memory for its requests.
 - No remote configuration and no code that is loaded while the app runs: the only code that
-  arrives from outside is a signed update that you choose to install.
+  arrives from outside is a signed update that you choose to install (on the phone, an
+update from the App Store or Google Play).
 - Nothing for anyone to read remotely: sync, if you set it up, carries only data encrypted on
   your devices. The
   optional MCP server is off by default and listens on `127.0.0.1` only; whoever holds its token
@@ -183,6 +185,45 @@ language of the lock screen, auto-lock and the automatic update check, which is 
 you had turned the update check off, turn it off again under **Settings → Security → Updates**
 ("Check for updates automatically"). Your data and the settings inside the database are
 unchanged.
+
+## The phone app (iPhone and Android)
+
+The phone app (`com.moonyfinance.mobile`) runs the same core as the desktop app: the same
+encrypted databases, the same key handling and the same network requests as listed above, with
+these differences.
+
+- **No update check and no MCP server.** Updates come from the App Store or Google Play, so the
+  phone never contacts GitHub, and the AI-assistant server does not exist on the phone.
+- **Not in the phone's own backup.** The data folder, the web view's storage and the files
+  Moony stages for saving are excluded from iCloud and computer backups on iOS and from Android's
+  cloud backup and device transfer. Outside the phone your data exists only in a Moony backup you
+  save yourself and, if you set sync up, encrypted on your sync server and your other devices.
+- **Face ID, Touch ID or fingerprint unlock (optional).** On iOS a copy of the master key is kept in
+  the Keychain, readable only after Face ID or Touch ID, only on this device, only while a passcode
+  is set, and invalidated when the enrolled faces or fingers change. On Android it is encrypted
+  with a key in the Android Keystore that needs a strong biometric for every use and is invalidated
+  by a new enrolment. Switching the unlock off deletes the copy; the password always keeps working.
+- **Notifications are scheduled on the phone**, with no push server. A deadline reminder shows the
+  name you gave the loan, policy, bond or account and what is due (for example "Fixed rate ends in
+  14 days"), never an amount; it can appear on the lock screen. The other reminders (data upkeep,
+  backup) are generic. Each kind can be switched off in Settings → Notifications.
+- **Permissions:** the camera (photographing documents and properties, scanning sync pairing codes
+  and the Recovery Kit's QR code), Face ID, notifications and, on iOS, the local network (only when
+  sync reaches a server on your home network). Moony does not ask for access to your photo
+  library; picking a photo goes through the system picker, which hands over only the photo you
+  choose.
+- **When the app goes to the background** its screen is covered (a blur on iOS, a plain cover on
+  Android, where the recent-apps thumbnail is also blocked from Android 13 on), and it locks after
+  the delay you set (1 minute by default). Screenshots are not blocked.
+
+What is readable on the phone outside the encrypted databases:
+
+| What | Notes |
+| --- | --- |
+| Web view storage | The same kind of device settings as on the desktop: language, theme, your first name (for the lock screen greeting), the lock delay, the notification switches and which upkeep reminders you hid. No amounts or account data. Deleting the profile clears it. |
+| A photo or file you just picked or took | The system makes a temporary copy while handing it to Moony; Moony deletes these copies when it locks and at the next start. |
+| A statement shared into or opened with Moony | A temporary copy in the app's private inbox, deleted once you finish or cancel the import (or at the next start if the app was closed in between). |
+| A file you save to Files | Moony prepares a readable copy (a document, the backup, the recovery key) for the save dialog and deletes it right after, whatever you choose; the copy you save is wherever you put it. |
 
 ## Backups and the recovery key
 

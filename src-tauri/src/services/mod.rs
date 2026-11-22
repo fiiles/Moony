@@ -4,6 +4,9 @@
 
 pub mod asset_logos;
 pub mod attachment_conversion;
+// Phones only: a document handed to the save picker (the tests run everywhere)
+#[cfg(any(mobile, test))]
+pub mod attachment_export;
 pub mod attachment_protocol;
 pub mod attachment_store;
 pub mod attachments;

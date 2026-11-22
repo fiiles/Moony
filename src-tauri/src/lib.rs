@@ -43,8 +43,9 @@ fn spawn_legacy_temp_cleanup(app: tauri::AppHandle) {
 
 /// Phones only: remove what an export that was interrupted (the app killed while the Files picker
 /// was open) left in the staging folder (Documents on iOS, the private `exports` cache folder on
-/// Android), a staged backup archive or the recovery key's text, once at startup and off the main
-/// thread. Best effort: a problem is logged and never blocks startup.
+/// Android), a staged backup archive or the recovery key's text, and a document copy of "Save to
+/// Files" (`services::attachment_export`), once at startup and off the main thread. Best effort: a
+/// problem is logged and never blocks startup.
 #[cfg(mobile)]
 fn spawn_staged_export_sweep(app: tauri::AppHandle) {
     let document_dir = match commands::backup::staging_dir(&app) {
@@ -54,10 +55,21 @@ fn spawn_staged_export_sweep(app: tauri::AppHandle) {
             return;
         }
     };
+    let data_dir = app.path().app_data_dir();
     tauri::async_runtime::spawn_blocking(move || {
         match services::backup::sweep_staged_exports(&document_dir) {
             Ok(count) => log::info!("[BACKUP] Staged export sweep removed {count} file(s)"),
             Err(e) => log::warn!("[BACKUP] Staged export sweep failed: {e}"),
+        }
+        // A document copy an interrupted "Save to Files" left (named by the marker, never logged)
+        match data_dir {
+            Ok(data_dir) => match services::attachment_export::sweep(&data_dir, &document_dir) {
+                Ok(count) => {
+                    log::info!("[ATTACHMENTS] Staged document sweep removed {count} file(s)")
+                }
+                Err(e) => log::warn!("[ATTACHMENTS] Staged document sweep failed: {e}"),
+            },
+            Err(e) => log::warn!("[ATTACHMENTS] Staged document sweep skipped: no data dir: {e}"),
         }
     });
 }
@@ -296,6 +308,10 @@ async fn run_app() {
             commands::backup::stage_data_export,
             #[cfg(mobile)]
             commands::backup::write_staged_export,
+            #[cfg(mobile)]
+            commands::attachments::stage_attachment_export,
+            #[cfg(mobile)]
+            commands::attachments::discard_attachment_export,
             // Statement files the system opened in Moony (services::received_files)
             #[cfg(mobile)]
             commands::received_files::take_received_files,

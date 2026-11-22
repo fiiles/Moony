@@ -71,7 +71,7 @@ pub(crate) fn staging_dir(app: &AppHandle) -> Result<PathBuf> {
 }
 
 /// Phones only. Android: copy a staged export (`stage_backup_export`, `stage_text_export`,
-/// `stage_data_export`, `stage_sync_backup_export`) into the document the save picker created,
+/// `stage_data_export`, `stage_sync_backup_export`, `stage_attachment_export`) into the document the save picker created,
 /// `uri` (a `content://` URI). The caller then finishes or discards the staged file as on iOS.
 /// Refuses any path that is not a staged export, and is refused on iOS, whose picker exports the
 /// staged file itself.
@@ -80,8 +80,11 @@ pub(crate) fn staging_dir(app: &AppHandle) -> Result<PathBuf> {
 pub async fn write_staged_export(app: AppHandle, path: String, uri: String) -> Result<()> {
     let path = PathBuf::from(path);
     let staging = staging_dir(&app)?;
+    let staged_document =
+        crate::services::attachment_export::is_staged_path(&data_dir(&app)?, &staging, &path)?;
     if !(backup::is_staged_export_path(&staging, &path)
-        || backup::is_staged_text_export_path(&staging, &path))
+        || backup::is_staged_text_export_path(&staging, &path)
+        || staged_document)
         || !uri.starts_with("content://")
     {
         return Err(AppError::Validation(

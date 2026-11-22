@@ -6,7 +6,23 @@ import {
   dialogPathToFsPath,
   exportsOnThisDevice,
   restoreBackupPlan,
+  stagedFileName,
 } from './export-file';
+
+describe('stagedFileName', () => {
+  it('is the last part of the path Rust staged the copy under, the name the picker saves', () => {
+    expect(stagedFileName('/var/mobile/Containers/Data/X/Documents/KOOP - Rekapitulace.pdf')).toBe(
+      'KOOP - Rekapitulace.pdf'
+    );
+    expect(stagedFileName('/data/user/0/com.moonyfinance.mobile/cache/exports/Účet.pdf')).toBe(
+      'Účet.pdf'
+    );
+  });
+
+  it('takes a bare name as it is', () => {
+    expect(stagedFileName('smlouva.pdf')).toBe('smlouva.pdf');
+  });
+});
 
 describe('backupFileName', () => {
   it('names the archive by its day, the way the desktop does', () => {

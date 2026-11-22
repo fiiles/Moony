@@ -1,9 +1,11 @@
 # Privacy
 
-Moony is a local-first app: **there is no account, no cloud and no sync.** Your financial
-records stay on your computer, in an encrypted database. The app talks to the internet only
-for the few things listed below, and none of them involves your amounts, balances, names or
-documents (an AI client that you connect yourself is the exception, see below). Links you click
+Moony is a local-first app: **there is no account and no cloud.** Your financial records stay
+on your computer, in an encrypted database. The app talks to the internet only for the few
+things listed below, and none of them involves your amounts, balances, names or documents in a
+form anyone else can read (an AI client that you connect yourself is the exception, see below).
+Device sync is optional and off until you set it up; it goes through a sync server that you or
+someone you trust runs, and everything it carries is encrypted on your device first. Links you click
 in the app open in your default browser, which makes its own requests.
 
 This page is written to be checked against the code. If you find a statement here that does
@@ -73,6 +75,7 @@ updater plugin's own user agent, described in the GitHub row.
 | **European Central Bank** (`www.ecb.europa.eu`) | Nothing from your data; it is a download of the public daily reference rates. The ECB sees your IP address and the `Moony/<version>` user agent. | When exchange rates are stale. | Yes — rates then simply go stale. Currencies the ECB does not publish never get an automatic rate (Settings → General → Currency explains this). |
 | **Frankfurter** (`api.frankfurter.dev`, serves ECB historical rates) | The ISO codes of the currencies found in your data (accounts, transactions, stock and crypto positions and their quotes, properties, loans, bonds, insurance, budgets, your profile; the euro itself and currencies without a rate source are left out) and the date range still missing, which can reach back to your earliest dated record (a transaction, a purchase date, a loan start) minus ten days. | When you enter or import transactions in a currency whose history is missing, and on rate refresh. Best effort: failures are ignored. | Yes — without it historical conversions fall back to current rates. |
 | **GitHub** (`github.com` and `release-assets.githubusercontent.com`) | A plain request for `latest.json` of the latest release (`github.com/fiiles/Moony/releases/latest/download/latest.json`), which GitHub redirects to its release-asset host. The request carries the user agent of the updater plugin, `tauri-plugin-updater/<plugin version>` (`tauri-plugin-updater/2.14.0` in Moony 1.0.0), and `Accept: application/json`. Moony's own version, your operating system and your CPU architecture are not part of the request. If you accept an update, the installer for your platform is downloaded from the same release with the same user agent (so GitHub can tell which platform's file you fetched), and its signature is verified against the public key built into the app. GitHub decides which host serves release files and can change it, so a firewall rule may need to allow `*.githubusercontent.com`. | Once per app start, after you unlock, and whenever you press the manual check. | Yes — Settings → Security → Updates has a switch for the automatic check. |
+| **Your sync server** (device sync, optional) | Your changes, a full copy of your data now and then (a snapshot), the photos and documents you attach, and your Recovery Kit, each encrypted on the device with keys the server never gets; the 16-digit account number of your connection code and an access token. See [Device sync](#device-sync-optional) for what the server can still see. Requests carry the `Moony/<version>` user agent. | Only after you set sync up: after unlocking, every few seconds while changes wait to be sent, every 5 minutes, and when you press "Sync now". Pairing a device and using a Recovery Kit also talk to it. | Yes — sync is off until you set it up, and you can turn it off in Settings → Sync. |
 | **Your AI client** (MCP, optional) | Whatever the client asks for and the tools return — potentially your full financial data. | Only while the MCP server is enabled, the app is unlocked and a client connected with your token. | Off by default; see below. |
 
 Notes:
@@ -97,9 +100,30 @@ Desktop or Claude Code that you connect will process whatever it reads — usual
 provider's cloud, under that provider's terms. Enable the integration only for clients you
 trust, and regenerate the token when you stop using one.
 
+### Device sync (optional)
+
+Sync keeps your own devices in step through a sync server: one you run yourself (the server
+software is open source, [fiiles/moony-sync](https://github.com/fiiles/moony-sync)) or one run by
+someone you trust, who adds you and gives you a connection code. The Moony cloud, a server run by
+the project, is shown in the setup but does not exist yet and cannot be chosen.
+
+- **What is encrypted before it leaves the device:** every change, every snapshot, every photo and
+  document, your device names and the Recovery Kit. The keys stay on your devices (and in the
+  Recovery Kit you print or save); the server cannot open any of it.
+- **What the server sees anyway:** the account number of your connection code, the name its admin
+  typed for you, how many items you store and how big each is, when they arrived, and when your
+  devices last talked to it. It sees your IP address on every request. The server's own
+  documentation lists everything it stores (`DESIGN.md`, "What the server knows").
+- **Plain `http`:** an own server may be reached without TLS. Your data stays encrypted, but anyone
+  on the same network can capture the access token and with it delete or block the synced data on
+  the server; the app warns before it accepts such an address.
+- **Turning it off** removes the account, the keys and the sync bookkeeping from this device; the
+  data on your other devices and on the server stays until you remove it there.
+
 ## What Moony does not do
 
-- No account, login or registration, and no server operated by the project.
+- No account, login or registration, and no server operated by the project (device sync goes
+  through a server you choose, see above).
 - No telemetry: no crash reporting, no analytics, no tracking SDKs.
 - No advertising, no tracking cookies and no third-party fonts or images, apart from the
   company logos from Yahoo Finance and Financial Modeling Prep described above. The interface
@@ -107,13 +131,14 @@ trust, and regenerate the token when you stop using one.
   price library keeps in memory for its requests.
 - No remote configuration and no code that is loaded while the app runs: the only code that
   arrives from outside is a signed update that you choose to install.
-- No sync, so nothing for anyone to read remotely. The
+- Nothing for anyone to read remotely: sync, if you set it up, carries only data encrypted on
+  your devices. The
   optional MCP server is off by default and listens on `127.0.0.1` only; whoever holds its token
   on your computer can read and change your data (see above).
 
-Today Moony has no sync, no bank connection and no mobile app. If a feature that sends data over
-the internet is ever added (for example fetching balances and transactions through a bank-data
-service, or syncing your own devices), it will be optional and off until you turn it on, and this
+Today Moony has no bank connection. If another feature that sends data over the internet is ever
+added (for example fetching balances and transactions through a bank-data service, or the Moony
+cloud for sync), it will be optional and off until you turn it on, and this
 page will describe what it sends, and to whom, before the release that adds it. The one permanent
 promise on this page is: no telemetry.
 

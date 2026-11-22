@@ -8,6 +8,11 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Added
 
+- **Sync between your own devices.** Settings → Sync sets it up with the connection code of a
+  sync server you run yourself (or someone you trust runs). Changes, photos and documents are
+  encrypted on your device before they leave it, so the server cannot read them; a Recovery Kit
+  lets you get back in if you lose every device. The Moony cloud is shown but cannot be chosen
+  yet. What the server can still see is in PRIVACY.md.
 - **Spending plans on the phone.** The Cashflow tab shows a card with what is left in this year's
   plans and which ones run over, and opens the list of plans for any year. Each plan has a detail
   with what is left, spend per month, spend per category and its payments. From a payment's

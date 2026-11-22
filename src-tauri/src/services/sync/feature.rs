@@ -1,7 +1,9 @@
 //! The runtime flag for device sync (plan's call P1): everything compiles and is tested in every
-//! build, but nothing of sync runs unless the flag is on. `RELEASED` flips in phase 6; until then
-//! a debug build has sync on by default (owner's call, 2026-11-14) and `MOONY_DEV_SYNC=0` turns
-//! it off; `MOONY_RELAY_URL` points it at a dev relay (read by `relay::http::default_base_url`).
+//! build, but nothing of sync runs unless the flag is on. `RELEASED` is on since 2026-11-22, so
+//! every build runs sync. Before that a debug build had sync on by default (owner's call,
+//! 2026-11-14) and `MOONY_DEV_SYNC=0` turned it off; with `RELEASED` on the variable no longer
+//! turns it off. `MOONY_RELAY_URL` points a debug build at a dev relay (read by
+//! `relay::http::default_base_url`).
 //! An iPhone app gets no environment variables, so a debug build made with `MOONY_DEV_SYNC=0` (or
 //! `MOONY_RELAY_URL`) in the build environment carries them in the binary (`option_env!`; cargo
 //! rebuilds when they change); the run-time value wins over the built-in one. A release build
@@ -12,8 +14,9 @@
 //! sync off (`sync_turn_off`), so it never writes synced tables uncaptured.
 //! CI runs `cargo test --release --lib services::sync::feature` with both variables set.
 
-/// Device sync is released to everyone (phase 6).
-pub const RELEASED: bool = false;
+/// Device sync is released to everyone (owner's call, 2026-11-22: own servers only; the Moony
+/// cloud stays a disabled choice in the setup until it runs).
+pub const RELEASED: bool = true;
 
 /// The environment variable that turns sync off in a debug build (`0`).
 pub const DEV_VARIABLE: &str = "MOONY_DEV_SYNC";
@@ -79,8 +82,8 @@ mod tests {
     #[test]
     fn a_debug_build_has_sync_on_unless_the_dev_variable_is_zero() {
         assert!(
-            !decide(RELEASED, false, None, None),
-            "a release build of this version runs no sync (released in phase 6)"
+            decide(RELEASED, false, None, None),
+            "a release build runs sync (released to everyone, owner's call 2026-11-22)"
         );
         // (released, debug, run-time variable, built with) → enabled
         let table = [
@@ -105,11 +108,9 @@ mod tests {
                 "released {released}, debug {debug}, {DEV_VARIABLE} {variable:?}, built with {built_with:?}"
             );
         }
-        // This process: a debug build follows the variable, a release build ignores it.
-        let variable = std::env::var(DEV_VARIABLE).ok();
-        let expected = cfg!(debug_assertions) && variable.as_deref().or(BUILT_WITH) != Some("0");
-        assert_eq!(enabled(), expected);
-        assert_eq!(dev_tools(), expected);
+        // This process: sync runs whatever the variable says; the developer tools only in debug.
+        assert!(enabled());
+        assert_eq!(dev_tools(), cfg!(debug_assertions));
     }
 
     #[test]
@@ -135,7 +136,7 @@ mod tests {
     #[cfg(not(debug_assertions))]
     #[test]
     fn a_release_build_ignores_the_dev_variables() {
-        assert!(!enabled());
+        assert!(enabled(), "released: a release build runs sync");
         assert!(!dev_tools());
         assert_eq!(dev_relay_base(), None);
         assert_eq!(

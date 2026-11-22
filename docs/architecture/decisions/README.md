@@ -42,6 +42,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0032](0032-device-sync-device-removal-and-the-recovery-kit.md) | Device sync: removing a device, and the Recovery Kit as a paper device | 2026-11-17 | Accepted; builds on 0024–0027, 0029 and 0030; amends 0025, 0026 and 0027; amended by 0034 |
 | [0033](0033-finished-days-settle-to-closing-prices.md) | Finished days settle to closing prices | 2026-11-17 | Accepted; adds a rule to 0016, narrows a known cost of 0024 |
 | [0034](0034-device-sync-second-audit-fixes.md) | Device sync: the second security audit's fixes | 2026-11-20 | Accepted; amends 0026, 0027, 0029 and 0032 |
+| [0035](0035-device-sync-released-for-own-servers.md) | Device sync released, own servers only | 2026-11-22 | Accepted; turns on the flag of 0025, setup path of 0029 |
 
 ## Rules
 
@@ -49,7 +50,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
   different. To change a decision, write a **new ADR** with the next number
   that links back to the one it supersedes. The only edit ever made to an old
   ADR is flipping its `## Status` to `Superseded by [NNNN](NNNN-....md)`.
-- Numbering is sequential and zero-padded; the next free number is `0034`.
+- Numbering is sequential and zero-padded; the next free number is `0036`.
 - Filename: `NNNN-short-kebab-title.md`. Add every new ADR to the index table
   above.
 - Keep each ADR to one page or less.

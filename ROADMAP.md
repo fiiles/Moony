@@ -4,7 +4,7 @@ Moony is maintained by one person, so this page lists intentions, not commitment
 
 ## Today
 
-Moony is a desktop app for macOS, Windows and Linux. You import bank statements or enter data yourself, everything stays on your computer, and there is no sync. This describes today, not a rule: the longer-term items below would change some of it.
+Moony is a desktop app for macOS, Windows and Linux. You import bank statements or enter data yourself and everything stays on your computer, unless you set up sync between your own devices through a sync server you run yourself; it carries only data encrypted on your devices. This describes today, not a rule: the longer-term items below would change some of it.
 
 ## Next
 
@@ -28,7 +28,7 @@ Moony is a desktop app for macOS, Windows and Linux. You import bank statements 
 Work that is under way in this repository and is not part of a release yet. Neither item has a date.
 
 - **A phone app.** Moony on a phone that works on its own, with its own encrypted data and no desktop app needed.
-- **Sync between your own devices**, encrypted on the device so that whatever carries the data cannot read it. The code is in the repository and switched off in the released builds until it has been tested on real devices.
+- **The Moony cloud for sync**, so that syncing your devices needs no server of your own. The sync setup already shows it as a choice that cannot be picked yet.
 
 ## Longer term
 

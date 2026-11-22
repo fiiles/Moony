@@ -7,8 +7,9 @@ build number is, and what in the iOS project exists because of the store. The de
 The store build is made by hand on a Mac with `scripts/ios-store-build.sh`. Nothing uploads by
 itself, and CI builds no iOS package (it only type-checks the crate for the simulator).
 
-A store build is a release build, so it carries what `services/sync/feature.rs` says: with
-`RELEASED = false` it has no device sync, and nothing of sync shows in it.
+A store build is a release build, so it carries what `services/sync/feature.rs` says: since
+2026-11-22 `RELEASED` is `true`, so it has device sync (own servers; the Moony cloud is a choice
+that cannot be picked yet).
 
 ## One-time setup (the owner)
 
@@ -68,8 +69,8 @@ which is what an install on your own phone uses
 given over that file in a temporary copy.
 
 Before the first upload of a version, install the release build on a phone and walk through it: a
-debug build has sync on, a release build does not, so only the release build shows what a tester
-gets.
+debug build also shows sync's developer tools (the measurements) and can point at a dev server, so
+only the release build shows what a tester gets.
 
 ## Upload
 
@@ -153,11 +154,10 @@ privacy screen tested on a device. Repeat the launch check after a major Xcode u
 
 ### Permission texts
 
-`NSCameraUsageDescription` describes photographing documents and the property. With device sync the
-camera also scans pairing codes and the Recovery Kit's QR code; the text names that only once
-`RELEASED` is `true`, and `src/mobile/permission-strings.test.ts` fails on the flip until the ten
-`InfoPlist.strings`, `Info.ios.plist` and the generated `Info.plist` carry the scanning clause again
-(the texts are in the tag `v1.4.0`). `NSLocalNetworkUsageDescription` stays: iOS shows it only when
+`NSCameraUsageDescription` describes photographing documents and the property, and scanning
+pairing codes and the Recovery Kit's QR code. `src/mobile/permission-strings.test.ts` ties the
+scanning clause to `RELEASED`: should sync ever be switched off again, it fails until the ten
+`InfoPlist.strings`, `Info.ios.plist` and the generated `Info.plist` drop the clause. `NSLocalNetworkUsageDescription` stays: iOS shows it only when
 the app first reaches a local address, which only sync does.
 
 ## Key files

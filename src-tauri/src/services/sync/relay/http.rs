@@ -28,7 +28,8 @@ use crate::services::http::{no_redirect_client, no_redirect_download_client};
 use crate::services::sync::envelope::blob::MAX_BLOB_SEALED;
 use crate::services::sync::keys::VaultAuth;
 
-/// The relay of release builds (a placeholder until phase 6).
+/// The Moony cloud. It does not run yet: the setup shows it as a disabled choice ("Coming soon"),
+/// so people set sync up with their own server.
 pub const DEFAULT_RELAY_URL: &str = "https://sync.moonyfinance.com";
 /// The host of `DEFAULT_RELAY_URL`: the Moony cloud, the one server plain http never reaches.
 pub const DEFAULT_RELAY_HOST: &str = "sync.moonyfinance.com";

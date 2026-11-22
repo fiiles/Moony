@@ -15,10 +15,12 @@ macOS · Windows · Linux · ten languages
 </div>
 
 Moony tracks your bank accounts, stocks, crypto, bonds, real estate, loans and insurance in one
-net-worth view, in ten languages and 45 currencies. There is no account, no cloud and no sync:
-your records, photos and documents live AES-256 encrypted on your computer (exports and copies
-you open in other apps are readable, see [Privacy and security](#privacy-and-security-at-a-glance)). The app contacts the
-internet only for market data and update checks, all listed in [PRIVACY.md](./PRIVACY.md).
+net-worth view, in ten languages and 45 currencies. There is no account and no cloud: your
+records, photos and documents live AES-256 encrypted on your computer (exports and copies you
+open in other apps are readable, see [Privacy and security](#privacy-and-security-at-a-glance)).
+Optional device sync goes through a sync server you run yourself and carries only data encrypted
+on your devices. The app contacts the internet only for market data, update checks and, if you
+set it up, your sync server, all listed in [PRIVACY.md](./PRIVACY.md).
 
 <p align="center"><img src="docs/screenshots/dashboard.png" alt="Overview page with the net worth and its history over time" width="800"></p>
 <p align="center"><img src="docs/screenshots/cashflow.png" alt="Cashflow report with income and expenses by month and by category" width="260"> <img src="docs/screenshots/account-detail.png" alt="Bank account detail page with the monthly flows and the ledger" width="260"> <img src="docs/screenshots/stocks-analysis.png" alt="Stock analysis with time-weighted and money-weighted return and the positions split by tag" width="260"></p>
@@ -31,7 +33,8 @@ The screenshots show a sample profile (synthetic data).
 Moony is for people with several accounts, investments, loans and insurance policies who want
 one net-worth number and do not want to hand their statements to a service. It is not the
 right tool today if you need automatic bank sync (you import bank statements or enter data yourself), a phone or
-tablet app, or a budget shared by a household (one profile on one computer, no sync).
+tablet app, or a budget shared by a household (one profile per person; sync keeps one person's own
+devices in step and needs a sync server you run, see [PRIVACY.md](./PRIVACY.md#device-sync-optional)).
 
 ## What it does
 
@@ -155,8 +158,11 @@ public key; switch the check off in *Settings → Security → Updates*.
 The checkable version is **[PRIVACY.md](./PRIVACY.md)**; vulnerabilities go through **[SECURITY.md](./SECURITY.md)**.
 
 - **Local-first.** AES-256 encrypted SQLite databases (SQLCipher) in your user profile: one for
-  your records, one for the photos and documents you attach. No account, no cloud, no sync, and no
+  your records, one for the photos and documents you attach. No account, no cloud and no
   telemetry: no analytics, no usage statistics, no crash reports.
+- **Optional device sync.** Through a sync server you run yourself; changes, photos and documents
+  are encrypted on your device before they leave it, so the server cannot read them. Off until
+  you set it up.
 - **What leaves your computer.** Ticker symbols, ISINs, crypto symbols, search text, currencies and
   date ranges go to Yahoo Finance and Frankfurter for prices and rates; company logos come from
   Yahoo's image server (`s.yimg.com`) and, for tickers Yahoo has no logo for, from Financial

@@ -2,7 +2,7 @@
 "NSFaceIDUsageDescription" = "Moony 通过 Face ID 解锁您的数据。";
 
 /* Camera permission prompt */
-"NSCameraUsageDescription" = "Moony 会拍摄文档和您的房产；照片将加密存储在这部手机上。";
+"NSCameraUsageDescription" = "Moony 会拍摄文档和您的房产，并扫描用于配对同步设备的代码和恢复包的二维码；照片将加密存储在这部手机上。";
 
 /* Local network permission prompt (a sync server on the home network; only with device sync) */
 "NSLocalNetworkUsageDescription" = "当您使用家庭网络中的同步服务器时，Moony 会连接到该服务器。";

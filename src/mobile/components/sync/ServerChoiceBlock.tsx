@@ -97,19 +97,23 @@ export function ServerCheckBlock({ state }: { state: ServerChoiceState }) {
 
 interface ServerChoiceBlockProps {
   state: ServerChoiceState;
-  /** Whether the Moony cloud card is shown (disabled, "Coming soon") above the own server. */
-  showCloud: boolean;
+  /**
+   * Whether the Moony cloud card is shown (disabled, "Coming soon") above the own server. No sheet
+   * passes it until the cloud runs: App Review rejects a choice that cannot be used (owner's call,
+   * 2026-11-22, ADR 0035). The desktop keeps its disabled card.
+   */
+  showCloud?: boolean;
   /** Opens the camera for a connection code; without it there is no "Scan code" button. */
   onScan?: () => void;
 }
 
 /**
- * The phone's "where should your data sync?": the Moony cloud (not open yet) and the person's own
- * server, with the connection code field (typed, pasted or scanned), what the server answered and,
+ * The phone's "where should your data sync?": the person's own server (and, once it runs, the
+ * Moony cloud above it), with the connection code field (typed, pasted or scanned), what the server answered and,
  * for plain http, the warning to acknowledge. The desktop's `ServerChoice` in the phone's type
  * scale, 48 pt fields and 44 pt targets.
  */
-export function ServerChoiceBlock({ state, showCloud, onScan }: ServerChoiceBlockProps) {
+export function ServerChoiceBlock({ state, showCloud = false, onScan }: ServerChoiceBlockProps) {
   const { t } = useTranslation('deviceSync');
   const fieldId = useId();
   const hintId = `${fieldId}-hint`;

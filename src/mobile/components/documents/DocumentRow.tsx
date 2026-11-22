@@ -6,7 +6,7 @@ import type { PhoneDocument } from './document-kind';
 
 interface DocumentRowProps {
   doc: PhoneDocument;
-  /** "smlouva · 2,1 MB · 9. 1. 2024" (`documentSub`). */
+  /** "smlouva · 2,1 MB · 9. 1. 2024 · popis" (`documentSub`; the description when there is one). */
   sub: string;
   /** The `···` trigger's accessible name, already worded ("Další akce: Pojistná smlouva"). */
   menuLabel: string;

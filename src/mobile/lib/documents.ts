@@ -81,6 +81,8 @@ export function documentNameFrom(
 type DocumentSubInput = {
   fileType: string;
   fileSize: number | null;
+  /** The optional description typed on the computer (the phone's add sheet has none). */
+  description?: string | null;
   /** A real instant (the backend stamps it with the clock), not a calendar day. */
   uploadedAt: number;
 } & (
@@ -110,7 +112,10 @@ function documentNoteKey(content: AttachmentContent, mimeType: string): Document
 
 /**
  * The sub-line of a document row: the type's label · the size · the upload day ("smlouva · 1,2 MB ·
- * 24. 10. 2026"). The size is left out when it is not known. The day is the local one — the upload
+ * 24. 10. 2026") · the description, when one was typed (on the computer: the desktop row shows it
+ * after the size too), on one line. The size is left out when it is not known; the description
+ * comes last, so a narrow screen's ellipsis falls on it, never on the facts, and the viewer's head
+ * (where the line wraps) shows it whole. The day is the local one — the upload
  * is a real instant, so a document added at 00:30 is not dated the day before. A document whose
  * content is not on the phone starts with the note that says where it is (`noteText` words it;
  * first, so a narrow screen's cut falls on the day); content that is here (or sync off) gives the
@@ -128,6 +133,7 @@ export function documentSub(
     typeLabel(doc.fileType),
     doc.fileSize ? fileSizeText(doc.fileSize, fmt) : '',
     fmt.date(new Date(doc.uploadedAt * 1000)),
+    doc.description?.replace(/\s+/g, ' ').trim() ?? '',
   ]
     .filter(Boolean)
     .join(' · ');

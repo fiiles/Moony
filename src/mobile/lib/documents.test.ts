@@ -128,6 +128,22 @@ describe('documentSub', () => {
     expect(documentSub({ ...doc, fileSize: null }, label, cs)).toBe('smlouva · 24. 10. 2026');
   });
 
+  it('ends with the description typed on the computer, as the desktop row does', () => {
+    expect(documentSub({ ...doc, description: 'Rekapitulace od makléře' }, label, cs)).toBe(
+      'smlouva · 1,2 MB · 24. 10. 2026 · Rekapitulace od makléře'
+    );
+    // An empty or blank description (the field is optional) adds nothing
+    expect(documentSub({ ...doc, description: null }, label, cs)).toBe(
+      'smlouva · 1,2 MB · 24. 10. 2026'
+    );
+    expect(documentSub({ ...doc, description: '  ' }, label, cs)).toBe(
+      'smlouva · 1,2 MB · 24. 10. 2026'
+    );
+    expect(documentSub({ ...doc, description: ' na jednom\nřádku ' }, label, cs)).toBe(
+      'smlouva · 1,2 MB · 24. 10. 2026 · na jednom řádku'
+    );
+  });
+
   it('asks the caller for the type’s label and keeps a type it does not know', () => {
     expect(documentSub({ ...doc, fileType: 'appraisal' }, label, cs)).toBe(
       'appraisal · 1,2 MB · 24. 10. 2026'

@@ -15,6 +15,7 @@ pub mod categories;
 pub mod categorization;
 pub mod company_info;
 pub mod crypto;
+pub mod demo;
 /// Phones only: device backups are a phone concern (on the desktop the keychain plugin's
 /// `exclude_from_backup` answers Unsupported).
 #[cfg(mobile)]

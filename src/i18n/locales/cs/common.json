@@ -403,7 +403,9 @@
     "setupNotPrepared": "Zakládání účtu bylo přerušeno. Vraťte se zpět a založte účet znovu.",
     "biometricInvalidated": "Biometrie se změnila, odemkněte heslem a zapněte ji znovu.",
     "biometricCancelled": "Odemknutí biometrií bylo zrušeno.",
-    "biometricFailed": "Ověření se nezdařilo, odemkněte heslem."
+    "biometricFailed": "Ověření se nezdařilo, odemkněte heslem.",
+    "notInDemo": "V ukázkovém profilu tohle není k dispozici. Pro tuto funkci si založte vlastní profil.",
+    "demoUnavailable": "Ukázkový profil teď není k dispozici. Lze ho používat jen do založení vlastního profilu."
   },
   "time": {
     "today": "Dnes",

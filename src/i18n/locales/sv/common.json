@@ -403,7 +403,9 @@
     "setupNotPrepared": "Kontoskapandet avbröts. Gå tillbaka och skapa kontot igen.",
     "biometricInvalidated": "Biometrin har ändrats. Lås upp med lösenordet och slå på den igen.",
     "biometricCancelled": "Biometrisk upplåsning avbröts.",
-    "biometricFailed": "Verifieringen misslyckades. Lås upp med lösenordet."
+    "biometricFailed": "Verifieringen misslyckades. Lås upp med lösenordet.",
+    "notInDemo": "Det här är inte tillgängligt i exempelprofilen. Skapa en egen profil för att använda det.",
+    "demoUnavailable": "Exempelprofilen är inte tillgänglig nu. Den kan bara användas innan du skapar en egen profil."
   },
   "time": {
     "today": "I dag",

@@ -403,7 +403,9 @@
     "setupNotPrepared": "Zakładanie konta zostało przerwane. Wróć i utwórz konto ponownie.",
     "biometricInvalidated": "Biometria się zmieniła. Odblokuj hasłem i włącz ją ponownie.",
     "biometricCancelled": "Odblokowanie biometrią zostało anulowane.",
-    "biometricFailed": "Weryfikacja nie powiodła się. Odblokuj hasłem."
+    "biometricFailed": "Weryfikacja nie powiodła się. Odblokuj hasłem.",
+    "notInDemo": "Ta funkcja nie jest dostępna w profilu przykładowym. Utwórz własny profil, aby z niej korzystać.",
+    "demoUnavailable": "Profil przykładowy nie jest teraz dostępny. Można go używać tylko przed utworzeniem własnego profilu."
   },
   "time": {
     "today": "Dziś",

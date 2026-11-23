@@ -227,6 +227,8 @@ pub fn create_backup(
     dest: &Path,
     app_version: &str,
 ) -> Result<BackupManifest> {
+    // The demo's synthetic data never leaves the device in an archive (ADR 0037).
+    crate::services::profile_dir::ensure_not_demo()?;
     if let Some(parent) = dest.parent() {
         if !parent.as_os_str().is_empty() && !parent.exists() {
             return Err(AppError::Validation(
@@ -560,6 +562,8 @@ pub fn restore_backup(
     archive_path: &Path,
     known_migrations: &[&str],
 ) -> Result<PathBuf> {
+    // A restore replaces the real profile; never while the demo is the open profile (ADR 0037).
+    crate::services::profile_dir::ensure_not_demo()?;
     restore_backup_with(
         data_dir,
         archive_path,
@@ -1835,6 +1839,40 @@ mod tests {
         assert_eq!(
             sweep_staged_exports(&dir.path().join("not-there")).expect("sweep"),
             0
+        );
+    }
+
+    #[test]
+    fn backups_and_restores_are_refused_while_the_demo_is_open() {
+        let src = tempfile::tempdir().expect("src");
+        let conn = seed_account(src.path());
+        let archive = src.path().join("out.zip");
+        let dst = tempfile::tempdir().expect("dst");
+        fs::write(dst.path().join("salt"), b"OLD-SALT").expect("old salt");
+        let refused = |result: Result<()>| match result {
+            Err(AppError::Auth(key)) => {
+                assert_eq!(key, crate::services::profile_dir::NOT_IN_DEMO)
+            }
+            other => panic!("expected the demo gate, got {other:?}"),
+        };
+        {
+            let _demo = crate::services::profile_dir::demo_flag_for_test(true);
+            refused(create_backup(&conn, src.path(), &archive, "1.0.0").map(|_| ()));
+            assert!(!archive.exists(), "no archive was written");
+        }
+        create_backup(&conn, src.path(), &archive, "1.0.0").expect("backup once closed");
+        {
+            let _demo = crate::services::profile_dir::demo_flag_for_test(true);
+            refused(restore_backup(dst.path(), &archive, &KNOWN).map(|_| ()));
+            assert_eq!(
+                fs::read(dst.path().join("salt")).expect("salt"),
+                b"OLD-SALT"
+            );
+        }
+        restore_backup(dst.path(), &archive, &KNOWN).expect("restore once closed");
+        assert_eq!(
+            fs::read(dst.path().join("salt")).expect("salt"),
+            b"saltsaltsaltsalt"
         );
     }
 }

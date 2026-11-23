@@ -403,7 +403,9 @@
     "setupNotPrepared": "La creación de la cuenta se interrumpió. Vuelve atrás y crea tu cuenta de nuevo.",
     "biometricInvalidated": "La biometría ha cambiado. Desbloquea con tu contraseña y vuelve a activarla.",
     "biometricCancelled": "Se ha cancelado el desbloqueo biométrico.",
-    "biometricFailed": "No se ha podido verificar. Desbloquea con tu contraseña."
+    "biometricFailed": "No se ha podido verificar. Desbloquea con tu contraseña.",
+    "notInDemo": "Esto no está disponible en el perfil de ejemplo. Crea tu propio perfil para usarlo.",
+    "demoUnavailable": "El perfil de ejemplo no está disponible ahora. Solo se puede usar antes de crear tu propio perfil."
   },
   "time": {
     "today": "Hoy",

@@ -403,7 +403,9 @@
     "setupNotPrepared": "Die Kontoeinrichtung wurde unterbrochen. Gehen Sie zurück und legen Sie Ihr Konto erneut an.",
     "biometricInvalidated": "Die Biometrie hat sich geändert. Entsperren Sie mit Ihrem Passwort und schalten Sie sie erneut ein.",
     "biometricCancelled": "Die biometrische Entsperrung wurde abgebrochen.",
-    "biometricFailed": "Die Überprüfung ist fehlgeschlagen. Entsperren Sie mit Ihrem Passwort."
+    "biometricFailed": "Die Überprüfung ist fehlgeschlagen. Entsperren Sie mit Ihrem Passwort.",
+    "notInDemo": "Im Beispielprofil ist das nicht verfügbar. Legen Sie ein eigenes Profil an, um es zu nutzen.",
+    "demoUnavailable": "Das Beispielprofil ist gerade nicht verfügbar. Es lässt sich nur nutzen, bevor Sie ein eigenes Profil anlegen."
   },
   "time": {
     "today": "Heute",

@@ -192,6 +192,22 @@ QueryClientProvider → AuthProvider → ThemeProvider → I18nProvider → Curr
 - Desktop biometric unlock (macOS Touch ID, Windows Hello; ADR 0021): the `moony-keychain` plugin's desktop backend (`plugins/moony-keychain/src/desktop/`) wraps the master key with a Secure Enclave key (`macos.rs` + the `MoonyBiometrics` Swift package, linked with swift-rs) or a Hello signature (`windows.rs`, `hello_wrap.rs`) and keeps the blob in `moony.master-key.bin` in the data folder (`blob_file.rs`); Linux answers `Unsupported`. The commands and `services/biometric_unlock.rs` are the phone's, shared; on macOS and Windows `SessionKey` holds the master key for the unlocked session (Linux keeps nothing). Only an `Invalidated` answer switches the feature off. The frontend: `src/lib/biometrics.ts` (status, the `moony-biometrics-asked` flag), `EnableBiometricsDialog` (one-time offer after a password unlock), the lock page (one automatic prompt when the app starts, none after a lock; a button opens it otherwise) and the switch in Settings → Security. Restore switches it off in Rust; account deletion removes the stored key. The blob is never in a backup or the export.
 - Auto-lock: `useAutoLock()` (`src/hooks/use-auto-lock.ts`, mounted in `AppLayout`) locks the app after N minutes without input and on wake-up once the deadline has passed; the device-level setting is the `localStorage` key `moony-auto-lock-minutes` (off / 5 / 15 / 30 / 60, default 15), edited in Settings → Security (`AutoLockSlot`); deadline logic is pure and tested in `src/utils/auto-lock.ts`.
 
+## Demo profile (ADR 0037)
+
+Desktop first run offers a demo profile (Alex Meyer, EUR) before an own profile exists. It lives in
+`<app data folder>/demo/` with a fixed, non-secret SQLCipher key and no key files, so `check_setup`
+never sees it. `services/profile_dir.rs` holds the process-wide "demo is open" flag and the one
+resolver for the open profile's folder (attachments, the attachment URI scheme, data location);
+everything about the real profile (key files, biometrics, sync, restore, startup sweeps) uses the
+real folder. `services/demo/profile.rs` creates (generator `services::demo::seed`, marker
+`demo-profile.json` written last, folder deleted on failure), opens, resets and discards it; the
+thin commands are `demo_status` / `demo_open` / `demo_reset` / `demo_close` / `demo_discard`
+(`demoApi`). While it is open, sync, the MCP server, biometric enable, backup and restore, the
+password, recovery and account deletion refuse with `auth.notInDemo`, and no `backup_stale`
+reminder is produced. The demo is deleted once a real profile exists (after `confirm_setup`, after
+`restore_backup`, at startup). Frontend: `demoApi.status()` on start (`active` recovers an open demo
+after a webview reload); auto-lock is off in the demo.
+
 ## Mobile shell
 
 The phone shell (in development, not released; iOS, and Android since 2026-11-17, plan `docs/plans/2026-11-17-android-app.md`) is the same Tauri crate and the same Vite bundle as the desktop app, with a second frontend shell and a few phone-only native pieces. Spec: `docs/specs/2026-10-16-mobile-app-design.md`; plan and Phase 0 findings: `docs/plans/2026-10-16-mobile-app.md`. Phase 1 delivers the shell, the lock page, biometric unlock and the Overview tab; Finance, Cashflow and Wealth are placeholders and Settings holds only "Lock application". Apart from the biometric pieces, which the desktop shares since ADR 0021, everything below leaves the desktop unchanged.

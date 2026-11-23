@@ -63,6 +63,7 @@ pub mod positions;
 pub mod price_api;
 pub mod price_overrides;
 pub mod pricing;
+pub mod profile_dir;
 pub mod projection;
 pub mod projection_math;
 pub mod quote_unit;

@@ -403,7 +403,9 @@
     "setupNotPrepared": "La creazione dell'account è stata interrotta. Torna indietro e crea di nuovo il tuo account.",
     "biometricInvalidated": "I dati biometrici sono cambiati. Sblocca con la password e riattiva lo sblocco biometrico.",
     "biometricCancelled": "Lo sblocco biometrico è stato annullato.",
-    "biometricFailed": "Verifica non riuscita. Sblocca con la password."
+    "biometricFailed": "Verifica non riuscita. Sblocca con la password.",
+    "notInDemo": "Questa funzione non è disponibile nel profilo di esempio. Crea il tuo profilo per usarla.",
+    "demoUnavailable": "Il profilo di esempio non è disponibile ora. Si può usare solo prima di creare il tuo profilo."
   },
   "time": {
     "today": "Oggi",

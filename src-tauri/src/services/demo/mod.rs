@@ -12,6 +12,7 @@ pub mod history;
 pub mod invest;
 pub mod planning;
 pub mod prices;
+pub mod profile;
 // generated data: real rates such as 1.0472 are not approximations of constants
 #[allow(clippy::approx_constant)]
 #[rustfmt::skip]
@@ -80,6 +81,19 @@ pub fn seed(conn: &Connection, opts: &DemoOptions) -> Result<DemoSummary> {
     Ok(summary)
 }
 
+/// Seeding replaces the process-wide exchange-rate snapshot, so tests that seed (here and in
+/// [`profile`]) run one at a time: each holds this for its whole body.
+#[cfg(test)]
+static SEED_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Test helper: hold the seed lock (see [`SEED_LOCK`]).
+#[cfg(test)]
+pub(crate) fn seed_test_lock() -> std::sync::MutexGuard<'static, ()> {
+    SEED_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -108,14 +122,8 @@ mod tests {
         }
     }
 
-    /// Seeding replaces the process-wide exchange-rate snapshot, so tests that seed run one at
-    /// a time (each holds this for its whole body).
-    static SEED_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
     fn serial() -> std::sync::MutexGuard<'static, ()> {
-        SEED_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        super::seed_test_lock()
     }
 
     fn seeded(language: &str, now: i64) -> (Connection, DemoSummary) {

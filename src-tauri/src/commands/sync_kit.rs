@@ -12,7 +12,7 @@ use tauri::{AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
 use zeroize::Zeroizing;
 
-use super::sync::{data_dir, require_feature, with_kit_draft};
+use super::sync::{data_dir, require_feature, require_feature_outside_demo, with_kit_draft};
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::sync::{KitFileKind, KitSaveOutcome};
@@ -55,7 +55,7 @@ pub async fn sync_save_recovery_kit(
     contents: String,
 ) -> Result<KitSaveOutcome> {
     let contents = Zeroizing::new(contents);
-    require_feature()?;
+    require_feature_outside_demo()?;
     desktop_only(cfg!(mobile))?;
     let code = draft_code(&app, &db)?;
     kit_file::check_contents(kind, &contents, &code)?;

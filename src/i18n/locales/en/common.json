@@ -403,7 +403,9 @@
     "setupNotPrepared": "Account setup was interrupted. Go back and create your account again.",
     "biometricInvalidated": "Biometrics changed. Unlock with your password and turn them on again.",
     "biometricCancelled": "Biometric unlock was cancelled.",
-    "biometricFailed": "Authentication failed, unlock with your password."
+    "biometricFailed": "Authentication failed, unlock with your password.",
+    "notInDemo": "This isn't available in the sample profile. Create your own profile to use it.",
+    "demoUnavailable": "The sample profile isn't available now. It can only be used before you create your own profile."
   },
   "time": {
     "today": "Today",

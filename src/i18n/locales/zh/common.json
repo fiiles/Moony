@@ -403,7 +403,9 @@
     "setupNotPrepared": "账户创建已中断。请返回并重新创建账户。",
     "biometricInvalidated": "生物识别信息已更改。请使用密码解锁，然后重新开启。",
     "biometricCancelled": "生物识别解锁已取消。",
-    "biometricFailed": "验证失败，请使用密码解锁。"
+    "biometricFailed": "验证失败，请使用密码解锁。",
+    "notInDemo": "示例档案中无法使用此功能。请创建您自己的档案后再使用。",
+    "demoUnavailable": "示例档案目前不可用。只能在创建您自己的档案之前使用。"
   },
   "time": {
     "today": "今天",

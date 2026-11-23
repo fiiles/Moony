@@ -29,6 +29,7 @@ import type {
   ExportSummary,
   IntegrityReport,
   BiometricStatus,
+  DemoStatus,
   BiometryType,
   UserProfile,
   SavingsAccountZone,
@@ -272,6 +273,32 @@ export const authApi = {
   setMcpServerPort: (port: number) => tauriInvoke<void>('set_mcp_server_port', { port }),
 
   regenerateMcpToken: () => tauriInvoke<string>('regenerate_mcp_token'),
+};
+
+// ============================================================================
+// Demo profile API (ADR 0037)
+// ============================================================================
+
+/**
+ * The demo profile: Alex Meyer's synthetic data in its own folder, opened with no password and
+ * offered only while no real profile exists. `status().active` tells a reloaded webview that the
+ * demo is still open. While it is open, sync, the MCP server, biometric unlock, backups, the
+ * password, recovery and account deletion refuse with `auth.notInDemo`.
+ */
+export const demoApi = {
+  status: () => tauriInvoke<DemoStatus>('demo_status'),
+
+  /** Opens the stored demo, or generates it first, in `language`. */
+  open: (language: string) => tauriInvoke<UserProfile>('demo_open', { language }),
+
+  /** Throws the open demo away and generates it again in its current language. */
+  reset: () => tauriInvoke<UserProfile>('demo_reset'),
+
+  /** Closes the demo (as a lock does); it stays on disk. */
+  close: () => tauriInvoke<void>('demo_close'),
+
+  /** Deletes the stored demo (closing it first when open). */
+  discard: () => tauriInvoke<void>('demo_discard'),
 };
 
 // ============================================================================

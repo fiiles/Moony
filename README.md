@@ -50,7 +50,9 @@ devices in step and needs a sync server you run, see [PRIVACY.md](./PRIVACY.md#d
   company logos (from Yahoo Finance, or Financial Modeling Prep where Yahoo has none), and a watchlist that never counts toward net worth. Broker CSV import reads XTB, Trading 212,
   Degiro and Interactive Brokers exports and your own table. The analysis shows time-weighted and
   money-weighted return, drawdown, each position's contribution, deposits against gain and an
-  optional comparison with S&P 500 or MSCI World. Stock splits are detected from Yahoo Finance
+  optional comparison with S&P 500 or MSCI World. The stock transactions report shows a period's
+  sales with their cost, fees and dividends, matched to the oldest buys or by weighted average,
+  with an optional holding-period test and a CSV export; it computes no tax. Stock splits are detected from Yahoo Finance
   and wait for your confirmation before your earlier trades are converted; the broker import
   checks the file's prices against them and converts pre-split rows on request.
 - **Crypto, bonds, other assets, real estate, loans and insurance**, with dated valuations,

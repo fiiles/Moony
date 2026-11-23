@@ -43,6 +43,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0033](0033-finished-days-settle-to-closing-prices.md) | Finished days settle to closing prices | 2026-11-17 | Accepted; adds a rule to 0016, narrows a known cost of 0024 |
 | [0034](0034-device-sync-second-audit-fixes.md) | Device sync: the second security audit's fixes | 2026-11-20 | Accepted; amends 0026, 0027, 0029 and 0032 |
 | [0035](0035-device-sync-released-for-own-servers.md) | Device sync released, own servers only | 2026-11-22 | Accepted; turns on the flag of 0025, setup path of 0029 |
+| [0036](0036-stock-report-fifo-lots.md) | Stock transactions report: oldest-first lots derived on read | 2026-11-23 | Accepted; beside `cost_basis.rs`, conversion by 0012 |
 
 ## Rules
 

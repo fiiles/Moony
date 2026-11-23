@@ -140,7 +140,7 @@
       "tabPassed": "Redan klarat · {{n}}",
       "colPasses": "Klaras",
       "colPassed": "Klarades",
-      "colTitle": "Värdepapper",
+      "colQuantity": "Antal",
       "colBought": "Köpt",
       "colValue": "Värde i dag",
       "colUnrealized": "Orealiserat",
@@ -150,7 +150,9 @@
       "emptyPassedBody": "Inget köp du äger har klarat innehavstidstestet ännu.",
       "ofLot_one": "{{open}} av {{lot}} aktie",
       "ofLot_other": "{{open}} av {{lot}} aktier",
-      "perShare": "till {{price}} per aktie"
+      "perShare": "till {{price}} per aktie",
+      "groupLots_one": "{{count}} köp",
+      "groupLots_other": "{{count}} köp"
     }
   },
   "tips": {

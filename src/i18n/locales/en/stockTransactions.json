@@ -140,7 +140,7 @@
       "tabPassed": "Already passed · {{n}}",
       "colPasses": "Passes",
       "colPassed": "Passed",
-      "colTitle": "Ticker",
+      "colQuantity": "Quantity",
       "colBought": "Bought",
       "colValue": "Value today",
       "colUnrealized": "Unrealized",
@@ -150,7 +150,9 @@
       "emptyPassedBody": "No buy you hold has passed the holding test yet.",
       "ofLot_one": "{{open}} of {{lot}} share",
       "ofLot_other": "{{open}} of {{lot}} shares",
-      "perShare": "{{price}} per share"
+      "perShare": "{{price}} per share",
+      "groupLots_one": "{{count}} buy",
+      "groupLots_other": "{{count}} buys"
     }
   },
   "tips": {

@@ -188,3 +188,46 @@ export function openLotGroups(
   passed.sort((a, b) => (b.passDay ?? 0) - (a.passDay ?? 0));
   return { waiting, passed, waitingValue, passedValue };
 }
+
+/** The open lots of one position, with what they add up to. */
+export interface OpenLotGroup {
+  investmentId: string;
+  ticker: string;
+  companyName: string;
+  lots: StockReportOpenLot[];
+  /** Open shares of all its lots. */
+  quantity: number;
+  /** Sum over the priced lots; null when none of them is priced. */
+  value: number | null;
+  unrealized: number | null;
+}
+
+/**
+ * Open lots grouped by position. The groups come in the order of their first lot and keep the
+ * order of the lots, so a list sorted by pass day gives the position with the nearest day first.
+ */
+export function openLotsByTicker(lots: StockReportOpenLot[]): OpenLotGroup[] {
+  const groups = new Map<string, OpenLotGroup>();
+  for (const lot of lots) {
+    let group = groups.get(lot.investmentId);
+    if (!group) {
+      group = {
+        investmentId: lot.investmentId,
+        ticker: lot.ticker,
+        companyName: lot.companyName,
+        lots: [],
+        quantity: 0,
+        value: null,
+        unrealized: null,
+      };
+      groups.set(lot.investmentId, group);
+    }
+    group.lots.push(lot);
+    group.quantity += amount(lot.quantity);
+    if (lot.value !== null) group.value = (group.value ?? 0) + amount(lot.value);
+    if (lot.unrealized !== null) {
+      group.unrealized = (group.unrealized ?? 0) + amount(lot.unrealized);
+    }
+  }
+  return [...groups.values()];
+}

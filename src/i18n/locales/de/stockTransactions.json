@@ -140,7 +140,7 @@
       "tabPassed": "Bereits erreicht · {{n}}",
       "colPasses": "Erreicht am",
       "colPassed": "Erreicht seit",
-      "colTitle": "Titel",
+      "colQuantity": "Anzahl",
       "colBought": "Gekauft",
       "colValue": "Wert heute",
       "colUnrealized": "Nicht realisiert",
@@ -150,7 +150,9 @@
       "emptyPassedBody": "Noch kein gehaltener Kauf hat die Haltefrist erreicht.",
       "ofLot_one": "{{open}} von {{lot}} Stück",
       "ofLot_other": "{{open}} von {{lot}} Stück",
-      "perShare": "zu {{price}} je Stück"
+      "perShare": "zu {{price}} je Stück",
+      "groupLots_one": "{{count}} Kauf",
+      "groupLots_other": "{{count}} Käufe"
     }
   },
   "tips": {

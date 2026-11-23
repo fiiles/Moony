@@ -4,6 +4,7 @@ import { CalendarClock } from 'lucide-react';
 import type { StockReportOpenLot } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { useReportMoney } from '@/lib/use-report-money';
+import { openLotsByTicker } from '@/utils/stock-transactions-report';
 import { cn } from '@/lib/utils';
 import { AssetLogo } from '@/components/common/AssetLogo';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -20,11 +21,11 @@ import {
 import { Segmented } from '@/components/ui/segmented';
 import { holdingLength } from './holding-length';
 import { lotName } from './holding-lot-helpers';
-import { PassChip, UnrealizedCell } from './holding-lot-parts';
+import { PassChip } from './holding-lot-parts';
 
 type Tab = 'waiting' | 'passed';
 
-const COLUMNS = 'grid-cols-[104px_minmax(0,1.5fr)_minmax(0,1fr)_92px_132px]';
+const COLUMNS = 'grid-cols-[104px_minmax(0,1fr)_minmax(0,1.2fr)_112px_132px]';
 
 interface Groups {
   waiting: StockReportOpenLot[];
@@ -33,8 +34,10 @@ interface Groups {
 
 /**
  * "Časový test otevřených pozic" (spec D12): every open lot, the ones still waiting and the ones
- * that have passed, with the day its sale passes (or passed), the open quantity of the bought
- * quantity, the purchase day and price, the value today and the unrealized result. Plain
+ * that have passed, grouped by position (owner, 2026-11-23): a head row per position with its
+ * open quantity, value and unrealized result, then its lots with the day the sale passes (or
+ * passed), the open quantity of the bought quantity, the purchase day and price. The positions
+ * follow their nearest day. Plain
  * scrolling content: no Select or Popover in here (wheel scrolling over a portaled popover inside
  * a dialog is blocked in the WebKit webview).
  */
@@ -92,11 +95,26 @@ function LotsTable({
 }) {
   const { t } = useTranslation('stockTransactions');
   const fmt = useFormat();
-  const { money, nativeMoney } = useReportMoney(currency);
+  const { money, signedMoney, nativeMoney } = useReportMoney(currency);
   const [tab, setTab] = useState<Tab>('waiting');
-  const rows = groups[tab];
+  const positions = openLotsByTicker(groups[tab]);
 
-  const num = (text: string) => fmt.number(Number(text), { maximumFractionDigits: 6 });
+  const num = (value: string | number) => fmt.number(Number(value), { maximumFractionDigits: 6 });
+  const signed = (value: number | null, strong: boolean) =>
+    value === null ? (
+      <span className="text-ink-4">—</span>
+    ) : (
+      <span
+        className={cn(
+          'whitespace-nowrap text-table num',
+          strong ? 'font-650' : 'font-500',
+          value > 0 && 'text-gain',
+          value < 0 && 'text-loss'
+        )}
+      >
+        {signedMoney(value)}
+      </span>
+    );
 
   return (
     <>
@@ -112,7 +130,7 @@ function LotsTable({
         ]}
         className="justify-self-start"
       />
-      {rows.length === 0 ? (
+      {positions.length === 0 ? (
         <EmptyState
           bare
           className="py-8"
@@ -134,14 +152,14 @@ function LotsTable({
             <div
               role="row"
               className={cn(
-                'sticky top-0 z-[1] grid gap-x-3 border-b border-line-soft bg-paper pb-[7px] text-thead uppercase text-ink-3',
+                'sticky top-0 z-[1] grid gap-x-3 border-b border-line-soft bg-paper px-2 pb-[7px] text-thead uppercase text-ink-3',
                 COLUMNS
               )}
             >
               <span role="columnheader">
                 {t(tab === 'waiting' ? 'upcoming.dialog.colPasses' : 'upcoming.dialog.colPassed')}
               </span>
-              <span role="columnheader">{t('upcoming.dialog.colTitle')}</span>
+              <span role="columnheader">{t('upcoming.dialog.colQuantity')}</span>
               <span role="columnheader">{t('upcoming.dialog.colBought')}</span>
               <span role="columnheader" className="text-right">
                 {t('upcoming.dialog.colValue')}
@@ -150,58 +168,84 @@ function LotsTable({
                 {t('upcoming.dialog.colUnrealized')}
               </span>
             </div>
-            {rows.map((lot, i) => {
-              const quantity = Number(lot.quantity);
-              const lotQuantity = Number(lot.lotQuantity);
-              const quantityText =
-                quantity < lotQuantity
-                  ? t('upcoming.dialog.ofLot', {
-                      count: lotQuantity,
-                      open: num(lot.quantity),
-                      lot: num(lot.lotQuantity),
-                    })
-                  : t('quantity', { count: quantity, value: num(lot.quantity) });
-              return (
+            {positions.map((position) => (
+              <div key={position.investmentId} role="rowgroup" className="mt-2">
                 <div
-                  key={`${lot.investmentId}-${lot.buyDay}-${lot.quantity}-${i}`}
                   role="row"
-                  className={cn(
-                    'grid items-center gap-x-3 border-b border-line-soft py-2.5 last:border-0',
-                    COLUMNS
-                  )}
+                  className={cn('grid items-center gap-x-3 rounded-r2 bg-well px-2 py-2', COLUMNS)}
                 >
-                  <span role="cell">
-                    {lot.passDay !== null && <PassChip passDay={lot.passDay} today={today} />}
-                  </span>
-                  <span role="cell" className="flex min-w-0 items-center gap-2.5">
-                    <AssetLogo ticker={lot.ticker} type="stock" className="shrink-0" />
+                  <span role="rowheader" className="col-span-3 flex min-w-0 items-center gap-2.5">
+                    <AssetLogo ticker={position.ticker} type="stock" className="shrink-0" />
                     <span className="min-w-0">
-                      <b className="block truncate text-table font-650 text-ink">{lotName(lot)}</b>
+                      <b className="block truncate text-table font-650 text-ink">
+                        {lotName(position.lots[0])}
+                      </b>
                       <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">
-                        {lot.ticker} · {quantityText}
+                        {position.ticker} ·{' '}
+                        {t('upcoming.dialog.groupLots', { count: position.lots.length })} ·{' '}
+                        {t('quantity', {
+                          count: position.quantity,
+                          value: num(position.quantity),
+                        })}
                       </small>
                     </span>
                   </span>
-                  <span role="cell" className="min-w-0 text-table text-ink-2">
-                    {fmt.day(lot.buyDay)}
-                    <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">
-                      {t('upcoming.dialog.perShare', {
-                        price: nativeMoney(Number(lot.buyPrice), lot.buyCurrency),
-                      })}
-                    </small>
-                  </span>
                   <span
                     role="cell"
-                    className="whitespace-nowrap text-right text-table num text-ink-2"
+                    className="whitespace-nowrap text-right text-table font-650 num text-ink"
                   >
-                    {lot.value === null ? '—' : money(Number(lot.value))}
+                    {position.value === null ? '—' : money(position.value)}
                   </span>
                   <span role="cell" className="text-right">
-                    <UnrealizedCell lot={lot} currency={currency} />
+                    {signed(position.unrealized, true)}
                   </span>
                 </div>
-              );
-            })}
+                {position.lots.map((lot, i) => {
+                  const quantity = Number(lot.quantity);
+                  const lotQuantity = Number(lot.lotQuantity);
+                  return (
+                    <div
+                      key={`${lot.buyDay}-${lot.quantity}-${i}`}
+                      role="row"
+                      className={cn(
+                        'grid items-center gap-x-3 border-b border-line-soft px-2 py-2 last:border-0',
+                        COLUMNS
+                      )}
+                    >
+                      <span role="cell">
+                        {lot.passDay !== null && <PassChip passDay={lot.passDay} today={today} />}
+                      </span>
+                      <span role="cell" className="min-w-0 truncate text-table num text-ink-2">
+                        {quantity < lotQuantity
+                          ? t('upcoming.dialog.ofLot', {
+                              count: lotQuantity,
+                              open: num(lot.quantity),
+                              lot: num(lot.lotQuantity),
+                            })
+                          : t('quantity', { count: quantity, value: num(lot.quantity) })}
+                      </span>
+                      <span role="cell" className="min-w-0 text-table text-ink-2">
+                        {fmt.day(lot.buyDay)}
+                        <small className="mt-[3px] block truncate text-micro font-500 text-ink-4">
+                          {t('upcoming.dialog.perShare', {
+                            price: nativeMoney(Number(lot.buyPrice), lot.buyCurrency),
+                          })}
+                        </small>
+                      </span>
+                      <span
+                        role="cell"
+                        className="whitespace-nowrap text-right text-table num text-ink-2"
+                      >
+                        {lot.value === null ? '—' : money(Number(lot.value))}
+                      </span>
+                      <span role="cell" className="text-right">
+                        {signed(lot.unrealized === null ? null : Number(lot.unrealized), false)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
       )}

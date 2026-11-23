@@ -126,7 +126,7 @@
       "tabPassed": "通過済み · {{n}}",
       "colPasses": "通過日",
       "colPassed": "通過日",
-      "colTitle": "銘柄",
+      "colQuantity": "数量",
       "colBought": "購入",
       "colValue": "現在の評価額",
       "colUnrealized": "含み損益",
@@ -135,7 +135,8 @@
       "emptyPassedTitle": "まだ通過したものはありません",
       "emptyPassedBody": "保有中の購入で、まだ保有期間テストを通過したものはありません。",
       "ofLot_other": "{{lot}} 株中 {{open}} 株",
-      "perShare": "1 株あたり {{price}}"
+      "perShare": "1 株あたり {{price}}",
+      "groupLots_other": "{{count}}件の購入"
     }
   },
   "tips": {

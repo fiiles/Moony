@@ -140,7 +140,7 @@
       "tabPassed": "Allerede bestått · {{n}}",
       "colPasses": "Består",
       "colPassed": "Bestått",
-      "colTitle": "Aksje",
+      "colQuantity": "Antall",
       "colBought": "Kjøpt",
       "colValue": "Verdi i dag",
       "colUnrealized": "Urealisert",
@@ -150,7 +150,9 @@
       "emptyPassedBody": "Ingen kjøp du eier har bestått eiertidstesten ennå.",
       "ofLot_one": "{{open}} av {{lot}} aksje",
       "ofLot_other": "{{open}} av {{lot}} aksjer",
-      "perShare": "til {{price}} per aksje"
+      "perShare": "til {{price}} per aksje",
+      "groupLots_one": "{{count}} kjøp",
+      "groupLots_other": "{{count}} kjøp"
     }
   },
   "tips": {

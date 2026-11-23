@@ -10,6 +10,7 @@ import {
   holdingSpan,
   ledgerRows,
   openLotGroups,
+  openLotsByTicker,
   parseHoldingMonths,
   saleViews,
   totalOf,
@@ -271,5 +272,36 @@ describe('openLotGroups', () => {
       today
     );
     expect(groups.passed.map((l) => l.passDay)).toEqual([day(2026, 2, 1), day(2025, 1, 1)]);
+  });
+});
+
+describe('openLotsByTicker', () => {
+  it('groups lots by position in the order of their first lot and keeps the lot order', () => {
+    const lots = [
+      lot({ investmentId: 'a', ticker: 'AAA', passDay: day(2026, 8, 1), quantity: '5' }),
+      lot({ investmentId: 'b', ticker: 'BBB', passDay: day(2026, 9, 1), quantity: '2' }),
+      lot({ investmentId: 'a', ticker: 'AAA', passDay: day(2027, 5, 1), quantity: '7' }),
+    ];
+    const groups = openLotsByTicker(lots);
+    expect(groups.map((g) => g.ticker)).toEqual(['AAA', 'BBB']);
+    expect(groups[0].lots.map((l) => l.passDay)).toEqual([day(2026, 8, 1), day(2027, 5, 1)]);
+    expect(groups[0].quantity).toBe(12);
+    expect(groups[1].quantity).toBe(2);
+  });
+  it('adds up the value and the unrealized result of the priced lots', () => {
+    const groups = openLotsByTicker([
+      lot({ investmentId: 'a', value: '100.10', unrealized: '10.05' }),
+      lot({ investmentId: 'a', value: '200.20', unrealized: '-30.10' }),
+    ]);
+    expect(groups[0].value).toBeCloseTo(300.3, 6);
+    expect(groups[0].unrealized).toBeCloseTo(-20.05, 6);
+  });
+  it('has no value when none of its lots is priced', () => {
+    const groups = openLotsByTicker([
+      lot({ investmentId: 'a', value: null, unrealized: null }),
+      lot({ investmentId: 'a', value: null, unrealized: null }),
+    ]);
+    expect(groups[0].value).toBeNull();
+    expect(groups[0].unrealized).toBeNull();
   });
 });

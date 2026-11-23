@@ -154,7 +154,7 @@
       "tabPassed": "Už prošlo · {{n}}",
       "colPasses": "Projde",
       "colPassed": "Prošlo",
-      "colTitle": "Titul",
+      "colQuantity": "Počet",
       "colBought": "Nakoupeno",
       "colValue": "Hodnota dnes",
       "colUnrealized": "Nerealizováno",
@@ -165,7 +165,10 @@
       "ofLot_one": "{{open}} z {{lot}} ks",
       "ofLot_few": "{{open}} z {{lot}} ks",
       "ofLot_other": "{{open}} z {{lot}} ks",
-      "perShare": "po {{price}} za kus"
+      "perShare": "po {{price}} za kus",
+      "groupLots_one": "{{count}} nákup",
+      "groupLots_few": "{{count}} nákupy",
+      "groupLots_other": "{{count}} nákupů"
     }
   },
   "tips": {

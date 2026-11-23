@@ -154,7 +154,7 @@
       "tabPassed": "Ya superado · {{n}}",
       "colPasses": "Lo supera",
       "colPassed": "Superado",
-      "colTitle": "Valor",
+      "colQuantity": "Cantidad",
       "colBought": "Comprado",
       "colValue": "Valor hoy",
       "colUnrealized": "No realizado",
@@ -165,7 +165,10 @@
       "ofLot_one": "{{open}} de {{lot}} acción",
       "ofLot_many": "{{open}} de {{lot}} acciones",
       "ofLot_other": "{{open}} de {{lot}} acciones",
-      "perShare": "a {{price}} por acción"
+      "perShare": "a {{price}} por acción",
+      "groupLots_one": "{{count}} compra",
+      "groupLots_many": "{{count}} compras",
+      "groupLots_other": "{{count}} compras"
     }
   },
   "tips": {

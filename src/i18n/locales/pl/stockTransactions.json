@@ -168,7 +168,7 @@
       "tabPassed": "Już przeszło · {{n}}",
       "colPasses": "Przejdzie",
       "colPassed": "Przeszło",
-      "colTitle": "Walor",
+      "colQuantity": "Liczba",
       "colBought": "Kupiono",
       "colValue": "Wartość dziś",
       "colUnrealized": "Niezrealizowane",
@@ -180,7 +180,11 @@
       "ofLot_few": "{{open}} z {{lot}} szt.",
       "ofLot_many": "{{open}} z {{lot}} szt.",
       "ofLot_other": "{{open}} z {{lot}} szt.",
-      "perShare": "po {{price}} za sztukę"
+      "perShare": "po {{price}} za sztukę",
+      "groupLots_one": "{{count}} zakup",
+      "groupLots_few": "{{count}} zakupy",
+      "groupLots_many": "{{count}} zakupów",
+      "groupLots_other": "{{count}} zakupu"
     }
   },
   "tips": {

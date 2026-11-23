@@ -126,7 +126,7 @@
       "tabPassed": "已通过 · {{n}}",
       "colPasses": "通过日",
       "colPassed": "通过日",
-      "colTitle": "证券",
+      "colQuantity": "数量",
       "colBought": "买入",
       "colValue": "当前价值",
       "colUnrealized": "未实现",
@@ -135,7 +135,8 @@
       "emptyPassedTitle": "尚无通过的",
       "emptyPassedBody": "您持有的买入还没有通过持有期测试。",
       "ofLot_other": "共 {{lot}} 股中的 {{open}} 股",
-      "perShare": "每股 {{price}}"
+      "perShare": "每股 {{price}}",
+      "groupLots_other": "{{count}} 笔买入"
     }
   },
   "tips": {

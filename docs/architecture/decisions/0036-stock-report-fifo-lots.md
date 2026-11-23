@@ -53,4 +53,4 @@ held long enough.
 - Every read replays all stock trades. Acceptable for personal volumes; a stored lot table would be
   the next step if that stops being true.
 - Anyone changing the replay order in `cost_basis.rs` must keep the report's replay in step; one
-  test pins that both agree.
+  test pins that the replayed open quantity equals `cost_basis::replayed_quantity`.

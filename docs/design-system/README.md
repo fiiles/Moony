@@ -211,7 +211,7 @@ Analýza akcií, Akciové transakce and Sledování akcií (one toggle per `menu
 - Row 36 px, 14/600, Lucide icon 16 px stroke 1.75 in `ink-3`; the active row is the contrast material with
   text and icon in `ink-inverse`. Hover is 5 % ink. Counts sit right in micro type.
 - Group titles are 10 px uppercase eyebrows; a chevron appears on hover and groups collapse. State persists
-  per group (existing `moony-sidebar-groups` behavior). **Nástroje is collapsed by default** so the 17 items
+  per group (existing `moony-sidebar-groups` behavior). **Nástroje is collapsed by default** so the 18 items
   fit a 900 px window; the middle region scrolls, Nastavení and the account stay pinned.
 - Account row: avatar initials, name, "Účet a zámek aplikace"; click opens the existing menu (Pravidla
   kategorizace, Zamknout aplikaci).

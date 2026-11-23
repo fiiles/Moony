@@ -7,11 +7,9 @@ use crate::services::dated_facts;
 use crate::services::loan_amortization::today_utc_day;
 use crate::services::net_worth;
 use crate::services::portfolio_history::{self, SnapshotSource};
-use crate::services::positions::{self, AssetKind};
 use serde::Serialize;
 use specta::Type;
 use tauri::{AppHandle, Emitter, State};
-use uuid::Uuid;
 
 /// Current net worth in `report_currency` (native breakdowns at the current quote snapshot).
 #[tauri::command]
@@ -51,81 +49,8 @@ pub async fn get_dated_facts(
 /// Record today's per-ticker values to stock_value_history and crypto_value_history tables
 /// This is called alongside update_todays_snapshot to ensure per-ticker chart data is available
 fn record_todays_ticker_values(db: &Database) -> Result<()> {
-    let now = chrono::Utc::now();
-    let today_start = now
-        .date_naive()
-        .and_hms_opt(0, 0, 0)
-        .expect("Valid date should have valid midnight time")
-        .and_utc()
-        .timestamp();
-
-    db.with_conn(|conn| {
-        // Record stock values, at the quantity the positions value (one quantity rule)
-        for (ticker, qty) in positions::held_quantities(conn, AssetKind::Stock)? {
-            if qty <= 0.0 {
-                continue;
-            }
-
-            if let Some(resolved) = crate::services::pricing::resolve_stock_price(conn, &ticker) {
-                let price: f64 = resolved.original_price.parse().unwrap_or(0.0);
-                if price <= 0.0 {
-                    continue;
-                }
-                let id = Uuid::new_v4().to_string();
-
-                conn.execute(
-                    "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-                     ON CONFLICT(ticker, recorded_at) DO UPDATE SET
-                         quantity = excluded.quantity,
-                         price = excluded.price,
-                         currency = excluded.currency",
-                    rusqlite::params![
-                        id,
-                        ticker,
-                        today_start,
-                        qty.to_string(),
-                        price.to_string(),
-                        resolved.currency,
-                    ],
-                )?;
-            }
-        }
-
-        // Record crypto values
-        for (ticker, qty) in positions::held_quantities(conn, AssetKind::Crypto)? {
-            if qty <= 0.0 {
-                continue;
-            }
-
-            if let Some(resolved) = crate::services::pricing::resolve_crypto_price(conn, &ticker) {
-                let price: f64 = resolved.original_price.parse().unwrap_or(0.0);
-                if price <= 0.0 {
-                    continue;
-                }
-                let id = Uuid::new_v4().to_string();
-
-                conn.execute(
-                    "INSERT INTO crypto_value_history (id, ticker, recorded_at, quantity, price, currency)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-                     ON CONFLICT(ticker, recorded_at) DO UPDATE SET
-                         quantity = excluded.quantity,
-                         price = excluded.price,
-                         currency = excluded.currency",
-                    rusqlite::params![
-                        id,
-                        ticker,
-                        today_start,
-                        qty.to_string(),
-                        price.to_string(),
-                        resolved.currency,
-                    ],
-                )?;
-            }
-        }
-
-        Ok(())
-    })
+    let today_start = today_utc_day();
+    db.with_conn(|conn| crate::services::ticker_history::record_current_values(conn, today_start))
 }
 
 /// Update today's portfolio snapshot (or create one if it doesn't exist).

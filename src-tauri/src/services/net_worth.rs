@@ -81,6 +81,12 @@ impl ClassTotals {
 /// Today's native breakdowns of every class from the live tables (real estate split into
 /// personal and investment). Shared by the current metrics and the snapshot writer.
 pub fn compute_breakdowns(conn: &Connection) -> Result<ClassBreakdowns> {
+    compute_breakdowns_at(conn, today_utc_day())
+}
+
+/// [`compute_breakdowns`] with today's UTC day passed in (the day the loans are amortized to),
+/// for callers that work on a given day rather than the clock's (the demo generator).
+pub fn compute_breakdowns_at(conn: &Connection, today: i64) -> Result<ClassBreakdowns> {
     let mut breakdowns = ClassBreakdowns::default();
 
     let mut stmt =
@@ -108,7 +114,7 @@ pub fn compute_breakdowns(conn: &Connection) -> Result<ClassBreakdowns> {
     }
 
     // Liabilities: the amortized balance as of today
-    breakdowns.loans = crate::services::loans::outstanding_by_currency(conn, today_utc_day())?;
+    breakdowns.loans = crate::services::loans::outstanding_by_currency(conn, today)?;
 
     let mut stmt =
         conn.prepare("SELECT type, market_price, market_price_currency FROM real_estate")?;
@@ -230,7 +236,8 @@ pub fn current_net_worth_with_quotes(
     ))
 }
 
-fn net_worth_of(
+/// Net worth of given native breakdowns in `currency` at `quotes` (see [`NetWorth`]).
+pub fn net_worth_of(
     breakdowns: ClassBreakdowns,
     quotes: &Quotes,
     currency: &str,

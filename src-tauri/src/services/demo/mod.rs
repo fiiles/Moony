@@ -47,6 +47,8 @@ pub struct DemoSummary {
     pub counts: BTreeMap<&'static str, usize>,
     /// Net worth today in EUR.
     pub net_worth_eur: f64,
+    /// Today's value of each class in EUR (loans as a positive amount owed).
+    pub classes_eur: BTreeMap<&'static str, f64>,
 }
 
 /// Fill a migrated database with the demo data set.
@@ -61,7 +63,7 @@ pub fn seed(conn: &Connection, opts: &DemoOptions) -> Result<DemoSummary> {
     planning::seed(conn, opts, &mut summary)?; // budgets, spending plans, cashflow items
     invest::seed(conn, opts, &mut summary)?; // stocks, crypto, bond, watchlist
     assets::seed(conn, opts, &mut summary)?; // property, loans, insurance, other assets
-                                             // Task 4: history::seed(conn, opts, &mut summary)?;
+    history::seed(conn, opts, &mut summary)?; // daily values, portfolio days, markers
 
     Ok(summary)
 }
@@ -69,7 +71,7 @@ pub fn seed(conn: &Connection, opts: &DemoOptions) -> Result<DemoSummary> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{NaiveDate, TimeZone, Utc};
+    use chrono::{Datelike, NaiveDate, TimeZone, Utc};
 
     fn now_2026() -> i64 {
         Utc.with_ymd_and_hms(2026, 11, 23, 12, 0, 0)
@@ -524,5 +526,151 @@ mod tests {
         assert!(!invest::nvda_bought_before_split(later));
         let earlier = clock::day_of(NaiveDate::from_ymd_opt(2027, 12, 1).expect("date"));
         assert!(invest::nvda_bought_before_split(earlier));
+    }
+
+    // --- derived history ----------------------------------------------------------------------
+
+    fn check_history(conn: &Connection, summary: &DemoSummary, now: i64) {
+        use crate::services::{fx_backfill, history_plan};
+        let today = clock::today(now);
+        let first = clock::months_ago(now, assets::FLAT_BOUGHT_M, assets::FLAT_DAY);
+        // one row per day from the flat purchase to today; only today's is live
+        let days = (today - first) / clock::DAY + 1;
+        assert_eq!(
+            count(
+                conn,
+                &format!(
+                    "SELECT COUNT(DISTINCT recorded_at / 86400) FROM portfolio_metrics_history
+                     WHERE recorded_at >= {first}"
+                )
+            ),
+            days
+        );
+        assert_eq!(
+            count(
+                conn,
+                &format!(
+                    "SELECT COUNT(*) FROM portfolio_metrics_history WHERE recorded_at < {first}"
+                )
+            ),
+            0
+        );
+        let live: Vec<(i64, String)> = {
+            let mut q = conn
+                .prepare(
+                    "SELECT recorded_at, source FROM portfolio_metrics_history
+                     WHERE source = 'live'",
+                )
+                .expect("prepare");
+            q.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+                .expect("query")
+                .collect::<std::result::Result<_, _>>()
+                .expect("rows")
+        };
+        assert_eq!(live.len(), 1);
+        assert_eq!(clock::today(live[0].0), today);
+        // both markers set; the first unlock plans nothing and fetches no rates
+        assert_eq!(
+            history_plan::stored_rebuild_version(conn).expect("version"),
+            history_plan::REBUILD_VERSION
+        );
+        assert_eq!(
+            history_plan::stored_settled_through(conn).expect("mark"),
+            Some(today - clock::DAY)
+        );
+        let plan = history_plan::plan_startup(conn, now).expect("plan");
+        assert!(plan.jobs.is_empty(), "{:?}", plan.jobs);
+        assert!(!plan.one_time && plan.from_day.is_none() && plan.settles_through.is_none());
+        assert_eq!(
+            fx_backfill::missing_fx_ranges(conn, today).expect("ranges"),
+            Vec::<(i64, i64)>::new()
+        );
+        let quotes = crate::services::fx::Quotes::from_stored([
+            ("USD", prices::usd_per_eur(today)),
+            ("DKK", prices::dkk_per_eur(today)),
+        ]);
+        assert_eq!(
+            fx_backfill::unquoted_currencies(conn, &quotes).expect("unquoted"),
+            Vec::<String>::new()
+        );
+        assert!(fx_backfill::stale_currencies(conn, today)
+            .expect("stale")
+            .is_empty());
+        // today's net worth and every class
+        let nw = summary.net_worth_eur;
+        assert!((240_000.0..=380_000.0).contains(&nw), "net worth {nw}");
+        for (class, value) in &summary.classes_eur {
+            assert!(*value > 0.0, "{class} is empty today");
+        }
+        assert_eq!(summary.classes_eur.len(), 8);
+        // four years ago was poorer, and the stocks never drop to nothing in four years
+        let (points, _) =
+            crate::services::net_worth::history_in(conn, "EUR", Some(first), Some(now))
+                .expect("history");
+        assert_eq!(points.len() as i64, days);
+        let four_years = clock::months_ago(now, 48, clock::date_of(today).day());
+        let then = points
+            .iter()
+            .find(|p| clock::today(p.recorded_at) == four_years)
+            .and_then(|p| p.net_worth)
+            .expect("four years ago");
+        let last = points.last().and_then(|p| p.net_worth).expect("today");
+        assert!(then < last, "{then} vs {last}");
+        assert!((last - nw).abs() < 1.0, "{last} vs {nw}");
+        // the first trade is at M46, so "four years" starts there
+        let first_trade: i64 = conn
+            .query_row(
+                "SELECT MIN(transaction_date) FROM investment_transactions",
+                [],
+                |r| r.get(0),
+            )
+            .expect("first trade");
+        assert!(first_trade < clock::months_ago(now, 45, 1));
+        for p in points.iter().filter(|p| p.recorded_at >= first_trade) {
+            assert!(
+                p.classes.investments.is_some_and(|v| v > 0.0),
+                "no stocks on {}",
+                clock::date_of(p.recorded_at)
+            );
+            assert!(p.net_worth.is_some(), "{}", clock::date_of(p.recorded_at));
+        }
+    }
+
+    #[test]
+    fn history_covers_every_day_and_the_first_unlock_has_nothing_to_do() {
+        let started = std::time::Instant::now();
+        let (conn, summary) = seeded("en", now_2026());
+        let elapsed = started.elapsed();
+        eprintln!("seed {elapsed:?}");
+        eprintln!(
+            "net worth {:.2} EUR, {:?}",
+            summary.net_worth_eur, summary.classes_eur
+        );
+        eprintln!("{:?}", summary.counts);
+        assert!(elapsed < std::time::Duration::from_secs(10), "{elapsed:?}");
+        check_history(&conn, &summary, now_2026());
+    }
+
+    #[test]
+    fn an_earlier_now_keeps_the_history_invariants() {
+        let now = now_2026() - 200 * 86_400;
+        let (conn, summary) = seeded("en", now);
+        check_history(&conn, &summary, now);
+    }
+
+    #[test]
+    fn every_language_seeds() {
+        for lang in text::LANGUAGES {
+            let (conn, summary) = seeded(lang, now_2026());
+            assert!(summary.net_worth_eur > 0.0, "{lang}");
+            let flat: String = conn
+                .query_row(
+                    "SELECT name FROM real_estate WHERE type = 'personal'",
+                    [],
+                    |r| r.get(0),
+                )
+                .expect("flat");
+            assert_eq!(flat, text::t(lang, text::T::PropFlat));
+        }
     }
 }

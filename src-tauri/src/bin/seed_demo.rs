@@ -11,7 +11,13 @@
 //! cargo run --bin seed_demo -- --out <dir>   # writes the data directory to exactly <dir>
 //! MOONY_SEED_OUT=<dir> cargo run --bin seed_demo
 //! cargo run --bin seed_demo -- --legacy-attachments   # attachments as plain files, like 0.12
+//! cargo run --bin seed_demo -- --product-demo --lang cs --out <dir>   # the product demo profile
 //! ```
+//!
+//! `--product-demo` writes the product demo instead of the default data set: Alex Meyer's five
+//! years in EUR from `moony_lib::services::demo` (the generator the app's demo profile uses),
+//! its free text in the language `--lang` names (`en` by default; en, cs, de, es, it, nb, pl,
+//! sv, ja or zh), with derived history and two documents in the encrypted store.
 //!
 //! The investment flat gets a photo batch (two photos) and a PDF lease. By default they go into the
 //! encrypted attachments store (`attachments.db`). `--legacy-attachments` writes them as plain
@@ -43,7 +49,9 @@ use moony_lib::db::Database;
 use moony_lib::models::{
     InsertBankAccount, InsertCryptoTransaction, InsertInvestmentTransaction, InsertUserProfile,
 };
-use moony_lib::services::{auth, bank_accounts, crypto_investments, investments, stock_dividends};
+use moony_lib::services::{
+    auth, bank_accounts, crypto_investments, demo, investments, stock_dividends,
+};
 use rusqlite::params;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
@@ -77,9 +85,13 @@ const MARKER_FILE: &str = ".seed_demo";
 const OUT_ENV: &str = "MOONY_SEED_OUT";
 
 const USAGE: &str = "Usage: seed_demo [--out <dir>] [--legacy-attachments]
+       seed_demo --product-demo [--lang <code>] [--out <dir>]
 
   --out <dir>             write the data directory to exactly <dir> (also: env MOONY_SEED_OUT)
   --legacy-attachments    store the demo attachments as plain files, like versions up to 0.12
+  --product-demo          write the product demo (Alex Meyer, EUR) instead of the default data set
+  --lang <code>           language of the product demo's texts: en (default), cs, de, es, it,
+                          nb, pl, sv, ja, zh
   -h, --help              show this help
 
 Without --out the demo data goes to <repo>/demo-home/<per-OS app data path>.";
@@ -90,22 +102,33 @@ enum Cli {
     Run {
         out: Option<PathBuf>,
         legacy_attachments: bool,
+        /// `Some(language)` for `--product-demo`.
+        product_demo: Option<String>,
     },
 }
 
-/// `--out <dir>` / `--out=<dir>` / `-h`, with `MOONY_SEED_OUT` as the fallback
-/// (the flag wins). Anything else is an error.
+/// `--out <dir>` / `--out=<dir>` / `--legacy-attachments` / `--product-demo` /
+/// `--lang <code>` / `-h`, with `MOONY_SEED_OUT` as the fallback (the flag wins). `--lang`
+/// takes one of the ten UI languages and needs `--product-demo`, which in turn does not mix
+/// with `--legacy-attachments`. Anything else is an error.
 fn parse_args<I>(args: I, env_out: Option<String>) -> Result<Cli, String>
 where
     I: IntoIterator<Item = String>,
 {
     let mut out: Option<PathBuf> = None;
     let mut legacy_attachments = false;
+    let mut product_demo = false;
+    let mut lang: Option<String> = None;
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "-h" | "--help" => return Ok(Cli::Help),
             "--legacy-attachments" => legacy_attachments = true,
+            "--product-demo" => product_demo = true,
+            "--lang" => {
+                let value = args.next().ok_or("--lang needs a language code")?;
+                lang = Some(value);
+            }
             "--out" => {
                 let value = args.next().ok_or("--out needs a directory")?;
                 out = Some(PathBuf::from(value));
@@ -119,10 +142,25 @@ where
     if out.as_ref().is_some_and(|p| p.as_os_str().is_empty()) {
         return Err("--out needs a non-empty directory".into());
     }
+    if let Some(code) = &lang {
+        if !demo::text::LANGUAGES.contains(&code.as_str()) {
+            return Err(format!(
+                "unknown language {code:?}; use one of {}",
+                demo::text::LANGUAGES.join(", ")
+            ));
+        }
+        if !product_demo {
+            return Err("--lang only applies to --product-demo".into());
+        }
+    }
+    if product_demo && legacy_attachments {
+        return Err("--legacy-attachments only applies to the default data set".into());
+    }
     let out = out.or_else(|| env_out.filter(|v| !v.is_empty()).map(PathBuf::from));
     Ok(Cli::Run {
         out,
         legacy_attachments,
+        product_demo: product_demo.then(|| lang.unwrap_or_else(|| "en".to_string())),
     })
 }
 
@@ -172,7 +210,7 @@ fn main() {
             std::process::exit(2);
         }
     };
-    let (out, legacy_attachments) = match cli {
+    let (out, legacy_attachments, product_demo) = match cli {
         Cli::Help => {
             println!("{USAGE}");
             return;
@@ -180,7 +218,8 @@ fn main() {
         Cli::Run {
             out,
             legacy_attachments,
-        } => (out, legacy_attachments),
+            product_demo,
+        } => (out, legacy_attachments, product_demo),
     };
 
     // CARGO_MANIFEST_DIR is src-tauri, so this works from any working directory.
@@ -205,6 +244,20 @@ fn main() {
     let db_path = data_dir.join("moony.db");
     let db = Database::new();
 
+    let recovery_key = match product_demo {
+        Some(language) => seed_product_demo(&db, db_path, &language),
+        None => seed_default(&db, db_path, &data_dir, legacy_attachments),
+    };
+    finish(&data_dir, explicit, &demo_home, &recovery_key);
+}
+
+/// The default data set (Alex Novák, CZK); returns the recovery key.
+fn seed_default(
+    db: &Database,
+    db_path: PathBuf,
+    data_dir: &Path,
+    legacy_attachments: bool,
+) -> String {
     let profile = InsertUserProfile {
         name: "Alex".into(),
         surname: "Novák".into(),
@@ -214,22 +267,66 @@ fn main() {
         language: Some("en".into()),
         exclude_personal_real_estate: Some(false),
     };
-    let recovery_key = auth::setup_account(&db, db_path.clone(), profile, DEMO_PASSWORD)
-        .expect("setup demo account");
+    let recovery_key =
+        auth::setup_account(db, db_path, profile, DEMO_PASSWORD).expect("setup demo account");
 
     let now = chrono::Utc::now().timestamp();
     let mut rng = Rng(20260806);
 
-    seed_bank(&db, now, &mut rng);
-    seed_stocks(&db, now);
-    seed_crypto(&db, now);
-    seed_static_assets(&db, now);
-    seed_attachments(&db, &data_dir, now, legacy_attachments);
-    seed_rate_history(&db, now, &mut rng);
-    seed_portfolio_history(&db, now, &mut rng);
+    seed_bank(db, now, &mut rng);
+    seed_stocks(db, now);
+    seed_crypto(db, now);
+    seed_static_assets(db, now);
+    seed_attachments(db, data_dir, now, legacy_attachments);
+    seed_rate_history(db, now, &mut rng);
+    seed_portfolio_history(db, now, &mut rng);
 
-    verify(&db);
+    verify(db);
+    recovery_key
+}
 
+/// The product demo (Alex Meyer, EUR, texts in `language`) from the library generator, with
+/// documents; prints what it wrote and how long it took. Returns the recovery key.
+fn seed_product_demo(db: &Database, db_path: PathBuf, language: &str) -> String {
+    let profile = InsertUserProfile {
+        name: demo::PERSONA_NAME.into(),
+        surname: demo::PERSONA_SURNAME.into(),
+        email: demo::PERSONA_EMAIL.into(),
+        menu_preferences: None,
+        currency: Some(demo::PERSONA_CURRENCY.into()),
+        language: Some(language.into()),
+        exclude_personal_real_estate: Some(false),
+    };
+    let recovery_key =
+        auth::setup_account(db, db_path, profile, DEMO_PASSWORD).expect("setup demo account");
+    let options = demo::DemoOptions {
+        language: language.to_string(),
+        now: chrono::Utc::now().timestamp(),
+        attachments: true,
+    };
+    let started = std::time::Instant::now();
+    let summary = db
+        .with_conn(|conn| demo::seed(conn, &options))
+        .expect("seed the product demo");
+    let elapsed = started.elapsed();
+
+    println!(
+        "\nSeeded the product demo ({language}) in {:.1} s:",
+        elapsed.as_secs_f64()
+    );
+    for (table, rows) in &summary.counts {
+        println!("  {table:<28} {rows}");
+    }
+    println!("\nToday in EUR:");
+    for (class, value) in &summary.classes_eur {
+        println!("  {class:<28} {value:>12.2}");
+    }
+    println!("  {:<28} {:>12.2}", "net worth", summary.net_worth_eur);
+    recovery_key
+}
+
+/// Marks the folder as ours and prints where it is and how to open the app on it.
+fn finish(data_dir: &Path, explicit: bool, demo_home: &Path, recovery_key: &str) {
     std::fs::write(
         data_dir.join(MARKER_FILE),
         "Created by `cargo run --bin seed_demo`; safe to delete.\n",
@@ -973,7 +1070,8 @@ mod tests {
             parse_args(args(&[]), None),
             Ok(Cli::Run {
                 out: None,
-                legacy_attachments: false
+                legacy_attachments: false,
+                product_demo: None,
             })
         );
     }
@@ -985,6 +1083,7 @@ mod tests {
             Ok(Cli::Run {
                 out: Some(PathBuf::from("/tmp/demo")),
                 legacy_attachments: true,
+                product_demo: None,
             })
         );
     }
@@ -994,6 +1093,7 @@ mod tests {
         let expected = Ok(Cli::Run {
             out: Some(PathBuf::from("/tmp/demo")),
             legacy_attachments: false,
+            product_demo: None,
         });
         assert_eq!(parse_args(args(&["--out", "/tmp/demo"]), None), expected);
         assert_eq!(parse_args(args(&["--out=/tmp/demo"]), None), expected);
@@ -1006,6 +1106,7 @@ mod tests {
             Ok(Cli::Run {
                 out: Some(PathBuf::from("/env/dir")),
                 legacy_attachments: false,
+                product_demo: None,
             })
         );
         assert_eq!(
@@ -1013,6 +1114,7 @@ mod tests {
             Ok(Cli::Run {
                 out: Some(PathBuf::from("/flag/dir")),
                 legacy_attachments: false,
+                product_demo: None,
             })
         );
         // An empty variable counts as unset.
@@ -1020,7 +1122,8 @@ mod tests {
             parse_args(args(&[]), Some(String::new())),
             Ok(Cli::Run {
                 out: None,
-                legacy_attachments: false
+                legacy_attachments: false,
+                product_demo: None,
             })
         );
     }
@@ -1031,6 +1134,42 @@ mod tests {
         assert!(parse_args(args(&["--out="]), None).is_err());
         assert!(parse_args(args(&["--bogus"]), None).is_err());
         assert!(parse_args(args(&["positional"]), None).is_err());
+    }
+
+    #[test]
+    fn product_demo_defaults_to_english_and_takes_a_language() {
+        assert_eq!(
+            parse_args(args(&["--product-demo"]), None),
+            Ok(Cli::Run {
+                out: None,
+                legacy_attachments: false,
+                product_demo: Some("en".into()),
+            })
+        );
+        assert_eq!(
+            parse_args(
+                args(&["--lang", "cs", "--product-demo", "--out", "/tmp/demo"]),
+                None
+            ),
+            Ok(Cli::Run {
+                out: Some(PathBuf::from("/tmp/demo")),
+                legacy_attachments: false,
+                product_demo: Some("cs".into()),
+            })
+        );
+        for code in moony_lib::services::demo::text::LANGUAGES {
+            assert!(parse_args(args(&["--product-demo", "--lang", code]), None).is_ok());
+        }
+    }
+
+    #[test]
+    fn product_demo_rejects_unknown_languages_and_stray_flags() {
+        assert!(parse_args(args(&["--product-demo", "--lang", "fr"]), None).is_err());
+        assert!(parse_args(args(&["--product-demo", "--lang", "CS"]), None).is_err());
+        assert!(parse_args(args(&["--product-demo", "--lang"]), None).is_err());
+        // --lang means nothing for the default data set
+        assert!(parse_args(args(&["--lang", "cs"]), None).is_err());
+        assert!(parse_args(args(&["--product-demo", "--legacy-attachments"]), None).is_err());
     }
 
     #[test]

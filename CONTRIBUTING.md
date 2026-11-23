@@ -224,6 +224,9 @@ cargo run --bin seed_demo -- --out <dir>        # writes the data folder into <d
 MOONY_SEED_OUT=<dir> cargo run --bin seed_demo  # same, through the environment
 ```
 
+`--product-demo` writes the product demo instead (Alex Meyer, five years in EUR, the app's own
+generator); `--lang <code>` sets the language of its texts (`en` default, `cs`, `de`, … `zh`).
+
 **An explicit `--out` folder is cleared only when an earlier `seed_demo` run created it** (it
 leaves a `.seed_demo` marker); a non-empty folder without that marker is refused, so the tool
 cannot overwrite a real profile. Still, never point `--out` at your live data folder.

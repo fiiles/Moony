@@ -267,6 +267,51 @@ where
     apply_stock_ticker_plan(conn, ticker, &plan)
 }
 
+/// Record `day`'s row of every held stock and crypto ticker at its current resolved price (the
+/// price cache or an override) and the quantity the positions value (one quantity rule). A
+/// ticker without a positive price is skipped. The live snapshot writes this alongside today's
+/// portfolio row so the per-ticker charts end today.
+pub fn record_current_values(conn: &Connection, day: i64) -> Result<()> {
+    for kind in [AssetKind::Stock, AssetKind::Crypto] {
+        let (table, _) = tables(kind);
+        for (ticker, qty) in crate::services::positions::held_quantities(conn, kind)? {
+            if qty <= 0.0 {
+                continue;
+            }
+            let resolved = match kind {
+                AssetKind::Stock => crate::services::pricing::resolve_stock_price(conn, &ticker),
+                AssetKind::Crypto => crate::services::pricing::resolve_crypto_price(conn, &ticker),
+            };
+            let Some(resolved) = resolved else {
+                continue;
+            };
+            let price: f64 = resolved.original_price.parse().unwrap_or(0.0);
+            if price <= 0.0 {
+                continue;
+            }
+            conn.execute(
+                &format!(
+                    "INSERT INTO {table} (id, ticker, recorded_at, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                     ON CONFLICT(ticker, recorded_at) DO UPDATE SET
+                         quantity = excluded.quantity,
+                         price = excluded.price,
+                         currency = excluded.currency"
+                ),
+                params![
+                    Uuid::new_v4().to_string(),
+                    ticker,
+                    day,
+                    qty.to_string(),
+                    price.to_string(),
+                    resolved.currency,
+                ],
+            )?;
+        }
+    }
+    Ok(())
+}
+
 /// A ticker's daily value history (`stock_value_history` / `crypto_value_history`) in
 /// `report_currency`, oldest day first, optionally limited to `start_date..=end_date`.
 ///

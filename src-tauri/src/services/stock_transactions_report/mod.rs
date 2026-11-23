@@ -1,8 +1,10 @@
 //! Stock transactions report: realized sales valued by cost method and holding-period test,
-//! with the lots behind them (`lots`) and their valuation (`sales`).
+//! with the lots behind them (`lots`), their valuation in integer minor units (`sales`,
+//! `money`), the period's activity (`activity`) and the open lots (`open_lots`).
 
 pub mod activity;
 pub mod lots;
+pub mod money;
 pub mod open_lots;
 pub mod sales;
 pub mod settings;
@@ -39,8 +41,9 @@ pub fn report(
     let mut conv = sales::Converter::new(&history, &current, &currency);
     let outcome = sales::value_sales(&replay, request, &currency, &mut conv);
     let activity = activity::build(&replay, &outcome, &dividends, request, &currency, &mut conv);
-    let open_lots =
-        open_lots::open_lots(conn, &replay, &outcome, request, &current, today, &mut conv)?;
+    let open_lots = open_lots::open_lots(
+        conn, &replay, &outcome, request, &currency, &current, &mut conv,
+    );
     Ok(StockTransactionsReport {
         fx_quality: ConversionQuality::from(&conv.quality),
         today: today.div_euclid(DAY) * DAY,

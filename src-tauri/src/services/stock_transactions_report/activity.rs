@@ -7,6 +7,7 @@ use chrono::{DateTime, Datelike, Days, Months, NaiveDate, Utc};
 use rusqlite::Connection;
 
 use super::lots::{Replay, TradeKind};
+use super::money::Minor;
 use super::sales::{Converter, SalesOutcome};
 use crate::error::Result;
 use crate::models::stock_dividends::amount_text;
@@ -14,7 +15,6 @@ use crate::models::{
     StockDividendSource, StockReportBucket, StockReportLedgerKind, StockReportLedgerRow,
     StockReportStats, StockTransactionsReportRequest,
 };
-use crate::services::reporting::money_in_currency;
 use crate::services::stock_dividends;
 
 /// A period touching more calendar months than this is bucketed by year.
@@ -42,7 +42,8 @@ pub struct Activity {
 }
 
 /// The counted payouts (never a superseded manual one, none after `today`) of every stock
-/// position with the ex-date in the period, oldest first.
+/// position with the ex-date in the period, oldest first. The filter mirrors
+/// `stock_dividends::payouts`; keep the two alike.
 pub fn dividends_in_period(
     conn: &Connection,
     request: &StockTransactionsReportRequest,
@@ -100,90 +101,109 @@ pub fn build(
 ) -> Activity {
     let in_period = |day: i64| day >= request.from_day && day <= request.to_day;
     let valued = &outcome.valued;
+    let minor = Minor::of(currency);
 
-    let mut bought = 0.0;
-    let mut proceeds = 0.0;
-    let mut fees = 0.0;
+    // Minor units of the rounded per-trade amounts, so the stats equal the ledger's sum. Counts
+    // and tickers cover only what is in their sum.
+    let (mut bought, mut proceeds, mut fees) = (0i64, 0i64, 0i64);
     let (mut buys_count, mut sales_count) = (0u32, 0u32);
     let mut bought_tickers: HashSet<&str> = HashSet::new();
     let mut sold_tickers: HashSet<&str> = HashSet::new();
-    let mut ledger = Vec::new();
+    // Ledger rows with their order key: day, then trades after dividends, then replay order.
+    let mut ledger: Vec<((i64, u8, usize), StockReportLedgerRow)> = Vec::new();
 
     for (index, trade) in replay.trades.iter().enumerate() {
         if !in_period(trade.day) {
             continue;
         }
-        fees += valued.fee[index].unwrap_or(0.0);
+        fees += valued.fee[index].unwrap_or(0);
+        let volume = valued.volume[index];
         let kind = match trade.kind {
             TradeKind::Buy => {
-                buys_count += 1;
-                bought_tickers.insert(&trade.investment_id);
-                bought += valued.volume[index].unwrap_or(0.0);
+                if let Some(volume) = volume {
+                    buys_count += 1;
+                    bought_tickers.insert(&trade.investment_id);
+                    bought += volume;
+                }
                 StockReportLedgerKind::Buy
             }
             TradeKind::Sell => {
-                sales_count += 1;
-                sold_tickers.insert(&trade.investment_id);
-                proceeds += valued.proceeds[index].unwrap_or(0.0);
+                if let Some(volume) = volume {
+                    sales_count += 1;
+                    sold_tickers.insert(&trade.investment_id);
+                    proceeds += volume;
+                }
                 StockReportLedgerKind::Sell
             }
         };
-        ledger.push(StockReportLedgerRow {
-            id: trade.id.clone(),
-            kind,
-            day: trade.day,
-            investment_id: trade.investment_id.clone(),
-            ticker: trade.ticker.clone(),
-            company_name: trade.company_name.clone(),
-            quantity: Some(amount_text(trade.quantity)),
-            price: Some(amount_text(trade.price)),
-            currency: trade.currency.clone(),
-            rate: conv.rate(&trade.currency, trade.day).map(amount_text),
-            amount: valued.volume[index].map(|v| money_in_currency(v, currency)),
-            fee: (trade.fee != 0.0).then(|| amount_text(trade.fee)),
-        });
+        ledger.push((
+            (trade.day, 1, index),
+            StockReportLedgerRow {
+                id: trade.id.clone(),
+                kind,
+                day: trade.day,
+                investment_id: trade.investment_id.clone(),
+                ticker: trade.ticker.clone(),
+                company_name: trade.company_name.clone(),
+                quantity: Some(amount_text(trade.quantity)),
+                price: Some(amount_text(trade.price)),
+                currency: trade.currency.clone(),
+                rate: conv.rate(&trade.currency, trade.day).map(amount_text),
+                amount: volume.map(|v| minor.text(v)),
+                fee: (trade.fee != 0.0).then(|| amount_text(trade.fee)),
+            },
+        ));
     }
 
-    let mut dividend_sum = 0.0;
-    for dividend in dividends {
-        let amount = conv.tracked(dividend.gross, &dividend.currency, dividend.ex_date);
-        dividend_sum += amount.unwrap_or(0.0);
-        ledger.push(StockReportLedgerRow {
-            id: dividend.id.clone(),
-            kind: StockReportLedgerKind::Dividend,
-            day: dividend.ex_date,
-            investment_id: dividend.investment_id.clone(),
-            ticker: dividend.ticker.clone(),
-            company_name: dividend.company_name.clone(),
-            quantity: dividend.shares.clone(),
-            price: dividend.per_share.clone(),
-            currency: dividend.currency.clone(),
-            rate: conv
-                .rate(&dividend.currency, dividend.ex_date)
-                .map(amount_text),
-            amount: amount.map(|v| money_in_currency(v, currency)),
-            fee: None,
-        });
+    let (mut dividend_sum, mut dividends_count) = (0i64, 0u32);
+    for (position, dividend) in dividends.iter().enumerate() {
+        let amount = conv
+            .tracked(dividend.gross, &dividend.currency, dividend.ex_date)
+            .map(|v| minor.units(v));
+        if let Some(amount) = amount {
+            dividend_sum += amount;
+            dividends_count += 1;
+        }
+        ledger.push((
+            (dividend.ex_date, 0, position),
+            StockReportLedgerRow {
+                id: dividend.id.clone(),
+                kind: StockReportLedgerKind::Dividend,
+                day: dividend.ex_date,
+                investment_id: dividend.investment_id.clone(),
+                ticker: dividend.ticker.clone(),
+                company_name: dividend.company_name.clone(),
+                quantity: dividend.shares.clone(),
+                price: dividend.per_share.clone(),
+                currency: dividend.currency.clone(),
+                rate: conv
+                    .rate(&dividend.currency, dividend.ex_date)
+                    .map(amount_text),
+                amount: amount.map(|v| minor.text(v)),
+                fee: None,
+            },
+        ));
     }
-    ledger.sort_by(|a, b| b.day.cmp(&a.day).then_with(|| b.id.cmp(&a.id)));
+    // Newest first; within a day the later trade first, dividends below the day's trades.
+    ledger.sort_by_key(|(key, _)| std::cmp::Reverse(*key));
 
     let stats = StockReportStats {
-        proceeds: money_in_currency(proceeds, currency),
+        proceeds: minor.text(proceeds),
         sales_count,
         sold_tickers: sold_tickers.len() as u32,
-        bought: money_in_currency(bought, currency),
+        bought: minor.text(bought),
         buys_count,
         bought_tickers: bought_tickers.len() as u32,
-        fees_paid: money_in_currency(fees, currency),
-        traded_volume: money_in_currency(bought + proceeds, currency),
-        dividends: money_in_currency(dividend_sum, currency),
-        dividends_count: dividends.len() as u32,
+        fees_paid: minor.text(fees),
+        traded_volume: minor.text(bought + proceeds),
+        dividends: minor.text(dividend_sum),
+        dividends_count,
     };
 
     Activity {
         stats,
-        buckets: buckets(replay, outcome, request, currency),
-        ledger,
+        buckets: buckets(replay, outcome, request, minor),
+        ledger: ledger.into_iter().map(|(_, row)| row).collect(),
     }
 }
 
@@ -202,7 +222,7 @@ fn buckets(
     replay: &Replay,
     outcome: &SalesOutcome,
     request: &StockTransactionsReportRequest,
-    currency: &str,
+    minor: Minor,
 ) -> Vec<StockReportBucket> {
     let (Some(first), Some(last)) = (date_of(request.from_day), date_of(request.to_day)) else {
         return Vec::new();
@@ -230,14 +250,14 @@ fn buckets(
             .checked_sub_days(Days::new(1))
             .map_or(request.to_day, midnight)
             .min(request.to_day);
-        let (mut buys, mut sells, mut res) = (0.0, 0.0, 0.0);
+        let (mut buys, mut sells, mut res) = (0i64, 0i64, 0i64);
         for (index, trade) in replay.trades.iter().enumerate() {
             if trade.day < from_day || trade.day > to_day {
                 continue;
             }
             match trade.kind {
-                TradeKind::Buy => buys += outcome.valued.volume[index].unwrap_or(0.0),
-                TradeKind::Sell => sells += outcome.valued.proceeds[index].unwrap_or(0.0),
+                TradeKind::Buy => buys += outcome.valued.volume[index].unwrap_or(0),
+                TradeKind::Sell => sells += outcome.valued.proceeds[index].unwrap_or(0),
             }
         }
         for (day, after_fees) in &outcome.results {
@@ -253,9 +273,9 @@ fn buckets(
             },
             from_day,
             to_day,
-            buys: money_in_currency(buys, currency),
-            sells: money_in_currency(sells, currency),
-            result: money_in_currency(res, currency),
+            buys: minor.text(buys),
+            sells: minor.text(sells),
+            result: minor.text(res),
         });
         start = Some(next);
     }
@@ -443,6 +463,44 @@ mod tests {
         assert!(row.quantity.is_none() && row.price.is_none());
         assert_eq!(row.amount.as_deref(), Some(czk(1_000.0).as_str()));
         assert_eq!(r.stats.dividends, czk(1_000.0));
+    }
+
+    #[test]
+    fn counts_hold_only_what_the_sums_hold() {
+        let conn = fixture();
+        add_position(&conn, "XXX", "XXX");
+        add_trade(&conn, "xb", "XXX", "buy", "1", "10", "XXX", EX_DATE, None);
+        add_trade(
+            &conn,
+            "xs",
+            "XXX",
+            "sell",
+            "1",
+            "10",
+            "XXX",
+            EX_DATE + 86_400,
+            None,
+        );
+        conn.execute(
+            "INSERT INTO investment_dividends (id, investment_id, ex_date, gross_amount, currency)
+             VALUES ('xd', 'XXX', ?1, '5', 'XXX')",
+            [EX_DATE],
+        )
+        .expect("manual dividend");
+        add_rate(&conn, EX_DATE, "CZK", 25.0);
+        let r = run(&conn, Y2026, StockReportCostMethod::Fifo);
+        let s = &r.stats;
+        assert_eq!((s.buys_count, s.bought_tickers), (0, 0));
+        assert_eq!((s.sales_count, s.sold_tickers), (1, 1));
+        assert_eq!(s.proceeds, czk(112_500.0));
+        assert_eq!(
+            (s.dividends_count, s.dividends.as_str()),
+            (0, czk(0.0).as_str())
+        );
+        for id in ["xb", "xs", "xd"] {
+            let row = r.ledger.iter().find(|l| l.id == id).expect(id);
+            assert!(row.amount.is_none(), "{id}");
+        }
     }
 
     #[test]

@@ -12,6 +12,9 @@ use crate::services::fx;
 /// Longest holding-period test, in months.
 pub const MAX_HOLDING_TEST_MONTHS: i64 = 600;
 
+/// Longest period of a request: 100 years of 365.25 days, in seconds.
+pub const MAX_PERIOD_SECONDS: i64 = 36_525 * 86_400;
+
 /// How the cost of a sold share is determined.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub enum StockReportCostMethod {
@@ -54,7 +57,9 @@ pub struct StockTransactionsReportRequest {
 impl StockTransactionsReportRequest {
     /// Validate input data at the trust boundary.
     pub fn validate(&self) -> Result<()> {
-        if self.from_day > self.to_day {
+        if self.from_day > self.to_day
+            || self.to_day.saturating_sub(self.from_day) > MAX_PERIOD_SECONDS
+        {
             return Err(AppError::Validation("validation.periodInvalid".into()));
         }
         if let Some(months) = self.holding_test_months {
@@ -384,6 +389,22 @@ mod tests {
         assert!(request(86_400, 86_400, None, "CZK").validate().is_ok());
         assert_eq!(
             message(request(86_400, 0, None, "CZK").validate()),
+            "validation.periodInvalid"
+        );
+    }
+
+    #[test]
+    fn a_period_longer_than_a_hundred_years_is_refused() {
+        assert!(request(0, MAX_PERIOD_SECONDS, None, "CZK")
+            .validate()
+            .is_ok());
+        assert_eq!(
+            message(request(0, MAX_PERIOD_SECONDS + 86_400, None, "CZK").validate()),
+            "validation.periodInvalid"
+        );
+        // Year 0001 to 2026, as a typed custom range could send.
+        assert_eq!(
+            message(request(-62_135_596_800, 1_767_225_600, None, "CZK").validate()),
             "validation.periodInvalid"
         );
     }

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use rusqlite::Connection;
 
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use crate::models::validation::utc_day;
 use crate::services::reporting::parse_money;
 
@@ -57,7 +57,8 @@ pub struct Replay {
 }
 
 /// Every stock trade, in stored order (`transaction_date`, `created_at`, `rowid`). Ticker and
-/// company name come from the position.
+/// company name come from the position. Strict: a row that does not parse fails the report (a
+/// skipped row would silently shift every later match), with an error naming its id.
 pub fn load_trades(conn: &Connection) -> Result<Vec<Trade>> {
     let mut stmt = conn.prepare(
         "SELECT t.id, t.investment_id, s.ticker, s.company_name, t.type, t.quantity,
@@ -85,6 +86,16 @@ pub fn load_trades(conn: &Connection) -> Result<Vec<Trade>> {
     for row in rows {
         let (id, investment_id, ticker, company_name, kind, quantity, price, currency, date, fee) =
             row?;
+        let parsed = parse_numbers(&quantity, &price, date, fee.as_deref());
+        let (quantity, price, day, fee) = parsed.map_err(|error| {
+            log::error!("[STOCK REPORT] Transaction {id} is unreadable: {error}");
+            match error {
+                AppError::Validation(key) => {
+                    AppError::validation_with(&key, serde_json::json!({ "transactionId": id }))
+                }
+                other => other,
+            }
+        })?;
         trades.push(Trade {
             id,
             investment_id,
@@ -95,17 +106,32 @@ pub fn load_trades(conn: &Connection) -> Result<Vec<Trade>> {
             } else {
                 TradeKind::Buy
             },
-            quantity: parse_money(&quantity)?,
-            price: parse_money(&price)?,
+            quantity,
+            price,
             currency,
-            day: utc_day(date, "validation.invalidDate")?,
-            fee: match fee.as_deref().map(str::trim).filter(|f| !f.is_empty()) {
-                Some(text) => parse_money(text)?,
-                None => 0.0,
-            },
+            day,
+            fee,
         });
     }
     Ok(trades)
+}
+
+/// Quantity, price, UTC day and fee (0 when none) of a stored trade row.
+fn parse_numbers(
+    quantity: &str,
+    price: &str,
+    date: i64,
+    fee: Option<&str>,
+) -> Result<(f64, f64, i64, f64)> {
+    Ok((
+        parse_money(quantity)?,
+        parse_money(price)?,
+        utc_day(date, "validation.invalidDate")?,
+        match fee.map(str::trim).filter(|f| !f.is_empty()) {
+            Some(text) => parse_money(text)?,
+            None => 0.0,
+        },
+    ))
 }
 
 /// Match the sales of `trades` to buy lots, FIFO per position. Order key `(day, is sale)` with a
@@ -341,6 +367,29 @@ mod tests {
         )
         .expect("schema");
         conn
+    }
+
+    #[test]
+    fn an_unreadable_trade_fails_with_its_id() {
+        let conn = setup_db();
+        conn.execute(
+            "INSERT INTO stock_investments (id, ticker, company_name, quantity)
+             VALUES ('inv', 'AAA', 'Alpha Inc.', '10')",
+            [],
+        )
+        .expect("investment");
+        conn.execute(
+            "INSERT INTO investment_transactions
+               (id, investment_id, type, ticker, company_name, quantity, price_per_unit,
+                currency, transaction_date)
+             VALUES ('tx-bad', 'inv', 'buy', 'AAA', 'Alpha Inc.', 'ten', '100', 'USD', ?1)",
+            [D1],
+        )
+        .expect("transaction");
+        let error = load_trades(&conn).expect_err("unreadable quantity");
+        let (key, params) = error.keyed().expect("keyed validation error");
+        assert_eq!(key, "validation.invalidAmount");
+        assert_eq!(params["transactionId"], "tx-bad");
     }
 
     #[test]

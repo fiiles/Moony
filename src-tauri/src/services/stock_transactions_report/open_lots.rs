@@ -6,81 +6,66 @@ use std::collections::HashMap;
 use rusqlite::Connection;
 
 use super::lots::Replay;
+use super::money::{Minor, Split};
 use super::sales::{pass_day, Converter, SalesOutcome};
-use crate::error::Result;
 use crate::models::stock_dividends::amount_text;
 use crate::models::{StockReportCostMethod, StockReportOpenLot, StockTransactionsReportRequest};
 use crate::services::fx::Quotes;
-use crate::services::positions::{self, AssetKind};
-use crate::services::reporting::money_in_currency;
+use crate::services::pricing::{self, AssetKind, ResolvedPrice};
 
-/// The current native price of a position and its currency.
-struct Price {
-    price: f64,
-    currency: String,
-}
-
+/// Every open lot, oldest buy first. Today's value is the positions service's: its price resolver
+/// (`pricing::resolve_price`, the price taken as is) and `quantity × price` converted from the
+/// price's currency with the current quotes. Value and unrealized result are whole minor units
+/// per lot.
 pub fn open_lots(
     conn: &Connection,
     replay: &Replay,
     outcome: &SalesOutcome,
     request: &StockTransactionsReportRequest,
+    currency: &str,
     current: &Quotes,
-    today: i64,
     conv: &mut Converter,
-) -> Result<Vec<StockReportOpenLot>> {
-    if replay.open.is_empty() {
-        return Ok(Vec::new());
-    }
-    // The price and its conversion are the positions service's: its resolver and the current
-    // quotes. Its quality (cost basis, dividends of every position) is not the report's.
-    let positions = positions::value_positions_with_quotes(
-        conn,
-        AssetKind::Stock,
-        &request.report_currency,
-        current,
-        today,
-    )?;
-    let currency = positions.currency.as_str();
-    let (valued, pools) = (&outcome.valued, &outcome.pools);
-    let prices: HashMap<&str, Price> = positions
-        .items
-        .iter()
-        .filter_map(|p| {
-            Some((
-                p.investment_id.as_str(),
-                Price {
-                    price: p.price?,
-                    currency: p.price_currency.clone()?,
-                },
-            ))
-        })
-        .collect();
+) -> Vec<StockReportOpenLot> {
+    let minor = Minor::of(currency);
     let months = request
         .holding_test_months
         .and_then(|m| u32::try_from(m).ok());
+    let mut prices: HashMap<&str, Option<ResolvedPrice>> = HashMap::new();
+    // The average method splits each position's pool over its open lots, oldest first.
+    let mut pool_splits: HashMap<&str, Option<Split>> = HashMap::new();
 
     let mut lots = Vec::new();
     for (index, open) in &replay.open {
         let buy = &replay.trades[*index];
-        let value = prices.get(buy.investment_id.as_str()).and_then(|p| {
+        let price = prices
+            .entry(buy.investment_id.as_str())
+            .or_insert_with(|| pricing::resolve_price(conn, AssetKind::Stock, &buy.ticker));
+        let value = price.as_ref().and_then(|p| {
             let amount = open * p.price;
             if amount == 0.0 {
-                return Some(0.0);
+                return Some(0);
             }
             let converted = current.convert(amount, &p.currency, currency);
             conv.quality
                 .track_conversion(current, &p.currency, currency, converted)
+                .map(|v| minor.units(v))
         });
-        let share = open / buy.quantity;
         let cost = match request.cost_method {
-            StockReportCostMethod::Fifo => valued.volume[*index]
-                .zip(valued.fee[*index])
-                .map(|(volume, fee)| (volume + fee) * share),
-            StockReportCostMethod::Average => pools
-                .get(&buy.investment_id)
-                .filter(|pool| pool.quantity > 0.0)
-                .and_then(|pool| Some((pool.cost? + pool.fee?) / pool.quantity * open)),
+            StockReportCostMethod::Fifo => outcome
+                .lot_rest
+                .get(index)
+                .and_then(|(volume, fee)| Some((*volume)? + (*fee)?)),
+            StockReportCostMethod::Average => pool_splits
+                .entry(buy.investment_id.as_str())
+                .or_insert_with(|| {
+                    outcome
+                        .pools
+                        .get(&buy.investment_id)
+                        .filter(|pool| pool.quantity > 0.0)
+                        .and_then(|pool| Some(Split::new(pool.cost? + pool.fee?, pool.quantity)))
+                })
+                .as_mut()
+                .map(|split| split.take(*open)),
         };
         lots.push(StockReportOpenLot {
             investment_id: buy.investment_id.clone(),
@@ -92,13 +77,11 @@ pub fn open_lots(
             buy_price: amount_text(buy.price),
             buy_currency: buy.currency.clone(),
             pass_day: months.map(|n| pass_day(buy.day, n)),
-            value: value.map(|v| money_in_currency(v, currency)),
-            unrealized: value
-                .zip(cost)
-                .map(|(v, c)| money_in_currency(v - c, currency)),
+            value: value.map(|v| minor.text(v)),
+            unrealized: value.zip(cost).map(|(v, c)| minor.text(v - c)),
         });
     }
-    Ok(lots)
+    lots
 }
 
 #[cfg(test)]

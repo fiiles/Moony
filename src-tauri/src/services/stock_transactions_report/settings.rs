@@ -20,7 +20,9 @@ fn defaults() -> StockTransactionsReportSettings {
     }
 }
 
-/// The stored settings, or the defaults when nothing is stored or the value is unreadable.
+/// The stored settings, or the defaults when nothing is stored or the value is unreadable. A
+/// length outside 1..=600 (the key syncs, so another build or a hand edit can store one) is
+/// unreadable too: the page would send it and stay locked in the refused request's error.
 pub fn load(conn: &Connection) -> Result<StockTransactionsReportSettings> {
     let raw: Option<String> = conn
         .query_row(
@@ -32,7 +34,10 @@ pub fn load(conn: &Connection) -> Result<StockTransactionsReportSettings> {
     let Some(raw) = raw else {
         return Ok(defaults());
     };
-    Ok(serde_json::from_str(&raw).unwrap_or_else(|_| {
+    let stored = serde_json::from_str::<StockTransactionsReportSettings>(&raw)
+        .ok()
+        .filter(|s| (1..=MAX_HOLDING_TEST_MONTHS).contains(&s.holding_test_months));
+    Ok(stored.unwrap_or_else(|| {
         log::warn!("[STOCK REPORT] Stored settings are unreadable, defaults used");
         defaults()
     }))
@@ -107,6 +112,37 @@ mod tests {
         let loaded = load(&conn).unwrap();
         assert_eq!(loaded.cost_method, StockReportCostMethod::Fifo);
         assert_eq!(loaded.holding_test_months, 36);
+    }
+
+    #[test]
+    fn a_stored_length_out_of_range_falls_back_to_defaults() {
+        let conn = db();
+        for months in [0, 700, -5] {
+            conn.execute(
+                "INSERT INTO app_config (key, value) VALUES (?1, ?2)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                rusqlite::params![
+                    CONFIG_KEY,
+                    format!(
+                        r#"{{"costMethod":"average","holdingTestEnabled":true,"holdingTestMonths":{months}}}"#
+                    )
+                ],
+            )
+            .unwrap();
+            let loaded = load(&conn).unwrap();
+            assert_eq!(loaded.cost_method, StockReportCostMethod::Fifo, "{months}");
+            assert!(!loaded.holding_test_enabled, "{months}");
+            assert_eq!(loaded.holding_test_months, 36, "{months}");
+        }
+    }
+
+    #[test]
+    fn the_range_ends_are_accepted() {
+        let conn = db();
+        for months in [1, 600] {
+            save(&conn, &settings(StockReportCostMethod::Fifo, true, months)).unwrap();
+            assert_eq!(load(&conn).unwrap().holding_test_months, months);
+        }
     }
 
     #[test]

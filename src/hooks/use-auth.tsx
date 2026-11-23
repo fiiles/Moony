@@ -9,16 +9,34 @@
 import { createContext, ReactNode, useContext, useState, useEffect, useRef } from 'react';
 import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { authApi, biometricApi, priceApi, categorizationApi } from '../lib/tauri-api';
+import { authApi, biometricApi, priceApi, categorizationApi, demoApi } from '../lib/tauri-api';
 import { queryClient } from '../lib/queryClient';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { translateApiError } from '@/lib/translate-api-error';
 import { isAuthApiError } from '@/lib/api-error';
-import type { UserProfile } from '@shared/schema';
+import { isMobileShell } from '@/lib/platform';
+import type { WizardEntry } from '@/utils/demo-profile';
+import type { DemoStatus, UserProfile } from '@shared/schema';
 import type { MutateOptions, UseMutationResult } from '@tanstack/react-query';
 
 type AppStatus = 'needs_setup' | 'locked' | 'unlocked';
+
+/**
+ * The demo profile (ADR 0037) is a desktop feature: the phone keeps today's first run and never
+ * asks for the demo's state.
+ */
+export const DEMO_AVAILABLE = !isMobileShell(import.meta.env);
+
+/** What the choice screen needs to know about a stored demo while no profile is open. */
+export interface StoredDemo {
+  exists: boolean;
+  /** Unix seconds; null when unknown. */
+  lastOpenedAt: number | null;
+}
+
+/** Where leaving the demo goes: the choice screen, or the wizard's first step ("Založit vlastní profil"). */
+export type DemoExit = 'choice' | 'ownProfile';
 
 // Pending setup data (stored between prepare and confirm phases)
 interface PendingSetup {
@@ -81,6 +99,22 @@ type AuthContextType = {
   clearRecoveryKey: () => void;
   pendingSetup: PendingSetup | null;
   pendingRecover: PendingRecover | null;
+  /** The open profile is the demo (Alex Meyer's synthetic data), not a real profile. */
+  isDemo: boolean;
+  /** The stored demo while no real profile exists; null on the phone or with a real profile. */
+  storedDemo: StoredDemo | null;
+  /** How the first-run wizard was entered (desktop); null while it is not shown. */
+  wizardEntry: WizardEntry | null;
+  enterWizard: (entry: WizardEntry) => void;
+  leaveWizard: () => void;
+  /** Opens (or first generates) the demo in this language and enters the app with no password. */
+  openDemoMutation: UseMutationResult<UserProfile, Error, string>;
+  /** Ends the demo session (the demo stays stored), then the choice screen or the wizard. */
+  closeDemoMutation: UseMutationResult<DemoStatus | null, Error, DemoExit>;
+  /** Throws the open demo away and generates it again in the profile's language. */
+  resetDemoMutation: UseMutationResult<UserProfile, Error, void>;
+  /** Deletes the stored demo ("Začít znovu s původními daty"). */
+  discardDemoMutation: UseMutationResult<void, Error, void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -112,6 +146,22 @@ export async function rememberGreetingNameFromProfile() {
   }
 }
 
+/** The demo's state, or null when it cannot be read (the first run then works without it). */
+async function readDemoStatus(): Promise<DemoStatus | null> {
+  try {
+    return await demoApi.status();
+  } catch (error) {
+    console.error('Failed to read the demo profile status:', error);
+    return null;
+  }
+}
+
+function storedDemoFrom(status: DemoStatus | null): StoredDemo {
+  return status
+    ? { exists: status.exists, lastOpenedAt: status.lastOpenedAt }
+    : { exists: false, lastOpenedAt: null };
+}
+
 function rememberLockedAt() {
   try {
     localStorage.setItem(LOCKED_AT_KEY, String(Date.now()));
@@ -129,6 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [appStatus, setAppStatus] = useState<AppStatus>('locked');
   const [isCheckingStatus, setIsCheckingStatus] = useState(true);
   const [error, _setError] = useState<Error | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
+  const [storedDemo, setStoredDemo] = useState<StoredDemo | null>(null);
+  const [wizardEntry, setWizardEntry] = useState<WizardEntry | null>(null);
 
   // Fetch user profile automatically when unlocked
   const { data: user = null, isLoading: isProfileLoading } = useQuery({
@@ -148,7 +201,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const hasSetup = await authApi.checkSetup();
 
         if (!hasSetup) {
-          setAppStatus('needs_setup');
+          // No real profile: the demo may be open (a webview reload while in it) or stored.
+          const demo = DEMO_AVAILABLE ? await readDemoStatus() : null;
+          if (demo?.active) {
+            setIsDemo(true);
+            setStoredDemo(storedDemoFrom(demo));
+            setAppStatus('unlocked');
+          } else {
+            if (demo) setStoredDemo(storedDemoFrom(demo));
+            setAppStatus('needs_setup');
+          }
         } else {
           // Check if authenticated
           const isAuth = await authApi.isAuthenticated();
@@ -222,6 +284,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // The first lock after setup greets by name too, not only locks after an unlock.
       rememberGreetingName(profile.name);
       setPendingSetup(null);
+      // The backend deleted a stored demo now that a real profile exists (ADR 0037).
+      setStoredDemo(null);
       // Load learned payees from database
       categorizationApi.loadFromDb().catch(console.error);
       // Load user's own IBANs for internal transfer detection
@@ -244,7 +308,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.setQueryData(['user-profile'], profile);
     setAppStatus('unlocked');
     rememberGreetingName(profile.name);
+    refreshAfterOpen();
+  };
 
+  // The background work after a profile opens (an unlock, the demo): prices, dividends and the
+  // categorization engine
+  const refreshAfterOpen = () => {
     // Refresh all prices in background after unlock
     // Stock prices and dividends (Yahoo Finance)
     priceApi
@@ -319,6 +388,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.clear();
+      // A lock that slips through in the demo ends the demo in Rust: back to the choice screen.
+      if (isDemo) {
+        leaveDemoState();
+        return;
+      }
       setAppStatus('locked');
       rememberLockedAt();
     },
@@ -383,6 +457,88 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // ---------------- Demo profile (ADR 0037) ----------------
+
+  // The demo is no longer the open profile (closed, a failed reset, a lock): the choice screen
+  // reads the stored demo afresh.
+  const leaveDemoState = () => {
+    setIsDemo(false);
+    setAppStatus('needs_setup');
+    void readDemoStatus().then((status) => setStoredDemo(storedDemoFrom(status)));
+  };
+
+  const openDemoMutation = useMutation<UserProfile, Error, string>({
+    mutationFn: (language) => demoApi.open(language),
+    onSuccess: (profile) => {
+      setWizardEntry(null);
+      setIsDemo(true);
+      setStoredDemo({ exists: true, lastOpenedAt: Math.floor(Date.now() / 1000) });
+      queryClient.setQueryData(['user-profile'], profile);
+      setAppStatus('unlocked');
+      refreshAfterOpen();
+    },
+    onError: (error) => {
+      toast.error(t('demo.toast.openFailed'), { description: translateApiError(error, tc) });
+    },
+  });
+
+  const closeDemoMutation = useMutation<DemoStatus | null, Error, DemoExit>({
+    mutationFn: async () => {
+      await demoApi.close();
+      return readDemoStatus();
+    },
+    onSuccess: (status, exit) => {
+      // The whole dataset goes, as on a lock
+      queryClient.clear();
+      setIsDemo(false);
+      setStoredDemo(status ? storedDemoFrom(status) : { exists: true, lastOpenedAt: null });
+      setWizardEntry(exit === 'ownProfile' ? { from: 'demo', path: 'new' } : null);
+      setAppStatus('needs_setup');
+    },
+    onError: (error) => {
+      toast.error(t('demo.toast.closeFailed'), { description: translateApiError(error, tc) });
+    },
+  });
+
+  const resetDemoMutation = useMutation<UserProfile, Error, void>({
+    mutationFn: () => demoApi.reset(),
+    onSuccess: (profile) => {
+      setStoredDemo({ exists: true, lastOpenedAt: Math.floor(Date.now() / 1000) });
+      queryClient.setQueryData(['user-profile'], profile);
+      // A new dataset under the same open profile: every other query starts over (active ones
+      // refetch). The profile stays, so the shell does not fall back to the auth page meanwhile.
+      void queryClient.resetQueries({
+        predicate: (query) => query.queryKey[0] !== 'user-profile',
+      });
+      refreshAfterOpen();
+    },
+    onError: (error) => {
+      toast.error(t('demo.toast.resetFailed'), { description: translateApiError(error, tc) });
+      // A failed regeneration leaves the demo closed in Rust
+      queryClient.clear();
+      leaveDemoState();
+    },
+  });
+
+  const discardDemoMutation = useMutation<void, Error, void>({
+    mutationFn: () => demoApi.discard(),
+    onSuccess: () => {
+      setStoredDemo({ exists: false, lastOpenedAt: null });
+      // Discarding closes an open demo first
+      if (isDemo) {
+        queryClient.clear();
+        setIsDemo(false);
+        setAppStatus('needs_setup');
+      }
+    },
+    onError: (error) => {
+      toast.error(t('demo.toast.discardFailed'), { description: translateApiError(error, tc) });
+    },
+  });
+
+  const enterWizard = (entry: WizardEntry) => setWizardEntry(entry);
+  const leaveWizard = () => setWizardEntry(null);
+
   const clearRecoveryKey = () => {
     setRecoveryKey(null);
     // If user cancels during setup before confirming, clear pending setup
@@ -414,6 +570,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearRecoveryKey,
         pendingSetup,
         pendingRecover,
+        isDemo,
+        storedDemo,
+        wizardEntry,
+        enterWizard,
+        leaveWizard,
+        openDemoMutation,
+        closeDemoMutation,
+        resetDemoMutation,
+        discardDemoMutation,
       }}
     >
       {children}

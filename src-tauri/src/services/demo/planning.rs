@@ -189,13 +189,15 @@ pub fn seed(conn: &Connection, opts: &DemoOptions, summary: &mut DemoSummary) ->
             (s.plan.id, value)
         })
         .collect();
-    for (planned, used) in [
-        (&this_holiday, HOLIDAY_USED),
-        (&car, CAR_USED),
-        (&last_holiday, LAST_HOLIDAY_USED),
+    // The floor is a believable yearly amount: early in a year little is spent yet, and a plan
+    // sized from that alone would shrink to almost nothing.
+    for (planned, used, floor) in [
+        (&this_holiday, HOLIDAY_USED, 2_800.0),
+        (&car, CAR_USED, 1_500.0),
+        (&last_holiday, LAST_HOLIDAY_USED, 2_500.0),
     ] {
         let spend = spent.get(&planned.id).copied().unwrap_or(0.0);
-        let amount = ((spend / used / 100.0).round() * 100.0).max(100.0);
+        let amount = ((spend / used / 100.0).round() * 100.0).max(floor);
         spending_plans::update_plan(
             conn,
             &planned.id,

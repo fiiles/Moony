@@ -216,6 +216,7 @@
     "partOf_other": "{{part}} av {{whole}} aksjer",
     "times": "{{quantity}} × {{price}}",
     "feesPart": "herav gebyrer {{amount}}",
+    "feesShort": "gebyrer {{amount}}",
     "badgeTaxable": "Skattepliktig",
     "badgeExempt": "Fritatt",
     "badgeMixed": "Delvis fritatt",

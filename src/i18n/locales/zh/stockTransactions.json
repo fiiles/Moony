@@ -199,6 +199,7 @@
     "partOf_other": "{{part}} 股（共 {{whole}} 股）",
     "times": "{{quantity}} × {{price}}",
     "feesPart": "其中费用 {{amount}}",
+    "feesShort": "费用 {{amount}}",
     "badgeTaxable": "应税",
     "badgeExempt": "免税",
     "badgeMixed": "部分免税",

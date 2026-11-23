@@ -216,6 +216,7 @@
     "partOf_other": "{{part}} av {{whole}} aktier",
     "times": "{{quantity}} × {{price}}",
     "feesPart": "varav avgifter {{amount}}",
+    "feesShort": "avgifter {{amount}}",
     "badgeTaxable": "Skattepliktigt",
     "badgeExempt": "Undantaget",
     "badgeMixed": "Delvis undantaget",

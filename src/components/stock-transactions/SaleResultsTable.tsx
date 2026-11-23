@@ -23,11 +23,15 @@ import {
   TableEmpty,
 } from './transactions-table-parts';
 
-/** Prototype grid: tighter columns under 1240 px so nothing overflows at the 1080 px minimum. */
+/**
+ * The prototype's grid, widened for amounts in minor units ("+ 130 793,01 Kč"): under 1240 px the
+ * columns tighten so nothing overflows at the 1080 px minimum (content about 720 px), the title
+ * column takes what is left and truncates, and the fee line drops its "z toho".
+ */
 const COLUMNS_TEST =
-  'grid-cols-[18px_78px_minmax(0,1fr)_112px_112px_112px_124px] gap-x-2.5 max-[1239px]:grid-cols-[16px_78px_minmax(0,1fr)_94px_104px_98px_110px] max-[1239px]:gap-x-2';
+  'grid-cols-[18px_84px_minmax(0,1fr)_116px_136px_120px_124px] gap-x-2.5 max-[1239px]:grid-cols-[16px_78px_minmax(0,1fr)_100px_104px_112px_110px] max-[1239px]:gap-x-2';
 const COLUMNS_PLAIN =
-  'grid-cols-[18px_78px_minmax(0,1fr)_112px_112px_112px_84px] gap-x-2.5 max-[1239px]:grid-cols-[16px_78px_minmax(0,1fr)_94px_104px_98px_84px] max-[1239px]:gap-x-2';
+  'grid-cols-[18px_84px_minmax(0,1fr)_116px_136px_120px_96px] gap-x-2.5 max-[1239px]:grid-cols-[16px_78px_minmax(0,1fr)_100px_104px_112px_84px] max-[1239px]:gap-x-2';
 
 type TestKind = 'taxable' | 'exempt' | 'mixed';
 
@@ -55,13 +59,13 @@ export function SaleResultsTable({
   currency: string;
 }) {
   const { t } = useTranslation('stockTransactions');
-  const fmt = useFormat();
+  const { money, signedMoney } = useReportMoney(currency);
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
   const columns = testOn ? COLUMNS_TEST : COLUMNS_PLAIN;
 
-  const money = (value: number) => fmt.money(value, currency);
-  const signed = (value: number) => fmt.money(value, currency, { signed: true });
   const total = totalOf(views);
+  // The sales the sums hold: an uncounted or a wholly uncovered sale adds nothing
+  const summed = views.filter(hasAmounts).length;
 
   const toggle = (id: string) =>
     setOpen((current) => {
@@ -107,15 +111,31 @@ export function SaleResultsTable({
       <div className={cn(BODY_ROW, columns, 'border-b-0 bg-well font-650 text-ink')}>
         <span />
         <span>{t('summary.total')}</span>
-        <span className="min-w-0 truncate">{t('stats.sales', { count: views.length })}</span>
+        <span className="min-w-0 truncate">{t('stats.sales', { count: summed })}</span>
         <span className={NUM_CELL}>{money(total.proceeds)}</span>
         <span className={NUM_CELL}>{money(total.cost + total.fees)}</span>
         <span className={cn(NUM_CELL, gainClass(total.resultAfterFees))}>
-          {signed(total.resultAfterFees)}
+          {signedMoney(total.resultAfterFees)}
         </span>
         <span />
       </div>
     </div>
+  );
+}
+
+/** A sale with amounts to show: counted (D15) and with at least one purchase matched (D16). */
+function hasAmounts(view: SaleView): boolean {
+  return view.sale.counted && view.matches.length > 0;
+}
+
+/** "z toho poplatky X", "poplatky X" under 1240 px; the amount never wraps inside itself. */
+function FeesLine({ amount }: { amount: string }) {
+  const { t } = useTranslation('stockTransactions');
+  return (
+    <SubLine>
+      <span className="max-[1239px]:hidden">{t('sales.feesPart', { amount })}</span>
+      <span className="hidden max-[1239px]:inline">{t('sales.feesShort', { amount })}</span>
+    </SubLine>
   );
 }
 
@@ -163,13 +183,12 @@ function SaleRows({
 }) {
   const { t } = useTranslation('stockTransactions');
   const fmt = useFormat();
-  const { nativeMoney } = useReportMoney(currency);
+  const { money, signedMoney, nativeMoney } = useReportMoney(currency);
   const held = useHeld();
   const { sale, matches } = view;
+  const amounts = hasAmounts(view);
 
   const quantityText = (value: number) => fmt.number(value, { maximumFractionDigits: 6 });
-  const money = (value: number) => fmt.money(value, currency);
-  const signed = (value: number) => fmt.money(value, currency, { signed: true });
 
   // The pieces the class filter keeps, whether or not their amounts converted
   const shown = matches.reduce((sum, m) => sum + toNumber(m.quantity), 0);
@@ -201,7 +220,8 @@ function SaleRows({
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      onToggle();
+      // A held key repeats; one press toggles once
+      if (!event.repeat) onToggle();
     }
   };
 
@@ -229,31 +249,33 @@ function SaleRows({
         <span className="whitespace-nowrap num">{fmt.day(sale.day)}</span>
         <EntityCell ticker={sale.ticker} name={sale.companyName} sub={sub} note={note} />
         <div className={NUM_CELL}>
-          <span className="whitespace-nowrap">{sale.counted ? money(view.proceeds) : '—'}</span>
-          <SubLine>
-            {t('sales.times', {
-              quantity: quantityText(shown),
-              price: nativeMoney(toNumber(sale.price), sale.currency),
-            })}
-          </SubLine>
+          <span className="whitespace-nowrap">{amounts ? money(view.proceeds) : '—'}</span>
+          {matches.length > 0 && (
+            <SubLine>
+              {t('sales.times', {
+                quantity: quantityText(shown),
+                price: nativeMoney(toNumber(sale.price), sale.currency),
+              })}
+            </SubLine>
+          )}
         </div>
         <div className={NUM_CELL}>
-          {sale.counted ? (
+          {amounts ? (
             <>
               <span className="whitespace-nowrap">{money(outlay)}</span>
-              <SubLine>{t('sales.feesPart', { amount: money(view.fees) })}</SubLine>
+              <FeesLine amount={money(view.fees)} />
             </>
           ) : (
             '—'
           )}
         </div>
         <div className={NUM_CELL}>
-          {sale.counted ? (
+          {amounts ? (
             <>
               <span
                 className={cn('block whitespace-nowrap font-650', gainClass(view.resultAfterFees))}
               >
-                {signed(view.resultAfterFees)}
+                {signedMoney(view.resultAfterFees)}
               </span>
               {outlay > 0 && (
                 <ChangeBadge ratio={view.resultAfterFees / outlay} className="mt-[3px]" />
@@ -323,7 +345,7 @@ function MatchRow({
 }) {
   const { t } = useTranslation('stockTransactions');
   const fmt = useFormat();
-  const { nativeMoney } = useReportMoney(currency);
+  const { money, signedMoney, nativeMoney } = useReportMoney(currency);
 
   const quantity = toNumber(match.quantity);
   const quantityLabel = t('quantity', {
@@ -332,8 +354,7 @@ function MatchRow({
   });
   const rate = (text: string | null) =>
     text === null ? '—' : fmt.number(toNumber(text), { maximumFractionDigits: 3 });
-  const money = (text: string | null) =>
-    text === null ? '—' : fmt.money(toNumber(text), currency);
+  const amount = (text: string | null) => (text === null ? '—' : money(toNumber(text)));
 
   const outlay =
     match.cost === null || match.fees === null ? null : toNumber(match.cost) + toNumber(match.fees);
@@ -356,7 +377,7 @@ function MatchRow({
       match.averageCost === null
         ? null
         : t('sales.average', {
-            price: fmt.money(toNumber(match.averageCost), currency, { decimals: 2 }),
+            price: money(toNumber(match.averageCost)),
           });
   }
 
@@ -373,21 +394,21 @@ function MatchRow({
         </span>
         {whatSub && <SubLine>{whatSub}</SubLine>}
       </div>
-      <span className={cn(NUM_CELL, 'whitespace-nowrap')}>{money(match.proceeds)}</span>
+      <span className={cn(NUM_CELL, 'whitespace-nowrap')}>{amount(match.proceeds)}</span>
       <div className={NUM_CELL}>
         {outlay === null ? (
           '—'
         ) : (
           <>
-            <span className="whitespace-nowrap">{fmt.money(outlay, currency)}</span>
-            <SubLine>{t('sales.feesPart', { amount: money(match.fees) })}</SubLine>
+            <span className="whitespace-nowrap">{money(outlay)}</span>
+            <FeesLine amount={amount(match.fees)} />
           </>
         )}
       </div>
       <span
         className={cn(NUM_CELL, 'whitespace-nowrap font-650', result !== null && gainClass(result))}
       >
-        {result === null ? '—' : fmt.money(result, currency, { signed: true })}
+        {result === null ? '—' : signedMoney(result)}
       </span>
       <div className={NUM_CELL}>
         {testOn && match.exempt !== null ? (

@@ -233,6 +233,7 @@
     "partOf_other": "{{part}} ks z {{whole}}",
     "times": "{{quantity}} × {{price}}",
     "feesPart": "z toho poplatky {{amount}}",
+    "feesShort": "poplatky {{amount}}",
     "badgeTaxable": "Podléhá dani",
     "badgeExempt": "Osvobozeno",
     "badgeMixed": "Zčásti osvobozeno",

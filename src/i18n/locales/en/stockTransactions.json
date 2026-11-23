@@ -216,6 +216,7 @@
     "partOf_other": "{{part}} of {{whole}} shares",
     "times": "{{quantity}} × {{price}}",
     "feesPart": "incl. fees {{amount}}",
+    "feesShort": "fees {{amount}}",
     "badgeTaxable": "Taxable",
     "badgeExempt": "Exempt",
     "badgeMixed": "Partly exempt",

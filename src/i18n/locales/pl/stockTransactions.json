@@ -250,6 +250,7 @@
     "partOf_other": "{{part}} z {{whole}} szt.",
     "times": "{{quantity}} × {{price}}",
     "feesPart": "w tym opłaty {{amount}}",
+    "feesShort": "opłaty {{amount}}",
     "badgeTaxable": "Podlega opodatkowaniu",
     "badgeExempt": "Zwolnione",
     "badgeMixed": "Częściowo zwolnione",

@@ -216,6 +216,7 @@
     "partOf_other": "{{part}} von {{whole}} Stück",
     "times": "{{quantity}} × {{price}}",
     "feesPart": "davon Gebühren {{amount}}",
+    "feesShort": "Gebühren {{amount}}",
     "badgeTaxable": "Steuerpflichtig",
     "badgeExempt": "Befreit",
     "badgeMixed": "Teilweise befreit",

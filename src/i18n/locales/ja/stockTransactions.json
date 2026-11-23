@@ -199,6 +199,7 @@
     "partOf_other": "{{whole}} 株中 {{part}} 株",
     "times": "{{quantity}} × {{price}}",
     "feesPart": "うち手数料 {{amount}}",
+    "feesShort": "手数料 {{amount}}",
     "badgeTaxable": "課税対象",
     "badgeExempt": "非課税",
     "badgeMixed": "一部非課税",

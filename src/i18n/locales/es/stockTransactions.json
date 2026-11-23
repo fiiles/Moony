@@ -233,6 +233,7 @@
     "partOf_other": "{{part}} de {{whole}} acciones",
     "times": "{{quantity}} × {{price}}",
     "feesPart": "incl. comisiones {{amount}}",
+    "feesShort": "comisiones {{amount}}",
     "badgeTaxable": "Sujeto a impuestos",
     "badgeExempt": "Exento",
     "badgeMixed": "Exento en parte",

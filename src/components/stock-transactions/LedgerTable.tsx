@@ -12,9 +12,12 @@ import {
   TableEmpty,
 } from './transactions-table-parts';
 
-/** Prototype grid: tighter columns under 1240 px so nothing overflows at the 1080 px minimum. */
+/**
+ * The prototype's grid, widened for amounts in minor units: under 1240 px the columns tighten so
+ * nothing overflows at the 1080 px minimum and the title column takes what is left.
+ */
 const COLUMNS =
-  'grid-cols-[78px_92px_minmax(0,1fr)_56px_108px_114px_80px] gap-x-2.5 max-[1239px]:grid-cols-[78px_86px_minmax(0,1fr)_48px_94px_100px_70px] max-[1239px]:gap-x-2';
+  'grid-cols-[84px_92px_minmax(0,1fr)_56px_112px_120px_88px] gap-x-2.5 max-[1239px]:grid-cols-[78px_86px_minmax(0,1fr)_48px_94px_104px_76px] max-[1239px]:gap-x-2';
 
 /** The time-trace glyphs of README §9; the word always follows the glyph. */
 const GLYPH = { buy: '▲', sell: '▽', dividend: '○' } as const;
@@ -63,7 +66,7 @@ export function LedgerTable({
 function LedgerRow({ row, currency }: { row: StockReportLedgerRow; currency: string }) {
   const { t } = useTranslation('stockTransactions');
   const fmt = useFormat();
-  const { nativeMoney } = useReportMoney(currency);
+  const { money, nativeMoney } = useReportMoney(currency);
   const dividend = row.kind === 'dividend';
 
   const quantity =
@@ -114,7 +117,7 @@ function LedgerRow({ row, currency }: { row: StockReportLedgerRow; currency: str
           '—'
         ) : (
           <>
-            <span className="whitespace-nowrap">{fmt.money(Number(row.amount), currency)}</span>
+            <span className="whitespace-nowrap">{money(Number(row.amount))}</span>
             {rateLine && <SubLine>{rateLine}</SubLine>}
           </>
         )}

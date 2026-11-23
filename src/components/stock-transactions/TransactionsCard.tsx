@@ -183,7 +183,8 @@ export function TransactionsCard({
               size="sm"
               className="ml-auto"
               title={t('table.exportTitle')}
-              disabled={rows.length === 0 || exporting}
+              // Placeholder rows of the previous period never go out under the new period's name
+              disabled={rows.length === 0 || exporting || stale}
               aria-busy={exporting || undefined}
               onClick={() => void exportCsv()}
             >

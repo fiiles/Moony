@@ -127,7 +127,11 @@
   .points .ic { flex: none; margin-top: 1px; color: var(--gain); }
   .points b { color: var(--ink); font-weight: 650; }
   .wiz__nav { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .wiz__note { margin: 12px 0 0; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .wiz__note:empty { display: none; }
   .wiz__from { margin: 16px 0 0; padding-top: 16px; border-top: 1px solid var(--line-soft); color: var(--ink-3); font-size: var(--fs-caption); font-weight: 500; }
+  .wiz__links { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 6px; }
+  .wiz__links .link { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
   .wiz__preview { position: relative; display: grid; place-items: center; padding: 40px; border-left: 1px solid var(--line); background: linear-gradient(160deg, var(--well), var(--canvas)); }
   .mini { width: 100%; max-width: 420px; padding: 18px; }
   .mini .eyebrow { margin-bottom: 6px; }
@@ -306,7 +310,8 @@
           <button type="button" class="btn btn--ghost" id="wiz-back"></button>
           <button type="button" class="btn btn--primary" data-toast="Pokračuje krokem Účet (beze změny)">Pokračovat</button>
         </div>
-        <p class="wiz__from" id="wiz-from"></p>
+        <p class="wiz__note" id="wiz-from"></p>
+        <p class="wiz__from">Už Moony používáte na jiném zařízení?<span class="wiz__links"><button type="button" class="link" data-toast="Připojení k synchronizaci, stejně jako dnes">Připojit k synchronizaci</button><button type="button" class="link" data-toast="Výběr souboru se zálohou, stejně jako dnes">Obnovit ze zálohy</button></span></p>
       </div>
     </div>
     <div class="wiz__preview">
@@ -451,7 +456,7 @@
       "Nová obrazovka mezi úvodní animací a průvodcem. Průvodce samotný se nemění.",
       "<b>Vlastní profil je hlavní tlačítko</b>, ukázka vedlejší. Obě karty jsou stejně velké, aby ukázka nepůsobila jako druhořadá volba.",
       "Ukázka se otevře <b>bez hesla</b> a bez jediné otázky. <b>Jazyk se bere z přepínače vpravo nahoře</b>, data jsou pro všechny stejná: Alex Meyer, v eurech (rozhodnuto 23. 11.).",
-      "Odkazy „Připojit k synchronizaci“ a „Obnovit ze zálohy“ se sem <b>přesouvají z prvního kroku průvodce</b>: kdo už Moony má, nepotřebuje se proklikat přes zakládání profilu."
+      "Odkazy „Připojit k synchronizaci“ a „Obnovit ze zálohy“ jsou tady jen <b>jako zkratka navíc</b>. První krok průvodce je má dál, beze změny (rozhodnuto 23. 11.)."
     ]],
     demo: ["V ukázce", [
       "Jeden motiv: <b>čárkovaný obrys znamená „smyšlené, ne vaše“</b>. Nese ho štítek, karta v postranním panelu i avatar. Žádná nová barva, zelená a červená dál znamenají jen zisk a ztrátu.",
@@ -472,9 +477,10 @@
     ]],
     wizard: ["Cesta k vlastnímu profilu", [
       "Z ukázky vede „Založit vlastní profil“ <b>rovnou do průvodce, bez potvrzovacího okna</b>. Vstupem do průvodce se nic neztrácí.",
-      "První krok má vlevo dole <b>Zpět do ukázky</b>. Kdo přišel z úvodní obrazovky, má tam „Zpět“.",
-      "Ukázka se smaže <b>až ve třetím kroku</b>, když vznikne skutečný profil. Do té doby se dá vrátit.",
-      "Průvodce je jinak beze změny: stejných pět kroků, stejné texty."
+      "<b>První krok je stejný jako dnes</b>, včetně „Připojit k synchronizaci“ a „Obnovit ze zálohy“ (rozhodnuto 23. 11.). Přibývá jen tlačítko zpět a jedna věta, že se ukázková data nepřenesou.",
+      "Tlačítko zpět říká <b>Zpět do ukázky</b>. Kdo přišel z úvodní obrazovky, má tam „Zpět“.",
+      "Ukázka zmizí, <b>až skutečný profil vznikne</b>: založením ve třetím kroku, obnovou ze zálohy, nebo připojením k synchronizaci. Do té doby se dá vrátit.",
+      "Stejných pět kroků, stejné texty."
     ]],
     again: ["Další spuštění", [
       "Dokud neexistuje vlastní profil, začíná každé spuštění <b>na téhle obrazovce</b>, ne rovnou v ukázce.",
@@ -525,7 +531,7 @@
     if (scene === "wizard") {
       var fromDemo = state.from === "demo";
       $("wiz-back").innerHTML = icon("arrow-left", 14) + (fromDemo ? "Zpět do ukázky" : "Zpět");
-      $("wiz-from").innerHTML = fromDemo ? "Ukázková data se do vašeho profilu nepřenesou. Ukázka se zavře, až profil ve třetím kroku vytvoříte." : "Ukázku můžete otevřít i později, dokud profil nevytvoříte.";
+      $("wiz-from").innerHTML = fromDemo ? "Ukázková data se do vašeho profilu nepřenesou. Ukázka zmizí, až vlastní profil vznikne." : "";
     }
     renderNotes(scene);
     window.scrollTo(0, 0);

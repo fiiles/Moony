@@ -34,7 +34,7 @@ data is synthetic while the person explores, and a way from the demo to the real
 1. **First run.** After the brand intro comes "Jak chcete začít?" with two equal cards:
    "Založit vlastní profil" (primary button, leads to the unchanged five-step wizard) and
    "Vyzkoušet na ukázkových datech" (secondary). "Připojit k synchronizaci" and "Obnovit ze
-   zálohy" move here from the wizard's first step.
+   zálohy" are repeated here as a shortcut; the wizard's first step keeps them.
 2. **Marking.** One motif: a dashed outline means "sample, not yours" (badge, sidebar card,
    avatar). No new color. A card above the account row with "Založit vlastní profil", plus
    an "Ukázková data" badge in the top bar that explains itself on click (owner's choice,
@@ -46,9 +46,11 @@ data is synthetic while the person explores, and a way from the demo to the real
 4. **Settings.** A new first section "Ukázka" with the three actions. Security, data and
    backups, sync and the AI assistant are visible but locked, each with one sentence and the
    way to an own profile. General and categorization work as usual.
-5. **To an own profile.** No confirmation dialog: the button opens the wizard at step 1,
-   whose back button reads "Zpět do ukázky". The demo is deleted when step 3 creates the
-   real profile.
+5. **To an own profile.** No confirmation dialog: the button opens the wizard at step 1.
+   That step is exactly today's, with joining sync and restoring from a backup (owner,
+   2026-11-23); it only gains a back button reading "Zpět do ukázky" and one sentence that
+   demo data does not carry over. The demo is deleted when a real profile comes to exist:
+   created in step 3, restored from a backup, or joined through sync.
 6. **Next launch.** While no own profile exists, every launch starts on the choice screen;
    the demo card reads "Pokračovat v ukázce" and offers to start over.
 
@@ -61,12 +63,14 @@ discards something.
 2. Next launch shows the choice screen, not the demo directly.
 3. Changes in the demo persist until "Obnovit původní data".
 4. The demo is gone for good once an own profile exists.
-5. The "already use Moony" links move from wizard step 1 to the choice screen.
+5. The "already use Moony" links also appear on the choice screen, as a shortcut.
 6. Sync, backup and restore, password, biometrics and the MCP server are off in the demo.
 
 ## Decided by the owner (2026-11-23)
 
 - Marking: the sidebar card and the top-bar badge.
+- The wizard's first step stays as it is today when reached from the demo, including
+  "Připojit k synchronizaci" and "Obnovit ze zálohy".
 - One universal persona for everyone: **Alex Meyer**, all data in **EUR**. The language of the
   demo profile is the one chosen in the language selector on the choice screen.
 

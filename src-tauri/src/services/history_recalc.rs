@@ -416,10 +416,7 @@ pub fn schedule(
             // session open the batch could only fail; it ends as failed at once.
             let Ok(db) = db.current_session() else {
                 log::warn!("[RECALC] A history batch was dropped: no profile is open");
-                let failed = BatchOutcome::default();
-                for completion in completions {
-                    completion(&failed);
-                }
+                drop_batch(&batch, completions, &notify);
                 continue;
             };
             // Any dated write (a stock import, a backdated balance in a foreign currency, …)
@@ -441,6 +438,23 @@ pub fn schedule(
         }
         guard.finish();
     });
+}
+
+/// End a batch that cannot run (no profile is open) the way a failed run ends: every ticker of it
+/// reports `failed` (a ticker a running batch left `running` must not stay so), then the batch
+/// is complete, and its completions learn that it failed.
+fn drop_batch(batch: &Batch, completions: Vec<Completion>, notify: &Notifier) {
+    for ticker in batch.tickers() {
+        notify(Notice::Status(HistoryRecalcEvent {
+            ticker,
+            status: RecalcStatus::Failed,
+        }));
+    }
+    notify(Notice::BatchComplete);
+    let failed = BatchOutcome::default();
+    for completion in completions {
+        completion(&failed);
+    }
 }
 
 /// One batch (A5): stock tickers, crypto tickers, then the portfolio days from the
@@ -1094,6 +1108,47 @@ mod tests {
 
     fn crypto(ticker: &str, from: i64) -> Job {
         Job::CryptoTicker(ticker.to_string(), from)
+    }
+
+    #[test]
+    fn a_dropped_batch_reports_every_ticker_failed_then_completes() {
+        let queue = HistoryRecalc::new();
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(None));
+        let record = seen.clone();
+        assert!(queue.enqueue(
+            [
+                stock("VWCE.DE", DAY),
+                crypto("BTC", 2 * DAY),
+                Job::Days(DAY)
+            ],
+            Some(Box::new(move |outcome: &BatchOutcome| {
+                *record.lock().unwrap() = Some(outcome.clone());
+            })),
+        ));
+        let (batch, completions) = queue.take_batch().expect("a batch");
+        let notices = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let sink = notices.clone();
+        let notify: Notifier = std::sync::Arc::new(move |notice| sink.lock().unwrap().push(notice));
+
+        drop_batch(&batch, completions, &notify);
+
+        let failed = |ticker: &str| {
+            Notice::Status(HistoryRecalcEvent {
+                ticker: ticker.to_string(),
+                status: RecalcStatus::Failed,
+            })
+        };
+        let notices = notices.lock().unwrap().clone();
+        assert_eq!(notices.len(), 3);
+        assert!(notices.contains(&failed("VWCE.DE")));
+        assert!(notices.contains(&failed("BTC")));
+        assert_eq!(
+            notices.last(),
+            Some(&Notice::BatchComplete),
+            "complete comes last"
+        );
+        let outcome = seen.lock().unwrap().clone().expect("the completion ran");
+        assert!(!outcome.days_ok);
     }
 
     #[test]

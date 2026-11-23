@@ -206,11 +206,16 @@ impl CategorizationEngine {
         self.forget_payee(Some(payee), None)
     }
 
-    /// Forget every learned payee (the exact-match layer); the loader fills it afresh from the
-    /// open profile's database, so nothing of another profile survives a reload.
+    /// Forget every learned payee (the exact-match layer).
     pub fn clear_learned(&self) {
+        self.replace_learned(ExactMatchEngine::new());
+    }
+
+    /// Swap in a learned-payee layer built aside (`learn::load_learned_payees`), under one write
+    /// lock: readers see the old layer or the new one, never a partly filled one.
+    pub fn replace_learned(&self, layer: ExactMatchEngine) {
         if let Ok(mut exact) = self.exact_match.write() {
-            *exact = ExactMatchEngine::new();
+            *exact = layer;
         }
     }
 

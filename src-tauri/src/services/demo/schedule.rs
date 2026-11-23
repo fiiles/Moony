@@ -1,6 +1,10 @@
 //! The shared event calendar of the demo life: when the big things happen, counted in calendar
-//! months before today (`Mn`). Pure data; the bank, investment and asset parts all read it so
-//! that a purchase paid from savings shows up on the same day in every part.
+//! months before today (`Mn`). Data plus the few date rules more than one part needs; the bank,
+//! investment and asset parts all read it so that a purchase paid from savings shows up on the
+//! same day in every part.
+
+use super::clock::{self, DAY};
+use chrono::{Datelike, NaiveDate};
 
 /// Months of bank history (the simulation starts on the first day of `M48`).
 pub const HISTORY_MONTHS: i32 = 48;
@@ -74,3 +78,41 @@ pub const LONG_TRIP: (u32, u32) = (9, 6);
 pub const SHORT_TRIP_DAYS: i64 = 4;
 /// Length of the long trip in days.
 pub const LONG_TRIP_DAYS: i64 = 10;
+
+/// Calendar months ahead the savings account's promotional rate ends (on the 15th): inside the
+/// 90 days the milestones look ahead, so the deadline shows.
+pub const SAVINGS_RATE_END_AHEAD_M: i32 = 2;
+
+/// The next anniversary of the car policy: 30 to 40 days after today (picked from the day
+/// itself, no random stream), so the insurance deadline shows. The yearly premium is paid on
+/// the same month and day.
+pub fn car_policy_anniversary(now: i64) -> i64 {
+    let today = clock::today(now);
+    today + (30 + (today / DAY).rem_euclid(11)) * DAY
+}
+
+/// The car premium days, oldest first: the anniversary's month and day in every year from the
+/// first one on or after the car purchase up to the year before the next anniversary. The
+/// first one is the start of the car policy.
+pub fn car_premium_days(now: i64) -> Vec<i64> {
+    let next = clock::date_of(car_policy_anniversary(now));
+    let bought = clock::months_ago(now, CAR_BOUGHT_M, CAR_DAY);
+    let mut days: Vec<i64> = (1..=CAR_BOUGHT_M / 12 + 2)
+        .filter_map(|k| {
+            let year = next.year() - k;
+            let dom = next.day().min(clock::days_in_month(year, next.month()));
+            NaiveDate::from_ymd_opt(year, next.month(), dom).map(clock::day_of)
+        })
+        .filter(|day| *day >= bought)
+        .collect();
+    days.sort_unstable();
+    days
+}
+
+/// Start of the car policy: the first premium day (the car purchase if there is none).
+pub fn car_policy_start(now: i64) -> i64 {
+    car_premium_days(now)
+        .first()
+        .copied()
+        .unwrap_or_else(|| clock::months_ago(now, CAR_BOUGHT_M, CAR_DAY))
+}

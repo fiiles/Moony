@@ -540,20 +540,10 @@ fn generate(opts: &DemoOptions, names: [String; 3]) -> Vec<Pay> {
     g.out
 }
 
-/// Yearly car premium on a date chosen so the policy anniversary falls 30-40 days after today.
+/// Yearly car premium on the policy anniversaries ([`car_premium_days`]); the next one falls
+/// 30-40 days after today.
 fn car_insurance(g: &mut Gen, now: i64) {
-    let today = clock::today(now);
-    let anniversary = clock::date_of(today + g.rng.int_range(30, 40) * DAY);
-    let bought = clock::months_ago(now, CAR_BOUGHT_M, CAR_DAY);
-    for k in 1.. {
-        let day = ymd(
-            anniversary.year() - k,
-            anniversary.month(),
-            anniversary.day(),
-        );
-        if day < bought {
-            break;
-        }
+    for day in car_premium_days(now) {
         g.debit(
             day,
             c(612.0),
@@ -847,7 +837,7 @@ pub fn seed(
         interest_rate_valid_until: until,
         exclude_from_balance: None,
     };
-    let rate_until = clock::months_ago(opts.now, -5, 15);
+    let rate_until = clock::months_ago(opts.now, -SAVINGS_RATE_END_AHEAD_M, 15);
     let ids = [
         bank_accounts::create_account(conn, &mk(&names[CUR], "checking", "EUR", None, None, None))?
             .id,

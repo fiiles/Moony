@@ -18,7 +18,6 @@ import { cn } from '@/lib/utils';
 import {
   NAV_GROUPS,
   OVERVIEW_ITEM,
-  SETTINGS_ITEM,
   isGroupOpen,
   isNavItemActive,
   readGroupState,
@@ -31,8 +30,8 @@ import {
  * Sidebar (design system §5): continuous, no boxed groups. Rows 36 px,
  * 14/600, 16 px Lucide icons in ink-3; the active row is dark material.
  * Group titles are eyebrows with a chevron on hover; state persists per
- * group and Tools starts collapsed. The middle scrolls, Settings and the
- * account row stay pinned above a hairline.
+ * group and Tools starts collapsed. The middle scrolls; the account row stays
+ * pinned above a hairline, and its menu holds Settings.
  */
 function NavRow({
   item,
@@ -151,16 +150,11 @@ export function AppSidebar() {
       </nav>
 
       <div className="mt-[10px] border-t border-line-sidebar pt-[10px]">
-        <NavRow
-          item={SETTINGS_ITEM}
-          active={isNavItemActive(location, SETTINGS_ITEM.url)}
-          label={t(SETTINGS_ITEM.labelKey)}
-        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="mt-1 flex w-full items-center gap-[9px] rounded-r2 p-[10px] text-left transition-colors duration-fast hover:bg-ink-hover focus-visible:outline-none focus-visible:shadow-focus"
+              className="flex w-full items-center gap-[9px] rounded-r2 p-[10px] text-left transition-colors duration-fast hover:bg-ink-hover focus-visible:outline-none focus-visible:shadow-focus"
             >
               <Avatar>
                 <AvatarFallback>{initials}</AvatarFallback>

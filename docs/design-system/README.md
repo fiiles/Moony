@@ -203,7 +203,7 @@ with at most one primary button. Content column grids: `1.4fr .6fr` for detail p
 
 The sidebar is continuous, no boxed groups. The tree is the real IA from
 `src/components/common/nav-config.ts`: Přehled · Peníze · Investice · Závazky a pojištění · Nástroje,
-with Nastavení pinned above the account row. **Peníze** is Bankovní účty and Cashflow (budgets live inside
+with the account row pinned at the bottom; Nastavení lives only in its menu (with Pravidla kategorizace, O aplikaci and Zamknout). **Peníze** is Bankovní účty and Cashflow (budgets live inside
 Cashflow; `/reports/budgeting` redirects there); **"Plánování cashflow"**
 (icon `Repeat`) opens **Nástroje**, see §7 and §11. Hiding Akcie in Settings → Menu visibility also hides
 Analýza akcií and Sledování akcií (one toggle per `menuPreferences` flag).

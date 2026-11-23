@@ -261,7 +261,7 @@ describe('openLotGroups', () => {
       day(2026, 9, 1),
       day(2027, 5, 1),
     ]);
-    expect(groups.openValue).toBe(500);
+    expect(groups.waitingValue).toBe(500);
     expect(groups.passedValue).toBe(1000);
   });
   it('lists passed lots newest pass first', () => {

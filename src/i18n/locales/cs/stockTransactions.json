@@ -10,6 +10,7 @@
     "from": "Od",
     "to": "Do",
     "rangeOrder": "Od nesmí být později než Do.",
+    "rangeBounds": "Období může začít nejdříve {{from}} a skončit nejpozději {{to}}.",
     "yearToDate": "{{year}} · do dneška",
     "range": "{{from}} – {{to}}"
   },
@@ -25,6 +26,7 @@
     "sales_few": "{{count}} prodeje, {{profit}} v zisku a {{loss}} ve ztrátě",
     "sales_other": "{{count}} prodejů, {{profit}} v zisku a {{loss}} ve ztrátě",
     "noSales": "V tomto období jste nic neprodali.",
+    "notCounted": "Výsledek nelze spočítat, chybí kurz nebo nákup.",
     "exempt": "Osvobozeno časovým testem {{amount}}"
   },
   "settings": {
@@ -184,7 +186,7 @@
     "fx": {
       "label": "Jak se přepočítává měna",
       "title": "Přepočet na {{currency}}",
-      "rate": "Nákup i prodej se přepočítají kurzem ECB ze svého dne, takže ve výsledku je i pohyb kurzu.",
+      "rate": "Nákup i prodej se přepočítají kurzem ze svého dne, takže ve výsledku je i pohyb kurzu.",
       "return": "Daňové přiznání může chtít jiný kurz, například denní nebo roční kurz vaší centrální banky. Rozdíl bývá malý."
     },
     "dividends": {

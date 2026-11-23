@@ -10,6 +10,7 @@
     "from": "Fra",
     "to": "Til",
     "rangeOrder": "Fra kan ikke være etter Til.",
+    "rangeBounds": "Perioden kan begynne tidligst {{from}} og slutte senest {{to}}.",
     "yearToDate": "{{year}} · til i dag",
     "range": "{{from}} – {{to}}"
   },
@@ -24,6 +25,7 @@
     "sales_one": "{{count}} salg, {{profit}} med gevinst og {{loss}} med tap",
     "sales_other": "{{count}} salg, {{profit}} med gevinst og {{loss}} med tap",
     "noSales": "Du solgte ingenting i denne perioden.",
+    "notCounted": "Resultatet kan ikke beregnes, det mangler en kurs eller et kjøp.",
     "exempt": "Fritatt etter eiertidstesten {{amount}}"
   },
   "settings": {
@@ -169,7 +171,7 @@
     "fx": {
       "label": "Slik regnes valutaen om",
       "title": "Omregning til {{currency}}",
-      "rate": "Kjøp og salg regnes hver for seg om etter ESB-kursen på sin dag, så resultatet inkluderer også kursbevegelsen.",
+      "rate": "Kjøp og salg regnes hver for seg om etter kursen på sin dag, så resultatet inkluderer også kursbevegelsen.",
       "return": "Skattemeldingen kan kreve en annen kurs, for eksempel dags- eller årskursen til sentralbanken din. Forskjellen er vanligvis liten."
     },
     "dividends": {

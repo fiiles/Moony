@@ -26,6 +26,14 @@ function field(value: string | null): string {
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
+/**
+ * A free-text cell (ticker, name) that a spreadsheet would run as a formula gets a leading
+ * apostrophe; numeric cells never do, a negative amount stays a number.
+ */
+function text(value: string): string {
+  return /^[=+\-@]/.test(value) ? `'${value}` : value;
+}
+
 /** The ledger as CSV text, `\n` line ends, no BOM (the caller adds it). */
 export function ledgerCsv(rows: StockReportLedgerRow[], reportCurrency: string): string {
   const lines = [HEADER.join(',')];
@@ -34,8 +42,8 @@ export function ledgerCsv(rows: StockReportLedgerRow[], reportCurrency: string):
       [
         isoDay(row.day),
         KIND_LABEL[row.kind],
-        row.ticker,
-        row.companyName,
+        text(row.ticker),
+        text(row.companyName),
         row.quantity,
         row.price,
         row.currency,

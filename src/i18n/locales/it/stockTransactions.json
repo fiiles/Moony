@@ -10,6 +10,7 @@
     "from": "Dal",
     "to": "Al",
     "rangeOrder": "Dal non può essere dopo Al.",
+    "rangeBounds": "Il periodo può iniziare al più presto il {{from}} e finire al più tardi il {{to}}.",
     "yearToDate": "{{year}} · a oggi",
     "range": "{{from}} – {{to}}"
   },
@@ -25,6 +26,7 @@
     "sales_many": "{{count}} vendite, {{profit}} in utile e {{loss}} in perdita",
     "sales_other": "{{count}} vendite, {{profit}} in utile e {{loss}} in perdita",
     "noSales": "In questo periodo non hai venduto nulla.",
+    "notCounted": "Il risultato non si può calcolare: manca un cambio o un acquisto.",
     "exempt": "Esente per periodo di detenzione {{amount}}"
   },
   "settings": {
@@ -184,7 +186,7 @@
     "fx": {
       "label": "Come si converte la valuta",
       "title": "Conversione in {{currency}}",
-      "rate": "Acquisto e vendita sono convertiti ciascuno al cambio BCE del proprio giorno, quindi il risultato include anche il movimento del cambio.",
+      "rate": "Acquisto e vendita sono convertiti ciascuno al cambio del proprio giorno, quindi il risultato include anche il movimento del cambio.",
       "return": "La dichiarazione può richiedere un altro cambio, per esempio il cambio giornaliero o annuale della tua banca centrale. La differenza di solito è piccola."
     },
     "dividends": {

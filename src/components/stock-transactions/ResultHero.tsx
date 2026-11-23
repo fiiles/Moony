@@ -41,7 +41,10 @@ export function ResultHero({
   const testOn = settings.holdingTestEnabled && summary.taxable !== null;
   const taxableResult = summary.taxable ? Number(summary.taxable.resultAfterFees) : 0;
   const exemptResult = summary.exempt ? Number(summary.exempt.resultAfterFees) : 0;
+  // Sales the sums hold; "nothing sold" only when the period has no sale at all (an uncounted
+  // sale is still listed in the table)
   const hasSales = summary.salesCount > 0;
+  const soldNothing = report.sales.length === 0;
 
   const delta = hasSales ? (
     <span className="inline-flex flex-wrap items-center gap-x-[5px] gap-y-1">
@@ -56,7 +59,9 @@ export function ResultHero({
       </span>
     </span>
   ) : (
-    <span className="font-450 text-ink-4">{t('hero.noSales')}</span>
+    <span className="font-450 text-ink-4">
+      {t(soldNothing ? 'hero.noSales' : 'hero.notCounted')}
+    </span>
   );
 
   const aside =

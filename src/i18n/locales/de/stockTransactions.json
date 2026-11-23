@@ -10,6 +10,7 @@
     "from": "Von",
     "to": "Bis",
     "rangeOrder": "Von darf nicht nach Bis liegen.",
+    "rangeBounds": "Der Zeitraum kann frühestens am {{from}} beginnen und spätestens am {{to}} enden.",
     "yearToDate": "{{year}} · bis heute",
     "range": "{{from}} – {{to}}"
   },
@@ -24,6 +25,7 @@
     "sales_one": "{{count}} Verkauf, {{profit}} im Gewinn und {{loss}} im Verlust",
     "sales_other": "{{count}} Verkäufe, {{profit}} im Gewinn und {{loss}} im Verlust",
     "noSales": "In diesem Zeitraum haben Sie nichts verkauft.",
+    "notCounted": "Das Ergebnis lässt sich nicht berechnen, es fehlt ein Kurs oder ein Kauf.",
     "exempt": "Durch die Haltefrist befreit {{amount}}"
   },
   "settings": {
@@ -169,7 +171,7 @@
     "fx": {
       "label": "Wie die Währung umgerechnet wird",
       "title": "Umrechnung in {{currency}}",
-      "rate": "Kauf und Verkauf werden jeweils zum EZB-Kurs ihres Tages umgerechnet, das Ergebnis enthält also auch die Kursbewegung.",
+      "rate": "Kauf und Verkauf werden jeweils zum Kurs ihres Tages umgerechnet, das Ergebnis enthält also auch die Kursbewegung.",
       "return": "Eine Steuererklärung kann einen anderen Kurs verlangen, etwa den Tages- oder Jahreskurs Ihrer Zentralbank. Der Unterschied ist meist gering."
     },
     "dividends": {

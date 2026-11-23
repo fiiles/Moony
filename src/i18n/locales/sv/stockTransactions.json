@@ -10,6 +10,7 @@
     "from": "Från",
     "to": "Till",
     "rangeOrder": "Från får inte vara efter Till.",
+    "rangeBounds": "Perioden kan börja tidigast {{from}} och sluta senast {{to}}.",
     "yearToDate": "{{year}} · hittills",
     "range": "{{from}} – {{to}}"
   },
@@ -24,6 +25,7 @@
     "sales_one": "{{count}} försäljning, {{profit}} med vinst och {{loss}} med förlust",
     "sales_other": "{{count}} försäljningar, {{profit}} med vinst och {{loss}} med förlust",
     "noSales": "Du sålde inget under den här perioden.",
+    "notCounted": "Resultatet kan inte beräknas, en kurs eller ett köp saknas.",
     "exempt": "Undantaget genom innehavstiden {{amount}}"
   },
   "settings": {
@@ -169,7 +171,7 @@
     "fx": {
       "label": "Hur valutan räknas om",
       "title": "Omräkning till {{currency}}",
-      "rate": "Köp och försäljning räknas var för sig om till ECB-kursen för sin dag, så resultatet innehåller även valutarörelsen.",
+      "rate": "Köp och försäljning räknas var för sig om till kursen för sin dag, så resultatet innehåller även valutarörelsen.",
       "return": "Deklarationen kan kräva en annan kurs, till exempel din centralbanks dags- eller årskurs. Skillnaden brukar vara liten."
     },
     "dividends": {

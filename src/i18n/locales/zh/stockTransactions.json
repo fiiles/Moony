@@ -10,6 +10,7 @@
     "from": "从",
     "to": "至",
     "rangeOrder": "开始日期不能晚于结束日期。",
+    "rangeBounds": "期间最早从 {{from}} 开始，最晚到 {{to}} 结束。",
     "yearToDate": "{{year}} · 截至今天",
     "range": "{{from}} – {{to}}"
   },
@@ -23,6 +24,7 @@
     "ofCosts": "相对成本",
     "sales_other": "{{count}} 笔卖出，{{profit}} 笔盈利，{{loss}} 笔亏损",
     "noSales": "此期间您没有卖出。",
+    "notCounted": "无法计算盈亏：缺少汇率或买入记录。",
     "exempt": "持有期满免税 {{amount}}"
   },
   "settings": {
@@ -154,7 +156,7 @@
     "fx": {
       "label": "货币如何换算",
       "title": "换算为 {{currency}}",
-      "rate": "买入和卖出各自按当日的欧洲央行汇率换算，因此盈亏也包含汇率变动。",
+      "rate": "买入和卖出各自按当日的汇率换算，因此盈亏也包含汇率变动。",
       "return": "纳税申报可能要求使用其他汇率，例如央行的每日汇率或年度汇率。差异通常很小。"
     },
     "dividends": {

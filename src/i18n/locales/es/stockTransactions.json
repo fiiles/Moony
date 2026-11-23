@@ -10,6 +10,7 @@
     "from": "Desde",
     "to": "Hasta",
     "rangeOrder": "Desde no puede ser posterior a Hasta.",
+    "rangeBounds": "El período puede empezar como pronto el {{from}} y terminar como tarde el {{to}}.",
     "yearToDate": "{{year}} · hasta hoy",
     "range": "{{from}} – {{to}}"
   },
@@ -25,6 +26,7 @@
     "sales_many": "{{count}} ventas, {{profit}} con ganancia y {{loss}} con pérdida",
     "sales_other": "{{count}} ventas, {{profit}} con ganancia y {{loss}} con pérdida",
     "noSales": "No vendiste nada en este período.",
+    "notCounted": "No se puede calcular el resultado: falta un tipo de cambio o una compra.",
     "exempt": "Exento por el plazo de tenencia {{amount}}"
   },
   "settings": {
@@ -184,7 +186,7 @@
     "fx": {
       "label": "Cómo se convierte la moneda",
       "title": "Conversión a {{currency}}",
-      "rate": "La compra y la venta se convierten cada una al tipo del BCE de su día, así que el resultado incluye también el movimiento del tipo de cambio.",
+      "rate": "La compra y la venta se convierten cada una al tipo de su propio día, así que el resultado incluye también el movimiento del tipo de cambio.",
       "return": "La declaración puede exigir otro tipo de cambio, por ejemplo el tipo diario o anual de tu banco central. La diferencia suele ser pequeña."
     },
     "dividends": {

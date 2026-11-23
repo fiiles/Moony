@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import type { StockReportCostMethod, StockTransactionsReportSettings } from '@shared/schema';
 import { parseHoldingMonths } from '@/utils/stock-transactions-report';
@@ -18,11 +18,26 @@ import { holdingLength } from './holding-length';
 /** The preset lengths of the holding test, in months (spec D7). */
 const PRESETS = [6, 12, 24, 36, 60, 120] as const;
 const CUSTOM = 'custom';
+/** A typed length is saved this long after the last valid keystroke (or at once on blur). */
+const SAVE_DELAY_MS = 400;
+
+type Pending = { months: number; timer: ReturnType<typeof setTimeout> };
+
+/** Cancels the pending save and returns its length, `null` when none was pending. */
+function takePending(pending: { current: Pending | null }): number | null {
+  const taken = pending.current;
+  if (taken === null) return null;
+  clearTimeout(taken.timer);
+  pending.current = null;
+  return taken.months;
+}
 
 /**
  * The settings strip of the hero (spec D6, D7): the cost method and the holding test with its
- * length. Every valid change is saved at once; the custom months field keeps what is typed and
- * marks it invalid until it reads as 1–600 whole months, while the last valid length stays.
+ * length. Every valid change is saved at once, except the custom months field: it keeps what is
+ * typed, marks it invalid until it reads as 1–600 whole months while the last valid length
+ * stays, and saves the last valid length once typing pauses (or on blur), so one value is saved
+ * and requested. Any other change takes a pending length along in the same save.
  */
 export function ReportSettings({
   settings,
@@ -41,11 +56,34 @@ export function ReportSettings({
   /** What the months field holds; `null` shows the stored length. */
   const [draft, setDraft] = useState<string | null>(null);
 
+  /** The typed length waiting to be saved. */
+  const pending = useRef<Pending | null>(null);
+  /** The settings and the callback of the last render, for a save that fires later. */
+  const latest = useRef({ settings, onChange });
+  useEffect(() => {
+    latest.current = { settings, onChange };
+  });
+  const savePending = useCallback(() => {
+    const typed = takePending(pending);
+    const { settings: current, onChange: save } = latest.current;
+    if (typed !== null && typed !== current.holdingTestMonths) {
+      save({ ...current, holdingTestMonths: typed });
+    }
+  }, []);
+  // Leaving the page while a length waits still saves it
+  useEffect(() => savePending, [savePending]);
+
   const months = settings.holdingTestMonths;
   const isPreset = (PRESETS as readonly number[]).includes(months);
   const custom = customPicked || !isPreset;
   const text = draft ?? String(months);
   const invalid = parseHoldingMonths(text) === null;
+
+  /** `settings` with a typed length that has not been saved yet. */
+  const withPending = (): StockTransactionsReportSettings => {
+    const typed = takePending(pending);
+    return typed === null ? settings : { ...settings, holdingTestMonths: typed };
+  };
 
   const pickLength = (value: string) => {
     setDraft(null);
@@ -54,6 +92,7 @@ export function ReportSettings({
       return;
     }
     setCustomPicked(false);
+    takePending(pending);
     const next = Number(value);
     if (next !== months) onChange({ ...settings, holdingTestMonths: next });
   };
@@ -61,7 +100,10 @@ export function ReportSettings({
     setCustomPicked(true);
     setDraft(value);
     const next = parseHoldingMonths(value);
-    if (next !== null && next !== months) onChange({ ...settings, holdingTestMonths: next });
+    // An invalid keystroke keeps the last valid length waiting
+    if (next === null) return;
+    takePending(pending);
+    pending.current = { months: next, timer: setTimeout(savePending, SAVE_DELAY_MS) };
   };
 
   return (
@@ -80,7 +122,7 @@ export function ReportSettings({
         </ExplainTip>
         <Segmented<StockReportCostMethod>
           value={settings.costMethod}
-          onValueChange={(costMethod) => onChange({ ...settings, costMethod })}
+          onValueChange={(costMethod) => onChange({ ...withPending(), costMethod })}
           aria-label={t('settings.costMethod')}
           options={[
             { value: 'fifo', label: t('settings.fifo') },
@@ -104,7 +146,7 @@ export function ReportSettings({
           onCheckedChange={(holdingTestEnabled) => {
             setCustomPicked(false);
             setDraft(null);
-            onChange({ ...settings, holdingTestEnabled });
+            onChange({ ...withPending(), holdingTestEnabled });
           }}
         />
         {settings.holdingTestEnabled && (
@@ -131,6 +173,7 @@ export function ReportSettings({
                   inputMode="numeric"
                   value={text}
                   onChange={(event) => typeMonths(event.target.value)}
+                  onBlur={savePending}
                   aria-label={t('settings.customMonths')}
                   aria-invalid={invalid}
                   title={invalid ? t('settings.invalidMonths') : undefined}

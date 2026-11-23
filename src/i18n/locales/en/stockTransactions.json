@@ -10,6 +10,7 @@
     "from": "From",
     "to": "To",
     "rangeOrder": "From must not be later than To.",
+    "rangeBounds": "The period can start on {{from}} at the earliest and end on {{to}} at the latest.",
     "yearToDate": "{{year}} · to date",
     "range": "{{from}} – {{to}}"
   },
@@ -24,6 +25,7 @@
     "sales_one": "{{count}} sale, {{profit}} in profit and {{loss}} at a loss",
     "sales_other": "{{count}} sales, {{profit}} in profit and {{loss}} at a loss",
     "noSales": "You sold nothing in this period.",
+    "notCounted": "The result cannot be computed: an exchange rate or a purchase is missing.",
     "exempt": "Exempt by the holding test {{amount}}"
   },
   "settings": {
@@ -169,7 +171,7 @@
     "fx": {
       "label": "How the currency is converted",
       "title": "Conversion to {{currency}}",
-      "rate": "A buy and a sale are each converted at the ECB rate of their own day, so the result includes the movement of the exchange rate.",
+      "rate": "A buy and a sale are each converted at the rate of their own day, so the result includes the movement of the exchange rate.",
       "return": "A tax return may require a different rate, for example your central bank's daily or yearly rate. The difference is usually small."
     },
     "dividends": {

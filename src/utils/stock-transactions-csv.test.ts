@@ -40,6 +40,21 @@ describe('ledgerCsv', () => {
     );
   });
 
+  it('keeps a spreadsheet from running a ticker or a name as a formula', () => {
+    const rows = ['=1+2', '+CMD', '-2', '@SUM(A1)'].map((companyName, i) => ({
+      ...base,
+      id: `r${i}`,
+      ticker: i === 0 ? '=HYPERLINK("x")' : 'AAPL',
+      companyName,
+      amount: '-4020',
+    }));
+    const lines = ledgerCsv(rows, 'CZK').split('\n');
+    expect(lines[1]).toBe('2026-01-05,Buy,"\'=HYPERLINK(""x"")",\'=1+2,2,100.5,USD,20,-4020,CZK,1');
+    expect(lines[2]).toBe("2026-01-05,Buy,AAPL,'+CMD,2,100.5,USD,20,-4020,CZK,1");
+    expect(lines[3]).toBe("2026-01-05,Buy,AAPL,'-2,2,100.5,USD,20,-4020,CZK,1");
+    expect(lines[4]).toBe("2026-01-05,Buy,AAPL,'@SUM(A1),2,100.5,USD,20,-4020,CZK,1");
+  });
+
   it('ends with a line break and has no BOM', () => {
     const csv = ledgerCsv([], 'CZK');
     expect(csv.endsWith('\n')).toBe(true);

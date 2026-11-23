@@ -153,19 +153,22 @@ export function parseHoldingMonths(text: string): number | null {
   return value >= 1 && value <= 600 ? value : null;
 }
 
-/** Open lots split by whether the holding test is already passed; sums count priced lots only. */
+/**
+ * Open lots split by whether the holding test is already passed, with the value of each group
+ * (priced lots only): `waitingValue` + `passedValue` is the value of every valued open lot.
+ */
 export function openLotGroups(
   lots: StockReportOpenLot[],
   today: number
 ): {
   waiting: StockReportOpenLot[];
   passed: StockReportOpenLot[];
-  openValue: number;
+  waitingValue: number;
   passedValue: number;
 } {
   const waiting: StockReportOpenLot[] = [];
   const passed: StockReportOpenLot[] = [];
-  let openValue = 0;
+  let waitingValue = 0;
   let passedValue = 0;
   for (const lot of lots) {
     const value = amount(lot.value);
@@ -174,7 +177,7 @@ export function openLotGroups(
       passedValue += value;
     } else {
       waiting.push(lot);
-      openValue += value;
+      waitingValue += value;
     }
   }
   waiting.sort((a, b) => {
@@ -183,5 +186,5 @@ export function openLotGroups(
     return x === y ? 0 : x < y ? -1 : 1;
   });
   passed.sort((a, b) => (b.passDay ?? 0) - (a.passDay ?? 0));
-  return { waiting, passed, openValue, passedValue };
+  return { waiting, passed, waitingValue, passedValue };
 }

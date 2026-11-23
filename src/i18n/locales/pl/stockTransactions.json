@@ -10,6 +10,7 @@
     "from": "Od",
     "to": "Do",
     "rangeOrder": "Data Od nie może być późniejsza niż Do.",
+    "rangeBounds": "Okres może zaczynać się najwcześniej {{from}} i kończyć najpóźniej {{to}}.",
     "yearToDate": "{{year}} · do dziś",
     "range": "{{from}} – {{to}}"
   },
@@ -26,6 +27,7 @@
     "sales_many": "{{count}} sprzedaży, {{profit}} z zyskiem i {{loss}} ze stratą",
     "sales_other": "{{count}} sprzedaży, {{profit}} z zyskiem i {{loss}} ze stratą",
     "noSales": "W tym okresie nie było sprzedaży.",
+    "notCounted": "Nie można obliczyć wyniku, brakuje kursu lub zakupu.",
     "exempt": "Zwolnione testem okresu posiadania {{amount}}"
   },
   "settings": {
@@ -199,7 +201,7 @@
     "fx": {
       "label": "Jak przeliczana jest waluta",
       "title": "Przeliczenie na {{currency}}",
-      "rate": "Zakup i sprzedaż są przeliczane po kursie EBC z ich własnego dnia, więc wynik obejmuje też zmianę kursu.",
+      "rate": "Zakup i sprzedaż są przeliczane po kursie z ich własnego dnia, więc wynik obejmuje też zmianę kursu.",
       "return": "Zeznanie podatkowe może wymagać innego kursu, na przykład dziennego lub rocznego kursu twojego banku centralnego. Różnica zwykle jest niewielka."
     },
     "dividends": {
